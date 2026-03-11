@@ -52,6 +52,7 @@ def language : Distilled.Language where
     intro τ
     cases τ <;> infer_instance
   bool := .bool
+  toBool := id
 
 abbrev BindTy : Type := Distilled.VisBindTy Player language
 abbrev Ctx : Type := Distilled.VisCtx Player language
@@ -553,13 +554,16 @@ noncomputable def evalPayoffMap (u : PayoffMap Γ) (env : Env Γ) : Outcome :=
 visibility-aware language boundary. -/
 noncomputable def payoffKit : Distilled.VisPayoffKit Player language where
   PayoffExpr := PayoffMap
-  eval := fun u env who => evalPayoffMap u env who
+  Outcome := Outcome
+  decEqOutcome := inferInstance
+  payoff := fun o who => o who
+  eval := @evalPayoffMap
   deps := fun u => u.entries.foldr (fun pe acc => exprVars pe.2 ++ acc) []
 
-def evalR {Γ : Ctx} {b : BaseTy} {who : Player} {x : VarId}
+abbrev evalR {Γ : Ctx} {b : BaseTy} {who : Player} {x : VarId}
     (R : Expr ((x, .pub b) :: flattenCtx (viewCtx who Γ)) .bool)
     (a : Val b) (view : Env (viewCtx who Γ)) : Bool :=
-  evalExpr R (Env.cons (x := x) a view.toFlat)
+  Distilled.evalGuard (Player := Player) (L := language) exprKit R a view
 
 inductive Prog : Ctx → Type where
   | ret (u : PayoffMap Γ) : Prog Γ

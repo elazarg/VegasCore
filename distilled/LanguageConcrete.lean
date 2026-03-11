@@ -43,6 +43,7 @@ def lang : Language where
   Val := Val
   decEqVal := instDecEqVal
   bool := .bool
+  toBool := id
 
 /-- Finite valuation for the backend language. -/
 def finite : FiniteValuation lang where

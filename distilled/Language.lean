@@ -53,6 +53,7 @@ structure Language where
   Val : Ty → Type
   decEqVal : ∀ {τ : Ty}, DecidableEq (Val τ)
   bool : Ty
+  toBool : Val bool → Bool
 
 attribute [instance] Language.decEqTy Language.decEqVal
 
@@ -330,9 +331,14 @@ structure VisDistKit (Player : Type) (L : Language) where
 /-- Visibility-aware payoff interface. Utility outputs need not be finite. -/
 structure VisPayoffKit (Player : Type) (L : Language) where
   PayoffExpr : VisCtx Player L → Type
+  Outcome : Type
+  decEqOutcome : DecidableEq Outcome
+  payoff : Outcome → Player → Int
   eval : {Γ : VisCtx Player L} →
-    PayoffExpr Γ → VisEnv (Player := Player) L Γ → Player → Int
+    PayoffExpr Γ → VisEnv (Player := Player) L Γ → Outcome
   deps : {Γ : VisCtx Player L} → PayoffExpr Γ → List VarId
+
+attribute [instance] VisPayoffKit.decEqOutcome
 
 /-- Whether a value is sampled publicly by nature, privately by nature, or by
 the owning player. -/
@@ -362,6 +368,68 @@ def projectDist {Player : Type} [DecidableEq Player] {L : Language} {Γ : VisCtx
   | .hidden p _, .PlayerPriv => env.toFlatView p
 
 end VisEnv
+
+/-- Evaluate a commit guard against a proposed action and the committing
+player's current view. -/
+def evalGuard {Player : Type} [DecidableEq Player] {L : Language}
+    (E : VisExprKit Player L) {Γ : VisCtx Player L} {τ : L.Ty}
+    {who : Player} {x : VarId}
+    (R : E.Expr ((x, .pub τ) :: flattenCtx (viewCtx who Γ)) L.bool)
+    (a : L.Val τ) (view : VisEnv (Player := Player) L (viewCtx who Γ)) : Bool :=
+  L.toBool (E.eval R (VisEnv.cons (Player := Player) (L := L) (x := x) (τ := .pub τ) a view.toFlat))
+
+/-- Generic Vegas-style protocol syntax over a visibility-aware language
+interface. -/
+inductive VisProg (Player : Type) [DecidableEq Player] (L : Language)
+    (E : VisExprKit Player L) (D : VisDistKit Player L) (U : VisPayoffKit Player L) :
+    VisCtx Player L → Type where
+  | ret (u : U.PayoffExpr Γ) : VisProg Player L E D U Γ
+  | letExpr (x : VarId) {τ : L.Ty} (e : E.Expr Γ τ)
+      (k : VisProg Player L E D U ((x, .pub τ) :: Γ)) :
+      VisProg Player L E D U Γ
+  | sample (x : VarId) (τ : VisBindTy Player L) (m : SampleMode τ)
+      (D' : D.DistExpr (distCtx τ m Γ) τ.base)
+      (k : VisProg Player L E D U ((x, τ) :: Γ)) :
+      VisProg Player L E D U Γ
+  | commit (x : VarId) (who : Player) {τ : L.Ty}
+      (acts : List (L.Val τ))
+      (R : E.Expr ((x, .pub τ) :: flattenCtx (viewCtx who Γ)) L.bool)
+      (k : VisProg Player L E D U ((x, .hidden who τ) :: Γ)) :
+      VisProg Player L E D U Γ
+  | reveal (y : VarId) (who : Player) (x : VarId) {τ : L.Ty}
+      (hx : VisHasVar (L := L) Γ x (.hidden who τ))
+      (k : VisProg Player L E D U ((y, .pub τ) :: Γ)) :
+      VisProg Player L E D U Γ
+
+/-- Generic commit kernels indexed by a player view. -/
+abbrev VisCommitKernel (Player : Type) [DecidableEq Player] (L : Language)
+    (who : Player) (Γ : VisCtx Player L) (τ : L.Ty) : Type :=
+  VisEnv (Player := Player) L (viewCtx who Γ) → FDist (L.Val τ)
+
+/-- Generic profiles for Vegas-style commit nodes. -/
+structure VisProfile (Player : Type) [DecidableEq Player] (L : Language)
+    (E : VisExprKit Player L) (D : VisDistKit Player L) (U : VisPayoffKit Player L) where
+  commit : {Γ : VisCtx Player L} → {τ : L.Ty} → (who : Player) →
+    (x : VarId) → (acts : List (L.Val τ)) →
+    (R : E.Expr ((x, .pub τ) :: flattenCtx (viewCtx who Γ)) L.bool) →
+    VisCommitKernel Player L who Γ τ
+
+/-- Partial generic profiles with optional commit kernels. -/
+structure VisPProfile (Player : Type) [DecidableEq Player] (L : Language)
+    (E : VisExprKit Player L) (D : VisDistKit Player L) (U : VisPayoffKit Player L) where
+  commit? : {Γ : VisCtx Player L} → {τ : L.Ty} → (who : Player) →
+    (x : VarId) → (acts : List (L.Val τ)) →
+    (R : E.Expr ((x, .pub τ) :: flattenCtx (viewCtx who Γ)) L.bool) →
+    Option (VisCommitKernel Player L who Γ τ)
+
+def VisPProfile.toProfile {Player : Type} [DecidableEq Player] {L : Language}
+    {E : VisExprKit Player L} {D : VisDistKit Player L} {U : VisPayoffKit Player L}
+    (π : VisPProfile Player L E D U) (fallback : VisProfile Player L E D U) :
+    VisProfile Player L E D U where
+  commit := fun {Γ} {τ} who x acts R view =>
+    match π.commit? (Γ := Γ) (τ := τ) who x acts R with
+    | some k => k view
+    | none => fallback.commit who x acts R view
 
 /-- Extra assumptions needed only for finite-backend compilation. -/
 structure FiniteValuation (L : Language) where
