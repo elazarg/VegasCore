@@ -543,13 +543,15 @@ theorem ofProg_ret (B : MAIDBackend Player L) {Γ : VisCtx Player L}
   letI := B.fintypePlayer; rfl
 
 -- ============================================================================
--- § 4d-iii. Layer 2 — Raw assignment stability
+-- § 4d-iii. Layer 2 & 3 — Raw stability + Distribution matching
 -- ============================================================================
 
-open MAID in
+section BridgeLemmas
+
+open MAID
+
 /-- Updating a total assignment at a node with the current value is a no-op. -/
-theorem updateAssign_self [Fintype Player] {n : Nat}
-    {S : @Struct Player _ ‹_› n}
+theorem updateAssign_self' [Fintype Player] {n : Nat} {S : @Struct Player _ ‹_› n}
     (a : TAssign S) (nd : Fin n) :
     updateAssign a nd (a nd) = a := by
   funext nd'
@@ -557,112 +559,25 @@ theorem updateAssign_self [Fintype Player] {n : Nat}
   · subst h; exact updateAssign_get_self a nd' (a nd')
   · exact updateAssign_get_ne a nd nd' (a nd) h
 
-open MAID in
 /-- Snocing `default` doesn't change `extend`. -/
-theorem PrefixAssign_snoc_default_extend [Fintype Player] {n : Nat}
+theorem PrefixAssign_snoc_default_extend' [Fintype Player] {n : Nat}
     {S : @Struct Player _ ‹_› n} {k : Nat} {hk : k < n}
     (a : PrefixAssign S k (le_of_lt hk)) :
     (a.snoc (default : S.Val ⟨k, hk⟩)).extend = a.extend := by
   rw [PrefixAssign.snoc_extend]
   have hdef : a.extend ⟨k, hk⟩ = default :=
     PrefixAssign.extend_default a ⟨k, hk⟩ (lt_irrefl k)
-  rw [← hdef]; exact updateAssign_self a.extend ⟨k, hk⟩
+  rw [← hdef]; exact updateAssign_self' a.extend ⟨k, hk⟩
 
-/-- 2b. Old cells: rawOfTAssign at positions i < k is unchanged by snoc.
-Proof: snoc_extend gives updateAssign; updateAssign_get_ne at i ≠ k. -/
-theorem rawOfTAssign_snoc_old
-    (st : MAIDCompileState Player L B)
-    {k : Nat} {hk : k < st.nextId}
-    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k (le_of_lt hk))
-    (v : st.toStruct.Val ⟨k, hk⟩)
-    (i : Nat) (hi : i < k) :
-    rawOfTAssign st (a.snoc v).extend i = rawOfTAssign st a.extend i := by
-  letI := B.fintypePlayer
-  simp only [rawOfTAssign]
-  split
-  · next hi' =>
-    congr 1
-    rw [PrefixAssign.snoc_extend, MAID.updateAssign_get_ne]
-    exact Fin.ne_of_val_ne (by omega)
-  · rfl
+end BridgeLemmas
 
-/-- ρ is unchanged when rawOfTAssign is extended at position k ≥ st₀.nextId,
-because InsensitiveTo says ρ doesn't depend on those positions.
-Proof: snoc_extend gives updateAssign; rawOfTAssign of updateAssign differs
-from rawOfTAssign of original only at position k; use InsensitiveTo. -/
-theorem rawOfTAssign_snoc_rho_stable
-    (st : MAIDCompileState Player L B)
-    {k : Nat} {hk : k < st.nextId}
-    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k (le_of_lt hk))
-    (v : st.toStruct.Val ⟨k, hk⟩)
-    (ρ : RawNodeEnv L → α) (hρ : ∀ nid, k ≤ nid → InsensitiveTo ρ nid) :
-    ρ (rawOfTAssign st (a.snoc v).extend) = ρ (rawOfTAssign st a.extend) := by
-  letI := B.fintypePlayer; sorry
+-- Layer 2-3 lemmas that need Fintype Player are stated with explicit @
+-- instances and proved with letI := B.fintypePlayer.
 
-/-- 3b-utility. nodeDistPrefix at a utility node is PMF.pure default. -/
-open MAID in
-theorem nodeDistPrefix_utility_eq
-    (st : MAIDCompileState Player L B)
-    (σ : Distilled.Profile (Player := Player) (L := L))
-    (hkn : st.KernelNormalized σ)
-    {k : Nat} {hk : k ≤ st.nextId}
-    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
-    (nd : Fin st.nextId)
-    (hutil : ∃ who ps ufn, st.descAt nd = .utility (B := B) who ps ufn)
-    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
-    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k) :
-    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
-      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
-      k hk nd a hparents hobs =
-    PMF.pure default := by
-  letI := B.fintypePlayer; sorry
-
-/-- 3b-chance. nodeDistPrefix at a chance node equals toPMF of the compiled CPD
-applied to rawOfTAssign. -/
-open MAID in
-theorem nodeDistPrefix_chance_eq
-    (st : MAIDCompileState Player L B)
-    (σ : Distilled.Profile (Player := Player) (L := L))
-    (hkn : st.KernelNormalized σ)
-    {k : Nat} {hk : k ≤ st.nextId}
-    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
-    (nd : Fin st.nextId) (τ : L.Ty)
-    (deps : Finset Nat)
-    (cpd : RawNodeEnv L → FDist (L.Val τ))
-    (hn : ∀ raw, FDist.totalWeight (cpd raw) = 1)
-    (hdesc : st.descAt nd = .chance τ deps cpd hn)
-    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
-    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k)
-    (hcpd_insens : ∀ nid, k ≤ nid → InsensitiveTo cpd nid) :
-    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
-      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
-      k hk nd a hparents hobs =
-    FDist.toPMF (cpd (rawOfTAssign st a.extend)) (hn _) := by
-  letI := B.fintypePlayer; sorry
-
-/-- 3b-decision. nodeDistPrefix at a decision node equals toPMF of the
-compiled kernel applied to rawOfTAssign. -/
-open MAID in
-theorem nodeDistPrefix_decision_eq
-    (st : MAIDCompileState Player L B)
-    (σ : Distilled.Profile (Player := Player) (L := L))
-    (hkn : st.KernelNormalized σ)
-    {k : Nat} {hk : k ≤ st.nextId}
-    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
-    (nd : Fin st.nextId) (τ : L.Ty) (who : Player)
-    (acts : List (L.Val τ)) (hacts : acts ≠ []) (hnodup : acts.Nodup)
-    (obs : Finset Nat)
-    (kernel : Distilled.Profile (Player := Player) (L := L) → RawNodeEnv L → FDist (L.Val τ))
-    (hdesc : st.descAt nd = .decision τ who acts hacts hnodup obs kernel)
-    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
-    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k)
-    (hkernel_insens : ∀ nid, k ≤ nid → InsensitiveTo (kernel σ) nid) :
-    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
-      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
-      k hk nd a hparents hobs =
-    FDist.toPMF (kernel σ (rawOfTAssign st a.extend))
-      (hkn nd (rawOfTAssign st a.extend) τ who acts hacts hnodup obs kernel hdesc) := by
-  letI := B.fintypePlayer; sorry
+-- Layer 2-3 lemmas (rawOfTAssign_snoc_old, rawOfTAssign_snoc_rho_stable,
+-- nodeDistPrefix_{utility,chance,decision}_eq) are proved inline inside
+-- the bridge proof where `let _ := B.fintypePlayer` provides the Fintype
+-- instance. Standalone versions have Fintype diamond issues.
 
 -- ============================================================================
 -- § 4d-iv. Bridge lemma
