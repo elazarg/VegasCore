@@ -330,3 +330,4 @@ theorem evalS_ofArena_eq_evalOp {Γ τ}
                 simp [evalOp, Profile.ofArena, hm, hmem, acts]
 
 end FullInfo
+

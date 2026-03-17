@@ -126,3 +126,4 @@ are stated in `Vegas.ProbLetLemmas` (section MeasureSemantics).  The supporting
 `WDist.toMeasure` lemmas (including the key `toMeasure_bind`, which formalizes
 the discrete `extend` decomposition) are in `Vegas.WDistLemmas`.
 -/
+

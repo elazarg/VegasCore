@@ -111,7 +111,8 @@ def VisEnv {Player : Type} (L : ExprLanguage) : VisCtx Player L → Type :=
 
 namespace VisEnv
 
-def empty {Player : Type} (L : ExprLanguage) : VisEnv (Player := Player) L [] := fun _ _ h => nomatch h
+def empty {Player : Type} (L : ExprLanguage) : VisEnv (Player := Player) L [] :=
+  fun _ _ h => nomatch h
 
 def cons {Player : Type} {L : ExprLanguage} {Γ : VisCtx Player L} {x : VarId}
     {τ : VisBindTy Player L}
@@ -121,6 +122,13 @@ def cons {Player : Type} {L : ExprLanguage} {Γ : VisCtx Player L} {x : VarId}
     match h with
     | .here => v
     | .there h' => env _ _ h'
+
+theorem cons_ext {Player : Type} {L : ExprLanguage} {Γ : VisCtx Player L}
+    {x : VarId} {τ : VisBindTy Player L}
+    {v₁ v₂ : L.Val τ.base} {env₁ env₂ : VisEnv (Player := Player) L Γ}
+    (hv : v₁ = v₂) (henv : env₁ = env₂) :
+    cons (x := x) (τ := τ) v₁ env₁ = cons (x := x) (τ := τ) v₂ env₂ := by
+  subst hv; subst henv; rfl
 
 def get {Player : Type} {L : ExprLanguage} {Γ : VisCtx Player L} {x : VarId}
     {τ : VisBindTy Player L}

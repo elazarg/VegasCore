@@ -81,3 +81,4 @@ def basicExprLaws : ExprLaws BasicLang where
   toBool_eval_andBool := by intros; rfl
   var := Expr.var
   eval_var := by intros; rfl
+

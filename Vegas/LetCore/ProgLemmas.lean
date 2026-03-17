@@ -45,3 +45,4 @@ theorem observe_hoist_letDet {Γ τ τ'} (e : L.Expr Γ τ') (c : L.Expr Γ L.bo
     evalProgOption (DProg.ret e) env := by
   simp [Prog.DProg.ret, Prog.evalProgOption, Prog.evalWith,
         Prog.evalProg_gen, EL.eval_weaken]
+

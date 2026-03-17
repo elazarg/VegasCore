@@ -91,3 +91,4 @@ theorem runWithSeed_deterministic {Γ τ} (choices : List Nat)
     runWithSeed choices p env = runWithSeed choices p env := rfl
 
 end Proto
+

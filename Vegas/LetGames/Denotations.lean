@@ -185,3 +185,4 @@ theorem toEFG_wfTree
         exact ih u (v, env) hnd.2 hne.2 hwf
 
 end Proto
+

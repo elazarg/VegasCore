@@ -122,3 +122,4 @@ def IsNash {Γ : L.Ctx} (G : Game (W := W) Γ) (σ : Profile (L := L) (W := W))
   IsNash_WF (ReachAll) G σ env
 
 end Proto
+

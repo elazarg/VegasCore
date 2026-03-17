@@ -262,3 +262,4 @@ theorem evalEProto_liftProto {Ev : Type}
           rw [ih (x, env), WDist_map_map]; congr 1
 
 end Emit
+

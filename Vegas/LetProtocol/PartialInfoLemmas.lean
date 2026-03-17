@@ -183,3 +183,4 @@ theorem toProb_correct {Γ τ} (σ : Profile (W := W)) (p : SProg Γ τ) (env : 
   exact (evalS_eq_evalP_toProb σ p env).symm
 
 end PartialInfo
+

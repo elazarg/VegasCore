@@ -455,3 +455,4 @@ theorem mass_normalize?_eq_one [Inv W] [DecidableEq W]
 end Normalization
 
 end WDist
+

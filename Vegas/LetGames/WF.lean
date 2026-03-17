@@ -129,3 +129,4 @@ theorem WF_GameProg.choose {Γ : BasicLang.Ctx} {τ τ' : BasicLang.Ty}
     rwa [ParentProtoProg.yieldIds_embed] at this
 
 end Proto
+

@@ -133,3 +133,4 @@ theorem seq_root_is_p0 :
   exact ⟨_, rfl⟩
 
 end Proto.Examples.SequentialGame
+

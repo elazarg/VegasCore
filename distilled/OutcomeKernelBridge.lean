@@ -80,6 +80,93 @@ noncomputable def FDist.toPMF {α : Type} [DecidableEq α]
       simp [hz, NNRat.toNNReal_zero])
 
 -- ============================================================================
+-- § 3a. toPMF monad homomorphism lemmas
+-- ============================================================================
+
+/-- `toPMF` applied at a point equals the cast of the original weight. -/
+theorem FDist.toPMF_apply {α : Type} [DecidableEq α]
+    (d : FDist α) (h : d.totalWeight = 1) (a : α) :
+    (d.toPMF h) a = (NNRat.toNNReal (d a) : ENNReal) := by
+  simp [FDist.toPMF, PMF.ofFinset_apply]
+
+/-- `toPMF` converts `FDist.pure` to `PMF.pure`. -/
+theorem FDist.toPMF_pure [DecidableEq α] (a : α) :
+    (FDist.pure a).toPMF (FDist.totalWeight_pure a) = PMF.pure a := by
+  ext b
+  rw [toPMF_apply]
+  simp only [FDist.pure, PMF.pure_apply]
+  rw [Finsupp.single_apply]
+  split
+  · next h => subst h; simp [NNRat.toNNReal_one]
+  · next h => simp [NNRat.toNNReal_zero, Ne.symm h]
+
+/-- `toPMF` converts `FDist.map` to `PMF.map`. -/
+theorem FDist.toPMF_map [DecidableEq α] [DecidableEq β]
+    (d : FDist α) (f : α → β) (h : d.totalWeight = 1)
+    (hmap : (d.map f).totalWeight = 1) :
+    (d.map f).toPMF hmap = (d.toPMF h).map f := by
+  ext b
+  rw [toPMF_apply]
+  simp only [PMF.map_apply, toPMF_apply]
+  rw [FDist.map_apply]
+  -- Collapse tsum to finite sum over d.support
+  rw [tsum_eq_sum (s := d.support) (fun a ha => by
+    have hz : d a = 0 := by simpa [Finsupp.mem_support_iff] using ha
+    simp [hz, NNRat.toNNReal_zero])]
+  -- LHS: ↑(∑ a, if f a = b then d a else 0).toNNReal
+  -- RHS: ∑ a, if b = f a then ↑(d a).toNNReal else 0
+  -- Push NNRat.toNNReal through the sum, then cast to ENNReal
+  have hlhs : ((∑ a ∈ d.support, if f a = b then d a else 0).toNNReal : ENNReal) =
+      ∑ a ∈ d.support, ((if f a = b then d a else 0).toNNReal : ENNReal) := by
+    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finset_sum]
+  rw [hlhs]
+  apply Finset.sum_congr rfl
+  intro a _
+  by_cases hfab : f a = b
+  · simp [hfab]
+  · simp [hfab, Ne.symm hfab, NNRat.toNNReal_zero]
+
+/-- Pointwise `toPMF` of `FDist.bind`: the weight at `b` is the finite sum
+of products `d(a) * f(a)(b)`, cast to `ℝ≥0∞`. This is the core bridge lemma
+for converting `FDist.bind` chains to `PMF` computations. -/
+theorem FDist.toPMF_bind_apply [DecidableEq α] [DecidableEq β]
+    (d : FDist α) (f : α → FDist β)
+    (hbind : (d.bind f).totalWeight = 1) (b : β) :
+    ((d.bind f).toPMF hbind) b =
+    d.support.sum (fun a =>
+      (NNRat.toNNReal (d a) : ENNReal) * (NNRat.toNNReal ((f a) b) : ENNReal)) := by
+  rw [toPMF_apply, bind_apply]
+  -- LHS: ↑(∑ a ∈ d.support, d a * (f a) b).toNNReal
+  -- RHS: ∑ a ∈ d.support, ↑(d a).toNNReal * ↑((f a) b).toNNReal
+  rw [show ((d.support.sum fun a => d a * (f a) b).toNNReal : ENNReal) =
+      d.support.sum (fun a => ((d a * (f a) b).toNNReal : ENNReal)) from by
+    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finset_sum]]
+  apply Finset.sum_congr rfl
+  intro a _
+  rw [NNRat.toNNReal_mul, ENNReal.coe_mul]
+
+/-- `toPMF` commutes with `bind` when `f` is normalized everywhere.
+
+When `f` is normalized only on `d.support`, one would need a guard in the RHS
+(or collapse the tsum to a finite sum). But when `f a` has totalWeight 1 for
+all `a`, the conversion is clean. -/
+theorem FDist.toPMF_bind [DecidableEq α] [DecidableEq β]
+    (d : FDist α) (f : α → FDist β)
+    (hd : d.totalWeight = 1)
+    (hf : ∀ a, FDist.totalWeight (f a) = 1)
+    (hbind : (FDist.bind d f).totalWeight = 1) :
+    (FDist.bind d f).toPMF hbind =
+      (d.toPMF hd).bind (fun a => (f a).toPMF (hf a)) := by
+  ext b
+  rw [toPMF_bind_apply]
+  -- RHS: ∑' a, (d.toPMF hd) a * ((f a).toPMF (hf a)) b
+  simp only [PMF.bind_apply, toPMF_apply]
+  -- Collapse tsum to sum over d.support
+  rw [tsum_eq_sum (s := d.support) (fun a ha => by
+    have hz : d a = 0 := by simpa [Finsupp.mem_support_iff] using ha
+    simp [hz, NNRat.toNNReal_zero])]
+
+-- ============================================================================
 -- § 4. Vegas outcome kernel (statement)
 -- ============================================================================
 

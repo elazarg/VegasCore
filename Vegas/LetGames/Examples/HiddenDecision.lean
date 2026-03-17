@@ -124,3 +124,4 @@ theorem hidden_root_is_chance :
   exact ⟨_, rfl⟩
 
 end Proto.Examples.HiddenDecision
+

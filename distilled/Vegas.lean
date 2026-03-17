@@ -92,13 +92,13 @@ abbrev get {Γ : Ctx} {x : VarId} {τ : BindTy}
 @[simp] theorem cons_get_here {Γ : Ctx} {x : VarId} {τ : BindTy}
     {v : Val τ.base} {env : Env Γ} :
     (Env.cons v env).get (HasVar.here (Γ := Γ) (x := x) (τ := τ)) = v := by
-  simpa using (Distilled.VisEnv.cons_get_here
+  exact (Distilled.VisEnv.cons_get_here
     (Player := Player) (L := exprLanguage) (Γ := Γ) (x := x) (τ := τ) (v := v) (env := env))
 
 @[simp] theorem cons_get_there {Γ : Ctx} {x y : VarId} {τ σ : BindTy}
     {v : Val τ.base} {env : Env Γ} {h : HasVar Γ y σ} :
     (Env.cons (x := x) v env).get (HasVar.there h) = env.get h := by
-  simpa using (Distilled.VisEnv.cons_get_there
+  exact (Distilled.VisEnv.cons_get_there
     (Player := Player) (L := exprLanguage) (Γ := Γ) (x := x) (y := y)
     (τ := τ) (σ := σ) (v := v) (env := env) (h := h))
 
@@ -604,14 +604,22 @@ noncomputable def outcomeDist {P : Type} [DecidableEq P]
   | _, .ret u, env =>
       FDist.pure (U.eval u env)
   | _, .letExpr x e k, env =>
-      outcomeDist σ k (Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _) (E.eval e env) env)
+      outcomeDist σ k <|
+        Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+          (E.eval e env) env
   | _, .sample x τ m D' k, env =>
-      FDist.bind (D.eval D' (Distilled.VisEnv.projectDist (Player := P) (L := L) τ m env)) (fun v =>
-        outcomeDist σ k (Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := τ) v env))
+      FDist.bind
+        (D.eval D' (Distilled.VisEnv.projectDist (Player := P) (L := L) τ m env))
+        (fun v =>
+          outcomeDist σ k
+            (Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := τ) v env))
   | _, .commit x who acts R k, env =>
-      FDist.bind (σ.commit who x acts R (Distilled.VisEnv.toView (Player := P) (L := L) who env)) (fun v =>
-        outcomeDist σ k (Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _) v env))
-  | _, .reveal y who x (b := b) hx k, env =>
+      FDist.bind
+        (σ.commit who x acts R (Distilled.VisEnv.toView (Player := P) (L := L) who env))
+        (fun v =>
+          outcomeDist σ k
+            (Distilled.VisEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _) v env))
+  | _, .reveal y _who _x (b := b) hx k, env =>
       let v : L.Val b := Distilled.VisEnv.get (Player := P) (L := L) env hx
       outcomeDist σ k (Distilled.VisEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
 
@@ -661,10 +669,10 @@ def decidableWF {P : Type} [DecidableEq P]
     [U : Distilled.VisPayoffKit P L] :
     {Γ : Distilled.VisCtx P L} → (p : Distilled.Prog P L Γ) → Decidable (WF p)
   | _, .ret _ => .isTrue trivial
-  | Γ, .letExpr x _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | Γ, .sample x _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | Γ, .commit x _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | Γ, .reveal y _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
+  | _, .letExpr _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
+  | _, .sample _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
+  | _, .commit _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
+  | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
 
 instance {P : Type} [DecidableEq P]
     {L : Distilled.ExprLanguage}
@@ -769,7 +777,7 @@ theorem viewCtx_map_fst_sub {x : VarId} {p : Player} {Γ : Ctx} :
   | nil =>
     intro h
     have : False := by
-      simpa [Distilled.viewCtx] using h
+      simp [Distilled.viewCtx] at h
     exact False.elim this
   | cons hd tl ih =>
     obtain ⟨y, τ⟩ := hd
@@ -820,6 +828,18 @@ def Legal {P : Type} [DecidableEq P]
         ∃ a ∈ acts, Distilled.evalGuard (Player := P) (L := L) E R a view = true) ∧ Legal k
   | _, .reveal _ _ _ _ k => Legal k
 
+def DistinctActs {P : Type} [DecidableEq P]
+    {L : Distilled.ExprLanguage}
+    [E : Distilled.VisExprKit P L]
+    [D : Distilled.VisDistKit P L]
+    [U : Distilled.VisPayoffKit P L] :
+    {Γ : Distilled.VisCtx P L} → Distilled.Prog P L Γ → Prop
+  | _, .ret _ => True
+  | _, .letExpr _ _ k => DistinctActs k
+  | _, .sample _ _ _ _ k => DistinctActs k
+  | _, .commit _ _ acts _ k => acts.Nodup ∧ DistinctActs k
+  | _, .reveal _ _ _ _ k => DistinctActs k
+
 def AdmissibleProfile {P : Type} [DecidableEq P]
     {L : Distilled.ExprLanguage}
     [E : Distilled.VisExprKit P L]
@@ -847,9 +867,7 @@ theorem List.filter_ne_nil_of_exists {l : List α} {p : α → Bool}
 
 def DistExprNormalized {P : Type} [DecidableEq P]
     {L : Distilled.ExprLanguage}
-    [E : Distilled.VisExprKit P L]
     [D : Distilled.VisDistKit P L]
-    [U : Distilled.VisPayoffKit P L]
     {Γ : Distilled.VisCtx P L} {b : L.Ty}
     (D' : D.DistExpr Γ b) : Prop :=
   ∀ env : Distilled.VisEnv (Player := P) L Γ, FDist.totalWeight (D.eval D' env) = 1
@@ -894,9 +912,9 @@ theorem DistExpr.Normalized_ite {Γ : Ctx} {b : BaseTy}
   intro env
   change FDist.totalWeight (evalDistExpr (DistExpr.ite c t f) env) = 1
   by_cases hc : evalExpr c env
-  · simp [evalDistExpr, hc]
+  · simp only [evalDistExpr, hc]
     exact ht env
-  · simp [evalDistExpr, hc]
+  · simp only [evalDistExpr, hc]
     exact hf env
 
 theorem outcomeDist_totalWeight_eq_one {P : Type} [DecidableEq P]

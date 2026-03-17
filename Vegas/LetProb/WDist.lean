@@ -182,3 +182,4 @@ noncomputable def uniform [Inv W] (xs : List α) : WDist W α :=
   | n+1 => ⟨xs.map (fun a => (a, (↑(n + 1) : W)⁻¹))⟩
 
 end WDist
+

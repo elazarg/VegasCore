@@ -116,3 +116,4 @@ instance : WeightModel ℝ≥0 where
 @[simp] lemma WeightModel.toENNReal_nnreal (w : ℝ≥0) :
     WeightModel.toENNReal w = (w : ℝ≥0∞) := by
   simp [WeightModel.toENNReal]
+

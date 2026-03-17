@@ -97,3 +97,4 @@ theorem EV_bind (d : WDist W α) (g : α → WDist W β) (f : β → ℝ) :
       simp [EV, add_comm]
 
 end WDist
+

@@ -122,3 +122,4 @@ def liftGame {Ev : Type} {Γ : L.Ctx} (G : Proto.Game (L := L) (W := W) Γ) :
   }
 
 end Assumptions
+

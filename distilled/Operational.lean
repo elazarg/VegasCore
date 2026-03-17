@@ -356,13 +356,13 @@ theorem adequacy_pointwise {Γ : Ctx} (σ : Profile)
     (outcomeDist σ p env) oc = traceWeightSum σ p env oc := by
   induction p with
   | ret u =>
-    simpa [outcomeDist, traceWeightSum, payoffKit, evalPayoffMap,
+    simp [outcomeDist, traceWeightSum, payoffKit, evalPayoffMap,
       FDist.pure, Finsupp.single_apply, eq_comm]
   | letExpr x _ k ih =>
     simp only [outcomeDist, traceWeightSum]
     exact ih _
   | sample x τ m D k ih =>
-    simp only [outcomeDist, traceWeightSum, FDist.bind_apply, distKit, evalDistExpr]
+    simp only [outcomeDist, traceWeightSum, FDist.bind_apply, distKit]
     exact Finset.sum_congr rfl fun v _ => by
       change (evalDistExpr D (env.projectDist τ m)) v *
           (outcomeDist σ k (Env.cons v env)) oc =

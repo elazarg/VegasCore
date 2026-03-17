@@ -82,3 +82,4 @@ abbrev vz (EL : ExprLaws L) {Γ : Env.Ctx (Ty := L.Ty)} {τ : L.Ty} :
   simpa [ExprLaws.vz] using (EL.eval_var (L := L) (x := (Env.Var.vz : Env.Var (τ :: Γ) τ)) (env := (v, env)))
 
 end ExprLaws
+

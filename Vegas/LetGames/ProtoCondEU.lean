@@ -80,3 +80,4 @@ theorem EU_Cond_eq_EU_of_isProb {Γ : L.Ctx}
 -- Leaving as sorry for now; depends on ProtoGameLemmas progress.
 
 end Proto
+

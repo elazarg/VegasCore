@@ -40,3 +40,4 @@ noncomputable def GameTree.evalWDist {ι : Type}
   simp [GameTree.evalWDist, GameTree.evalWDistAux]
 
 end EFG
+

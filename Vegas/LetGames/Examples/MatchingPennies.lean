@@ -60,3 +60,4 @@ theorem mp_root_is_p0_decision :
   exact ⟨_, rfl⟩
 
 end Proto.Examples.MatchingPennies
+

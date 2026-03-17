@@ -9,3 +9,4 @@ namespace Defs
 abbrev Player := Nat
 
 end Defs
+

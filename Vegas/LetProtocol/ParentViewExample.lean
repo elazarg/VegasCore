@@ -107,3 +107,4 @@ private def seqGameRaw : ProtoProg (L := L) (W := W) [] Ty.bool :=
 example : Proto.yieldIds (seqGameProto (W := W)) = Proto.yieldIds (seqGameRaw (W := W)) := rfl
 
 end Proto
+

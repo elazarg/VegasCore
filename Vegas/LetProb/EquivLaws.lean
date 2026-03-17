@@ -249,3 +249,4 @@ theorem ProgEq.observe_false {Γ τ} [MeasurableSpace (L.Val τ)]
 end Laws
 
 end Prob
+

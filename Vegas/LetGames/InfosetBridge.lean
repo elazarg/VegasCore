@@ -281,3 +281,4 @@ theorem choose_nonvacuity
   exact congrArg (fun obs => (A obs).length) hobs
 
 end Proto
+

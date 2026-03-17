@@ -99,3 +99,4 @@ theorem EU_preserved_of_noChoose_pass
   exact EU_preserved_of_pass G f hStruct hEq σ env who
 
 end Proto
+

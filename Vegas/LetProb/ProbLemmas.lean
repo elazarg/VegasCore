@@ -340,3 +340,4 @@ theorem posterior_univ (p : PProg (W := W) [] τ)
 end MeasureSemantics
 
 end Prob
+

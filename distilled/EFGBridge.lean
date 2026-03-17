@@ -168,12 +168,14 @@ noncomputable def Prog.toEFGTreeAux (root : Prog Δ) (hlRoot : Legal root) :
   | .commit x who acts R k, hl, env, base, hentries =>
       have hbase : base < root.infoEntries.length := by
         have hlen : 0 < (root.infoEntries.drop base).length := by
-          simpa [hentries, Prog.infoEntries]
+          simp [hentries, Prog.infoEntries]
         simpa [List.length_drop] using hlen
       have hdrop :
           root.infoEntries.get ⟨base, hbase⟩ :: root.infoEntries.drop (base + 1) =
             (x, who, acts.length) :: Prog.infoEntries k := by
-        simpa [hentries, Prog.infoEntries] using (List.drop_eq_getElem_cons hbase)
+        have hdrop0 := List.drop_eq_getElem_cons hbase
+        rw [hentries, Prog.infoEntries] at hdrop0
+        exact hdrop0.symm
       have hget : root.infoEntries.get ⟨base, hbase⟩ = (x, who, acts.length) :=
         (List.cons.inj hdrop).1
       have htail : root.infoEntries.drop (base + 1) = Prog.infoEntries k :=
@@ -185,7 +187,7 @@ noncomputable def Prog.toEFGTreeAux (root : Prog Δ) (hlRoot : Legal root) :
           simpa [hplayer] using root.entryPlayer_lt_playerCount ⟨base, hbase⟩⟩
       let I : (root.mkInfoS hlRoot).Infoset pWho :=
         ⟨⟨base, hbase⟩, by
-          simpa [Prog.mkInfoS, pWho, hplayer]⟩
+          simp [pWho, hplayer]⟩
       have hentryArity : root.entryArity ⟨base, hbase⟩ = acts.length := by
         simpa [Prog.entryArity] using congrArg (fun e => e.2.2) hget
       have hArity : (root.mkInfoS hlRoot).arity pWho I = acts.length := by

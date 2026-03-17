@@ -69,3 +69,4 @@ theorem observe_fuse
   simpa using congrArg (fun f => f env) (Prob.observe_fuse EL)
 
 end Dag
+

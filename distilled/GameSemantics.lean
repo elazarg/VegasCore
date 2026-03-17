@@ -715,3 +715,4 @@ def toMAIDNodes (p : Prog Γ) : List MAID.Node :=
 --   Node 3: utility(P1), parents=[]
 #eval! (toMAIDNodes Examples.conditionedGame).map
   (fun n => (n.id, n.kind, n.parents))
+

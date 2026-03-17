@@ -117,3 +117,4 @@ def IsNash {Γ : L.Ctx} {τ : L.Ty}
   by simp [GameProg.emit]
 
 end Assume
+

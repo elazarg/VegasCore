@@ -38,3 +38,4 @@ def stepProto {L : Language} {W : Type} [WeightModel W]
       stepProto h k (val, env)
 
 end Proto
+
