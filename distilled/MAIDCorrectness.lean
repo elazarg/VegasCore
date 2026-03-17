@@ -453,45 +453,51 @@ theorem MAIDCompileState.ofProg_nextId_le
     letI := B.fintypePlayer; simp only [MAIDCompileState.ofProg]
     rw [MAIDCompileState.addUtilityNodes_nextId]; omega
   | letExpr x e k ih =>
-    simp only [MAIDCompileState.ofProg]
     (expose_names;
       exact
         le_of_le_of_eq''
-          (ih hl ha hd (fun raw ↦ VisEnv.cons (VisExprKit.eval e (ρ raw)) (ρ raw))
+          (ih hl ha hd
+            (fun raw ↦
+              have env := ρ raw;
+              VisEnv.cons (VisExprKit.eval e env) env)
             (st₀.addVar x (VisBindTy.pub b) (st₀.ctxDeps Γ_1) (ofProg._proof_1 B Γ_1 st₀)))
           rfl)
   | sample x τ m D' k ih =>
-    simp only [MAIDCompileState.ofProg]
-    refine le_trans (Nat.le_succ _) (le_trans (le_refl _) ?_)
+    change st₀.nextId ≤ (MAIDCompileState.ofProg B k hl ha hd.2 _ _).nextId
+    refine le_trans (Nat.le_succ _) ?_
     (expose_names;
       exact
         le_of_le_of_eq''
-          (ih hl ha (ofProg._proof_4 Γ_1 x τ m D' k hd)
-            (fun raw ↦ VisEnv.cons (readVal raw τ.base st₀.nextId) (ρ raw))
+          (ih hl ha hd.right
+            (fun raw ↦
+              have env := ρ raw;
+              have v := readVal raw τ.base st₀.nextId;
+              VisEnv.cons v env)
             ((st₀.addNode
-                    (CompiledNode.chance τ.base (st₀.sampleDeps τ m)
-                      (fun raw ↦ VisDistKit.eval D' (VisEnv.projectDist τ m (ρ raw)))
+                    (CompiledNode.chance τ.base (st₀.ctxDeps Γ_1)
+                      (fun raw ↦
+                        have env := ρ raw;
+                        VisDistKit.eval D' (VisEnv.projectDist τ m env))
                       (ofProg._proof_2 Γ_1 x τ m D' k hd ρ))
                     (ofProg._proof_3 B Γ_1 x τ m D' k hd ρ st₀)).2.addVar
               x τ {st₀.nextId} (ofProg._proof_5 B Γ_1 x τ m D' k hd ρ st₀)))
           rfl)
   | commit x who acts R k ih =>
-    simp only [MAIDCompileState.ofProg]
-    refine le_trans (Nat.le_succ _) (le_trans (le_refl _) ?_)
+    change st₀.nextId ≤ (MAIDCompileState.ofProg B k hl.2 ha.2 hd _ _).nextId
+    refine le_trans (Nat.le_succ _) ?_
     (expose_names;
       exact
         le_of_le_of_eq''
-          (ih (ofProg._proof_9 Γ_1 x who b acts R k hl) (ofProg._proof_10 Γ_1 x who b acts R k ha)
-            hd (fun raw ↦ VisEnv.cons (readVal raw b st₀.nextId) (ρ raw))
+          (ih hl.right ha.right hd
+            (fun raw ↦
+              have env := ρ raw;
+              have v := readVal raw _ st₀.nextId;
+              VisEnv.cons v env)
             ((st₀.addNode
-                    (CompiledNode.decision b who acts (ofProg._proof_6 B Γ_1 x who b acts R k hl)
-                      (ofProg._proof_7 Γ_1 x who b acts R k ha) (st₀.viewDeps who Γ_1) fun σ raw ↦
+                    (CompiledNode.decision _ who acts _ _ (st₀.ctxDeps Γ_1) fun σ raw ↦
                       σ.commit who x acts R (VisEnv.toView who (ρ raw)))
-                    (ofProg._proof_8 B Γ_1 x who b acts R k ha ρ st₀
-                      (ofProg._proof_6 B Γ_1 x who b acts R k hl))).2.addVar
-              x (VisBindTy.hidden who b) {st₀.nextId}
-              (ofProg._proof_11 B Γ_1 x who b acts R k ha ρ st₀
-                (ofProg._proof_6 B Γ_1 x who b acts R k hl))))
+                    _).2.addVar
+              x _ {st₀.nextId} _))
           rfl)
   | reveal y who x hx k ih =>
     (expose_names;
@@ -523,7 +529,143 @@ theorem nativeOutcomeDist_totalWeight
   exact outcomeDist_totalWeight_eq_one hd hσ_norm
 
 -- ============================================================================
--- § 4d-ii. Bridge lemma
+-- § 4d-ii. Layer 1 — Compiler shape lemmas
+-- ============================================================================
+
+-- Equation lemmas for `ofProg`. Used via explicit `rw` only, NOT @[simp].
+
+theorem ofProg_ret (B : MAIDBackend Player L) {Γ : VisCtx Player L}
+    (u : U.PayoffExpr Γ) (hl ha hd ρ st₀) :
+    MAIDCompileState.ofProg B (Prog.ret u) hl ha hd ρ st₀ =
+    st₀.addUtilityNodes (st₀.ctxDeps Γ) (st₀.depsOfVars_lt _)
+      (fun who raw => (U.payoff (U.eval u (ρ raw)) who : ℝ))
+      (@Finset.univ Player B.fintypePlayer).toList := by
+  letI := B.fintypePlayer; rfl
+
+-- ============================================================================
+-- § 4d-iii. Layer 2 — Raw assignment stability
+-- ============================================================================
+
+open MAID in
+/-- Updating a total assignment at a node with the current value is a no-op. -/
+theorem updateAssign_self [Fintype Player] {n : Nat}
+    {S : @Struct Player _ ‹_› n}
+    (a : TAssign S) (nd : Fin n) :
+    updateAssign a nd (a nd) = a := by
+  funext nd'
+  by_cases h : nd' = nd
+  · subst h; exact updateAssign_get_self a nd' (a nd')
+  · exact updateAssign_get_ne a nd nd' (a nd) h
+
+open MAID in
+/-- Snocing `default` doesn't change `extend`. -/
+theorem PrefixAssign_snoc_default_extend [Fintype Player] {n : Nat}
+    {S : @Struct Player _ ‹_› n} {k : Nat} {hk : k < n}
+    (a : PrefixAssign S k (le_of_lt hk)) :
+    (a.snoc (default : S.Val ⟨k, hk⟩)).extend = a.extend := by
+  rw [PrefixAssign.snoc_extend]
+  have hdef : a.extend ⟨k, hk⟩ = default :=
+    PrefixAssign.extend_default a ⟨k, hk⟩ (lt_irrefl k)
+  rw [← hdef]; exact updateAssign_self a.extend ⟨k, hk⟩
+
+/-- 2b. Old cells: rawOfTAssign at positions i < k is unchanged by snoc.
+Proof: snoc_extend gives updateAssign; updateAssign_get_ne at i ≠ k. -/
+theorem rawOfTAssign_snoc_old
+    (st : MAIDCompileState Player L B)
+    {k : Nat} {hk : k < st.nextId}
+    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k (le_of_lt hk))
+    (v : st.toStruct.Val ⟨k, hk⟩)
+    (i : Nat) (hi : i < k) :
+    rawOfTAssign st (a.snoc v).extend i = rawOfTAssign st a.extend i := by
+  letI := B.fintypePlayer
+  simp only [rawOfTAssign]
+  split
+  · next hi' =>
+    congr 1
+    rw [PrefixAssign.snoc_extend, MAID.updateAssign_get_ne]
+    exact Fin.ne_of_val_ne (by omega)
+  · rfl
+
+/-- ρ is unchanged when rawOfTAssign is extended at position k ≥ st₀.nextId,
+because InsensitiveTo says ρ doesn't depend on those positions.
+Proof: snoc_extend gives updateAssign; rawOfTAssign of updateAssign differs
+from rawOfTAssign of original only at position k; use InsensitiveTo. -/
+theorem rawOfTAssign_snoc_rho_stable
+    (st : MAIDCompileState Player L B)
+    {k : Nat} {hk : k < st.nextId}
+    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k (le_of_lt hk))
+    (v : st.toStruct.Val ⟨k, hk⟩)
+    (ρ : RawNodeEnv L → α) (hρ : ∀ nid, k ≤ nid → InsensitiveTo ρ nid) :
+    ρ (rawOfTAssign st (a.snoc v).extend) = ρ (rawOfTAssign st a.extend) := by
+  letI := B.fintypePlayer; sorry
+
+/-- 3b-utility. nodeDistPrefix at a utility node is PMF.pure default. -/
+open MAID in
+theorem nodeDistPrefix_utility_eq
+    (st : MAIDCompileState Player L B)
+    (σ : Distilled.Profile (Player := Player) (L := L))
+    (hkn : st.KernelNormalized σ)
+    {k : Nat} {hk : k ≤ st.nextId}
+    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
+    (nd : Fin st.nextId)
+    (hutil : ∃ who ps ufn, st.descAt nd = .utility (B := B) who ps ufn)
+    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
+    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k) :
+    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
+      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
+      k hk nd a hparents hobs =
+    PMF.pure default := by
+  letI := B.fintypePlayer; sorry
+
+/-- 3b-chance. nodeDistPrefix at a chance node equals toPMF of the compiled CPD
+applied to rawOfTAssign. -/
+open MAID in
+theorem nodeDistPrefix_chance_eq
+    (st : MAIDCompileState Player L B)
+    (σ : Distilled.Profile (Player := Player) (L := L))
+    (hkn : st.KernelNormalized σ)
+    {k : Nat} {hk : k ≤ st.nextId}
+    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
+    (nd : Fin st.nextId) (τ : L.Ty)
+    (deps : Finset Nat)
+    (cpd : RawNodeEnv L → FDist (L.Val τ))
+    (hn : ∀ raw, FDist.totalWeight (cpd raw) = 1)
+    (hdesc : st.descAt nd = .chance τ deps cpd hn)
+    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
+    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k)
+    (hcpd_insens : ∀ nid, k ≤ nid → InsensitiveTo cpd nid) :
+    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
+      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
+      k hk nd a hparents hobs =
+    FDist.toPMF (cpd (rawOfTAssign st a.extend)) (hn _) := by
+  letI := B.fintypePlayer; sorry
+
+/-- 3b-decision. nodeDistPrefix at a decision node equals toPMF of the
+compiled kernel applied to rawOfTAssign. -/
+open MAID in
+theorem nodeDistPrefix_decision_eq
+    (st : MAIDCompileState Player L B)
+    (σ : Distilled.Profile (Player := Player) (L := L))
+    (hkn : st.KernelNormalized σ)
+    {k : Nat} {hk : k ≤ st.nextId}
+    (a : @PrefixAssign Player _ B.fintypePlayer st.nextId st.toStruct k hk)
+    (nd : Fin st.nextId) (τ : L.Ty) (who : Player)
+    (acts : List (L.Val τ)) (hacts : acts ≠ []) (hnodup : acts.Nodup)
+    (obs : Finset Nat)
+    (kernel : Distilled.Profile (Player := Player) (L := L) → RawNodeEnv L → FDist (L.Val τ))
+    (hdesc : st.descAt nd = .decision τ who acts hacts hnodup obs kernel)
+    (hparents : ∀ p ∈ st.toStruct.parents nd, p.val < k)
+    (hobs : ∀ p ∈ st.toStruct.obsParents nd, p.val < k)
+    (hkernel_insens : ∀ nid, k ≤ nid → InsensitiveTo (kernel σ) nid) :
+    @nodeDistPrefix Player _ B.fintypePlayer st.nextId st.toStruct
+      (MAIDCompileState.toSem st) (compiledPolicy st σ hkn)
+      k hk nd a hparents hobs =
+    FDist.toPMF (kernel σ (rawOfTAssign st a.extend))
+      (hkn nd (rawOfTAssign st a.extend) τ who acts hacts hnodup obs kernel hdesc) := by
+  letI := B.fintypePlayer; sorry
+
+-- ============================================================================
+-- § 4d-iv. Bridge lemma
 -- ============================================================================
 
 open MAID in
@@ -572,9 +714,34 @@ theorem evalFoldPrefix_go_extract_eq
     exact ih hl ha hd hσ_norm _ _ (st₀.addVar_kernelNormalized σ _ _ _ _ hst₀)
       (fun nid hn raw tv =>
         VisEnv.cons_ext (by rw [hρ nid hn raw tv]) (hρ nid hn raw tv)) μ
-  | ret u => sorry
-  | sample x τ m D' k ih => sorry
-  | commit x who acts R k ih => sorry
+  | ret u =>
+    simp only [extractOutcome, nativeOutcomeDist, FDist.toPMF_pure]
+    -- Goal: map (U.eval u ∘ ρ ∘ rawOfTAssign st ∘ toTAssign) (go ... μ)
+    --     = μ.bind (fun a₀ => PMF.pure (U.eval u (ρ (rawOfTAssign st a₀.extend))))
+    -- Strategy: show fold through utility nodes is transparent for rawOfTAssign.
+    -- Each utility step snocs default; PrefixAssign_snoc_default_extend shows
+    -- extend is unchanged; so rawOfTAssign ∘ toTAssign = rawOfTAssign ∘ extend.
+    -- This requires induction on the players list in addUtilityNodes.
+    sorry
+  | sample x τ m D' k ih =>
+    -- Step 1: Unfold ofProg, extractOutcome, nativeOutcomeDist one level
+    simp only [MAIDCompileState.ofProg, extractOutcome, nativeOutcomeDist]
+    -- Step 2: The fold starts at st₀.nextId which is a chance node.
+    -- Unfold evalFoldPrefix.go one step to get evalStepPrefix + go from st₀.nextId+1.
+    -- Step 3: evalStepPrefix draws from nodeDistPrefix at the chance node.
+    -- By nodeDistPrefix_chance_eq, this equals toPMF of the CPD on rawOfTAssign.
+    -- Step 4: After snoc v, use rawOfTAssign_snoc_rho_stable to show ρ stable,
+    -- and readVal_extend_self to read back v. This gives the new ρ'.
+    -- Step 5: Apply IH with the new st₀' = (addNode ...).2.addVar ...,
+    -- new ρ' = cons (readVal ...) ρ, and the stepped accumulator.
+    -- The IH hypotheses (kernel normalized, InsensitiveTo) follow from
+    -- addNode/addVar preservation lemmas + readVal_extend_ne + hρ.
+    sorry
+  | @commit _ x who b acts R k ih =>
+    -- Analogous to sample: unfold, step fold, match decision node distribution,
+    -- apply IH. The kernel normalization comes from hσ_norm.
+    simp only [MAIDCompileState.ofProg, extractOutcome, nativeOutcomeDist]
+    sorry
 
 open MAID in
 /-- **Bridge lemma.** Mapping `extractOutcome` over the MAID assignment

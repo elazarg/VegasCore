@@ -354,7 +354,7 @@ noncomputable def ofProg
             (E.eval e env) env)
         (st.addVar x (.pub b) deps (st.depsOfVars_lt _))
   | Γ, .sample x τ m D' k, hl, ha, hd, ρ, st =>
-      let deps := st.sampleDeps (Γ := Γ) τ m
+      let deps := st.ctxDeps Γ
       let id := st.nextId
       let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
         let env := ρ raw
@@ -379,7 +379,7 @@ noncomputable def ofProg
           subst d
           exact Nat.lt_succ_self _))
   | Γ, .commit (b := b) x who acts R k, hl, ha, hd, ρ, st =>
-      let obs := st.viewDeps who Γ
+      let obs := st.ctxDeps Γ
       have hacts : acts ≠ [] := by
         rcases hl.1 (defaultView B (viewCtx who Γ)) with ⟨a, ha, _⟩
         exact List.ne_nil_of_mem ha
@@ -390,7 +390,7 @@ noncomputable def ofProg
         intro d hd'
         have hd'' : d ∈ obs := by
           simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
-        exact st.depsOfVars_lt ((viewCtx who Γ).map Prod.fst) d hd'')
+        exact st.depsOfVars_lt _ d hd'')
       let st' := res.2
       ofProg B k hl.2 ha.2 hd
         (fun raw =>
