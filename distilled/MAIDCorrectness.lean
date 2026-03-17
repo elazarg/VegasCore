@@ -654,14 +654,22 @@ theorem evalFoldPrefix_go_extract_eq
     -- This requires induction on the players list in addUtilityNodes.
     sorry
   | sample x τ m D' k ih =>
-    simp only [MAIDCompileState.ofProg, extractOutcome, nativeOutcomeDist]
-    -- Cannot directly apply IH: sample adds a node (nextId+1), so we must
-    -- first unfold evalFoldPrefix.go one step at st₀.nextId (the chance node),
-    -- then apply IH to the stepped accumulator at nextId+1.
+    -- The fold starts at st₀.nextId. The first node is a chance node.
+    -- We need to unfold go one step, then apply IH at st₀.nextId + 1.
+    -- But the IH is generalized over st₀, so we apply it with
+    -- st₀' = (st₀.addNode ...).2.addVar ... (which has nextId = st₀.nextId + 1).
+    --
+    -- Step 1: Simplify extractOutcome and nativeOutcomeDist for sample
+    simp only [extractOutcome, nativeOutcomeDist]
+    -- Now both sides have ofProg B k ... inside, matching the IH.
+    -- Step 2: Apply IH. The ofProg for sample definitionally equals
+    -- ofProg B k ... ρ' st₁, so the IH should unify.
+    -- But the fold starts at st₀.nextId, not st₁.nextId = st₀.nextId + 1.
+    -- We need to decompose the fold: go st₀.nextId = go (st₀.nextId+1) ∘ step.
+    -- This decomposition + matching the step distribution is the core difficulty.
     sorry
   | @commit _ x who b acts R k ih =>
-    simp only [MAIDCompileState.ofProg, extractOutcome, nativeOutcomeDist]
-    -- Same as sample: must unfold evalFoldPrefix.go one step first.
+    simp only [extractOutcome, nativeOutcomeDist]
     sorry
 
 open MAID in
