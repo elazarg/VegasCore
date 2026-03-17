@@ -1,0 +1,70 @@
+I have the following in a file GameTheory/EFG.lean (Lean 4, Mathlib v4.27):
+
+-- Types
+def BehavioralStrategy := Nat → List NNReal
+-- GameTree ι with .terminal, .chance, .decision constructors
+-- GameTheory.FDist with .pure, .zero, .scale, .append, .bind, .map, .expect
+
+-- Available simp lemmas (all inside namespace EFG):
+@[simp] theorem evalDist_decision σ pid (p : ι) acts :
+    (GameTree.decision pid p acts).evalDist σ = GameTree.evalDist.go_decision σ (σ pid) acts
+
+@[simp] theorem go_decision_cons σ (w : NNReal) ws (t : GameTree ι) ts :
+    GameTree.evalDist.go_decision σ (w :: ws) (t :: ts) =
+    GameTheory.FDist.append (GameTheory.FDist.scale w (t.evalDist σ))
+                            (GameTree.evalDist.go_decision σ ws ts) := rfl
+
+@[simp] theorem go_decision_nil_acts σ (ws : List NNReal) :
+    GameTree.evalDist.go_decision σ ws ([] : List (GameTree ι)) = GameTheory.FDist.zero
+
+@[simp] theorem go_decision_nil_ws σ (t : GameTree ι) (ts : List (GameTree ι)) :
+    GameTree.evalDist.go_decision σ [] (t :: ts) = GameTheory.FDist.zero := rfl
+
+@[simp] theorem evalDist_chance σ (branches : List (GameTree ι × NNReal)) :
+    (GameTree.chance branches).evalDist σ = GameTree.evalDist.go_chance σ branches := rfl
+
+-- Proved helper lemmas:
+theorem expect_go_decision_zip σ f (ws : List NNReal) (ts : List (GameTree ι)) :
+    GameTheory.FDist.expect f (GameTree.evalDist.go_decision σ ws ts) =
+    ((ws.zip ts).map (fun p => (↑p.1 : ℝ) * GameTheory.FDist.expect f (p.2.evalDist σ))).sum
+
+theorem expect_go_chance_sum σ f (bs : List (GameTree ι × NNReal)) :
+    GameTheory.FDist.expect f (GameTree.evalDist.go_chance σ bs) =
+    (bs.map (fun p => (↑p.2 : ℝ) * GameTheory.FDist.expect f (p.1.evalDist σ))).sum
+
+-- FDist.equiv is defined as: ∀ f : α → ℝ, d₁.expect f = d₂.expect f
+-- Available lemmas: GameTheory.FDist.expect_append, .expect_scale, .expect_zero, .expect_pure
+
+-- We are inside namespace EFG, so evalDist_decision etc. don't need prefix.
+
+-- TASK: Prove these two theorems. Give ONLY the proof body (the := by ... block).
+-- Strategy:
+-- 1. intro f to unfold FDist.equiv
+-- 2. simp only [evalDist_decision] / [evalDist_chance] to get go_decision/go_chance
+-- 3. rw [expect_go_decision_zip] / [expect_go_chance_sum] to get zip-sums
+-- 4. simp only [evalDist_decision, expect_go_decision_zip] to handle inner evalDist
+-- 5. Case-split on weight list shapes using `cases` on σ pid₁, σ pid₂
+-- 6. After simp on List.zip_cons_cons, List.zip_nil_left/right, List.map_cons/nil, List.sum_cons/nil,
+--    close with ring
+
+-- When a weight list is [], zip gives [], sum gives 0. Both sides give 0.
+-- For the chance-decision swap, also use expect_go_chance_sum similarly.
+
+theorem swap_decisions_equiv (pid₁ pid₂ : Nat) (p₁ p₂ : ι)
+    (t₀₀ t₀₁ t₁₀ t₁₁ : GameTree ι) (σ : BehavioralStrategy) :
+    GameTheory.FDist.equiv
+      ((GameTree.decision pid₁ p₁ [GameTree.decision pid₂ p₂ [t₀₀, t₀₁],
+                            GameTree.decision pid₂ p₂ [t₁₀, t₁₁]]).evalDist σ)
+      ((GameTree.decision pid₂ p₂ [GameTree.decision pid₁ p₁ [t₀₀, t₁₀],
+                            GameTree.decision pid₁ p₁ [t₀₁, t₁₁]]).evalDist σ) := by
+  <PROOF HERE>
+
+theorem swap_chance_decision_equiv (pid : Nat) (p : ι)
+    (w₀ w₁ : NNReal) (t₀₀ t₀₁ t₁₀ t₁₁ : GameTree ι)
+    (σ : BehavioralStrategy) :
+    GameTheory.FDist.equiv
+      ((GameTree.chance [(GameTree.decision pid p [t₀₀, t₀₁], w₀),
+                 (GameTree.decision pid p [t₁₀, t₁₁], w₁)]).evalDist σ)
+      ((GameTree.decision pid p [GameTree.chance [(t₀₀, w₀), (t₁₀, w₁)],
+                          GameTree.chance [(t₀₁, w₀), (t₁₁, w₁)]]).evalDist σ) := by
+  <PROOF HERE>
