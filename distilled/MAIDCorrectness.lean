@@ -1165,6 +1165,21 @@ theorem foldl_evalStepFDist_cons [Fintype Player]
       rest.foldl (evalStepFDist data) (evalStepFDist data acc nd) := by
   rfl
 
+private theorem fdist_eq_pure_of_unique {α : Type} [DecidableEq α] [Unique α]
+    (d : FDist α) (hnorm : FDist.totalWeight d = 1) (x : α) :
+    d = FDist.pure x := by
+  apply Finsupp.ext
+  intro a
+  have hsum : d.sum (fun _ w => w) = d default := by
+    exact Finsupp.sum_unique (f := d) (g := fun _ w => w) (by simp)
+  rw [FDist.totalWeight] at hnorm
+  rw [hsum] at hnorm
+  have ha : a = default := Subsingleton.elim _ _
+  rw [ha]
+  have hx : x = default := Subsingleton.elim _ _
+  rw [hx]
+  simpa [FDist.pure] using hnorm
+
 theorem evalStepFDist_utility_pure
     (st : MAIDCompileState Player L B)
     (σ : Profile (Player := Player) (L := L))
@@ -1177,7 +1192,16 @@ theorem evalStepFDist_utility_pure
     letI := B.fintypePlayer
     evalStepFDist data (FDist.pure a) nd =
       FDist.pure (updateAssign a nd default) := by
-  sorry
+  letI := B.fintypePlayer
+  rcases hutility with ⟨who, hwho⟩
+  have hkind : st.toStruct.kind nd = .utility who := by
+    simpa using hwho
+  letI : Unique (st.toStruct.Val nd) := st.toStruct.utility_unique nd who hkind
+  have hdist : data.dist nd a = FDist.pure default := by
+    have hnorm := data.normalized nd a
+    subst hdata
+    exact fdist_eq_pure_of_unique _ hnorm default
+  rw [evalStepFDist, FDist.pure_bind, hdist, FDist.pure_bind]
 
 theorem evalStepFDist_utility_map_eq
     (st : MAIDCompileState Player L B)
@@ -1230,7 +1254,7 @@ theorem foldl_utility_map_eq
       ∃ who, (st.descAt nd).kind = .utility who)
     (f : @TAssign Player _ B.fintypePlayer st.nextId st.toStruct → α)
     [DecidableEq α]
-    (hf : ∀ a nd v (hw : ∃ who, (st.descAt nd).kind = .utility who),
+    (hf : ∀ a nd v,
       f (@updateAssign Player _ B.fintypePlayer st.nextId st.toStruct a nd v) = f a)
     (acc : FDist (@TAssign Player _ B.fintypePlayer st.nextId st.toStruct)) :
     letI := B.fintypePlayer
@@ -1248,7 +1272,7 @@ theorem foldl_utility_map_eq
         _ = FDist.map f acc := by
               apply evalStepFDist_utility_map_eq st σ hkn data hdata nd (hutility nd (by simp))
               intro a v
-              exact hf a nd v (hutility nd (by simp))
+              exact hf a nd v
 
 def MAIDCompileState.VarsSubCtx
     (st : MAIDCompileState Player L B) (Γ : VisCtx Player L) : Prop :=
