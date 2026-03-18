@@ -310,6 +310,14 @@ The `letI` in the type is required to match the instance scope inside the defini
     {d₁ d₂ : FDist α} {h₁ h₂} (heq : d₁ = d₂) :
     FDist.toPMF d₁ h₁ = FDist.toPMF d₂ h₂ := by subst heq; rfl
 
+/-- Transporting `PMF.pure default` along any index equality gives `PMF.pure default`. -/
+theorem eq_rec_pmf_pure_default
+    {ι : Type} {F : ι → Type} [∀ i, Inhabited (F i)]
+    {i j : ι} (h : i = j) :
+    (h ▸ (PMF.pure (α := F i) default : PMF (F i)) : PMF (F j)) =
+    PMF.pure default := by
+  subst h; rfl
+
 /-- `toPMF` commutes past a `CompiledNode` match: proof irrelevance lets us
 case-split the node descriptor without disturbing the normalization proof. -/
 theorem FDist.toPMF_compiledNode_comm
@@ -369,17 +377,25 @@ theorem compiledFDistData_compatible
   intro c hn hc
   cases c with
   | chance τ ps cpd hcn =>
-      simp_all only [compiledNodeFDist, ne_eq, nodeDist, toStruct_kind, CompiledNode.kind,
-        toStruct_Val, MAIDCompileState.toSem, eq_mpr_eq_cast, id_eq, reduceCtorEq, compiledPolicy]
+      simp_all only [compiledNodeFDist, nodeDist, toStruct_kind, CompiledNode.kind,
+         MAIDCompileState.toSem, eq_mpr_eq_cast, id_eq]
       grind only
   | decision τ who acts ha hnd obs k =>
-      simp_all only [compiledNodeFDist, ne_eq, nodeDist, toStruct_kind, CompiledNode.kind,
-        toStruct_Val, MAIDCompileState.toSem, eq_mpr_eq_cast, id_eq, reduceCtorEq, compiledPolicy]
+      simp_all only [compiledNodeFDist, nodeDist, toStruct_kind, CompiledNode.kind,
+        id_eq, compiledPolicy]
       grind only
   | utility who ps ufn =>
-      simp_all [compiledNodeFDist, CompiledNode.kind, nodeDist, MAIDCompileState.toSem,
-        toStruct_kind, compiledPolicy, FDist.toPMF_pure]
-      sorry
+      -- Both sides are in PMF Unit (defeq to PMF (CompiledNode.valType (utility ...))).
+      -- PMF Unit is a subsingleton, so they are equal.
+      have hsub : Subsingleton (PMF Unit) := ⟨fun a b => PMF.ext fun ⟨⟩ => by
+        have ha := a.2.tsum_eq
+        rw [tsum_eq_single ()
+          (fun x hx => absurd (Subsingleton.elim x ()) hx)] at ha
+        have hb := b.2.tsum_eq
+        rw [tsum_eq_single ()
+          (fun x hx => absurd (Subsingleton.elim x ()) hx)] at hb
+        exact ha.trans hb.symm⟩
+      exact hsub.elim _ _
 
 -- ============================================================================
 -- § 4c. Kernel normalization from σ.NormalizedOn
