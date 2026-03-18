@@ -1,7 +1,7 @@
+import GameTheory.Languages.MAID.Syntax
 import distilled.Vegas
 import distilled.MAIDBridge
 import distilled.OutcomeKernelBridge
-import GameTheory.Languages.MAID.Syntax
 
 /-!
 # Vegas to MAID compiler
@@ -50,6 +50,11 @@ inductive CompiledNode (Player : Type) [DecidableEq Player] (L : ExprLanguage)
       (ufn : RawNodeEnv L → ℝ)
 
 namespace CompiledNode
+
+noncomputable def valType : CompiledNode Player L B → Type
+  | .chance τ _ _ _ => L.Val τ
+  | .decision τ _ _ _ _ _ _ => L.Val τ
+  | .utility _ _ _ => Unit
 
 variable {B : MAIDBackend Player L}
 
@@ -176,9 +181,7 @@ theorem lookupDepsAux_lt {vars : List (MAIDVarEntry Player L)} {n : Nat}
       · intro d hd
         have hd' : d ∈ lookupDepsAux rest x := by
           simpa [lookupDepsAux, hxy] using hd
-        exact ih (by
-          intro e he d hd
-          exact hvars e (by simp [he]) d hd) d hd'
+        exact ih (fun e he d hd => hvars e (by simp [he]) d hd) d hd'
 
 theorem lookupDeps_lt (st : MAIDCompileState Player L B) (x : VarId) :
     ∀ d ∈ st.lookupDeps x, d < st.nextId := by
@@ -334,7 +337,7 @@ noncomputable def ofProg
       (p : Prog Player L Γ) →
       Legal p →
       DistinctActs p →
-      _root_.NormalizedDists (P := Player) (L := L) p →
+      NormalizedDists p →
       (RawNodeEnv L → VisEnv (Player := Player) L Γ) →
       MAIDCompileState Player L B →
       MAIDCompileState Player L B
@@ -350,15 +353,14 @@ noncomputable def ofProg
       ofProg B k hl ha hd
         (fun raw =>
           let env := ρ raw
-          VisEnv.cons (Player := Player) (L := L) (x := x) (τ := .pub b)
-            (E.eval e env) env)
+          VisEnv.cons (τ := .pub b) (E.eval e env) env)
         (st.addVar x (.pub b) deps (st.depsOfVars_lt _))
   | Γ, .sample x τ m D' k, hl, ha, hd, ρ, st =>
       let deps := st.ctxDeps Γ
       let id := st.nextId
       let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
         let env := ρ raw
-        D.eval D' (VisEnv.projectDist (Player := Player) (L := L) τ m env)
+        D.eval D' (VisEnv.projectDist τ m env)
       let cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1 :=
         fun raw => hd.1 _
       let res := st.addNode (.chance τ.base deps cpdFDist cpdNorm) (by
@@ -371,7 +373,7 @@ noncomputable def ofProg
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw τ.base id
-          VisEnv.cons (Player := Player) (L := L) (x := x) (τ := τ) v env)
+          VisEnv.cons v env)
         (st'.addVar x τ ({id}) (by
           intro d hd'
           have hdid : d = id := by
@@ -396,7 +398,7 @@ noncomputable def ofProg
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw b id
-          VisEnv.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b) v env)
+          VisEnv.cons (τ := .hidden who b) v env)
         (st'.addVar x (.hidden who b) ({id}) (by
           intro d hd'
           have hdid : d = id := by
@@ -408,8 +410,8 @@ noncomputable def ofProg
       ofProg B k hl ha hd
         (fun raw =>
           let env := ρ raw
-          let v : L.Val b := VisEnv.get (Player := Player) (L := L) env hx
-          VisEnv.cons (Player := Player) (L := L) (x := y) (τ := .pub b) v env)
+          let v : L.Val b := VisEnv.get env hx
+          VisEnv.cons (τ := .pub b) v env)
         (st.addVar y (.pub b) deps (st.lookupDeps_lt x))
 
 /-- The native value type for a compiled node. -/
@@ -442,49 +444,48 @@ noncomputable instance (nd : CompiledNode Player L B) :
 noncomputable def toStruct (st : MAIDCompileState Player L B) :
     @MAID.Struct Player _ B.fintypePlayer st.nextId := by
   let _ : Fintype Player := B.fintypePlayer
-  refine
-    { kind := fun nd => (st.descAt nd).kind
-      parents := fun nd =>
-        (st.descAt nd).parents.attach.image
-          (fun d => ⟨d.1, Nat.lt_trans (st.descAt_parent_lt nd d.2) nd.2⟩)
-      obsParents := fun nd =>
-        (st.descAt nd).obsParents.attach.image
-          (fun d => ⟨d.1, Nat.lt_trans (st.descAt_obs_lt nd d.2) nd.2⟩)
-      Val := fun nd => CompiledNode.valType (st.descAt nd)
-      instFintype := fun nd => inferInstance
-      instDecidableEq := fun nd => inferInstance
-      instInhabited := fun nd => inferInstance
-      obs_sub := ?_
-      obs_eq_nondec := ?_
-      utility_unique := ?_
-      acyclic := ?_ }
-  · intro nd x hx
-    rcases Finset.mem_image.mp hx with ⟨d, hd, rfl⟩
-    exact Finset.mem_image.mpr ⟨⟨d.1, (st.descAt nd).obs_sub d.2⟩, by simp, by simp⟩
-  · intro nd h
-    ext x
-    constructor <;> intro hx
-    · simpa [(st.descAt nd).obs_eq_nondec h] using hx
-    · simpa [(st.descAt nd).obs_eq_nondec h] using hx
-  · intro nd a h
-    cases hdesc : st.descAt nd with
-    | utility _ _ _ =>
-        exact PUnit.instUnique
-    | chance τ ps cpd hn =>
-        exfalso; simp [CompiledNode.kind, hdesc] at h
-    | decision τ who acts hacts hnodup obs kernel =>
-        exfalso; simp [CompiledNode.kind, hdesc] at h
-  · refine DAG.acyclic_of_topologicalOrder
-      { order := List.finRange st.nextId
+  exact {
+    kind := fun nd => (st.descAt nd).kind
+    parents := fun nd =>
+      (st.descAt nd).parents.attach.image
+        (fun d => ⟨d.1, Nat.lt_trans (st.descAt_parent_lt nd d.2) nd.2⟩)
+    obsParents := fun nd =>
+      (st.descAt nd).obsParents.attach.image
+        (fun d => ⟨d.1, Nat.lt_trans (st.descAt_obs_lt nd d.2) nd.2⟩)
+    Val := fun nd => CompiledNode.valType (st.descAt nd)
+    instFintype := inferInstance
+    instDecidableEq := inferInstance
+    instInhabited := inferInstance
+    obs_sub := by
+      intro nd x hx
+      rcases Finset.mem_image.mp hx with ⟨d, hd, rfl⟩
+      exact Finset.mem_image.mpr ⟨⟨d.1, (st.descAt nd).obs_sub d.2⟩, by simp, by simp⟩
+    obs_eq_nondec := by
+      intro nd h
+      ext x
+      simp [(st.descAt nd).obs_eq_nondec h]
+    utility_unique := by
+      intro nd a h
+      cases hdesc : st.descAt nd with
+      | utility _ _ _ =>
+          exact PUnit.instUnique
+      | chance τ ps cpd hn =>
+          exfalso; simp [CompiledNode.kind, hdesc] at h
+      | decision τ who acts hacts hnodup obs kernel =>
+          exfalso; simp [CompiledNode.kind, hdesc] at h
+    acyclic := DAG.acyclic_of_topologicalOrder {
+        order := List.finRange st.nextId
         nodup := List.nodup_finRange st.nextId
         length := by simp
-        respects := ?_ }
-    intro i p hp
-    have hp' : p.1 < ((List.finRange st.nextId)[i]).1 := by
-      rcases Finset.mem_image.mp hp with ⟨d, hd, rfl⟩
-      exact st.descAt_parent_lt ((List.finRange st.nextId)[i]) d.2
-    have hp'' : p.1 < i.1 := by simp at hp'; exact hp'
-    exact ⟨⟨p.1, by omega⟩, hp'', by simp⟩
+        respects := by
+          intro i p hp
+          have hp' : p.1 < ((List.finRange st.nextId)[i]).1 := by
+            rcases Finset.mem_image.mp hp with ⟨d, hd, rfl⟩
+            exact st.descAt_parent_lt ((List.finRange st.nextId)[i]) d.2
+          simp only [Fin.getElem_fin, List.getElem_finRange, Fin.eta, Fin.val_cast] at hp'
+          exact ⟨⟨p.1, by omega⟩, hp', by simp⟩
+      }
+  }
 
 /-- Convert a node value (in the native valType) to a tagged value for RawNodeEnv. -/
 noncomputable def taggedOfVal :
@@ -508,15 +509,14 @@ noncomputable def rawEnvOfCfg (st : MAIDCompileState Player L B)
   else
     none
 
-noncomputable def toSem (st : MAIDCompileState Player L B) := by
+noncomputable def toSem (st : MAIDCompileState Player L B) :
+    @MAID.Sem Player _ B.fintypePlayer st.nextId st.toStruct := by
   let _ : Fintype Player := B.fintypePlayer
   exact show MAID.Sem st.toStruct from
     { chanceCPD := by
         intro c cfg
-        -- S.Val c.1 = (descAt c.1).valType = L.Val τ for chance nodes
         match hdesc : st.descAt c.1 with
         | .chance τ _parents cpdFDist cpdNorm =>
-            -- S.Val c.1 = CompiledNode.valType (descAt c.1) = L.Val τ
             change PMF (CompiledNode.valType (st.descAt c.1))
             rw [hdesc]
             exact FDist.toPMF (cpdFDist (st.rawEnvOfCfg cfg)) (cpdNorm _)
@@ -524,14 +524,13 @@ noncomputable def toSem (st : MAIDCompileState Player L B) := by
             have hk := c.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk
         | .utility who parents ufn =>
             have hk := c.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk
-      utilityFn := by
-        intro p u cfg
+      utilityFn := fun p u cfg =>
         match hdesc : st.descAt u.1 with
-        | .utility _who _parents ufn => exact ufn (st.rawEnvOfCfg cfg)
+        | .utility _who _parents ufn => ufn (st.rawEnvOfCfg cfg)
         | .chance τ _parents _ _ =>
-            have hk := u.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk
+            absurd u.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc])
         | .decision τ _who _ _ _ _ _ =>
-            have hk := u.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk }
+            absurd u.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc]) }
 
 end MAIDCompileState
 
@@ -540,9 +539,9 @@ namespace Prog
 noncomputable def toMAID
     (B : MAIDBackend Player L) {Γ : VisCtx Player L}
     (p : Prog Player L Γ) (env : VisEnv (Player := Player) L Γ)
-    (_hΓ : _root_.WFCtx Γ) (_hwf : _root_.WF p)
+    (_hΓ : WFCtx Γ) (_hwf : WF p)
     (hl : Legal p) (ha : DistinctActs p)
-    (hd : _root_.NormalizedDists (P := Player) (L := L) p) :
+    (hd : NormalizedDists (P := Player) (L := L) p) :
     Σ n, Σ S : @MAID.Struct Player _ B.fintypePlayer n, @MAID.Sem Player _ B.fintypePlayer n S := by
   let _ : Fintype Player := B.fintypePlayer
   let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
