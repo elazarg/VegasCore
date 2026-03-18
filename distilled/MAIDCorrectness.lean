@@ -1236,7 +1236,19 @@ theorem foldl_utility_map_eq
     letI := B.fintypePlayer
     FDist.map f (nodes.foldl (evalStepFDist data) acc) =
       FDist.map f acc := by
-  sorry
+  letI := B.fintypePlayer
+  induction nodes generalizing acc with
+  | nil => rfl
+  | cons nd rest ih =>
+      simp only [List.foldl_cons]
+      calc
+        FDist.map f (rest.foldl (evalStepFDist data) (evalStepFDist data acc nd)) =
+            FDist.map f (evalStepFDist data acc nd) := by
+              exact ih (fun nd' hnd' => hutility nd' (by simp [hnd'])) _
+        _ = FDist.map f acc := by
+              apply evalStepFDist_utility_map_eq st σ hkn data hdata nd (hutility nd (by simp))
+              intro a v
+              exact hf a nd v (hutility nd (by simp))
 
 def MAIDCompileState.VarsSubCtx
     (st : MAIDCompileState Player L B) (Γ : VisCtx Player L) : Prop :=
