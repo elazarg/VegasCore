@@ -52,11 +52,10 @@ structure ExprLanguage where
   decEqTy : DecidableEq Ty
   Val : Ty → Type
   decEqVal : ∀ {τ : Ty}, DecidableEq (Val τ)
-  inhabitedVal : ∀ {τ : Ty}, Inhabited (Val τ)
   bool : Ty
   toBool : Val bool → Bool
 
-attribute [instance] ExprLanguage.decEqTy ExprLanguage.decEqVal ExprLanguage.inhabitedVal
+attribute [instance] ExprLanguage.decEqTy ExprLanguage.decEqVal
 
 namespace ExprLanguage
 
@@ -487,6 +486,3 @@ structure PayoffKit (L : ExprLanguage) where
 attribute [instance] PayoffKit.decEqPlayer
 
 end Distilled
-
-
-

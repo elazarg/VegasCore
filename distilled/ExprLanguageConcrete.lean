@@ -17,20 +17,16 @@ namespace Distilled.BasicLanguage
 
 open Distilled
 
-/-- Backend value types: booleans and finite ranges (n > 0). -/
+/-- Backend value types: booleans and finite ranges. -/
 inductive Ty where
   | bool
-  | range (n : Nat) (hn : n > 0 := by omega)
-deriving Repr
-
-instance : DecidableEq Ty := by
-  intro a b
-  cases a <;> cases b <;> simp [Ty.range.injEq] <;> exact inferInstance
+  | range (n : Nat)
+deriving DecidableEq, Repr
 
 /-- Runtime values for `Ty`. -/
 abbrev Val : Ty → Type
   | .bool => Bool
-  | .range n _ => Fin n
+  | .range n => Fin n
 
 instance instDecEqVal : ∀ {τ : Ty}, DecidableEq (Val τ) := by
   intro τ
@@ -40,16 +36,12 @@ instance instFintypeVal : (τ : Ty) → Fintype (Val τ)
   | .bool => inferInstance
   | .range _ => inferInstance
 
-instance instInhabitedVal : ∀ {τ : Ty}, Inhabited (Val τ) := by
-  intro τ; cases τ <;> infer_instance
-
 /-- The backend language instance. -/
 def lang : ExprLanguage where
   Ty := Ty
   decEqTy := inferInstance
   Val := Val
   decEqVal := instDecEqVal
-  inhabitedVal := inferInstance
   bool := .bool
   toBool := id
 

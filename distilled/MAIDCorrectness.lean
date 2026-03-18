@@ -1103,7 +1103,8 @@ theorem eq_on_ctxDeps_rawOfTAssign
       · simp [rawSel, hi, hdep, hmem]
     · simp [rawSel, hi, ks, rawOfTAssign]
   rw [hclear]
-  haveI : Nonempty (TaggedVal L) := ⟨⟨L.bool, default⟩⟩
+  haveI : Nonempty (TaggedVal L) :=
+    let ⟨v⟩ := B.toMAIDValuation.nonemptyVal L.bool; ⟨⟨L.bool, v⟩⟩
   apply InsensitiveTo.eq_of_agree_off_list ks
   · intro k hk
     apply hf k

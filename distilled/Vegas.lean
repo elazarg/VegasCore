@@ -51,9 +51,6 @@ def exprLanguage : Distilled.ExprLanguage where
   decEqVal := by
     intro τ
     cases τ <;> infer_instance
-  inhabitedVal := by
-    intro τ
-    cases τ <;> exact ⟨default⟩
   bool := .bool
   toBool := id
 
