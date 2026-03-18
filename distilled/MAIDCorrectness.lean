@@ -1524,54 +1524,9 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           (st₀.addVar_kernelNormalized σ x (.pub b) (st₀.ctxDeps Γ') (st₀.depsOfVars_lt _) hst₀)
           hvars₁ hρ'_deps a₀)
   | sample x τ m D' k ih =>
+      rename_i Γ'
       dsimp
       intro a₀
-      -- Player : Type
-      -- inst✝ : DecidableEq Player
-      -- L : ExprLanguage
-      -- E : VisExprKit Player L
-      -- D : VisDistKit Player L
-      -- U : VisPayoffKit Player L
-      -- B : MAIDBackend Player L
-      -- Γ : VisCtx Player L
-      -- σ : Profile Player L
-      -- this : Fintype Player := B.fintypePlayer
-      -- Γ✝ : VisCtx Player L
-      -- x : VarId
-      -- τ : VisBindTy Player L
-      -- m : SampleMode τ
-      -- D' : VisDistKit.DistExpr (distCtx τ m Γ✝) τ.base
-      -- k : Prog Player L ((x, τ) :: Γ✝)
-      -- ih : ∀ (hl : Legal k) (ha : DistinctActs k) (hd : NormalizedDists k),
-      --   WF k →
-      --     ∀ (hσ_norm : σ.NormalizedOn k) (ρ : RawNodeEnv L → VisEnv L ((x, τ) :: Γ✝)) (st₀ : MAIDCompileState Player L B)
-      --       (hst₀ : st₀.KernelNormalized σ),
-      --       st₀.VarsSubCtx ((x, τ) :: Γ✝) →
-      --         (∀ j ∉ st₀.ctxDeps ((x, τ) :: Γ✝), InsensitiveTo ρ j) →
-      --           let x_1 := B.fintypePlayer;
-      --           let st := MAIDCompileState.ofProg B k hl ha hd ρ st₀;
-      --           let data := compiledFDistData st σ ⋯;
-      --           ∀ (a₀ : TAssign st.toStruct),
-      --             FDist.map (fun a ↦ extractOutcome B k ρ st₀.nextId (rawOfTAssign st a))
-      --                 (List.foldl (evalStepFDist data) (FDist.pure a₀) (List.drop st₀.nextId (List.finRange st.nextId))) =
-      --               nativeOutcomeDist B σ k ρ st₀.nextId (rawOfTAssign st a₀)
-      -- hl✝ : Legal (Prog.sample x τ m D' k)
-      -- ha✝ : DistinctActs (Prog.sample x τ m D' k)
-      -- hd✝ : NormalizedDists (Prog.sample x τ m D' k)
-      -- hwf✝ : WF (Prog.sample x τ m D' k)
-      -- hσ_norm : σ.NormalizedOn (Prog.sample x τ m D' k)
-      -- ρ : RawNodeEnv L → VisEnv L Γ✝
-      -- st₀ : MAIDCompileState Player L B
-      -- hst₀ : st₀.KernelNormalized σ
-      -- hvars : st₀.VarsSubCtx Γ✝
-      -- hρ_deps : ∀ j ∉ st₀.ctxDeps Γ✝, InsensitiveTo ρ j
-      -- hl : Fintype Player := B.fintypePlayer
-      -- ha : MAIDCompileState Player L B := MAIDCompileState.ofProg B (Prog.sample x τ m D' k) hl✝ ha✝ hd✝ ρ st₀
-      -- hd : FDistNodeData ha.toStruct := compiledFDistData ha σ ⋯
-      -- hwf : TAssign ha.toStruct
-      -- ⊢ FDist.map (fun a ↦ extractOutcome B (Prog.sample x τ m D' k) ρ st₀.nextId (rawOfTAssign ha a))
-      --     (List.foldl (evalStepFDist hd) (FDist.pure hwf) (List.drop st₀.nextId (List.finRange ha.nextId))) =
-      --   nativeOutcomeDist B σ (Prog.sample x τ m D' k) ρ st₀.nextId (rawOfTAssign ha hwf)
       sorry
   | commit x who acts R k ih =>
       dsimp
@@ -1625,56 +1580,34 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       --   nativeOutcomeDist B σ (Prog.commit x who acts R k) ρ st₀.nextId (rawOfTAssign ha hwf)
       sorry
   | reveal y who x hx k ih =>
+      rename_i Γ' b
       dsimp
       intro a₀
-      -- Player : Type
-      -- inst✝ : DecidableEq Player
-      -- L : ExprLanguage
-      -- E : VisExprKit Player L
-      -- D : VisDistKit Player L
-      -- U : VisPayoffKit Player L
-      -- B : MAIDBackend Player L
-      -- Γ : VisCtx Player L
-      -- σ : Profile Player L
-      -- this : Fintype Player := B.fintypePlayer
-      -- Γ✝ : VisCtx Player L
-      -- y : VarId
-      -- who : Player
-      -- x : VarId
-      -- b✝ : L.Ty
-      -- hx : VisHasVar Γ✝ x (VisBindTy.hidden who b✝)
-      -- k : Prog Player L ((y, VisBindTy.pub b✝) :: Γ✝)
-      -- ih : ∀ (hl : Legal k) (ha : DistinctActs k) (hd : NormalizedDists k),
-      --   WF k →
-      --     ∀ (hσ_norm : σ.NormalizedOn k) (ρ : RawNodeEnv L → VisEnv L ((y, VisBindTy.pub b✝) :: Γ✝))
-      --       (st₀ : MAIDCompileState Player L B) (hst₀ : st₀.KernelNormalized σ),
-      --       st₀.VarsSubCtx ((y, VisBindTy.pub b✝) :: Γ✝) →
-      --         (∀ j ∉ st₀.ctxDeps ((y, VisBindTy.pub b✝) :: Γ✝), InsensitiveTo ρ j) →
-      --           let x := B.fintypePlayer;
-      --           let st := MAIDCompileState.ofProg B k hl ha hd ρ st₀;
-      --           let data := compiledFDistData st σ ⋯;
-      --           ∀ (a₀ : TAssign st.toStruct),
-      --             FDist.map (fun a ↦ extractOutcome B k ρ st₀.nextId (rawOfTAssign st a))
-      --                 (List.foldl (evalStepFDist data) (FDist.pure a₀) (List.drop st₀.nextId (List.finRange st.nextId))) =
-      --               nativeOutcomeDist B σ k ρ st₀.nextId (rawOfTAssign st a₀)
-      -- hl✝ : Legal (Prog.reveal y who x hx k)
-      -- ha✝ : DistinctActs (Prog.reveal y who x hx k)
-      -- hd✝ : NormalizedDists (Prog.reveal y who x hx k)
-      -- hwf✝ : WF (Prog.reveal y who x hx k)
-      -- hσ_norm : σ.NormalizedOn (Prog.reveal y who x hx k)
-      -- ρ : RawNodeEnv L → VisEnv L Γ✝
-      -- st₀ : MAIDCompileState Player L B
-      -- hst₀ : st₀.KernelNormalized σ
-      -- hvars : st₀.VarsSubCtx Γ✝
-      -- hρ_deps : ∀ j ∉ st₀.ctxDeps Γ✝, InsensitiveTo ρ j
-      -- hl : Fintype Player := B.fintypePlayer
-      -- ha : MAIDCompileState Player L B := MAIDCompileState.ofProg B (Prog.reveal y who x hx k) hl✝ ha✝ hd✝ ρ st₀
-      -- hd : FDistNodeData ha.toStruct := compiledFDistData ha σ ⋯
-      -- hwf : TAssign ha.toStruct
-      -- ⊢ FDist.map (fun a ↦ extractOutcome B (Prog.reveal y who x hx k) ρ st₀.nextId (rawOfTAssign ha a))
-      --     (List.foldl (evalStepFDist hd) (FDist.pure hwf) (List.drop st₀.nextId (List.finRange ha.nextId))) =
-      --   nativeOutcomeDist B σ (Prog.reveal y who x hx k) ρ st₀.nextId (rawOfTAssign ha hwf)
-      sorry
+      have hyΓ : Fresh y Γ' := hwf.1
+      have hyvars : y ∉ st₀.vars.map Prod.fst := by
+        intro hymem
+        exact hyΓ (hvars y hymem)
+      let ρ' : RawNodeEnv L → VisEnv (Player := Player) L ((y, .pub b) :: Γ') :=
+        fun raw =>
+          let env := ρ raw
+          let v : L.Val b := VisEnv.get env hx
+          VisEnv.cons (τ := .pub b) v env
+      let st₁ := st₀.addVar y (.pub b) (st₀.lookupDeps x) (st₀.lookupDeps_lt x)
+      have hvars₁ : st₁.VarsSubCtx ((y, .pub b) :: Γ') := by
+        simpa [st₁] using st₀.VarsSubCtx_reveal_step hvars y x hyΓ
+      have hctx₁ : st₁.ctxDeps ((y, .pub b) :: Γ') = st₀.ctxDeps Γ' := by
+        simpa [st₁] using st₀.ctxDeps_reveal_step y who x hx hyΓ hyvars
+      have hρ'_deps : ∀ j, j ∉ st₁.ctxDeps ((y, .pub b) :: Γ') → InsensitiveTo ρ' j := by
+        intro j hj raw tv
+        have hj' : j ∉ st₀.ctxDeps Γ' := by
+          simpa [hctx₁] using hj
+        have hρj := hρ_deps j hj' raw tv
+        exact VisEnv.cons_ext (by simp [hρj]) hρj
+      simpa [ρ', st₁, extractOutcome, nativeOutcomeDist] using
+        (ih hl ha hd hwf.2 hσ_norm ρ' st₁
+          (st₀.addVar_kernelNormalized σ y (.pub b)
+            (st₀.lookupDeps x) (st₀.lookupDeps_lt x) hst₀)
+          hvars₁ hρ'_deps a₀)
 
 -- Bridge lemma
 
