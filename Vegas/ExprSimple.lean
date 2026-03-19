@@ -4,7 +4,8 @@ import Vegas.Core
 # Concrete Vegas expression layer
 
 This file fixes the concrete value types used by the current Vegas protocol
-and defines the concrete expression syntax over visibility-aware contexts.
+and defines the concrete expression and distribution syntax over plain
+(non-visibility) contexts.
 -/
 
 namespace Vegas
@@ -23,112 +24,22 @@ abbrev Val : BaseTy → Type
 instance : DecidableEq (Val b) := by
   cases b <;> infer_instance
 
-/-- The current concrete value layer, viewed as an instance of `ExprLanguage`. -/
-def simpleExpr : Vegas.ExprLanguage where
-  Ty := BaseTy
-  decEqTy := inferInstance
-  Val := Val
-  decEqVal := by
-    intro τ
-    cases τ <;> infer_instance
-  bool := .bool
-  toBool := id
-  int := .int
-  toInt := id
+-- ════════════════════════════════════════════════════════════════
+-- Plain context abbreviations
+-- ════════════════════════════════════════════════════════════════
 
-abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
-abbrev CtxSimple : Type := Vegas.Ctx Player simpleExpr
-abbrev HasVarSimple : CtxSimple → VarId → BindTySimple → Type :=
-  Vegas.HasVar
-abbrev EnvSimple (Γ : CtxSimple) : Type := Vegas.Env (Player := Player) simpleExpr Γ
+/-- Plain (non-visibility) context over `BaseTy`. -/
+abbrev CtxSimple : Type := Vegas.Ctx BaseTy
 
-namespace BindTySimple
+/-- Plain `Env` over concrete value types. -/
+abbrev PlainEnv (Γ : CtxSimple) : Type := Vegas.Env Val Γ
 
-abbrev base : BindTySimple → BaseTy := Vegas.BindTy.base
-
-end BindTySimple
-
-namespace HasVarSimple
-
-abbrev here {Γ : CtxSimple} {x : VarId} {τ : BindTySimple} : HasVarSimple ((x, τ) :: Γ) x τ :=
-  Vegas.HasVar.here
-
-abbrev there {Γ : CtxSimple} {x y : VarId} {τ τ' : BindTySimple}
-    (h : HasVarSimple Γ x τ) : HasVarSimple ((y, τ') :: Γ) x τ :=
-  Vegas.HasVar.there h
-
-end HasVarSimple
-
-namespace EnvSimple
-
-abbrev empty : EnvSimple [] := Vegas.Env.empty (Player := Player) simpleExpr
-
-abbrev cons {Γ : CtxSimple} {x : VarId} {τ : BindTySimple}
-    (v : Val τ.base) (env : EnvSimple Γ) : EnvSimple ((x, τ) :: Γ) :=
-  Vegas.Env.cons v env
-
-abbrev get {Γ : CtxSimple} {x : VarId} {τ : BindTySimple}
-    (env : EnvSimple Γ) (h : HasVarSimple Γ x τ) : Val τ.base :=
-  Vegas.Env.get env h
-
-@[simp] theorem cons_get_here {Γ : CtxSimple} {x : VarId} {τ : BindTySimple}
-    {v : Val τ.base} {env : EnvSimple Γ} :
-    (EnvSimple.cons v env).get (HasVarSimple.here (Γ := Γ) (x := x) (τ := τ)) = v := by
-  exact Vegas.Env.cons_get_here
-
-@[simp] theorem cons_get_there {Γ : CtxSimple} {x y : VarId} {τ σ : BindTySimple}
-    {v : Val τ.base} {env : EnvSimple Γ} {h : HasVarSimple Γ y σ} :
-    (EnvSimple.cons (x := x) v env).get (HasVarSimple.there h) = env.get h := by
-  exact Vegas.Env.cons_get_there
-
-abbrev toView (p : Player) (env : EnvSimple Γ) :
-    EnvSimple (Vegas.viewCtx p Γ) :=
-  Vegas.Env.toView p env
-
-abbrev toPub (env : EnvSimple Γ) :
-    EnvSimple (Vegas.pubCtx Γ) :=
-  Vegas.Env.toPub env
-
-abbrev toFlat {Γ : CtxSimple} (env : EnvSimple Γ) :
-    EnvSimple (Vegas.flattenCtx Γ) :=
-  Vegas.Env.toFlat env
-
-abbrev toFlatView (p : Player) {Γ : CtxSimple} (env : EnvSimple Γ) :
-    EnvSimple (Vegas.flattenCtx
-      (Vegas.viewCtx p Γ)) :=
-  Vegas.Env.toFlatView p env
-
-end EnvSimple
-
-namespace HasVarSimple
-
-abbrev ofViewCtx {p : Player} :
-    HasVarSimple (Vegas.viewCtx p Γ) x τ → HasVarSimple Γ x τ :=
-  Vegas.HasVar.ofViewCtx (p := p)
-
-abbrev ofPubCtx :
-    HasVarSimple (Vegas.pubCtx Γ) x τ → HasVarSimple Γ x τ :=
-  Vegas.HasVar.ofPubCtx
-
-abbrev ofPubToView {p : Player} :
-    HasVarSimple (Vegas.pubCtx Γ) x τ →
-      HasVarSimple (Vegas.viewCtx p Γ) x τ :=
-  Vegas.HasVar.ofPubToView (p := p)
-
-abbrev toFlatten :
-    HasVarSimple Γ x τ →
-      HasVarSimple (Vegas.flattenCtx Γ) x (.pub τ.base) :=
-  Vegas.HasVar.toFlatten
-
-abbrev unflatten {Γ : CtxSimple} {x : VarId} {b : BaseTy} :
-    HasVarSimple (Vegas.flattenCtx Γ) x (.pub b) →
-      (τ : BindTySimple) × HasVarSimple Γ x τ × PLift (τ.base = b) :=
-  Vegas.HasVar.unflatten
-
-end HasVarSimple
+-- ════════════════════════════════════════════════════════════════
+-- Expression syntax over plain contexts
+-- ════════════════════════════════════════════════════════════════
 
 inductive Expr : CtxSimple → BaseTy → Type where
-  | var (x : VarId) (h : HasVarSimple Γ x (.pub b)) : Expr Γ b
+  | var (x : VarId) (h : HasVar Γ x b) : Expr Γ b
   | constInt (i : Int) : Expr Γ .int
   | constBool (b : Bool) : Expr Γ .bool
   | addInt (l r : Expr Γ .int) : Expr Γ .int
@@ -138,7 +49,7 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | notBool (e : Expr Γ .bool) : Expr Γ .bool
   | ite (c : Expr Γ .bool) (t f : Expr Γ b) : Expr Γ b
 
-def evalExpr : Expr Γ b → EnvSimple Γ → Val b
+def evalExpr : Expr Γ b → PlainEnv Γ → Val b
   | .var _ h, env => env.get h
   | .constInt i, _ => i
   | .constBool b, _ => b
@@ -149,7 +60,217 @@ def evalExpr : Expr Γ b → EnvSimple Γ → Val b
   | .notBool e, env => !(evalExpr e env)
   | .ite c t f, env => if evalExpr c env then evalExpr t env else evalExpr f env
 
-def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BindTySimple}
+/-- Expression dependency set. -/
+def exprDeps : Expr Γ b → Finset VarId
+  | .var x _ => {x}
+  | .constInt _ => ∅
+  | .constBool _ => ∅
+  | .addInt l r => exprDeps l ∪ exprDeps r
+  | .eqInt l r => exprDeps l ∪ exprDeps r
+  | .eqBool l r => exprDeps l ∪ exprDeps r
+  | .andBool l r => exprDeps l ∪ exprDeps r
+  | .notBool e => exprDeps e
+  | .ite c t f => exprDeps c ∪ exprDeps t ∪ exprDeps f
+
+theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
+    (e : Expr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
+    (ha : AgreesOn ρ₁ ρ₂ (exprDeps e)) :
+    evalExpr e ρ₁ = evalExpr e ρ₂ := by
+  induction e with
+  | var x h =>
+    exact ha x _ h (Finset.mem_singleton.mpr rfl)
+  | constInt _ => rfl
+  | constBool _ => rfl
+  | addInt l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | eqInt l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | eqBool l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | andBool l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | notBool e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | ite c t f ihc iht ihf =>
+    simp only [evalExpr]
+    rw [ihc (ha.mono (Finset.subset_union_left.trans Finset.subset_union_left))]
+    split
+    · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
+    · exact ihf (ha.mono Finset.subset_union_right)
+
+-- ════════════════════════════════════════════════════════════════
+-- Distribution expression syntax over plain contexts
+-- ════════════════════════════════════════════════════════════════
+
+inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
+  | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
+  | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
+
+noncomputable def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FDist (Val b)
+  | .weighted entries, _ => FDist.ofList entries
+  | .ite c t f, env =>
+      if evalExpr c env then evalDistExpr t env else evalDistExpr f env
+
+/-- Distribution expression dependency set. -/
+def distExprDeps : DistExpr Γ b → Finset VarId
+  | .weighted _ => ∅
+  | .ite c t f => exprDeps c ∪ distExprDeps t ∪ distExprDeps f
+
+theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
+    (d : DistExpr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
+    (ha : AgreesOn ρ₁ ρ₂ (distExprDeps d)) :
+    evalDistExpr d ρ₁ = evalDistExpr d ρ₂ := by
+  induction d with
+  | weighted _ => rfl
+  | ite c t f iht ihf =>
+    simp only [evalDistExpr]
+    rw [expr_deps_sound c ρ₁ ρ₂
+      (ha.mono (Finset.subset_union_left.trans Finset.subset_union_left))]
+    split
+    · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
+    · exact ihf (ha.mono Finset.subset_union_right)
+
+-- ════════════════════════════════════════════════════════════════
+-- Complete ExprLanguage instance
+-- ════════════════════════════════════════════════════════════════
+
+/-- The current concrete language, viewed as an instance of `ExprLanguage`. -/
+noncomputable def simpleExpr : Vegas.ExprLanguage where
+  Ty := BaseTy
+  decEqTy := inferInstance
+  Val := Val
+  decEqVal := by intro τ; cases τ <;> infer_instance
+  bool := .bool
+  toBool := id
+  int := .int
+  toInt := id
+  Expr := Expr
+  eval := @evalExpr
+  exprDeps := @exprDeps
+  DistExpr := DistExpr
+  evalDist := @evalDistExpr
+  distDeps := @distExprDeps
+  expr_deps_sound := @expr_deps_sound
+  dist_deps_sound := @dist_deps_sound
+
+-- ════════════════════════════════════════════════════════════════
+-- Visibility-aware abbreviations (V-prefixed)
+-- ════════════════════════════════════════════════════════════════
+
+abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
+abbrev VCtxSimple : Type := Vegas.VCtx Player simpleExpr
+abbrev VHasVarSimple : VCtxSimple → VarId → BindTySimple → Type :=
+  Vegas.VHasVar
+abbrev VEnvSimple (Γ : VCtxSimple) : Type :=
+  Vegas.VEnv (Player := Player) simpleExpr Γ
+
+namespace BindTySimple
+
+abbrev base : BindTySimple → BaseTy := Vegas.BindTy.base
+
+end BindTySimple
+
+namespace VHasVarSimple
+
+abbrev here {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple} :
+    VHasVarSimple ((x, τ) :: Γ) x τ :=
+  Vegas.VHasVar.here
+
+abbrev there {Γ : VCtxSimple} {x y : VarId} {τ τ' : BindTySimple}
+    (h : VHasVarSimple Γ x τ) : VHasVarSimple ((y, τ') :: Γ) x τ :=
+  Vegas.VHasVar.there h
+
+end VHasVarSimple
+
+namespace VEnvSimple
+
+abbrev empty : VEnvSimple [] :=
+  Vegas.VEnv.empty (Player := Player) simpleExpr
+
+abbrev cons {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
+    (v : Val τ.base) (env : VEnvSimple Γ) : VEnvSimple ((x, τ) :: Γ) :=
+  Vegas.VEnv.cons v env
+
+abbrev get {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
+    (env : VEnvSimple Γ) (h : VHasVarSimple Γ x τ) : Val τ.base :=
+  Vegas.VEnv.get env h
+
+@[simp] theorem cons_get_here {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
+    {v : Val τ.base} {env : VEnvSimple Γ} :
+    (VEnvSimple.cons v env).get
+      (VHasVarSimple.here (Γ := Γ) (x := x) (τ := τ)) = v := by
+  exact Vegas.VEnv.cons_get_here
+
+@[simp] theorem cons_get_there {Γ : VCtxSimple} {x y : VarId}
+    {τ σ : BindTySimple}
+    {v : Val τ.base} {env : VEnvSimple Γ}
+    {h : VHasVarSimple Γ y σ} :
+    (VEnvSimple.cons (x := x) v env).get (VHasVarSimple.there h) =
+      env.get h := by
+  exact Vegas.VEnv.cons_get_there
+
+abbrev toView (p : Player) {Γ : VCtxSimple} (env : VEnvSimple Γ) :
+    VEnvSimple (Vegas.viewVCtx p Γ) :=
+  Vegas.VEnv.toView p env
+
+abbrev toPub {Γ : VCtxSimple} (env : VEnvSimple Γ) :
+    VEnvSimple (Vegas.pubVCtx Γ) :=
+  Vegas.VEnv.toPub env
+
+noncomputable abbrev toFlat {Γ : VCtxSimple} (env : VEnvSimple Γ) :
+    VEnvSimple (Vegas.flattenVCtx Γ) :=
+  Vegas.VEnv.toFlat env
+
+noncomputable abbrev toFlatView (p : Player) {Γ : VCtxSimple}
+    (env : VEnvSimple Γ) :
+    VEnvSimple (Vegas.flattenVCtx (Vegas.viewVCtx p Γ)) :=
+  Vegas.VEnv.toFlatView p env
+
+end VEnvSimple
+
+namespace VHasVarSimple
+
+abbrev ofViewVCtx {p : Player} {Γ : VCtxSimple} {x : VarId}
+    {τ : BindTySimple} :
+    VHasVarSimple (Vegas.viewVCtx p Γ) x τ → VHasVarSimple Γ x τ :=
+  Vegas.VHasVar.ofViewVCtx (p := p)
+
+abbrev ofPubVCtx {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple} :
+    VHasVarSimple (Vegas.pubVCtx Γ) x τ → VHasVarSimple Γ x τ :=
+  Vegas.VHasVar.ofPubVCtx
+
+abbrev ofPubToView {p : Player} {Γ : VCtxSimple} {x : VarId}
+    {τ : BindTySimple} :
+    VHasVarSimple (Vegas.pubVCtx Γ) x τ →
+      VHasVarSimple (Vegas.viewVCtx p Γ) x τ :=
+  Vegas.VHasVar.ofPubToView (p := p)
+
+abbrev toFlatten {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple} :
+    VHasVarSimple Γ x τ →
+      VHasVarSimple (Vegas.flattenVCtx Γ) x (.pub τ.base) :=
+  Vegas.VHasVar.toFlatten
+
+abbrev unflatten {Γ : VCtxSimple} {x : VarId} {b : BaseTy} :
+    VHasVarSimple (Vegas.flattenVCtx Γ) x (.pub b) →
+      (τ : BindTySimple) × VHasVarSimple Γ x τ × PLift (τ.base = b) :=
+  Vegas.VHasVar.unflatten
+
+end VHasVarSimple
+
+-- ════════════════════════════════════════════════════════════════
+-- Expression utilities
+-- ════════════════════════════════════════════════════════════════
+
+def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
     (e : Expr Γ b) : Expr ((x, τ) :: Γ) b :=
   match e with
   | .var y h => .var y (.there h)
@@ -162,9 +283,9 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BindTySimple}
   | .notBool e => .notBool e.weaken
   | .ite c t f => .ite c.weaken t.weaken f.weaken
 
-theorem evalExpr_weaken {Γ : CtxSimple} {b : BaseTy} {τ : BindTySimple} {x : VarId}
-    (e : Expr Γ b) (v : Val τ.base) (env : EnvSimple Γ) :
-    evalExpr e.weaken (EnvSimple.cons (x := x) v env) = evalExpr e env := by
+theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
+    (e : Expr Γ b) (v : Val τ) (env : PlainEnv Γ) :
+    evalExpr e.weaken (Env.cons (x := x) v env) = evalExpr e env := by
   induction e with
   | var _ _ => rfl
   | constInt _ => rfl
@@ -176,7 +297,7 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b : BaseTy} {τ : BindTySimple} {x : V
   | notBool e ih => simp [Expr.weaken, evalExpr, ih]
   | ite c t f ihc iht ihf => simp [Expr.weaken, evalExpr, ihc, iht, ihf]
 
-/-- Extract variable IDs referenced by an expression. -/
+/-- Extract variable IDs referenced by an expression (as a list). -/
 def exprVars : Expr Γ b → List VarId
   | .var x _ => [x]
   | .constInt _ => []
@@ -188,11 +309,35 @@ def exprVars : Expr Γ b → List VarId
   | .notBool e => exprVars e
   | .ite c t f => exprVars c ++ exprVars t ++ exprVars f
 
-/-- The current Vegas expression syntax as an instance of the generic
-visibility-aware expression interface. -/
-instance exprKit : Vegas.ExprKit Player simpleExpr where
-  Expr := Expr
-  eval := @evalExpr
-  deps := @exprVars
+/-- Extract variable IDs referenced by a distribution expression (as a list). -/
+def distExprVars : DistExpr Γ b → List VarId
+  | .weighted _ => []
+  | .ite c t f => exprVars c ++ distExprVars t ++ distExprVars f
+
+-- ════════════════════════════════════════════════════════════════
+-- Distribution utilities
+-- ════════════════════════════════════════════════════════════════
+
+@[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
+    (entries : List (Val b × ℚ≥0)) (env : PlainEnv Γ) :
+    evalDistExpr (.weighted entries) env = FDist.ofList entries := rfl
+
+theorem evalDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
+    {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
+    (hc : evalExpr c env = true) :
+    evalDistExpr (.ite c t f) env = evalDistExpr t env := by
+  simp [evalDistExpr, hc]
+
+theorem evalDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
+    {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
+    (hc : evalExpr c env = false) :
+    evalDistExpr (.ite c t f) env = evalDistExpr f env := by
+  simp [evalDistExpr, hc]
+
+def DistExpr.point (v : Val b) : DistExpr Γ b := .weighted [(v, 1)]
+
+def DistExpr.uniform (vs : List (Val b)) : DistExpr Γ b :=
+  let w : ℚ≥0 := 1 / (vs.length : ℚ≥0)
+  .weighted (vs.map fun v => (v, w))
 
 end Vegas

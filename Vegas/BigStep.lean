@@ -11,41 +11,39 @@ namespace Vegas
 
 noncomputable def outcomeDist {P : Type} [DecidableEq P]
     {L : Vegas.ExprLanguage}
-    [E : Vegas.ExprKit P L]
-    [D : Vegas.DistKit P L]
     (σ : Vegas.Profile P L) :
-    {Γ : Vegas.Ctx P L} →
+    {Γ : Vegas.VCtx P L} →
       Vegas.VegasCore P L Γ →
-      Vegas.Env (Player := P) L Γ →
+      Vegas.VEnv (Player := P) L Γ →
       FDist (Outcome P)
   | _, .ret payoffs, env =>
       FDist.pure (evalPayoffs payoffs env)
   | _, .letExpr x e k, env =>
       outcomeDist σ k <|
-        Vegas.Env.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-          (E.eval e env) env
+        Vegas.VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+          (L.eval e (VEnv.erasePubEnv env)) env
   | _, .sample x τ m D' k, env =>
       FDist.bind
-        (D.eval D' (Vegas.Env.projectDist (Player := P) (L := L) τ m env))
+        (L.evalDist D' (VEnv.eraseDistEnv τ m env))
         (fun v =>
           outcomeDist σ k
-            (Vegas.Env.cons (Player := P) (L := L) (x := x) (τ := τ) v env))
+            (Vegas.VEnv.cons (Player := P) (L := L) (x := x) (τ := τ) v env))
   | _, .commit x who acts R k, env =>
       FDist.bind
-        (σ.commit who x acts R (Vegas.Env.toView (Player := P) (L := L) who env))
+        (σ.commit who x acts R (Vegas.VEnv.toView (Player := P) (L := L) who env))
         (fun v =>
           outcomeDist σ k
-            (Vegas.Env.cons (Player := P) (L := L) (x := x) (τ := .hidden who _) v env))
+            (Vegas.VEnv.cons (Player := P) (L := L) (x := x)
+              (τ := .hidden who _) v env))
   | _, .reveal y _who _x (b := b) hx k, env =>
-      let v : L.Val b := Vegas.Env.get (Player := P) (L := L) env hx
-      outcomeDist σ k (Vegas.Env.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
+      let v : L.Val b := Vegas.VEnv.get (Player := P) (L := L) env hx
+      outcomeDist σ k
+        (Vegas.VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
 
 theorem outcomeDist_totalWeight_eq_one {P : Type} [DecidableEq P]
     {L : Vegas.ExprLanguage}
-    [E : Vegas.ExprKit P L]
-    [D : Vegas.DistKit P L]
-    {Γ : Vegas.Ctx P L} {σ : Vegas.Profile P L}
-    {p : Vegas.VegasCore P L Γ} {env : Vegas.Env (Player := P) L Γ}
+    {Γ : Vegas.VCtx P L} {σ : Vegas.Profile P L}
+    {p : Vegas.VegasCore P L Γ} {env : Vegas.VEnv (Player := P) L Γ}
     (hd : NormalizedDists p) (hσ : σ.NormalizedOn p) :
     (outcomeDist σ p env).totalWeight = 1 := by
   induction p with

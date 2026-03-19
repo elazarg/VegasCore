@@ -9,29 +9,32 @@ def vb : VarId := 1
 def va' : VarId := 2
 def vb' : VarId := 3
 
-def Γ0 : CtxSimple := []
-def Γ1 : CtxSimple := [(va, .hidden 0 .bool)]
-def Γ2 : CtxSimple := [(vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
-def Γ3 : CtxSimple := [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
-def Γ4 : CtxSimple :=
+def Γ0 : VCtxSimple := []
+def Γ1 : VCtxSimple := [(va, .hidden 0 .bool)]
+def Γ2 : VCtxSimple := [(vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
+def Γ3 : VCtxSimple :=
+  [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
+def Γ4 : VCtxSimple :=
   [(vb', .pub .bool), (va', .pub .bool),
    (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
 
-def hva_in_Γ2 : HasVarSimple Γ2 va (.hidden 0 .bool) := .there .here
-def hvb_in_Γ3 : HasVarSimple Γ3 vb (.hidden 1 .bool) := .there .here
-def hva'_in_Γ4 : HasVarSimple Γ4 va' (.pub .bool) := .there .here
-def hvb'_in_Γ4 : HasVarSimple Γ4 vb' (.pub .bool) := .here
+def hva_in_Γ2 : VHasVarSimple Γ2 va (.hidden 0 .bool) := .there .here
+def hvb_in_Γ3 : VHasVarSimple Γ3 vb (.hidden 1 .bool) := .there .here
+
+-- HasVar proofs in erasePubVCtx Γ4 = [(vb', .bool), (va', .bool)]
+def hva'_in_eΓ4 : HasVar (erasePubVCtx Γ4) va' .bool := .there .here
+def hvb'_in_eΓ4 : HasVar (erasePubVCtx Γ4) vb' .bool := .here
 
 def mpPayoff : PayoffMap Γ4 :=
   ⟨[ (0, .ite
-        (.eqBool (.var va' hva'_in_Γ4) (.var vb' hvb'_in_Γ4))
+        (.eqBool (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
         (.constInt 1) (.constInt (-1))),
      (1, .ite
-        (.eqBool (.var va' hva'_in_Γ4) (.var vb' hvb'_in_Γ4))
+        (.eqBool (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
         (.constInt (-1)) (.constInt 1))
    ], by decide⟩
 
-def matchingPennies : VegasSimple Γ0 :=
+noncomputable def matchingPennies : VegasSimple Γ0 :=
   .commit va 0 (b := .bool) [true, false] (.constBool true)
     (.commit vb 1 (b := .bool) [true, false] (.constBool true)
       (.reveal va' 0 va hva_in_Γ2
@@ -51,7 +54,14 @@ noncomputable def mpProfile : ProfileSimple where
       | .int => FDist.zero
     | _ => FDist.zero
 
-def conditionedGame : VegasSimple Γ0 :=
+-- conditionedGame: commit guard references revealed value
+-- Guard for player 1: the expression sees (vb, .bool) :: eraseVCtx (viewVCtx 1 Γ1')
+-- where Γ1' = [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
+-- viewVCtx 1 Γ1' = [(va', .pub .bool), (vb, .hidden 1 .bool)]
+-- eraseVCtx above = [(va', .bool), (vb, .bool)]
+-- so context is (vb, .bool) :: [(va', .bool), (vb, .bool)]
+-- and the guard var va' is at .there .here
+noncomputable def conditionedGame : VegasSimple Γ0 :=
   .commit va 0 (b := .bool) [true, false] (.constBool true)
     (.reveal va' 0 va .here
       (.commit vb 1 (b := .bool) [true, false]

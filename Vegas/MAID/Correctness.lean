@@ -8,7 +8,6 @@ namespace Vegas
 open MAID
 
 variable {Player : Type} [DecidableEq Player] {L : ExprLanguage}
-variable [E : ExprKit Player L] [D : DistKit Player L]
 variable {B : MAIDBackend Player L}
 
 -- RawNodeEnv helpers
@@ -18,13 +17,13 @@ def RawNodeEnv.extend (raw : RawNodeEnv L) (nid : Nat) (tv : RawTaggedVal L) :
     RawNodeEnv L :=
   fun i => if i = nid then some tv else raw i
 
-omit E D in
+
 theorem readVal_extend_self (raw : RawNodeEnv L) (nid : Nat) (τ : L.Ty)
     (v : L.Val τ) :
     MAIDCompileState.readVal (B := B) (raw.extend nid ⟨τ, v⟩) τ nid = v := by
   simp [RawNodeEnv.extend, MAIDCompileState.readVal]
 
-omit E D in
+
 theorem readVal_extend_ne (raw : RawNodeEnv L) (nid nid' : Nat)
     (tv : RawTaggedVal L) (τ : L.Ty) (hne : nid' ≠ nid) :
     MAIDCompileState.readVal (B := B) (raw.extend nid tv) τ nid' =
@@ -61,39 +60,39 @@ have computable `DecidableEq`. -/
 noncomputable def nativeOutcomeDist
     (B : MAIDBackend Player L)
     (σ : Profile Player L) :
-    {Γ : Ctx Player L} →
+    {Γ : VCtx Player L} →
     (p : VegasCore Player L Γ) →
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ) →
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ) →
     (nextId : Nat) →
     RawNodeEnv L → FDist (Outcome Player)
   | _, .ret u, ρ, _, raw =>
       FDist.pure (evalPayoffs u (ρ raw))
   | _, .letExpr (b := b) x e k, ρ, nextId, raw =>
       nativeOutcomeDist B σ k
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := .pub b)
-          (E.eval e (ρ raw)) (ρ raw))
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := .pub b)
+          (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
         nextId raw
   | _, .sample x τ _m D' k, ρ, nextId, raw =>
       FDist.bind
-        (D.eval D' (Env.projectDist (Player := Player) (L := L) τ _ (ρ raw)))
+        (L.evalDist D' (VEnv.eraseDistEnv τ _ (ρ raw)))
         (fun v =>
           nativeOutcomeDist B σ k
-            (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := τ)
+            (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := τ)
               (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw))
             (nextId + 1) (raw.extend nextId ⟨τ.base, v⟩))
   | _, .commit (b := b) x who acts R k, ρ, nextId, raw =>
       FDist.bind
-        (σ.commit who x acts R (Env.toView (Player := Player) (L := L) who (ρ raw)))
+        (σ.commit who x acts R (VEnv.toView (Player := Player) (L := L) who (ρ raw)))
         (fun v =>
           nativeOutcomeDist B σ k
-            (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
+            (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
               (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw))
             (nextId + 1) (raw.extend nextId ⟨b, v⟩))
   | _, .reveal (b := b) y _who _x hx k, ρ, nextId, raw =>
       nativeOutcomeDist B σ k
         (fun raw =>
-          let v : L.Val b := Env.get (Player := Player) (L := L) (ρ raw) hx
-          Env.cons (Player := Player) (L := L) (x := y) (τ := .pub b) v (ρ raw))
+          let v : L.Val b := VEnv.get (Player := Player) (L := L) (ρ raw) hx
+          VEnv.cons (Player := Player) (L := L) (x := y) (τ := .pub b) v (ρ raw))
         nextId raw
 
 -- nativeOutcomeDist = outcomeDist
@@ -106,10 +105,10 @@ The proof is by structural induction on `VegasSimple`. Each case uses
 `readVal_extend_self` + `InsensitiveTo` for the ρ roundtrip. -/
 theorem nativeOutcomeDist_eq_outcomeDist
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (σ : Profile Player L)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (nextId : Nat)
     (hρ : ∀ nid, nextId ≤ nid → InsensitiveTo ρ nid) :
     ∀ raw : RawNodeEnv L,
@@ -122,52 +121,52 @@ theorem nativeOutcomeDist_eq_outcomeDist
     intro raw
     simp only [nativeOutcomeDist, outcomeDist]
     exact ih _ nextId
-      (fun nid hn raw tv => Env.cons_ext (by rw [hρ nid hn raw tv]) (hρ nid hn raw tv))
+      (fun nid hn raw tv => VEnv.cons_ext (by rw [hρ nid hn raw tv]) (hρ nid hn raw tv))
       raw
   | sample x τ m D' k ih =>
     intro raw
     simp only [nativeOutcomeDist, outcomeDist]
     congr 1; funext v
     have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := τ)
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := τ)
           (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw)) nid' := by
       intro nid' hn' raw tv
-      exact Env.cons_ext
+      exact VEnv.cons_ext
         (readVal_extend_ne raw nid' nextId tv τ.base (by omega))
         (hρ nid' (by omega) raw tv)
     rw [ih _ (nextId + 1) hρ']
     congr 1
-    exact Env.cons_ext (readVal_extend_self (B := B) raw nextId τ.base v)
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId τ.base v)
       (hρ nextId (le_refl _) raw ⟨τ.base, v⟩)
   | @commit _ x who b acts R k ih =>
     intro raw
     simp only [nativeOutcomeDist, outcomeDist]
     congr 1; funext v
     have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
           (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw)) nid' := by
       intro nid' hn' raw tv
-      exact Env.cons_ext
+      exact VEnv.cons_ext
         (readVal_extend_ne raw nid' nextId tv b (by omega))
         (hρ nid' (by omega) raw tv)
     rw [ih _ (nextId + 1) hρ']
     congr 1
-    exact Env.cons_ext (readVal_extend_self (B := B) raw nextId b v)
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId b v)
       (hρ nextId (le_refl _) raw ⟨b, v⟩)
   | reveal y who x hx k ih =>
     intro raw
     simp only [nativeOutcomeDist, outcomeDist]
     exact ih _ nextId
-      (fun nid hn raw tv => Env.cons_ext (by rw [hρ nid hn raw tv]) (hρ nid hn raw tv))
+      (fun nid hn raw tv => VEnv.cons_ext (by rw [hρ nid hn raw tv]) (hρ nid hn raw tv))
       raw
 
 /-- Corollary: for the initial state (constant ρ), `nativeOutcomeDist` = `outcomeDist`. -/
 theorem nativeOutcomeDist_eq_outcomeDist_init
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (σ : Profile Player L)
-    (env : Env (Player := Player) L Γ)
+    (env : VEnv (Player := Player) L Γ)
     (raw₀ : RawNodeEnv L) :
     nativeOutcomeDist B σ p (fun _ => env) 0 raw₀ = outcomeDist σ p env := by
   exact nativeOutcomeDist_eq_outcomeDist B p σ (fun _ => env) 0
@@ -190,31 +189,31 @@ theorem compiled_naturalOrder (st : MAIDCompileState Player L B) :
 to reconstruct the final environment and evaluate the utility. -/
 noncomputable def extractOutcome
     (B : MAIDBackend Player L) :
-    {Γ : Ctx Player L} →
+    {Γ : VCtx Player L} →
     VegasCore Player L Γ →
-    (RawNodeEnv L → Env (Player := Player) L Γ) →
+    (RawNodeEnv L → VEnv (Player := Player) L Γ) →
     Nat → (RawNodeEnv L → Outcome Player)
   | _, .ret u, ρ, _ => fun raw => evalPayoffs u (ρ raw)
   | _, .letExpr (b := b) x e k, ρ, nextId =>
       extractOutcome B k
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := .pub b)
-          (E.eval e (ρ raw)) (ρ raw))
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := .pub b)
+          (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
         nextId
   | _, .sample x τ _m _D' k, ρ, nextId =>
       extractOutcome B k
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := τ)
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := τ)
           (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw))
         (nextId + 1)
   | _, .commit (b := b) x who _acts _R k, ρ, nextId =>
       extractOutcome B k
-        (fun raw => Env.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
+        (fun raw => VEnv.cons (Player := Player) (L := L) (x := x) (τ := .hidden who b)
           (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw))
         (nextId + 1)
   | _, .reveal (b := b) y _who _x hx k, ρ, nextId =>
       extractOutcome B k
         (fun raw =>
-          let v : L.Val b := Env.get (Player := Player) (L := L) (ρ raw) hx
-          Env.cons (Player := Player) (L := L) (x := y) (τ := .pub b) v (ρ raw))
+          let v : L.Val b := VEnv.get (Player := Player) (L := L) (ρ raw) hx
+          VEnv.cons (Player := Player) (L := L) (x := y) (τ := .pub b) v (ρ raw))
         nextId
 
 /-- Convert a total MAID assignment to a `RawNodeEnv`. -/
@@ -404,13 +403,13 @@ theorem MAIDCompileState.addUtilityNodes_kernelNormalized
 normalization and `σ` is normalized on `p`, then so does `ofProg B p ... st₀`. -/
 theorem ofProg_kernelNormalized
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hσ_norm : σ.NormalizedOn p)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B)
     (hst₀ : st₀.KernelNormalized σ) :
     (MAIDCompileState.ofProg B p hl ha hd ρ st₀).KernelNormalized σ := by
@@ -448,9 +447,9 @@ theorem MAIDCompileState.addUtilityNodes_nextId
 
 /-- `ofProg` only increases `nextId`. -/
 theorem MAIDCompileState.ofProg_nextId_le
-    (B : MAIDBackend Player L) {Γ : Ctx Player L}
+    (B : MAIDBackend Player L) {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) (hl ha hd)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B) :
     st₀.nextId ≤ (MAIDCompileState.ofProg B p hl ha hd ρ st₀).nextId := by
   induction p generalizing st₀ with
@@ -464,7 +463,7 @@ theorem MAIDCompileState.ofProg_nextId_le
           (ih hl ha hd
             (fun raw ↦
               have env := ρ raw;
-              Env.cons (ExprKit.eval e env) env)
+              VEnv.cons (L.eval e (VEnv.erasePubEnv env)) env)
             (st₀.addVar x (BindTy.pub b) (st₀.ctxDeps Γ_1) (ofProg._proof_1 B Γ_1 st₀)))
           rfl)
   | sample x τ m D' k ih =>
@@ -477,12 +476,12 @@ theorem MAIDCompileState.ofProg_nextId_le
             (fun raw ↦
               have env := ρ raw;
               have v := readVal raw τ.base st₀.nextId;
-              Env.cons v env)
+              VEnv.cons v env)
             ((st₀.addNode
                     (CompiledNode.chance τ.base (st₀.ctxDeps Γ_1)
                       (fun raw ↦
                         have env := ρ raw;
-                        DistKit.eval D' (Env.projectDist τ m env))
+                        L.evalDist D' (VEnv.eraseDistEnv τ m env))
                       (ofProg._proof_2 Γ_1 x τ m D' k hd ρ))
                     (ofProg._proof_3 B Γ_1 x τ m D' k hd ρ st₀)).2.addVar
               x τ {st₀.nextId} (ofProg._proof_5 B Γ_1 x τ m D' k hd ρ st₀)))
@@ -497,10 +496,10 @@ theorem MAIDCompileState.ofProg_nextId_le
             (fun raw ↦
               have env := ρ raw;
               have v := readVal raw _ st₀.nextId;
-              Env.cons v env)
+              VEnv.cons v env)
             ((st₀.addNode
                     (CompiledNode.decision _ who acts _ _ (st₀.ctxDeps Γ_1) fun σ raw ↦
-                      σ.commit who x acts R (Env.toView who (ρ raw)))
+                      σ.commit who x acts R (VEnv.toView who (ρ raw)))
                     _).2.addVar
               x _ {st₀.nextId} _))
           rfl)
@@ -512,7 +511,7 @@ theorem MAIDCompileState.ofProg_nextId_le
             (fun raw ↦
               have env := ρ raw;
               have v := env.get hx;
-              Env.cons v env)
+              VEnv.cons v env)
             (st₀.addVar y (BindTy.pub b) (st₀.lookupDeps x) (lookupDeps_lt st₀ x)))
           rfl)
 
@@ -520,12 +519,12 @@ theorem MAIDCompileState.ofProg_nextId_le
 are normalized. -/
 theorem nativeOutcomeDist_totalWeight
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (σ : Profile Player L)
     (hd : NormalizedDists p)
     (hσ_norm : σ.NormalizedOn p)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (nextId : Nat)
     (hρ : ∀ nid, nextId ≤ nid → InsensitiveTo ρ nid)
     (raw : RawNodeEnv L) :
@@ -600,9 +599,9 @@ theorem MAIDCompileState.addUtilityNodes_all_utility
 
 /-- `ofProg` preserves `descAt` for nodes below the initial `nextId`. -/
 theorem MAIDCompileState.ofProg_descAt_old
-    (B : MAIDBackend Player L) {Γ : Ctx Player L}
+    (B : MAIDBackend Player L) {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) (hl ha hd)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B) (j : Nat) (hj : j < st₀.nextId) :
     let st := MAIDCompileState.ofProg B p hl ha hd ρ st₀
     (st.descAt ⟨j, Nat.lt_of_lt_of_le hj (ofProg_nextId_le B p hl ha hd ρ st₀)⟩) =
@@ -634,7 +633,7 @@ theorem MAIDCompileState.ofProg_descAt_old
 -- ctxDeps tracking lemmas
 
 section
-omit [DecidableEq Player] E D
+omit [DecidableEq Player]
 
 theorem lookupDepsAux_append_singleton_eq_of_ne
     (vars : List (MAIDVarEntry Player L))
@@ -726,7 +725,7 @@ theorem MAIDCompileState.ctxDeps_addVar_eq_of_fresh
     (st : MAIDCompileState Player L B)
     (x : VarId) (τ : BindTy Player L) (deps : Finset Nat)
     (hdeps : ∀ d ∈ deps, d < st.nextId)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hfresh : Fresh x Γ) :
     (st.addVar x τ deps hdeps).ctxDeps Γ = st.ctxDeps Γ := by
   simpa [MAIDCompileState.ctxDeps] using
@@ -736,7 +735,7 @@ theorem MAIDCompileState.ctxDeps_addVar_cons_eq_of_fresh
     (st : MAIDCompileState Player L B)
     (x : VarId) (τ : BindTy Player L) (deps : Finset Nat)
     (hdeps : ∀ d ∈ deps, d < st.nextId)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hfreshΓ : Fresh x Γ)
     (hfreshVars : x ∉ st.vars.map Prod.fst) :
     (st.addVar x τ deps hdeps).ctxDeps ((x, τ) :: Γ) = deps ∪ st.ctxDeps Γ := by
@@ -763,7 +762,7 @@ theorem MAIDCompileState.lookupDeps_subset_depsOfVars_of_mem
 
 theorem MAIDCompileState.lookupDeps_subset_ctxDeps_of_mem
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L} {x : VarId}
+    {Γ : VCtx Player L} {x : VarId}
     (hx : x ∈ Γ.map Prod.fst) :
     st.lookupDeps x ⊆ st.ctxDeps Γ := by
   simpa [MAIDCompileState.ctxDeps] using
@@ -771,8 +770,8 @@ theorem MAIDCompileState.lookupDeps_subset_ctxDeps_of_mem
 
 theorem MAIDCompileState.lookupDeps_subset_ctxDeps_of_hasVar
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L} {x : VarId} {τ : BindTy Player L}
-    (hx : HasVar (L := L) Γ x τ) :
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
+    (hx : VHasVar (L := L) Γ x τ) :
     st.lookupDeps x ⊆ st.ctxDeps Γ :=
   st.lookupDeps_subset_ctxDeps_of_mem hx.mem_map_fst
 
@@ -780,7 +779,7 @@ theorem MAIDCompileState.ctxDeps_addNode_eq
     (st : MAIDCompileState Player L B)
     (nd : CompiledNode Player L B)
     (hdeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
-    (Γ : Ctx Player L) :
+    (Γ : VCtx Player L) :
     (st.addNode nd hdeps).2.ctxDeps Γ = st.ctxDeps Γ := by
   unfold MAIDCompileState.ctxDeps
   have haux : ∀ xs : List VarId,
@@ -794,7 +793,7 @@ theorem MAIDCompileState.ctxDeps_addNode_eq
 
 theorem MAIDCompileState.ctxDeps_letExpr_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L} (x : VarId) {b : L.Ty}
+    {Γ : VCtx Player L} (x : VarId) {b : L.Ty}
     (hfreshΓ : Fresh x Γ)
     (hfreshVars : x ∉ st.vars.map Prod.fst) :
     (st.addVar x (.pub b) (st.ctxDeps Γ) (st.depsOfVars_lt _)).ctxDeps
@@ -807,7 +806,7 @@ theorem MAIDCompileState.ctxDeps_addNode_addVar_singleton_cons_eq_of_fresh
     (st : MAIDCompileState Player L B)
     (nd : CompiledNode Player L B)
     (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (x : VarId) (τ : BindTy Player L)
     (hfreshΓ : Fresh x Γ)
     (hfreshVars : x ∉ st.vars.map Prod.fst) :
@@ -830,9 +829,9 @@ theorem MAIDCompileState.ctxDeps_addNode_addVar_singleton_cons_eq_of_fresh
 
 theorem MAIDCompileState.ctxDeps_reveal_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (y : VarId) (who : Player) (x : VarId) {b : L.Ty}
-    (hx : HasVar (L := L) Γ x (.hidden who b))
+    (hx : VHasVar (L := L) Γ x (.hidden who b))
     (hfreshΓ : Fresh y Γ)
     (hfreshVars : y ∉ st.vars.map Prod.fst) :
     (st.addVar y (.pub b) (st.lookupDeps x) (st.lookupDeps_lt x)).ctxDeps
@@ -1267,12 +1266,12 @@ theorem foldl_utility_map_eq
               exact hf a nd v
 
 def MAIDCompileState.VarsSubCtx
-    (st : MAIDCompileState Player L B) (Γ : Ctx Player L) : Prop :=
+    (st : MAIDCompileState Player L B) (Γ : VCtx Player L) : Prop :=
   ∀ x, x ∈ st.vars.map Prod.fst → x ∈ Γ.map Prod.fst
 
 theorem MAIDCompileState.VarsSubCtx_addNode
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (nd : CompiledNode Player L B)
     (hdeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId) :
@@ -1282,7 +1281,7 @@ theorem MAIDCompileState.VarsSubCtx_addNode
 
 theorem MAIDCompileState.VarsSubCtx_addVar
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (x : VarId) (τ : BindTy Player L) (deps : Finset Nat)
     (hdeps : ∀ d ∈ deps, d < st.nextId)
@@ -1299,7 +1298,7 @@ theorem MAIDCompileState.VarsSubCtx_addVar
 
 theorem MAIDCompileState.VarsSubCtx_letExpr_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (x : VarId) {b : L.Ty}
     (hfreshΓ : Fresh x Γ) :
@@ -1310,7 +1309,7 @@ theorem MAIDCompileState.VarsSubCtx_letExpr_step
 
 theorem MAIDCompileState.VarsSubCtx_addNode_addVar_singleton_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (nd : CompiledNode Player L B)
     (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
@@ -1331,7 +1330,7 @@ theorem MAIDCompileState.VarsSubCtx_addNode_addVar_singleton_step
 
 theorem MAIDCompileState.VarsSubCtx_sample_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (nd : CompiledNode Player L B)
     (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
@@ -1346,7 +1345,7 @@ theorem MAIDCompileState.VarsSubCtx_sample_step
 
 theorem MAIDCompileState.VarsSubCtx_commit_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (nd : CompiledNode Player L B)
     (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
@@ -1361,7 +1360,7 @@ theorem MAIDCompileState.VarsSubCtx_commit_step
 
 theorem MAIDCompileState.VarsSubCtx_reveal_step
     (st : MAIDCompileState Player L B)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (hvars : st.VarsSubCtx Γ)
     (y : VarId) (x : VarId) {b : L.Ty}
     (hfreshΓ : Fresh y Γ) :
@@ -1455,14 +1454,14 @@ The hypothesis `hρ_deps` captures that `ρ` only reads from positions in
 VegasSimple recursion since each sample/commit adds exactly its node ID to `ctxDeps`. -/
 theorem foldFDist_map_extract_eq_nativeOutcomeDist
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hwf : WF p)
     (hσ_norm : σ.NormalizedOn p)
-    (ρ : RawNodeEnv L → Env (Player := Player) L Γ)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B)
     (hst₀ : st₀.KernelNormalized σ)
     (hvars : st₀.VarsSubCtx Γ)
@@ -1578,10 +1577,10 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       have hxvars : x ∉ st₀.vars.map Prod.fst := by
         intro hxmem
         exact hxΓ (hvars x hxmem)
-      let ρ' : RawNodeEnv L → Env (Player := Player) L ((x, .pub b) :: Γ') :=
+      let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .pub b) :: Γ') :=
         fun raw =>
           let env := ρ raw
-          Env.cons (τ := .pub b) (E.eval e env) env
+          VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv env)) env
       let st₁ := st₀.addVar x (.pub b) (st₀.ctxDeps Γ') (st₀.depsOfVars_lt _)
       have hvars₁ : st₁.VarsSubCtx ((x, .pub b) :: Γ') := by
         simpa [st₁] using st₀.VarsSubCtx_letExpr_step hvars x hxΓ
@@ -1590,7 +1589,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         have hj' : j ∉ st₀.ctxDeps Γ' := by
           simpa [st₁, st₀.ctxDeps_letExpr_step x hxΓ hxvars] using hj
         have hρj := hρ_deps j hj' raw tv
-        exact Env.cons_ext (by simp [hρj]) hρj
+        exact VEnv.cons_ext (by simp [hρj]) hρj
       simpa [ρ', st₁, extractOutcome, nativeOutcomeDist] using
         (ih hl ha hd hwf.2 hσ_norm ρ' st₁
           (st₀.addVar_kernelNormalized σ x (.pub b) (st₀.ctxDeps Γ') (st₀.depsOfVars_lt _) hst₀)
@@ -1607,7 +1606,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       let id := st₀.nextId
       let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
         let env := ρ raw
-        D.eval D' (Env.projectDist τ m env)
+        L.evalDist D' (VEnv.eraseDistEnv τ m env)
       let cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1 := fun raw => hd.1 _
       let nd : CompiledNode Player L B := .chance τ.base deps cpdFDist cpdNorm
       have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
@@ -1622,11 +1621,11 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           simpa using hd'
         subst d
         exact Nat.lt_succ_self _)
-      let ρ' : RawNodeEnv L → Env (Player := Player) L ((x, τ) :: Γ') :=
+      let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, τ) :: Γ') :=
         fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw τ.base id
-          Env.cons v env
+          VEnv.cons v env
       have hvars₁ : st₁.VarsSubCtx ((x, τ) :: Γ') := by
         simpa [st₁, stNode, nd, deps, id] using
           st₀.VarsSubCtx_sample_step hvars nd hndeps x τ hxΓ
@@ -1654,7 +1653,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           apply hj
           simp [hctx₁, hmem]
         have hρj := hρ_deps j hj' raw tv
-        exact Env.cons_ext (readVal_extend_ne (B := B) raw j id tv τ.base hjid.symm) hρj
+        exact VEnv.cons_ext (readVal_extend_ne (B := B) raw j id tv τ.base hjid.symm) hρj
       let st : MAIDCompileState Player L B := MAIDCompileState.ofProg B k hl ha hd.2 ρ' st₁
       have hkn : st.KernelNormalized σ := by
         simpa [st] using ofProg_kernelNormalized B k σ hl ha hd.2 hσ_norm ρ' st₁ hst₁
@@ -1763,7 +1762,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         -- Distributions match
         simp only [nativeOutcomeDist, cpdFDist, H]
         congr 1
-        exact congr_arg (fun env => D.eval D' (Env.projectDist τ m env)) hρeq
+        exact congr_arg (fun env => L.evalDist D' (VEnv.eraseDistEnv τ m env)) hρeq
       simpa [MAIDCompileState.ofProg, deps, id, cpdFDist, cpdNorm, nd, stNode, st₁, ρ', st, data, f]
         using hmain
   | commit x who acts R k ih =>
@@ -1777,10 +1776,10 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       let obs := st₀.ctxDeps Γ'
       let id := st₀.nextId
       have hacts : acts ≠ [] := by
-        rcases hl.1 (MAIDCompileState.defaultView B (viewCtx who Γ')) with ⟨a, ha', _⟩
+        rcases hl.1 (MAIDCompileState.defaultView B (viewVCtx who Γ')) with ⟨a, ha', _⟩
         exact List.ne_nil_of_mem ha'
       let kernel : Profile Player L → RawNodeEnv L → FDist (L.Val b) :=
-        fun σ raw => σ.commit who x acts R (Env.toView who (ρ raw))
+        fun σ raw => σ.commit who x acts R (VEnv.toView who (ρ raw))
       let nd : CompiledNode Player L B := .decision b who acts hacts ha.1 obs kernel
       have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
         intro d hd'
@@ -1794,11 +1793,11 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           simpa using hd'
         subst d
         exact Nat.lt_succ_self _)
-      let ρ' : RawNodeEnv L → Env (Player := Player) L ((x, .hidden who b) :: Γ') :=
+      let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .hidden who b) :: Γ') :=
         fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw b id
-          Env.cons v env
+          VEnv.cons v env
       have hvars₁ : st₁.VarsSubCtx ((x, .hidden who b) :: Γ') := by
         simpa [st₁, stNode, nd, obs, id] using
           st₀.VarsSubCtx_commit_step hvars nd hndeps x (.hidden who b) hxΓ
@@ -1828,7 +1827,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           apply hj
           simp [hctx₁, hmem]
         have hρj := hρ_deps j hj' raw tv
-        exact Env.cons_ext (readVal_extend_ne (B := B) raw j id tv b hjid.symm) hρj
+        exact VEnv.cons_ext (readVal_extend_ne (B := B) raw j id tv b hjid.symm) hρj
       let st : MAIDCompileState Player L B := MAIDCompileState.ofProg B k hl.2 ha.2 hd ρ' st₁
       have hkn : st.KernelNormalized σ := by
         simpa [st] using ofProg_kernelNormalized B k σ hl.2 ha.2 hd hσ_norm.2 ρ' st₁ hst₁
@@ -1938,7 +1937,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         -- Distributions match
         simp only [nativeOutcomeDist, kernel, H]
         congr 1
-        exact congr_arg (fun env => σ.commit who x acts R (Env.toView who env)) hρeq
+        exact congr_arg (fun env => σ.commit who x acts R (VEnv.toView who env)) hρeq
       simpa [MAIDCompileState.ofProg, obs, id, hacts, kernel, nd, stNode, st₁, ρ', st, data, f]
         using hmain
   | reveal y who x hx k ih =>
@@ -1949,11 +1948,11 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       have hyvars : y ∉ st₀.vars.map Prod.fst := by
         intro hymem
         exact hyΓ (hvars y hymem)
-      let ρ' : RawNodeEnv L → Env (Player := Player) L ((y, .pub b) :: Γ') :=
+      let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((y, .pub b) :: Γ') :=
         fun raw =>
           let env := ρ raw
-          let v : L.Val b := Env.get env hx
-          Env.cons (τ := .pub b) v env
+          let v : L.Val b := VEnv.get env hx
+          VEnv.cons (τ := .pub b) v env
       let st₁ := st₀.addVar y (.pub b) (st₀.lookupDeps x) (st₀.lookupDeps_lt x)
       have hvars₁ : st₁.VarsSubCtx ((y, .pub b) :: Γ') := by
         simpa [st₁] using st₀.VarsSubCtx_reveal_step hvars y x hyΓ
@@ -1964,7 +1963,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         have hj' : j ∉ st₀.ctxDeps Γ' := by
           simpa [hctx₁] using hj
         have hρj := hρ_deps j hj' raw tv
-        exact Env.cons_ext (by simp [hρj]) hρj
+        exact VEnv.cons_ext (by simp [hρj]) hρj
       simpa [ρ', st₁, extractOutcome, nativeOutcomeDist] using
         (ih hl ha hd hwf.2 hσ_norm ρ' st₁
           (st₀.addVar_kernelNormalized σ y (.pub b)
@@ -1979,9 +1978,9 @@ open MAID in
 distribution yields the Vegas outcome distribution. -/
 theorem maid_map_extract_eq_outcomeDist
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (env : Env (Player := Player) L Γ)
+    (env : VEnv (Player := Player) L Γ)
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
@@ -2042,9 +2041,9 @@ There exist a MAID policy and extraction function such that the MAID's
 outcome marginal equals the Vegas semantics. Uses order-free `evalAssignDist`. -/
 theorem vegas_maid_dist_eq
     (B : MAIDBackend Player L)
-    {Γ : Ctx Player L}
+    {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (env : Env (Player := Player) L Γ)
+    (env : VEnv (Player := Player) L Γ)
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
