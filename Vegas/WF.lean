@@ -104,43 +104,50 @@ def WFProg {P : Type} [DecidableEq P]
   WF p ∧ RevealComplete [] p
 
 
-@[simp] theorem WFCtx_nil : WFCtx (P := Player) (L := simpleExpr) [] := List.nodup_nil
+@[simp] theorem WFCtx_nil {P : Type} {L : ExprLanguage} :
+    WFCtx (P := P) (L := L) [] := List.nodup_nil
 
-theorem WFCtx.cons {x : VarId} {τ : BindTySimple} {Γ : CtxSimple}
+theorem WFCtx.cons {P : Type} {L : ExprLanguage}
+    {x : VarId} {τ : BindTy P L} {Γ : Ctx P L}
     (hfresh : Fresh x Γ) (hwf : WFCtx Γ) :
     WFCtx ((x, τ) :: Γ) := by
   change (((x, τ) :: Γ).map Prod.fst).Nodup
   exact List.Nodup.cons hfresh hwf
 
-theorem WFCtx.tail {x : VarId} {τ : BindTySimple} {Γ : CtxSimple} :
+theorem WFCtx.tail {P : Type} {L : ExprLanguage}
+    {x : VarId} {τ : BindTy P L} {Γ : Ctx P L} :
     WFCtx ((x, τ) :: Γ) → WFCtx Γ := by
   intro h; exact (List.nodup_cons.mp h).2
 
-theorem WFCtx.fresh_head {x : VarId} {τ : BindTySimple} {Γ : CtxSimple} :
+theorem WFCtx.fresh_head {P : Type} {L : ExprLanguage}
+    {x : VarId} {τ : BindTy P L} {Γ : Ctx P L} :
     WFCtx ((x, τ) :: Γ) → Fresh x Γ := by
   intro h; exact (List.nodup_cons.mp h).1
 
-theorem HasVarSimple.mem_map_fst {Γ : CtxSimple} {x : VarId} {τ : BindTySimple} :
-    HasVarSimple Γ x τ → x ∈ Γ.map Prod.fst := by
+theorem HasVar.mem_map_fst {P : Type} {L : ExprLanguage}
+    {Γ : Ctx P L} {x : VarId} {τ : BindTy P L} :
+    HasVar (L := L) Γ x τ → x ∈ Γ.map Prod.fst := by
   intro h; induction h with
   | here => simp
   | there _ ih => exact List.mem_cons_of_mem _ ih
 
-theorem HasVarSimple.unique {Γ : CtxSimple} {x : VarId} {τ₁ τ₂ : BindTySimple}
-    (hwf : WFCtx Γ) (h1 : HasVarSimple Γ x τ₁) (h2 : HasVarSimple Γ x τ₂) :
+theorem HasVar.unique {P : Type} {L : ExprLanguage}
+    {Γ : Ctx P L} {x : VarId} {τ₁ τ₂ : BindTy P L}
+    (hwf : WFCtx Γ) (h1 : HasVar (L := L) Γ x τ₁) (h2 : HasVar (L := L) Γ x τ₂) :
     τ₁ = τ₂ := by
   induction h1 with
   | here =>
     match h2 with
     | .here => rfl
-    | .there h2' => exact absurd (HasVarSimple.mem_map_fst h2') hwf.fresh_head
+    | .there h2' => exact absurd (HasVar.mem_map_fst h2') hwf.fresh_head
   | there h1' ih =>
     match h2 with
-    | .here => exact absurd (HasVarSimple.mem_map_fst h1') hwf.fresh_head
+    | .here => exact absurd (HasVar.mem_map_fst h1') hwf.fresh_head
     | .there h2' => exact ih hwf.tail h2'
 
 
-theorem viewCtx_map_fst_sub {x : VarId} {p : Player} {Γ : CtxSimple} :
+theorem viewCtx_map_fst_sub {P : Type} [DecidableEq P] {L : ExprLanguage}
+    {x : VarId} {p : P} {Γ : Ctx P L} :
     x ∈ (viewCtx p Γ).map Prod.fst → x ∈ Γ.map Prod.fst := by
   induction Γ with
   | nil =>
@@ -150,7 +157,7 @@ theorem viewCtx_map_fst_sub {x : VarId} {p : Player} {Γ : CtxSimple} :
     exact False.elim this
   | cons hd tl ih =>
     obtain ⟨y, τ⟩ := hd
-    cases hsee : Vegas.canSee (Player := Player) (L := simpleExpr) p τ with
+    cases hsee : Vegas.canSee (Player := P) (L := L) p τ with
     | false =>
       intro h
       have hview : viewCtx p ((y, τ) :: tl) = viewCtx p tl := by
@@ -167,15 +174,18 @@ theorem viewCtx_map_fst_sub {x : VarId} {p : Player} {Γ : CtxSimple} :
       · exact Or.inl rfl
       · exact Or.inr (ih htl)
 
-theorem Fresh_viewCtx {x : VarId} {p : Player} {Γ : CtxSimple}
+theorem Fresh_viewCtx {P : Type} [DecidableEq P] {L : ExprLanguage}
+    {x : VarId} {p : P} {Γ : Ctx P L}
     (hfresh : Fresh x Γ) : Fresh x (viewCtx p Γ) :=
   fun hmem => hfresh (viewCtx_map_fst_sub hmem)
 
-theorem Fresh_flattenCtx {x : VarId} {Γ : CtxSimple}
+theorem Fresh_flattenCtx {P : Type} {L : ExprLanguage}
+    {x : VarId} {Γ : Ctx P L}
     (hfresh : Fresh x Γ) : Fresh x (flattenCtx Γ) := by
   unfold Fresh at *; rwa [flattenCtx_map_fst]
 
-theorem WFCtx_flattenCtx {Γ : CtxSimple}
+theorem WFCtx_flattenCtx {P : Type} {L : ExprLanguage}
+    {Γ : Ctx P L}
     (hwf : WFCtx Γ) : WFCtx (flattenCtx Γ) := by
   unfold WFCtx at *; rwa [flattenCtx_map_fst]
 
