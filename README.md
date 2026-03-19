@@ -82,6 +82,20 @@ git submodule update --init --recursive
 lake build
 ```
 
+# Vegas
+
+This is the mainline language and backend implementation for the project.
+
+Structure:
+
+- `Expr/` — generic expression-language boundary and concrete instantiation
+- `Protocol/` — Vegas syntax, static side conditions, and examples
+- `BigStep.lean` — canonical denotational semantics
+- `TraceSemantics.lean` — trace-based semantics
+- `ActionGraph.lean` — graph extraction and graph-level execution model
+- `Strategic.lean` — kernel-game bridge and strategic corollaries
+- `MAID/` — the main backend and its correctness work
+
 ## Status
 
 This is research work exploring formal foundations for expressing games as
