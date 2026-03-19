@@ -1,7 +1,7 @@
 name = "formal"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["distilled"]
+defaultTargets = ["Vegas"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -16,11 +16,7 @@ rev = "v4.27.0"
 
 [[require]]
 name = "GameTheory"
-path = "../GameTheory"
+path = "GameTheory"
 
 [[lean_lib]]
 name = "Vegas"
-
-[[lean_lib]]
-name = "distilled"
-roots = ["distilled"]

@@ -1,0 +1,3 @@
+[submodule "GameTheory"]
+	path = GameTheory
+	url = https://github.com/elazarg/GameTheory.git
