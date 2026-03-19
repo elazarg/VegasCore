@@ -6,6 +6,7 @@ import Vegas.WF
 import Vegas.Examples
 import Vegas.BigStep
 import Vegas.TraceSemantics
+import Vegas.TraceCorollaries
 import Vegas.ActionGraph
 import Vegas.Strategic
 import Vegas.Equilibrium
