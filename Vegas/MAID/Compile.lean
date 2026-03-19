@@ -1,12 +1,12 @@
 import GameTheory.Languages.MAID.Syntax
-import Vegas.Protocol
 import Vegas.MAID.Backend
+import Vegas.Core
 import Vegas.Strategic
 
 /-!
 # Vegas to MAID compiler
 
-Direct compilation of a Vegas `Prog` to `GameTheory`'s `MAID.Struct` and
+Direct compilation of a Vegas `VegasSimple` to `GameTheory`'s `MAID.Struct` and
 `MAID.Sem`.
 
 The compiler keeps one unified typed descriptor for every emitted MAID node, so
@@ -26,26 +26,26 @@ namespace Vegas
 open MAID
 
 variable {Player : Type} [DecidableEq Player] {L : ExprLanguage}
-variable [E : VisExprKit Player L] [D : VisDistKit Player L] [U : VisPayoffKit Player L]
+variable [E : ExprKit Player L] [D : DistKit Player L] [U : PayoffKit Player L]
 
 /-- Untyped payload used to reconstruct Vegas environments from MAID parent
 configurations. -/
-abbrev TaggedVal (L : ExprLanguage) : Type := Sigma L.Val
+abbrev RawTaggedVal (L : ExprLanguage) : Type := Sigma L.Val
 
 /-- Partial assignment of already-known MAID node values. -/
-abbrev RawNodeEnv (L : ExprLanguage) : Type := Nat → Option (TaggedVal L)
+abbrev RawNodeEnv (L : ExprLanguage) : Type := Nat → Option (RawTaggedVal L)
 
 /-- A fully-typed emitted MAID node. This is the compiler's single source of
 truth for both `MAID.Struct` and `MAID.Sem`. -/
 inductive CompiledNode (Player : Type) [DecidableEq Player] (L : ExprLanguage)
-    (B : MAIDBackend Player L) [VisExprKit Player L] [VisDistKit Player L]
-    [VisPayoffKit Player L] where
+    (B : MAIDBackend Player L) [ExprKit Player L] [DistKit Player L]
+    [PayoffKit Player L] where
   | chance (τ : L.Ty) (parents : Finset Nat)
       (cpdFDist : RawNodeEnv L → FDist (L.Val τ))
       (cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1)
   | decision (τ : L.Ty) (who : Player) (acts : List (L.Val τ))
       (hacts : acts ≠ []) (hnodup : acts.Nodup) (obsParents : Finset Nat)
-      (kernel : Vegas.Profile (Player := Player) (L := L) → RawNodeEnv L → FDist (L.Val τ))
+      (kernel : Vegas.Profile Player L → RawNodeEnv L → FDist (L.Val τ))
   | utility (who : Player) (parents : Finset Nat)
       (ufn : RawNodeEnv L → ℝ)
 
@@ -121,12 +121,12 @@ end CompiledNode
 
 /-- Variable-to-dependency entries accumulated during compilation. -/
 abbrev MAIDVarEntry (Player : Type) (L : ExprLanguage) :=
-  VarId × VisBindTy Player L × Finset Nat
+  VarId × BindTy Player L × Finset Nat
 
 /-- Internal state for direct Vegas-to-MAID compilation. -/
 structure MAIDCompileState (Player : Type) [DecidableEq Player] (L : ExprLanguage)
-    (B : MAIDBackend Player L) [VisExprKit Player L] [VisDistKit Player L]
-    [VisPayoffKit Player L] where
+    (B : MAIDBackend Player L) [ExprKit Player L] [DistKit Player L]
+    [PayoffKit Player L] where
   nextId : Nat
   nodes : List (Nat × CompiledNode Player L B)
   vars : List (MAIDVarEntry Player L)
@@ -206,20 +206,20 @@ theorem depsOfVars_lt (st : MAIDCompileState Player L B) (xs : List VarId) :
       · exact st.lookupDeps_lt x d hd
       · exact ih d hd
 
-def ctxDeps (st : MAIDCompileState Player L B) (Γ : VisCtx Player L) :
+def ctxDeps (st : MAIDCompileState Player L B) (Γ : Ctx Player L) :
     Finset Nat :=
   st.depsOfVars (Γ.map Prod.fst)
 
-def viewDeps (st : MAIDCompileState Player L B) (who : Player) (Γ : VisCtx Player L) :
+def viewDeps (st : MAIDCompileState Player L B) (who : Player) (Γ : Ctx Player L) :
     Finset Nat :=
   st.depsOfVars ((viewCtx who Γ).map Prod.fst)
 
 def sampleDeps (st : MAIDCompileState Player L B)
-    {Γ : VisCtx Player L} (τ : VisBindTy Player L) (m : SampleMode τ) :
+    {Γ : Ctx Player L} (τ : BindTy Player L) (m : SampleMode τ) :
     Finset Nat :=
   st.depsOfVars ((distCtx τ m Γ).map Prod.fst)
 
-def addVar (st : MAIDCompileState Player L B) (x : VarId) (τ : VisBindTy Player L)
+def addVar (st : MAIDCompileState Player L B) (x : VarId) (τ : BindTy Player L)
     (deps : Finset Nat) (hdeps : ∀ d ∈ deps, d < st.nextId) :
     MAIDCompileState Player L B where
   nextId := st.nextId
@@ -255,10 +255,10 @@ def addNode (st : MAIDCompileState Player L B) (nd : CompiledNode Player L B)
         exact Nat.lt_trans (st.varDeps_lt e he d hd) (Nat.lt_succ_self _) })
 
 noncomputable def defaultView (B : MAIDBackend Player L) :
-    (Γ : VisCtx Player L) → VisEnv (Player := Player) L Γ
-  | [] => VisEnv.empty L
+    (Γ : Ctx Player L) → Env (Player := Player) L Γ
+  | [] => Env.empty L
   | (_, τ) :: Γ =>
-      VisEnv.cons (Player := Player) (L := L)
+      Env.cons (Player := Player) (L := L)
         (MAIDValuation.defaultVal L B.toMAIDValuation τ.base)
         (defaultView B Γ)
 
@@ -333,12 +333,12 @@ noncomputable def readVal (raw : RawNodeEnv L) (τ : L.Ty) (id : Nat) : L.Val τ
 
 noncomputable def ofProg
     (B : MAIDBackend Player L) :
-    {Γ : VisCtx Player L} →
-      (p : Prog Player L Γ) →
+    {Γ : Ctx Player L} →
+      (p : VegasCore Player L Γ) →
       Legal p →
       DistinctActs p →
       NormalizedDists p →
-      (RawNodeEnv L → VisEnv (Player := Player) L Γ) →
+      (RawNodeEnv L → Env (Player := Player) L Γ) →
       MAIDCompileState Player L B →
       MAIDCompileState Player L B
   | Γ, .ret u, _hl, _ha, _hd, ρ, st =>
@@ -353,14 +353,14 @@ noncomputable def ofProg
       ofProg B k hl ha hd
         (fun raw =>
           let env := ρ raw
-          VisEnv.cons (τ := .pub b) (E.eval e env) env)
+          Env.cons (τ := .pub b) (E.eval e env) env)
         (st.addVar x (.pub b) deps (st.depsOfVars_lt _))
   | Γ, .sample x τ m D' k, hl, ha, hd, ρ, st =>
       let deps := st.ctxDeps Γ
       let id := st.nextId
       let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
         let env := ρ raw
-        D.eval D' (VisEnv.projectDist τ m env)
+        D.eval D' (Env.projectDist τ m env)
       let cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1 :=
         fun raw => hd.1 _
       let res := st.addNode (.chance τ.base deps cpdFDist cpdNorm) (by
@@ -373,7 +373,7 @@ noncomputable def ofProg
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw τ.base id
-          VisEnv.cons v env)
+          Env.cons v env)
         (st'.addVar x τ ({id}) (by
           intro d hd'
           have hdid : d = id := by
@@ -388,7 +388,7 @@ noncomputable def ofProg
       let id := st.nextId
       let res := st.addNode
         (.decision b who acts hacts ha.1 obs
-          (fun σ raw => σ.commit who x acts R (VisEnv.toView who (ρ raw)))) (by
+          (fun σ raw => σ.commit who x acts R (Env.toView who (ρ raw)))) (by
         intro d hd'
         have hd'' : d ∈ obs := by
           simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
@@ -398,7 +398,7 @@ noncomputable def ofProg
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw b id
-          VisEnv.cons (τ := .hidden who b) v env)
+          Env.cons (τ := .hidden who b) v env)
         (st'.addVar x (.hidden who b) ({id}) (by
           intro d hd'
           have hdid : d = id := by
@@ -410,8 +410,8 @@ noncomputable def ofProg
       ofProg B k hl ha hd
         (fun raw =>
           let env := ρ raw
-          let v : L.Val b := VisEnv.get env hx
-          VisEnv.cons (τ := .pub b) v env)
+          let v : L.Val b := Env.get env hx
+          Env.cons (τ := .pub b) v env)
         (st.addVar y (.pub b) deps (st.lookupDeps_lt x))
 
 /-- The native value type for a compiled node. -/
@@ -489,7 +489,7 @@ noncomputable def toStruct (st : MAIDCompileState Player L B) :
 
 /-- Convert a node value (in the native valType) to a tagged value for RawNodeEnv. -/
 noncomputable def taggedOfVal :
-    (nd : CompiledNode Player L B) → CompiledNode.valType nd → Option (TaggedVal L)
+    (nd : CompiledNode Player L B) → CompiledNode.valType nd → Option (RawTaggedVal L)
   | .chance τ _ _ _, v => some ⟨τ, v⟩
   | .decision τ _ _ _ _ _ _, v => some ⟨τ, v⟩
   | .utility _ _ _, _ => none
@@ -534,11 +534,11 @@ noncomputable def toSem (st : MAIDCompileState Player L B) :
 
 end MAIDCompileState
 
-namespace Prog
+namespace VegasCore
 
 noncomputable def toMAID
-    (B : MAIDBackend Player L) {Γ : VisCtx Player L}
-    (p : Prog Player L Γ) (env : VisEnv (Player := Player) L Γ)
+    (B : MAIDBackend Player L) {Γ : Ctx Player L}
+    (p : VegasCore Player L Γ) (env : Env (Player := Player) L Γ)
     (_hΓ : WFCtx Γ) (_hwf : WF p)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists (P := Player) (L := L) p) :
@@ -547,6 +547,6 @@ noncomputable def toMAID
   let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
   exact ⟨st.nextId, st.toStruct, MAIDCompileState.toSem st⟩
 
-end Prog
+end VegasCore
 
 end Vegas

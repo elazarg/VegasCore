@@ -1,5 +1,5 @@
-import Vegas.MAID.Compile
 import Vegas.Strategic
+import Vegas.MAID.Compile
 
 /-!
 # FDist-based MAID fold
@@ -27,17 +27,11 @@ open MAID
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {n : Nat}
 
--- ============================================================================
--- § 1. DecidableEq for MAID assignment types
--- ============================================================================
 
 noncomputable instance instDecidableEqTAssign (S : MAID.Struct Player n) :
     DecidableEq (TAssign S) :=
   inferInstance
 
--- ============================================================================
--- § 2. FDist node distribution
--- ============================================================================
 
 /-- FDist-valued node distribution data. For each node and assignment, provides
 an `FDist` over values. This captures the pre-`toPMF` data that the compiler
@@ -55,9 +49,6 @@ def FDistNodeDataCompatible {S : MAID.Struct Player n}
   ∀ nd a, FDist.toPMF (data.dist nd a) (data.normalized nd a) =
     nodeDist S sem pol nd a
 
--- ============================================================================
--- § 3. FDist fold step and fold
--- ============================================================================
 
 /-- One step of the evaluation fold in `FDist`: draw a value at `nd` and
 update the assignment. Mirrors `MAID.evalStep`. -/
@@ -74,9 +65,6 @@ noncomputable def evalFoldFDist {S : MAID.Struct Player n}
     FDist (TAssign S) :=
   σ.order.foldl (evalStepFDist data) (FDist.pure (defaultAssign S))
 
--- ============================================================================
--- § 4. Normalization preservation
--- ============================================================================
 
 /-- `evalStepFDist` preserves normalization. -/
 theorem evalStepFDist_normalized {S : MAID.Struct Player n}
@@ -107,32 +95,6 @@ theorem evalFoldFDist_normalized {S : MAID.Struct Player n}
     FDist.totalWeight (evalFoldFDist data σ) = 1 := by
   unfold evalFoldFDist
   exact foldl_evalStepFDist_normalized data σ.order _ (FDist.totalWeight_pure _)
-
--- ============================================================================
--- § 5. Helper: FDist.bind (pure ∘ g) = FDist.map g
--- ============================================================================
-
-/-- `FDist.bind d (FDist.pure ∘ g) = FDist.map g d` (monad law). -/
-theorem FDist.bind_pure_comp [DecidableEq α] [DecidableEq β]
-    (d : FDist α) (g : α → β) :
-    FDist.bind d (fun a => FDist.pure (g a)) = FDist.map g d := by
-  simp only [FDist.bind, FDist.pure, FDist.map]
-  congr 1; funext a; funext w
-  rw [Finsupp.mapRange_single, mul_one]
-
-/-- Normalization of `FDist.map`. -/
-theorem FDist.totalWeight_map [DecidableEq α] [DecidableEq β]
-    (d : FDist α) (g : α → β) :
-    FDist.totalWeight (FDist.map g d) = FDist.totalWeight d := by
-  simp only [FDist.map, FDist.totalWeight]
-  rw [Finsupp.sum_sum_index (fun _ => rfl) (fun _ _ _ => rfl)]
-  apply Finset.sum_congr rfl
-  intro a _
-  simp [Finsupp.sum_single_index]
-
--- ============================================================================
--- § 6. Bridge: FDist fold → PMF fold
--- ============================================================================
 
 /-- One step: `toPMF (evalStepFDist data acc nd) = evalStep S sem pol (toPMF acc) nd`
 when the FDist data is compatible with the MAID semantics. -/

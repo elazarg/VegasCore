@@ -1,10 +1,10 @@
-import Vegas.Expr.Interface
 import GameTheory.Languages.MAID.Syntax
+import Vegas.Core
 
 /-!
 # Vegas to MAID backend assumptions
 
-This file records the extra assumptions needed to compile a `Prog` over an
+This file records the extra assumptions needed to compile a `VegasSimple` over an
 `ExprLanguage` into the finite MAID representation from `GameTheory`.
 
 The protocol language itself stays parametric over `ExprLanguage`. Finiteness

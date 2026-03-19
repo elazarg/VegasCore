@@ -1,4 +1,6 @@
-import Vegas.Protocol.WF
+import Vegas.WF
+
+namespace Vegas
 
 namespace Examples
 
@@ -7,18 +9,18 @@ def vb : VarId := 1
 def va' : VarId := 2
 def vb' : VarId := 3
 
-def Γ0 : Ctx := []
-def Γ1 : Ctx := [(va, .hidden 0 .bool)]
-def Γ2 : Ctx := [(vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
-def Γ3 : Ctx := [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
-def Γ4 : Ctx :=
+def Γ0 : CtxSimple := []
+def Γ1 : CtxSimple := [(va, .hidden 0 .bool)]
+def Γ2 : CtxSimple := [(vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
+def Γ3 : CtxSimple := [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
+def Γ4 : CtxSimple :=
   [(vb', .pub .bool), (va', .pub .bool),
    (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
 
-def hva_in_Γ2 : HasVar Γ2 va (.hidden 0 .bool) := .there .here
-def hvb_in_Γ3 : HasVar Γ3 vb (.hidden 1 .bool) := .there .here
-def hva'_in_Γ4 : HasVar Γ4 va' (.pub .bool) := .there .here
-def hvb'_in_Γ4 : HasVar Γ4 vb' (.pub .bool) := .here
+def hva_in_Γ2 : HasVarSimple Γ2 va (.hidden 0 .bool) := .there .here
+def hvb_in_Γ3 : HasVarSimple Γ3 vb (.hidden 1 .bool) := .there .here
+def hva'_in_Γ4 : HasVarSimple Γ4 va' (.pub .bool) := .there .here
+def hvb'_in_Γ4 : HasVarSimple Γ4 vb' (.pub .bool) := .here
 
 def mpPayoff : PayoffMap Γ4 :=
   ⟨[ (0, .ite
@@ -29,14 +31,14 @@ def mpPayoff : PayoffMap Γ4 :=
         (.constInt (-1)) (.constInt 1))
    ], by decide⟩
 
-def matchingPennies : Prog Γ0 :=
+def matchingPennies : VegasSimple Γ0 :=
   .commit va 0 (b := .bool) [true, false] (.constBool true)
     (.commit vb 1 (b := .bool) [true, false] (.constBool true)
       (.reveal va' 0 va hva_in_Γ2
         (.reveal vb' 1 vb hvb_in_Γ3
           (.ret mpPayoff))))
 
-noncomputable def mpProfile : Profile where
+noncomputable def mpProfile : ProfileSimple where
   commit := fun {_Γ} {b} _who x _acts _R _view =>
     match x with
     | 0 =>
@@ -49,7 +51,7 @@ noncomputable def mpProfile : Profile where
       | .int => FDist.zero
     | _ => FDist.zero
 
-def conditionedGame : Prog Γ0 :=
+def conditionedGame : VegasSimple Γ0 :=
   .commit va 0 (b := .bool) [true, false] (.constBool true)
     (.reveal va' 0 va .here
       (.commit vb 1 (b := .bool) [true, false]
@@ -57,10 +59,18 @@ def conditionedGame : Prog Γ0 :=
         (.reveal vb' 1 vb .here
           (.ret ⟨[(0, .constInt 1), (1, .constInt 0)], by decide⟩))))
 
--- Verify well-formedness predicates on examples
-#eval! decide (WF matchingPennies)          -- true
-#eval! decide (RevealComplete [] matchingPennies)  -- true
-#eval! decide (WF conditionedGame)          -- true
-#eval! decide (RevealComplete [] conditionedGame)  -- true
+example : WF matchingPennies := by
+  decide
+
+example : RevealComplete [] matchingPennies := by
+  decide
+
+example : WF conditionedGame := by
+  decide
+
+example : RevealComplete [] conditionedGame := by
+  decide
 
 end Examples
+
+end Vegas

@@ -1,5 +1,9 @@
-import Vegas.Expr
-import Vegas.Protocol
+import Vegas.FDist
+import Vegas.Core
+import Vegas.ExprSimple
+import Vegas.VegasSimple
+import Vegas.WF
+import Vegas.Examples
 import Vegas.BigStep
 import Vegas.TraceSemantics
 import Vegas.ActionGraph

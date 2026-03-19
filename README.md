@@ -17,12 +17,11 @@ Games are expressed as programs where:
 - Players make **strategic choices** from available actions, restricted by **Views** (observable projections of the environment)
 - Outcomes may be **probabilistic** (sampling from finite-support weighted distributions)
 - **Strategy profiles** determine how players choose actions at each decision point
-- **Conditioning** uses hard rejection (`observe`) on boolean predicates
+- Additional conditioning constructs such as `observe` remain planned rather than part of the current core surface
 
 The mainline `Vegas/` tree is organized around:
 
-1. **Expr** -- the generic expression-language boundary and a concrete instantiation
-2. **Protocol** -- Vegas syntax, static side conditions, and examples
+1. **Core / ExprSimple / VegasSimple** -- the generic interface and current concrete instantiation
 3. **BigStep / TraceSemantics / ActionGraph** -- the main semantic presentations and graph IR
 4. **Strategic / MAID** -- the strategic semantics and the main backend stack
 5. **GameTheory** -- the external submodule providing MAID and general game-theory infrastructure
@@ -31,13 +30,12 @@ The mainline `Vegas/` tree is organized around:
 
 ```text
 Vegas/
-  Expr/
-    Interface.lean
-    Concrete.lean
-  Protocol/
-    Syntax.lean
-    WF.lean
-    Examples.lean
+  Core.lean
+  ExprSimple.lean
+  VegasSimple.lean
+  WF.lean
+  Examples.lean
+  FDist.lean
   BigStep.lean
   TraceSemantics.lean
   ActionGraph.lean
@@ -63,7 +61,7 @@ GameTheory/
 A `Profile` maps player decisions to probability distributions over actions. Each decision site has a `View` that restricts what the player can observe. Fixing a profile converts a strategic program into a pure probabilistic program.
 
 ### Views (Partial Information)
-A `View Gamma` projects the full environment `Env Gamma` to a visible sub-environment `Env Delta`. Strategies at a yield site can only depend on the projected environment, enforcing information restrictions structurally.
+A `View Gamma` projects the full environment `Env Gamma` to a visible sub-environment `Env Delta`. Strategies at a commit site can only depend on the projected environment, enforcing information restrictions structurally.
 
 ### Weighted Distributions
 `FDist alpha` is the main finitely-supported weighted distribution used in the
@@ -75,26 +73,12 @@ general game-theory results can be imported from `GameTheory`.
 
 ## Building
 
-Requires Lean 4 and Mathlib.
+Requires Lean 4, Mathlib, and the checked-out `GameTheory` submodule.
 
 ```bash
 git submodule update --init --recursive
 lake build
 ```
-
-# Vegas
-
-This is the mainline language and backend implementation for the project.
-
-Structure:
-
-- `Expr/` — generic expression-language boundary and concrete instantiation
-- `Protocol/` — Vegas syntax, static side conditions, and examples
-- `BigStep.lean` — canonical denotational semantics
-- `TraceSemantics.lean` — trace-based semantics
-- `ActionGraph.lean` — graph extraction and graph-level execution model
-- `Strategic.lean` — kernel-game bridge and strategic corollaries
-- `MAID/` — the main backend and its correctness work
 
 ## Status
 

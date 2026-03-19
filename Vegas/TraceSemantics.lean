@@ -18,7 +18,8 @@ The central connection to the denotational semantics:
 
 ## Design notes
 
-- **DAG execution model**: The sequential `Prog` syntax linearizes a DAG of
+- **Action-graph execution model**: The sequential `VegasSimple` syntax linearizes an
+  action graph of
   events. Independent `commit`s and `reveal`s commute — the linearization
   order doesn't affect `outcomeDist`. This is proved as `outcomeDist_comm_commit`
   and `outcomeDist_comm_reveal`.
@@ -32,34 +33,33 @@ The central connection to the denotational semantics:
 
 - **`reveal` is silent but meaningful**: It changes visibility (makes a hidden
   value public) without introducing nondeterminism. The value is already
-  determined by the prior `commit`.
+determined by the prior `commit`.
 -/
 
--- ============================================================================
--- § 1. Traces
--- ============================================================================
+namespace Vegas
+
 
 /-- A complete execution path through a Vegas program.
     Indexed by the program it traverses. Records the value chosen at each
     `sample` and `commit` site. `letExpr` and `reveal` are deterministic
     wrappers (no choice recorded). -/
-inductive Trace : (Γ : Ctx) → Prog Γ → Type where
-  | ret {Γ : Ctx} {u : PayoffMap Γ} :
+inductive Trace : (Γ : CtxSimple) → VegasSimple Γ → Type where
+  | ret {Γ : CtxSimple} {u : PayoffMap Γ} :
       Trace Γ (.ret u)
-  | letExpr {Γ : Ctx} {x : VarId} {b : BaseTy} {e : Expr Γ b}
-      {k : Prog ((x, .pub b) :: Γ)} :
+  | letExpr {Γ : CtxSimple} {x : VarId} {b : BaseTy} {e : Expr Γ b}
+      {k : VegasSimple ((x, .pub b) :: Γ)} :
       Trace ((x, .pub b) :: Γ) k → Trace Γ (.letExpr x e k)
-  | sample {Γ : Ctx} {x : VarId} {τ : BindTy} {m : SampleMode τ}
-      {D : DistExpr (distCtx τ m Γ) τ.base} {k : Prog ((x, τ) :: Γ)} :
+  | sample {Γ : CtxSimple} {x : VarId} {τ : BindTySimple} {m : SampleMode τ}
+      {D : DistExpr (distCtx τ m Γ) τ.base} {k : VegasSimple ((x, τ) :: Γ)} :
       Val τ.base → Trace ((x, τ) :: Γ) k → Trace Γ (.sample x τ m D k)
-  | commit {Γ : Ctx} {x : VarId} {who : Player} {b : BaseTy}
+  | commit {Γ : CtxSimple} {x : VarId} {who : Player} {b : BaseTy}
       {acts : List (Val b)}
       {R : Expr ((x, .pub b) :: flattenCtx (viewCtx who Γ)) .bool}
-      {k : Prog ((x, .hidden who b) :: Γ)} :
+      {k : VegasSimple ((x, .hidden who b) :: Γ)} :
       Val b → Trace ((x, .hidden who b) :: Γ) k →
       Trace Γ (.commit x who acts R k)
-  | reveal {Γ : Ctx} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
-      {hx : HasVar Γ x (.hidden who b)} {k : Prog ((y, .pub b) :: Γ)} :
+  | reveal {Γ : CtxSimple} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
+      {hx : HasVarSimple Γ x (.hidden who b)} {k : VegasSimple ((y, .pub b) :: Γ)} :
       Trace ((y, .pub b) :: Γ) k → Trace Γ (.reveal y who x hx k)
 
 noncomputable instance : DecidableEq (Trace Γ p) := by
@@ -99,147 +99,133 @@ noncomputable instance : DecidableEq (Trace Γ p) := by
       | .isTrue h => .isTrue (h ▸ rfl)
       | .isFalse h => .isFalse (fun heq => h (Trace.reveal.inj heq))
 
--- ============================================================================
--- § 2. Trace outcome
--- ============================================================================
 
 /-- The outcome produced by following trace `t` through program `p`.
     Mirrors the structure of `outcomeDist` but follows a single deterministic
     path — no weighting, no distribution binding. -/
-noncomputable def traceOutcome : {Γ : Ctx} → (p : Prog Γ) → Env Γ → Trace Γ p → Outcome
+noncomputable def traceOutcome :
+    {Γ : CtxSimple} → (p : VegasSimple Γ) → EnvSimple Γ → Trace Γ p → Outcome
   | _, .ret u, env, .ret =>
       evalPayoffMap u env
   | _, .letExpr _ e k, env, .letExpr t =>
-      traceOutcome k (Env.cons (evalExpr e env) env) t
+      traceOutcome k (EnvSimple.cons (evalExpr e env) env) t
   | _, .sample _ _ _ _ k, env, .sample v t =>
-      traceOutcome k (Env.cons v env) t
+      traceOutcome k (EnvSimple.cons v env) t
   | _, .commit _ _ _ _ k, env, .commit v t =>
-      traceOutcome k (Env.cons v env) t
+      traceOutcome k (EnvSimple.cons v env) t
   | _, .reveal y _who _x (b := b) hx k, env, .reveal t =>
       let val : Val b := env.get hx
-      traceOutcome k (Env.cons (x := y) (τ := .pub b) val env) t
+      traceOutcome k (EnvSimple.cons (x := y) (τ := .pub b) val env) t
 
--- ============================================================================
--- § 3. Trace weight
--- ============================================================================
 
 /-- The probability weight of trace `t` under profile `σ`.
     Product of:
     - At each `sample` site: the distribution weight of the chosen value
     - At each `commit` site: the profile's strategy weight for the chosen value
     - At `letExpr`/`reveal`/`ret`: weight 1 (deterministic) -/
-noncomputable def traceWeight (σ : Profile) :
-    {Γ : Ctx} → (p : Prog Γ) → Env Γ → Trace Γ p → ℚ≥0
+noncomputable def traceWeight (σ : ProfileSimple) :
+    {Γ : CtxSimple} → (p : VegasSimple Γ) → EnvSimple Γ → Trace Γ p → ℚ≥0
   | _, .ret _, _, .ret => 1
   | _, .letExpr _ e k, env, .letExpr t =>
-      traceWeight σ k (Env.cons (evalExpr e env) env) t
+      traceWeight σ k (EnvSimple.cons (evalExpr e env) env) t
   | _, .sample _ τ m D k, env, .sample v t =>
       (evalDistExpr D (env.projectDist τ m)) v *
-      traceWeight σ k (Env.cons v env) t
+      traceWeight σ k (EnvSimple.cons v env) t
   | _, .commit x who acts R k, env, .commit v t =>
       (σ.commit who x acts R (env.toView who)) v *
-      traceWeight σ k (Env.cons v env) t
+      traceWeight σ k (EnvSimple.cons v env) t
   | _, .reveal y _who _x (b := b) hx k, env, .reveal t =>
       let val : Val b := env.get hx
-      traceWeight σ k (Env.cons (x := y) (τ := .pub b) val env) t
+      traceWeight σ k (EnvSimple.cons (x := y) (τ := .pub b) val env) t
 
--- ============================================================================
--- § 4. Trace legality
--- ============================================================================
 
 /-- A trace is legal if every `commit` choice is in the action list and
     satisfies constraint `R`, and every `sample` choice is in the
     distribution's support. -/
-def Trace.legal : {Γ : Ctx} → (p : Prog Γ) → Env Γ → Trace Γ p → Prop
+def Trace.legal : {Γ : CtxSimple} → (p : VegasSimple Γ) → EnvSimple Γ → Trace Γ p → Prop
   | _, .ret _, _, .ret => True
   | _, .letExpr _ e k, env, .letExpr t =>
-      legal k (Env.cons (evalExpr e env) env) t
+      legal k (EnvSimple.cons (evalExpr e env) env) t
   | _, .sample _ τ m D k, env, .sample v t =>
       v ∈ (evalDistExpr D (env.projectDist τ m)).support ∧
-      legal k (Env.cons v env) t
+      legal k (EnvSimple.cons v env) t
   | _, .commit _ who acts R k, env, .commit v t =>
       v ∈ acts ∧ evalR R v (env.toView who) = true ∧
-      legal k (Env.cons v env) t
+      legal k (EnvSimple.cons v env) t
   | _, .reveal y _who _x (b := b) hx k, env, .reveal t =>
       let val : Val b := env.get hx
-      legal k (Env.cons (x := y) (τ := .pub b) val env) t
+      legal k (EnvSimple.cons (x := y) (τ := .pub b) val env) t
 
--- ============================================================================
--- § 5. Big-step reachability
--- ============================================================================
 
 /-- Profile-free reachability: outcome `oc` can be reached from `(p, env)`
     by some sequence of legal choices at commit sites and in-support choices
     at sample sites. Characterizes the game's possible outcomes regardless
     of strategy. -/
-inductive CanReach : {Γ : Ctx} → Prog Γ → Env Γ → Outcome → Prop where
-  | ret {Γ : Ctx} {u : PayoffMap Γ} {env : Env Γ} :
+inductive CanReach : {Γ : CtxSimple} → VegasSimple Γ → EnvSimple Γ → Outcome → Prop where
+  | ret {Γ : CtxSimple} {u : PayoffMap Γ} {env : EnvSimple Γ} :
       CanReach (.ret u) env (evalPayoffMap u env)
-  | letExpr {Γ : Ctx} {x : VarId} {b : BaseTy} {e : Expr Γ b}
-      {k : Prog ((x, .pub b) :: Γ)} {env : Env Γ} {oc : Outcome} :
-      CanReach k (Env.cons (evalExpr e env) env) oc →
+  | letExpr {Γ : CtxSimple} {x : VarId} {b : BaseTy} {e : Expr Γ b}
+      {k : VegasSimple ((x, .pub b) :: Γ)} {env : EnvSimple Γ} {oc : Outcome} :
+      CanReach k (EnvSimple.cons (evalExpr e env) env) oc →
       CanReach (.letExpr x e k) env oc
-  | sample {Γ : Ctx} {x : VarId} {τ : BindTy} {m : SampleMode τ}
-      {D : DistExpr (distCtx τ m Γ) τ.base} {k : Prog ((x, τ) :: Γ)}
-      {env : Env Γ} {oc : Outcome}
+  | sample {Γ : CtxSimple} {x : VarId} {τ : BindTySimple} {m : SampleMode τ}
+      {D : DistExpr (distCtx τ m Γ) τ.base} {k : VegasSimple ((x, τ) :: Γ)}
+      {env : EnvSimple Γ} {oc : Outcome}
       (v : Val τ.base)
       (hsupp : v ∈ (evalDistExpr D (env.projectDist τ m)).support) :
-      CanReach k (Env.cons v env) oc →
+      CanReach k (EnvSimple.cons v env) oc →
       CanReach (.sample x τ m D k) env oc
-  | commit {Γ : Ctx} {x : VarId} {who : Player} {b : BaseTy}
+  | commit {Γ : CtxSimple} {x : VarId} {who : Player} {b : BaseTy}
       {acts : List (Val b)}
       {R : Expr ((x, .pub b) :: flattenCtx (viewCtx who Γ)) .bool}
-      {k : Prog ((x, .hidden who b) :: Γ)}
-      {env : Env Γ} {oc : Outcome}
+      {k : VegasSimple ((x, .hidden who b) :: Γ)}
+      {env : EnvSimple Γ} {oc : Outcome}
       (v : Val b) (hacts : v ∈ acts)
       (hR : evalR R v (env.toView who) = true) :
-      CanReach k (Env.cons v env) oc →
+      CanReach k (EnvSimple.cons v env) oc →
       CanReach (.commit x who acts R k) env oc
-  | reveal {Γ : Ctx} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
-      {hx : HasVar Γ x (.hidden who b)}
-      {k : Prog ((y, .pub b) :: Γ)} {env : Env Γ} {oc : Outcome} :
-      CanReach k (Env.cons (x := y) (τ := .pub b) (show Val b from env.get hx) env) oc →
+  | reveal {Γ : CtxSimple} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
+      {hx : HasVarSimple Γ x (.hidden who b)}
+      {k : VegasSimple ((y, .pub b) :: Γ)} {env : EnvSimple Γ} {oc : Outcome} :
+      CanReach k (EnvSimple.cons (x := y) (τ := .pub b) (show Val b from env.get hx) env) oc →
       CanReach (.reveal y who x hx k) env oc
 
 /-- Profile-dependent reachability: outcome `oc` has positive weight under
     profile `σ`. Uses the profile's support at commit sites (not just legality)
     and the distribution's support at sample sites. -/
-inductive Reach (σ : Profile) :
-    {Γ : Ctx} → Prog Γ → Env Γ → Outcome → Prop where
-  | ret {Γ : Ctx} {u : PayoffMap Γ} {env : Env Γ} :
+inductive Reach (σ : ProfileSimple) :
+    {Γ : CtxSimple} → VegasSimple Γ → EnvSimple Γ → Outcome → Prop where
+  | ret {Γ : CtxSimple} {u : PayoffMap Γ} {env : EnvSimple Γ} :
       Reach σ (.ret u) env (evalPayoffMap u env)
-  | letExpr {Γ : Ctx} {x : VarId} {b : BaseTy} {e : Expr Γ b}
-      {k : Prog ((x, .pub b) :: Γ)} {env : Env Γ} {oc : Outcome} :
-      Reach σ k (Env.cons (evalExpr e env) env) oc →
+  | letExpr {Γ : CtxSimple} {x : VarId} {b : BaseTy} {e : Expr Γ b}
+      {k : VegasSimple ((x, .pub b) :: Γ)} {env : EnvSimple Γ} {oc : Outcome} :
+      Reach σ k (EnvSimple.cons (evalExpr e env) env) oc →
       Reach σ (.letExpr x e k) env oc
-  | sample {Γ : Ctx} {x : VarId} {τ : BindTy} {m : SampleMode τ}
-      {D : DistExpr (distCtx τ m Γ) τ.base} {k : Prog ((x, τ) :: Γ)}
-      {env : Env Γ} {oc : Outcome}
+  | sample {Γ : CtxSimple} {x : VarId} {τ : BindTySimple} {m : SampleMode τ}
+      {D : DistExpr (distCtx τ m Γ) τ.base} {k : VegasSimple ((x, τ) :: Γ)}
+      {env : EnvSimple Γ} {oc : Outcome}
       (v : Val τ.base)
       (hsupp : v ∈ (evalDistExpr D (env.projectDist τ m)).support) :
-      Reach σ k (Env.cons v env) oc →
+      Reach σ k (EnvSimple.cons v env) oc →
       Reach σ (.sample x τ m D k) env oc
-  | commit {Γ : Ctx} {x : VarId} {who : Player} {b : BaseTy}
+  | commit {Γ : CtxSimple} {x : VarId} {who : Player} {b : BaseTy}
       {acts : List (Val b)}
       {R : Expr ((x, .pub b) :: flattenCtx (viewCtx who Γ)) .bool}
-      {k : Prog ((x, .hidden who b) :: Γ)}
-      {env : Env Γ} {oc : Outcome}
+      {k : VegasSimple ((x, .hidden who b) :: Γ)}
+      {env : EnvSimple Γ} {oc : Outcome}
       (v : Val b)
       (hsupp : v ∈ (σ.commit who x acts R (env.toView who)).support) :
-      Reach σ k (Env.cons v env) oc →
+      Reach σ k (EnvSimple.cons v env) oc →
       Reach σ (.commit x who acts R k) env oc
-  | reveal {Γ : Ctx} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
-      {hx : HasVar Γ x (.hidden who b)}
-      {k : Prog ((y, .pub b) :: Γ)} {env : Env Γ} {oc : Outcome} :
-      Reach σ k (Env.cons (x := y) (τ := .pub b) (show Val b from env.get hx) env) oc →
+  | reveal {Γ : CtxSimple} {y : VarId} {who : Player} {x : VarId} {b : BaseTy}
+      {hx : HasVarSimple Γ x (.hidden who b)}
+      {k : VegasSimple ((y, .pub b) :: Γ)} {env : EnvSimple Γ} {oc : Outcome} :
+      Reach σ k (EnvSimple.cons (x := y) (τ := .pub b) (show Val b from env.get hx) env) oc →
       Reach σ (.reveal y who x hx k) env oc
 
--- ============================================================================
--- § 6. Connecting traces to reachability
--- ============================================================================
 
 /-- A legal trace witnesses reachability. -/
-theorem legal_trace_canReach {Γ : Ctx} {p : Prog Γ} {env : Env Γ}
+theorem legal_trace_canReach {Γ : CtxSimple} {p : VegasSimple Γ} {env : EnvSimple Γ}
     (t : Trace Γ p) (hl : t.legal p env) :
     CanReach p env (traceOutcome p env t) := by
   induction t with
@@ -250,8 +236,8 @@ theorem legal_trace_canReach {Γ : Ctx} {p : Prog Γ} {env : Env Γ}
   | reveal _ ih => exact .reveal (ih hl)
 
 /-- A positive-weight trace witnesses profile-dependent reachability. -/
-theorem pos_weight_trace_reach {Γ : Ctx} {p : Prog Γ} {env : Env Γ}
-    (σ : Profile) (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
+theorem pos_weight_trace_reach {Γ : CtxSimple} {p : VegasSimple Γ} {env : EnvSimple Γ}
+    (σ : ProfileSimple) (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
     Reach σ p env (traceOutcome p env t) := by
   induction t with
   | ret => exact .ret
@@ -267,7 +253,7 @@ theorem pos_weight_trace_reach {Γ : Ctx} {p : Prog Γ} {env : Env Γ}
   | reveal _ ih => exact .reveal (ih hw)
 
 /-- Every reachable outcome has a witnessing trace. -/
-theorem canReach_has_trace {Γ : Ctx} {p : Prog Γ} {env : Env Γ} {oc : Outcome}
+theorem canReach_has_trace {Γ : CtxSimple} {p : VegasSimple Γ} {env : EnvSimple Γ} {oc : Outcome}
     (h : CanReach p env oc) :
     ∃ t : Trace Γ p, t.legal p env ∧ traceOutcome p env t = oc := by
   induction h with
@@ -285,14 +271,11 @@ theorem canReach_has_trace {Γ : Ctx} {p : Prog Γ} {env : Env Γ} {oc : Outcome
     obtain ⟨t, hl, ho⟩ := ih
     exact ⟨.reveal t, hl, ho⟩
 
--- ============================================================================
--- § 7. Adequacy
--- ============================================================================
 
 /-- **Support correctness**: an outcome is in the support of `outcomeDist`
     iff it is reachable under the profile. -/
-theorem reach_iff_outcomeDist_support {Γ : Ctx} (σ : Profile)
-    (p : Prog Γ) (env : Env Γ) (oc : Outcome) :
+theorem reach_iff_outcomeDist_support {Γ : CtxSimple} (σ : ProfileSimple)
+    (p : VegasSimple Γ) (env : EnvSimple Γ) (oc : Outcome) :
     Reach σ p env oc ↔ oc ∈ (outcomeDist σ p env).support := by
   induction p with
   | ret u =>
@@ -329,45 +312,45 @@ theorem reach_iff_outcomeDist_support {Γ : Ctx} (σ : Profile)
     sum over distribution supports by structural induction on `p`. Corresponds
     to summing `traceWeight` over the finitely many positive-weight traces, but
     avoids requiring `Fintype (Trace Γ p)` (which would need `Fintype Int`). -/
-noncomputable def traceWeightSum (σ : Profile) :
-    {Γ : Ctx} → (p : Prog Γ) → Env Γ → Outcome → ℚ≥0
+noncomputable def traceWeightSum (σ : ProfileSimple) :
+    {Γ : CtxSimple} → (p : VegasSimple Γ) → EnvSimple Γ → Outcome → ℚ≥0
   | _, .ret u, env, oc =>
       if oc = evalPayoffMap u env then 1 else 0
   | _, .letExpr _ e k, env, oc =>
-      traceWeightSum σ k (Env.cons (evalExpr e env) env) oc
+      traceWeightSum σ k (EnvSimple.cons (evalExpr e env) env) oc
   | _, .sample _ τ m D k, env, oc =>
       (evalDistExpr D (env.projectDist τ m)).support.sum fun v =>
         (evalDistExpr D (env.projectDist τ m)) v *
-        traceWeightSum σ k (Env.cons v env) oc
+        traceWeightSum σ k (EnvSimple.cons v env) oc
   | _, .commit x who acts R k, env, oc =>
       (σ.commit who x acts R (env.toView who)).support.sum fun v =>
         (σ.commit who x acts R (env.toView who)) v *
-        traceWeightSum σ k (Env.cons v env) oc
+        traceWeightSum σ k (EnvSimple.cons v env) oc
   | _, .reveal y _who _x (b := b) hx k, env, oc =>
       let val : Val b := env.get hx
-      traceWeightSum σ k (Env.cons (x := y) (τ := .pub b) val env) oc
+      traceWeightSum σ k (EnvSimple.cons (x := y) (τ := .pub b) val env) oc
 
 /-- **Adequacy** (pointwise form): `outcomeDist σ p env` and `traceWeightSum σ p env`
     agree pointwise. Since `traceWeightSum` computes the same nested-support sums
     that `FDist.bind` produces, this is a direct structural induction with
     `FDist.bind_apply` at each `sample`/`commit` step. -/
-theorem adequacy_pointwise {Γ : Ctx} (σ : Profile)
-    (p : Prog Γ) (env : Env Γ) (oc : Outcome) :
+theorem adequacy_pointwise {Γ : CtxSimple} (σ : ProfileSimple)
+    (p : VegasSimple Γ) (env : EnvSimple Γ) (oc : Outcome) :
     (outcomeDist σ p env) oc = traceWeightSum σ p env oc := by
   induction p with
   | ret u =>
-    simp [outcomeDist, traceWeightSum, payoffKit, evalPayoffMap,
+    simp [outcomeDist, traceWeightSum, payoffKitSimple, evalPayoffMap,
       FDist.pure, Finsupp.single_apply, eq_comm]
   | letExpr x _ k ih =>
     simp only [outcomeDist, traceWeightSum]
     exact ih _
   | sample x τ m D k ih =>
-    simp only [outcomeDist, traceWeightSum, FDist.bind_apply, distKit]
+    simp only [outcomeDist, traceWeightSum, FDist.bind_apply, distKitSimple]
     exact Finset.sum_congr rfl fun v _ => by
       change (evalDistExpr D (env.projectDist τ m)) v *
-          (outcomeDist σ k (Env.cons v env)) oc =
+          (outcomeDist σ k (EnvSimple.cons v env)) oc =
         (evalDistExpr D (env.projectDist τ m)) v *
-          traceWeightSum σ k (Env.cons v env) oc
+          traceWeightSum σ k (EnvSimple.cons v env) oc
       rw [ih]
   | commit x who acts R k ih =>
     simp only [outcomeDist, traceWeightSum, FDist.bind_apply]
@@ -378,47 +361,47 @@ theorem adequacy_pointwise {Γ : Ctx} (σ : Profile)
 
 /-- The distribution on traces induced by profile `σ`. Each trace gets
     its `traceWeight` as its probability mass. -/
-noncomputable def traceDist (σ : Profile) :
-    {Γ : Ctx} → (p : Prog Γ) → Env Γ → FDist (Trace Γ p)
+noncomputable def traceDist (σ : ProfileSimple) :
+    {Γ : CtxSimple} → (p : VegasSimple Γ) → EnvSimple Γ → FDist (Trace Γ p)
   | _, .ret _, _ => FDist.pure .ret
   | _, .letExpr _ e k, env =>
-      (traceDist σ k (Env.cons (evalExpr e env) env)).map (.letExpr ·)
+      (traceDist σ k (EnvSimple.cons (evalExpr e env) env)).map (.letExpr ·)
   | _, .sample _ τ m D k, env =>
       (evalDistExpr D (env.projectDist τ m)).bind fun v =>
-        (traceDist σ k (Env.cons v env)).map (.sample v ·)
+        (traceDist σ k (EnvSimple.cons v env)).map (.sample v ·)
   | _, .commit x who acts R k, env =>
       FDist.bind (σ.commit who x acts R (env.toView who)) fun v =>
-        (traceDist σ k (Env.cons v env)).map (.commit v ·)
+        (traceDist σ k (EnvSimple.cons v env)).map (.commit v ·)
   | _, .reveal y _who _x (b := b) hx k, env =>
       let val : Val b := env.get hx
-      (traceDist σ k (Env.cons (x := y) (τ := .pub b) val env)).map (.reveal ·)
+      (traceDist σ k (EnvSimple.cons (x := y) (τ := .pub b) val env)).map (.reveal ·)
 
-private theorem Trace.letExpr_injective {Γ : Ctx} {x : VarId} {b : BaseTy}
-    {e : Expr Γ b} {k : Prog ((x, .pub b) :: Γ)} :
+private theorem Trace.letExpr_injective {Γ : CtxSimple} {x : VarId} {b : BaseTy}
+    {e : Expr Γ b} {k : VegasSimple ((x, .pub b) :: Γ)} :
     Function.Injective (@Trace.letExpr Γ x b e k) :=
   fun _ _ h => Trace.letExpr.inj h
 
-private theorem Trace.sample_injective {Γ : Ctx} {x : VarId} {τ : BindTy}
+private theorem Trace.sample_injective {Γ : CtxSimple} {x : VarId} {τ : BindTySimple}
     {m : SampleMode τ} {D : DistExpr (distCtx τ m Γ) τ.base}
-    {k : Prog ((x, τ) :: Γ)} (v : Val τ.base) :
+    {k : VegasSimple ((x, τ) :: Γ)} (v : Val τ.base) :
     Function.Injective (@Trace.sample Γ x τ m D k v ·) :=
   fun _ _ h => (Trace.sample.inj h).2
 
-private theorem Trace.commit_injective {Γ : Ctx} {x : VarId} {who : Player}
+private theorem Trace.commit_injective {Γ : CtxSimple} {x : VarId} {who : Player}
     {b : BaseTy} {acts : List (Val b)}
     {R : Expr ((x, .pub b) :: flattenCtx (viewCtx who Γ)) .bool}
-    {k : Prog ((x, .hidden who b) :: Γ)} (v : Val b) :
+    {k : VegasSimple ((x, .hidden who b) :: Γ)} (v : Val b) :
     Function.Injective (@Trace.commit Γ x who b acts R k v ·) :=
   fun _ _ h => (Trace.commit.inj h).2
 
-private theorem Trace.reveal_injective {Γ : Ctx} {y : VarId} {who : Player}
-    {x : VarId} {b : BaseTy} {hx : HasVar Γ x (.hidden who b)}
-    {k : Prog ((y, .pub b) :: Γ)} :
+private theorem Trace.reveal_injective {Γ : CtxSimple} {y : VarId} {who : Player}
+    {x : VarId} {b : BaseTy} {hx : HasVarSimple Γ x (.hidden who b)}
+    {k : VegasSimple ((y, .pub b) :: Γ)} :
     Function.Injective (@Trace.reveal Γ y who x b hx k) :=
   fun _ _ h => Trace.reveal.inj h
 
 /-- Each trace gets exactly its `traceWeight` as mass in `traceDist`. -/
-theorem traceDist_apply (σ : Profile) {Γ : Ctx} (p : Prog Γ) (env : Env Γ)
+theorem traceDist_apply (σ : ProfileSimple) {Γ : CtxSimple} (p : VegasSimple Γ) (env : EnvSimple Γ)
     (t : Trace Γ p) :
     (traceDist σ p env) t = traceWeight σ p env t := by
   induction p with
@@ -471,8 +454,8 @@ theorem traceDist_apply (σ : Profile) {Γ : Ctx} (p : Prog Γ) (env : Env Γ)
     via `FDist.map_apply`, it says
     `(outcomeDist σ p env) oc = ∑ t in (traceDist σ p env).support,
       if traceOutcome p env t = oc then traceWeight σ p env t else 0`. -/
-theorem outcomeDist_eq_map_traceDist (σ : Profile) {Γ : Ctx}
-    (p : Prog Γ) (env : Env Γ) :
+theorem outcomeDist_eq_map_traceDist (σ : ProfileSimple) {Γ : CtxSimple}
+    (p : VegasSimple Γ) (env : EnvSimple Γ) :
     outcomeDist σ p env = (traceDist σ p env).map (traceOutcome p env) := by
   induction p with
   | ret u =>
@@ -489,13 +472,10 @@ theorem outcomeDist_eq_map_traceDist (σ : Profile) {Γ : Ctx}
   | reveal y who x hx k ih =>
     simp only [outcomeDist, traceDist]; rw [ih, FDist.map_map]; congr 1
 
--- ============================================================================
--- § 8. Admissibility and legality of traces
--- ============================================================================
 
 /-- Under an admissible profile, every positive-weight trace is legal. -/
-theorem admissible_pos_weight_legal {Γ : Ctx} {σ : Profile}
-    {p : Prog Γ} {env : Env Γ}
+theorem admissible_pos_weight_legal {Γ : CtxSimple} {σ : ProfileSimple}
+    {p : VegasSimple Γ} {env : EnvSimple Γ}
     (hadm : AdmissibleProfile σ p)
     (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
     t.legal p env := by
@@ -514,8 +494,8 @@ theorem admissible_pos_weight_legal {Γ : Ctx} {σ : Profile}
   | reveal _ ih => exact ih hadm hw
 
 /-- Under an admissible profile, `Reach` implies `CanReach`. -/
-theorem admissible_reach_canReach {Γ : Ctx} {σ : Profile}
-    {p : Prog Γ} {env : Env Γ} {oc : Outcome}
+theorem admissible_reach_canReach {Γ : CtxSimple} {σ : ProfileSimple}
+    {p : VegasSimple Γ} {env : EnvSimple Γ} {oc : Outcome}
     (hadm : AdmissibleProfile σ p)
     (h : Reach σ p env oc) :
     CanReach p env oc := by
@@ -528,15 +508,12 @@ theorem admissible_reach_canReach {Γ : Ctx} {σ : Profile}
     exact .commit v hv.1 hv.2 (ih hadm.2)
   | reveal _ ih => exact .reveal (ih hadm)
 
--- ============================================================================
--- § 9. Commutativity (DAG property)
--- ============================================================================
 
 /-! ### Independent events commute
 
-The blockchain execution model runs events as a reactive DAG: each event
+The blockchain execution model runs events as a reactive action graph: each event
 fires when its dependencies are met, and independent events can fire in
-any order. In the sequential `Prog` syntax, this means adjacent constructors
+any order. In the sequential `VegasSimple` syntax, this means adjacent constructors
 whose bindings don't depend on each other can be swapped without changing
 `outcomeDist`.
 
@@ -549,16 +526,16 @@ The key cases:
 
 Stating this precisely requires showing that the environment projections
 (viewCtx, pubCtx) are independent of the swapped binding. The proof
-reduces to showing that `Env.cons a (Env.cons b env)` and
-`Env.cons b (Env.cons a env)` give the same projections when looked up
-through the appropriate HasVar embeddings.
+reduces to showing that `EnvSimple.cons a (EnvSimple.cons b env)` and
+`EnvSimple.cons b (EnvSimple.cons a env)` give the same projections when looked up
+through the appropriate HasVarSimple embeddings.
 -/
 
 /-- Helper: invisible bindings don't affect viewCtx. -/
-theorem viewCtx_skip_invisible {p : Player} {x : VarId} {τ : BindTy} {Γ : Ctx}
+theorem viewCtx_skip_invisible {p : Player} {x : VarId} {τ : BindTySimple} {Γ : CtxSimple}
     (h : canSee p τ = false) :
     viewCtx p ((x, τ) :: Γ) = viewCtx p Γ := by
-  have h' : Vegas.canSee (Player := Player) (L := exprLanguage) p τ = false := by
+  have h' : Vegas.canSee (Player := Player) (L := simpleExpr) p τ = false := by
     simpa [canSee] using h
   simp [viewCtx, Vegas.viewCtx, h']
 
@@ -589,7 +566,7 @@ theorem outcomeDist_comm_commit_algebraic
     - Once those hypotheses are discharged, the proof reduces to unfolding
       `outcomeDist` twice on each side and applying `FDist.bind_comm`. -/
 theorem outcomeDist_comm_commit
-    {Γ : Ctx} {σ : Profile} {env : Env Γ}
+    {Γ : CtxSimple} {σ : ProfileSimple} {env : EnvSimple Γ}
     -- original ordering: commit x₁ then commit x₂
     {x₁ : VarId} {who₁ : Player} {b₁ : BaseTy}
     {acts₁ : List (Val b₁)}
@@ -598,25 +575,25 @@ theorem outcomeDist_comm_commit
     {acts₂ : List (Val b₂)}
     {R₂ : Expr ((x₂, .pub b₂) :: flattenCtx
       (viewCtx who₂ ((x₁, .hidden who₁ b₁) :: Γ))) .bool}
-    {k : Prog ((x₂, .hidden who₂ b₂) :: (x₁, .hidden who₁ b₁) :: Γ)}
+    {k : VegasSimple ((x₂, .hidden who₂ b₂) :: (x₁, .hidden who₁ b₁) :: Γ)}
     -- swapped ordering: commit x₂ then commit x₁ (different types)
     {R₂' : Expr ((x₂, .pub b₂) :: flattenCtx (viewCtx who₂ Γ)) .bool}
     {R₁' : Expr ((x₁, .pub b₁) :: flattenCtx
       (viewCtx who₁ ((x₂, .hidden who₂ b₂) :: Γ))) .bool}
-    {k' : Prog ((x₁, .hidden who₁ b₁) :: (x₂, .hidden who₂ b₂) :: Γ)}
+    {k' : VegasSimple ((x₁, .hidden who₁ b₁) :: (x₂, .hidden who₂ b₂) :: Γ)}
     -- Semantic equivalence: swapped continuation produces the same outcome
     -- for all values and environments. This abstracts over the reindexing
     -- details (which would be derived from hindep + hvis + viewCtx_skip_invisible).
-    (hk_eq : ∀ (v₁ : Val b₁) (v₂ : Val b₂) (e : Env Γ),
-      outcomeDist σ k (Env.cons v₂ (Env.cons v₁ e)) =
-      outcomeDist σ k' (Env.cons v₁ (Env.cons v₂ e)))
+    (hk_eq : ∀ (v₁ : Val b₁) (v₂ : Val b₂) (e : EnvSimple Γ),
+      outcomeDist σ k (EnvSimple.cons v₂ (EnvSimple.cons v₁ e)) =
+      outcomeDist σ k' (EnvSimple.cons v₁ (EnvSimple.cons v₂ e)))
     -- Strategy equivalence: the profiles produce the same distributions
     -- at both commit sites regardless of binding order.
-    (hσ₁ : ∀ (v₂ : Val b₂) (e : Env Γ),
+    (hσ₁ : ∀ (v₂ : Val b₂) (e : EnvSimple Γ),
       σ.commit who₁ x₁ acts₁ R₁ (e.toView who₁) =
-      σ.commit who₁ x₁ acts₁ R₁' ((Env.cons (τ := .hidden who₂ b₂) v₂ e).toView who₁))
-    (hσ₂ : ∀ (v₁ : Val b₁) (e : Env Γ),
-      σ.commit who₂ x₂ acts₂ R₂ ((Env.cons (τ := .hidden who₁ b₁) v₁ e).toView who₂) =
+      σ.commit who₁ x₁ acts₁ R₁' ((EnvSimple.cons (τ := .hidden who₂ b₂) v₂ e).toView who₁))
+    (hσ₂ : ∀ (v₁ : Val b₁) (e : EnvSimple Γ),
+      σ.commit who₂ x₂ acts₂ R₂ ((EnvSimple.cons (τ := .hidden who₁ b₁) v₁ e).toView who₂) =
       σ.commit who₂ x₂ acts₂ R₂' (e.toView who₂)) :
     outcomeDist σ
       (.commit x₁ who₁ acts₁ R₁
@@ -639,23 +616,23 @@ theorem outcomeDist_comm_commit
     (no `FDist.bind`). The proof unfolds `outcomeDist` twice on each side
     and applies the continuation equivalence hypothesis.
 
-    The inner `HasVar` proofs use `.there` to shift through the outer
+    The inner `HasVarSimple` proofs use `.there` to shift through the outer
     reveal's public binding, ensuring the looked-up values are independent:
-    `(Env.cons v env).get (.there h) = env.get h` (definitional). -/
+    `(EnvSimple.cons v env).get (.there h) = env.get h` (definitional). -/
 theorem outcomeDist_comm_reveal
-    {Γ : Ctx} {σ : Profile} {env : Env Γ}
+    {Γ : CtxSimple} {σ : ProfileSimple} {env : EnvSimple Γ}
     -- original ordering: reveal y₁ then reveal y₂
     {y₁ : VarId} {who₁ : Player} {x₁ : VarId} {b₁ : BaseTy}
-    {hx₁ : HasVar Γ x₁ (.hidden who₁ b₁)}
+    {hx₁ : HasVarSimple Γ x₁ (.hidden who₁ b₁)}
     {y₂ : VarId} {who₂ : Player} {x₂ : VarId} {b₂ : BaseTy}
-    {hx₂ : HasVar Γ x₂ (.hidden who₂ b₂)}
-    {k : Prog ((y₂, .pub b₂) :: (y₁, .pub b₁) :: Γ)}
+    {hx₂ : HasVarSimple Γ x₂ (.hidden who₂ b₂)}
+    {k : VegasSimple ((y₂, .pub b₂) :: (y₁, .pub b₁) :: Γ)}
     -- swapped ordering: reveal y₂ then reveal y₁
-    {k' : Prog ((y₁, .pub b₁) :: (y₂, .pub b₂) :: Γ)}
+    {k' : VegasSimple ((y₁, .pub b₁) :: (y₂, .pub b₂) :: Γ)}
     -- Continuation equivalence: swapped env produces the same outcome
-    (hk_eq : ∀ (v₁ : Val b₁) (v₂ : Val b₂) (e : Env Γ),
-      outcomeDist σ k (Env.cons v₂ (Env.cons v₁ e)) =
-      outcomeDist σ k' (Env.cons v₁ (Env.cons v₂ e))) :
+    (hk_eq : ∀ (v₁ : Val b₁) (v₂ : Val b₂) (e : EnvSimple Γ),
+      outcomeDist σ k (EnvSimple.cons v₂ (EnvSimple.cons v₁ e)) =
+      outcomeDist σ k' (EnvSimple.cons v₁ (EnvSimple.cons v₂ e))) :
     outcomeDist σ
       (.reveal y₁ who₁ x₁ hx₁
         (.reveal y₂ who₂ x₂ hx₂.there k)) env =
@@ -669,3 +646,4 @@ theorem outcomeDist_comm_reveal
 -- - commit/reveal (committer will see the revealed variable)
 -- - sample/commit (committer will see the sampled variable)
 
+end Vegas

@@ -1,31 +1,26 @@
-import Vegas.Protocol
+import Vegas.Examples
 
 /-!
-# DAG State Machine for Vegas
+# Action graph semantics for Vegas
 
-A canonical, order-independent representation of Vegas programs as event DAGs.
+A canonical, order-independent representation of Vegas programs as action
+graphs.
 Two programs that differ only in the ordering of independent events (e.g., two
 commits for different players) have the same event graph, making commutativity
 structural rather than requiring per-pair theorems.
 
-## Structure
-
-- **Layer 1** (§1–5): Event graph + state machine (no dependent typing)
-- **Layer 2** (§6–8): Bridge connecting DAG execution to `outcomeDist` on `Prog`
-- **Layer 3** (§9): Key theorems (outcome uniqueness, adequacy)
-
 ## Design
 
-Inspired by compiler IRs (Kotlin coroutine state machine). The DAG is extracted
-from a `Prog` by walking its structure and recording dependencies via
+Inspired by compiler IRs (Kotlin coroutine state machine). The action graph is
+extracted
+from a `VegasSimple` by walking its structure and recording dependencies via
 `exprVars`/`distExprVars`/`viewCtx`.
 -/
 
--- ============================================================================
--- § 1. Nodes
--- ============================================================================
+namespace Vegas
 
-/-- The kind of event in the program DAG. -/
+
+/-- The kind of event in the action graph. -/
 inductive EventKind where
   | letExpr  -- deterministic expression binding
   | sample   -- nature's random choice
@@ -33,16 +28,13 @@ inductive EventKind where
   | reveal   -- making a hidden value public
   deriving DecidableEq, Repr
 
-/-- A node in the program DAG. -/
+/-- A node in the action graph. -/
 structure EventNode where
   id : VarId          -- the variable this node binds
   kind : EventKind    -- what kind of event
   deps : List VarId   -- variables this node reads
   deriving DecidableEq, Repr
 
--- ============================================================================
--- § 2. Partial environment
--- ============================================================================
 
 /-- A value tagged with its base type. -/
 structure TaggedVal where
@@ -75,11 +67,8 @@ def PartialEnv.empty : PartialEnv := fun _ => none
 def PartialEnv.set (pe : PartialEnv) (x : VarId) (v : TaggedVal) : PartialEnv :=
   fun y => if y = x then some v else pe y
 
--- ============================================================================
--- § 3. Configuration
--- ============================================================================
 
-/-- State of the DAG execution. -/
+/-- State of action-graph execution. -/
 structure Config where
   pending : List EventNode   -- events not yet fired
   env     : PartialEnv       -- resolved variable values
@@ -98,9 +87,6 @@ def Config.terminal (c : Config) : Prop := c.pending = []
 instance : Decidable (Config.terminal c) :=
   inferInstanceAs (Decidable (c.pending = []))
 
--- ============================================================================
--- § 4. Step relation
--- ============================================================================
 
 /-- One step: fire a ready node, recording its value. -/
 structure Step (c₁ c₂ : Config) where
@@ -111,9 +97,6 @@ structure Step (c₁ c₂ : Config) where
   henv : c₂.env = c₁.env.set node.id value
   hpending : c₂.pending = c₁.pending.erase node
 
--- ============================================================================
--- § 5. Execution
--- ============================================================================
 
 /-- A complete execution: a sequence of steps from one config to another. -/
 inductive Execution : Config → Config → Type where
@@ -125,62 +108,56 @@ def Execution.length : Execution c₁ c₂ → Nat
   | .done => 0
   | .step _ rest => 1 + rest.length
 
--- ============================================================================
--- § 6. Extraction from Prog
--- ============================================================================
 
-/-- Extract the event graph from a Prog. Walks the program structure and
+/-- Extract the event graph from a VegasSimple. Walks the program structure and
     builds one EventNode per binding site.
 
-    Dependency computation follows `toMAIDBuild` in GameSemantics.lean:
+    Dependency computation follows the current Vegas protocol structure:
     - `letExpr x e k`: deps = `exprVars e`
     - `sample x τ m D k`: deps = `distExprVars D`
     - `commit x who acts R k`: deps = all vars visible to `who` in Γ
     - `reveal y who x hx k`: deps = `[x]` -/
-def Prog.extractEvents : Prog Γ → List EventNode
+def VegasSimple.extractEvents : VegasSimple Γ → List EventNode
   | .ret _ => []
   | .letExpr x e k =>
     { id := x, kind := .letExpr, deps := exprVars e } ::
-    Prog.extractEvents k
+    VegasSimple.extractEvents k
   | .sample x _τ _m D k =>
     { id := x, kind := .sample, deps := distExprVars D } ::
-    Prog.extractEvents k
+    VegasSimple.extractEvents k
   | .commit x who _acts _R k =>
     { id := x, kind := .commit,
       deps := (viewCtx who Γ).map Prod.fst } ::
-    Prog.extractEvents k
+    VegasSimple.extractEvents k
   | .reveal y _who x _hx k =>
     { id := y, kind := .reveal, deps := [x] } ::
-    Prog.extractEvents k
+    VegasSimple.extractEvents k
 
-/-- Build a PartialEnv from a typed Env by looking up each variable in Γ. -/
-noncomputable def initPartialEnv : (Γ : Ctx) → Env Γ → PartialEnv
+/-- Build a PartialEnv from a typed EnvSimple by looking up each variable in Γ. -/
+noncomputable def initPartialEnv : (Γ : CtxSimple) → EnvSimple Γ → PartialEnv
   | [], _ => PartialEnv.empty
   | (x, τ) :: Γ', env =>
     let rest := initPartialEnv Γ' (fun a b h => env a b (.there h))
     rest.set x ⟨τ.base, env.get .here⟩
 
-/-- Build initial Config from a Prog and an initial Env.
-    The initial partial env is populated from the given Env Γ
+/-- Build initial Config from a VegasSimple and an initial EnvSimple.
+    The initial partial env is populated from the given EnvSimple Γ
     (the "already bound" variables). -/
-noncomputable def Prog.initConfig (p : Prog Γ) (env : Env Γ) : Config where
-  pending := Prog.extractEvents p
+noncomputable def VegasSimple.initConfig (p : VegasSimple Γ) (env : EnvSimple Γ) : Config where
+  pending := VegasSimple.extractEvents p
   env := initPartialEnv Γ env
 
--- ============================================================================
--- § 7. PartialEnv ↔ Env bridge
--- ============================================================================
 
-/-- A PartialEnv is consistent with an Env Γ when every variable
+/-- A PartialEnv is consistent with an EnvSimple Γ when every variable
     in Γ maps to its correct value. -/
-def PartialEnv.consistent (pe : PartialEnv) {Γ : Ctx} (env : Env Γ) : Prop :=
-  ∀ x τ (h : HasVar Γ x τ), pe x = some ⟨τ.base, env.get h⟩
+def PartialEnv.consistent (pe : PartialEnv) {Γ : CtxSimple} (env : EnvSimple Γ) : Prop :=
+  ∀ x τ (h : HasVarSimple Γ x τ), pe x = some ⟨τ.base, env.get h⟩
 
-/-- Reconstruct a typed Env from a PartialEnv, if all variables
+/-- Reconstruct a typed EnvSimple from a PartialEnv, if all variables
     in Γ are resolved with the correct base types. -/
 noncomputable def PartialEnv.toEnv? (pe : PartialEnv) :
-    (Γ : Ctx) → Option (Env Γ)
-  | [] => some Env.empty
+    (Γ : CtxSimple) → Option (EnvSimple Γ)
+  | [] => some EnvSimple.empty
   | (x, τ) :: Γ' =>
     match pe x with
     | none => none
@@ -193,7 +170,7 @@ noncomputable def PartialEnv.toEnv? (pe : PartialEnv) :
           let v' : Val τ.base := by
             cases h
             exact v
-          some (Env.cons v' env')
+          some (EnvSimple.cons v' env')
       | .isFalse _ => none
 
 -- Commutativity: sets with distinct keys commute
@@ -243,7 +220,7 @@ private theorem nodup_map_not_mem_erase [DecidableEq α]
       exact ⟨fun heq => hfb (heq ▸ List.mem_map.mpr ⟨n, hn_in, rfl⟩), ih hnd' hn_in⟩
 
 -- initPartialEnv produces a consistent PartialEnv (requires no shadowing)
-theorem initPartialEnv_consistent (Γ : Ctx) (env : Env Γ)
+theorem initPartialEnv_consistent (Γ : CtxSimple) (env : EnvSimple Γ)
     (hwf : WFCtx Γ) : (initPartialEnv Γ env).consistent env := by
   intro x τ h
   induction Γ with
@@ -259,24 +236,21 @@ theorem initPartialEnv_consistent (Γ : Ctx) (env : Env Γ)
         intro heq; subst heq
         have hnd : (x :: Γ'.map Prod.fst).Nodup := hwf
         rw [List.nodup_cons] at hnd
-        exact absurd (HasVar.mem_map_fst h') hnd.1
+        exact absurd (HasVarSimple.mem_map_fst h') hnd.1
       rw [PartialEnv.set_get_diff _ _ _ _ hne]
       have hnd : (x' :: Γ'.map Prod.fst).Nodup := hwf
       rw [List.nodup_cons] at hnd
       exact ih (fun a b h => env a b (.there h)) hnd.2 h'
 
--- ============================================================================
--- § 8. Step weight
--- ============================================================================
 
-/-- Walk a Prog to compute the weight of assigning `tv` to variable `id`,
+/-- Walk a VegasSimple to compute the weight of assigning `tv` to variable `id`,
     given profile σ and current partial env `pe`. Returns 0 if the node
     is not found or env reconstruction fails. -/
-noncomputable def Prog.nodeWeight (σ : Profile) (pe : PartialEnv) :
-    Prog Γ → VarId → TaggedVal → ℚ≥0
+noncomputable def VegasSimple.nodeWeight (σ : ProfileSimple) (pe : PartialEnv) :
+    VegasSimple Γ → VarId → TaggedVal → ℚ≥0
   | .ret _, _, _ => 0
   | .letExpr x _ k, id, tv =>
-      if x = id then 1 else Prog.nodeWeight σ pe k id tv
+      if x = id then 1 else VegasSimple.nodeWeight σ pe k id tv
   | .sample x τ m D k, id, tv =>
       if x = id then
         match decEq tv.base τ.base with
@@ -285,7 +259,7 @@ noncomputable def Prog.nodeWeight (σ : Profile) (pe : PartialEnv) :
           | some env => (evalDistExpr D env) (h ▸ tv.val)
           | none => 0
         | .isFalse _ => 0
-      else Prog.nodeWeight σ pe k id tv
+      else VegasSimple.nodeWeight σ pe k id tv
   | .commit x who (b := b) acts R k, id, tv =>
       if x = id then
         match decEq tv.base b with
@@ -294,25 +268,22 @@ noncomputable def Prog.nodeWeight (σ : Profile) (pe : PartialEnv) :
           | some view => (σ.commit who x acts R view) (h ▸ tv.val)
           | none => 0
         | .isFalse _ => 0
-      else Prog.nodeWeight σ pe k id tv
+      else VegasSimple.nodeWeight σ pe k id tv
   | .reveal y _ _ _ k, id, tv =>
-      if y = id then 1 else Prog.nodeWeight σ pe k id tv
+      if y = id then 1 else VegasSimple.nodeWeight σ pe k id tv
 
-/-- Weight of a step under a profile σ: looks up the node in the Prog
+/-- Weight of a step under a profile σ: looks up the node in the VegasSimple
     and computes the weight from the pre-step partial env. -/
-noncomputable def Step.weight (σ : Profile) (p : Prog Γ)
+noncomputable def Step.weight (σ : ProfileSimple) (p : VegasSimple Γ)
     (s : Step c₁ c₂) : ℚ≥0 :=
-  Prog.nodeWeight σ c₁.env p s.node.id s.value
+  VegasSimple.nodeWeight σ c₁.env p s.node.id s.value
 
 /-- Weight of a complete execution (product of step weights). -/
-noncomputable def Execution.weight (σ : Profile) (p : Prog Γ) :
+noncomputable def Execution.weight (σ : ProfileSimple) (p : VegasSimple Γ) :
     Execution c₁ c₂ → ℚ≥0
   | .done => 1
   | .step s rest => s.weight σ p * rest.weight σ p
 
--- ============================================================================
--- § 9. Key theorems
--- ============================================================================
 
 /-- Values assigned to each variable id during an execution. -/
 def Execution.assignments : Execution c₁ c₂ → VarId → Option TaggedVal
@@ -394,33 +365,29 @@ theorem execution_env_unique {c₁ c_term₁ c_term₂ : Config}
   rw [execution_env_at exec₁ hterm₁ huniq x,
       execution_env_at exec₂ hterm₂ huniq x, hsame]
 
--- ============================================================================
--- § 10. Examples
--- ============================================================================
 
-namespace DAGExamples
+namespace ActionGraphExamples
 
 open Examples in
 /-- Extract event graph from matching pennies. -/
-def mpEvents : List EventNode := Prog.extractEvents matchingPennies
+def mpEvents : List EventNode := VegasSimple.extractEvents matchingPennies
 
--- Expected:
---   commit 0, deps=[] (player 0, no visible vars)
---   commit 1, deps=[] (player 1, no visible vars)
---   reveal 2, deps=[0]
---   reveal 3, deps=[1]
-#eval! mpEvents.map (fun n => (n.id, n.kind, n.deps))
+example :
+    mpEvents.map (fun n => (n.id, n.kind, n.deps)) =
+      [(0, EventKind.commit, []), (1, EventKind.commit, []),
+        (2, EventKind.reveal, [0]), (3, EventKind.reveal, [1])] := by
+  decide
 
 open Examples in
 /-- Extract event graph from conditioned game. -/
-def cgEvents : List EventNode := Prog.extractEvents conditionedGame
+def cgEvents : List EventNode := VegasSimple.extractEvents conditionedGame
 
--- Expected:
---   commit 0, deps=[] (player 0, no visible vars)
---   reveal 2, deps=[0]
---   commit 1, deps=[2] (player 1, sees va' which is public)
---   reveal 3, deps=[1]
-#eval! cgEvents.map (fun n => (n.id, n.kind, n.deps))
+example :
+    cgEvents.map (fun n => (n.id, n.kind, n.deps)) =
+      [(0, EventKind.commit, []), (2, EventKind.reveal, [0]),
+        (1, EventKind.commit, [2]), (3, EventKind.reveal, [1])] := by
+  decide
 
-end DAGExamples
+end ActionGraphExamples
 
+end Vegas
