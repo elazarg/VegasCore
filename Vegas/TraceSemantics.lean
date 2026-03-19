@@ -521,12 +521,14 @@ reduces to showing that `Env.cons a (Env.cons b env)` and
 through the appropriate HasVar embeddings.
 -/
 
+omit E D U in
 /-- Helper: invisible bindings don't affect viewCtx. -/
 theorem viewCtx_skip_invisible {p : P} {x : VarId} {τ : BindTy P L} {Γ : Ctx P L}
     (h : canSee p τ = false) :
     viewCtx p ((x, τ) :: Γ) = viewCtx p Γ := by
   simp [viewCtx, Vegas.viewCtx, h]
 
+omit [DecidableEq P] E D in
 /-- The algebraic core of commit–commit commutativity: two independent
     `FDist.bind`s commute. Immediate from `FDist.bind_comm`. -/
 theorem outcomeDist_comm_commit_algebraic
