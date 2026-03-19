@@ -702,7 +702,40 @@ theorem canReach_comm_commit_distinct_transport
       (x₂ := x₂) (who₂ := who₂) (b₂ := b₂) hneq R₁)
     hneq hk_eq hR₁ hR₂
 
-/-- The algebraic core of commit–commit commutativity. -/
+/-- Clean final form of distinct-player commit commutation: once the
+    continuation commutes recursively, the canonical guard transports suffice.
+    The remaining proof is currently deferred. -/
+theorem canReach_comm_commit_distinct_canonical
+    {Γ : VCtx P L} {env : VEnv (Player := P) L Γ} {oc : Outcome P}
+    {x₁ : VarId} {who₁ : P} {b₁ : L.Ty}
+    {acts₁ : List (L.Val b₁)}
+    {R₁ : L.Expr ((x₁, b₁) :: eraseVCtx (viewVCtx who₁ Γ)) L.bool}
+    {x₂ : VarId} {who₂ : P} {b₂ : L.Ty}
+    {acts₂ : List (L.Val b₂)}
+    {R₂ : L.Expr ((x₂, b₂) :: eraseVCtx
+      (viewVCtx who₂ ((x₁, .hidden who₁ b₁) :: Γ))) L.bool}
+    {k : VegasCore P L
+      ((x₂, .hidden who₂ b₂) :: (x₁, .hidden who₁ b₁) :: Γ)}
+    {k' : VegasCore P L
+      ((x₁, .hidden who₁ b₁) :: (x₂, .hidden who₂ b₂) :: Γ)}
+    (hneq : who₁ ≠ who₂)
+    (hk_eq : ∀ (v₁ : L.Val b₁) (v₂ : L.Val b₂)
+        (e : VEnv (Player := P) L Γ) (oc' : Outcome P),
+      CanReach k (VEnv.cons v₂ (VEnv.cons v₁ e)) oc' ↔
+      CanReach k' (VEnv.cons v₁ (VEnv.cons v₂ e)) oc') :
+    CanReach
+      (.commit x₁ who₁ acts₁ R₁
+        (.commit x₂ who₂ acts₂ R₂ k)) env oc ↔
+    CanReach
+      (.commit x₂ who₂ acts₂
+          (commuteGuardRightDistinct (P := P) (L := L)
+            (x₁ := x₁) (who₁ := who₁) (b₁ := b₁) hneq R₂)
+        (.commit x₁ who₁ acts₁
+          (commuteGuardLeftDistinct (P := P) (L := L)
+            (x₂ := x₂) (who₂ := who₂) (b₂ := b₂) hneq R₁) k')) env oc := by
+  sorry
+
+/-- The algebraic core of commit-commit commutativity. -/
 theorem outcomeDist_comm_commit_algebraic
     {b₁ b₂ : L.Ty}
     (d₁ : FDist (L.Val b₁)) (d₂ : FDist (L.Val b₂))
