@@ -11,7 +11,7 @@ and packages normalized Vegas programs as `KernelGame`s.
 
 namespace Vegas
 
-variable {P : Type} [DecidableEq P] {L : ExprLanguage}
+variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- A player's Vegas strategy component, bundled with normalization. -/
 structure PlayerStrategy (who : P) where

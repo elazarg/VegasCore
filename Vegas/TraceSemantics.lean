@@ -38,7 +38,7 @@ determined by the prior `commit`.
 
 namespace Vegas
 
-variable {P : Type} [DecidableEq P] {L : ExprLanguage}
+variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- A complete execution path through a Vegas program.
     Indexed by the program it traverses. Records the value chosen at each

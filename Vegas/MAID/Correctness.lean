@@ -7,7 +7,7 @@ namespace Vegas
 
 open MAID
 
-variable {Player : Type} [DecidableEq Player] {L : ExprLanguage}
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {B : MAIDBackend Player L}
 
 -- RawNodeEnv helpers

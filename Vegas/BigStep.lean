@@ -10,7 +10,7 @@ normalization theorem used by the strategic and backend bridges.
 namespace Vegas
 
 noncomputable def outcomeDist {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     (σ : Vegas.Profile P L) :
     {Γ : Vegas.VCtx P L} →
       Vegas.VegasCore P L Γ →
@@ -41,7 +41,7 @@ noncomputable def outcomeDist {P : Type} [DecidableEq P]
         (Vegas.VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
 
 theorem outcomeDist_totalWeight_eq_one {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     {Γ : Vegas.VCtx P L} {σ : Vegas.Profile P L}
     {p : Vegas.VegasCore P L Γ} {env : Vegas.VEnv (Player := P) L Γ}
     (hd : NormalizedDists p) (hσ : σ.NormalizedOn p) :

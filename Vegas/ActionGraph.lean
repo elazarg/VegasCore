@@ -27,11 +27,11 @@ structure EventNode where
 
 
 /-- A value tagged with its base type, parameterized by the expression language. -/
-structure TaggedVal (L : ExprLanguage) where
+structure TaggedVal (L : IExpr) where
   base : L.Ty
   val : L.Val base
 
-instance {L : ExprLanguage} : DecidableEq (TaggedVal L) := by
+instance {L : IExpr} : DecidableEq (TaggedVal L) := by
   intro ⟨b₁, v₁⟩ ⟨b₂, v₂⟩
   cases decEq b₁ b₂ with
   | isTrue hb =>
@@ -43,11 +43,11 @@ instance {L : ExprLanguage} : DecidableEq (TaggedVal L) := by
     exact .isFalse (by intro heq; cases heq; exact hb rfl)
 
 /-- A partial assignment of variable values. -/
-def PartialEnv (L : ExprLanguage) := VarId → Option (TaggedVal L)
+def PartialEnv (L : IExpr) := VarId → Option (TaggedVal L)
 
-instance {L : ExprLanguage} : Inhabited (PartialEnv L) := ⟨fun _ => none⟩
+instance {L : IExpr} : Inhabited (PartialEnv L) := ⟨fun _ => none⟩
 
-variable {L : ExprLanguage}
+variable {L : IExpr}
 
 /-- The empty partial environment. -/
 def PartialEnv.empty : PartialEnv L := fun _ => none
@@ -59,7 +59,7 @@ def PartialEnv.set (pe : PartialEnv L) (x : VarId) (v : TaggedVal L) :
 
 
 /-- State of action-graph execution. -/
-structure Config (L : ExprLanguage) where
+structure Config (L : IExpr) where
   pending : List EventNode   -- events not yet fired
   env     : PartialEnv L     -- resolved variable values
 
@@ -79,7 +79,7 @@ instance : Decidable (Config.terminal (L := L) c) :=
 
 
 /-- One step: fire a ready node, recording its value. -/
-structure Step {L : ExprLanguage} (c₁ c₂ : Config L) where
+structure Step {L : IExpr} (c₁ c₂ : Config L) where
   node : EventNode
   value : TaggedVal L
   hmem : node ∈ c₁.pending
@@ -101,7 +101,7 @@ def Execution.length : Execution c₁ c₂ → Nat
 
 
 /-- Extract the event graph from a VegasCore program. -/
-noncomputable def VegasCore.extractEvents {P : Type} [DecidableEq P] {L : ExprLanguage}
+noncomputable def VegasCore.extractEvents {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} : VegasCore P L Γ → List EventNode
   | .ret _ => []
   | .letExpr x e k =>
@@ -119,7 +119,7 @@ noncomputable def VegasCore.extractEvents {P : Type} [DecidableEq P] {L : ExprLa
     extractEvents k
 
 /-- Build a PartialEnv from a typed VEnv by looking up each variable in Γ. -/
-noncomputable def initPartialEnv {P : Type} {L : ExprLanguage} :
+noncomputable def initPartialEnv {P : Type} {L : IExpr} :
     (Γ : VCtx P L) → VEnv (Player := P) L Γ → PartialEnv L
   | [], _ => PartialEnv.empty
   | (x, τ) :: Γ', env =>
@@ -128,7 +128,7 @@ noncomputable def initPartialEnv {P : Type} {L : ExprLanguage} :
 
 /-- Build initial Config from a VegasCore program and an initial VEnv. -/
 noncomputable def VegasCore.initConfig {P : Type} [DecidableEq P]
-    {L : ExprLanguage}
+    {L : IExpr}
     {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) :
     Config L where
   pending := VegasCore.extractEvents p
@@ -137,13 +137,13 @@ noncomputable def VegasCore.initConfig {P : Type} [DecidableEq P]
 
 /-- A PartialEnv is consistent with a VEnv Γ when every variable
     in Γ maps to its correct value. -/
-def PartialEnv.consistent {P : Type} {L : ExprLanguage}
+def PartialEnv.consistent {P : Type} {L : IExpr}
     (pe : PartialEnv L) {Γ : VCtx P L} (env : VEnv (Player := P) L Γ) :
     Prop :=
   ∀ x τ (h : VHasVar (L := L) Γ x τ), pe x = some ⟨τ.base, VEnv.get env h⟩
 
 /-- Reconstruct a typed VEnv from a PartialEnv. -/
-noncomputable def PartialEnv.toVEnv? {P : Type} {L : ExprLanguage}
+noncomputable def PartialEnv.toVEnv? {P : Type} {L : IExpr}
     (pe : PartialEnv L) :
     (Γ : VCtx P L) → Option (VEnv (Player := P) L Γ)
   | [] => some (VEnv.empty L)
@@ -208,7 +208,7 @@ private theorem nodup_map_not_mem_erase [DecidableEq α]
              ih hnd' hn_in⟩
 
 -- initPartialEnv produces a consistent PartialEnv (requires no shadowing)
-theorem initPartialEnv_consistent {P : Type} {L : ExprLanguage}
+theorem initPartialEnv_consistent {P : Type} {L : IExpr}
     (Γ : VCtx P L) (env : VEnv (Player := P) L Γ)
     (hwf : WFCtx Γ) : (initPartialEnv Γ env).consistent env := by
   intro x τ h
@@ -235,7 +235,7 @@ theorem initPartialEnv_consistent {P : Type} {L : ExprLanguage}
 /-- Walk a VegasCore to compute the weight of assigning `tv` to variable `id`,
     given profile σ and current partial env `pe`. -/
 noncomputable def VegasCore.nodeWeight {P : Type} [DecidableEq P]
-    {L : ExprLanguage}
+    {L : IExpr}
     (σ : Profile P L) (pe : PartialEnv L) :
     {Γ : VCtx P L} → VegasCore P L Γ → VarId → TaggedVal L → ℚ≥0
   | _, .ret _, _, _ => 0
@@ -264,14 +264,14 @@ noncomputable def VegasCore.nodeWeight {P : Type} [DecidableEq P]
       if y = id then 1 else nodeWeight σ pe k id tv
 
 /-- Weight of a step under a profile σ. -/
-noncomputable def Step.weight {P : Type} [DecidableEq P] {L : ExprLanguage}
+noncomputable def Step.weight {P : Type} [DecidableEq P] {L : IExpr}
     (σ : Profile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
     {c₁ c₂ : Config L} (s : Step c₁ c₂) : ℚ≥0 :=
   VegasCore.nodeWeight σ c₁.env p s.node.id s.value
 
 /-- Weight of a complete execution (product of step weights). -/
 noncomputable def Execution.weight {P : Type} [DecidableEq P]
-    {L : ExprLanguage}
+    {L : IExpr}
     (σ : Profile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
     {c₁ c₂ : Config L} : Execution c₁ c₂ → ℚ≥0
   | .done => 1
@@ -279,7 +279,7 @@ noncomputable def Execution.weight {P : Type} [DecidableEq P]
 
 
 /-- Values assigned to each variable id during an execution. -/
-def Execution.assignments {L : ExprLanguage} {c₁ c₂ : Config L} :
+def Execution.assignments {L : IExpr} {c₁ c₂ : Config L} :
     Execution c₁ c₂ → VarId → Option (TaggedVal L)
   | .done, _ => none
   | .step s rest, x =>

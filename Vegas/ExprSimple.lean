@@ -24,19 +24,11 @@ abbrev Val : BaseTy → Type
 instance : DecidableEq (Val b) := by
   cases b <;> infer_instance
 
--- ════════════════════════════════════════════════════════════════
--- Plain context abbreviations
--- ════════════════════════════════════════════════════════════════
-
 /-- Plain (non-visibility) context over `BaseTy`. -/
 abbrev CtxSimple : Type := Vegas.Ctx BaseTy
 
 /-- Plain `Env` over concrete value types. -/
 abbrev PlainEnv (Γ : CtxSimple) : Type := Vegas.Env Val Γ
-
--- ════════════════════════════════════════════════════════════════
--- Expression syntax over plain contexts
--- ════════════════════════════════════════════════════════════════
 
 inductive Expr : CtxSimple → BaseTy → Type where
   | var (x : VarId) (h : HasVar Γ x b) : Expr Γ b
@@ -107,10 +99,6 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
     · exact ihf (ha.mono Finset.subset_union_right)
 
--- ════════════════════════════════════════════════════════════════
--- Distribution expression syntax over plain contexts
--- ════════════════════════════════════════════════════════════════
-
 inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
@@ -139,12 +127,8 @@ theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
     · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
     · exact ihf (ha.mono Finset.subset_union_right)
 
--- ════════════════════════════════════════════════════════════════
--- Complete ExprLanguage instance
--- ════════════════════════════════════════════════════════════════
-
-/-- The current concrete language, viewed as an instance of `ExprLanguage`. -/
-noncomputable def simpleExpr : Vegas.ExprLanguage where
+/-- The current concrete language, viewed as an instance of `IExpr`. -/
+noncomputable def simpleExpr : Vegas.IExpr where
   Ty := BaseTy
   decEqTy := inferInstance
   Val := Val
@@ -161,10 +145,6 @@ noncomputable def simpleExpr : Vegas.ExprLanguage where
   distDeps := @distExprDeps
   expr_deps_sound := @expr_deps_sound
   dist_deps_sound := @dist_deps_sound
-
--- ════════════════════════════════════════════════════════════════
--- Visibility-aware abbreviations (V-prefixed)
--- ════════════════════════════════════════════════════════════════
 
 abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
 abbrev VCtxSimple : Type := Vegas.VCtx Player simpleExpr
@@ -266,10 +246,6 @@ abbrev unflatten {Γ : VCtxSimple} {x : VarId} {b : BaseTy} :
 
 end VHasVarSimple
 
--- ════════════════════════════════════════════════════════════════
--- Expression utilities
--- ════════════════════════════════════════════════════════════════
-
 def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
     (e : Expr Γ b) : Expr ((x, τ) :: Γ) b :=
   match e with
@@ -313,10 +289,6 @@ def exprVars : Expr Γ b → List VarId
 def distExprVars : DistExpr Γ b → List VarId
   | .weighted _ => []
   | .ite c t f => exprVars c ++ distExprVars t ++ distExprVars f
-
--- ════════════════════════════════════════════════════════════════
--- Distribution utilities
--- ════════════════════════════════════════════════════════════════
 
 @[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (entries : List (Val b × ℚ≥0)) (env : PlainEnv Γ) :

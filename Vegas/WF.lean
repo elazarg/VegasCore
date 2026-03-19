@@ -9,20 +9,20 @@ legality, admissibility, and normalization obligations.
 
 namespace Vegas
 
-def Fresh {P : Type} {L : Vegas.ExprLanguage}
+def Fresh {P : Type} {L : Vegas.IExpr}
     (x : VarId) (Γ : Vegas.VCtx P L) : Prop :=
   x ∉ Γ.map Prod.fst
 
-def WFCtx {P : Type} {L : Vegas.ExprLanguage}
+def WFCtx {P : Type} {L : Vegas.IExpr}
     (Γ : Vegas.VCtx P L) : Prop :=
   (Γ.map Prod.fst).Nodup
 
-instance {P : Type} {L : Vegas.ExprLanguage} {x : VarId}
+instance {P : Type} {L : Vegas.IExpr} {x : VarId}
     {Γ : Vegas.VCtx P L} : Decidable (Fresh (P := P) (L := L) x Γ) :=
   inferInstanceAs (Decidable (x ∉ _))
 
 def WF {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
@@ -32,7 +32,7 @@ def WF {P : Type} [DecidableEq P]
   | Γ, .reveal y _ _ _ k => Fresh y Γ ∧ WF k
 
 def decidableWF {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) → Decidable (WF p)
   | _, .ret _ => .isTrue trivial
@@ -42,14 +42,14 @@ def decidableWF {P : Type} [DecidableEq P]
   | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
 
 instance {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
     Decidable (WF p) := decidableWF p
 
 /-- Every committed secret is revealed exactly once. `pending` tracks
     commit variables awaiting revelation. -/
 def RevealComplete {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → List VarId → Vegas.VegasCore P L Γ → Prop
   | _, pending, .ret _ => pending = []
@@ -62,7 +62,7 @@ def RevealComplete {P : Type} [DecidableEq P]
 instance : DecidableEq VarId := inferInstanceAs (DecidableEq Nat)
 
 def decidableRevealComplete {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} →
     (pending : List VarId) → (p : Vegas.VegasCore P L Γ) →
@@ -75,46 +75,46 @@ def decidableRevealComplete {P : Type} [DecidableEq P]
     @instDecidableAnd _ _ (inferInstance) (decidableRevealComplete (pending.filter (· ≠ x)) k)
 
 instance {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     {pending : List VarId} {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
     Decidable (RevealComplete pending p) := decidableRevealComplete pending p
 
 /-- Full well-formedness: SSA freshness AND every committed secret is revealed. -/
 def WFProg {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     {Γ : Vegas.VCtx P L}
     (p : Vegas.VegasCore P L Γ) : Prop :=
   WF p ∧ RevealComplete [] p
 
 
-@[simp] theorem WFCtx_nil {P : Type} {L : ExprLanguage} :
+@[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
     WFCtx (P := P) (L := L) [] := List.nodup_nil
 
-theorem WFCtx.cons {P : Type} {L : ExprLanguage}
+theorem WFCtx.cons {P : Type} {L : IExpr}
     {x : VarId} {τ : BindTy P L} {Γ : VCtx P L}
     (hfresh : Fresh x Γ) (hwf : WFCtx Γ) :
     WFCtx ((x, τ) :: Γ) := by
   change (((x, τ) :: Γ).map Prod.fst).Nodup
   exact List.Nodup.cons hfresh hwf
 
-theorem WFCtx.tail {P : Type} {L : ExprLanguage}
+theorem WFCtx.tail {P : Type} {L : IExpr}
     {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
     WFCtx ((x, τ) :: Γ) → WFCtx Γ := by
   intro h; exact (List.nodup_cons.mp h).2
 
-theorem WFCtx.fresh_head {P : Type} {L : ExprLanguage}
+theorem WFCtx.fresh_head {P : Type} {L : IExpr}
     {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
     WFCtx ((x, τ) :: Γ) → Fresh x Γ := by
   intro h; exact (List.nodup_cons.mp h).1
 
-theorem VHasVar.mem_map_fst {P : Type} {L : ExprLanguage}
+theorem VHasVar.mem_map_fst {P : Type} {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {τ : BindTy P L} :
     VHasVar (L := L) Γ x τ → x ∈ Γ.map Prod.fst := by
   intro h; induction h with
   | here => simp
   | there _ ih => exact List.mem_cons_of_mem _ ih
 
-theorem VHasVar.unique {P : Type} {L : ExprLanguage}
+theorem VHasVar.unique {P : Type} {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {τ₁ τ₂ : BindTy P L}
     (hwf : WFCtx Γ) (h1 : VHasVar (L := L) Γ x τ₁)
     (h2 : VHasVar (L := L) Γ x τ₂) :
@@ -130,7 +130,7 @@ theorem VHasVar.unique {P : Type} {L : ExprLanguage}
     | .there h2' => exact ih hwf.tail h2'
 
 
-theorem viewVCtx_map_fst_sub {P : Type} [DecidableEq P] {L : ExprLanguage}
+theorem viewVCtx_map_fst_sub {P : Type} [DecidableEq P] {L : IExpr}
     {x : VarId} {p : P} {Γ : VCtx P L} :
     x ∈ (viewVCtx p Γ).map Prod.fst → x ∈ Γ.map Prod.fst := by
   induction Γ with
@@ -158,24 +158,24 @@ theorem viewVCtx_map_fst_sub {P : Type} [DecidableEq P] {L : ExprLanguage}
       · exact Or.inl rfl
       · exact Or.inr (ih htl)
 
-theorem Fresh_viewVCtx {P : Type} [DecidableEq P] {L : ExprLanguage}
+theorem Fresh_viewVCtx {P : Type} [DecidableEq P] {L : IExpr}
     {x : VarId} {p : P} {Γ : VCtx P L}
     (hfresh : Fresh x Γ) : Fresh x (viewVCtx p Γ) :=
   fun hmem => hfresh (viewVCtx_map_fst_sub hmem)
 
-theorem Fresh_flattenVCtx {P : Type} {L : ExprLanguage}
+theorem Fresh_flattenVCtx {P : Type} {L : IExpr}
     {x : VarId} {Γ : VCtx P L}
     (hfresh : Fresh x Γ) : Fresh x (flattenVCtx Γ) := by
   unfold Fresh at *; rwa [flattenVCtx_map_fst]
 
-theorem WFCtx_flattenVCtx {P : Type} {L : ExprLanguage}
+theorem WFCtx_flattenVCtx {P : Type} {L : IExpr}
     {Γ : VCtx P L}
     (hwf : WFCtx Γ) : WFCtx (flattenVCtx Γ) := by
   unfold WFCtx at *; rwa [flattenVCtx_map_fst]
 
 
 def Legal {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
@@ -188,7 +188,7 @@ def Legal {P : Type} [DecidableEq P]
   | _, .reveal _ _ _ _ k => Legal k
 
 def DistinctActs {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
@@ -198,7 +198,7 @@ def DistinctActs {P : Type} [DecidableEq P]
   | _, .reveal _ _ _ _ k => DistinctActs k
 
 def AdmissibleProfile {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     (σ : Vegas.Profile P L) :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
@@ -221,7 +221,7 @@ abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}
 end DistExpr
 
 def NormalizedDists {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
@@ -233,7 +233,7 @@ def NormalizedDists {P : Type} [DecidableEq P]
   | _, .reveal _ _ _ _ k => NormalizedDists k
 
 def Profile.NormalizedOn {P : Type} [DecidableEq P]
-    {L : Vegas.ExprLanguage}
+    {L : Vegas.IExpr}
     (σ : Vegas.Profile P L) :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True

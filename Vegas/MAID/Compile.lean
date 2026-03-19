@@ -25,18 +25,18 @@ namespace Vegas
 
 open MAID
 
-variable {Player : Type} [DecidableEq Player] {L : ExprLanguage}
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
 /-- Untyped payload used to reconstruct Vegas environments from MAID parent
 configurations. -/
-abbrev RawTaggedVal (L : ExprLanguage) : Type := Sigma L.Val
+abbrev RawTaggedVal (L : IExpr) : Type := Sigma L.Val
 
 /-- Partial assignment of already-known MAID node values. -/
-abbrev RawNodeEnv (L : ExprLanguage) : Type := Nat → Option (RawTaggedVal L)
+abbrev RawNodeEnv (L : IExpr) : Type := Nat → Option (RawTaggedVal L)
 
 /-- A fully-typed emitted MAID node. This is the compiler's single source of
 truth for both `MAID.Struct` and `MAID.Sem`. -/
-inductive CompiledNode (Player : Type) [DecidableEq Player] (L : ExprLanguage)
+inductive CompiledNode (Player : Type) [DecidableEq Player] (L : IExpr)
     (B : MAIDBackend Player L)
     where
   | chance (τ : L.Ty) (parents : Finset Nat)
@@ -119,11 +119,11 @@ theorem nonutility_pos (nd : CompiledNode Player L B)
 end CompiledNode
 
 /-- Variable-to-dependency entries accumulated during compilation. -/
-abbrev MAIDVarEntry (Player : Type) (L : ExprLanguage) :=
+abbrev MAIDVarEntry (Player : Type) (L : IExpr) :=
   VarId × BindTy Player L × Finset Nat
 
 /-- Internal state for direct Vegas-to-MAID compilation. -/
-structure MAIDCompileState (Player : Type) [DecidableEq Player] (L : ExprLanguage)
+structure MAIDCompileState (Player : Type) [DecidableEq Player] (L : IExpr)
     (B : MAIDBackend Player L)
     where
   nextId : Nat
