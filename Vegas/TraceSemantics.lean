@@ -573,6 +573,50 @@ theorem canReach_comm_commit
             exact hguard₂
           · exact (hk_eq v₁ v₂ env oc).2 h
 
+/-- Clean corollary of `canReach_comm_commit` for the intended independence
+    case: distinct players' fresh hidden commitments are invisible to each
+    other. This packages the operational commutation theorem at the
+    player-distinct interface used by the paper. -/
+theorem canReach_comm_commit_distinct
+    {Γ : VCtx P L} {env : VEnv (Player := P) L Γ} {oc : Outcome P}
+    {x₁ : VarId} {who₁ : P} {b₁ : L.Ty}
+    {acts₁ : List (L.Val b₁)}
+    {R₁ : L.Expr ((x₁, b₁) :: eraseVCtx (viewVCtx who₁ Γ)) L.bool}
+    {x₂ : VarId} {who₂ : P} {b₂ : L.Ty}
+    {acts₂ : List (L.Val b₂)}
+    {R₂ : L.Expr ((x₂, b₂) :: eraseVCtx
+      (viewVCtx who₂ ((x₁, .hidden who₁ b₁) :: Γ))) L.bool}
+    {k : VegasCore P L
+      ((x₂, .hidden who₂ b₂) :: (x₁, .hidden who₁ b₁) :: Γ)}
+    {R₂' : L.Expr ((x₂, b₂) :: eraseVCtx (viewVCtx who₂ Γ)) L.bool}
+    {R₁' : L.Expr ((x₁, b₁) :: eraseVCtx
+      (viewVCtx who₁ ((x₂, .hidden who₂ b₂) :: Γ))) L.bool}
+    {k' : VegasCore P L
+      ((x₁, .hidden who₁ b₁) :: (x₂, .hidden who₂ b₂) :: Γ)}
+    (hneq : who₁ ≠ who₂)
+    (hk_eq : ∀ (v₁ : L.Val b₁) (v₂ : L.Val b₂)
+        (e : VEnv (Player := P) L Γ) (oc' : Outcome P),
+      CanReach k (VEnv.cons v₂ (VEnv.cons v₁ e)) oc' ↔
+      CanReach k' (VEnv.cons v₁ (VEnv.cons v₂ e)) oc')
+    (hR₁ : ∀ (v₁ : L.Val b₁) (v₂ : L.Val b₂)
+        (e : VEnv (Player := P) L Γ),
+      evalGuard R₁ v₁ (VEnv.toView who₁ e) =
+      evalGuard R₁' v₁
+        (VEnv.toView who₁ (VEnv.cons (τ := .hidden who₂ b₂) v₂ e)))
+    (hR₂ : ∀ (v₁ : L.Val b₁) (v₂ : L.Val b₂)
+        (e : VEnv (Player := P) L Γ),
+      evalGuard R₂ v₂
+        (VEnv.toView who₂ (VEnv.cons (τ := .hidden who₁ b₁) v₁ e)) =
+      evalGuard R₂' v₂ (VEnv.toView who₂ e)) :
+    CanReach
+      (.commit x₁ who₁ acts₁ R₁
+        (.commit x₂ who₂ acts₂ R₂ k)) env oc ↔
+    CanReach
+      (.commit x₂ who₂ acts₂ R₂'
+        (.commit x₁ who₁ acts₁ R₁' k')) env oc := by
+  let _ := hneq
+  exact canReach_comm_commit (env := env) (oc := oc) hk_eq hR₁ hR₂
+
 /-- The algebraic core of commit–commit commutativity. -/
 theorem outcomeDist_comm_commit_algebraic
     {b₁ b₂ : L.Ty}
