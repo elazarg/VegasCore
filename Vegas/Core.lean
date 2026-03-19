@@ -1,5 +1,5 @@
-import Vegas.FDist
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
+import Vegas.FDist
 
 /-!
 # Generic protocol interface

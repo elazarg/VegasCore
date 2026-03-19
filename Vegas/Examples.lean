@@ -148,6 +148,42 @@ example : mpProfile.NormalizedOn conditionedGame := by
       simp [mpProfile, vb, FDist.totalWeight_pure]
     · trivial
 
+-- sequentialReveal: same as matching pennies but Player 0 reveals before
+-- Player 1 commits, giving Player 1 information about Player 0's choice.
+noncomputable def sequentialReveal : VegasSimple Γ0 :=
+  .commit va 0 (b := .bool) [true, false] (.constBool true)
+    (.reveal va' 0 va .here
+      (.commit vb 1 (b := .bool) [true, false] (.constBool true)
+        (.reveal vb' 1 vb .here
+          (.ret mpPayoff.entries))))
+
+example : WFProg sequentialReveal := by
+  exact ⟨by decide, by decide⟩
+
+example : Legal sequentialReveal := by
+  constructor
+  · intro _view
+    exact ⟨true, by simp, by rfl⟩
+  · constructor
+    · intro _view
+      exact ⟨true, by simp, by rfl⟩
+    · trivial
+
+example : DistinctActs sequentialReveal := by
+  simp [sequentialReveal, DistinctActs]
+
+example : NormalizedDists sequentialReveal := by
+  simp [sequentialReveal, NormalizedDists]
+
+example : mpProfile.NormalizedOn sequentialReveal := by
+  constructor
+  · intro _view
+    simp [mpProfile, va, FDist.totalWeight_pure]
+  · constructor
+    · intro _view
+      simp [mpProfile, vb, FDist.totalWeight_pure]
+    · trivial
+
 end Examples
 
 end Vegas
