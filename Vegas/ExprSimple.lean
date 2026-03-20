@@ -168,6 +168,170 @@ theorem evalExpr_weakenAfterHead
   | ite c t f ihc iht ihf =>
       simp [Expr.weakenAfterHead, evalExpr, ihc, iht, ihf]
 
+def Expr.dropAfterHead
+    {Γ : CtxSimple} {x y : VarId} {τ σ b : BaseTy}
+    (e : Expr ((x, τ) :: (y, σ) :: Γ) b)
+    (hy : y ∉ exprDeps e) : Expr ((x, τ) :: Γ) b :=
+  match e with
+  | .var _ .here => .var x .here
+  | .var _ (.there .here) => False.elim (hy (by simp [exprDeps]))
+  | .var z (.there (.there h')) => .var z (.there h')
+  | .constInt i => .constInt i
+  | .constBool v => .constBool v
+  | .addInt l r =>
+      .addInt
+        (l.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (r.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+  | .eqInt l r =>
+      .eqInt
+        (l.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (r.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+  | .eqBool l r =>
+      .eqBool
+        (l.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (r.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+  | .andBool l r =>
+      .andBool
+        (l.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (r.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+  | .notBool e =>
+      .notBool (e.dropAfterHead (by
+        intro hmem
+        apply hy
+        simpa [exprDeps] using hmem))
+  | .ite c t f =>
+      .ite
+        (c.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (t.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (f.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+
+theorem evalExpr_dropAfterHead
+    {Γ : CtxSimple} {x y : VarId} {τ σ b : BaseTy}
+    (e : Expr ((x, τ) :: (y, σ) :: Γ) b)
+    (hy : y ∉ exprDeps e)
+    (vx : Val τ) (vy : Val σ) (env : PlainEnv Γ) :
+    evalExpr (e.dropAfterHead hy) (Env.cons (x := x) vx env) =
+      evalExpr e (Env.cons (x := x) vx (Env.cons (x := y) vy env)) := by
+  induction e generalizing vx vy env with
+  | var z h =>
+      cases h with
+      | here =>
+          simp [Expr.dropAfterHead, evalExpr]
+      | there h =>
+          cases h with
+          | here =>
+              exfalso
+              exact hy (by simp [exprDeps])
+          | there h' =>
+              simp [Expr.dropAfterHead, evalExpr]
+  | constInt i =>
+      simp [Expr.dropAfterHead, evalExpr]
+  | constBool v =>
+      simp [Expr.dropAfterHead, evalExpr]
+  | addInt l r ihl ihr =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ihl (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem]),
+          ihr (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem])]
+  | eqInt l r ihl ihr =>
+      simp only [Expr.dropAfterHead, evalExpr, decide_eq_decide]
+      rw [ihl (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem]),
+          ihr (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem])]
+  | eqBool l r ihl ihr =>
+      simp only [Expr.dropAfterHead, evalExpr, decide_eq_decide]
+      rw [ihl (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem]),
+          ihr (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem])]
+  | andBool l r ihl ihr =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ihl (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem]),
+          ihr (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem])]
+  | notBool e ih =>
+      simp only [Expr.dropAfterHead, evalExpr, Bool.not_eq_eq_eq_not, Bool.not_not]
+      rw [ih (by
+            intro hmem
+            apply hy
+            simpa [exprDeps] using hmem)]
+  | ite c t f ihc iht ihf =>
+      have hyc : y ∉ exprDeps c := by
+        intro hmem
+        apply hy
+        simp [exprDeps, hmem]
+      have hyt : y ∉ exprDeps t := by
+        intro hmem
+        apply hy
+        simp [exprDeps, hmem]
+      have hyf : y ∉ exprDeps f := by
+        intro hmem
+        apply hy
+        simp [exprDeps, hmem]
+      cases hcv : evalExpr c (Env.cons (x := x) vx (Env.cons (x := y) vy env)) with
+      | false =>
+          have hcv' : evalExpr (c.dropAfterHead hyc) (Env.cons (x := x) vx env) = false := by
+            rw [ihc hyc vx vy env, hcv]
+          simp only [Expr.dropAfterHead, evalExpr, hcv', Bool.false_eq_true, ↓reduceIte, hcv]
+          exact ihf hyf vx vy env
+      | true =>
+          have hcv' : evalExpr (c.dropAfterHead hyc) (Env.cons (x := x) vx env) = true := by
+            rw [ihc hyc vx vy env, hcv]
+          simp only [Expr.dropAfterHead, evalExpr, hcv', ↓reduceIte, hcv]
+          exact iht hyt vx vy env
+
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
 noncomputable def simpleExpr : Vegas.IExpr where
   Ty := BaseTy
@@ -186,6 +350,11 @@ noncomputable def simpleExpr : Vegas.IExpr where
     refine ⟨e.weakenAfterHead, ?_⟩
     intro vx vy env
     exact evalExpr_weakenAfterHead e vx vy env
+  dropAfterHead := by
+    intro Γ x y τ σ b e hy
+    refine ⟨e.dropAfterHead hy, ?_⟩
+    intro vx vy env
+    exact evalExpr_dropAfterHead e hy vx vy env
   DistExpr := DistExpr
   evalDist := @evalDistExpr
   distDeps := @distExprDeps

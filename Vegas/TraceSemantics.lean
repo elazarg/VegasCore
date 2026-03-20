@@ -1,4 +1,5 @@
 import Vegas.BigStep
+import Vegas.Scope
 
 /-!
 # Trace Semantics for Vegas
@@ -600,6 +601,56 @@ theorem canReach_comm_commit_main
   exact canReach_comm_commit
     (env := env) (oc := oc)
     hk_eq hR₁ hR₂
+
+/-- Paper-facing adjacent-commit commutation theorem for distinct players.
+
+    `ViewScoped` ensures the second guard cannot depend on the first player's
+    freshly committed hidden value, and the expression-language structural laws
+    in `IExpr` supply the corresponding swapped guards. The continuation
+    equivalence remains an explicit recursive hypothesis. -/
+theorem canReach_comm_commit_viewScoped
+    {Γ : VCtx P L} {env : VEnv (Player := P) L Γ} {oc : Outcome P}
+    {x₁ : VarId} {who₁ : P} {b₁ : L.Ty}
+    {R₁ : L.Expr ((x₁, b₁) :: eraseVCtx Γ) L.bool}
+    {x₂ : VarId} {who₂ : P} {b₂ : L.Ty}
+    {R₂ : L.Expr ((x₂, b₂) :: eraseVCtx
+      ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
+    {k : VegasCore P L
+      ((x₂, .hidden who₂ b₂) :: (x₁, .hidden who₁ b₁) :: Γ)}
+    {k' : VegasCore P L
+      ((x₁, .hidden who₁ b₁) :: (x₂, .hidden who₂ b₂) :: Γ)}
+    (hfresh : FreshBindings (.commit x₁ who₁ R₁ (.commit x₂ who₂ R₂ k)))
+    (hsc : ViewScoped (.commit x₁ who₁ R₁ (.commit x₂ who₂ R₂ k)))
+    (hneq : who₂ ≠ who₁)
+    (hk_eq : ∀ (v₁ : L.Val b₁) (v₂ : L.Val b₂)
+        (e : VEnv (Player := P) L Γ) (oc' : Outcome P),
+      CanReach k (VEnv.cons v₂ (VEnv.cons v₁ e)) oc' ↔
+      CanReach k' (VEnv.cons v₁ (VEnv.cons v₂ e)) oc') :
+    let R₁' := extendAfterHeadExpr (L := L) (x := x₁) (y := x₂) (τ := b₁) (σ := b₂) R₁
+    let hdrop : x₁ ∉ L.exprDeps R₂ :=
+      GuardUsesOnly.not_mem_hidden_other (L := L) (R := R₂) hsc.2.1 hfresh.1 hfresh.2.1 hneq
+    let R₂' := dropAfterHeadExpr (L := L) (x := x₂) (y := x₁) (τ := b₂) (σ := b₁) R₂ hdrop
+    CanReach
+      (.commit x₁ who₁ R₁
+        (.commit x₂ who₂ R₂ k)) env oc ↔
+    CanReach
+      (.commit x₂ who₂ R₂'
+        (.commit x₁ who₁ R₁' k')) env oc := by
+  dsimp
+  apply canReach_comm_commit_main (k' := k') (env := env) (oc := oc)
+  · exact hk_eq
+  · intro v₁ v₂ e
+    unfold evalGuard
+    exact congrArg L.toBool
+      (eval_extendAfterHeadExpr (L := L) (x := x₁) (y := x₂)
+        (τ := b₁) (σ := b₂) R₁ v₁ v₂ (VEnv.eraseEnv e)).symm
+  · intro v₁ v₂ e
+    unfold evalGuard
+    exact congrArg L.toBool
+      (eval_dropAfterHeadExpr (L := L) (x := x₂) (y := x₁)
+        (τ := b₂) (σ := b₁) R₂
+        (GuardUsesOnly.not_mem_hidden_other (L := L) (R := R₂) hsc.2.1 hfresh.1 hfresh.2.1 hneq)
+        v₂ v₁ (VEnv.eraseEnv e)).symm
 
 /-- The algebraic core of commit-commit commutativity. -/
 theorem outcomeDist_comm_commit_algebraic

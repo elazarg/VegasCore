@@ -59,6 +59,32 @@ theorem publicVars_subset_visibleVars
             simpa [visibleVars, hown] using Finset.mem_insert_of_mem (ih hy)
           · simpa [publicVars, visibleVars, hown] using ih
 
+/-- Every visible variable comes from the ambient visibility context. -/
+theorem mem_visibleVars_map_fst
+    {who : P} {Γ : VCtx P L} {x : VarId} :
+    x ∈ visibleVars (L := L) who Γ → x ∈ Γ.map Prod.fst := by
+  induction Γ with
+  | nil =>
+      intro hx
+      simp [visibleVars] at hx
+  | cons hd tl ih =>
+      obtain ⟨z, τ⟩ := hd
+      cases τ with
+      | pub b =>
+          intro hx
+          rcases Finset.mem_insert.mp (by simpa [visibleVars] using hx) with rfl | htl
+          · simp
+          · exact List.mem_cons_of_mem _ (ih htl)
+      | hidden owner b =>
+          by_cases hown : who = owner
+          · intro hx
+            subst hown
+            rcases Finset.mem_insert.mp (by simpa [visibleVars] using hx) with rfl | htl
+            · simp
+            · exact List.mem_cons_of_mem _ (ih htl)
+          · intro hx
+            exact List.mem_cons_of_mem _ (ih (by simpa [visibleVars, hown] using hx))
+
 /-- Erasing visibility annotations preserves the variable-name projection. -/
 theorem eraseVCtx_map_fst {P : Type} {L : IExpr} {Γ : VCtx P L} :
     (eraseVCtx Γ).map Prod.fst = Γ.map Prod.fst := by
@@ -219,6 +245,71 @@ theorem KernelRespectsObservation.eq_of_obsEq
     (hobs : ObsEq (L := L) (Γ := Γ) who ρ₁ ρ₂) :
     κ ρ₁ = κ ρ₂ :=
   hκ ρ₁ ρ₂ hobs
+
+/-- Chosen witness for `IExpr.extendAfterHead`. -/
+noncomputable def extendAfterHeadExpr
+    {Γ : Ctx L.Ty} {x y : VarId} {τ σ b : L.Ty}
+    (e : L.Expr ((x, τ) :: Γ) b) :
+    L.Expr ((x, τ) :: (y, σ) :: Γ) b :=
+  Classical.choose (L.extendAfterHead e)
+
+theorem eval_extendAfterHeadExpr
+    {Γ : Ctx L.Ty} {x y : VarId} {τ σ b : L.Ty}
+    (e : L.Expr ((x, τ) :: Γ) b)
+    (vx : L.Val τ) (vy : L.Val σ) (env : Env L.Val Γ) :
+    L.eval (extendAfterHeadExpr (L := L) (x := x) (y := y) (τ := τ) (σ := σ) e)
+      (Env.cons (x := x) vx (Env.cons (x := y) vy env)) =
+    L.eval e (Env.cons (x := x) vx env) :=
+  (Classical.choose_spec (L.extendAfterHead e)) vx vy env
+
+/-- Chosen witness for `IExpr.dropAfterHead`. -/
+noncomputable def dropAfterHeadExpr
+    {Γ : Ctx L.Ty} {x y : VarId} {τ σ b : L.Ty}
+    (e : L.Expr ((x, τ) :: (y, σ) :: Γ) b)
+    (hy : y ∉ L.exprDeps e) :
+    L.Expr ((x, τ) :: Γ) b :=
+  Classical.choose (L.dropAfterHead e hy)
+
+theorem eval_dropAfterHeadExpr
+    {Γ : Ctx L.Ty} {x y : VarId} {τ σ b : L.Ty}
+    (e : L.Expr ((x, τ) :: (y, σ) :: Γ) b)
+    (hy : y ∉ L.exprDeps e)
+    (vx : L.Val τ) (vy : L.Val σ) (env : Env L.Val Γ) :
+    L.eval (dropAfterHeadExpr (L := L) (x := x) (y := y) (τ := τ) (σ := σ) e hy)
+      (Env.cons (x := x) vx env) =
+    L.eval e (Env.cons (x := x) vx (Env.cons (x := y) vy env)) :=
+  (Classical.choose_spec (L.dropAfterHead e hy)) vx vy env
+
+/-- A freshly introduced hidden variable owned by another player is not visible
+    in the extended context. -/
+theorem not_mem_visibleVars_hidden_other
+    {Γ : VCtx P L} {x : VarId} {who owner : P} {τ : L.Ty}
+    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hneq : who ≠ owner) :
+    x ∉ visibleVars (L := L) who ((x, .hidden owner τ) :: Γ) := by
+  intro hx
+  apply hfresh
+  exact mem_visibleVars_map_fst (L := L) (who := who) (by simpa [visibleVars, hneq] using hx)
+
+/-- For a distinct player, the freshly committed hidden value is outside the
+    allowed dependency set of the next guard. -/
+theorem GuardUsesOnly.not_mem_hidden_other
+    {Γ : VCtx P L}
+    {x₁ x₂ : VarId} {who₁ who₂ : P} {b₁ b₂ : L.Ty}
+    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
+    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, .hidden who₁ b₁) :: Γ))
+      (x := x₂) (who := who₂) R)
+    (hfresh₁ : Fresh (P := P) (L := L) x₁ Γ)
+    (hfresh₂ : Fresh (P := P) (L := L) x₂ ((x₁, .hidden who₁ b₁) :: Γ))
+    (hneq : who₂ ≠ who₁) :
+    x₁ ∉ L.exprDeps R := by
+  intro hx
+  have hx' := hR hx
+  rcases Finset.mem_insert.mp hx' with hxeq | hxvis
+  · apply hfresh₂
+    simp [hxeq]
+  · exact (not_mem_visibleVars_hidden_other (L := L) (Γ := Γ)
+      (x := x₁) (who := who₂) (owner := who₁) (τ := b₁) hfresh₁ hneq) hxvis
 
 /-- A profile satisfying `ProfileRespectsObservation` chooses the same commit
     kernel output on observationally equivalent states at every commit site. -/
