@@ -14,10 +14,9 @@ import Vegas.Strategic
 
 This file defines a finite pure strategic form for a fixed Vegas program.
 
-Unlike `Vegas.PureStrategy` in `Vegas.Strategies`, which is a global policy
-space over all contexts and guards, `ProgramPureStrategy p who` contains one
-deterministic choice rule for each commit site of the fixed program `p` owned
-by `who`.
+Unlike a global policy space over all contexts and guards, `ProgramPureStrategy
+who p` contains one deterministic choice rule for each commit site of the fixed
+program `p` owned by `who`.
 -/
 
 namespace Vegas
@@ -136,24 +135,65 @@ noncomputable instance instFintype
 
 end ProgramPureProfile
 
-namespace PureProfile
+namespace ProgramBehavioralKernel
 
-/-- A global pure Vegas profile agrees with a fixed-program pure profile when
-they choose the same action at every commit site encountered in the program. -/
-def AgreesOnProgram
-    (π : PureProfile (P := P) (L := L)) :
+/-- Turn a deterministic local rule into a normalized behavioral local rule. -/
+noncomputable def ofPure
+    {who : P} {Γ : VCtx P L} {b : L.Ty}
+    (κ : PureKernel (P := P) (L := L) who Γ b) :
+    ProgramBehavioralKernel (P := P) (L := L) who Γ b :=
+  { run := fun view => FDist.pure (κ view)
+    normalized := by
+      intro view
+      simp [FDist.totalWeight_pure] }
+
+@[simp] theorem run_ofPure
+    {who : P} {Γ : VCtx P L} {b : L.Ty}
+    (κ : PureKernel (P := P) (L := L) who Γ b)
+    (view : ViewEnv (P := P) (L := L) who Γ) :
+    (ofPure (P := P) (L := L) κ).run view = FDist.pure (κ view) := rfl
+
+end ProgramBehavioralKernel
+
+namespace ProgramPureProfile
+
+/-- Lift a fixed-program pure profile to the corresponding fixed-program
+behavioral profile. -/
+noncomputable def toBehavioral :
     {Γ : VCtx P L} →
       (p : VegasCore P L Γ) →
-      ProgramPureProfile (P := P) (L := L) p → Prop
-  | _, .ret _, _ => True
-  | _, .letExpr _ _ k, σ => AgreesOnProgram π k σ
-  | _, .sample _ _ _ _ k, σ => AgreesOnProgram π k σ
-  | _, .commit x who R k, σ =>
-      (π who).commit x R = ProgramPureStrategy.headKernel (P := P) (L := L) (σ who) ∧
-      AgreesOnProgram π k (ProgramPureProfile.tail (P := P) (L := L) σ)
-  | _, .reveal _ _ _ _ k, σ => AgreesOnProgram π k σ
+      ProgramPureProfile (P := P) (L := L) p →
+      ProgramBehavioralProfile (P := P) (L := L) p
+  | _, .ret _, _ => fun _ => PUnit.unit
+  | _, .letExpr _ _ k, σ => toBehavioral k σ
+  | _, .sample _ _ _ _ k, σ => toBehavioral k σ
+  | _, .commit _ who R k, σ =>
+      fun i =>
+        by
+          by_cases h : who = i
+          · subst h
+            simpa [ProgramBehavioralStrategy] using
+              (ProgramBehavioralKernel.ofPure (P := P) (L := L)
+                (ProgramPureStrategy.headKernel (P := P) (L := L) (σ who)),
+               toBehavioral k (tail (P := P) (L := L) σ) who)
+          · simpa [ProgramBehavioralStrategy, h] using
+              toBehavioral k (tail (P := P) (L := L) σ) i
+  | _, .reveal _ _ _ _ k, σ => toBehavioral k σ
 
-end PureProfile
+@[simp] theorem tail_toBehavioral
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (σ : ProgramPureProfile (P := P) (L := L) (.commit x who R k)) :
+    ProgramBehavioralProfile.tail (P := P) (L := L) (toBehavioral (.commit x who R k) σ) =
+      toBehavioral k (tail (P := P) (L := L) σ) := by
+  funext i
+  by_cases h : who = i
+  · subst h
+    simp [toBehavioral, ProgramBehavioralProfile.tail, ProgramBehavioralStrategy.tailOwn]
+  · simp [toBehavioral, ProgramBehavioralProfile.tail, h]
+
+end ProgramPureProfile
 
 /-- Evaluate a fixed-program pure profile directly, threading the continuation
 profile through the program structure. -/
@@ -206,36 +246,46 @@ theorem outcomeDistPure_totalWeight_eq_one
   | reveal y who x hx k ih =>
       exact ih hd
 
-/-- If a global pure Vegas profile agrees with a fixed-program pure profile on
-the commit sites of `p`, then both induce the same outcome distribution on `p`. -/
-theorem outcomeDist_eq_outcomeDistPure_of_agrees
-    (π : PureProfile (P := P) (L := L))
-    {Γ : VCtx P L} {p : VegasCore P L Γ}
-    {σ : ProgramPureProfile (P := P) (L := L) p}
-    {env : VEnv (Player := P) L Γ}
-    (hag : PureProfile.AgreesOnProgram (P := P) (L := L) π p σ) :
-    outcomeDist π.toOperationalProfile p env = outcomeDistPure p σ env := by
+/-- Running the local behavioral lift of a fixed-program pure profile yields
+the same outcome distribution as the pure strategic semantics. -/
+theorem outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
+    {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (σ : ProgramPureProfile (P := P) (L := L) p)
+    (env : VEnv (Player := P) L Γ) :
+    outcomeDistBehavioral p (ProgramPureProfile.toBehavioral (P := P) (L := L) p σ) env =
+      outcomeDistPure p σ env := by
   induction p with
   | ret u =>
       rfl
   | letExpr x e k ih =>
-      simpa [outcomeDist, outcomeDistPure] using ih hag
+      simpa [outcomeDistBehavioral, outcomeDistPure, ProgramPureProfile.toBehavioral] using
+        ih σ _
   | sample x τ m D' k ih =>
-      simp only [outcomeDist, outcomeDistPure, ih hag]
+      simp only [outcomeDistBehavioral, outcomeDistPure]
+      congr
+      funext v
+      exact ih σ _
   | commit x who R k ih =>
-      rcases hag with ⟨hhead, htail⟩
-      simp only [outcomeDist, outcomeDistPure]
-      rw [show
-          π.toOperationalProfile.commit who x R (VEnv.eraseEnv env) =
+      simp only [outcomeDistBehavioral, outcomeDistPure]
+      have hhead :
+          ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+              ((ProgramPureProfile.toBehavioral
+                  (P := P) (L := L) (.commit x who R k) σ) who)
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env)) =
             FDist.pure
               ((ProgramPureStrategy.headKernel (P := P) (L := L) (σ who))
-                (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))) by
-            simp [PureProfile.toOperationalProfile, PureProfile.toBehavioral,
-              BehavioralProfile.toOperationalProfile, BehavioralStrategy.toOperationalKernel,
-              PureStrategy.toBehavioral, hhead]]
-      simpa [FDist.pure_bind] using ih htail
+                (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))) := by
+        simp [ProgramPureProfile.toBehavioral, ProgramBehavioralStrategy.headKernel,
+          ProgramBehavioralKernel.ofPure, ProgramPureStrategy.headKernel]
+      rw [hhead, FDist.pure_bind]
+      simpa [ProgramPureProfile.tail_toBehavioral] using
+        ih (ProgramPureProfile.tail (P := P) (L := L) σ)
+          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _)
+            ((ProgramPureStrategy.headKernel (P := P) (L := L) (σ who))
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))) env)
   | reveal y who x hx k ih =>
-      simpa [outcomeDist, outcomeDistPure] using ih hag
+      simpa [outcomeDistBehavioral, outcomeDistPure, ProgramPureProfile.toBehavioral] using
+        ih σ _
 
 /-- Fixed-program pure strategic form of a Vegas program. -/
 noncomputable def toStrategicKernelGame
@@ -276,42 +326,34 @@ theorem toStrategicKernelGame_eu
       (h := hnorm)
       (f := fun o => (o who : ℝ)))
 
-/-- If a global pure Vegas profile agrees with a fixed-program pure profile on
-`p`, then the ordinary behavioral `toKernelGame` and the fixed-program pure
-`toStrategicKernelGame` have the same outcome kernel on these profiles. -/
-theorem toKernelGame_outcomeKernel_eq_toStrategicKernelGame_of_agrees
-    (π : PureProfile (P := P) (L := L))
+/-- The local behavioral lift of a fixed-program pure profile has the same
+outcome kernel as the fixed-program pure strategic form. -/
+theorem toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral
     {Γ : VCtx P L} (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ)
     (hd : NormalizedDists p)
-    (σ : ProgramPureProfile (P := P) (L := L) p)
-    (hag : PureProfile.AgreesOnProgram (P := P) (L := L) π p σ) :
-    (toKernelGame p env hd).outcomeKernel π.toBehavioral =
+    (σ : ProgramPureProfile (P := P) (L := L) p) :
+    (toKernelGame p env hd).outcomeKernel (ProgramPureProfile.toBehavioral (P := P) (L := L) p σ) =
       (toStrategicKernelGame p env hd).outcomeKernel σ := by
-  have hout :
-      outcomeDist π.toBehavioral.toOperationalProfile p env = outcomeDistPure p σ env := by
-    simpa [PureProfile.toOperationalProfile] using
-      outcomeDist_eq_outcomeDistPure_of_agrees (P := P) (L := L) π hag
+  have hout :=
+    outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
+      (P := P) (L := L) p σ env
   rw [toKernelGame_outcomeKernel, toStrategicKernelGame_outcomeKernel]
   simp [hout]
 
-/-- Under agreement on the commit sites of `p`, the ordinary behavioral Vegas
-kernel game and the fixed-program pure strategic form assign the same expected
-utility. -/
-theorem toKernelGame_eu_eq_toStrategicKernelGame_eu_of_agrees
-    (π : PureProfile (P := P) (L := L))
+/-- The local behavioral lift of a fixed-program pure profile has the same
+expected utility as the fixed-program pure strategic form. -/
+theorem toKernelGame_eu_eq_toStrategicKernelGame_toBehavioral
     {Γ : VCtx P L} (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ)
     (hd : NormalizedDists p)
     (σ : ProgramPureProfile (P := P) (L := L) p)
-    (hag : PureProfile.AgreesOnProgram (P := P) (L := L) π p σ)
     (who : P) :
-    (toKernelGame p env hd).eu π.toBehavioral who =
+    (toKernelGame p env hd).eu (ProgramPureProfile.toBehavioral (P := P) (L := L) p σ) who =
       (toStrategicKernelGame p env hd).eu σ who := by
-  have hout :
-      outcomeDist π.toBehavioral.toOperationalProfile p env = outcomeDistPure p σ env := by
-    simpa [PureProfile.toOperationalProfile] using
-      outcomeDist_eq_outcomeDistPure_of_agrees (P := P) (L := L) π hag
+  have hout :=
+    outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
+      (P := P) (L := L) p σ env
   rw [toKernelGame_eu, toStrategicKernelGame_eu]
   simp [hout]
 

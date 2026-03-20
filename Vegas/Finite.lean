@@ -1,13 +1,12 @@
-import Vegas.Strategies
+import Vegas.ViewKernel
 
 /-!
 # Finite Infrastructure
 
 Finite-enumeration instances for Vegas environments under `FiniteValuation`.
 
-This file intentionally stops at environments. The current global strategy
-types in `Vegas.Strategies` quantify over all commit sites in all contexts, so
-their finiteness does not follow from `FiniteValuation` alone.
+This file intentionally stops at environments. Finite strategic-form
+construction happens in the fixed-program modules instead.
 -/
 
 namespace Vegas

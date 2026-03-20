@@ -11,7 +11,7 @@ import Vegas.BigStep
 import Vegas.TraceSemantics
 import Vegas.TraceCorollaries
 import Vegas.ActionGraph
-import Vegas.Strategies
+import Vegas.ViewKernel
 import Vegas.PureStrategic
 import Vegas.Strategic
 import Vegas.Equilibrium
