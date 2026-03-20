@@ -1,5 +1,6 @@
 import Vegas.Equilibrium
 import GameTheory.Concepts.ApproximateNash
+import GameTheory.Concepts.DominanceSolvability
 import GameTheory.Concepts.Rationalizability
 import GameTheory.Concepts.SecurityStrategy
 import GameTheory.Concepts.Minimax
@@ -45,6 +46,16 @@ def IsIndividuallyRational (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ) (hd : NormalizedDists p)
     (r : P → ℝ) (σ : StrategyProfile p env hd) : Prop :=
   (Game p env hd).IsIndividuallyRational r σ
+
+def IsDominanceSolvable (p : VegasCore P L Γ)
+    (env : VEnv (Player := P) L Γ) (hd : NormalizedDists p) : Prop :=
+  (Game p env hd).IsDominanceSolvable
+
+noncomputable def IsDominanceSolvable.dominantProfile
+    (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
+    (hd : NormalizedDists p)
+    (h : IsDominanceSolvable p env hd) : StrategyProfile p env hd :=
+  KernelGame.IsDominanceSolvable.dominantProfile (G := Game p env hd) h
 
 def IsExactPotential (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ) (hd : NormalizedDists p)

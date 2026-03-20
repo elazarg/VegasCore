@@ -1,4 +1,7 @@
 import Vegas.GameProperties
+import GameTheory.Concepts.CorrelatedNashMixed
+import GameTheory.Concepts.DominanceSolvability
+import GameTheory.Concepts.IndividualRationality
 import GameTheory.Concepts.PotentialGame
 import GameTheory.Concepts.Rationalizability
 import GameTheory.Concepts.WelfareTheorems
@@ -7,7 +10,10 @@ import GameTheory.Concepts.ConstantSum
 import GameTheory.Concepts.Minimax
 import GameTheory.Concepts.SecurityStrategy
 import GameTheory.Concepts.PriceOfAnarchy
+import GameTheory.Theorems.CorrelatedEqExistence
 import GameTheory.Theorems.Minimax
+import GameTheory.Theorems.NashExistence
+import GameTheory.Theorems.NashExistenceMixed
 
 /-!
 # Vegas structural game-theory corollaries
@@ -54,6 +60,91 @@ theorem IsOrdinalPotential.nash_of_maximizer (p : VegasCore P L Γ)
   simpa [IsOrdinalPotential, IsNash] using
     (KernelGame.IsOrdinalPotential.nash_of_maximizer
       (G := Game p env hd) hΦ hmax)
+
+/-- In a finite exact-potential Vegas game, a Nash equilibrium exists. -/
+theorem exact_potential_nash_exists (p : VegasCore P L Γ)
+    (env : VEnv L Γ) (hd : NormalizedDists p)
+    [Finite (StrategyProfile p env hd)] [Nonempty (StrategyProfile p env hd)]
+    {Φ : StrategyProfile p env hd → ℝ}
+    (hΦ : IsExactPotential p env hd Φ) :
+    ∃ σ : StrategyProfile p env hd, IsNash p env hd σ := by
+  let _ : Fintype (StrategyProfile p env hd) := Fintype.ofFinite (StrategyProfile p env hd)
+  simpa [IsExactPotential, IsNash] using
+    (KernelGame.exact_potential_nash_exists
+      (G := Game p env hd) hΦ)
+
+/-- If every player has a dominant Vegas strategy, a Vegas Nash equilibrium
+exists. -/
+theorem nash_of_all_have_dominant (p : VegasCore P L Γ)
+    (env : VEnv L Γ) (hd : NormalizedDists p)
+    (h : ∀ who, ∃ s : Strategy p env hd who, IsDominant p env hd who s) :
+    ∃ σ : StrategyProfile p env hd, IsNash p env hd σ := by
+  simpa [IsDominant, IsNash] using
+    (KernelGame.nash_of_all_have_dominant
+      (G := Game p env hd) h)
+
+/-- Weakening the reservation utility preserves Vegas individual rationality. -/
+theorem IsIndividuallyRational.mono {p : VegasCore P L Γ}
+    {env : VEnv L Γ} {hd : NormalizedDists p}
+    {r r' : P → ℝ} {σ : StrategyProfile p env hd}
+    (hIR : IsIndividuallyRational p env hd r σ)
+    (hle : ∀ who, r' who ≤ r who) :
+    IsIndividuallyRational p env hd r' σ := by
+  simpa [IsIndividuallyRational] using
+    (KernelGame.IsIndividuallyRational.mono
+      (G := Game p env hd) hIR hle)
+
+/-- A Vegas Pareto improvement preserves individual rationality. -/
+theorem IsIndividuallyRational.of_pareto_dominates {p : VegasCore P L Γ}
+    {env : VEnv L Γ} {hd : NormalizedDists p}
+    {r : P → ℝ} {σ τ : StrategyProfile p env hd}
+    (hdom : ParetoDominates p env hd σ τ)
+    (hIR : IsIndividuallyRational p env hd r τ) :
+    IsIndividuallyRational p env hd r σ := by
+  simpa [ParetoDominates, IsIndividuallyRational] using
+    (KernelGame.IsIndividuallyRational.of_pareto_dominates
+      (G := Game p env hd) hdom hIR)
+
+/-- IR with respect to two reservation functions implies IR with respect to
+their pointwise max. -/
+theorem IsIndividuallyRational.sup {p : VegasCore P L Γ}
+    {env : VEnv L Γ} {hd : NormalizedDists p}
+    {r₁ r₂ : P → ℝ} {σ : StrategyProfile p env hd}
+    (h1 : IsIndividuallyRational p env hd r₁ σ)
+    (h2 : IsIndividuallyRational p env hd r₂ σ) :
+    IsIndividuallyRational p env hd (fun who => max (r₁ who) (r₂ who)) σ := by
+  simpa [IsIndividuallyRational] using
+    (KernelGame.IsIndividuallyRational.sup
+      (G := Game p env hd) h1 h2)
+
+/-- A dominance-solvable Vegas game carries a canonical dominant profile. -/
+theorem IsDominanceSolvable.isNash (p : VegasCore P L Γ)
+    (env : VEnv L Γ) (hd : NormalizedDists p)
+    (h : IsDominanceSolvable p env hd) :
+    IsNash p env hd (IsDominanceSolvable.dominantProfile p env hd h) := by
+  simpa [IsDominanceSolvable, IsNash, IsDominanceSolvable.dominantProfile] using
+    (KernelGame.IsDominanceSolvable.isNash
+      (G := Game p env hd) h)
+
+/-- In a dominance-solvable Vegas game, every Nash equilibrium equals the
+dominant profile. -/
+theorem IsDominanceSolvable.nash_unique (p : VegasCore P L Γ)
+    (env : VEnv L Γ) (hd : NormalizedDists p)
+    (h : IsDominanceSolvable p env hd)
+    {σ : StrategyProfile p env hd} (hN : IsNash p env hd σ) :
+    σ = IsDominanceSolvable.dominantProfile p env hd h := by
+  simpa [IsDominanceSolvable, IsNash, IsDominanceSolvable.dominantProfile] using
+    (KernelGame.IsDominanceSolvable.nash_unique
+      (G := Game p env hd) h hN)
+
+/-- A dominance-solvable Vegas game has a unique Nash equilibrium. -/
+theorem IsDominanceSolvable.exists_unique_nash (p : VegasCore P L Γ)
+    (env : VEnv L Γ) (hd : NormalizedDists p)
+    (h : IsDominanceSolvable p env hd) :
+    ∃! σ : StrategyProfile p env hd, IsNash p env hd σ := by
+  simpa [IsDominanceSolvable, IsNash] using
+    (KernelGame.IsDominanceSolvable.exists_unique_nash
+      (G := Game p env hd) h)
 
 /-- In a Vegas ordinal-potential game, Nash is equivalent to local optimality
 of the potential. -/
@@ -287,6 +378,86 @@ theorem exists_securityStrategy (p : VegasCore P L Γ)
   simpa [worstCaseEU, securityLevel] using
     (KernelGame.exists_securityStrategy
       (G := Game p env hd) who)
+
+/-- A finite Vegas game admits a mixed Nash equilibrium. -/
+theorem mixed_nash_exists [Fintype P]
+    (p : VegasCore P L Γ) (env : VEnv L Γ) (hd : NormalizedDists p)
+    [∀ who, Fintype (Strategy p env hd who)]
+    [∀ who, Nonempty (Strategy p env hd who)]
+    [Finite (Outcome P)] :
+    ∃ σ : MixedStrategyProfile p env hd, IsMixedNash p env hd σ := by
+  let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
+  let _ : Fintype (Game p env hd).Outcome := by
+    simpa [Game] using (inferInstance : Fintype (Outcome P))
+  simpa [MixedStrategyProfile, IsMixedNash] using
+    (KernelGame.mixed_nash_exists (G := Game p env hd))
+
+/-- A Vegas mixed Nash profile induces a correlated equilibrium on pure Vegas
+profiles. -/
+theorem mixed_nash_isCorrelatedEq [Fintype P]
+    (p : VegasCore P L Γ) (env : VEnv L Γ) (hd : NormalizedDists p)
+    [∀ who, Fintype (Strategy p env hd who)]
+    [Finite (Outcome P)]
+    (σ : MixedStrategyProfile p env hd)
+    (hN : IsMixedNash p env hd σ) :
+    IsCorrelatedEq p env hd (Math.PMFProduct.pmfPi σ) := by
+  let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
+  let _ : Fintype (Game p env hd).Outcome := by
+    simpa [Game] using (inferInstance : Fintype (Outcome P))
+  simpa [MixedStrategyProfile, IsMixedNash, IsCorrelatedEq] using
+    (KernelGame.mixed_nash_isCorrelatedEq
+      (G := Game p env hd) σ hN)
+
+/-- A Vegas mixed Nash profile induces a coarse correlated equilibrium. -/
+theorem mixed_nash_isCoarseCorrelatedEq [Fintype P]
+    (p : VegasCore P L Γ) (env : VEnv L Γ) (hd : NormalizedDists p)
+    [∀ who, Fintype (Strategy p env hd who)]
+    [Finite (Outcome P)]
+    (σ : MixedStrategyProfile p env hd)
+    (hN : IsMixedNash p env hd σ) :
+    IsCoarseCorrelatedEq p env hd (Math.PMFProduct.pmfPi σ) := by
+  let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
+  let _ : Fintype (Game p env hd).Outcome := by
+    simpa [Game] using (inferInstance : Fintype (Outcome P))
+  simpa [MixedStrategyProfile, IsMixedNash, IsCoarseCorrelatedEq] using
+    (KernelGame.mixed_nash_isCoarseCorrelatedEq
+      (G := Game p env hd) σ hN)
+
+/-- Every finite Vegas game has a correlated equilibrium. -/
+theorem correlatedEq_exists
+    (p : VegasCore P L Γ) (env : VEnv L Γ) (hd : NormalizedDists p)
+    [Finite P]
+    [∀ who, Finite (Strategy p env hd who)]
+    [∀ who, Nonempty (Strategy p env hd who)]
+    [Finite (Outcome P)] :
+    ∃ μ : CorrelatedProfile p env hd, IsCorrelatedEq p env hd μ := by
+  let _ : Fintype P := Fintype.ofFinite P
+  let _ : ∀ who, Fintype (Strategy p env hd who) := by
+    intro who
+    exact Fintype.ofFinite (Strategy p env hd who)
+  let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
+  let _ : Fintype (Game p env hd).Outcome := by
+    simpa [Game] using (inferInstance : Fintype (Outcome P))
+  simpa [CorrelatedProfile, IsCorrelatedEq] using
+    (KernelGame.correlatedEq_exists (G := Game p env hd))
+
+/-- Every finite Vegas game has a coarse correlated equilibrium. -/
+theorem coarseCorrelatedEq_exists
+    (p : VegasCore P L Γ) (env : VEnv L Γ) (hd : NormalizedDists p)
+    [Finite P]
+    [∀ who, Finite (Strategy p env hd who)]
+    [∀ who, Nonempty (Strategy p env hd who)]
+    [Finite (Outcome P)] :
+    ∃ μ : CorrelatedProfile p env hd, IsCoarseCorrelatedEq p env hd μ := by
+  let _ : Fintype P := Fintype.ofFinite P
+  let _ : ∀ who, Fintype (Strategy p env hd who) := by
+    intro who
+    exact Fintype.ofFinite (Strategy p env hd who)
+  let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
+  let _ : Fintype (Game p env hd).Outcome := by
+    simpa [Game] using (inferInstance : Fintype (Outcome P))
+  simpa [CorrelatedProfile, IsCoarseCorrelatedEq] using
+    (KernelGame.coarseCorrelatedEq_exists (G := Game p env hd))
 
 /-- In a Vegas team game, social welfare is a scalar multiple of any player's EU. -/
 theorem IsTeamGame.socialWelfare_eq [Fintype P] [Inhabited P]
