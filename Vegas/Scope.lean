@@ -43,26 +43,24 @@ theorem publicVars_subset_visibleVars
     publicVars (P := P) (L := L) Γ ⊆ visibleVars (L := L) who Γ := by
   induction Γ with
   | nil =>
-      intro x hx
-      simpa [publicVars, visibleVars] using hx
+      intro _ hx
+      simp [publicVars] at hx
   | cons hd tl ih =>
-      obtain ⟨x, τ⟩ := hd
+      obtain ⟨z, τ⟩ := hd
       cases τ with
       | pub b =>
           intro y hy
-          simp [publicVars, visibleVars] at hy ⊢
-          rcases hy with rfl | hy
-          · exact Or.inl rfl
-          · exact Or.inr (ih hy)
+          rcases Finset.mem_insert.mp hy with rfl | hy
+          · exact Finset.mem_insert_self _ _
+          · exact Finset.mem_insert_of_mem (ih hy)
       | hidden owner b =>
           by_cases hown : who = owner
           · intro y hy
-            simp [visibleVars, hown]
-            exact Or.inr (by simpa [hown] using ih hy)
+            simpa [visibleVars, hown] using Finset.mem_insert_of_mem (ih hy)
           · simpa [publicVars, visibleVars, hown] using ih
 
 /-- Erasing visibility annotations preserves the variable-name projection. -/
-theorem eraseVCtx_map_fst {Γ : VCtx P L} :
+theorem eraseVCtx_map_fst {P : Type} {L : IExpr} {Γ : VCtx P L} :
     (eraseVCtx Γ).map Prod.fst = Γ.map Prod.fst := by
   induction Γ with
   | nil => rfl
@@ -108,7 +106,7 @@ theorem HasVar.mem_map_fst {Γ : Ctx L.Ty} {x : VarId} {τ : L.Ty} :
 /-- If two erased environments agree on `S`, then extending both with the same
     fresh variable/value yields agreement on `insert x S`. -/
 theorem AgreesOn.cons_insert_of_fresh
-    {Γ : VCtx P L}
+    {P : Type} {L : IExpr} {Γ : VCtx P L}
     {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
     {S : Finset VarId} {x : VarId} {b : L.Ty} {a : L.Val b}
     (hfresh : Fresh (P := P) (L := L) x Γ)

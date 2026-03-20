@@ -133,7 +133,7 @@ theorem allValues_nodup (B : MAIDBackend Player L) (τ : L.Ty) :
 theorem allValues_ne_nil (B : MAIDBackend Player L) (τ : L.Ty) :
     allValues B τ ≠ [] := by
   intro hnil
-  have hlen : (allValues B τ).length = 0 := by simpa [hnil]
+  have hlen : (allValues B τ).length = 0 := by simp [hnil]
   have hpos := B.domainSize_pos τ
   have hlen' : 0 < (allValues B τ).length := by
     simpa [allValues, MAIDBackend.domainSize] using hpos

@@ -502,11 +502,13 @@ theorem MAIDCompileState.ofProg_nextId_le
               have env := ρ raw;
                have v := readVal raw b st₀.nextId;
                VEnv.cons v env)
-             ((st₀.addNode
-                    (CompiledNode.decision b who acts (allValues_ne_nil B b) (allValues_nodup B b) (st₀.ctxDeps Γ') fun σ raw ↦
-                      σ.commit who x R (VEnv.eraseEnv (ρ raw)))
+              ((st₀.addNode
+                    (CompiledNode.decision b who acts
+                      (allValues_ne_nil B b) (allValues_nodup B b)
+                      (st₀.ctxDeps Γ') (fun σ raw ↦
+                        σ.commit who x R (VEnv.eraseEnv (ρ raw))))
                     _).2.addVar
-              x (.hidden who b) {st₀.nextId} _))
+               x (.hidden who b) {st₀.nextId} _))
           rfl)
   | reveal y who x hx k ih =>
     (expose_names;

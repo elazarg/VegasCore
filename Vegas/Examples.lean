@@ -119,11 +119,13 @@ example : ¬ Legal conditionedGame := by
   -- With va' = false, guard evaluates to false for all choices,
   -- contradicting Legal (which requires ∃ choice satisfying the guard).
   -- Full erased env with va' = false, va = true
-  let envFalse : Env simpleExpr.Val (eraseVCtx ((va', .pub .bool) :: (va, .hidden 0 .bool) :: Γ0)) :=
+  let envFalse :
+      Env simpleExpr.Val (eraseVCtx ((va', .pub .bool) :: (va, .hidden 0 .bool) :: Γ0)) :=
     Env.cons false (Env.cons true (Env.empty _))
   obtain ⟨a, hg⟩ := hlegal.2.1 envFalse
-  cases a <;> simpa [envFalse, conditionedGame, Γ0, va, va', Vegas.evalGuard, Vegas.evalExpr,
-    Vegas.simpleExpr, eraseVCtx, Env.cons, Env.get, BindTy.base] using hg
+  cases a <;>
+    simp [envFalse, Γ0, va, va', Vegas.evalGuard, Vegas.evalExpr,
+      Vegas.simpleExpr, Env.cons, Env.get, BindTy.base] at hg
 
 example : DistinctActs conditionedGame := by
   simp [conditionedGame, DistinctActs]

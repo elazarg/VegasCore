@@ -124,7 +124,7 @@ def Trace.legal : {Γ : VCtx P L} → (p : VegasCore P L Γ) →
   | _, .sample _ τ m D' k, env, .sample v t =>
       v ∈ (L.evalDist D' (VEnv.eraseDistEnv τ m env)).support ∧
       legal k (VEnv.cons v env) t
-  | _, .commit _ who R k, env, .commit v t =>
+  | _, .commit _ _who R k, env, .commit v t =>
       evalGuard R v (VEnv.eraseEnv env) = true ∧
       legal k (VEnv.cons v env) t
   | _, .reveal y _who _x (b := b) hx k, env, .reveal t =>
