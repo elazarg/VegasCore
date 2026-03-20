@@ -12,7 +12,7 @@ recover the intended information-flow discipline extrinsically:
 - `visibleVars who Γ` characterizes what player `who` can observe in context `Γ`
 - `GuardUsesOnly who x Γ R` states that commit guard `R` depends only on the
   proposed action `x` and variables visible to `who`
-- `Scoped p` is the recursive scoping judgment for raw Vegas programs
+- `ViewScoped p` is the recursive scoping judgment for raw Vegas programs
 - `KernelRespectsObservation` / `ProfileRespectsObservation` state that
   behavioral strategies are invariant under observationally equivalent states
 
@@ -148,18 +148,18 @@ def PrivateDistUsesOnly
 
 /-- Recursive visibility-scoping judgment for raw Vegas programs. The only
     nontrivial new obligation after the guard refactor is at commit nodes. -/
-def Scoped :
+def ViewScoped :
     {Γ : VCtx P L} → VegasCore P L Γ → Prop
   | _, .ret payoffs => PayoffUsesOnlyPublic (P := P) (L := L) payoffs
-  | _, .letExpr _ _ k => Scoped k
-  | _, .sample _ _ _ _ k => Scoped k
-  | Γ, .commit x who R k => GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R ∧ Scoped k
-  | _, .reveal _ _ _ _ k => Scoped k
+  | _, .letExpr _ _ k => ViewScoped k
+  | _, .sample _ _ _ _ k => ViewScoped k
+  | Γ, .commit x who R k =>
+      GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R ∧ ViewScoped k
+  | _, .reveal _ _ _ _ k => ViewScoped k
 
-/-- Full paper-facing static discipline: SSA/reveal well-formedness plus
-    visibility scoping. -/
-def ScopedProg {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
-  WFProg p ∧ Scoped p
+/-- Full well-formedness: fresh bindings, reveal completeness, and view scoping. -/
+def WF {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
+  FreshBindings p ∧ RevealComplete [] p ∧ ViewScoped p
 
 /-- Observation-respecting behavioral kernels depend only on the owner's
     observable state. -/
@@ -181,11 +181,11 @@ def ProfileRespectsObservation (σ : Profile P L) :
   | _, .reveal _ _ _ _ k => ProfileRespectsObservation σ k
 
 /-- Convenience projection from a scoped commit node to its guard-scoping fact. -/
-theorem Scoped.commit_guard_usesOnly
+theorem ViewScoped.commit_guard_usesOnly
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (hsc : Scoped (.commit x who R k)) :
+    (hsc : ViewScoped (.commit x who R k)) :
     GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R :=
   hsc.1
 

@@ -1466,7 +1466,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
-    (hwf : WF p)
+    (hfresh : FreshBindings p)
     (hσ_norm : σ.NormalizedOn p)
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B)
@@ -1580,7 +1580,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       rename_i Γ' b
       dsimp
       intro a₀
-      have hxΓ : Fresh x Γ' := hwf.1
+      have hxΓ : Fresh x Γ' := hfresh.1
       have hxvars : x ∉ st₀.vars.map Prod.fst := by
         intro hxmem
         exact hxΓ (hvars x hxmem)
@@ -1598,14 +1598,14 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         have hρj := hρ_deps j hj' raw tv
         exact VEnv.cons_ext (by simp [hρj]) hρj
       simpa [ρ', st₁, extractOutcome, nativeOutcomeDist] using
-        (ih hl ha hd hwf.2 hσ_norm ρ' st₁
+        (ih hl ha hd hfresh.2 hσ_norm ρ' st₁
           (st₀.addVar_kernelNormalized σ x (.pub b) (st₀.ctxDeps Γ') (st₀.depsOfVars_lt _) hst₀)
           hvars₁ hρ'_deps a₀)
   | sample x τ m D' k ih =>
       rename_i Γ'
       dsimp
       intro a₀
-      have hxΓ : Fresh x Γ' := hwf.1
+      have hxΓ : Fresh x Γ' := hfresh.1
       have hxvars : x ∉ st₀.vars.map Prod.fst := by
         intro hxmem
         exact hxΓ (hvars x hxmem)
@@ -1743,7 +1743,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
                 (FDist.bind μ (fun v => FDist.pure (updateAssign a₀ nd0 v)))) =
             nativeOutcomeDist B σ (VegasCore.sample x τ m D' k) ρ st₀.nextId (rawOfTAssign st a₀)
         rw [hbindmap_aux _ _]
-        have hih := ih hl ha hd.2 hwf.2 hσ_norm ρ' st₁ hst₁ hvars₁ hρ'_deps
+        have hih := ih hl ha hd.2 hfresh.2 hσ_norm ρ' st₁ hst₁ hvars₁ hρ'_deps
         -- Step 1: Expose compiledNodeFDist in the bind
         change FDist.bind (compiledNodeFDist st σ
             (st.rawEnvOfCfg (projCfg a₀ (st.toStruct.parents nd0)))
@@ -1776,7 +1776,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       rename_i Γ' b
       dsimp
       intro a₀
-      have hxΓ : Fresh x Γ' := hwf.1
+      have hxΓ : Fresh x Γ' := hfresh.1
       have hxvars : x ∉ st₀.vars.map Prod.fst := by
         intro hxmem
         exact hxΓ (hvars x hxmem)
@@ -1918,7 +1918,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
             nativeOutcomeDist B σ (VegasCore.commit x who R k) ρ
               st₀.nextId (rawOfTAssign st a₀)
         rw [hbindmap_aux _ _]
-        have hih := ih hl.2 ha hd hwf.2 hσ_norm.2 ρ' st₁ hst₁ hvars₁ hρ'_deps
+        have hih := ih hl.2 ha hd hfresh.2 hσ_norm.2 ρ' st₁ hst₁ hvars₁ hρ'_deps
         -- Step 1: Expose compiledNodeFDist in the bind
         change FDist.bind (compiledNodeFDist st σ
             (st.rawEnvOfCfg (projCfg a₀ (st.toStruct.parents nd0)))
@@ -1951,7 +1951,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       rename_i Γ' b
       dsimp
       intro a₀
-      have hyΓ : Fresh y Γ' := hwf.1
+      have hyΓ : Fresh y Γ' := hfresh.1
       have hyvars : y ∉ st₀.vars.map Prod.fst := by
         intro hymem
         exact hyΓ (hvars y hymem)
@@ -1972,7 +1972,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         have hρj := hρ_deps j hj' raw tv
         exact VEnv.cons_ext (by simp [hρj]) hρj
       simpa [ρ', st₁, extractOutcome, nativeOutcomeDist] using
-        (ih hl ha hd hwf.2 hσ_norm ρ' st₁
+        (ih hl ha hd hfresh.2 hσ_norm ρ' st₁
           (st₀.addVar_kernelNormalized σ y (.pub b)
             (st₀.lookupDeps x) (st₀.lookupDeps_lt x) hst₀)
           hvars₁ hρ'_deps a₀)
@@ -1991,7 +1991,7 @@ theorem maid_map_extract_eq_outcomeDist
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
-    (hwf : WF p)
+    (hfresh : FreshBindings p)
     (hσ_norm : σ.NormalizedOn p) :
     let _ : Fintype Player := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
@@ -2024,7 +2024,7 @@ theorem maid_map_extract_eq_outcomeDist
   -- Since st₀ = .empty, st₀.nextId = 0, drop 0 is trivial
   -- Apply foldFDist_map_extract_eq_nativeOutcomeDist then nativeOutcomeDist_eq_outcomeDist_init
   have key := foldFDist_map_extract_eq_nativeOutcomeDist B p σ hl ha hd
-    hwf hσ_norm
+    hfresh hσ_norm
     (fun _ => env) .empty (MAIDCompileState.empty_kernelNormalized σ)
     (by
       intro x hx
@@ -2054,7 +2054,7 @@ theorem vegas_maid_dist_eq
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
-    (hwf : WF p)
+    (hfresh : FreshBindings p)
     (hσ_norm : σ.NormalizedOn p) :
     let _ : Fintype Player := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
@@ -2072,6 +2072,6 @@ theorem vegas_maid_dist_eq
   let extract : @TAssign Player _ B.fintypePlayer st.nextId st.toStruct → Outcome Player :=
     fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
   exact ⟨pol, extract,
-    maid_map_extract_eq_outcomeDist B p env σ hl ha hd hwf hσ_norm⟩
+    maid_map_extract_eq_outcomeDist B p env σ hl ha hd hfresh hσ_norm⟩
 
 end Vegas

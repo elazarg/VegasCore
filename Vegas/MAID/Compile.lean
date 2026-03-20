@@ -566,7 +566,6 @@ namespace VegasCore
 noncomputable def toMAID
     (B : MAIDBackend Player L) {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) (env : VEnv (Player := Player) L Γ)
-    (_hΓ : WFCtx Γ) (_hwf : WF p)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists (P := Player) (L := L) p) :
     Σ n, Σ S : @MAID.Struct Player _ B.fintypePlayer n, @MAID.Sem Player _ B.fintypePlayer n S := by

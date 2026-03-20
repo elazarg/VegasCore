@@ -23,7 +23,7 @@ theorem maid_expected_payoff_eq_vegas
     (σ : Profile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
-    (hwf : WF p)
+    (hfresh : FreshBindings p)
     (hσ_norm : σ.NormalizedOn p)
     (who : Player) :
     let _ : Fintype Player := B.fintypePlayer
@@ -38,7 +38,7 @@ theorem maid_expected_payoff_eq_vegas
     expect (PMF.map extract (evalAssignDist S sem pol)) (fun o => (o who : ℝ)) =
       (outcomeDist σ p env).sum (fun o w => (w : ℝ) * (o who : ℝ)) := by
   intro _inst st S sem hkn pol extract
-  rw [maid_map_extract_eq_outcomeDist B p env σ hl ha hd hwf hσ_norm]
+  rw [maid_map_extract_eq_outcomeDist B p env σ hl ha hd hfresh hσ_norm]
   exact (FDist.expect_toPMF_eq_sum
     (d := outcomeDist σ p env)
     (h := outcomeDist_totalWeight_eq_one hd hσ_norm)

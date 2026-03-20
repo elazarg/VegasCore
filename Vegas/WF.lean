@@ -21,30 +21,30 @@ instance {P : Type} {L : Vegas.IExpr} {x : VarId}
     {Γ : Vegas.VCtx P L} : Decidable (Fresh (P := P) (L := L) x Γ) :=
   inferInstanceAs (Decidable (x ∉ _))
 
-def WF {P : Type} [DecidableEq P]
+def FreshBindings {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
 :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
-  | Γ, .letExpr x _ k => Fresh x Γ ∧ WF k
-  | Γ, .sample x _ _ _ k => Fresh x Γ ∧ WF k
-  | Γ, .commit x _ _ k => Fresh x Γ ∧ WF k
-  | Γ, .reveal y _ _ _ k => Fresh y Γ ∧ WF k
+  | Γ, .letExpr x _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .sample x _ _ _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .commit x _ _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .reveal y _ _ _ k => Fresh y Γ ∧ FreshBindings k
 
-def decidableWF {P : Type} [DecidableEq P]
+def decidableFreshBindings {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
 :
-    {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) → Decidable (WF p)
+    {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) → Decidable (FreshBindings p)
   | _, .ret _ => .isTrue trivial
-  | _, .letExpr _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | _, .sample _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | _, .commit _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
-  | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableWF k)
+  | _, .letExpr _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .sample _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .commit _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
 
 instance {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
     {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
-    Decidable (WF p) := decidableWF p
+    Decidable (FreshBindings p) := decidableFreshBindings p
 
 /-- Every committed secret is revealed exactly once. `pending` tracks
     commit variables awaiting revelation. -/
@@ -78,14 +78,6 @@ instance {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
     {pending : List VarId} {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
     Decidable (RevealComplete pending p) := decidableRevealComplete pending p
-
-/-- Full well-formedness: SSA freshness AND every committed secret is revealed. -/
-def WFProg {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-    {Γ : Vegas.VCtx P L}
-    (p : Vegas.VegasCore P L Γ) : Prop :=
-  WF p ∧ RevealComplete [] p
-
 
 @[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
     WFCtx (P := P) (L := L) [] := List.nodup_nil

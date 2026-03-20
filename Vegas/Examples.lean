@@ -1,4 +1,5 @@
 import Vegas.WF
+import Vegas.Scope
 
 namespace Vegas
 
@@ -71,14 +72,34 @@ noncomputable def conditionedGame : VegasSimple Γ0 :=
         (.reveal vb' 1 vb .here
           (.ret [(0, .constInt 1), (1, .constInt 0)]))))
 
-example : WF matchingPennies := by
-  decide
-
 example : RevealComplete [] matchingPennies := by
   decide
 
-example : WFProg matchingPennies := by
-  exact ⟨by decide, by decide⟩
+example : FreshBindings matchingPennies := by
+  decide
+
+example : ViewScoped matchingPennies := by
+  constructor
+  · intro x hx
+    exact Finset.mem_insert_of_mem hx
+  · constructor
+    · intro x hx
+      exfalso
+      change x ∈ (∅ : Finset VarId) at hx
+      simp at hx
+    · trivial
+
+example : WF matchingPennies := by
+  exact ⟨by decide, by decide, by
+    constructor
+    · intro x hx
+      exact Finset.mem_insert_of_mem hx
+    · constructor
+      · intro x hx
+        exfalso
+        change x ∈ (∅ : Finset VarId) at hx
+        simp at hx
+      · trivial⟩
 
 example : Legal matchingPennies := by
   constructor
@@ -104,14 +125,30 @@ example : mpProfile.NormalizedOn matchingPennies := by
       simp [mpProfile, vb, FDist.totalWeight_pure]
     · trivial
 
-example : WF conditionedGame := by
-  decide
-
 example : RevealComplete [] conditionedGame := by
   decide
 
-example : WFProg conditionedGame := by
-  exact ⟨by decide, by decide⟩
+example : FreshBindings conditionedGame := by
+  decide
+
+example : ViewScoped conditionedGame := by
+  constructor
+  · intro x hx
+    exact Finset.mem_insert_of_mem hx
+  · constructor
+    · intro x hx
+      exact Finset.mem_insert_of_mem hx
+    · trivial
+
+example : WF conditionedGame := by
+  exact ⟨by decide, by decide, by
+    constructor
+    · intro x hx
+      exact Finset.mem_insert_of_mem hx
+    · constructor
+      · intro x hx
+        exact Finset.mem_insert_of_mem hx
+      · trivial⟩
 
 example : ¬ Legal conditionedGame := by
   intro hlegal
@@ -151,8 +188,34 @@ noncomputable def sequentialReveal : VegasSimple Γ0 :=
         (.reveal vb' 1 vb .here
           (.ret mpPayoff.entries))))
 
-example : WFProg sequentialReveal := by
-  exact ⟨by decide, by decide⟩
+example : FreshBindings sequentialReveal := by
+  decide
+
+example : RevealComplete [] sequentialReveal := by
+  decide
+
+example : ViewScoped sequentialReveal := by
+  constructor
+  · intro x hx
+    exact Finset.mem_insert_of_mem hx
+  · constructor
+    · intro x hx
+      exfalso
+      change x ∈ (∅ : Finset VarId) at hx
+      simp at hx
+    · trivial
+
+example : WF sequentialReveal := by
+  exact ⟨by decide, by decide, by
+    constructor
+    · intro x hx
+      exact Finset.mem_insert_of_mem hx
+    · constructor
+      · intro x hx
+        exfalso
+        change x ∈ (∅ : Finset VarId) at hx
+        simp at hx
+      · trivial⟩
 
 example : Legal sequentialReveal := by
   constructor
