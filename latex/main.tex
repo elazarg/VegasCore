@@ -16,16 +16,14 @@ We present \emph{Vegas}, a typed domain-specific calculus for expressing
 strategic games as programs. Vegas programs compose five constructs---return,
 let-binding, sampling, commit, and reveal---under a visibility-aware static
 discipline. Each variable binding carries a visibility annotation---public or
-hidden with a designated owner---and a separate view-scoping judgment ensures
-that commit guards depend only on the committing player's view. We develop
-three semantic layers for Vegas: a
-denotational semantics producing weighted outcome distributions, a trace
-semantics enumerating execution paths, and a strategic semantics packaging
-programs as kernel games whose strategy spaces are view-based behavioral
-strategies. We prove these layers are connected by normalization
-(outcome distributions sum to one), adequacy (denotational semantics equals
-weighted trace sums), and expected utility preservation (strategic semantics
-faithfully represents payoffs). We further compile Vegas programs to
+hidden with a designated owner---and a view-scoping judgment ensures
+that commit guards depend only on the committing player's view. We give Vegas four semantic representations---denotational,
+trace, action graph, and native---connected by adequacy, normalization,
+execution uniqueness, and commutativity theorems. A strategic bridge packages
+any Vegas program as a kernel game whose strategy spaces are view-based
+behavioral strategies, with a proof that expected utility is
+preserved---enabling game-theoretic solution concepts (Nash equilibria,
+dominance) to be applied directly to programs. We further compile Vegas programs to
 Multi-Agent Influence Diagrams (MAIDs) and prove that compilation preserves
 outcome distributions. The entire development is mechanized in Lean~4,
 comprising approximately 7,000 lines of verified code for the Vegas calculus
@@ -83,19 +81,27 @@ scoping rather than by cryptographic mechanisms.
       $\Reveal$---and a visibility-aware context system that enforces
       information structure through a separate view-scoping judgment.
 
-\item \textbf{Denotational and trace semantics} (\Cref{sec:semantics}):
+\item \textbf{Four semantic representations} (\Cref{sec:semantics}):
       a denotational semantics ($\outcomeDist$) producing weighted outcome
-      distributions, a trace semantics enumerating all execution paths, and
-      proofs connecting them:
+      distributions; a trace semantics enumerating execution paths;
+      an action graph semantics providing order-independent DAG-based
+      execution; and a native intermediate semantics bridging to MAID
+      evaluation.
+      Proofs connecting these layers include
       \emph{normalization} (distributions sum to~1),
       \emph{adequacy} (denotational = trace),
       \emph{support correctness} (reachable outcomes = support),
+      \emph{execution uniqueness} (action graph order-independence),
       and \emph{commutativity} (adjacent independent constructs commute).
 
 \item \textbf{Strategic bridge} (\Cref{sec:strategic}): a construction
-      $\toKG(p, \rho)$ packaging any Vegas program as a kernel game, with a
-      proof that expected utility is preserved. This enables applying
-      game-theoretic solution concepts (Nash equilibria) to Vegas programs.
+      $\toKG(p, \rho)$ packaging any Vegas program as a kernel game whose
+      strategies are view-based behavioral strategies---functions from a
+      player's visible state to action distributions. The typing discipline
+      guarantees that strategies cannot depend on unobserved state, unlike
+      in extensive-form games where this is a convention. An EU preservation
+      theorem connects the kernel game's expected utility to the Vegas
+      denotational semantics.
 
 \item \textbf{MAID compilation} (\Cref{sec:maid}): a verified compiler from
       Vegas programs to Multi-Agent Influence Diagrams, with a correctness
@@ -110,9 +116,10 @@ scoping rather than by cryptographic mechanisms.
 \end{enumerate}
 
 \paragraph{Paper outline.}
-\Cref{sec:overview} introduces Vegas through two examples.
+\Cref{sec:overview} introduces Vegas through examples.
 \Cref{sec:calculus} defines the calculus formally.
-\Cref{sec:semantics} presents the denotational and trace semantics.
+\Cref{sec:semantics} presents the four semantic representations and their
+connecting theorems.
 \Cref{sec:strategic} describes the strategic bridge.
 \Cref{sec:maid} covers MAID compilation.
 \Cref{sec:mechanization} discusses the mechanization.
@@ -124,8 +131,9 @@ scoping rather than by cryptographic mechanisms.
 \section{Overview by Example}\label{sec:overview}
 %% =====================================================================
 
-We introduce Vegas through two games that illustrate the key features
-of the calculus: visibility annotations, commit-reveal, and information flow.
+We introduce Vegas through three games that illustrate the key features
+of the calculus: visibility annotations, commit-reveal, guards, and
+information flow.
 
 \subsection{Matching Pennies}
 
@@ -195,6 +203,47 @@ constructs---determines the information available to each player. Our
 commutativity theorems (\Cref{sec:semantics}) confirm that reordering
 independent constructs does not affect semantics.
 
+\subsection{Conditioned Choices}
+
+Commit guards can restrict a player's available actions based on observable
+state. Consider a variant where Player~0's revealed choice becomes the guard
+for Player~1:
+%
+\begin{quote}
+\begin{tabbing}
+\qquad\= \qquad\= \kill
+$\Commit\;a\;\mathbf{by}\;\pl{0}\;\mathbf{where}\;\mathit{true}$ \\
+$\Reveal\;a'\;\mathbf{from}\;a$ \\
+$\Commit\;b\;\mathbf{by}\;\pl{1}\;\mathbf{where}\;a'$ \\
+$\Reveal\;b'\;\mathbf{from}\;b$ \\
+$\Ret\;[\pl{0} \mapsto 1,\; \pl{1} \mapsto 0]$
+\end{tabbing}
+\end{quote}
+%
+Player~1's guard is the variable $a'$, which is Player~0's revealed choice
+interpreted as a Boolean. When $a' = \mathit{true}$, Player~1's choices are
+unrestricted (both Boolean values satisfy the guard). But when
+$a' = \mathit{false}$, \emph{no} Boolean value satisfies the guard---a
+deadlock. This program violates the $\Legal$ condition
+(\Cref{def:standing}), which requires that for every erased environment, at
+least one action satisfies the guard. The example illustrates both the
+expressiveness of non-trivial guards and the necessity of the legality
+assumption.
+
+\paragraph{View scoping of guards.}
+The guard $a'$ is well-scoped: it depends only on $a'$, which is public
+and hence in Player~1's view at the point of the commit. A guard that
+referenced a variable hidden from the committing player would violate the
+view-scoping judgment (\Cref{def:viewscoped}).
+
+\subsection{Nature and Sampling}
+
+\paragraph{Missing:} \textit{The calculus includes a $\Sample$ construct with
+three sampling modes---public nature, private nature, and player-private---that
+draw from distribution expressions and bind the result with appropriate
+visibility. A small example (e.g., Bayesian game with private types drawn from
+a prior) should be added here to complete the tour of language features.}
+
 
 %% =====================================================================
 \section{The Vegas Calculus}\label{sec:calculus}
@@ -206,24 +255,12 @@ that track which variables each player can observe.
 
 \subsection{Expression Language Interface}
 
-The calculus is generic over its expression layer. An expression language
-$L$ provides:
-\begin{itemize}[nosep]
-\item A type universe $L.\Ty$ with distinguished types $L.\bool$ and $L.\intt$.
-\item A value family $L.\Val(\tau)$ for each $\tau : L.\Ty$.
-\item Expression syntax $L.\Expr(\Delta, \tau)$ typed over plain contexts
-      $\Delta$, with an evaluation function
-      $L.\mathit{eval} : L.\Expr(\Delta, \tau) \to \Env(\Delta) \to L.\Val(\tau)$.
-\item Distribution expressions $L.\mathit{DistExpr}(\Delta, \tau)$ evaluating to
-      weighted distributions $\FDist{L.\Val(\tau)}$.
-\item Dependency tracking: operations assigning to each expression or
-      distribution expression the set of variable identifiers it depends on,
-      together with soundness laws guaranteeing that evaluation depends only on
-      those variables.
-\item Structural irrelevance laws: expressions can be extended across fresh,
-      irrelevant bindings, and expressions that do not depend on a variable can
-      be re-expressed after dropping that variable from the context.
-\end{itemize}
+The calculus is generic over an expression language interface $L$
+(\leanref{IExpr}) that provides types, values, expression syntax with an
+evaluator, distribution expressions, and a dependency-tracking discipline.
+All Vegas metatheory is proved once for any $L$; a concrete instantiation with
+integers, Booleans, arithmetic, equality, and conditionals is used for
+examples. The full interface is described in \Cref{sec:mechanization}.
 
 \subsection{Visibility Contexts}\label{sec:vctx}
 
@@ -346,6 +383,10 @@ The five constructs operate as follows:
       lie in the proposed value and the player's view. The result is bound as
       $\hid(i, \tau)$.
 \item $\Reveal$: Make a hidden variable public by binding a fresh $\pub$ copy.
+      Reveal is an explicit construct so that the \emph{timing} of information
+      disclosure is under program control---a commit followed by an immediate
+      reveal models open play, while deferring the reveal models sealed
+      commitment.
 \end{itemize}
 
 
@@ -404,23 +445,25 @@ interface and justified by dependency-soundness theorems.
 Let $p$ be a Vegas program and $\sigma$ an operational profile. The following
 predicates are defined by structural recursion on~$p$:
 \begin{itemize}[nosep]
-\item $\Legal(p)$: At every $\Commit\;x\;\mathbf{by}\;i\;\mathbf{where}\;R$
-      site, for every erased environment $\rho : \Env(\|\Gamma\|)$, there
-      exists some value $a : L.\Val(\tau)$ with
-      $R[x \mapsto a, \rho] = \mathit{true}$.
-      This is a feasibility/non-deadlock condition.
+\item $\Legal(p)$: At every commit site, for every erased environment
+      $\rho : \Env(\|\Gamma\|)$, there exists some value
+      $a : L.\Val(\tau)$ with $R[x \mapsto a, \rho] = \mathit{true}$.
+      This is a feasibility condition: the game never deadlocks.
+      (See the conditioned-choice example in \Cref{sec:overview} for a
+      program that violates it.)
 
-\item $\DistinctActs(p)$: a structural side condition used by the MAID
-      correctness theorem, requiring that compiled decision nodes have
-      duplicate-free action lists. In the core language, where committed
-      types determine the action space, it holds trivially.
-
-\item $\NormDists(p)$: At every sample site with distribution $D$, for every
-      environment $\rho$,
-      $\sum_{v} D(\rho)(v) = 1$.
+\item $\NormDists(p)$: At every sample site, for every environment $\rho$,
+      $\sum_{v} D(\rho)(v) = 1$. Used by the normalization theorem
+      (\Cref{thm:norm}).
 
 \item $\NormOn(\sigma, p)$: At every commit site, for every erased environment
-      $\rho$, $\sum_{v} \sigma(i, x, R)(\rho)(v) = 1$.
+      $\rho$, $\sum_{v} \sigma(i, x, R)(\rho)(v) = 1$. Used together with
+      $\NormDists$ for normalization.
+
+\item $\DistinctActs(p)$: compiled decision nodes have duplicate-free action
+      lists. Used by the MAID correctness theorem (\Cref{thm:maid}); holds
+      trivially in the core language, where committed types determine the
+      action space.
 \end{itemize}
 \end{definition}
 
@@ -431,8 +474,11 @@ preconditions for our main theorems.
 \begin{definition}[Fair Play]\label{def:admissible}
 An operational profile~$\sigma$ is \emph{fair play} for~$p$ if at every commit
 site $(x, i, R)$ and every erased environment $\rho$, the kernel
-$\sigma(i, x, R)(\rho)$ assigns positive weight only to values
-$a$ satisfying $R[x \mapsto a, \rho] = \mathit{true}$.
+$\sigma(i, x, R)(\rho)$ is supported on values
+$a$ satisfying $R[x \mapsto a, \rho] = \mathit{true}$---i.e., players only
+choose actions that satisfy the guard. Fair play connects strategy properties
+to trace properties: under a fair-play profile, every trace with positive
+weight is legal (\Cref{thm:fairplay}).
 \end{definition}
 
 
@@ -472,36 +518,60 @@ Let $\mathcal{V}_i(\Gamma) = \Env(\|\Gamma\!\!\downarrow_i\|)$.
 \end{itemize}
 Joint pure, behavioral, and mixed profiles are defined pointwise over players.
 Behavioral profiles are converted to operational profiles by projecting each
-erased environment to the corresponding player view. This is the bridge from
-the game-theoretic strategy layer to the operational semantics.
+erased environment to the corresponding player view
+(\leanref{projectViewEnv}). This is the bridge from the game-theoretic
+strategy layer to the operational semantics.
 \end{definition}
+
+\paragraph{Information discipline by construction.}
+In extensive-form games, a behavioral strategy is a function from
+\emph{information sets} to action distributions, but nothing in the type
+prevents defining a strategy that conditions on the full game history---the
+information-set constraint is enforced by convention.
+In Vegas, the strategy type $\mathcal{V}_i(\Gamma) \to \FDist{L.\Val(\tau)}$
+makes the constraint structural: a player's strategy is a function from
+\emph{only the variables the player can observe}, as determined by the
+visibility context. The view projection $\Gamma\!\!\downarrow_i$ erases
+variables hidden from player~$i$, so there is no way to write a strategy that
+accidentally depends on unobserved state. This is the central payoff of the
+visibility-aware type system: information structure is enforced by
+construction, not by side conditions. In the mechanization, we prove that
+operationalized behavioral strategies automatically satisfy the
+observation-respecting property (\leanref{toOperationalProfile\_respectsObservation}).
 
 
 %% =====================================================================
 \section{Semantics}\label{sec:semantics}
 %% =====================================================================
 
-We define two semantic layers for Vegas---denotational and trace---and prove
-they coincide. \Cref{fig:layers} summarizes the semantic architecture.
+Vegas has two primary semantic representations---denotational and
+trace---connected by adequacy. An action graph formalization establishes
+order-independence, and a native intermediate semantics bridges to MAID
+evaluation (\Cref{sec:maid}). \Cref{fig:layers} summarizes the architecture.
 
 \begin{figure}[ht]
 \centering
-\fbox{\parbox{0.85\textwidth}{\centering
+\fbox{\parbox{0.88\textwidth}{\centering
 \begin{tabular}{ccc}
   \textbf{Denotational} & & \textbf{Trace} \\
   $\densub{p}{\sigma}(\rho) : \FDist{\Outcome}$
   & $\xleftarrow{\;\text{adequacy}\;}$ &
   $\sum_{t} \trweight{\sigma}(t, \rho) \cdot \delta_{\trout(t,\rho)}$ \\[8pt]
   $\downarrow$ \text{\small normalization} & & $\downarrow$ \text{\small support = Reach} \\[4pt]
-  $\PMF{\Outcome}$ & $\xrightarrow{\;\toKG\;}$ &
-  \textbf{Kernel Game} $\KG$ \\[4pt]
-  & & $\downarrow$ \text{\small EU preservation} \\[4pt]
-  & & Nash / dominance
+  $\PMF{\Outcome}$ & & \\[4pt]
+  $\downarrow$ \text{\small $\toKG$} & & \\[4pt]
+  \textbf{Kernel Game} $\KG$ & $\xrightarrow{\;\text{EU pres.}\;}$ &
+  Nash / dominance \\[12pt]
+  \multicolumn{3}{c}{\textbf{Action Graph}: $\mathit{extractEvents}(p) \to
+    \mathsf{Execution}$ \quad (\text{order-independence})}
 \end{tabular}
 }}
-\caption{Semantic layers and their connections. Arrows indicate proved
-theorems; the final step (Nash/dominance for Vegas programs) uses the
-equilibrium wrapper layer.}\label{fig:layers}
+\caption{Semantic architecture. The denotational and trace semantics are
+connected by adequacy. Normalization promotes to PMF, enabling the strategic
+bridge $\toKG$ (\Cref{sec:strategic}). The action graph
+(\Cref{sec:actiongraph}) provides a complementary order-independent execution
+model. MAID compilation (\Cref{sec:maid}) proceeds via a separate native
+intermediate semantics proved equal to $\outcomeDist$.}\label{fig:layers}
 \end{figure}
 
 
@@ -651,15 +721,21 @@ $\trweight{\sigma}(t,\rho) > 0$
 (\leanref{mem\_support\_outcomeDist\_iff\_exists\_pos\_weight\_trace}).
 \end{theorem}
 
-\noindent
-At the trace level, fair play connects strategy properties with trace
-properties:
-\begin{itemize}[nosep]
-\item Under a fair-play operational profile, every trace with positive weight is
-      legal (\leanref{admissible\_pos\_weight\_legal}).
-\item $\Reach$ implies $\CanReach$ under fair play
+\begin{theorem}[Fair Play]\label{thm:fairplay}
+Under a fair-play operational profile~$\sigma$:
+\begin{enumerate}[nosep]
+\item Every trace with positive weight is legal
+      (\leanref{admissible\_pos\_weight\_legal}).
+\item Profile-dependent reachability implies profile-free reachability:
+      $\Reach(\sigma, p, \rho, o) \Rightarrow \CanReach(p, \rho, o)$
       (\leanref{admissible\_reach\_canReach}).
-\end{itemize}
+\end{enumerate}
+\end{theorem}
+
+\noindent
+Together with support correctness, this means that under fair play the
+reachable outcomes of a Vegas program depend only on the program's guards and
+distribution supports, not on the specific strategy profile.
 
 \begin{theorem}[Commutativity]\label{thm:comm}
 Adjacent commits with disjoint variable dependencies produce the same outcome
@@ -680,6 +756,55 @@ guard dependencies).
 \noindent
 Commutativity confirms that the sequential textual order of independent
 constructs is an artifact of the syntax, not a semantic distinction.
+
+
+\subsection{Action Graph Semantics}\label{sec:actiongraph}
+
+The denotational and trace semantics both follow the program's syntactic
+structure. The \emph{action graph} semantics provides a complementary,
+order-independent view: a Vegas program is flattened into a dependency DAG
+of event nodes, and execution proceeds by firing any node whose dependencies
+are satisfied.
+
+\begin{definition}[Event Node and Action Graph]
+An \emph{event node} has an identifier (the variable it binds), a kind
+($\mathit{let}$, $\mathit{sample}$, $\mathit{commit}$, or $\mathit{reveal}$),
+and a dependency list (the variable identifiers it reads). The function
+$\mathit{extractEvents}(p)$ walks a Vegas program and emits one event node per
+construct, with dependencies drawn from expression dependency tracking
+($\mathsf{deps}$) for $\Let$ and $\Sample$ nodes, from the variable
+identifiers in the player's view
+$(\Gamma\!\!\downarrow_i).\mathit{vars}$ for $\Commit$ nodes, and from the
+source variable for $\Reveal$ nodes.
+\leanref{VegasCore.extractEvents}
+\end{definition}
+
+\begin{definition}[Configuration and Execution]
+A \emph{configuration} consists of a list of pending event nodes and a partial
+environment mapping variable identifiers to tagged values. A node is
+\emph{ready} when all its dependencies are resolved. A \emph{step} fires a
+ready node, recording a value and removing the node from the pending list. An
+\emph{execution} is a sequence of steps from an initial configuration to a
+terminal one (no pending nodes).
+\leanref{Config}, \leanref{Step}, \leanref{Execution}
+\end{definition}
+
+The key property is that the final environment depends only on \emph{what}
+values are assigned, not on the \emph{order} in which ready nodes are fired:
+
+\begin{theorem}[Execution Uniqueness]\label{thm:execunique}
+Two complete executions from the same initial configuration that assign the
+same value at each node produce the same final environment.
+
+\noindent\leanref{execution\_env\_unique}
+\end{theorem}
+
+\noindent
+This result justifies the DAG perspective: the syntactic ordering of a Vegas
+program is one valid topological sort of the action graph, but any other is
+equally valid. The action graph also provides the conceptual foundation for
+MAID compilation (\Cref{sec:maid}), where the DAG structure maps directly to
+the MAID's graphical structure.
 
 
 %% =====================================================================
@@ -739,16 +864,53 @@ For any player~$i$ and joint strategy $\sigma$:
 \leanref{toKernelGame\_eu}
 \end{theorem}
 
+\subsection{Equilibrium Wrapper Layer}
+
+Because the bridge preserves expected utility, game-theoretic solution concepts
+apply directly to Vegas programs. We provide a thin wrapper layer that
+transports the GT library's definitions through $\toKG$:
+
+\begin{definition}[Vegas Nash Equilibrium]
+A behavioral profile~$\sigma$ is a \emph{Nash equilibrium} of a Vegas
+program~$p$ with environment~$\rho$ if it is a Nash equilibrium of
+$\toKG(p, \rho)$:
+\[
+  \mathsf{IsNash}(p, \rho, \sigma) \;\;\iff\;\;
+  \toKG(p, \rho).\mathsf{IsNash}(\sigma)
+\]
+\leanref{Vegas.IsNash}
+\end{definition}
+
 \noindent
-Because the bridge preserves expected utility, the game theory library's
-solution concepts apply directly to Vegas programs. We provide a thin
-\emph{equilibrium wrapper layer} (\leanref{Vegas.IsNash},
-\leanref{Vegas.IsDominant}, \leanref{Vegas.IsBestResponse}, etc.) that
-transports the GT library's definitions through $\toKG$ so they can be stated
-directly in terms of Vegas programs and player strategies. A Nash equilibrium
-of a Vegas program is a profile of player strategies where no player can
-improve their expected payoff by unilateral deviation---the EU preservation
-theorem guarantees this matches the underlying kernel game definition.
+The wrapper also provides $\mathsf{IsBestResponse}$, $\mathsf{IsDominant}$,
+$\mathsf{IsParetoEfficient}$, and $\mathsf{socialWelfare}$, all defined by
+the same transport. Two structural results lift through the bridge:
+
+\begin{theorem}[Nash Characterization]\label{thm:nashchar}
+$\mathsf{IsNash}(p, \rho, \sigma)$ holds iff every player is playing a best
+response:
+\[
+  \mathsf{IsNash}(p, \rho, \sigma) \;\;\iff\;\;
+  \forall\, i.\; \mathsf{IsBestResponse}(p, \rho, i, \sigma, \sigma_i)
+\]
+\leanref{Vegas.isNash\_iff\_bestResponse}
+\end{theorem}
+
+\begin{theorem}[Dominance implies Nash]\label{thm:domNash}
+If every player plays a dominant strategy, the resulting profile is a Nash
+equilibrium.
+
+\noindent\leanref{Vegas.dominant\_is\_nash}
+\end{theorem}
+
+\noindent
+For Matching Pennies, a Nash equilibrium is thus a pair of behavioral
+strategies $(\sigma_{\pl{0}}, \sigma_{\pl{1}})$---each mapping the player's
+visible state to a distribution over $\{\mathit{true}, \mathit{false}\}$---such
+that neither player can increase their expected payoff by switching to a
+different strategy. Since both commits precede all reveals, each player's
+visible state at their commit point contains only their own prior
+choices (if any), enforcing the simultaneity of the original game.
 
 
 %% =====================================================================
@@ -813,6 +975,52 @@ configurations when evaluating downstream node functions. The key challenge is
 ensuring that decision node observation parents exactly match the player's view
 $\Gamma\!\!\downarrow_i$.
 
+\paragraph{Example: compiled MAIDs.}
+For Matching Pennies, the compiler emits four nodes
+(\Cref{fig:maid-mp}):
+
+\begin{figure}[ht]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\textbf{Matching Pennies} (simultaneous):
+\[
+\underset{\text{Player $\pl{0}$}}{\fbox{$D_a$}}
+\qquad
+\underset{\text{Player $\pl{1}$}}{\fbox{$D_b$}}
+\qquad
+\overset{D_a, D_b}{\longrightarrow}\;
+\underset{\pl{0}}{\Diamond\; U_0}
+\qquad
+\overset{D_a, D_b}{\longrightarrow}\;
+\underset{\pl{1}}{\Diamond\; U_1}
+\]
+Decision nodes $D_a$ (Player~$\pl{0}$) and $D_b$ (Player~$\pl{1}$) have
+\emph{no observation parents}---neither player observes any prior node.
+Both utility nodes $U_0, U_1$ have parents $\{D_a, D_b\}$.
+
+\medskip
+\textbf{Sequential Reveal} (Player~$\pl{0}$ moves first):
+\[
+\underset{\text{Player $\pl{0}$}}{\fbox{$D_a$}}
+\;\xrightarrow{\;\text{obs}\;}\;
+\underset{\text{Player $\pl{1}$}}{\fbox{$D_b$}}
+\qquad
+\overset{D_a, D_b}{\longrightarrow}\;
+\underset{\pl{0}}{\Diamond\; U_0}
+\qquad
+\overset{D_a, D_b}{\longrightarrow}\;
+\underset{\pl{1}}{\Diamond\; U_1}
+\]
+Now $D_b$ has observation parent $\{D_a\}$: the reveal of $a$ before
+Player~$\pl{1}$'s commit makes $a$'s decision node observable. The
+$\Reveal$ construct itself produces no MAID node; its effect is captured
+entirely by the observation-parent edge.
+}}
+\caption{Compiled MAIDs for the two main examples. Boxes are decision
+nodes, diamonds are utility nodes. Arrows labeled ``obs'' are observation
+edges; other arrows are value-parent edges.}\label{fig:maid-mp}
+\end{figure}
+
 
 \subsection{Correctness}
 
@@ -838,10 +1046,26 @@ $\mathit{extract}$ such that:
 \end{theorem}
 
 \noindent
-The proof proceeds in layers: a ``native'' outcome distribution evaluates
-compiled nodes in topological order, shown equivalent to $\outcomeDist$ by
-structural induction; then native evaluation is connected to the MAID's formal
-semantics.
+The proof proceeds in three layers:
+\begin{enumerate}[nosep]
+\item A \emph{native outcome distribution}
+      $\mathit{nativeOutcomeDist}$ (\leanref{nativeOutcomeDist}) evaluates the
+      Vegas program while threading a $\mathit{RawNodeEnv}$---a flat partial
+      assignment mapping MAID node indices to tagged values. Each $\Sample$ and
+      $\Commit$ step extends the raw environment alongside the typed
+      environment. This intermediate semantics is proved equal to
+      $\outcomeDist$ by structural induction
+      (\leanref{nativeOutcomeDist\_eq\_outcomeDist}).
+\item A \emph{fold bridge}
+      (\leanref{evalFoldFDist\_toPMF\_eq\_evalFold}) shows that
+      the $\FDist$-valued fold over compiled nodes (which mirrors the MAID's
+      topological evaluation) can be promoted to the MAID's $\PMF$-valued
+      evaluation.
+\item The main theorem connects these layers:
+      $\mathit{evalFoldFDist} \circ \mathit{extract} =
+       \mathit{nativeOutcomeDist} = \outcomeDist$
+      (\leanref{foldFDist\_map\_extract\_eq\_nativeOutcomeDist}).
+\end{enumerate}
 
 As a strategic corollary, the expected payoff of any player under the compiled
 MAID policy equals the Vegas denotational expected payoff
@@ -885,11 +1109,27 @@ GameTheory library & 60+ & ${\sim}33{,}000$ \\
 
 \paragraph{Expression language parametricity.}
 The Vegas calculus is generic over its expression language interface
-$L : \leanref{IExpr}$, which bundles types, values, expression syntax,
-evaluation, distribution expressions, dependency tracking, and soundness
-laws. The metatheory is proved once, independently of any concrete language.
-A concrete instantiation with integers, Booleans, arithmetic, equality, and
-conditionals is used for examples and testing.
+$L : \leanref{IExpr}$. The interface bundles:
+\begin{itemize}[nosep]
+\item A type universe $L.\Ty$ with distinguished $L.\bool$ and $L.\intt$.
+\item A value family $L.\Val(\tau)$ and expression syntax
+      $L.\Expr(\Delta, \tau)$ with an evaluator.
+\item Distribution expressions $L.\mathit{DistExpr}(\Delta, \tau)$ evaluating
+      to weighted distributions $\FDist{L.\Val(\tau)}$.
+\item Dependency tracking: $L.\mathit{exprDeps}$ and $L.\mathit{distDeps}$
+      assign each expression the set of variable identifiers it depends on.
+\item Soundness laws: evaluation depends only on tracked variables. These are
+      required for the commutativity proofs (\Cref{thm:comm}), which must show
+      that reordering independent constructs does not affect expression
+      evaluation.
+\item Structural laws: expressions can be extended across fresh bindings, and
+      expressions not depending on a variable can be re-expressed after
+      dropping it. These are required for guard manipulation in the
+      commutativity proofs.
+\end{itemize}
+The metatheory is proved once for any $L$. A concrete instantiation with
+integers, Booleans, arithmetic, equality, and conditionals
+(\leanref{simpleExpr}) is used for examples and testing.
 
 \paragraph{Design decisions.}
 \begin{itemize}[nosep]
@@ -898,12 +1138,6 @@ conditionals is used for examples and testing.
       type, rather than Mathlib's $\PMF{}$. This avoids carrying normalization
       proofs through intermediate computations; normalization is established once
       at the end (\Cref{thm:norm}) and used to promote to $\PMF{}$ when needed.
-
-\item \emph{Parametric IExpr.} The expression language interface was designed so
-      that all Vegas theorems hold for any $L : \leanref{IExpr}$. The dependency
-      tracking and soundness laws in $\leanref{IExpr}$ are sufficient for the
-      commutativity proofs, which require showing that reordering independent
-      constructs does not affect expression evaluation.
 
 \item \emph{SSA via Fresh.} Well-formedness is a simple ``fresh identifier in
       context'' check rather than a full de~Bruijn encoding. This keeps the
@@ -934,14 +1168,14 @@ verified semantics, not the GT library itself.
 Vegas's visibility annotations are reminiscent of information-flow type systems
 in the security literature. Both track which principals can observe which data.
 The key difference is purpose: security type systems prevent information
-\emph{leakage}, while Vegas's visibility-scoping discipline enforces game-theoretic information
+\emph{leakage}, while Vegas's view-scoping discipline enforces game-theoretic information
 \emph{structure}---ensuring that strategies depend only on the information
 players are supposed to have.
 
 \paragraph{Blockchain and commit-reveal.}
 The commit-reveal pattern is standard in blockchain applications (e.g.,
 sealed-bid auctions on Ethereum). Vegas abstracts this pattern into a
-visibility-scoping discipline, showing that the same information-structure guarantees
+view-scoping discipline, showing that the same information-structure guarantees
 can be stated at the language level rather than deferred entirely to cryptography. This complements work
 on verified smart contracts by providing a game-theoretic foundation for
 reasoning about strategic interaction in decentralized protocols.
@@ -959,15 +1193,31 @@ multi-agent strategic interaction with per-player information constraints.
 
 We have presented Vegas, a typed game calculus that integrates imperfect
 information structure through commit-reveal constructs, visibility-aware
-contexts, and a separate view-scoping discipline. The calculus comes with three verified semantic
-layers connected by normalization, adequacy, and EU preservation theorems, and
-a verified compilation path to MAIDs. The entire development is mechanized in
-Lean~4.
+contexts, and a view-scoping discipline. The calculus comes with four
+semantic representations---denotational, trace, action graph, and
+native---connected by adequacy, normalization, execution uniqueness, and
+commutativity theorems. A strategic bridge to kernel games preserves expected
+utility, enabling game-theoretic solution concepts; a verified compilation
+path to MAIDs preserves outcome distributions. The entire development is
+mechanized in Lean~4.
 
-Future directions include extending Vegas with sequential equilibrium
-refinements, richer expression languages (continuous distributions, recursive
-types), and exploring the connection to verified smart contract languages more
-deeply.
+\paragraph{Limitations.}
+The current calculus is restricted to finite types (all $L.\Val(\tau)$ are
+finite), which excludes games with continuous action spaces. The commit-reveal
+model assumes perfect recall---a player's view grows monotonically as the
+program executes, and there is no construct for forgetting. The expression
+language interface requires explicit dependency tracking with soundness
+proofs, which adds friction to defining new expression languages. Finally,
+the strategic bridge constructs kernel games from behavioral strategies but
+does not yet provide a Kuhn-style equivalence between behavioral and mixed
+strategies within the Vegas framework.
+
+\paragraph{Future directions.}
+Extending Vegas with richer expression languages (continuous distributions,
+recursive types), sequential equilibrium refinements, and a deeper connection
+to verified smart contract languages. The commit-reveal structure suggests a
+natural correspondence with zero-knowledge protocols that remains to be
+formalized.
 
 \bibliographystyle{plain}
 % \bibliography{refs}

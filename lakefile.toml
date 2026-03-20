@@ -3,12 +3,6 @@ version = "0.1.0"
 keywords = ["math"]
 defaultTargets = ["Vegas"]
 
-[leanOptions]
-pp.unicode.fun = true # pretty-prints `fun a ↦ b`
-relaxedAutoImplicit = false
-weak.linter.mathlibStandardSet = true
-maxSynthPendingDepth = 3
-
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
@@ -20,3 +14,8 @@ path = "GameTheory"
 
 [[lean_lib]]
 name = "Vegas"
+[lean_lib.leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3

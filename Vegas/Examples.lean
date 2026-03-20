@@ -241,6 +241,55 @@ example : mpProfile.NormalizedOn sequentialReveal := by
       simp [mpProfile, vb, FDist.totalWeight_pure]
     · trivial
 
+/-! ### Paper claims: visibility contexts -/
+
+-- Matching Pennies: after both commits, Player 0's view contains only their own variable.
+-- Paper: "Player 0's view Γ↓₀ = [(a, hid(0, bool))]"
+example : viewVCtx 0 Γ2 = [(va, .hidden 0 .bool)] := by
+  simp [viewVCtx, canSee, Γ2, va, vb]
+
+-- Matching Pennies: Player 1's view contains only their own variable.
+example : viewVCtx 1 Γ2 = [(vb, .hidden 1 .bool)] := by
+  simp [viewVCtx, canSee, Γ2, va, vb]
+
+-- Sequential Reveal: at Player 1's commit point, a' is in Player 1's view.
+-- Paper: "Player 1's view includes a' (public)"
+-- Context at Player 1's commit: (va', .pub .bool) :: Γ1
+def Γ_seqRevealAtP1Commit : VCtxSimple := (va', .pub .bool) :: Γ1
+
+example : va' ∈ visibleVars (L := simpleExpr) 1 Γ_seqRevealAtP1Commit := by
+  simp [Γ_seqRevealAtP1Commit, Γ1, visibleVars, va, va']
+
+/-! ### Paper claims: conditioned game guard behavior -/
+
+-- The guard for Player 1's commit in conditionedGame.
+-- Guard context: (vb, .bool) :: eraseVCtx [(va', .pub .bool), (va, .hidden 0 .bool)]
+--              = [(vb, .bool), (va', .bool), (va, .bool)]
+-- Guard expression: .var va' (.there .here)  — reads va' from the environment.
+
+private def cgGuard : simpleExpr.Expr ((vb, .bool) :: eraseVCtx Γ_seqRevealAtP1Commit) .bool :=
+  .var va' (.there .here)
+
+-- When va' = true in the environment, the guard evaluates to true for ANY proposed action.
+-- Paper: "When a' = true, Player 1's choices are unrestricted"
+example : ∀ (a : Bool) (va_val : Bool),
+    let env : Env simpleExpr.Val (eraseVCtx Γ_seqRevealAtP1Commit) :=
+      Env.cons true (Env.cons va_val (Env.empty _))
+    evalGuard cgGuard a env = true := by
+  intro a va_val
+  cases a <;> cases va_val <;>
+    simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]
+
+-- When va' = false, the guard evaluates to false for ANY proposed action — deadlock.
+-- Paper: "When a' = false, no Boolean value satisfies the guard"
+example : ∀ (a : Bool) (va_val : Bool),
+    let env : Env simpleExpr.Val (eraseVCtx Γ_seqRevealAtP1Commit) :=
+      Env.cons false (Env.cons va_val (Env.empty _))
+    evalGuard cgGuard a env = false := by
+  intro a va_val
+  cases a <;> cases va_val <;>
+    simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]
+
 end Examples
 
 end Vegas
