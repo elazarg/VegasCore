@@ -47,19 +47,4 @@ def PartialOperationalProfile.toOperationalProfile
     | some k => k env
     | none => fallback.commit who x R env
 
-/-- Backward-compatible alias for evaluator-facing profiles. Prefer
-`OperationalProfile` in new code. -/
-abbrev Profile := OperationalProfile
-
-/-- Backward-compatible alias for partial evaluator-facing profiles. Prefer
-`PartialOperationalProfile` in new code. -/
-abbrev PProfile := PartialOperationalProfile
-
-/-- Backward-compatible alias for partial-profile completion. Prefer
-`PartialOperationalProfile.toOperationalProfile`. -/
-def PProfile.toProfile {Player : Type} [DecidableEq Player] {L : IExpr}
-    (π : PProfile Player L) (fallback : Profile Player L) :
-    Profile Player L :=
-  π.toOperationalProfile fallback
-
 end Vegas

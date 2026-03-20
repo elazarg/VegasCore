@@ -45,7 +45,7 @@ noncomputable def matchingPennies : VegasSimple Γ0 :=
         (.reveal vb' 1 vb hvb_in_Γ3
           (.ret mpPayoff.entries))))
 
-noncomputable def mpProfile : ProfileSimple where
+noncomputable def mpProfile : OperationalProfileSimple where
   commit := fun {_Γ} {b} _who x _R _env =>
     match x with
     | 0 =>
@@ -244,3 +244,4 @@ example : mpProfile.NormalizedOn sequentialReveal := by
 end Examples
 
 end Vegas
+

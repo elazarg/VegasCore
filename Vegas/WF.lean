@@ -202,13 +202,6 @@ def FairPlayProfile {P : Type} [DecidableEq P]
     FairPlayProfile σ k
   | _, .reveal _ _ _ _ k => FairPlayProfile σ k
 
-/-- Backward-compatible alias for fair-play profiles. Prefer `FairPlayProfile`
-in new code. -/
-abbrev AdmissibleProfile {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr} (σ : Vegas.OperationalProfile P L)
-    {Γ : Vegas.VCtx P L} (p : Vegas.VegasCore P L Γ) : Prop :=
-  FairPlayProfile σ p
-
 namespace DistExpr
 
 abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}

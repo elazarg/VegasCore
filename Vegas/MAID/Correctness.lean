@@ -59,7 +59,7 @@ The `FDist.bind` is over `FDist (L.Val τ)` → `FDist (Outcome Player)`, both o
 have computable `DecidableEq`. -/
 noncomputable def nativeOutcomeDist
     (B : MAIDBackend Player L)
-    (σ : Profile Player L) :
+    (σ : OperationalProfile Player L) :
     {Γ : VCtx Player L} →
     (p : VegasCore Player L Γ) →
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ) →
@@ -107,7 +107,7 @@ theorem nativeOutcomeDist_eq_outcomeDist
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (nextId : Nat)
     (hρ : ∀ nid, nextId ≤ nid → InsensitiveTo ρ nid) :
@@ -165,7 +165,7 @@ theorem nativeOutcomeDist_eq_outcomeDist_init
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (env : VEnv (Player := Player) L Γ)
     (raw₀ : RawNodeEnv L) :
     nativeOutcomeDist B σ p (fun _ => env) 0 raw₀ = outcomeDist σ p env := by
@@ -232,18 +232,18 @@ noncomputable def rawOfTAssign (st : MAIDCompileState Player L B)
 /-- Kernel normalization: every decision node in `st`, when its kernel is
 applied to `σ`, produces a normalized FDist. -/
 def MAIDCompileState.KernelNormalized (st : MAIDCompileState Player L B)
-    (σ : Profile Player L) : Prop :=
+    (σ : OperationalProfile Player L) : Prop :=
   ∀ (nd : Fin st.nextId) (raw : RawNodeEnv L)
     (τ : L.Ty) (who : Player) (acts : List (L.Val τ))
     (hacts : acts ≠ []) (hnodup : acts.Nodup) (obs : Finset Nat)
-    (kernel : Profile Player L → RawNodeEnv L → FDist (L.Val τ)),
+    (kernel : OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ)),
     st.descAt nd = .decision τ who acts hacts hnodup obs kernel →
     FDist.totalWeight (kernel σ raw) = 1
 
-/-- Compile a Vegas `ProfileSimple` into a MAID `Policy`. Each decision node's
+/-- Compile a Vegas `OperationalProfileSimple` into a MAID `Policy`. Each decision node's
 kernel is evaluated and converted via `toPMF`. -/
 noncomputable def compiledPolicy (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ) :
     @MAID.Policy Player _ B.fintypePlayer st.nextId st.toStruct := by
   let _ : Fintype Player := B.fintypePlayer
@@ -265,14 +265,14 @@ noncomputable def compiledPolicy (st : MAIDCompileState Player L B)
 /-- The empty compile state trivially satisfies kernel normalization
 (it has no nodes). -/
 theorem MAIDCompileState.empty_kernelNormalized
-    (σ : Profile Player L) :
+    (σ : OperationalProfile Player L) :
     (MAIDCompileState.empty (B := B)).KernelNormalized σ :=
   fun nd => nd.elim0
 
 /-- `addVar` does not change nodes, so kernel normalization is preserved. -/
 theorem MAIDCompileState.addVar_kernelNormalized
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (x : VarId) (τ : BindTy Player L) (deps : Finset Nat)
     (hdeps : ∀ d ∈ deps, d < st.nextId)
     (hst : st.KernelNormalized σ) :
@@ -308,7 +308,7 @@ theorem MAIDCompileState.addNode_descAt_old
 /-- `addNode` with a chance node preserves kernel normalization. -/
 theorem MAIDCompileState.addNode_chance_kernelNormalized
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (τ : L.Ty) (deps : Finset Nat)
     (cpd : RawNodeEnv L → FDist (L.Val τ))
     (hn : ∀ raw, FDist.totalWeight (cpd raw) = 1)
@@ -337,10 +337,10 @@ theorem MAIDCompileState.addNode_chance_kernelNormalized
 kernel is normalized. -/
 theorem MAIDCompileState.addNode_decision_kernelNormalized
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (τ : L.Ty) (who : Player) (acts : List (L.Val τ))
     (hacts : acts ≠ []) (hnodup : acts.Nodup) (obs : Finset Nat)
-    (kernel : Profile Player L → RawNodeEnv L → FDist (L.Val τ))
+    (kernel : OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ))
     (hdeps : ∀ d ∈ (CompiledNode.decision τ who acts hacts hnodup obs kernel).parents ∪
       (CompiledNode.decision τ who acts hacts hnodup obs kernel).obsParents, d < st.nextId)
     (hst : st.KernelNormalized σ)
@@ -365,7 +365,7 @@ theorem MAIDCompileState.addNode_decision_kernelNormalized
 /-- Utility nodes preserve kernel normalization. -/
 theorem MAIDCompileState.addUtilityNodes_kernelNormalized
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (deps : Finset Nat) (hdeps : ∀ d ∈ deps, d < st.nextId)
     (ufn : Player → RawNodeEnv L → ℝ) (players : List Player)
     (hst : st.KernelNormalized σ) :
@@ -405,7 +405,7 @@ theorem ofProg_kernelNormalized
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hσ_norm : σ.NormalizedOn p)
@@ -528,7 +528,7 @@ theorem nativeOutcomeDist_totalWeight
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hd : NormalizedDists p)
     (hσ_norm : σ.NormalizedOn p)
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
@@ -865,7 +865,7 @@ noncomputable instance (nd : CompiledNode Player L B) :
 its value type. -/
 noncomputable def compiledNodeFDist
     (_st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (rawP : RawNodeEnv L) (rawO : RawNodeEnv L) :
     (c : CompiledNode Player L B) → FDist (CompiledNode.valType c)
   | .chance _τ _ cpd _ => cpd rawP
@@ -875,7 +875,7 @@ noncomputable def compiledNodeFDist
 /-- FDist node data produced by the compiler. -/
 noncomputable def compiledFDistData
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ) :
     @FDistNodeData Player _ B.fintypePlayer _ st.toStruct :=
   letI := B.fintypePlayer
@@ -905,7 +905,7 @@ noncomputable def compiledFDistData
 
 theorem compiledFDistData_dist_eq
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ)
     (nd : Fin st.nextId)
     (a : @TAssign Player _ B.fintypePlayer st.nextId st.toStruct) :
@@ -918,7 +918,7 @@ theorem compiledFDistData_dist_eq
 
 theorem compiledFDistData_compatible
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ) :
     @FDistNodeDataCompatible _ _ B.fintypePlayer _ _ (compiledFDistData st σ hkn)
       (MAIDCompileState.toSem st) (compiledPolicy st σ hkn) := by
@@ -1180,7 +1180,7 @@ private theorem fdist_eq_pure_of_unique {α : Type} [DecidableEq α] [Unique α]
 
 theorem evalStepFDist_utility_pure
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ)
     (data : @FDistNodeData Player _ B.fintypePlayer _ st.toStruct)
     (hdata : data = compiledFDistData st σ hkn)
@@ -1203,7 +1203,7 @@ theorem evalStepFDist_utility_pure
 
 theorem evalStepFDist_utility_map_eq
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ)
     (data : @FDistNodeData Player _ B.fintypePlayer _ st.toStruct)
     (hdata : data = compiledFDistData st σ hkn)
@@ -1243,7 +1243,7 @@ theorem evalStepFDist_utility_map_eq
 nodes draw `default` and `rawOfTAssign` is invariant at utility positions. -/
 theorem foldl_utility_map_eq
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hkn : st.KernelNormalized σ)
     (data : @FDistNodeData Player _ B.fintypePlayer _ st.toStruct)
     (hdata : data = compiledFDistData st σ hkn)
@@ -1401,7 +1401,7 @@ private theorem taggedOfVal_decision_cast
     {τ₀ : L.Ty} {who₀ : Player} {acts₀ : List (L.Val τ₀)}
     {hacts₀ : acts₀ ≠ []} {hnodup₀ : acts₀.Nodup}
     {obs₀ : Finset Nat}
-    {kernel₀ : Profile Player L → RawNodeEnv L → FDist (L.Val τ₀)}
+    {kernel₀ : OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ₀)}
     (hc : c = .decision τ₀ who₀ acts₀ hacts₀ hnodup₀ obs₀ kernel₀)
     (v : CompiledNode.valType c) :
     MAIDCompileState.taggedOfVal c v = some ⟨τ₀, castValType hc v⟩ := by
@@ -1413,7 +1413,7 @@ the native CPD, up to a cast on the function body. -/
 private theorem compiledNodeFDist_chance_bind_eq
     {β : Type} [DecidableEq β]
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (rawP rawO : RawNodeEnv L)
     {c : CompiledNode Player L B}
     {τ₀ : L.Ty} {deps₀ : Finset Nat}
@@ -1435,13 +1435,13 @@ the kernel applied to σ and obsParents. -/
 private theorem compiledNodeFDist_decision_bind_eq
     {β : Type} [DecidableEq β]
     (st : MAIDCompileState Player L B)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (rawP rawO : RawNodeEnv L)
     {c : CompiledNode Player L B}
     {τ₀ : L.Ty} {who₀ : Player} {acts₀ : List (L.Val τ₀)}
     {hacts₀ : acts₀ ≠ []} {hnodup₀ : acts₀.Nodup}
     {obs₀ : Finset Nat}
-    {kernel₀ : Profile Player L → RawNodeEnv L → FDist (L.Val τ₀)}
+    {kernel₀ : OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ₀)}
     (hc : c = .decision τ₀ who₀ acts₀ hacts₀ hnodup₀ obs₀ kernel₀)
     (G : CompiledNode.valType c → FDist β)
     (H : L.Val τ₀ → FDist β)
@@ -1463,7 +1463,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
@@ -1785,7 +1785,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       let acts := allValues B b
       have hacts : acts ≠ [] := allValues_ne_nil B b
       have hnodup : acts.Nodup := allValues_nodup B b
-      let kernel : Profile Player L → RawNodeEnv L → FDist (L.Val b) :=
+      let kernel : OperationalProfile Player L → RawNodeEnv L → FDist (L.Val b) :=
         fun σ raw => σ.commit who x R (VEnv.eraseEnv (ρ raw))
       let nd : CompiledNode Player L B := .decision b who acts hacts hnodup obs kernel
       have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
@@ -1988,7 +1988,7 @@ theorem maid_map_extract_eq_outcomeDist
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (env : VEnv (Player := Player) L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
@@ -2051,7 +2051,7 @@ theorem vegas_maid_dist_eq
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (env : VEnv (Player := Player) L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
@@ -2075,3 +2075,4 @@ theorem vegas_maid_dist_eq
     maid_map_extract_eq_outcomeDist B p env σ hl ha hd hfresh hσ_norm⟩
 
 end Vegas
+

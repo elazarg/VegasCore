@@ -44,7 +44,7 @@ inductive CompiledNode (Player : Type) [DecidableEq Player] (L : IExpr)
       (cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1)
   | decision (τ : L.Ty) (who : Player) (acts : List (L.Val τ))
       (hacts : acts ≠ []) (hnodup : acts.Nodup) (obsParents : Finset Nat)
-      (kernel : Vegas.Profile Player L → RawNodeEnv L → FDist (L.Val τ))
+      (kernel : Vegas.OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ))
   | utility (who : Player) (parents : Finset Nat)
       (ufn : RawNodeEnv L → ℝ)
 
@@ -576,3 +576,4 @@ noncomputable def toMAID
 end VegasCore
 
 end Vegas
+

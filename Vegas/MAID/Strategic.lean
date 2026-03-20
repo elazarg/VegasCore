@@ -20,7 +20,7 @@ theorem maid_expected_payoff_eq_vegas
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (env : VEnv (Player := Player) L Γ)
-    (σ : Profile Player L)
+    (σ : OperationalProfile Player L)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
@@ -45,3 +45,4 @@ theorem maid_expected_payoff_eq_vegas
     (f := fun o => (o who : ℝ)))
 
 end Vegas
+

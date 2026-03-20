@@ -42,10 +42,4 @@ abbrev OperationalProfileSimple : Type := Vegas.OperationalProfile Player simple
 abbrev PartialOperationalProfileSimple : Type :=
   Vegas.PartialOperationalProfile Player simpleExpr
 
-/-- Backward-compatible alias. Prefer `OperationalProfileSimple`. -/
-abbrev ProfileSimple : Type := OperationalProfileSimple
-
-/-- Backward-compatible alias. Prefer `PartialOperationalProfileSimple`. -/
-abbrev PProfileSimple : Type := PartialOperationalProfileSimple
-
 end Vegas
