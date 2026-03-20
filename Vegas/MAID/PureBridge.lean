@@ -333,4 +333,15 @@ theorem maid_behavioral_eq_outcomeDistBehavioral
   congr 1
   exact (outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure p π env).symm
 
+/-- Pure strategic expected utility equals behavioral-lift expected utility.
+This is a purely Vegas theorem: no MAID in the statement. -/
+theorem toStrategicKernelGame_eu_eq_toKernelGame_eu_toBehavioral
+    {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (env : VEnv (Player := P) L Γ) (hd : NormalizedDists p)
+    (π : ProgramPureProfile (P := P) (L := L) p) (who : P) :
+    (toStrategicKernelGame p env hd).eu π who =
+      (toKernelGame p env hd).eu
+        (ProgramPureProfile.toBehavioral (P := P) (L := L) p π) who :=
+  (toKernelGame_eu_eq_toStrategicKernelGame_toBehavioral p env hd π who).symm
+
 end Vegas
