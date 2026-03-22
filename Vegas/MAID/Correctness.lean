@@ -1737,56 +1737,41 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
               (ih' (fun v => FDist.bind (g v) (fun a =>
                 FDist.bind (data.dist nd' a) (fun w => FDist.pure (updateAssign a nd' w)))))
       have hih := ih (ProgramBehavioralProfile.tail β) hl.2 ha hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps
-      have hmain :
-          FDist.map f
-              ((List.finRange st.nextId).drop id |>.foldl (evalStepFDist data) (FDist.pure a₀)) =
-            nativeOutcomeDist B (VegasCore.commit x who R k) β ρ
-              st₀.nextId (rawOfTAssign st a₀) := by
-        rw [hdrop]; simp only [List.foldl_cons, evalStepFDist, FDist.pure_bind]
-        change FDist.map f
-              (((List.finRange st.nextId).drop st₁.nextId).foldl (evalStepFDist data)
-                (FDist.bind μ (fun v => FDist.pure (updateAssign a₀ nd0 v)))) = _
-        rw [hbindmap_aux _ _]
-        let H : L.Val b → FDist (Outcome Player) :=
-          fun w => nativeOutcomeDist B k (ProgramBehavioralProfile.tail β) ρ' (id + 1)
-            ((rawOfTAssign st a₀).extend id ⟨b, w⟩)
-        have hGH : ∀ v, (fun v => FDist.map f (List.foldl (evalStepFDist data)
-            (FDist.pure (updateAssign a₀ nd0 v))
-            (List.drop st₁.nextId (List.finRange st.nextId)))) v =
-            H (castValType hdesc0 v) := by
-          intro v
-          have h1 : st₁.nextId = id + 1 := by
-            simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode]
-          have h2 : rawOfTAssign st (updateAssign a₀ nd0 v) =
-              (rawOfTAssign st a₀).extend id ⟨b, castValType hdesc0 v⟩ :=
-            MAIDCompileState.rawOfTAssign_updateAssign_of_tagged st a₀ nd0
-              v ⟨b, castValType hdesc0 v⟩ (taggedOfVal_decision_cast hdesc0 v)
-          exact (hih (updateAssign a₀ nd0 v)).trans (by rw [h1, h2])
-        conv_lhs => rw [show (fun v => FDist.map f (List.foldl (evalStepFDist data)
-            (FDist.pure (updateAssign a₀ nd0 v))
-            (List.drop st₁.nextId (List.finRange st.nextId)))) =
-          (fun v => H (castValType hdesc0 v)) from funext hGH]
-        -- μ dispatches on descAt nd0 = .decision via hdesc0.
-        -- μ = dk nd0 rawO (via compiledFDistData decision branch).
-        let rawO := st.rawEnvOfCfg (projCfg a₀ (st.toStruct.obsParents nd0))
-        -- μ = dk nd0 rawO (decision branch has no transport)
-        have hμ : μ = compiledDecisionKernel B k hl.2 ha hd ρ' st₁
-            (ProgramBehavioralProfile.tail β) nd0 rawO := by
-          change (compiledFDistData B k hl.2 ha hd ρ' st₁
-            (ProgramBehavioralProfile.tail β)).dist nd0 a₀ = _
-          unfold compiledFDistData; dsimp only []
-          split
-          · next _ _ _ _ hdesc₁ => exact absurd (hdesc₁.symm.trans hdesc0 :
-              CompiledNode.chance _ _ _ _ = .decision b who acts hacts hnodup obs) nofun
-          · next _ _ _ _ _ _ hdesc₁ => rfl
-          · next _ _ _ hdesc₁ => exact absurd (hdesc₁.symm.trans hdesc0 :
-              CompiledNode.utility _ _ _ = .decision b who acts hacts hnodup obs) nofun
-        -- hμ gives μ = dk nd0 rawO. Through compiledDecisionKernel_commit_bind_cancel,
-        -- the bind with H ∘ castValType cancels, leaving (headKernel (β who) view₁).bind H.
-        -- hViewEq gives view₁ = view₂. Together this closes the goal.
-        -- Blocked by: rw [hμ] times out (proof term too large).
-        sorry
-      sorry -- exact hmain (times out)
+      -- Prove the goal directly (no intermediate have, to keep proof term small)
+      rw [hdrop]; simp only [List.foldl_cons, evalStepFDist, FDist.pure_bind]
+      change FDist.map f
+            (((List.finRange st.nextId).drop st₁.nextId).foldl (evalStepFDist data)
+              (FDist.bind μ (fun v => FDist.pure (updateAssign a₀ nd0 v)))) = _
+      rw [hbindmap_aux _ _]
+      let H : L.Val b → FDist (Outcome Player) :=
+        fun w => nativeOutcomeDist B k (ProgramBehavioralProfile.tail β) ρ' (id + 1)
+          ((rawOfTAssign st a₀).extend id ⟨b, w⟩)
+      conv_lhs => rw [show (fun v => FDist.map f (List.foldl (evalStepFDist data)
+          (FDist.pure (updateAssign a₀ nd0 v))
+          (List.drop st₁.nextId (List.finRange st.nextId)))) =
+        (fun v => H (castValType hdesc0 v)) from funext fun v =>
+          (hih (updateAssign a₀ nd0 v)).trans (by
+            rw [show st₁.nextId = id + 1 by
+              simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode],
+              MAIDCompileState.rawOfTAssign_updateAssign_of_tagged st a₀ nd0
+                v ⟨b, castValType hdesc0 v⟩ (taggedOfVal_decision_cast hdesc0 v)])]
+      -- μ = dk nd0 rawO (decision branch, no outer transport)
+      let rawO := st.rawEnvOfCfg (projCfg a₀ (st.toStruct.obsParents nd0))
+      have hμ : μ = compiledDecisionKernel B k hl.2 ha hd ρ' st₁
+          (ProgramBehavioralProfile.tail β) nd0 rawO := by
+        change (compiledFDistData B k hl.2 ha hd ρ' st₁
+          (ProgramBehavioralProfile.tail β)).dist nd0 a₀ = _
+        unfold compiledFDistData; dsimp only []
+        split
+        · next _ _ _ _ hdesc₁ => exact absurd (hdesc₁.symm.trans hdesc0 :
+            CompiledNode.chance _ _ _ _ = .decision b who acts hacts hnodup obs) nofun
+        · next _ _ _ _ _ _ hdesc₁ => rfl
+        · next _ _ _ hdesc₁ => exact absurd (hdesc₁.symm.trans hdesc0 :
+            CompiledNode.utility _ _ _ = .decision b who acts hacts hnodup obs) nofun
+      simp only [hμ]
+      rw [compiledDecisionKernel_commit_bind_cancel B hl ha hd ρ st₀ β rawO H]
+      congr 1
+      exact congrArg (ProgramBehavioralStrategy.headKernel (β who)) hViewEq
   | reveal y who x hx k ih =>
       rename_i Γ' b
       dsimp
