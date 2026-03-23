@@ -260,6 +260,10 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
       (DecisionVisible_addNode_addVar_cons st₀ _ _ _ _ _ hfresh.1 hvis
         (fun who h => by simp [CompiledNode.kind] at h))
   | commit x who_c R k ih =>
+    -- New decision node at st₀.nextId, obsParents = viewDeps who_c Γ.
+    -- DecisionMonotone of st₁: old pairs from hmon; new vs old from hvis
+    -- DecisionVisible of st₁: old from hvis + viewDeps monotonicity;
+    --   new node visible because canSee who_c (.hidden who_c b) = true
     exact ih hl.2 ha hd hfresh.2 _ _ sorry sorry
   | reveal _ _ _ _ k ih =>
     exact ih hl ha hd hfresh.2 _ _ hmon
