@@ -1838,16 +1838,13 @@ private theorem dk_toPMF_eq_ts
     (hk : (MAIDCompileState.ofProg B p hl ha hd ρ st₀).toStruct.kind (fp := B.fintypePlayer) nd =
       .decision who)
     (cfg) :
-    letI := B.fintypePlayer
     (compiledDecisionKernel B p hl ha hd ρ st₀ β nd
       ((MAIDCompileState.ofProg B p hl ha hd ρ st₀).rawEnvOfCfg cfg)).toPMF
       (compiledDecisionKernel_normalized B p hl ha hd ρ st₀ β nd _ ⟨who, by
-        simp [toStruct_kind] at hk; exact hk⟩) =
+        simp only [toStruct_kind] at hk; exact hk⟩) =
       (translateStrategy B p hl ha hd ρ st₀ β) who ⟨⟨nd, hk⟩, cfg⟩ := by
-  letI := B.fintypePlayer
   induction p generalizing st₀ with
   | ret =>
-      change ((compiledDecisionKernel B (.ret _) _ _ _ _ _ _ nd _).toPMF _) = _
       simp only [compiledDecisionKernel, translateStrategy, id]
       exact (FDist.toPMF_congr rfl).trans (FDist.toPMF_pure _)
   | letExpr x e k ih => exact @ih _ _ _ _ _ β nd hk cfg
@@ -2216,17 +2213,26 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         | here =>
             have hlookup : st₁.lookupDeps x = ({id} : Finset Nat) := by
               simpa [st₁] using stNode.lookupDeps_addVar_eq_self_of_fresh x τ {id}
-                (by intro d hd'; have := Finset.mem_singleton.mp hd'; subst d; exact Nat.lt_succ_self id)
+                (by
+                  intro d hd'
+                  have := Finset.mem_singleton.mp hd'
+                  subst d
+                  exact Nat.lt_succ_self id)
                 (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
             have hjid : j ≠ id := by
-              simpa [Finset.mem_singleton] using (show j ∉ ({id} : Finset Nat) by simpa [hlookup] using hj)
+              simpa [Finset.mem_singleton] using (show j ∉ ({id} : Finset Nat) by
+                simpa [hlookup] using hj)
             simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
               (readVal_extend_ne (B := B) raw j id tv τ.base hjid.symm)
         | there hy' =>
             have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
             have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
               simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x τ {id}
-                (by intro d hd'; have := Finset.mem_singleton.mp hd'; subst d; exact Nat.lt_succ_self id)
+                (by
+                  intro d hd'
+                  have := Finset.mem_singleton.mp hd'
+                  subst d
+                  exact Nat.lt_succ_self id)
                 hxy
             have hlookupNode : stNode.lookupDeps y = st₀.lookupDeps y := by
               simpa [stNode] using st₀.lookupDeps_addNode nd hndeps y
