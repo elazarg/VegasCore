@@ -144,10 +144,14 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
       PMF.map extract (evalAssignDist (fp := B.fintypePlayer) st.toStruct
         (MAIDCompileState.toSem st) pol) =
         outcomeDistBehavioralPMF p hd σ_pmf env := by
-  -- This requires obs-config injectivity: at each commit site, the Classical.choose
-  -- in reflectPolicyAux's kernel picks the unique cfg matching the runtime view,
-  -- ensuring the reflected profile produces the same distribution as the MAID policy.
-  -- The proof proceeds by structural induction on p, generalizing ρ and st₀.
+  -- The proof requires induction on p, matching the structure of both
+  -- evalAssignDist (MAID fold) and outcomeDistBehavioralPMF (Vegas recursion).
+  -- At commit sites, obs-config injectivity ensures Classical.choose picks
+  -- the correct cfg, making the reflected kernel agree with the MAID policy.
+  --
+  -- This is the deepest remaining theorem. It mirrors the forward bridge
+  -- proof (maid_map_extract_eq_outcomeDistBehavioral in Correctness.lean)
+  -- but in reverse, requiring the injectivity argument at commit sites.
   sorry
 
 /-! ## Pure strategy compilation: Vegas → MAID -/
