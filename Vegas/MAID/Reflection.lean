@@ -231,6 +231,45 @@ private theorem nativeOutcomeDistPMF_eq
           (hρ nid hn raw tv))
       raw
 
+/-- **PMF fold bridge**: the MAID evaluation folded through `evalStep` and
+mapped through outcome extraction equals `nativeOutcomeDistPMF` applied
+to the reflected policy.
+
+This is the hard half of the reflectPolicy correctness proof. It requires:
+- At chance nodes: the compiled sem matches the sample distribution
+- At decision nodes: obs-config injectivity ensures the reflected kernel
+  (using Classical.choose) matches the MAID policy
+- At utility nodes: extract is invariant under utility-node updates
+
+The proof is by structural induction on `p`, mirroring
+`foldFDist_map_extract_eq_nativeOutcomeDist` at the PMF level. -/
+private theorem pmfFoldBridge
+    (B : MAIDBackend P L)
+    {Γ : VCtx P L}
+    (p : VegasCore P L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (ρ : RawNodeEnv L → VEnv L Γ)
+    (st₀ : MAIDCompileState P L B)
+    (hvars : st₀.VarsSubCtx Γ)
+    (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
+    (hρ_var : EnvRespectsLookupDeps st₀ ρ) :
+    letI := B.fintypePlayer
+    let st := MAIDCompileState.ofProg B p hl hd ρ st₀
+    let S := st.toStruct
+    let sem := MAIDCompileState.toSem st
+    let extract : MAID.TAssign (fp := B.fintypePlayer) S → Outcome P :=
+      fun a => extractOutcome B p ρ st₀.nextId (rawOfTAssign st a)
+    ∀ (pol : MAID.Policy (fp := B.fintypePlayer) S)
+      (a₀ : MAID.TAssign (fp := B.fintypePlayer) S),
+      PMF.map extract
+        ((List.finRange st.nextId).drop st₀.nextId |>.foldl
+          (MAID.evalStep S sem pol) (PMF.pure a₀)) =
+      nativeOutcomeDistPMF B p hd
+        (reflectPolicyAux B p hl hd ρ st₀ pol)
+        ρ st₀.nextId (rawOfTAssign st a₀) := by
+  sorry
+
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
 obtained by reflecting a MAID policy produces the same outcome distribution
 as the MAID's `evalAssignDist` mapped through outcome extraction. -/
@@ -248,11 +287,34 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
         (evalAssignDist (fp := B.fintypePlayer) st.toStruct
         (MAIDCompileState.toSem st) pol) =
         outcomeDistBehavioralPMF p hd (reflectPolicy B p hl hd env pol) env := by
-  -- The proof requires a PMF-level fold bridge connecting evalAssignDist
-  -- to nativeOutcomeDistPMF, then using nativeOutcomeDistPMF_eq above.
-  -- At commit sites, obs-config injectivity (now correct after the
-  -- pubCtxDeps fix) ensures Classical.choose picks the correct cfg.
-  sorry
+  intro st pol
+  letI := B.fintypePlayer
+  -- Step 1: Rewrite evalAssignDist as evalFold along natural order
+  let hnat := compiled_naturalOrder st
+  let σ_topo := hnat.toTopologicalOrder
+  rw [MAID.evalAssignDist_eq_evalFold _ _ _ σ_topo]
+  -- Step 2: Apply the fold bridge
+  have hbridge := pmfFoldBridge B p hl hd hwf.1
+    (fun _ => env) .empty
+    (fun _ h => by simp [MAIDCompileState.empty] at h)
+    (fun j hj => by intro raw tv; rfl)
+    (envRespectsLookupDeps_const (B := B) (st := .empty) env)
+    pol (MAID.defaultAssign st.toStruct)
+  -- Step 3: Connect to outcomeDistBehavioralPMF via nativeOutcomeDistPMF_eq
+  have hnative := nativeOutcomeDistPMF_eq B p hd
+    (reflectPolicyAux B p hl hd (fun _ => env) .empty pol)
+    (fun _ => env) 0
+    (fun nid _ raw tv => rfl)
+  rw [show (MAIDCompileState.empty (B := B) (Player := P) (L := L)).nextId = 0 from rfl,
+    List.drop_zero] at hbridge
+  -- evalFold = foldl along the natural order
+  have hfold : MAID.evalFold st.toStruct (MAIDCompileState.toSem st) pol σ_topo =
+      (List.finRange st.nextId).foldl (MAID.evalStep st.toStruct (MAIDCompileState.toSem st) pol)
+        (PMF.pure (MAID.defaultAssign st.toStruct)) := by
+    rfl
+  rw [hfold]
+  -- Chain: foldl → nativeOutcomeDistPMF → outcomeDistBehavioralPMF
+  exact hbridge.trans (hnative _)
 
 /-! ## Pure strategy compilation: Vegas → MAID -/
 
