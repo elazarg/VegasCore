@@ -254,7 +254,7 @@ theorem initPartialEnv_consistent {P : Type} {L : IExpr}
     given profile σ and current partial env `pe`. -/
 noncomputable def VegasCore.nodeWeight {P : Type} [DecidableEq P]
     {L : IExpr}
-    (σ : OperationalProfile P L) (pe : PartialEnv L) :
+    (σ : OmniscientOperationalProfile P L) (pe : PartialEnv L) :
     {Γ : VCtx P L} → VegasCore P L Γ → VarId → TaggedVal L → ℚ≥0
   | _, .ret _, _, _ => 0
   | _, .letExpr x _ k, id, tv =>
@@ -283,14 +283,14 @@ noncomputable def VegasCore.nodeWeight {P : Type} [DecidableEq P]
 
 /-- Weight of a step under a profile σ. -/
 noncomputable def Step.weight {P : Type} [DecidableEq P] {L : IExpr}
-    (σ : OperationalProfile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (σ : OmniscientOperationalProfile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
     {c₁ c₂ : Config L} (s : Step c₁ c₂) : ℚ≥0 :=
   VegasCore.nodeWeight σ c₁.env p s.node.id s.value
 
 /-- Weight of a complete execution (product of step weights). -/
 noncomputable def Execution.weight {P : Type} [DecidableEq P]
     {L : IExpr}
-    (σ : OperationalProfile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (σ : OmniscientOperationalProfile P L) {Γ : VCtx P L} (p : VegasCore P L Γ)
     {c₁ c₂ : Config L} : Execution c₁ c₂ → ℚ≥0
   | .done => 1
   | .step s rest => s.weight σ p * rest.weight σ p

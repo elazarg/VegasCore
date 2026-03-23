@@ -44,7 +44,6 @@ inductive CompiledNode (Player : Type) [DecidableEq Player] (L : IExpr)
       (cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1)
   | decision (τ : L.Ty) (who : Player) (acts : List (L.Val τ))
       (hacts : acts ≠ []) (hnodup : acts.Nodup) (obsParents : Finset Nat)
-      (kernel : Vegas.OperationalProfile Player L → RawNodeEnv L → FDist (L.Val τ))
   | utility (who : Player) (parents : Finset Nat)
       (ufn : RawNodeEnv L → ℝ)
 
@@ -52,29 +51,29 @@ namespace CompiledNode
 
 noncomputable def valType : CompiledNode Player L B → Type
   | .chance τ _ _ _ => L.Val τ
-  | .decision τ _ _ _ _ _ _ => L.Val τ
+  | .decision τ _ _ _ _ _ => L.Val τ
   | .utility _ _ _ => Unit
 
 variable {B : MAIDBackend Player L}
 
 def kind : CompiledNode Player L B → NodeKind Player
   | .chance _ _ _ _ => .chance
-  | .decision _ who _ _ _ _ _ => .decision who
+  | .decision _ who _ _ _ _ => .decision who
   | .utility who _ _ => .utility who
 
 def parents : CompiledNode Player L B → Finset Nat
   | .chance _ ps _ _ => ps
-  | .decision _ _ _ _ _ ps _ => ps
+  | .decision _ _ _ _ _ ps => ps
   | .utility _ ps _ => ps
 
 def obsParents : CompiledNode Player L B → Finset Nat
   | .chance _ ps _ _ => ps
-  | .decision _ _ _ _ _ ps _ => ps
+  | .decision _ _ _ _ _ ps => ps
   | .utility _ ps _ => ps
 
 noncomputable def domainSize : CompiledNode Player L B → Nat
   | .chance τ _ _ _ => B.domainSize τ
-  | .decision _ _ acts _ _ _ _ => acts.length
+  | .decision _ _ acts _ _ _ => acts.length
   | .utility _ _ _ => 1
 
 theorem obs_sub (nd : CompiledNode Player L B) :
@@ -88,7 +87,7 @@ theorem obs_eq_nondec (nd : CompiledNode Player L B)
   cases nd with
   | chance τ ps cpd hn => rfl
   | utility who ps ufn => rfl
-  | decision τ who acts hacts hnodup ps kernel =>
+  | decision τ who acts hacts hnodup ps =>
       exfalso
       exact h ⟨who, rfl⟩
 
@@ -101,7 +100,7 @@ theorem utility_domain (nd : CompiledNode Player L B) (a : Player)
       rfl
   | chance τ ps cpd hn =>
       cases h
-  | decision τ who acts hacts hnodup ps kernel =>
+  | decision τ who acts hacts hnodup ps =>
       cases h
 
 theorem nonutility_pos (nd : CompiledNode Player L B)
@@ -110,7 +109,7 @@ theorem nonutility_pos (nd : CompiledNode Player L B)
   cases nd with
   | chance τ ps cpd hn =>
       simpa [domainSize] using B.domainSize_pos τ
-  | decision τ who acts hacts hnodup ps kernel =>
+  | decision τ who acts hacts hnodup ps =>
       exact List.length_pos_iff.mpr hacts
   | utility who ps ufn =>
       exfalso
@@ -408,14 +407,13 @@ noncomputable def ofProg
           subst d
           exact Nat.lt_succ_self _))
   | Γ, .commit (b := b) x who R k, hl, ha, hd, ρ, st =>
-      let obs := st.ctxDeps Γ
+      let obs := st.viewDeps who Γ
       let acts := allValues B b
       have hacts : acts ≠ [] := allValues_ne_nil B b
       have hnodup : acts.Nodup := allValues_nodup B b
       let id := st.nextId
       let res := st.addNode
-        (.decision b who acts hacts hnodup obs
-          (fun σ raw => σ.commit who x R (VEnv.eraseEnv (ρ raw)))) (by
+        (.decision b who acts hacts hnodup obs) (by
         intro d hd'
         have hd'' : d ∈ obs := by
           simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
@@ -444,28 +442,28 @@ noncomputable def ofProg
 /-- The native value type for a compiled node. -/
 def CompiledNode.valType : CompiledNode Player L B → Type
   | .chance τ _ _ _ => L.Val τ
-  | .decision τ _ _ _ _ _ _ => L.Val τ
+  | .decision τ _ _ _ _ _ => L.Val τ
   | .utility _ _ _ => Unit
 
 noncomputable instance (nd : CompiledNode Player L B) :
     Fintype (CompiledNode.valType (B := B) nd) := by
   cases nd with
   | chance τ _ _ _ => exact MAIDValuation.instFintypeVal L B.toMAIDValuation τ
-  | decision τ _ _ _ _ _ _ => exact MAIDValuation.instFintypeVal L B.toMAIDValuation τ
+  | decision τ _ _ _ _ _ => exact MAIDValuation.instFintypeVal L B.toMAIDValuation τ
   | utility _ _ _ => exact Unit.fintype
 
 noncomputable instance (nd : CompiledNode Player L B) :
     DecidableEq (CompiledNode.valType (B := B) nd) := by
   cases nd with
   | chance τ _ _ _ => exact L.decEqVal
-  | decision τ _ _ _ _ _ _ => exact L.decEqVal
+  | decision τ _ _ _ _ _ => exact L.decEqVal
   | utility _ _ _ => exact instDecidableEqPUnit
 
 noncomputable instance (nd : CompiledNode Player L B) :
     Inhabited (CompiledNode.valType (B := B) nd) := by
   cases nd with
   | chance τ _ _ _ => exact ⟨MAIDValuation.defaultVal L B.toMAIDValuation τ⟩
-  | decision τ _ _ _ _ _ _ => exact ⟨MAIDValuation.defaultVal L B.toMAIDValuation τ⟩
+  | decision τ _ _ _ _ _ => exact ⟨MAIDValuation.defaultVal L B.toMAIDValuation τ⟩
   | utility _ _ _ => exact ⟨()⟩
 
 noncomputable def toStruct (st : MAIDCompileState Player L B) :
@@ -498,7 +496,7 @@ noncomputable def toStruct (st : MAIDCompileState Player L B) :
           exact PUnit.instUnique
       | chance τ ps cpd hn =>
           exfalso; simp [CompiledNode.kind, hdesc] at h
-      | decision τ who acts hacts hnodup obs kernel =>
+      | decision τ who acts hacts hnodup obs =>
           exfalso; simp [CompiledNode.kind, hdesc] at h
     acyclic := DAG.acyclic_of_topologicalOrder {
         order := List.finRange st.nextId
@@ -518,7 +516,7 @@ noncomputable def toStruct (st : MAIDCompileState Player L B) :
 noncomputable def taggedOfVal :
     (nd : CompiledNode Player L B) → CompiledNode.valType nd → Option (RawTaggedVal L)
   | .chance τ _ _ _, v => some ⟨τ, v⟩
-  | .decision τ _ _ _ _ _ _, v => some ⟨τ, v⟩
+  | .decision τ _ _ _ _ _, v => some ⟨τ, v⟩
   | .utility _ _ _, _ => none
 
 noncomputable def rawEnvOfCfg (st : MAIDCompileState Player L B)
@@ -547,7 +545,7 @@ noncomputable def toSem (st : MAIDCompileState Player L B) :
             change PMF (CompiledNode.valType (st.descAt c.1))
             rw [hdesc]
             exact FDist.toPMF (cpdFDist (st.rawEnvOfCfg cfg)) (cpdNorm _)
-        | .decision τ who acts hacts hnodup obs kernel =>
+        | .decision τ who acts hacts hnodup obs =>
             have hk := c.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk
         | .utility who parents ufn =>
             have hk := c.2; simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc] at hk
@@ -556,7 +554,7 @@ noncomputable def toSem (st : MAIDCompileState Player L B) :
         | .utility _who _parents ufn => ufn (st.rawEnvOfCfg cfg)
         | .chance τ _parents _ _ =>
             absurd u.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc])
-        | .decision τ _who _ _ _ _ _ =>
+        | .decision τ _who _ _ _ _ =>
             absurd u.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc]) }
 
 end MAIDCompileState

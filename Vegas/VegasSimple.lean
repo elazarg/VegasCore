@@ -37,9 +37,10 @@ abbrev CommitKernelSimple (who : Player) (Γ : VCtxSimple) (b : BaseTy) :
     Type :=
   Vegas.CommitKernel Player simpleExpr who Γ b
 
-abbrev OperationalProfileSimple : Type := Vegas.OperationalProfile Player simpleExpr
+abbrev OmniscientOperationalProfileSimple : Type :=
+  Vegas.OmniscientOperationalProfile Player simpleExpr
 
-abbrev PartialOperationalProfileSimple : Type :=
-  Vegas.PartialOperationalProfile Player simpleExpr
+abbrev PartialOmniscientOperationalProfileSimple : Type :=
+  Vegas.PartialOmniscientOperationalProfile Player simpleExpr
 
 end Vegas

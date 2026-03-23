@@ -26,7 +26,7 @@ namespace Vegas
 
 open MAID
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player] {n : Nat}
+variable {Player : Type} [DecidableEq Player] [fp : Fintype Player] {n : Nat}
 
 
 noncomputable instance instDecidableEqTAssign (S : MAID.Struct Player n) :

@@ -97,7 +97,7 @@ noncomputable def traceOutcome :
     - At each `sample` site: the distribution weight of the chosen value
     - At each `commit` site: the profile's strategy weight for the chosen value
     - At `letExpr`/`reveal`/`ret`: weight 1 (deterministic) -/
-noncomputable def traceWeight (σ : OperationalProfile P L) :
+noncomputable def traceWeight (σ : OmniscientOperationalProfile P L) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) → VEnv (Player := P) L Γ →
       Trace Γ p → ℚ≥0
   | _, .ret _, _, .ret => 1
@@ -133,7 +133,7 @@ def Trace.legal : {Γ : VCtx P L} → (p : VegasCore P L Γ) →
       legal k (VEnv.cons (x := y) (τ := .pub b) val env) t
 
 
-/-- OperationalProfile-free reachability: outcome `oc` can be reached from `(p, env)`
+/-- OmniscientOperationalProfile-free reachability: outcome `oc` can be reached from `(p, env)`
     by some sequence of legal choices at commit sites and in-support choices
     at sample sites. Characterizes the game's possible outcomes regardless
     of strategy. -/
@@ -173,10 +173,10 @@ inductive CanReach : {Γ : VCtx P L} → VegasCore P L Γ →
         (show L.Val b from VEnv.get env hx) env) oc →
       CanReach (.reveal y who x hx k) env oc
 
-/-- OperationalProfile-dependent reachability: outcome `oc` has positive weight under
+/-- OmniscientOperationalProfile-dependent reachability: outcome `oc` has positive weight under
     profile `σ`. Uses the profile's support at commit sites (not just legality)
     and the distribution's support at sample sites. -/
-inductive Reach (σ : OperationalProfile P L) :
+inductive Reach (σ : OmniscientOperationalProfile P L) :
     {Γ : VCtx P L} → VegasCore P L Γ → VEnv (Player := P) L Γ →
     Outcome P → Prop where
   | ret {Γ : VCtx P L}
@@ -230,7 +230,7 @@ theorem legal_trace_canReach {Γ : VCtx P L} {p : VegasCore P L Γ}
 /-- A positive-weight trace witnesses profile-dependent reachability. -/
 theorem pos_weight_trace_reach {Γ : VCtx P L} {p : VegasCore P L Γ}
     {env : VEnv (Player := P) L Γ}
-    (σ : OperationalProfile P L) (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
+    (σ : OmniscientOperationalProfile P L) (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
     Reach σ p env (traceOutcome p env t) := by
   induction t with
   | ret =>
@@ -271,7 +271,7 @@ theorem canReach_has_trace {Γ : VCtx P L} {p : VegasCore P L Γ}
 
 /-- **Support correctness**: an outcome is in the support of `outcomeDist`
     iff it is reachable under the profile. -/
-theorem reach_iff_outcomeDist_support {Γ : VCtx P L} (σ : OperationalProfile P L)
+theorem reach_iff_outcomeDist_support {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) (oc : Outcome P) :
     Reach σ p env oc ↔ oc ∈ (outcomeDist σ p env).support := by
   induction p with
@@ -307,7 +307,7 @@ theorem reach_iff_outcomeDist_support {Γ : VCtx P L} (σ : OperationalProfile P
 
 /-- The weighted count of traces producing outcome `oc`, computed as a nested
     sum over distribution supports by structural induction on `p`. -/
-noncomputable def traceWeightSum (σ : OperationalProfile P L) :
+noncomputable def traceWeightSum (σ : OmniscientOperationalProfile P L) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) → VEnv (Player := P) L Γ →
       Outcome P → ℚ≥0
   | _, .ret u, env, oc =>
@@ -328,7 +328,7 @@ noncomputable def traceWeightSum (σ : OperationalProfile P L) :
 
 /-- **Adequacy** (pointwise form): `outcomeDist σ p env` and `traceWeightSum σ p env`
     agree pointwise. -/
-theorem adequacy_pointwise {Γ : VCtx P L} (σ : OperationalProfile P L)
+theorem adequacy_pointwise {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) (oc : Outcome P) :
     (outcomeDist σ p env) oc = traceWeightSum σ p env oc := by
   induction p with
@@ -348,7 +348,7 @@ theorem adequacy_pointwise {Γ : VCtx P L} (σ : OperationalProfile P L)
     exact ih _
 
 /-- The distribution on traces induced by profile `σ`. -/
-noncomputable def traceDist (σ : OperationalProfile P L) :
+noncomputable def traceDist (σ : OmniscientOperationalProfile P L) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) → VEnv (Player := P) L Γ →
       FDist (Trace Γ p)
   | _, .ret _, _ => FDist.pure .ret
@@ -395,7 +395,7 @@ private theorem Trace.reveal_injective {Γ : VCtx P L} {y : VarId} {who : P}
   fun _ _ h => Trace.reveal.inj h
 
 /-- Each trace gets exactly its `traceWeight` as mass in `traceDist`. -/
-theorem traceDist_apply (σ : OperationalProfile P L) {Γ : VCtx P L}
+theorem traceDist_apply (σ : OmniscientOperationalProfile P L) {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
     (t : Trace Γ p) :
     (traceDist σ p env) t = traceWeight σ p env t := by
@@ -445,7 +445,7 @@ theorem traceDist_apply (σ : OperationalProfile P L) {Γ : VCtx P L}
       exact ih _ t
 
 /-- The outcome distribution is the pushforward of the trace distribution. -/
-theorem outcomeDist_eq_map_traceDist (σ : OperationalProfile P L) {Γ : VCtx P L}
+theorem outcomeDist_eq_map_traceDist (σ : OmniscientOperationalProfile P L) {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) :
     outcomeDist σ p env = (traceDist σ p env).map (traceOutcome p env) := by
   induction p with
@@ -465,7 +465,7 @@ theorem outcomeDist_eq_map_traceDist (σ : OperationalProfile P L) {Γ : VCtx P 
 
 
 /-- Under an admissible profile, every positive-weight trace is legal. -/
-theorem admissible_pos_weight_legal {Γ : VCtx P L} {σ : OperationalProfile P L}
+theorem admissible_pos_weight_legal {Γ : VCtx P L} {σ : OmniscientOperationalProfile P L}
     {p : VegasCore P L Γ} {env : VEnv (Player := P) L Γ}
     (hadm : FairPlayProfile σ p)
     (t : Trace Γ p) (hw : traceWeight σ p env t ≠ 0) :
@@ -485,7 +485,7 @@ theorem admissible_pos_weight_legal {Γ : VCtx P L} {σ : OperationalProfile P L
   | reveal _ ih => exact ih hadm hw
 
 /-- Under an admissible profile, `Reach` implies `CanReach`. -/
-theorem admissible_reach_canReach {Γ : VCtx P L} {σ : OperationalProfile P L}
+theorem admissible_reach_canReach {Γ : VCtx P L} {σ : OmniscientOperationalProfile P L}
     {p : VegasCore P L Γ} {env : VEnv (Player := P) L Γ} {oc : Outcome P}
     (hadm : FairPlayProfile σ p)
     (h : Reach σ p env oc) :
@@ -666,7 +666,7 @@ theorem outcomeDist_comm_commit_algebraic
     now receive the full erased environment, independence is expressed
     directly as pointwise equality of strategy outputs. -/
 theorem outcomeDist_comm_commit
-    {Γ : VCtx P L} {σ : OperationalProfile P L} {env : VEnv (Player := P) L Γ}
+    {Γ : VCtx P L} {σ : OmniscientOperationalProfile P L} {env : VEnv (Player := P) L Γ}
     {x₁ : VarId} {who₁ : P} {b₁ : L.Ty}
     {R₁ : L.Expr ((x₁, b₁) :: eraseVCtx Γ) L.bool}
     {x₂ : VarId} {who₂ : P} {b₂ : L.Ty}
@@ -708,7 +708,7 @@ theorem outcomeDist_comm_commit
 /-- Two adjacent reveals of distinct hidden variables produce the same
     outcome distribution regardless of order. -/
 theorem outcomeDist_comm_reveal
-    {Γ : VCtx P L} {σ : OperationalProfile P L} {env : VEnv (Player := P) L Γ}
+    {Γ : VCtx P L} {σ : OmniscientOperationalProfile P L} {env : VEnv (Player := P) L Γ}
     {y₁ : VarId} {who₁ : P} {x₁ : VarId} {b₁ : L.Ty}
     {hx₁ : VHasVar (L := L) Γ x₁ (.hidden who₁ b₁)}
     {y₂ : VarId} {who₂ : P} {x₂ : VarId} {b₂ : L.Ty}

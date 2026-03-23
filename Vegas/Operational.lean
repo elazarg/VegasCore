@@ -22,7 +22,7 @@ abbrev CommitKernel (Player : Type) [DecidableEq Player] (L : IExpr)
 
 /-- Operational profiles for Vegas commit nodes. These are evaluator inputs,
 not the paper-facing strategic objects. -/
-structure OperationalProfile (Player : Type) [DecidableEq Player]
+structure OmniscientOperationalProfile (Player : Type) [DecidableEq Player]
     (L : IExpr) where
   commit : {Γ : VCtx Player L} → {b : L.Ty} → (who : Player) →
     (x : VarId) →
@@ -30,18 +30,18 @@ structure OperationalProfile (Player : Type) [DecidableEq Player]
     CommitKernel Player L who Γ b
 
 /-- Partial operational profiles with optional commit kernels. -/
-structure PartialOperationalProfile (Player : Type) [DecidableEq Player]
+structure PartialOmniscientOperationalProfile (Player : Type) [DecidableEq Player]
     (L : IExpr) where
   commit? : {Γ : VCtx Player L} → {b : L.Ty} → (who : Player) →
     (x : VarId) →
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) →
     Option (CommitKernel Player L who Γ b)
 
-def PartialOperationalProfile.toOperationalProfile
+def PartialOmniscientOperationalProfile.toOmniscientOperationalProfile
     {Player : Type} [DecidableEq Player] {L : IExpr}
-    (π : PartialOperationalProfile Player L)
-    (fallback : OperationalProfile Player L) :
-    OperationalProfile Player L where
+    (π : PartialOmniscientOperationalProfile Player L)
+    (fallback : OmniscientOperationalProfile Player L) :
+    OmniscientOperationalProfile Player L where
   commit := fun {Γ} {b} who x R env =>
     match π.commit? (Γ := Γ) (b := b) who x R with
     | some k => k env

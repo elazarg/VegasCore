@@ -10,10 +10,10 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- OperationalProfile-dependent reachability has a witnessing positive-weight trace. -/
+/-- OmniscientOperationalProfile-dependent reachability has a witnessing positive-weight trace. -/
 theorem reach_has_pos_weight_trace {Γ : VCtx P L} {p : VegasCore P L Γ}
     {env : VEnv (Player := P) L Γ} {oc : Outcome P}
-    (σ : OperationalProfile P L) (h : Reach σ p env oc) :
+    (σ : OmniscientOperationalProfile P L) (h : Reach σ p env oc) :
     ∃ t : Trace Γ p, traceOutcome p env t = oc ∧ traceWeight σ p env t ≠ 0 := by
   induction h with
   | ret =>
@@ -41,7 +41,7 @@ theorem reach_has_pos_weight_trace {Γ : VCtx P L} {p : VegasCore P L Γ}
       · simpa [traceOutcome] using ho
       · simpa [traceWeight] using hw
 
-/-- OperationalProfile-free reachability is exactly existence of a legal trace. -/
+/-- OmniscientOperationalProfile-free reachability is exactly existence of a legal trace. -/
 theorem canReach_iff_exists_legal_trace {Γ : VCtx P L} {p : VegasCore P L Γ}
     {env : VEnv (Player := P) L Γ} {oc : Outcome P} :
     CanReach p env oc ↔
@@ -52,7 +52,7 @@ theorem canReach_iff_exists_legal_trace {Γ : VCtx P L} {p : VegasCore P L Γ}
     simpa [hout] using legal_trace_canReach (p := p) (env := env) t hlegal
 
 /-- The denotational semantics is extensionally equal to the trace-weight sum. -/
-theorem outcomeDist_eq_traceWeightSum {Γ : VCtx P L} (σ : OperationalProfile P L)
+theorem outcomeDist_eq_traceWeightSum {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) :
     outcomeDist σ p env = traceWeightSum σ p env := by
   funext oc
@@ -61,7 +61,7 @@ theorem outcomeDist_eq_traceWeightSum {Γ : VCtx P L} (σ : OperationalProfile P
 /-- An outcome is in the denotational support iff it is realized by some
 positive-weight trace. -/
 theorem mem_support_outcomeDist_iff_exists_pos_weight_trace
-    {Γ : VCtx P L} (σ : OperationalProfile P L)
+    {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) (oc : Outcome P) :
     oc ∈ (outcomeDist σ p env).support ↔
       ∃ t : Trace Γ p, traceOutcome p env t = oc ∧ traceWeight σ p env t ≠ 0 := by

@@ -191,7 +191,7 @@ def DistinctActs {P : Type} [DecidableEq P]
 
 def FairPlayProfile {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
-    (σ : Vegas.OperationalProfile P L) :
+    (σ : Vegas.OmniscientOperationalProfile P L) :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
   | _, .letExpr _ _ k => FairPlayProfile σ k
@@ -224,9 +224,9 @@ def NormalizedDists {P : Type} [DecidableEq P]
   | _, .commit _ _ _ k => NormalizedDists k
   | _, .reveal _ _ _ _ k => NormalizedDists k
 
-def OperationalProfile.NormalizedOn {P : Type} [DecidableEq P]
+def OmniscientOperationalProfile.NormalizedOn {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
-    (σ : Vegas.OperationalProfile P L) :
+    (σ : Vegas.OmniscientOperationalProfile P L) :
     {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
   | _, .ret _ => True
   | _, .letExpr _ _ k => σ.NormalizedOn k

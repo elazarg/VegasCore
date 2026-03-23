@@ -7,7 +7,7 @@ import Vegas.MAID.Correctness
 Connects fixed-program Vegas pure profiles to MAID pure policies through the
 existing Vegas-to-MAID compiler.  The key construction is
 `pureProfileOperational`, which lifts a `ProgramPureProfile` to an
-`OperationalProfile` that the compiler can consume.
+`OmniscientOperationalProfile` that the compiler can consume.
 -/
 
 namespace Vegas
@@ -56,7 +56,7 @@ theorem not_mem_commitVarIds_of_mem_ctx
 /-- If two operational profiles agree at every commit VarId of `p`, they
 produce the same `outcomeDist`. -/
 theorem outcomeDist_congr_on_commits
-    (σ₁ σ₂ : OperationalProfile P L)
+    (σ₁ σ₂ : OmniscientOperationalProfile P L)
     {Γ : VCtx P L} (p : VegasCore P L Γ)
     (h : ∀ {Γ' : VCtx P L} {b' : L.Ty} (who : P) (x : VarId)
         (R : L.Expr ((x, b') :: eraseVCtx Γ') L.bool)
@@ -89,7 +89,7 @@ theorem outcomeDist_congr_on_commits
 /-- If two operational profiles agree at every commit VarId of `p`, one is
 normalized on `p` iff the other is. -/
 theorem NormalizedOn_congr_on_commits
-    (σ₁ σ₂ : OperationalProfile P L)
+    (σ₁ σ₂ : OmniscientOperationalProfile P L)
     {Γ : VCtx P L} (p : VegasCore P L Γ)
     (h : ∀ {Γ' : VCtx P L} {b' : L.Ty} (who : P) (x : VarId)
         (R : L.Expr ((x, b') :: eraseVCtx Γ') L.bool)
@@ -98,15 +98,15 @@ theorem NormalizedOn_congr_on_commits
       σ₁.commit who x R env = σ₂.commit who x R env) :
     σ₁.NormalizedOn p ↔ σ₂.NormalizedOn p := by
   induction p with
-  | ret _ => simp [OperationalProfile.NormalizedOn]
+  | ret _ => simp [OmniscientOperationalProfile.NormalizedOn]
   | letExpr _ _ k ih =>
-    simp only [OperationalProfile.NormalizedOn]
+    simp only [OmniscientOperationalProfile.NormalizedOn]
     exact ih (fun who x R e hx => h who x R e hx)
   | sample _ _ _ _ k ih =>
-    simp only [OperationalProfile.NormalizedOn]
+    simp only [OmniscientOperationalProfile.NormalizedOn]
     exact ih (fun who x R e hx => h who x R e hx)
   | commit x who R k ih =>
-    simp only [OperationalProfile.NormalizedOn]
+    simp only [OmniscientOperationalProfile.NormalizedOn]
     have hhead : ∀ view, σ₁.commit who x R view = σ₂.commit who x R view :=
       fun view => h who x R view
         (Finset.mem_union.mpr (Or.inl (Finset.mem_singleton.mpr rfl)))
@@ -120,8 +120,43 @@ theorem NormalizedOn_congr_on_commits
              (ih (fun who' x' R' e' hx' =>
                h who' x' R' e' (Finset.mem_union.mpr (Or.inr hx')))).mpr hrec⟩
   | reveal _ _ _ _ k ih =>
-    simp only [OperationalProfile.NormalizedOn]
+    simp only [OmniscientOperationalProfile.NormalizedOn]
     exact ih (fun who x R e hx => h who x R e hx)
+
+/-- If two omniscient profiles agree at every commit VarId of `p`, one
+respects observation on `p` iff the other does. -/
+theorem RespectsObservation_congr_on_commits
+    (σ₁ σ₂ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (h : ∀ {Γ' : VCtx P L} {b' : L.Ty} (who : P) (x : VarId)
+        (R : L.Expr ((x, b') :: eraseVCtx Γ') L.bool)
+        (env : Env L.Val (eraseVCtx Γ')),
+      x ∈ commitVarIds p →
+      σ₁.commit who x R env = σ₂.commit who x R env) :
+    OmniscientOperationalProfileRespectsObservation σ₁ p ↔
+      OmniscientOperationalProfileRespectsObservation σ₂ p := by
+  induction p with
+  | ret _ => simp [OmniscientOperationalProfileRespectsObservation]
+  | letExpr _ _ k ih =>
+      exact ih (fun who x R e hx => h who x R e hx)
+  | sample _ _ _ _ k ih =>
+      exact ih (fun who x R e hx => h who x R e hx)
+  | commit x who R k ih =>
+    simp only [OmniscientOperationalProfileRespectsObservation]
+    have hhead : ∀ env, σ₁.commit who x R env = σ₂.commit who x R env :=
+      fun env => h who x R env
+        (Finset.mem_union.mpr (Or.inl (Finset.mem_singleton.mpr rfl)))
+    constructor
+    · intro ⟨hk, hrec⟩
+      exact ⟨fun ρ₁ ρ₂ hobs => by rw [← hhead ρ₁, ← hhead ρ₂]; exact hk ρ₁ ρ₂ hobs,
+             (ih (fun who' x' R' e' hx' =>
+               h who' x' R' e' (Finset.mem_union.mpr (Or.inr hx')))).mp hrec⟩
+    · intro ⟨hk, hrec⟩
+      exact ⟨fun ρ₁ ρ₂ hobs => by rw [hhead ρ₁, hhead ρ₂]; exact hk ρ₁ ρ₂ hobs,
+             (ih (fun who' x' R' e' hx' =>
+               h who' x' R' e' (Finset.mem_union.mpr (Or.inr hx')))).mpr hrec⟩
+  | reveal _ _ _ _ k ih =>
+      exact ih (fun who x R e hx => h who x R e hx)
 
 /-! ## Operational lift of a pure profile -/
 
@@ -134,7 +169,7 @@ noncomputable def pureProfileOperational :
     {Γ : VCtx P L} →
     (p : VegasCore P L Γ) →
     ProgramPureProfile (P := P) (L := L) p →
-    OperationalProfile P L
+    OmniscientOperationalProfile P L
   | _, .ret _, _ =>
     { commit := fun _who _x _R _env => 0 }
   | _, .letExpr _ _ k, π => pureProfileOperational k π
@@ -269,24 +304,20 @@ theorem maid_pure_bridge
     (π : ProgramPureProfile (P := P) (L := L) p)
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p) (hfresh : FreshBindings p) :
-    let _ : Fintype P := B.fintypePlayer
-    let σ := pureProfileOperational p π
+    let β := ProgramPureProfile.toBehavioral (P := P) (L := L) p π
     let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
     let S := st.toStruct
     let sem := MAIDCompileState.toSem st
-    let hσ_norm := pureProfileOperational_normalizedOn p π hfresh
-    let hkn := ofProg_kernelNormalized B p σ hl ha hd hσ_norm
-        (fun _ => env) .empty (MAIDCompileState.empty_kernelNormalized σ)
-    let pol := compiledPolicy st σ hkn
-    let extract : @TAssign P _ B.fintypePlayer st.nextId S → Outcome P :=
+    let pol := compiledPolicy B p hl ha hd (fun _ => env) .empty β
+    let extract : TAssign (fp := B.fintypePlayer) S → Outcome P :=
       fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
     PMF.map extract (evalAssignDist S sem pol) =
       (outcomeDistPure p π env).toPMF
         (outcomeDistPure_totalWeight_eq_one hd) := by
-  intro _inst σ st S sem hσ_norm hkn pol extract
-  rw [maid_map_extract_eq_outcomeDist B p env σ hl ha hd hfresh hσ_norm]
+  intro _inst β st S sem pol extract
+  rw [maid_map_extract_eq_outcomeDistBehavioral B p env β hl ha hd hfresh]
   congr 1
-  exact outcomeDist_pureProfileOperational_eq p π env hfresh
+  exact outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure p π env
 
 /-- The pure-strategic expected payoff agrees with the behavioral-lift expected
 payoff.  This is a Vegas-only corollary: its statement mentions no MAID
@@ -314,24 +345,18 @@ theorem maid_behavioral_eq_outcomeDistBehavioral
     (hl : Legal p) (ha : DistinctActs p)
     (hd : NormalizedDists p) (hfresh : FreshBindings p) :
     let _ : Fintype P := B.fintypePlayer
-    let σ := pureProfileOperational p π
+    let β := ProgramPureProfile.toBehavioral (P := P) (L := L) p π
     let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
     let S := st.toStruct
     let sem := MAIDCompileState.toSem st
-    let hσ_norm := pureProfileOperational_normalizedOn p π hfresh
-    let hkn := ofProg_kernelNormalized B p σ hl ha hd hσ_norm
-        (fun _ => env) .empty (MAIDCompileState.empty_kernelNormalized σ)
-    let pol := compiledPolicy st σ hkn
+    let pol := compiledPolicy B p hl ha hd (fun _ => env) .empty β
     let extract : @TAssign P _ B.fintypePlayer st.nextId S → Outcome P :=
       fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
     PMF.map extract (evalAssignDist S sem pol) =
-      (outcomeDistBehavioral p
-        (ProgramPureProfile.toBehavioral (P := P) (L := L) p π) env).toPMF
+      (outcomeDistBehavioral p β env).toPMF
           (outcomeDistBehavioral_totalWeight_eq_one hd) := by
-  intro _inst σ st S sem hσ_norm hkn pol extract
-  rw [maid_pure_bridge B p env π hl ha hd hfresh]
-  congr 1
-  exact (outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure p π env).symm
+  intro _inst β st S sem pol extract
+  exact maid_map_extract_eq_outcomeDistBehavioral B p env β hl ha hd hfresh
 
 /-- Pure strategic expected utility equals behavioral-lift expected utility.
 This is a purely Vegas theorem: no MAID in the statement. -/
