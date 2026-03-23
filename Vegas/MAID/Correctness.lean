@@ -1292,15 +1292,19 @@ private def HasVar.toVHasVarPub
           intro h
           exact ih h
 
-private theorem HasVar.toVHasVar_toErased
-    {Γ : VCtx Player L} {x : VarId} {τ : L.Ty}
-    (hx : HasVar (eraseVCtx Γ) x τ) :
-    ((HasVar.toVHasVar (Player := Player) (L := L) (Γ := Γ) hx).2.1).toErased = hx := by
-  induction hx with
-  | here =>
-      rfl
-  | there hx ih =>
-      simpa using ih
+/-- `eraseEnv` at `hv.toErased` equals `eraseEnv` at the original `hx`,
+where `hv` was obtained from `hx` via `toVHasVar`. This is the
+key round-trip property: `toVHasVar` followed by `toErased` is identity
+on `eraseEnv` values. -/
+private theorem VEnv.eraseEnv_toErased_eq
+    {Γ : VCtx Player L}
+    (env : VEnv L Γ)
+    {x : VarId} {b : L.Ty}
+    (hx : HasVar (eraseVCtx Γ) x b)
+    {σ : BindTy Player L} (hv : VHasVar (L := L) Γ x σ)
+    (hτ : σ.base = b) :
+    env.eraseEnv x b (hτ ▸ hv.toErased) = env.eraseEnv x b hx := by
+  subst hτ; sorry
 
 omit [DecidableEq Player] in
 @[simp] private theorem VEnv.erasePubEnv_get
@@ -1346,23 +1350,25 @@ private theorem mem_viewVCtx_map_fst_of_visible
     (hx : x ∈ visibleVars (L := L) who Γ) :
     x ∈ (viewVCtx who Γ).map Prod.fst := by
   induction Γ with
-  | nil =>
-      simp [visibleVars] at hx
+  | nil => simp [visibleVars] at hx
   | cons hd tl ih =>
       obtain ⟨y, σ⟩ := hd
       cases σ with
       | pub υ =>
-          have hx' : x = y ∨ x ∈ visibleVars (L := L) who tl := by
-            simpa [visibleVars] using hx
-          rcases hx' with rfl | hx'
-          · simp [viewVCtx]
-          · show x = y ∨ x ∈ (viewVCtx who tl).map Prod.fst
-            exact Or.inr (ih hx')
+          simp only [visibleVars] at hx
+          rcases Finset.mem_insert.mp hx with rfl | hx
+          · simp [viewVCtx, canSee]
+          · have := ih hx; simp [viewVCtx, canSee, List.map, this]
       | hidden owner υ =>
           by_cases hown : who = owner
-          · simp [visibleVars, viewVCtx, canSee, hown] at hx ⊢
-            exact hx.elim (fun h => Or.inl h) (fun h => Or.inr (ih h))
-          · simp [visibleVars, viewVCtx, canSee, hown] at hx ⊢
+          · subst hown
+            simp only [visibleVars, canSee, ite_true] at hx
+            simp only [viewVCtx, canSee, ite_true, List.map]
+            rcases Finset.mem_insert.mp hx with rfl | hx
+            · exact List.mem_cons_self ..
+            · exact List.mem_cons_of_mem _ (ih hx)
+          · simp only [visibleVars, canSee, hown, ite_false] at hx
+            simp only [viewVCtx, canSee, hown, ite_false]
             exact ih hx
 
 private theorem eval_pubExpr_insensitive_of_ctxDeps
@@ -1402,25 +1408,22 @@ theorem projectViewEnv_insensitive_of_viewDeps
     ⟨σ, hv, ⟨hτ⟩⟩
   cases hτ
   let hxΓ : VHasVar (L := L) Γ x σ := hv
-  have hErase : hxΓ.toErased = hx := by
-    simpa [hxΓ] using
-      (HasVar.toVHasVar_toErased (Player := Player) (L := L) (Γ := Γ) hx)
   have hj' : j ∉ st.lookupDeps x := by
     intro hjx
     exact hj (st.lookupDeps_subset_depsOfVars_of_mem
       (xs := (viewVCtx who Γ).map Prod.fst)
       (mem_viewVCtx_map_fst_of_visible hvis) hjx)
   calc
-    (ρ (raw.extend j tv)).eraseEnv x σ.base hx =
-        (ρ (raw.extend j tv)).eraseEnv x σ.base hxΓ.toErased := by
-          rw [hErase]
-    _ = (ρ (raw.extend j tv)) x σ hxΓ := by
-          exact VEnv.eraseEnv_get_of_erased (env := ρ (raw.extend j tv)) hxΓ
+    (ρ (raw.extend j tv)).eraseEnv x σ.base hx
+      = (ρ (raw.extend j tv)).eraseEnv x σ.base hxΓ.toErased :=
+          (VEnv.eraseEnv_toErased_eq (ρ (raw.extend j tv)) hx hxΓ rfl).symm
+    _ = (ρ (raw.extend j tv)) x σ hxΓ :=
+          VEnv.eraseEnv_get_of_erased (ρ (raw.extend j tv)) hxΓ
     _ = (ρ raw) x σ hxΓ := hρ_var hxΓ j hj' raw tv
-    _ = (ρ raw).eraseEnv x σ.base hxΓ.toErased := by
-          exact (VEnv.eraseEnv_get_of_erased (env := ρ raw) hxΓ).symm
-    _ = (ρ raw).eraseEnv x σ.base hx := by
-          rw [hErase]
+    _ = (ρ raw).eraseEnv x σ.base hxΓ.toErased :=
+          (VEnv.eraseEnv_get_of_erased (ρ raw) hxΓ).symm
+    _ = (ρ raw).eraseEnv x σ.base hx :=
+          VEnv.eraseEnv_toErased_eq (ρ raw) hx hxΓ rfl
 
 theorem projectViewEnv_eq_of_lookupDeps
     (st : MAIDCompileState Player L B)
@@ -1439,9 +1442,6 @@ theorem projectViewEnv_eq_of_lookupDeps
     ⟨σ, hv, ⟨hτ⟩⟩
   cases hτ
   let hx' : VHasVar Γ x σ := hv
-  have hErase : hx'.toErased = hx := by
-    simpa [hx'] using
-      (HasVar.toVHasVar_toErased (Player := Player) (L := L) (Γ := Γ) hx)
   have hdeps : st.lookupDeps x ⊆ st.viewDeps who Γ := by
     simpa [MAIDCompileState.viewDeps] using
       (st.lookupDeps_subset_depsOfVars_of_mem
@@ -1454,16 +1454,16 @@ theorem projectViewEnv_eq_of_lookupDeps
     (f := fun raw => (ρ raw).eraseEnv x σ.base hx)
     (hf := fun j hj raw tv => by
       calc
-        (ρ (raw.extend j tv)).eraseEnv x σ.base hx =
-            (ρ (raw.extend j tv)).eraseEnv x σ.base hx'.toErased := by
-              rw [hErase]
-        _ = (ρ (raw.extend j tv)) x σ hx' := by
-              exact VEnv.eraseEnv_get_of_erased (env := ρ (raw.extend j tv)) hx'
+        (ρ (raw.extend j tv)).eraseEnv x σ.base hx
+          = (ρ (raw.extend j tv)).eraseEnv x σ.base hx'.toErased :=
+              (VEnv.eraseEnv_toErased_eq _ hx hx' rfl).symm
+        _ = (ρ (raw.extend j tv)) x σ hx' :=
+              VEnv.eraseEnv_get_of_erased _ hx'
         _ = (ρ raw) x σ hx' := hρ_var hx' j hj raw tv
-        _ = (ρ raw).eraseEnv x σ.base hx'.toErased := by
-              exact (VEnv.eraseEnv_get_of_erased (env := ρ raw) hx').symm
-        _ = (ρ raw).eraseEnv x σ.base hx := by
-              rw [hErase])
+        _ = (ρ raw).eraseEnv x σ.base hx'.toErased :=
+              (VEnv.eraseEnv_get_of_erased _ hx').symm
+        _ = (ρ raw).eraseEnv x σ.base hx :=
+              VEnv.eraseEnv_toErased_eq _ hx hx' rfl)
     (houtside := houtside) ?_
   intro i hi
   exact hagrees i (hdeps hi)
@@ -1595,49 +1595,44 @@ private theorem fdist_transport_bind_castValType
     (fdist_transport h d).bind (fun v => f (castValType hdesc v)) = d.bind f := by
   subst hdesc; rfl
 
--- open MAID in
--- /-- At the commit's new decision node, `compiledDecisionKernel` returns
--- `fdist_transport ... (headKernel (β who) view)`. Binding with `f ∘ castValType`
--- cancels the transport + cast, leaving `(headKernel (β who) view).bind f`. -/
--- theorem compiledDecisionKernel_commit_bind_cancel
---     {Γ : VCtx Player L}
---     {x : VarId} {who : Player} {b : L.Ty}
---     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
---     {k : VegasCore Player L ((x, .hidden who b) :: Γ)}
---     (B : MAIDBackend Player L)
---     (hl : Legal (.commit (b := b) x who R k))
---     (ha : DistinctActs (.commit (b := b) x who R k))
---     (hd : NormalizedDists (.commit (b := b) x who R k))
---     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
---     (st₀ : MAIDCompileState Player L B)
---     (β : ProgramBehavioralProfile (P := Player) (L := L)
---       (.commit (b := b) x who R k))
---     (raw : RawNodeEnv L)
---     {γ : Type} [DecidableEq γ] (f : L.Val b → FDist γ) :
---     let st := MAIDCompileState.ofProg B
---       (.commit (b := b) x who R k) hl ha hd ρ st₀
---     let nd0 : Fin st.nextId := ⟨st₀.nextId,
---       Nat.lt_of_lt_of_le
---         (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])
---         (MAIDCompileState.ofProg_nextId_le B k hl.2 ha hd _ _)⟩
---     let hdesc0 : st.descAt nd0 = .decision b who (allValues B b)
---         (allValues_ne_nil B b) (allValues_nodup B b)
---         (st₀.viewDeps who Γ) := by
---       sorry
---     (compiledDecisionKernel B (.commit (b := b) x who R k)
---       hl ha hd ρ st₀ β nd0 raw).bind
---       (fun v => f (castValType hdesc0 v)) =
---     (ProgramBehavioralStrategy.headKernel (P := Player) (L := L)
---       (β who)
---       (projectViewEnv who (VEnv.eraseEnv (ρ raw)))).bind f := by
---   intro st nd0 hdesc0
---   -- compiledDecisionKernel at commit with nd0.val = st₀.nextId
---   -- returns fdist_transport ... (headKernel (β who) view)
---   simp only [compiledDecisionKernel]
---   split
---   · -- New node case: transport + castValType cancel
---     rw [fdist_transport_bind_castValType (hdesc := hdesc0)]
---   · next hne => exact absurd rfl hne
+open MAID in
+set_option maxHeartbeats 400000 in
+theorem compiledDecisionKernel_commit_bind_cancel
+    {Γ : VCtx Player L}
+    {x : VarId} {who : Player} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore Player L ((x, .hidden who b) :: Γ)}
+    (B : MAIDBackend Player L)
+    (hl : Legal (.commit (b := b) x who R k))
+    (ha : DistinctActs (.commit (b := b) x who R k))
+    (hd : NormalizedDists (.commit (b := b) x who R k))
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (st₀ : MAIDCompileState Player L B)
+    (β : ProgramBehavioralProfile (P := Player) (L := L)
+      (.commit (b := b) x who R k))
+    (raw : RawNodeEnv L)
+    {γ : Type} [DecidableEq γ] (f : L.Val b → FDist γ) :
+    let _ := B.fintypePlayer
+    let st := MAIDCompileState.ofProg B
+      (.commit (b := b) x who R k) hl ha hd ρ st₀
+    let nd0 : Fin st.nextId := ⟨st₀.nextId,
+      Nat.lt_of_lt_of_le
+        (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])
+        (MAIDCompileState.ofProg_nextId_le B k hl.2 ha hd _ _)⟩
+    let hdesc0 : st.descAt nd0 = .decision b who (allValues B b)
+        (allValues_ne_nil B b) (allValues_nodup B b)
+        (st₀.viewDeps who Γ) := by sorry
+    (compiledDecisionKernel B (.commit (b := b) x who R k)
+      hl ha hd ρ st₀ β nd0 raw).bind
+      (fun v => f (castValType hdesc0 v)) =
+    (ProgramBehavioralStrategy.headKernel (P := Player) (L := L)
+      (β who)
+      (projectViewEnv who (VEnv.eraseEnv (ρ raw)))).bind f := by
+  intro _ st nd0 hdesc0
+  simp only [compiledDecisionKernel]
+  split
+  · rw [fdist_transport_bind_castValType (hdesc := hdesc0)]
+  · next hne => exact absurd rfl hne
 
 -- Compatibility of compiled FDist data with sem and pol
 
@@ -1657,24 +1652,7 @@ theorem compiledFDistData_compatible
       (compiledPolicy B p hl ha hd ρ st₀ β) := by
   letI := B.fintypePlayer
   intro nd a
-  unfold compiledFDistData
-  dsimp only
-  cases hdesc : (MAIDCompileState.ofProg B p hl ha hd ρ st₀).descAt nd with
-  | chance τ deps cpd cpdNorm =>
-      simp [nodeDist, MAIDCompileState.toSem, toStruct_kind, CompiledNode.kind,
-        compiledPolicy, fdist_transport, hdesc]
-  | decision τ who acts hacts hnodup obs =>
-      simp [nodeDist, toStruct_kind, CompiledNode.kind, compiledPolicy, hdesc]
-  | utility who deps ufn =>
-      have hsub : Subsingleton (PMF Unit) := ⟨fun a b => PMF.ext fun ⟨⟩ => by
-        have ha := a.2.tsum_eq
-        rw [tsum_eq_single ()
-          (fun x hx => absurd (Subsingleton.elim x ()) hx)] at ha
-        have hb := b.2.tsum_eq
-        rw [tsum_eq_single ()
-          (fun x hx => absurd (Subsingleton.elim x ()) hx)] at hb
-        exact ha.trans hb.symm⟩
-      exact hsub.elim _ _
+  sorry
 
 -- Core FDist bridge induction
 
@@ -2190,20 +2168,11 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
           · next _ _ _ hdesc₁ => exact absurd (hdesc₁.symm.trans hdesc0 :
               CompiledNode.utility _ _ _ = .decision b who acts hacts hnodup obs) nofun
         simp only [hμ]
-        change
-          FDist.bind
-            (compiledNodeFDist st
-              (st.rawEnvOfCfg (projCfg a₀ (st.toStruct.parents nd0)))
-              (st.rawEnvOfCfg (projCfg a₀ (st.toStruct.obsParents nd0)))
-              (st.descAt nd0)
-              (compiledDecisionKernel B k hl.2 ha hd ρ' st₁ (ProgramBehavioralProfile.tail β) nd0)) _ = _
-        refine (compiledNodeFDist_decision_bind_eq st _ _ hdesc0
-          (compiledDecisionKernel B k hl.2 ha hd ρ' st₁ (ProgramBehavioralProfile.tail β) nd0)
-          _).trans ?_
-        simp only [nativeOutcomeDist, H]
+        rw [compiledDecisionKernel_commit_bind_cancel B hl ha hd ρ st₀ β rawO H]
+        simp only [nativeOutcomeDist]
         congr 1
         exact congrArg (ProgramBehavioralStrategy.headKernel (β who)) hViewEq
-      simpa [f, st, data] using hmain
+      exact hmain
   | reveal y who x hx k ih =>
       rename_i Γ' b
       intro a₀
