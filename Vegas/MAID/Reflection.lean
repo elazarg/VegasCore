@@ -248,10 +248,18 @@ private theorem compilePureProfile_eq_pureToPolicy_aux
     simp only [translateStrategy, compilePureProfileAux,
       MAID.pureToPolicy, MAID.pureToPlayerStrategy]
     split
-    · -- isTrue: cast h (FDist.toPMF_pure v) = PMF.pure (cast h' v)
-      sorry
-    · -- isFalse: IH + ProgramBehavioralProfile.tail_toBehavioral
-      sorry
+    · -- isTrue: toPMF_pure + cast commutation with PMF.pure
+      simp [_root_.id, ProgramPureProfile.toBehavioral,
+        ProgramBehavioralStrategy.headKernel, ProgramBehavioralKernel.ofPure,
+        ProgramPureStrategy.headKernel, FDist.toPMF_pure]
+      have : ∀ (α β : Type) [DecidableEq α] [DecidableEq β] (h : α = β)
+          (v : α), cast (congrArg PMF h) (PMF.pure v) = PMF.pure (cast h v) := by
+        intro α β _ _ h v; subst h; rfl
+      exact this _ _ _ _
+    · -- isFalse: IH on continuation
+      simpa [ProgramPureProfile.tail_toBehavioral, MAID.pureToPolicy,
+        MAID.pureToPlayerStrategy] using
+        congrFun (congrFun (ih hl.2 hd hfresh.2 _ _ _) player) ⟨d, cfg⟩
   | reveal _ _ _ _ k ih => exact ih hl hd hfresh.2 _ _ _
 
 /-- The compiled pure policy, lifted to a behavioral MAID policy via
