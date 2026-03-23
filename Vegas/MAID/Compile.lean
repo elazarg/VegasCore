@@ -229,6 +229,10 @@ def ctxDeps (st : MAIDCompileState Player L B) (Γ : VCtx Player L) :
     Finset Nat :=
   st.depsOfVars (Γ.map Prod.fst)
 
+def pubCtxDeps (st : MAIDCompileState Player L B) (Γ : VCtx Player L) :
+    Finset Nat :=
+  st.depsOfVars ((erasePubVCtx Γ).map Prod.fst)
+
 def viewDeps (st : MAIDCompileState Player L B) (who : Player) (Γ : VCtx Player L) :
     Finset Nat :=
   st.depsOfVars ((viewVCtx who Γ).map Prod.fst)
@@ -374,7 +378,7 @@ noncomputable def ofProg
         (fun who raw => ((evalPayoffs payoffs (ρ raw)) who : ℝ))
         Finset.univ.toList
   | Γ, .letExpr (b := b) x e k, hl, hd, ρ, st =>
-      let deps := st.ctxDeps Γ
+      let deps := st.pubCtxDeps Γ
       ofProg B k hl hd
         (fun raw =>
           let env := ρ raw

@@ -459,7 +459,7 @@ noncomputable def translateStrategy
         (fun raw =>
           let env := ρ raw
           VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv env)) env)
-        (st.addVar x (.pub b) (st.ctxDeps _Γ) (st.depsOfVars_lt _))
+        (st.addVar x (.pub b) (st.pubCtxDeps _Γ) (st.depsOfVars_lt _))
         β
   | _Γ, .sample x τ m D' k, hl, hd, ρ, st, β =>
       let deps := st.ctxDeps _Γ
@@ -722,16 +722,37 @@ theorem MAIDCompileState.ctxDeps_addNode_eq
         simp [MAIDCompileState.depsOfVars, MAIDCompileState.lookupDeps_addNode, ih]
   exact haux (Γ.map Prod.fst)
 
+omit [DecidableEq Player] in
+private theorem erasePubVCtx_map_fst_sub (Γ : VCtx Player L) :
+    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst → x ∈ Γ.map Prod.fst := by
+  induction Γ with
+  | nil => simp [erasePubVCtx]
+  | cons a Γ' ih =>
+    intro x hx
+    match a with
+    | (y, .pub b) =>
+      simp only [erasePubVCtx_cons_pub, List.map_cons, List.mem_cons] at hx ⊢
+      exact hx.elim .inl (fun h => .inr (ih x h))
+    | (y, .hidden p b) =>
+      simp only [erasePubVCtx_cons_hidden, List.map_cons, List.mem_cons] at hx ⊢
+      exact .inr (ih x hx)
+
+theorem MAIDCompileState.pubCtxDeps_sub_ctxDeps
+    (st : MAIDCompileState Player L B) (Γ : VCtx Player L) :
+    st.pubCtxDeps Γ ⊆ st.ctxDeps Γ := by
+  unfold MAIDCompileState.pubCtxDeps MAIDCompileState.ctxDeps
+  exact st.depsOfVars_subset_of_subset _ _ (erasePubVCtx_map_fst_sub Γ)
+
 theorem MAIDCompileState.ctxDeps_letExpr_step
     (st : MAIDCompileState Player L B)
     {Γ : VCtx Player L} (x : VarId) {b : L.Ty}
     (hfreshΓ : Fresh x Γ)
     (hfreshVars : x ∉ st.vars.map Prod.fst) :
-    (st.addVar x (.pub b) (st.ctxDeps Γ) (st.depsOfVars_lt _)).ctxDeps
+    (st.addVar x (.pub b) (st.pubCtxDeps Γ) (st.depsOfVars_lt _)).ctxDeps
       ((x, .pub b) :: Γ) = st.ctxDeps Γ := by
-  rw [st.ctxDeps_addVar_cons_eq_of_fresh x (.pub b) (st.ctxDeps Γ)
+  rw [st.ctxDeps_addVar_cons_eq_of_fresh x (.pub b) (st.pubCtxDeps Γ)
     (st.depsOfVars_lt _) hfreshΓ hfreshVars]
-  simp
+  exact Finset.union_eq_right.mpr (st.pubCtxDeps_sub_ctxDeps Γ)
 
 theorem MAIDCompileState.ctxDeps_addNode_addVar_singleton_cons_eq_of_fresh
     (st : MAIDCompileState Player L B)
@@ -982,7 +1003,7 @@ noncomputable def compiledDecisionKernel
       compiledDecisionKernel B k hl hd
         (fun raw => VEnv.cons (τ := .pub b)
           (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
-        (st₀.addVar x (.pub b) (st₀.ctxDeps _Γ) (st₀.depsOfVars_lt _))
+        (st₀.addVar x (.pub b) (st₀.pubCtxDeps _Γ) (st₀.depsOfVars_lt _))
         β nd raw
   | _Γ, .sample x τ m D' k, hl, hd, ρ, st₀, β, nd, raw =>
       let deps := st₀.ctxDeps _Γ
@@ -1072,7 +1093,7 @@ theorem compiledDecisionKernel_normalized
       intro nd raw _
       simp only [compiledDecisionKernel]
       exact FDist.totalWeight_pure _
-  | letExpr x e k ih => exact ih _ _ _ _ _
+  | letExpr x e k ih => exact ih hl hd _ _ β
   | sample x τ m D' k ih => exact ih _ _ _ _ _
   | commit x who R k ih =>
       intro nd raw ⟨w, hw⟩
@@ -1546,6 +1567,28 @@ private theorem eval_pubExpr_insensitive_of_ctxDeps
   simpa [VEnv.erasePubEnv_get, hxPub, hxΓ] using
     (hρ_var hxΓ j hj' raw tv)
 
+private theorem eval_pubExpr_insensitive_of_pubCtxDeps
+    (st : MAIDCompileState Player L B)
+    {Γ : VCtx Player L}
+    (ρ : RawNodeEnv L → VEnv L Γ)
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    {τ : L.Ty}
+    (e : L.Expr (erasePubVCtx Γ) τ)
+    (j : Nat)
+    (hj : j ∉ st.pubCtxDeps Γ) :
+    InsensitiveTo (fun raw => L.eval e (VEnv.erasePubEnv (ρ raw))) j := by
+  intro raw tv
+  apply L.expr_deps_sound
+  intro x τ' hx _hmem
+  let hxPub : VHasVar (L := L) (pubVCtx Γ) x (.pub τ') := HasVar.toVHasVarPub hx
+  let hxΓ : VHasVar (L := L) Γ x (.pub τ') := VHasVar.ofPubVCtx hxPub
+  have hxMem : x ∈ (erasePubVCtx Γ).map Prod.fst := hx.mem_map_fst
+  have hj' : j ∉ st.lookupDeps x := by
+    intro hjx
+    exact hj (st.lookupDeps_subset_depsOfVars_of_mem hxMem hjx)
+  simpa [VEnv.erasePubEnv_get, hxPub, hxΓ] using
+    (hρ_var hxΓ j hj' raw tv)
+
 theorem projectViewEnv_insensitive_of_viewDeps
     (st : MAIDCompileState Player L B)
     {Γ : VCtx Player L}
@@ -1845,7 +1888,7 @@ private theorem dk_toPMF_eq_ts
   | ret =>
       simp only [compiledDecisionKernel, translateStrategy, id]
       exact (FDist.toPMF_congr rfl).trans (FDist.toPMF_pure _)
-  | letExpr x e k ih => exact @ih _ _ _ _ β nd hk cfg
+  | letExpr x e k ih => exact ih hl hd _ _ β nd hk cfg
   | sample x τ m D' k ih => exact @ih _ _ _ _ β nd hk cfg
   | @commit _ x who' b R k ih =>
       -- Both compiledDecisionKernel and translateStrategy for commit use
@@ -2040,9 +2083,9 @@ theorem MAIDCompileState.VarsSubCtx_letExpr_step
     (hvars : st.VarsSubCtx Γ)
     (x : VarId) {b : L.Ty}
     (hfreshΓ : Fresh x Γ) :
-    (st.addVar x (.pub b) (st.ctxDeps Γ) (st.depsOfVars_lt _)).VarsSubCtx
+    (st.addVar x (.pub b) (st.pubCtxDeps Γ) (st.depsOfVars_lt _)).VarsSubCtx
       ((x, .pub b) :: Γ) := by
-  exact st.VarsSubCtx_addVar hvars x (.pub b) (st.ctxDeps Γ)
+  exact st.VarsSubCtx_addVar hvars x (.pub b) (st.pubCtxDeps Γ)
     (st.depsOfVars_lt _) hfreshΓ
 
 theorem MAIDCompileState.VarsSubCtx_addNode_addVar_singleton_step
@@ -2143,7 +2186,7 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
       have hxvars : x ∉ st₀.vars.map Prod.fst := fun hxmem => hxΓ (hvars x hxmem)
       let ρ' : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ') :=
         fun raw => VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw)
-      let st₁ := st₀.addVar x (.pub b) (st₀.ctxDeps Γ') (st₀.depsOfVars_lt _)
+      let st₁ := st₀.addVar x (.pub b) (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _)
       have hvars₁ : st₁.VarsSubCtx ((x, .pub b) :: Γ') := by
         simpa [st₁] using st₀.VarsSubCtx_letExpr_step hvars x hxΓ
       have hρ'_deps : ∀ j, j ∉ st₁.ctxDeps ((x, .pub b) :: Γ') → InsensitiveTo ρ' j := by
@@ -2156,21 +2199,20 @@ theorem foldFDist_map_extract_eq_nativeOutcomeDist
         intro y τ hy j hj raw tv
         cases hy with
         | here =>
-            have hj' : j ∉ st₀.ctxDeps Γ' := by
-              simpa [st₁, st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.ctxDeps Γ')
+            have hj' : j ∉ st₀.pubCtxDeps Γ' := by
+              simpa [st₁, st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.pubCtxDeps Γ')
                 (st₀.depsOfVars_lt _) hxvars] using hj
             simpa [ρ', VEnv.get] using
-              (eval_pubExpr_insensitive_of_ctxDeps st₀ ρ hρ_var e j hj' raw tv)
+              (eval_pubExpr_insensitive_of_pubCtxDeps st₀ ρ hρ_var e j hj' raw tv)
         | there hy' =>
             have hxy : y ≠ x := by
               intro hEq
               exact hxΓ (hEq.symm ▸ hy'.mem_map_fst)
             have hj' : j ∉ st₀.lookupDeps y := by
-              simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b) (st₀.ctxDeps Γ')
+              simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b) (st₀.pubCtxDeps Γ')
                 (st₀.depsOfVars_lt _) hxy] using hj
             simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-      have hih := ih β hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var
-      exact hih a₀
+      exact ih β hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var a₀
   | sample x τ m D' k ih =>
       rename_i Γ'
       intro a₀

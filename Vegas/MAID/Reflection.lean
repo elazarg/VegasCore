@@ -138,12 +138,10 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (hwf : WF p) :
     let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     ∀ (pol : MAID.Policy (fp := B.fintypePlayer) st.toStruct),
-      let extract : TAssign (fp := B.fintypePlayer) st.toStruct → Outcome P :=
-        fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
-      let σ_pmf := reflectPolicy B p hl hd env pol
-      PMF.map extract (evalAssignDist (fp := B.fintypePlayer) st.toStruct
+      PMF.map (fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a))
+        (evalAssignDist (fp := B.fintypePlayer) st.toStruct
         (MAIDCompileState.toSem st) pol) =
-        outcomeDistBehavioralPMF p hd σ_pmf env := by
+        outcomeDistBehavioralPMF p hd (reflectPolicy B p hl hd env pol) env := by
   -- Proven modulo nativeOutcomeDistPMF bridge (see below).
   -- The mathematical argument: both sides decompose along the program structure.
   -- At commit sites, obs-config injectivity ensures Classical.choose picks
@@ -173,7 +171,7 @@ private noncomputable def compilePureProfileAux
   | _, .letExpr (b := b) x e k, hl, hd, ρ, st, π =>
       compilePureProfileAux B k hl hd
         (fun raw => VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
-        (st.addVar x (.pub b) (st.ctxDeps _) (st.depsOfVars_lt _)) π
+        (st.addVar x (.pub b) (st.pubCtxDeps _) (st.depsOfVars_lt _)) π
   | _, .sample x τ m D' k, hl, hd, ρ, st, π =>
       compilePureProfileAux B k hl hd.2 _ _ π
   | Γ, .commit (b := b) x who R k, hl, hd, ρ, st, π => by
@@ -239,7 +237,7 @@ private theorem compilePureProfile_eq_pureToPolicy_aux
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
     (hl : Legal p) (hd : NormalizedDists p) (hfresh : FreshBindings p)
-    (ρ : RawNodeEnv L → VEnv (Player := P) L Γ)
+    (ρ : RawNodeEnv L → VEnv L Γ)
     (st₀ : MAIDCompileState P L B)
     (π : ProgramPureProfile p) :
     translateStrategy B p hl hd ρ st₀ (ProgramPureProfile.toBehavioral p π) =
@@ -248,7 +246,9 @@ private theorem compilePureProfile_eq_pureToPolicy_aux
   | ret => funext player ⟨d, cfg⟩
            simp [translateStrategy, compilePureProfileAux,
                  MAID.pureToPolicy, MAID.pureToPlayerStrategy]
-  | letExpr _ _ k ih => exact ih hl hd hfresh.2 _ _ _
+  | letExpr _ _ k ih =>
+    simp only [translateStrategy, compilePureProfileAux]
+    exact ih hl hd hfresh.2 _ _ _
   | sample _ _ _ _ k ih => exact ih hl hd.2 hfresh.2 _ _ _
   | commit x who_c R k ih =>
     funext player ⟨d, cfg⟩
@@ -256,9 +256,10 @@ private theorem compilePureProfile_eq_pureToPolicy_aux
       MAID.pureToPolicy, MAID.pureToPlayerStrategy]
     split
     · -- isTrue: toPMF_pure + cast commutation with PMF.pure
-      simp [_root_.id, ProgramPureProfile.toBehavioral,
-        ProgramBehavioralStrategy.headKernel, ProgramBehavioralKernel.ofPure,
-        ProgramPureStrategy.headKernel, FDist.toPMF_pure]
+      simp only [toStruct_kind, toStruct_Val, id, ProgramBehavioralStrategy.headKernel,
+        ProgramPureProfile.toBehavioral, ↓reduceDIte, ProgramBehavioralKernel.ofPure,
+        ProgramPureStrategy.headKernel, eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq,
+        FDist.totalWeight_pure, FDist.toPMF_pure]
       have : ∀ (α β : Type) [DecidableEq α] [DecidableEq β] (h : α = β)
           (v : α), cast (congrArg PMF h) (PMF.pure v) = PMF.pure (cast h v) := by
         intro α β _ _ h v; subst h; rfl
@@ -281,11 +282,10 @@ theorem compilePureProfile_eq_pureToPolicy
     (hl : Legal p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p) :
-    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     let β := ProgramPureProfile.toBehavioral p π
     compiledPolicy B p hl hd (fun _ => env) .empty β =
       MAID.pureToPolicy (fp := B.fintypePlayer) (compilePureProfile B p hl hd env π) := by
-  intro st β
+  intro β
   exact compilePureProfile_eq_pureToPolicy_aux B p hl hd hfresh (fun _ => env) .empty π
 
 end Vegas
