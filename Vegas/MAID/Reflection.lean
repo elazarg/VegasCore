@@ -125,6 +125,112 @@ noncomputable def reflectPolicy
     ProgramBehavioralProfilePMF p :=
   reflectPolicyAux B p hl hd (fun _ => env) .empty
 
+/-! ### PMF-level native outcome distribution -/
+
+/-- PMF-level native outcome distribution: like `nativeOutcomeDist` (FDist) but
+uses PMF throughout. At sample sites, the FDist from nature is converted to PMF
+via `NormalizedDists`. At commit sites, the PMF behavioral kernel is applied. -/
+private noncomputable def nativeOutcomeDistPMF
+    (B : MAIDBackend P L)
+    {Γ : VCtx P L}
+    (p : VegasCore P L Γ)
+    (hd : NormalizedDists p)
+    (σ : ProgramBehavioralProfilePMF p) :
+    (ρ : RawNodeEnv L → VEnv L Γ) →
+    (nextId : Nat) →
+    RawNodeEnv L → PMF (Outcome P) :=
+  match p, hd, σ with
+  | .ret u, _, _ => fun ρ _ raw =>
+      PMF.pure (evalPayoffs u (ρ raw))
+  | .letExpr (b := b) x e k, hd, σ => fun ρ nextId raw =>
+      nativeOutcomeDistPMF B k hd σ
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := .pub b)
+          (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
+        nextId raw
+  | .sample x τ _m D' k, hd, σ => fun ρ nextId raw =>
+      ((L.evalDist D' (VEnv.eraseDistEnv τ _ (ρ raw))).toPMF (hd.1 _)).bind
+        (fun v =>
+          nativeOutcomeDistPMF B k hd.2 σ
+            (fun raw => VEnv.cons (L := L) (x := x) (τ := τ)
+              (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw))
+            (nextId + 1) (raw.extend nextId ⟨τ.base, v⟩))
+  | .commit (b := b) x who _ k, hd, σ => fun ρ nextId raw =>
+      let κ := ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L) (σ who)
+      (κ (projectViewEnv who (VEnv.eraseEnv (ρ raw)))).bind
+        (fun v =>
+          nativeOutcomeDistPMF B k hd
+            (ProgramBehavioralProfilePMF.tail (P := P) (L := L) σ)
+            (fun raw => VEnv.cons (L := L) (x := x) (τ := .hidden who b)
+              (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw))
+            (nextId + 1) (raw.extend nextId ⟨b, v⟩))
+  | .reveal (b := b) y _who _x hx k, hd, σ => fun ρ nextId raw =>
+      nativeOutcomeDistPMF B k hd σ
+        (fun raw =>
+          let v : L.Val b := VEnv.get (L := L) (ρ raw) hx
+          VEnv.cons (L := L) (x := y) (τ := .pub b) v (ρ raw))
+        nextId raw
+
+/-- `nativeOutcomeDistPMF` equals `outcomeDistBehavioralPMF` when ρ is
+insensitive to all node ids ≥ nextId. -/
+private theorem nativeOutcomeDistPMF_eq
+    (B : MAIDBackend P L)
+    {Γ : VCtx P L}
+    (p : VegasCore P L Γ)
+    (hd : NormalizedDists p)
+    (σ : ProgramBehavioralProfilePMF p)
+    (ρ : RawNodeEnv L → VEnv L Γ)
+    (nextId : Nat)
+    (hρ : ∀ nid, nextId ≤ nid → InsensitiveTo ρ nid) :
+    ∀ raw : RawNodeEnv L,
+    nativeOutcomeDistPMF B p hd σ ρ nextId raw =
+      outcomeDistBehavioralPMF p hd σ (ρ raw) := by
+  induction p generalizing nextId with
+  | ret u =>
+    intro raw; simp only [nativeOutcomeDistPMF, outcomeDistBehavioralPMF]
+  | letExpr x e k ih =>
+    intro raw; simp only [nativeOutcomeDistPMF, outcomeDistBehavioralPMF]
+    exact ih hd σ _ nextId
+      (fun nid hn raw tv => VEnv.cons_ext
+        (congrArg (L.eval e) (congrArg VEnv.erasePubEnv (hρ nid hn raw tv)))
+        (hρ nid hn raw tv))
+      raw
+  | sample x τ m D' k ih =>
+    intro raw; simp only [nativeOutcomeDistPMF, outcomeDistBehavioralPMF]
+    congr 1; funext v
+    have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := τ)
+          (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw)) nid' := by
+      intro nid' hn' raw tv
+      exact VEnv.cons_ext
+        (readVal_extend_ne raw nid' nextId tv τ.base (by omega))
+        (hρ nid' (by omega) raw tv)
+    rw [ih hd.2 σ _ (nextId + 1) hρ']
+    congr 1
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId τ.base v)
+      (hρ nextId (le_refl _) raw ⟨τ.base, v⟩)
+  | @commit _ x who b R k ih =>
+    intro raw; simp only [nativeOutcomeDistPMF, outcomeDistBehavioralPMF]
+    congr 1; funext v
+    have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := .hidden who b)
+          (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw)) nid' := by
+      intro nid' hn' raw tv
+      exact VEnv.cons_ext
+        (readVal_extend_ne raw nid' nextId tv b (by omega))
+        (hρ nid' (by omega) raw tv)
+    rw [ih hd (ProgramBehavioralProfilePMF.tail (P := P) (L := L) σ) _ (nextId + 1) hρ']
+    congr 1
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId b v)
+      (hρ nextId (le_refl _) raw ⟨b, v⟩)
+  | reveal y who x hx k ih =>
+    intro raw; simp only [nativeOutcomeDistPMF, outcomeDistBehavioralPMF]
+    exact ih hd σ _ nextId
+      (fun nid hn raw tv =>
+        VEnv.cons_ext (τ := .pub _)
+          (congrArg (VEnv.get (L := L) · hx) (hρ nid hn raw tv))
+          (hρ nid hn raw tv))
+      raw
+
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
 obtained by reflecting a MAID policy produces the same outcome distribution
 as the MAID's `evalAssignDist` mapped through outcome extraction. -/
@@ -142,13 +248,10 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
         (evalAssignDist (fp := B.fintypePlayer) st.toStruct
         (MAIDCompileState.toSem st) pol) =
         outcomeDistBehavioralPMF p hd (reflectPolicy B p hl hd env pol) env := by
-  -- Proven modulo nativeOutcomeDistPMF bridge (see below).
-  -- The mathematical argument: both sides decompose along the program structure.
-  -- At commit sites, obs-config injectivity ensures Classical.choose picks
-  -- the correct cfg, so the reflected kernel matches the MAID policy.
-  -- The formal proof requires PMF-level fold machinery (analogous to the
-  -- FDist fold in Correctness.lean) connecting evalAssignDist to the
-  -- structural recursion of outcomeDistBehavioralPMF.
+  -- The proof requires a PMF-level fold bridge connecting evalAssignDist
+  -- to nativeOutcomeDistPMF, then using nativeOutcomeDistPMF_eq above.
+  -- At commit sites, obs-config injectivity (now correct after the
+  -- pubCtxDeps fix) ensures Classical.choose picks the correct cfg.
   sorry
 
 /-! ## Pure strategy compilation: Vegas → MAID -/
