@@ -110,6 +110,67 @@ private theorem MAIDCompileState.DecisionMonotone_addUtilityNodes
   rw [h₁] at hk₁ ⊢; rw [h₂] at hk₂ ⊢
   exact hmon who ⟨d₁.val, old₁⟩ ⟨d₂.val, old₂⟩ hk₁ hk₂ hlt
 
+/-- `addVar` of a fresh variable preserves `DecisionVisible` for extended context.
+Key facts: (1) old visible vars have unchanged lookupDeps, (2) viewVCtx only grows. -/
+private theorem MAIDCompileState.DecisionVisible_addVar_cons
+    (st : MAIDCompileState P L B)
+    (x : VarId) (τ : BindTy P L) (deps : Finset Nat)
+    (hdeps : ∀ d ∈ deps, d < st.nextId)
+    {Γ : VCtx P L}
+    (hfreshΓ : Fresh x Γ)
+    (hvis : st.DecisionVisible Γ) :
+    (st.addVar x τ deps hdeps).DecisionVisible ((x, τ) :: Γ) := by
+  intro who d hkd
+  -- addVar doesn't change nodes or nextId, so descAt is the same
+  have hkd' : (st.descAt d).kind = .decision who := hkd
+  obtain ⟨hmem, hsub⟩ := hvis who d hkd'
+  -- Need: d.val ∈ (addVar ...).viewDeps who ((x,τ)::Γ)
+  -- and obsParents ⊆ (addVar ...).viewDeps who ((x,τ)::Γ)
+  -- Key: viewDeps who Γ in st ⊆ viewDeps who ((x,τ)::Γ) in (addVar ...)
+  have hview_sub : st.viewDeps who Γ ⊆
+      (st.addVar x τ deps hdeps).viewDeps who ((x, τ) :: Γ) := by
+    intro d' hd'
+    unfold viewDeps
+    simp only [viewVCtx]
+    split
+    · -- canSee who τ = true
+      simp only [List.map, depsOfVars]
+      exact Finset.mem_union_right _
+        (depsOfVars_addVar_eq_of_fresh st x τ deps hdeps
+          ((viewVCtx who Γ).map Prod.fst)
+          (fun h => hfreshΓ (viewVCtx_map_fst_sub h)) ▸ hd')
+    · -- canSee who τ = false
+      exact depsOfVars_addVar_eq_of_fresh st x τ deps hdeps
+        ((viewVCtx who Γ).map Prod.fst)
+        (fun h => hfreshΓ (viewVCtx_map_fst_sub h)) ▸ hd'
+  exact ⟨hview_sub hmem, fun d' hd' => hview_sub (hsub hd')⟩
+
+/-- `addNode` of non-decision + `addVar` preserves `DecisionMonotone`. -/
+private theorem MAIDCompileState.DecisionMonotone_addNode_addVar_nonDec
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    (hmon : st.DecisionMonotone)
+    (hnotDec : ∀ who, nd.kind ≠ .decision who) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).DecisionMonotone := by
+  sorry
+
+/-- `addNode + addVar` of non-decision node preserves `DecisionVisible`. -/
+private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    {Γ : VCtx P L} (hfreshΓ : Fresh x Γ)
+    (hvis : st.DecisionVisible Γ)
+    (hnotDec : ∀ who, nd.kind ≠ .decision who) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).DecisionVisible
+      ((x, τ) :: Γ) := by
+  sorry
+
 /-- Generalized induction: `ofProg` preserves `DecisionMonotone` when started
 from a state satisfying both `DecisionMonotone` and `DecisionVisible`. -/
 private theorem MAIDCompileState.ofProg_preserves_decision_monotone
@@ -126,13 +187,19 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
     simp only [ofProg]
     exact DecisionMonotone_addUtilityNodes st₀ _ _ _ _ hmon
   | letExpr _ _ k ih =>
-    exact ih hl ha hd hfresh.2 _ _ hmon sorry
+    exact ih hl ha hd hfresh.2 _ _ hmon
+      (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis)
   | sample _ _ _ _ k ih =>
-    exact ih hl ha hd.2 hfresh.2 _ _ sorry sorry
+    exact ih hl ha hd.2 hfresh.2 _ _
+      (DecisionMonotone_addNode_addVar_nonDec st₀ _ _ _ _ _ hmon
+        (fun who h => by simp [CompiledNode.kind] at h))
+      (DecisionVisible_addNode_addVar_cons st₀ _ _ _ _ _ hfresh.1 hvis
+        (fun who h => by simp [CompiledNode.kind] at h))
   | commit x who_c R k ih =>
     exact ih hl.2 ha hd hfresh.2 _ _ sorry sorry
   | reveal _ _ _ _ k ih =>
-    exact ih hl ha hd hfresh.2 _ _ hmon sorry
+    exact ih hl ha hd hfresh.2 _ _ hmon
+      (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis)
 
 /-- For any two decision nodes of the same player with `d₁.val < d₂.val`,
 `d₁` is a direct obsParent of `d₂` and d₁'s obsParents are a subset of d₂'s.
