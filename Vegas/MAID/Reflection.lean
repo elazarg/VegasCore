@@ -66,14 +66,40 @@ private noncomputable def reflectPolicyAux
             intro view
             -- The decision node for this commit is at index st.nextId in st_final
             -- Node at id is a decision for who (from addNode_descAt_new + ofProg_descAt_old)
+            -- Derive descAt for the decision node at st.nextId
+            let nd : CompiledNode P L B :=
+              .decision b who (allValues B b) (allValues_ne_nil B b)
+                (allValues_nodup B b) (st.viewDeps who Γ)
+            have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId := by
+              intro d hd'
+              have : d ∈ st.viewDeps who Γ := by
+                rcases Finset.mem_union.mp hd' with h | h <;>
+                  simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using h
+              exact st.depsOfVars_lt _ d (by simpa [MAIDCompileState.viewDeps] using this)
+            have hst1_lt : st.nextId < ((st.addNode nd hndeps).2.addVar x (.hidden who b)
+                {st.nextId} (fun d hd₁ => by
+                  simp only [Finset.mem_singleton] at hd₁; subst hd₁
+                  exact Nat.lt_succ_self _)).nextId := by
+              simp [MAIDCompileState.addVar, MAIDCompileState.addNode]
+            have hdesc : st_final.descAt ⟨id, hid_lt⟩ = nd := by
+              -- Chain: ofProg_descAt_old gives st₁.descAt, then addVar gives addNode, then addNode_descAt_new
+              let ρ' : RawNodeEnv L → VEnv (Player := P) L ((x, .hidden who b) :: Γ) :=
+                fun raw => VEnv.cons (τ := .hidden who b) (MAIDCompileState.readVal (B := B) raw b st.nextId) (ρ raw)
+              let st₁ := (st.addNode nd hndeps).2.addVar x (.hidden who b) {st.nextId}
+                (fun d hd₁ => by simp only [Finset.mem_singleton] at hd₁; subst hd₁; exact Nat.lt_succ_self _)
+              show (MAIDCompileState.ofProg B k hl.2 hd ρ' st₁).descAt ⟨st.nextId, _⟩ = nd
+              rw [MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ st.nextId hst1_lt]
+              simp only [st₁, MAIDCompileState.addVar]
+              exact st.addNode_descAt_new nd hndeps
             have hkind : st_final.toStruct.kind ⟨id, hid_lt⟩ =
-                MAID.NodeKind.decision who := sorry
-            have hval : st_final.toStruct.Val ⟨id, hid_lt⟩ = L.Val b := sorry
+                MAID.NodeKind.decision who := by
+              simp only [toStruct_kind, hdesc, nd, CompiledNode.kind]
+            have hval : st_final.toStruct.Val ⟨id, hid_lt⟩ = L.Val b := by
+              change CompiledNode.valType (st_final.descAt ⟨id, hid_lt⟩) = L.Val b
+              rw [hdesc]; rfl
             let obs := st_final.toStruct.obsParents ⟨id, hid_lt⟩
-            let forwardMap := fun (cfg : @MAID.Cfg P _ B.fintypePlayer
-                st_final.nextId st_final.toStruct obs) =>
-              projectViewEnv (P := P) (L := L) who
-                (VEnv.eraseEnv (ρ (st_final.rawEnvOfCfg cfg)))
+            let forwardMap (cfg : MAID.Cfg (fp := B.fintypePlayer) st_final.toStruct obs) :=
+              projectViewEnv who (VEnv.eraseEnv (ρ (st_final.rawEnvOfCfg cfg)))
             by_cases h : ∃ cfg, forwardMap cfg = view
             · exact hval ▸ (pol who ⟨⟨⟨id, hid_lt⟩, hkind⟩, Classical.choose h⟩)
             · exact PMF.pure (MAIDValuation.defaultVal L B.toMAIDValuation b) }
@@ -95,7 +121,7 @@ noncomputable def reflectPolicy
     (env : VEnv L Γ) :
     let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     MAID.Policy (fp := B.fintypePlayer) st.toStruct →
-    ProgramBehavioralProfilePMF (P := P) (L := L) p :=
+    ProgramBehavioralProfilePMF p :=
   reflectPolicyAux B p hl hd (fun _ => env) .empty
 
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
@@ -130,7 +156,7 @@ private noncomputable def compilePureProfileAux
     (hl : Legal p) → (hd : NormalizedDists p) →
     (ρ : RawNodeEnv L → VEnv (Player := P) L Γ) →
     (st₀ : MAIDCompileState P L B) →
-    ProgramPureProfile (P := P) (L := L) p →
+    ProgramPureProfile p →
     @MAID.PurePolicy P _ B.fintypePlayer
       (MAIDCompileState.ofProg B p hl hd ρ st₀).nextId
       (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct
@@ -161,8 +187,8 @@ private noncomputable def compilePureProfileAux
       let st₁ := st'.addVar x (.hidden who b) ({id}) (by
         intro d hd₁; simp only [Finset.mem_singleton] at hd₁; subst hd₁; exact Nat.lt_succ_self _)
       let pol_rest := compilePureProfileAux B k hl.2 hd ρ' st₁
-        (ProgramPureProfile.tail (P := P) (L := L) π)
-      let κ := ProgramPureStrategy.headKernel (P := P) (L := L) (π who)
+        (ProgramPureProfile.tail π)
+      let κ := ProgramPureStrategy.headKernel (π who)
       intro p ⟨d, cfg⟩
       let st_final := MAIDCompileState.ofProg B k hl.2 hd ρ' st₁
       by_cases hd_eq : d.1.val = id
@@ -182,7 +208,7 @@ private noncomputable def compilePureProfileAux
           exact h.trans hdesc0
         change CompiledNode.valType (st_final.descAt d.1)
         rw [hdesc]; change L.Val b
-        exact κ (projectViewEnv (P := P) (L := L) who
+        exact κ (projectViewEnv who
           (VEnv.eraseEnv (ρ (st_final.rawEnvOfCfg cfg))))
       · exact pol_rest p ⟨d, cfg⟩
   | _, .reveal (b := b) y who x hx k, hl, hd, ρ, st, π =>
