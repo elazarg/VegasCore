@@ -362,26 +362,25 @@ noncomputable def ofProg
     {Γ : VCtx Player L} →
       (p : VegasCore Player L Γ) →
       Legal p →
-      DistinctActs p →
       NormalizedDists p →
       (RawNodeEnv L → VEnv (Player := Player) L Γ) →
       MAIDCompileState Player L B →
       MAIDCompileState Player L B
-  | Γ, .ret payoffs, _hl, _ha, _hd, ρ, st =>
+  | Γ, .ret payoffs, _hl, _hd, ρ, st =>
       let _ : Fintype Player := B.fintypePlayer
       st.addUtilityNodes
         (st.ctxDeps Γ)
         (st.depsOfVars_lt _)
         (fun who raw => ((evalPayoffs payoffs (ρ raw)) who : ℝ))
         Finset.univ.toList
-  | Γ, .letExpr (b := b) x e k, hl, ha, hd, ρ, st =>
+  | Γ, .letExpr (b := b) x e k, hl, hd, ρ, st =>
       let deps := st.ctxDeps Γ
-      ofProg B k hl ha hd
+      ofProg B k hl hd
         (fun raw =>
           let env := ρ raw
           VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv env)) env)
         (st.addVar x (.pub b) deps (st.depsOfVars_lt _))
-  | Γ, .sample x τ m D' k, hl, ha, hd, ρ, st =>
+  | Γ, .sample x τ m D' k, hl, hd, ρ, st =>
       let deps := st.ctxDeps Γ
       let id := st.nextId
       let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
@@ -395,7 +394,7 @@ noncomputable def ofProg
           simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
         exact st.depsOfVars_lt _ d hd'')
       let st' := res.2
-      ofProg B k hl ha hd.2
+      ofProg B k hl hd.2
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw τ.base id
@@ -406,7 +405,7 @@ noncomputable def ofProg
             simpa using hd'
           subst d
           exact Nat.lt_succ_self _))
-  | Γ, .commit (b := b) x who R k, hl, ha, hd, ρ, st =>
+  | Γ, .commit (b := b) x who R k, hl, hd, ρ, st =>
       let obs := st.viewDeps who Γ
       let acts := allValues B b
       have hacts : acts ≠ [] := allValues_ne_nil B b
@@ -419,7 +418,7 @@ noncomputable def ofProg
           simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
         exact st.depsOfVars_lt _ d hd'')
       let st' := res.2
-      ofProg B k hl.2 ha hd
+      ofProg B k hl.2 hd
         (fun raw =>
           let env := ρ raw
           let v := MAIDCompileState.readVal (B := B) raw b id
@@ -430,9 +429,9 @@ noncomputable def ofProg
             simpa using hd'
           subst d
           exact Nat.lt_succ_self _))
-  | _, .reveal (b := b) y who x hx k, hl, ha, hd, ρ, st =>
+  | _, .reveal (b := b) y who x hx k, hl, hd, ρ, st =>
       let deps := st.lookupDeps x
-      ofProg B k hl ha hd
+      ofProg B k hl hd
         (fun raw =>
           let env := ρ raw
           let v : L.Val b := VEnv.get env hx
@@ -564,14 +563,13 @@ namespace VegasCore
 noncomputable def toMAID
     (B : MAIDBackend Player L) {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) (env : VEnv (Player := Player) L Γ)
-    (hl : Legal p) (ha : DistinctActs p)
+    (hl : Legal p)
     (hd : NormalizedDists (P := Player) (L := L) p) :
     Σ n, Σ S : @MAID.Struct Player _ B.fintypePlayer n, @MAID.Sem Player _ B.fintypePlayer n S := by
   let _ : Fintype Player := B.fintypePlayer
-  let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+  let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
   exact ⟨st.nextId, st.toStruct, MAIDCompileState.toSem st⟩
 
 end VegasCore
 
 end Vegas
-

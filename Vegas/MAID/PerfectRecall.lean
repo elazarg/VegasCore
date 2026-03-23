@@ -165,14 +165,18 @@ private theorem MAIDCompileState.DecisionMonotone_addNode_addVar_nonDec
     have heq : d.val = st.nextId := by
       have := d.isLt; simp [MAIDCompileState.addVar, MAIDCompileState.addNode] at this; omega
     have hdesc : ((st.addNode nd hndeps).2.addVar x τ _ hdeps).descAt d = nd := by
-      show ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by simp [MAIDCompileState.addNode, MAIDCompileState.addVar, st.nodes_length_eq_nextId]; omega)).2 = nd
+      change ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by
+        simp [MAIDCompileState.addNode, MAIDCompileState.addVar, st.nodes_length_eq_nextId]
+        omega)).2 = nd
       rw [List.getElem_append_right (by rw [st.nodes_length_eq_nextId]; omega)]
       simp [st.nodes_length_eq_nextId, heq]
     rw [hdesc] at hkd; exact absurd hkd (fun h => hnotDec who h)
   have old₁ := old d₁ hk₁; have old₂ := old d₂ hk₂
   have hdesc (d : Fin _) (hold : d.val < st.nextId) :
       ((st.addNode nd hndeps).2.addVar x τ _ hdeps).descAt d = st.descAt ⟨d.val, hold⟩ := by
-    show ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by simp [MAIDCompileState.addNode, MAIDCompileState.addVar, st.nodes_length_eq_nextId]; omega)).2 = (st.nodes[d.val]'(by rw [st.nodes_length_eq_nextId]; exact hold)).2
+    change ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by
+      simp [MAIDCompileState.addNode, MAIDCompileState.addVar, st.nodes_length_eq_nextId]
+      omega)).2 = (st.nodes[d.val]'(by rw [st.nodes_length_eq_nextId]; exact hold)).2
     congr 1
     exact List.getElem_append_left (by rw [st.nodes_length_eq_nextId]; exact hold)
   rw [hdesc d₁ old₁] at hk₁ ⊢; rw [hdesc d₂ old₂] at hk₂ ⊢
@@ -353,7 +357,8 @@ private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons_decision
     constructor
     · -- st.nextId ∈ viewDeps owner ((x, τ)::Γ)
       unfold viewDeps viewVCtx
-      rw [hcanSee]; simp [canSee]
+      rw [hcanSee]
+      simp only [canSee, decide_true, ↓reduceIte, List.map_cons]
       simp only [depsOfVars]
       apply Finset.mem_union_left
       have hfv : x ∉ (st.addNode nd hndeps).2.vars.map Prod.fst := by
@@ -366,28 +371,28 @@ private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons_decision
 from a state satisfying both `DecisionMonotone` and `DecisionVisible`. -/
 private theorem MAIDCompileState.ofProg_preserves_decision_monotone
     {Γ : VCtx P L}
-    (p : VegasCore P L Γ) (hl : Legal p) (ha : DistinctActs p)
+    (p : VegasCore P L Γ) (hl : Legal p)
     (hd : NormalizedDists p) (hfresh : FreshBindings p)
     (ρ : RawNodeEnv L → VEnv (Player := P) L Γ)
     (st₀ : MAIDCompileState P L B)
     (hmon : st₀.DecisionMonotone)
     (hvis : st₀.DecisionVisible Γ)
     (hvs : ∀ y, y ∈ st₀.vars.map Prod.fst → y ∈ Γ.map Prod.fst) :
-    (MAIDCompileState.ofProg B p hl ha hd ρ st₀).DecisionMonotone := by
+    (MAIDCompileState.ofProg B p hl hd ρ st₀).DecisionMonotone := by
   induction p generalizing st₀ with
   | ret payoffs =>
     simp only [ofProg]
     exact DecisionMonotone_addUtilityNodes st₀ _ _ _ _ hmon
   | letExpr _ _ k ih =>
     simp only [ofProg]
-    refine ih hl ha hd hfresh.2 _ _ hmon (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis) ?_
+    refine ih hl hd hfresh.2 _ _ hmon (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis) ?_
     intro y hy
     simp only [MAIDCompileState.addVar, List.map_append, List.mem_append, List.map] at hy
     rcases hy with h | h
     · exact List.mem_cons_of_mem _ (hvs y h)
-    · simp at h; subst h; exact List.Mem.head _
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at h; subst h; exact List.Mem.head _
   | sample _ _ _ _ k ih =>
-    refine ih hl ha hd.2 hfresh.2 _ _ ?_ ?_ ?_
+    refine ih hl hd.2 hfresh.2 _ _ ?_ ?_ ?_
     · exact DecisionMonotone_addNode_addVar_nonDec st₀ _ _ _ _ _ hmon
         (fun who h => by simp [CompiledNode.kind] at h)
     · exact DecisionVisible_addNode_addVar_cons st₀ _ _ _ _ _ hfresh.1 hvis
@@ -397,27 +402,28 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
         List.map_append, List.mem_append, List.map] at hy
       rcases hy with h | h
       · exact List.mem_cons_of_mem _ (hvs y h)
-      · simp at h; subst h; exact List.Mem.head _
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at h; subst h; exact List.Mem.head _
   | commit x who_c R k ih =>
-    refine ih hl.2 ha hd hfresh.2 _ _ ?_ ?_ ?_
+    refine ih hl.2 hd hfresh.2 _ _ ?_ ?_ ?_
     · exact DecisionMonotone_addNode_addVar_decision st₀ _ _ _ _ _ who_c hmon hvis rfl rfl
-    · exact DecisionVisible_addNode_addVar_cons_decision st₀ _ _ _ _ _ hfresh.1 hvis who_c _ rfl rfl rfl
+    · exact DecisionVisible_addNode_addVar_cons_decision
+        st₀ _ _ _ _ _ hfresh.1 hvis who_c _ rfl rfl rfl
         (fun h => hfresh.1 (hvs _ h))
     · intro y hy
       simp only [MAIDCompileState.addVar, MAIDCompileState.addNode,
         List.map_append, List.mem_append, List.map] at hy
       rcases hy with h | h
       · exact List.mem_cons_of_mem _ (hvs y h)
-      · simp at h; subst h; exact List.Mem.head _
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at h; subst h; exact List.Mem.head _
   | reveal _ _ _ _ k ih =>
-    refine ih hl ha hd hfresh.2 _ _ ?_ ?_ ?_
+    refine ih hl hd hfresh.2 _ _ ?_ ?_ ?_
     · exact hmon
     · exact DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis
     · intro y hy
       simp only [MAIDCompileState.addVar, List.map_append, List.mem_append, List.map] at hy
       rcases hy with h | h
       · exact List.mem_cons_of_mem _ (hvs y h)
-      · simp at h; subst h; exact List.Mem.head _
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at h; subst h; exact List.Mem.head _
 
 /-- For any two decision nodes of the same player with `d₁.val < d₂.val`,
 `d₁` is a direct obsParent of `d₂` and d₁'s obsParents are a subset of d₂'s.
@@ -425,9 +431,9 @@ This is the key invariant maintained by the sequential compiler. -/
 theorem MAIDCompileState.ofProg_decision_obs_monotone
     {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
-    (hl : Legal p) (ha : DistinctActs p) (hd : NormalizedDists p)
+    (hl : Legal p) (hd : NormalizedDists p)
     (hwf : WF p) :
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     ∀ (who : P) (d₁ d₂ : Fin st.nextId),
       (st.descAt d₁).kind = .decision who →
       (st.descAt d₂).kind = .decision who →
@@ -435,7 +441,7 @@ theorem MAIDCompileState.ofProg_decision_obs_monotone
       d₁.val ∈ (st.descAt d₂).obsParents ∧
         (st.descAt d₁).obsParents ⊆ (st.descAt d₂).obsParents := by
   intro st
-  exact ofProg_preserves_decision_monotone p hl ha hd hwf.1 (fun _ => env)
+  exact ofProg_preserves_decision_monotone p hl hd hwf.1 (fun _ => env)
     .empty
     -- empty state is trivially DecisionMonotone
     (fun _ d₁ _ _ _ _ => absurd d₁.isLt (Nat.not_lt_zero _))
@@ -451,14 +457,14 @@ theorem compiledStruct_perfectRecall
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
-    (hl : Legal p) (ha : DistinctActs p) (hd : NormalizedDists p)
+    (hl : Legal p) (hd : NormalizedDists p)
     (hwf : WF p) :
     let _ : Fintype P := B.fintypePlayer
-    (MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty).toStruct.PerfectRecall := by
+    (MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty).toStruct.PerfectRecall := by
   intro _inst
   letI : Fintype P := B.fintypePlayer
-  set st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty with hst
-  have core := MAIDCompileState.ofProg_decision_obs_monotone (B := B) p env hl ha hd hwf
+  set st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty with hst
+  have core := MAIDCompileState.ofProg_decision_obs_monotone (B := B) p env hl hd hwf
   -- core is about the same `st` by definition
   unfold Struct.PerfectRecall
   constructor

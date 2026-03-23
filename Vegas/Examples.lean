@@ -110,9 +110,6 @@ example : Legal matchingPennies := by
       exact ⟨true, by rfl⟩
     · trivial
 
-example : DistinctActs matchingPennies := by
-  simp [matchingPennies, DistinctActs]
-
 example : NormalizedDists matchingPennies := by
   simp [matchingPennies, NormalizedDists]
 
@@ -163,9 +160,6 @@ example : ¬ Legal conditionedGame := by
   cases a <;>
     simp [envFalse, Γ0, va, va', Vegas.evalGuard, Vegas.evalExpr,
       Vegas.simpleExpr, Env.cons, Env.get, BindTy.base] at hg
-
-example : DistinctActs conditionedGame := by
-  simp [conditionedGame, DistinctActs]
 
 example : NormalizedDists conditionedGame := by
   simp [conditionedGame, NormalizedDists]
@@ -225,9 +219,6 @@ example : Legal sequentialReveal := by
     · intro _env
       exact ⟨true, by rfl⟩
     · trivial
-
-example : DistinctActs sequentialReveal := by
-  simp [sequentialReveal, DistinctActs]
 
 example : NormalizedDists sequentialReveal := by
   simp [sequentialReveal, NormalizedDists]
@@ -293,4 +284,3 @@ example : ∀ (a : Bool) (va_val : Bool),
 end Examples
 
 end Vegas
-

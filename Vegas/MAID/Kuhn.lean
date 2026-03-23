@@ -46,19 +46,18 @@ noncomputable def compilePureStrategyOfPlayer
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
-    (hl : Legal p) (ha : DistinctActs p) (hd : NormalizedDists p)
-    (env : VEnv (Player := P) L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (env : VEnv L Γ)
     (who : P)
-    (s : ProgramPureStrategy (P := P) (L := L) who p)
-    (default_others : ∀ i, i ≠ who → ProgramPureStrategy (P := P) (L := L) i p) :
-    let _ : Fintype P := B.fintypePlayer
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
-    @MAID.PureStrategy P _ B.fintypePlayer st.nextId st.toStruct who := by
-  intro _inst st
+    (s : ProgramPureStrategy who p)
+    (default_others : ∀ i, i ≠ who → ProgramPureStrategy i p) :
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
+    MAID.PureStrategy (fp := B.fintypePlayer) st.toStruct who := by
+  intro st
   -- Build a full profile using s for `who` and defaults for others
-  let π : ProgramPureProfile (P := P) (L := L) p := fun i =>
+  let π : ProgramPureProfile p := fun i =>
     if h : i = who then h ▸ s else default_others i h
-  exact compilePureProfile B p hl ha hd env π who
+  exact compilePureProfile B p hl hd env π who
 
 /-- The RHS of the MAID Kuhn theorem, expressed through Vegas pure outcome
 distributions via the pure bridge. -/
@@ -66,28 +65,29 @@ theorem maid_kuhn_rhs_eq_vegas_mixed
     (B : MAIDBackend P L)
     (LF : FiniteValuation L)
     {Γ : VCtx P L}
-    (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
-    (hl : Legal p) (ha : DistinctActs p)
+    (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (hl : Legal p)
     (hd : NormalizedDists p) (hwf : WF p)
-    (μ : ∀ who, PMF (ProgramPureStrategy (P := P) (L := L) who p)) :
-    let _ : Fintype P := B.fintypePlayer
-    let _ : ∀ who, Fintype (ProgramPureStrategy (P := P) (L := L) who p) :=
+    (μ : ∀ who, PMF (ProgramPureStrategy who p)) :
+    let _ : ∀ who, Fintype (ProgramPureStrategy who p) :=
       fun who => ProgramPureStrategy.instFintype LF who p
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     let S := st.toStruct
     let sem := MAIDCompileState.toSem st
-    let extract : @TAssign P _ B.fintypePlayer st.nextId S → Outcome P :=
+    let extract : TAssign (fp := B.fintypePlayer) S → Outcome P :=
       fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
     -- For any product of compiled MAID pure strategies that commutes with
     -- the Vegas pure profiles, the mixed MAID outcome = mixed Vegas outcome
-    ∀ (μ_maid : ∀ who, PMF (@PureStrategy P _ B.fintypePlayer st.nextId S who))
-      (hcomm : ∀ π : ProgramPureProfile (P := P) (L := L) p,
+    ∀ (μ_maid : ∀ who, PMF (PureStrategy (fp := B.fintypePlayer) S who))
+      (hcomm : ∀ π : ProgramPureProfile p,
         PMF.map extract
-          (frontierEval S sem (pureToPolicy (compilePureProfile B p hl ha hd env π))) =
+          (frontierEval (fp := B.fintypePlayer) S sem (pureToPolicy (fp := B.fintypePlayer)
+            (compilePureProfile B p hl hd env π))) =
         (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd)),
-      (pmfPi μ_maid).bind (fun π_maid =>
-        PMF.map extract (frontierEval S sem (pureToPolicy π_maid))) =
-      (pmfPi μ).bind (fun π =>
+      (@pmfPi _ _ _ B.fintypePlayer _ μ_maid).bind (fun π_maid =>
+        PMF.map extract (frontierEval (fp := B.fintypePlayer) S sem
+          (pureToPolicy (fp := B.fintypePlayer) π_maid))) =
+      (@pmfPi _ _ _ B.fintypePlayer _ μ).bind (fun π =>
         (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd)) := by
   sorry
 
@@ -107,24 +107,24 @@ theorem vegas_kuhn_mixed_to_behavioral
     (LF : FiniteValuation L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
-    (hl : Legal p) (ha : DistinctActs p)
+    (hl : Legal p)
     (hd : NormalizedDists p) (hwf : WF p)
-    (μ : ∀ who, PMF (ProgramPureStrategy (P := P) (L := L) who p)) :
-    let _ : Fintype P := B.fintypePlayer
-    let _ : ∀ who, Fintype (ProgramPureStrategy (P := P) (L := L) who p) :=
+    (μ : ∀ who, PMF (ProgramPureStrategy who p)) :
+    let _ : ∀ who, Fintype (ProgramPureStrategy who p) :=
       fun who => ProgramPureStrategy.instFintype LF who p
-    ∃ σ : ProgramBehavioralProfilePMF (P := P) (L := L) p,
+    ∃ σ : ProgramBehavioralProfilePMF p,
       outcomeDistBehavioralPMF p hd σ env =
-        (pmfPi μ).bind (fun π =>
+        (@pmfPi _ _ _ B.fintypePlayer _ μ).bind (fun π =>
           (outcomeDistPure p π env).toPMF
             (outcomeDistPure_totalWeight_eq_one hd)) := by
-  intro _instFin _instFinStrat
+  intro _instFinStrat
   -- Step 1: Compile to MAID
-  let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+  let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
   let S := st.toStruct
   let sem := MAIDCompileState.toSem st
   -- Step 2: Establish perfect recall
-  have hPR : S.PerfectRecall := compiledStruct_perfectRecall B p env hl ha hd hwf
+  have hPR : S.PerfectRecall (fp := B.fintypePlayer) :=
+     compiledStruct_perfectRecall B p env hl hd hwf
   -- Step 3: Compile pure strategies to MAID
   -- (For each pure profile π, compilePureProfile gives a MAID PurePolicy.
   -- We need per-player PMFs over MAID PureStrategies.)

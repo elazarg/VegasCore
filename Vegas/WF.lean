@@ -179,16 +179,6 @@ def Legal {P : Type} [DecidableEq P]
     Legal k
   | _, .reveal _ _ _ _ k => Legal k
 
-def DistinctActs {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .letExpr _ _ k => DistinctActs k
-  | _, .sample _ _ _ _ k => DistinctActs k
-  | _, .commit _ _ _ k => DistinctActs k
-  | _, .reveal _ _ _ _ k => DistinctActs k
-
 def FairPlayProfile {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
     (σ : Vegas.OmniscientOperationalProfile P L) :

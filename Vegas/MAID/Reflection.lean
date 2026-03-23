@@ -40,11 +40,10 @@ noncomputable def reflectPolicy
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
-    (hl : Legal p) (ha : DistinctActs p) (hd : NormalizedDists p)
-    (env : VEnv (Player := P) L Γ) :
-    let _ : Fintype P := B.fintypePlayer
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
-    @MAID.Policy P _ B.fintypePlayer st.nextId st.toStruct →
+    (hl : Legal p) (hd : NormalizedDists p)
+    (env : VEnv L Γ) :
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
+    MAID.Policy (fp := B.fintypePlayer) st.toStruct →
     ProgramBehavioralProfilePMF (P := P) (L := L) p := by
   sorry
 
@@ -55,19 +54,17 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
-    (env : VEnv (Player := P) L Γ)
-    (hl : Legal p) (ha : DistinctActs p)
+    (env : VEnv L Γ)
+    (hl : Legal p)
     (hd : NormalizedDists p)
     (hwf : WF p) :
-    let _ : Fintype P := B.fintypePlayer
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
-    let S := st.toStruct
-    let sem := MAIDCompileState.toSem st
-    ∀ (pol : @MAID.Policy P _ B.fintypePlayer st.nextId S),
-      let extract : @TAssign P _ B.fintypePlayer st.nextId S → Outcome P :=
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
+    ∀ (pol : MAID.Policy (fp := B.fintypePlayer) st.toStruct),
+      let extract : @TAssign P _ B.fintypePlayer st.nextId st.toStruct → Outcome P :=
         fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
-      let σ_pmf := reflectPolicy B p hl ha hd env pol
-      PMF.map extract (evalAssignDist S sem pol) =
+      let σ_pmf := reflectPolicy B p hl hd env pol
+      PMF.map extract (evalAssignDist (fp := B.fintypePlayer) st.toStruct
+        (MAIDCompileState.toSem st) pol) =
         outcomeDistBehavioralPMF p hd σ_pmf env := by
   sorry
 
@@ -83,11 +80,11 @@ noncomputable def compilePureProfile
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
-    (hl : Legal p) (ha : DistinctActs p) (hd : NormalizedDists p)
-    (env : VEnv (Player := P) L Γ)
-    (π : ProgramPureProfile (P := P) (L := L) p) :
+    (hl : Legal p) (hd : NormalizedDists p)
+    (env : VEnv L Γ)
+    (π : ProgramPureProfile p) :
     let _ : Fintype P := B.fintypePlayer
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     @MAID.PurePolicy P _ B.fintypePlayer st.nextId st.toStruct := by
   intro _inst st
   let σ := pureProfileOperational p π
@@ -113,17 +110,16 @@ theorem compilePureProfile_eq_pureToPolicy
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
     (p : VegasCore P L Γ)
-    (env : VEnv (Player := P) L Γ)
-    (π : ProgramPureProfile (P := P) (L := L) p)
-    (hl : Legal p) (ha : DistinctActs p)
+    (env : VEnv L Γ)
+    (π : ProgramPureProfile p)
+    (hl : Legal p)
     (hd : NormalizedDists p)
     (hfresh : FreshBindings p) :
-    let _ : Fintype P := B.fintypePlayer
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
-    let β := ProgramPureProfile.toBehavioral (P := P) (L := L) p π
-    compiledPolicy B p hl ha hd (fun _ => env) .empty β =
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
+    let β := ProgramPureProfile.toBehavioral p π
+    compiledPolicy B p hl hd (fun _ => env) .empty β =
       @MAID.pureToPolicy P _ B.fintypePlayer st.nextId st.toStruct
-        (compilePureProfile B p hl ha hd env π) := by
+        (compilePureProfile B p hl hd env π) := by
   sorry
 
 end Vegas

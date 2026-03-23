@@ -302,21 +302,19 @@ theorem maid_pure_bridge
     (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ)
     (π : ProgramPureProfile (P := P) (L := L) p)
-    (hl : Legal p) (ha : DistinctActs p)
+    (hl : Legal p)
     (hd : NormalizedDists p) (hfresh : FreshBindings p) :
-    let _ : Fintype P := B.fintypePlayer
     let β := ProgramPureProfile.toBehavioral (P := P) (L := L) p π
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
-    let S := st.toStruct
-    let sem := MAIDCompileState.toSem st
-    let pol := compiledPolicy B p hl ha hd (fun _ => env) .empty β
-    let extract : TAssign (fp := B.fintypePlayer) S → Outcome P :=
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
+    let pol := compiledPolicy B p hl hd (fun _ => env) .empty β
+    let extract : TAssign (fp := B.fintypePlayer) st.toStruct → Outcome P :=
       fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
-    PMF.map extract (evalAssignDist S sem pol) =
+    PMF.map extract (evalAssignDist (fp := B.fintypePlayer)
+      st.toStruct (MAIDCompileState.toSem st) pol) =
       (outcomeDistPure p π env).toPMF
         (outcomeDistPure_totalWeight_eq_one hd) := by
-  intro _inst β st S sem pol extract
-  rw [maid_map_extract_eq_outcomeDistBehavioral B p env β hl ha hd hfresh]
+  intro β _ _ _
+  rw [maid_map_extract_eq_outcomeDistBehavioral B p env β hl hd hfresh]
   congr 1
   exact outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure p π env
 
@@ -343,21 +341,21 @@ theorem maid_behavioral_eq_outcomeDistBehavioral
     (p : VegasCore P L Γ)
     (env : VEnv (Player := P) L Γ)
     (π : ProgramPureProfile (P := P) (L := L) p)
-    (hl : Legal p) (ha : DistinctActs p)
+    (hl : Legal p)
     (hd : NormalizedDists p) (hfresh : FreshBindings p) :
     let _ : Fintype P := B.fintypePlayer
     let β := ProgramPureProfile.toBehavioral (P := P) (L := L) p π
-    let st := MAIDCompileState.ofProg B p hl ha hd (fun _ => env) .empty
+    let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     let S := st.toStruct
     let sem := MAIDCompileState.toSem st
-    let pol := compiledPolicy B p hl ha hd (fun _ => env) .empty β
+    let pol := compiledPolicy B p hl hd (fun _ => env) .empty β
     let extract : @TAssign P _ B.fintypePlayer st.nextId S → Outcome P :=
       fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a)
     PMF.map extract (evalAssignDist S sem pol) =
       (outcomeDistBehavioral p β env).toPMF
           (outcomeDistBehavioral_totalWeight_eq_one hd) := by
   intro _inst β st S sem pol extract
-  exact maid_map_extract_eq_outcomeDistBehavioral B p env β hl ha hd hfresh
+  exact maid_map_extract_eq_outcomeDistBehavioral B p env β hl hd hfresh
 
 /-- Pure strategic expected utility equals behavioral-lift expected utility.
 This is a purely Vegas theorem: no MAID in the statement. -/
