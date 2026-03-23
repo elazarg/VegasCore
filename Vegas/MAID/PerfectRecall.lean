@@ -235,6 +235,133 @@ private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons
         (fun h => hfreshΓ (viewVCtx_map_fst_sub h)) ▸ hd''
   exact ⟨hview_sub hmem, fun d' hd' => hview_sub (hsub hd')⟩
 
+/-- Helper: descAt for the addNode+addVar state equals st₀'s descAt for old nodes,
+and equals the new node for the new index. -/
+private theorem MAIDCompileState.descAt_addNode_addVar
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    (d : Fin ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).nextId)
+    (hold : d.val < st.nextId) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).descAt d =
+      st.descAt ⟨d.val, hold⟩ := by
+  change ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by
+    simp [MAIDCompileState.addNode, MAIDCompileState.addVar,
+      st.nodes_length_eq_nextId]; omega)).2 =
+    (st.nodes[d.val]'(by rw [st.nodes_length_eq_nextId]; exact hold)).2
+  congr 1
+  exact List.getElem_append_left (by rw [st.nodes_length_eq_nextId]; exact hold)
+
+private theorem MAIDCompileState.descAt_addNode_addVar_new
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    (d : Fin ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).nextId)
+    (heq : d.val = st.nextId) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).descAt d = nd := by
+  change ((st.nodes ++ [(st.nextId, nd)])[d.val]'(by
+    simp [MAIDCompileState.addNode, MAIDCompileState.addVar,
+      st.nodes_length_eq_nextId]; omega)).2 = nd
+  rw [List.getElem_append_right (by rw [st.nodes_length_eq_nextId]; omega)]
+  simp [st.nodes_length_eq_nextId, heq]
+
+private theorem MAIDCompileState.val_lt_or_eq_of_addNode_addVar
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    (d : Fin ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).nextId) :
+    d.val < st.nextId ∨ d.val = st.nextId := by
+  have := d.isLt; simp [MAIDCompileState.addVar, MAIDCompileState.addNode] at this; omega
+
+/-- `addNode(.decision) + addVar` preserves `DecisionMonotone` using `DecisionVisible`. -/
+private theorem MAIDCompileState.DecisionMonotone_addNode_addVar_decision
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    {Γ : VCtx P L} (owner : P)
+    (hmon : st.DecisionMonotone)
+    (hvis : st.DecisionVisible Γ)
+    (hobs : nd.obsParents = st.viewDeps owner Γ)
+    (hkind : nd.kind = .decision owner) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).DecisionMonotone := by
+  intro who d₁ d₂ hk₁ hk₂ hlt
+  rcases st.val_lt_or_eq_of_addNode_addVar nd hndeps x τ hdeps d₁ with old₁ | new₁
+  · rw [st.descAt_addNode_addVar nd hndeps x τ hdeps d₁ old₁] at hk₁ ⊢
+    rcases st.val_lt_or_eq_of_addNode_addVar nd hndeps x τ hdeps d₂ with old₂ | new₂
+    · rw [st.descAt_addNode_addVar nd hndeps x τ hdeps d₂ old₂] at hk₂ ⊢
+      exact hmon who ⟨d₁.val, old₁⟩ ⟨d₂.val, old₂⟩ hk₁ hk₂ hlt
+    · rw [st.descAt_addNode_addVar_new nd hndeps x τ hdeps d₂ new₂] at hk₂ ⊢
+      rw [hobs]
+      have hwho : who = owner := by rw [hkind] at hk₂; exact (NodeKind.decision.inj hk₂).symm
+      rw [hwho] at hk₁
+      exact hvis owner ⟨d₁.val, old₁⟩ hk₁
+  · rcases st.val_lt_or_eq_of_addNode_addVar nd hndeps x τ hdeps d₂ with old₂ | new₂
+    · omega
+    · omega
+
+/-- `addNode(.decision) + addVar` preserves `DecisionVisible` for commit context extension. -/
+private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons_decision
+    (st : MAIDCompileState P L B)
+    (nd : CompiledNode P L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (x : VarId) (τ : BindTy P L)
+    (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < (st.addNode nd hndeps).2.nextId)
+    {Γ : VCtx P L} (hfreshΓ : Fresh x Γ)
+    (hvis : st.DecisionVisible Γ)
+    (owner : P) (bty : L.Ty)
+    (hobs : nd.obsParents = st.viewDeps owner Γ)
+    (hkind : nd.kind = .decision owner)
+    (hcanSee : τ = .hidden owner bty)
+    (hfreshVars : x ∉ st.vars.map Prod.fst) :
+    ((st.addNode nd hndeps).2.addVar x τ {st.nextId} hdeps).DecisionVisible
+      ((x, τ) :: Γ) := by
+  -- viewDeps monotonicity (same as non-decision case)
+  have hview_sub : ∀ who, st.viewDeps who Γ ⊆
+      ((st.addNode nd hndeps).2.addVar x τ _ hdeps).viewDeps who ((x, τ) :: Γ) := by
+    intro who d' hd'
+    have hd'' : d' ∈ (st.addNode nd hndeps).2.viewDeps who Γ :=
+      viewDeps_addNode_eq st nd hndeps who Γ ▸ hd'
+    unfold viewDeps at hd'' ⊢
+    simp only [viewVCtx]; split
+    · simp only [List.map, depsOfVars]
+      exact Finset.mem_union_right _
+        (depsOfVars_addVar_eq_of_fresh (st.addNode nd hndeps).2 x τ _ hdeps
+          ((viewVCtx who Γ).map Prod.fst)
+          (fun h => hfreshΓ (viewVCtx_map_fst_sub h)) ▸ hd'')
+    · exact depsOfVars_addVar_eq_of_fresh (st.addNode nd hndeps).2 x τ _ hdeps
+        ((viewVCtx who Γ).map Prod.fst)
+        (fun h => hfreshΓ (viewVCtx_map_fst_sub h)) ▸ hd''
+  intro who d hkd
+  rcases st.val_lt_or_eq_of_addNode_addVar nd hndeps x τ hdeps d with hold | hnew
+  · -- Old node: use hvis + viewDeps monotonicity
+    rw [st.descAt_addNode_addVar nd hndeps x τ hdeps d hold] at hkd ⊢
+    obtain ⟨hmem, hsub⟩ := hvis who ⟨d.val, hold⟩ hkd
+    exact ⟨hview_sub who hmem, fun d' hd' => hview_sub who (hsub hd')⟩
+  · -- New node (d.val = st.nextId): this is the decision node for owner
+    rw [st.descAt_addNode_addVar_new nd hndeps x τ hdeps d hnew] at hkd ⊢
+    -- From hkd: nd.kind = .decision who, so who = owner
+    have hwho : who = owner := by rw [hkind] at hkd; exact (NodeKind.decision.inj hkd).symm
+    subst hwho
+    constructor
+    · -- st.nextId ∈ viewDeps owner ((x, τ)::Γ)
+      unfold viewDeps viewVCtx
+      rw [hcanSee]; simp [canSee]
+      simp only [depsOfVars]
+      apply Finset.mem_union_left
+      have hfv : x ∉ (st.addNode nd hndeps).2.vars.map Prod.fst := by
+        simp only [MAIDCompileState.addNode]; exact hfreshVars
+      rw [lookupDeps_addVar_eq_self_of_fresh _ x _ _ _ hfv, hnew]
+      simp
+    · rw [hobs]; exact hview_sub who
+
 /-- Generalized induction: `ofProg` preserves `DecisionMonotone` when started
 from a state satisfying both `DecisionMonotone` and `DecisionVisible`. -/
 private theorem MAIDCompileState.ofProg_preserves_decision_monotone
@@ -264,7 +391,10 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
     -- DecisionMonotone of st₁: old pairs from hmon; new vs old from hvis
     -- DecisionVisible of st₁: old from hvis + viewDeps monotonicity;
     --   new node visible because canSee who_c (.hidden who_c b) = true
-    exact ih hl.2 ha hd hfresh.2 _ _ sorry sorry
+    exact ih hl.2 ha hd hfresh.2 _ _
+      (DecisionMonotone_addNode_addVar_decision st₀ _ _ _ _ _ who_c hmon hvis rfl rfl)
+      (DecisionVisible_addNode_addVar_cons_decision st₀ _ _ _ _ _ hfresh.1 hvis who_c _ rfl rfl rfl
+        sorry)
   | reveal _ _ _ _ k ih =>
     exact ih hl ha hd hfresh.2 _ _ hmon
       (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis)
