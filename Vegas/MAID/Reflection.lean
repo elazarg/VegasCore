@@ -99,12 +99,74 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
 
 /-! ## Pure strategy compilation: Vegas → MAID -/
 
-/-- Compile a Vegas pure profile to a MAID pure policy.
+/-- Auxiliary for `compilePureProfile`, threading compile state.
+Mirrors `translateStrategy` but extracts pure values instead of PMFs. -/
+private noncomputable def compilePureProfileAux
+    (B : MAIDBackend P L) :
+    {Γ : VCtx P L} →
+    (p : VegasCore P L Γ) →
+    (hl : Legal p) → (hd : NormalizedDists p) →
+    (ρ : RawNodeEnv L → VEnv (Player := P) L Γ) →
+    (st₀ : MAIDCompileState P L B) →
+    ProgramPureProfile (P := P) (L := L) p →
+    @MAID.PurePolicy P _ B.fintypePlayer
+      (MAIDCompileState.ofProg B p hl hd ρ st₀).nextId
+      (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct
+  | _, .ret _, _, _, _, _, _ => by
+      letI := B.fintypePlayer; intro _p ⟨d, _⟩
+      exact default
+  | _, .letExpr (b := b) x e k, hl, hd, ρ, st, π =>
+      compilePureProfileAux B k hl hd
+        (fun raw => VEnv.cons (τ := .pub b) (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
+        (st.addVar x (.pub b) (st.ctxDeps _) (st.depsOfVars_lt _)) π
+  | _, .sample x τ m D' k, hl, hd, ρ, st, π =>
+      compilePureProfileAux B k hl hd.2 _ _ π
+  | Γ, .commit (b := b) x who R k, hl, hd, ρ, st, π => by
+      letI := B.fintypePlayer
+      let id := st.nextId
+      let obs := st.viewDeps who Γ
+      let acts := allValues B b
+      let res := st.addNode
+        (.decision b who acts (allValues_ne_nil B b) (allValues_nodup B b) obs) (by
+        intro d hd'
+        have := Finset.mem_union.mp hd'
+        rcases this with h | h <;> simpa [CompiledNode.parents, CompiledNode.obsParents] using
+          st.depsOfVars_lt _ d h)
+      let st' := res.2
+      let ρ' : RawNodeEnv L → VEnv (Player := P) L ((x, .hidden who b) :: Γ) :=
+        fun raw => VEnv.cons (τ := .hidden who b)
+          (MAIDCompileState.readVal (B := B) raw b id) (ρ raw)
+      let st₁ := st'.addVar x (.hidden who b) ({id}) (by
+        intro d hd₁; simp only [Finset.mem_singleton] at hd₁; subst hd₁; exact Nat.lt_succ_self _)
+      let pol_rest := compilePureProfileAux B k hl.2 hd ρ' st₁
+        (ProgramPureProfile.tail (P := P) (L := L) π)
+      let κ := ProgramPureStrategy.headKernel (P := P) (L := L) (π who)
+      intro p ⟨d, cfg⟩
+      let st_final := MAIDCompileState.ofProg B k hl.2 hd ρ' st₁
+      by_cases hd_eq : d.1.val = id
+      · have hid_lt_st₁ : id < st₁.nextId := by
+          simp [st₁, st', res, id, MAIDCompileState.addVar, MAIDCompileState.addNode]
+        have hid_lt : id < st_final.nextId :=
+          Nat.lt_of_lt_of_le hid_lt_st₁
+            (MAIDCompileState.ofProg_nextId_le B k hl.2 hd ρ' st₁)
+        have hdesc : st_final.descAt d.1 =
+              .decision b who acts (allValues_ne_nil B b) (allValues_nodup B b) obs := by
+          have hdesc0 : st₁.descAt ⟨id, hid_lt_st₁⟩ =
+              .decision b who acts (allValues_ne_nil B b) (allValues_nodup B b) obs := by
+            simp only [st₁, MAIDCompileState.addVar, st', res]
+            exact st.addNode_descAt_new _ _
+          have h := MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ id hid_lt_st₁
+          conv_lhs => rw [show d.1 = ⟨id, hid_lt⟩ from Fin.ext hd_eq]
+          exact h.trans hdesc0
+        change CompiledNode.valType (st_final.descAt d.1)
+        rw [hdesc]; change L.Val b
+        exact κ (projectViewEnv (P := P) (L := L) who
+          (VEnv.eraseEnv (ρ (st_final.rawEnvOfCfg cfg))))
+      · exact pol_rest p ⟨d, cfg⟩
+  | _, .reveal (b := b) y who x hx k, hl, hd, ρ, st, π =>
+      compilePureProfileAux B k hl hd _ _ π
 
-At each MAID decision node, the pure policy extracts the deterministic value
-from the FDist produced by `pureProfileOperational`. Since the operational
-lift of a pure profile always yields `FDist.pure v` at decision nodes, the
-support contains exactly one value, which is selected. -/
+/-- Compile a Vegas pure profile to a MAID pure policy. -/
 noncomputable def compilePureProfile
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
@@ -114,23 +176,8 @@ noncomputable def compilePureProfile
     (π : ProgramPureProfile p) :
     let _ : Fintype P := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
-    @MAID.PurePolicy P _ B.fintypePlayer st.nextId st.toStruct := by
-  intro _inst st
-  let σ := pureProfileOperational p π
-  intro player ⟨d, cfg⟩
-  -- d.1 : Fin st.nextId with st.toStruct.kind d.1 = .decision player
-  -- cfg : Cfg st.toStruct (st.toStruct.obsParents d.1)
-  -- Goal: st.toStruct.Val d.1 = CompiledNode.valType (st.descAt d.1)
-  change CompiledNode.valType (B := B) (st.descAt d.1)
-  exact match hdesc : st.descAt d.1 with
-  | .decision τ _who acts hacts hnodup obs =>
-      -- No kernel in the compiled node; just pick the first action as a default.
-      -- The semantic content is in compilePureProfile_eq_pureToPolicy.
-      acts.head hacts
-  | .chance τ ps cpd hn =>
-      absurd d.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc])
-  | .utility who ps ufn =>
-      absurd d.2 (by simp [MAIDCompileState.toStruct, CompiledNode.kind, hdesc])
+    @MAID.PurePolicy P _ B.fintypePlayer st.nextId st.toStruct :=
+  compilePureProfileAux B p hl hd (fun _ => env) .empty π
 
 /-- The compiled pure policy, lifted to a behavioral MAID policy via
 `pureToPolicy`, agrees with the `compiledPolicy` of the operationally
