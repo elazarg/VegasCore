@@ -371,7 +371,8 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
     (ρ : RawNodeEnv L → VEnv (Player := P) L Γ)
     (st₀ : MAIDCompileState P L B)
     (hmon : st₀.DecisionMonotone)
-    (hvis : st₀.DecisionVisible Γ) :
+    (hvis : st₀.DecisionVisible Γ)
+    (hvs : ∀ y, y ∈ st₀.vars.map Prod.fst → y ∈ Γ.map Prod.fst) :
     (MAIDCompileState.ofProg B p hl ha hd ρ st₀).DecisionMonotone := by
   induction p generalizing st₀ with
   | ret payoffs =>
@@ -379,22 +380,44 @@ private theorem MAIDCompileState.ofProg_preserves_decision_monotone
     exact DecisionMonotone_addUtilityNodes st₀ _ _ _ _ hmon
   | letExpr _ _ k ih =>
     simp only [ofProg]
-    exact ih hl ha hd hfresh.2 _ _ hmon (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis)
+    refine ih hl ha hd hfresh.2 _ _ hmon (DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis) ?_
+    intro y hy
+    simp only [MAIDCompileState.addVar, List.map_append, List.mem_append, List.map] at hy
+    rcases hy with h | h
+    · exact List.mem_cons_of_mem _ (hvs y h)
+    · simp at h; subst h; exact List.Mem.head _
   | sample _ _ _ _ k ih =>
-    refine ih hl ha hd.2 hfresh.2 _ _ ?_ ?_
+    refine ih hl ha hd.2 hfresh.2 _ _ ?_ ?_ ?_
     · exact DecisionMonotone_addNode_addVar_nonDec st₀ _ _ _ _ _ hmon
         (fun who h => by simp [CompiledNode.kind] at h)
     · exact DecisionVisible_addNode_addVar_cons st₀ _ _ _ _ _ hfresh.1 hvis
         (fun who h => by simp [CompiledNode.kind] at h)
+    · intro y hy
+      simp only [MAIDCompileState.addVar, MAIDCompileState.addNode,
+        List.map_append, List.mem_append, List.map] at hy
+      rcases hy with h | h
+      · exact List.mem_cons_of_mem _ (hvs y h)
+      · simp at h; subst h; exact List.Mem.head _
   | commit x who_c R k ih =>
-    refine ih hl.2 ha hd hfresh.2 _ _ ?_ ?_
+    refine ih hl.2 ha hd hfresh.2 _ _ ?_ ?_ ?_
     · exact DecisionMonotone_addNode_addVar_decision st₀ _ _ _ _ _ who_c hmon hvis rfl rfl
     · exact DecisionVisible_addNode_addVar_cons_decision st₀ _ _ _ _ _ hfresh.1 hvis who_c _ rfl rfl rfl
-        sorry
+        (fun h => hfresh.1 (hvs _ h))
+    · intro y hy
+      simp only [MAIDCompileState.addVar, MAIDCompileState.addNode,
+        List.map_append, List.mem_append, List.map] at hy
+      rcases hy with h | h
+      · exact List.mem_cons_of_mem _ (hvs y h)
+      · simp at h; subst h; exact List.Mem.head _
   | reveal _ _ _ _ k ih =>
-    refine ih hl ha hd hfresh.2 _ _ ?_ ?_
+    refine ih hl ha hd hfresh.2 _ _ ?_ ?_ ?_
     · exact hmon
     · exact DecisionVisible_addVar_cons st₀ _ _ _ _ hfresh.1 hvis
+    · intro y hy
+      simp only [MAIDCompileState.addVar, List.map_append, List.mem_append, List.map] at hy
+      rcases hy with h | h
+      · exact List.mem_cons_of_mem _ (hvs y h)
+      · simp at h; subst h; exact List.Mem.head _
 
 /-- For any two decision nodes of the same player with `d₁.val < d₂.val`,
 `d₁` is a direct obsParent of `d₂` and d₁'s obsParents are a subset of d₂'s.
@@ -418,6 +441,8 @@ theorem MAIDCompileState.ofProg_decision_obs_monotone
     (fun _ d₁ _ _ _ _ => absurd d₁.isLt (Nat.not_lt_zero _))
     -- empty state is trivially DecisionVisible
     (fun _ d _ => absurd d.isLt (Nat.not_lt_zero _))
+    -- empty vars
+    (fun _ h => by simp [MAIDCompileState.empty] at h)
 
 /-! ## Main theorem -/
 
