@@ -866,7 +866,24 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       exact ih hl hd hfresh.2 _ _ _
         ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
         hprev (by sorry) -- VarVisible for extended context
-  | sample x τ m D' k ih => sorry
+  | sample x τ m D' k ih =>
+      rename_i Γ'
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      let cnd : CompiledNode Player L B :=
+        .chance τ.base (st₀.ctxDeps Γ') (fun raw => L.evalDist D' (VEnv.eraseDistEnv τ m (ρ raw)))
+          (fun raw => hd.1 (ρ raw))
+      have hcnd_deps : ∀ d ∈ cnd.parents ∪ cnd.obsParents, d < st₀.nextId := by
+        intro d hd'; simp [cnd, CompiledNode.parents, CompiledNode.obsParents] at hd'
+        exact st₀.depsOfVars_lt _ d hd'
+      have hdeps : ∀ d ∈ ({st₀.nextId} : Finset Nat), d < st₀.nextId + 1 := by
+        intro d hd'; simp at hd'; omega
+      exact ih hl hd.2 hfresh.2 _ _ _
+        (revealConsistent_addChance' hcon₀ cnd
+          (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps x τ hdeps)
+        (by -- hprev for intermediate: old decisions preserved
+            sorry)
+        (by -- VarVisible for extended context
+            sorry)
   | commit x who R k ih =>
       -- THE key case: new decision node + IH for continuation.
       -- New node's parents = viewDeps who Γ'. By hvar₀, each dep has
