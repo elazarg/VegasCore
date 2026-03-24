@@ -794,9 +794,27 @@ private theorem pmfFoldBridge
               (VEnv.eraseEnv (ρ raw₁)) =
               projectViewEnv p (VEnv.eraseEnv (ρ raw₂)) := by
             exact hchoose_view.trans hViewEq.symm
-          -- Use hρ_readers: both rawEnvOfCfg are none outside obs,
-          -- and ρ views agree → raw values at obs agree → rawEnvOfCfg agree
-          sorry
+          show raw₁ = raw₂
+          funext j
+          by_cases hj_lt : j < st.nextId
+          · by_cases hj_mem : (⟨j, hj_lt⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0
+            · -- j ∈ obsParents: use hρ_readers
+              have hj_obs : j ∈ obs := by
+                rw [st.mem_toStruct_obsParents_iff nd0 hj_lt] at hj_mem
+                simp [hdesc0, CompiledNode.obsParents] at hj_mem; exact hj_mem
+              exact hρ_readers p raw₁ raw₂
+                (fun i hi => by
+                  show raw₁ i = raw₂ i
+                  sorry) -- raw₁ i = raw₂ i for i ≥ st₀.nextId: both none
+                (fun i hi hi_lt => by
+                  show raw₁ i = raw₂ i
+                  sorry) -- raw₁ i = raw₂ i for i ∉ obs, i < st₀.nextId: both none
+                hview_eq j hj_obs
+            · -- j ∉ obsParents: both rawEnvOfCfg give none at j
+              show raw₁ j = raw₂ j
+              sorry -- both rawEnvOfCfg give none at j ∉ obsParents
+          · show raw₁ j = raw₂ j
+            simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, the pol values match. Cast cancel for the rest.
         sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
