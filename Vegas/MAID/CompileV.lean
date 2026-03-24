@@ -761,9 +761,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       -- revealTime ≤ nextId = d.val or is who's decision. ✓
       -- Old nodes: preserved by addNode, revealTime only decreases. ✓
       sorry
-  | reveal y who x hx k ih =>
-      -- reveal: no new nodes. revealTime may decrease (strengthens property).
-      sorry
+  | reveal y who x hx k ih => sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
