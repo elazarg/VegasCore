@@ -783,8 +783,20 @@ private theorem pmfFoldBridge
             MAID.projCfg a₀ (st.toStruct.obsParents nd0) := by
           -- Both cfgs produce the same ρ view (from h_exists + hViewEq)
           have hchoose_view := Classical.choose_spec h_exists
-          -- rawEnvOfCfg agreement from ρ view agreement + ViewDeterminesRaw st₀
-          -- (ρ is insensitive to index id, so rawEnvOfCfg at old indices determines ρ view)
+          -- Apply rawEnvOfCfg_injective: show raws agree at all indices
+          apply st.rawEnvOfCfg_injective
+          -- Show pointwise raw agreement
+          let raw₁ := st.rawEnvOfCfg (Classical.choose h_exists)
+          let raw₂ := st.rawEnvOfCfg (MAID.projCfg a₀ (st.toStruct.obsParents nd0))
+          -- Both agree outside obsParents (both none) and outside [0, nextId)
+          -- View equality: hchoose_view.trans hViewEq.symm
+          have hview_eq : projectViewEnv (P := P) (L := L) p
+              (VEnv.eraseEnv (ρ raw₁)) =
+              projectViewEnv p (VEnv.eraseEnv (ρ raw₂)) := by
+            exact hchoose_view.trans hViewEq.symm
+          -- Use ViewDeterminesRaw on rawEnvOfCfg + rawEnvOfCfg_injective
+          -- obsParents ⊆ viewDeps; rawEnvOfCfg is none outside obsParents
+          -- hρ_readers gives raw agreement at viewDeps from ρ view equality
           sorry
         -- With cfg equality, the pol values match. Cast cancel for the rest.
         sorry
