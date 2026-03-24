@@ -409,6 +409,8 @@ private theorem pmfFoldBridge
       have hview_old : projectViewEnv (P := P) (L := L) who
           (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₁))) =
           projectViewEnv who (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₂))) := by
+        -- Needs: projectViewEnv_cons_tail lemma (view of VEnv.cons v env
+        -- restricted to old vars = view of env)
         sorry
       -- viewDeps subset: st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ'
       have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by sorry
