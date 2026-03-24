@@ -489,10 +489,12 @@ private theorem pmfFoldBridge
       intro v
       rw [← hst₁_id]
       exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol _
-    -- Rewrite inner + connect rawOfTAssign after update to raw.extend
-    -- This requires: nodeDist at chance node = compiled dist, and type casts
-    -- The remaining steps are mechanical (matching compiled sem with cpdFDist,
-    -- rawOfTAssign_updateAssign_of_tagged, and cast alignment)
+    -- Rewrite inner fold using IH
+    simp_rw [hinner]
+    -- The nodeDist at a chance node = compiled sem's chanceCPD = cpdFDist.toPMF
+    -- The rawOfTAssign after updateAssign = raw.extend
+    -- These require working through the compiled sem definition and type casts
+    -- between S.Val nd0 and L.Val τ.base (definitionally equal via hdesc0)
     sorry
   | commit x who R k ih =>
     rename_i Γ' b
