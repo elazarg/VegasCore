@@ -1,0 +1,150 @@
+import Vegas.MAID.BridgeV
+import Vegas.MAID.PerfectRecallV
+import GameTheory.Languages.MAID.Kuhn
+import Math.PMFProduct
+
+/-!
+# Vegas Kuhn Theorem via VegasMAID
+
+**Status: top-down proof — depends on sorry'd bridges.**
+
+The Vegas Kuhn theorem: for a Vegas program compiled through VegasMAID,
+every product mixed strategy over pure Vegas strategies is outcome-equivalent
+to some PMF-valued behavioral profile.
+
+## Proof outline (via VegasMAID)
+
+1. Compile to VegasMAID: `compiledStruct B p env ...`
+2. Perfect recall: `compiledStruct_perfectRecallV` (from factored observation)
+3. Apply MAID `kuhn_mixed_to_behavioral` → behavioral MAID policy `pol`
+4. Reverse bridge: `reflectPolicyV` → Vegas behavioral `σ`
+5. Pure bridge: connect RHS through `compilePureProfileV`
+6. Chain equalities
+-/
+
+namespace Vegas
+
+open MAID Math.PMFProduct
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+/-! ## Auxiliary: compile pure strategies to MAID -/
+
+/-- Compile a Vegas per-player pure strategy to a MAID per-player pure strategy. -/
+noncomputable def compilePureStrategyV
+    (B : MAIDBackend Player L) {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (env : VEnv (Player := Player) L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (who : Player)
+    (s : ProgramPureStrategy who p) :
+    PureStrategy (fp := B.fintypePlayer) (compiledStruct B p env hl hd hfresh hpub) who := by
+  sorry
+
+/-- The compiled MAID pure policy from a full Vegas pure profile decomposes
+into per-player compiled strategies. -/
+theorem compilePureProfileV_eq_mk
+    (B : MAIDBackend Player L) {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (env : VEnv (Player := Player) L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (π : ProgramPureProfile (P := Player) (L := L) p) :
+    compilePureProfileV B p env hl hd hfresh hpub π =
+      fun who => compilePureStrategyV B p env hl hd hfresh hpub who (π who) := by
+  sorry
+
+/-! ## RHS connection: MAID mixed = Vegas mixed -/
+
+/-- The RHS of MAID Kuhn, mapped through `extractOutcomeV`, equals the
+Vegas mixed outcome distribution when the MAID pure strategies correspond
+to compiled Vegas pure strategies. -/
+theorem maid_kuhn_rhs_eq_vegas_mixedV
+    (B : MAIDBackend Player L)
+    (LF : FiniteValuation L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (env : VEnv (Player := Player) L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (μ : ∀ who, PMF (ProgramPureStrategy who p)) :
+    let _ : ∀ who, Fintype (ProgramPureStrategy who p) :=
+      fun who => ProgramPureStrategy.instFintype LF who p
+    let S := compiledStruct B p env hl hd hfresh hpub
+    let sem := vegasMAIDSem B p env hl hd hfresh hpub
+    let extract := extractOutcomeV B p env hl hd hfresh hpub
+    let μ_maid : ∀ who, PMF (PureStrategy (fp := B.fintypePlayer) S who) :=
+      fun who => (μ who).map (compilePureStrategyV B p env hl hd hfresh hpub who)
+    (@pmfPi _ _ _ B.fintypePlayer _ μ_maid).bind (fun π_maid =>
+      PMF.map extract (frontierEval (fp := B.fintypePlayer) S sem
+        (pureToPolicy (fp := B.fintypePlayer) π_maid))) =
+    (@pmfPi _ _ _ B.fintypePlayer _ μ).bind (fun π =>
+      (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd)) := by
+  sorry
+
+/-! ## Main theorem -/
+
+/-- **Vegas Kuhn theorem (mixed → behavioral) via VegasMAID**: under the
+preconditions that the program is legal, has normalized distributions, has
+fresh bindings, and has no hidden variables in scope, every product mixed
+strategy over pure Vegas strategies is outcome-equivalent to some PMF-valued
+behavioral profile.
+
+This version uses the VegasMAID factored-observation compilation, where
+`obsParents = parents` eliminates the obs-config injectivity problem. -/
+theorem vegas_kuhn_mixed_to_behavioralV
+    (B : MAIDBackend Player L)
+    (LF : FiniteValuation L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (env : VEnv L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (μ : ∀ who, PMF (ProgramPureStrategy who p)) :
+    let _ : ∀ who, Fintype (ProgramPureStrategy who p) :=
+      fun who => ProgramPureStrategy.instFintype LF who p
+    ∃ σ : ProgramBehavioralProfilePMF p,
+      outcomeDistBehavioralPMF p hd σ env =
+        (@pmfPi _ _ _ B.fintypePlayer _ μ).bind (fun π =>
+          (outcomeDistPure p π env).toPMF
+            (outcomeDistPure_totalWeight_eq_one hd)) := by
+  intro _instFinStrat
+  -- Step 1: Set up the compiled VegasMAID
+  let S := compiledStruct B p env hl hd hfresh hpub
+  let sem := vegasMAIDSem B p env hl hd hfresh hpub
+  let extract := extractOutcomeV B p env hl hd hfresh hpub
+  -- Step 2: Perfect recall from factored observation
+  have hPR : S.PerfectRecall (fp := B.fintypePlayer) :=
+    compiledStruct_perfectRecallV B p env hl hd hfresh hpub
+  -- Step 3: Build MAID mixed strategy from Vegas mixed strategy
+  let μ_maid : ∀ who, PMF (PureStrategy (fp := B.fintypePlayer) S who) :=
+    fun who => (μ who).map (compilePureStrategyV B p env hl hd hfresh hpub who)
+  -- Step 4: Apply MAID Kuhn (mixed → behavioral)
+  letI := B.fintypePlayer
+  obtain ⟨pol, hpol⟩ :=
+    GameTheory.Languages.MAID.kuhn_mixed_to_behavioral S sem hPR μ_maid
+  -- Step 5: Reflect MAID policy to Vegas behavioral profile
+  let σ := reflectPolicyV B p env hl hd hfresh hpub pol
+  use σ
+  -- Step 6: Chain the bridges
+  -- Goal: outcomeDistBehavioralPMF p hd σ env = (pmfPi μ).bind (fun π => ...)
+  -- From reverse bridge:
+  --   PMF.map extract (frontierEval S sem pol) = outcomeDistBehavioralPMF p hd σ env
+  have hrev := vegasMAID_reverse_bridge B p env hl hd hfresh hpub pol
+  -- From MAID Kuhn: frontierEval S sem pol = (pmfPi μ_maid).bind (...)
+  -- So: PMF.map extract (frontierEval S sem pol) =
+  --     (pmfPi μ_maid).bind (fun π_maid =>
+  --       PMF.map extract (frontierEval S sem (pureToPolicy π_maid)))
+  -- From maid_kuhn_rhs_eq_vegas_mixedV:
+  --   (pmfPi μ_maid).bind (...) = (pmfPi μ).bind (fun π => (outcomeDistPure p π env).toPMF ...)
+  have hrhs := maid_kuhn_rhs_eq_vegas_mixedV B LF p env hl hd hfresh hpub μ
+  -- Chain: σ's behavioral dist = extract ∘ frontierEval = extract ∘ MAID-mixed = Vegas-mixed
+  rw [← hrev]
+  rw [hpol]
+  -- Goal should now be about PMF.map extract ((pmfPi μ_maid).bind ...)
+  -- = (pmfPi μ).bind (fun π => (outcomeDistPure p π env).toPMF ...)
+  rw [PMF.map_bind]
+  exact hrhs
+
+end Vegas
