@@ -761,6 +761,49 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
               have := hcon₀.nodeOf_lt x nid' hx_eq; omega)]
             exact hcon₀.unset i hi
 
+/-- hprev transfer: old decision nodes' parent visibility is preserved through
+    addNode (non-decision) + addPublicNode. -/
+private theorem hprev_transfer_addNode
+    {st : MAIDCompileState Player L B} {rs : RevealState}
+    (hcon : RevealConsistent st rs)
+    (nd : CompiledNode Player L B) (hkind : ¬ ∃ p, nd.kind = .decision p)
+    (hnd : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (hp : ∀ (d : Fin st.nextId) (pw : Player),
+      (st.descAt d).kind = .decision pw →
+      ∀ (i : Nat) (hi : i ∈ (st.descAt d).parents),
+        rs.revealTime i ≤ ↑d.val ∨ (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind = .decision pw) :
+    ∀ (d : Fin (st.addNode nd hnd).2.nextId) (pw : Player),
+      ((st.addNode nd hnd).2.descAt d).kind = .decision pw →
+      ∀ (i : Nat) (hi : i ∈ ((st.addNode nd hnd).2.descAt d).parents),
+        rs.addPublicNode.revealTime i ≤ ↑d.val ∨
+          ((st.addNode nd hnd).2.descAt ⟨i, Nat.lt_trans ((st.addNode nd hnd).2.descAt_parent_lt d hi) d.2⟩).kind =
+            .decision pw := by
+  intro d' pw' hk' i hi'
+  have hbound : d'.val ≤ st.nextId := by
+    have := d'.isLt; simp [MAIDCompileState.addNode] at this; omega
+  have hk_inner : ((st.addNode nd hnd).2.descAt ⟨d'.val, by
+      simp [MAIDCompileState.addNode]; omega⟩).kind = .decision pw' := hk'
+  rcases Nat.lt_or_eq_of_le hbound with hlt | heq
+  · rw [MAIDCompileState.addNode_descAt_old st nd hnd ⟨d'.val, hlt⟩] at hk_inner
+    have hi_inner : i ∈ (st.descAt ⟨d'.val, hlt⟩).parents := by
+      have : i ∈ ((st.addNode nd hnd).2.descAt ⟨d'.val, by simp [MAIDCompileState.addNode]; omega⟩).parents := hi'
+      rwa [MAIDCompileState.addNode_descAt_old st nd hnd ⟨d'.val, hlt⟩] at this
+    rcases hp ⟨d'.val, hlt⟩ pw' hk_inner i hi_inner with h | h
+    · left; simp only [RevealState.addPublicNode]
+      rw [if_neg (show i ≠ rs.nextId from by
+        rw [hcon.sync]; have := st.descAt_parent_lt ⟨d'.val, hlt⟩ hi_inner; omega)]
+      exact h
+    · right
+      show ((st.addNode nd hnd).2.descAt ⟨i, _⟩).kind = _
+      rw [MAIDCompileState.addNode_descAt_old st nd hnd
+        ⟨i, by have := st.descAt_parent_lt ⟨d'.val, hlt⟩ hi_inner; omega⟩]
+      exact h
+  · exfalso
+    rw [show (⟨d'.val, _⟩ : Fin (st.addNode nd hnd).2.nextId) =
+        ⟨st.nextId, by simp [MAIDCompileState.addNode]⟩ from Fin.ext heq] at hk_inner
+    rw [MAIDCompileState.addNode_descAt_new st nd hnd] at hk_inner
+    exact hkind ⟨pw', hk_inner⟩
+
 /-- Visible-variable-deps invariant: for each variable visible to a player,
     its lookupDeps point to nodes that are either public or same-player decisions. -/
 def VarVisible {B : MAIDBackend Player L}
@@ -880,7 +923,8 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       exact ih hl hd.2 hfresh.2 _ _ _
         (revealConsistent_addChance' hcon₀ cnd
           (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps x τ hdeps)
-        (by sorry) -- hprev for intermediate: old decisions via addNode_descAt_old + revealTime
+        (hprev_transfer_addNode hcon₀ cnd
+          (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps hprev)
         (by -- VarVisible for extended context
             sorry)
   | commit x who R k ih =>
