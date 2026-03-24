@@ -129,9 +129,10 @@ theorem projectViewEnv_cons_eq
         (VEnv.eraseEnv env₁) =
       projectViewEnv (P := P) (L := L) who
         (VEnv.eraseEnv env₂) := by
-  -- Each visible variable in Γ is also visible in (x, τ) :: Γ via .there.
-  -- The eraseEnv of VEnv.cons at .there equals eraseEnv of the tail.
-  -- Extracting from h at each old variable gives the result.
+  -- Proof: each visible y in Γ is visible in (x,τ)::Γ via viewVCtx_cons.
+  -- projectViewEnv eq → eraseEnv values agree at each visible variable.
+  -- eraseEnv (cons v env) at .there = eraseEnv env (by Env.cons structure).
+  -- Combining gives ObsEq for Γ → projectViewEnv_eq_of_obsEq closes.
   sorry
 
 end Vegas
