@@ -1085,7 +1085,33 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
           (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps hprev)
         (varVisible_addNode_chance_addVar st₀ rs₀ hcon₀ cnd
           (by simp [cnd, CompiledNode.kind]) hcnd_deps x τ _ hvars hfresh.1 hdeps hvar₀)
-        (by sorry) (by sorry) (by sorry) -- hdt + hhn + hnsc for sample continuation
+        (by -- hdt: x→{nextId}⊆{nextId}, y≠x → from hdt
+            intro z nid hnid
+            simp only [RevealState.addPublicNode, RevealState.bindVar] at hnid
+            by_cases hz : z = x
+            · subst hz; simp at hnid; subst hnid
+              rw [(st₀.addNode cnd hcnd_deps).2.lookupDeps_addVar_eq_self_of_fresh z _ _ _
+                (fun hm => hfresh.1 ((st₀.VarsSubCtx_addNode hvars cnd hcnd_deps) z hm))]
+              rw [hcon₀.sync]
+            · simp [hz] at hnid
+              rw [(st₀.addNode cnd hcnd_deps).2.lookupDeps_addVar_eq_of_ne x _ _ _ hz]
+              exact hdt z nid hnid)
+        (by -- hhn: hidden vars have nodeOf; new var x: bindVar sets it
+            intro z who' b' hv
+            simp only [RevealState.addPublicNode, RevealState.bindVar]
+            cases hv with
+            | here => simp -- z = x: nodeOf x = some nextId ≠ none
+            | there hv' =>
+                by_cases hz : z = x
+                · subst hz; simp
+                · simp [hz]; exact hhn z who' b' hv')
+        (by -- hnsc: x in new context; old vars via hnsc
+            intro z nid hnid
+            simp only [RevealState.addPublicNode, RevealState.bindVar] at hnid
+            simp only [List.map_cons, List.mem_cons]
+            by_cases hz : z = x
+            · left; exact hz
+            · right; simp [hz] at hnid; exact hnsc z nid hnid)
   | commit x who R k ih =>
       -- THE key case: new decision node + IH for continuation.
       -- New node's parents = viewDeps who Γ'. By hvar₀, each dep has
