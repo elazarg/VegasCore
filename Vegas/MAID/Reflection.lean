@@ -303,9 +303,9 @@ private theorem pmfFoldBridge
       simp only [MAID.nodeDist]
       split
       · -- chance: contradicts hkind
-        rename_i hk; simp [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
+        rename_i hk; simp only [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
       · -- decision: contradicts hkind
-        rename_i p hk; simp [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
+        rename_i p hk; simp only [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
       · -- utility: PMF.pure default
         simp only [PMF.pure_bind, Function.comp]
         exact congrArg PMF.pure (congrArg (extractOutcome B (.ret u) ρ st₀.nextId)
@@ -313,7 +313,8 @@ private theorem pmfFoldBridge
     have hfold : ∀ (nodes : List (Fin st.nextId))
         (hnodes : ∀ nd ∈ nodes, ∃ who, (st.descAt nd).kind = .utility who)
         (acc : PMF (MAID.TAssign st.toStruct)),
-        PMF.map extract (List.foldl (MAID.evalStep st.toStruct (MAIDCompileState.toSem st) pol) acc nodes) =
+        PMF.map extract (List.foldl (MAID.evalStep st.toStruct
+          (MAIDCompileState.toSem st) pol) acc nodes) =
         PMF.map extract acc := by
       intro nodes hnodes acc
       induction nodes generalizing acc with
@@ -357,7 +358,40 @@ private theorem pmfFoldBridge
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var pol a₀
   | sample x τ m D' k ih => sorry
   | commit x who R k ih => sorry
-  | reveal y who x hx k ih => sorry
+  | reveal y who' x hx k ih =>
+    rename_i Γ' b
+    intro pol a₀
+    have hyΓ : Fresh y Γ' := hfresh.1
+    have hyvars : y ∉ st₀.vars.map Prod.fst := fun hymem => hyΓ (hvars y hymem)
+    let ρ' : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ') :=
+      fun raw =>
+        let v : L.Val b := VEnv.get (L := L) (ρ raw) hx
+        VEnv.cons (L := L) (x := y) (τ := .pub b) v (ρ raw)
+    let st₁ := st₀.addVar y (.pub b) (st₀.lookupDeps x) (st₀.lookupDeps_lt x)
+    have hvars₁ : st₁.VarsSubCtx ((y, .pub b) :: Γ') := by
+      simpa [st₁] using st₀.VarsSubCtx_addVar hvars y _ _ _ hyΓ
+    have hctx₁ : st₁.ctxDeps ((y, .pub b) :: Γ') = st₀.ctxDeps Γ' := by
+      simpa [st₁] using st₀.ctxDeps_reveal_step y who' x hx hyΓ hyvars
+    have hρ'_deps : ∀ j, j ∉ st₁.ctxDeps ((y, .pub b) :: Γ') → InsensitiveTo ρ' j := by
+      intro j hj raw tv
+      have hj' : j ∉ st₀.ctxDeps Γ' := by simpa [hctx₁] using hj
+      have hρj := hρ_deps j hj' raw tv
+      simp only [ρ', hρj]
+    have hρ'_var : EnvRespectsLookupDeps st₁ ρ' := by
+      intro z σ hz j hj raw tv
+      cases hz with
+      | here =>
+          have hj' : j ∉ st₀.lookupDeps x := by
+            simpa [st₁, st₀.lookupDeps_addVar_eq_self_of_fresh y (.pub b) (st₀.lookupDeps x)
+              (st₀.lookupDeps_lt x) hyvars] using hj
+          simpa [ρ', VEnv.get] using hρ_var hx j hj' raw tv
+      | there hz' =>
+          have hzy : z ≠ y := fun hEq => hyΓ (hEq.symm ▸ hz'.mem_map_fst)
+          have hj' : j ∉ st₀.lookupDeps z := by
+            simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne y (.pub b) (st₀.lookupDeps x)
+              (st₀.lookupDeps_lt x) hzy] using hj
+          simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
+    exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol a₀
 
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
 obtained by reflecting a MAID policy produces the same outcome distribution
