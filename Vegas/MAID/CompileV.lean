@@ -979,11 +979,41 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                   show (st₀.addNode dnd hdnd_deps).2.descAt ⟨i, _⟩ = _
                   exact MAIDCompileState.addNode_descAt_old st₀ dnd hdnd_deps ⟨i, hilt⟩
                 rw [this]; exact h
-            · -- NEW decision: parents = viewDeps who Γ', apply hvar₀
-              -- The Fin conversion from d' to ⟨st₀.nextId, _⟩ + addNode_descAt_new
-              -- gives pw' = who and hi' ∈ viewDeps who Γ'. Then hvar₀ +
-              -- mem_depsOfVars_iff connects to the conclusion.
-              sorry)
+            · -- NEW decision: convert d' → st₀.nextId, extract pw'=who and parents=viewDeps
+              have hdesc_new : (st₀.addNode dnd hdnd_deps).2.descAt
+                  ⟨st₀.nextId, by simp [MAIDCompileState.addNode]⟩ = dnd :=
+                MAIDCompileState.addNode_descAt_new st₀ dnd hdnd_deps
+              -- Convert via show + hdesc_new
+              have hpw : pw' = who := by
+                have : dnd.kind = .decision pw' := by
+                  have h1 := hk'; rw [show d' = (⟨st₀.nextId, by
+                    simp [MAIDCompileState.addNode, MAIDCompileState.addVar]⟩ : Fin _) from Fin.ext heq] at h1
+                  change ((st₀.addNode dnd hdnd_deps).2.descAt ⟨st₀.nextId, _⟩).kind = _ at h1
+                  rw [hdesc_new] at h1; exact h1
+                simp only [dnd, CompiledNode.kind, NodeKind.decision.injEq] at this; exact this.symm
+              subst hpw
+              have hi_dnd : i ∈ dnd.parents := by
+                have h1 := hi'; rw [show d' = (⟨st₀.nextId, by
+                  simp [MAIDCompileState.addNode, MAIDCompileState.addVar]⟩ : Fin _) from Fin.ext heq] at h1
+                change i ∈ ((st₀.addNode dnd hdnd_deps).2.descAt ⟨st₀.nextId, _⟩).parents at h1
+                rw [hdesc_new] at h1; exact h1
+              have hi_vd : i ∈ st₀.viewDeps pw' Γ' := by
+                simp [dnd, CompiledNode.parents] at hi_dnd; exact hi_dnd
+              rw [MAIDCompileState.viewDeps] at hi_vd
+              obtain ⟨y, hy_mem, hy_dep⟩ := (mem_depsOfVars_iff st₀ _ i).mp hi_vd
+              obtain ⟨⟨y', σ⟩, hys_mem, hys_fst⟩ := List.mem_map.mp hy_mem
+              simp at hys_fst; subst hys_fst
+              rcases hvar₀ pw' y' σ hys_mem i hy_dep with h | h
+              · left; simp only [RevealState.addPrivateNode, RevealState.bindVar]
+                exact le_trans h (by rw [heq])
+              · right
+                have hilt : i < st₀.nextId := st₀.depsOfVars_lt _ i hi_vd
+                have : ((st₀.addNode dnd hdnd_deps).2.addVar x (.hidden pw' b) {st₀.nextId} hdeps).descAt
+                    ⟨i, by simp [MAIDCompileState.addNode, MAIDCompileState.addVar]; omega⟩ =
+                    st₀.descAt ⟨i, hilt⟩ := by
+                  show (st₀.addNode dnd hdnd_deps).2.descAt ⟨i, _⟩ = _
+                  exact MAIDCompileState.addNode_descAt_old st₀ dnd hdnd_deps ⟨i, hilt⟩
+                rw [this]; exact h)
         (by sorry) -- VarVisible for extended context
   | reveal y who x hx k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
