@@ -1120,15 +1120,47 @@ private theorem pmfFoldBridge
       intro who raw₁ raw₂ hout hnot_vd htyped hview i hi
       have hview_old := Vegas.projectViewEnv_cons_eq
         (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) hview
-      -- Reveal VDR: viewDeps = lookupDeps(x) ∪ old viewDeps.
-      -- For i ∈ old viewDeps: forward to hρ_readers (same as letExpr).
-      -- For i ∈ lookupDeps(x) \ old viewDeps: need raw equality from view.
-      --   If x ∈ viewVCtx who Γ' (who sees x): lookupDeps(x) ⊆ viewDeps, no new indices.
-      --   If x ∉ viewVCtx who Γ' (who doesn't see x): genuinely new indices.
-      --     The view gives get(x, ρ raw₁) = get(x, ρ raw₂) (from cons_head_eq),
-      --     but equal outputs don't imply equal inputs at individual lookupDeps indices.
-      -- TODO: This case needs either a structural lemma or reformulation.
-      sorry
+      -- Reveal VDR: viewDeps = lookupDeps(x) ∪ old viewDeps
+      have hy_not_view : y ∉ (viewVCtx who Γ').map Prod.fst :=
+        fun hmem => hyΓ (viewVCtx_map_fst_sub hmem)
+      have hVD : st₁.viewDeps who ((y, .pub b) :: Γ') =
+          st₀.lookupDeps x ∪ st₀.viewDeps who Γ' := by
+        unfold MAIDCompileState.viewDeps
+        simp only [viewVCtx, canSee, ite_true, List.map_cons, MAIDCompileState.depsOfVars]
+        rw [st₀.lookupDeps_addVar_eq_self_of_fresh y (.pub b) (st₀.lookupDeps x)
+            (st₀.lookupDeps_lt x) hyvars,
+          st₀.depsOfVars_addVar_eq_of_not_mem y (.pub b) _ _ _ hy_not_view]
+      rw [hVD] at hi
+      -- Head value equality: get hx (ρ raw₁) = get hx (ρ raw₂)
+      have hhead := Vegas.projectViewEnv_cons_head_eq
+        (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) (by simp [canSee]) hview
+      rcases Finset.mem_union.mp hi with hi_lookup | hi_old
+      · -- i ∈ lookupDeps(x): use EnvReadValAtDeps for singleton deps + readVal equality
+        rcases hρ_readval x who' b hx ⟨i, hi_lookup⟩ with ⟨j, hsingleton, hjlt, hreadval⟩
+        have hij : i = j := Finset.mem_singleton.mp (hsingleton ▸ hi_lookup); subst hij
+        rw [hreadval raw₁, hreadval raw₂] at hhead
+        -- hhead : readVal raw₁ b i = readVal raw₂ b i
+        -- RawsMatchDescAt: correct descAt type → readVal_tagged_eq closes
+        have hi_vd := hVD ▸ Finset.mem_union_left _ hi_lookup
+        have htyped_i := htyped i hi_vd (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+        simp only [RawsMatchDescAt, show st₁.descAt ⟨i, _⟩ = st₀.descAt ⟨i, hjlt⟩ from rfl] at htyped_i
+        -- The descAt type at i should be b (from the commit node).
+        -- readVal_tagged_eq needs the descAt type = b for the readVal equality to give raw equality.
+        sorry -- TODO: need descAt type = b invariant at lookupDeps singleton
+      · -- i ∈ old viewDeps: forward to hρ_readers (same as letExpr)
+        apply hρ_readers who raw₁ raw₂
+        · intro j hj; exact hout j (by simp [st₁, MAIDCompileState.addVar] at hj ⊢; exact hj)
+        · intro j hj hjlt
+          exact hnot_vd j (fun hmem => hj (by rw [hVD] at hmem;
+            rcases Finset.mem_union.mp hmem with h | h
+            · exact absurd (st₀.lookupDeps_lt x j h) (by omega)
+            · exact h))
+            (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+        · intro j hj hjlt
+          exact htyped j (by rw [hVD]; exact Finset.mem_union_right _ hj)
+            (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+        · exact hview_old
+        · exact hi_old
     exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
       (sorry : EnvReadValAtDeps _ _ ρ')
       (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) pol a₀
