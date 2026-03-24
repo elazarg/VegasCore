@@ -439,7 +439,7 @@ private theorem pmfFoldBridge
             simp only [MAIDCompileState.pubCtxDeps, MAIDCompileState.viewDeps]
             apply st₀.depsOfVars_subset_of_subset
             -- erasePubVCtx Γ'.map fst ⊆ viewVCtx who Γ'.map fst (pub vars visible)
-            sorry
+            exact erasePubVCtx_map_fst_sub_viewVCtx
           exact this h
         · exact h
       exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
