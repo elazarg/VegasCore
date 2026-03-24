@@ -243,11 +243,10 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
   | sample x τ m D' k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
       apply ih (hd := hd.2)
-      -- Need: RevealConsistent for addNode(.chance)+addVar vs addPublicNode+bindVar
-      -- sync: both nextId = st₀.nextId + 1 (by hcon₀.sync)
-      -- chance: old nodes preserved (addNode_descAt_old), new node is chance with ↑id
-      -- decision: old nodes preserved, new chance node is vacuously not decision
-      -- nodeOf_lt: x maps to st₀.nextId < st₀.nextId + 1, others by hcon₀.nodeOf_lt
+      -- Need: RevealConsistent after addNode(.chance) + addVar vs addPublicNode + bindVar.
+      -- Each field is straightforward (old nodes preserved via List.getElem_append_left,
+      -- new node is .chance with revealTime = ↑id, nodeOf x = st₀.nextId < nextId+1).
+      -- Closing requires the same descAt/addNode list manipulation as Correctness.lean.
       sorry
   | commit x who R k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
