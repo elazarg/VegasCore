@@ -400,8 +400,19 @@ private theorem pmfFoldBridge
               (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hxy] using hj
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
     have hρ'_readers : CfgDeterminedByView st₁ ((x, .pub b) :: Γ') ρ' := by
-      -- No new nodes; ρ' extends ρ; view through ρ' projects to view through ρ
-      sorry
+      -- No new nodes (addVar only). st₁.toStruct = st₀.toStruct, rawEnvOfCfg unchanged.
+      -- viewDeps over extended ctx = viewDeps over old ctx (pubCtxDeps ⊆ viewDeps).
+      -- ρ' = VEnv.cons ... ρ; view through ρ' projects to view through ρ.
+      intro who ps hps cfg₁ cfg₂ hview
+      -- Derive ρ view equality from ρ' view equality:
+      -- projectViewEnv who (eraseEnv (ρ' raw)) at old variables = projectViewEnv who (eraseEnv (ρ raw))
+      have hview_old : projectViewEnv (P := P) (L := L) who
+          (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₁))) =
+          projectViewEnv who (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₂))) := by
+        sorry
+      -- viewDeps subset: st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ'
+      have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by sorry
+      exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers pol a₀
   | sample x τ m D' k ih =>
