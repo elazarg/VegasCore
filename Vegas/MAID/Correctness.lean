@@ -753,7 +753,8 @@ theorem erasePubVCtx_map_fst_sub_viewVCtx {Γ : VCtx Player L} {who : Player} :
       by_cases h : canSee who (.hidden p b)
       · simp only [h, ite_true, List.map_cons, List.mem_cons]
         right; exact ih x hx
-      · simp only [h, ite_false]; exact ih x hx
+      · simp only [h]
+        exact ih x hx
 
 theorem MAIDCompileState.depsOfVars_addVar_eq_of_not_mem
     (st : MAIDCompileState Player L B)
@@ -1755,7 +1756,7 @@ open MAID in
 theorem MAIDCompileState.rawEnvOfCfg_not_mem
     (st : MAIDCompileState Player L B)
     {ps : Finset (Fin st.nextId)}
-    (cfg : @Cfg Player _ B.fintypePlayer _ st.toStruct ps)
+    (cfg : Cfg (fp := B.fintypePlayer) st.toStruct ps)
     (i : Nat) (hi : i < st.nextId)
     (hmem : (⟨i, hi⟩ : Fin st.nextId) ∉ ps) :
     st.rawEnvOfCfg cfg i = none := by
@@ -1766,10 +1767,52 @@ open MAID in
 theorem MAIDCompileState.rawEnvOfCfg_ge_nextId
     (st : MAIDCompileState Player L B)
     {ps : Finset (Fin st.nextId)}
-    (cfg : @Cfg Player _ B.fintypePlayer _ st.toStruct ps)
+    (cfg : Cfg (fp := B.fintypePlayer) st.toStruct ps)
     (i : Nat) (hi : ¬(i < st.nextId)) :
     st.rawEnvOfCfg cfg i = none := by
   simp [rawEnvOfCfg, hi]
+
+theorem taggedOfVal_type_consistent (nd : CompiledNode Player L B)
+    (v₁ v₂ : CompiledNode.valType nd) :
+    (∃ (τ : L.Ty) (w₁ w₂ : L.Val τ),
+      MAIDCompileState.taggedOfVal nd v₁ = some ⟨τ, w₁⟩ ∧
+      MAIDCompileState.taggedOfVal nd v₂ = some ⟨τ, w₂⟩) ∨
+    (MAIDCompileState.taggedOfVal nd v₁ = none ∧
+     MAIDCompileState.taggedOfVal nd v₂ = none) := by
+  match nd, v₁, v₂ with
+  | .chance τ _ _ _, v₁, v₂ => left; exact ⟨τ, v₁, v₂, rfl, rfl⟩
+  | .decision τ _ _ _ _ _, v₁, v₂ => left; exact ⟨τ, v₁, v₂, rfl, rfl⟩
+  | .utility _ _ _, _, _ => right; exact ⟨rfl, rfl⟩
+
+open MAID in
+/-- Two rawEnvOfCfg calls on the same state at the same member index produce
+values with consistent type tags (same type or both none). -/
+theorem MAIDCompileState.rawEnvOfCfg_type_consistent
+    (st : MAIDCompileState Player L B)
+    {ps₁ ps₂ : Finset (Fin st.nextId)}
+    (cfg₁ : Cfg (fp := B.fintypePlayer) st.toStruct ps₁)
+    (cfg₂ : Cfg (fp := B.fintypePlayer) st.toStruct ps₂)
+    (i : Nat) (hi : i < st.nextId)
+    (hmem₁ : (⟨i, hi⟩ : Fin st.nextId) ∈ ps₁)
+    (hmem₂ : (⟨i, hi⟩ : Fin st.nextId) ∈ ps₂) :
+    (∃ (τ : L.Ty) (v₁ v₂ : L.Val τ),
+      st.rawEnvOfCfg cfg₁ i = some ⟨τ, v₁⟩ ∧
+      st.rawEnvOfCfg cfg₂ i = some ⟨τ, v₂⟩) ∨
+    (st.rawEnvOfCfg cfg₁ i = none ∧ st.rawEnvOfCfg cfg₂ i = none) := by
+  simp only [rawEnvOfCfg, hi, dif_pos, hmem₁, hmem₂]
+  exact taggedOfVal_type_consistent (st.descAt ⟨i, hi⟩) _ _
+
+open MAID in
+/-- If two raw envs have the same type tag at index `i` and `readVal` agrees,
+then the full raw values agree. -/
+theorem readVal_tagged_eq {raw₁ raw₂ : RawNodeEnv L}
+    {τ : L.Ty} {v₁ v₂ : L.Val τ} {i : Nat}
+    (h₁ : raw₁ i = some ⟨τ, v₁⟩) (h₂ : raw₂ i = some ⟨τ, v₂⟩)
+    (heq : MAIDCompileState.readVal (B := B) raw₁ τ i =
+      MAIDCompileState.readVal (B := B) raw₂ τ i) :
+    raw₁ i = raw₂ i := by
+  simp only [MAIDCompileState.readVal, h₁, ↓reduceDIte, h₂] at heq
+  rw [h₁, h₂, heq]
 
 open MAID in
 theorem taggedOfVal_decision_cast
@@ -1790,8 +1833,10 @@ theorem taggedOfVal_injective {c : CompiledNode Player L B}
     (h : MAIDCompileState.taggedOfVal c v₁ = MAIDCompileState.taggedOfVal c v₂) :
     v₁ = v₂ := by
   cases c with
-  | chance τ => simp [MAIDCompileState.taggedOfVal] at h; exact h
-  | decision τ => simp [MAIDCompileState.taggedOfVal] at h; exact h
+  | chance τ => simp only [MAIDCompileState.taggedOfVal, Option.some.injEq, Sigma.mk.injEq,
+    heq_eq_eq, true_and] at h; exact h
+  | decision τ => simp only [MAIDCompileState.taggedOfVal, Option.some.injEq, Sigma.mk.injEq,
+    heq_eq_eq, true_and] at h; exact h
   | utility => cases v₁; cases v₂; rfl
 
 open MAID in
@@ -1800,14 +1845,14 @@ environment on their support set must be equal. -/
 theorem MAIDCompileState.rawEnvOfCfg_injective
     (st : MAIDCompileState Player L B)
     {ps : Finset (Fin st.nextId)}
-    (cfg₁ cfg₂ : @Cfg Player _ B.fintypePlayer _ st.toStruct ps)
+    (cfg₁ cfg₂ : Cfg (fp := B.fintypePlayer) st.toStruct ps)
     (h : st.rawEnvOfCfg cfg₁ = st.rawEnvOfCfg cfg₂) :
     cfg₁ = cfg₂ := by
   letI := B.fintypePlayer
   funext ⟨nd, hmem⟩
   have hi := nd.isLt
   have := congr_fun h nd.val
-  simp only [rawEnvOfCfg, hi, dite_true, hmem, ite_true] at this
+  simp only [rawEnvOfCfg, hi, dite_true, hmem] at this
   exact taggedOfVal_injective this
 
 open MAID in

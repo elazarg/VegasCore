@@ -216,4 +216,32 @@ theorem projectViewEnv_cons_eq
     exact this
   exact projectViewEnv_eq_of_obsEq hobs
 
+/-- If `canSee who τ` and the views through `VEnv.cons v₁ env₁` and
+`VEnv.cons v₂ env₂` agree, then `v₁ = v₂`. -/
+theorem projectViewEnv_cons_head_eq
+    {who : P} {Γ : VCtx P L} {x : VarId} {τ : BindTy P L}
+    {env₁ env₂ : VEnv (Player := P) L Γ}
+    {v₁ v₂ : L.Val τ.base}
+    (hnodup : (((x, τ) :: Γ).map Prod.fst).Nodup)
+    (hsee : canSee who τ = true)
+    (h : projectViewEnv (P := P) (L := L) who
+        (VEnv.eraseEnv (VEnv.cons (L := L) (x := x) (τ := τ) v₁ env₁)) =
+      projectViewEnv (P := P) (L := L) who
+        (VEnv.eraseEnv (VEnv.cons (L := L) (x := x) (τ := τ) v₂ env₂))) :
+    v₁ = v₂ := by
+  have hvm : viewVCtx who ((x, τ) :: Γ) = (x, τ) :: viewVCtx who Γ := by
+    simp [viewVCtx, hsee]
+  have h_view : HasVar (eraseVCtx (viewVCtx who ((x, τ) :: Γ))) x τ.base := by
+    rw [hvm]; exact HasVar.here
+  have hnodup_e : ((eraseVCtx ((x, τ) :: Γ)).map Prod.fst).Nodup := by
+    rwa [eraseVCtx_map_fst]
+  rcases projectViewEnv_apply (VEnv.eraseEnv (VEnv.cons v₁ env₁)) h_view with ⟨hy₁, hpv₁⟩
+  rcases projectViewEnv_apply (VEnv.eraseEnv (VEnv.cons v₂ env₂)) h_view with ⟨hy₂, hpv₂⟩
+  have h_eq := congr_fun (congr_fun (congr_fun h x) τ.base) h_view
+  rw [hpv₁, hpv₂] at h_eq
+  rw [HasVar.eq_of_nodup hnodup_e hy₁ HasVar.here,
+      HasVar.eq_of_nodup hnodup_e hy₂ HasVar.here] at h_eq
+  simp only [VEnv.eraseEnv, Env.cons] at h_eq
+  exact h_eq
+
 end Vegas
