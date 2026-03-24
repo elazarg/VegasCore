@@ -1731,6 +1731,65 @@ theorem taggedOfVal_decision_cast
   subst hc; rfl
 
 open MAID in
+/-- `taggedOfVal` is injective for non-utility nodes: if two values produce the
+same tagged value, the values are equal. -/
+theorem taggedOfVal_injective {c : CompiledNode Player L B}
+    {v₁ v₂ : CompiledNode.valType c}
+    (h : MAIDCompileState.taggedOfVal c v₁ = MAIDCompileState.taggedOfVal c v₂) :
+    v₁ = v₂ := by
+  cases c with
+  | chance τ => simp [MAIDCompileState.taggedOfVal] at h; exact h
+  | decision τ => simp [MAIDCompileState.taggedOfVal] at h; exact h
+  | utility => cases v₁; cases v₂; rfl
+
+open MAID in
+/-- `rawEnvOfCfg` is injective: two configurations that produce the same raw
+environment on their support set must be equal. -/
+theorem MAIDCompileState.rawEnvOfCfg_injective
+    (st : MAIDCompileState Player L B)
+    {ps : Finset (Fin st.nextId)}
+    (cfg₁ cfg₂ : @Cfg Player _ B.fintypePlayer _ st.toStruct ps)
+    (h : st.rawEnvOfCfg cfg₁ = st.rawEnvOfCfg cfg₂) :
+    cfg₁ = cfg₂ := by
+  letI := B.fintypePlayer
+  funext ⟨nd, hmem⟩
+  have hi := nd.isLt
+  have := congr_fun h nd.val
+  simp only [rawEnvOfCfg, hi, dite_true, hmem, ite_true] at this
+  exact taggedOfVal_injective this
+
+open MAID in
+/-- Obs-config injectivity: if two configurations on `obsParents` produce the
+same view through `ρ`, they must be equal. Uses `rawEnvOfCfg_injective` after
+showing the raw environments agree via `projectViewEnv_eq_of_lookupDeps` converse. -/
+theorem MAIDCompileState.cfg_eq_of_view_eq
+    (st : MAIDCompileState Player L B)
+    {Γ : VCtx Player L}
+    (ρ : RawNodeEnv L → VEnv L Γ)
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    (who : Player)
+    {ps : Finset (Fin st.nextId)}
+    (hps : ∀ i ∈ ps, i.val ∈ st.viewDeps who Γ)
+    (cfg₁ cfg₂ : @Cfg Player _ B.fintypePlayer _ st.toStruct ps)
+    (hview : projectViewEnv (P := Player) (L := L) who
+        (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₁))) =
+      projectViewEnv (P := Player) (L := L) who
+        (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₂)))) :
+    cfg₁ = cfg₂ := by
+  letI := B.fintypePlayer
+  -- Both rawEnvOfCfg are none outside ps, and agree outside ps.
+  -- Show they also agree on ps (then rawEnvOfCfg_injective closes).
+  apply st.rawEnvOfCfg_injective cfg₁ cfg₂
+  -- Show raw environments agree pointwise
+  -- Key: both rawEnvOfCfg agree outside viewDeps (both none there),
+  -- and ρ is insensitive to non-viewDeps. Since views equal, ρ gives same
+  -- result for both raws. Then for each variable with singleton lookupDeps,
+  -- the raw values at that index must agree.
+  -- Approach: show rawEnvOfCfg cfg₁ = rawEnvOfCfg cfg₂ using view eq
+  -- For now, use sorry as the formal proof requires tracing the compilation structure
+  sorry
+
+open MAID in
 private theorem compiledNodeFDist_chance_bind_eq
     {β : Type} [DecidableEq β]
     (st : MAIDCompileState Player L B)

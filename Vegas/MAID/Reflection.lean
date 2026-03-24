@@ -683,13 +683,33 @@ private theorem pmfFoldBridge
       exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol _
     -- Use IH to rewrite inner fold
     simp_rw [hinner]
-    -- Now goal is: (nodeDist ...).bind (fun v => native ρ' (id+1) (rawOfTAssign st (updateAssign ...)))
-    --           = (headKernel ... view).bind (fun v => native (tail ...) ρ' (id+1) (raw₀.extend ...))
-    -- Remaining: match nodeDist with reflected kernel, and raw update with extend
-    -- This requires: obs-config injectivity to show Classical.choose = projCfg,
-    -- nodeDist at decision node = pol, rawOfTAssign_updateAssign_of_tagged,
-    -- and type cast alignment (S.Val nd0 = L.Val b via hdesc0).
-    sorry
+    -- Cast raw update to extend (same pattern as sample case)
+    have hraw : ∀ v, rawOfTAssign st (MAID.updateAssign a₀ nd0 v) =
+        (rawOfTAssign st a₀).extend id ⟨b, castValType hdesc0 v⟩ :=
+      fun v => MAIDCompileState.rawOfTAssign_updateAssign_of_tagged st a₀ nd0
+        v ⟨b, castValType hdesc0 v⟩ (taggedOfVal_decision_cast hdesc0 v)
+    simp_rw [hraw]
+    -- Unfold nodeDist at decision node
+    simp only [MAID.nodeDist]
+    have hkind_decision : (st.descAt nd0).kind = .decision who := by
+      simp [hdesc0, nd, CompiledNode.kind]
+    split
+    · -- chance: contradiction
+      rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
+    · -- decision: the correct branch
+      rename_i p hk
+      -- nodeDist = pol p ⟨⟨nd0, hk⟩, projCfg a₀ (obsParents nd0)⟩
+      -- Need: p = who (from hkind_decision and hk)
+      have hp : p = who := by
+        have := (toStruct_kind st nd0).symm.trans hk
+        rw [hkind_decision] at this; exact (MAID.NodeKind.decision.inj this).symm
+      subst hp
+      -- LHS: (pol p ⟨d, projCfg a₀ (obsParents nd0)⟩).bind (fun v => ... castValType hdesc0 v ...)
+      -- RHS: (hval ▸ pol p ⟨d', Classical.choose h⟩).bind (fun v => ... v ...)
+      -- Close via cfg_eq_of_view_eq (obs-config injectivity) + cast cancel
+      sorry
+    · -- utility: contradiction
+      rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
   | reveal y who' x hx k ih =>
     rename_i Γ' b
     intro pol a₀
