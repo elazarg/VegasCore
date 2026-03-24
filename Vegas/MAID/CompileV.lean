@@ -161,15 +161,26 @@ theorem computeReveals_nextId_eq (B : MAIDBackend Player L)
       cases rs.nodeOf x <;>
         simp [RevealState.aliasVar, MAIDCompileState.addVar, hsync]
 
-/-- Build a `VegasMAID` from the existing compiler's output and computed
-    reveal times.
+/-- Joint consistency of reveal times with compiled node kinds. -/
+structure RevealConsistent {B : MAIDBackend Player L}
+    (st : MAIDCompileState Player L B) (rs : RevealState) : Prop where
+  sync : rs.nextId = st.nextId
+  chance : ∀ (nd : Fin st.nextId),
+    (st.descAt nd).kind = .chance → rs.revealTime nd.val = ↑nd.val
+  decision : ∀ (nd : Fin st.nextId) (p : Player),
+    (st.descAt nd).kind = .decision p → (↑nd.val : WithTop Nat) < rs.revealTime nd.val
 
-    This is the main construction: it takes the structural data from
-    `MAIDCompileState` (kinds, parents, value types) and the visibility
-    data from `RevealState` (reveal times) to produce a `VegasMAID`. -/
+/-- Build a `VegasMAID` from the existing compiler's output and computed
+    reveal times, given consistency. -/
 noncomputable def toVegasMAID
     (B : MAIDBackend Player L) (st : MAIDCompileState Player L B)
-    (rs : RevealState) (_ : rs.nextId = st.nextId) :
+    (rs : RevealState) (hcon : RevealConsistent st rs)
+    (hvisible : ∀ (d : Fin st.nextId) (p : Player),
+      (st.descAt d).kind = .decision p →
+      ∀ (i : Nat) (hi : i ∈ (st.descAt d).parents),
+        rs.revealTime i ≤ ↑d.val ∨
+          (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
+            .decision q ∧ q = p)) :
     @VegasMAID Player _ B.fintypePlayer st.nextId := by
   letI := B.fintypePlayer
   exact
@@ -201,14 +212,43 @@ noncomputable def toVegasMAID
     natural_order := fun nd p hp => by
       rcases Finset.mem_image.mp hp with ⟨d, hd, rfl⟩
       exact st.descAt_parent_lt nd d.2
-    -- The three visibility invariants require a joint induction on the
-    -- program relating computeReveals and ofProg, showing:
-    -- (a) addPublicNode sets revealTime = ↑id, and later ops don't decrease it
-    -- (b) addPrivateNode leaves revealTime = ⊤, reveals set it to ↑k for k > id
-    -- (c) decision parents are visible because ofProg only adds viewDeps parents
-    chance_public := by sorry
-    decision_private := by sorry
-    parents_visible := by sorry }
+    chance_public := hcon.chance
+    decision_private := hcon.decision
+    parents_visible := by
+      intro d p hkind i hi
+      rcases Finset.mem_image.mp hi with ⟨⟨j, hj⟩, _, rfl⟩
+      exact hvisible d p hkind j hj }
+
+/-- `computeReveals` produces a state consistent with `ofProg`:
+    chance nodes have revealTime = index, decision nodes have revealTime > index. -/
+theorem computeReveals_consistent (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (hl : Legal p) (hd : NormalizedDists p)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (st₀ : MAIDCompileState Player L B) (rs₀ : RevealState)
+    (hcon₀ : RevealConsistent st₀ rs₀) :
+    RevealConsistent
+      (MAIDCompileState.ofProg B p hl hd ρ st₀)
+      (computeReveals B p rs₀) := by
+  sorry
+
+/-- Decision parents in the compiled MAID are all visible to the player
+    (the factored-observation property). -/
+theorem computeReveals_parents_visible (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) (hl : Legal p) (hd : NormalizedDists p)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (st₀ : MAIDCompileState Player L B) (rs₀ : RevealState)
+    (hcon₀ : RevealConsistent st₀ rs₀) :
+    let st := MAIDCompileState.ofProg B p hl hd ρ st₀
+    let rs := computeReveals B p rs₀
+    ∀ (d : Fin st.nextId) (p : Player),
+      (st.descAt d).kind = .decision p →
+      ∀ (i : Nat) (hi : i ∈ (st.descAt d).parents),
+        rs.revealTime i ≤ ↑d.val ∨
+          (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
+            .decision q ∧ q = p) := by
+  sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
@@ -221,8 +261,10 @@ noncomputable def compileVegasMAID
     @VegasMAID Player _ B.fintypePlayer st.nextId :=
   let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
   let rs := computeReveals B p .empty
-  toVegasMAID B st rs (by
-    have := computeReveals_nextId_eq B p hl hd (fun _ => env) .empty .empty rfl
-    simpa using this)
+  let hcon : RevealConsistent .empty .empty :=
+    ⟨rfl, fun nd => nd.elim0, fun nd => nd.elim0⟩
+  toVegasMAID B st rs
+    (computeReveals_consistent B p hl hd _ _ _ hcon)
+    (computeReveals_parents_visible B p hl hd _ _ _ hcon)
 
 end Vegas
