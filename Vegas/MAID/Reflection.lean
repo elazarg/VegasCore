@@ -344,7 +344,10 @@ private def EnvReadValAtDeps (st : MAIDCompileState P L B)
     (Γ : VCtx P L) (ρ : RawNodeEnv L → VEnv L Γ) : Prop :=
   ∀ (x : VarId) (who' : P) (b : L.Ty) (hx : VHasVar Γ x (.hidden who' b)),
     (st.lookupDeps x).Nonempty →
-    ∃ j, ∃ _ : j < st.nextId, st.lookupDeps x = {j} ∧
+    ∃ j, ∃ hj : j < st.nextId, st.lookupDeps x = {j} ∧
+      (match st.descAt ⟨j, hj⟩ with
+       | .chance τ _ _ _ | .decision τ _ _ _ _ _ => τ = b
+       | .utility _ _ _ => True) ∧
       ∀ raw, VEnv.get (ρ raw) hx = MAIDCompileState.readVal (B := B) raw b j
 
 private theorem pmfFoldBridge
@@ -497,9 +500,9 @@ private theorem pmfFoldBridge
             rwa [show st₁.lookupDeps y = st₀.lookupDeps y from by
               simp [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b)
                 (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hne]] at hne_deps
-          rcases hρ_readval y who' bt hy' hne_deps' with ⟨j, hjlt, hld, hget⟩
+          rcases hρ_readval y who' bt hy' hne_deps' with ⟨j, hjlt, hld, hdesc_j, hget⟩
           exact ⟨j, hjlt, by simp [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b)
-            (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hne, hld],
+            (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hne, hld], hdesc_j,
             fun raw => by simpa [ρ', VEnv.get, VEnv.cons_get_there] using hget raw⟩)
       (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol a₀
   | sample x τ m D' k ih =>
@@ -715,14 +718,19 @@ private theorem pmfFoldBridge
             exact ⟨id, by rw [hst₁_id]; omega,
               stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who_z bz) {id}
                 (by intro d hd'; simp at hd'; subst hd'; exact Nat.lt_succ_self _) hxvars,
+              by have := MAIDCompileState.addNode_descAt_new st₀ nd hndeps
+                 simp only [show st₁.descAt ⟨id, _⟩ = nd from this, nd]; rfl,
               fun _ => rfl⟩
           | there hy' =>
             have hne : z ≠ x := fun h => hxΓ (h.symm ▸ hy'.mem_map_fst)
             have hld_st₁_st₀ : st₁.lookupDeps z = st₀.lookupDeps z := by
               simp [st₁, stNode.lookupDeps_addVar_eq_of_ne x _ _ _ hne, hlN]
             have hne_z' : (st₀.lookupDeps z).Nonempty := by rwa [← hld_st₁_st₀]
-            rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hget⟩
+            rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hdesc_j, hget⟩
+            have hdesc_fwd : st₁.descAt ⟨j, by rw [hst₁_id]; omega⟩ = st₀.descAt ⟨j, hjlt⟩ :=
+              MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨j, hjlt⟩
             exact ⟨j, by rw [hst₁_id]; omega, by rwa [hld_st₁_st₀],
+              by simp only [hdesc_fwd]; exact hdesc_j,
               fun raw => by simpa [ρ', VEnv.get, VEnv.cons_get_there] using hget raw⟩)
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Rewrite inner fold using IH
@@ -1000,14 +1008,19 @@ private theorem pmfFoldBridge
             exact ⟨id, by rw [hst₁_id]; omega,
               stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who b) {id}
                 (by intro d hd'; simp at hd'; subst hd'; exact Nat.lt_succ_self _) hxvars,
+              by have := MAIDCompileState.addNode_descAt_new st₀ nd hndeps
+                 simp only [show st₁.descAt ⟨id, _⟩ = nd from this, nd],
               fun _ => rfl⟩
           | there hy' =>
             have hne : z ≠ x := fun h => hxΓ (h.symm ▸ hy'.mem_map_fst)
             have hld_eq : st₁.lookupDeps z = st₀.lookupDeps z := by
               simp [st₁, stNode.lookupDeps_addVar_eq_of_ne x _ _ _ hne, hlN]
             have hne_z' : (st₀.lookupDeps z).Nonempty := by rwa [← hld_eq]
-            rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hget⟩
+            rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hdesc_j, hget⟩
+            have hdesc_fwd : st₁.descAt ⟨j, by rw [hst₁_id]; omega⟩ = st₀.descAt ⟨j, hjlt⟩ :=
+              MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨j, hjlt⟩
             exact ⟨j, by rw [hst₁_id]; omega, by rwa [hld_eq],
+              by simp only [hdesc_fwd]; exact hdesc_j,
               fun raw => by simpa [ρ', VEnv.get, VEnv.cons_get_there] using hget raw⟩)
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Use IH to rewrite inner fold
@@ -1168,24 +1181,21 @@ private theorem pmfFoldBridge
       -- Key: prove raw equality at ALL lookupDeps(x) indices FIRST (lesson #1)
       have hraw_lookup_eq : ∀ j ∈ st₀.lookupDeps x, raw₁ j = raw₂ j := by
         intro j hj_mem
-        rcases hρ_readval x who' b hx ⟨j, hj_mem⟩ with ⟨k, hklt, hsingleton, hreadval⟩
+        rcases hρ_readval x who' b hx ⟨j, hj_mem⟩ with ⟨k, hklt, hsingleton, hdescAt_type, hreadval⟩
         have hjk : j = k := Finset.mem_singleton.mp (hsingleton ▸ hj_mem); subst hjk
         rw [hreadval raw₁, hreadval raw₂] at hhead
         -- hhead : readVal raw₁ b j = readVal raw₂ b j
         have hj_vd := hVD ▸ Finset.mem_union_left _ hj_mem
         have htyped_j := htyped j hj_vd (by simp [st₁, MAIDCompileState.addVar]; exact hklt)
         simp only [RawsMatchDescAt, show st₁.descAt ⟨j, _⟩ = st₀.descAt ⟨j, hklt⟩ from rfl] at htyped_j
-        -- Split on descAt to apply readVal_tagged_eq (need τ = b from node type)
-        revert htyped_j; match st₀.descAt ⟨j, hklt⟩ with
+        -- Split on descAt to apply readVal_tagged_eq
+        revert htyped_j hdescAt_type; match st₀.descAt ⟨j, hklt⟩ with
         | .chance τ _ _ _ | .decision τ _ _ _ _ _ =>
-          intro ⟨v₁, v₂, hraw₁, hraw₂⟩
-          -- τ = b holds because the node was compiled for the hidden var x of type b.
-          -- readVal_tagged_eq needs readVal at τ, but hhead is at b. Use τ = b.
-          have hτb : τ = b := sorry -- descAt type = bind type (structural invariant)
+          intro hτb ⟨v₁, v₂, hraw₁, hraw₂⟩
           subst hτb
           exact readVal_tagged_eq hraw₁ hraw₂ hhead
         | .utility _ _ _ =>
-          intro ⟨h₁, h₂⟩; rw [h₁, h₂]
+          intro _ ⟨h₁, h₂⟩; rw [h₁, h₂]
       rw [hVD] at hi
       rcases Finset.mem_union.mp hi with hi_lookup | hi_old
       · exact hraw_lookup_eq i hi_lookup
@@ -1213,8 +1223,8 @@ private theorem pmfFoldBridge
           have hld_eq : st₁.lookupDeps z = st₀.lookupDeps z := by
             simp [st₁, st₀.lookupDeps_addVar_eq_of_ne y (.pub b) _ _ hne]
           have hne_z' : (st₀.lookupDeps z).Nonempty := by rwa [← hld_eq]
-          rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hget⟩
-          exact ⟨j, hjlt, by rwa [hld_eq],
+          rcases hρ_readval z who_z bz hy' hne_z' with ⟨j, hjlt, hj_sing, hdesc_j, hget⟩
+          exact ⟨j, hjlt, by rwa [hld_eq], hdesc_j,
             fun raw => by simpa [ρ', VEnv.get, VEnv.cons_get_there] using hget raw⟩)
       (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) pol a₀
 
