@@ -337,13 +337,14 @@ private theorem rawEnvOfCfg_rawsMatchDescAt
   | .decision τ _ _ _ _ _, v₁, v₂ => exact ⟨v₁, v₂, rfl, rfl⟩
   | .utility _ _ _, _, _ => exact ⟨rfl, rfl⟩
 
-/-- For variables with singleton lookupDeps, ρ reads via readVal at the correct type.
-This is needed for the reveal case of ViewDeterminesRaw. -/
+/-- For HIDDEN variables with singleton lookupDeps, ρ reads via readVal at the
+correct type. This is needed for the reveal case of ViewDeterminesRaw: only
+hidden variables can be revealed, and they always have singleton deps from commit. -/
 private def EnvReadValAtDeps (st : MAIDCompileState P L B)
     (Γ : VCtx P L) (ρ : RawNodeEnv L → VEnv L Γ) : Prop :=
-  ∀ (x : VarId) (σ : BindTy P L) (hx : VHasVar Γ x σ) (j : Nat),
+  ∀ (x : VarId) (who' : P) (b : L.Ty) (hx : VHasVar Γ x (.hidden who' b)) (j : Nat),
     st.lookupDeps x = {j} → j < st.nextId →
-    ∀ raw, VEnv.get (ρ raw) hx = MAIDCompileState.readVal (B := B) raw σ.base j
+    ∀ raw, VEnv.get (ρ raw) hx = MAIDCompileState.readVal (B := B) raw b j
 
 private theorem pmfFoldBridge
     (B : MAIDBackend P L)
@@ -487,7 +488,14 @@ private theorem pmfFoldBridge
       · rwa [hVD] at hi
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers
-      (sorry : EnvReadValAtDeps _ _ ρ')
+      (fun y who' bt hy j hld hjlt raw => by
+        cases hy with
+        | there hy' =>
+          have hne : y ≠ x := fun h => hxΓ (h.symm ▸ hy'.mem_map_fst)
+          simp [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b)
+            (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hne] at hld
+          simpa [ρ', VEnv.get, VEnv.cons_get_there] using
+            hρ_readval y who' bt hy' j hld hjlt raw)
       (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol a₀
   | sample x τ m D' k ih =>
     rename_i Γ'
@@ -693,7 +701,7 @@ private theorem pmfFoldBridge
           · exact hview_old
           · rwa [hVD] at hi
       exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
-        (sorry : EnvReadValAtDeps _ _ ρ')
+        (sorry : EnvReadValAtDeps _ _ ρ') -- sample: .here has readVal by construction, .there inherited
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Rewrite inner fold using IH
     simp_rw [hinner]
@@ -1156,7 +1164,7 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
         have := MAIDCompileState.depsOfVars_lt MAIDCompileState.empty
           ((viewVCtx who Γ).map Prod.fst) i hi
         simp [MAIDCompileState.empty] at this))
-    (fun x σ hx j hld hjlt raw => by
+    (fun x σ bt hx j hld hjlt raw => by
       simp [MAIDCompileState.empty] at hjlt)
     hnodup_ctx pol (MAID.defaultAssign st.toStruct)
   -- Step 3: Connect to outcomeDistBehavioralPMF via nativeOutcomeDistPMF_eq
