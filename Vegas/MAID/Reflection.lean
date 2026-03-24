@@ -803,10 +803,8 @@ private theorem pmfFoldBridge
                 rw [st.mem_toStruct_obsParents_iff nd0 hj_lt] at hj_mem
                 simp [hdesc0, CompiledNode.obsParents] at hj_mem; exact hj_mem
               exact hρ_readers p raw₁ raw₂
-                (fun i hi => by
-                  show raw₁ i = raw₂ i
-                  sorry)
-                (fun i hi_not hi_lt => by sorry)
+                (fun i hi => by sorry) -- rawEnvOfCfg none for i ≥ st₀.nextId
+                (fun i hi_not hi_lt => by sorry) -- rawEnvOfCfg none for i ∉ obs
                 hview_eq j hj_obs
             · -- j ∉ obsParents: both rawEnvOfCfg give none at j
               show raw₁ j = raw₂ j
