@@ -1050,9 +1050,10 @@ private theorem pmfFoldBridge
             simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, unify both sides
         rw [hcfg_eq]
-        -- Both sides use projCfg. Need cast cancel + DecisionNode matching.
-        -- The LHS has castValType hdesc0 in the bind; the RHS has ⋯ ▸ on the PMF.
-        -- These cancel via pmf_descAt_cast_bind_cancel.symm.
+        -- Cast cancel: two issues remain:
+        -- 1. PMF cast: d.bind (f ∘ castValType) = (hdesc0 ▸ d).bind f (proven: cast_eq below)
+        -- 2. Profile: reflectPolicyAux ... = ProgramBehavioralProfilePMF.tail (...)
+        --    (definitionally equal but syntactically different)
         sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
