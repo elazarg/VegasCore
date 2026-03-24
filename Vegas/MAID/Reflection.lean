@@ -562,7 +562,15 @@ private theorem pmfFoldBridge
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v
       rw [← hst₁_id]
-      have hρ'_readers : CfgDeterminedByView st₁ ((x, τ) :: Γ') ρ' := by sorry
+      have hρ'_readers : CfgDeterminedByView st₁ ((x, τ) :: Γ') ρ' := by
+        intro who ps hps cfg₁ cfg₂ hview
+        -- Step 1: project away x to get ρ view equality
+        have hview_old := Vegas.projectViewEnv_cons_eq
+          (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
+        -- Step 2: for old indices, use hρ_readers via tail view equality
+        -- Step 3: for new index id, extract head value equality from hview
+        -- Combined: cfg₁ = cfg₂
+        sorry
       exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Rewrite inner fold using IH
@@ -744,7 +752,11 @@ private theorem pmfFoldBridge
         nativeOutcomeDistPMF B k hd (reflectPolicyAux B k hl.2 hd ρ' st₁ pol)
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v; rw [← hst₁_id]
-      have hρ'_readers : CfgDeterminedByView st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by sorry
+      have hρ'_readers : CfgDeterminedByView st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by
+        intro who' ps hps cfg₁ cfg₂ hview
+        have hview_old := Vegas.projectViewEnv_cons_eq
+          (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
+        sorry
       exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Use IH to rewrite inner fold
