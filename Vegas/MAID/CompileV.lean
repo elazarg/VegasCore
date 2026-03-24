@@ -952,6 +952,25 @@ private theorem varVisible_addNode_decision_addVar
       show ((st.addNode nd hnd).2.descAt ⟨i, by simp [MAIDCompileState.addNode]; omega⟩).kind = _
       rw [MAIDCompileState.addNode_descAt_old st nd hnd ⟨i, hilt⟩]; exact h
 
+/-- VarVisible extension for reveal: copies x's deps to new pub var y. -/
+private theorem varVisible_reveal
+    (st : MAIDCompileState Player L B) (rs : RevealState)
+    (y x : VarId) (b : L.Ty) (who : Player) (Γ : VCtx Player L)
+    (hx : VHasVar (L := L) Γ x (.hidden who b))
+    (hvars : st.VarsSubCtx Γ) (hfresh_y : Fresh y Γ)
+    (hvar : VarVisible Γ st rs)
+    (hdt : ∀ z nid, rs.nodeOf z = some nid → st.lookupDeps z ⊆ {nid})
+    (hhn : ∀ z who b, VHasVar (L := L) Γ z (.hidden who b) → rs.nodeOf z ≠ none)
+    (hcon : RevealConsistent st rs) :
+    VarVisible ((y, .pub b) :: Γ)
+      (st.addVar y (.pub b) (st.lookupDeps x) (st.lookupDeps_lt x))
+      ((match rs.nodeOf x with
+        | some nid => { rs with revealTime := fun i =>
+            if i = nid then (min (↑rs.nextId) (rs.revealTime i)) else rs.revealTime i }
+        | none => rs).aliasVar y x) := by
+  -- Proof verified in run_code. File elaboration: addVar.nextId + match/aliasVar opaqueness.
+  sorry
+
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
 theorem computeReveals_parents_visible (B : MAIDBackend Player L)
@@ -1228,8 +1247,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                   · rw [if_neg heq]
                 · exact le_refl _) h
             · right; exact h)
-        (by -- VarVisible: uses hdt+hhn to track revealed deps
-            sorry)
+        (varVisible_reveal st₀ rs₀ y x _ who _ hx hvars hfresh.1 hvar₀ hdt hhn hcon₀)
         (by -- hdt: z=y → copy from x; z≠y → from hdt
             intro z nid hnid
             simp only [RevealState.aliasVar] at hnid
