@@ -932,7 +932,20 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       -- New node's parents = viewDeps who Γ'. By hvar₀, each dep has
       -- revealTime ≤ nextId = d.val or is who's decision. ✓
       -- Old nodes: preserved by addNode, revealTime only decreases. ✓
-      sorry
+      rename_i Γ' b
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      let dnd : CompiledNode Player L B :=
+        .decision b who (allValues B b) (allValues_ne_nil B b) (allValues_nodup B b) (st₀.viewDeps who Γ')
+      have hdnd_deps : ∀ d ∈ dnd.parents ∪ dnd.obsParents, d < st₀.nextId := by
+        intro d hd'; simp [dnd, CompiledNode.parents, CompiledNode.obsParents] at hd'
+        exact st₀.depsOfVars_lt _ d hd'
+      have hdeps : ∀ d ∈ ({st₀.nextId} : Finset Nat), d < st₀.nextId + 1 := by
+        intro d hd'; simp at hd'; omega
+      exact ih hl.2 hd hfresh.2 _ _ _
+        (revealConsistent_addDecision' hcon₀ dnd rfl hdnd_deps x (.hidden who b) hdeps)
+        (by -- hprev: old decisions via hprev_transfer pattern + NEW decision via hvar₀
+            sorry)
+        (by sorry) -- VarVisible for extended context
   | reveal y who x hx k ih => sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
