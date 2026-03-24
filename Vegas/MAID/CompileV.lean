@@ -925,7 +925,9 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       -- letExpr: no new nodes, addVar doesn't change descAt. IH with same hprev.
       exact ih hl hd hfresh.2 _ _ _
         ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
-        (st₀.VarsSubCtx_addVar hvars x _ _ _ hfresh.1) hprev (by sorry) -- VarVisible
+        (st₀.VarsSubCtx_addVar hvars x _ _ _ hfresh.1) hprev (by
+          -- VarVisible: viewVCtx cons unfold + lookupDeps_addVar for y=x vs y≠x
+          sorry)
   | sample x τ m D' k ih =>
       rename_i Γ'
       simp only [computeReveals, MAIDCompileState.ofProg]
