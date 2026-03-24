@@ -880,8 +880,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       exact ih hl hd.2 hfresh.2 _ _ _
         (revealConsistent_addChance' hcon₀ cnd
           (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps x τ hdeps)
-        (by -- hprev for intermediate: old decisions preserved
-            sorry)
+        (by sorry) -- hprev for intermediate: old decisions via addNode_descAt_old + revealTime
         (by -- VarVisible for extended context
             sorry)
   | commit x who R k ih =>
