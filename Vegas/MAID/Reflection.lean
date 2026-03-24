@@ -828,7 +828,7 @@ private theorem pmfFoldBridge
                 hview_eq j hj_obs
             · -- j ∉ obsParents: both rawEnvOfCfg give none at j
               show raw₁ j = raw₂ j
-              sorry
+              simp [raw₁, raw₂, st.rawEnvOfCfg_not_mem _ j hj_lt hj_mem]
           · show raw₁ j = raw₂ j
             simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, the pol values match. Cast cancel for the rest.
