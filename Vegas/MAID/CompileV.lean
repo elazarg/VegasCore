@@ -857,16 +857,15 @@ private theorem varVisible_addVar_pub
     exact hvar who y σ hy i hi
 
 /-- VarVisible extension for addNode(.chance)+addVar (sample case).
-    Proof verified in run_code; sorry'd in file due to obtain/subst variable
-    elimination in concrete context. -/
+-/
 private theorem varVisible_addNode_chance_addVar
-    (st : MAIDCompileState Player L B) (rs : RevealState) (_hcon : RevealConsistent st rs)
+    (st : MAIDCompileState Player L B) (rs : RevealState) (hcon : RevealConsistent st rs)
     (nd : CompiledNode Player L B) (_hnd_kind : nd.kind = .chance)
     (hnd : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
     (x : VarId) (τ : BindTy Player L) (Γ : VCtx Player L)
-    (_hvars : st.VarsSubCtx Γ) (_hfresh_x : Fresh x Γ)
+    (hvars : st.VarsSubCtx Γ) (hfresh_x : Fresh x Γ)
     (hdeps : ∀ d ∈ ({st.nextId} : Finset Nat), d < st.nextId + 1)
-    (_hvar : VarVisible Γ st rs) :
+    (hvar : VarVisible Γ st rs) :
     VarVisible ((x, τ) :: Γ) ((st.addNode nd hnd).2.addVar x τ {st.nextId} hdeps)
       (rs.addPublicNode.bindVar x rs.nextId) := by sorry
 
