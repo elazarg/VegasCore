@@ -126,6 +126,18 @@ noncomputable def projectViewEnv (who : P) {Γ : VCtx P L}
   cases hτ
   exact env _ _ (VHasVar.toErased (Player := P) (L := L) (VHasVar.ofViewVCtx (p := who) hv))
 
+/-- `projectViewEnv` at a specific view variable equals some env lookup at the
+corresponding erased variable. The specific HasVar proof comes from the
+toVHasVar→ofViewVCtx→toErased chain. -/
+theorem projectViewEnv_apply {who : P} {Γ : VCtx P L}
+    (env : Env L.Val (eraseVCtx Γ))
+    {y : VarId} {σ : L.Ty} (h_view : HasVar (eraseVCtx (viewVCtx who Γ)) y σ) :
+    ∃ hy : HasVar (eraseVCtx Γ) y σ, projectViewEnv who env y σ h_view = env y σ hy := by
+  dsimp [projectViewEnv]
+  rcases HasVar.toVHasVar h_view with ⟨σ_bt, hv, ⟨hτ⟩⟩
+  subst hτ
+  exact ⟨hv.ofViewVCtx.toErased, rfl⟩
+
 theorem projectViewEnv_eq_of_obsEq
     {who : P} {Γ : VCtx P L}
     {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
@@ -167,10 +179,29 @@ theorem projectViewEnv_cons_eq
     -- y' is visible → construct HasVar in eraseVCtx(viewVCtx) via Classical
     have hmem : y' ∈ ((x, τ) :: Γ).map Prod.fst :=
       mem_visibleVars_map_fst hvis'
-    -- Env lookups are proof-irrelevant with nodup (HasVar.eq_of_nodup).
-    -- From projectViewEnv equality, extract the env equality via the view HasVar,
-    -- then transport to hy' using proof irrelevance.
-    sorry
+    -- Get a view HasVar for y'
+    have hmem_view := mem_viewVCtx_map_fst_of_visible hvis'
+    rw [← eraseVCtx_map_fst] at hmem_view
+    rcases List.mem_map.mp hmem_view with ⟨⟨y_name, σ_b⟩, h_mem_e, hfst⟩
+    simp only [Prod.fst] at hfst
+    -- y_name = y' (from hfst), σ_b is the erased type in viewVCtx
+    have h_view : HasVar (eraseVCtx (viewVCtx who ((x, τ) :: Γ))) y' σ_b := by
+      rw [← hfst]; exact HasVar.ofMem h_mem_e
+    -- projectViewEnv_apply: projectViewEnv who ρ y' σ_b h_view = ρ y' σ_b hy_v for some hy_v
+    rcases projectViewEnv_apply (VEnv.eraseEnv (VEnv.cons v₁ env₁)) h_view with ⟨hy_v₁, hpv₁⟩
+    rcases projectViewEnv_apply (VEnv.eraseEnv (VEnv.cons v₂ env₂)) h_view with ⟨hy_v₂, hpv₂⟩
+    -- From h: projectViewEnv eq at h_view
+    have h_pt := congr_fun (congr_fun (congr_fun h y') σ_b) h_view
+    -- h_pt: pv₁ = pv₂. By apply: ρ₁ y' σ_b hy_v₁ = ρ₂ y' σ_b hy_v₂
+    rw [hpv₁, hpv₂] at h_pt
+    -- h_pt: ρ₁ y' σ_b hy_v₁ = ρ₂ y' σ_b hy_v₂
+    -- By type_unique: σ₀ = σ_b
+    have htype := HasVar.type_unique hnodup_e hy' hy_v₁
+    subst htype
+    -- By eq_of_nodup: hy' = hy_v₁ and hy' = hy_v₂
+    rw [HasVar.eq_of_nodup hnodup_e hy' hy_v₁]
+    conv_rhs => rw [HasVar.eq_of_nodup hnodup_e hy_v₁ hy_v₂]
+    exact h_pt
   -- Step 2: ObsEq for (x,τ)::Γ restricted to old vars → ObsEq for Γ
   have hobs : ObsEq (L := L) (Γ := Γ) who (VEnv.eraseEnv env₁) (VEnv.eraseEnv env₂) := by
     intro y' σ₀ hy' hvis'
