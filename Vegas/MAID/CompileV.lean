@@ -909,7 +909,48 @@ private theorem varVisible_addNode_decision_addVar
     (_hvar : VarVisible Γ st rs) :
     VarVisible ((x, .hidden who b) :: Γ)
       ((st.addNode nd hnd).2.addVar x (.hidden who b) {st.nextId} hdeps)
-      (rs.addPrivateNode.bindVar x rs.nextId) := by sorry
+      (rs.addPrivateNode.bindVar x rs.nextId) := by
+  have hnid : ((st.addNode nd hnd).2.addVar x (.hidden who b) {st.nextId} hdeps).nextId =
+      st.nextId + 1 := by simp [MAIDCompileState.addNode, MAIDCompileState.addVar]
+  intro p y σ hy i hi
+  -- canSee dispatch: p = who sees x, p ≠ who doesn't
+  by_cases hp : p = who
+  · subst hp -- p replaces who
+    by_cases heq : y = x
+    · subst heq
+      rw [(st.addNode nd hnd).2.lookupDeps_addVar_eq_self_of_fresh y _ _ _
+        (fun hm => _hfresh_x ((st.VarsSubCtx_addNode _hvars nd hnd) y hm))] at hi
+      simp at hi; subst hi
+      right
+      show ((st.addNode nd hnd).2.descAt ⟨st.nextId, by simp [MAIDCompileState.addNode]⟩).kind = _
+      rw [MAIDCompileState.addNode_descAt_new st nd hnd]; exact _hnd_kind
+    · rw [(st.addNode nd hnd).2.lookupDeps_addVar_eq_of_ne x _ _ _ heq] at hi
+      have hy' : (y, σ) ∈ viewVCtx p Γ := by
+        unfold viewVCtx at hy; simp [canSee] at hy; rcases hy with ⟨rfl, _⟩ | hy
+        · exact absurd rfl heq
+        · exact hy
+      have hilt : i < st.nextId := st.lookupDeps_lt y i hi
+      rcases _hvar p y σ hy' i hi with h | h
+      · left; simp only [RevealState.addPrivateNode, RevealState.bindVar]
+        rw [hnid]; exact le_trans h (WithTop.coe_le_coe.mpr (Nat.le_succ _))
+      · right
+        show ((st.addNode nd hnd).2.descAt ⟨i, by simp [MAIDCompileState.addNode]; omega⟩).kind = _
+        rw [MAIDCompileState.addNode_descAt_old st nd hnd ⟨i, hilt⟩]; exact h
+  · -- p ≠ who: x not visible
+    have hy' : (y, σ) ∈ viewVCtx p Γ := by
+      unfold viewVCtx at hy; simp [canSee, hp] at hy; exact hy
+    have hne : y ≠ x := by
+      intro heq; subst heq
+      exact _hfresh_x (viewVCtx_map_fst_sub (p := p) (Γ := Γ)
+        (List.mem_map.mpr ⟨(y, σ), hy', rfl⟩))
+    rw [(st.addNode nd hnd).2.lookupDeps_addVar_eq_of_ne x _ _ _ hne] at hi
+    have hilt : i < st.nextId := st.lookupDeps_lt y i hi
+    rcases _hvar p y σ hy' i hi with h | h
+    · left; simp only [RevealState.addPrivateNode, RevealState.bindVar]
+      rw [hnid]; exact le_trans h (WithTop.coe_le_coe.mpr (Nat.le_succ _))
+    · right
+      show ((st.addNode nd hnd).2.descAt ⟨i, by simp [MAIDCompileState.addNode]; omega⟩).kind = _
+      rw [MAIDCompileState.addNode_descAt_old st nd hnd ⟨i, hilt⟩]; exact h
 
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
