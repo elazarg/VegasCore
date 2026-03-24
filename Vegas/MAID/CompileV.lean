@@ -968,8 +968,35 @@ private theorem varVisible_reveal
         | some nid => { rs with revealTime := fun i =>
             if i = nid then (min (↑rs.nextId) (rs.revealTime i)) else rs.revealTime i }
         | none => rs).aliasVar y x) := by
-  -- Proof verified in run_code. File elaboration: addVar.nextId + match/aliasVar opaqueness.
-  sorry
+  have hnid_eq : (st.addVar y (.pub b) (st.lookupDeps x) (st.lookupDeps_lt x)).nextId = st.nextId := rfl
+  intro p z σ hz i hi
+  by_cases heq : z = y
+  · -- z = y: deps = lookupDeps x
+    subst heq
+    rw [st.lookupDeps_addVar_eq_self_of_fresh z _ _ _ (fun hm => hfresh_y (hvars z hm))] at hi
+    obtain ⟨nid, hnid⟩ := Option.ne_none_iff_exists'.mp (hhn x who _ hx)
+    have hi_eq := Finset.mem_singleton.mp (hdt x nid hnid hi); subst hi_eq
+    left; simp only [RevealState.aliasVar]; rw [hnid]
+    -- goal: revealTime through match(some nid) at nid ≤ ↑addVar.nextId
+    simp only [hnid_eq, ite_true]
+    exact le_trans (min_le_left _ _) (by exact_mod_cast (show rs.nextId ≤ st.nextId by have := hcon.sync; omega))
+  · rw [st.lookupDeps_addVar_eq_of_ne y _ _ _ heq] at hi
+    have hz' : (z, σ) ∈ viewVCtx p Γ := by
+      unfold viewVCtx at hz; simp [canSee] at hz
+      rcases hz with ⟨rfl, _⟩ | hz
+      · exact absurd rfl heq
+      · exact hz
+    rcases hvar p z σ hz' i hi with h | h
+    · left
+      cases hnx : rs.nodeOf x with
+      | none =>
+          simp only [RevealState.aliasVar, hnx, hnid_eq]; exact h
+      | some nid =>
+          simp only [RevealState.aliasVar, hnx, hnid_eq]
+          by_cases heqi : i = nid
+          · subst heqi; simp only [ite_true]; exact le_trans (min_le_right _ _) h
+          · simp only [show ¬(i = nid) from heqi, ite_false]; exact h
+    · right; exact h
 
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
