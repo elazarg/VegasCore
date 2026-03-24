@@ -243,6 +243,24 @@ This is the hard half of the reflectPolicy correctness proof. It requires:
 
 The proof is by structural induction on `p`, mirroring
 `foldFDist_map_extract_eq_nativeOutcomeDist` at the PMF level. -/
+
+private theorem foldl_evalStep_bind_left [Fintype P] {n : Nat}
+    {S : MAID.Struct P n} (sem : MAID.Sem S) (pol : MAID.Policy S)
+    (nodes : List (Fin n)) {β : Type} (μ : PMF β) (g : β → PMF (MAID.TAssign S)) :
+    List.foldl (MAID.evalStep S sem pol) (μ.bind g) nodes =
+      μ.bind (fun v => List.foldl (MAID.evalStep S sem pol) (g v) nodes) := by
+  induction nodes generalizing g with
+  | nil => simp
+  | cons nd rest ih =>
+    simp only [List.foldl_cons, MAID.evalStep]
+    rw [show (μ.bind g).bind (fun a =>
+          (MAID.nodeDist S sem pol nd a).bind (fun v =>
+            PMF.pure (MAID.updateAssign a nd v))) =
+        μ.bind (fun v => (g v).bind (fun a =>
+          (MAID.nodeDist S sem pol nd a).bind (fun v' =>
+            PMF.pure (MAID.updateAssign a nd v')))) from PMF.bind_bind _ _ _]
+    exact ih _
+
 private theorem pmfFoldBridge
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
@@ -357,20 +375,126 @@ private theorem pmfFoldBridge
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var pol a₀
   | sample x τ m D' k ih =>
-    -- One chance node at st₀.nextId, then continuation's nodes.
-    -- The fold peels off the chance node step, which samples from the
-    -- compiled distribution. By IH, the remaining fold matches nativeOutcomeDistPMF.
-    -- Key: nodeDist at the compiled chance node = (L.evalDist D' ...).toPMF,
-    -- and rawOfTAssign (updateAssign a₀ nd₀ v) = raw₀.extend id ⟨τ.base, v⟩.
+    rename_i Γ'
+    intro pol a₀
+    have hxΓ : Fresh x Γ' := hfresh.1
+    have hxvars : x ∉ st₀.vars.map Prod.fst := fun hxmem => hxΓ (hvars x hxmem)
+    let deps := st₀.ctxDeps Γ'
+    let id := st₀.nextId
+    let cpdFDist : RawNodeEnv L → FDist (L.Val τ.base) := fun raw =>
+      L.evalDist D' (VEnv.eraseDistEnv τ m (ρ raw))
+    let cpdNorm : ∀ raw, FDist.totalWeight (cpdFDist raw) = 1 := fun raw => hd.1 _
+    let nd : CompiledNode P L B := .chance τ.base deps cpdFDist cpdNorm
+    have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
+      intro d hd'
+      have hd'' : d ∈ deps := by
+        simpa [CompiledNode.parents, CompiledNode.obsParents] using hd'
+      exact st₀.depsOfVars_lt _ d hd''
+    let stNode := (st₀.addNode nd hndeps).2
+    let st₁ := stNode.addVar x τ ({id}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self id)
+    let ρ' : RawNodeEnv L → VEnv L ((x, τ) :: Γ') :=
+      fun raw => VEnv.cons (MAIDCompileState.readVal (B := B) raw τ.base id) (ρ raw)
+    have hvars₁ : st₁.VarsSubCtx ((x, τ) :: Γ') := by
+      simpa [st₁, stNode, nd, deps, id] using
+        st₀.VarsSubCtx_addNode_addVar_singleton_step hvars nd hndeps x τ hxΓ
+    have hctx₁ : st₁.ctxDeps ((x, τ) :: Γ') = {id} ∪ st₀.ctxDeps Γ' := by
+      simpa [st₁, stNode, nd, deps, id] using
+        st₀.ctxDeps_addNode_addVar_singleton_cons_eq_of_fresh nd hndeps x τ hxΓ hxvars
+    have hρ'_deps : ∀ j, j ∉ st₁.ctxDeps ((x, τ) :: Γ') → InsensitiveTo ρ' j := by
+      intro j hj raw tv
+      have hjid : j ≠ id := by intro hEq; apply hj; simp [hctx₁, hEq]
+      have hj' : j ∉ st₀.ctxDeps Γ' := by intro hmem; apply hj; simp [hctx₁, hmem]
+      have hρj := hρ_deps j hj' raw tv
+      exact VEnv.cons_ext (readVal_extend_ne raw j id tv τ.base hjid.symm) hρj
+    have hρ'_var : EnvRespectsLookupDeps st₁ ρ' := by
+      intro y σ hy j hj raw tv
+      cases hy with
+      | here =>
+          have hlookup : st₁.lookupDeps x = ({id} : Finset Nat) := by
+            simpa [st₁] using stNode.lookupDeps_addVar_eq_self_of_fresh x τ {id}
+              (by intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+                  exact Nat.lt_succ_self id)
+              (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
+          have hjid : j ≠ id := by
+            simpa [Finset.mem_singleton] using (show j ∉ ({id} : Finset Nat) by
+              simpa [hlookup] using hj)
+          simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
+            (readVal_extend_ne (B := B) raw j id tv τ.base hjid.symm)
+      | there hy' =>
+          have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
+          have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
+            simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x τ {id}
+              (by intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+                  exact Nat.lt_succ_self id) hxy
+          have hlookupNode : stNode.lookupDeps y = st₀.lookupDeps y := by
+            simpa [stNode] using st₀.lookupDeps_addNode nd hndeps y
+          have hj' : j ∉ st₀.lookupDeps y := by simpa [hlookupVar, hlookupNode] using hj
+          simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
+    let st := MAIDCompileState.ofProg B k hl hd.2 ρ' st₁
+    have hid_lt : id < st.nextId :=
+      Nat.lt_of_lt_of_le (by
+        simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode])
+        (MAIDCompileState.ofProg_nextId_le B k hl hd.2 ρ' st₁)
+    let nd0 : Fin st.nextId := ⟨id, hid_lt⟩
+    have hdrop :
+        (List.finRange st.nextId).drop id =
+          nd0 :: (List.finRange st.nextId).drop st₁.nextId := by
+      have hlen : id < (List.finRange st.nextId).length := by simpa using hid_lt
+      rw [show st₁.nextId = id + 1 by
+        simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode]]
+      rw [← List.cons_getElem_drop_succ (l := List.finRange st.nextId) (n := id) (h := hlen)]
+      simp [nd0]
+    have hdesc0 : st.descAt nd0 = nd := by
+      have hdesc1 := MAIDCompileState.ofProg_descAt_old B k hl hd.2 ρ' st₁ id
+        (by simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode])
+      rw [hdesc1]
+      simpa [st₁, stNode] using st₀.addNode_descAt_new nd hndeps
+    have hρeq :
+        ρ (st.rawEnvOfCfg (MAID.projCfg a₀ (st.toStruct.parents nd0))) =
+          ρ (rawOfTAssign st a₀) := by
+      have hrawP : st.rawEnvOfCfg (MAID.projCfg a₀ (st.toStruct.parents nd0)) =
+          fun i => if i < st.nextId then
+            if i ∈ deps then rawOfTAssign st a₀ i else none else none := by
+        apply st.rawEnvOfCfg_proj_eq_select a₀ (st.toStruct.parents nd0) deps
+        intro i hi
+        simp only [st.mem_toStruct_parents_iff nd0 hi, hdesc0, nd, CompiledNode.parents]
+      rw [hrawP]
+      simpa [deps] using (eq_on_ctxDeps_rawOfTAssign (st := st) (deps := deps) hρ_deps a₀)
+    -- Peel off the chance node from the fold
+    -- The goal has ofProg B (sample ...) which = ofProg B k ρ' st₁ = st
+    change PMF.map (fun a => extractOutcome B (.sample x τ m D' k) ρ st₀.nextId (rawOfTAssign st a))
+      (List.foldl (MAID.evalStep st.toStruct st.toSem pol) (PMF.pure a₀)
+        ((List.finRange st.nextId).drop id)) =
+      nativeOutcomeDistPMF B (.sample x τ m D' k) hd
+        (reflectPolicyAux B (.sample x τ m D' k) hl hd ρ st₀ pol) ρ
+        id (rawOfTAssign st a₀)
+    rw [hdrop, List.foldl_cons]
+    simp only [nativeOutcomeDistPMF, reflectPolicyAux]
+    -- evalStep at nd0: acc.bind (nodeDist.bind (pure ∘ updateAssign))
+    simp only [MAID.evalStep, PMF.pure_bind, PMF.map_bind]
+    -- Distribute bind through fold using monad associativity, then map through bind
+    rw [foldl_evalStep_bind_left, PMF.map_bind]
+    have hst₁_id : st₁.nextId = id + 1 := by
+      simp [st₁, stNode, id, MAIDCompileState.addVar, MAIDCompileState.addNode]
+    -- Apply IH to rewrite inner fold for each v
+    have hinner : ∀ v, PMF.map (fun a => extractOutcome B (.sample x τ m D' k) ρ
+          st₀.nextId (rawOfTAssign st a))
+        (List.foldl (MAID.evalStep st.toStruct st.toSem pol)
+          (PMF.pure (MAID.updateAssign a₀ nd0 v))
+          ((List.finRange st.nextId).drop st₁.nextId)) =
+        nativeOutcomeDistPMF B k hd.2 (reflectPolicyAux B k hl hd.2 ρ' st₁ pol)
+          ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
+      intro v
+      rw [← hst₁_id]
+      exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol _
+    -- Rewrite inner + connect rawOfTAssign after update to raw.extend
+    -- This requires: nodeDist at chance node = compiled dist, and type casts
+    -- The remaining steps are mechanical (matching compiled sem with cpdFDist,
+    -- rawOfTAssign_updateAssign_of_tagged, and cast alignment)
     sorry
   | commit x who R k ih =>
-    -- One decision node at st₀.nextId, then continuation's nodes.
-    -- The fold peels off the decision node step, which applies
-    -- pol who ⟨d, projCfg a₀ (obsParents d)⟩.
-    -- The reflected kernel uses Classical.choose to recover cfg from view.
-    -- By obs-config injectivity (now correct after pubCtxDeps fix),
-    -- Classical.choose picks projCfg a₀ (obsParents d), matching the fold.
-    -- Then IH handles the continuation.
     sorry
   | reveal y who' x hx k ih =>
     rename_i Γ' b
