@@ -273,19 +273,20 @@ private theorem pmf_descAt_cast_bind_cancel
     (cast hcast d).bind (fun v => f (castValType hdesc v)) = d.bind f := by
   subst hdesc; rfl
 
-/-- Obs-config determinacy: for any subset of node indices within viewDeps,
-two configurations that produce the same view through ρ must be equal.
-This is the injectivity condition needed for the commit case. -/
-private def CfgDeterminedByView (st : MAIDCompileState P L B)
+/-- Raw-level view determinacy: if two raw environments agree outside viewDeps
+(and outside [0, nextId)), and their views through ρ agree, then they agree
+on viewDeps. This is the injectivity condition needed for the commit case,
+formulated over raw environments to avoid cfg-casting between compile states. -/
+private def ViewDeterminesRaw (st : MAIDCompileState P L B)
     (Γ : VCtx P L) (ρ : RawNodeEnv L → VEnv L Γ) : Prop :=
-  ∀ (who : P) {ps : Finset (Fin st.nextId)}
-    (hps : ∀ i ∈ ps, i.val ∈ st.viewDeps who Γ)
-    (cfg₁ cfg₂ : @MAID.Cfg P _ B.fintypePlayer _ st.toStruct ps),
+  ∀ (who : P) (raw₁ raw₂ : RawNodeEnv L),
+    (∀ i, st.nextId ≤ i → raw₁ i = raw₂ i) →
+    (∀ i, i ∉ st.viewDeps who Γ → i < st.nextId → raw₁ i = raw₂ i) →
     projectViewEnv (P := P) (L := L) who
-      (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₁))) =
+      (VEnv.eraseEnv (ρ raw₁)) =
     projectViewEnv (P := P) (L := L) who
-      (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₂))) →
-    cfg₁ = cfg₂
+      (VEnv.eraseEnv (ρ raw₂)) →
+    ∀ i, i ∈ st.viewDeps who Γ → raw₁ i = raw₂ i
 
 private theorem pmfFoldBridge
     (B : MAIDBackend P L)
@@ -298,7 +299,7 @@ private theorem pmfFoldBridge
     (hvars : st₀.VarsSubCtx Γ)
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (hρ_readers : CfgDeterminedByView st₀ Γ ρ)
+    (hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
     (hnodup : (Γ.map Prod.fst).Nodup) :
     letI := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
@@ -400,51 +401,11 @@ private theorem pmfFoldBridge
             simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b)
               (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hxy] using hj
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-    have hρ'_readers : CfgDeterminedByView st₁ ((x, .pub b) :: Γ') ρ' := by
-      -- No new nodes (addVar only). st₁.toStruct = st₀.toStruct, rawEnvOfCfg unchanged.
-      -- viewDeps over extended ctx = viewDeps over old ctx (pubCtxDeps ⊆ viewDeps).
-      -- ρ' = VEnv.cons ... ρ; view through ρ' projects to view through ρ.
-      intro who ps hps cfg₁ cfg₂ hview
-      -- Derive ρ view equality from ρ' view equality:
-      -- projectViewEnv who (eraseEnv (ρ' raw)) at old variables = projectViewEnv who (eraseEnv (ρ raw))
-      have hview_old : projectViewEnv (P := P) (L := L) who
-          (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₁))) =
-          projectViewEnv who (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₂))) :=
-        Vegas.projectViewEnv_cons_eq (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
-      -- viewDeps subset: st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ'
-      -- st₁.viewDeps who ((x,.pub b)::Γ') = pubCtxDeps Γ' ∪ st₀.viewDeps who Γ'
-      -- = st₀.viewDeps who Γ' (since pubCtxDeps ⊆ viewDeps)
-      have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by
-        intro i hi; have hi_vd := hps i hi
-        simp only [MAIDCompileState.viewDeps] at hi_vd ⊢
-        -- st₁.depsOfVars (viewVCtx who ((x,.pub b)::Γ')).map fst
-        -- = st₁.lookupDeps x ∪ st₁.depsOfVars (viewVCtx who Γ').map fst
-        simp only [viewVCtx, canSee, ite_true, List.map_cons] at hi_vd
-        simp only [MAIDCompileState.depsOfVars] at hi_vd
-        -- st₁.lookupDeps x = pubCtxDeps Γ' (from addVar)
-        rw [st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.pubCtxDeps Γ')
-          (st₀.depsOfVars_lt _) hxvars] at hi_vd
-        -- st₁.depsOfVars = st₀.depsOfVars on viewVCtx (x ∉ viewVCtx by freshness)
-        have hdeps_eq : st₁.depsOfVars (List.map Prod.fst (viewVCtx who Γ')) =
-            st₀.depsOfVars (List.map Prod.fst (viewVCtx who Γ')) :=
-          st₀.depsOfVars_addVar_eq_of_not_mem x (.pub b) _ _ _
-            (fun hmem => hxΓ (viewVCtx_map_fst_sub hmem))
-        rw [hdeps_eq] at hi_vd
-        -- pubCtxDeps Γ' ⊆ viewDeps who Γ' (public vars visible to all)
-        rcases Finset.mem_union.mp hi_vd with h | h
-        · -- h : i ∈ pubCtxDeps Γ'. pubCtxDeps ⊆ ctxDeps ⊇ viewDeps? No.
-          -- pubCtxDeps = depsOfVars (erasePubVCtx Γ').map fst
-          -- viewDeps who Γ' = depsOfVars (viewVCtx who Γ').map fst
-          -- erasePubVCtx ⊆ viewVCtx (pub vars visible to all)
-          -- → depsOfVars_subset_of_subset
-          have : st₀.pubCtxDeps Γ' ⊆ st₀.viewDeps who Γ' := by
-            simp only [MAIDCompileState.pubCtxDeps, MAIDCompileState.viewDeps]
-            apply st₀.depsOfVars_subset_of_subset
-            -- erasePubVCtx Γ'.map fst ⊆ viewVCtx who Γ'.map fst (pub vars visible)
-            exact erasePubVCtx_map_fst_sub_viewVCtx
-          exact this h
-        · exact h
-      exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
+    have hρ'_readers : ViewDeterminesRaw st₁ ((x, .pub b) :: Γ') ρ' := by
+      intro who raw₁ raw₂ hout hnot_vd hview i hi
+      have hview_old := Vegas.projectViewEnv_cons_eq
+        (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
+      sorry
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers
       (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol a₀
@@ -562,14 +523,10 @@ private theorem pmfFoldBridge
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v
       rw [← hst₁_id]
-      have hρ'_readers : CfgDeterminedByView st₁ ((x, τ) :: Γ') ρ' := by
-        intro who ps hps cfg₁ cfg₂ hview
-        -- Step 1: project away x to get ρ view equality
+      have hρ'_readers : ViewDeterminesRaw st₁ ((x, τ) :: Γ') ρ' := by
+        intro who raw₁ raw₂ hout hnot_vd hview i hi
         have hview_old := Vegas.projectViewEnv_cons_eq
           (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
-        -- Step 2: for old indices, use hρ_readers via tail view equality
-        -- Step 3: for new index id, extract head value equality from hview
-        -- Combined: cfg₁ = cfg₂
         sorry
       exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
@@ -752,8 +709,8 @@ private theorem pmfFoldBridge
         nativeOutcomeDistPMF B k hd (reflectPolicyAux B k hl.2 hd ρ' st₁ pol)
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v; rw [← hst₁_id]
-      have hρ'_readers : CfgDeterminedByView st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by
-        intro who' ps hps cfg₁ cfg₂ hview
+      have hρ'_readers : ViewDeterminesRaw st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by
+        intro who' raw₁ raw₂ hout hnot_vd hview i hi
         have hview_old := Vegas.projectViewEnv_cons_eq
           (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
         sorry
@@ -789,7 +746,7 @@ private theorem pmfFoldBridge
       -- Split the kernel's if-then-else
       split_ifs with h_exists
       · -- ∃ holds: kernel returns ⋯ ▸ pol p ⟨d, Classical.choose h_exists⟩
-        -- Need: (1) CfgDeterminedByView to show Classical.choose = projCfg a₀ (obsParents nd0)
+        -- Need: (1) ViewDeterminesRaw to show Classical.choose = projCfg a₀ (obsParents nd0)
         --       (2) cast cancel: (d.bind (F ∘ castValType)) = (hval ▸ d).bind F
         --       (3) DecisionNode/Infoset structure matching (nd0 = ⟨st₀.nextId, _⟩, hk = hkind)
         sorry
@@ -829,12 +786,11 @@ private theorem pmfFoldBridge
             simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne y (.pub b) (st₀.lookupDeps x)
               (st₀.lookupDeps_lt x) hzy] using hj
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
-    have hρ'_readers : CfgDeterminedByView st₁ ((y, .pub b) :: Γ') ρ' := by
-      intro who ps hps cfg₁ cfg₂ hview
-      have hview_old := Vegas.projectViewEnv_cons_eq (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) hview
-      have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by
-        sorry -- viewDeps subset: st₁.viewDeps who Γ₁ = st₀.viewDeps who Γ'
-      exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
+    have hρ'_readers : ViewDeterminesRaw st₁ ((y, .pub b) :: Γ') ρ' := by
+      intro who raw₁ raw₂ hout hnot_vd hview i hi
+      have hview_old := Vegas.projectViewEnv_cons_eq
+        (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) hview
+      sorry
     exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
       (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) pol a₀
 
@@ -868,9 +824,12 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (fun _ h => by simp [MAIDCompileState.empty] at h)
     (fun j hj => by intro raw tv; rfl)
     (envRespectsLookupDeps_const (B := B) (st := .empty) env)
-    (fun who ps hps cfg₁ cfg₂ _ => by
-      funext ⟨nd, hmem⟩
-      exact absurd nd.isLt (by simp [MAIDCompileState.empty]))
+    (fun who raw₁ raw₂ _ _ _ i hi => by
+      simp [MAIDCompileState.viewDeps, MAIDCompileState.empty, MAIDCompileState.depsOfVars] at hi
+      exact absurd hi (by
+        have := MAIDCompileState.depsOfVars_lt MAIDCompileState.empty
+          ((viewVCtx who Γ).map Prod.fst) i hi
+        simp [MAIDCompileState.empty] at this))
     hnodup_ctx pol (MAID.defaultAssign st.toStruct)
   -- Step 3: Connect to outcomeDistBehavioralPMF via nativeOutcomeDistPMF_eq
   have hnative := nativeOutcomeDistPMF_eq B p hd
