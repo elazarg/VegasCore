@@ -1,5 +1,6 @@
 import Vegas.MAID.VegasMAID
 import Vegas.MAID.Compile
+import Vegas.MAID.Correctness
 
 /-!
 # Experimental Vegas-to-VegasMAID Compiler
@@ -242,6 +243,11 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
   | sample x τ m D' k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
       apply ih (hd := hd.2)
+      -- Need: RevealConsistent for addNode(.chance)+addVar vs addPublicNode+bindVar
+      -- sync: both nextId = st₀.nextId + 1 (by hcon₀.sync)
+      -- chance: old nodes preserved (addNode_descAt_old), new node is chance with ↑id
+      -- decision: old nodes preserved, new chance node is vacuously not decision
+      -- nodeOf_lt: x maps to st₀.nextId < st₀.nextId + 1, others by hcon₀.nodeOf_lt
       sorry
   | commit x who R k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
