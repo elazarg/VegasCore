@@ -830,6 +830,32 @@ def VarVisible {B : MAIDBackend Player L}
       rs.revealTime i ≤ ↑st.nextId ∨
         (st.descAt ⟨i, st.lookupDeps_lt y i hi⟩).kind = .decision who
 
+/-- VarVisible extension for adding a pub variable (letExpr case). -/
+private theorem varVisible_addVar_pub
+    (st : MAIDCompileState Player L B) (rs : RevealState)
+    (x : VarId) (b : L.Ty) (Γ : VCtx Player L)
+    (hvars : st.VarsSubCtx Γ) (hfresh_x : Fresh x Γ)
+    (deps : Finset Nat) (hdeps : ∀ d ∈ deps, d < st.nextId)
+    (hvar : VarVisible Γ st rs)
+    (hdeps_sub : deps ⊆ st.pubCtxDeps Γ) :
+    VarVisible ((x, .pub b) :: Γ) (st.addVar x (.pub b) deps hdeps) rs := by
+  intro who y σ hy i hi
+  unfold viewVCtx at hy; simp [canSee] at hy
+  rcases hy with ⟨rfl, rfl⟩ | hy
+  · rw [st.lookupDeps_addVar_eq_self_of_fresh y _ _ _ (fun hm => hfresh_x (hvars y hm))] at hi
+    have hi_pub := hdeps_sub hi
+    rw [MAIDCompileState.pubCtxDeps] at hi_pub
+    obtain ⟨z, hz_mem, hz_dep⟩ := (mem_depsOfVars_iff st _ i).mp hi_pub
+    have hz_view := erasePubVCtx_map_fst_sub_viewVCtx (Γ := Γ) (who := who) z hz_mem
+    obtain ⟨⟨z', σ'⟩, hzs_mem, hzs_fst⟩ := List.mem_map.mp hz_view
+    simp at hzs_fst; subst hzs_fst
+    exact hvar who z' σ' hzs_mem i hz_dep
+  · rw [st.lookupDeps_addVar_eq_of_ne x _ _ _ (by
+      intro heq; subst heq
+      exact hfresh_x (viewVCtx_map_fst_sub (p := who) (Γ := Γ)
+        (List.mem_map.mpr ⟨(y, σ), hy, rfl⟩)))] at hi
+    exact hvar who y σ hy i hi
+
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
 theorem computeReveals_parents_visible (B : MAIDBackend Player L)
@@ -925,11 +951,8 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       -- letExpr: no new nodes, addVar doesn't change descAt. IH with same hprev.
       exact ih hl hd hfresh.2 _ _ _
         ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
-        (st₀.VarsSubCtx_addVar hvars x _ _ _ hfresh.1) hprev (by
-          -- y=x: pubCtxDeps decomposition via mem_depsOfVars_iff +
-          --   erasePubVCtx_map_fst_sub_viewVCtx → hvar₀
-          -- y≠x: lookupDeps_addVar_eq_of_ne + viewVCtx_map_fst_sub → hvar₀
-          sorry)
+        (st₀.VarsSubCtx_addVar hvars x _ _ _ hfresh.1) hprev
+        (varVisible_addVar_pub st₀ rs₀ x _ _ hvars hfresh.1 _ _ hvar₀ (Finset.Subset.refl _))
   | sample x τ m D' k ih =>
       rename_i Γ'
       simp only [computeReveals, MAIDCompileState.ofProg]
