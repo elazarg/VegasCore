@@ -959,9 +959,31 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
         intro d hd'; simp at hd'; omega
       exact ih hl.2 hd hfresh.2 _ _ _
         (revealConsistent_addDecision' hcon₀ dnd rfl hdnd_deps x (.hidden who b) hdeps)
-        (by -- hprev: old decisions via addNode_descAt_old + addPrivateNode identity,
-            -- NEW decision via hvar₀ + mem_depsOfVars_iff → viewVCtx → lookupDeps → VarVisible
-            sorry)
+        (by -- hprev: old decisions + NEW decision
+            intro d' pw' hk' i hi'
+            have hbound : d'.val ≤ st₀.nextId := by
+              have := d'.isLt; simp [MAIDCompileState.addNode, MAIDCompileState.addVar] at this; omega
+            rcases Nat.lt_or_eq_of_le hbound with hlt | heq
+            · -- OLD decision node
+              have hk_old : (st₀.descAt ⟨d'.val, hlt⟩).kind = .decision pw' := by
+                rw [← MAIDCompileState.addNode_descAt_old st₀ dnd hdnd_deps ⟨d'.val, hlt⟩]; exact hk'
+              have hi_old : i ∈ (st₀.descAt ⟨d'.val, hlt⟩).parents := by
+                rw [← MAIDCompileState.addNode_descAt_old st₀ dnd hdnd_deps ⟨d'.val, hlt⟩]; exact hi'
+              have hilt : i < st₀.nextId := Nat.lt_trans (st₀.descAt_parent_lt ⟨d'.val, hlt⟩ hi_old) (by omega)
+              rcases hprev ⟨d'.val, hlt⟩ pw' hk_old i hi_old with h | h
+              · left; simp only [RevealState.addPrivateNode, RevealState.bindVar]; exact h
+              · right
+                have : ((st₀.addNode dnd hdnd_deps).2.addVar x (.hidden who b) {st₀.nextId} hdeps).descAt
+                    ⟨i, by simp [MAIDCompileState.addNode, MAIDCompileState.addVar]; omega⟩ =
+                    st₀.descAt ⟨i, hilt⟩ := by
+                  show (st₀.addNode dnd hdnd_deps).2.descAt ⟨i, _⟩ = _
+                  exact MAIDCompileState.addNode_descAt_old st₀ dnd hdnd_deps ⟨i, hilt⟩
+                rw [this]; exact h
+            · -- NEW decision: parents = viewDeps who Γ', apply hvar₀
+              -- The Fin conversion from d' to ⟨st₀.nextId, _⟩ + addNode_descAt_new
+              -- gives pw' = who and hi' ∈ viewDeps who Γ'. Then hvar₀ +
+              -- mem_depsOfVars_iff connects to the conclusion.
+              sorry)
         (by sorry) -- VarVisible for extended context
   | reveal y who x hx k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
