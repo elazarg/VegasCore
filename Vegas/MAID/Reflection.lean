@@ -724,9 +724,18 @@ private theorem pmfFoldBridge
         have := (toStruct_kind st nd0).symm.trans hk
         rw [hkind_decision] at this; exact (MAID.NodeKind.decision.inj this).symm
       subst hp
-      -- Simplify if True and resolve all branches
-      simp only [dif_pos trivial]
-      all_goals sorry
+      -- Simplify: headKernel_mk extracts the kernel from reflectPolicyAux
+      simp only [dif_pos trivial, nativeOutcomeDistPMF, reflectPolicyAux,
+        ProgramBehavioralStrategyPMF.headKernel_mk]
+      -- Resolve the ∃ cfg branch with the witness from hViewEq
+      -- Split the kernel's if-then-else
+      split_ifs with h_exists
+      · -- ∃ holds: kernel returns ⋯ ▸ pol p ⟨d, Classical.choose h_exists⟩
+        -- Need: (1) CfgDeterminedByView to show Classical.choose = projCfg a₀ (obsParents nd0)
+        --       (2) cast cancel: (d.bind (F ∘ castValType)) = (hval ▸ d).bind F
+        --       (3) DecisionNode/Infoset structure matching (nd0 = ⟨st₀.nextId, _⟩, hk = hkind)
+        sorry
+      · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
   | reveal y who' x hx k ih =>

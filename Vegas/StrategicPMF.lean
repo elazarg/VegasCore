@@ -120,6 +120,16 @@ def tailOwn
     simpa [ProgramBehavioralStrategyPMF] using σ
   exact σ'.2
 
+@[simp] theorem headKernel_mk
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (kern : ProgramBehavioralKernelPMF (P := P) (L := L) who Γ b)
+    (tail : ProgramBehavioralStrategyPMF (P := P) (L := L) who k) :
+    headKernel (R := R) (show ProgramBehavioralStrategyPMF who (.commit x who R k) from
+      by simpa [ProgramBehavioralStrategyPMF] using (kern, tail)) = kern.run := by
+  simp [headKernel, ProgramBehavioralStrategyPMF]
+
 end ProgramBehavioralStrategyPMF
 
 namespace ProgramBehavioralProfilePMF
