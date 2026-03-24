@@ -273,6 +273,20 @@ private theorem pmf_descAt_cast_bind_cancel
     (cast hcast d).bind (fun v => f (castValType hdesc v)) = d.bind f := by
   subst hdesc; rfl
 
+/-- Obs-config determinacy: for any subset of node indices within viewDeps,
+two configurations that produce the same view through ρ must be equal.
+This is the injectivity condition needed for the commit case. -/
+private def CfgDeterminedByView (st : MAIDCompileState P L B)
+    (Γ : VCtx P L) (ρ : RawNodeEnv L → VEnv L Γ) : Prop :=
+  ∀ (who : P) {ps : Finset (Fin st.nextId)}
+    (hps : ∀ i ∈ ps, i.val ∈ st.viewDeps who Γ)
+    (cfg₁ cfg₂ : @MAID.Cfg P _ B.fintypePlayer _ st.toStruct ps),
+    projectViewEnv (P := P) (L := L) who
+      (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₁))) =
+    projectViewEnv (P := P) (L := L) who
+      (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg₂))) →
+    cfg₁ = cfg₂
+
 private theorem pmfFoldBridge
     (B : MAIDBackend P L)
     {Γ : VCtx P L}
@@ -283,7 +297,8 @@ private theorem pmfFoldBridge
     (st₀ : MAIDCompileState P L B)
     (hvars : st₀.VarsSubCtx Γ)
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
-    (hρ_var : EnvRespectsLookupDeps st₀ ρ) :
+    (hρ_var : EnvRespectsLookupDeps st₀ ρ)
+    (hρ_readers : CfgDeterminedByView st₀ Γ ρ) :
     letI := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
     let S := st.toStruct
@@ -384,8 +399,13 @@ private theorem pmfFoldBridge
             simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne x (.pub b)
               (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _) hxy] using hj
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
+    have hρ'_readers : CfgDeterminedByView st₁ ((x, .pub b) :: Γ') ρ' := by
+      intro who i hi
+      -- viewDeps for st₁ over (x, .pub b) :: Γ' ⊆ viewDeps for st₀ over Γ'
+      -- (no new nodes, lookupDeps x = pubCtxDeps ⊆ viewDeps)
+      sorry
     exact ih hl hd hfresh.2 ρ' st₁
-      (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var pol a₀
+      (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers pol a₀
   | sample x τ m D' k ih =>
     rename_i Γ'
     intro pol a₀
@@ -500,7 +520,8 @@ private theorem pmfFoldBridge
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v
       rw [← hst₁_id]
-      exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol _
+      have hρ'_readers : CfgDeterminedByView st₁ ((x, τ) :: Γ') ρ' := by sorry
+      exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol _
     -- Rewrite inner fold using IH
     simp_rw [hinner]
     -- Cast rawOfTAssign update to extend
@@ -680,7 +701,8 @@ private theorem pmfFoldBridge
         nativeOutcomeDistPMF B k hd (reflectPolicyAux B k hl.2 hd ρ' st₁ pol)
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v; rw [← hst₁_id]
-      exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol _
+      have hρ'_readers : CfgDeterminedByView st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by sorry
+      exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol _
     -- Use IH to rewrite inner fold
     simp_rw [hinner]
     -- Cast raw update to extend (same pattern as sample case)
@@ -704,11 +726,14 @@ private theorem pmfFoldBridge
         have := (toStruct_kind st nd0).symm.trans hk
         rw [hkind_decision] at this; exact (MAID.NodeKind.decision.inj this).symm
       subst hp
-      -- The core step: show Classical.choose picks projCfg a₀ (obsParents nd0).
-      -- This requires obs-config injectivity (sensitivity of ρ to obs-parent
-      -- indices). Proved: hViewEq shows projCfg a₀ is a witness; uniqueness
-      -- needs the reader-variable invariant (see ephemeral/MAID_COMPILER_SPEC.md).
-      -- For now, sorry the cfg equality and close the rest structurally.
+      -- The remaining proof needs:
+      -- 1. cfg equality: Classical.choose = projCfg (from obs-config injectivity)
+      -- 2. Cast cancel: d.bind (F ∘ castValType) = (hval ▸ d).bind F
+      -- 3. Match DecisionNode/Infoset structure across casts
+      -- These require CfgDeterminedByView at the FULL compile state (st, not st₀)
+      -- and careful cast manipulation through the reflectPolicyAux unfolding.
+      -- The structural argument is sound (see ephemeral/MAID_COMPILER_SPEC.md);
+      -- formal proof deferred pending the compiler spec layer.
       sorry
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
@@ -745,7 +770,8 @@ private theorem pmfFoldBridge
             simpa [st₁, st₀.lookupDeps_addVar_eq_of_ne y (.pub b) (st₀.lookupDeps x)
               (st₀.lookupDeps_lt x) hzy] using hj
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
-    exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var pol a₀
+    have hρ'_readers : CfgDeterminedByView st₁ ((y, .pub b) :: Γ') ρ' := by sorry
+    exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol a₀
 
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
 obtained by reflecting a MAID policy produces the same outcome distribution
@@ -776,6 +802,9 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (fun _ h => by simp [MAIDCompileState.empty] at h)
     (fun j hj => by intro raw tv; rfl)
     (envRespectsLookupDeps_const (B := B) (st := .empty) env)
+    (fun who ps hps cfg₁ cfg₂ _ => by
+      funext ⟨nd, hmem⟩
+      exact absurd nd.isLt (by simp [MAIDCompileState.empty]))
     pol (MAID.defaultAssign st.toStruct)
   -- Step 3: Connect to outcomeDistBehavioralPMF via nativeOutcomeDistPMF_eq
   have hnative := nativeOutcomeDistPMF_eq B p hd
