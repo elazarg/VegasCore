@@ -867,7 +867,89 @@ private theorem pmfFoldBridge
         intro who' raw₁ raw₂ hout hnot_vd htyped hview i hi
         have hview_old := Vegas.projectViewEnv_cons_eq
           (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
-        sorry
+        have hid_lt_st₁ : id < st₁.nextId := by rw [hst₁_id]; omega
+        have hxvars_sn : x ∉ stNode.vars.map Prod.fst := hxvars
+        have hx_not_view : x ∉ (viewVCtx who' Γ').map Prod.fst :=
+          fun hmem => hxΓ (viewVCtx_map_fst_sub hmem)
+        have hlt_fwd (j : Nat) (hj : j < st₀.nextId) : j < st₁.nextId := by
+          rw [hst₁_id]; omega
+        have hid_not_old : id ∉ st₀.viewDeps who' Γ' :=
+          fun hmem => absurd (st₀.depsOfVars_lt _ id hmem) (by omega)
+        -- canSee who' (.hidden who b) = (who' = who)
+        by_cases hsee : canSee who' (BindTy.hidden who b)
+        · -- canSee (who' = who): viewDeps = insert id (old viewDeps)
+          have hVD : st₁.viewDeps who' ((x, .hidden who b) :: Γ') =
+              insert id (st₀.viewDeps who' Γ') := by
+            unfold MAIDCompileState.viewDeps
+            simp only [viewVCtx, hsee, ite_true, List.map_cons, MAIDCompileState.depsOfVars]
+            rw [stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who b) {id}
+                (by intro d hd; simp at hd; subst hd; exact Nat.lt_succ_self _) hxvars_sn,
+              stNode.depsOfVars_addVar_eq_of_not_mem x (.hidden who b) _ _ _ hx_not_view,
+              Finset.singleton_union]
+            congr 1
+            induction (viewVCtx who' Γ').map Prod.fst with
+            | nil => rfl
+            | cons y ys ih =>
+              simp [stNode, MAIDCompileState.depsOfVars, st₀.lookupDeps_addNode nd hndeps, ih]
+          -- Prove raw₁ id = raw₂ id first (for both i=id and hout gap)
+          have hraw_id_eq : raw₁ id = raw₂ id := by
+            have hhead := Vegas.projectViewEnv_cons_head_eq
+              (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hsee hview
+            have htyped_id := htyped id (by rw [hVD]; exact Finset.mem_insert_self _ _) hid_lt_st₁
+            have hdesc_id : st₁.descAt ⟨id, hid_lt_st₁⟩ = nd :=
+              MAIDCompileState.addNode_descAt_new st₀ nd hndeps
+            simp only [RawsMatchDescAt, hdesc_id, nd] at htyped_id
+            rcases htyped_id with ⟨v₁, v₂, hraw₁, hraw₂⟩
+            have hr₁ : MAIDCompileState.readVal (B := B) raw₁ b id = v₁ := by
+              simp [MAIDCompileState.readVal, hraw₁]
+            have hr₂ : MAIDCompileState.readVal (B := B) raw₂ b id = v₂ := by
+              simp [MAIDCompileState.readVal, hraw₂]
+            rw [hr₁, hr₂] at hhead; rw [hraw₁, hraw₂, hhead]
+          rw [hVD] at hi
+          rcases Finset.mem_insert.mp hi with rfl | hold
+          · exact hraw_id_eq
+          · apply hρ_readers who' raw₁ raw₂
+            · intro j hj
+              by_cases hjid : j = id
+              · subst hjid; exact hraw_id_eq
+              · exact hout j (by rw [hst₁_id]; omega)
+            · intro j hj hjlt
+              exact hnot_vd j (fun hmem => hj (by
+                rw [hVD] at hmem
+                rcases Finset.mem_insert.mp hmem with rfl | h
+                · exact absurd hjlt (by omega)
+                · exact h)) (hlt_fwd j hjlt)
+            · intro j hj hjlt
+              exact RawsMatchDescAt_of_descAt_eq
+                (MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨j, hjlt⟩)
+                (htyped j (by rw [hVD]; exact Finset.mem_insert_of_mem hj) (hlt_fwd j hjlt))
+            · exact hview_old
+            · exact hold
+        · -- ¬canSee (who' ≠ who): viewDeps = old viewDeps
+          have hVD : st₁.viewDeps who' ((x, .hidden who b) :: Γ') = st₀.viewDeps who' Γ' := by
+            unfold MAIDCompileState.viewDeps
+            have hcf : canSee who' (BindTy.hidden who b) = false := by
+              cases h : canSee who' (BindTy.hidden who b); rfl; exact absurd h hsee
+            simp only [viewVCtx, hcf, ite_false, Bool.false_eq_true]
+            rw [stNode.depsOfVars_addVar_eq_of_not_mem x (.hidden who b) _ _ _ hx_not_view]
+            induction (viewVCtx who' Γ').map Prod.fst with
+            | nil => rfl
+            | cons y ys ih =>
+              simp [stNode, MAIDCompileState.depsOfVars, st₀.lookupDeps_addNode nd hndeps, ih]
+          apply hρ_readers who' raw₁ raw₂
+          · intro j hj
+            by_cases hjid : j = id
+            · subst hjid
+              exact hnot_vd id (by rw [hVD]; exact hid_not_old) hid_lt_st₁
+            · exact hout j (by rw [hst₁_id]; omega)
+          · intro j hj hjlt
+            exact hnot_vd j (fun hmem => hj (by rwa [hVD] at hmem)) (hlt_fwd j hjlt)
+          · intro j hj hjlt
+            exact RawsMatchDescAt_of_descAt_eq
+              (MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨j, hjlt⟩)
+              (htyped j (by rw [hVD]; exact hj) (hlt_fwd j hjlt))
+          · exact hview_old
+          · rwa [hVD] at hi
       exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Use IH to rewrite inner fold
