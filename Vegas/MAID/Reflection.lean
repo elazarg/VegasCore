@@ -411,8 +411,37 @@ private theorem pmfFoldBridge
           projectViewEnv who (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₂))) :=
         Vegas.projectViewEnv_cons_eq hview
       -- viewDeps subset: st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ'
+      -- st₁.viewDeps who ((x,.pub b)::Γ') = pubCtxDeps Γ' ∪ st₀.viewDeps who Γ'
+      -- = st₀.viewDeps who Γ' (since pubCtxDeps ⊆ viewDeps)
       have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by
-        sorry -- viewDeps subset: st₁.viewDeps who Γ₁ = st₀.viewDeps who Γ'
+        intro i hi; have hi_vd := hps i hi
+        simp only [MAIDCompileState.viewDeps] at hi_vd ⊢
+        -- st₁.depsOfVars (viewVCtx who ((x,.pub b)::Γ')).map fst
+        -- = st₁.lookupDeps x ∪ st₁.depsOfVars (viewVCtx who Γ').map fst
+        simp only [viewVCtx, canSee, ite_true, List.map_cons] at hi_vd
+        simp only [MAIDCompileState.depsOfVars] at hi_vd
+        -- st₁.lookupDeps x = pubCtxDeps Γ' (from addVar)
+        rw [st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.pubCtxDeps Γ')
+          (st₀.depsOfVars_lt _) hxvars] at hi_vd
+        -- st₁.depsOfVars = st₀.depsOfVars on viewVCtx (x ∉ viewVCtx by freshness)
+        have hdeps_eq : st₁.depsOfVars (List.map Prod.fst (viewVCtx who Γ')) =
+            st₀.depsOfVars (List.map Prod.fst (viewVCtx who Γ')) := by
+          sorry
+        rw [hdeps_eq] at hi_vd
+        -- pubCtxDeps Γ' ⊆ viewDeps who Γ' (public vars visible to all)
+        rcases Finset.mem_union.mp hi_vd with h | h
+        · -- h : i ∈ pubCtxDeps Γ'. pubCtxDeps ⊆ ctxDeps ⊇ viewDeps? No.
+          -- pubCtxDeps = depsOfVars (erasePubVCtx Γ').map fst
+          -- viewDeps who Γ' = depsOfVars (viewVCtx who Γ').map fst
+          -- erasePubVCtx ⊆ viewVCtx (pub vars visible to all)
+          -- → depsOfVars_subset_of_subset
+          have : st₀.pubCtxDeps Γ' ⊆ st₀.viewDeps who Γ' := by
+            simp only [MAIDCompileState.pubCtxDeps, MAIDCompileState.viewDeps]
+            apply st₀.depsOfVars_subset_of_subset
+            -- erasePubVCtx Γ'.map fst ⊆ viewVCtx who Γ'.map fst (pub vars visible)
+            sorry
+          exact this h
+        · exact h
       exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers pol a₀
