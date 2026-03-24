@@ -1229,7 +1229,25 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                 · exact le_refl _) h
             · right; exact h)
         (by sorry) -- VarVisible for extended context
-        (by sorry) (by sorry) (by sorry) -- hdt + hhn + hnsc for reveal continuation
+        (by -- hdt: z=y → copy from x; z≠y → from hdt
+            intro z nid hnid
+            simp only [RevealState.aliasVar] at hnid
+            by_cases hz : z = y
+            · subst hz; simp at hnid
+              rw [st₀.lookupDeps_addVar_eq_self_of_fresh z _ _ _
+                (fun hm => hfresh.1 (hvars z hm))]
+              split at hnid <;> exact hdt x nid hnid
+            · simp [hz] at hnid
+              rw [st₀.lookupDeps_addVar_eq_of_ne y _ _ _ hz]
+              split at hnid <;> exact hdt z nid hnid)
+        (by sorry) -- hhn for reveal continuation
+        (by -- hnsc: y in new context; old vars via hnsc
+            intro z nid hnid
+            simp only [RevealState.aliasVar] at hnid
+            simp only [List.map_cons, List.mem_cons]
+            by_cases hz : z = y
+            · left; exact hz
+            · right; simp [hz] at hnid; split at hnid <;> exact hnsc z nid hnid)
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
