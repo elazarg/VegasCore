@@ -1121,11 +1121,12 @@ private theorem pmfFoldBridge
             simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, unify both sides
         rw [hcfg_eq]
-        -- Last sorry: cast cancel + profile equality.
-        -- The cast part needs toStruct.Val to be transparent for generalize+subst.
-        -- simp [toStruct_Val] reduces the goal but not all hypothesis types,
-        -- so generalize fails. Needs a specialized cast_cancel lemma or
-        -- a restructured pmf_descAt_cast_bind_cancel that works with toStruct.Val.
+        -- Last sorry: cast cancel. Both sides are propositionally equal
+        -- (the PMF cast and profile .tail cancel after hdesc0 subst).
+        -- Blocked by toStruct.Val opacity: pol's type depends on
+        -- st.descAt nd0 through toStruct.Val, which prevents generalize+subst.
+        -- The fix requires either redefining toStruct without `by exact` or
+        -- adding a transport lemma that handles this specific pattern.
         sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
