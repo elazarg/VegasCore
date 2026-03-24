@@ -298,7 +298,8 @@ private theorem pmfFoldBridge
     (hvars : st₀.VarsSubCtx Γ)
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (hρ_readers : CfgDeterminedByView st₀ Γ ρ) :
+    (hρ_readers : CfgDeterminedByView st₀ Γ ρ)
+    (hnodup : (Γ.map Prod.fst).Nodup) :
     letI := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
     let S := st.toStruct
@@ -409,7 +410,7 @@ private theorem pmfFoldBridge
       have hview_old : projectViewEnv (P := P) (L := L) who
           (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₁))) =
           projectViewEnv who (VEnv.eraseEnv (ρ (st₁.rawEnvOfCfg cfg₂))) :=
-        Vegas.projectViewEnv_cons_eq (by sorry) hview
+        Vegas.projectViewEnv_cons_eq (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
       -- viewDeps subset: st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ'
       -- st₁.viewDeps who ((x,.pub b)::Γ') = pubCtxDeps Γ' ∪ st₀.viewDeps who Γ'
       -- = st₀.viewDeps who Γ' (since pubCtxDeps ⊆ viewDeps)
@@ -445,7 +446,8 @@ private theorem pmfFoldBridge
         · exact h
       exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
     exact ih hl hd hfresh.2 ρ' st₁
-      (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers pol a₀
+      (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers
+      (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol a₀
   | sample x τ m D' k ih =>
     rename_i Γ'
     intro pol a₀
@@ -561,7 +563,8 @@ private theorem pmfFoldBridge
       intro v
       rw [← hst₁_id]
       have hρ'_readers : CfgDeterminedByView st₁ ((x, τ) :: Γ') ρ' := by sorry
-      exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol _
+      exact ih hl hd.2 hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
+        (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Rewrite inner fold using IH
     simp_rw [hinner]
     -- Cast rawOfTAssign update to extend
@@ -742,7 +745,8 @@ private theorem pmfFoldBridge
           ρ' (id + 1) (rawOfTAssign st (MAID.updateAssign a₀ nd0 v)) := by
       intro v; rw [← hst₁_id]
       have hρ'_readers : CfgDeterminedByView st₁ ((x, BindTy.hidden who b) :: Γ') ρ' := by sorry
-      exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol _
+      exact ih hl.2 hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
+        (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol _
     -- Use IH to rewrite inner fold
     simp_rw [hinner]
     -- Cast raw update to extend (same pattern as sample case)
@@ -815,11 +819,12 @@ private theorem pmfFoldBridge
           simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
     have hρ'_readers : CfgDeterminedByView st₁ ((y, .pub b) :: Γ') ρ' := by
       intro who ps hps cfg₁ cfg₂ hview
-      have hview_old := Vegas.projectViewEnv_cons_eq (by sorry) hview
+      have hview_old := Vegas.projectViewEnv_cons_eq (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) hview
       have hps_old : ∀ i ∈ ps, i.val ∈ st₀.viewDeps who Γ' := by
         sorry -- viewDeps subset: st₁.viewDeps who Γ₁ = st₀.viewDeps who Γ'
       exact hρ_readers who hps_old cfg₁ cfg₂ hview_old
-    exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers pol a₀
+    exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
+      (List.nodup_cons.mpr ⟨hyΓ, hnodup⟩) pol a₀
 
 /-- Semantic correctness of `reflectPolicy`: the PMF behavioral profile
 obtained by reflecting a MAID policy produces the same outcome distribution
@@ -831,7 +836,8 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (env : VEnv L Γ)
     (hl : Legal p)
     (hd : NormalizedDists p)
-    (hwf : WF p) :
+    (hwf : WF p)
+    (hnodup_ctx : (Γ.map Prod.fst).Nodup) :
     let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     ∀ (pol : MAID.Policy (fp := B.fintypePlayer) st.toStruct),
       PMF.map (fun a => extractOutcome B p (fun _ => env) 0 (rawOfTAssign st a))
@@ -853,7 +859,7 @@ theorem reflectPolicy_outcomeDistBehavioralPMF_eq
     (fun who ps hps cfg₁ cfg₂ _ => by
       funext ⟨nd, hmem⟩
       exact absurd nd.isLt (by simp [MAIDCompileState.empty]))
-    pol (MAID.defaultAssign st.toStruct)
+    hnodup_ctx pol (MAID.defaultAssign st.toStruct)
   -- Step 3: Connect to outcomeDistBehavioralPMF via nativeOutcomeDistPMF_eq
   have hnative := nativeOutcomeDistPMF_eq B p hd
     (reflectPolicyAux B p hl hd (fun _ => env) .empty pol)
