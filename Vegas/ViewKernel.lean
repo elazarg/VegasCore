@@ -129,10 +129,23 @@ theorem projectViewEnv_cons_eq
         (VEnv.eraseEnv env₁) =
       projectViewEnv (P := P) (L := L) who
         (VEnv.eraseEnv env₂) := by
-  -- The proof requires relating projectViewEnv through viewVCtx at
-  -- (x,τ)::Γ vs Γ. The toVHasVar→ofViewVCtx→toErased chains differ
-  -- between the extended and original contexts, creating non-matching
-  -- Eq.rec terms. Needs infrastructure for viewVCtx/eraseVCtx interaction.
-  sorry
+  -- Step 1: projectViewEnv eq → ObsEq for extended context
+  -- (converse of projectViewEnv_eq_of_obsEq — needs viewVCtx/HasVar infrastructure)
+  have hobs_ext : ObsEq (L := L) (Γ := (x, τ) :: Γ) who
+      (VEnv.eraseEnv (VEnv.cons v₁ env₁)) (VEnv.eraseEnv (VEnv.cons v₂ env₂)) := by
+    sorry
+  -- Step 2: ObsEq for (x,τ)::Γ restricted to old vars → ObsEq for Γ
+  have hobs : ObsEq (L := L) (Γ := Γ) who (VEnv.eraseEnv env₁) (VEnv.eraseEnv env₂) := by
+    intro y' σ₀ hy' hvis'
+    have hvis_ext : y' ∈ visibleVars (L := L) who ((x, τ) :: Γ) := by
+      cases τ with
+      | pub b => simp [visibleVars, hvis']
+      | hidden owner b =>
+        simp only [visibleVars]
+        split <;> simp_all [Finset.mem_insert]
+    have := hobs_ext y' σ₀ (.there hy') hvis_ext
+    simp only [VEnv.eraseEnv, Env.cons] at this
+    exact this
+  exact projectViewEnv_eq_of_obsEq hobs
 
 end Vegas
