@@ -493,6 +493,16 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
               have := hcon₀.nodeOf_lt x nid' hx_eq; omega)]
             exact hcon₀.unset i hi
 
+/-- Visible-variable-deps invariant: for each variable visible to a player,
+    its lookupDeps point to nodes that are either public or same-player decisions. -/
+def VarVisible {B : MAIDBackend Player L}
+    (Γ : VCtx Player L) (st : MAIDCompileState Player L B) (rs : RevealState) : Prop :=
+  ∀ (who : Player) (y : VarId) (σ : BindTy Player L),
+    (y, σ) ∈ viewVCtx who Γ →
+    ∀ (i : Nat) (hi : i ∈ st.lookupDeps y),
+      rs.revealTime i ≤ ↑st.nextId ∨
+        (st.descAt ⟨i, st.lookupDeps_lt y i hi⟩).kind = .decision who
+
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
 theorem computeReveals_parents_visible (B : MAIDBackend Player L)
@@ -500,7 +510,8 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
     (p : VegasCore Player L Γ) (hl : Legal p) (hd : NormalizedDists p)
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B) (rs₀ : RevealState)
-    (hcon₀ : RevealConsistent st₀ rs₀) :
+    (hcon₀ : RevealConsistent st₀ rs₀)
+    (hvar₀ : VarVisible Γ st₀ rs₀) :
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
     let rs := computeReveals B p rs₀
     ∀ (d : Fin st.nextId) (p : Player),
@@ -509,25 +520,37 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
         rs.revealTime i ≤ ↑d.val ∨
           (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
             .decision q ∧ q = p) := by
-  -- The core invariant: visible variable deps point to visible nodes.
-  -- This is the `obs_has_reader` equivalent from MAID_COMPILER_SPEC.md.
-  -- Requires induction on VegasCore threading a `hvar` hypothesis about
-  -- the relationship between viewVCtx, lookupDeps, and revealTime.
-  --
-  -- At each `commit who`, the new decision node's parents = viewDeps who Γ'.
-  -- hvar ensures these are either public (revealTime ≤ nextId) or same-player
-  -- decisions. For old decision nodes, addNode preserves descAt and revealTime
-  -- can only decrease (making the "public" condition easier to satisfy).
-  --
-  -- Each program construct maintains hvar:
-  -- - letExpr: new pub variable has public deps (from pubCtxDeps)
-  -- - sample: new variable has deps = {id} where id is a chance node (public)
-  -- - commit: new variable has deps = {id} where id is a decision of `who`
-  --           (visible to `who` as own decision)
-  -- - reveal: new pub variable copies deps of the revealed variable;
-  --           the revealed variable was hidden for some player, now public
-  -- - ret: no new variables
-  sorry
+  induction p generalizing st₀ rs₀ with
+  | ret payoffs =>
+      -- No decision nodes are created by ret (only utility nodes).
+      -- Any existing decision node d was already in st; its parents
+      -- were set before and the invariant was satisfied then.
+      sorry
+  | letExpr x e k ih =>
+      -- letExpr adds a public variable. viewVCtx gains x for all players.
+      -- x's lookupDeps = pubCtxDeps which are all public. IH applies.
+      sorry
+  | sample x τ m D' k ih =>
+      -- sample adds chance node at id, variable x with deps = {id}.
+      -- id is a chance node → revealTime = ↑id ≤ ↑nextId. IH applies.
+      sorry
+  | commit x who R k ih =>
+      -- commit adds decision node for `who` at id, variable x with deps = {id}.
+      -- For player `who`: x is in viewVCtx (own hidden), deps = {id},
+      --   descAt(id).kind = .decision who ✓
+      -- For other players: x is NOT in viewVCtx (hidden for `who`)
+      -- The NEW decision node's parents = viewDeps who Γ = deps of
+      --   visible vars. By hvar, these are public or same-player. ✓
+      -- Old decision nodes: preserved by addNode, revealTime only decreases.
+      sorry
+  | reveal y who x hx k ih =>
+      -- reveal adds public variable y with same deps as x.
+      -- x was hidden for `who`, now y is public.
+      -- y's deps are x's deps, which by hvar (for player `who`)
+      -- pointed to public-or-who's-decision nodes. After reveal,
+      -- the node is now public (revealTime set to ↑nextId), so the
+      -- invariant is maintained for all players viewing y.
+      sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
@@ -546,6 +569,9 @@ noncomputable def compileVegasMAID
      fun _ _ => rfl⟩
   toVegasMAID B st rs
     (computeReveals_consistent B p hl hd _ _ _ hcon)
-    (computeReveals_parents_visible B p hl hd _ _ _ hcon)
+    (computeReveals_parents_visible B p hl hd _ _ _ hcon (by
+      intro who y σ hy i hi; exfalso
+      simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
+            MAIDCompileState.lookupDepsAux] at hi))
 
 end Vegas
