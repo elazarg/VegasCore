@@ -761,6 +761,22 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
               have := hcon₀.nodeOf_lt x nid' hx_eq; omega)]
             exact hcon₀.unset i hi
 
+/-- If `i ∈ depsOfVars xs`, then `i ∈ lookupDeps x` for some `x ∈ xs`. -/
+private theorem mem_depsOfVars_iff (st : MAIDCompileState Player L B)
+    (xs : List VarId) (i : Nat) :
+    i ∈ st.depsOfVars xs ↔ ∃ x ∈ xs, i ∈ st.lookupDeps x := by
+  induction xs with
+  | nil => simp [MAIDCompileState.depsOfVars]
+  | cons y ys ih =>
+      simp only [MAIDCompileState.depsOfVars, Finset.mem_union, ih, List.mem_cons]
+      constructor
+      · rintro (h | ⟨x, hx, hm⟩)
+        · exact ⟨y, Or.inl rfl, h⟩
+        · exact ⟨x, Or.inr hx, hm⟩
+      · rintro ⟨x, (rfl | hx), hm⟩
+        · left; exact hm
+        · right; exact ⟨x, hx, hm⟩
+
 /-- hprev transfer: old decision nodes' parent visibility is preserved through
     addNode (non-decision) + addPublicNode. -/
 private theorem hprev_transfer_addNode
@@ -943,7 +959,8 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
         intro d hd'; simp at hd'; omega
       exact ih hl.2 hd hfresh.2 _ _ _
         (revealConsistent_addDecision' hcon₀ dnd rfl hdnd_deps x (.hidden who b) hdeps)
-        (by -- hprev: old decisions via hprev_transfer pattern + NEW decision via hvar₀
+        (by -- hprev: old decisions via addNode_descAt_old + addPrivateNode identity,
+            -- NEW decision via hvar₀ + mem_depsOfVars_iff → viewVCtx → lookupDeps → VarVisible
             sorry)
         (by sorry) -- VarVisible for extended context
   | reveal y who x hx k ih =>
