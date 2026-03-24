@@ -169,6 +169,8 @@ structure RevealConsistent {B : MAIDBackend Player L}
     (st.descAt nd).kind = .chance → rs.revealTime nd.val = ↑nd.val
   decision : ∀ (nd : Fin st.nextId) (p : Player),
     (st.descAt nd).kind = .decision p → (↑nd.val : WithTop Nat) < rs.revealTime nd.val
+  /-- `nodeOf` only points to allocated node indices. -/
+  nodeOf_lt : ∀ x nid, rs.nodeOf x = some nid → nid < st.nextId
 
 /-- Build a `VegasMAID` from the existing compiler's output and computed
     reveal times, given consistency. -/
@@ -230,7 +232,25 @@ theorem computeReveals_consistent (B : MAIDBackend Player L)
     RevealConsistent
       (MAIDCompileState.ofProg B p hl hd ρ st₀)
       (computeReveals B p rs₀) := by
-  sorry
+  induction p generalizing st₀ rs₀ with
+  | ret payoffs =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      sorry
+  | letExpr x e k ih =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      exact ih hl hd _ _ _ ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt⟩
+  | sample x τ m D' k ih =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      apply ih (hd := hd.2)
+      sorry
+  | commit x who R k ih =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      apply ih (hd := hd)
+      sorry
+  | reveal y who x hx k ih =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      apply ih (hd := hd)
+      sorry
 
 /-- Decision parents in the compiled MAID are all visible to the player
     (the factored-observation property). -/
@@ -262,7 +282,7 @@ noncomputable def compileVegasMAID
   let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
   let rs := computeReveals B p .empty
   let hcon : RevealConsistent .empty .empty :=
-    ⟨rfl, fun nd => nd.elim0, fun nd => nd.elim0⟩
+    ⟨rfl, fun nd => nd.elim0, fun nd => nd.elim0, fun _ _ h => by simp [RevealState.empty] at h⟩
   toVegasMAID B st rs
     (computeReveals_consistent B p hl hd _ _ _ hcon)
     (computeReveals_parents_visible B p hl hd _ _ _ hcon)
