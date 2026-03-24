@@ -973,7 +973,9 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
     -- DepsTracked: nodeOf y = some nid → lookupDeps y ⊆ {nid}
     (hdt : ∀ y nid, rs₀.nodeOf y = some nid → st₀.lookupDeps y ⊆ {nid})
     -- HiddenHasNodeOf: hidden vars have nodeOf bindings
-    (hhn : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → rs₀.nodeOf y ≠ none) :
+    (hhn : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → rs₀.nodeOf y ≠ none)
+    -- NodeOfSubCtx: nodeOf only set for vars in context
+    (hnsc : ∀ y nid, rs₀.nodeOf y = some nid → y ∈ Γ.map Prod.fst) :
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
     let rs := computeReveals B p rs₀
     ∀ (d : Fin st.nextId) (p : Player),
@@ -1052,10 +1054,17 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
         ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
         (st₀.VarsSubCtx_addVar hvars x _ _ _ hfresh.1) hprev
         (varVisible_addVar_pub st₀ rs₀ x _ _ hvars hfresh.1 _ _ hvar₀ (Finset.Subset.refl _))
-        (by sorry) -- hdt for letExpr: y≠x case from hdt, y=x case needs nodeOf x = none
+        (by intro z nid hnid
+            by_cases hz : z = x
+            · subst hz; exact absurd (hnsc z nid hnid) hfresh.1
+            · rw [st₀.lookupDeps_addVar_eq_of_ne x _ _ _ hz]; exact hdt z nid hnid)
         (by -- hhn: new pub var x is not hidden; old hidden vars: nodeOf unchanged
             intro z who' b' hv; cases hv with
             | there hv' => exact hhn z who' b' hv')
+        (by -- hnsc: nodeOf only in context; addVar extends context
+            intro z nid hnid
+            simp only [List.map_cons, List.mem_cons]
+            right; exact hnsc z nid hnid)
   | sample x τ m D' k ih =>
       rename_i Γ'
       simp only [computeReveals, MAIDCompileState.ofProg]
@@ -1076,7 +1085,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
           (by intro ⟨_, h⟩; simp [cnd, CompiledNode.kind] at h) hcnd_deps hprev)
         (varVisible_addNode_chance_addVar st₀ rs₀ hcon₀ cnd
           (by simp [cnd, CompiledNode.kind]) hcnd_deps x τ _ hvars hfresh.1 hdeps hvar₀)
-        (by sorry) (by sorry) -- hdt + hhn for sample continuation
+        (by sorry) (by sorry) (by sorry) -- hdt + hhn + hnsc for sample continuation
   | commit x who R k ih =>
       -- THE key case: new decision node + IH for continuation.
       -- New node's parents = viewDeps who Γ'. By hvar₀, each dep has
@@ -1152,7 +1161,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                 rw [this]; exact h)
         (varVisible_addNode_decision_addVar st₀ rs₀ hcon₀ dnd who
           rfl hdnd_deps x b _ hvars hfresh.1 hdeps hvar₀)
-        (by sorry) (by sorry) -- hdt + hhn for commit continuation
+        (by sorry) (by sorry) (by sorry) -- hdt + hhn + hnsc for commit continuation
   | reveal y who x hx k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
       exact ih hl hd hfresh.2 _ _ _
@@ -1171,7 +1180,7 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                 · exact le_refl _) h
             · right; exact h)
         (by sorry) -- VarVisible for extended context
-        (by sorry) (by sorry) -- hdt + hhn for reveal continuation
+        (by sorry) (by sorry) (by sorry) -- hdt + hhn + hnsc for reveal continuation
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
@@ -1199,6 +1208,7 @@ noncomputable def compileVegasMAID
           simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
                 MAIDCompileState.lookupDepsAux] at hi)
       (by intro y nid h; simp [RevealState.empty] at h)
-      (by intro y who b hv; exact (hpub y who b hv).elim))
+      (by intro y who b hv; exact (hpub y who b hv).elim)
+      (by intro y nid h; simp [RevealState.empty] at h))
 
 end Vegas
