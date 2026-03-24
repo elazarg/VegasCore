@@ -696,11 +696,38 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
             .decision q ∧ q = p) := by
   induction p generalizing st₀ rs₀ with
   | ret payoffs =>
-      -- ret adds only utility nodes. Any decision d was in st₀; its parents
-      -- satisfied the property there. addUtilityNodes/foldl addPublicNode
-      -- preserve descAt for old nodes and don't decrease revealTime below ↑i.
-      -- ret adds only utility nodes: any decision was in st₀, property inherited
-      sorry
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      letI := B.fintypePlayer
+      -- suffices: for any player list, addUtilityNodes preserves the property
+      suffices ∀ (players : List Player) (deps : Finset Nat)
+          (ufn : Player → RawNodeEnv L → ℝ)
+          (st : MAIDCompileState Player L B) (rs : RevealState)
+          (hdeps : ∀ d ∈ deps, d < st.nextId)
+          (hcon : RevealConsistent st rs)
+          (hvar : VarVisible _ st rs),
+          ∀ (d : Fin (st.addUtilityNodes deps hdeps ufn players).nextId) (p : Player),
+            ((st.addUtilityNodes deps hdeps ufn players).descAt d).kind = .decision p →
+            ∀ (i : Nat) (hi : i ∈ ((st.addUtilityNodes deps hdeps ufn players).descAt d).parents),
+              (players.foldl (fun rs' _ => rs'.addPublicNode) rs).revealTime i ≤ ↑d.val ∨
+                ∃ q, ((st.addUtilityNodes deps hdeps ufn players).descAt
+                  ⟨i, Nat.lt_trans ((st.addUtilityNodes deps hdeps ufn players).descAt_parent_lt d hi) d.2⟩).kind =
+                    .decision q ∧ q = p by
+        exact this _ _ _ st₀ rs₀ _ hcon₀ hvar₀
+      intro players
+      induction players with
+      | nil =>
+          -- Base: need revealTime i ≤ d.val, but VarVisible gives ≤ nextId.
+          -- Requires: (1) connecting VarVisible to decision parents via viewDeps,
+          -- (2) revealTime monotonicity (only min decreases it) to get ≤ d.val.
+          intro _ _ st rs _ _ _; sorry
+      | cons pw rest ih_ret =>
+          intro deps ufn st rs hdeps hcon hvar
+          simp only [MAIDCompileState.addUtilityNodes, List.foldl_cons]
+          let und : CompiledNode Player L B := .utility pw deps (ufn pw)
+          have hund_deps : ∀ d ∈ und.parents ∪ und.obsParents, d < st.nextId := by
+            intro d hd'; simp [und, CompiledNode.parents, CompiledNode.obsParents] at hd'
+            exact hdeps d hd'
+          sorry -- cons case: addNode(.utility) + addPublicNode, apply IH
   | letExpr x e k ih => sorry
   | sample x τ m D' k ih => sorry
   | commit x who R k ih => sorry
