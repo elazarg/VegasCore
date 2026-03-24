@@ -509,6 +509,16 @@ theorem readVal_extend_ne (raw : RawNodeEnv L) (nid nid' : Nat)
     MAIDCompileState.readVal (B := B) raw τ nid' := by
   simp [RawNodeEnv.extend, hne, MAIDCompileState.readVal]
 
+/-- If two raws store the same type at index `i` and readVal agrees, the raws agree. -/
+theorem readVal_tagged_eq {raw₁ raw₂ : RawNodeEnv L}
+    {τ : L.Ty} {v₁ v₂ : L.Val τ} {i : Nat}
+    (h₁ : raw₁ i = some ⟨τ, v₁⟩) (h₂ : raw₂ i = some ⟨τ, v₂⟩)
+    (heq : MAIDCompileState.readVal (B := B) raw₁ τ i =
+      MAIDCompileState.readVal (B := B) raw₂ τ i) :
+    raw₁ i = raw₂ i := by
+  simp only [MAIDCompileState.readVal, h₁, ↓reduceDIte, h₂] at heq
+  rw [h₁, h₂, heq]
+
 /-- `ρ` is insensitive to extending the raw env at index `nid`. -/
 def InsensitiveTo (f : RawNodeEnv L → α) (nid : Nat) : Prop :=
   ∀ raw (tv : RawTaggedVal L), f (raw.extend nid tv) = f raw
