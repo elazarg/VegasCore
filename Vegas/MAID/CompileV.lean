@@ -1228,7 +1228,8 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
                   · rw [if_neg heq]
                 · exact le_refl _) h
             · right; exact h)
-        (by sorry) -- VarVisible for extended context
+        (by -- VarVisible: uses hdt+hhn to track revealed deps
+            sorry)
         (by -- hdt: z=y → copy from x; z≠y → from hdt
             intro z nid hnid
             simp only [RevealState.aliasVar] at hnid
