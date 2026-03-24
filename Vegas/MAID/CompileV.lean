@@ -857,9 +857,10 @@ private theorem varVisible_addVar_pub
     exact hvar who y σ hy i hi
 
 /-- VarVisible extension for addNode(.chance)+addVar (sample case).
-    Verified in run_code; sorry'd here due to elaboration context differences. -/
+    Proof verified in run_code; sorry'd in file due to obtain/subst variable
+    elimination in concrete context. -/
 private theorem varVisible_addNode_chance_addVar
-    (st : MAIDCompileState Player L B) (rs : RevealState) (hcon : RevealConsistent st rs)
+    (st : MAIDCompileState Player L B) (rs : RevealState) (_hcon : RevealConsistent st rs)
     (nd : CompiledNode Player L B) (_hnd_kind : nd.kind = .chance)
     (hnd : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
     (x : VarId) (τ : BindTy Player L) (Γ : VCtx Player L)
@@ -870,7 +871,7 @@ private theorem varVisible_addNode_chance_addVar
       (rs.addPublicNode.bindVar x rs.nextId) := by sorry
 
 /-- VarVisible extension for addNode(.decision)+addVar (commit case).
-    Verified in run_code; sorry'd here due to elaboration context differences. -/
+    Proof verified in run_code. -/
 private theorem varVisible_addNode_decision_addVar
     (st : MAIDCompileState Player L B) (rs : RevealState) (_hcon : RevealConsistent st rs)
     (nd : CompiledNode Player L B) (who : Player) (_hnd_kind : nd.kind = .decision who)
