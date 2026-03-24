@@ -1,6 +1,6 @@
 import Vegas.MAID.VegasMAID
 import Vegas.MAID.Compile
-import Vegas.MAID.Correctness
+import Vegas.MAID.CompileStructural
 
 /-!
 # Experimental Vegas-to-VegasMAID Compiler

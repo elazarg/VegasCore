@@ -237,6 +237,33 @@ def viewDeps (st : MAIDCompileState Player L B) (who : Player) (Γ : VCtx Player
     Finset Nat :=
   st.depsOfVars ((viewVCtx who Γ).map Prod.fst)
 
+end MAIDCompileState
+
+theorem erasePubVCtx_map_fst_sub_viewVCtx
+    {Γ : VCtx Player L} {who : Player} :
+    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst →
+      x ∈ (viewVCtx who Γ).map Prod.fst := by
+  induction Γ with
+  | nil => simp [erasePubVCtx]
+  | cons a Γ' ih =>
+    intro x hx
+    match a with
+    | (y, .pub b) =>
+      simp only [erasePubVCtx_cons_pub, viewVCtx, canSee, ite_true,
+        List.map_cons, List.mem_cons] at hx ⊢
+      exact hx.elim .inl (fun h => .inr (ih x h))
+    | (y, .hidden p b) =>
+      simp only [erasePubVCtx_cons_hidden, viewVCtx] at hx ⊢
+      by_cases h : canSee who (.hidden p b)
+      · simp only [h, ite_true, List.map_cons, List.mem_cons]
+        right; exact ih x hx
+      · simp only [h]
+        exact ih x hx
+
+namespace MAIDCompileState
+
+variable {B : MAIDBackend Player L}
+
 def sampleDeps (st : MAIDCompileState Player L B)
     {Γ : VCtx Player L} (τ : BindTy Player L) (m : SampleMode τ) :
     Finset Nat :=
@@ -353,6 +380,34 @@ theorem descAt_obs_lt (st : MAIDCompileState Player L B) (i : Fin st.nextId)
   have hid : e.1 = i.1 := st.get_id_eq i
   have hdep := st.nodeDeps_lt e he d (Finset.mem_union.mpr (.inr hd))
   simpa [descAt, e, hid] using hdep
+
+/-- `descAt` for the newly added node returns that node. -/
+theorem addNode_descAt_new
+    (st : MAIDCompileState Player L B)
+    (nd : CompiledNode Player L B)
+    (hdeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId) :
+    (st.addNode nd hdeps).2.descAt
+      ⟨st.nextId, Nat.lt_succ_self _⟩ = nd := by
+  simp only [descAt, addNode]
+  change ((st.nodes ++ [(st.nextId, nd)])[st.nextId]'(by
+    simp [st.nodes_length_eq_nextId])).2 = nd
+  rw [List.getElem_append_right (by simp [st.nodes_length_eq_nextId])]
+  simp [st.nodes_length_eq_nextId]
+
+/-- `descAt` for old nodes is unchanged by `addNode`. -/
+theorem addNode_descAt_old
+    (st : MAIDCompileState Player L B)
+    (nd : CompiledNode Player L B)
+    (hdeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (i : Fin st.nextId) :
+    (st.addNode nd hdeps).2.descAt
+      ⟨i.val, Nat.lt_succ_of_lt i.isLt⟩ = st.descAt i := by
+  simp only [descAt, addNode]
+  change ((st.nodes ++ [(st.nextId, nd)])[i.val]'(by
+    simp [st.nodes_length_eq_nextId])).2 =
+    (st.nodes[i.val]'(st.index_lt_nodes i)).2
+  congr 1
+  rw [List.getElem_append_left]
 
 noncomputable def readVal (raw : RawNodeEnv L) (τ : L.Ty) (id : Nat) : L.Val τ :=
   match raw id with
