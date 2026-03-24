@@ -638,6 +638,7 @@ def VarVisible {B : MAIDBackend Player L}
 theorem computeReveals_parents_visible (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B) (rs₀ : RevealState)
     (hcon₀ : RevealConsistent st₀ rs₀)
@@ -657,41 +658,10 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
       -- preserve descAt for old nodes and don't decrease revealTime below ↑i.
       -- ret adds only utility nodes: any decision was in st₀, property inherited
       sorry
-  | letExpr x e k ih =>
-      simp only [computeReveals, MAIDCompileState.ofProg]
-      exact ih hl hd _  _ _
-        ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
-        (by sorry)
-  | sample x τ m D' k ih =>
-      rename_i Γ'
-      simp only [computeReveals, MAIDCompileState.ofProg]
-      apply ih (hd := hd.2)
-      · -- RevealConsistent: reuse proven lemma
-        exact revealConsistent_addChance' hcon₀
-          (CompiledNode.chance τ.base (st₀.ctxDeps Γ')
-            (fun raw => L.evalDist D' (VEnv.eraseDistEnv τ m (ρ raw)))
-            (fun raw => hd.1 (ρ raw)))
-          rfl (by intro d hd'; simp [CompiledNode.parents, CompiledNode.obsParents] at hd'
-                  exact st₀.depsOfVars_lt _ d hd')
-          x τ (by intro d hd'; simp at hd'; omega)
-      · sorry -- VarVisible for extended context
-  | commit x who R k ih =>
-      rename_i Γ' b
-      simp only [computeReveals, MAIDCompileState.ofProg]
-      apply ih (hd := hd)
-      · exact revealConsistent_addDecision' hcon₀
-          (CompiledNode.decision b who (allValues B b) (allValues_ne_nil B b)
-            (allValues_nodup B b) (st₀.viewDeps who Γ'))
-          rfl (by intro d hd'; simp [CompiledNode.parents, CompiledNode.obsParents] at hd'
-                  exact st₀.depsOfVars_lt _ d hd')
-          x (.hidden who b) (by intro d hd'; simp at hd'; omega)
-      · sorry -- VarVisible for extended context
-  | reveal y who x hx k ih =>
-      rename_i Γ' b
-      simp only [computeReveals, MAIDCompileState.ofProg]
-      apply ih (hd := hd)
-      · exact revealConsistent_reveal' hcon₀ y x b _ _
-      · sorry -- VarVisible for extended context
+  | letExpr x e k ih => sorry
+  | sample x τ m D' k ih => sorry
+  | commit x who R k ih => sorry
+  | reveal y who x hx k ih => sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
@@ -699,6 +669,7 @@ noncomputable def compileVegasMAID
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
     (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
     (env : VEnv (Player := Player) L Γ) :
     let st := MAIDCompileState.ofProg B p hl hd (fun _ => env) .empty
     @VegasMAID Player _ B.fintypePlayer st.nextId :=
@@ -710,9 +681,9 @@ noncomputable def compileVegasMAID
      fun _ _ => rfl⟩
   toVegasMAID B st rs
     (computeReveals_consistent B p hl hd _ _ _ hcon)
-    (computeReveals_parents_visible B p hl hd _ _ _ hcon (by
-      intro who y σ hy i hi; exfalso
-      simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
-            MAIDCompileState.lookupDepsAux] at hi))
+    (computeReveals_parents_visible B p hl hd hfresh _ _ _ hcon
+      (by intro who y σ hy i hi; exfalso;
+          simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
+                MAIDCompileState.lookupDepsAux] at hi))
 
 end Vegas
