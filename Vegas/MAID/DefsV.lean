@@ -518,6 +518,29 @@ def castValType {c c' : CompiledNode Player L B}
     (hc : c = c') (v : CompiledNode.valType c) : CompiledNode.valType c' :=
   hc ▸ v
 
+/-- Updating a total assignment at a utility node doesn't change `rawOfTAssign`. -/
+theorem rawOfTAssign_updateAssign_utility
+    (st : MAIDCompileState Player L B)
+    (a : TAssign (fp := B.fintypePlayer) st.toStruct)
+    (nd : Fin st.nextId) (v : Struct.Val (fp := B.fintypePlayer) st.toStruct nd)
+    (hwho : ∃ who, (st.descAt nd).kind = .utility who) :
+    rawOfTAssign st (updateAssign (fp := B.fintypePlayer) a nd v) = rawOfTAssign st a := by
+  have taggedOfVal_utility : ∀ (c : CompiledNode Player L B)
+      (_ : ∃ who, c.kind = .utility who) (v₁ v₂ : CompiledNode.valType c),
+      MAIDCompileState.taggedOfVal c v₁ = MAIDCompileState.taggedOfVal c v₂ := by
+    intro c ⟨who, hw⟩ v₁ v₂
+    cases c <;> simp_all [MAIDCompileState.taggedOfVal, CompiledNode.kind]
+  funext i; simp only [rawOfTAssign]
+  split
+  · next hi =>
+    by_cases heq : i = nd.val
+    · subst heq
+      have hnd : (⟨↑nd, hi⟩ : Fin st.nextId) = nd := Fin.ext rfl
+      rw [hnd]; exact taggedOfVal_utility _ hwho _ _
+    · have hne : (⟨i, ‹_›⟩ : Fin st.nextId) ≠ nd := Fin.ne_of_val_ne heq
+      simp [updateAssign, hne]
+  · rfl
+
 /-- The compiled structure has natural order (parents have lower indices). -/
 theorem compiled_naturalOrderV (st : MAIDCompileState Player L B) :
     Struct.NaturalOrder (fp := B.fintypePlayer) st.toStruct := by

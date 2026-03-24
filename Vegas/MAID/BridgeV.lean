@@ -53,7 +53,65 @@ private theorem pmfFoldBridgeV
       nativeOutcomeDistPMFV B p hd
         (reflectPolicyAuxV B p hl hd ρ st₀ pol)
         ρ st₀.nextId (rawOfTAssign st a₀) := by
-  sorry
+  letI := B.fintypePlayer
+  dsimp only
+  induction p generalizing st₀ with
+  | ret u =>
+    rename_i Γ'
+    intro pol a₀
+    let st := MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀
+    let extract := fun a => extractOutcomeAux B (.ret u) ρ st₀.nextId (rawOfTAssign st a)
+    -- All new nodes are utility; evalStep at utility preserves PMF.map extract
+    have hutility : ∀ nd ∈ (List.finRange st.nextId).drop st₀.nextId,
+        ∃ who, (st.descAt nd).kind = .utility who :=
+      fun nd hnd => by
+        have hge : st₀.nextId ≤ nd.val := by
+          rcases List.mem_iff_getElem.mp hnd with ⟨i, hi, hget⟩
+          have := congrArg Fin.val hget; rw [List.getElem_drop] at this; simp at this; omega
+        exact MAIDCompileState.addUtilityNodes_all_utility
+          (st := st₀) (deps := st₀.ctxDeps Γ') (hdeps := st₀.depsOfVars_lt _)
+          (ufn := fun who raw => ((evalPayoffs u (ρ raw)) who : ℝ))
+          (players := Finset.univ.toList) (i := nd) hge
+    have hstep : ∀ (nd : Fin st.nextId)
+        (hwho : ∃ who, (st.descAt nd).kind = .utility who) (acc : PMF (TAssign st.toStruct)),
+        PMF.map extract (evalStep st.toStruct (MAIDCompileState.toSem st) pol acc nd) =
+        PMF.map extract acc := by
+      intro nd hwho acc
+      simp only [evalStep, PMF.map_bind]
+      congr 1; funext a
+      obtain ⟨w, hw⟩ := hwho
+      have hkind : st.toStruct.kind nd = .utility w := by
+        simp only [toStruct_kind]; exact hw
+      conv_lhs => rw [show (fun a_1 => PMF.map extract (PMF.pure (updateAssign a nd a_1))) =
+        (fun a_1 => PMF.pure (extract (updateAssign a nd a_1))) from
+        funext fun v => PMF.pure_map extract (updateAssign a nd v)]
+      simp only [nodeDist]
+      split
+      · rename_i hk; simp only [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
+      · rename_i p hk; simp only [toStruct_kind] at hk; rw [hk] at hw; exact absurd hw (by simp)
+      · simp only [PMF.pure_bind, Function.comp]
+        exact congrArg PMF.pure (congrArg (extractOutcomeAux B (.ret u) ρ st₀.nextId)
+          (rawOfTAssign_updateAssign_utility st a nd _ ⟨w, hw⟩))
+    have hfold : ∀ (nodes : List (Fin st.nextId))
+        (hnodes : ∀ nd ∈ nodes, ∃ who, (st.descAt nd).kind = .utility who)
+        (acc : PMF (TAssign st.toStruct)),
+        PMF.map extract (List.foldl (evalStep st.toStruct
+          (MAIDCompileState.toSem st) pol) acc nodes) =
+        PMF.map extract acc := by
+      intro nodes hnodes acc
+      induction nodes generalizing acc with
+      | nil => rfl
+      | cons nd rest ih_nodes =>
+        simp only [List.foldl_cons]
+        rw [ih_nodes (fun nd' hnd' => hnodes nd' (List.mem_cons.mpr (.inr hnd')))
+          (evalStep st.toStruct (MAIDCompileState.toSem st) pol acc nd)]
+        exact hstep nd (hnodes nd (List.mem_cons.mpr (.inl rfl))) acc
+    rw [hfold _ hutility, PMF.pure_map]
+    simp [extract, extractOutcomeAux, nativeOutcomeDistPMFV]; rfl
+  | letExpr x e k ih => sorry
+  | sample x τ m D' k ih => sorry
+  | commit x who_commit R k ih => sorry
+  | reveal y who_r x_r hx k ih => sorry
 
 /-! ## Reverse bridge -/
 
