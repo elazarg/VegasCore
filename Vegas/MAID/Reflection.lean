@@ -1134,10 +1134,12 @@ private theorem pmfFoldBridge
         have hprofile : reflectPolicyAux B k hl.2 hd ρ' st₁ pol =
             ProgramBehavioralProfilePMF.tail
               (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol) := by
-          sorry
+          sorry -- .tail(reflectPolicyAux(.commit...)) = reflectPolicyAux(k...)
         rw [hprofile]
-        -- After rw, LHS has .tail(reflectPolicyAux(.commit...)), RHS has .tail(fun i=>...).
-        -- These + the PMF cast should be definitionally equal but rfl fails.
+        -- After rw, LHS profile = .tail(reflectPolicyAux(.commit...)).
+        -- RHS profile = .tail(fun i => ...) which is propositionally but not
+        -- definitionally equal (reflectPolicyAux commit case uses simpa casts).
+        -- Plus the PMF cast (castValType/▸).
         sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
