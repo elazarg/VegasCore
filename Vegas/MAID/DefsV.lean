@@ -485,4 +485,163 @@ theorem compilePureProfileV_player_indep
       compilePureProfileV B p env hl hd hfresh hpub π₂ who :=
   compilePureProfileAuxV_player_indep B p hl hd _ _ π₁ π₂ who h
 
+/-! ## Helpers for bridge proofs (copied from Correctness/Reflection, independent) -/
+
+/-- Extend a raw node environment at a single index. -/
+def RawNodeEnv.extend (raw : RawNodeEnv L) (nid : Nat) (tv : RawTaggedVal L) :
+    RawNodeEnv L :=
+  fun i => if i = nid then some tv else raw i
+
+theorem readVal_extend_self (raw : RawNodeEnv L) (nid : Nat) (τ : L.Ty)
+    (v : L.Val τ) :
+    MAIDCompileState.readVal (B := B) (raw.extend nid ⟨τ, v⟩) τ nid = v := by
+  simp [RawNodeEnv.extend, MAIDCompileState.readVal]
+
+theorem readVal_extend_ne (raw : RawNodeEnv L) (nid nid' : Nat)
+    (tv : RawTaggedVal L) (τ : L.Ty) (hne : nid' ≠ nid) :
+    MAIDCompileState.readVal (B := B) (raw.extend nid tv) τ nid' =
+    MAIDCompileState.readVal (B := B) raw τ nid' := by
+  simp [RawNodeEnv.extend, hne, MAIDCompileState.readVal]
+
+/-- `ρ` is insensitive to extending the raw env at index `nid`. -/
+def InsensitiveTo (f : RawNodeEnv L → α) (nid : Nat) : Prop :=
+  ∀ raw (tv : RawTaggedVal L), f (raw.extend nid tv) = f raw
+
+/-- Cast between CompiledNode value types along a description equality. -/
+def castValType {c c' : CompiledNode Player L B}
+    (hc : c = c') (v : CompiledNode.valType c) : CompiledNode.valType c' :=
+  hc ▸ v
+
+/-- The compiled structure has natural order (parents have lower indices). -/
+theorem compiled_naturalOrderV (st : MAIDCompileState Player L B) :
+    Struct.NaturalOrder (fp := B.fintypePlayer) st.toStruct := by
+  letI : Fintype Player := B.fintypePlayer
+  intro nd p hp
+  rcases Finset.mem_image.mp hp with ⟨d, hd, rfl⟩
+  exact st.descAt_parent_lt nd d.2
+
+/-- `ρ` respects the compile state's lookupDeps: if `j ∉ lookupDeps x`,
+then `VEnv.get (ρ raw) hx` is insensitive to extending raw at j. -/
+def EnvRespectsLookupDeps
+    {Γ : VCtx Player L}
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv L Γ) : Prop :=
+  ∀ {x : VarId} {τ : BindTy Player L}
+    (hx : VHasVar (L := L) Γ x τ) (j : Nat),
+      j ∉ st.lookupDeps x →
+      InsensitiveTo (fun raw => VEnv.get (L := L) (ρ raw) hx) j
+
+theorem envRespectsLookupDeps_const
+    (st : MAIDCompileState Player L B)
+    {Γ : VCtx Player L}
+    (env : VEnv L Γ) :
+    EnvRespectsLookupDeps st (fun _ => env) :=
+  fun _ _ _ _ _ => rfl
+
+/-! ## PMF native outcome distribution -/
+
+/-- PMF-level native outcome distribution: like `outcomeDistBehavioralPMF` but
+threads `(nextId, rawNodeEnv)` through the program. At sample/commit sites,
+the raw env is extended with the new node's value. -/
+noncomputable def nativeOutcomeDistPMFV
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ)
+    (hd : NormalizedDists p)
+    (σ : ProgramBehavioralProfilePMF p) :
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ) →
+    (nextId : Nat) →
+    RawNodeEnv L → PMF (Outcome Player) :=
+  match p, hd, σ with
+  | .ret u, _, _ => fun ρ _ raw =>
+      PMF.pure (evalPayoffs u (ρ raw))
+  | .letExpr (b := b) x e k, hd, σ => fun ρ nextId raw =>
+      nativeOutcomeDistPMFV B k hd σ
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := .pub b)
+          (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw))
+        nextId raw
+  | .sample x τ _m D' k, hd, σ => fun ρ nextId raw =>
+      ((L.evalDist D' (VEnv.eraseDistEnv τ _ (ρ raw))).toPMF (hd.1 _)).bind
+        (fun v =>
+          nativeOutcomeDistPMFV B k hd.2 σ
+            (fun raw => VEnv.cons (L := L) (x := x) (τ := τ)
+              (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw))
+            (nextId + 1) (raw.extend nextId ⟨τ.base, v⟩))
+  | .commit (b := b) x who _ k, hd, σ => fun ρ nextId raw =>
+      let κ := ProgramBehavioralStrategyPMF.headKernel (P := Player) (L := L) (σ who)
+      (κ (projectViewEnv who (VEnv.eraseEnv (ρ raw)))).bind
+        (fun v =>
+          nativeOutcomeDistPMFV B k hd
+            (ProgramBehavioralProfilePMF.tail (P := Player) (L := L) σ)
+            (fun raw => VEnv.cons (L := L) (x := x) (τ := .hidden who b)
+              (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw))
+            (nextId + 1) (raw.extend nextId ⟨b, v⟩))
+  | .reveal (b := b) y _who _x hx k, hd, σ => fun ρ nextId raw =>
+      nativeOutcomeDistPMFV B k hd σ
+        (fun raw =>
+          let v : L.Val b := VEnv.get (L := L) (ρ raw) hx
+          VEnv.cons (L := L) (x := y) (τ := .pub b) v (ρ raw))
+        nextId raw
+
+/-- `nativeOutcomeDistPMFV` equals `outcomeDistBehavioralPMF` when `ρ` is
+insensitive to all node IDs ≥ `nextId`. -/
+theorem nativeOutcomeDistPMFV_eq
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ)
+    (hd : NormalizedDists p)
+    (σ : ProgramBehavioralProfilePMF p)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (nextId : Nat)
+    (hρ : ∀ nid, nextId ≤ nid → InsensitiveTo ρ nid) :
+    ∀ raw : RawNodeEnv L,
+    nativeOutcomeDistPMFV B p hd σ ρ nextId raw =
+      outcomeDistBehavioralPMF p hd σ (ρ raw) := by
+  induction p generalizing nextId with
+  | ret u =>
+    intro raw; simp only [nativeOutcomeDistPMFV, outcomeDistBehavioralPMF]
+  | letExpr x e k ih =>
+    intro raw; simp only [nativeOutcomeDistPMFV, outcomeDistBehavioralPMF]
+    exact ih hd σ _ nextId
+      (fun nid hn raw tv => VEnv.cons_ext
+        (congrArg (L.eval e) (congrArg VEnv.erasePubEnv (hρ nid hn raw tv)))
+        (hρ nid hn raw tv))
+      raw
+  | sample x τ m D' k ih =>
+    intro raw; simp only [nativeOutcomeDistPMFV, outcomeDistBehavioralPMF]
+    congr 1; funext v
+    have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := τ)
+          (MAIDCompileState.readVal (B := B) raw τ.base nextId) (ρ raw)) nid' := by
+      intro nid' hn' raw tv
+      exact VEnv.cons_ext
+        (readVal_extend_ne raw nid' nextId tv τ.base (by omega))
+        (hρ nid' (by omega) raw tv)
+    rw [ih hd.2 σ _ (nextId + 1) hρ']
+    congr 1
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId τ.base v)
+      (hρ nextId (le_refl _) raw ⟨τ.base, v⟩)
+  | @commit _ x who b R k ih =>
+    intro raw; simp only [nativeOutcomeDistPMFV, outcomeDistBehavioralPMF]
+    congr 1; funext v
+    have hρ' : ∀ nid', nextId + 1 ≤ nid' → InsensitiveTo
+        (fun raw => VEnv.cons (L := L) (x := x) (τ := .hidden who b)
+          (MAIDCompileState.readVal (B := B) raw b nextId) (ρ raw)) nid' := by
+      intro nid' hn' raw tv
+      exact VEnv.cons_ext
+        (readVal_extend_ne raw nid' nextId tv b (by omega))
+        (hρ nid' (by omega) raw tv)
+    rw [ih hd (ProgramBehavioralProfilePMF.tail (P := Player) (L := L) σ) _ (nextId + 1) hρ']
+    congr 1
+    exact VEnv.cons_ext (readVal_extend_self (B := B) raw nextId b v)
+      (hρ nextId (le_refl _) raw ⟨b, v⟩)
+  | reveal y who x hx k ih =>
+    intro raw; simp only [nativeOutcomeDistPMFV, outcomeDistBehavioralPMF]
+    exact ih hd σ _ nextId
+      (fun nid hn raw tv =>
+        VEnv.cons_ext (τ := .pub _)
+          (congrArg (VEnv.get (L := L) · hx) (hρ nid hn raw tv))
+          (hρ nid hn raw tv))
+      raw
+
 end Vegas
