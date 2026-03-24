@@ -746,7 +746,26 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
         rs.revealTime i ≤ ↑d.val ∨
           (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
             .decision q ∧ q = p) := by
-  sorry
+  induction p generalizing st₀ rs₀ with
+  | ret => sorry
+  | letExpr x e k ih =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      -- letExpr: no new nodes, addVar doesn't change descAt. IH with same hprev.
+      exact ih hl hd hfresh.2 _ _ _
+        ⟨hcon₀.sync, hcon₀.chance, hcon₀.decision, hcon₀.nodeOf_lt, hcon₀.unset⟩
+        hprev (by sorry) -- VarVisible for extended context
+  | sample x τ m D' k ih =>
+      -- sample: new node is chance (not decision). Old decision nodes preserved.
+      sorry
+  | commit x who R k ih =>
+      -- THE key case: new decision node + IH for continuation.
+      -- New node's parents = viewDeps who Γ'. By hvar₀, each dep has
+      -- revealTime ≤ nextId = d.val or is who's decision. ✓
+      -- Old nodes: preserved by addNode, revealTime only decreases. ✓
+      sorry
+  | reveal y who x hx k ih =>
+      -- reveal: no new nodes. revealTime may decrease (strengthens property).
+      sorry
 
 /-- The main experimental compilation function: Vegas program → VegasMAID. -/
 noncomputable def compileVegasMAID
