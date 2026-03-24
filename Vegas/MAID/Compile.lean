@@ -525,10 +525,9 @@ noncomputable instance (nd : CompiledNode Player L B) :
   | utility _ _ _ => exact ⟨()⟩
 
 noncomputable def toStruct (st : MAIDCompileState Player L B) :
-    @MAID.Struct Player _ B.fintypePlayer st.nextId := by
-  let _ : Fintype Player := B.fintypePlayer
-  exact {
-    kind := fun nd => (st.descAt nd).kind
+    @MAID.Struct Player _ B.fintypePlayer st.nextId :=
+  letI := B.fintypePlayer
+  { kind := fun nd => (st.descAt nd).kind
     parents := fun nd =>
       (st.descAt nd).parents.attach.image
         (fun d => ⟨d.1, Nat.lt_trans (st.descAt_parent_lt nd d.2) nd.2⟩)

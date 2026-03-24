@@ -1068,14 +1068,15 @@ private theorem pmfFoldBridge
               (VEnv.eraseEnv (ρ raw₁)) =
               projectViewEnv p (VEnv.eraseEnv (ρ raw₂)) := by
             exact hchoose_view.trans hViewEq.symm
-          show raw₁ = raw₂
+          change raw₁ = raw₂
           funext j
           by_cases hj_lt : j < st.nextId
           · by_cases hj_mem : (⟨j, hj_lt⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0
             · -- j ∈ obsParents: use hρ_readers
               have hj_obs : j ∈ obs := by
                 rw [st.mem_toStruct_obsParents_iff nd0 hj_lt] at hj_mem
-                simp [hdesc0, CompiledNode.obsParents] at hj_mem; exact hj_mem
+                simp only [CompiledNode.obsParents, hdesc0, ne_eq] at hj_mem
+                exact hj_mem
               exact hρ_readers p raw₁ raw₂
                 (fun i hi => by
                   show raw₁ i = raw₂ i
@@ -1084,7 +1085,8 @@ private theorem pmfFoldBridge
                       intro hm
                       have hi_obs : i ∈ obs := by
                         rw [st.mem_toStruct_obsParents_iff nd0 hilt] at hm
-                        simp [hdesc0, CompiledNode.obsParents] at hm; exact hm
+                        simp only [CompiledNode.obsParents, hdesc0, ne_eq] at hm
+                        exact hm
                       exact absurd (hndeps i (Finset.mem_union_right _ hi_obs)) (by omega)
                     simp [raw₁, raw₂, st.rawEnvOfCfg_not_mem _ i hilt hmem]
                   · simp [raw₁, raw₂, st.rawEnvOfCfg_ge_nextId _ i hilt])
@@ -1092,25 +1094,32 @@ private theorem pmfFoldBridge
                   show raw₁ i = raw₂ i
                   have hilt : i < st.nextId := by
                     calc i < st₀.nextId := hi_lt
-                    _ < st₁.nextId := by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+                    _ < st₁.nextId := by simp [st₁, stNode, MAIDCompileState.addVar,
+                        MAIDCompileState.addNode]
                     _ ≤ st.nextId := MAIDCompileState.ofProg_nextId_le B k hl.2 hd ρ' st₁
                   have hmem : (⟨i, hilt⟩ : Fin st.nextId) ∉ st.toStruct.obsParents nd0 := by
                     intro hm; exact hi_not (by
                       rw [st.mem_toStruct_obsParents_iff nd0 hilt] at hm
-                      simp [hdesc0, CompiledNode.obsParents] at hm; exact hm)
+                      simp only [hdesc0, CompiledNode.obsParents] at hm
+                      exact hm)
                   simp [raw₁, raw₂, st.rawEnvOfCfg_not_mem _ i hilt hmem])
                 (fun i hi_vd hi_lt => by
                   have hilt : i < st.nextId := by
                     calc i < st₀.nextId := hi_lt
-                    _ < st₁.nextId := by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+                    _ < st₁.nextId := by simp [st₁, stNode, MAIDCompileState.addVar,
+                        MAIDCompileState.addNode]
                     _ ≤ st.nextId := MAIDCompileState.ofProg_nextId_le B k hl.2 hd ρ' st₁
                   have hi_obs : (⟨i, hilt⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0 := by
                     rw [st.mem_toStruct_obsParents_iff nd0 hilt]
-                    simp [hdesc0, CompiledNode.obsParents]; exact hi_vd
+                    simp only [hdesc0, CompiledNode.obsParents]
+                    exact hi_vd
                   have hdescI : st.descAt ⟨i, hilt⟩ = st₀.descAt ⟨i, hi_lt⟩ := by
-                    -- st → st₁ (ofProg_descAt_old), st₁ → stNode (addVar preserves), stNode → st₀ (addNode_descAt_old)
+                    -- st → st₁ (ofProg_descAt_old), st₁ → stNode (addVar preserves),
+                    --   stNode → st₀ (addNode_descAt_old)
                     have h1 := MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ i
-                      (show i < st₁.nextId by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]; omega)
+                      (show i < st₁.nextId by
+                        simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+                        omega)
                     rw [h1]; exact MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨i, hi_lt⟩
                   exact rawEnvOfCfg_rawsMatchDescAt _ _ hilt hi_lt hi_obs hdescI)
                 hview_eq j hj_obs
@@ -1121,13 +1130,16 @@ private theorem pmfFoldBridge
             simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, unify both sides
         rw [hcfg_eq]
-        -- Last sorry: cast cancel. Both sides are propositionally equal
-        -- (the PMF cast and profile .tail cancel after hdesc0 subst).
-        -- Blocked by toStruct.Val opacity: pol's type depends on
-        -- st.descAt nd0 through toStruct.Val, which prevents generalize+subst.
-        -- The fix requires either redefining toStruct without `by exact` or
-        -- adding a transport lemma that handles this specific pattern.
-        sorry
+        -- Use pmf_descAt_cast_bind_cancel after establishing profile equality.
+        have hprofile : reflectPolicyAux B k hl.2 hd ρ' st₁ pol =
+            ProgramBehavioralProfilePMF.tail
+              (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol) := by
+          sorry
+        rw [hprofile]
+        -- After rw, LHS profile = .tail(reflectPolicyAux(.commit...)).
+        -- RHS profile = .tail(fun i => ...) which is definitionally equal.
+        -- Only the PMF cast (castValType/▸) remains. Try rfl:
+        rfl
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
