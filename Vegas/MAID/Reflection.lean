@@ -405,7 +405,39 @@ private theorem pmfFoldBridge
       intro who raw₁ raw₂ hout hnot_vd hview i hi
       have hview_old := Vegas.projectViewEnv_cons_eq
         (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) hview
-      sorry
+      -- viewDeps: st₁.viewDeps who ((x,.pub b)::Γ') = st₀.viewDeps who Γ'
+      -- (no new nodes, pubCtxDeps ⊆ viewDeps; proven before)
+      -- Apply hρ_readers with same raws + viewDeps equality
+      apply hρ_readers who raw₁ raw₂
+      · -- hout: st₀.nextId = st₁.nextId (addVar preserves nextId)
+        intro j hj; exact hout j (by
+          simp [st₁, MAIDCompileState.addVar] at hj ⊢; exact hj)
+      · -- hnot_vd: viewDeps same
+        intro j hj hjlt
+        apply hnot_vd j _ (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+        -- viewDeps: st₁.viewDeps who Γ₁ = st₀.viewDeps who Γ'
+        have hVD : st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ' := by
+          unfold MAIDCompileState.viewDeps
+          simp only [viewVCtx, canSee, ite_true, List.map_cons, MAIDCompileState.depsOfVars]
+          rw [st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.pubCtxDeps Γ')
+              (st₀.depsOfVars_lt _) hxvars,
+            st₀.depsOfVars_addVar_eq_of_not_mem x (.pub b) _ _ _
+              (fun hmem => hxΓ (viewVCtx_map_fst_sub hmem))]
+          exact Finset.union_eq_right.mpr (st₀.depsOfVars_subset_of_subset _ _
+            erasePubVCtx_map_fst_sub_viewVCtx)
+        rw [hVD] at hi; exact fun hmem => hj (hVD ▸ hmem)
+      · exact hview_old
+      · -- i ∈ st₀.viewDeps from i ∈ st₁.viewDeps
+        have hVD : st₁.viewDeps who ((x, .pub b) :: Γ') = st₀.viewDeps who Γ' := by
+          unfold MAIDCompileState.viewDeps
+          simp only [viewVCtx, canSee, ite_true, List.map_cons, MAIDCompileState.depsOfVars]
+          rw [st₀.lookupDeps_addVar_eq_self_of_fresh x (.pub b) (st₀.pubCtxDeps Γ')
+              (st₀.depsOfVars_lt _) hxvars,
+            st₀.depsOfVars_addVar_eq_of_not_mem x (.pub b) _ _ _
+              (fun hmem => hxΓ (viewVCtx_map_fst_sub hmem))]
+          exact Finset.union_eq_right.mpr (st₀.depsOfVars_subset_of_subset _ _
+            erasePubVCtx_map_fst_sub_viewVCtx)
+        rwa [hVD] at hi
     exact ih hl hd hfresh.2 ρ' st₁
       (st₀.VarsSubCtx_letExpr_step hvars x hxΓ) hρ'_deps hρ'_var hρ'_readers
       (List.nodup_cons.mpr ⟨hxΓ, hnodup⟩) pol a₀
