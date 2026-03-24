@@ -805,14 +805,12 @@ private theorem pmfFoldBridge
               exact hρ_readers p raw₁ raw₂
                 (fun i hi => by
                   show raw₁ i = raw₂ i
-                  sorry) -- raw₁ i = raw₂ i for i ≥ st₀.nextId: both none
-                (fun i hi hi_lt => by
-                  show raw₁ i = raw₂ i
-                  sorry) -- raw₁ i = raw₂ i for i ∉ obs, i < st₀.nextId: both none
+                  sorry)
+                (fun i hi_not hi_lt => by sorry)
                 hview_eq j hj_obs
             · -- j ∉ obsParents: both rawEnvOfCfg give none at j
               show raw₁ j = raw₂ j
-              sorry -- both rawEnvOfCfg give none at j ∉ obsParents
+              sorry
           · show raw₁ j = raw₂ j
             simp only [raw₁, raw₂, MAIDCompileState.rawEnvOfCfg, hj_lt, dite_false]
         -- With cfg equality, the pol values match. Cast cancel for the rest.
