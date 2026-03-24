@@ -747,7 +747,68 @@ theorem computeReveals_parents_visible (B : MAIDBackend Player L)
           (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
             .decision q ∧ q = p) := by
   induction p generalizing st₀ rs₀ with
-  | ret => sorry
+  | ret payoffs =>
+      simp only [computeReveals, MAIDCompileState.ofProg]
+      letI := B.fintypePlayer
+      suffices ∀ (players : List Player) (deps : Finset Nat)
+          (ufn : Player → RawNodeEnv L → ℝ)
+          (st : MAIDCompileState Player L B) (rs : RevealState)
+          (hdeps : ∀ d ∈ deps, d < st.nextId) (hcon : RevealConsistent st rs)
+          (hp : ∀ (d : Fin st.nextId) (pw : Player),
+            (st.descAt d).kind = .decision pw →
+            ∀ (i : Nat) (hi : i ∈ (st.descAt d).parents),
+              rs.revealTime i ≤ ↑d.val ∨ (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind = .decision pw),
+          ∀ (d : Fin (st.addUtilityNodes deps hdeps ufn players).nextId) (p : Player),
+            ((st.addUtilityNodes deps hdeps ufn players).descAt d).kind = .decision p →
+            ∀ (i : Nat) (hi : i ∈ ((st.addUtilityNodes deps hdeps ufn players).descAt d).parents),
+              (players.foldl (fun rs' _ => rs'.addPublicNode) rs).revealTime i ≤ ↑d.val ∨
+                ∃ q, ((st.addUtilityNodes deps hdeps ufn players).descAt
+                  ⟨i, Nat.lt_trans ((st.addUtilityNodes deps hdeps ufn players).descAt_parent_lt d hi) d.2⟩).kind =
+                    .decision q ∧ q = p by
+        exact this _ _ _ st₀ rs₀ _ hcon₀ hprev
+      intro players
+      induction players with
+      | nil => intro _ _ st rs _ _ hp; simpa [MAIDCompileState.addUtilityNodes]
+      | cons pw rest ih =>
+          intro deps ufn st rs hdeps hcon hp
+          simp only [MAIDCompileState.addUtilityNodes, List.foldl_cons]
+          let und : CompiledNode Player L B := .utility pw deps (ufn pw)
+          have hund_deps : ∀ d ∈ und.parents ∪ und.obsParents, d < st.nextId := by
+            intro d hd'; simp [und, CompiledNode.parents, CompiledNode.obsParents] at hd'
+            exact hdeps d hd'
+          exact ih deps ufn _ _ (fun d hd => Nat.lt_trans (hdeps d hd) (Nat.lt_succ_self _))
+            (sorry : RevealConsistent _ _) -- RC for addNode(.utility)+addPublicNode
+            (by -- hp for intermediate: old decisions preserved
+                intro d' pw' hk' i hi'
+                have hbound : d'.val ≤ st.nextId := by
+                  have := d'.isLt; simp [MAIDCompileState.addNode] at this; omega
+                have hk_inner : ((st.addNode und hund_deps).2.descAt ⟨d'.val, by
+                    simp [MAIDCompileState.addNode]; omega⟩).kind = .decision pw' := hk'
+                rcases Nat.lt_or_eq_of_le hbound with hlt | heq
+                · -- old decision node
+                  rw [MAIDCompileState.addNode_descAt_old st und hund_deps ⟨d'.val, hlt⟩] at hk_inner
+                  have hi_inner : i ∈ (st.descAt ⟨d'.val, hlt⟩).parents := by
+                    have := hi'; rw [MAIDCompileState.addNode_descAt_old st und hund_deps ⟨d'.val, hlt⟩] at this
+                    exact this
+                  rcases hp ⟨d'.val, hlt⟩ pw' hk_inner i hi_inner with h | h
+                  · left
+                    simp only [RevealState.addPublicNode]
+                    rw [if_neg (show i ≠ rs.nextId from by
+                      rw [hcon.sync]
+                      have := st.descAt_parent_lt ⟨d'.val, hlt⟩ hi_inner
+                      omega)]
+                    exact h
+                  · right
+                    show ((st.addNode und hund_deps).2.descAt ⟨i, _⟩).kind = _
+                    rw [MAIDCompileState.addNode_descAt_old st und hund_deps
+                      ⟨i, by have := st.descAt_parent_lt ⟨d'.val, hlt⟩ hi_inner; omega⟩]
+                    exact h
+                · -- new utility node: not decision
+                  exfalso
+                  rw [show (⟨d'.val, _⟩ : Fin _) = ⟨st.nextId, by simp [MAIDCompileState.addNode]⟩
+                      from Fin.ext heq] at hk_inner
+                  rw [MAIDCompileState.addNode_descAt_new st und hund_deps] at hk_inner
+                  simp [und, CompiledNode.kind] at hk_inner)
   | letExpr x e k ih =>
       simp only [computeReveals, MAIDCompileState.ofProg]
       -- letExpr: no new nodes, addVar doesn't change descAt. IH with same hprev.
