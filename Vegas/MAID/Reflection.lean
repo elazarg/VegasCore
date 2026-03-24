@@ -1122,8 +1122,10 @@ private theorem pmfFoldBridge
         -- With cfg equality, unify both sides
         rw [hcfg_eq]
         -- Last sorry: cast cancel + profile equality.
-        -- Both are clearly true but fighting Lean's definitional reduction through
-        -- tactic-defined toStruct.Val and reflectPolicyAux.
+        -- The cast part needs toStruct.Val to be transparent for generalize+subst.
+        -- simp [toStruct_Val] reduces the goal but not all hypothesis types,
+        -- so generalize fails. Needs a specialized cast_cancel lemma or
+        -- a restructured pmf_descAt_cast_bind_cancel that works with toStruct.Val.
         sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
