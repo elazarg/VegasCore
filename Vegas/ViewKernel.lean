@@ -132,11 +132,32 @@ theorem projectViewEnv_cons_eq
         (VEnv.eraseEnv env₂) := by
   -- Step 1: projectViewEnv eq → ObsEq for extended context
   -- (converse of projectViewEnv_eq_of_obsEq — needs viewVCtx/HasVar infrastructure)
+  -- nodup of erased context names (from hnodup + eraseVCtx preserves names)
+  have hnodup_e : ((eraseVCtx ((x, τ) :: Γ)).map Prod.fst).Nodup := by
+    rwa [eraseVCtx_map_fst]
   have hobs_ext : ObsEq (L := L) (Γ := (x, τ) :: Γ) who
       (VEnv.eraseEnv (VEnv.cons v₁ env₁)) (VEnv.eraseEnv (VEnv.cons v₂ env₂)) := by
-    -- Uses HasVar uniqueness (hnodup) + eraseVCtx_map_fst to relate
-    -- the HasVar proof from projectViewEnv to the one from ObsEq.
-    sorry
+    intro y' σ₀ hy' hvis'
+    -- y' is visible → construct HasVar in eraseVCtx(viewVCtx) via Classical
+    have hmem : y' ∈ ((x, τ) :: Γ).map Prod.fst :=
+      mem_visibleVars_map_fst hvis'
+    have hmem_view : y' ∈ (viewVCtx who ((x, τ) :: Γ)).map Prod.fst := by
+      sorry -- mem_viewVCtx_map_fst_of_visible (not in scope)
+    -- From name membership, get (y', σ_v) ∈ viewVCtx
+    rcases List.mem_map.mp hmem_view with ⟨⟨_, σ_v⟩, hmem_v, hfst⟩
+    simp at hfst; subst hfst
+    -- Construct HasVar in eraseVCtx(viewVCtx) using classical choice
+    have h_view : HasVar (eraseVCtx (viewVCtx who ((x, τ) :: Γ))) y' σ_v.base :=
+      (VHasVar.ofMem hmem_v).toErased
+    -- Extract from projectViewEnv equality
+    have h_pt := congr_fun (congr_fun (congr_fun h y') σ_v.base) h_view
+    -- dsimp to expose the Env lookup
+    dsimp [projectViewEnv] at h_pt
+    -- h_pt gives equality at a specific HasVar proof from toVHasVar chain.
+    -- By HasVar.type_unique (nodup): σ₀ = the type from the chain.
+    -- By HasVar.eq_of_nodup (nodup): the HasVar proofs are equal.
+    -- So env values agree at hy'.
+    sorry -- final HasVar proof matching via eq_of_nodup
   -- Step 2: ObsEq for (x,τ)::Γ restricted to old vars → ObsEq for Γ
   have hobs : ObsEq (L := L) (Γ := Γ) who (VEnv.eraseEnv env₁) (VEnv.eraseEnv env₂) := by
     intro y' σ₀ hy' hvis'

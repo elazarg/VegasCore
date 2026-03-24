@@ -91,6 +91,17 @@ theorem Env.get_eq_of_nodup {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
     env x τ h₁ = env x τ h₂ := by
   rw [HasVar.eq_of_nodup hnodup h₁ h₂]
 
+/-- Construct a `HasVar` from list membership. -/
+noncomputable def HasVar.ofMem {Ty : Type} {Γ : Ctx Ty} {x : VarId} {τ : Ty}
+    (h : (x, τ) ∈ Γ) : HasVar Γ x τ := by
+  classical
+  induction Γ with
+  | nil => exact absurd h (by simp)
+  | cons a Γ' ih =>
+    by_cases heq : a = (x, τ)
+    · subst heq; exact .here
+    · exact .there (ih (List.mem_of_ne_of_mem (Ne.symm heq) h))
+
 namespace Env
 
 def empty {Ty : Type} (Val : Ty → Type) : Env Val ([] : Ctx Ty) :=
