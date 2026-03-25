@@ -94,8 +94,18 @@ theorem MAIDCompileState.lookupDeps_addNode
   simp [MAIDCompileState.lookupDeps, MAIDCompileState.addNode]
 
 -- ────────────────────────────────────────────────
--- depsOfVars under addVar
+-- depsOfVars under addNode / addVar
 -- ────────────────────────────────────────────────
+
+@[simp] theorem MAIDCompileState.depsOfVars_addNode_eq
+    (st : MAIDCompileState Player L B) (nd : CompiledNode Player L B)
+    (hdeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    (xs : List VarId) :
+    (st.addNode nd hdeps).2.depsOfVars xs = st.depsOfVars xs := by
+  induction xs with
+  | nil => rfl
+  | cons y ys ih =>
+    simp only [depsOfVars, addNode, lookupDeps, lookupDepsAux]; congr 1
 
 theorem MAIDCompileState.depsOfVars_addVar_eq_of_fresh
     (st : MAIDCompileState Player L B)
