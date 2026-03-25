@@ -666,12 +666,11 @@ private theorem pmfFoldBridgeV
         have := (toStruct_kind st nd0).symm.trans hk
         rw [hkind_decision] at this; exact (NodeKind.decision.inj this).symm
       subst hp
-      -- The commit kernel matching requires navigating cast layers through
-      -- headKernel/dif_pos/Eq.mpr. All mathematical content is proven:
-      -- hcfg (Classical.choose = projCfg via rawEnvOfCfg_injective + hρ_readers)
-      -- hprofile (tail = reflectPolicyAuxV via split_ifs + cast_eq)
-      -- hViewEq (obs-config view equivalence)
-      -- The remaining gap is purely Lean 4 cast assembly.
+      -- Commit kernel matching.
+      -- Key proven facts: hViewEq, hρ_readers (for hcfg), hprofile (tail eq).
+      -- Approach: define continuation K over S.Val nd0, cast to L.Val b once
+      -- at the boundary, rewrite both sides toward (pol p ...).bind K.
+      -- See ephemeral/EqRecUniverseMismatch.md for analysis.
       sorry
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
