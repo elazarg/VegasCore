@@ -1159,11 +1159,20 @@ private theorem pmfFoldBridge
             ProgramBehavioralStrategyPMF.tailOwn]
           split_ifs with h <;> subst_vars <;>
             simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl
-        -- Handle cast + profile mismatch via pmf_bind_castValType
-        -- with toStruct_Val simp for the clean goal, plus sorry for the
-        -- expanded-profile recursive sub-goal from convert rfl.
+        -- Handle cast + profile mismatch via pmf_bind_castValType.
+        -- After rw [hprofile] + simp [toStruct_Val], convert ... using 5
+        -- produces sub-goals: type equalities, profile, and Eq.rec cast.
         rw [hprofile]
-        sorry
+        simp only [toStruct_Val]
+        convert pmf_bind_castValType hdesc0 _
+          (fun v => nativeOutcomeDistPMF B k hd
+            (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
+            (id + 1) ((rawOfTAssign st a₀).extend id ⟨b, v⟩)) using 5
+        -- Sub-goal 1: type equality (st.descAt nd0).valType = L.Val b
+        · simp [hdesc0]
+        -- Sub-goal 2: Eq.rec universe mismatch ⋯ ▸ pol p ... = hdesc0 ▸ pol p ...
+        -- Both transport pol p via hdesc0 but with Eq.rec at different universe levels.
+        · sorry
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)

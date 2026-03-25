@@ -647,6 +647,30 @@ theorem eq_on_ctxDeps_rawOfTAssign
     simpa using (List.mem_filter.mp hk').2
   · intro i hi; simp [hi]
 
+theorem taggedOfVal_injective {c : CompiledNode Player L B}
+    {v₁ v₂ : CompiledNode.valType c}
+    (h : MAIDCompileState.taggedOfVal c v₁ = MAIDCompileState.taggedOfVal c v₂) :
+    v₁ = v₂ := by
+  cases c with
+  | chance τ => simp only [MAIDCompileState.taggedOfVal, Option.some.injEq, Sigma.mk.injEq,
+    heq_eq_eq, true_and] at h; exact h
+  | decision τ => simp only [MAIDCompileState.taggedOfVal, Option.some.injEq, Sigma.mk.injEq,
+    heq_eq_eq, true_and] at h; exact h
+  | utility => exact @Subsingleton.elim PUnit instSubsingletonPUnit _ _
+
+theorem rawEnvOfCfg_injective
+    (st : MAIDCompileState Player L B)
+    {ps : Finset (Fin st.nextId)}
+    (cfg₁ cfg₂ : Cfg (fp := B.fintypePlayer) st.toStruct ps)
+    (h : st.rawEnvOfCfg cfg₁ = st.rawEnvOfCfg cfg₂) :
+    cfg₁ = cfg₂ := by
+  letI := B.fintypePlayer
+  funext ⟨nd, hmem⟩
+  have hi := nd.isLt
+  have := congr_fun h nd.val
+  simp only [MAIDCompileState.rawEnvOfCfg, hi, dite_true, hmem] at this
+  exact taggedOfVal_injective this
+
 /-- Cast between CompiledNode value types along a description equality. -/
 def castValType {c c' : CompiledNode Player L B}
     (hc : c = c') (v : CompiledNode.valType c) : CompiledNode.valType c' :=
