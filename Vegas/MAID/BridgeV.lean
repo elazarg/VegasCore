@@ -669,18 +669,10 @@ private theorem pmfFoldBridgeV
         ⟨projCfg a₀ (st.toStruct.obsParents nd0), hViewEq⟩
       have hcfg : Classical.choose h_ex = projCfg a₀ (st.toStruct.obsParents nd0) := by
         sorry -- rawEnvOfCfg_injective + ViewDeterminesRaw
-      rw [hprofile]
-      simp only [dif_pos trivial, eq_mpr_eq_cast, eq_mp_eq_cast, cast_cast, cast_eq,
-        ProgramBehavioralStrategyPMF.headKernel]
-      -- Normalize Eq.rec universe mismatch via eqRec_eq_cast
-      simp only [eqRec_eq_cast, cast_cast]
-      congr 1
-      · -- Distribution: normalize cast + apply hcfg
-        simp only [h_ex, hcfg, dif_pos, cast_eq]; rfl
-      · -- Continuation: profile + ρ' let-binding match
-        funext v; congr 1
-        · exact hprofile
-        · rfl
+      -- Need: rw [hcfg_eq] where hcfg_eq rewrites Classical.choose from
+      -- reflectPolicyAuxV's internal kernel, then convert + eqRec_eq_cast.
+      -- The hcfg sorry below must prove about the SAME ∃ that reflectPolicyAuxV uses.
+      sorry
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
   | reveal y who_r x_r hx k ih =>
