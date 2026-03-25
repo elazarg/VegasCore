@@ -950,11 +950,12 @@ private theorem cast_PMF_pure {α β : Type} (h₁ : PMF α = PMF β) (h₂ : α
 
 /-! ## Pure bridge -/
 
-/-- Round-trip: compile pure → MAID pure → pureToPolicy → reflect = toBehavioralPMF.
-The commit case kernel matching requires showing cast cancellation between
-`hval ▸ PMF.pure (compiled_action)` and `PMF.pure (κ view)`, plus policy
-extensionality for the tail. -/
-private theorem roundtrip_auxV
+/-- Outcome-distribution-level round-trip: evaluating a reflected compiled-pure
+policy gives the same outcome distribution as pure evaluation.
+
+Unlike a profile-level round-trip, this avoids comparing kernels at unreachable
+views (where `reflectPolicyAuxV` returns a default value). -/
+private theorem outcomeDistRoundtripV
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) :
@@ -963,99 +964,43 @@ private theorem roundtrip_auxV
       (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
       (st₀ : MAIDCompileState Player L B)
       (π : ProgramPureProfile (P := Player) (L := L) p)
-      (pol : MAID.Policy (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct),
+      (pol : MAID.Policy (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct)
+      (env : VEnv (Player := Player) L Γ),
     (∀ (who : Player) (I : MAID.Infoset (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct who),
       I.1.1.val ≥ st₀.nextId →
       pol who I =
         MAID.pureToPolicy (compilePureProfileAuxV B p hl hd ρ st₀ π) who I) →
-    reflectPolicyAuxV B p hl hd ρ st₀ pol =
-      ProgramPureProfile.toBehavioralPMF p π := by
+    (∀ raw, ρ raw = env) →
+    outcomeDistBehavioralPMF p hd
+      (reflectPolicyAuxV B p hl hd ρ st₀ pol) env =
+      (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd) := by
   letI := B.fintypePlayer
   induction p with
-  | ret => intros; funext i; exact rfl
+  | ret =>
+    intro hl hd ρ st₀ π pol env hpol hρ
+    simp [outcomeDistBehavioralPMF, outcomeDistPure, FDist.toPMF_pure]
   | letExpr x e k ih =>
-    intro hl hd ρ st π pol hpol; funext w
-    change ProgramBehavioralStrategyPMF.letExpr _ = ProgramBehavioralStrategyPMF.letExpr _
-    exact congrArg _ (congr_fun (ih hl hd _ _ π pol hpol) w)
+    intro hl hd ρ st π pol env hpol hρ
+    simp only [outcomeDistBehavioralPMF, outcomeDistPure, reflectPolicyAuxV,
+      ProgramPureProfile.toBehavioralPMF]
+    exact ih hl hd _ _ π pol _ hpol (fun raw => by simp [hρ raw])
   | sample x τ m D' k ih =>
-    intro hl hd ρ st π pol hpol; funext w
-    change ProgramBehavioralStrategyPMF.sample _ = ProgramBehavioralStrategyPMF.sample _
-    exact congrArg _ (congr_fun (ih hl hd.2 _ _ π pol (fun who I hge => hpol who I
-      (le_trans (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode]) hge))) w)
-  | reveal y who x hx k ih =>
-    intro hl hd ρ st π pol hpol; funext w
-    change ProgramBehavioralStrategyPMF.reveal _ = ProgramBehavioralStrategyPMF.reveal _
-    exact congrArg _ (congr_fun (ih hl hd _ _ π pol hpol) w)
+    intro hl hd ρ st π pol env hpol hρ
+    simp only [outcomeDistBehavioralPMF, outcomeDistPure]
+    rw [FDist.toPMF_bind (hd := hd.1 env) (hf := fun v => outcomeDistPure_totalWeight_eq_one hd.2)]
+    congr 1; funext v
+    -- ρ' reads from raw at st.nextId, so hρ doesn't propagate directly
+    sorry
+  | reveal y who_r x_r hx k ih =>
+    intro hl hd ρ st π pol env hpol hρ
+    simp only [outcomeDistBehavioralPMF, outcomeDistPure, reflectPolicyAuxV]
+    exact ih hl hd _ _ π pol _ hpol (fun raw => by simp [hρ raw])
   | commit x who_commit R k ih =>
-    intro hl hd ρ st₀ π pol hpol
+    intro hl hd ρ st₀ π pol env hpol hρ
     rename_i Γ' b
-    -- Set up intermediate compile state (shared between owner/non-owner)
-    let nd : CompiledNode Player L B :=
-      .decision b who_commit (allValues B b) (allValues_ne_nil B b)
-        (allValues_nodup B b) (st₀.viewDeps who_commit Γ')
-    have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
-      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
-        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st₀.depsOfVars_lt _ d h
-    let st₁ := (st₀.addNode nd hndeps).2.addVar x (.hidden who_commit b) ({st₀.nextId}) (by
-      intro d hd₁; simp only [Finset.mem_singleton] at hd₁; subst hd₁; exact Nat.lt_succ_self _)
-    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .hidden who_commit b) :: Γ') :=
-      fun raw => VEnv.cons (τ := .hidden who_commit b)
-        (MAIDCompileState.readVal (B := B) raw b st₀.nextId) (ρ raw)
-    have hst₁_le : ∀ (who : Player)
-        (I : MAID.Infoset (MAIDCompileState.ofProg B k hl.2 hd ρ' st₁).toStruct who),
-        I.1.1.val ≥ st₁.nextId →
-        pol who I = MAID.pureToPolicy (compilePureProfileAuxV B k hl.2 hd ρ' st₁
-          (ProgramPureProfile.tail π)) who I := by
-      intro who ⟨d, cfg⟩ hge
-      rw [hpol who ⟨d, cfg⟩ (le_trans (by simp [st₁, MAIDCompileState.addVar,
-        MAIDCompileState.addNode]) hge)]
-      simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy]; congr 1
-      simp only [compilePureProfileAuxV]
-      have hne : d.1.val ≠ st₀.nextId := by
-        have : st₁.nextId = st₀.nextId + 1 := by
-          simp [st₁, MAIDCompileState.addVar, MAIDCompileState.addNode]
-        exact Ne.symm (Nat.ne_of_lt hge)
-      simp only [toStruct_kind, hne, ↓reduceDIte]
-      exact ((fun a ↦ a) ∘ fun a ↦ a) rfl
-    funext i
-    by_cases h_eq : who_commit = i
-    · subst h_eq
-      simp only [reflectPolicyAuxV, ProgramPureProfile.toBehavioralPMF, dif_pos rfl,
-        dif_pos trivial]
-      rw [ProgramBehavioralStrategyPMF.commitOwn.injEq]; constructor
-      · -- Kernel equality
-        ext1; funext view
-        simp only [ProgramBehavioralKernelPMF.run_ofPure]
-        split_ifs with h_ex
-        · -- then: hpol + compilePureProfileAuxV unfolding + cast cancellation
-          have h_choose := Classical.choose_spec h_ex
-          rw [hpol who_commit ⟨⟨⟨st₀.nextId, _⟩, _⟩, Classical.choose h_ex⟩ le_rfl]
-          simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy,
-            compilePureProfileAuxV, dif_pos rfl,
-            CompiledNode.valType, eqRec_eq_cast, eq_mpr_eq_cast, id]
-          conv_rhs => rw [← h_choose]
-          have hid_lt : st₀.nextId <
-              (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).nextId :=
-            Nat.lt_of_lt_of_le (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])
-              (MAIDCompileState.ofProg_nextId_le B k hl.2 hd _ _)
-          have hval : CompiledNode.valType
-              ((MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).descAt
-                ⟨st₀.nextId, hid_lt⟩) = L.Val b := by
-            change CompiledNode.valType
-              ((MAIDCompileState.ofProg B k hl.2 hd _ _).descAt ⟨st₀.nextId, _⟩) = _
-            rw [MAIDCompileState.ofProg_descAt_old B k hl.2 hd _ _
-              st₀.nextId (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])]
-            simp [MAIDCompileState.addVar, MAIDCompileState.addNode_descAt_new]; rfl
-          rw [cast_PMF_pure _ hval, cast_cast, cast_eq]
-          exact PMF.ext (congrFun rfl)
-        · -- else: contradiction — every view is reachable
-          sorry
-      · -- Tail: by IH + policy extensionality
-        exact congr_fun (ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol hst₁_le) who_commit
-    · -- Non-owner case
-      simp only [reflectPolicyAuxV, ProgramPureProfile.toBehavioralPMF, dif_neg h_eq]
-      congr 1
-      exact congr_fun (ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol hst₁_le) i
+    simp only [outcomeDistBehavioralPMF, outcomeDistPure]
+    -- ρ' reads from raw at st₀.nextId, so hρ doesn't propagate
+    sorry
 
 theorem vegasMAID_pure_bridge
     (B : MAIDBackend Player L) {Γ : VCtx Player L}
@@ -1074,17 +1019,13 @@ theorem vegasMAID_pure_bridge
     (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd) := by
   intro S sem
   letI := B.fintypePlayer
-  -- Step 1: Use reverse bridge
+  -- Step 1: Use reverse bridge to get outcomeDistBehavioralPMF
   have hrev := vegasMAID_reverse_bridge B p env hl hd hfresh hpub hnodup
     (pureToPolicy (compilePureProfileV B p env hl hd hfresh hpub π))
   rw [hrev]
-  -- Step 2: Round-trip
-  have hroundtrip := roundtrip_auxV B p hl hd (fun _ => env) .empty π
+  -- Step 2: Outcome-distribution-level round-trip
+  exact outcomeDistRoundtripV B p hl hd (fun _ => env) .empty π
     (pureToPolicy (compilePureProfileV B p env hl hd hfresh hpub π))
-    (fun _ _ _ => rfl)
-  simp only [reflectPolicyV, compilePureProfileV] at hroundtrip ⊢
-  rw [hroundtrip]
-  -- Step 3: toBehavioralPMF → outcomeDistPure.toPMF
-  exact outcomeDistBehavioralPMF_toBehavioralPMF_eq p π env hd
+    env (fun _ _ _ => rfl) (fun _ => rfl)
 
 end Vegas
