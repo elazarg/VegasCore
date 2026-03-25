@@ -275,7 +275,7 @@ private theorem pmf_descAt_cast_bind_cancel
 
 /-- Variant: starting from a PMF over the struct Val type, binding with
 `f ∘ castValType` equals transporting the PMF then binding directly. -/
-private theorem pmf_bind_castValType [Fintype P]
+private theorem pmf_bind_castValType
     {st : MAIDCompileState P L B} {nd : Fin st.nextId}
     {c : CompiledNode P L B} (hdesc : st.descAt nd = c)
     (d : PMF (CompiledNode.valType (st.descAt nd)))
@@ -490,14 +490,14 @@ private theorem pmfFoldBridge
       apply hρ_readers who raw₁ raw₂
       · -- hout: st₀.nextId = st₁.nextId (addVar preserves nextId)
         intro j hj; exact hout j (by
-          simp [st₁, MAIDCompileState.addVar] at hj ⊢; exact hj)
+          simp only [MAIDCompileState.addVar, st₁] at hj ⊢; exact hj)
       · -- hnot_vd
         intro j hj hjlt
         exact hnot_vd j (fun hmem => hj (hVD ▸ hmem))
-          (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+          (by simp only [MAIDCompileState.addVar, st₁]; exact hjlt)
       · -- htyped
         intro j hj hjlt
-        exact htyped j (hVD ▸ hj) (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+        exact htyped j (hVD ▸ hj) (by simp only [st₁, MAIDCompileState.addVar]; exact hjlt)
       · exact hview_old
       · rwa [hVD] at hi
     exact ih hl hd hfresh.2 ρ' st₁
@@ -649,8 +649,11 @@ private theorem pmfFoldBridge
           have hVD : st₁.viewDeps who ((x, τ) :: Γ') = insert id (st₀.viewDeps who Γ') := by
             unfold MAIDCompileState.viewDeps
             simp only [viewVCtx, hsee, ite_true, List.map_cons, MAIDCompileState.depsOfVars]
-            rw [stNode.lookupDeps_addVar_eq_self_of_fresh x τ {id}
-                (by intro d hd; simp at hd; subst hd; exact Nat.lt_succ_self _) hxvars_sn,
+            rw [stNode.lookupDeps_addVar_eq_self_of_fresh x τ {id} (by
+                intro d hd
+                simp only [Finset.mem_singleton] at hd
+                subst hd
+                exact Nat.lt_succ_self _) hxvars_sn,
               stNode.depsOfVars_addVar_eq_of_not_mem x τ _ _ _ hx_not_view,
               Finset.singleton_union]
             congr 1
@@ -697,7 +700,9 @@ private theorem pmfFoldBridge
           have hVD : st₁.viewDeps who ((x, τ) :: Γ') = st₀.viewDeps who Γ' := by
             unfold MAIDCompileState.viewDeps
             have hcf : canSee who τ = false := by
-              cases h : canSee who τ; rfl; exact absurd h hsee
+              cases h : canSee who τ
+              · rfl
+              · exact absurd h hsee
             simp only [viewVCtx, hcf, ite_false, Bool.false_eq_true]
             rw [stNode.depsOfVars_addVar_eq_of_not_mem x τ _ _ _ hx_not_view]
             induction (viewVCtx who Γ').map Prod.fst with
@@ -726,8 +731,11 @@ private theorem pmfFoldBridge
           cases hz with
           | here => -- x has type .hidden who_z bz; lookupDeps x = {id}; ρ' reads via readVal
             exact ⟨id, by rw [hst₁_id]; omega,
-              stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who_z bz) {id}
-                (by intro d hd'; simp at hd'; subst hd'; exact Nat.lt_succ_self _) hxvars,
+              stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who_z bz) {id} (by
+                intro d hd'
+                simp only [Finset.mem_singleton] at hd'
+                subst hd'
+                exact Nat.lt_succ_self _) hxvars,
               by have := MAIDCompileState.addNode_descAt_new st₀ nd hndeps
                  simp only [show st₁.descAt ⟨id, _⟩ = nd from this, nd]; rfl,
               fun _ => rfl⟩
@@ -1169,16 +1177,16 @@ private theorem pmfFoldBridge
             (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
             (id + 1) ((rawOfTAssign st a₀).extend id ⟨b, v⟩)) using 5
         -- Sub-goal 1: two ▸ transports of pol via hdesc0.
-        -- Make nd a free variable so subst hdesc0 eliminates the cast.
-        -- Fix: replace `let nd := ...` with `generalize ... = nd` at line 816,
-        -- then `subst hdesc0; rfl` works here. Requires fixing downstream simpa [nd, ...].
-        · sorry
+        -- Normalize Eq.rec to cast, then rfl (nd0 = ⟨st₀.nextId, _⟩ by defn).
+        · change _ = _
+          simp only [CompiledNode.valType, eqRec_eq_cast]
+          rfl
         -- Sub-goal 2: profile (expanded lambda = opaque reflectPolicyAux)
         · funext i
           simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
             ProgramBehavioralStrategyPMF.tailOwn]
           split_ifs with h <;> subst_vars <;>
-            simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl
+            simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq]
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
@@ -1256,7 +1264,7 @@ private theorem pmfFoldBridge
       · apply hρ_readers who raw₁ raw₂
         · intro j hj  -- hout: j ≥ st₀.nextId → raw₁ j = raw₂ j
           exact hout j (by
-                          simp [st₁, MAIDCompileState.addVar] at hj ⊢
+                          simp only [MAIDCompileState.addVar, st₁] at hj ⊢
                           exact hj)
         · intro j hj hjlt  -- hnot_vd: j ∉ viewDeps → raw₁ j = raw₂ j
           by_cases hj_lookup : j ∈ st₀.lookupDeps x
@@ -1265,10 +1273,10 @@ private theorem pmfFoldBridge
               rw [hVD] at hmem
               rcases Finset.mem_union.mp hmem with h | h
               · exact hj_lookup h
-              · exact hj h) (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+              · exact hj h) (by simp only [st₁, MAIDCompileState.addVar]; exact hjlt)
         · intro j hj hjlt
           exact htyped j (by rw [hVD]; exact Finset.mem_union_right _ hj)
-            (by simp [st₁, MAIDCompileState.addVar]; exact hjlt)
+            (by simp only [st₁, MAIDCompileState.addVar]; exact hjlt)
         · exact hview_old
         · exact hi_old
     exact ih hl hd hfresh.2 ρ' st₁ hvars₁ hρ'_deps hρ'_var hρ'_readers
