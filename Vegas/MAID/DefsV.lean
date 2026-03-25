@@ -330,7 +330,7 @@ noncomputable def reflectPolicyV
 
 /-- Auxiliary for `compilePureProfileV`, threading compile state.
 Mirrors `compilePureProfileAux` from Reflection.lean. -/
-private noncomputable def compilePureProfileAuxV
+noncomputable def compilePureProfileAuxV
     (B : MAIDBackend Player L) :
     {Γ : VCtx Player L} →
     (p : VegasCore Player L Γ) →
@@ -395,7 +395,7 @@ private noncomputable def compilePureProfileAuxV
   | _, .reveal (b := b) y who x hx k, hl, hd, ρ, st, π =>
       compilePureProfileAuxV B k hl hd _ _ π
 
-private theorem compilePureProfileAuxV_player_indep
+theorem compilePureProfileAuxV_player_indep
     (B : MAIDBackend Player L) {Γ : VCtx Player L}
     (p : VegasCore Player L Γ) :
     ∀ (hl : Legal p) (hd : NormalizedDists p)

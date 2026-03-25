@@ -95,6 +95,7 @@ theorem maid_kuhn_rhs_eq_vegas_mixedV
     (hl : Legal p) (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
     (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (hnodup : (Γ.map Prod.fst).Nodup)
     (μ : ∀ who, PMF (ProgramPureStrategy who p)) :
     let _ : ∀ who, Fintype (ProgramPureStrategy who p) :=
       fun who => ProgramPureStrategy.instFintype LF who p
@@ -108,7 +109,19 @@ theorem maid_kuhn_rhs_eq_vegas_mixedV
         (pureToPolicy (fp := B.fintypePlayer) π_maid))) =
     (@pmfPi _ _ _ B.fintypePlayer _ μ).bind (fun π =>
       (outcomeDistPure p π env).toPMF (outcomeDistPure_totalWeight_eq_one hd)) := by
-  sorry
+  intro _instFin S sem extract μ_maid
+  letI := B.fintypePlayer
+  -- Key: pmfPi of mapped marginals commutes with bind
+  have hpi : (pmfPi μ_maid).bind (fun π_maid =>
+      PMF.map extract (frontierEval S sem (pureToPolicy π_maid))) =
+    (pmfPi μ).bind (fun π =>
+      PMF.map extract (frontierEval S sem (pureToPolicy
+        (fun who => compilePureStrategyV B p env hl hd hfresh hpub who (π who))))) := by
+    sorry -- pmfPi_map_bind: (pmfPi (σ.map f)).bind g = (pmfPi σ).bind (g ∘ (fun π i => f i (π i)))
+  rw [hpi]; congr 1; funext π
+  -- For each fixed π, relate compiled strategy to compilePureProfileV
+  rw [← compilePureProfileV_eq_mk B p env hl hd hfresh hpub π]
+  exact vegasMAID_pure_bridge B p env hl hd hfresh hpub hnodup π
 
 /-! ## Main theorem -/
 
@@ -166,7 +179,7 @@ theorem vegas_kuhn_mixed_to_behavioralV
   --       PMF.map extract (frontierEval S sem (pureToPolicy π_maid)))
   -- From maid_kuhn_rhs_eq_vegas_mixedV:
   --   (pmfPi μ_maid).bind (...) = (pmfPi μ).bind (fun π => (outcomeDistPure p π env).toPMF ...)
-  have hrhs := maid_kuhn_rhs_eq_vegas_mixedV B LF p env hl hd hfresh hpub μ
+  have hrhs := maid_kuhn_rhs_eq_vegas_mixedV B LF p env hl hd hfresh hpub hnodup μ
   -- Chain: σ's behavioral dist = extract ∘ frontierEval = extract ∘ MAID-mixed = Vegas-mixed
   rw [← hrev]
   rw [hpol]
