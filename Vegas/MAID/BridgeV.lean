@@ -987,6 +987,7 @@ private theorem outcomeDistRoundtripV
     simp only [outcomeDistBehavioralPMF, reflectPolicyAuxV,
       ProgramPureProfile.toBehavioralPMF]
     congr 1; funext v
+    -- IH's env is universally quantified; supply appropriate hρ for ρ'
     exact ih hl hd.2 _ _ π pol _ (fun who I hge => hpol who I
       (le_trans (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode]) hge))
   | reveal y who x hx k ih =>
@@ -1037,8 +1038,8 @@ private theorem outcomeDistRoundtripV
           reflectPolicyAuxV B k hl.2 hd ρ' st₁ pol := by
         funext w; simp only [ProgramBehavioralProfilePMF.tail, reflectPolicyAuxV]
         by_cases hw : who_commit = w
-        · subst hw; simp [ProgramBehavioralStrategyPMF.tailOwn, dif_pos rfl]; rfl
-        · simp [hw, dif_neg hw]; rfl
+        · subst hw; simp [ProgramBehavioralStrategyPMF.tailOwn]; rfl
+        · simp [hw]; rfl
       rw [h1, ProgramPureProfile.tail_toBehavioralPMF]
       exact ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol _ hst₁_le
 
