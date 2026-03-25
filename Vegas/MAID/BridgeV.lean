@@ -666,12 +666,11 @@ private theorem pmfFoldBridgeV
         have := (toStruct_kind st nd0).symm.trans hk
         rw [hkind_decision] at this; exact (NodeKind.decision.inj this).symm
       subst hp
-      -- Match reflected kernel with MAID policy.
-      -- Key proven facts:
-      -- hprofile: reflectPolicyAuxV B k ... = tail (reflectPolicyAuxV B (.commit ...) ...)
-      -- hcfg_eq: Classical.choose h_exists = projCfg a₀ (obsParents nd0)
-      --   (via rawEnvOfCfg_injective + ViewDeterminesRaw + hViewEq)
-      -- Remaining: cast gymnastics to match pol applications through Eq.mp/Eq.mpr layers
+      -- Match reflected kernel with MAID policy
+      -- Proven facts available: hViewEq, hρ_readers, rawEnvOfCfg_injective
+      -- These give hcfg: Classical.choose = projCfg
+      -- And hprofile: tail = reflectPolicyAuxV (via split_ifs + cast cancel)
+      -- The final cast gymnastics through headKernel/dif_pos/Eq.mpr remain
       sorry
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
