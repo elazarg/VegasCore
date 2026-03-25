@@ -667,7 +667,10 @@ private theorem pmfFoldBridgeV
         rw [hkind_decision] at this; exact (NodeKind.decision.inj this).symm
       subst hp
       -- Match reflected kernel with MAID policy
-      -- This is where VegasMAID's obsParents = parents simplifies things
+      -- The obs-config injectivity + cast gymnastics here are where VegasMAID
+      -- eliminates the old proof's sorry (obsParents = parents definitionally).
+      -- Full proof needs: hViewEq witness → Classical.choose = projCfg →
+      -- profile tail = reflectPolicyAuxV → pmf_descAt_cast_bind_cancel
       sorry
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)

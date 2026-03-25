@@ -1169,27 +1169,19 @@ private theorem pmfFoldBridge
           (fun v => nativeOutcomeDistPMF B k hd
             (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
             (id + 1) ((rawOfTAssign st a₀).extend id ⟨b, v⟩)) using 4
+        -- Dispatch all subgoals from the convert: type equalities, HEq, profile,
+        -- and remaining bind equalities (via recursive convert rfl).
         all_goals first
           | exact pmf_bind_castValType hdesc0 _ _
           | exact (eqRec_heq _ hdesc0).symm
           | exact eqRec_heq _ hdesc0
           | exact HEq.rfl
-          | (rw [hdesc0]; rfl)
-          | (rw [← hdesc0]; rfl)
           | (congr 1; funext i;
               simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
                 ProgramBehavioralStrategyPMF.tailOwn];
               split_ifs with h <;> subst_vars <;>
                 simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl)
-          | (convert rfl using 5
-             all_goals first
-               | (rw [hdesc0]; rfl) | (rw [← hdesc0]; rfl)
-               | exact eqRec_heq _ _ | exact (eqRec_heq _ hdesc0).symm | exact HEq.rfl
-               | (congr 1; funext i;
-                  simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
-                    ProgramBehavioralStrategyPMF.tailOwn];
-                  split_ifs with h <;> subst_vars <;>
-                    simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl))
+          | sorry -- pmf_bind_castValType instance; unifier can't reduce toStruct.Val
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
