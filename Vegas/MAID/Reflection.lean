@@ -374,19 +374,14 @@ private theorem pmfFoldBridge
     (hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
     (hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
     (hnodup : (Γ.map Prod.fst).Nodup) :
-    letI := B.fintypePlayer
     let st := MAIDCompileState.ofProg B p hl hd ρ st₀
-    let S := st.toStruct
-    let sem := MAIDCompileState.toSem st
-    let extract : MAID.TAssign (fp := B.fintypePlayer) S → Outcome P :=
-      fun a => extractOutcome B p ρ st₀.nextId (rawOfTAssign st a)
-    ∀ (pol : MAID.Policy (fp := B.fintypePlayer) S)
-      (a₀ : MAID.TAssign (fp := B.fintypePlayer) S),
-      PMF.map extract
+    ∀ (pol : MAID.Policy (fp := B.fintypePlayer) st.toStruct)
+      (a₀ : MAID.TAssign (fp := B.fintypePlayer) st.toStruct),
+      PMF.map (fun a => extractOutcome B p ρ st₀.nextId (rawOfTAssign st a))
         ((List.finRange st.nextId).drop st₀.nextId |>.foldl
-          (MAID.evalStep S sem pol) (PMF.pure a₀)) =
-      nativeOutcomeDistPMF B p hd
-        (reflectPolicyAux B p hl hd ρ st₀ pol)
+          (MAID.evalStep (fp := B.fintypePlayer) st.toStruct
+            (MAIDCompileState.toSem st) pol) (PMF.pure a₀)) =
+      nativeOutcomeDistPMF B p hd (reflectPolicyAux B p hl hd ρ st₀ pol)
         ρ st₀.nextId (rawOfTAssign st a₀) := by
   letI := B.fintypePlayer
   dsimp only
