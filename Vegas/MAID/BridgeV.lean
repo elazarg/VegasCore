@@ -705,8 +705,7 @@ private theorem pmfFoldBridgeV
             (reflectPolicyAuxV B (.commit x p R k) hl hd ρ st₀ pol) := by
         funext i; simp only [reflectPolicyAuxV, ProgramBehavioralProfilePMF.tail,
           ProgramBehavioralStrategyPMF.tailOwn]
-        split_ifs with h <;> subst_vars <;>
-          simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl
+        split_ifs with h <;> subst_vars <;> simp only <;> rfl
       have h_ex : ∃ cfg, projectViewEnv p (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
           projectViewEnv p (VEnv.eraseEnv (ρ (rawOfTAssign st a₀))) :=
         ⟨projCfg a₀ (st.toStruct.obsParents nd0), hViewEq⟩
@@ -775,8 +774,7 @@ private theorem pmfFoldBridgeV
               (reflectPolicyAuxV B (.commit x p R k) hl hd ρ st₀ pol) := by
           funext i; simp only [reflectPolicyAuxV, ProgramBehavioralProfilePMF.tail,
             ProgramBehavioralStrategyPMF.tailOwn]
-          split_ifs with h <;> subst_vars <;>
-            simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl
+          split_ifs with h <;> subst_vars <;> simp only <;> rfl
         rw [hprofile]
         convert pmf_descAt_cast_bind_cancel hdesc0 _
           (fun v => nativeOutcomeDistPMFV B k hd
@@ -789,8 +787,7 @@ private theorem pmfFoldBridgeV
         · funext i
           simp only [reflectPolicyAuxV, ProgramBehavioralProfilePMF.tail,
             ProgramBehavioralStrategyPMF.tailOwn]
-          split_ifs with h <;> subst_vars <;>
-            simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq]
+          split_ifs with h <;> subst_vars <;> simp only
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
@@ -948,6 +945,9 @@ theorem vegasMAID_reverse_bridge
   rw [hfold]
   exact hbridge.trans (hnative _)
 
+private theorem cast_PMF_pure {α β : Type} (h₁ : PMF α = PMF β) (h₂ : α = β) (x : α) :
+    cast h₁ (PMF.pure x) = PMF.pure (cast h₂ x) := by subst h₂; rfl
+
 /-! ## Pure bridge -/
 
 /-- Round-trip: compile pure → MAID pure → pureToPolicy → reflect = toBehavioralPMF.
@@ -975,68 +975,87 @@ private theorem roundtrip_auxV
   | ret => intros; funext i; exact rfl
   | letExpr x e k ih =>
     intro hl hd ρ st π pol hpol; funext w
-    show ProgramBehavioralStrategyPMF.letExpr _ = ProgramBehavioralStrategyPMF.letExpr _
+    change ProgramBehavioralStrategyPMF.letExpr _ = ProgramBehavioralStrategyPMF.letExpr _
     exact congrArg _ (congr_fun (ih hl hd _ _ π pol hpol) w)
   | sample x τ m D' k ih =>
     intro hl hd ρ st π pol hpol; funext w
-    show ProgramBehavioralStrategyPMF.sample _ = ProgramBehavioralStrategyPMF.sample _
+    change ProgramBehavioralStrategyPMF.sample _ = ProgramBehavioralStrategyPMF.sample _
     exact congrArg _ (congr_fun (ih hl hd.2 _ _ π pol (fun who I hge => hpol who I
       (le_trans (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode]) hge))) w)
   | reveal y who x hx k ih =>
     intro hl hd ρ st π pol hpol; funext w
-    show ProgramBehavioralStrategyPMF.reveal _ = ProgramBehavioralStrategyPMF.reveal _
+    change ProgramBehavioralStrategyPMF.reveal _ = ProgramBehavioralStrategyPMF.reveal _
     exact congrArg _ (congr_fun (ih hl hd _ _ π pol hpol) w)
   | commit x who_commit R k ih =>
     intro hl hd ρ st₀ π pol hpol
     rename_i Γ' b
+    -- Set up intermediate compile state (shared between owner/non-owner)
+    let nd : CompiledNode Player L B :=
+      .decision b who_commit (allValues B b) (allValues_ne_nil B b)
+        (allValues_nodup B b) (st₀.viewDeps who_commit Γ')
+    have hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId := by
+      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
+        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st₀.depsOfVars_lt _ d h
+    let st₁ := (st₀.addNode nd hndeps).2.addVar x (.hidden who_commit b) ({st₀.nextId}) (by
+      intro d hd₁; simp only [Finset.mem_singleton] at hd₁; subst hd₁; exact Nat.lt_succ_self _)
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .hidden who_commit b) :: Γ') :=
+      fun raw => VEnv.cons (τ := .hidden who_commit b)
+        (MAIDCompileState.readVal (B := B) raw b st₀.nextId) (ρ raw)
+    have hst₁_le : ∀ (who : Player)
+        (I : MAID.Infoset (MAIDCompileState.ofProg B k hl.2 hd ρ' st₁).toStruct who),
+        I.1.1.val ≥ st₁.nextId →
+        pol who I = MAID.pureToPolicy (compilePureProfileAuxV B k hl.2 hd ρ' st₁
+          (ProgramPureProfile.tail π)) who I := by
+      intro who ⟨d, cfg⟩ hge
+      rw [hpol who ⟨d, cfg⟩ (le_trans (by simp [st₁, MAIDCompileState.addVar,
+        MAIDCompileState.addNode]) hge)]
+      simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy]; congr 1
+      simp only [compilePureProfileAuxV]
+      have hne : d.1.val ≠ st₀.nextId := by
+        have : st₁.nextId = st₀.nextId + 1 := by
+          simp [st₁, MAIDCompileState.addVar, MAIDCompileState.addNode]
+        exact Ne.symm (Nat.ne_of_lt hge)
+      simp only [toStruct_kind, hne, ↓reduceDIte]
+      exact ((fun a ↦ a) ∘ fun a ↦ a) rfl
     funext i
     by_cases h_eq : who_commit = i
     · subst h_eq
       simp only [reflectPolicyAuxV, ProgramPureProfile.toBehavioralPMF, dif_pos rfl,
         dif_pos trivial]
-      congr 1
+      rw [ProgramBehavioralStrategyPMF.commitOwn.injEq]; constructor
       · -- Kernel equality
-        ext view; simp only [ProgramBehavioralKernelPMF.ofPure,
-          ProgramPureStrategy.headKernel, ProgramBehavioralKernelPMF.run_ofPure]
-        sorry
-      · -- Tail: IH + policy extensionality
-        have hst₁_le : ∀ (who : Player)
-            (I : MAID.Infoset (MAIDCompileState.ofProg B k hl.2 hd _ _).toStruct who),
-            I.1.1.val ≥ _ →
-            pol who I = MAID.pureToPolicy (compilePureProfileAuxV B k hl.2 hd _ _
-              (ProgramPureProfile.tail π)) who I := by
-          intro who ⟨d, cfg⟩ hge
-          rw [hpol who ⟨d, cfg⟩ (le_trans (by simp [MAIDCompileState.addVar,
-            MAIDCompileState.addNode]) hge)]
-          simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy]; congr 1
-          simp only [compilePureProfileAuxV]
-          have hne : d.1.val ≠ st₀.nextId := by
-            have : ((st₀.addNode _ _).2.addVar x (.hidden who_commit b) _ _).nextId =
-                st₀.nextId + 1 := by
-              simp [MAIDCompileState.addVar, MAIDCompileState.addNode]
-            omega
-          simp [hne]
-        exact congr_fun (ih hl.2 hd _ _ (ProgramPureProfile.tail π) pol hst₁_le) who_commit
+        ext1; funext view
+        simp only [ProgramBehavioralKernelPMF.run_ofPure]
+        split_ifs with h_ex
+        · -- then: hpol + compilePureProfileAuxV unfolding + cast cancellation
+          have h_choose := Classical.choose_spec h_ex
+          rw [hpol who_commit ⟨⟨⟨st₀.nextId, _⟩, _⟩, Classical.choose h_ex⟩ le_rfl]
+          simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy,
+            compilePureProfileAuxV, dif_pos rfl,
+            CompiledNode.valType, eqRec_eq_cast, eq_mpr_eq_cast, id]
+          conv_rhs => rw [← h_choose]
+          have hid_lt : st₀.nextId <
+              (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).nextId :=
+            Nat.lt_of_lt_of_le (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])
+              (MAIDCompileState.ofProg_nextId_le B k hl.2 hd _ _)
+          have hval : CompiledNode.valType
+              ((MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).descAt
+                ⟨st₀.nextId, hid_lt⟩) = L.Val b := by
+            change CompiledNode.valType
+              ((MAIDCompileState.ofProg B k hl.2 hd _ _).descAt ⟨st₀.nextId, _⟩) = _
+            rw [MAIDCompileState.ofProg_descAt_old B k hl.2 hd _ _
+              st₀.nextId (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode])]
+            simp [MAIDCompileState.addVar, MAIDCompileState.addNode_descAt_new]; rfl
+          rw [cast_PMF_pure _ hval, cast_cast, cast_eq]
+          exact PMF.ext (congrFun rfl)
+        · -- else: contradiction — every view is reachable
+          sorry
+      · -- Tail: by IH + policy extensionality
+        exact congr_fun (ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol hst₁_le) who_commit
     · -- Non-owner case
       simp only [reflectPolicyAuxV, ProgramPureProfile.toBehavioralPMF, dif_neg h_eq]
       congr 1
-      have hst₁_le : ∀ (who : Player)
-          (I : MAID.Infoset (MAIDCompileState.ofProg B k hl.2 hd _ _).toStruct who),
-          I.1.1.val ≥ _ →
-          pol who I = MAID.pureToPolicy (compilePureProfileAuxV B k hl.2 hd _ _
-            (ProgramPureProfile.tail π)) who I := by
-        intro who ⟨d, cfg⟩ hge
-        rw [hpol who ⟨d, cfg⟩ (le_trans (by simp [MAIDCompileState.addVar,
-          MAIDCompileState.addNode]) hge)]
-        simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy]; congr 1
-        simp only [compilePureProfileAuxV]
-        have hne : d.1.val ≠ st₀.nextId := by
-          have : ((st₀.addNode _ _).2.addVar x (.hidden who_commit b) _ _).nextId =
-              st₀.nextId + 1 := by
-            simp [MAIDCompileState.addVar, MAIDCompileState.addNode]
-          omega
-        simp [hne]
-      exact congr_fun (ih hl.2 hd _ _ (ProgramPureProfile.tail π) pol hst₁_le) i
+      exact congr_fun (ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol hst₁_le) i
 
 theorem vegasMAID_pure_bridge
     (B : MAIDBackend Player L) {Γ : VCtx Player L}

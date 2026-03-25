@@ -38,6 +38,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- A PMF behavioral choice rule for one fixed commit site. Unlike
 `ProgramBehavioralKernel` (FDist-valued), no explicit normalization witness
 is needed because PMF is inherently normalized. -/
+@[ext]
 structure ProgramBehavioralKernelPMF
     (who : P) (Γ : VCtx P L) (b : L.Ty) where
   run : ViewEnv (P := P) (L := L) who Γ → PMF (L.Val b)
