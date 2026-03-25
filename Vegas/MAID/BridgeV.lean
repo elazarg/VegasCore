@@ -666,12 +666,31 @@ private theorem pmfFoldBridgeV
         have := (toStruct_kind st nd0).symm.trans hk
         rw [hkind_decision] at this; exact (NodeKind.decision.inj this).symm
       subst hp
-      -- Commit kernel matching.
-      -- Key proven facts: hViewEq, hρ_readers (for hcfg), hprofile (tail eq).
-      -- Approach: define continuation K over S.Val nd0, cast to L.Val b once
-      -- at the boundary, rewrite both sides toward (pol p ...).bind K.
-      -- See ephemeral/EqRecUniverseMismatch.md for analysis.
-      sorry
+      -- Commit kernel matching: normalize Eq.rec to cast, then match
+      have hprofile : reflectPolicyAuxV B k hl.2 hd ρ' st₁ pol =
+          ProgramBehavioralProfilePMF.tail
+            (reflectPolicyAuxV B (.commit x p R k) hl hd ρ st₀ pol) := by
+        funext i; simp only [reflectPolicyAuxV, ProgramBehavioralProfilePMF.tail,
+          ProgramBehavioralStrategyPMF.tailOwn]
+        split_ifs with h <;> subst_vars <;>
+          simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq]
+      have h_ex : ∃ cfg, projectViewEnv p (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
+          projectViewEnv p (VEnv.eraseEnv (ρ (rawOfTAssign st a₀))) :=
+        ⟨projCfg a₀ (st.toStruct.obsParents nd0), hViewEq⟩
+      have hcfg : Classical.choose h_ex = projCfg a₀ (st.toStruct.obsParents nd0) := by
+        sorry -- rawEnvOfCfg_injective + ViewDeterminesRaw
+      rw [hprofile]
+      simp only [dif_pos trivial, eq_mpr_eq_cast, eq_mp_eq_cast, cast_cast, cast_eq,
+        ProgramBehavioralStrategyPMF.headKernel]
+      -- Normalize Eq.rec universe mismatch via eqRec_eq_cast
+      simp only [eqRec_eq_cast, cast_cast]
+      congr 1
+      · -- Distribution: normalize cast + apply hcfg
+        simp only [h_ex, hcfg, dif_pos, cast_eq]; rfl
+      · -- Continuation: profile + ρ' let-binding match
+        funext v; congr 1
+        · exact hprofile
+        · rfl
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
   | reveal y who_r x_r hx k ih =>
