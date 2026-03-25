@@ -1159,33 +1159,17 @@ private theorem pmfFoldBridge
             ProgramBehavioralStrategyPMF.tailOwn]
           split_ifs with h <;> subst_vars <;>
             simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl
-        -- Handle cast + profile mismatch in one convert step.
-        -- The profile and ρ' differences are definitional or closable by simp;
-        -- the cast transport uses pmf_bind_castValType; the type/HEq
-        -- goals from convert are discharged by hdesc0-based lemmas.
-        rw [hprofile]; symm
-        convert pmf_bind_castValType hdesc0
-          (pol p ⟨⟨nd0, hk⟩, projCfg a₀ (st.toStruct.obsParents nd0)⟩)
-          (fun v => nativeOutcomeDistPMF B k hd
-            (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
-            (id + 1) ((rawOfTAssign st a₀).extend id ⟨b, v⟩)) using 4
-        -- Dispatch all subgoals from the convert: type equalities, HEq, profile,
-        -- and remaining bind equalities (via recursive convert rfl).
+        -- Handle cast + profile mismatch: convert rfl decomposes at depth 5,
+        -- then dispatch all sub-goals.
+        rw [hprofile]
+        convert rfl using 5
         all_goals first
-          | exact pmf_bind_castValType hdesc0 _ _
-          | exact (eqRec_heq _ hdesc0).symm
-          | exact eqRec_heq _ hdesc0
-          | exact HEq.rfl
-          | (congr 1; funext i;
-              simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
-                ProgramBehavioralStrategyPMF.tailOwn];
-              split_ifs with h <;> subst_vars <;>
-                simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl)
+          | (simp [hdesc0, toStruct_Val])
           | (simp only [toStruct_Val]; exact pmf_bind_castValType hdesc0 _
               (fun v => nativeOutcomeDistPMF B k hd
                 (reflectPolicyAux B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
                 (id + 1) ((rawOfTAssign st a₀).extend id ⟨b, v⟩)))
-          | (convert rfl using 5; congr 1; funext i;
+          | (congr 1; funext i;
               simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
                 ProgramBehavioralStrategyPMF.tailOwn];
               split_ifs with h <;> subst_vars <;>
