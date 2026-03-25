@@ -775,6 +775,56 @@ theorem eval_pubExpr_insensitive_of_pubCtxDeps
   exact hρ_var (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) j
     (fun hjx => hj (st.lookupDeps_subset_depsOfVars_of_mem hx.mem_map_fst hjx)) raw tv
 
+@[simp] private theorem VEnv.eraseEnv_get_of_erased
+    {Γ : VCtx Player L}
+    (env : VEnv (Player := Player) L Γ)
+    {x : VarId} {τ : BindTy Player L}
+    (hx : VHasVar (L := L) Γ x τ) :
+    VEnv.eraseEnv env x τ.base hx.toErased = env x τ hx := by
+  induction hx with
+  | here => rfl
+  | there hx ih =>
+    simpa [VEnv.eraseEnv] using (ih (env := fun a b h => env a b (VHasVar.there h)))
+
+private theorem VEnv.eraseEnv_toErased_eq :
+    {Γ : VCtx Player L} →
+    (env : VEnv (Player := Player) L Γ) →
+    {x : VarId} → {b : L.Ty} →
+    (hx : HasVar (eraseVCtx Γ) x b) →
+    HEq (env.eraseEnv x
+        (hx.toVHasVar (Player := Player) (L := L)).1.base
+        (hx.toVHasVar (Player := Player) (L := L)).2.1.toErased)
+      (env.eraseEnv x b hx)
+  | _ :: _, _, _, _, .here => HEq.rfl
+  | _ :: _, env, _, _, .there hx =>
+      eraseEnv_toErased_eq (fun a b h => env a b (.there h)) hx
+
+private theorem mem_viewVCtx_map_fst_of_visible
+    {Γ : VCtx Player L} {who : Player} {x : VarId}
+    (hx : x ∈ visibleVars (L := L) who Γ) :
+    x ∈ (viewVCtx who Γ).map Prod.fst := by
+  induction Γ with
+  | nil => simp [visibleVars] at hx
+  | cons hd tl ih =>
+    obtain ⟨y, σ⟩ := hd
+    cases σ with
+    | pub υ =>
+      simp only [visibleVars] at hx
+      rcases Finset.mem_insert.mp hx with rfl | hx
+      · simp [viewVCtx, canSee]
+      · have := ih hx; simp [viewVCtx, canSee, this]
+    | hidden owner υ =>
+      by_cases hown : who = owner
+      · subst hown
+        simp only [visibleVars, ite_true] at hx
+        simp only [viewVCtx, canSee]
+        rcases Finset.mem_insert.mp hx with rfl | hx
+        · exact List.mem_cons_self ..
+        · exact List.mem_cons_of_mem _ (ih hx)
+      · simp only [visibleVars, hown, ite_false] at hx
+        simp only [viewVCtx, canSee, hown]
+        exact ih hx
+
 /-- If `j ∉ viewDeps who`, the projected view through `ρ` is insensitive to `j`. -/
 theorem projectViewEnv_insensitive_of_viewDeps
     (st : MAIDCompileState Player L B)
@@ -785,7 +835,24 @@ theorem projectViewEnv_insensitive_of_viewDeps
     (j : Nat)
     (hj : j ∉ st.viewDeps who Γ) :
     InsensitiveTo (fun raw => projectViewEnv who (VEnv.eraseEnv (ρ raw))) j := by
-  sorry
+  intro raw tv
+  apply projectViewEnv_eq_of_obsEq
+  intro x τ hx hvis
+  let tv' := hx.toVHasVar (Player := Player) (L := L) (Γ := Γ)
+  let σ := tv'.1; let hv := tv'.2.1
+  have hj' : j ∉ st.lookupDeps x := by
+    intro hjx
+    exact hj (st.lookupDeps_subset_depsOfVars_of_mem
+      (xs := (viewVCtx who Γ).map Prod.fst)
+      (mem_viewVCtx_map_fst_of_visible hvis) hjx)
+  have h1 := VEnv.eraseEnv_toErased_eq (ρ (raw.extend j tv)) hx
+  have h2 := VEnv.eraseEnv_toErased_eq (ρ raw) hx
+  have step1 : (ρ (raw.extend j tv)).eraseEnv _ _ hv.toErased =
+      (ρ (raw.extend j tv)) _ σ hv := VEnv.eraseEnv_get_of_erased _ hv
+  have step3 : (ρ raw) _ σ hv = (ρ raw).eraseEnv _ _ hv.toErased :=
+    (VEnv.eraseEnv_get_of_erased _ hv).symm
+  have hmid := hρ_var hv j hj' raw tv
+  exact eq_of_heq (h1.symm.trans (heq_of_eq (step1.trans (hmid.trans step3))) |>.trans h2)
 
 /-- What it means for two raw envs to match a compiled node at index `i`. -/
 def RawsMatchDescAt (st : MAIDCompileState Player L B)

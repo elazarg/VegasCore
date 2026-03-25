@@ -1181,7 +1181,7 @@ private theorem pmfFoldBridge
                 ProgramBehavioralStrategyPMF.tailOwn];
               split_ifs with h <;> subst_vars <;>
                 simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl)
-          | sorry -- pmf_bind_castValType instance; unifier can't reduce toStruct.Val
+          | (simp only [toStruct_Val]; exact pmf_bind_castValType hdesc0 _ _)
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
