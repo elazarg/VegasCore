@@ -1181,7 +1181,15 @@ private theorem pmfFoldBridge
                 ProgramBehavioralStrategyPMF.tailOwn];
               split_ifs with h <;> subst_vars <;>
                 simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl)
-          | sorry
+          | (convert rfl using 5
+             all_goals first
+               | (rw [hdesc0]; rfl) | (rw [← hdesc0]; rfl)
+               | exact eqRec_heq _ _ | exact (eqRec_heq _ hdesc0).symm | exact HEq.rfl
+               | (congr 1; funext i;
+                  simp only [reflectPolicyAux, ProgramBehavioralProfilePMF.tail,
+                    ProgramBehavioralStrategyPMF.tailOwn];
+                  split_ifs with h <;> subst_vars <;>
+                    simp only [eq_mp_eq_cast, eq_mpr_eq_cast, cast_cast, cast_eq] <;> rfl))
       · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
     · -- utility: contradiction
       rename_i hk; rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
