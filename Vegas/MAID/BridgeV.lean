@@ -970,40 +970,54 @@ private theorem outcomeDistRoundtripV
       I.1.1.val ≥ st₀.nextId →
       pol who I =
         MAID.pureToPolicy (compilePureProfileAuxV B p hl hd ρ st₀ π) who I) →
+    (∃ raw₀, ρ raw₀ = env) →
+    (∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j) →
     outcomeDistBehavioralPMF p hd
       (reflectPolicyAuxV B p hl hd ρ st₀ pol) env =
     outcomeDistBehavioralPMF p hd
       (ProgramPureProfile.toBehavioralPMF p π) env := by
   letI := B.fintypePlayer
   induction p with
-  | ret => intros; rfl
+  | ret => intro _ _ _ _ _ _ _ _ _ _; rfl
   | letExpr x e k ih =>
-    intro hl hd ρ st π pol env hpol
+    intro hl hd ρ st π pol env hpol ⟨raw₀, hraw₀⟩ hρ_deps
     simp only [outcomeDistBehavioralPMF, reflectPolicyAuxV,
       ProgramPureProfile.toBehavioralPMF]
-    exact ih hl hd _ _ π pol _ hpol
+    exact ih hl hd _ _ π pol _ hpol ⟨raw₀, by simp [hraw₀]⟩ sorry
   | sample x τ m D' k ih =>
-    intro hl hd ρ st π pol env hpol
+    intro hl hd ρ st π pol env hpol ⟨raw₀, hraw₀⟩ hρ_deps
     simp only [outcomeDistBehavioralPMF, reflectPolicyAuxV,
       ProgramPureProfile.toBehavioralPMF]
     congr 1; funext v
-    -- IH's env is universally quantified; supply appropriate hρ for ρ'
+    -- Extend raw₀ at st.nextId with v; ρ' insensitive follows from ρ insensitive
     exact ih hl hd.2 _ _ π pol _ (fun who I hge => hpol who I
       (le_trans (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode]) hge))
+      ⟨RawNodeEnv.extend raw₀ st.nextId ⟨_, v⟩, by
+        show VEnv.cons (MAIDCompileState.readVal (RawNodeEnv.extend raw₀ st.nextId ⟨_, v⟩) _ st.nextId)
+          (ρ (RawNodeEnv.extend raw₀ st.nextId ⟨_, v⟩)) = VEnv.cons v env
+        rw [show MAIDCompileState.readVal (B := B) (RawNodeEnv.extend raw₀ st.nextId ⟨_, v⟩) _ st.nextId = v from by
+          simp [RawNodeEnv.extend, MAIDCompileState.readVal]]
+        rw [show ρ (RawNodeEnv.extend raw₀ st.nextId ⟨_, v⟩) = env from by
+          rw [hρ_deps st.nextId (by intro h; exact absurd (st.depsOfVars_lt _ _ h) (by omega))
+            raw₀ ⟨_, v⟩, hraw₀]]⟩
+      sorry
   | reveal y who x hx k ih =>
-    intro hl hd ρ st π pol env hpol
+    intro hl hd ρ st π pol env hpol ⟨raw₀, hraw₀⟩ hρ_deps
     simp only [outcomeDistBehavioralPMF, reflectPolicyAuxV,
       ProgramPureProfile.toBehavioralPMF]
-    exact ih hl hd _ _ π pol _ hpol
+    exact ih hl hd _ _ π pol _ hpol ⟨raw₀, by simp [hraw₀]⟩ sorry
   | commit x who_commit R k ih =>
-    intro hl hd ρ st₀ π pol env hpol
+    intro hl hd ρ st₀ π pol env hpol ⟨raw₀, hraw₀⟩ hρ_deps
     rename_i Γ' b
     apply Vegas.outcomeDistBehavioralPMF_commit_congr
     · -- Kernel agreement at the evaluated view
       simp only [reflectPolicyAuxV, ProgramPureProfile.toBehavioralPMF, dif_pos rfl,
         dif_pos trivial, ProgramBehavioralStrategyPMF.headKernel,
         ProgramBehavioralKernelPMF.run_ofPure]
-      -- The reflected kernel has a dite on ∃ cfg. At the evaluated view, this is satisfiable.
+      -- Show the dite's ∃ cfg is satisfiable using raw₀
+      -- Step 1: provide witness cfg = projCfg raw₀ (obsParents nd0)
+      -- Step 2: show rawEnvOfCfg (projCfg raw₀ ...) agrees with raw₀ on viewDeps
+      -- Step 3: by InsensitiveTo outside viewDeps, ρ gives the same view
       sorry
     · -- Tail agreement by IH
       intro v
@@ -1042,6 +1056,15 @@ private theorem outcomeDistRoundtripV
         · simp [hw]; rfl
       rw [h1, ProgramPureProfile.tail_toBehavioralPMF]
       exact ih hl.2 hd ρ' st₁ (ProgramPureProfile.tail π) pol _ hst₁_le
+        ⟨RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩, by
+          show VEnv.cons (MAIDCompileState.readVal (B := B) (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) b st₀.nextId)
+            (ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩)) = VEnv.cons v env
+          rw [show MAIDCompileState.readVal (B := B) (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) b st₀.nextId = v from by
+            simp [RawNodeEnv.extend, MAIDCompileState.readVal]]
+          rw [show ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) = env from by
+            rw [hρ_deps st₀.nextId (by intro h; exact absurd (st₀.depsOfVars_lt _ _ h) (by omega))
+              raw₀ ⟨b, v⟩, hraw₀]]⟩
+        sorry
 
 theorem vegasMAID_pure_bridge
     (B : MAIDBackend Player L) {Γ : VCtx Player L}
@@ -1067,7 +1090,7 @@ theorem vegasMAID_pure_bridge
   -- Step 2: Outcome-distribution round-trip (avoids unreachable-view issue)
   have hrt := outcomeDistRoundtripV B p hl hd (fun _ => env) .empty π
     (pureToPolicy (compilePureProfileV B p env hl hd hfresh hpub π))
-    env (fun _ _ _ => rfl)
+    env (fun _ _ _ => rfl) ⟨fun _ => none, rfl⟩ (fun j _ => fun _ _ => rfl)
   simp only [reflectPolicyV, compilePureProfileV] at hrt ⊢
   rw [hrt]
   -- Step 3: toBehavioralPMF → outcomeDistPure.toPMF
