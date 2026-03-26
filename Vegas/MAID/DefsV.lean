@@ -125,7 +125,7 @@ noncomputable def extractOutcomeV
 /-- Translate a behavioral profile into a MAID policy.
 Mirrors `translateStrategy` from Correctness.lean but is self-contained
 (does not import Correctness). -/
-private noncomputable def translateStrategyV
+noncomputable def translateStrategyV
     (B : MAIDBackend Player L) :
     {Γ : VCtx Player L} →
       (p : VegasCore Player L Γ) →
@@ -743,7 +743,7 @@ theorem envRespectsLookupDeps_const
     EnvRespectsLookupDeps st (fun _ => env) :=
   fun _ _ _ _ _ => rfl
 
-private def HasVar.toVHasVarPub
+def HasVar.toVHasVarPub
     {Γ : VCtx Player L} {x : VarId} {τ : L.Ty} :
     HasVar (erasePubVCtx Γ) x τ → VHasVar (pubVCtx Γ) x (.pub τ) := by
   induction Γ with
@@ -759,7 +759,8 @@ private def HasVar.toVHasVarPub
     | hidden p υ =>
       simp only [erasePubVCtx, pubVCtx]; intro h; exact ih h
 
-@[simp] private theorem VEnv.erasePubEnv_get
+omit [DecidableEq Player] in
+@[simp] theorem VEnv.erasePubEnv_get
     {Γ : VCtx Player L}
     (env : VEnv (Player := Player) L Γ)
     {x : VarId} {τ : L.Ty}
@@ -797,7 +798,8 @@ theorem eval_pubExpr_insensitive_of_pubCtxDeps
   exact hρ_var (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) j
     (fun hjx => hj (st.lookupDeps_subset_depsOfVars_of_mem hx.mem_map_fst hjx)) raw tv
 
-@[simp] private theorem VEnv.eraseEnv_get_of_erased
+omit [DecidableEq Player] in
+@[simp] theorem VEnv.eraseEnv_get_of_erased
     {Γ : VCtx Player L}
     (env : VEnv (Player := Player) L Γ)
     {x : VarId} {τ : BindTy Player L}
@@ -808,7 +810,8 @@ theorem eval_pubExpr_insensitive_of_pubCtxDeps
   | there hx ih =>
     simpa [VEnv.eraseEnv] using (ih (env := fun a b h => env a b (VHasVar.there h)))
 
-private theorem VEnv.eraseEnv_toErased_eq :
+omit [DecidableEq Player] in
+theorem VEnv.eraseEnv_toErased_eq :
     {Γ : VCtx Player L} →
     (env : VEnv (Player := Player) L Γ) →
     {x : VarId} → {b : L.Ty} →
@@ -821,7 +824,7 @@ private theorem VEnv.eraseEnv_toErased_eq :
   | _ :: _, env, _, _, .there hx =>
       eraseEnv_toErased_eq (fun a b h => env a b (.there h)) hx
 
-private theorem mem_viewVCtx_map_fst_of_visible
+theorem mem_viewVCtx_map_fst_of_visible
     {Γ : VCtx Player L} {who : Player} {x : VarId}
     (hx : x ∈ visibleVars (L := L) who Γ) :
     x ∈ (viewVCtx who Γ).map Prod.fst := by

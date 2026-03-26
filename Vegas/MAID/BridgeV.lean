@@ -1190,14 +1190,14 @@ private theorem outcomeDistRoundtripV
           (MAIDCompileState.ofProg_nextId_le B k hl.2 hd ρ' st₁)
       let nd0 : Fin st_final.nextId := ⟨st₀.nextId, hid_lt⟩
       have hdesc0 : st_final.descAt nd0 = nd := by
-        show (MAIDCompileState.ofProg B k hl.2 hd ρ' st₁).descAt ⟨st₀.nextId, _⟩ = nd
+        change (MAIDCompileState.ofProg B k hl.2 hd ρ' st₁).descAt ⟨st₀.nextId, _⟩ = nd
         rw [MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ st₀.nextId
           (by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode])]
         simpa [st₁, stNode] using st₀.addNode_descAt_new nd hndeps
       -- Construct TAssign from raw₀
       let a₀ : MAID.TAssign st_final.toStruct := fun ⟨j, hj⟩ =>
         if h : j < st₀.nextId then
-          cast (by show CompiledNode.valType (st₀.descAt ⟨j, h⟩) =
+          cast (by change CompiledNode.valType (st₀.descAt ⟨j, h⟩) =
                      CompiledNode.valType (st_final.descAt ⟨j, hj⟩)
                    congr 1
                    exact (MAIDCompileState.ofProg_descAt_old B
@@ -1277,10 +1277,21 @@ private theorem outcomeDistRoundtripV
       rw [hpol who_commit ⟨⟨nd0, _⟩, Classical.choose hex⟩ hge]
       simp only [MAID.pureToPolicy, MAID.pureToPlayerStrategy, compilePureProfileAuxV,
         show (nd0 : Nat) = st₀.nextId from rfl, ↓reduceDIte, id]
-      -- Cast algebra: Eq.rec on PMF through compilePureProfileAuxV.
-      -- Types are propositionally equal (toStruct.Val nd0 = L.Val b via hdesc0)
-      -- but Eq.rec doesn't reduce. Needs Subtype.ext + generalize on descAt.
-      sorry
+      have hview_cfg := Classical.choose_spec hex
+      rw [show projectViewEnv who_commit (ρ ((MAIDCompileState.ofProg B k _ hd
+            (fun raw => VEnv.cons (MAIDCompileState.readVal raw b st₀.nextId) (ρ raw))
+            ((st₀.addNode (CompiledNode.decision b who_commit (allValues B b) _ _
+              (st₀.viewDeps who_commit Γ')) _).2.addVar
+              x (BindTy.hidden who_commit b) {st₀.nextId} _)).rawEnvOfCfg
+            (Classical.choose hex))).eraseEnv =
+          projectViewEnv who_commit env.eraseEnv from hview_cfg]
+      have hval : st_final.toStruct.Val nd0 = L.Val b := by
+        change CompiledNode.valType (st_final.descAt nd0) = L.Val b; rw [hdesc0]; rfl
+      have hcancel : ∀ {α β : Type} (h : α = β) (x : β),
+          h ▸ (PMF.pure (h ▸ x) : PMF α) = (PMF.pure x : PMF β) := by
+        intro α β h x; subst h; rfl
+      rw [← hcancel hval ((π who_commit).headKernel (projectViewEnv who_commit env.eraseEnv))]
+      congr 1
     · -- Tail agreement by IH
       intro v
       let nd : CompiledNode Player L B :=
