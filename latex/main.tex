@@ -923,11 +923,45 @@ choices (if any), enforcing the simultaneity of the original game.
 \section{MAID Compilation}\label{sec:maid}
 %% =====================================================================
 
-Multi-Agent Influence Diagrams (MAIDs) are a DAG-based representation of
-strategic interactions, extending Bayesian networks with decision and utility
-nodes. We compile Vegas programs to MAIDs and prove the compilation correct.
+Multi-Agent Influence Diagrams (MAIDs)~\cite{koller2003multi} are a
+DAG-based representation of strategic interactions, extending Bayesian
+networks with decision and utility nodes. We compile Vegas programs to a
+restricted class of MAIDs and prove the compilation correct, including a
+Kuhn theorem.
 
-\subsection{Compiled Node Structure}
+\subsection{Factored-Observation Information Structure}
+
+Vegas's commit-reveal discipline gives rise to a particular information
+structure: every value in the game is either \emph{fully public} (visible to
+all players) or \emph{private to exactly one player}. There is no partial
+sharing---no situation where player~$i$ observes a value but player~$j$ does
+not, even though both have downstream decisions depending on it. This is
+precisely the \emph{factored-observation} model of
+Kova\v{r}\'ik et al.~\cite{kovarik2019rethinking}.
+
+The connection to Vegas is direct. Each Vegas construct produces a value with a
+definite visibility status:
+\begin{itemize}[nosep]
+\item $\Sample$ produces a chance value---immediately public.
+\item $\Commit$ produces a hidden value---private to the committing player until
+      explicitly revealed.
+\item $\Reveal$ transitions a hidden value to public.
+\item $\Let$ and $\Ret$ compute from already-visible values; they produce no new
+      hidden state.
+\end{itemize}
+At any program point, a player's \emph{view} consists of all public values plus
+their own hidden values. Because Vegas has no construct for partial disclosure
+(revealing to some players but not others), the factored-observation property
+is a structural consequence of the calculus.
+
+\subsection{Compiled MAID Structure}
+
+The compiled MAID inherits the factored-observation property: for every
+decision node, the observation parents \emph{equal} the data-dependency
+parents. In a general MAID, observation parents are a subset of data parents
+(a player may depend on values they cannot observe). In a Vegas-compiled MAID,
+a decision node depends only on values visible to its player---the typing
+discipline guarantees this by construction.
 
 The compiler emits three kinds of MAID nodes (\Cref{fig:compilation}):
 
@@ -938,15 +972,23 @@ A \emph{compiled node} is one of:
       a chance node of type~$\tau$ with parent set and conditional distribution
       $\mathit{cpd} : \mathrm{RawNodeEnv} \to \FDist{L.\Val(\tau)}$,
       together with a normalization proof.
-\item $\mathit{decision}(\tau, i, \mathit{obsParents}, \mathit{kernel})$:
-      a decision node owned by player~$i$ with observation parents. The backend
-      derives the finite action menu canonically from the finite carrier
-      $L.\Val(\tau)$.
+      Immediately public (reveal time = node index).
+\item $\mathit{decision}(\tau, i, \mathit{parents})$:
+      a decision node owned by player~$i$. The parent set equals the
+      observation parents---the player observes everything the node depends on.
+      Private at creation; the reveal time records when (if ever) the value
+      becomes public via a subsequent $\Reveal$.
 \item $\mathit{utility}(i, \mathit{parents}, u)$:
       a utility node for player~$i$ with real-valued function
       $u : \mathrm{RawNodeEnv} \to \mathbb{R}$.
 \end{itemize}
 \end{definition}
+
+Each node also carries a \emph{reveal time}: the program point at which
+it becomes publicly observable. The compiler maintains a reveal-time schedule
+alongside the node-emission state, and proves a \emph{factored-observation
+invariant}: every parent of a decision node is either already public (reveal
+time $\le$ the decision's index) or is that player's own earlier decision.
 
 
 \subsection{Compilation Strategy}
@@ -1252,7 +1294,19 @@ to verified smart contract languages. The commit-reveal structure suggests a
 natural correspondence with zero-knowledge protocols that remains to be
 formalized.
 
-\bibliographystyle{plain}
-% \bibliography{refs}
+\begin{thebibliography}{9}
+
+\bibitem{koller2003multi}
+D.~Koller and B.~Milch.
+\newblock Multi-agent influence diagrams for representing and solving games.
+\newblock {\em Games and Economic Behavior}, 45(1):181--221, 2003.
+
+\bibitem{kovarik2019rethinking}
+V.~Kova\v{r}\'ik, M.~Schmid, N.~Burch, M.~Bowling, and V.~Lis\'y.
+\newblock Rethinking formal models of partially observable multiagent decision
+  making.
+\newblock {\em Artificial Intelligence}, 277:103171, 2019.
+
+\end{thebibliography}
 
 \end{document}
