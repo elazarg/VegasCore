@@ -25,9 +25,12 @@ behavioral strategies, with a proof that expected utility is
 preserved---enabling game-theoretic solution concepts (Nash equilibria,
 dominance) to be applied directly to programs. We further compile Vegas programs to
 Multi-Agent Influence Diagrams (MAIDs) and prove that compilation preserves
-outcome distributions. The entire development is mechanized in Lean~4,
-comprising approximately 7,000 lines of verified code for the Vegas calculus
-and 33,000 lines for a supporting game theory library.
+outcome distributions. The compiled MAID has perfect recall, enabling a
+Vegas Kuhn theorem: every product mixture over pure strategies is
+outcome-equivalent to some behavioral strategy profile. The entire
+development is mechanized in Lean~4, comprising approximately 10,000 lines
+of verified code for the Vegas calculus and 33,000 lines for a supporting
+game theory library.
 \end{abstract}
 
 %% =====================================================================
@@ -103,13 +106,16 @@ scoping rather than by cryptographic mechanisms.
       theorem connects the kernel game's expected utility to the Vegas
       denotational semantics.
 
-\item \textbf{MAID compilation} (\Cref{sec:maid}): a verified compiler from
-      Vegas programs to Multi-Agent Influence Diagrams, with a correctness
-      theorem showing that the compiled MAID's outcome distribution equals the
-      Vegas denotational semantics.
+\item \textbf{MAID compilation and Kuhn theorem} (\Cref{sec:maid}): a
+      verified compiler from Vegas programs to Multi-Agent Influence Diagrams,
+      with a correctness theorem showing that the compiled MAID's outcome
+      distribution equals the Vegas denotational semantics. The compiled MAID
+      has perfect recall, which yields a Vegas Kuhn theorem: every product
+      mixture over pure strategies is outcome-equivalent to some behavioral
+      strategy profile.
 
 \item \textbf{Lean~4 mechanization} (\Cref{sec:mechanization}): the entire
-      development is formalized in Lean~4, including ${\sim}7{,}000$ lines for
+      development is formalized in Lean~4, including ${\sim}10{,}000$ lines for
       the Vegas calculus and ${\sim}33{,}000$ lines for a supporting game
       theory library providing extensive-form games, normal-form games, MAIDs,
       and their interrelations.
@@ -967,13 +973,21 @@ configurations.}\label{fig:compilation}
 \end{figure}
 
 \noindent
-The compiler maintains a state tracking emitted nodes, their types, and a
-mapping from Vegas variable identifiers to MAID node indices. For $\Let$ and
-$\Reveal$, the compiler records the dependency information needed to
-reconstruct the corresponding environment entries from MAID parent
+The compiler maintains two parallel states:
+\begin{enumerate}[nosep]
+\item A \emph{node state} tracking emitted nodes, their types, and a mapping
+      from Vegas variable identifiers to MAID node indices and dependency sets.
+\item A \emph{reveal state} tracking when each node becomes publicly observable.
+      Chance nodes are immediately public; decision nodes start private; the
+      $\Reveal$ construct lowers a node's reveal time to the current program
+      point.
+\end{enumerate}
+For $\Let$ and $\Reveal$, the compiler records the dependency information
+needed to reconstruct the corresponding environment entries from MAID parent
 configurations when evaluating downstream node functions. The key challenge is
 ensuring that decision node observation parents exactly match the player's view
-$\Gamma\!\!\downarrow_i$.
+$\Gamma\!\!\downarrow_i$, and that reveal times are consistent with the
+node kinds (chance nodes public, decision nodes private until revealed).
 
 \paragraph{Example: compiled MAIDs.}
 For Matching Pennies, the compiler emits four nodes
@@ -1022,54 +1036,76 @@ edges; other arrows are value-parent edges.}\label{fig:maid-mp}
 \end{figure}
 
 
-\subsection{Correctness}
+\subsection{Correctness}\label{sec:maid-correct}
 
-\begin{theorem}[MAID Compilation Correctness]\label{thm:maid}
-Let $p : \Gamma \vdash p$, $\sigma$ a profile, $\rho$ an environment.
-If all of the following hold:
+The compilation correctness proof connects the MAID's evaluation to the
+Vegas denotational semantics via two bridges:
+
 \begin{enumerate}[nosep]
-\item $\FreshBindings(p)$ \quad (SSA freshness)
-\item $\Legal(p)$ \quad (feasible actions exist)
-\item $\DistinctActs(p)$ \quad (no duplicate actions)
-\item $\NormDists(p)$ \quad (sample distributions normalized)
-\item $\NormOn(\sigma, p)$ \quad (commit kernels normalized)
+\item A \emph{reverse bridge} shows that for any MAID policy, evaluating the
+      compiled MAID and extracting the outcome distribution equals the Vegas
+      behavioral outcome distribution under the reflected policy. The
+      reflected policy translates a MAID policy---which maps infosets to action
+      distributions---back into a Vegas behavioral profile by reconstructing
+      each player's view from the MAID's parent configuration.
+
+\item A \emph{pure bridge} shows that for any Vegas pure strategy profile,
+      compiling it to a MAID pure policy and reflecting back recovers the
+      original pure outcome distribution. The key step is showing that the
+      view reconstruction is faithful: the player's projected view under the
+      MAID's raw-node environment agrees with the view under the Vegas
+      typed environment.
 \end{enumerate}
-then there exist a MAID policy $\mathit{pol}$ and extraction function
-$\mathit{extract}$ such that:
+
+\noindent
+The pure bridge requires a \emph{view-insensitivity} argument: each variable's
+contribution to the environment depends only on the MAID nodes in its
+dependency set, so extending the raw environment at unrelated positions does
+not alter the player's view. This is the most technically demanding part of
+the proof, involving a witness construction that maps the Vegas environment
+back to a MAID type-assignment and shows agreement at all view-dependency
+positions.
+
+\subsection{Perfect Recall}\label{sec:perfect-recall}
+
+The compiled MAID has \emph{perfect recall}: each decision node's observation
+parents include all nodes previously observed by the same player. This follows
+from the compilation strategy together with the reveal-time tracking described
+above. Because Vegas programs execute top-to-bottom and the compiler records
+observation parents as $\Gamma\!\!\downarrow_i$ (the player's full view at the
+point of commitment), any previously revealed variable is already in the view.
+For variables hidden from the player, the reveal-time invariant ensures that
+the corresponding node was not yet public at the time of the earlier decision.
+
+\subsection{The Vegas Kuhn Theorem}\label{sec:kuhn}
+
+Combining the compilation correctness bridges with perfect recall yields a
+Kuhn-style result for Vegas programs.
+
+\begin{theorem}[Vegas Kuhn Theorem]\label{thm:kuhn}
+Let $p$ be a Vegas program satisfying the standing assumptions.
+For every product mixture $\mu$ over pure strategy profiles (one independent
+distribution per player over that player's pure strategies), there exists a
+behavioral strategy profile $\sigma$ such that:
 \[
-  \PMF{}.\mathrm{map}\;\mathit{extract}\;
-    (\mathit{evalAssignDist}(S, \mathit{sem}, \mathit{pol}))
-  \;=\;
-  (\densub{p}{\sigma}(\rho)).\mathrm{toPMF}
+  \outcomeDist_{\sigma}(p, \rho) \;=\;
+  \mathbb{E}_{\pi \sim \mu}\bigl[\outcomeDist_{\pi}(p, \rho)\bigr]
 \]
-\leanref{vegas\_maid\_dist\_eq}
 \end{theorem}
 
 \noindent
-The proof proceeds in three layers:
-\begin{enumerate}[nosep]
-\item A \emph{native outcome distribution}
-      $\mathit{nativeOutcomeDist}$ (\leanref{nativeOutcomeDist}) evaluates the
-      Vegas program while threading a $\mathit{RawNodeEnv}$---a flat partial
-      assignment mapping MAID node indices to tagged values. Each $\Sample$ and
-      $\Commit$ step extends the raw environment alongside the typed
-      environment. This intermediate semantics is proved equal to
-      $\outcomeDist$ by structural induction
-      (\leanref{nativeOutcomeDist\_eq\_outcomeDist}).
-\item A \emph{fold bridge}
-      (\leanref{evalFoldFDist\_toPMF\_eq\_evalFold}) shows that
-      the $\FDist$-valued fold over compiled nodes (which mirrors the MAID's
-      topological evaluation) can be promoted to the MAID's $\PMF$-valued
-      evaluation.
-\item The main theorem connects these layers:
-      $\mathit{evalFoldFDist} \circ \mathit{extract} =
-       \mathit{nativeOutcomeDist} = \outcomeDist$
-      (\leanref{foldFDist\_map\_extract\_eq\_nativeOutcomeDist}).
-\end{enumerate}
+The proof compiles $p$ to a MAID, applies the MAID-level Kuhn theorem
+(which requires perfect recall) to obtain a MAID behavioral policy, and
+reflects this policy back to a Vegas behavioral profile via the reverse bridge.
+The pure bridge establishes that the right-hand side---the mixture over
+pure outcome distributions---equals the corresponding MAID-level mixture,
+closing the chain.
 
-As a strategic corollary, the expected payoff of any player under the compiled
-MAID policy equals the Vegas denotational expected payoff
-(\leanref{maid\_expected\_payoff\_eq\_vegas}).
+This theorem is significant because it shows that behavioral strategies
+suffice: any outcome distribution achievable by mixing over pure strategies
+can be realized by a single behavioral profile. In game-theoretic terms, there
+is no loss of generality in restricting attention to behavioral strategies
+when analyzing Vegas programs.
 
 
 %% =====================================================================
@@ -1091,17 +1127,17 @@ Vegas well-formedness, scoping \& assumptions & 2 & ${\sim}580$ \\
 Vegas strategies \& operational profiles & 2 & ${\sim}290$ \\
 Vegas semantics (denotational, trace) & 3 & ${\sim}870$ \\
 Vegas strategic bridge \& equilibrium & 2 & ${\sim}150$ \\
-Vegas MAID compilation \& correctness & 4 & ${\sim}2{,}900$ \\
+Vegas MAID compilation, bridges \& Kuhn & 8 & ${\sim}6{,}300$ \\
 Vegas examples & 1 & ${\sim}250$ \\
 FDist library & 1 & ${\sim}400$ \\
 Supporting expression language & 2 & ${\sim}580$ \\
 Action graph & 1 & ${\sim}390$ \\
 \midrule
-\textbf{Vegas subtotal} & \textbf{21} & $\mathbf{{\sim}7{,}100}$ \\
+\textbf{Vegas subtotal} & \textbf{25} & $\mathbf{{\sim}10{,}500}$ \\
 \midrule
 GameTheory library & 60+ & ${\sim}33{,}000$ \\
 \midrule
-\textbf{Total} & & $\mathbf{{\sim}40{,}000}$ \\
+\textbf{Total} & & $\mathbf{{\sim}43{,}000}$ \\
 \bottomrule
 \end{tabular}
 \caption{Lines of Lean~4 code by component (approximate).}\label{tab:loc}
@@ -1207,10 +1243,7 @@ finite), which excludes games with continuous action spaces. The commit-reveal
 model assumes perfect recall---a player's view grows monotonically as the
 program executes, and there is no construct for forgetting. The expression
 language interface requires explicit dependency tracking with soundness
-proofs, which adds friction to defining new expression languages. Finally,
-the strategic bridge constructs kernel games from behavioral strategies but
-does not yet provide a Kuhn-style equivalence between behavioral and mixed
-strategies within the Vegas framework.
+proofs, which adds friction to defining new expression languages.
 
 \paragraph{Future directions.}
 Extending Vegas with richer expression languages (continuous distributions,
