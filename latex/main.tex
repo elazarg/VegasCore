@@ -929,7 +929,7 @@ networks with decision and utility nodes. We compile Vegas programs to a
 restricted class of MAIDs and prove the compilation correct, including a
 Kuhn theorem.
 
-\subsection{Factored-Observation Information Structure}
+\subsection{Information Structure}\label{sec:maid-info}
 
 Vegas's commit-reveal discipline gives rise to a particular information
 structure: every value in the game is either \emph{fully public} (visible to
@@ -939,8 +939,7 @@ not, even though both have downstream decisions depending on it. This is
 precisely the \emph{factored-observation} model of
 Kova\v{r}\'ik et al.~\cite{kovarik2019rethinking}.
 
-The connection to Vegas is direct. Each Vegas construct produces a value with a
-definite visibility status:
+The connection to Vegas is direct:
 \begin{itemize}[nosep]
 \item $\Sample$ produces a chance value---immediately public.
 \item $\Commit$ produces a hidden value---private to the committing player until
@@ -954,45 +953,19 @@ their own hidden values. Because Vegas has no construct for partial disclosure
 (revealing to some players but not others), the factored-observation property
 is a structural consequence of the calculus.
 
-\subsection{Compiled MAID Structure}
+\subsection{Compiled MAID Structure}\label{sec:maid-structure}
 
-The compiled MAID inherits the factored-observation property: for every
-decision node, the observation parents \emph{equal} the data-dependency
-parents. In a general MAID, observation parents are a subset of data parents
-(a player may depend on values they cannot observe). In a Vegas-compiled MAID,
-a decision node depends only on values visible to its player---the typing
-discipline guarantees this by construction.
+The compiled MAID inherits the factored-observation property. In a general
+MAID, each decision node has two parent sets: data-dependency parents (values
+the node's function reads) and observation parents (values the player actually
+sees), with observation parents $\subseteq$ data parents. In a Vegas-compiled
+MAID, these two sets are always \emph{equal}: a decision node depends only on
+values visible to its player. The view-scoping judgment guarantees this by
+construction.
 
-The compiler emits three kinds of MAID nodes (\Cref{fig:compilation}):
-
-\begin{definition}[Compiled Node]
-A \emph{compiled node} is one of:
-\begin{itemize}[nosep]
-\item $\mathit{chance}(\tau, \mathit{parents}, \mathit{cpd})$:
-      a chance node of type~$\tau$ with parent set and conditional distribution
-      $\mathit{cpd} : \mathrm{RawNodeEnv} \to \FDist{L.\Val(\tau)}$,
-      together with a normalization proof.
-\item $\mathit{decision}(\tau, i, \mathit{parents})$:
-      a decision node owned by player~$i$. The parent set equals the
-      observation parents---the player observes everything the node depends on.
-\item $\mathit{utility}(i, \mathit{parents}, u)$:
-      a utility node for player~$i$ with real-valued function
-      $u : \mathrm{RawNodeEnv} \to \mathbb{R}$.
-\end{itemize}
-\end{definition}
-
-\noindent
-The defining property of the compiled MAID is that observation parents equal
-data-dependency parents for all nodes. To prove this, the compiler maintains
-an auxiliary \emph{reveal-time schedule}---a mapping from node indices to the
-program point at which they become publicly observable---alongside the
-node-emission state. This schedule is not part of the compiled MAID; it is a
-proof device used to establish the factored-observation invariant: every parent
-of a decision node is either already public (reveal time $\le$ the decision's
-index) or is that player's own earlier decision.
-
-
-\subsection{Compilation Strategy}
+\Cref{fig:compilation} shows the mapping from Vegas constructs to MAID nodes.
+Only $\Sample$, $\Commit$, and $\Ret$ produce nodes; $\Let$ and $\Reveal$ are
+compiled away through dependency tracking.
 
 \begin{figure}[ht]
 \centering
@@ -1003,27 +976,14 @@ Vegas construct & MAID node & Notes \\
 \midrule
 $\Sample\;x \sim D$ & chance & CPD from $D$; parents from $\mathsf{deps}(D)$ \\
 $\Commit\;x\;\mathbf{by}\;i\;\mathbf{where}\;R$
-  & decision & Owner $i$; obs.\ parents $= \Gamma\!\!\downarrow_i$ \\
+  & decision & Owner $i$; parents $= \mathsf{deps}(\Gamma\!\!\downarrow_i)$ \\
 $\Ret$ & utility ($\times |\Players|$) & One per player; parents from payoff deps \\
-$\Let\;x = e$ & \emph{(none)} & Compiled away; deps inlined \\
-$\Reveal\;y\;\mathbf{from}\;x$ & \emph{(none)} & Compiled away; identity mapping \\
+$\Let\;x = e$ & \emph{(none)} & Deps inlined into downstream nodes \\
+$\Reveal\;y\;\mathbf{from}\;x$ & \emph{(none)} & Updates visibility; no MAID node \\
 \bottomrule
 \end{tabular}
-\caption{Vegas-to-MAID compilation. Only $\Sample$, $\Commit$, and $\Ret$
-produce MAID nodes. Administrative bindings ($\Let$, $\Reveal$) are handled
-by dependency tracking and environment reconstruction from parent
-configurations.}\label{fig:compilation}
+\caption{Vegas-to-MAID compilation.}\label{fig:compilation}
 \end{figure}
-
-\noindent
-The compiler walks the program top-to-bottom, maintaining a state that tracks
-emitted nodes, their types, and a mapping from Vegas variable identifiers to
-MAID node indices and dependency sets. For $\Let$ and $\Reveal$, no MAID node
-is emitted; the compiler records the dependency information needed to
-reconstruct the corresponding environment entries from MAID parent
-configurations when evaluating downstream node functions. The key challenge is
-ensuring that decision node observation parents exactly match the player's view
-$\Gamma\!\!\downarrow_i$.
 
 \paragraph{Example: compiled MAIDs.}
 For Matching Pennies, the compiler emits four nodes
