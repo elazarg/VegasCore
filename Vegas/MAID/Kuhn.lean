@@ -1,12 +1,10 @@
-import Vegas.MAID.BridgeV
-import Vegas.MAID.PerfectRecallV
+import Vegas.MAID.Bridge
+import Vegas.MAID.PerfectRecall
 import GameTheory.Languages.MAID.Kuhn
 import Math.PMFProduct
 
 /-!
 # Vegas Kuhn Theorem via VegasMAID
-
-**Status: top-down proof — depends on sorry'd bridges.**
 
 The Vegas Kuhn theorem: for a Vegas program compiled through VegasMAID,
 every product mixed strategy over pure Vegas strategies is outcome-equivalent

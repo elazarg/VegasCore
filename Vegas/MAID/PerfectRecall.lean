@@ -1,4 +1,4 @@
-import Vegas.MAID.DefsV
+import Vegas.MAID.Defs
 
 /-!
 # Perfect Recall for VegasMAID

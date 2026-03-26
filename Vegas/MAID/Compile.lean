@@ -1,5 +1,6 @@
 import GameTheory.Languages.MAID.Syntax
 import Vegas.MAID.Backend
+import Vegas.MAID.VegasMAID
 import Vegas.Core
 import Vegas.Strategic
 
@@ -580,5 +581,149 @@ noncomputable def toMAID
   exact ⟨st.nextId, st.toStruct, MAIDCompileState.toSem st⟩
 
 end VegasCore
+
+/-! ## Reveal-time tracking state -/
+
+/-- Lightweight state for computing reveal times alongside compilation.
+    Shadows `MAIDCompileState.ofProg` without duplicating structural work. -/
+structure RevealState where
+  /-- Current node counter (mirrors `MAIDCompileState.nextId`). -/
+  nextId : Nat := 0
+  /-- When each node becomes public. `⊤` means never revealed. -/
+  revealTime : Nat → WithTop Nat := fun _ => ⊤
+  /-- Which MAID node (if any) backs each program variable. -/
+  nodeOf : VarId → Option Nat := fun _ => none
+
+/-- Initial reveal state. -/
+def RevealState.empty : RevealState := {}
+
+/-- Record a new node as immediately public (for chance/utility). -/
+def RevealState.addPublicNode (rs : RevealState) : RevealState :=
+  let id := rs.nextId
+  { rs with
+    nextId := id + 1
+    revealTime := fun i => if i = id then ↑id else rs.revealTime i }
+
+/-- Record a new node as private (for decision nodes).
+    The `revealTime` for the new node stays at `⊤` (the default). -/
+def RevealState.addPrivateNode (rs : RevealState) : RevealState :=
+  { rs with nextId := rs.nextId + 1 }
+
+/-- Bind a variable to a MAID node. -/
+def RevealState.bindVar (rs : RevealState) (x : VarId) (nid : Nat) :
+    RevealState :=
+  { rs with nodeOf := fun v => if v = x then some nid else rs.nodeOf v }
+
+/-- Copy a variable's node binding (for reveal). -/
+def RevealState.aliasVar (rs : RevealState) (y x : VarId) :
+    RevealState :=
+  { rs with nodeOf := fun v => if v = y then rs.nodeOf x else rs.nodeOf v }
+
+/-! ## Reveal-time computation -/
+
+/-- Walk a Vegas program and compute reveal times. Mirrors the structure of
+    `MAIDCompileState.ofProg` but only tracks visibility, not dependencies
+    or semantics. -/
+noncomputable def computeReveals (B : MAIDBackend Player L) :
+    {Γ : VCtx Player L} →
+    VegasCore Player L Γ →
+    RevealState → RevealState
+  | _, .ret _, rs =>
+      let _ := B.fintypePlayer
+      (Finset.univ (α := Player)).toList.foldl (fun rs' _ => rs'.addPublicNode) rs
+  | _, .letExpr _ _ k, rs =>
+      computeReveals B k rs
+  | _, .sample x _ _ _ k, rs =>
+      let id := rs.nextId
+      let rs' := rs.addPublicNode.bindVar x id
+      computeReveals B k rs'
+  | _, .commit x _ _ k, rs =>
+      let id := rs.nextId
+      let rs' := rs.addPrivateNode.bindVar x id
+      computeReveals B k rs'
+  | _, .reveal y _ x _ k, rs =>
+      let rs' := match rs.nodeOf x with
+        | some nid =>
+            let curTime : WithTop Nat := ↑rs.nextId
+            { rs with
+              revealTime := fun i =>
+                if i = nid then min curTime (rs.revealTime i)
+                else rs.revealTime i }
+        | none => rs
+      computeReveals B k (rs'.aliasVar y x)
+
+/-! ## Building VegasMAID from compiler output + reveal times -/
+
+/-- Joint consistency of reveal times with compiled node kinds. -/
+structure RevealConsistent {B : MAIDBackend Player L}
+    (st : MAIDCompileState Player L B) (rs : RevealState) : Prop where
+  sync : rs.nextId = st.nextId
+  chance : ∀ (nd : Fin st.nextId),
+    (st.descAt nd).kind = .chance → rs.revealTime nd.val = ↑nd.val
+  decision : ∀ (nd : Fin st.nextId) (p : Player),
+    (st.descAt nd).kind = .decision p → (↑nd.val : WithTop Nat) < rs.revealTime nd.val
+  /-- `nodeOf` only points to allocated node indices. -/
+  nodeOf_lt : ∀ x nid, rs.nodeOf x = some nid → nid < st.nextId
+  /-- `revealTime` at unallocated indices is `⊤` (never set). -/
+  unset : ∀ i, st.nextId ≤ i → rs.revealTime i = ⊤
+
+/-- Build a `VegasMAID` from the existing compiler's output and computed
+    reveal times, given consistency. -/
+noncomputable def toVegasMAID
+    (B : MAIDBackend Player L) (st : MAIDCompileState Player L B)
+    (rs : RevealState) (hcon : RevealConsistent st rs)
+    (hvisible : ∀ (d : Fin st.nextId) (p : Player),
+      (st.descAt d).kind = .decision p →
+      ∀ (i : Nat) (hi : i ∈ (st.descAt d).parents),
+        rs.revealTime i ≤ ↑d.val ∨
+          (∃ q, (st.descAt ⟨i, Nat.lt_trans (st.descAt_parent_lt d hi) d.2⟩).kind =
+            .decision q ∧ q = p)) :
+    @VegasMAID Player _ B.fintypePlayer st.nextId := by
+  letI := B.fintypePlayer
+  exact
+  { kind := fun nd => (st.descAt nd).kind
+    parents := fun nd =>
+      (st.descAt nd).parents.attach.image
+        (fun d => ⟨d.1, Nat.lt_trans (st.descAt_parent_lt nd d.2) nd.2⟩)
+    Val := fun nd => CompiledNode.valType (B := B) (st.descAt nd)
+    instFintype := fun nd => by cases st.descAt nd with
+      | chance τ _ _ _ => exact MAIDValuation.instFintypeVal L B.toMAIDValuation τ
+      | decision τ _ _ _ _ _ => exact MAIDValuation.instFintypeVal L B.toMAIDValuation τ
+      | utility _ _ _ => exact Unit.fintype
+    instDecidableEq := fun nd => by cases st.descAt nd with
+      | chance τ _ _ _ => exact L.decEqVal
+      | decision τ _ _ _ _ _ => exact L.decEqVal
+      | utility _ _ _ => exact instDecidableEqPUnit
+    instInhabited := fun nd => by cases st.descAt nd with
+      | chance τ _ _ _ => exact ⟨MAIDValuation.defaultVal L B.toMAIDValuation τ⟩
+      | decision τ _ _ _ _ _ => exact ⟨MAIDValuation.defaultVal L B.toMAIDValuation τ⟩
+      | utility _ _ _ => exact ⟨()⟩
+    utility_unique := by
+      intro nd a h
+      cases hdesc : st.descAt nd with
+      | utility _ _ _ => exact PUnit.instUnique
+      | chance τ ps cpd hn => exfalso; simp [CompiledNode.kind, hdesc] at h
+      | decision τ who acts hacts hnodup obs =>
+          exfalso; simp [CompiledNode.kind, hdesc] at h
+    revealedAt := fun nd => rs.revealTime nd.val
+    natural_order := fun nd p hp => by
+      rcases Finset.mem_image.mp hp with ⟨d, hd, rfl⟩
+      exact st.descAt_parent_lt nd d.2
+    chance_public := hcon.chance
+    decision_private := hcon.decision
+    parents_visible := by
+      intro d p hkind i hi
+      rcases Finset.mem_image.mp hi with ⟨⟨j, hj⟩, _, rfl⟩
+      exact hvisible d p hkind j hj }
+
+/-- Visible-variable-deps invariant: for each variable visible to a player,
+    its lookupDeps point to nodes that are either public or same-player decisions. -/
+def VarVisible {B : MAIDBackend Player L}
+    (Γ : VCtx Player L) (st : MAIDCompileState Player L B) (rs : RevealState) : Prop :=
+  ∀ (who : Player) (y : VarId) (σ : BindTy Player L),
+    (y, σ) ∈ viewVCtx who Γ →
+    ∀ (i : Nat) (hi : i ∈ st.lookupDeps y),
+      rs.revealTime i ≤ ↑st.nextId ∨
+        (st.descAt ⟨i, st.lookupDeps_lt y i hi⟩).kind = .decision who
 
 end Vegas

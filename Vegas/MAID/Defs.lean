@@ -1,14 +1,12 @@
-import Vegas.MAID.CompileV
+import Vegas.MAID.CompileLemmas
 import Vegas.StrategicPMF
 import GameTheory.Languages.MAID.FoldEval
 
 /-!
 # Definitions for VegasMAID Bridge Proofs
 
-**Status: top-down development — interfaces first, proofs later.**
-
-Import policy: only CompileV.lean + Compile.lean + GameTheory MAID.
-Do NOT reference theorems from Correctness.lean or Reflection.lean.
+Definitions for the bridge proofs: policy reflection, pure profile compilation,
+view projections, and insensitivity predicates.
 -/
 
 namespace Vegas

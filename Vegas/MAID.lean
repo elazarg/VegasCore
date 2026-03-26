@@ -1,12 +1,11 @@
 import Vegas.MAID.Backend
 import Vegas.MAID.Compile
 import Vegas.MAID.VegasMAID
-import Vegas.MAID.CompileV
-import Vegas.MAID.CompileStructural
-import Vegas.MAID.DefsV
-import Vegas.MAID.PerfectRecallV
-import Vegas.MAID.BridgeV
-import Vegas.MAID.KuhnV
+import Vegas.MAID.CompileLemmas
+import Vegas.MAID.Defs
+import Vegas.MAID.PerfectRecall
+import Vegas.MAID.Bridge
+import Vegas.MAID.Kuhn
 
 /-!
 # Vegas MAID backend
