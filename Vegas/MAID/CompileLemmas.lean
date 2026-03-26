@@ -104,7 +104,7 @@ theorem MAIDCompileState.lookupDeps_addNode
   induction xs with
   | nil => rfl
   | cons y ys ih =>
-    simp only [depsOfVars, addNode, lookupDeps, lookupDepsAux]; congr 1
+    simp only [depsOfVars, addNode, lookupDeps]; congr 1
 
 theorem MAIDCompileState.depsOfVars_addVar_eq_of_fresh
     (st : MAIDCompileState Player L B)
