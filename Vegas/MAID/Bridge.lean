@@ -413,8 +413,8 @@ private structure BridgeInv
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ.map Prod.fst).Nodup) : Prop where
   fold_eq :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer) (MAIDCompileState.ofProg B p hl hd ρ st₀).toStruct),
@@ -454,15 +454,15 @@ private theorem bridgeInv_ret_fold
     {Γ : VCtx Player L}
     (u : List (Player × L.Expr (erasePubVCtx Γ) L.int))
     (hl : Legal (.ret u)) (hd : NormalizedDists (.ret u))
-    (hfresh : FreshBindings (.ret u))
+    (_hfresh : FreshBindings (.ret u))
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B)
-    (hvars : st₀.VarsSubCtx Γ)
-    (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
-    (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (hnodup : (Γ.map Prod.fst).Nodup) :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
+    (_hvars : st₀.VarsSubCtx Γ)
+    (_hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
+    (_hρ_var : EnvRespectsLookupDeps st₀ ρ)
+    (_hnodup : (Γ.map Prod.fst).Nodup) :
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer)
@@ -481,7 +481,7 @@ private theorem bridgeInv_ret_fold
         ρ st₀.nextId
         (rawOfTAssign (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀) a₀) := by
   letI := B.fintypePlayer
-  intro hρ_readers hρ_readval pol a₀
+  intro _hρ_readers _hρ_readval pol a₀
   let st := MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀
   let extract := fun a => extractOutcomeAux B (.ret u) ρ st₀.nextId (rawOfTAssign st a)
   have hutility : ∀ nd ∈ (List.finRange st.nextId).drop st₀.nextId,
@@ -548,13 +548,13 @@ private theorem bridgeInv_ret_behavioral
     {Γ : VCtx Player L}
     (u : List (Player × L.Expr (erasePubVCtx Γ) L.int))
     (hl : Legal (.ret u)) (hd : NormalizedDists (.ret u))
-    (hfresh : FreshBindings (.ret u))
+    (_hfresh : FreshBindings (.ret u))
     (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
     (st₀ : MAIDCompileState Player L B)
-    (hvars : st₀.VarsSubCtx Γ)
-    (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
-    (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (hnodup : (Γ.map Prod.fst).Nodup) :
+    (_hvars : st₀.VarsSubCtx Γ)
+    (_hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
+    (_hρ_var : EnvRespectsLookupDeps st₀ ρ)
+    (_hnodup : (Γ.map Prod.fst).Nodup) :
     ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) (.ret u))
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct)
@@ -613,8 +613,8 @@ private theorem bridgeInv_letExpr_fold
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.letExpr x e k) hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer)
@@ -803,8 +803,8 @@ private theorem bridgeInv_reveal_fold
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer)
@@ -816,7 +816,8 @@ private theorem bridgeInv_reveal_fold
           st₀.nextId) |>.foldl
             (evalStep (fp := B.fintypePlayer)
               (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀).toStruct
-              (MAIDCompileState.toSem (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀)) pol)
+              (MAIDCompileState.toSem
+                (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀)) pol)
             (PMF.pure a₀)) =
       nativeOutcomeDistPMFV B (.reveal y who x hx k) hd
         (reflectPolicyAuxV B (.reveal y who x hx k) hl hd ρ st₀ pol)
@@ -1026,8 +1027,8 @@ private theorem bridgeInv_sample_fold
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer)
@@ -1035,7 +1036,9 @@ private theorem bridgeInv_sample_fold
       PMF.map (fun a =>
           extractOutcomeAux B (.sample x τ m D' k) ρ st₀.nextId
             (rawOfTAssign (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀) a))
-        (((List.finRange (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).nextId).drop st₀.nextId) |>.foldl
+        (((List.finRange
+            (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).nextId).drop
+          st₀.nextId) |>.foldl
             (evalStep (fp := B.fintypePlayer)
               (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).toStruct
               (MAIDCompileState.toSem
@@ -1454,8 +1457,8 @@ private theorem bridgeInv_commit_fold
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
-      (hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
+    ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ' ρ)
+      (_hρ_readval : EnvReadValAtDeps st₀ Γ' ρ)
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).toStruct)
       (a₀ : TAssign (fp := B.fintypePlayer)
@@ -1463,7 +1466,8 @@ private theorem bridgeInv_commit_fold
       PMF.map (fun a =>
           extractOutcomeAux B (.commit x who_commit R k) ρ st₀.nextId
             (rawOfTAssign (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀) a))
-        (((List.finRange (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).nextId).drop
+        (((List.finRange
+            (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).nextId).drop
           st₀.nextId) |>.foldl
             (evalStep (fp := B.fintypePlayer)
               (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).toStruct
@@ -1535,7 +1539,6 @@ private theorem bridgeInv_commit_fold
           simpa [stNode] using st₀.lookupDeps_addNode nd hndeps y
         have hj' : j ∉ st₀.lookupDeps y := by simpa [hlookupVar, hlookupNode] using hj
         simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-
   let st := MAIDCompileState.ofProg B k hl.2 hd ρ' st₁
   have hid_lt : st₀.nextId < st.nextId :=
     Nat.lt_of_lt_of_le (by
@@ -1674,7 +1677,6 @@ private theorem bridgeInv_commit_fold
           (htyped j (by rw [hVD]; exact hj) (hlt_fwd j hjlt))
       · exact hview_old
       · rwa [hVD] at hi
-
   have hρ'_readval : EnvReadValAtDeps st₁ ((x, .hidden who_commit b) :: Γ') ρ' := by
     intro z who_z bz hz hne_z
     have hlN : ∀ w, stNode.lookupDeps w = st₀.lookupDeps w :=
