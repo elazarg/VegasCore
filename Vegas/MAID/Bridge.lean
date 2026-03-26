@@ -1,7 +1,7 @@
-import Vegas.MAID.Defs
-import Vegas.PureStrategic
 import GameTheory.Languages.MAID.SOS
 import GameTheory.Languages.MAID.FrontierEval
+import Vegas.PureStrategic
+import Vegas.MAID.Defs
 
 /-!
 # Bridge Theorems for VegasMAID
@@ -44,13 +44,6 @@ private theorem toPMF_fdist_transport_cast {α β : Type}
   subst heq
   rfl
 
-private theorem taggedOfVal_castValType
-    {c c' : CompiledNode Player L B} (hc : c = c') (v : CompiledNode.valType c) :
-    MAIDCompileState.taggedOfVal c' (castValType hc v) =
-      MAIDCompileState.taggedOfVal c v := by
-  subst hc
-  rfl
-
 private theorem eq_on_ctxDeps_raw
     (st : MAIDCompileState Player L B)
     {deps : Finset Nat} {f : RawNodeEnv L → α}
@@ -86,221 +79,6 @@ private theorem eq_on_ctxDeps_raw
   · intro i hi
     simp [hi]
 
-private theorem envRespectsLookupDeps_letExpr
-    {Γ' : VCtx Player L}
-    (st : MAIDCompileState Player L B)
-    (ρ : RawNodeEnv L → VEnv L Γ')
-    (hρ_var : EnvRespectsLookupDeps st ρ)
-    {x : VarId} {b : L.Ty} (e : L.Expr (erasePubVCtx Γ') b)
-    (hxΓ : Fresh x Γ')
-    (hxvars : x ∉ st.vars.map Prod.fst) :
-    let ρ' : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ') :=
-      fun raw => VEnv.cons (L := L) (x := x) (τ := .pub b)
-        (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw)
-    let st₁ := st.addVar x (.pub b) (st.pubCtxDeps Γ') (st.depsOfVars_lt _)
-    EnvRespectsLookupDeps st₁ ρ' := by
-  intro ρ' st₁ y τ hy j hj raw tv
-  cases hy with
-  | here =>
-      have hj' : j ∉ st.pubCtxDeps Γ' := by
-        simpa [st₁, st.lookupDeps_addVar_eq_self_of_fresh x (.pub b)
-          (st.pubCtxDeps Γ') (st.depsOfVars_lt _) hxvars] using hj
-      exact Vegas.eval_pubExpr_insensitive_of_pubCtxDeps st ρ hρ_var e j hj' raw tv
-  | there hy' =>
-      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
-      have hj' : j ∉ st.lookupDeps y := by
-        simpa [st₁, st.lookupDeps_addVar_eq_of_ne x (.pub b)
-          (st.pubCtxDeps Γ') (st.depsOfVars_lt _) hxy] using hj
-      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-
-private theorem envRespectsLookupDeps_sample
-    {Γ' : VCtx Player L}
-    (st : MAIDCompileState Player L B)
-    (ρ : RawNodeEnv L → VEnv L Γ')
-    (hρ_var : EnvRespectsLookupDeps st ρ)
-    {x : VarId} {τ : BindTy Player L} {m : SampleMode τ}
-    (D' : L.DistExpr (eraseVCtx (distVCtx τ m Γ')) τ.base)
-    (hd : ∀ env, FDist.totalWeight (L.evalDist D' (VEnv.eraseDistEnv τ m env)) = 1)
-    (hxΓ : Fresh x Γ')
-    (hxvars : x ∉ st.vars.map Prod.fst) :
-    let nd : CompiledNode Player L B := .chance τ.base (st.ctxDeps Γ')
-      (fun raw => L.evalDist D' (VEnv.eraseDistEnv τ m (ρ raw))) (fun raw => hd _)
-    let hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId := by
-      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
-        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st.depsOfVars_lt _ d h
-    let stNode := (st.addNode nd hndeps).2
-    let st₁ := stNode.addVar x τ ({st.nextId}) (by
-      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
-      exact Nat.lt_succ_self _)
-    let ρ' : RawNodeEnv L → VEnv L ((x, τ) :: Γ') :=
-      fun raw => VEnv.cons (MAIDCompileState.readVal (B := B) raw τ.base st.nextId) (ρ raw)
-    EnvRespectsLookupDeps st₁ ρ' := by
-  intro nd hndeps stNode st₁ ρ' y σ hy j hj raw tv
-  cases hy with
-  | here =>
-      have hlookup : st₁.lookupDeps x = ({st.nextId} : Finset Nat) := by
-        simpa [st₁] using stNode.lookupDeps_addVar_eq_self_of_fresh x τ {st.nextId}
-          (by
-            intro d hd'
-            have := Finset.mem_singleton.mp hd'
-            subst d
-            exact Nat.lt_succ_self _)
-          (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
-      have hjid : j ≠ st.nextId := by
-        simpa [Finset.mem_singleton] using
-          (show j ∉ ({st.nextId} : Finset Nat) by simpa [hlookup] using hj)
-      simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
-        (readVal_extend_ne (B := B) raw j st.nextId tv τ.base hjid.symm)
-  | there hy' =>
-      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
-      have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
-        simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x τ {st.nextId}
-          (by
-            intro d hd'
-            have := Finset.mem_singleton.mp hd'
-            subst d
-            exact Nat.lt_succ_self _) hxy
-      have hlookupNode : stNode.lookupDeps y = st.lookupDeps y := by
-        simpa [stNode] using st.lookupDeps_addNode nd hndeps y
-      have hj' : j ∉ st.lookupDeps y := by
-        simpa [hlookupVar, hlookupNode] using hj
-      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-
-private theorem envRespectsLookupDeps_reveal
-    {Γ' : VCtx Player L}
-    (st : MAIDCompileState Player L B)
-    (ρ : RawNodeEnv L → VEnv L Γ')
-    (hρ_var : EnvRespectsLookupDeps st ρ)
-    {y x : VarId} {who : Player} {b : L.Ty}
-    (hx : VHasVar (L := L) Γ' x (.hidden who b))
-    (hyΓ : Fresh y Γ')
-    (hyvars : y ∉ st.vars.map Prod.fst) :
-    let ρ' : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ') :=
-      fun raw =>
-        let v : L.Val b := VEnv.get (L := L) (ρ raw) hx
-        VEnv.cons (L := L) (x := y) (τ := .pub b) v (ρ raw)
-    let st₁ := st.addVar y (.pub b) (st.lookupDeps x) (st.lookupDeps_lt x)
-    EnvRespectsLookupDeps st₁ ρ' := by
-  intro ρ' st₁ z σ hz j hj raw tv
-  cases hz with
-  | here =>
-      have hj' : j ∉ st.lookupDeps x := by
-        simpa [st₁, st.lookupDeps_addVar_eq_self_of_fresh y (.pub b) (st.lookupDeps x)
-          (st.lookupDeps_lt x) hyvars] using hj
-      simpa [ρ', VEnv.get] using hρ_var hx j hj' raw tv
-  | there hz' =>
-      have hzy : z ≠ y := fun hEq => hyΓ (hEq.symm ▸ hz'.mem_map_fst)
-      have hj' : j ∉ st.lookupDeps z := by
-        simpa [st₁, st.lookupDeps_addVar_eq_of_ne y (.pub b) (st.lookupDeps x)
-          (st.lookupDeps_lt x) hzy] using hj
-      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
-
-private theorem envRespectsLookupDeps_commit
-    {Γ' : VCtx Player L}
-    (st : MAIDCompileState Player L B)
-    (ρ : RawNodeEnv L → VEnv L Γ')
-    (hρ_var : EnvRespectsLookupDeps st ρ)
-    {x : VarId} {who : Player} {b : L.Ty}
-    (hxΓ : Fresh x Γ')
-    (hxvars : x ∉ st.vars.map Prod.fst) :
-    let nd : CompiledNode Player L B :=
-      .decision b who (allValues B b) (allValues_ne_nil B b)
-        (allValues_nodup B b) (st.viewDeps who Γ')
-    let hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId := by
-      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
-        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st.depsOfVars_lt _ d h
-    let stNode := (st.addNode nd hndeps).2
-    let st₁ := stNode.addVar x (.hidden who b) ({st.nextId}) (by
-      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
-      exact Nat.lt_succ_self _)
-    let ρ' : RawNodeEnv L → VEnv L ((x, .hidden who b) :: Γ') :=
-      fun raw => VEnv.cons (τ := .hidden who b)
-        (MAIDCompileState.readVal (B := B) raw b st.nextId) (ρ raw)
-    EnvRespectsLookupDeps st₁ ρ' := by
-  intro nd hndeps stNode st₁ ρ' y σ hy j hj raw tv
-  cases hy with
-  | here =>
-      have hlookup : st₁.lookupDeps x = ({st.nextId} : Finset Nat) := by
-        simpa [st₁] using
-          stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who b) {st.nextId}
-            (by
-              intro d hd'
-              have := Finset.mem_singleton.mp hd'
-              subst d
-              exact Nat.lt_succ_self _)
-            (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
-      have hjid : j ≠ st.nextId := by
-        simpa [Finset.mem_singleton] using
-          (show j ∉ ({st.nextId} : Finset Nat) by simpa [hlookup] using hj)
-      simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
-        (readVal_extend_ne (B := B) raw j st.nextId tv b hjid.symm)
-  | there hy' =>
-      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
-      have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
-        simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x (.hidden who b) {st.nextId}
-          (by
-            intro d hd'
-            have := Finset.mem_singleton.mp hd'
-            subst d
-            exact Nat.lt_succ_self _) hxy
-      have hlookupNode : stNode.lookupDeps y = st.lookupDeps y := by
-        simpa [stNode] using st.lookupDeps_addNode nd hndeps y
-      have hj' : j ∉ st.lookupDeps y := by
-        simpa [hlookupVar, hlookupNode] using hj
-      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
-
-private theorem rawWitness_extend_addNode_addVar
-    (st : MAIDCompileState Player L B)
-    (nd : CompiledNode Player L B)
-    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
-    {x : VarId} {τ : BindTy Player L}
-    (raw₀ : RawNodeEnv L)
-    (hraw_typed : ∀ j (hj : j < st.nextId), ∃ v,
-      raw₀ j = MAIDCompileState.taggedOfVal (st.descAt ⟨j, hj⟩) v)
-    (hraw_hi : ∀ j, st.nextId ≤ j → raw₀ j = none)
-    (tv : RawTaggedVal L)
-    (htag : ∃ v, MAIDCompileState.taggedOfVal nd v = some tv) :
-    let stNode := (st.addNode nd hndeps).2
-    let st₁ := stNode.addVar x τ ({st.nextId}) (by
-      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
-      exact Nat.lt_succ_self _)
-    (∀ j (hj : j < st₁.nextId), ∃ v,
-      (raw₀.extend st.nextId tv) j = MAIDCompileState.taggedOfVal (st₁.descAt ⟨j, hj⟩) v) ∧
-    (∀ j, st₁.nextId ≤ j → (raw₀.extend st.nextId tv) j = none) := by
-  intro stNode st₁
-  constructor
-  · intro j hj
-    by_cases hjid : j = st.nextId
-    · subst hjid
-      rcases htag with ⟨v, hv⟩
-      have hdesc_new : st₁.descAt ⟨st.nextId, hj⟩ = nd := by
-        simp only [st₁, MAIDCompileState.addVar, stNode]
-        exact st.addNode_descAt_new nd hndeps
-      refine ⟨castValType hdesc_new.symm v, ?_⟩
-      simp [RawNodeEnv.extend, hv, taggedOfVal_castValType]
-    · have hj_old : j < st.nextId := by
-        have hnext : st₁.nextId = st.nextId + 1 := by
-          simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
-        omega
-      rcases hraw_typed j hj_old with ⟨v, hv⟩
-      have hdesc_old : st₁.descAt ⟨j, hj⟩ = st.descAt ⟨j, hj_old⟩ := by
-        simp only [st₁, MAIDCompileState.addVar, stNode]
-        exact st.addNode_descAt_old nd hndeps ⟨j, hj_old⟩
-      refine ⟨castValType hdesc_old.symm v, ?_⟩
-      simpa [RawNodeEnv.extend, hjid, hdesc_old, taggedOfVal_castValType] using hv
-  · intro j hj
-    have hjid : j ≠ st.nextId := by
-      intro hEq
-      subst hEq
-      have hnext : st₁.nextId = st.nextId + 1 := by
-        simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
-      omega
-    have hge : st.nextId ≤ j := by
-      have hnext : st₁.nextId = st.nextId + 1 := by
-        simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
-      omega
-    simpa [RawNodeEnv.extend, hjid] using hraw_hi j hge
-
 /-! ## Pure bridge -/
 
 private theorem compilePureProfileV_eq_pureToPolicy_aux
@@ -310,7 +88,7 @@ private theorem compilePureProfileV_eq_pureToPolicy_aux
     (hl : Legal p) (hd : NormalizedDists p) (hfresh : FreshBindings p)
     (ρ : RawNodeEnv L → VEnv L Γ)
     (st₀ : MAIDCompileState Player L B)
-    (π : ProgramPureProfile (P := Player) (L := L) p) :
+    (π : ProgramPureProfile p) :
     translateStrategyV B p hl hd ρ st₀ (ProgramPureProfile.toBehavioral p π) =
       MAID.pureToPolicy (fp := B.fintypePlayer) (compilePureProfileAuxV B p hl hd ρ st₀ π) := by
   induction p generalizing st₀ with
@@ -345,8 +123,8 @@ private theorem compilePureProfileV_eq_pureToPolicy
     (p : VegasCore Player L Γ)
     (env : VEnv L Γ)
     (hl : Legal p) (hd : NormalizedDists p) (hfresh : FreshBindings p)
-    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
-    (π : ProgramPureProfile (P := Player) (L := L) p) :
+    (hpub : ∀ y who b, VHasVar Γ y (.hidden who b) → False)
+    (π : ProgramPureProfile p) :
     let β := ProgramPureProfile.toBehavioral p π
     compiledPolicyV B p env hl hd hfresh hpub β =
       MAID.pureToPolicy (fp := B.fintypePlayer)
@@ -357,15 +135,15 @@ private theorem compilePureProfileV_eq_pureToPolicy
 private theorem toBehavioralPMF_eq_toPMFProfile_toBehavioral
     {Γ : VCtx Player L}
     (p : VegasCore Player L Γ)
-    (π : ProgramPureProfile (P := Player) (L := L) p) :
+    (π : ProgramPureProfile p) :
     ProgramPureProfile.toBehavioralPMF p π =
       ProgramBehavioralProfile.toPMFProfile p (ProgramPureProfile.toBehavioral p π) := by
   have hofPure :
       ∀ {who : Player} {Γ : VCtx Player L} {b : L.Ty}
-        (κ : PureKernel (P := Player) (L := L) who Γ b),
+        (κ : PureKernel who Γ b),
         ProgramBehavioralKernelPMF.ofFDist
-            (ProgramBehavioralKernel.ofPure (P := Player) (L := L) κ) =
-          ProgramBehavioralKernelPMF.ofPure (P := Player) (L := L) κ := by
+            (ProgramBehavioralKernel.ofPure κ) =
+          ProgramBehavioralKernelPMF.ofPure κ := by
     intro who Γ b κ
     ext view
     simp [ProgramBehavioralKernelPMF.ofFDist, ProgramBehavioralKernelPMF.ofPure,
@@ -450,7 +228,7 @@ private structure BridgeInv
         ρ st₀.nextId
         (rawOfTAssign (bridgeState B p hl hd ρ st₀) a₀)
   behavioral_eq :
-    ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) p)
+    ∀ (β : ProgramBehavioralProfile p)
       (pol : Policy (fp := B.fintypePlayer)
         (bridgeStruct B p hl hd ρ st₀))
       (env : VEnv L Γ),
@@ -459,49 +237,54 @@ private structure BridgeInv
             (bridgeStruct B p hl hd ρ st₀) who),
         I.1.1.val ≥ st₀.nextId →
         pol who I = translateStrategyV B p hl hd ρ st₀ β who I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF p hd
         (reflectPolicyAuxV B p hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF p hd
         (ProgramBehavioralProfile.toPMFProfile p β) env
+
+private abbrev BridgeTailIH
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ) :=
+  ∀ (hl : Legal p) (hd : NormalizedDists p) (hfresh : FreshBindings p)
+    (ρ : RawNodeEnv L → VEnv L Γ)
+    (st₀ : MAIDCompileState Player L B)
+    (hvars : st₀.VarsSubCtx Γ)
+    (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
+    (hρ_var : EnvRespectsLookupDeps st₀ ρ)
+    (hnodup : (Γ.map Prod.fst).Nodup),
+    BridgeInv B p hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup
 
 private theorem bridgeInv_ret_fold
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
     (u : List (Player × L.Expr (erasePubVCtx Γ) L.int))
     (hl : Legal (.ret u)) (hd : NormalizedDists (.ret u))
-    (_hfresh : FreshBindings (.ret u))
     (ρ : RawNodeEnv L → VEnv L Γ)
-    (st₀ : MAIDCompileState Player L B)
-    (_hvars : st₀.VarsSubCtx Γ)
-    (_hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
-    (_hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (_hnodup : (Γ.map Prod.fst).Nodup) :
+    (st₀ : MAIDCompileState Player L B) :
     ∀ (_hρ_readers : ViewDeterminesRaw st₀ Γ ρ)
       (_hρ_readval : EnvReadValAtDeps st₀ Γ ρ)
       (pol : Policy (fp := B.fintypePlayer)
-        (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct)
+        (bridgeStruct B (.ret u) hl hd ρ st₀))
       (a₀ : TAssign (fp := B.fintypePlayer)
-        (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct),
+        (bridgeStruct B (.ret u) hl hd ρ st₀)),
       PMF.map (fun a =>
           extractOutcomeAux B (.ret u) ρ st₀.nextId
-            (rawOfTAssign (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀) a))
-        (((List.finRange (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).nextId).drop st₀.nextId)
+            (rawOfTAssign (bridgeState B (.ret u) hl hd ρ st₀) a))
+        (((List.finRange (bridgeState B (.ret u) hl hd ρ st₀).nextId).drop st₀.nextId)
           |>.foldl
             (evalStep (fp := B.fintypePlayer)
-              (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct
-              (MAIDCompileState.toSem (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀)) pol)
+              (bridgeStruct B (.ret u) hl hd ρ st₀)
+              (MAIDCompileState.toSem (bridgeState B (.ret u) hl hd ρ st₀)) pol)
             (PMF.pure a₀)) =
       nativeOutcomeDistPMFV B (.ret u) hd
         (reflectPolicyAuxV B (.ret u) hl hd ρ st₀ pol)
         ρ st₀.nextId
-        (rawOfTAssign (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀) a₀) := by
+        (rawOfTAssign (bridgeState B (.ret u) hl hd ρ st₀) a₀) := by
   letI := B.fintypePlayer
   intro _hρ_readers _hρ_readval pol a₀
-  let st := MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀
+  let st := bridgeState B (.ret u) hl hd ρ st₀
   let extract := fun a => extractOutcomeAux B (.ret u) ρ st₀.nextId (rawOfTAssign st a)
   have hutility : ∀ nd ∈ (List.finRange st.nextId).drop st₀.nextId,
       ∃ who, (st.descAt nd).kind = .utility who := fun nd hnd => by
@@ -567,26 +350,18 @@ private theorem bridgeInv_ret_behavioral
     {Γ : VCtx Player L}
     (u : List (Player × L.Expr (erasePubVCtx Γ) L.int))
     (hl : Legal (.ret u)) (hd : NormalizedDists (.ret u))
-    (_hfresh : FreshBindings (.ret u))
     (ρ : RawNodeEnv L → VEnv L Γ)
-    (st₀ : MAIDCompileState Player L B)
-    (_hvars : st₀.VarsSubCtx Γ)
-    (_hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
-    (_hρ_var : EnvRespectsLookupDeps st₀ ρ)
-    (_hnodup : (Γ.map Prod.fst).Nodup) :
+    (st₀ : MAIDCompileState Player L B) :
     ∀ (β : ProgramBehavioralProfile (.ret u))
       (pol : Policy (fp := B.fintypePlayer)
-        (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct)
+        (bridgeStruct B (.ret u) hl hd ρ st₀))
       (env : VEnv L Γ),
       (∀ (who : Player)
           (I : MAID.Infoset (fp := B.fintypePlayer)
-            (MAIDCompileState.ofProg B (.ret u) hl hd ρ st₀).toStruct who),
+            (bridgeStruct B (.ret u) hl hd ρ st₀) who),
         I.1.1.val ≥ st₀.nextId →
         pol who I = translateStrategyV B (.ret u) hl hd ρ st₀ β who I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF (.ret u) hd
         (reflectPolicyAuxV B (.ret u) hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF (.ret u) hd
@@ -608,22 +383,15 @@ private theorem bridgeInv_ret
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ.map Prod.fst).Nodup) :
     BridgeInv B (.ret u) hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup := by
-  exact ⟨bridgeInv_ret_fold B u hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup,
-    bridgeInv_ret_behavioral B u hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup⟩
+  exact ⟨bridgeInv_ret_fold B u hl hd ρ st₀,
+    bridgeInv_ret_behavioral B u hl hd ρ st₀⟩
 
 private theorem bridgeInv_letExpr_fold
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {x : VarId} {b : L.Ty}
     (e : L.Expr (erasePubVCtx Γ') b)
     (k : VegasCore Player L ((x, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.letExpr x e k)) (hd : NormalizedDists (.letExpr x e k))
     (hfresh : FreshBindings (.letExpr x e k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -656,7 +424,7 @@ private theorem bridgeInv_letExpr_fold
   have hxΓ : Fresh x Γ' := hfresh.1
   have hxvars : x ∉ st₀.vars.map Prod.fst := fun hxmem => hxΓ (hvars x hxmem)
   let ρ' : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ') :=
-    fun raw => VEnv.cons (L := L) (x := x) (τ := .pub b)
+    fun raw => VEnv.cons (x := x) (τ := .pub b)
       (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw)
   let st₁ := st₀.addVar x (.pub b) (st₀.pubCtxDeps Γ') (st₀.depsOfVars_lt _)
   have hρ'_deps : ∀ j, j ∉ st₁.ctxDeps ((x, .pub b) :: Γ') → InsensitiveTo ρ' j := by
@@ -726,14 +494,7 @@ private theorem bridgeInv_letExpr_behavioral
     {Γ' : VCtx Player L} {x : VarId} {b : L.Ty}
     (e : L.Expr (erasePubVCtx Γ') b)
     (k : VegasCore Player L ((x, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.letExpr x e k)) (hd : NormalizedDists (.letExpr x e k))
     (hfresh : FreshBindings (.letExpr x e k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -742,7 +503,7 @@ private theorem bridgeInv_letExpr_behavioral
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) (.letExpr x e k))
+    ∀ (β : ProgramBehavioralProfile (.letExpr x e k))
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.letExpr x e k) hl hd ρ st₀).toStruct)
       (env : VEnv L Γ'),
@@ -751,10 +512,7 @@ private theorem bridgeInv_letExpr_behavioral
             (MAIDCompileState.ofProg B (.letExpr x e k) hl hd ρ st₀).toStruct who),
         I.1.1.val ≥ st₀.nextId →
         pol who I = translateStrategyV B (.letExpr x e k) hl hd ρ st₀ β who I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF (.letExpr x e k) hd
         (reflectPolicyAuxV B (.letExpr x e k) hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF (.letExpr x e k) hd
@@ -781,14 +539,7 @@ private theorem bridgeInv_letExpr
     {Γ' : VCtx Player L} {x : VarId} {b : L.Ty}
     (e : L.Expr (erasePubVCtx Γ') b)
     (k : VegasCore Player L ((x, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.letExpr x e k)) (hd : NormalizedDists (.letExpr x e k))
     (hfresh : FreshBindings (.letExpr x e k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -804,16 +555,9 @@ private theorem bridgeInv_letExpr
 private theorem bridgeInv_reveal_fold
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {y x : VarId} {who : Player} {b : L.Ty}
-    (hx : VHasVar (L := L) Γ' x (.hidden who b))
+    (hx : VHasVar Γ' x (.hidden who b))
     (k : VegasCore Player L ((y, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((y, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((y, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((y, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.reveal y who x hx k)) (hd : NormalizedDists (.reveal y who x hx k))
     (hfresh : FreshBindings (.reveal y who x hx k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -848,8 +592,8 @@ private theorem bridgeInv_reveal_fold
   have hyvars : y ∉ st₀.vars.map Prod.fst := fun hymem => hyΓ (hvars y hymem)
   let ρ' : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ') :=
     fun raw =>
-      let v := VEnv.get (L := L) (ρ raw) hx
-      VEnv.cons (L := L) (x := y) (τ := .pub b) v (ρ raw)
+      let v := VEnv.get (ρ raw) hx
+      VEnv.cons (x := y) (τ := .pub b) v (ρ raw)
   let st₁ := st₀.addVar y (.pub b) (st₀.lookupDeps x) (st₀.lookupDeps_lt x)
   have hvars₁ : st₁.VarsSubCtx ((y, .pub b) :: Γ') := by
     simpa [st₁] using st₀.VarsSubCtx_addVar hvars y _ _ _ hyΓ
@@ -946,16 +690,9 @@ private theorem bridgeInv_reveal_fold
 private theorem bridgeInv_reveal_behavioral
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {y x : VarId} {who : Player} {b : L.Ty}
-    (hx : VHasVar (L := L) Γ' x (.hidden who b))
+    (hx : VHasVar Γ' x (.hidden who b))
     (k : VegasCore Player L ((y, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((y, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((y, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((y, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.reveal y who x hx k)) (hd : NormalizedDists (.reveal y who x hx k))
     (hfresh : FreshBindings (.reveal y who x hx k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -964,7 +701,7 @@ private theorem bridgeInv_reveal_behavioral
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) (.reveal y who x hx k))
+    ∀ (β : ProgramBehavioralProfile (.reveal y who x hx k))
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀).toStruct)
       (env : VEnv L Γ'),
@@ -973,10 +710,7 @@ private theorem bridgeInv_reveal_behavioral
             (MAIDCompileState.ofProg B (.reveal y who x hx k) hl hd ρ st₀).toStruct who'),
         I.1.1.val ≥ st₀.nextId →
         pol who' I = translateStrategyV B (.reveal y who x hx k) hl hd ρ st₀ β who' I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF (.reveal y who x hx k) hd
         (reflectPolicyAuxV B (.reveal y who x hx k) hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF (.reveal y who x hx k) hd
@@ -1003,16 +737,9 @@ private theorem bridgeInv_reveal_behavioral
 private theorem bridgeInv_reveal
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {y x : VarId} {who : Player} {b : L.Ty}
-    (hx : VHasVar (L := L) Γ' x (.hidden who b))
+    (hx : VHasVar Γ' x (.hidden who b))
     (k : VegasCore Player L ((y, .pub b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((y, .pub b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((y, .pub b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((y, .pub b) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((y, .pub b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.reveal y who x hx k)) (hd : NormalizedDists (.reveal y who x hx k))
     (hfresh : FreshBindings (.reveal y who x hx k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1030,14 +757,7 @@ private theorem bridgeInv_sample_fold
     {Γ' : VCtx Player L} {x : VarId} {τ : BindTy Player L} {m : SampleMode τ}
     (D' : L.DistExpr (eraseVCtx (distVCtx τ m Γ')) τ.base)
     (k : VegasCore Player L ((x, τ) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, τ) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, τ) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, τ) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, τ) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.sample x τ m D' k)) (hd : NormalizedDists (.sample x τ m D' k))
     (hfresh : FreshBindings (.sample x τ m D' k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1338,14 +1058,7 @@ private theorem bridgeInv_sample_behavioral
     {Γ' : VCtx Player L} {x : VarId} {τ : BindTy Player L} {m : SampleMode τ}
     (D' : L.DistExpr (eraseVCtx (distVCtx τ m Γ')) τ.base)
     (k : VegasCore Player L ((x, τ) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, τ) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, τ) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, τ) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, τ) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.sample x τ m D' k)) (hd : NormalizedDists (.sample x τ m D' k))
     (hfresh : FreshBindings (.sample x τ m D' k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1354,7 +1067,7 @@ private theorem bridgeInv_sample_behavioral
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) (.sample x τ m D' k))
+    ∀ (β : ProgramBehavioralProfile (.sample x τ m D' k))
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).toStruct)
       (env : VEnv L Γ'),
@@ -1363,10 +1076,7 @@ private theorem bridgeInv_sample_behavioral
             (MAIDCompileState.ofProg B (.sample x τ m D' k) hl hd ρ st₀).toStruct who),
         I.1.1.val ≥ st₀.nextId →
         pol who I = translateStrategyV B (.sample x τ m D' k) hl hd ρ st₀ β who I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF (.sample x τ m D' k) hd
         (reflectPolicyAuxV B (.sample x τ m D' k) hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF (.sample x τ m D' k) hd
@@ -1410,38 +1120,17 @@ private theorem bridgeInv_sample_behavioral
     β pol _
     (fun who I hge => hpol who I
       (le_trans (by simp [MAIDCompileState.addVar, MAIDCompileState.addNode]) hge))
-    ⟨RawNodeEnv.extend raw₀ st₀.nextId ⟨τ.base, v⟩, by
-      constructor
-      · change VEnv.cons (MAIDCompileState.readVal
-          (RawNodeEnv.extend raw₀ st₀.nextId ⟨τ.base, v⟩) τ.base st₀.nextId)
-          (ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨τ.base, v⟩)) = VEnv.cons v env
-        rw [show MAIDCompileState.readVal (B := B)
-          (RawNodeEnv.extend raw₀ st₀.nextId ⟨τ.base, v⟩) τ.base st₀.nextId = v from by
-          simp [RawNodeEnv.extend, MAIDCompileState.readVal]]
-        rw [show ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨τ.base, v⟩) = env from by
-           rw [hρ_deps st₀.nextId
-              (by intro h; exact absurd (st₀.depsOfVars_lt _ _ h) (by omega))
-              raw₀ ⟨τ.base, v⟩, hraw₀]]
-      · exact ⟨(rawWitness_extend_addNode_addVar st₀ nd hndeps (x := x) (τ := τ) raw₀
-            hraw_typed hraw_hi ⟨τ.base, v⟩
-            ⟨v, by simp [nd, MAIDCompileState.taggedOfVal]⟩).1,
-          (rawWitness_extend_addNode_addVar st₀ nd hndeps (x := x) (τ := τ) raw₀
-            hraw_typed hraw_hi ⟨τ.base, v⟩
-            ⟨v, by simp [nd, MAIDCompileState.taggedOfVal]⟩).2⟩⟩
+    (realizedRawEnv_extend_addNode_addVar st₀ ρ env
+      ⟨raw₀, hraw₀, hraw_typed, hraw_hi⟩ hρ_deps nd hndeps
+      (x := x) (τ := τ) v
+      ⟨v, by simp [nd, MAIDCompileState.taggedOfVal]⟩)
 
 private theorem bridgeInv_sample
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {x : VarId} {τ : BindTy Player L} {m : SampleMode τ}
     (D' : L.DistExpr (eraseVCtx (distVCtx τ m Γ')) τ.base)
     (k : VegasCore Player L ((x, τ) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, τ) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, τ) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, τ) :: Γ') : Finset Nat) → InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, τ) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.sample x τ m D' k)) (hd : NormalizedDists (.sample x τ m D' k))
     (hfresh : FreshBindings (.sample x τ m D' k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1459,15 +1148,7 @@ private theorem bridgeInv_commit_fold
     {Γ' : VCtx Player L} {x : VarId} {who_commit : Player} {b : L.Ty}
     (R : L.Expr ((x, b) :: eraseVCtx Γ') L.bool)
     (k : VegasCore Player L ((x, .hidden who_commit b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .hidden who_commit b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .hidden who_commit b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .hidden who_commit b) :: Γ') : Finset Nat) →
-        InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .hidden who_commit b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.commit x who_commit R k)) (hd : NormalizedDists (.commit x who_commit R k))
     (hfresh : FreshBindings (.commit x who_commit R k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1578,10 +1259,10 @@ private theorem bridgeInv_commit_fold
       (by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode])
     rw [hdesc1]; simpa [st₁, stNode] using st₀.addNode_descAt_new nd hndeps
   have hViewEq :
-      projectViewEnv (P := Player) (L := L) who_commit
+      projectViewEnv who_commit
         (VEnv.eraseEnv (ρ (st.rawEnvOfCfg
           (MAID.projCfg a₀ (st.toStruct.obsParents nd0))))) =
-      projectViewEnv (P := Player) (L := L) who_commit
+      projectViewEnv who_commit
         (VEnv.eraseEnv (ρ (rawOfTAssign st a₀))) := by
     have hrawO : st.rawEnvOfCfg (MAID.projCfg a₀ (st.toStruct.obsParents nd0)) =
         fun i => if i < st.nextId then
@@ -1843,20 +1524,138 @@ private theorem bridgeInv_commit_fold
   · rename_i hk
     rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
 
+private theorem commit_cfg_view_exists_of_realizedRawEnv
+    (B : MAIDBackend Player L)
+    {Γ' : VCtx Player L} {x : VarId} {who_commit : Player} {b : L.Ty}
+    (k : VegasCore Player L ((x, .hidden who_commit b) :: Γ'))
+    (hlk : Legal k) (hdk : NormalizedDists k)
+    (ρ : RawNodeEnv L → VEnv L Γ')
+    (st₀ : MAIDCompileState Player L B)
+    (hρ_var : EnvRespectsLookupDeps st₀ ρ)
+    (env : VEnv L Γ')
+    (raw₀ : RawNodeEnv L)
+    (hraw₀ : ρ raw₀ = env)
+    (hraw_typed : ∀ j (hj : j < st₀.nextId), ∃ v,
+      raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v)
+    (hraw_hi : ∀ j, st₀.nextId ≤ j → raw₀ j = none)
+    (nd : CompiledNode Player L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st₀.nextId)
+    (hnd : nd = .decision b who_commit (allValues B b) (allValues_ne_nil B b)
+      (allValues_nodup B b) (st₀.viewDeps who_commit Γ')) :
+    let stNode := (st₀.addNode nd hndeps).2
+    let st₁ := stNode.addVar x (.hidden who_commit b) ({st₀.nextId}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self _)
+    let ρ' : RawNodeEnv L → VEnv L ((x, .hidden who_commit b) :: Γ') :=
+      fun raw => VEnv.cons (τ := .hidden who_commit b)
+        (MAIDCompileState.readVal (B := B) raw b st₀.nextId) (ρ raw)
+    let st := MAIDCompileState.ofProg B k hlk hdk ρ' st₁
+    let nd0 : Fin st.nextId := ⟨st₀.nextId, by
+      refine Nat.lt_of_lt_of_le ?_ (MAIDCompileState.ofProg_nextId_le B k hlk hdk ρ' st₁)
+      simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]⟩
+    letI := B.fintypePlayer
+    ∃ cfg : MAID.Cfg st.toStruct (st.toStruct.obsParents nd0),
+      projectViewEnv who_commit
+          (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
+        projectViewEnv who_commit
+          (VEnv.eraseEnv env) := by
+  letI := B.fintypePlayer
+  intro stNode st₁ ρ' st nd0
+  have hdesc0 : st.descAt nd0 = nd := by
+    have hdesc1 := MAIDCompileState.ofProg_descAt_old B k hlk hdk ρ' st₁ st₀.nextId
+      (by simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode])
+    rw [hdesc1]
+    simpa [st₁, stNode] using st₀.addNode_descAt_new nd hndeps
+  have hobs_mem : ∀ i (hi : i < st.nextId),
+      ((⟨i, hi⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0 ↔
+        i ∈ st₀.viewDeps who_commit Γ') := by
+    intro i hi
+    rw [st.mem_toStruct_obsParents_iff nd0 hi]
+    simp only [hdesc0, hnd, CompiledNode.obsParents]
+  let cfg : MAID.Cfg (fp := B.fintypePlayer) st.toStruct (st.toStruct.obsParents nd0) := by
+    intro i
+    have himem : i.1.val ∈ st₀.viewDeps who_commit Γ' := (hobs_mem i.1.val i.1.isLt).mp i.2
+    have hi_old : i.1.val < st₀.nextId := st₀.depsOfVars_lt _ _ himem
+    have hdesc_i : st.descAt i.1 = st₀.descAt ⟨i.1.val, hi_old⟩ := by
+      have hprog_old := MAIDCompileState.ofProg_descAt_old B k hlk hdk ρ' st₁ i.1.val
+        (by
+          have hnext : st₁.nextId = st₀.nextId + 1 := by
+            simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+          omega)
+      rw [hprog_old]
+      exact MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨i.1.val, hi_old⟩
+    exact castValType hdesc_i.symm (Classical.choose (hraw_typed i.1.val hi_old))
+  have hraw_cfg : st.rawEnvOfCfg cfg =
+      fun i => if i < st.nextId then
+        if i ∈ st₀.viewDeps who_commit Γ' then raw₀ i else none else none := by
+    funext i
+    by_cases hi : i < st.nextId
+    · by_cases hmem : i ∈ st₀.viewDeps who_commit Γ'
+      · have hi_obs : (⟨i, hi⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0 :=
+          (hobs_mem i hi).2 hmem
+        have hi_old : i < st₀.nextId := st₀.depsOfVars_lt _ _ hmem
+        have hdesc_i : st.descAt ⟨i, hi⟩ = st₀.descAt ⟨i, hi_old⟩ := by
+          have hprog_old := MAIDCompileState.ofProg_descAt_old B k hlk hdk ρ' st₁ i
+            (by
+              have hnext : st₁.nextId = st₀.nextId + 1 := by
+                simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+              omega)
+          rw [hprog_old]
+          exact MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨i, hi_old⟩
+        have hchoose := Classical.choose_spec (hraw_typed i hi_old)
+        simp only [MAIDCompileState.rawEnvOfCfg, hi, ↓reduceDIte, hi_obs, ↓reduceIte]
+        simp only [hmem, reduceIte]
+        change
+          MAIDCompileState.taggedOfVal (st.descAt ⟨i, hi⟩) (cfg ⟨⟨i, hi⟩, hi_obs⟩) = raw₀ i
+        dsimp [cfg]
+        rw [taggedOfVal_castValType hdesc_i.symm]
+        exact hchoose.symm
+      · have hi_obs : (⟨i, hi⟩ : Fin st.nextId) ∉ st.toStruct.obsParents nd0 := by
+          intro hm
+          exact hmem ((hobs_mem i hi).mp hm)
+        simp [MAIDCompileState.rawEnvOfCfg, hi, hmem, hi_obs]
+    · simp [MAIDCompileState.rawEnvOfCfg, hi]
+  have hraw_cfg_old : st.rawEnvOfCfg cfg =
+      (fun i => if i < st₀.nextId then
+        if i ∈ st₀.viewDeps who_commit Γ' then raw₀ i else none
+      else none) := by
+    rw [hraw_cfg]
+    funext i
+    by_cases hi₀ : i < st₀.nextId
+    · have hi₁ : i < st₁.nextId := by
+        have hnext : st₁.nextId = st₀.nextId + 1 := by
+          simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
+        omega
+      have hi : i < st.nextId := Nat.lt_of_lt_of_le hi₁
+        (MAIDCompileState.ofProg_nextId_le B k hlk hdk ρ' st₁)
+      simp [hi, hi₀]
+    · have hnot_mem : i ∉ st₀.viewDeps who_commit Γ' := by
+        intro hmem
+        exact hi₀ (st₀.depsOfVars_lt _ _ hmem)
+      by_cases hi : i < st.nextId
+      · simp [hi, hi₀, hnot_mem]
+      · simp [hi, hi₀]
+  have hViewEq :
+      projectViewEnv who_commit
+        (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
+      projectViewEnv who_commit
+        (VEnv.eraseEnv env) := by
+    rw [hraw_cfg_old, ← hraw₀]
+    simpa using
+      (eq_on_ctxDeps_raw st₀ (deps := st₀.viewDeps who_commit Γ')
+        (f := fun raw => projectViewEnv who_commit (VEnv.eraseEnv (ρ raw)))
+        (fun j hj =>
+          projectViewEnv_insensitive_of_viewDeps st₀ ρ hρ_var who_commit j
+            (by simpa using hj))
+        raw₀ hraw_hi)
+  exact ⟨cfg, hViewEq⟩
+
 private theorem bridgeInv_commit_behavioral
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {x : VarId} {who_commit : Player} {b : L.Ty}
     (R : L.Expr ((x, b) :: eraseVCtx Γ') L.bool)
     (k : VegasCore Player L ((x, .hidden who_commit b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .hidden who_commit b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .hidden who_commit b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .hidden who_commit b) :: Γ') : Finset Nat) →
-        InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .hidden who_commit b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.commit x who_commit R k)) (hd : NormalizedDists (.commit x who_commit R k))
     (hfresh : FreshBindings (.commit x who_commit R k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -1865,7 +1664,7 @@ private theorem bridgeInv_commit_behavioral
     (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps Γ' : Finset Nat) → InsensitiveTo ρ j)
     (hρ_var : EnvRespectsLookupDeps st₀ ρ)
     (hnodup : (Γ'.map Prod.fst).Nodup) :
-    ∀ (β : ProgramBehavioralProfile (P := Player) (L := L) (.commit x who_commit R k))
+    ∀ (β : ProgramBehavioralProfile (.commit x who_commit R k))
       (pol : Policy (fp := B.fintypePlayer)
         (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).toStruct)
       (env : VEnv L Γ'),
@@ -1874,10 +1673,7 @@ private theorem bridgeInv_commit_behavioral
             (MAIDCompileState.ofProg B (.commit x who_commit R k) hl hd ρ st₀).toStruct who),
         I.1.1.val ≥ st₀.nextId →
         pol who I = translateStrategyV B (.commit x who_commit R k) hl hd ρ st₀ β who I) →
-      (∃ raw₀, ρ raw₀ = env ∧
-        (∀ j (hj : j < st₀.nextId), ∃ v,
-          raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-        (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+      RealizedRawEnv st₀ ρ env →
       outcomeDistBehavioralPMF (.commit x who_commit R k) hd
         (reflectPolicyAuxV B (.commit x who_commit R k) hl hd ρ st₀ pol) env =
       outcomeDistBehavioralPMF (.commit x who_commit R k) hd
@@ -1918,89 +1714,15 @@ private theorem bridgeInv_commit_behavioral
       intro i hi
       rw [st.mem_toStruct_obsParents_iff nd0 hi]
       simp only [hdesc0, nd, CompiledNode.obsParents]
-    let cfg : MAID.Cfg (fp := B.fintypePlayer) st.toStruct (st.toStruct.obsParents nd0) := by
-      intro i
-      have himem : i.1.val ∈ st₀.viewDeps who_commit Γ' := (hobs_mem i.1.val i.1.isLt).mp i.2
-      have hi_old : i.1.val < st₀.nextId := st₀.depsOfVars_lt _ _ himem
-      have hdesc_i : st.descAt i.1 = st₀.descAt ⟨i.1.val, hi_old⟩ := by
-        have hprog_old := MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ i.1.val
-          (by
-            have hnext : st₁.nextId = st₀.nextId + 1 := by
-              simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
-            omega)
-        rw [hprog_old]
-        exact MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨i.1.val, hi_old⟩
-      exact castValType hdesc_i.symm (Classical.choose (hraw_typed i.1.val hi_old))
-    have hraw_cfg : st.rawEnvOfCfg cfg =
-        fun i => if i < st.nextId then
-          if i ∈ st₀.viewDeps who_commit Γ' then raw₀ i else none else none := by
-      funext i
-      by_cases hi : i < st.nextId
-      · by_cases hmem : i ∈ st₀.viewDeps who_commit Γ'
-        · have hi_obs : (⟨i, hi⟩ : Fin st.nextId) ∈ st.toStruct.obsParents nd0 :=
-            (hobs_mem i hi).2 hmem
-          have hi_old : i < st₀.nextId := st₀.depsOfVars_lt _ _ hmem
-          have hdesc_i : st.descAt ⟨i, hi⟩ = st₀.descAt ⟨i, hi_old⟩ := by
-            have hprog_old := MAIDCompileState.ofProg_descAt_old B k hl.2 hd ρ' st₁ i
-              (by
-                have hnext : st₁.nextId = st₀.nextId + 1 := by
-                  simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
-                omega)
-            rw [hprog_old]
-            exact MAIDCompileState.addNode_descAt_old st₀ nd hndeps ⟨i, hi_old⟩
-          have hchoose := Classical.choose_spec (hraw_typed i hi_old)
-          simp only [MAIDCompileState.rawEnvOfCfg, hi, ↓reduceDIte, hi_obs, ↓reduceIte]
-          simp only [hmem, reduceIte]
-          change
-            MAIDCompileState.taggedOfVal (st.descAt ⟨i, hi⟩) (cfg ⟨⟨i, hi⟩, hi_obs⟩) = raw₀ i
-          dsimp [cfg]
-          rw [taggedOfVal_castValType hdesc_i.symm]
-          exact hchoose.symm
-        · have hi_obs : (⟨i, hi⟩ : Fin st.nextId) ∉ st.toStruct.obsParents nd0 := by
-            intro hm
-            exact hmem ((hobs_mem i hi).mp hm)
-          simp [MAIDCompileState.rawEnvOfCfg, hi, hmem, hi_obs]
-      · simp [MAIDCompileState.rawEnvOfCfg, hi]
-    have hraw_cfg_old : st.rawEnvOfCfg cfg =
-        (fun i => if i < st₀.nextId then
-          if i ∈ st₀.viewDeps who_commit Γ' then raw₀ i else none
-        else none) := by
-      rw [hraw_cfg]
-      funext i
-      by_cases hi₀ : i < st₀.nextId
-      · have hi₁ : i < st₁.nextId := by
-          have hnext : st₁.nextId = st₀.nextId + 1 := by
-            simp [st₁, stNode, MAIDCompileState.addVar, MAIDCompileState.addNode]
-          omega
-        have hi : i < st.nextId := Nat.lt_of_lt_of_le hi₁
-          (MAIDCompileState.ofProg_nextId_le B k hl.2 hd ρ' st₁)
-        simp [hi, hi₀]
-      · have hnot_mem : i ∉ st₀.viewDeps who_commit Γ' := by
-          intro hmem
-          exact hi₀ (st₀.depsOfVars_lt _ _ hmem)
-        by_cases hi : i < st.nextId
-        · simp [hi, hi₀, hnot_mem]
-        · simp [hi, hi₀]
-    have hViewEq :
-        projectViewEnv (P := Player) (L := L) who_commit
-          (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
-        projectViewEnv (P := Player) (L := L) who_commit
-          (VEnv.eraseEnv env) := by
-      rw [hraw_cfg_old, ← hraw₀]
-      simpa using
-        (eq_on_ctxDeps_raw st₀ (deps := st₀.viewDeps who_commit Γ')
-          (f := fun raw => projectViewEnv who_commit (VEnv.eraseEnv (ρ raw)))
-          (fun j hj =>
-            projectViewEnv_insensitive_of_viewDeps st₀ ρ hρ_var who_commit j
-              (by simpa using hj))
-          raw₀ hraw_hi)
     have hkind0 : st.toStruct.kind nd0 = NodeKind.decision who_commit := by
       simp [toStruct_kind, hdesc0, nd, CompiledNode.kind]
     have h_exists : ∃ cfg,
-        projectViewEnv (P := Player) (L := L) who_commit
-          (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
-        projectViewEnv (P := Player) (L := L) who_commit
-          (VEnv.eraseEnv env) := ⟨cfg, hViewEq⟩
+      projectViewEnv who_commit
+        (VEnv.eraseEnv (ρ (st.rawEnvOfCfg cfg))) =
+      projectViewEnv who_commit
+        (VEnv.eraseEnv env) :=
+      commit_cfg_view_exists_of_realizedRawEnv B k hl.2 hd ρ st₀ hρ_var env raw₀ hraw₀
+        hraw_typed hraw_hi nd hndeps rfl
     split_ifs with h_exists'
     · rw [hpol who_commit ⟨⟨nd0, hkind0⟩, Classical.choose h_exists'⟩ (by simp [nd0])]
       simp only [translateStrategyV]
@@ -2092,39 +1814,17 @@ private theorem bridgeInv_commit_behavioral
       (envRespectsLookupDeps_commit st₀ ρ hρ_var hfresh.1 hxvars)
       (List.nodup_cons.mpr ⟨hfresh.1, hnodup⟩)).behavioral_eq
       (ProgramBehavioralProfile.tail β) pol _ hst₁_le
-      ⟨RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩, by
-        constructor
-        · change VEnv.cons (MAIDCompileState.readVal (B := B)
-            (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) b st₀.nextId)
-            (ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩)) = VEnv.cons v env
-          rw [show MAIDCompileState.readVal (B := B)
-            (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) b st₀.nextId = v from by
-            simp [RawNodeEnv.extend, MAIDCompileState.readVal]]
-          rw [show ρ (RawNodeEnv.extend raw₀ st₀.nextId ⟨b, v⟩) = env from by
-            rw [hρ_deps st₀.nextId
-              (by intro h; exact absurd (st₀.depsOfVars_lt _ _ h) (by omega))
-              raw₀ ⟨b, v⟩, hraw₀]]
-        · exact ⟨(rawWitness_extend_addNode_addVar st₀ nd hndeps (x := x)
-              (τ := .hidden who_commit b) raw₀ hraw_typed hraw_hi ⟨b, v⟩
-              ⟨v, by simp [nd, MAIDCompileState.taggedOfVal]⟩).1,
-            (rawWitness_extend_addNode_addVar st₀ nd hndeps (x := x)
-              (τ := .hidden who_commit b) raw₀ hraw_typed hraw_hi ⟨b, v⟩
-              ⟨v, by simp [nd, MAIDCompileState.taggedOfVal]⟩).2⟩⟩
+      (realizedRawEnv_extend_addNode_addVar st₀ ρ env
+            ⟨raw₀, hraw₀, hraw_typed, hraw_hi⟩ hρ_deps nd hndeps
+            (x := x) (τ := .hidden who_commit b) v
+            ⟨v, Option.mem_def.mp rfl⟩)
 
 private theorem bridgeInv_commit
     (B : MAIDBackend Player L)
     {Γ' : VCtx Player L} {x : VarId} {who_commit : Player} {b : L.Ty}
     (R : L.Expr ((x, b) :: eraseVCtx Γ') L.bool)
     (k : VegasCore Player L ((x, .hidden who_commit b) :: Γ'))
-    (ih : ∀ (hl : Legal k) (hd : NormalizedDists k) (hfresh : FreshBindings k)
-      (ρ : RawNodeEnv L → VEnv L ((x, .hidden who_commit b) :: Γ'))
-      (st₀ : MAIDCompileState Player L B)
-      (hvars : st₀.VarsSubCtx ((x, .hidden who_commit b) :: Γ'))
-      (hρ_deps : ∀ j, j ∉ (st₀.ctxDeps ((x, .hidden who_commit b) :: Γ') : Finset Nat) →
-        InsensitiveTo ρ j)
-      (hρ_var : EnvRespectsLookupDeps st₀ ρ)
-      (hnodup : (((x, .hidden who_commit b) :: Γ').map Prod.fst).Nodup),
-      BridgeInv B k hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup)
+    (ih : BridgeTailIH B k)
     (hl : Legal (.commit x who_commit R k)) (hd : NormalizedDists (.commit x who_commit R k))
     (hfresh : FreshBindings (.commit x who_commit R k))
     (ρ : RawNodeEnv L → VEnv L Γ')
@@ -2162,6 +1862,59 @@ private theorem bridgeInv
       exact bridgeInv_reveal B hx k ih hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup
   | commit x who_commit R k ih =>
       exact bridgeInv_commit B R k ih hl hd hfresh ρ st₀ hvars hρ_deps hρ_var hnodup
+
+private theorem bridgeInv_empty_const
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (p : VegasCore Player L Γ)
+    (env : VEnv L Γ)
+    (hl : Legal p) (hd : NormalizedDists p)
+    (hfresh : FreshBindings p)
+    (hnodup : (Γ.map Prod.fst).Nodup) :
+    BridgeInv B p hl hd hfresh (fun _ => env) .empty
+      (fun _ h => by simp [MAIDCompileState.empty] at h)
+      (fun j _ => by intro raw tv; rfl)
+      (envRespectsLookupDeps_const (B := B) .empty env)
+      hnodup := by
+  exact bridgeInv B p hl hd hfresh (fun _ => env) .empty
+    (fun _ h => by simp [MAIDCompileState.empty] at h)
+    (fun j _ => by intro raw tv; rfl)
+    (envRespectsLookupDeps_const (B := B) .empty env)
+    hnodup
+
+private theorem viewDeterminesRaw_empty_const
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (env : VEnv L Γ) :
+    ViewDeterminesRaw (B := B) .empty Γ (fun _ => env) := by
+  intro who raw₁ raw₂ _ _ _ _ i hi
+  simp only [MAIDCompileState.viewDeps, MAIDCompileState.empty] at hi
+  exact absurd hi (by
+    have := MAIDCompileState.depsOfVars_lt (st := (MAIDCompileState.empty (B := B) (L := L)))
+      ((viewVCtx who Γ).map Prod.fst) i hi
+    simp [MAIDCompileState.empty] at this)
+
+private theorem envReadValAtDeps_empty_const
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (env : VEnv L Γ) :
+    EnvReadValAtDeps (B := B) .empty Γ (fun _ => env) := by
+  intro x who bt hx hne
+  exact absurd hne (by
+    simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
+      MAIDCompileState.lookupDepsAux, Finset.not_nonempty_empty])
+
+private theorem rawWitness_empty_const
+    (B : MAIDBackend Player L)
+    {Γ : VCtx Player L}
+    (env : VEnv L Γ) :
+    RealizedRawEnv (MAIDCompileState.empty (B := B) (L := L)) (fun _ => env) env := by
+  refine ⟨fun _ => (none : Option (RawTaggedVal L)), rfl, ?_, ?_⟩
+  · intro j hj
+    exact absurd hj (by simp [MAIDCompileState.empty])
+  · intro j hj
+    rfl
+
 private theorem pmfFoldBridgeV
     (B : MAIDBackend Player L)
     {Γ : VCtx Player L}
@@ -2207,10 +1960,7 @@ private theorem outcomeDistRoundtripV
       I.1.1.val ≥ st₀.nextId →
       pol who I =
         translateStrategyV B p hl hd ρ st₀ β who I) →
-    (∃ raw₀, ρ raw₀ = env ∧
-      (∀ j (hj : j < st₀.nextId), ∃ v,
-        raw₀ j = MAIDCompileState.taggedOfVal (st₀.descAt ⟨j, hj⟩) v) ∧
-      (∀ j, st₀.nextId ≤ j → raw₀ j = none)) →
+    RealizedRawEnv st₀ ρ env →
     (∀ j, j ∉ (st₀.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j) →
     EnvRespectsLookupDeps st₀ ρ →
     (Γ.map Prod.fst).Nodup →
@@ -2231,7 +1981,7 @@ theorem vegasMAID_reverse_bridge
     (p : VegasCore Player L Γ) (env : VEnv L Γ)
     (hl : Legal p) (hd : NormalizedDists p)
     (hfresh : FreshBindings p)
-    (hpub : ∀ y who b, VHasVar (L := L) Γ y (.hidden who b) → False)
+    (hpub : ∀ y who b, VHasVar Γ y (.hidden who b) → False)
     (hnodup : (Γ.map Prod.fst).Nodup)
     (pol : Policy (fp := B.fintypePlayer) (compiledStruct B p env hl hd hfresh hpub)) :
     let S := compiledStruct B p env hl hd hfresh hpub
@@ -2246,21 +1996,10 @@ theorem vegasMAID_reverse_bridge
   let st := compiledState B p env hl hd
   have hnat := compiled_naturalOrderV st
   rw [MAID.evalAssignDist_eq_evalFold S sem pol hnat.toTopologicalOrder]
-  have hinv := bridgeInv B p hl hd hfresh (fun _ => env) .empty
-    (fun _ h => by simp [MAIDCompileState.empty] at h)
-    (fun j _ => by intro raw tv; rfl)
-    (envRespectsLookupDeps_const (B := B) .empty env)
-    hnodup
+  have hinv := bridgeInv_empty_const B p env hl hd hfresh hnodup
   have hbridge := hinv.fold_eq
-    (fun who raw₁ raw₂ _ _ _ _ i hi => by
-      simp only [MAIDCompileState.viewDeps, MAIDCompileState.empty] at hi
-      exact absurd hi (by
-        have := MAIDCompileState.depsOfVars_lt MAIDCompileState.empty
-          ((viewVCtx who _).map Prod.fst) i hi
-        simp [MAIDCompileState.empty] at this))
-    (fun x who' bt hx hne => absurd hne (by
-      simp [MAIDCompileState.empty, MAIDCompileState.lookupDeps,
-        MAIDCompileState.lookupDepsAux, Finset.not_nonempty_empty]))
+    (viewDeterminesRaw_empty_const B env)
+    (envReadValAtDeps_empty_const B env)
     pol (defaultAssign S)
   rw [show (MAIDCompileState.empty (B := B) (L := L)).nextId = 0 from rfl,
     List.drop_zero] at hbridge
@@ -2292,15 +2031,11 @@ theorem vegasMAID_behavioral_bridge
   have hrev := vegasMAID_reverse_bridge B p env hl hd hfresh hpub hnodup
     (compiledPolicyV B p env hl hd hfresh hpub β)
   rw [hrev]
-  have hinv := bridgeInv B p hl hd hfresh (fun _ => env) .empty
-    (fun _ h => by simp [MAIDCompileState.empty] at h)
-    (fun j _ => fun _ _ => rfl)
-    (fun _ _ _ _ _ => rfl)
-    hnodup
+  have hinv := bridgeInv_empty_const B p env hl hd hfresh hnodup
   have hrt := hinv.behavioral_eq β
     (compiledPolicyV B p env hl hd hfresh hpub β)
     env (by intro who I _; simp [compiledPolicyV])
-    ⟨fun _ => none, rfl, fun j hj => absurd hj (by simp [MAIDCompileState.empty]), fun _ _ => rfl⟩
+    (rawWitness_empty_const B env)
   simpa [reflectPolicyV, compiledPolicyV] using hrt
 
 theorem vegasMAID_pure_bridge

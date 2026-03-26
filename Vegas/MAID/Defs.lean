@@ -1,6 +1,6 @@
-import Vegas.MAID.CompileLemmas
-import Vegas.StrategicPMF
 import GameTheory.Languages.MAID.FoldEval
+import Vegas.StrategicPMF
+import Vegas.MAID.CompileLemmas
 
 /-!
 # Definitions for VegasMAID Bridge Proofs
@@ -920,6 +920,275 @@ def EnvReadValAtDeps (st : MAIDCompileState Player L B)
        | .chance τ _ _ _ | .decision τ _ _ _ _ _ => τ = bt
        | .utility _ _ _ => True) ∧
       ∀ raw, VEnv.get (ρ raw) hx = MAIDCompileState.readVal (B := B) raw bt j
+
+/-- A raw environment that realizes a visible env for `ρ` and is well-typed
+below `st.nextId` and empty above it. -/
+abbrev RealizedRawEnv
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (env : VEnv (Player := Player) L Γ) : Prop :=
+  ∃ raw : RawNodeEnv L, ρ raw = env ∧
+    (∀ j (hj : j < st.nextId), ∃ v,
+      raw j = MAIDCompileState.taggedOfVal (st.descAt ⟨j, hj⟩) v) ∧
+    (∀ j, st.nextId ≤ j → raw j = none)
+
+theorem taggedOfVal_castValType
+    {c c' : CompiledNode Player L B} (hc : c = c') (v : CompiledNode.valType c) :
+    MAIDCompileState.taggedOfVal c' (castValType hc v) =
+      MAIDCompileState.taggedOfVal c v := by
+  subst hc
+  rfl
+
+theorem envRespectsLookupDeps_letExpr
+    {Γ' : VCtx Player L}
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ')
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    {x : VarId} {b : L.Ty} (e : L.Expr (erasePubVCtx Γ') b)
+    (hxΓ : Fresh x Γ')
+    (hxvars : x ∉ st.vars.map Prod.fst) :
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .pub b) :: Γ') :=
+      fun raw => VEnv.cons (x := x) (τ := .pub b)
+        (L.eval e (VEnv.erasePubEnv (ρ raw))) (ρ raw)
+    let st₁ := st.addVar x (.pub b) (st.pubCtxDeps Γ') (st.depsOfVars_lt _)
+    EnvRespectsLookupDeps st₁ ρ' := by
+  intro ρ' st₁ y τ hy j hj raw tv
+  cases hy with
+  | here =>
+      have hj' : j ∉ st.pubCtxDeps Γ' := by
+        simpa [st₁, st.lookupDeps_addVar_eq_self_of_fresh x (.pub b)
+          (st.pubCtxDeps Γ') (st.depsOfVars_lt _) hxvars] using hj
+      exact Vegas.eval_pubExpr_insensitive_of_pubCtxDeps st ρ hρ_var e j hj' raw tv
+  | there hy' =>
+      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
+      have hj' : j ∉ st.lookupDeps y := by
+        simpa [st₁, st.lookupDeps_addVar_eq_of_ne x (.pub b)
+          (st.pubCtxDeps Γ') (st.depsOfVars_lt _) hxy] using hj
+      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
+
+theorem envRespectsLookupDeps_sample
+    {Γ' : VCtx Player L}
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ')
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    {x : VarId} {τ : BindTy Player L} {m : SampleMode τ}
+    (D' : L.DistExpr (eraseVCtx (distVCtx τ m Γ')) τ.base)
+    (hd : ∀ env, FDist.totalWeight (L.evalDist D' (VEnv.eraseDistEnv τ m env)) = 1)
+    (hxΓ : Fresh x Γ')
+    (hxvars : x ∉ st.vars.map Prod.fst) :
+    let nd : CompiledNode Player L B := .chance τ.base (st.ctxDeps Γ')
+      (fun raw => L.evalDist D' (VEnv.eraseDistEnv τ m (ρ raw))) (fun raw => hd _)
+    let hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId := by
+      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
+        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st.depsOfVars_lt _ d h
+    let stNode := (st.addNode nd hndeps).2
+    let st₁ := stNode.addVar x τ ({st.nextId}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self _)
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, τ) :: Γ') :=
+      fun raw => VEnv.cons (MAIDCompileState.readVal (B := B) raw τ.base st.nextId) (ρ raw)
+    EnvRespectsLookupDeps st₁ ρ' := by
+  intro nd hndeps stNode st₁ ρ' y σ hy j hj raw tv
+  cases hy with
+  | here =>
+      have hlookup : st₁.lookupDeps x = ({st.nextId} : Finset Nat) := by
+        simpa [st₁] using stNode.lookupDeps_addVar_eq_self_of_fresh x τ {st.nextId}
+          (by
+            intro d hd'
+            have := Finset.mem_singleton.mp hd'
+            subst d
+            exact Nat.lt_succ_self _)
+          (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
+      have hjid : j ≠ st.nextId := by
+        simpa [Finset.mem_singleton] using
+          (show j ∉ ({st.nextId} : Finset Nat) by simpa [hlookup] using hj)
+      simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
+        (readVal_extend_ne (B := B) raw j st.nextId tv τ.base hjid.symm)
+  | there hy' =>
+      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
+      have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
+        simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x τ {st.nextId}
+          (by
+            intro d hd'
+            have := Finset.mem_singleton.mp hd'
+            subst d
+            exact Nat.lt_succ_self _) hxy
+      have hlookupNode : stNode.lookupDeps y = st.lookupDeps y := by
+        simpa [stNode] using st.lookupDeps_addNode nd hndeps y
+      have hj' : j ∉ st.lookupDeps y := by
+        simpa [hlookupVar, hlookupNode] using hj
+      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
+
+theorem envRespectsLookupDeps_reveal
+    {Γ' : VCtx Player L}
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ')
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    {y x : VarId} {who : Player} {b : L.Ty}
+    (hx : VHasVar Γ' x (.hidden who b))
+    (hyΓ : Fresh y Γ')
+    (hyvars : y ∉ st.vars.map Prod.fst) :
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((y, .pub b) :: Γ') :=
+      fun raw =>
+        let v : L.Val b := VEnv.get (ρ raw) hx
+        VEnv.cons (x := y) (τ := .pub b) v (ρ raw)
+    let st₁ := st.addVar y (.pub b) (st.lookupDeps x) (st.lookupDeps_lt x)
+    EnvRespectsLookupDeps st₁ ρ' := by
+  intro ρ' st₁ z σ hz j hj raw tv
+  cases hz with
+  | here =>
+      have hj' : j ∉ st.lookupDeps x := by
+        simpa [st₁, st.lookupDeps_addVar_eq_self_of_fresh y (.pub b) (st.lookupDeps x)
+          (st.lookupDeps_lt x) hyvars] using hj
+      simpa [ρ', VEnv.get] using hρ_var hx j hj' raw tv
+  | there hz' =>
+      have hzy : z ≠ y := fun hEq => hyΓ (hEq.symm ▸ hz'.mem_map_fst)
+      have hj' : j ∉ st.lookupDeps z := by
+        simpa [st₁, st.lookupDeps_addVar_eq_of_ne y (.pub b) (st.lookupDeps x)
+          (st.lookupDeps_lt x) hzy] using hj
+      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hz' j hj' raw tv
+
+theorem envRespectsLookupDeps_commit
+    {Γ' : VCtx Player L}
+    (st : MAIDCompileState Player L B)
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ')
+    (hρ_var : EnvRespectsLookupDeps st ρ)
+    {x : VarId} {who : Player} {b : L.Ty}
+    (hxΓ : Fresh x Γ')
+    (hxvars : x ∉ st.vars.map Prod.fst) :
+    let nd : CompiledNode Player L B :=
+      .decision b who (allValues B b) (allValues_ne_nil B b)
+        (allValues_nodup B b) (st.viewDeps who Γ')
+    let hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId := by
+      intro d hd'; rcases Finset.mem_union.mp hd' with h | h <;>
+        simpa [CompiledNode.parents, CompiledNode.obsParents, nd] using st.depsOfVars_lt _ d h
+    let stNode := (st.addNode nd hndeps).2
+    let st₁ := stNode.addVar x (.hidden who b) ({st.nextId}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self _)
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, .hidden who b) :: Γ') :=
+      fun raw => VEnv.cons (τ := .hidden who b)
+        (MAIDCompileState.readVal (B := B) raw b st.nextId) (ρ raw)
+    EnvRespectsLookupDeps st₁ ρ' := by
+  intro nd hndeps stNode st₁ ρ' y σ hy j hj raw tv
+  cases hy with
+  | here =>
+      have hlookup : st₁.lookupDeps x = ({st.nextId} : Finset Nat) := by
+        simpa [st₁] using
+          stNode.lookupDeps_addVar_eq_self_of_fresh x (.hidden who b) {st.nextId}
+            (by
+              intro d hd'
+              have := Finset.mem_singleton.mp hd'
+              subst d
+              exact Nat.lt_succ_self _)
+            (by simpa [stNode, MAIDCompileState.addNode] using hxvars)
+      have hjid : j ≠ st.nextId := by
+        simpa [Finset.mem_singleton] using
+          (show j ∉ ({st.nextId} : Finset Nat) by simpa [hlookup] using hj)
+      simpa [ρ', VEnv.get, readVal_extend_ne, hjid] using
+        (readVal_extend_ne (B := B) raw j st.nextId tv b hjid.symm)
+  | there hy' =>
+      have hxy : y ≠ x := fun hEq => hxΓ (hEq.symm ▸ hy'.mem_map_fst)
+      have hlookupVar : st₁.lookupDeps y = stNode.lookupDeps y := by
+        simpa [st₁] using stNode.lookupDeps_addVar_eq_of_ne x (.hidden who b) {st.nextId}
+          (by
+            intro d hd'
+            have := Finset.mem_singleton.mp hd'
+            subst d
+            exact Nat.lt_succ_self _) hxy
+      have hlookupNode : stNode.lookupDeps y = st.lookupDeps y := by
+        simpa [stNode] using st.lookupDeps_addNode nd hndeps y
+      have hj' : j ∉ st.lookupDeps y := by
+        simpa [hlookupVar, hlookupNode] using hj
+      simpa [ρ', VEnv.get, VEnv.cons_get_there] using hρ_var hy' j hj' raw tv
+
+theorem rawWitness_extend_addNode_addVar
+    (st : MAIDCompileState Player L B)
+    (nd : CompiledNode Player L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    {x : VarId} {τ : BindTy Player L}
+    (raw₀ : RawNodeEnv L)
+    (hraw_typed : ∀ j (hj : j < st.nextId), ∃ v,
+      raw₀ j = MAIDCompileState.taggedOfVal (st.descAt ⟨j, hj⟩) v)
+    (hraw_hi : ∀ j, st.nextId ≤ j → raw₀ j = none)
+    (tv : RawTaggedVal L)
+    (htag : ∃ v, MAIDCompileState.taggedOfVal nd v = some tv) :
+    let stNode := (st.addNode nd hndeps).2
+    let st₁ := stNode.addVar x τ ({st.nextId}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self _)
+    (∀ j (hj : j < st₁.nextId), ∃ v,
+      (raw₀.extend st.nextId tv) j = MAIDCompileState.taggedOfVal (st₁.descAt ⟨j, hj⟩) v) ∧
+    (∀ j, st₁.nextId ≤ j → (raw₀.extend st.nextId tv) j = none) := by
+  intro stNode st₁
+  constructor
+  · intro j hj
+    by_cases hjid : j = st.nextId
+    · subst hjid
+      rcases htag with ⟨v, hv⟩
+      have hdesc_new : st₁.descAt ⟨st.nextId, hj⟩ = nd := by
+        simp only [st₁, MAIDCompileState.addVar, stNode]
+        exact st.addNode_descAt_new nd hndeps
+      refine ⟨castValType hdesc_new.symm v, ?_⟩
+      simp [RawNodeEnv.extend, hv, taggedOfVal_castValType]
+    · have hj_old : j < st.nextId := by
+        have hnext : st₁.nextId = st.nextId + 1 := by
+          simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
+        omega
+      rcases hraw_typed j hj_old with ⟨v, hv⟩
+      have hdesc_old : st₁.descAt ⟨j, hj⟩ = st.descAt ⟨j, hj_old⟩ := by
+        simp only [st₁, MAIDCompileState.addVar, stNode]
+        exact st.addNode_descAt_old nd hndeps ⟨j, hj_old⟩
+      refine ⟨castValType hdesc_old.symm v, ?_⟩
+      simpa [RawNodeEnv.extend, hjid, hdesc_old, taggedOfVal_castValType] using hv
+  · intro j hj
+    have hjid : j ≠ st.nextId := by
+      intro hEq
+      subst hEq
+      have hnext : st₁.nextId = st.nextId + 1 := by
+        simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
+      omega
+    have hge : st.nextId ≤ j := by
+      have hnext : st₁.nextId = st.nextId + 1 := by
+        simp [st₁, MAIDCompileState.addVar, stNode, MAIDCompileState.addNode]
+      omega
+    simpa [RawNodeEnv.extend, hjid] using hraw_hi j hge
+
+theorem realizedRawEnv_extend_addNode_addVar
+    (st : MAIDCompileState Player L B)
+    {Γ : VCtx Player L}
+    (ρ : RawNodeEnv L → VEnv (Player := Player) L Γ)
+    (env : VEnv (Player := Player) L Γ)
+    (hreal : RealizedRawEnv st ρ env)
+    (hρ_deps : ∀ j, j ∉ (st.ctxDeps Γ : Finset Nat) → InsensitiveTo ρ j)
+    (nd : CompiledNode Player L B)
+    (hndeps : ∀ d ∈ nd.parents ∪ nd.obsParents, d < st.nextId)
+    {x : VarId} {τ : BindTy Player L}
+    (v : L.Val τ.base)
+    (htag : ∃ w, MAIDCompileState.taggedOfVal nd w = some ⟨τ.base, v⟩) :
+    let stNode := (st.addNode nd hndeps).2
+    let st₁ := stNode.addVar x τ ({st.nextId}) (by
+      intro d hd'; have := Finset.mem_singleton.mp hd'; subst d
+      exact Nat.lt_succ_self _)
+    let ρ' : RawNodeEnv L → VEnv (Player := Player) L ((x, τ) :: Γ) :=
+      fun raw => VEnv.cons (τ := τ)
+        (MAIDCompileState.readVal (B := B) raw τ.base st.nextId) (ρ raw)
+    RealizedRawEnv st₁ ρ' (VEnv.cons (τ := τ) v env) := by
+  intro stNode st₁ ρ'
+  rcases hreal with ⟨raw₀, hraw₀, hraw_typed, hraw_hi⟩
+  refine ⟨RawNodeEnv.extend raw₀ st.nextId ⟨τ.base, v⟩, ?_, ?_, ?_⟩
+  · apply VEnv.cons_ext
+    · simp [RawNodeEnv.extend, MAIDCompileState.readVal]
+    · rw [show ρ (RawNodeEnv.extend raw₀ st.nextId ⟨τ.base, v⟩) = env from by
+        rw [hρ_deps st.nextId
+          (by
+            intro h
+            exact absurd (st.depsOfVars_lt _ _ h) (by omega))
+          raw₀ ⟨τ.base, v⟩, hraw₀]]
+  · exact (rawWitness_extend_addNode_addVar st nd hndeps (x := x) (τ := τ) raw₀
+      hraw_typed hraw_hi ⟨τ.base, v⟩ htag).1
+  · exact (rawWitness_extend_addNode_addVar st nd hndeps (x := x) (τ := τ) raw₀
+      hraw_typed hraw_hi ⟨τ.base, v⟩ htag).2
 
 open MAID in
 theorem rawEnvOfCfg_rawsMatchDescAt
