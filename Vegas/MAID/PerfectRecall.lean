@@ -96,11 +96,11 @@ private theorem MAIDCompileState.DecisionMonotone_addUtilityNodes'
     (st.addUtilityNodes deps hdeps ufn players).DecisionMonotone' := by
   intro who d₁ d₂ hk₁ hk₂ hlt
   have old₁ : d₁.val < st.nextId := by
-    by_contra hge; push_neg at hge
+    by_contra hge; push Not at hge
     have ⟨w, hw⟩ := addUtilityNodes_all_utility st deps hdeps ufn players d₁ hge
     rw [hw] at hk₁; exact nomatch hk₁
   have old₂ : d₂.val < st.nextId := by
-    by_contra hge; push_neg at hge
+    by_contra hge; push Not at hge
     have ⟨w, hw⟩ := addUtilityNodes_all_utility st deps hdeps ufn players d₂ hge
     rw [hw] at hk₂; exact nomatch hk₂
   have h₁ : (st.addUtilityNodes deps hdeps ufn players).descAt d₁ =
@@ -153,7 +153,7 @@ private theorem MAIDCompileState.DecisionMonotone_addNode_addVar_nonDec'
   intro who d₁ d₂ hk₁ hk₂ hlt
   have old (d : Fin _) (hkd : (((st.addNode nd hndeps).2.addVar x τ _ hdeps).descAt d).kind =
       .decision who) : d.val < st.nextId := by
-    by_contra hge; push_neg at hge
+    by_contra hge; push Not at hge
     have heq : d.val = st.nextId := by
       have := d.isLt; simp [MAIDCompileState.addVar, MAIDCompileState.addNode] at this; omega
     have hdesc : ((st.addNode nd hndeps).2.addVar x τ _ hdeps).descAt d = nd := by
@@ -180,7 +180,7 @@ private theorem MAIDCompileState.DecisionVisible_addNode_addVar_cons'
       ((x, τ) :: Γ) := by
   intro who d hkd
   have hold : d.val < st.nextId := by
-    by_contra hge; push_neg at hge
+    by_contra hge; push Not at hge
     have heq : d.val = st.nextId := by
       have := d.isLt; simp [MAIDCompileState.addVar, MAIDCompileState.addNode] at this; omega
     have hdesc : ((st.addNode nd hndeps).2.addVar x τ _ hdeps).descAt d = nd := by

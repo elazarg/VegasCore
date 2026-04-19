@@ -221,7 +221,7 @@ private theorem nodup_map_not_mem_erase [DecidableEq α]
       have hbeq : (b == n) = false := beq_eq_false_iff_ne.mpr hbn
       simp only [List.erase_cons, hbeq, Bool.false_eq_true, ↓reduceIte,
         List.map_cons, List.mem_cons] at *
-      push_neg
+      push Not
       exact ⟨fun heq => hfb (heq ▸ List.mem_map.mpr ⟨n, hn_in, rfl⟩),
              ih hnd' hn_in⟩
 

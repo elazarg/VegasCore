@@ -30,8 +30,45 @@ noncomputable def map (g : α → β) (d : FDist α) : FDist β :=
 
 noncomputable def totalWeight (d : FDist α) : ℚ≥0 := d.sum (fun _ w => w)
 
-noncomputable def ofList (entries : List (α × ℚ≥0)) : FDist α :=
-  entries.foldl (fun acc (a, w) => acc + Finsupp.single a w) 0
+def ofListWeight (a : α) : List (α × ℚ≥0) → ℚ≥0
+  | [] => 0
+  | entry :: rest => (if entry.1 = a then entry.2 else 0) + ofListWeight a rest
+
+def ofList (entries : List (α × ℚ≥0)) : FDist α where
+  support := (entries.map Prod.fst).toFinset.filter (fun a => ofListWeight a entries ≠ 0)
+  toFun a := ofListWeight a entries
+  mem_support_toFun a := by
+    rw [Finset.mem_filter]
+    constructor
+    · intro h
+      exact h.2
+    · intro hne
+      constructor
+      · simp only [List.mem_toFinset, List.mem_map]
+        induction entries with
+        | nil => simp [ofListWeight] at hne
+        | cons hd tl ih =>
+            simp only [ofListWeight] at hne
+            by_cases h : hd.1 = a
+            · exact ⟨hd, by simp, h⟩
+            · have htail : ofListWeight a tl ≠ 0 := by
+                intro hzero
+                apply hne
+                simp [h, hzero]
+              rcases ih htail with ⟨entry, hmem, heq⟩
+              exact ⟨entry, List.mem_cons_of_mem hd hmem, heq⟩
+      · exact hne
+
+@[simp] theorem pure_apply (x y : α) : FDist.pure x y = if x = y then 1 else 0 := by
+  simp [FDist.pure, Finsupp.single_apply]
+
+theorem bind_apply (d : FDist α) (f : α → FDist β) (b : β) :
+    (d.bind f) b = d.support.sum (fun a => d a * (f a) b) := by
+  simp only [bind, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.mapRange_apply]
+
+theorem map_apply (g : α → β) (d : FDist α) (b : β) :
+    (d.map g) b = d.support.sum (fun a => if g a = b then d a else 0) := by
+  simp only [map, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.single_apply]
 
 def Supported (d : FDist α) (P : α → Prop) : Prop := ∀ a ∈ d.support, P a
 
@@ -46,7 +83,7 @@ def Supported (d : FDist α) (P : α → Prop) : Prop := ∀ a ∈ d.support, P 
 
 @[simp] theorem Supported_pure {P : α → Prop} (x : α) :
     (FDist.pure x).Supported P ↔ P x := by
-  simp [Supported, FDist.pure, Finsupp.support_single_ne_zero _ one_ne_zero]
+  simp [Supported]
 
 theorem Supported_zero (P : α → Prop) : (FDist.zero : FDist α).Supported P := by
   simp [Supported, FDist.zero]
@@ -68,25 +105,14 @@ theorem bind_zero_left (f : α → FDist β) :
     (FDist.zero : FDist α).bind f = FDist.zero := by
   simp [bind, FDist.zero, Finsupp.sum_zero_index]
 
-@[simp] theorem ofList_nil : (FDist.ofList (α := α) []) = FDist.zero := rfl
+@[simp] theorem ofList_nil : (FDist.ofList (α := α) []) = FDist.zero := by
+  ext a
+  simp [ofList, ofListWeight, FDist.zero]
 
 theorem ofList_cons (a : α) (w : ℚ≥0) (rest : List (α × ℚ≥0)) :
     FDist.ofList ((a, w) :: rest) = Finsupp.single a w + FDist.ofList rest := by
-  simp only [ofList, List.foldl_cons, zero_add]
-  suffices ∀ (init : FDist α) (l : List (α × ℚ≥0)),
-      l.foldl (fun acc (p : α × ℚ≥0) => acc + Finsupp.single p.1 p.2) init =
-      init + l.foldl (fun acc (p : α × ℚ≥0) => acc + Finsupp.single p.1 p.2) 0 by
-    exact this _ _
-  intro init l
-  induction l generalizing init with
-  | nil => simp
-  | cons hd tl ih =>
-      simp only [List.foldl_cons, zero_add]
-      rw [ih, ih (Finsupp.single hd.1 hd.2), add_assoc]
-
-theorem bind_apply (d : FDist α) (f : α → FDist β) (b : β) :
-    (d.bind f) b = d.support.sum (fun a => d a * (f a) b) := by
-  simp only [bind, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.mapRange_apply]
+  ext x
+  simp [ofList, ofListWeight, Finsupp.single_apply]
 
 theorem mem_support_bind {d : FDist α} {f : α → FDist β} {b : β} :
     b ∈ (d.bind f).support ↔ ∃ a ∈ d.support, b ∈ (f a).support := by
@@ -94,7 +120,7 @@ theorem mem_support_bind {d : FDist α} {f : α → FDist β} {b : β} :
   constructor
   · intro h
     by_contra hall
-    push_neg at hall
+    push Not at hall
     apply h
     apply Finset.sum_eq_zero
     intro a ha
@@ -136,10 +162,6 @@ theorem totalWeight_bind_of_normalized {d : FDist α} {f : α → FDist β}
     rw [hf a ha, mul_one]
   rw [hs]
   exact hd
-
-theorem map_apply (g : α → β) (d : FDist α) (b : β) :
-    (d.map g) b = d.support.sum (fun a => if g a = b then d a else 0) := by
-  simp only [map, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.single_apply]
 
 theorem map_apply_injective (g : α → β) (d : FDist α) (a : α)
     (hinj : Function.Injective g) :

@@ -103,7 +103,7 @@ inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
 
-noncomputable def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FDist (Val b)
+def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FDist (Val b)
   | .weighted entries, _ => FDist.ofList entries
   | .ite c t f, env =>
       if evalExpr c env then evalDistExpr t env else evalDistExpr f env
@@ -333,7 +333,7 @@ theorem evalExpr_dropAfterHead
           exact iht hyt vx vy env
 
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
-noncomputable def simpleExpr : Vegas.IExpr where
+def simpleExpr : Vegas.IExpr where
   Ty := BaseTy
   decEqTy := inferInstance
   Val := Val

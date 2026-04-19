@@ -38,6 +38,24 @@ private theorem toPMF_fdist_transport_cast {α β : Type}
   subst h
   rfl
 
+private theorem infoset_eq_of_cfg_heq
+    [Fintype Player] {n : Nat} {S : MAID.Struct Player n} {p : Player}
+    {d₁ d₂ : MAID.DecisionNode S p}
+    {cfg₁ : MAID.Cfg S (S.obsParents d₁.val)}
+    {cfg₂ : MAID.Cfg S (S.obsParents d₂.val)}
+    (hd : d₁ = d₂) (hcfg : HEq cfg₁ cfg₂) :
+    (⟨d₁, cfg₁⟩ : MAID.Infoset S p) = ⟨d₂, cfg₂⟩ := by
+  cases hd
+  cases hcfg
+  rfl
+
+private theorem playerStrategy_apply_heq
+    [Fintype Player] {n : Nat} {S : MAID.Struct Player n} {p : Player}
+    (pol : MAID.PlayerStrategy S p) {I J : MAID.Infoset S p} (h : I = J) :
+    HEq (pol I) (pol J) := by
+  cases h
+  rfl
+
 @[congr] private theorem FDist.toPMF_congr' [DecidableEq α]
     {d₁ d₂ : FDist α} {h₁ h₂} (heq : d₁ = d₂) :
     FDist.toPMF d₁ h₁ = FDist.toPMF d₂ h₂ := by
@@ -1004,7 +1022,7 @@ private theorem bridgeInv_sample_fold
       change PMF.bind (cast _ ((cpdFDist (st.rawEnvOfCfg
         (MAID.projCfg a₀ (st.toStruct.parents nd0)))).toPMF _))
         (fun a => F (castValType hdesc0 a)) = _
-      rw [pmf_descAt_cast_bind_cancel hdesc0]
+      refine (pmf_descAt_cast_bind_cancel hdesc0 _ _ _).trans ?_
       change ((cpdFDist (st.rawEnvOfCfg
           (MAID.projCfg a₀ (st.toStruct.parents nd0)))).toPMF (cpdNorm _)).bind F =
         ((L.evalDist D' (VEnv.eraseSampleEnv (ρ (rawOfTAssign st a₀)))).toPMF _).bind F
@@ -1467,7 +1485,6 @@ private theorem bridgeInv_commit_fold
     simp only [dif_pos trivial, ProgramBehavioralStrategyPMF.headKernel_mk]
     split_ifs with h_exists
     · have hcfg_eq := cfg_injective h_exists
-      rw [hcfg_eq]
       have hprofile : reflectPolicyAuxV B k hl.2 hd ρ' st₁ pol =
           ProgramBehavioralProfilePMF.tail
             (reflectPolicyAuxV B (.commit x p R k) hl hd ρ st₀ pol) := by
@@ -1480,13 +1497,22 @@ private theorem bridgeInv_commit_fold
           (reflectPolicyAuxV B (.commit x p R k) hl hd ρ st₀ pol).tail ρ'
           (st₀.nextId + 1) ((rawOfTAssign st a₀).extend st₀.nextId ⟨b, v⟩))
         (congrArg PMF (congrArg CompiledNode.valType hdesc0.symm)) using 5
-      · change _ = _
-        simp only [CompiledNode.valType, eqRec_eq_cast, cast_cast, cast_eq]
-        rfl
+      · have hI_eq :
+            (⟨⟨⟨st₀.nextId, hid_lt⟩, hk⟩, Classical.choose h_exists⟩ :
+              MAID.Infoset st.toStruct p) =
+                ⟨⟨nd0, hk⟩, projCfg a₀ (st.toStruct.obsParents nd0)⟩ := by
+          apply infoset_eq_of_cfg_heq
+          · apply Subtype.ext
+            rfl
+          · exact heq_of_eq hcfg_eq
+        exact (eq_of_heq ((cast_heq _ _).trans
+          ((eqRec_heq _ _).trans (playerStrategy_apply_heq (pol p) hI_eq)))).symm
+      · casesm* _ ≍ _; rfl
       · funext i
         simp only [reflectPolicyAuxV, ProgramBehavioralProfilePMF.tail,
           ProgramBehavioralStrategyPMF.tailOwn]
         split_ifs with h <;> subst_vars <;> simp only
+      · casesm* _ ≍ _; rfl
     · exfalso; apply h_exists; exact ⟨_, hViewEq⟩
   · rename_i hk
     rw [toStruct_kind] at hk; rw [hkind_decision] at hk; exact absurd hk (by simp)
@@ -1691,9 +1717,10 @@ private theorem bridgeInv_commit_behavioral
       commit_cfg_view_exists_of_realizedRawEnv B k hl.2 hd ρ st₀ hρ_var env raw₀ hraw₀
         hraw_typed hraw_hi nd hndeps rfl
     split_ifs with h_exists'
-    · rw [hpol who_commit ⟨⟨nd0, hkind0⟩, Classical.choose h_exists'⟩ (by simp [nd0])]
+    · rw [hpol who_commit
+        ⟨⟨⟨st₀.nextId, hid_lt⟩, hkind0⟩, Classical.choose h_exists'⟩ (by simp)]
       simp only [translateStrategyV]
-      simp only [show (nd0 : Nat) = st₀.nextId from rfl, ↓reduceDIte, id, Eq.mpr]
+      simp only [↓reduceDIte, id, Eq.mpr]
       have htype_eq : st.toStruct.Val nd0 = L.Val b := by
         change CompiledNode.valType (st.descAt nd0) = L.Val b
         rw [hdesc0]
@@ -1717,7 +1744,10 @@ private theorem bridgeInv_commit_behavioral
           ((β who_commit).headKernel view_env).toPMF
             (ProgramBehavioralStrategy.headKernel_normalized (β who_commit) view_env) := by
         exact FDist.toPMF_congr' hkernel_eq
-      simpa [eqRec_eq_cast] using hpmf_eq
+      simp only [eqRec_eq_cast]
+      exact (eq_of_heq ((cast_heq _ _).trans ((cast_heq _ _).trans
+        ((heq_of_eq hpmf_eq).trans (by
+          simp [ProgramBehavioralStrategy.headKernel, view_env])))))
     · exfalso
       exact h_exists' h_exists
   · intro v
@@ -1739,15 +1769,15 @@ private theorem bridgeInv_commit_behavioral
         pol who I = translateStrategyV B k hl.2 hd ρ' st₁
           (ProgramBehavioralProfile.tail β) who I := by
       intro who ⟨d, cfg⟩ hge
-      rw [hpol who ⟨d, cfg⟩ (le_trans (by simp [st₁, MAIDCompileState.addVar,
-        MAIDCompileState.addNode]) hge)]
-      simp only [translateStrategyV]
-      have hne : d.1.val ≠ st₀.nextId := by
-        have : st₁.nextId = st₀.nextId + 1 := by
-          simp [st₁, MAIDCompileState.addVar, MAIDCompileState.addNode]
-        exact Ne.symm (Nat.ne_of_lt hge)
-      simp only [toStruct_kind, hne, ↓reduceDIte]
-      exact ((fun a ↦ a) ∘ fun a ↦ a) rfl
+      exact (hpol who ⟨d, cfg⟩ (le_trans (by simp [st₁, MAIDCompileState.addVar,
+          MAIDCompileState.addNode]) hge)).trans (by
+        simp only [translateStrategyV]
+        have hne : d.1.val ≠ st₀.nextId := by
+          have : st₁.nextId = st₀.nextId + 1 := by
+            simp [st₁, MAIDCompileState.addVar, MAIDCompileState.addNode]
+          exact Ne.symm (Nat.ne_of_lt hge)
+        simp only [toStruct_kind, hne, ↓reduceDIte]
+        exact ((fun a ↦ a) ∘ fun a ↦ a) rfl)
     have h1 : (reflectPolicyAuxV B (.commit x who_commit R k) hl hd ρ st₀ pol).tail =
         reflectPolicyAuxV B k hl.2 hd ρ' st₁ pol := by
       funext w; simp only [ProgramBehavioralProfilePMF.tail, reflectPolicyAuxV]

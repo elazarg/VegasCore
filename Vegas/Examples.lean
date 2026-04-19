@@ -269,7 +269,7 @@ example : ∀ (a : Bool) (va_val : Bool),
     evalGuard cgGuard a env = true := by
   intro a va_val
   cases a <;> cases va_val <;>
-    simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]
+    (simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]; rfl)
 
 -- When va' = false, the guard evaluates to false for ANY proposed action — deadlock.
 -- Paper: "When a' = false, no Boolean value satisfies the guard"
@@ -279,7 +279,7 @@ example : ∀ (a : Bool) (va_val : Bool),
     evalGuard cgGuard a env = false := by
   intro a va_val
   cases a <;> cases va_val <;>
-    simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]
+    (simp [cgGuard, evalGuard, evalExpr, simpleExpr, BindTy.base]; rfl)
 
 end Examples
 

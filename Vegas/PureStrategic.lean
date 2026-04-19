@@ -303,6 +303,12 @@ noncomputable def toStrategicKernelGame
         (outcomeDistPure_totalWeight_eq_one
           (P := P) (L := L) (p := p) (σ := σ) hd) := rfl
 
+@[simp] theorem toStrategicKernelGame_Strategy
+    (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ)
+    (hd : NormalizedDists p) :
+    (toStrategicKernelGame p env hd).Strategy =
+      fun who => ProgramPureStrategy (P := P) (L := L) who p := rfl
+
 /-- Expected utility in the fixed-program pure strategic form matches the Vegas
 expected payoff computed from `outcomeDistPure`. -/
 theorem toStrategicKernelGame_eu

@@ -138,6 +138,7 @@ theorem IsPureExactPotential.strictNash_of_strict_maximizer
     have := congr_fun h who
     simpa [Function.update] using this
   have hlt := hmax _ hne
+  simp only [toStrategicKernelGame_Strategy] at hpot ⊢
   linarith
 
 /-- In the fixed-program pure strategic form, exact-potential Nash equilibria
@@ -155,10 +156,12 @@ theorem IsPureExactPotential.isNash_iff_local_maximizer
   · intro hN who s'
     have hpot := hΦ who σ s'
     have hge := hN who s'
+    simp only [toStrategicKernelGame_Strategy] at hpot hge ⊢
     linarith
   · intro hmax who s'
     have hpot := hΦ who σ s'
     have hge := hmax who s'
+    simp only [toStrategicKernelGame_Strategy] at hpot hge ⊢
     linarith
 
 /-- In the fixed-program pure strategic form, ordinal-potential Nash
