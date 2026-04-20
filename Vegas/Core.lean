@@ -293,6 +293,58 @@ inductive VHasVar {Player : Type} {L : IExpr} :
   | here {Γ x τ} : VHasVar ((x, τ) :: Γ) x τ
   | there {Γ x y τ τ'} : VHasVar Γ x τ → VHasVar ((y, τ') :: Γ) x τ
 
+/-- A `VHasVar` proof witnesses that `x` appears in the visibility context's
+name list. -/
+theorem VHasVar.mem_map_fst {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L} :
+    VHasVar Γ x τ → x ∈ Γ.map Prod.fst := by
+  intro h; induction h with
+  | here => simp
+  | there _ ih => exact List.mem_cons_of_mem _ ih
+
+/-- In a context with unique names, `VHasVar` is a subsingleton: any two
+proofs of `VHasVar Γ x τ` are equal. The visibility-aware analogue of
+`HasVar.eq_of_nodup`. -/
+theorem VHasVar.eq_of_nodup {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
+    (hnodup : (Γ.map Prod.fst).Nodup)
+    (h₁ h₂ : VHasVar Γ x τ) : h₁ = h₂ := by
+  induction h₁ with
+  | @here Γ' y σ =>
+    cases h₂ with
+    | here => rfl
+    | @there _ _ _ _ σ' h₂' =>
+      have hnd := List.nodup_cons.mp hnodup
+      exact absurd h₂'.mem_map_fst hnd.1
+  | @there Γ' y z σ σ' h₁' ih =>
+    cases h₂ with
+    | @here =>
+      have hnd := List.nodup_cons.mp hnodup
+      exact absurd h₁'.mem_map_fst hnd.1
+    | @there _ _ _ _ _ h₂' =>
+      have hnd := List.nodup_cons.mp hnodup
+      exact congrArg VHasVar.there (ih hnd.2 h₂')
+
+/-- In a context with unique names, `VHasVar` determines the binding type:
+two proofs `VHasVar Γ x τ₁` and `VHasVar Γ x τ₂` force `τ₁ = τ₂`. The
+visibility-aware analogue of `HasVar.type_unique`. -/
+theorem VHasVar.type_unique {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ₁ τ₂ : BindTy Player L}
+    (hnodup : (Γ.map Prod.fst).Nodup)
+    (h₁ : VHasVar Γ x τ₁) (h₂ : VHasVar Γ x τ₂) : τ₁ = τ₂ := by
+  induction h₁ with
+  | here =>
+    cases h₂ with
+    | here => rfl
+    | there h₂' =>
+      exact absurd h₂'.mem_map_fst (List.nodup_cons.mp hnodup).1
+  | there h₁' ih =>
+    cases h₂ with
+    | here =>
+      exact absurd h₁'.mem_map_fst (List.nodup_cons.mp hnodup).1
+    | there h₂' =>
+      exact ih (List.nodup_cons.mp hnodup).2 h₂'
+
 /-- Runtime environments for visibility-tagged contexts. -/
 def VEnv {Player : Type} (L : IExpr) : VCtx Player L → Type :=
   fun Γ => ∀ x τ, VHasVar Γ x τ → L.Val τ.base
@@ -335,6 +387,16 @@ def get {Player : Type} {L : IExpr} {Γ : VCtx Player L} {x : VarId}
     {h : VHasVar Γ y σ} :
     (VEnv.cons (x := x) v env).get (VHasVar.there h) = env.get h := rfl
 
+/-- In a context with unique names, `VEnv.get` is proof-irrelevant:
+the value depends only on `x` and `τ`, not on the `VHasVar` proof. The
+visibility-aware analogue of `Env.get_eq_of_nodup`. -/
+theorem get_eq_of_nodup {Player : Type} {L : IExpr} {Γ : VCtx Player L}
+    {x : VarId} {τ : BindTy Player L}
+    (hnodup : (Γ.map Prod.fst).Nodup)
+    (env : VEnv L Γ) (h₁ h₂ : VHasVar Γ x τ) :
+    env.get h₁ = env.get h₂ := by
+  rw [VHasVar.eq_of_nodup hnodup h₁ h₂]
+
 end VEnv
 
 /-! ## Views and public projection -/
@@ -352,6 +414,34 @@ def viewVCtx {Player : Type} [DecidableEq Player] {L : IExpr}
   | [] => []
   | (x, τ) :: Γ =>
       if canSee p τ then (x, τ) :: viewVCtx p Γ else viewVCtx p Γ
+
+/-- The view's name set is contained in the full context's name set: anything
+visible to `p` is in the original context. -/
+theorem viewVCtx_map_fst_sub {Player : Type} [DecidableEq Player] {L : IExpr}
+    {x : VarId} {p : Player} {Γ : VCtx Player L} :
+    x ∈ (viewVCtx p Γ).map Prod.fst → x ∈ Γ.map Prod.fst := by
+  induction Γ with
+  | nil =>
+    intro h
+    simp [viewVCtx] at h
+  | cons hd tl ih =>
+    obtain ⟨y, τ⟩ := hd
+    cases hsee : canSee (Player := Player) (L := L) p τ with
+    | false =>
+      intro h
+      have hview : viewVCtx p ((y, τ) :: tl) = viewVCtx p tl := by
+        simp [viewVCtx, hsee]
+      rw [hview] at h
+      exact List.mem_cons_of_mem _ (ih h)
+    | true =>
+      intro h
+      have hview : viewVCtx p ((y, τ) :: tl) = (y, τ) :: viewVCtx p tl := by
+        simp [viewVCtx, hsee]
+      rw [hview] at h
+      simp only [List.map, List.mem_cons] at h ⊢
+      rcases h with rfl | htl
+      · exact Or.inl rfl
+      · exact Or.inr (ih htl)
 
 namespace VHasVar
 
@@ -436,6 +526,15 @@ def eraseVCtx {Player : Type} {L : IExpr} :
     {x : VarId} {τ : BindTy Player L} {Γ : VCtx Player L} :
     eraseVCtx ((x, τ) :: Γ) = (x, τ.base) :: eraseVCtx Γ := rfl
 
+/-- Erasing visibility annotations preserves the variable-name projection. -/
+theorem eraseVCtx_map_fst {Player : Type} {L : IExpr} {Γ : VCtx Player L} :
+    (eraseVCtx Γ).map Prod.fst = Γ.map Prod.fst := by
+  induction Γ with
+  | nil => rfl
+  | cons hd tl ih =>
+      obtain ⟨x, τ⟩ := hd
+      simp [eraseVCtx, ih]
+
 /-- Erase visibility, keeping only public variables. -/
 def erasePubVCtx {Player : Type} {L : IExpr} :
     VCtx Player L → Ctx L.Ty
@@ -453,6 +552,30 @@ def erasePubVCtx {Player : Type} {L : IExpr} :
 @[simp] theorem erasePubVCtx_cons_hidden {Player : Type} {L : IExpr}
     {x : VarId} {p : Player} {τ : L.Ty} {Γ : VCtx Player L} :
     erasePubVCtx ((x, BindTy.hidden p τ) :: Γ) = erasePubVCtx Γ := rfl
+
+/-- Every name in `erasePubVCtx Γ` also appears in any player's view of `Γ`,
+since public bindings are visible to everyone. -/
+theorem erasePubVCtx_map_fst_sub_viewVCtx
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {Γ : VCtx Player L} {who : Player} :
+    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst →
+      x ∈ (viewVCtx who Γ).map Prod.fst := by
+  induction Γ with
+  | nil => simp [erasePubVCtx]
+  | cons a Γ' ih =>
+    intro x hx
+    match a with
+    | (y, .pub b) =>
+      simp only [erasePubVCtx_cons_pub, viewVCtx, canSee, ite_true,
+        List.map_cons, List.mem_cons] at hx ⊢
+      exact hx.elim .inl (fun h => .inr (ih x h))
+    | (y, .hidden p b) =>
+      simp only [erasePubVCtx_cons_hidden, viewVCtx] at hx ⊢
+      by_cases h : canSee who (.hidden p b)
+      · simp only [h, ite_true, List.map_cons, List.mem_cons]
+        right; exact ih x hx
+      · simp only [h]
+        exact ih x hx
 
 /-- Erasure of pubVCtx equals erasePubVCtx. -/
 theorem eraseVCtx_pubVCtx {Player : Type} {L : IExpr}
@@ -482,6 +605,24 @@ def HasVar.toVHasVar {Player : Type} {L : IExpr} :
   | _ :: _, _, _, .there h =>
     let ⟨τ', hv, ⟨hb⟩⟩ := toVHasVar h
     ⟨τ', .there hv, ⟨hb⟩⟩
+
+/-- A `HasVar` in `erasePubVCtx Γ` lifts to a `VHasVar` in `pubVCtx Γ` of the
+corresponding `pub` binding. The structural inverse to `VHasVar.toErasedPub`. -/
+def HasVar.toVHasVarPub {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : L.Ty} :
+    HasVar (erasePubVCtx Γ) x τ → VHasVar (pubVCtx Γ) x (.pub τ) := by
+  induction Γ with
+  | nil => intro h; exact nomatch h
+  | cons hd tl ih =>
+    obtain ⟨y, σ⟩ := hd
+    cases σ with
+    | pub υ =>
+      simp only [erasePubVCtx, pubVCtx]; intro h
+      cases h with
+      | here => exact .here
+      | there h' => exact .there (ih h')
+    | hidden p υ =>
+      simp only [erasePubVCtx, pubVCtx]; intro h; exact ih h
 
 /-- A VHasVar in pubVCtx induces a HasVar in erasePubVCtx. -/
 def VHasVar.toErasedPub {Player : Type} {L : IExpr}
@@ -519,6 +660,60 @@ def erasePubEnv {Player : Type} {L : IExpr} :
       (erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h)))
   | ((_, .hidden _ _) :: Γ'), env =>
     erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h))
+
+/-- Pointwise formula for `erasePubEnv`: looking up at an erased-pub position
+equals looking up the original VEnv at the corresponding `pub` binding. -/
+@[simp] theorem erasePubEnv_get {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L}
+    (env : VEnv (Player := Player) L Γ)
+    {x : VarId} {τ : L.Ty}
+    (hx : HasVar (erasePubVCtx Γ) x τ) :
+    erasePubEnv env x τ hx =
+      env x (.pub τ) (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) := by
+  induction Γ generalizing x τ with
+  | nil => exact nomatch hx
+  | cons hd tl ih =>
+    obtain ⟨y, σ⟩ := hd
+    cases σ with
+    | pub υ =>
+      cases hx with
+      | here => rfl
+      | there hx' =>
+        simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
+          (ih (env := fun a b h => env a b (VHasVar.there h)) hx')
+    | hidden p υ =>
+      simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
+        (ih (env := fun a b h => env a b (VHasVar.there h)) hx)
+
+/-- Pointwise formula for `eraseEnv`: looking up at the erased position
+produced by `VHasVar.toErased` equals the original lookup. -/
+@[simp] theorem eraseEnv_get_of_erased {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L}
+    (env : VEnv (Player := Player) L Γ)
+    {x : VarId} {τ : BindTy Player L}
+    (hx : VHasVar Γ x τ) :
+    eraseEnv env x τ.base hx.toErased = env x τ hx := by
+  induction hx with
+  | here => rfl
+  | there hx ih =>
+    simpa [VEnv.eraseEnv] using (ih (env := fun a b h => env a b (VHasVar.there h)))
+
+/-- HEq variant of `eraseEnv_get_of_erased`, going through `HasVar.toVHasVar`:
+the erased-env lookup at `hx` is HEq to the lookup along the lifted-and-then-
+re-erased proof. Useful where dependent typing makes a strict equality
+unstatable. -/
+theorem eraseEnv_toErased_eq {Player : Type} {L : IExpr} :
+    {Γ : VCtx Player L} →
+    (env : VEnv (Player := Player) L Γ) →
+    {x : VarId} → {b : L.Ty} →
+    (hx : HasVar (eraseVCtx Γ) x b) →
+    HEq (env.eraseEnv x
+        (hx.toVHasVar (Player := Player) (L := L)).1.base
+        (hx.toVHasVar (Player := Player) (L := L)).2.1.toErased)
+      (env.eraseEnv x b hx)
+  | _ :: _, _, _, _, .here => HEq.rfl
+  | _ :: _, env, _, _, .there hx =>
+      eraseEnv_toErased_eq (fun a b h => env a b (.there h)) hx
 
 /-- Project a VEnv to the visible subcontext of player `p`. -/
 def toView {Player : Type} [DecidableEq Player] {L : IExpr} (p : Player)

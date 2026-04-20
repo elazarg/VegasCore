@@ -741,45 +741,6 @@ theorem envRespectsLookupDeps_const
     EnvRespectsLookupDeps st (fun _ => env) :=
   fun _ _ _ _ _ => rfl
 
-def HasVar.toVHasVarPub
-    {Γ : VCtx Player L} {x : VarId} {τ : L.Ty} :
-    HasVar (erasePubVCtx Γ) x τ → VHasVar (pubVCtx Γ) x (.pub τ) := by
-  induction Γ with
-  | nil => intro h; exact nomatch h
-  | cons hd tl ih =>
-    obtain ⟨y, σ⟩ := hd
-    cases σ with
-    | pub υ =>
-      simp only [erasePubVCtx, pubVCtx]; intro h
-      cases h with
-      | here => exact .here
-      | there h' => exact .there (ih h')
-    | hidden p υ =>
-      simp only [erasePubVCtx, pubVCtx]; intro h; exact ih h
-
-omit [DecidableEq Player] in
-@[simp] theorem VEnv.erasePubEnv_get
-    {Γ : VCtx Player L}
-    (env : VEnv (Player := Player) L Γ)
-    {x : VarId} {τ : L.Ty}
-    (hx : HasVar (erasePubVCtx Γ) x τ) :
-    VEnv.erasePubEnv env x τ hx =
-      env x (.pub τ) (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) := by
-  induction Γ generalizing x τ with
-  | nil => exact nomatch hx
-  | cons hd tl ih =>
-    obtain ⟨y, σ⟩ := hd
-    cases σ with
-    | pub υ =>
-      cases hx with
-      | here => rfl
-      | there hx' =>
-        simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
-          (ih (env := fun a b h => env a b (VHasVar.there h)) hx')
-    | hidden p υ =>
-      simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
-        (ih (env := fun a b h => env a b (VHasVar.there h)) hx)
-
 /-- If `j ∉ pubCtxDeps`, evaluating a public expression via `ρ` is insensitive to `j`. -/
 theorem eval_pubExpr_insensitive_of_pubCtxDeps
     (st : MAIDCompileState Player L B)
@@ -795,32 +756,6 @@ theorem eval_pubExpr_insensitive_of_pubCtxDeps
   simp only [VEnv.erasePubEnv_get]
   exact hρ_var (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) j
     (fun hjx => hj (st.lookupDeps_subset_depsOfVars_of_mem hx.mem_map_fst hjx)) raw tv
-
-omit [DecidableEq Player] in
-@[simp] theorem VEnv.eraseEnv_get_of_erased
-    {Γ : VCtx Player L}
-    (env : VEnv (Player := Player) L Γ)
-    {x : VarId} {τ : BindTy Player L}
-    (hx : VHasVar (L := L) Γ x τ) :
-    VEnv.eraseEnv env x τ.base hx.toErased = env x τ hx := by
-  induction hx with
-  | here => rfl
-  | there hx ih =>
-    simpa [VEnv.eraseEnv] using (ih (env := fun a b h => env a b (VHasVar.there h)))
-
-omit [DecidableEq Player] in
-theorem VEnv.eraseEnv_toErased_eq :
-    {Γ : VCtx Player L} →
-    (env : VEnv (Player := Player) L Γ) →
-    {x : VarId} → {b : L.Ty} →
-    (hx : HasVar (eraseVCtx Γ) x b) →
-    HEq (env.eraseEnv x
-        (hx.toVHasVar (Player := Player) (L := L)).1.base
-        (hx.toVHasVar (Player := Player) (L := L)).2.1.toErased)
-      (env.eraseEnv x b hx)
-  | _ :: _, _, _, _, .here => HEq.rfl
-  | _ :: _, env, _, _, .there hx =>
-      eraseEnv_toErased_eq (fun a b h => env a b (.there h)) hx
 
 /-- If `j ∉ viewDeps who`, the projected view through `ρ` is insensitive to `j`. -/
 theorem projectViewEnv_insensitive_of_viewDeps

@@ -112,15 +112,6 @@ theorem mem_viewVCtx_map_fst_of_visible
         simp only [viewVCtx, canSee, hown]
         exact ih hx
 
-/-- Erasing visibility annotations preserves the variable-name projection. -/
-theorem eraseVCtx_map_fst {P : Type} {L : IExpr} {Γ : VCtx P L} :
-    (eraseVCtx Γ).map Prod.fst = Γ.map Prod.fst := by
-  induction Γ with
-  | nil => rfl
-  | cons hd tl ih =>
-      obtain ⟨x, τ⟩ := hd
-      simp [eraseVCtx, ih]
-
 /-- Two erased environments are observationally equivalent for player `who`
     when they agree on every variable visible to `who`. -/
 def ObsEq {Γ : VCtx P L} (who : P)
@@ -163,7 +154,7 @@ theorem AgreesOn.cons_insert_of_fresh
       have hne : y ≠ x := by
         intro hyx
         apply hfresh
-        rw [← eraseVCtx_map_fst (P := P) (L := L) (Γ := Γ)]
+        rw [← eraseVCtx_map_fst (Player := P) (L := L) (Γ := Γ)]
         simpa [hyx] using HasVar.mem_map_fst hy'
       have hmemS : y ∈ S := by
         rcases Finset.mem_insert.mp hmem with rfl | hs

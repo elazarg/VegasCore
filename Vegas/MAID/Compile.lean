@@ -234,27 +234,6 @@ def viewDeps (st : MAIDCompileState Player L B) (who : Player) (Γ : VCtx Player
 
 end MAIDCompileState
 
-theorem erasePubVCtx_map_fst_sub_viewVCtx
-    {Γ : VCtx Player L} {who : Player} :
-    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst →
-      x ∈ (viewVCtx who Γ).map Prod.fst := by
-  induction Γ with
-  | nil => simp [erasePubVCtx]
-  | cons a Γ' ih =>
-    intro x hx
-    match a with
-    | (y, .pub b) =>
-      simp only [erasePubVCtx_cons_pub, viewVCtx, canSee, ite_true,
-        List.map_cons, List.mem_cons] at hx ⊢
-      exact hx.elim .inl (fun h => .inr (ih x h))
-    | (y, .hidden p b) =>
-      simp only [erasePubVCtx_cons_hidden, viewVCtx] at hx ⊢
-      by_cases h : canSee who (.hidden p b)
-      · simp only [h, ite_true, List.map_cons, List.mem_cons]
-        right; exact ih x hx
-      · simp only [h]
-        exact ih x hx
-
 namespace MAIDCompileState
 
 variable {B : MAIDBackend Player L}
