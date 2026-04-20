@@ -333,7 +333,7 @@ theorem adequacy_pointwise {Γ : VCtx P L} (σ : OmniscientOperationalProfile P 
     (outcomeDist σ p env) oc = traceWeightSum σ p env oc := by
   induction p with
   | ret u =>
-    simp [outcomeDist, traceWeightSum, FDist.pure, Finsupp.single_apply, eq_comm]
+    simp [outcomeDist, traceWeightSum, FDist.pure]
   | letExpr x _ k ih =>
     simp only [outcomeDist, traceWeightSum]
     exact ih _
@@ -402,7 +402,7 @@ theorem traceDist_apply (σ : OmniscientOperationalProfile P L) {Γ : VCtx P L}
   induction p with
   | ret u =>
     cases t
-    simp [traceDist, traceWeight, FDist.pure, Finsupp.single_eq_same]
+    simp [traceDist, traceWeight, FDist.pure]
   | letExpr x e k ih =>
     cases t with
     | letExpr t =>

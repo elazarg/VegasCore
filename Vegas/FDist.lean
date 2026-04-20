@@ -39,9 +39,12 @@ Three choices distinguish it from Mathlib's `PMF`:
   bridging into Mathlib's measure-theoretic `PMF`. The bridge is one-way
   and is the only exit point from `FDist`.
 
-The operations are `noncomputable` because `Finsupp.single` and `Finsupp.sum`
-are noncomputable in Mathlib; reasoning about `FDist` is fully constructive
-but `#eval` is not available.
+`pure` and `zero` are computable — they're built directly from the underlying
+`Finsupp` record using the `[DecidableEq α]` we carry. `bind`, `map`
+and the `toPMF` bridge remain `noncomputable` because they
+route through `Finsupp.sum`, which Mathlib marks `noncomputable`. Reasoning
+about all of them is fully constructive; `#eval` works on Dirac masses but
+not on bind-trees.
 -/
 
 namespace Vegas
@@ -56,13 +59,24 @@ variable {α : Type} {β : Type} [DecidableEq α] [DecidableEq β]
 
 /-! ## Operations -/
 
-/-- The Dirac mass at `x`: weight `1` on `x`, weight `0` elsewhere. -/
-noncomputable def pure (x : α) : FDist α := Finsupp.single x 1
+/-- The Dirac mass at `x`: weight `1` on `x`, weight `0` elsewhere.
+
+Built directly rather than via `Finsupp.single` (which is `noncomputable`
+because it uses `Classical.dec` internally to decide `b = 0`). The
+`[DecidableEq α]` on `FDist α` lets us construct the underlying `Finsupp`
+record with computable support and indicator function. -/
+def pure (x : α) : FDist α where
+  support := {x}
+  toFun y := if y = x then 1 else 0
+  mem_support_toFun y := by
+    by_cases h : y = x
+    · subst h; simp
+    · simp [h]
 
 /-- The empty distribution; total weight `0`. Acts as the identity for
 addition of distributions and as the absorbing element for `bind` on the
 left (`bind_zero_left`). -/
-noncomputable def zero : FDist α := 0
+def zero : FDist α := 0
 
 /-- Monadic continuation: each support point `a` of `d`, weighted by `w`,
 contributes the distribution `f a` rescaled by `w`. -/
@@ -76,7 +90,7 @@ noncomputable def map (g : α → β) (d : FDist α) : FDist β :=
 
 /-- Total mass of `d` — the sum of weights over the support. Equals `1`
 exactly for normalized (probability) distributions. -/
-noncomputable def totalWeight (d : FDist α) : ℚ≥0 := d.sum (fun _ w => w)
+def totalWeight (d : FDist α) : ℚ≥0 := d.sum (fun _ w => w)
 
 /-! ## Constructors from data -/
 
@@ -120,7 +134,11 @@ def ofList (entries : List (α × ℚ≥0)) : FDist α where
 /-! ## Pointwise formulae and support -/
 
 @[simp] theorem pure_apply (x y : α) : FDist.pure x y = if x = y then 1 else 0 := by
-  simp [FDist.pure, Finsupp.single_apply]
+  change (if y = x then 1 else 0 : ℚ≥0) = _
+  by_cases h : x = y
+  · subst h; simp
+  · have : y ≠ x := fun e => h e.symm
+    simp [h, this]
 
 /-- Pointwise unfolding of `bind` to a finite sum over the support of `d`.
 Not a `simp` lemma: applied eagerly it would expand bind-heavy terms. Use
@@ -142,11 +160,10 @@ expressing semantic side conditions on a distribution — for example, the
 fair-play requirement that every committed action satisfies its guard. -/
 def Supported (d : FDist α) (P : α → Prop) : Prop := ∀ a ∈ d.support, P a
 
-@[simp] theorem totalWeight_pure (x : α) : (FDist.pure x).totalWeight = 1 := by
-  simp [totalWeight, FDist.pure, Finsupp.sum_single_index]
+@[simp] theorem support_pure (x : α) : (FDist.pure x).support = {x} := rfl
 
-@[simp] theorem support_pure (x : α) : (FDist.pure x).support = {x} :=
-  Finsupp.support_single_ne_zero _ one_ne_zero
+@[simp] theorem totalWeight_pure (x : α) : (FDist.pure x).totalWeight = 1 := by
+  simp [totalWeight, Finsupp.sum, support_pure, pure_apply]
 
 @[simp] theorem support_zero : (FDist.zero : FDist α).support = ∅ :=
   Finsupp.support_zero
@@ -159,17 +176,18 @@ theorem Supported_zero (P : α → Prop) : (FDist.zero : FDist α).Supported P :
   simp [Supported, FDist.zero]
 
 theorem pure_bind (x : α) (f : α → FDist β) : (FDist.pure x).bind f = f x := by
-  simp only [FDist.pure, bind]
-  rw [Finsupp.sum_single_index]
-  · ext a
-    simp [Finsupp.mapRange_apply]
-  · ext a
-    simp [Finsupp.mapRange_apply]
+  ext b
+  rw [bind_apply]
+  simp [support_pure, pure_apply]
 
 theorem bind_pure (d : FDist α) : d.bind FDist.pure = d := by
-  simp only [bind, FDist.pure]
-  simp_rw [Finsupp.mapRange_single, mul_one]
-  exact d.sum_single
+  ext b
+  rw [bind_apply]
+  simp only [pure_apply, mul_ite, mul_one, mul_zero]
+  rw [Finset.sum_ite_eq' d.support b (fun a => d a)]
+  by_cases h : b ∈ d.support
+  · simp [h]
+  · simp [h, Finsupp.notMem_support_iff.mp h]
 
 theorem bind_zero_left (f : α → FDist β) :
     (FDist.zero : FDist α).bind f = FDist.zero := by
@@ -266,8 +284,12 @@ theorem map_apply_of_forall_ne (g : α → β) (d : FDist α) (b : β)
 
 theorem map_pure (g : α → β) (a : α) :
     (FDist.pure a).map g = FDist.pure (g a) := by
-  simp only [FDist.pure, map]
-  rw [Finsupp.sum_single_index (Finsupp.single_zero _)]
+  ext b
+  rw [map_apply]
+  simp only [support_pure, Finset.sum_singleton, pure_apply]
+  by_cases h : g a = b
+  · simp [h]
+  · simp [h]
 
 theorem map_map {γ : Type} [DecidableEq γ] (f : α → β) (g : β → γ) (d : FDist α) :
     (d.map f).map g = d.map (g ∘ f) := by
@@ -338,11 +360,9 @@ theorem bind_comm {γ : Type} [DecidableEq γ]
 
 theorem bind_pure_comp (d : FDist α) (g : α → β) :
     FDist.bind d (fun a => FDist.pure (g a)) = FDist.map g d := by
-  simp only [FDist.bind, FDist.pure, FDist.map]
-  congr 1
-  funext a
-  funext w
-  rw [Finsupp.mapRange_single, mul_one]
+  ext b
+  rw [bind_apply, map_apply]
+  simp_rw [pure_apply, mul_ite, mul_one, mul_zero]
 
 theorem totalWeight_map (d : FDist α) (g : α → β) :
     FDist.totalWeight (FDist.map g d) = FDist.totalWeight d := by
@@ -446,11 +466,10 @@ theorem toPMF_pure [DecidableEq α] (a : α) :
     (FDist.pure a).toPMF (FDist.totalWeight_pure a) = PMF.pure a := by
   ext b
   rw [toPMF_apply]
-  simp only [FDist.pure, PMF.pure_apply]
-  rw [Finsupp.single_apply]
-  split
-  · next h => subst h; simp [NNRat.toNNReal_one]
-  · next h => simp [NNRat.toNNReal_zero, Ne.symm h]
+  simp only [PMF.pure_apply, pure_apply]
+  by_cases h : a = b
+  · subst h; simp [NNRat.toNNReal_one]
+  · simp [h, NNRat.toNNReal_zero, Ne.symm h]
 
 /-- `toPMF` converts `FDist.map` to `PMF.map`. -/
 theorem toPMF_map [DecidableEq α] [DecidableEq β]
