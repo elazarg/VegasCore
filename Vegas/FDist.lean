@@ -201,14 +201,10 @@ theorem mem_support_bind {d : FDist α} {f : α → FDist β} {b : β} :
       by_contra hne
       exact hall a ha (Finsupp.mem_support_iff.mpr hne)
     rw [hfab, mul_zero]
-  · rintro ⟨a, ha, hb⟩
-    intro heq
-    have hsplit := Finset.add_sum_erase d.support (fun a => d a * (f a) b) ha
-    rw [heq] at hsplit
-    have hle : d a * (f a) b ≤ 0 := hsplit ▸ le_self_add
-    have hge : 0 ≤ d a * (f a) b := zero_add (d a * (f a) b) ▸ le_self_add
+  · rintro ⟨a, ha, hb⟩ heq
     exact mul_ne_zero (Finsupp.mem_support_iff.mp ha)
-      (Finsupp.mem_support_iff.mp hb) (le_antisymm hle hge)
+      (Finsupp.mem_support_iff.mp hb)
+      (Finset.sum_eq_zero_iff.mp heq a ha)
 
 @[simp] theorem mem_support_pure {a b : α} :
     b ∈ (FDist.pure a).support ↔ b = a := by
