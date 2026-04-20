@@ -218,11 +218,11 @@ instance ContextFreeGuards.instDecidable [DecidableEq VarId] :
 /-! ## Region C — named conjectures -/
 
 /-- The protocol-level Kuhn property for a Vegas program: every
-mixture over guard-legal pure strategies admits a guard-legal
+mixture over guard-legal pure profiles admits a guard-legal
 behavioural profile with the same outcome distribution.
 
-Stated here as a `Prop`-valued definition rather than a theorem.
-Proving it would require one of:
+Stated as a `Prop`-valued definition, not proved here. Proving it
+would require one of:
 
 * Repairing `MAID.Struct.Val` / `reflectPolicyAuxV`'s off-path
   defaults (`MAIDValuation.defaultVal`) to be guard-respecting, then
@@ -230,39 +230,49 @@ Proving it would require one of:
 * Constructing a direct Vegas Kuhn argument at the legal-subtype
   level.
 
-Both are substantial, and neither is attempted here. The name is in
+Both are substantial; neither is attempted here. The name is in
 place so paper and future proof work have a target. -/
 def ProtocolKuhnProperty (g : WFProgram P L) : Prop :=
-  ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
+  ∀ (μ : PMF (LegalProgramPureProfile g)),
     ∃ β : LegalProgramBehavioralProfile g,
       (toKernelGame g).outcomeKernel β =
-        (((fun who => μ who) : ∀ who, PMF (LegalProgramPureStrategy g who))
-          |> fun _ => (toKernelGame g).outcomeKernel β)
-  -- The equation's RHS is a placeholder: the intended statement is
-  -- "outcome distribution equals the pushforward mixture under μ",
-  -- but writing the pushforward requires MAID-style machinery that
-  -- is out of scope here. Any consumer of this `Prop` should treat
-  -- it as a named conjecture, not a usable lemma.
+        μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-/-- Provable direction of the MAID ↔ Protocol bridge: MAID Nash of
-the compiled MAID, restricted to legal reflected profiles, implies
-Protocol Nash of the Vegas program. Stated as a `Prop` to be
-specialised against concrete MAID-bridge infrastructure in a future
-dedicated pass; the obstruction is not mathematical but mechanical,
-matching the `compiledPolicyV` / `reflectPolicyV` boundary.
+/-- `ProtocolKuhnProperty` is not vacuous: a concrete witness for a
+direction-trivialising case is the Dirac mixture on any legal pure
+profile, where the behavioural witness is its point-lift `toBehavioral`
+and the outcome-equation reduces to the bridge theorem
+`toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral`. The
+general property is non-trivial because it quantifies over every
+mixture. -/
+theorem protocolKuhn_dirac (g : WFProgram P L)
+    (σ : LegalProgramPureProfile g) :
+    ∃ β : LegalProgramBehavioralProfile g,
+      (toKernelGame g).outcomeKernel β =
+        (PMF.pure σ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  refine ⟨LegalProgramPureProfile.toBehavioral σ, ?_⟩
+  rw [PMF.pure_bind]
+  exact toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral g σ
 
-The converse (Protocol Nash ⇒ MAID Nash) is **intentionally not
-named**: it is false in general, because MAID Nash quantifies over
-deviations that include guard-violating alternatives the protocol
-rejects. -/
-def MaidNashImpliesProtocolNash (g : WFProgram P L) : Prop :=
-  ∀ (σ : LegalProgramBehavioralProfile g),
-    -- Placeholder: a rigorous statement needs to reference
-    -- MAID bridge artefacts (`vegasMAID_behavioral_bridge`,
-    -- `reflectPolicyV`) that are not imported at this layer. A
-    -- future pass that imports `Vegas.MAID.Bridge` can refine this
-    -- into a proved theorem by restricting the MAID's universal
-    -- deviation quantifier to the legal reflected subset.
-    ProtocolNash g σ → ProtocolNash g σ
+/-
+## Gap (prose, not code)
+
+**MAID ↔ Protocol bridge, provable direction.** MAID Nash of the
+compiled MAID --- with its universal deviation quantifier restricted
+to the guard-legal reflected subset --- implies Protocol Nash of the
+Vegas program. Stating this precisely requires the MAID bridge
+artefacts (`vegasMAID_behavioral_bridge`, `reflectPolicyV`) from
+`Vegas.MAID.Bridge`, which this module intentionally does not import
+(to keep the protocol-native layer independent of MAID). A future
+pass that imports the bridge layer can state and prove the one-
+direction theorem. We do not commit a Prop-valued placeholder here
+because a truly named theorem with an inline or trivially-derivable
+proof is worse API than a documented gap.
+
+**Converse (Protocol Nash ⇒ MAID Nash).** Intentionally not stated.
+It is false in general, because MAID Nash quantifies over deviations
+that include guard-violating alternatives the protocol rejects.
+-/
 
 end Vegas
