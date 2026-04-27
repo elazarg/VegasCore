@@ -1,4 +1,4 @@
-import GameTheory.Languages.FOSG.Basic
+import GameTheory.Languages.FOSG.Information
 import Vegas.WFProgram
 
 /-!
@@ -351,6 +351,67 @@ noncomputable def compileSkeleton (g : WFProgram P L) :
   reward := checkedReward
   privObs := fun _ _ _ _ => ()
   pubObs := fun _ _ _ => ()
+  terminal_active_eq_empty := by
+    intro w hterm
+    exact checked_terminal_active_eq_empty hterm
+  terminal_no_legal := by
+    intro w a hterm
+    exact checked_terminal_no_legal hterm
+  nonterminal_exists_legal := by
+    intro w hterm
+    exact checked_nonterminal_exists_legal hterm
+
+/-! ## Observation-preserving target
+
+`compileSkeleton` is useful for the transition/availability core, but its
+`Unit` observations intentionally discard information. The definitions below
+are the bridge target for strategy transport: every transition emits the next
+public protocol state and the next player-local view.
+-/
+
+/-- Public observation after a Vegas/FOSG transition: the current program
+location together with the public environment. -/
+structure PublicObs (P : Type) [DecidableEq P] (L : IExpr) where
+  Γ : VCtx P L
+  prog : VegasCore P L Γ
+  env : VEnv L (pubVCtx Γ)
+
+/-- Private observation after a Vegas/FOSG transition: the observing player's
+current view environment. -/
+structure PrivateObs (P : Type) [DecidableEq P] (L : IExpr) (who : P) where
+  Γ : VCtx P L
+  env : VEnv L (viewVCtx who Γ)
+
+def publicObsOfWorld (w : CheckedWorld P L) : PublicObs P L where
+  Γ := w.Γ
+  prog := w.prog
+  env := VEnv.toPub w.env
+
+def privateObsOfWorld (who : P) (w : CheckedWorld P L) : PrivateObs P L who where
+  Γ := w.Γ
+  env := VEnv.toView who w.env
+
+/-- A FOSG compiler target that preserves the public protocol location and
+each player's local Vegas view at every step.
+
+This is the object that should be used for the future strategy/equilibrium
+transport work. The remaining work is not to invent a game model, but to prove
+that these observation histories determine exactly the same view environments
+that Vegas strategies consume.
+-/
+noncomputable def compileObserved (g : WFProgram P L) :
+    GameTheory.FOSG P (CheckedWorld P L)
+      (fun who : P => Action (P := P) L who)
+      (fun who : P => PrivateObs P L who)
+      (PublicObs P L) where
+  init := CheckedWorld.initial g
+  active := checkedActive
+  availableActions := checkedAvailableActions
+  terminal := checkedTerminal
+  transition := checkedTransition
+  reward := checkedReward
+  privObs := fun who _ _ w' => privateObsOfWorld who w'
+  pubObs := fun _ _ w' => publicObsOfWorld w'
   terminal_active_eq_empty := by
     intro w hterm
     exact checked_terminal_active_eq_empty hterm
