@@ -523,6 +523,47 @@ noncomputable def behavioralProfile
       exact ProgramBehavioralProfile.tail (P := P) (L := L) (ih σ)
   | reveal s ih => intro σ; exact ih σ
 
+@[simp] theorem behavioralProfile_letExpr
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.letExpr x e k))
+    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (ProgramSuffix.letExpr s).behavioralProfile σ =
+      s.behavioralProfile σ := rfl
+
+@[simp] theorem behavioralProfile_sample
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.sample x D k))
+    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (ProgramSuffix.sample s).behavioralProfile σ =
+      s.behavioralProfile σ := rfl
+
+@[simp] theorem behavioralProfile_commit
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.commit x who R k))
+    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (ProgramSuffix.commit s).behavioralProfile σ =
+      ProgramBehavioralProfile.tail (P := P) (L := L)
+        (s.behavioralProfile σ) := rfl
+
+@[simp] theorem behavioralProfile_reveal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.reveal y who x hx k))
+    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (ProgramSuffix.reveal s).behavioralProfile σ =
+      s.behavioralProfile σ := rfl
+
 theorem behavioralProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
@@ -3198,6 +3239,242 @@ theorem observedProgramLegalActionLaw_bind_coord
 GameTheory's generic FOSG compiler uses terminal histories as kernel-game
 outcomes. For Vegas, the semantic comparison is the pushforward of that
 history distribution along `observedProgramHistoryOutcome`. -/
+
+/-- Vegas' denotational outcome kernel at a suffix-based checked world. This
+is the natural semantic target for the preservation proof: the current Vegas
+program is exposed directly, so the proof proceeds by ordinary cases on
+`w.prog` rather than by induction through a finite cursor encoding. -/
+noncomputable def checkedVegasOutcomeKernel
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CheckedWorld g hctx) : PMF (Outcome P) :=
+  (outcomeDistBehavioral w.prog
+      (w.suffix.behavioralProfile (fun i => (σ i).val)) w.env).toPMF
+    (outcomeDistBehavioral_totalWeight_eq_one
+      (P := P) (L := L) (p := w.prog)
+      (σ := w.suffix.behavioralProfile (fun i => (σ i).val))
+      w.normalized)
+
+/-- Vegas' own profile-induced one-step kernel on suffix-based checked worlds.
+This is the semantic small-step machine. It is intentionally independent of
+FOSG's joint-action representation; commit nodes bind directly over the active
+player's Vegas strategy kernel. -/
+noncomputable def checkedProfileStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CheckedWorld g hctx) : PMF (CheckedWorld g hctx) := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          exact PMF.pure
+            { Γ := Γ
+              prog := .ret payoffs
+              env := env
+              suffix := suffix
+              wctx := wctx
+              fresh := fresh
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+      | letExpr x e k =>
+          exact PMF.pure
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                (L.eval e (VEnv.erasePubEnv env)) env
+              suffix := .letExpr suffix
+              wctx := WFCtx.cons fresh.1 wctx
+              fresh := fresh.2
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+      | sample x D k =>
+          exact PMF.map
+            (fun v =>
+              { Γ := _
+                prog := k
+                env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                  v env
+                suffix := .sample suffix
+                wctx := WFCtx.cons fresh.1 wctx
+                fresh := fresh.2
+                viewScoped := viewScoped
+                normalized := normalized.2
+                legal := legal })
+            ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF (normalized.1 env))
+      | commit x who R k =>
+          let σp : ProgramBehavioralProfile (P := P) (L := L)
+              (.commit x who R k) :=
+            suffix.behavioralProfile (fun i => (σ i).val)
+          let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+            (σp who) (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
+          have hd : FDist.totalWeight d = 1 :=
+            ProgramBehavioralStrategy.headKernel_normalized
+              (P := P) (L := L) (σp who)
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
+          exact PMF.map
+            (fun v =>
+              { Γ := _
+                prog := k
+                env := VEnv.cons (Player := P) (L := L) (x := x)
+                  (τ := .hidden who _) v env
+                suffix := .commit suffix
+                wctx := WFCtx.cons fresh.1 wctx
+                fresh := fresh.2
+                viewScoped := viewScoped.2
+                normalized := normalized
+                legal := legal.2 })
+            (d.toPMF hd)
+      | reveal y who x hx k =>
+          exact PMF.pure
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub _)
+                (env x (.hidden who _) hx) env
+              suffix := .reveal suffix
+              wctx := WFCtx.cons fresh.1 wctx
+              fresh := fresh.2
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+
+/-- One semantic small step preserves the remaining Vegas denotation. This is
+the hard preservation equation in the proof architecture; it is proved at the
+suffix-based machine level before involving the finite FOSG cursor encoding. -/
+theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CheckedWorld g hctx) :
+    (checkedProfileStep (P := P) (L := L) g hctx σ w).bind
+        (checkedVegasOutcomeKernel (P := P) (L := L) σ) =
+      checkedVegasOutcomeKernel (P := P) (L := L) σ w := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          simp [checkedProfileStep, checkedVegasOutcomeKernel,
+            outcomeDistBehavioral]
+      | letExpr x e k =>
+          simp [checkedProfileStep, checkedVegasOutcomeKernel,
+            outcomeDistBehavioral]
+      | sample x D k =>
+          simp only [checkedProfileStep, checkedVegasOutcomeKernel,
+            outcomeDistBehavioral]
+          rw [PMF.bind_map]
+          change
+            ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF
+                (normalized.1 env)).bind
+              (fun v =>
+                (outcomeDistBehavioral k
+                    (suffix.behavioralProfile (fun i => (σ i).val))
+                    (VEnv.cons (Player := P) (L := L) (x := x)
+                      (τ := .pub _) v env)).toPMF
+                  (outcomeDistBehavioral_totalWeight_eq_one
+                    (P := P) (L := L) (p := k)
+                    (σ := suffix.behavioralProfile (fun i => (σ i).val))
+                    normalized.2)) =
+              ((L.evalDist D (VEnv.eraseSampleEnv env)).bind fun v =>
+                outcomeDistBehavioral k
+                  (suffix.behavioralProfile (fun i => (σ i).val))
+                  (VEnv.cons (Player := P) (L := L) (x := x)
+                    (τ := .pub _) v env)).toPMF
+                (outcomeDistBehavioral_totalWeight_eq_one
+                  (P := P) (L := L) (p := VegasCore.sample x D k)
+                  (σ := suffix.behavioralProfile (fun i => (σ i).val))
+                  ⟨normalized.1, normalized.2⟩)
+          rw [← FDist.toPMF_bind
+            (L.evalDist D (VEnv.eraseSampleEnv env))
+            (fun v =>
+              outcomeDistBehavioral k
+                (suffix.behavioralProfile (fun i => (σ i).val))
+                (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                  v env))
+            (normalized.1 env)
+            (fun v =>
+              outcomeDistBehavioral_totalWeight_eq_one
+                (P := P) (L := L) (p := k)
+                (σ := suffix.behavioralProfile (fun i => (σ i).val))
+                normalized.2)
+            (outcomeDistBehavioral_totalWeight_eq_one
+              (P := P) (L := L) (p := VegasCore.sample x D k)
+              (σ := suffix.behavioralProfile (fun i => (σ i).val))
+              ⟨normalized.1, normalized.2⟩)]
+      | commit x who R k =>
+          simp only [checkedProfileStep, checkedVegasOutcomeKernel,
+            outcomeDistBehavioral]
+          rw [PMF.bind_map]
+          have hd :
+              FDist.totalWeight
+                (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+                  ((suffix.behavioralProfile (fun i => (σ i).val)) who)
+                  (projectViewEnv (P := P) (L := L) who
+                    (VEnv.eraseEnv env))) = 1 :=
+            ProgramBehavioralStrategy.headKernel_normalized
+              (P := P) (L := L)
+              ((suffix.behavioralProfile (fun i => (σ i).val)) who)
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
+          change
+            ((ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+                ((suffix.behavioralProfile (fun i => (σ i).val)) who)
+                (projectViewEnv (P := P) (L := L) who
+                  (VEnv.eraseEnv env))).toPMF hd).bind
+              (fun v =>
+                (outcomeDistBehavioral k
+                    (ProgramBehavioralProfile.tail (P := P) (L := L)
+                      (suffix.behavioralProfile (fun i => (σ i).val)))
+                    (VEnv.cons (Player := P) (L := L) (x := x)
+                      (τ := .hidden who _) v env)).toPMF
+                  (outcomeDistBehavioral_totalWeight_eq_one
+                    (P := P) (L := L) (p := k)
+                    (σ := ProgramBehavioralProfile.tail (P := P) (L := L)
+                      (suffix.behavioralProfile (fun i => (σ i).val)))
+                    normalized)) =
+              ((ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+                  ((suffix.behavioralProfile (fun i => (σ i).val)) who)
+                  (projectViewEnv (P := P) (L := L) who
+                    (VEnv.eraseEnv env))).bind fun v =>
+                outcomeDistBehavioral k
+                  (ProgramBehavioralProfile.tail (P := P) (L := L)
+                    (suffix.behavioralProfile (fun i => (σ i).val)))
+                  (VEnv.cons (Player := P) (L := L) (x := x)
+                    (τ := .hidden who _) v env)).toPMF
+                (outcomeDistBehavioral_totalWeight_eq_one
+                  (P := P) (L := L) (p := VegasCore.commit x who R k)
+                  (σ := suffix.behavioralProfile (fun i => (σ i).val))
+                  normalized)
+          rw [← FDist.toPMF_bind
+            (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+              ((suffix.behavioralProfile (fun i => (σ i).val)) who)
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env)))
+            (fun v =>
+              outcomeDistBehavioral k
+                (ProgramBehavioralProfile.tail (P := P) (L := L)
+                  (suffix.behavioralProfile (fun i => (σ i).val)))
+                (VEnv.cons (Player := P) (L := L) (x := x)
+                  (τ := .hidden who _) v env))
+            hd
+            (fun v =>
+              outcomeDistBehavioral_totalWeight_eq_one
+                (P := P) (L := L) (p := k)
+                (σ := ProgramBehavioralProfile.tail (P := P) (L := L)
+                  (suffix.behavioralProfile (fun i => (σ i).val)))
+                normalized)
+            (outcomeDistBehavioral_totalWeight_eq_one
+              (P := P) (L := L) (p := VegasCore.commit x who R k)
+              (σ := suffix.behavioralProfile (fun i => (σ i).val))
+              normalized)]
+      | reveal y who x hx k =>
+          simp [checkedProfileStep, checkedVegasOutcomeKernel,
+            outcomeDistBehavioral, VEnv.get]
+
+@[simp] theorem checkedVegasOutcomeKernel_ofCursorChecked
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CursorCheckedWorld (P := P) (L := L) g) :
+    checkedVegasOutcomeKernel (P := P) (L := L) (hctx := hctx) σ
+        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx) w) =
+      cursorVegasOutcomeKernel (P := P) (L := L) σ w := rfl
 
 /-- The Vegas-outcome kernel induced by running the observed-program FOSG and
 projecting terminal histories back to Vegas payoff outcomes. This is the
