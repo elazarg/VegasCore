@@ -888,6 +888,19 @@ noncomputable def moveAtObservation?
   · exact moveAtCursor g hctx σ who pub.suffix (hΓ ▸ VEnv.eraseEnv priv.env)
   · exact PMF.pure none
 
+theorem moveAtObservation?_of_world
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P) (w : CheckedWorld g hctx) :
+    moveAtObservation? g hctx σ who
+      (privateObsOfWorld who w, publicObsOfWorld w) =
+      moveAtWorld g hctx σ who w := by
+  unfold moveAtObservation? moveAtWorld
+  simp only [dite_eq_ite]
+  rw [privateObsOfWorld_eraseEnv]
+  simp only [publicObsOfWorld]
+  simp [privateObsOfWorld]
+
 /-- Raw FOSG behavioral profile induced by a Vegas legal behavioral profile.
 
 This is not yet bundled as a legal FOSG profile; legality is the next theorem.
@@ -900,6 +913,28 @@ noncomputable def behavioralProfileCandidate
     match latestObservation? g hctx who s with
     | none => moveAtWorld g hctx σ who (CheckedWorld.initial g hctx)
     | some obs => moveAtObservation? g hctx σ who obs
+
+theorem behavioralProfileCandidate_support_available_snoc
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    (h : (observedControlFlowFOSG g hctx).History)
+    (a : (observedControlFlowFOSG g hctx).LegalAction h.lastState)
+    (dst : CheckedWorld g hctx)
+    (support : (observedControlFlowFOSG g hctx).transition h.lastState a dst ≠ 0)
+    {oi : Option (Action (P := P) L who)}
+    (hoi : oi ∈
+      (behavioralProfileCandidate g hctx σ who
+        ((h.snoc a dst support).playerView who)).support) :
+    oi ∈ (observedControlFlowFOSG g hctx).availableMoves
+      (h.snoc a dst support) who := by
+  rw [behavioralProfileCandidate,
+    latestObservation?_history_snoc g hctx who h a dst support] at hoi
+  simp only at hoi
+  rw [moveAtObservation?_of_world] at hoi
+  simpa [GameTheory.FOSG.availableMoves,
+    GameTheory.FOSG.availableMovesAtState] using
+    moveAtWorld_support_available g hctx σ who dst hoi
 
 end Observed
 
