@@ -1113,42 +1113,37 @@ The proofs reduce to definitional unfolding: $\EU(\toKG(g), \sigma, i)$
 equals $\protocolEU(g, \sigma, i)$ by \Cref{thm:eu}, and each solution
 concept's statement shape is preserved by that substitution.
 
-\begin{definition}[Context-free guards]\label{def:contextfree}
-A commit guard $R : L.\Expr((x{:}\tau) :: \|\Gamma\|, \bool)$ is
-\emph{context-free} if $L.\exprDeps(R) \subseteq \{x\}$ --- legality
-of an action depends only on the proposed action itself, never on
-the ambient environment. A program has \emph{context-free guards},
-$\ContextFreeGuards(p)$, if every commit site's guard is context-free.
-Matching-pennies (with trivial guard $\mathit{true}$) has context-free
-guards; the conditioned-game of \Cref{sec:conditioned} does not.
-(\leanref{Vegas.ContextFreeGuards})
-\end{definition}
+\paragraph{FOSG outcome preservation.}
+The protocol-preserving compilation target is a factored-observation
+stochastic game whose worlds are reachable Vegas cursor states and whose
+available actions are the guard-satisfying moves at the current commit site.
+For every finite valuation witness and legal behavioural profile, the FOSG
+run projected back to Vegas payoff outcomes has exactly the same outcome
+kernel as $\toKG(g)$
+(\leanref{Vegas.FOSGBridge.Observed.observedProgramOutcomeKernel\_eq\_toKernelGame}).
+Consequently the projected FOSG game preserves the utility distribution and
+expected utility of $\toKG(g)$
+(\leanref{Vegas.FOSGBridge.Observed.observedProgramOutcomeKernelGame\_eu}).
 
 \paragraph{Conjectural: protocol Kuhn.}
 We name the protocol-level Kuhn claim as a $\Prop$-valued target
 rather than a theorem: for every mixture $\mu$ over guard-legal pure
 strategies, there exists a guard-legal behavioural profile $\beta$
 with the same outcome distribution
-(\leanref{ProtocolKuhnProperty}). Proving this from existing MAID Kuhn
-would require the guard-respecting default-value repair discussed in
-\Cref{sec:mechanization}, or a direct Vegas Kuhn construction at the
-legal-subtype level. Neither is attempted in this paper.
+(\leanref{ProtocolKuhnProperty}). The FOSG bridge supplies the right
+outcome-preserving protocol representation for arbitrary state-dependent
+guards; what remains is relating Vegas' legal pure/behavioural strategy
+spaces to the corresponding FOSG strategy spaces, or proving the realization
+directly for Vegas.
 
-\paragraph{Gap: general MAID compilation does not preserve protocol
-equilibria.}
-MAID compilation is outcome-distribution preserving and supports a
-faithful Kuhn theorem at the outcome level, but the compiled MAID's
+\paragraph{MAID caveat.}
+The MAID backend is outcome-distribution preserving and supports a
+Kuhn theorem at the outcome level, but the compiled MAID's
 strategy type is driven by $\mathrm{MAID.Struct.Val}$ which is set to
 the full $L.\Val(\tau)$ at every decision node. A MAID Nash
 equilibrium can therefore recommend guard-violating actions. The
-faithful compilation target for the general case is a formalism with
-environment-dependent action admissibility (factored-observation
-stochastic games); its mechanisation is a separate project. For
-context-free guards the restricted compilation is conceptually
-straightforward --- MAID decision-node $\Val$ becomes the guard-
-filtered subtype --- but its mechanisation requires a cascade through
-outcome extraction, policy translation, and the perfect-recall
-proofs, and is deferred.
+faithful protocol-compilation target is therefore the FOSG bridge, not the
+current MAID backend.
 
 
 %% =====================================================================
@@ -1658,14 +1653,10 @@ Extending Vegas with richer expression languages (continuous distributions,
 recursive types), sequential equilibrium refinements, and a deeper connection
 to verified smart contract languages. The commit-reveal structure suggests a
 natural correspondence with zero-knowledge protocols that remains to be
-formalized. On the protocol-compilation side, the natural target for the
-general case --- where commit guards may read the ambient environment ---
-is a factored-observation stochastic game (FOSG) with environment-dependent
-action admissibility. Formalising FOSGs in \texttt{GameTheory} and
-connecting them to Vegas would close the gap between Vegas's
-protocol-native semantics and a faithful compilation target for the full
-language; a restricted-MAID construction for the $\ContextFreeGuards$
-subclass (\Cref{def:contextfree}) is a smaller intermediate target.
+formalized. On the protocol-compilation side, the remaining target is a
+Kuhn-style strategy-space correspondence between Vegas legal strategies and
+the FOSG representation, building on the outcome-preservation theorem already
+mechanized for the full guarded language.
 
 \begin{thebibliography}{9}
 

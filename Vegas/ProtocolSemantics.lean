@@ -12,7 +12,7 @@ Vegas Nash equilibrium *means* at the protocol level is exactly the
 statement of `ProtocolNash`, and the existing `Vegas.IsNash` (defined
 via `KernelGame`) is shown to be literally the same proposition.
 
-The file has four regions.
+The file has two regions.
 
 * **Region A (protocol-native definitions, proved).**
   `protocolEU`, `ProtocolNash`, `ProtocolBestResponse`,
@@ -22,42 +22,17 @@ The file has four regions.
   (`isNash_iff_protocolNash`, etc.) prove each equals its
   `KernelGame`-transported counterpart by definitional unfolding.
 
-* **Region B (context-free subclass, proved decidable).**
-  `CommitGuardContextFree` / `ContextFreeGuards` carve out the
-  sub-class of Vegas programs whose commit guards read only the
-  proposed action — never the ambient environment. Matching-pennies
-  (trivial `true` guard) qualifies; conditioned-game does not. This
-  class is the natural target for a future protocol-preserving MAID
-  compilation (see Region D).
-
-* **Region C (named conjectures, not theorems).**
+* **Region B (named target, not a theorem).**
   `ProtocolKuhnProperty g : Prop` — the protocol-level Kuhn claim:
   every mixture over legal pure strategies is outcome-equivalent to
-  some legal behavioural profile. Proving this from the existing MAID
-  Kuhn would require repairing `reflectPolicyAuxV`'s off-path defaults
-  to be guard-respecting, or a direct Vegas Kuhn proof. Left as a
-  named target.
+  some legal behavioural profile. `Vegas.FOSG` now gives the
+  outcome-preserving protocol representation for arbitrary state-
+  dependent guards; this remaining target is the strategy-space
+  Kuhn theorem for Vegas' legal pure/behavioral strategy types.
 
-  `MaidNashImpliesProtocolNash g : Prop` — the provable direction of
-  the MAID bridge (MAID Nash of the compiled MAID plus legality ⇒
-  Protocol Nash). This could be a theorem, but its precise statement
-  requires lining up against `compiledPolicyV` / `reflectPolicyV` in
-  `Vegas.MAID.Bridge`; we name it as a `Prop`-valued target for a
-  future dedicated MAID-bridge pass rather than forcing that detour
-  mid-plan. The converse is intentionally *not* stated (generally
-  false — MAID Nash quantifies over deviations that include
-  guard-violating alternatives).
-
-* **Region D (gap documentation, prose only).**
-  The general-case MAID compilation is outcome-preserving but not
-  protocol-representing: the action graph at each decision node takes
-  the full `L.Val τ` rather than a guard-filtered subtype, so MAID
-  equilibria can recommend guard-violating moves. Closing this gap
-  requires subtype-valued decision-node `Val` in the MAID struct —
-  a separate refactor of comparable scope to Vegas Kuhn. For
-  `ContextFreeGuards` programs, the restricted-MAID construction is
-  conceptually straightforward, but its mechanisation is still
-  deferred; see the paper's Mechanisation-Notes discussion.
+The MAID backend remains useful for the older compilation path, but it is not
+the protocol-representing route: its decision nodes quantify over full value
+types rather than guard-filtered actions.
 -/
 
 namespace Vegas
@@ -176,62 +151,17 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
     have := h who s' hne
     simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
 
-/-! ## Region B — context-free guards -/
-
-/-- A commit guard is *context-free* when it depends only on the
-proposed action variable, not on the ambient environment. Formally,
-its expression-dependency set is contained in the singleton `{x}`.
-This is the special case in which the legality of an action can be
-decided without consulting the current execution environment. -/
-def CommitGuardContextFree {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
-  L.exprDeps R ⊆ {x}
-
-/-- Every commit site in the program has a context-free guard. -/
-def ContextFreeGuards :
-    {Γ : VCtx P L} → VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .letExpr _ _ k => ContextFreeGuards k
-  | _, .sample _ _ k => ContextFreeGuards k
-  | _, .commit _ _ R k => CommitGuardContextFree R ∧ ContextFreeGuards k
-  | _, .reveal _ _ _ _ k => ContextFreeGuards k
-
-instance CommitGuardContextFree.instDecidable
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    [DecidableEq VarId]
-    (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) :
-    Decidable (CommitGuardContextFree R) := by
-  unfold CommitGuardContextFree; infer_instance
-
-instance ContextFreeGuards.instDecidable [DecidableEq VarId] :
-    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-    Decidable (ContextFreeGuards p)
-  | _, .ret _ => instDecidableTrue
-  | _, .letExpr _ _ k => ContextFreeGuards.instDecidable k
-  | _, .sample _ _ k => ContextFreeGuards.instDecidable k
-  | _, .commit _ _ R k =>
-      let _ := CommitGuardContextFree.instDecidable R
-      let _ := ContextFreeGuards.instDecidable k
-      inferInstanceAs (Decidable (_ ∧ _))
-  | _, .reveal _ _ _ _ k => ContextFreeGuards.instDecidable k
-
-/-! ## Region C — named conjectures -/
+/-! ## Region B — named Kuhn target -/
 
 /-- The protocol-level Kuhn property for a Vegas program: every
 mixture over guard-legal pure profiles admits a guard-legal
 behavioural profile with the same outcome distribution.
 
-Stated as a `Prop`-valued definition, not proved here. Proving it
-would require one of:
-
-* Repairing `MAID.Struct.Val` / `reflectPolicyAuxV`'s off-path
-  defaults (`MAIDValuation.defaultVal`) to be guard-respecting, then
-  routing through the existing MAID Kuhn.
-* Constructing a direct Vegas Kuhn argument at the legal-subtype
-  level.
-
-Both are substantial; neither is attempted here. The name is in
-place so paper and future proof work have a target. -/
+Stated as a `Prop`-valued definition, not proved here. The FOSG bridge proves
+the right protocol outcome semantics; what remains is relating Vegas'
+`LegalProgramPureProfile`/`LegalProgramBehavioralProfile` spaces to the
+corresponding FOSG pure/behavioral strategy spaces, or proving the realization
+directly for Vegas. -/
 def ProtocolKuhnProperty (g : WFProgram P L) : Prop :=
   ∀ (μ : PMF (LegalProgramPureProfile g)),
     ∃ β : LegalProgramBehavioralProfile g,
@@ -254,25 +184,5 @@ theorem protocolKuhn_dirac (g : WFProgram P L)
   refine ⟨LegalProgramPureProfile.toBehavioral σ, ?_⟩
   rw [PMF.pure_bind]
   exact toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral g σ
-
-/-
-## Gap (prose, not code)
-
-**MAID ↔ Protocol bridge, provable direction.** MAID Nash of the
-compiled MAID --- with its universal deviation quantifier restricted
-to the guard-legal reflected subset --- implies Protocol Nash of the
-Vegas program. Stating this precisely requires the MAID bridge
-artefacts (`vegasMAID_behavioral_bridge`, `reflectPolicyV`) from
-`Vegas.MAID.Bridge`, which this module intentionally does not import
-(to keep the protocol-native layer independent of MAID). A future
-pass that imports the bridge layer can state and prove the one-
-direction theorem. We do not commit a Prop-valued placeholder here
-because a truly named theorem with an inline or trivially-derivable
-proof is worse API than a documented gap.
-
-**Converse (Protocol Nash ⇒ MAID Nash).** Intentionally not stated.
-It is false in general, because MAID Nash quantifies over deviations
-that include guard-violating alternatives the protocol rejects.
--/
 
 end Vegas
