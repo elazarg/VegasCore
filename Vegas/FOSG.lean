@@ -1,6 +1,7 @@
 import GameTheory.Languages.FOSG.Information
 import GameTheory.Languages.FOSG.Strategy
 import Vegas.Strategic
+import Vegas.Finite
 import Vegas.ViewKernel
 import Vegas.WFProgram
 
@@ -558,6 +559,44 @@ theorem ty_commitCursor
 
 end ProgramSuffix
 
+/-! ## Program points
+
+`CheckedWorld` carries proof fields needed by the FOSG structure. For
+finiteness, the data-bearing part is smaller: a syntactic point in the fixed
+program plus an environment for that point's context.
+-/
+
+/-- A typed syntactic continuation of a fixed root program. -/
+structure ProgramPoint {Γ₀ : VCtx P L} (root : VegasCore P L Γ₀) where
+  Γ : VCtx P L
+  prog : VegasCore P L Γ
+  suffix : ProgramSuffix root prog
+
+/-- The data-bearing part of a checked world, before attaching local proof
+obligations. -/
+structure CheckedWorldData (g : WFProgram P L) where
+  point : ProgramPoint (P := P) (L := L) g.prog
+  env : VEnv L point.Γ
+
+namespace CheckedWorldData
+
+def prog {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) :
+    VegasCore P L d.point.Γ :=
+  d.point.prog
+
+def suffix {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) :
+    ProgramSuffix g.prog d.prog :=
+  d.point.suffix
+
+/-- Local proof obligations attached to a checked world. This predicate is
+separated from `CheckedWorldData` so finiteness can be proved on the data
+carrier first and then restricted to valid states. -/
+def Valid {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) : Prop :=
+  WFCtx d.point.Γ ∧ FreshBindings d.prog ∧ ViewScoped d.prog ∧
+    NormalizedDists d.prog ∧ Legal d.prog
+
+end CheckedWorldData
+
 /-! ## A checked-world FOSG skeleton
 
 The next layer uses worlds that carry the local obligations needed by the FOSG
@@ -586,6 +625,49 @@ structure CheckedWorld (g : WFProgram P L) (hctx : WFCtx g.Γ) where
   legal : Legal prog
 
 namespace CheckedWorld
+
+/-- Forget the proof obligations on a checked world. -/
+def toData {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx) : CheckedWorldData (P := P) (L := L) g where
+  point :=
+    { Γ := w.Γ
+      prog := w.prog
+      suffix := w.suffix }
+  env := w.env
+
+/-- Reattach checked-world proof obligations to data. -/
+def ofValid {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (d : CheckedWorldData (P := P) (L := L) g)
+    (h : d.Valid) : CheckedWorld g hctx where
+  Γ := d.point.Γ
+  prog := d.prog
+  env := d.env
+  suffix := d.suffix
+  wctx := h.1
+  fresh := h.2.1
+  viewScoped := h.2.2.1
+  normalized := h.2.2.2.1
+  legal := h.2.2.2.2
+
+/-- Checked worlds are exactly valid checked-world data. -/
+def equivValidData {g : WFProgram P L} {hctx : WFCtx g.Γ} :
+    CheckedWorld g hctx ≃
+      {d : CheckedWorldData (P := P) (L := L) g // d.Valid} where
+  toFun := fun w =>
+    ⟨w.toData, by
+      exact ⟨w.wctx, w.fresh, w.viewScoped, w.normalized, w.legal⟩⟩
+  invFun := fun d => ofValid d.1 d.2
+  left_inv := by
+    intro w
+    cases w
+    rfl
+  right_inv := by
+    intro d
+    cases d with
+    | mk data valid =>
+        apply Subtype.ext
+        cases data
+        rfl
 
 def toWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) : World P L where
@@ -1102,6 +1184,29 @@ noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     (g : WFProgram P L) (_hctx : WFCtx g.Γ) (who : P) :
     DecidableEq (ProgramAction (P := P) (L := L) g.prog who) :=
   ProgramAction.instDecidableEq (P := P) (L := L) g.prog who
+
+/-- Per-player optional-action finite helper for FOSG execution APIs. -/
+@[reducible] noncomputable def observedProgramFOSG.instFintypeOptionAction
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (who : P) :
+    Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) := by
+  let _ : Fintype (ProgramAction (P := P) (L := L) g.prog who) :=
+    observedProgramFOSG.instFintypeAction (P := P) (L := L) g hctx LF who
+  infer_instance
+
+/-- Terminal decidability helper for FOSG execution APIs. -/
+@[reducible] def observedProgramFOSG.instDecidablePredTerminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    DecidablePred (observedProgramFOSG g hctx).terminal := by
+  intro w
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog
+      · exact isTrue trivial
+      · exact isFalse (by intro h; cases h)
+      · exact isFalse (by intro h; cases h)
+      · exact isFalse (by intro h; cases h)
+      · exact isFalse (by intro h; cases h)
 
 namespace Observed
 
