@@ -1496,6 +1496,45 @@ theorem commitValueOfLegal_guard
       (commitValueOfLegal (L := L) ha) (VEnv.eraseEnv env) = true :=
   (Classical.choose_spec (commit_value_of_legal (L := L) ha)).2
 
+/-- If a legal broad joint action names the active commit action explicitly,
+the value extracted by `commitValueOfLegal` is that action's value. -/
+theorem commitValueOfLegal_eq_action_value
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {env : VEnv L Γ} {a : JointAction P L}
+    (ha : JointActionLegal
+      ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L) a)
+    {ai : Action (P := P) L who}
+    (hai : a who = some ai)
+    (hty : ai.1 = b) :
+    hty ▸ ai.2 = commitValueOfLegal (P := P) (L := L) ha := by
+  have hact := commitValueOfLegal_action (P := P) (L := L) ha
+  rw [hai] at hact
+  cases ai with
+  | mk cty val =>
+      simp only [Option.some.injEq, Sigma.mk.injEq] at hact
+      rcases hact with ⟨_hcty, hval⟩
+      cases hty
+      exact eq_of_heq hval
+
+/-- Program-local variant of `commitValueOfLegal_eq_action_value`. -/
+theorem commitValueOfLegal_eq_programAction_value
+    {g : WFProgram P L} {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {env : VEnv L Γ} {a : ProgramJointAction (P := P) (L := L) g}
+    (ha : JointActionLegal
+      ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
+      (ProgramJointAction.toAction a))
+    {ai : ProgramAction (P := P) (L := L) g.prog who}
+    (hai : a who = some ai)
+    (hty : CommitCursor.ty ai.cursor = b) :
+    hty ▸ ai.value = commitValueOfLegal (P := P) (L := L) ha := by
+  apply commitValueOfLegal_eq_action_value
+    (P := P) (L := L) (ai := ProgramAction.toAction ai) ha
+  · simp [ProgramJointAction.toAction, ProgramAction.toAction, hai]
+
 theorem checked_terminal_active_eq_empty
     {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
     checkedTerminal w → checkedActive w = ∅ :=
