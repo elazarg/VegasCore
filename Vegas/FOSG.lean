@@ -648,6 +648,54 @@ theorem ty_commitCursor
 
 end ProgramSuffix
 
+namespace ProgramAction
+
+/-- Program-local action at a concrete commit suffix. The dependent cast is
+centralized here so downstream semantic proofs can use the round-trip lemma
+instead of depending on elaborator-generated proof terms. -/
+noncomputable def commitAt
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (v : L.Val b) : ProgramAction (P := P) (L := L) g.prog who where
+  cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
+  value := cast
+    (congrArg L.Val
+      (ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix)).symm v
+
+@[simp] theorem commitAt_cursor
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (v : L.Val b) :
+    (commitAt (P := P) (L := L) suffix v).cursor =
+      ProgramSuffix.commitCursor (P := P) (L := L) suffix := rfl
+
+private theorem cast_val_roundtrip {cty b : L.Ty}
+    (h h' : cty = b) (v : L.Val b) :
+    h' ▸ (cast (congrArg L.Val h).symm v : L.Val cty) = v := by
+  cases h
+  simp [cast_eq]
+
+@[simp] theorem commitAt_value_cast
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (v : L.Val b)
+    (hty : CommitCursor.ty
+      (commitAt (P := P) (L := L) suffix v).cursor = b) :
+    hty ▸ (commitAt (P := P) (L := L) suffix v).value = v := by
+  exact cast_val_roundtrip
+    (ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix) hty v
+
+end ProgramAction
+
 /-! ## Canonical program cursors
 
 `ProgramSuffix` is useful for proof transport, but it is not the right finite
@@ -1170,7 +1218,52 @@ def toCheckedWorldFrom
   normalized := s.valid.2.2.2.1
   legal := s.valid.2.2.2.2
 
+/-- Project a local cursor runtime state under an explicit global suffix into
+the suffix-based checked-world presentation. This is the proof-friendly form of
+`toCheckedWorldFrom`: recursive cursor proofs frame suffixes directly, avoiding
+extra transport through prefix-cursor equality. -/
+def toCheckedWorldFromSuffix
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog root)
+    (s : CursorRuntimeState (P := P) (L := L) root) :
+    CheckedWorld g hctx where
+  Γ := s.cursor.Γ
+  prog := s.cursor.prog
+  env := s.env
+  suffix := ProgramCursor.toSuffixFrom
+    (P := P) (L := L) suffix s.cursor
+  wctx := s.valid.1
+  fresh := s.valid.2.1
+  viewScoped := s.valid.2.2.1
+  normalized := s.valid.2.2.2.1
+  legal := s.valid.2.2.2.2
+
 end CursorRuntimeState
+
+namespace ProgramCursor
+
+/-- Project a cursor endpoint under an explicit global suffix into the
+suffix-based checked-world presentation. -/
+def toCheckedWorldFromSuffix
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog root)
+    (c : ProgramCursor (P := P) (L := L) root)
+    (env : VEnv L c.Γ) (valid : c.EndpointValid) :
+    CheckedWorld g hctx where
+  Γ := c.Γ
+  prog := c.prog
+  env := env
+  suffix := ProgramCursor.toSuffixFrom
+    (P := P) (L := L) suffix c
+  wctx := valid.1
+  fresh := valid.2.1
+  viewScoped := valid.2.2.1
+  normalized := valid.2.2.2.1
+  legal := valid.2.2.2.2
+
+end ProgramCursor
 
 def checkedTerminal {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) : Prop :=
@@ -1832,6 +1925,158 @@ noncomputable def cursorProgramTransition
       (ProgramJointAction.toAction a.1)
       (CursorProgramJointActionLegal.toAction a.2))
 
+
+theorem cursorTransitionState_map_toCheckedWorldFromSuffix
+    {g : WFProgram P L} {hctx : WFCtx g.Γ} :
+    {Γ : VCtx P L} → {root : VegasCore P L Γ} →
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog root) →
+    (c : ProgramCursor (P := P) (L := L) root) →
+    (env : VEnv L c.Γ) →
+    (valid : c.EndpointValid) →
+    (a : JointAction P L) →
+    (ha : JointActionLegal
+      ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
+    PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
+        (P := P) (L := L) (hctx := hctx) suffix)
+      (cursorTransitionState (P := P) (L := L) c env valid a ha) =
+    checkedTransition (P := P) (L := L)
+      (ProgramCursor.toCheckedWorldFromSuffix
+        (P := P) (L := L) (hctx := hctx) suffix c env valid)
+      ⟨a, by
+        simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
+          checkedActive, checkedTerminal, checkedAvailableActions,
+          CheckedWorld.toWorld] using ha⟩ := by
+  intro Γ root suffix c
+  revert suffix
+  exact ProgramCursor.rec
+    (motive := fun {Γ} root c =>
+      (suffix : ProgramSuffix (P := P) (L := L) g.prog root) →
+      (env : VEnv L c.Γ) →
+      (valid : c.EndpointValid) →
+      (a : JointAction P L) →
+      (ha : JointActionLegal
+        ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
+      PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
+          (P := P) (L := L) (hctx := hctx) suffix)
+        (cursorTransitionState (P := P) (L := L) c env valid a ha) =
+      checkedTransition (P := P) (L := L)
+        (ProgramCursor.toCheckedWorldFromSuffix
+          (P := P) (L := L) (hctx := hctx) suffix c env valid)
+        ⟨a, by
+          simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
+            checkedActive, checkedTerminal, checkedAvailableActions,
+            CheckedWorld.toWorld] using ha⟩)
+    (fun {Γ} {p} suffix env valid a ha => by
+      cases p
+      · exact False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      · simp [cursorTransitionState, checkedTransition,
+          CursorRuntimeState.toCheckedWorldFromSuffix,
+          ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+          ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.pure_map]
+      · simp [cursorTransitionState, checkedTransition,
+          CursorRuntimeState.toCheckedWorldFromSuffix,
+          ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+          ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.map, Function.comp_def]
+      · simp [cursorTransitionState, checkedTransition,
+          CursorRuntimeState.toCheckedWorldFromSuffix,
+          ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+          ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.pure_map]
+      · simp [cursorTransitionState, checkedTransition,
+          CursorRuntimeState.toCheckedWorldFromSuffix,
+          ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+          ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.pure_map])
+    (fun c ih suffix env valid a ha => by
+      simpa [cursorTransitionState,
+        CursorRuntimeState.toCheckedWorldFromSuffix,
+        ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+        ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.map, PMF.pure_map,
+        bind_assoc, Function.comp_def] using
+        ih (ProgramSuffix.letExpr suffix) env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a
+          (by simpa [ProgramCursor.EndpointValid] using ha))
+    (fun c ih suffix env valid a ha => by
+      simpa [cursorTransitionState,
+        CursorRuntimeState.toCheckedWorldFromSuffix,
+        ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+        ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.map, PMF.pure_map,
+        bind_assoc, Function.comp_def] using
+        ih (ProgramSuffix.sample suffix) env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a
+          (by simpa [ProgramCursor.EndpointValid] using ha))
+    (fun c ih suffix env valid a ha => by
+      simpa [cursorTransitionState,
+        CursorRuntimeState.toCheckedWorldFromSuffix,
+        ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+        ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.map, PMF.pure_map,
+        bind_assoc, Function.comp_def] using
+        ih (ProgramSuffix.commit suffix) env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a
+          (by simpa [ProgramCursor.EndpointValid] using ha))
+    (fun c ih suffix env valid a ha => by
+      simpa [cursorTransitionState,
+        CursorRuntimeState.toCheckedWorldFromSuffix,
+        ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
+        ProgramCursor.Γ, ProgramCursor.toSuffixFrom, PMF.map, PMF.pure_map,
+        bind_assoc, Function.comp_def] using
+        ih (ProgramSuffix.reveal suffix) env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a
+          (by simpa [ProgramCursor.EndpointValid] using ha))
+    c
+
+/-- The program-local finite FOSG transition agrees with the checked-world
+transition after erasing program actions and forgetting cursor keys. -/
+theorem cursorProgramTransition_map_checkedWorld
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CursorCheckedWorld (P := P) (L := L) g)
+    (a : {a : ProgramJointAction (P := P) (L := L) g //
+      CursorProgramJointActionLegal w a}) :
+    PMF.map (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+        (cursorProgramTransition (P := P) (L := L) w a) =
+      checkedTransition (P := P) (L := L)
+        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx) w)
+        ⟨ProgramJointAction.toAction a.1,
+          CursorProgramJointActionLegal.toAction a.2⟩ := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          let hv : cursor.EndpointValid := by
+            simpa [CursorWorldData.Valid, CursorWorldData.prog,
+              ProgramCursor.EndpointValid] using valid
+          rw [cursorProgramTransition]
+          change PMF.map
+              (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+              (PMF.map CursorRuntimeState.toChecked
+                (cursorTransitionState cursor env hv
+                  (ProgramJointAction.toAction a.1)
+                  (CursorProgramJointActionLegal.toAction a.2))) = _
+          rw [show PMF.map
+              (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+              (PMF.map CursorRuntimeState.toChecked
+                (cursorTransitionState cursor env hv
+                  (ProgramJointAction.toAction a.1)
+                  (CursorProgramJointActionLegal.toAction a.2))) =
+            PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
+                (P := P) (L := L) (hctx := hctx) ProgramSuffix.here)
+              (cursorTransitionState cursor env hv
+                (ProgramJointAction.toAction a.1)
+                (CursorProgramJointActionLegal.toAction a.2)) by
+            simp [PMF.map, Function.comp_def,
+              CursorRuntimeState.toChecked, CheckedWorld.ofCursorChecked,
+              CursorRuntimeState.toCheckedWorldFromSuffix,
+              ProgramCursor.toSuffix, CursorWorldData.Valid,
+              CursorWorldData.prog, CursorWorldData.suffix]]
+          simpa [ProgramCursor.toCheckedWorldFromSuffix,
+            CheckedWorld.ofCursorChecked, ProgramCursor.toSuffix,
+            ProgramCursor.toSuffixFrom, CursorWorldData.Valid,
+            CursorWorldData.prog, CursorWorldData.suffix, hv] using
+          cursorTransitionState_map_toCheckedWorldFromSuffix
+              (P := P) (L := L) (hctx := hctx)
+              (g := g) (suffix := ProgramSuffix.here) (c := cursor)
+              (env := env) (valid := hv)
+              (a := ProgramJointAction.toAction a.1)
+              (ha := CursorProgramJointActionLegal.toAction a.2)
+
 set_option linter.flexible false in
 /-- Every supported cursor-recursive transition consumes exactly one
 operational syntax node. -/
@@ -2107,6 +2352,23 @@ noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
   nonterminal_exists_legal := by
     intro w hterm
     exact cursor_nonterminal_exists_program_legal hterm
+
+/-- The observed-program FOSG transition is the checked transition after
+forgetting cursor keys and erasing program-local actions. -/
+theorem observedProgramTransition_map_checkedWorld_eq_checkedTransition
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CursorCheckedWorld (P := P) (L := L) g)
+    (a : (observedProgramFOSG (P := P) (L := L) g hctx).LegalAction w) :
+    PMF.map (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+        ((observedProgramFOSG (P := P) (L := L) g hctx).transition w a) =
+      checkedTransition (P := P) (L := L)
+        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx) w)
+        ⟨ProgramJointAction.toAction a.1,
+          CursorProgramJointActionLegal.toAction a.2⟩ := by
+  simpa [observedProgramFOSG] using
+    cursorProgramTransition_map_checkedWorld
+      (P := P) (L := L) (hctx := hctx) w a
+
 
 /-- Finite-world helper for `observedProgramFOSG`. -/
 @[reducible] noncomputable def observedProgramFOSG.instFintypeWorld
@@ -2732,11 +2994,7 @@ noncomputable def moveAtProgramCursor
               (P := P) (L := L) (σp who) view
           exact PMF.map
             (fun v => some
-              ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
-                 value := by
-                   rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
-                   exact v } :
-                ProgramAction (P := P) (L := L) g.prog who))
+              (ProgramAction.commitAt (P := P) (L := L) suffix v))
             (d.toPMF hd)
       else
         PMF.pure none
@@ -2760,11 +3018,7 @@ noncomputable def moveAtProgramCursor
             (P := P) (L := L) (σp who) view
         exact PMF.map
           (fun v => some
-            ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
-               value := by
-                 rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
-                 exact v } :
-              ProgramAction (P := P) (L := L) g.prog who))
+            (ProgramAction.commitAt (P := P) (L := L) suffix v))
           (d.toPMF hd) := by
   simp [moveAtProgramCursor]
 
@@ -2865,11 +3119,7 @@ theorem moveAtProgramCursor_support_availableAt
         have hoi' :
             ∃ v, ¬(d.toPMF hd) v = 0 ∧
               some
-                ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
-                   value := by
-                     rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
-                     exact v } :
-                  ProgramAction (P := P) (L := L) g.prog who) = oi := by
+                (ProgramAction.commitAt (P := P) (L := L) suffix v) = oi := by
           simpa [moveAtProgramCursor, d, hd] using hoi
         rcases hoi' with ⟨v, hvprob, hvo⟩
         rw [← hvo]
@@ -2884,11 +3134,14 @@ theorem moveAtProgramCursor_support_availableAt
             g hctx σ suffix (VEnv.eraseEnv env) v hvFD
         simp [CursorCheckedWorld.availableProgramMovesAt,
           CursorCheckedWorld.availableProgramActionsAt, active,
-          Vegas.FOSGBridge.availableActions, ProgramAction.toAction,
-          ProgramSuffix.ty_commitCursor, hguard]
-        refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-        · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-        · rfl
+          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
+        constructor
+        · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
+              (P := P) (L := L) suffix, ?_⟩, hguard⟩⟩
+          exact cast_heq _ v
+        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
+          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
+          · rfl
       · have hoiNone : oi = none := by
           simpa [moveAtProgramCursor, howner] using hoi
         subst oi
@@ -3383,6 +3636,114 @@ noncomputable def checkedProfileStep
               normalized := normalized
               legal := legal }
 
+/-- At a commit cursor owned by `who`, binding the transported program-action
+kernel through the checked transition's commit continuation is exactly the
+Vegas profile step at that checked world. -/
+theorem moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
+    (viewScoped : ViewScoped (.commit x who R k))
+    (normalized : NormalizedDists (.commit x who R k))
+    (legal : Legal (.commit x who R k)) :
+    (moveAtProgramCursor g hctx σ who suffix
+        (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))).bind
+      (fun oi =>
+        match oi with
+        | some ai =>
+            if hty : CommitCursor.ty ai.cursor = b then
+              PMF.pure
+                ({ Γ := _
+                   prog := k
+                   env := VEnv.cons (Player := P) (L := L) (x := x)
+                     (τ := .hidden who _) (hty ▸ ai.value) env
+                   suffix := .commit suffix
+                   wctx := WFCtx.cons fresh.1 wctx
+                   fresh := fresh.2
+                   viewScoped := viewScoped.2
+                   normalized := normalized
+                   legal := legal.2 } : CheckedWorld g hctx)
+            else
+              PMF.pure
+                ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                   wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                   normalized := normalized, legal := legal } : CheckedWorld g hctx)
+        | none =>
+            PMF.pure
+              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                 normalized := normalized, legal := legal } : CheckedWorld g hctx)) =
+      checkedProfileStep (P := P) (L := L) g hctx σ
+        ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+           wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+           normalized := normalized, legal := legal } : CheckedWorld g hctx) := by
+  rw [moveAtProgramCursor_commit_owner]
+  rw [PMF.bind_map]
+  simp only [checkedProfileStep, Function.comp_def]
+  have hbind := bind_congr (m := PMF)
+    (x := (((suffix.behavioralProfile (fun i => ↑(σ i)) who).headKernel
+      (projectViewEnv who env.eraseEnv)).toPMF
+        (ProgramBehavioralStrategy.headKernel_normalized
+          (P := P) (L := L)
+          ((suffix.behavioralProfile (fun i => ↑(σ i))) who)
+          (projectViewEnv who env.eraseEnv))))
+    (f := fun v =>
+      if hty : (ProgramAction.commitAt (P := P) (L := L) suffix v).cursor.ty = b then
+        PMF.pure
+          ({ Γ := _
+             prog := k
+             env := VEnv.cons (Player := P) (L := L) (x := x)
+               (τ := .hidden who _)
+               (hty ▸ (ProgramAction.commitAt (P := P) (L := L) suffix v).value) env
+             suffix := .commit suffix
+             wctx := WFCtx.cons fresh.1 wctx
+             fresh := fresh.2
+             viewScoped := viewScoped.2
+             normalized := normalized
+             legal := legal.2 } : CheckedWorld g hctx)
+      else
+        PMF.pure
+          ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+             wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+             normalized := normalized, legal := legal } : CheckedWorld g hctx))
+    (g := fun v => PMF.pure
+      ({ Γ := _
+         prog := k
+         env := VEnv.cons (Player := P) (L := L) (x := x)
+           (τ := .hidden who _) v env
+         suffix := .commit suffix
+         wctx := WFCtx.cons fresh.1 wctx
+         fresh := fresh.2
+         viewScoped := viewScoped.2
+         normalized := normalized
+         legal := legal.2 } : CheckedWorld g hctx)) ?_
+  · simpa [PMF.bind_pure_comp, Function.comp_def] using hbind
+  · intro v
+    by_cases hty : (ProgramAction.commitAt (P := P) (L := L) suffix v).cursor.ty = b
+    · dsimp only
+      rw [dif_pos hty]
+      have hv :
+          hty ▸ (ProgramAction.commitAt (P := P) (L := L) suffix v).value = v :=
+        ProgramAction.commitAt_value_cast (P := P) (L := L) suffix v hty
+      have henv :
+          VEnv.cons (Player := P) (L := L) (x := x)
+              (τ := .hidden who _)
+              (hty ▸ (ProgramAction.commitAt (P := P) (L := L) suffix v).value) env =
+            VEnv.cons (Player := P) (L := L) (x := x)
+              (τ := .hidden who _) v env :=
+        VEnv.cons_ext hv rfl
+      rw [henv]
+    · exact False.elim
+        (hty (ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix))
+
+
+
+
 theorem checkedTransition_eq_checkedProfileStep_of_active_empty
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -3405,6 +3766,44 @@ theorem checkedTransition_eq_checkedProfileStep_of_active_empty
           simp [checkedActive, CheckedWorld.toWorld, active] at hactive
       | reveal y who x hx k =>
           simp [checkedTransition, checkedProfileStep]
+
+/-- At an observed-program history with no active players, the FOSG
+legal-action law followed by the checked-world transition is the Vegas
+small-step kernel. This discharges the `let`, `sample`, and `reveal` one-step
+cases; commit states are handled separately by their singleton active player. -/
+theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
+    (σ : LegalProgramBehavioralProfile g)
+    (h : (observedProgramFOSG (P := P) (L := L) g hctx).History)
+    (hterm : ¬ (observedProgramFOSG (P := P) (L := L) g hctx).terminal h.lastState)
+    (hactive :
+      (observedProgramFOSG (P := P) (L := L) g hctx).active h.lastState = ∅) :
+    ((observedProgramFOSG (P := P) (L := L) g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
+      (fun a =>
+        PMF.map (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+          ((observedProgramFOSG (P := P) (L := L) g hctx).transition
+            h.lastState a)) =
+      checkedProfileStep (P := P) (L := L) g hctx σ
+        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx)
+          h.lastState) := by
+  rw [GameTheory.FOSG.legalActionLaw_eq_pure_noop_of_active_empty
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm hactive]
+  simp only [PMF.pure_bind]
+  rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+    (P := P) (L := L) (hctx := hctx)
+    (w := h.lastState)
+    (a := ⟨GameTheory.FOSG.noopAction
+        (fun who : P => ProgramAction (P := P) (L := L) g.prog who),
+      (observedProgramFOSG (P := P) (L := L) g hctx)
+        |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
+  apply checkedTransition_eq_checkedProfileStep_of_active_empty
+  simpa [observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
+    CursorCheckedWorld.active] using hactive
 
 /-- Project a suffix-based checked world to the Vegas payoff outcome carried at
 terminal `ret` worlds. The nonterminal branch is a total-function default;
