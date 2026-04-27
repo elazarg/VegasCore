@@ -328,6 +328,11 @@ structure ProgramAction {Γ : VCtx P L} (p : VegasCore P L Γ) (who : P) where
 
 namespace ProgramAction
 
+/-- Erase a program-local action to the broad structural action alphabet. -/
+def toAction {Γ : VCtx P L} {p : VegasCore P L Γ} {who : P}
+    (a : ProgramAction (P := P) (L := L) p who) : Action (P := P) L who :=
+  Sigma.mk (CommitCursor.ty a.cursor) a.value
+
 /-- Program-local actions are finite when the value types that occur in the
 language are finite. This avoids the stronger and usually wrong requirement
 that the global sigma alphabet `Action L who` be finite. -/
@@ -510,6 +515,39 @@ noncomputable def commitCursor
     CommitCursor (P := P) (L := L) who root :=
   s.liftCommitCursor .here
 
+/-- Lifting a commit cursor through a suffix preserves the commit site's value
+type. -/
+theorem ty_liftCommitCursor
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P}
+    (c : CommitCursor (P := P) (L := L) who p) :
+    CommitCursor.ty (s.liftCommitCursor c) = CommitCursor.ty c := by
+  induction s with
+  | here =>
+      rfl
+  | letExpr s ih =>
+      simpa [liftCommitCursor, CommitCursor.ty] using ih (.letExpr c)
+  | sample s ih =>
+      simpa [liftCommitCursor, CommitCursor.ty] using ih (.sample c)
+  | commit s ih =>
+      simpa [liftCommitCursor, CommitCursor.ty] using ih (.commit c)
+  | reveal s ih =>
+      simpa [liftCommitCursor, CommitCursor.ty] using ih (.reveal c)
+
+/-- The cursor extracted from a suffix ending at a commit has the type of that
+commit. -/
+theorem ty_commitCursor
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    CommitCursor.ty (commitCursor (P := P) (L := L) s) = b := by
+  simpa [commitCursor, CommitCursor.ty] using
+    ty_liftCommitCursor (P := P) (L := L) (s := s)
+      (c := (.here :
+        CommitCursor (P := P) (L := L) who (.commit x who (b := b) R k)))
+
 end ProgramSuffix
 
 /-! ## A checked-world FOSG skeleton
@@ -583,6 +621,92 @@ abbrev CheckedJointActionLegal
     checkedAvailableActions
     w
     a
+
+/-- Joint actions over the program-local action alphabet. -/
+abbrev ProgramJointAction (g : WFProgram P L) : Type :=
+  GameTheory.JointAction
+    (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
+
+/-- Erase a program-local joint action to the broad structural alphabet. -/
+def ProgramJointAction.toAction {g : WFProgram P L}
+    (a : ProgramJointAction (P := P) (L := L) g) : JointAction P L :=
+  fun who => (a who).map ProgramAction.toAction
+
+/-- Program-local action availability: at a commit node, the active player may
+choose exactly the current commit cursor paired with a guard-legal value. -/
+def checkedAvailableProgramActions
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx) (who : P) :
+    Set (ProgramAction (P := P) (L := L) g.prog who) :=
+  {a | ProgramAction.toAction a ∈ checkedAvailableActions w who ∧
+    match w with
+    | ⟨_Γ, prog, _env, suffix, _wctx, _fresh, _viewScoped, _normalized, _legal⟩ =>
+        match prog with
+        | .commit _ owner _ _ =>
+            if h : owner = who then
+              by
+                cases h
+                exact a.cursor = ProgramSuffix.commitCursor (P := P) (L := L) suffix
+            else
+              False
+        | _ => False}
+
+/-- FOSG joint-action legality for the program-local action alphabet. -/
+abbrev CheckedProgramJointActionLegal
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx) (a : ProgramJointAction (P := P) (L := L) g) : Prop :=
+  GameTheory.JointActionLegal
+    (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
+    checkedActive
+    checkedTerminal
+    checkedAvailableProgramActions
+    w
+    a
+
+/-- Program-local legality implies legality after erasing to the broad action
+alphabet. -/
+theorem CheckedProgramJointActionLegal.toAction
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {w : CheckedWorld g hctx} {a : ProgramJointAction (P := P) (L := L) g}
+    (ha : CheckedProgramJointActionLegal w a) :
+    CheckedJointActionLegal w (ProgramJointAction.toAction a) := by
+  refine ⟨ha.1, ?_⟩
+  intro i
+  have hlocal := ha.2 i
+  cases hai : a i with
+  | none =>
+      simpa [ProgramJointAction.toAction, hai] using hlocal
+  | some ai =>
+      have hpair : i ∈ checkedActive w ∧
+          ai ∈ checkedAvailableProgramActions w i := by
+        simpa [ProgramJointAction.toAction, hai] using hlocal
+      have hbroad : i ∈ checkedActive w ∧
+          ProgramAction.toAction ai ∈ checkedAvailableActions w i := by
+        refine ⟨hpair.1, ?_⟩
+        exact hpair.2.1
+      simpa [ProgramJointAction.toAction, hai] using hbroad
+
+/-- A program-local joint action where exactly `who` commits to `v` at the
+current suffix endpoint. -/
+noncomputable def commitProgramJointAction
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (v : L.Val b) : ProgramJointAction (P := P) (L := L) g :=
+  fun i =>
+    if h : i = who then
+      by
+        cases h
+        exact some
+          ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
+             value := by
+               rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
+               exact v } :
+            ProgramAction (P := P) (L := L) g.prog who)
+    else
+      none
 
 private theorem commit_value_of_legal
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
@@ -666,6 +790,60 @@ theorem checked_nonterminal_exists_legal
   intro hterm
   exact exists_jointActionLegal_of_legal w.toWorld w.legal hterm
 
+/-- Terminal checked worlds admit no legal program-local joint action. -/
+theorem checked_terminal_no_program_legal
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {w : CheckedWorld g hctx} {a : ProgramJointAction (P := P) (L := L) g} :
+    checkedTerminal w → ¬ CheckedProgramJointActionLegal w a := by
+  intro hterm hlegal
+  exact hlegal.1 hterm
+
+/-- Program-level `Legal` also prevents deadlock for the program-local action
+alphabet. At a commit state the witness is the current commit cursor paired
+with a guard-satisfying value. -/
+theorem checked_nonterminal_exists_program_legal
+    {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
+    ¬ checkedTerminal w →
+      ∃ a : ProgramJointAction (P := P) (L := L) g,
+        CheckedProgramJointActionLegal w a := by
+  intro hterm
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+      | letExpr x e k =>
+          refine ⟨GameTheory.FOSG.noopAction
+            (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+          refine ⟨by simp [checkedTerminal, CheckedWorld.toWorld, terminal], ?_⟩
+          intro i
+          simp [GameTheory.FOSG.noopAction, checkedActive, CheckedWorld.toWorld, active]
+      | sample x D k =>
+          refine ⟨GameTheory.FOSG.noopAction
+            (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+          refine ⟨by simp [checkedTerminal, CheckedWorld.toWorld, terminal], ?_⟩
+          intro i
+          simp [GameTheory.FOSG.noopAction, checkedActive, CheckedWorld.toWorld, active]
+      | commit x who R k =>
+          rcases legal.1 (VEnv.eraseEnv env) with ⟨v, hv⟩
+          refine ⟨commitProgramJointAction (P := P) (L := L) suffix v, ?_⟩
+          refine ⟨by simp [checkedTerminal, CheckedWorld.toWorld, terminal], ?_⟩
+          intro i
+          by_cases hi : i = who
+          · subst i
+            simp [commitProgramJointAction, checkedActive, CheckedWorld.toWorld,
+              active, checkedAvailableProgramActions, checkedAvailableActions,
+              availableActions, ProgramAction.toAction,
+              ProgramSuffix.ty_commitCursor, hv]
+          · simp [commitProgramJointAction, checkedActive, CheckedWorld.toWorld,
+              active, hi]
+      | reveal y who x hx k =>
+          refine ⟨GameTheory.FOSG.noopAction
+            (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+          refine ⟨by simp [checkedTerminal, CheckedWorld.toWorld, terminal], ?_⟩
+          intro i
+          simp [GameTheory.FOSG.noopAction, checkedActive, CheckedWorld.toWorld, active]
+
 /-- The one-step transition kernel of the checked-world FOSG skeleton. -/
 noncomputable def checkedTransition
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
@@ -734,6 +912,18 @@ noncomputable def checkedTransition
               normalized := normalized
               legal := legal }
 
+/-- The checked transition over program-local actions, obtained by erasing the
+local cursor/value action into the structural action alphabet. -/
+noncomputable def checkedProgramTransition
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx)
+    (a : {a : ProgramJointAction (P := P) (L := L) g //
+      CheckedProgramJointActionLegal w a}) :
+    PMF (CheckedWorld g hctx) :=
+  checkedTransition w
+    ⟨ProgramJointAction.toAction a.1,
+      CheckedProgramJointActionLegal.toAction a.2⟩
+
 def rewardOnEnteringRet
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (_w : CheckedWorld g hctx)
@@ -742,6 +932,19 @@ def rewardOnEnteringRet
   match w'.prog with
   | .ret payoffs => (evalPayoffs payoffs w'.env who : ℝ)
   | _ => 0
+
+/-- Reward over program-local actions, again via erasure to the structural
+checked transition interface. -/
+def rewardOnEnteringRetProgram
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx)
+    (a : {a : ProgramJointAction (P := P) (L := L) g //
+      CheckedProgramJointActionLegal w a})
+    (w' : CheckedWorld g hctx) (who : P) : ℝ :=
+  rewardOnEnteringRet w
+    ⟨ProgramJointAction.toAction a.1,
+      CheckedProgramJointActionLegal.toAction a.2⟩
+    w' who
 
 /-- A first executable FOSG control-flow object for a checked Vegas program.
 
@@ -849,6 +1052,35 @@ noncomputable def observedControlFlowFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ
   nonterminal_exists_legal := by
     intro w hterm
     exact checked_nonterminal_exists_legal hterm
+
+/-- Observation-preserving FOSG over the program-local action alphabet.
+
+Under `FiniteValuation L`, each player's action type is finite because it only
+ranges over commit sites in `g.prog` and the value types at those sites. The
+older `observedControlFlowFOSG` remains as a broad-alphabet structural bridge
+for existing proof transport. -/
+noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    GameTheory.FOSG P (CheckedWorld g hctx)
+      (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
+      (fun who : P => PrivateObs P L who)
+      (PublicObs g hctx) where
+  init := CheckedWorld.initial g hctx
+  active := checkedActive
+  availableActions := checkedAvailableProgramActions
+  terminal := checkedTerminal
+  transition := checkedProgramTransition
+  reward := rewardOnEnteringRetProgram
+  privObs := fun who _ _ w' => privateObsOfWorld who w'
+  pubObs := fun _ _ w' => publicObsOfWorld w'
+  terminal_active_eq_empty := by
+    intro w hterm
+    exact checked_terminal_active_eq_empty hterm
+  terminal_no_legal := by
+    intro w a hterm
+    exact checked_terminal_no_program_legal hterm
+  nonterminal_exists_legal := by
+    intro w hterm
+    exact checked_nonterminal_exists_program_legal hterm
 
 namespace Observed
 
