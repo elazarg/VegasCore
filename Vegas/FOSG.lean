@@ -2574,8 +2574,8 @@ theorem observedProgramFOSG_boundedHorizon
     (G := observedProgramFOSG (P := P) (L := L) g hctx)
     (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
 
-/-- The bounded run distribution used by `observedProgramKernelGame`, with the
-finite execution instances fixed by `FiniteValuation`. -/
+/-- The bounded run distribution of the observed-program FOSG, with the finite
+execution instances fixed by `FiniteValuation`. -/
 noncomputable def observedProgramRunDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -2591,48 +2591,6 @@ noncomputable def observedProgramRunDist
   letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
   exact (observedProgramFOSG g hctx).runDist (syntaxSteps g.prog) σ
-
-/-- Compile the cursor-world observed FOSG to a finite `KernelGame` through
-GameTheory's bounded-horizon route. -/
-noncomputable def observedProgramKernelGame
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P] :
-    KernelGame P := by
-  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
-    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        (P := P) (L := L) g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
-  letI : Fintype (observedProgramFOSG g hctx).History :=
-    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
-  exact (observedProgramFOSG g hctx).toKernelGameOfBoundedHorizon
-    (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
-
-@[simp] theorem observedProgramKernelGame_outcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile) :
-    (observedProgramKernelGame (P := P) (L := L) g hctx LF).outcomeKernel σ =
-      observedProgramRunDist (P := P) (L := L) g hctx LF σ := by
-  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
-    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        (P := P) (L := L) g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
-  letI : Fintype (observedProgramFOSG g hctx).History :=
-    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
-  simpa [observedProgramKernelGame, observedProgramRunDist] using
-    (GameTheory.FOSG.toKernelGameOfBoundedHorizon_outcomeKernel
-      (G := observedProgramFOSG (P := P) (L := L) g hctx)
-      (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx) σ)
 
 /-- Project a cursor-world endpoint to the Vegas payoff outcome it represents.
 
