@@ -7,16 +7,13 @@ import Vegas.ViewKernel
 import Vegas.WFProgram
 
 /-!
-# Vegas to FOSG bridge, first layer
+# Vegas to FOSG bridge
 
-This file records the part of the Vegas/FOSG correspondence that is already
-structural: commit guards are state-dependent action-availability constraints.
-The full `GameTheory.FOSG` compiler still needs a careful world choice. In
-particular, the FOSG transition field is total over all worlds, while Vegas'
-normalization proof is attached to the original program and its syntactic
-subprograms. A compiler should therefore use a reachable-world type carrying
-the inherited obligations, rather than quantify over arbitrary
-`Σ Γ, VegasCore P L Γ × VEnv L Γ` states.
+This file compiles a checked Vegas program to an observation-preserving FOSG
+whose commit guards are state-dependent action-availability constraints. The
+executable target uses a finite program-local action alphabet and reachable
+cursor worlds carrying the inherited proof obligations needed by Vegas'
+suffix-based semantics.
 -/
 
 namespace Vegas
@@ -33,8 +30,8 @@ action type, while a Vegas commit node chooses the active player and the type
 of value expected at that node. Node-local availability below filters this
 static alphabet down to the values of the demanded type satisfying the guard.
 
-This broad alphabet is adequate for the structural control-flow bridge. A
-finite execution bridge should use a program-local action alphabet instead:
+This broad alphabet is used only for the suffix-based checked transition
+semantics. The executable FOSG target uses the finite `ProgramAction` alphabet:
 otherwise `Fintype (Action L who)` would require finiteness of `L.Ty`, not just
 finiteness of values that actually occur in `g`.
 -/
@@ -2394,44 +2391,7 @@ def rewardOnEnteringRetCursor
   | .ret payoffs => (evalPayoffs payoffs w'.1.env who : ℝ)
   | _ => 0
 
-/-- A first executable FOSG control-flow object for a checked Vegas program.
-
-This captures the operational control flow and guard-as-availability
-structure. The observation types are intentionally coarse, and rewards are paid
-on transitions that enter `ret`; consequently this is not the final
-utility-preserving compiler used for solution-concept transport.
--/
-noncomputable def controlFlowFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    GameTheory.FOSG P (CheckedWorld g hctx)
-      (fun who : P => Action (P := P) L who)
-      (fun _who : P => Unit)
-      Unit where
-  init := CheckedWorld.initial g hctx
-  active := checkedActive
-  availableActions := checkedAvailableActions
-  terminal := checkedTerminal
-  transition := checkedTransition
-  reward := rewardOnEnteringRet
-  privObs := fun _ _ _ _ => ()
-  pubObs := fun _ _ _ => ()
-  terminal_active_eq_empty := by
-    intro w hterm
-    exact checked_terminal_active_eq_empty hterm
-  terminal_no_legal := by
-    intro w a hterm
-    exact checked_terminal_no_legal hterm
-  nonterminal_exists_legal := by
-    intro w hterm
-    exact checked_nonterminal_exists_legal hterm
-
-/-! ## Observation-preserving target
-
-`controlFlowFOSG` is useful for the transition/availability core, but its
-`Unit` observations intentionally discard information. The definitions below
-are the bridge target for strategy transport: every transition emits the next
-public protocol state and the next player-local view. This remains a
-control-flow bridge, not a completed utility-preserving semantic compiler.
--/
+/-! ## Observation-preserving target -/
 
 /-- Public observation after a Vegas/FOSG transition: the current public
 program cursor together with the public environment. The cursor is public
@@ -2449,18 +2409,6 @@ structure PrivateObs (P : Type) [DecidableEq P] (L : IExpr) (who : P) where
   Γ : VCtx P L
   env : VEnv L (viewVCtx who Γ)
 
-def publicObsOfWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CheckedWorld g hctx) : PublicObs g hctx where
-  Γ := w.Γ
-  prog := w.prog
-  suffix := w.suffix
-  env := VEnv.toPub w.env
-
-def privateObsOfWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (who : P) (w : CheckedWorld g hctx) : PrivateObs P L who where
-  Γ := w.Γ
-  env := VEnv.toView who w.env
-
 def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CursorCheckedWorld (P := P) (L := L) g) : PublicObs g hctx where
   Γ := w.1.cursor.Γ
@@ -2474,16 +2422,6 @@ def privateObsOfCursorWorld {g : WFProgram P L}
   Γ := w.1.cursor.Γ
   env := VEnv.toView who w.1.env
 
-/-- The private observation's stored structured view is exactly the
-strategy-facing erased view after erasure. -/
-theorem privateObsOfWorld_eraseEnv
-    {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (who : P) (w : CheckedWorld g hctx) :
-    VEnv.eraseEnv (privateObsOfWorld who w).env =
-      projectViewEnv who (VEnv.eraseEnv w.env) := by
-  exact (projectViewEnv_eraseEnv_eq_toView (who := who) w.wctx w.env).symm
-
-/-- Cursor-world variant of `privateObsOfWorld_eraseEnv`. -/
 theorem privateObsOfCursorWorld_eraseEnv
     {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
@@ -2907,35 +2845,6 @@ theorem observedProgramRunDistFrom_historyOutcome_succ_active_empty
     (G := observedProgramFOSG (P := P) (L := L) g hctx) σ n h hterm hactive]
   rw [PMF.map_bind]
 
-/-- Broad-action FOSG control-flow object that preserves the public protocol
-location and each player's local Vegas view at every step.
-
-This is retained for observation-history lemmas over the structural action
-alphabet. The program-action compiler target is `observedProgramFOSG`.
--/
-noncomputable def observedControlFlowFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    GameTheory.FOSG P (CheckedWorld g hctx)
-      (fun who : P => Action (P := P) L who)
-      (fun who : P => PrivateObs P L who)
-      (PublicObs g hctx) where
-  init := CheckedWorld.initial g hctx
-  active := checkedActive
-  availableActions := checkedAvailableActions
-  terminal := checkedTerminal
-  transition := checkedTransition
-  reward := rewardOnEnteringRet
-  privObs := fun who _ _ w' => privateObsOfWorld who w'
-  pubObs := fun _ _ w' => publicObsOfWorld w'
-  terminal_active_eq_empty := by
-    intro w hterm
-    exact checked_terminal_active_eq_empty hterm
-  terminal_no_legal := by
-    intro w a hterm
-    exact checked_terminal_no_legal hterm
-  nonterminal_exists_legal := by
-    intro w hterm
-    exact checked_nonterminal_exists_legal hterm
-
 namespace Observed
 
 /-- Last element of a list, as an `Option`. Kept local to avoid depending on
@@ -2954,85 +2863,6 @@ def last? {α : Type} : List α → Option α
       | nil => rfl
       | cons z zs =>
           simpa [last?] using ih
-
-/-- Observation events extracted from an observed FOSG information state. -/
-noncomputable def observationEvents
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who) :
-    List (PrivateObs P L who × PublicObs g hctx) :=
-  s.filterMap
-    (GameTheory.FOSG.PlayerEvent.observationPart
-      (G := observedControlFlowFOSG g hctx) (i := who))
-
-/-- Latest private/public observation in an observed FOSG information state. -/
-noncomputable def latestObservation?
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who) :
-    Option (PrivateObs P L who × PublicObs g hctx) :=
-  last? (observationEvents g hctx who s)
-
-noncomputable def latestPrivateObs?
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who) :
-    Option (PrivateObs P L who) :=
-  (latestObservation? g hctx who s).map Prod.fst
-
-noncomputable def latestPublicObs?
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who) :
-    Option (PublicObs g hctx) :=
-  (latestObservation? g hctx who s).map Prod.snd
-
-@[simp] theorem observationEvents_nil (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
-    observationEvents g hctx who [] = [] := rfl
-
-@[simp] theorem latestObservation?_nil (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
-    latestObservation? g hctx who [] = none := rfl
-
-theorem latestObservation?_append_obs
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who)
-    (priv : PrivateObs P L who) (pub : PublicObs g hctx) :
-    latestObservation? g hctx who
-      (s ++ [GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
-  simp [latestObservation?, observationEvents]
-
-theorem latestObservation?_append_act_obs
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedControlFlowFOSG g hctx).InfoState who)
-    (a : Action (P := P) L who)
-    (priv : PrivateObs P L who) (pub : PublicObs g hctx) :
-    latestObservation? g hctx who
-      (s ++ [GameTheory.FOSG.PlayerEvent.act a,
-        GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
-  simp [latestObservation?, observationEvents]
-
-/-- Extending an observed FOSG history records the destination world's Vegas
-view/public state as the latest information-state observation. -/
-theorem latestObservation?_history_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h : (observedControlFlowFOSG g hctx).History)
-    (a : (observedControlFlowFOSG g hctx).LegalAction h.lastState)
-    (dst : CheckedWorld g hctx)
-    (support : (observedControlFlowFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    latestObservation? g hctx who ((h.snoc a dst support).playerView who) =
-      some (privateObsOfWorld who dst, publicObsOfWorld dst) := by
-  rw [GameTheory.FOSG.History.playerView_snoc]
-  let e : (observedControlFlowFOSG g hctx).Step :=
-    { src := h.lastState, act := a, dst := dst, support := support }
-  change latestObservation? g hctx who (h.playerView who ++ e.playerView who) =
-    some (privateObsOfWorld who dst, publicObsOfWorld dst)
-  cases hact : e.ownAction? who with
-  | none =>
-      rw [GameTheory.FOSG.Step.playerView_of_none e who hact]
-      simpa [e, observedControlFlowFOSG] using
-        latestObservation?_append_obs g hctx who (h.playerView who)
-          (privateObsOfWorld who dst) (publicObsOfWorld dst)
-  | some ai =>
-      rw [GameTheory.FOSG.Step.playerView_of_some e who hact]
-      simpa [e, observedControlFlowFOSG] using
-        latestObservation?_append_act_obs g hctx who (h.playerView who) ai
-          (privateObsOfWorld who dst) (publicObsOfWorld dst)
 
 /-- Observation events extracted from the final program-action FOSG information
 state. -/
@@ -3105,39 +2935,10 @@ theorem programLatestObservation?_history_snoc
 
 /-! ## Behavioral profile candidate
 
-The following definitions build a raw FOSG behavioral profile from a legal Vegas
-behavioral profile. They are deliberately named `candidate`: the legal-support
-proof is the next obligation, and only after that proof should this be exposed
-as a strategy transport.
+The following definitions build the program-action FOSG behavioral profile
+induced by a legal Vegas behavioral profile.
 -/
 
-noncomputable def moveAtCursor
-    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (suffix : ProgramSuffix g.prog p)
-    (view : ViewEnv (P := P) (L := L) who Γ) :
-    PMF (Option (Action (P := P) L who)) :=
-  match p with
-  | .commit x owner (b := b) R k =>
-      if howner : owner = who then
-        by
-          cases howner
-          let σp : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k) :=
-            suffix.behavioralProfile (fun i => (σ i).val)
-          let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L) (σp who) view
-          have hd :
-              FDist.totalWeight d = 1 :=
-            ProgramBehavioralStrategy.headKernel_normalized
-              (P := P) (L := L) (σp who) view
-          exact PMF.map (fun v => some (Sigma.mk b v)) (d.toPMF hd)
-      else
-        PMF.pure none
-  | _ => PMF.pure none
-
-/-- Program-action variant of `moveAtCursor`, targeting the finite
-`observedProgramFOSG` action alphabet. -/
 noncomputable def moveAtProgramCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -3218,14 +3019,6 @@ theorem headKernel_supported_atCursor
   have hsite := hcursor who
   simp [ProgramBehavioralStrategy.IsLegal] at hsite
   simpa [raw] using hsite.1 ρ
-
-noncomputable def moveAtWorld
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CheckedWorld g hctx) :
-    PMF (Option (Action (P := P) L who)) :=
-  moveAtCursor g hctx σ who w.suffix
-    (projectViewEnv who (VEnv.eraseEnv w.env))
 
 noncomputable def moveAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -3354,108 +3147,6 @@ theorem moveAtCursorWorld_support_available
         CursorCheckedWorld.availableProgramActionsAt,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
         CursorCheckedWorld.toWorld, availableActions] using hlocal
-
-theorem moveAtWorld_support_available
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CheckedWorld g hctx)
-    {oi : Option (Action (P := P) L who)}
-    (hoi : oi ∈ (moveAtWorld g hctx σ who w).support) :
-    oi ∈ (observedControlFlowFOSG g hctx).availableMovesAtState w who := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          have hoiNone : oi = none := by
-            simpa [moveAtWorld, moveAtCursor] using hoi
-          subst oi
-          simp [GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-            checkedActive, CheckedWorld.toWorld, active]
-      | letExpr x e k =>
-          have hoiNone : oi = none := by
-            simpa [moveAtWorld, moveAtCursor] using hoi
-          subst oi
-          simp [GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-            checkedActive, CheckedWorld.toWorld, active]
-      | sample x D k =>
-          have hoiNone : oi = none := by
-            simpa [moveAtWorld, moveAtCursor] using hoi
-          subst oi
-          simp [GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-            checkedActive, CheckedWorld.toWorld, active]
-      | reveal y owner x hx k =>
-          have hoiNone : oi = none := by
-            simpa [moveAtWorld, moveAtCursor] using hoi
-          subst oi
-          simp [GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-            checkedActive, CheckedWorld.toWorld, active]
-      | commit x owner R k =>
-          by_cases howner : owner = who
-          · cases howner
-            let d :=
-              ProgramBehavioralStrategy.headKernel (P := P) (L := L)
-                ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-                (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
-            have hd :
-                FDist.totalWeight d = 1 :=
-              ProgramBehavioralStrategy.headKernel_normalized
-                (P := P) (L := L)
-                ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-                (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
-            have hoi' :
-                ∃ v, ¬(d.toPMF hd) v = 0 ∧ some (Sigma.mk _ v) = oi := by
-              simpa [moveAtWorld, moveAtCursor, d, hd] using hoi
-            rcases hoi' with ⟨v, hvprob, hvo⟩
-            rw [← hvo]
-            have hv : v ∈ (d.toPMF hd).support := by
-              rw [PMF.mem_support_iff]
-              simpa [d] using hvprob
-            have hvFD : v ∈ d.support :=
-              mem_fdist_support_of_mem_toPMF_support (d := d) (h := hd) hv
-            have hguard :
-                evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
-              exact headKernel_supported_atCursor (P := P) (L := L)
-                g hctx σ suffix (VEnv.eraseEnv env) v hvFD
-            simp [GameTheory.FOSG.availableMovesAtState,
-              GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-              checkedActive, checkedAvailableActions, CheckedWorld.toWorld,
-              active, availableActions, hguard]
-          · have hoiNone : oi = none := by
-              simpa [moveAtWorld, moveAtCursor, howner] using hoi
-            subst oi
-            have hnot : who ≠ owner := fun h => howner h.symm
-            simp [GameTheory.FOSG.availableMovesAtState,
-              GameTheory.FOSG.locallyLegalAtState, observedControlFlowFOSG,
-              checkedActive, CheckedWorld.toWorld, active, hnot]
-
-noncomputable def moveAtObservation?
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (obs : PrivateObs P L who × PublicObs g hctx) :
-    PMF (Option (Action (P := P) L who)) := by
-  let priv := obs.1
-  let pub := obs.2
-  by_cases hΓ : priv.Γ = pub.Γ
-  · exact moveAtCursor g hctx σ who pub.suffix (hΓ ▸ VEnv.eraseEnv priv.env)
-  · exact PMF.pure none
-
-theorem moveAtObservation?_of_world
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CheckedWorld g hctx) :
-    moveAtObservation? g hctx σ who
-      (privateObsOfWorld who w, publicObsOfWorld w) =
-      moveAtWorld g hctx σ who w := by
-  unfold moveAtObservation? moveAtWorld
-  simp only [dite_eq_ite]
-  rw [privateObsOfWorld_eraseEnv]
-  simp only [publicObsOfWorld]
-  simp [privateObsOfWorld]
 
 /-- Program-action observation lookup for the final `observedProgramFOSG`
 target. -/
@@ -5021,148 +4712,6 @@ noncomputable def observedProgramOutcomeKernelGame
     (σ : LegalProgramBehavioralProfile g) :
     (observedProgramOutcomeKernelGame (P := P) (L := L) g hctx LF).outcomeKernel σ =
       observedProgramOutcomeKernel (P := P) (L := L) g hctx LF σ := rfl
-
-/-- Raw FOSG behavioral profile induced by a Vegas legal behavioral profile.
-The `Candidate` suffix means this is the unbundled profile function; use
-`toObservedControlFlowLegalBehavioralProfile` when the target type requires a
-legal FOSG profile. -/
-noncomputable def behavioralProfileCandidate
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) :
-    GameTheory.FOSG.BehavioralProfile (observedControlFlowFOSG g hctx) :=
-  fun who s =>
-    match latestObservation? g hctx who s with
-    | none => moveAtWorld g hctx σ who (CheckedWorld.initial g hctx)
-    | some obs => moveAtObservation? g hctx σ who obs
-
-theorem behavioralProfileCandidate_support_available_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedControlFlowFOSG g hctx).History)
-    (a : (observedControlFlowFOSG g hctx).LegalAction h.lastState)
-    (dst : CheckedWorld g hctx)
-    (support : (observedControlFlowFOSG g hctx).transition h.lastState a dst ≠ 0)
-    {oi : Option (Action (P := P) L who)}
-    (hoi : oi ∈
-      (behavioralProfileCandidate g hctx σ who
-        ((h.snoc a dst support).playerView who)).support) :
-    oi ∈ (observedControlFlowFOSG g hctx).availableMoves
-      (h.snoc a dst support) who := by
-  rw [behavioralProfileCandidate,
-    latestObservation?_history_snoc g hctx who h a dst support] at hoi
-  simp only at hoi
-  rw [moveAtObservation?_of_world] at hoi
-  simpa [GameTheory.FOSG.availableMoves,
-    GameTheory.FOSG.availableMovesAtState] using
-    moveAtWorld_support_available g hctx σ who dst hoi
-
-theorem behavioralProfileCandidate_support_available_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedControlFlowFOSG g hctx).History)
-    (e : (observedControlFlowFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState)
-    {oi : Option (Action (P := P) L who)}
-    (hoi : oi ∈
-      (behavioralProfileCandidate g hctx σ who
-        ((h.appendStep e hsrc).playerView who)).support) :
-    oi ∈ (observedControlFlowFOSG g hctx).availableMoves
-      (h.appendStep e hsrc) who := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      simpa [GameTheory.FOSG.History.appendStep_eq_snoc] using
-        behavioralProfileCandidate_support_available_snoc
-          g hctx σ who h act dst support hoi
-
-theorem behavioralProfileCandidate_support_available
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedControlFlowFOSG g hctx).History)
-    {oi : Option (Action (P := P) L who)}
-    (hoi : oi ∈
-      (behavioralProfileCandidate g hctx σ who (h.playerView who)).support) :
-    oi ∈ (observedControlFlowFOSG g hctx).availableMoves h who := by
-  let G := observedControlFlowFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          have hoi' : oi ∈
-              (moveAtWorld g hctx σ who (CheckedWorld.initial g hctx)).support := by
-            simpa [G, behavioralProfileCandidate, GameTheory.FOSG.History.playerView,
-              GameTheory.FOSG.History.playerViewFrom, latestObservation?,
-              observationEvents, last?] using hoi
-          simpa [G, GameTheory.FOSG.availableMoves, GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.History.lastState, GameTheory.FOSG.lastStateFrom] using
-            moveAtWorld_support_available g hctx σ who (CheckedWorld.initial g hctx) hoi'
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq] at hoi ⊢
-          exact behavioralProfileCandidate_support_available_appendStep
-            g hctx σ who hprefix e hsrc hoi
-
-/-- Transport a Vegas guard-legal behavioral profile to a legal behavioral
-profile of the observed control-flow FOSG.
-
-The target name is intentionally specific: this is not yet the final
-utility-preserving Vegas-to-FOSG compiler, only the observed control-flow FOSG
-defined in this file.
--/
-noncomputable def toObservedControlFlowLegalBehavioralProfile
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) :
-    (observedControlFlowFOSG g hctx).LegalBehavioralProfile :=
-  fun who =>
-    ⟨behavioralProfileCandidate g hctx σ who, by
-      intro h oi hoi
-      exact behavioralProfileCandidate_support_available g hctx σ who h hoi⟩
-
-@[simp] theorem toObservedControlFlowLegalBehavioralProfile_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) (who : P) :
-    ((toObservedControlFlowLegalBehavioralProfile g hctx σ who).1) =
-      behavioralProfileCandidate g hctx σ who := rfl
-
-@[simp] theorem behavioralProfileCandidate_nil
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) (who : P) :
-    behavioralProfileCandidate g hctx σ who
-      ((GameTheory.FOSG.History.nil (observedControlFlowFOSG g hctx)).playerView who) =
-      moveAtWorld g hctx σ who (CheckedWorld.initial g hctx) := by
-  simp [behavioralProfileCandidate, latestObservation?, observationEvents, last?]
-
-@[simp] theorem behavioralProfileCandidate_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedControlFlowFOSG g hctx).History)
-    (a : (observedControlFlowFOSG g hctx).LegalAction h.lastState)
-    (dst : CheckedWorld g hctx)
-    (support : (observedControlFlowFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    behavioralProfileCandidate g hctx σ who
-      ((h.snoc a dst support).playerView who) =
-      moveAtWorld g hctx σ who dst := by
-  rw [behavioralProfileCandidate,
-    latestObservation?_history_snoc g hctx who h a dst support]
-  simp [moveAtObservation?_of_world]
 
 end Observed
 
