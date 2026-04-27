@@ -936,6 +936,90 @@ theorem behavioralProfileCandidate_support_available_snoc
     GameTheory.FOSG.availableMovesAtState] using
     moveAtWorld_support_available g hctx σ who dst hoi
 
+theorem behavioralProfileCandidate_support_available_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    (h : (observedControlFlowFOSG g hctx).History)
+    (e : (observedControlFlowFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState)
+    {oi : Option (Action (P := P) L who)}
+    (hoi : oi ∈
+      (behavioralProfileCandidate g hctx σ who
+        ((h.appendStep e hsrc).playerView who)).support) :
+    oi ∈ (observedControlFlowFOSG g hctx).availableMoves
+      (h.appendStep e hsrc) who := by
+  cases e with
+  | mk src act dst support =>
+      cases hsrc
+      simpa [GameTheory.FOSG.History.appendStep_eq_snoc] using
+        behavioralProfileCandidate_support_available_snoc
+          g hctx σ who h act dst support hoi
+
+theorem behavioralProfileCandidate_support_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    (h : (observedControlFlowFOSG g hctx).History)
+    {oi : Option (Action (P := P) L who)}
+    (hoi : oi ∈
+      (behavioralProfileCandidate g hctx σ who (h.playerView who)).support) :
+    oi ∈ (observedControlFlowFOSG g hctx).availableMoves h who := by
+  let G := observedControlFlowFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          have hoi' : oi ∈
+              (moveAtWorld g hctx σ who (CheckedWorld.initial g hctx)).support := by
+            simpa [G, behavioralProfileCandidate, GameTheory.FOSG.History.playerView,
+              GameTheory.FOSG.History.playerViewFrom, latestObservation?,
+              observationEvents, last?] using hoi
+          simpa [G, GameTheory.FOSG.availableMoves, GameTheory.FOSG.availableMovesAtState,
+            GameTheory.FOSG.History.lastState, GameTheory.FOSG.lastStateFrom] using
+            moveAtWorld_support_available g hctx σ who (CheckedWorld.initial g hctx) hoi'
+      | append_singleton steps e ih =>
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          rw [hEq] at hoi ⊢
+          exact behavioralProfileCandidate_support_available_appendStep
+            g hctx σ who hprefix e hsrc hoi
+
+/-- Transport a Vegas guard-legal behavioral profile to a legal behavioral
+profile of the observed control-flow FOSG.
+
+The target name is intentionally specific: this is not yet the final
+utility-preserving Vegas-to-FOSG compiler, only the observed control-flow FOSG
+defined in this file.
+-/
+noncomputable def toObservedControlFlowLegalBehavioralProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g) :
+    (observedControlFlowFOSG g hctx).LegalBehavioralProfile :=
+  fun who =>
+    ⟨behavioralProfileCandidate g hctx σ who, by
+      intro h oi hoi
+      exact behavioralProfileCandidate_support_available g hctx σ who h hoi⟩
+
+@[simp] theorem toObservedControlFlowLegalBehavioralProfile_apply
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    ((toObservedControlFlowLegalBehavioralProfile g hctx σ who).1) =
+      behavioralProfileCandidate g hctx σ who := rfl
+
 end Observed
 
 end FOSGBridge
