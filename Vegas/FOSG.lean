@@ -1954,6 +1954,24 @@ theorem checkedTransition_commit_eq_programActionContinuation
             ⟨_v, htyv, _hguard⟩
           exact htyv.1))
 
+/-- `checkedTransition` respects equality of checked worlds; the legal-action
+proof component is proof-irrelevant. -/
+theorem checkedTransition_congr_checkedWorld
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {w₁ w₂ : CheckedWorld g hctx}
+    (hw : w₁ = w₂)
+    (a : JointAction P L)
+    (ha₁ : CheckedJointActionLegal w₁ a)
+    (ha₂ : CheckedJointActionLegal w₂ a) :
+    checkedTransition (P := P) (L := L) w₁ ⟨a, ha₁⟩ =
+      checkedTransition (P := P) (L := L) w₂ ⟨a, ha₂⟩ := by
+  cases hw
+  have hsub :
+      (⟨a, ha₁⟩ : {a : JointAction P L // CheckedJointActionLegal w₁ a}) =
+        ⟨a, ha₂⟩ := Subtype.ext rfl
+  cases hsub
+  rfl
+
 /-- Cursor-recursive transition over the erased broad action alphabet.
 
 The recursion follows the cursor frames until the endpoint is definitionally at
