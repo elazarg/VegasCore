@@ -68,6 +68,53 @@ def active (w : World P L) : Finset P :=
   | .commit _ who _ _ => {who}
   | _ => ∅
 
+/-- Number of operational syntax nodes remaining before a Vegas program reaches
+`ret`, ignoring probabilistic branching because branching changes only
+environments, not the continuation shape. -/
+def syntaxSteps :
+    {Γ : VCtx P L} → VegasCore P L Γ → Nat
+  | _, .ret _ => 0
+  | _, .letExpr _ _ k => syntaxSteps k + 1
+  | _, .sample _ _ k => syntaxSteps k + 1
+  | _, .commit _ _ _ k => syntaxSteps k + 1
+  | _, .reveal _ _ _ _ k => syntaxSteps k + 1
+
+@[simp] theorem syntaxSteps_ret
+    {Γ : VCtx P L}
+    (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
+    syntaxSteps (P := P) (L := L) (.ret payoffs) = 0 := rfl
+
+@[simp] theorem syntaxSteps_letExpr
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
+    syntaxSteps (P := P) (L := L) (.letExpr x e k) = syntaxSteps k + 1 := rfl
+
+@[simp] theorem syntaxSteps_sample
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
+    syntaxSteps (P := P) (L := L) (.sample x D k) = syntaxSteps k + 1 := rfl
+
+@[simp] theorem syntaxSteps_commit
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
+    syntaxSteps (P := P) (L := L) (.commit x who R k) = syntaxSteps k + 1 := rfl
+
+@[simp] theorem syntaxSteps_reveal
+    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)} :
+    syntaxSteps (P := P) (L := L) (.reveal y who x hx k) = syntaxSteps k + 1 := rfl
+
+/-- A program has no remaining syntax steps exactly at `ret`. -/
+theorem terminal_iff_syntaxSteps_eq_zero {w : World P L} :
+    terminal w ↔ syntaxSteps w.prog = 0 := by
+  cases w with
+  | mk Γ prog env =>
+      cases prog <;> simp [terminal, syntaxSteps]
+
 /-- Node-local action availability.
 
 At a commit node, the owner may choose exactly values of the committed type
@@ -692,6 +739,18 @@ def checkedTerminal {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) : Prop :=
   terminal w.toWorld
 
+/-- Remaining operational syntax nodes at a checked world. -/
+def CheckedWorld.remainingSyntaxSteps {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx) : Nat :=
+  syntaxSteps w.prog
+
+theorem checkedTerminal_iff_remainingSyntaxSteps_eq_zero
+    {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
+    checkedTerminal w ↔ w.remainingSyntaxSteps = 0 := by
+  cases w
+  simp [checkedTerminal, CheckedWorld.remainingSyntaxSteps, CheckedWorld.toWorld,
+    terminal_iff_syntaxSteps_eq_zero]
+
 def checkedActive {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) : Finset P :=
   active w.toWorld
@@ -1013,6 +1072,53 @@ noncomputable def checkedProgramTransition
   checkedTransition w
     ⟨ProgramJointAction.toAction a.1,
       CheckedProgramJointActionLegal.toAction a.2⟩
+
+set_option linter.flexible false in
+/-- Every supported checked transition consumes exactly one operational syntax
+node. -/
+theorem checkedTransition_remainingSyntaxSteps
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx)
+    (a : {a : JointAction P L // CheckedJointActionLegal w a})
+    (dst : CheckedWorld g hctx)
+    (hsupp : checkedTransition w a dst ≠ 0) :
+    dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          exact False.elim (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
+      | letExpr x e k =>
+          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          subst dst
+          rfl
+      | sample x D k =>
+          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          rcases hsupp with ⟨v, hdst, _hv⟩
+          subst dst
+          rfl
+      | commit x who R k =>
+          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          subst dst
+          rfl
+      | reveal y who x hx k =>
+          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          subst dst
+          rfl
+
+/-- The program-local checked transition inherits the same syntax-step
+decrease through action erasure. -/
+theorem checkedProgramTransition_remainingSyntaxSteps
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w : CheckedWorld g hctx)
+    (a : {a : ProgramJointAction (P := P) (L := L) g //
+      CheckedProgramJointActionLegal w a})
+    (dst : CheckedWorld g hctx)
+    (hsupp : checkedProgramTransition w a dst ≠ 0) :
+    dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps :=
+  checkedTransition_remainingSyntaxSteps w
+    ⟨ProgramJointAction.toAction a.1,
+      CheckedProgramJointActionLegal.toAction a.2⟩ dst hsupp
 
 def rewardOnEnteringRet
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
