@@ -4671,6 +4671,24 @@ noncomputable def observedProgramOutcomeKernelGame
     (observedProgramOutcomeKernelGame (P := P) (L := L) g hctx LF).outcomeKernel σ =
       observedProgramOutcomeKernel (P := P) (L := L) g hctx LF σ := rfl
 
+@[simp] theorem observedProgramOutcomeKernelGame_udist
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) :
+    (observedProgramOutcomeKernelGame (P := P) (L := L) g hctx LF).udist σ =
+      (toKernelGame g).udist σ := by
+  simp [KernelGame.udist, observedProgramOutcomeKernelGame,
+    observedProgramOutcomeKernel_eq_toKernelGame, toKernelGame]
+
+@[simp] theorem observedProgramOutcomeKernelGame_eu
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    (observedProgramOutcomeKernelGame (P := P) (L := L) g hctx LF).eu σ who =
+      (toKernelGame g).eu σ who := by
+  simp [KernelGame.eu, observedProgramOutcomeKernelGame,
+    observedProgramOutcomeKernel_eq_toKernelGame, toKernelGame]
+
 end Observed
 
 end FOSGBridge
