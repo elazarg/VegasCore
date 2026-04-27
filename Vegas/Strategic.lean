@@ -184,6 +184,20 @@ noncomputable def outcomeDistBehavioral :
       outcomeDistBehavioral k σ
         (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
 
+/-- If a program is propositionally equal to `ret`, its behavioral outcome
+distribution is the corresponding point mass. The strategy argument is
+dependent on the program, so this lemma is often easier to use than rewriting
+inside `outcomeDistBehavioral` directly. -/
+theorem outcomeDistBehavioral_of_eq_ret
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    {payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)}
+    (hp : p = VegasCore.ret payoffs)
+    (σ : ProgramBehavioralProfile (P := P) (L := L) p)
+    (env : VEnv (Player := P) L Γ) :
+    outcomeDistBehavioral p σ env = FDist.pure (evalPayoffs payoffs env) := by
+  cases hp
+  rfl
+
 theorem outcomeDistBehavioral_totalWeight_eq_one
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     {σ : ProgramBehavioralProfile (P := P) (L := L) p}

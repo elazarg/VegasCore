@@ -1353,6 +1353,142 @@ theorem cursor_terminal_no_program_legal
   intro hterm hlegal
   exact hlegal.1 hterm
 
+theorem cursor_active_eq_empty_of_letExpr
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.letExpr x e k) :
+    w.active = ∅ := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.letExpr x e k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, active, hprog']
+
+theorem cursor_not_terminal_of_letExpr
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.letExpr x e k) :
+    ¬ w.terminal := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.letExpr x e k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, terminal, hprog']
+
+theorem cursor_active_eq_empty_of_sample
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.sample x D k) :
+    w.active = ∅ := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.sample x D k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, active, hprog']
+
+theorem cursor_not_terminal_of_sample
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.sample x D k) :
+    ¬ w.terminal := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.sample x D k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, terminal, hprog']
+
+theorem cursor_active_eq_singleton_of_commit
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k) :
+    w.active = {who} := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.commit x who R k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, active, hprog']
+
+theorem cursor_not_terminal_of_commit
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k) :
+    ¬ w.terminal := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.commit x who R k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, terminal, hprog']
+
+theorem cursor_active_eq_empty_of_reveal
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.reveal y who x hx k) :
+    w.active = ∅ := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.reveal y who x hx k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, active, hprog']
+
+theorem cursor_not_terminal_of_reveal
+    {g : WFProgram P L}
+    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.reveal y who x hx k) :
+    ¬ w.terminal := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          have hprog' : cursor.prog = VegasCore.reveal y who x hx k := by
+            simpa [CursorWorldData.prog] using hprog
+          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog, terminal, hprog']
+
 set_option linter.flexible false in
 /-- Program-level `Legal` prevents deadlock for the cursor-keyed program-local
 action alphabet. -/
@@ -2047,6 +2183,217 @@ noncomputable def observedProgramKernelGame
       (G := observedProgramFOSG (P := P) (L := L) g hctx)
       (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx) σ)
 
+/-- Project a cursor-world endpoint to the Vegas payoff outcome it represents.
+
+Only `ret` worlds carry a protocol outcome. The nonterminal branch is a
+harmless default used to make this a total projection from FOSG histories;
+`observedProgramRunDist_support_terminal` below proves the bounded run assigns
+mass only to terminal histories. -/
+def cursorWorldOutcome
+    {g : WFProgram P L}
+    (w : CursorCheckedWorld (P := P) (L := L) g) : Outcome P :=
+  match w.1.prog with
+  | .ret payoffs => evalPayoffs payoffs w.1.env
+  | _ => 0
+
+/-- Project a terminal-history outcome from the observed-program FOSG back to
+the Vegas payoff outcome carried by its final cursor world. -/
+noncomputable def observedProgramHistoryOutcome
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (h : (observedProgramFOSG g hctx).History) : Outcome P :=
+  cursorWorldOutcome (P := P) (L := L) h.lastState
+
+/-- Vegas' denotational outcome kernel for the program suffix represented by a
+cursor world. This is the state-local right-hand side for the FOSG
+outcome-preservation induction. -/
+noncomputable def cursorVegasOutcomeKernel
+    {g : WFProgram P L}
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CursorCheckedWorld (P := P) (L := L) g) : PMF (Outcome P) :=
+  (outcomeDistBehavioral w.1.prog
+      (w.1.suffix.behavioralProfile (fun i => (σ i).val)) w.1.env).toPMF
+    (outcomeDistBehavioral_totalWeight_eq_one
+      (P := P) (L := L) (p := w.1.prog)
+      (σ := w.1.suffix.behavioralProfile (fun i => (σ i).val))
+      w.2.2.2.2.1)
+
+@[simp] theorem cursorVegasOutcomeKernel_initial
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g) :
+    cursorVegasOutcomeKernel (P := P) (L := L) σ
+        (CursorCheckedWorld.initial (P := P) (L := L) g hctx) =
+      (toKernelGame g).outcomeKernel σ := by
+  rfl
+
+theorem cursorVegasOutcomeKernel_terminal
+    {g : WFProgram P L}
+    (σ : LegalProgramBehavioralProfile g)
+    (w : CursorCheckedWorld (P := P) (L := L) g)
+    (hterm : w.terminal) :
+    cursorVegasOutcomeKernel (P := P) (L := L) σ w =
+      PMF.pure (cursorWorldOutcome (P := P) (L := L) w) := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          cases hprog : cursor.prog with
+          | ret payoffs =>
+              have hout :
+                  outcomeDistBehavioral cursor.prog
+                      (cursor.toSuffix.behavioralProfile (fun i => (σ i).val)) env =
+                    FDist.pure (evalPayoffs payoffs env) :=
+                outcomeDistBehavioral_of_eq_ret
+                  (P := P) (L := L) hprog
+                  (cursor.toSuffix.behavioralProfile (fun i => (σ i).val)) env
+              apply PMF.ext
+              intro o
+              unfold cursorVegasOutcomeKernel cursorWorldOutcome
+              simp only [CursorWorldData.prog, CursorWorldData.suffix, Subtype.coe_mk]
+              rw [FDist.toPMF_apply]
+              have hpoint :
+                  (outcomeDistBehavioral cursor.prog
+                      (cursor.toSuffix.behavioralProfile (fun i => (σ i).val)) env) o =
+                    (FDist.pure (evalPayoffs payoffs env)) o := by
+                rw [hout]
+              rw [hpoint]
+              by_cases ho : o = evalPayoffs payoffs env
+              · subst o
+                simp [hprog, FDist.pure_apply, NNRat.toNNReal_one]
+              · have hne : evalPayoffs payoffs env ≠ o := fun h => ho h.symm
+                simp [hprog, FDist.pure_apply, ho, hne, NNRat.toNNReal_zero]
+          | letExpr x e k =>
+              simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+                CursorWorldData.prog, terminal, hprog] at hterm
+          | sample x D k =>
+              simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+                CursorWorldData.prog, terminal, hprog] at hterm
+          | commit x who R k =>
+              simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+                CursorWorldData.prog, terminal, hprog] at hterm
+          | reveal y who x hx k =>
+              simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+                CursorWorldData.prog, terminal, hprog] at hterm
+
+/-- The bounded observed-program run distribution supports only terminal
+histories, so the default branch in `observedProgramHistoryOutcome` is
+irrelevant for realized outcomes. -/
+theorem observedProgramRunDist_support_terminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    {h : (observedProgramFOSG g hctx).History}
+    (hh : h ∈ (observedProgramRunDist (P := P) (L := L) g hctx LF σ).support) :
+    (observedProgramFOSG g hctx).terminal h.lastState := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact GameTheory.FOSG.runDist_support_isTerminal_of_boundedHorizon
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
+    σ h (by simpa [observedProgramRunDist] using hh)
+
+/-- `runDistFrom` for the observed-program FOSG, with the finite execution
+instances supplied by `FiniteValuation`. -/
+noncomputable def observedProgramRunDistFrom
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History) :
+    PMF (observedProgramFOSG g hctx).History := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact GameTheory.FOSG.History.runDistFrom
+    (observedProgramFOSG (P := P) (L := L) g hctx) σ n h
+
+@[simp] theorem observedProgramRunDist_eq_runDistFrom_initial
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile) :
+    observedProgramRunDist (P := P) (L := L) g hctx LF σ =
+      observedProgramRunDistFrom (P := P) (L := L) g hctx LF σ
+        (syntaxSteps g.prog)
+        (GameTheory.FOSG.History.nil
+          (observedProgramFOSG (P := P) (L := L) g hctx)) := by
+  rfl
+
+/-- Once an observed-program FOSG history is terminal, any remaining bounded
+run horizon maps to the point mass at its projected Vegas outcome. -/
+theorem observedProgramRunDistFrom_historyOutcome_terminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History)
+    (hterm : (observedProgramFOSG g hctx).terminal h.lastState) :
+    PMF.map (observedProgramHistoryOutcome (P := P) (L := L) g hctx)
+        (observedProgramRunDistFrom (P := P) (L := L) g hctx LF σ n h) =
+      PMF.pure (observedProgramHistoryOutcome (P := P) (L := L) g hctx h) := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  unfold observedProgramRunDistFrom
+  rw [GameTheory.FOSG.History.runDistFrom_terminal
+    (G := observedProgramFOSG (P := P) (L := L) g hctx) σ n h hterm]
+  rw [PMF.pure_map]
+
+/-- Projected one-step run equation at empty-active observed-program states.
+This is the common FOSG-side reduction for Vegas `let`, `sample`, and
+`reveal` nodes. -/
+theorem observedProgramRunDistFrom_historyOutcome_succ_active_empty
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
+    (hactive : (observedProgramFOSG g hctx).active h.lastState = ∅) :
+    PMF.map (observedProgramHistoryOutcome (P := P) (L := L) g hctx)
+        (observedProgramRunDistFrom (P := P) (L := L) g hctx LF σ (n + 1) h) =
+      ((observedProgramFOSG (P := P) (L := L) g hctx).transition h.lastState
+          ⟨GameTheory.FOSG.noopAction
+              (fun who : P => ProgramAction (P := P) (L := L) g.prog who),
+            (observedProgramFOSG (P := P) (L := L) g hctx)
+              |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩).bind
+        (fun dst =>
+          PMF.map (observedProgramHistoryOutcome (P := P) (L := L) g hctx)
+            (observedProgramRunDistFrom (P := P) (L := L) g hctx LF σ n
+              (h.extendByOutcome
+                ⟨GameTheory.FOSG.noopAction
+                    (fun who : P => ProgramAction (P := P) (L := L) g.prog who),
+                  (observedProgramFOSG (P := P) (L := L) g hctx)
+                    |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩
+                dst))) := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  unfold observedProgramRunDistFrom
+  rw [GameTheory.FOSG.History.runDistFrom_succ_active_empty
+    (G := observedProgramFOSG (P := P) (L := L) g hctx) σ n h hterm hactive]
+  rw [PMF.map_bind]
+
 /-- Broad-action FOSG control-flow object that preserves the public protocol
 location and each player's local Vegas view at every step.
 
@@ -2309,6 +2656,32 @@ noncomputable def moveAtProgramCursor
       else
         PMF.pure none
   | _ => PMF.pure none
+
+@[simp] theorem moveAtProgramCursor_commit_owner
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (view : ViewEnv (P := P) (L := L) who Γ) :
+    moveAtProgramCursor g hctx σ who suffix view =
+      by
+        let σp : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k) :=
+          suffix.behavioralProfile (fun i => (σ i).val)
+        let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L) (σp who) view
+        have hd : FDist.totalWeight d = 1 :=
+          ProgramBehavioralStrategy.headKernel_normalized
+            (P := P) (L := L) (σp who) view
+        exact PMF.map
+          (fun v => some
+            ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
+               value := by
+                 rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
+                 exact v } :
+              ProgramAction (P := P) (L := L) g.prog who))
+          (d.toPMF hd) := by
+  simp [moveAtProgramCursor]
 
 private theorem mem_fdist_support_of_mem_toPMF_support
     {α : Type} [DecidableEq α] {d : FDist α} {h : d.totalWeight = 1} {a : α}
@@ -2628,6 +3001,68 @@ noncomputable def programBehavioralProfileCandidate
     programLatestObservation?_history_snoc g hctx who h a dst support]
   simp [moveAtProgramObservation?_of_cursorWorld]
 
+@[simp] theorem programBehavioralProfileCandidate_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (e : (observedProgramFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState) :
+    programBehavioralProfileCandidate g hctx σ who
+      ((h.appendStep e hsrc).playerView who) =
+      moveAtCursorWorld g hctx σ who (h.appendStep e hsrc).lastState := by
+  cases e with
+  | mk src act dst support =>
+      cases hsrc
+      change
+        programBehavioralProfileCandidate g hctx σ who
+          ((h.snoc act dst support).playerView who) =
+        moveAtCursorWorld g hctx σ who (h.snoc act dst support).lastState
+      simpa using
+        programBehavioralProfileCandidate_snoc
+          g hctx σ who h act dst support
+
+/-- At every realized history of the observed-program FOSG, the transported
+profile reads exactly the Vegas strategy at the current cursor world. -/
+theorem programBehavioralProfileCandidate_history
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History) :
+    programBehavioralProfileCandidate g hctx σ who (h.playerView who) =
+      moveAtCursorWorld g hctx σ who h.lastState := by
+  let G := observedProgramFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          simp [programBehavioralProfileCandidate,
+            GameTheory.FOSG.History.playerView,
+            GameTheory.FOSG.History.playerViewFrom,
+            GameTheory.FOSG.History.lastState,
+            GameTheory.FOSG.lastStateFrom,
+            programLatestObservation?, programObservationEvents, last?,
+            observedProgramFOSG]
+      | append_singleton steps e ih =>
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          rw [hEq]
+          exact programBehavioralProfileCandidate_appendStep
+            g hctx σ who hprefix e hsrc
+
 theorem programBehavioralProfileCandidate_support_available_snoc
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -2733,6 +3168,67 @@ noncomputable def toObservedProgramLegalBehavioralProfile
     (σ : LegalProgramBehavioralProfile g) (who : P) :
     ((toObservedProgramLegalBehavioralProfile g hctx σ who).1) =
       programBehavioralProfileCandidate g hctx σ who := rfl
+
+/-- The FOSG legal-action law induced by a transported Vegas profile has the
+same marginal over any player's optional move as the Vegas strategy currently
+visible at the history endpoint. This is the product-law collapse needed for
+the `commit` case of outcome preservation. -/
+theorem observedProgramLegalActionLaw_bind_coord
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
+    (σ : LegalProgramBehavioralProfile g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
+    (who : P) {β : Type}
+    (f : Option (ProgramAction (P := P) (L := L) g.prog who) → PMF β) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
+        (fun a => f (a.1 who)) =
+      (moveAtCursorWorld g hctx σ who h.lastState).bind f := by
+  rw [GameTheory.FOSG.legalActionLaw_bind_coord
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm who f]
+  simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
+    toObservedProgramLegalBehavioralProfile_apply,
+    programBehavioralProfileCandidate_history]
+
+/-! ## Projected outcome kernel
+
+GameTheory's generic FOSG compiler uses terminal histories as kernel-game
+outcomes. For Vegas, the semantic comparison is the pushforward of that
+history distribution along `observedProgramHistoryOutcome`. -/
+
+/-- The Vegas-outcome kernel induced by running the observed-program FOSG and
+projecting terminal histories back to Vegas payoff outcomes. This is the
+left-hand side of the intended outcome-preservation theorem against
+`toKernelGame`. -/
+noncomputable def observedProgramOutcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) : PMF (Outcome P) :=
+  PMF.map (observedProgramHistoryOutcome (P := P) (L := L) g hctx)
+    (observedProgramRunDist (P := P) (L := L) g hctx LF
+      (toObservedProgramLegalBehavioralProfile g hctx σ))
+
+/-- Kernel-game-shaped version of `observedProgramOutcomeKernel`: strategies
+are Vegas legal behavioral profiles and outcomes are Vegas payoff outcomes.
+The remaining semantic bridge is to prove that this game has the same outcome
+kernel as `toKernelGame g`. -/
+noncomputable def observedProgramOutcomeKernelGame
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P] : KernelGame P where
+  Strategy := LegalProgramBehavioralStrategy g
+  Outcome := Outcome P
+  utility := fun o i => (o i : ℝ)
+  outcomeKernel := observedProgramOutcomeKernel (P := P) (L := L) g hctx LF
+
+@[simp] theorem observedProgramOutcomeKernelGame_outcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) :
+    (observedProgramOutcomeKernelGame (P := P) (L := L) g hctx LF).outcomeKernel σ =
+      observedProgramOutcomeKernel (P := P) (L := L) g hctx LF σ := rfl
 
 /-- Raw FOSG behavioral profile induced by a Vegas legal behavioral profile.
 The `Candidate` suffix means this is the unbundled profile function; use
