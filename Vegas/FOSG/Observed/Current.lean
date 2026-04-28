@@ -619,6 +619,119 @@ theorem currentObsModel_stepMassInvariant
     ObsModelCore.step] using
       currentProgramStep_massInvariant g w t a₁ a₂ h₁' h₂'
 
+theorem currentObsModel_action_subsingleton_of_not_active
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (ss : List (CursorCheckedWorld g))
+    (hnot :
+      who ∉ CursorCheckedWorld.active
+        ((currentObsModel g hctx).lastState ss)) :
+    Subsingleton
+      (CurrentProgramMove g who
+        ((currentObsModel g hctx).currentObs who
+          ((currentObsModel g hctx).projectStates who ss))) := by
+  let O := currentObsModel g hctx
+  have hobs :
+      O.currentObs who (O.projectStates who ss) =
+        privateObsOfCursorWorld who (O.lastState ss) := by
+    simpa [O, currentObsModel] using
+      O.currentObs_projectStates who ss
+  rw [hobs]
+  exact CurrentProgramMove.subsingleton_of_not_active
+    (O.lastState ss) hnot
+
+theorem currentObsModel_active_of_not_subsingleton
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (ss : List (CursorCheckedWorld g))
+    (hsub :
+      ¬ Subsingleton
+        (CurrentProgramMove g who
+          ((currentObsModel g hctx).currentObs who
+            ((currentObsModel g hctx).projectStates who ss)))) :
+    who ∈ CursorCheckedWorld.active
+      ((currentObsModel g hctx).lastState ss) := by
+  by_contra hnot
+  exact hsub
+    (currentObsModel_action_subsingleton_of_not_active
+      g hctx who ss hnot)
+
+theorem currentObsModel_not_terminal_of_not_subsingleton
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (ss : List (CursorCheckedWorld g))
+    (hsub :
+      ¬ Subsingleton
+        (CurrentProgramMove g who
+          ((currentObsModel g hctx).currentObs who
+            ((currentObsModel g hctx).projectStates who ss)))) :
+    ¬ CursorCheckedWorld.terminal
+      ((currentObsModel g hctx).lastState ss) := by
+  intro hterm
+  have hactive :=
+    currentObsModel_active_of_not_subsingleton g hctx who ss hsub
+  have hempty := cursor_terminal_active_eq_empty
+    (w := (currentObsModel g hctx).lastState ss) hterm
+  simp [hempty] at hactive
+
+theorem currentObsModel_commit_owner_of_not_subsingleton
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (ss : List (CursorCheckedWorld g))
+    (hsub :
+      ¬ Subsingleton
+        (CurrentProgramMove g who
+          ((currentObsModel g hctx).currentObs who
+            ((currentObsModel g hctx).projectStates who ss)))) :
+    ∃ (x : VarId) (b : L.Ty)
+      (R : L.Expr
+        ((x, b) ::
+          eraseVCtx ((currentObsModel g hctx).lastState ss).1.cursor.Γ)
+        L.bool)
+      (k : VegasCore P L
+        ((x, .hidden who b) ::
+          ((currentObsModel g hctx).lastState ss).1.cursor.Γ)),
+      ((currentObsModel g hctx).lastState ss).1.prog =
+        VegasCore.commit x who R k := by
+  let w := (currentObsModel g hctx).lastState ss
+  have hactive :
+      who ∈ CursorCheckedWorld.active w :=
+    currentObsModel_active_of_not_subsingleton g hctx who ss hsub
+  cases hprog : w.1.prog with
+  | ret payoffs =>
+      have hfalse : False := by
+        have hterm : CursorCheckedWorld.terminal w := by
+          have htermWorld :
+              terminal
+                ({ Γ := w.1.cursor.Γ, prog := w.1.prog,
+                   env := w.1.env } : World P L) := by
+            rw [hprog]
+            exact terminal_ret payoffs
+          simpa [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+            CursorWorldData.prog] using htermWorld
+        have hempty := cursor_terminal_active_eq_empty (w := w) hterm
+        simp [hempty] at hactive
+      exact False.elim hfalse
+  | letExpr x e k =>
+      have hfalse : False := by
+        have hempty := cursor_active_eq_empty_of_letExpr (w := w) hprog
+        simp [hempty] at hactive
+      exact False.elim hfalse
+  | sample x D k =>
+      have hfalse : False := by
+        have hempty := cursor_active_eq_empty_of_sample (w := w) hprog
+        simp [hempty] at hactive
+      exact False.elim hfalse
+  | commit x owner R k =>
+      have howner : owner = who := by
+        have hmem : who ∈ ({owner} : Finset P) := by
+          have hsingle := cursor_active_eq_singleton_of_commit (w := w) hprog
+          simpa [hsingle] using hactive
+        exact (Finset.mem_singleton.mp hmem).symm
+      cases howner
+      exact ⟨x, _, R, k, by simp [w]⟩
+  | reveal y owner x hx k =>
+      have hfalse : False := by
+        have hempty := cursor_active_eq_empty_of_reveal (w := w) hprog
+        simp [hempty] at hactive
+      exact False.elim hfalse
+
 theorem currentObsModel_stepSupportFactorization
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L) :
