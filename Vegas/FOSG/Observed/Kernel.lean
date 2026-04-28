@@ -2655,6 +2655,54 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist_f
   exact observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
     g hctx μ
 
+/-- Strategic KernelGame collapse of the observed-program FOSG, using legal
+reachable behavioral strategies as the strategic choices.
+
+This is the KernelGame view of the sequential FOSG denotation. Its outcome
+kernel is the finite-horizon FOSG run distribution, pushed forward to Vegas
+payoff outcomes. -/
+noncomputable def observedProgramReachableKernelGame
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P] : GameTheory.KernelGame P where
+  Strategy := fun who =>
+    (observedProgramFOSG g hctx).ReachableLegalBehavioralStrategy who
+  Outcome := Outcome P
+  utility := fun o who => (o who : ℝ)
+  outcomeKernel := fun β => by
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    exact PMF.map (observedProgramHistoryOutcome g hctx)
+      ((observedProgramFOSG g hctx).runDist
+        (syntaxSteps g.prog)
+        (GameTheory.FOSG.ReachableLegalBehavioralProfile.extend
+          (G := observedProgramFOSG g hctx) β))
+
+@[simp] theorem observedProgramReachableKernelGame_outcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile) :
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    (observedProgramReachableKernelGame g hctx LF).outcomeKernel β =
+      PMF.map (observedProgramHistoryOutcome g hctx)
+        ((observedProgramFOSG g hctx).runDist
+          (syntaxSteps g.prog) β.extend) := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  rfl
+
 /-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B.
 
 This theorem starts from a Vegas independent mixed pure profile, transports
@@ -2807,6 +2855,38 @@ theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_fi
   funext σ
   exact observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
     g hctx LF σ
+
+/-- KernelGame-shaped FOSG Kuhn corollary for Vegas.
+
+A product mixed profile over legal Vegas pure strategies is realized by a legal
+reachable behavioral profile in the KernelGame collapse of the observed-program
+FOSG, with the same distribution over Vegas payoff outcomes. -/
+theorem observedProgramReachableKernelGame_mixedPure_realization
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : GameTheory.KernelGame.Profile
+        (observedProgramReachableKernelGame g hctx LF),
+      (observedProgramReachableKernelGame g hctx LF).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  obtain ⟨β, hβ⟩ :=
+    observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+      g hctx LF μ
+  refine ⟨β, ?_⟩
+  simpa using hβ
 
 end Observed
 
