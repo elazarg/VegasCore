@@ -192,6 +192,19 @@ def currentProgramJointActionRaw
     ProgramJointAction g :=
   fun who => (a who).1
 
+theorem currentProgramJointActionRaw_eq_of_active_empty
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hactive : CursorCheckedWorld.active w = ∅) :
+    currentProgramJointActionRaw w a =
+      currentProgramJointActionRaw w a' := by
+  funext who
+  have hnot : who ∉ CursorCheckedWorld.active w := by
+    simp [hactive]
+  change (a who).1 = (a' who).1
+  rw [CurrentProgramMove.eq_none_of_not_active w (a who) hnot,
+    CurrentProgramMove.eq_none_of_not_active w (a' who) hnot]
+
 theorem currentProgramJointActionLegal
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
@@ -253,6 +266,19 @@ theorem currentProgramStep_nonterminal
         ⟨currentProgramJointActionRaw w a,
           currentProgramJointActionLegal w a hterm⟩ := by
   simp [currentProgramStep, hterm]
+
+theorem currentProgramStep_eq_of_active_empty
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hactive : CursorCheckedWorld.active w = ∅) :
+    currentProgramStep g w a = currentProgramStep g w a' := by
+  by_cases hterm : CursorCheckedWorld.terminal w
+  · simp [currentProgramStep_terminal, hterm]
+  · rw [currentProgramStep_nonterminal g w a hterm,
+      currentProgramStep_nonterminal g w a' hterm]
+    have hraw := currentProgramJointActionRaw_eq_of_active_empty w a a' hactive
+    congr 1
+    exact Subtype.ext hraw
 
 /-- Kuhn core model whose information state is exactly Vegas' current private
 observation. Its behavioral profiles are the semantic target for total
