@@ -1508,6 +1508,90 @@ theorem observedProgramReachable_mixed_to_legal_behavioral
     (observedProgramFOSG_legalObservable g hctx)
     μ (syntaxSteps g.prog)
 
+/-- Vegas-outcome distribution form of reachable-coordinate FOSG M→B.
+
+The native FOSG theorem preserves terminal-history distributions. Vegas
+observes those histories only through `observedProgramHistoryOutcome`, so the
+protocol-facing invariant is the pushforward distribution on `Outcome P`.
+Expected-utility preservation is a corollary of this statement. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    [Fintype (observedProgramFOSG g hctx).History]
+    (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG g hctx)) :
+    ∃ βcore :
+      (GameTheory.FOSG.Kuhn.toReachableHistoryObsModelCore
+        (observedProgramFOSG g hctx)
+        (observedProgramFOSG_legalObservable g hctx)).BehavioralProfile,
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      β.toProfile =
+        GameTheory.FOSG.Kuhn.eraseReachableHistoryBehavioral
+          (G := observedProgramFOSG g hctx)
+          (observedProgramFOSG_legalObservable g hctx)
+          βcore ∧
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist
+            (G := observedProgramFOSG g hctx)
+            (observedProgramFOSG_legalObservable g hctx)
+            (syntaxSteps g.prog) βcore) =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG g hctx) μ).bind
+          (fun π =>
+            PMF.map (observedProgramHistoryOutcome g hctx)
+              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+                (G := observedProgramFOSG g hctx)
+                (observedProgramFOSG_legalObservable g hctx)
+                (syntaxSteps g.prog) π)) := by
+  obtain ⟨βcore, β, hβ, hdist⟩ :=
+    observedProgramReachable_mixed_to_legal_behavioral
+      (P := P) (L := L) g hctx μ
+  refine ⟨βcore, β, hβ, ?_⟩
+  rw [hdist, PMF.map_bind]
+
+/-- Finite-valuation wrapper for
+`observedProgramReachable_mixed_to_legal_behavioral_outcomeDist`. This is the
+form used by clients of a concrete finite expression language. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG g hctx)) :
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    ∃ βcore :
+      (GameTheory.FOSG.Kuhn.toReachableHistoryObsModelCore
+        (observedProgramFOSG g hctx)
+        (observedProgramFOSG_legalObservable g hctx)).BehavioralProfile,
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      β.toProfile =
+        GameTheory.FOSG.Kuhn.eraseReachableHistoryBehavioral
+          (G := observedProgramFOSG g hctx)
+          (observedProgramFOSG_legalObservable g hctx)
+          βcore ∧
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist
+            (G := observedProgramFOSG g hctx)
+            (observedProgramFOSG_legalObservable g hctx)
+            (syntaxSteps g.prog) βcore) =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG g hctx) μ).bind
+          (fun π =>
+            PMF.map (observedProgramHistoryOutcome g hctx)
+              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+                (G := observedProgramFOSG g hctx)
+                (observedProgramFOSG_legalObservable g hctx)
+                (syntaxSteps g.prog) π)) := by
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
+    (P := P) (L := L) g hctx μ
+
 end Observed
 
 end FOSGBridge
