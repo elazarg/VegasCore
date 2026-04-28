@@ -3871,6 +3871,119 @@ noncomputable def toObservedProgramReachableLegalBehavioralProfile
     ((toObservedProgramReachableLegalBehavioralProfile g hctx σ who).1) =
       (programBehavioralProfileCandidate g hctx σ who).restrictReachable := rfl
 
+@[simp] theorem toObservedProgramReachableLegalBehavioralProfile_extend_apply_history
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (h : (observedProgramFOSG g hctx).History) (who : P) :
+    ((toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend.toProfile
+        who (h.playerView who)) =
+      (toObservedProgramLegalBehavioralProfile g hctx σ).toProfile
+        who (h.playerView who) := by
+  simp [GameTheory.FOSG.ReachableLegalBehavioralProfile.extend,
+    GameTheory.FOSG.ReachableBehavioralStrategy.extend,
+    GameTheory.FOSG.BehavioralStrategy.restrictReachable]
+
+theorem observedProgramRunDist_reachable_extend_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) :
+    observedProgramRunDist (P := P) (L := L) g hctx LF
+        (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend =
+      observedProgramRunDist (P := P) (L := L) g hctx LF
+        (toObservedProgramLegalBehavioralProfile g hctx σ) := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  unfold observedProgramRunDist
+  exact GameTheory.FOSG.runDist_congr
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (syntaxSteps g.prog)
+    (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend
+    (toObservedProgramLegalBehavioralProfile g hctx σ)
+    (by
+      intro h who
+      exact toObservedProgramReachableLegalBehavioralProfile_extend_apply_history
+        (P := P) (L := L) g hctx σ h who)
+
+theorem observedProgramProjectedPayoff_terminalWeight_reachable_eq_runDist
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+      observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+    letI : ∀ who : P,
+        Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+      fun who =>
+        observedProgramFOSG.instFintypeOptionAction
+          (P := P) (L := L) g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+    ∑ h : (observedProgramFOSG g hctx).History,
+      (GameTheory.FOSG.History.terminalWeight
+          (G := observedProgramFOSG g hctx)
+          (toObservedProgramReachableLegalBehavioralProfile
+            (P := P) (L := L) g hctx σ).toProfile.extend
+          h).toReal *
+        (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ) =
+      ∑ h : (observedProgramFOSG g hctx).History,
+        (observedProgramRunDist (P := P) (L := L) g hctx LF
+          (toObservedProgramLegalBehavioralProfile g hctx σ) h).toReal *
+          (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ) := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  calc
+    ∑ h : (observedProgramFOSG g hctx).History,
+      (GameTheory.FOSG.History.terminalWeight
+          (G := observedProgramFOSG g hctx)
+          (toObservedProgramReachableLegalBehavioralProfile
+            (P := P) (L := L) g hctx σ).toProfile.extend
+          h).toReal *
+        (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ)
+      = ∑ h : (observedProgramFOSG g hctx).History,
+          (observedProgramRunDist (P := P) (L := L) g hctx LF
+            (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend h).toReal *
+            (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ) := by
+          refine Finset.sum_congr rfl ?_
+          intro h _
+          have hrun :
+              observedProgramRunDist (P := P) (L := L) g hctx LF
+                  (toObservedProgramReachableLegalBehavioralProfile
+                    g hctx σ).extend h =
+                GameTheory.FOSG.History.terminalWeight
+                  (G := observedProgramFOSG g hctx)
+                  (toObservedProgramReachableLegalBehavioralProfile
+                    g hctx σ).toProfile.extend h := by
+            simpa [observedProgramRunDist,
+              GameTheory.FOSG.ReachableLegalBehavioralProfile.extend] using
+              GameTheory.FOSG.runDist_eq_terminalWeight_of_boundedHorizon
+                (G := observedProgramFOSG (P := P) (L := L) g hctx)
+                (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
+                (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend h
+          rw [← hrun]
+    _ = ∑ h : (observedProgramFOSG g hctx).History,
+        (observedProgramRunDist (P := P) (L := L) g hctx LF
+          (toObservedProgramLegalBehavioralProfile g hctx σ) h).toReal *
+          (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ) := by
+          rw [observedProgramRunDist_reachable_extend_eq
+            (P := P) (L := L) g hctx LF σ]
+
 /-- Reachable-coordinate FOSG Kuhn theorem specialized to the observed-program
 terminal-history game.
 
@@ -3933,6 +4046,72 @@ theorem observedProgramTerminalHistory_behavioral_to_mixed_eu_reachable
     (toObservedProgramReachableLegalBehavioralProfile
       (P := P) (L := L) g hctx σ)
     who
+
+/-- Reachable-coordinate FOSG Kuhn theorem specialized to Vegas' projected
+payoff on terminal histories.
+
+Unlike `observedProgramTerminalHistory_behavioral_to_mixed_eu_reachable`, this
+statement uses the Vegas outcome projection as the payoff function, not the
+native FOSG cumulative reward. This is the payoff expression needed for the
+Vegas-facing Kuhn bridge. -/
+theorem observedProgramProjectedPayoff_behavioral_to_mixed_reachable
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+      observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+    letI : ∀ who : P,
+        Fintype (ProgramAction (P := P) (L := L) g.prog who) :=
+      fun who =>
+        ProgramAction.instFintype (P := P) (L := L) LF g.prog who
+    letI : ∀ who : P,
+        Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+      fun who =>
+        observedProgramFOSG.instFintypeOptionAction
+          (P := P) (L := L) g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+    ∑ π,
+      (GameTheory.FOSG.Kuhn.reachableBehavioralToMixedJoint
+          (G := observedProgramFOSG g hctx)
+          (toObservedProgramReachableLegalBehavioralProfile
+            (P := P) (L := L) g hctx σ).toProfile π).toReal *
+        (∑ h : (observedProgramFOSG g hctx).History,
+          (GameTheory.FOSG.History.terminalWeight
+              (G := observedProgramFOSG g hctx)
+              ((observedProgramFOSG g hctx).pureToBehavioral π.extend)
+              h).toReal *
+            (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ)) =
+      ∑ h : (observedProgramFOSG g hctx).History,
+        (GameTheory.FOSG.History.terminalWeight
+            (G := observedProgramFOSG g hctx)
+            (toObservedProgramReachableLegalBehavioralProfile
+              (P := P) (L := L) g hctx σ).toProfile.extend
+            h).toReal *
+          (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ) := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (ProgramAction (P := P) (L := L) g.prog who) :=
+    fun who =>
+      ProgramAction.instFintype (P := P) (L := L) LF g.prog who
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact GameTheory.FOSG.Kuhn.reachable_marginal_terminalExpectation
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (toObservedProgramReachableLegalBehavioralProfile
+      (P := P) (L := L) g hctx σ).toProfile
+    (fun h =>
+      (observedProgramHistoryOutcome (P := P) (L := L) g hctx h who : ℝ))
 
 theorem programBehavioralProfileCandidate_toBehavioral_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
