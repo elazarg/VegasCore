@@ -663,13 +663,63 @@ theorem currentLocalMixedPureProfile_joint
   exact (Math.PMFProduct.pmfPi_push_coordwise μ
     (fun who => currentLocalPureStrategy g hctx who)).symm
 
-/-- Semantic M→B specialized to the current-observation model.
+/-- Semantic M→B specialized to the current-observation model, under the
+exact GameTheory semantic hypotheses.
 
-This is the direct GameTheory Kuhn theorem applied to Vegas' current private
-observations. Step mass invariance is discharged by the cursor transition
-semantics; the remaining model obligation is full observation-local
-feasibility. It states preservation of the current-model run distribution, not
-yet the final Vegas outcome distribution. -/
+This states preservation of the current-model run distribution, not yet the
+final Vegas outcome distribution. It is intentionally phrased with
+`RunSupportFactorization` and `ActionPosteriorLocal`, because those are the
+semantic facts used by the run-level core M→B theorem; full obs-local
+feasibility is only one sufficient way to obtain them. -/
+theorem currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions
+    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) (k : Nat) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+      fun who => PrivateObs.instFintype g LF who
+    letI : ∀ who obs,
+        Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    ObsModelCore.RunSupportFactorization (currentObsModel g hctx) →
+    (∀ who, ObsModelCore.ActionPosteriorLocal (currentObsModel g hctx) who) →
+    ∃ β : ObsModelCore.BehavioralProfile (currentObsModel g hctx),
+      (currentObsModel g hctx).runDist k β =
+        (PMF.map (currentLocalPureProfile g hctx)
+          (Math.PMFProduct.pmfPi μ)).bind
+            ((currentObsModel g hctx).runDistPure k) := by
+  classical
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+    fun who => PrivateObs.instFintype g LF who
+  letI : ∀ who obs,
+      Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  intro hRun hLocal
+  have hMass : ObsModelCore.StepMassInvariant (currentObsModel g hctx) :=
+    currentObsModel_stepMassInvariant g hctx LF
+  letI : Nonempty (LegalProgramPureProfile g) :=
+    LegalProgramPureProfile.instNonempty_of_wfctx g hctx
+  let fallback : LegalProgramPureProfile g := Classical.choice inferInstance
+  letI : ∀ who obs, Nonempty (CurrentProgramMove g who obs) :=
+    currentProgramMoveNonemptyOfPureProfile g hctx fallback
+  obtain ⟨β, hβ⟩ :=
+    ObsModelCore.kuhn_mixed_to_behavioral_of_runSupport
+      (O := currentObsModel g hctx)
+      hMass hRun hLocal
+      (currentLocalMixedPureProfile g hctx μ) k
+  refine ⟨β, ?_⟩
+  rw [hβ]
+  rw [currentLocalMixedPureProfile_joint g hctx LF μ]
+
+/-- Semantic M→B specialized to the current-observation model, with full
+obs-local feasibility as a sufficient packaged hypothesis.
+
+Step mass invariance is discharged by the cursor transition semantics. Full
+obs-local feasibility supplies the remaining support-factorization and
+posterior-locality obligations expected by the exact semantic theorem above. -/
 theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
     [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -697,21 +747,17 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
       Fintype (CurrentProgramMove g who obs) :=
     fun who obs => CurrentProgramMove.instFintype g LF who obs
   intro hObsLocal
-  have hMass : ObsModelCore.StepMassInvariant (currentObsModel g hctx) :=
-    currentObsModel_stepMassInvariant g hctx LF
-  letI : Nonempty (LegalProgramPureProfile g) :=
-    LegalProgramPureProfile.instNonempty_of_wfctx g hctx
-  let fallback : LegalProgramPureProfile g := Classical.choice inferInstance
-  letI : ∀ who obs, Nonempty (CurrentProgramMove g who obs) :=
-    currentProgramMoveNonemptyOfPureProfile g hctx fallback
-  obtain ⟨β, hβ⟩ :=
-    ObsModelCore.kuhn_mixed_to_behavioral_of_obsLocal
-      (O := currentObsModel g hctx)
-      hMass hObsLocal
-      (currentLocalMixedPureProfile g hctx μ) k
-  refine ⟨β, ?_⟩
-  rw [hβ]
-  rw [currentLocalMixedPureProfile_joint g hctx LF μ]
+  exact currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions
+    g hctx LF μ k
+    (ObsModelCore.obsLocalFeasibilityFull_toRunSupportFactorization
+      (O := currentObsModel g hctx) hObsLocal)
+    (fun who =>
+      ObsModelCore.actionPosteriorLocal_of_obsLocalFeasibility
+        (O := currentObsModel g hctx)
+        (currentObsModel_stepMassInvariant g hctx LF)
+        who
+        (fun n₁ n₂ π₀ π₀' ss₁ ss₂ hobs h₁ h₂ _hnontriv πᵢ =>
+          hObsLocal who n₁ n₂ π₀ π₀' ss₁ ss₂ hobs h₁ h₂ πᵢ))
 
 @[simp] theorem currentLocalPureStrategy_apply_observe
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
