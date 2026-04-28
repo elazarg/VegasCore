@@ -111,6 +111,57 @@ theorem VEnv.eq_of_eraseEnv_eq {Γ : VCtx P L}
   have hget := congrFun (congrFun (congrFun h x) τ.base) hx.toErased
   simpa [VEnv.eraseEnv_get_of_erased] using hget
 
+theorem VEnv.toView_cons_hidden_self_head_eq {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {v₁ v₂ : L.Val b} {env₁ env₂ : VEnv L Γ}
+    (hctx : WFCtx ((x, .hidden who b) :: Γ))
+    (h : VEnv.toView who
+        (VEnv.cons (Player := P) (L := L) (x := x)
+          (τ := .hidden who b) v₁ env₁) =
+      VEnv.toView who
+        (VEnv.cons (Player := P) (L := L) (x := x)
+          (τ := .hidden who b) v₂ env₂)) :
+    v₁ = v₂ := by
+  have hproj :
+      projectViewEnv who
+          (VEnv.eraseEnv (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who b) v₁ env₁)) =
+        projectViewEnv who
+          (VEnv.eraseEnv (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who b) v₂ env₂)) := by
+    simpa [projectViewEnv_eraseEnv_eq_toView (who := who) hctx]
+      using congrArg VEnv.eraseEnv h
+  exact projectViewEnv_cons_head_eq (who := who) (Γ := Γ)
+    (x := x) (τ := .hidden who b) (hnodup := hctx)
+    (hsee := by simp [canSee]) hproj
+
+theorem VEnv.toView_cons_hidden_self_tail_eq {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {v₁ v₂ : L.Val b} {env₁ env₂ : VEnv L Γ}
+    (hctx : WFCtx ((x, .hidden who b) :: Γ))
+    (h : VEnv.toView who
+        (VEnv.cons (Player := P) (L := L) (x := x)
+          (τ := .hidden who b) v₁ env₁) =
+      VEnv.toView who
+        (VEnv.cons (Player := P) (L := L) (x := x)
+          (τ := .hidden who b) v₂ env₂)) :
+    VEnv.toView who env₁ = VEnv.toView who env₂ := by
+  apply VEnv.eq_of_eraseEnv_eq (P := P)
+  rw [← projectViewEnv_eraseEnv_eq_toView
+      (who := who) (WFCtx.tail hctx) env₁]
+  rw [← projectViewEnv_eraseEnv_eq_toView
+      (who := who) (WFCtx.tail hctx) env₂]
+  have hproj :
+      projectViewEnv who
+          (VEnv.eraseEnv (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who b) v₁ env₁)) =
+        projectViewEnv who
+          (VEnv.eraseEnv (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who b) v₂ env₂)) := by
+    simpa [projectViewEnv_eraseEnv_eq_toView (who := who) hctx]
+      using congrArg VEnv.eraseEnv h
+  exact projectViewEnv_cons_eq (hnodup := hctx) hproj
+
 theorem VEnv.toView_ofErased_projectViewEnv {Γ : VCtx P L}
     (hctx : WFCtx Γ) (who : P) (env : Env L.Val (eraseVCtx Γ)) :
     VEnv.toView who (VEnv.ofErased env : VEnv L Γ) =
@@ -384,6 +435,49 @@ noncomputable def currentMoveCommitValueOrDefault
         Classical.ofNonempty
   | none =>
       Classical.ofNonempty
+
+theorem currentMoveCommitValueOrDefault_eq_programAction_value
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    {g : WFProgram P L} {who : P} {priv : PrivateObs g who}
+    {b : L.Ty} (m : CurrentProgramMove g who priv)
+    {ai : ProgramAction g.prog who}
+    (hm : m.1 = some ai)
+    (hty : CommitCursor.ty ai.cursor = b) :
+    currentMoveCommitValueOrDefault (b := b) m = hty ▸ ai.value := by
+  simp [currentMoveCommitValueOrDefault, hm, hty]
+
+theorem currentProgramMove_commit_valueOrDefault_eq_action
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k)
+    (m : CurrentProgramMove g who (privateObsOfCursorWorld who w)) :
+    ∃ (ai : ProgramAction g.prog who)
+      (hty : CommitCursor.ty ai.cursor = b),
+      m.1 = some ai ∧
+        currentMoveCommitValueOrDefault (b := b) m = hty ▸ ai.value := by
+  rcases currentProgramMove_exists_available_action_of_commit_owner
+      (g := g) w hprog m with
+    ⟨ai, hm, hai⟩
+  have hbroad :
+      ProgramAction.toAction ai ∈
+        availableActions
+          ({ Γ := w.1.cursor.Γ, prog := VegasCore.commit x who R k,
+             env := w.1.env } : World P L) who := by
+    rw [← hprog]
+    exact hai.1
+  rcases (by simpa [availableActions] using hbroad) with
+    ⟨v, haiEq, _hguard⟩
+  cases ai with
+  | mk cursor value =>
+      simp only [ProgramAction.toAction] at haiEq
+      simp only [Sigma.mk.injEq] at haiEq
+      rcases haiEq with ⟨hty, _hval⟩
+      exact ⟨⟨cursor, value⟩, hty, hm,
+        currentMoveCommitValueOrDefault_eq_programAction_value
+          m hm hty⟩
 
 theorem currentMoveCommitValueOrDefault_guard_at_commit
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
