@@ -2464,7 +2464,7 @@ FOSG.
 GameTheory discharges the reachable-history Kuhn semantic conditions
 generically for FOSGs. The Vegas-specific input is legal observability, proved
 above from the cursor/view observation design and guard view-scoping. -/
-theorem observedProgramReachable_mixed_to_legal_behavioral
+theorem observedProgramReachable_mixed_to_coreBehavioral
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
@@ -2503,7 +2503,7 @@ The native FOSG theorem preserves terminal-history distributions. Vegas
 observes those histories only through `observedProgramHistoryOutcome`, so the
 protocol-facing invariant is the pushforward distribution on `Outcome P`.
 Expected-utility preservation is a corollary of this statement. -/
-theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
+theorem observedProgramReachable_mixed_to_coreBehavioral_outcomeDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
@@ -2534,14 +2534,14 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
                 (observedProgramFOSG_legalObservable g hctx)
                 (syntaxSteps g.prog) π)) := by
   obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_mixed_to_legal_behavioral g hctx μ
+    observedProgramReachable_mixed_to_coreBehavioral g hctx μ
   refine ⟨βcore, β, hβ, ?_⟩
   rw [hdist, PMF.map_bind]
 
 /-- Finite-valuation wrapper for
-`observedProgramReachable_mixed_to_legal_behavioral_outcomeDist`. This is the
+`observedProgramReachable_mixed_to_coreBehavioral_outcomeDist`. This is the
 form used by clients of a concrete finite expression language. -/
-theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
+theorem observedProgramReachable_mixed_to_coreBehavioral_outcomeDist_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
@@ -2577,19 +2577,92 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
     fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
-  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist g hctx μ
+  exact observedProgramReachable_mixed_to_coreBehavioral_outcomeDist g hctx μ
+
+/-- Native-FOSG run-distribution form of reachable-coordinate FOSG M→B.
+
+This is the Vegas-facing distribution theorem: the witness is a legal
+reachable FOSG behavioral profile, and the left side is the ordinary FOSG
+`runDist` of its global extension. The intermediate ObsModelCore behavioral
+profile is used only inside the proof. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [Fintype (CursorCheckedWorld g)]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    [Fintype (observedProgramFOSG g hctx).History]
+    [DecidablePred (observedProgramFOSG g hctx).terminal]
+    (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG g hctx)) :
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          ((observedProgramFOSG g hctx).runDist
+            (syntaxSteps g.prog) β.extend) =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG g hctx) μ).bind
+          (fun π =>
+            PMF.map (observedProgramHistoryOutcome g hctx)
+              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+                (G := observedProgramFOSG g hctx)
+                (observedProgramFOSG_legalObservable g hctx)
+                (syntaxSteps g.prog) π)) := by
+  obtain ⟨βcore, β, hβ, hdist⟩ :=
+    observedProgramReachable_mixed_to_coreBehavioral_outcomeDist g hctx μ
+  refine ⟨β, ?_⟩
+  have hrun :=
+    GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist_eq_runDist
+      (G := observedProgramFOSG g hctx)
+      (observedProgramFOSG_legalObservable g hctx)
+      (syntaxSteps g.prog) βcore β hβ
+  rw [← hrun]
+  exact hdist
+
+/-- Finite-valuation wrapper for
+`observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist`. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG g hctx)) :
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          ((observedProgramFOSG g hctx).runDist
+            (syntaxSteps g.prog) β.extend) =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG g hctx) μ).bind
+          (fun π =>
+            PMF.map (observedProgramHistoryOutcome g hctx)
+              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+                (G := observedProgramFOSG g hctx)
+                (observedProgramFOSG_legalObservable g hctx)
+                (syntaxSteps g.prog) π)) := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  exact observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
+    g hctx μ
 
 /-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B.
 
 This theorem starts from a Vegas independent mixed pure profile, transports
 each player's marginal to the observed-program FOSG reachable pure strategy
-space, and applies the FOSG distribution theorem. The behavioral witness is
-still an observed-program FOSG reachable behavioral profile over full
-player-view histories. The remaining Vegas-facing step must show that the
-particular FOSG witness is current-observation-local, or replace this final
-bridge with a Kuhn application whose information state is already the Vegas
-cursor plus visible environment. -/
-theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_finite
+space, and applies the core FOSG distribution theorem. This is an intermediate
+bridge lemma: it exposes the ObsModelCore behavioral profile so the native
+`runDist` theorem below can eliminate it explicitly. -/
+theorem observedProgramReachable_vegasMixedPure_to_coreBehavioral_outcomeDist_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
@@ -2629,7 +2702,7 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
   obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_mixed_to_legal_behavioral_outcomeDist g hctx
+    observedProgramReachable_mixed_to_coreBehavioral_outcomeDist g hctx
       (toObservedProgramReachableMixedPureProfile g hctx μ)
   refine ⟨βcore, β, hβ, ?_⟩
   rw [toObservedProgramReachableMixedPureProfile_joint] at hdist
@@ -2640,11 +2713,11 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
 with the pure side collapsed back to the native Vegas pure kernel.
 
 The behavioral side is still a FOSG reachable behavioral witness over full
-player-view histories. This theorem intentionally does not call that a Vegas
-behavioral profile: the missing step is current-observation locality, not just
-repackaging. The distribution statement here is already expressed entirely over
-Vegas outcomes on the pure side. -/
-theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_toStrategicKernelGame_finite
+player-view histories, but the distribution is still stated through the
+reachable-history ObsModelCore execution. Use
+`observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite`
+for the native FOSG `runDist` statement. -/
+theorem observedProgramReachable_vegasMixedPure_to_coreBehavioral_toStrategicKernelGame_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
@@ -2678,11 +2751,59 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_toStrategicK
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
   obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_finite
+    observedProgramReachable_vegasMixedPure_to_coreBehavioral_outcomeDist_finite
       g hctx LF μ
   refine ⟨βcore, β, hβ, ?_⟩
   rw [hdist]
   congr
+  funext σ
+  exact observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
+    g hctx LF σ
+
+/-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B,
+stated over native FOSG execution.
+
+The witness is a legal reachable behavioral profile for the observed-program
+FOSG. The preserved object is the pushforward distribution on Vegas outcomes;
+expected-utility preservation is a corollary of this distribution statement. -/
+theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          ((observedProgramFOSG g hctx).runDist
+            (syntaxSteps g.prog) β.extend) =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  obtain ⟨β, hdist⟩ :=
+    observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
+      g hctx (toObservedProgramReachableMixedPureProfile g hctx μ)
+  refine ⟨β, ?_⟩
+  rw [toObservedProgramReachableMixedPureProfile_joint] at hdist
+  rw [PMF.bind_map] at hdist
+  rw [hdist]
+  apply congrArg
   funext σ
   exact observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
     g hctx LF σ

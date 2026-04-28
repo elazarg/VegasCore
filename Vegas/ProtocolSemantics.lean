@@ -195,14 +195,12 @@ def ProtocolRationalKuhnProperty [Fintype P] (g : WFProgram P L)
 guard-legal pure profiles admits a guard-legal PMF behavioural profile with the
 same outcome distribution.
 
-Stated as a `Prop`-valued definition, not proved here. The FOSG bridge proves
-the right protocol outcome semantics. The remaining strategy-space step is not
-mere subtype unpacking: the generic FOSG witness is indexed by full reachable
-player-view histories, while `LegalProgramBehavioralProfilePMF g` is indexed by
-the current Vegas cursor and visible environment. Closing this property requires
-either proving the FOSG witness is current-observation-local for compiled Vegas
-programs, or applying the core Kuhn theorem directly to that current-observation
-state space. -/
+Stated as a `Prop`-valued definition, not proved here. The FOSG bridge now gives
+a native reachable FOSG behavioral witness with the right outcome distribution.
+This property asks for a total Vegas-indexed behavioral profile instead. Closing
+that gap requires reifying reachable FOSG player-view strategies through the SSA
+observation equivalence, plus an explicit choice of legal behavior away from
+reachable views. -/
 def ProtocolCorrelatedPureRealizationPropertyPMF (g : WFProgram P L) : Prop :=
   ∀ (μ : PMF (LegalProgramPureProfile g)),
     ∃ β : LegalProgramBehavioralProfilePMF g,
