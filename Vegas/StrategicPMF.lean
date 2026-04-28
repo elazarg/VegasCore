@@ -135,6 +135,19 @@ def tailOwn
   match σ with
   | .commitOwn _ tail => tail
 
+/-- Drop the head commit-site wrapper from any player's strategy. For the
+owner this removes the owned kernel; for other players it removes the
+`commitOther` wrapper. -/
+def tail
+    {Γ : VCtx P L} {x : VarId} {owner who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
+    (σ : ProgramBehavioralStrategyPMF (P := P) (L := L) who (.commit x owner R k)) :
+    ProgramBehavioralStrategyPMF (P := P) (L := L) who k :=
+  match σ with
+  | .commitOwn _ tail => tail
+  | .commitOther _ tail => tail
+
 @[simp] theorem headKernel_mk
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
@@ -163,6 +176,59 @@ def tail
       | .commitOwn _ tail => tail
 
 end ProgramBehavioralProfilePMF
+
+/-! ## Guard-legality predicate -/
+
+/-- PMF-valued analogue of `ProgramBehavioralKernel.IsLegalAt`: at every
+erased environment, the kernel's support is contained in the guard-satisfying
+actions for the current commit site. -/
+def ProgramBehavioralKernelPMF.IsLegalAt
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    (κ : ProgramBehavioralKernelPMF (P := P) (L := L) who Γ b)
+    (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
+  ∀ (ρ : Env L.Val (eraseVCtx Γ)) {v : L.Val b},
+    v ∈ (κ.run (projectViewEnv (P := P) (L := L) who ρ)).support →
+      evalGuard (Player := P) (L := L) R v ρ = true
+
+/-- A PMF behavioral strategy is guard-legal when every owned commit-site
+kernel is supported on guard-satisfying actions. -/
+def ProgramBehavioralStrategyPMF.IsLegal : {who : P} →
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+    ProgramBehavioralStrategyPMF (P := P) (L := L) who p → Prop
+  | _, _, .ret _, _ => True
+  | who, _, .letExpr _ _ k, .letExpr σ =>
+      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+  | who, _, .sample _ _ k, .sample σ =>
+      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+  | who, _, .commit _x owner R k, σ => by
+      by_cases h : owner = who
+      · subst h
+        exact
+          (∀ (ρ : Env L.Val (eraseVCtx _)) {v},
+            v ∈ (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L) σ
+              (projectViewEnv (P := P) (L := L) owner ρ)).support →
+              evalGuard (Player := P) (L := L) R v ρ = true) ∧
+          ProgramBehavioralStrategyPMF.IsLegal (who := owner) k
+            (ProgramBehavioralStrategyPMF.tailOwn (P := P) (L := L) σ)
+      · exact ProgramBehavioralStrategyPMF.IsLegal (who := who) k
+          (ProgramBehavioralStrategyPMF.tail (P := P) (L := L) σ)
+  | who, _, .reveal _ _ _ _ k, .reveal σ =>
+      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+
+/-- A PMF behavioral profile is legal when each player's PMF strategy is
+guard-legal. -/
+def ProgramBehavioralProfilePMF.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (σ : ProgramBehavioralProfilePMF (P := P) (L := L) p) : Prop :=
+  ∀ who, (σ who).IsLegal p
+
+/-- Guard-legal PMF behavioral strategies over a checked program bundle. -/
+abbrev LegalProgramBehavioralStrategyPMF (g : WFProgram P L) (who : P) : Type :=
+  { s : ProgramBehavioralStrategyPMF (P := P) (L := L) who g.prog //
+    s.IsLegal g.prog }
+
+/-- Guard-legal joint PMF behavioral profiles over a checked program bundle. -/
+abbrev LegalProgramBehavioralProfilePMF (g : WFProgram P L) : Type :=
+  ∀ who, LegalProgramBehavioralStrategyPMF g who
 
 /-! ## PMF behavioral outcome distribution -/
 
@@ -311,6 +377,27 @@ noncomputable def toPMFProfile :
 
 end ProgramBehavioralProfile
 
+private theorem mem_fdist_support_of_mem_toPMF_support
+    {α : Type} [DecidableEq α] {d : FDist α} {h : d.totalWeight = 1} {a : α}
+    (ha : a ∈ (d.toPMF h).support) :
+    a ∈ d.support := by
+  rw [PMF.mem_support_iff, FDist.toPMF_apply] at ha
+  rw [Finsupp.mem_support_iff]
+  intro hzero
+  exact ha (by rw [hzero, NNRat.toNNReal_zero]; rfl)
+
+theorem ProgramBehavioralKernelPMF.ofFDist_IsLegalAt
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    (κ : ProgramBehavioralKernel (P := P) (L := L) who Γ b)
+    (hκ : κ.IsLegalAt R) :
+    (ProgramBehavioralKernelPMF.ofFDist (P := P) (L := L) κ).IsLegalAt R := by
+  intro ρ v hv
+  exact hκ ρ v
+    (mem_fdist_support_of_mem_toPMF_support
+      (d := κ.run (projectViewEnv (P := P) (L := L) who ρ))
+      (h := κ.normalized (projectViewEnv (P := P) (L := L) who ρ)) hv)
+
 /-! ## Agreement: pure lift through PMF = outcomeDistPure.toPMF -/
 
 /-- Running the PMF behavioral lift of a pure profile yields the same outcome
@@ -422,5 +509,33 @@ theorem outcomeDistBehavioralPMF_toPMFProfile_eq
   | reveal y who x hx k ih =>
       simpa [outcomeDistBehavioralPMF, outcomeDistBehavioral,
         ProgramBehavioralProfile.toPMFProfile] using ih σ _ hd
+
+/-! ## Checked PMF behavioral kernel game -/
+
+/-- PMF-valued behavioral kernel game for a checked Vegas program.
+
+Unlike `toKernelGame`, this game uses `PMF` behavioral strategies directly.
+That matters for Kuhn mixed-to-behavioral results: an arbitrary mixed strategy
+over pure profiles can induce real-valued behavioral probabilities, which need
+not be representable by Vegas' rational `FDist` kernels. -/
+noncomputable def toKernelGamePMF (g : WFProgram P L) : GameTheory.KernelGame P where
+  Strategy := LegalProgramBehavioralStrategyPMF g
+  Outcome := Outcome P
+  utility := fun o i => (o i : ℝ)
+  outcomeKernel := fun σ =>
+    outcomeDistBehavioralPMF g.prog g.normalized (fun i => (σ i).val) g.env
+
+@[simp] theorem toKernelGamePMF_outcomeKernel
+    (g : WFProgram P L) (σ : LegalProgramBehavioralProfilePMF g) :
+    (toKernelGamePMF g).outcomeKernel σ =
+      outcomeDistBehavioralPMF g.prog g.normalized (fun i => (σ i).val) g.env := rfl
+
+@[simp] theorem toKernelGamePMF_udist
+    (g : WFProgram P L) (σ : LegalProgramBehavioralProfilePMF g) :
+    (toKernelGamePMF g).udist σ =
+      PMF.map (fun o : Outcome P => fun i => (o i : ℝ))
+        (outcomeDistBehavioralPMF g.prog g.normalized
+          (fun i => (σ i).val) g.env) := by
+  rfl
 
 end Vegas
