@@ -2612,6 +2612,300 @@ theorem cursorProgramTransition_map_checkedWorld
               (a := ProgramJointAction.toAction a.1)
               (ha := CursorProgramJointActionLegal.toAction a.2)
 
+private theorem pmf_map_apply_of_injective
+    {α β : Type} (p : PMF α) (f : α → β)
+    (hf : Function.Injective f) (a : α) :
+    (PMF.map f p) (f a) = p a := by
+  rw [PMF.map_apply]
+  rw [tsum_eq_single a]
+  · simp
+  · intro b hb
+    have hne : f a ≠ f b := fun h => hb (hf h).symm
+    simp [hne]
+
+private theorem pmf_map_massInvariant_of_injective
+    {α β : Type} (p₁ p₂ : PMF α) (f : α → β)
+    (hf : Function.Injective f) (b : β)
+    (h₁ : (PMF.map f p₁) b ≠ 0)
+    (h₂ : (PMF.map f p₂) b ≠ 0)
+    (hp : ∀ a, p₁ a ≠ 0 → p₂ a ≠ 0 → p₁ a = p₂ a) :
+    (PMF.map f p₁) b = (PMF.map f p₂) b := by
+  have hmem₁ : b ∈ (PMF.map f p₁).support := by
+    rw [PMF.mem_support_iff]
+    exact h₁
+  rw [PMF.support_map] at hmem₁
+  rcases hmem₁ with ⟨a, ha₁, hba⟩
+  rw [← hba]
+  rw [pmf_map_apply_of_injective _ f hf a]
+  rw [pmf_map_apply_of_injective _ f hf a]
+  have ha₂ : p₂ a ≠ 0 := by
+    have h₂' : (PMF.map f p₂) (f a) ≠ 0 := by
+      simpa [hba] using h₂
+    simpa [pmf_map_apply_of_injective _ f hf a] using h₂'
+  exact hp a (by simpa [PMF.mem_support_iff] using ha₁) ha₂
+
+theorem cursorTransitionState_massInvariant
+    {Γ₀ : VCtx P L} :
+    {root : VegasCore P L Γ₀} →
+    (c : ProgramCursor root) →
+    (env : VEnv L c.Γ) →
+    (valid : c.EndpointValid) →
+    (a₁ a₂ : JointAction P L) →
+    (ha₁ : JointActionLegal
+      ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a₁) →
+    (ha₂ : JointActionLegal
+      ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a₂) →
+    (dst : CursorRuntimeState root) →
+    cursorTransitionState c env valid a₁ ha₁ dst ≠ 0 →
+    cursorTransitionState c env valid a₂ ha₂ dst ≠ 0 →
+      cursorTransitionState c env valid a₁ ha₁ dst =
+        cursorTransitionState c env valid a₂ ha₂ dst
+  | .ret payoffs, .here, env, valid, a₁, a₂, ha₁, _ha₂, dst, _h₁, _h₂ =>
+      False.elim (ha₁.1 (by simp [ProgramCursor.prog, terminal]))
+  | .letExpr x e k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      simp [cursorTransitionState] at h₁ h₂ ⊢
+  | .sample x D k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      simp [cursorTransitionState]
+  | .commit x who R k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      simp [cursorTransitionState] at h₁ h₂ ⊢
+      subst dst
+      simp [h₂]
+  | .reveal y who x hx k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      simp [cursorTransitionState] at h₁ h₂ ⊢
+  | .letExpr x e k, .letExpr c, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      let wrap : CursorRuntimeState k → CursorRuntimeState (.letExpr x e k) :=
+        fun s =>
+          { cursor := ProgramCursor.letExpr s.cursor
+            env := s.env
+            valid := by simpa [ProgramCursor.EndpointValid] using s.valid }
+      have hinj : Function.Injective wrap := by
+        intro s t h
+        cases s
+        cases t
+        cases h
+        rfl
+      have hmem₁ : dst ∈ (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))).support := by
+        rw [PMF.mem_support_iff]
+        simpa [cursorTransitionState, wrap] using h₁
+      rw [PMF.support_map] at hmem₁
+      rcases hmem₁ with ⟨s₁, hs₁, hdst₁⟩
+      rw [← hdst₁]
+      change (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))) (wrap s₁) =
+        (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+            (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁)
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      have hs₂ : cursorTransitionState c env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+          (by simpa [ProgramCursor.EndpointValid] using ha₂) s₁ ≠ 0 := by
+        have h₂' : (PMF.map wrap
+            (cursorTransitionState c env
+              (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+              (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁) ≠ 0 := by
+          simpa [cursorTransitionState, wrap, hdst₁] using h₂
+        simpa [pmf_map_apply_of_injective _ wrap hinj s₁] using h₂'
+      exact cursorTransitionState_massInvariant c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        a₁ a₂
+        (by simpa [ProgramCursor.EndpointValid] using ha₁)
+        (by simpa [ProgramCursor.EndpointValid] using ha₂)
+        s₁ (by simpa [PMF.mem_support_iff] using hs₁) hs₂
+  | .sample x D k, .sample c, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      let wrap : CursorRuntimeState k → CursorRuntimeState (.sample x D k) :=
+        fun s =>
+          { cursor := ProgramCursor.sample s.cursor
+            env := s.env
+            valid := by simpa [ProgramCursor.EndpointValid] using s.valid }
+      have hinj : Function.Injective wrap := by
+        intro s t h
+        cases s
+        cases t
+        cases h
+        rfl
+      have hmem₁ : dst ∈ (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))).support := by
+        rw [PMF.mem_support_iff]
+        simpa [cursorTransitionState, wrap] using h₁
+      rw [PMF.support_map] at hmem₁
+      rcases hmem₁ with ⟨s₁, hs₁, hdst₁⟩
+      rw [← hdst₁]
+      change (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))) (wrap s₁) =
+        (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+            (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁)
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      have hs₂ : cursorTransitionState c env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+          (by simpa [ProgramCursor.EndpointValid] using ha₂) s₁ ≠ 0 := by
+        have h₂' : (PMF.map wrap
+            (cursorTransitionState c env
+              (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+              (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁) ≠ 0 := by
+          simpa [cursorTransitionState, wrap, hdst₁] using h₂
+        simpa [pmf_map_apply_of_injective _ wrap hinj s₁] using h₂'
+      exact cursorTransitionState_massInvariant c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        a₁ a₂
+        (by simpa [ProgramCursor.EndpointValid] using ha₁)
+        (by simpa [ProgramCursor.EndpointValid] using ha₂)
+        s₁ (by simpa [PMF.mem_support_iff] using hs₁) hs₂
+  | .commit x who R k, .commit c, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      let wrap : CursorRuntimeState k → CursorRuntimeState (.commit x who R k) :=
+        fun s =>
+          { cursor := ProgramCursor.commit s.cursor
+            env := s.env
+            valid := by simpa [ProgramCursor.EndpointValid] using s.valid }
+      have hinj : Function.Injective wrap := by
+        intro s t h
+        cases s
+        cases t
+        cases h
+        rfl
+      have hmem₁ : dst ∈ (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))).support := by
+        rw [PMF.mem_support_iff]
+        simpa [cursorTransitionState, wrap] using h₁
+      rw [PMF.support_map] at hmem₁
+      rcases hmem₁ with ⟨s₁, hs₁, hdst₁⟩
+      rw [← hdst₁]
+      change (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))) (wrap s₁) =
+        (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+            (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁)
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      have hs₂ : cursorTransitionState c env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+          (by simpa [ProgramCursor.EndpointValid] using ha₂) s₁ ≠ 0 := by
+        have h₂' : (PMF.map wrap
+            (cursorTransitionState c env
+              (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+              (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁) ≠ 0 := by
+          simpa [cursorTransitionState, wrap, hdst₁] using h₂
+        simpa [pmf_map_apply_of_injective _ wrap hinj s₁] using h₂'
+      exact cursorTransitionState_massInvariant c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        a₁ a₂
+        (by simpa [ProgramCursor.EndpointValid] using ha₁)
+        (by simpa [ProgramCursor.EndpointValid] using ha₂)
+        s₁ (by simpa [PMF.mem_support_iff] using hs₁) hs₂
+  | .reveal y who x hx k, .reveal c, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
+      let wrap : CursorRuntimeState k → CursorRuntimeState (.reveal y who x hx k) :=
+        fun s =>
+          { cursor := ProgramCursor.reveal s.cursor
+            env := s.env
+            valid := by simpa [ProgramCursor.EndpointValid] using s.valid }
+      have hinj : Function.Injective wrap := by
+        intro s t h
+        cases s
+        cases t
+        cases h
+        rfl
+      have hmem₁ : dst ∈ (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))).support := by
+        rw [PMF.mem_support_iff]
+        simpa [cursorTransitionState, wrap] using h₁
+      rw [PMF.support_map] at hmem₁
+      rcases hmem₁ with ⟨s₁, hs₁, hdst₁⟩
+      rw [← hdst₁]
+      change (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₁
+            (by simpa [ProgramCursor.EndpointValid] using ha₁))) (wrap s₁) =
+        (PMF.map wrap
+          (cursorTransitionState c env
+            (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+            (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁)
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      rw [pmf_map_apply_of_injective _ wrap hinj s₁]
+      have hs₂ : cursorTransitionState c env
+          (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+          (by simpa [ProgramCursor.EndpointValid] using ha₂) s₁ ≠ 0 := by
+        have h₂' : (PMF.map wrap
+            (cursorTransitionState c env
+              (by simpa [ProgramCursor.EndpointValid] using valid) a₂
+              (by simpa [ProgramCursor.EndpointValid] using ha₂))) (wrap s₁) ≠ 0 := by
+          simpa [cursorTransitionState, wrap, hdst₁] using h₂
+        simpa [pmf_map_apply_of_injective _ wrap hinj s₁] using h₂'
+      exact cursorTransitionState_massInvariant c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        a₁ a₂
+        (by simpa [ProgramCursor.EndpointValid] using ha₁)
+        (by simpa [ProgramCursor.EndpointValid] using ha₂)
+        s₁ (by simpa [PMF.mem_support_iff] using hs₁) hs₂
+
+theorem CursorRuntimeState.toChecked_injective
+    {g : WFProgram P L} :
+    Function.Injective (CursorRuntimeState.toChecked (g := g)) := by
+  intro s t h
+  cases s
+  cases t
+  cases h
+  rfl
+
+theorem cursorProgramTransition_massInvariant
+    {g : WFProgram P L}
+    (w : CursorCheckedWorld g)
+    (a₁ a₂ : {a : ProgramJointAction g //
+      CursorProgramJointActionLegal w a})
+    (dst : CursorCheckedWorld g)
+    (h₁ : cursorProgramTransition w a₁ dst ≠ 0)
+    (h₂ : cursorProgramTransition w a₂ dst ≠ 0) :
+    cursorProgramTransition w a₁ dst =
+      cursorProgramTransition w a₂ dst := by
+  cases w with
+  | mk data valid =>
+      cases data with
+      | mk cursor env =>
+          let hv : cursor.EndpointValid := by
+            simpa [CursorWorldData.Valid, CursorWorldData.prog,
+              ProgramCursor.EndpointValid] using valid
+          let p₁ :=
+            cursorTransitionState cursor env hv
+              (ProgramJointAction.toAction a₁.1)
+              (CursorProgramJointActionLegal.toAction a₁.2)
+          let p₂ :=
+            cursorTransitionState cursor env hv
+              (ProgramJointAction.toAction a₂.1)
+              (CursorProgramJointActionLegal.toAction a₂.2)
+          change (PMF.map CursorRuntimeState.toChecked p₁) dst =
+            (PMF.map CursorRuntimeState.toChecked p₂) dst
+          exact pmf_map_massInvariant_of_injective p₁ p₂
+            CursorRuntimeState.toChecked
+            CursorRuntimeState.toChecked_injective dst
+            (by simpa [cursorProgramTransition, p₁, hv] using h₁)
+            (by simpa [cursorProgramTransition, p₂, hv] using h₂)
+            (fun s hs₁ hs₂ =>
+              cursorTransitionState_massInvariant cursor env hv
+                (ProgramJointAction.toAction a₁.1)
+                (ProgramJointAction.toAction a₂.1)
+                (CursorProgramJointActionLegal.toAction a₁.2)
+                (CursorProgramJointActionLegal.toAction a₂.2)
+                s hs₁ hs₂)
+
 set_option linter.flexible false in
 /-- Every supported cursor-recursive transition consumes exactly one
 operational syntax node. -/

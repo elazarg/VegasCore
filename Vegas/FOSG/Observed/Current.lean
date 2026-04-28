@@ -509,6 +509,25 @@ theorem currentProgramStep_actionDeterministic_of_active_empty
     a = a' :=
   currentProgramJointAction_eq_of_active_empty w a a' hactive
 
+theorem currentProgramStep_massInvariant
+    (g : WFProgram P L) (w dst : CursorCheckedWorld g)
+    (a₁ a₂ : ∀ who,
+      CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (h₁ : currentProgramStep g w a₁ dst ≠ 0)
+    (h₂ : currentProgramStep g w a₂ dst ≠ 0) :
+    currentProgramStep g w a₁ dst =
+      currentProgramStep g w a₂ dst := by
+  by_cases hterm : CursorCheckedWorld.terminal w
+  · simp [currentProgramStep_terminal, hterm]
+  · rw [currentProgramStep_nonterminal g w a₁ hterm] at h₁ ⊢
+    rw [currentProgramStep_nonterminal g w a₂ hterm] at h₂ ⊢
+    exact cursorProgramTransition_massInvariant w
+      ⟨currentProgramJointActionRaw w a₁,
+        currentProgramJointActionLegal w a₁ hterm⟩
+      ⟨currentProgramJointActionRaw w a₂,
+        currentProgramJointActionLegal w a₂ hterm⟩
+      dst h₁ h₂
+
 /-- Kuhn core model whose information state is exactly Vegas' current private
 observation. Its behavioral profiles are the semantic target for total
 Vegas-view PMF behavioral strategies. -/
@@ -522,6 +541,36 @@ noncomputable def currentObsModel
   machine :=
     { init := CursorCheckedWorld.initial g _hctx
       step := fun w a => currentProgramStep g w a }
+
+theorem currentObsModel_stepMassInvariant
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (LF : FiniteValuation L) :
+    letI : ∀ who obs, Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    ObsModelCore.StepMassInvariant (currentObsModel g hctx) := by
+  letI : ∀ who obs, Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  intro ss t π₁ π₂ h₁ h₂
+  let w := (currentObsModel g hctx).lastState ss
+  let a₁ : ∀ who,
+      CurrentProgramMove g who ((currentObsModel g hctx).observe who w) :=
+    fun who =>
+      (currentObsModel g hctx).currentObs_projectStates who ss ▸
+        π₁ who ((currentObsModel g hctx).projectStates who ss)
+  let a₂ : ∀ who,
+      CurrentProgramMove g who ((currentObsModel g hctx).observe who w) :=
+    fun who =>
+      (currentObsModel g hctx).currentObs_projectStates who ss ▸
+        π₂ who ((currentObsModel g hctx).projectStates who ss)
+  have h₁' : currentProgramStep g w a₁ t ≠ 0 := by
+    simpa [ObsModelCore.pureStep_eq, w, a₁, currentObsModel,
+      ObsModelCore.step] using h₁
+  have h₂' : currentProgramStep g w a₂ t ≠ 0 := by
+    simpa [ObsModelCore.pureStep_eq, w, a₂, currentObsModel,
+      ObsModelCore.step] using h₂
+  simpa [ObsModelCore.pureStep_eq, w, a₁, a₂, currentObsModel,
+    ObsModelCore.step] using
+      currentProgramStep_massInvariant g w t a₁ a₂ h₁' h₂'
 
 /-- The PMF kernel obtained by reading a current-observation behavioral
 profile at one owned commit cursor. -/
@@ -617,10 +666,10 @@ theorem currentLocalMixedPureProfile_joint
 /-- Semantic M→B specialized to the current-observation model.
 
 This is the direct GameTheory Kuhn theorem applied to Vegas' current private
-observations. The remaining model obligations are exactly the semantic
-ones needed by GameTheory's core theorem: step mass invariance and full
-observation-local feasibility. It states preservation of the current-model run
-distribution, not yet the final Vegas outcome distribution. -/
+observations. Step mass invariance is discharged by the cursor transition
+semantics; the remaining model obligation is full observation-local
+feasibility. It states preservation of the current-model run distribution, not
+yet the final Vegas outcome distribution. -/
 theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
     [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -632,7 +681,6 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
     letI : ∀ who obs,
         Fintype (CurrentProgramMove g who obs) :=
       fun who obs => CurrentProgramMove.instFintype g LF who obs
-    ObsModelCore.StepMassInvariant (currentObsModel g hctx) →
     (∀ who, ObsModelCore.ObsLocalFeasibilityFull
       (currentObsModel g hctx) who) →
     ∃ β : ObsModelCore.BehavioralProfile (currentObsModel g hctx),
@@ -648,7 +696,9 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
   letI : ∀ who obs,
       Fintype (CurrentProgramMove g who obs) :=
     fun who obs => CurrentProgramMove.instFintype g LF who obs
-  intro hMass hObsLocal
+  intro hObsLocal
+  have hMass : ObsModelCore.StepMassInvariant (currentObsModel g hctx) :=
+    currentObsModel_stepMassInvariant g hctx LF
   letI : Nonempty (LegalProgramPureProfile g) :=
     LegalProgramPureProfile.instNonempty_of_wfctx g hctx
   let fallback : LegalProgramPureProfile g := Classical.choice inferInstance
