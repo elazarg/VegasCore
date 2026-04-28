@@ -5871,30 +5871,42 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
     [∀ who : P, Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
     (hMass : GameTheory.FOSG.Kuhn.ReachableHistoryStepMassInvariant
-      (G := observedProgramFOSG (P := P) (L := L) g hctx))
+      (G := observedProgramFOSG (P := P) (L := L) g hctx)
+      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
     (hFactor : GameTheory.FOSG.Kuhn.ReachableHistoryStepSupportFactorization
-      (G := observedProgramFOSG (P := P) (L := L) g hctx))
+      (G := observedProgramFOSG (P := P) (L := L) g hctx)
+      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
     (hLocal : ∀ who,
       GameTheory.FOSG.Kuhn.ReachableHistoryActionPosteriorLocal
-        (G := observedProgramFOSG (P := P) (L := L) g hctx) who)
+        (G := observedProgramFOSG (P := P) (L := L) g hctx)
+        (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx) who)
     (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
-      (G := observedProgramFOSG (P := P) (L := L) g hctx))
-    (hμ : GameTheory.FOSG.Kuhn.IsLegalReachableMixedProfile
-      (G := observedProgramFOSG (P := P) (L := L) g hctx) μ) :
+      (G := observedProgramFOSG (P := P) (L := L) g hctx)) :
+    ∃ βcore :
+      (GameTheory.FOSG.Kuhn.toReachableHistoryObsModelCore
+        (observedProgramFOSG g hctx)
+        (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)).BehavioralProfile,
     ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      β.toProfile =
+        GameTheory.FOSG.Kuhn.eraseReachableHistoryBehavioral
+          (G := observedProgramFOSG (P := P) (L := L) g hctx)
+          (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
+          βcore ∧
       GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist
           (G := observedProgramFOSG (P := P) (L := L) g hctx)
-          (syntaxSteps g.prog) β.toProfile =
+          (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
+          (syntaxSteps g.prog) βcore =
         (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
           (G := observedProgramFOSG (P := P) (L := L) g hctx) μ).bind
           (fun π =>
             GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
               (G := observedProgramFOSG (P := P) (L := L) g hctx)
+              (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
               (syntaxSteps g.prog) π) := by
   exact GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral
     (G := observedProgramFOSG (P := P) (L := L) g hctx)
     (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
-    hMass hFactor hLocal μ hμ (syntaxSteps g.prog)
+    hMass hFactor hLocal μ (syntaxSteps g.prog)
 
 end Observed
 
