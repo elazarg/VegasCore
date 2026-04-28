@@ -31,6 +31,50 @@ abbrev CurrentProgramMove
         oi ∈ CursorCheckedWorld.availableProgramMovesAt
           w.1.prog w.1.env w.1.suffix who }
 
+/-- Rebuild a visibility-annotated environment from its erased version.
+
+The operation is used only for player views: current-observation strategies are
+indexed by `PrivateObs`, while ordinary Vegas behavioral kernels are indexed by
+the erased `ViewEnv`. -/
+def VEnv.ofErased {Γ : VCtx P L}
+    (env : Env L.Val (eraseVCtx Γ)) : VEnv L Γ :=
+  fun x τ h => env x τ.base h.toErased
+
+omit [DecidableEq P] in
+theorem VEnv.eraseEnv_ofErased {Γ : VCtx P L}
+    (hctx : WFCtx Γ) (env : Env L.Val (eraseVCtx Γ)) :
+    VEnv.eraseEnv (Player := P) (L := L) (VEnv.ofErased env : VEnv L Γ) =
+      env := by
+  induction Γ with
+  | nil =>
+      funext x τ h
+      cases h
+  | cons hd tl ih =>
+      obtain ⟨y, σ⟩ := hd
+      funext x τ h
+      cases h with
+      | here => rfl
+      | there htail =>
+          have htailCtx : WFCtx tl := WFCtx.tail hctx
+          have hrec := ih htailCtx (fun x τ h => env x τ (.there h))
+          exact congrFun (congrFun (congrFun hrec x) τ) htail
+
+/-- Current private observation reconstructed from an ordinary erased Vegas
+view at a known program cursor. -/
+def privateObsOfViewAtCursor
+    {g : WFProgram P L} (who : P) (c : ProgramCursor g.prog)
+    (view : ViewEnv who c.Γ) : PrivateObs g who where
+  cursor := c
+  env := VEnv.ofErased view
+
+@[simp] theorem privateObsOfViewAtCursor_eraseEnv
+    {g : WFProgram P L} (who : P) (c : ProgramCursor g.prog)
+    (hctx : WFCtx c.Γ) (view : ViewEnv who c.Γ) :
+    VEnv.eraseEnv (Player := P) (L := L)
+        (privateObsOfViewAtCursor who c view).env =
+      view :=
+  VEnv.eraseEnv_ofErased (P := P) (WFCtx.viewVCtx (p := who) hctx) view
+
 namespace CurrentProgramMove
 
 @[simp] theorem val_mk
