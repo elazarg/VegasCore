@@ -20,23 +20,23 @@ noncomputable def moveAtProgramCursor
     (who : P)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
-    (view : ViewEnv (P := P) (L := L) who Γ) :
-    PMF (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    (view : ViewEnv who Γ) :
+    PMF (Option (ProgramAction g.prog who)) :=
   match p with
   | .commit x owner (b := b) R k =>
       if howner : owner = who then
         by
           cases howner
-          let σp : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k) :=
+          let σp : ProgramBehavioralProfile (.commit x who R k) :=
             suffix.behavioralProfile (fun i => (σ i).val)
-          let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L) (σp who) view
+          let d := ProgramBehavioralStrategy.headKernel (σp who) view
           have hd :
               FDist.totalWeight d = 1 :=
             ProgramBehavioralStrategy.headKernel_normalized
-              (P := P) (L := L) (σp who) view
+              (σp who) view
           exact PMF.map
             (fun v => some
-              (ProgramAction.commitAt (P := P) (L := L) suffix v))
+              (ProgramAction.commitAt suffix v))
             (d.toPMF hd)
       else
         PMF.pure none
@@ -48,19 +48,19 @@ noncomputable def moveAtProgramCursor
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
-    (view : ViewEnv (P := P) (L := L) who Γ) :
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (view : ViewEnv who Γ) :
     moveAtProgramCursor g hctx σ who suffix view =
       by
-        let σp : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k) :=
+        let σp : ProgramBehavioralProfile (.commit x who R k) :=
           suffix.behavioralProfile (fun i => (σ i).val)
-        let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L) (σp who) view
+        let d := ProgramBehavioralStrategy.headKernel (σp who) view
         have hd : FDist.totalWeight d = 1 :=
           ProgramBehavioralStrategy.headKernel_normalized
-            (P := P) (L := L) (σp who) view
+            (σp who) view
         exact PMF.map
           (fun v => some
-            (ProgramAction.commitAt (P := P) (L := L) suffix v))
+            (ProgramAction.commitAt suffix v))
           (d.toPMF hd) := by
   simp [moveAtProgramCursor]
 
@@ -84,9 +84,9 @@ theorem headKernel_supported_atCursor
     FDist.Supported
       (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
         ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-        (projectViewEnv (P := P) (L := L) who ρ))
+        (projectViewEnv who ρ))
       (fun v => evalGuard (Player := P) (L := L) R v ρ = true) := by
-  let raw : ProgramBehavioralProfile (P := P) (L := L) g.prog :=
+  let raw : ProgramBehavioralProfile g.prog :=
     fun i => (σ i).val
   have hraw : raw.IsLegal := fun i => (σ i).2
   have hcursor : (suffix.behavioralProfile raw).IsLegal :=
@@ -98,8 +98,8 @@ theorem headKernel_supported_atCursor
 noncomputable def moveAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
-    PMF (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    (who : P) (w : CursorCheckedWorld g) :
+    PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursor g hctx σ who w.1.suffix
     (projectViewEnv who (VEnv.eraseEnv w.1.env))
 
@@ -107,31 +107,31 @@ noncomputable def moveAtCheckedWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
     (who : P) (w : CheckedWorld g hctx) :
-    PMF (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursor g hctx σ who w.suffix
     (projectViewEnv who (VEnv.eraseEnv w.env))
 
 @[simp] theorem moveAtCheckedWorld_ofCursorChecked
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
-    moveAtCheckedWorld (P := P) (L := L) g hctx σ who
-        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx) w) =
-      moveAtCursorWorld (P := P) (L := L) g hctx σ who w := rfl
+    (who : P) (w : CursorCheckedWorld g) :
+    moveAtCheckedWorld g hctx σ who
+        (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
+      moveAtCursorWorld g hctx σ who w := rfl
 
 set_option linter.flexible false in
 theorem moveAtProgramCursor_support_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog p)
+    (suffix : ProgramSuffix g.prog p)
     (env : VEnv L Γ)
-    {oi : Option (ProgramAction (P := P) (L := L) g.prog who)}
+    {oi : Option (ProgramAction g.prog who)}
     (hoi : oi ∈
       (moveAtProgramCursor g hctx σ who suffix
         (projectViewEnv who (VEnv.eraseEnv env))).support) :
     oi ∈ CursorCheckedWorld.availableProgramMovesAt
-      (P := P) (L := L) p env suffix who := by
+      p env suffix who := by
   cases p with
   | ret payoffs =>
       have hoiNone : oi = none := by
@@ -159,17 +159,17 @@ theorem moveAtProgramCursor_support_availableAt
         let d :=
           ProgramBehavioralStrategy.headKernel (P := P) (L := L)
             ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-            (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
+            (projectViewEnv who (VEnv.eraseEnv env))
         have hd :
             FDist.totalWeight d = 1 :=
           ProgramBehavioralStrategy.headKernel_normalized
             (P := P) (L := L)
             ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-            (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env))
+            (projectViewEnv who (VEnv.eraseEnv env))
         have hoi' :
             ∃ v, ¬(d.toPMF hd) v = 0 ∧
               some
-                (ProgramAction.commitAt (P := P) (L := L) suffix v) = oi := by
+                (ProgramAction.commitAt suffix v) = oi := by
           simpa [moveAtProgramCursor, d, hd] using hoi
         rcases hoi' with ⟨v, hvprob, hvo⟩
         rw [← hvo]
@@ -187,7 +187,7 @@ theorem moveAtProgramCursor_support_availableAt
           Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
         constructor
         · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
-              (P := P) (L := L) suffix, ?_⟩, hguard⟩⟩
+              suffix, ?_⟩, hguard⟩⟩
           exact cast_heq _ v
         · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
           · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
@@ -201,13 +201,13 @@ theorem moveAtProgramCursor_support_availableAt
 theorem moveAtCursorWorld_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
-    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g)
-    {oi : Option (ProgramAction (P := P) (L := L) g.prog who)}
+    (who : P) (w : CursorCheckedWorld g)
+    {oi : Option (ProgramAction g.prog who)}
     (hoi : oi ∈ (moveAtCursorWorld g hctx σ who w).support) :
     oi ∈ (observedProgramFOSG g hctx).availableMovesAtState w who := by
   have hlocal :=
     moveAtProgramCursor_support_availableAt
-      (P := P) (L := L) g hctx σ who w.1.suffix w.1.env hoi
+      g hctx σ who w.1.suffix w.1.env hoi
   cases oi with
   | none =>
       simpa [moveAtCursorWorld, observedProgramFOSG,

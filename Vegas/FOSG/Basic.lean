@@ -83,31 +83,31 @@ def syntaxSteps :
 @[simp] theorem syntaxSteps_ret
     {Γ : VCtx P L}
     (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
-    syntaxSteps (P := P) (L := L) (.ret payoffs) = 0 := rfl
+    syntaxSteps (.ret payoffs) = 0 := rfl
 
 @[simp] theorem syntaxSteps_letExpr
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    syntaxSteps (P := P) (L := L) (.letExpr x e k) = syntaxSteps k + 1 := rfl
+    syntaxSteps (.letExpr x e k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_sample
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    syntaxSteps (P := P) (L := L) (.sample x D k) = syntaxSteps k + 1 := rfl
+    syntaxSteps (.sample x D k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_commit
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
-    syntaxSteps (P := P) (L := L) (.commit x who R k) = syntaxSteps k + 1 := rfl
+    syntaxSteps (.commit x who R k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_reveal
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
     {hx : VHasVar Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: Γ)} :
-    syntaxSteps (P := P) (L := L) (.reveal y who x hx k) = syntaxSteps k + 1 := rfl
+    syntaxSteps (.reveal y who x hx k) = syntaxSteps k + 1 := rfl
 
 /-- A program has no remaining syntax steps exactly at `ret`. -/
 theorem terminal_iff_syntaxSteps_eq_zero {w : World P L} :
@@ -236,9 +236,9 @@ theorem tail_isLegal
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {σ : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k)}
+    {σ : ProgramBehavioralProfile (.commit x who R k)}
     (hσ : σ.IsLegal) :
-    (ProgramBehavioralProfile.tail (P := P) (L := L) σ).IsLegal := by
+    (ProgramBehavioralProfile.tail σ).IsLegal := by
   intro j
   by_cases hj : who = j
   · subst hj
@@ -310,7 +310,7 @@ namespace CommitCursor
 /-- The value type chosen at the pointed commit site. -/
 def ty {who : P} :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      CommitCursor (P := P) (L := L) who p → L.Ty
+      CommitCursor who p → L.Ty
   | _, .commit _ _ (b := b) _ _, .here => b
   | _, .letExpr _ _ _, .letExpr c => ty c
   | _, .sample _ _ _, .sample c => ty c
@@ -320,7 +320,7 @@ def ty {who : P} :
 /-- Enumerate the commit sites owned by `who` in a fixed program. -/
 def enumerate (who : P) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-      List (CommitCursor (P := P) (L := L) who p)
+      List (CommitCursor who p)
   | _, .ret _ => []
   | _, .letExpr _ _ k => (enumerate who k).map .letExpr
   | _, .sample _ _ k => (enumerate who k).map .sample
@@ -328,7 +328,7 @@ def enumerate (who : P) :
       if h : owner = who then
         by
           have head :
-              CommitCursor (P := P) (L := L) who
+              CommitCursor who
                 (.commit x owner (b := b) R k) := by
             cases h
             exact .here
@@ -340,8 +340,8 @@ def enumerate (who : P) :
 /-- `enumerate` is complete: every cursor appears in the generated list. -/
 theorem mem_enumerate {who : P} :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      (c : CommitCursor (P := P) (L := L) who p) →
-        c ∈ enumerate (P := P) (L := L) who p
+      (c : CommitCursor who p) →
+        c ∈ enumerate who p
   | _, _, .here => by
       simp [enumerate]
   | _, _, .letExpr c => by
@@ -361,10 +361,10 @@ theorem mem_enumerate {who : P} :
 types are finite. -/
 @[reducible] noncomputable def instFintype
     (who : P) {Γ : VCtx P L} (p : VegasCore P L Γ) :
-    Fintype (CommitCursor (P := P) (L := L) who p) := by
+    Fintype (CommitCursor who p) := by
   classical
-  exact Fintype.ofList (enumerate (P := P) (L := L) who p)
-    (fun c => mem_enumerate (P := P) (L := L) c)
+  exact Fintype.ofList (enumerate who p)
+    (fun c => mem_enumerate c)
 
 end CommitCursor
 
@@ -372,14 +372,14 @@ end CommitCursor
 that site's type. This is the intended replacement alphabet for finite FOSG
 execution, avoiding any global finiteness assumption on `L.Ty`. -/
 structure ProgramAction {Γ : VCtx P L} (p : VegasCore P L Γ) (who : P) where
-  cursor : CommitCursor (P := P) (L := L) who p
+  cursor : CommitCursor who p
   value : L.Val (CommitCursor.ty cursor)
 
 namespace ProgramAction
 
 /-- Erase a program-local action to the broad structural action alphabet. -/
 def toAction {Γ : VCtx P L} {p : VegasCore P L Γ} {who : P}
-    (a : ProgramAction (P := P) (L := L) p who) : Action (P := P) L who :=
+    (a : ProgramAction p who) : Action (P := P) L who :=
   Sigma.mk (CommitCursor.ty a.cursor) a.value
 
 /-- Local decidable equality helper for program actions. Kept as an explicit
@@ -387,7 +387,7 @@ definition rather than a global instance because it is classical over the
 dependent cursor proof shape. -/
 @[reducible] noncomputable def instDecidableEq
     {Γ : VCtx P L} (p : VegasCore P L Γ) (who : P) :
-    DecidableEq (ProgramAction (P := P) (L := L) p who) :=
+    DecidableEq (ProgramAction p who) :=
   Classical.decEq _
 
 /-- Program-local actions are finite when the value types that occur in the
@@ -396,16 +396,16 @@ that the global sigma alphabet `Action L who` be finite. -/
 @[reducible] noncomputable def instFintype
     (LF : FiniteValuation L) {Γ : VCtx P L}
     (p : VegasCore P L Γ) (who : P) :
-    Fintype (ProgramAction (P := P) (L := L) p who) := by
+    Fintype (ProgramAction p who) := by
   classical
-  let _ : Fintype (CommitCursor (P := P) (L := L) who p) :=
-    CommitCursor.instFintype (P := P) (L := L) who p
-  have hVal : ∀ c : CommitCursor (P := P) (L := L) who p,
+  let _ : Fintype (CommitCursor who p) :=
+    CommitCursor.instFintype who p
+  have hVal : ∀ c : CommitCursor who p,
       Fintype (L.Val (CommitCursor.ty c)) :=
     fun c => LF.fintypeVal (CommitCursor.ty c)
   let e :
-      ProgramAction (P := P) (L := L) p who ≃
-        Sigma (fun c : CommitCursor (P := P) (L := L) who p =>
+      ProgramAction p who ≃
+        Sigma (fun c : CommitCursor who p =>
           L.Val (CommitCursor.ty c)) :=
     { toFun := fun a => ⟨a.cursor, a.value⟩
       invFun := fun a => { cursor := a.1, value := a.2 }
@@ -417,10 +417,10 @@ that the global sigma alphabet `Action L who` be finite. -/
         intro a
         cases a
         rfl }
-  let _ : ∀ c : CommitCursor (P := P) (L := L) who p,
+  let _ : ∀ c : CommitCursor who p,
       Fintype (L.Val (CommitCursor.ty c)) := hVal
   exact Fintype.ofEquiv
-    (Sigma (fun c : CommitCursor (P := P) (L := L) who p =>
+    (Sigma (fun c : CommitCursor who p =>
       L.Val (CommitCursor.ty c))) e.symm
 
 end ProgramAction
@@ -512,15 +512,15 @@ def legal
 noncomputable def pureProfile
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
-    ProgramPureProfile (P := P) (L := L) root →
-      ProgramPureProfile (P := P) (L := L) p := by
+    ProgramPureProfile root →
+      ProgramPureProfile p := by
   induction s with
   | here => intro σ; exact σ
   | letExpr s ih => intro σ; exact ih σ
   | sample s ih => intro σ; exact ih σ
   | commit s ih =>
       intro σ
-      exact ProgramPureProfile.tail (P := P) (L := L) (ih σ)
+      exact ProgramPureProfile.tail (ih σ)
   | reveal s ih => intro σ; exact ih σ
 
 @[simp] theorem pureProfile_letExpr
@@ -528,8 +528,8 @@ noncomputable def pureProfile
     {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.letExpr x e k))
-    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.letExpr x e k))
+    (σ : ProgramPureProfile root) :
     (ProgramSuffix.letExpr s).pureProfile σ =
       s.pureProfile σ := rfl
 
@@ -538,8 +538,8 @@ noncomputable def pureProfile
     {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.sample x D k))
-    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.sample x D k))
+    (σ : ProgramPureProfile root) :
     (ProgramSuffix.sample s).pureProfile σ =
       s.pureProfile σ := rfl
 
@@ -548,8 +548,8 @@ noncomputable def pureProfile
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.commit x who R k))
-    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.commit x who R k))
+    (σ : ProgramPureProfile root) :
     (ProgramSuffix.commit s).pureProfile σ =
       ProgramPureProfile.tail (P := P) (L := L)
         (s.pureProfile σ) := rfl
@@ -559,15 +559,15 @@ noncomputable def pureProfile
     {y : VarId} {who : P} {x : VarId} {b : L.Ty}
     {hx : VHasVar Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.reveal y who x hx k))
-    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.reveal y who x hx k))
+    (σ : ProgramPureProfile root) :
     (ProgramSuffix.reveal s).pureProfile σ =
       s.pureProfile σ := rfl
 
 theorem pureProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
-    {σ : ProgramPureProfile (P := P) (L := L) root}
+    {σ : ProgramPureProfile root}
     (hσ : σ.IsLegal) :
     (s.pureProfile σ).IsLegal := by
   induction s generalizing σ with
@@ -575,21 +575,21 @@ theorem pureProfile_isLegal
   | letExpr s ih => exact ih hσ
   | sample s ih => exact ih hσ
   | commit s ih =>
-      exact ProgramPureProfile.tail_isLegal (P := P) (L := L) (ih hσ)
+      exact ProgramPureProfile.tail_isLegal (ih hσ)
   | reveal s ih => exact ih hσ
 
 noncomputable def behavioralProfile
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
-    ProgramBehavioralProfile (P := P) (L := L) root →
-      ProgramBehavioralProfile (P := P) (L := L) p := by
+    ProgramBehavioralProfile root →
+      ProgramBehavioralProfile p := by
   induction s with
   | here => intro σ; exact σ
   | letExpr s ih => intro σ; exact ih σ
   | sample s ih => intro σ; exact ih σ
   | commit s ih =>
       intro σ
-      exact ProgramBehavioralProfile.tail (P := P) (L := L) (ih σ)
+      exact ProgramBehavioralProfile.tail (ih σ)
   | reveal s ih => intro σ; exact ih σ
 
 @[simp] theorem behavioralProfile_letExpr
@@ -597,8 +597,8 @@ noncomputable def behavioralProfile
     {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.letExpr x e k))
-    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.letExpr x e k))
+    (σ : ProgramBehavioralProfile root) :
     (ProgramSuffix.letExpr s).behavioralProfile σ =
       s.behavioralProfile σ := rfl
 
@@ -607,8 +607,8 @@ noncomputable def behavioralProfile
     {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
     {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.sample x D k))
-    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.sample x D k))
+    (σ : ProgramBehavioralProfile root) :
     (ProgramSuffix.sample s).behavioralProfile σ =
       s.behavioralProfile σ := rfl
 
@@ -617,8 +617,8 @@ noncomputable def behavioralProfile
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.commit x who R k))
-    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.commit x who R k))
+    (σ : ProgramBehavioralProfile root) :
     (ProgramSuffix.commit s).behavioralProfile σ =
       ProgramBehavioralProfile.tail (P := P) (L := L)
         (s.behavioralProfile σ) := rfl
@@ -628,15 +628,15 @@ noncomputable def behavioralProfile
     {y : VarId} {who : P} {x : VarId} {b : L.Ty}
     {hx : VHasVar Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: Γ)}
-    (s : ProgramSuffix (P := P) (L := L) root (.reveal y who x hx k))
-    (σ : ProgramBehavioralProfile (P := P) (L := L) root) :
+    (s : ProgramSuffix root (.reveal y who x hx k))
+    (σ : ProgramBehavioralProfile root) :
     (ProgramSuffix.reveal s).behavioralProfile σ =
       s.behavioralProfile σ := rfl
 
 theorem behavioralProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
-    {σ : ProgramBehavioralProfile (P := P) (L := L) root}
+    {σ : ProgramBehavioralProfile root}
     (hσ : σ.IsLegal) :
     (s.behavioralProfile σ).IsLegal := by
   induction s generalizing σ with
@@ -644,16 +644,16 @@ theorem behavioralProfile_isLegal
   | letExpr s ih => exact ih hσ
   | sample s ih => exact ih hσ
   | commit s ih =>
-      exact ProgramBehavioralProfile.tail_isLegal (P := P) (L := L) (ih hσ)
+      exact ProgramBehavioralProfile.tail_isLegal (ih hσ)
   | reveal s ih => exact ih hσ
 
 theorem behavioralProfile_toBehavioral
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
-    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (σ : ProgramPureProfile root) :
     s.behavioralProfile
-        (ProgramPureProfile.toBehavioral (P := P) (L := L) root σ) =
-      ProgramPureProfile.toBehavioral (P := P) (L := L) p (s.pureProfile σ) := by
+        (ProgramPureProfile.toBehavioral root σ) =
+      ProgramPureProfile.toBehavioral p (s.pureProfile σ) := by
   induction s generalizing σ with
   | here => rfl
   | letExpr s ih => exact ih σ
@@ -668,8 +668,8 @@ for the original root program. -/
 noncomputable def liftCommitCursor
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) {who : P} :
-    CommitCursor (P := P) (L := L) who p →
-      CommitCursor (P := P) (L := L) who root := by
+    CommitCursor who p →
+      CommitCursor who root := by
   induction s with
   | here =>
       intro c
@@ -695,7 +695,7 @@ noncomputable def commitCursor
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     (s : ProgramSuffix root (.commit x who R k)) :
-    CommitCursor (P := P) (L := L) who root :=
+    CommitCursor who root :=
   s.liftCommitCursor .here
 
 /-- Lifting a commit cursor through a suffix preserves the commit site's value
@@ -703,7 +703,7 @@ type. -/
 theorem ty_liftCommitCursor
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) {who : P}
-    (c : CommitCursor (P := P) (L := L) who p) :
+    (c : CommitCursor who p) :
     CommitCursor.ty (s.liftCommitCursor c) = CommitCursor.ty c := by
   induction s with
   | here =>
@@ -725,11 +725,11 @@ theorem ty_commitCursor
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     (s : ProgramSuffix root (.commit x who R k)) :
-    CommitCursor.ty (commitCursor (P := P) (L := L) s) = b := by
+    CommitCursor.ty (commitCursor s) = b := by
   simpa [commitCursor, CommitCursor.ty] using
-    ty_liftCommitCursor (P := P) (L := L) (s := s)
+    ty_liftCommitCursor (s := s)
       (c := (.here :
-        CommitCursor (P := P) (L := L) who (.commit x who (b := b) R k)))
+        CommitCursor who (.commit x who (b := b) R k)))
 
 end ProgramSuffix
 
@@ -743,22 +743,22 @@ noncomputable def commitAt
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
-    (v : L.Val b) : ProgramAction (P := P) (L := L) g.prog who where
-  cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (v : L.Val b) : ProgramAction g.prog who where
+  cursor := ProgramSuffix.commitCursor suffix
   value := cast
     (congrArg L.Val
-      (ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix)).symm v
+      (ProgramSuffix.ty_commitCursor suffix)).symm v
 
 @[simp] theorem commitAt_cursor
     {g : WFProgram P L} {Γ : VCtx P L}
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
     (v : L.Val b) :
-    (commitAt (P := P) (L := L) suffix v).cursor =
-      ProgramSuffix.commitCursor (P := P) (L := L) suffix := rfl
+    (commitAt suffix v).cursor =
+      ProgramSuffix.commitCursor suffix := rfl
 
 private theorem cast_val_roundtrip {cty b : L.Ty}
     (h h' : cty = b) (v : L.Val b) :
@@ -771,13 +771,13 @@ private theorem cast_val_roundtrip {cty b : L.Ty}
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
     (v : L.Val b)
     (hty : CommitCursor.ty
-      (commitAt (P := P) (L := L) suffix v).cursor = b) :
-    hty ▸ (commitAt (P := P) (L := L) suffix v).value = v := by
+      (commitAt suffix v).cursor = b) :
+    hty ▸ (commitAt suffix v).value = v := by
   exact cast_val_roundtrip
-    (ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix) hty v
+    (ProgramSuffix.ty_commitCursor suffix) hty v
 
 end ProgramAction
 
@@ -823,7 +823,7 @@ namespace ProgramCursor
 /-- Context at the cursor target. -/
 def Γ :
     {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
-      ProgramCursor (P := P) (L := L) root → VCtx P L
+      ProgramCursor root → VCtx P L
   | Γ₀, _, .here => Γ₀
   | _, _, .letExpr c => Γ c
   | _, _, .sample c => Γ c
@@ -833,7 +833,7 @@ def Γ :
 /-- Program continuation at the cursor target. -/
 def prog :
     {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
-      (c : ProgramCursor (P := P) (L := L) root) → VegasCore P L (Γ c)
+      (c : ProgramCursor root) → VegasCore P L (Γ c)
   | _, root, .here => root
   | _, _, .letExpr c => prog c
   | _, _, .sample c => prog c
@@ -843,7 +843,7 @@ def prog :
 /-- Local proof obligations attached to a program cursor endpoint. -/
 def EndpointValid
     {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
-    (c : ProgramCursor (P := P) (L := L) root) : Prop :=
+    (c : ProgramCursor root) : Prop :=
   WFCtx c.Γ ∧ FreshBindings c.prog ∧ ViewScoped c.prog ∧
     NormalizedDists c.prog ∧ Legal c.prog
 
@@ -851,7 +851,7 @@ def EndpointValid
 def toSuffixFrom
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
-    (c : ProgramCursor (P := P) (L := L) p) →
+    (c : ProgramCursor p) →
       ProgramSuffix root (prog c)
   | .here => s
   | .letExpr c => toSuffixFrom (.letExpr s) c
@@ -862,7 +862,7 @@ def toSuffixFrom
 /-- Convert a canonical cursor to the existing proof-shaped suffix. -/
 def toSuffix
     {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
-    (c : ProgramCursor (P := P) (L := L) root) :
+    (c : ProgramCursor root) :
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
 
@@ -870,9 +870,9 @@ def toSuffix
 continuation. -/
 def extend :
     {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
-      (c : ProgramCursor (P := P) (L := L) root) →
-      ProgramCursor (P := P) (L := L) (prog c) →
-        ProgramCursor (P := P) (L := L) root
+      (c : ProgramCursor root) →
+      ProgramCursor (prog c) →
+        ProgramCursor root
   | _, _, .here, d => d
   | _, _, .letExpr c, d => .letExpr (extend c d)
   | _, _, .sample c, d => .sample (extend c d)
@@ -881,15 +881,15 @@ def extend :
 
 @[simp] theorem extend_here_left
     {Γ : VCtx P L} {root : VegasCore P L Γ}
-    (d : ProgramCursor (P := P) (L := L) root) :
-    extend (P := P) (L := L) (.here : ProgramCursor (P := P) (L := L) root) d = d := rfl
+    (d : ProgramCursor root) :
+    extend (.here : ProgramCursor root) d = d := rfl
 
 /-- Canonical cursors are finite because Vegas syntax is linear. -/
 @[reducible] noncomputable def instFintype :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-      Fintype (ProgramCursor (P := P) (L := L) p)
+      Fintype (ProgramCursor p)
   | _, .ret _ =>
-      let e : ProgramCursor (P := P) (L := L) (.ret _) ≃ Unit :=
+      let e : ProgramCursor (.ret _) ≃ Unit :=
         { toFun := fun _ => ()
           invFun := fun _ => .here
           left_inv := by
@@ -902,9 +902,9 @@ def extend :
             rfl }
       Fintype.ofEquiv Unit e.symm
   | Γ, .letExpr x (b := b) e k =>
-      let _ : Fintype (ProgramCursor (P := P) (L := L) k) := instFintype k
-      let e : ProgramCursor (P := P) (L := L) (.letExpr x (b := b) e k) ≃
-          Unit ⊕ ProgramCursor (P := P) (L := L) k :=
+      let _ : Fintype (ProgramCursor k) := instFintype k
+      let e : ProgramCursor (.letExpr x (b := b) e k) ≃
+          Unit ⊕ ProgramCursor k :=
         { toFun := fun c =>
             match c with
             | .here => Sum.inl ()
@@ -919,11 +919,11 @@ def extend :
           right_inv := by
             intro s
             cases s <;> rfl }
-      Fintype.ofEquiv (Unit ⊕ ProgramCursor (P := P) (L := L) k) e.symm
+      Fintype.ofEquiv (Unit ⊕ ProgramCursor k) e.symm
   | Γ, .sample x (b := b) D k =>
-      let _ : Fintype (ProgramCursor (P := P) (L := L) k) := instFintype k
-      let e : ProgramCursor (P := P) (L := L) (.sample x (b := b) D k) ≃
-          Unit ⊕ ProgramCursor (P := P) (L := L) k :=
+      let _ : Fintype (ProgramCursor k) := instFintype k
+      let e : ProgramCursor (.sample x (b := b) D k) ≃
+          Unit ⊕ ProgramCursor k :=
         { toFun := fun c =>
             match c with
             | .here => Sum.inl ()
@@ -938,11 +938,11 @@ def extend :
           right_inv := by
             intro s
             cases s <;> rfl }
-      Fintype.ofEquiv (Unit ⊕ ProgramCursor (P := P) (L := L) k) e.symm
+      Fintype.ofEquiv (Unit ⊕ ProgramCursor k) e.symm
   | Γ, .commit x who (b := b) R k =>
-      let _ : Fintype (ProgramCursor (P := P) (L := L) k) := instFintype k
-      let e : ProgramCursor (P := P) (L := L) (.commit x who (b := b) R k) ≃
-          Unit ⊕ ProgramCursor (P := P) (L := L) k :=
+      let _ : Fintype (ProgramCursor k) := instFintype k
+      let e : ProgramCursor (.commit x who (b := b) R k) ≃
+          Unit ⊕ ProgramCursor k :=
         { toFun := fun c =>
             match c with
             | .here => Sum.inl ()
@@ -957,11 +957,11 @@ def extend :
           right_inv := by
             intro s
             cases s <;> rfl }
-      Fintype.ofEquiv (Unit ⊕ ProgramCursor (P := P) (L := L) k) e.symm
+      Fintype.ofEquiv (Unit ⊕ ProgramCursor k) e.symm
   | Γ, .reveal y who x (b := b) hx k =>
-      let _ : Fintype (ProgramCursor (P := P) (L := L) k) := instFintype k
-      let e : ProgramCursor (P := P) (L := L) (.reveal y who x (b := b) hx k) ≃
-          Unit ⊕ ProgramCursor (P := P) (L := L) k :=
+      let _ : Fintype (ProgramCursor k) := instFintype k
+      let e : ProgramCursor (.reveal y who x (b := b) hx k) ≃
+          Unit ⊕ ProgramCursor k :=
         { toFun := fun c =>
             match c with
             | .here => Sum.inl ()
@@ -976,7 +976,7 @@ def extend :
           right_inv := by
             intro s
             cases s <;> rfl }
-      Fintype.ofEquiv (Unit ⊕ ProgramCursor (P := P) (L := L) k) e.symm
+      Fintype.ofEquiv (Unit ⊕ ProgramCursor k) e.symm
 
 end ProgramCursor
 
@@ -986,35 +986,35 @@ end ProgramCursor
 is the finite-state carrier that should replace the older suffix-based
 `CheckedWorldData` once the FOSG target is migrated. -/
 structure CursorWorldData (g : WFProgram P L) where
-  cursor : ProgramCursor (P := P) (L := L) g.prog
+  cursor : ProgramCursor g.prog
   env : VEnv L cursor.Γ
 
 namespace CursorWorldData
 
-def prog {g : WFProgram P L} (d : CursorWorldData (P := P) (L := L) g) :
+def prog {g : WFProgram P L} (d : CursorWorldData g) :
     VegasCore P L d.cursor.Γ :=
   d.cursor.prog
 
-def suffix {g : WFProgram P L} (d : CursorWorldData (P := P) (L := L) g) :
+def suffix {g : WFProgram P L} (d : CursorWorldData g) :
     ProgramSuffix g.prog d.prog :=
   d.cursor.toSuffix
 
 /-- Local proof obligations for a cursor-keyed checked world. -/
-def Valid {g : WFProgram P L} (d : CursorWorldData (P := P) (L := L) g) : Prop :=
+def Valid {g : WFProgram P L} (d : CursorWorldData g) : Prop :=
   WFCtx d.cursor.Γ ∧ FreshBindings d.prog ∧ ViewScoped d.prog ∧
     NormalizedDists d.prog ∧ Legal d.prog
 
 /-- Cursor-keyed world data is finite under finite value types. -/
 @[reducible] noncomputable def instFintype
     (g : WFProgram P L) (LF : FiniteValuation L) :
-    Fintype (CursorWorldData (P := P) (L := L) g) := by
-  let _ : Fintype (ProgramCursor (P := P) (L := L) g.prog) :=
-    ProgramCursor.instFintype (P := P) (L := L) g.prog
-  have hEnv : ∀ c : ProgramCursor (P := P) (L := L) g.prog,
+    Fintype (CursorWorldData g) := by
+  let _ : Fintype (ProgramCursor g.prog) :=
+    ProgramCursor.instFintype g.prog
+  have hEnv : ∀ c : ProgramCursor g.prog,
       Fintype (VEnv L c.Γ) := fun c => VEnv.instFintype LF
   let e :
-      CursorWorldData (P := P) (L := L) g ≃
-        Sigma (fun c : ProgramCursor (P := P) (L := L) g.prog =>
+      CursorWorldData g ≃
+        Sigma (fun c : ProgramCursor g.prog =>
           VEnv L c.Γ) :=
     { toFun := fun d => ⟨d.cursor, d.env⟩
       invFun := fun d => { cursor := d.1, env := d.2 }
@@ -1026,10 +1026,10 @@ def Valid {g : WFProgram P L} (d : CursorWorldData (P := P) (L := L) g) : Prop :
         intro d
         cases d
         rfl }
-  let _ : ∀ c : ProgramCursor (P := P) (L := L) g.prog,
+  let _ : ∀ c : ProgramCursor g.prog,
       Fintype (VEnv L c.Γ) := hEnv
   exact Fintype.ofEquiv
-    (Sigma (fun c : ProgramCursor (P := P) (L := L) g.prog => VEnv L c.Γ))
+    (Sigma (fun c : ProgramCursor g.prog => VEnv L c.Γ))
     e.symm
 
 end CursorWorldData
@@ -1037,40 +1037,40 @@ end CursorWorldData
 /-- Checked worlds over the finite cursor-keyed carrier. This is the intended
 finite world type for the final executable FOSG target. -/
 abbrev CursorCheckedWorld (g : WFProgram P L) : Type :=
-  {d : CursorWorldData (P := P) (L := L) g // d.Valid}
+  {d : CursorWorldData g // d.Valid}
 
 namespace CursorCheckedWorld
 
 /-- Forget the cursor-keyed checked obligations to the raw runtime world. -/
 def toWorld {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) : World P L where
+    (w : CursorCheckedWorld g) : World P L where
   Γ := w.1.cursor.Γ
   prog := w.1.prog
   env := w.1.env
 
 /-- Terminality for the finite cursor-keyed checked-world carrier. -/
 def terminal {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) : Prop :=
+    (w : CursorCheckedWorld g) : Prop :=
   Vegas.FOSGBridge.terminal w.toWorld
 
 /-- Active players for the finite cursor-keyed checked-world carrier. -/
 def active {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) : Finset P :=
+    (w : CursorCheckedWorld g) : Finset P :=
   Vegas.FOSGBridge.active w.toWorld
 
 /-- Broad-alphabet action availability for the finite cursor-keyed carrier. -/
 def availableActions {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) (who : P) :
+    (w : CursorCheckedWorld g) (who : P) :
     Set (Action (P := P) L who) :=
   Vegas.FOSGBridge.availableActions w.toWorld who
 
 /-- Remaining operational syntax nodes at a finite cursor-keyed checked world. -/
 def remainingSyntaxSteps {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) : Nat :=
+    (w : CursorCheckedWorld g) : Nat :=
   syntaxSteps w.1.prog
 
 theorem terminal_iff_remainingSyntaxSteps_eq_zero
-    {g : WFProgram P L} {w : CursorCheckedWorld (P := P) (L := L) g} :
+    {g : WFProgram P L} {w : CursorCheckedWorld g} :
     w.terminal ↔ w.remainingSyntaxSteps = 0 := by
   cases w with
   | mk data valid =>
@@ -1082,14 +1082,14 @@ types. `Fintype.ofFinite` avoids requiring decidability of the proof-bearing
 `Valid` predicate. -/
 @[reducible] noncomputable def instFintype
     (g : WFProgram P L) (LF : FiniteValuation L) :
-    Fintype (CursorCheckedWorld (P := P) (L := L) g) := by
-  let _ : Fintype (CursorWorldData (P := P) (L := L) g) :=
-    CursorWorldData.instFintype (P := P) (L := L) g LF
-  exact Fintype.ofFinite (CursorCheckedWorld (P := P) (L := L) g)
+    Fintype (CursorCheckedWorld g) := by
+  let _ : Fintype (CursorWorldData g) :=
+    CursorWorldData.instFintype g LF
+  exact Fintype.ofFinite (CursorCheckedWorld g)
 
 /-- Initial state for the finite cursor-keyed checked-world carrier. -/
 def initial (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    CursorCheckedWorld (P := P) (L := L) g :=
+    CursorCheckedWorld g :=
   ⟨{ cursor := .here
      env := g.env },
     by
@@ -1100,7 +1100,7 @@ end CursorCheckedWorld
 /-- Result carrier for cursor-recursive execution before reattaching the
 `WFProgram` wrapper. -/
 structure CursorRuntimeState {Γ₀ : VCtx P L} (root : VegasCore P L Γ₀) where
-  cursor : ProgramCursor (P := P) (L := L) root
+  cursor : ProgramCursor root
   env : VEnv L cursor.Γ
   valid : cursor.EndpointValid
 
@@ -1108,8 +1108,8 @@ namespace CursorRuntimeState
 
 /-- Reattach a cursor runtime state to a fixed checked program. -/
 def toChecked {g : WFProgram P L}
-    (s : CursorRuntimeState (P := P) (L := L) g.prog) :
-    CursorCheckedWorld (P := P) (L := L) g :=
+    (s : CursorRuntimeState g.prog) :
+    CursorCheckedWorld g :=
   ⟨{ cursor := s.cursor, env := s.env },
     by
       simpa [CursorWorldData.Valid, CursorWorldData.prog,
@@ -1133,23 +1133,23 @@ structure ProgramPoint {Γ₀ : VCtx P L} (root : VegasCore P L Γ₀) where
 /-- The data-bearing part of a checked world, before attaching local proof
 obligations. -/
 structure CheckedWorldData (g : WFProgram P L) where
-  point : ProgramPoint (P := P) (L := L) g.prog
+  point : ProgramPoint g.prog
   env : VEnv L point.Γ
 
 namespace CheckedWorldData
 
-def prog {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) :
+def prog {g : WFProgram P L} (d : CheckedWorldData g) :
     VegasCore P L d.point.Γ :=
   d.point.prog
 
-def suffix {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) :
+def suffix {g : WFProgram P L} (d : CheckedWorldData g) :
     ProgramSuffix g.prog d.prog :=
   d.point.suffix
 
 /-- Local proof obligations attached to a checked world. This predicate is
 separated from `CheckedWorldData` so finiteness can be proved on the data
 carrier first and then restricted to valid states. -/
-def Valid {g : WFProgram P L} (d : CheckedWorldData (P := P) (L := L) g) : Prop :=
+def Valid {g : WFProgram P L} (d : CheckedWorldData g) : Prop :=
   WFCtx d.point.Γ ∧ FreshBindings d.prog ∧ ViewScoped d.prog ∧
     NormalizedDists d.prog ∧ Legal d.prog
 
@@ -1187,7 +1187,7 @@ namespace CheckedWorld
 /-- Embed the finite cursor-keyed carrier into the current suffix-based
 `CheckedWorld` presentation. -/
 def ofCursorChecked {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CursorCheckedWorld (P := P) (L := L) g) :
+    (w : CursorCheckedWorld g) :
     CheckedWorld g hctx where
   Γ := w.1.cursor.Γ
   prog := w.1.prog
@@ -1201,7 +1201,7 @@ def ofCursorChecked {g : WFProgram P L} {hctx : WFCtx g.Γ}
 
 /-- Forget the proof obligations on a checked world. -/
 def toData {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CheckedWorld g hctx) : CheckedWorldData (P := P) (L := L) g where
+    (w : CheckedWorld g hctx) : CheckedWorldData g where
   point :=
     { Γ := w.Γ
       prog := w.prog
@@ -1210,7 +1210,7 @@ def toData {g : WFProgram P L} {hctx : WFCtx g.Γ}
 
 /-- Reattach checked-world proof obligations to data. -/
 def ofValid {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (d : CheckedWorldData (P := P) (L := L) g)
+    (d : CheckedWorldData g)
     (h : d.Valid) : CheckedWorld g hctx where
   Γ := d.point.Γ
   prog := d.prog
@@ -1225,7 +1225,7 @@ def ofValid {g : WFProgram P L} {hctx : WFCtx g.Γ}
 /-- Checked worlds are exactly valid checked-world data. -/
 def equivValidData {g : WFProgram P L} {hctx : WFCtx g.Γ} :
     CheckedWorld g hctx ≃
-      {d : CheckedWorldData (P := P) (L := L) g // d.Valid} where
+      {d : CheckedWorldData g // d.Valid} where
   toFun := fun w =>
     ⟨w.toData, by
       exact ⟨w.wctx, w.fresh, w.viewScoped, w.normalized, w.legal⟩⟩
@@ -1267,7 +1267,7 @@ namespace ProgramCursor
 presentation. This is the projection used by adapter lemmas: cursors are the
 finite implementation, while `CheckedWorld` is the semantic machine. -/
 def toCheckedWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (c : ProgramCursor (P := P) (L := L) g.prog)
+    (c : ProgramCursor g.prog)
     (env : VEnv L c.Γ) (valid : c.EndpointValid) :
     CheckedWorld g hctx where
   Γ := c.Γ
@@ -1289,14 +1289,14 @@ suffix-based checked-world presentation. This is the implementation adapter:
 the finite cursor representation is forgotten before semantic reasoning. -/
 def toCheckedWorldFrom
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (pref : ProgramCursor (P := P) (L := L) g.prog)
-    (s : CursorRuntimeState (P := P) (L := L) pref.prog) :
+    (pref : ProgramCursor g.prog)
+    (s : CursorRuntimeState pref.prog) :
     CheckedWorld g hctx where
   Γ := s.cursor.Γ
   prog := s.cursor.prog
   env := s.env
   suffix := ProgramCursor.toSuffixFrom
-    (P := P) (L := L) pref.toSuffix s.cursor
+    pref.toSuffix s.cursor
   wctx := s.valid.1
   fresh := s.valid.2.1
   viewScoped := s.valid.2.2.1
@@ -1310,14 +1310,14 @@ extra transport through prefix-cursor equality. -/
 def toCheckedWorldFromSuffix
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     {Γ : VCtx P L} {root : VegasCore P L Γ}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog root)
-    (s : CursorRuntimeState (P := P) (L := L) root) :
+    (suffix : ProgramSuffix g.prog root)
+    (s : CursorRuntimeState root) :
     CheckedWorld g hctx where
   Γ := s.cursor.Γ
   prog := s.cursor.prog
   env := s.env
   suffix := ProgramCursor.toSuffixFrom
-    (P := P) (L := L) suffix s.cursor
+    suffix s.cursor
   wctx := s.valid.1
   fresh := s.valid.2.1
   viewScoped := s.valid.2.2.1
@@ -1333,15 +1333,15 @@ suffix-based checked-world presentation. -/
 def toCheckedWorldFromSuffix
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     {Γ : VCtx P L} {root : VegasCore P L Γ}
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog root)
-    (c : ProgramCursor (P := P) (L := L) root)
+    (suffix : ProgramSuffix g.prog root)
+    (c : ProgramCursor root)
     (env : VEnv L c.Γ) (valid : c.EndpointValid) :
     CheckedWorld g hctx where
   Γ := c.Γ
   prog := c.prog
   env := env
   suffix := ProgramCursor.toSuffixFrom
-    (P := P) (L := L) suffix c
+    suffix c
   wctx := valid.1
   fresh := valid.2.1
   viewScoped := valid.2.2.1
@@ -1389,11 +1389,11 @@ abbrev CheckedJointActionLegal
 /-- Joint actions over the program-local action alphabet. -/
 abbrev ProgramJointAction (g : WFProgram P L) : Type :=
   GameTheory.JointAction
-    (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
+    (fun who : P => ProgramAction g.prog who)
 
 /-- Erase a program-local joint action to the broad structural alphabet. -/
 def ProgramJointAction.toAction {g : WFProgram P L}
-    (a : ProgramJointAction (P := P) (L := L) g) : JointAction P L :=
+    (a : ProgramJointAction g) : JointAction P L :=
   fun who => (a who).map ProgramAction.toAction
 
 namespace CursorCheckedWorld
@@ -1403,8 +1403,8 @@ transport-free version of `availableProgramActions`; the cursor-world wrapper is
 just its instantiation at the current cursor endpoint. -/
 def availableProgramActionsAt {g : WFProgram P L} {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv L Γ)
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog p) (who : P) :
-    Set (ProgramAction (P := P) (L := L) g.prog who) :=
+    (suffix : ProgramSuffix g.prog p) (who : P) :
+    Set (ProgramAction g.prog who) :=
   {a | ProgramAction.toAction a ∈
       Vegas.FOSGBridge.availableActions
         ({ Γ := Γ, prog := p, env := env } : World P L) who ∧
@@ -1426,13 +1426,13 @@ FOSG's `availableMovesAtState` without packaging the endpoint as a cursor
 world. -/
 def availableProgramMovesAt {g : WFProgram P L} {Γ : VCtx P L}
     (p : VegasCore P L Γ) (env : VEnv L Γ)
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog p) (who : P) :
-    Set (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    (suffix : ProgramSuffix g.prog p) (who : P) :
+    Set (Option (ProgramAction g.prog who)) :=
   {oi | match oi with
     | some a =>
         who ∈ Vegas.FOSGBridge.active
           ({ Γ := Γ, prog := p, env := env } : World P L) ∧
-        a ∈ availableProgramActionsAt (P := P) (L := L) p env suffix who
+        a ∈ availableProgramActionsAt p env suffix who
     | none =>
         who ∉ Vegas.FOSGBridge.active
           ({ Γ := Γ, prog := p, env := env } : World P L)}
@@ -1441,8 +1441,8 @@ def availableProgramMovesAt {g : WFProgram P L} {Γ : VCtx P L}
 a commit node, only the active owner may choose the current commit cursor paired
 with a guard-legal value. -/
 def availableProgramActions {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g) (who : P) :
-    Set (ProgramAction (P := P) (L := L) g.prog who) :=
+    (w : CursorCheckedWorld g) (who : P) :
+    Set (ProgramAction g.prog who) :=
   {a | ProgramAction.toAction a ∈ w.availableActions who ∧
     ∃ (x : VarId) (owner : P) (b : L.Ty)
       (R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool)
@@ -1462,7 +1462,7 @@ end CursorCheckedWorld
 theorem availableProgramMovesAt_eq_of_projectViewEnv_eq
     (g : WFProgram P L) (who : P)
     {Γ : VCtx P L} (p : VegasCore P L Γ)
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog p)
+    (suffix : ProgramSuffix g.prog p)
     (env₁ env₂ : VEnv L Γ)
     (hctx : WFCtx (L := L) Γ)
     (hfresh : FreshBindings p)
@@ -1470,9 +1470,9 @@ theorem availableProgramMovesAt_eq_of_projectViewEnv_eq
     (hview : projectViewEnv who (VEnv.eraseEnv env₁) =
       projectViewEnv who (VEnv.eraseEnv env₂)) :
     CursorCheckedWorld.availableProgramMovesAt
-        (P := P) (L := L) p env₁ suffix who =
+        p env₁ suffix who =
       CursorCheckedWorld.availableProgramMovesAt
-        (P := P) (L := L) p env₂ suffix who := by
+        p env₂ suffix who := by
   ext oi
   cases oi with
   | none =>
@@ -1510,10 +1510,10 @@ theorem availableProgramMovesAt_eq_of_projectViewEnv_eq
 /-- FOSG joint-action legality for the cursor-keyed program-local alphabet. -/
 abbrev CursorProgramJointActionLegal
     {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g)
-    (a : ProgramJointAction (P := P) (L := L) g) : Prop :=
+    (w : CursorCheckedWorld g)
+    (a : ProgramJointAction g) : Prop :=
   GameTheory.JointActionLegal
-    (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
+    (fun who : P => ProgramAction g.prog who)
     CursorCheckedWorld.active
     CursorCheckedWorld.terminal
     CursorCheckedWorld.availableProgramActions
@@ -1524,8 +1524,8 @@ abbrev CursorProgramJointActionLegal
 broad structural action alphabet. -/
 theorem CursorProgramJointActionLegal.toAction
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
-    {a : ProgramJointAction (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
+    {a : ProgramJointAction g}
     (ha : CursorProgramJointActionLegal w a) :
     JointActionLegal w.toWorld (ProgramJointAction.toAction a) := by
   refine ⟨ha.1, ?_⟩
@@ -1552,17 +1552,17 @@ noncomputable def commitProgramJointAction
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     (suffix : ProgramSuffix g.prog (.commit x who R k))
-    (v : L.Val b) : ProgramJointAction (P := P) (L := L) g :=
+    (v : L.Val b) : ProgramJointAction g :=
   fun i =>
     if h : i = who then
       by
         cases h
         exact some
-          ({ cursor := ProgramSuffix.commitCursor (P := P) (L := L) suffix
+          ({ cursor := ProgramSuffix.commitCursor suffix
              value := by
-               rw [ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix]
+               rw [ProgramSuffix.ty_commitCursor suffix]
                exact v } :
-            ProgramAction (P := P) (L := L) g.prog who)
+            ProgramAction g.prog who)
     else
       none
 
@@ -1615,8 +1615,8 @@ theorem commitValueOfLegal_proof_irrel
     {env : VEnv L Γ} {a : JointAction P L}
     (ha₁ ha₂ : JointActionLegal
       ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L) a) :
-    commitValueOfLegal (P := P) (L := L) ha₁ =
-      commitValueOfLegal (P := P) (L := L) ha₂ := by
+    commitValueOfLegal ha₁ =
+      commitValueOfLegal ha₂ := by
   have hproof : ha₁ = ha₂ := Subsingleton.elim ha₁ ha₂
   cases hproof
   rfl
@@ -1654,8 +1654,8 @@ theorem commitValueOfLegal_eq_action_value
     {ai : Action (P := P) L who}
     (hai : a who = some ai)
     (hty : ai.1 = b) :
-    hty ▸ ai.2 = commitValueOfLegal (P := P) (L := L) ha := by
-  have hact := commitValueOfLegal_action (P := P) (L := L) ha
+    hty ▸ ai.2 = commitValueOfLegal ha := by
+  have hact := commitValueOfLegal_action ha
   rw [hai] at hact
   cases ai with
   | mk cty val =>
@@ -1669,16 +1669,16 @@ theorem commitValueOfLegal_eq_programAction_value
     {g : WFProgram P L} {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {env : VEnv L Γ} {a : ProgramJointAction (P := P) (L := L) g}
+    {env : VEnv L Γ} {a : ProgramJointAction g}
     (ha : JointActionLegal
       ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
       (ProgramJointAction.toAction a))
-    {ai : ProgramAction (P := P) (L := L) g.prog who}
+    {ai : ProgramAction g.prog who}
     (hai : a who = some ai)
     (hty : CommitCursor.ty ai.cursor = b) :
-    hty ▸ ai.value = commitValueOfLegal (P := P) (L := L) ha := by
+    hty ▸ ai.value = commitValueOfLegal ha := by
   apply commitValueOfLegal_eq_action_value
-    (P := P) (L := L) (ai := ProgramAction.toAction ai) ha
+    (ai := ProgramAction.toAction ai) ha
   · simp [ProgramJointAction.toAction, ProgramAction.toAction, hai]
 
 theorem checked_terminal_active_eq_empty
@@ -1703,22 +1703,22 @@ theorem checked_nonterminal_exists_legal
 /-- Terminal cursor worlds have no active players. -/
 theorem cursor_terminal_active_eq_empty
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g} :
+    {w : CursorCheckedWorld g} :
     w.terminal → w.active = ∅ :=
   terminal_active_eq_empty
 
 /-- Terminal cursor worlds admit no legal program-local joint action. -/
 theorem cursor_terminal_no_program_legal
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
-    {a : ProgramJointAction (P := P) (L := L) g} :
+    {w : CursorCheckedWorld g}
+    {a : ProgramJointAction g} :
     w.terminal → ¬ CursorProgramJointActionLegal w a := by
   intro hterm hlegal
   exact hlegal.1 hterm
 
 theorem cursor_active_eq_empty_of_letExpr
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
@@ -1735,7 +1735,7 @@ theorem cursor_active_eq_empty_of_letExpr
 
 theorem cursor_not_terminal_of_letExpr
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
@@ -1752,7 +1752,7 @@ theorem cursor_not_terminal_of_letExpr
 
 theorem cursor_active_eq_empty_of_sample
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
@@ -1769,7 +1769,7 @@ theorem cursor_active_eq_empty_of_sample
 
 theorem cursor_not_terminal_of_sample
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
@@ -1786,7 +1786,7 @@ theorem cursor_not_terminal_of_sample
 
 theorem cursor_active_eq_singleton_of_commit
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
@@ -1803,7 +1803,7 @@ theorem cursor_active_eq_singleton_of_commit
 
 theorem cursor_not_terminal_of_commit
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
@@ -1820,7 +1820,7 @@ theorem cursor_not_terminal_of_commit
 
 theorem cursor_active_eq_empty_of_reveal
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {y : VarId} {who : P} {x : VarId} {b : L.Ty}
     {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
@@ -1837,7 +1837,7 @@ theorem cursor_active_eq_empty_of_reveal
 
 theorem cursor_not_terminal_of_reveal
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g}
+    {w : CursorCheckedWorld g}
     {y : VarId} {who : P} {x : VarId} {b : L.Ty}
     {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
@@ -1857,9 +1857,9 @@ set_option linter.flexible false in
 action alphabet. -/
 theorem cursor_nonterminal_exists_program_legal
     {g : WFProgram P L}
-    {w : CursorCheckedWorld (P := P) (L := L) g} :
+    {w : CursorCheckedWorld g} :
     ¬ w.terminal →
-      ∃ a : ProgramJointAction (P := P) (L := L) g,
+      ∃ a : ProgramJointAction g,
         CursorProgramJointActionLegal w a := by
   intro hterm
   cases w with
@@ -1873,7 +1873,7 @@ theorem cursor_nonterminal_exists_program_legal
                 CursorWorldData.prog, terminal, hprog] at hterm
           | letExpr x e k =>
               refine ⟨GameTheory.FOSG.noopAction
-                (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+                (fun who : P => ProgramAction g.prog who), ?_⟩
               refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
@@ -1881,7 +1881,7 @@ theorem cursor_nonterminal_exists_program_legal
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active, hprog]
           | sample x D k =>
               refine ⟨GameTheory.FOSG.noopAction
-                (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+                (fun who : P => ProgramAction g.prog who), ?_⟩
               refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
@@ -1891,11 +1891,11 @@ theorem cursor_nonterminal_exists_program_legal
               change Legal cursor.prog at legal
               rw [hprog] at legal
               rcases legal.1 (VEnv.eraseEnv env) with ⟨v, hv⟩
-              let suffix : ProgramSuffix (P := P) (L := L) g.prog
+              let suffix : ProgramSuffix g.prog
                   (VegasCore.commit x who R k) := by
                 rw [← hprog]
                 exact cursor.toSuffix
-              refine ⟨commitProgramJointAction (P := P) (L := L) suffix v, ?_⟩
+              refine ⟨commitProgramJointAction suffix v, ?_⟩
               refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
@@ -1909,14 +1909,14 @@ theorem cursor_nonterminal_exists_program_legal
                 refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
                 · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
                 · rfl
-              · have hnone : commitProgramJointAction (P := P) (L := L) suffix v i = none := by
+              · have hnone : commitProgramJointAction suffix v i = none := by
                     simp [commitProgramJointAction, hi]
                 rw [hnone]
                 simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
                   CursorWorldData.prog, active, hprog, hi]
           | reveal y who x hx k =>
               refine ⟨GameTheory.FOSG.noopAction
-                (fun who : P => ProgramAction (P := P) (L := L) g.prog who), ?_⟩
+                (fun who : P => ProgramAction g.prog who), ?_⟩
               refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
@@ -2001,12 +2001,12 @@ theorem checkedTransition_commit_eq_programActionContinuation
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     (env : VEnv L Γ)
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
     (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
     (viewScoped : ViewScoped (.commit x who R k))
     (normalized : NormalizedDists (.commit x who R k))
     (legal : Legal (.commit x who R k))
-    (a : ProgramJointAction (P := P) (L := L) g)
+    (a : ProgramJointAction g)
     (ha : JointActionLegal
       ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
       (ProgramJointAction.toAction a)) :
@@ -2058,13 +2058,13 @@ theorem checkedTransition_commit_eq_programActionContinuation
       by_cases hty : CommitCursor.ty ai.cursor = b
       · rw [dif_pos hty]
         simp only [checkedTransition]
-        rw [commitValueOfLegal_proof_irrel (P := P) (L := L) (ha₂ := ha)]
+        rw [commitValueOfLegal_proof_irrel (ha₂ := ha)]
         have hv := commitValueOfLegal_eq_programAction_value
-          (P := P) (L := L) (g := g) (Γ := Γ) (x := x) (who := who)
+          (g := g) (Γ := Γ) (x := x) (who := who)
           (b := b) (R := R) (k := k) (env := env) (a := a) ha hai hty
         have henv :
             VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _)
-                (commitValueOfLegal (P := P) (L := L) ha) env =
+                (commitValueOfLegal ha) env =
               VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _)
                 (hty ▸ ai.value) env :=
           VEnv.cons_ext hv.symm rfl
@@ -2096,8 +2096,8 @@ theorem checkedTransition_congr_checkedWorld
     (a : JointAction P L)
     (ha₁ : CheckedJointActionLegal w₁ a)
     (ha₂ : CheckedJointActionLegal w₂ a) :
-    checkedTransition (P := P) (L := L) w₁ ⟨a, ha₁⟩ =
-      checkedTransition (P := P) (L := L) w₂ ⟨a, ha₂⟩ := by
+    checkedTransition w₁ ⟨a, ha₁⟩ =
+      checkedTransition w₂ ⟨a, ha₂⟩ := by
   cases hw
   have hsub :
       (⟨a, ha₁⟩ : {a : JointAction P L // CheckedJointActionLegal w₁ a}) =
@@ -2113,13 +2113,13 @@ cursor-keyed FOSG target. -/
 noncomputable def cursorTransitionState
     {Γ₀ : VCtx P L} :
     {root : VegasCore P L Γ₀} →
-    (c : ProgramCursor (P := P) (L := L) root) →
+    (c : ProgramCursor root) →
     (env : VEnv L c.Γ) →
     (valid : c.EndpointValid) →
     (a : JointAction P L) →
     (ha : JointActionLegal
       ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
-    PMF (CursorRuntimeState (P := P) (L := L) root)
+    PMF (CursorRuntimeState root)
   | .ret payoffs, .here, env, valid, a, ha =>
       False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, _a, _ha =>
@@ -2174,7 +2174,7 @@ noncomputable def cursorTransitionState
             normalized, legal⟩ }
   | .letExpr x e k, .letExpr c, env, valid, a, ha =>
       PMF.map
-        (fun (s : CursorRuntimeState (P := P) (L := L) k) =>
+        (fun (s : CursorRuntimeState k) =>
           { cursor := ProgramCursor.letExpr s.cursor
             env := s.env
             valid := by simpa [ProgramCursor.EndpointValid] using s.valid })
@@ -2183,7 +2183,7 @@ noncomputable def cursorTransitionState
           (by simpa [ProgramCursor.EndpointValid] using ha))
   | .sample x D k, .sample c, env, valid, a, ha =>
       PMF.map
-        (fun (s : CursorRuntimeState (P := P) (L := L) k) =>
+        (fun (s : CursorRuntimeState k) =>
           { cursor := ProgramCursor.sample s.cursor
             env := s.env
             valid := by simpa [ProgramCursor.EndpointValid] using s.valid })
@@ -2192,7 +2192,7 @@ noncomputable def cursorTransitionState
           (by simpa [ProgramCursor.EndpointValid] using ha))
   | .commit x who R k, .commit c, env, valid, a, ha =>
       PMF.map
-        (fun (s : CursorRuntimeState (P := P) (L := L) k) =>
+        (fun (s : CursorRuntimeState k) =>
           { cursor := ProgramCursor.commit s.cursor
             env := s.env
             valid := by simpa [ProgramCursor.EndpointValid] using s.valid })
@@ -2201,7 +2201,7 @@ noncomputable def cursorTransitionState
           (by simpa [ProgramCursor.EndpointValid] using ha))
   | .reveal y who x hx k, .reveal c, env, valid, a, ha =>
       PMF.map
-        (fun (s : CursorRuntimeState (P := P) (L := L) k) =>
+        (fun (s : CursorRuntimeState k) =>
           { cursor := ProgramCursor.reveal s.cursor
             env := s.env
             valid := by simpa [ProgramCursor.EndpointValid] using s.valid })
@@ -2212,10 +2212,10 @@ noncomputable def cursorTransitionState
 /-- Cursor-keyed transition over program-local actions. -/
 noncomputable def cursorProgramTransition
     {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g)
-    (a : {a : ProgramJointAction (P := P) (L := L) g //
+    (w : CursorCheckedWorld g)
+    (a : {a : ProgramJointAction g //
       CursorProgramJointActionLegal w a}) :
-    PMF (CursorCheckedWorld (P := P) (L := L) g) :=
+    PMF (CursorCheckedWorld g) :=
   PMF.map CursorRuntimeState.toChecked
     (cursorTransitionState w.1.cursor w.1.env
       (by
@@ -2228,19 +2228,19 @@ noncomputable def cursorProgramTransition
 theorem cursorTransitionState_map_toCheckedWorldFromSuffix
     {g : WFProgram P L} {hctx : WFCtx g.Γ} :
     {Γ : VCtx P L} → {root : VegasCore P L Γ} →
-    (suffix : ProgramSuffix (P := P) (L := L) g.prog root) →
-    (c : ProgramCursor (P := P) (L := L) root) →
+    (suffix : ProgramSuffix g.prog root) →
+    (c : ProgramCursor root) →
     (env : VEnv L c.Γ) →
     (valid : c.EndpointValid) →
     (a : JointAction P L) →
     (ha : JointActionLegal
       ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
     PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
-        (P := P) (L := L) (hctx := hctx) suffix)
-      (cursorTransitionState (P := P) (L := L) c env valid a ha) =
+        (hctx := hctx) suffix)
+      (cursorTransitionState c env valid a ha) =
     checkedTransition (P := P) (L := L)
       (ProgramCursor.toCheckedWorldFromSuffix
-        (P := P) (L := L) (hctx := hctx) suffix c env valid)
+        (hctx := hctx) suffix c env valid)
       ⟨a, by
         simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
           checkedActive, checkedTerminal, checkedAvailableActions,
@@ -2249,18 +2249,18 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
   revert suffix
   exact ProgramCursor.rec
     (motive := fun {Γ} root c =>
-      (suffix : ProgramSuffix (P := P) (L := L) g.prog root) →
+      (suffix : ProgramSuffix g.prog root) →
       (env : VEnv L c.Γ) →
       (valid : c.EndpointValid) →
       (a : JointAction P L) →
       (ha : JointActionLegal
         ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
       PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
-          (P := P) (L := L) (hctx := hctx) suffix)
-        (cursorTransitionState (P := P) (L := L) c env valid a ha) =
+          (hctx := hctx) suffix)
+        (cursorTransitionState c env valid a ha) =
       checkedTransition (P := P) (L := L)
         (ProgramCursor.toCheckedWorldFromSuffix
-          (P := P) (L := L) (hctx := hctx) suffix c env valid)
+          (hctx := hctx) suffix c env valid)
         ⟨a, by
           simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
             checkedActive, checkedTerminal, checkedAvailableActions,
@@ -2326,13 +2326,13 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
 transition after erasing program actions and forgetting cursor keys. -/
 theorem cursorProgramTransition_map_checkedWorld
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CursorCheckedWorld (P := P) (L := L) g)
-    (a : {a : ProgramJointAction (P := P) (L := L) g //
+    (w : CursorCheckedWorld g)
+    (a : {a : ProgramJointAction g //
       CursorProgramJointActionLegal w a}) :
-    PMF.map (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
-        (cursorProgramTransition (P := P) (L := L) w a) =
+    PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+        (cursorProgramTransition w a) =
       checkedTransition (P := P) (L := L)
-        (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx) w)
+        (CheckedWorld.ofCursorChecked (hctx := hctx) w)
         ⟨ProgramJointAction.toAction a.1,
           CursorProgramJointActionLegal.toAction a.2⟩ := by
   cases w with
@@ -2344,19 +2344,19 @@ theorem cursorProgramTransition_map_checkedWorld
               ProgramCursor.EndpointValid] using valid
           rw [cursorProgramTransition]
           change PMF.map
-              (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+              (CheckedWorld.ofCursorChecked (hctx := hctx))
               (PMF.map CursorRuntimeState.toChecked
                 (cursorTransitionState cursor env hv
                   (ProgramJointAction.toAction a.1)
                   (CursorProgramJointActionLegal.toAction a.2))) = _
           rw [show PMF.map
-              (CheckedWorld.ofCursorChecked (P := P) (L := L) (hctx := hctx))
+              (CheckedWorld.ofCursorChecked (hctx := hctx))
               (PMF.map CursorRuntimeState.toChecked
                 (cursorTransitionState cursor env hv
                   (ProgramJointAction.toAction a.1)
                   (CursorProgramJointActionLegal.toAction a.2))) =
             PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
-                (P := P) (L := L) (hctx := hctx) ProgramSuffix.here)
+                (hctx := hctx) ProgramSuffix.here)
               (cursorTransitionState cursor env hv
                 (ProgramJointAction.toAction a.1)
                 (CursorProgramJointActionLegal.toAction a.2)) by
@@ -2370,7 +2370,7 @@ theorem cursorProgramTransition_map_checkedWorld
             ProgramCursor.toSuffixFrom, CursorWorldData.Valid,
             CursorWorldData.prog, CursorWorldData.suffix, hv] using
           cursorTransitionState_map_toCheckedWorldFromSuffix
-              (P := P) (L := L) (hctx := hctx)
+              (hctx := hctx)
               (g := g) (suffix := ProgramSuffix.here) (c := cursor)
               (env := env) (valid := hv)
               (a := ProgramJointAction.toAction a.1)
@@ -2382,13 +2382,13 @@ operational syntax node. -/
 theorem cursorTransitionState_remainingSyntaxSteps
     {Γ₀ : VCtx P L} :
     {root : VegasCore P L Γ₀} →
-    (c : ProgramCursor (P := P) (L := L) root) →
+    (c : ProgramCursor root) →
     (env : VEnv L c.Γ) →
     (valid : c.EndpointValid) →
     (a : JointAction P L) →
     (ha : JointActionLegal
       ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
-    (dst : CursorRuntimeState (P := P) (L := L) root) →
+    (dst : CursorRuntimeState root) →
     cursorTransitionState c env valid a ha dst ≠ 0 →
       syntaxSteps dst.cursor.prog + 1 = syntaxSteps c.prog
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
@@ -2448,10 +2448,10 @@ set_option linter.flexible false in
 node on every supported transition. -/
 theorem cursorProgramTransition_remainingSyntaxSteps
     {g : WFProgram P L}
-    (w : CursorCheckedWorld (P := P) (L := L) g)
-    (a : {a : ProgramJointAction (P := P) (L := L) g //
+    (w : CursorCheckedWorld g)
+    (a : {a : ProgramJointAction g //
       CursorProgramJointActionLegal w a})
-    (dst : CursorCheckedWorld (P := P) (L := L) g)
+    (dst : CursorCheckedWorld g)
     (hsupp : cursorProgramTransition w a dst ≠ 0) :
     dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps := by
   rw [cursorProgramTransition] at hsupp
@@ -2461,7 +2461,7 @@ theorem cursorProgramTransition_remainingSyntaxSteps
   subst dst
   have hstep :=
     cursorTransitionState_remainingSyntaxSteps
-      (P := P) (L := L) w.1.cursor w.1.env
+      w.1.cursor w.1.env
       (by
         simpa [CursorWorldData.Valid, CursorWorldData.prog,
           ProgramCursor.EndpointValid] using w.2)
@@ -2519,10 +2519,10 @@ def rewardOnEnteringRet
 transition enters a `ret` continuation. -/
 def rewardOnEnteringRetCursor
     {g : WFProgram P L}
-    (_w : CursorCheckedWorld (P := P) (L := L) g)
-    (_a : {a : ProgramJointAction (P := P) (L := L) g //
+    (_w : CursorCheckedWorld g)
+    (_a : {a : ProgramJointAction g //
       CursorProgramJointActionLegal _w a})
-    (w' : CursorCheckedWorld (P := P) (L := L) g) (who : P) : ℝ :=
+    (w' : CursorCheckedWorld g) (who : P) : ℝ :=
   match w'.1.prog with
   | .ret payoffs => (evalPayoffs payoffs w'.1.env who : ℝ)
   | _ => 0

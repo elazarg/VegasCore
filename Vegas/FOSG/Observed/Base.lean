@@ -60,7 +60,7 @@ theorem programLatestObservation?_append_obs
 theorem programLatestObservation?_append_act_obs
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who)
-    (a : ProgramAction (P := P) (L := L) g.prog who)
+    (a : ProgramAction g.prog who)
     (priv : PrivateObs g who) (pub : PublicObs g hctx) :
     programLatestObservation? g hctx who
       (s ++ [GameTheory.FOSG.PlayerEvent.act a,
@@ -73,7 +73,7 @@ theorem programLatestObservation?_history_snoc
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (h : (observedProgramFOSG g hctx).History)
     (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld (P := P) (L := L) g)
+    (dst : CursorCheckedWorld g)
     (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
     programLatestObservation? g hctx who ((h.snoc a dst support).playerView who) =
       some (privateObsOfCursorWorld who dst, publicObsOfCursorWorld dst) := by
@@ -208,7 +208,7 @@ theorem observedProgramFOSG_legalObservable
         congrArg Prod.fst hobs
       simpa [GameTheory.FOSG.availableMoves] using
         observedProgram_availableMovesAtState_eq_of_privateObs_eq
-          (P := P) (L := L) g hctx who h.lastState h'.lastState hpriv
+          g hctx who h.lastState h'.lastState hpriv
 
 end Observed
 
