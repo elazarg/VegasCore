@@ -22,13 +22,17 @@ The file has two regions.
   (`isNash_iff_protocolNash`, etc.) prove each equals its
   `KernelGame`-transported counterpart by definitional unfolding.
 
-* **Region B (named target, not a theorem).**
-  `ProtocolKuhnProperty g : Prop` — the protocol-level Kuhn claim:
-  every mixture over legal pure strategies is outcome-equivalent to
-  some legal behavioural profile. `Vegas.FOSG` now gives the
-  outcome-preserving protocol representation for arbitrary state-
-  dependent guards; this remaining target is the strategy-space
-  Kuhn theorem for Vegas' legal pure/behavioral strategy types.
+* **Region B (named targets, not theorems).**
+  `ProtocolKuhnProperty g : Prop` is the protocol-level Kuhn claim:
+  every independent mixed profile over legal pure strategies is
+  outcome-equivalent to some legal behavioural profile.
+  `ProtocolCorrelatedPureRealizationProperty g : Prop` is the stronger
+  correlated variant over arbitrary PMFs on joint pure profiles.
+  `Vegas.FOSG` gives the outcome-preserving protocol representation for
+  arbitrary state-dependent guards; the remaining target is relating the
+  Vegas legal pure/behavioral strategy spaces to the corresponding FOSG
+  reachable strategy spaces, or proving the realization directly for
+  Vegas.
 
 The MAID backend remains useful for the older compilation path, but it is not
 the protocol-representing route: its decision nodes quantify over full value
@@ -151,31 +155,42 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
     have := h who s' hne
     simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
 
-/-! ## Region B — named Kuhn target -/
+/-! ## Region B — named realization targets -/
 
-/-- The protocol-level Kuhn property for a Vegas program: every
-mixture over guard-legal pure profiles admits a guard-legal
-behavioural profile with the same outcome distribution.
+/-- The protocol-level Kuhn property for a Vegas program: every independent
+mixed profile over guard-legal pure strategies admits a guard-legal
+behavioural profile with the same outcome distribution. -/
+def ProtocolKuhnProperty [Fintype P] (g : WFProgram P L)
+    [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
+  ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
+    ∃ β : LegalProgramBehavioralProfile g,
+      (toKernelGame g).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- Strong correlated variant of protocol realization: every PMF over joint
+guard-legal pure profiles admits a guard-legal behavioural profile with the
+same outcome distribution.
 
 Stated as a `Prop`-valued definition, not proved here. The FOSG bridge proves
 the right protocol outcome semantics; what remains is relating Vegas'
 `LegalProgramPureProfile`/`LegalProgramBehavioralProfile` spaces to the
-corresponding FOSG pure/behavioral strategy spaces, or proving the realization
-directly for Vegas. -/
-def ProtocolKuhnProperty (g : WFProgram P L) : Prop :=
+corresponding FOSG reachable pure/behavioral strategy spaces, or proving the
+realization directly for Vegas. -/
+def ProtocolCorrelatedPureRealizationProperty (g : WFProgram P L) : Prop :=
   ∀ (μ : PMF (LegalProgramPureProfile g)),
     ∃ β : LegalProgramBehavioralProfile g,
       (toKernelGame g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-/-- `ProtocolKuhnProperty` is not vacuous: a concrete witness for a
-direction-trivialising case is the Dirac mixture on any legal pure
-profile, where the behavioural witness is its point-lift `toBehavioral`
-and the outcome-equation reduces to the bridge theorem
+/-- `ProtocolCorrelatedPureRealizationProperty` is not vacuous: a concrete
+witness for a direction-trivialising case is the Dirac mixture on any legal
+pure profile, where the behavioural witness is its point-lift `toBehavioral`
+and the outcome equation reduces to the bridge theorem
 `toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral`. The
-general property is non-trivial because it quantifies over every
+general property is non-trivial because it quantifies over every correlated
 mixture. -/
-theorem protocolKuhn_dirac (g : WFProgram P L)
+theorem protocolCorrelatedPureRealization_dirac (g : WFProgram P L)
     (σ : LegalProgramPureProfile g) :
     ∃ β : LegalProgramBehavioralProfile g,
       (toKernelGame g).outcomeKernel β =
