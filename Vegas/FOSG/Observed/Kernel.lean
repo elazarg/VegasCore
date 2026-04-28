@@ -1298,6 +1298,32 @@ theorem observedProgramOutcomeKernel_eq_toKernelGame
     (observedProgramCheckedWorldRunDist_eq_checkedProfileRun
       g hctx LF σ)
 
+/-- Pure-strategy outcome preservation for the observed-program FOSG.
+
+Transporting a Vegas legal pure profile to the FOSG, running its deterministic
+behavioral lift, and projecting terminal histories to Vegas outcomes gives the
+same outcome distribution as `toStrategicKernelGame`. -/
+theorem observedProgramPureOutcomeKernel_eq_toStrategicKernelGame
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramPureProfile g) :
+    PMF.map (observedProgramHistoryOutcome g hctx)
+        (observedProgramRunDist g hctx LF
+          ((observedProgramFOSG g hctx).legalPureToBehavioral
+            (toObservedProgramLegalPureProfile g hctx σ))) =
+      (toStrategicKernelGame g).outcomeKernel σ := by
+  rw [show
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          (observedProgramRunDist g hctx LF
+            ((observedProgramFOSG g hctx).legalPureToBehavioral
+              (toObservedProgramLegalPureProfile g hctx σ))) =
+        observedProgramOutcomeKernel g hctx LF
+          (LegalProgramPureProfile.toBehavioral σ) by
+        simp [observedProgramOutcomeKernel,
+          toObservedProgramLegalBehavioralProfile_toBehavioral]]
+  rw [observedProgramOutcomeKernel_eq_toKernelGame]
+  exact toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral g σ
+
 /-- Kernel-game-shaped version of `observedProgramOutcomeKernel`: strategies
 are Vegas legal behavioral profiles and outcomes are Vegas payoff outcomes.
 `observedProgramOutcomeKernel_eq_toKernelGame` identifies this kernel with
