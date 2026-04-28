@@ -1081,6 +1081,45 @@ def extend :
     (d : ProgramCursor root) :
     extend (.here : ProgramCursor root) d = d := rfl
 
+/-- Extending a cursor preserves the endpoint context of the appended cursor. -/
+theorem extend_Γ
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (c : ProgramCursor root) (d : ProgramCursor c.prog) :
+    (extend c d).Γ = d.Γ := by
+  induction c with
+  | here => rfl
+  | letExpr c ih => simpa [extend, ProgramCursor.Γ] using ih d
+  | sample c ih => simpa [extend, ProgramCursor.Γ] using ih d
+  | commit c ih => simpa [extend, ProgramCursor.Γ] using ih d
+  | reveal c ih => simpa [extend, ProgramCursor.Γ] using ih d
+
+/-- Extending a cursor preserves the endpoint program of the appended cursor,
+after transporting along `extend_Γ`. -/
+theorem extend_prog
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (c : ProgramCursor root) (d : ProgramCursor c.prog) :
+    (extend_Γ c d) ▸ (extend c d).prog = d.prog := by
+  induction c with
+  | here => rfl
+  | letExpr c ih => simpa [extend, ProgramCursor.Γ, prog, extend_Γ] using ih d
+  | sample c ih => simpa [extend, ProgramCursor.Γ, prog, extend_Γ] using ih d
+  | commit c ih => simpa [extend, ProgramCursor.Γ, prog, extend_Γ] using ih d
+  | reveal c ih => simpa [extend, ProgramCursor.Γ, prog, extend_Γ] using ih d
+
+namespace CommitCursor
+
+/-- Forget that a cursor points specifically at an owned commit site. -/
+def toProgramCursor {who : P} :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      CommitCursor who p → ProgramCursor p
+  | _, _, .here => .here
+  | _, _, .letExpr c => .letExpr (toProgramCursor c)
+  | _, _, .sample c => .sample (toProgramCursor c)
+  | _, _, .commit c => .commit (toProgramCursor c)
+  | _, _, .reveal c => .reveal (toProgramCursor c)
+
+end CommitCursor
+
 /-- Canonical cursors are finite because Vegas syntax is linear. -/
 @[reducible] noncomputable def instFintype :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
