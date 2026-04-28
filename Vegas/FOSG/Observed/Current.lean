@@ -396,6 +396,35 @@ theorem currentMoveCommitValueOrDefault_guard_at_commit
             exact eq_of_heq hval
           simpa [currentMoveCommitValueOrDefault, hm, hty, hvalue] using hguard
 
+theorem currentMoveCommitValueOrDefault_guard_at_cursor
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (c : ProgramCursor g.prog)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k)
+    (env : Env L.Val (eraseVCtx c.Γ))
+    (m : CurrentProgramMove g who
+      (privateObsOfViewAtCursor who c (projectViewEnv who env))) :
+    evalGuard (Player := P) (L := L) R
+        (currentMoveCommitValueOrDefault (b := b) m) env = true := by
+  let w : CursorCheckedWorld g :=
+    ⟨{ cursor := c, env := VEnv.ofErased env },
+      ProgramCursor.endpointValid g hctx c⟩
+  have hobs := privateObsOfCursorWorld_ofErased hctx who c env
+  let mAtW : CurrentProgramMove g who (privateObsOfCursorWorld who w) :=
+    ⟨m.1, fun w' hw' => m.2 w' (hw'.trans hobs)⟩
+  have hmAtW : mAtW.1 = m.1 := by
+    rfl
+  have hguard :=
+    currentMoveCommitValueOrDefault_guard_at_commit
+      (g := g) (w := w) (x := x) (who := who)
+      (b := b) (R := R) (k := k) hprog mAtW
+  simpa [w, mAtW, hmAtW, VEnv.eraseEnv_ofErased (P := P)
+      (ProgramSuffix.wctx c.toSuffix hctx g.wf.1) env]
+    using hguard
+
 theorem currentProgramJointActionLegal
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
