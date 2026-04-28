@@ -523,6 +523,23 @@ noncomputable def pureProfile
       exact ProgramPureProfile.tail (ih σ)
   | reveal s ih => intro σ; exact ih σ
 
+noncomputable def pureStrategy
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) (who : P) :
+    ProgramPureStrategy (P := P) (L := L) who root →
+      ProgramPureStrategy (P := P) (L := L) who p := by
+  induction s with
+  | here => intro σ; exact σ
+  | letExpr s ih => intro σ; exact ih σ
+  | sample s ih => intro σ; exact ih σ
+  | @commit Γ x owner b R k s ih =>
+      intro σ
+      by_cases h : owner = who
+      · cases h
+        exact ProgramPureStrategy.tailOwn (P := P) (L := L) (ih σ)
+      · simpa [ProgramPureStrategy, h] using ih σ
+  | reveal s ih => intro σ; exact ih σ
+
 @[simp] theorem pureProfile_letExpr
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
     {x : VarId} {b : L.Ty}
@@ -563,6 +580,23 @@ noncomputable def pureProfile
     (σ : ProgramPureProfile root) :
     (ProgramSuffix.reveal s).pureProfile σ =
       s.pureProfile σ := rfl
+
+theorem pureProfile_apply
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    (σ : ProgramPureProfile root) (who : P) :
+    s.pureProfile σ who = s.pureStrategy who (σ who) := by
+  induction s generalizing σ with
+  | here => rfl
+  | letExpr s ih => simpa [pureStrategy] using ih σ
+  | sample s ih => simpa [pureStrategy] using ih σ
+  | reveal s ih => simpa [pureStrategy] using ih σ
+  | @commit Γ x owner b R k s ih =>
+      rw [pureProfile_commit]
+      by_cases h : owner = who
+      · cases h
+        simp [pureStrategy, ProgramPureProfile.tail, ih]
+      · simp [pureStrategy, h, ProgramPureProfile.tail, ih]
 
 theorem pureProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}

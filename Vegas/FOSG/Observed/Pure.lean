@@ -37,6 +37,52 @@ noncomputable def movePureAtProgramCursor
         none
   | _ => none
 
+noncomputable def movePureStrategyAtProgramCursor
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    Option (ProgramAction g.prog who) :=
+  match p with
+  | .commit x owner (b := b) R k =>
+      if howner : owner = who then
+        by
+          cases howner
+          let σp : ProgramPureStrategy (P := P) (L := L) who
+              (.commit x who R k) :=
+            suffix.pureStrategy who σ.val
+          exact some
+            (ProgramAction.commitAt suffix
+              ((ProgramPureStrategy.headKernel (σp)) view))
+      else
+        none
+  | _ => none
+
+theorem movePureAtProgramCursor_eq_strategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    movePureAtProgramCursor g hctx σ who suffix view =
+      movePureStrategyAtProgramCursor g hctx who (σ who) suffix view := by
+  cases p with
+  | ret payoffs =>
+      simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor]
+  | letExpr x e k =>
+      simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor]
+  | sample x D k =>
+      simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor]
+  | reveal y owner x hx k =>
+      simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor,
+          ProgramSuffix.pureProfile_apply]
+      · simp [movePureAtProgramCursor, movePureStrategyAtProgramCursor, howner]
+
 @[simp] theorem movePureAtProgramCursor_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -246,6 +292,25 @@ noncomputable def movePureAtProgramObservation?
   exact movePureAtProgramCursor g hctx σ who priv.cursor.toSuffix
     (VEnv.eraseEnv priv.env)
 
+noncomputable def movePureStrategyAtProgramObservation?
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (obs : PrivateObs g who × PublicObs g hctx) :
+    Option (ProgramAction g.prog who) := by
+  let priv := obs.1
+  exact movePureStrategyAtProgramCursor g hctx who σ priv.cursor.toSuffix
+    (VEnv.eraseEnv priv.env)
+
+theorem movePureAtProgramObservation?_eq_strategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (obs : PrivateObs g who × PublicObs g hctx) :
+    movePureAtProgramObservation? g hctx σ who obs =
+      movePureStrategyAtProgramObservation? g hctx who (σ who) obs := by
+  unfold movePureAtProgramObservation? movePureStrategyAtProgramObservation?
+  exact movePureAtProgramCursor_eq_strategy g hctx σ who _ _
+
 theorem movePureAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -273,6 +338,32 @@ noncomputable def programPureProfileCandidate
     match programLatestObservation? g hctx who s with
     | none => movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx)
     | some obs => movePureAtProgramObservation? g hctx σ who obs
+
+noncomputable def programPureStrategyCandidate
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who) :
+    GameTheory.FOSG.PureStrategy (observedProgramFOSG g hctx) who :=
+  fun s =>
+    match programLatestObservation? g hctx who s with
+    | none =>
+        movePureStrategyAtProgramCursor g hctx who σ
+          (ProgramSuffix.here (root := g.prog))
+          (projectViewEnv who (VEnv.eraseEnv g.env))
+    | some obs => movePureStrategyAtProgramObservation? g hctx who σ obs
+
+theorem programPureProfileCandidate_eq_strategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) (who : P) :
+    programPureProfileCandidate g hctx σ who =
+      programPureStrategyCandidate g hctx who (σ who) := by
+  funext s
+  unfold programPureProfileCandidate programPureStrategyCandidate
+  split
+  · simp [movePureAtCursorWorld, CursorCheckedWorld.initial,
+      CursorWorldData.suffix, ProgramCursor.toSuffix,
+      ProgramCursor.toSuffixFrom, movePureAtProgramCursor_eq_strategy]
+    rfl
+  · rw [movePureAtProgramObservation?_eq_strategy]
 
 @[simp] theorem programPureProfileCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -396,6 +487,26 @@ noncomputable def toObservedProgramReachableLegalPureProfile
     (observedProgramFOSG g hctx).ReachableLegalPureProfile :=
   fun who =>
     (toObservedProgramLegalPureProfile g hctx σ who).restrictReachable
+
+noncomputable def toObservedProgramReachableLegalPureStrategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
+    (who : P) (σ : LegalProgramPureStrategy g who) :
+    (observedProgramFOSG g hctx).ReachableLegalPureStrategy who := by
+  let base : LegalProgramPureProfile g :=
+    fun j => Classical.choice (inferInstanceAs (Nonempty (LegalProgramPureStrategy g j)))
+  let prof : LegalProgramPureProfile g := Function.update base who σ
+  refine ⟨(programPureStrategyCandidate g hctx who σ).restrictReachable, ?_⟩
+  intro h
+  have havail :
+      programPureProfileCandidate g hctx prof who (h.playerView who) ∈
+        (observedProgramFOSG g hctx).availableMoves h who :=
+    programPureProfileCandidate_available g hctx prof who h
+  have heq :=
+    congrFun (programPureProfileCandidate_eq_strategy g hctx prof who)
+      (h.playerView who)
+  rw [heq] at havail
+  simpa [GameTheory.FOSG.PureStrategy.restrictReachable, prof] using havail
 
 @[simp] theorem toObservedProgramReachableLegalPureProfile_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
