@@ -200,6 +200,44 @@ noncomputable def currentLocalPureProfile
     (currentObsModel g hctx).PureProfile :=
   fun who => currentLocalPureStrategy g hctx who (σ who)
 
+/-- Independent mixed legal Vegas pure strategies transported to the
+current-observation Kuhn model. -/
+noncomputable def currentLocalMixedPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    ∀ who, PMF ((currentObsModel g hctx).LocalStrategy who) :=
+  fun who => PMF.map (currentLocalPureStrategy g hctx who) (μ who)
+
+theorem currentLocalMixedPureProfile_joint
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+      fun who => PrivateObs.instFintype g LF who
+    letI : ∀ who obs,
+        Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    Math.PMFProduct.pmfPi (currentLocalMixedPureProfile g hctx μ) =
+      PMF.map (currentLocalPureProfile g hctx)
+        (Math.PMFProduct.pmfPi μ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+    fun who => PrivateObs.instFintype g LF who
+  letI : ∀ who obs,
+      Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  change Math.PMFProduct.pmfPi
+      (fun who =>
+        PMF.map (currentLocalPureStrategy g hctx who) (μ who)) =
+    PMF.map
+      (fun σ => currentLocalPureProfile g hctx σ)
+      (Math.PMFProduct.pmfPi μ)
+  exact (Math.PMFProduct.pmfPi_push_coordwise μ
+    (fun who => currentLocalPureStrategy g hctx who)).symm
+
 @[simp] theorem currentLocalPureStrategy_apply_observe
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
