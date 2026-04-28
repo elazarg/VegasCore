@@ -221,6 +221,30 @@ def ProgramBehavioralProfilePMF.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramBehavioralProfilePMF (P := P) (L := L) p) : Prop :=
   ∀ who, (σ who).IsLegal p
 
+namespace ProgramBehavioralProfilePMF
+
+theorem tail_isLegal
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {σ : ProgramBehavioralProfilePMF (P := P) (L := L) (.commit x who R k)}
+    (hσ : σ.IsLegal) :
+    (tail (P := P) (L := L) σ).IsLegal := by
+  intro i
+  by_cases h : who = i
+  · subst i
+    have hsite := hσ who
+    simp [ProgramBehavioralStrategyPMF.IsLegal] at hsite
+    simpa [tail, ProgramBehavioralStrategyPMF.tailOwn] using hsite.2
+  · have hsite := hσ i
+    cases σi : σ i with
+    | commitOwn kern tail' =>
+        exact False.elim (h rfl)
+    | commitOther hne tail' =>
+        simpa [ProgramBehavioralStrategyPMF.IsLegal, tail, h, σi] using hsite
+
+end ProgramBehavioralProfilePMF
+
 /-- Guard-legal PMF behavioral strategies over a checked program bundle. -/
 abbrev LegalProgramBehavioralStrategyPMF (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramBehavioralStrategyPMF (P := P) (L := L) who g.prog //

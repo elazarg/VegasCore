@@ -95,6 +95,85 @@ theorem headKernel_supported_atCursor
   simp [ProgramBehavioralStrategy.IsLegal] at hsite
   simpa [raw] using hsite.1 ρ
 
+/-! ## PMF behavioral profile candidate
+
+The PMF variant is the target needed for general Kuhn M→B transport. Unlike
+the `FDist` transport above, it can represent arbitrary real-valued
+behavioural probabilities induced by a mixed pure profile. -/
+
+noncomputable def moveAtProgramCursorPMF
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    PMF (Option (ProgramAction g.prog who)) :=
+  match p with
+  | .commit x owner (b := b) R k =>
+      if howner : owner = who then
+        by
+          cases howner
+          let σp : ProgramBehavioralProfilePMF (.commit x who R k) :=
+            suffix.behavioralProfilePMF (fun i => (σ i).val)
+          exact PMF.map
+            (fun v => some
+              (ProgramAction.commitAt suffix v))
+            (ProgramBehavioralStrategyPMF.headKernel (σp who) view)
+      else
+        PMF.pure none
+  | _ => PMF.pure none
+
+@[simp] theorem moveAtProgramCursorPMF_commit_owner
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (view : ViewEnv who Γ) :
+    moveAtProgramCursorPMF g hctx σ who suffix view =
+      by
+        let σp : ProgramBehavioralProfilePMF (.commit x who R k) :=
+          suffix.behavioralProfilePMF (fun i => (σ i).val)
+        exact PMF.map
+          (fun v => some
+            (ProgramAction.commitAt suffix v))
+          (ProgramBehavioralStrategyPMF.headKernel (σp who) view) := by
+  simp [moveAtProgramCursorPMF]
+
+theorem headKernelPMF_supported_atCursor
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (ρ : Env L.Val (eraseVCtx Γ))
+    {v : L.Val b}
+    (hv : v ∈
+      (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+        ((suffix.behavioralProfilePMF (fun i => (σ i).val)) who)
+        (projectViewEnv who ρ)).support) :
+    evalGuard (Player := P) (L := L) R v ρ = true := by
+  let raw : ProgramBehavioralProfilePMF g.prog :=
+    fun i => (σ i).val
+  have hraw : raw.IsLegal := fun i => (σ i).2
+  have hcursor : (suffix.behavioralProfilePMF raw).IsLegal :=
+    suffix.behavioralProfilePMF_isLegal hraw
+  have hsite := hcursor who
+  have hsite' :
+      (∀ (ρ : Env L.Val (eraseVCtx Γ)) {v : L.Val b},
+        v ∈ (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+          ((suffix.behavioralProfilePMF raw) who)
+          (projectViewEnv who ρ)).support →
+        evalGuard (Player := P) (L := L) R v ρ = true) ∧
+        ProgramBehavioralStrategyPMF.IsLegal (P := P) (L := L)
+          k (ProgramBehavioralStrategyPMF.tailOwn (P := P) (L := L)
+            ((suffix.behavioralProfilePMF raw) who)) := by
+    simpa [raw, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+  exact hsite'.1 ρ hv
+
 noncomputable def moveAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -111,6 +190,22 @@ noncomputable def moveAtCheckedWorld
   moveAtProgramCursor g hctx σ who w.suffix
     (projectViewEnv who (VEnv.eraseEnv w.env))
 
+noncomputable def moveAtCursorWorldPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P) (w : CursorCheckedWorld g) :
+    PMF (Option (ProgramAction g.prog who)) :=
+  moveAtProgramCursorPMF g hctx σ who w.1.suffix
+    (projectViewEnv who (VEnv.eraseEnv w.1.env))
+
+noncomputable def moveAtCheckedWorldPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P) (w : CheckedWorld g hctx) :
+    PMF (Option (ProgramAction g.prog who)) :=
+  moveAtProgramCursorPMF g hctx σ who w.suffix
+    (projectViewEnv who (VEnv.eraseEnv w.env))
+
 @[simp] theorem moveAtCheckedWorld_ofCursorChecked
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -118,6 +213,14 @@ noncomputable def moveAtCheckedWorld
     moveAtCheckedWorld g hctx σ who
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
       moveAtCursorWorld g hctx σ who w := rfl
+
+@[simp] theorem moveAtCheckedWorldPMF_ofCursorChecked
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P) (w : CursorCheckedWorld g) :
+    moveAtCheckedWorldPMF g hctx σ who
+        (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
+      moveAtCursorWorldPMF g hctx σ who w := rfl
 
 set_option linter.flexible false in
 theorem moveAtProgramCursor_support_availableAt
@@ -182,9 +285,12 @@ theorem moveAtProgramCursor_support_availableAt
             evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
           exact headKernel_supported_atCursor (P := P) (L := L)
             g hctx σ suffix (VEnv.eraseEnv env) v hvFD
-        simp [CursorCheckedWorld.availableProgramMovesAt,
-          CursorCheckedWorld.availableProgramActionsAt, active,
-          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
+        simp only [CursorCheckedWorld.availableProgramMovesAt, active,
+          Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,
+          availableActions, ↓reduceIte, ProgramAction.toAction,
+          Set.mem_setOf_eq, Sigma.mk.injEq, eq_mpr_eq_cast,
+          VegasCore.commit.injEq, true_and, not_true_eq_false,
+          ProgramAction.commitAt_cursor]
         constructor
         · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
               suffix, ?_⟩, hguard⟩⟩
@@ -216,6 +322,100 @@ theorem moveAtCursorWorld_support_available
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld] using hlocal
   | some ai =>
       simpa [moveAtCursorWorld, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramActions,
+        CursorCheckedWorld.availableProgramActionsAt,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.toWorld, availableActions] using hlocal
+
+theorem moveAtProgramCursorPMF_support_availableAt
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (env : VEnv L Γ)
+    {oi : Option (ProgramAction g.prog who)}
+    (hoi : oi ∈
+      (moveAtProgramCursorPMF g hctx σ who suffix
+        (projectViewEnv who (VEnv.eraseEnv env))).support) :
+    oi ∈ CursorCheckedWorld.availableProgramMovesAt
+      p env suffix who := by
+  cases p with
+  | ret payoffs =>
+      have hoiNone : oi = none := by
+        simpa [moveAtProgramCursorPMF] using hoi
+      subst oi
+      simp [CursorCheckedWorld.availableProgramMovesAt, active]
+  | letExpr x e k =>
+      have hoiNone : oi = none := by
+        simpa [moveAtProgramCursorPMF] using hoi
+      subst oi
+      simp [CursorCheckedWorld.availableProgramMovesAt, active]
+  | sample x D k =>
+      have hoiNone : oi = none := by
+        simpa [moveAtProgramCursorPMF] using hoi
+      subst oi
+      simp [CursorCheckedWorld.availableProgramMovesAt, active]
+  | reveal y owner x hx k =>
+      have hoiNone : oi = none := by
+        simpa [moveAtProgramCursorPMF] using hoi
+      subst oi
+      simp [CursorCheckedWorld.availableProgramMovesAt, active]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        let d :=
+          ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+            ((suffix.behavioralProfilePMF (fun i => (σ i).val)) who)
+            (projectViewEnv who (VEnv.eraseEnv env))
+        have hoi' :
+            ∃ v, v ∈ d.support ∧
+              some (ProgramAction.commitAt suffix v) = oi := by
+          simpa [moveAtProgramCursorPMF, d] using hoi
+        rcases hoi' with ⟨v, hv, hvo⟩
+        rw [← hvo]
+        have hguard :
+            evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
+          exact headKernelPMF_supported_atCursor (P := P) (L := L)
+            g hctx σ suffix (VEnv.eraseEnv env) hv
+        simp only [CursorCheckedWorld.availableProgramMovesAt, active,
+          Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,
+          availableActions, ↓reduceIte, ProgramAction.toAction,
+          Set.mem_setOf_eq, Sigma.mk.injEq, eq_mpr_eq_cast,
+          VegasCore.commit.injEq, true_and, not_true_eq_false,
+          ProgramAction.commitAt_cursor]
+        constructor
+        · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
+              suffix, ?_⟩, hguard⟩⟩
+          exact cast_heq _ v
+        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
+          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
+          · rfl
+      · have hoiNone : oi = none := by
+          simpa [moveAtProgramCursorPMF, howner] using hoi
+        subst oi
+        have hnot : who ≠ owner := fun h => howner h.symm
+        simp [CursorCheckedWorld.availableProgramMovesAt, active, hnot]
+
+theorem moveAtCursorWorldPMF_support_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (who : P) (w : CursorCheckedWorld g)
+    {oi : Option (ProgramAction g.prog who)}
+    (hoi : oi ∈ (moveAtCursorWorldPMF g hctx σ who w).support) :
+    oi ∈ (observedProgramFOSG g hctx).availableMovesAtState w who := by
+  have hlocal :=
+    moveAtProgramCursorPMF_support_availableAt
+      g hctx σ who w.1.suffix w.1.env hoi
+  cases oi with
+  | none =>
+      simpa [moveAtCursorWorldPMF, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld] using hlocal
+  | some ai =>
+      simpa [moveAtCursorWorldPMF, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
         CursorCheckedWorld.availableProgramActions,

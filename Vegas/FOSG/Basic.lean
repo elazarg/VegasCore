@@ -4,6 +4,7 @@ import GameTheory.Languages.FOSG.Compile
 import GameTheory.Languages.FOSG.Kuhn
 import Vegas.Strategic
 import Vegas.PureStrategic
+import Vegas.StrategicPMF
 import Vegas.LegalNonempty
 import Vegas.Finite
 import Vegas.ViewKernel
@@ -702,6 +703,146 @@ theorem behavioralProfile_isLegal
   | commit s ih =>
       exact ProgramBehavioralProfile.tail_isLegal (ih hσ)
   | reveal s ih => exact ih hσ
+
+noncomputable def behavioralProfilePMF
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) :
+    ProgramBehavioralProfilePMF root →
+      ProgramBehavioralProfilePMF p := by
+  induction s with
+  | here => intro σ; exact σ
+  | letExpr s ih => intro σ; exact (fun who =>
+      match ih σ who with
+      | .letExpr tail => tail)
+  | sample s ih => intro σ; exact (fun who =>
+      match ih σ who with
+      | .sample tail => tail)
+  | commit s ih =>
+      intro σ
+      exact ProgramBehavioralProfilePMF.tail (ih σ)
+  | reveal s ih => intro σ; exact (fun who =>
+      match ih σ who with
+      | .reveal tail => tail)
+
+theorem behavioralProfilePMF_letExpr
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix root (.letExpr x e k))
+    (σ : ProgramBehavioralProfilePMF root) (who : P) :
+    (ProgramSuffix.letExpr s).behavioralProfilePMF σ who =
+      match s.behavioralProfilePMF σ who with
+      | .letExpr tail => tail := by
+  simp [behavioralProfilePMF]
+
+theorem behavioralProfilePMF_sample
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix root (.sample x D k))
+    (σ : ProgramBehavioralProfilePMF root) (who : P) :
+    (ProgramSuffix.sample s).behavioralProfilePMF σ who =
+      match s.behavioralProfilePMF σ who with
+      | .sample tail => tail := by
+  simp [behavioralProfilePMF]
+
+@[simp] theorem behavioralProfilePMF_commit
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k))
+    (σ : ProgramBehavioralProfilePMF root) :
+    (ProgramSuffix.commit s).behavioralProfilePMF σ =
+      ProgramBehavioralProfilePMF.tail (P := P) (L := L)
+        (s.behavioralProfilePMF σ) := by
+  simp [behavioralProfilePMF]
+
+theorem behavioralProfilePMF_reveal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    (s : ProgramSuffix root (.reveal y who x hx k))
+    (σ : ProgramBehavioralProfilePMF root) (i : P) :
+    (ProgramSuffix.reveal s).behavioralProfilePMF σ i =
+      match s.behavioralProfilePMF σ i with
+      | .reveal tail => tail := by
+  simp [behavioralProfilePMF]
+
+theorem behavioralProfilePMF_isLegal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    {σ : ProgramBehavioralProfilePMF root}
+    (hσ : σ.IsLegal) :
+    (s.behavioralProfilePMF σ).IsLegal := by
+  induction s generalizing σ with
+  | here => exact hσ
+  | letExpr s ih =>
+      intro who
+      rw [behavioralProfilePMF_letExpr]
+      have hsite := ih hσ who
+      cases hprof : s.behavioralProfilePMF σ who with
+      | letExpr tail =>
+          rw [hprof] at hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+  | sample s ih =>
+      intro who
+      rw [behavioralProfilePMF_sample]
+      have hsite := ih hσ who
+      cases hprof : s.behavioralProfilePMF σ who with
+      | sample tail =>
+          rw [hprof] at hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+  | commit s ih =>
+      exact ProgramBehavioralProfilePMF.tail_isLegal (ih hσ)
+  | reveal s ih =>
+      intro who
+      rw [behavioralProfilePMF_reveal]
+      have hsite := ih hσ who
+      cases hprof : s.behavioralProfilePMF σ who with
+      | reveal tail =>
+          rw [hprof] at hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+
+theorem behavioralProfilePMF_toBehavioralPMF
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    (σ : ProgramPureProfile root) :
+    s.behavioralProfilePMF
+        (ProgramPureProfile.toBehavioralPMF root σ) =
+      ProgramPureProfile.toBehavioralPMF p (s.pureProfile σ) := by
+  induction s generalizing σ with
+  | here => rfl
+  | @letExpr Γ x b e k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramPureProfile.toBehavioralPMF root σ) who with
+        | .letExpr tail => tail) =
+        ProgramPureProfile.toBehavioralPMF k (s.pureProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
+  | @sample Γ x b D k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramPureProfile.toBehavioralPMF root σ) who with
+        | .sample tail => tail) =
+        ProgramPureProfile.toBehavioralPMF k (s.pureProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
+  | commit s ih =>
+      rw [behavioralProfilePMF_commit, pureProfile_commit, ih,
+        ProgramPureProfile.tail_toBehavioralPMF]
+  | @reveal Γ y owner x b hx k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramPureProfile.toBehavioralPMF root σ) who with
+        | .reveal tail => tail) =
+        ProgramPureProfile.toBehavioralPMF k (s.pureProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
 
 theorem behavioralProfile_toBehavioral
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
