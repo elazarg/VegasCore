@@ -1629,7 +1629,6 @@ strategy-space bridge. -/
 theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
     letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
       fun who => LegalProgramPureStrategy.instFintype g LF who

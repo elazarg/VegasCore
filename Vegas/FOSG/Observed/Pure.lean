@@ -119,12 +119,46 @@ theorem headPureKernel_legal_atCursor
   simp [ProgramPureStrategy.IsLegal] at hsite
   simpa [raw] using hsite.1 ρ
 
+theorem headPureStrategyKernel_legal_atCursor
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    {who : P} (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (ρ : Env L.Val (eraseVCtx Γ)) :
+    evalGuard (Player := P) (L := L) R
+      ((ProgramPureStrategy.headKernel (P := P) (L := L)
+        (suffix.pureStrategy who σ.val))
+        (projectViewEnv who ρ)) ρ = true := by
+  have hcursor :
+      (suffix.pureStrategy who σ.val).IsLegal
+        (.commit x who R k) :=
+    suffix.pureStrategy_isLegal who σ.2
+  let σc :
+      PureKernel (P := P) (L := L) who Γ b ×
+        ProgramPureStrategy (P := P) (L := L) who k := by
+    simpa [ProgramPureStrategy] using suffix.pureStrategy who σ.val
+  have hsite :
+      σc.1.IsLegalAt (P := P) (L := L) (x := x) (who := who)
+          (b := b) R ∧ σc.2.IsLegal k := by
+    simpa [ProgramPureStrategy.IsLegal, σc] using hcursor
+  simpa [ProgramPureStrategy.headKernel, σc] using hsite.1 ρ
+
 noncomputable def movePureAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     Option (ProgramAction g.prog who) :=
   movePureAtProgramCursor g hctx σ who w.1.suffix
+    (projectViewEnv who (VEnv.eraseEnv w.1.env))
+
+noncomputable def movePureStrategyAtCursorWorld
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (w : CursorCheckedWorld g) :
+    Option (ProgramAction g.prog who) :=
+  movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
     (projectViewEnv who (VEnv.eraseEnv w.1.env))
 
 set_option linter.flexible false in
@@ -176,6 +210,61 @@ theorem movePureAtProgramCursor_availableAt
         simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt,
           active, howner, hnot]
 
+set_option linter.flexible false in
+theorem movePureStrategyAtProgramCursor_availableAt
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (env : VEnv L Γ) :
+    movePureStrategyAtProgramCursor g hctx who σ suffix
+        (projectViewEnv who (VEnv.eraseEnv env)) ∈
+      CursorCheckedWorld.availableProgramMovesAt
+        p env suffix who := by
+  cases p with
+  | ret payoffs =>
+      simp [movePureStrategyAtProgramCursor,
+        CursorCheckedWorld.availableProgramMovesAt, active]
+  | letExpr x e k =>
+      simp [movePureStrategyAtProgramCursor,
+        CursorCheckedWorld.availableProgramMovesAt, active]
+  | sample x D k =>
+      simp [movePureStrategyAtProgramCursor,
+        CursorCheckedWorld.availableProgramMovesAt, active]
+  | reveal y owner x hx k =>
+      simp [movePureStrategyAtProgramCursor,
+        CursorCheckedWorld.availableProgramMovesAt, active]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        have hguard :
+            evalGuard (Player := P) (L := L) R
+              ((ProgramPureStrategy.headKernel (P := P) (L := L)
+                (suffix.pureStrategy who σ.val))
+                (projectViewEnv who (VEnv.eraseEnv env)))
+              (VEnv.eraseEnv env) = true := by
+          exact headPureStrategyKernel_legal_atCursor
+            g hctx σ suffix (VEnv.eraseEnv env)
+        simp [movePureStrategyAtProgramCursor,
+          CursorCheckedWorld.availableProgramMovesAt,
+          CursorCheckedWorld.availableProgramActionsAt, active,
+          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
+        constructor
+        · refine ⟨
+            (ProgramPureStrategy.headKernel (P := P) (L := L)
+              (suffix.pureStrategy who σ.val))
+              (projectViewEnv who (VEnv.eraseEnv env)),
+            ⟨⟨ProgramSuffix.ty_commitCursor suffix, ?_⟩,
+              hguard⟩⟩
+          exact cast_heq _ _
+        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
+          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
+          · rfl
+      · have hnot : who ≠ owner := fun h => howner h.symm
+        simp [movePureStrategyAtProgramCursor,
+          CursorCheckedWorld.availableProgramMovesAt,
+          active, howner, hnot]
+
 theorem movePureAtCursorWorld_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -200,6 +289,37 @@ theorem movePureAtCursorWorld_available
           (projectViewEnv who (VEnv.eraseEnv w.1.env)) = some ai at hmove
       rw [hmove] at hlocal
       simpa [movePureAtCursorWorld, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramActions,
+        CursorCheckedWorld.availableProgramActionsAt,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.toWorld, availableActions, hmove] using hlocal
+
+theorem movePureStrategyAtCursorWorld_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (w : CursorCheckedWorld g) :
+    movePureStrategyAtCursorWorld g hctx who σ w ∈
+      (observedProgramFOSG g hctx).availableMovesAtState w who := by
+  have hlocal :=
+    movePureStrategyAtProgramCursor_availableAt
+      g hctx who σ w.1.suffix w.1.env
+  cases hmove : movePureStrategyAtCursorWorld g hctx who σ w with
+  | none =>
+      change movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
+          (projectViewEnv who (VEnv.eraseEnv w.1.env)) = none at hmove
+      rw [hmove] at hlocal
+      simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
+        hmove] using hlocal
+  | some ai =>
+      change movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
+          (projectViewEnv who (VEnv.eraseEnv w.1.env)) = some ai at hmove
+      rw [hmove] at hlocal
+      simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
         CursorCheckedWorld.availableProgramActions,
@@ -327,6 +447,22 @@ theorem movePureAtProgramObservation?_of_cursorWorld
   rw [privateObsOfCursorWorld_eraseEnv]
   rfl
 
+theorem movePureStrategyAtProgramObservation?_of_cursorWorld
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (w : CursorCheckedWorld g) :
+    movePureStrategyAtProgramObservation? g hctx who σ
+      (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
+      movePureStrategyAtCursorWorld g hctx who σ w := by
+  unfold movePureStrategyAtProgramObservation? movePureStrategyAtCursorWorld
+  change movePureStrategyAtProgramCursor g hctx who σ
+      (privateObsOfCursorWorld who w).cursor.toSuffix
+      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+    movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
+  rw [privateObsOfCursorWorld_eraseEnv]
+  rfl
+
 /-- Raw pure profile induced by a Vegas legal pure profile for the final
 program-action FOSG. Use `toObservedProgramLegalPureProfile` when the target
 type requires FOSG legality. -/
@@ -364,6 +500,107 @@ theorem programPureProfileCandidate_eq_strategy
       ProgramCursor.toSuffixFrom, movePureAtProgramCursor_eq_strategy]
     rfl
   · rw [movePureAtProgramObservation?_eq_strategy]
+
+@[simp] theorem programPureStrategyCandidate_nil
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who) :
+    programPureStrategyCandidate g hctx who σ
+      ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
+      movePureStrategyAtCursorWorld g hctx who σ
+        (CursorCheckedWorld.initial g hctx) := by
+  simp [programPureStrategyCandidate, programLatestObservation?,
+    programObservationEvents, last?, movePureStrategyAtCursorWorld,
+    CursorCheckedWorld.initial, CursorWorldData.suffix, ProgramCursor.toSuffix,
+    ProgramCursor.toSuffixFrom]
+  rfl
+
+@[simp] theorem programPureStrategyCandidate_snoc
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (h : (observedProgramFOSG g hctx).History)
+    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
+    (dst : CursorCheckedWorld g)
+    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
+    programPureStrategyCandidate g hctx who σ
+      ((h.snoc a dst support).playerView who) =
+      movePureStrategyAtCursorWorld g hctx who σ dst := by
+  rw [programPureStrategyCandidate,
+    programLatestObservation?_history_snoc g hctx who h a dst support]
+  simp [movePureStrategyAtProgramObservation?_of_cursorWorld]
+
+@[simp] theorem programPureStrategyCandidate_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (h : (observedProgramFOSG g hctx).History)
+    (e : (observedProgramFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState) :
+    programPureStrategyCandidate g hctx who σ
+      ((h.appendStep e hsrc).playerView who) =
+      movePureStrategyAtCursorWorld g hctx who σ
+        (h.appendStep e hsrc).lastState := by
+  cases e with
+  | mk src act dst support =>
+      cases hsrc
+      change
+        programPureStrategyCandidate g hctx who σ
+          ((h.snoc act dst support).playerView who) =
+        movePureStrategyAtCursorWorld g hctx who σ
+          (h.snoc act dst support).lastState
+      simpa using
+        programPureStrategyCandidate_snoc
+          g hctx who σ h act dst support
+
+theorem programPureStrategyCandidate_history
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (h : (observedProgramFOSG g hctx).History) :
+    programPureStrategyCandidate g hctx who σ (h.playerView who) =
+      movePureStrategyAtCursorWorld g hctx who σ h.lastState := by
+  let G := observedProgramFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          simp [programPureStrategyCandidate,
+            GameTheory.FOSG.History.playerView,
+            GameTheory.FOSG.History.playerViewFrom,
+            GameTheory.FOSG.History.lastState,
+            GameTheory.FOSG.lastStateFrom,
+            programLatestObservation?, programObservationEvents, last?,
+            observedProgramFOSG, movePureStrategyAtCursorWorld,
+            CursorCheckedWorld.initial, CursorWorldData.suffix,
+            ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+          rfl
+      | append_singleton steps e ih =>
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          rw [hEq]
+          exact programPureStrategyCandidate_appendStep
+            g hctx who σ hprefix e hsrc
+
+theorem programPureStrategyCandidate_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (h : (observedProgramFOSG g hctx).History) :
+    programPureStrategyCandidate g hctx who σ (h.playerView who) ∈
+      (observedProgramFOSG g hctx).availableMoves h who := by
+  rw [programPureStrategyCandidate_history g hctx who σ h]
+  simpa [GameTheory.FOSG.availableMoves,
+    GameTheory.FOSG.availableMovesAtState] using
+    movePureStrategyAtCursorWorld_available g hctx who σ h.lastState
 
 @[simp] theorem programPureProfileCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -490,27 +727,15 @@ noncomputable def toObservedProgramReachableLegalPureProfile
 
 noncomputable def toObservedProgramReachableLegalPureStrategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     (who : P) (σ : LegalProgramPureStrategy g who) :
     (observedProgramFOSG g hctx).ReachableLegalPureStrategy who := by
-  let base : LegalProgramPureProfile g :=
-    fun j => Classical.choice (inferInstanceAs (Nonempty (LegalProgramPureStrategy g j)))
-  let prof : LegalProgramPureProfile g := Function.update base who σ
   refine ⟨(programPureStrategyCandidate g hctx who σ).restrictReachable, ?_⟩
   intro h
-  have havail :
-      programPureProfileCandidate g hctx prof who (h.playerView who) ∈
-        (observedProgramFOSG g hctx).availableMoves h who :=
-    programPureProfileCandidate_available g hctx prof who h
-  have heq :=
-    congrFun (programPureProfileCandidate_eq_strategy g hctx prof who)
-      (h.playerView who)
-  rw [heq] at havail
-  simpa [GameTheory.FOSG.PureStrategy.restrictReachable, prof] using havail
+  simpa [GameTheory.FOSG.PureStrategy.restrictReachable] using
+    programPureStrategyCandidate_available g hctx who σ h
 
 noncomputable def toObservedProgramReachableMixedPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
     GameTheory.FOSG.Kuhn.ReachableMixedProfile
       (G := observedProgramFOSG g hctx) :=
@@ -519,7 +744,6 @@ noncomputable def toObservedProgramReachableMixedPureProfile
 
 theorem toObservedProgramReachableLegalPureProfile_eq_component
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     (σ : LegalProgramPureProfile g) :
     toObservedProgramReachableLegalPureProfile g hctx σ =
       fun who => toObservedProgramReachableLegalPureStrategy g hctx who (σ who) := by
@@ -535,7 +759,6 @@ theorem toObservedProgramReachableMixedPureProfile_joint
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who, Fintype (LegalProgramPureStrategy g who)]
-    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :

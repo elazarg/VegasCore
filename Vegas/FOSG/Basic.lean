@@ -540,6 +540,28 @@ noncomputable def pureStrategy
       · simpa [ProgramPureStrategy, h] using ih σ
   | reveal s ih => intro σ; exact ih σ
 
+set_option linter.flexible false in
+theorem pureStrategy_isLegal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) (who : P)
+    {σ : ProgramPureStrategy (P := P) (L := L) who root}
+    (hσ : σ.IsLegal root) :
+    (s.pureStrategy who σ).IsLegal p := by
+  induction s generalizing σ with
+  | here => exact hσ
+  | letExpr s ih => simpa [pureStrategy] using ih hσ
+  | sample s ih => simpa [pureStrategy] using ih hσ
+  | reveal s ih => simpa [pureStrategy] using ih hσ
+  | @commit Γ x owner b R k s ih =>
+      have hsite := ih hσ
+      by_cases h : owner = who
+      · cases h
+        dsimp [pureStrategy]
+        simp [ProgramPureStrategy.IsLegal] at hsite ⊢
+        exact hsite.2
+      · dsimp [pureStrategy]
+        simpa [ProgramPureStrategy.IsLegal, h] using hsite
+
 @[simp] theorem pureProfile_letExpr
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
     {x : VarId} {b : L.Ty}
