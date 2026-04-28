@@ -1470,21 +1470,16 @@ theorem observedProgramProjectedPayoff_behavioral_to_mixed_toKernelGame_eu_reach
             g hctx LF σ who
 
 /-- Reachable-coordinate FOSG Kuhn M→B specialized to the observed-program
-FOSG, with the remaining posterior-locality condition kept explicit.
+FOSG.
 
-This is the first Vegas-facing form of the new bounded-history FOSG M→B theorem.
-Step-mass invariance and support factorization are discharged by GameTheory's
-legal reachable-history step-determinism theorem. Legal observability is proved
+GameTheory discharges the reachable-history Kuhn semantic conditions
+generically for FOSGs. The Vegas-specific input is legal observability, proved
 above from the cursor/view observation design and guard view-scoping. -/
-theorem observedProgramReachable_mixed_to_legal_behavioral_of_actionPosteriorLocal
+theorem observedProgramReachable_mixed_to_legal_behavioral
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
-    (hLocal : ∀ who,
-      GameTheory.FOSG.Kuhn.ReachableHistoryActionPosteriorLocal
-        (G := observedProgramFOSG g hctx)
-        (observedProgramFOSG_legalObservable g hctx) who)
     (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
       (G := observedProgramFOSG g hctx)) :
     ∃ βcore :
@@ -1511,13 +1506,7 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_of_actionPosteriorLoc
   exact GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral
     (G := observedProgramFOSG g hctx)
     (observedProgramFOSG_legalObservable g hctx)
-    (GameTheory.FOSG.Kuhn.reachableHistory_stepMassInvariant
-      (G := observedProgramFOSG g hctx)
-      (observedProgramFOSG_legalObservable g hctx))
-    (GameTheory.FOSG.Kuhn.reachableHistory_stepSupportFactorization
-      (G := observedProgramFOSG g hctx)
-      (observedProgramFOSG_legalObservable g hctx))
-    hLocal μ (syntaxSteps g.prog)
+    μ (syntaxSteps g.prog)
 
 end Observed
 
