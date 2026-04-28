@@ -1,4 +1,5 @@
 import Vegas.FOSG.Observed.Kernel
+import Vegas.FOSG.Observed.Current
 
 namespace Vegas
 namespace FOSGBridge
