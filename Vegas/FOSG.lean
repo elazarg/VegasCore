@@ -5631,6 +5631,44 @@ theorem observedProgramProjectedPayoff_behavioral_to_mixed_toKernelGame_eu_reach
           exact observedProgramProjectedPayoff_runDist_eq_toKernelGame_eu
             (P := P) (L := L) g hctx LF σ who
 
+/-- Reachable-coordinate FOSG Kuhn M→B specialized to the observed-program
+FOSG, with the semantic side conditions kept explicit.
+
+This is the first Vegas-facing form of the new bounded-history FOSG M→B theorem.
+It deliberately does not hide the remaining obligations: legal observability,
+step-mass invariance, support factorization, and posterior locality for the
+compiled observed-program FOSG. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
+    [Fintype (observedProgramFOSG g hctx).History]
+    (hLeg : (observedProgramFOSG g hctx).LegalObservable)
+    (hMass : GameTheory.FOSG.Kuhn.ReachableHistoryStepMassInvariant
+      (G := observedProgramFOSG (P := P) (L := L) g hctx))
+    (hFactor : GameTheory.FOSG.Kuhn.ReachableHistoryStepSupportFactorization
+      (G := observedProgramFOSG (P := P) (L := L) g hctx))
+    (hLocal : ∀ who,
+      GameTheory.FOSG.Kuhn.ReachableHistoryActionPosteriorLocal
+        (G := observedProgramFOSG (P := P) (L := L) g hctx) who)
+    (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG (P := P) (L := L) g hctx))
+    (hμ : GameTheory.FOSG.Kuhn.IsLegalReachableMixedProfile
+      (G := observedProgramFOSG (P := P) (L := L) g hctx) μ) :
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist
+          (G := observedProgramFOSG (P := P) (L := L) g hctx)
+          (syntaxSteps g.prog) β.toProfile =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG (P := P) (L := L) g hctx) μ).bind
+          (fun π =>
+            GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+              (G := observedProgramFOSG (P := P) (L := L) g hctx)
+              (syntaxSteps g.prog) π) := by
+  exact GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    hLeg hMass hFactor hLocal μ hμ (syntaxSteps g.prog)
+
 end Observed
 
 end FOSGBridge
