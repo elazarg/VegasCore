@@ -1,5 +1,6 @@
 import Vegas.Equilibrium
 import Vegas.PureStrategic
+import Vegas.StrategicPMF
 
 /-!
 # Protocol-native semantics for Vegas
@@ -23,10 +24,14 @@ The file has two regions.
   `KernelGame`-transported counterpart by definitional unfolding.
 
 * **Region B (named targets, not theorems).**
-  `ProtocolKuhnProperty g : Prop` is the protocol-level Kuhn claim:
+  `ProtocolKuhnPropertyPMF g : Prop` is the general protocol-level Kuhn claim:
   every independent mixed profile over legal pure strategies is
-  outcome-equivalent to some legal behavioural profile.
-  `ProtocolCorrelatedPureRealizationProperty g : Prop` is the stronger
+  outcome-equivalent to some legal PMF behavioural profile. The PMF target is
+  essential: arbitrary mixed pure profiles can induce real-valued behavioural
+  probabilities, while the original `FDist` behavioural game is rational-valued.
+  `ProtocolRationalKuhnProperty g : Prop` is the corresponding FDist-valued
+  target for rational behavioural witnesses.
+  `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
   correlated variant over arbitrary PMFs on joint pure profiles.
   `Vegas.FOSG` gives the outcome-preserving protocol representation for
   arbitrary state-dependent guards; the remaining target is relating the
@@ -157,10 +162,28 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
 
 /-! ## Region B — named realization targets -/
 
-/-- The protocol-level Kuhn property for a Vegas program: every independent
-mixed profile over guard-legal pure strategies admits a guard-legal
-behavioural profile with the same outcome distribution. -/
-def ProtocolKuhnProperty [Fintype P] (g : WFProgram P L)
+/-- The general protocol-level Kuhn property for a Vegas program: every
+independent mixed profile over guard-legal pure strategies admits a
+guard-legal PMF behavioural profile with the same outcome distribution.
+
+The PMF target is part of the mathematical statement. Vegas' `FDist`
+behavioural strategies have rational weights, so they cannot represent all
+behavioural probabilities induced by arbitrary `PMF` mixtures over pure
+strategies. -/
+def ProtocolKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
+    [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
+  ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- FDist-valued version of the protocol-level Kuhn target.
+
+This is deliberately not named as the general Kuhn property: it can only be
+true for mixed pure profiles whose induced behavioural probabilities are
+representable by rational `FDist` kernels. -/
+def ProtocolRationalKuhnProperty [Fintype P] (g : WFProgram P L)
     [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
     ∃ β : LegalProgramBehavioralProfile g,
@@ -169,21 +192,28 @@ def ProtocolKuhnProperty [Fintype P] (g : WFProgram P L)
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
 /-- Strong correlated variant of protocol realization: every PMF over joint
-guard-legal pure profiles admits a guard-legal behavioural profile with the
+guard-legal pure profiles admits a guard-legal PMF behavioural profile with the
 same outcome distribution.
 
 Stated as a `Prop`-valued definition, not proved here. The FOSG bridge proves
-the right protocol outcome semantics; what remains is relating Vegas'
-`LegalProgramPureProfile`/`LegalProgramBehavioralProfile` spaces to the
-corresponding FOSG reachable pure/behavioral strategy spaces, or proving the
-realization directly for Vegas. -/
-def ProtocolCorrelatedPureRealizationProperty (g : WFProgram P L) : Prop :=
+the right protocol outcome semantics; what remains is reifying the FOSG PMF
+behavioural witness back into `LegalProgramBehavioralProfilePMF g`. -/
+def ProtocolCorrelatedPureRealizationPropertyPMF (g : WFProgram P L) : Prop :=
+  ∀ (μ : PMF (LegalProgramPureProfile g)),
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- FDist-valued correlated realization target. As above, this is a rational
+variant rather than the general PMF-level property. -/
+def ProtocolRationalCorrelatedPureRealizationProperty
+    (g : WFProgram P L) : Prop :=
   ∀ (μ : PMF (LegalProgramPureProfile g)),
     ∃ β : LegalProgramBehavioralProfile g,
       (toKernelGame g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-/-- `ProtocolCorrelatedPureRealizationProperty` is not vacuous: a concrete
+/-- `ProtocolRationalCorrelatedPureRealizationProperty` is not vacuous: a concrete
 witness for a direction-trivialising case is the Dirac mixture on any legal
 pure profile, where the behavioural witness is its point-lift `toBehavioral`
 and the outcome equation reduces to the bridge theorem
