@@ -238,6 +238,54 @@ theorem currentLocalMixedPureProfile_joint
   exact (Math.PMFProduct.pmfPi_push_coordwise μ
     (fun who => currentLocalPureStrategy g hctx who)).symm
 
+/-- Semantic M→B specialized to the current-observation model.
+
+This is the direct GameTheory Kuhn theorem applied to Vegas' current private
+observations. It still assumes the semantic Kuhn hypotheses for this model and
+states preservation of the current-model run distribution, not yet the final
+Vegas outcome distribution. -/
+theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
+    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) (k : Nat) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+      fun who => PrivateObs.instFintype g LF who
+    letI : ∀ who obs,
+        Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    ObsModelCore.StepMassInvariant (currentObsModel g hctx) →
+    ObsModelCore.StepSupportFactorization (currentObsModel g hctx) →
+    (∀ who, ObsModelCore.ActionPosteriorLocal (currentObsModel g hctx) who) →
+    ∃ β : ObsModelCore.BehavioralProfile (currentObsModel g hctx),
+      (currentObsModel g hctx).runDist k β =
+        (PMF.map (currentLocalPureProfile g hctx)
+          (Math.PMFProduct.pmfPi μ)).bind
+            ((currentObsModel g hctx).runDistPure k) := by
+  classical
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+    fun who => PrivateObs.instFintype g LF who
+  letI : ∀ who obs,
+      Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  intro hMass hFactor hLocal
+  letI : Nonempty (LegalProgramPureProfile g) :=
+    LegalProgramPureProfile.instNonempty_of_wfctx g hctx
+  let fallback : LegalProgramPureProfile g := Classical.choice inferInstance
+  letI : ∀ who obs, Nonempty (CurrentProgramMove g who obs) :=
+    currentProgramMoveNonemptyOfPureProfile g hctx fallback
+  obtain ⟨β, hβ⟩ :=
+    ObsModelCore.kuhn_mixed_to_behavioral_semantic
+      (O := currentObsModel g hctx)
+      hMass hFactor hLocal
+      (currentLocalMixedPureProfile g hctx μ) k
+  refine ⟨β, ?_⟩
+  rw [hβ]
+  rw [currentLocalMixedPureProfile_joint g hctx LF μ]
+
 @[simp] theorem currentLocalPureStrategy_apply_observe
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
