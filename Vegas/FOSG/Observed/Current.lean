@@ -101,6 +101,28 @@ theorem VEnv.eraseEnv_ofErased {Γ : VCtx P L}
           have hrec := ih htailCtx (fun x τ h => env x τ (.there h))
           exact congrFun (congrFun (congrFun hrec x) τ) htail
 
+omit [DecidableEq P] in
+theorem VEnv.eq_of_eraseEnv_eq {Γ : VCtx P L}
+    {env₁ env₂ : VEnv L Γ}
+    (h : VEnv.eraseEnv (Player := P) (L := L) env₁ =
+      VEnv.eraseEnv (Player := P) (L := L) env₂) :
+    env₁ = env₂ := by
+  funext x τ hx
+  have hget := congrFun (congrFun (congrFun h x) τ.base) hx.toErased
+  simpa [VEnv.eraseEnv_get_of_erased] using hget
+
+theorem VEnv.toView_ofErased_projectViewEnv {Γ : VCtx P L}
+    (hctx : WFCtx Γ) (who : P) (env : Env L.Val (eraseVCtx Γ)) :
+    VEnv.toView who (VEnv.ofErased env : VEnv L Γ) =
+      (VEnv.ofErased (projectViewEnv who env) :
+        VEnv L (viewVCtx who Γ)) := by
+  apply VEnv.eq_of_eraseEnv_eq (P := P)
+  rw [← projectViewEnv_eraseEnv_eq_toView
+      (who := who) hctx (VEnv.ofErased env)]
+  rw [VEnv.eraseEnv_ofErased (P := P) hctx env]
+  rw [VEnv.eraseEnv_ofErased (P := P) (WFCtx.viewVCtx (p := who) hctx)
+    (projectViewEnv who env)]
+
 /-- Current private observation reconstructed from an ordinary erased Vegas
 view at a known program cursor. -/
 def privateObsOfViewAtCursor
@@ -116,6 +138,24 @@ def privateObsOfViewAtCursor
         (privateObsOfViewAtCursor who c view).env =
       view :=
   VEnv.eraseEnv_ofErased (P := P) (WFCtx.viewVCtx (p := who) hctx) view
+
+theorem privateObsOfCursorWorld_ofErased
+    {g : WFProgram P L} (hctx : WFCtx g.Γ)
+    (who : P) (c : ProgramCursor g.prog)
+    (env : Env L.Val (eraseVCtx c.Γ)) :
+    privateObsOfCursorWorld who
+        (⟨{ cursor := c, env := VEnv.ofErased env },
+          ProgramCursor.endpointValid g hctx c⟩ : CursorCheckedWorld g) =
+      privateObsOfViewAtCursor who c (projectViewEnv who env) := by
+  change
+    ({ cursor := c
+       env := VEnv.toView who (VEnv.ofErased env : VEnv L c.Γ) } :
+        PrivateObs g who) =
+      { cursor := c
+        env := VEnv.ofErased (projectViewEnv who env) }
+  congr
+  exact VEnv.toView_ofErased_projectViewEnv
+    (ProgramSuffix.wctx c.toSuffix hctx g.wf.1) who env
 
 namespace CurrentProgramMove
 
