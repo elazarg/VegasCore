@@ -356,7 +356,82 @@ noncomputable def toBehavioralPMF :
       ProgramBehavioralStrategyPMF.tailOwn]
   · simp [toBehavioralPMF, ProgramBehavioralProfilePMF.tail, h]
 
+theorem toBehavioralPMF_IsLegal :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+    (σ : ProgramPureProfile p) →
+    σ.IsLegal →
+    (ProgramPureProfile.toBehavioralPMF p σ).IsLegal
+  | _, .ret _, _, _ => fun _ => trivial
+  | _, .letExpr _ _ k, σ, hσ =>
+      toBehavioralPMF_IsLegal k σ hσ
+  | _, .sample _ _ k, σ, hσ =>
+      toBehavioralPMF_IsLegal k σ hσ
+  | _, .reveal _ _ _ _ k, σ, hσ =>
+      toBehavioralPMF_IsLegal k σ hσ
+  | _, .commit x who_c (b := b) R k, σ, hσ => by
+      have htail : (ProgramPureProfile.tail σ).IsLegal := by
+        intro j
+        by_cases hj : who_c = j
+        · subst hj
+          have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
+          dsimp [ProgramPureStrategy.IsLegal] at hσ_who
+          dsimp [ProgramPureProfile.tail]
+          split at hσ_who
+          · split
+            · exact hσ_who.2
+            · exact absurd rfl ‹_›
+          · exact absurd rfl ‹_›
+        · have hσ_j : (σ j).IsLegal (.commit x who_c R k) := hσ j
+          dsimp [ProgramPureStrategy.IsLegal] at hσ_j
+          dsimp [ProgramPureProfile.tail]
+          split at hσ_j
+          · rename_i h
+            exact absurd h hj
+          · split
+            · rename_i h
+              exact absurd h hj
+            · exact hσ_j
+      intro i
+      by_cases hi : who_c = i
+      · subst hi
+        have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
+        dsimp [ProgramPureProfile.toBehavioralPMF, ProgramPureStrategy.IsLegal,
+          ProgramBehavioralStrategyPMF.IsLegal] at hσ_who ⊢
+        split at hσ_who
+        · split
+          · refine ⟨?_, ?_⟩
+            · intro ρ v hv
+              have hv_eq :
+                  v = ProgramPureStrategy.headKernel (σ who_c)
+                    (projectViewEnv who_c ρ) := by
+                simpa only [ProgramBehavioralStrategyPMF.headKernel,
+                  ProgramBehavioralKernelPMF.ofPure, PMF.support_pure,
+                  Set.mem_singleton_iff] using hv
+              rw [hv_eq]
+              exact hσ_who.1 ρ
+            · exact toBehavioralPMF_IsLegal k _ htail who_c
+          · exact absurd rfl ‹_›
+        · exact absurd rfl ‹_›
+      · dsimp [ProgramPureProfile.toBehavioralPMF,
+          ProgramBehavioralStrategyPMF.IsLegal]
+        split
+        · rename_i h
+          exact absurd h hi
+        · exact toBehavioralPMF_IsLegal k _ htail i
+
 end ProgramPureProfile
+
+/-- Lift a legal pure profile to a legal PMF behavioral profile. -/
+noncomputable def LegalProgramPureProfile.toBehavioralPMF
+    {g : WFProgram P L} (σ : LegalProgramPureProfile g) :
+    LegalProgramBehavioralProfilePMF g :=
+  let rawPure : ProgramPureProfile g.prog := fun i => (σ i).val
+  let rawPureLegal : ProgramPureProfile.IsLegal rawPure := fun i => (σ i).2
+  let rawBeh : ProgramBehavioralProfilePMF g.prog :=
+    ProgramPureProfile.toBehavioralPMF g.prog rawPure
+  let rawBehLegal : ProgramBehavioralProfilePMF.IsLegal rawBeh :=
+    ProgramPureProfile.toBehavioralPMF_IsLegal g.prog rawPure rawPureLegal
+  fun i => ⟨rawBeh i, rawBehLegal i⟩
 
 /-! ## FDist behavioral → PMF behavioral conversion -/
 
@@ -561,5 +636,27 @@ noncomputable def toKernelGamePMF (g : WFProgram P L) : GameTheory.KernelGame P 
         (outcomeDistBehavioralPMF g.prog g.normalized
           (fun i => (σ i).val) g.env) := by
   rfl
+
+/-- The PMF behavioral lift of a legal pure profile has the same outcome
+kernel as the fixed-program pure strategic form. -/
+theorem toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
+    (g : WFProgram P L)
+    (σ : LegalProgramPureProfile g) :
+    (toKernelGamePMF g).outcomeKernel
+        (LegalProgramPureProfile.toBehavioralPMF σ) =
+      (toStrategicKernelGame g).outcomeKernel σ := by
+  have heq :
+      outcomeDistBehavioralPMF g.prog g.normalized
+          (fun i => ((LegalProgramPureProfile.toBehavioralPMF (g := g) σ) i).val)
+          g.env =
+        (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
+          (outcomeDistPure_totalWeight_eq_one
+            (p := g.prog) (σ := fun i => (σ i).val)
+            g.normalized) :=
+    outcomeDistBehavioralPMF_toBehavioralPMF_eq
+      (p := g.prog)
+      (σ := fun i => (σ i).val) (env := g.env) (hd := g.normalized)
+  simp only [toKernelGamePMF_outcomeKernel, toStrategicKernelGame_outcomeKernel,
+    heq]
 
 end Vegas

@@ -213,6 +213,19 @@ def ProtocolRationalCorrelatedPureRealizationProperty
       (toKernelGame g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
+/-- `ProtocolCorrelatedPureRealizationPropertyPMF` is not vacuous: a Dirac
+mixture on any legal pure profile is realized by the PMF behavioral point-lift
+of that pure profile. -/
+theorem protocolCorrelatedPureRealizationPMF_dirac (g : WFProgram P L)
+    (σ : LegalProgramPureProfile g) :
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        (PMF.pure σ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  refine ⟨LegalProgramPureProfile.toBehavioralPMF σ, ?_⟩
+  rw [PMF.pure_bind]
+  exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF g σ
+
 /-- `ProtocolRationalCorrelatedPureRealizationProperty` is not vacuous: a concrete
 witness for a direction-trivialising case is the Dirac mixture on any legal
 pure profile, where the behavioural witness is its point-lift `toBehavioral`
