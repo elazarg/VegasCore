@@ -292,6 +292,15 @@ theorem currentProgramStep_eq_of_active_empty
     congr 1
     exact Subtype.ext hraw
 
+theorem currentProgramStep_actionDeterministic_of_active_empty
+    (g : WFProgram P L) (w t : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hactive : CursorCheckedWorld.active w = ∅)
+    (_ha : currentProgramStep g w a t ≠ 0)
+    (_ha' : currentProgramStep g w a' t ≠ 0) :
+    a = a' :=
+  currentProgramJointAction_eq_of_active_empty w a a' hactive
+
 /-- Kuhn core model whose information state is exactly Vegas' current private
 observation. Its behavioral profiles are the semantic target for total
 Vegas-view PMF behavioral strategies. -/
