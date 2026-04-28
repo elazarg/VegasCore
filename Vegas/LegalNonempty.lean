@@ -49,7 +49,7 @@ under which the default is guaranteed legal. -/
 noncomputable def defaultPureStrategy
     [∀ τ : L.Ty, Nonempty (L.Val τ)] (who : P) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-    ProgramPureStrategy (P := P) (L := L) who p
+    ProgramPureStrategy who p
   | _, .ret _ => PUnit.unit
   | _, .letExpr _ _ k => defaultPureStrategy who k
   | _, .sample _ _ k => defaultPureStrategy who k
@@ -58,7 +58,7 @@ noncomputable def defaultPureStrategy
       · subst h
         exact by
           simpa [ProgramPureStrategy] using
-            ((fun _ : ViewEnv (P := P) (L := L) owner Γ =>
+            ((fun _ : ViewEnv owner Γ =>
                 Classical.arbitrary (L.Val b)),
              defaultPureStrategy owner k)
       · simpa [ProgramPureStrategy, h] using defaultPureStrategy who k
@@ -68,7 +68,7 @@ noncomputable def defaultPureStrategy
 noncomputable def defaultPureProfile
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
     {Γ : VCtx P L} (p : VegasCore P L Γ) :
-    ProgramPureProfile (P := P) (L := L) p :=
+    ProgramPureProfile p :=
   fun who => defaultPureStrategy who p
 
 /-- A guard is *trivially true* if it evaluates to `true` for every
@@ -232,7 +232,7 @@ theorem evalGuard_eq_of_projectViewEnv_eq
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     (hctx : WFCtx (L := L) Γ)
-    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hfresh : Fresh x Γ)
     (hR : GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R)
     {a : L.Val b}
     {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
@@ -257,12 +257,12 @@ theorem exists_legalKernel
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     (hctx : WFCtx (L := L) Γ)
-    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hfresh : Fresh x Γ)
     (hR : GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R)
     (hL : ∀ ρ : Env L.Val (eraseVCtx Γ), ∃ a : L.Val b,
         evalGuard (Player := P) (L := L) R a ρ = true) :
-    ∃ κ : PureKernel (P := P) (L := L) who Γ b,
-      κ.IsLegalAt (P := P) (L := L) (x := x) (who := who) (b := b) R := by
+    ∃ κ : PureKernel who Γ b,
+      κ.IsLegalAt (x := x) (who := who) (b := b) R := by
   classical
   refine ⟨fun view =>
     if hreach : ∃ ρ, projectViewEnv who ρ = view then
@@ -289,7 +289,7 @@ site and recurses on the tail. -/
 theorem exists_legal_pureStrategy [∀ τ : L.Ty, Nonempty (L.Val τ)] :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     WFCtx (L := L) Γ → FreshBindings p → ViewScoped p → Legal p →
-    ∀ who, ∃ s : ProgramPureStrategy (P := P) (L := L) who p, s.IsLegal p
+    ∀ who, ∃ s : ProgramPureStrategy who p, s.IsLegal p
   | _, .ret _, _, _, _, _, _ => ⟨PUnit.unit, trivial⟩
   | _, .letExpr _ _ k, hctx, hfresh, hsc, hl, who => by
       obtain ⟨s, hs⟩ :=
@@ -342,7 +342,7 @@ theorem exists_legal_pureProfile
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (hctx : WFCtx (L := L) Γ) (hwf : WF p) (hl : Legal p) :
-    ∃ σ : ProgramPureProfile (P := P) (L := L) p, σ.IsLegal := by
+    ∃ σ : ProgramPureProfile p, σ.IsLegal := by
   classical
   refine ⟨fun who =>
     Classical.choose (exists_legal_pureStrategy p hctx hwf.1 hwf.2.2 hl who), ?_⟩

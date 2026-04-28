@@ -85,10 +85,10 @@ noncomputable def checkedProfileStep
                 legal := legal })
             ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF (normalized.1 env))
       | commit x who R k =>
-          let σp : ProgramBehavioralProfile (P := P) (L := L)
+          let σp : ProgramBehavioralProfile
               (.commit x who R k) :=
             suffix.behavioralProfile (fun i => (σ i).val)
-          let d := ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+          let d := ProgramBehavioralStrategy.headKernel
             (σp who) (projectViewEnv who (VEnv.eraseEnv env))
           have hd : FDist.totalWeight d = 1 :=
             ProgramBehavioralStrategy.headKernel_normalized
@@ -165,7 +165,7 @@ noncomputable def checkedProfileStepPMF
                 legal := legal })
             ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF (normalized.1 env))
       | commit x who R k =>
-          let σp : ProgramBehavioralProfilePMF (P := P) (L := L)
+          let σp : ProgramBehavioralProfilePMF
               (.commit x who R k) :=
             suffix.behavioralProfilePMF (fun i => (σ i).val)
           exact PMF.map
@@ -180,8 +180,8 @@ noncomputable def checkedProfileStepPMF
                 viewScoped := viewScoped.2
                 normalized := normalized
                 legal := legal.2 })
-            (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
-              (σp who) (projectViewEnv who (VEnv.eraseEnv env)))
+            (ProgramBehavioralStrategyPMF.headKernel (σp who)
+             (projectViewEnv who (VEnv.eraseEnv env)))
       | reveal y who x hx k =>
           exact PMF.pure
             { Γ := _
@@ -248,7 +248,6 @@ theorem moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
     (x := (((suffix.behavioralProfile (fun i => ↑(σ i)) who).headKernel
       (projectViewEnv who env.eraseEnv)).toPMF
         (ProgramBehavioralStrategy.headKernel_normalized
-          (P := P) (L := L)
           ((suffix.behavioralProfile (fun i => ↑(σ i))) who)
           (projectViewEnv who env.eraseEnv))))
     (f := fun v =>
@@ -348,7 +347,6 @@ theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
   simp only [checkedProfileStepPMF, Function.comp_def]
   have hbind := bind_congr (m := PMF)
     (x := (ProgramBehavioralStrategyPMF.headKernel
-          (P := P) (L := L)
           ((suffix.behavioralProfilePMF (fun i => ↑(σ i))) who)
           (projectViewEnv who env.eraseEnv)))
     (f := fun v =>
@@ -916,36 +914,35 @@ theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
           rw [PMF.bind_map]
           have hd :
               FDist.totalWeight
-                (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+                (ProgramBehavioralStrategy.headKernel
                   ((suffix.behavioralProfile (fun i => (σ i).val)) who)
                   (projectViewEnv who
                     (VEnv.eraseEnv env))) = 1 :=
             ProgramBehavioralStrategy.headKernel_normalized
-              (P := P) (L := L)
               ((suffix.behavioralProfile (fun i => (σ i).val)) who)
               (projectViewEnv who (VEnv.eraseEnv env))
           change
-            ((ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+            ((ProgramBehavioralStrategy.headKernel
                 ((suffix.behavioralProfile (fun i => (σ i).val)) who)
                 (projectViewEnv who
                   (VEnv.eraseEnv env))).toPMF hd).bind
               (fun v =>
                 (outcomeDistBehavioral k
-                    (ProgramBehavioralProfile.tail (P := P) (L := L)
+                    (ProgramBehavioralProfile.tail
                       (suffix.behavioralProfile (fun i => (σ i).val)))
                     (VEnv.cons (Player := P) (L := L) (x := x)
                       (τ := .hidden who _) v env)).toPMF
                   (outcomeDistBehavioral_totalWeight_eq_one
                     (p := k)
-                    (σ := ProgramBehavioralProfile.tail (P := P) (L := L)
+                    (σ := ProgramBehavioralProfile.tail
                       (suffix.behavioralProfile (fun i => (σ i).val)))
                     normalized)) =
-              ((ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+              ((ProgramBehavioralStrategy.headKernel
                   ((suffix.behavioralProfile (fun i => (σ i).val)) who)
                   (projectViewEnv who
                     (VEnv.eraseEnv env))).bind fun v =>
                 outcomeDistBehavioral k
-                  (ProgramBehavioralProfile.tail (P := P) (L := L)
+                  (ProgramBehavioralProfile.tail
                     (suffix.behavioralProfile (fun i => (σ i).val)))
                   (VEnv.cons (Player := P) (L := L) (x := x)
                     (τ := .hidden who _) v env)).toPMF
@@ -954,12 +951,12 @@ theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
                   (σ := suffix.behavioralProfile (fun i => (σ i).val))
                   normalized)
           rw [← FDist.toPMF_bind
-            (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+            (ProgramBehavioralStrategy.headKernel
               ((suffix.behavioralProfile (fun i => (σ i).val)) who)
               (projectViewEnv who (VEnv.eraseEnv env)))
             (fun v =>
               outcomeDistBehavioral k
-                (ProgramBehavioralProfile.tail (P := P) (L := L)
+                (ProgramBehavioralProfile.tail
                   (suffix.behavioralProfile (fun i => (σ i).val)))
                 (VEnv.cons (Player := P) (L := L) (x := x)
                   (τ := .hidden who _) v env))
@@ -967,7 +964,7 @@ theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
             (fun v =>
               outcomeDistBehavioral_totalWeight_eq_one
                 (p := k)
-                (σ := ProgramBehavioralProfile.tail (P := P) (L := L)
+                (σ := ProgramBehavioralProfile.tail
                   (suffix.behavioralProfile (fun i => (σ i).val)))
                 normalized)
             (outcomeDistBehavioral_totalWeight_eq_one
@@ -1469,7 +1466,7 @@ theorem checkedProfileRunPMF_initial_outcomeKernel
 @[simp] theorem checkedWorldOutcome_ofCursorChecked
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CursorCheckedWorld g) :
-    checkedWorldOutcome (P := P) (L := L)
+    checkedWorldOutcome
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
       cursorWorldOutcome w := by
   cases w with
@@ -1491,7 +1488,7 @@ noncomputable def observedProgramHistoryCheckedWorld
 @[simp] theorem checkedWorldOutcome_observedProgramHistoryCheckedWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (h : (observedProgramFOSG g hctx).History) :
-    checkedWorldOutcome (P := P) (L := L)
+    checkedWorldOutcome
         (observedProgramHistoryCheckedWorld g hctx h) =
       observedProgramHistoryOutcome g hctx h := by
   simp [observedProgramHistoryCheckedWorld, observedProgramHistoryOutcome]
@@ -2470,8 +2467,7 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
                 (observedProgramFOSG_legalObservable g hctx)
                 (syntaxSteps g.prog) π)) := by
   obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_mixed_to_legal_behavioral
-      (P := P) (L := L) g hctx μ
+    observedProgramReachable_mixed_to_legal_behavioral g hctx μ
   refine ⟨βcore, β, hβ, ?_⟩
   rw [hdist, PMF.map_bind]
 
@@ -2514,8 +2510,7 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
     fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
-  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
-    (P := P) (L := L) g hctx μ
+  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist g hctx μ
 
 /-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B.
 
@@ -2565,8 +2560,7 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
   obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
-      (P := P) (L := L) g hctx
+    observedProgramReachable_mixed_to_legal_behavioral_outcomeDist g hctx
       (toObservedProgramReachableMixedPureProfile g hctx μ)
   refine ⟨βcore, β, hβ, ?_⟩
   rw [toObservedProgramReachableMixedPureProfile_joint] at hdist

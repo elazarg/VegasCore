@@ -59,9 +59,9 @@ theorem availableProgramMovesAt_eq_of_privateObs_eq
   dsimp [privateObsOfCursorWorld] at hpriv ⊢
   injection hpriv with hcursor henv
   cases hcursor
-  change CursorCheckedWorld.availableProgramMovesAt (P := P) (L := L)
+  change CursorCheckedWorld.availableProgramMovesAt
       c₁.prog env₁ c₁.toSuffix who =
-    CursorCheckedWorld.availableProgramMovesAt (P := P) (L := L)
+    CursorCheckedWorld.availableProgramMovesAt
       c₁.prog env₂ c₁.toSuffix who
   have hview : projectViewEnv who (VEnv.eraseEnv env₁) =
       projectViewEnv who (VEnv.eraseEnv env₂) := by
@@ -141,7 +141,7 @@ theorem observedProgramTransition_map_checkedWorld_eq_checkedTransition
     (a : (observedProgramFOSG g hctx).LegalAction w) :
     PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
         ((observedProgramFOSG g hctx).transition w a) =
-      checkedTransition (P := P) (L := L)
+      checkedTransition
         (CheckedWorld.ofCursorChecked (hctx := hctx) w)
         ⟨ProgramJointAction.toAction a.1,
           CursorProgramJointActionLegal.toAction a.2⟩ := by

@@ -18,7 +18,7 @@ def WFCtx {P : Type} {L : Vegas.IExpr}
   (Γ.map Prod.fst).Nodup
 
 instance {P : Type} {L : Vegas.IExpr} {x : VarId}
-    {Γ : Vegas.VCtx P L} : Decidable (Fresh (P := P) (L := L) x Γ) :=
+    {Γ : Vegas.VCtx P L} : Decidable (Fresh x Γ) :=
   inferInstanceAs (Decidable (x ∉ _))
 
 def FreshBindings {P : Type} [DecidableEq P]
@@ -80,7 +80,7 @@ instance {P : Type} [DecidableEq P]
     Decidable (RevealComplete pending p) := decidableRevealComplete pending p
 
 @[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
-    WFCtx (P := P) (L := L) [] := List.nodup_nil
+    WFCtx (L := L) (P := P) [] := List.nodup_nil
 
 theorem WFCtx.cons {P : Type} {L : IExpr}
     {x : VarId} {τ : BindTy P L} {Γ : VCtx P L}

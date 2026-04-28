@@ -18,7 +18,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- A normalized behavioral choice rule for one fixed commit site. -/
 structure ProgramBehavioralKernel
     (who : P) (Γ : VCtx P L) (b : L.Ty) where
-  run : BehavioralKernel (P := P) (L := L) who Γ b
+  run : BehavioralKernel who Γ b
   normalized : ∀ view, FDist.totalWeight (run view) = 1
 
 /-- Player-`who` behavioral strategies for the fixed program `p`: one
@@ -30,14 +30,14 @@ def ProgramBehavioralStrategy (who : P) :
   | _, .sample _ _ k => ProgramBehavioralStrategy who k
   | Γ, .commit _ owner (b := b) _ k =>
       if owner = who then
-        ProgramBehavioralKernel (P := P) (L := L) who Γ b × ProgramBehavioralStrategy who k
+        ProgramBehavioralKernel who Γ b × ProgramBehavioralStrategy who k
       else
         ProgramBehavioralStrategy who k
   | _, .reveal _ _ _ _ k => ProgramBehavioralStrategy who k
 
 /-- Joint behavioral strategy profile for the fixed program `p`. -/
 abbrev ProgramBehavioralProfile {Γ : VCtx P L} (p : VegasCore P L Γ) : Type :=
-  ∀ who, ProgramBehavioralStrategy (P := P) (L := L) who p
+  ∀ who, ProgramBehavioralStrategy who p
 
 namespace ProgramBehavioralStrategy
 
@@ -46,10 +46,10 @@ def headKernel
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (σ : ProgramBehavioralStrategy (P := P) (L := L) who (.commit x who R k)) :
-    BehavioralKernel (P := P) (L := L) who Γ b := by
-  let σ' : ProgramBehavioralKernel (P := P) (L := L) who Γ b ×
-      ProgramBehavioralStrategy (P := P) (L := L) who k := by
+    (σ : ProgramBehavioralStrategy who (.commit x who R k)) :
+    BehavioralKernel who Γ b := by
+  let σ' : ProgramBehavioralKernel who Γ b ×
+      ProgramBehavioralStrategy who k := by
     simpa [ProgramBehavioralStrategy] using σ
   exact σ'.1.run
 
@@ -58,11 +58,11 @@ theorem headKernel_normalized
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (σ : ProgramBehavioralStrategy (P := P) (L := L) who (.commit x who R k))
-    (view : ViewEnv (P := P) (L := L) who Γ) :
-    FDist.totalWeight (headKernel (P := P) (L := L) σ view) = 1 := by
-  let σ' : ProgramBehavioralKernel (P := P) (L := L) who Γ b ×
-      ProgramBehavioralStrategy (P := P) (L := L) who k := by
+    (σ : ProgramBehavioralStrategy who (.commit x who R k))
+    (view : ViewEnv who Γ) :
+    FDist.totalWeight (headKernel σ view) = 1 := by
+  let σ' : ProgramBehavioralKernel who Γ b ×
+      ProgramBehavioralStrategy who k := by
     simpa [ProgramBehavioralStrategy] using σ
   exact σ'.1.normalized view
 
@@ -71,10 +71,10 @@ def tailOwn
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (σ : ProgramBehavioralStrategy (P := P) (L := L) who (.commit x who R k)) :
-    ProgramBehavioralStrategy (P := P) (L := L) who k := by
-  let σ' : ProgramBehavioralKernel (P := P) (L := L) who Γ b ×
-      ProgramBehavioralStrategy (P := P) (L := L) who k := by
+    (σ : ProgramBehavioralStrategy who (.commit x who R k)) :
+    ProgramBehavioralStrategy who k := by
+  let σ' : ProgramBehavioralKernel who Γ b ×
+      ProgramBehavioralStrategy who k := by
     simpa [ProgramBehavioralStrategy] using σ
   exact σ'.2
 
@@ -87,13 +87,13 @@ def tail
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (σ : ProgramBehavioralProfile (P := P) (L := L) (.commit x who R k)) :
-    ProgramBehavioralProfile (P := P) (L := L) k :=
+    (σ : ProgramBehavioralProfile (.commit x who R k)) :
+    ProgramBehavioralProfile k :=
   fun i =>
     by
       by_cases h : who = i
       · subst h
-        exact ProgramBehavioralStrategy.tailOwn (P := P) (L := L) (σ who)
+        exact ProgramBehavioralStrategy.tailOwn (σ who)
       · simpa [ProgramBehavioralStrategy, h] using σ i
 
 end ProgramBehavioralProfile
@@ -106,17 +106,17 @@ view projection of `ρ`) is supported on actions that satisfy the commit
 guard `R` under `ρ`. -/
 def ProgramBehavioralKernel.IsLegalAt
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    (κ : ProgramBehavioralKernel (P := P) (L := L) who Γ b)
+    (κ : ProgramBehavioralKernel who Γ b)
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
   ∀ ρ : Env L.Val (eraseVCtx Γ),
-    FDist.Supported (κ.run (projectViewEnv (P := P) (L := L) who ρ))
+    FDist.Supported (κ.run (projectViewEnv who ρ))
       (fun a => evalGuard (Player := P) (L := L) R a ρ = true)
 
 /-- A behavioral strategy is guard-legal when every kernel at every
 owned commit site satisfies `IsLegalAt` for that commit's guard. -/
 def ProgramBehavioralStrategy.IsLegal : {who : P} →
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-    ProgramBehavioralStrategy (P := P) (L := L) who p → Prop
+    ProgramBehavioralStrategy who p → Prop
   | _, _, .ret _, _ => True
   | who, _, .letExpr _ _ k, σ =>
       ProgramBehavioralStrategy.IsLegal (who := who) k σ
@@ -125,13 +125,13 @@ def ProgramBehavioralStrategy.IsLegal : {who : P} →
   | who, _, .commit _x owner (b := b) R k, σ => by
       by_cases h : owner = who
       · -- Save `who` before `subst` (subst may rename it to `owner`).
-        let σ' : ProgramBehavioralKernel (P := P) (L := L) owner _ b ×
-                 ProgramBehavioralStrategy (P := P) (L := L) owner k := by
+        let σ' : ProgramBehavioralKernel owner _ b ×
+                 ProgramBehavioralStrategy owner k := by
           subst h
           simpa [ProgramBehavioralStrategy] using σ
         exact σ'.1.IsLegalAt R
               ∧ ProgramBehavioralStrategy.IsLegal (who := owner) k σ'.2
-      · let σ' : ProgramBehavioralStrategy (P := P) (L := L) who k := by
+      · let σ' : ProgramBehavioralStrategy who k := by
           simpa [ProgramBehavioralStrategy, h] using σ
         exact ProgramBehavioralStrategy.IsLegal (who := who) k σ'
   | who, _, .reveal _ _ _ _ k, σ =>
@@ -139,12 +139,12 @@ def ProgramBehavioralStrategy.IsLegal : {who : P} →
 
 /-- A behavioral profile is legal when every player's strategy is legal. -/
 def ProgramBehavioralProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (σ : ProgramBehavioralProfile (P := P) (L := L) p) : Prop :=
+    (σ : ProgramBehavioralProfile p) : Prop :=
   ∀ who, (σ who).IsLegal p
 
 /-- Guard-legal behavioral strategies over a `WFProgram` bundle. -/
 abbrev LegalProgramBehavioralStrategy (g : WFProgram P L) (who : P) : Type :=
-  { s : ProgramBehavioralStrategy (P := P) (L := L) who g.prog //
+  { s : ProgramBehavioralStrategy who g.prog //
     s.IsLegal g.prog }
 
 /-- Guard-legal joint behavioral profile over a `WFProgram` bundle. -/
@@ -156,7 +156,7 @@ continuation profile through the program structure. -/
 noncomputable def outcomeDistBehavioral :
     {Γ : VCtx P L} →
       (p : VegasCore P L Γ) →
-      ProgramBehavioralProfile (P := P) (L := L) p →
+      ProgramBehavioralProfile p →
       VEnv (Player := P) L Γ →
       FDist (Outcome P)
   | _, .ret payoffs, _, env =>
@@ -172,11 +172,11 @@ noncomputable def outcomeDistBehavioral :
           outcomeDistBehavioral k σ
             (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _) v env))
   | _, .commit x who (b := b) _ k, σ, env =>
-      let κ := ProgramBehavioralStrategy.headKernel (P := P) (L := L) (σ who)
+      let κ := ProgramBehavioralStrategy.headKernel (σ who)
       FDist.bind
-        (κ (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env)))
+        (κ (projectViewEnv who (VEnv.eraseEnv env)))
         (fun v =>
-          outcomeDistBehavioral k (ProgramBehavioralProfile.tail (P := P) (L := L) σ)
+          outcomeDistBehavioral k (ProgramBehavioralProfile.tail σ)
             (VEnv.cons (Player := P) (L := L) (x := x)
               (τ := .hidden who b) v env))
   | _, .reveal y _who _x (b := b) hx k, σ, env =>
@@ -192,7 +192,7 @@ theorem outcomeDistBehavioral_of_eq_ret
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     {payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)}
     (hp : p = VegasCore.ret payoffs)
-    (σ : ProgramBehavioralProfile (P := P) (L := L) p)
+    (σ : ProgramBehavioralProfile p)
     (env : VEnv (Player := P) L Γ) :
     outcomeDistBehavioral p σ env = FDist.pure (evalPayoffs payoffs env) := by
   cases hp
@@ -200,7 +200,7 @@ theorem outcomeDistBehavioral_of_eq_ret
 
 theorem outcomeDistBehavioral_totalWeight_eq_one
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    {σ : ProgramBehavioralProfile (P := P) (L := L) p}
+    {σ : ProgramBehavioralProfile p}
     {env : VEnv (Player := P) L Γ}
     (hd : NormalizedDists p) :
     (outcomeDistBehavioral p σ env).totalWeight = 1 := by
@@ -215,8 +215,8 @@ theorem outcomeDistBehavioral_totalWeight_eq_one
   | commit x who R k ih =>
       simp only [outcomeDistBehavioral]
       exact FDist.totalWeight_bind_of_normalized
-        (ProgramBehavioralStrategy.headKernel_normalized (P := P) (L := L) (σ who) _)
-        (fun _ _ => ih (σ := ProgramBehavioralProfile.tail (P := P) (L := L) σ) hd)
+        (ProgramBehavioralStrategy.headKernel_normalized (σ who) _)
+        (fun _ _ => ih (σ := ProgramBehavioralProfile.tail σ) hd)
   | reveal y who x hx k ih =>
       exact ih hd
 
@@ -236,7 +236,7 @@ noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P whe
   outcomeKernel := fun σ =>
     (outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
       (outcomeDistBehavioral_totalWeight_eq_one
-        (P := P) (L := L) (p := g.prog) (σ := fun i => (σ i).val) g.normalized)
+        (p := g.prog) (σ := fun i => (σ i).val) g.normalized)
 
 @[simp] theorem toKernelGame_outcomeKernel
     (g : WFProgram P L)
@@ -244,7 +244,7 @@ noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P whe
     (toKernelGame g).outcomeKernel σ =
       (outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
         (outcomeDistBehavioral_totalWeight_eq_one
-          (P := P) (L := L) (p := g.prog) (σ := fun i => (σ i).val)
+          (p := g.prog) (σ := fun i => (σ i).val)
           g.normalized) := rfl
 
 @[simp] theorem toKernelGame_udist
@@ -253,7 +253,7 @@ noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P whe
     (toKernelGame g).udist σ =
       ((outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
         (outcomeDistBehavioral_totalWeight_eq_one
-          (P := P) (L := L) (p := g.prog) (σ := fun i => (σ i).val)
+          (p := g.prog) (σ := fun i => (σ i).val)
           g.normalized)).bind
         (fun o => PMF.pure (fun i => (o i : ℝ))) := rfl
 
@@ -266,7 +266,7 @@ theorem toKernelGame_eu
         (fun o w => (w : ℝ) * (o who : ℝ)) := by
   let hnorm :=
     outcomeDistBehavioral_totalWeight_eq_one
-      (P := P) (L := L) (p := g.prog) (σ := fun i => (σ i).val) (env := g.env)
+      (p := g.prog) (σ := fun i => (σ i).val) (env := g.env)
       g.normalized
   simpa [GameTheory.KernelGame.eu, toKernelGame, hnorm,
     NNRat.toNNReal_coe_real] using

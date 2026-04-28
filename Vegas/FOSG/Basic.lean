@@ -527,8 +527,8 @@ noncomputable def pureProfile
 noncomputable def pureStrategy
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) (who : P) :
-    ProgramPureStrategy (P := P) (L := L) who root →
-      ProgramPureStrategy (P := P) (L := L) who p := by
+    ProgramPureStrategy who root →
+      ProgramPureStrategy who p := by
   induction s with
   | here => intro σ; exact σ
   | letExpr s ih => intro σ; exact ih σ
@@ -537,7 +537,7 @@ noncomputable def pureStrategy
       intro σ
       by_cases h : owner = who
       · cases h
-        exact ProgramPureStrategy.tailOwn (P := P) (L := L) (ih σ)
+        exact ProgramPureStrategy.tailOwn (ih σ)
       · simpa [ProgramPureStrategy, h] using ih σ
   | reveal s ih => intro σ; exact ih σ
 
@@ -545,7 +545,7 @@ set_option linter.flexible false in
 theorem pureStrategy_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) (who : P)
-    {σ : ProgramPureStrategy (P := P) (L := L) who root}
+    {σ : ProgramPureStrategy who root}
     (hσ : σ.IsLegal root) :
     (s.pureStrategy who σ).IsLegal p := by
   induction s generalizing σ with
@@ -591,7 +591,7 @@ theorem pureStrategy_isLegal
     (s : ProgramSuffix root (.commit x who R k))
     (σ : ProgramPureProfile root) :
     (ProgramSuffix.commit s).pureProfile σ =
-      ProgramPureProfile.tail (P := P) (L := L)
+      ProgramPureProfile.tail
         (s.pureProfile σ) := rfl
 
 @[simp] theorem pureProfile_reveal
@@ -677,7 +677,7 @@ noncomputable def behavioralProfile
     (s : ProgramSuffix root (.commit x who R k))
     (σ : ProgramBehavioralProfile root) :
     (ProgramSuffix.commit s).behavioralProfile σ =
-      ProgramBehavioralProfile.tail (P := P) (L := L)
+      ProgramBehavioralProfile.tail
         (s.behavioralProfile σ) := rfl
 
 @[simp] theorem behavioralProfile_reveal
@@ -756,7 +756,7 @@ theorem behavioralProfilePMF_sample
     (s : ProgramSuffix root (.commit x who R k))
     (σ : ProgramBehavioralProfilePMF root) :
     (ProgramSuffix.commit s).behavioralProfilePMF σ =
-      ProgramBehavioralProfilePMF.tail (P := P) (L := L)
+      ProgramBehavioralProfilePMF.tail
         (s.behavioralProfilePMF σ) := by
   simp [behavioralProfilePMF]
 
@@ -1613,7 +1613,7 @@ def availableProgramActionsAt {g : WFProgram P L} {Γ : VCtx P L}
         by
           cases howner
           exact a.cursor =
-            ProgramSuffix.commitCursor (P := P) (L := L)
+            ProgramSuffix.commitCursor
               (by
                 rw [← hprog]
                 exact suffix)}
@@ -1649,7 +1649,7 @@ def availableProgramActions {g : WFProgram P L}
         by
           cases howner
           exact a.cursor =
-            ProgramSuffix.commitCursor (P := P) (L := L)
+            ProgramSuffix.commitCursor
               (by
                 rw [← hprog]
                 exact w.1.suffix)}
@@ -2207,7 +2207,7 @@ theorem checkedTransition_commit_eq_programActionContinuation
     (ha : JointActionLegal
       ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
       (ProgramJointAction.toAction a)) :
-    checkedTransition (P := P) (L := L)
+    checkedTransition
       ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env, suffix := suffix,
          wctx := wctx, fresh := fresh, viewScoped := viewScoped,
          normalized := normalized, legal := legal } : CheckedWorld g hctx)
@@ -2435,7 +2435,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
     PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
         (hctx := hctx) suffix)
       (cursorTransitionState c env valid a ha) =
-    checkedTransition (P := P) (L := L)
+    checkedTransition
       (ProgramCursor.toCheckedWorldFromSuffix
         (hctx := hctx) suffix c env valid)
       ⟨a, by
@@ -2455,7 +2455,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
       PMF.map (CursorRuntimeState.toCheckedWorldFromSuffix
           (hctx := hctx) suffix)
         (cursorTransitionState c env valid a ha) =
-      checkedTransition (P := P) (L := L)
+      checkedTransition
         (ProgramCursor.toCheckedWorldFromSuffix
           (hctx := hctx) suffix c env valid)
         ⟨a, by
@@ -2528,7 +2528,7 @@ theorem cursorProgramTransition_map_checkedWorld
       CursorProgramJointActionLegal w a}) :
     PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
         (cursorProgramTransition w a) =
-      checkedTransition (P := P) (L := L)
+      checkedTransition
         (CheckedWorld.ofCursorChecked (hctx := hctx) w)
         ⟨ProgramJointAction.toAction a.1,
           CursorProgramJointActionLegal.toAction a.2⟩ := by

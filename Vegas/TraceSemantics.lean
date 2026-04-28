@@ -221,7 +221,7 @@ theorem legal_trace_canReach {Γ : VCtx P L} {p : VegasCore P L Γ}
     CanReach p env (traceOutcome p env t) := by
   induction t with
   | ret =>
-    simpa [traceOutcome] using (CanReach.ret (P := P) (L := L) (env := env))
+    simpa [traceOutcome] using (CanReach.ret (env := env))
   | letExpr _ ih => exact .letExpr (ih hl)
   | sample v _ ih => exact .sample v hl.1 (ih hl.2)
   | commit v _ ih => exact .commit v hl.1 (ih hl.2)
@@ -234,7 +234,7 @@ theorem pos_weight_trace_reach {Γ : VCtx P L} {p : VegasCore P L Γ}
     Reach σ p env (traceOutcome p env t) := by
   induction t with
   | ret =>
-    simpa [traceOutcome] using (Reach.ret (σ := σ) (P := P) (L := L) (env := env))
+    simpa [traceOutcome] using (Reach.ret (σ := σ) (env := env))
   | letExpr _ ih => exact .letExpr (ih hw)
   | sample v _ ih =>
     have h1 := left_ne_zero_of_mul hw

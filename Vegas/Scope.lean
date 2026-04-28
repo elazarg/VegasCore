@@ -40,7 +40,7 @@ def visibleVars (who : P) : VCtx P L → Finset VarId
 /-- Public variables are visible to every player. -/
 theorem publicVars_subset_visibleVars
     (who : P) {Γ : VCtx P L} :
-    publicVars (P := P) (L := L) Γ ⊆ visibleVars (L := L) who Γ := by
+    publicVars Γ ⊆ visibleVars (L := L) who Γ := by
   induction Γ with
   | nil =>
       intro _ hx
@@ -144,7 +144,7 @@ theorem AgreesOn.cons_insert_of_fresh
     {P : Type} {L : IExpr} {Γ : VCtx P L}
     {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
     {S : Finset VarId} {x : VarId} {b : L.Ty} {a : L.Val b}
-    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hfresh : Fresh x Γ)
     (h : AgreesOn ρ₁ ρ₂ S) :
     AgreesOn (Env.cons (x := x) a ρ₁) (Env.cons (x := x) a ρ₂) (insert x S) := by
   intro y τ hy hmem
@@ -179,7 +179,7 @@ def GuardUsesOnly
     nontrivial new obligation after the guard refactor is at commit nodes. -/
 def ViewScoped :
     {Γ : VCtx P L} → VegasCore P L Γ → Prop
-  | _, .ret payoffs => PayoffUsesOnlyPublic (P := P) (L := L) payoffs
+  | _, .ret payoffs => PayoffUsesOnlyPublic payoffs
   | _, .letExpr _ _ k => ViewScoped k
   | _, .sample _ _ k => ViewScoped k
   | Γ, .commit x who R k =>
@@ -224,7 +224,7 @@ theorem ViewScoped.commit_guard_usesOnly
 theorem evalGuard_eq_of_obsEq
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hfresh : Fresh x Γ)
     (hR : GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R)
     {a : L.Val b}
     {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
@@ -235,7 +235,7 @@ theorem evalGuard_eq_of_obsEq
   apply congrArg L.toBool
   apply L.expr_deps_sound
   exact AgreesOn.mono
-    (AgreesOn.cons_insert_of_fresh (P := P) (L := L) (Γ := Γ)
+    (AgreesOn.cons_insert_of_fresh (Γ := Γ)
       (x := x) (b := b) (a := a) hfresh hobs)
     hR
 
@@ -287,7 +287,7 @@ theorem eval_dropAfterHeadExpr
     in the extended context. -/
 theorem not_mem_visibleVars_hidden_other
     {Γ : VCtx P L} {x : VarId} {who owner : P} {τ : L.Ty}
-    (hfresh : Fresh (P := P) (L := L) x Γ)
+    (hfresh : Fresh x Γ)
     (hneq : who ≠ owner) :
     x ∉ visibleVars (L := L) who ((x, .hidden owner τ) :: Γ) := by
   intro hx
@@ -302,8 +302,8 @@ theorem GuardUsesOnly.not_mem_hidden_other
     {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
     (hR : GuardUsesOnly (L := L) (Γ := ((x₁, .hidden who₁ b₁) :: Γ))
       (x := x₂) (who := who₂) R)
-    (hfresh₁ : Fresh (P := P) (L := L) x₁ Γ)
-    (hfresh₂ : Fresh (P := P) (L := L) x₂ ((x₁, .hidden who₁ b₁) :: Γ))
+    (hfresh₁ : Fresh x₁ Γ)
+    (hfresh₂ : Fresh x₂ ((x₁, .hidden who₁ b₁) :: Γ))
     (hneq : who₂ ≠ who₁) :
     x₁ ∉ L.exprDeps R := by
   intro hx

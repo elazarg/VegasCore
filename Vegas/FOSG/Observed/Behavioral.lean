@@ -82,7 +82,7 @@ theorem headKernel_supported_atCursor
     (suffix : ProgramSuffix g.prog (.commit x who R k))
     (ρ : Env L.Val (eraseVCtx Γ)) :
     FDist.Supported
-      (ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+      (ProgramBehavioralStrategy.headKernel
         ((suffix.behavioralProfile (fun i => (σ i).val)) who)
         (projectViewEnv who ρ))
       (fun v => evalGuard (Player := P) (L := L) R v ρ = true) := by
@@ -152,7 +152,7 @@ theorem headKernelPMF_supported_atCursor
     (ρ : Env L.Val (eraseVCtx Γ))
     {v : L.Val b}
     (hv : v ∈
-      (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+      (ProgramBehavioralStrategyPMF.headKernel
         ((suffix.behavioralProfilePMF (fun i => (σ i).val)) who)
         (projectViewEnv who ρ)).support) :
     evalGuard (Player := P) (L := L) R v ρ = true := by
@@ -164,12 +164,12 @@ theorem headKernelPMF_supported_atCursor
   have hsite := hcursor who
   have hsite' :
       (∀ (ρ : Env L.Val (eraseVCtx Γ)) {v : L.Val b},
-        v ∈ (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+        v ∈ (ProgramBehavioralStrategyPMF.headKernel
           ((suffix.behavioralProfilePMF raw) who)
           (projectViewEnv who ρ)).support →
         evalGuard (Player := P) (L := L) R v ρ = true) ∧
-        ProgramBehavioralStrategyPMF.IsLegal (P := P) (L := L)
-          k (ProgramBehavioralStrategyPMF.tailOwn (P := P) (L := L)
+        ProgramBehavioralStrategyPMF.IsLegal
+          k (ProgramBehavioralStrategyPMF.tailOwn
             ((suffix.behavioralProfilePMF raw) who)) := by
     simpa [raw, ProgramBehavioralStrategyPMF.IsLegal] using hsite
   exact hsite'.1 ρ hv
@@ -260,13 +260,12 @@ theorem moveAtProgramCursor_support_availableAt
       by_cases howner : owner = who
       · cases howner
         let d :=
-          ProgramBehavioralStrategy.headKernel (P := P) (L := L)
+          ProgramBehavioralStrategy.headKernel
             ((suffix.behavioralProfile (fun i => (σ i).val)) who)
             (projectViewEnv who (VEnv.eraseEnv env))
         have hd :
             FDist.totalWeight d = 1 :=
           ProgramBehavioralStrategy.headKernel_normalized
-            (P := P) (L := L)
             ((suffix.behavioralProfile (fun i => (σ i).val)) who)
             (projectViewEnv who (VEnv.eraseEnv env))
         have hoi' :
@@ -283,7 +282,7 @@ theorem moveAtProgramCursor_support_availableAt
           mem_fdist_support_of_mem_toPMF_support (d := d) (h := hd) hv
         have hguard :
             evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
-          exact headKernel_supported_atCursor (P := P) (L := L)
+          exact headKernel_supported_atCursor
             g hctx σ suffix (VEnv.eraseEnv env) v hvFD
         simp only [CursorCheckedWorld.availableProgramMovesAt, active,
           Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,
@@ -366,7 +365,7 @@ theorem moveAtProgramCursorPMF_support_availableAt
       by_cases howner : owner = who
       · cases howner
         let d :=
-          ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+          ProgramBehavioralStrategyPMF.headKernel
             ((suffix.behavioralProfilePMF (fun i => (σ i).val)) who)
             (projectViewEnv who (VEnv.eraseEnv env))
         have hoi' :
@@ -377,7 +376,7 @@ theorem moveAtProgramCursorPMF_support_availableAt
         rw [← hvo]
         have hguard :
             evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
-          exact headKernelPMF_supported_atCursor (P := P) (L := L)
+          exact headKernelPMF_supported_atCursor
             g hctx σ suffix (VEnv.eraseEnv env) hv
         simp only [CursorCheckedWorld.availableProgramMovesAt, active,
           Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,

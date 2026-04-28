@@ -49,7 +49,7 @@ noncomputable def movePureStrategyAtProgramCursor
       if howner : owner = who then
         by
           cases howner
-          let σp : ProgramPureStrategy (P := P) (L := L) who
+          let σp : ProgramPureStrategy who
               (.commit x who R k) :=
             suffix.pureStrategy who σ.val
           exact some
@@ -94,7 +94,7 @@ theorem movePureAtProgramCursor_eq_strategy
     movePureAtProgramCursor g hctx σ who suffix view =
       some
         (ProgramAction.commitAt suffix
-          ((ProgramPureStrategy.headKernel (P := P) (L := L)
+          ((ProgramPureStrategy.headKernel
             ((suffix.pureProfile (fun i => (σ i).val)) who)) view)) := by
   simp [movePureAtProgramCursor]
 
@@ -107,7 +107,7 @@ theorem headPureKernel_legal_atCursor
     (suffix : ProgramSuffix g.prog (.commit x who R k))
     (ρ : Env L.Val (eraseVCtx Γ)) :
     evalGuard (Player := P) (L := L) R
-      ((ProgramPureStrategy.headKernel (P := P) (L := L)
+      ((ProgramPureStrategy.headKernel
         ((suffix.pureProfile (fun i => (σ i).val)) who))
         (projectViewEnv who ρ)) ρ = true := by
   let raw : ProgramPureProfile g.prog :=
@@ -128,7 +128,7 @@ theorem headPureStrategyKernel_legal_atCursor
     (suffix : ProgramSuffix g.prog (.commit x who R k))
     (ρ : Env L.Val (eraseVCtx Γ)) :
     evalGuard (Player := P) (L := L) R
-      ((ProgramPureStrategy.headKernel (P := P) (L := L)
+      ((ProgramPureStrategy.headKernel
         (suffix.pureStrategy who σ.val))
         (projectViewEnv who ρ)) ρ = true := by
   have hcursor :
@@ -136,11 +136,11 @@ theorem headPureStrategyKernel_legal_atCursor
         (.commit x who R k) :=
     suffix.pureStrategy_isLegal who σ.2
   let σc :
-      PureKernel (P := P) (L := L) who Γ b ×
-        ProgramPureStrategy (P := P) (L := L) who k := by
+      PureKernel who Γ b ×
+        ProgramPureStrategy who k := by
     simpa [ProgramPureStrategy] using suffix.pureStrategy who σ.val
   have hsite :
-      σc.1.IsLegalAt (P := P) (L := L) (x := x) (who := who)
+      σc.1.IsLegalAt (x := x) (who := who)
           (b := b) R ∧ σc.2.IsLegal k := by
     simpa [ProgramPureStrategy.IsLegal, σc] using hcursor
   simpa [ProgramPureStrategy.headKernel, σc] using hsite.1 ρ
@@ -186,7 +186,7 @@ theorem movePureAtProgramCursor_availableAt
       · cases howner
         have hguard :
             evalGuard (Player := P) (L := L) R
-              ((ProgramPureStrategy.headKernel (P := P) (L := L)
+              ((ProgramPureStrategy.headKernel
                 ((suffix.pureProfile (fun i => (σ i).val)) who))
                 (projectViewEnv who (VEnv.eraseEnv env)))
               (VEnv.eraseEnv env) = true := by
@@ -197,7 +197,7 @@ theorem movePureAtProgramCursor_availableAt
           Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
         constructor
         · refine ⟨
-            (ProgramPureStrategy.headKernel (P := P) (L := L)
+            (ProgramPureStrategy.headKernel
               ((suffix.pureProfile (fun i => (σ i).val)) who))
               (projectViewEnv who (VEnv.eraseEnv env)),
             ⟨⟨ProgramSuffix.ty_commitCursor suffix, ?_⟩,
@@ -239,7 +239,7 @@ theorem movePureStrategyAtProgramCursor_availableAt
       · cases howner
         have hguard :
             evalGuard (Player := P) (L := L) R
-              ((ProgramPureStrategy.headKernel (P := P) (L := L)
+              ((ProgramPureStrategy.headKernel
                 (suffix.pureStrategy who σ.val))
                 (projectViewEnv who (VEnv.eraseEnv env)))
               (VEnv.eraseEnv env) = true := by
@@ -251,7 +251,7 @@ theorem movePureStrategyAtProgramCursor_availableAt
           Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
         constructor
         · refine ⟨
-            (ProgramPureStrategy.headKernel (P := P) (L := L)
+            (ProgramPureStrategy.headKernel
               (suffix.pureStrategy who σ.val))
               (projectViewEnv who (VEnv.eraseEnv env)),
             ⟨⟨ProgramSuffix.ty_commitCursor suffix, ?_⟩,
@@ -352,7 +352,7 @@ theorem moveAtProgramCursor_toBehavioral_eq_pure
         have hprofile :
             suffix.behavioralProfile
                 (fun i => ((LegalProgramPureProfile.toBehavioral (g := g) σ) i).val) =
-              ProgramPureProfile.toBehavioral (P := P) (L := L)
+              ProgramPureProfile.toBehavioral
                 (.commit x who R k) (suffix.pureProfile raw) := by
           simpa [raw, LegalProgramPureProfile.toBehavioral] using
             ProgramSuffix.behavioralProfile_toBehavioral
