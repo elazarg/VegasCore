@@ -2583,8 +2583,7 @@ theorem observedProgramReachable_mixed_to_coreBehavioral_outcomeDist_finite
 
 This is the Vegas-facing distribution theorem: the witness is a legal
 reachable FOSG behavioral profile, and the left side is the ordinary FOSG
-`runDist` of its global extension. The intermediate ObsModelCore behavioral
-profile is used only inside the proof. -/
+`runDist` of its global extension. -/
 theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
@@ -2606,16 +2605,18 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
                 (G := observedProgramFOSG g hctx)
                 (observedProgramFOSG_legalObservable g hctx)
                 (syntaxSteps g.prog) π)) := by
-  obtain ⟨βcore, β, hβ, hdist⟩ :=
-    observedProgramReachable_mixed_to_coreBehavioral_outcomeDist g hctx μ
-  refine ⟨β, ?_⟩
-  have hrun :=
-    GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist_eq_runDist
+  obtain ⟨β, hdist⟩ :=
+    GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral_runDist
       (G := observedProgramFOSG g hctx)
       (observedProgramFOSG_legalObservable g hctx)
-      (syntaxSteps g.prog) βcore β hβ
-  rw [← hrun]
-  exact hdist
+      μ (syntaxSteps g.prog)
+  refine ⟨β, ?_⟩
+  rw [hdist, PMF.map_bind]
+  congr
+  funext π
+  rw [← GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile_eq_runDist
+    (G := observedProgramFOSG g hctx)
+    (observedProgramFOSG_legalObservable g hctx)]
 
 /-- Finite-valuation wrapper for
 `observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist`. -/
