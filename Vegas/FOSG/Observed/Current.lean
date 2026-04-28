@@ -254,6 +254,66 @@ theorem currentProgramMove_exists_available_action_of_commit_owner
       rw [ha] at hmem'
       exact ⟨ai, rfl, hmem'.2⟩
 
+/-- Extract the committed value from a current-model local move at a commit
+site, using an arbitrary value only for impossible/default branches. -/
+noncomputable def currentMoveCommitValueOrDefault
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    {g : WFProgram P L} {who : P} {priv : PrivateObs g who}
+    {b : L.Ty} (m : CurrentProgramMove g who priv) :
+    L.Val b :=
+  match m.1 with
+  | some ai =>
+      if hty : CommitCursor.ty ai.cursor = b then
+        hty ▸ ai.value
+      else
+        Classical.ofNonempty
+  | none =>
+      Classical.ofNonempty
+
+theorem currentMoveCommitValueOrDefault_guard_at_commit
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k)
+    (m : CurrentProgramMove g who (privateObsOfCursorWorld who w)) :
+    evalGuard (Player := P) (L := L) R
+        (currentMoveCommitValueOrDefault (b := b) m)
+        (VEnv.eraseEnv w.1.env) = true := by
+  have hmem := m.2 w rfl
+  cases hm : m.1 with
+  | none =>
+      rw [hm] at hmem
+      have hactive := cursor_active_eq_singleton_of_commit (w := w) hprog
+      have hin : who ∈ CursorCheckedWorld.active w := by
+        simp [hactive]
+      exact False.elim (hmem hin)
+  | some ai =>
+      rw [hm] at hmem
+      have hbroad := hmem.2.1
+      have hbroad' :
+          ProgramAction.toAction ai ∈
+            availableActions
+              ({ Γ := w.1.cursor.Γ, prog := VegasCore.commit x who R k,
+                 env := w.1.env } : World P L) who := by
+        rw [← hprog]
+        exact hbroad
+      rcases (by
+          simpa [availableActions] using hbroad') with
+        ⟨v, hai, hguard⟩
+      unfold currentMoveCommitValueOrDefault
+      rw [hm]
+      cases ai with
+      | mk cursor value =>
+          simp only [ProgramAction.toAction] at hai
+          simp only [Sigma.mk.injEq] at hai
+          rcases hai with ⟨hty, hval⟩
+          have hvalue : hty ▸ value = v := by
+            cases hty
+            exact eq_of_heq hval
+          simpa [currentMoveCommitValueOrDefault, hm, hty, hvalue] using hguard
+
 theorem currentProgramJointActionLegal
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
