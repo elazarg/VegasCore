@@ -1470,24 +1470,17 @@ theorem observedProgramProjectedPayoff_behavioral_to_mixed_toKernelGame_eu_reach
             (P := P) (L := L) g hctx LF σ who
 
 /-- Reachable-coordinate FOSG Kuhn M→B specialized to the observed-program
-FOSG, with the semantic side conditions kept explicit.
+FOSG, with the remaining posterior-locality condition kept explicit.
 
 This is the first Vegas-facing form of the new bounded-history FOSG M→B theorem.
-It deliberately does not hide the remaining stochastic obligations: step-mass
-invariance, support factorization, and posterior locality for the compiled
-observed-program FOSG. Legal observability is proved above from the
-cursor/view observation design and guard view-scoping. -/
-theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
+Step-mass invariance and support factorization are discharged by GameTheory's
+legal reachable-history step-determinism theorem. Legal observability is proved
+above from the cursor/view observation design and guard view-scoping. -/
+theorem observedProgramReachable_mixed_to_legal_behavioral_of_actionPosteriorLocal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
-    (hMass : GameTheory.FOSG.Kuhn.ReachableHistoryStepMassInvariant
-      (G := observedProgramFOSG (P := P) (L := L) g hctx)
-      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
-    (hFactor : GameTheory.FOSG.Kuhn.ReachableHistoryStepSupportFactorization
-      (G := observedProgramFOSG (P := P) (L := L) g hctx)
-      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
     (hLocal : ∀ who,
       GameTheory.FOSG.Kuhn.ReachableHistoryActionPosteriorLocal
         (G := observedProgramFOSG (P := P) (L := L) g hctx)
@@ -1518,7 +1511,13 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
   exact GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral
     (G := observedProgramFOSG (P := P) (L := L) g hctx)
     (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
-    hMass hFactor hLocal μ (syntaxSteps g.prog)
+    (GameTheory.FOSG.Kuhn.reachableHistory_stepMassInvariant
+      (G := observedProgramFOSG (P := P) (L := L) g hctx)
+      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
+    (GameTheory.FOSG.Kuhn.reachableHistory_stepSupportFactorization
+      (G := observedProgramFOSG (P := P) (L := L) g hctx)
+      (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx))
+    hLocal μ (syntaxSteps g.prog)
 
 end Observed
 
