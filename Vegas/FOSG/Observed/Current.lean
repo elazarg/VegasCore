@@ -617,9 +617,10 @@ theorem currentLocalMixedPureProfile_joint
 /-- Semantic M→B specialized to the current-observation model.
 
 This is the direct GameTheory Kuhn theorem applied to Vegas' current private
-observations. It still assumes the semantic Kuhn hypotheses for this model and
-states preservation of the current-model run distribution, not yet the final
-Vegas outcome distribution. -/
+observations. The remaining model obligations are exactly the semantic
+ones needed by GameTheory's core theorem: step mass invariance and full
+observation-local feasibility. It states preservation of the current-model run
+distribution, not yet the final Vegas outcome distribution. -/
 theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
     [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -632,8 +633,8 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
         Fintype (CurrentProgramMove g who obs) :=
       fun who obs => CurrentProgramMove.instFintype g LF who obs
     ObsModelCore.StepMassInvariant (currentObsModel g hctx) →
-    ObsModelCore.StepSupportFactorization (currentObsModel g hctx) →
-    (∀ who, ObsModelCore.ActionPosteriorLocal (currentObsModel g hctx) who) →
+    (∀ who, ObsModelCore.ObsLocalFeasibilityFull
+      (currentObsModel g hctx) who) →
     ∃ β : ObsModelCore.BehavioralProfile (currentObsModel g hctx),
       (currentObsModel g hctx).runDist k β =
         (PMF.map (currentLocalPureProfile g hctx)
@@ -647,16 +648,16 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
   letI : ∀ who obs,
       Fintype (CurrentProgramMove g who obs) :=
     fun who obs => CurrentProgramMove.instFintype g LF who obs
-  intro hMass hFactor hLocal
+  intro hMass hObsLocal
   letI : Nonempty (LegalProgramPureProfile g) :=
     LegalProgramPureProfile.instNonempty_of_wfctx g hctx
   let fallback : LegalProgramPureProfile g := Classical.choice inferInstance
   letI : ∀ who obs, Nonempty (CurrentProgramMove g who obs) :=
     currentProgramMoveNonemptyOfPureProfile g hctx fallback
   obtain ⟨β, hβ⟩ :=
-    ObsModelCore.kuhn_mixed_to_behavioral_semantic
+    ObsModelCore.kuhn_mixed_to_behavioral_of_obsLocal
       (O := currentObsModel g hctx)
-      hMass hFactor hLocal
+      hMass hObsLocal
       (currentLocalMixedPureProfile g hctx μ) k
   refine ⟨β, ?_⟩
   rw [hβ]

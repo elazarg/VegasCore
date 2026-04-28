@@ -10,12 +10,18 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 namespace Observed
 
 /-!
-## Completing reachable FOSG behavior to total Vegas behavior
+## Representative completion of reachable FOSG behavior
 
 The FOSG M→B proof naturally constructs behavioral choices only at reachable
-information states. A Vegas PMF behavioral strategy is total over syntactic
-views. This module completes a reachable FOSG profile by using it at reachable
-current observations and a legal pure fallback elsewhere.
+full-history information states. A current-observation model instead indexes
+behavior by the current Vegas cursor and view.
+
+The construction below chooses one reachable history for each reachable current
+observation and uses a legal pure fallback elsewhere. It is a total,
+guard-legal representative, not an outcome-preservation theorem: preservation
+needs an additional proof that the behavioral profile is invariant across all
+reachable histories with the same current observation, or a Kuhn construction
+performed directly on `currentObsModel`.
 -/
 
 noncomputable def currentMoveOfAvailableAtHistory
@@ -84,7 +90,7 @@ noncomputable def currentMoveOfAvailableAtPrivateObs
   cases hpriv
   rfl
 
-noncomputable def completeReachableBehavioralCurrentProfile
+noncomputable def representativeCurrentProfileOfReachable
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile)
     (fallback : LegalProgramPureProfile g) :
