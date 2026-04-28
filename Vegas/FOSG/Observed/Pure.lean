@@ -508,6 +508,15 @@ noncomputable def toObservedProgramReachableLegalPureStrategy
   rw [heq] at havail
   simpa [GameTheory.FOSG.PureStrategy.restrictReachable, prof] using havail
 
+noncomputable def toObservedProgramReachableMixedPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    GameTheory.FOSG.Kuhn.ReachableMixedProfile
+      (G := observedProgramFOSG g hctx) :=
+  fun who =>
+    PMF.map (toObservedProgramReachableLegalPureStrategy g hctx who) (μ who)
+
 @[simp] theorem toObservedProgramReachableLegalPureProfile_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g) (who : P) :

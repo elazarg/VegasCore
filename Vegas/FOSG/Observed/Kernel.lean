@@ -1592,6 +1592,55 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
   exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
     (P := P) (L := L) g hctx μ
 
+/-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B.
+
+This theorem starts from a Vegas independent mixed pure profile, transports
+each player's marginal to the observed-program FOSG reachable pure strategy
+space, and applies the FOSG distribution theorem. The behavioral witness is
+still an observed-program FOSG reachable behavioral profile; reifying that
+witness back into `LegalProgramBehavioralProfile g` is the remaining
+strategy-space bridge. -/
+theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    ∃ βcore :
+      (GameTheory.FOSG.Kuhn.toReachableHistoryObsModelCore
+        (observedProgramFOSG g hctx)
+        (observedProgramFOSG_legalObservable g hctx)).BehavioralProfile,
+    ∃ β : (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile,
+      β.toProfile =
+        GameTheory.FOSG.Kuhn.eraseReachableHistoryBehavioral
+          (G := observedProgramFOSG g hctx)
+          (observedProgramFOSG_legalObservable g hctx)
+          βcore ∧
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDist
+            (G := observedProgramFOSG g hctx)
+            (observedProgramFOSG_legalObservable g hctx)
+            (syntaxSteps g.prog) βcore) =
+        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+          (G := observedProgramFOSG g hctx)
+          (toObservedProgramReachableMixedPureProfile g hctx μ)).bind
+          (fun π =>
+            PMF.map (observedProgramHistoryOutcome g hctx)
+              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+                (G := observedProgramFOSG g hctx)
+                (observedProgramFOSG_legalObservable g hctx)
+                (syntaxSteps g.prog) π)) := by
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
+    (P := P) (L := L) g hctx
+    (toObservedProgramReachableMixedPureProfile g hctx μ)
+
 end Observed
 
 end FOSGBridge
