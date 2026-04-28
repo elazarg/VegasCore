@@ -31,6 +31,48 @@ abbrev CurrentProgramMove
         oi ∈ CursorCheckedWorld.availableProgramMovesAt
           w.1.prog w.1.env w.1.suffix who }
 
+namespace ProgramSuffix
+
+/-- Following a suffix through a fresh program preserves the SSA context
+invariant at the suffix endpoint. -/
+def wctx
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) :
+    WFCtx Γ₀ → FreshBindings root → WFCtx Γ := by
+  induction s with
+  | here =>
+      intro hctx _hfresh
+      exact hctx
+  | letExpr s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | sample s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | commit s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | reveal s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+
+end ProgramSuffix
+
+namespace ProgramCursor
+
+/-- A cursor endpoint of a `WFProgram` inherits all local obligations needed by
+the cursor transition machine. -/
+def endpointValid
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (c : ProgramCursor g.prog) : c.EndpointValid :=
+  ⟨ProgramSuffix.wctx c.toSuffix hctx g.wf.1,
+    c.toSuffix.fresh g.wf.1,
+    c.toSuffix.viewScoped g.wf.2.2,
+    c.toSuffix.normalized g.normalized,
+    c.toSuffix.legal g.legal⟩
+
+end ProgramCursor
+
 /-- Rebuild a visibility-annotated environment from its erased version.
 
 The operation is used only for player views: current-observation strategies are
