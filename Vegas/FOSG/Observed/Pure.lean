@@ -1483,6 +1483,26 @@ theorem observedProgramLegalActionLaw_bind_coord
     toObservedProgramLegalBehavioralProfile_apply,
     programBehavioralProfileCandidate_history]
 
+theorem observedProgramLegalActionLawPMF_bind_coord
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
+    (who : P) {β : Type}
+    (f : Option (ProgramAction g.prog who) → PMF β) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+        (fun a => f (a.1 who)) =
+      (moveAtCursorWorldPMF g hctx σ who h.lastState).bind f := by
+  rw [GameTheory.FOSG.legalActionLaw_bind_coord
+    (G := observedProgramFOSG g hctx)
+    (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm who f]
+  simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
+    toObservedProgramLegalBehavioralProfilePMF_apply,
+    programBehavioralProfilePMFCandidate_history]
+
 end Observed
 
 end FOSGBridge

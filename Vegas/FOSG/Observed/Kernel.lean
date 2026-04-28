@@ -300,6 +300,105 @@ theorem moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
     · exact False.elim
         (hty (ProgramSuffix.ty_commitCursor suffix))
 
+theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
+    (viewScoped : ViewScoped (.commit x who R k))
+    (normalized : NormalizedDists (.commit x who R k))
+    (legal : Legal (.commit x who R k)) :
+    (moveAtProgramCursorPMF g hctx σ who suffix
+        (projectViewEnv who (VEnv.eraseEnv env))).bind
+      (fun oi =>
+        match oi with
+        | some ai =>
+            if hty : CommitCursor.ty ai.cursor = b then
+              PMF.pure
+                ({ Γ := _
+                   prog := k
+                   env := VEnv.cons (Player := P) (L := L) (x := x)
+                     (τ := .hidden who _) (hty ▸ ai.value) env
+                   suffix := .commit suffix
+                   wctx := WFCtx.cons fresh.1 wctx
+                   fresh := fresh.2
+                   viewScoped := viewScoped.2
+                   normalized := normalized
+                   legal := legal.2 } : CheckedWorld g hctx)
+            else
+              PMF.pure
+                ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                   wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                   normalized := normalized, legal := legal } : CheckedWorld g hctx)
+        | none =>
+            PMF.pure
+              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                 normalized := normalized, legal := legal } : CheckedWorld g hctx)) =
+      checkedProfileStepPMF g hctx σ
+        ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+           wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+           normalized := normalized, legal := legal } : CheckedWorld g hctx) := by
+  rw [moveAtProgramCursorPMF_commit_owner]
+  rw [PMF.bind_map]
+  simp only [checkedProfileStepPMF, Function.comp_def]
+  have hbind := bind_congr (m := PMF)
+    (x := (ProgramBehavioralStrategyPMF.headKernel
+          (P := P) (L := L)
+          ((suffix.behavioralProfilePMF (fun i => ↑(σ i))) who)
+          (projectViewEnv who env.eraseEnv)))
+    (f := fun v =>
+      if hty : (ProgramAction.commitAt suffix v).cursor.ty = b then
+        PMF.pure
+          ({ Γ := _
+             prog := k
+             env := VEnv.cons (Player := P) (L := L) (x := x)
+               (τ := .hidden who _)
+               (hty ▸ (ProgramAction.commitAt suffix v).value) env
+             suffix := .commit suffix
+             wctx := WFCtx.cons fresh.1 wctx
+             fresh := fresh.2
+             viewScoped := viewScoped.2
+             normalized := normalized
+             legal := legal.2 } : CheckedWorld g hctx)
+      else
+        PMF.pure
+          ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+             wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+             normalized := normalized, legal := legal } : CheckedWorld g hctx))
+    (g := fun v => PMF.pure
+      ({ Γ := _
+         prog := k
+         env := VEnv.cons (Player := P) (L := L) (x := x)
+           (τ := .hidden who _) v env
+         suffix := .commit suffix
+         wctx := WFCtx.cons fresh.1 wctx
+         fresh := fresh.2
+         viewScoped := viewScoped.2
+         normalized := normalized
+         legal := legal.2 } : CheckedWorld g hctx)) ?_
+  · simpa [PMF.bind_pure_comp, Function.comp_def] using hbind
+  · intro v
+    by_cases hty : (ProgramAction.commitAt suffix v).cursor.ty = b
+    · dsimp only
+      rw [dif_pos hty]
+      have hv :
+          hty ▸ (ProgramAction.commitAt suffix v).value = v :=
+        ProgramAction.commitAt_value_cast suffix v hty
+      have henv :
+          VEnv.cons (Player := P) (L := L) (x := x)
+              (τ := .hidden who _)
+              (hty ▸ (ProgramAction.commitAt suffix v).value) env =
+            VEnv.cons (Player := P) (L := L) (x := x)
+              (τ := .hidden who _) v env :=
+        VEnv.cons_ext hv rfl
+      rw [henv]
+    · exact False.elim
+        (hty (ProgramSuffix.ty_commitCursor suffix))
 
 
 
@@ -325,6 +424,29 @@ theorem checkedTransition_eq_checkedProfileStep_of_active_empty
           simp [checkedActive, CheckedWorld.toWorld, active] at hactive
       | reveal y who x hx k =>
           simp [checkedTransition, checkedProfileStep]
+
+theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx)
+    (a : {a : JointAction P L // CheckedJointActionLegal w a})
+    (hactive : checkedActive w = ∅) :
+    checkedTransition w a =
+      checkedProfileStepPMF g hctx σ w := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          exact False.elim
+            (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
+      | letExpr x e k =>
+          simp [checkedTransition, checkedProfileStepPMF]
+      | sample x D k =>
+          simp [checkedTransition, checkedProfileStepPMF]
+      | commit x who R k =>
+          simp [checkedActive, CheckedWorld.toWorld, active] at hactive
+      | reveal y who x hx k =>
+          simp [checkedTransition, checkedProfileStepPMF]
 
 /-- At an observed-program history with no active players, the FOSG
 legal-action law followed by the checked-world transition is the Vegas
@@ -361,6 +483,41 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
       (observedProgramFOSG g hctx)
         |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
   apply checkedTransition_eq_checkedProfileStep_of_active_empty
+  simpa [observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
+    CursorCheckedWorld.active] using hactive
+
+theorem
+    observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P,
+      Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
+    (hactive :
+      (observedProgramFOSG g hctx).active h.lastState = ∅) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+      (fun a =>
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          ((observedProgramFOSG g hctx).transition
+            h.lastState a)) =
+      checkedProfileStepPMF g hctx σ
+        (CheckedWorld.ofCursorChecked (hctx := hctx)
+          h.lastState) := by
+  rw [GameTheory.FOSG.legalActionLaw_eq_pure_noop_of_active_empty
+    (G := observedProgramFOSG g hctx)
+    (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm hactive]
+  simp only [PMF.pure_bind]
+  rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+    (hctx := hctx)
+    (w := h.lastState)
+    (a := ⟨GameTheory.FOSG.noopAction
+        (fun who : P => ProgramAction g.prog who),
+      (observedProgramFOSG g hctx)
+        |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
+  apply checkedTransition_eq_checkedProfileStepPMF_of_active_empty
   simpa [observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
     CursorCheckedWorld.active] using hactive
 
@@ -532,6 +689,106 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
           g hctx σ who h.lastState]
         rw [hchecked]
         exact moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
+          g hctx σ env suffix wctx fresh viewScoped
+          normalized legal
+
+theorem observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+      (fun a =>
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          ((observedProgramFOSG g hctx).transition
+            h.lastState a)) =
+      checkedProfileStepPMF g hctx σ
+        (CheckedWorld.ofCursorChecked (hctx := hctx)
+          h.lastState) := by
+  let G := observedProgramFOSG g hctx
+  by_cases hactive : G.active h.lastState = ∅
+  · exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty
+      g hctx σ h hterm hactive
+  · have hne : (G.active h.lastState).Nonempty :=
+      Finset.nonempty_iff_ne_empty.mpr hactive
+    rcases hne with ⟨who, hmem⟩
+    rcases observedProgram_active_mem_commitData
+        g hctx h.lastState hmem with
+      ⟨Γ, x, b, R, k, env, suffix, wctx, fresh, viewScoped,
+        normalized, legal, hchecked, hworld⟩
+    let f : Option (ProgramAction g.prog who) →
+        PMF (CheckedWorld g hctx) := fun oi =>
+      match oi with
+      | some ai =>
+          if hty : CommitCursor.ty ai.cursor = b then
+            PMF.pure
+              ({ Γ := _
+                 prog := k
+                 env := VEnv.cons (Player := P) (L := L) (x := x)
+                   (τ := .hidden who _) (hty ▸ ai.value) env
+                 suffix := .commit suffix
+                 wctx := WFCtx.cons fresh.1 wctx
+                 fresh := fresh.2
+                 viewScoped := viewScoped.2
+                 normalized := normalized
+                 legal := legal.2 } : CheckedWorld g hctx)
+          else
+            PMF.pure
+              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                 normalized := normalized, legal := legal } : CheckedWorld g hctx)
+      | none =>
+          PMF.pure
+            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+               normalized := normalized, legal := legal } : CheckedWorld g hctx)
+    have hK : ∀ a : G.LegalAction h.lastState,
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          (G.transition h.lastState a) = f (a.1 who) := by
+      intro a
+      rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+        (hctx := hctx) (w := h.lastState) (a := a)]
+      have haRaw : JointActionLegal
+          ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
+          (ProgramJointAction.toAction a.1) := by
+        have hto := CursorProgramJointActionLegal.toAction a.2
+        simpa [hworld] using hto
+      rw [checkedTransition_congr_checkedWorld
+        (hw := hchecked)
+        (a := ProgramJointAction.toAction a.1)
+        (ha₂ := by
+          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
+            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
+      simpa [f] using
+        checkedTransition_commit_eq_programActionContinuation
+          g hctx env suffix wctx fresh viewScoped
+          normalized legal a.1 haRaw
+    calc
+      ((observedProgramFOSG g hctx).legalActionLaw
+          (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+        (fun a =>
+          PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+            ((observedProgramFOSG g hctx).transition
+              h.lastState a))
+          = ((observedProgramFOSG g hctx).legalActionLaw
+              (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+              (fun a => f (a.1 who)) := by
+                congr
+                funext a
+                exact hK a
+      _ = (moveAtCursorWorldPMF g hctx σ who h.lastState).bind f := by
+        exact observedProgramLegalActionLawPMF_bind_coord
+          g hctx σ h hterm who f
+      _ = checkedProfileStepPMF g hctx σ
+          (CheckedWorld.ofCursorChecked (hctx := hctx)
+            h.lastState) := by
+        rw [← moveAtCheckedWorldPMF_ofCursorChecked
+          g hctx σ who h.lastState]
+        rw [hchecked]
+        exact moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
           g hctx σ env suffix wctx fresh viewScoped
           normalized legal
 
@@ -1590,6 +1847,214 @@ theorem observedProgramCheckedWorldRunDistFrom_eq_checkedProfileRun
                 g hctx h)).bind run := by
               rw [hstep]
 
+noncomputable def observedProgramCheckedWorldRunDistFromPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History) :
+    PMF (CheckedWorld g hctx) :=
+  PMF.map (observedProgramHistoryCheckedWorld g hctx)
+    (observedProgramRunDistFrom g hctx LF
+      (toObservedProgramLegalBehavioralProfilePMF g hctx σ) n h)
+
+@[simp] theorem observedProgramCheckedWorldRunDistFromPMF_zero
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History) :
+    observedProgramCheckedWorldRunDistFromPMF
+        g hctx LF σ 0 h =
+      PMF.pure
+        (observedProgramHistoryCheckedWorld g hctx h) := by
+  simp [observedProgramCheckedWorldRunDistFromPMF, observedProgramRunDistFrom,
+    PMF.pure_map]
+
+theorem observedProgramCheckedWorldRunDistFromPMF_terminal_eq_checkedProfileRunPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History)
+    (hterm : (observedProgramFOSG g hctx).terminal h.lastState) :
+    observedProgramCheckedWorldRunDistFromPMF
+        g hctx LF σ n h =
+      checkedProfileRunPMF g hctx σ n
+        (observedProgramHistoryCheckedWorld g hctx h) := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  unfold observedProgramCheckedWorldRunDistFromPMF observedProgramRunDistFrom
+  rw [GameTheory.FOSG.History.runDistFrom_terminal
+    (G := observedProgramFOSG g hctx)
+    (toObservedProgramLegalBehavioralProfilePMF g hctx σ) n h hterm]
+  rw [PMF.pure_map]
+  rw [checkedProfileRunPMF_terminal]
+  exact (checkedTerminal_observedProgramHistoryCheckedWorld
+    g hctx h).2 hterm
+
+noncomputable def observedProgramCheckedWorldRunDistFromSuccPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    PMF (CheckedWorld g hctx) := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        g hctx LF who
+  exact
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+      (fun a =>
+        ((observedProgramFOSG g hctx).transition
+            h.lastState a).bind
+          (fun dst =>
+            observedProgramCheckedWorldRunDistFromPMF
+              g hctx LF σ n
+              (h.extendByOutcome a dst)))
+
+theorem observedProgramCheckedWorldRunDistFromPMF_succ_nonterminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    observedProgramCheckedWorldRunDistFromPMF
+        g hctx LF σ (n + 1) h =
+      observedProgramCheckedWorldRunDistFromSuccPMF
+        g hctx LF σ n h hterm := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  unfold observedProgramCheckedWorldRunDistFromSuccPMF
+  unfold observedProgramCheckedWorldRunDistFromPMF observedProgramRunDistFrom
+  rw [GameTheory.FOSG.History.runDistFrom_succ_nonterminal
+    (G := observedProgramFOSG g hctx)
+    (toObservedProgramLegalBehavioralProfilePMF g hctx σ) n h hterm]
+  rw [PMF.map_bind]
+  congr
+  funext a
+  rw [PMF.map_bind]
+
+theorem observedProgramCheckedWorldRunDistFromPMF_eq_checkedProfileRunPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    ∀ n h,
+      observedProgramCheckedWorldRunDistFromPMF
+          g hctx LF σ n h =
+        checkedProfileRunPMF g hctx σ n
+          (observedProgramHistoryCheckedWorld g hctx h) := by
+  intro n
+  induction n with
+  | zero =>
+      intro h
+      simp
+  | succ n ih =>
+      intro h
+      by_cases hterm : (observedProgramFOSG g hctx).terminal
+          h.lastState
+      · exact observedProgramCheckedWorldRunDistFromPMF_terminal_eq_checkedProfileRunPMF
+          g hctx LF σ (n + 1) h hterm
+      · letI : ∀ who : P,
+            Fintype (Option (ProgramAction g.prog who)) :=
+          fun who =>
+            observedProgramFOSG.instFintypeOptionAction
+              g hctx LF who
+        have hcheckedTerm :
+            ¬ checkedTerminal
+              (observedProgramHistoryCheckedWorld g hctx h) := by
+          intro ht
+          exact hterm ((checkedTerminal_observedProgramHistoryCheckedWorld
+            g hctx h).1 ht)
+        rw [observedProgramCheckedWorldRunDistFromPMF_succ_nonterminal
+          g hctx LF σ n h hterm]
+        rw [checkedProfileRunPMF_succ_nonterminal
+          g hctx σ n
+          (observedProgramHistoryCheckedWorld g hctx h)
+          hcheckedTerm]
+        unfold observedProgramCheckedWorldRunDistFromSuccPMF
+        let G := observedProgramFOSG g hctx
+        let law := G.legalActionLaw
+          (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm
+        let step := fun a : G.LegalAction h.lastState =>
+          G.transition h.lastState a
+        let forget :=
+          CheckedWorld.ofCursorChecked (hctx := hctx)
+        let run := checkedProfileRunPMF g hctx σ n
+        have hstep :
+            law.bind (fun a => PMF.map forget (step a)) =
+              checkedProfileStepPMF g hctx σ
+                (observedProgramHistoryCheckedWorld
+                  g hctx h) := by
+          simpa [G, law, step, forget, observedProgramHistoryCheckedWorld] using
+            observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
+              g hctx σ h hterm
+        calc
+          law.bind
+              (fun a =>
+                (step a).bind
+                  (fun dst =>
+                    observedProgramCheckedWorldRunDistFromPMF
+                      g hctx LF σ n
+                      (h.extendByOutcome a dst))) =
+            law.bind
+              (fun a =>
+                (step a).bind
+                  (fun dst =>
+                    run
+                      (observedProgramHistoryCheckedWorld
+                        g hctx
+                        (h.extendByOutcome a dst)))) := by
+              refine Math.ProbabilityMassFunction.bind_congr_on_support
+                law _ _ ?_
+              intro a _
+              refine Math.ProbabilityMassFunction.bind_congr_on_support
+                (step a) _ _ ?_
+              intro dst _
+              exact ih (h.extendByOutcome a dst)
+          _ =
+            law.bind
+              (fun a =>
+                (step a).bind
+                  (fun dst => run (forget dst))) := by
+              refine Math.ProbabilityMassFunction.bind_congr_on_support
+                law _ _ ?_
+              intro a _
+              refine Math.ProbabilityMassFunction.bind_congr_on_support
+                (step a) _ _ ?_
+              intro dst hdst
+              have hsupp : step a dst ≠ 0 := by
+                simpa [step, PMF.mem_support_iff] using hdst
+              rw [observedProgramHistoryCheckedWorld_extendByOutcome_of_support
+                g hctx h a dst hsupp]
+          _ =
+            (law.bind (fun a => PMF.map forget (step a))).bind run := by
+              rw [PMF.bind_bind]
+              congr
+              funext a
+              simp [PMF.map, PMF.bind_bind]
+          _ =
+            (checkedProfileStepPMF g hctx σ
+              (observedProgramHistoryCheckedWorld
+                g hctx h)).bind run := by
+              rw [hstep]
+
 @[simp] theorem observedProgramHistoryCheckedWorld_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     observedProgramHistoryCheckedWorld g hctx
@@ -1610,6 +2075,82 @@ theorem observedProgramCheckedWorldRunDist_eq_checkedProfileRun
   rw [observedProgramCheckedWorldRunDist_eq_runDistFrom_initial]
   rw [observedProgramCheckedWorldRunDistFrom_eq_checkedProfileRun]
   simp
+
+noncomputable def observedProgramOutcomeKernelPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
+  PMF.map (observedProgramHistoryOutcome g hctx)
+    (observedProgramRunDist g hctx LF
+      (toObservedProgramLegalBehavioralProfilePMF g hctx σ))
+
+noncomputable def observedProgramCheckedWorldRunDistPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) : PMF (CheckedWorld g hctx) :=
+  PMF.map (observedProgramHistoryCheckedWorld g hctx)
+    (observedProgramRunDist g hctx LF
+      (toObservedProgramLegalBehavioralProfilePMF g hctx σ))
+
+theorem observedProgramCheckedWorldRunDistPMF_eq_runDistFrom_initial
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    observedProgramCheckedWorldRunDistPMF
+        g hctx LF σ =
+      observedProgramCheckedWorldRunDistFromPMF
+        g hctx LF σ
+        (syntaxSteps g.prog)
+        (GameTheory.FOSG.History.nil
+          (observedProgramFOSG g hctx)) := by
+  rfl
+
+theorem observedProgramCheckedWorldRunDistPMF_eq_checkedProfileRunPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    observedProgramCheckedWorldRunDistPMF
+        g hctx LF σ =
+      checkedProfileRunPMF g hctx σ
+        (syntaxSteps g.prog)
+        (CheckedWorld.initial g hctx) := by
+  rw [observedProgramCheckedWorldRunDistPMF_eq_runDistFrom_initial]
+  rw [observedProgramCheckedWorldRunDistFromPMF_eq_checkedProfileRunPMF]
+  simp
+
+theorem observedProgramOutcomeKernelPMF_eq_checkedWorldProjection
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    observedProgramOutcomeKernelPMF g hctx LF σ =
+      PMF.map (checkedWorldOutcome (P := P) (L := L))
+        (PMF.map
+          (observedProgramHistoryCheckedWorld g hctx)
+          (observedProgramRunDist g hctx LF
+            (toObservedProgramLegalBehavioralProfilePMF g hctx σ))) := by
+  rw [PMF.map_comp]
+  simp [observedProgramOutcomeKernelPMF, Function.comp_def]
+
+theorem observedProgramOutcomeKernelPMF_eq_checkedWorldRunDistPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    observedProgramOutcomeKernelPMF g hctx LF σ =
+      PMF.map (checkedWorldOutcome (P := P) (L := L))
+        (observedProgramCheckedWorldRunDistPMF
+          g hctx LF σ) := by
+  rw [observedProgramOutcomeKernelPMF_eq_checkedWorldProjection]
+  rfl
+
+theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    observedProgramOutcomeKernelPMF g hctx LF σ =
+      (toKernelGamePMF g).outcomeKernel σ := by
+  rw [observedProgramOutcomeKernelPMF_eq_checkedWorldRunDistPMF]
+  rw [observedProgramCheckedWorldRunDistPMF_eq_checkedProfileRunPMF]
+  exact checkedProfileRunPMF_initial_outcomeKernel g hctx σ
 
 theorem observedProgramOutcomeKernel_eq_checkedWorldRunDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
