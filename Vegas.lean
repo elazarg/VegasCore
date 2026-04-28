@@ -22,5 +22,6 @@ import Vegas.Corollaries.GameProperties
 import Vegas.Corollaries.PureStrategic
 import Vegas.LegalNonempty
 import Vegas.ProtocolSemantics
+import Vegas.Kuhn
 import Vegas.FOSG
 import Vegas.MAID
