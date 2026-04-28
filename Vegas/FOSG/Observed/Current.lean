@@ -523,6 +523,43 @@ noncomputable def currentObsModel
     { init := CursorCheckedWorld.initial g _hctx
       step := fun w a => currentProgramStep g w a }
 
+/-- The PMF kernel obtained by reading a current-observation behavioral
+profile at one owned commit cursor. -/
+noncomputable def currentBehavioralKernelPMFAtCursor
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : ObsModelCore.BehavioralProfile (currentObsModel g hctx))
+    (c : ProgramCursor g.prog)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (_hprog : c.prog = VegasCore.commit x who R k) :
+    ProgramBehavioralKernelPMF who c.Γ b where
+  run := fun view =>
+    PMF.map (currentMoveCommitValueOrDefault (b := b))
+      (β who (privateObsOfViewAtCursor who c view))
+
+theorem currentBehavioralKernelPMFAtCursor_isLegalAt
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : ObsModelCore.BehavioralProfile (currentObsModel g hctx))
+    (c : ProgramCursor g.prog)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k) :
+    (currentBehavioralKernelPMFAtCursor g hctx β c hprog).IsLegalAt R := by
+  intro env v hv
+  change v ∈
+      (PMF.map (currentMoveCommitValueOrDefault (b := b))
+        (β who
+          (privateObsOfViewAtCursor who c
+            (projectViewEnv who env)))).support at hv
+  rcases (PMF.mem_support_map_iff _ _ _).mp hv with ⟨m, _hm, hm⟩
+  rw [← hm]
+  exact currentMoveCommitValueOrDefault_guard_at_cursor
+    g hctx c hprog env m
+
 /-- Embed a legal Vegas pure strategy as a local strategy of the
 current-observation Kuhn model. -/
 noncomputable def currentLocalPureStrategy
