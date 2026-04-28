@@ -107,19 +107,4 @@ theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
       g hctx LF μ
   exact ⟨⟨βF⟩, hβF⟩
 
-/-- Complete a reachable Vegas behavioral profile to a total legal Vegas PMF
-behavioral profile without changing the outcome distribution.
-
-The fallback profile supplies legal behavior at views outside the reachable
-observation domain. -/
-theorem completeReachableProgramBehavioralProfilePMF
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (βR : ReachableProgramBehavioralProfilePMF g hctx) :
-    ∃ β : LegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
-        reachableProgramOutcomeKernelPMF g hctx LF βR := by
-  sorry
-
 end Vegas

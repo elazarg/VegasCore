@@ -34,9 +34,10 @@ The file has two regions.
   target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
   correlated variant over arbitrary PMFs on joint pure profiles.
-  The executable finite theorem below proves the product-mixed pure case under
-  the currently required finite-game assumptions. The correlated realization
-  properties remain named targets.
+  The executable finite theorem below proves the product-mixed pure case in the
+  reachable strategy space under the currently required finite-game
+  assumptions. The total and correlated realization properties remain named
+  targets.
 -/
 
 namespace Vegas
@@ -188,42 +189,12 @@ theorem protocol_mixedPure_realizedByReachableBehavioralPMF_finite
   exact reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
 
-/-- Native Vegas Kuhn theorem for concrete finite games.
-
-Every independent mixed profile over guard-legal pure strategies is realized by
-a guard-legal PMF behavioral profile with the same distribution over Vegas
-payoff outcomes. -/
-theorem protocol_mixedPure_realizedByBehavioralPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
-    ∃ β : LegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
-  obtain ⟨βR, hβR⟩ :=
-    protocol_mixedPure_realizedByReachableBehavioralPMF_finite
-      g hctx LF μ
-  let fallbackPure : LegalProgramPureProfile g :=
-    fun who => Classical.choose (μ who).support_nonempty
-  let fallback : LegalProgramBehavioralProfilePMF g :=
-    LegalProgramPureProfile.toBehavioralPMF fallbackPure
-  obtain ⟨β, hβ⟩ :=
-    completeReachableProgramBehavioralProfilePMF
-      g hctx LF fallback βR
-  refine ⟨β, ?_⟩
-  rw [hβ, hβR]
-
 /-- General native Vegas Kuhn target, PMF mixed-to-behavioral direction.
 
 Every independent mixed profile over guard-legal pure strategies is realized by
 a guard-legal PMF behavioral profile with the same outcome distribution. This
-is a property-valued target; the concrete finite theorem above is the proved
-finite-game form. -/
+is a property-valued target over total Vegas behavioral profiles. The concrete
+finite theorem above proves the corresponding reachable-strategy form. -/
 def ProtocolMixedPureRealizationPMF
     [Fintype P] (g : WFProgram P L)
     [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
