@@ -1631,6 +1631,8 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
     [Fintype P]
     [∀ who, Nonempty (LegalProgramPureStrategy g who)]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
     letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
       fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
     letI : Fintype (observedProgramFOSG g hctx).History :=
@@ -1650,22 +1652,28 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
             (G := observedProgramFOSG g hctx)
             (observedProgramFOSG_legalObservable g hctx)
             (syntaxSteps g.prog) βcore) =
-        (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
-          (G := observedProgramFOSG g hctx)
-          (toObservedProgramReachableMixedPureProfile g hctx μ)).bind
-          (fun π =>
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ =>
             PMF.map (observedProgramHistoryOutcome g hctx)
               (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
                 (G := observedProgramFOSG g hctx)
                 (observedProgramFOSG_legalObservable g hctx)
-                (syntaxSteps g.prog) π)) := by
+                (syntaxSteps g.prog)
+                (toObservedProgramReachableLegalPureProfile g hctx σ))) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
     fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
   letI : Fintype (observedProgramFOSG g hctx).History :=
     observedProgramFOSG.instFintypeHistory g hctx LF
-  exact observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
-    (P := P) (L := L) g hctx
-    (toObservedProgramReachableMixedPureProfile g hctx μ)
+  obtain ⟨βcore, β, hβ, hdist⟩ :=
+    observedProgramReachable_mixed_to_legal_behavioral_outcomeDist
+      (P := P) (L := L) g hctx
+      (toObservedProgramReachableMixedPureProfile g hctx μ)
+  refine ⟨βcore, β, hβ, ?_⟩
+  rw [toObservedProgramReachableMixedPureProfile_joint] at hdist
+  rw [PMF.bind_map] at hdist
+  simpa [Function.comp_def] using hdist
 
 end Observed
 
