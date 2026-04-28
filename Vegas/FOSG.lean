@@ -4,6 +4,7 @@ import GameTheory.Languages.FOSG.Compile
 import GameTheory.Languages.FOSG.Kuhn
 import Vegas.Strategic
 import Vegas.PureStrategic
+import Vegas.LegalNonempty
 import Vegas.Finite
 import Vegas.ViewKernel
 import Vegas.WFProgram
@@ -1458,6 +1459,54 @@ def availableProgramActions {g : WFProgram P L}
 
 end CursorCheckedWorld
 
+theorem availableProgramMovesAt_eq_of_projectViewEnv_eq
+    (g : WFProgram P L) (who : P)
+    {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog p)
+    (env₁ env₂ : VEnv L Γ)
+    (hctx : WFCtx (L := L) Γ)
+    (hfresh : FreshBindings p)
+    (hsc : ViewScoped p)
+    (hview : projectViewEnv who (VEnv.eraseEnv env₁) =
+      projectViewEnv who (VEnv.eraseEnv env₂)) :
+    CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) p env₁ suffix who =
+      CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) p env₂ suffix who := by
+  ext oi
+  cases oi with
+  | none =>
+      cases p <;> simp [CursorCheckedWorld.availableProgramMovesAt, active]
+  | some a =>
+      cases p with
+      | ret payoffs =>
+          simp [CursorCheckedWorld.availableProgramMovesAt,
+            CursorCheckedWorld.availableProgramActionsAt, active]
+      | letExpr x e k =>
+          simp [CursorCheckedWorld.availableProgramMovesAt,
+            CursorCheckedWorld.availableProgramActionsAt, active]
+      | sample x D k =>
+          simp [CursorCheckedWorld.availableProgramMovesAt,
+            CursorCheckedWorld.availableProgramActionsAt, active]
+      | reveal y owner x hx k =>
+          simp [CursorCheckedWorld.availableProgramMovesAt,
+            CursorCheckedWorld.availableProgramActionsAt, active]
+      | commit x owner R k =>
+          by_cases howner : owner = who
+          · cases howner
+            have hguard : ∀ v : L.Val _,
+                evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env₁) =
+                  evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env₂) := by
+              intro v
+              exact evalGuard_eq_of_projectViewEnv_eq hctx hfresh.1
+                (ViewScoped.commit_guard_usesOnly hsc) hview
+            simp [CursorCheckedWorld.availableProgramMovesAt,
+              CursorCheckedWorld.availableProgramActionsAt,
+              active, availableActions, ProgramAction.toAction, hguard]
+          · simp [CursorCheckedWorld.availableProgramMovesAt,
+              CursorCheckedWorld.availableProgramActionsAt,
+              active, availableActions, ProgramAction.toAction, howner]
+
 /-- FOSG joint-action legality for the cursor-keyed program-local alphabet. -/
 abbrev CursorProgramJointActionLegal
     {g : WFProgram P L}
@@ -2491,10 +2540,12 @@ structure PublicObs (g : WFProgram P L) (hctx : WFCtx g.Γ) where
   env : VEnv L (pubVCtx Γ)
 
 /-- Private observation after a Vegas/FOSG transition: the observing player's
-current view environment. -/
-structure PrivateObs (P : Type) [DecidableEq P] (L : IExpr) (who : P) where
-  Γ : VCtx P L
-  env : VEnv L (viewVCtx who Γ)
+current program cursor and view environment. The cursor is public information,
+but storing it here makes the player's local observation self-sufficient for
+strategy lookup and action-availability proofs. -/
+structure PrivateObs (g : WFProgram P L) (who : P) where
+  cursor : ProgramCursor (P := P) (L := L) g.prog
+  env : VEnv L (viewVCtx who cursor.Γ)
 
 def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CursorCheckedWorld (P := P) (L := L) g) : PublicObs g hctx where
@@ -2505,8 +2556,8 @@ def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
 
 def privateObsOfCursorWorld {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
-    PrivateObs P L who where
-  Γ := w.1.cursor.Γ
+    PrivateObs g who where
+  cursor := w.1.cursor
   env := VEnv.toView who w.1.env
 
 theorem privateObsOfCursorWorld_eraseEnv
@@ -2516,6 +2567,37 @@ theorem privateObsOfCursorWorld_eraseEnv
       projectViewEnv who (VEnv.eraseEnv w.1.env) := by
   exact (projectViewEnv_eraseEnv_eq_toView (who := who) w.2.1 w.1.env).symm
 
+theorem availableProgramMovesAt_eq_of_privateObs_eq
+    (g : WFProgram P L) (who : P)
+    (w₁ w₂ : CursorCheckedWorld (P := P) (L := L) g)
+    (hpriv : privateObsOfCursorWorld who w₁ = privateObsOfCursorWorld who w₂) :
+    CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) w₁.1.prog w₁.1.env w₁.1.suffix who =
+      CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) w₂.1.prog w₂.1.env w₂.1.suffix who := by
+  rcases w₁ with ⟨⟨c₁, env₁⟩, valid₁⟩
+  rcases w₂ with ⟨⟨c₂, env₂⟩, valid₂⟩
+  dsimp [privateObsOfCursorWorld] at hpriv ⊢
+  injection hpriv with hcursor henv
+  cases hcursor
+  change CursorCheckedWorld.availableProgramMovesAt (P := P) (L := L)
+      c₁.prog env₁ c₁.toSuffix who =
+    CursorCheckedWorld.availableProgramMovesAt (P := P) (L := L)
+      c₁.prog env₂ c₁.toSuffix who
+  have hview : projectViewEnv who (VEnv.eraseEnv env₁) =
+      projectViewEnv who (VEnv.eraseEnv env₂) := by
+    have h₁ := privateObsOfCursorWorld_eraseEnv (g := g) who
+      (⟨⟨c₁, env₁⟩, valid₁⟩ : CursorCheckedWorld (P := P) (L := L) g)
+    have h₂ := privateObsOfCursorWorld_eraseEnv (g := g) who
+      (⟨⟨c₁, env₂⟩, valid₂⟩ : CursorCheckedWorld (P := P) (L := L) g)
+    dsimp [privateObsOfCursorWorld] at h₁ h₂
+    rw [← h₁, ← h₂]
+    have henvEq : VEnv.toView who env₁ = VEnv.toView who env₂ := eq_of_heq henv
+    exact congrArg VEnv.eraseEnv henvEq
+  exact availableProgramMovesAt_eq_of_projectViewEnv_eq
+    (P := P) (L := L) g who c₁.prog c₁.toSuffix env₁ env₂
+    valid₁.1 valid₁.2.1 valid₁.2.2.1 hview
+
 /-- Cursor-keyed observation-preserving FOSG over the program-local action
 alphabet.
 
@@ -2524,7 +2606,7 @@ equilibrium transport. -/
 noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     GameTheory.FOSG P (CursorCheckedWorld (P := P) (L := L) g)
       (fun who : P => ProgramAction (P := P) (L := L) g.prog who)
-      (fun who : P => PrivateObs P L who)
+      (fun who : P => PrivateObs g who)
       (PublicObs g hctx) where
   init := CursorCheckedWorld.initial g hctx
   active := CursorCheckedWorld.active
@@ -2543,6 +2625,34 @@ noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
   nonterminal_exists_legal := by
     intro w hterm
     exact cursor_nonterminal_exists_program_legal hterm
+
+theorem observedProgram_availableMovesAtState_eq_of_privateObs_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (w₁ w₂ : CursorCheckedWorld (P := P) (L := L) g)
+    (hpriv : privateObsOfCursorWorld who w₁ = privateObsOfCursorWorld who w₂) :
+    (observedProgramFOSG g hctx).availableMovesAtState w₁ who =
+      (observedProgramFOSG g hctx).availableMovesAtState w₂ who := by
+  have h :=
+    availableProgramMovesAt_eq_of_privateObs_eq
+      (P := P) (L := L) g who w₁ w₂ hpriv
+  ext oi
+  have hmem : oi ∈ CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) w₁.1.prog w₁.1.env w₁.1.suffix who ↔
+      oi ∈ CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) w₂.1.prog w₂.1.env w₂.1.suffix who := by
+    simp [h]
+  cases oi with
+  | none =>
+      simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
+        CursorCheckedWorld.active, CursorCheckedWorld.toWorld, active] using hmem
+  | some ai =>
+      simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
+        CursorCheckedWorld.availableProgramActions,
+        CursorCheckedWorld.availableProgramActionsAt, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld, active,
+        availableActions] using hmem
 
 /-- The observed-program FOSG transition is the checked transition after
 forgetting cursor keys and erasing program-local actions. -/
@@ -2967,7 +3077,7 @@ state. -/
 noncomputable def programObservationEvents
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :
-    List (PrivateObs P L who × PublicObs g hctx) :=
+    List (PrivateObs g who × PublicObs g hctx) :=
   s.filterMap
     (GameTheory.FOSG.PlayerEvent.observationPart
       (G := observedProgramFOSG g hctx) (i := who))
@@ -2975,7 +3085,7 @@ noncomputable def programObservationEvents
 noncomputable def programLatestObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :
-    Option (PrivateObs P L who × PublicObs g hctx) :=
+    Option (PrivateObs g who × PublicObs g hctx) :=
   last? (programObservationEvents g hctx who s)
 
 @[simp] theorem programObservationEvents_nil
@@ -2989,7 +3099,7 @@ noncomputable def programLatestObservation?
 theorem programLatestObservation?_append_obs
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who)
-    (priv : PrivateObs P L who) (pub : PublicObs g hctx) :
+    (priv : PrivateObs g who) (pub : PublicObs g hctx) :
     programLatestObservation? g hctx who
       (s ++ [GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
   simp [programLatestObservation?, programObservationEvents]
@@ -2998,7 +3108,7 @@ theorem programLatestObservation?_append_act_obs
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who)
     (a : ProgramAction (P := P) (L := L) g.prog who)
-    (priv : PrivateObs P L who) (pub : PublicObs g hctx) :
+    (priv : PrivateObs g who) (pub : PublicObs g hctx) :
     programLatestObservation? g hctx who
       (s ++ [GameTheory.FOSG.PlayerEvent.act a,
         GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
@@ -3103,6 +3213,49 @@ theorem programLatestObservation?_history_of_ne_nil
           rw [hEq]
           exact programLatestObservation?_history_appendStep
             g hctx who hprefix e hsrc
+
+theorem observedProgramFOSG_legalObservable
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    (observedProgramFOSG g hctx).LegalObservable := by
+  intro who h h' hInfo
+  by_cases hnil : h.steps = []
+  · have h_eq_nil :
+        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+      GameTheory.FOSG.History.ext hnil
+    subst h_eq_nil
+    by_cases hnil' : h'.steps = []
+    · have h'_eq_nil :
+          h' = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+        GameTheory.FOSG.History.ext hnil'
+      subst h'_eq_nil
+      rfl
+    · have hlatest :=
+        congrArg (programLatestObservation? g hctx who) hInfo
+      rw [programLatestObservation?_history_nil,
+        programLatestObservation?_history_of_ne_nil g hctx who h' hnil'] at hlatest
+      cases hlatest
+  · by_cases hnil' : h'.steps = []
+    · have h'_eq_nil :
+          h' = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+        GameTheory.FOSG.History.ext hnil'
+      subst h'_eq_nil
+      have hlatest :=
+        congrArg (programLatestObservation? g hctx who) hInfo
+      rw [programLatestObservation?_history_of_ne_nil g hctx who h hnil,
+        programLatestObservation?_history_nil] at hlatest
+      cases hlatest
+    · have hlatest :=
+        congrArg (programLatestObservation? g hctx who) hInfo
+      rw [programLatestObservation?_history_of_ne_nil g hctx who h hnil,
+        programLatestObservation?_history_of_ne_nil g hctx who h' hnil'] at hlatest
+      injection hlatest with hobs
+      have hpriv :
+          privateObsOfCursorWorld who h.lastState =
+            privateObsOfCursorWorld who h'.lastState :=
+        congrArg Prod.fst hobs
+      simpa [GameTheory.FOSG.availableMoves] using
+        observedProgram_availableMovesAtState_eq_of_privateObs_eq
+          (P := P) (L := L) g hctx who h.lastState h'.lastState hpriv
 
 /-! ## Behavioral profile candidate
 
@@ -3523,13 +3676,11 @@ noncomputable def moveAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
     (who : P)
-    (obs : PrivateObs P L who × PublicObs g hctx) :
+    (obs : PrivateObs g who × PublicObs g hctx) :
     PMF (Option (ProgramAction (P := P) (L := L) g.prog who)) := by
   let priv := obs.1
-  let pub := obs.2
-  by_cases hΓ : priv.Γ = pub.Γ
-  · exact moveAtProgramCursor g hctx σ who pub.suffix (hΓ ▸ VEnv.eraseEnv priv.env)
-  · exact PMF.pure none
+  exact moveAtProgramCursor g hctx σ who priv.cursor.toSuffix
+    (VEnv.eraseEnv priv.env)
 
 theorem moveAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -3539,10 +3690,13 @@ theorem moveAtProgramObservation?_of_cursorWorld
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
       moveAtCursorWorld g hctx σ who w := by
   unfold moveAtProgramObservation? moveAtCursorWorld
-  simp only [dite_eq_ite]
+  change moveAtProgramCursor g hctx σ who
+      (privateObsOfCursorWorld who w).cursor.toSuffix
+      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+    moveAtProgramCursor g hctx σ who w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]
-  simp only [publicObsOfCursorWorld]
-  simp [privateObsOfCursorWorld]
+  rfl
 
 /-- Program-action pure observation lookup for the final `observedProgramFOSG`
 target. -/
@@ -3550,13 +3704,11 @@ noncomputable def movePureAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
     (who : P)
-    (obs : PrivateObs P L who × PublicObs g hctx) :
+    (obs : PrivateObs g who × PublicObs g hctx) :
     Option (ProgramAction (P := P) (L := L) g.prog who) := by
   let priv := obs.1
-  let pub := obs.2
-  by_cases hΓ : priv.Γ = pub.Γ
-  · exact movePureAtProgramCursor g hctx σ who pub.suffix (hΓ ▸ VEnv.eraseEnv priv.env)
-  · exact none
+  exact movePureAtProgramCursor g hctx σ who priv.cursor.toSuffix
+    (VEnv.eraseEnv priv.env)
 
 theorem movePureAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -3566,10 +3718,13 @@ theorem movePureAtProgramObservation?_of_cursorWorld
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
       movePureAtCursorWorld g hctx σ who w := by
   unfold movePureAtProgramObservation? movePureAtCursorWorld
-  simp only [dite_eq_ite]
+  change movePureAtProgramCursor g hctx σ who
+      (privateObsOfCursorWorld who w).cursor.toSuffix
+      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+    movePureAtProgramCursor g hctx σ who w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]
-  simp only [publicObsOfCursorWorld]
-  simp [privateObsOfCursorWorld]
+  rfl
 
 /-- Raw pure profile induced by a Vegas legal pure profile for the final
 program-action FOSG. Use `toObservedProgramLegalPureProfile` when the target
@@ -3716,13 +3871,11 @@ theorem moveAtProgramObservation?_toBehavioral_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
     (who : P)
-    (obs : PrivateObs P L who × PublicObs g hctx) :
+    (obs : PrivateObs g who × PublicObs g hctx) :
     moveAtProgramObservation? g hctx (LegalProgramPureProfile.toBehavioral σ) who obs =
       PMF.pure (movePureAtProgramObservation? g hctx σ who obs) := by
   unfold moveAtProgramObservation? movePureAtProgramObservation?
-  by_cases hΓ : obs.1.Γ = obs.2.Γ
-  · simp [hΓ, moveAtProgramCursor_toBehavioral_eq_pure]
-  · simp [hΓ]
+  simp [moveAtProgramCursor_toBehavioral_eq_pure]
 
 /-- Raw behavioral profile induced by a Vegas legal behavioral profile for the
 final program-action FOSG. The `Candidate` suffix means this is the unbundled
@@ -5708,15 +5861,15 @@ theorem observedProgramProjectedPayoff_behavioral_to_mixed_toKernelGame_eu_reach
 FOSG, with the semantic side conditions kept explicit.
 
 This is the first Vegas-facing form of the new bounded-history FOSG M→B theorem.
-It deliberately does not hide the remaining obligations: legal observability,
-step-mass invariance, support factorization, and posterior locality for the
-compiled observed-program FOSG. -/
+It deliberately does not hide the remaining stochastic obligations: step-mass
+invariance, support factorization, and posterior locality for the compiled
+observed-program FOSG. Legal observability is proved above from the
+cursor/view observation design and guard view-scoping. -/
 theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction (P := P) (L := L) g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
-    (hLeg : (observedProgramFOSG g hctx).LegalObservable)
     (hMass : GameTheory.FOSG.Kuhn.ReachableHistoryStepMassInvariant
       (G := observedProgramFOSG (P := P) (L := L) g hctx))
     (hFactor : GameTheory.FOSG.Kuhn.ReachableHistoryStepSupportFactorization
@@ -5740,7 +5893,8 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_of_semanticConditions
               (syntaxSteps g.prog) π) := by
   exact GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral
     (G := observedProgramFOSG (P := P) (L := L) g hctx)
-    hLeg hMass hFactor hLocal μ hμ (syntaxSteps g.prog)
+    (observedProgramFOSG_legalObservable (P := P) (L := L) g hctx)
+    hMass hFactor hLocal μ hμ (syntaxSteps g.prog)
 
 end Observed
 
