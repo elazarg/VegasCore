@@ -205,6 +205,18 @@ theorem currentProgramJointActionRaw_eq_of_active_empty
   rw [CurrentProgramMove.eq_none_of_not_active w (a who) hnot,
     CurrentProgramMove.eq_none_of_not_active w (a' who) hnot]
 
+theorem currentProgramJointAction_eq_of_active_empty
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hactive : CursorCheckedWorld.active w = ∅) :
+    a = a' := by
+  funext who
+  apply Subtype.ext
+  have hnot : who ∉ CursorCheckedWorld.active w := by
+    simp [hactive]
+  rw [CurrentProgramMove.eq_none_of_not_active w (a who) hnot,
+    CurrentProgramMove.eq_none_of_not_active w (a' who) hnot]
+
 theorem currentProgramJointActionLegal
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
