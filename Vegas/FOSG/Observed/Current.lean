@@ -187,6 +187,25 @@ theorem eq_none_of_terminal
       have hactive := cursor_terminal_active_eq_empty (w := w) hterm
       simp [hactive])
 
+theorem subsingleton_of_not_active
+    {g : WFProgram P L} {who : P} (w : CursorCheckedWorld g)
+    (hnot : who ∉ CursorCheckedWorld.active w) :
+    Subsingleton
+      (CurrentProgramMove g who (privateObsOfCursorWorld who w)) := by
+  refine ⟨fun a b => ?_⟩
+  apply Subtype.ext
+  rw [eq_none_of_not_active w a hnot,
+    eq_none_of_not_active w b hnot]
+
+theorem subsingleton_of_terminal
+    {g : WFProgram P L} {who : P} (w : CursorCheckedWorld g)
+    (hterm : CursorCheckedWorld.terminal w) :
+    Subsingleton
+      (CurrentProgramMove g who (privateObsOfCursorWorld who w)) := by
+  apply subsingleton_of_not_active w
+  have hactive := cursor_terminal_active_eq_empty (w := w) hterm
+  simp [hactive]
+
 end CurrentProgramMove
 
 /-- Current private observations are finite for concrete finite expression
