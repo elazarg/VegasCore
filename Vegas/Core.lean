@@ -333,6 +333,21 @@ theorem cons_ext {Player : Type} {L : IExpr} {Γ : VCtx Player L}
     cons (x := x) v₁ env₁ = cons (x := x) v₂ env₂ := by
   subst hv; subst henv; rfl
 
+theorem cons_head_eq_of_eq {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
+    {v₁ v₂ : L.Val τ.base} {env₁ env₂ : VEnv L Γ}
+    (h : cons (x := x) v₁ env₁ = cons (x := x) v₂ env₂) :
+    v₁ = v₂ := by
+  exact congrFun (congrFun (congrFun h x) τ) VHasVar.here
+
+theorem cons_tail_eq_of_eq {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
+    {v₁ v₂ : L.Val τ.base} {env₁ env₂ : VEnv L Γ}
+    (h : cons (x := x) v₁ env₁ = cons (x := x) v₂ env₂) :
+    env₁ = env₂ := by
+  funext y σ hy
+  exact congrFun (congrFun (congrFun h y) σ) (VHasVar.there hy)
+
 def get {Player : Type} {L : IExpr} {Γ : VCtx Player L} {x : VarId}
     {τ : BindTy Player L}
     (env : VEnv L Γ) (h : VHasVar Γ x τ) :
