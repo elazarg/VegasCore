@@ -29,6 +29,13 @@ noncomputable def checkedVegasOutcomeKernel
       (σ := w.suffix.behavioralProfile (fun i => (σ i).val))
       w.normalized)
 
+noncomputable def checkedVegasOutcomeKernelPMF
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx) : PMF (Outcome P) :=
+  outcomeDistBehavioralPMF w.prog w.normalized
+    (w.suffix.behavioralProfilePMF (fun i => (σ i).val)) w.env
+
 /-- Vegas' own profile-induced one-step kernel on suffix-based checked worlds.
 This is the semantic small-step machine. It is intentionally independent of
 FOSG's joint-action representation; commit nodes bind directly over the active
@@ -100,6 +107,81 @@ noncomputable def checkedProfileStep
                 normalized := normalized
                 legal := legal.2 })
             (d.toPMF hd)
+      | reveal y who x hx k =>
+          exact PMF.pure
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub _)
+                (env x (.hidden who _) hx) env
+              suffix := .reveal suffix
+              wctx := WFCtx.cons fresh.1 wctx
+              fresh := fresh.2
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+
+noncomputable def checkedProfileStepPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx) : PMF (CheckedWorld g hctx) := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          exact PMF.pure
+            { Γ := Γ
+              prog := .ret payoffs
+              env := env
+              suffix := suffix
+              wctx := wctx
+              fresh := fresh
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+      | letExpr x e k =>
+          exact PMF.pure
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                (L.eval e (VEnv.erasePubEnv env)) env
+              suffix := .letExpr suffix
+              wctx := WFCtx.cons fresh.1 wctx
+              fresh := fresh.2
+              viewScoped := viewScoped
+              normalized := normalized
+              legal := legal }
+      | sample x D k =>
+          exact PMF.map
+            (fun v =>
+              { Γ := _
+                prog := k
+                env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                  v env
+                suffix := .sample suffix
+                wctx := WFCtx.cons fresh.1 wctx
+                fresh := fresh.2
+                viewScoped := viewScoped
+                normalized := normalized.2
+                legal := legal })
+            ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF (normalized.1 env))
+      | commit x who R k =>
+          let σp : ProgramBehavioralProfilePMF (P := P) (L := L)
+              (.commit x who R k) :=
+            suffix.behavioralProfilePMF (fun i => (σ i).val)
+          exact PMF.map
+            (fun v =>
+              { Γ := _
+                prog := k
+                env := VEnv.cons (Player := P) (L := L) (x := x)
+                  (τ := .hidden who _) v env
+                suffix := .commit suffix
+                wctx := WFCtx.cons fresh.1 wctx
+                fresh := fresh.2
+                viewScoped := viewScoped.2
+                normalized := normalized
+                legal := legal.2 })
+            (ProgramBehavioralStrategyPMF.headKernel (P := P) (L := L)
+              (σp who) (projectViewEnv who (VEnv.eraseEnv env)))
       | reveal y who x hx k =>
           exact PMF.pure
             { Γ := _
@@ -488,6 +570,28 @@ theorem checkedVegasOutcomeKernel_terminal
       | reveal y who x hx k =>
           simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
 
+theorem checkedVegasOutcomeKernelPMF_terminal
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx)
+    (hterm : checkedTerminal w) :
+    checkedVegasOutcomeKernelPMF σ w =
+      PMF.pure (checkedWorldOutcome w) := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          simp [checkedVegasOutcomeKernelPMF, checkedWorldOutcome,
+            outcomeDistBehavioralPMF]
+      | letExpr x e k =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+      | sample x D k =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+      | commit x who R k =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+      | reveal y who x hx k =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+
 /-- One semantic small step preserves the remaining Vegas denotation. This is
 the hard preservation equation in the proof architecture; it is proved at the
 suffix-based machine level before involving the finite FOSG cursor encoding. -/
@@ -617,6 +721,59 @@ theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
           simp [checkedProfileStep, checkedVegasOutcomeKernel,
             outcomeDistBehavioral, VEnv.get]
 
+theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx) :
+    (checkedProfileStepPMF g hctx σ w).bind
+        (checkedVegasOutcomeKernelPMF σ) =
+      checkedVegasOutcomeKernelPMF σ w := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          simp [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
+            outcomeDistBehavioralPMF]
+      | letExpr x e k =>
+          simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
+            outcomeDistBehavioralPMF, PMF.pure_bind]
+          rw [show
+              (ProgramSuffix.letExpr suffix).behavioralProfilePMF
+                  (fun i => (σ i).val) =
+                (fun w =>
+                  match suffix.behavioralProfilePMF
+                      (fun i => (σ i).val) w with
+                  | .letExpr tail => tail) by
+            funext w
+            exact ProgramSuffix.behavioralProfilePMF_letExpr
+              suffix (fun i => (σ i).val) w]
+          rfl
+      | sample x D k =>
+          simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
+            outcomeDistBehavioralPMF]
+          rw [PMF.bind_map]
+          rfl
+      | commit x who R k =>
+          simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
+            outcomeDistBehavioralPMF]
+          rw [PMF.bind_map]
+          rfl
+      | reveal y who x hx k =>
+          simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
+            outcomeDistBehavioralPMF, PMF.pure_bind]
+          rw [show
+              (ProgramSuffix.reveal suffix).behavioralProfilePMF
+                  (fun i => (σ i).val) =
+                (fun w =>
+                  match suffix.behavioralProfilePMF
+                      (fun i => (σ i).val) w with
+                  | .reveal tail => tail) by
+            funext w
+            exact ProgramSuffix.behavioralProfilePMF_reveal
+              suffix (fun i => (σ i).val) w]
+          simp [VEnv.get]
+          rfl
+
 set_option linter.flexible false in
 /-- Every supported nonterminal semantic small step consumes exactly one Vegas
 syntax node. -/
@@ -652,6 +809,48 @@ theorem checkedProfileStep_remainingSyntaxSteps
           rfl
       | reveal y who x hx k =>
           simp [checkedProfileStep, CheckedWorld.remainingSyntaxSteps,
+            syntaxSteps] at hsupp ⊢
+          subst dst
+          rfl
+
+theorem checkedProfileStepPMF_remainingSyntaxSteps
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx)
+    (hterm : ¬ checkedTerminal w)
+    (dst : CheckedWorld g hctx)
+    (hsupp : checkedProfileStepPMF g hctx σ w dst ≠ 0) :
+    dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps := by
+  cases w with
+  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
+      cases prog with
+      | ret payoffs =>
+          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+      | letExpr x e k =>
+          simp only [checkedProfileStepPMF, PMF.pure_apply, ne_eq,
+            ite_eq_right_iff, one_ne_zero, imp_false, not_not,
+            CheckedWorld.remainingSyntaxSteps, syntaxSteps,
+            Nat.add_right_cancel_iff] at hsupp ⊢
+          subst dst
+          rfl
+      | sample x D k =>
+          simp only [checkedProfileStepPMF, PMF.map_apply, ne_eq,
+            ENNReal.tsum_eq_zero, ite_eq_right_iff, not_forall,
+            CheckedWorld.remainingSyntaxSteps,
+            syntaxSteps, Nat.add_right_cancel_iff] at hsupp ⊢
+          rcases hsupp with ⟨v, hdst, _hv⟩
+          subst dst
+          rfl
+      | commit x who R k =>
+          simp only [checkedProfileStepPMF, PMF.map_apply, ne_eq,
+            ENNReal.tsum_eq_zero, ite_eq_right_iff, not_forall,
+            CheckedWorld.remainingSyntaxSteps,
+            syntaxSteps, Nat.add_right_cancel_iff] at hsupp ⊢
+          rcases hsupp with ⟨v, hdst, _hv⟩
+          subst dst
+          rfl
+      | reveal y who x hx k =>
+          simp [checkedProfileStepPMF, CheckedWorld.remainingSyntaxSteps,
             syntaxSteps] at hsupp ⊢
           subst dst
           rfl
@@ -710,6 +909,57 @@ theorem checkedProfileRun_succ_nonterminal
         (checkedProfileRun g hctx σ n) := by
   simp [checkedProfileRun, hterm]
 
+open Classical in
+noncomputable def checkedProfileRunPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    Nat → CheckedWorld g hctx → PMF (CheckedWorld g hctx)
+  | 0, w => PMF.pure w
+  | n + 1, w =>
+      if checkedTerminal w then
+        PMF.pure w
+      else
+        (checkedProfileStepPMF g hctx σ w).bind
+          (checkedProfileRunPMF g hctx σ n)
+
+@[simp] theorem checkedProfileRunPMF_zero
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (w : CheckedWorld g hctx) :
+    checkedProfileRunPMF g hctx σ 0 w = PMF.pure w := rfl
+
+@[simp] theorem checkedProfileRunPMF_succ_terminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (w : CheckedWorld g hctx)
+    (hterm : checkedTerminal w) :
+    checkedProfileRunPMF g hctx σ (n + 1) w =
+      PMF.pure w := by
+  simp [checkedProfileRunPMF, hterm]
+
+@[simp] theorem checkedProfileRunPMF_terminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (w : CheckedWorld g hctx)
+    (hterm : checkedTerminal w) :
+    checkedProfileRunPMF g hctx σ n w =
+      PMF.pure w := by
+  cases n with
+  | zero => rfl
+  | succ n =>
+      exact checkedProfileRunPMF_succ_terminal
+        g hctx σ n w hterm
+
+theorem checkedProfileRunPMF_succ_nonterminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (w : CheckedWorld g hctx)
+    (hterm : ¬ checkedTerminal w) :
+    checkedProfileRunPMF g hctx σ (n + 1) w =
+      (checkedProfileStepPMF g hctx σ w).bind
+        (checkedProfileRunPMF g hctx σ n) := by
+  simp [checkedProfileRunPMF, hterm]
+
 theorem checkedTransition_bind_checkedProfileRun_eq_checkedProfileRun_succ_of_active_empty
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -755,6 +1005,34 @@ theorem checkedProfileRun_bind_checkedVegasOutcomeKernel
         exact checkedProfileStep_bind_checkedVegasOutcomeKernel
           g hctx σ w
 
+theorem checkedProfileRunPMF_bind_checkedVegasOutcomeKernelPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    ∀ (n : Nat) (w : CheckedWorld g hctx),
+      (checkedProfileRunPMF g hctx σ n w).bind
+          (checkedVegasOutcomeKernelPMF σ) =
+        checkedVegasOutcomeKernelPMF σ w := by
+  intro n
+  induction n with
+  | zero =>
+      intro w
+      simp
+  | succ n ih =>
+      intro w
+      by_cases hterm : checkedTerminal w
+      · rw [checkedProfileRunPMF_succ_terminal
+          g hctx σ n w hterm]
+        simp
+      · rw [checkedProfileRunPMF_succ_nonterminal
+          g hctx σ n w hterm]
+        rw [PMF.bind_bind]
+        conv_lhs =>
+          arg 2
+          intro w'
+          rw [ih w']
+        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+          g hctx σ w
+
 /-- Once the semantic run horizon covers the remaining syntax depth, every
 supported destination is terminal. -/
 theorem checkedProfileRun_support_terminal
@@ -794,6 +1072,43 @@ theorem checkedProfileRun_support_terminal
         have hmidDepth : mid.remainingSyntaxSteps ≤ n := by omega
         exact ih mid dst hmidDepth hdst
 
+theorem checkedProfileRunPMF_support_terminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    ∀ (n : Nat) (w dst : CheckedWorld g hctx),
+      w.remainingSyntaxSteps ≤ n →
+      dst ∈ (checkedProfileRunPMF g hctx σ n w).support →
+        checkedTerminal dst := by
+  intro n
+  induction n with
+  | zero =>
+      intro w dst hn hdst
+      have hzero : w.remainingSyntaxSteps = 0 := by omega
+      have hterm : checkedTerminal w :=
+        checkedTerminal_iff_remainingSyntaxSteps_eq_zero.mpr hzero
+      have hdstEq : dst = w := by
+        simpa using hdst
+      subst dst
+      exact hterm
+  | succ n ih =>
+      intro w dst hn hdst
+      by_cases hterm : checkedTerminal w
+      · rw [checkedProfileRunPMF_succ_terminal
+          g hctx σ n w hterm] at hdst
+        have hdstEq : dst = w := by
+          simpa using hdst
+        subst dst
+        exact hterm
+      · rw [checkedProfileRunPMF_succ_nonterminal
+          g hctx σ n w hterm] at hdst
+        rw [PMF.mem_support_bind_iff] at hdst
+        rcases hdst with ⟨mid, hmid, hdst⟩
+        have hstep := checkedProfileStepPMF_remainingSyntaxSteps
+          g hctx σ w hterm mid
+          (by simpa [PMF.mem_support_iff] using hmid)
+        have hmidDepth : mid.remainingSyntaxSteps ≤ n := by omega
+        exact ih mid dst hmidDepth hdst
+
 /-- At sufficient horizon, the suffix-based Vegas semantic run projected to
 payoff outcomes is exactly the denotational outcome kernel at the starting
 world. -/
@@ -819,12 +1134,41 @@ theorem checkedProfileRun_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernel
       σ dst hterm]
     rfl
 
+theorem checkedProfileRunPMF_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernelPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (n : Nat) (w : CheckedWorld g hctx)
+    (hn : w.remainingSyntaxSteps ≤ n) :
+    PMF.map (checkedWorldOutcome (P := P) (L := L))
+        (checkedProfileRunPMF g hctx σ n w) =
+      checkedVegasOutcomeKernelPMF σ w := by
+  rw [← PMF.bind_pure_comp]
+  rw [Math.ProbabilityMassFunction.bind_congr_on_support
+    (checkedProfileRunPMF g hctx σ n w)
+    (PMF.pure ∘ checkedWorldOutcome (P := P) (L := L))
+    (checkedVegasOutcomeKernelPMF σ)]
+  · exact checkedProfileRunPMF_bind_checkedVegasOutcomeKernelPMF
+      g hctx σ n w
+  · intro dst hdst
+    have hterm := checkedProfileRunPMF_support_terminal
+      g hctx σ n w dst hn hdst
+    rw [checkedVegasOutcomeKernelPMF_terminal
+      σ dst hterm]
+    rfl
+
 @[simp] theorem checkedVegasOutcomeKernel_initial
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g) :
     checkedVegasOutcomeKernel σ
         (CheckedWorld.initial g hctx) =
       (toKernelGame g).outcomeKernel σ := rfl
+
+@[simp] theorem checkedVegasOutcomeKernelPMF_initial
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    checkedVegasOutcomeKernelPMF σ
+        (CheckedWorld.initial g hctx) =
+      (toKernelGamePMF g).outcomeKernel σ := rfl
 
 /-- The suffix-based Vegas semantic machine, run for the syntactic horizon
 from the initial checked world and projected to payoff outcomes, agrees with
@@ -838,6 +1182,20 @@ theorem checkedProfileRun_initial_outcomeKernel
           (CheckedWorld.initial g hctx)) =
       (toKernelGame g).outcomeKernel σ := by
   rw [checkedProfileRun_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernel
+    g hctx σ (syntaxSteps g.prog)
+    (CheckedWorld.initial g hctx)]
+  · rfl
+  · rfl
+
+theorem checkedProfileRunPMF_initial_outcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    PMF.map (checkedWorldOutcome (P := P) (L := L))
+        (checkedProfileRunPMF g hctx σ
+          (syntaxSteps g.prog)
+          (CheckedWorld.initial g hctx)) =
+      (toKernelGamePMF g).outcomeKernel σ := by
+  rw [checkedProfileRunPMF_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernelPMF
     g hctx σ (syntaxSteps g.prog)
     (CheckedWorld.initial g hctx)]
   · rfl
