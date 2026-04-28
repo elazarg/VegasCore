@@ -38,6 +38,29 @@ namespace CurrentProgramMove
     (oi : Option (ProgramAction g.prog who))
     (h) : ((⟨oi, h⟩ : CurrentProgramMove g who priv).1) = oi := rfl
 
+theorem eq_none_of_not_active
+    {g : WFProgram P L} {who : P} (w : CursorCheckedWorld g)
+    (a : CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hnot : who ∉ CursorCheckedWorld.active w) :
+    a.1 = none := by
+  have hmem := a.2 w rfl
+  cases ha : a.1 with
+  | none => rfl
+  | some ai =>
+      rw [ha] at hmem
+      exact False.elim (hnot (by
+        simpa [CursorCheckedWorld.availableProgramMovesAt] using hmem.1))
+
+theorem eq_none_of_terminal
+    {g : WFProgram P L} {who : P} (w : CursorCheckedWorld g)
+    (a : CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hterm : CursorCheckedWorld.terminal w) :
+    a.1 = none := by
+  exact eq_none_of_not_active w a
+    (by
+      have hactive := cursor_terminal_active_eq_empty (w := w) hterm
+      simp [hactive])
+
 end CurrentProgramMove
 
 /-- Current private observations are finite for concrete finite expression
@@ -169,6 +192,23 @@ noncomputable def currentProgramStep
       cursorProgramTransition w
         ⟨currentProgramJointActionRaw w a,
           currentProgramJointActionLegal w a hterm⟩
+
+@[simp] theorem currentProgramStep_terminal
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hterm : CursorCheckedWorld.terminal w) :
+    currentProgramStep g w a = PMF.pure w := by
+  simp [currentProgramStep, hterm]
+
+theorem currentProgramStep_nonterminal
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hterm : ¬ CursorCheckedWorld.terminal w) :
+    currentProgramStep g w a =
+      cursorProgramTransition w
+        ⟨currentProgramJointActionRaw w a,
+          currentProgramJointActionLegal w a hterm⟩ := by
+  simp [currentProgramStep, hterm]
 
 /-- Kuhn core model whose information state is exactly Vegas' current private
 observation. Its behavioral profiles are the semantic target for total
