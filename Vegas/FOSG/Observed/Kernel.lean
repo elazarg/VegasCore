@@ -2584,9 +2584,11 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_outcomeDist_finite
 This theorem starts from a Vegas independent mixed pure profile, transports
 each player's marginal to the observed-program FOSG reachable pure strategy
 space, and applies the FOSG distribution theorem. The behavioral witness is
-still an observed-program FOSG reachable behavioral profile; reifying that
-witness back into `LegalProgramBehavioralProfile g` is the remaining
-strategy-space bridge. -/
+still an observed-program FOSG reachable behavioral profile over full
+player-view histories. The remaining Vegas-facing step must show that the
+particular FOSG witness is current-observation-local, or replace this final
+bridge with a Kuhn application whose information state is already the Vegas
+cursor plus visible environment. -/
 theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -2637,10 +2639,11 @@ theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_outcomeDist_
 /-- Product-mixed Vegas-pure specialization of reachable-coordinate FOSG M→B,
 with the pure side collapsed back to the native Vegas pure kernel.
 
-The remaining bridge is strategy-space reification of the FOSG reachable
-behavioral witness into a Vegas PMF behavioral profile. The distribution
-statement here is already expressed entirely over Vegas outcomes on the pure
-side. -/
+The behavioral side is still a FOSG reachable behavioral witness over full
+player-view histories. This theorem intentionally does not call that a Vegas
+behavioral profile: the missing step is current-observation locality, not just
+repackaging. The distribution statement here is already expressed entirely over
+Vegas outcomes on the pure side. -/
 theorem observedProgramReachable_vegasMixedPure_to_legal_behavioral_toStrategicKernelGame_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
