@@ -2149,6 +2149,18 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
   rw [observedProgramCheckedWorldRunDistPMF_eq_checkedProfileRunPMF]
   exact checkedProfileRunPMF_initial_outcomeKernel g hctx σ
 
+theorem observedProgramReachableOutcomeKernelPMF_eq_toKernelGamePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    PMF.map (observedProgramHistoryOutcome g hctx)
+        (observedProgramRunDist g hctx LF
+          (toObservedProgramReachableLegalBehavioralProfilePMF
+            g hctx σ).extend) =
+      (toKernelGamePMF g).outcomeKernel σ := by
+  rw [observedProgramRunDistPMF_reachable_extend_eq g hctx LF σ]
+  exact observedProgramOutcomeKernelPMF_eq_toKernelGamePMF g hctx LF σ
+
 theorem observedProgramOutcomeKernel_eq_checkedWorldRunDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
