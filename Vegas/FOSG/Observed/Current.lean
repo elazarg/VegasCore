@@ -217,6 +217,43 @@ theorem currentProgramJointAction_eq_of_active_empty
   rw [CurrentProgramMove.eq_none_of_not_active w (a who) hnot,
     CurrentProgramMove.eq_none_of_not_active w (a' who) hnot]
 
+theorem currentProgramMove_eq_none_of_commit_nonowner
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k)
+    {i : P} (hi : i ≠ who)
+    (a : CurrentProgramMove g i (privateObsOfCursorWorld i w)) :
+    a.1 = none := by
+  apply CurrentProgramMove.eq_none_of_not_active w a
+  have hactive := cursor_active_eq_singleton_of_commit (w := w) hprog
+  simp [hactive, hi]
+
+theorem currentProgramMove_exists_available_action_of_commit_owner
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
+    (hprog : w.1.prog = VegasCore.commit x who R k)
+    (a : CurrentProgramMove g who (privateObsOfCursorWorld who w)) :
+    ∃ ai : ProgramAction g.prog who,
+      a.1 = some ai ∧
+        ai ∈ CursorCheckedWorld.availableProgramActionsAt
+          w.1.prog w.1.env w.1.suffix who := by
+  have hmem := a.2 w rfl
+  cases ha : a.1 with
+  | none =>
+      rw [ha] at hmem
+      have hactive := cursor_active_eq_singleton_of_commit (w := w) hprog
+      have hin : who ∈ CursorCheckedWorld.active w := by
+        simp [hactive]
+      exact False.elim (hmem hin)
+  | some ai =>
+      have hmem' := hmem
+      rw [ha] at hmem'
+      exact ⟨ai, rfl, hmem'.2⟩
+
 theorem currentProgramJointActionLegal
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
