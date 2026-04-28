@@ -517,6 +517,51 @@ noncomputable def toObservedProgramReachableMixedPureProfile
   fun who =>
     PMF.map (toObservedProgramReachableLegalPureStrategy g hctx who) (μ who)
 
+theorem toObservedProgramReachableLegalPureProfile_eq_component
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
+    (σ : LegalProgramPureProfile g) :
+    toObservedProgramReachableLegalPureProfile g hctx σ =
+      fun who => toObservedProgramReachableLegalPureStrategy g hctx who (σ who) := by
+  funext who
+  apply Subtype.ext
+  funext s
+  change
+    (programPureProfileCandidate g hctx σ who).restrictReachable s =
+      (programPureStrategyCandidate g hctx who (σ who)).restrictReachable s
+  rw [programPureProfileCandidate_eq_strategy]
+
+theorem toObservedProgramReachableMixedPureProfile_joint
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who, Fintype (LegalProgramPureStrategy g who)]
+    [∀ who, Nonempty (LegalProgramPureStrategy g who)]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    [Fintype (observedProgramFOSG g hctx).History]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
+        (G := observedProgramFOSG g hctx)
+        (toObservedProgramReachableMixedPureProfile g hctx μ) =
+      PMF.map (toObservedProgramReachableLegalPureProfile g hctx)
+        (Math.PMFProduct.pmfPi μ) := by
+  classical
+  change Math.PMFProduct.pmfPi
+      (fun who =>
+        PMF.map (toObservedProgramReachableLegalPureStrategy g hctx who)
+          (μ who)) =
+    PMF.map
+      (fun σ => toObservedProgramReachableLegalPureProfile g hctx σ)
+      (Math.PMFProduct.pmfPi μ)
+  have hmap :
+      (fun σ => toObservedProgramReachableLegalPureProfile g hctx σ) =
+        (fun σ => fun who =>
+          toObservedProgramReachableLegalPureStrategy g hctx who (σ who)) := by
+    funext σ
+    exact toObservedProgramReachableLegalPureProfile_eq_component g hctx σ
+  rw [hmap]
+  exact (Math.PMFProduct.pmfPi_push_coordwise μ
+    (fun who => toObservedProgramReachableLegalPureStrategy g hctx who)).symm
+
 @[simp] theorem toObservedProgramReachableLegalPureProfile_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g) (who : P) :
