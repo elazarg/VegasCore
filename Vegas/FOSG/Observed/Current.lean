@@ -287,6 +287,20 @@ theorem currentProgramJointActionRaw_eq_of_active_empty
   rw [CurrentProgramMove.eq_none_of_not_active w (a who) hnot,
     CurrentProgramMove.eq_none_of_not_active w (a' who) hnot]
 
+theorem currentProgramJointActionRaw_eq_of_agree_active
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hagree : ∀ who, who ∈ CursorCheckedWorld.active w →
+      (a who).1 = (a' who).1) :
+    currentProgramJointActionRaw w a =
+      currentProgramJointActionRaw w a' := by
+  funext who
+  by_cases hmem : who ∈ CursorCheckedWorld.active w
+  · exact hagree who hmem
+  · change (a who).1 = (a' who).1
+    rw [CurrentProgramMove.eq_none_of_not_active w (a who) hmem,
+      CurrentProgramMove.eq_none_of_not_active w (a' who) hmem]
+
 theorem currentProgramJointAction_eq_of_active_empty
     {g : WFProgram P L} (w : CursorCheckedWorld g)
     (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
@@ -500,6 +514,20 @@ theorem currentProgramStep_eq_of_active_empty
     congr 1
     exact Subtype.ext hraw
 
+theorem currentProgramStep_eq_of_agree_active
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
+    (hagree : ∀ who, who ∈ CursorCheckedWorld.active w →
+      (a who).1 = (a' who).1) :
+    currentProgramStep g w a = currentProgramStep g w a' := by
+  by_cases hterm : CursorCheckedWorld.terminal w
+  · simp [currentProgramStep_terminal, hterm]
+  · rw [currentProgramStep_nonterminal g w a hterm,
+      currentProgramStep_nonterminal g w a' hterm]
+    have hraw := currentProgramJointActionRaw_eq_of_agree_active w a a' hagree
+    congr 1
+    exact Subtype.ext hraw
+
 theorem currentProgramStep_actionDeterministic_of_active_empty
     (g : WFProgram P L) (w t : CursorCheckedWorld g)
     (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
@@ -571,6 +599,133 @@ theorem currentObsModel_stepMassInvariant
   simpa [ObsModelCore.pureStep_eq, w, a₁, a₂, currentObsModel,
     ObsModelCore.step] using
       currentProgramStep_massInvariant g w t a₁ a₂ h₁' h₂'
+
+theorem currentObsModel_stepSupportFactorization
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (LF : FiniteValuation L) :
+    letI : ∀ who obs, Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    ObsModelCore.StepSupportFactorization (currentObsModel g hctx) := by
+  classical
+  letI : ∀ who obs, Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  intro ss t π₀ π h₀
+  let O := currentObsModel g hctx
+  let w := O.lastState ss
+  let act (ρ : O.PureProfile) :
+      ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w) :=
+    fun who => by
+      have hobs : O.projectStates who ss =
+          privateObsOfCursorWorld who w := by
+        simpa [O, w, currentObsModel, ObsModelCore.currentObs] using
+          O.currentObs_projectStates who ss
+      exact
+        (hobs ▸ ρ who (O.projectStates who ss))
+  have hpure : ∀ ρ : O.PureProfile,
+      O.pureStep ρ ss = currentProgramStep g w (act ρ) := by
+    intro ρ
+    simpa [O, w, act, currentObsModel, ObsModelCore.step]
+      using (ObsModelCore.pureStep_eq (O := O) ρ ss)
+  have hsame_of_active_empty
+      (hactive : CursorCheckedWorld.active w = ∅)
+      (ρ ρ' : O.PureProfile) :
+      O.pureStep ρ ss = O.pureStep ρ' ss := by
+    simpa [hpure ρ, hpure ρ'] using
+      currentProgramStep_eq_of_active_empty g w (act ρ) (act ρ') hactive
+  cases hprog : w.1.prog with
+  | ret payoffs =>
+      have hactive : CursorCheckedWorld.active w = ∅ := by
+        apply cursor_terminal_active_eq_empty
+        have hterm :
+            terminal
+              ({ Γ := w.1.cursor.Γ, prog := w.1.prog,
+                 env := w.1.env } : World P L) := by
+          rw [hprog]
+          exact terminal_ret payoffs
+        simpa [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+          CursorWorldData.prog] using hterm
+      constructor
+      · intro _ i
+        rw [hsame_of_active_empty hactive
+          (Function.update π₀ i (π i)) π₀]
+        exact h₀
+      · intro _
+        rw [hsame_of_active_empty hactive π π₀]
+        exact h₀
+  | letExpr x e k =>
+      have hactive := cursor_active_eq_empty_of_letExpr (w := w) hprog
+      constructor
+      · intro _ i
+        rw [hsame_of_active_empty hactive
+          (Function.update π₀ i (π i)) π₀]
+        exact h₀
+      · intro _
+        rw [hsame_of_active_empty hactive π π₀]
+        exact h₀
+  | sample x D k =>
+      have hactive := cursor_active_eq_empty_of_sample (w := w) hprog
+      constructor
+      · intro _ i
+        rw [hsame_of_active_empty hactive
+          (Function.update π₀ i (π i)) π₀]
+        exact h₀
+      · intro _
+        rw [hsame_of_active_empty hactive π π₀]
+        exact h₀
+  | commit x owner R k =>
+      have hactive := cursor_active_eq_singleton_of_commit (w := w) hprog
+      have hsame_of_owner
+          (ρ ρ' : O.PureProfile)
+          (howner :
+            (act ρ owner).1 = (act ρ' owner).1) :
+          O.pureStep ρ ss = O.pureStep ρ' ss := by
+        simpa [hpure ρ, hpure ρ'] using
+          currentProgramStep_eq_of_agree_active g w (act ρ) (act ρ')
+            (by
+              intro who hwho
+              have hwho_eq : who = owner := by
+                simpa [hactive] using hwho
+              cases hwho_eq
+              exact howner)
+      constructor
+      · intro hπ i
+        by_cases hi : i = owner
+        · subst i
+          have howner :
+              (act (Function.update π₀ owner (π owner)) owner).1 =
+                (act π owner).1 := by
+            simp [act]
+          rw [hsame_of_owner
+            (Function.update π₀ owner (π owner)) π howner]
+          exact hπ
+        · have howner :
+              (act (Function.update π₀ i (π i)) owner).1 =
+                (act π₀ owner).1 := by
+            have hfun :
+                Function.update π₀ i (π i) owner = π₀ owner :=
+              Function.update_of_ne (Ne.symm hi) (π i) π₀
+            simp [act, hfun]
+          rw [hsame_of_owner
+            (Function.update π₀ i (π i)) π₀ howner]
+          exact h₀
+      · intro hall
+        have howner :
+            (act π owner).1 =
+              (act (Function.update π₀ owner (π owner)) owner).1 := by
+          simp [act]
+        rw [hsame_of_owner π
+          (Function.update π₀ owner (π owner)) howner]
+        exact hall owner
+  | reveal y owner x hx k =>
+      have hactive := cursor_active_eq_empty_of_reveal (w := w) hprog
+      constructor
+      · intro _ i
+        rw [hsame_of_active_empty hactive
+          (Function.update π₀ i (π i)) π₀]
+        exact h₀
+      · intro _
+        rw [hsame_of_active_empty hactive π π₀]
+        exact h₀
 
 /-- The PMF kernel obtained by reading a current-observation behavioral
 profile at one owned commit cursor. -/
@@ -714,12 +869,50 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions
   rw [hβ]
   rw [currentLocalMixedPureProfile_joint g hctx LF μ]
 
+/-- Semantic M→B specialized to the current-observation model, after
+discharging Vegas' support-factorization obligation.
+
+At this point the only semantic assumption left is action-posterior locality:
+conditional next-action posteriors must depend only on the acting player's
+current private observation. -/
+theorem currentObsModel_mixedPure_realized_by_behavioral_of_posteriorLocal
+    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) (k : Nat) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+      fun who => PrivateObs.instFintype g LF who
+    letI : ∀ who obs,
+        Fintype (CurrentProgramMove g who obs) :=
+      fun who obs => CurrentProgramMove.instFintype g LF who obs
+    (∀ who, ObsModelCore.ActionPosteriorLocal (currentObsModel g hctx) who) →
+    ∃ β : ObsModelCore.BehavioralProfile (currentObsModel g hctx),
+      (currentObsModel g hctx).runDist k β =
+        (PMF.map (currentLocalPureProfile g hctx)
+          (Math.PMFProduct.pmfPi μ)).bind
+            ((currentObsModel g hctx).runDistPure k) := by
+  classical
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype ((currentObsModel g hctx).InfoState who) :=
+    fun who => PrivateObs.instFintype g LF who
+  letI : ∀ who obs,
+      Fintype (CurrentProgramMove g who obs) :=
+    fun who obs => CurrentProgramMove.instFintype g LF who obs
+  intro hLocal
+  exact currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions
+    g hctx LF μ k
+    (ObsModelCore.StepSupportFactorization.toRunSupportFactorization
+      (currentObsModel_stepSupportFactorization g hctx LF))
+    hLocal
+
 /-- Semantic M→B specialized to the current-observation model, with full
 obs-local feasibility as a sufficient packaged hypothesis.
 
-Step mass invariance is discharged by the cursor transition semantics. Full
-obs-local feasibility supplies the remaining support-factorization and
-posterior-locality obligations expected by the exact semantic theorem above. -/
+Step mass invariance and support factorization are discharged by the cursor
+transition semantics. Full obs-local feasibility remains as one sufficient way
+to obtain posterior locality. -/
 theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
     [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -747,10 +940,8 @@ theorem currentObsModel_mixedPure_realized_by_behavioral_semantic
       Fintype (CurrentProgramMove g who obs) :=
     fun who obs => CurrentProgramMove.instFintype g LF who obs
   intro hObsLocal
-  exact currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions
+  exact currentObsModel_mixedPure_realized_by_behavioral_of_posteriorLocal
     g hctx LF μ k
-    (ObsModelCore.obsLocalFeasibilityFull_toRunSupportFactorization
-      (O := currentObsModel g hctx) hObsLocal)
     (fun who =>
       ObsModelCore.actionPosteriorLocal_of_obsLocalFeasibility
         (O := currentObsModel g hctx)
