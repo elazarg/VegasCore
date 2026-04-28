@@ -1723,6 +1723,46 @@ theorem availableProgramActionsAt_commit_owner_iff
     · refine ⟨x, who, b, R, k, rfl, rfl, ?_⟩
       rfl
 
+/-- At a fixed endpoint, program-local availability pins down the commit
+cursor. Two available program actions with the same erased action are equal. -/
+theorem availableProgramActionsAt_eq_of_toAction_eq
+    {g : WFProgram P L} {Γ : VCtx P L} {p : VegasCore P L Γ}
+    {env : VEnv L Γ} {suffix : ProgramSuffix g.prog p} {who : P}
+    {ai aj : ProgramAction g.prog who}
+    (hai : ai ∈ availableProgramActionsAt p env suffix who)
+    (haj : aj ∈ availableProgramActionsAt p env suffix who)
+    (hact : ProgramAction.toAction ai = ProgramAction.toAction aj) :
+    ai = aj := by
+  cases p with
+  | ret payoffs =>
+      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+  | letExpr x e k =>
+      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+  | sample x D k =>
+      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+  | reveal y owner x hx k =>
+      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+  | commit x owner R k =>
+      rcases hai.2 with ⟨x₁, owner₁, b₁, R₁, k₁, hprog₁, howner₁, hcursor₁⟩
+      rcases haj.2 with ⟨x₂, owner₂, b₂, R₂, k₂, hprog₂, howner₂, hcursor₂⟩
+      cases hprog₁
+      cases howner₁
+      cases hprog₂
+      cases howner₂
+      cases ai with
+      | mk cursor value =>
+          cases aj with
+          | mk cursor' value' =>
+              dsimp at hcursor₁ hcursor₂
+              cases hcursor₁.symm
+              cases hcursor₂.symm
+              rw [ProgramAction.mk.injEq]
+              constructor
+              · rfl
+              · simp only [ProgramAction.toAction] at hact
+                simp only [Sigma.mk.injEq] at hact
+                exact hact.2
+
 /-- Optional program-local moves available at a suffix endpoint. This mirrors
 FOSG's `availableMovesAtState` without packaging the endpoint as a cursor
 world. -/

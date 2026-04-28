@@ -31,6 +31,111 @@ abbrev CurrentProgramMove
         oi ∈ CursorCheckedWorld.availableProgramMovesAt
           w.1.prog w.1.env w.1.suffix who }
 
+/-- Cursor-local value move for the current-observation model.
+
+At an owned commit observation this is the committed value, restricted to
+values whose guard is forced by the current player view. At inactive
+observations the action type is `PUnit`. This is the strategy-facing action
+carrier; `ProgramAction` is reconstructed only at concrete worlds. -/
+@[reducible] noncomputable def CurrentValueMove
+    (g : WFProgram P L) (who : P) (priv : PrivateObs g who) : Type :=
+  match priv.cursor.prog with
+  | VegasCore.commit _x owner (b := b) R _k =>
+      if owner = who then
+        {v : L.Val b // ∀ ρ : Env L.Val (eraseVCtx priv.cursor.Γ),
+          projectViewEnv who ρ = VEnv.eraseEnv priv.env →
+            evalGuard (Player := P) (L := L) R v ρ = true}
+      else PUnit
+  | _ => PUnit
+
+namespace CurrentValueMove
+
+@[reducible] noncomputable def instFintype
+    (g : WFProgram P L) (LF : FiniteValuation L)
+    (who : P) (priv : PrivateObs g who) :
+    Fintype (CurrentValueMove g who priv) := by
+  classical
+  letI : ∀ τ : L.Ty, Fintype (L.Val τ) :=
+    fun τ => FiniteValuation.instFintypeVal L LF τ
+  unfold CurrentValueMove
+  cases hprog : priv.cursor.prog with
+  | ret payoffs => infer_instance
+  | letExpr x e k => infer_instance
+  | sample x D k => infer_instance
+  | reveal y owner x hx k => infer_instance
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · simp only [howner, ↓reduceIte]
+        exact Fintype.ofFinite
+          {v : L.Val _ // ∀ ρ : Env L.Val (eraseVCtx priv.cursor.Γ),
+            projectViewEnv who ρ = VEnv.eraseEnv priv.env →
+              evalGuard (Player := P) (L := L) R v ρ = true}
+      · simp only [howner, ↓reduceIte]
+        exact inferInstanceAs (Fintype PUnit)
+
+/-- Reconstruct the concrete program-local action at a concrete world. -/
+noncomputable def toProgramMoveAtWorld
+    {g : WFProgram P L} (w : CursorCheckedWorld g) (who : P)
+    (m : CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    Option (ProgramAction g.prog who) := by
+  cases hprog : w.1.prog with
+  | ret payoffs => exact none
+  | letExpr x e k => exact none
+  | sample x D k => exact none
+  | reveal y owner x hx k => exact none
+  | commit x owner R k =>
+      change w.1.cursor.prog = VegasCore.commit x owner R k at hprog
+      dsimp [CurrentValueMove, privateObsOfCursorWorld] at m
+      rw [hprog] at m
+      by_cases howner : owner = who
+      · cases howner
+        let mv :
+            {v : L.Val _ //
+              ∀ ρ : Env L.Val (eraseVCtx w.1.cursor.Γ),
+                projectViewEnv who ρ =
+                    VEnv.eraseEnv (VEnv.toView who w.1.env) →
+                  evalGuard (Player := P) (L := L) R v ρ = true} := by
+          simpa only [if_pos rfl] using m
+        exact some
+          (ProgramAction.commitAt
+            (by
+              rw [← hprog]
+              exact w.1.suffix)
+            mv.1)
+      · simp only [if_neg howner] at m
+        exact none
+
+/-- A legal pure Vegas strategy gives a canonical current-value move. -/
+noncomputable def ofPureStrategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    (priv : PrivateObs g who) : CurrentValueMove g who priv := by
+  unfold CurrentValueMove
+  cases hprog : priv.cursor.prog with
+  | ret payoffs => exact PUnit.unit
+  | letExpr x e k => exact PUnit.unit
+  | sample x D k => exact PUnit.unit
+  | reveal y owner x hx k => exact PUnit.unit
+  | commit x owner R k =>
+      dsimp
+      by_cases howner : owner = who
+      · cases howner
+        rw [if_pos rfl]
+        let suffix : ProgramSuffix g.prog (.commit x who R k) := by
+          rw [← hprog]
+          exact priv.cursor.toSuffix
+        refine ⟨(ProgramPureStrategy.headKernel
+          (ProgramSuffix.pureStrategy suffix who σ.val))
+          (VEnv.eraseEnv priv.env), ?_⟩
+        intro ρ hview
+        have hlegal := headPureStrategyKernel_legal_atCursor
+          g hctx σ suffix ρ
+        simpa [hview] using hlegal
+      · rw [if_neg howner]
+        exact PUnit.unit
+
+end CurrentValueMove
+
 namespace ProgramSuffix
 
 /-- Following a suffix through a fresh program preserves the SSA context
