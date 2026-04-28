@@ -1632,6 +1632,11 @@ def ProgramJointAction.toAction {g : WFProgram P L}
     (a : ProgramJointAction g) : JointAction P L :=
   fun who => (a who).map ProgramAction.toAction
 
+private theorem heq_of_cast_eq {α : Sort _} {F : α → Sort _} {a b : α}
+    (h : a = b) {x : F a} {y : F b} (hx : h ▸ x = y) : HEq x y := by
+  cases h
+  exact heq_of_eq hx
+
 namespace CursorCheckedWorld
 
 /-- Program-local availability at a specific suffix endpoint. This is the
@@ -1656,6 +1661,67 @@ def availableProgramActionsAt {g : WFProgram P L} {Γ : VCtx P L}
               (by
                 rw [← hprog]
                 exact suffix)}
+
+/-- At an owned commit endpoint, program-local availability is exactly the
+current commit cursor paired with a guard-legal value. -/
+theorem availableProgramActionsAt_commit_owner_iff
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (ai : ProgramAction g.prog who) :
+    ai ∈ availableProgramActionsAt (.commit x who R k) env suffix who ↔
+      ∃ v : L.Val b,
+        ai = ProgramAction.commitAt suffix v ∧
+        evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
+  constructor
+  · intro hai
+    have hbroad : ∃ v : L.Val b,
+        ProgramAction.toAction ai = Sigma.mk b v ∧
+          evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) =
+            true := by
+      simpa [FOSGBridge.availableActions] using hai.1
+    rcases hbroad with ⟨v, hact, hguard⟩
+    refine ⟨v, ?_, hguard⟩
+    cases ai with
+    | mk cursor value =>
+        simp only [ProgramAction.toAction] at hact
+        simp only [Sigma.mk.injEq] at hact
+        rcases hact with ⟨_hty, hvalue⟩
+        rcases hai.2 with ⟨x', owner, b', R', k', hprog, howner, hcursor⟩
+        cases hprog
+        cases howner
+        dsimp at hcursor
+        cases hcursor
+        rw [ProgramAction.mk.injEq]
+        refine ⟨rfl, ?_⟩
+        have hcomm_heq : HEq (ProgramAction.commitAt suffix v).value v :=
+          heq_of_cast_eq (ProgramSuffix.ty_commitCursor suffix)
+            (ProgramAction.commitAt_value_cast suffix v
+              (ProgramSuffix.ty_commitCursor suffix))
+        exact hvalue.trans hcomm_heq.symm
+  · intro h
+    rcases h with ⟨v, rfl, hguard⟩
+    constructor
+    · show ProgramAction.toAction (ProgramAction.commitAt suffix v) ∈
+          FOSGBridge.availableActions
+            ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
+              World P L) who
+      have hbroad : ∃ u : L.Val b,
+          ProgramAction.toAction (ProgramAction.commitAt suffix v) =
+              Sigma.mk b u ∧
+            evalGuard (Player := P) (L := L) R u (VEnv.eraseEnv env) =
+              true := by
+        refine ⟨v, ?_, hguard⟩
+        apply Sigma.ext (ProgramSuffix.ty_commitCursor suffix)
+        exact heq_of_cast_eq (ProgramSuffix.ty_commitCursor suffix)
+          (ProgramAction.commitAt_value_cast suffix v
+            (ProgramSuffix.ty_commitCursor suffix))
+      simpa [FOSGBridge.availableActions] using hbroad
+    · refine ⟨x, who, b, R, k, rfl, rfl, ?_⟩
+      rfl
 
 /-- Optional program-local moves available at a suffix endpoint. This mirrors
 FOSG's `availableMovesAtState` without packaging the endpoint as a cursor
