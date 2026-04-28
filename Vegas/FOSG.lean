@@ -3031,6 +3031,79 @@ theorem programLatestObservation?_history_snoc
         programLatestObservation?_append_act_obs g hctx who (h.playerView who) ai
           (privateObsOfCursorWorld who dst) (publicObsOfCursorWorld dst)
 
+/-- Appending one concrete observed-program step records the destination cursor
+world's observation as the latest player observation. -/
+theorem programLatestObservation?_history_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (e : (observedProgramFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState) :
+    programLatestObservation? g hctx who ((h.appendStep e hsrc).playerView who) =
+      some (privateObsOfCursorWorld who (h.appendStep e hsrc).lastState,
+        publicObsOfCursorWorld (h.appendStep e hsrc).lastState) := by
+  rw [GameTheory.FOSG.History.playerView]
+  change programLatestObservation? g hctx who
+      (GameTheory.FOSG.History.playerViewFrom (G := observedProgramFOSG g hctx)
+        who (h.steps ++ [e])) =
+    some (privateObsOfCursorWorld who (h.appendStep e hsrc).lastState,
+      publicObsOfCursorWorld (h.appendStep e hsrc).lastState)
+  rw [GameTheory.FOSG.History.playerViewFrom_append_singleton]
+  simp only [GameTheory.FOSG.History.lastState_appendStep]
+  cases hact : e.ownAction? who with
+  | none =>
+      rw [GameTheory.FOSG.Step.playerView_of_none e who hact]
+      simpa [GameTheory.FOSG.History.playerView, observedProgramFOSG] using
+        programLatestObservation?_append_obs g hctx who (h.playerView who)
+          (privateObsOfCursorWorld who e.dst) (publicObsOfCursorWorld e.dst)
+  | some ai =>
+      rw [GameTheory.FOSG.Step.playerView_of_some e who hact]
+      simpa [GameTheory.FOSG.History.playerView, observedProgramFOSG] using
+        programLatestObservation?_append_act_obs g hctx who (h.playerView who) ai
+          (privateObsOfCursorWorld who e.dst) (publicObsOfCursorWorld e.dst)
+
+/-- The initial observed-program history has no latest program observation. -/
+@[simp] theorem programLatestObservation?_history_nil
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
+    programLatestObservation? g hctx who
+        ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
+      none := by
+  simp [programLatestObservation?, programObservationEvents, last?]
+
+/-- Any nonempty observed-program history records the final cursor world's
+private/public observation as the latest program observation for every player. -/
+theorem programLatestObservation?_history_of_ne_nil
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (hne : h.steps ≠ []) :
+    programLatestObservation? g hctx who (h.playerView who) =
+      some (privateObsOfCursorWorld who h.lastState,
+        publicObsOfCursorWorld h.lastState) := by
+  let G := observedProgramFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          exact False.elim (hne rfl)
+      | append_singleton steps e ih =>
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          rw [hEq]
+          exact programLatestObservation?_history_appendStep
+            g hctx who hprefix e hsrc
+
 /-! ## Behavioral profile candidate
 
 The following definitions build the program-action FOSG behavioral profile
