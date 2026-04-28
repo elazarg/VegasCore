@@ -817,6 +817,17 @@ theorem toObservedProgramReachableMixedPureProfile_joint
     ((toObservedProgramReachableLegalPureProfile g hctx σ who).1) =
       (programPureProfileCandidate g hctx σ who).restrictReachable := rfl
 
+@[simp] theorem toObservedProgramReachableLegalPureProfile_extend_apply_history
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (h : (observedProgramFOSG g hctx).History) (who : P) :
+    ((toObservedProgramReachableLegalPureProfile g hctx σ).extend.toProfile
+        who (h.playerView who)) =
+      (toObservedProgramLegalPureProfile g hctx σ).toProfile
+        who (h.playerView who) := by
+  simp [GameTheory.FOSG.ReachableLegalPureProfile.extend,
+    GameTheory.FOSG.PureStrategy.restrictReachable]
+
 theorem moveAtProgramObservation?_toBehavioral_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
