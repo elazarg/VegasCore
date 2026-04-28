@@ -33,11 +33,11 @@ The file has two regions.
   target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
   correlated variant over arbitrary PMFs on joint pure profiles.
-  `Vegas.FOSG` gives the outcome-preserving protocol representation for
-  arbitrary state-dependent guards; the remaining target is relating the
-  Vegas legal pure/behavioral strategy spaces to the corresponding FOSG
-  reachable strategy spaces, or proving the realization directly for
-  Vegas.
+  `Vegas.FOSG` is the canonical sequential denotation and now gives the
+  reachable FOSG strategy-space form of Kuhn's M→B direction. The properties
+  below deliberately ask for total Vegas-indexed PMF behavioural profiles
+  instead, so they are stronger/different targets rather than the FOSG theorem
+  under another name.
 
 The MAID backend remains useful for the older compilation path, but it is not
 the protocol-representing route: its decision nodes quantify over full value
