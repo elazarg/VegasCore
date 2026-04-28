@@ -1,7 +1,9 @@
 import GameTheory.Languages.FOSG.Information
 import GameTheory.Languages.FOSG.Strategy
 import GameTheory.Languages.FOSG.Compile
+import GameTheory.Languages.FOSG.Kuhn
 import Vegas.Strategic
+import Vegas.PureStrategic
 import Vegas.Finite
 import Vegas.ViewKernel
 import Vegas.WFProgram
@@ -506,6 +508,75 @@ def legal
   | commit s ih => intro h; exact (ih h).2
   | reveal s ih => intro h; exact ih h
 
+noncomputable def pureProfile
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) :
+    ProgramPureProfile (P := P) (L := L) root →
+      ProgramPureProfile (P := P) (L := L) p := by
+  induction s with
+  | here => intro σ; exact σ
+  | letExpr s ih => intro σ; exact ih σ
+  | sample s ih => intro σ; exact ih σ
+  | commit s ih =>
+      intro σ
+      exact ProgramPureProfile.tail (P := P) (L := L) (ih σ)
+  | reveal s ih => intro σ; exact ih σ
+
+@[simp] theorem pureProfile_letExpr
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.letExpr x e k))
+    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (ProgramSuffix.letExpr s).pureProfile σ =
+      s.pureProfile σ := rfl
+
+@[simp] theorem pureProfile_sample
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.sample x D k))
+    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (ProgramSuffix.sample s).pureProfile σ =
+      s.pureProfile σ := rfl
+
+@[simp] theorem pureProfile_commit
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.commit x who R k))
+    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (ProgramSuffix.commit s).pureProfile σ =
+      ProgramPureProfile.tail (P := P) (L := L)
+        (s.pureProfile σ) := rfl
+
+@[simp] theorem pureProfile_reveal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    (s : ProgramSuffix (P := P) (L := L) root (.reveal y who x hx k))
+    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    (ProgramSuffix.reveal s).pureProfile σ =
+      s.pureProfile σ := rfl
+
+theorem pureProfile_isLegal
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    {σ : ProgramPureProfile (P := P) (L := L) root}
+    (hσ : σ.IsLegal) :
+    (s.pureProfile σ).IsLegal := by
+  induction s generalizing σ with
+  | here => exact hσ
+  | letExpr s ih => exact ih hσ
+  | sample s ih => exact ih hσ
+  | commit s ih =>
+      exact ProgramPureProfile.tail_isLegal (P := P) (L := L) (ih hσ)
+  | reveal s ih => exact ih hσ
+
 noncomputable def behavioralProfile
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
@@ -574,6 +645,22 @@ theorem behavioralProfile_isLegal
   | commit s ih =>
       exact ProgramBehavioralProfile.tail_isLegal (P := P) (L := L) (ih hσ)
   | reveal s ih => exact ih hσ
+
+theorem behavioralProfile_toBehavioral
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    (σ : ProgramPureProfile (P := P) (L := L) root) :
+    s.behavioralProfile
+        (ProgramPureProfile.toBehavioral (P := P) (L := L) root σ) =
+      ProgramPureProfile.toBehavioral (P := P) (L := L) p (s.pureProfile σ) := by
+  induction s generalizing σ with
+  | here => rfl
+  | letExpr s ih => exact ih σ
+  | sample s ih => exact ih σ
+  | commit s ih =>
+      rw [behavioralProfile_commit, pureProfile_commit, ih,
+        ProgramPureProfile.tail_toBehavioral]
+  | reveal s ih => exact ih σ
 
 /-- Lift a program-local commit cursor at the current suffix back to a cursor
 for the original root program. -/
@@ -2574,6 +2661,59 @@ theorem observedProgramFOSG_boundedHorizon
     (G := observedProgramFOSG (P := P) (L := L) g hctx)
     (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
 
+/-- The terminal-history law of the observed-program FOSG normalizes. -/
+noncomputable def observedProgramFOSG.hasNormalizedTerminalLaw
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P] :
+    letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+      observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+    letI : ∀ who : P,
+        Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+      fun who =>
+        observedProgramFOSG.instFintypeOptionAction
+          (P := P) (L := L) g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+    (observedProgramFOSG g hctx).HasNormalizedTerminalLaw := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact GameTheory.FOSG.hasNormalizedTerminalLaw_of_boundedHorizon
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (observedProgramFOSG_boundedHorizon (P := P) (L := L) g hctx)
+
+/-- The terminal-history `KernelGame` induced by the observed-program FOSG.
+
+This is the native FOSG game, whose outcomes are terminal histories and whose
+utilities are cumulative transition rewards. Use
+`observedProgramOutcomeKernelGame` for the Vegas-outcome projection. -/
+noncomputable def observedProgramTerminalHistoryGame
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P] : KernelGame P := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact (observedProgramFOSG g hctx).toKernelGame
+    (observedProgramFOSG.hasNormalizedTerminalLaw (P := P) (L := L) g hctx LF)
+
 /-- The bounded run distribution of the observed-program FOSG, with the finite
 execution instances fixed by `FiniteValuation`. -/
 noncomputable def observedProgramRunDist
@@ -3106,6 +3246,204 @@ theorem moveAtCursorWorld_support_available
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
         CursorCheckedWorld.toWorld, availableActions] using hlocal
 
+/-! ## Pure profile candidate
+
+The pure transport is the deterministic counterpart of the behavioral transport
+above. It is needed to state the Kuhn correspondence against GameTheory's FOSG
+strategy API without weakening the Vegas strategy spaces.
+-/
+
+noncomputable def movePureAtProgramCursor
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv (P := P) (L := L) who Γ) :
+    Option (ProgramAction (P := P) (L := L) g.prog who) :=
+  match p with
+  | .commit x owner (b := b) R k =>
+      if howner : owner = who then
+        by
+          cases howner
+          let σp : ProgramPureProfile (P := P) (L := L) (.commit x who R k) :=
+            suffix.pureProfile (fun i => (σ i).val)
+          exact some
+            (ProgramAction.commitAt (P := P) (L := L) suffix
+              ((ProgramPureStrategy.headKernel (P := P) (L := L) (σp who)) view))
+      else
+        none
+  | _ => none
+
+@[simp] theorem movePureAtProgramCursor_commit_owner
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog (.commit x who R k))
+    (view : ViewEnv (P := P) (L := L) who Γ) :
+    movePureAtProgramCursor g hctx σ who suffix view =
+      some
+        (ProgramAction.commitAt (P := P) (L := L) suffix
+          ((ProgramPureStrategy.headKernel (P := P) (L := L)
+            ((suffix.pureProfile (fun i => (σ i).val)) who)) view)) := by
+  simp [movePureAtProgramCursor]
+
+theorem headPureKernel_legal_atCursor
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (ρ : Env L.Val (eraseVCtx Γ)) :
+    evalGuard (Player := P) (L := L) R
+      ((ProgramPureStrategy.headKernel (P := P) (L := L)
+        ((suffix.pureProfile (fun i => (σ i).val)) who))
+        (projectViewEnv (P := P) (L := L) who ρ)) ρ = true := by
+  let raw : ProgramPureProfile (P := P) (L := L) g.prog :=
+    fun i => (σ i).val
+  have hraw : raw.IsLegal := fun i => (σ i).2
+  have hcursor : (suffix.pureProfile raw).IsLegal :=
+    suffix.pureProfile_isLegal hraw
+  have hsite := hcursor who
+  simp [ProgramPureStrategy.IsLegal] at hsite
+  simpa [raw] using hsite.1 ρ
+
+noncomputable def movePureAtCursorWorld
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
+    Option (ProgramAction (P := P) (L := L) g.prog who) :=
+  movePureAtProgramCursor g hctx σ who w.1.suffix
+    (projectViewEnv who (VEnv.eraseEnv w.1.env))
+
+set_option linter.flexible false in
+theorem movePureAtProgramCursor_availableAt
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog p)
+    (env : VEnv L Γ) :
+    movePureAtProgramCursor g hctx σ who suffix
+        (projectViewEnv who (VEnv.eraseEnv env)) ∈
+      CursorCheckedWorld.availableProgramMovesAt
+        (P := P) (L := L) p env suffix who := by
+  cases p with
+  | ret payoffs =>
+      simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt, active]
+  | letExpr x e k =>
+      simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt, active]
+  | sample x D k =>
+      simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt, active]
+  | reveal y owner x hx k =>
+      simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt, active]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        have hguard :
+            evalGuard (Player := P) (L := L) R
+              ((ProgramPureStrategy.headKernel (P := P) (L := L)
+                ((suffix.pureProfile (fun i => (σ i).val)) who))
+                (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env)))
+              (VEnv.eraseEnv env) = true := by
+          exact headPureKernel_legal_atCursor
+            (P := P) (L := L) g hctx σ suffix (VEnv.eraseEnv env)
+        simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt,
+          CursorCheckedWorld.availableProgramActionsAt, active,
+          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
+        constructor
+        · refine ⟨
+            (ProgramPureStrategy.headKernel (P := P) (L := L)
+              ((suffix.pureProfile (fun i => (σ i).val)) who))
+              (projectViewEnv (P := P) (L := L) who (VEnv.eraseEnv env)),
+            ⟨⟨ProgramSuffix.ty_commitCursor (P := P) (L := L) suffix, ?_⟩,
+              hguard⟩⟩
+          exact cast_heq _ _
+        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
+          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
+          · rfl
+      · have hnot : who ≠ owner := fun h => howner h.symm
+        simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt,
+          active, howner, hnot]
+
+theorem movePureAtCursorWorld_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
+    movePureAtCursorWorld g hctx σ who w ∈
+      (observedProgramFOSG g hctx).availableMovesAtState w who := by
+  have hlocal :=
+    movePureAtProgramCursor_availableAt
+      (P := P) (L := L) g hctx σ who w.1.suffix w.1.env
+  cases hmove : movePureAtCursorWorld g hctx σ who w with
+  | none =>
+      change movePureAtProgramCursor g hctx σ who w.1.suffix
+          (projectViewEnv who (VEnv.eraseEnv w.1.env)) = none at hmove
+      rw [hmove] at hlocal
+      simpa [movePureAtCursorWorld, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
+        hmove] using hlocal
+  | some ai =>
+      change movePureAtProgramCursor g hctx σ who w.1.suffix
+          (projectViewEnv who (VEnv.eraseEnv w.1.env)) = some ai at hmove
+      rw [hmove] at hlocal
+      simpa [movePureAtCursorWorld, observedProgramFOSG,
+        GameTheory.FOSG.availableMovesAtState,
+        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        CursorCheckedWorld.availableProgramActions,
+        CursorCheckedWorld.availableProgramActionsAt,
+        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.toWorld, availableActions, hmove] using hlocal
+
+theorem moveAtProgramCursor_toBehavioral_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix (P := P) (L := L) g.prog p)
+    (view : ViewEnv (P := P) (L := L) who Γ) :
+    moveAtProgramCursor g hctx (LegalProgramPureProfile.toBehavioral σ) who suffix view =
+      PMF.pure (movePureAtProgramCursor g hctx σ who suffix view) := by
+  cases p with
+  | ret payoffs =>
+      simp [moveAtProgramCursor, movePureAtProgramCursor]
+  | letExpr x e k =>
+      simp [moveAtProgramCursor, movePureAtProgramCursor]
+  | sample x D k =>
+      simp [moveAtProgramCursor, movePureAtProgramCursor]
+  | reveal y owner x hx k =>
+      simp [moveAtProgramCursor, movePureAtProgramCursor]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        let raw : ProgramPureProfile (P := P) (L := L) g.prog :=
+          fun i => (σ i).val
+        have hprofile :
+            suffix.behavioralProfile
+                (fun i => ((LegalProgramPureProfile.toBehavioral (g := g) σ) i).val) =
+              ProgramPureProfile.toBehavioral (P := P) (L := L)
+                (.commit x who R k) (suffix.pureProfile raw) := by
+          simpa [raw, LegalProgramPureProfile.toBehavioral] using
+            ProgramSuffix.behavioralProfile_toBehavioral
+              (P := P) (L := L) (s := suffix) raw
+        simp [moveAtProgramCursor, movePureAtProgramCursor, hprofile,
+          ProgramPureProfile.toBehavioral, ProgramBehavioralStrategy.headKernel,
+          FDist.toPMF_pure, PMF.pure_map, raw]
+      · simp [moveAtProgramCursor, movePureAtProgramCursor, howner]
+
+theorem moveAtCursorWorld_toBehavioral_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
+    moveAtCursorWorld g hctx (LegalProgramPureProfile.toBehavioral σ) who w =
+      PMF.pure (movePureAtCursorWorld g hctx σ who w) := by
+  exact moveAtProgramCursor_toBehavioral_eq_pure
+    (P := P) (L := L) g hctx σ who w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
+
 /-- Program-action observation lookup for the final `observedProgramFOSG`
 target. -/
 noncomputable def moveAtProgramObservation?
@@ -3132,6 +3470,186 @@ theorem moveAtProgramObservation?_of_cursorWorld
   rw [privateObsOfCursorWorld_eraseEnv]
   simp only [publicObsOfCursorWorld]
   simp [privateObsOfCursorWorld]
+
+/-- Program-action pure observation lookup for the final `observedProgramFOSG`
+target. -/
+noncomputable def movePureAtProgramObservation?
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (obs : PrivateObs P L who × PublicObs g hctx) :
+    Option (ProgramAction (P := P) (L := L) g.prog who) := by
+  let priv := obs.1
+  let pub := obs.2
+  by_cases hΓ : priv.Γ = pub.Γ
+  · exact movePureAtProgramCursor g hctx σ who pub.suffix (hΓ ▸ VEnv.eraseEnv priv.env)
+  · exact none
+
+theorem movePureAtProgramObservation?_of_cursorWorld
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) (w : CursorCheckedWorld (P := P) (L := L) g) :
+    movePureAtProgramObservation? g hctx σ who
+      (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
+      movePureAtCursorWorld g hctx σ who w := by
+  unfold movePureAtProgramObservation? movePureAtCursorWorld
+  simp only [dite_eq_ite]
+  rw [privateObsOfCursorWorld_eraseEnv]
+  simp only [publicObsOfCursorWorld]
+  simp [privateObsOfCursorWorld]
+
+/-- Raw pure profile induced by a Vegas legal pure profile for the final
+program-action FOSG. Use `toObservedProgramLegalPureProfile` when the target
+type requires FOSG legality. -/
+noncomputable def programPureProfileCandidate
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    GameTheory.FOSG.PureProfile (observedProgramFOSG g hctx) :=
+  fun who s =>
+    match programLatestObservation? g hctx who s with
+    | none => movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx)
+    | some obs => movePureAtProgramObservation? g hctx σ who obs
+
+@[simp] theorem programPureProfileCandidate_nil
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) (who : P) :
+    programPureProfileCandidate g hctx σ who
+      ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
+      movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx) := by
+  simp [programPureProfileCandidate, programLatestObservation?,
+    programObservationEvents, last?]
+
+@[simp] theorem programPureProfileCandidate_snoc
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
+    (dst : CursorCheckedWorld (P := P) (L := L) g)
+    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
+    programPureProfileCandidate g hctx σ who
+      ((h.snoc a dst support).playerView who) =
+      movePureAtCursorWorld g hctx σ who dst := by
+  rw [programPureProfileCandidate,
+    programLatestObservation?_history_snoc g hctx who h a dst support]
+  simp [movePureAtProgramObservation?_of_cursorWorld]
+
+@[simp] theorem programPureProfileCandidate_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (e : (observedProgramFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState) :
+    programPureProfileCandidate g hctx σ who
+      ((h.appendStep e hsrc).playerView who) =
+      movePureAtCursorWorld g hctx σ who (h.appendStep e hsrc).lastState := by
+  cases e with
+  | mk src act dst support =>
+      cases hsrc
+      change
+        programPureProfileCandidate g hctx σ who
+          ((h.snoc act dst support).playerView who) =
+        movePureAtCursorWorld g hctx σ who (h.snoc act dst support).lastState
+      simpa using
+        programPureProfileCandidate_snoc
+          g hctx σ who h act dst support
+
+theorem programPureProfileCandidate_history
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History) :
+    programPureProfileCandidate g hctx σ who (h.playerView who) =
+      movePureAtCursorWorld g hctx σ who h.lastState := by
+  let G := observedProgramFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          simp [programPureProfileCandidate,
+            GameTheory.FOSG.History.playerView,
+            GameTheory.FOSG.History.playerViewFrom,
+            GameTheory.FOSG.History.lastState,
+            GameTheory.FOSG.lastStateFrom,
+            programLatestObservation?, programObservationEvents, last?,
+            observedProgramFOSG]
+      | append_singleton steps e ih =>
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          rw [hEq]
+          exact programPureProfileCandidate_appendStep
+            g hctx σ who hprefix e hsrc
+
+theorem programPureProfileCandidate_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (h : (observedProgramFOSG g hctx).History) :
+    programPureProfileCandidate g hctx σ who (h.playerView who) ∈
+      (observedProgramFOSG g hctx).availableMoves h who := by
+  rw [programPureProfileCandidate_history g hctx σ who h]
+  simpa [GameTheory.FOSG.availableMoves,
+    GameTheory.FOSG.availableMovesAtState] using
+    movePureAtCursorWorld_available g hctx σ who h.lastState
+
+/-- Transport a Vegas guard-legal pure profile to a legal pure profile of the
+finite observed-program FOSG. -/
+noncomputable def toObservedProgramLegalPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    (observedProgramFOSG g hctx).LegalPureProfile :=
+  fun who =>
+    ⟨programPureProfileCandidate g hctx σ who, by
+      intro h
+      exact programPureProfileCandidate_available g hctx σ who h⟩
+
+@[simp] theorem toObservedProgramLegalPureProfile_apply
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) (who : P) :
+    ((toObservedProgramLegalPureProfile g hctx σ who).1) =
+      programPureProfileCandidate g hctx σ who := rfl
+
+/-- Transport a Vegas guard-legal pure profile to the reachable-information
+strategy space of the observed-program FOSG. This is the finite strategy space
+used by the reachable-coordinate FOSG Kuhn theorem. -/
+noncomputable def toObservedProgramReachableLegalPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    (observedProgramFOSG g hctx).ReachableLegalPureProfile :=
+  fun who =>
+    (toObservedProgramLegalPureProfile g hctx σ who).restrictReachable
+
+@[simp] theorem toObservedProgramReachableLegalPureProfile_apply
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) (who : P) :
+    ((toObservedProgramReachableLegalPureProfile g hctx σ who).1) =
+      (programPureProfileCandidate g hctx σ who).restrictReachable := rfl
+
+theorem moveAtProgramObservation?_toBehavioral_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (obs : PrivateObs P L who × PublicObs g hctx) :
+    moveAtProgramObservation? g hctx (LegalProgramPureProfile.toBehavioral σ) who obs =
+      PMF.pure (movePureAtProgramObservation? g hctx σ who obs) := by
+  unfold moveAtProgramObservation? movePureAtProgramObservation?
+  by_cases hΓ : obs.1.Γ = obs.2.Γ
+  · simp [hΓ, moveAtProgramCursor_toBehavioral_eq_pure]
+  · simp [hΓ]
 
 /-- Raw behavioral profile induced by a Vegas legal behavioral profile for the
 final program-action FOSG. The `Candidate` suffix means this is the unbundled
@@ -3337,6 +3855,117 @@ noncomputable def toObservedProgramLegalBehavioralProfile
     (σ : LegalProgramBehavioralProfile g) (who : P) :
     ((toObservedProgramLegalBehavioralProfile g hctx σ who).1) =
       programBehavioralProfileCandidate g hctx σ who := rfl
+
+/-- Transport a Vegas guard-legal behavioral profile to the reachable-information
+strategy space of the observed-program FOSG. -/
+noncomputable def toObservedProgramReachableLegalBehavioralProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g) :
+    (observedProgramFOSG g hctx).ReachableLegalBehavioralProfile :=
+  fun who =>
+    (toObservedProgramLegalBehavioralProfile g hctx σ who).restrictReachable
+
+@[simp] theorem toObservedProgramReachableLegalBehavioralProfile_apply
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    ((toObservedProgramReachableLegalBehavioralProfile g hctx σ who).1) =
+      (programBehavioralProfileCandidate g hctx σ who).restrictReachable := rfl
+
+/-- Reachable-coordinate FOSG Kuhn theorem specialized to the observed-program
+terminal-history game.
+
+This is still a theorem about the native FOSG terminal-history game. The
+separate outcome-preservation theorem below identifies the projected Vegas
+outcome kernel with `toKernelGame g`. -/
+theorem observedProgramTerminalHistory_behavioral_to_mixed_eu_reachable
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) (who : P) :
+    letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+      observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+    letI : ∀ who : P,
+        Fintype (ProgramAction (P := P) (L := L) g.prog who) :=
+      fun who =>
+        ProgramAction.instFintype (P := P) (L := L) LF g.prog who
+    letI : ∀ who : P,
+        Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+      fun who =>
+        observedProgramFOSG.instFintypeOptionAction
+          (P := P) (L := L) g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+    ∑ π,
+      (GameTheory.FOSG.Kuhn.reachableBehavioralToMixedJoint
+          (G := observedProgramFOSG g hctx)
+          (toObservedProgramReachableLegalBehavioralProfile
+            (P := P) (L := L) g hctx σ).toProfile π).toReal *
+        (∑ h : (observedProgramFOSG g hctx).History,
+          (GameTheory.FOSG.History.terminalWeight
+              (G := observedProgramFOSG g hctx)
+              ((observedProgramFOSG g hctx).pureToBehavioral π.extend)
+              h).toReal *
+            GameTheory.FOSG.History.utility h who) =
+      (observedProgramTerminalHistoryGame
+          (P := P) (L := L) g hctx LF).eu
+        (toObservedProgramReachableLegalBehavioralProfile
+          (P := P) (L := L) g hctx σ).extend
+        who := by
+  letI : Fintype (CursorCheckedWorld (P := P) (L := L) g) :=
+    observedProgramFOSG.instFintypeWorld (P := P) (L := L) g hctx LF
+  letI : ∀ who : P,
+      Fintype (ProgramAction (P := P) (L := L) g.prog who) :=
+    fun who =>
+      ProgramAction.instFintype (P := P) (L := L) LF g.prog who
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction (P := P) (L := L) g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        (P := P) (L := L) g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory (P := P) (L := L) g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal (P := P) (L := L) g hctx
+  exact GameTheory.FOSG.Kuhn.behavioral_to_mixed_eu_reachable
+    (G := observedProgramFOSG (P := P) (L := L) g hctx)
+    (observedProgramFOSG.hasNormalizedTerminalLaw (P := P) (L := L) g hctx LF)
+    (toObservedProgramReachableLegalBehavioralProfile
+      (P := P) (L := L) g hctx σ)
+    who
+
+theorem programBehavioralProfileCandidate_toBehavioral_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (s : (observedProgramFOSG g hctx).InfoState who) :
+    programBehavioralProfileCandidate g hctx
+        (LegalProgramPureProfile.toBehavioral σ) who s =
+      PMF.pure (programPureProfileCandidate g hctx σ who s) := by
+  unfold programBehavioralProfileCandidate programPureProfileCandidate
+  cases hobs : programLatestObservation? g hctx who s with
+  | none =>
+      simpa [hobs] using
+        moveAtCursorWorld_toBehavioral_eq_pure
+          (P := P) (L := L) g hctx σ who (CursorCheckedWorld.initial g hctx)
+  | some obs =>
+      simpa [hobs] using
+        moveAtProgramObservation?_toBehavioral_eq_pure
+          (P := P) (L := L) g hctx σ who obs
+
+theorem toObservedProgramLegalBehavioralProfile_toBehavioral
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    toObservedProgramLegalBehavioralProfile g hctx
+        (LegalProgramPureProfile.toBehavioral σ) =
+      (observedProgramFOSG g hctx).legalPureToBehavioral
+        (toObservedProgramLegalPureProfile g hctx σ) := by
+  funext who
+  apply Subtype.ext
+  funext s
+  simp [GameTheory.FOSG.legalPureToBehavioral,
+    GameTheory.FOSG.pureToBehavioral,
+    programBehavioralProfileCandidate_toBehavioral_eq_pure]
 
 /-- The FOSG legal-action law induced by a transported Vegas profile has the
 same marginal over any player's optional move as the Vegas strategy currently

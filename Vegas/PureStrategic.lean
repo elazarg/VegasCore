@@ -173,6 +173,40 @@ def ProgramPureProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramPureProfile (P := P) (L := L) p) : Prop :=
   ∀ who, (σ who).IsLegal p
 
+namespace ProgramPureProfile
+
+/-- Dropping the head commit site preserves pure guard-legality. -/
+theorem tail_isLegal
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {σ : ProgramPureProfile (P := P) (L := L) (.commit x who R k)}
+    (hσ : σ.IsLegal) :
+    (ProgramPureProfile.tail (P := P) (L := L) σ).IsLegal := by
+  intro j
+  by_cases hj : who = j
+  · subst hj
+    have hσ_who : (σ who).IsLegal (.commit x who R k) := hσ who
+    dsimp [ProgramPureStrategy.IsLegal] at hσ_who
+    dsimp [ProgramPureProfile.tail]
+    split at hσ_who
+    · split
+      · exact hσ_who.2
+      · exact absurd rfl ‹_›
+    · exact absurd rfl ‹_›
+  · have hσ_j : (σ j).IsLegal (.commit x who R k) := hσ j
+    dsimp [ProgramPureStrategy.IsLegal] at hσ_j
+    dsimp [ProgramPureProfile.tail]
+    split at hσ_j
+    · rename_i h
+      exact absurd h hj
+    · split
+      · rename_i h
+        exact absurd h hj
+      · exact hσ_j
+
+end ProgramPureProfile
+
 /-- Guard-legal pure strategies over a `WFProgram` bundle. -/
 abbrev LegalProgramPureStrategy (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramPureStrategy (P := P) (L := L) who g.prog //
