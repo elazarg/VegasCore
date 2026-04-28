@@ -68,4 +68,58 @@ theorem toFOSG_mixedPure_realizedByBehavioral_outcomeKernel
     g hctx LF μ
 
 end FOSGBridge
+
+open GameTheory
+
+variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- A Vegas behavioral profile defined only on reachable program observations.
+
+This is the partial strategy space: unlike `LegalProgramBehavioralProfilePMF`,
+it does not assign behavior to syntactically well-typed views that cannot occur
+as player observations in the sequential execution. -/
+structure ReachableProgramBehavioralProfilePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) where
+  profile : (FOSGBridge.toFOSG g hctx).ReachableLegalBehavioralProfile
+
+/-- Outcome kernel for a reachable Vegas behavioral profile. -/
+noncomputable def reachableProgramOutcomeKernelPMF
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (β : ReachableProgramBehavioralProfilePMF g hctx) : PMF (Outcome P) :=
+  (FOSGBridge.toFOSGKernelGame g hctx LF).outcomeKernel β.profile
+
+/-- Finite-game Kuhn theorem in the reachable Vegas strategy space. -/
+theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
+      reachableProgramOutcomeKernelPMF g hctx LF β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  obtain ⟨βF, hβF⟩ :=
+    FOSGBridge.toFOSG_mixedPure_realizedByBehavioral_outcomeKernel
+      g hctx LF μ
+  exact ⟨⟨βF⟩, hβF⟩
+
+/-- Complete a reachable Vegas behavioral profile to a total legal Vegas PMF
+behavioral profile without changing the outcome distribution.
+
+The fallback profile supplies legal behavior at views outside the reachable
+observation domain. -/
+theorem completeReachableProgramBehavioralProfilePMF
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (fallback : LegalProgramBehavioralProfilePMF g)
+    (βR : ReachableProgramBehavioralProfilePMF g hctx) :
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        reachableProgramOutcomeKernelPMF g hctx LF βR := by
+  sorry
+
 end Vegas
