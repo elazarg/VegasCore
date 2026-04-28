@@ -25,15 +25,14 @@ The file has two regions.
   `KernelGame`-transported counterpart by definitional unfolding.
 
 * **Region B (realization theorems and named targets).**
-  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the proved
-  FOSG-reachable realization claim: every independent mixed profile over legal
-  pure strategies is outcome-equivalent to some reachable PMF behavioural
-  profile. The PMF target is essential: arbitrary mixed pure profiles can
-  induce real-valued behavioural probabilities, while the original `FDist`
+  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the proved reachable
+  realization claim: every independent mixed profile over legal pure
+  strategies is outcome-equivalent to some reachable PMF behavioural profile.
+  The PMF target is essential: arbitrary mixed pure profiles can induce
+  real-valued behavioural probabilities, while the original `FDist`
   behavioural game is rational-valued.
-  `ProtocolTotalMixedPureRealizationPMF g : Prop` is the stronger total
-  Vegas-view target. This is the public strategy-space theorem one would call
-  the full Vegas Kuhn M→B theorem once proved.
+  `ProtocolTotalMixedPureRealizationPMF g : Prop` is the stronger total-profile
+  target.
   `ProtocolRationalKuhnProperty g : Prop` is the corresponding FDist-valued
   target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
@@ -166,8 +165,8 @@ The PMF target is part of the mathematical statement. Vegas' `FDist`
 behavioural strategies have rational weights, so they cannot represent all
 behavioural probabilities induced by arbitrary `PMF` mixtures over pure
 strategies. The behavioral witness is indexed only by reachable program
-observations; total Vegas-view profiles are a stronger representation target
-and are named separately below. -/
+observations; total profiles are a stronger representation target and are
+named separately below. -/
 def ProtocolReachableKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
@@ -178,8 +177,8 @@ def ProtocolReachableKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-/-- FOSG-reachable mixed-to-behavioral realization for concrete finite Vegas
-programs. The witness is not a total Vegas-view strategy. -/
+/-- Reachable mixed-to-behavioral realization for concrete finite Vegas
+programs. The witness is not a total strategy. -/
 theorem protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -193,8 +192,7 @@ theorem protocol_mixedPure_realizedByReachableBehavioralPMF_finite
   exact reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
 
-/-- Concrete finite reachable-strategy realization theorem. This is the proven
-FOSG-reachable form, not the total Vegas-view M→B theorem. -/
+/-- Concrete finite reachable-strategy realization theorem. -/
 theorem protocolReachableKuhnPropertyPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
@@ -208,8 +206,8 @@ direction.
 
 Every independent mixed profile over guard-legal pure strategies is realized by
 a guard-legal PMF behavioral profile with the same outcome distribution. This
-asks for a total Vegas-view profile, so it is stronger than the reachable
-strategy-space Kuhn theorem above. -/
+asks for a total profile, so it is stronger than the reachable strategy-space
+Kuhn theorem above. -/
 def ProtocolTotalMixedPureRealizationPMF
     [Fintype P] (g : WFProgram P L)
     [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
