@@ -21,7 +21,7 @@ Every independent mixed profile over guard-legal pure strategies has a
 reachable PMF behavioral realization with the same distribution over payoff
 outcomes. The behavioral witness is intentionally reachable-indexed: it assigns
 behavior only to observations that can arise during the sequential execution. -/
-theorem kuhn_mixedPure_realizedByBehavioralPMF_finite
+theorem kuhn_mixedPure_realizedByReachableBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
@@ -34,8 +34,9 @@ theorem kuhn_mixedPure_realizedByBehavioralPMF_finite
   exact protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     g hctx LF μ
 
-/-- The finite Vegas Kuhn property, packaged as a reusable proposition. -/
-theorem kuhnPropertyPMF_finite
+/-- The finite reachable Vegas Kuhn property, packaged as a reusable
+proposition. -/
+theorem reachableKuhnPropertyPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
     ProtocolReachableKuhnPropertyPMF g hctx LF := by
