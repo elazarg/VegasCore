@@ -73,7 +73,7 @@ The theorem preserves the Vegas outcome distribution. The behavioral witness is
 total for the compiled FOSG information-state space; this is stronger than the
 reachable-profile wrapper below, but it is still a FOSG strategy, not a Vegas
 `LegalProgramBehavioralProfilePMF`. -/
-theorem toFOSG_mixedPure_realizedByFullBehavioral_runDist
+theorem toFOSG_mixedPure_realizedByLegalBehavioral_runDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
