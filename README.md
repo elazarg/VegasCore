@@ -1,43 +1,125 @@
 # VegasCore
 
-A Lean 4 formalization providing formal semantics for the [VEGAS](https://github.com/elazarg/VEGAS) game specification language. VegasCore defines a layered calculus for strategic computation and compiles game specifications to [Multi-Agent Influence Diagrams (MAIDs)](https://github.com/elazarg/GameTheory), from which extensive-form games can be derived via the GameTheory library's MAID-to-EFG bridge.
+VegasCore is a Lean 4 formalization of the core semantics of
+[VEGAS](https://github.com/elazarg/VEGAS): a programming language for writing
+finite games with probabilistic computation, partial information, and strategic
+choices.
 
-The repository has one mainline implementation and one secondary exploration tree:
+As a Vegas user, the main object you build is a checked program:
 
-- `Vegas/` is the mainline language and backend stack.
-- `Explorations/` preserves older design explorations, but is not the primary
-  project surface.
-- `GameTheory/` is the root-level submodule providing the broader game-theory
-  library used by the MAID backend.
+```lean
+WFProgram P L
+```
 
-## Overview
+A `WFProgram` packages a Vegas program, its initial environment, and the facts
+needed to treat it as a game:
 
-Games are expressed as programs where:
-- Players make **strategic choices** from available actions, restricted by **Views** (observable projections of the environment)
-- Outcomes may be **probabilistic** (sampling from finite-support weighted distributions)
-- **Strategy profiles** determine how players choose actions at each decision point
+- variables are fresh, reveals are complete, and commit sites respect player
+  views;
+- all probabilistic samples are normalized;
+- every commit guard admits at least one legal action.
 
-The mainline `Vegas/` tree is organized around:
+Once you have a `WFProgram`, VegasCore gives you strategic and sequential
+game-theoretic views of the same program.
 
-1. **Core / ExprSimple / VegasSimple** -- the generic interface and current concrete instantiation
-2. **BigStep / TraceSemantics / ActionGraph** -- the main semantic presentations and graph IR
-3. **Strategic / MAID** -- the strategic semantics and the main backend stack
-4. **GameTheory** -- the external submodule providing MAID and general game-theory infrastructure
+## What You Get
 
-## Project Structure
+### Legal Strategies
+
+Commit guards constrain the actions available to players. VegasCore reflects
+that in the strategy types exposed by the game APIs: behavioral and pure
+strategies are guard-legal subtypes, so equilibrium statements quantify over
+strategies that are legal for the program, not over arbitrary functions.
+
+The main types are:
+
+- `LegalProgramBehavioralStrategy g who`
+- `LegalProgramBehavioralProfile g`
+- `LegalProgramPureStrategy g who`
+- `LegalProgramPureProfile g`
+
+### Strategic-Form Game APIs
+
+VegasCore turns a checked program into `GameTheory.KernelGame`s:
+
+- `toKernelGame g` for behavioral strategies;
+- `toStrategicKernelGame g` for pure strategies.
+
+The wrappers in `Vegas.Equilibrium`, `Vegas.PureStrategic`, and
+`Vegas.GameProperties` expose the usual game-theoretic vocabulary directly on
+Vegas programs:
+
+- expected utility: `eu`, `mixedEu`, `correlatedEu`;
+- Nash and strict Nash equilibria: `IsNash`, `IsStrictNash`;
+- pure Nash variants: `IsPureNash`, `IsPureStrictNash`;
+- best response and dominance: `IsBestResponse`, `IsDominant`,
+  `WeaklyDominates`, `StrictlyDominates`;
+- correlated and coarse correlated equilibrium;
+- Pareto efficiency and social welfare;
+- approximate Nash, potential games, zero-sum/constant-sum games, security
+  levels, rationalizability, and price-of-anarchy style definitions.
+
+The corollary files transport standard `GameTheory` results through these
+Vegas-facing wrappers.
+
+### Sequential-Game Results
+
+VegasCore also has a canonical sequential denotation for checked Vegas
+programs. The public Vegas-facing result is the finite mixed-to-behavioral
+realization theorem:
+
+```lean
+kuhn_mixedPure_realizedByBehavioralPMF_finite
+```
+
+It says that, for a finite checked Vegas program, every independent mixed
+profile over legal pure strategies has a sequential behavioral profile with the
+same distribution over payoff outcomes.
+
+The preservation statement is about the outcome distribution. Expected-utility
+equalities are corollaries of that distribution equality.
+
+The sequential denotation is implemented using the FOSG layer from
+`GameTheory`, but ordinary users of the Vegas Kuhn theorem do not need to work
+with FOSG internals.
+
+### Protocol-Level Statements
+
+`Vegas.ProtocolSemantics` states the same strategic concepts directly in terms
+of the program's outcome semantics and proves that they agree with the
+`KernelGame` wrappers:
+
+- `ProtocolNash` agrees with `IsNash`;
+- `ProtocolBestResponse` agrees with `IsBestResponse`;
+- `ProtocolDominant` agrees with `IsDominant`;
+- `ProtocolStrictNash` agrees with `IsStrictNash`.
+
+Use these when you want a statement phrased directly over the Vegas protocol
+semantics rather than over the strategic-form wrapper.
+
+## Main Files
 
 ```text
 Vegas/
-  Core.lean
-  ExprSimple.lean
-  VegasSimple.lean
-  WF.lean
-  Examples.lean
-  FDist.lean
-  BigStep.lean
-  TraceSemantics.lean
-  ActionGraph.lean
-  Strategic.lean
+  Core.lean              -- core language
+  ExprSimple.lean        -- concrete expression language
+  VegasSimple.lean       -- simple instantiation
+  WF.lean                -- well-formedness, legality, normalization
+  WFProgram.lean         -- checked-program bundle
+  Strategic.lean         -- behavioral strategic view
+  PureStrategic.lean     -- pure strategic view
+  Equilibrium.lean       -- Nash, dominance, correlated equilibrium, welfare
+  GameProperties.lean    -- approximate Nash, potential games, zero-sum, etc.
+  ProtocolSemantics.lean -- protocol-level definitions and correspondence
+  Kuhn.lean              -- Vegas-facing mixed-to-behavioral realization
+  FOSG.lean              -- sequential denotation entrypoint
+  Examples.lean          -- small checked examples
+
+  Corollaries/
+    Equilibrium.lean
+    PureStrategic.lean
+    GameProperties.lean
+
   MAID/
     Backend.lean
     Compile.lean
@@ -50,24 +132,11 @@ Explorations/
   LetProtocol/
   LetGames/
 
-GameTheory/
+GameTheory/              -- submodule with the general game-theory library
 ```
 
-## Key Concepts
-
-### Strategy Profiles
-A `Profile` maps player decisions to probability distributions over actions. Each decision site has a `View` that restricts what the player can observe. Fixing a profile converts a strategic program into a pure probabilistic program.
-
-### Views (Partial Information)
-A `View Gamma` projects the full environment `Env Gamma` to a visible sub-environment `Env Delta`. Strategies at a commit site can only depend on the projected environment, enforcing information restrictions structurally.
-
-### Weighted Distributions
-`FDist alpha` is the main finitely-supported weighted distribution used in the
-mainline semantics. It is implemented with `Finsupp` over `ℚ≥0`.
-
-### Strategic Semantics
-`Vegas/Strategic.lean` packages normalized Vegas programs as `KernelGame`s so
-general game-theory results can be imported from `GameTheory`.
+`Explorations/` preserves older design experiments. The main supported surface
+is the `Vegas/` tree.
 
 ## Building
 
@@ -75,12 +144,12 @@ Requires Lean 4, Mathlib, and the checked-out `GameTheory` submodule.
 
 ```bash
 git submodule update --init --recursive
-lake build
+lake build Vegas
 ```
 
 ## Status
 
-This is research work exploring formal foundations for expressing games as
-programs. The mainline repository is MAID-first: game specifications compile to
-MAID representations, from which extensive-form games (EFG) can be derived via
-the `GameTheory` library's MAID -> EFG bridge.
+VegasCore currently provides a checked-program boundary, legal strategic
+strategy spaces, strategic-form game APIs, protocol-level correspondence
+theorems, and a finite sequential mixed-to-behavioral realization theorem that
+preserves outcome distributions.
