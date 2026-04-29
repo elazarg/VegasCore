@@ -1063,6 +1063,72 @@ def toSuffix
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
 
+theorem toSuffixFrom_pureStrategy
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) (c : ProgramCursor p) (who : P)
+    (σ : ProgramPureStrategy who root) :
+    (toSuffixFrom s c).pureStrategy who σ =
+      c.toSuffix.pureStrategy who (s.pureStrategy who σ) := by
+  induction c generalizing Γ₀ root σ with
+  | here => rfl
+  | @letExpr Γ x b e k c ih =>
+      change (toSuffixFrom (ProgramSuffix.letExpr s) c).pureStrategy who σ =
+        (toSuffixFrom
+          (ProgramSuffix.letExpr
+            (.here : ProgramSuffix (.letExpr x e k) (.letExpr x e k)))
+          c).pureStrategy who (s.pureStrategy who σ)
+      rw [ih (ProgramSuffix.letExpr s) σ]
+      rw [ih
+        (ProgramSuffix.letExpr
+          (.here : ProgramSuffix (.letExpr x e k) (.letExpr x e k)))
+        (s.pureStrategy who σ)]
+      rfl
+  | @sample Γ x b D k c ih =>
+      change (toSuffixFrom (ProgramSuffix.sample s) c).pureStrategy who σ =
+        (toSuffixFrom
+          (ProgramSuffix.sample
+            (.here : ProgramSuffix (.sample x D k) (.sample x D k)))
+          c).pureStrategy who (s.pureStrategy who σ)
+      rw [ih (ProgramSuffix.sample s) σ]
+      rw [ih
+        (ProgramSuffix.sample
+          (.here : ProgramSuffix (.sample x D k) (.sample x D k)))
+        (s.pureStrategy who σ)]
+      rfl
+  | @commit Γ x owner b R k c ih =>
+      change (toSuffixFrom (ProgramSuffix.commit s) c).pureStrategy who σ =
+        (toSuffixFrom
+          (ProgramSuffix.commit
+            (.here : ProgramSuffix (.commit x owner R k)
+              (.commit x owner R k)))
+          c).pureStrategy who (s.pureStrategy who σ)
+      rw [ih (ProgramSuffix.commit s) σ]
+      rw [ih
+        (ProgramSuffix.commit
+          (.here : ProgramSuffix (.commit x owner R k)
+            (.commit x owner R k)))
+        (s.pureStrategy who σ)]
+      congr 1
+      by_cases h : owner = who
+      · subst h
+        rfl
+      · simp [ProgramSuffix.pureStrategy, h]
+  | @reveal Γ y owner x b hx k c ih =>
+      change (toSuffixFrom (ProgramSuffix.reveal s) c).pureStrategy who σ =
+        (toSuffixFrom
+          (ProgramSuffix.reveal
+            (.here : ProgramSuffix (.reveal y owner x hx k)
+              (.reveal y owner x hx k)))
+          c).pureStrategy who (s.pureStrategy who σ)
+      rw [ih (ProgramSuffix.reveal s) σ]
+      rw [ih
+        (ProgramSuffix.reveal
+          (.here : ProgramSuffix (.reveal y owner x hx k)
+            (.reveal y owner x hx k)))
+        (s.pureStrategy who σ)]
+      rfl
+
 /-- Compose a cursor from `root` to `p` with a cursor from `p` to a deeper
 continuation. -/
 def extend :
@@ -1118,7 +1184,244 @@ def toProgramCursor {who : P} :
   | _, _, .commit c => .commit (toProgramCursor c)
   | _, _, .reveal c => .reveal (toProgramCursor c)
 
+/-- Forgetting a commit cursor commutes with transport across equal endpoint
+programs. -/
+theorem toProgramCursor_cast {who : P}
+    {Γ : VCtx P L} {p q : VegasCore P L Γ}
+    (h : p = q) (c : CommitCursor who q) :
+    toProgramCursor
+        (cast (congrArg (fun r => CommitCursor who r) h).symm c) =
+      cast (congrArg (fun r => ProgramCursor r) h).symm
+        (toProgramCursor c) := by
+  cases h
+  rfl
+
 end CommitCursor
+
+/-- The canonical `.here` cursor is stable under transport across equal
+endpoint programs. -/
+theorem cast_here
+    {Γ : VCtx P L} {p q : VegasCore P L Γ}
+    (h : p = q) :
+    cast (congrArg (fun r => ProgramCursor r) h).symm
+        (.here : ProgramCursor q) =
+      (.here : ProgramCursor p) := by
+  cases h
+  rfl
+
+/-- Reinterpret a canonical program cursor as a commit cursor when its endpoint
+is propositionally known to be an owned commit site. -/
+noncomputable def toCommitCursor
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k) :
+    CommitCursor who root := by
+  induction c with
+  | here =>
+      exact cast (congrArg (fun q => CommitCursor who q) hprog).symm .here
+  | letExpr c ih =>
+      exact .letExpr (ih hprog)
+  | sample c ih =>
+      exact .sample (ih hprog)
+  | commit c ih =>
+      exact .commit (ih hprog)
+  | reveal c ih =>
+      exact .reveal (ih hprog)
+
+/-- Forgetting the commit-specific structure of `toCommitCursor` recovers the
+original canonical program cursor. -/
+theorem toProgramCursor_toCommitCursor
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k) :
+    CommitCursor.toProgramCursor (toCommitCursor c hprog) = c := by
+  induction c generalizing x who b with
+  | here =>
+      change CommitCursor.toProgramCursor
+          (cast (congrArg (fun q => CommitCursor who q) hprog).symm
+            (.here : CommitCursor who (VegasCore.commit x who R k))) =
+        (.here : ProgramCursor _)
+      rw [CommitCursor.toProgramCursor_cast hprog]
+      exact cast_here hprog
+  | letExpr c ih =>
+      change ProgramCursor.letExpr
+          (CommitCursor.toProgramCursor (toCommitCursor c hprog)) =
+        ProgramCursor.letExpr c
+      rw [ih]
+  | sample c ih =>
+      change ProgramCursor.sample
+          (CommitCursor.toProgramCursor (toCommitCursor c hprog)) =
+        ProgramCursor.sample c
+      rw [ih]
+  | commit c ih =>
+      change ProgramCursor.commit
+          (CommitCursor.toProgramCursor (toCommitCursor c hprog)) =
+        ProgramCursor.commit c
+      rw [ih]
+  | reveal c ih =>
+      change ProgramCursor.reveal
+          (CommitCursor.toProgramCursor (toCommitCursor c hprog)) =
+        ProgramCursor.reveal c
+      rw [ih]
+
+theorem commitCursor_toSuffixFrom_eq_lift_toCommitCursor
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) (c : ProgramCursor p)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k) :
+    ProgramSuffix.commitCursor
+        (hprog ▸ ProgramCursor.toSuffixFrom s c) =
+      s.liftCommitCursor (toCommitCursor c hprog) := by
+  induction c generalizing x who b with
+  | here =>
+      rename_i Γp pp
+      cases pp <;> try cases hprog
+      rfl
+  | letExpr c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramSuffix.commitCursor,
+        ProgramSuffix.liftCommitCursor, toCommitCursor] using
+        ih (ProgramSuffix.letExpr s) hprog
+  | sample c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramSuffix.commitCursor,
+        ProgramSuffix.liftCommitCursor, toCommitCursor] using
+        ih (ProgramSuffix.sample s) hprog
+  | commit c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramSuffix.commitCursor,
+        ProgramSuffix.liftCommitCursor, toCommitCursor] using
+        ih (ProgramSuffix.commit s) hprog
+  | reveal c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramSuffix.commitCursor,
+        ProgramSuffix.liftCommitCursor, toCommitCursor] using
+        ih (ProgramSuffix.reveal s) hprog
+
+/-- A suffix obtained from a canonical cursor and transported to an owned
+commit endpoint recovers the original canonical cursor after extracting and
+forgetting the commit cursor. -/
+theorem toProgramCursor_commitCursor_toSuffix
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root)
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx c.Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: c.Γ)}
+    (hprog : c.prog = VegasCore.commit x who R k) :
+    CommitCursor.toProgramCursor
+        (ProgramSuffix.commitCursor (hprog ▸ c.toSuffix)) =
+      c := by
+  change CommitCursor.toProgramCursor
+        (ProgramSuffix.commitCursor
+          (hprog ▸ ProgramCursor.toSuffixFrom ProgramSuffix.here c)) =
+      c
+  rw [commitCursor_toSuffixFrom_eq_lift_toCommitCursor
+    (ProgramSuffix.here : ProgramSuffix root root) c hprog]
+  exact toProgramCursor_toCommitCursor c hprog
+
+end ProgramCursor
+
+namespace ProgramSuffix
+
+theorem liftCommitCursor_toSuffix_pureStrategy_heq
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {owner who : P}
+    (c : CommitCursor owner p)
+    (σ : ProgramPureStrategy who root) :
+    HEq
+      ((ProgramCursor.toSuffix
+        (ProgramCursor.CommitCursor.toProgramCursor
+          (s.liftCommitCursor c))).pureStrategy who σ)
+      ((ProgramCursor.toSuffix
+        (ProgramCursor.CommitCursor.toProgramCursor c)).pureStrategy who
+          (s.pureStrategy who σ)) := by
+  induction s generalizing σ with
+  | here => exact HEq.rfl
+  | @letExpr Γ x b e k s ih =>
+      change HEq
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor
+            (s.liftCommitCursor (.letExpr c)))).pureStrategy who σ)
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor c)).pureStrategy who
+            ((ProgramSuffix.letExpr s).pureStrategy who σ))
+      have h₁ := ih (.letExpr c) σ
+      have h₂ := ProgramCursor.toSuffixFrom_pureStrategy
+        (s := (ProgramSuffix.letExpr
+          (.here : ProgramSuffix (.letExpr x e k) (.letExpr x e k))))
+        (c := ProgramCursor.CommitCursor.toProgramCursor c) who
+        (s.pureStrategy who σ)
+      exact h₁.trans (heq_of_eq h₂)
+  | @sample Γ x b D k s ih =>
+      change HEq
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor
+            (s.liftCommitCursor (.sample c)))).pureStrategy who σ)
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor c)).pureStrategy who
+            ((ProgramSuffix.sample s).pureStrategy who σ))
+      have h₁ := ih (.sample c) σ
+      have h₂ := ProgramCursor.toSuffixFrom_pureStrategy
+        (s := (ProgramSuffix.sample
+          (.here : ProgramSuffix (.sample x D k) (.sample x D k))))
+        (c := ProgramCursor.CommitCursor.toProgramCursor c) who
+        (s.pureStrategy who σ)
+      exact h₁.trans (heq_of_eq h₂)
+  | @commit Γ x owner' b R k s ih =>
+      change HEq
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor
+            (s.liftCommitCursor (.commit c)))).pureStrategy who σ)
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor c)).pureStrategy who
+            ((ProgramSuffix.commit s).pureStrategy who σ))
+      have h₁ := ih (.commit c) σ
+      have h₂ := ProgramCursor.toSuffixFrom_pureStrategy
+        (s := (ProgramSuffix.commit
+          (.here : ProgramSuffix (.commit x owner' R k)
+            (.commit x owner' R k))))
+        (c := ProgramCursor.CommitCursor.toProgramCursor c) who
+        (s.pureStrategy who σ)
+      have h₂' : HEq
+          (ProgramSuffix.pureStrategy
+            ((ProgramCursor.CommitCursor.toProgramCursor c.commit).toSuffix)
+            who (s.pureStrategy who σ))
+          (ProgramSuffix.pureStrategy
+            ((ProgramCursor.CommitCursor.toProgramCursor c).toSuffix)
+            who
+            ((ProgramSuffix.commit s).pureStrategy who σ)) := by
+        by_cases h : owner' = who
+        · subst h
+          exact heq_of_eq h₂
+        · exact heq_of_eq (by
+            simpa [ProgramSuffix.pureStrategy, h] using h₂)
+      exact h₁.trans h₂'
+  | @reveal Γ y owner' x b hx k s ih =>
+      change HEq
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor
+            (s.liftCommitCursor (.reveal c)))).pureStrategy who σ)
+        ((ProgramCursor.toSuffix
+          (ProgramCursor.CommitCursor.toProgramCursor c)).pureStrategy who
+            ((ProgramSuffix.reveal s).pureStrategy who σ))
+      have h₁ := ih (.reveal c) σ
+      have h₂ := ProgramCursor.toSuffixFrom_pureStrategy
+        (s := (ProgramSuffix.reveal
+          (.here : ProgramSuffix (.reveal y owner' x hx k)
+            (.reveal y owner' x hx k))))
+        (c := ProgramCursor.CommitCursor.toProgramCursor c) who
+        (s.pureStrategy who σ)
+      exact h₁.trans (heq_of_eq h₂)
+
+end ProgramSuffix
+
+namespace ProgramCursor
 
 /-- Canonical cursors are finite because Vegas syntax is linear. -/
 @[reducible] noncomputable def instFintype :

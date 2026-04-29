@@ -1,4 +1,5 @@
 import Vegas.FOSG.Observed.Kernel
+import Vegas.FOSG.Observed.Current
 
 namespace Vegas
 namespace FOSGBridge
@@ -134,5 +135,20 @@ theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     FOSGBridge.toFOSG_mixedPure_realizedByBehavioral_outcomeKernel
       g hctx LF μ
   exact ⟨⟨βF⟩, hβF⟩
+
+/-- Finite-game Kuhn theorem in the total Vegas behavioral strategy space. -/
+theorem program_mixedPure_realizedByBehavioralPMF_finite
+    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  exact FOSGBridge.Observed.currentObsModel_mixedPure_realizedByBehavioralPMF_finite
+    g hctx LF μ
 
 end Vegas

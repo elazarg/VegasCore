@@ -37,6 +37,18 @@ noncomputable def movePureAtProgramCursor
         none
   | _ => none
 
+theorem movePureAtProgramCursor_suffix_cast
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) (who : P)
+    {Γ : VCtx P L} {p q : VegasCore P L Γ}
+    (h : p = q)
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    movePureAtProgramCursor g hctx σ who suffix view =
+      movePureAtProgramCursor g hctx σ who (h ▸ suffix) view := by
+  cases h
+  rfl
+
 noncomputable def movePureStrategyAtProgramCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
@@ -58,6 +70,18 @@ noncomputable def movePureStrategyAtProgramCursor
       else
         none
   | _ => none
+
+theorem movePureStrategyAtProgramCursor_suffix_cast
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {p q : VegasCore P L Γ}
+    (h : p = q)
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    movePureStrategyAtProgramCursor g hctx who σ suffix view =
+      movePureStrategyAtProgramCursor g hctx who σ (h ▸ suffix) view := by
+  cases h
+  rfl
 
 theorem movePureAtProgramCursor_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -97,6 +121,32 @@ theorem movePureAtProgramCursor_eq_strategy
           ((ProgramPureStrategy.headKernel
             ((suffix.pureProfile (fun i => (σ i).val)) who)) view)) := by
   simp [movePureAtProgramCursor]
+
+@[simp] theorem movePureStrategyAtProgramCursor_commit_owner
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    {who : P} (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (view : ViewEnv who Γ) :
+    movePureStrategyAtProgramCursor g hctx who σ suffix view =
+      some
+        (ProgramAction.commitAt suffix
+          ((ProgramPureStrategy.headKernel
+            (suffix.pureStrategy who σ.val)) view)) := by
+  simp [movePureStrategyAtProgramCursor]
+
+@[simp] theorem movePureStrategyAtProgramCursor_commit_nonowner
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    {owner who : P} (σ : LegalProgramPureStrategy g who)
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x owner R k))
+    (view : ViewEnv who Γ) (howner : owner ≠ who) :
+    movePureStrategyAtProgramCursor g hctx who σ suffix view = none := by
+  simp [movePureStrategyAtProgramCursor, howner]
 
 theorem headPureKernel_legal_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
@@ -369,6 +419,55 @@ theorem moveAtCursorWorld_toBehavioral_eq_pure
     moveAtCursorWorld g hctx (LegalProgramPureProfile.toBehavioral σ) who w =
       PMF.pure (movePureAtCursorWorld g hctx σ who w) := by
   exact moveAtProgramCursor_toBehavioral_eq_pure
+    g hctx σ who w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
+
+theorem moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    moveAtProgramCursorPMF g hctx
+        (LegalProgramPureProfile.toBehavioralPMF σ) who suffix view =
+      PMF.pure (movePureAtProgramCursor g hctx σ who suffix view) := by
+  cases p with
+  | ret payoffs =>
+      simp [moveAtProgramCursorPMF, movePureAtProgramCursor]
+  | letExpr x e k =>
+      simp [moveAtProgramCursorPMF, movePureAtProgramCursor]
+  | sample x D k =>
+      simp [moveAtProgramCursorPMF, movePureAtProgramCursor]
+  | reveal y owner x hx k =>
+      simp [moveAtProgramCursorPMF, movePureAtProgramCursor]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        let raw : ProgramPureProfile g.prog :=
+          fun i => (σ i).val
+        have hprofile :
+            suffix.behavioralProfilePMF
+                (fun i => ((LegalProgramPureProfile.toBehavioralPMF
+                  (g := g) σ) i).val) =
+              ProgramPureProfile.toBehavioralPMF
+                (.commit x who R k) (suffix.pureProfile raw) := by
+          simpa [raw, LegalProgramPureProfile.toBehavioralPMF] using
+            ProgramSuffix.behavioralProfilePMF_toBehavioralPMF
+              (s := suffix) raw
+        simp [moveAtProgramCursorPMF, movePureAtProgramCursor, hprofile,
+          ProgramPureProfile.toBehavioralPMF,
+          ProgramBehavioralStrategyPMF.headKernel,
+          PMF.pure_map, raw]
+      · simp [moveAtProgramCursorPMF, movePureAtProgramCursor, howner]
+
+theorem moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P) (w : CursorCheckedWorld g) :
+    moveAtCursorWorldPMF g hctx
+        (LegalProgramPureProfile.toBehavioralPMF σ) who w =
+      PMF.pure (movePureAtCursorWorld g hctx σ who w) := by
+  exact moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
     g hctx σ who w.1.suffix
       (projectViewEnv who (VEnv.eraseEnv w.1.env))
 
