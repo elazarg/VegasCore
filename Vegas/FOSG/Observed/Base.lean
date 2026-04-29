@@ -171,6 +171,7 @@ private structure CursorEmbedding (g : WFProgram P L) (who : P)
     {Γ : VCtx P L} (root : VegasCore P L Γ) where
   cursor : ProgramCursor root → ProgramCursor g.prog
   cursor_Γ : (c : ProgramCursor root) → (cursor c).Γ = c.Γ
+  suffix : (c : ProgramCursor root) → ProgramSuffix g.prog c.prog
   commit : CommitCursor who root → CommitCursor who g.prog
   commit_ty : (c : CommitCursor who root) →
     CommitCursor.ty (commit c) = CommitCursor.ty c
@@ -179,6 +180,7 @@ private def CursorEmbedding.id (g : WFProgram P L) (who : P) :
     CursorEmbedding (P := P) (L := L) g who g.prog where
   cursor := fun c => c
   cursor_Γ := fun _ => rfl
+  suffix := fun c => c.toSuffix
   commit := fun c => c
   commit_ty := fun _ => rfl
 
@@ -192,6 +194,7 @@ private def CursorEmbedding.letExpr
   cursor := fun c => emb.cursor (.letExpr c)
   cursor_Γ := fun c => by
     simpa [ProgramCursor.Γ] using emb.cursor_Γ (.letExpr c)
+  suffix := fun c => emb.suffix (.letExpr c)
   commit := fun c => emb.commit (.letExpr c)
   commit_ty := fun c => by
     simpa [CommitCursor.ty] using emb.commit_ty (.letExpr c)
@@ -206,6 +209,7 @@ private def CursorEmbedding.sample
   cursor := fun c => emb.cursor (.sample c)
   cursor_Γ := fun c => by
     simpa [ProgramCursor.Γ] using emb.cursor_Γ (.sample c)
+  suffix := fun c => emb.suffix (.sample c)
   commit := fun c => emb.commit (.sample c)
   commit_ty := fun c => by
     simpa [CommitCursor.ty] using emb.commit_ty (.sample c)
@@ -220,6 +224,7 @@ private def CursorEmbedding.commitFrame
   cursor := fun c => emb.cursor (.commit c)
   cursor_Γ := fun c => by
     simpa [ProgramCursor.Γ] using emb.cursor_Γ (.commit c)
+  suffix := fun c => emb.suffix (.commit c)
   commit := fun c => emb.commit (.commit c)
   commit_ty := fun c => by
     simpa [CommitCursor.ty] using emb.commit_ty (.commit c)
@@ -234,6 +239,7 @@ private def CursorEmbedding.reveal
   cursor := fun c => emb.cursor (.reveal c)
   cursor_Γ := fun c => by
     simpa [ProgramCursor.Γ] using emb.cursor_Γ (.reveal c)
+  suffix := fun c => emb.suffix (.reveal c)
   commit := fun c => emb.commit (.reveal c)
   commit_ty := fun c => by
     simpa [CommitCursor.ty] using emb.commit_ty (.reveal c)
@@ -269,13 +275,12 @@ private noncomputable def embeddedOwnCommitEvents
   if howner : owner = who then
     by
       subst owner
-      let localCursor : CommitCursor who (.commit x who R k) := .here
+      let suffix : ProgramSuffix g.prog (.commit x who R k) :=
+        emb.suffix ProgramCursor.here
       let action : ProgramAction g.prog who :=
-        { cursor := emb.commit localCursor
-          value :=
-            cast (congrArg L.Val (emb.commit_ty localCursor)).symm
-              (env.get (VHasVar.here (Γ := Γ) (x := x)
-                (τ := BindTy.hidden who b))) }
+        ProgramAction.commitAt suffix
+          (env.get (VHasVar.here (Γ := Γ) (x := x)
+            (τ := BindTy.hidden who b)))
       exact [GameTheory.FOSG.PlayerEvent.act action]
   else
     []
@@ -339,6 +344,440 @@ private theorem cursorPlayerView_initial
       cases prog <;>
         simp [cursorPlayerView, cursorPlayerViewFrom,
           CursorCheckedWorld.initial, CursorEmbedding.id]
+
+private theorem programCursor_root_wfctx :
+    {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
+    (c : ProgramCursor root) → WFCtx c.Γ → WFCtx Γ₀
+  | _, _, .here, hctx => hctx
+  | _, .letExpr _ _ _, .letExpr c, hctx =>
+      WFCtx.tail (programCursor_root_wfctx c hctx)
+  | _, .sample _ _ _, .sample c, hctx =>
+      WFCtx.tail (programCursor_root_wfctx c hctx)
+  | _, .commit _ _ _ _, .commit c, hctx =>
+      WFCtx.tail (programCursor_root_wfctx c hctx)
+  | _, .reveal _ _ _ _ _, .reveal c, hctx =>
+      WFCtx.tail (programCursor_root_wfctx c hctx)
+
+private theorem programCursor_rootEnv_projectViewEnv_eq
+    (who : P) :
+    {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
+    (c : ProgramCursor root) →
+    (env₁ env₂ : VEnv L c.Γ) →
+    WFCtx c.Γ →
+    projectViewEnv who (VEnv.eraseEnv env₁) =
+      projectViewEnv who (VEnv.eraseEnv env₂) →
+    projectViewEnv who (VEnv.eraseEnv (ProgramCursor.rootEnv c env₁)) =
+      projectViewEnv who (VEnv.eraseEnv (ProgramCursor.rootEnv c env₂))
+  | _, _, .here, _env₁, _env₂, _hctx, hview => hview
+  | _, .letExpr _ _ _, .letExpr c, env₁, env₂, hctx, hview => by
+      have hmid := programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hctx hview
+      exact projectViewEnv_cons_eq (programCursor_root_wfctx c hctx) hmid
+  | _, .sample _ _ _, .sample c, env₁, env₂, hctx, hview => by
+      have hmid := programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hctx hview
+      exact projectViewEnv_cons_eq (programCursor_root_wfctx c hctx) hmid
+  | _, .commit _ _ _ _, .commit c, env₁, env₂, hctx, hview => by
+      have hmid := programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hctx hview
+      exact projectViewEnv_cons_eq (programCursor_root_wfctx c hctx) hmid
+  | _, .reveal _ _ _ _ _, .reveal c, env₁, env₂, hctx, hview => by
+      have hmid := programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hctx hview
+      exact projectViewEnv_cons_eq (programCursor_root_wfctx c hctx) hmid
+
+private theorem cursorPlayerViewFrom_here
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (emb : CursorEmbedding (P := P) (L := L) g who root)
+    (env : VEnv L ProgramCursor.here.Γ) :
+    cursorPlayerViewFrom g hctx who emb ProgramCursor.here env = [] := by
+  cases root <;> simp [cursorPlayerViewFrom]
+
+private noncomputable def cursorStepPlayerViewFrom
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (emb : CursorEmbedding (P := P) (L := L) g who root)
+    (pa : ProgramJointAction g)
+    (dstC : ProgramCursor root) (dstEnv : VEnv L dstC.Γ) :
+    (observedProgramFOSG g hctx).InfoState who :=
+  match pa who with
+  | some ai =>
+      [GameTheory.FOSG.PlayerEvent.act ai,
+        GameTheory.FOSG.PlayerEvent.obs
+          (embeddedPrivateObs g who emb dstC dstEnv)
+          (embeddedPublicObs g hctx who emb dstC dstEnv)]
+  | none =>
+      [GameTheory.FOSG.PlayerEvent.obs
+        (embeddedPrivateObs g who emb dstC dstEnv)
+        (embeddedPublicObs g hctx who emb dstC dstEnv)]
+
+private theorem cursorPlayerViewFrom_transition
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
+    {Γ : VCtx P L} → {root : VegasCore P L Γ} →
+    (emb : CursorEmbedding (P := P) (L := L) g who root) →
+    (c : ProgramCursor root) →
+    (env : VEnv L c.Γ) →
+    (valid : c.EndpointValid) →
+    (pa : ProgramJointAction g) →
+    (ha : JointActionLegal
+      ({ Γ := c.Γ, prog := c.prog, env := env } : World P L)
+      (ProgramJointAction.toAction pa)) →
+    (hmoves : ∀ i,
+      pa i ∈ CursorCheckedWorld.availableProgramMovesAt
+        c.prog env (emb.suffix c) i) →
+    (dst : CursorRuntimeState root) →
+    cursorTransitionState c env valid
+      (ProgramJointAction.toAction pa) ha dst ≠ 0 →
+      cursorPlayerViewFrom g hctx who emb dst.cursor dst.env =
+        cursorPlayerViewFrom g hctx who emb c env ++
+          cursorStepPlayerViewFrom g hctx who emb pa dst.cursor dst.env
+  | _, .ret _payoffs, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp =>
+      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+  | _, .letExpr x e k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      subst dst
+      have hnone : pa who = none := by
+        specialize hmoves who
+        cases hpa : pa who with
+        | none => rfl
+        | some ai =>
+            simp [CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, hpa] at hmoves
+      simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
+  | _, .sample x D k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      rcases hsupp with ⟨v, hdst, _hv⟩
+      subst dst
+      have hnone : pa who = none := by
+        specialize hmoves who
+        cases hpa : pa who with
+        | none => rfl
+        | some ai =>
+            simp [CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, hpa] at hmoves
+      simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
+  | _, .commit x owner R k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      subst dst
+      by_cases howner : owner = who
+      · subst owner
+        have hsome : ∃ ai, pa who = some ai := by
+          specialize hmoves who
+          cases hpa : pa who with
+          | none =>
+              simp [CursorCheckedWorld.availableProgramMovesAt, active,
+                ProgramCursor.prog, hpa] at hmoves
+          | some ai => exact ⟨ai, by simpa using hpa.symm⟩
+        rcases hsome with ⟨ai, hai⟩
+        have haiAvail : ai ∈
+            CursorCheckedWorld.availableProgramActionsAt
+              (.commit x who R k) env (emb.suffix ProgramCursor.here) who := by
+          have hm := hmoves who
+          rw [hai] at hm
+          simpa [CursorCheckedWorld.availableProgramMovesAt, active,
+            ProgramCursor.prog] using hm.2
+        let v := commitValueOfLegal (L := L) ha
+        let aj : ProgramAction g.prog who :=
+          ProgramAction.commitAt (emb.suffix ProgramCursor.here) v
+        have hajAvail : aj ∈
+            CursorCheckedWorld.availableProgramActionsAt
+              (.commit x who R k) env (emb.suffix ProgramCursor.here) who := by
+          rw [CursorCheckedWorld.availableProgramActionsAt_commit_owner_iff]
+          exact ⟨v, rfl, commitValueOfLegal_guard (L := L) ha⟩
+        have hact_ai :
+            ProgramAction.toAction ai = Sigma.mk _ v := by
+          have h := commitValueOfLegal_action (L := L) ha
+          simpa [ProgramJointAction.toAction, hai, v] using h
+        have hact_aj :
+            ProgramAction.toAction aj = Sigma.mk _ v := by
+          dsimp [aj]
+          simp [ProgramAction.toAction, ProgramAction.commitAt,
+            ProgramSuffix.ty_commitCursor]
+        have hact : ProgramAction.toAction ai = ProgramAction.toAction aj := by
+          rw [hact_ai, hact_aj]
+        have haiEq : ai = aj :=
+          CursorCheckedWorld.availableProgramActionsAt_eq_of_toAction_eq
+            haiAvail hajAvail hact
+        subst ai
+        simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+          embeddedOwnCommitEvents, ProgramCursor.rootEnv, hai, aj, v,
+          cursorPlayerViewFrom_here]
+        rfl
+      · have hnone : pa who = none := by
+          specialize hmoves who
+          cases hpa : pa who with
+          | none => rfl
+          | some ai =>
+              simp [CursorCheckedWorld.availableProgramMovesAt, active,
+                ProgramCursor.prog, hpa] at hmoves
+              exact False.elim (howner hmoves.1.symm)
+        simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+          embeddedOwnCommitEvents, ProgramCursor.rootEnv, hnone, howner,
+          cursorPlayerViewFrom_here]
+  | _, .reveal (b := b) y owner x hx k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      subst dst
+      have hnone : pa who = none := by
+        specialize hmoves who
+        cases hpa : pa who with
+        | none => rfl
+        | some ai =>
+            simp [CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, hpa] at hmoves
+      simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
+  | _, .letExpr x e k, emb, .letExpr c, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      subst dst
+      have hrec := cursorPlayerViewFrom_transition g hctx who
+        (CursorEmbedding.letExpr emb) c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        pa
+        (by simpa [ProgramCursor.EndpointValid] using ha)
+        (by
+          intro i
+          simpa [CursorCheckedWorld.availableProgramMovesAt, ProgramCursor.prog,
+            active, CursorEmbedding.letExpr] using hmoves i)
+        s hsuppS
+      have hroot := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        (ProgramJointAction.toAction pa)
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      simpa [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        hroot, List.append_assoc]
+        using hrec
+  | _, .sample x D k, emb, .sample c, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      subst dst
+      have hrec := cursorPlayerViewFrom_transition g hctx who
+        (CursorEmbedding.sample emb) c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        pa
+        (by simpa [ProgramCursor.EndpointValid] using ha)
+        (by
+          intro i
+          simpa [CursorCheckedWorld.availableProgramMovesAt, ProgramCursor.prog,
+            active, CursorEmbedding.sample] using hmoves i)
+        s hsuppS
+      have hroot := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        (ProgramJointAction.toAction pa)
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      simpa [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        hroot, List.append_assoc]
+        using hrec
+  | _, .commit x owner R k, emb, .commit c, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      subst dst
+      have hrec := cursorPlayerViewFrom_transition g hctx who
+        (CursorEmbedding.commitFrame emb) c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        pa
+        (by simpa [ProgramCursor.EndpointValid] using ha)
+        (by
+          intro i
+          simpa [CursorCheckedWorld.availableProgramMovesAt, ProgramCursor.prog,
+            active, CursorEmbedding.commitFrame] using hmoves i)
+        s hsuppS
+      have hroot := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        (ProgramJointAction.toAction pa)
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      simpa [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        hroot, List.append_assoc]
+        using hrec
+  | _, .reveal y owner x hx k, emb, .reveal c, env, valid, pa, ha, hmoves, dst, hsupp => by
+      simp [cursorTransitionState] at hsupp
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      subst dst
+      have hrec := cursorPlayerViewFrom_transition g hctx who
+        (CursorEmbedding.reveal emb) c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        pa
+        (by simpa [ProgramCursor.EndpointValid] using ha)
+        (by
+          intro i
+          simpa [CursorCheckedWorld.availableProgramMovesAt, ProgramCursor.prog,
+            active, CursorEmbedding.reveal] using hmoves i)
+        s hsuppS
+      have hroot := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid)
+        (ProgramJointAction.toAction pa)
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      simpa [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
+        hroot, List.append_assoc]
+        using hrec
+
+private theorem cursorLegal_mem_availableProgramMovesAt
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a : ProgramJointAction g) (ha : CursorProgramJointActionLegal w a)
+    (i : P) :
+    a i ∈ CursorCheckedWorld.availableProgramMovesAt
+      w.1.cursor.prog w.1.env w.1.cursor.toSuffix i := by
+  cases w with
+  | mk d valid =>
+      cases d with
+      | mk c env =>
+          cases h : a i with
+          | none =>
+              simpa [CursorProgramJointActionLegal,
+                CursorCheckedWorld.availableProgramMovesAt,
+                CursorCheckedWorld.availableProgramActions,
+                CursorCheckedWorld.active, CursorWorldData.prog,
+                CursorWorldData.suffix, h] using ha.2 i
+          | some ai =>
+              simpa [CursorProgramJointActionLegal,
+                CursorCheckedWorld.availableProgramMovesAt,
+                CursorCheckedWorld.availableProgramActions,
+                CursorCheckedWorld.active, CursorWorldData.prog,
+                CursorWorldData.suffix, h] using ha.2 i
+
+private theorem cursorPlayerView_step
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (src dst : CursorCheckedWorld g)
+    (a : (observedProgramFOSG g hctx).LegalAction src)
+    (hsupp : (observedProgramFOSG g hctx).transition src a dst ≠ 0) :
+    cursorPlayerView g hctx who dst.1.cursor dst.1.env =
+      cursorPlayerView g hctx who src.1.cursor src.1.env ++
+        (GameTheory.FOSG.Step.playerView
+          ({ src := src, act := a, dst := dst, support := hsupp } :
+            (observedProgramFOSG g hctx).Step) who) := by
+  have hmem :
+      dst ∈ (cursorProgramTransition src a).support := by
+    simpa [observedProgramFOSG, PMF.mem_support_iff] using hsupp
+  rw [cursorProgramTransition] at hmem
+  rcases (PMF.mem_support_map_iff _ _ _).mp hmem with ⟨s, hs, hdst⟩
+  subst hdst
+  have hsuppS :
+      cursorTransitionState src.1.cursor src.1.env
+        (by
+          simpa [CursorWorldData.Valid, CursorWorldData.prog,
+            ProgramCursor.EndpointValid] using src.2)
+        (ProgramJointAction.toAction a.1)
+        (CursorProgramJointActionLegal.toAction a.2) s ≠ 0 := by
+    simpa [PMF.mem_support_iff] using hs
+  have hmoves : ∀ i,
+      a.1 i ∈ CursorCheckedWorld.availableProgramMovesAt
+        src.1.cursor.prog src.1.env
+        ((CursorEmbedding.id g who).suffix src.1.cursor) i := by
+    intro i
+    simpa [CursorEmbedding.id] using
+      cursorLegal_mem_availableProgramMovesAt (g := g) src a.1 a.2 i
+  have hbase := cursorPlayerViewFrom_transition g hctx who
+    (CursorEmbedding.id g who) src.1.cursor src.1.env
+    (by
+      simpa [CursorWorldData.Valid, CursorWorldData.prog,
+        ProgramCursor.EndpointValid] using src.2)
+    a.1
+    (CursorProgramJointActionLegal.toAction a.2)
+    hmoves
+    s
+    hsuppS
+  have hstep :
+      cursorStepPlayerViewFrom g hctx who (CursorEmbedding.id g who)
+          a.1 s.cursor s.env =
+        (GameTheory.FOSG.Step.playerView
+          ({ src := src, act := a, dst := CursorRuntimeState.toChecked s,
+             support := hsupp } :
+            (observedProgramFOSG g hctx).Step) who) := by
+    cases hact : a.1 who with
+    | none =>
+        simp [cursorStepPlayerViewFrom, GameTheory.FOSG.Step.playerView,
+          GameTheory.FOSG.Step.ownAction?, GameTheory.FOSG.Step.privateObs,
+          GameTheory.FOSG.Step.publicObs, observedProgramFOSG,
+          CursorRuntimeState.toChecked, embeddedPrivateObs, embeddedPublicObs,
+          CursorEmbedding.id, privateObsOfCursorEnv, privateObsOfCursorWorld,
+          publicObsOfCursorEnv, publicObsOfCursorWorld, hact]
+    | some ai =>
+        simp [cursorStepPlayerViewFrom, GameTheory.FOSG.Step.playerView,
+          GameTheory.FOSG.Step.ownAction?, GameTheory.FOSG.Step.privateObs,
+          GameTheory.FOSG.Step.publicObs, observedProgramFOSG,
+          CursorRuntimeState.toChecked, embeddedPrivateObs, embeddedPublicObs,
+          CursorEmbedding.id, privateObsOfCursorEnv, privateObsOfCursorWorld,
+          publicObsOfCursorEnv, publicObsOfCursorWorld, hact]
+  unfold cursorPlayerView
+  simp [CursorRuntimeState.toChecked]
+  rw [hbase, hstep]
+  simp [GameTheory.FOSG.Step.playerView, GameTheory.FOSG.Step.ownAction?,
+    GameTheory.FOSG.Step.privateObs, GameTheory.FOSG.Step.publicObs,
+    observedProgramFOSG, CursorRuntimeState.toChecked]
+
+private theorem cursorPlayerView_appendStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (h : (observedProgramFOSG g hctx).History)
+    (e : (observedProgramFOSG g hctx).Step)
+    (hsrc : e.src = h.lastState) :
+    cursorPlayerView g hctx who
+        (h.appendStep e hsrc).lastState.1.cursor
+        (h.appendStep e hsrc).lastState.1.env =
+      cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env ++
+        e.playerView who := by
+  cases e with
+  | mk src act dst support =>
+      dsimp at hsrc ⊢
+      subst src
+      rw [GameTheory.FOSG.History.lastState_appendStep]
+      change cursorPlayerView g hctx who dst.1.cursor dst.1.env =
+        cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env ++
+          (({ src := h.lastState, act := act, dst := dst, support := support } :
+              (observedProgramFOSG g hctx).Step).playerView who)
+      exact cursorPlayerView_step g hctx who h.lastState dst act support
+
+private theorem playerView_eq_cursorPlayerView
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (h : (observedProgramFOSG g hctx).History) :
+    h.playerView who =
+      cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env := by
+  let G := observedProgramFOSG g hctx
+  cases h with
+  | mk steps chain =>
+      revert chain
+      induction steps using List.reverseRecOn with
+      | nil =>
+          intro chain
+          simpa [GameTheory.FOSG.History.playerView,
+            GameTheory.FOSG.History.playerViewFrom,
+            GameTheory.FOSG.History.lastState,
+            GameTheory.FOSG.lastStateFrom] using
+            (cursorPlayerView_initial g hctx who).symm
+      | append_singleton steps e ih =>
+          intro chain
+          let hprefix : G.History :=
+            { steps := steps
+              chain := GameTheory.FOSG.StepChainFrom.left
+                (G := G) (es₁ := steps) (es₂ := [e]) chain }
+          have hright :
+              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
+            GameTheory.FOSG.StepChainFrom.right
+              (G := G) (es₁ := steps) (es₂ := [e]) chain
+          have hsrc : e.src = hprefix.lastState := by
+            simpa [hprefix, GameTheory.FOSG.History.lastState,
+              GameTheory.FOSG.StepChainFrom] using hright.1
+          let hfull : G.History := hprefix.appendStep e hsrc
+          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
+            ext
+            rfl
+          have ihprefix :
+              hprefix.playerView who =
+                cursorPlayerView g hctx who
+                  hprefix.lastState.1.cursor hprefix.lastState.1.env :=
+            ih hprefix.chain
+          have hcur := cursorPlayerView_appendStep g hctx who hprefix e hsrc
+          rw [hEq]
+          change hfull.playerView who =
+            cursorPlayerView g hctx who
+              hfull.lastState.1.cursor hfull.lastState.1.env
+          rw [hcur]
+          simp only [hfull, GameTheory.FOSG.History.playerView,
+            GameTheory.FOSG.History.appendStep]
+          rw [GameTheory.FOSG.History.playerViewFrom_append_singleton]
+          change hprefix.playerView who ++ e.playerView who =
+            cursorPlayerView g hctx who
+              hprefix.lastState.1.cursor hprefix.lastState.1.env ++
+              e.playerView who
+          rw [ihprefix]
 
 /--
 History-collapse target for transporting FOSG behavioral strategies back to

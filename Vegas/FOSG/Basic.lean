@@ -3284,6 +3284,75 @@ theorem cursorTransitionState_remainingSyntaxSteps
       exact hrec
 
 set_option linter.flexible false in
+/-- A cursor-recursive transition only extends the environment below the
+current cursor endpoint; the environment at the root of the local cursor is
+unchanged. -/
+theorem cursorTransitionState_rootEnv_eq
+    {Γ₀ : VCtx P L} :
+    {root : VegasCore P L Γ₀} →
+    (c : ProgramCursor root) →
+    (env : VEnv L c.Γ) →
+    (valid : c.EndpointValid) →
+    (a : JointAction P L) →
+    (ha : JointActionLegal
+      ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
+    (dst : CursorRuntimeState root) →
+    cursorTransitionState c env valid a ha dst ≠ 0 →
+      ProgramCursor.rootEnv dst.cursor dst.env =
+        ProgramCursor.rootEnv c env
+  | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
+      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+  | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      subst dst
+      rfl
+  | .sample x D k, .here, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      rcases hsupp with ⟨v, hdst, _hv⟩
+      subst dst
+      rfl
+  | .commit x who R k, .here, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      subst dst
+      rfl
+  | .reveal y who x hx k, .here, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      subst dst
+      rfl
+  | .letExpr x e k, .letExpr c, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hrec := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid) a
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      subst dst
+      exact congrArg VEnv.tail hrec
+  | .sample x D k, .sample c, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hrec := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid) a
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      subst dst
+      exact congrArg VEnv.tail hrec
+  | .commit x who R k, .commit c, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hrec := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid) a
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      subst dst
+      exact congrArg VEnv.tail hrec
+  | .reveal y who x hx k, .reveal c, env, valid, a, ha, dst, hsupp => by
+      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hrec := cursorTransitionState_rootEnv_eq c env
+        (by simpa [ProgramCursor.EndpointValid] using valid) a
+        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+      subst dst
+      exact congrArg VEnv.tail hrec
+
+set_option linter.flexible false in
 /-- The cursor-keyed program transition consumes exactly one operational syntax
 node on every supported transition. -/
 theorem cursorProgramTransition_remainingSyntaxSteps
