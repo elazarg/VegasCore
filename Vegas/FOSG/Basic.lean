@@ -1288,6 +1288,55 @@ theorem commitCursor_toProgramCursor_prog
       (liftCommitCursor_toProgramCursor_prog s
         (.here : CommitCursor who (.commit x who R k)))
 
+/-- Lifting a commit cursor through a suffix and then converting it back to a
+suffix agrees with extending the original suffix by the local program cursor. -/
+theorem toProgramCursor_toSuffix_liftCommitCursor_heq
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    HEq (ProgramCursor.toSuffix
+      (ProgramCursor.CommitCursor.toProgramCursor (s.liftCommitCursor c)))
+      (ProgramCursor.toSuffixFrom s
+        (ProgramCursor.CommitCursor.toProgramCursor c)) := by
+  induction s with
+  | here => rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor,
+        ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+        using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor,
+        ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+        using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor,
+        ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+        using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor,
+        ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+        using ih (.reveal c)
+
+/-- The suffix recovered from the canonical cursor for an owned commit site is
+heterogeneously equal to the original suffix proof for that site. -/
+theorem commitCursor_toProgramCursor_toSuffix_heq
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    HEq (ProgramCursor.toSuffix
+      (ProgramCursor.CommitCursor.toProgramCursor
+        (ProgramSuffix.commitCursor s))) s := by
+  simpa [ProgramSuffix.commitCursor, ProgramCursor.toSuffixFrom,
+    ProgramCursor.CommitCursor.toProgramCursor] using
+    (toProgramCursor_toSuffix_liftCommitCursor_heq s
+      (.here : CommitCursor who (.commit x who R k)))
+
 end ProgramSuffix
 
 /-! ## Cursor-based world data -/

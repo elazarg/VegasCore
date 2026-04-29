@@ -90,6 +90,23 @@ noncomputable def valueOfProgramMoveOr
       simpa [ProgramAction.commitAt_cursor] using
         ProgramSuffix.ty_commitCursor suffix))
 
+theorem valueOfProgramMoveOr_eq_of_toAction
+    {g : WFProgram P L} {who : P} {b : L.Ty}
+    (default v : L.Val b) (ai : ProgramAction g.prog who)
+    (hact : ProgramAction.toAction ai = Sigma.mk b v) :
+    valueOfProgramMoveOr (g := g) (who := who) (b := b) default
+        (some ai) = v := by
+  cases ai with
+  | mk cursor value =>
+      unfold ProgramAction.toAction at hact
+      unfold valueOfProgramMoveOr
+      simp only [ProgramAction.toAction]
+      simp only [Sigma.mk.injEq] at hact
+      rcases hact with ⟨hty, hvalue⟩
+      rw [dif_pos hty]
+      cases hty
+      exact eq_of_heq hvalue
+
 /-- A support value from a fallback Vegas behavioral profile at a commit site.
 This avoids any global `Nonempty (L.Val b)` assumption. -/
 noncomputable def fallbackValueAtCommit
