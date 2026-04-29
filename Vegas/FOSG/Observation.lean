@@ -34,11 +34,35 @@ def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
   suffix := w.1.suffix
   env := VEnv.toPub w.1.env
 
+def publicObsOfCursorEnv {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (c : ProgramCursor g.prog) (env : VEnv L c.Γ) :
+    PublicObs g hctx where
+  Γ := c.Γ
+  prog := c.prog
+  suffix := c.toSuffix
+  env := VEnv.toPub env
+
 noncomputable def privateObsOfCursorWorld {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld g) :
     PrivateObs g who where
   cursor := w.1.cursor
   env := projectViewEnv who (VEnv.eraseEnv w.1.env)
+
+noncomputable def privateObsOfCursorEnv {g : WFProgram P L}
+    (who : P) (c : ProgramCursor g.prog) (env : VEnv L c.Γ) :
+    PrivateObs g who where
+  cursor := c
+  env := projectViewEnv who (VEnv.eraseEnv env)
+
+@[simp] theorem publicObsOfCursorEnv_world {g : WFProgram P L}
+    {hctx : WFCtx g.Γ} (w : CursorCheckedWorld g) :
+    publicObsOfCursorEnv (hctx := hctx) w.1.cursor w.1.env =
+      publicObsOfCursorWorld (hctx := hctx) w := rfl
+
+@[simp] theorem privateObsOfCursorEnv_world {g : WFProgram P L}
+    (who : P) (w : CursorCheckedWorld g) :
+    privateObsOfCursorEnv who w.1.cursor w.1.env =
+      privateObsOfCursorWorld who w := rfl
 
 /-- The private-observation key corresponding to a syntax-recursive owned
 commit site and a current Vegas view at that site. -/

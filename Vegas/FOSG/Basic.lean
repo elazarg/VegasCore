@@ -70,6 +70,36 @@ def active (w : World P L) : Finset P :=
   | .commit _ who _ _ => {who}
   | _ => ∅
 
+/-- A world known, up to context transport, to be an owned commit has that
+owner active. -/
+theorem active_mem_of_eq_commit
+    {Γc Γ : VCtx P L} {p : VegasCore P L Γc}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (hΓ : Γc = Γ) (hp : hΓ ▸ p = VegasCore.commit x who R k)
+    (env : VEnv L Γc) :
+    who ∈ active ({ Γ := Γc, prog := p, env := env } : World P L) := by
+  cases p with
+  | ret payoffs =>
+      cases hΓ
+      simp at hp
+  | letExpr y e k =>
+      cases hΓ
+      simp at hp
+  | sample y D k =>
+      cases hΓ
+      simp at hp
+  | reveal y owner z hz k =>
+      cases hΓ
+      simp at hp
+  | commit y owner R' k' =>
+      cases hΓ
+      simp only [VegasCore.commit.injEq] at hp
+      rcases hp with ⟨_hxy, howner, _hb, _hR, _hk⟩
+      subst howner
+      simp [active]
+
 /-- Number of operational syntax nodes remaining before a Vegas program reaches
 `ret`, ignoring probabilistic branching because branching changes only
 environments, not the continuation shape. -/
@@ -133,6 +163,45 @@ def availableActions (w : World P L) (who : P) : Set (Action (P := P) L who) :=
       else
         ∅
   | _ => ∅
+
+/-- Broad-alphabet availability at a world known, up to context transport, to
+be a particular owned commit site. -/
+theorem availableActions_of_eq_commit
+    {Γc Γ : VCtx P L} {p : VegasCore P L Γc}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (hΓ : Γc = Γ) (hp : hΓ ▸ p = VegasCore.commit x who R k)
+    (env : VEnv L Γc) {ai : Action (P := P) L who}
+    (hact : ai ∈
+      availableActions ({ Γ := Γc, prog := p, env := env } : World P L)
+        who) :
+    ∃ v : L.Val b,
+      ai = Sigma.mk b v ∧
+        evalGuard (Player := P) (L := L) R v
+          (VEnv.eraseEnv (hΓ ▸ env)) = true := by
+  cases p with
+  | ret payoffs =>
+      cases hΓ
+      simp at hp
+  | letExpr y e k =>
+      cases hΓ
+      simp at hp
+  | sample y D k =>
+      cases hΓ
+      simp at hp
+  | reveal y owner z hz k =>
+      cases hΓ
+      simp at hp
+  | commit y owner R' k' =>
+      cases hΓ
+      simp only [VegasCore.commit.injEq] at hp
+      rcases hp with ⟨hxy, howner, hb, hR, _hk⟩
+      subst hxy
+      subst howner
+      subst hb
+      cases hR
+      simpa [availableActions] using hact
 
 abbrev JointAction (P : Type) [DecidableEq P] (L : IExpr) : Type :=
   GameTheory.JointAction (fun who : P => Action (P := P) L who)
@@ -1083,6 +1152,18 @@ def toSuffix
     (c : ProgramCursor root) :
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
+
+/-- Drop the environment bindings added between the root of a local cursor and
+its endpoint. -/
+def rootEnv
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root) (env : VEnv L c.Γ) : VEnv L Γ₀ :=
+  match c with
+  | .here => env
+  | .letExpr c => VEnv.tail (rootEnv c env)
+  | .sample c => VEnv.tail (rootEnv c env)
+  | .commit c => VEnv.tail (rootEnv c env)
+  | .reveal c => VEnv.tail (rootEnv c env)
 
 namespace CommitCursor
 

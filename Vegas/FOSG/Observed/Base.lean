@@ -167,6 +167,179 @@ theorem programLatestObservation?_history_of_ne_nil
           exact programLatestObservation?_history_appendStep
             g hctx who hprefix e hsrc
 
+private structure CursorEmbedding (g : WFProgram P L) (who : P)
+    {Γ : VCtx P L} (root : VegasCore P L Γ) where
+  cursor : ProgramCursor root → ProgramCursor g.prog
+  cursor_Γ : (c : ProgramCursor root) → (cursor c).Γ = c.Γ
+  commit : CommitCursor who root → CommitCursor who g.prog
+  commit_ty : (c : CommitCursor who root) →
+    CommitCursor.ty (commit c) = CommitCursor.ty c
+
+private def CursorEmbedding.id (g : WFProgram P L) (who : P) :
+    CursorEmbedding (P := P) (L := L) g who g.prog where
+  cursor := fun c => c
+  cursor_Γ := fun _ => rfl
+  commit := fun c => c
+  commit_ty := fun _ => rfl
+
+private def CursorEmbedding.letExpr
+    {g : WFProgram P L} {who : P}
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.letExpr x e k)) :
+    CursorEmbedding (P := P) (L := L) g who k where
+  cursor := fun c => emb.cursor (.letExpr c)
+  cursor_Γ := fun c => by
+    simpa [ProgramCursor.Γ] using emb.cursor_Γ (.letExpr c)
+  commit := fun c => emb.commit (.letExpr c)
+  commit_ty := fun c => by
+    simpa [CommitCursor.ty] using emb.commit_ty (.letExpr c)
+
+private def CursorEmbedding.sample
+    {g : WFProgram P L} {who : P}
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.sample x D k)) :
+    CursorEmbedding (P := P) (L := L) g who k where
+  cursor := fun c => emb.cursor (.sample c)
+  cursor_Γ := fun c => by
+    simpa [ProgramCursor.Γ] using emb.cursor_Γ (.sample c)
+  commit := fun c => emb.commit (.sample c)
+  commit_ty := fun c => by
+    simpa [CommitCursor.ty] using emb.commit_ty (.sample c)
+
+private def CursorEmbedding.commitFrame
+    {g : WFProgram P L} {who owner : P}
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.commit x owner R k)) :
+    CursorEmbedding (P := P) (L := L) g who k where
+  cursor := fun c => emb.cursor (.commit c)
+  cursor_Γ := fun c => by
+    simpa [ProgramCursor.Γ] using emb.cursor_Γ (.commit c)
+  commit := fun c => emb.commit (.commit c)
+  commit_ty := fun c => by
+    simpa [CommitCursor.ty] using emb.commit_ty (.commit c)
+
+private def CursorEmbedding.reveal
+    {g : WFProgram P L} {who owner : P}
+    {Γ : VCtx P L} {y x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden owner b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.reveal y owner x hx k)) :
+    CursorEmbedding (P := P) (L := L) g who k where
+  cursor := fun c => emb.cursor (.reveal c)
+  cursor_Γ := fun c => by
+    simpa [ProgramCursor.Γ] using emb.cursor_Γ (.reveal c)
+  commit := fun c => emb.commit (.reveal c)
+  commit_ty := fun c => by
+    simpa [CommitCursor.ty] using emb.commit_ty (.reveal c)
+
+private noncomputable def embeddedPrivateObs
+    (g : WFProgram P L) (who : P)
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (emb : CursorEmbedding (P := P) (L := L) g who root)
+    (c : ProgramCursor root) (env : VEnv L c.Γ) :
+    PrivateObs g who :=
+  let gc := emb.cursor c
+  let hΓ := emb.cursor_Γ c
+  privateObsOfCursorEnv who gc (hΓ.symm ▸ env)
+
+private def embeddedPublicObs
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (emb : CursorEmbedding (P := P) (L := L) g who root)
+    (c : ProgramCursor root) (env : VEnv L c.Γ) :
+    PublicObs g hctx :=
+  let gc := emb.cursor c
+  let hΓ := emb.cursor_Γ c
+  publicObsOfCursorEnv (hctx := hctx) gc (hΓ.symm ▸ env)
+
+private noncomputable def embeddedOwnCommitEvents
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who owner : P)
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.commit x owner R k))
+    (env : VEnv L ((x, .hidden owner b) :: Γ)) :
+    (observedProgramFOSG g hctx).InfoState who :=
+  if howner : owner = who then
+    by
+      subst owner
+      let localCursor : CommitCursor who (.commit x who R k) := .here
+      let action : ProgramAction g.prog who :=
+        { cursor := emb.commit localCursor
+          value :=
+            cast (congrArg L.Val (emb.commit_ty localCursor)).symm
+              (env.get (VHasVar.here (Γ := Γ) (x := x)
+                (τ := BindTy.hidden who b))) }
+      exact [GameTheory.FOSG.PlayerEvent.act action]
+  else
+    []
+
+private noncomputable def cursorPlayerViewFrom
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
+    {Γ : VCtx P L} → {root : VegasCore P L Γ} →
+    (emb : CursorEmbedding (P := P) (L := L) g who root) →
+    (c : ProgramCursor root) → VEnv L c.Γ →
+      (observedProgramFOSG g hctx).InfoState who
+  | _, .ret _payoffs, _emb, .here, _env => []
+  | _, .letExpr _x _e _k, _emb, .here, _env => []
+  | _, .letExpr _x _e _k, emb, .letExpr c, env =>
+      let env₀ := ProgramCursor.rootEnv c env
+      [GameTheory.FOSG.PlayerEvent.obs
+        (embeddedPrivateObs g who emb (.letExpr ProgramCursor.here) env₀)
+        (embeddedPublicObs g hctx who emb (.letExpr ProgramCursor.here) env₀)] ++
+      cursorPlayerViewFrom g hctx who (CursorEmbedding.letExpr emb) c env
+  | _, .sample _x _D _k, _emb, .here, _env => []
+  | _, .sample _x _D _k, emb, .sample c, env =>
+      let env₀ := ProgramCursor.rootEnv c env
+      [GameTheory.FOSG.PlayerEvent.obs
+        (embeddedPrivateObs g who emb (.sample ProgramCursor.here) env₀)
+        (embeddedPublicObs g hctx who emb (.sample ProgramCursor.here) env₀)] ++
+      cursorPlayerViewFrom g hctx who (CursorEmbedding.sample emb) c env
+  | _, .commit _x _owner _R _k, _emb, .here, _env => []
+  | _, .commit x owner R k, emb, .commit c, env =>
+      let env₀ := ProgramCursor.rootEnv c env
+      let obs :=
+        GameTheory.FOSG.PlayerEvent.obs
+          (embeddedPrivateObs g who emb (.commit ProgramCursor.here) env₀)
+          (embeddedPublicObs g hctx who emb (.commit ProgramCursor.here) env₀)
+      let rest :=
+        cursorPlayerViewFrom g hctx who
+          (CursorEmbedding.commitFrame emb) c env
+      embeddedOwnCommitEvents g hctx who owner emb env₀ ++ [obs] ++ rest
+  | _, .reveal _y _owner _x _hx _k, _emb, .here, _env => []
+  | _, .reveal _y _owner _x _hx _k, emb, .reveal c, env =>
+      let env₀ := ProgramCursor.rootEnv c env
+      [GameTheory.FOSG.PlayerEvent.obs
+        (embeddedPrivateObs g who emb (.reveal ProgramCursor.here) env₀)
+        (embeddedPublicObs g hctx who emb (.reveal ProgramCursor.here) env₀)] ++
+      cursorPlayerViewFrom g hctx who (CursorEmbedding.reveal emb) c env
+termination_by _ root _ _ _ => syntaxSteps root
+decreasing_by
+  all_goals simp_wf
+
+private noncomputable def cursorPlayerView
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (c : ProgramCursor g.prog) (env : VEnv L c.Γ) :
+    (observedProgramFOSG g hctx).InfoState who :=
+  cursorPlayerViewFrom g hctx who (CursorEmbedding.id g who) c env
+
+private theorem cursorPlayerView_initial
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
+    cursorPlayerView g hctx who
+        (CursorCheckedWorld.initial g hctx).1.cursor
+        (CursorCheckedWorld.initial g hctx).1.env = [] := by
+  cases g with
+  | mk Γ prog env wf normalized legal =>
+      cases prog <;>
+        simp [cursorPlayerView, cursorPlayerViewFrom,
+          CursorCheckedWorld.initial, CursorEmbedding.id]
+
 /--
 History-collapse target for transporting FOSG behavioral strategies back to
 syntax-recursive Vegas behavioral strategies.

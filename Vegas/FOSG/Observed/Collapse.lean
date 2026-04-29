@@ -57,6 +57,14 @@ theorem projectViewEnv_eraseEnv_ofErased
 
 end VEnv
 
+theorem projectViewEnv_eraseEnv_cast_heq
+    {Γc Γ : VCtx P L} (who : P) (hΓ : Γc = Γ)
+    (env : VEnv L Γc) :
+    HEq (projectViewEnv who (VEnv.eraseEnv (hΓ ▸ env)))
+      (projectViewEnv who (VEnv.eraseEnv env)) := by
+  cases hΓ
+  rfl
+
 /-- Decode a program-local optional FOSG move into the value chosen at a
 particular Vegas commit type, using `default` on impossible branches.
 
@@ -261,6 +269,115 @@ theorem collapsedHeadKernelAtCommit_guard_of_not_exists
   rw [collapsedHeadKernelAtCommit_eq_fallback_of_not_exists
     g hctx β fallback suffix (projectViewEnv who ρ) hnorep] at hv
   exact headKernelPMF_supported_atCursor g hctx fallback suffix ρ hv
+
+theorem valueOfProgramMoveOr_guard_of_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    {ρ : Env L.Val (eraseVCtx Γ)}
+    (h : (observedProgramFOSG g hctx).History)
+    (hobs :
+      privateObsOfCursorWorld who h.lastState =
+        privateObsOfCommitSite suffix (projectViewEnv who ρ))
+    {oi : Option (ProgramAction g.prog who)}
+    (hoi : oi ∈ (observedProgramFOSG g hctx).availableMoves h who)
+    {default v : L.Val b}
+    (hv : valueOfProgramMoveOr default oi = v) :
+    evalGuard (Player := P) (L := L) R v ρ = true := by
+  have hlocal0 :
+      oi ∈ (observedProgramFOSG g hctx).availableMovesAtState
+        h.lastState who := by
+    simpa [GameTheory.FOSG.availableMoves] using hoi
+  have hvalue : valueOfProgramMoveOr default oi = v := hv
+  cases hlast : h.lastState with
+  | mk data valid =>
+      rcases data with ⟨cursor, env⟩
+      rw [hlast] at hlocal0 hobs
+      dsimp [privateObsOfCursorWorld, privateObsOfCommitSite] at hobs
+      injection hobs with hcursor henv
+      change cursor =
+        ProgramCursor.CommitCursor.toProgramCursor suffix.commitCursor at hcursor
+      cases hcursor
+      cases oi with
+      | none =>
+          have hactive :
+              who ∈ CursorCheckedWorld.active
+                (⟨{ cursor :=
+                    ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor,
+                    env := env }, valid⟩ : CursorCheckedWorld g) := by
+            exact active_mem_of_eq_commit
+              (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
+              (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
+              env
+          have hnot :
+              who ∉ CursorCheckedWorld.active
+                (⟨{ cursor :=
+                    ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor,
+                    env := env }, valid⟩ : CursorCheckedWorld g) := by
+            simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+              GameTheory.FOSG.locallyLegalAtState] using hlocal0
+          exact False.elim (hnot hactive)
+      | some ai =>
+          have hact :
+              ProgramAction.toAction ai ∈
+                FOSGBridge.availableActions
+                  ({ Γ :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).Γ,
+                     prog :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).prog,
+                     env := env } : World P L) who := by
+            simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+              GameTheory.FOSG.locallyLegalAtState,
+              CursorCheckedWorld.availableProgramActions,
+              CursorCheckedWorld.availableActions,
+              CursorCheckedWorld.toWorld] using hlocal0.2.1
+          have hbroad :=
+            availableActions_of_eq_commit
+              (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
+              (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
+              env hact
+          rcases hbroad with ⟨u, huact, hguard_env⟩
+          have hdecode :
+              valueOfProgramMoveOr default (some ai) = u :=
+            valueOfProgramMoveOr_eq_of_toAction default u ai huact
+          have huv : u = v := by
+            rw [← hdecode]
+            exact hvalue
+          subst v
+          have hview :
+              projectViewEnv who
+                  (VEnv.eraseEnv
+                    ((ProgramSuffix.commitCursor_toProgramCursor_Γ suffix) ▸
+                      env)) =
+                projectViewEnv who ρ := by
+            have hleft := projectViewEnv_eraseEnv_cast_heq who
+              (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix) env
+            have hright : HEq
+                (cast (Eq.symm (privateObsOfCommitSite._proof_1 suffix))
+                  (projectViewEnv who ρ))
+                (projectViewEnv who ρ) := by
+              exact cast_heq _ _
+            exact eq_of_heq (hleft.trans (henv.trans hright))
+          have hctx_local :
+              WFCtx (L := L) Γ :=
+            suffix.wfctx hctx g.wf.1
+          have hfresh_local :
+              Fresh x Γ :=
+            (suffix.fresh g.wf.1).1
+          have hsc_local :
+              GuardUsesOnly (L := L) (Γ := Γ) (x := x)
+                (who := who) R :=
+            ViewScoped.commit_guard_usesOnly
+              (suffix.viewScoped g.wf.2.2)
+          rw [← evalGuard_eq_of_projectViewEnv_eq
+            hctx_local hfresh_local hsc_local hview]
+          simpa [hdecode] using hguard_env
 
 /-- Raw syntax-recursive Vegas behavioral strategy obtained by collapsing a
 sequential FOSG behavioral profile.  The legality wrapper is proved separately

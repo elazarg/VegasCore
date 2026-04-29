@@ -354,6 +354,16 @@ def get {Player : Type} {L : IExpr} {Γ : VCtx Player L} {x : VarId}
     L.Val τ.base :=
   env x τ h
 
+def tail {Player : Type} {L : IExpr} {Γ : VCtx Player L} {x : VarId}
+    {τ : BindTy Player L}
+    (env : VEnv L ((x, τ) :: Γ)) : VEnv L Γ :=
+  fun y σ h => env y σ (VHasVar.there h)
+
+@[simp] theorem tail_cons {Player : Type} {L : IExpr} {Γ : VCtx Player L}
+    {x : VarId} {τ : BindTy Player L}
+    {v : L.Val τ.base} {env : VEnv L Γ} :
+    tail (x := x) (τ := τ) (cons v env) = env := rfl
+
 @[simp] theorem cons_get_here {Player : Type} {L : IExpr}
     {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
     {v : L.Val τ.base} {env : VEnv L Γ} :
