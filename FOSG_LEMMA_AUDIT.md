@@ -1,0 +1,361 @@
+# FOSG Lemma Audit
+
+Scope: theorem and lemma declarations in `Vegas/FOSG.lean` and `Vegas/FOSG/**.lean`.
+Definitions are mentioned only when needed to explain why a lemma exists. Entries are
+ordered by source file and then by declaration order.
+
+## Vegas/FOSG.lean
+
+- `toFOSG_legalObservable`: Exposes the canonical Vegas-to-FOSG game as a legal-observable FOSG, which is the library-side precondition needed before FOSG observation and strategy theorems can be applied.
+- `toFOSG_boundedHorizon`: Proves the compiled FOSG has a finite syntax-step horizon, needed for finite-game FOSG results such as reachable strategy finite support and Kuhn-style theorems.
+- `toFOSGKernelGame_outcomeKernel`: Identifies the public FOSG kernel-game wrapper with the observed-program outcome kernel, so downstream users can unfold the canonical API without seeing the intermediate construction.
+- `toFOSG_mixedPure_realizedByBehavioral_outcomeKernel`: Main top-level transport theorem from FOSG mixed-pure realization back to equality of Vegas/FOSG outcome kernels.
+- `reachableProgram_mixedPure_realizedByBehavioralPMF_finite`: Finite reachable mixed-pure realization theorem for the canonical Vegas FOSG, currently the closest proved endpoint for Kuhn-style behavioral realization.
+
+## Vegas/FOSG/Basic.lean
+
+- `syntaxSteps_ret`: Base case for the syntactic progress measure; terminal returns have zero remaining syntax work.
+- `syntaxSteps_letExpr`: Computes the progress measure through `letExpr`, allowing induction and horizon proofs to descend through let-binding syntax.
+- `syntaxSteps_sample`: Computes the progress measure through `sample`, needed for step-decrease proofs in probabilistic syntax.
+- `syntaxSteps_commit`: Computes the progress measure through `commit`, the active decision form.
+- `syntaxSteps_reveal`: Computes the progress measure through `reveal`, needed because reveals are silent syntax steps in the compiled FOSG.
+- `World.terminal_iff_syntaxSteps_eq_zero`: Connects semantic terminality of the unchecked world to the syntactic measure used for bounded-horizon proofs.
+- `terminal_ret`: Simplifies terminality of return worlds.
+- `active_ret`: Simplifies active players at return worlds.
+- `terminal_active_eq_empty`: Terminal worlds have no active players; used to discharge FOSG action legality obligations at terminal states.
+- `terminal_no_legal`: Rules out legal joint actions at terminal worlds, matching FOSG semantics.
+- `noop_legal_of_active_empty`: Supplies a legal no-op joint action when no player is active but the state is nonterminal.
+- `exists_jointActionLegal_of_legal`: Turns per-player legal choices into a legal joint action, needed for FOSG's global action existence obligation.
+- `initial_exists_jointActionLegal`: Establishes the initial FOSG state has at least one legal joint action when nonterminal.
+- `tail_isLegal`: Preserves legality through a list tail, used in the enumerated action construction.
+- `mem_enumerate`: Shows every legal program action appears in the finite enumeration used to build FOSG action sets.
+- `pureStrategy_isLegal`: Proves the simple pure strategy extracted from a Vegas legal pure strategy is legal in the FOSG interface.
+- `pureProfile_letExpr`: Evaluates pure-profile action choice through `letExpr`, a simplification lemma for recursive pure strategy compilation.
+- `pureProfile_sample`: Evaluates pure-profile action choice through `sample`, needed for non-active probabilistic syntax.
+- `pureProfile_commit`: Evaluates pure-profile action choice at commits, the core bridge from Vegas pure strategies to FOSG actions.
+- `pureProfile_reveal`: Evaluates pure-profile action choice through reveals.
+- `pureProfile_apply`: General statement tying compiled pure profiles to their selected legal actions.
+- `pureProfile_isLegal`: Establishes that the compiled pure profile satisfies FOSG legality everywhere.
+- `behavioralProfile_letExpr`: Simplifies compiled finite-distribution behavioral profiles through `letExpr`.
+- `behavioralProfile_sample`: Simplifies compiled finite-distribution behavioral profiles through `sample`.
+- `behavioralProfile_commit`: Simplifies compiled finite-distribution behavioral profiles at commits.
+- `behavioralProfile_reveal`: Simplifies compiled finite-distribution behavioral profiles through reveals.
+- `behavioralProfile_isLegal`: Proves compiled finite-distribution behavioral profiles satisfy FOSG legality.
+- `behavioralProfilePMF_letExpr`: PMF analogue of behavioral-profile simplification through `letExpr`.
+- `behavioralProfilePMF_sample`: PMF analogue through `sample`.
+- `behavioralProfilePMF_commit`: PMF analogue at commits.
+- `behavioralProfilePMF_reveal`: PMF analogue through reveals.
+- `behavioralProfilePMF_isLegal`: Proves compiled PMF behavioral profiles satisfy FOSG legality.
+- `behavioralProfilePMF_toBehavioralPMF`: Shows the directly compiled PMF behavioral profile agrees with converting the finite-distribution Vegas behavioral profile to PMFs.
+- `behavioralProfile_toBehavioral`: Shows the compiled behavioral profile agrees with the behavioral profile obtained from pure-strategy conversion.
+- `ty_liftCommitCursor`: Type-transport lemma for commit cursors under lifted contexts.
+- `ty_commitCursor`: Recovers the commit type from a commit cursor, needed to align dependent action values.
+- `commitAt_cursor`: Simplifies the cursor stored in a `commitAt` proof.
+- `cast_val_roundtrip`: Private dependent-cast helper for values transported across equal commit types.
+- `commitAt_value_cast`: Simplifies transported commit values back to the original value.
+- `extend_here_left`: Simplifies lookup after extending a cursor context with the head binding.
+- `extend_Γ`: Identifies the context of an extended cursor.
+- `extend_prog`: Identifies the program under an extended cursor.
+- `CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero`: Connects cursor-checked terminality to the remaining syntax-step measure.
+- `checkedTerminal_iff_remainingSyntaxSteps_eq_zero`: Same terminality/measure bridge for checked worlds.
+- `heq_of_cast_eq`: Private helper for dependent equality after casts; used where ordinary equality is too weak.
+- `availableProgramActionsAt_commit_owner_iff`: Characterizes available program actions at a commit exactly by owner and guard legality.
+- `availableProgramActionsAt_eq_of_toAction_eq`: Allows equality of available actions to be proved through equality of erased FOSG actions.
+- `availableProgramMovesAt_eq_of_projectViewEnv_eq`: Shows available moves depend only on the player's projected view, essential for observation-based legality.
+- `CursorProgramJointActionLegal.toAction`: Converts legal cursor-level joint actions into legal checked-world FOSG actions.
+- `commit_value_of_legal`: Private extractor of the chosen commit value from a legal joint action.
+- `commitValueOfLegal_proof_irrel`: Shows extracted commit values do not depend on proof artifacts.
+- `commitValueOfLegal_action`: Relates the extracted value to the underlying action object.
+- `commitValueOfLegal_guard`: Carries guard legality for the extracted value.
+- `commitValueOfLegal_eq_action_value`: Identifies extracted value with the raw action value.
+- `commitValueOfLegal_eq_programAction_value`: Same identification through the `ProgramAction` wrapper.
+- `checked_terminal_active_eq_empty`: Checked terminal states have no active players.
+- `checked_terminal_no_legal`: Checked terminal states admit no legal checked actions.
+- `checked_nonterminal_exists_legal`: Nonterminal checked states admit some legal action, satisfying the FOSG totality obligation.
+- `cursor_terminal_active_eq_empty`: Cursor terminal states have no active players.
+- `cursor_terminal_no_program_legal`: Cursor terminal states admit no legal program action.
+- `cursor_active_eq_empty_of_letExpr`: Let expressions are silent states with no active player.
+- `cursor_not_terminal_of_letExpr`: Let expressions are nonterminal syntax steps.
+- `cursor_active_eq_empty_of_sample`: Samples are silent states with no active player.
+- `cursor_not_terminal_of_sample`: Samples are nonterminal syntax steps.
+- `cursor_active_eq_singleton_of_commit`: Commits activate exactly the commit owner.
+- `cursor_not_terminal_of_commit`: Commits are nonterminal syntax steps.
+- `cursor_active_eq_empty_of_reveal`: Reveals are silent states with no active player.
+- `cursor_not_terminal_of_reveal`: Reveals are nonterminal syntax steps.
+- `cursor_nonterminal_exists_program_legal`: Nonterminal cursor states have some legal program-level action.
+- `checkedTransition_commit_eq_programActionContinuation`: Computes checked transition at a commit from the selected legal program action.
+- `checkedTransition_congr_checkedWorld`: Lets checked transitions be rewritten across equal checked worlds.
+- `cursorTransitionState_map_toCheckedWorldFromSuffix`: Relates cursor transition state to checked-world transition by mapping through suffix reconstruction.
+- `cursorProgramTransition_map_checkedWorld`: Main bridge from cursor transitions to checked-world transitions.
+- `pmf_map_apply_of_injective`: Private PMF support/mass helper for injective maps.
+- `pmf_map_massInvariant_of_injective`: Private mass-invariance helper for mapped PMFs.
+- `cursorTransitionState_massInvariant`: Cursor transitions preserve total PMF mass.
+- `CursorRuntimeState.toChecked_injective`: Injectivity needed to move probability equalities through checked-state projection.
+- `cursorProgramTransition_massInvariant`: Program-level cursor transitions preserve mass.
+- `cursorTransitionState_remainingSyntaxSteps`: Cursor transition strictly respects/decreases remaining syntax steps.
+- `cursorProgramTransition_remainingSyntaxSteps`: Program transition respects/decreases remaining syntax steps.
+- `checkedTransition_remainingSyntaxSteps`: Checked transition respects/decreases remaining syntax steps, used for bounded horizon and run termination.
+
+## Vegas/FOSG/Observation.lean
+
+- `privateObsOfCursorWorld_eraseEnv`: The private observation of a cursor world contains exactly the erased environment, needed to relate observations to Vegas views.
+- `availableProgramMovesAt_eq_of_privateObs_eq`: Available moves are invariant under equal private observations.
+- `observedProgram_availableMovesAtState_eq_of_privateObs_eq`: Lifts the previous invariance to the observed FOSG state API.
+- `observedProgramTransition_map_checkedWorld_eq_checkedTransition`: Shows observed FOSG transition projected to checked worlds is the checked transition.
+- `observedProgramFOSG_stepChain_remainingSyntaxSteps`: Establishes syntax-step progress along one FOSG step.
+- `observedProgramFOSG_history_remainingSyntaxSteps`: Extends progress to histories, giving a global bound.
+- `observedProgramFOSG_boundedHorizon`: Packages the progress result as the FOSG bounded-horizon property.
+- `cursorVegasOutcomeKernel_initial`: Simplifies the cursor outcome kernel at the initial state.
+- `cursorVegasOutcomeKernel_terminal`: Computes the cursor outcome kernel on terminal histories.
+- `observedProgramRunDist_support_terminal`: Shows supported run outcomes are terminal, needed before extracting payoffs/outcomes.
+- `observedProgramRunDist_eq_runDistFrom_initial`: Identifies the default run distribution with running from the initial state.
+- `observedProgramRunDistFrom_historyOutcome_terminal`: Computes history outcome extraction at terminal histories.
+- `observedProgramRunDistFrom_historyOutcome_succ_active_empty`: Handles silent nonterminal steps in history outcome extraction.
+
+## Vegas/FOSG/Observed/Base.lean
+
+- `last?_append_singleton`: List helper used to compute latest observation after appending one event.
+- `programObservationEvents_nil`: Base case for observation extraction from an empty history.
+- `programLatestObservation?_nil`: There is no latest observation in an empty history.
+- `programLatestObservation?_append_obs`: Appending an observation event makes it the latest observation.
+- `programLatestObservation?_append_act_obs`: Appending an action then observation still makes the observation latest.
+- `programLatestObservation?_history_snoc`: Computes latest observation after extending a FOSG history by one step.
+- `programLatestObservation?_history_appendStep`: Computes latest observation after using the library append-step operation.
+- `programLatestObservation?_history_nil`: Simplifies latest observation for the empty FOSG history.
+- `programLatestObservation?_history_of_ne_nil`: Nonempty histories have a latest observation in the observed-program construction.
+- `observedProgramFOSG_legalObservable`: Proves the observed-program FOSG satisfies GameTheory's legal-observable condition.
+
+## Vegas/FOSG/Observed/Behavioral.lean
+
+- `moveAtProgramCursor_commit_owner`: Simplifies behavioral move selection at a commit to the owner's strategy component.
+- `mem_fdist_support_of_mem_toPMF_support`: Private bridge from PMF support back to finite-distribution support.
+- `headKernel_supported_atCursor`: Supported actions from the behavioral head kernel are available at the current cursor.
+- `moveAtProgramCursorPMF_commit_owner`: PMF version of commit-owner behavioral move selection.
+- `headKernelPMF_supported_atCursor`: PMF version of supported-action availability.
+- `moveAtCheckedWorld_ofCursorChecked`: Simplifies checked-world behavioral move selection for a cursor-checked world.
+- `moveAtCheckedWorldPMF_ofCursorChecked`: PMF analogue of the cursor-checked simplification.
+- `moveAtProgramCursor_support_availableAt`: Every finite-distribution behavioral support action is available at the program cursor.
+- `moveAtCursorWorld_support_available`: Lifts program-cursor support legality to cursor worlds.
+- `moveAtProgramCursorPMF_support_availableAt`: PMF support legality at program cursors.
+- `moveAtCursorWorldPMF_support_available`: PMF support legality at cursor worlds.
+
+## Vegas/FOSG/Observed/Pure.lean
+
+- `movePureAtProgramCursor_eq_strategy`: Identifies pure FOSG move selection with the underlying Vegas pure strategy at a cursor.
+- `movePureAtProgramCursor_commit_owner`: Commit-owner simplification for pure move selection.
+- `headPureKernel_legal_atCursor`: The pure head kernel selects an available action at the cursor.
+- `headPureStrategyKernel_legal_atCursor`: Same legality result for the pure-strategy kernel wrapper.
+- `movePureAtProgramCursor_availableAt`: Pure cursor move is available at the program cursor.
+- `movePureStrategyAtProgramCursor_availableAt`: Pure-strategy cursor move is available at the program cursor.
+- `movePureAtCursorWorld_available`: Lifts pure availability from program cursor to cursor world.
+- `movePureStrategyAtCursorWorld_available`: Lifts pure-strategy availability from program cursor to cursor world.
+- `moveAtProgramCursor_toBehavioral_eq_pure`: Behavioral conversion of a pure strategy chooses the same cursor action.
+- `moveAtCursorWorld_toBehavioral_eq_pure`: Cursor-world version of pure-to-behavioral action equality.
+- `moveAtProgramObservation?_of_cursorWorld`: Observation-indexed behavioral action lookup agrees with cursor-world lookup.
+- `moveAtProgramObservationPMF?_of_cursorWorld`: PMF analogue of observation-indexed lookup agreement.
+- `movePureAtProgramObservation?_eq_strategy`: Pure observation-indexed lookup agrees with the underlying strategy.
+- `movePureAtProgramObservation?_of_cursorWorld`: Pure observation-indexed lookup agrees with cursor-world lookup.
+- `movePureStrategyAtProgramObservation?_of_cursorWorld`: Same agreement for the pure-strategy wrapper.
+- `programPureProfileCandidate_eq_strategy`: The candidate reachable pure profile recovers the original Vegas pure strategy where defined.
+- `programPureStrategyCandidate_nil`: Base case for candidate pure strategy construction from an empty history.
+- `programPureStrategyCandidate_snoc`: Step case for candidate pure strategy construction.
+- `programPureStrategyCandidate_appendStep`: Append-step form of candidate pure strategy construction.
+- `programPureStrategyCandidate_history`: General history theorem for candidate pure strategies.
+- `programPureStrategyCandidate_available`: Candidate pure strategy chooses available actions.
+- `programPureProfileCandidate_nil`: Base case for candidate pure profile construction.
+- `programPureProfileCandidate_snoc`: Step case for candidate pure profile construction.
+- `programPureProfileCandidate_appendStep`: Append-step form of candidate pure profile construction.
+- `programPureProfileCandidate_history`: General history theorem for candidate pure profiles.
+- `programPureProfileCandidate_available`: Candidate pure profiles choose available actions.
+- `toObservedProgramLegalPureProfile_apply`: Simplifies the legal pure profile adapter at a concrete history.
+- `toObservedProgramReachableLegalPureProfile_eq_component`: The reachable pure profile adapter agrees with the component strategy.
+- `toObservedProgramReachableMixedPureProfile_joint`: The reachable mixed-pure profile adapter has the expected joint distribution.
+- `toObservedProgramReachableLegalPureProfile_apply`: Simplifies reachable legal pure profile application.
+- `toObservedProgramReachableLegalPureProfile_extend_apply_history`: Completion does not change values on reachable histories.
+- `moveAtProgramObservation?_toBehavioral_eq_pure`: Observation-level pure-to-behavioral equality.
+- `programBehavioralProfileCandidate_nil`: Base case for candidate behavioral profile construction.
+- `programBehavioralProfileCandidate_snoc`: Step case for candidate behavioral profile construction.
+- `programBehavioralProfileCandidate_appendStep`: Append-step form for behavioral candidate construction.
+- `programBehavioralProfileCandidate_history`: General history theorem for behavioral candidates.
+- `programBehavioralProfileCandidate_support_available_snoc`: Support legality after one history extension.
+- `programBehavioralProfileCandidate_support_available_appendStep`: Support legality for append-step histories.
+- `programBehavioralProfileCandidate_support_available`: Candidate behavioral profiles put support only on available actions.
+- `programBehavioralProfilePMFCandidate_nil`: PMF candidate behavioral base case.
+- `programBehavioralProfilePMFCandidate_snoc`: PMF candidate behavioral step case.
+- `programBehavioralProfilePMFCandidate_appendStep`: PMF append-step candidate theorem.
+- `programBehavioralProfilePMFCandidate_history`: General PMF history theorem for behavioral candidates.
+- `programBehavioralProfilePMFCandidate_support_available`: PMF candidate support legality.
+- `toObservedProgramLegalBehavioralProfile_apply`: Simplifies finite-distribution legal behavioral adapter application.
+- `toObservedProgramLegalBehavioralProfilePMF_apply`: Simplifies PMF legal behavioral adapter application.
+- `toObservedProgramReachableLegalBehavioralProfile_apply`: Simplifies reachable finite-distribution behavioral adapter application.
+- `toObservedProgramReachableLegalBehavioralProfilePMF_apply`: Simplifies reachable PMF behavioral adapter application.
+- `toObservedProgramReachableLegalBehavioralProfile_extend_apply_history`: Completion preserves finite-distribution behavioral choices on reachable histories.
+- `toObservedProgramReachableLegalBehavioralProfilePMF_extend_apply_history`: Completion preserves PMF behavioral choices on reachable histories.
+- `observedProgramRunDist_reachable_extend_eq`: Run distributions are unchanged by completing reachable behavioral strategies off-reach.
+- `observedProgramRunDistPMF_reachable_extend_eq`: PMF version of run-distribution invariance under completion.
+- `observedProgramProjectedPayoff_terminalWeight_reachable_eq_runDist`: Projected payoffs computed through terminal weights agree with run distributions on reachable completions.
+- `observedProgramTerminalHistory_behavioral_to_mixed_eu_reachable`: FOSG terminal-history expected utility agrees between behavioral and mixed-pure profiles on reachable histories.
+- `observedProgramProjectedPayoff_behavioral_to_mixed_reachable`: Projected payoff equality for behavioral realization of mixed-pure profiles.
+- `programBehavioralProfileCandidate_toBehavioral_eq_pure`: Candidate behavioral profile from a pure profile is the pure-to-behavioral conversion.
+- `toObservedProgramLegalBehavioralProfile_toBehavioral`: Legal behavioral adapter commutes with pure-to-behavioral conversion.
+- `observedProgramLegalActionLaw_bind_coord`: Finite-distribution legal action law decomposes into the coordinated Vegas behavioral move distribution.
+- `observedProgramLegalActionLawPMF_bind_coord`: PMF legal action law decomposes into the coordinated Vegas behavioral move distribution.
+
+## Vegas/FOSG/Observed/Kernel.lean
+
+- `moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep`: Binding a finite-distribution behavioral action through commit continuation equals one checked profile step.
+- `moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF`: PMF analogue of the behavioral action/checked-step bridge.
+- `checkedTransition_eq_checkedProfileStep_of_active_empty`: Silent checked transition agrees with checked profile stepping when no player is active.
+- `checkedTransition_eq_checkedProfileStepPMF_of_active_empty`: PMF analogue for silent checked profile stepping.
+- `observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty`: Observed FOSG legal action law followed by transition equals checked profile stepping in silent states.
+- `observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty`: PMF analogue for silent states.
+- `observedProgram_active_mem_commitData`: If a player is active, the current state carries commit data for that player.
+- `observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep`: Main finite-distribution one-step correspondence between observed FOSG stepping and checked Vegas stepping.
+- `observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF`: PMF one-step correspondence.
+- `checkedVegasOutcomeKernel_terminal`: Computes checked Vegas outcome kernel at terminal checked worlds.
+- `checkedVegasOutcomeKernelPMF_terminal`: PMF analogue of terminal checked outcome kernel.
+- `checkedProfileStep_bind_checkedVegasOutcomeKernel`: One checked profile step followed by outcome extraction equals direct checked outcome kernel.
+- `checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF`: PMF analogue of one-step outcome-kernel fusion.
+- `checkedProfileStep_remainingSyntaxSteps`: Checked profile step respects/decreases the remaining syntax measure.
+- `checkedProfileStepPMF_remainingSyntaxSteps`: PMF analogue of syntax-measure progress.
+- `checkedProfileRun_zero`: Zero checked run steps return the current checked world.
+- `checkedProfileRun_succ_terminal`: Running from a terminal checked world is stationary.
+- `checkedProfileRun_terminal`: Any positive run from a terminal checked world is stationary.
+- `checkedProfileRun_succ_nonterminal`: Recursive equation for one more finite-distribution checked run step in nonterminal states.
+- `checkedProfileRunPMF_zero`: PMF zero-step run equation.
+- `checkedProfileRunPMF_succ_terminal`: PMF terminal-state stationarity.
+- `checkedProfileRunPMF_terminal`: PMF positive-run terminal stationarity.
+- `checkedProfileRunPMF_succ_nonterminal`: PMF recursive equation for nonterminal checked runs.
+- `checkedTransition_bind_checkedProfileRun_eq_checkedProfileRun_succ_of_active_empty`: Silent checked transitions compose with run recursion correctly.
+- `checkedProfileRun_bind_checkedVegasOutcomeKernel`: Fuses checked runs with checked outcome extraction.
+- `checkedProfileRunPMF_bind_checkedVegasOutcomeKernelPMF`: PMF run/outcome fusion.
+- `checkedProfileRun_support_terminal`: Supported endpoints of a sufficiently long checked run are terminal.
+- `checkedProfileRunPMF_support_terminal`: PMF analogue of terminal support.
+- `checkedProfileRun_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernel`: Mapping checked run endpoints to outcomes equals the checked outcome kernel.
+- `checkedProfileRunPMF_map_checkedWorldOutcome_eq_checkedVegasOutcomeKernelPMF`: PMF analogue of checked run projection.
+- `checkedVegasOutcomeKernel_initial`: Simplifies checked outcome kernel at the initial world.
+- `checkedVegasOutcomeKernelPMF_initial`: PMF initial checked outcome simplification.
+- `checkedProfileRun_initial_outcomeKernel`: Checked finite-distribution run from the initial world equals Vegas outcome kernel.
+- `checkedProfileRunPMF_initial_outcomeKernel`: PMF initial run equals Vegas PMF outcome kernel.
+- `checkedVegasOutcomeKernel_ofCursorChecked`: Checked outcome kernel agrees with cursor outcome kernel after cursor-to-checked embedding.
+- `checkedWorldOutcome_ofCursorChecked`: Checked-world outcome extraction agrees with cursor outcome extraction after embedding.
+- `checkedWorldOutcome_observedProgramHistoryCheckedWorld`: Outcome extraction agrees on checked worlds reconstructed from observed histories.
+- `checkedTerminal_observedProgramHistoryCheckedWorld`: Terminality agrees on checked worlds reconstructed from observed histories.
+- `observedProgramHistoryCheckedWorld_extendByOutcome_of_support`: Extending an observed history by a supported outcome updates the reconstructed checked world as expected.
+- `observedProgramOutcomeKernel_eq_checkedWorldProjection`: Observed FOSG outcome kernel is the checked-world run distribution projected to outcomes.
+- `observedProgramCheckedWorldRunDistFrom_zero`: Zero observed checked-world run steps return the current checked world.
+- `observedProgramCheckedWorldRunDist_eq_runDistFrom_initial`: Observed checked-world run distribution starts from the initial history.
+- `observedProgramCheckedWorldRunDistFrom_terminal`: Terminal observed histories are stationary under checked-world run distribution.
+- `observedProgramCheckedWorldRunDistFrom_terminal_eq_checkedProfileRun`: At terminal histories, observed checked-world runs equal checked Vegas profile runs.
+- `observedProgramCheckedWorldRunDistFrom_succ_nonterminal`: Recursive equation for observed checked-world runs in nonterminal states.
+- `observedProgramCheckedWorldRunDistFrom_succ_active_empty`: Specialized recursive equation for silent nonterminal states.
+- `observedProgramCheckedWorldRunDistFrom_eq_checkedProfileRun`: Main finite-distribution equality between observed checked-world runs and checked Vegas runs.
+- `observedProgramCheckedWorldRunDistFromPMF_zero`: PMF zero-step observed checked-world run equation.
+- `observedProgramCheckedWorldRunDistFromPMF_terminal_eq_checkedProfileRunPMF`: PMF terminal observed run equals checked Vegas PMF run.
+- `observedProgramCheckedWorldRunDistFromPMF_succ_nonterminal`: PMF recursive equation for observed checked-world runs.
+- `observedProgramCheckedWorldRunDistFromPMF_eq_checkedProfileRunPMF`: Main PMF equality between observed checked-world runs and checked Vegas runs.
+- `observedProgramHistoryCheckedWorld_nil`: Reconstructed checked world from an empty observed history is the initial checked world.
+- `observedProgramCheckedWorldRunDist_eq_checkedProfileRun`: Initial finite-distribution observed checked-world run equals checked Vegas run.
+- `observedProgramCheckedWorldRunDistPMF_eq_runDistFrom_initial`: PMF observed checked-world run starts from the initial history.
+- `observedProgramCheckedWorldRunDistPMF_eq_checkedProfileRunPMF`: Initial PMF observed checked-world run equals checked Vegas PMF run.
+- `observedProgramOutcomeKernelPMF_eq_checkedWorldProjection`: PMF observed outcome kernel is checked-world run projected to outcomes.
+- `observedProgramOutcomeKernelPMF_eq_checkedWorldRunDistPMF`: PMF outcome kernel equals PMF checked-world run distribution projected to outcomes.
+- `observedProgramOutcomeKernelPMF_eq_toKernelGamePMF`: PMF observed outcome kernel equals the existing Vegas behavioral kernel-game outcome.
+- `observedProgramReachableOutcomeKernelPMF_eq_toKernelGamePMF`: Reachable PMF observed outcome kernel equals the existing Vegas behavioral kernel-game outcome.
+- `observedProgramOutcomeKernel_eq_checkedWorldRunDist`: Finite-distribution observed outcome kernel equals checked-world run distribution projected to outcomes.
+- `observedProgramOutcomeKernel_eq_toKernelGame_of_checkedWorldRunDist_eq`: Generic transport lemma from checked-world run equality to kernel-game equality.
+- `observedProgramOutcomeKernel_eq_toKernelGame`: Finite-distribution observed outcome kernel equals the existing Vegas behavioral kernel-game outcome.
+- `observedProgramPureOutcomeKernel_eq_toStrategicKernelGame`: Observed pure FOSG outcome kernel equals the existing Vegas pure strategic kernel game.
+- `observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame`: Reachable pure observed outcome kernel equals the existing Vegas pure strategic kernel game.
+- `observedProgramOutcomeKernelGame_outcomeKernel`: Simplifies the kernel-game wrapper's outcome kernel field.
+- `observedProgramOutcomeKernelGame_udist`: Simplifies utility distribution through the kernel-game wrapper.
+- `observedProgramOutcomeKernelGame_eu`: Simplifies expected utility through the kernel-game wrapper.
+- `observedProgramProjectedPayoff_runDist_eq_toKernelGame_eu`: FOSG projected payoff equals Vegas kernel-game expected utility.
+- `observedProgramProjectedPayoff_behavioral_to_mixed_toKernelGame_eu_reachable`: Behavioral/mixed-pure payoff equality transported all the way to Vegas kernel-game EU.
+- `observedProgramReachable_mixed_to_coreBehavioral`: Builds a core Vegas behavioral profile realizing a reachable FOSG mixed-pure profile.
+- `observedProgramReachable_mixed_to_coreBehavioral_outcomeDist`: Outcome distribution equality for that core behavioral realization.
+- `observedProgramReachable_mixed_to_coreBehavioral_outcomeDist_finite`: Finite-support version of the core behavioral realization theorem.
+- `observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist`: Legal behavioral realization theorem stated through run distributions.
+- `observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist_finite`: Finite-support legal behavioral realization theorem.
+- `observedProgramReachableKernelGame_outcomeKernel`: Simplifies the reachable kernel-game wrapper's outcome kernel.
+- `observedProgramReachable_vegasMixedPure_to_coreBehavioral_outcomeDist_finite`: Converts a Vegas mixed pure profile to a core behavioral profile with equal outcome distribution.
+- `observedProgramReachable_vegasMixedPure_to_coreBehavioral_toStrategicKernelGame_finite`: Transports that equality to the pure strategic kernel-game view.
+- `observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite`: Run-distribution form of the Vegas mixed-pure to strategic-kernel equality.
+- `observedProgramReachableKernelGame_mixedPure_realization`: Final reachable kernel-game realization theorem used by the top-level FOSG API.
+
+## Vegas/FOSG/Observed/Completion.lean
+
+- `currentMoveOfAvailableAtPrivateObs_val_of_available`: Shows completion from an available private observation returns the original move value, used to safely fill off-reach choices.
+
+## Vegas/FOSG/Observed/Current.lean
+
+- `toProgramMoveAtWorld_available`: Converts current-value moves at a world into available program moves.
+- `CurrentValueMove.subsingleton_of_not_active`: Current-value move type is subsingleton when the player is inactive, needed for posterior-locality side conditions.
+- `VEnv.eraseEnv_ofErased`: Erasing an environment reconstructed from erased values gives back those erased values.
+- `VEnv.eq_of_eraseEnv_eq`: Full visible environments are equal when their erased environments agree, relying on context typing.
+- `VEnv.toView_cons_hidden_self_head_eq`: Computes the current player's view across a hidden self-binding at the head.
+- `VEnv.toView_cons_hidden_self_tail_eq`: Computes the current player's view across hidden self-bindings in the tail.
+- `VEnv.toView_ofErased_projectViewEnv`: Reconstructing from erased projected values gives the same player view.
+- `privateObsOfViewAtCursor_eraseEnv`: Private observation from a view exposes exactly the erased environment.
+- `privateObsOfCursorWorld_ofErased`: Cursor-world private observation agrees with the reconstructed current view.
+- `CurrentProgramMove.val_mk`: Simplifies the value field of a constructed current program move.
+- `CurrentProgramMove.eq_none_of_not_active`: Current program move is none when the player is inactive.
+- `CurrentProgramMove.eq_none_of_terminal`: Current program move is none at terminal cursors.
+- `CurrentProgramMove.subsingleton_of_not_active`: Program move type is subsingleton when inactive.
+- `CurrentProgramMove.subsingleton_of_terminal`: Program move type is subsingleton at terminal states.
+- `currentProgramJointActionRaw_eq_of_active_empty`: Raw current joint action is unique when no player is active.
+- `currentProgramJointActionRaw_eq_of_agree_active`: Raw current joint actions are equal when they agree on active players.
+- `currentProgramJointAction_eq_of_active_empty`: Legal current joint action is unique when no player is active.
+- `currentProgramMove_eq_none_of_commit_nonowner`: Nonowners have no current move at a commit.
+- `currentProgramMove_exists_available_action_of_commit_owner`: Commit owners have an available action corresponding to their current move.
+- `currentMoveCommitValueOrDefault_eq_programAction_value`: The defaulted current move value matches the selected program action value.
+- `currentProgramMove_commit_valueOrDefault_eq_action`: Current move's defaulted value reconstructs the selected commit action.
+- `currentMoveCommitValueOrDefault_guard_at_commit`: Guard legality holds for the current move value at the commit syntax.
+- `currentMoveCommitValueOrDefault_guard_at_cursor`: Guard legality holds for the current move value at the cursor level.
+- `currentProgramJointActionLegal`: Current joint actions are legal checked/program actions.
+- `currentProgramStep_terminal`: Current-step kernel is stationary at terminal states.
+- `currentProgramStep_nonterminal`: Current-step kernel unfolds to checked transition in nonterminal states.
+- `currentValueProgramJointActionRaw_eq`: Current-value raw joint action agrees with the current program joint action.
+- `currentValueProgramJointActionLegal`: Current-value joint action is legal.
+- `currentValueProgramStep_terminal`: Current-value step is stationary at terminal states.
+- `currentValueProgramStep_nonterminal`: Current-value step unfolds to checked transition in nonterminal states.
+- `currentValueProgramStep_checkedTransition_support`: Supported current-value steps are supported checked transitions.
+- `checkedTransition_commit_support_eq_programActionContinuation`: Supported checked commit transitions land exactly in the selected action continuation.
+- `currentProgramStep_eq_of_active_empty`: Current-step kernels are equal when no player is active.
+- `currentProgramStep_eq_of_agree_active`: Current-step kernels depend only on active players' moves.
+- `currentProgramStep_actionDeterministic_of_active_empty`: Silent current steps are action-deterministic.
+- `currentProgramStep_massInvariant`: Current-step kernel preserves mass.
+- `currentValueProgramStep_massInvariant`: Current-value step kernel preserves mass.
+- `currentValueProgramStep_eq_of_active_empty`: Current-value steps are equal when no player is active.
+- `currentValueProgramStep_eq_of_agree_active`: Current-value steps depend only on active players' current values.
+- `currentValueObsModel_stepMassInvariant`: Current-value observation model has mass-invariant steps.
+- `currentValueObsModel_action_subsingleton_of_not_active`: Current-value action type is subsingleton for inactive players.
+- `currentValueObsModel_active_of_not_subsingleton`: A non-subsingleton current-value action type implies the player is active.
+- `currentValueObsModel_not_terminal_of_not_subsingleton`: A non-subsingleton current-value action type implies a nonterminal state.
+- `currentValueObsModel_commit_owner_of_not_subsingleton`: A non-subsingleton current-value action type implies the player owns the current commit.
+- `currentValueObsModel_stepSupportFactorization`: Current-value step support factorizes through the selected player's local action; this is the hard local-action condition for realization.
+- `currentValueLocalMixedPureProfile_joint`: Builds the local mixed-pure profile expected by the observation-model theorem.
+- `currentValueObsModel_mixedPure_realized_by_behavioral_of_semanticConditions`: Applies the generic semantic conditions theorem to obtain behavioral realization for current-value observations.
+- `currentValueObsModel_mixedPure_realized_by_behavioral_of_posteriorLocal`: Same result when posterior locality is supplied directly.
+- `currentObsModel_stepMassInvariant`: Erased current observation model has mass-invariant steps.
+- `currentObsModel_action_subsingleton_of_not_active`: Erased current action type is subsingleton for inactive players.
+- `currentObsModel_active_of_not_subsingleton`: Non-subsingleton erased current actions imply activity.
+- `currentObsModel_not_terminal_of_not_subsingleton`: Non-subsingleton erased current actions imply nonterminality.
+- `currentObsModel_commit_owner_of_not_subsingleton`: Non-subsingleton erased current actions imply commit ownership.
+- `currentObsModel_stepSupportFactorization`: Erased current step support factorizes through local action.
+- `currentBehavioralKernelPMFAtCursor_isLegalAt`: Current behavioral PMF kernel chooses only legal actions at the cursor.
+- `currentLocalMixedPureProfile_joint`: Builds the local mixed-pure profile for the erased current observation model.
+- `currentObsModel_mixedPure_realized_by_behavioral_of_semanticConditions`: Applies generic semantic conditions to erased current observations.
+- `currentObsModel_mixedPure_realized_by_behavioral_of_posteriorLocal`: Erased current observation behavioral realization using posterior locality.
+- `currentObsModel_mixedPure_realized_by_behavioral_semantic`: Erased current observation behavioral realization from the full semantic condition package.
+- `currentLocalPureStrategy_apply_observe`: Simplifies local pure strategy application after observing a state.
+- `currentObsModel_init`: Simplifies erased current observation model initial state.
+- `currentObsModel_observe`: Simplifies erased current observation function.
+- `currentObsModel_currentObs`: The erased current observation is exactly the current observation field.
+- `currentObsModel_projectStates`: Projecting observed states from an erased current observation history recovers the state list.
+- `currentObsModel_projectStates_nil`: Empty erased current observation history projects to the empty state list.
+- `currentValueObsModel_init`: Simplifies current-value observation model initial state.
+- `currentValueObsModel_observe`: Simplifies current-value observation function.
+- `currentValueObsModel_currentObs`: The current-value observation is exactly the current observation field.
+- `currentValueObsModel_projectStates`: Projecting states from a current-value observation history recovers the state list.
+- `currentValueObsModel_projectStates_nil`: Empty current-value observation history projects to the empty state list.
