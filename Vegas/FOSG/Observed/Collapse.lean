@@ -421,6 +421,91 @@ noncomputable def collapsedBehavioralProfilePMF
     collapsedBehavioralStrategyPMF g hctx β fallback who g.prog
       ProgramSuffix.here
 
+theorem collapsedBehavioralStrategyPMF_isLegal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g)
+    (who : P) :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+    (suffix : ProgramSuffix g.prog p) →
+      (collapsedBehavioralStrategyPMF
+        g hctx β fallback who p suffix).IsLegal p := by
+  intro Γ p
+  induction p with
+  | ret payoffs =>
+    intro _suffix
+    simp [ProgramBehavioralStrategyPMF.IsLegal]
+  | letExpr _x _e k ih =>
+    intro suffix
+    simpa [collapsedBehavioralStrategyPMF,
+      ProgramBehavioralStrategyPMF.IsLegal] using
+      ih (ProgramSuffix.letExpr suffix)
+  | sample _x _D k ih =>
+    intro suffix
+    simpa [collapsedBehavioralStrategyPMF,
+      ProgramBehavioralStrategyPMF.IsLegal] using
+      ih (ProgramSuffix.sample suffix)
+  | commit x owner R k ih =>
+    intro suffix
+    by_cases howner : owner = who
+    · subst owner
+      dsimp [collapsedBehavioralStrategyPMF,
+        ProgramBehavioralStrategyPMF.IsLegal]
+      simp only [eq_self, ProgramBehavioralStrategyPMF.headKernel,
+        ProgramBehavioralStrategyPMF.tailOwn]
+      constructor
+      · intro ρ v hv
+        have hvHead :
+            v ∈ (collapsedHeadKernelAtCommit g hctx β fallback suffix
+              (projectViewEnv who ρ)).support := by
+          simpa [collapsedBehavioralStrategyPMF,
+            ProgramBehavioralStrategyPMF.headKernel] using hv
+        by_cases hrep : ∃ h : (observedProgramFOSG g hctx).History,
+            privateObsOfCursorWorld who h.lastState =
+              privateObsOfCommitSite suffix (projectViewEnv who ρ)
+        · rcases hrep with ⟨h, hobs⟩
+          rw [collapsedHeadKernelAtCommit_eq_of_privateObs
+            g hctx β fallback suffix (projectViewEnv who ρ) h hobs] at hvHead
+          rcases (PMF.mem_support_map_iff _ _ _).mp hvHead with
+            ⟨oi, hoi, hdecode⟩
+          have hoiAvail :
+              oi ∈ (observedProgramFOSG g hctx).availableMoves h who :=
+            (β who).2 h hoi
+          exact valueOfProgramMoveOr_guard_of_available
+            g hctx suffix h hobs hoiAvail hdecode
+        · exact collapsedHeadKernelAtCommit_guard_of_not_exists
+            g hctx β fallback suffix ρ hrep hvHead
+      · simpa [collapsedBehavioralStrategyPMF,
+          ProgramBehavioralStrategyPMF.tailOwn] using
+          ih (ProgramSuffix.commit suffix)
+    · simpa [collapsedBehavioralStrategyPMF,
+        ProgramBehavioralStrategyPMF.IsLegal, howner,
+        ProgramBehavioralStrategyPMF.tail] using
+        ih (ProgramSuffix.commit suffix)
+  | reveal _y _owner _x _hx k ih =>
+    intro suffix
+    simpa [collapsedBehavioralStrategyPMF,
+      ProgramBehavioralStrategyPMF.IsLegal] using
+      ih (ProgramSuffix.reveal suffix)
+
+theorem collapsedBehavioralProfilePMF_isLegal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g) :
+    (collapsedBehavioralProfilePMF g hctx β fallback).IsLegal := by
+  intro who
+  exact collapsedBehavioralStrategyPMF_isLegal
+    g hctx β fallback who g.prog ProgramSuffix.here
+
+noncomputable def collapsedLegalBehavioralProfilePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g) :
+    LegalProgramBehavioralProfilePMF g :=
+  fun who =>
+    ⟨collapsedBehavioralProfilePMF g hctx β fallback who,
+      collapsedBehavioralProfilePMF_isLegal g hctx β fallback who⟩
+
 end Observed
 
 end FOSGBridge
