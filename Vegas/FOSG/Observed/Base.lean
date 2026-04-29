@@ -167,6 +167,51 @@ theorem programLatestObservation?_history_of_ne_nil
           exact programLatestObservation?_history_appendStep
             g hctx who hprefix e hsrc
 
+/--
+History-collapse target for transporting FOSG behavioral strategies back to
+syntax-recursive Vegas behavioral strategies.
+
+`privateObsOfCursorWorld who w` is exactly the current program cursor together
+with `who`'s current `ViewEnv` at that cursor.  The intended SSA/view-history
+invariant is that, on reachable observed-program histories, this current
+private observation already determines the player's full FOSG information
+state.  Equivalently, two histories that end at the same Vegas program point
+with the same current player view are indistinguishable as FOSG histories for
+that player.
+
+This is the missing "history collapse" lemma needed to define a
+`LegalProgramBehavioralProfilePMF g` from a sequential FOSG behavioral profile:
+the sequential profile is indexed by `h.playerView who`, while the Vegas
+profile is indexed by the current commit-site cursor and `ViewEnv`.
+-/
+theorem playerView_eq_of_privateObsOfLastState_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (h h' : (observedProgramFOSG g hctx).History)
+    (hobs :
+      privateObsOfCursorWorld who h.lastState =
+        privateObsOfCursorWorld who h'.lastState) :
+    h.playerView who = h'.playerView who := by
+  sorry
+
+/-- A total FOSG behavioral profile is constant on histories with the same
+current Vegas private observation.
+
+This is the representative-independence fact needed when a sequential
+information-state strategy is read back as a syntax-recursive Vegas strategy:
+once the current cursor and player view agree, the sorry'd history-collapse
+lemma identifies the FOSG information states, so the profile lookup is the
+same. -/
+theorem legalBehavioralProfile_apply_eq_of_privateObsOfLastState_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (h h' : (observedProgramFOSG g hctx).History)
+    (hobs :
+      privateObsOfCursorWorld who h.lastState =
+        privateObsOfCursorWorld who h'.lastState) :
+    (β.toProfile who) (h.playerView who) =
+      (β.toProfile who) (h'.playerView who) := by
+  rw [playerView_eq_of_privateObsOfLastState_eq g hctx who h h' hobs]
+
 theorem observedProgramFOSG_legalObservable
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     (observedProgramFOSG g hctx).LegalObservable := by

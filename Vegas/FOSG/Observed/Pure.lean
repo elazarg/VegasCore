@@ -481,7 +481,7 @@ noncomputable def moveAtProgramObservation?
     PMF (Option (ProgramAction g.prog who)) := by
   let priv := obs.1
   exact moveAtProgramCursor g hctx σ who priv.cursor.toSuffix
-    (VEnv.eraseEnv priv.env)
+    (priv.env)
 
 noncomputable def moveAtProgramObservationPMF?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -491,7 +491,7 @@ noncomputable def moveAtProgramObservationPMF?
     PMF (Option (ProgramAction g.prog who)) := by
   let priv := obs.1
   exact moveAtProgramCursorPMF g hctx σ who priv.cursor.toSuffix
-    (VEnv.eraseEnv priv.env)
+    (priv.env)
 
 theorem moveAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -503,7 +503,7 @@ theorem moveAtProgramObservation?_of_cursorWorld
   unfold moveAtProgramObservation? moveAtCursorWorld
   change moveAtProgramCursor g hctx σ who
       (privateObsOfCursorWorld who w).cursor.toSuffix
-      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+      ((privateObsOfCursorWorld who w).env) =
     moveAtProgramCursor g hctx σ who w.1.suffix
       (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]
@@ -519,7 +519,7 @@ theorem moveAtProgramObservationPMF?_of_cursorWorld
   unfold moveAtProgramObservationPMF? moveAtCursorWorldPMF
   change moveAtProgramCursorPMF g hctx σ who
       (privateObsOfCursorWorld who w).cursor.toSuffix
-      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+      ((privateObsOfCursorWorld who w).env) =
     moveAtProgramCursorPMF g hctx σ who w.1.suffix
       (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]
@@ -535,7 +535,7 @@ noncomputable def movePureAtProgramObservation?
     Option (ProgramAction g.prog who) := by
   let priv := obs.1
   exact movePureAtProgramCursor g hctx σ who priv.cursor.toSuffix
-    (VEnv.eraseEnv priv.env)
+    (priv.env)
 
 noncomputable def movePureStrategyAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -544,7 +544,7 @@ noncomputable def movePureStrategyAtProgramObservation?
     Option (ProgramAction g.prog who) := by
   let priv := obs.1
   exact movePureStrategyAtProgramCursor g hctx who σ priv.cursor.toSuffix
-    (VEnv.eraseEnv priv.env)
+    (priv.env)
 
 theorem movePureAtProgramObservation?_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -566,7 +566,7 @@ theorem movePureAtProgramObservation?_of_cursorWorld
   unfold movePureAtProgramObservation? movePureAtCursorWorld
   change movePureAtProgramCursor g hctx σ who
       (privateObsOfCursorWorld who w).cursor.toSuffix
-      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+      ((privateObsOfCursorWorld who w).env) =
     movePureAtProgramCursor g hctx σ who w.1.suffix
       (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]
@@ -582,7 +582,7 @@ theorem movePureStrategyAtProgramObservation?_of_cursorWorld
   unfold movePureStrategyAtProgramObservation? movePureStrategyAtCursorWorld
   change movePureStrategyAtProgramCursor g hctx who σ
       (privateObsOfCursorWorld who w).cursor.toSuffix
-      (VEnv.eraseEnv (privateObsOfCursorWorld who w).env) =
+      ((privateObsOfCursorWorld who w).env) =
     movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
       (projectViewEnv who (VEnv.eraseEnv w.1.env))
   rw [privateObsOfCursorWorld_eraseEnv]

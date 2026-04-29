@@ -22,9 +22,10 @@ structure PublicObs (g : WFProgram P L) (hctx : WFCtx g.Γ) where
 current program cursor and view environment. The cursor is public information,
 but storing it here makes the player's local observation self-sufficient for
 strategy lookup and action-availability proofs. -/
+@[ext]
 structure PrivateObs (g : WFProgram P L) (who : P) where
   cursor : ProgramCursor g.prog
-  env : VEnv L (viewVCtx who cursor.Γ)
+  env : ViewEnv who cursor.Γ
 
 def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CursorCheckedWorld g) : PublicObs g hctx where
@@ -33,18 +34,33 @@ def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
   suffix := w.1.suffix
   env := VEnv.toPub w.1.env
 
-def privateObsOfCursorWorld {g : WFProgram P L}
+noncomputable def privateObsOfCursorWorld {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld g) :
     PrivateObs g who where
   cursor := w.1.cursor
-  env := VEnv.toView who w.1.env
+  env := projectViewEnv who (VEnv.eraseEnv w.1.env)
+
+/-- The private-observation key corresponding to a syntax-recursive owned
+commit site and a current Vegas view at that site. -/
+noncomputable def privateObsOfCommitSite {g : WFProgram P L}
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (view : ViewEnv who Γ) :
+    PrivateObs g who where
+  cursor :=
+    ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.commitCursor suffix)
+  env := by
+    rw [ProgramSuffix.commitCursor_toProgramCursor_Γ suffix]
+    exact view
 
 theorem privateObsOfCursorWorld_eraseEnv
     {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld g) :
-    VEnv.eraseEnv (privateObsOfCursorWorld who w).env =
-      projectViewEnv who (VEnv.eraseEnv w.1.env) := by
-  exact (projectViewEnv_eraseEnv_eq_toView (who := who) w.2.1 w.1.env).symm
+    (privateObsOfCursorWorld who w).env =
+      projectViewEnv who (VEnv.eraseEnv w.1.env) := rfl
 
 theorem availableProgramMovesAt_eq_of_privateObs_eq
     (g : WFProgram P L) (who : P)
@@ -64,15 +80,7 @@ theorem availableProgramMovesAt_eq_of_privateObs_eq
     CursorCheckedWorld.availableProgramMovesAt
       c₁.prog env₂ c₁.toSuffix who
   have hview : projectViewEnv who (VEnv.eraseEnv env₁) =
-      projectViewEnv who (VEnv.eraseEnv env₂) := by
-    have h₁ := privateObsOfCursorWorld_eraseEnv (g := g) who
-      (⟨⟨c₁, env₁⟩, valid₁⟩ : CursorCheckedWorld g)
-    have h₂ := privateObsOfCursorWorld_eraseEnv (g := g) who
-      (⟨⟨c₁, env₂⟩, valid₂⟩ : CursorCheckedWorld g)
-    dsimp [privateObsOfCursorWorld] at h₁ h₂
-    rw [← h₁, ← h₂]
-    have henvEq : VEnv.toView who env₁ = VEnv.toView who env₂ := eq_of_heq henv
-    exact congrArg VEnv.eraseEnv henvEq
+      projectViewEnv who (VEnv.eraseEnv env₂) := eq_of_heq henv
   exact availableProgramMovesAt_eq_of_projectViewEnv_eq
     g who c₁.prog c₁.toSuffix env₁ env₂
     valid₁.1 valid₁.2.1 valid₁.2.2.1 hview

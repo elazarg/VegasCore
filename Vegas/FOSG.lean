@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Kernel
+import Vegas.FOSG.Observed.Collapse
 
 namespace Vegas
 namespace FOSGBridge

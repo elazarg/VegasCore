@@ -477,6 +477,27 @@ def fresh
   | commit s ih => intro h; exact ih h |>.2
   | reveal s ih => intro h; exact ih h |>.2
 
+def wfctx
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) :
+    WFCtx (L := L) Γ₀ → FreshBindings root → WFCtx (L := L) Γ := by
+  induction s with
+  | here =>
+      intro hctx _hfresh
+      exact hctx
+  | letExpr s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | sample s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | commit s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+  | reveal s ih =>
+      intro hctx hfresh
+      exact WFCtx.cons (s.fresh hfresh).1 (ih hctx hfresh)
+
 def viewScoped
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
@@ -1063,6 +1084,20 @@ def toSuffix
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
 
+namespace CommitCursor
+
+/-- Forget that a cursor points specifically at an owned commit site. -/
+def toProgramCursor {who : P} :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      CommitCursor who p → ProgramCursor p
+  | _, _, .here => .here
+  | _, _, .letExpr c => .letExpr (toProgramCursor c)
+  | _, _, .sample c => .sample (toProgramCursor c)
+  | _, _, .commit c => .commit (toProgramCursor c)
+  | _, _, .reveal c => .reveal (toProgramCursor c)
+
+end CommitCursor
+
 /-- Canonical cursors are finite because Vegas syntax is linear. -/
 @[reducible] noncomputable def instFintype :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
@@ -1158,6 +1193,102 @@ def toSuffix
       Fintype.ofEquiv (Unit ⊕ ProgramCursor k) e.symm
 
 end ProgramCursor
+
+namespace ProgramSuffix
+
+/-- Lifting a commit cursor through a suffix preserves the endpoint context of
+the corresponding program cursor. -/
+theorem liftCommitCursor_toProgramCursor_Γ
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    (ProgramCursor.CommitCursor.toProgramCursor (s.liftCommitCursor c)).Γ =
+      (ProgramCursor.CommitCursor.toProgramCursor c).Γ := by
+  induction s with
+  | here => rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.reveal c)
+
+/-- Lifting a commit cursor through a suffix preserves the endpoint program of
+the corresponding program cursor, after transporting along the endpoint
+context equality. -/
+theorem liftCommitCursor_toProgramCursor_prog
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    (liftCommitCursor_toProgramCursor_Γ s c) ▸
+      (ProgramCursor.CommitCursor.toProgramCursor (s.liftCommitCursor c)).prog =
+        (ProgramCursor.CommitCursor.toProgramCursor c).prog := by
+  induction s with
+  | here => rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.reveal c)
+
+/-- The canonical program cursor extracted from a suffix ending at an owned
+commit node has the context of that commit node. -/
+theorem commitCursor_toProgramCursor_Γ
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    (ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.commitCursor s)).Γ = Γ := by
+  simpa [ProgramSuffix.commitCursor,
+    ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ] using
+      (liftCommitCursor_toProgramCursor_Γ s
+        (.here : CommitCursor who (.commit x who R k)))
+
+/-- The canonical program cursor extracted from a suffix ending at an owned
+commit node points back to that same commit node, after transporting along the
+endpoint-context equality. -/
+theorem commitCursor_toProgramCursor_prog
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    (commitCursor_toProgramCursor_Γ s) ▸
+      (ProgramCursor.CommitCursor.toProgramCursor
+        (ProgramSuffix.commitCursor s)).prog =
+        VegasCore.commit x who R k := by
+  simpa [ProgramSuffix.commitCursor,
+    ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+    ProgramCursor.prog, commitCursor_toProgramCursor_Γ] using
+      (liftCommitCursor_toProgramCursor_prog s
+        (.here : CommitCursor who (.commit x who R k)))
+
+end ProgramSuffix
 
 /-! ## Cursor-based world data -/
 
