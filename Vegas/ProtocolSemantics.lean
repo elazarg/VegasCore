@@ -33,8 +33,8 @@ The file has two regions.
   behavioural game is rational-valued.
   `ProtocolTotalMixedPureRealizationPMF g : Prop` is the stronger total-profile
   target.
-  `ProtocolRationalKuhnProperty g : Prop` is the corresponding FDist-valued
-  target for rational behavioural witnesses.
+  `ProtocolRationalMixedPureRealizationProperty g : Prop` is the corresponding
+  FDist-valued target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
   correlated variant over arbitrary PMFs on joint pure profiles.
 -/
@@ -217,12 +217,12 @@ def ProtocolTotalMixedPureRealizationPMF
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-/-- FDist-valued version of the protocol-level Kuhn target.
+/-- FDist-valued mixed-pure realization target.
 
 This is deliberately not named as the general Kuhn property: it can only be
 true for mixed pure profiles whose induced behavioural probabilities are
 representable by rational `FDist` kernels. -/
-def ProtocolRationalKuhnProperty [Fintype P] (g : WFProgram P L)
+def ProtocolRationalMixedPureRealizationProperty [Fintype P] (g : WFProgram P L)
     [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
     ∃ β : LegalProgramBehavioralProfile g,
