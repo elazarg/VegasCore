@@ -54,8 +54,8 @@ proposition. -/
 theorem kuhnPropertyPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    ProtocolKuhnPropertyPMF g hctx LF := by
-  exact protocolKuhnPropertyPMF_finite g hctx LF
+    ProtocolSequentialKuhnPropertyPMF g hctx LF := by
+  exact protocolSequentialKuhnPropertyPMF_finite g hctx LF
 
 /-- The finite reachable Vegas Kuhn property, packaged as a reusable
 proposition. -/
