@@ -914,6 +914,77 @@ theorem currentValueProgramStep_checkedTransition_support
   rw [hmap] at hmapmem
   exact (PMF.mem_support_iff _ _).mp hmapmem
 
+theorem checkedTransition_commit_support_eq_programActionContinuation
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
+    (viewScoped : ViewScoped (.commit x who R k))
+    (normalized : NormalizedDists (.commit x who R k))
+    (legal : Legal (.commit x who R k))
+    (a : ProgramJointAction g)
+    (ha : JointActionLegal
+      ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
+      (ProgramJointAction.toAction a))
+    (dst : CheckedWorld g hctx)
+    (hsupp :
+      checkedTransition
+        ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env,
+           suffix := suffix, wctx := wctx, fresh := fresh,
+           viewScoped := viewScoped, normalized := normalized, legal := legal } :
+          CheckedWorld g hctx)
+        ⟨ProgramJointAction.toAction a, by
+          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
+            checkedAvailableActions, CheckedWorld.toWorld] using ha⟩ dst ≠ 0) :
+    ∃ (ai : ProgramAction g.prog who)
+      (_ : a who = some ai)
+      (hty : CommitCursor.ty ai.cursor = b),
+      dst =
+        ({ Γ := (x, .hidden who b) :: Γ
+           prog := k
+           env := VEnv.cons (Player := P) (L := L) (x := x)
+             (τ := .hidden who b) (hty ▸ ai.value) env
+           suffix := .commit suffix
+           wctx := WFCtx.cons fresh.1 wctx
+           fresh := fresh.2
+           viewScoped := viewScoped.2
+           normalized := normalized
+           legal := legal.2 } : CheckedWorld g hctx) := by
+  have hstep :=
+    checkedTransition_commit_eq_programActionContinuation
+      g hctx env suffix wctx fresh viewScoped normalized legal a ha
+  rw [hstep] at hsupp
+  cases hai : a who with
+  | none =>
+      have hlocal := ha.2 who
+      have hnone : ProgramJointAction.toAction a who = none := by
+        simp [ProgramJointAction.toAction, hai]
+      rw [hnone] at hlocal
+      have hmem :
+          who ∈ active
+            ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
+              World P L) := by
+        simp [active]
+      exact False.elim (hlocal hmem)
+  | some ai =>
+      by_cases hty : CommitCursor.ty ai.cursor = b
+      · refine ⟨ai, rfl, hty, ?_⟩
+        simpa [hai, hty, PMF.pure_apply] using hsupp
+      · have hlocal := ha.2 who
+        have hsome :
+            ProgramJointAction.toAction a who =
+              some (ProgramAction.toAction ai) := by
+          simp [ProgramJointAction.toAction, hai]
+        rw [hsome] at hlocal
+        have havail := hlocal.2
+        rcases (by
+            simpa [availableActions, ProgramAction.toAction] using havail) with
+          ⟨_v, htyv, _hguard⟩
+        exact False.elim (hty htyv.1)
+
 theorem currentProgramStep_eq_of_active_empty
     (g : WFProgram P L) (w : CursorCheckedWorld g)
     (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
