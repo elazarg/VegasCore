@@ -25,14 +25,16 @@ The file has two regions.
   `KernelGame`-transported counterpart by definitional unfolding.
 
 * **Region B (realization theorems and named targets).**
-  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the proved reachable
+  `ProtocolKuhnPropertyPMF g hctx LF : Prop` is the proved sequential
   realization claim: every independent mixed profile over legal pure
-  strategies is outcome-equivalent to some reachable PMF behavioural profile.
-  The PMF target is essential: arbitrary mixed pure profiles can induce
-  real-valued behavioural probabilities, while the original `FDist`
-  behavioural game is rational-valued.
-  `ProtocolTotalMixedPureRealizationPMF g : Prop` is the stronger total-profile
-  target.
+  strategies is outcome-equivalent to a total PMF behavioural profile for the
+  sequential denotation. The PMF target is essential: arbitrary mixed pure
+  profiles can induce real-valued behavioural probabilities, while the
+  original `FDist` behavioural game is rational-valued.
+  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the reachable
+  strategy-space version.
+  `ProtocolTotalMixedPureRealizationPMF g : Prop` is the stronger
+  syntax-recursive total-profile target.
   `ProtocolRationalMixedPureRealizationProperty g : Prop` is the corresponding
   FDist-valued target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
@@ -158,6 +160,43 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
 /-! ## Region B — named realization targets -/
 
 /-- The protocol-level Kuhn property for a concrete finite Vegas program:
+every independent mixed profile over guard-legal pure strategies admits a total
+sequential PMF behavioural profile with the same outcome distribution. -/
+def ProtocolKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
+  ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : SequentialBehavioralProfilePMF g hctx,
+      sequentialOutcomeKernelPMF g hctx LF β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
+total sequential strategy space. -/
+theorem protocol_mixedPure_realizedByBehavioralPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : SequentialBehavioralProfilePMF g hctx,
+      sequentialOutcomeKernelPMF g hctx LF β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  exact sequential_mixedPure_realizedByBehavioralPMF_finite
+    g hctx LF μ
+
+/-- Concrete finite sequential-strategy realization theorem. -/
+theorem protocolKuhnPropertyPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
+    ProtocolKuhnPropertyPMF g hctx LF := by
+  intro μ
+  exact protocol_mixedPure_realizedByBehavioralPMF_finite
+    g hctx LF μ
+
+/-- The protocol-level Kuhn property for a concrete finite Vegas program:
 every independent mixed profile over guard-legal pure strategies admits a
 reachable PMF behavioural profile with the same outcome distribution.
 
@@ -201,13 +240,13 @@ theorem protocolReachableKuhnPropertyPMF_finite
   exact protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     g hctx LF μ
 
-/-- Stronger total-profile realization target, PMF mixed-to-behavioral
+/-- Stronger syntax-recursive total-profile realization target, PMF mixed-to-behavioral
 direction.
 
 Every independent mixed profile over guard-legal pure strategies is realized by
 a guard-legal PMF behavioral profile with the same outcome distribution. This
 asks for a total profile, so it is stronger than the reachable strategy-space
-Kuhn theorem above. -/
+Kuhn theorem above and different from the sequential-denotation theorem. -/
 def ProtocolTotalMixedPureRealizationPMF
     [Fintype P] (g : WFProgram P L)
     [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=

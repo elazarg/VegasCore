@@ -101,6 +101,54 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- A total behavioral profile for the sequential denotation of a Vegas
+program.
+
+The profile is indexed by the player's sequential information state. This is
+the native strategy space for the FOSG denotation, wrapped here so downstream
+Vegas theorems need not expose FOSG names. -/
+structure SequentialBehavioralProfilePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) where
+  profile : (FOSGBridge.toFOSG g hctx).LegalBehavioralProfile
+
+/-- Outcome kernel for a total sequential behavioral profile. -/
+noncomputable def sequentialOutcomeKernelPMF
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (β : SequentialBehavioralProfilePMF g hctx) : PMF (Outcome P) := by
+  letI : Fintype (FOSGBridge.CursorCheckedWorld g) :=
+    FOSGBridge.observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (FOSGBridge.ProgramAction g.prog who)) :=
+    fun who =>
+      FOSGBridge.observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (FOSGBridge.toFOSG g hctx).History :=
+    FOSGBridge.observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (FOSGBridge.toFOSG g hctx).terminal :=
+    FOSGBridge.observedProgramFOSG.instDecidablePredTerminal g hctx
+  exact
+    PMF.map (FOSGBridge.observedProgramHistoryOutcome g hctx)
+      ((FOSGBridge.toFOSG g hctx).runDist
+        (FOSGBridge.syntaxSteps g.prog) β.profile)
+
+/-- Finite-game Kuhn theorem in the total sequential Vegas strategy space. -/
+theorem sequential_mixedPure_realizedByBehavioralPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : SequentialBehavioralProfilePMF g hctx,
+      sequentialOutcomeKernelPMF g hctx LF β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  obtain ⟨βF, hβF⟩ :=
+    FOSGBridge.toFOSG_mixedPure_realizedByLegalBehavioral_runDist
+      g hctx LF μ
+  refine ⟨⟨βF⟩, ?_⟩
+  simpa [sequentialOutcomeKernelPMF] using hβF
+
 /-- A Vegas behavioral profile defined only on reachable program observations.
 
 This is the partial strategy space: unlike `LegalProgramBehavioralProfilePMF`,
