@@ -384,6 +384,29 @@ theorem VEnv.toView_ofErased_projectViewEnv {Γ : VCtx P L}
   rw [VEnv.eraseEnv_ofErased (P := P) (WFCtx.viewVCtx (p := who) hctx)
     (projectViewEnv who env)]
 
+theorem projectViewEnv_cast_ctx
+    {Γ Γ' : VCtx P L} (who : P) (h : Γ = Γ')
+    (env : Env L.Val (eraseVCtx Γ')) :
+    projectViewEnv who
+        (cast (congrArg (fun Δ => Env L.Val (eraseVCtx Δ)) h.symm) env) =
+      cast
+        (congrArg (fun Δ => Env L.Val (eraseVCtx (viewVCtx who Δ))) h.symm)
+        (projectViewEnv who env) := by
+  cases h
+  rfl
+
+omit [DecidableEq P] in
+theorem VEnv.ofErased_cast_ctx
+    {Γ Γ' : VCtx P L} (h : Γ = Γ')
+    (env : Env L.Val (eraseVCtx Γ')) :
+    (VEnv.ofErased
+        (cast (congrArg (fun Δ => Env L.Val (eraseVCtx Δ)) h.symm) env) :
+      VEnv L Γ) =
+      cast (congrArg (fun Δ => VEnv L Δ) h.symm)
+        (VEnv.ofErased env : VEnv L Γ') := by
+  cases h
+  rfl
+
 /-- Current private observation reconstructed from an ordinary erased Vegas
 view at a known program cursor. -/
 def privateObsOfViewAtCursor
@@ -1827,6 +1850,41 @@ noncomputable def privateObsOfViewAtCommitSuffix
         (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix).symm)
       (VEnv.ofErased view :
         VEnv L (viewVCtx who Γ)) }
+
+theorem privateObsOfCursorWorld_ofErased_commitSuffix
+    {g : WFProgram P L} (hctx : WFCtx g.Γ)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (env : Env L.Val (eraseVCtx Γ)) :
+    let c := ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.commitCursor suffix)
+    let envAtCursor : Env L.Val (eraseVCtx c.Γ) :=
+      cast (congrArg (fun Δ => Env L.Val (eraseVCtx Δ))
+        (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix).symm) env
+    privateObsOfCursorWorld who
+        (⟨{ cursor := c, env := VEnv.ofErased envAtCursor },
+          ProgramCursor.endpointValid g hctx c⟩ : CursorCheckedWorld g) =
+      privateObsOfViewAtCommitSuffix suffix
+        (projectViewEnv who env) := by
+  dsimp [privateObsOfViewAtCommitSuffix, privateObsOfCursorWorld]
+  congr
+  let c := ProgramCursor.CommitCursor.toProgramCursor
+    (ProgramSuffix.commitCursor suffix)
+  let hΓ := ProgramSuffix.commitCursor_toProgramCursor_Γ suffix
+  let envAtCursor : Env L.Val (eraseVCtx c.Γ) :=
+    cast (congrArg (fun Δ => Env L.Val (eraseVCtx Δ)) hΓ.symm) env
+  have hview :=
+    VEnv.toView_ofErased_projectViewEnv
+      (ProgramSuffix.wctx c.toSuffix hctx g.wf.1) who envAtCursor
+  have hproject :=
+    projectViewEnv_cast_ctx (P := P) (L := L) who hΓ env
+  rw [hproject] at hview
+  rw [VEnv.ofErased_cast_ctx
+    (P := P) (L := L) (congrArg (viewVCtx who) hΓ)
+      (projectViewEnv who env)] at hview
+  simpa [c, hΓ, envAtCursor] using hview
 
 /-- The PMF kernel obtained by reading a current-observation behavioral profile
 at a suffix-indexed owned commit site. -/
