@@ -8,15 +8,12 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 /-! ## Observation-preserving target -/
 
-/-- Public observation after a Vegas/FOSG transition: the current public
-program cursor together with the public environment. The cursor is public
-control-flow metadata and is needed to project a fixed Vegas strategy profile
-to the current continuation. -/
-structure PublicObs (g : WFProgram P L) (hctx : WFCtx g.Γ) where
-  Γ : VCtx P L
-  prog : VegasCore P L Γ
-  suffix : ProgramSuffix g.prog prog
-  env : VEnv L (pubVCtx Γ)
+/-- The FOSG public-observation channel is unused for Vegas.
+
+Public Vegas bindings are already included in every player's private
+`ViewEnv`, so carrying them again as `PubObs` only duplicates information and
+creates dependent transport noise. -/
+abbrev PublicObs (g : WFProgram P L) (_hctx : WFCtx g.Γ) := PUnit
 
 /-- Private observation after a Vegas/FOSG transition: the observing player's
 current program cursor and view environment. The cursor is public information,
@@ -28,19 +25,13 @@ structure PrivateObs (g : WFProgram P L) (who : P) where
   env : ViewEnv who cursor.Γ
 
 def publicObsOfCursorWorld {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CursorCheckedWorld g) : PublicObs g hctx where
-  Γ := w.1.cursor.Γ
-  prog := w.1.prog
-  suffix := w.1.suffix
-  env := VEnv.toPub w.1.env
+    (_w : CursorCheckedWorld g) : PublicObs g hctx :=
+  PUnit.unit
 
 def publicObsOfCursorEnv {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (c : ProgramCursor g.prog) (env : VEnv L c.Γ) :
-    PublicObs g hctx where
-  Γ := c.Γ
-  prog := c.prog
-  suffix := c.toSuffix
-  env := VEnv.toPub env
+    (c : ProgramCursor g.prog) (_env : VEnv L c.Γ) :
+    PublicObs g hctx :=
+  PUnit.unit
 
 noncomputable def privateObsOfCursorWorld {g : WFProgram P L}
     (who : P) (w : CursorCheckedWorld g) :
