@@ -382,6 +382,57 @@ private theorem programCursor_rootEnv_projectViewEnv_eq
       have hmid := programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hctx hview
       exact projectViewEnv_cons_eq (programCursor_root_wfctx c hctx) hmid
 
+private theorem projectViewEnv_cast_eq
+    (who : P) {Γ Δ : VCtx P L} (hΓ : Γ = Δ)
+    (env₁ env₂ : VEnv L Γ)
+    (hview :
+      projectViewEnv who (VEnv.eraseEnv env₁) =
+        projectViewEnv who (VEnv.eraseEnv env₂)) :
+    projectViewEnv who (VEnv.eraseEnv (hΓ ▸ env₁)) =
+      projectViewEnv who (VEnv.eraseEnv (hΓ ▸ env₂)) := by
+  cases hΓ
+  exact hview
+
+private theorem embeddedPrivateObs_eq_of_projectViewEnv_eq
+    (g : WFProgram P L) (who : P)
+    {Γ : VCtx P L} {root : VegasCore P L Γ}
+    (emb : CursorEmbedding (P := P) (L := L) g who root)
+    (c : ProgramCursor root) (env₁ env₂ : VEnv L c.Γ)
+    (hview :
+      projectViewEnv who (VEnv.eraseEnv env₁) =
+        projectViewEnv who (VEnv.eraseEnv env₂)) :
+    embeddedPrivateObs g who emb c env₁ =
+      embeddedPrivateObs g who emb c env₂ := by
+  dsimp [embeddedPrivateObs, privateObsOfCursorEnv]
+  ext
+  · rfl
+  · apply heq_of_eq
+    exact projectViewEnv_cast_eq who (emb.cursor_Γ c).symm env₁ env₂ hview
+
+private theorem embeddedOwnCommitEvents_eq_of_projectViewEnv_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who owner : P)
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
+    (emb : CursorEmbedding (P := P) (L := L) g who (.commit x owner R k))
+    (env₁ env₂ : VEnv L ((x, .hidden owner b) :: Γ))
+    (hnodup : (((x, .hidden owner b) :: Γ).map Prod.fst).Nodup)
+    (hview :
+      projectViewEnv who (VEnv.eraseEnv env₁) =
+        projectViewEnv who (VEnv.eraseEnv env₂)) :
+    embeddedOwnCommitEvents g hctx who owner emb env₁ =
+      embeddedOwnCommitEvents g hctx who owner emb env₂ := by
+  by_cases howner : owner = who
+  · subst owner
+    have hhead :
+        env₁.get (VHasVar.here (Γ := Γ) (x := x)
+          (τ := BindTy.hidden who b)) =
+          env₂.get (VHasVar.here (Γ := Γ) (x := x)
+            (τ := BindTy.hidden who b)) := by
+      exact projectViewEnv_cons_head_eq hnodup (by simp [canSee]) hview
+    simp [embeddedOwnCommitEvents, hhead]
+  · simp [embeddedOwnCommitEvents, howner]
+
 private theorem cursorPlayerViewFrom_here
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     {Γ : VCtx P L} {root : VegasCore P L Γ}
@@ -389,6 +440,117 @@ private theorem cursorPlayerViewFrom_here
     (env : VEnv L ProgramCursor.here.Γ) :
     cursorPlayerViewFrom g hctx who emb ProgramCursor.here env = [] := by
   cases root <;> simp [cursorPlayerViewFrom]
+
+private theorem cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
+    {Γ : VCtx P L} → {root : VegasCore P L Γ} →
+    (emb : CursorEmbedding (P := P) (L := L) g who root) →
+    (c : ProgramCursor root) →
+    (env₁ env₂ : VEnv L c.Γ) →
+    WFCtx c.Γ →
+    projectViewEnv who (VEnv.eraseEnv env₁) =
+      projectViewEnv who (VEnv.eraseEnv env₂) →
+    cursorPlayerViewFrom g hctx who emb c env₁ =
+      cursorPlayerViewFrom g hctx who emb c env₂
+  | _, .ret _payoffs, _emb, .here, _env₁, _env₂, _hcur, _hview => by
+      simp [cursorPlayerViewFrom]
+  | _, .letExpr _x _e _k, _emb, .here, _env₁, _env₂, _hcur, _hview => by
+      simp [cursorPlayerViewFrom]
+  | _, .letExpr _x _e _k, emb, .letExpr c, env₁, env₂, hcur, hview => by
+      let env₁₀ := ProgramCursor.rootEnv c env₁
+      let env₂₀ := ProgramCursor.rootEnv c env₂
+      have hroot :
+          projectViewEnv who (VEnv.eraseEnv env₁₀) =
+            projectViewEnv who (VEnv.eraseEnv env₂₀) :=
+        programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hcur hview
+      have hpriv := embeddedPrivateObs_eq_of_projectViewEnv_eq
+        g who emb (.letExpr ProgramCursor.here) env₁₀ env₂₀ hroot
+      have hrec := cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+        g hctx who (CursorEmbedding.letExpr emb) c env₁ env₂ hcur hview
+      simpa [cursorPlayerViewFrom, env₁₀, env₂₀, hpriv, embeddedPublicObs]
+        using hrec
+  | _, .sample _x _D _k, _emb, .here, _env₁, _env₂, _hcur, _hview => by
+      simp [cursorPlayerViewFrom]
+  | _, .sample _x _D _k, emb, .sample c, env₁, env₂, hcur, hview => by
+      let env₁₀ := ProgramCursor.rootEnv c env₁
+      let env₂₀ := ProgramCursor.rootEnv c env₂
+      have hroot :
+          projectViewEnv who (VEnv.eraseEnv env₁₀) =
+            projectViewEnv who (VEnv.eraseEnv env₂₀) :=
+        programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hcur hview
+      have hpriv := embeddedPrivateObs_eq_of_projectViewEnv_eq
+        g who emb (.sample ProgramCursor.here) env₁₀ env₂₀ hroot
+      have hrec := cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+        g hctx who (CursorEmbedding.sample emb) c env₁ env₂ hcur hview
+      simpa [cursorPlayerViewFrom, env₁₀, env₂₀, hpriv, embeddedPublicObs]
+        using hrec
+  | _, .commit _x _owner _R _k, _emb, .here, _env₁, _env₂, _hcur, _hview => by
+      simp [cursorPlayerViewFrom]
+  | _, .commit x owner R k, emb, .commit c, env₁, env₂, hcur, hview => by
+      let env₁₀ := ProgramCursor.rootEnv c env₁
+      let env₂₀ := ProgramCursor.rootEnv c env₂
+      have hroot :
+          projectViewEnv who (VEnv.eraseEnv env₁₀) =
+            projectViewEnv who (VEnv.eraseEnv env₂₀) :=
+        programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hcur hview
+      have hpriv := embeddedPrivateObs_eq_of_projectViewEnv_eq
+        g who emb (.commit ProgramCursor.here) env₁₀ env₂₀ hroot
+      have hown := embeddedOwnCommitEvents_eq_of_projectViewEnv_eq
+        g hctx who owner emb env₁₀ env₂₀
+        (programCursor_root_wfctx c hcur) hroot
+      have hrec := cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+        g hctx who (CursorEmbedding.commitFrame emb) c env₁ env₂ hcur hview
+      simpa [cursorPlayerViewFrom, env₁₀, env₂₀, hpriv, embeddedPublicObs, hown]
+        using hrec
+  | _, .reveal _y _owner _x _hx _k, _emb, .here, _env₁, _env₂, _hcur, _hview => by
+      simp [cursorPlayerViewFrom]
+  | _, .reveal _y _owner _x _hx _k, emb, .reveal c, env₁, env₂, hcur, hview => by
+      let env₁₀ := ProgramCursor.rootEnv c env₁
+      let env₂₀ := ProgramCursor.rootEnv c env₂
+      have hroot :
+          projectViewEnv who (VEnv.eraseEnv env₁₀) =
+            projectViewEnv who (VEnv.eraseEnv env₂₀) :=
+        programCursor_rootEnv_projectViewEnv_eq who c env₁ env₂ hcur hview
+      have hpriv := embeddedPrivateObs_eq_of_projectViewEnv_eq
+        g who emb (.reveal ProgramCursor.here) env₁₀ env₂₀ hroot
+      have hrec := cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+        g hctx who (CursorEmbedding.reveal emb) c env₁ env₂ hcur hview
+      simpa [cursorPlayerViewFrom, env₁₀, env₂₀, hpriv, embeddedPublicObs]
+        using hrec
+termination_by _ root _ _ _ _ _ => syntaxSteps root
+decreasing_by
+  all_goals simp_wf
+
+private theorem cursorPlayerView_eq_of_projectViewEnv_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (c : ProgramCursor g.prog) (env₁ env₂ : VEnv L c.Γ)
+    (hcur : WFCtx c.Γ)
+    (hview :
+      projectViewEnv who (VEnv.eraseEnv env₁) =
+        projectViewEnv who (VEnv.eraseEnv env₂)) :
+    cursorPlayerView g hctx who c env₁ =
+      cursorPlayerView g hctx who c env₂ :=
+  cursorPlayerViewFrom_eq_of_projectViewEnv_eq
+    g hctx who (CursorEmbedding.id g who) c env₁ env₂ hcur hview
+
+private theorem cursorPlayerView_eq_of_privateObs_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
+    (w₁ w₂ : CursorCheckedWorld g)
+    (hpriv :
+      privateObsOfCursorWorld who w₁ =
+        privateObsOfCursorWorld who w₂) :
+    cursorPlayerView g hctx who w₁.1.cursor w₁.1.env =
+      cursorPlayerView g hctx who w₂.1.cursor w₂.1.env := by
+  rcases w₁ with ⟨⟨c₁, env₁⟩, valid₁⟩
+  rcases w₂ with ⟨⟨c₂, env₂⟩, valid₂⟩
+  dsimp [privateObsOfCursorWorld] at hpriv ⊢
+  injection hpriv with hcursor henv
+  cases hcursor
+  have hview :
+      projectViewEnv who (VEnv.eraseEnv env₁) =
+        projectViewEnv who (VEnv.eraseEnv env₂) := eq_of_heq henv
+  exact cursorPlayerView_eq_of_projectViewEnv_eq
+    g hctx who c₁ env₁ env₂ valid₁.1 hview
 
 private noncomputable def cursorStepPlayerViewFrom
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
@@ -466,7 +628,7 @@ private theorem cursorPlayerViewFrom_transition
           | none =>
               simp [CursorCheckedWorld.availableProgramMovesAt, active,
                 ProgramCursor.prog, hpa] at hmoves
-          | some ai => exact ⟨ai, by simpa using hpa.symm⟩
+          | some ai => exact ⟨ai, rfl⟩
         rcases hsome with ⟨ai, hai⟩
         have haiAvail : ai ∈
             CursorCheckedWorld.availableProgramActionsAt
@@ -803,14 +965,21 @@ theorem playerView_eq_of_privateObsOfLastState_eq
       privateObsOfCursorWorld who h.lastState =
         privateObsOfCursorWorld who h'.lastState) :
     h.playerView who = h'.playerView who := by
-  sorry
+  calc
+    h.playerView who =
+        cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env :=
+      playerView_eq_cursorPlayerView g hctx who h
+    _ = cursorPlayerView g hctx who h'.lastState.1.cursor h'.lastState.1.env :=
+      cursorPlayerView_eq_of_privateObs_eq g hctx who h.lastState h'.lastState hobs
+    _ = h'.playerView who :=
+      (playerView_eq_cursorPlayerView g hctx who h').symm
 
 /-- A total FOSG behavioral profile is constant on histories with the same
 current Vegas private observation.
 
 This is the representative-independence fact needed when a sequential
 information-state strategy is read back as a syntax-recursive Vegas strategy:
-once the current cursor and player view agree, the sorry'd history-collapse
+once the current cursor and player view agree, the history-collapse
 lemma identifies the FOSG information states, so the profile lookup is the
 same. -/
 theorem legalBehavioralProfile_apply_eq_of_privateObsOfLastState_eq
