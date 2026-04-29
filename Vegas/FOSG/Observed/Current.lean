@@ -77,33 +77,112 @@ namespace CurrentValueMove
 noncomputable def toProgramMoveAtWorld
     {g : WFProgram P L} (w : CursorCheckedWorld g) (who : P)
     (m : CurrentValueMove g who (privateObsOfCursorWorld who w)) :
-    Option (ProgramAction g.prog who) := by
-  cases hprog : w.1.prog with
-  | ret payoffs => exact none
-  | letExpr x e k => exact none
-  | sample x D k => exact none
-  | reveal y owner x hx k => exact none
-  | commit x owner R k =>
-      change w.1.cursor.prog = VegasCore.commit x owner R k at hprog
-      dsimp [CurrentValueMove, privateObsOfCursorWorld] at m
-      rw [hprog] at m
-      by_cases howner : owner = who
-      · cases howner
-        let mv :
-            {v : L.Val _ //
-              ∀ ρ : Env L.Val (eraseVCtx w.1.cursor.Γ),
-                projectViewEnv who ρ =
-                    VEnv.eraseEnv (VEnv.toView who w.1.env) →
-                  evalGuard (Player := P) (L := L) R v ρ = true} := by
-          simpa only [if_pos rfl] using m
-        exact some
-          (ProgramAction.commitAt
-            (by
-              rw [← hprog]
-              exact w.1.suffix)
-            mv.1)
-      · simp only [if_neg howner] at m
-        exact none
+    Option (ProgramAction g.prog who) :=
+  match hprog : w.1.cursor.prog with
+  | .ret _ => none
+  | .letExpr _ _ _ => none
+  | .sample _ _ _ => none
+  | .reveal _ _ _ _ _ => none
+  | .commit x owner R k =>
+      if howner : owner = who then
+        by
+          cases howner
+          let mv :
+              {v : L.Val _ //
+                ∀ ρ : Env L.Val (eraseVCtx w.1.cursor.Γ),
+                  projectViewEnv who ρ =
+                      VEnv.eraseEnv (VEnv.toView who w.1.env) →
+                    evalGuard (Player := P) (L := L) R v ρ = true} := by
+            dsimp [CurrentValueMove, privateObsOfCursorWorld] at m
+            rw [hprog] at m
+            simpa only [if_pos rfl] using m
+          exact some
+            (ProgramAction.commitAt
+              (by
+                rw [← hprog]
+                exact w.1.suffix)
+              mv.1)
+      else none
+
+theorem toProgramMoveAtWorld_available
+    {g : WFProgram P L} (w : CursorCheckedWorld g) (who : P)
+    (m : CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    toProgramMoveAtWorld w who m ∈
+      CursorCheckedWorld.availableProgramMovesAt
+        w.1.prog w.1.env w.1.suffix who := by
+  unfold toProgramMoveAtWorld
+  split
+  · rename_i payoffs hprog
+    simp [CursorCheckedWorld.availableProgramMovesAt,
+      CursorWorldData.prog, hprog, active]
+  · rename_i x b e k hprog
+    simp [CursorCheckedWorld.availableProgramMovesAt,
+      CursorWorldData.prog, hprog, active]
+  · rename_i x b D k hprog
+    simp [CursorCheckedWorld.availableProgramMovesAt,
+      CursorWorldData.prog, hprog, active]
+  · rename_i y owner x b hx k hprog
+    simp [CursorCheckedWorld.availableProgramMovesAt,
+      CursorWorldData.prog, hprog, active]
+  · rename_i x owner b R k hprog
+    split
+    · rename_i howner
+      cases howner
+      let suffix : ProgramSuffix g.prog (VegasCore.commit x who R k) := by
+        rw [← hprog]
+        exact w.1.suffix
+      let mv :
+          {v : L.Val _ //
+            ∀ ρ : Env L.Val (eraseVCtx w.1.cursor.Γ),
+              projectViewEnv who ρ =
+                  VEnv.eraseEnv (VEnv.toView who w.1.env) →
+                evalGuard (Player := P) (L := L) R v ρ = true} := by
+        dsimp [CurrentValueMove, privateObsOfCursorWorld] at m
+        rw [hprog] at m
+        simpa only [if_pos rfl] using m
+      have hguard :
+          evalGuard (Player := P) (L := L) R mv.1
+            (VEnv.eraseEnv w.1.env) = true := by
+        exact mv.2 (VEnv.eraseEnv w.1.env)
+          ((privateObsOfCursorWorld_eraseEnv (g := g) who w).symm)
+      have hai :
+          ProgramAction.commitAt suffix mv.1 ∈
+            CursorCheckedWorld.availableProgramActionsAt
+              (VegasCore.commit x who R k) w.1.env suffix who := by
+        rw [CursorCheckedWorld.availableProgramActionsAt_commit_owner_iff]
+        exact ⟨mv.1, rfl, hguard⟩
+      have hai' :
+          ProgramAction.commitAt suffix mv.1 ∈
+            CursorCheckedWorld.availableProgramActionsAt
+              w.1.cursor.prog w.1.env w.1.suffix who := by
+        constructor
+        · have hbroad := hai.1
+          simpa [FOSGBridge.availableActions, hprog] using hbroad
+        · exact ⟨x, who, _, R, k, hprog, rfl, rfl⟩
+      simpa [CursorCheckedWorld.availableProgramMovesAt,
+        CursorWorldData.prog, hprog, active, suffix, mv] using
+          (⟨by simp [active, hprog], hai'⟩ :
+            some (ProgramAction.commitAt suffix mv.1) ∈
+              CursorCheckedWorld.availableProgramMovesAt
+                w.1.cursor.prog w.1.env w.1.suffix who)
+    · rename_i howner
+      simpa [CursorCheckedWorld.availableProgramMovesAt,
+        CursorWorldData.prog, hprog, active] using
+          (fun h : who = owner => howner h.symm)
+
+/-- Repackage a value move as the proof-carrying optional program move used by
+the checked cursor transition. -/
+noncomputable def toCurrentProgramMove
+    {g : WFProgram P L} (w : CursorCheckedWorld g) (who : P)
+    (m : CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    CurrentProgramMove g who (privateObsOfCursorWorld who w) :=
+  ⟨toProgramMoveAtWorld w who m, by
+    intro w' hpriv
+    have hsets :=
+      availableProgramMovesAt_eq_of_privateObs_eq
+        g who w' w hpriv
+    rw [hsets]
+    exact toProgramMoveAtWorld_available w who m⟩
 
 /-- A legal pure Vegas strategy gives a canonical current-value move. -/
 noncomputable def ofPureStrategy
@@ -719,6 +798,60 @@ theorem currentProgramStep_nonterminal
           currentProgramJointActionLegal w a hterm⟩ := by
   simp [currentProgramStep, hterm]
 
+/-- Erase a current value joint action to the program-local optional joint
+action used by the cursor transition. -/
+noncomputable def currentValueProgramJointActionRaw
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    ProgramJointAction g :=
+  currentProgramJointActionRaw w
+    (fun who => CurrentValueMove.toCurrentProgramMove w who (a who))
+
+theorem currentValueProgramJointActionRaw_eq
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    currentValueProgramJointActionRaw w a =
+      fun who => CurrentValueMove.toProgramMoveAtWorld w who (a who) := rfl
+
+theorem currentValueProgramJointActionLegal
+    {g : WFProgram P L} (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w))
+    (hterm : ¬ CursorCheckedWorld.terminal w) :
+    CursorProgramJointActionLegal w
+      (currentValueProgramJointActionRaw w a) := by
+  exact currentProgramJointActionLegal w
+    (fun who => CurrentValueMove.toCurrentProgramMove w who (a who))
+    hterm
+
+/-- One-step transition of the value-indexed current-observation Kuhn model. -/
+noncomputable def currentValueProgramStep
+    (g : WFProgram P L)
+    (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w)) :
+    PMF (CursorCheckedWorld g) :=
+  currentProgramStep g w
+    (fun who => CurrentValueMove.toCurrentProgramMove w who (a who))
+
+@[simp] theorem currentValueProgramStep_terminal
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w))
+    (hterm : CursorCheckedWorld.terminal w) :
+    currentValueProgramStep g w a = PMF.pure w := by
+  simp [currentValueProgramStep, hterm]
+
+theorem currentValueProgramStep_nonterminal
+    (g : WFProgram P L) (w : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w))
+    (hterm : ¬ CursorCheckedWorld.terminal w) :
+    currentValueProgramStep g w a =
+      cursorProgramTransition w
+        ⟨currentValueProgramJointActionRaw w a,
+          currentValueProgramJointActionLegal w a hterm⟩ := by
+  simp [currentValueProgramStep, currentValueProgramJointActionRaw,
+    currentProgramStep_nonterminal g w
+      (fun who => CurrentValueMove.toCurrentProgramMove w who (a who))
+      hterm]
+
 theorem currentProgramStep_eq_of_active_empty
     (g : WFProgram P L) (w : CursorCheckedWorld g)
     (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
@@ -773,6 +906,125 @@ theorem currentProgramStep_massInvariant
       ⟨currentProgramJointActionRaw w a₂,
         currentProgramJointActionLegal w a₂ hterm⟩
       dst h₁ h₂
+
+theorem currentValueProgramStep_massInvariant
+    (g : WFProgram P L) (w dst : CursorCheckedWorld g)
+    (a₁ a₂ : ∀ who,
+      CurrentValueMove g who (privateObsOfCursorWorld who w))
+    (h₁ : currentValueProgramStep g w a₁ dst ≠ 0)
+    (h₂ : currentValueProgramStep g w a₂ dst ≠ 0) :
+    currentValueProgramStep g w a₁ dst =
+      currentValueProgramStep g w a₂ dst := by
+  exact currentProgramStep_massInvariant g w dst
+    (fun who => CurrentValueMove.toCurrentProgramMove w who (a₁ who))
+    (fun who => CurrentValueMove.toCurrentProgramMove w who (a₂ who))
+    h₁ h₂
+
+/-- Kuhn core model whose information state is Vegas' current private
+observation and whose local actions are cursor-local committed values. -/
+noncomputable def currentValueObsModel
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ) :
+    ObsModelCore P (CursorCheckedWorld g)
+      (fun who => PrivateObs g who)
+      (fun who priv => CurrentValueMove g who priv) where
+  infoState := fun who => InfoStateCore.identity (PrivateObs g who)
+  observe := fun who w => privateObsOfCursorWorld who w
+  machine :=
+    { init := CursorCheckedWorld.initial g _hctx
+      step := fun w a => currentValueProgramStep g w a }
+
+theorem currentValueObsModel_stepMassInvariant
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (LF : FiniteValuation L) :
+    letI : ∀ who obs, Fintype (CurrentValueMove g who obs) :=
+      fun who obs => CurrentValueMove.instFintype g LF who obs
+    ObsModelCore.StepMassInvariant (currentValueObsModel g hctx) := by
+  letI : ∀ who obs, Fintype (CurrentValueMove g who obs) :=
+    fun who obs => CurrentValueMove.instFintype g LF who obs
+  intro ss t π₁ π₂ h₁ h₂
+  let w := (currentValueObsModel g hctx).lastState ss
+  let a₁ : ∀ who,
+      CurrentValueMove g who ((currentValueObsModel g hctx).observe who w) :=
+    fun who =>
+      (currentValueObsModel g hctx).currentObs_projectStates who ss ▸
+        π₁ who ((currentValueObsModel g hctx).projectStates who ss)
+  let a₂ : ∀ who,
+      CurrentValueMove g who ((currentValueObsModel g hctx).observe who w) :=
+    fun who =>
+      (currentValueObsModel g hctx).currentObs_projectStates who ss ▸
+        π₂ who ((currentValueObsModel g hctx).projectStates who ss)
+  have h₁' : currentValueProgramStep g w a₁ t ≠ 0 := by
+    simpa [ObsModelCore.pureStep_eq, w, a₁, currentValueObsModel,
+      ObsModelCore.step] using h₁
+  have h₂' : currentValueProgramStep g w a₂ t ≠ 0 := by
+    simpa [ObsModelCore.pureStep_eq, w, a₂, currentValueObsModel,
+      ObsModelCore.step] using h₂
+  simpa [ObsModelCore.pureStep_eq, w, a₁, a₂, currentValueObsModel,
+    ObsModelCore.step] using
+      currentValueProgramStep_massInvariant g w t a₁ a₂ h₁' h₂'
+
+/-- A pure profile supplies fallback/nonempty witnesses for all players'
+value-indexed current-observation local action types. -/
+@[reducible] noncomputable def currentValueMoveNonemptyOfPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    ∀ who (priv : PrivateObs g who),
+      Nonempty (CurrentValueMove g who priv) :=
+  fun who priv => ⟨CurrentValueMove.ofPureStrategy g hctx who (σ who) priv⟩
+
+/-- Embed a legal Vegas pure strategy as a value-indexed local strategy of
+the current-observation Kuhn model. -/
+noncomputable def currentValueLocalPureStrategy
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (σ : LegalProgramPureStrategy g who) :
+    (currentValueObsModel g hctx).LocalStrategy who :=
+  fun priv => CurrentValueMove.ofPureStrategy g hctx who σ priv
+
+/-- Profile-level embedding of legal Vegas pure strategies into the
+value-indexed current-observation Kuhn model. -/
+noncomputable def currentValueLocalPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    (currentValueObsModel g hctx).PureProfile :=
+  fun who => currentValueLocalPureStrategy g hctx who (σ who)
+
+/-- Independent mixed legal Vegas pure strategies transported to the
+value-indexed current-observation Kuhn model. -/
+noncomputable def currentValueLocalMixedPureProfile
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    ∀ who, PMF ((currentValueObsModel g hctx).LocalStrategy who) :=
+  fun who => PMF.map (currentValueLocalPureStrategy g hctx who) (μ who)
+
+theorem currentValueLocalMixedPureProfile_joint
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : ∀ who, Fintype ((currentValueObsModel g hctx).InfoState who) :=
+      fun who => PrivateObs.instFintype g LF who
+    letI : ∀ who obs,
+        Fintype (CurrentValueMove g who obs) :=
+      fun who obs => CurrentValueMove.instFintype g LF who obs
+    Math.PMFProduct.pmfPi (currentValueLocalMixedPureProfile g hctx μ) =
+      PMF.map (currentValueLocalPureProfile g hctx)
+        (Math.PMFProduct.pmfPi μ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype ((currentValueObsModel g hctx).InfoState who) :=
+    fun who => PrivateObs.instFintype g LF who
+  letI : ∀ who obs,
+      Fintype (CurrentValueMove g who obs) :=
+    fun who obs => CurrentValueMove.instFintype g LF who obs
+  change Math.PMFProduct.pmfPi
+      (fun who =>
+        PMF.map (currentValueLocalPureStrategy g hctx who) (μ who)) =
+    PMF.map
+      (fun σ => currentValueLocalPureProfile g hctx σ)
+      (Math.PMFProduct.pmfPi μ)
+  exact (Math.PMFProduct.pmfPi_push_coordwise μ
+    (fun who => currentValueLocalPureStrategy g hctx who)).symm
 
 /-- Kuhn core model whose information state is exactly Vegas' current private
 observation. Its behavioral profiles are the semantic target for total
