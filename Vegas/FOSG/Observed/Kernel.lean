@@ -2857,6 +2857,48 @@ theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_fi
   exact observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
     g hctx LF σ
 
+/-- Product-mixed Vegas-pure specialization of FOSG M→B with a total FOSG
+behavioral witness.
+
+The proof still uses the bounded-history reachable theorem internally, then
+extends the reachable behavioral profile to a total legal FOSG behavioral
+profile. This avoids any finiteness assumption on the full FOSG information
+state space. -/
+theorem observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (observedProgramFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    ∃ β : (observedProgramFOSG g hctx).LegalBehavioralProfile,
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          ((observedProgramFOSG g hctx).runDist
+            (syntaxSteps g.prog) β) =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (observedProgramFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  obtain ⟨β, hβ⟩ :=
+    observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+      g hctx LF μ
+  exact ⟨β.extend, hβ⟩
+
 /-- KernelGame-shaped FOSG Kuhn corollary for Vegas.
 
 A product mixed profile over legal Vegas pure strategies is realized by a legal

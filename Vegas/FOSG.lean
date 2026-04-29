@@ -67,6 +67,34 @@ theorem toFOSG_mixedPure_realizedByBehavioral_outcomeKernel
   Observed.observedProgramReachableKernelGame_mixedPure_realization
     g hctx LF μ
 
+/-- FOSG Kuhn M→B with a total legal FOSG behavioral witness.
+
+The theorem preserves the Vegas outcome distribution. The behavioral witness is
+total for the compiled FOSG information-state space; this is stronger than the
+reachable-profile wrapper below, but it is still a FOSG strategy, not a Vegas
+`LegalProgramBehavioralProfilePMF`. -/
+theorem toFOSG_mixedPure_realizedByFullBehavioral_runDist
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    letI : Fintype (CursorCheckedWorld g) :=
+      observedProgramFOSG.instFintypeWorld g hctx LF
+    letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+      fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+    letI : Fintype (toFOSG g hctx).History :=
+      observedProgramFOSG.instFintypeHistory g hctx LF
+    letI : DecidablePred (toFOSG g hctx).terminal :=
+      observedProgramFOSG.instDecidablePredTerminal g hctx
+    ∃ β : (toFOSG g hctx).LegalBehavioralProfile,
+      PMF.map (observedProgramHistoryOutcome g hctx)
+          ((toFOSG g hctx).runDist (syntaxSteps g.prog) β) =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) :=
+  Observed.observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    g hctx LF μ
+
 end FOSGBridge
 
 open GameTheory
