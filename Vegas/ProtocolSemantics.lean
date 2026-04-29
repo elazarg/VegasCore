@@ -217,28 +217,6 @@ def ProtocolTotalMixedPureRealizationPMF
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
-theorem protocol_mixedPure_realizedByBehavioralPMF_finite
-    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
-    (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
-    ∃ β : LegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  exact program_mixedPure_realizedByBehavioralPMF_finite g hctx LF μ
-
-theorem protocolTotalMixedPureRealizationPMF_finite
-    [Fintype P] [∀ τ : L.Ty, Nonempty (L.Val τ)]
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
-    ProtocolTotalMixedPureRealizationPMF g := by
-  intro μ
-  exact protocol_mixedPure_realizedByBehavioralPMF_finite g hctx LF μ
-
 /-- FDist-valued mixed-pure realization target.
 
 This is deliberately not named as the general Kuhn property: it can only be
