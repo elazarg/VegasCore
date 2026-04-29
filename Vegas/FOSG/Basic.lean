@@ -1216,6 +1216,102 @@ end CommitCursor
 
 end ProgramCursor
 
+namespace ProgramSuffix
+
+/-- Lifting a commit cursor through a suffix preserves the endpoint context of
+the corresponding program cursor. -/
+theorem liftCommitCursor_toProgramCursor_Γ
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    (ProgramCursor.CommitCursor.toProgramCursor (s.liftCommitCursor c)).Γ =
+      (ProgramCursor.CommitCursor.toProgramCursor c).Γ := by
+  induction s with
+  | here => rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ]
+        using ih (.reveal c)
+
+/-- Lifting a commit cursor through a suffix preserves the endpoint program of
+the corresponding program cursor, after transporting along the endpoint
+context equality. -/
+theorem liftCommitCursor_toProgramCursor_prog
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    (liftCommitCursor_toProgramCursor_Γ s c) ▸
+      (ProgramCursor.CommitCursor.toProgramCursor (s.liftCommitCursor c)).prog =
+        (ProgramCursor.CommitCursor.toProgramCursor c).prog := by
+  induction s with
+  | here => rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+        ProgramCursor.prog, liftCommitCursor_toProgramCursor_Γ]
+        using ih (.reveal c)
+
+/-- The canonical program cursor extracted from a suffix ending at an owned
+commit node has the context of that commit node. -/
+theorem commitCursor_toProgramCursor_Γ
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    (ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.commitCursor s)).Γ = Γ := by
+  simpa [ProgramSuffix.commitCursor,
+    ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ] using
+      (liftCommitCursor_toProgramCursor_Γ s
+        (.here : CommitCursor who (.commit x who R k)))
+
+/-- The canonical program cursor extracted from a suffix ending at an owned
+commit node points back to that same commit node, after transporting along the
+endpoint-context equality. -/
+theorem commitCursor_toProgramCursor_prog
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    (commitCursor_toProgramCursor_Γ s) ▸
+      (ProgramCursor.CommitCursor.toProgramCursor
+        (ProgramSuffix.commitCursor s)).prog =
+        VegasCore.commit x who R k := by
+  simpa [ProgramSuffix.commitCursor,
+    ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.Γ,
+    ProgramCursor.prog, commitCursor_toProgramCursor_Γ] using
+      (liftCommitCursor_toProgramCursor_prog s
+        (.here : CommitCursor who (.commit x who R k)))
+
+end ProgramSuffix
+
 /-! ## Cursor-based world data -/
 
 /-- Data-bearing world state keyed by a canonical finite program cursor. This

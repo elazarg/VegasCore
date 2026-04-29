@@ -1810,6 +1810,91 @@ theorem currentBehavioralKernelPMFAtCursor_isLegalAt
   exact currentMoveCommitValueOrDefault_guard_at_cursor
     g hctx c hprog env m
 
+/-- Current-observation private state at a concrete commit suffix, using the
+canonical finite cursor for that suffix. -/
+noncomputable def privateObsOfViewAtCommitSuffix
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (view : ViewEnv who Γ) : PrivateObs g who :=
+  let c := ProgramCursor.CommitCursor.toProgramCursor
+    (ProgramSuffix.commitCursor suffix)
+  { cursor := c
+    env := cast
+      (congrArg (fun Δ => VEnv L (viewVCtx who Δ))
+        (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix).symm)
+      (VEnv.ofErased view :
+        VEnv L (viewVCtx who Γ)) }
+
+/-- The PMF kernel obtained by reading a current-observation behavioral profile
+at a suffix-indexed owned commit site. -/
+noncomputable def currentBehavioralKernelPMFAtSuffix
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : ObsModelCore.BehavioralProfile (currentObsModel g hctx))
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (suffix : ProgramSuffix g.prog (.commit x who R k)) :
+    ProgramBehavioralKernelPMF who Γ b where
+  run := fun view =>
+    PMF.map (currentMoveCommitValueOrDefault (b := b))
+      (β who (privateObsOfViewAtCommitSuffix suffix view))
+
+/-- Read a current-observation behavioral profile as an ordinary total Vegas
+PMF behavioral profile at a suffix of the root program. -/
+noncomputable def currentBehavioralProfilePMFAtSuffix
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : ObsModelCore.BehavioralProfile (currentObsModel g hctx)) :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      ProgramSuffix g.prog p → ProgramBehavioralProfilePMF p
+  | _, .ret _, _suffix =>
+      fun _who => .ret
+  | _, .letExpr _ _ k, suffix =>
+      fun who => .letExpr
+        (currentBehavioralProfilePMFAtSuffix g hctx β k
+          (ProgramSuffix.letExpr suffix) who)
+  | _, .sample _ _ k, suffix =>
+      fun who => .sample
+        (currentBehavioralProfilePMFAtSuffix g hctx β k
+          (ProgramSuffix.sample suffix) who)
+  | _, .commit x owner R k, suffix =>
+      fun who => by
+        by_cases howner : owner = who
+        · cases howner
+          exact .commitOwn
+            (currentBehavioralKernelPMFAtSuffix g hctx β suffix)
+            (currentBehavioralProfilePMFAtSuffix g hctx β k
+              (ProgramSuffix.commit suffix) owner)
+        · exact .commitOther howner
+            (currentBehavioralProfilePMFAtSuffix g hctx β k
+              (ProgramSuffix.commit suffix) who)
+  | _, .reveal _ _ _ _ k, suffix =>
+      fun who => .reveal
+        (currentBehavioralProfilePMFAtSuffix g hctx β k
+          (ProgramSuffix.reveal suffix) who)
+termination_by _Γ p _suffix => syntaxSteps p
+decreasing_by
+  simp_wf
+  all_goals
+    first
+    | rw [syntaxSteps_letExpr]
+    | rw [syntaxSteps_sample]
+    | rw [syntaxSteps_commit]
+    | rw [syntaxSteps_reveal]
+    omega
+
+/-- Root version of `currentBehavioralProfilePMFAtSuffix`. -/
+noncomputable def currentBehavioralProfilePMF
+    [∀ τ : L.Ty, Nonempty (L.Val τ)]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : ObsModelCore.BehavioralProfile (currentObsModel g hctx)) :
+    ProgramBehavioralProfilePMF g.prog :=
+  currentBehavioralProfilePMFAtSuffix g hctx β g.prog .here
+
 /-- Embed a legal Vegas pure strategy as a local strategy of the
 current-observation Kuhn model. -/
 noncomputable def currentLocalPureStrategy
