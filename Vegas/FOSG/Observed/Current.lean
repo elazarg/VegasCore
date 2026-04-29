@@ -878,6 +878,42 @@ theorem currentValueProgramStep_nonterminal
       (fun who => CurrentValueMove.toCurrentProgramMove w who (a who))
       hterm]
 
+theorem currentValueProgramStep_checkedTransition_support
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    (w dst : CursorCheckedWorld g)
+    (a : ∀ who, CurrentValueMove g who (privateObsOfCursorWorld who w))
+    (hterm : ¬ CursorCheckedWorld.terminal w)
+    (hsupp : currentValueProgramStep g w a dst ≠ 0) :
+    checkedTransition (hctx := hctx) (CheckedWorld.ofCursorChecked w)
+        ⟨ProgramJointAction.toAction (currentValueProgramJointActionRaw w a),
+          CursorProgramJointActionLegal.toAction
+            (currentValueProgramJointActionLegal w a hterm)⟩
+        (CheckedWorld.ofCursorChecked dst) ≠ 0 := by
+  have hmem :
+      dst ∈ (currentValueProgramStep g w a).support := by
+    exact (PMF.mem_support_iff _ _).mpr hsupp
+  have hmapmem :
+      CheckedWorld.ofCursorChecked (hctx := hctx) dst ∈
+        (PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          (currentValueProgramStep g w a)).support := by
+    rw [PMF.support_map]
+    exact ⟨dst, hmem, rfl⟩
+  have hmap :
+      PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          (currentValueProgramStep g w a) =
+        checkedTransition (CheckedWorld.ofCursorChecked (hctx := hctx) w)
+          ⟨ProgramJointAction.toAction (currentValueProgramJointActionRaw w a),
+            CursorProgramJointActionLegal.toAction
+              (currentValueProgramJointActionLegal w a hterm)⟩ := by
+    rw [currentValueProgramStep_nonterminal g w a hterm]
+    simpa [currentValueProgramJointActionRaw] using
+      cursorProgramTransition_map_checkedWorld
+        (hctx := hctx) w
+        ⟨currentValueProgramJointActionRaw w a,
+          currentValueProgramJointActionLegal w a hterm⟩
+  rw [hmap] at hmapmem
+  exact (PMF.mem_support_iff _ _).mp hmapmem
+
 theorem currentProgramStep_eq_of_active_empty
     (g : WFProgram P L) (w : CursorCheckedWorld g)
     (a a' : ∀ who, CurrentProgramMove g who (privateObsOfCursorWorld who w))
