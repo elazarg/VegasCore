@@ -803,11 +803,13 @@ theorem observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
       cursorVegasOutcomeKernelPMF σc h.lastState := by
   intro σc
   exact
-    observedProgramCursorStepValue_of_checkedStep
-      g hctx β
-      (checkedProfileStepPMF g hctx σc)
-      (checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
-      (cursorVegasOutcomeKernelPMF σc)
+    GameTheory.FOSG.History.OutcomeValue.stateStepValue_of_projectedStep
+      (G := observedProgramFOSG g hctx)
+      (σ := β)
+      (project := CheckedWorld.ofCursorChecked (hctx := hctx))
+      (semanticStep := checkedProfileStepPMF g hctx σc)
+      (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
+      (stateValue := cursorVegasOutcomeKernelPMF σc)
       (by intro w; rfl)
       (by
         intro w
@@ -833,9 +835,16 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       β
       (Outcome P) :=
   let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
-  observedProgramOutcomeValueOfCursorValue
-    g hctx β
-    (cursorVegasOutcomeKernelPMF σc)
+  GameTheory.FOSG.History.OutcomeValue.ofLastStateValue
+    (G := observedProgramFOSG g hctx)
+    (σ := β)
+    (rankState := fun w => w.remainingSyntaxSteps)
+    (observeState := cursorWorldOutcome)
+    (stateValue := cursorVegasOutcomeKernelPMF σc)
+    (by
+      intro w hrank
+      exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
+        (g := g) (w := w)).2 hrank)
     (by
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
@@ -845,6 +854,11 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       exact
         observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
           g hctx β fallback h hterm)
+    (by
+      intro h _hterm a dst hsupp
+      simpa [observedProgramFOSG] using
+        cursorProgramTransition_remainingSyntaxSteps
+          (g := g) h.lastState a dst hsupp)
 
 noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)

@@ -727,138 +727,6 @@ theorem observedProgramFOSG_initial_remainingSyntaxSteps_le
   change syntaxSteps g.prog ≤ syntaxSteps g.prog
   exact Nat.le_refl (syntaxSteps g.prog)
 
-/-- Build observed-program outcome-value data directly over the finite cursor
-world carrier.  Clients supply the cursor-local continuation value and prove
-that one observed-program FOSG step preserves it. -/
-noncomputable def observedProgramOutcomeValueOfCursorValue
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (cursorValue : CursorCheckedWorld g → PMF (Outcome P))
-    (terminal_value :
-      ∀ w, (observedProgramFOSG g hctx).terminal w →
-        cursorValue w = PMF.pure (cursorWorldOutcome w))
-    (step_value :
-      ∀ h (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState),
-        ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
-            (fun a =>
-              ((observedProgramFOSG g hctx).transition h.lastState a).bind
-                (fun dst => cursorValue (h.extendByOutcome a dst).lastState)) =
-          cursorValue h.lastState) :
-    GameTheory.FOSG.History.OutcomeValue
-      (G := observedProgramFOSG g hctx)
-      β
-      (Outcome P) where
-  rank := fun h => h.lastState.remainingSyntaxSteps
-  observe := observedProgramHistoryOutcome g hctx
-  value := fun h => cursorValue h.lastState
-  terminal_of_rank_zero := by
-    intro h hrank
-    exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
-      (g := g) (w := h.lastState)).2 hrank
-  terminal_value := by
-    intro h hterm
-    simpa [observedProgramHistoryOutcome] using
-      terminal_value h.lastState hterm
-  step_value := step_value
-  step_rank := by
-    intro h hterm a dst hsupp
-    have hcursor :
-        dst.remainingSyntaxSteps + 1 =
-          h.lastState.remainingSyntaxSteps := by
-      simpa [observedProgramFOSG] using
-        cursorProgramTransition_remainingSyntaxSteps
-          (g := g) h.lastState a dst hsupp
-    rw [GameTheory.FOSG.History.extendByOutcome_of_support
-      (h := h) (a := a) (dst := dst) hsupp]
-    simpa using hcursor
-
-/-- Lift a projected checked-world one-step preservation proof to a
-cursor-world continuation-value preservation proof.  This keeps checked worlds
-as an internal proof device while the observed-program outcome value itself is
-defined on the finite cursor carrier. -/
-theorem observedProgramCursorStepValue_of_checkedStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (checkedStep : CheckedWorld g hctx → PMF (CheckedWorld g hctx))
-    (checkedValue : CheckedWorld g hctx → PMF (Outcome P))
-    (cursorValue : CursorCheckedWorld g → PMF (Outcome P))
-    (hvalue :
-      ∀ w,
-        checkedValue (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
-          cursorValue w)
-    (checked_step_value :
-      ∀ w, (checkedStep w).bind checkedValue = checkedValue w)
-    (hstep :
-      ∀ h (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState),
-        ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
-            (fun a =>
-              PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-                ((observedProgramFOSG g hctx).transition h.lastState a)) =
-          checkedStep
-            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)) :
-    ∀ h (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState),
-      ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
-          (fun a =>
-            ((observedProgramFOSG g hctx).transition h.lastState a).bind
-              (fun dst => cursorValue (h.extendByOutcome a dst).lastState)) =
-        cursorValue h.lastState := by
-  intro h hterm
-  let G := observedProgramFOSG g hctx
-  let project : CursorCheckedWorld g → CheckedWorld g hctx :=
-    CheckedWorld.ofCursorChecked (hctx := hctx)
-  have hproject :
-      (G.legalActionLaw β h hterm).bind
-          (fun a => (G.transition h.lastState a).bind
-            (fun dst => cursorValue (h.extendByOutcome a dst).lastState)) =
-        (G.legalActionLaw β h hterm).bind
-          (fun a => (G.transition h.lastState a).bind cursorValue) := by
-    refine Math.ProbabilityMassFunction.bind_congr_on_support
-      (G.legalActionLaw β h hterm) _ _ ?_
-    intro a _ha
-    refine Math.ProbabilityMassFunction.bind_congr_on_support
-      (G.transition h.lastState a) _ _ ?_
-    intro dst hdst
-    have hsupp : G.transition h.lastState a dst ≠ 0 := by
-      simpa [PMF.mem_support_iff] using hdst
-    rw [GameTheory.FOSG.History.extendByOutcome_of_support
-      (h := h) (a := a) (dst := dst) hsupp]
-    simp
-  have hstep' :
-      (G.legalActionLaw β h hterm).bind
-          (fun a => PMF.map project (G.transition h.lastState a)) =
-        checkedStep
-          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-    simpa [G, project] using hstep h hterm
-  calc
-    (G.legalActionLaw β h hterm).bind
-        (fun a => (G.transition h.lastState a).bind
-          (fun dst => cursorValue (h.extendByOutcome a dst).lastState)) =
-      (G.legalActionLaw β h hterm).bind
-        (fun a => (G.transition h.lastState a).bind cursorValue) := hproject
-    _ =
-      ((G.legalActionLaw β h hterm).bind
-          (fun a => PMF.map project (G.transition h.lastState a))).bind
-        checkedValue := by
-          rw [PMF.bind_bind]
-          congr 1
-          funext a
-          simp [PMF.map, PMF.bind_bind, project, hvalue]
-    _ =
-      (checkedStep
-          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)).bind
-        checkedValue := by
-          rw [hstep']
-    _ =
-      checkedValue
-        (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-          exact checked_step_value
-            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
-    _ = cursorValue h.lastState := hvalue h.lastState
-
 /-- Direct FOSG-step closure for the PMF Vegas cursor outcome kernel. -/
 theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -876,12 +744,13 @@ theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
                 (h.extendByOutcome a dst).lastState)) =
       cursorVegasOutcomeKernelPMF σ h.lastState := by
   exact
-    observedProgramCursorStepValue_of_checkedStep
-      g hctx
-      (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-      (checkedProfileStepPMF g hctx σ)
-      (checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
-      (cursorVegasOutcomeKernelPMF σ)
+    GameTheory.FOSG.History.OutcomeValue.stateStepValue_of_projectedStep
+      (G := observedProgramFOSG g hctx)
+      (σ := toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+      (project := CheckedWorld.ofCursorChecked (hctx := hctx))
+      (semanticStep := checkedProfileStepPMF g hctx σ)
+      (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
+      (stateValue := cursorVegasOutcomeKernelPMF σ)
       (by intro w; rfl)
       (by
         intro w
@@ -903,9 +772,16 @@ noncomputable def observedProgramOutcomeValuePMF
       (G := observedProgramFOSG g hctx)
       (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
       (Outcome P) :=
-  observedProgramOutcomeValueOfCursorValue
-    g hctx (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-    (cursorVegasOutcomeKernelPMF σ)
+  GameTheory.FOSG.History.OutcomeValue.ofLastStateValue
+    (G := observedProgramFOSG g hctx)
+    (σ := toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+    (rankState := fun w => w.remainingSyntaxSteps)
+    (observeState := cursorWorldOutcome)
+    (stateValue := cursorVegasOutcomeKernelPMF σ)
+    (by
+      intro w hrank
+      exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
+        (g := g) (w := w)).2 hrank)
     (by
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
@@ -914,6 +790,11 @@ noncomputable def observedProgramOutcomeValuePMF
       intro h hterm
       exact observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
         g hctx σ h hterm)
+    (by
+      intro h _hterm a dst hsupp
+      simpa [observedProgramFOSG] using
+        cursorProgramTransition_remainingSyntaxSteps
+          (g := g) h.lastState a dst hsupp)
 
 /-- The Vegas-outcome kernel induced by running the observed-program FOSG and
 projecting terminal histories back to Vegas payoff outcomes. This is the
