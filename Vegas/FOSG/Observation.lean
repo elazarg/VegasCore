@@ -347,9 +347,7 @@ noncomputable def observedProgramRunDist
 /-- Project a cursor-world endpoint to the Vegas payoff outcome it represents.
 
 Only `ret` worlds carry a protocol outcome. The nonterminal branch is a
-harmless default used to make this a total projection from FOSG histories;
-`observedProgramRunDist_support_terminal` below proves the bounded run assigns
-mass only to terminal histories. -/
+harmless default used to make this a total projection from FOSG histories. -/
 def cursorWorldOutcome
     {g : WFProgram P L}
     (w : CursorCheckedWorld g) : Outcome P :=
@@ -434,126 +432,6 @@ theorem cursorVegasOutcomeKernel_terminal
           | reveal y who x hx k =>
               simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog] at hterm
-
-/-- The bounded observed-program run distribution supports only terminal
-histories, so the default branch in `observedProgramHistoryOutcome` is
-irrelevant for realized outcomes. -/
-theorem observedProgramRunDist_support_terminal
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    {h : (observedProgramFOSG g hctx).History}
-    (hh : h ∈ (observedProgramRunDist g hctx LF σ).support) :
-    (observedProgramFOSG g hctx).terminal h.lastState := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  exact GameTheory.FOSG.runDist_support_isTerminal_of_boundedHorizon
-    (G := observedProgramFOSG g hctx)
-    (observedProgramFOSG_boundedHorizon g hctx)
-    σ h (by simpa [observedProgramRunDist] using hh)
-
-/-- `runDistFrom` for the observed-program FOSG, with the finite execution
-instances supplied by `FiniteValuation`. -/
-noncomputable def observedProgramRunDistFrom
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History) :
-    PMF (observedProgramFOSG g hctx).History := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  exact GameTheory.FOSG.History.runDistFrom
-    (observedProgramFOSG g hctx) σ n h
-
-@[simp] theorem observedProgramRunDist_eq_runDistFrom_initial
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile) :
-    observedProgramRunDist g hctx LF σ =
-      observedProgramRunDistFrom g hctx LF σ
-        (syntaxSteps g.prog)
-        (GameTheory.FOSG.History.nil
-          (observedProgramFOSG g hctx)) := by
-  rfl
-
-/-- Once an observed-program FOSG history is terminal, any remaining bounded
-run horizon maps to the point mass at its projected Vegas outcome. -/
-theorem observedProgramRunDistFrom_historyOutcome_terminal
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History)
-    (hterm : (observedProgramFOSG g hctx).terminal h.lastState) :
-    PMF.map (observedProgramHistoryOutcome g hctx)
-        (observedProgramRunDistFrom g hctx LF σ n h) =
-      PMF.pure (observedProgramHistoryOutcome g hctx h) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramRunDistFrom
-  rw [GameTheory.FOSG.History.runDistFrom_terminal
-    (G := observedProgramFOSG g hctx) σ n h hterm]
-  rw [PMF.pure_map]
-
-/-- Projected one-step run equation at empty-active observed-program states.
-This is the common FOSG-side reduction for Vegas `let`, `sample`, and
-`reveal` nodes. -/
-theorem observedProgramRunDistFrom_historyOutcome_succ_active_empty
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
-    (hactive : (observedProgramFOSG g hctx).active h.lastState = ∅) :
-    PMF.map (observedProgramHistoryOutcome g hctx)
-        (observedProgramRunDistFrom g hctx LF σ (n + 1) h) =
-      ((observedProgramFOSG g hctx).transition h.lastState
-          ⟨GameTheory.FOSG.noopAction
-              (fun who : P => ProgramAction g.prog who),
-            (observedProgramFOSG g hctx)
-              |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩).bind
-        (fun dst =>
-          PMF.map (observedProgramHistoryOutcome g hctx)
-            (observedProgramRunDistFrom g hctx LF σ n
-              (h.extendByOutcome
-                ⟨GameTheory.FOSG.noopAction
-                    (fun who : P => ProgramAction g.prog who),
-                  (observedProgramFOSG g hctx)
-                    |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩
-                dst))) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramRunDistFrom
-  rw [GameTheory.FOSG.History.runDistFrom_succ_active_empty
-    (G := observedProgramFOSG g hctx) σ n h hterm hactive]
-  rw [PMF.map_bind]
 
 end FOSGBridge
 end Vegas
