@@ -994,23 +994,6 @@ theorem toObservedProgramReachableMixedPureProfile_joint
   exact (Math.PMFProduct.pmfPi_push_coordwise μ
     (fun who => toObservedProgramReachableLegalPureStrategy g hctx who)).symm
 
-@[simp] theorem toObservedProgramReachableLegalPureProfile_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) (who : P) :
-    ((toObservedProgramReachableLegalPureProfile g hctx σ who).1) =
-      (programPureProfileCandidate g hctx σ who).restrictReachable := rfl
-
-@[simp] theorem toObservedProgramReachableLegalPureProfile_extend_apply_history
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
-    (h : (observedProgramFOSG g hctx).History) (who : P) :
-    ((toObservedProgramReachableLegalPureProfile g hctx σ).extend.toProfile
-        who (h.playerView who)) =
-      (toObservedProgramLegalPureProfile g hctx σ).toProfile
-        who (h.playerView who) := by
-  simp [GameTheory.FOSG.ReachableLegalPureProfile.extend,
-    GameTheory.FOSG.PureStrategy.restrictReachable]
-
 theorem moveAtProgramObservation?_toBehavioral_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -1434,42 +1417,6 @@ noncomputable def toObservedProgramReachableLegalBehavioralProfilePMF
   fun who =>
     (toObservedProgramLegalBehavioralProfilePMF g hctx σ who).restrictReachable
 
-@[simp] theorem toObservedProgramReachableLegalBehavioralProfile_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) (who : P) :
-    ((toObservedProgramReachableLegalBehavioralProfile g hctx σ who).1) =
-      (programBehavioralProfileCandidate g hctx σ who).restrictReachable := rfl
-
-@[simp] theorem toObservedProgramReachableLegalBehavioralProfilePMF_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) (who : P) :
-    ((toObservedProgramReachableLegalBehavioralProfilePMF g hctx σ who).1) =
-      (programBehavioralProfilePMFCandidate g hctx σ who).restrictReachable := rfl
-
-@[simp] theorem toObservedProgramReachableLegalBehavioralProfile_extend_apply_history
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (h : (observedProgramFOSG g hctx).History) (who : P) :
-    ((toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend.toProfile
-        who (h.playerView who)) =
-      (toObservedProgramLegalBehavioralProfile g hctx σ).toProfile
-        who (h.playerView who) := by
-  simp [GameTheory.FOSG.ReachableLegalBehavioralProfile.extend,
-    GameTheory.FOSG.ReachableBehavioralStrategy.extend,
-    GameTheory.FOSG.BehavioralStrategy.restrictReachable]
-
-@[simp] theorem toObservedProgramReachableLegalBehavioralProfilePMF_extend_apply_history
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (h : (observedProgramFOSG g hctx).History) (who : P) :
-    ((toObservedProgramReachableLegalBehavioralProfilePMF g hctx σ).extend.toProfile
-        who (h.playerView who)) =
-      (toObservedProgramLegalBehavioralProfilePMF g hctx σ).toProfile
-        who (h.playerView who) := by
-  simp [GameTheory.FOSG.ReachableLegalBehavioralProfile.extend,
-    GameTheory.FOSG.ReachableBehavioralStrategy.extend,
-    GameTheory.FOSG.BehavioralStrategy.restrictReachable]
-
 theorem observedProgramRunDist_reachable_extend_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -1487,16 +1434,13 @@ theorem observedProgramRunDist_reachable_extend_eq
         g hctx LF who
   letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramRunDist
-  exact GameTheory.FOSG.runDist_congr
+  simpa [observedProgramRunDist,
+    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable,
+    toObservedProgramReachableLegalBehavioralProfile] using
+    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable_extend_runDist
     (G := observedProgramFOSG g hctx)
-    (syntaxSteps g.prog)
-    (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend
     (toObservedProgramLegalBehavioralProfile g hctx σ)
-    (by
-      intro h who
-      exact toObservedProgramReachableLegalBehavioralProfile_extend_apply_history
-        g hctx σ h who)
+    (syntaxSteps g.prog)
 
 theorem observedProgramRunDistPMF_reachable_extend_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -1515,16 +1459,13 @@ theorem observedProgramRunDistPMF_reachable_extend_eq
         g hctx LF who
   letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramRunDist
-  exact GameTheory.FOSG.runDist_congr
+  simpa [observedProgramRunDist,
+    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable,
+    toObservedProgramReachableLegalBehavioralProfilePMF] using
+    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable_extend_runDist
     (G := observedProgramFOSG g hctx)
-    (syntaxSteps g.prog)
-    (toObservedProgramReachableLegalBehavioralProfilePMF g hctx σ).extend
     (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-    (by
-      intro h who
-      exact toObservedProgramReachableLegalBehavioralProfilePMF_extend_apply_history
-        g hctx σ h who)
+    (syntaxSteps g.prog)
 
 theorem observedProgramProjectedPayoff_terminalWeight_reachable_eq_runDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)

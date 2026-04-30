@@ -930,18 +930,13 @@ theorem observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
         observedProgramRunDist g hctx LF
           ((observedProgramFOSG g hctx).legalPureToBehavioral
             (toObservedProgramLegalPureProfile g hctx σ)) by
-        unfold observedProgramRunDist
-        exact GameTheory.FOSG.runDist_congr
+        simpa [observedProgramRunDist,
+          GameTheory.FOSG.Kuhn.legalPureProfileRestrictReachable,
+          toObservedProgramReachableLegalPureProfile] using
+          GameTheory.FOSG.Kuhn.legalPureProfileRestrictReachable_extend_runDist
           (G := observedProgramFOSG g hctx)
-          (syntaxSteps g.prog)
-          ((observedProgramFOSG g hctx).legalPureToBehavioral
-            (toObservedProgramReachableLegalPureProfile g hctx σ).extend)
-          ((observedProgramFOSG g hctx).legalPureToBehavioral
-            (toObservedProgramLegalPureProfile g hctx σ))
-          (by
-            intro h who
-            simp [GameTheory.FOSG.legalPureToBehavioral,
-              GameTheory.FOSG.pureToBehavioral])]
+          (toObservedProgramLegalPureProfile g hctx σ)
+          (syntaxSteps g.prog)]
   exact observedProgramPureOutcomeKernel_eq_toStrategicKernelGame g hctx LF σ
 
 /-- Kernel-game-shaped version of `observedProgramOutcomeKernel`: strategies
