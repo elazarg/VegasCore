@@ -459,9 +459,9 @@ theorem behavioralProfilePMF_collapsedBehavioralProfilePMF
           fun i =>
             collapsedBehavioralStrategyPMF g hctx β fallback i _ suffix
         from funext (ih)]
-      simp [ProgramBehavioralProfilePMF.tail,
+      simp only [ProgramBehavioralProfilePMF.tail,
         ProgramBehavioralStrategyPMF.tailOwn,
-        collapsedBehavioralStrategyPMF]
+        collapsedBehavioralStrategyPMF, ↓reduceDIte, ne_eq]
       split
       · rename_i howner
         cases howner
@@ -671,8 +671,9 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
         checkedProfileStepPMF]
       rw [behavioralProfilePMF_collapsedBehavioralProfilePMF
         g hctx β fallback suffix who]
-      simp [collapsedBehavioralStrategyPMF,
-        ProgramBehavioralStrategyPMF.headKernel]
+      simp only [FOSG.legalBehavioralProfile_toProfile_apply,
+        ProgramBehavioralStrategyPMF.headKernel,
+        collapsedBehavioralStrategyPMF, ↓reduceDIte]
       change (β.toProfile who (h.playerView who)).bind f =
         PMF.map
           (fun v =>

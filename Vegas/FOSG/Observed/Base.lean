@@ -593,19 +593,22 @@ private theorem cursorPlayerViewFrom_transition
   | _, .ret _payoffs, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp =>
       False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | _, .letExpr x e k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.pure_apply, ne_eq, ite_eq_right_iff,
+        one_ne_zero, imp_false, not_not] at hsupp
       subst dst
       have hnone : pa who = none := by
         specialize hmoves who
         cases hpa : pa who with
         | none => rfl
         | some ai =>
-            simp [CursorCheckedWorld.availableProgramMovesAt, active,
-              ProgramCursor.prog, hpa] at hmoves
+            simp only [hpa, CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, Set.mem_setOf_eq, Finset.notMem_empty,
+              false_and] at hmoves
       simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
         ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
   | _, .sample x D k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.map_apply, ne_eq, ENNReal.tsum_eq_zero,
+        ite_eq_right_iff, not_forall] at hsupp
       rcases hsupp with ⟨v, hdst, _hv⟩
       subst dst
       have hnone : pa who = none := by
@@ -613,12 +616,14 @@ private theorem cursorPlayerViewFrom_transition
         cases hpa : pa who with
         | none => rfl
         | some ai =>
-            simp [CursorCheckedWorld.availableProgramMovesAt, active,
-              ProgramCursor.prog, hpa] at hmoves
+            simp only [hpa, CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, Set.mem_setOf_eq, Finset.notMem_empty,
+              false_and] at hmoves
       simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
         ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
   | _, .commit x owner R k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.pure_apply, ne_eq, ite_eq_right_iff,
+        one_ne_zero, imp_false, not_not] at hsupp
       subst dst
       by_cases howner : owner = who
       · subst owner
@@ -626,8 +631,9 @@ private theorem cursorPlayerViewFrom_transition
           specialize hmoves who
           cases hpa : pa who with
           | none =>
-              simp [CursorCheckedWorld.availableProgramMovesAt, active,
-                ProgramCursor.prog, hpa] at hmoves
+              simp only [hpa, CursorCheckedWorld.availableProgramMovesAt, active,
+                ProgramCursor.prog, Set.mem_setOf_eq, Finset.mem_singleton,
+                not_true_eq_false] at hmoves
           | some ai => exact ⟨ai, rfl⟩
         rcases hsome with ⟨ai, hai⟩
         have haiAvail : ai ∈
@@ -669,26 +675,29 @@ private theorem cursorPlayerViewFrom_transition
           cases hpa : pa who with
           | none => rfl
           | some ai =>
-              simp [CursorCheckedWorld.availableProgramMovesAt, active,
-                ProgramCursor.prog, hpa] at hmoves
+              simp only [hpa, CursorCheckedWorld.availableProgramMovesAt, active,
+                ProgramCursor.prog, Set.mem_setOf_eq, Finset.mem_singleton] at hmoves
               exact False.elim (howner hmoves.1.symm)
         simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
           embeddedOwnCommitEvents, ProgramCursor.rootEnv, hnone, howner,
           cursorPlayerViewFrom_here]
   | _, .reveal (b := b) y owner x hx k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.pure_apply, ne_eq, ite_eq_right_iff,
+        one_ne_zero, imp_false, not_not] at hsupp
       subst dst
       have hnone : pa who = none := by
         specialize hmoves who
         cases hpa : pa who with
         | none => rfl
         | some ai =>
-            simp [CursorCheckedWorld.availableProgramMovesAt, active,
-              ProgramCursor.prog, hpa] at hmoves
+            simp only [hpa, CursorCheckedWorld.availableProgramMovesAt, active,
+              ProgramCursor.prog, Set.mem_setOf_eq, Finset.notMem_empty,
+              false_and] at hmoves
       simp [cursorPlayerViewFrom, cursorStepPlayerViewFrom,
         ProgramCursor.rootEnv, hnone, cursorPlayerViewFrom_here]
   | _, .letExpr x e k, emb, .letExpr c, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.map_apply, ne_eq, ENNReal.tsum_eq_zero,
+        ite_eq_right_iff, not_forall] at hsupp
       rcases hsupp with ⟨s, hdst, hsuppS⟩
       subst dst
       have hrec := cursorPlayerViewFrom_transition g hctx who
@@ -709,7 +718,8 @@ private theorem cursorPlayerViewFrom_transition
         hroot, List.append_assoc]
         using hrec
   | _, .sample x D k, emb, .sample c, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.map_apply, ne_eq, ENNReal.tsum_eq_zero,
+        ite_eq_right_iff, not_forall] at hsupp
       rcases hsupp with ⟨s, hdst, hsuppS⟩
       subst dst
       have hrec := cursorPlayerViewFrom_transition g hctx who
@@ -730,7 +740,8 @@ private theorem cursorPlayerViewFrom_transition
         hroot, List.append_assoc]
         using hrec
   | _, .commit x owner R k, emb, .commit c, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.map_apply, ne_eq, ENNReal.tsum_eq_zero,
+        ite_eq_right_iff, not_forall] at hsupp
       rcases hsupp with ⟨s, hdst, hsuppS⟩
       subst dst
       have hrec := cursorPlayerViewFrom_transition g hctx who
@@ -751,7 +762,8 @@ private theorem cursorPlayerViewFrom_transition
         hroot, List.append_assoc]
         using hrec
   | _, .reveal y owner x hx k, emb, .reveal c, env, valid, pa, ha, hmoves, dst, hsupp => by
-      simp [cursorTransitionState] at hsupp
+      simp only [cursorTransitionState, PMF.map_apply, ne_eq, ENNReal.tsum_eq_zero,
+        ite_eq_right_iff, not_forall] at hsupp
       rcases hsupp with ⟨s, hdst, hsuppS⟩
       subst dst
       have hrec := cursorPlayerViewFrom_transition g hctx who
@@ -860,7 +872,7 @@ private theorem cursorPlayerView_step
           CursorEmbedding.id, privateObsOfCursorEnv, privateObsOfCursorWorld,
           publicObsOfCursorEnv, publicObsOfCursorWorld, hact]
   unfold cursorPlayerView
-  simp [CursorRuntimeState.toChecked]
+  simp only [CursorRuntimeState.toChecked]
   rw [hbase, hstep]
   simp [GameTheory.FOSG.Step.playerView, GameTheory.FOSG.Step.ownAction?,
     GameTheory.FOSG.Step.privateObs, GameTheory.FOSG.Step.publicObs,
