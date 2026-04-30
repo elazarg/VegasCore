@@ -15,21 +15,6 @@ GameTheory's generic FOSG compiler uses terminal histories as kernel-game
 outcomes. For Vegas, the semantic comparison is the pushforward of that
 history distribution along `observedProgramHistoryOutcome`. -/
 
-/-- Vegas' denotational outcome kernel at a suffix-based checked world. This
-is the natural semantic target for the preservation proof: the current Vegas
-program is exposed directly, so the proof proceeds by ordinary cases on
-`w.prog` rather than by induction through a finite cursor encoding. -/
-noncomputable def checkedVegasOutcomeKernel
-    {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx) : PMF (Outcome P) :=
-  (outcomeDistBehavioral w.prog
-      (w.suffix.behavioralProfile (fun i => (σ i).val)) w.env).toPMF
-    (outcomeDistBehavioral_totalWeight_eq_one
-      (p := w.prog)
-      (σ := w.suffix.behavioralProfile (fun i => (σ i).val))
-      w.normalized)
-
 noncomputable def checkedVegasOutcomeKernelPMF
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -45,90 +30,6 @@ noncomputable def cursorVegasOutcomeKernelPMF
     (w : CursorCheckedWorld g) : PMF (Outcome P) :=
   outcomeDistBehavioralPMF w.1.prog w.2.2.2.2.1
     (w.1.suffix.behavioralProfilePMF (fun i => (σ i).val)) w.1.env
-
-/-- Vegas' own profile-induced one-step kernel on suffix-based checked worlds.
-This is the semantic small-step machine. It is intentionally independent of
-FOSG's joint-action representation; commit nodes bind directly over the active
-player's Vegas strategy kernel. -/
-noncomputable def checkedProfileStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx) : PMF (CheckedWorld g hctx) := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          exact PMF.pure
-            { Γ := Γ
-              prog := .ret payoffs
-              env := env
-              suffix := suffix
-              wctx := wctx
-              fresh := fresh
-              viewScoped := viewScoped
-              normalized := normalized
-              legal := legal }
-      | letExpr x e k =>
-          exact PMF.pure
-            { Γ := _
-              prog := k
-              env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-                (L.eval e (VEnv.erasePubEnv env)) env
-              suffix := .letExpr suffix
-              wctx := WFCtx.cons fresh.1 wctx
-              fresh := fresh.2
-              viewScoped := viewScoped
-              normalized := normalized
-              legal := legal }
-      | sample x D k =>
-          exact PMF.map
-            (fun v =>
-              { Γ := _
-                prog := k
-                env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-                  v env
-                suffix := .sample suffix
-                wctx := WFCtx.cons fresh.1 wctx
-                fresh := fresh.2
-                viewScoped := viewScoped
-                normalized := normalized.2
-                legal := legal })
-            ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF (normalized.1 env))
-      | commit x who R k =>
-          let σp : ProgramBehavioralProfile
-              (.commit x who R k) :=
-            suffix.behavioralProfile (fun i => (σ i).val)
-          let d := ProgramBehavioralStrategy.headKernel
-            (σp who) (projectViewEnv who (VEnv.eraseEnv env))
-          have hd : FDist.totalWeight d = 1 :=
-            ProgramBehavioralStrategy.headKernel_normalized
-              (σp who)
-              (projectViewEnv who (VEnv.eraseEnv env))
-          exact PMF.map
-            (fun v =>
-              { Γ := _
-                prog := k
-                env := VEnv.cons (Player := P) (L := L) (x := x)
-                  (τ := .hidden who _) v env
-                suffix := .commit suffix
-                wctx := WFCtx.cons fresh.1 wctx
-                fresh := fresh.2
-                viewScoped := viewScoped.2
-                normalized := normalized
-                legal := legal.2 })
-            (d.toPMF hd)
-      | reveal y who x hx k =>
-          exact PMF.pure
-            { Γ := _
-              prog := k
-              env := VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub _)
-                (env x (.hidden who _) hx) env
-              suffix := .reveal suffix
-              wctx := WFCtx.cons fresh.1 wctx
-              fresh := fresh.2
-              viewScoped := viewScoped
-              normalized := normalized
-              legal := legal }
 
 noncomputable def checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -247,87 +148,6 @@ noncomputable def checkedCommitContinuation
            wctx := wctx, fresh := fresh, viewScoped := viewScoped,
            normalized := normalized, legal := legal } : CheckedWorld g hctx)
 
-/-- At a commit cursor owned by `who`, binding the transported program-action
-kernel through the checked transition's commit continuation is exactly the
-Vegas profile step at that checked world. -/
-theorem moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (env : VEnv L Γ)
-    (suffix : ProgramSuffix g.prog (.commit x who R k))
-    (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
-    (viewScoped : ViewScoped (.commit x who R k))
-    (normalized : NormalizedDists (.commit x who R k))
-    (legal : Legal (.commit x who R k)) :
-    (moveAtProgramCursor g hctx σ who suffix
-        (projectViewEnv who (VEnv.eraseEnv env))).bind
-      (checkedCommitContinuation g hctx env suffix wctx fresh viewScoped
-        normalized legal) =
-      checkedProfileStep g hctx σ
-        ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-           wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-           normalized := normalized, legal := legal } : CheckedWorld g hctx) := by
-  rw [moveAtProgramCursor_commit_owner]
-  rw [PMF.bind_map]
-  simp only [checkedProfileStep, Function.comp_def]
-  have hbind := bind_congr (m := PMF)
-    (x := (((suffix.behavioralProfile (fun i => ↑(σ i)) who).headKernel
-      (projectViewEnv who env.eraseEnv)).toPMF
-        (ProgramBehavioralStrategy.headKernel_normalized
-          ((suffix.behavioralProfile (fun i => ↑(σ i))) who)
-          (projectViewEnv who env.eraseEnv))))
-    (f := fun v =>
-      if hty : (ProgramAction.commitAt suffix v).cursor.ty = b then
-        PMF.pure
-          ({ Γ := _
-             prog := k
-             env := VEnv.cons (Player := P) (L := L) (x := x)
-               (τ := .hidden who _)
-               (hty ▸ (ProgramAction.commitAt suffix v).value) env
-             suffix := .commit suffix
-             wctx := WFCtx.cons fresh.1 wctx
-             fresh := fresh.2
-             viewScoped := viewScoped.2
-             normalized := normalized
-             legal := legal.2 } : CheckedWorld g hctx)
-      else
-        PMF.pure
-          ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-             wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-             normalized := normalized, legal := legal } : CheckedWorld g hctx))
-    (g := fun v => PMF.pure
-      ({ Γ := _
-         prog := k
-         env := VEnv.cons (Player := P) (L := L) (x := x)
-           (τ := .hidden who _) v env
-         suffix := .commit suffix
-         wctx := WFCtx.cons fresh.1 wctx
-         fresh := fresh.2
-         viewScoped := viewScoped.2
-         normalized := normalized
-         legal := legal.2 } : CheckedWorld g hctx)) ?_
-  · simpa [PMF.bind_pure_comp, Function.comp_def] using hbind
-  · intro v
-    by_cases hty : (ProgramAction.commitAt suffix v).cursor.ty = b
-    · dsimp only
-      rw [dif_pos hty]
-      have hv :
-          hty ▸ (ProgramAction.commitAt suffix v).value = v :=
-        ProgramAction.commitAt_value_cast suffix v hty
-      have henv :
-          VEnv.cons (Player := P) (L := L) (x := x)
-              (τ := .hidden who _)
-              (hty ▸ (ProgramAction.commitAt suffix v).value) env =
-            VEnv.cons (Player := P) (L := L) (x := x)
-              (τ := .hidden who _) v env :=
-        VEnv.cons_ext hv rfl
-      rw [henv]
-    · exact False.elim
-        (hty (ProgramSuffix.ty_commitCursor suffix))
-
 theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -403,32 +223,6 @@ theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
       rw [henv]
     · exact False.elim
         (hty (ProgramSuffix.ty_commitCursor suffix))
-
-
-
-theorem checkedTransition_eq_checkedProfileStep_of_active_empty
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx)
-    (a : {a : JointAction P L // CheckedJointActionLegal w a})
-    (hactive : checkedActive w = ∅) :
-    checkedTransition w a =
-      checkedProfileStep g hctx σ w := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          exact False.elim
-            (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
-      | letExpr x e k =>
-          simp [checkedTransition, checkedProfileStep]
-      | sample x D k =>
-          simp [checkedTransition, checkedProfileStep]
-      | commit x who R k =>
-          simp [checkedActive, CheckedWorld.toWorld, active] at hactive
-      | reveal y who x hx k =>
-          simp [checkedTransition, checkedProfileStep]
-
 theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -451,44 +245,6 @@ theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
           simp [checkedActive, CheckedWorld.toWorld, active] at hactive
       | reveal y who x hx k =>
           simp [checkedTransition, checkedProfileStepPMF]
-
-/-- At an observed-program history with no active players, the FOSG
-legal-action law followed by the checked-world transition is the Vegas
-small-step kernel. This discharges the `let`, `sample`, and `reveal` one-step
-cases; commit states are handled separately by their singleton active player. -/
-theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P,
-      Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfile g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
-    (hactive :
-      (observedProgramFOSG g hctx).active h.lastState = ∅) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-      (fun a =>
-        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-          ((observedProgramFOSG g hctx).transition
-            h.lastState a)) =
-      checkedProfileStep g hctx σ
-        (CheckedWorld.ofCursorChecked (hctx := hctx)
-          h.lastState) := by
-  rw [GameTheory.FOSG.legalActionLaw_eq_pure_noop_of_active_empty
-    (G := observedProgramFOSG g hctx)
-    (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm hactive]
-  simp only [PMF.pure_bind]
-  rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
-    (hctx := hctx)
-    (w := h.lastState)
-    (a := ⟨GameTheory.FOSG.noopAction
-        (fun who : P => ProgramAction g.prog who),
-      (observedProgramFOSG g hctx)
-        |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
-  apply checkedTransition_eq_checkedProfileStep_of_active_empty
-  simpa [observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
-    CursorCheckedWorld.active] using hactive
 
 theorem
     observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty
@@ -616,10 +372,9 @@ theorem observedProgram_active_mem_commitData
 /-- Common bridge from an observed-program FOSG step to any checked-world
 semantic step whose only active-state obligation is the commit continuation.
 
-This factors the representation work shared by the FDist, PMF, and collapsed
-profile proofs: active-empty states use the no-op action, while singleton
-active states reduce the legal joint-action law to the active player's
-optional program move. -/
+This factors the representation work shared by semantic step proofs:
+active-empty states use the no-op action, while singleton active states reduce
+the legal joint-action law to the active player's optional program move. -/
 theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
@@ -741,46 +496,6 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
           exact commit_step h hterm hmem Γ x b R k env suffix wctx fresh
             viewScoped normalized legal hchecked hworld hobs
 
-/-- One observed-program FOSG execution step, projected to checked worlds,
-coincides with the Vegas semantic one-step kernel. -/
-theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfile g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-      (fun a =>
-        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-          ((observedProgramFOSG g hctx).transition
-            h.lastState a)) =
-      checkedProfileStep g hctx σ
-        (CheckedWorld.ofCursorChecked (hctx := hctx)
-          h.lastState) := by
-  refine observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
-    g hctx (toObservedProgramLegalBehavioralProfile g hctx σ)
-    (checkedProfileStep g hctx σ) ?_ ?_ h hterm
-  · intro h hterm hactive
-    exact
-      observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty
-        g hctx σ h hterm hactive
-  · intro h _hterm who _hmem Γ x b R k env suffix wctx fresh viewScoped
-      normalized legal hchecked _hworld _hobs
-    rw [show
-        ((toObservedProgramLegalBehavioralProfile g hctx σ).toProfile who
-          (h.playerView who)) =
-          moveAtCursorWorld g hctx σ who h.lastState by
-        simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
-          toObservedProgramLegalBehavioralProfile_apply,
-          programBehavioralProfileCandidate_history]]
-    rw [← moveAtCheckedWorld_ofCursorChecked
-      g hctx σ who h.lastState]
-    rw [hchecked]
-    exact moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
-      g hctx σ env suffix wctx fresh viewScoped normalized legal
-
 theorem observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
@@ -830,30 +545,6 @@ def checkedWorldOutcome
   | .ret payoffs => evalPayoffs payoffs w.env
   | _ => 0
 
-/-- At terminal checked worlds, the denotational kernel is exactly the point
-mass at the world's payoff outcome. -/
-theorem checkedVegasOutcomeKernel_terminal
-    {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx)
-    (hterm : checkedTerminal w) :
-    checkedVegasOutcomeKernel σ w =
-      PMF.pure (checkedWorldOutcome w) := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          simp [checkedVegasOutcomeKernel, checkedWorldOutcome,
-            outcomeDistBehavioral, FDist.toPMF_pure]
-      | letExpr x e k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-      | sample x D k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-      | commit x who R k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-      | reveal y who x hx k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-
 theorem checkedVegasOutcomeKernelPMF_terminal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -875,134 +566,6 @@ theorem checkedVegasOutcomeKernelPMF_terminal
           simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
       | reveal y who x hx k =>
           simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-
-/-- One semantic small step preserves the remaining Vegas denotation. This is
-the hard preservation equation in the proof architecture; it is proved at the
-suffix-based machine level before involving the finite FOSG cursor encoding. -/
-theorem checkedProfileStep_bind_checkedVegasOutcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx) :
-    (checkedProfileStep g hctx σ w).bind
-        (checkedVegasOutcomeKernel σ) =
-      checkedVegasOutcomeKernel σ w := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          simp [checkedProfileStep, checkedVegasOutcomeKernel,
-            outcomeDistBehavioral]
-      | letExpr x e k =>
-          simp [checkedProfileStep, checkedVegasOutcomeKernel,
-            outcomeDistBehavioral]
-      | sample x D k =>
-          simp only [checkedProfileStep, checkedVegasOutcomeKernel,
-            outcomeDistBehavioral]
-          rw [PMF.bind_map]
-          change
-            ((L.evalDist D (VEnv.eraseSampleEnv env)).toPMF
-                (normalized.1 env)).bind
-              (fun v =>
-                (outcomeDistBehavioral k
-                    (suffix.behavioralProfile (fun i => (σ i).val))
-                    (VEnv.cons (Player := P) (L := L) (x := x)
-                      (τ := .pub _) v env)).toPMF
-                  (outcomeDistBehavioral_totalWeight_eq_one
-                    (p := k)
-                    (σ := suffix.behavioralProfile (fun i => (σ i).val))
-                    normalized.2)) =
-              ((L.evalDist D (VEnv.eraseSampleEnv env)).bind fun v =>
-                outcomeDistBehavioral k
-                  (suffix.behavioralProfile (fun i => (σ i).val))
-                  (VEnv.cons (Player := P) (L := L) (x := x)
-                    (τ := .pub _) v env)).toPMF
-                (outcomeDistBehavioral_totalWeight_eq_one
-                  (p := VegasCore.sample x D k)
-                  (σ := suffix.behavioralProfile (fun i => (σ i).val))
-                  ⟨normalized.1, normalized.2⟩)
-          rw [← FDist.toPMF_bind
-            (L.evalDist D (VEnv.eraseSampleEnv env))
-            (fun v =>
-              outcomeDistBehavioral k
-                (suffix.behavioralProfile (fun i => (σ i).val))
-                (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-                  v env))
-            (normalized.1 env)
-            (fun v =>
-              outcomeDistBehavioral_totalWeight_eq_one
-                (p := k)
-                (σ := suffix.behavioralProfile (fun i => (σ i).val))
-                normalized.2)
-            (outcomeDistBehavioral_totalWeight_eq_one
-              (p := VegasCore.sample x D k)
-              (σ := suffix.behavioralProfile (fun i => (σ i).val))
-              ⟨normalized.1, normalized.2⟩)]
-      | commit x who R k =>
-          simp only [checkedProfileStep, checkedVegasOutcomeKernel,
-            outcomeDistBehavioral]
-          rw [PMF.bind_map]
-          have hd :
-              FDist.totalWeight
-                (ProgramBehavioralStrategy.headKernel
-                  ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-                  (projectViewEnv who
-                    (VEnv.eraseEnv env))) = 1 :=
-            ProgramBehavioralStrategy.headKernel_normalized
-              ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-              (projectViewEnv who (VEnv.eraseEnv env))
-          change
-            ((ProgramBehavioralStrategy.headKernel
-                ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-                (projectViewEnv who
-                  (VEnv.eraseEnv env))).toPMF hd).bind
-              (fun v =>
-                (outcomeDistBehavioral k
-                    (ProgramBehavioralProfile.tail
-                      (suffix.behavioralProfile (fun i => (σ i).val)))
-                    (VEnv.cons (Player := P) (L := L) (x := x)
-                      (τ := .hidden who _) v env)).toPMF
-                  (outcomeDistBehavioral_totalWeight_eq_one
-                    (p := k)
-                    (σ := ProgramBehavioralProfile.tail
-                      (suffix.behavioralProfile (fun i => (σ i).val)))
-                    normalized)) =
-              ((ProgramBehavioralStrategy.headKernel
-                  ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-                  (projectViewEnv who
-                    (VEnv.eraseEnv env))).bind fun v =>
-                outcomeDistBehavioral k
-                  (ProgramBehavioralProfile.tail
-                    (suffix.behavioralProfile (fun i => (σ i).val)))
-                  (VEnv.cons (Player := P) (L := L) (x := x)
-                    (τ := .hidden who _) v env)).toPMF
-                (outcomeDistBehavioral_totalWeight_eq_one
-                  (p := VegasCore.commit x who R k)
-                  (σ := suffix.behavioralProfile (fun i => (σ i).val))
-                  normalized)
-          rw [← FDist.toPMF_bind
-            (ProgramBehavioralStrategy.headKernel
-              ((suffix.behavioralProfile (fun i => (σ i).val)) who)
-              (projectViewEnv who (VEnv.eraseEnv env)))
-            (fun v =>
-              outcomeDistBehavioral k
-                (ProgramBehavioralProfile.tail
-                  (suffix.behavioralProfile (fun i => (σ i).val)))
-                (VEnv.cons (Player := P) (L := L) (x := x)
-                  (τ := .hidden who _) v env))
-            hd
-            (fun v =>
-              outcomeDistBehavioral_totalWeight_eq_one
-                (p := k)
-                (σ := ProgramBehavioralProfile.tail
-                  (suffix.behavioralProfile (fun i => (σ i).val)))
-                normalized)
-            (outcomeDistBehavioral_totalWeight_eq_one
-              (p := VegasCore.commit x who R k)
-              (σ := suffix.behavioralProfile (fun i => (σ i).val))
-              normalized)]
-      | reveal y who x hx k =>
-          simp [checkedProfileStep, checkedVegasOutcomeKernel,
-            outcomeDistBehavioral, VEnv.get]
 
 theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1057,45 +620,6 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
           simp [VEnv.get]
           rfl
 
-set_option linter.flexible false in
-/-- Every supported nonterminal semantic small step consumes exactly one Vegas
-syntax node. -/
-theorem checkedProfileStep_remainingSyntaxSteps
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CheckedWorld g hctx)
-    (hterm : ¬ checkedTerminal w)
-    (dst : CheckedWorld g hctx)
-    (hsupp : checkedProfileStep g hctx σ w dst ≠ 0) :
-    dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-      | letExpr x e k =>
-          simp [checkedProfileStep, CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps] at hsupp ⊢
-          subst dst
-          rfl
-      | sample x D k =>
-          simp [checkedProfileStep, CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps] at hsupp ⊢
-          rcases hsupp with ⟨v, hdst, _hv⟩
-          subst dst
-          rfl
-      | commit x who R k =>
-          simp [checkedProfileStep, CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps] at hsupp ⊢
-          rcases hsupp with ⟨v, hdst, _hv⟩
-          subst dst
-          rfl
-      | reveal y who x hx k =>
-          simp [checkedProfileStep, CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps] at hsupp ⊢
-          subst dst
-          rfl
-
 theorem checkedProfileStepPMF_remainingSyntaxSteps
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -1138,27 +662,12 @@ theorem checkedProfileStepPMF_remainingSyntaxSteps
           subst dst
           rfl
 
-@[simp] theorem checkedVegasOutcomeKernel_initial
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) :
-    checkedVegasOutcomeKernel σ
-        (CheckedWorld.initial g hctx) =
-      (toKernelGame g).outcomeKernel σ := rfl
-
 @[simp] theorem checkedVegasOutcomeKernelPMF_initial
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g) :
     checkedVegasOutcomeKernelPMF σ
         (CheckedWorld.initial g hctx) =
       (toKernelGamePMF g).outcomeKernel σ := rfl
-
-@[simp] theorem checkedVegasOutcomeKernel_ofCursorChecked
-    {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : LegalProgramBehavioralProfile g)
-    (w : CursorCheckedWorld g) :
-    checkedVegasOutcomeKernel (hctx := hctx) σ
-        (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
-      cursorVegasOutcomeKernel σ w := rfl
 
 @[simp] theorem checkedVegasOutcomeKernelPMF_ofCursorChecked
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
@@ -1350,42 +859,6 @@ theorem observedProgramCursorStepValue_of_checkedStep
             (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
     _ = cursorValue h.lastState := hvalue h.lastState
 
-/-- Direct FOSG-step closure for the Vegas cursor outcome kernel.  This is the
-state-facing theorem clients should use: a single observed-program FOSG step,
-including the legal joint-action layer and history extension, preserves the
-Vegas denotational continuation value at the current cursor world. -/
-theorem observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfile g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-        (fun a =>
-          ((observedProgramFOSG g hctx).transition h.lastState a).bind
-            (fun dst =>
-              cursorVegasOutcomeKernel σ
-                (h.extendByOutcome a dst).lastState)) =
-      cursorVegasOutcomeKernel σ h.lastState := by
-  exact
-    observedProgramCursorStepValue_of_checkedStep
-      g hctx
-      (toObservedProgramLegalBehavioralProfile g hctx σ)
-      (checkedProfileStep g hctx σ)
-      (checkedVegasOutcomeKernel (hctx := hctx) σ)
-      (cursorVegasOutcomeKernel σ)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStep_bind_checkedVegasOutcomeKernel g hctx σ w)
-      (by
-        intro h hterm
-        exact observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep
-          g hctx σ h hterm)
-      h hterm
-
 /-- Direct FOSG-step closure for the PMF Vegas cursor outcome kernel. -/
 theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1420,27 +893,6 @@ theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
           g hctx σ h hterm)
       h hterm
 
-/-- The Vegas continuation value on observed-program histories. -/
-noncomputable def observedProgramOutcomeValue
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfile g) :
-    GameTheory.FOSG.History.OutcomeValue
-      (G := observedProgramFOSG g hctx)
-      (toObservedProgramLegalBehavioralProfile g hctx σ)
-      (Outcome P) :=
-  observedProgramOutcomeValueOfCursorValue
-    g hctx (toObservedProgramLegalBehavioralProfile g hctx σ)
-    (cursorVegasOutcomeKernel σ)
-    (by
-      intro w hterm
-      exact cursorVegasOutcomeKernel_terminal σ w hterm)
-    (by
-      intro h hterm
-      exact observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernel
-        g hctx σ h hterm)
-
 /-- The Vegas PMF continuation value on observed-program histories. -/
 noncomputable def observedProgramOutcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1474,33 +926,6 @@ noncomputable def observedProgramOutcomeKernel
   PMF.map (observedProgramHistoryOutcome g hctx)
     (observedProgramRunDist g hctx LF
       (toObservedProgramLegalBehavioralProfile g hctx σ))
-
-theorem observedProgramOutcomeKernel_eq_toKernelGame_by_value
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfile g) :
-    observedProgramOutcomeKernel g hctx LF σ =
-      (toKernelGame g).outcomeKernel σ := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  let R := observedProgramOutcomeValue g hctx σ
-  have hclosure :=
-    R.map_observe_runDist_eq_value
-      (syntaxSteps g.prog)
-      (by
-        change
-          (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
-            syntaxSteps g.prog
-        exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
-  simpa [R, observedProgramOutcomeValue, observedProgramOutcomeKernel]
-    using hclosure
 
 noncomputable def observedProgramOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
