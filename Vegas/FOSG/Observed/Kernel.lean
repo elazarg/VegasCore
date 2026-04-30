@@ -1350,6 +1350,76 @@ theorem observedProgramCursorStepValue_of_checkedStep
             (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
     _ = cursorValue h.lastState := hvalue h.lastState
 
+/-- Direct FOSG-step closure for the Vegas cursor outcome kernel.  This is the
+state-facing theorem clients should use: a single observed-program FOSG step,
+including the legal joint-action layer and history extension, preserves the
+Vegas denotational continuation value at the current cursor world. -/
+theorem observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernel
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfile g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
+        (fun a =>
+          ((observedProgramFOSG g hctx).transition h.lastState a).bind
+            (fun dst =>
+              cursorVegasOutcomeKernel σ
+                (h.extendByOutcome a dst).lastState)) =
+      cursorVegasOutcomeKernel σ h.lastState := by
+  exact
+    observedProgramCursorStepValue_of_checkedStep
+      g hctx
+      (toObservedProgramLegalBehavioralProfile g hctx σ)
+      (checkedProfileStep g hctx σ)
+      (checkedVegasOutcomeKernel (hctx := hctx) σ)
+      (cursorVegasOutcomeKernel σ)
+      (by intro w; rfl)
+      (by
+        intro w
+        exact checkedProfileStep_bind_checkedVegasOutcomeKernel g hctx σ w)
+      (by
+        intro h hterm
+        exact observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep
+          g hctx σ h hterm)
+      h hterm
+
+/-- Direct FOSG-step closure for the PMF Vegas cursor outcome kernel. -/
+theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    ((observedProgramFOSG g hctx).legalActionLaw
+        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
+        (fun a =>
+          ((observedProgramFOSG g hctx).transition h.lastState a).bind
+            (fun dst =>
+              cursorVegasOutcomeKernelPMF σ
+                (h.extendByOutcome a dst).lastState)) =
+      cursorVegasOutcomeKernelPMF σ h.lastState := by
+  exact
+    observedProgramCursorStepValue_of_checkedStep
+      g hctx
+      (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+      (checkedProfileStepPMF g hctx σ)
+      (checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
+      (cursorVegasOutcomeKernelPMF σ)
+      (by intro w; rfl)
+      (by
+        intro w
+        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+          g hctx σ w)
+      (by
+        intro h hterm
+        exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
+          g hctx σ h hterm)
+      h hterm
+
 /-- The Vegas continuation value on observed-program histories. -/
 noncomputable def observedProgramOutcomeValue
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1366,20 +1436,10 @@ noncomputable def observedProgramOutcomeValue
     (by
       intro w hterm
       exact cursorVegasOutcomeKernel_terminal σ w hterm)
-    (observedProgramCursorStepValue_of_checkedStep
-      g hctx
-      (toObservedProgramLegalBehavioralProfile g hctx σ)
-      (checkedProfileStep g hctx σ)
-      (checkedVegasOutcomeKernel (hctx := hctx) σ)
-      (cursorVegasOutcomeKernel σ)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStep_bind_checkedVegasOutcomeKernel g hctx σ w)
-      (by
-        intro h hterm
-        exact observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep
-          g hctx σ h hterm))
+    (by
+      intro h hterm
+      exact observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernel
+        g hctx σ h hterm)
 
 /-- The Vegas PMF continuation value on observed-program histories. -/
 noncomputable def observedProgramOutcomeValuePMF
@@ -1398,21 +1458,10 @@ noncomputable def observedProgramOutcomeValuePMF
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
         (hctx := hctx) σ w hterm)
-    (observedProgramCursorStepValue_of_checkedStep
-      g hctx
-      (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-      (checkedProfileStepPMF g hctx σ)
-      (checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
-      (cursorVegasOutcomeKernelPMF σ)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-          g hctx σ w)
-      (by
-        intro h hterm
-        exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
-          g hctx σ h hterm))
+    (by
+      intro h hterm
+      exact observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
+        g hctx σ h hterm)
 
 /-- The Vegas-outcome kernel induced by running the observed-program FOSG and
 projecting terminal histories back to Vegas payoff outcomes. This is the

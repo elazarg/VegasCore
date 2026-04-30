@@ -865,6 +865,43 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
         rw [hchecked]
         exact hcoord
 
+/-- Direct FOSG-step closure for an arbitrary observed-program behavioral
+profile after collapsing it back to a Vegas PMF behavioral profile. -/
+theorem observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
+    ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
+        (fun a =>
+          ((observedProgramFOSG g hctx).transition h.lastState a).bind
+            (fun dst =>
+              cursorVegasOutcomeKernelPMF σc
+                (h.extendByOutcome a dst).lastState)) =
+      cursorVegasOutcomeKernelPMF σc h.lastState := by
+  intro σc
+  exact
+    observedProgramCursorStepValue_of_checkedStep
+      g hctx β
+      (checkedProfileStepPMF g hctx σc)
+      (checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
+      (cursorVegasOutcomeKernelPMF σc)
+      (by intro w; rfl)
+      (by
+        intro w
+        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+          g hctx σc w)
+      (by
+        intro h hterm
+        exact
+          observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
+            g hctx β fallback h hterm)
+      h hterm
+
 /-- Continuation value for a total observed-program FOSG profile, interpreted
 through its collapsed Vegas behavioral profile. -/
 noncomputable def observedProgramCollapsedOutcomeValuePMF
@@ -885,21 +922,11 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
         (hctx := hctx) σc w hterm)
-    (observedProgramCursorStepValue_of_checkedStep
-      g hctx β
-      (checkedProfileStepPMF g hctx σc)
-      (checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
-      (cursorVegasOutcomeKernelPMF σc)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-          g hctx σc w)
-      (by
-        intro h hterm
-        exact
-          observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
-            g hctx β fallback h hterm))
+    (by
+      intro h hterm
+      exact
+        observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
+          g hctx β fallback h hterm)
 
 noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
