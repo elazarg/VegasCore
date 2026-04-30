@@ -877,25 +877,29 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       (G := observedProgramFOSG g hctx)
       β
       (Outcome P) :=
-  observedProgramOutcomeValueOfCheckedStep
+  let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
+  observedProgramOutcomeValueOfCursorValue
     g hctx β
-    (checkedProfileStepPMF g hctx
-      (collapsedLegalBehavioralProfilePMF g hctx β fallback))
-    (checkedVegasOutcomeKernelPMF (hctx := hctx)
-      (collapsedLegalBehavioralProfilePMF g hctx β fallback))
+    (cursorVegasOutcomeKernelPMF σc)
     (by
       intro w hterm
-      exact checkedVegasOutcomeKernelPMF_terminal
-        (collapsedLegalBehavioralProfilePMF g hctx β fallback) w hterm)
-    (by
-      intro w
-      exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-        g hctx (collapsedLegalBehavioralProfilePMF g hctx β fallback) w)
-    (by
-      intro h hterm
-      exact
-        observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
-          g hctx β fallback h hterm)
+      exact cursorVegasOutcomeKernelPMF_terminal
+        (hctx := hctx) σc w hterm)
+    (observedProgramCursorStepValue_of_checkedStep
+      g hctx β
+      (checkedProfileStepPMF g hctx σc)
+      (checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
+      (cursorVegasOutcomeKernelPMF σc)
+      (by intro w; rfl)
+      (by
+        intro w
+        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+          g hctx σc w)
+      (by
+        intro h hterm
+        exact
+          observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
+            g hctx β fallback h hterm))
 
 noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -932,7 +936,6 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
             syntaxSteps g.prog
         exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramCollapsedOutcomeValuePMF,
-    observedProgramOutcomeValueOfCheckedStep,
     observedProgramCollapsedOutcomeKernelPMF] using hclosure
 
 theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
