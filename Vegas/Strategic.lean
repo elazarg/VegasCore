@@ -142,6 +142,40 @@ def ProgramBehavioralProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramBehavioralProfile p) : Prop :=
   ∀ who, (σ who).IsLegal p
 
+namespace ProgramBehavioralProfile
+
+/-- Dropping the head commit site preserves behavioral guard-legality. -/
+theorem tail_isLegal
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {σ : ProgramBehavioralProfile (.commit x who R k)}
+    (hσ : σ.IsLegal) :
+    (ProgramBehavioralProfile.tail σ).IsLegal := by
+  intro j
+  by_cases hj : who = j
+  · subst hj
+    have hσ_who : (σ who).IsLegal (.commit x who R k) := hσ who
+    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_who
+    dsimp [ProgramBehavioralProfile.tail]
+    split at hσ_who
+    · split
+      · exact hσ_who.2
+      · exact absurd rfl ‹_›
+    · exact absurd rfl ‹_›
+  · have hσ_j : (σ j).IsLegal (.commit x who R k) := hσ j
+    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_j
+    dsimp [ProgramBehavioralProfile.tail]
+    split at hσ_j
+    · rename_i h
+      exact absurd h hj
+    · split
+      · rename_i h
+        exact absurd h hj
+      · exact hσ_j
+
+end ProgramBehavioralProfile
+
 /-- Guard-legal behavioral strategies over a `WFProgram` bundle. -/
 abbrev LegalProgramBehavioralStrategy (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramBehavioralStrategy who g.prog //

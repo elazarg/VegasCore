@@ -212,6 +212,46 @@ theorem moveAtProgramCursorPMF_suffix_cast
       PMF.pure none := by
   rfl
 
+theorem moveAtProgramCursorPMF_toPMFProfile_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p)
+    (view : ViewEnv who Γ) :
+    moveAtProgramCursorPMF g hctx
+        (LegalProgramBehavioralProfile.toPMFProfile σ) who suffix view =
+      moveAtProgramCursor g hctx σ who suffix view := by
+  cases p with
+  | ret payoffs =>
+      simp [moveAtProgramCursorPMF, moveAtProgramCursor]
+  | letExpr x e k =>
+      simp [moveAtProgramCursorPMF, moveAtProgramCursor]
+  | sample x D k =>
+      simp [moveAtProgramCursorPMF, moveAtProgramCursor]
+  | reveal y owner x hx k =>
+      simp [moveAtProgramCursorPMF, moveAtProgramCursor]
+  | commit x owner R k =>
+      by_cases howner : owner = who
+      · cases howner
+        let raw : ProgramBehavioralProfile g.prog := fun i => (σ i).val
+        have hprofile :
+            suffix.behavioralProfilePMF
+                (fun i =>
+                  ((LegalProgramBehavioralProfile.toPMFProfile σ) i).val) =
+              ProgramBehavioralProfile.toPMFProfile
+                (.commit x who R k) (suffix.behavioralProfile raw) := by
+          simpa [raw, LegalProgramBehavioralProfile.toPMFProfile] using
+            ProgramSuffix.behavioralProfilePMF_toPMFProfile
+              (s := suffix) raw
+        simp only [moveAtProgramCursorPMF, moveAtProgramCursor]
+        rw [hprofile]
+        simp [ProgramBehavioralProfile.toPMFProfile,
+          ProgramBehavioralStrategy.headKernel,
+          ProgramBehavioralStrategyPMF.headKernel,
+          ProgramBehavioralKernelPMF.ofFDist, raw]
+      · simp [moveAtProgramCursorPMF, moveAtProgramCursor, howner]
+
 theorem headKernelPMF_supported_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -491,6 +531,17 @@ theorem moveAtCursorWorldPMF_support_available
         CursorCheckedWorld.availableProgramActionsAt,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
         CursorCheckedWorld.toWorld, availableActions] using hlocal
+
+theorem moveAtCursorWorldPMF_toPMFProfile_eq
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramBehavioralProfile g)
+    (who : P) (w : CursorCheckedWorld g) :
+    moveAtCursorWorldPMF g hctx
+        (LegalProgramBehavioralProfile.toPMFProfile σ) who w =
+      moveAtCursorWorld g hctx σ who w :=
+  moveAtProgramCursorPMF_toPMFProfile_eq
+    g hctx σ who w.1.suffix
+      (projectViewEnv who (VEnv.eraseEnv w.1.env))
 
 end Observed
 

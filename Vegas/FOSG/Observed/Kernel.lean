@@ -1546,6 +1546,23 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
   exact observedProgramOutcomeKernelPMF_eq_toKernelGamePMF_by_value
     g hctx LF σ
 
+theorem observedProgramOutcomeKernel_eq_toKernelGame_by_pmf
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (σ : LegalProgramBehavioralProfile g) :
+    observedProgramOutcomeKernel g hctx LF σ =
+      (toKernelGame g).outcomeKernel σ := by
+  let σpmf := LegalProgramBehavioralProfile.toPMFProfile σ
+  have hobs :
+      observedProgramOutcomeKernel g hctx LF σ =
+        observedProgramOutcomeKernelPMF g hctx LF σpmf := by
+    unfold observedProgramOutcomeKernel observedProgramOutcomeKernelPMF
+    rw [toObservedProgramLegalBehavioralProfilePMF_toPMFProfile_eq]
+  rw [hobs]
+  rw [observedProgramOutcomeKernelPMF_eq_toKernelGamePMF]
+  simpa [σpmf] using
+    toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame g σ
+
 theorem observedProgramReachableOutcomeKernelPMF_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -1564,7 +1581,7 @@ theorem observedProgramOutcomeKernel_eq_toKernelGame
     (σ : LegalProgramBehavioralProfile g) :
     observedProgramOutcomeKernel g hctx LF σ =
       (toKernelGame g).outcomeKernel σ := by
-  exact observedProgramOutcomeKernel_eq_toKernelGame_by_value
+  exact observedProgramOutcomeKernel_eq_toKernelGame_by_pmf
     g hctx LF σ
 
 /-- Pure-strategy outcome preservation for the observed-program FOSG.

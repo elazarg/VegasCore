@@ -497,6 +497,71 @@ theorem ProgramBehavioralKernelPMF.ofFDist_IsLegalAt
       (d := κ.run (projectViewEnv who ρ))
       (h := κ.normalized (projectViewEnv who ρ)) hv)
 
+namespace ProgramBehavioralProfile
+
+/-- Converting an FDist behavioral profile to PMF preserves guard-legality. -/
+theorem toPMFProfile_isLegal :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      {σ : ProgramBehavioralProfile p} →
+      σ.IsLegal →
+      (toPMFProfile p σ).IsLegal
+  | _, .ret _, σ, hσ => by
+      intro who
+      simp [ProgramBehavioralStrategyPMF.IsLegal]
+  | _, .letExpr _ _ k, σ, hσ => by
+      intro who
+      exact toPMFProfile_isLegal k (σ := fun i => σ i) hσ who
+  | _, .sample _ _ k, σ, hσ => by
+      intro who
+      exact toPMFProfile_isLegal k (σ := fun i => σ i) hσ who
+  | _, .commit _ who R k, σ, hσ => by
+      intro i
+      by_cases h : who = i
+      · subst i
+        let σpair : ProgramBehavioralKernel who _ _ ×
+            ProgramBehavioralStrategy who k := by
+          simpa [ProgramBehavioralStrategy] using σ who
+        have hsite :
+            σpair.1.IsLegalAt R ∧
+              ProgramBehavioralStrategy.IsLegal (who := who) k σpair.2 := by
+          have hraw := hσ who
+          simpa [ProgramBehavioralStrategy.IsLegal, σpair] using hraw
+        have htail :=
+          toPMFProfile_isLegal k
+            (σ := ProgramBehavioralProfile.tail σ)
+            (ProgramBehavioralProfile.tail_isLegal hσ) who
+        simpa [toPMFProfile, ProgramBehavioralStrategyPMF.IsLegal, σpair]
+          using And.intro
+            (ProgramBehavioralKernelPMF.ofFDist_IsLegalAt σpair.1 hsite.1)
+            htail
+      · have htail :=
+          toPMFProfile_isLegal k
+            (σ := ProgramBehavioralProfile.tail σ)
+            (ProgramBehavioralProfile.tail_isLegal hσ) i
+        simpa [toPMFProfile, h, ProgramBehavioralStrategyPMF.IsLegal]
+          using htail
+  | _, .reveal _ _ _ _ k, σ, hσ => by
+      intro who
+      exact toPMFProfile_isLegal k (σ := fun i => σ i) hσ who
+
+end ProgramBehavioralProfile
+
+namespace LegalProgramBehavioralProfile
+
+/-- Convert a legal FDist behavioral profile to the corresponding legal PMF
+behavioral profile. -/
+noncomputable def toPMFProfile
+    {g : WFProgram P L}
+    (σ : LegalProgramBehavioralProfile g) :
+    LegalProgramBehavioralProfilePMF g :=
+  let raw : ProgramBehavioralProfile g.prog := fun i => (σ i).val
+  let hraw : raw.IsLegal := fun i => (σ i).2
+  fun i =>
+    ⟨ProgramBehavioralProfile.toPMFProfile g.prog raw i,
+      ProgramBehavioralProfile.toPMFProfile_isLegal g.prog hraw i⟩
+
+end LegalProgramBehavioralProfile
+
 /-! ## Agreement: pure lift through PMF = outcomeDistPure.toPMF -/
 
 /-- Running the PMF behavioral lift of a pure profile yields the same outcome
@@ -636,6 +701,29 @@ noncomputable def toKernelGamePMF (g : WFProgram P L) : GameTheory.KernelGame P 
         (outcomeDistBehavioralPMF g.prog g.normalized
           (fun i => (σ i).val) g.env) := by
   rfl
+
+/-- The PMF conversion of an FDist behavioral profile has the same outcome
+kernel as the original FDist-valued kernel game profile. -/
+theorem toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame
+    (g : WFProgram P L)
+    (σ : LegalProgramBehavioralProfile g) :
+    (toKernelGamePMF g).outcomeKernel
+        (LegalProgramBehavioralProfile.toPMFProfile σ) =
+      (toKernelGame g).outcomeKernel σ := by
+  let raw : ProgramBehavioralProfile g.prog := fun i => (σ i).val
+  have heq :
+      outcomeDistBehavioralPMF g.prog g.normalized
+          (fun i =>
+            ((LegalProgramBehavioralProfile.toPMFProfile σ) i).val)
+          g.env =
+        (outcomeDistBehavioral g.prog raw g.env).toPMF
+          (outcomeDistBehavioral_totalWeight_eq_one
+            (p := g.prog) (σ := raw) g.normalized) := by
+    simpa [raw, LegalProgramBehavioralProfile.toPMFProfile] using
+      outcomeDistBehavioralPMF_toPMFProfile_eq
+        (p := g.prog) (σ := raw) (env := g.env) (hd := g.normalized)
+  simpa [toKernelGamePMF_outcomeKernel, toKernelGame_outcomeKernel, raw]
+    using heq
 
 /-- The PMF behavioral lift of a legal pure profile has the same outcome
 kernel as the fixed-program pure strategic form. -/

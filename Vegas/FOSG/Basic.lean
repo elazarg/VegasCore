@@ -299,40 +299,6 @@ theorem initial_exists_jointActionLegal
     ∃ a : JointAction P L, JointActionLegal (World.initial g) a :=
   exists_jointActionLegal_of_legal (World.initial g) g.legal hterm
 
-namespace ProgramBehavioralProfile
-
-/-- Dropping the head commit site preserves behavioral guard-legality. -/
-theorem tail_isLegal
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {σ : ProgramBehavioralProfile (.commit x who R k)}
-    (hσ : σ.IsLegal) :
-    (ProgramBehavioralProfile.tail σ).IsLegal := by
-  intro j
-  by_cases hj : who = j
-  · subst hj
-    have hσ_who : (σ who).IsLegal (.commit x who R k) := hσ who
-    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_who
-    dsimp [ProgramBehavioralProfile.tail]
-    split at hσ_who
-    · split
-      · exact hσ_who.2
-      · exact absurd rfl ‹_›
-    · exact absurd rfl ‹_›
-  · have hσ_j : (σ j).IsLegal (.commit x who R k) := hσ j
-    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_j
-    dsimp [ProgramBehavioralProfile.tail]
-    split at hσ_j
-    · rename_i h
-      exact absurd h hj
-    · split
-      · rename_i h
-        exact absurd h hj
-      · exact hσ_j
-
-end ProgramBehavioralProfile
-
 /-! ## Program-local action cursors
 
 The broad `Action L who` alphabet above is useful for the first structural
@@ -951,6 +917,47 @@ theorem behavioralProfilePMF_toBehavioralPMF
           (ProgramPureProfile.toBehavioralPMF root σ) who with
         | .reveal tail => tail) =
         ProgramPureProfile.toBehavioralPMF k (s.pureProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
+
+theorem behavioralProfilePMF_toPMFProfile
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    (σ : ProgramBehavioralProfile root) :
+    s.behavioralProfilePMF
+        (ProgramBehavioralProfile.toPMFProfile root σ) =
+      ProgramBehavioralProfile.toPMFProfile p
+        (s.behavioralProfile σ) := by
+  induction s generalizing σ with
+  | here => rfl
+  | @letExpr Γ x b e k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramBehavioralProfile.toPMFProfile root σ) who with
+        | .letExpr tail => tail) =
+        ProgramBehavioralProfile.toPMFProfile k
+          (s.behavioralProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
+  | @sample Γ x b D k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramBehavioralProfile.toPMFProfile root σ) who with
+        | .sample tail => tail) =
+        ProgramBehavioralProfile.toPMFProfile k
+          (s.behavioralProfile σ) who
+      rw [congrFun (ih σ) who]
+      rfl
+  | commit s ih =>
+      rw [behavioralProfilePMF_commit, behavioralProfile_commit, ih,
+        ProgramBehavioralProfile.tail_toPMFProfile]
+  | @reveal Γ y owner x b hx k s ih =>
+      funext who
+      change (match s.behavioralProfilePMF
+          (ProgramBehavioralProfile.toPMFProfile root σ) who with
+        | .reveal tail => tail) =
+        ProgramBehavioralProfile.toPMFProfile k
+          (s.behavioralProfile σ) who
       rw [congrFun (ih σ) who]
       rfl
 
