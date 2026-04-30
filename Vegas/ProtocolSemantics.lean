@@ -174,7 +174,7 @@ def ProtocolSequentialKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
 
 /-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
 total sequential strategy space. -/
-theorem protocol_mixedPure_realizedByBehavioralPMF_finite
+theorem protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
@@ -193,7 +193,7 @@ theorem protocolSequentialKuhnPropertyPMF_finite
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
     ProtocolSequentialKuhnPropertyPMF g hctx LF := by
   intro μ
-  exact protocol_mixedPure_realizedByBehavioralPMF_finite
+  exact protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     g hctx LF μ
 
 /-- The protocol-level Kuhn property for a concrete finite Vegas program:
@@ -255,6 +255,34 @@ def ProtocolTotalMixedPureRealizationPMF
       (toKernelGamePMF g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
+syntax-recursive Vegas behavioral strategy space. -/
+theorem protocol_mixedPure_realizedByBehavioralPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  exact FOSGBridge.mixedPure_realizedByLegalBehavioralPMF_finite
+    g hctx LF μ
+
+/-- Concrete finite syntax-recursive Vegas realization theorem. -/
+theorem protocolTotalMixedPureRealizationPMF_finite
+    [Fintype P] (g : WFProgram P L)
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ProtocolTotalMixedPureRealizationPMF g := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  intro μ
+  exact protocol_mixedPure_realizedByBehavioralPMF_finite
+    g hctx LF μ
 
 /-- FDist-valued mixed-pure realization target.
 

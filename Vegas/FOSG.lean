@@ -95,6 +95,46 @@ theorem toFOSG_mixedPure_realizedByLegalBehavioral_runDist
   Observed.observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
     g hctx LF μ
 
+/-- FOSG Kuhn M→B collapsed back to Vegas' syntax-recursive PMF behavioral
+strategy space.
+
+The witness is a total guard-legal Vegas behavioral profile. Off-path syntax
+views are filled from an arbitrary pure profile selected from the input mixed
+profile's support; the outcome equation is independent of this completion. -/
+theorem mixedPure_realizedByLegalBehavioralPMF_finite
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : LegalProgramBehavioralProfilePMF g,
+      (toKernelGamePMF g).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (toFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (toFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  obtain ⟨βF, hβF⟩ :=
+    toFOSG_mixedPure_realizedByLegalBehavioral_runDist
+      g hctx LF μ
+  let fallbackPure : LegalProgramPureProfile g := fun who =>
+    (μ who).support_nonempty.choose
+  let fallback : LegalProgramBehavioralProfilePMF g :=
+    LegalProgramPureProfile.toBehavioralPMF fallbackPure
+  refine
+    ⟨Observed.collapsedLegalBehavioralProfilePMF
+        g hctx βF fallback, ?_⟩
+  rw [← Observed.observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
+    g hctx LF βF fallback]
+  simpa [Observed.observedProgramCollapsedOutcomeKernelPMF] using hβF
+
 end FOSGBridge
 
 open GameTheory
