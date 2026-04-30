@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Refinement
+import Vegas.FOSG.Observed.Kernel
 
 namespace Vegas
 namespace FOSGBridge
