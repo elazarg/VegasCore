@@ -783,45 +783,6 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
                   VEnv.cons_ext hv rfl
                 rw [henvEq]
 
-/-- Direct FOSG-step closure for an arbitrary observed-program behavioral
-profile after collapsing it back to a Vegas PMF behavioral profile. -/
-theorem observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
-    ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
-        (fun a =>
-          ((observedProgramFOSG g hctx).transition h.lastState a).bind
-            (fun dst =>
-              cursorVegasOutcomeKernelPMF σc
-                (h.extendByOutcome a dst).lastState)) =
-      cursorVegasOutcomeKernelPMF σc h.lastState := by
-  intro σc
-  exact
-    GameTheory.FOSG.History.OutcomeValue.stateStepValue_of_projectedStep
-      (G := observedProgramFOSG g hctx)
-      (σ := β)
-      (project := CheckedWorld.ofCursorChecked (hctx := hctx))
-      (semanticStep := checkedProfileStepPMF g hctx σc)
-      (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
-      (stateValue := cursorVegasOutcomeKernelPMF σc)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-          g hctx σc w)
-      (by
-        intro h hterm
-        exact
-          observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
-            g hctx β fallback h hterm)
-      h hterm
-
 /-- Continuation value for a total observed-program FOSG profile, interpreted
 through its collapsed Vegas behavioral profile. -/
 noncomputable def observedProgramCollapsedOutcomeValuePMF
@@ -835,11 +796,14 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       β
       (Outcome P) :=
   let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
-  GameTheory.FOSG.History.OutcomeValue.ofLastStateValue
+  GameTheory.FOSG.History.OutcomeValue.ofProjectedLastStateStep
     (G := observedProgramFOSG g hctx)
     (σ := β)
     (rankState := fun w => w.remainingSyntaxSteps)
     (observeState := cursorWorldOutcome)
+    (project := CheckedWorld.ofCursorChecked (hctx := hctx))
+    (semanticStep := checkedProfileStepPMF g hctx σc)
+    (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σc)
     (stateValue := cursorVegasOutcomeKernelPMF σc)
     (by
       intro w hrank
@@ -849,10 +813,15 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
         (hctx := hctx) σc w hterm)
+    (by intro w; rfl)
+    (by
+      intro w
+      exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+        g hctx σc w)
     (by
       intro h hterm
       exact
-        observedProgramLegalActionLaw_bind_cursorVegasOutcomeKernelPMF_collapsed
+        observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
           g hctx β fallback h hterm)
     (by
       intro h _hterm a dst hsupp

@@ -727,41 +727,6 @@ theorem observedProgramFOSG_initial_remainingSyntaxSteps_le
   change syntaxSteps g.prog ≤ syntaxSteps g.prog
   exact Nat.le_refl (syntaxSteps g.prog)
 
-/-- Direct FOSG-step closure for the PMF Vegas cursor outcome kernel. -/
-theorem observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
-        (fun a =>
-          ((observedProgramFOSG g hctx).transition h.lastState a).bind
-            (fun dst =>
-              cursorVegasOutcomeKernelPMF σ
-                (h.extendByOutcome a dst).lastState)) =
-      cursorVegasOutcomeKernelPMF σ h.lastState := by
-  exact
-    GameTheory.FOSG.History.OutcomeValue.stateStepValue_of_projectedStep
-      (G := observedProgramFOSG g hctx)
-      (σ := toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-      (project := CheckedWorld.ofCursorChecked (hctx := hctx))
-      (semanticStep := checkedProfileStepPMF g hctx σ)
-      (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
-      (stateValue := cursorVegasOutcomeKernelPMF σ)
-      (by intro w; rfl)
-      (by
-        intro w
-        exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-          g hctx σ w)
-      (by
-        intro h hterm
-        exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
-          g hctx σ h hterm)
-      h hterm
-
 /-- The Vegas PMF continuation value on observed-program histories. -/
 noncomputable def observedProgramOutcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -772,11 +737,14 @@ noncomputable def observedProgramOutcomeValuePMF
       (G := observedProgramFOSG g hctx)
       (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
       (Outcome P) :=
-  GameTheory.FOSG.History.OutcomeValue.ofLastStateValue
+  GameTheory.FOSG.History.OutcomeValue.ofProjectedLastStateStep
     (G := observedProgramFOSG g hctx)
     (σ := toObservedProgramLegalBehavioralProfilePMF g hctx σ)
     (rankState := fun w => w.remainingSyntaxSteps)
     (observeState := cursorWorldOutcome)
+    (project := CheckedWorld.ofCursorChecked (hctx := hctx))
+    (semanticStep := checkedProfileStepPMF g hctx σ)
+    (semanticValue := checkedVegasOutcomeKernelPMF (hctx := hctx) σ)
     (stateValue := cursorVegasOutcomeKernelPMF σ)
     (by
       intro w hrank
@@ -786,9 +754,14 @@ noncomputable def observedProgramOutcomeValuePMF
       intro w hterm
       exact cursorVegasOutcomeKernelPMF_terminal
         (hctx := hctx) σ w hterm)
+    (by intro w; rfl)
+    (by
+      intro w
+      exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+        g hctx σ w)
     (by
       intro h hterm
-      exact observedProgramLegalActionLawPMF_bind_cursorVegasOutcomeKernelPMF
+      exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
         g hctx σ h hterm)
     (by
       intro h _hterm a dst hsupp
