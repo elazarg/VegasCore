@@ -877,229 +877,25 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
       (G := observedProgramFOSG g hctx)
       β
       (Outcome P) :=
-  observedProgramOutcomeValueOfCheckedStepPMF
-    g hctx β (collapsedLegalBehavioralProfilePMF g hctx β fallback)
+  observedProgramOutcomeValueOfCheckedStep
+    g hctx β
+    (checkedProfileStepPMF g hctx
+      (collapsedLegalBehavioralProfilePMF g hctx β fallback))
+    (checkedVegasOutcomeKernelPMF (hctx := hctx)
+      (collapsedLegalBehavioralProfilePMF g hctx β fallback))
+    (by
+      intro w hterm
+      exact checkedVegasOutcomeKernelPMF_terminal
+        (collapsedLegalBehavioralProfilePMF g hctx β fallback) w hterm)
+    (by
+      intro w
+      exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+        g hctx (collapsedLegalBehavioralProfilePMF g hctx β fallback) w)
     (by
       intro h hterm
       exact
         observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
           g hctx β fallback h hterm)
-
-noncomputable def observedProgramCheckedWorldRunDistFromCollapsedPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (_fallback : LegalProgramBehavioralProfilePMF g)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History) :
-    PMF (CheckedWorld g hctx) :=
-  PMF.map (observedProgramHistoryCheckedWorld g hctx)
-    (observedProgramRunDistFrom g hctx LF β n h)
-
-@[simp] theorem observedProgramCheckedWorldRunDistFromCollapsedPMF_zero
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (h : (observedProgramFOSG g hctx).History) :
-    observedProgramCheckedWorldRunDistFromCollapsedPMF
-        g hctx LF β fallback 0 h =
-      PMF.pure
-        (observedProgramHistoryCheckedWorld g hctx h) := by
-  simp [observedProgramCheckedWorldRunDistFromCollapsedPMF,
-    observedProgramRunDistFrom, PMF.pure_map]
-
-theorem observedProgramCheckedWorldRunDistFromCollapsedPMF_terminal_eq_checkedProfileRunPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History)
-    (hterm : (observedProgramFOSG g hctx).terminal h.lastState) :
-    observedProgramCheckedWorldRunDistFromCollapsedPMF
-        g hctx LF β fallback n h =
-      checkedProfileRunPMF g hctx
-        (collapsedLegalBehavioralProfilePMF g hctx β fallback) n
-        (observedProgramHistoryCheckedWorld g hctx h) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramCheckedWorldRunDistFromCollapsedPMF
-    observedProgramRunDistFrom
-  rw [GameTheory.FOSG.History.runDistFrom_terminal
-    (G := observedProgramFOSG g hctx) β n h hterm]
-  rw [PMF.pure_map]
-  rw [checkedProfileRunPMF_terminal]
-  exact (checkedTerminal_observedProgramHistoryCheckedWorld
-    g hctx h).2 hterm
-
-noncomputable def observedProgramCheckedWorldRunDistFromCollapsedSuccPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    PMF (CheckedWorld g hctx) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  exact
-    ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
-      (fun a =>
-        ((observedProgramFOSG g hctx).transition
-            h.lastState a).bind
-          (fun dst =>
-            observedProgramCheckedWorldRunDistFromCollapsedPMF
-              g hctx LF β fallback n
-              (h.extendByOutcome a dst)))
-
-theorem observedProgramCheckedWorldRunDistFromCollapsedPMF_succ_nonterminal
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    (n : Nat) (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
-    observedProgramCheckedWorldRunDistFromCollapsedPMF
-        g hctx LF β fallback (n + 1) h =
-      observedProgramCheckedWorldRunDistFromCollapsedSuccPMF
-        g hctx LF β fallback n h hterm := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  unfold observedProgramCheckedWorldRunDistFromCollapsedSuccPMF
-  unfold observedProgramCheckedWorldRunDistFromCollapsedPMF
-    observedProgramRunDistFrom
-  rw [GameTheory.FOSG.History.runDistFrom_succ_nonterminal
-    (G := observedProgramFOSG g hctx) β n h hterm]
-  rw [PMF.map_bind]
-  congr
-  funext a
-  rw [PMF.map_bind]
-
-theorem observedProgramCheckedWorldRunDistFromCollapsedPMF_eq_checkedProfileRunPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    ∀ n h,
-      observedProgramCheckedWorldRunDistFromCollapsedPMF
-          g hctx LF β fallback n h =
-        checkedProfileRunPMF g hctx
-          (collapsedLegalBehavioralProfilePMF g hctx β fallback) n
-          (observedProgramHistoryCheckedWorld g hctx h) := by
-  intro n
-  induction n with
-  | zero =>
-      intro h
-      simp
-  | succ n ih =>
-      intro h
-      by_cases hterm : (observedProgramFOSG g hctx).terminal
-          h.lastState
-      · exact observedProgramCheckedWorldRunDistFromCollapsedPMF_terminal_eq_checkedProfileRunPMF
-          g hctx LF β fallback (n + 1) h hterm
-      · letI : ∀ who : P,
-            Fintype (Option (ProgramAction g.prog who)) :=
-          fun who =>
-            observedProgramFOSG.instFintypeOptionAction
-              g hctx LF who
-        have hcheckedTerm :
-            ¬ checkedTerminal
-              (observedProgramHistoryCheckedWorld g hctx h) := by
-          intro ht
-          exact hterm ((checkedTerminal_observedProgramHistoryCheckedWorld
-            g hctx h).1 ht)
-        rw [observedProgramCheckedWorldRunDistFromCollapsedPMF_succ_nonterminal
-          g hctx LF β fallback n h hterm]
-        rw [checkedProfileRunPMF_succ_nonterminal
-          g hctx (collapsedLegalBehavioralProfilePMF g hctx β fallback) n
-          (observedProgramHistoryCheckedWorld g hctx h)
-          hcheckedTerm]
-        unfold observedProgramCheckedWorldRunDistFromCollapsedSuccPMF
-        let G := observedProgramFOSG g hctx
-        let law := G.legalActionLaw β h hterm
-        let step := fun a : G.LegalAction h.lastState =>
-          G.transition h.lastState a
-        let forget :=
-          CheckedWorld.ofCursorChecked (hctx := hctx)
-        let run := checkedProfileRunPMF g hctx
-          (collapsedLegalBehavioralProfilePMF g hctx β fallback) n
-        have hstep :
-            law.bind (fun a => PMF.map forget (step a)) =
-              checkedProfileStepPMF g hctx
-                (collapsedLegalBehavioralProfilePMF g hctx β fallback)
-                (observedProgramHistoryCheckedWorld
-                  g hctx h) := by
-          simpa [G, law, step, forget, observedProgramHistoryCheckedWorld] using
-            observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
-              g hctx β fallback h hterm
-        calc
-          law.bind
-              (fun a =>
-                (step a).bind
-                  (fun dst =>
-                    observedProgramCheckedWorldRunDistFromCollapsedPMF
-                      g hctx LF β fallback n
-                      (h.extendByOutcome a dst))) =
-            law.bind
-              (fun a =>
-                (step a).bind
-                  (fun dst =>
-                    run
-                      (observedProgramHistoryCheckedWorld
-                        g hctx
-                        (h.extendByOutcome a dst)))) := by
-              refine Math.ProbabilityMassFunction.bind_congr_on_support
-                law _ _ ?_
-              intro a _
-              refine Math.ProbabilityMassFunction.bind_congr_on_support
-                (step a) _ _ ?_
-              intro dst _
-              exact ih (h.extendByOutcome a dst)
-          _ =
-            law.bind
-              (fun a =>
-                (step a).bind
-                  (fun dst => run (forget dst))) := by
-              refine Math.ProbabilityMassFunction.bind_congr_on_support
-                law _ _ ?_
-              intro a _
-              refine Math.ProbabilityMassFunction.bind_congr_on_support
-                (step a) _ _ ?_
-              intro dst hdst
-              have hsupp : step a dst ≠ 0 := by
-                simpa [step, PMF.mem_support_iff] using hdst
-              rw [observedProgramHistoryCheckedWorld_extendByOutcome_of_support
-                g hctx h a dst hsupp]
-          _ =
-            (law.bind (fun a => PMF.map forget (step a))).bind run := by
-              rw [PMF.bind_bind]
-              congr
-              funext a
-              simp [PMF.map, PMF.bind_bind]
-          _ =
-            (checkedProfileStepPMF g hctx
-              (collapsedLegalBehavioralProfilePMF g hctx β fallback)
-              (observedProgramHistoryCheckedWorld
-                g hctx h)).bind run := by
-              rw [hstep]
 
 noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -1108,58 +904,6 @@ noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (_fallback : LegalProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
   PMF.map (observedProgramHistoryOutcome g hctx)
     (observedProgramRunDist g hctx LF β)
-
-noncomputable def observedProgramCheckedWorldRunDistCollapsedPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (_fallback : LegalProgramBehavioralProfilePMF g) :
-    PMF (CheckedWorld g hctx) :=
-  PMF.map (observedProgramHistoryCheckedWorld g hctx)
-    (observedProgramRunDist g hctx LF β)
-
-theorem observedProgramCheckedWorldRunDistCollapsedPMF_eq_runDistFrom_initial
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    observedProgramCheckedWorldRunDistCollapsedPMF
-        g hctx LF β fallback =
-      observedProgramCheckedWorldRunDistFromCollapsedPMF
-        g hctx LF β fallback
-        (syntaxSteps g.prog)
-        (GameTheory.FOSG.History.nil
-          (observedProgramFOSG g hctx)) := by
-  rfl
-
-theorem observedProgramCheckedWorldRunDistCollapsedPMF_eq_checkedProfileRunPMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    observedProgramCheckedWorldRunDistCollapsedPMF
-        g hctx LF β fallback =
-      checkedProfileRunPMF g hctx
-        (collapsedLegalBehavioralProfilePMF g hctx β fallback)
-        (syntaxSteps g.prog)
-        (CheckedWorld.initial g hctx) := by
-  rw [observedProgramCheckedWorldRunDistCollapsedPMF_eq_runDistFrom_initial]
-  rw [observedProgramCheckedWorldRunDistFromCollapsedPMF_eq_checkedProfileRunPMF]
-  simp
-
-theorem observedProgramCollapsedOutcomeKernelPMF_eq_checkedWorldProjection
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
-      PMF.map (checkedWorldOutcome (P := P) (L := L))
-        (observedProgramCheckedWorldRunDistCollapsedPMF
-          g hctx LF β fallback) := by
-  unfold observedProgramCollapsedOutcomeKernelPMF
-    observedProgramCheckedWorldRunDistCollapsedPMF
-  rw [PMF.map_comp]
-  simp [Function.comp_def]
 
 theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -1188,7 +932,7 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
             syntaxSteps g.prog
         exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramCollapsedOutcomeValuePMF,
-    observedProgramOutcomeValueOfCheckedStepPMF,
+    observedProgramOutcomeValueOfCheckedStep,
     observedProgramCollapsedOutcomeKernelPMF] using hclosure
 
 theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
