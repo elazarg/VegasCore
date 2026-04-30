@@ -595,22 +595,23 @@ noncomputable def programPureProfileCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g) :
     GameTheory.FOSG.PureProfile (observedProgramFOSG g hctx) :=
-  fun who s =>
-    match programLatestObservation? g hctx who s with
-    | none => movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx)
-    | some obs => movePureAtProgramObservation? g hctx σ who obs
+  GameTheory.FOSG.PureProfile.ofLatestObservation
+    (G := observedProgramFOSG g hctx)
+    (fun who =>
+      movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx))
+    (fun who obs => movePureAtProgramObservation? g hctx σ who obs)
 
 noncomputable def programPureStrategyCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who) :
     GameTheory.FOSG.PureStrategy (observedProgramFOSG g hctx) who :=
-  fun s =>
-    match programLatestObservation? g hctx who s with
-    | none =>
-        movePureStrategyAtProgramCursor g hctx who σ
-          (ProgramSuffix.here (root := g.prog))
-          (projectViewEnv who (VEnv.eraseEnv g.env))
-    | some obs => movePureStrategyAtProgramObservation? g hctx who σ obs
+  GameTheory.FOSG.PureStrategy.ofLatestObservation
+    (G := observedProgramFOSG g hctx)
+    (i := who)
+    (movePureStrategyAtProgramCursor g hctx who σ
+      (ProgramSuffix.here (root := g.prog))
+      (projectViewEnv who (VEnv.eraseEnv g.env)))
+    (movePureStrategyAtProgramObservation? g hctx who σ)
 
 theorem programPureProfileCandidate_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -619,12 +620,20 @@ theorem programPureProfileCandidate_eq_strategy
       programPureStrategyCandidate g hctx who (σ who) := by
   funext s
   unfold programPureProfileCandidate programPureStrategyCandidate
-  split
-  · simp [movePureAtCursorWorld, CursorCheckedWorld.initial,
+  cases hobs :
+      GameTheory.FOSG.InfoState.latestObservation?
+        (G := observedProgramFOSG g hctx) (i := who) s with
+  | none =>
+      simp [GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs,
+        movePureAtCursorWorld, CursorCheckedWorld.initial,
       CursorWorldData.suffix, ProgramCursor.toSuffix,
       ProgramCursor.toSuffixFrom, movePureAtProgramCursor_eq_strategy]
-    rfl
-  · rw [movePureAtProgramObservation?_eq_strategy]
+      rfl
+  | some obs =>
+      simp [GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs,
+        movePureAtProgramObservation?_eq_strategy]
 
 @[simp] theorem programPureStrategyCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -633,7 +642,8 @@ theorem programPureProfileCandidate_eq_strategy
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       movePureStrategyAtCursorWorld g hctx who σ
         (CursorCheckedWorld.initial g hctx) := by
-  simp [programPureStrategyCandidate, programLatestObservation?,
+  simp [programPureStrategyCandidate,
+    GameTheory.FOSG.PureStrategy.ofLatestObservation,
     movePureStrategyAtCursorWorld,
     CursorCheckedWorld.initial, CursorWorldData.suffix, ProgramCursor.toSuffix,
     ProgramCursor.toSuffixFrom]
@@ -649,9 +659,20 @@ theorem programPureProfileCandidate_eq_strategy
     programPureStrategyCandidate g hctx who σ
       ((h.snoc a dst support).playerView who) =
       movePureStrategyAtCursorWorld g hctx who σ dst := by
-  rw [programPureStrategyCandidate,
-    programLatestObservation?_history_snoc g hctx who h a dst support]
-  simp [movePureStrategyAtProgramObservation?_of_cursorWorld]
+  have hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := observedProgramFOSG g hctx) (i := who)
+          (h.playerView who ++
+            (⟨h.lastState, a, dst, support⟩ :
+              (observedProgramFOSG g hctx).Step).playerView who) =
+        some (privateObsOfCursorWorld who dst,
+          publicObsOfCursorWorld dst) := by
+    rw [← GameTheory.FOSG.History.playerView_snoc]
+    simpa [programLatestObservation?] using
+      programLatestObservation?_history_snoc g hctx who h a dst support
+  simp [programPureStrategyCandidate,
+    GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
+    movePureStrategyAtProgramObservation?_of_cursorWorld]
 
 @[simp] theorem programPureStrategyCandidate_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -691,7 +712,6 @@ theorem programPureStrategyCandidate_history
             GameTheory.FOSG.History.playerViewFrom,
             GameTheory.FOSG.History.lastState,
             GameTheory.FOSG.lastStateFrom,
-            programLatestObservation?,
             observedProgramFOSG, movePureStrategyAtCursorWorld,
             CursorCheckedWorld.initial, CursorWorldData.suffix,
             ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
@@ -733,7 +753,8 @@ theorem programPureStrategyCandidate_available
     programPureProfileCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx) := by
-  simp [programPureProfileCandidate, programLatestObservation?]
+  simp [programPureProfileCandidate,
+    GameTheory.FOSG.PureProfile.ofLatestObservation]
 
 @[simp] theorem programPureProfileCandidate_snoc
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -746,9 +767,21 @@ theorem programPureStrategyCandidate_available
     programPureProfileCandidate g hctx σ who
       ((h.snoc a dst support).playerView who) =
       movePureAtCursorWorld g hctx σ who dst := by
-  rw [programPureProfileCandidate,
-    programLatestObservation?_history_snoc g hctx who h a dst support]
-  simp [movePureAtProgramObservation?_of_cursorWorld]
+  have hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := observedProgramFOSG g hctx) (i := who)
+          (h.playerView who ++
+            (⟨h.lastState, a, dst, support⟩ :
+              (observedProgramFOSG g hctx).Step).playerView who) =
+        some (privateObsOfCursorWorld who dst,
+          publicObsOfCursorWorld dst) := by
+    rw [← GameTheory.FOSG.History.playerView_snoc]
+    simpa [programLatestObservation?] using
+      programLatestObservation?_history_snoc g hctx who h a dst support
+  simp [programPureProfileCandidate,
+    GameTheory.FOSG.PureProfile.ofLatestObservation,
+    GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
+    movePureAtProgramObservation?_of_cursorWorld]
 
 @[simp] theorem programPureProfileCandidate_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -788,7 +821,6 @@ theorem programPureProfileCandidate_history
             GameTheory.FOSG.History.playerViewFrom,
             GameTheory.FOSG.History.lastState,
             GameTheory.FOSG.lastStateFrom,
-            programLatestObservation?,
             observedProgramFOSG]
       | append_singleton steps e ih =>
           let hprefix : G.History :=
@@ -1002,10 +1034,11 @@ noncomputable def programBehavioralProfileCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g) :
     GameTheory.FOSG.BehavioralProfile (observedProgramFOSG g hctx) :=
-  fun who s =>
-    match programLatestObservation? g hctx who s with
-    | none => moveAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx)
-    | some obs => moveAtProgramObservation? g hctx σ who obs
+  GameTheory.FOSG.BehavioralProfile.ofLatestObservation
+    (G := observedProgramFOSG g hctx)
+    (fun who =>
+      moveAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx))
+    (fun who obs => moveAtProgramObservation? g hctx σ who obs)
 
 @[simp] theorem programBehavioralProfileCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1013,7 +1046,8 @@ noncomputable def programBehavioralProfileCandidate
     programBehavioralProfileCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       moveAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx) := by
-  simp [programBehavioralProfileCandidate, programLatestObservation?]
+  simp [programBehavioralProfileCandidate,
+    GameTheory.FOSG.BehavioralProfile.ofLatestObservation]
 
 @[simp] theorem programBehavioralProfileCandidate_snoc
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1026,9 +1060,21 @@ noncomputable def programBehavioralProfileCandidate
     programBehavioralProfileCandidate g hctx σ who
       ((h.snoc a dst support).playerView who) =
       moveAtCursorWorld g hctx σ who dst := by
-  rw [programBehavioralProfileCandidate,
-    programLatestObservation?_history_snoc g hctx who h a dst support]
-  simp [moveAtProgramObservation?_of_cursorWorld]
+  have hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := observedProgramFOSG g hctx) (i := who)
+          (h.playerView who ++
+            (⟨h.lastState, a, dst, support⟩ :
+              (observedProgramFOSG g hctx).Step).playerView who) =
+        some (privateObsOfCursorWorld who dst,
+          publicObsOfCursorWorld dst) := by
+    rw [← GameTheory.FOSG.History.playerView_snoc]
+    simpa [programLatestObservation?] using
+      programLatestObservation?_history_snoc g hctx who h a dst support
+  simp [programBehavioralProfileCandidate,
+    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
+    moveAtProgramObservation?_of_cursorWorld]
 
 @[simp] theorem programBehavioralProfileCandidate_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1070,7 +1116,6 @@ theorem programBehavioralProfileCandidate_history
             GameTheory.FOSG.History.playerViewFrom,
             GameTheory.FOSG.History.lastState,
             GameTheory.FOSG.lastStateFrom,
-            programLatestObservation?,
             observedProgramFOSG]
       | append_singleton steps e ih =>
           let hprefix : G.History :=
@@ -1106,10 +1151,21 @@ theorem programBehavioralProfileCandidate_support_available_snoc
         ((h.snoc a dst support).playerView who)).support) :
     oi ∈ (observedProgramFOSG g hctx).availableMoves
       (h.snoc a dst support) who := by
-  rw [programBehavioralProfileCandidate,
-    programLatestObservation?_history_snoc g hctx who h a dst support] at hoi
-  simp only at hoi
-  rw [moveAtProgramObservation?_of_cursorWorld] at hoi
+  have hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := observedProgramFOSG g hctx) (i := who)
+          (h.playerView who ++
+            (⟨h.lastState, a, dst, support⟩ :
+              (observedProgramFOSG g hctx).Step).playerView who) =
+        some (privateObsOfCursorWorld who dst,
+          publicObsOfCursorWorld dst) := by
+    rw [← GameTheory.FOSG.History.playerView_snoc]
+    simpa [programLatestObservation?] using
+      programLatestObservation?_history_snoc g hctx who h a dst support
+  simp [programBehavioralProfileCandidate,
+    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
+    moveAtProgramObservation?_of_cursorWorld] at hoi
   simpa [GameTheory.FOSG.availableMoves,
     GameTheory.FOSG.availableMovesAtState] using
     moveAtCursorWorld_support_available g hctx σ who dst hoi
@@ -1185,10 +1241,11 @@ noncomputable def programBehavioralProfilePMFCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g) :
     GameTheory.FOSG.BehavioralProfile (observedProgramFOSG g hctx) :=
-  fun who s =>
-    match programLatestObservation? g hctx who s with
-    | none => moveAtCursorWorldPMF g hctx σ who (CursorCheckedWorld.initial g hctx)
-    | some obs => moveAtProgramObservationPMF? g hctx σ who obs
+  GameTheory.FOSG.BehavioralProfile.ofLatestObservation
+    (G := observedProgramFOSG g hctx)
+    (fun who =>
+      moveAtCursorWorldPMF g hctx σ who (CursorCheckedWorld.initial g hctx))
+    (fun who obs => moveAtProgramObservationPMF? g hctx σ who obs)
 
 @[simp] theorem programBehavioralProfilePMFCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1196,7 +1253,8 @@ noncomputable def programBehavioralProfilePMFCandidate
     programBehavioralProfilePMFCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       moveAtCursorWorldPMF g hctx σ who (CursorCheckedWorld.initial g hctx) := by
-  simp [programBehavioralProfilePMFCandidate, programLatestObservation?]
+  simp [programBehavioralProfilePMFCandidate,
+    GameTheory.FOSG.BehavioralProfile.ofLatestObservation]
 
 @[simp] theorem programBehavioralProfilePMFCandidate_snoc
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1209,9 +1267,21 @@ noncomputable def programBehavioralProfilePMFCandidate
     programBehavioralProfilePMFCandidate g hctx σ who
       ((h.snoc a dst support).playerView who) =
       moveAtCursorWorldPMF g hctx σ who dst := by
-  rw [programBehavioralProfilePMFCandidate,
-    programLatestObservation?_history_snoc g hctx who h a dst support]
-  simp [moveAtProgramObservationPMF?_of_cursorWorld]
+  have hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := observedProgramFOSG g hctx) (i := who)
+          (h.playerView who ++
+            (⟨h.lastState, a, dst, support⟩ :
+              (observedProgramFOSG g hctx).Step).playerView who) =
+        some (privateObsOfCursorWorld who dst,
+          publicObsOfCursorWorld dst) := by
+    rw [← GameTheory.FOSG.History.playerView_snoc]
+    simpa [programLatestObservation?] using
+      programLatestObservation?_history_snoc g hctx who h a dst support
+  simp [programBehavioralProfilePMFCandidate,
+    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
+    moveAtProgramObservationPMF?_of_cursorWorld]
 
 @[simp] theorem programBehavioralProfilePMFCandidate_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1251,7 +1321,6 @@ theorem programBehavioralProfilePMFCandidate_history
             GameTheory.FOSG.History.playerViewFrom,
             GameTheory.FOSG.History.lastState,
             GameTheory.FOSG.lastStateFrom,
-            programLatestObservation?,
             observedProgramFOSG]
       | append_singleton steps e ih =>
           let hprefix : G.History :=
@@ -1640,13 +1709,21 @@ theorem programBehavioralProfileCandidate_toBehavioral_eq_pure
         (LegalProgramPureProfile.toBehavioral σ) who s =
       PMF.pure (programPureProfileCandidate g hctx σ who s) := by
   unfold programBehavioralProfileCandidate programPureProfileCandidate
-  cases hobs : programLatestObservation? g hctx who s with
+  cases hobs :
+      GameTheory.FOSG.InfoState.latestObservation?
+        (G := observedProgramFOSG g hctx) (i := who) s with
   | none =>
-      simpa [hobs] using
+      simpa [GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+        GameTheory.FOSG.BehavioralStrategy.ofLatestObservation,
+        GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs] using
         moveAtCursorWorld_toBehavioral_eq_pure
           g hctx σ who (CursorCheckedWorld.initial g hctx)
   | some obs =>
-      simpa [hobs] using
+      simpa [GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+        GameTheory.FOSG.BehavioralStrategy.ofLatestObservation,
+        GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs] using
         moveAtProgramObservation?_toBehavioral_eq_pure
           g hctx σ who obs
 
