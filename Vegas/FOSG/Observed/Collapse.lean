@@ -1186,11 +1186,7 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
         change
           (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
             syntaxSteps g.prog
-        change
-          syntaxSteps ((ProgramCursor.here : ProgramCursor g.prog).prog) ≤
-            syntaxSteps g.prog
-        change syntaxSteps g.prog ≤ syntaxSteps g.prog
-        exact Nat.le_refl (syntaxSteps g.prog))
+        exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramCollapsedOutcomeValuePMF,
     observedProgramOutcomeValueOfCheckedStepPMF,
     observedProgramCollapsedOutcomeKernelPMF] using hclosure

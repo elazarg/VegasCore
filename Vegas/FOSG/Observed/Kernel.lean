@@ -1539,6 +1539,16 @@ theorem observedProgramHistoryCheckedWorld_extendByOutcome_of_support
     (h := h) (a := a) (dst := dst) hsupp]
   simp [observedProgramHistoryCheckedWorld]
 
+theorem observedProgramFOSG_initial_remainingSyntaxSteps_le
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
+      syntaxSteps g.prog := by
+  change
+    syntaxSteps ((ProgramCursor.here : ProgramCursor g.prog).prog) ≤
+      syntaxSteps g.prog
+  change syntaxSteps g.prog ≤ syntaxSteps g.prog
+  exact Nat.le_refl (syntaxSteps g.prog)
+
 /-- Build observed-program outcome-value data from a checked-step projection
 equation. The only profile-specific input is that one FOSG step, projected to
 checked worlds, matches the Vegas checked step for `σ`. -/
@@ -2323,11 +2333,7 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF_by_value
         change
           (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
             syntaxSteps g.prog
-        change
-          syntaxSteps ((ProgramCursor.here : ProgramCursor g.prog).prog) ≤
-            syntaxSteps g.prog
-        change syntaxSteps g.prog ≤ syntaxSteps g.prog
-        exact Nat.le_refl (syntaxSteps g.prog))
+        exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
     using hclosure
 
