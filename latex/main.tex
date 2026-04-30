@@ -26,8 +26,8 @@ spaces, denotational and trace semantics, strategic-form game wrappers,
 protocol-level solution concepts, a canonical sequential denotation through
 factored-observation stochastic games, a finite Kuhn-style
 mixed-to-behavioral realization theorem with a native guard-legal Vegas
-behavioral witness, preserving outcome distributions, and a MAID backend used
-for an additional graphical-game compilation route.  This
+behavioral witness, FOSG outcome preservation by outcome-value closure, and a
+MAID backend used for an additional graphical-game compilation route.  This
 report is intended as a map of what is implemented and why the main design
 choices were made.  It deliberately avoids cataloguing every internal lemma:
 the useful level of detail is the shape of the objects, the invariants they
@@ -102,9 +102,9 @@ above.  In this report they appear only where they explain a design decision
 or a theorem boundary.
 
 \paragraph{Current scale.}
-At the time of writing, the Vegas tree contains roughly 24,000 lines of Lean
-across 42 files.  The GameTheory submodule contains roughly 44,500 lines of
-Lean across 169 files.  The split matters: VegasCore defines the programming
+At the time of writing, the Vegas tree contains roughly 25,800 lines of Lean
+across 44 files.  The GameTheory submodule contains roughly 49,300 lines of
+Lean across 185 files.  The split matters: VegasCore defines the programming
 language and its denotations; GameTheory supplies generic game-theoretic
 objects and theorems that Vegas instantiates.
 
@@ -619,8 +619,8 @@ The important Vegas-facing facts are:
 \item the sequential denotation is legal-observable: available moves depend
       only on the acting player's observation;
 \item it has bounded horizon, bounded by the remaining program syntax;
-\item its run distribution, projected to Vegas payoff outcomes, preserves the
-      Vegas outcome distribution.
+\item its run distribution, projected to payoff outcomes by the FOSG outcome
+      observation, is the Vegas outcome distribution.
 \end{itemize}
 
 The proof infrastructure behind these facts is substantial, because Lean must
@@ -628,6 +628,36 @@ relate cursor states, program suffixes, typed environments, and finite FOSG
 histories.  But those are implementation devices.  The semantic statement is
 simple: running the sequential denotation of a Vegas program gives the same
 distribution over final payoff outcomes as running the Vegas program itself.
+
+\subsection{Outcome-Value Closure}
+
+The preservation proof is organized around a generic outcome-value closure
+abstraction in GameTheory.  The core file
+\texttt{GameTheory/Math/OutcomeClosure} packages a value process: each live
+state is assigned a continuation distribution over final outcomes, each
+transition preserves that value in expectation, and terminal states observe
+that value directly.  The FOSG-specific adapter in
+\texttt{GameTheory/Languages/FOSG/OutcomeClosure} lifts the same idea from
+states to finite FOSG histories.  Its theorem says that if the local
+continuation-value equations hold, then the distribution obtained by
+observing completed FOSG runs is the initial value.
+
+This is extensional in the sense relevant to the mechanization.  The proof
+does not expose an equality between two internal whole-run simulations.
+Instead it identifies the observable distribution both semantics assign to
+final outcomes.  Intermediate cursor states, checked suffix states, and
+history encodings remain proof devices.
+
+Vegas instantiates the abstraction in \texttt{FOSG/Observed/Kernel}.  The
+value of a FOSG history is the remaining Vegas outcome distribution of the
+corresponding checked suffix state.  The main local obligation is the checked
+one-step equation
+\texttt{observedProgramOutcomeValueOfCheckedStep}: one observed FOSG step
+preserves that Vegas continuation value.  From that local fact and the
+generic closure theorem, Vegas obtains
+\texttt{observedProgramOutcomeKernelPMF\_eq\_toKernelGamePMF}.  The collapsed
+behavioral witness in \texttt{FOSG/Observed/Collapse} reuses the same
+outcome-value route rather than proving a separate whole-run simulation.
 
 \subsection{The Internal Shape of the Sequential Machine}
 
@@ -677,10 +707,11 @@ syntax of Vegas.  The route is:
 \item apply the generic GameTheory FOSG mixed-to-behavioral theorem;
 \item collapse the resulting sequential behavioral witness to a native
       syntax-recursive Vegas behavioral profile;
-\item prove, by a step-by-step run induction, that the collapsed Vegas profile
-      has the same payoff-outcome distribution as the FOSG witness;
-\item use outcome preservation to identify that distribution with the original
-      Vegas mixed-pure outcome distribution.
+\item prove the local checked-step equation required by the outcome-value
+      closure theorem for the collapsed profile;
+\item use the outcome-value theorem and the generic FOSG outcome equality to
+      identify the collapsed Vegas distribution with the original Vegas
+      mixed-pure outcome distribution.
 \end{enumerate}
 
 This division is important for maintainability.  The hard probabilistic
@@ -734,11 +765,11 @@ decisions differently:
 For well-formed SSA programs these carry the same game-relevant information
 along reachable executions.  The proof extracts the active commit site and
 current player-view environment from the last sequential observation, proves
-that available moves agree at that site, and then runs a step-by-step
-outcome-kernel induction.  Off-path Vegas views are completed from an
-arbitrary legal pure profile selected componentwise from the input mixed
-profile supports; this completion is guard-legal and does not affect the
-outcome distribution.
+that available moves agree at that site, and proves the local checked-step
+equation needed by the outcome-value closure theorem.  Off-path Vegas views
+are completed from an arbitrary legal pure profile selected componentwise
+from the input mixed profile supports; this completion is guard-legal and
+does not affect the outcome distribution.
 
 The repository still exposes the sequential witness type
 \[
@@ -905,7 +936,7 @@ when the expression language supports enumeration.
 
 \begin{center}
 \renewcommand{\arraystretch}{1.25}
-\begin{tabular}{@{}ll@{}}
+\begin{tabular}{@{}lp{0.52\textwidth}@{}}
 \toprule
 Area & Main files \\
 \midrule
@@ -925,9 +956,11 @@ Game-theoretic wrappers &
   \texttt{Equilibrium}, \texttt{GameProperties}, \texttt{Corollaries/*} \\
 Protocol and sequential theorems &
   \texttt{ProtocolSemantics}, \texttt{Kuhn}, \texttt{FOSG} \\
+GameTheory outcome closure &
+  \texttt{OutcomeClosure} in \texttt{Math} and FOSG language layers \\
 FOSG implementation internals &
   \texttt{FOSG/Basic}, \texttt{FOSG/Observation},
-  \texttt{FOSG/Observed/*} \\
+  \texttt{Observed/Kernel}, \texttt{Observed/Collapse} \\
 MAID backend &
   \texttt{MAID/*} \\
 Examples &
@@ -953,8 +986,12 @@ For understanding the current repository, the most efficient path is:
       protocol-native statements.
 \item \texttt{Kuhn} and \texttt{FOSG}: the public sequential theorem and its
       denotational entry point.
-\item \texttt{FOSG/Observed/Kernel}: the deepest part of the FOSG proof route,
-      only after the public statement is clear.
+\item GameTheory's \texttt{OutcomeClosure} files in the \texttt{Math} and
+      FOSG language layers: the generic continuation-value closure used by
+      sequential preservation.
+\item \texttt{FOSG/Observed/Kernel} and
+      \texttt{FOSG/Observed/Collapse}: the Vegas outcome-value instantiation
+      and the collapsed-witness preservation proof.
 \item \texttt{MAID}: the graphical backend and its separate theorem route.
 \end{enumerate}
 
@@ -993,7 +1030,17 @@ Nash, dominance, welfare, and other strategic-form concepts.
 Expected utility equalities are useful, but they are consequences of a
 stronger statement: equality of outcome distributions.  The current
 FOSG-based Kuhn theorem is stated at the distribution level, which makes it
-robust under changes to utility interpretation and welfare aggregation.
+robust under changes to utility interpretation and welfare aggregation.  The
+same principle shapes the proof: the FOSG bridge preserves a semantic
+continuation value for final outcomes, rather than making equality of
+intermediate machine runs part of the theorem boundary.
+
+\paragraph{Checked states are a projection target, not a run semantics.}
+Checked suffix states still appear in the FOSG proof because they are the
+natural place to define the remaining Vegas outcome distribution.  The
+important obligation is local: an observed FOSG step projects to the checked
+Vegas step that preserves this continuation value.  The public theorem does
+not ask users to reason about whole checked runs.
 
 \paragraph{MAID remains valuable but is no longer the main theorem path.}
 The MAID backend explains a lot about the graphical structure of Vegas games,
@@ -1024,7 +1071,8 @@ The repository currently has:
       semantics;
 \item Vegas-facing equilibrium and game-property wrappers;
 \item protocol-native definitions corresponding to the kernel-game wrappers;
-\item FOSG sequential denotation preserving outcome distributions;
+\item FOSG sequential denotation preserving outcome distributions by
+      outcome-value closure;
 \item finite mixed-to-behavioral realization preserving outcome
       distributions, with a native Vegas behavioral witness;
 \item MAID compilation and associated outcome-preservation/perfect-recall
@@ -1048,6 +1096,8 @@ The repository currently has:
 \item Factor the sequential-to-Vegas behavioral collapse into a reusable
       equivalence or transport API, rather than leaving it specialized to the
       current Kuhn proof route.
+\item Factor the local checked-step outcome-value lemma into a reusable
+      projected-step abstraction if another backend needs the same pattern.
 \item Strengthen or adapt generic GameTheory backends so state-dependent
       action availability is represented uniformly across sequential and
       graphical games.
@@ -1092,11 +1142,12 @@ VegasCore now has a coherent end-to-end story.  A checked Vegas program is a
 game.  Its strategic form is available through guard-legal kernel-game
 wrappers.  Its protocol-level solution concepts agree with those wrappers.
 Its sequential denotation is a FOSG that preserves the Vegas outcome
-distribution.  For finite games, independent mixtures over legal pure
-strategies can be realized by sequential behavioral strategies with the same
-outcome distribution.  The MAID backend remains as a graphical compilation
-route and an additional body of metatheory, but the canonical sequential
-denotation for current public theorem statements is FOSG.
+distribution by outcome-value closure.  For finite games, independent
+mixtures over legal pure strategies can be realized by native guard-legal
+Vegas behavioral strategies with the same outcome distribution.  The MAID
+backend remains as a graphical compilation route and an additional body of
+metatheory, but the canonical sequential denotation for current public
+theorem statements is FOSG.
 
 The important design boundary is that public theorem statements should be
 simple and Vegas-facing, while proof machinery stays behind the denotational
