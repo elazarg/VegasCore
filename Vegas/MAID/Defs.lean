@@ -1137,9 +1137,8 @@ theorem pmf_bind_castValType
   subst hdesc; rfl
 
 -- evalStep bind distributes over left bind.
-omit [Fintype Player] in
-theorem foldl_evalStep_bind_left {fp : Fintype Player} {n : Nat}
-    {S : @MAID.Struct Player _ fp n} (sem : MAID.Sem S) (pol : MAID.Policy S)
+theorem foldl_evalStep_bind_left {n : Nat}
+    {S : MAID.Struct Player n} (sem : MAID.Sem S) (pol : MAID.Policy S)
     (nodes : List (Fin n)) {β : Type} (μ : PMF β)
     (g : β → PMF (MAID.TAssign S)) :
     List.foldl (MAID.evalStep S sem pol) (μ.bind g) nodes =
