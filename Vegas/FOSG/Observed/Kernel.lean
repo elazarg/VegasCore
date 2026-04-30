@@ -205,6 +205,48 @@ noncomputable def checkedProfileStepPMF
               normalized := normalized
               legal := legal }
 
+/-- Checked-world continuation induced by an optional program action at a
+concrete Vegas commit node.  Legal FOSG actions always take the `some` branch
+with the current commit cursor; the fallback branches make the continuation
+total so it can be used under unconstrained PMF binds. -/
+noncomputable def checkedCommitContinuation
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (wctx : WFCtx Γ) (fresh : FreshBindings (.commit x who R k))
+    (viewScoped : ViewScoped (.commit x who R k))
+    (normalized : NormalizedDists (.commit x who R k))
+    (legal : Legal (.commit x who R k))
+    (oi : Option (ProgramAction g.prog who)) :
+    PMF (CheckedWorld g hctx) :=
+  match oi with
+  | some ai =>
+      if hty : CommitCursor.ty ai.cursor = b then
+        PMF.pure
+          ({ Γ := _
+             prog := k
+             env := VEnv.cons (Player := P) (L := L) (x := x)
+               (τ := .hidden who _) (hty ▸ ai.value) env
+             suffix := .commit suffix
+             wctx := WFCtx.cons fresh.1 wctx
+             fresh := fresh.2
+             viewScoped := viewScoped.2
+             normalized := normalized
+             legal := legal.2 } : CheckedWorld g hctx)
+      else
+        PMF.pure
+          ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+             wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+             normalized := normalized, legal := legal } : CheckedWorld g hctx)
+  | none =>
+      PMF.pure
+        ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+           wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+           normalized := normalized, legal := legal } : CheckedWorld g hctx)
+
 /-- At a commit cursor owned by `who`, binding the transported program-action
 kernel through the checked transition's commit continuation is exactly the
 Vegas profile step at that checked world. -/
@@ -222,31 +264,8 @@ theorem moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
     (legal : Legal (.commit x who R k)) :
     (moveAtProgramCursor g hctx σ who suffix
         (projectViewEnv who (VEnv.eraseEnv env))).bind
-      (fun oi =>
-        match oi with
-        | some ai =>
-            if hty : CommitCursor.ty ai.cursor = b then
-              PMF.pure
-                ({ Γ := _
-                   prog := k
-                   env := VEnv.cons (Player := P) (L := L) (x := x)
-                     (τ := .hidden who _) (hty ▸ ai.value) env
-                   suffix := .commit suffix
-                   wctx := WFCtx.cons fresh.1 wctx
-                   fresh := fresh.2
-                   viewScoped := viewScoped.2
-                   normalized := normalized
-                   legal := legal.2 } : CheckedWorld g hctx)
-            else
-              PMF.pure
-                ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                   wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                   normalized := normalized, legal := legal } : CheckedWorld g hctx)
-        | none =>
-            PMF.pure
-              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                 normalized := normalized, legal := legal } : CheckedWorld g hctx)) =
+      (checkedCommitContinuation g hctx env suffix wctx fresh viewScoped
+        normalized legal) =
       checkedProfileStep g hctx σ
         ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
            wctx := wctx, fresh := fresh, viewScoped := viewScoped,
@@ -323,31 +342,8 @@ theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
     (legal : Legal (.commit x who R k)) :
     (moveAtProgramCursorPMF g hctx σ who suffix
         (projectViewEnv who (VEnv.eraseEnv env))).bind
-      (fun oi =>
-        match oi with
-        | some ai =>
-            if hty : CommitCursor.ty ai.cursor = b then
-              PMF.pure
-                ({ Γ := _
-                   prog := k
-                   env := VEnv.cons (Player := P) (L := L) (x := x)
-                     (τ := .hidden who _) (hty ▸ ai.value) env
-                   suffix := .commit suffix
-                   wctx := WFCtx.cons fresh.1 wctx
-                   fresh := fresh.2
-                   viewScoped := viewScoped.2
-                   normalized := normalized
-                   legal := legal.2 } : CheckedWorld g hctx)
-            else
-              PMF.pure
-                ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                   wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                   normalized := normalized, legal := legal } : CheckedWorld g hctx)
-        | none =>
-            PMF.pure
-              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                 normalized := normalized, legal := legal } : CheckedWorld g hctx)) =
+      (checkedCommitContinuation g hctx env suffix wctx fresh viewScoped
+        normalized legal) =
       checkedProfileStepPMF g hctx σ
         ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
            wctx := wctx, fresh := fresh, viewScoped := viewScoped,
@@ -617,6 +613,134 @@ theorem observedProgram_active_mem_commitData
                             rw [ProgramCursor.path_toProgramCursor_commitCursor]
                   · exact (cast_heq _ _).symm
 
+/-- Common bridge from an observed-program FOSG step to any checked-world
+semantic step whose only active-state obligation is the commit continuation.
+
+This factors the representation work shared by the FDist, PMF, and collapsed
+profile proofs: active-empty states use the no-op action, while singleton
+active states reduce the legal joint-action law to the active player's
+optional program move. -/
+theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (semanticStep : CheckedWorld g hctx → PMF (CheckedWorld g hctx))
+    (empty_step :
+      ∀ (h : (observedProgramFOSG g hctx).History)
+        (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState),
+        (observedProgramFOSG g hctx).active h.lastState = ∅ →
+        ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
+          (fun a =>
+            PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+              ((observedProgramFOSG g hctx).transition
+                h.lastState a)) =
+          semanticStep
+            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState))
+    (commit_step :
+      ∀ (h : (observedProgramFOSG g hctx).History)
+        (_hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
+        {who : P}
+        (_hmem : who ∈ (observedProgramFOSG g hctx).active h.lastState)
+        (Γ : VCtx P L) (x : VarId) (b : L.Ty)
+        (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
+        (k : VegasCore P L ((x, .hidden who b) :: Γ))
+        (env : VEnv L Γ)
+        (suffix : ProgramSuffix g.prog (.commit x who R k))
+        (wctx : WFCtx Γ)
+        (fresh : FreshBindings (.commit x who R k))
+        (viewScoped : ViewScoped (.commit x who R k))
+        (normalized : NormalizedDists (.commit x who R k))
+        (legal : Legal (.commit x who R k)),
+        CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState =
+          ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+             wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+             normalized := normalized, legal := legal } :
+            CheckedWorld g hctx) →
+        h.lastState.toWorld =
+          ({ Γ := Γ, prog := .commit x who R k, env := env } : World P L) →
+        privateObsOfCursorWorld who h.lastState =
+          privateObsOfCommitSite suffix
+            (projectViewEnv who (VEnv.eraseEnv env)) →
+        ((β.toProfile who) (h.playerView who)).bind
+            (checkedCommitContinuation g hctx env suffix wctx fresh
+              viewScoped normalized legal) =
+          semanticStep
+            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+               normalized := normalized, legal := legal } :
+              CheckedWorld g hctx))
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
+      (fun a =>
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          ((observedProgramFOSG g hctx).transition
+            h.lastState a)) =
+      semanticStep
+        (CheckedWorld.ofCursorChecked (hctx := hctx)
+          h.lastState) := by
+  let G := observedProgramFOSG g hctx
+  by_cases hactive : G.active h.lastState = ∅
+  · exact empty_step h hterm hactive
+  · have hne : (G.active h.lastState).Nonempty :=
+      Finset.nonempty_iff_ne_empty.mpr hactive
+    rcases hne with ⟨who, hmem⟩
+    rcases observedProgram_active_mem_commitData
+        g hctx h.lastState hmem with
+      ⟨Γ, x, b, R, k, env, suffix, wctx, fresh, viewScoped,
+        normalized, legal, hchecked, hworld, hobs⟩
+    have hK : ∀ a : G.LegalAction h.lastState,
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          (G.transition h.lastState a) =
+        checkedCommitContinuation g hctx env suffix wctx fresh
+          viewScoped normalized legal (a.1 who) := by
+      intro a
+      rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+        (hctx := hctx) (w := h.lastState) (a := a)]
+      have haRaw : JointActionLegal
+          ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
+            World P L)
+          (ProgramJointAction.toAction a.1) := by
+        have hto := CursorProgramJointActionLegal.toAction a.2
+        simpa [hworld] using hto
+      rw [checkedTransition_congr_checkedWorld
+        (hw := hchecked)
+        (a := ProgramJointAction.toAction a.1)
+        (ha₂ := by
+          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
+            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
+      simpa [checkedCommitContinuation] using
+        checkedTransition_commit_eq_programActionContinuation
+          g hctx env suffix wctx fresh viewScoped
+          normalized legal a.1 haRaw
+    calc
+      (G.legalActionLaw β h hterm).bind
+          (fun a =>
+            PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+              (G.transition h.lastState a))
+        = (G.legalActionLaw β h hterm).bind
+            (fun a =>
+              checkedCommitContinuation g hctx env suffix wctx fresh
+                viewScoped normalized legal (a.1 who)) := by
+              congr
+              funext a
+              exact hK a
+      _ =
+        ((β.toProfile who) (h.playerView who)).bind
+            (checkedCommitContinuation g hctx env suffix wctx fresh
+              viewScoped normalized legal) := by
+          exact GameTheory.FOSG.legalActionLaw_bind_coord
+            (G := G) β h hterm who
+            (checkedCommitContinuation g hctx env suffix wctx fresh
+              viewScoped normalized legal)
+      _ =
+        semanticStep
+          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
+          rw [hchecked]
+          exact commit_step h hterm hmem Γ x b R k env suffix wctx fresh
+            viewScoped normalized legal hchecked hworld hobs
+
 /-- One observed-program FOSG execution step, projected to checked worlds,
 coincides with the Vegas semantic one-step kernel. -/
 theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep
@@ -635,89 +759,27 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
       checkedProfileStep g hctx σ
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           h.lastState) := by
-  let G := observedProgramFOSG g hctx
-  by_cases hactive : G.active h.lastState = ∅
-  · exact observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty
-      g hctx σ h hterm hactive
-  · have hne : (G.active h.lastState).Nonempty :=
-      Finset.nonempty_iff_ne_empty.mpr hactive
-    rcases hne with ⟨who, hmem⟩
-    rcases observedProgram_active_mem_commitData
-        g hctx h.lastState hmem with
-      ⟨Γ, x, b, R, k, env, suffix, wctx, fresh, viewScoped,
-        normalized, legal, hchecked, hworld⟩
-    let f : Option (ProgramAction g.prog who) →
-        PMF (CheckedWorld g hctx) := fun oi =>
-      match oi with
-      | some ai =>
-          if hty : CommitCursor.ty ai.cursor = b then
-            PMF.pure
-              ({ Γ := _
-                 prog := k
-                 env := VEnv.cons (Player := P) (L := L) (x := x)
-                   (τ := .hidden who _) (hty ▸ ai.value) env
-                 suffix := .commit suffix
-                 wctx := WFCtx.cons fresh.1 wctx
-                 fresh := fresh.2
-                 viewScoped := viewScoped.2
-                 normalized := normalized
-                 legal := legal.2 } : CheckedWorld g hctx)
-          else
-            PMF.pure
-              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                 normalized := normalized, legal := legal } : CheckedWorld g hctx)
-      | none =>
-          PMF.pure
-            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-               normalized := normalized, legal := legal } : CheckedWorld g hctx)
-    have hK : ∀ a : G.LegalAction h.lastState,
-        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-          (G.transition h.lastState a) = f (a.1 who) := by
-      intro a
-      rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
-        (hctx := hctx) (w := h.lastState) (a := a)]
-      have haRaw : JointActionLegal
-          ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
-          (ProgramJointAction.toAction a.1) := by
-        have hto := CursorProgramJointActionLegal.toAction a.2
-        simpa [hworld] using hto
-      rw [checkedTransition_congr_checkedWorld
-        (hw := hchecked)
-        (a := ProgramJointAction.toAction a.1)
-        (ha₂ := by
-          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
-      simpa [f] using
-        checkedTransition_commit_eq_programActionContinuation
-          g hctx env suffix wctx fresh viewScoped
-          normalized legal a.1 haRaw
-    calc
-      ((observedProgramFOSG g hctx).legalActionLaw
-          (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-        (fun a =>
-          PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-            ((observedProgramFOSG g hctx).transition
-              h.lastState a))
-          = ((observedProgramFOSG g hctx).legalActionLaw
-              (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-              (fun a => f (a.1 who)) := by
-                congr
-                funext a
-                exact hK a
-      _ = (moveAtCursorWorld g hctx σ who h.lastState).bind f := by
-        exact observedProgramLegalActionLaw_bind_coord
-          g hctx σ h hterm who f
-      _ = checkedProfileStep g hctx σ
-          (CheckedWorld.ofCursorChecked (hctx := hctx)
-            h.lastState) := by
-        rw [← moveAtCheckedWorld_ofCursorChecked
-          g hctx σ who h.lastState]
-        rw [hchecked]
-        exact moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
-          g hctx σ env suffix wctx fresh viewScoped
-          normalized legal
+  refine observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
+    g hctx (toObservedProgramLegalBehavioralProfile g hctx σ)
+    (checkedProfileStep g hctx σ) ?_ ?_ h hterm
+  · intro h hterm hactive
+    exact
+      observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStep_of_active_empty
+        g hctx σ h hterm hactive
+  · intro h _hterm who _hmem Γ x b R k env suffix wctx fresh viewScoped
+      normalized legal hchecked _hworld _hobs
+    rw [show
+        ((toObservedProgramLegalBehavioralProfile g hctx σ).toProfile who
+          (h.playerView who)) =
+          moveAtCursorWorld g hctx σ who h.lastState by
+        simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
+          toObservedProgramLegalBehavioralProfile_apply,
+          programBehavioralProfileCandidate_history]]
+    rw [← moveAtCheckedWorld_ofCursorChecked
+      g hctx σ who h.lastState]
+    rw [hchecked]
+    exact moveAtProgramCursor_bind_commitContinuation_eq_checkedProfileStep
+      g hctx σ env suffix wctx fresh viewScoped normalized legal
 
 theorem observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -735,89 +797,27 @@ theorem observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfil
       checkedProfileStepPMF g hctx σ
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           h.lastState) := by
-  let G := observedProgramFOSG g hctx
-  by_cases hactive : G.active h.lastState = ∅
-  · exact observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty
-      g hctx σ h hterm hactive
-  · have hne : (G.active h.lastState).Nonempty :=
-      Finset.nonempty_iff_ne_empty.mpr hactive
-    rcases hne with ⟨who, hmem⟩
-    rcases observedProgram_active_mem_commitData
-        g hctx h.lastState hmem with
-      ⟨Γ, x, b, R, k, env, suffix, wctx, fresh, viewScoped,
-        normalized, legal, hchecked, hworld⟩
-    let f : Option (ProgramAction g.prog who) →
-        PMF (CheckedWorld g hctx) := fun oi =>
-      match oi with
-      | some ai =>
-          if hty : CommitCursor.ty ai.cursor = b then
-            PMF.pure
-              ({ Γ := _
-                 prog := k
-                 env := VEnv.cons (Player := P) (L := L) (x := x)
-                   (τ := .hidden who _) (hty ▸ ai.value) env
-                 suffix := .commit suffix
-                 wctx := WFCtx.cons fresh.1 wctx
-                 fresh := fresh.2
-                 viewScoped := viewScoped.2
-                 normalized := normalized
-                 legal := legal.2 } : CheckedWorld g hctx)
-          else
-            PMF.pure
-              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-                 normalized := normalized, legal := legal } : CheckedWorld g hctx)
-      | none =>
-          PMF.pure
-            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
-               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
-               normalized := normalized, legal := legal } : CheckedWorld g hctx)
-    have hK : ∀ a : G.LegalAction h.lastState,
-        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-          (G.transition h.lastState a) = f (a.1 who) := by
-      intro a
-      rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
-        (hctx := hctx) (w := h.lastState) (a := a)]
-      have haRaw : JointActionLegal
-          ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
-          (ProgramJointAction.toAction a.1) := by
-        have hto := CursorProgramJointActionLegal.toAction a.2
-        simpa [hworld] using hto
-      rw [checkedTransition_congr_checkedWorld
-        (hw := hchecked)
-        (a := ProgramJointAction.toAction a.1)
-        (ha₂ := by
-          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
-      simpa [f] using
-        checkedTransition_commit_eq_programActionContinuation
-          g hctx env suffix wctx fresh viewScoped
-          normalized legal a.1 haRaw
-    calc
-      ((observedProgramFOSG g hctx).legalActionLaw
-          (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
-        (fun a =>
-          PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-            ((observedProgramFOSG g hctx).transition
-              h.lastState a))
-          = ((observedProgramFOSG g hctx).legalActionLaw
-              (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
-              (fun a => f (a.1 who)) := by
-                congr
-                funext a
-                exact hK a
-      _ = (moveAtCursorWorldPMF g hctx σ who h.lastState).bind f := by
-        exact observedProgramLegalActionLawPMF_bind_coord
-          g hctx σ h hterm who f
-      _ = checkedProfileStepPMF g hctx σ
-          (CheckedWorld.ofCursorChecked (hctx := hctx)
-            h.lastState) := by
-        rw [← moveAtCheckedWorldPMF_ofCursorChecked
-          g hctx σ who h.lastState]
-        rw [hchecked]
-        exact moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
-          g hctx σ env suffix wctx fresh viewScoped
-          normalized legal
+  refine observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
+    g hctx (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+    (checkedProfileStepPMF g hctx σ) ?_ ?_ h hterm
+  · intro h hterm hactive
+    exact
+      observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF_empty
+        g hctx σ h hterm hactive
+  · intro h _hterm who _hmem Γ x b R k env suffix wctx fresh viewScoped
+      normalized legal hchecked _hworld _hobs
+    rw [show
+        ((toObservedProgramLegalBehavioralProfilePMF g hctx σ).toProfile who
+          (h.playerView who)) =
+          moveAtCursorWorldPMF g hctx σ who h.lastState by
+        simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
+          toObservedProgramLegalBehavioralProfilePMF_apply,
+          programBehavioralProfilePMFCandidate_history]]
+    rw [← moveAtCheckedWorldPMF_ofCursorChecked
+      g hctx σ who h.lastState]
+    rw [hchecked]
+    exact moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
+      g hctx σ env suffix wctx fresh viewScoped normalized legal
 
 /-- Project a suffix-based checked world to the Vegas payoff outcome carried at
 terminal `ret` worlds. The nonterminal branch is a total-function default;
