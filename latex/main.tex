@@ -675,9 +675,12 @@ syntax of Vegas.  The route is:
 \item map independent mixed Vegas pure strategies to the corresponding
       mixed pure strategies in the FOSG;
 \item apply the generic GameTheory FOSG mixed-to-behavioral theorem;
-\item project the FOSG run distribution back to Vegas payoff outcomes;
-\item use outcome preservation to identify the result with the original Vegas
-      mixed-pure outcome distribution.
+\item collapse the resulting sequential behavioral witness to a native
+      syntax-recursive Vegas behavioral profile;
+\item prove, by a step-by-step run induction, that the collapsed Vegas profile
+      has the same payoff-outcome distribution as the FOSG witness;
+\item use outcome preservation to identify that distribution with the original
+      Vegas mixed-pure outcome distribution.
 \end{enumerate}
 
 This division is important for maintainability.  The hard probabilistic
@@ -688,19 +691,19 @@ the projected outcome distribution is the Vegas one.
 
 \subsection{The Vegas Kuhn Theorem}
 
-The main public sequential-game result is stated back in the native Vegas
-strategy space:
+The main public Kuhn result is stated back in the native Vegas strategy space:
 \[
 \begin{array}{l}
 \text{for finite } P \;([{\rm Fintype}\;P])
   \text{ and finite value types }(\mathrm{FiniteValuation}\;L),\\
 \text{for every } g:\WFP \text{ and every independent PMF mixture }
   \mu_i \text{ over legal pure strategies,}\\
-\text{there exists a total guard-legal Vegas behavioral profile } \beta\\
-\text{such that for every } o\in\Outcome,\quad
-  \Pr_{\beta}^{\mathrm{beh}}[o]
+\text{there exists a total guard-legal Vegas behavioral profile } \beta
+\text{ such that}\\
+  \mathrm{outcomeKernel}_{\mathrm{beh}}(g,\beta)
   =
-  \Pr_{\pi\sim\prod_i\mu_i}^{\mathrm{pure}}[o].
+  \operatorname{bind}\!\left(\prod_i \mu_i\right)
+    \left(\lambda \pi.\,\mathrm{outcomeKernel}_{\mathrm{pure}}(g,\pi)\right).
 \end{array}
 \]
 In the code this is the Vegas-facing theorem
@@ -733,8 +736,9 @@ along reachable executions.  The proof extracts the active commit site and
 current player-view environment from the last sequential observation, proves
 that available moves agree at that site, and then runs a step-by-step
 outcome-kernel induction.  Off-path Vegas views are completed from an
-arbitrary legal pure profile selected from the input mixed profile's support;
-this completion is guard-legal and does not affect the outcome distribution.
+arbitrary legal pure profile selected componentwise from the input mixed
+profile supports; this completion is guard-legal and does not affect the
+outcome distribution.
 
 The repository still exposes the sequential witness type
 \[
@@ -1041,9 +1045,9 @@ The repository currently has:
 \subsection{Natural Future Work}
 
 \begin{itemize}[nosep]
-\item Prove a clean correspondence between syntax-recursive Vegas behavioral
-      profiles and sequential behavioral profiles, if the syntax-recursive
-      strategy space is needed as the witness type for Kuhn-style theorems.
+\item Factor the sequential-to-Vegas behavioral collapse into a reusable
+      equivalence or transport API, rather than leaving it specialized to the
+      current Kuhn proof route.
 \item Strengthen or adapt generic GameTheory backends so state-dependent
       action availability is represented uniformly across sequential and
       graphical games.
