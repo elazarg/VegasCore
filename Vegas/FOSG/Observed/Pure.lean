@@ -211,7 +211,6 @@ noncomputable def movePureStrategyAtCursorWorld
   movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
     (projectViewEnv who (VEnv.eraseEnv w.1.env))
 
-set_option linter.flexible false in
 theorem movePureAtProgramCursor_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -242,25 +241,17 @@ theorem movePureAtProgramCursor_availableAt
               (VEnv.eraseEnv env) = true := by
           exact headPureKernel_legal_atCursor
             g hctx σ suffix (VEnv.eraseEnv env)
-        simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt,
-          CursorCheckedWorld.availableProgramActionsAt, active,
-          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
-        constructor
-        · refine ⟨
-            (ProgramPureStrategy.headKernel
-              ((suffix.pureProfile (fun i => (σ i).val)) who))
-              (projectViewEnv who (VEnv.eraseEnv env)),
-            ⟨⟨ProgramSuffix.ty_commitCursor suffix, ?_⟩,
-              hguard⟩⟩
-          exact cast_heq _ _
-        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-          · rfl
+        rw [movePureAtProgramCursor_commit_owner]
+        exact CursorCheckedWorld.availableProgramMovesAt_commit_owner_commitAt
+          env suffix
+          ((ProgramPureStrategy.headKernel
+            ((suffix.pureProfile (fun i => (σ i).val)) who))
+            (projectViewEnv who (VEnv.eraseEnv env)))
+          hguard
       · have hnot : who ≠ owner := fun h => howner h.symm
         simp [movePureAtProgramCursor, CursorCheckedWorld.availableProgramMovesAt,
           active, howner, hnot]
 
-set_option linter.flexible false in
 theorem movePureStrategyAtProgramCursor_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
@@ -295,21 +286,13 @@ theorem movePureStrategyAtProgramCursor_availableAt
               (VEnv.eraseEnv env) = true := by
           exact headPureStrategyKernel_legal_atCursor
             g hctx σ suffix (VEnv.eraseEnv env)
-        simp [movePureStrategyAtProgramCursor,
-          CursorCheckedWorld.availableProgramMovesAt,
-          CursorCheckedWorld.availableProgramActionsAt, active,
-          Vegas.FOSGBridge.availableActions, ProgramAction.toAction]
-        constructor
-        · refine ⟨
-            (ProgramPureStrategy.headKernel
-              (suffix.pureStrategy who σ.val))
-              (projectViewEnv who (VEnv.eraseEnv env)),
-            ⟨⟨ProgramSuffix.ty_commitCursor suffix, ?_⟩,
-              hguard⟩⟩
-          exact cast_heq _ _
-        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-          · rfl
+        rw [movePureStrategyAtProgramCursor_commit_owner]
+        exact CursorCheckedWorld.availableProgramMovesAt_commit_owner_commitAt
+          env suffix
+          ((ProgramPureStrategy.headKernel
+            (suffix.pureStrategy who σ.val))
+            (projectViewEnv who (VEnv.eraseEnv env)))
+          hguard
       · have hnot : who ≠ owner := fun h => howner h.symm
         simp [movePureStrategyAtProgramCursor,
           CursorCheckedWorld.availableProgramMovesAt,

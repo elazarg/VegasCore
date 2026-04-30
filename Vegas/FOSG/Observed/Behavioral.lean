@@ -332,7 +332,6 @@ noncomputable def moveAtCheckedWorldPMF
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
       moveAtCursorWorldPMF g hctx σ who w := rfl
 
-set_option linter.flexible false in
 theorem moveAtProgramCursor_support_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfile g)
@@ -394,19 +393,8 @@ theorem moveAtProgramCursor_support_availableAt
             evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
           exact headKernel_supported_atCursor
             g hctx σ suffix (VEnv.eraseEnv env) v hvFD
-        simp only [CursorCheckedWorld.availableProgramMovesAt, active,
-          Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,
-          availableActions, ↓reduceIte, ProgramAction.toAction,
-          Set.mem_setOf_eq, Sigma.mk.injEq, eq_mpr_eq_cast,
-          VegasCore.commit.injEq, true_and, not_true_eq_false,
-          ProgramAction.commitAt_cursor]
-        constructor
-        · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
-              suffix, ?_⟩, hguard⟩⟩
-          exact cast_heq _ v
-        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-          · rfl
+        exact CursorCheckedWorld.availableProgramMovesAt_commit_owner_commitAt
+          env suffix v hguard
       · have hoiNone : oi = none := by
           simpa [moveAtProgramCursor, howner] using hoi
         subst oi
@@ -488,19 +476,8 @@ theorem moveAtProgramCursorPMF_support_availableAt
             evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
           exact headKernelPMF_supported_atCursor
             g hctx σ suffix (VEnv.eraseEnv env) hv
-        simp only [CursorCheckedWorld.availableProgramMovesAt, active,
-          Finset.mem_singleton, CursorCheckedWorld.availableProgramActionsAt,
-          availableActions, ↓reduceIte, ProgramAction.toAction,
-          Set.mem_setOf_eq, Sigma.mk.injEq, eq_mpr_eq_cast,
-          VegasCore.commit.injEq, true_and, not_true_eq_false,
-          ProgramAction.commitAt_cursor]
-        constructor
-        · refine ⟨v, ⟨⟨ProgramSuffix.ty_commitCursor
-              suffix, ?_⟩, hguard⟩⟩
-          exact cast_heq _ v
-        · refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-          · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-          · rfl
+        exact CursorCheckedWorld.availableProgramMovesAt_commit_owner_commitAt
+          env suffix v hguard
       · have hoiNone : oi = none := by
           simpa [moveAtProgramCursorPMF, howner] using hoi
         subst oi

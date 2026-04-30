@@ -617,7 +617,6 @@ noncomputable def pureStrategy
       · simpa [ProgramPureStrategy, h] using ih σ
   | reveal s ih => intro σ; exact ih σ
 
-set_option linter.flexible false in
 theorem pureStrategy_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) (who : P)
@@ -634,8 +633,13 @@ theorem pureStrategy_isLegal
       by_cases h : owner = who
       · cases h
         dsimp [pureStrategy]
-        simp [ProgramPureStrategy.IsLegal] at hsite ⊢
-        exact hsite.2
+        have hsite' :
+            (ProgramPureStrategy.headKernel (s.pureStrategy who σ)).IsLegalAt
+                (x := x) (who := who) (b := b) R ∧
+              (ProgramPureStrategy.tailOwn (s.pureStrategy who σ)).IsLegal
+                k := by
+          simpa [ProgramPureStrategy.IsLegal] using hsite
+        simpa [pureStrategy] using hsite'.2
       · dsimp [pureStrategy]
         simpa [ProgramPureStrategy.IsLegal, h] using hsite
 
@@ -2234,6 +2238,48 @@ def availableProgramMovesAt {g : WFProgram P L} {Γ : VCtx P L}
         who ∉ Vegas.FOSGBridge.active
           ({ Γ := Γ, prog := p, env := env } : World P L)}
 
+/-- At an owned commit endpoint, optional program-move availability is exactly
+the current commit cursor paired with a guard-legal value. -/
+theorem availableProgramMovesAt_commit_owner_iff
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (ai : ProgramAction g.prog who) :
+    some ai ∈ availableProgramMovesAt (.commit x who R k) env suffix who ↔
+      ∃ v : L.Val b,
+        ai = ProgramAction.commitAt suffix v ∧
+          evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
+  change
+    (who ∈ Vegas.FOSGBridge.active
+        ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
+          World P L) ∧
+      ai ∈ availableProgramActionsAt (.commit x who R k) env suffix who) ↔
+      ∃ v : L.Val b,
+        ai = ProgramAction.commitAt suffix v ∧
+          evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true
+  simp only [Vegas.FOSGBridge.active, Finset.mem_singleton, true_and]
+  exact availableProgramActionsAt_commit_owner_iff env suffix ai
+
+/-- A guard-legal value is available as the owned commit endpoint's optional
+program move. -/
+theorem availableProgramMovesAt_commit_owner_commitAt
+    {g : WFProgram P L} {Γ : VCtx P L}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (env : VEnv L Γ)
+    (suffix : ProgramSuffix g.prog (.commit x who R k))
+    (v : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true) :
+    some (ProgramAction.commitAt suffix v) ∈
+      availableProgramMovesAt (.commit x who R k) env suffix who := by
+  rw [availableProgramMovesAt_commit_owner_iff]
+  exact ⟨v, rfl, hguard⟩
+
 /-- Program-local action availability for the finite cursor-keyed carrier. At
 a commit node, only the active owner may choose the current commit cursor paired
 with a guard-legal value. -/
@@ -2649,7 +2695,6 @@ theorem cursor_not_terminal_of_reveal
           simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, terminal, hprog']
 
-set_option linter.flexible false in
 /-- Program-level `Legal` prevents deadlock for the cursor-keyed program-local
 action alphabet. -/
 theorem cursor_nonterminal_exists_program_legal
@@ -2698,14 +2743,50 @@ theorem cursor_nonterminal_exists_program_legal
               intro i
               by_cases hi : i = who
               · subst i
-                simp [commitProgramJointAction, CursorCheckedWorld.active,
-                  CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
-                  CursorCheckedWorld.availableProgramActions,
-                  CursorCheckedWorld.availableActions, availableActions,
-                  ProgramAction.toAction, ProgramSuffix.ty_commitCursor, hprog, hv]
-                refine ⟨x, who, _, R, k, ?_, rfl, ?_⟩
-                · exact ⟨rfl, rfl, rfl, HEq.rfl, HEq.rfl⟩
-                · rfl
+                let w : CursorCheckedWorld g :=
+                  ⟨⟨cursor, env⟩,
+                    ⟨wctx, fresh, viewScoped, normalized, by
+                      change Legal cursor.prog
+                      rw [hprog]
+                      exact legal⟩⟩
+                have hactive : who ∈ CursorCheckedWorld.active w := by
+                  simp [w, CursorCheckedWorld.active,
+                    CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
+                    hprog]
+                have haction :
+                    ProgramAction.commitAt suffix v ∈
+                      CursorCheckedWorld.availableProgramActions w who := by
+                  constructor
+                  · have hbroad : ∃ u : L.Val _,
+                        ProgramAction.toAction (ProgramAction.commitAt suffix v) =
+                          Sigma.mk _ u ∧
+                        evalGuard (Player := P) (L := L) R u
+                          (VEnv.eraseEnv env) = true := by
+                      refine ⟨v, ?_, hv⟩
+                      apply Sigma.ext (ProgramSuffix.ty_commitCursor suffix)
+                      exact heq_of_cast_eq
+                        (ProgramSuffix.ty_commitCursor suffix)
+                        (ProgramAction.commitAt_value_cast suffix v
+                          (ProgramSuffix.ty_commitCursor suffix))
+                    simpa [w, CursorCheckedWorld.availableActions,
+                      CursorCheckedWorld.toWorld, CursorWorldData.prog,
+                      availableActions, hprog] using hbroad
+                  · refine ⟨x, who, _, R, k, hprog, rfl, ?_⟩
+                    dsimp [suffix]
+                    rfl
+                have hcommit :
+                    commitProgramJointAction suffix v who =
+                      some (ProgramAction.commitAt suffix v) := by
+                  simp only [commitProgramJointAction, ↓reduceDIte]
+                  rw [Option.some.injEq, ProgramAction.mk.injEq]
+                  have hcomm_heq :
+                      HEq (ProgramAction.commitAt suffix v).value v :=
+                    heq_of_cast_eq (ProgramSuffix.ty_commitCursor suffix)
+                      (ProgramAction.commitAt_value_cast suffix v
+                        (ProgramSuffix.ty_commitCursor suffix))
+                  exact ⟨rfl, (cast_heq _ v).trans hcomm_heq.symm⟩
+                rw [hcommit]
+                exact ⟨hactive, haction⟩
               · have hnone : commitProgramJointAction suffix v i = none := by
                     simp [commitProgramJointAction, hi]
                 rw [hnone]
@@ -3467,7 +3548,6 @@ theorem cursorProgramTransition_massInvariant
                 (CursorProgramJointActionLegal.toAction a₂.2)
                 s hs₁ hs₂)
 
-set_option linter.flexible false in
 /-- Every supported cursor-recursive transition consumes exactly one
 operational syntax node. -/
 theorem cursorTransitionState_remainingSyntaxSteps
@@ -3485,56 +3565,107 @@ theorem cursorTransitionState_remainingSyntaxSteps
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
       False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog, syntaxSteps] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .sample x D k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog, syntaxSteps] at hsupp ⊢
-      rcases hsupp with ⟨v, hdst, _hv⟩
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨v, _hv, hdst⟩
       subst dst
       rfl
   | .commit x who R k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog, syntaxSteps] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .reveal y who x hx k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog, syntaxSteps] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .letExpr x e k, .letExpr c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.letExpr c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_remainingSyntaxSteps c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact hrec
   | .sample x D k, .sample c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.sample c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_remainingSyntaxSteps c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact hrec
   | .commit x who R k, .commit c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.commit c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_remainingSyntaxSteps c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact hrec
   | .reveal y who x hx k, .reveal c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.prog] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.reveal c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_remainingSyntaxSteps c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact hrec
 
-set_option linter.flexible false in
 /-- A cursor-recursive transition only extends the environment below the
 current cursor endpoint; the environment at the root of the local cursor is
 unchanged. -/
@@ -3554,56 +3685,107 @@ theorem cursorTransitionState_rootEnv_eq
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
       False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .sample x D k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
-      rcases hsupp with ⟨v, hdst, _hv⟩
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨v, _hv, hdst⟩
       subst dst
       rfl
   | .commit x who R k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .reveal y who x hx k, .here, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
+      have hmem :
+          dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      simp only [cursorTransitionState, PMF.support_pure,
+        Set.mem_singleton_iff] at hmem
       subst dst
       rfl
   | .letExpr x e k, .letExpr c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.letExpr c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_rootEnv_eq c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact congrArg VEnv.tail hrec
   | .sample x D k, .sample c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.sample c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_rootEnv_eq c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact congrArg VEnv.tail hrec
   | .commit x who R k, .commit c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.commit c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_rootEnv_eq c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact congrArg VEnv.tail hrec
   | .reveal y who x hx k, .reveal c, env, valid, a, ha, dst, hsupp => by
-      simp [cursorTransitionState, ProgramCursor.rootEnv] at hsupp ⊢
-      rcases hsupp with ⟨s, hdst, hsuppS⟩
+      have hmem :
+          dst ∈ (cursorTransitionState (ProgramCursor.reveal c) env valid a ha).support := by
+        rw [PMF.mem_support_iff]
+        exact hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp
+          (by simpa [cursorTransitionState] using hmem) with
+        ⟨s, hsuppS, hdst⟩
       have hrec := cursorTransitionState_rootEnv_eq c env
         (by simpa [ProgramCursor.EndpointValid] using valid) a
-        (by simpa [ProgramCursor.EndpointValid] using ha) s hsuppS
+        (by simpa [ProgramCursor.EndpointValid] using ha) s
+        (by
+          rw [PMF.mem_support_iff] at hsuppS
+          exact hsuppS)
       subst dst
       exact congrArg VEnv.tail hrec
 
-set_option linter.flexible false in
 /-- The cursor-keyed program transition consumes exactly one operational syntax
 node on every supported transition. -/
 theorem cursorProgramTransition_remainingSyntaxSteps
@@ -3633,7 +3815,6 @@ theorem cursorProgramTransition_remainingSyntaxSteps
   simpa [CursorCheckedWorld.remainingSyntaxSteps, CursorRuntimeState.toChecked,
     CursorWorldData.prog] using hstep
 
-set_option linter.flexible false in
 /-- Every supported checked transition consumes exactly one operational syntax
 node. -/
 theorem checkedTransition_remainingSyntaxSteps
@@ -3649,20 +3830,28 @@ theorem checkedTransition_remainingSyntaxSteps
       | ret payoffs =>
           exact False.elim (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
       | letExpr x e k =>
-          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          rw [← PMF.mem_support_iff] at hsupp
+          simp only [checkedTransition, PMF.support_pure,
+            Set.mem_singleton_iff] at hsupp
           subst dst
           rfl
       | sample x D k =>
-          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
-          rcases hsupp with ⟨v, hdst, _hv⟩
+          rw [← PMF.mem_support_iff] at hsupp
+          rcases (PMF.mem_support_map_iff _ _ _).mp
+              (by simpa [checkedTransition] using hsupp) with
+            ⟨v, _hv, hdst⟩
           subst dst
           rfl
       | commit x who R k =>
-          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          rw [← PMF.mem_support_iff] at hsupp
+          simp only [checkedTransition, PMF.support_pure,
+            Set.mem_singleton_iff] at hsupp
           subst dst
           rfl
       | reveal y who x hx k =>
-          simp [checkedTransition, CheckedWorld.remainingSyntaxSteps, syntaxSteps] at hsupp ⊢
+          rw [← PMF.mem_support_iff] at hsupp
+          simp only [checkedTransition, PMF.support_pure,
+            Set.mem_singleton_iff] at hsupp
           subst dst
           rfl
 
