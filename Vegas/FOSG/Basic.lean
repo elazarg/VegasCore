@@ -1153,6 +1153,60 @@ def toSuffix
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
 
+/-- Append a local cursor below a global cursor.
+
+If `pref` points from the program root to the current continuation and `c`
+points inside that continuation, `pref.extend c` points from the original root
+to the same final endpoint as `c`. This is the cursor-level counterpart of
+`toSuffixFrom`. -/
+def extend
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (pref : ProgramCursor root) (c : ProgramCursor pref.prog) :
+    ProgramCursor root :=
+  match pref with
+  | .here => c
+  | .letExpr pref =>
+      .letExpr (extend (root := _) pref
+        (by simpa [ProgramCursor.prog] using c))
+  | .sample pref =>
+      .sample (extend (root := _) pref
+        (by simpa [ProgramCursor.prog] using c))
+  | .commit pref =>
+      .commit (extend (root := _) pref
+        (by simpa [ProgramCursor.prog] using c))
+  | .reveal pref =>
+      .reveal (extend (root := _) pref
+        (by simpa [ProgramCursor.prog] using c))
+
+theorem toSuffixFrom_extend_heq
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p)
+    (pref : ProgramCursor p) (c : ProgramCursor pref.prog) :
+    HEq (ProgramCursor.toSuffixFrom s (pref.extend c))
+      (ProgramCursor.toSuffixFrom (ProgramCursor.toSuffixFrom s pref) c) := by
+  induction pref with
+  | here => exact HEq.rfl
+  | letExpr pref ih =>
+      simpa [extend, toSuffixFrom, ProgramCursor.prog] using
+        ih (ProgramSuffix.letExpr s) c
+  | sample pref ih =>
+      simpa [extend, toSuffixFrom, ProgramCursor.prog] using
+        ih (ProgramSuffix.sample s) c
+  | commit pref ih =>
+      simpa [extend, toSuffixFrom, ProgramCursor.prog] using
+        ih (ProgramSuffix.commit s) c
+  | reveal pref ih =>
+      simpa [extend, toSuffixFrom, ProgramCursor.prog] using
+        ih (ProgramSuffix.reveal s) c
+
+theorem toSuffix_extend_heq
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (pref : ProgramCursor root) (c : ProgramCursor pref.prog) :
+    HEq (pref.extend c).toSuffix
+      (ProgramCursor.toSuffixFrom pref.toSuffix c) := by
+  exact toSuffixFrom_extend_heq ProgramSuffix.here pref c
+
 /-- Drop the environment bindings added between the root of a local cursor and
 its endpoint. -/
 def rootEnv
