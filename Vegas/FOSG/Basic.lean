@@ -1207,6 +1207,36 @@ theorem toSuffix_extend_heq
       (ProgramCursor.toSuffixFrom pref.toSuffix c) := by
   exact toSuffixFrom_extend_heq ProgramSuffix.here pref c
 
+theorem extend_Γ
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (pref : ProgramCursor root) (c : ProgramCursor pref.prog) :
+    (pref.extend c).Γ = c.Γ := by
+  induction pref with
+  | here => rfl
+  | letExpr pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog] using ih c
+  | sample pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog] using ih c
+  | commit pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog] using ih c
+  | reveal pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog] using ih c
+
+theorem extend_prog
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (pref : ProgramCursor root) (c : ProgramCursor pref.prog) :
+    (extend_Γ pref c) ▸ (pref.extend c).prog = c.prog := by
+  induction pref with
+  | here => rfl
+  | letExpr pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog, extend_Γ] using ih c
+  | sample pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog, extend_Γ] using ih c
+  | commit pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog, extend_Γ] using ih c
+  | reveal pref ih =>
+      simpa [extend, ProgramCursor.Γ, ProgramCursor.prog, extend_Γ] using ih c
+
 /-- Drop the environment bindings added between the root of a local cursor and
 its endpoint. -/
 def rootEnv
