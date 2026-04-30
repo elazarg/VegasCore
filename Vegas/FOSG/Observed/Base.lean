@@ -8,22 +8,13 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 namespace Observed
 
-/-- Last element of a list, as an `Option`. Kept local to avoid depending on
-which `List.getLast?` lemmas are imported. -/
-def last? {α : Type} : List α → Option α
-  | [] => none
-  | [x] => some x
-  | _ :: xs => last? xs
+/-- Compatibility alias for the generic FOSG latest-observation helper. -/
+abbrev last? {α : Type} : List α → Option α :=
+  GameTheory.FOSG.InfoState.last?
 
 @[simp] theorem last?_append_singleton {α : Type} (xs : List α) (x : α) :
-    last? (xs ++ [x]) = some x := by
-  induction xs with
-  | nil => rfl
-  | cons y ys ih =>
-      cases ys with
-      | nil => rfl
-      | cons z zs =>
-          simpa [last?] using ih
+    last? (xs ++ [x]) = some x :=
+  GameTheory.FOSG.InfoState.last?_append_singleton xs x
 
 /-- Observation events extracted from the final program-action FOSG information
 state. -/
@@ -31,23 +22,25 @@ noncomputable def programObservationEvents
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :
     List (PrivateObs g who × PublicObs g hctx) :=
-  s.filterMap
-    (GameTheory.FOSG.PlayerEvent.observationPart
-      (G := observedProgramFOSG g hctx) (i := who))
+  GameTheory.FOSG.InfoState.observationEvents
+    (G := observedProgramFOSG g hctx) (i := who) s
 
 noncomputable def programLatestObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :
     Option (PrivateObs g who × PublicObs g hctx) :=
-  last? (programObservationEvents g hctx who s)
+  GameTheory.FOSG.InfoState.latestObservation?
+    (G := observedProgramFOSG g hctx) (i := who) s
 
 @[simp] theorem programObservationEvents_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
-    programObservationEvents g hctx who [] = [] := rfl
+    programObservationEvents g hctx who [] = [] :=
+  GameTheory.FOSG.InfoState.observationEvents_nil
 
 @[simp] theorem programLatestObservation?_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
-    programLatestObservation? g hctx who [] = none := rfl
+    programLatestObservation? g hctx who [] = none :=
+  GameTheory.FOSG.InfoState.latestObservation?_nil
 
 theorem programLatestObservation?_append_obs
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
@@ -55,7 +48,8 @@ theorem programLatestObservation?_append_obs
     (priv : PrivateObs g who) (pub : PublicObs g hctx) :
     programLatestObservation? g hctx who
       (s ++ [GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
-  simp [programLatestObservation?, programObservationEvents]
+  exact GameTheory.FOSG.InfoState.latestObservation?_append_obs
+    (G := observedProgramFOSG g hctx) (i := who) s priv pub
 
 theorem programLatestObservation?_append_act_obs
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
@@ -65,7 +59,8 @@ theorem programLatestObservation?_append_act_obs
     programLatestObservation? g hctx who
       (s ++ [GameTheory.FOSG.PlayerEvent.act a,
         GameTheory.FOSG.PlayerEvent.obs priv pub]) = some (priv, pub) := by
-  simp [programLatestObservation?, programObservationEvents]
+  exact GameTheory.FOSG.InfoState.latestObservation?_append_act_obs
+    (G := observedProgramFOSG g hctx) (i := who) s a priv pub
 
 /-- Extending a program-action FOSG history records the destination cursor
 world's Vegas view/public state as the latest information-state observation. -/
@@ -77,22 +72,9 @@ theorem programLatestObservation?_history_snoc
     (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
     programLatestObservation? g hctx who ((h.snoc a dst support).playerView who) =
       some (privateObsOfCursorWorld who dst, publicObsOfCursorWorld dst) := by
-  rw [GameTheory.FOSG.History.playerView_snoc]
-  let e : (observedProgramFOSG g hctx).Step :=
-    { src := h.lastState, act := a, dst := dst, support := support }
-  change programLatestObservation? g hctx who (h.playerView who ++ e.playerView who) =
-    some (privateObsOfCursorWorld who dst, publicObsOfCursorWorld dst)
-  cases hact : e.ownAction? who with
-  | none =>
-      rw [GameTheory.FOSG.Step.playerView_of_none e who hact]
-      simpa [e, observedProgramFOSG] using
-        programLatestObservation?_append_obs g hctx who (h.playerView who)
-          (privateObsOfCursorWorld who dst) (publicObsOfCursorWorld dst)
-  | some ai =>
-      rw [GameTheory.FOSG.Step.playerView_of_some e who hact]
-      simpa [e, observedProgramFOSG] using
-        programLatestObservation?_append_act_obs g hctx who (h.playerView who) ai
-          (privateObsOfCursorWorld who dst) (publicObsOfCursorWorld dst)
+  simpa [programLatestObservation?, observedProgramFOSG] using
+    GameTheory.FOSG.History.latestObservation?_playerView_snoc
+      (G := observedProgramFOSG g hctx) h who a dst support
 
 /-- Appending one concrete observed-program step records the destination cursor
 world's observation as the latest player observation. -/
@@ -104,25 +86,9 @@ theorem programLatestObservation?_history_appendStep
     programLatestObservation? g hctx who ((h.appendStep e hsrc).playerView who) =
       some (privateObsOfCursorWorld who (h.appendStep e hsrc).lastState,
         publicObsOfCursorWorld (h.appendStep e hsrc).lastState) := by
-  rw [GameTheory.FOSG.History.playerView]
-  change programLatestObservation? g hctx who
-      (GameTheory.FOSG.History.playerViewFrom (G := observedProgramFOSG g hctx)
-        who (h.steps ++ [e])) =
-    some (privateObsOfCursorWorld who (h.appendStep e hsrc).lastState,
-      publicObsOfCursorWorld (h.appendStep e hsrc).lastState)
-  rw [GameTheory.FOSG.History.playerViewFrom_append_singleton]
-  simp only [GameTheory.FOSG.History.lastState_appendStep]
-  cases hact : e.ownAction? who with
-  | none =>
-      rw [GameTheory.FOSG.Step.playerView_of_none e who hact]
-      simpa [GameTheory.FOSG.History.playerView, observedProgramFOSG] using
-        programLatestObservation?_append_obs g hctx who (h.playerView who)
-          (privateObsOfCursorWorld who e.dst) (publicObsOfCursorWorld e.dst)
-  | some ai =>
-      rw [GameTheory.FOSG.Step.playerView_of_some e who hact]
-      simpa [GameTheory.FOSG.History.playerView, observedProgramFOSG] using
-        programLatestObservation?_append_act_obs g hctx who (h.playerView who) ai
-          (privateObsOfCursorWorld who e.dst) (publicObsOfCursorWorld e.dst)
+  simpa [programLatestObservation?, observedProgramFOSG] using
+    GameTheory.FOSG.History.latestObservation?_playerView_appendStep
+      (G := observedProgramFOSG g hctx) h who e hsrc
 
 /-- The initial observed-program history has no latest program observation. -/
 @[simp] theorem programLatestObservation?_history_nil
@@ -130,7 +96,7 @@ theorem programLatestObservation?_history_appendStep
     programLatestObservation? g hctx who
         ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       none := by
-  simp [programLatestObservation?, programObservationEvents, last?]
+  simp [programLatestObservation?]
 
 /-- Any nonempty observed-program history records the final cursor world's
 private/public observation as the latest program observation for every player. -/
