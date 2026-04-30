@@ -544,7 +544,10 @@ theorem observedProgram_active_mem_commitData
            wctx := wctx, fresh := fresh, viewScoped := viewScoped,
            normalized := normalized, legal := legal } : CheckedWorld g hctx) ∧
       w.toWorld =
-        ({ Γ := Γ, prog := .commit x who R k, env := env } : World P L) := by
+        ({ Γ := Γ, prog := .commit x who R k, env := env } : World P L) ∧
+      privateObsOfCursorWorld who w =
+        privateObsOfCommitSite suffix
+          (projectViewEnv who (VEnv.eraseEnv env)) := by
   cases w with
   | mk data valid =>
       cases data with
@@ -575,9 +578,7 @@ theorem observedProgram_active_mem_commitData
               subst who
               let suffix : ProgramSuffix g.prog
                   (VegasCore.commit x owner R k) :=
-                by
-                  rw [← hprog]
-                  exact cursor.toSuffix
+                hprog ▸ cursor.toSuffix
               refine ⟨cursor.Γ, x, _, R, k, env, suffix, wctx, ?_, ?_,
                 ?_, ?_, ?_, ?_⟩
               · simpa [CursorWorldData.prog, hprog] using fresh
@@ -586,7 +587,25 @@ theorem observedProgram_active_mem_commitData
               · simpa [CursorWorldData.prog, hprog] using legal
               · simp [CheckedWorld.ofCursorChecked, CursorWorldData.prog,
                   CursorWorldData.suffix, suffix, hprog]
-              · simp [CursorCheckedWorld.toWorld, CursorWorldData.prog, hprog]
+              · constructor
+                · simp [CursorCheckedWorld.toWorld, CursorWorldData.prog, hprog]
+                · dsimp [privateObsOfCursorWorld, privateObsOfCommitSite,
+                    suffix]
+                  apply PrivateObs.ext
+                  · apply ProgramCursor.eq_of_path_eq
+                    have hsuffixPath :
+                        suffix.path = cursor.toSuffix.path := by
+                      dsimp [suffix]
+                      exact ProgramSuffix.path_cast hprog cursor.toSuffix
+                    calc
+                      cursor.path = cursor.toSuffix.path := by
+                        rw [ProgramCursor.path_toSuffix]
+                      _ = suffix.path := hsuffixPath.symm
+                      _ =
+                          (ProgramCursor.CommitCursor.toProgramCursor
+                            (ProgramSuffix.commitCursor suffix)).path := by
+                            rw [ProgramCursor.path_toProgramCursor_commitCursor]
+                  · exact (cast_heq _ _).symm
 
 /-- One observed-program FOSG execution step, projected to checked worlds,
 coincides with the Vegas semantic one-step kernel. -/

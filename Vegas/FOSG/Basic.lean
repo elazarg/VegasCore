@@ -535,6 +535,26 @@ inductive ProgramSuffix {Γ₀ : VCtx P L} (root : VegasCore P L Γ₀) :
 
 namespace ProgramSuffix
 
+/-- Branch-code path from the root program to a suffix endpoint. Vegas syntax
+is linear, so this path identifies the endpoint among canonical cursors. -/
+def path
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) : List Nat :=
+  match s with
+  | .here => []
+  | .letExpr s => s.path ++ [0]
+  | .sample s => s.path ++ [1]
+  | .commit s => s.path ++ [2]
+  | .reveal s => s.path ++ [3]
+
+@[simp] theorem path_cast
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p q : VegasCore P L Γ} (h : p = q)
+    (s : ProgramSuffix root p) :
+    (h ▸ s : ProgramSuffix root q).path = s.path := by
+  cases h
+  rfl
+
 def fresh
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) :
@@ -1107,6 +1127,16 @@ inductive ProgramCursor :
 
 namespace ProgramCursor
 
+/-- Branch-code path from the root program to the cursor endpoint. -/
+def path :
+    {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
+      ProgramCursor root → List Nat
+  | _, _, .here => []
+  | _, _, .letExpr c => 0 :: path c
+  | _, _, .sample c => 1 :: path c
+  | _, _, .commit c => 2 :: path c
+  | _, _, .reveal c => 3 :: path c
+
 /-- Context at the cursor target. -/
 def Γ :
     {Γ₀ : VCtx P L} → {root : VegasCore P L Γ₀} →
@@ -1152,6 +1182,96 @@ def toSuffix
     (c : ProgramCursor root) :
     ProgramSuffix root (prog c) :=
   toSuffixFrom .here c
+
+@[simp] theorem path_toSuffixFrom
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) (c : ProgramCursor p) :
+    (ProgramCursor.toSuffixFrom s c).path = s.path ++ c.path := by
+  induction c generalizing Γ₀ root with
+  | here =>
+      simp [ProgramCursor.toSuffixFrom, ProgramCursor.path]
+      rfl
+  | letExpr c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using
+        ih (ProgramSuffix.letExpr s)
+  | sample c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using
+        ih (ProgramSuffix.sample s)
+  | commit c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using
+        ih (ProgramSuffix.commit s)
+  | reveal c ih =>
+      simpa [ProgramCursor.toSuffixFrom, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using
+        ih (ProgramSuffix.reveal s)
+
+@[simp] theorem path_toSuffix
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root) :
+    c.toSuffix.path = c.path := by
+  simpa only [ProgramCursor.toSuffix, ProgramSuffix.path, List.nil_append] using
+    (path_toSuffixFrom (P := P) (L := L) ProgramSuffix.here c)
+
+theorem eq_of_path_eq
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c d : ProgramCursor root) (h : c.path = d.path) : c = d := by
+  induction root with
+  | ret payoffs =>
+      cases c
+      cases d
+      rfl
+  | letExpr x e k ih =>
+      cases c with
+      | here =>
+          cases d with
+          | here => rfl
+          | letExpr d => cases h
+      | letExpr c =>
+          cases d with
+          | here => cases h
+          | letExpr d =>
+              simp only [ProgramCursor.path, List.cons.injEq] at h
+              exact congrArg ProgramCursor.letExpr (ih c d h.2)
+  | sample x D k ih =>
+      cases c with
+      | here =>
+          cases d with
+          | here => rfl
+          | sample d => cases h
+      | sample c =>
+          cases d with
+          | here => cases h
+          | sample d =>
+              simp only [ProgramCursor.path, List.cons.injEq] at h
+              exact congrArg ProgramCursor.sample (ih c d h.2)
+  | commit x who R k ih =>
+      cases c with
+      | here =>
+          cases d with
+          | here => rfl
+          | commit d => cases h
+      | commit c =>
+          cases d with
+          | here => cases h
+          | commit d =>
+              simp only [ProgramCursor.path, List.cons.injEq] at h
+              exact congrArg ProgramCursor.commit (ih c d h.2)
+  | reveal y who x hx k ih =>
+      cases c with
+      | here =>
+          cases d with
+          | here => rfl
+          | reveal d => cases h
+      | reveal c =>
+          cases d with
+          | here => cases h
+          | reveal d =>
+              simp only [ProgramCursor.path, List.cons.injEq] at h
+              exact congrArg ProgramCursor.reveal (ih c d h.2)
 
 /-- Append a local cursor below a global cursor.
 
@@ -1262,6 +1382,46 @@ def toProgramCursor {who : P} :
   | _, _, .reveal c => .reveal (toProgramCursor c)
 
 end CommitCursor
+
+@[simp] theorem path_toProgramCursor_liftCommitCursor
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {p : VegasCore P L Γ}
+    (s : ProgramSuffix root p) {who : P} (c : CommitCursor who p) :
+    (ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.liftCommitCursor s c)).path =
+      s.path ++ (ProgramCursor.CommitCursor.toProgramCursor c).path := by
+  induction s with
+  | here =>
+      simp [ProgramSuffix.liftCommitCursor]
+      rfl
+  | letExpr s ih =>
+      simpa [ProgramSuffix.commitCursor, ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using ih (.letExpr c)
+  | sample s ih =>
+      simpa [ProgramSuffix.commitCursor, ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using ih (.sample c)
+  | commit s ih =>
+      simpa [ProgramSuffix.commitCursor, ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using ih (.commit c)
+  | reveal s ih =>
+      simpa [ProgramSuffix.commitCursor, ProgramSuffix.liftCommitCursor,
+        ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.path,
+        ProgramSuffix.path, List.append_assoc] using ih (.reveal c)
+
+@[simp] theorem path_toProgramCursor_commitCursor
+    {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
+    {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    (s : ProgramSuffix root (.commit x who R k)) :
+    (ProgramCursor.CommitCursor.toProgramCursor
+      (ProgramSuffix.commitCursor s)).path = s.path := by
+  rw [ProgramSuffix.commitCursor]
+  rw [path_toProgramCursor_liftCommitCursor]
+  simp [ProgramCursor.CommitCursor.toProgramCursor, ProgramCursor.path]
 
 /-- Canonical cursors are finite because Vegas syntax is linear. -/
 @[reducible] noncomputable def instFintype :

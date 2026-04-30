@@ -65,6 +65,16 @@ theorem projectViewEnv_eraseEnv_cast_heq
   cases hΓ
   rfl
 
+private noncomputable def castBehavioralStrategyPMF
+    {who : P} {Γ₁ Γ₂ : VCtx P L}
+    {p₁ : VegasCore P L Γ₁} {p₂ : VegasCore P L Γ₂}
+    (hΓ : Γ₁ = Γ₂) (hp : hΓ ▸ p₁ = p₂)
+    (σ : ProgramBehavioralStrategyPMF who p₁) :
+    ProgramBehavioralStrategyPMF who p₂ := by
+  cases hΓ
+  cases hp
+  exact σ
+
 /-- Decode a program-local optional FOSG move into the value chosen at a
 particular Vegas commit type, using `default` on impossible branches.
 
