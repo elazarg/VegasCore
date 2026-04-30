@@ -25,9 +25,9 @@ The current repository provides a checked-program boundary, legal strategy
 spaces, denotational and trace semantics, strategic-form game wrappers,
 protocol-level solution concepts, a canonical sequential denotation through
 factored-observation stochastic games, a finite Kuhn-style
-mixed-to-behavioral realization theorem with behavioral witness in the
-canonical sequential strategy space, preserving outcome distributions, and a
-MAID backend used for an additional graphical-game compilation route.  This
+mixed-to-behavioral realization theorem with a native guard-legal Vegas
+behavioral witness, preserving outcome distributions, and a MAID backend used
+for an additional graphical-game compilation route.  This
 report is intended as a map of what is implemented and why the main design
 choices were made.  It deliberately avoids cataloguing every internal lemma:
 the useful level of detail is the shape of the objects, the invariants they
@@ -62,9 +62,9 @@ From such a program the repository exposes:
 \item protocol-level versions of the same solution concepts, stated directly
       on the Vegas outcome semantics, with correspondence theorems to the
       strategic-form wrappers;
-\item a sequential strategy space and a finite mixed-to-behavioral
-      realization theorem preserving the distribution over final payoff
-      outcomes;
+\item a finite mixed-to-behavioral realization theorem preserving the
+      distribution over final payoff outcomes, with a native Vegas
+      behavioral witness;
 \item a MAID backend that compiles the program to a graphical representation
       and proves outcome preservation for that backend.
 \end{itemize}
@@ -544,8 +544,8 @@ The repository follows the standard distinction:
 \end{itemize}
 Kuhn-style theorems compare the last two.  In VegasCore the mixed side is
 represented as an independent product of PMFs over legal pure strategies, one
-PMF per player.  The behavioral witness produced by the current sequential
-theorem is PMF-valued because the realization probabilities are real-valued
+PMF per player.  The behavioral witness produced by the Kuhn theorem is
+PMF-valued because the realization probabilities are real-valued
 probabilities produced by the generic GameTheory theorem, not necessarily
 representable as rational FDist weights.
 
@@ -688,16 +688,17 @@ the projected outcome distribution is the Vegas one.
 
 \subsection{The Vegas Kuhn Theorem}
 
-The main public sequential result is:
+The main public sequential-game result is stated back in the native Vegas
+strategy space:
 \[
 \begin{array}{l}
 \text{for finite } P \;([{\rm Fintype}\;P])
   \text{ and finite value types }(\mathrm{FiniteValuation}\;L),\\
 \text{for every } g:\WFP \text{ and every independent PMF mixture }
   \mu_i \text{ over legal pure strategies,}\\
-\text{there exists a total sequential behavioral profile } \beta\\
+\text{there exists a total guard-legal Vegas behavioral profile } \beta\\
 \text{such that for every } o\in\Outcome,\quad
-  \Pr_{\beta}^{\mathrm{seq}}[o]
+  \Pr_{\beta}^{\mathrm{beh}}[o]
   =
   \Pr_{\pi\sim\prod_i\mu_i}^{\mathrm{pure}}[o].
 \end{array}
@@ -710,38 +711,17 @@ utility preservation is a corollary, not the primitive statement.  This is the
 right level: outcome-distribution equality is stronger and composes better
 with later utility functions or welfare functionals.
 
-\subsection{What ``Sequential Behavioral'' Means Here}
+\subsection{How the Sequential Witness Becomes a Vegas Witness}
 
-The behavioral witness produced by the theorem is indexed by the player's
-sequential information state in the FOSG denotation, wrapped as the Vegas type
-\[
-  \leanref{SequentialBehavioralProfilePMF}\;g.
-\]
-This is intentionally not the same type as the syntax-recursive
-view-environment behavioral profile used by \(\toKG(g)\).  The sequential
-profile is the native strategy space of the sequential denotation.  It is
-what generic sequential-game theorems naturally produce.
-
-There is also a reachable-profile variant, useful when one wants to assign
-behavior only to observations that can actually arise.  The main theorem uses
-a total sequential profile, because that is the standard game-theoretic
-strategy object and is more convenient for downstream use.
-
-\subsection{Why the Witness Is Sequential Rather Than Syntax-Recursive}
-
-A stronger Vegas-native theorem would use a witness in the syntax-recursive
-Vegas behavioral strategy space:
+The generic theorem imported from GameTheory produces a behavioral profile
+for the FOSG denotation, indexed by each player's sequential information
+state.  Vegas then collapses that witness back to the syntax-recursive
+behavioral strategy space:
 \[
   \beta : \leanref{LegalProgramBehavioralProfilePMF}\;g.
 \]
-The current repository does not yet prove that version.  What is proved is
-the sequential version produced by the FOSG denotation:
-\[
-  \beta : \leanref{SequentialBehavioralProfilePMF}\;g.
-\]
-
-The missing step is a strategy-space transport theorem.  The two behavioral
-strategy spaces index decisions differently:
+The transport is not merely a type cast.  The two strategy spaces index
+decisions differently:
 \begin{itemize}[nosep]
 \item the syntax-recursive Vegas behavioral strategy is indexed by commit
       sites and current player-view environments;
@@ -749,23 +729,34 @@ strategy spaces index decisions differently:
       states in the sequential denotation.
 \end{itemize}
 For well-formed SSA programs these carry the same game-relevant information
-along reachable executions.  Proving this cleanly should amount to showing
-that each reachable sequential information state corresponds to a unique
-Vegas commit site together with the current player-view environment, and that
-available actions and outcome kernels are preserved by this correspondence.
+along reachable executions.  The proof extracts the active commit site and
+current player-view environment from the last sequential observation, proves
+that available moves agree at that site, and then runs a step-by-step
+outcome-kernel induction.  Off-path Vegas views are completed from an
+arbitrary legal pure profile selected from the input mixed profile's support;
+this completion is guard-legal and does not affect the outcome distribution.
+
+The repository still exposes the sequential witness type
+\[
+  \leanref{SequentialBehavioralProfilePMF}\;g
+\]
+for users who want to inspect or reuse the FOSG denotation directly.  The
+unqualified Vegas Kuhn theorem, however, returns the native
+\leanref{LegalProgramBehavioralProfilePMF} witness.
 
 Thus the present state is:
 \begin{itemize}[nosep]
-\item proved: mixed legal pure strategies are realized by a total sequential
-      behavioral strategy with the same outcome distribution;
-\item not yet proved: the same statement with a
-      \leanref{LegalProgramBehavioralProfilePMF} witness.
+\item proved: mixed legal pure strategies are realized by a native total
+      Vegas PMF behavioral profile with the same outcome distribution
+      (\leanref{LegalProgramBehavioralProfilePMF});
+\item also exposed: the corresponding sequential-denotation witness, useful
+      when working directly with the FOSG semantics.
 \end{itemize}
 
 The sequential theorem is still a genuine Vegas theorem: it uses the canonical
-sequential denotation and preserves the Vegas outcome distribution.  But the
-syntax-recursive witness is the more native theorem for users who want the
-result phrased entirely in the ordinary Vegas behavioral profile type.
+sequential denotation and preserves the Vegas outcome distribution.  The
+syntax-recursive witness is the main user-facing theorem because it is phrased
+entirely in the ordinary Vegas behavioral profile type.
 
 
 %% =====================================================================
@@ -780,9 +771,9 @@ restricted MAID structure and proves that MAID evaluation preserves the Vegas
 outcome distribution under the corresponding policy.
 
 Historically, this backend was the main route to sequential-game theorems.
-The current public sequential Kuhn theorem instead goes through the FOSG
-denotation, because FOSG is the cleaner semantic match for guarded sequential
-execution.  The MAID backend remains useful:
+The current public Kuhn theorem instead goes through the FOSG denotation,
+because FOSG is the cleaner semantic match for guarded sequential execution.
+The MAID backend remains useful:
 \begin{itemize}[nosep]
 \item it gives an independent graphical-game representation of Vegas
       programs;
@@ -1030,8 +1021,8 @@ The repository currently has:
 \item Vegas-facing equilibrium and game-property wrappers;
 \item protocol-native definitions corresponding to the kernel-game wrappers;
 \item FOSG sequential denotation preserving outcome distributions;
-\item finite mixed-to-behavioral sequential realization preserving outcome
-      distributions;
+\item finite mixed-to-behavioral realization preserving outcome
+      distributions, with a native Vegas behavioral witness;
 \item MAID compilation and associated outcome-preservation/perfect-recall
       metatheory.
 \end{itemize}
@@ -1040,9 +1031,6 @@ The repository currently has:
 
 \begin{itemize}[nosep]
 \item The finite Kuhn theorem requires finite players and finite value types.
-\item The behavioral witness in the proved Kuhn theorem lives in the total
-      sequential strategy space, not in the syntax-recursive Vegas
-      behavioral-profile type.
 \item The MAID backend does not by itself expose the same guard-legal action
       subtype as the public Vegas strategy API.
 \item The concrete executable path is better through finite backend

@@ -73,15 +73,15 @@ kuhn_mixedPure_realizedByBehavioralPMF_finite
 ```
 
 It says that, for a finite checked Vegas program, every independent mixed
-profile over legal pure strategies has a sequential behavioral profile with the
+profile over legal pure strategies has a legal PMF behavioral profile with the
 same distribution over payoff outcomes.
 
 The preservation statement is about the outcome distribution. Expected-utility
 equalities are corollaries of that distribution equality.
 
-The sequential denotation is implemented using the FOSG layer from
-`GameTheory`, but ordinary users of the Vegas Kuhn theorem do not need to work
-with FOSG internals.
+The proof goes through the FOSG layer from `GameTheory`, but ordinary users of
+the Vegas Kuhn theorem receive a native Vegas behavioral witness and do not
+need to work with FOSG internals.
 
 ### Protocol-Level Statements
 
