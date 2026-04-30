@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Kernel
+import Vegas.FOSG.Observed.Refinement
 
 namespace Vegas
 namespace FOSGBridge
@@ -865,6 +865,26 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
         rw [hchecked]
         exact hcoord
 
+/-- Continuation value for a total observed-program FOSG profile, interpreted
+through its collapsed Vegas behavioral profile. -/
+noncomputable def observedProgramCollapsedOutcomeValuePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g) :
+    GameTheory.FOSG.History.OutcomeValue
+      (G := observedProgramFOSG g hctx)
+      β
+      (Outcome P) :=
+  observedProgramOutcomeValueOfCheckedStepPMF
+    g hctx β (collapsedLegalBehavioralProfilePMF g hctx β fallback)
+    (by
+      intro h hterm
+      exact
+        observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
+          g hctx β fallback h hterm)
+
 noncomputable def observedProgramCheckedWorldRunDistFromCollapsedPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -1141,6 +1161,40 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_checkedWorldProjection
   rw [PMF.map_comp]
   simp [Function.comp_def]
 
+theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    [Fintype P]
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g) :
+    observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
+      (toKernelGamePMF g).outcomeKernel
+        (collapsedLegalBehavioralProfilePMF g hctx β fallback) := by
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option (ProgramAction g.prog who)) :=
+    fun who =>
+      observedProgramFOSG.instFintypeOptionAction
+        g hctx LF who
+  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  let R := observedProgramCollapsedOutcomeValuePMF g hctx β fallback
+  have hclosure :=
+    R.map_observe_runDist_eq_value
+      (syntaxSteps g.prog)
+      (by
+        change
+          (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
+            syntaxSteps g.prog
+        change
+          syntaxSteps ((ProgramCursor.here : ProgramCursor g.prog).prog) ≤
+            syntaxSteps g.prog
+        change syntaxSteps g.prog ≤ syntaxSteps g.prog
+        exact Nat.le_refl (syntaxSteps g.prog))
+  simpa [R, observedProgramCollapsedOutcomeValuePMF,
+    observedProgramOutcomeValueOfCheckedStepPMF,
+    observedProgramCollapsedOutcomeKernelPMF] using hclosure
+
 theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -1149,10 +1203,8 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
       (toKernelGamePMF g).outcomeKernel
         (collapsedLegalBehavioralProfilePMF g hctx β fallback) := by
-  rw [observedProgramCollapsedOutcomeKernelPMF_eq_checkedWorldProjection]
-  rw [observedProgramCheckedWorldRunDistCollapsedPMF_eq_checkedProfileRunPMF]
-  exact checkedProfileRunPMF_initial_outcomeKernel
-    g hctx (collapsedLegalBehavioralProfilePMF g hctx β fallback)
+  exact observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
+    g hctx LF β fallback
 
 end Observed
 

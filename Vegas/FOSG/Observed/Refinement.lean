@@ -19,15 +19,26 @@ with `checkedProfileRunPMF`; it only proves that one FOSG step preserves the
 remaining Vegas outcome distribution.
 -/
 
-/-- The Vegas PMF continuation value on observed-program histories. -/
-noncomputable def observedProgramOutcomeValuePMF
+/-- Build observed-program outcome-value data from a checked-step projection
+equation.  The only profile-specific input is that one FOSG step, projected to
+checked worlds, matches the Vegas checked step for `σ`. -/
+noncomputable def observedProgramOutcomeValueOfCheckedStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfilePMF g) :
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (σ : LegalProgramBehavioralProfilePMF g)
+    (hstep :
+      ∀ h (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState),
+        ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
+            (fun a =>
+              PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+                ((observedProgramFOSG g hctx).transition h.lastState a)) =
+          checkedProfileStepPMF g hctx σ
+            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)) :
     GameTheory.FOSG.History.OutcomeValue
       (G := observedProgramFOSG g hctx)
-      (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+      β
       (Outcome P) where
   rank := fun h => h.lastState.remainingSyntaxSteps
   observe := observedProgramHistoryOutcome g hctx
@@ -53,7 +64,6 @@ noncomputable def observedProgramOutcomeValuePMF
   step_value := by
     intro h hterm
     let G := observedProgramFOSG g hctx
-    let β := toObservedProgramLegalBehavioralProfilePMF g hctx σ
     let project : CursorCheckedWorld g → CheckedWorld g hctx :=
       CheckedWorld.ofCursorChecked (hctx := hctx)
     let valueChecked : CheckedWorld g hctx → PMF (Outcome P) :=
@@ -84,14 +94,12 @@ noncomputable def observedProgramOutcomeValuePMF
           valueChecked (CheckedWorld.ofCursorChecked (hctx := hctx) dst)
       rw [observedProgramHistoryCheckedWorld_extendByOutcome_of_support
         g hctx h a dst hsupp]
-    have hstep :
+    have hstep' :
         (G.legalActionLaw β h hterm).bind
             (fun a => PMF.map project (G.transition h.lastState a)) =
           checkedProfileStepPMF g hctx σ
             (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-      simpa [G, β, project] using
-        observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
-          g hctx σ h hterm
+      simpa [G, project] using hstep h hterm
     calc
       (G.legalActionLaw β h hterm).bind
           (fun a =>
@@ -115,7 +123,7 @@ noncomputable def observedProgramOutcomeValuePMF
         (checkedProfileStepPMF g hctx σ
           (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)).bind
           valueChecked := by
-            rw [hstep]
+            rw [hstep']
       _ =
         checkedVegasOutcomeKernelPMF (hctx := hctx) σ
           (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
@@ -133,6 +141,24 @@ noncomputable def observedProgramOutcomeValuePMF
     rw [GameTheory.FOSG.History.extendByOutcome_of_support
       (h := h) (a := a) (dst := dst) hsupp]
     simpa using hcursor
+
+/-- The Vegas PMF continuation value on observed-program histories. -/
+noncomputable def observedProgramOutcomeValuePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (σ : LegalProgramBehavioralProfilePMF g) :
+    GameTheory.FOSG.History.OutcomeValue
+      (G := observedProgramFOSG g hctx)
+      (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
+      (Outcome P) :=
+  observedProgramOutcomeValueOfCheckedStepPMF
+    g hctx (toObservedProgramLegalBehavioralProfilePMF g hctx σ) σ
+    (by
+      intro h hterm
+      exact
+        observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfileStepPMF
+          g hctx σ h hterm)
 
 /-- Outcome preservation for the observed-program FOSG, proved by the
 continuation-value closure theorem rather than by a global run-distribution
