@@ -1246,103 +1246,102 @@ noncomputable def observedProgramOutcomeValueOfCheckedStep
     GameTheory.FOSG.History.OutcomeValue
       (G := observedProgramFOSG g hctx)
       β
-      (Outcome P) where
-  rank := fun h => h.lastState.remainingSyntaxSteps
-  observe := observedProgramHistoryOutcome g hctx
-  value := fun h =>
-    checkedValue (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
-  terminal_of_rank_zero := by
-    intro h hrank
-    exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
-      (g := g) (w := h.lastState)).2 hrank
-  terminal_value := by
-    intro h hterm
-    have hchecked :
-        checkedTerminal
-          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-      exact (checkedTerminal_observedProgramHistoryCheckedWorld
-        g hctx h).2 hterm
-    simpa [observedProgramHistoryOutcome] using
-      terminal_value
-        (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
-        hchecked
-  step_value := by
-    intro h hterm
-    let G := observedProgramFOSG g hctx
-    let project : CursorCheckedWorld g → CheckedWorld g hctx :=
-      CheckedWorld.ofCursorChecked (hctx := hctx)
-    have hproject :
+      (Outcome P) :=
+  GameTheory.FOSG.History.OutcomeValue.ofProjectedStep
+    (G := observedProgramFOSG g hctx)
+    (σ := β)
+    (S := CheckedWorld g hctx)
+    (Ω := Outcome P)
+    (fun h => h.lastState.remainingSyntaxSteps)
+    (observedProgramHistoryOutcome g hctx)
+    (observedProgramHistoryCheckedWorld g hctx)
+    checkedStep
+    checkedValue
+    (by
+      intro h hrank
+      exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
+        (g := g) (w := h.lastState)).2 hrank)
+    (by
+      intro h hterm
+      have hchecked :
+          checkedTerminal
+            (observedProgramHistoryCheckedWorld g hctx h) := by
+        exact (checkedTerminal_observedProgramHistoryCheckedWorld
+          g hctx h).2 hterm
+      simpa [observedProgramHistoryOutcome,
+        observedProgramHistoryCheckedWorld] using
+        terminal_value
+          (observedProgramHistoryCheckedWorld g hctx h)
+          hchecked)
+    (by
+      intro h _hterm
+      exact step_value (observedProgramHistoryCheckedWorld g hctx h))
+    (by
+      intro h hterm
+      let G := observedProgramFOSG g hctx
+      let project : CursorCheckedWorld g → CheckedWorld g hctx :=
+        CheckedWorld.ofCursorChecked (hctx := hctx)
+      have hproject :
+          (G.legalActionLaw β h hterm).bind
+              (fun a =>
+                (G.transition h.lastState a).bind
+                  (fun dst =>
+                    PMF.pure
+                      (observedProgramHistoryCheckedWorld g hctx
+                        (h.extendByOutcome a dst)))) =
+            (G.legalActionLaw β h hterm).bind
+              (fun a =>
+                (G.transition h.lastState a).bind
+                  (fun dst => PMF.pure (project dst))) := by
+        refine Math.ProbabilityMassFunction.bind_congr_on_support
+          (G.legalActionLaw β h hterm) _ _ ?_
+        intro a _ha
+        refine Math.ProbabilityMassFunction.bind_congr_on_support
+          (G.transition h.lastState a) _ _ ?_
+        intro dst hdst
+        have hsupp : G.transition h.lastState a dst ≠ 0 := by
+          simpa [PMF.mem_support_iff] using hdst
+        congr 1
+        exact observedProgramHistoryCheckedWorld_extendByOutcome_of_support
+          g hctx h a dst hsupp
+      have hstep' :
+          (G.legalActionLaw β h hterm).bind
+              (fun a => PMF.map project (G.transition h.lastState a)) =
+            checkedStep
+              (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
+        simpa [G, project] using hstep h hterm
+      calc
         (G.legalActionLaw β h hterm).bind
             (fun a =>
               (G.transition h.lastState a).bind
                 (fun dst =>
-                  checkedValue
-                    (project (h.extendByOutcome a dst).lastState))) =
+                  PMF.pure
+                    (observedProgramHistoryCheckedWorld g hctx
+                      (h.extendByOutcome a dst)))) =
           (G.legalActionLaw β h hterm).bind
             (fun a =>
               (G.transition h.lastState a).bind
-                (fun dst => checkedValue (project dst))) := by
-      refine Math.ProbabilityMassFunction.bind_congr_on_support
-        (G.legalActionLaw β h hterm) _ _ ?_
-      intro a _ha
-      refine Math.ProbabilityMassFunction.bind_congr_on_support
-        (G.transition h.lastState a) _ _ ?_
-      intro dst hdst
-      have hsupp : G.transition h.lastState a dst ≠ 0 := by
-        simpa [PMF.mem_support_iff] using hdst
-      change
-        checkedValue
-            (observedProgramHistoryCheckedWorld g hctx
-              (h.extendByOutcome a dst)) =
-          checkedValue (CheckedWorld.ofCursorChecked (hctx := hctx) dst)
-      rw [observedProgramHistoryCheckedWorld_extendByOutcome_of_support
-        g hctx h a dst hsupp]
-    have hstep' :
-        (G.legalActionLaw β h hterm).bind
-            (fun a => PMF.map project (G.transition h.lastState a)) =
-          checkedStep
-            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-      simpa [G, project] using hstep h hterm
-    calc
-      (G.legalActionLaw β h hterm).bind
-          (fun a =>
-            (G.transition h.lastState a).bind
-              (fun dst =>
-                checkedValue
-                  (project (h.extendByOutcome a dst).lastState))) =
-        (G.legalActionLaw β h hterm).bind
-          (fun a =>
-            (G.transition h.lastState a).bind
-              (fun dst => checkedValue (project dst))) := hproject
-      _ =
-        ((G.legalActionLaw β h hterm).bind
-          (fun a => PMF.map project (G.transition h.lastState a))).bind
-          checkedValue := by
-            rw [PMF.bind_bind]
-            congr 1
-            funext a
-            simp [PMF.map, PMF.bind_bind]
-      _ =
-        (checkedStep
-          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)).bind
-          checkedValue := by
-            rw [hstep']
-      _ =
-        checkedValue
-          (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
-            exact step_value
-              (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState)
-  step_rank := by
-    intro h hterm a dst hsupp
-    have hcursor :
-        dst.remainingSyntaxSteps + 1 =
-          h.lastState.remainingSyntaxSteps := by
-      simpa [observedProgramFOSG] using
-        cursorProgramTransition_remainingSyntaxSteps
-          (g := g) h.lastState a dst hsupp
-    rw [GameTheory.FOSG.History.extendByOutcome_of_support
-      (h := h) (a := a) (dst := dst) hsupp]
-    simpa using hcursor
+                (fun dst => PMF.pure (project dst))) := hproject
+        _ =
+          (G.legalActionLaw β h hterm).bind
+            (fun a => PMF.map project (G.transition h.lastState a)) := by
+              rfl
+        _ = checkedStep
+            (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := hstep'
+        _ = checkedStep
+            (observedProgramHistoryCheckedWorld g hctx h) := by
+              rfl)
+    (by
+      intro h hterm a dst hsupp
+      have hcursor :
+          dst.remainingSyntaxSteps + 1 =
+            h.lastState.remainingSyntaxSteps := by
+        simpa [observedProgramFOSG] using
+          cursorProgramTransition_remainingSyntaxSteps
+            (g := g) h.lastState a dst hsupp
+      rw [GameTheory.FOSG.History.extendByOutcome_of_support
+        (h := h) (a := a) (dst := dst) hsupp]
+      simpa using hcursor)
 
 /-- The Vegas continuation value on observed-program histories. -/
 noncomputable def observedProgramOutcomeValue
