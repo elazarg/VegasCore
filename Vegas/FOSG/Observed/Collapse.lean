@@ -431,6 +431,47 @@ noncomputable def collapsedBehavioralProfilePMF
     collapsedBehavioralStrategyPMF g hctx β fallback who g.prog
       ProgramSuffix.here
 
+theorem behavioralProfilePMF_collapsedBehavioralProfilePMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g)
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (suffix : ProgramSuffix g.prog p) (who : P) :
+    suffix.behavioralProfilePMF
+        (collapsedBehavioralProfilePMF g hctx β fallback) who =
+      collapsedBehavioralStrategyPMF g hctx β fallback who p suffix := by
+  induction suffix generalizing who with
+  | here =>
+      rfl
+  | letExpr suffix ih =>
+      rw [ProgramSuffix.behavioralProfilePMF_letExpr]
+      rw [ih]
+      simp [collapsedBehavioralStrategyPMF]
+  | sample suffix ih =>
+      rw [ProgramSuffix.behavioralProfilePMF_sample]
+      rw [ih]
+      simp [collapsedBehavioralStrategyPMF]
+  | commit suffix ih =>
+      rw [ProgramSuffix.behavioralProfilePMF_commit]
+      rw [show
+        suffix.behavioralProfilePMF
+            (collapsedBehavioralProfilePMF g hctx β fallback) =
+          fun i =>
+            collapsedBehavioralStrategyPMF g hctx β fallback i _ suffix
+        from funext (ih)]
+      simp [ProgramBehavioralProfilePMF.tail,
+        ProgramBehavioralStrategyPMF.tailOwn,
+        collapsedBehavioralStrategyPMF]
+      split
+      · rename_i howner
+        cases howner
+        rfl
+      · rfl
+  | reveal suffix ih =>
+      rw [ProgramSuffix.behavioralProfilePMF_reveal]
+      rw [ih]
+      simp [collapsedBehavioralStrategyPMF]
+
 theorem collapsedBehavioralStrategyPMF_isLegal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
