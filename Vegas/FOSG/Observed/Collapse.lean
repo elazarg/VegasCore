@@ -557,6 +557,313 @@ noncomputable def collapsedLegalBehavioralProfilePMF
     ⟨collapsedBehavioralProfilePMF g hctx β fallback who,
       collapsedBehavioralProfilePMF_isLegal g hctx β fallback who⟩
 
+theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileStepPMF_collapsed
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
+    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
+    (fallback : LegalProgramBehavioralProfilePMF g)
+    (h : (observedProgramFOSG g hctx).History)
+    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
+    ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
+      (fun a =>
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          ((observedProgramFOSG g hctx).transition
+            h.lastState a)) =
+      checkedProfileStepPMF g hctx
+        (collapsedLegalBehavioralProfilePMF g hctx β fallback)
+        (CheckedWorld.ofCursorChecked (hctx := hctx) h.lastState) := by
+  let G := observedProgramFOSG g hctx
+  let σc := collapsedLegalBehavioralProfilePMF g hctx β fallback
+  by_cases hactive : G.active h.lastState = ∅
+  · rw [GameTheory.FOSG.legalActionLaw_eq_pure_noop_of_active_empty
+      (G := G) β h hterm hactive]
+    simp only [PMF.pure_bind]
+    rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+      (hctx := hctx)
+      (w := h.lastState)
+      (a := ⟨GameTheory.FOSG.noopAction
+          (fun who : P => ProgramAction g.prog who),
+        G.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
+    apply checkedTransition_eq_checkedProfileStepPMF_of_active_empty
+    simpa [G, observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
+      CursorCheckedWorld.active] using hactive
+  · have hne : (G.active h.lastState).Nonempty :=
+      Finset.nonempty_iff_ne_empty.mpr hactive
+    rcases hne with ⟨who, hmem⟩
+    rcases observedProgram_active_mem_commitData
+        g hctx h.lastState hmem with
+      ⟨Γ, x, b, R, k, env, suffix, wctx, fresh, viewScoped,
+        normalized, legal, hchecked, hworld, hobs⟩
+    let default : L.Val b :=
+      fallbackValueAtCommit g fallback suffix
+        (projectViewEnv who (VEnv.eraseEnv env))
+    let next : L.Val b → PMF (CheckedWorld g hctx) := fun v =>
+      PMF.pure
+        ({ Γ := _
+           prog := k
+           env := VEnv.cons (Player := P) (L := L) (x := x)
+             (τ := .hidden who _) v env
+           suffix := .commit suffix
+           wctx := WFCtx.cons fresh.1 wctx
+           fresh := fresh.2
+           viewScoped := viewScoped.2
+           normalized := normalized
+           legal := legal.2 } : CheckedWorld g hctx)
+    let f : Option (ProgramAction g.prog who) →
+        PMF (CheckedWorld g hctx) := fun oi =>
+      match oi with
+      | some ai =>
+          if hty : CommitCursor.ty ai.cursor = b then
+            PMF.pure
+              ({ Γ := _
+                 prog := k
+                 env := VEnv.cons (Player := P) (L := L) (x := x)
+                   (τ := .hidden who _) (hty ▸ ai.value) env
+                 suffix := .commit suffix
+                 wctx := WFCtx.cons fresh.1 wctx
+                 fresh := fresh.2
+                 viewScoped := viewScoped.2
+                 normalized := normalized
+                 legal := legal.2 } : CheckedWorld g hctx)
+          else
+            PMF.pure
+              ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+                 wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+                 normalized := normalized, legal := legal } : CheckedWorld g hctx)
+      | none =>
+          PMF.pure
+            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+               normalized := normalized, legal := legal } : CheckedWorld g hctx)
+    have hK : ∀ a : G.LegalAction h.lastState,
+        PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+          (G.transition h.lastState a) = f (a.1 who) := by
+      intro a
+      rw [observedProgramTransition_map_checkedWorld_eq_checkedTransition
+        (hctx := hctx) (w := h.lastState) (a := a)]
+      have haRaw : JointActionLegal
+          ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
+          (ProgramJointAction.toAction a.1) := by
+        have hto := CursorProgramJointActionLegal.toAction a.2
+        simpa [hworld] using hto
+      rw [checkedTransition_congr_checkedWorld
+        (hw := hchecked)
+        (a := ProgramJointAction.toAction a.1)
+        (ha₂ := by
+          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
+            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
+      simpa [f] using
+        checkedTransition_commit_eq_programActionContinuation
+          g hctx env suffix wctx fresh viewScoped
+          normalized legal a.1 haRaw
+    have hcoord :
+        ((β.toProfile who) (h.playerView who)).bind f =
+          checkedProfileStepPMF g hctx σc
+            ({ Γ := Γ, prog := .commit x who R k, env := env, suffix := suffix,
+               wctx := wctx, fresh := fresh, viewScoped := viewScoped,
+               normalized := normalized, legal := legal } : CheckedWorld g hctx) := by
+      have hhead :=
+        collapsedHeadKernelAtCommit_eq_of_privateObs
+          g hctx β fallback suffix
+          (projectViewEnv who (VEnv.eraseEnv env)) h hobs
+      simp only [σc, collapsedLegalBehavioralProfilePMF,
+        checkedProfileStepPMF]
+      rw [behavioralProfilePMF_collapsedBehavioralProfilePMF
+        g hctx β fallback suffix who]
+      simp [collapsedBehavioralStrategyPMF,
+        ProgramBehavioralStrategyPMF.headKernel]
+      change (β.toProfile who (h.playerView who)).bind f =
+        PMF.map
+          (fun v =>
+            ({ Γ := _
+               prog := k
+               env := VEnv.cons (Player := P) (L := L) (x := x)
+                 (τ := .hidden who _) v env
+               suffix := .commit suffix
+               wctx := WFCtx.cons fresh.1 wctx
+               fresh := fresh.2
+               viewScoped := viewScoped.2
+               normalized := normalized
+               legal := legal.2 } : CheckedWorld g hctx))
+          (collapsedHeadKernelAtCommit g hctx β fallback suffix
+            (projectViewEnv who (VEnv.eraseEnv env)))
+      rw [show
+        PMF.map
+          (fun v =>
+            ({ Γ := _
+               prog := k
+               env := VEnv.cons (Player := P) (L := L) (x := x)
+                 (τ := .hidden who _) v env
+               suffix := .commit suffix
+               wctx := WFCtx.cons fresh.1 wctx
+               fresh := fresh.2
+               viewScoped := viewScoped.2
+               normalized := normalized
+               legal := legal.2 } : CheckedWorld g hctx))
+          (collapsedHeadKernelAtCommit g hctx β fallback suffix
+            (projectViewEnv who (VEnv.eraseEnv env))) =
+        PMF.map
+          (fun v =>
+            ({ Γ := _
+               prog := k
+               env := VEnv.cons (Player := P) (L := L) (x := x)
+                 (τ := .hidden who _) v env
+               suffix := .commit suffix
+               wctx := WFCtx.cons fresh.1 wctx
+               fresh := fresh.2
+               viewScoped := viewScoped.2
+               normalized := normalized
+               legal := legal.2 } : CheckedWorld g hctx))
+          (PMF.map
+            (valueOfProgramMoveOr
+              (fallbackValueAtCommit g fallback suffix
+                (projectViewEnv who (VEnv.eraseEnv env))))
+            (β.toProfile who (h.playerView who))) from
+          congrArg
+            (PMF.map
+              (fun v =>
+                ({ Γ := _
+                   prog := k
+                   env := VEnv.cons (Player := P) (L := L) (x := x)
+                     (τ := .hidden who _) v env
+                   suffix := .commit suffix
+                   wctx := WFCtx.cons fresh.1 wctx
+                   fresh := fresh.2
+                   viewScoped := viewScoped.2
+                   normalized := normalized
+                   legal := legal.2 } : CheckedWorld g hctx)))
+            hhead]
+      rw [PMF.map_comp]
+      rw [← PMF.bind_pure_comp]
+      refine Math.ProbabilityMassFunction.bind_congr_on_support
+        ((β.toProfile who) (h.playerView who))
+        f
+        (PMF.pure ∘
+          (fun oi =>
+            ({ Γ := _
+               prog := k
+               env := VEnv.cons (Player := P) (L := L) (x := x)
+                 (τ := .hidden who _)
+                 (valueOfProgramMoveOr (g := g) (who := who) (b := b)
+                   default oi) env
+               suffix := .commit suffix
+               wctx := WFCtx.cons fresh.1 wctx
+               fresh := fresh.2
+               viewScoped := viewScoped.2
+               normalized := normalized
+               legal := legal.2 } : CheckedWorld g hctx)))
+        ?_
+      intro oi hoi
+      have hoiAvail :
+          oi ∈ G.availableMoves h who := (β who).2 h hoi
+      have hlocal0 :
+          oi ∈ G.availableMovesAtState h.lastState who := by
+        simpa [G, GameTheory.FOSG.availableMoves] using hoiAvail
+      cases hlast : h.lastState with
+      | mk data valid =>
+          rcases data with ⟨cursor, env'⟩
+          rw [hlast] at hlocal0 hobs
+          dsimp [privateObsOfCursorWorld, privateObsOfCommitSite] at hobs
+          injection hobs with hcursor henv
+          change cursor =
+            ProgramCursor.CommitCursor.toProgramCursor suffix.commitCursor at hcursor
+          cases hcursor
+          cases oi with
+          | none =>
+              have hactiveMem :
+                  who ∈ CursorCheckedWorld.active
+                    (⟨{ cursor :=
+                        ProgramCursor.CommitCursor.toProgramCursor
+                          suffix.commitCursor,
+                        env := env' }, valid⟩ : CursorCheckedWorld g) := by
+                exact active_mem_of_eq_commit
+                  (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
+                  (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
+                  env'
+              have hnot :
+                  who ∉ CursorCheckedWorld.active
+                    (⟨{ cursor :=
+                        ProgramCursor.CommitCursor.toProgramCursor
+                          suffix.commitCursor,
+                        env := env' }, valid⟩ : CursorCheckedWorld g) := by
+                simpa [G, observedProgramFOSG,
+                  GameTheory.FOSG.availableMovesAtState,
+                  GameTheory.FOSG.locallyLegalAtState] using hlocal0
+              exact False.elim (hnot hactiveMem)
+          | some ai =>
+              have hact :
+                  ProgramAction.toAction ai ∈
+                    FOSGBridge.availableActions
+                      ({ Γ :=
+                          (ProgramCursor.CommitCursor.toProgramCursor
+                            suffix.commitCursor).Γ,
+                         prog :=
+                          (ProgramCursor.CommitCursor.toProgramCursor
+                            suffix.commitCursor).prog,
+                         env := env' } : World P L) who := by
+                simpa [G, observedProgramFOSG,
+                  GameTheory.FOSG.availableMovesAtState,
+                  GameTheory.FOSG.locallyLegalAtState,
+                  CursorCheckedWorld.availableProgramActions,
+                  CursorCheckedWorld.availableActions,
+                  CursorCheckedWorld.toWorld] using hlocal0.2.1
+              have hbroad :=
+                availableActions_of_eq_commit
+                  (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
+                  (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
+                  env' hact
+              rcases hbroad with ⟨u, huact, _hguard⟩
+              have hdecode :
+                  valueOfProgramMoveOr
+                      (g := g) (who := who) (b := b)
+                      default (some ai) = u :=
+                valueOfProgramMoveOr_eq_of_toAction default u ai huact
+              cases ai with
+              | mk cursorAi value =>
+                  unfold ProgramAction.toAction at huact
+                  simp only [Sigma.mk.injEq] at huact
+                  rcases huact with ⟨hty, hval⟩
+                  dsimp [f]
+                  rw [dif_pos hty]
+                  have hv :
+                      hty ▸ value =
+                        valueOfProgramMoveOr
+                          (g := g) (who := who) (b := b)
+                          default (some (ProgramAction.mk cursorAi value)) := by
+                    rw [hdecode]
+                    cases hty
+                    exact eq_of_heq hval
+                  have henvEq :
+                      VEnv.cons (Player := P) (L := L) (x := x)
+                          (τ := .hidden who _) (hty ▸ value) env =
+                        VEnv.cons (Player := P) (L := L) (x := x)
+                          (τ := .hidden who _)
+                          (valueOfProgramMoveOr
+                            (g := g) (who := who) (b := b)
+                            default
+                            (some (ProgramAction.mk cursorAi value))) env :=
+                    VEnv.cons_ext hv rfl
+                  rw [henvEq]
+    calc
+      (G.legalActionLaw β h hterm).bind
+          (fun a =>
+            PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
+              (G.transition h.lastState a))
+        = (G.legalActionLaw β h hterm).bind
+            (fun a => f (a.1 who)) := by
+              congr
+              funext a
+              exact hK a
+      _ = ((β.toProfile who) (h.playerView who)).bind f := by
+        exact GameTheory.FOSG.legalActionLaw_bind_coord
+          (G := G) β h hterm who f
+      _ = checkedProfileStepPMF g hctx σc
+          (CheckedWorld.ofCursorChecked (hctx := hctx)
+            h.lastState) := by
+        rw [hchecked]
+        exact hcoord
+
 end Observed
 
 end FOSGBridge
