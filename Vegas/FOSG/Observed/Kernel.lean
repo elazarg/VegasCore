@@ -721,10 +721,6 @@ theorem observedProgramFOSG_initial_remainingSyntaxSteps_le
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
       syntaxSteps g.prog := by
-  change
-    syntaxSteps ((ProgramCursor.here : ProgramCursor g.prog).prog) ≤
-      syntaxSteps g.prog
-  change syntaxSteps g.prog ≤ syntaxSteps g.prog
   exact Nat.le_refl (syntaxSteps g.prog)
 
 /-- The Vegas PMF continuation value on observed-program histories. -/
@@ -808,11 +804,7 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
   have hclosure :=
     R.map_observe_runDist_eq_value
       (syntaxSteps g.prog)
-      (by
-        change
-          (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
-            syntaxSteps g.prog
-        exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
+      (observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
     using hclosure
 
@@ -1112,24 +1104,17 @@ theorem observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist
             (syntaxSteps g.prog) β.extend) =
         (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
           (G := observedProgramFOSG g hctx) μ).bind
-          (fun π =>
-            PMF.map (observedProgramHistoryOutcome g hctx)
-              (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
-                (G := observedProgramFOSG g hctx)
-                (observedProgramFOSG_legalObservable g hctx)
-                (syntaxSteps g.prog) π)) := by
-  obtain ⟨β, hdist⟩ :=
-    GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral_runDist
-      (G := observedProgramFOSG g hctx)
-      (observedProgramFOSG_legalObservable g hctx)
-      μ (syntaxSteps g.prog)
-  refine ⟨β, ?_⟩
-  rw [hdist, PMF.map_bind]
-  congr
-  funext π
-  rw [← GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile_eq_runDist
+      (fun π =>
+        PMF.map (observedProgramHistoryOutcome g hctx)
+          (GameTheory.FOSG.Kuhn.reachableHistoryOutcomeDistPureProfile
+            (G := observedProgramFOSG g hctx)
+            (observedProgramFOSG_legalObservable g hctx)
+            (syntaxSteps g.prog) π)) := by
+  exact
+    GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral_mapped_runDist
     (G := observedProgramFOSG g hctx)
-    (observedProgramFOSG_legalObservable g hctx)]
+    (observedProgramFOSG_legalObservable g hctx)
+    μ (syntaxSteps g.prog) (observedProgramHistoryOutcome g hctx)
 
 /-- Finite-valuation wrapper for
 `observedProgramReachable_mixed_to_legal_behavioral_runDist_outcomeDist`. -/

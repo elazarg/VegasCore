@@ -858,11 +858,7 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
   have hclosure :=
     R.map_observe_runDist_eq_value
       (syntaxSteps g.prog)
-      (by
-        change
-          (observedProgramFOSG g hctx).init.remainingSyntaxSteps ≤
-            syntaxSteps g.prog
-        exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
+      (observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramCollapsedOutcomeValuePMF,
     observedProgramCollapsedOutcomeKernelPMF] using hclosure
 
