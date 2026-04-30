@@ -837,7 +837,7 @@ noncomputable def observedProgramCollapsedOutcomeKernelPMF
   PMF.map (observedProgramHistoryOutcome g hctx)
     (observedProgramRunDist g hctx LF β)
 
-theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
+theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
@@ -865,17 +865,6 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
         exact observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
   simpa [R, observedProgramCollapsedOutcomeValuePMF,
     observedProgramCollapsedOutcomeKernelPMF] using hclosure
-
-theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
-      (toKernelGamePMF g).outcomeKernel
-        (collapsedLegalBehavioralProfilePMF g hctx β fallback) := by
-  exact observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF_by_value
-    g hctx LF β fallback
 
 end Observed
 

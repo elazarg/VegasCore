@@ -789,7 +789,7 @@ noncomputable def observedProgramOutcomeKernelPMF
     (observedProgramRunDist g hctx LF
       (toObservedProgramLegalBehavioralProfilePMF g hctx σ))
 
-theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF_by_value
+theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (σ : LegalProgramBehavioralProfilePMF g) :
@@ -816,16 +816,7 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF_by_value
   simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
     using hclosure
 
-theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfilePMF g) :
-    observedProgramOutcomeKernelPMF g hctx LF σ =
-      (toKernelGamePMF g).outcomeKernel σ := by
-  exact observedProgramOutcomeKernelPMF_eq_toKernelGamePMF_by_value
-    g hctx LF σ
-
-theorem observedProgramOutcomeKernel_eq_toKernelGame_by_pmf
+theorem observedProgramOutcomeKernel_eq_toKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (σ : LegalProgramBehavioralProfile g) :
@@ -853,15 +844,6 @@ theorem observedProgramReachableOutcomeKernelPMF_eq_toKernelGamePMF
       (toKernelGamePMF g).outcomeKernel σ := by
   rw [observedProgramRunDistPMF_reachable_extend_eq g hctx LF σ]
   exact observedProgramOutcomeKernelPMF_eq_toKernelGamePMF g hctx LF σ
-
-theorem observedProgramOutcomeKernel_eq_toKernelGame
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfile g) :
-    observedProgramOutcomeKernel g hctx LF σ =
-      (toKernelGame g).outcomeKernel σ := by
-  exact observedProgramOutcomeKernel_eq_toKernelGame_by_pmf
-    g hctx LF σ
 
 /-- Pure-strategy outcome preservation for the observed-program FOSG.
 
