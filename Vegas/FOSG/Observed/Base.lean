@@ -8,23 +8,6 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 namespace Observed
 
-/-- Compatibility alias for the generic FOSG latest-observation helper. -/
-abbrev last? {α : Type} : List α → Option α :=
-  GameTheory.FOSG.InfoState.last?
-
-@[simp] theorem last?_append_singleton {α : Type} (xs : List α) (x : α) :
-    last? (xs ++ [x]) = some x :=
-  GameTheory.FOSG.InfoState.last?_append_singleton xs x
-
-/-- Observation events extracted from the final program-action FOSG information
-state. -/
-noncomputable def programObservationEvents
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedProgramFOSG g hctx).InfoState who) :
-    List (PrivateObs g who × PublicObs g hctx) :=
-  GameTheory.FOSG.InfoState.observationEvents
-    (G := observedProgramFOSG g hctx) (i := who) s
-
 noncomputable def programLatestObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :

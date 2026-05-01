@@ -635,12 +635,6 @@ noncomputable def toObservedProgramLegalPureProfile
       intro h
       exact programPureProfileCandidate_available g hctx σ who h⟩
 
-@[simp] theorem toObservedProgramLegalPureProfile_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) (who : P) :
-    ((toObservedProgramLegalPureProfile g hctx σ who).1) =
-      programPureProfileCandidate g hctx σ who := rfl
-
 /-- Transport a Vegas guard-legal pure profile to the reachable-information
 strategy space of the observed-program FOSG. This is the finite strategy space
 used by the reachable-coordinate FOSG Kuhn theorem. -/
@@ -831,7 +825,8 @@ theorem toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF
   funext s
   simp [GameTheory.FOSG.legalPureToBehavioral,
     GameTheory.FOSG.pureToBehavioral,
-    programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure]
+    programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure,
+    toObservedProgramLegalPureProfile]
 
 end Observed
 

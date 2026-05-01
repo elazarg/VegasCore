@@ -73,22 +73,6 @@ noncomputable def fallbackValueAtCommit
       ((suffix.behavioralProfilePMF (fun i => (fallback i).val)) who)
       view).support_nonempty
 
-theorem fallbackValueAtCommit_mem_support
-    (g : WFProgram P L) (fallback : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.commit x who R k))
-    (view : ViewEnv who Γ) :
-    fallbackValueAtCommit g fallback suffix view ∈
-      (ProgramBehavioralStrategyPMF.headKernel
-        ((suffix.behavioralProfilePMF (fun i => (fallback i).val)) who)
-        view).support :=
-  Classical.choose_spec <|
-    (ProgramBehavioralStrategyPMF.headKernel
-      ((suffix.behavioralProfilePMF (fun i => (fallback i).val)) who)
-      view).support_nonempty
-
 /-- The head PMF for an owned Vegas commit site, read from a total sequential
 FOSG behavioral profile when the current private observation is reachable, and
 from `fallback` otherwise. -/
