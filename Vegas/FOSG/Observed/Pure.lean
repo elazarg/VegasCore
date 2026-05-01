@@ -1359,56 +1359,6 @@ noncomputable def toObservedProgramReachableLegalBehavioralProfilePMF
   fun who =>
     (toObservedProgramLegalBehavioralProfilePMF g hctx σ who).restrictReachable
 
-theorem observedProgramRunDist_reachable_extend_eq
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfile g) :
-    observedProgramRunDist g hctx LF
-        (toObservedProgramReachableLegalBehavioralProfile g hctx σ).extend =
-      observedProgramRunDist g hctx LF
-        (toObservedProgramLegalBehavioralProfile g hctx σ) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  simpa [observedProgramRunDist,
-    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable,
-    toObservedProgramReachableLegalBehavioralProfile] using
-    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable_extend_runDist
-    (G := observedProgramFOSG g hctx)
-    (toObservedProgramLegalBehavioralProfile g hctx σ)
-    (syntaxSteps g.prog)
-
-theorem observedProgramRunDistPMF_reachable_extend_eq
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfilePMF g) :
-    observedProgramRunDist g hctx LF
-        (toObservedProgramReachableLegalBehavioralProfilePMF g hctx σ).extend =
-      observedProgramRunDist g hctx LF
-        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  simpa [observedProgramRunDist,
-    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable,
-    toObservedProgramReachableLegalBehavioralProfilePMF] using
-    GameTheory.FOSG.Kuhn.legalBehavioralProfileRestrictReachable_extend_runDist
-    (G := observedProgramFOSG g hctx)
-    (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
-    (syntaxSteps g.prog)
-
 theorem programBehavioralProfileCandidate_toBehavioral_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -1449,50 +1399,6 @@ theorem toObservedProgramLegalBehavioralProfile_toBehavioral
   simp [GameTheory.FOSG.legalPureToBehavioral,
     GameTheory.FOSG.pureToBehavioral,
     programBehavioralProfileCandidate_toBehavioral_eq_pure]
-
-/-- The FOSG legal-action law induced by a transported Vegas profile has the
-same marginal over any player's optional move as the Vegas strategy currently
-visible at the history endpoint. This is the product-law collapse needed for
-the `commit` case of outcome preservation. -/
-theorem observedProgramLegalActionLaw_bind_coord
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfile g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
-    (who : P) {β : Type}
-    (f : Option (ProgramAction g.prog who) → PMF β) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm).bind
-        (fun a => f (a.1 who)) =
-      (moveAtCursorWorld g hctx σ who h.lastState).bind f := by
-  rw [GameTheory.FOSG.legalActionLaw_bind_coord
-    (G := observedProgramFOSG g hctx)
-    (toObservedProgramLegalBehavioralProfile g hctx σ) h hterm who f]
-  simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
-    toObservedProgramLegalBehavioralProfile_apply,
-    programBehavioralProfileCandidate_history]
-
-theorem observedProgramLegalActionLawPMF_bind_coord
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (h : (observedProgramFOSG g hctx).History)
-    (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
-    (who : P) {β : Type}
-    (f : Option (ProgramAction g.prog who) → PMF β) :
-    ((observedProgramFOSG g hctx).legalActionLaw
-        (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm).bind
-        (fun a => f (a.1 who)) =
-      (moveAtCursorWorldPMF g hctx σ who h.lastState).bind f := by
-  rw [GameTheory.FOSG.legalActionLaw_bind_coord
-    (G := observedProgramFOSG g hctx)
-    (toObservedProgramLegalBehavioralProfilePMF g hctx σ) h hterm who f]
-  simp [GameTheory.FOSG.LegalBehavioralProfile.toProfile,
-    toObservedProgramLegalBehavioralProfilePMF_apply,
-    programBehavioralProfilePMFCandidate_history]
 
 end Observed
 
