@@ -644,92 +644,32 @@ theorem programPureProfileCandidate_eq_strategy
     ProgramCursor.toSuffixFrom]
   rfl
 
-@[simp] theorem programPureStrategyCandidate_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
-    (h : (observedProgramFOSG g hctx).History)
-    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld g)
-    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    programPureStrategyCandidate g hctx who σ
-      ((h.snoc a dst support).playerView who) =
-      movePureStrategyAtCursorWorld g hctx who σ dst := by
-  have hlatest :
-      GameTheory.FOSG.InfoState.latestObservation?
-          (G := observedProgramFOSG g hctx) (i := who)
-          (h.playerView who ++
-            (⟨h.lastState, a, dst, support⟩ :
-              (observedProgramFOSG g hctx).Step).playerView who) =
-        some (privateObsOfCursorWorld who dst,
-          publicObsOfCursorWorld dst) := by
-    rw [← GameTheory.FOSG.History.playerView_snoc]
-    simpa [programLatestObservation?] using
-      programLatestObservation?_history_snoc g hctx who h a dst support
-  simp [programPureStrategyCandidate,
-    GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
-    movePureStrategyAtProgramObservation?_of_cursorWorld]
-
-@[simp] theorem programPureStrategyCandidate_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState) :
-    programPureStrategyCandidate g hctx who σ
-      ((h.appendStep e hsrc).playerView who) =
-      movePureStrategyAtCursorWorld g hctx who σ
-        (h.appendStep e hsrc).lastState := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      change
-        programPureStrategyCandidate g hctx who σ
-          ((h.snoc act dst support).playerView who) =
-        movePureStrategyAtCursorWorld g hctx who σ
-          (h.snoc act dst support).lastState
-      simpa using
-        programPureStrategyCandidate_snoc
-          g hctx who σ h act dst support
-
 theorem programPureStrategyCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
     (h : (observedProgramFOSG g hctx).History) :
     programPureStrategyCandidate g hctx who σ (h.playerView who) =
       movePureStrategyAtCursorWorld g hctx who σ h.lastState := by
-  let G := observedProgramFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          simp [programPureStrategyCandidate,
-            GameTheory.FOSG.History.playerView,
-            GameTheory.FOSG.History.playerViewFrom,
-            GameTheory.FOSG.History.lastState,
-            GameTheory.FOSG.lastStateFrom,
-            observedProgramFOSG, movePureStrategyAtCursorWorld,
-            CursorCheckedWorld.initial, CursorWorldData.suffix,
-            ProgramCursor.toSuffix, ProgramCursor.toSuffixFrom]
+  by_cases hnil : h.steps = []
+  · have hh :
+        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) := by
+      cases h with
+      | mk steps chain =>
+          cases hnil
           rfl
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq]
-          exact programPureStrategyCandidate_appendStep
-            g hctx who σ hprefix e hsrc
+    rw [hh]
+    simpa using programPureStrategyCandidate_nil g hctx who σ
+  · have hlatest :
+        GameTheory.FOSG.InfoState.latestObservation?
+            (G := observedProgramFOSG g hctx) (i := who)
+            (h.playerView who) =
+          some (privateObsOfCursorWorld who h.lastState,
+            publicObsOfCursorWorld h.lastState) := by
+      simpa [programLatestObservation?] using
+        programLatestObservation?_history_of_ne_nil g hctx who h hnil
+    simp [programPureStrategyCandidate,
+      GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
+      movePureStrategyAtProgramObservation?_of_cursorWorld]
 
 theorem programPureStrategyCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -751,54 +691,6 @@ theorem programPureStrategyCandidate_available
   simp [programPureProfileCandidate,
     GameTheory.FOSG.PureProfile.ofLatestObservation]
 
-@[simp] theorem programPureProfileCandidate_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld g)
-    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    programPureProfileCandidate g hctx σ who
-      ((h.snoc a dst support).playerView who) =
-      movePureAtCursorWorld g hctx σ who dst := by
-  have hlatest :
-      GameTheory.FOSG.InfoState.latestObservation?
-          (G := observedProgramFOSG g hctx) (i := who)
-          (h.playerView who ++
-            (⟨h.lastState, a, dst, support⟩ :
-              (observedProgramFOSG g hctx).Step).playerView who) =
-        some (privateObsOfCursorWorld who dst,
-          publicObsOfCursorWorld dst) := by
-    rw [← GameTheory.FOSG.History.playerView_snoc]
-    simpa [programLatestObservation?] using
-      programLatestObservation?_history_snoc g hctx who h a dst support
-  simp [programPureProfileCandidate,
-    GameTheory.FOSG.PureProfile.ofLatestObservation,
-    GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
-    movePureAtProgramObservation?_of_cursorWorld]
-
-@[simp] theorem programPureProfileCandidate_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState) :
-    programPureProfileCandidate g hctx σ who
-      ((h.appendStep e hsrc).playerView who) =
-      movePureAtCursorWorld g hctx σ who (h.appendStep e hsrc).lastState := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      change
-        programPureProfileCandidate g hctx σ who
-          ((h.snoc act dst support).playerView who) =
-        movePureAtCursorWorld g hctx σ who (h.snoc act dst support).lastState
-      simpa using
-        programPureProfileCandidate_snoc
-          g hctx σ who h act dst support
-
 theorem programPureProfileCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -806,36 +698,27 @@ theorem programPureProfileCandidate_history
     (h : (observedProgramFOSG g hctx).History) :
     programPureProfileCandidate g hctx σ who (h.playerView who) =
       movePureAtCursorWorld g hctx σ who h.lastState := by
-  let G := observedProgramFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          simp [programPureProfileCandidate,
-            GameTheory.FOSG.History.playerView,
-            GameTheory.FOSG.History.playerViewFrom,
-            GameTheory.FOSG.History.lastState,
-            GameTheory.FOSG.lastStateFrom,
-            observedProgramFOSG]
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq]
-          exact programPureProfileCandidate_appendStep
-            g hctx σ who hprefix e hsrc
+  by_cases hnil : h.steps = []
+  · have hh :
+        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) := by
+      cases h with
+      | mk steps chain =>
+          cases hnil
+          rfl
+    rw [hh]
+    simpa using programPureProfileCandidate_nil g hctx σ who
+  · have hlatest :
+        GameTheory.FOSG.InfoState.latestObservation?
+            (G := observedProgramFOSG g hctx) (i := who)
+            (h.playerView who) =
+          some (privateObsOfCursorWorld who h.lastState,
+            publicObsOfCursorWorld h.lastState) := by
+      simpa [programLatestObservation?] using
+        programLatestObservation?_history_of_ne_nil g hctx who h hnil
+    simp [programPureProfileCandidate,
+      GameTheory.FOSG.PureProfile.ofLatestObservation,
+      GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
+      movePureAtProgramObservation?_of_cursorWorld]
 
 theorem programPureProfileCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -969,54 +852,6 @@ noncomputable def programBehavioralProfileCandidate
   simp [programBehavioralProfileCandidate,
     GameTheory.FOSG.BehavioralProfile.ofLatestObservation]
 
-@[simp] theorem programBehavioralProfileCandidate_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld g)
-    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    programBehavioralProfileCandidate g hctx σ who
-      ((h.snoc a dst support).playerView who) =
-      moveAtCursorWorld g hctx σ who dst := by
-  have hlatest :
-      GameTheory.FOSG.InfoState.latestObservation?
-          (G := observedProgramFOSG g hctx) (i := who)
-          (h.playerView who ++
-            (⟨h.lastState, a, dst, support⟩ :
-              (observedProgramFOSG g hctx).Step).playerView who) =
-        some (privateObsOfCursorWorld who dst,
-          publicObsOfCursorWorld dst) := by
-    rw [← GameTheory.FOSG.History.playerView_snoc]
-    simpa [programLatestObservation?] using
-      programLatestObservation?_history_snoc g hctx who h a dst support
-  simp [programBehavioralProfileCandidate,
-    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
-    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
-    moveAtProgramObservation?_of_cursorWorld]
-
-@[simp] theorem programBehavioralProfileCandidate_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState) :
-    programBehavioralProfileCandidate g hctx σ who
-      ((h.appendStep e hsrc).playerView who) =
-      moveAtCursorWorld g hctx σ who (h.appendStep e hsrc).lastState := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      change
-        programBehavioralProfileCandidate g hctx σ who
-          ((h.snoc act dst support).playerView who) =
-        moveAtCursorWorld g hctx σ who (h.snoc act dst support).lastState
-      simpa using
-        programBehavioralProfileCandidate_snoc
-          g hctx σ who h act dst support
-
 /-- At every realized history of the observed-program FOSG, the transported
 profile reads exactly the Vegas strategy at the current cursor world. -/
 theorem programBehavioralProfileCandidate_history
@@ -1026,89 +861,27 @@ theorem programBehavioralProfileCandidate_history
     (h : (observedProgramFOSG g hctx).History) :
     programBehavioralProfileCandidate g hctx σ who (h.playerView who) =
       moveAtCursorWorld g hctx σ who h.lastState := by
-  let G := observedProgramFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          simp [programBehavioralProfileCandidate,
-            GameTheory.FOSG.History.playerView,
-            GameTheory.FOSG.History.playerViewFrom,
-            GameTheory.FOSG.History.lastState,
-            GameTheory.FOSG.lastStateFrom,
-            observedProgramFOSG]
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq]
-          exact programBehavioralProfileCandidate_appendStep
-            g hctx σ who hprefix e hsrc
-
-theorem programBehavioralProfileCandidate_support_available_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld g)
-    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0)
-    {oi : Option (ProgramAction g.prog who)}
-    (hoi : oi ∈
-      (programBehavioralProfileCandidate g hctx σ who
-        ((h.snoc a dst support).playerView who)).support) :
-    oi ∈ (observedProgramFOSG g hctx).availableMoves
-      (h.snoc a dst support) who := by
-  have hlatest :
-      GameTheory.FOSG.InfoState.latestObservation?
-          (G := observedProgramFOSG g hctx) (i := who)
-          (h.playerView who ++
-            (⟨h.lastState, a, dst, support⟩ :
-              (observedProgramFOSG g hctx).Step).playerView who) =
-        some (privateObsOfCursorWorld who dst,
-          publicObsOfCursorWorld dst) := by
-    rw [← GameTheory.FOSG.History.playerView_snoc]
-    simpa [programLatestObservation?] using
-      programLatestObservation?_history_snoc g hctx who h a dst support
-  simp [programBehavioralProfileCandidate,
-    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
-    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
-    moveAtProgramObservation?_of_cursorWorld] at hoi
-  simpa [GameTheory.FOSG.availableMoves,
-    GameTheory.FOSG.availableMovesAtState] using
-    moveAtCursorWorld_support_available g hctx σ who dst hoi
-
-theorem programBehavioralProfileCandidate_support_available_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState)
-    {oi : Option (ProgramAction g.prog who)}
-    (hoi : oi ∈
-      (programBehavioralProfileCandidate g hctx σ who
-        ((h.appendStep e hsrc).playerView who)).support) :
-    oi ∈ (observedProgramFOSG g hctx).availableMoves
-      (h.appendStep e hsrc) who := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      simpa [GameTheory.FOSG.History.appendStep_eq_snoc] using
-        programBehavioralProfileCandidate_support_available_snoc
-          g hctx σ who h act dst support hoi
+  by_cases hnil : h.steps = []
+  · have hh :
+        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) := by
+      cases h with
+      | mk steps chain =>
+          cases hnil
+          rfl
+    rw [hh]
+    simpa using programBehavioralProfileCandidate_nil g hctx σ who
+  · have hlatest :
+        GameTheory.FOSG.InfoState.latestObservation?
+            (G := observedProgramFOSG g hctx) (i := who)
+            (h.playerView who) =
+          some (privateObsOfCursorWorld who h.lastState,
+            publicObsOfCursorWorld h.lastState) := by
+      simpa [programLatestObservation?] using
+        programLatestObservation?_history_of_ne_nil g hctx who h hnil
+    simp [programBehavioralProfileCandidate,
+      GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+      GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
+      moveAtProgramObservation?_of_cursorWorld]
 
 theorem programBehavioralProfileCandidate_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1119,43 +892,10 @@ theorem programBehavioralProfileCandidate_support_available
     (hoi : oi ∈
       (programBehavioralProfileCandidate g hctx σ who (h.playerView who)).support) :
     oi ∈ (observedProgramFOSG g hctx).availableMoves h who := by
-  let G := observedProgramFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          have hoi' : oi ∈
-              (moveAtCursorWorld g hctx σ who
-                (CursorCheckedWorld.initial g hctx)).support := by
-            simpa [G, programBehavioralProfileCandidate,
-              GameTheory.FOSG.History.playerView,
-              GameTheory.FOSG.History.playerViewFrom,
-              programLatestObservation?, programObservationEvents, last?] using hoi
-          simpa [G, GameTheory.FOSG.availableMoves,
-            GameTheory.FOSG.availableMovesAtState,
-            GameTheory.FOSG.History.lastState,
-            GameTheory.FOSG.lastStateFrom] using
-            moveAtCursorWorld_support_available
-              g hctx σ who (CursorCheckedWorld.initial g hctx) hoi'
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq] at hoi ⊢
-          exact programBehavioralProfileCandidate_support_available_appendStep
-            g hctx σ who hprefix e hsrc hoi
+  rw [programBehavioralProfileCandidate_history g hctx σ who h] at hoi
+  simpa [GameTheory.FOSG.availableMoves,
+    GameTheory.FOSG.availableMovesAtState] using
+    moveAtCursorWorld_support_available g hctx σ who h.lastState hoi
 
 noncomputable def programBehavioralProfilePMFCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1176,54 +916,6 @@ noncomputable def programBehavioralProfilePMFCandidate
   simp [programBehavioralProfilePMFCandidate,
     GameTheory.FOSG.BehavioralProfile.ofLatestObservation]
 
-@[simp] theorem programBehavioralProfilePMFCandidate_snoc
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (a : (observedProgramFOSG g hctx).LegalAction h.lastState)
-    (dst : CursorCheckedWorld g)
-    (support : (observedProgramFOSG g hctx).transition h.lastState a dst ≠ 0) :
-    programBehavioralProfilePMFCandidate g hctx σ who
-      ((h.snoc a dst support).playerView who) =
-      moveAtCursorWorldPMF g hctx σ who dst := by
-  have hlatest :
-      GameTheory.FOSG.InfoState.latestObservation?
-          (G := observedProgramFOSG g hctx) (i := who)
-          (h.playerView who ++
-            (⟨h.lastState, a, dst, support⟩ :
-              (observedProgramFOSG g hctx).Step).playerView who) =
-        some (privateObsOfCursorWorld who dst,
-          publicObsOfCursorWorld dst) := by
-    rw [← GameTheory.FOSG.History.playerView_snoc]
-    simpa [programLatestObservation?] using
-      programLatestObservation?_history_snoc g hctx who h a dst support
-  simp [programBehavioralProfilePMFCandidate,
-    GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
-    GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
-    moveAtProgramObservationPMF?_of_cursorWorld]
-
-@[simp] theorem programBehavioralProfilePMFCandidate_appendStep
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
-    (hsrc : e.src = h.lastState) :
-    programBehavioralProfilePMFCandidate g hctx σ who
-      ((h.appendStep e hsrc).playerView who) =
-      moveAtCursorWorldPMF g hctx σ who (h.appendStep e hsrc).lastState := by
-  cases e with
-  | mk src act dst support =>
-      cases hsrc
-      change
-        programBehavioralProfilePMFCandidate g hctx σ who
-          ((h.snoc act dst support).playerView who) =
-        moveAtCursorWorldPMF g hctx σ who (h.snoc act dst support).lastState
-      simpa using
-        programBehavioralProfilePMFCandidate_snoc
-          g hctx σ who h act dst support
-
 theorem programBehavioralProfilePMFCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -1231,36 +923,27 @@ theorem programBehavioralProfilePMFCandidate_history
     (h : (observedProgramFOSG g hctx).History) :
     programBehavioralProfilePMFCandidate g hctx σ who (h.playerView who) =
       moveAtCursorWorldPMF g hctx σ who h.lastState := by
-  let G := observedProgramFOSG g hctx
-  cases h with
-  | mk steps chain =>
-      induction steps using List.reverseRecOn with
-      | nil =>
-          simp [programBehavioralProfilePMFCandidate,
-            GameTheory.FOSG.History.playerView,
-            GameTheory.FOSG.History.playerViewFrom,
-            GameTheory.FOSG.History.lastState,
-            GameTheory.FOSG.lastStateFrom,
-            observedProgramFOSG]
-      | append_singleton steps e ih =>
-          let hprefix : G.History :=
-            { steps := steps
-              chain := GameTheory.FOSG.StepChainFrom.left
-                (G := G) (es₁ := steps) (es₂ := [e]) chain }
-          have hright :
-              G.StepChainFrom (G.lastStateFrom G.init steps) [e] :=
-            GameTheory.FOSG.StepChainFrom.right
-              (G := G) (es₁ := steps) (es₂ := [e]) chain
-          have hsrc : e.src = hprefix.lastState := by
-            simpa [hprefix, GameTheory.FOSG.History.lastState,
-              GameTheory.FOSG.StepChainFrom] using hright.1
-          let hfull : G.History := hprefix.appendStep e hsrc
-          have hEq : ({ steps := steps ++ [e], chain := chain } : G.History) = hfull := by
-            ext
-            rfl
-          rw [hEq]
-          exact programBehavioralProfilePMFCandidate_appendStep
-            g hctx σ who hprefix e hsrc
+  by_cases hnil : h.steps = []
+  · have hh :
+        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) := by
+      cases h with
+      | mk steps chain =>
+          cases hnil
+          rfl
+    rw [hh]
+    simpa using programBehavioralProfilePMFCandidate_nil g hctx σ who
+  · have hlatest :
+        GameTheory.FOSG.InfoState.latestObservation?
+            (G := observedProgramFOSG g hctx) (i := who)
+            (h.playerView who) =
+          some (privateObsOfCursorWorld who h.lastState,
+            publicObsOfCursorWorld h.lastState) := by
+      simpa [programLatestObservation?] using
+        programLatestObservation?_history_of_ne_nil g hctx who h hnil
+    simp [programBehavioralProfilePMFCandidate,
+      GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+      GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hlatest,
+      moveAtProgramObservationPMF?_of_cursorWorld]
 
 theorem programBehavioralProfilePMFCandidate_toPMFProfile_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
