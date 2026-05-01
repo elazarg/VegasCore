@@ -860,69 +860,11 @@ noncomputable def toObservedProgramLegalPureProfile
       intro h
       exact programPureProfileCandidate_available g hctx σ who h⟩
 
-noncomputable def toObservedProgramLegalPureStrategy
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    (observedProgramFOSG g hctx).LegalPureStrategy who :=
-  ⟨programPureStrategyCandidate g hctx who σ, by
-    intro h
-    exact programPureStrategyCandidate_available g hctx who σ h⟩
-
 @[simp] theorem toObservedProgramLegalPureProfile_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g) (who : P) :
     ((toObservedProgramLegalPureProfile g hctx σ who).1) =
       programPureProfileCandidate g hctx σ who := rfl
-
-@[simp] theorem toObservedProgramLegalPureStrategy_apply
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    ((toObservedProgramLegalPureStrategy g hctx who σ).1) =
-      programPureStrategyCandidate g hctx who σ := rfl
-
-theorem toObservedProgramLegalPureProfile_eq_component
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
-    toObservedProgramLegalPureProfile g hctx σ =
-      fun who => toObservedProgramLegalPureStrategy g hctx who (σ who) := by
-  funext who
-  apply Subtype.ext
-  funext s
-  exact congrFun (programPureProfileCandidate_eq_strategy g hctx σ who) s
-
-noncomputable def toObservedProgramMixedPureProfile
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    ∀ who, PMF ((observedProgramFOSG g hctx).LegalPureStrategy who) :=
-  fun who =>
-    PMF.map (toObservedProgramLegalPureStrategy g hctx who) (μ who)
-
-theorem toObservedProgramMixedPureProfile_joint
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [Fintype P]
-    [∀ who, Fintype (LegalProgramPureStrategy g who)]
-    [∀ who, Fintype ((observedProgramFOSG g hctx).LegalPureStrategy who)]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    Math.PMFProduct.pmfPi (toObservedProgramMixedPureProfile g hctx μ) =
-      PMF.map (toObservedProgramLegalPureProfile g hctx)
-        (Math.PMFProduct.pmfPi μ) := by
-  classical
-  change Math.PMFProduct.pmfPi
-      (fun who =>
-        PMF.map (toObservedProgramLegalPureStrategy g hctx who)
-          (μ who)) =
-    PMF.map
-      (fun σ => toObservedProgramLegalPureProfile g hctx σ)
-      (Math.PMFProduct.pmfPi μ)
-  have hmap :
-      (fun σ => toObservedProgramLegalPureProfile g hctx σ) =
-        (fun σ => fun who =>
-          toObservedProgramLegalPureStrategy g hctx who (σ who)) := by
-    funext σ
-    exact toObservedProgramLegalPureProfile_eq_component g hctx σ
-  rw [hmap]
-  exact (Math.PMFProduct.pmfPi_push_coordwise μ
-    (fun who => toObservedProgramLegalPureStrategy g hctx who)).symm
 
 /-- Transport a Vegas guard-legal pure profile to the reachable-information
 strategy space of the observed-program FOSG. This is the finite strategy space

@@ -825,18 +825,6 @@ theorem observedProgramOutcomeKernel_eq_toKernelGame
   simpa [σpmf] using
     toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame g σ
 
-theorem observedProgramReachableOutcomeKernelPMF_eq_toKernelGamePMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfilePMF g) :
-    PMF.map (observedProgramHistoryOutcome g hctx)
-        (observedProgramRunDist g hctx LF
-          (toObservedProgramReachableLegalBehavioralProfilePMF
-            g hctx σ).extend) =
-      (toKernelGamePMF g).outcomeKernel σ := by
-  rw [observedProgramRunDistPMF_reachable_extend_eq g hctx LF σ]
-  exact observedProgramOutcomeKernelPMF_eq_toKernelGamePMF g hctx LF σ
-
 /-- Pure-strategy outcome preservation for the observed-program FOSG.
 
 Transporting a Vegas legal pure profile to the FOSG, running its deterministic
