@@ -765,18 +765,6 @@ noncomputable def observedProgramOutcomeValuePMF
         cursorProgramTransition_remainingSyntaxSteps
           (g := g) h.lastState a dst hsupp)
 
-/-- The Vegas-outcome kernel induced by running the observed-program FOSG and
-projecting terminal histories back to Vegas payoff outcomes. This is the
-left-hand side of the intended outcome-preservation theorem against
-`toKernelGame`. -/
-noncomputable def observedProgramOutcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfile g) : PMF (Outcome P) :=
-  PMF.map (observedProgramHistoryOutcome g hctx)
-    (observedProgramRunDist g hctx LF
-      (toObservedProgramLegalBehavioralProfile g hctx σ))
-
 noncomputable def observedProgramOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
@@ -808,23 +796,6 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
   simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
     using hclosure
 
-theorem observedProgramOutcomeKernel_eq_toKernelGame
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : LegalProgramBehavioralProfile g) :
-    observedProgramOutcomeKernel g hctx LF σ =
-      (toKernelGame g).outcomeKernel σ := by
-  let σpmf := LegalProgramBehavioralProfile.toPMFProfile σ
-  have hobs :
-      observedProgramOutcomeKernel g hctx LF σ =
-        observedProgramOutcomeKernelPMF g hctx LF σpmf := by
-    unfold observedProgramOutcomeKernel observedProgramOutcomeKernelPMF
-    rw [toObservedProgramLegalBehavioralProfilePMF_toPMFProfile_eq]
-  rw [hobs]
-  rw [observedProgramOutcomeKernelPMF_eq_toKernelGamePMF]
-  simpa [σpmf] using
-    toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame g σ
-
 /-- Pure-strategy outcome preservation for the observed-program FOSG.
 
 Transporting a Vegas legal pure profile to the FOSG, running its deterministic
@@ -844,12 +815,13 @@ theorem observedProgramPureOutcomeKernel_eq_toStrategicKernelGame
           (observedProgramRunDist g hctx LF
             ((observedProgramFOSG g hctx).legalPureToBehavioral
               (toObservedProgramLegalPureProfile g hctx σ))) =
-        observedProgramOutcomeKernel g hctx LF
-          (LegalProgramPureProfile.toBehavioral σ) by
-        simp [observedProgramOutcomeKernel,
-          toObservedProgramLegalBehavioralProfile_toBehavioral]]
-  rw [observedProgramOutcomeKernel_eq_toKernelGame]
-  exact toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral g σ
+        observedProgramOutcomeKernelPMF g hctx LF
+          (LegalProgramPureProfile.toBehavioralPMF σ) by
+        simp [observedProgramOutcomeKernelPMF,
+          toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF]]
+  rw [observedProgramOutcomeKernelPMF_eq_toKernelGamePMF]
+  exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
+    g σ
 
 /-- Reachable pure-profile outcome preservation for the observed-program FOSG.
 

@@ -541,6 +541,18 @@ noncomputable def movePureStrategyAtProgramObservation?
   exact movePureStrategyAtProgramCursor g hctx who σ priv.cursor.toSuffix
     (priv.env)
 
+theorem moveAtProgramObservationPMF?_toBehavioralPMF_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (obs : PrivateObs g who × PublicObs g hctx) :
+    moveAtProgramObservationPMF? g hctx
+        (LegalProgramPureProfile.toBehavioralPMF σ) who obs =
+      PMF.pure (movePureAtProgramObservation? g hctx σ who obs) := by
+  unfold moveAtProgramObservationPMF? movePureAtProgramObservation?
+  exact moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
+    g hctx σ who obs.1.cursor.toSuffix obs.1.env
+
 theorem movePureAtProgramObservation?_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramPureProfile g)
@@ -966,6 +978,33 @@ theorem programBehavioralProfilePMFCandidate_toPMFProfile_eq
         GameTheory.FOSG.BehavioralStrategy.ofLatestObservation, hobs,
         moveAtProgramObservationPMF?_toPMFProfile_eq]
 
+theorem programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g)
+    (who : P)
+    (s : (observedProgramFOSG g hctx).InfoState who) :
+    programBehavioralProfilePMFCandidate g hctx
+        (LegalProgramPureProfile.toBehavioralPMF σ) who s =
+      PMF.pure (programPureProfileCandidate g hctx σ who s) := by
+  unfold programBehavioralProfilePMFCandidate programPureProfileCandidate
+  cases hobs :
+      GameTheory.FOSG.InfoState.latestObservation?
+        (G := observedProgramFOSG g hctx) (i := who) s with
+  | none =>
+      simpa [GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+        GameTheory.FOSG.BehavioralStrategy.ofLatestObservation,
+        GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs] using
+        moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
+          g hctx σ who (CursorCheckedWorld.initial g hctx)
+  | some obs =>
+      simpa [GameTheory.FOSG.BehavioralProfile.ofLatestObservation,
+        GameTheory.FOSG.BehavioralStrategy.ofLatestObservation,
+        GameTheory.FOSG.PureProfile.ofLatestObservation,
+        GameTheory.FOSG.PureStrategy.ofLatestObservation, hobs] using
+        moveAtProgramObservationPMF?_toBehavioralPMF_eq_pure
+          g hctx σ who obs
+
 theorem programBehavioralProfilePMFCandidate_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -1025,6 +1064,20 @@ theorem toObservedProgramLegalBehavioralProfilePMF_toPMFProfile_eq
   exact congrFun
     (programBehavioralProfilePMFCandidate_toPMFProfile_eq
       g hctx σ) who
+
+theorem toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    toObservedProgramLegalBehavioralProfilePMF g hctx
+        (LegalProgramPureProfile.toBehavioralPMF σ) =
+      (observedProgramFOSG g hctx).legalPureToBehavioral
+        (toObservedProgramLegalPureProfile g hctx σ) := by
+  funext who
+  apply Subtype.ext
+  funext s
+  simp [GameTheory.FOSG.legalPureToBehavioral,
+    GameTheory.FOSG.pureToBehavioral,
+    programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure]
 
 /-- Transport a Vegas guard-legal behavioral profile to the reachable-information
 strategy space of the observed-program FOSG. -/
