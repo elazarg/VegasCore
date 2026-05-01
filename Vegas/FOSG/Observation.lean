@@ -273,59 +273,6 @@ theorem observedProgramFOSG_boundedHorizon
     (G := observedProgramFOSG g hctx)
     (observedProgramFOSG_boundedHorizon g hctx)
 
-/-- The terminal-history law of the observed-program FOSG normalizes. -/
-noncomputable def observedProgramFOSG.hasNormalizedTerminalLaw
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P] :
-    letI : Fintype (CursorCheckedWorld g) :=
-      observedProgramFOSG.instFintypeWorld g hctx LF
-    letI : ∀ who : P,
-        Fintype (Option (ProgramAction g.prog who)) :=
-      fun who =>
-        observedProgramFOSG.instFintypeOptionAction
-          g hctx LF who
-    letI : Fintype (observedProgramFOSG g hctx).History :=
-      observedProgramFOSG.instFintypeHistory g hctx LF
-    letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-      observedProgramFOSG.instDecidablePredTerminal g hctx
-    (observedProgramFOSG g hctx).HasNormalizedTerminalLaw := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : Fintype (observedProgramFOSG g hctx).History :=
-    observedProgramFOSG.instFintypeHistory g hctx LF
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  exact GameTheory.FOSG.hasNormalizedTerminalLaw_of_boundedHorizon
-    (G := observedProgramFOSG g hctx)
-    (observedProgramFOSG_boundedHorizon g hctx)
-
-/-- The terminal-history `KernelGame` induced by the observed-program FOSG.
-
-This is the native FOSG game, whose outcomes are terminal histories and whose
-utilities are cumulative transition rewards. The Vegas-outcome projection is
-handled by mapping terminal histories through `observedProgramHistoryOutcome`. -/
-noncomputable def observedProgramTerminalHistoryGame
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P] : KernelGame P := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : Fintype (observedProgramFOSG g hctx).History :=
-    observedProgramFOSG.instFintypeHistory g hctx LF
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  exact (observedProgramFOSG g hctx).toKernelGame
-    (observedProgramFOSG.hasNormalizedTerminalLaw g hctx LF)
-
 /-- The bounded run distribution of the observed-program FOSG, with the finite
 execution instances fixed by `FiniteValuation`. -/
 noncomputable def observedProgramRunDist
