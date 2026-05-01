@@ -37,54 +37,6 @@ noncomputable def moveAtProgramCursorPMF
         PMF.pure none
   | _ => PMF.pure none
 
-theorem moveAtProgramCursorPMF_suffix_cast
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (who : P)
-    {Γ : VCtx P L} {p q : VegasCore P L Γ}
-    (h : p = q)
-    (suffix : ProgramSuffix g.prog p)
-    (view : ViewEnv who Γ) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      moveAtProgramCursorPMF g hctx σ who (h ▸ suffix) view := by
-  cases h
-  rfl
-
-@[simp] theorem moveAtProgramCursorPMF_ret
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L}
-    {payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)}
-    (suffix : ProgramSuffix g.prog (.ret payoffs))
-    (who : P) (view : ViewEnv who Γ) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      PMF.pure none := by
-  rfl
-
-@[simp] theorem moveAtProgramCursorPMF_letExpr
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.letExpr x e k))
-    (who : P) (view : ViewEnv who Γ) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      PMF.pure none := by
-  rfl
-
-@[simp] theorem moveAtProgramCursorPMF_sample
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.sample x D k))
-    (who : P) (view : ViewEnv who Γ) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      PMF.pure none := by
-  rfl
-
 @[simp] theorem moveAtProgramCursorPMF_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -100,30 +52,6 @@ theorem moveAtProgramCursorPMF_suffix_cast
         (ProgramBehavioralStrategyPMF.headKernel
           ((suffix.behavioralProfilePMF (fun i => (σ i).val)) who) view) := by
   simp [moveAtProgramCursorPMF]
-
-@[simp] theorem moveAtProgramCursorPMF_commit_nonowner
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {x : VarId} {owner who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.commit x owner R k))
-    (view : ViewEnv who Γ) (howner : owner ≠ who) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      PMF.pure none := by
-  simp [moveAtProgramCursorPMF, howner]
-
-@[simp] theorem moveAtProgramCursorPMF_reveal
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {y : VarId} {owner : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden owner b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.reveal y owner x hx k))
-    (who : P) (view : ViewEnv who Γ) :
-    moveAtProgramCursorPMF g hctx σ who suffix view =
-      PMF.pure none := by
-  rfl
 
 theorem headKernelPMF_supported_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)

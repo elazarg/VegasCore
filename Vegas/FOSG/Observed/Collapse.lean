@@ -19,44 +19,6 @@ profile.  The only semantic fact used to make representative choice coherent is
 `playerView_eq_of_privateObsOfLastState_eq`.
 -/
 
-namespace VEnv
-
-/-- Reattach visibility tags to an erased environment. This is the inverse
-direction needed only for proofs that compare FOSG cursor worlds against the
-syntax-recursive Vegas strategy key. -/
-noncomputable def ofErased
-    {Γ : VCtx P L} (ρ : Env L.Val (eraseVCtx Γ)) : VEnv (Player := P) L Γ :=
-  fun x τ hx => ρ x τ.base hx.toErased
-
-omit [DecidableEq P] in
-theorem eraseEnv_ofErased
-    {Γ : VCtx P L} (hctx : WFCtx (L := L) Γ)
-    (ρ : Env L.Val (eraseVCtx Γ)) :
-    VEnv.eraseEnv (ofErased (P := P) (L := L) (Γ := Γ) ρ) = ρ := by
-  induction Γ with
-  | nil =>
-      funext x τ hx
-      nomatch hx
-  | cons hd tl ih =>
-      obtain ⟨y, σ⟩ := hd
-      funext x τ hx
-      cases hx with
-      | here => rfl
-      | there hx' =>
-          have hctx_tail : WFCtx (L := L) tl := (List.nodup_cons.mp hctx).2
-          have ih' := ih hctx_tail (fun x τ h => ρ x τ (.there h))
-          exact congrFun (congrFun (congrFun ih' x) τ) hx'
-
-theorem projectViewEnv_eraseEnv_ofErased
-    {Γ : VCtx P L} (hctx : WFCtx (L := L) Γ)
-    (who : P) (ρ : Env L.Val (eraseVCtx Γ)) :
-    projectViewEnv who
-        (VEnv.eraseEnv (ofErased (P := P) (L := L) (Γ := Γ) ρ)) =
-      projectViewEnv who ρ := by
-  rw [eraseEnv_ofErased (P := P) (L := L) hctx ρ]
-
-end VEnv
-
 theorem projectViewEnv_eraseEnv_cast_heq
     {Γc Γ : VCtx P L} (who : P) (hΓ : Γc = Γ)
     (env : VEnv L Γc) :
@@ -64,16 +26,6 @@ theorem projectViewEnv_eraseEnv_cast_heq
       (projectViewEnv who (VEnv.eraseEnv env)) := by
   cases hΓ
   rfl
-
-private noncomputable def castBehavioralStrategyPMF
-    {who : P} {Γ₁ Γ₂ : VCtx P L}
-    {p₁ : VegasCore P L Γ₁} {p₂ : VegasCore P L Γ₂}
-    (hΓ : Γ₁ = Γ₂) (hp : hΓ ▸ p₁ = p₂)
-    (σ : ProgramBehavioralStrategyPMF who p₁) :
-    ProgramBehavioralStrategyPMF who p₂ := by
-  cases hΓ
-  cases hp
-  exact σ
 
 /-- Decode a program-local optional FOSG move into the value chosen at a
 particular Vegas commit type, using `default` on impossible branches.
@@ -89,24 +41,6 @@ noncomputable def valueOfProgramMoveOr
       match ProgramAction.toAction ai with
       | Sigma.mk τ v =>
           if hτ : τ = b then hτ ▸ v else default
-
-@[simp] theorem valueOfProgramMoveOr_commitAt
-    {g : WFProgram P L} {Γ : VCtx P L}
-    {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.commit x who R k))
-    (default v : L.Val b) :
-    valueOfProgramMoveOr (g := g) (who := who) (b := b) default
-        (some (ProgramAction.commitAt suffix v)) = v := by
-  unfold valueOfProgramMoveOr
-  simp only [ProgramAction.toAction]
-  by_cases hty : (ProgramAction.commitAt suffix v).cursor.ty = b
-  · rw [dif_pos hty]
-    exact ProgramAction.commitAt_value_cast suffix v hty
-  · exact False.elim (hty (by
-      simpa [ProgramAction.commitAt_cursor] using
-        ProgramSuffix.ty_commitCursor suffix))
 
 theorem valueOfProgramMoveOr_eq_of_toAction
     {g : WFProgram P L} {who : P} {b : L.Ty}
@@ -154,21 +88,6 @@ theorem fallbackValueAtCommit_mem_support
     (ProgramBehavioralStrategyPMF.headKernel
       ((suffix.behavioralProfilePMF (fun i => (fallback i).val)) who)
       view).support_nonempty
-
-theorem fallbackValueAtCommit_guard
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (fallback : LegalProgramBehavioralProfilePMF g)
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.commit x who R k))
-    (ρ : Env L.Val (eraseVCtx Γ)) :
-    evalGuard (Player := P) (L := L) R
-      (fallbackValueAtCommit g fallback suffix (projectViewEnv who ρ)) ρ =
-        true := by
-  exact headKernelPMF_supported_atCursor g hctx fallback suffix ρ
-    (fallbackValueAtCommit_mem_support g fallback suffix
-      (projectViewEnv who ρ))
 
 /-- The head PMF for an owned Vegas commit site, read from a total sequential
 FOSG behavioral profile when the current private observation is reachable, and

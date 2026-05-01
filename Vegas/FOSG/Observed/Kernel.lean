@@ -620,55 +620,6 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
           simp [VEnv.get]
           rfl
 
-theorem checkedProfileStepPMF_remainingSyntaxSteps
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
-    (w : CheckedWorld g hctx)
-    (hterm : ¬ checkedTerminal w)
-    (dst : CheckedWorld g hctx)
-    (hsupp : checkedProfileStepPMF g hctx σ w dst ≠ 0) :
-    dst.remainingSyntaxSteps + 1 = w.remainingSyntaxSteps := by
-  cases w with
-  | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
-      cases prog with
-      | ret payoffs =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
-      | letExpr x e k =>
-          simp only [checkedProfileStepPMF, PMF.pure_apply, ne_eq,
-            ite_eq_right_iff, one_ne_zero, imp_false, not_not,
-            CheckedWorld.remainingSyntaxSteps, syntaxSteps,
-            Nat.add_right_cancel_iff] at hsupp ⊢
-          subst dst
-          rfl
-      | sample x D k =>
-          simp only [checkedProfileStepPMF, PMF.map_apply, ne_eq,
-            ENNReal.tsum_eq_zero, ite_eq_right_iff, not_forall,
-            CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps, Nat.add_right_cancel_iff] at hsupp ⊢
-          rcases hsupp with ⟨v, hdst, _hv⟩
-          subst dst
-          rfl
-      | commit x who R k =>
-          simp only [checkedProfileStepPMF, PMF.map_apply, ne_eq,
-            ENNReal.tsum_eq_zero, ite_eq_right_iff, not_forall,
-            CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps, Nat.add_right_cancel_iff] at hsupp ⊢
-          rcases hsupp with ⟨v, hdst, _hv⟩
-          subst dst
-          rfl
-      | reveal y who x hx k =>
-          simp [checkedProfileStepPMF, CheckedWorld.remainingSyntaxSteps,
-            syntaxSteps] at hsupp ⊢
-          subst dst
-          rfl
-
-@[simp] theorem checkedVegasOutcomeKernelPMF_initial
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) :
-    checkedVegasOutcomeKernelPMF σ
-        (CheckedWorld.initial g hctx) =
-      (toKernelGamePMF g).outcomeKernel σ := rfl
-
 @[simp] theorem checkedVegasOutcomeKernelPMF_ofCursorChecked
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (σ : LegalProgramBehavioralProfilePMF g)
@@ -676,13 +627,6 @@ theorem checkedProfileStepPMF_remainingSyntaxSteps
     checkedVegasOutcomeKernelPMF (hctx := hctx) σ
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
       cursorVegasOutcomeKernelPMF σ w := rfl
-
-@[simp] theorem cursorVegasOutcomeKernelPMF_initial
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) :
-    cursorVegasOutcomeKernelPMF σ
-        (CursorCheckedWorld.initial g hctx) =
-      (toKernelGamePMF g).outcomeKernel σ := rfl
 
 @[simp] theorem checkedWorldOutcome_ofCursorChecked
     {g : WFProgram P L} {hctx : WFCtx g.Γ}

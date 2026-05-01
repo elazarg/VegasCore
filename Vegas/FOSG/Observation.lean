@@ -45,16 +45,6 @@ noncomputable def privateObsOfCursorEnv {g : WFProgram P L}
   cursor := c
   env := projectViewEnv who (VEnv.eraseEnv env)
 
-@[simp] theorem publicObsOfCursorEnv_world {g : WFProgram P L}
-    {hctx : WFCtx g.Γ} (w : CursorCheckedWorld g) :
-    publicObsOfCursorEnv (hctx := hctx) w.1.cursor w.1.env =
-      publicObsOfCursorWorld (hctx := hctx) w := rfl
-
-@[simp] theorem privateObsOfCursorEnv_world {g : WFProgram P L}
-    (who : P) (w : CursorCheckedWorld g) :
-    privateObsOfCursorEnv who w.1.cursor w.1.env =
-      privateObsOfCursorWorld who w := rfl
-
 /-- The private-observation key corresponding to a syntax-recursive owned
 commit site and a current Vegas view at that site. -/
 noncomputable def privateObsOfCommitSite {g : WFProgram P L}
@@ -185,12 +175,6 @@ theorem observedProgramTransition_map_checkedWorld_eq_checkedTransition
     (who : P) :
     Fintype (ProgramAction g.prog who) :=
   ProgramAction.instFintype LF g.prog who
-
-/-- Per-player action equality helper for `observedProgramFOSG`. -/
-@[reducible] noncomputable def observedProgramFOSG.instDecidableEqAction
-    (g : WFProgram P L) (_hctx : WFCtx g.Γ) (who : P) :
-    DecidableEq (ProgramAction g.prog who) :=
-  ProgramAction.instDecidableEq g.prog who
 
 /-- Per-player optional-action finite helper for FOSG execution APIs. -/
 @[reducible] noncomputable def observedProgramFOSG.instFintypeOptionAction

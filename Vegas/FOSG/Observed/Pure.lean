@@ -37,18 +37,6 @@ noncomputable def movePureAtProgramCursor
         none
   | _ => none
 
-theorem movePureAtProgramCursor_suffix_cast
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) (who : P)
-    {Γ : VCtx P L} {p q : VegasCore P L Γ}
-    (h : p = q)
-    (suffix : ProgramSuffix g.prog p)
-    (view : ViewEnv who Γ) :
-    movePureAtProgramCursor g hctx σ who suffix view =
-      movePureAtProgramCursor g hctx σ who (h ▸ suffix) view := by
-  cases h
-  rfl
-
 noncomputable def movePureStrategyAtProgramCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
     (who : P) (σ : LegalProgramPureStrategy g who)
@@ -70,18 +58,6 @@ noncomputable def movePureStrategyAtProgramCursor
       else
         none
   | _ => none
-
-theorem movePureStrategyAtProgramCursor_suffix_cast
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
-    {Γ : VCtx P L} {p q : VegasCore P L Γ}
-    (h : p = q)
-    (suffix : ProgramSuffix g.prog p)
-    (view : ViewEnv who Γ) :
-    movePureStrategyAtProgramCursor g hctx who σ suffix view =
-      movePureStrategyAtProgramCursor g hctx who σ (h ▸ suffix) view := by
-  cases h
-  rfl
 
 theorem movePureAtProgramCursor_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -136,17 +112,6 @@ theorem movePureAtProgramCursor_eq_strategy
           ((ProgramPureStrategy.headKernel
             (suffix.pureStrategy who σ.val)) view)) := by
   simp [movePureStrategyAtProgramCursor]
-
-@[simp] theorem movePureStrategyAtProgramCursor_commit_nonowner
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    {owner who : P} (σ : LegalProgramPureStrategy g who)
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
-    (suffix : ProgramSuffix g.prog (.commit x owner R k))
-    (view : ViewEnv who Γ) (howner : owner ≠ who) :
-    movePureStrategyAtProgramCursor g hctx who σ suffix view = none := by
-  simp [movePureStrategyAtProgramCursor, howner]
 
 theorem headPureKernel_legal_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
