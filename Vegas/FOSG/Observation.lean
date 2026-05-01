@@ -307,8 +307,8 @@ noncomputable def observedProgramFOSG.hasNormalizedTerminalLaw
 /-- The terminal-history `KernelGame` induced by the observed-program FOSG.
 
 This is the native FOSG game, whose outcomes are terminal histories and whose
-utilities are cumulative transition rewards. Use
-`observedProgramOutcomeKernelGame` for the Vegas-outcome projection. -/
+utilities are cumulative transition rewards. The Vegas-outcome projection is
+handled by mapping terminal histories through `observedProgramHistoryOutcome`. -/
 noncomputable def observedProgramTerminalHistoryGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P] : KernelGame P := by
