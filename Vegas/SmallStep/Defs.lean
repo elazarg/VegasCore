@@ -1,4 +1,4 @@
-import Vegas.FOSG.Basic
+import Vegas.Config
 
 /-!
 # Raw small-step semantics for Vegas
@@ -11,8 +11,6 @@ layer is a separate bridge.
 
 namespace Vegas
 namespace SmallStep
-
-open FOSGBridge
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 

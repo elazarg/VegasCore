@@ -8,8 +8,6 @@ import Vegas.TraceSemantics
 namespace Vegas
 namespace SmallStep
 
-open FOSGBridge
-
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Project an existing complete `Trace` to the raw small-step labels it

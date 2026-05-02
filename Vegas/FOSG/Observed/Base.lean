@@ -496,7 +496,7 @@ private theorem cursorPlayerViewFrom_transition
         cursorPlayerViewFrom g hctx who emb c env ++
           cursorStepPlayerViewFrom g hctx who emb pa dst.cursor dst.env
   | _, .ret _payoffs, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp =>
-      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
   | _, .letExpr x e k, emb, .here, env, valid, pa, ha, hmoves, dst, hsupp => by
       simp only [cursorTransitionState, PMF.pure_apply, ne_eq, ite_eq_right_iff,
         one_ne_zero, imp_false, not_not] at hsupp

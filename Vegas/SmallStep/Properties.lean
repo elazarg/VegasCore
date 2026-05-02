@@ -7,8 +7,6 @@ import Vegas.SmallStep.Agreement
 namespace Vegas
 namespace SmallStep
 
-open FOSGBridge
-
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Every non-terminal raw world has an outgoing small-step distribution. -/

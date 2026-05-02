@@ -6,6 +6,7 @@ import Vegas.VegasSimple
 import Vegas.WF
 import Vegas.Scope
 import Vegas.WFProgram
+import Vegas.Config
 import Vegas.Finite
 import Vegas.Examples
 import Vegas.BigStep

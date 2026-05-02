@@ -169,7 +169,7 @@ noncomputable def sequentialOutcomeKernelPMF
   exact
     PMF.map (FOSGBridge.observedProgramHistoryOutcome g hctx)
       ((FOSGBridge.toFOSG g hctx).runDist
-        (FOSGBridge.syntaxSteps g.prog) β.profile)
+        (Vegas.syntaxSteps g.prog) β.profile)
 
 /-- Finite-game Kuhn theorem in the total sequential Vegas strategy space. -/
 theorem sequential_mixedPure_realizedByBehavioralPMF_finite

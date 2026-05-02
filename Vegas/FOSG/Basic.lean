@@ -8,6 +8,7 @@ import Vegas.StrategicPMF
 import Vegas.LegalNonempty
 import Vegas.Finite
 import Vegas.ViewKernel
+import Vegas.Config
 import Vegas.WFProgram
 
 /-!
@@ -42,27 +43,21 @@ finiteness of values that actually occur in `g`.
 abbrev Action (L : IExpr) (_who : P) : Type :=
   Sigma L.Val
 
-/-- A Vegas runtime configuration, before restricting to reachable states. -/
-structure World (P : Type) [DecidableEq P] (L : IExpr) where
-  Γ : VCtx P L
-  prog : VegasCore P L Γ
-  env : VEnv L Γ
+/-- Compatibility alias for the neutral runtime configuration type. The
+canonical definition lives in `Vegas.Config`. -/
+abbrev World (P : Type) [DecidableEq P] (L : IExpr) :=
+  Vegas.World P L
 
-namespace World
+/-- Compatibility alias for neutral Vegas terminality. The canonical definition
+lives in `Vegas.Config`. -/
+abbrev terminal (w : World P L) : Prop :=
+  Vegas.terminal w
 
-/-- The initial world associated with a checked Vegas program. -/
-def initial (g : WFProgram P L) : World P L where
-  Γ := g.Γ
-  prog := g.prog
-  env := g.env
-
-end World
-
-/-- Vegas terminal states are exactly `ret` configurations. -/
-def terminal (w : World P L) : Prop :=
-  match w.prog with
-  | .ret _ => True
-  | _ => False
+/-- Compatibility alias for neutral syntax-step counting. The canonical
+definition lives in `Vegas.Config`. -/
+abbrev syntaxSteps :
+    {Γ : VCtx P L} → VegasCore P L Γ → Nat :=
+  Vegas.syntaxSteps
 
 /-- The only strategic FOSG states are Vegas `commit` nodes. -/
 def active (w : World P L) : Finset P :=
@@ -99,53 +94,6 @@ theorem active_mem_of_eq_commit
       rcases hp with ⟨_hxy, howner, _hb, _hR, _hk⟩
       subst howner
       simp [active]
-
-/-- Number of operational syntax nodes remaining before a Vegas program reaches
-`ret`, ignoring probabilistic branching because branching changes only
-environments, not the continuation shape. -/
-def syntaxSteps :
-    {Γ : VCtx P L} → VegasCore P L Γ → Nat
-  | _, .ret _ => 0
-  | _, .letExpr _ _ k => syntaxSteps k + 1
-  | _, .sample _ _ k => syntaxSteps k + 1
-  | _, .commit _ _ _ k => syntaxSteps k + 1
-  | _, .reveal _ _ _ _ k => syntaxSteps k + 1
-
-@[simp] theorem syntaxSteps_ret
-    {Γ : VCtx P L}
-    (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
-    syntaxSteps (.ret payoffs) = 0 := rfl
-
-@[simp] theorem syntaxSteps_letExpr
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    syntaxSteps (.letExpr x e k) = syntaxSteps k + 1 := rfl
-
-@[simp] theorem syntaxSteps_sample
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    syntaxSteps (.sample x D k) = syntaxSteps k + 1 := rfl
-
-@[simp] theorem syntaxSteps_commit
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
-    syntaxSteps (.commit x who R k) = syntaxSteps k + 1 := rfl
-
-@[simp] theorem syntaxSteps_reveal
-    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)} :
-    syntaxSteps (.reveal y who x hx k) = syntaxSteps k + 1 := rfl
-
-/-- A program has no remaining syntax steps exactly at `ret`. -/
-theorem terminal_iff_syntaxSteps_eq_zero {w : World P L} :
-    terminal w ↔ syntaxSteps w.prog = 0 := by
-  cases w with
-  | mk Γ prog env =>
-      cases prog <;> simp [terminal, syntaxSteps]
 
 /-- Node-local action availability.
 
@@ -2999,7 +2947,7 @@ noncomputable def cursorTransitionState
       ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
     PMF (CursorRuntimeState root)
   | .ret payoffs, .here, env, valid, a, ha =>
-      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, _a, _ha =>
       let wctx := valid.1
       let fresh := valid.2.1
@@ -3145,7 +3093,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
             CheckedWorld.toWorld] using ha⟩)
     (fun {Γ} {p} suffix env valid a ha => by
       cases p
-      · exact False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      · exact False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
       · simp [cursorTransitionState, checkedTransition,
           CursorRuntimeState.toCheckedWorldFromSuffix,
           ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
@@ -3303,7 +3251,7 @@ theorem cursorTransitionState_massInvariant
       cursorTransitionState c env valid a₁ ha₁ dst =
         cursorTransitionState c env valid a₂ ha₂ dst
   | .ret payoffs, .here, env, valid, a₁, a₂, ha₁, _ha₂, dst, _h₁, _h₂ =>
-      False.elim (ha₁.1 (by simp [ProgramCursor.prog, terminal]))
+      False.elim (ha₁.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
       simp [cursorTransitionState] at h₁ h₂ ⊢
   | .sample x D k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
@@ -3563,7 +3511,7 @@ theorem cursorTransitionState_remainingSyntaxSteps
     cursorTransitionState c env valid a ha dst ≠ 0 →
       syntaxSteps dst.cursor.prog + 1 = syntaxSteps c.prog
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
-      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
       have hmem :
           dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
@@ -3683,7 +3631,7 @@ theorem cursorTransitionState_rootEnv_eq
       ProgramCursor.rootEnv dst.cursor dst.env =
         ProgramCursor.rootEnv c env
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
-      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
       have hmem :
           dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
