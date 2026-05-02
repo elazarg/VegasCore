@@ -183,10 +183,11 @@ inductive Step (σ : OmniscientOperationalProfile P L) :
                    (FDist.bind (σ.commit who x R _) (fun v => FDist.pure (.commit who _ v, …)))
 ```
 
-`runSmallStep σ w : FDist (Outcome P)` is defined by structural recursion on
-`w.prog` and matches `outcomeDist` constructor-for-constructor. A later theorem
-can also characterize it as "bind one `Step`, then recurse" for non-terminal
-worlds.
+`runSmallStep σ w : FDist (Outcome P)` is a packaged-world wrapper around the
+canonical `outcomeDist σ w.prog w.env`. The small-step semantic content is the
+one-step characterization theorem `step_bind_runSmallStep`, which says a
+non-terminal `Step` followed by recursive evaluation has the same value as the
+source world.
 
 ### Multi-step / labelled trace
 
@@ -206,6 +207,12 @@ def smallStepTraces (σ) (w : World P L) : Finset (List (Label P L) × Outcome P
 def smallStepWeight (σ) (w : World P L) : List (Label P L) → ℚ≥0
 ```
 
+Current status: `Steps` is qualitative support reachability. It intentionally
+uses `StepSupport`, not bare `Step`, so every recorded edge has positive
+one-step mass. The remaining probabilistic multi-step cleanup is to define a
+small-step path weight and prove that `labelDist σ w labels` is the sum of
+terminal supported path weights with that label list.
+
 ### Agreement theorems
 
 Three theorems, all by induction on `syntaxSteps`:
@@ -217,8 +224,8 @@ Three theorems, all by induction on `syntaxSteps`:
 
 2. **Big-step equivalence** —
    `runSmallStep σ w = outcomeDist σ w.prog w.env`.
-   Proof: induct, each constructor of `Step` matches the corresponding
-   `outcomeDist` clause definitionally up to `FDist.bind`/`FDist.pure`.
+   This is definitional because `outcomeDist` is the canonical evaluator.
+   The nontrivial operational theorem is `step_bind_runSmallStep`.
 
 3. **Checked PMF/FOSG equivalence** —
    For `β : LegalProgramBehavioralProfilePMF g`, the checked PMF small-step
@@ -250,6 +257,19 @@ reasoning, beyond what `Trace` already gives:
   commute. Already proved at the big-step level (`outcomeDist_comm_commit`,
   `outcomeDist_comm_reveal` per `TraceSemantics.lean:24`); restate at
   small-step.
+
+Current status: progress, functionality, and bounded horizon are implemented.
+Preservation and independent-commit commutation remain follow-ups. The typing
+part of preservation is mostly index-level; the useful theorem should be a
+well-formedness/local-obligation propagation statement along `StepSupport` or
+`Steps`.
+
+Raw-to-checked PMF bridge status: raw `runSmallStep` and checked
+`FOSGBridge.SmallStep.Checked.stepPMF` are each proved against their own
+denotational counterpart. A direct convenience theorem should be added later for an
+omniscient unfolding of `β : LegalProgramBehavioralProfilePMF g`, relating
+`runInitialSmallStep` to `FOSGBridge.SmallStep.Checked.outcomeValuePMF` after the
+appropriate `FDist`/`PMF` conversion.
 
 ## What this enables
 

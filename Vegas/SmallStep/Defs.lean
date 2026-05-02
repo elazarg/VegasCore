@@ -1,3 +1,4 @@
+import Vegas.BigStep
 import Vegas.Config
 
 /-!
@@ -98,8 +99,9 @@ def StepSupport (σ : OmniscientOperationalProfile P L)
   ∃ d, Step σ w d ∧ lw ∈ d.support
 
 /-- Multi-step reachability through supported raw small steps, recording the
-realized labels. This is qualitative support reachability; weights are handled
-by `labelDist`/`traceDist`. -/
+realized labels. This consumes `StepSupport`, not bare `Step`, so every edge
+has positive one-step mass. The relation is still qualitative; weights are
+handled separately by `labelDist`/`traceDist`. -/
 inductive Steps (σ : OmniscientOperationalProfile P L) :
     World P L → List (Label P L) → World P L → Prop where
   | nil (w : World P L) : Steps σ w [] w
@@ -109,39 +111,15 @@ inductive Steps (σ : OmniscientOperationalProfile P L) :
       Steps σ mid labels dst →
       Steps σ w (label :: labels) dst
 
-/-- Structural core of the raw small-step evaluator. This is intentionally
-constructor-for-constructor with `outcomeDist`; the public wrapper below
-packages the arguments as a `World`. -/
-noncomputable def runSmallStepCore (σ : OmniscientOperationalProfile P L) :
-    {Γ : VCtx P L} → VegasCore P L Γ → VEnv L Γ → FDist (Outcome P)
-  | _, .ret payoffs, env =>
-      FDist.pure (evalPayoffs payoffs env)
-  | _, .letExpr x e k, env =>
-      runSmallStepCore σ k
-        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-          (L.eval e (VEnv.erasePubEnv env)) env)
-  | _, .sample x D k, env =>
-      FDist.bind (L.evalDist D (VEnv.eraseSampleEnv env)) fun v =>
-        runSmallStepCore σ k
-          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-            v env)
-  | _, .commit x who R k, env =>
-      FDist.bind (σ.commit who x R (VEnv.eraseEnv env)) fun v =>
-        runSmallStepCore σ k
-          (VEnv.cons (Player := P) (L := L) (x := x)
-            (τ := .hidden who _) v env)
-  | _, .reveal y _who _x (b := b) hx k, env =>
-      runSmallStepCore σ k
-        (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
-          (show L.Val b from
-            VEnv.get (Player := P) (L := L) (x := _x)
-              (τ := .hidden _who b) env hx) env)
+/-- Raw small-step evaluator over packaged worlds.
 
-/-- Raw small-step evaluator over packaged worlds. -/
+The denotational `outcomeDist` remains the canonical outcome evaluator.
+Small-step semantic content is carried by `Step` and by agreement lemmas such
+as `step_bind_runSmallStep`. -/
 noncomputable def runSmallStep
     (σ : OmniscientOperationalProfile P L) (w : World P L) :
     FDist (Outcome P) :=
-  runSmallStepCore σ w.prog w.env
+  outcomeDist σ w.prog w.env
 
 /-- Raw small-step evaluator from the initial world of a checked program. -/
 noncomputable def runInitialSmallStep
