@@ -84,8 +84,8 @@ Today there are *de facto* three configurations:
 - `OmniscientOperationalProfile`: not a configuration but the "scheduler"
   side; lives separately.
 
-Proposal: promote `Vegas.World` (currently in `FOSG/Basic.lean`) to
-`Vegas/Config.lean` (or `Vegas/World.lean`) and re-export from `FOSG/Basic`.
+Status: `Vegas.World` has been promoted to `Vegas/Config.lean` and is
+re-exported from `FOSG/Basic` through compatibility aliases.
 Rephrase the *statements* of the existing big-step / trace lemmas in terms
 of `World` where it doesn't break proofs (often just a thin abbreviation
 layer is enough). This lets `Step`, `Trace`, `outcomeDist`, and `runDist`
@@ -245,7 +245,7 @@ reasoning, beyond what `Trace` already gives:
 - `determinism modulo label` — fixing the label collapses `Step` to a
   function (this is what makes a "scheduler" / chain a labeller).
 - `bounded_horizon` — multi-step terminates in `syntaxSteps w.prog` steps.
-  Already provable from `FOSG/Basic.lean:144`.
+  The raw support form is now `steps_length_eq_syntaxSteps_of_terminal`.
 - `commute_independent_commits` — commits at independent player views
   commute. Already proved at the big-step level (`outcomeDist_comm_commit`,
   `outcomeDist_comm_reveal` per `TraceSemantics.lean:24`); restate at

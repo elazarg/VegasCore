@@ -4,7 +4,7 @@ import Vegas.Config
 # Raw small-step semantics for Vegas
 
 This file defines the first, raw `FDist`-valued small-step layer over the
-existing runtime `World` shape from the FOSG bridge. It intentionally uses
+neutral runtime `World` shape from `Vegas.Config`. It intentionally uses
 `OmniscientOperationalProfile`, matching `outcomeDist`; the checked PMF/FOSG
 layer is a separate bridge.
 -/
