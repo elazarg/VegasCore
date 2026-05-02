@@ -181,5 +181,35 @@ theorem mem_support_labelDist_iff_exists_trace
           traceLabels w.prog t = labels := by
   exact mem_support_labelDistCore_iff_exists_trace σ w.prog w.env labels
 
+/-- Under an admissible profile, every positive-mass label run has a legal
+trace witness. -/
+theorem exists_legal_trace_of_mem_support_labelDistCore
+    {σ : OmniscientOperationalProfile P L}
+    {Γ : VCtx P L} {p : VegasCore P L Γ} {env : VEnv L Γ}
+    (hadm : FairPlayProfile σ p) {labels : List (Label P L)}
+    (hlabels : labels ∈ (labelDistCore σ p env).support) :
+    ∃ t : Trace Γ p,
+      t.legal p env ∧
+        t ∈ (traceDist σ p env).support ∧
+          traceLabels p t = labels := by
+  obtain ⟨t, ht, hproj⟩ :=
+    (mem_support_labelDistCore_iff_exists_trace σ p env labels).1 hlabels
+  have hweight : traceWeight σ p env t ≠ 0 := by
+    have hmass := Finsupp.mem_support_iff.mp ht
+    simpa [traceDist_apply] using hmass
+  exact ⟨t, admissible_pos_weight_legal hadm t hweight, ht, hproj⟩
+
+/-- Packaged-world admissibility corollary for positive-mass label runs. -/
+theorem exists_legal_trace_of_mem_support_labelDist
+    {σ : OmniscientOperationalProfile P L} {w : World P L}
+    (hadm : FairPlayProfile σ w.prog) {labels : List (Label P L)}
+    (hlabels : labels ∈ (labelDist σ w).support) :
+    ∃ t : Trace w.Γ w.prog,
+      t.legal w.prog w.env ∧
+        t ∈ (traceDist σ w.prog w.env).support ∧
+          traceLabels w.prog t = labels := by
+  exact exists_legal_trace_of_mem_support_labelDistCore
+    (p := w.prog) (env := w.env) hadm hlabels
+
 end SmallStep
 end Vegas
