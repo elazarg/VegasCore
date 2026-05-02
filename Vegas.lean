@@ -11,6 +11,7 @@ import Vegas.Examples
 import Vegas.BigStep
 import Vegas.TraceSemantics
 import Vegas.TraceCorollaries
+import Vegas.SmallStep
 import Vegas.ActionGraph
 import Vegas.ViewKernel
 import Vegas.PureStrategic
