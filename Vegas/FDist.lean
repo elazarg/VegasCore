@@ -21,8 +21,8 @@ Three choices distinguish it from Mathlib's `PMF`:
   (see `totalWeight_bind_of_normalized`), so intermediate distributions in a
   `bind`-tree can be built without per-step normalization proofs.
 * **Rational weights.** Equality is decidable and concrete distributions
-  are computationally meaningful — the MAID compiler relies on this when
-  emitting chance-node CPDs.
+  are computationally meaningful, which keeps examples and finite
+  transformations inspectable.
 * **Decidable carrier.** `[DecidableEq α]` is what makes `Finsupp`
   arithmetic and the `support` Finset usable.
 

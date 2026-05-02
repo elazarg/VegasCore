@@ -6,8 +6,8 @@ import Vegas.Strategic
 
 This file mirrors `Vegas.Strategic` and `Vegas.PureStrategic` but uses `PMF`
 (Mathlib's probability mass functions) instead of `FDist` (rational Finsupp
-distributions). The PMF layer is needed because the MAID Kuhn theorem produces
-real-valued behavioral strategies, which are naturally PMF-valued.
+distributions). The PMF layer is needed for theorem backends that produce
+real-valued behavioral strategies.
 
 Key definitions:
 * `ProgramBehavioralKernelPMF` — PMF-valued behavioral kernel (no normalization

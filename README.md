@@ -120,12 +120,6 @@ Vegas/
     PureStrategic.lean
     GameProperties.lean
 
-  MAID/
-    Backend.lean
-    Compile.lean
-    Fold.lean
-    Correctness.lean
-
 Explorations/
   LetCore/
   LetProb/
@@ -135,8 +129,8 @@ Explorations/
 GameTheory/              -- submodule with the general game-theory library
 ```
 
-`Explorations/` preserves older design experiments. The main supported surface
-is the `Vegas/` tree.
+`Explorations/` preserves older design experiments. The supported sequential
+game view is `Vegas/FOSG.lean`.
 
 ## Building
 

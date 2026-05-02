@@ -38,8 +38,8 @@ structure** (`VCtx`, `VegasCore`), with **erasure** as the bridge between them.
   `Env.get_eq_of_nodup`.
 * Finiteness is opt-in via `FiniteValuation` at the bottom of the file.
   The core semantics, the strategic bridge, and the equilibrium wrapper
-  do not require it; only MAID compilation, the Kuhn theorem, and
-  pure-strategy enumeration do.
+  do not require it; only finite sequential game constructions, the Kuhn
+  theorem, and pure-strategy enumeration do.
 -/
 
 namespace Vegas
@@ -900,10 +900,10 @@ inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
 
 A separate bundle, deliberately not part of `IExpr`. Only the backends that
 need to enumerate or count values consume it: pure-strategy enumeration
-(`Vegas.PureStrategic`), MAID compilation, and the Vegas Kuhn theorem.
-Languages with infinite-valued types still instantiate `IExpr` and
-exercise the full denotational, trace, and behavioral-strategic
-metatheory. -/
+(`Vegas.PureStrategic`), finite sequential game constructions, and the Vegas
+Kuhn theorem. Languages with infinite-valued types still instantiate `IExpr`
+and exercise the full denotational, trace, and behavioral-strategic metatheory.
+-/
 
 /-- Extra assumptions needed only for finite-backend compilation. -/
 structure FiniteValuation (L : IExpr) where

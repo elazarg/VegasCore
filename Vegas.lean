@@ -26,4 +26,3 @@ import Vegas.LegalNonempty
 import Vegas.ProtocolSemantics
 import Vegas.Kuhn
 import Vegas.FOSG
-import Vegas.MAID
