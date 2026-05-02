@@ -1,5 +1,6 @@
 import Vegas.FOSG.Observed.Collapse
 import Vegas.FOSG.Observed.Refinement
+import Vegas.FOSG.SmallStep
 
 namespace Vegas
 namespace FOSGBridge

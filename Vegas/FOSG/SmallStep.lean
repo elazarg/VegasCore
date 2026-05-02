@@ -1,12 +1,14 @@
 import Vegas.FOSG.Observed.Kernel
 
 /-!
-# Checked PMF bridge for small-step semantics
+# FOSG bridge for checked small-step semantics
 
 The raw small-step layer uses `FDist` and omniscient full-state kernels. The
 FOSG bridge uses checked worlds and legal, view-indexed PMF behavioral
 profiles. This file exposes the existing checked one-step PMF kernel under the
-small-step namespace and records the first bridge lemmas.
+small-step namespace and records the bridge lemmas. It lives under `FOSG`
+because the dependency direction is from the game-theoretic view to the
+neutral small-step semantics, not the reverse.
 -/
 
 namespace Vegas
