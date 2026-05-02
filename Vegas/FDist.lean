@@ -224,6 +224,25 @@ theorem mem_support_bind {d : FDist α} {f : α → FDist β} {b : β} :
       (Finsupp.mem_support_iff.mp hb)
       (Finset.sum_eq_zero_iff.mp heq a ha)
 
+/-- Support characterization of `map`: a target has positive mass exactly when
+some positive-mass source maps to it. -/
+theorem mem_support_map {d : FDist α} {g : α → β} {b : β} :
+    b ∈ (d.map g).support ↔ ∃ a ∈ d.support, g a = b := by
+  rw [Finsupp.mem_support_iff, map_apply]
+  constructor
+  · intro h
+    by_contra hall
+    push Not at hall
+    apply h
+    apply Finset.sum_eq_zero
+    intro a ha
+    have hne : g a ≠ b := fun hg => hall a ha hg
+    simp [hne]
+  · rintro ⟨a, ha, hg⟩ hzero
+    have hterm := Finset.sum_eq_zero_iff.mp hzero a ha
+    rw [if_pos hg] at hterm
+    exact Finsupp.mem_support_iff.mp ha hterm
+
 @[simp] theorem mem_support_pure {a b : α} :
     b ∈ (FDist.pure a).support ↔ b = a := by
   rw [support_pure, Finset.mem_singleton]

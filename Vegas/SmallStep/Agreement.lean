@@ -160,5 +160,26 @@ theorem labelDist_eq_traceDist_map_traceLabels
     labelDist σ w = (traceDist σ w.prog w.env).map (traceLabels w.prog) := by
   exact labelDistCore_eq_traceDist_map_traceLabels σ w.prog w.env
 
+/-- Support form of the label/trace bridge: a label list has positive mass
+exactly when it is the projection of some positive-weight existing `Trace`. -/
+theorem mem_support_labelDistCore_iff_exists_trace
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (labels : List (Label P L)) :
+    labels ∈ (labelDistCore σ p env).support ↔
+      ∃ t : Trace Γ p,
+        t ∈ (traceDist σ p env).support ∧ traceLabels p t = labels := by
+  rw [labelDistCore_eq_traceDist_map_traceLabels, FDist.mem_support_map]
+
+/-- Packaged-world support form of the label/trace bridge. -/
+theorem mem_support_labelDist_iff_exists_trace
+    (σ : OmniscientOperationalProfile P L) (w : World P L)
+    (labels : List (Label P L)) :
+    labels ∈ (labelDist σ w).support ↔
+      ∃ t : Trace w.Γ w.prog,
+        t ∈ (traceDist σ w.prog w.env).support ∧
+          traceLabels w.prog t = labels := by
+  exact mem_support_labelDistCore_iff_exists_trace σ w.prog w.env labels
+
 end SmallStep
 end Vegas
