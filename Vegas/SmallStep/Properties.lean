@@ -66,5 +66,41 @@ theorem step_syntaxSteps_lt {σ : OmniscientOperationalProfile P L}
       subst lw
       simp [syntaxSteps]
 
+/-- Supported labelled one-step targets strictly decrease the syntax-node
+measure. -/
+theorem stepSupport_syntaxSteps_lt
+    {σ : OmniscientOperationalProfile P L}
+    {w : World P L} {lw : Label P L × World P L}
+    (hstep : StepSupport σ w lw) :
+    syntaxSteps lw.2.prog < syntaxSteps w.prog := by
+  rcases hstep with ⟨d, hd, hsupp⟩
+  exact step_syntaxSteps_lt hd hsupp
+
+/-- A supported raw multi-step path cannot consume more labels plus remaining
+syntax than the source syntax contains. -/
+theorem steps_length_add_syntaxSteps_le
+    {σ : OmniscientOperationalProfile P L}
+    {w dst : World P L} {labels : List (Label P L)}
+    (hsteps : Steps σ w labels dst) :
+    labels.length + syntaxSteps dst.prog ≤ syntaxSteps w.prog := by
+  induction hsteps with
+  | nil w =>
+      simp
+  | cons hstep _ ih =>
+      have hlt := stepSupport_syntaxSteps_lt hstep
+      simp at hlt
+      simp only [List.length_cons]
+      omega
+
+/-- Bounded-horizon form: the number of supported labels in a raw multi-step
+path is bounded by the source syntax size. -/
+theorem steps_length_le_syntaxSteps
+    {σ : OmniscientOperationalProfile P L}
+    {w dst : World P L} {labels : List (Label P L)}
+    (hsteps : Steps σ w labels dst) :
+    labels.length ≤ syntaxSteps w.prog := by
+  have h := steps_length_add_syntaxSteps_le hsteps
+  omega
+
 end SmallStep
 end Vegas

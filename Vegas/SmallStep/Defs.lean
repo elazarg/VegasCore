@@ -93,6 +93,24 @@ inductive Step (σ : OmniscientOperationalProfile P L) :
                    VEnv.get (Player := P) (L := L) (x := x)
                      (τ := .hidden who b) env hx) env } : World P L)))
 
+/-- A concrete labelled target with positive one-step mass from a source
+world. -/
+def StepSupport (σ : OmniscientOperationalProfile P L)
+    (w : World P L) (lw : Label P L × World P L) : Prop :=
+  ∃ d, Step σ w d ∧ lw ∈ d.support
+
+/-- Multi-step reachability through supported raw small steps, recording the
+realized labels. This is qualitative support reachability; weights are handled
+by `labelDist`/`traceDist`. -/
+inductive Steps (σ : OmniscientOperationalProfile P L) :
+    World P L → List (Label P L) → World P L → Prop where
+  | nil (w : World P L) : Steps σ w [] w
+  | cons {w mid dst : World P L} {label : Label P L}
+      {labels : List (Label P L)} :
+      StepSupport σ w (label, mid) →
+      Steps σ mid labels dst →
+      Steps σ w (label :: labels) dst
+
 /-- Structural core of the raw small-step evaluator. This is intentionally
 constructor-for-constructor with `outcomeDist`; the public wrapper below
 packages the arguments as a `World`. -/
