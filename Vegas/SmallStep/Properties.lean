@@ -37,5 +37,34 @@ theorem step_functional {σ : OmniscientOperationalProfile P L}
     d₁ = d₂ := by
   cases h₁ <;> cases h₂ <;> rfl
 
+/-- Every supported raw step strictly decreases the remaining syntax-node
+measure. This is the bounded-horizon core for raw small-step execution. -/
+theorem step_syntaxSteps_lt {σ : OmniscientOperationalProfile P L}
+    {w : World P L} {d : FDist (Label P L × World P L)}
+    {lw : Label P L × World P L}
+    (hstep : Step σ w d) (hsupp : lw ∈ d.support) :
+    syntaxSteps lw.2.prog < syntaxSteps w.prog := by
+  cases hstep with
+  | letExpr env =>
+      rw [FDist.mem_support_pure] at hsupp
+      subst lw
+      simp [syntaxSteps]
+  | sample env =>
+      rw [FDist.mem_support_bind] at hsupp
+      rcases hsupp with ⟨v, _hv, hpure⟩
+      rw [FDist.mem_support_pure] at hpure
+      subst lw
+      simp [syntaxSteps]
+  | commit env =>
+      rw [FDist.mem_support_bind] at hsupp
+      rcases hsupp with ⟨v, _hv, hpure⟩
+      rw [FDist.mem_support_pure] at hpure
+      subst lw
+      simp [syntaxSteps]
+  | reveal env =>
+      rw [FDist.mem_support_pure] at hsupp
+      subst lw
+      simp [syntaxSteps]
+
 end SmallStep
 end Vegas

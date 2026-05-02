@@ -41,5 +41,33 @@ theorem runSmallStep_eq_outcomeDist
     runSmallStep σ w = outcomeDist σ w.prog w.env := by
   exact runSmallStepCore_eq_outcomeDist σ w.prog w.env
 
+/-- The raw evaluator is characterized by one probabilistic `Step` followed by
+recursive evaluation of the target world. This makes the `Step` relation, not
+just the structural recursion, semantically central. -/
+theorem step_bind_runSmallStep
+    {σ : OmniscientOperationalProfile P L} {w : World P L}
+    {d : FDist (Label P L × World P L)}
+    (hstep : Step σ w d) :
+    d.bind (fun lw => runSmallStep σ lw.2) = runSmallStep σ w := by
+  cases hstep with
+  | letExpr env =>
+      rw [FDist.pure_bind]
+      rfl
+  | sample env =>
+      rw [FDist.bind_assoc]
+      congr
+      funext v
+      rw [FDist.pure_bind]
+      rfl
+  | commit env =>
+      rw [FDist.bind_assoc]
+      congr
+      funext v
+      rw [FDist.pure_bind]
+      rfl
+  | reveal env =>
+      rw [FDist.pure_bind]
+      rfl
+
 end SmallStep
 end Vegas
