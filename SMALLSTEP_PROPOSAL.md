@@ -1,6 +1,8 @@
 # Configuration-style operational semantics for Vegas — proposal
 
-Status: revised after code review. Initial implementation in progress.
+Status: revised after code review. Initial implementation in progress; the
+raw layer, neutral configuration layer, and checked/FOSG bridge are now in
+code.
 
 ## Goal
 
@@ -31,16 +33,19 @@ to the strategic / equilibrium layer.
 | big-step / denotational   | `Vegas/BigStep.lean`               | `outcomeDist σ p env : FDist (Outcome P)` |
 | path / tree-style         | `Vegas/TraceSemantics.lean`        | `Trace Γ p` + `traceWeight` + `Trace.legal` |
 | reachability (∃ trace)    | `Vegas/TraceSemantics.lean`        | `CanReach`, `Reach σ` (inductive)  |
-| sequential transition sys | `Vegas/FOSG/Basic.lean`            | `World`, `terminal`, `active`, `availableActions`, checked transitions |
+| runtime configuration     | `Vegas/Config.lean`                | `World`, `World.initial`, `terminal`, `syntaxSteps` |
+| sequential game view      | `Vegas/FOSG/Basic.lean`            | `active`, `availableActions`, checked/cursor transitions |
 | operational kernels       | `Vegas/Operational.lean`           | `OmniscientOperationalProfile.commit` |
 | strategic / equilibrium   | `Vegas/Strategic.lean`, `Equilibrium.lean`, `ProtocolSemantics.lean` | `KernelGame`-based |
 
 ### What this means
 
-- `Vegas/FOSG/Basic.lean:46` already defines `World := { Γ, prog, env }` —
-  the configuration shape we want is *already there*.
-- `terminal` (`FOSG/Basic.lean:62`) and `active`
-  (`FOSG/Basic.lean:68`) are already defined per-`World`.
+- `Vegas/Config.lean` now defines `World := { Γ, prog, env }`,
+  `World.initial`, `terminal`, and `syntaxSteps`. This is the neutral
+  configuration shape shared by raw small-step and the FOSG bridge.
+- `active` and `availableActions` remain in `Vegas/FOSG/Basic.lean` because
+  they are game-view structure over configurations, not part of the neutral
+  runtime configuration.
 - `Trace` (`TraceSemantics.lean:48`) is essentially a tree of complete paths
   through these configurations — but it carries the full path as one term, not
   a step relation.
@@ -50,17 +55,17 @@ a small set of agreement theorems that nail it to the existing semantics.
 
 ## What's missing
 
-1. A step relation `Step : World P L → FDist (Label P L × World P L) → Prop` (or
+1. Done: a step relation `Step : World P L → FDist (Label P L × World P L) → Prop` (or
    the deterministic-once-the-label-is-fixed variant — see "Design choices"
    below). One rule per `VegasCore` constructor.
-2. A reflexive-transitive closure / multi-step relation, plus a "run from
+2. Done: a reflexive-transitive closure / multi-step relation, plus a "run from
    `World.initial g` to a terminal world" wrapper that returns an `FDist
    (Outcome P)`.
-3. Agreement theorems linking the new relation to `traceDist` and
+3. Done for the raw distribution surface: agreement theorems linking the new relation to `traceDist` and
    `outcomeDist`.
-4. A separate checked/PMF agreement theorem linking the checked small-step
+4. Done under `Vegas/FOSG/SmallStep.lean`: a separate checked/PMF agreement theorem linking the checked small-step
    kernel to mapped `FOSG.runDist`.
-5. A small but real cleanup pass on the layers we already have, before adding
+5. In progress: a small but real cleanup pass on the layers we already have, before adding
    another one — see "Cleanup" below.
 
 ## Cleanup we should do first
@@ -130,10 +135,24 @@ constructing a FOSG profile from an omniscient one.
 ```
 Vegas/SmallStep/
   Defs.lean         -- Step, Steps, runSmallStep
-  Agreement.lean    -- agreement with Trace, BigStep, FOSG
-  Properties.lean   -- progress, preservation-style lemmas
+  Agreement.lean    -- agreement with Trace and BigStep
+  Properties.lean   -- progress, functionality, bounded-horizon lemmas
 Vegas/SmallStep.lean -- public entrypoint: imports + re-exports
+Vegas/FOSG/SmallStep.lean -- checked PMF / mapped FOSG.runDist bridge
 ```
+
+## Architecture notes after implementation
+
+- `World`, `terminal`, and `syntaxSteps` were competing because they were
+  semantically neutral but lived in FOSG. They are now unified in
+  `Vegas/Config.lean`.
+- `active` and `availableActions` are not neutral runtime notions. They remain
+  FOSG-owned as the game-theoretic view of a protocol configuration.
+- `CheckedWorld` and `CursorCheckedWorld` are still two presentations of
+  checked execution state. They are related by `CheckedWorld.ofCursorChecked`,
+  but should not yet be claimed equivalent: `CursorCheckedWorld` is the finite
+  executable carrier, while `CheckedWorld` is suffix/proof oriented and useful
+  for semantic kernels.
 
 ### Core definitions (sketched)
 
@@ -278,16 +297,17 @@ reasoning, beyond what `Trace` already gives:
 
 ## Suggested order of work
 
-1. Add `Vegas/SmallStep/Defs.lean` with `Label`, raw `Step`, and
-   `runSmallStep`.
-2. Add `Vegas/SmallStep/Agreement.lean` with
-   `runSmallStep_eq_outcomeDist` and a first `traceDist` projection theorem.
-3. Add lightweight properties for the raw layer: progress, step functionality,
-   and syntax-step decrease.
-4. Add a checked/PMF small-step wrapper only after the raw layer is stable,
+1. Done: add `Vegas/SmallStep/Defs.lean` with `Label`, raw `Step`, `Steps`,
+   `runSmallStep`, and `runInitialSmallStep`.
+2. Done: add `Vegas/SmallStep/Agreement.lean` with
+   `runSmallStep_eq_outcomeDist`, `runInitialSmallStep_eq_outcomeDist`, and
+   trace-label projection theorems.
+3. Done: add lightweight properties for the raw layer: progress, step
+   functionality, exact syntax-step consumption, and bounded horizon.
+4. Done: add a checked/PMF small-step wrapper under `Vegas/FOSG/SmallStep.lean`,
    reusing `checkedProfileStepPMF` rather than duplicating the FOSG proof stack.
-5. Consider C1 (`World` lift) if imports become painful; otherwise keep the
-   first PR small.
+5. Done for the core split: C1 (`World` lift) is implemented in
+   `Vegas/Config.lean`; FOSG re-exports compatibility aliases.
 6. Optional follow-up: a thin `Vegas/Refinement.lean` stating
    "implementation `I` simulates Vegas iff every reachable `I`-state
    has a matching `Step` with equal label-distribution," for the

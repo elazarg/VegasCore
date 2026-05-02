@@ -143,5 +143,11 @@ noncomputable def runSmallStep
     FDist (Outcome P) :=
   runSmallStepCore σ w.prog w.env
 
+/-- Raw small-step evaluator from the initial world of a checked program. -/
+noncomputable def runInitialSmallStep
+    (σ : OmniscientOperationalProfile P L) (g : WFProgram P L) :
+    FDist (Outcome P) :=
+  runSmallStep σ (World.initial g)
+
 end SmallStep
 end Vegas

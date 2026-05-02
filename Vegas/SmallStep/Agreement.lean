@@ -91,6 +91,12 @@ theorem runSmallStep_eq_outcomeDist
     runSmallStep σ w = outcomeDist σ w.prog w.env := by
   exact runSmallStepCore_eq_outcomeDist σ w.prog w.env
 
+/-- Initial checked-program form of `runSmallStep_eq_outcomeDist`. -/
+theorem runInitialSmallStep_eq_outcomeDist
+    (σ : OmniscientOperationalProfile P L) (g : WFProgram P L) :
+    runInitialSmallStep σ g = outcomeDist σ g.prog g.env := by
+  exact runSmallStep_eq_outcomeDist σ (World.initial g)
+
 /-- The raw evaluator is characterized by one probabilistic `Step` followed by
 recursive evaluation of the target world. This makes the `Step` relation, not
 just the structural recursion, semantically central. -/
