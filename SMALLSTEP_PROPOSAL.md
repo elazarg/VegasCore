@@ -100,8 +100,8 @@ is stated once, then the rest of `Reach` follows by pushing through
 `traceWeight > 0`.
 
 Current status: the headline `CanReach` theorem already exists as
-`canReach_iff_exists_legal_trace` in `TraceCorollaries.lean`; this cleanup is
-mostly about re-export/name hygiene, not new proof content.
+`canReach_iff_exists_legal_trace` in `TraceCorollaries.lean`; the packaged
+`World.canReach_iff_exists_legal_trace` form is now also available.
 
 ### C3. Name the trace ↔ outcomeDist agreement explicitly
 
@@ -112,8 +112,8 @@ style equalities). Give the headline equality a single canonical name
 will route through this one lemma.
 
 Current status: `outcomeDist_eq_traceWeightSum` already exists in
-`TraceCorollaries.lean`. A future rename to `outcomeDist_eq_traceSum` can be a
-compatibility alias rather than a blocking cleanup.
+`TraceCorollaries.lean`; `outcomeDist_eq_traceSum` and packaged
+`World.outcomeDist_eq_traceSum` compatibility aliases are now available.
 
 ### C4. Decide the canonical form of "operational profile"
 

@@ -1,4 +1,5 @@
 import Vegas.TraceSemantics
+import Vegas.Config
 
 /-!
 # Trace-facing corollaries for Vegas
@@ -58,6 +59,37 @@ theorem outcomeDist_eq_traceWeightSum {Γ : VCtx P L} (σ : OmniscientOperationa
   funext oc
   exact adequacy_pointwise σ p env oc
 
+/-- Compatibility alias for the headline trace/outcome agreement theorem. -/
+theorem outcomeDist_eq_traceSum {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
+    (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) :
+    outcomeDist σ p env = traceWeightSum σ p env :=
+  outcomeDist_eq_traceWeightSum σ p env
+
+namespace World
+
+/-- World-packaged form of `canReach_iff_exists_legal_trace`. -/
+theorem canReach_iff_exists_legal_trace
+    (w : World P L) {oc : Outcome P} :
+    CanReach w.prog w.env oc ↔
+      ∃ t : Trace w.Γ w.prog,
+        t.legal w.prog w.env ∧ traceOutcome w.prog w.env t = oc :=
+  Vegas.canReach_iff_exists_legal_trace
+
+/-- World-packaged form of `outcomeDist_eq_traceWeightSum`. -/
+theorem outcomeDist_eq_traceWeightSum
+    (σ : OmniscientOperationalProfile P L) (w : World P L) :
+    outcomeDist σ w.prog w.env = traceWeightSum σ w.prog w.env :=
+  Vegas.outcomeDist_eq_traceWeightSum σ w.prog w.env
+
+/-- World-packaged compatibility alias for the headline trace/outcome
+agreement theorem. -/
+theorem outcomeDist_eq_traceSum
+    (σ : OmniscientOperationalProfile P L) (w : World P L) :
+    outcomeDist σ w.prog w.env = traceWeightSum σ w.prog w.env :=
+  Vegas.outcomeDist_eq_traceSum σ w.prog w.env
+
+end World
+
 /-- An outcome is in the denotational support iff it is realized by some
 positive-weight trace. -/
 theorem mem_support_outcomeDist_iff_exists_pos_weight_trace
@@ -76,4 +108,3 @@ theorem mem_support_outcomeDist_iff_exists_pos_weight_trace
       (reach_iff_outcomeDist_support σ p env (traceOutcome p env t)).1 hreach
 
 end Vegas
-
