@@ -141,6 +141,43 @@ theorem labelDist_eq_traceDist_map_traceLabels
     labelDist σ w = (traceDist σ w.prog w.env).map (traceLabels w.prog) := by
   exact labelDistCore_eq_traceDist_map_traceLabels σ w.prog w.env
 
+/-- Pointwise weight form of `labelDistCore_eq_traceDist_map_traceLabels`.
+
+The mass assigned to a label list is the sum of the weights of all complete
+traces that project to that label list. The qualitative `Steps` relation below
+records positive-support reachability; this theorem is the current
+weight-carrying statement. -/
+theorem labelDistCore_apply_eq_traceLabel_sum
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (labels : List (Label P L)) :
+    (labelDistCore σ p env) labels =
+      (traceDist σ p env).support.sum
+        (fun t =>
+          if traceLabels p t = labels then
+            traceWeight σ p env t
+          else
+            0) := by
+  rw [labelDistCore_eq_traceDist_map_traceLabels, FDist.map_apply]
+  apply Finset.sum_congr rfl
+  intro t _ht
+  by_cases h : traceLabels p t = labels
+  · simp [h, traceDist_apply]
+  · simp [h]
+
+/-- Packaged-world form of `labelDistCore_apply_eq_traceLabel_sum`. -/
+theorem labelDist_apply_eq_traceLabel_sum
+    (σ : OmniscientOperationalProfile P L) (w : World P L)
+    (labels : List (Label P L)) :
+    (labelDist σ w) labels =
+      (traceDist σ w.prog w.env).support.sum
+        (fun t =>
+          if traceLabels w.prog t = labels then
+            traceWeight σ w.prog w.env t
+          else
+            0) := by
+  exact labelDistCore_apply_eq_traceLabel_sum σ w.prog w.env labels
+
 /-- Support form of the label/trace bridge: a label list has positive mass
 exactly when it is the projection of some positive-weight existing `Trace`. -/
 theorem mem_support_labelDistCore_iff_exists_trace
@@ -161,6 +198,139 @@ theorem mem_support_labelDist_iff_exists_trace
         t ∈ (traceDist σ w.prog w.env).support ∧
           traceLabels w.prog t = labels := by
   exact mem_support_labelDistCore_iff_exists_trace σ w.prog w.env labels
+
+/-- Every positive-weight trace induces a terminal qualitative small-step path
+with the trace's projected labels.
+
+This theorem connects the pathwise trace presentation to `Steps`. It does not
+assign a numeric weight to the `Steps` proof; weights are carried by
+`traceWeight` and the pointwise `labelDist` sum theorem above. -/
+theorem exists_terminal_steps_of_pos_weight_trace
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (t : Trace Γ p) (hwt : traceWeight σ p env t ≠ 0) :
+    ∃ dst : World P L,
+      terminal dst ∧
+        Steps σ ({ Γ := Γ, prog := p, env := env } : World P L)
+          (traceLabels p t) dst := by
+  induction p with
+  | ret payoffs =>
+      cases t
+      exact ⟨{ Γ := _, prog := .ret payoffs, env := env }, by simp [terminal],
+        Steps.nil _⟩
+  | letExpr x e k ih =>
+      cases t with
+      | letExpr tTail =>
+          obtain ⟨dst, hterm, hsteps⟩ :=
+            ih
+              (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                (L.eval e (VEnv.erasePubEnv env)) env)
+              tTail (by simpa [traceWeight] using hwt)
+          let mid : World P L :=
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                (L.eval e (VEnv.erasePubEnv env)) env }
+          have hsupport :
+              StepSupport σ
+                ({ Γ := _, prog := .letExpr x e k, env := env } : World P L)
+                (Label.tau, mid) := by
+            refine ⟨_, Step.letExpr (σ := σ) env, ?_⟩
+            rw [FDist.mem_support_pure]
+          exact ⟨dst, hterm, Steps.cons hsupport hsteps⟩
+  | sample x D k ih =>
+      cases t with
+      | sample v tTail =>
+          have hmul : (L.evalDist D (VEnv.eraseSampleEnv env)) v *
+                traceWeight σ k
+                  (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                    v env) tTail ≠ 0 := by
+            simpa [traceWeight] using hwt
+          have hv_ne :
+              (L.evalDist D (VEnv.eraseSampleEnv env)) v ≠ 0 :=
+            (mul_ne_zero_iff.mp hmul).1
+          have htail_ne :
+              traceWeight σ k
+                (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                  v env) tTail ≠ 0 :=
+            (mul_ne_zero_iff.mp hmul).2
+          obtain ⟨dst, hterm, hsteps⟩ :=
+            ih
+              (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                v env)
+              tTail htail_ne
+          let mid : World P L :=
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+                v env }
+          have hsupport :
+              StepSupport σ
+                ({ Γ := _, prog := .sample x D k, env := env } : World P L)
+                (Label.sample _ v, mid) := by
+            refine ⟨_, Step.sample (σ := σ) env, ?_⟩
+            rw [FDist.mem_support_bind]
+            refine ⟨v, Finsupp.mem_support_iff.mpr hv_ne, ?_⟩
+            rw [FDist.mem_support_pure]
+          exact ⟨dst, hterm, Steps.cons hsupport hsteps⟩
+  | commit x who R k ih =>
+      cases t with
+      | commit v tTail =>
+          have hmul : (σ.commit who x R (VEnv.eraseEnv env)) v *
+                traceWeight σ k
+                  (VEnv.cons (Player := P) (L := L) (x := x)
+                    (τ := .hidden who _) v env) tTail ≠ 0 := by
+            simpa [traceWeight] using hwt
+          have hv_ne : (σ.commit who x R (VEnv.eraseEnv env)) v ≠ 0 :=
+            (mul_ne_zero_iff.mp hmul).1
+          have htail_ne :
+              traceWeight σ k
+                (VEnv.cons (Player := P) (L := L) (x := x)
+                  (τ := .hidden who _) v env) tTail ≠ 0 :=
+            (mul_ne_zero_iff.mp hmul).2
+          obtain ⟨dst, hterm, hsteps⟩ :=
+            ih
+              (VEnv.cons (Player := P) (L := L) (x := x)
+                (τ := .hidden who _) v env)
+              tTail htail_ne
+          let mid : World P L :=
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := x)
+                (τ := .hidden who _) v env }
+          have hsupport :
+              StepSupport σ
+                ({ Γ := _, prog := .commit x who R k, env := env } : World P L)
+                (Label.commit who _ v, mid) := by
+            refine ⟨_, Step.commit (σ := σ) env, ?_⟩
+            rw [FDist.mem_support_bind]
+            refine ⟨v, Finsupp.mem_support_iff.mpr hv_ne, ?_⟩
+            rw [FDist.mem_support_pure]
+          exact ⟨dst, hterm, Steps.cons hsupport hsteps⟩
+  | @reveal Γ y who x b hx k ih =>
+      cases t with
+      | reveal tTail =>
+          obtain ⟨dst, hterm, hsteps⟩ :=
+            ih
+              (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+                (show L.Val b from
+                  VEnv.get (Player := P) (L := L) (x := x)
+                    (τ := .hidden who b) env hx) env)
+              tTail (by simpa [traceWeight] using hwt)
+          let mid : World P L :=
+            { Γ := _
+              prog := k
+              env := VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+                (show L.Val b from
+                  VEnv.get (Player := P) (L := L) (x := x)
+                    (τ := .hidden who b) env hx) env }
+          have hsupport :
+              StepSupport σ
+                ({ Γ := _, prog := .reveal y who x hx k, env := env } : World P L)
+                (Label.tau, mid) := by
+            refine ⟨_, Step.reveal (σ := σ) env, ?_⟩
+            rw [FDist.mem_support_pure]
+          exact ⟨dst, hterm, Steps.cons hsupport hsteps⟩
 
 /-- Under an admissible profile, every positive-mass label run has a legal
 trace witness. -/

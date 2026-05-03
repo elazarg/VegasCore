@@ -142,6 +142,34 @@ def ProgramBehavioralProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramBehavioralProfile p) : Prop :=
   ∀ who, (σ who).IsLegal p
 
+namespace OmniscientOperationalProfile
+
+/-- An omniscient operational profile agrees with a fixed-program behavioral
+profile at every commit site of `p`.
+
+The raw evaluator consumes full erased environments. A behavioral profile
+consumes player views. This predicate says that, along `p`, the raw full-state
+kernel is exactly the behavioral kernel after projecting the full environment
+to the active player's view. -/
+def ExtendsBehavioralProfile (σ : OmniscientOperationalProfile P L) :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      ProgramBehavioralProfile p → Prop
+  | _, .ret _, _ => True
+  | _, .letExpr _ _ k, β =>
+      ExtendsBehavioralProfile σ k β
+  | _, .sample _ _ k, β =>
+      ExtendsBehavioralProfile σ k β
+  | Γ, .commit x who R k, β =>
+      (∀ ρ : Env L.Val (eraseVCtx Γ),
+        σ.commit who x R ρ =
+          ProgramBehavioralStrategy.headKernel (β who)
+            (projectViewEnv who ρ)) ∧
+      ExtendsBehavioralProfile σ k (ProgramBehavioralProfile.tail β)
+  | _, .reveal _ _ _ _ k, β =>
+      ExtendsBehavioralProfile σ k β
+
+end OmniscientOperationalProfile
+
 namespace ProgramBehavioralProfile
 
 /-- Dropping the head commit site preserves behavioral guard-legality. -/
@@ -217,6 +245,44 @@ noncomputable def outcomeDistBehavioral :
       let v : L.Val b := VEnv.get (Player := P) (L := L) env hx
       outcomeDistBehavioral k σ
         (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
+
+/-- If an omniscient operational profile extends a fixed behavioral profile,
+the raw denotational evaluator and the fixed-program behavioral evaluator
+produce the same outcome distribution. -/
+theorem outcomeDist_eq_outcomeDistBehavioral_of_extends
+    {Γ : VCtx P L} (p : VegasCore P L Γ)
+    (σ : OmniscientOperationalProfile P L)
+    (β : ProgramBehavioralProfile p)
+    (env : VEnv (Player := P) L Γ)
+    (hβ : σ.ExtendsBehavioralProfile p β) :
+    outcomeDist σ p env = outcomeDistBehavioral p β env := by
+  induction p with
+  | ret payoffs =>
+      rfl
+  | letExpr x e k ih =>
+      exact ih β
+        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+          (L.eval e (VEnv.erasePubEnv env)) env) hβ
+  | sample x D k ih =>
+      simp only [outcomeDist, outcomeDistBehavioral]
+      congr
+      funext v
+      exact ih β
+        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _) v env) hβ
+  | commit x who R k ih =>
+      simp only [outcomeDist, outcomeDistBehavioral]
+      rw [hβ.1 (VEnv.eraseEnv env)]
+      congr
+      funext v
+      exact ih (ProgramBehavioralProfile.tail β)
+        (VEnv.cons (Player := P) (L := L) (x := x)
+          (τ := .hidden who _) v env) hβ.2
+  | @reveal Γ y who x b hx k ih =>
+      exact ih β
+        (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+          (show L.Val b from
+            VEnv.get (Player := P) (L := L) (x := x)
+              (τ := .hidden who b) env hx) env) hβ
 
 /-- If a program is propositionally equal to `ret`, its behavioral outcome
 distribution is the corresponding point mass. The strategy argument is
