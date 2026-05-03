@@ -104,9 +104,15 @@ Vegas/
   Core.lean              -- core language
   ExprSimple.lean        -- concrete expression language
   VegasSimple.lean       -- simple instantiation
+  Config.lean            -- neutral runtime worlds and syntax-step measure
   WF.lean                -- well-formedness, legality, normalization
   WFProgram.lean         -- checked-program bundle
+  BigStep.lean           -- canonical outcome semantics
+  TraceSemantics.lean    -- trace semantics and reachability
+  TraceCorollaries.lean  -- trace/outcome corollaries
+  SmallStep.lean         -- raw labelled small-step entrypoint
   Strategic.lean         -- behavioral strategic view
+  StrategicPMF.lean      -- PMF behavioral strategic view
   PureStrategic.lean     -- pure strategic view
   Equilibrium.lean       -- Nash, dominance, correlated equilibrium, welfare
   GameProperties.lean    -- approximate Nash, potential games, zero-sum, etc.
@@ -114,6 +120,19 @@ Vegas/
   Kuhn.lean              -- Vegas-facing mixed-to-behavioral realization
   FOSG.lean              -- sequential denotation entrypoint
   Examples.lean          -- small checked examples
+
+  SmallStep/
+    Defs.lean
+    Agreement.lean
+    Properties.lean
+
+  FOSG/
+    Runtime.lean         -- active players and broad action availability
+    Action.lean          -- program-local finite action alphabet
+    Basic.lean           -- suffix/cursor checked-state machinery
+    Observation.lean     -- observed FOSG target
+    SmallStep.lean       -- checked PMF small-step bridge
+    Observed/
 
   Corollaries/
     Equilibrium.lean
@@ -143,7 +162,8 @@ lake build Vegas
 
 ## Status
 
-VegasCore currently provides a checked-program boundary, legal strategic
-strategy spaces, strategic-form game APIs, protocol-level correspondence
-theorems, and a finite sequential mixed-to-behavioral realization theorem that
-preserves outcome distributions.
+VegasCore provides a checked-program boundary, legal strategic strategy
+spaces, canonical outcome semantics, trace and small-step semantics,
+strategic-form game APIs, protocol-level correspondence theorems, and a finite
+sequential mixed-to-behavioral realization theorem that preserves outcome
+distributions.

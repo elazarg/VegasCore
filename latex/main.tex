@@ -4,7 +4,7 @@
 
 \usepackage[margin=1in]{geometry}
 
-\title{VegasCore: A Technical Report on the Current Mechanization}
+\title{VegasCore: Semantics and Game-Theoretic Bridges}
 \author{}
 \date{}
 
@@ -12,62 +12,47 @@
 \maketitle
 
 \begin{abstract}
-VegasCore is a Lean~4 development for expressing finite strategic games as
-programs.  A Vegas program combines ordinary deterministic computation,
-finite-support probabilistic sampling, strategic commitment, and explicit
-reveal of private values.  The central design idea is that information
-structure is represented by the program context: each binding is either
-public, or hidden and owned by one player.  Player strategies are then typed
-over that player's view of the context, rather than over the full program
-state, in the user-facing legal pure and behavioral strategy spaces.
+VegasCore is a Lean~4 mechanization of finite games written as programs.
+A Vegas program combines deterministic computation, finite-support sampling,
+strategic commitments, and explicit reveals of private values. The core
+invariant is that information is represented in the program context: a binding
+is public, or hidden and owned by one player. Strategy spaces are indexed by
+the player's view of that context, so legal strategies talk only about
+information that the player can observe.
 
-The current repository provides a checked-program boundary, legal strategy
-spaces, denotational and trace semantics, strategic-form game wrappers,
-protocol-level solution concepts, a canonical sequential denotation through
-factored-observation stochastic games, a finite Kuhn-style
-mixed-to-behavioral realization theorem with a native guard-legal Vegas
-behavioral witness, FOSG outcome preservation by outcome-value closure, and a
-MAID backend used for an additional graphical-game compilation route.  This
-report is intended as a map of what is implemented and why the main design
-choices were made.  It deliberately avoids cataloguing every internal lemma:
-the useful level of detail is the shape of the objects, the invariants they
-carry, and the theorems a Vegas user can rely on.
+The development exposes several equivalent views of a checked Vegas program.
+The canonical outcome evaluator is the denotational distribution
+\(\outcomeDist\). Trace semantics decomposes that distribution into complete
+execution paths. Raw small-step semantics gives a labelled operational
+presentation and is proved to agree with the same outcome evaluator. Strategic
+and protocol-level APIs package the outcome semantics as game-theoretic
+solution concepts. The FOSG bridge gives the canonical sequential
+game-theoretic denotation and supplies the finite mixed-to-behavioral
+realization theorem used by the public Kuhn-style results.
 \end{abstract}
 
 \tableofcontents
 
 %% =====================================================================
-\section{Orientation}\label{sec:orientation}
+\section{Overview}\label{sec:overview}
 %% =====================================================================
 
-VegasCore sits between two worlds.  On one side is a programming-language
-view of games: a game is a program with variables, contexts, sampling,
-branching-by-strategic-choice, and final payoff computation.  On the other
-side is game theory: strategies, outcome kernels, expected utility,
-equilibrium concepts, and sequential-game theorems such as Kuhn's theorem.
-The repository's job is to make those two views agree in Lean.
+VegasCore connects a programming-language presentation of games to standard
+game-theoretic objects. The programming side provides syntax, typed
+environments, visibility annotations, and executable outcome distributions.
+The game-theoretic side provides strategy profiles, kernel games, equilibrium
+concepts, and finite sequential-game theorems.
 
-\paragraph{What a Vegas user gets.}
-The main user-facing object is a checked program:
+The central user-facing object is a checked program:
 \[
   g : \WFP.
 \]
-From such a program the repository exposes:
-\begin{itemize}[nosep]
-\item guard-legal behavioral and pure strategy spaces;
-\item strategic-form kernel games for behavioral and pure strategies;
-\item Vegas-facing definitions of Nash equilibrium, best response, dominance,
-      correlated equilibrium, welfare, approximate Nash, potential games,
-      zero-sum games, and related properties;
-\item protocol-level versions of the same solution concepts, stated directly
-      on the Vegas outcome semantics, with correspondence theorems to the
-      strategic-form wrappers;
-\item a finite mixed-to-behavioral realization theorem preserving the
-      distribution over final payoff outcomes, with a native Vegas
-      behavioral witness;
-\item a MAID backend that compiles the program to a graphical representation
-      and proves outcome preservation for that backend.
-\end{itemize}
+A checked program packages a Vegas program, an initial environment, and the
+facts required to treat the program as a finite game. From \(g\), the library
+derives legal strategy spaces, strategic-form games, protocol-native
+definitions, trace and small-step semantics, and a sequential FOSG denotation.
+These are not competing meanings of the program. They are different interfaces
+to the same outcome semantics, with bridge theorems recording the agreement.
 
 \begin{figure}[ht]
 \centering
@@ -75,1098 +60,508 @@ From such a program the repository exposes:
 \begin{center}
 \small
 \begin{tabular}{@{}rcl@{}}
-Vegas program & \(\longrightarrow\) & \(\WFP\) \\[4pt]
-\(\WFP\) & \(\xrightarrow{\;\toKG,\;\toStrategicKG\;}\) &
-  strategic form: Nash, dominance, welfare \\[4pt]
-\(\WFP\) & \(\xrightarrow{\;\mathrm{toFOSG}\;}\) &
-  sequential form: bounded horizon, Kuhn \\[4pt]
-\(\WFP\) & \(\xrightarrow{\;\mathrm{MAID}\;}\) &
-  graphical backend: outcome preservation
+Vegas syntax and environment
+  & \(\longrightarrow\) & \(\WFP\) \\[4pt]
+\(\WFP\)
+  & \(\xrightarrow{\;\outcomeDist\;}\) &
+  distribution over payoff outcomes \\[4pt]
+\(\WFP\)
+  & \(\xrightarrow{\;\mathrm{traceDist}\;}\) &
+  complete executions, weights, reachability \\[4pt]
+\(\WFP\)
+  & \(\xrightarrow{\;\mathrm{Step},\;\mathrm{Steps}\;}\) &
+  labelled operational execution \\[4pt]
+\(\WFP\)
+  & \(\xrightarrow{\;\toKG,\;\toStrategicKG\;}\) &
+  strategic-form kernel games \\[4pt]
+\(\WFP\)
+  & \(\xrightarrow{\;\mathrm{toFOSG}\;}\) &
+  sequential FOSG denotation
 \end{tabular}
 \end{center}
 }}
-\caption{The main denotational routes.  \WFP{} is the boundary where raw
-syntax becomes a checked game.  Kernel games provide strategic-form concepts;
-FOSG provides the canonical sequential denotation; MAID remains a graphical
-backend.}
-\label{fig:pipeline}
+\caption{The semantic stack. \(\outcomeDist\) is the canonical outcome
+semantics; the other layers expose structure or game-theoretic interfaces and
+are related back to it by agreement theorems.}
+\label{fig:stack}
 \end{figure}
 
-\paragraph{What is intentionally internal.}
-The development contains a substantial amount of proof infrastructure:
-cursor-indexed program states, suffix witnesses, dependent transports between
-program fragments, executable MAID compilation states, FDist/PMF bridges, and
-finite-history constructions for the GameTheory library.  Those are not
-separate user concepts.  They exist to justify the public surfaces listed
-above.  In this report they appear only where they explain a design decision
-or a theorem boundary.
-
-\paragraph{Current scale.}
-At the time of writing, the Vegas tree contains roughly 25,800 lines of Lean
-across 44 files.  The GameTheory submodule contains roughly 49,300 lines of
-Lean across 185 files.  The split matters: VegasCore defines the programming
-language and its denotations; GameTheory supplies generic game-theoretic
-objects and theorems that Vegas instantiates.
-
+The direction of dependency is intentional. The neutral runtime configuration
+type lives in \leanref{Vegas.Config}. Raw small-step semantics depends on that
+neutral runtime and on the denotational evaluator. The FOSG bridge depends on
+the runtime and checked small-step machinery to build a sequential
+game-theoretic view. The runtime layer itself does not depend on FOSG.
 
 %% =====================================================================
-\section{The Programming Model}\label{sec:model}
+\section{The Program Model}\label{sec:model}
 %% =====================================================================
 
-\subsection{Contexts, Visibility, and Views}
+\subsection{Contexts and Visibility}
 
-The language is parameterized by a player type $\Players$ and an expression
-language interface $L$.  A Vegas context is a list of variable bindings:
+The core syntax is indexed by a visibility context:
 \[
-  \Gamma ::= [] \mid (x,\beta)::\Gamma.
+  \VCtx : \mathrm{List}\;(\mathrm{VarId} \times \mathrm{visibility}).
 \]
-The binding type $\beta$ records both the value type and its visibility:
-\[
-  \beta ::= \pub\;\tau \mid \hid(i,\tau),
-\]
-where $\tau$ is a type of the expression language and $i$ is a player.
+A binding is either public, written \(\pub\), or hidden and owned by a player,
+written \(\hid(i)\). This annotation is the main information-flow device in
+VegasCore. A player's view of the context keeps public variables and that
+player's hidden variables; other hidden variables are not available.
 
-There are three projections that occur throughout the development:
-\begin{itemize}[nosep]
-\item $\Gamma\!\!\downarrow_i$ is player $i$'s view: public bindings plus
-      hidden bindings owned by $i$;
-\item $\Gamma^{\pub}$ is the public subcontext;
-\item $\|\Gamma\|$ erases visibility and keeps only ordinary expression
-      types.
-\end{itemize}
+The same idea appears at the environment level. A full environment contains
+all realized values. A player view environment is a projection of the full
+environment to the variables visible to that player. Commit strategies consume
+view environments, not full environments, which is what prevents a strategy
+from depending on hidden information owned by someone else.
 
-The point of these projections is not just notation.  They determine which
-environment is available to which part of the semantics.  Public computation
-uses the public erasure; guard evaluation uses the full erased environment;
-player strategies use the player's view.  This separation is the core
-information-flow discipline of Vegas.
-
-\subsection{Program Constructs}
+\subsection{Core Constructs}
 
 The core language has five constructs:
-\[
-\begin{array}{rcl}
-p &::=& \Ret\;\mathit{payoffs}\\
-  &\mid& \Let\;x = e\;\mathbf{in}\;p\\
-  &\mid& \Sample\;x \sim D\;\mathbf{in}\;p\\
-  &\mid& \Commit\;x\;\mathbf{by}\;i\;\mathbf{where}\;R\;\mathbf{in}\;p\\
-  &\mid& \Reveal\;y\;\mathbf{from}\;x\;\mathbf{in}\;p.
-\end{array}
-\]
-
-\paragraph{Return.}
-$\Ret$ terminates the game with one integer-valued payoff expression per
-player.  Payoff expressions are typed over the public context only.  A payoff
-cannot directly inspect a still-hidden secret.
-
-\paragraph{Let.}
-$\Let$ binds a deterministic public expression.  It is administratively useful
-even though it has no strategic content.  One could imagine desugaring it to
-a sample from a point-mass distribution, but keeping it separate avoids
-requiring the expression language to expose point-mass distribution
-expressions or substitution operations.  It also preserves sharing: a named
-public computation can be referenced many times downstream without duplicating
-the expression into every use site.
-
-\paragraph{Sample.}
-$\Sample$ is public chance.  It draws from a finite-support weighted
-distribution expression evaluated in the current public environment and binds
-the result as a public variable.
-
-\paragraph{Commit.}
-$\Commit$ is strategic choice.  Player $i$ chooses a value of type $\tau$
-subject to guard $R$, and the chosen value is bound as hidden state owned by
-$i$.  The guard is typed over the full erased context extended by the proposed
-value.  A separate view-scoping judgment then requires the guard's
-dependencies to lie in the proposed value plus player $i$'s view.
-
-That design is deliberate.  Typing guards directly over
-$\Gamma\!\!\downarrow_i$ would make the core syntax depend more deeply on the
-committing player and would force more dependent transports through the
-semantics.  The current design keeps raw syntax simple and puts the
-information-flow obligation in a decidable well-formedness predicate.
-
-\paragraph{Reveal.}
-$\Reveal$ makes a hidden value public by binding a fresh public copy.  Reveal
-is an explicit program construct because the timing of information disclosure
-is strategic.  Committing both players' moves before either reveal models a
-simultaneous move; revealing one player's move before another player commits
-models sequential information.
-
-\subsection{Examples}
-
-\paragraph{Matching pennies.}
-The simultaneous version commits both choices first and reveals them only
-afterward:
-\[
-\begin{array}{l}
-\Commit\;a\;\mathbf{by}\;\pl{0}\;\mathbf{where}\;\mathit{true}\\
-\Commit\;b\;\mathbf{by}\;\pl{1}\;\mathbf{where}\;\mathit{true}\\
-\Reveal\;a'\;\mathbf{from}\;a\\
-\Reveal\;b'\;\mathbf{from}\;b\\
-\Ret\;[\pl{0}\mapsto \mathbf{if}\;a'=b'\;\mathbf{then}\;1\;\mathbf{else}\;-1,\;
-      \pl{1}\mapsto \mathbf{if}\;a'=b'\;\mathbf{then}\;-1\;\mathbf{else}\;1].
-\end{array}
-\]
-At player~1's commit site, player~0's hidden value is not in player~1's
-view.  Therefore player~1's strategy cannot depend on it.  The simultaneity is
-not a convention; it is enforced by the type of strategies.
-
-\paragraph{Sequential reveal.}
-If the program reveals $a$ before player~1 commits, then $a'$ is public at
-player~1's commit site.  Player~1's strategy type now permits dependence on
-$a'$.  The difference between simultaneous and sequential play is represented
-by program order and visibility, not by changing the game-theory layer.
-
-\paragraph{Guarded choice.}
-A guard can make the set of legal actions depend on visible state.  For
-example, after revealing $a'$, player~1 can have a commit guard depending on
-$a'$.  If for some visible state no action satisfies the guard, the program is
-not legal as a game.  This is why legality is a separate checked obligation:
-view scoping says the guard only reads allowed information; legality says the
-guard does not deadlock the protocol.
-
-
-%% =====================================================================
-\section{Checked Programs}\label{sec:wfprogram}
-%% =====================================================================
-
-The raw core syntax is intentionally permissive.  It is an inductive family
-indexed by context, so ordinary expression scoping is intrinsic, but several
-semantic obligations are extrinsic.  A raw program can use duplicate variable
-names, leave secrets unrevealed, use a guard that depends on another player's
-hidden state, or contain a sample distribution whose mass is not one.  Those
-terms are useful for metatheory by structural recursion, but they should not
-be exported as game-theoretic objects.
-
-\subsection{The Bundle Boundary}
-
-The public game API consumes:
-\[
-  g : \WFP.
-\]
-The bundle contains:
-\[
-  (\Gamma,\;p,\;\rho,\;\mathsf{wf},\;\mathsf{normalized},\;\mathsf{legal}).
-\]
-Here $\Gamma$ is the initial context, $p$ is the program, $\rho$ is the
-initial environment, and the witnesses assert:
 \begin{itemize}[nosep]
-\item $\WF(p)$: fresh bindings, reveal-completeness, and view scoping;
-\item $\NormDists(p)$: every sample distribution has total mass one;
-\item $\Legal(p)$: every commit site admits at least one guard-satisfying
-      action in every relevant environment.
+\item \(\Ret\): terminate with payoff expressions;
+\item \(\Let\): compute a public deterministic binding;
+\item \(\Sample\): sample a public value from a finite distribution;
+\item \(\Commit\): let a player choose a hidden value satisfying a guard;
+\item \(\Reveal\): publish a previously hidden value.
 \end{itemize}
 
-This bundle is not just packaging.  It is the boundary between raw syntax and
-coherent games.  Earlier APIs allowed a raw program plus a normalization proof
-to be turned into a kernel game.  That was too weak: a view-violating or
-duplicate-name program could be mathematically assigned an outcome kernel even
-though it did not describe a coherent protocol.  Requiring \WFP{} at all
-user-facing game-theoretic entry points closes that gap.
+\(\Let\) and \(\Reveal\) are deterministic administrative steps. \(\Sample\)
+is nature's probabilistic step. \(\Commit\) is the strategic step. The final
+payoff expressions are evaluated in the public environment at \(\Ret\).
 
-\subsection{The Three Structural Obligations}
+\subsection{Checked Programs}
 
-\paragraph{Fresh bindings.}
-Freshness is an SSA discipline.  Every \(\Let\), \(\Sample\), \(\Commit\),
-and \(\Reveal\) introduces a variable name that is fresh for the current
-context.  This is not only surface-language hygiene.  Several backends rely
-on the fact that a variable identifier names one event in the program.  In
-the action graph it becomes a node identifier; in MAID compilation it becomes
-part of the dependency map; in FOSG proofs it helps relate the current
-environment to the visible observation.
-
-\paragraph{Reveal-completeness.}
-Every committed hidden value must eventually be revealed exactly once before
-the program returns.  This is stronger than merely requiring payoffs to be
-publicly scoped.  It gives a simple closed-world reading to a terminated
-Vegas execution: all strategically chosen values have become part of the
-public transcript by the time final payoffs are evaluated.  It also avoids a
-class of awkward backend states in which a secret exists operationally but has
-no public interpretation at termination.
-
-\paragraph{View scoping.}
-View scoping is the information-flow condition for commit guards.  A guard is
-syntactically typed over the full erased environment, but the dependency
-tracker must prove that it actually depends only on the proposed action and
-the committing player's view.  This division is important.  The evaluator can
-remain uniform and pass the full erased environment to guards, while the
-well-formedness proof certifies that hidden information owned by other players
-does not affect the result.
-
-\subsection{Normalization and Legality}
-
-The other two \WFP{} fields are not structural in the same sense, but they are
-needed for game-theoretic interpretation.
-
-\paragraph{Normalized distributions.}
-Every \(\Sample\) site must evaluate to total mass one in every public
-environment.  This theorem is combined with normalized strategy kernels to
-show that the final outcome distribution has total mass one.  Only then can
-the FDist-valued semantics be promoted to a PMF-valued outcome kernel.
-
-\paragraph{Program legality.}
-Every commit site must have at least one guard-satisfying action in every
-erased environment.  This is a no-deadlock condition.  It does not choose an
-action and it does not require all actions to be legal; it only says the
-protocol never presents a player with an empty action set.
-
-\subsection{Why Not Bundle Everything Internally?}
-
-Internal semantic functions still operate on raw programs plus the specific
-facts they need.  This is the right shape for proofs by induction.  When a
-semantic proof descends into a continuation, it naturally has a subprogram in
-an extended context.  Reconstructing a fresh \WFP{} bundle at every recursive
-call would add dependent bookkeeping without changing the theorem being
-proved.  The current architecture is therefore:
+The public boundary is \leanref{WFProgram}. A checked program contains:
 \begin{itemize}[nosep]
-\item raw program semantics for metatheory;
-\item checked program bundles for exported game-theoretic objects.
+\item the root context, program, and initial environment;
+\item freshness and scoped visibility facts;
+\item distribution normalization for all samples;
+\item commit legality, meaning every guard admits at least one legal action.
 \end{itemize}
 
-\subsection{Program Legality versus Strategy Legality}
+This boundary is deliberately strong. Once a program has crossed it, downstream
+game APIs can quantify over legal strategy spaces without restating basic
+program well-formedness at every theorem. The proof obligations also prevent
+deadlock in the sequential denotation: every nonterminal checked state has a
+legal continuation.
 
-$\Legal(p)$ is a feasibility property of the program: every commit site has
-some legal action.  It does not say that every strategy chooses legal actions.
-That second property is enforced by the strategy types used by the public
-game APIs.
+%% =====================================================================
+\section{Outcome Semantics}\label{sec:outcome}
+%% =====================================================================
 
-For a checked program $g$, the exported behavioral and pure strategy spaces
-are subtypes:
+\subsection{Finite Distributions}
+
+The raw evaluator uses \(\FDist{A}\), a finite weighted distribution over
+values of type \(A\). Its weights live in \(\mathbb{Q}_{\ge 0}\). Normalization
+is proved separately and is available after a program is checked. PMF-based
+interfaces are used where the surrounding game-theory library expects
+probability mass functions.
+
+\subsection{Canonical Evaluator}
+
+The canonical raw outcome evaluator is:
 \[
-  \mathcal{B}^{\Legal}_i(g),
+  \outcomeDist\; \sigma\; p\; env : \FDist{\Outcome}.
+\]
+Here \(\sigma\) is an omniscient operational profile. The evaluator recurses
+through the program:
+\begin{itemize}[nosep]
+\item \(\Ret\) evaluates payoff expressions;
+\item \(\Let\) extends the environment with the deterministic value;
+\item \(\Sample\) binds over the sample distribution;
+\item \(\Commit\) binds over the profile's commit distribution;
+\item \(\Reveal\) copies a hidden value into a public binding.
+\end{itemize}
+
+The evaluator is the reference semantics for raw execution. Other raw
+presentations either compute a projection of the same choices or are stated as
+agreement theorems against this evaluator.
+
+\subsection{Trace Semantics}
+
+\leanref{Vegas.TraceSemantics} defines complete execution traces. A trace
+records the realized values at every \(\Sample\) and \(\Commit\) site.
+Deterministic \(\Let\) and \(\Reveal\) nodes are present structurally but do
+not add probabilistic choices.
+
+The trace layer provides:
+\begin{itemize}[nosep]
+\item \leanref{traceOutcome}, the outcome reached by a complete trace;
+\item \leanref{traceWeight}, the product of sample and commit weights;
+\item \leanref{traceDist}, the distribution over complete traces;
+\item reachability predicates such as \leanref{CanReach} and \leanref{Reach};
+\item commutation results for independent commits and reveals.
+\end{itemize}
+
+The key relationship is that summing trace weights by outcome recovers
+\(\outcomeDist\). This makes trace semantics the pathwise explanation of the
+canonical evaluator.
+
+\subsection{Raw Small-Step Semantics}
+
+\leanref{Vegas.SmallStep} defines a labelled one-step relation over neutral
+runtime worlds:
+\[
+  \mathrm{Step}\; \sigma\; w\; d.
+\]
+A world is a program suffix paired with an environment. A one-step transition
+returns a finite distribution over labelled target worlds. Labels are
+\(\tau\) for deterministic administrative steps, sample labels for nature
+values, and commit labels for strategic values.
+
+There are two small-step notions:
+\begin{itemize}[nosep]
+\item \leanref{Step} records the outgoing one-step distribution;
+\item \leanref{Steps} records qualitative multi-step reachability through
+      positive-mass supported edges.
+\end{itemize}
+
+\leanref{Steps} intentionally consumes \leanref{StepSupport}, not bare
+\leanref{Step}. A multi-step edge therefore represents a target with positive
+one-step mass. The relation itself is qualitative; the probabilistic mass of
+complete labelled runs is carried by \leanref{labelDist}.
+
+The raw small-step evaluator is:
+\[
+  \mathrm{runSmallStep}\; \sigma\; w
+    \coloneqq \outcomeDist\; \sigma\; w.prog\; w.env.
+\]
+This definition makes \(\outcomeDist\) canonical and avoids a second recursive
+outcome evaluator. The small-step content is supplied by the theorem
+\leanref{step_bind_runSmallStep}, which states that one supported operational
+step followed by \leanref{runSmallStep} has the same outcome value as the
+source world.
+
+\subsection{Trace and Small-Step Agreement}
+
+The small-step labels are a projection of traces:
+\[
+  \mathrm{traceLabels}\;p\;t : \mathrm{List}\;(\mathrm{Label}).
+\]
+The theorem \leanref{labelDist_eq_traceDist_map_traceLabels} states that the
+complete-run label distribution is exactly \(\mathrm{traceDist}\) mapped
+through this projection. Support lemmas then connect positive-mass label runs
+to positive-weight traces, and admissibility turns those traces into legal
+execution witnesses.
+
+Together, the raw semantic picture is:
+\[
+  \mathrm{labelDist}
+    = \mathrm{map}\;\mathrm{traceLabels}\;\mathrm{traceDist},
   \qquad
-  \mathcal{P}^{\Legal}_i(g).
+  \mathrm{runSmallStep}
+    = \outcomeDist.
 \]
-A behavioral strategy is legal when, at every owned commit site and every
-reachable environment, its distribution is supported on values satisfying the
-commit guard.  A pure strategy is legal when its chosen value satisfies the
-guard in the same sense.  Thus a Nash equilibrium of a Vegas program is an
-equilibrium among protocol-legal strategies, not among arbitrary functions
-that could recommend rejected moves.
-
-This distinction is easy to miss, but it is one of the central API decisions
-in the current repository.  If the strategy type were not refined, a
-``deviation'' in a Nash statement could choose an action that the protocol
-would reject.  The resulting theorem would be formally true about the wrapper
-game but not about the intended protocol.  By making strategy legality part
-of the public strategy type, the usual game-theoretic quantifiers range over
-exactly the admissible strategic behavior.
-
+The first equation relates the observable operational labels to traces. The
+second says that outcome evaluation remains the canonical denotation.
 
 %% =====================================================================
-\section{Outcome Semantics}\label{sec:outcomes}
+\section{Strategic and Protocol Views}\label{sec:strategic}
 %% =====================================================================
 
-\subsection{Finite Weighted Distributions}
+\subsection{Legal Strategy Spaces}
 
-The main semantics uses $\FDist{\alpha}$, a finitely-supported distribution
-with nonnegative rational weights.  It is a sub-probability object: the type
-does not require total mass one.  Normalization is a theorem, not a field in
-every intermediate term.
-
-This design pays off in the denotational semantics.  A program's outcome
-distribution is built by repeated monadic bind.  If the semantics used
-$\PMF{}$ directly, every intermediate bind would require a normalization
-proof.  With $\FDist{}$, the algebraic semantics stays simple and the final
-normalization theorem promotes the result to $\PMF{}$ when a game-theoretic
-kernel needs an actual probability distribution.
-
-The tradeoff is that not every PMF-valued object can be represented as an
-$\FDist{}$.  A $\PMF{}$ may have real-valued weights or arise from the
-GameTheory library.  Consequently the repository has both FDist-based
-behavioral semantics and PMF-valued strategy/output bridges.  This duplication
-is not accidental; it reflects the boundary between a rational, executable
-language semantics and the real-valued probability objects used by general
-game theory.
-
-\subsection{Denotational Semantics}
-
-Given an operational profile $\sigma$ and environment $\rho$, the
-denotational semantics returns:
-\[
-  \densub{p}{\sigma}(\rho) : \FDist{\Outcome}.
-\]
-The clauses follow the program structure:
+Commit guards constrain the values a player may choose. VegasCore reflects
+that constraint in the strategy types:
 \begin{itemize}[nosep]
-\item $\Ret$ evaluates public payoff expressions and returns a point mass;
-\item $\Let$ evaluates a public expression and continues in the extended
-      environment;
-\item $\Sample$ binds over the sampled distribution;
-\item $\Commit$ binds over the profile's kernel for the active player and
-      commit site;
-\item $\Reveal$ copies a hidden value into a new public binding.
+\item \leanref{LegalProgramBehavioralStrategy};
+\item \leanref{LegalProgramBehavioralProfile};
+\item \leanref{LegalProgramPureStrategy};
+\item \leanref{LegalProgramPureProfile};
+\item PMF variants for probabilistic behavioral strategies.
 \end{itemize}
 
-The semantics is intentionally evaluator-facing: commit kernels are functions
-of the full erased environment.  View-based game strategies are converted to
-operational kernels by projecting that environment to the player's view before
-calling the strategy.  This keeps the low-level evaluator simple while still
-making information restrictions structural at the strategy layer.
+The public APIs therefore quantify over guard-legal strategies. This keeps
+protocol legality out of theorem side conditions and makes illegal deviations
+unrepresentable in the usual equilibrium statements.
 
-\subsection{Normalization Theorem}
+\subsection{Strategic-Form Kernel Games}
 
-The main mass theorem has the following shape:
-\[
-  \NormDists(p) \;\wedge\; \NormOn(\sigma,p)
-  \quad\Longrightarrow\quad
-  \mathrm{totalWeight}(\densub{p}{\sigma}(\rho)) = 1.
-\]
-\(\NormDists\) covers the program's chance moves, while \(\NormOn\) covers
-the operational strategy kernels at commit sites.  This separation is useful:
-normalization of the program is a property of \(p\), while normalization of
-strategic behavior is a property of the profile currently being evaluated.
-The public checked-program APIs hide most of this split because their legal
-strategy spaces already carry normalized kernels.
+The behavioral strategic-form wrapper is \leanref{toKernelGame}. The pure
+strategic-form wrapper is \leanref{toStrategicKernelGame}. Both are
+\leanref{GameTheory.KernelGame}s whose outcome kernels are induced by the
+Vegas outcome semantics.
 
-\subsection{Trace Semantics and Reachability}
+The strategic wrapper files expose Vegas-facing names for standard solution
+concepts: Nash equilibrium, strict Nash equilibrium, best response, dominance,
+correlated equilibrium, welfare, approximate equilibrium, potential games, and
+zero-sum or constant-sum properties. Corollary files transport generic
+\leanref{GameTheory} theorems through these wrappers.
 
-The trace semantics records one choice at each probabilistic or strategic
-branch.  Deterministic steps carry no choice data.  A trace has:
+\subsection{Protocol-Native Statements}
+
+\leanref{Vegas.ProtocolSemantics} states strategic concepts directly over the
+program's outcome semantics. This is useful when the desired statement should
+refer to the protocol rather than to a strategic-form wrapper.
+
+The correspondence theorems say that the two presentations agree:
 \begin{itemize}[nosep]
-\item an outcome, obtained by replaying the recorded choices;
-\item a weight, obtained by multiplying the selected sample and commit
-      weights;
-\item a legality predicate, requiring sampled values to lie in distribution
-      support and committed values to satisfy guards.
+\item \leanref{ProtocolNash} agrees with \leanref{IsNash};
+\item \leanref{ProtocolBestResponse} agrees with \leanref{IsBestResponse};
+\item \leanref{ProtocolDominant} agrees with \leanref{IsDominant};
+\item \leanref{ProtocolStrictNash} agrees with \leanref{IsStrictNash}.
 \end{itemize}
 
-The central trace theorem is adequacy: the denotational weight of an outcome
-equals the sum of weights of traces producing that outcome.  A related support
-theorem identifies the support of the outcome distribution with the
-inductively reachable outcomes.  These results are important because they
-connect the algebraic monadic semantics to the operational reading of a game
-execution.
-
-In formula form, adequacy says:
-\[
-  \densub{p}{\sigma}(\rho)(o)
-  =
-  \sum_{\substack{t\in\Tr{p}\\ \trout(t,\rho)=o}}
-    \trweight{\sigma}(t,\rho).
-\]
-Support correctness says that \(o\) is assigned positive weight exactly when
-there is a reachable trace producing \(o\).  Fair-play lemmas then connect
-positive-weight traces to guard legality: if a profile is supported on
-guard-satisfying actions, every positive-weight execution is a legal
-protocol execution.
-
-\subsection{Commutativity and Action Graphs}
-
-Vegas programs are written sequentially, but some adjacent constructs are
-independent.  The repository proves commutativity theorems showing that
-independent commits and independent reveals can be swapped without changing
-the outcome distribution.  These theorems rely on two ingredients:
-\begin{itemize}[nosep]
-\item expression dependency tracking supplied by the expression language
-      interface;
-\item commutativity of independent finite-distribution binds.
-\end{itemize}
-
-The action-graph semantics makes this order-independence explicit.  A program
-can be flattened into a dependency DAG of let, sample, commit, and reveal
-events.  Any ready event can fire once its dependencies are available, and
-complete executions that assign the same values to nodes produce the same
-final environment.  This layer is useful conceptually because it explains why
-the textual order of independent program fragments is not always
-game-theoretically meaningful.
-
-The action graph is not currently the primary exported game object.  Its role
-is explanatory and structural: it records the dependency skeleton that is also
-visible in the MAID backend, and it justifies thinking about Vegas programs as
-partially ordered protocols rather than merely as syntax trees.
-
+Thus the protocol-facing definitions are not a separate game model. They are
+the same outcome semantics presented without first naming the kernel-game
+wrapper.
 
 %% =====================================================================
-\section{Strategic Views}\label{sec:strategic}
+\section{Sequential FOSG Denotation}\label{sec:fosg}
 %% =====================================================================
 
-\subsection{Behavioral Strategic Form}
+\subsection{Role of FOSG}
 
-For a checked program $g$, VegasCore constructs a kernel game:
-\[
-  \toKG(g) : \KG.
-\]
-The strategy type for player $i$ is the legal behavioral strategy subtype
-$\mathcal{B}^{\Legal}_i(g)$.  The outcome type is the Vegas payoff outcome
-type, and the outcome kernel is obtained by running the Vegas behavioral
-outcome semantics from $g$'s initial environment and promoting the normalized
-FDist result to a PMF.
+The FOSG bridge is the canonical sequential game-theoretic view of a checked
+Vegas program. It treats the program as a finite horizon game with
+state-dependent action availability and observation-indexed behavioral
+strategies.
 
-The expected utility theorem says that the expected utility in this kernel
-game is exactly the expected payoff computed from the Vegas outcome
-distribution.  This theorem is the justification for transporting
-game-theoretic definitions through the bridge.
+This layer is game-theoretic rather than foundational for the raw runtime.
+The neutral runtime lives in \leanref{Vegas.Config}. The FOSG layer imports
+that runtime, adds active-player and action-availability structure, constructs
+a finite observed game, and proves that running the observed game preserves
+the Vegas outcome distribution.
 
-\paragraph{The strategy shape.}
-A behavioral strategy for player \(i\) is not a function from full histories
-or full environments.  At a commit site in context \(\Gamma\), it is a kernel
-from the view environment
-\[
-  \Env(\|\Gamma\!\!\downarrow_i\|)
-\]
-to a distribution over values of the committed type.  The projection from the
-full erased environment to this view is the only place where hidden state is
-discarded.  Once the strategy has this type, accidental dependence on another
-player's secret is impossible.
+\subsection{Runtime, Actions, and Cursors}
 
-\paragraph{Why KernelGame is still useful.}
-The kernel game is not a competing denotation to the sequential game.  It is
-the strategic-form view of the same protocol: choose one strategy per player,
-run the program, obtain a distribution over outcomes.  This is exactly the
-shape needed by Nash, dominance, welfare, correlated-equilibrium, and
-potential-game definitions.  Sequential structure matters for theorems such
-as Kuhn; strategic form matters for solution concepts stated as deviations
-from complete strategies.
-
-\subsection{Pure Strategic Form}
-
-The repository also constructs a pure-strategy kernel game:
-\[
-  \toStrategicKG(g) : \KG.
-\]
-Its strategy type is the legal pure strategy subtype
-$\mathcal{P}^{\Legal}_i(g)$.  Pure strategies can be embedded into behavioral
-strategies by turning each chosen action into a point mass.  The bridge proves
-that the behavioral and pure strategic views agree on the outcome kernel after
-this embedding.
-
-This pure strategic form is the right source for mixed-over-pure statements:
-a mixed strategy in the Kuhn theorem is a PMF over legal pure strategies.
-
-\paragraph{Mixed strategies.}
-The repository follows the standard distinction:
+The FOSG code is split into layers:
 \begin{itemize}[nosep]
-\item a pure strategy chooses one action at each of a player's decision sites;
-\item a behavioral strategy gives an action distribution at each decision
-      site or information state;
-\item a mixed strategy is a distribution over pure strategies.
-\end{itemize}
-Kuhn-style theorems compare the last two.  In VegasCore the mixed side is
-represented as an independent product of PMFs over legal pure strategies, one
-PMF per player.  The behavioral witness produced by the Kuhn theorem is
-PMF-valued because the realization probabilities are real-valued
-probabilities produced by the generic GameTheory theorem, not necessarily
-representable as rational FDist weights.
-
-\subsection{Equilibrium and Game-Property Wrappers}
-
-The files \texttt{Vegas.Equilibrium}, \texttt{Vegas.PureStrategic}, and
-\texttt{Vegas.GameProperties} expose GameTheory concepts directly on
-\WFP{}:
-\begin{itemize}[nosep]
-\item Nash, strict Nash, best response, dominance, and Pareto efficiency;
-\item correlated and coarse correlated equilibrium;
-\item pure Nash and pure dominance variants;
-\item approximate Nash, rationalizability, potential games, zero-sum and
-      constant-sum games, security levels, and welfare quantities.
+\item \leanref{Vegas.FOSG.Runtime}: active players, broad action availability,
+      terminality aliases, and joint-action legality over neutral worlds;
+\item \leanref{Vegas.FOSG.Action}: commit cursors and finite program-local
+      actions;
+\item \leanref{Vegas.FOSG.Basic}: suffix and cursor machinery, checked
+      worlds, transitions, and preservation facts;
+\item \leanref{Vegas.FOSG.Observation}: the observed FOSG target;
+\item \leanref{Vegas.FOSG.Observed.*}: behavioral, pure, collapse,
+      refinement, and kernel proofs;
+\item \leanref{Vegas.FOSG.SmallStep}: checked PMF small-step aliases and
+      bridge lemmas.
 \end{itemize}
 
-These definitions are intentionally thin.  They should not introduce a new
-game theory; they give Vegas names to the corresponding GameTheory notions
-after applying the appropriate kernel-game bridge.  The corollary files then
-transport general GameTheory results back to Vegas.  For example, the fact
-that a profile of dominant strategies is Nash is not reproved for Vegas from
-scratch; it is inherited through the kernel-game representation.
+The broad action type is useful for local semantic statements: a player action
+is a typed value. The executable FOSG target uses \leanref{ProgramAction}
+instead. A program action is a commit cursor paired with a value of that
+commit's type. This avoids requiring the entire language universe of types to
+be finite; only the values that occur at program-local commit sites matter.
 
-\subsection{Protocol-Native Concepts}
+\subsection{CheckedWorld and CursorCheckedWorld}
 
-The strategic wrappers are convenient, but they phrase theorems through an
-intermediate kernel game.  \texttt{Vegas.ProtocolSemantics} states the same
-core solution concepts directly over the Vegas outcome semantics:
-\[
-  \protocolEU(g,\sigma,i)
-    = \sum_o \Pr_{\sigma,g}[o]\cdot o(i),
-\]
-and then defines protocol Nash, best response, dominance, and strict Nash in
-the expected way.
+There are two checked state representations because they serve different
+proof obligations.
 
-The correspondence theorems show that these protocol-native definitions agree
-with the strategic wrappers.  This is useful for readers: the kernel-game
-layer is a representation, not a change in meaning.  A Vegas Nash equilibrium
-is exactly the familiar no-profitable-legal-deviation condition stated over
-the program's own outcome distribution.
+\leanref{CheckedWorld} is the proof-friendly semantic state. It stores the
+current program suffix, environment, and local obligations needed by the
+checked transition: context well-formedness, freshness, scoped visibility,
+normalization, and legality. This is convenient for recursive semantic
+arguments and for relating checked PMF steps to \(\outcomeDist\).
 
+\leanref{CursorCheckedWorld} is the finite executable carrier for the observed
+FOSG. It keys states by a \leanref{ProgramCursor} into the fixed root program
+and an environment at that cursor. The cursor identifies the current
+continuation inside the original program, which is needed for a fixed global
+strategy profile to be projected to the current suffix. The carrier is finite
+under finite value types because cursors are drawn from one finite program and
+environments range over finite value sets.
 
-%% =====================================================================
-\section{Sequential Denotation and Kuhn}\label{sec:fosg}
-%% =====================================================================
+The two representations are connected by projections such as
+\leanref{ofCursorChecked}. FOSG execution uses the cursor-keyed carrier;
+semantic comparison often projects back to checked worlds.
 
-\subsection{Why a Sequential Denotation Exists}
+\subsection{Observation-Preserving FOSG}
 
-The kernel-game views collapse a program to strategic form.  That is the
-right representation for many solution concepts, but it hides the sequential
-structure of execution.  To use sequential-game theorems from GameTheory, the
-repository also gives checked Vegas programs a canonical sequential
-denotation.
+\leanref{toFOSG} exposes the public sequential denotation. Internally,
+\leanref{observedProgramFOSG} uses cursor worlds, program-local actions, and
+private observations consisting of the player's current program cursor and
+view environment. The public observation channel is trivial because public
+bindings already appear in every player's private view.
 
-The chosen target is a factored-observation stochastic game (FOSG).  This is a
-good match for Vegas because Vegas observations are factored by construction:
-the public state is visible to everyone, and each hidden value is visible only
-to its owner until reveal.  A player's observation at a point in the run is
-the sequential record of what that player can see.
-
-\subsection{What the FOSG Layer Proves for Vegas}
-
-The public entry point is \texttt{Vegas.FOSG}.  Internally it constructs a
-finite cursor-indexed state machine for a checked program.  The cursor records
-where the sequential execution is in the program; the state carries the typed
-environment; available actions are exactly the program actions at the current
-commit site; terminal states correspond to program returns.
-
-The important Vegas-facing facts are:
+The bridge proves:
 \begin{itemize}[nosep]
-\item the sequential denotation is legal-observable: available moves depend
-      only on the acting player's observation;
-\item it has bounded horizon, bounded by the remaining program syntax;
-\item its run distribution, projected to payoff outcomes by the FOSG outcome
-      observation, is the Vegas outcome distribution.
+\item legal observability for the compiled FOSG;
+\item bounded horizon by \leanref{syntaxSteps};
+\item finite world and action instances under \leanref{FiniteValuation};
+\item transition agreement after forgetting cursor keys;
+\item outcome preservation after mapping terminal histories to Vegas outcomes.
 \end{itemize}
 
-The proof infrastructure behind these facts is substantial, because Lean must
-relate cursor states, program suffixes, typed environments, and finite FOSG
-histories.  But those are implementation devices.  The semantic statement is
-simple: running the sequential denotation of a Vegas program gives the same
-distribution over final payoff outcomes as running the Vegas program itself.
+\subsection{Checked Small-Step Bridge}
 
-\subsection{Outcome-Value Closure}
+\leanref{Vegas.FOSG.SmallStep} exposes the checked PMF one-step kernel as
+\leanref{stepPMF}. This is the legal, view-indexed counterpart of the raw
+\(\FDist\)-valued small-step layer. Its continuation value is
+\leanref{outcomeValuePMF}.
 
-The preservation proof is organized around a generic outcome-value closure
-abstraction in GameTheory.  The core file
-\texttt{GameTheory/Math/OutcomeClosure} packages a value process: each live
-state is assigned a continuation distribution over final outcomes, each
-transition preserves that value in expectation, and terminal states observe
-that value directly.  The FOSG-specific adapter in
-\texttt{GameTheory/Languages/FOSG/OutcomeClosure} lifts the same idea from
-states to finite FOSG histories.  Its theorem says that if the local
-continuation-value equations hold, then the distribution obtained by
-observing completed FOSG runs is the initial value.
+The theorem \leanref{stepPMF_bind_outcomeValuePMF} is the checked analogue of
+raw one-step value preservation. The theorem
+\leanref{legalActionLaw_bind_transition_eq_stepPMF} states that the FOSG legal
+action law followed by the FOSG transition collapses to this checked step after
+forgetting cursor keys. Finally,
+\leanref{mappedRunDist_eq_toKernelGamePMF} connects the observed FOSG run
+distribution to the PMF strategic game API.
 
-This is extensional in the sense relevant to the mechanization.  The proof
-does not expose an equality between two internal whole-run simulations.
-Instead it identifies the observable distribution both semantics assign to
-final outcomes.  Intermediate cursor states, checked suffix states, and
-history encodings remain proof devices.
+\subsection{Kuhn-Style Realization}
 
-Vegas instantiates the abstraction in \texttt{FOSG/Observed/Kernel}.  The
-value of a FOSG history is the remaining Vegas outcome distribution of the
-corresponding checked suffix state.  The main local obligation is the checked
-one-step equation
-\texttt{observedProgramOutcomeValueOfCheckedStep}: one observed FOSG step
-preserves that Vegas continuation value.  From that local fact and the
-generic closure theorem, Vegas obtains
-\texttt{observedProgramOutcomeKernelPMF\_eq\_toKernelGamePMF}.  The collapsed
-behavioral witness in \texttt{FOSG/Observed/Collapse} reuses the same
-outcome-value route rather than proving a separate whole-run simulation.
-
-\subsection{The Internal Shape of the Sequential Machine}
-
-The FOSG implementation uses two related representations of runtime state.
-The first is suffix-oriented: a state contains the current program suffix and
-the current typed environment.  This is convenient for proofs by cases on the
-next program construct.  The second is cursor-oriented: a finite cursor points
-into the original program, and the runtime state carries enough data to
-recover the corresponding suffix state.  This is convenient for constructing
-a finite FOSG world type.
-
-Both representations are necessary for clean code.  If everything were done
-with suffixes, finiteness would be hard to expose to GameTheory.  If
-everything were done with cursors, every local proof about the next program
-construct would be polluted by cursor decoding.  The bridge between the two
-is internal; the user-facing theorem only sees the checked program and the
-sequential strategy profile.
-
-\paragraph{Action alphabet.}
-There is a similar split for actions.  The evaluator can talk about a broad
-action alphabet, essentially a value of the type being committed.  The FOSG
-needs a finite action type at each state, so it uses a program-action type
-indexed by commit sites in the program.  The bridge theorem says that these
-two views agree at the current commit.  This avoids assuming that the entire
-expression language has globally finite type codes; finiteness is required
-only through the explicit finite-valuation witness used by the theorem.
-
-\paragraph{Observations.}
-The private observation recorded for a player contains the current sequential
-position and the player's visible environment.  The position matters: the same
-visible values at two different commit sites need not have the same available
-actions.  The visible environment matters for exactly the reason Vegas exists:
-strategies should depend on what the player can observe, not on the full
-state.  Legal observability then states that if two histories give a player
-the same observation, the set of available legal moves is the same.
-
-\subsection{How the Kuhn Proof Is Routed}
-
-The proved Vegas theorem is not a bespoke probabilistic proof about the
-syntax of Vegas.  The route is:
-\begin{enumerate}[nosep]
-\item compile the checked program to its FOSG sequential denotation;
-\item prove the FOSG hypotheses needed by GameTheory: legal observability and
-      bounded horizon;
-\item map independent mixed Vegas pure strategies to the corresponding
-      mixed pure strategies in the FOSG;
-\item apply the generic GameTheory FOSG mixed-to-behavioral theorem;
-\item collapse the resulting sequential behavioral witness to a native
-      syntax-recursive Vegas behavioral profile;
-\item prove the local checked-step equation required by the outcome-value
-      closure theorem for the collapsed profile;
-\item use the outcome-value theorem and the generic FOSG outcome equality to
-      identify the collapsed Vegas distribution with the original Vegas
-      mixed-pure outcome distribution.
-\end{enumerate}
-
-This division is important for maintainability.  The hard probabilistic
-Kuhn argument belongs in GameTheory.  Vegas contributes exactly the facts that
-its programming language must prove: how to run the program as a sequential
-game, what observations and legal actions are, why the run is finite, and why
-the projected outcome distribution is the Vegas one.
-
-\subsection{The Vegas Kuhn Theorem}
-
-The main public Kuhn result is stated back in the native Vegas strategy space:
+The public finite mixed-to-behavioral realization theorem is:
 \[
-\begin{array}{l}
-\text{for finite } P \;([{\rm Fintype}\;P])
-  \text{ and finite value types }(\mathrm{FiniteValuation}\;L),\\
-\text{for every } g:\WFP \text{ and every independent PMF mixture }
-  \mu_i \text{ over legal pure strategies,}\\
-\text{there exists a total guard-legal Vegas behavioral profile } \beta
-\text{ such that}\\
-  \mathrm{outcomeKernel}_{\mathrm{beh}}(g,\beta)
-  =
-  \operatorname{bind}\!\left(\prod_i \mu_i\right)
-    \left(\lambda \pi.\,\mathrm{outcomeKernel}_{\mathrm{pure}}(g,\pi)\right).
+  \leanref{kuhn_mixedPure_realizedByBehavioralPMF_finite}.
+\]
+It says that, for a finite checked Vegas program, every independent mixed
+profile over legal pure strategies has a legal PMF behavioral profile with the
+same distribution over payoff outcomes.
+
+The proof route is:
+\[
+\begin{array}{c}
+\text{mixed legal pure Vegas profile} \\
+\downarrow \\
+\text{observed finite FOSG} \\
+\downarrow \\
+\text{FOSG behavioral witness preserving terminal-history outcomes} \\
+\downarrow \\
+\text{collapsed legal Vegas behavioral profile preserving } \Outcome.
 \end{array}
 \]
-In the code this is the Vegas-facing theorem
-\texttt{kuhn\_mixedPure\_realizedByBehavioralPMF\_finite}.
-
-The theorem preserves the distribution over payoff outcomes.  Expected
-utility preservation is a corollary, not the primitive statement.  This is the
-right level: outcome-distribution equality is stronger and composes better
-with later utility functions or welfare functionals.
-
-\subsection{How the Sequential Witness Becomes a Vegas Witness}
-
-The generic theorem imported from GameTheory produces a behavioral profile
-for the FOSG denotation, indexed by each player's sequential information
-state.  Vegas then collapses that witness back to the syntax-recursive
-behavioral strategy space:
-\[
-  \beta : \leanref{LegalProgramBehavioralProfilePMF}\;g.
-\]
-The transport is not merely a type cast.  The two strategy spaces index
-decisions differently:
-\begin{itemize}[nosep]
-\item the syntax-recursive Vegas behavioral strategy is indexed by commit
-      sites and current player-view environments;
-\item the sequential behavioral strategy is indexed by player information
-      states in the sequential denotation.
-\end{itemize}
-For well-formed SSA programs these carry the same game-relevant information
-along reachable executions.  The proof extracts the active commit site and
-current player-view environment from the last sequential observation, proves
-that available moves agree at that site, and proves the local checked-step
-equation needed by the outcome-value closure theorem.  Off-path Vegas views
-are completed from an arbitrary legal pure profile selected componentwise
-from the input mixed profile supports; this completion is guard-legal and
-does not affect the outcome distribution.
-
-The repository still exposes the sequential witness type
-\[
-  \leanref{SequentialBehavioralProfilePMF}\;g
-\]
-for users who want to inspect or reuse the FOSG denotation directly.  The
-unqualified Vegas Kuhn theorem, however, returns the native
-\leanref{LegalProgramBehavioralProfilePMF} witness.
-
-Thus the present state is:
-\begin{itemize}[nosep]
-\item proved: mixed legal pure strategies are realized by a native total
-      Vegas PMF behavioral profile with the same outcome distribution
-      (\leanref{LegalProgramBehavioralProfilePMF});
-\item also exposed: the corresponding sequential-denotation witness, useful
-      when working directly with the FOSG semantics.
-\end{itemize}
-
-The sequential theorem is still a genuine Vegas theorem: it uses the canonical
-sequential denotation and preserves the Vegas outcome distribution.  The
-syntax-recursive witness is the main user-facing theorem because it is phrased
-entirely in the ordinary Vegas behavioral profile type.
-
+The preservation statement is distributional. Expected-utility equalities are
+corollaries obtained by mapping utilities over the equal outcome distribution.
 
 %% =====================================================================
-\section{MAID Backend}\label{sec:maid}
+\section{Relationship Table}\label{sec:relationship}
 %% =====================================================================
 
-\subsection{What the MAID Backend Is For}
-
-The repository also contains a MAID backend.  MAIDs are graphical models with
-chance, decision, and utility nodes.  The backend compiles Vegas programs to a
-restricted MAID structure and proves that MAID evaluation preserves the Vegas
-outcome distribution under the corresponding policy.
-
-Historically, this backend was the main route to sequential-game theorems.
-The current public Kuhn theorem instead goes through the FOSG denotation,
-because FOSG is the cleaner semantic match for guarded sequential execution.
-The MAID backend remains useful:
-\begin{itemize}[nosep]
-\item it gives an independent graphical-game representation of Vegas
-      programs;
-\item it validates the relationship between the language's visibility
-      discipline and graphical observation parents;
-\item it provides a computable compilation route under finite valuation
-      assumptions;
-\item it contains additional metatheory about perfect recall for the compiled
-      graphical structure.
-\end{itemize}
-
-\subsection{Compilation Shape}
-
-The MAID compilation maps program constructs as follows:
 \begin{center}
-\renewcommand{\arraystretch}{1.25}
+\small
 \begin{tabular}{@{}lll@{}}
 \toprule
-Vegas construct & MAID node & Role \\
+Layer & Purpose & Main agreement point \\
 \midrule
-\(\Sample\;x\sim D\) & chance node & public random value \\
-\(\Commit\;x\;\mathbf{by}\;i\) & decision node & player \(i\)'s action \\
-\(\Ret\) & utility nodes & one payoff node per player \\
-\(\Let\) & no node & deterministic expression inlined through dependencies \\
-\(\Reveal\) & no node & changes visibility/observation structure \\
+\leanref{outcomeDist} &
+canonical raw evaluator &
+reference outcome distribution \\
+\leanref{traceDist} &
+complete path decomposition &
+maps and sums back to \(\outcomeDist\) \\
+\leanref{labelDist} &
+observable small-step labels &
+\leanref{labelDist_eq_traceDist_map_traceLabels} \\
+\leanref{runSmallStep} &
+world-packaged raw outcome value &
+\leanref{runSmallStep_eq_outcomeDist} \\
+\leanref{stepPMF} &
+checked legal PMF one-step kernel &
+\leanref{stepPMF_bind_outcomeValuePMF} \\
+\leanref{toKernelGamePMF} &
+PMF strategic-form game &
+outcome kernel agrees with checked semantics \\
+\leanref{toFOSG} &
+sequential observed game &
+\leanref{mappedRunDist_eq_toKernelGamePMF} \\
+\leanref{ProtocolSemantics} &
+protocol-facing solution concepts &
+correspondence with strategic wrappers \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The significant invariant is that a compiled decision node's observation
-parents match the values visible to the player at the corresponding commit
-site.  View scoping is what makes this sound: a commit guard cannot depend on
-another player's hidden state.
-
-\paragraph{Perfect recall in the compiled MAID.}
-The backend proves that the compiled MAID has perfect recall.  Intuitively,
-Vegas views are monotone: as the program executes, public values remain
-public and a player's own hidden values remain in that player's view.  A
-player does not forget previously visible information.  The MAID compilation
-records the whole current view as the observation parent set of each decision
-node, so later decisions by the same player observe at least what earlier
-decisions observed.
-
-\paragraph{Outcome bridge.}
-The correctness proof relates two evaluations.  On one side is MAID frontier
-evaluation under a policy.  On the other side is the Vegas outcome semantics
-under the reflected behavioral profile.  The proof reconstructs typed Vegas
-environments from raw MAID node assignments and shows that expression
-evaluation agrees on the variables each expression depends on.  This is one
-of the places where the expression language's dependency-soundness laws are
-load-bearing.
-
-\subsection{Guard Caveat}
-
-MAIDs in the current GameTheory library do not natively carry the same
-guard-legal action subtype that Vegas exposes to users.  A compiled MAID
-decision node has an action type determined by the value type, whereas a
-Vegas commit site may restrict available actions by a state-dependent guard.
-This means the MAID backend is outcome-preserving under the compiled policy
-correspondence, but it is not the cleanest public home for the final guarded
-Vegas Kuhn theorem.
-
-This is why the report treats FOSG as the canonical sequential denotation and
-MAID as a useful backend rather than as the main public game-theoretic
-semantics.
-
-\subsection{Relation to the MAID Kuhn Theorem}
-
-The MAID backend contains a raw-program Kuhn theorem through the compiled
-MAID.  It is useful evidence that the graphical compilation has the expected
-perfect-recall structure, but it is not the final public theorem for checked
-Vegas programs.  The current public theorem quantifies over legal pure
-strategies of a \WFP{} and produces a sequential behavioral witness through
-the FOSG denotation.  This distinction prevents a misleading theorem shape:
-the MAID route can talk about the full value type at decision nodes, while
-the Vegas API must respect state-dependent commit guards.
-
-
-%% =====================================================================
-\section{Expression Languages and Finiteness}\label{sec:expr}
-%% =====================================================================
-
-\subsection{The Expression Interface}
-
-VegasCore is generic over an expression language interface \(L\).  The
-interface supplies:
-\begin{itemize}[nosep]
-\item a universe of expression types, including Booleans and integers;
-\item values for each type;
-\item expressions and distribution expressions indexed by contexts;
-\item evaluators for expressions and distribution expressions;
-\item dependency tracking for both expressions and distributions;
-\item soundness laws saying that evaluation depends only on tracked
-      variables;
-\item structural operations needed to extend and drop context entries in
-      commutativity proofs.
-\end{itemize}
-
-This is why most Vegas metatheory is parametric in \(L\).  The repository
-includes a concrete simple expression language with Booleans, integers,
-arithmetic, equality, conditionals, and simple finite distributions for
-examples and testing.
-
-\subsection{Finite Valuation}
-
-Finiteness is not part of the core expression-language interface.  The
-separate finite-valuation assumption says that every value type \(L.\Val(\tau)\)
-is finite.  It is needed for:
-\begin{itemize}[nosep]
-\item enumerating pure strategies;
-\item compiling finite action spaces for backend game structures;
-\item applying finite FOSG and MAID theorems;
-\item stating the current finite Kuhn theorem.
-\end{itemize}
-
-The denotational semantics, trace semantics, behavioral strategic bridge, and
-many equilibrium wrappers do not need finite valuation.  This separation keeps
-the core language more general while making the finite-game results available
-when the expression language supports enumeration.
-
+This table is the intended way to read the multiple semantic files. The
+development has one canonical payoff-outcome meaning; the other layers expose
+path structure, operational structure, strategic-form interfaces, or
+sequential game-theoretic structure.
 
 %% =====================================================================
 \section{Repository Map}\label{sec:repo}
 %% =====================================================================
 
 \begin{center}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{@{}lp{0.52\textwidth}@{}}
+\small
+\begin{tabular}{@{}p{0.27\textwidth}p{0.65\textwidth}@{}}
 \toprule
 Area & Main files \\
 \midrule
-Core syntax and expression layer &
-  \texttt{Core}, \texttt{ExprSimple}, \texttt{VegasSimple} \\
-Well-formedness and checked programs &
-  \texttt{WF}, \texttt{Scope}, \texttt{WFProgram} \\
-Operational and denotational semantics &
-  \texttt{Operational}, \texttt{BigStep}, \texttt{Strategic},
-  \texttt{StrategicPMF} \\
-Trace and action graph semantics &
-  \texttt{TraceSemantics}, \texttt{TraceCorollaries},
-  \texttt{ActionGraph} \\
-Pure and behavioral strategic views &
-  \texttt{PureStrategic}, \texttt{ViewKernel}, \texttt{LegalNonempty} \\
-Game-theoretic wrappers &
-  \texttt{Equilibrium}, \texttt{GameProperties}, \texttt{Corollaries/*} \\
-Protocol and sequential theorems &
-  \texttt{ProtocolSemantics}, \texttt{Kuhn}, \texttt{FOSG} \\
-GameTheory outcome closure &
-  \texttt{OutcomeClosure} in \texttt{Math} and FOSG language layers \\
-FOSG implementation internals &
-  \texttt{FOSG/Basic}, \texttt{FOSG/Observation},
-  \texttt{Observed/Kernel}, \texttt{Observed/Collapse} \\
-MAID backend &
-  \texttt{MAID/*} \\
+Core language &
+  \leanref{Core.lean}, \leanref{ExprSimple.lean},
+  \leanref{VegasSimple.lean} \\
+Checked programs &
+  \leanref{WF.lean}, \leanref{WFProgram.lean},
+  \leanref{LegalNonempty.lean} \\
+Runtime and raw semantics &
+  \leanref{Config.lean}, \leanref{BigStep.lean},
+  \leanref{TraceSemantics.lean}, \leanref{TraceCorollaries.lean},
+  \leanref{SmallStep.lean}, \leanref{SmallStep/*} \\
+Strategic-form APIs &
+  \leanref{Strategic.lean}, \leanref{StrategicPMF.lean},
+  \leanref{PureStrategic.lean}, \leanref{Equilibrium.lean},
+  \leanref{GameProperties.lean} \\
+Protocol semantics &
+  \leanref{ProtocolSemantics.lean} \\
+Sequential FOSG bridge &
+  \leanref{FOSG.lean}, \leanref{FOSG/Runtime.lean},
+  \leanref{FOSG/Action.lean}, \leanref{FOSG/Basic.lean},
+  \leanref{FOSG/Observation.lean}, \leanref{FOSG/Observed/*},
+  \leanref{FOSG/SmallStep.lean} \\
+Finite realization &
+  \leanref{Kuhn.lean}, \leanref{FOSG.lean} \\
 Examples &
-  \texttt{Examples} \\
+  \leanref{Examples.lean} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The public import file \texttt{Vegas.lean} gathers the supported Vegas
-surface.  The \texttt{Explorations/} directory is not part of the main
-surface; it preserves earlier design experiments.
-
-\subsection{Suggested Reading Order}
-
-For understanding the current repository, the most efficient path is:
+A useful reading order is:
 \begin{enumerate}[nosep]
-\item \texttt{WFProgram}: the boundary between syntax and games.
-\item \texttt{Strategic} and \texttt{PureStrategic}: legal strategy spaces and
-      kernel-game construction.
-\item \texttt{Equilibrium} and \texttt{GameProperties}: the public
-      strategic-form vocabulary.
-\item \texttt{ProtocolSemantics}: why the strategic wrappers agree with
-      protocol-native statements.
-\item \texttt{Kuhn} and \texttt{FOSG}: the public sequential theorem and its
-      denotational entry point.
-\item GameTheory's \texttt{OutcomeClosure} files in the \texttt{Math} and
-      FOSG language layers: the generic continuation-value closure used by
-      sequential preservation.
-\item \texttt{FOSG/Observed/Kernel} and
-      \texttt{FOSG/Observed/Collapse}: the Vegas outcome-value instantiation
-      and the collapsed-witness preservation proof.
-\item \texttt{MAID}: the graphical backend and its separate theorem route.
+\item \leanref{Core.lean} and \leanref{WFProgram.lean} for the checked-program
+      boundary;
+\item \leanref{BigStep.lean} for the canonical evaluator;
+\item \leanref{TraceSemantics.lean} and \leanref{SmallStep/*} for path and
+      operational structure;
+\item \leanref{Strategic.lean}, \leanref{StrategicPMF.lean}, and
+      \leanref{ProtocolSemantics.lean} for strategic APIs;
+\item \leanref{FOSG.lean} and the split \leanref{FOSG/*} files for the
+      sequential denotation and Kuhn proof route.
 \end{enumerate}
 
-Reading the FOSG internals first is usually counterproductive.  Much of that
-code is there to satisfy Lean's dependent typechecker and GameTheory's finite
-interfaces.  The public semantic shape is clearer from \texttt{Kuhn},
-\texttt{FOSG}, and \texttt{ProtocolSemantics}.
-
-
 %% =====================================================================
-\section{Design Lessons}\label{sec:lessons}
+\section{Design Principles}\label{sec:principles}
 %% =====================================================================
 
-\paragraph{The checked-program boundary is essential.}
-It is tempting in a mechanized development to expose the raw inductive syntax
-everywhere and ask each theorem to carry the needed side conditions.  That
-works internally, but it gives users too many ways to construct
-game-theoretic objects from incoherent syntax.  The \WFP{} bundle makes the
-safe boundary explicit.
+\paragraph{Keep the checked boundary explicit.}
+Raw syntax is useful for constructing examples and proving structural lemmas,
+but public game-theoretic APIs should consume \leanref{WFProgram}. This keeps
+freshness, scoped visibility, normalization, and non-deadlock assumptions in
+one place.
 
-\paragraph{Legality must appear in the strategy type.}
-Program legality only prevents deadlock.  It does not prevent an arbitrary
-strategy from recommending illegal actions.  Moving guard admissibility into
-the public strategy subtypes makes the equilibrium API match the intended
-protocol semantics.
+\paragraph{Make illegal strategies unrepresentable.}
+The legal strategy spaces are subtypes whose choices satisfy commit guards.
+Equilibrium and dominance statements therefore quantify over legal deviations
+by construction.
 
-\paragraph{FOSG is the sequential denotation; KernelGame is the strategic
-view.}
-These are not competing backends.  A sequential game and its strategic form
-answer different questions.  FOSG keeps the sequential information structure
-visible, which is why it is the natural route to Kuhn.  KernelGame packages
-the induced strategic interaction, which is why it is the natural route to
-Nash, dominance, welfare, and other strategic-form concepts.
+\paragraph{Keep \(\outcomeDist\) canonical.}
+Trace semantics, labelled small-step semantics, strategic wrappers, and the
+FOSG bridge all point back to the same payoff-outcome distribution. This avoids
+having multiple recursive outcome evaluators that later need to be declared
+equivalent.
 
-\paragraph{Outcome preservation is the right invariant.}
-Expected utility equalities are useful, but they are consequences of a
-stronger statement: equality of outcome distributions.  The current
-FOSG-based Kuhn theorem is stated at the distribution level, which makes it
-robust under changes to utility interpretation and welfare aggregation.  The
-same principle shapes the proof: the FOSG bridge preserves a semantic
-continuation value for final outcomes, rather than making equality of
-intermediate machine runs part of the theorem boundary.
+\paragraph{Treat FOSG as a sequential game view.}
+FOSG is the right abstraction for finite sequential-game reasoning: histories,
+observations, legal actions, bounded horizon, and Kuhn-style realization. It
+should depend on the Vegas runtime and checked semantics, not define them.
 
-\paragraph{Checked states are a projection target, not a run semantics.}
-Checked suffix states still appear in the FOSG proof because they are the
-natural place to define the remaining Vegas outcome distribution.  The
-important obligation is local: an observed FOSG step projects to the checked
-Vegas step that preserves this continuation value.  The public theorem does
-not ask users to reason about whole checked runs.
-
-\paragraph{MAID remains valuable but is no longer the main theorem path.}
-The MAID backend explains a lot about the graphical structure of Vegas games,
-and it supplies a useful compilation/evaluation route.  But state-dependent
-guards make FOSG the cleaner target for the public guarded sequential theorem.
-
-\paragraph{Dependent transport is the main engineering cost.}
-Most difficult proofs are not mathematically surprising.  They are about
-showing that two dependently typed views of the same program state agree:
-cursor states versus suffix states, erased environments versus typed
-environments, reachable histories versus current observations, and FDist
-versus PMF presentations.  The stable architecture is the one that keeps
-those transports internal and exposes simple semantic statements at the
-boundary.
-
-
-%% =====================================================================
-\section{Current Status and Open Ends}\label{sec:status}
-%% =====================================================================
-
-\subsection{Stable Public Results}
-
-The repository currently has:
-\begin{itemize}[nosep]
-\item checked-program game APIs based on \WFP{};
-\item legal behavioral and pure strategy spaces;
-\item behavioral and pure kernel-game views preserving the Vegas outcome
-      semantics;
-\item Vegas-facing equilibrium and game-property wrappers;
-\item protocol-native definitions corresponding to the kernel-game wrappers;
-\item FOSG sequential denotation preserving outcome distributions by
-      outcome-value closure;
-\item finite mixed-to-behavioral realization preserving outcome
-      distributions, with a native Vegas behavioral witness;
-\item MAID compilation and associated outcome-preservation/perfect-recall
-      metatheory.
-\end{itemize}
-
-\subsection{Known Limits}
-
-\begin{itemize}[nosep]
-\item The finite Kuhn theorem requires finite players and finite value types.
-\item The MAID backend does not by itself expose the same guard-legal action
-      subtype as the public Vegas strategy API.
-\item The concrete executable path is better through finite backend
-      compilation than through reducing the abstract FDist denotational
-      semantics in the Lean kernel.
-\end{itemize}
-
-\subsection{Natural Future Work}
-
-\begin{itemize}[nosep]
-\item Factor the sequential-to-Vegas behavioral collapse into a reusable
-      equivalence or transport API, rather than leaving it specialized to the
-      current Kuhn proof route.
-\item Factor the local checked-step outcome-value lemma into a reusable
-      projected-step abstraction if another backend needs the same pattern.
-\item Strengthen or adapt generic GameTheory backends so state-dependent
-      action availability is represented uniformly across sequential and
-      graphical games.
-\item Add more expression language instances and surface-language tooling.
-\item Extend the game-theoretic theorem surface beyond Kuhn and strategic-form
-      wrappers, using FOSG as the canonical sequential denotation.
-\end{itemize}
-
-
-%% =====================================================================
-\section{Related Work}\label{sec:related}
-%% =====================================================================
-
-\paragraph{Game description languages.}
-GDL, Gambit, and OpenSpiel provide ways to describe and solve games.  Their
-focus is execution and solving, whereas VegasCore focuses on a mechanized
-semantics with a type-directed account of information.
-
-\paragraph{Mechanized game theory.}
-The GameTheory submodule supplies the generic library of kernel games, MAIDs,
-FOSGs, extensive-form games, and theorem infrastructure.  VegasCore's
-contribution is to connect a programming language for games to those
-objects with verified semantic bridges.
-
-\paragraph{Information-flow type systems.}
-Visibility annotations resemble security labels, but the purpose differs.
-Security type systems prevent unintended leakage.  Vegas uses visibility to
-state what information a player has when choosing an action, so the same style
-of structure enforces game-theoretic information constraints.
-
-\paragraph{Commit-reveal protocols.}
-Blockchain commit-reveal protocols motivate the language design, but Vegas is
-not a cryptographic model.  Commit and reveal are semantic constructs for
-information timing.  Cryptographic enforcement is outside the calculus.
-
+\paragraph{Separate semantic state from finite execution keys.}
+\leanref{CheckedWorld} is convenient for semantic preservation. 
+\leanref{CursorCheckedWorld} is convenient for finite observed-game execution.
+The projection between them keeps both proof styles available without forcing
+one representation to serve every purpose.
 
 %% =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 %% =====================================================================
 
-VegasCore now has a coherent end-to-end story.  A checked Vegas program is a
-game.  Its strategic form is available through guard-legal kernel-game
-wrappers.  Its protocol-level solution concepts agree with those wrappers.
-Its sequential denotation is a FOSG that preserves the Vegas outcome
-distribution by outcome-value closure.  For finite games, independent
-mixtures over legal pure strategies can be realized by native guard-legal
-Vegas behavioral strategies with the same outcome distribution.  The MAID
-backend remains as a graphical compilation route and an additional body of
-metatheory, but the canonical sequential denotation for current public
-theorem statements is FOSG.
-
-The important design boundary is that public theorem statements should be
-simple and Vegas-facing, while proof machinery stays behind the denotational
-interfaces.  That boundary is what makes the current repository usable despite
-the large amount of mechanized infrastructure underneath.
-
-\begin{thebibliography}{9}
-
-\bibitem{koller2003multi}
-D.~Koller and B.~Milch.
-\newblock Multi-agent influence diagrams for representing and solving games.
-\newblock {\em Games and Economic Behavior}, 45(1):181--221, 2003.
-
-\bibitem{kovarik2019rethinking}
-V.~Kova\v{r}\'ik, M.~Schmid, N.~Burch, M.~Bowling, and V.~Lis\'y.
-\newblock Rethinking formal models of partially observable multiagent decision
-  making.
-\newblock {\em Artificial Intelligence}, 277:103171, 2019.
-
-\end{thebibliography}
+VegasCore gives checked Vegas programs a single canonical payoff-outcome
+semantics and several proved-compatible interfaces. Trace and small-step
+semantics explain execution structure. Strategic and protocol APIs expose the
+same semantics as solution concepts. The FOSG bridge supplies the sequential
+game-theoretic denotation and the finite mixed-to-behavioral realization
+result, then collapses the witness back to a native guard-legal Vegas
+behavioral profile.
 
 \end{document}
