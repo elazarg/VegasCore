@@ -61,6 +61,106 @@ noncomputable def labelDist
     FDist (List (Label P L)) :=
   labelDistCore σ w.prog w.env
 
+/-! ## Finite terminal-path enumeration -/
+
+/-- Finite weighted enumeration of complete raw small-step paths.
+
+Each support element is a pair `(labels, dst)` where `labels` is the full
+small-step label sequence and `dst` is the terminal destination world. The
+`FDist` mass of that pair is the product of the one-step masses along the
+path. This is the finite carrier needed for "sum over terminal paths"
+statements; the qualitative `Steps` relation is connected to its support
+below. -/
+noncomputable def terminalPathDistCore (σ : OmniscientOperationalProfile P L) :
+    {Γ : VCtx P L} → VegasCore P L Γ → VEnv L Γ →
+      FDist (List (Label P L) × World P L)
+  | _, .ret payoffs, env =>
+      FDist.pure
+        ([],
+          ({ Γ := _, prog := .ret payoffs, env := env } : World P L))
+  | _, .letExpr x e k, env =>
+      (terminalPathDistCore σ k
+        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+          (L.eval e (VEnv.erasePubEnv env)) env)).map
+        (fun path => (Label.tau :: path.1, path.2))
+  | _, .sample x (b := b) D k, env =>
+      FDist.bind (L.evalDist D (VEnv.eraseSampleEnv env)) fun v =>
+        (terminalPathDistCore σ k
+          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub b)
+            v env)).map
+          (fun path => (Label.sample b v :: path.1, path.2))
+  | _, .commit x who (b := b) R k, env =>
+      FDist.bind (σ.commit who x R (VEnv.eraseEnv env)) fun v =>
+        (terminalPathDistCore σ k
+          (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who b) v env)).map
+          (fun path => (Label.commit who b v :: path.1, path.2))
+  | _, .reveal y _who _x (b := b) hx k, env =>
+      (terminalPathDistCore σ k
+        (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+          (show L.Val b from
+            VEnv.get (Player := P) (L := L) (x := _x)
+              (τ := .hidden _who b) env hx) env)).map
+        (fun path => (Label.tau :: path.1, path.2))
+
+/-- Finite weighted enumeration of terminal raw small-step paths from a
+packaged world. -/
+noncomputable def terminalPathDist
+    (σ : OmniscientOperationalProfile P L) (w : World P L) :
+    FDist (List (Label P L) × World P L) :=
+  terminalPathDistCore σ w.prog w.env
+
+/-- Projecting the finite terminal-path enumeration to labels recovers
+`labelDistCore`. -/
+theorem terminalPathDistCore_map_labels_eq_labelDistCore
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ) :
+    (terminalPathDistCore σ p env).map
+        (fun path : List (Label P L) × World P L => path.1) =
+      labelDistCore σ p env := by
+  induction p with
+  | ret payoffs =>
+      rw [terminalPathDistCore, labelDistCore, FDist.map_pure]
+  | letExpr x e k ih =>
+      simp only [terminalPathDistCore, labelDistCore]
+      rw [FDist.map_map]
+      rw [← ih]
+      rw [FDist.map_map]
+      rfl
+  | sample x D k ih =>
+      simp only [terminalPathDistCore, labelDistCore]
+      rw [FDist.bind_map]
+      congr 1
+      funext v
+      rw [FDist.map_map]
+      rw [← ih]
+      rw [FDist.map_map]
+      rfl
+  | commit x who R k ih =>
+      simp only [terminalPathDistCore, labelDistCore]
+      rw [FDist.bind_map]
+      congr 1
+      funext v
+      rw [FDist.map_map]
+      rw [← ih]
+      rw [FDist.map_map]
+      rfl
+  | reveal y who x hx k ih =>
+      simp only [terminalPathDistCore, labelDistCore]
+      rw [FDist.map_map]
+      rw [← ih]
+      rw [FDist.map_map]
+      rfl
+
+/-- Projecting the finite terminal-path enumeration to labels recovers
+`labelDist`. -/
+theorem terminalPathDist_map_labels_eq_labelDist
+    (σ : OmniscientOperationalProfile P L) (w : World P L) :
+    (terminalPathDist σ w).map
+        (fun path : List (Label P L) × World P L => path.1) =
+      labelDist σ w := by
+  exact terminalPathDistCore_map_labels_eq_labelDistCore σ w.prog w.env
+
 /-- The raw small-step evaluator is the existing denotational semantics,
 repackaged over `World`. -/
 theorem runSmallStep_eq_outcomeDist
@@ -178,6 +278,38 @@ theorem labelDist_apply_eq_traceLabel_sum
             0) := by
   exact labelDistCore_apply_eq_traceLabel_sum σ w.prog w.env labels
 
+/-- Pointwise weight form using the finite terminal-path enumeration.
+
+The mass `labelDistCore σ p env labels` is the sum of the masses of all
+enumerated terminal paths whose label projection is `labels`. The summation
+domain is the finite support of `terminalPathDistCore`. -/
+theorem labelDistCore_apply_eq_terminalPath_sum
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (labels : List (Label P L)) :
+    (labelDistCore σ p env) labels =
+      (terminalPathDistCore σ p env).support.sum
+        (fun path =>
+          if path.1 = labels then
+            (terminalPathDistCore σ p env) path
+          else
+            0) := by
+  rw [← terminalPathDistCore_map_labels_eq_labelDistCore σ p env]
+  rw [FDist.map_apply]
+
+/-- Packaged-world form of `labelDistCore_apply_eq_terminalPath_sum`. -/
+theorem labelDist_apply_eq_terminalPath_sum
+    (σ : OmniscientOperationalProfile P L) (w : World P L)
+    (labels : List (Label P L)) :
+    (labelDist σ w) labels =
+      (terminalPathDist σ w).support.sum
+        (fun path =>
+          if path.1 = labels then
+            (terminalPathDist σ w) path
+          else
+            0) := by
+  exact labelDistCore_apply_eq_terminalPath_sum σ w.prog w.env labels
+
 /-- Support form of the label/trace bridge: a label list has positive mass
 exactly when it is the projection of some positive-weight existing `Trace`. -/
 theorem mem_support_labelDistCore_iff_exists_trace
@@ -198,6 +330,127 @@ theorem mem_support_labelDist_iff_exists_trace
         t ∈ (traceDist σ w.prog w.env).support ∧
           traceLabels w.prog t = labels := by
   exact mem_support_labelDistCore_iff_exists_trace σ w.prog w.env labels
+
+/-- Every support point of the finite terminal-path enumeration is terminal
+and has a qualitative `Steps` witness. -/
+theorem terminalPathDistCore_support_terminal_steps
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    {path : List (Label P L) × World P L}
+    (hpath : path ∈ (terminalPathDistCore σ p env).support) :
+    terminal path.2 ∧
+      Steps σ ({ Γ := Γ, prog := p, env := env } : World P L)
+        path.1 path.2 := by
+  induction p generalizing path with
+  | ret payoffs =>
+      rw [terminalPathDistCore, FDist.mem_support_pure] at hpath
+      cases hpath
+      exact ⟨by simp [terminal], Steps.nil _⟩
+  | letExpr x e k ih =>
+      rw [terminalPathDistCore, FDist.mem_support_map] at hpath
+      rcases hpath with ⟨tailPath, htail, hproj⟩
+      obtain ⟨hterm, hsteps⟩ :=
+        ih
+          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+            (L.eval e (VEnv.erasePubEnv env)) env)
+          htail
+      let mid : World P L :=
+        { Γ := _
+          prog := k
+          env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+            (L.eval e (VEnv.erasePubEnv env)) env }
+      have hsupport :
+          StepSupport σ
+            ({ Γ := _, prog := .letExpr x e k, env := env } : World P L)
+            (Label.tau, mid) := by
+        refine ⟨_, Step.letExpr (σ := σ) env, ?_⟩
+        rw [FDist.mem_support_pure]
+      cases hproj
+      exact ⟨hterm, Steps.cons hsupport hsteps⟩
+  | sample x D k ih =>
+      rw [terminalPathDistCore, FDist.mem_support_bind] at hpath
+      rcases hpath with ⟨v, hv, htailMap⟩
+      rw [FDist.mem_support_map] at htailMap
+      rcases htailMap with ⟨tailPath, htail, hproj⟩
+      obtain ⟨hterm, hsteps⟩ :=
+        ih
+          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+            v env)
+          htail
+      let mid : World P L :=
+        { Γ := _
+          prog := k
+          env := VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
+            v env }
+      have hsupport :
+          StepSupport σ
+            ({ Γ := _, prog := .sample x D k, env := env } : World P L)
+            (Label.sample _ v, mid) := by
+        refine ⟨_, Step.sample (σ := σ) env, ?_⟩
+        rw [FDist.mem_support_bind]
+        refine ⟨v, hv, ?_⟩
+        rw [FDist.mem_support_pure]
+      cases hproj
+      exact ⟨hterm, Steps.cons hsupport hsteps⟩
+  | commit x who R k ih =>
+      rw [terminalPathDistCore, FDist.mem_support_bind] at hpath
+      rcases hpath with ⟨v, hv, htailMap⟩
+      rw [FDist.mem_support_map] at htailMap
+      rcases htailMap with ⟨tailPath, htail, hproj⟩
+      obtain ⟨hterm, hsteps⟩ :=
+        ih
+          (VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who _) v env)
+          htail
+      let mid : World P L :=
+        { Γ := _
+          prog := k
+          env := VEnv.cons (Player := P) (L := L) (x := x)
+            (τ := .hidden who _) v env }
+      have hsupport :
+          StepSupport σ
+            ({ Γ := _, prog := .commit x who R k, env := env } : World P L)
+            (Label.commit who _ v, mid) := by
+        refine ⟨_, Step.commit (σ := σ) env, ?_⟩
+        rw [FDist.mem_support_bind]
+        refine ⟨v, hv, ?_⟩
+        rw [FDist.mem_support_pure]
+      cases hproj
+      exact ⟨hterm, Steps.cons hsupport hsteps⟩
+  | @reveal Γ y who x b hx k ih =>
+      rw [terminalPathDistCore, FDist.mem_support_map] at hpath
+      rcases hpath with ⟨tailPath, htail, hproj⟩
+      obtain ⟨hterm, hsteps⟩ :=
+        ih
+          (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+            (show L.Val b from
+              VEnv.get (Player := P) (L := L) (x := x)
+                (τ := .hidden who b) env hx) env)
+          htail
+      let mid : World P L :=
+        { Γ := _
+          prog := k
+          env := VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b)
+            (show L.Val b from
+              VEnv.get (Player := P) (L := L) (x := x)
+                (τ := .hidden who b) env hx) env }
+      have hsupport :
+          StepSupport σ
+            ({ Γ := _, prog := .reveal y who x hx k, env := env } : World P L)
+            (Label.tau, mid) := by
+        refine ⟨_, Step.reveal (σ := σ) env, ?_⟩
+        rw [FDist.mem_support_pure]
+      cases hproj
+      exact ⟨hterm, Steps.cons hsupport hsteps⟩
+
+/-- Packaged-world form of
+`terminalPathDistCore_support_terminal_steps`. -/
+theorem terminalPathDist_support_terminal_steps
+    (σ : OmniscientOperationalProfile P L) (w : World P L)
+    {path : List (Label P L) × World P L}
+    (hpath : path ∈ (terminalPathDist σ w).support) :
+    terminal path.2 ∧ Steps σ w path.1 path.2 := by
+  exact terminalPathDistCore_support_terminal_steps σ w.prog w.env hpath
 
 /-- Every positive-weight trace induces a terminal qualitative small-step path
 with the trace's projected labels.

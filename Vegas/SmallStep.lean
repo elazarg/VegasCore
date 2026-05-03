@@ -26,6 +26,12 @@ Main user-facing declarations:
   label runs are the trace distribution projected to labels.
 * `SmallStep.labelDist_apply_eq_traceLabel_sum`: pointwise label mass is the
   sum of weights of traces projecting to that label list.
+* `SmallStep.terminalPathDist`: finite weighted enumeration of terminal
+  labelled paths.
+* `SmallStep.labelDist_apply_eq_terminalPath_sum`: pointwise label mass is the
+  sum of masses of enumerated terminal paths with that label list.
+* `SmallStep.terminalPathDist_support_terminal_steps`: every enumerated path
+  is terminal and has a `Steps` witness.
 * `SmallStep.exists_terminal_steps_of_pos_weight_trace`: every positive-weight
   trace gives a terminal `Steps` path with the same labels.
 * `SmallStep.progress`, `SmallStep.step_functional`, and syntax-step bounds:
