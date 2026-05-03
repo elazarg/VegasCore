@@ -150,7 +150,12 @@ profile at every commit site of `p`.
 The raw evaluator consumes full erased environments. A behavioral profile
 consumes player views. This predicate says that, along `p`, the raw full-state
 kernel is exactly the behavioral kernel after projecting the full environment
-to the active player's view. -/
+to the active player's view.
+
+This is a strong extensional condition over all environments, including
+unreachable ones. A weaker reachable-environment version would need a
+reachability-indexed profile agreement relation and is intentionally not
+folded into this basic bridge. -/
 def ExtendsBehavioralProfile (σ : OmniscientOperationalProfile P L) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
       ProgramBehavioralProfile p → Prop

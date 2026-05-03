@@ -17,7 +17,8 @@ Main user-facing declarations:
   world.
 * `SmallStep.StepSupport`: a positive-mass labelled one-step target.
 * `SmallStep.Steps`: qualitative multi-step reachability through supported
-  edges.
+  edges. `Steps` deliberately carries no numeric mass; weights live on
+  `terminalPathDist`.
 * `SmallStep.runSmallStep_eq_outcomeDist`: the raw small-step evaluator is the
   canonical `outcomeDist` packaged over worlds.
 * `SmallStep.step_bind_runSmallStep`: one raw step followed by the evaluator
@@ -32,6 +33,8 @@ Main user-facing declarations:
   sum of masses of enumerated terminal paths with that label list.
 * `SmallStep.terminalPathDist_support_terminal_steps`: every enumerated path
   is terminal and has a `Steps` witness.
+* `SmallStep.mem_terminalPathDist_iff_terminal_steps`: terminal enumerated
+  paths are exactly terminal `Steps` paths.
 * `SmallStep.exists_terminal_steps_of_pos_weight_trace`: every positive-weight
   trace gives a terminal `Steps` path with the same labels.
 * `SmallStep.progress`, `SmallStep.step_functional`, and syntax-step bounds:

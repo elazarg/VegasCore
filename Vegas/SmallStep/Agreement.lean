@@ -452,6 +452,98 @@ theorem terminalPathDist_support_terminal_steps
     terminal path.2 ∧ Steps σ w path.1 path.2 := by
   exact terminalPathDistCore_support_terminal_steps σ w.prog w.env hpath
 
+/-- Every terminal qualitative `Steps` path is represented by the finite
+terminal-path enumeration. This is the converse of
+`terminalPathDist_support_terminal_steps`. -/
+theorem terminal_steps_mem_terminalPathDist
+    {σ : OmniscientOperationalProfile P L}
+    {w dst : World P L} {labels : List (Label P L)}
+    (hsteps : Steps σ w labels dst) (hterm : terminal dst) :
+    (labels, dst) ∈ (terminalPathDist σ w).support := by
+  induction hsteps with
+  | nil w =>
+      cases w with
+      | mk Γ prog env =>
+          cases prog with
+          | ret payoffs =>
+              rw [terminalPathDist, terminalPathDistCore, FDist.mem_support_pure]
+          | letExpr x e k =>
+              simp [terminal] at hterm
+          | sample x D k =>
+              simp [terminal] at hterm
+          | commit x who R k =>
+              simp [terminal] at hterm
+          | reveal y who x hx k =>
+              simp [terminal] at hterm
+  | cons hsupport _ ih =>
+      rcases hsupport with ⟨d, hstep, hsupp⟩
+      cases hstep with
+      | letExpr env =>
+          rw [FDist.mem_support_pure] at hsupp
+          cases hsupp
+          rw [terminalPathDist, terminalPathDistCore, FDist.mem_support_map]
+          exact ⟨_, ih hterm, rfl⟩
+      | sample env =>
+          rw [FDist.mem_support_bind] at hsupp
+          rcases hsupp with ⟨v, hv, hpure⟩
+          rw [FDist.mem_support_pure] at hpure
+          cases hpure
+          rw [terminalPathDist, terminalPathDistCore, FDist.mem_support_bind]
+          refine ⟨v, hv, ?_⟩
+          rw [FDist.mem_support_map]
+          exact ⟨_, ih hterm, rfl⟩
+      | commit env =>
+          rw [FDist.mem_support_bind] at hsupp
+          rcases hsupp with ⟨v, hv, hpure⟩
+          rw [FDist.mem_support_pure] at hpure
+          cases hpure
+          rw [terminalPathDist, terminalPathDistCore, FDist.mem_support_bind]
+          refine ⟨v, hv, ?_⟩
+          rw [FDist.mem_support_map]
+          exact ⟨_, ih hterm, rfl⟩
+      | reveal env =>
+          rw [FDist.mem_support_pure] at hsupp
+          cases hsupp
+          rw [terminalPathDist, terminalPathDistCore, FDist.mem_support_map]
+          exact ⟨_, ih hterm, rfl⟩
+
+/-- Core-world form of `terminal_steps_mem_terminalPathDist`. -/
+theorem terminal_steps_mem_terminalPathDistCore
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} {p : VegasCore P L Γ} {env : VEnv L Γ}
+    {dst : World P L} {labels : List (Label P L)}
+    (hsteps : Steps σ ({ Γ := Γ, prog := p, env := env } : World P L)
+      labels dst)
+    (hterm : terminal dst) :
+    (labels, dst) ∈ (terminalPathDistCore σ p env).support := by
+  exact terminal_steps_mem_terminalPathDist hsteps hterm
+
+/-- The finite terminal-path enumeration is exactly the weighted support
+carrier for terminal `Steps` paths. Weights live on `terminalPathDist`; `Steps`
+itself remains qualitative. -/
+theorem mem_terminalPathDist_iff_terminal_steps
+    (σ : OmniscientOperationalProfile P L) (w : World P L)
+    (labels : List (Label P L)) (dst : World P L) :
+    (labels, dst) ∈ (terminalPathDist σ w).support ↔
+      terminal dst ∧ Steps σ w labels dst := by
+  constructor
+  · intro hpath
+    exact terminalPathDist_support_terminal_steps σ w hpath
+  · intro h
+    exact terminal_steps_mem_terminalPathDist h.2 h.1
+
+/-- Core-world form of `mem_terminalPathDist_iff_terminal_steps`. -/
+theorem mem_terminalPathDistCore_iff_terminal_steps
+    (σ : OmniscientOperationalProfile P L)
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    (labels : List (Label P L)) (dst : World P L) :
+    (labels, dst) ∈ (terminalPathDistCore σ p env).support ↔
+      terminal dst ∧
+        Steps σ ({ Γ := Γ, prog := p, env := env } : World P L)
+          labels dst := by
+  exact mem_terminalPathDist_iff_terminal_steps σ
+    ({ Γ := Γ, prog := p, env := env } : World P L) labels dst
+
 /-- Every positive-weight trace induces a terminal qualitative small-step path
 with the trace's projected labels.
 

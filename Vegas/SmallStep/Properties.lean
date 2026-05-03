@@ -145,7 +145,13 @@ theorem steps_length_eq_syntaxSteps_of_terminal
 
 The theorem restates `outcomeDist_comm_commit` over packaged small-step worlds.
 It is an outcome-level scheduler/permutation fact for `runSmallStep`; the
-qualitative `Steps` relation remains the positive-support path relation. -/
+qualitative `Steps` relation remains the positive-support path relation.
+
+The strategy-agreement hypotheses are explicit because an arbitrary
+`OmniscientOperationalProfile` is indexed by both the full erased environment
+and the syntactic guard expression. Distinct players and view-scoped guards
+are not enough by themselves to identify those raw kernels; a lower-friction
+corollary needs an additional coherence predicate for the operational profile. -/
 theorem runSmallStep_comm_commit
     {Γ : VCtx P L} {σ : OmniscientOperationalProfile P L} {env : VEnv L Γ}
     {x₁ : VarId} {who₁ : P} {b₁ : L.Ty}
