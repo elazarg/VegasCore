@@ -25,6 +25,26 @@ theorem isNash_iff_bestResponse (g : WFProgram P L) (σ : StrategyProfile g) :
   simpa [IsNash, IsBestResponse] using
     (KernelGame.isNash_iff_bestResponse (G := toKernelGame g) σ)
 
+/-- Machine-native Nash is equivalent to every player playing a machine-native
+best response. -/
+theorem machineIsNash_iff_machineBestResponse
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : MachineStrategyProfile g hctx) :
+    MachineIsNash g hctx σ ↔
+      ∀ who, MachineIsBestResponse g hctx who σ (σ who) := by
+  constructor
+  · intro h who
+    exact (machineIsBestResponse_iff_isBestResponse
+      g hctx who σ (σ who)).2
+      ((isNash_iff_bestResponse g σ).1
+        ((machineIsNash_iff_isNash g hctx σ).1 h) who)
+  · intro h
+    exact (machineIsNash_iff_isNash g hctx σ).2
+      ((isNash_iff_bestResponse g σ).2
+        (fun who =>
+          (machineIsBestResponse_iff_isBestResponse
+            g hctx who σ (σ who)).1 (h who)))
+
 /-- Preference-parameterized Vegas Nash is equivalent to every player playing a
 preference-parameterized Vegas best response. -/
 theorem isNashFor_iff_bestResponseFor (g : WFProgram P L)
@@ -100,6 +120,18 @@ theorem dominant_is_nash (g : WFProgram P L) (σ : StrategyProfile g)
   simpa [IsNash, IsDominant] using
     (KernelGame.dominant_is_nash (G := toKernelGame g) σ hdom)
 
+/-- A profile of machine-native dominant strategies is machine-native Nash. -/
+theorem machineDominant_is_machineNash
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : MachineStrategyProfile g hctx)
+    (hdom : ∀ who, MachineIsDominant g hctx who (σ who)) :
+    MachineIsNash g hctx σ := by
+  exact (machineIsNash_iff_isNash g hctx σ).2
+    (dominant_is_nash g σ
+      (fun who =>
+        (machineIsDominant_iff_isDominant g hctx who (σ who)).1
+          (hdom who)))
+
 /-- A Vegas profile of preference-dominant strategies is preference-Nash. -/
 theorem dominant_is_nash_for (g : WFProgram P L)
     (pref : P → PMF (Outcome P) → PMF (Outcome P) → Prop)
@@ -117,6 +149,19 @@ theorem dominant_isBestResponse (g : WFProgram P L)
   simpa [IsDominant, IsBestResponse] using
     (KernelGame.dominant_isBestResponse (G := toKernelGame g) who s σ hdom)
 
+/-- A machine-native dominant strategy is a machine-native best response
+against any profile. -/
+theorem machineDominant_isMachineBestResponse
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (who : P) (s : MachineStrategy g hctx who)
+    (σ : MachineStrategyProfile g hctx)
+    (hdom : MachineIsDominant g hctx who s) :
+    MachineIsBestResponse g hctx who σ s := by
+  exact (machineIsBestResponse_iff_isBestResponse
+    g hctx who σ s).2
+    (dominant_isBestResponse g who s σ
+      ((machineIsDominant_iff_isDominant g hctx who s).1 hdom))
+
 /-- Vegas Nash is equivalent to having no strictly improving unilateral
 deviation. -/
 theorem isNash_iff_no_improving (g : WFProgram P L) (σ : StrategyProfile g) :
@@ -125,6 +170,19 @@ theorem isNash_iff_no_improving (g : WFProgram P L) (σ : StrategyProfile g) :
         eu g (Function.update σ who s') who > eu g σ who := by
   simpa [IsNash, eu, Strategy] using
     (KernelGame.isNash_iff_no_improving (G := toKernelGame g) (σ := σ))
+
+/-- Machine-native Nash is equivalent to having no strictly improving
+machine-evaluated unilateral deviation. -/
+theorem machineIsNash_iff_no_machineImproving
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : MachineStrategyProfile g hctx) :
+    MachineIsNash g hctx σ ↔
+      ¬ ∃ (who : P) (s' : MachineStrategy g hctx who),
+        machineEu g hctx (Function.update σ who s') who >
+          machineEu g hctx σ who := by
+  rw [machineIsNash_iff_isNash, isNash_iff_no_improving]
+  simp [machineEu_eq_eu, MachineStrategy_eq_Strategy]
+  rfl
 
 /-- Replacing a Vegas Nash strategy with another Vegas best response preserves
 the deviator's expected utility. -/
@@ -143,6 +201,16 @@ theorem IsStrictNash.isNash {g : WFProgram P L}
     IsNash g σ := by
   simpa [IsStrictNash, IsNash] using
     (KernelGame.IsStrictNash.isNash (G := toKernelGame g) hstrict)
+
+/-- A machine-native strict Nash equilibrium is machine-native Nash. -/
+theorem MachineIsStrictNash.isNash
+    {g : WFProgram P L} {hctx : WFCtx g.Γ}
+    {σ : MachineStrategyProfile g hctx}
+    (hstrict : MachineIsStrictNash g hctx σ) :
+    MachineIsNash g hctx σ := by
+  exact (machineIsNash_iff_isNash g hctx σ).2
+    (IsStrictNash.isNash
+      ((machineIsStrictNash_iff_isStrictNash g hctx σ).1 hstrict))
 
 /-- Vegas Pareto dominance is exactly preference-parameterized Pareto
 dominance with EU preferences. -/

@@ -2,6 +2,7 @@ import Vegas.FOSG.Observed.Collapse
 import Vegas.FOSG.Observed.Refinement
 import Vegas.FOSG.SmallStep
 import Vegas.Protocol.Checked
+import Vegas.Protocol.Strategic
 
 namespace Vegas
 namespace FOSGBridge
@@ -106,9 +107,16 @@ theorem toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
     ∃ β : KernelGame.Profile (toObservedFOSGKernelGame g hctx LF),
       (toObservedFOSGKernelGame g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) :=
-  Observed.observedProgramReachableKernelGame_mixedPure_realization
-    g hctx LF μ
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  obtain ⟨β, hβ⟩ :=
+    Observed.observedProgramReachableKernelGame_mixedPure_realization
+      g hctx LF μ
+  refine ⟨β, ?_⟩
+  rw [hβ]
+  exact (bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx (Math.PMFProduct.pmfPi μ)).symm
 
 /-- Finite observed-FOSG Kuhn M→B with a total legal FOSG behavioral witness.
 
@@ -134,9 +142,24 @@ theorem toObservedFOSG_mixedPure_realizedByLegalBehavioral_runDist
       PMF.map (observedProgramHistoryOutcome g hctx)
           ((toObservedFOSG g hctx).runDist (syntaxSteps g.prog) β) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) :=
-  Observed.observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
-    g hctx LF μ
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : Fintype (CursorCheckedWorld g) :=
+    observedProgramFOSG.instFintypeWorld g hctx LF
+  letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
+    fun who => observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  letI : Fintype (toObservedFOSG g hctx).History :=
+    observedProgramFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (toObservedFOSG g hctx).terminal :=
+    observedProgramFOSG.instDecidablePredTerminal g hctx
+  obtain ⟨β, hβ⟩ :=
+    Observed.observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
+      g hctx LF μ
+  refine ⟨β, ?_⟩
+  rw [hβ]
+  exact (bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx (Math.PMFProduct.pmfPi μ)).symm
 
 theorem toBoundedFOSG_boundedHorizon
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :
@@ -969,7 +992,7 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
 
 /-- Pure Vegas strategies have the same outcome distribution through the
 finite graph-machine-derived FOSG as through the native strategic kernel game. -/
-theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
@@ -985,7 +1008,7 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
           ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
             (toFiniteGraphMachineFOSGReachableLegalPureProfile
               g hctx σ).extend)) =
-      (toStrategicKernelGame g).outcomeKernel σ := by
+      (toMachineStrategicKernelGame g hctx).outcomeKernel σ := by
   classical
   let R := finiteGraphMachineFOSGPureOutcomeValuePMF g hctx σ
   have hclosure :=
@@ -1021,8 +1044,33 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
       cursorWorldOfGraphConfiguration_initial, R,
       finiteGraphMachineFOSGPureOutcomeValuePMF] using hclosure
   rw [hmachine, hvalue]
-  exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
-    g σ
+  rw [toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF]
+  exact (toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx σ).symm
+
+/-- Legacy spelling of the pure finite graph-machine FOSG bridge, stated
+against `toStrategicKernelGame`. New code should use
+`toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame`. -/
+theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [Fintype P]
+    [∀ who : P,
+      Fintype (Option ((graphMachine g hctx).Action who))]
+    [Fintype
+      ((graphMachine g hctx).BoundedRunPrefix
+        (syntaxSteps g.prog))]
+    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
+    (σ : LegalProgramPureProfile g) :
+    PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
+        ((toFiniteGraphMachineFOSG g hctx).runDist
+          (syntaxSteps g.prog)
+          ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
+            (toFiniteGraphMachineFOSGReachableLegalPureProfile
+              g hctx σ).extend)) =
+      (toStrategicKernelGame g).outcomeKernel σ := by
+  rw [toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame]
+  exact toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx σ
 
 /-- Product mixed profile over finite graph-machine-FOSG reachable pure
 strategies induced by a product mixed profile over Vegas legal pure strategies. -/
@@ -1079,7 +1127,7 @@ theorem toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mapped
           ((toFiniteGraphMachineFOSG g hctx).runDist
             (syntaxSteps g.prog) β.extend) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   letI : Fintype (toFiniteGraphMachineFOSG g hctx).History :=
     Fintype.ofFinite _
   obtain ⟨β, hβ⟩ :=
@@ -1091,7 +1139,7 @@ theorem toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mapped
   rw [hβ]
   apply congrArg
   funext σ
-  exact toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+  exact toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame
     g hctx σ
 
 /-- Finite observed-FOSG Kuhn M→B projected back to Vegas'
@@ -1107,9 +1155,9 @@ theorem mixedPure_realizedBySyntaxLegalBehavioralPMF_finite
     letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
       fun who => LegalProgramPureStrategy.instFintype g LF who
     ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
+      (toMachineKernelGamePMF g hctx).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
     fun who => LegalProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
@@ -1130,6 +1178,7 @@ theorem mixedPure_realizedBySyntaxLegalBehavioralPMF_finite
   refine
     ⟨Observed.collapsedLegalBehavioralProfilePMF
         g hctx βF fallback, ?_⟩
+  rw [toMachineKernelGamePMF_outcomeKernel_eq_toKernelGamePMF]
   rw [← Observed.observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     g hctx LF βF fallback]
   simpa [Observed.observedProgramCollapsedOutcomeKernelPMF] using hβF
@@ -1185,7 +1234,7 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   classical
   letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
     fun who => LegalProgramPureStrategy.instFintype g LF who
@@ -1245,7 +1294,7 @@ theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
       reachableProgramOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
     fun who => LegalProgramPureStrategy.instFintype g LF who
   obtain ⟨βF, hβF⟩ :=
@@ -1254,6 +1303,3 @@ theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
   exact ⟨⟨βF⟩, hβF⟩
 
 end Vegas
-
-
-

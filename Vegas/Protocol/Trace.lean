@@ -11,8 +11,10 @@ by stepping the machine `n` primitive events from the initial state, where each
 step samples an event from `law` and then samples a successor from
 `Machine.step`. `traceDistFrom` is the same starting from a given state.
 
-`outcomeKernel` marginalizes a trace to the terminal `M.Outcome`. This is the
-distribution Kuhn-style realization theorems compare.
+`outcomeKernelFrom` is the same terminal-outcome marginal, written as a
+state-recursive kernel from an arbitrary starting state. `outcomeKernel`
+specializes it to `M.init`. This is the distribution Kuhn-style realization
+theorems compare.
 
 These are *the* trace semantics for `Machine`. The earlier syntax-directed
 `Vegas.Trace` (Vegas/TraceSemantics.lean) is the equivalent notion at the
@@ -67,13 +69,39 @@ noncomputable def traceDist
     (M : Machine Player) (law : M.EventLaw) :
     M.traceDist law 0 = PMF.pure ([], [M.init]) := rfl
 
-/-- Outcome kernel induced by a scheduled event law: the terminal-state
-marginal of `traceDist`. -/
+/-- Outcome kernel induced by a scheduled event law, starting from an arbitrary
+machine state. -/
+noncomputable def outcomeKernelFrom
+    (M : Machine Player) (law : M.EventLaw) :
+    Nat → M.State → PMF M.Outcome
+  | 0, state => PMF.pure (M.outcome state)
+  | horizon + 1, state =>
+      (law state).bind fun event =>
+        (M.step event state).bind fun next =>
+          M.outcomeKernelFrom law horizon next
+
+@[simp] theorem outcomeKernelFrom_zero
+    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
+    M.outcomeKernelFrom law 0 state = PMF.pure (M.outcome state) := rfl
+
+theorem outcomeKernelFrom_succ
+    (M : Machine Player) (law : M.EventLaw)
+    (horizon : Nat) (state : M.State) :
+    M.outcomeKernelFrom law (horizon + 1) state =
+      (law state).bind fun event =>
+        (M.step event state).bind fun next =>
+          M.outcomeKernelFrom law horizon next := rfl
+
+/-- Outcome kernel induced by a scheduled event law from the machine initial
+state. -/
 noncomputable def outcomeKernel
     (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
     PMF M.Outcome :=
-  (M.traceDist law horizon).map fun trace =>
-    M.outcome (trace.2.getLast?.getD M.init)
+  M.outcomeKernelFrom law horizon M.init
+
+@[simp] theorem outcomeKernel_zero
+    (M : Machine Player) (law : M.EventLaw) :
+    M.outcomeKernel law 0 = PMF.pure (M.outcome M.init) := rfl
 
 end Machine
 

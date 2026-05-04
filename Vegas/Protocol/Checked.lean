@@ -1452,6 +1452,72 @@ theorem graphMachine_step_support_remainingSyntaxSteps_of_event_available_of_cur
     (cursorWorldOfGraphConfiguration g hctx next)
     ((PMF.mem_support_iff _ _).1 hmem)
 
+/-- Available checked graph-machine events project to checked-world
+transitions after forgetting the graph frontier. -/
+theorem graphMachine_step_map_checkedWorld_eq_checkedTransition_of_available
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    {state : (graphMachine g hctx).State}
+    {event : (graphMachine g hctx).Event}
+    (hcursor :
+      ¬ CursorCheckedWorld.terminal
+        (cursorWorldOfGraphConfiguration g hctx state))
+    (havailable : (graphMachine g hctx).EventAvailable state event) :
+    PMF.map
+        (fun next : (graphMachine g hctx).State =>
+          CheckedWorld.ofCursorChecked (hctx := hctx)
+            (cursorWorldOfGraphConfiguration g hctx next))
+        ((graphMachine g hctx).step event state) =
+      checkedTransition
+        (CheckedWorld.ofCursorChecked (hctx := hctx)
+          (cursorWorldOfGraphConfiguration g hctx state))
+        ⟨ProgramJointAction.toAction (graphMachineJointAction g hctx event),
+          CursorProgramJointActionLegal.toAction
+            (cursorProgramJointActionLegal_of_graphMachine_available
+              g hctx hcursor havailable)⟩ := by
+  have hstep :
+      PMF.map (cursorWorldOfGraphConfiguration g hctx)
+          ((graphMachine g hctx).step event state) =
+        cursorProgramTransition
+          (cursorWorldOfGraphConfiguration g hctx state)
+          ⟨graphMachineJointAction g hctx event,
+            cursorProgramJointActionLegal_of_graphMachine_available
+              g hctx hcursor havailable⟩ := by
+    exact
+      graphMachine_step_map_cursorWorld_eq_cursorProgramTransition_of_available
+        g hctx hcursor havailable
+  calc
+    PMF.map
+        (fun next : (graphMachine g hctx).State =>
+          CheckedWorld.ofCursorChecked (hctx := hctx)
+            (cursorWorldOfGraphConfiguration g hctx next))
+        ((graphMachine g hctx).step event state)
+        =
+      PMF.map
+        (fun next : CursorCheckedWorld g =>
+          CheckedWorld.ofCursorChecked (hctx := hctx) next)
+        (cursorProgramTransition
+          (cursorWorldOfGraphConfiguration g hctx state)
+          ⟨graphMachineJointAction g hctx event,
+            cursorProgramJointActionLegal_of_graphMachine_available
+              g hctx hcursor havailable⟩) := by
+          rw [← hstep]
+          rw [PMF.map_comp]
+          rfl
+    _ =
+      checkedTransition
+        (CheckedWorld.ofCursorChecked (hctx := hctx)
+          (cursorWorldOfGraphConfiguration g hctx state))
+        ⟨ProgramJointAction.toAction (graphMachineJointAction g hctx event),
+          CursorProgramJointActionLegal.toAction
+            (cursorProgramJointActionLegal_of_graphMachine_available
+              g hctx hcursor havailable)⟩ := by
+          convert cursorProgramTransition_map_checkedWorld
+            (hctx := hctx)
+            (cursorWorldOfGraphConfiguration g hctx state)
+            ⟨graphMachineJointAction g hctx event,
+              cursorProgramJointActionLegal_of_graphMachine_available
+                g hctx hcursor havailable⟩ using 1
+
 theorem graphMachine_step_support_done_eq_advance_of_event_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     {state next : (graphMachine g hctx).State}

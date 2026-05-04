@@ -70,6 +70,19 @@ noncomputable def protocolEU (g : WFProgram P L)
     Vegas.eu g σ i = protocolEU g σ i := by
   simp [protocolEU, eu, Game]
 
+@[simp] theorem MachineGame_eu_eq_protocolEU
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+  (σ : StrategyProfile g) (i : P) :
+    (MachineGame g hctx).eu σ i = protocolEU g σ i := by
+  rw [MachineGame_eu_eq_Game]
+  simp [Game]
+
+@[simp] theorem machineEu_eq_protocolEU
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : StrategyProfile g) (i : P) :
+    machineEu g hctx σ i = protocolEU g σ i := by
+  rw [machineEu_eq_eu, eu_eq_protocolEU]
+
 /-- Protocol-level Nash equilibrium: no player can improve their
 protocol-level expected utility by a unilateral deviation within
 the guard-legal strategy space. -/
@@ -90,6 +103,12 @@ theorem isNash_iff_protocolNash (g : WFProgram P L)
   · intro h who s'
     have := h who s'
     simpa [eu_eq_protocolEU, Game] using this
+
+theorem machineIsNash_iff_protocolNash
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : StrategyProfile g) :
+    MachineIsNash g hctx σ ↔ ProtocolNash g σ := by
+  rw [machineIsNash_iff_isNash, isNash_iff_protocolNash]
 
 /-- Protocol-level best response: `s` maximises player `who`'s
 protocol-level expected utility among all legal deviations, holding
@@ -172,7 +191,7 @@ def ProtocolSequentialKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
 
 /-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
 machine-derived sequential strategy space. -/
@@ -185,7 +204,7 @@ theorem protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact sequential_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
 
@@ -216,7 +235,7 @@ def ProtocolReachableKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
     ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
       reachableProgramOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
 
 /-- Reachable mixed-to-behavioral realization for concrete finite Vegas
 programs. The witness is not a total strategy. -/
@@ -229,7 +248,7 @@ theorem protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
       reachableProgramOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
 
@@ -257,7 +276,7 @@ def ProtocolTotalMixedPureRealizationPMF
     ∃ β : LegalProgramBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
 
 /-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
 IR-based behavioral profile space. -/
@@ -270,7 +289,7 @@ theorem protocol_mixedPure_realizedByBehavioralPMF_finite
     ∃ β : LegalProgramBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     g hctx LF μ
 
@@ -296,6 +315,55 @@ def ProtocolRationalMixedPureRealizationProperty [Fintype P] (g : WFProgram P L)
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
+/-- Machine-native FDist-valued mixed-pure realization target. This is the
+`hctx`-indexed machine presentation of
+`ProtocolRationalMixedPureRealizationProperty`. -/
+def ProtocolRationalMixedPureRealizationMachineProperty
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
+  ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
+    ∃ β : LegalProgramBehavioralProfile g,
+      (toMachineKernelGame g hctx).outcomeKernel β =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
+
+theorem protocolRationalMixedPureRealizationMachineProperty_iff
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [∀ who, Fintype (LegalProgramPureStrategy g who)] :
+    ProtocolRationalMixedPureRealizationMachineProperty g hctx ↔
+      ProtocolRationalMixedPureRealizationProperty g := by
+  constructor
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGame g hctx).outcomeKernel β =
+            (Math.PMFProduct.pmfPi μ).bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGame g).outcomeKernel β =
+            (Math.PMFProduct.pmfPi μ).bind
+              (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGame_outcomeKernel_eq_toKernelGame]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mp hβ
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGame g hctx).outcomeKernel β =
+            (Math.PMFProduct.pmfPi μ).bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGame g).outcomeKernel β =
+            (Math.PMFProduct.pmfPi μ).bind
+              (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGame_outcomeKernel_eq_toKernelGame]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mpr hβ
+
 /-- Strong correlated variant of protocol realization: every PMF over joint
 guard-legal pure profiles admits a guard-legal PMF behavioural profile with the
 same outcome distribution.
@@ -309,6 +377,49 @@ def ProtocolCorrelatedPureRealizationPropertyPMF (g : WFProgram P L) : Prop :=
       (toKernelGamePMF g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
+/-- Machine-native PMF correlated pure-realization target. -/
+def ProtocolCorrelatedPureRealizationMachinePropertyPMF
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) : Prop :=
+  ∀ (μ : PMF (LegalProgramPureProfile g)),
+    ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
+      (toMachineKernelGamePMF g hctx).outcomeKernel β =
+        μ.bind
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
+
+theorem protocolCorrelatedPureRealizationMachinePropertyPMF_iff
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    ProtocolCorrelatedPureRealizationMachinePropertyPMF g hctx ↔
+      ProtocolCorrelatedPureRealizationPropertyPMF g := by
+  constructor
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGamePMF g hctx).outcomeKernel β =
+            μ.bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGamePMF g).outcomeKernel β =
+            μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGamePMF_outcomeKernel_eq_toKernelGamePMF]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mp hβ
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGamePMF g hctx).outcomeKernel β =
+            μ.bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGamePMF g).outcomeKernel β =
+            μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGamePMF_outcomeKernel_eq_toKernelGamePMF]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mpr hβ
+
 /-- FDist-valued correlated realization target. As above, this is a rational
 variant rather than the general PMF-level property. -/
 def ProtocolRationalCorrelatedPureRealizationProperty
@@ -317,6 +428,49 @@ def ProtocolRationalCorrelatedPureRealizationProperty
     ∃ β : LegalProgramBehavioralProfile g,
       (toKernelGame g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
+
+/-- Machine-native FDist-valued correlated realization target. -/
+def ProtocolRationalCorrelatedPureRealizationMachineProperty
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) : Prop :=
+  ∀ (μ : PMF (LegalProgramPureProfile g)),
+    ∃ β : LegalProgramBehavioralProfile g,
+      (toMachineKernelGame g hctx).outcomeKernel β =
+        μ.bind
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ)
+
+theorem protocolRationalCorrelatedPureRealizationMachineProperty_iff
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    ProtocolRationalCorrelatedPureRealizationMachineProperty g hctx ↔
+      ProtocolRationalCorrelatedPureRealizationProperty g := by
+  constructor
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGame g hctx).outcomeKernel β =
+            μ.bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGame g).outcomeKernel β =
+            μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGame_outcomeKernel_eq_toKernelGame]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mp hβ
+  · intro h μ
+    obtain ⟨β, hβ⟩ := h μ
+    refine ⟨β, ?_⟩
+    have hconv :
+        (toMachineKernelGame g hctx).outcomeKernel β =
+            μ.bind
+              (fun σ =>
+                (toMachineStrategicKernelGame g hctx).outcomeKernel σ) ↔
+          (toKernelGame g).outcomeKernel β =
+            μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+      rw [toMachineKernelGame_outcomeKernel_eq_toKernelGame]
+      rw [bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame]
+      rfl
+    exact hconv.mpr hβ
 
 /-- `ProtocolCorrelatedPureRealizationPropertyPMF` is not vacuous: a Dirac
 mixture on any legal pure profile is realized by the PMF behavioral point-lift
@@ -330,6 +484,21 @@ theorem protocolCorrelatedPureRealizationPMF_dirac (g : WFProgram P L)
   refine ⟨LegalProgramPureProfile.toBehavioralPMF σ, ?_⟩
   rw [PMF.pure_bind]
   exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF g σ
+
+/-- Machine-native Dirac witness for the PMF correlated realization target. -/
+theorem protocolCorrelatedPureRealizationMachinePMF_dirac
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
+      (toMachineKernelGamePMF g hctx).outcomeKernel β =
+        (PMF.pure σ).bind
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
+  refine ⟨LegalProgramPureProfile.toBehavioralPMF σ, ?_⟩
+  rw [PMF.pure_bind]
+  rw [toMachineKernelGamePMF_outcomeKernel_eq_toKernelGamePMF]
+  rw [toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF]
+  exact (toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx σ).symm
 
 /-- `ProtocolRationalCorrelatedPureRealizationProperty` is not vacuous: a concrete
 witness for a direction-trivialising case is the Dirac mixture on any legal
@@ -347,5 +516,20 @@ theorem protocolCorrelatedPureRealization_dirac (g : WFProgram P L)
   refine ⟨LegalProgramPureProfile.toBehavioral σ, ?_⟩
   rw [PMF.pure_bind]
   exact toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral g σ
+
+/-- Machine-native Dirac witness for the FDist correlated realization target. -/
+theorem protocolCorrelatedPureRealizationMachine_dirac
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (σ : LegalProgramPureProfile g) :
+    ∃ β : LegalProgramBehavioralProfile g,
+      (toMachineKernelGame g hctx).outcomeKernel β =
+        (PMF.pure σ).bind
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
+  refine ⟨LegalProgramPureProfile.toBehavioral σ, ?_⟩
+  rw [PMF.pure_bind]
+  rw [toMachineKernelGame_outcomeKernel_eq_toKernelGame]
+  rw [toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral]
+  exact (toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+    g hctx σ).symm
 
 end Vegas

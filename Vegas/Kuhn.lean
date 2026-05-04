@@ -30,7 +30,7 @@ theorem kuhn_mixedPure_realizedByBehavioralPMF_finite
     ∃ β : LegalProgramBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact protocol_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
 
@@ -45,7 +45,7 @@ theorem kuhn_mixedPure_realizedBySequentialBehavioralPMF_finite
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     g hctx LF μ
 
@@ -64,7 +64,7 @@ theorem kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact kuhn_mixedPure_realizedBySequentialBehavioralPMF_finite
     g hctx LF μ
 
@@ -80,7 +80,7 @@ theorem kuhn_mixedPure_realizedByReachableBehavioralPMF_finite
     ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
       reachableProgramOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
+          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
   exact protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     g hctx LF μ
 

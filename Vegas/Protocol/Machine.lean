@@ -171,10 +171,12 @@ the preservation theorem they need. -/
 abbrev EventLaw (M : Machine Player) : Type :=
   M.State → PMF M.Event
 
-/-- An event law is legal when it puts mass only on currently available
-primitive events. -/
+/-- An event law is legal when, before terminal states, it puts mass only on
+currently available primitive events. Terminal states have no semantic next
+event; trace users should either stop there or rely on total machine steps for
+post-terminal stutter behavior. -/
 def IsLegalEventLaw (M : Machine Player) (law : M.EventLaw) : Prop :=
-  ∀ (state : M.State) {event : M.Event},
+  ∀ (state : M.State), ¬ M.terminal state → ∀ {event : M.Event},
     event ∈ (law state).support → M.EventAvailable state event
 
 /-- Legal event laws for the asynchronous machine. -/
@@ -190,9 +192,10 @@ def toEventLaw (M : Machine Player) (law : M.LegalEventLaw) : M.EventLaw :=
 theorem eventAvailable_of_mem_support
     (M : Machine Player) (law : M.LegalEventLaw)
     (state : M.State) {event : M.Event}
+    (hterminal : ¬ M.terminal state)
     (hmem : event ∈ (law.toEventLaw M state).support) :
     M.EventAvailable state event :=
-  law.2 state hmem
+  law.2 state hterminal hmem
 
 end LegalEventLaw
 
