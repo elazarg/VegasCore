@@ -1,4 +1,5 @@
 import Vegas.FOSG.Observed.Kernel
+import Vegas.StrategicPMF
 
 namespace Vegas
 namespace FOSGBridge

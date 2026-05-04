@@ -1,6 +1,7 @@
 import Vegas.Protocol.Trace
 import Vegas.Protocol.Checked
 import Vegas.FOSG.Observed.Kernel
+import Vegas.Strategy.Conversions
 
 /-!
 # Strategic profiles as graph-machine event laws
@@ -817,69 +818,9 @@ theorem lawOfPure_bind_step_cursorVegasOutcomeKernelPMF
       (g := g) (σ := LegalProgramPureProfile.toBehavioralPMF σ)
       hctx state hterminal hcursor
 
-/-- PMF behavioral profiles have the same outcome kernel through the
-graph-machine event law as through the legacy syntax PMF kernel. -/
-theorem lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
-    (hctx : WFCtx g.Γ) :
-    (graphMachine g hctx).outcomeKernel
-        (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog) =
-      (toKernelGamePMF g).outcomeKernel σ := by
-  rw [lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
-  simp [Observed.cursorVegasOutcomeKernelPMF,
-    CursorCheckedWorld.initial, CursorWorldData.prog,
-    CursorWorldData.suffix, ProgramCursor.toSuffix,
-    ProgramCursor.toSuffixFrom, ProgramSuffix.behavioralProfilePMF,
-    ProgramCursor.prog]
-  rfl
-
-/-- FDist-valued legal behavioral profiles have the same outcome kernel
-through the graph-machine event law as through the legacy behavioral kernel. -/
-theorem lawOfBehavioral_outcomeKernel_eq_toKernelGame
-    (σ : LegalProgramBehavioralProfile g)
-    (hctx : WFCtx g.Γ) :
-    (graphMachine g hctx).outcomeKernel
-        (lawOfBehavioral σ hctx).val (syntaxSteps g.prog) =
-      (toKernelGame g).outcomeKernel σ := by
-  rw [lawOfBehavioral]
-  rw [lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF]
-  exact toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame g σ
-
-/-- Pure profiles have the same outcome kernel through the graph-machine event
-law as through the legacy pure strategic kernel. -/
-theorem lawOfPure_outcomeKernel_eq_toStrategicKernelGame
-    (σ : LegalProgramPureProfile g)
-    (hctx : WFCtx g.Γ) :
-    (graphMachine g hctx).outcomeKernel
-        (lawOfPure σ hctx).val (syntaxSteps g.prog) =
-      (toStrategicKernelGame g).outcomeKernel σ := by
-  rw [lawOfPure]
-  rw [lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF]
-  exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
-    g σ
-
-/-- Direct pure-strategy bridge, stated in terms of the legacy
-`outcomeDistPure` expression. -/
-theorem outcomeDistPure_eq_machine_outcomeKernel
-    (σ : LegalProgramPureProfile g)
-    (hctx : WFCtx g.Γ) :
-    (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
-        (outcomeDistPure_totalWeight_eq_one
-          (p := g.prog) (σ := fun i => (σ i).val)
-          g.normalized) =
-      (graphMachine g hctx).outcomeKernel
-        (lawOfPure σ hctx).val (syntaxSteps g.prog) := by
-  rw [← toStrategicKernelGame_outcomeKernel (g := g) σ]
-  exact (lawOfPure_outcomeKernel_eq_toStrategicKernelGame
-    (g := g) σ hctx).symm
-
 end GraphEventLaw
 
 export GraphEventLaw
-  (lawValOfBehavioralPMF lawOfBehavioralPMF lawOfBehavioral lawOfPure
-   lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
-   lawOfBehavioral_outcomeKernel_eq_toKernelGame
-   lawOfPure_outcomeKernel_eq_toStrategicKernelGame
-   outcomeDistPure_eq_machine_outcomeKernel)
+  (lawValOfBehavioralPMF lawOfBehavioralPMF lawOfBehavioral lawOfPure)
 
 end Vegas

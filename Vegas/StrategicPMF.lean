@@ -1,7 +1,7 @@
 import Vegas.PureStrategic
 import Vegas.Strategic
 import Vegas.Strategy.Conversions
-import Vegas.Strategy.PMF
+import Vegas.Strategy.PMFSemantics
 
 /-!
 # PMF Behavioral Strategic Semantics
@@ -11,9 +11,10 @@ This file mirrors `Vegas.Strategic` and `Vegas.PureStrategic` but uses `PMF`
 distributions). The PMF layer is needed for theorem backends that produce
 real-valued behavioral strategies.
 
-The PMF strategy carrier lives in `Vegas.Strategy.PMF`; carrier conversions
-live in `Vegas.Strategy.Conversions`. This file keeps the PMF outcome evaluator
-and legacy syntax-recursive PMF kernel-game packaging.
+The PMF strategy carrier lives in `Vegas.Strategy.PMF`; the syntax-recursive
+PMF evaluator lives in `Vegas.Strategy.PMFSemantics`; carrier conversions live
+in `Vegas.Strategy.Conversions`. This file keeps the agreement theorems and
+legacy syntax-recursive PMF kernel-game packaging.
 
 Key agreement theorems:
 * `outcomeDistBehavioralPMF_toBehavioralPMF_eq` — pure lift through PMF layer
@@ -25,69 +26,6 @@ Key agreement theorems:
 namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
-
-/-! ## PMF behavioral outcome distribution -/
-
-/-- Evaluate a fixed-program PMF behavioral profile directly, threading the
-continuation profile through the program structure. At sample nodes, the FDist
-from nature is converted to a PMF via `NormalizedDists`. -/
-noncomputable def outcomeDistBehavioralPMF :
-    {Γ : VCtx P L} →
-      (p : VegasCore P L Γ) →
-      NormalizedDists p →
-      ProgramBehavioralProfilePMF p →
-      VEnv (Player := P) L Γ →
-      PMF (Outcome P)
-  | _, .ret payoffs, _, _, env =>
-      PMF.pure (evalPayoffs payoffs env)
-  | _, .letExpr x e k, hd, σ, env =>
-      outcomeDistBehavioralPMF k hd (fun w => match σ w with | .letExpr tail => tail) <|
-        VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-          (L.eval e (VEnv.erasePubEnv env)) env
-  | _, .sample x D' k, hd, σ, env =>
-      ((L.evalDist D' (VEnv.eraseSampleEnv env)).toPMF (hd.1 env)).bind
-        (fun v =>
-          outcomeDistBehavioralPMF k hd.2
-            (fun w => match σ w with | .sample tail => tail)
-            (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _) v env))
-  | _, .commit x who (b := b) _ k, hd, σ, env =>
-      (ProgramBehavioralStrategyPMF.headKernel (σ who)
-        (projectViewEnv who (VEnv.eraseEnv env))).bind
-        (fun v =>
-          outcomeDistBehavioralPMF k hd
-            (ProgramBehavioralProfilePMF.tail σ)
-            (VEnv.cons (Player := P) (L := L) (x := x)
-              (τ := .hidden who b) v env))
-  | _, .reveal y _who _x (b := b) hx k, hd, σ, env =>
-      let v : L.Val b := VEnv.get (Player := P) (L := L) env hx
-      outcomeDistBehavioralPMF k hd (fun w => match σ w with | .reveal tail => tail)
-        (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
-
-/-- At a commit node, `outcomeDistBehavioralPMF` depends only on `headKernel` at
-the current view and the tail's outcome distribution. -/
-theorem outcomeDistBehavioralPMF_commit_congr
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (hd : NormalizedDists (.commit x who R k))
-    (σ₁ σ₂ : ProgramBehavioralProfilePMF (.commit x who R k))
-    (env : VEnv (Player := P) L Γ)
-    (hkernel :
-      ProgramBehavioralStrategyPMF.headKernel (σ₁ who)
-        (projectViewEnv who (VEnv.eraseEnv env)) =
-      ProgramBehavioralStrategyPMF.headKernel (σ₂ who)
-        (projectViewEnv who (VEnv.eraseEnv env)))
-    (htail : ∀ v,
-      outcomeDistBehavioralPMF k hd
-        (ProgramBehavioralProfilePMF.tail σ₁)
-        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who b) v env) =
-      outcomeDistBehavioralPMF k hd
-        (ProgramBehavioralProfilePMF.tail σ₂)
-        (VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who b) v env)) :
-    outcomeDistBehavioralPMF (.commit x who R k) hd σ₁ env =
-      outcomeDistBehavioralPMF (.commit x who R k) hd σ₂ env := by
-  simp only [outcomeDistBehavioralPMF]
-  rw [hkernel]; congr 1; funext v; exact htail v
 
 /-! ## Agreement: pure lift through PMF = outcomeDistPure.toPMF -/
 

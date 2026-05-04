@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Kernel
+import Vegas.FOSG.Observed.Strategic
 
 /-!
 # FOSG bridge for checked small-step semantics

@@ -2,6 +2,7 @@ import Vegas.Equilibrium
 import Vegas.FOSG
 import Vegas.PureStrategic
 import Vegas.StrategicPMF
+import Vegas.Protocol.StrategicCompatibility
 
 /-!
 # Protocol-native semantics for Vegas

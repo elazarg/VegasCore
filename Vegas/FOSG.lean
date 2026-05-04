@@ -1,8 +1,10 @@
 import Vegas.FOSG.Observed.Collapse
 import Vegas.FOSG.Observed.Refinement
+import Vegas.FOSG.Observed.Strategic
 import Vegas.FOSG.SmallStep
 import Vegas.Protocol.Checked
 import Vegas.Protocol.Strategic
+import Vegas.Protocol.StrategicCompatibility
 
 namespace Vegas
 namespace FOSGBridge
