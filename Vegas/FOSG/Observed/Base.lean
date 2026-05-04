@@ -245,7 +245,7 @@ private theorem cursorPlayerView_initial
         (CursorCheckedWorld.initial g hctx).1.cursor
         (CursorCheckedWorld.initial g hctx).1.env = [] := by
   cases g with
-  | mk Γ prog env wf normalized legal =>
+  | mk Γ prog env wctx wf normalized legal =>
       cases prog <;>
         simp [cursorPlayerView, cursorPlayerViewFrom,
           CursorCheckedWorld.initial, CursorEmbedding.id]

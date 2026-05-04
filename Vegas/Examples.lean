@@ -295,6 +295,7 @@ noncomputable def matchingPenniesWF :
   Γ := Γ0
   prog := matchingPennies
   env := VEnv.empty simpleExpr
+  wctx := WFCtx_nil
   wf := ⟨by decide, by decide, by
     constructor
     · intro x hx
