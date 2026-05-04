@@ -64,30 +64,6 @@ theorem lawOfPure_outcomeKernel_eq_toStrategicKernelGame
   exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
     g σ
 
-/-- Direct pure-strategy bridge, stated in terms of the legacy
-`outcomeDistPure` expression. -/
-theorem outcomeDistPure_eq_machine_outcomeKernel
-    (σ : LegalProgramPureProfile g)
-    (hctx : WFCtx g.Γ) :
-    (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
-        (outcomeDistPure_totalWeight_eq_one
-          (p := g.prog) (σ := fun i => (σ i).val)
-          g.normalized) =
-      (graphMachine g hctx).outcomeKernel
-        (lawOfPure σ hctx).val (syntaxSteps g.prog) := by
-  rw [lawOfPure]
-  rw [lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
-  simpa [Observed.cursorVegasOutcomeKernelPMF,
-    CursorCheckedWorld.initial, CursorWorldData.prog,
-    CursorWorldData.suffix, ProgramCursor.toSuffix,
-    ProgramCursor.toSuffixFrom, ProgramSuffix.behavioralProfilePMF,
-    ProgramCursor.prog] using
-    (outcomeDistBehavioralPMF_toBehavioralPMF_eq
-    (p := g.prog)
-    (σ := fun i => (σ i).val)
-    (env := g.env)
-    (hd := g.normalized)).symm
-
 /-- The `hctx`-indexed machine pure kernel agrees with the public pure kernel. -/
 theorem toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -220,7 +196,6 @@ export GraphEventLaw
   (lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
    lawOfBehavioral_outcomeKernel_eq_toKernelGame
    lawOfPure_outcomeKernel_eq_toStrategicKernelGame
-   outcomeDistPure_eq_machine_outcomeKernel
    toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
    toMachineStrategicKernelGame_eu_eq_toStrategicKernelGame
    toMachineStrategicKernelGame_udist_eq_toStrategicKernelGame

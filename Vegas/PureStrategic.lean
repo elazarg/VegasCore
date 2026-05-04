@@ -14,105 +14,12 @@ This file defines the pure strategic form for a fixed Vegas program.
 Unlike a global policy space over all contexts and guards, `ProgramPureStrategy
 who p` contains one deterministic choice rule for each commit site of the fixed
 program `p` owned by `who`. The carrier itself lives in `Vegas.Strategy.Pure`.
-This file keeps the legacy pure outcome evaluator for compatibility; the public
-pure `KernelGame` constructor is machine-backed.
+The public pure `KernelGame` constructor is machine-backed.
 -/
 
 namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
-
-/-- Evaluate a fixed-program pure profile directly, threading the continuation
-profile through the program structure. -/
-noncomputable def outcomeDistPure :
-    {Γ : VCtx P L} →
-      (p : VegasCore P L Γ) →
-      ProgramPureProfile p →
-      VEnv (Player := P) L Γ →
-      FDist (Outcome P)
-  | _, .ret payoffs, _, env =>
-      FDist.pure (evalPayoffs payoffs env)
-  | _, .letExpr x e k, σ, env =>
-      outcomeDistPure k σ <|
-        VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _)
-          (L.eval e (VEnv.erasePubEnv env)) env
-  | _, .sample x D' k, σ, env =>
-      FDist.bind
-        (L.evalDist D' (VEnv.eraseSampleEnv env))
-        (fun v =>
-          outcomeDistPure k σ
-            (VEnv.cons (Player := P) (L := L) (x := x) (τ := .pub _) v env))
-  | _, .commit x who (b := b) _ k, σ, env =>
-      let s := ProgramPureStrategy.headKernel (σ who)
-      let v := s (projectViewEnv who (VEnv.eraseEnv env))
-      outcomeDistPure k (ProgramPureProfile.tail σ)
-        (VEnv.cons (Player := P) (L := L) (x := x)
-          (τ := .hidden who b) v env)
-  | _, .reveal y _who _x (b := b) hx k, σ, env =>
-      let v : L.Val b := VEnv.get (Player := P) (L := L) env hx
-      outcomeDistPure k σ
-        (VEnv.cons (Player := P) (L := L) (x := y) (τ := .pub b) v env)
-
-theorem outcomeDistPure_totalWeight_eq_one
-    {Γ : VCtx P L} {p : VegasCore P L Γ}
-    {σ : ProgramPureProfile p}
-    {env : VEnv (Player := P) L Γ}
-    (hd : NormalizedDists p) :
-    (outcomeDistPure p σ env).totalWeight = 1 := by
-  induction p with
-  | ret u =>
-      simp [outcomeDistPure, FDist.totalWeight_pure]
-  | letExpr x e k ih =>
-      exact ih hd
-  | sample x D' k ih =>
-      simp only [outcomeDistPure]
-      exact FDist.totalWeight_bind_of_normalized (hd.1 _) (fun _ _ => ih hd.2)
-  | commit x who R k ih =>
-      simpa [outcomeDistPure] using
-        ih (σ := ProgramPureProfile.tail σ) hd
-  | reveal y who x hx k ih =>
-      exact ih hd
-
-/-- Running the local behavioral lift of a fixed-program pure profile yields
-the same outcome distribution as the pure strategic semantics. -/
-theorem outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
-    {Γ : VCtx P L} (p : VegasCore P L Γ)
-    (σ : ProgramPureProfile p)
-    (env : VEnv (Player := P) L Γ) :
-    outcomeDistBehavioral p (ProgramPureProfile.toBehavioral p σ) env =
-      outcomeDistPure p σ env := by
-  induction p with
-  | ret u =>
-      rfl
-  | letExpr x e k ih =>
-      simpa [outcomeDistBehavioral, outcomeDistPure, ProgramPureProfile.toBehavioral] using
-        ih σ _
-  | sample x D' k ih =>
-      simp only [outcomeDistBehavioral, outcomeDistPure]
-      congr
-      funext v
-      exact ih σ _
-  | commit x who R k ih =>
-      simp only [outcomeDistBehavioral, outcomeDistPure]
-      have hhead :
-          ProgramBehavioralStrategy.headKernel
-              ((ProgramPureProfile.toBehavioral
-                  (.commit x who R k) σ) who)
-              (projectViewEnv who (VEnv.eraseEnv env)) =
-            FDist.pure
-              ((ProgramPureStrategy.headKernel (σ who))
-                (projectViewEnv who (VEnv.eraseEnv env))) := by
-        simp [ProgramPureProfile.toBehavioral, ProgramBehavioralStrategy.headKernel,
-          ProgramBehavioralKernel.ofPure, ProgramPureStrategy.headKernel]
-      rw [hhead, FDist.pure_bind]
-      simpa [ProgramPureProfile.tail_toBehavioral] using
-        ih (ProgramPureProfile.tail σ)
-          (VEnv.cons (Player := P) (L := L) (x := x) (τ := .hidden who _)
-            ((ProgramPureStrategy.headKernel (σ who))
-              (projectViewEnv who (VEnv.eraseEnv env))) env)
-  | reveal y who x hx k ih =>
-      simpa [outcomeDistBehavioral, outcomeDistPure, ProgramPureProfile.toBehavioral] using
-        ih σ _
 
 /-- Fixed-program pure strategic form of a Vegas program.
 

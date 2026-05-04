@@ -13,10 +13,9 @@ and the equilibrium-family predicates — consume `WFProgram` rather than a raw
 `VegasCore` plus separate side conditions. This is the API boundary where raw,
 unchecked syntax becomes a "real" game.
 
-Compatibility semantic functions (`outcomeDistBehavioral`,
-`outcomeDistPure`, `outcomeDistBehavioralPMF`) continue to operate on raw
-programs — they recurse through subprograms where constructing fresh bundles
-would be painful and irrelevant.
+The low-level PMF continuation evaluator used by the observed/FOSG bridge
+still operates on raw suffix programs, where constructing fresh bundles for
+each recursive subprogram would be painful and irrelevant.
 
 **Strategy-level guard admissibility.** The program-level `Legal`
 predicate only promises that every commit site *admits* some guard-
