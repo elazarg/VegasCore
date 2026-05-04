@@ -62,7 +62,7 @@ theorem valueOfProgramMoveOr_eq_of_toAction
 /-- A support value from a fallback Vegas behavioral profile at a commit site.
 This avoids any global `Nonempty (L.Val b)` assumption. -/
 noncomputable def fallbackValueAtCommit
-    (g : WFProgram P L) (fallback : LegalProgramBehavioralProfilePMF g)
+    (g : WFProgram P L) (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -79,7 +79,7 @@ from `fallback` otherwise. -/
 noncomputable def collapsedHeadKernelAtCommit
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -106,7 +106,7 @@ can be computed using any representative history for that observation. -/
 theorem collapsedHeadKernelAtCommit_eq_of_privateObs
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -145,7 +145,7 @@ theorem collapsedHeadKernelAtCommit_eq_of_privateObs
 theorem collapsedHeadKernelAtCommit_eq_fallback_of_not_exists
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -165,7 +165,7 @@ theorem collapsedHeadKernelAtCommit_eq_fallback_of_not_exists
 theorem collapsedHeadKernelAtCommit_guard_of_not_exists
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -298,7 +298,7 @@ so the construction itself stays transparent. -/
 noncomputable def collapsedBehavioralStrategyPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
       ProgramSuffix g.prog p → ProgramBehavioralStrategyPMF who p
@@ -328,7 +328,7 @@ termination_by _ p _ => syntaxSteps p
 noncomputable def collapsedBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g) :
     ProgramBehavioralProfilePMF g.prog :=
   fun who =>
     collapsedBehavioralStrategyPMF g hctx β fallback who g.prog
@@ -337,7 +337,7 @@ noncomputable def collapsedBehavioralProfilePMF
 theorem behavioralProfilePMF_collapsedBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p) (who : P) :
     suffix.behavioralProfilePMF
@@ -378,7 +378,7 @@ theorem behavioralProfilePMF_collapsedBehavioralProfilePMF
 theorem collapsedBehavioralStrategyPMF_isLegal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     (suffix : ProgramSuffix g.prog p) →
@@ -445,7 +445,7 @@ theorem collapsedBehavioralStrategyPMF_isLegal
 theorem collapsedBehavioralProfilePMF_isLegal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g) :
     (collapsedBehavioralProfilePMF g hctx β fallback).IsLegal := by
   intro who
   exact collapsedBehavioralStrategyPMF_isLegal
@@ -454,8 +454,8 @@ theorem collapsedBehavioralProfilePMF_isLegal
 noncomputable def collapsedLegalBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
-    LegalProgramBehavioralProfilePMF g :=
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g) :
+    SyntaxLegalProgramBehavioralProfilePMF g :=
   fun who =>
     ⟨collapsedBehavioralProfilePMF g hctx β fallback who,
       collapsedBehavioralProfilePMF_isLegal g hctx β fallback who⟩
@@ -465,7 +465,7 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g)
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g)
     (h : (observedProgramFOSG g hctx).History)
     (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
     ((observedProgramFOSG g hctx).legalActionLaw β h hterm).bind
@@ -693,7 +693,7 @@ noncomputable def observedProgramCollapsedOutcomeValuePMF
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g) :
     GameTheory.FOSG.History.OutcomeValue
       (G := observedProgramFOSG g hctx)
       β
@@ -736,7 +736,7 @@ noncomputable def observedProgramCollapsedOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (_fallback : LegalProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
+    (_fallback : SyntaxLegalProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
   PMF.map (observedProgramHistoryOutcome g hctx)
     (observedProgramRunDist g hctx LF β)
 
@@ -744,7 +744,7 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
     (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (fallback : LegalProgramBehavioralProfilePMF g) :
+    (fallback : SyntaxLegalProgramBehavioralProfilePMF g) :
     observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
       (toKernelGamePMF g).outcomeKernel
         (collapsedLegalBehavioralProfilePMF g hctx β fallback) := by

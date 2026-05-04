@@ -241,6 +241,24 @@ theorem observedProgramFOSG_boundedHorizon
   exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
     (g := g) (w := h.lastState)).2 hzero
 
+/-- The cursor-world observed FOSG has exact syntactic horizon: a realized
+history is terminal exactly when it has consumed all operational syntax nodes
+of the source program. -/
+theorem observedProgramFOSG_exactHorizon
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+    (observedProgramFOSG g hctx).ExactHorizon (syntaxSteps g.prog) := by
+  intro h
+  constructor
+  · intro hterm
+    have hinv := observedProgramFOSG_history_remainingSyntaxSteps
+      g hctx h
+    have hzero : h.lastState.remainingSyntaxSteps = 0 :=
+      (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
+        (g := g) (w := h.lastState)).1 hterm
+    omega
+  · intro hlen
+    exact observedProgramFOSG_boundedHorizon g hctx h hlen
+
 /-- Finite-history helper for the cursor-world observed FOSG. -/
 @[reducible] noncomputable def observedProgramFOSG.instFintypeHistory
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)

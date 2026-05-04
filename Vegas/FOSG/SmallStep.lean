@@ -26,21 +26,21 @@ This is an alias for the kernel already used by the observed-program FOSG
 proof. -/
 noncomputable abbrev stepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) : PMF (CheckedWorld g hctx) :=
   checkedProfileStepPMF g hctx σ w
 
 /-- Checked PMF continuation outcome value. -/
 noncomputable abbrev outcomeValuePMF
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) : PMF (Outcome P) :=
   checkedVegasOutcomeKernelPMF σ w
 
 /-- One checked PMF step preserves the Vegas continuation outcome value. -/
 theorem stepPMF_bind_outcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) :
     (stepPMF g hctx σ w).bind (outcomeValuePMF σ) =
       outcomeValuePMF σ w := by
@@ -52,7 +52,7 @@ theorem legalActionLaw_bind_transition_eq_stepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (h : (observedProgramFOSG g hctx).History)
     (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
     ((observedProgramFOSG g hctx).legalActionLaw
@@ -71,7 +71,7 @@ checked world. -/
 theorem mappedRunDist_eq_initialOutcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : LegalProgramBehavioralProfilePMF g) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     PMF.map (observedProgramHistoryOutcome g hctx)
         (observedProgramRunDist g hctx LF
           (toObservedProgramLegalBehavioralProfilePMF g hctx σ)) =
@@ -97,7 +97,7 @@ theorem mappedRunDist_eq_initialOutcomeValuePMF
 theorem mappedRunDist_eq_toKernelGamePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : LegalProgramBehavioralProfilePMF g) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     PMF.map (observedProgramHistoryOutcome g hctx)
         (observedProgramRunDist g hctx LF
           (toObservedProgramLegalBehavioralProfilePMF g hctx σ)) =

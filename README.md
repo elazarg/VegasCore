@@ -64,24 +64,58 @@ Vegas-facing wrappers.
 
 ### Sequential-Game Results
 
-VegasCore also has a canonical sequential denotation for checked Vegas
-programs. The public Vegas-facing result is the finite mixed-to-behavioral
-realization theorem:
+VegasCore has a machine-derived sequential FOSG denotation for checked Vegas
+programs. Checked syntax elaborates to `Protocol.Checked.syntaxActionGraph`,
+then to `Protocol.Checked.graphMachine`. `FOSGBridge.toGraphFOSG` is the direct
+sequential view of that graph machine, and
+`FOSGBridge.toFiniteGraphMachineFOSG` is its syntax-horizon finite view.
+`FOSGBridge.toFOSG` and `FOSGBridge.toBoundedFOSG` are aliases for the same
+graph-machine carrier.
+
+The primary Vegas-facing finite sequential realization theorem is:
+
+```lean
+kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite
+```
+
+It says that, for a finite checked Vegas program, every independent mixed
+profile over legal pure strategies has a reachable legal PMF behavioral profile
+in the syntax-horizon graph-machine-derived FOSG with the same distribution
+over payoff outcomes.
+
+The preservation statement is about the outcome distribution. Expected-utility
+equalities are corollaries of that distribution equality.
+
+The underlying machine-derived finite FOSG theorems are:
+
+```lean
+FOSGBridge.toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
+FOSGBridge.toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
+FOSGBridge.toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+```
+
+The last theorem transports product-mixed Vegas legal pure strategies directly
+into the finite graph-machine-derived FOSG reachable pure strategy space and
+collapses the pure side to the native `toStrategicKernelGame` outcome kernel.
+The local bridge behind this collapse is:
+
+```lean
+FOSGBridge.toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+```
+
+The unprefixed checked-program PMF behavioral profile type is tied to this IR:
+`LegalProgramBehavioralProfilePMF g hctx` wraps a reachable legal behavioral
+profile of `FOSGBridge.toFiniteGraphMachineFOSG g hctx`. The syntax-recursive
+type is named `SyntaxLegalProgramBehavioralProfilePMF`; it is a presentation
+that should be proved equivalent to the IR carrier when exposed to clients.
 
 ```lean
 kuhn_mixedPure_realizedByBehavioralPMF_finite
 ```
 
-It says that, for a finite checked Vegas program, every independent mixed
-profile over legal pure strategies has a legal PMF behavioral profile with the
-same distribution over payoff outcomes.
-
-The preservation statement is about the outcome distribution. Expected-utility
-equalities are corollaries of that distribution equality.
-
-The proof goes through the FOSG layer from `GameTheory`, but ordinary users of
-the Vegas Kuhn theorem receive a native Vegas behavioral witness and do not
-need to work with FOSG internals.
+The cursor-world observed adapter remains as a syntax-projection layer. It is
+not a second semantics; its run and outcome laws are used only through
+machine-derived bridge theorems.
 
 ### Protocol-Level Statements
 
@@ -96,6 +130,36 @@ of the program's outcome semantics and proves that they agree with the
 
 Use these when you want a statement phrased directly over the Vegas protocol
 semantics rather than over the strategic-form wrapper.
+
+### Protocol Carrier
+
+`Vegas.Protocol` is the executable protocol-carrier namespace. `ActionGraph`
+records the finite dependency and visibility language; its structural execution
+order is frontier resolution, where all currently ready actions form one layer.
+The graph-level frontier sequence is deterministic; schedulers only appear when
+a later view serializes or refines a frontier layer. The Kotlin `../vegas`
+frontier design is useful design evidence, not a specification imported as
+ground truth; the Lean carrier is justified by the interpretation and
+projection theorems stated here.
+`Machine` is the single probabilistic, observation-aware execution carrier:
+one primitive step is one enabled player move or one internal protocol event.
+`ActionGraph.Semantics.toMachine` is the source denotation from graph
+configuration to machine. Runtime configurations use bounded histories, so this
+state carrier is finite under finite action, field, and value domains.
+`Vegas.Protocol.FOSG` now derives sequential FOSG views directly from this
+carrier through `Machine.FOSGView`: FOSG worlds are `Machine.RunPrefix`
+event/state prefixes, and `Machine.FOSGView.transition_map_lastState_eq_step`
+projects each derived FOSG transition back to the selected `Machine.step`.
+`Machine.FOSGView.legalActionLaw_bind_transition_lastState_eq_machine_stepDist`
+is the corresponding one-step profile-induced law.
+Checked Vegas programs expose `Vegas.Protocol.Checked.graphMachine`, its direct
+graph-machine FOSG view, and projection lemmas showing that available graph
+steps agree with the cursor transition. The observed cursor-world adapter is
+retained only as a syntax-facing projection layer and is related back to the
+checked transition by direct bridge lemmas.
+Runtime distribution-preservation should use
+`Machine.StochasticStepRefinement`; the weak refinement relation is only
+support-level.
 
 ## Main Files
 
@@ -117,8 +181,9 @@ Vegas/
   Equilibrium.lean       -- Nash, dominance, correlated equilibrium, welfare
   GameProperties.lean    -- approximate Nash, potential games, zero-sum, etc.
   ProtocolSemantics.lean -- protocol-level definitions and correspondence
+  Protocol.lean          -- executable protocol carrier entrypoint
   Kuhn.lean              -- Vegas-facing mixed-to-behavioral realization
-  FOSG.lean              -- sequential denotation entrypoint
+  FOSG.lean              -- checked FOSG entrypoint
   Examples.lean          -- small checked examples
 
   SmallStep/
@@ -130,9 +195,17 @@ Vegas/
     Runtime.lean         -- active players and broad action availability
     Action.lean          -- program-local finite action alphabet
     Basic.lean           -- suffix/cursor checked-state machinery
-    Observation.lean     -- observed FOSG target
+    Observation.lean     -- finite observed FOSG adapter
     SmallStep.lean       -- checked PMF small-step bridge
     Observed/
+
+  Protocol/
+    ActionGraph.lean     -- proof-carrying dependency/visibility graph
+    Machine.lean         -- probabilistic observation-aware machine carrier
+    FOSG.lean            -- machine-derived sequential FOSG views
+    Checked.lean         -- checked Vegas programs as machines
+    Strategic.lean       -- machine bridge to the Vegas PMF KernelGame
+    Backend.lean         -- machine-to-machine backend refinement obligations
 
   Corollaries/
     Equilibrium.lean

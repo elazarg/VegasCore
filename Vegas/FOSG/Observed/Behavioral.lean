@@ -16,7 +16,7 @@ induced by a legal Vegas PMF behavioral profile.
 
 noncomputable def moveAtProgramCursorPMF
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
@@ -39,7 +39,7 @@ noncomputable def moveAtProgramCursorPMF
 
 @[simp] theorem moveAtProgramCursorPMF_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -55,7 +55,7 @@ noncomputable def moveAtProgramCursorPMF
 
 theorem headKernelPMF_supported_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -87,7 +87,7 @@ theorem headKernelPMF_supported_atCursor
 
 noncomputable def moveAtCursorWorldPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursorPMF g hctx σ who w.1.suffix
@@ -95,7 +95,7 @@ noncomputable def moveAtCursorWorldPMF
 
 noncomputable def moveAtCheckedWorldPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) (w : CheckedWorld g hctx) :
     PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursorPMF g hctx σ who w.suffix
@@ -103,7 +103,7 @@ noncomputable def moveAtCheckedWorldPMF
 
 @[simp] theorem moveAtCheckedWorldPMF_ofCursorChecked
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     moveAtCheckedWorldPMF g hctx σ who
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
@@ -111,7 +111,7 @@ noncomputable def moveAtCheckedWorldPMF
 
 theorem moveAtProgramCursorPMF_support_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (env : VEnv L Γ)
@@ -169,7 +169,7 @@ theorem moveAtProgramCursorPMF_support_availableAt
 
 theorem moveAtCursorWorldPMF_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g)
     {oi : Option (ProgramAction g.prog who)}
     (hoi : oi ∈ (moveAtCursorWorldPMF g hctx σ who w).support) :

@@ -33,18 +33,18 @@ finiteness of values that actually occur in `g`.
 abbrev Action (L : IExpr) (_who : P) : Type :=
   Sigma L.Val
 
-/-- Compatibility alias for the neutral runtime configuration type. The
-canonical definition lives in `Vegas.Config`. -/
+/-- Local alias for the neutral runtime configuration type. The canonical
+definition lives in `Vegas.Config`. -/
 abbrev World (P : Type) [DecidableEq P] (L : IExpr) :=
   Vegas.World P L
 
-/-- Compatibility alias for neutral Vegas terminality. The canonical definition
-lives in `Vegas.Config`. -/
+/-- Local alias for neutral Vegas terminality. The canonical definition lives in
+`Vegas.Config`. -/
 abbrev terminal (w : World P L) : Prop :=
   Vegas.terminal w
 
-/-- Compatibility alias for neutral syntax-step counting. The canonical
-definition lives in `Vegas.Config`. -/
+/-- Local alias for neutral syntax-step counting. The canonical definition lives
+in `Vegas.Config`. -/
 abbrev syntaxSteps :
     {Γ : VCtx P L} → VegasCore P L Γ → Nat :=
   Vegas.syntaxSteps

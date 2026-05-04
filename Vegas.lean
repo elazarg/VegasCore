@@ -13,7 +13,6 @@ import Vegas.BigStep
 import Vegas.TraceSemantics
 import Vegas.TraceCorollaries
 import Vegas.SmallStep
-import Vegas.ActionGraph
 import Vegas.ViewKernel
 import Vegas.PureStrategic
 import Vegas.Strategic
@@ -24,5 +23,6 @@ import Vegas.Corollaries.GameProperties
 import Vegas.Corollaries.PureStrategic
 import Vegas.LegalNonempty
 import Vegas.ProtocolSemantics
+import Vegas.Protocol
 import Vegas.Kuhn
 import Vegas.FOSG
