@@ -371,10 +371,10 @@ each \leanref{Machine.RunPrefix}; the FOSG transition is still the selected
 This layer is game-theoretic rather than foundational for protocol execution.
 Checked syntax elaborates to \leanref{Protocol.Checked.syntaxActionGraph} and
 then to \leanref{Protocol.Checked.graphMachine}. The public graph-machine FOSG
-aliases are \leanref{FOSGBridge.toGraphFOSG} and
-\leanref{FOSGBridge.toFiniteFOSG};
-\leanref{FOSGBridge.toFOSG} is an alias for the same graph-derived carrier.
-The cursor-world FOSG remains as \leanref{FOSGBridge.toObservedFOSG}, a finite
+aliases are \leanref{toGraphFOSG} and
+\leanref{toFiniteFOSG};
+\leanref{toFOSG} is an alias for the same graph-derived carrier.
+The cursor-world FOSG remains as \leanref{toObservedFOSG}, a finite
 adapter used for syntax-recursive behavioral-profile projection. It is related
 back to the checked transition by bridge theorems.
 
@@ -426,15 +426,15 @@ semantic comparison often projects back to checked worlds.
 
 \subsection{Graph-Machine and Observed FOSG}
 
-\leanref{FOSGBridge.toGraphFOSG} exposes the direct graph-machine sequential
-denotation, and \leanref{FOSGBridge.toFiniteFOSG} is its
+\leanref{toGraphFOSG} exposes the direct graph-machine sequential
+denotation, and \leanref{toFiniteFOSG} is its
 syntax-horizon bounded view. Its transition kernel is the graph-machine step,
 wrapped with bounded prefix history. The graph-machine finite FOSG already has
 the generic reachable mixed-to-behavioral target, graph-history projection
 invariants, legal-observability proof, and the Vegas-pure collapse to the native
 strategic kernel game.
 
-\leanref{FOSGBridge.toObservedFOSG} names the finite observed adapter.
+\leanref{toObservedFOSG} names the finite observed adapter.
 Internally, \leanref{observedProgramFOSG} uses cursor worlds, program-local
 actions, and private observations consisting of the player's current program
 cursor and view environment. The public observation channel is trivial because
@@ -550,13 +550,13 @@ bounded collapse to \leanref{KernelGame} \\
 \leanref{Protocol.FOSG} &
 machine-derived sequential FOSG views &
 projected one-step law over bounded prefixes \\
-\leanref{FOSGBridge.toFiniteFOSG} &
+\leanref{toFiniteFOSG} &
 graph-machine finite FOSG &
 graph-history projection invariant and generic Kuhn target \\
 \leanref{pmfBehavioralKernelGame} &
 PMF strategic-form game &
 outcome kernel agrees with checked semantics \\
-\leanref{FOSGBridge.toObservedFOSG} &
+\leanref{toObservedFOSG} &
 finite observed adapter &
 \leanref{mappedRunDist_eq_pmfBehavioralKernelGame} \\
 \leanref{ProtocolSemantics} &

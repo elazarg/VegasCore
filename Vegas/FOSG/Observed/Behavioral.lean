@@ -1,7 +1,6 @@
 import Vegas.FOSG.Observed.Base
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -194,5 +193,4 @@ theorem moveAtCursorWorldPMF_support_available
 
 end Observed
 
-end FOSGBridge
 end Vegas

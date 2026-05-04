@@ -9,7 +9,6 @@ alphabet from `Vegas.FOSG.Runtime`.
 -/
 
 namespace Vegas
-namespace FOSGBridge
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
@@ -175,5 +174,4 @@ that the global sigma alphabet `Action L who` be finite. -/
 
 end ProgramAction
 
-end FOSGBridge
 end Vegas

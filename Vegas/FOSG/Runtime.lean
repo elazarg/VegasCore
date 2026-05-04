@@ -12,7 +12,6 @@ joint-action legality facts. The neutral configuration type itself lives in
 -/
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -32,22 +31,6 @@ finiteness of values that actually occur in `g`.
 -/
 abbrev Action (L : IExpr) (_who : P) : Type :=
   Sigma L.Val
-
-/-- Local alias for the neutral runtime configuration type. The canonical
-definition lives in `Vegas.Config`. -/
-abbrev World (P : Type) [DecidableEq P] (L : IExpr) :=
-  Vegas.World P L
-
-/-- Local alias for neutral Vegas terminality. The canonical definition lives in
-`Vegas.Config`. -/
-abbrev terminal (w : World P L) : Prop :=
-  Vegas.terminal w
-
-/-- Local alias for neutral syntax-step counting. The canonical definition lives
-in `Vegas.Config`. -/
-abbrev syntaxSteps :
-    {Γ : VCtx P L} → VegasCore P L Γ → Nat :=
-  Vegas.syntaxSteps
 
 /-- The only strategic FOSG states are Vegas `commit` nodes. -/
 def active (w : World P L) : Finset P :=
@@ -158,12 +141,6 @@ abbrev JointActionLegal (w : World P L) (a : JointAction P L) : Prop :=
 def commitJointAction (who : P) {b : L.Ty} (v : L.Val b) : JointAction P L :=
   fun i => if i = who then some (Sigma.mk b v) else none
 
-@[simp] theorem terminal_ret
-    {Γ : VCtx P L} {env : VEnv L Γ}
-    (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
-    terminal ({ Γ := Γ, prog := VegasCore.ret payoffs, env := env } : World P L) := by
-  simp [terminal]
-
 @[simp] theorem active_ret
     {Γ : VCtx P L} {env : VEnv L Γ}
     (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
@@ -237,5 +214,4 @@ theorem initial_exists_jointActionLegal
     ∃ a : JointAction P L, JointActionLegal (World.initial g) a :=
   exists_jointActionLegal_of_legal (World.initial g) g.legal hterm
 
-end FOSGBridge
 end Vegas

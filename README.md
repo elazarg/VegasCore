@@ -66,10 +66,10 @@ Vegas-facing wrappers.
 
 VegasCore has a machine-derived sequential FOSG denotation for checked Vegas
 programs. Checked syntax elaborates to `Protocol.Checked.syntaxActionGraph`,
-then to `Protocol.Checked.graphMachine`. `FOSGBridge.toGraphFOSG` is the direct
+then to `Protocol.Checked.graphMachine`. `toGraphFOSG` is the direct
 sequential view of that graph machine, and
-`FOSGBridge.toFiniteFOSG` is its syntax-horizon finite view.
-`FOSGBridge.toFOSG` and `FOSGBridge.toBoundedFOSG` are aliases for the same
+`toFiniteFOSG` is its syntax-horizon finite view.
+`toFOSG` and `toBoundedFOSG` are aliases for the same
 graph-machine carrier.
 
 The primary Vegas-facing finite sequential realization theorem is:
@@ -89,9 +89,9 @@ equalities are corollaries of that distribution equality.
 The underlying machine-derived finite FOSG theorems are:
 
 ```lean
-FOSGBridge.toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
-FOSGBridge.toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
-FOSGBridge.toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
+toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
+toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
 ```
 
 The last theorem transports product-mixed Vegas legal pure strategies directly
@@ -100,12 +100,12 @@ collapses the pure side to the native `pureKernelGame` outcome kernel.
 The local bridge behind this collapse is:
 
 ```lean
-FOSGBridge.toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame
+toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame
 ```
 
 The unprefixed checked-program PMF behavioral profile type is tied to this IR:
 `SequentialBehavioralProfilePMF g hctx` wraps a reachable legal behavioral
-profile of `FOSGBridge.toFiniteFOSG g hctx`. The syntax-recursive
+profile of `toFiniteFOSG g hctx`. The syntax-recursive
 type is named `FeasibleProgramBehavioralProfilePMF`; it is a presentation
 that should be proved equivalent to the IR carrier when exposed to clients.
 

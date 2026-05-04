@@ -22,7 +22,6 @@ suffix-based semantics.
 -/
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -1644,7 +1643,7 @@ def availableProgramActionsAt {g : WFProgram P L} {Γ : VCtx P L}
     (suffix : ProgramSuffix g.prog p) (who : P) :
     Set (ProgramAction g.prog who) :=
   {a | ProgramAction.toAction a ∈
-      Vegas.FOSGBridge.availableActions
+      Vegas.availableActions
         ({ Γ := Γ, prog := p, env := env } : World P L) who ∧
     ∃ (x : VarId) (owner : P) (b : L.Ty)
       (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
@@ -1679,7 +1678,7 @@ theorem availableProgramActionsAt_commit_owner_iff
         ProgramAction.toAction ai = Sigma.mk b v ∧
           evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) =
             true := by
-      simpa [FOSGBridge.availableActions] using hai.1
+      simpa [availableActions] using hai.1
     rcases hbroad with ⟨v, hact, hguard⟩
     refine ⟨v, ?_, hguard⟩
     cases ai with
@@ -1703,7 +1702,7 @@ theorem availableProgramActionsAt_commit_owner_iff
     rcases h with ⟨v, rfl, hguard⟩
     constructor
     · show ProgramAction.toAction (ProgramAction.commitAt suffix v) ∈
-          FOSGBridge.availableActions
+          availableActions
             ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
               World P L) who
       have hbroad : ∃ u : L.Val b,
@@ -1716,7 +1715,7 @@ theorem availableProgramActionsAt_commit_owner_iff
         exact heq_of_cast_eq (ProgramSuffix.ty_commitCursor suffix)
           (ProgramAction.commitAt_value_cast suffix v
             (ProgramSuffix.ty_commitCursor suffix))
-      simpa [FOSGBridge.availableActions] using hbroad
+      simpa [availableActions] using hbroad
     · refine ⟨x, who, b, R, k, rfl, rfl, ?_⟩
       rfl
 
@@ -1732,13 +1731,13 @@ theorem availableProgramActionsAt_eq_of_toAction_eq
     ai = aj := by
   cases p with
   | ret payoffs =>
-      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+      simpa [availableProgramActionsAt, availableActions] using hai.1
   | letExpr x e k =>
-      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+      simpa [availableProgramActionsAt, availableActions] using hai.1
   | sample x D k =>
-      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+      simpa [availableProgramActionsAt, availableActions] using hai.1
   | reveal y owner x hx k =>
-      simpa [availableProgramActionsAt, FOSGBridge.availableActions] using hai.1
+      simpa [availableProgramActionsAt, availableActions] using hai.1
   | commit x owner R k =>
       rcases hai.2 with ⟨x₁, owner₁, b₁, R₁, k₁, hprog₁, howner₁, hcursor₁⟩
       rcases haj.2 with ⟨x₂, owner₂, b₂, R₂, k₂, hprog₂, howner₂, hcursor₂⟩
@@ -1769,11 +1768,11 @@ def availableProgramMovesAt {g : WFProgram P L} {Γ : VCtx P L}
     Set (Option (ProgramAction g.prog who)) :=
   {oi | match oi with
     | some a =>
-        who ∈ Vegas.FOSGBridge.active
+        who ∈ Vegas.active
           ({ Γ := Γ, prog := p, env := env } : World P L) ∧
         a ∈ availableProgramActionsAt p env suffix who
     | none =>
-        who ∉ Vegas.FOSGBridge.active
+        who ∉ Vegas.active
           ({ Γ := Γ, prog := p, env := env } : World P L)}
 
 /-- At an owned commit endpoint, optional program-move availability is exactly
@@ -1791,14 +1790,14 @@ theorem availableProgramMovesAt_commit_owner_iff
         ai = ProgramAction.commitAt suffix v ∧
           evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true := by
   change
-    (who ∈ Vegas.FOSGBridge.active
+    (who ∈ Vegas.active
         ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
           World P L) ∧
       ai ∈ availableProgramActionsAt (.commit x who R k) env suffix who) ↔
       ∃ v : L.Val b,
         ai = ProgramAction.commitAt suffix v ∧
           evalGuard (Player := P) (L := L) R v (VEnv.eraseEnv env) = true
-  simp only [Vegas.FOSGBridge.active, Finset.mem_singleton, true_and]
+  simp only [Vegas.active, Finset.mem_singleton, true_and]
   exact availableProgramActionsAt_commit_owner_iff env suffix ai
 
 /-- A guard-legal value is available as the owned commit endpoint's optional
@@ -3414,5 +3413,4 @@ def rewardOnEnteringRetCursor
   | .ret payoffs => (evalPayoffs payoffs w'.1.env who : ℝ)
   | _ => 0
 
-end FOSGBridge
 end Vegas

@@ -12,7 +12,6 @@ the event-law adapters from `Vegas.Protocol.EventLaw`.
 namespace Vegas
 
 open GameTheory
-open FOSGBridge
 
 namespace GraphEventLaw
 

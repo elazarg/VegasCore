@@ -3,7 +3,6 @@ import Vegas.Protocol.StrategicCompatibility
 import Vegas.StrategicPMF
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -322,5 +321,4 @@ theorem observedProgramReachableKernelGame_mixedPure_realization
 
 end Observed
 
-end FOSGBridge
 end Vegas

@@ -15,7 +15,6 @@ administrative syntax heads schedule the graph machine's unit internal event.
 namespace Vegas
 
 open GameTheory
-open FOSGBridge
 
 namespace GraphEventLaw
 
@@ -191,7 +190,7 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
   cases hhead : w.1.prog with
   | ret payoffs =>
       have hterm : terminal w.toWorld := by
-        change Vegas.FOSGBridge.terminal
+        change Vegas.terminal
           ({ Γ := w.1.cursor.Γ, prog := w.1.prog,
              env := w.1.env } : World P L)
         rw [hhead]

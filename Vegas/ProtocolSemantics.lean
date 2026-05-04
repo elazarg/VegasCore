@@ -28,7 +28,7 @@ The file has two regions.
   `SequentialKuhnPMF g hctx LF : Prop` is the proved finite
   machine-derived sequential realization claim: every independent mixed
   profile over legal pure strategies is outcome-equivalent to a reachable PMF
-  behavioural profile for `FOSGBridge.toFiniteFOSG`. The PMF target is
+  behavioural profile for `toFiniteFOSG`. The PMF target is
   essential: arbitrary mixed pure profiles can induce real-valued behavioural
   probabilities, while the original `FDist` behavioural game is rational-valued.
   `ReachableKuhnPMF g hctx LF : Prop` is the
@@ -43,7 +43,6 @@ The file has two regions.
 namespace Vegas
 
 open GameTheory
-open FOSGBridge
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 

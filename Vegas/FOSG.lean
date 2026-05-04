@@ -7,7 +7,6 @@ import Vegas.Protocol.Strategic
 import Vegas.Protocol.StrategicCompatibility
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -1174,7 +1173,6 @@ theorem mixedPure_realizedBySyntaxLegalBehavioralPMF_finite
     g hctx LF βF fallback]
   simpa [Observed.observedProgramCollapsedOutcomeKernelPMF] using hβF
 
-end FOSGBridge
 
 open GameTheory
 
@@ -1189,14 +1187,14 @@ as a presentation proved equivalent to this IR carrier, not as an independent
 semantics. -/
 abbrev SequentialBehavioralStrategyPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) : Type :=
-  (FOSGBridge.toFiniteFOSG g hctx).ReachableLegalBehavioralStrategy who
+  (toFiniteFOSG g hctx).ReachableLegalBehavioralStrategy who
 
 /-- IR-based PMF behavioral profile for a checked Vegas program: a
 reachable feasible (guard-respecting) behavioral profile of the
 finite graph-machine-derived FOSG. -/
 structure SequentialBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) where
-  profile : (FOSGBridge.toFiniteFOSG g hctx).ReachableLegalBehavioralProfile
+  profile : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile
 
 /-- Outcome kernel for a machine-derived reachable sequential behavioral
 profile. -/
@@ -1205,7 +1203,7 @@ noncomputable def sequentialOutcomeKernelPMF
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (β : SequentialBehavioralProfilePMF g hctx) :
     PMF (Outcome P) :=
-  FOSGBridge.finiteFOSGReachableBehavioralOutcomeKernel
+  finiteFOSGReachableBehavioralOutcomeKernel
     g hctx LF β.profile
 
 /-- Finite-game Kuhn theorem in the machine-derived sequential strategy space.
@@ -1233,7 +1231,7 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
     fun who => graphMachine.instFintypeOptionAction
       g hctx LF who
   obtain ⟨βF, hβF⟩ :=
-    @FOSGBridge.toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+    @toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
       P inferInstance L g hctx inferInstance
       (fun who => FeasibleProgramPureStrategy.instFintype g LF who)
       (fun who =>
@@ -1244,13 +1242,13 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
         (graphMachine.instFintypeEvent g hctx LF)
         (graphMachine.instFintypeState g hctx LF))
       (@Finite.of_fintype
-        (FOSGBridge.toFiniteFOSG g hctx).History
+        (toFiniteFOSG g hctx).History
         (finiteFOSG.instFintypeHistory g hctx LF))
-      (Classical.decPred (FOSGBridge.toFiniteFOSG g hctx).terminal)
+      (Classical.decPred (toFiniteFOSG g hctx).terminal)
       μ
   refine ⟨⟨βF⟩, ?_⟩
   simpa [sequentialOutcomeKernelPMF,
-    FOSGBridge.finiteFOSGReachableBehavioralOutcomeKernel]
+    finiteFOSGReachableBehavioralOutcomeKernel]
     using hβF
 
 /-- A syntax-recursive Vegas behavioral profile defined only on reachable
@@ -1263,14 +1261,14 @@ as player observations in the sequential execution. -/
 structure ReachableProgramBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) where
   profile :
-    (FOSGBridge.toObservedFOSG g hctx).ReachableLegalBehavioralProfile
+    (toObservedFOSG g hctx).ReachableLegalBehavioralProfile
 
 /-- Outcome kernel for a reachable Vegas behavioral profile. -/
 noncomputable def reachableProgramOutcomeKernelPMF
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (β : ReachableProgramBehavioralProfilePMF g hctx) : PMF (Outcome P) :=
-  (FOSGBridge.toObservedFOSGKernelGame g hctx LF).outcomeKernel β.profile
+  (toObservedFOSGKernelGame g hctx LF).outcomeKernel β.profile
 
 /-- Finite-game Kuhn theorem in the reachable Vegas strategy space. -/
 theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
@@ -1286,7 +1284,7 @@ theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
   letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
     fun who => FeasibleProgramPureStrategy.instFintype g LF who
   obtain ⟨βF, hβF⟩ :=
-    FOSGBridge.toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
+    toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
       g hctx LF μ
   exact ⟨⟨βF⟩, hβF⟩
 

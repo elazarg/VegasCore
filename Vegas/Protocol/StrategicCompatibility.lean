@@ -15,7 +15,6 @@ strategic compatibility material.
 namespace Vegas
 
 open GameTheory
-open FOSGBridge
 
 namespace GraphEventLaw
 

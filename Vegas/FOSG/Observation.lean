@@ -1,7 +1,6 @@
 import Vegas.FOSG.Basic
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -311,5 +310,4 @@ noncomputable def observedProgramHistoryOutcome
     (h : (observedProgramFOSG g hctx).History) : Outcome P :=
   cursorWorldOutcome h.lastState
 
-end FOSGBridge
 end Vegas

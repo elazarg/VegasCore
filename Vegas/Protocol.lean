@@ -58,10 +58,10 @@ This entrypoint exposes the executable protocol construction path.
   `PMF M.Outcome` distributions. No external syntactic strategy space
   (e.g. `pureKernelGame`) appears in the statement.
 
-`Vegas.FOSG` exposes `FOSGBridge.toGraphFOSG` and
-`FOSGBridge.toFiniteFOSG` as the graph-machine sequential views;
-`FOSGBridge.toFOSG` is an alias for the same carrier.
-`FOSGBridge.toObservedFOSG` is the finite cursor-world adapter used for
+`Vegas.FOSG` exposes `toGraphFOSG` and
+`toFiniteFOSG` as the graph-machine sequential views;
+`toFOSG` is an alias for the same carrier.
+`toObservedFOSG` is the finite cursor-world adapter used for
 syntax-facing projection proofs, not a semantic owner.
 
 Schedulers and linearizations are presentation data for traces, sequential

@@ -3,7 +3,6 @@ import Vegas.FOSG.Observed.Pure
 import Vegas.Strategy.PMFSemantics
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -720,5 +719,4 @@ noncomputable def observedProgramOutcomeKernelPMF
 
 end Observed
 
-end FOSGBridge
 end Vegas

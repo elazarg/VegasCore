@@ -1,7 +1,6 @@
 import Vegas.FOSG.Observed.Behavioral
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -830,5 +829,4 @@ theorem toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF
 
 end Observed
 
-end FOSGBridge
 end Vegas

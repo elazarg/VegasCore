@@ -3,7 +3,6 @@ import Vegas.Protocol.StrategicCompatibility
 import Vegas.StrategicPMF
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -246,7 +245,7 @@ theorem valueOfProgramMoveOr_guard_of_available
       | some ai =>
           have hact :
               ProgramAction.toAction ai ∈
-                FOSGBridge.availableActions
+                availableActions
                   ({ Γ :=
                       (ProgramCursor.CommitCursor.toProgramCursor
                         suffix.commitCursor).Γ,
@@ -650,7 +649,7 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
         | some ai =>
             have hact :
                 ProgramAction.toAction ai ∈
-                  FOSGBridge.availableActions
+                  availableActions
                     ({ Γ :=
                         (ProgramCursor.CommitCursor.toProgramCursor
                           suffix.commitCursor).Γ,
@@ -793,5 +792,4 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_pmfBehavioralKernelGame
 
 end Observed
 
-end FOSGBridge
 end Vegas

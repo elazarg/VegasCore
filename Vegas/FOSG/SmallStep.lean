@@ -9,7 +9,6 @@ FOSG small-step bridge namespace and records the bridge lemmas.
 -/
 
 namespace Vegas
-namespace FOSGBridge
 namespace SmallStep
 namespace Checked
 
@@ -102,5 +101,4 @@ theorem mappedRunDist_eq_pmfBehavioralKernelGame
 
 end Checked
 end SmallStep
-end FOSGBridge
 end Vegas

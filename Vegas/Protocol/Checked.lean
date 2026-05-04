@@ -18,7 +18,6 @@ this module is the graph machine itself.
 namespace Vegas
 
 open GameTheory
-open FOSGBridge
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
@@ -1019,7 +1018,7 @@ theorem fosgView_active_eq_cursor_active_of_not_terminal
   cases hprog : w.1.cursor.prog <;>
     simp [Machine.FOSGView.active, fosgView, graphMachineTurn,
       hnot, w, active, CursorCheckedWorld.toWorld,
-      CursorWorldData.prog, FOSGBridge.active, hprog]
+      CursorWorldData.prog, active, hprog]
 
 theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -1041,7 +1040,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
         simp [availableActions, CursorCheckedWorld.toWorld,
-          CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
+          CursorWorldData.prog, availableActions, w, hprog] at hfalse
   | letExpr x e k =>
       constructor
       · intro hleft
@@ -1052,7 +1051,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
         simp [availableActions, CursorCheckedWorld.toWorld,
-          CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
+          CursorWorldData.prog, availableActions, w, hprog] at hfalse
   | sample x D k =>
       constructor
       · intro hleft
@@ -1063,7 +1062,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
         simp [availableActions, CursorCheckedWorld.toWorld,
-          CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
+          CursorWorldData.prog, availableActions, w, hprog] at hfalse
   | commit x owner R k =>
       by_cases hwho : who = owner
       · subst who
@@ -1106,7 +1105,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
         simp [availableActions, CursorCheckedWorld.toWorld,
-          CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
+          CursorWorldData.prog, availableActions, w, hprog] at hfalse
 
 /-- Finite state helper for the checked graph machine. -/
 @[reducible] noncomputable def graphMachine.instFintypeState
@@ -1318,17 +1317,17 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
               by_cases hother : other = who
               · subst other
                 have hactive : who ∈ active w.toWorld := by
-                  change who ∈ FOSGBridge.active
+                  change who ∈ active
                     ({ Γ := w.1.cursor.Γ,
                        prog := w.1.cursor.prog,
-                       env := w.1.env } : FOSGBridge.World P L)
+                       env := w.1.env } : World P L)
                   rw [hprog]
-                  simp [FOSGBridge.active]
+                  simp [active]
                 have hactiveAt :
-                    who ∈ FOSGBridge.active
+                    who ∈ active
                       ({ Γ := w.1.cursor.Γ,
                          prog := w.1.prog,
-                         env := w.1.env } : FOSGBridge.World P L) := by
+                         env := w.1.env } : World P L) := by
                   simpa [active, CursorCheckedWorld.toWorld,
                     w] using hactive
                 have hactionAt :
@@ -1342,15 +1341,15 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
               · have hnot : other ∉ active w.toWorld := by
                   intro hactive
                   have hwho : other = who := by
-                    change other ∈ FOSGBridge.active w.toWorld at hactive
+                    change other ∈ active w.toWorld at hactive
                     simpa [CursorCheckedWorld.toWorld, CursorWorldData.prog,
-                      hprog, FOSGBridge.active, w] using hactive
+                      hprog, active, w] using hactive
                   exact hother hwho
                 have hnotAt :
-                    other ∉ FOSGBridge.active
+                    other ∉ active
                       ({ Γ := w.1.cursor.Γ,
                          prog := w.1.prog,
-                         env := w.1.env } : FOSGBridge.World P L) := by
+                         env := w.1.env } : World P L) := by
                   simpa [active, CursorCheckedWorld.toWorld,
                     w] using hnot
                 simpa [graphMachineJointAction, singleProgramJointAction,
@@ -2040,7 +2039,7 @@ theorem finiteFOSG_cursor_terminal_of_graph_terminal
     (h : (finiteFOSG g hctx).History)
     (hgraph : (graphMachine g hctx).terminal h.lastState.lastState) :
     terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
-  change FOSGBridge.terminal
+  change terminal
     (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld
   rw [(CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
     (w := cursorWorldOfGraphConfiguration g hctx h.lastState.lastState))]

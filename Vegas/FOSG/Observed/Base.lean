@@ -1,7 +1,6 @@
 import Vegas.FOSG.Observation
 
 namespace Vegas
-namespace FOSGBridge
 
 open GameTheory
 
@@ -955,5 +954,4 @@ theorem observedProgramFOSG_legalObservable
 
 end Observed
 
-end FOSGBridge
 end Vegas
