@@ -3,6 +3,7 @@ import Vegas.Protocol.Machine
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Checked
 import Vegas.Protocol.Backend
+import Vegas.Protocol.Kuhn
 
 /-!
 # Protocol semantics
@@ -38,6 +39,11 @@ This entrypoint exposes the executable protocol construction path.
   reactive runtimes, including a probability-preserving
   `Machine.StochasticStepRefinement` for backend distribution-preservation
   proofs.
+* `Vegas.Protocol.Kuhn` exposes `Machine.FOSGView.kuhn_mixed_to_behavioral`,
+  a machine-native Kuhn realization theorem. The witness is a
+  `Machine.FOSGView.BehavioralProfile`; the equality is between two
+  `PMF M.Outcome` distributions. No external syntactic strategy space
+  (e.g. `toStrategicKernelGame`) appears in the statement.
 
 `Vegas.FOSG` exposes `FOSGBridge.toGraphFOSG` and
 `FOSGBridge.toFiniteGraphMachineFOSG` as the graph-machine sequential views;
