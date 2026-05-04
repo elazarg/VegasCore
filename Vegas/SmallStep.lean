@@ -23,10 +23,6 @@ Main user-facing declarations:
   canonical `outcomeDist` packaged over worlds.
 * `SmallStep.step_bind_runSmallStep`: one raw step followed by the evaluator
   preserves the source outcome value.
-* `SmallStep.labelDist_eq_traceDist_map_traceLabels`: complete small-step
-  label runs are the trace distribution projected to labels.
-* `SmallStep.labelDist_apply_eq_traceLabel_sum`: pointwise label mass is the
-  sum of weights of traces projecting to that label list.
 * `SmallStep.terminalPathDist`: finite weighted enumeration of terminal
   labelled paths.
 * `SmallStep.labelDist_apply_eq_terminalPath_sum`: pointwise label mass is the

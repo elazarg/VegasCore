@@ -10,8 +10,6 @@ import Vegas.Config
 import Vegas.Finite
 import Vegas.Examples
 import Vegas.BigStep
-import Vegas.TraceSemantics
-import Vegas.TraceCorollaries
 import Vegas.SmallStep
 import Vegas.ViewKernel
 import Vegas.PureStrategic
