@@ -260,8 +260,7 @@ theorem machineIsConstantSum_iff_isConstantSum
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ) (c : ℝ) :
     MachineIsConstantSum g hctx c ↔ IsConstantSum g c := by
   unfold MachineIsConstantSum IsConstantSum MachineGame Game
-  simp [GameTheory.KernelGame.IsConstantSum, toMachineKernelGame,
-    toKernelGame]
+  simp [GameTheory.KernelGame.IsConstantSum, toMachineKernelGame]
 
 def IsZeroSum [Fintype P] (g : WFProgram P L) : Prop :=
   (Game g).IsZeroSum
@@ -287,8 +286,7 @@ theorem machineIsTeamGame_iff_isTeamGame
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     MachineIsTeamGame g hctx ↔ IsTeamGame g := by
   unfold MachineIsTeamGame IsTeamGame MachineGame Game
-  simp [GameTheory.KernelGame.IsTeamGame, toMachineKernelGame,
-    toKernelGame]
+  simp [GameTheory.KernelGame.IsTeamGame, toMachineKernelGame]
 
 noncomputable def optimalWelfare [Fintype P] (g : WFProgram P L) : ℝ :=
   (Game g).optimalWelfare

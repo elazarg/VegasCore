@@ -7,16 +7,13 @@ import GameTheory.Core.GameProperties
 # Vegas equilibrium wrappers
 
 Game-theoretic vocabulary for Vegas programs, defined by transport through the
-`toKernelGame` strategic bridge. The entire user-facing game-theory API
-consumes a `WFProgram` bundle rather than a raw `(program, env,
-NormalizedDists)` triplet: the bundle carries the full well-formedness
-obligations (`WF`, `NormalizedDists`, `Legal`) needed to ensure a coherent
-game interpretation.
+checked graph machine. The entire user-facing game-theory API consumes a
+`WFProgram` bundle rather than a raw `(program, env, NormalizedDists)` triplet:
+the bundle carries the full well-formedness obligations (`WFCtx`, `WF`,
+`NormalizedDists`, `Legal`) needed to ensure a coherent game interpretation.
 
-The `MachineGame` mirror keeps the same legal strategy spaces but evaluates
-outcomes through the checked graph machine. It takes an explicit
-`hctx : WFCtx g.Γ` because the machine elaboration carries context
-well-formedness separately from `WFProgram`.
+The historical `MachineGame` mirror is retained as a compatibility alias for
+the public `Game`; `WFProgram.wctx` is now the canonical machine context.
 -/
 
 namespace Vegas
@@ -26,12 +23,12 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 noncomputable def Game (g : WFProgram P L) : GameTheory.KernelGame P :=
-  toKernelGame g
+  toMachineKernelGame g g.wctx
 
-/-- Machine-native behavioral kernel game for a checked Vegas program. -/
+/-- Compatibility alias for the now machine-native public kernel game. -/
 noncomputable def MachineGame
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P :=
-  toMachineKernelGame g hctx
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ) : GameTheory.KernelGame P :=
+  Game g
 
 /-- Strategy profiles for a Vegas program are exactly the profiles of its
 kernel-game image. -/
@@ -69,14 +66,12 @@ theorem MachineGame_outcomeKernel_eq_Game
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : StrategyProfile g) :
     (MachineGame g hctx).outcomeKernel σ =
-      (Game g).outcomeKernel σ :=
-  toMachineKernelGame_outcomeKernel_eq_toKernelGame g hctx σ
+      (Game g).outcomeKernel σ := rfl
 
 theorem MachineGame_eu_eq_Game
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : StrategyProfile g) (who : P) :
-    (MachineGame g hctx).eu σ who = (Game g).eu σ who :=
-  toMachineKernelGame_eu_eq_toKernelGame g hctx σ who
+    (MachineGame g hctx).eu σ who = (Game g).eu σ who := rfl
 
 instance instFintypeGameStrategy (g : WFProgram P L)
     [∀ who, Fintype (Strategy g who)] :
@@ -118,8 +113,7 @@ noncomputable def machineEu (g : WFProgram P L) (hctx : WFCtx g.Γ)
 @[simp] theorem machineEu_eq_eu (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : StrategyProfile g) (who : P) :
     machineEu g hctx σ who = eu g σ who := by
-  simp [machineEu, MachineGame, eu, Game,
-    toMachineKernelGame_eu_eq_toKernelGame]
+  rfl
 
 /-- Correlated expected utility for a Vegas correlated profile, via
 `toKernelGame`. -/

@@ -425,11 +425,11 @@ theorem IsZeroSum.socialWelfare_eq_zero [Fintype P]
     (hzs : IsZeroSum g) (σ : StrategyProfile g) :
     socialWelfare g σ = 0 := by
   let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome P))
   simpa [IsZeroSum, socialWelfare] using
     (KernelGame.IsZeroSum.socialWelfare_eq_zero
-      (G := toKernelGame g) hzs σ)
+      (G := Game g) hzs σ)
 
 /-- In a 2-player Vegas zero-sum game with finite outcome space, one player's
 EU is the negation of the other's. -/
@@ -438,10 +438,10 @@ theorem IsZeroSum.eu_neg
     (hzs : IsZeroSum g) (σ : StrategyProfile g) :
     eu g σ 0 = - eu g σ 1 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, eu] using
-    (KernelGame.IsZeroSum.eu_neg (G := toKernelGame g) hzs σ)
+    (KernelGame.IsZeroSum.eu_neg (G := Game g) hzs σ)
 
 /-- In a Vegas constant-sum game with finite outcome space, social welfare is constant. -/
 theorem IsConstantSum.socialWelfare_eq [Fintype P]
@@ -449,11 +449,11 @@ theorem IsConstantSum.socialWelfare_eq [Fintype P]
     {c : ℝ} (hcs : IsConstantSum g c) (σ : StrategyProfile g) :
     socialWelfare g σ = c := by
   let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome P))
   simpa [IsConstantSum, socialWelfare] using
     (KernelGame.IsConstantSum.socialWelfare_eq
-      (G := toKernelGame g) hcs σ)
+      (G := Game g) hcs σ)
 
 /-- In a 2-player Vegas constant-sum game, player 0's EU is determined by player 1's. -/
 theorem IsConstantSum.eu_determined
@@ -461,18 +461,18 @@ theorem IsConstantSum.eu_determined
     {c : ℝ} (hcs : IsConstantSum g c) (σ : StrategyProfile g) :
     eu g σ 0 = c - eu g σ 1 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsConstantSum, eu] using
     (KernelGame.IsConstantSum.eu_determined
-      (G := toKernelGame g) hcs σ)
+      (G := Game g) hcs σ)
 
 /-- A Vegas zero-sum game is a Vegas constant-sum game with constant `0`. -/
 theorem IsZeroSum.isConstantSum_zero [Fintype P]
     (g : WFProgram P L) (hzs : IsZeroSum g) :
     IsConstantSum g 0 := by
   simpa [IsZeroSum, IsConstantSum] using
-    (KernelGame.IsZeroSum.isConstantSum_zero (G := toKernelGame g) hzs)
+    (KernelGame.IsZeroSum.isConstantSum_zero (G := Game g) hzs)
 
 /-- In a 2-player Vegas constant-sum game, all Nash equilibria give the same EU. -/
 theorem IsConstantSum.nash_eu_eq
@@ -482,11 +482,11 @@ theorem IsConstantSum.nash_eu_eq
     (hNσ : IsNash g σ) (hNτ : IsNash g τ) :
     eu g σ 0 = eu g τ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsConstantSum, IsNash, eu] using
     (KernelGame.IsConstantSum.nash_eu_eq
-      (G := toKernelGame g) hcs hNσ hNτ)
+      (G := Game g) hcs hNσ hNτ)
 
 /-- Social welfare is bounded above by the Vegas optimal welfare. -/
 theorem welfare_le_optimal [Fintype P]
@@ -494,7 +494,7 @@ theorem welfare_le_optimal [Fintype P]
     (hbdd : BddAbove (Set.range (fun τ => socialWelfare g τ))) :
     socialWelfare g σ ≤ optimalWelfare g := by
   simpa [socialWelfare, optimalWelfare] using
-    (KernelGame.welfare_le_optimal (G := toKernelGame g) σ hbdd)
+    (KernelGame.welfare_le_optimal (G := Game g) σ hbdd)
 
 /-- In a Vegas team game, Pareto-efficient profiles are Nash under the same
 hypotheses as in `GameTheory`. -/
@@ -506,7 +506,7 @@ theorem IsTeamGame.pareto_isNash [Fintype P] [Inhabited P]
     IsNash g σ := by
   simpa [IsTeamGame, IsParetoEfficient, IsNash, socialWelfare] using
     (KernelGame.IsTeamGame.pareto_isNash
-      (G := toKernelGame g) hteam hpareto hmax)
+      (G := Game g) hteam hpareto hmax)
 
 /-- Worst Vegas Nash welfare is at most best Vegas Nash welfare. -/
 theorem worstNashWelfare_le_bestNashWelfare [Fintype P]
@@ -536,11 +536,11 @@ theorem IsZeroSum.nash_p0_optimal
     (hN : IsNash g σ) (s₁ : Strategy g 1) :
     eu g (Function.update σ 1 s₁) 0 ≥ eu g σ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, eu, Strategy] using
     (KernelGame.IsZeroSum.nash_p0_optimal
-      (G := toKernelGame g) hzs hN s₁)
+      (G := Game g) hzs hN s₁)
 
 /-- In a 2-player Vegas game, player 0 cannot improve at Nash. -/
 theorem nash_p0_cap
@@ -548,7 +548,7 @@ theorem nash_p0_cap
     (hN : IsNash g σ) (s₀ : Strategy g 0) :
     eu g σ 0 ≥ eu g (Function.update σ 0 s₀) 0 := by
   simpa [IsNash, eu, Strategy] using
-    (KernelGame.nash_p0_cap (G := toKernelGame g) hN s₀)
+    (KernelGame.nash_p0_cap (G := Game g) hN s₀)
 
 /-- In a 2-player Vegas zero-sum game, all Nash equilibria give the same value. -/
 theorem IsZeroSum.nash_eu_eq
@@ -557,11 +557,11 @@ theorem IsZeroSum.nash_eu_eq
     (hNσ : IsNash g σ) (hNτ : IsNash g τ) :
     eu g σ 0 = eu g τ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, eu] using
     (KernelGame.IsZeroSum.nash_eu_eq
-      (G := toKernelGame g) hzs hNσ hNτ)
+      (G := Game g) hzs hNσ hNτ)
 
 /-- In a 2-player Vegas zero-sum game, Nash equilibria are interchangeable. -/
 theorem IsZeroSum.nash_interchangeable
@@ -570,11 +570,11 @@ theorem IsZeroSum.nash_interchangeable
     (hNσ : IsNash g σ) (hNτ : IsNash g τ) :
     IsNash g (Function.update σ 1 (τ 1)) := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
-  let _ : Fintype (toKernelGame g).Outcome := by
+  let _ : Fintype (Game g).Outcome := by
     simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, StrategyProfile] using
     (KernelGame.IsZeroSum.nash_interchangeable
-      (G := toKernelGame g) hzs hNσ hNτ)
+      (G := Game g) hzs hNσ hNτ)
 
 /-- Zero-sum is preserved by the mixed extension of the Vegas kernel game. -/
 theorem mixedExtension_isZeroSum [Fintype P]

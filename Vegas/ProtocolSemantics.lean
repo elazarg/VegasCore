@@ -65,17 +65,24 @@ noncomputable def protocolEU (g : WFProgram P L)
   simpa [protocolEU] using
     toKernelGame_eu (g := g) (σ := σ) (who := i)
 
+@[simp] theorem Game_eu_eq_protocolEU (g : WFProgram P L)
+    (σ : StrategyProfile g) (i : P) :
+    (Game g).eu σ i = protocolEU g σ i := by
+  unfold Game
+  rw [toMachineKernelGame_eu_eq_toKernelGame]
+  exact toKernelGame_eu_eq_protocolEU g σ i
+
 @[simp] theorem eu_eq_protocolEU (g : WFProgram P L)
     (σ : StrategyProfile g) (i : P) :
     Vegas.eu g σ i = protocolEU g σ i := by
-  simp [protocolEU, eu, Game]
+  simp [eu]
 
 @[simp] theorem MachineGame_eu_eq_protocolEU
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
   (σ : StrategyProfile g) (i : P) :
     (MachineGame g hctx).eu σ i = protocolEU g σ i := by
   rw [MachineGame_eu_eq_Game]
-  simp [Game]
+  exact Game_eu_eq_protocolEU g σ i
 
 @[simp] theorem machineEu_eq_protocolEU
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -99,10 +106,10 @@ theorem isNash_iff_protocolNash (g : WFProgram P L)
   constructor
   · intro h who s'
     have := h who s'
-    simpa [eu_eq_protocolEU, Game] using this
+    simpa using this
   · intro h who s'
     have := h who s'
-    simpa [eu_eq_protocolEU, Game] using this
+    simpa using this
 
 theorem machineIsNash_iff_protocolNash
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -128,10 +135,10 @@ theorem isBestResponse_iff_protocolBestResponse (g : WFProgram P L)
   constructor
   · intro h s'
     have := h s'
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
   · intro h s'
     have := h s'
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
 
 /-- Protocol-level dominant strategy: `s` is at least as good as any
 legal alternative, for player `who`, at every legal profile of
@@ -151,10 +158,10 @@ theorem isDominant_iff_protocolDominant (g : WFProgram P L)
   constructor
   · intro h σ s'
     have := h σ s'
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
   · intro h σ s'
     have := h σ s'
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
 
 /-- Protocol-level strict Nash equilibrium: every legal unilateral
 deviation strictly decreases the deviator's protocol-level expected
@@ -172,10 +179,10 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
   constructor
   · intro h who s' hne
     have := h who s' hne
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
   · intro h who s' hne
     have := h who s' hne
-    simpa [eu_eq_protocolEU, Game, Strategy, StrategyProfile] using this
+    simpa [Strategy, StrategyProfile] using this
 
 /-! ## Region B — named realization targets -/
 
