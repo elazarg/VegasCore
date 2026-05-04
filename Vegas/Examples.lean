@@ -46,19 +46,6 @@ noncomputable def matchingPennies : VegasSimple Γ0 :=
         (.reveal vb' 1 vb hvb_in_Γ3
           (.ret mpPayoff.entries))))
 
-noncomputable def mpProfile : OmniscientOperationalProfileSimple where
-  commit := fun {_Γ} {b} _who x _R _env =>
-    match x with
-    | 0 =>
-      match b with
-      | .bool => FDist.pure true
-      | .int => FDist.zero
-    | 1 =>
-      match b with
-      | .bool => FDist.pure false
-      | .int => FDist.zero
-    | _ => FDist.zero
-
 -- conditionedGame: commit guard references revealed value
 -- Guard for player 1: the expression sees (vb, .bool) :: eraseVCtx Γ1'
 -- where Γ1' = [(va', .pub .bool), (vb, .hidden 1 .bool), (va, .hidden 0 .bool)]
@@ -114,15 +101,6 @@ example : Legal matchingPennies := by
 example : NormalizedDists matchingPennies := by
   simp [matchingPennies, NormalizedDists]
 
-example : mpProfile.NormalizedOn matchingPennies := by
-  constructor
-  · intro _env
-    simp [mpProfile, va, FDist.totalWeight_pure]
-  · constructor
-    · intro _env
-      simp [mpProfile, vb, FDist.totalWeight_pure]
-    · trivial
-
 example : RevealComplete [] conditionedGame := by
   decide
 
@@ -164,15 +142,6 @@ example : ¬ Legal conditionedGame := by
 
 example : NormalizedDists conditionedGame := by
   simp [conditionedGame, NormalizedDists]
-
-example : mpProfile.NormalizedOn conditionedGame := by
-  constructor
-  · intro _env
-    simp [mpProfile, va, FDist.totalWeight_pure]
-  · constructor
-    · intro _env
-      simp [mpProfile, vb, FDist.totalWeight_pure]
-    · trivial
 
 -- sequentialReveal: same as matching pennies but Player 0 reveals before
 -- Player 1 commits, giving Player 1 information about Player 0's choice.
@@ -223,15 +192,6 @@ example : Legal sequentialReveal := by
 
 example : NormalizedDists sequentialReveal := by
   simp [sequentialReveal, NormalizedDists]
-
-example : mpProfile.NormalizedOn sequentialReveal := by
-  constructor
-  · intro _env
-    simp [mpProfile, va, FDist.totalWeight_pure]
-  · constructor
-    · intro _env
-      simp [mpProfile, vb, FDist.totalWeight_pure]
-    · trivial
 
 /-! ### Paper claims: visibility contexts -/
 

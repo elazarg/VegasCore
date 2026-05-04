@@ -1,6 +1,5 @@
 import Vegas.FDist
 import Vegas.Core
-import Vegas.Operational
 import Vegas.ExprSimple
 import Vegas.VegasSimple
 import Vegas.WF
@@ -9,7 +8,6 @@ import Vegas.WFProgram
 import Vegas.Config
 import Vegas.Finite
 import Vegas.Examples
-import Vegas.BigStep
 import Vegas.ViewKernel
 import Vegas.Strategy.Behavioral
 import Vegas.Strategy.Pure

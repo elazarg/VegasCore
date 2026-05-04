@@ -13,8 +13,6 @@ recover the intended information-flow discipline extrinsically:
 - `GuardUsesOnly who x Γ R` states that commit guard `R` depends only on the
   proposed action `x` and variables visible to `who`
 - `ViewScoped p` is the recursive scoping judgment for raw Vegas programs
-- `KernelRespectsObservation` / `OmniscientOperationalProfileRespectsObservation` state
-  that operational kernels are invariant under observationally equivalent states
 
 These predicates let us reason about visibility without re-encoding it into the
 raw core syntax.
@@ -190,25 +188,6 @@ def ViewScoped :
 def WF {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
   FreshBindings p ∧ RevealComplete [] p ∧ ViewScoped p
 
-/-- Observation-respecting behavioral kernels depend only on the owner's
-    observable state. -/
-def KernelRespectsObservation
-    {Γ : VCtx P L} {who : P} {b : L.Ty}
-    (κ : Env L.Val (eraseVCtx Γ) → FDist (L.Val b)) : Prop :=
-  ∀ ρ₁ ρ₂, ObsEq (L := L) (Γ := Γ) who ρ₁ ρ₂ → κ ρ₁ = κ ρ₂
-
-/-- Observation-respecting raw profiles choose the same commit distribution on
-    observationally equivalent states at every commit site. -/
-def OmniscientOperationalProfileRespectsObservation (σ : OmniscientOperationalProfile P L) :
-    {Γ : VCtx P L} → VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .letExpr _ _ k => OmniscientOperationalProfileRespectsObservation σ k
-  | _, .sample _ _ k => OmniscientOperationalProfileRespectsObservation σ k
-  | Γ, .commit x who R k =>
-      KernelRespectsObservation (L := L) (Γ := Γ) (who := who) (σ.commit who x R) ∧
-      OmniscientOperationalProfileRespectsObservation σ k
-  | _, .reveal _ _ _ _ k => OmniscientOperationalProfileRespectsObservation σ k
-
 /-- Convenience projection from a scoped commit node to its guard-scoping fact. -/
 theorem ViewScoped.commit_guard_usesOnly
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
@@ -238,16 +217,6 @@ theorem evalGuard_eq_of_obsEq
     (AgreesOn.cons_insert_of_fresh (Γ := Γ)
       (x := x) (b := b) (a := a) hfresh hobs)
     hR
-
-/-- Observation-respecting kernels agree on observationally equivalent states. -/
-theorem KernelRespectsObservation.eq_of_obsEq
-    {Γ : VCtx P L} {who : P} {b : L.Ty}
-    {κ : Env L.Val (eraseVCtx Γ) → FDist (L.Val b)}
-    (hκ : KernelRespectsObservation (L := L) (Γ := Γ) (who := who) κ)
-    {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
-    (hobs : ObsEq (L := L) (Γ := Γ) who ρ₁ ρ₂) :
-    κ ρ₁ = κ ρ₂ :=
-  hκ ρ₁ ρ₂ hobs
 
 /-- Chosen witness for `IExpr.extendAfterHead`. -/
 noncomputable def extendAfterHeadExpr
@@ -313,19 +282,5 @@ theorem GuardUsesOnly.not_mem_hidden_other
     simp [hxeq]
   · exact (not_mem_visibleVars_hidden_other (L := L) (Γ := Γ)
       (x := x₁) (who := who₂) (owner := who₁) (τ := b₁) hfresh₁ hneq) hxvis
-
-/-- An operational profile satisfying
-`OmniscientOperationalProfileRespectsObservation` chooses the same commit
-    kernel output on observationally equivalent states at every commit site. -/
-theorem OmniscientOperationalProfileRespectsObservation.commit_eq_of_obsEq
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {σ : OmniscientOperationalProfile P L}
-    (hσ : OmniscientOperationalProfileRespectsObservation (L := L) σ (.commit x who R k))
-    {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
-    (hobs : ObsEq (L := L) (Γ := Γ) who ρ₁ ρ₂) :
-    σ.commit who x R ρ₁ = σ.commit who x R ρ₂ :=
-  hσ.1 ρ₁ ρ₂ hobs
 
 end Vegas

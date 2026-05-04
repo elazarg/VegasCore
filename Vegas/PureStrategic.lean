@@ -2,7 +2,6 @@ import GameTheory.Core.KernelGame
 import GameTheory.Concepts.SolutionConcepts
 import GameTheory.Core.GameProperties
 import Vegas.Finite
-import Vegas.BigStep
 import Vegas.Strategic
 import Vegas.Strategy.Conversions
 import Vegas.Strategy.Pure

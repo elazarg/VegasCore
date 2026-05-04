@@ -811,9 +811,8 @@ A `VegasCore Player L Γ` is a typed program in context `Γ`. The inductive
 is indexed by the visibility context, so every well-formed term is
 well-scoped by construction. Strategies do not appear here — the `commit`
 constructor holds only its guard, and the choice kernel is supplied
-separately by an `OmniscientOperationalProfile` (in `Vegas.Operational`).
-The same program can therefore be evaluated against many strategy
-profiles.
+by local strategy carriers in the strategic and machine semantics. The same
+program can therefore be evaluated against many strategy profiles.
 
 ## Classification
 

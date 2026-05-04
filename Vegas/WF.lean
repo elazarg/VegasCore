@@ -136,19 +136,6 @@ def Legal {P : Type} [DecidableEq P]
     Legal k
   | _, .reveal _ _ _ _ k => Legal k
 
-def FairPlayProfile {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-    (σ : Vegas.OmniscientOperationalProfile P L) :
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .letExpr _ _ k => FairPlayProfile σ k
-  | _, .sample _ _ k => FairPlayProfile σ k
-  | _, .commit x who R k =>
-    (∀ env, FDist.Supported (σ.commit who x R env)
-      (fun a => Vegas.evalGuard (Player := P) (L := L) R a env = true)) ∧
-    FairPlayProfile σ k
-  | _, .reveal _ _ _ _ k => FairPlayProfile σ k
-
 namespace DistExpr
 
 abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}
@@ -169,17 +156,6 @@ def NormalizedDists {P : Type} [DecidableEq P]
     NormalizedDists k
   | _, .commit _ _ _ k => NormalizedDists k
   | _, .reveal _ _ _ _ k => NormalizedDists k
-
-def OmniscientOperationalProfile.NormalizedOn {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-    (σ : Vegas.OmniscientOperationalProfile P L) :
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .letExpr _ _ k => σ.NormalizedOn k
-  | _, .sample _ _ k => σ.NormalizedOn k
-  | _, .commit x who R k =>
-    (∀ view, FDist.totalWeight (σ.commit who x R view) = 1) ∧ σ.NormalizedOn k
-  | _, .reveal _ _ _ _ k => σ.NormalizedOn k
 
 theorem DistExpr.Normalized_ite {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b}

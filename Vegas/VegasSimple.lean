@@ -1,5 +1,4 @@
 import Vegas.ExprSimple
-import Vegas.Operational
 
 /-!
 # Vegas protocol syntax
@@ -31,15 +30,5 @@ noncomputable abbrev evalR {Γ : VCtxSimple} {b : BaseTy} {x : VarId}
   Vegas.evalGuard (Player := Player) (L := simpleExpr) R a env
 
 abbrev VegasSimple : VCtxSimple → Type := Vegas.VegasCore Player simpleExpr
-
-abbrev CommitKernelSimple (who : Player) (Γ : VCtxSimple) (b : BaseTy) :
-    Type :=
-  Vegas.CommitKernel Player simpleExpr who Γ b
-
-abbrev OmniscientOperationalProfileSimple : Type :=
-  Vegas.OmniscientOperationalProfile Player simpleExpr
-
-abbrev PartialOmniscientOperationalProfileSimple : Type :=
-  Vegas.PartialOmniscientOperationalProfile Player simpleExpr
 
 end Vegas
