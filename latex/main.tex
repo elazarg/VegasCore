@@ -20,15 +20,18 @@ is public, or hidden and owned by one player. Strategy spaces are indexed by
 the player's view of that context, so legal strategies talk only about
 information that the player can observe.
 
-The development exposes several equivalent views of a checked Vegas program.
+The development exposes several related views of a checked Vegas program.
 The canonical outcome evaluator is the denotational distribution
 \(\outcomeDist\). Trace semantics decomposes that distribution into complete
 execution paths. Raw small-step semantics gives a labelled operational
 presentation and is proved to agree with the same outcome evaluator. Strategic
 and protocol-level APIs package the outcome semantics as game-theoretic
-solution concepts. The FOSG bridge gives the canonical sequential
-game-theoretic denotation and supplies the finite mixed-to-behavioral
-realization theorem used by the public Kuhn-style results.
+solution concepts. The protocol machine is the executable semantic carrier for
+protocol reasoning. Checked syntax elaborates to an action graph, then to the
+graph machine. FOSG is a sequential game-theoretic view derived from that
+machine. The finite Kuhn proof stack targets that graph-machine FOSG; the
+cursor-world observed FOSG is a syntax-facing projection adapter, not a semantic
+owner.
 \end{abstract}
 
 \tableofcontents
@@ -50,9 +53,10 @@ The central user-facing object is a checked program:
 A checked program packages a Vegas program, an initial environment, and the
 facts required to treat the program as a finite game. From \(g\), the library
 derives legal strategy spaces, strategic-form games, protocol-native
-definitions, trace and small-step semantics, and a sequential FOSG denotation.
-These are not competing meanings of the program. They are different interfaces
-to the same outcome semantics, with bridge theorems recording the agreement.
+definitions, trace and small-step semantics, an executable protocol machine,
+and a machine-derived sequential FOSG denotation. These are not competing
+meanings of the program. They are different interfaces to the same outcome
+semantics, with bridge theorems recording the agreement.
 
 \begin{figure}[ht]
 \centering
@@ -75,7 +79,10 @@ Vegas syntax and environment
   & \(\xrightarrow{\;\toKG,\;\toStrategicKG\;}\) &
   strategic-form kernel games \\[4pt]
 \(\WFP\)
-  & \(\xrightarrow{\;\mathrm{toFOSG}\;}\) &
+  & \(\xrightarrow{\;\mathrm{syntaxActionGraph},\;\mathrm{graphMachine}\;}\) &
+  executable graph machine \\[4pt]
+graph machine
+  & \(\xrightarrow{\;\mathrm{Machine.FOSGView}\;}\) &
   sequential FOSG denotation
 \end{tabular}
 \end{center}
@@ -88,9 +95,10 @@ are related back to it by agreement theorems.}
 
 The direction of dependency is intentional. The neutral runtime configuration
 type lives in \leanref{Vegas.Config}. Raw small-step semantics depends on that
-neutral runtime and on the denotational evaluator. The FOSG bridge depends on
-the runtime and checked small-step machinery to build a sequential
-game-theoretic view. The runtime layer itself does not depend on FOSG.
+neutral runtime and on the denotational evaluator. Protocol reasoning goes
+through \leanref{Protocol.ActionGraph} and \leanref{Protocol.Machine}. FOSG,
+strategic collapses, and backend refinement obligations should be derived
+from that executable carrier.
 
 %% =====================================================================
 \section{The Program Model}\label{sec:model}
@@ -305,22 +313,70 @@ Thus the protocol-facing definitions are not a separate game model. They are
 the same outcome semantics presented without first naming the kernel-game
 wrapper.
 
+\subsection{Executable Protocol Carrier}
+
+\leanref{Vegas.Protocol} is the executable carrier path for protocol and
+runtime reasoning. \leanref{Vegas.Protocol.ActionGraph} is the finite
+dependency/visibility language. Its structural execution order is frontier
+resolution: all currently ready actions form one layer. The graph-level
+frontier sequence is deterministic; schedulers only appear when a later view
+serializes or refines a frontier layer. \leanref{ActionGraph.Semantics}
+supplies the executable value domains, choice kernels, observations, outcomes,
+and utilities, and \leanref{ActionGraph.Semantics.toMachine} turns that
+semantics into the protocol machine. The existing Kotlin frontier
+implementation in \texttt{../vegas} is design evidence for this shape, not a
+source specification; VegasCore chooses the carrier by the Lean invariants and
+projection theorems it can support.
+
+\leanref{Vegas.Protocol.Machine} is the single probabilistic, observation-aware
+execution carrier: one primitive step is one enabled player move or one
+internal protocol event. \leanref{Vegas.Protocol.FOSG} derives sequential FOSG
+views directly from this carrier through \leanref{Machine.FOSGView}. The FOSG
+worlds are \leanref{Machine.RunPrefix} event/state prefixes, and
+\leanref{Machine.FOSGView.transition_map_lastState_eq_step} projects every
+derived FOSG transition back to the selected \leanref{Machine.step}. The
+profile-induced one-step law is
+\leanref{Machine.FOSGView.legalActionLaw_bind_transition_lastState_eq_machine_stepDist}.
+
+\leanref{Vegas.Protocol.Checked.syntaxActionGraph} is the checked syntax
+elaboration to the graph language, and
+\leanref{Vegas.Protocol.Checked.graphMachine} is the direct graph-machine
+denotation. \leanref{Vegas.Protocol.Checked.graphMachineFOSG} and
+\leanref{Vegas.Protocol.Checked.finiteGraphMachineFOSG} are the sequential
+views derived from that machine. Available graph events project to the checked
+cursor transition on reachable nonterminal cursor states, and finite graph
+histories preserve the syntax-step accounting after projection to
+\leanref{CursorCheckedWorld}.
+Runtime backends are related to the same carrier by machine-to-machine
+refinement obligations in \leanref{Vegas.Protocol.Backend}. Distribution-
+preserving runtime proofs should use
+\leanref{Machine.StochasticStepRefinement}; the weak refinement relation is
+only support-level. Schedulers and linearizations are presentation data for
+traces, FOSG histories, or backend transaction orderings, not inputs to the
+graph denotation.
+
 %% =====================================================================
 \section{Sequential FOSG Denotation}\label{sec:fosg}
 %% =====================================================================
 
 \subsection{Role of FOSG}
 
-The FOSG bridge is the canonical sequential game-theoretic view of a checked
-Vegas program. It treats the program as a finite horizon game with
-state-dependent action availability and observation-indexed behavioral
-strategies.
+The FOSG bridge is a sequential game-theoretic view derived from the protocol
+machine. It treats execution prefixes as worlds, with state-dependent action
+availability and information-state-indexed behavioral strategies. In the direct
+path, \leanref{Machine.FOSGView} selects the primitive machine source exposed at
+each \leanref{Machine.RunPrefix}; the FOSG transition is still the selected
+\leanref{Machine.step}, wrapped with prefix history.
 
-This layer is game-theoretic rather than foundational for the raw runtime.
-The neutral runtime lives in \leanref{Vegas.Config}. The FOSG layer imports
-that runtime, adds active-player and action-availability structure, constructs
-a finite observed game, and proves that running the observed game preserves
-the Vegas outcome distribution.
+This layer is game-theoretic rather than foundational for protocol execution.
+Checked syntax elaborates to \leanref{Protocol.Checked.syntaxActionGraph} and
+then to \leanref{Protocol.Checked.graphMachine}. The public graph-machine FOSG
+aliases are \leanref{FOSGBridge.toGraphFOSG} and
+\leanref{FOSGBridge.toFiniteGraphMachineFOSG};
+\leanref{FOSGBridge.toFOSG} is an alias for the same graph-derived carrier.
+The cursor-world FOSG remains as \leanref{FOSGBridge.toObservedFOSG}, a finite
+adapter used for syntax-recursive behavioral-profile projection. It is related
+back to the checked transition by bridge theorems.
 
 \subsection{Runtime, Actions, and Cursors}
 
@@ -332,7 +388,7 @@ The FOSG code is split into layers:
       actions;
 \item \leanref{Vegas.FOSG.Basic}: suffix and cursor machinery, checked
       worlds, transitions, and preservation facts;
-\item \leanref{Vegas.FOSG.Observation}: the observed FOSG target;
+\item \leanref{Vegas.FOSG.Observation}: the finite observed adapter;
 \item \leanref{Vegas.FOSG.Observed.*}: behavioral, pure, collapse,
       refinement, and kernel proofs;
 \item \leanref{Vegas.FOSG.SmallStep}: checked PMF small-step aliases and
@@ -368,21 +424,30 @@ The two representations are connected by projections such as
 \leanref{ofCursorChecked}. FOSG execution uses the cursor-keyed carrier;
 semantic comparison often projects back to checked worlds.
 
-\subsection{Observation-Preserving FOSG}
+\subsection{Graph-Machine and Observed FOSG}
 
-\leanref{toFOSG} exposes the public sequential denotation. Internally,
-\leanref{observedProgramFOSG} uses cursor worlds, program-local actions, and
-private observations consisting of the player's current program cursor and
-view environment. The public observation channel is trivial because public
-bindings already appear in every player's private view.
+\leanref{FOSGBridge.toGraphFOSG} exposes the direct graph-machine sequential
+denotation, and \leanref{FOSGBridge.toFiniteGraphMachineFOSG} is its
+syntax-horizon bounded view. Its transition kernel is the graph-machine step,
+wrapped with bounded prefix history. The graph-machine finite FOSG already has
+the generic reachable mixed-to-behavioral target, graph-history projection
+invariants, legal-observability proof, and the Vegas-pure collapse to the native
+strategic kernel game.
 
-The bridge proves:
+\leanref{FOSGBridge.toObservedFOSG} names the finite observed adapter.
+Internally, \leanref{observedProgramFOSG} uses cursor worlds, program-local
+actions, and private observations consisting of the player's current program
+cursor and view environment. The public observation channel is trivial because
+public bindings already appear in every player's private view.
+
+The observed adapter proves:
 \begin{itemize}[nosep]
 \item legal observability for the compiled FOSG;
 \item bounded horizon by \leanref{syntaxSteps};
 \item finite world and action instances under \leanref{FiniteValuation};
 \item transition agreement after forgetting cursor keys;
-\item outcome preservation after mapping terminal histories to Vegas outcomes.
+\item run and outcome preservation after mapping histories to machine traces
+      and Vegas outcomes.
 \end{itemize}
 
 \subsection{Checked Small-Step Bridge}
@@ -402,15 +467,41 @@ distribution to the PMF strategic game API.
 
 \subsection{Kuhn-Style Realization}
 
-The public finite mixed-to-behavioral realization theorem is:
+The primary public finite mixed-to-behavioral realization theorem is:
+\[
+  \leanref{kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite}.
+\]
+It says that, for a finite checked Vegas program, every independent mixed
+profile over legal pure strategies has a reachable legal PMF behavioral profile
+in the syntax-horizon graph-machine-derived FOSG with the same distribution over
+payoff outcomes.
+
+The machine-derived finite FOSG has a direct reachable
+mixed-to-behavioral realization theorem:
+\[
+  \leanref{toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist}.
+\]
+Its outcome-pushforward form is
+\[
+  \leanref{toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist}.
+\]
+The product-mixed Vegas-pure specialization is
+\[
+  \leanref{toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist}.
+\]
+It transports Vegas legal pure strategies into the finite graph-machine-derived FOSG
+reachable pure strategy space, and its pure side is already collapsed to the
+native \leanref{toStrategicKernelGame} outcome kernel. The local pure-side
+bridge is
+\[
+  \leanref{toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame}.
+\]
+
+The syntax-recursive Vegas behavioral-profile projection theorem is still:
 \[
   \leanref{kuhn_mixedPure_realizedByBehavioralPMF_finite}.
 \]
-It says that, for a finite checked Vegas program, every independent mixed
-profile over legal pure strategies has a legal PMF behavioral profile with the
-same distribution over payoff outcomes.
-
-The proof route is:
+That theorem uses the observed adapter for the final syntax-profile collapse:
 \[
 \begin{array}{c}
 \text{mixed legal pure Vegas profile} \\
@@ -450,11 +541,23 @@ world-packaged raw outcome value &
 \leanref{stepPMF} &
 checked legal PMF one-step kernel &
 \leanref{stepPMF_bind_outcomeValuePMF} \\
+\leanref{ActionGraph.Semantics} &
+frontier-based protocol IR semantics &
+\leanref{ActionGraph.Semantics.toMachine} \\
+\leanref{Protocol.Machine} &
+probabilistic observation-aware machine &
+bounded collapse to \leanref{KernelGame} \\
+\leanref{Protocol.FOSG} &
+machine-derived sequential FOSG views &
+projected one-step law over bounded prefixes \\
+\leanref{FOSGBridge.toFiniteGraphMachineFOSG} &
+graph-machine finite FOSG &
+graph-history projection invariant and generic Kuhn target \\
 \leanref{toKernelGamePMF} &
 PMF strategic-form game &
 outcome kernel agrees with checked semantics \\
-\leanref{toFOSG} &
-sequential observed game &
+\leanref{FOSGBridge.toObservedFOSG} &
+finite observed adapter &
 \leanref{mappedRunDist_eq_toKernelGamePMF} \\
 \leanref{ProtocolSemantics} &
 protocol-facing solution concepts &
@@ -493,7 +596,8 @@ Strategic-form APIs &
   \leanref{PureStrategic.lean}, \leanref{Equilibrium.lean},
   \leanref{GameProperties.lean} \\
 Protocol semantics &
-  \leanref{ProtocolSemantics.lean} \\
+  \leanref{ProtocolSemantics.lean}, \leanref{Protocol.lean},
+  \leanref{Protocol/*} \\
 Sequential FOSG bridge &
   \leanref{FOSG.lean}, \leanref{FOSG/Runtime.lean},
   \leanref{FOSG/Action.lean}, \leanref{FOSG/Basic.lean},
@@ -516,8 +620,12 @@ A useful reading order is:
       operational structure;
 \item \leanref{Strategic.lean}, \leanref{StrategicPMF.lean}, and
       \leanref{ProtocolSemantics.lean} for strategic APIs;
+\item \leanref{Protocol.lean}, \leanref{Protocol/Machine.lean}, and
+      \leanref{Protocol/FOSG.lean} for the executable carrier and
+      machine-derived FOSG view;
 \item \leanref{FOSG.lean} and the split \leanref{FOSG/*} files for the
-      sequential denotation and Kuhn proof route.
+      graph-machine FOSG entrypoints, finite Kuhn theorem, and observed
+      projection route.
 \end{enumerate}
 
 %% =====================================================================
@@ -541,10 +649,14 @@ FOSG bridge all point back to the same payoff-outcome distribution. This avoids
 having multiple recursive outcome evaluators that later need to be declared
 equivalent.
 
-\paragraph{Treat FOSG as a sequential game view.}
+\paragraph{Derive FOSG from the machine.}
 FOSG is the right abstraction for finite sequential-game reasoning: histories,
 observations, legal actions, bounded horizon, and Kuhn-style realization. It
-should depend on the Vegas runtime and checked semantics, not define them.
+is a view of \leanref{Protocol.Machine}, not a second execution semantics. The
+graph-machine finite FOSG is the intended carrier and carries the direct finite
+Kuhn theorem plus product-mixed Vegas-pure specialization. The checked-program
+observed FOSG remains only for syntax-facing projection proofs, and its run law
+is proved back to the checked transition.
 
 \paragraph{Separate semantic state from finite execution keys.}
 \leanref{CheckedWorld} is convenient for semantic preservation. 
@@ -559,9 +671,10 @@ one representation to serve every purpose.
 VegasCore gives checked Vegas programs a single canonical payoff-outcome
 semantics and several proved-compatible interfaces. Trace and small-step
 semantics explain execution structure. Strategic and protocol APIs expose the
-same semantics as solution concepts. The FOSG bridge supplies the sequential
-game-theoretic denotation and the finite mixed-to-behavioral realization
-result, then collapses the witness back to a native guard-legal Vegas
-behavioral profile.
+same semantics as solution concepts. Checked syntax now flows through
+action graph to graph machine, and sequential FOSG views are derived from that
+machine. The remaining consolidation work is runtime-facing: proving concrete
+backend machines refine the graph machine with the same outcome distributions
+and strategy spaces under the stated implementation assumptions.
 
 \end{document}

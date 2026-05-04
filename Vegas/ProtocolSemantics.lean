@@ -25,16 +25,17 @@ The file has two regions.
   `KernelGame`-transported counterpart by definitional unfolding.
 
 * **Region B (realization theorems and named targets).**
-  `ProtocolSequentialKuhnPropertyPMF g hctx LF : Prop` is the proved sequential
-  realization claim: every independent mixed profile over legal pure
-  strategies is outcome-equivalent to a total PMF behavioural profile for the
-  sequential denotation. The PMF target is essential: arbitrary mixed pure
-  profiles can induce real-valued behavioural probabilities, while the
-  original `FDist` behavioural game is rational-valued.
-  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the reachable
-  strategy-space version.
-  `ProtocolTotalMixedPureRealizationPMF g : Prop` is the syntax-recursive
-  Vegas-profile target.
+  `ProtocolSequentialKuhnPropertyPMF g hctx LF : Prop` is the proved finite
+  machine-derived sequential realization claim: every independent mixed
+  profile over legal pure strategies is outcome-equivalent to a reachable PMF
+  behavioural profile for `FOSGBridge.toFiniteGraphMachineFOSG`. The PMF target is
+  essential: arbitrary mixed pure profiles can induce real-valued behavioural
+  probabilities, while the original `FDist` behavioural game is rational-valued.
+  `ProtocolReachableKuhnPropertyPMF g hctx LF : Prop` is the
+  observed-adapter reachable strategy-space version used by the syntax-facing
+  projection route.
+  `ProtocolTotalMixedPureRealizationPMF g hctx LF : Prop` is kept as a
+  backwards-facing name for the same IR-based behavioral target.
   `ProtocolRationalMixedPureRealizationProperty g : Prop` is the corresponding
   FDist-valued target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
@@ -160,8 +161,9 @@ theorem isStrictNash_iff_protocolStrictNash (g : WFProgram P L)
 /-! ## Region B — named realization targets -/
 
 /-- The protocol-level Kuhn property for a concrete finite Vegas program:
-every independent mixed profile over guard-legal pure strategies admits a total
-sequential PMF behavioural profile with the same outcome distribution. -/
+every independent mixed profile over guard-legal pure strategies admits a
+reachable PMF behavioural profile in the syntax-horizon machine-derived FOSG
+with the same outcome distribution. -/
 def ProtocolSequentialKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
@@ -173,7 +175,7 @@ def ProtocolSequentialKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
 /-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
-total sequential strategy space. -/
+machine-derived sequential strategy space. -/
 theorem protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
@@ -198,14 +200,14 @@ theorem protocolSequentialKuhnPropertyPMF_finite
 
 /-- The protocol-level Kuhn property for a concrete finite Vegas program:
 every independent mixed profile over guard-legal pure strategies admits a
-reachable PMF behavioural profile with the same outcome distribution.
+reachable PMF behavioural profile of the observed adapter with the same
+outcome distribution.
 
 The PMF target is part of the mathematical statement. Vegas' `FDist`
 behavioural strategies have rational weights, so they cannot represent all
 behavioural probabilities induced by arbitrary `PMF` mixtures over pure
-strategies. The behavioral witness is indexed only by reachable program
-observations; total profiles are a stronger representation target and are
-named separately below. -/
+strategies. The behavioral witness is indexed only by reachable observed
+program histories and is retained only as a syntax-facing projection target. -/
 def ProtocolReachableKuhnPropertyPMF [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
@@ -240,46 +242,43 @@ theorem protocolReachableKuhnPropertyPMF_finite
   exact protocol_mixedPure_realizedByReachableBehavioralPMF_finite
     g hctx LF μ
 
-/-- Syntax-recursive total-profile realization target, PMF
-mixed-to-behavioral direction.
+/-- Main PMF mixed-to-behavioral realization target.
 
-Every independent mixed profile over guard-legal pure strategies is realized by
-a guard-legal PMF behavioral profile with the same outcome distribution. The
-witness lives in Vegas' syntax-recursive behavioral strategy space, so this is
-different from the sequential-denotation theorem above. -/
+Despite the historical name, the witness is now the IR-based behavioral profile
+carrier: a reachable profile of the syntax-horizon FOSG derived from the
+checked protocol machine. A syntax-oriented client profile should be added as a
+separate presentation theorem against this target. -/
 def ProtocolTotalMixedPureRealizationPMF
     [Fintype P] (g : WFProgram P L)
-    [∀ who, Fintype (LegalProgramPureStrategy g who)] : Prop :=
+    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
   ∀ (μ : ∀ who, PMF (LegalProgramPureStrategy g who)),
-    ∃ β : LegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
+    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
+      fun who => LegalProgramPureStrategy.instFintype g LF who
+    ∃ β : LegalProgramBehavioralProfilePMF g hctx,
+      sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
 /-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
-syntax-recursive Vegas behavioral strategy space. -/
+IR-based behavioral profile space. -/
 theorem protocol_mixedPure_realizedByBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
     letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
       fun who => LegalProgramPureStrategy.instFintype g LF who
-    ∃ β : LegalProgramBehavioralProfilePMF g,
-      (toKernelGamePMF g).outcomeKernel β =
+    ∃ β : LegalProgramBehavioralProfilePMF g hctx,
+      sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  exact FOSGBridge.mixedPure_realizedByLegalBehavioralPMF_finite
+  exact protocol_mixedPure_realizedBySequentialBehavioralPMF_finite
     g hctx LF μ
 
-/-- Concrete finite syntax-recursive Vegas realization theorem. -/
+/-- Concrete finite IR-based realization theorem. -/
 theorem protocolTotalMixedPureRealizationPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
-    ProtocolTotalMixedPureRealizationPMF g := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+    ProtocolTotalMixedPureRealizationPMF g hctx LF := by
   intro μ
   exact protocol_mixedPure_realizedByBehavioralPMF_finite
     g hctx LF μ
@@ -306,7 +305,7 @@ above is the independent-profile case; this property asks for arbitrary
 correlated mixtures over joint pure profiles. -/
 def ProtocolCorrelatedPureRealizationPropertyPMF (g : WFProgram P L) : Prop :=
   ∀ (μ : PMF (LegalProgramPureProfile g)),
-    ∃ β : LegalProgramBehavioralProfilePMF g,
+    ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
       (toKernelGamePMF g).outcomeKernel β =
         μ.bind (fun σ => (toStrategicKernelGame g).outcomeKernel σ)
 
@@ -324,7 +323,7 @@ mixture on any legal pure profile is realized by the PMF behavioral point-lift
 of that pure profile. -/
 theorem protocolCorrelatedPureRealizationPMF_dirac (g : WFProgram P L)
     (σ : LegalProgramPureProfile g) :
-    ∃ β : LegalProgramBehavioralProfilePMF g,
+    ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
       (toKernelGamePMF g).outcomeKernel β =
         (PMF.pure σ).bind
           (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by

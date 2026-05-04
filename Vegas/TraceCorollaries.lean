@@ -59,7 +59,7 @@ theorem outcomeDist_eq_traceWeightSum {Γ : VCtx P L} (σ : OmniscientOperationa
   funext oc
   exact adequacy_pointwise σ p env oc
 
-/-- Compatibility alias for the headline trace/outcome agreement theorem. -/
+/-- Short alias for the headline trace/outcome agreement theorem. -/
 theorem outcomeDist_eq_traceSum {Γ : VCtx P L} (σ : OmniscientOperationalProfile P L)
     (p : VegasCore P L Γ) (env : VEnv (Player := P) L Γ) :
     outcomeDist σ p env = traceWeightSum σ p env :=
@@ -81,8 +81,8 @@ theorem outcomeDist_eq_traceWeightSum
     outcomeDist σ w.prog w.env = traceWeightSum σ w.prog w.env :=
   Vegas.outcomeDist_eq_traceWeightSum σ w.prog w.env
 
-/-- World-packaged compatibility alias for the headline trace/outcome
-agreement theorem. -/
+/-- World-packaged short alias for the headline trace/outcome agreement
+theorem. -/
 theorem outcomeDist_eq_traceSum
     (σ : OmniscientOperationalProfile P L) (w : World P L) :
     outcomeDist σ w.prog w.env = traceWeightSum σ w.prog w.env :=

@@ -376,7 +376,7 @@ theorem moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
 
 noncomputable def moveAtProgramObservationPMF?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P)
     (obs : PrivateObs g who × PublicObs g hctx) :
     PMF (Option (ProgramAction g.prog who)) := by
@@ -386,7 +386,7 @@ noncomputable def moveAtProgramObservationPMF?
 
 theorem moveAtProgramObservationPMF?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     moveAtProgramObservationPMF? g hctx σ who
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
@@ -707,7 +707,7 @@ theorem toObservedProgramReachableMixedPureProfile_joint
 
 noncomputable def programBehavioralProfilePMFCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     GameTheory.FOSG.BehavioralProfile (observedProgramFOSG g hctx) :=
   GameTheory.FOSG.BehavioralProfile.ofLatestObservation
     (G := observedProgramFOSG g hctx)
@@ -717,7 +717,7 @@ noncomputable def programBehavioralProfilePMFCandidate
 
 @[simp] theorem programBehavioralProfilePMFCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) (who : P) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) (who : P) :
     programBehavioralProfilePMFCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       moveAtCursorWorldPMF g hctx σ who (CursorCheckedWorld.initial g hctx) := by
@@ -726,7 +726,7 @@ noncomputable def programBehavioralProfilePMFCandidate
 
 theorem programBehavioralProfilePMFCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History) :
     programBehavioralProfilePMFCandidate g hctx σ who (h.playerView who) =
@@ -782,7 +782,7 @@ theorem programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure
 
 theorem programBehavioralProfilePMFCandidate_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g)
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History)
     {oi : Option (ProgramAction g.prog who)}
@@ -799,7 +799,7 @@ theorem programBehavioralProfilePMFCandidate_support_available
 profile of the finite observed-program FOSG. -/
 noncomputable def toObservedProgramLegalBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     (observedProgramFOSG g hctx).LegalBehavioralProfile :=
   fun who =>
     ⟨programBehavioralProfilePMFCandidate g hctx σ who, by
@@ -809,7 +809,7 @@ noncomputable def toObservedProgramLegalBehavioralProfilePMF
 
 @[simp] theorem toObservedProgramLegalBehavioralProfilePMF_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfilePMF g) (who : P) :
+    (σ : SyntaxLegalProgramBehavioralProfilePMF g) (who : P) :
     ((toObservedProgramLegalBehavioralProfilePMF g hctx σ who).1) =
       programBehavioralProfilePMFCandidate g hctx σ who := rfl
 
