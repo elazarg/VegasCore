@@ -1,5 +1,6 @@
 import Vegas.Protocol.ActionGraph
 import Vegas.Protocol.Machine
+import Vegas.Protocol.Trace
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Checked
 import Vegas.Protocol.Backend
@@ -25,6 +26,12 @@ This entrypoint exposes the executable protocol construction path.
   steps merge one frontier packet, and the sole internal event finalizes the
   current frontier. Extra implementation state belongs in backend refinement,
   not in the source machine.
+* `Vegas.Protocol.Trace` defines the bounded event/state trace
+  distribution `Machine.traceDist` and the terminal-outcome marginal
+  `Machine.outcomeKernel`. These are the canonical machine-level trace
+  semantics; the older syntax-directed `Vegas.Trace`
+  (`Vegas/TraceSemantics.lean`) is the IR-level redundant counterpart and
+  is on track for deprecation.
 * `Vegas.Protocol.FOSG` derives sequential FOSG views directly from
   `Machine` through `Machine.FOSGView`, using `Machine.RunPrefix` event/state
   prefixes as worlds. `Machine.FOSGView.transition_map_lastState_eq_step`

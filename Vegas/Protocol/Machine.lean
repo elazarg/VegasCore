@@ -196,66 +196,6 @@ theorem eventAvailable_of_mem_support
 
 end LegalEventLaw
 
-/-- One scheduled machine step. -/
-noncomputable def stepDist
-    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
-    PMF M.State :=
-  (law state).bind fun event => M.step event state
-
-/-- Bounded event/state trace distribution from an existing state. The state
-trace starts with the input state and has one more state than event labels. -/
-noncomputable def eventStateRunDistFrom
-    (M : Machine Player) (law : M.EventLaw) :
-    Nat → M.State → PMF (List M.Event × List M.State)
-  | 0, state => PMF.pure ([], [state])
-  | horizon + 1, state =>
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          (M.eventStateRunDistFrom law horizon next).map fun trace =>
-            (event :: trace.1, state :: trace.2)
-
-@[simp] theorem eventStateRunDistFrom_zero
-    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
-    M.eventStateRunDistFrom law 0 state = PMF.pure ([], [state]) := rfl
-
-theorem eventStateRunDistFrom_succ
-    (M : Machine Player) (law : M.EventLaw)
-    (horizon : Nat) (state : M.State) :
-    M.eventStateRunDistFrom law (horizon + 1) state =
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          (M.eventStateRunDistFrom law horizon next).map fun trace =>
-            (event :: trace.1, state :: trace.2) := rfl
-
-/-- Bounded event/state trace distribution from the machine initial state. -/
-noncomputable def eventStateRunDist
-    (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF (List M.Event × List M.State) :=
-  M.eventStateRunDistFrom law horizon M.init
-
-@[simp] theorem eventStateRunDist_zero
-    (M : Machine Player) (law : M.EventLaw) :
-    M.eventStateRunDist law 0 = PMF.pure ([], [M.init]) := rfl
-
-/-- Bounded state-trace distribution from an existing state. -/
-noncomputable def runDistFrom
-    (M : Machine Player) (law : M.EventLaw)
-    (horizon : Nat) (state : M.State) : PMF (List M.State) :=
-  (M.eventStateRunDistFrom law horizon state).map Prod.snd
-
-/-- Bounded state-trace distribution from the machine initial state. -/
-noncomputable def runDist
-    (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF (List M.State) :=
-  (M.eventStateRunDist law horizon).map Prod.snd
-
-/-- Outcome kernel induced by a scheduled event law. -/
-noncomputable def outcomeKernel
-    (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF M.Outcome :=
-  (M.runDist law horizon).map fun states =>
-    M.outcome (states.getLast?.getD M.init)
-
 end Machine
 
 namespace ActionGraph
