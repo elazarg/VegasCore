@@ -1310,22 +1310,6 @@ def toWorld {g : WFProgram P L}
   prog := w.1.prog
   env := w.1.env
 
-/-- Terminality for the finite cursor-keyed checked-world carrier. -/
-def terminal {g : WFProgram P L}
-    (w : CursorCheckedWorld g) : Prop :=
-  Vegas.FOSGBridge.terminal w.toWorld
-
-/-- Active players for the finite cursor-keyed checked-world carrier. -/
-def active {g : WFProgram P L}
-    (w : CursorCheckedWorld g) : Finset P :=
-  Vegas.FOSGBridge.active w.toWorld
-
-/-- Broad-alphabet action availability for the finite cursor-keyed carrier. -/
-def availableActions {g : WFProgram P L}
-    (w : CursorCheckedWorld g) (who : P) :
-    Set (Action (P := P) L who) :=
-  Vegas.FOSGBridge.availableActions w.toWorld who
-
 /-- Remaining operational syntax nodes at a finite cursor-keyed checked world. -/
 def remainingSyntaxSteps {g : WFProgram P L}
     (w : CursorCheckedWorld g) : Nat :=
@@ -1333,11 +1317,11 @@ def remainingSyntaxSteps {g : WFProgram P L}
 
 theorem terminal_iff_remainingSyntaxSteps_eq_zero
     {g : WFProgram P L} {w : CursorCheckedWorld g} :
-    w.terminal ↔ w.remainingSyntaxSteps = 0 := by
+    terminal w.toWorld ↔ w.remainingSyntaxSteps = 0 := by
   cases w with
   | mk data valid =>
       cases data
-      simp [terminal, remainingSyntaxSteps, toWorld, terminal_iff_syntaxSteps_eq_zero]
+      simp [remainingSyntaxSteps, toWorld, terminal_iff_syntaxSteps_eq_zero]
 
 /-- The finite cursor-keyed checked-world carrier is finite under finite value
 types. `Fintype.ofFinite` avoids requiring decidability of the proof-bearing
@@ -1612,39 +1596,26 @@ def toCheckedWorldFromSuffix
 
 end ProgramCursor
 
-def checkedTerminal {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CheckedWorld g hctx) : Prop :=
-  terminal w.toWorld
-
 /-- Remaining operational syntax nodes at a checked world. -/
 def CheckedWorld.remainingSyntaxSteps {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) : Nat :=
   syntaxSteps w.prog
 
-theorem checkedTerminal_iff_remainingSyntaxSteps_eq_zero
+theorem terminal_iff_remainingSyntaxSteps_eq_zero
     {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
-    checkedTerminal w ↔ w.remainingSyntaxSteps = 0 := by
+    terminal w.toWorld ↔ w.remainingSyntaxSteps = 0 := by
   cases w
-  simp [checkedTerminal, CheckedWorld.remainingSyntaxSteps, CheckedWorld.toWorld,
+  simp [CheckedWorld.remainingSyntaxSteps, CheckedWorld.toWorld,
     terminal_iff_syntaxSteps_eq_zero]
-
-def checkedActive {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CheckedWorld g hctx) : Finset P :=
-  active w.toWorld
-
-def checkedAvailableActions
-    {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (w : CheckedWorld g hctx) (who : P) : Set (Action (P := P) L who) :=
-  availableActions w.toWorld who
 
 abbrev CheckedJointActionLegal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CheckedWorld g hctx) (a : JointAction P L) : Prop :=
   GameTheory.JointActionLegal
     (fun who : P => Action (P := P) L who)
-    checkedActive
-    checkedTerminal
-    checkedAvailableActions
+    (fun w => active w.toWorld)
+    (fun w => terminal w.toWorld)
+    (fun w who => availableActions w.toWorld who)
     w
     a
 
@@ -1853,7 +1824,7 @@ with a guard-legal value. -/
 def availableProgramActions {g : WFProgram P L}
     (w : CursorCheckedWorld g) (who : P) :
     Set (ProgramAction g.prog who) :=
-  {a | ProgramAction.toAction a ∈ w.availableActions who ∧
+  {a | ProgramAction.toAction a ∈ availableActions w.toWorld who ∧
     ∃ (x : VarId) (owner : P) (b : L.Ty)
       (R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool)
       (k : VegasCore P L ((x, .hidden owner b) :: w.1.cursor.Γ)),
@@ -1924,8 +1895,8 @@ abbrev CursorProgramJointActionLegal
     (a : ProgramJointAction g) : Prop :=
   GameTheory.JointActionLegal
     (fun who : P => ProgramAction g.prog who)
-    CursorCheckedWorld.active
-    CursorCheckedWorld.terminal
+    (fun w => active w.toWorld)
+    (fun w => terminal w.toWorld)
     CursorCheckedWorld.availableProgramActions
     w
     a
@@ -1943,15 +1914,15 @@ theorem CursorProgramJointActionLegal.toAction
   have hlocal := ha.2 i
   cases hai : a i with
   | none =>
-      simpa [ProgramJointAction.toAction, hai, CursorProgramJointActionLegal,
-        CursorCheckedWorld.active, CursorCheckedWorld.terminal] using hlocal
+      simpa [ProgramJointAction.toAction, hai, CursorProgramJointActionLegal] using hlocal
   | some ai =>
-      have hpair : i ∈ w.active ∧ ai ∈ w.availableProgramActions i := by
+      have hpair :
+          i ∈ active w.toWorld ∧ ai ∈ w.availableProgramActions i := by
         simpa [ProgramJointAction.toAction, hai, CursorProgramJointActionLegal] using hlocal
       have hbroad : i ∈ active w.toWorld ∧
           ProgramAction.toAction ai ∈ availableActions w.toWorld i := by
         refine ⟨?_, hpair.2.1⟩
-        simpa [CursorCheckedWorld.active] using hpair.1
+        exact hpair.1
       simpa [ProgramJointAction.toAction, hai] using hbroad
 
 /-- A program-local joint action where exactly `who` commits to `v` at the
@@ -2093,19 +2064,19 @@ theorem commitValueOfLegal_eq_programAction_value
 
 theorem checked_terminal_active_eq_empty
     {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
-    checkedTerminal w → checkedActive w = ∅ :=
+    terminal w.toWorld → active w.toWorld = ∅ :=
   terminal_active_eq_empty
 
 theorem checked_terminal_no_legal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     {w : CheckedWorld g hctx} {a : JointAction P L} :
-    checkedTerminal w → ¬ CheckedJointActionLegal w a := by
+    terminal w.toWorld → ¬ CheckedJointActionLegal w a := by
   intro hterm hlegal
   exact hlegal.1 hterm
 
 theorem checked_nonterminal_exists_legal
     {g : WFProgram P L} {hctx : WFCtx g.Γ} {w : CheckedWorld g hctx} :
-    ¬ checkedTerminal w →
+    ¬ terminal w.toWorld →
       ∃ a : JointAction P L, CheckedJointActionLegal w a := by
   intro hterm
   exact exists_jointActionLegal_of_legal w.toWorld w.legal hterm
@@ -2114,7 +2085,7 @@ theorem checked_nonterminal_exists_legal
 theorem cursor_terminal_active_eq_empty
     {g : WFProgram P L}
     {w : CursorCheckedWorld g} :
-    w.terminal → w.active = ∅ :=
+    terminal w.toWorld → active w.toWorld = ∅ :=
   terminal_active_eq_empty
 
 /-- Terminal cursor worlds admit no legal program-local joint action. -/
@@ -2122,7 +2093,7 @@ theorem cursor_terminal_no_program_legal
     {g : WFProgram P L}
     {w : CursorCheckedWorld g}
     {a : ProgramJointAction g} :
-    w.terminal → ¬ CursorProgramJointActionLegal w a := by
+    terminal w.toWorld → ¬ CursorProgramJointActionLegal w a := by
   intro hterm hlegal
   exact hlegal.1 hterm
 
@@ -2133,14 +2104,14 @@ theorem cursor_active_eq_empty_of_letExpr
     {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.letExpr x e k) :
-    w.active = ∅ := by
+    active w.toWorld = ∅ := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.letExpr x e k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+          simp [active, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, active, hprog']
 
 theorem cursor_not_terminal_of_letExpr
@@ -2150,14 +2121,14 @@ theorem cursor_not_terminal_of_letExpr
     {e : L.Expr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.letExpr x e k) :
-    ¬ w.terminal := by
+    ¬ terminal w.toWorld := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.letExpr x e k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+          simp [terminal, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, terminal, hprog']
 
 theorem cursor_active_eq_empty_of_sample
@@ -2167,14 +2138,14 @@ theorem cursor_active_eq_empty_of_sample
     {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.sample x D k) :
-    w.active = ∅ := by
+    active w.toWorld = ∅ := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.sample x D k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+          simp [active, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, active, hprog']
 
 theorem cursor_not_terminal_of_sample
@@ -2184,14 +2155,14 @@ theorem cursor_not_terminal_of_sample
     {D : L.DistExpr (erasePubVCtx w.1.cursor.Γ) b}
     {k : VegasCore P L ((x, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.sample x D k) :
-    ¬ w.terminal := by
+    ¬ terminal w.toWorld := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.sample x D k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+          simp [terminal, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, terminal, hprog']
 
 theorem cursor_active_eq_singleton_of_commit
@@ -2201,14 +2172,14 @@ theorem cursor_active_eq_singleton_of_commit
     {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.commit x who R k) :
-    w.active = {who} := by
+    active w.toWorld = {who} := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.commit x who R k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+          simp [active, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, active, hprog']
 
 theorem cursor_not_terminal_of_commit
@@ -2218,14 +2189,14 @@ theorem cursor_not_terminal_of_commit
     {R : L.Expr ((x, b) :: eraseVCtx w.1.cursor.Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.commit x who R k) :
-    ¬ w.terminal := by
+    ¬ terminal w.toWorld := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.commit x who R k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+          simp [terminal, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, terminal, hprog']
 
 theorem cursor_active_eq_empty_of_reveal
@@ -2235,14 +2206,14 @@ theorem cursor_active_eq_empty_of_reveal
     {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.reveal y who x hx k) :
-    w.active = ∅ := by
+    active w.toWorld = ∅ := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.reveal y who x hx k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+          simp [active, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, active, hprog']
 
 theorem cursor_not_terminal_of_reveal
@@ -2252,14 +2223,14 @@ theorem cursor_not_terminal_of_reveal
     {hx : VHasVar w.1.cursor.Γ x (.hidden who b)}
     {k : VegasCore P L ((y, .pub b) :: w.1.cursor.Γ)}
     (hprog : w.1.prog = VegasCore.reveal y who x hx k) :
-    ¬ w.terminal := by
+    ¬ terminal w.toWorld := by
   cases w with
   | mk data valid =>
       cases data with
       | mk cursor env =>
           have hprog' : cursor.prog = VegasCore.reveal y who x hx k := by
             simpa [CursorWorldData.prog] using hprog
-          simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+          simp [terminal, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, terminal, hprog']
 
 /-- Program-level `Legal` prevents deadlock for the cursor-keyed program-local
@@ -2267,7 +2238,7 @@ action alphabet. -/
 theorem cursor_nonterminal_exists_program_legal
     {g : WFProgram P L}
     {w : CursorCheckedWorld g} :
-    ¬ w.terminal →
+    ¬ terminal w.toWorld →
       ∃ a : ProgramJointAction g,
         CursorProgramJointActionLegal w a := by
   intro hterm
@@ -2278,23 +2249,23 @@ theorem cursor_nonterminal_exists_program_legal
           rcases valid with ⟨wctx, fresh, viewScoped, normalized, legal⟩
           cases hprog : cursor.prog with
           | ret payoffs =>
-              simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+              simp [terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog] at hterm
           | letExpr x e k =>
               refine ⟨GameTheory.FOSG.noopAction
                 (fun who : P => ProgramAction g.prog who), ?_⟩
-              refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+              refine ⟨by simp [terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
-              simp [GameTheory.FOSG.noopAction, CursorCheckedWorld.active,
+              simp [GameTheory.FOSG.noopAction, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active, hprog]
           | sample x D k =>
               refine ⟨GameTheory.FOSG.noopAction
                 (fun who : P => ProgramAction g.prog who), ?_⟩
-              refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+              refine ⟨by simp [terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
-              simp [GameTheory.FOSG.noopAction, CursorCheckedWorld.active,
+              simp [GameTheory.FOSG.noopAction, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active, hprog]
           | commit x who R k =>
               change Legal cursor.prog at legal
@@ -2305,7 +2276,7 @@ theorem cursor_nonterminal_exists_program_legal
                 rw [← hprog]
                 exact cursor.toSuffix
               refine ⟨commitProgramJointAction suffix v, ?_⟩
-              refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+              refine ⟨by simp [terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
               by_cases hi : i = who
@@ -2316,8 +2287,8 @@ theorem cursor_nonterminal_exists_program_legal
                       change Legal cursor.prog
                       rw [hprog]
                       exact legal⟩⟩
-                have hactive : who ∈ CursorCheckedWorld.active w := by
-                  simp [w, CursorCheckedWorld.active,
+                have hactive : who ∈ active w.toWorld := by
+                  simp [w, active,
                     CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                     hprog]
                 have haction :
@@ -2335,7 +2306,7 @@ theorem cursor_nonterminal_exists_program_legal
                         (ProgramSuffix.ty_commitCursor suffix)
                         (ProgramAction.commitAt_value_cast suffix v
                           (ProgramSuffix.ty_commitCursor suffix))
-                    simpa [w, CursorCheckedWorld.availableActions,
+                    simpa [w, availableActions,
                       CursorCheckedWorld.toWorld, CursorWorldData.prog,
                       availableActions, hprog] using hbroad
                   · refine ⟨x, who, _, R, k, hprog, rfl, ?_⟩
@@ -2357,15 +2328,15 @@ theorem cursor_nonterminal_exists_program_legal
               · have hnone : commitProgramJointAction suffix v i = none := by
                     simp [commitProgramJointAction, hi]
                 rw [hnone]
-                simp [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+                simp [active, CursorCheckedWorld.toWorld,
                   CursorWorldData.prog, active, hprog, hi]
           | reveal y who x hx k =>
               refine ⟨GameTheory.FOSG.noopAction
                 (fun who : P => ProgramAction g.prog who), ?_⟩
-              refine ⟨by simp [CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+              refine ⟨by simp [terminal, CursorCheckedWorld.toWorld,
                 CursorWorldData.prog, terminal, hprog], ?_⟩
               intro i
-              simp [GameTheory.FOSG.noopAction, CursorCheckedWorld.active,
+              simp [GameTheory.FOSG.noopAction, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active, hprog]
 
 /-- The one-step transition kernel of the checked-world FOSG skeleton. -/
@@ -2378,7 +2349,7 @@ noncomputable def checkedTransition
   | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
       cases prog with
       | ret payoffs =>
-          exact False.elim (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
+          exact False.elim (a.2.1 (by simp [terminal, CheckedWorld.toWorld, terminal]))
       | letExpr x e k =>
           exact PMF.pure
             { Γ := _
@@ -2409,8 +2380,8 @@ noncomputable def checkedTransition
           have ha : JointActionLegal
               ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L)
               a.1 := by
-            simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-              checkedAvailableActions, CheckedWorld.toWorld] using a.2
+            simpa [CheckedJointActionLegal, active, terminal,
+              availableActions, CheckedWorld.toWorld] using a.2
           let v := commitValueOfLegal (L := L) ha
           exact PMF.pure
             { Γ := _
@@ -2460,8 +2431,8 @@ theorem checkedTransition_commit_eq_programActionContinuation
          wctx := wctx, fresh := fresh, viewScoped := viewScoped,
          normalized := normalized, legal := legal } : CheckedWorld g hctx)
       ⟨ProgramJointAction.toAction a, by
-        simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-          checkedAvailableActions, CheckedWorld.toWorld] using ha⟩ =
+        simpa [CheckedJointActionLegal, active, terminal,
+          availableActions, CheckedWorld.toWorld] using ha⟩ =
     match a who with
     | some ai =>
         if hty : CommitCursor.ty ai.cursor = b then
@@ -2688,7 +2659,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
         (hctx := hctx) suffix c env valid)
       ⟨a, by
         simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
-          checkedActive, checkedTerminal, checkedAvailableActions,
+          active, terminal, availableActions,
           CheckedWorld.toWorld] using ha⟩ := by
   intro Γ root suffix c
   revert suffix
@@ -2708,7 +2679,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
           (hctx := hctx) suffix c env valid)
         ⟨a, by
           simpa [CheckedJointActionLegal, ProgramCursor.toCheckedWorldFromSuffix,
-            checkedActive, checkedTerminal, checkedAvailableActions,
+            active, terminal, availableActions,
             CheckedWorld.toWorld] using ha⟩)
     (fun {Γ} {p} suffix env valid a ha => by
       cases p
@@ -3395,7 +3366,7 @@ theorem checkedTransition_remainingSyntaxSteps
   | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
       cases prog with
       | ret payoffs =>
-          exact False.elim (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
+          exact False.elim (a.2.1 (by simp [terminal, CheckedWorld.toWorld, terminal]))
       | letExpr x e k =>
           rw [← PMF.mem_support_iff] at hsupp
           simp only [checkedTransition, PMF.support_pure,

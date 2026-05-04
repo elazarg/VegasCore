@@ -279,7 +279,7 @@ theorem movePureAtCursorWorld_available
       rw [hmove] at hlocal
       simpa [movePureAtCursorWorld, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
         hmove] using hlocal
   | some ai =>
@@ -288,10 +288,10 @@ theorem movePureAtCursorWorld_available
       rw [hmove] at hlocal
       simpa [movePureAtCursorWorld, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
         CursorCheckedWorld.availableProgramActionsAt,
-        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.availableProgramMovesAt, availableActions,
         CursorCheckedWorld.toWorld, availableActions, hmove] using hlocal
 
 theorem movePureStrategyAtCursorWorld_available
@@ -310,7 +310,7 @@ theorem movePureStrategyAtCursorWorld_available
       rw [hmove] at hlocal
       simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
         hmove] using hlocal
   | some ai =>
@@ -319,10 +319,10 @@ theorem movePureStrategyAtCursorWorld_available
       rw [hmove] at hlocal
       simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
         CursorCheckedWorld.availableProgramActionsAt,
-        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.availableProgramMovesAt, availableActions,
         CursorCheckedWorld.toWorld, availableActions, hmove] using hlocal
 
 theorem moveAtProgramCursorPMF_toBehavioralPMF_eq_pure

@@ -229,7 +229,7 @@ theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
     (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx)
     (a : {a : JointAction P L // CheckedJointActionLegal w a})
-    (hactive : checkedActive w = ∅) :
+    (hactive : active w.toWorld = ∅) :
     checkedTransition w a =
       checkedProfileStepPMF g hctx σ w := by
   cases w with
@@ -237,13 +237,13 @@ theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
       cases prog with
       | ret payoffs =>
           exact False.elim
-            (a.2.1 (by simp [checkedTerminal, CheckedWorld.toWorld, terminal]))
+            (a.2.1 (by simp [terminal, CheckedWorld.toWorld, terminal]))
       | letExpr x e k =>
           simp [checkedTransition, checkedProfileStepPMF]
       | sample x D k =>
           simp [checkedTransition, checkedProfileStepPMF]
       | commit x who R k =>
-          simp [checkedActive, CheckedWorld.toWorld, active] at hactive
+          simp [active, CheckedWorld.toWorld, active] at hactive
       | reveal y who x hx k =>
           simp [checkedTransition, checkedProfileStepPMF]
 
@@ -279,8 +279,8 @@ theorem
       (observedProgramFOSG g hctx)
         |>.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
   apply checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-  simpa [observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
-    CursorCheckedWorld.active] using hactive
+  simpa [observedProgramFOSG, active, CheckedWorld.ofCursorChecked,
+    active] using hactive
 
 /-- If a player is active in the observed-program FOSG, the cursor endpoint is
 a commit node owned by that player, and all checked-world projections expose
@@ -318,24 +318,24 @@ theorem observedProgram_active_mem_commitData
           rcases valid with ⟨wctx, fresh, viewScoped, normalized, legal⟩
           cases hprog : cursor.prog with
           | ret payoffs =>
-              simp [observedProgramFOSG, CursorCheckedWorld.active,
+              simp [observedProgramFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | letExpr x e k =>
-              simp [observedProgramFOSG, CursorCheckedWorld.active,
+              simp [observedProgramFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | sample x D k =>
-              simp [observedProgramFOSG, CursorCheckedWorld.active,
+              simp [observedProgramFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | reveal y owner x hx k =>
-              simp [observedProgramFOSG, CursorCheckedWorld.active,
+              simp [observedProgramFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | commit x owner R k =>
               have hwho : who = owner := by
-                simpa [observedProgramFOSG, CursorCheckedWorld.active,
+                simpa [observedProgramFOSG, active,
                   CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                   hprog] using hmem
               subst who
@@ -464,8 +464,8 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_semanticStep
         (hw := hchecked)
         (a := ProgramJointAction.toAction a.1)
         (ha₂ := by
-          simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-            checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
+          simpa [CheckedJointActionLegal, active, terminal,
+            availableActions, CheckedWorld.toWorld] using haRaw)]
       simpa [checkedCommitContinuation] using
         checkedTransition_commit_eq_programActionContinuation
           g hctx env suffix wctx fresh viewScoped
@@ -550,7 +550,7 @@ theorem checkedVegasOutcomeKernelPMF_terminal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx)
-    (hterm : checkedTerminal w) :
+    (hterm : terminal w.toWorld) :
     checkedVegasOutcomeKernelPMF σ w =
       PMF.pure (checkedWorldOutcome w) := by
   cases w with
@@ -560,13 +560,13 @@ theorem checkedVegasOutcomeKernelPMF_terminal
           simp [checkedVegasOutcomeKernelPMF, checkedWorldOutcome,
             behavioralOutcomePMF]
       | letExpr x e k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+          simp [terminal, CheckedWorld.toWorld, terminal] at hterm
       | sample x D k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+          simp [terminal, CheckedWorld.toWorld, terminal] at hterm
       | commit x who R k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+          simp [terminal, CheckedWorld.toWorld, terminal] at hterm
       | reveal y who x hx k =>
-          simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
+          simp [terminal, CheckedWorld.toWorld, terminal] at hterm
 
 theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -647,14 +647,14 @@ theorem cursorVegasOutcomeKernelPMF_terminal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CursorCheckedWorld g)
-    (hterm : w.terminal) :
+    (hterm : terminal w.toWorld) :
     cursorVegasOutcomeKernelPMF σ w =
       PMF.pure (cursorWorldOutcome w) := by
   have hchecked :
-      checkedTerminal
-        (CheckedWorld.ofCursorChecked (hctx := hctx) w) := by
-    simpa [checkedTerminal, CheckedWorld.ofCursorChecked,
-      CursorCheckedWorld.terminal, CursorCheckedWorld.toWorld,
+      terminal
+        (CheckedWorld.ofCursorChecked (hctx := hctx) w).toWorld := by
+    simpa [terminal, CheckedWorld.ofCursorChecked,
+      terminal, CursorCheckedWorld.toWorld,
       CheckedWorld.toWorld] using hterm
   rw [← checkedVegasOutcomeKernelPMF_ofCursorChecked (hctx := hctx) σ w]
   rw [← checkedWorldOutcome_ofCursorChecked (hctx := hctx) w]

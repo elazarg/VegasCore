@@ -181,15 +181,15 @@ theorem moveAtCursorWorldPMF_support_available
   | none =>
       simpa [moveAtCursorWorldPMF, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld] using hlocal
   | some ai =>
       simpa [moveAtCursorWorldPMF, observedProgramFOSG,
         GameTheory.FOSG.availableMovesAtState,
-        GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.active,
+        GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
         CursorCheckedWorld.availableProgramActionsAt,
-        CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.availableActions,
+        CursorCheckedWorld.availableProgramMovesAt, availableActions,
         CursorCheckedWorld.toWorld, availableActions] using hlocal
 
 end Observed

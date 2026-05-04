@@ -704,13 +704,13 @@ private theorem cursorLegal_mem_availableProgramMovesAt
               simpa [CursorProgramJointActionLegal,
                 CursorCheckedWorld.availableProgramMovesAt,
                 CursorCheckedWorld.availableProgramActions,
-                CursorCheckedWorld.active, CursorWorldData.prog,
+                active, CursorWorldData.prog,
                 CursorWorldData.suffix, h] using ha.2 i
           | some ai =>
               simpa [CursorProgramJointActionLegal,
                 CursorCheckedWorld.availableProgramMovesAt,
                 CursorCheckedWorld.availableProgramActions,
-                CursorCheckedWorld.active, CursorWorldData.prog,
+                active, CursorWorldData.prog,
                 CursorWorldData.suffix, h] using ha.2 i
 
 private theorem cursorPlayerView_step

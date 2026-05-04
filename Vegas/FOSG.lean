@@ -369,9 +369,7 @@ theorem toFiniteFOSGPureStrategyCandidate_available
   rw [toFiniteFOSGPureStrategyCandidate_history]
   by_cases hcut : syntaxSteps g.prog ≤ h.lastState.pref.events.length
   · have hterm :
-        CursorCheckedWorld.terminal
-          (cursorWorldOfGraphConfiguration
-            g hctx h.lastState.lastState) :=
+        terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld :=
       finiteFOSG_terminal_endpoint_of_cutoff
         g hctx h hcut
     let move :=
@@ -388,9 +386,7 @@ theorem toFiniteFOSGPureStrategyCandidate_available
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState)
     have hactiveEmpty :
-        CursorCheckedWorld.active
-          (cursorWorldOfGraphConfiguration
-            g hctx h.lastState.lastState) = ∅ :=
+        active (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld = ∅ :=
       cursor_terminal_active_eq_empty hterm
     let G := toFiniteFOSG g hctx
     change move ∈ G.availableMoves h who
@@ -406,13 +402,11 @@ theorem toFiniteFOSGPureStrategyCandidate_available
           (none : Option ((graphMachine g hctx).Action who))
     | some action =>
         have hmemActive :
-            who ∈ CursorCheckedWorld.active
-              (cursorWorldOfGraphConfiguration
-                g hctx h.lastState.lastState) := by
+            who ∈ active
+              (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
           have hpair :
-              who ∈ CursorCheckedWorld.active
-                (cursorWorldOfGraphConfiguration
-                  g hctx h.lastState.lastState) ∧
+              who ∈ active
+                  (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld ∧
                 action ∈
                   CursorCheckedWorld.availableProgramActions
                     (cursorWorldOfGraphConfiguration
@@ -504,9 +498,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
     intro hcut
     exact hterm (Or.inr hcut)
   have hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration
-          g hctx h.lastState.lastState) :=
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld :=
     finiteFOSG_cursor_nonterminal_of_not_terminal
       g hctx h hterm
   have hnotGraph :
@@ -518,9 +510,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
   · rw [G.legalActionLaw_eq_pure_noop_of_active_empty β h hterm hactive]
     simp only [PMF.pure_bind]
     have hactiveCursor :
-        CursorCheckedWorld.active
-          (cursorWorldOfGraphConfiguration
-            g hctx h.lastState.lastState) = ∅ := by
+        active (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld = ∅ := by
       have hview :
           (fosgView g hctx).active
               h.lastState.pref = ∅ := by
@@ -577,15 +567,14 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)) := by
             apply Observed.checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-            simpa [checkedActive, CheckedWorld.ofCursorChecked,
-              CursorCheckedWorld.active] using hactiveCursor
+            simpa [active, CheckedWorld.ofCursorChecked,
+              active] using hactiveCursor
   · have hne : (G.active h.lastState).Nonempty :=
       Finset.nonempty_iff_ne_empty.mpr hactive
     rcases hne with ⟨who, hmem⟩
     have hmemCursor :
         who ∈ (observedProgramFOSG g hctx).active
-          (cursorWorldOfGraphConfiguration
-            g hctx h.lastState.lastState) := by
+          (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
       have hmemRaw :
           who ∈
             (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
@@ -598,9 +587,9 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
           using hmem
       rw [if_neg hnotCut] at hmemRaw
       have hmem' :
-          who ∈ CursorCheckedWorld.active
-            (cursorWorldOfGraphConfiguration
-              g hctx h.lastState.pref.lastState) := by
+          who ∈ active
+            (cursorWorldOfGraphConfiguration g hctx
+              h.lastState.pref.lastState).toWorld := by
         simpa [fosgView_active_eq_cursor_active_of_not_terminal
           g hctx h.lastState.pref hnotGraph,
           Machine.BoundedRunPrefix.lastState] using hmemRaw
@@ -693,8 +682,8 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                 (hw := hchecked)
                 (a := ProgramJointAction.toAction selectedAction)
                 (ha₂ := by
-                  simpa [CheckedJointActionLegal, checkedActive, checkedTerminal,
-                    checkedAvailableActions, CheckedWorld.toWorld] using haRaw)]
+                  simpa [CheckedJointActionLegal, active, terminal,
+                    availableActions, CheckedWorld.toWorld] using haRaw)]
               simpa [Observed.checkedCommitContinuation, hselectedWho] using
                 checkedTransition_commit_eq_programActionContinuation
                   g hctx env suffix wctx fresh viewScoped

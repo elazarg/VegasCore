@@ -101,9 +101,9 @@ noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
       (fun who : P => PrivateObs g who)
       (PublicObs g hctx) where
   init := CursorCheckedWorld.initial g hctx
-  active := CursorCheckedWorld.active
+  active := fun w => active w.toWorld
   availableActions := CursorCheckedWorld.availableProgramActions
-  terminal := CursorCheckedWorld.terminal
+  terminal := fun w => terminal w.toWorld
   transition := cursorProgramTransition
   reward := rewardOnEnteringRetCursor
   privObs := fun who _ _ w' => privateObsOfCursorWorld who w'
@@ -137,13 +137,13 @@ theorem observedProgram_availableMovesAtState_eq_of_privateObs_eq
   | none =>
       simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
-        CursorCheckedWorld.active, CursorCheckedWorld.toWorld, active] using hmem
+        CursorCheckedWorld.toWorld, active] using hmem
   | some ai =>
       simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
         CursorCheckedWorld.availableProgramActions,
-        CursorCheckedWorld.availableProgramActionsAt, CursorCheckedWorld.active,
-        CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld, active,
+        CursorCheckedWorld.availableProgramActionsAt,
+        CursorCheckedWorld.toWorld, active,
         availableActions] using hmem
 
 /-- The observed-program FOSG transition is the checked transition after

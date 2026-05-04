@@ -383,8 +383,8 @@ abbrev InternalEvent := Unit
 strategic player. -/
 def availableInternal (g : WFProgram P L)
     (state : CursorCheckedWorld g) : Set InternalEvent :=
-  { _event : InternalEvent | CursorCheckedWorld.active state = ∅ ∧
-      ¬ CursorCheckedWorld.terminal state }
+  { _event : InternalEvent | active state.toWorld = ∅ ∧
+      ¬ terminal state.toWorld }
 
 /-- Configuration carrier of the checked action-graph semantics. -/
 abbrev GraphConfiguration (g : WFProgram P L) : Type :=
@@ -617,8 +617,7 @@ def graphAvailableInternal
     (cfg : GraphConfiguration g) : Set InternalEvent :=
   { _event |
       ¬ cfg.isTerminal ∧
-        CursorCheckedWorld.active
-          (cursorWorldOfGraphConfiguration g hctx cfg) = ∅ }
+        active (cursorWorldOfGraphConfiguration g hctx cfg).toWorld = ∅ }
 
 /-- Player step of the checked action-graph semantics. Unavailable choices
 stutter; available choices execute the checked cursor step and then advance the
@@ -902,8 +901,8 @@ noncomputable def fosgView
     let w := cursorWorldOfGraphConfiguration g hctx pref.lastState
     cases hprog : w.1.cursor.prog with
     | ret payoffs =>
-        have hactive : CursorCheckedWorld.active w = ∅ := by
-          simp [w, CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+        have hactive : active w.toWorld = ∅ := by
+          simp [w, active, CursorCheckedWorld.toWorld,
             CursorWorldData.prog, hprog]
         have hturn :
             graphMachineTurn g hctx pref = Machine.Turn.internal () := by
@@ -912,7 +911,7 @@ noncomputable def fosgView
         change () ∈ graphAvailableInternal g hctx pref.lastState
         exact ⟨hgraph, hactive⟩
     | letExpr x e k =>
-        have hactive : CursorCheckedWorld.active w = ∅ :=
+        have hactive : active w.toWorld = ∅ :=
           cursor_active_eq_empty_of_letExpr
             (by simpa [w, CursorWorldData.prog] using hprog)
         have hturn :
@@ -922,7 +921,7 @@ noncomputable def fosgView
         change () ∈ graphAvailableInternal g hctx pref.lastState
         exact ⟨hgraph, hactive⟩
     | sample x D k =>
-        have hactive : CursorCheckedWorld.active w = ∅ :=
+        have hactive : active w.toWorld = ∅ :=
           cursor_active_eq_empty_of_sample
             (by simpa [w, CursorWorldData.prog] using hprog)
         have hturn :
@@ -932,7 +931,7 @@ noncomputable def fosgView
         change () ∈ graphAvailableInternal g hctx pref.lastState
         exact ⟨hgraph, hactive⟩
     | commit x who R k =>
-        have hcursor : ¬ CursorCheckedWorld.terminal w :=
+        have hcursor : ¬ terminal w.toWorld :=
           cursor_not_terminal_of_commit
             (by simpa [w, CursorWorldData.prog] using hprog)
         rcases cursor_nonterminal_exists_program_legal
@@ -941,16 +940,16 @@ noncomputable def fosgView
         have hlocal := hlegal.2 who
         cases hmove : joint who with
         | none =>
-            have hactive : who ∈ CursorCheckedWorld.active w := by
+            have hactive : who ∈ active w.toWorld := by
               rw [cursor_active_eq_singleton_of_commit
                 (by simpa [w, CursorWorldData.prog] using hprog)]
               simp
-            have hnot : who ∉ CursorCheckedWorld.active w := by
+            have hnot : who ∉ active w.toWorld := by
               simpa [hmove] using hlocal
             exact False.elim (hnot hactive)
         | some action =>
             have hpair :
-                who ∈ CursorCheckedWorld.active w ∧
+                who ∈ active w.toWorld ∧
                   action ∈ CursorCheckedWorld.availableProgramActions w who := by
               simpa [hmove] using hlocal
             have hturn :
@@ -961,7 +960,7 @@ noncomputable def fosgView
               action ∈ graphAvailable g hctx pref.lastState who
             exact ⟨action, ⟨hgraph, by simpa [w] using hpair.2⟩⟩
     | reveal y who x hx k =>
-        have hactive : CursorCheckedWorld.active w = ∅ :=
+        have hactive : active w.toWorld = ∅ :=
           cursor_active_eq_empty_of_reveal
             (by simpa [w, CursorWorldData.prog] using hprog)
         have hturn :
@@ -1015,12 +1014,11 @@ theorem fosgView_active_eq_cursor_active_of_not_terminal
     (pref : (graphMachine g hctx).RunPrefix)
     (hnot : ¬ pref.lastState.isTerminal) :
     (fosgView g hctx).active pref =
-      CursorCheckedWorld.active
-        (cursorWorldOfGraphConfiguration g hctx pref.lastState) := by
+      active (cursorWorldOfGraphConfiguration g hctx pref.lastState).toWorld := by
   let w := cursorWorldOfGraphConfiguration g hctx pref.lastState
   cases hprog : w.1.cursor.prog <;>
     simp [Machine.FOSGView.active, fosgView, graphMachineTurn,
-      hnot, w, CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+      hnot, w, active, CursorCheckedWorld.toWorld,
       CursorWorldData.prog, FOSGBridge.active, hprog]
 
 theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
@@ -1042,7 +1040,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
       · intro hright
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
-        simp [CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld,
+        simp [availableActions, CursorCheckedWorld.toWorld,
           CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
   | letExpr x e k =>
       constructor
@@ -1053,7 +1051,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
       · intro hright
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
-        simp [CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld,
+        simp [availableActions, CursorCheckedWorld.toWorld,
           CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
   | sample x D k =>
       constructor
@@ -1064,7 +1062,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
       · intro hright
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
-        simp [CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld,
+        simp [availableActions, CursorCheckedWorld.toWorld,
           CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
   | commit x owner R k =>
       by_cases hwho : who = owner
@@ -1107,7 +1105,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
       · intro hright
         rcases hright with ⟨hbroad, _⟩
         have hfalse := hbroad
-        simp [CursorCheckedWorld.availableActions, CursorCheckedWorld.toWorld,
+        simp [availableActions, CursorCheckedWorld.toWorld,
           CursorWorldData.prog, FOSGBridge.availableActions, w, hprog] at hfalse
 
 /-- Finite state helper for the checked graph machine. -/
@@ -1209,7 +1207,7 @@ theorem cursorProgramJointActionLegal_of_mem_availableProgramMovesAt
     (g : WFProgram P L)
     {state : CursorCheckedWorld g}
     {action : ∀ who : P, Option (ProgramAction g.prog who)}
-    (hterminal : ¬ CursorCheckedWorld.terminal state)
+    (hterminal : ¬ terminal state.toWorld)
     (hmove :
       ∀ who : P,
         action who ∈ CursorCheckedWorld.availableProgramMovesAt
@@ -1222,13 +1220,13 @@ theorem cursorProgramJointActionLegal_of_mem_availableProgramMovesAt
   | none =>
       simpa [CursorProgramJointActionLegal,
         CursorCheckedWorld.availableProgramMovesAt,
-        CursorCheckedWorld.active, CursorWorldData.prog,
+        active, CursorWorldData.prog,
         CursorWorldData.suffix, haction] using hmove
   | some ai =>
       simpa [CursorProgramJointActionLegal,
         CursorCheckedWorld.availableProgramMovesAt,
         CursorCheckedWorld.availableProgramActions,
-        CursorCheckedWorld.active, CursorWorldData.prog,
+        active, CursorWorldData.prog,
         CursorWorldData.suffix, haction] using hmove
 
 theorem step_eq_cursorProgramTransition_of_legal
@@ -1260,8 +1258,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
     {state : (graphMachine g hctx).State}
     {event : (graphMachine g hctx).Event}
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state))
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld)
     (havailable : (graphMachine g hctx).EventAvailable state event) :
     CursorProgramJointActionLegal
       (cursorWorldOfGraphConfiguration g hctx state)
@@ -1276,12 +1273,12 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
       exact cursorProgramJointActionLegal_of_mem_availableProgramMovesAt
         g hcursor (by
           intro who
-          have hnot : who ∉ CursorCheckedWorld.active w := by
+          have hnot : who ∉ active w.toWorld := by
             rw [hinternal.2]
             simp
           simpa [graphMachineJointAction,
             CursorCheckedWorld.availableProgramMovesAt,
-            CursorCheckedWorld.active, w] using hnot)
+            active, w] using hnot)
   | play who action =>
       have hgraphAvailable :
           action ∈ graphAvailable g hctx state who := by
@@ -1320,7 +1317,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
               intro other
               by_cases hother : other = who
               · subst other
-                have hactive : who ∈ CursorCheckedWorld.active w := by
+                have hactive : who ∈ active w.toWorld := by
                   change who ∈ FOSGBridge.active
                     ({ Γ := w.1.cursor.Γ,
                        prog := w.1.cursor.prog,
@@ -1332,7 +1329,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
                       ({ Γ := w.1.cursor.Γ,
                          prog := w.1.prog,
                          env := w.1.env } : FOSGBridge.World P L) := by
-                  simpa [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+                  simpa [active, CursorCheckedWorld.toWorld,
                     w] using hactive
                 have hactionAt :
                     action ∈ CursorCheckedWorld.availableProgramActionsAt
@@ -1342,7 +1339,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
                 simpa [graphMachineJointAction, singleProgramJointAction,
                   CursorCheckedWorld.availableProgramMovesAt] using
                     (And.intro hactiveAt hactionAt)
-              · have hnot : other ∉ CursorCheckedWorld.active w := by
+              · have hnot : other ∉ active w.toWorld := by
                   intro hactive
                   have hwho : other = who := by
                     change other ∈ FOSGBridge.active w.toWorld at hactive
@@ -1354,7 +1351,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
                       ({ Γ := w.1.cursor.Γ,
                          prog := w.1.prog,
                          env := w.1.env } : FOSGBridge.World P L) := by
-                  simpa [CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+                  simpa [active, CursorCheckedWorld.toWorld,
                     w] using hnot
                 simpa [graphMachineJointAction, singleProgramJointAction,
                   CursorCheckedWorld.availableProgramMovesAt, hother]
@@ -1373,8 +1370,7 @@ theorem graphMachine_step_map_cursorWorld_eq_cursorProgramTransition_of_availabl
     {state : (graphMachine g hctx).State}
     {event : (graphMachine g hctx).Event}
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state))
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld)
     (havailable : (graphMachine g hctx).EventAvailable state event) :
     PMF.map (cursorWorldOfGraphConfiguration g hctx)
         ((graphMachine g hctx).step event state) =
@@ -1428,8 +1424,7 @@ theorem graphMachine_step_support_remainingSyntaxSteps_of_event_available_of_cur
     {state next : (graphMachine g hctx).State}
     {event : (graphMachine g hctx).Event}
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state))
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld)
     (havailable : (graphMachine g hctx).EventAvailable state event)
     (hsupp : (graphMachine g hctx).step event state next ≠ 0) :
     (cursorWorldOfGraphConfiguration g hctx next).remainingSyntaxSteps + 1 =
@@ -1459,8 +1454,7 @@ theorem graphMachine_step_map_checkedWorld_eq_checkedTransition_of_available
     {state : (graphMachine g hctx).State}
     {event : (graphMachine g hctx).Event}
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state))
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld)
     (havailable : (graphMachine g hctx).EventAvailable state event) :
     PMF.map
         (fun next : (graphMachine g hctx).State =>
@@ -1558,8 +1552,7 @@ theorem boundedFOSG_transition_map_checkedWorld_eq_checkedTransition
     (pref : (graphMachine g hctx).BoundedRunPrefix horizon)
     (action : (boundedFOSG g hctx horizon).LegalAction pref)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx pref.lastState)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx pref.lastState).toWorld) :
     let selected :=
       (fosgView g hctx).boundedEventOfLegalJointAction
         horizon pref action
@@ -1685,8 +1678,7 @@ theorem boundedFOSG_transition_support_remainingSyntaxSteps
     (hsupp :
       (boundedFOSG g hctx horizon).transition pref action dst ≠ 0)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx pref.lastState)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx pref.lastState).toWorld) :
     (cursorWorldOfGraphConfiguration g hctx dst.lastState).remainingSyntaxSteps + 1 =
       (cursorWorldOfGraphConfiguration g hctx pref.lastState).remainingSyntaxSteps := by
   classical
@@ -1821,7 +1813,7 @@ theorem finiteFOSG_stepChain_doneBeforeCursor_from
         syntaxGraphDoneBeforeCursor_cursor_nonterminal_of_not_complete
           (g := g) hinv hnotComplete
       have hcursor :
-          ¬ CursorCheckedWorld.terminal currentW := by
+          ¬ terminal currentW.toWorld := by
         intro hterminal
         have hzero :
             syntaxSteps currentW.1.cursor.prog = 0 := by
@@ -1928,8 +1920,7 @@ theorem finiteFOSG_stepChain_remainingSyntaxSteps_from
         intro hle
         exact action.2.1 (Or.inr hle)
       have hcursor :
-          ¬ CursorCheckedWorld.terminal
-            (cursorWorldOfGraphConfiguration g hctx start.lastState) := by
+          ¬ terminal (cursorWorldOfGraphConfiguration g hctx start.lastState).toWorld := by
         intro hterm
         have hzero :
             (cursorWorldOfGraphConfiguration g hctx
@@ -2015,8 +2006,7 @@ theorem finiteFOSG_terminal_endpoint_of_cutoff
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (h : (finiteFOSG g hctx).History)
     (hcut : syntaxSteps g.prog ≤ h.lastState.pref.events.length) :
-    CursorCheckedWorld.terminal
-      (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
+    terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
   have hlen :=
     (fosgView g hctx).toBoundedFOSG_history_events_length
       (syntaxSteps g.prog) h
@@ -2049,9 +2039,11 @@ theorem finiteFOSG_cursor_terminal_of_graph_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (h : (finiteFOSG g hctx).History)
     (hgraph : (graphMachine g hctx).terminal h.lastState.lastState) :
-    CursorCheckedWorld.terminal
-      (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
-  rw [CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero]
+    terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
+  change FOSGBridge.terminal
+    (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld
+  rw [(CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
+    (w := cursorWorldOfGraphConfiguration g hctx h.lastState.lastState))]
   by_contra hnotZero
   have hpositive :
       0 <
@@ -2092,8 +2084,7 @@ theorem finiteFOSG_cursor_terminal_of_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (h : (finiteFOSG g hctx).History)
     (hterm : (finiteFOSG g hctx).terminal h.lastState) :
-    CursorCheckedWorld.terminal
-      (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
+    terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
   rcases hterm with hgraph | hcut
   · exact finiteFOSG_cursor_terminal_of_graph_terminal
       g hctx h hgraph
@@ -2171,9 +2162,7 @@ theorem finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
             Machine.FOSGView.boundedActive
               (fosgView g hctx) (syntaxSteps g.prog)
               h.lastState ↔
-          who ∉ CursorCheckedWorld.active
-            (cursorWorldOfGraphConfiguration g hctx
-              h.lastState.lastState)
+          who ∉ active (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld
       rw [Machine.FOSGView.boundedActive]
       rw [if_neg hcut]
       rw [fosgView_active_eq_cursor_active_of_not_terminal
@@ -2189,9 +2178,9 @@ theorem finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
               (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
                else Machine.FOSGView.availableActions
                  (fosgView g hctx) h.lastState.pref who)) ↔
-          (who ∈ CursorCheckedWorld.active
+          (who ∈ active
               (cursorWorldOfGraphConfiguration g hctx
-                h.lastState.pref.lastState) ∧
+                h.lastState.pref.lastState).toWorld ∧
             action ∈
               CursorCheckedWorld.availableProgramActions
                 (cursorWorldOfGraphConfiguration g hctx
@@ -2207,8 +2196,7 @@ theorem finiteFOSG_cursor_nonterminal_of_not_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (h : (finiteFOSG g hctx).History)
     (hterm : ¬ (finiteFOSG g hctx).terminal h.lastState) :
-    ¬ CursorCheckedWorld.terminal
-      (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
+    ¬ terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
   have hnotCut :
       ¬ syntaxSteps g.prog ≤ h.lastState.pref.events.length := by
     intro hcut

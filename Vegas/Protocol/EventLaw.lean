@@ -51,8 +51,7 @@ private theorem internal_event_available_of_active_empty
     {state : (graphMachine g hctx).State}
     (hgraph : ¬ state.isTerminal)
     (hactive :
-      CursorCheckedWorld.active
-        (cursorWorldOfGraphConfiguration g hctx state) = ∅) :
+      active (cursorWorldOfGraphConfiguration g hctx state).toWorld = ∅) :
     (graphMachine g hctx).EventAvailable state (.internal ()) := by
   change () ∈ graphAvailableInternal g hctx state
   exact ⟨hgraph, hactive⟩
@@ -62,8 +61,7 @@ private theorem graphStep_remainingSyntaxSteps
     {state next : (graphMachine g hctx).State}
     {event : (graphMachine g hctx).Event}
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state))
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld)
     (havailable : (graphMachine g hctx).EventAvailable state event)
     (hsupp : (graphMachine g hctx).step event state next ≠ 0) :
     (cursorWorldOfGraphConfiguration g hctx next).remainingSyntaxSteps + 1 =
@@ -90,7 +88,7 @@ noncomputable def pmfBehavioralEventLaw
           (by
             have hhead' : w.1.cursor.prog = .ret payoffs := by
               simpa [CursorWorldData.prog] using hhead
-            simp [w, CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+            simp [w, active, CursorCheckedWorld.toWorld,
               CursorWorldData.prog, hhead'])
     | letExpr x e k =>
         have hevent : event = .internal () := by
@@ -124,15 +122,15 @@ noncomputable def pmfBehavioralEventLaw
             g hctx σ who w hmove
         cases move with
         | none =>
-            have hnotActive : who ∉ CursorCheckedWorld.active w := by
+            have hnotActive : who ∉ active w.toWorld := by
               simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
                 GameTheory.FOSG.locallyLegalAtState,
                 CursorCheckedWorld.availableProgramMovesAt,
-                CursorCheckedWorld.active, CursorCheckedWorld.toWorld]
+                active, CursorCheckedWorld.toWorld]
                 using havailableMove
             have hhead' : w.1.cursor.prog = .commit x who R k := by
               simpa [CursorWorldData.prog] using hhead
-            have hactive : who ∈ CursorCheckedWorld.active w := by
+            have hactive : who ∈ active w.toWorld := by
               rw [cursor_active_eq_singleton_of_commit
                 (by simpa [w, CursorWorldData.prog] using hhead')]
               simp
@@ -143,7 +141,7 @@ noncomputable def pmfBehavioralEventLaw
             have haction :
                 action ∈ CursorCheckedWorld.availableProgramActions w who := by
               have hpair :
-                  who ∈ CursorCheckedWorld.active w ∧
+                  who ∈ active w.toWorld ∧
                     action ∈ CursorCheckedWorld.availableProgramActions w who := by
                 simpa [observedProgramFOSG,
                   GameTheory.FOSG.availableMovesAtState,
@@ -151,8 +149,8 @@ noncomputable def pmfBehavioralEventLaw
                   CursorCheckedWorld.availableProgramMovesAt,
                   CursorCheckedWorld.availableProgramActions,
                   CursorCheckedWorld.availableProgramActionsAt,
-                  CursorCheckedWorld.availableActions,
-                  CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+                  availableActions,
+                  active, CursorCheckedWorld.toWorld,
                   availableActions]
                   using havailableMove
               exact hpair.2
@@ -175,8 +173,7 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld) :
     (pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           PMF.map
@@ -193,7 +190,7 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
   let w := cursorWorldOfGraphConfiguration g hctx state
   cases hhead : w.1.prog with
   | ret payoffs =>
-      have hterm : CursorCheckedWorld.terminal w := by
+      have hterm : terminal w.toWorld := by
         change Vegas.FOSGBridge.terminal
           ({ Γ := w.1.cursor.Γ, prog := w.1.prog,
              env := w.1.env } : World P L)
@@ -201,7 +198,7 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
         simp
       exact False.elim (hcursor hterm)
   | letExpr x e k =>
-      have hactive : CursorCheckedWorld.active w = ∅ :=
+      have hactive : active w.toWorld = ∅ :=
         cursor_active_eq_empty_of_letExpr
           (by simpa [w, CursorWorldData.prog] using hhead)
       have havailable :
@@ -238,10 +235,10 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
           Observed.checkedProfileStepPMF g hctx σ
             (CheckedWorld.ofCursorChecked (hctx := hctx) w) := by
               apply Observed.checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-              simpa [checkedActive, CheckedWorld.ofCursorChecked,
-                CursorCheckedWorld.active] using hactive
+              simpa [active, CheckedWorld.ofCursorChecked,
+                active] using hactive
   | sample x D k =>
-      have hactive : CursorCheckedWorld.active w = ∅ :=
+      have hactive : active w.toWorld = ∅ :=
         cursor_active_eq_empty_of_sample
           (by simpa [w, CursorWorldData.prog] using hhead)
       have havailable :
@@ -278,17 +275,17 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
           Observed.checkedProfileStepPMF g hctx σ
             (CheckedWorld.ofCursorChecked (hctx := hctx) w) := by
               apply Observed.checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-              simpa [checkedActive, CheckedWorld.ofCursorChecked,
-                CursorCheckedWorld.active] using hactive
+              simpa [active, CheckedWorld.ofCursorChecked,
+                active] using hactive
   | commit x who R k =>
-      have hactiveMem : who ∈ CursorCheckedWorld.active w := by
+      have hactiveMem : who ∈ active w.toWorld := by
         rw [cursor_active_eq_singleton_of_commit
           (by simpa [w, CursorWorldData.prog] using hhead)]
         simp
       rcases Observed.observedProgram_active_mem_commitData
           g hctx w
           (by
-            simpa [observedProgramFOSG, CursorCheckedWorld.active, w]
+            simpa [observedProgramFOSG, active, w]
               using hactiveMem) with
         ⟨Γ, x', b, R', k', env, suffix, wctx, fresh, viewScoped,
           normalized, legal, hchecked, hworld, _hobs⟩
@@ -308,18 +305,18 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
             g hctx σ who w hoi
         cases oi with
         | none =>
-            have hnotActive : who ∉ CursorCheckedWorld.active w := by
+            have hnotActive : who ∉ active w.toWorld := by
               simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
                 GameTheory.FOSG.locallyLegalAtState,
                 CursorCheckedWorld.availableProgramMovesAt,
-                CursorCheckedWorld.active, CursorCheckedWorld.toWorld]
+                active, CursorCheckedWorld.toWorld]
                 using havailableMove
             exact False.elim (hnotActive hactiveMem)
         | some action =>
             have haction :
                 action ∈ CursorCheckedWorld.availableProgramActions w who := by
               have hpair :
-                  who ∈ CursorCheckedWorld.active w ∧
+                  who ∈ active w.toWorld ∧
                     action ∈ CursorCheckedWorld.availableProgramActions w who := by
                 simpa [observedProgramFOSG,
                   GameTheory.FOSG.availableMovesAtState,
@@ -327,8 +324,8 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
                   CursorCheckedWorld.availableProgramMovesAt,
                   CursorCheckedWorld.availableProgramActions,
                   CursorCheckedWorld.availableProgramActionsAt,
-                  CursorCheckedWorld.availableActions,
-                  CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
+                  availableActions,
+                  active, CursorCheckedWorld.toWorld,
                   availableActions]
                   using havailableMove
               exact hpair.2
@@ -375,8 +372,8 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
                       (a := ProgramJointAction.toAction
                         (graphMachineJointAction g hctx (.play who action)))
                       (ha₂ := by
-                        simpa [CheckedJointActionLegal, checkedActive,
-                          checkedTerminal, checkedAvailableActions,
+                        simpa [CheckedJointActionLegal, active,
+                          terminal, availableActions,
                           CheckedWorld.toWorld] using haRaw)]
                     simpa [Observed.checkedCommitContinuation,
                       graphMachineJointAction, singleProgramJointAction] using
@@ -421,7 +418,7 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
                 Observed.moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
                   g hctx σ env suffix wctx fresh viewScoped normalized legal
   | reveal y who x hx k =>
-      have hactive : CursorCheckedWorld.active w = ∅ :=
+      have hactive : active w.toWorld = ∅ :=
         cursor_active_eq_empty_of_reveal
           (by simpa [w, CursorWorldData.prog] using hhead)
       have havailable :
@@ -458,8 +455,8 @@ theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileSte
           Observed.checkedProfileStepPMF g hctx σ
             (CheckedWorld.ofCursorChecked (hctx := hctx) w) := by
               apply Observed.checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-              simpa [checkedActive, CheckedWorld.ofCursorChecked,
-                CursorCheckedWorld.active] using hactive
+              simpa [active, CheckedWorld.ofCursorChecked,
+                active] using hactive
 
 /-- The legacy cursor outcome kernel is preserved by one graph-machine step
 under the PMF behavioral event law. -/
@@ -469,8 +466,7 @@ theorem pmfBehavioralEventKernel_bind_step_cursorVegasOutcomeKernelPMF
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld) :
     (pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind
@@ -537,8 +533,7 @@ theorem pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPM
           (cursorWorldOfGraphConfiguration g hctx state)
   | 0, state, hfuel, _hinv => by
       have hcursor :
-          CursorCheckedWorld.terminal
-            (cursorWorldOfGraphConfiguration g hctx state) :=
+          terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld :=
         (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
           (g := g)
           (w := cursorWorldOfGraphConfiguration g hctx state)).2 hfuel
@@ -561,7 +556,7 @@ theorem pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPM
           ProgramCursor.instFintype g.prog
         simp [syntaxGraphActions, hcursorPositive]
       have hcursor :
-          ¬ CursorCheckedWorld.terminal w := by
+          ¬ terminal w.toWorld := by
         intro hterm
         have hzero :
             w.remainingSyntaxSteps = 0 :=
@@ -750,8 +745,7 @@ theorem pureEventLaw_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld) :
     ((pureEventLaw σ hctx).val state).bind
         (fun event =>
           PMF.map
@@ -789,8 +783,7 @@ theorem pureEventLaw_bind_step_cursorVegasOutcomeKernelPMF
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
-      ¬ CursorCheckedWorld.terminal
-        (cursorWorldOfGraphConfiguration g hctx state)) :
+      ¬ terminal (cursorWorldOfGraphConfiguration g hctx state).toWorld) :
     ((pureEventLaw σ hctx).val state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind

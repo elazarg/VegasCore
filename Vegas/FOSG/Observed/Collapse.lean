@@ -218,23 +218,30 @@ theorem valueOfProgramMoveOr_guard_of_available
       cases oi with
       | none =>
           have hactive :
-              who ∈ CursorCheckedWorld.active
-                (⟨{ cursor :=
-                    ProgramCursor.CommitCursor.toProgramCursor
-                      suffix.commitCursor,
-                    env := env }, valid⟩ : CursorCheckedWorld g) := by
+              who ∈ active
+                ({ Γ :=
+                    (ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor).Γ,
+                   prog :=
+                    (ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor).prog,
+                   env := env } : World P L) := by
             exact active_mem_of_eq_commit
               (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
               (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
               env
           have hnot :
-              who ∉ CursorCheckedWorld.active
-                (⟨{ cursor :=
-                    ProgramCursor.CommitCursor.toProgramCursor
-                      suffix.commitCursor,
-                    env := env }, valid⟩ : CursorCheckedWorld g) := by
+              who ∉ active
+                ({ Γ :=
+                    (ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor).Γ,
+                   prog :=
+                    (ProgramCursor.CommitCursor.toProgramCursor
+                      suffix.commitCursor).prog,
+                   env := env } : World P L) := by
             simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
-              GameTheory.FOSG.locallyLegalAtState] using hlocal0
+              GameTheory.FOSG.locallyLegalAtState,
+              CursorCheckedWorld.toWorld] using hlocal0
           exact False.elim (hnot hactive)
       | some ai =>
           have hact :
@@ -250,7 +257,7 @@ theorem valueOfProgramMoveOr_guard_of_available
             simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
               GameTheory.FOSG.locallyLegalAtState,
               CursorCheckedWorld.availableProgramActions,
-              CursorCheckedWorld.availableActions,
+              availableActions,
               CursorCheckedWorld.toWorld] using hlocal0.2.1
           have hbroad :=
             availableActions_of_eq_commit
@@ -493,8 +500,8 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
           (fun who : P => ProgramAction g.prog who),
         G.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩)]
     apply checkedTransition_eq_checkedProfileStepPMF_of_active_empty
-    simpa [G, observedProgramFOSG, checkedActive, CheckedWorld.ofCursorChecked,
-      CursorCheckedWorld.active] using hactive
+    simpa [G, observedProgramFOSG, active, CheckedWorld.ofCursorChecked,
+      active] using hactive
   · intro h _hterm who _hmem Γ x b R k env suffix wctx fresh viewScoped
       normalized legal _hchecked _hworld hobs
     let G := observedProgramFOSG g hctx
@@ -614,24 +621,31 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
         cases oi with
         | none =>
             have hactiveMem :
-                who ∈ CursorCheckedWorld.active
-                  (⟨{ cursor :=
-                      ProgramCursor.CommitCursor.toProgramCursor
-                        suffix.commitCursor,
-                      env := env' }, valid⟩ : CursorCheckedWorld g) := by
+                who ∈ active
+                  ({ Γ :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).Γ,
+                     prog :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).prog,
+                     env := env' } : World P L) := by
               exact active_mem_of_eq_commit
                 (ProgramSuffix.commitCursor_toProgramCursor_Γ suffix)
                 (ProgramSuffix.commitCursor_toProgramCursor_prog suffix)
                 env'
             have hnot :
-                who ∉ CursorCheckedWorld.active
-                  (⟨{ cursor :=
-                      ProgramCursor.CommitCursor.toProgramCursor
-                        suffix.commitCursor,
-                      env := env' }, valid⟩ : CursorCheckedWorld g) := by
+                who ∉ active
+                  ({ Γ :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).Γ,
+                     prog :=
+                      (ProgramCursor.CommitCursor.toProgramCursor
+                        suffix.commitCursor).prog,
+                     env := env' } : World P L) := by
               simpa [G, observedProgramFOSG,
                 GameTheory.FOSG.availableMovesAtState,
-                GameTheory.FOSG.locallyLegalAtState] using hlocal0
+                GameTheory.FOSG.locallyLegalAtState,
+                CursorCheckedWorld.toWorld] using hlocal0
             exact False.elim (hnot hactiveMem)
         | some ai =>
             have hact :
@@ -648,7 +662,7 @@ theorem observedProgramLegalActionLaw_bind_checkedTransition_eq_checkedProfileSt
                 GameTheory.FOSG.availableMovesAtState,
                 GameTheory.FOSG.locallyLegalAtState,
                 CursorCheckedWorld.availableProgramActions,
-                CursorCheckedWorld.availableActions,
+                availableActions,
                 CursorCheckedWorld.toWorld] using hlocal0.2.1
             have hbroad :=
               availableActions_of_eq_commit
