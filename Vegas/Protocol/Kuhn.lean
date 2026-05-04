@@ -229,9 +229,9 @@ end Machine
 Specialization of the Machine-native bounded Kuhn theorem to the graph machine
 of a checked Vegas program. The witness, the input mixed profile, and the
 asserted distributional equality are all stated against
-`graphMachine g hctx` and `graphMachineFOSGView g hctx`; no syntactic
-strategy space (`LegalProgramPureStrategy`, `SequentialBehavioralProfilePMF`)
-or dual outcome kernel (`toStrategicKernelGame`) is used.
+`graphMachine g hctx` and `fosgView g hctx`; no syntactic
+strategy space (`FeasibleProgramPureStrategy`, `SequentialBehavioralProfilePMF`)
+or dual outcome kernel (`pureKernelGame`) is used.
 -/
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
@@ -246,14 +246,14 @@ at the syntactic horizon.
 The witness β is a behavioral profile of the bounded graph-machine FOSG view;
 the equality is between two `PMF (graphMachine g hctx).Outcome` distributions
 produced by running the machine under the realized strategies. Compared to
-the legacy `kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite`,
-the surface here mentions only `graphMachine`/`graphMachineFOSGView` — no
+the legacy `kuhn_mixedPureRealization_finite`,
+the surface here mentions only `graphMachine`/`fosgView` — no
 strategic-kernel detour. -/
 theorem kuhn_mixed_to_behavioral_vegas
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L)
     (μ :
-      (graphMachineFOSGView g hctx).BoundedMixedProfile (syntaxSteps g.prog))
+      (fosgView g hctx).BoundedMixedProfile (syntaxSteps g.prog))
     (steps : Nat) :
     letI : Fintype (graphMachine g hctx).State :=
       graphMachine.instFintypeState g hctx LF
@@ -266,19 +266,19 @@ theorem kuhn_mixed_to_behavioral_vegas
         ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
       Machine.BoundedRunPrefix.instFintype
     letI : Fintype
-        (((graphMachineFOSGView g hctx).toBoundedFOSG
+        (((fosgView g hctx).toBoundedFOSG
             (syntaxSteps g.prog)).History) :=
-      boundedGraphMachineFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
+      boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
     letI : DecidablePred
-        (((graphMachineFOSGView g hctx).toBoundedFOSG
+        (((fosgView g hctx).toBoundedFOSG
             (syntaxSteps g.prog)).terminal) :=
       Classical.decPred _
     ∃ β :
-      (graphMachineFOSGView g hctx).BoundedBehavioralProfile
+      (fosgView g hctx).BoundedBehavioralProfile
         (syntaxSteps g.prog),
-      (graphMachineFOSGView g hctx).boundedOutcomeFromBehavioral
+      (fosgView g hctx).boundedOutcomeFromBehavioral
           (syntaxSteps g.prog) β steps =
-        (graphMachineFOSGView g hctx).boundedOutcomeFromMixed
+        (fosgView g hctx).boundedOutcomeFromMixed
           (syntaxSteps g.prog) μ steps := by
   classical
   letI : Fintype (graphMachine g hctx).State :=
@@ -292,18 +292,18 @@ theorem kuhn_mixed_to_behavioral_vegas
       ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
     Machine.BoundedRunPrefix.instFintype
   letI : Fintype
-      (((graphMachineFOSGView g hctx).toBoundedFOSG
+      (((fosgView g hctx).toBoundedFOSG
           (syntaxSteps g.prog)).History) :=
-    boundedGraphMachineFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
+    boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
   letI : DecidablePred
-      (((graphMachineFOSGView g hctx).toBoundedFOSG
+      (((fosgView g hctx).toBoundedFOSG
           (syntaxSteps g.prog)).terminal) :=
     Classical.decPred _
   have hLeg :
-      ((graphMachineFOSGView g hctx).toBoundedFOSG
+      ((fosgView g hctx).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
-    finiteGraphMachineFOSG_legalObservable g hctx
-  exact (graphMachineFOSGView g hctx).kuhn_mixed_to_behavioral_bounded
+    finiteFOSG_legalObservable g hctx
+  exact (fosgView g hctx).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
 end Vegas

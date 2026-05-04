@@ -20,7 +20,7 @@ This file is the public entrypoint for FOSG integration. The canonical
 protocol carrier is the asynchronous `Machine`. Checked syntax
 elaborates to `syntaxActionGraph`, then to
 `graphMachine`; `toGraphFOSG`, `toGraphBoundedFOSG`, and
-`toFiniteGraphMachineFOSG` are sequential FOSG presentations derived from that
+`toFiniteFOSG` are sequential FOSG presentations derived from that
 single graph machine. The `toFOSG`/`toBoundedFOSG` names are aliases for that
 same graph-machine presentation.
 
@@ -35,12 +35,12 @@ This is the direct sequential presentation of the checked program's
 action-graph machine. -/
 noncomputable abbrev toGraphFOSG
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :=
-  graphMachineFOSG g hctx
+  fosg g hctx
 
 /-- Horizon-bounded graph-machine FOSG view of a checked Vegas program. -/
 noncomputable abbrev toGraphBoundedFOSG
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :=
-  boundedGraphMachineFOSG g hctx horizon
+  boundedFOSG g hctx horizon
 
 /-- Canonical sequential denotation of a checked Vegas program as a FOSG. -/
 noncomputable abbrev toFOSG
@@ -53,9 +53,9 @@ noncomputable abbrev toBoundedFOSG
   toGraphBoundedFOSG g hctx horizon
 
 /-- Syntax-horizon bounded graph-machine FOSG view. -/
-noncomputable abbrev toFiniteGraphMachineFOSG
+noncomputable abbrev toFiniteFOSG
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :=
-  finiteGraphMachineFOSG g hctx
+  finiteFOSG g hctx
 
 /-- Finite observed FOSG adapter.
 
@@ -103,21 +103,21 @@ strategies and stated as preservation of the Vegas outcome distribution. -/
 theorem toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     ∃ β : KernelGame.Profile (toObservedFOSGKernelGame g hctx LF),
       (toObservedFOSGKernelGame g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   obtain ⟨β, hβ⟩ :=
     Observed.observedProgramReachableKernelGame_mixedPure_realization
       g hctx LF μ
   refine ⟨β, ?_⟩
   rw [hβ]
-  exact (bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+  exact (bind_pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     g hctx (Math.PMFProduct.pmfPi μ)).symm
 
 /-- Finite observed-FOSG Kuhn M→B with a total legal FOSG behavioral witness.
@@ -125,13 +125,13 @@ theorem toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
 The theorem preserves the Vegas outcome distribution. The behavioral witness is
 total for the compiled FOSG information-state space; this is stronger than the
 reachable-profile wrapper below, but it is still a FOSG strategy, not a Vegas
-`SyntaxLegalProgramBehavioralProfilePMF`. -/
+`FeasibleProgramBehavioralProfilePMF`. -/
 theorem toObservedFOSG_mixedPure_realizedByLegalBehavioral_runDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     letI : Fintype (CursorCheckedWorld g) :=
       observedProgramFOSG.instFintypeWorld g hctx LF
     letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -144,9 +144,9 @@ theorem toObservedFOSG_mixedPure_realizedByLegalBehavioral_runDist
       PMF.map (observedProgramHistoryOutcome g hctx)
           ((toObservedFOSG g hctx).runDist (syntaxSteps g.prog) β) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -156,27 +156,27 @@ theorem toObservedFOSG_mixedPure_realizedByLegalBehavioral_runDist
   letI : DecidablePred (toObservedFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal g hctx
   obtain ⟨β, hβ⟩ :=
-    Observed.observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    Observed.observedProgramFullFOSG_vegasMixedPure_runDist_pureKernelGame_finite
       g hctx LF μ
   refine ⟨β, ?_⟩
   rw [hβ]
-  exact (bind_toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+  exact (bind_pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     g hctx (Math.PMFProduct.pmfPi μ)).symm
 
 theorem toBoundedFOSG_boundedHorizon
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :
     (toBoundedFOSG g hctx horizon).BoundedHorizon horizon :=
-  (graphMachineFOSGView g hctx)
+  (fosgView g hctx)
     |>.toBoundedFOSG_boundedHorizon horizon
 
 theorem toGraphBoundedFOSG_boundedHorizon
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :
     (toGraphBoundedFOSG g hctx horizon).BoundedHorizon horizon :=
-  (graphMachineFOSGView g hctx)
+  (fosgView g hctx)
     |>.toBoundedFOSG_boundedHorizon horizon
 
 /-- Endpoint outcome read from a bounded graph-machine FOSG history. -/
-noncomputable def graphMachineFOSGHistoryOutcome
+noncomputable def fosgHistoryOutcome
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     (h : (toGraphBoundedFOSG g hctx horizon).History) : Outcome P :=
   (graphMachine g hctx).outcome h.lastState.lastState
@@ -184,10 +184,10 @@ noncomputable def graphMachineFOSGHistoryOutcome
 /-- Outcome kernel for a reachable behavioral profile of the graph-machine
 finite FOSG. Finite enumeration instances are fixed by `LF` and kept inside
 the definition. -/
-noncomputable def finiteGraphMachineFOSGReachableBehavioralOutcomeKernel
+noncomputable def finiteFOSGReachableBehavioralOutcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (β : (toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralProfile) :
+    (β : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile) :
     PMF (Outcome P) := by
   classical
   letI : Fintype (graphMachine g hctx).State :=
@@ -203,13 +203,13 @@ noncomputable def finiteGraphMachineFOSGReachableBehavioralOutcomeKernel
         ((graphMachine g hctx).BoundedRunPrefix
           (syntaxSteps g.prog)) :=
     Machine.BoundedRunPrefix.instFintype
-  letI : Fintype (toFiniteGraphMachineFOSG g hctx).History :=
-    finiteGraphMachineFOSG.instFintypeHistory g hctx LF
-  letI : DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal :=
+  letI : Fintype (toFiniteFOSG g hctx).History :=
+    finiteFOSG.instFintypeHistory g hctx LF
+  letI : DecidablePred (toFiniteFOSG g hctx).terminal :=
     Classical.decPred _
   exact
-    PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-      ((toFiniteGraphMachineFOSG g hctx).runDist
+    PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+      ((toFiniteFOSG g hctx).runDist
         (syntaxSteps g.prog) β.extend)
 
 /-- Graph-machine finite-FOSG Kuhn M→B theorem, stated over the reachable
@@ -217,7 +217,7 @@ legal pure strategy coordinates of the bounded graph-machine FOSG.
 
 This is the machine-side finite Kuhn entry point for the canonical
 action-graph machine. -/
-theorem toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
+theorem toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
@@ -225,28 +225,28 @@ theorem toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_ru
     [Fintype
       ((graphMachine g hctx).BoundedRunPrefix
         (syntaxSteps g.prog))]
-    [Fintype (toFiniteGraphMachineFOSG g hctx).History]
-    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
+    [Fintype (toFiniteFOSG g hctx).History]
+    [DecidablePred (toFiniteFOSG g hctx).terminal]
     (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
-      (G := toFiniteGraphMachineFOSG g hctx)) :
-    ∃ β : (toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralProfile,
-      (toFiniteGraphMachineFOSG g hctx).runDist
+      (G := toFiniteFOSG g hctx)) :
+    ∃ β : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile,
+      (toFiniteFOSG g hctx).runDist
           (syntaxSteps g.prog) β.extend =
         (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
-          (G := toFiniteGraphMachineFOSG g hctx) μ).bind
+          (G := toFiniteFOSG g hctx) μ).bind
           (fun π =>
-            (toFiniteGraphMachineFOSG g hctx).runDist
+            (toFiniteFOSG g hctx).runDist
               (syntaxSteps g.prog)
-              ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
+              ((toFiniteFOSG g hctx).legalPureToBehavioral
                 π.extend)) := by
   exact
     GameTheory.FOSG.Kuhn.reachable_mixed_to_legal_behavioral_runDist
-      (G := toFiniteGraphMachineFOSG g hctx)
-      (finiteGraphMachineFOSG_legalObservable g hctx)
+      (G := toFiniteFOSG g hctx)
+      (finiteFOSG_legalObservable g hctx)
       μ (syntaxSteps g.prog)
 
 /-- Outcome-pushforward form of graph-machine finite-FOSG Kuhn. -/
-theorem toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
+theorem toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
@@ -254,68 +254,68 @@ theorem toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_ma
     [Fintype
       ((graphMachine g hctx).BoundedRunPrefix
         (syntaxSteps g.prog))]
-    [Fintype (toFiniteGraphMachineFOSG g hctx).History]
-    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
+    [Fintype (toFiniteFOSG g hctx).History]
+    [DecidablePred (toFiniteFOSG g hctx).terminal]
     (μ : GameTheory.FOSG.Kuhn.ReachableMixedProfile
-      (G := toFiniteGraphMachineFOSG g hctx)) :
-    ∃ β : (toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralProfile,
-      PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-          ((toFiniteGraphMachineFOSG g hctx).runDist
+      (G := toFiniteFOSG g hctx)) :
+    ∃ β : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile,
+      PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+          ((toFiniteFOSG g hctx).runDist
             (syntaxSteps g.prog) β.extend) =
         (GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
-          (G := toFiniteGraphMachineFOSG g hctx) μ).bind
+          (G := toFiniteFOSG g hctx) μ).bind
           (fun π =>
-            PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-              ((toFiniteGraphMachineFOSG g hctx).runDist
+            PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+              ((toFiniteFOSG g hctx).runDist
                 (syntaxSteps g.prog)
-                ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
+                ((toFiniteFOSG g hctx).legalPureToBehavioral
                   π.extend))) := by
   obtain ⟨β, hβ⟩ :=
-    toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
+    toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
       g hctx μ
   refine ⟨β, ?_⟩
   have hmap :=
     congrArg
-      (PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog)))
+      (PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog)))
       hβ
   exact hmap.trans (PMF.map_bind
     (p := GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
-      (G := toFiniteGraphMachineFOSG g hctx) μ)
+      (G := toFiniteFOSG g hctx) μ)
     (q := fun π =>
-      (toFiniteGraphMachineFOSG g hctx).runDist
+      (toFiniteFOSG g hctx).runDist
         (syntaxSteps g.prog)
-        ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
+        ((toFiniteFOSG g hctx).legalPureToBehavioral
           π.extend))
-    (f := graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog)))
+    (f := fosgHistoryOutcome g hctx (syntaxSteps g.prog)))
 
 /-- Pure FOSG strategy induced by a Vegas legal pure strategy on the
 syntax-horizon graph-machine FOSG. -/
-noncomputable def toFiniteGraphMachineFOSGPureStrategyCandidate
+noncomputable def toFiniteFOSGPureStrategyCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    GameTheory.FOSG.PureStrategy (toFiniteGraphMachineFOSG g hctx) who :=
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
+    GameTheory.FOSG.PureStrategy (toFiniteFOSG g hctx) who :=
   GameTheory.FOSG.PureStrategy.ofLatestObservation
-    (G := toFiniteGraphMachineFOSG g hctx)
+    (G := toFiniteFOSG g hctx)
     (i := who)
     (Observed.movePureStrategyAtCursorWorld
       g hctx who σ (CursorCheckedWorld.initial g hctx))
     (Observed.movePureStrategyAtProgramObservation? g hctx who σ)
 
-@[simp] theorem toFiniteGraphMachineFOSGPureStrategyCandidate_nil
+@[simp] theorem toFiniteFOSGPureStrategyCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    toFiniteGraphMachineFOSGPureStrategyCandidate g hctx who σ
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
+    toFiniteFOSGPureStrategyCandidate g hctx who σ
         ((GameTheory.FOSG.History.nil
-          (toFiniteGraphMachineFOSG g hctx)).playerView who) =
+          (toFiniteFOSG g hctx)).playerView who) =
       Observed.movePureStrategyAtCursorWorld
         g hctx who σ (CursorCheckedWorld.initial g hctx) := by
-  simp [toFiniteGraphMachineFOSGPureStrategyCandidate]
+  simp [toFiniteFOSGPureStrategyCandidate]
 
-theorem toFiniteGraphMachineFOSGPureStrategyCandidate_history
+theorem toFiniteFOSGPureStrategyCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
-    (h : (toFiniteGraphMachineFOSG g hctx).History) :
-    toFiniteGraphMachineFOSGPureStrategyCandidate g hctx who σ
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
+    (h : (toFiniteFOSG g hctx).History) :
+    toFiniteFOSGPureStrategyCandidate g hctx who σ
         (h.playerView who) =
       Observed.movePureStrategyAtCursorWorld
         g hctx who σ
@@ -324,7 +324,7 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_history
   by_cases hnil : h.steps = []
   · have hh :
         h = GameTheory.FOSG.History.nil
-          (toFiniteGraphMachineFOSG g hctx) := by
+          (toFiniteFOSG g hctx) := by
       cases h with
       | mk steps chain =>
           cases hnil
@@ -341,7 +341,7 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_history
     rw [cursorWorldOfGraphConfiguration_initial]
   · have hlatest :
         GameTheory.FOSG.InfoState.latestObservation?
-            (G := toFiniteGraphMachineFOSG g hctx) (i := who)
+            (G := toFiniteFOSG g hctx) (i := who)
             (h.playerView who) =
           some (privateObsOfCursorWorld who
               (cursorWorldOfGraphConfiguration
@@ -349,30 +349,30 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_history
             publicObsOfCursorWorld (hctx := hctx)
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)) := by
-      simpa [toFiniteGraphMachineFOSG, finiteGraphMachineFOSG,
-        boundedGraphMachineFOSG,
+      simpa [toFiniteFOSG, finiteFOSG,
+        boundedFOSG,
         graphMachine, graphSemantics] using
-        (graphMachineFOSGView g hctx)
+        (fosgView g hctx)
           |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
             (syntaxSteps g.prog) who h hnil
-    simp [toFiniteGraphMachineFOSGPureStrategyCandidate,
+    simp [toFiniteFOSGPureStrategyCandidate,
       GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
       Observed.movePureStrategyAtProgramObservation?_of_cursorWorld]
 
-theorem toFiniteGraphMachineFOSGPureStrategyCandidate_available
+theorem toFiniteFOSGPureStrategyCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
-    (h : (toFiniteGraphMachineFOSG g hctx).History) :
-    toFiniteGraphMachineFOSGPureStrategyCandidate g hctx who σ
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
+    (h : (toFiniteFOSG g hctx).History) :
+    toFiniteFOSGPureStrategyCandidate g hctx who σ
         (h.playerView who) ∈
-      (toFiniteGraphMachineFOSG g hctx).availableMoves h who := by
-  rw [toFiniteGraphMachineFOSGPureStrategyCandidate_history]
+      (toFiniteFOSG g hctx).availableMoves h who := by
+  rw [toFiniteFOSGPureStrategyCandidate_history]
   by_cases hcut : syntaxSteps g.prog ≤ h.lastState.pref.events.length
   · have hterm :
         CursorCheckedWorld.terminal
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) :=
-      finiteGraphMachineFOSG_terminal_endpoint_of_cutoff
+      finiteFOSG_terminal_endpoint_of_cutoff
         g hctx h hcut
     let move :=
       Observed.movePureStrategyAtCursorWorld
@@ -392,7 +392,7 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_available
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) = ∅ :=
       cursor_terminal_active_eq_empty hterm
-    let G := toFiniteGraphMachineFOSG g hctx
+    let G := toFiniteFOSG g hctx
     change move ∈ G.availableMoves h who
     have hInactive : who ∉ G.active h.lastState := by
       have hactiveG : G.active h.lastState = ∅ := by
@@ -424,7 +424,7 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_available
         rw [hactiveEmpty] at hmemActive
         simp at hmemActive
   · have havailable :=
-      finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
+      finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
         g hctx who h hcut
     have hobs :
         Observed.movePureStrategyAtCursorWorld
@@ -442,41 +442,41 @@ theorem toFiniteGraphMachineFOSGPureStrategyCandidate_available
 
 /-- Legal pure strategy induced by a Vegas legal pure strategy on the
 graph-machine finite FOSG. -/
-noncomputable def toFiniteGraphMachineFOSGLegalPureStrategy
+noncomputable def toFiniteFOSGLegalPureStrategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    (toFiniteGraphMachineFOSG g hctx).LegalPureStrategy who :=
-  ⟨toFiniteGraphMachineFOSGPureStrategyCandidate g hctx who σ,
-    toFiniteGraphMachineFOSGPureStrategyCandidate_available g hctx who σ⟩
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
+    (toFiniteFOSG g hctx).LegalPureStrategy who :=
+  ⟨toFiniteFOSGPureStrategyCandidate g hctx who σ,
+    toFiniteFOSGPureStrategyCandidate_available g hctx who σ⟩
 
 /-- Reachable-coordinate graph-machine-FOSG pure strategy induced by a Vegas
 legal pure strategy. -/
-noncomputable def toFiniteGraphMachineFOSGReachableLegalPureStrategy
+noncomputable def toFiniteFOSGReachableLegalPureStrategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
-    (toFiniteGraphMachineFOSG g hctx).ReachableLegalPureStrategy who :=
-  (toFiniteGraphMachineFOSGLegalPureStrategy g hctx who σ).restrictReachable
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
+    (toFiniteFOSG g hctx).ReachableLegalPureStrategy who :=
+  (toFiniteFOSGLegalPureStrategy g hctx who σ).restrictReachable
 
 /-- Reachable-coordinate graph-machine-FOSG pure profile induced pointwise by
 a Vegas legal pure profile. -/
-noncomputable def toFiniteGraphMachineFOSGReachableLegalPureProfile
+noncomputable def toFiniteFOSGReachableLegalPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
-    (toFiniteGraphMachineFOSG g hctx).ReachableLegalPureProfile :=
+    (σ : FeasibleProgramPureProfile g) :
+    (toFiniteFOSG g hctx).ReachableLegalPureProfile :=
   fun who =>
-    toFiniteGraphMachineFOSGReachableLegalPureStrategy g hctx who (σ who)
+    toFiniteFOSGReachableLegalPureStrategy g hctx who (σ who)
 
-theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStepPMF
+theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who))]
-    (σ : LegalProgramPureProfile g)
-    (h : (toFiniteGraphMachineFOSG g hctx).History)
-    (hterm : ¬ (toFiniteGraphMachineFOSG g hctx).terminal h.lastState) :
-    ((toFiniteGraphMachineFOSG g hctx).legalActionLaw
-        ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
-          (toFiniteGraphMachineFOSGReachableLegalPureProfile
+    (σ : FeasibleProgramPureProfile g)
+    (h : (toFiniteFOSG g hctx).History)
+    (hterm : ¬ (toFiniteFOSG g hctx).terminal h.lastState) :
+    ((toFiniteFOSG g hctx).legalActionLaw
+        ((toFiniteFOSG g hctx).legalPureToBehavioral
+          (toFiniteFOSGReachableLegalPureProfile
             g hctx σ).extend)
         h hterm).bind
       (fun action =>
@@ -487,18 +487,18 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
             CheckedWorld.ofCursorChecked (hctx := hctx)
               (cursorWorldOfGraphConfiguration
                 g hctx dst.lastState))
-          ((toFiniteGraphMachineFOSG g hctx).transition
+          ((toFiniteFOSG g hctx).transition
             h.lastState action)) =
       Observed.checkedProfileStepPMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ)
+        (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState)) := by
   classical
-  let G := toFiniteGraphMachineFOSG g hctx
+  let G := toFiniteFOSG g hctx
   let β : G.LegalBehavioralProfile :=
     G.legalPureToBehavioral
-      (toFiniteGraphMachineFOSGReachableLegalPureProfile g hctx σ).extend
+      (toFiniteFOSGReachableLegalPureProfile g hctx σ).extend
   have hnotCut :
       ¬ syntaxSteps g.prog ≤ h.lastState.pref.events.length := by
     intro hcut
@@ -507,7 +507,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState) :=
-    finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
+    finiteFOSG_cursor_nonterminal_of_not_terminal
       g hctx h hterm
   have hnotGraph :
       ¬ (graphMachine g hctx).terminal
@@ -522,18 +522,18 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) = ∅ := by
       have hview :
-          (graphMachineFOSGView g hctx).active
+          (fosgView g hctx).active
               h.lastState.pref = ∅ := by
         have hbounded :
             (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
-             else (graphMachineFOSGView g hctx).active
+             else (fosgView g hctx).active
                 h.lastState.pref) = ∅ := by
-          simpa [G, toFiniteGraphMachineFOSG,
-            finiteGraphMachineFOSG,
-            boundedGraphMachineFOSG,
+          simpa [G, toFiniteFOSG,
+            finiteFOSG,
+            boundedFOSG,
             Machine.FOSGView.boundedActive] using hactive
         rwa [if_neg hnotCut] at hbounded
-      simpa [graphMachineFOSGView_active_eq_cursor_active_of_not_terminal
+      simpa [fosgView_active_eq_cursor_active_of_not_terminal
         g hctx h.lastState.pref hnotGraph,
         Machine.BoundedRunPrefix.lastState] using hview
     let noop : G.LegalAction h.lastState :=
@@ -541,7 +541,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
           (graphMachine g hctx).Action,
         G.legal_noopAction_of_active_empty_of_not_terminal hactive hterm⟩
     have htrans :=
-      boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
+      boundedFOSG_transition_map_checkedWorld_eq_checkedTransition
         g hctx (syntaxSteps g.prog) h.lastState noop hcursor
     calc
       PMF.map
@@ -559,20 +559,20 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                 g hctx h.lastState.lastState))
             ⟨ProgramJointAction.toAction
                 (graphMachineJointAction g hctx
-                  ((graphMachineFOSGView g hctx)
+                  ((fosgView g hctx)
                     |>.boundedEventOfLegalJointAction
                       (syntaxSteps g.prog) h.lastState noop)),
               CursorProgramJointActionLegal.toAction
                 (cursorProgramJointActionLegal_of_graphMachine_available
                   g hctx hcursor
-                  ((graphMachineFOSGView g hctx)
+                  ((fosgView g hctx)
                     |>.boundedEventOfLegalJointAction_available
                       (syntaxSteps g.prog) h.lastState noop))⟩ := by
-            simpa [G, toFiniteGraphMachineFOSG,
-              finiteGraphMachineFOSG] using htrans
+            simpa [G, toFiniteFOSG,
+              finiteFOSG] using htrans
       _ =
           Observed.checkedProfileStepPMF g hctx
-            (LegalProgramPureProfile.toBehavioralPMF σ)
+            (FeasibleProgramPureProfile.toBehavioralPMF σ)
             (CheckedWorld.ofCursorChecked (hctx := hctx)
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)) := by
@@ -589,11 +589,11 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
       have hmemRaw :
           who ∈
             (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
-             else (graphMachineFOSGView g hctx).active
+             else (fosgView g hctx).active
                 h.lastState.pref) := by
-        simpa [G, toFiniteGraphMachineFOSG,
-          finiteGraphMachineFOSG,
-          boundedGraphMachineFOSG,
+        simpa [G, toFiniteFOSG,
+          finiteFOSG,
+          boundedFOSG,
           Machine.FOSGView.boundedActive]
           using hmem
       rw [if_neg hnotCut] at hmemRaw
@@ -601,7 +601,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
           who ∈ CursorCheckedWorld.active
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.pref.lastState) := by
-        simpa [graphMachineFOSGView_active_eq_cursor_active_of_not_terminal
+        simpa [fosgView_active_eq_cursor_active_of_not_terminal
           g hctx h.lastState.pref hnotGraph,
           Machine.BoundedRunPrefix.lastState] using hmemRaw
       simpa [observedProgramFOSG,
@@ -626,7 +626,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
           (action.1 who) := by
       intro action
       let selectedEvent :=
-        (graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+        (fosgView g hctx).boundedEventOfLegalJointAction
           (syntaxSteps g.prog) h.lastState action
       let selectedAction :=
         graphMachineJointAction g hctx selectedEvent
@@ -634,7 +634,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
           (graphMachine g hctx).EventAvailable
             h.lastState.lastState selectedEvent := by
         simpa [selectedEvent] using
-          ((graphMachineFOSGView g hctx)
+          ((fosgView g hctx)
             |>.boundedEventOfLegalJointAction_available
               (syntaxSteps g.prog) h.lastState action)
       have hselectedLegalCursor :
@@ -646,16 +646,16 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
             g hctx hcursor hselectedAvailable
       have hmemBounded :
           who ∈
-            (boundedGraphMachineFOSG
+            (boundedFOSG
               g hctx (syntaxSteps g.prog)).active h.lastState := by
-        simpa [G, toFiniteGraphMachineFOSG,
-          finiteGraphMachineFOSG] using hmem
+        simpa [G, toFiniteFOSG,
+          finiteFOSG] using hmem
       have hselectedWho : selectedAction who = action.1 who := by
         simpa [selectedAction, selectedEvent] using
           graphMachineJointAction_selected_eq_of_active
             g hctx (syntaxSteps g.prog) action hmemBounded
       have htrans :=
-        boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
+        boundedFOSG_transition_map_checkedWorld_eq_checkedTransition
           g hctx (syntaxSteps g.prog) h.lastState action hcursor
       have haRaw : JointActionLegal
           ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } :
@@ -682,8 +682,8 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
               ⟨ProgramJointAction.toAction selectedAction,
                 CursorProgramJointActionLegal.toAction
                   hselectedLegalCursor⟩ := by
-              simpa [G, toFiniteGraphMachineFOSG,
-                finiteGraphMachineFOSG,
+              simpa [G, toFiniteFOSG,
+                finiteFOSG,
                 selectedEvent, selectedAction] using htrans
         _ =
             Observed.checkedCommitContinuation
@@ -728,7 +728,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                 g hctx env suffix wctx fresh viewScoped normalized legal)
       _ =
           Observed.checkedProfileStepPMF g hctx
-            (LegalProgramPureProfile.toBehavioralPMF σ)
+            (FeasibleProgramPureProfile.toBehavioralPMF σ)
             (CheckedWorld.ofCursorChecked (hctx := hctx)
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)) := by
@@ -741,7 +741,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                         g hctx h.lastState.lastState)) := by
               change
                 PMF.pure
-                    (((toFiniteGraphMachineFOSGReachableLegalPureProfile
+                    (((toFiniteFOSGReachableLegalPureProfile
                         g hctx σ).toProfile who).extend
                       (h.playerView who)) =
                   PMF.pure
@@ -752,7 +752,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
               rw [GameTheory.FOSG.ReachablePureStrategy.extend_apply_history]
               change
                 PMF.pure
-                    ((toFiniteGraphMachineFOSGReachableLegalPureStrategy
+                    ((toFiniteFOSGReachableLegalPureStrategy
                         g hctx who (σ who)).1
                       (G.reachableInfoStateOfHistory who h)) =
                   PMF.pure
@@ -762,7 +762,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                         g hctx h.lastState.lastState))
               change
                 PMF.pure
-                    ((toFiniteGraphMachineFOSGLegalPureStrategy
+                    ((toFiniteFOSGLegalPureStrategy
                         g hctx who (σ who)).1.restrictReachable
                       (G.reachableInfoStateOfHistory who h)) =
                   PMF.pure
@@ -772,7 +772,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                         g hctx h.lastState.lastState))
               change
                 PMF.pure
-                    (toFiniteGraphMachineFOSGPureStrategyCandidate
+                    (toFiniteFOSGPureStrategyCandidate
                       g hctx who (σ who)
                       ((G.reachableInfoStateOfHistory who h).1)) =
                   PMF.pure
@@ -781,7 +781,7 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState))
               simp only [GameTheory.FOSG.reachableInfoStateOfHistory_val]
-              rw [toFiniteGraphMachineFOSGPureStrategyCandidate_history]
+              rw [toFiniteFOSGPureStrategyCandidate_history]
               rfl
             rw [hprofile]
             have hpureMove :
@@ -802,28 +802,28 @@ theorem toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checke
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)]
             rw [← Observed.moveAtCheckedWorldPMF_ofCursorChecked
-              g hctx (LegalProgramPureProfile.toBehavioralPMF σ)
+              g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
               who
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)]
             rw [hchecked]
             exact
               Observed.moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
-                g hctx (LegalProgramPureProfile.toBehavioralPMF σ)
+                g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
                 env suffix wctx fresh viewScoped normalized legal
 
 /-- History-indexed continuation value for the finite graph-machine FOSG under
 a Vegas pure profile. -/
-noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
+noncomputable def finiteFOSGPureOutcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who))]
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     GameTheory.FOSG.History.OutcomeValue
-      (G := toFiniteGraphMachineFOSG g hctx)
-      ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
-        (toFiniteGraphMachineFOSGReachableLegalPureProfile
+      (G := toFiniteFOSG g hctx)
+      ((toFiniteFOSG g hctx).legalPureToBehavioral
+        (toFiniteFOSGReachableLegalPureProfile
           g hctx σ).extend)
       (Outcome P) where
   rank := fun h =>
@@ -835,50 +835,50 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
         g hctx h.lastState.lastState)
   value := fun h =>
     Observed.cursorVegasOutcomeKernelPMF
-      (LegalProgramPureProfile.toBehavioralPMF σ)
+      (FeasibleProgramPureProfile.toBehavioralPMF σ)
       (cursorWorldOfGraphConfiguration
         g hctx h.lastState.lastState)
   terminal_of_rank_zero := by
     intro h hrank
     have hinv :=
-      finiteGraphMachineFOSG_history_remainingSyntaxSteps
+      finiteFOSG_history_remainingSyntaxSteps
         g hctx h
     have hcut : Vegas.syntaxSteps g.prog ≤ h.lastState.pref.events.length := by
       have hsteps : Vegas.syntaxSteps g.prog ≤ h.steps.length := by
         rw [hrank] at hinv
         omega
       have hlen :=
-        (graphMachineFOSGView g hctx)
+        (fosgView g hctx)
           |>.toBoundedFOSG_history_events_length (syntaxSteps g.prog) h
       have hlen' :
           h.lastState.pref.events.length = h.steps.length := by
         simpa [GameTheory.FOSG.History.lastState,
-          finiteGraphMachineFOSG,
-          boundedGraphMachineFOSG] using hlen
+          finiteFOSG,
+          boundedFOSG] using hlen
       rw [← hlen'] at hsteps
       exact hsteps
     exact Or.inr hcut
   terminal_value := by
     intro h hterm
     have hterm' :
-        (finiteGraphMachineFOSG g hctx).terminal
+        (finiteFOSG g hctx).terminal
           h.lastState := by
-      simpa [toFiniteGraphMachineFOSG] using hterm
+      simpa [toFiniteFOSG] using hterm
     have hcursor :=
-      finiteGraphMachineFOSG_cursor_terminal_of_terminal
+      finiteFOSG_cursor_terminal_of_terminal
         g hctx h hterm'
     exact Observed.cursorVegasOutcomeKernelPMF_terminal
-      (hctx := hctx) (LegalProgramPureProfile.toBehavioralPMF σ)
+      (hctx := hctx) (FeasibleProgramPureProfile.toBehavioralPMF σ)
       (cursorWorldOfGraphConfiguration
         g hctx h.lastState.lastState) hcursor
   step_value := by
     intro h hterm
-    let G := toFiniteGraphMachineFOSG g hctx
+    let G := toFiniteFOSG g hctx
     let β : G.LegalBehavioralProfile :=
       G.legalPureToBehavioral
-        (toFiniteGraphMachineFOSGReachableLegalPureProfile g hctx σ).extend
+        (toFiniteFOSGReachableLegalPureProfile g hctx σ).extend
     have hcheckedStep :=
-      toFiniteGraphMachineFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStepPMF
+      toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStepPMF
         g hctx σ h hterm
     calc
       (G.legalActionLaw β h hterm).bind
@@ -886,7 +886,7 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
             (G.transition h.lastState action).bind
               (fun dst =>
                 Observed.cursorVegasOutcomeKernelPMF
-                  (LegalProgramPureProfile.toBehavioralPMF σ)
+                  (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx
                     (h.extendByOutcome action dst).lastState.lastState))) =
@@ -895,7 +895,7 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
             (G.transition h.lastState action).bind
               (fun dst =>
                 Observed.cursorVegasOutcomeKernelPMF
-                  (LegalProgramPureProfile.toBehavioralPMF σ)
+                  (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx dst.lastState))) := by
             congr
@@ -904,13 +904,13 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
               (G.transition h.lastState action)
               (fun dst =>
                 Observed.cursorVegasOutcomeKernelPMF
-                  (LegalProgramPureProfile.toBehavioralPMF σ)
+                  (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx
                     (h.extendByOutcome action dst).lastState.lastState))
               (fun dst =>
                 Observed.cursorVegasOutcomeKernelPMF
-                  (LegalProgramPureProfile.toBehavioralPMF σ)
+                  (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx dst.lastState)) ?_
             intro dst hdst
@@ -935,51 +935,51 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
               (G.transition h.lastState action))).bind
             (Observed.checkedVegasOutcomeKernelPMF
               (hctx := hctx)
-              (LegalProgramPureProfile.toBehavioralPMF σ)) := by
+              (FeasibleProgramPureProfile.toBehavioralPMF σ)) := by
             rw [PMF.bind_bind]
             congr
             funext action
             simp [PMF.map, PMF.bind_bind, Function.comp_def]
       _ =
         (Observed.checkedProfileStepPMF g hctx
-          (LegalProgramPureProfile.toBehavioralPMF σ)
+          (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState))).bind
           (Observed.checkedVegasOutcomeKernelPMF
             (hctx := hctx)
-            (LegalProgramPureProfile.toBehavioralPMF σ)) := by
+            (FeasibleProgramPureProfile.toBehavioralPMF σ)) := by
             rw [hcheckedStep]
       _ =
         Observed.checkedVegasOutcomeKernelPMF
           (hctx := hctx)
-          (LegalProgramPureProfile.toBehavioralPMF σ)
+          (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState)) := by
             exact Observed.checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
-              g hctx (LegalProgramPureProfile.toBehavioralPMF σ)
+              g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
               (CheckedWorld.ofCursorChecked (hctx := hctx)
                 (cursorWorldOfGraphConfiguration
                   g hctx h.lastState.lastState))
       _ =
         Observed.cursorVegasOutcomeKernelPMF
-          (LegalProgramPureProfile.toBehavioralPMF σ)
+          (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) := rfl
   step_rank := by
     intro h hterm action dst hsupp
     have hterm' :
-        ¬ (finiteGraphMachineFOSG g hctx).terminal
+        ¬ (finiteFOSG g hctx).terminal
           h.lastState := by
-      simpa [toFiniteGraphMachineFOSG] using hterm
+      simpa [toFiniteFOSG] using hterm
     have hcursor :=
-      finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
+      finiteFOSG_cursor_nonterminal_of_not_terminal
         g hctx h hterm'
     have hsupp' :
-        (boundedGraphMachineFOSG g hctx
+        (boundedFOSG g hctx
             (syntaxSteps g.prog)).transition h.lastState action dst ≠ 0 := by
-      simpa [toFiniteGraphMachineFOSG, finiteGraphMachineFOSG]
+      simpa [toFiniteFOSG, finiteFOSG]
         using hsupp
     have hlast :
         (h.extendByOutcome action dst).lastState = dst := by
@@ -987,14 +987,14 @@ noncomputable def finiteGraphMachineFOSGPureOutcomeValuePMF
         (h := h) (a := action) (dst := dst) hsupp]
       simp
     have hremaining :=
-      boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
+      boundedFOSG_transition_support_remainingSyntaxSteps
         (dst := dst) g hctx (syntaxSteps g.prog) h.lastState
         action hsupp' hcursor
     simpa [hlast] using hremaining
 
 /-- Pure Vegas strategies have the same outcome distribution through the
 finite graph-machine-derived FOSG as through the native strategic kernel game. -/
-theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame
+theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
@@ -1002,17 +1002,17 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGa
     [Fintype
       ((graphMachine g hctx).BoundedRunPrefix
         (syntaxSteps g.prog))]
-    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
-    (σ : LegalProgramPureProfile g) :
-    PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-        ((toFiniteGraphMachineFOSG g hctx).runDist
+    [DecidablePred (toFiniteFOSG g hctx).terminal]
+    (σ : FeasibleProgramPureProfile g) :
+    PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+        ((toFiniteFOSG g hctx).runDist
           (syntaxSteps g.prog)
-          ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
-            (toFiniteGraphMachineFOSGReachableLegalPureProfile
+          ((toFiniteFOSG g hctx).legalPureToBehavioral
+            (toFiniteFOSGReachableLegalPureProfile
               g hctx σ).extend)) =
-      (toMachineStrategicKernelGame g hctx).outcomeKernel σ := by
+      (pureKernelGameAt g hctx).outcomeKernel σ := by
   classical
-  let R := finiteGraphMachineFOSGPureOutcomeValuePMF g hctx σ
+  let R := finiteFOSGPureOutcomeValuePMF g hctx σ
   have hclosure :=
     R.map_observe_runDist_eq_value
       (syntaxSteps g.prog)
@@ -1021,39 +1021,39 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGa
         exact Nat.le_refl _)
   have hvalue :
       Observed.cursorVegasOutcomeKernelPMF
-          (LegalProgramPureProfile.toBehavioralPMF σ)
+          (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CursorCheckedWorld.initial g hctx) =
-        (toKernelGamePMF g).outcomeKernel
-          (LegalProgramPureProfile.toBehavioralPMF σ) := by
+        (pmfBehavioralKernelGame g).outcomeKernel
+          (FeasibleProgramPureProfile.toBehavioralPMF σ) := by
     exact
-      (GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
+      (GraphEventLaw.pmfBehavioralEventLaw_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
         (g := g) (hctx := hctx)
-        (σ := LegalProgramPureProfile.toBehavioralPMF σ)).symm.trans
-        (GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
-          (g := g) (LegalProgramPureProfile.toBehavioralPMF σ) hctx)
+        (σ := FeasibleProgramPureProfile.toBehavioralPMF σ)).symm.trans
+        (GraphEventLaw.pmfBehavioralEventLaw_outcomeKernel_eq_pmfBehavioralKernelGame
+          (g := g) (FeasibleProgramPureProfile.toBehavioralPMF σ) hctx)
   have hmachine :
-      PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-          ((toFiniteGraphMachineFOSG g hctx).runDist
+      PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+          ((toFiniteFOSG g hctx).runDist
             (syntaxSteps g.prog)
-            ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
-              (toFiniteGraphMachineFOSGReachableLegalPureProfile
+            ((toFiniteFOSG g hctx).legalPureToBehavioral
+              (toFiniteFOSGReachableLegalPureProfile
                 g hctx σ).extend)) =
         Observed.cursorVegasOutcomeKernelPMF
-          (LegalProgramPureProfile.toBehavioralPMF σ)
+          (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CursorCheckedWorld.initial g hctx) := by
-    simpa [graphMachineFOSGHistoryOutcome, graphMachine,
+    simpa [fosgHistoryOutcome, graphMachine,
       graphSemantics, graphMachine_init,
       cursorWorldOfGraphConfiguration_initial, R,
-      finiteGraphMachineFOSGPureOutcomeValuePMF] using hclosure
+      finiteFOSGPureOutcomeValuePMF] using hclosure
   rw [hmachine, hvalue]
-  rw [toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF]
-  exact (toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+  rw [pmfBehavioralKernelGame_outcomeKernel_eq_pureKernelGame_toBehavioralPMF]
+  exact (pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     g hctx σ).symm
 
 /-- Legacy spelling of the pure finite graph-machine FOSG bridge, stated
-against `toStrategicKernelGame`. New code should use
-`toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame`. -/
-theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+against `pureKernelGame`. New code should use
+`toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt`. -/
+theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P,
@@ -1061,87 +1061,87 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
     [Fintype
       ((graphMachine g hctx).BoundedRunPrefix
         (syntaxSteps g.prog))]
-    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
-    (σ : LegalProgramPureProfile g) :
-    PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-        ((toFiniteGraphMachineFOSG g hctx).runDist
+    [DecidablePred (toFiniteFOSG g hctx).terminal]
+    (σ : FeasibleProgramPureProfile g) :
+    PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+        ((toFiniteFOSG g hctx).runDist
           (syntaxSteps g.prog)
-          ((toFiniteGraphMachineFOSG g hctx).legalPureToBehavioral
-            (toFiniteGraphMachineFOSGReachableLegalPureProfile
+          ((toFiniteFOSG g hctx).legalPureToBehavioral
+            (toFiniteFOSGReachableLegalPureProfile
               g hctx σ).extend)) =
-      (toStrategicKernelGame g).outcomeKernel σ := by
-  rw [toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame]
-  exact toMachineStrategicKernelGame_outcomeKernel_eq_toStrategicKernelGame
+      (pureKernelGame g).outcomeKernel σ := by
+  rw [toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt]
+  exact pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     g hctx σ
 
 /-- Product mixed profile over finite graph-machine-FOSG reachable pure
 strategies induced by a product mixed profile over Vegas legal pure strategies. -/
-noncomputable def toFiniteGraphMachineFOSGReachableMixedPureProfile
+noncomputable def toFiniteFOSGReachableMixedPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
     GameTheory.FOSG.Kuhn.ReachableMixedProfile
-      (G := toFiniteGraphMachineFOSG g hctx) :=
+      (G := toFiniteFOSG g hctx) :=
   fun who =>
-    PMF.map (toFiniteGraphMachineFOSGReachableLegalPureStrategy g hctx who)
+    PMF.map (toFiniteFOSGReachableLegalPureStrategy g hctx who)
       (μ who)
 
-theorem toFiniteGraphMachineFOSGReachableMixedPureProfile_joint
+theorem toFiniteFOSGReachableMixedPureProfile_joint
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
-    [∀ who, Fintype (LegalProgramPureStrategy g who)]
+    [∀ who, Fintype (FeasibleProgramPureStrategy g who)]
     [∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who))]
-    [Fintype (toFiniteGraphMachineFOSG g hctx).History]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    [Fintype (toFiniteFOSG g hctx).History]
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
     GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
-        (G := toFiniteGraphMachineFOSG g hctx)
-        (toFiniteGraphMachineFOSGReachableMixedPureProfile g hctx μ) =
-      PMF.map (toFiniteGraphMachineFOSGReachableLegalPureProfile g hctx)
+        (G := toFiniteFOSG g hctx)
+        (toFiniteFOSGReachableMixedPureProfile g hctx μ) =
+      PMF.map (toFiniteFOSGReachableLegalPureProfile g hctx)
         (Math.PMFProduct.pmfPi μ) := by
   classical
   change Math.PMFProduct.pmfPi
       (fun who =>
-        PMF.map (toFiniteGraphMachineFOSGReachableLegalPureStrategy g hctx who)
+        PMF.map (toFiniteFOSGReachableLegalPureStrategy g hctx who)
           (μ who)) =
     PMF.map
       (fun σ => fun who =>
-        toFiniteGraphMachineFOSGReachableLegalPureStrategy g hctx who (σ who))
+        toFiniteFOSGReachableLegalPureStrategy g hctx who (σ who))
       (Math.PMFProduct.pmfPi μ)
   exact (Math.PMFProduct.pmfPi_push_coordwise μ
-    (fun who => toFiniteGraphMachineFOSGReachableLegalPureStrategy g hctx who)).symm
+    (fun who => toFiniteFOSGReachableLegalPureStrategy g hctx who)).symm
 
 /-- Product-mixed Vegas-pure specialization of the graph-machine finite-FOSG
 Kuhn theorem. -/
-theorem toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+theorem toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
-    [∀ who, Fintype (LegalProgramPureStrategy g who)]
+    [∀ who, Fintype (FeasibleProgramPureStrategy g who)]
     [∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who))]
     [Fintype
       ((graphMachine g hctx).BoundedRunPrefix
         (syntaxSteps g.prog))]
-    [Finite (toFiniteGraphMachineFOSG g hctx).History]
-    [DecidablePred (toFiniteGraphMachineFOSG g hctx).terminal]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    ∃ β : (toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralProfile,
-      PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
-          ((toFiniteGraphMachineFOSG g hctx).runDist
+    [Finite (toFiniteFOSG g hctx).History]
+    [DecidablePred (toFiniteFOSG g hctx).terminal]
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    ∃ β : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile,
+      PMF.map (fosgHistoryOutcome g hctx (syntaxSteps g.prog))
+          ((toFiniteFOSG g hctx).runDist
             (syntaxSteps g.prog) β.extend) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
-  letI : Fintype (toFiniteGraphMachineFOSG g hctx).History :=
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+  letI : Fintype (toFiniteFOSG g hctx).History :=
     Fintype.ofFinite _
   obtain ⟨β, hβ⟩ :=
-    toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
-      g hctx (toFiniteGraphMachineFOSGReachableMixedPureProfile g hctx μ)
+    toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
+      g hctx (toFiniteFOSGReachableMixedPureProfile g hctx μ)
   refine ⟨β, ?_⟩
-  rw [toFiniteGraphMachineFOSGReachableMixedPureProfile_joint] at hβ
+  rw [toFiniteFOSGReachableMixedPureProfile_joint] at hβ
   rw [PMF.bind_map] at hβ
   rw [hβ]
   apply congrArg
   funext σ
-  exact toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGame
+  exact toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
     g hctx σ
 
 /-- Finite observed-FOSG Kuhn M→B projected back to Vegas'
@@ -1153,15 +1153,15 @@ profile's support; the outcome equation is independent of this completion. -/
 theorem mixedPure_realizedBySyntaxLegalBehavioralPMF_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
-    ∃ β : SyntaxLegalProgramBehavioralProfilePMF g,
-      (toMachineKernelGamePMF g hctx).outcomeKernel β =
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
+    ∃ β : FeasibleProgramBehavioralProfilePMF g,
+      (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -1173,15 +1173,15 @@ theorem mixedPure_realizedBySyntaxLegalBehavioralPMF_finite
   obtain ⟨βF, hβF⟩ :=
     toObservedFOSG_mixedPure_realizedByLegalBehavioral_runDist
       g hctx LF μ
-  let fallbackPure : LegalProgramPureProfile g := fun who =>
+  let fallbackPure : FeasibleProgramPureProfile g := fun who =>
     (μ who).support_nonempty.choose
-  let fallback : SyntaxLegalProgramBehavioralProfilePMF g :=
-    LegalProgramPureProfile.toBehavioralPMF fallbackPure
+  let fallback : FeasibleProgramBehavioralProfilePMF g :=
+    FeasibleProgramPureProfile.toBehavioralPMF fallbackPure
   refine
     ⟨Observed.collapsedLegalBehavioralProfilePMF
         g hctx βF fallback, ?_⟩
-  rw [toMachineKernelGamePMF_outcomeKernel_eq_toKernelGamePMF]
-  rw [← Observed.observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
+  rw [pmfBehavioralKernelGameAt_outcomeKernel_eq_pmfBehavioralKernelGame]
+  rw [← Observed.observedProgramCollapsedOutcomeKernelPMF_eq_pmfBehavioralKernelGame
     g hctx LF βF fallback]
   simpa [Observed.observedProgramCollapsedOutcomeKernelPMF] using hβF
 
@@ -1198,19 +1198,16 @@ syntax-horizon FOSG derived from the checked action-graph machine. A future
 syntax-oriented strategy type for client generation should be introduced only
 as a presentation proved equivalent to this IR carrier, not as an independent
 semantics. -/
-abbrev LegalProgramBehavioralStrategyPMF
+abbrev SequentialBehavioralStrategyPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) : Type :=
-  (FOSGBridge.toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralStrategy who
+  (FOSGBridge.toFiniteFOSG g hctx).ReachableLegalBehavioralStrategy who
 
-/-- IR-based legal PMF behavioral profile for a checked Vegas program. -/
-structure LegalProgramBehavioralProfilePMF
+/-- IR-based PMF behavioral profile for a checked Vegas program: a
+reachable feasible (guard-respecting) behavioral profile of the
+finite graph-machine-derived FOSG. -/
+structure SequentialBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) where
-  profile : (FOSGBridge.toFiniteGraphMachineFOSG g hctx).ReachableLegalBehavioralProfile
-
-/-- Sequential-game name for the same IR-based PMF behavioral profile. -/
-abbrev SequentialBehavioralProfilePMF
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : Type :=
-  LegalProgramBehavioralProfilePMF g hctx
+  profile : (FOSGBridge.toFiniteFOSG g hctx).ReachableLegalBehavioralProfile
 
 /-- Outcome kernel for a machine-derived reachable sequential behavioral
 profile. -/
@@ -1219,7 +1216,7 @@ noncomputable def sequentialOutcomeKernelPMF
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (β : SequentialBehavioralProfilePMF g hctx) :
     PMF (Outcome P) :=
-  FOSGBridge.finiteGraphMachineFOSGReachableBehavioralOutcomeKernel
+  FOSGBridge.finiteFOSGReachableBehavioralOutcomeKernel
     g hctx LF β.profile
 
 /-- Finite-game Kuhn theorem in the machine-derived sequential strategy space.
@@ -1230,16 +1227,16 @@ the native Vegas pure strategic kernel. -/
 theorem sequential_mixedPure_realizedByBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
   classical
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (graphMachine g hctx).State :=
     graphMachine.instFintypeState g hctx LF
   letI : ∀ who : P,
@@ -1247,9 +1244,9 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
     fun who => graphMachine.instFintypeOptionAction
       g hctx LF who
   obtain ⟨βF, hβF⟩ :=
-    @FOSGBridge.toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+    @FOSGBridge.toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
       P inferInstance L g hctx inferInstance
-      (fun who => LegalProgramPureStrategy.instFintype g LF who)
+      (fun who => FeasibleProgramPureStrategy.instFintype g LF who)
       (fun who =>
         graphMachine.instFintypeOptionAction
           g hctx LF who)
@@ -1258,20 +1255,20 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
         (graphMachine.instFintypeEvent g hctx LF)
         (graphMachine.instFintypeState g hctx LF))
       (@Finite.of_fintype
-        (FOSGBridge.toFiniteGraphMachineFOSG g hctx).History
-        (finiteGraphMachineFOSG.instFintypeHistory g hctx LF))
-      (Classical.decPred (FOSGBridge.toFiniteGraphMachineFOSG g hctx).terminal)
+        (FOSGBridge.toFiniteFOSG g hctx).History
+        (finiteFOSG.instFintypeHistory g hctx LF))
+      (Classical.decPred (FOSGBridge.toFiniteFOSG g hctx).terminal)
       μ
   refine ⟨⟨βF⟩, ?_⟩
   simpa [sequentialOutcomeKernelPMF,
-    FOSGBridge.finiteGraphMachineFOSGReachableBehavioralOutcomeKernel]
+    FOSGBridge.finiteFOSGReachableBehavioralOutcomeKernel]
     using hβF
 
 /-- A syntax-recursive Vegas behavioral profile defined only on reachable
 program observations.
 
 This is the partial syntax strategy space: unlike
-`SyntaxLegalProgramBehavioralProfilePMF`,
+`FeasibleProgramBehavioralProfilePMF`,
 it does not assign behavior to syntactically well-typed views that cannot occur
 as player observations in the sequential execution. -/
 structure ReachableProgramBehavioralProfilePMF
@@ -1290,15 +1287,15 @@ noncomputable def reachableProgramOutcomeKernelPMF
 theorem reachableProgram_mixedPure_realizedByBehavioralPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
       reachableProgramOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toMachineStrategicKernelGame g hctx).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   obtain ⟨βF, hβF⟩ :=
     FOSGBridge.toObservedFOSG_mixedPure_realizedByBehavioral_outcomeKernel
       g hctx LF μ

@@ -40,7 +40,7 @@ This entrypoint exposes the executable protocol construction path.
   projects each derived FOSG transition back to the selected `Machine.step`.
 * `Vegas.Protocol.Checked` elaborates checked syntax to
   `syntaxActionGraph`, interprets it with `graphSemantics`, and
-  exposes `graphMachine` plus `graphMachineFOSG`. Available
+  exposes `graphMachine` plus `fosg`. Available
   graph steps are proved to project to the corresponding checked cursor
   transition, so the cursor evaluator remains a proof tool rather than a second
   machine semantics.
@@ -56,10 +56,10 @@ This entrypoint exposes the executable protocol construction path.
   a machine-native Kuhn realization theorem. The witness is a
   `Machine.FOSGView.BehavioralProfile`; the equality is between two
   `PMF M.Outcome` distributions. No external syntactic strategy space
-  (e.g. `toStrategicKernelGame`) appears in the statement.
+  (e.g. `pureKernelGame`) appears in the statement.
 
 `Vegas.FOSG` exposes `FOSGBridge.toGraphFOSG` and
-`FOSGBridge.toFiniteGraphMachineFOSG` as the graph-machine sequential views;
+`FOSGBridge.toFiniteFOSG` as the graph-machine sequential views;
 `FOSGBridge.toFOSG` is an alias for the same carrier.
 `FOSGBridge.toObservedFOSG` is the finite cursor-world adapter used for
 syntax-facing projection proofs, not a semantic owner.

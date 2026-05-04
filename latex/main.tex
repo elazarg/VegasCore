@@ -271,10 +271,10 @@ second says that outcome evaluation remains the canonical denotation.
 Commit guards constrain the values a player may choose. VegasCore reflects
 that constraint in the strategy types:
 \begin{itemize}[nosep]
-\item \leanref{LegalProgramBehavioralStrategy};
-\item \leanref{LegalProgramBehavioralProfile};
-\item \leanref{LegalProgramPureStrategy};
-\item \leanref{LegalProgramPureProfile};
+\item \leanref{FeasibleProgramBehavioralStrategy};
+\item \leanref{FeasibleProgramBehavioralProfile};
+\item \leanref{FeasibleProgramPureStrategy};
+\item \leanref{FeasibleProgramPureProfile};
 \item PMF variants for probabilistic behavioral strategies.
 \end{itemize}
 
@@ -284,8 +284,8 @@ unrepresentable in the usual equilibrium statements.
 
 \subsection{Strategic-Form Kernel Games}
 
-The behavioral strategic-form wrapper is \leanref{toKernelGame}. The pure
-strategic-form wrapper is \leanref{toStrategicKernelGame}. Both are
+The behavioral strategic-form wrapper is \leanref{behavioralKernelGame}. The pure
+strategic-form wrapper is \leanref{pureKernelGame}. Both are
 \leanref{GameTheory.KernelGame}s whose outcome kernels are induced by the
 Vegas outcome semantics.
 
@@ -341,8 +341,8 @@ profile-induced one-step law is
 \leanref{Vegas.Protocol.Checked.syntaxActionGraph} is the checked syntax
 elaboration to the graph language, and
 \leanref{Vegas.Protocol.Checked.graphMachine} is the direct graph-machine
-denotation. \leanref{Vegas.Protocol.Checked.graphMachineFOSG} and
-\leanref{Vegas.Protocol.Checked.finiteGraphMachineFOSG} are the sequential
+denotation. \leanref{Vegas.Protocol.Checked.fosg} and
+\leanref{Vegas.Protocol.Checked.finiteFOSG} are the sequential
 views derived from that machine. Available graph events project to the checked
 cursor transition on reachable nonterminal cursor states, and finite graph
 histories preserve the syntax-step accounting after projection to
@@ -372,7 +372,7 @@ This layer is game-theoretic rather than foundational for protocol execution.
 Checked syntax elaborates to \leanref{Protocol.Checked.syntaxActionGraph} and
 then to \leanref{Protocol.Checked.graphMachine}. The public graph-machine FOSG
 aliases are \leanref{FOSGBridge.toGraphFOSG} and
-\leanref{FOSGBridge.toFiniteGraphMachineFOSG};
+\leanref{FOSGBridge.toFiniteFOSG};
 \leanref{FOSGBridge.toFOSG} is an alias for the same graph-derived carrier.
 The cursor-world FOSG remains as \leanref{FOSGBridge.toObservedFOSG}, a finite
 adapter used for syntax-recursive behavioral-profile projection. It is related
@@ -427,7 +427,7 @@ semantic comparison often projects back to checked worlds.
 \subsection{Graph-Machine and Observed FOSG}
 
 \leanref{FOSGBridge.toGraphFOSG} exposes the direct graph-machine sequential
-denotation, and \leanref{FOSGBridge.toFiniteGraphMachineFOSG} is its
+denotation, and \leanref{FOSGBridge.toFiniteFOSG} is its
 syntax-horizon bounded view. Its transition kernel is the graph-machine step,
 wrapped with bounded prefix history. The graph-machine finite FOSG already has
 the generic reachable mixed-to-behavioral target, graph-history projection
@@ -462,14 +462,14 @@ raw one-step value preservation. The theorem
 \leanref{legalActionLaw_bind_transition_eq_stepPMF} states that the FOSG legal
 action law followed by the FOSG transition collapses to this checked step after
 forgetting cursor keys. Finally,
-\leanref{mappedRunDist_eq_toKernelGamePMF} connects the observed FOSG run
+\leanref{mappedRunDist_eq_pmfBehavioralKernelGame} connects the observed FOSG run
 distribution to the PMF strategic game API.
 
 \subsection{Kuhn-Style Realization}
 
 The primary public finite mixed-to-behavioral realization theorem is:
 \[
-  \leanref{kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite}.
+  \leanref{kuhn_mixedPureRealization_finite}.
 \]
 It says that, for a finite checked Vegas program, every independent mixed
 profile over legal pure strategies has a reachable legal PMF behavioral profile
@@ -479,27 +479,27 @@ payoff outcomes.
 The machine-derived finite FOSG has a direct reachable
 mixed-to-behavioral realization theorem:
 \[
-  \leanref{toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist}.
+  \leanref{toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist}.
 \]
 Its outcome-pushforward form is
 \[
-  \leanref{toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist}.
+  \leanref{toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist}.
 \]
 The product-mixed Vegas-pure specialization is
 \[
-  \leanref{toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist}.
+  \leanref{toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist}.
 \]
 It transports Vegas legal pure strategies into the finite graph-machine-derived FOSG
 reachable pure strategy space, and its pure side is already collapsed to the
-native \leanref{toStrategicKernelGame} outcome kernel. The local pure-side
+native \leanref{pureKernelGame} outcome kernel. The local pure-side
 bridge is
 \[
-  \leanref{toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame}.
+  \leanref{toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame}.
 \]
 
 The syntax-recursive Vegas behavioral-profile projection theorem is still:
 \[
-  \leanref{kuhn_mixedPure_realizedByBehavioralPMF_finite}.
+  \leanref{kuhn_mixedPureRealization_total_finite}.
 \]
 That theorem uses the observed adapter for the final syntax-profile collapse:
 \[
@@ -550,15 +550,15 @@ bounded collapse to \leanref{KernelGame} \\
 \leanref{Protocol.FOSG} &
 machine-derived sequential FOSG views &
 projected one-step law over bounded prefixes \\
-\leanref{FOSGBridge.toFiniteGraphMachineFOSG} &
+\leanref{FOSGBridge.toFiniteFOSG} &
 graph-machine finite FOSG &
 graph-history projection invariant and generic Kuhn target \\
-\leanref{toKernelGamePMF} &
+\leanref{pmfBehavioralKernelGame} &
 PMF strategic-form game &
 outcome kernel agrees with checked semantics \\
 \leanref{FOSGBridge.toObservedFOSG} &
 finite observed adapter &
-\leanref{mappedRunDist_eq_toKernelGamePMF} \\
+\leanref{mappedRunDist_eq_pmfBehavioralKernelGame} \\
 \leanref{ProtocolSemantics} &
 protocol-facing solution concepts &
 correspondence with strategic wrappers \\

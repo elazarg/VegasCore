@@ -33,17 +33,17 @@ strategies that are legal for the program, not over arbitrary functions.
 
 The main types are:
 
-- `LegalProgramBehavioralStrategy g who`
-- `LegalProgramBehavioralProfile g`
-- `LegalProgramPureStrategy g who`
-- `LegalProgramPureProfile g`
+- `FeasibleProgramBehavioralStrategy g who`
+- `FeasibleProgramBehavioralProfile g`
+- `FeasibleProgramPureStrategy g who`
+- `FeasibleProgramPureProfile g`
 
 ### Strategic-Form Game APIs
 
 VegasCore turns a checked program into `GameTheory.KernelGame`s:
 
-- `toKernelGame g` for behavioral strategies;
-- `toStrategicKernelGame g` for pure strategies.
+- `behavioralKernelGame g` for behavioral strategies;
+- `pureKernelGame g` for pure strategies.
 
 The wrappers in `Vegas.Equilibrium`, `Vegas.PureStrategic`, and
 `Vegas.GameProperties` expose the usual game-theoretic vocabulary directly on
@@ -68,14 +68,14 @@ VegasCore has a machine-derived sequential FOSG denotation for checked Vegas
 programs. Checked syntax elaborates to `Protocol.Checked.syntaxActionGraph`,
 then to `Protocol.Checked.graphMachine`. `FOSGBridge.toGraphFOSG` is the direct
 sequential view of that graph machine, and
-`FOSGBridge.toFiniteGraphMachineFOSG` is its syntax-horizon finite view.
+`FOSGBridge.toFiniteFOSG` is its syntax-horizon finite view.
 `FOSGBridge.toFOSG` and `FOSGBridge.toBoundedFOSG` are aliases for the same
 graph-machine carrier.
 
 The primary Vegas-facing finite sequential realization theorem is:
 
 ```lean
-kuhn_mixedPure_realizedByFiniteMachineFOSGBehavioralPMF_finite
+kuhn_mixedPureRealization_finite
 ```
 
 It says that, for a finite checked Vegas program, every independent mixed
@@ -89,28 +89,28 @@ equalities are corollaries of that distribution equality.
 The underlying machine-derived finite FOSG theorems are:
 
 ```lean
-FOSGBridge.toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
-FOSGBridge.toFiniteGraphMachineFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
-FOSGBridge.toFiniteGraphMachineFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+FOSGBridge.toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
+FOSGBridge.toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
+FOSGBridge.toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
 ```
 
 The last theorem transports product-mixed Vegas legal pure strategies directly
 into the finite graph-machine-derived FOSG reachable pure strategy space and
-collapses the pure side to the native `toStrategicKernelGame` outcome kernel.
+collapses the pure side to the native `pureKernelGame` outcome kernel.
 The local bridge behind this collapse is:
 
 ```lean
-FOSGBridge.toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toStrategicKernelGame
+FOSGBridge.toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame
 ```
 
 The unprefixed checked-program PMF behavioral profile type is tied to this IR:
-`LegalProgramBehavioralProfilePMF g hctx` wraps a reachable legal behavioral
-profile of `FOSGBridge.toFiniteGraphMachineFOSG g hctx`. The syntax-recursive
-type is named `SyntaxLegalProgramBehavioralProfilePMF`; it is a presentation
+`SequentialBehavioralProfilePMF g hctx` wraps a reachable legal behavioral
+profile of `FOSGBridge.toFiniteFOSG g hctx`. The syntax-recursive
+type is named `FeasibleProgramBehavioralProfilePMF`; it is a presentation
 that should be proved equivalent to the IR carrier when exposed to clients.
 
 ```lean
-kuhn_mixedPure_realizedByBehavioralPMF_finite
+kuhn_mixedPureRealization_total_finite
 ```
 
 The cursor-world observed adapter remains as a syntax-projection layer. It is

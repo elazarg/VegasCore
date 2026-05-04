@@ -426,7 +426,7 @@ theorem IsZeroSum.socialWelfare_eq_zero [Fintype P]
     socialWelfare g σ = 0 := by
   let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome P))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome P))
   simpa [IsZeroSum, socialWelfare] using
     (KernelGame.IsZeroSum.socialWelfare_eq_zero
       (G := Game g) hzs σ)
@@ -439,7 +439,7 @@ theorem IsZeroSum.eu_neg
     eu g σ 0 = - eu g σ 1 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, eu] using
     (KernelGame.IsZeroSum.eu_neg (G := Game g) hzs σ)
 
@@ -450,7 +450,7 @@ theorem IsConstantSum.socialWelfare_eq [Fintype P]
     socialWelfare g σ = c := by
   let _ : Fintype (Outcome P) := Fintype.ofFinite (Outcome P)
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome P))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome P))
   simpa [IsConstantSum, socialWelfare] using
     (KernelGame.IsConstantSum.socialWelfare_eq
       (G := Game g) hcs σ)
@@ -462,7 +462,7 @@ theorem IsConstantSum.eu_determined
     eu g σ 0 = c - eu g σ 1 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsConstantSum, eu] using
     (KernelGame.IsConstantSum.eu_determined
       (G := Game g) hcs σ)
@@ -483,7 +483,7 @@ theorem IsConstantSum.nash_eu_eq
     eu g σ 0 = eu g τ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsConstantSum, IsNash, eu] using
     (KernelGame.IsConstantSum.nash_eu_eq
       (G := Game g) hcs hNσ hNτ)
@@ -537,7 +537,7 @@ theorem IsZeroSum.nash_p0_optimal
     eu g (Function.update σ 1 s₁) 0 ≥ eu g σ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, eu, Strategy] using
     (KernelGame.IsZeroSum.nash_p0_optimal
       (G := Game g) hzs hN s₁)
@@ -558,7 +558,7 @@ theorem IsZeroSum.nash_eu_eq
     eu g σ 0 = eu g τ 0 := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, eu] using
     (KernelGame.IsZeroSum.nash_eu_eq
       (G := Game g) hzs hNσ hNτ)
@@ -571,7 +571,7 @@ theorem IsZeroSum.nash_interchangeable
     IsNash g (Function.update σ 1 (τ 1)) := by
   let _ : Fintype (Outcome (Fin 2)) := Fintype.ofFinite (Outcome (Fin 2))
   let _ : Fintype (Game g).Outcome := by
-    simpa [toKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
+    simpa [behavioralKernelGame] using (inferInstance : Fintype (Outcome (Fin 2)))
   simpa [IsZeroSum, IsNash, StrategyProfile] using
     (KernelGame.IsZeroSum.nash_interchangeable
       (G := Game g) hzs hNσ hNτ)

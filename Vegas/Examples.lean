@@ -246,7 +246,7 @@ example : ∀ (a : Bool) (va_val : Bool),
 
 Having proven `WF`, `NormalizedDists`, and `Legal` individually above, we can
 assemble them into a `WFProgram` bundle. This is the object that downstream
-game-theory APIs (`toKernelGame`, `IsNash`, `IsεNash`, etc.) consume. -/
+game-theory APIs (`behavioralKernelGame`, `IsNash`, `IsεNash`, etc.) consume. -/
 
 /-- Matching Pennies as a `WFProgram`: program + empty initial environment +
 the three well-formedness witnesses. -/

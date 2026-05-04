@@ -153,10 +153,10 @@ end ProgramBehavioralProfilePMF
 
 /-! ## Guard-legality predicate -/
 
-/-- PMF-valued analogue of `ProgramBehavioralKernel.IsLegalAt`: at every
+/-- PMF-valued analogue of `ProgramBehavioralKernel.RespectsGuard`: at every
 erased environment, the kernel's support is contained in the guard-satisfying
 actions for the current commit site. -/
-def ProgramBehavioralKernelPMF.IsLegalAt
+def ProgramBehavioralKernelPMF.RespectsGuard
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     (κ : ProgramBehavioralKernelPMF who Γ b)
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
@@ -166,14 +166,14 @@ def ProgramBehavioralKernelPMF.IsLegalAt
 
 /-- A PMF behavioral strategy is guard-legal when every owned commit-site
 kernel is supported on guard-satisfying actions. -/
-def ProgramBehavioralStrategyPMF.IsLegal : {who : P} →
+def ProgramBehavioralStrategyPMF.RespectsGuards : {who : P} →
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     ProgramBehavioralStrategyPMF who p → Prop
   | _, _, .ret _, _ => True
   | who, _, .letExpr _ _ k, .letExpr σ =>
-      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+      ProgramBehavioralStrategyPMF.RespectsGuards (who := who) k σ
   | who, _, .sample _ _ k, .sample σ =>
-      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+      ProgramBehavioralStrategyPMF.RespectsGuards (who := who) k σ
   | who, _, .commit _x owner R k, σ => by
       by_cases h : owner = who
       · subst h
@@ -182,18 +182,18 @@ def ProgramBehavioralStrategyPMF.IsLegal : {who : P} →
             v ∈ (ProgramBehavioralStrategyPMF.headKernel σ
               (projectViewEnv owner ρ)).support →
               evalGuard (Player := P) (L := L) R v ρ = true) ∧
-          ProgramBehavioralStrategyPMF.IsLegal (who := owner) k
+          ProgramBehavioralStrategyPMF.RespectsGuards (who := owner) k
             (ProgramBehavioralStrategyPMF.tailOwn σ)
-      · exact ProgramBehavioralStrategyPMF.IsLegal (who := who) k
+      · exact ProgramBehavioralStrategyPMF.RespectsGuards (who := who) k
           (ProgramBehavioralStrategyPMF.tail σ)
   | who, _, .reveal _ _ _ _ k, .reveal σ =>
-      ProgramBehavioralStrategyPMF.IsLegal (who := who) k σ
+      ProgramBehavioralStrategyPMF.RespectsGuards (who := who) k σ
 
 /-- A PMF behavioral profile is legal when each player's PMF strategy is
 guard-legal. -/
-def ProgramBehavioralProfilePMF.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
+def ProgramBehavioralProfilePMF.RespectsGuards {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramBehavioralProfilePMF p) : Prop :=
-  ∀ who, (σ who).IsLegal p
+  ∀ who, (σ who).RespectsGuards p
 
 namespace ProgramBehavioralProfilePMF
 
@@ -202,32 +202,32 @@ theorem tail_isLegal
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     {σ : ProgramBehavioralProfilePMF (.commit x who R k)}
-    (hσ : σ.IsLegal) :
-    (tail σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (tail σ).RespectsGuards := by
   intro i
   by_cases h : who = i
   · subst i
     have hsite := hσ who
-    simp [ProgramBehavioralStrategyPMF.IsLegal] at hsite
+    simp [ProgramBehavioralStrategyPMF.RespectsGuards] at hsite
     simpa [tail, ProgramBehavioralStrategyPMF.tailOwn] using hsite.2
   · have hsite := hσ i
     cases σi : σ i with
     | commitOwn kern tail' =>
         exact False.elim (h rfl)
     | commitOther hne tail' =>
-        simpa [ProgramBehavioralStrategyPMF.IsLegal, tail, h, σi] using hsite
+        simpa [ProgramBehavioralStrategyPMF.RespectsGuards, tail, h, σi] using hsite
 
 end ProgramBehavioralProfilePMF
 
 /-- Guard-legal syntax-recursive PMF behavioral strategies over a checked
 program bundle. -/
-abbrev SyntaxLegalProgramBehavioralStrategyPMF (g : WFProgram P L) (who : P) : Type :=
+abbrev FeasibleProgramBehavioralStrategyPMF (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramBehavioralStrategyPMF who g.prog //
-    s.IsLegal g.prog }
+    s.RespectsGuards g.prog }
 
 /-- Guard-legal joint syntax-recursive PMF behavioral profiles over a checked
 program bundle. -/
-abbrev SyntaxLegalProgramBehavioralProfilePMF (g : WFProgram P L) : Type :=
-  ∀ who, SyntaxLegalProgramBehavioralStrategyPMF g who
+abbrev FeasibleProgramBehavioralProfilePMF (g : WFProgram P L) : Type :=
+  ∀ who, FeasibleProgramBehavioralStrategyPMF g who
 
 end Vegas

@@ -871,7 +871,7 @@ with the same current player view are indistinguishable as FOSG histories for
 that player.
 
 This is the missing "history collapse" lemma needed to define a
-`SyntaxLegalProgramBehavioralProfilePMF g` from a sequential FOSG behavioral profile:
+`FeasibleProgramBehavioralProfilePMF g` from a sequential FOSG behavioral profile:
 the sequential profile is indexed by `h.playerView who`, while the Vegas
 profile is indexed by the current commit-site cursor and `ViewEnv`.
 -/

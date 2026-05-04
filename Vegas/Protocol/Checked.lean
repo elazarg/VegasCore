@@ -886,7 +886,7 @@ noncomputable def graphMachineTurn
       | _ => .internal ()
 
 /-- Direct FOSG view of the checked action-graph machine. -/
-noncomputable def graphMachineFOSGView
+noncomputable def fosgView
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).FOSGView where
   turn := graphMachineTurn g hctx
@@ -983,51 +983,51 @@ noncomputable def graphMachineFOSGView
 
 /-- Sequential FOSG presentation derived directly from the checked graph
 machine. -/
-noncomputable def graphMachineFOSG
+noncomputable def fosg
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     GameTheory.FOSG P (graphMachine g hctx).RunPrefix
       (graphMachine g hctx).Action
       (graphMachine g hctx).Obs
       (graphMachine g hctx).Public :=
-  (graphMachineFOSGView g hctx).toFOSG
+  (fosgView g hctx).toFOSG
 
 /-- Horizon-bounded graph-machine FOSG presentation. -/
-noncomputable def boundedGraphMachineFOSG
+noncomputable def boundedFOSG
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :
     GameTheory.FOSG P ((graphMachine g hctx).BoundedRunPrefix horizon)
       (graphMachine g hctx).Action
       (graphMachine g hctx).Obs
       (graphMachine g hctx).Public :=
-  (graphMachineFOSGView g hctx).toBoundedFOSG horizon
+  (fosgView g hctx).toBoundedFOSG horizon
 
 /-- Syntax-horizon graph-machine FOSG presentation. -/
-noncomputable def finiteGraphMachineFOSG
+noncomputable def finiteFOSG
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     GameTheory.FOSG P
       ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog))
       (graphMachine g hctx).Action
       (graphMachine g hctx).Obs
       (graphMachine g hctx).Public :=
-  boundedGraphMachineFOSG g hctx (syntaxSteps g.prog)
+  boundedFOSG g hctx (syntaxSteps g.prog)
 
-theorem graphMachineFOSGView_active_eq_cursor_active_of_not_terminal
+theorem fosgView_active_eq_cursor_active_of_not_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (pref : (graphMachine g hctx).RunPrefix)
     (hnot : ¬ pref.lastState.isTerminal) :
-    (graphMachineFOSGView g hctx).active pref =
+    (fosgView g hctx).active pref =
       CursorCheckedWorld.active
         (cursorWorldOfGraphConfiguration g hctx pref.lastState) := by
   let w := cursorWorldOfGraphConfiguration g hctx pref.lastState
   cases hprog : w.1.cursor.prog <;>
-    simp [Machine.FOSGView.active, graphMachineFOSGView, graphMachineTurn,
+    simp [Machine.FOSGView.active, fosgView, graphMachineTurn,
       hnot, w, CursorCheckedWorld.active, CursorCheckedWorld.toWorld,
       CursorWorldData.prog, FOSGBridge.active, hprog]
 
-theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
+theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (pref : (graphMachine g hctx).RunPrefix) (who : P)
     (hnot : ¬ pref.lastState.isTerminal) :
-    (graphMachineFOSGView g hctx).availableActions pref who =
+    (fosgView g hctx).availableActions pref who =
       CursorCheckedWorld.availableProgramActions
         (cursorWorldOfGraphConfiguration g hctx pref.lastState) who := by
   ext action
@@ -1037,7 +1037,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       constructor
       · intro hleft
         have hfalse := hleft
-        simp [Machine.FOSGView.availableActions, graphMachineFOSGView,
+        simp [Machine.FOSGView.availableActions, fosgView,
           graphMachineTurn, hnot, w, hprog] at hfalse
       · intro hright
         rcases hright with ⟨hbroad, _⟩
@@ -1048,7 +1048,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       constructor
       · intro hleft
         have hfalse := hleft
-        simp [Machine.FOSGView.availableActions, graphMachineFOSGView,
+        simp [Machine.FOSGView.availableActions, fosgView,
           graphMachineTurn, hnot, w, hprog] at hfalse
       · intro hright
         rcases hright with ⟨hbroad, _⟩
@@ -1059,7 +1059,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       constructor
       · intro hleft
         have hfalse := hleft
-        simp [Machine.FOSGView.availableActions, graphMachineFOSGView,
+        simp [Machine.FOSGView.availableActions, fosgView,
           graphMachineTurn, hnot, w, hprog] at hfalse
       · intro hright
         rcases hright with ⟨hbroad, _⟩
@@ -1071,9 +1071,9 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       · subst who
         unfold Machine.FOSGView.availableActions
         have hturn :
-            (graphMachineFOSGView g hctx).turn pref =
+            (fosgView g hctx).turn pref =
               Machine.Turn.play owner := by
-          simp [graphMachineFOSGView, graphMachineTurn, hnot, w, hprog]
+          simp [fosgView, graphMachineTurn, hnot, w, hprog]
         rw [hturn]
         simp only [↓reduceIte]
         change
@@ -1088,7 +1088,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       · constructor
         · intro hleft
           have hfalse := hleft
-          simp [Machine.FOSGView.availableActions, graphMachineFOSGView,
+          simp [Machine.FOSGView.availableActions, fosgView,
             graphMachineTurn, hnot, w, hprog, hwho] at hfalse
         · intro hright
           rcases hright with
@@ -1102,7 +1102,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
       constructor
       · intro hleft
         have hfalse := hleft
-        simp [Machine.FOSGView.availableActions, graphMachineFOSGView,
+        simp [Machine.FOSGView.availableActions, fosgView,
           graphMachineTurn, hnot, w, hprog] at hfalse
       · intro hright
         rcases hright with ⟨hbroad, _⟩
@@ -1173,26 +1173,26 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
             ⟨event, Finset.mem_univ _, rfl⟩))
 
 /-- Finite-history helper for bounded graph-machine FOSG views. -/
-@[reducible] noncomputable def boundedGraphMachineFOSG.instFintypeHistory
+@[reducible] noncomputable def boundedFOSG.instFintypeHistory
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     [Fintype P]
     [Fintype (graphMachine g hctx).State]
     [∀ who : P, Fintype (Option ((graphMachine g hctx).Action who))]
     [Fintype (graphMachine g hctx).Event] :
-    Fintype (boundedGraphMachineFOSG g hctx horizon).History := by
+    Fintype (boundedFOSG g hctx horizon).History := by
   classical
   haveI :
       Fintype ((graphMachine g hctx).BoundedRunPrefix horizon) :=
     Machine.BoundedRunPrefix.instFintype
   exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
-    (G := boundedGraphMachineFOSG g hctx horizon)
-    ((graphMachineFOSGView g hctx).toBoundedFOSG_boundedHorizon horizon)
+    (G := boundedFOSG g hctx horizon)
+    ((fosgView g hctx).toBoundedFOSG_boundedHorizon horizon)
 
 /-- Finite-history helper for the syntax-horizon graph-machine FOSG. -/
-@[reducible] noncomputable def finiteGraphMachineFOSG.instFintypeHistory
+@[reducible] noncomputable def finiteFOSG.instFintypeHistory
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P] :
-    Fintype (finiteGraphMachineFOSG g hctx).History := by
+    Fintype (finiteFOSG g hctx).History := by
   letI : Fintype (graphMachine g hctx).State :=
     graphMachine.instFintypeState g hctx LF
   letI : ∀ who : P,
@@ -1200,7 +1200,7 @@ theorem graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_
     fun who => graphMachine.instFintypeOptionAction g hctx LF who
   letI : Fintype (graphMachine g hctx).Event :=
     graphMachine.instFintypeEvent g hctx LF
-  exact boundedGraphMachineFOSG.instFintypeHistory
+  exact boundedFOSG.instFintypeHistory
     g hctx (syntaxSteps g.prog)
 
 /-- Pointwise cursor availability at a nonterminal endpoint packages to the
@@ -1553,21 +1553,21 @@ configuration endpoints to cursor checked worlds.
 
 The cursor-nonterminal premise is discharged by reachable finite graph
 histories before the syntax cutoff. -/
-theorem boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
+theorem boundedFOSG_transition_map_checkedWorld_eq_checkedTransition
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     (pref : (graphMachine g hctx).BoundedRunPrefix horizon)
-    (action : (boundedGraphMachineFOSG g hctx horizon).LegalAction pref)
+    (action : (boundedFOSG g hctx horizon).LegalAction pref)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx pref.lastState)) :
     let selected :=
-      (graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+      (fosgView g hctx).boundedEventOfLegalJointAction
         horizon pref action
     PMF.map
         (fun dst : (graphMachine g hctx).BoundedRunPrefix horizon =>
           CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration g hctx dst.lastState))
-        ((boundedGraphMachineFOSG g hctx horizon).transition pref action) =
+        ((boundedFOSG g hctx horizon).transition pref action) =
       checkedTransition
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration g hctx pref.lastState))
@@ -1576,17 +1576,17 @@ theorem boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
           CursorProgramJointActionLegal.toAction
             (cursorProgramJointActionLegal_of_graphMachine_available
               g hctx hcursor
-              ((graphMachineFOSGView g hctx)
+              ((fosgView g hctx)
                 |>.boundedEventOfLegalJointAction_available
                   horizon pref action))⟩ := by
   classical
   let selected :=
-    (graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+    (fosgView g hctx).boundedEventOfLegalJointAction
       horizon pref action
   have havailable :
       (graphMachine g hctx).EventAvailable pref.lastState selected := by
     simpa [selected] using
-      (graphMachineFOSGView g hctx)
+      (fosgView g hctx)
         |>.boundedEventOfLegalJointAction_available horizon pref action
   have hstep :
       PMF.map (cursorWorldOfGraphConfiguration g hctx)
@@ -1604,7 +1604,7 @@ theorem boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
         (fun dst : (graphMachine g hctx).BoundedRunPrefix horizon =>
           CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration g hctx dst.lastState))
-        ((boundedGraphMachineFOSG g hctx horizon).transition pref action)
+        ((boundedFOSG g hctx horizon).transition pref action)
         =
       PMF.map
         (fun next : (graphMachine g hctx).State =>
@@ -1616,7 +1616,7 @@ theorem boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
                 (fun dst : (graphMachine g hctx).BoundedRunPrefix horizon =>
                   CheckedWorld.ofCursorChecked (hctx := hctx)
                     (cursorWorldOfGraphConfiguration g hctx dst.lastState))
-                (((graphMachineFOSGView g hctx).toBoundedFOSG horizon).transition
+                (((fosgView g hctx).toBoundedFOSG horizon).transition
                   pref action) =
               PMF.map
                 (fun next : (graphMachine g hctx).State =>
@@ -1677,13 +1677,13 @@ theorem boundedGraphMachineFOSG_transition_map_checkedWorld_eq_checkedTransition
 /-- Every supported bounded graph-machine FOSG transition consumes exactly one
 operational Vegas syntax node at the projected cursor state, for nonterminal
 projected cursor states. -/
-theorem boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
+theorem boundedFOSG_transition_support_remainingSyntaxSteps
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     (pref : (graphMachine g hctx).BoundedRunPrefix horizon)
-    (action : (boundedGraphMachineFOSG g hctx horizon).LegalAction pref)
+    (action : (boundedFOSG g hctx horizon).LegalAction pref)
     {dst : (graphMachine g hctx).BoundedRunPrefix horizon}
     (hsupp :
-      (boundedGraphMachineFOSG g hctx horizon).transition pref action dst ≠ 0)
+      (boundedFOSG g hctx horizon).transition pref action dst ≠ 0)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx pref.lastState)) :
@@ -1691,10 +1691,10 @@ theorem boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
       (cursorWorldOfGraphConfiguration g hctx pref.lastState).remainingSyntaxSteps := by
   classical
   let selected :=
-    (graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+    (fosgView g hctx).boundedEventOfLegalJointAction
       horizon pref action
   have hmem :
-      dst ∈ ((boundedGraphMachineFOSG g hctx horizon).transition
+      dst ∈ ((boundedFOSG g hctx horizon).transition
         pref action).support := by
     exact (PMF.mem_support_iff _ _).2 hsupp
   have hmemMap :
@@ -1710,7 +1710,7 @@ theorem boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
                 exact Nat.lt_of_not_ge hnot)
               selected next)
           ((graphMachine g hctx).step selected pref.lastState)).support := by
-    simpa [boundedGraphMachineFOSG,
+    simpa [boundedFOSG,
       Machine.FOSGView.toBoundedFOSG_transition, selected]
       using hmem
   rcases (PMF.mem_support_map_iff _ _ _).mp hmemMap with
@@ -1718,7 +1718,7 @@ theorem boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
   have havailable :
       (graphMachine g hctx).EventAvailable pref.lastState selected := by
     simpa [selected] using
-      (graphMachineFOSGView g hctx)
+      (fosgView g hctx)
         |>.boundedEventOfLegalJointAction_available horizon pref action
   have hnextStep :
       (graphMachine g hctx).step selected pref.lastState next ≠ 0 :=
@@ -1730,21 +1730,21 @@ theorem boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
   simpa [Machine.BoundedRunPrefix.lastState,
     Machine.BoundedRunPrefix.snoc, Machine.RunPrefix.lastState] using hremaining
 
-theorem boundedGraphMachineFOSG_transition_support_done_eq_advance
+theorem boundedFOSG_transition_support_done_eq_advance
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     (pref : (graphMachine g hctx).BoundedRunPrefix horizon)
-    (action : (boundedGraphMachineFOSG g hctx horizon).LegalAction pref)
+    (action : (boundedFOSG g hctx horizon).LegalAction pref)
     {dst : (graphMachine g hctx).BoundedRunPrefix horizon}
     (hsupp :
-      (boundedGraphMachineFOSG g hctx horizon).transition pref action dst ≠ 0) :
+      (boundedFOSG g hctx horizon).transition pref action dst ≠ 0) :
     dst.lastState.frontier.done =
       (syntaxActionGraph g).advance pref.lastState.frontier.done := by
   classical
   let selected :=
-    (graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+    (fosgView g hctx).boundedEventOfLegalJointAction
       horizon pref action
   have hmem :
-      dst ∈ ((boundedGraphMachineFOSG g hctx horizon).transition
+      dst ∈ ((boundedFOSG g hctx horizon).transition
         pref action).support := by
     exact (PMF.mem_support_iff _ _).2 hsupp
   have hmemMap :
@@ -1760,7 +1760,7 @@ theorem boundedGraphMachineFOSG_transition_support_done_eq_advance
                 exact Nat.lt_of_not_ge hnot)
               selected next)
           ((graphMachine g hctx).step selected pref.lastState)).support := by
-    simpa [boundedGraphMachineFOSG,
+    simpa [boundedFOSG,
       Machine.FOSGView.toBoundedFOSG_transition, selected]
       using hmem
   rcases (PMF.mem_support_map_iff _ _ _).mp hmemMap with
@@ -1768,7 +1768,7 @@ theorem boundedGraphMachineFOSG_transition_support_done_eq_advance
   have havailable :
       (graphMachine g hctx).EventAvailable pref.lastState selected := by
     simpa [selected] using
-      (graphMachineFOSGView g hctx)
+      (fosgView g hctx)
         |>.boundedEventOfLegalJointAction_available horizon pref action
   have hnextStep :
       (graphMachine g hctx).step selected pref.lastState next ≠ 0 :=
@@ -1782,27 +1782,27 @@ theorem boundedGraphMachineFOSG_transition_support_done_eq_advance
 
 /-- Along a finite graph-machine FOSG chain, graph frontier completion remains
 synchronized with the projected checked cursor. -/
-theorem finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
+theorem finiteFOSG_stepChain_doneBeforeCursor_from
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     ∀ {start : (graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)}
-      {steps : List (finiteGraphMachineFOSG g hctx).Step},
-      (finiteGraphMachineFOSG g hctx).StepChainFrom start steps →
+      {steps : List (finiteFOSG g hctx).Step},
+      (finiteFOSG g hctx).StepChainFrom start steps →
       syntaxGraphDoneBeforeCursor g start.lastState.frontier.done
         (cursorWorldOfGraphConfiguration g hctx start.lastState).1.cursor →
       syntaxGraphDoneBeforeCursor g
-        ((finiteGraphMachineFOSG g hctx).lastStateFrom start steps
+        ((finiteFOSG g hctx).lastStateFrom start steps
           ).lastState.frontier.done
         (cursorWorldOfGraphConfiguration g hctx
-          ((finiteGraphMachineFOSG g hctx).lastStateFrom start steps
+          ((finiteFOSG g hctx).lastStateFrom start steps
             ).lastState).1.cursor
   | start, [], _hchain, hinv => by
       simpa [GameTheory.FOSG.lastStateFrom] using hinv
   | start, step :: steps, hchain, hinv => by
       rcases hchain with ⟨hsrc, htail⟩
-      let action : (finiteGraphMachineFOSG g hctx).LegalAction start :=
+      let action : (finiteFOSG g hctx).LegalAction start :=
         hsrc ▸ step.act
       have hsupp :
-          (finiteGraphMachineFOSG g hctx).transition start action step.dst ≠ 0 := by
+          (finiteFOSG g hctx).transition start action step.dst ≠ 0 := by
         subst hsrc
         simpa [action] using step.support
       have hnotGraphTerminal :
@@ -1835,9 +1835,9 @@ theorem finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
           nextW.remainingSyntaxSteps + 1 =
             currentW.remainingSyntaxSteps := by
         exact
-          boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
+          boundedFOSG_transition_support_remainingSyntaxSteps
             g hctx (syntaxSteps g.prog) start action
-            (by simpa [finiteGraphMachineFOSG] using hsupp)
+            (by simpa [finiteFOSG] using hsupp)
             (by simpa [currentW] using hcursor)
       have hrankNext :
           syntaxGraphRank g nextW.1.cursor =
@@ -1855,9 +1855,9 @@ theorem finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
             (syntaxActionGraph g).advance
               start.lastState.frontier.done := by
         exact
-          boundedGraphMachineFOSG_transition_support_done_eq_advance
+          boundedFOSG_transition_support_done_eq_advance
             g hctx (syntaxSteps g.prog) start action
-            (by simpa [finiteGraphMachineFOSG] using hsupp)
+            (by simpa [finiteFOSG] using hsupp)
       have hinvStep :
           syntaxGraphDoneBeforeCursor g step.dst.lastState.frontier.done
             nextW.1.cursor := by
@@ -1866,20 +1866,20 @@ theorem finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
           (g := g) hcurrentMem (by simpa [currentW] using hinv)
           (by simpa [currentW, nextW] using hrankNext)
       exact
-        finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
+        finiteFOSG_stepChain_doneBeforeCursor_from
           (g := g) (hctx := hctx) (start := step.dst)
           (steps := steps) htail hinvStep
 
 /-- Every finite graph-machine FOSG history satisfies the graph/cursor
 synchronization invariant. -/
-theorem finiteGraphMachineFOSG_history_doneBeforeCursor
+theorem finiteFOSG_history_doneBeforeCursor
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History) :
+    (h : (finiteFOSG g hctx).History) :
     syntaxGraphDoneBeforeCursor g h.lastState.lastState.frontier.done
       (cursorWorldOfGraphConfiguration g hctx
         h.lastState.lastState).1.cursor := by
   have hinv :=
-    finiteGraphMachineFOSG_stepChain_doneBeforeCursor_from
+    finiteFOSG_stepChain_doneBeforeCursor_from
       (g := g) (hctx := hctx)
       (start := Machine.BoundedRunPrefix.init
         (graphMachine g hctx) (syntaxSteps g.prog))
@@ -1896,31 +1896,31 @@ theorem finiteGraphMachineFOSG_history_doneBeforeCursor
           ActionGraph.FrontierMachine.initial,
           cursorWorldOfGraphConfiguration_initial] using
           syntaxGraphDoneBeforeCursor_initial g)
-  simpa [GameTheory.FOSG.History.lastState, finiteGraphMachineFOSG,
-    boundedGraphMachineFOSG] using hinv
+  simpa [GameTheory.FOSG.History.lastState, finiteFOSG,
+    boundedFOSG] using hinv
 
 /-- Along a finite graph-machine FOSG chain, the projected endpoint cursor
 state and the bounded prefix length maintain the source syntax-step budget. -/
-theorem finiteGraphMachineFOSG_stepChain_remainingSyntaxSteps_from
+theorem finiteFOSG_stepChain_remainingSyntaxSteps_from
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     ∀ {start : (graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)}
-      {steps : List (finiteGraphMachineFOSG g hctx).Step},
-      (finiteGraphMachineFOSG g hctx).StepChainFrom start steps →
+      {steps : List (finiteFOSG g hctx).Step},
+      (finiteFOSG g hctx).StepChainFrom start steps →
       (cursorWorldOfGraphConfiguration g hctx start.lastState).remainingSyntaxSteps +
           start.pref.events.length = syntaxSteps g.prog →
       (cursorWorldOfGraphConfiguration g hctx
-          ((finiteGraphMachineFOSG g hctx).lastStateFrom start steps).lastState
+          ((finiteFOSG g hctx).lastStateFrom start steps).lastState
         ).remainingSyntaxSteps +
-          ((finiteGraphMachineFOSG g hctx).lastStateFrom start steps).pref.events.length =
+          ((finiteFOSG g hctx).lastStateFrom start steps).pref.events.length =
         syntaxSteps g.prog
   | start, [], _hchain, hstart => by
       simpa [GameTheory.FOSG.lastStateFrom] using hstart
   | start, step :: steps, hchain, hstart => by
       rcases hchain with ⟨hsrc, htail⟩
-      let action : (finiteGraphMachineFOSG g hctx).LegalAction start :=
+      let action : (finiteFOSG g hctx).LegalAction start :=
         hsrc ▸ step.act
       have hsupp :
-          (finiteGraphMachineFOSG g hctx).transition start action step.dst ≠ 0 := by
+          (finiteFOSG g hctx).transition start action step.dst ≠ 0 := by
         subst hsrc
         simpa [action] using step.support
       have hnotCut :
@@ -1944,19 +1944,19 @@ theorem finiteGraphMachineFOSG_stepChain_remainingSyntaxSteps_from
             (cursorWorldOfGraphConfiguration g hctx
               start.lastState).remainingSyntaxSteps := by
         exact
-          boundedGraphMachineFOSG_transition_support_remainingSyntaxSteps
+          boundedFOSG_transition_support_remainingSyntaxSteps
             g hctx (syntaxSteps g.prog) start action (by
-              simpa [finiteGraphMachineFOSG] using hsupp) hcursor
+              simpa [finiteFOSG] using hsupp) hcursor
       have hevents :
           step.dst.pref.events.length = start.pref.events.length + 1 := by
         have hsuppView :
-            (((graphMachineFOSGView g hctx).toBoundedFOSG
+            (((fosgView g hctx).toBoundedFOSG
                 (syntaxSteps g.prog)).transition start action step.dst) ≠ 0 := by
           change
-            (finiteGraphMachineFOSG g hctx).transition start action step.dst ≠ 0
+            (finiteFOSG g hctx).transition start action step.dst ≠ 0
           exact hsupp
         exact
-          (graphMachineFOSGView g hctx).toBoundedFOSG_transition_support_events_length
+          (fosgView g hctx).toBoundedFOSG_transition_support_events_length
             (syntaxSteps g.prog) start action
             hsuppView
       have htailStart :
@@ -1966,19 +1966,19 @@ theorem finiteGraphMachineFOSG_stepChain_remainingSyntaxSteps_from
             syntaxSteps g.prog := by
         omega
       exact
-        finiteGraphMachineFOSG_stepChain_remainingSyntaxSteps_from
+        finiteFOSG_stepChain_remainingSyntaxSteps_from
           (g := g) (hctx := hctx) (start := step.dst)
           (steps := steps) htail htailStart
 
 /-- A finite graph-machine FOSG history preserves syntax-step accounting after
 projecting its endpoint graph configuration to the checked cursor world. -/
-theorem finiteGraphMachineFOSG_history_remainingSyntaxSteps
+theorem finiteFOSG_history_remainingSyntaxSteps
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History) :
+    (h : (finiteFOSG g hctx).History) :
     (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).remainingSyntaxSteps +
         h.steps.length = syntaxSteps g.prog := by
   have hinv :=
-    finiteGraphMachineFOSG_stepChain_remainingSyntaxSteps_from
+    finiteFOSG_stepChain_remainingSyntaxSteps_from
       (g := g) (hctx := hctx)
       (start := Machine.BoundedRunPrefix.init
         (graphMachine g hctx) (syntaxSteps g.prog))
@@ -1999,11 +1999,11 @@ theorem finiteGraphMachineFOSG_history_remainingSyntaxSteps
           ProgramCursor.prog]
         rfl)
   have hlen :=
-    (graphMachineFOSGView g hctx).toBoundedFOSG_history_events_length
+    (fosgView g hctx).toBoundedFOSG_history_events_length
       (syntaxSteps g.prog) h
   have hlen' : h.lastState.pref.events.length = h.steps.length := by
-    simpa [GameTheory.FOSG.History.lastState, finiteGraphMachineFOSG,
-      boundedGraphMachineFOSG] using hlen
+    simpa [GameTheory.FOSG.History.lastState, finiteFOSG,
+      boundedFOSG] using hlen
   change
     (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).remainingSyntaxSteps +
         h.lastState.pref.events.length = syntaxSteps g.prog at hinv
@@ -2011,18 +2011,18 @@ theorem finiteGraphMachineFOSG_history_remainingSyntaxSteps
 
 /-- At the syntax cutoff, a finite graph-machine FOSG history projects to a
 terminal checked cursor state. -/
-theorem finiteGraphMachineFOSG_terminal_endpoint_of_cutoff
+theorem finiteFOSG_terminal_endpoint_of_cutoff
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History)
+    (h : (finiteFOSG g hctx).History)
     (hcut : syntaxSteps g.prog ≤ h.lastState.pref.events.length) :
     CursorCheckedWorld.terminal
       (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
   have hlen :=
-    (graphMachineFOSGView g hctx).toBoundedFOSG_history_events_length
+    (fosgView g hctx).toBoundedFOSG_history_events_length
       (syntaxSteps g.prog) h
   have hlen' : h.lastState.pref.events.length = h.steps.length := by
-    simpa [GameTheory.FOSG.History.lastState, finiteGraphMachineFOSG,
-      boundedGraphMachineFOSG] using hlen
+    simpa [GameTheory.FOSG.History.lastState, finiteFOSG,
+      boundedFOSG] using hlen
   have hsteps : h.steps.length = syntaxSteps g.prog := by
     have hle₁ : h.steps.length ≤ syntaxSteps g.prog := by
       calc
@@ -2033,7 +2033,7 @@ theorem finiteGraphMachineFOSG_terminal_endpoint_of_cutoff
         syntaxSteps g.prog ≤ h.lastState.pref.events.length := hcut
         _ = h.steps.length := hlen'
     exact Nat.le_antisymm hle₁ hle₂
-  have hinv := finiteGraphMachineFOSG_history_remainingSyntaxSteps g hctx h
+  have hinv := finiteFOSG_history_remainingSyntaxSteps g hctx h
   rw [hsteps] at hinv
   have hzero :
       (cursorWorldOfGraphConfiguration g hctx
@@ -2045,9 +2045,9 @@ theorem finiteGraphMachineFOSG_terminal_endpoint_of_cutoff
 
 /-- A graph-terminal finite graph-machine FOSG history projects to a terminal
 checked cursor state. -/
-theorem finiteGraphMachineFOSG_cursor_terminal_of_graph_terminal
+theorem finiteFOSG_cursor_terminal_of_graph_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History)
+    (h : (finiteFOSG g hctx).History)
     (hgraph : (graphMachine g hctx).terminal h.lastState.lastState) :
     CursorCheckedWorld.terminal
       (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
@@ -2072,7 +2072,7 @@ theorem finiteGraphMachineFOSG_cursor_terminal_of_graph_terminal
       ProgramCursor.instFintype g.prog
     simp [syntaxGraphActions, hcursorPositive]
   have hdoneBefore :=
-    finiteGraphMachineFOSG_history_doneBeforeCursor g hctx h
+    finiteFOSG_history_doneBeforeCursor g hctx h
   have hnotDone :
       (cursorWorldOfGraphConfiguration g hctx
         h.lastState.lastState).1.cursor ∉
@@ -2088,30 +2088,30 @@ theorem finiteGraphMachineFOSG_cursor_terminal_of_graph_terminal
 
 /-- A finite graph-machine FOSG terminal history projects to a terminal checked
 cursor state. -/
-theorem finiteGraphMachineFOSG_cursor_terminal_of_terminal
+theorem finiteFOSG_cursor_terminal_of_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History)
-    (hterm : (finiteGraphMachineFOSG g hctx).terminal h.lastState) :
+    (h : (finiteFOSG g hctx).History)
+    (hterm : (finiteFOSG g hctx).terminal h.lastState) :
     CursorCheckedWorld.terminal
       (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
   rcases hterm with hgraph | hcut
-  · exact finiteGraphMachineFOSG_cursor_terminal_of_graph_terminal
+  · exact finiteFOSG_cursor_terminal_of_graph_terminal
       g hctx h hgraph
-  · exact finiteGraphMachineFOSG_terminal_endpoint_of_cutoff
+  · exact finiteFOSG_terminal_endpoint_of_cutoff
       g hctx h hcut
 
-theorem finiteGraphMachineFOSG_not_graph_terminal_of_not_cutoff
+theorem finiteFOSG_not_graph_terminal_of_not_cutoff
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History)
+    (h : (finiteFOSG g hctx).History)
     (hcut : ¬ syntaxSteps g.prog ≤ h.lastState.pref.events.length) :
     ¬ (graphMachine g hctx).terminal h.lastState.lastState := by
   have hlen :=
-    (graphMachineFOSGView g hctx).toBoundedFOSG_history_events_length
+    (fosgView g hctx).toBoundedFOSG_history_events_length
       (syntaxSteps g.prog) h
   have hlen' : h.lastState.pref.events.length = h.steps.length := by
-    simpa [GameTheory.FOSG.History.lastState, finiteGraphMachineFOSG,
-      boundedGraphMachineFOSG] using hlen
-  have hinvSteps := finiteGraphMachineFOSG_history_remainingSyntaxSteps
+    simpa [GameTheory.FOSG.History.lastState, finiteFOSG,
+      boundedFOSG] using hlen
+  have hinvSteps := finiteFOSG_history_remainingSyntaxSteps
     g hctx h
   have hremainingPositive :
       0 <
@@ -2135,7 +2135,7 @@ theorem finiteGraphMachineFOSG_not_graph_terminal_of_not_cutoff
       ProgramCursor.instFintype g.prog
     simp [syntaxGraphActions, hcursorPositive]
   have hdoneBefore :=
-    finiteGraphMachineFOSG_history_doneBeforeCursor g hctx h
+    finiteFOSG_history_doneBeforeCursor g hctx h
   have hnotDone :
       (cursorWorldOfGraphConfiguration g hctx
         h.lastState.lastState).1.cursor ∉
@@ -2152,16 +2152,16 @@ theorem finiteGraphMachineFOSG_not_graph_terminal_of_not_cutoff
 
 /-- Away from the syntax cutoff, finite graph-machine FOSG available moves are
 exactly the observed cursor-world moves at the projected endpoint. -/
-theorem finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
+theorem finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (who : P)
-    (h : (finiteGraphMachineFOSG g hctx).History)
+    (h : (finiteFOSG g hctx).History)
     (hcut : ¬ syntaxSteps g.prog ≤ h.lastState.pref.events.length) :
-    (finiteGraphMachineFOSG g hctx).availableMoves h who =
+    (finiteFOSG g hctx).availableMoves h who =
       (observedProgramFOSG g hctx).availableMovesAtState
         (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) who := by
   have hnotGraph :=
-    finiteGraphMachineFOSG_not_graph_terminal_of_not_cutoff
+    finiteFOSG_not_graph_terminal_of_not_cutoff
       g hctx h hcut
   ext move
   cases move with
@@ -2169,26 +2169,26 @@ theorem finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
       change
         who ∉
             Machine.FOSGView.boundedActive
-              (graphMachineFOSGView g hctx) (syntaxSteps g.prog)
+              (fosgView g hctx) (syntaxSteps g.prog)
               h.lastState ↔
           who ∉ CursorCheckedWorld.active
             (cursorWorldOfGraphConfiguration g hctx
               h.lastState.lastState)
       rw [Machine.FOSGView.boundedActive]
       rw [if_neg hcut]
-      rw [graphMachineFOSGView_active_eq_cursor_active_of_not_terminal
+      rw [fosgView_active_eq_cursor_active_of_not_terminal
         g hctx h.lastState.pref hnotGraph]
       simp [Machine.BoundedRunPrefix.lastState]
   | some action =>
       change
         (who ∈
               (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
-               else Machine.FOSGView.active (graphMachineFOSGView g hctx)
+               else Machine.FOSGView.active (fosgView g hctx)
                  h.lastState.pref) ∧
             action ∈
               (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
                else Machine.FOSGView.availableActions
-                 (graphMachineFOSGView g hctx) h.lastState.pref who)) ↔
+                 (fosgView g hctx) h.lastState.pref who)) ↔
           (who ∈ CursorCheckedWorld.active
               (cursorWorldOfGraphConfiguration g hctx
                 h.lastState.pref.lastState) ∧
@@ -2197,16 +2197,16 @@ theorem finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
                 (cursorWorldOfGraphConfiguration g hctx
                   h.lastState.pref.lastState) who)
       rw [if_neg hcut, if_neg hcut]
-      rw [graphMachineFOSGView_active_eq_cursor_active_of_not_terminal
+      rw [fosgView_active_eq_cursor_active_of_not_terminal
         g hctx h.lastState.pref hnotGraph,
-        graphMachineFOSGView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
+        fosgView_availableActions_eq_cursor_availableProgramActions_of_not_terminal
           g hctx h.lastState.pref who hnotGraph]
       rfl
 
-theorem finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
+theorem finiteFOSG_cursor_nonterminal_of_not_terminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (finiteGraphMachineFOSG g hctx).History)
-    (hterm : ¬ (finiteGraphMachineFOSG g hctx).terminal h.lastState) :
+    (h : (finiteFOSG g hctx).History)
+    (hterm : ¬ (finiteFOSG g hctx).terminal h.lastState) :
     ¬ CursorCheckedWorld.terminal
       (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
   have hnotCut :
@@ -2214,7 +2214,7 @@ theorem finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
     intro hcut
     exact hterm (Or.inr hcut)
   have hnotGraph :=
-    finiteGraphMachineFOSG_not_graph_terminal_of_not_cutoff
+    finiteFOSG_not_graph_terminal_of_not_cutoff
       g hctx h hnotCut
   have hnotComplete :
       ¬ (syntaxActionGraph g).CompleteAt
@@ -2222,7 +2222,7 @@ theorem finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
     simpa [graphMachine_terminal, ActionGraph.Configuration.isTerminal,
       ActionGraph.FrontierMachine.isComplete] using hnotGraph
   have hdoneBefore :=
-    finiteGraphMachineFOSG_history_doneBeforeCursor g hctx h
+    finiteFOSG_history_doneBeforeCursor g hctx h
   have hpositive :
       0 < syntaxSteps
         (cursorWorldOfGraphConfiguration g hctx
@@ -2246,19 +2246,19 @@ theorem finiteGraphMachineFOSG_cursor_nonterminal_of_not_terminal
 theorem graphMachineJointAction_selected_eq_of_active
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     {pref : (graphMachine g hctx).BoundedRunPrefix horizon}
-    (action : (boundedGraphMachineFOSG g hctx horizon).LegalAction pref)
+    (action : (boundedFOSG g hctx horizon).LegalAction pref)
     {who : P}
     (hactive :
-      who ∈ (boundedGraphMachineFOSG g hctx horizon).active pref) :
+      who ∈ (boundedFOSG g hctx horizon).active pref) :
     graphMachineJointAction g hctx
-        ((graphMachineFOSGView g hctx).boundedEventOfLegalJointAction
+        ((fosgView g hctx).boundedEventOfLegalJointAction
           horizon pref action) who =
       action.1 who := by
   classical
-  cases hturn : (graphMachineFOSGView g hctx).turn pref.pref with
+  cases hturn : (fosgView g hctx).turn pref.pref with
   | internal event =>
       have hfalse := hactive
-      simp [boundedGraphMachineFOSG, Machine.FOSGView.boundedActive,
+      simp [boundedFOSG, Machine.FOSGView.boundedActive,
         Machine.FOSGView.active, hturn] at hfalse
   | play player =>
       have hcut : ¬ horizon ≤ pref.pref.events.length := by
@@ -2266,7 +2266,7 @@ theorem graphMachineJointAction_selected_eq_of_active
         exact action.2.1 (Or.inr hle)
       have hwho : who = player := by
         have hmem : who ∈ ({player} : Finset P) := by
-          simpa [boundedGraphMachineFOSG, Machine.FOSGView.boundedActive,
+          simpa [boundedFOSG, Machine.FOSGView.boundedActive,
             Machine.FOSGView.active, hcut, hturn] using hactive
         simpa using hmem
       subst who
@@ -2275,17 +2275,17 @@ theorem graphMachineJointAction_selected_eq_of_active
           have hlocal := action.2.2 player
           have hnot :
               player ∉
-                (graphMachineFOSGView g hctx).boundedActive horizon pref := by
+                (fosgView g hctx).boundedActive horizon pref := by
             simpa [hmove] using hlocal
           have hmem :
               player ∈
-                (graphMachineFOSGView g hctx).boundedActive horizon pref := by
+                (fosgView g hctx).boundedActive horizon pref := by
             simp [Machine.FOSGView.boundedActive,
               Machine.FOSGView.active, hcut, hturn]
           exact False.elim (hnot hmem)
       | some choice =>
           have hevent :=
-            (graphMachineFOSGView g hctx)
+            (fosgView g hctx)
               |>.boundedEventOfLegalJointAction_eq_play_of_turn_action
                 horizon pref action hturn hmove
           rw [hevent]
@@ -2294,25 +2294,25 @@ theorem graphMachineJointAction_selected_eq_of_active
 
 /-- The finite graph-machine FOSG for a checked Vegas program satisfies the
 FOSG legality-observability side condition needed by Kuhn's theorem. -/
-theorem finiteGraphMachineFOSG_legalObservable
+theorem finiteFOSG_legalObservable
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (finiteGraphMachineFOSG g hctx).LegalObservable := by
+    (finiteFOSG g hctx).LegalObservable := by
   intro who h h' hInfo
-  let G := finiteGraphMachineFOSG g hctx
+  let G := finiteFOSG g hctx
   have hobsLen :
       (GameTheory.FOSG.InfoState.observationEvents
         (G := G) (i := who) (h.playerView who)).length =
         h.steps.length := by
-    simpa [G, finiteGraphMachineFOSG, boundedGraphMachineFOSG] using
-      (graphMachineFOSGView g hctx)
+    simpa [G, finiteFOSG, boundedFOSG] using
+      (fosgView g hctx)
         |>.toBoundedFOSG_history_playerView_observationEvents_length
           (syntaxSteps g.prog) h who
   have hobsLen' :
       (GameTheory.FOSG.InfoState.observationEvents
         (G := G) (i := who) (h'.playerView who)).length =
         h'.steps.length := by
-    simpa [G, finiteGraphMachineFOSG, boundedGraphMachineFOSG] using
-      (graphMachineFOSGView g hctx)
+    simpa [G, finiteFOSG, boundedFOSG] using
+      (fosgView g hctx)
         |>.toBoundedFOSG_history_playerView_observationEvents_length
           (syntaxSteps g.prog) h' who
   have hlenEq : h.steps.length = h'.steps.length := by
@@ -2355,10 +2355,10 @@ theorem finiteGraphMachineFOSG_legalObservable
         rfl
       exact hnil (List.eq_nil_of_length_eq_zero hlen0)
     have heventLen :=
-      (graphMachineFOSGView g hctx)
+      (fosgView g hctx)
         |>.toBoundedFOSG_history_events_length (syntaxSteps g.prog) h
     have heventLen' :=
-      (graphMachineFOSGView g hctx)
+      (fosgView g hctx)
         |>.toBoundedFOSG_history_events_length (syntaxSteps g.prog) h'
     have hcutEq :
         (syntaxSteps g.prog ≤ h.lastState.pref.events.length) ↔
@@ -2381,13 +2381,13 @@ theorem finiteGraphMachineFOSG_legalObservable
       have hInactive : who ∉ G.active h.lastState := by
         change who ∉
           (if syntaxSteps g.prog ≤ h.lastState.pref.events.length then ∅
-           else (graphMachineFOSGView g hctx).active h.lastState.pref)
+           else (fosgView g hctx).active h.lastState.pref)
         rw [if_pos hcut]
         simp
       have hInactive' : who ∉ G.active h'.lastState := by
         change who ∉
           (if syntaxSteps g.prog ≤ h'.lastState.pref.events.length then ∅
-           else (graphMachineFOSGView g hctx).active h'.lastState.pref)
+           else (fosgView g hctx).active h'.lastState.pref)
         rw [if_pos hcut']
         simp
       rw [G.availableMoves_eq_singleton_none_of_not_mem_active h hInactive,
@@ -2409,9 +2409,9 @@ theorem finiteGraphMachineFOSG_legalObservable
               publicObsOfCursorWorld (hctx := hctx)
                 (cursorWorldOfGraphConfiguration g hctx
                   h.lastState.lastState)) := by
-        simpa [G, finiteGraphMachineFOSG, boundedGraphMachineFOSG,
+        simpa [G, finiteFOSG, boundedFOSG,
           graphMachine, graphSemantics] using
-          (graphMachineFOSGView g hctx)
+          (fosgView g hctx)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               (syntaxSteps g.prog) who h hnil
       have hlatest₂ :
@@ -2423,9 +2423,9 @@ theorem finiteGraphMachineFOSG_legalObservable
               publicObsOfCursorWorld (hctx := hctx)
                 (cursorWorldOfGraphConfiguration g hctx
                   h'.lastState.lastState)) := by
-        simpa [G, finiteGraphMachineFOSG, boundedGraphMachineFOSG,
+        simpa [G, finiteFOSG, boundedFOSG,
           graphMachine, graphSemantics] using
-          (graphMachineFOSGView g hctx)
+          (fosgView g hctx)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               (syntaxSteps g.prog) who h' hnil'
       rw [hlatest₁, hlatest₂] at hlatest
@@ -2439,9 +2439,9 @@ theorem finiteGraphMachineFOSG_legalObservable
                 h'.lastState.lastState) :=
         congrArg Prod.fst hobs
       rw [
-        finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
+        finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
           g hctx who h hcut,
-        finiteGraphMachineFOSG_availableMoves_eq_observedProgram_of_not_cutoff
+        finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
           g hctx who h' hcut']
       exact observedProgram_availableMovesAtState_eq_of_privateObs_eq
         g hctx who

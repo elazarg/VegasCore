@@ -6,7 +6,7 @@ import Vegas.Strategy.Behavioral
 # Strategic semantics bridge
 
 The fixed-program behavioral carrier lives in `Vegas.Strategy.Behavioral`;
-the public `toKernelGame` constructor is machine-backed.
+the public `behavioralKernelGame` constructor is machine-backed.
 -/
 
 namespace Vegas
@@ -18,29 +18,29 @@ fixed program's local *guard-legal* behavioral strategies.
 
 This is the public behavioral strategic form. Its outcome kernel is the
 checked graph-machine kernel at the program bundle's context proof. -/
-noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
-  toMachineKernelGame g g.wctx
+noncomputable def behavioralKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
+  behavioralKernelGameAt g g.wctx
 
-@[simp] theorem toKernelGame_outcomeKernel
+@[simp] theorem behavioralKernelGame_outcomeKernel
     (g : WFProgram P L)
-    (σ : LegalProgramBehavioralProfile g) :
-    (toKernelGame g).outcomeKernel σ =
+    (σ : FeasibleProgramBehavioralProfile g) :
+    (behavioralKernelGame g).outcomeKernel σ =
       (graphMachine g g.wctx).outcomeKernel
-        (lawOfBehavioral σ g.wctx).val (syntaxSteps g.prog) := rfl
+        (behavioralEventLaw σ g.wctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem toKernelGame_udist
+@[simp] theorem behavioralKernelGame_udist
     (g : WFProgram P L)
-    (σ : LegalProgramBehavioralProfile g) :
-    (toKernelGame g).udist σ =
+    (σ : FeasibleProgramBehavioralProfile g) :
+    (behavioralKernelGame g).udist σ =
       ((graphMachine g g.wctx).outcomeKernel
-        (lawOfBehavioral σ g.wctx).val (syntaxSteps g.prog)).bind
+        (behavioralEventLaw σ g.wctx).val (syntaxSteps g.prog)).bind
         (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
-/-- `toKernelGame` is the machine-native behavioral kernel at `g.wctx`. -/
-theorem toKernelGame_eu
+/-- `behavioralKernelGame` is the machine-native behavioral kernel at `g.wctx`. -/
+theorem behavioralKernelGame_eu
     (g : WFProgram P L)
-    (σ : LegalProgramBehavioralProfile g) (who : P) :
-    (toKernelGame g).eu σ who =
-      (toMachineKernelGame g g.wctx).eu σ who := rfl
+    (σ : FeasibleProgramBehavioralProfile g) (who : P) :
+    (behavioralKernelGame g).eu σ who =
+      (behavioralKernelGameAt g g.wctx).eu σ who := rfl
 
 end Vegas

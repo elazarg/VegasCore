@@ -34,8 +34,8 @@ def eventOfProgramMove
 
 /-- PMF-valued syntax-recursive behavioral profiles induce a state-local event
 law for the checked graph machine. -/
-noncomputable def lawValOfBehavioralPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+noncomputable def pmfBehavioralEventKernel
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).EventLaw := fun cfg =>
   let w := cursorWorldOfGraphConfiguration g hctx cfg
@@ -72,11 +72,11 @@ private theorem graphStep_remainingSyntaxSteps
     g hctx hcursor havailable hsupp
 
 /-- Legal event law induced by a syntax-recursive PMF behavioral profile. -/
-noncomputable def lawOfBehavioralPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+noncomputable def pmfBehavioralEventLaw
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).LegalEventLaw :=
-  ⟨lawValOfBehavioralPMF σ hctx, by
+  ⟨pmfBehavioralEventKernel σ hctx, by
     intro state hterminal event hmem
     have hgraph : ¬ state.isTerminal := by
       simpa [graphMachine_terminal] using hterminal
@@ -84,7 +84,7 @@ noncomputable def lawOfBehavioralPMF
     cases hhead : w.1.prog with
     | ret payoffs =>
         have hevent : event = .internal () := by
-          simpa [lawValOfBehavioralPMF, w, hhead] using hmem
+          simpa [pmfBehavioralEventKernel, w, hhead] using hmem
         subst event
         exact internal_event_available_of_active_empty g hctx hgraph
           (by
@@ -94,7 +94,7 @@ noncomputable def lawOfBehavioralPMF
               CursorWorldData.prog, hhead'])
     | letExpr x e k =>
         have hevent : event = .internal () := by
-          simpa [lawValOfBehavioralPMF, w, hhead] using hmem
+          simpa [pmfBehavioralEventKernel, w, hhead] using hmem
         subst event
         have hhead' : w.1.cursor.prog = .letExpr x e k := by
           simpa [CursorWorldData.prog] using hhead
@@ -103,7 +103,7 @@ noncomputable def lawOfBehavioralPMF
             (by simpa [w, CursorWorldData.prog] using hhead'))
     | sample x D k =>
         have hevent : event = .internal () := by
-          simpa [lawValOfBehavioralPMF, w, hhead] using hmem
+          simpa [pmfBehavioralEventKernel, w, hhead] using hmem
         subst event
         have hhead' : w.1.cursor.prog = .sample x D k := by
           simpa [CursorWorldData.prog] using hhead
@@ -116,7 +116,7 @@ noncomputable def lawOfBehavioralPMF
               move ∈
                 (Observed.moveAtCursorWorldPMF g hctx σ who w).support ∧
               eventOfProgramMove g hctx who move = event := by
-          simpa [lawValOfBehavioralPMF, w, hhead] using hmem
+          simpa [pmfBehavioralEventKernel, w, hhead] using hmem
         rcases hmap with ⟨move, hmove, heq⟩
         rw [← heq]
         have havailableMove :=
@@ -159,7 +159,7 @@ noncomputable def lawOfBehavioralPMF
             simpa [w] using haction
     | reveal y who x hx k =>
         have hevent : event = .internal () := by
-          simpa [lawValOfBehavioralPMF, w, hhead] using hmem
+          simpa [pmfBehavioralEventKernel, w, hhead] using hmem
         subst event
         have hhead' : w.1.cursor.prog = .reveal y who x hx k := by
           simpa [CursorWorldData.prog] using hhead
@@ -169,15 +169,15 @@ noncomputable def lawOfBehavioralPMF
 
 /-- One graph-machine step under the PMF behavioral event law projects to the
 existing checked-world profile step. -/
-theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+theorem pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ)
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx state)) :
-    (lawValOfBehavioralPMF σ hctx state).bind
+    (pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           PMF.map
             (fun next : (graphMachine g hctx).State =>
@@ -208,7 +208,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
           (graphMachine g hctx).EventAvailable state (.internal ()) :=
         internal_event_available_of_active_empty g hctx hgraph hactive
       calc
-        (lawValOfBehavioralPMF σ hctx state).bind
+        (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               PMF.map
                 (fun next : (graphMachine g hctx).State =>
@@ -221,7 +221,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
               CheckedWorld.ofCursorChecked (hctx := hctx)
                 (cursorWorldOfGraphConfiguration g hctx next))
             ((graphMachine g hctx).step (.internal ()) state) := by
-              simp [lawValOfBehavioralPMF, w, hhead]
+              simp [pmfBehavioralEventKernel, w, hhead]
         _ =
           checkedTransition
             (CheckedWorld.ofCursorChecked (hctx := hctx) w)
@@ -248,7 +248,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
           (graphMachine g hctx).EventAvailable state (.internal ()) :=
         internal_event_available_of_active_empty g hctx hgraph hactive
       calc
-        (lawValOfBehavioralPMF σ hctx state).bind
+        (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               PMF.map
                 (fun next : (graphMachine g hctx).State =>
@@ -261,7 +261,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
               CheckedWorld.ofCursorChecked (hctx := hctx)
                 (cursorWorldOfGraphConfiguration g hctx next))
             ((graphMachine g hctx).step (.internal ()) state) := by
-              simp [lawValOfBehavioralPMF, w, hhead]
+              simp [pmfBehavioralEventKernel, w, hhead]
         _ =
           checkedTransition
             (CheckedWorld.ofCursorChecked (hctx := hctx) w)
@@ -386,7 +386,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
                         (graphMachineJointAction g hctx (.play who action))
                         haRaw
       calc
-        (lawValOfBehavioralPMF σ hctx state).bind
+        (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               PMF.map
                 (fun next : (graphMachine g hctx).State =>
@@ -402,7 +402,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
                     (cursorWorldOfGraphConfiguration g hctx next))
                 ((graphMachine g hctx).step
                   (eventOfProgramMove g hctx who oi) state)) := by
-              simp [lawValOfBehavioralPMF, w, hhead, PMF.bind_map,
+              simp [pmfBehavioralEventKernel, w, hhead, PMF.bind_map,
                 Function.comp_def]
         _ =
           (Observed.moveAtCursorWorldPMF g hctx σ who w).bind
@@ -428,7 +428,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
           (graphMachine g hctx).EventAvailable state (.internal ()) :=
         internal_event_available_of_active_empty g hctx hgraph hactive
       calc
-        (lawValOfBehavioralPMF σ hctx state).bind
+        (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               PMF.map
                 (fun next : (graphMachine g hctx).State =>
@@ -441,7 +441,7 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
               CheckedWorld.ofCursorChecked (hctx := hctx)
                 (cursorWorldOfGraphConfiguration g hctx next))
             ((graphMachine g hctx).step (.internal ()) state) := by
-              simp [lawValOfBehavioralPMF, w, hhead]
+              simp [pmfBehavioralEventKernel, w, hhead]
         _ =
           checkedTransition
             (CheckedWorld.ofCursorChecked (hctx := hctx) w)
@@ -463,15 +463,15 @@ theorem lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPM
 
 /-- The legacy cursor outcome kernel is preserved by one graph-machine step
 under the PMF behavioral event law. -/
-theorem lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+theorem pmfBehavioralEventKernel_bind_step_cursorVegasOutcomeKernelPMF
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ)
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx state)) :
-    (lawValOfBehavioralPMF σ hctx state).bind
+    (pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind
             (fun next =>
@@ -481,14 +481,14 @@ theorem lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
         (cursorWorldOfGraphConfiguration g hctx state) := by
   let w := cursorWorldOfGraphConfiguration g hctx state
   calc
-    (lawValOfBehavioralPMF σ hctx state).bind
+    (pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind
             (fun next =>
               Observed.cursorVegasOutcomeKernelPMF σ
                 (cursorWorldOfGraphConfiguration g hctx next)))
         =
-      ((lawValOfBehavioralPMF σ hctx state).bind
+      ((pmfBehavioralEventKernel σ hctx state).bind
         (fun event =>
           PMF.map
             (fun next : (graphMachine g hctx).State =>
@@ -506,7 +506,7 @@ theorem lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration g hctx state))).bind
         (Observed.checkedVegasOutcomeKernelPMF (hctx := hctx) σ) := by
-          rw [lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
+          rw [pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
             (g := g) (σ := σ) hctx state hterminal hcursor]
     _ =
       Observed.checkedVegasOutcomeKernelPMF (hctx := hctx) σ
@@ -523,8 +523,8 @@ theorem lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
 /-- From any graph state whose frontier is synchronized with the projected
 cursor, running the graph-machine event law for exactly the remaining cursor
 syntax budget gives the legacy cursor outcome kernel. -/
-theorem lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+theorem pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ) :
     ∀ (fuel : Nat) (state : (graphMachine g hctx).State),
       (cursorWorldOfGraphConfiguration g hctx state).remainingSyntaxSteps =
@@ -532,7 +532,7 @@ theorem lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
       syntaxGraphDoneBeforeCursor g state.frontier.done
         (cursorWorldOfGraphConfiguration g hctx state).1.cursor →
       (graphMachine g hctx).outcomeKernelFrom
-          (lawValOfBehavioralPMF σ hctx) fuel state =
+          (pmfBehavioralEventKernel σ hctx) fuel state =
         Observed.cursorVegasOutcomeKernelPMF σ
           (cursorWorldOfGraphConfiguration g hctx state)
   | 0, state, hfuel, _hinv => by
@@ -582,25 +582,25 @@ theorem lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
         exact hnotDone (hcomplete hcurrentMem)
       rw [Machine.outcomeKernelFrom_succ]
       calc
-        (lawValOfBehavioralPMF σ hctx state).bind
+        (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               ((graphMachine g hctx).step event state).bind
                 (fun next =>
                   (graphMachine g hctx).outcomeKernelFrom
-                    (lawValOfBehavioralPMF σ hctx) fuel next))
+                    (pmfBehavioralEventKernel σ hctx) fuel next))
             =
-          (lawValOfBehavioralPMF σ hctx state).bind
+          (pmfBehavioralEventKernel σ hctx state).bind
             (fun event =>
               ((graphMachine g hctx).step event state).bind
                 (fun next =>
                   Observed.cursorVegasOutcomeKernelPMF σ
                     (cursorWorldOfGraphConfiguration g hctx next))) := by
               refine Math.ProbabilityMassFunction.bind_congr_on_support
-                (lawValOfBehavioralPMF σ hctx state) _ _ ?_
+                (pmfBehavioralEventKernel σ hctx state) _ _ ?_
               intro event hevent
               have havailable :
                   (graphMachine g hctx).EventAvailable state event :=
-                (lawOfBehavioralPMF σ hctx).2 state hterminal hevent
+                (pmfBehavioralEventLaw σ hctx).2 state hterminal hevent
               refine Math.ProbabilityMassFunction.bind_congr_on_support
                 ((graphMachine g hctx).step event state) _ _ ?_
               intro next hnext
@@ -639,33 +639,33 @@ theorem lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
                   (g := g) hcurrentMem (by simpa [w] using hinv)
                   (by simpa [w] using hrankNext)
               exact
-                lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
+                pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
                   σ hctx fuel next hnextFuel hnextInv
         _ =
           Observed.cursorVegasOutcomeKernelPMF σ
             (cursorWorldOfGraphConfiguration g hctx state) := by
               exact
-                lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
+                pmfBehavioralEventKernel_bind_step_cursorVegasOutcomeKernelPMF
                   (g := g) (σ := σ) hctx state hterminal
                   (by simpa [w] using hcursor)
 
 /-- Initial-state specialization of
-`lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF`. -/
-theorem lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+`pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF`. -/
+theorem pmfBehavioralEventLaw_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).outcomeKernel
-        (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog) =
+        (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog) =
       Observed.cursorVegasOutcomeKernelPMF σ
         (CursorCheckedWorld.initial g hctx) := by
   change
     (graphMachine g hctx).outcomeKernelFrom
-        (lawValOfBehavioralPMF σ hctx) (syntaxSteps g.prog)
+        (pmfBehavioralEventKernel σ hctx) (syntaxSteps g.prog)
         (graphMachine g hctx).init =
       Observed.cursorVegasOutcomeKernelPMF σ
         (CursorCheckedWorld.initial g hctx)
   have hbridge :=
-    lawValOfBehavioralPMF_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
+    pmfBehavioralEventKernel_outcomeKernelFrom_eq_cursorVegasOutcomeKernelPMF
       (g := g) σ hctx (syntaxSteps g.prog) (graphMachine g hctx).init
       (by
         change
@@ -691,24 +691,24 @@ theorem lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
     hbridge
 
 /-- Legal event law induced by a legal FDist-valued behavioral profile. -/
-noncomputable def lawOfBehavioral
-    (σ : LegalProgramBehavioralProfile g)
+noncomputable def behavioralEventLaw
+    (σ : FeasibleProgramBehavioralProfile g)
     (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).LegalEventLaw :=
-  lawOfBehavioralPMF (LegalProgramBehavioralProfile.toPMFProfile σ) hctx
+  pmfBehavioralEventLaw (FeasibleProgramBehavioralProfile.toPMFProfile σ) hctx
 
 /-- Legal event law induced by a legal pure profile. -/
-noncomputable def lawOfPure
-    (σ : LegalProgramPureProfile g)
+noncomputable def pureEventLaw
+    (σ : FeasibleProgramPureProfile g)
     (hctx : WFCtx g.Γ) :
     (graphMachine g hctx).LegalEventLaw :=
-  lawOfBehavioralPMF (LegalProgramPureProfile.toBehavioralPMF σ) hctx
+  pmfBehavioralEventLaw (FeasibleProgramPureProfile.toBehavioralPMF σ) hctx
 
 @[simp] theorem lawValOfPure_apply
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (hctx : WFCtx g.Γ)
     (cfg : (graphMachine g hctx).State) :
-    (lawOfPure σ hctx).val cfg =
+    (pureEventLaw σ hctx).val cfg =
       let w := cursorWorldOfGraphConfiguration g hctx cfg
       match w.1.prog with
       | .commit _ who _ _ =>
@@ -718,7 +718,7 @@ noncomputable def lawOfPure
       | _ =>
           PMF.pure (.internal ()) := by
   change
-    lawValOfBehavioralPMF (LegalProgramPureProfile.toBehavioralPMF σ) hctx cfg =
+    pmfBehavioralEventKernel (FeasibleProgramPureProfile.toBehavioralPMF σ) hctx cfg =
       (let w := cursorWorldOfGraphConfiguration g hctx cfg
        match w.1.prog with
        | .commit _ who _ _ =>
@@ -727,7 +727,7 @@ noncomputable def lawOfPure
                (Observed.movePureAtCursorWorld g hctx σ who w))
        | _ =>
            PMF.pure (.internal ()))
-  unfold lawValOfBehavioralPMF
+  unfold pmfBehavioralEventKernel
   let w := cursorWorldOfGraphConfiguration g hctx cfg
   cases hhead : w.1.prog with
   | ret payoffs =>
@@ -744,15 +744,15 @@ noncomputable def lawOfPure
 
 /-- One graph-machine step under a pure profile's event law projects to the
 checked-world profile step for the deterministic behavioral lift. -/
-theorem lawOfPure_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
-    (σ : LegalProgramPureProfile g)
+theorem pureEventLaw_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
+    (σ : FeasibleProgramPureProfile g)
     (hctx : WFCtx g.Γ)
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx state)) :
-    ((lawOfPure σ hctx).val state).bind
+    ((pureEventLaw σ hctx).val state).bind
         (fun event =>
           PMF.map
             (fun next : (graphMachine g hctx).State =>
@@ -760,11 +760,11 @@ theorem lawOfPure_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
                 (cursorWorldOfGraphConfiguration g hctx next))
             ((graphMachine g hctx).step event state)) =
       Observed.checkedProfileStepPMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ)
+        (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration g hctx state)) := by
   change
-    (lawValOfBehavioralPMF (LegalProgramPureProfile.toBehavioralPMF σ)
+    (pmfBehavioralEventKernel (FeasibleProgramPureProfile.toBehavioralPMF σ)
         hctx state).bind
         (fun event =>
           PMF.map
@@ -773,54 +773,54 @@ theorem lawOfPure_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
                 (cursorWorldOfGraphConfiguration g hctx next))
             ((graphMachine g hctx).step event state)) =
       Observed.checkedProfileStepPMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ)
+        (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration g hctx state))
   exact
-    lawValOfBehavioralPMF_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
-      (g := g) (σ := LegalProgramPureProfile.toBehavioralPMF σ)
+    pmfBehavioralEventKernel_bind_step_map_checkedWorld_eq_checkedProfileStepPMF
+      (g := g) (σ := FeasibleProgramPureProfile.toBehavioralPMF σ)
       hctx state hterminal hcursor
 
 /-- The legacy cursor outcome kernel is preserved by one graph-machine step
 under a pure profile's event law. -/
-theorem lawOfPure_bind_step_cursorVegasOutcomeKernelPMF
-    (σ : LegalProgramPureProfile g)
+theorem pureEventLaw_bind_step_cursorVegasOutcomeKernelPMF
+    (σ : FeasibleProgramPureProfile g)
     (hctx : WFCtx g.Γ)
     (state : (graphMachine g hctx).State)
     (hterminal : ¬ (graphMachine g hctx).terminal state)
     (hcursor :
       ¬ CursorCheckedWorld.terminal
         (cursorWorldOfGraphConfiguration g hctx state)) :
-    ((lawOfPure σ hctx).val state).bind
+    ((pureEventLaw σ hctx).val state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind
             (fun next =>
               Observed.cursorVegasOutcomeKernelPMF
-                (LegalProgramPureProfile.toBehavioralPMF σ)
+                (FeasibleProgramPureProfile.toBehavioralPMF σ)
                 (cursorWorldOfGraphConfiguration g hctx next))) =
       Observed.cursorVegasOutcomeKernelPMF
-        (LegalProgramPureProfile.toBehavioralPMF σ)
+        (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (cursorWorldOfGraphConfiguration g hctx state) := by
   change
-    (lawValOfBehavioralPMF (LegalProgramPureProfile.toBehavioralPMF σ)
+    (pmfBehavioralEventKernel (FeasibleProgramPureProfile.toBehavioralPMF σ)
         hctx state).bind
         (fun event =>
           ((graphMachine g hctx).step event state).bind
             (fun next =>
               Observed.cursorVegasOutcomeKernelPMF
-                (LegalProgramPureProfile.toBehavioralPMF σ)
+                (FeasibleProgramPureProfile.toBehavioralPMF σ)
                 (cursorWorldOfGraphConfiguration g hctx next))) =
       Observed.cursorVegasOutcomeKernelPMF
-        (LegalProgramPureProfile.toBehavioralPMF σ)
+        (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (cursorWorldOfGraphConfiguration g hctx state)
   exact
-    lawValOfBehavioralPMF_bind_step_cursorVegasOutcomeKernelPMF
-      (g := g) (σ := LegalProgramPureProfile.toBehavioralPMF σ)
+    pmfBehavioralEventKernel_bind_step_cursorVegasOutcomeKernelPMF
+      (g := g) (σ := FeasibleProgramPureProfile.toBehavioralPMF σ)
       hctx state hterminal hcursor
 
 end GraphEventLaw
 
 export GraphEventLaw
-  (lawValOfBehavioralPMF lawOfBehavioralPMF lawOfBehavioral lawOfPure)
+  (pmfBehavioralEventKernel pmfBehavioralEventLaw behavioralEventLaw pureEventLaw)
 
 end Vegas

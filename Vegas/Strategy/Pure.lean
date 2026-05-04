@@ -130,7 +130,7 @@ end ProgramPureProfile
 /-- A per-commit pure-kernel legality predicate: at every erased
 environment, the action chosen by the kernel (on `who`'s view of that
 environment) satisfies the commit's guard. -/
-def PureKernel.IsLegalAt
+def PureKernel.RespectsGuard
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     (κ : PureKernel who Γ b)
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
@@ -140,32 +140,32 @@ def PureKernel.IsLegalAt
 
 /-- A pure strategy is guard-legal when every kernel at every owned
 commit site satisfies `IsLegalAt` for that commit's guard. -/
-def ProgramPureStrategy.IsLegal : {who : P} →
+def ProgramPureStrategy.RespectsGuards : {who : P} →
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     ProgramPureStrategy who p → Prop
   | _, _, .ret _, _ => True
   | who, _, .letExpr _ _ k, σ =>
-      ProgramPureStrategy.IsLegal (who := who) k σ
+      ProgramPureStrategy.RespectsGuards (who := who) k σ
   | who, _, .sample _ _ k, σ =>
-      ProgramPureStrategy.IsLegal (who := who) k σ
+      ProgramPureStrategy.RespectsGuards (who := who) k σ
   | who, _, .commit _x owner (b := b) R k, σ => by
       by_cases h : owner = who
       · let σ' : PureKernel owner _ b ×
                  ProgramPureStrategy owner k := by
           subst h
           simpa [ProgramPureStrategy] using σ
-        exact σ'.1.IsLegalAt R
-              ∧ ProgramPureStrategy.IsLegal (who := owner) k σ'.2
+        exact σ'.1.RespectsGuard R
+              ∧ ProgramPureStrategy.RespectsGuards (who := owner) k σ'.2
       · let σ' : ProgramPureStrategy who k := by
           simpa [ProgramPureStrategy, h] using σ
-        exact ProgramPureStrategy.IsLegal (who := who) k σ'
+        exact ProgramPureStrategy.RespectsGuards (who := who) k σ'
   | who, _, .reveal _ _ _ _ k, σ =>
-      ProgramPureStrategy.IsLegal (who := who) k σ
+      ProgramPureStrategy.RespectsGuards (who := who) k σ
 
 /-- A pure profile is legal when every player's strategy is legal. -/
-def ProgramPureProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
+def ProgramPureProfile.RespectsGuards {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramPureProfile p) : Prop :=
-  ∀ who, (σ who).IsLegal p
+  ∀ who, (σ who).RespectsGuards p
 
 namespace ProgramPureProfile
 
@@ -175,21 +175,21 @@ theorem tail_isLegal
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     {σ : ProgramPureProfile (.commit x who R k)}
-    (hσ : σ.IsLegal) :
-    (ProgramPureProfile.tail σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (ProgramPureProfile.tail σ).RespectsGuards := by
   intro j
   by_cases hj : who = j
   · subst hj
-    have hσ_who : (σ who).IsLegal (.commit x who R k) := hσ who
-    dsimp [ProgramPureStrategy.IsLegal] at hσ_who
+    have hσ_who : (σ who).RespectsGuards (.commit x who R k) := hσ who
+    dsimp [ProgramPureStrategy.RespectsGuards] at hσ_who
     dsimp [ProgramPureProfile.tail]
     split at hσ_who
     · split
       · exact hσ_who.2
       · exact absurd rfl ‹_›
     · exact absurd rfl ‹_›
-  · have hσ_j : (σ j).IsLegal (.commit x who R k) := hσ j
-    dsimp [ProgramPureStrategy.IsLegal] at hσ_j
+  · have hσ_j : (σ j).RespectsGuards (.commit x who R k) := hσ j
+    dsimp [ProgramPureStrategy.RespectsGuards] at hσ_j
     dsimp [ProgramPureProfile.tail]
     split at hσ_j
     · rename_i h
@@ -202,32 +202,32 @@ theorem tail_isLegal
 end ProgramPureProfile
 
 /-- Guard-legal pure strategies over a `WFProgram` bundle. -/
-abbrev LegalProgramPureStrategy (g : WFProgram P L) (who : P) : Type :=
+abbrev FeasibleProgramPureStrategy (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramPureStrategy who g.prog //
-    s.IsLegal g.prog }
+    s.RespectsGuards g.prog }
 
 /-- Guard-legal joint pure profile over a `WFProgram` bundle. -/
-abbrev LegalProgramPureProfile (g : WFProgram P L) : Type :=
-  ∀ who, LegalProgramPureStrategy g who
+abbrev FeasibleProgramPureProfile (g : WFProgram P L) : Type :=
+  ∀ who, FeasibleProgramPureStrategy g who
 
 /-- Classical `Fintype` on the per-player guard-legal pure strategy
 subtype. Requires `FiniteValuation L` and uses `Classical.dec` for
 decidability of the legality predicate. -/
-@[reducible] noncomputable def LegalProgramPureStrategy.instFintype
+@[reducible] noncomputable def FeasibleProgramPureStrategy.instFintype
     (g : WFProgram P L) (LF : FiniteValuation L) (who : P) :
-    Fintype (LegalProgramPureStrategy g who) := by
+    Fintype (FeasibleProgramPureStrategy g who) := by
   classical
   let _ : Fintype (ProgramPureStrategy who g.prog) :=
     ProgramPureStrategy.instFintype (L := L) LF who g.prog
   exact Subtype.fintype _
 
 /-- Classical `Fintype` on the joint guard-legal pure profile. -/
-@[reducible] noncomputable def LegalProgramPureProfile.instFintype
+@[reducible] noncomputable def FeasibleProgramPureProfile.instFintype
     (g : WFProgram P L) (LF : FiniteValuation L) [Fintype P] :
-    Fintype (LegalProgramPureProfile g) := by
+    Fintype (FeasibleProgramPureProfile g) := by
   classical
-  have h : ∀ who, Fintype (LegalProgramPureStrategy g who) := fun who =>
-    LegalProgramPureStrategy.instFintype g LF who
+  have h : ∀ who, Fintype (FeasibleProgramPureStrategy g who) := fun who =>
+    FeasibleProgramPureStrategy.instFintype g LF who
   exact Pi.instFintype
 
 end Vegas

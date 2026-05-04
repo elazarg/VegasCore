@@ -119,7 +119,7 @@ end ProgramBehavioralProfile
 environment `ρ`, the kernel's output distribution (viewed through `who`'s
 view projection of `ρ`) is supported on actions that satisfy the commit
 guard `R` under `ρ`. -/
-def ProgramBehavioralKernel.IsLegalAt
+def ProgramBehavioralKernel.RespectsGuard
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     (κ : ProgramBehavioralKernel who Γ b)
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
@@ -129,32 +129,32 @@ def ProgramBehavioralKernel.IsLegalAt
 
 /-- A behavioral strategy is guard-legal when every kernel at every
 owned commit site satisfies `IsLegalAt` for that commit's guard. -/
-def ProgramBehavioralStrategy.IsLegal : {who : P} →
+def ProgramBehavioralStrategy.RespectsGuards : {who : P} →
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     ProgramBehavioralStrategy who p → Prop
   | _, _, .ret _, _ => True
   | who, _, .letExpr _ _ k, σ =>
-      ProgramBehavioralStrategy.IsLegal (who := who) k σ
+      ProgramBehavioralStrategy.RespectsGuards (who := who) k σ
   | who, _, .sample _ _ k, σ =>
-      ProgramBehavioralStrategy.IsLegal (who := who) k σ
+      ProgramBehavioralStrategy.RespectsGuards (who := who) k σ
   | who, _, .commit _x owner (b := b) R k, σ => by
       by_cases h : owner = who
       · let σ' : ProgramBehavioralKernel owner _ b ×
                  ProgramBehavioralStrategy owner k := by
           subst h
           simpa [ProgramBehavioralStrategy] using σ
-        exact σ'.1.IsLegalAt R
-              ∧ ProgramBehavioralStrategy.IsLegal (who := owner) k σ'.2
+        exact σ'.1.RespectsGuard R
+              ∧ ProgramBehavioralStrategy.RespectsGuards (who := owner) k σ'.2
       · let σ' : ProgramBehavioralStrategy who k := by
           simpa [ProgramBehavioralStrategy, h] using σ
-        exact ProgramBehavioralStrategy.IsLegal (who := who) k σ'
+        exact ProgramBehavioralStrategy.RespectsGuards (who := who) k σ'
   | who, _, .reveal _ _ _ _ k, σ =>
-      ProgramBehavioralStrategy.IsLegal (who := who) k σ
+      ProgramBehavioralStrategy.RespectsGuards (who := who) k σ
 
 /-- A behavioral profile is legal when every player's strategy is legal. -/
-def ProgramBehavioralProfile.IsLegal {Γ : VCtx P L} {p : VegasCore P L Γ}
+def ProgramBehavioralProfile.RespectsGuards {Γ : VCtx P L} {p : VegasCore P L Γ}
     (σ : ProgramBehavioralProfile p) : Prop :=
-  ∀ who, (σ who).IsLegal p
+  ∀ who, (σ who).RespectsGuards p
 
 namespace ProgramBehavioralProfile
 
@@ -164,21 +164,21 @@ theorem tail_isLegal
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     {σ : ProgramBehavioralProfile (.commit x who R k)}
-    (hσ : σ.IsLegal) :
-    (ProgramBehavioralProfile.tail σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (ProgramBehavioralProfile.tail σ).RespectsGuards := by
   intro j
   by_cases hj : who = j
   · subst hj
-    have hσ_who : (σ who).IsLegal (.commit x who R k) := hσ who
-    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_who
+    have hσ_who : (σ who).RespectsGuards (.commit x who R k) := hσ who
+    dsimp [ProgramBehavioralStrategy.RespectsGuards] at hσ_who
     dsimp [ProgramBehavioralProfile.tail]
     split at hσ_who
     · split
       · exact hσ_who.2
       · exact absurd rfl ‹_›
     · exact absurd rfl ‹_›
-  · have hσ_j : (σ j).IsLegal (.commit x who R k) := hσ j
-    dsimp [ProgramBehavioralStrategy.IsLegal] at hσ_j
+  · have hσ_j : (σ j).RespectsGuards (.commit x who R k) := hσ j
+    dsimp [ProgramBehavioralStrategy.RespectsGuards] at hσ_j
     dsimp [ProgramBehavioralProfile.tail]
     split at hσ_j
     · rename_i h
@@ -191,12 +191,12 @@ theorem tail_isLegal
 end ProgramBehavioralProfile
 
 /-- Guard-legal behavioral strategies over a `WFProgram` bundle. -/
-abbrev LegalProgramBehavioralStrategy (g : WFProgram P L) (who : P) : Type :=
+abbrev FeasibleProgramBehavioralStrategy (g : WFProgram P L) (who : P) : Type :=
   { s : ProgramBehavioralStrategy who g.prog //
-    s.IsLegal g.prog }
+    s.RespectsGuards g.prog }
 
 /-- Guard-legal joint behavioral profile over a `WFProgram` bundle. -/
-abbrev LegalProgramBehavioralProfile (g : WFProgram P L) : Type :=
-  ∀ who, LegalProgramBehavioralStrategy g who
+abbrev FeasibleProgramBehavioralProfile (g : WFProgram P L) : Type :=
+  ∀ who, FeasibleProgramBehavioralStrategy g who
 
 end Vegas

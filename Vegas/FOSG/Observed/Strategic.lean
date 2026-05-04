@@ -11,12 +11,12 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 namespace Observed
 
-theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
+theorem observedProgramOutcomeKernelPMF_eq_pmfBehavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) :
     observedProgramOutcomeKernelPMF g hctx LF σ =
-      (toKernelGamePMF g).outcomeKernel σ := by
+      (pmfBehavioralKernelGame g).outcomeKernel σ := by
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P,
@@ -34,38 +34,38 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
   have hrun :
       observedProgramOutcomeKernelPMF g hctx LF σ =
         (graphMachine g hctx).outcomeKernel
-          (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog) := by
-    rw [GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
+          (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog) := by
+    rw [GraphEventLaw.pmfBehavioralEventLaw_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
     simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
       using hclosure
   exact hrun.trans
-    (lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF σ hctx)
+    (pmfBehavioralEventLaw_outcomeKernel_eq_pmfBehavioralKernelGame σ hctx)
 
 /-- Pure-strategy outcome preservation for the observed-program FOSG.
 
 Transporting a Vegas legal pure profile to the FOSG, running its deterministic
 behavioral lift, and projecting terminal histories to Vegas outcomes gives the
-same outcome distribution as `toStrategicKernelGame`. -/
-theorem observedProgramPureOutcomeKernel_eq_toStrategicKernelGame
+same outcome distribution as `pureKernelGame`. -/
+theorem observedProgramPureOutcomeKernel_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     PMF.map (observedProgramHistoryOutcome g hctx)
         (observedProgramRunDist g hctx LF
           ((observedProgramFOSG g hctx).legalPureToBehavioral
             (toObservedProgramLegalPureProfile g hctx σ))) =
-      (toStrategicKernelGame g).outcomeKernel σ := by
+      (pureKernelGame g).outcomeKernel σ := by
   rw [show
       PMF.map (observedProgramHistoryOutcome g hctx)
           (observedProgramRunDist g hctx LF
             ((observedProgramFOSG g hctx).legalPureToBehavioral
               (toObservedProgramLegalPureProfile g hctx σ))) =
         observedProgramOutcomeKernelPMF g hctx LF
-          (LegalProgramPureProfile.toBehavioralPMF σ) by
+          (FeasibleProgramPureProfile.toBehavioralPMF σ) by
         simp [observedProgramOutcomeKernelPMF,
           toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF]]
-  rw [observedProgramOutcomeKernelPMF_eq_toKernelGamePMF]
-  exact toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
+  rw [observedProgramOutcomeKernelPMF_eq_pmfBehavioralKernelGame]
+  exact pmfBehavioralKernelGame_outcomeKernel_eq_pureKernelGame_toBehavioralPMF
     g σ
 
 /-- Reachable pure-profile outcome preservation for the observed-program FOSG.
@@ -73,11 +73,11 @@ theorem observedProgramPureOutcomeKernel_eq_toStrategicKernelGame
 The reachable-coordinate FOSG Kuhn theorem states its pure side using
 `reachableHistoryOutcomeDistPureProfile`. For Vegas, that distribution is the
 same terminal-history law as the native observed-program FOSG run of the
-extended pure profile, hence it projects to `toStrategicKernelGame`. -/
-theorem observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
+extended pure profile, hence it projects to `pureKernelGame`. -/
+theorem observedProgramReachablePureOutcomeKernel_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     letI : ∀ who : P,
         Fintype (Option (ProgramAction g.prog who)) :=
       fun who =>
@@ -89,7 +89,7 @@ theorem observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
           (observedProgramFOSG_legalObservable g hctx)
           (syntaxSteps g.prog)
           (toObservedProgramReachableLegalPureProfile g hctx σ)) =
-      (toStrategicKernelGame g).outcomeKernel σ := by
+      (pureKernelGame g).outcomeKernel σ := by
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P,
@@ -116,7 +116,7 @@ theorem observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
           (G := observedProgramFOSG g hctx)
           (toObservedProgramLegalPureProfile g hctx σ)
           (syntaxSteps g.prog)]
-  exact observedProgramPureOutcomeKernel_eq_toStrategicKernelGame g hctx LF σ
+  exact observedProgramPureOutcomeKernel_eq_pureKernelGame g hctx LF σ
 
 /-- Native-FOSG run-distribution form of reachable-coordinate FOSG M→B.
 
@@ -204,12 +204,12 @@ stated over native FOSG execution.
 The witness is a legal reachable behavioral profile for the observed-program
 FOSG. The preserved object is the pushforward distribution on Vegas outcomes;
 expected-utility preservation is a corollary of this distribution statement. -/
-theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+theorem observedProgramReachable_vegasMixedPure_runDist_pureKernelGame_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     letI : Fintype (CursorCheckedWorld g) :=
       observedProgramFOSG.instFintypeWorld g hctx LF
     letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -223,9 +223,9 @@ theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_fi
           ((observedProgramFOSG g hctx).runDist
             (syntaxSteps g.prog) β.extend) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -243,7 +243,7 @@ theorem observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_fi
   rw [hdist]
   apply congrArg
   funext σ
-  exact observedProgramReachablePureOutcomeKernel_eq_toStrategicKernelGame
+  exact observedProgramReachablePureOutcomeKernel_eq_pureKernelGame
     g hctx LF σ
 
 /-- Product-mixed Vegas-pure specialization of FOSG M→B with a total FOSG
@@ -253,12 +253,12 @@ The proof still uses the bounded-history reachable theorem internally, then
 extends the reachable behavioral profile to a total legal FOSG behavioral
 profile. This avoids any finiteness assumption on the full FOSG information
 state space. -/
-theorem observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_finite
+theorem observedProgramFullFOSG_vegasMixedPure_runDist_pureKernelGame_finite
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     letI : Fintype (CursorCheckedWorld g) :=
       observedProgramFOSG.instFintypeWorld g hctx LF
     letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -272,9 +272,9 @@ theorem observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_fin
           ((observedProgramFOSG g hctx).runDist
             (syntaxSteps g.prog) β) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -284,7 +284,7 @@ theorem observedProgramFullFOSG_vegasMixedPure_runDist_toStrategicKernelGame_fin
   letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal g hctx
   obtain ⟨β, hβ⟩ :=
-    observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    observedProgramReachable_vegasMixedPure_runDist_pureKernelGame_finite
       g hctx LF μ
   exact ⟨β.extend, hβ⟩
 
@@ -296,16 +296,16 @@ FOSG, with the same distribution over Vegas payoff outcomes. -/
 theorem observedProgramReachableKernelGame_mixedPure_realization
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-      fun who => LegalProgramPureStrategy.instFintype g LF who
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
+    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+      fun who => FeasibleProgramPureStrategy.instFintype g LF who
     ∃ β : GameTheory.KernelGame.Profile
         (observedProgramReachableKernelGame g hctx LF),
       (observedProgramReachableKernelGame g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (toStrategicKernelGame g).outcomeKernel σ) := by
-  letI : ∀ who, Fintype (LegalProgramPureStrategy g who) :=
-    fun who => LegalProgramPureStrategy.instFintype g LF who
+          (fun σ => (pureKernelGame g).outcomeKernel σ) := by
+  letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
+    fun who => FeasibleProgramPureStrategy.instFintype g LF who
   letI : Fintype (CursorCheckedWorld g) :=
     observedProgramFOSG.instFintypeWorld g hctx LF
   letI : ∀ who : P, Fintype (Option (ProgramAction g.prog who)) :=
@@ -315,7 +315,7 @@ theorem observedProgramReachableKernelGame_mixedPure_realization
   letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
     observedProgramFOSG.instDecidablePredTerminal g hctx
   obtain ⟨β, hβ⟩ :=
-    observedProgramReachable_vegasMixedPure_runDist_toStrategicKernelGame_finite
+    observedProgramReachable_vegasMixedPure_runDist_pureKernelGame_finite
       g hctx LF μ
   refine ⟨β, ?_⟩
   simpa using hβ

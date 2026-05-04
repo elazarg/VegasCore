@@ -19,76 +19,76 @@ namespace GraphEventLaw
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Pure strategic form whose outcome kernel is the checked graph machine. -/
-noncomputable def toMachineStrategicKernelGame
+noncomputable def pureKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := LegalProgramPureStrategy g
+  Strategy := FeasibleProgramPureStrategy g
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun σ =>
     (graphMachine g hctx).outcomeKernel
-      (lawOfPure σ hctx).val (syntaxSteps g.prog)
+      (pureEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem toMachineStrategicKernelGame_outcomeKernel
+@[simp] theorem pureKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
-    (toMachineStrategicKernelGame g hctx).outcomeKernel σ =
+    (σ : FeasibleProgramPureProfile g) :
+    (pureKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
-        (lawOfPure σ hctx).val (syntaxSteps g.prog) := rfl
+        (pureEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem toMachineStrategicKernelGame_Strategy
+@[simp] theorem pureKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (toMachineStrategicKernelGame g hctx).Strategy =
-      LegalProgramPureStrategy g := rfl
+    (pureKernelGameAt g hctx).Strategy =
+      FeasibleProgramPureStrategy g := rfl
 
 /-- PMF behavioral strategic form whose outcome kernel is the checked graph
 machine. -/
-noncomputable def toMachineKernelGamePMF
+noncomputable def pmfBehavioralKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := SyntaxLegalProgramBehavioralStrategyPMF g
+  Strategy := FeasibleProgramBehavioralStrategyPMF g
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun σ =>
     (graphMachine g hctx).outcomeKernel
-      (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog)
+      (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem toMachineKernelGamePMF_outcomeKernel
+@[simp] theorem pmfBehavioralKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
-    (toMachineKernelGamePMF g hctx).outcomeKernel σ =
+    (σ : FeasibleProgramBehavioralProfilePMF g) :
+    (pmfBehavioralKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
-        (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog) := rfl
+        (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem toMachineKernelGamePMF_Strategy
+@[simp] theorem pmfBehavioralKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (toMachineKernelGamePMF g hctx).Strategy =
-      SyntaxLegalProgramBehavioralStrategyPMF g := rfl
+    (pmfBehavioralKernelGameAt g hctx).Strategy =
+      FeasibleProgramBehavioralStrategyPMF g := rfl
 
 /-- FDist behavioral strategic form whose outcome kernel is the checked graph
 machine. -/
-noncomputable def toMachineKernelGame
+noncomputable def behavioralKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := LegalProgramBehavioralStrategy g
+  Strategy := FeasibleProgramBehavioralStrategy g
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun σ =>
     (graphMachine g hctx).outcomeKernel
-      (lawOfBehavioral σ hctx).val (syntaxSteps g.prog)
+      (behavioralEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem toMachineKernelGame_outcomeKernel
+@[simp] theorem behavioralKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramBehavioralProfile g) :
-    (toMachineKernelGame g hctx).outcomeKernel σ =
+    (σ : FeasibleProgramBehavioralProfile g) :
+    (behavioralKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
-        (lawOfBehavioral σ hctx).val (syntaxSteps g.prog) := rfl
+        (behavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem toMachineKernelGame_Strategy
+@[simp] theorem behavioralKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (toMachineKernelGame g hctx).Strategy =
-      LegalProgramBehavioralStrategy g := rfl
+    (behavioralKernelGameAt g hctx).Strategy =
+      FeasibleProgramBehavioralStrategy g := rfl
 
 end GraphEventLaw
 
 export GraphEventLaw
-  (toMachineStrategicKernelGame toMachineKernelGamePMF toMachineKernelGame)
+  (pureKernelGameAt pmfBehavioralKernelGameAt behavioralKernelGameAt)
 
 end Vegas

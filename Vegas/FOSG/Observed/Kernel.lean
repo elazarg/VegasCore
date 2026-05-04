@@ -18,23 +18,23 @@ history distribution along `observedProgramHistoryOutcome`. -/
 
 noncomputable def checkedVegasOutcomeKernelPMF
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) : PMF (Outcome P) :=
-  outcomeDistBehavioralPMF w.prog w.normalized
+  behavioralOutcomePMF w.prog w.normalized
     (w.suffix.behavioralProfilePMF (fun i => (σ i).val)) w.env
 
 /-- Vegas' denotational outcome kernel at the finite cursor world. This is the
 cursor-native value used by the observed-program FOSG outcome proof. -/
 noncomputable def cursorVegasOutcomeKernelPMF
     {g : WFProgram P L}
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CursorCheckedWorld g) : PMF (Outcome P) :=
-  outcomeDistBehavioralPMF w.1.prog w.2.2.2.2.1
+  behavioralOutcomePMF w.1.prog w.2.2.2.2.1
     (w.1.suffix.behavioralProfilePMF (fun i => (σ i).val)) w.1.env
 
 noncomputable def checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) : PMF (CheckedWorld g hctx) := by
   cases w with
   | mk Γ prog env suffix wctx fresh viewScoped normalized legal =>
@@ -151,7 +151,7 @@ noncomputable def checkedCommitContinuation
 
 theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -226,7 +226,7 @@ theorem moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
         (hty (ProgramSuffix.ty_commitCursor suffix))
 theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx)
     (a : {a : JointAction P L // CheckedJointActionLegal w a})
     (hactive : checkedActive w = ∅) :
@@ -253,7 +253,7 @@ theorem
     [Fintype P]
     [∀ who : P,
       Fintype (Option (ProgramAction g.prog who))]
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (h : (observedProgramFOSG g hctx).History)
     (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState)
     (hactive :
@@ -501,7 +501,7 @@ theorem observedProgramLegalActionLawPMF_bind_checkedTransition_eq_checkedProfil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (h : (observedProgramFOSG g hctx).History)
     (hterm : ¬ (observedProgramFOSG g hctx).terminal h.lastState) :
     ((observedProgramFOSG g hctx).legalActionLaw
@@ -548,7 +548,7 @@ def checkedWorldOutcome
 
 theorem checkedVegasOutcomeKernelPMF_terminal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx)
     (hterm : checkedTerminal w) :
     checkedVegasOutcomeKernelPMF σ w =
@@ -558,7 +558,7 @@ theorem checkedVegasOutcomeKernelPMF_terminal
       cases prog with
       | ret payoffs =>
           simp [checkedVegasOutcomeKernelPMF, checkedWorldOutcome,
-            outcomeDistBehavioralPMF]
+            behavioralOutcomePMF]
       | letExpr x e k =>
           simp [checkedTerminal, CheckedWorld.toWorld, terminal] at hterm
       | sample x D k =>
@@ -570,7 +570,7 @@ theorem checkedVegasOutcomeKernelPMF_terminal
 
 theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CheckedWorld g hctx) :
     (checkedProfileStepPMF g hctx σ w).bind
         (checkedVegasOutcomeKernelPMF σ) =
@@ -580,10 +580,10 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
       cases prog with
       | ret payoffs =>
           simp [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
-            outcomeDistBehavioralPMF]
+            behavioralOutcomePMF]
       | letExpr x e k =>
           simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
-            outcomeDistBehavioralPMF, PMF.pure_bind]
+            behavioralOutcomePMF, PMF.pure_bind]
           rw [show
               (ProgramSuffix.letExpr suffix).behavioralProfilePMF
                   (fun i => (σ i).val) =
@@ -597,17 +597,17 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
           rfl
       | sample x D k =>
           simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
-            outcomeDistBehavioralPMF]
+            behavioralOutcomePMF]
           rw [PMF.bind_map]
           rfl
       | commit x who R k =>
           simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
-            outcomeDistBehavioralPMF]
+            behavioralOutcomePMF]
           rw [PMF.bind_map]
           rfl
       | reveal y who x hx k =>
           simp only [checkedProfileStepPMF, checkedVegasOutcomeKernelPMF,
-            outcomeDistBehavioralPMF, PMF.pure_bind]
+            behavioralOutcomePMF, PMF.pure_bind]
           rw [show
               (ProgramSuffix.reveal suffix).behavioralProfilePMF
                   (fun i => (σ i).val) =
@@ -623,7 +623,7 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
 
 @[simp] theorem checkedVegasOutcomeKernelPMF_ofCursorChecked
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CursorCheckedWorld g) :
     checkedVegasOutcomeKernelPMF (hctx := hctx) σ
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
@@ -645,7 +645,7 @@ theorem checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
 
 theorem cursorVegasOutcomeKernelPMF_terminal
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (w : CursorCheckedWorld g)
     (hterm : w.terminal) :
     cursorVegasOutcomeKernelPMF σ w =
@@ -673,7 +673,7 @@ noncomputable def observedProgramOutcomeValuePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) :
     GameTheory.FOSG.History.OutcomeValue
       (G := observedProgramFOSG g hctx)
       (toObservedProgramLegalBehavioralProfilePMF g hctx σ)
@@ -713,7 +713,7 @@ noncomputable def observedProgramOutcomeValuePMF
 noncomputable def observedProgramOutcomeKernelPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     [Fintype P]
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
+    (σ : FeasibleProgramBehavioralProfilePMF g) : PMF (Outcome P) :=
   PMF.map (observedProgramHistoryOutcome g hctx)
     (observedProgramRunDist g hctx LF
       (toObservedProgramLegalBehavioralProfilePMF g hctx σ))

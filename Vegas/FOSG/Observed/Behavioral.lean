@@ -16,7 +16,7 @@ induced by a legal Vegas PMF behavioral profile.
 
 noncomputable def moveAtProgramCursorPMF
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
@@ -39,7 +39,7 @@ noncomputable def moveAtProgramCursorPMF
 
 @[simp] theorem moveAtProgramCursorPMF_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -55,7 +55,7 @@ noncomputable def moveAtProgramCursorPMF
 
 theorem headKernelPMF_supported_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -69,8 +69,8 @@ theorem headKernelPMF_supported_atCursor
     evalGuard (Player := P) (L := L) R v ρ = true := by
   let raw : ProgramBehavioralProfilePMF g.prog :=
     fun i => (σ i).val
-  have hraw : raw.IsLegal := fun i => (σ i).2
-  have hcursor : (suffix.behavioralProfilePMF raw).IsLegal :=
+  have hraw : raw.RespectsGuards := fun i => (σ i).2
+  have hcursor : (suffix.behavioralProfilePMF raw).RespectsGuards :=
     suffix.behavioralProfilePMF_isLegal hraw
   have hsite := hcursor who
   have hsite' :
@@ -79,15 +79,15 @@ theorem headKernelPMF_supported_atCursor
           ((suffix.behavioralProfilePMF raw) who)
           (projectViewEnv who ρ)).support →
         evalGuard (Player := P) (L := L) R v ρ = true) ∧
-        ProgramBehavioralStrategyPMF.IsLegal
+        ProgramBehavioralStrategyPMF.RespectsGuards
           k (ProgramBehavioralStrategyPMF.tailOwn
             ((suffix.behavioralProfilePMF raw) who)) := by
-    simpa [raw, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+    simpa [raw, ProgramBehavioralStrategyPMF.RespectsGuards] using hsite
   exact hsite'.1 ρ hv
 
 noncomputable def moveAtCursorWorldPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursorPMF g hctx σ who w.1.suffix
@@ -95,7 +95,7 @@ noncomputable def moveAtCursorWorldPMF
 
 noncomputable def moveAtCheckedWorldPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) (w : CheckedWorld g hctx) :
     PMF (Option (ProgramAction g.prog who)) :=
   moveAtProgramCursorPMF g hctx σ who w.suffix
@@ -103,7 +103,7 @@ noncomputable def moveAtCheckedWorldPMF
 
 @[simp] theorem moveAtCheckedWorldPMF_ofCursorChecked
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     moveAtCheckedWorldPMF g hctx σ who
         (CheckedWorld.ofCursorChecked (hctx := hctx) w) =
@@ -111,7 +111,7 @@ noncomputable def moveAtCheckedWorldPMF
 
 theorem moveAtProgramCursorPMF_support_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (env : VEnv L Γ)
@@ -169,7 +169,7 @@ theorem moveAtProgramCursorPMF_support_availableAt
 
 theorem moveAtCursorWorldPMF_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g)
     {oi : Option (ProgramAction g.prog who)}
     (hoi : oi ∈ (moveAtCursorWorldPMF g hctx σ who w).support) :

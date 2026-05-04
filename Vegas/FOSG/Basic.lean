@@ -188,8 +188,8 @@ theorem pureStrategy_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p) (who : P)
     {σ : ProgramPureStrategy who root}
-    (hσ : σ.IsLegal root) :
-    (s.pureStrategy who σ).IsLegal p := by
+    (hσ : σ.RespectsGuards root) :
+    (s.pureStrategy who σ).RespectsGuards p := by
   induction s generalizing σ with
   | here => exact hσ
   | letExpr s ih => simpa [pureStrategy] using ih hσ
@@ -201,14 +201,14 @@ theorem pureStrategy_isLegal
       · cases h
         dsimp [pureStrategy]
         have hsite' :
-            (ProgramPureStrategy.headKernel (s.pureStrategy who σ)).IsLegalAt
+            (ProgramPureStrategy.headKernel (s.pureStrategy who σ)).RespectsGuard
                 (x := x) (who := who) (b := b) R ∧
-              (ProgramPureStrategy.tailOwn (s.pureStrategy who σ)).IsLegal
+              (ProgramPureStrategy.tailOwn (s.pureStrategy who σ)).RespectsGuards
                 k := by
-          simpa [ProgramPureStrategy.IsLegal] using hsite
+          simpa [ProgramPureStrategy.RespectsGuards] using hsite
         simpa [pureStrategy] using hsite'.2
       · dsimp [pureStrategy]
-        simpa [ProgramPureStrategy.IsLegal, h] using hsite
+        simpa [ProgramPureStrategy.RespectsGuards, h] using hsite
 
 @[simp] theorem pureProfile_letExpr
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀}
@@ -272,8 +272,8 @@ theorem pureProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
     {σ : ProgramPureProfile root}
-    (hσ : σ.IsLegal) :
-    (s.pureProfile σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (s.pureProfile σ).RespectsGuards := by
   induction s generalizing σ with
   | here => exact hσ
   | letExpr s ih => exact ih hσ
@@ -341,8 +341,8 @@ theorem behavioralProfile_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
     {σ : ProgramBehavioralProfile root}
-    (hσ : σ.IsLegal) :
-    (s.behavioralProfile σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (s.behavioralProfile σ).RespectsGuards := by
   induction s generalizing σ with
   | here => exact hσ
   | letExpr s ih => exact ih hσ
@@ -423,8 +423,8 @@ theorem behavioralProfilePMF_isLegal
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}
     (s : ProgramSuffix root p)
     {σ : ProgramBehavioralProfilePMF root}
-    (hσ : σ.IsLegal) :
-    (s.behavioralProfilePMF σ).IsLegal := by
+    (hσ : σ.RespectsGuards) :
+    (s.behavioralProfilePMF σ).RespectsGuards := by
   induction s generalizing σ with
   | here => exact hσ
   | letExpr s ih =>
@@ -434,7 +434,7 @@ theorem behavioralProfilePMF_isLegal
       cases hprof : s.behavioralProfilePMF σ who with
       | letExpr tail =>
           rw [hprof] at hsite
-          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.RespectsGuards] using hsite
   | sample s ih =>
       intro who
       rw [behavioralProfilePMF_sample]
@@ -442,7 +442,7 @@ theorem behavioralProfilePMF_isLegal
       cases hprof : s.behavioralProfilePMF σ who with
       | sample tail =>
           rw [hprof] at hsite
-          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.RespectsGuards] using hsite
   | commit s ih =>
       exact ProgramBehavioralProfilePMF.tail_isLegal (ih hσ)
   | reveal s ih =>
@@ -452,7 +452,7 @@ theorem behavioralProfilePMF_isLegal
       cases hprof : s.behavioralProfilePMF σ who with
       | reveal tail =>
           rw [hprof] at hsite
-          simpa [hprof, ProgramBehavioralStrategyPMF.IsLegal] using hsite
+          simpa [hprof, ProgramBehavioralStrategyPMF.RespectsGuards] using hsite
 
 theorem behavioralProfilePMF_toBehavioralPMF
     {Γ₀ Γ : VCtx P L} {root : VegasCore P L Γ₀} {p : VegasCore P L Γ}

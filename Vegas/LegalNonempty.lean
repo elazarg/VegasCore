@@ -3,7 +3,7 @@ import Vegas.Strategy.Pure
 /-!
 # Nonempty instance for guard-legal pure profiles
 
-Two constructors witnessing `Nonempty (LegalProgramPureProfile g)`:
+Two constructors witnessing `Nonempty (FeasibleProgramPureProfile g)`:
 
 * `instNonempty_of_trivialGuards` — for programs whose commit guards
   are constantly-true (matching-pennies, sequential-reveal, any
@@ -93,16 +93,16 @@ theorem defaultPureStrategy_IsLegal
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
     {who : P} : {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     TrivialGuards p →
-    (defaultPureStrategy (L := L) who p).IsLegal p
+    (defaultPureStrategy (L := L) who p).RespectsGuards p
   | _, .ret _, _ => trivial
   | _, .letExpr _ _ k, htriv => by
-      dsimp [defaultPureStrategy, ProgramPureStrategy.IsLegal]
+      dsimp [defaultPureStrategy, ProgramPureStrategy.RespectsGuards]
       exact defaultPureStrategy_IsLegal k htriv
   | _, .sample _ _ k, htriv => by
-      dsimp [defaultPureStrategy, ProgramPureStrategy.IsLegal]
+      dsimp [defaultPureStrategy, ProgramPureStrategy.RespectsGuards]
       exact defaultPureStrategy_IsLegal k htriv
   | _, .commit x owner R k, htriv => by
-      dsimp [defaultPureStrategy, ProgramPureStrategy.IsLegal]
+      dsimp [defaultPureStrategy, ProgramPureStrategy.RespectsGuards]
       obtain ⟨hguard, htail⟩ := htriv
       by_cases h : owner = who
       · subst h
@@ -118,7 +118,7 @@ theorem defaultPureStrategy_IsLegal
           exact absurd h_eq h
         · simpa using defaultPureStrategy_IsLegal k htail
   | _, .reveal _ _ _ _ k, htriv => by
-      dsimp [defaultPureStrategy, ProgramPureStrategy.IsLegal]
+      dsimp [defaultPureStrategy, ProgramPureStrategy.RespectsGuards]
       exact defaultPureStrategy_IsLegal k htriv
 
 /-- The default pure profile is guard-legal under `TrivialGuards`. -/
@@ -126,14 +126,14 @@ theorem defaultPureProfile_IsLegal
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
     {Γ : VCtx P L} (p : VegasCore P L Γ)
     (htriv : TrivialGuards p) :
-    (defaultPureProfile p).IsLegal := fun _ =>
+    (defaultPureProfile p).RespectsGuards := fun _ =>
   defaultPureStrategy_IsLegal p htriv
 
 /-- `Nonempty` constructor for the trivial-guard case. -/
-@[reducible] noncomputable def LegalProgramPureProfile.instNonempty_of_trivialGuards
+@[reducible] noncomputable def FeasibleProgramPureProfile.instNonempty_of_trivialGuards
     (g : WFProgram P L) [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (htriv : TrivialGuards g.prog) :
-    Nonempty (LegalProgramPureProfile g) :=
+    Nonempty (FeasibleProgramPureProfile g) :=
   ⟨fun _ => ⟨defaultPureStrategy _ g.prog,
     defaultPureStrategy_IsLegal g.prog htriv⟩⟩
 
@@ -262,7 +262,7 @@ theorem exists_legalKernel
     (hL : ∀ ρ : Env L.Val (eraseVCtx Γ), ∃ a : L.Val b,
         evalGuard (Player := P) (L := L) R a ρ = true) :
     ∃ κ : PureKernel who Γ b,
-      κ.IsLegalAt (x := x) (who := who) (b := b) R := by
+      κ.RespectsGuard (x := x) (who := who) (b := b) R := by
   classical
   refine ⟨fun view =>
     if hreach : ∃ ρ, projectViewEnv who ρ = view then
@@ -270,7 +270,7 @@ theorem exists_legalKernel
     else
       Classical.arbitrary (L.Val b), ?_⟩
   intro ρ
-  dsimp only [PureKernel.IsLegalAt]
+  dsimp only [PureKernel.RespectsGuard]
   have hreach : ∃ ρ', projectViewEnv who ρ' = projectViewEnv who ρ := ⟨ρ, rfl⟩
   rw [dif_pos hreach]
   have hview_eq : projectViewEnv who hreach.choose = projectViewEnv who ρ :=
@@ -289,7 +289,7 @@ site and recurses on the tail. -/
 theorem exists_legal_pureStrategy [∀ τ : L.Ty, Nonempty (L.Val τ)] :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     WFCtx (L := L) Γ → FreshBindings p → ViewScoped p → Legal p →
-    ∀ who, ∃ s : ProgramPureStrategy who p, s.IsLegal p
+    ∀ who, ∃ s : ProgramPureStrategy who p, s.RespectsGuards p
   | _, .ret _, _, _, _, _, _ => ⟨PUnit.unit, trivial⟩
   | _, .letExpr _ _ k, hctx, hfresh, hsc, hl, who => by
       obtain ⟨s, hs⟩ :=
@@ -318,18 +318,18 @@ theorem exists_legal_pureStrategy [∀ τ : L.Ty, Nonempty (L.Val τ)] :
         refine ⟨?_, ?_⟩
         · exact by
             simpa [ProgramPureStrategy] using (κ, s_tail)
-        · dsimp [ProgramPureStrategy.IsLegal]
+        · dsimp [ProgramPureStrategy.RespectsGuards]
           split
           · rename_i h_eq
             refine ⟨?_, ?_⟩
-            · -- κ.IsLegalAt R for the ⟨κ, s_tail⟩.1 projection
+            · -- κ.RespectsGuard R for the ⟨κ, s_tail⟩.1 projection
               simpa using hκ
             · simpa using hs_tail
           · exact absurd rfl ‹_›
       · refine ⟨?_, ?_⟩
         · exact by
             simpa [ProgramPureStrategy, hown] using s_tail
-        · dsimp [ProgramPureStrategy.IsLegal]
+        · dsimp [ProgramPureStrategy.RespectsGuards]
           split
           · rename_i h_eq
             exact absurd h_eq hown
@@ -342,7 +342,7 @@ theorem exists_legal_pureProfile
     [∀ τ : L.Ty, Nonempty (L.Val τ)]
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (hctx : WFCtx (L := L) Γ) (hwf : WF p) (hl : Legal p) :
-    ∃ σ : ProgramPureProfile p, σ.IsLegal := by
+    ∃ σ : ProgramPureProfile p, σ.RespectsGuards := by
   classical
   refine ⟨fun who =>
     Classical.choose (exists_legal_pureStrategy p hctx hwf.1 hwf.2.2 hl who), ?_⟩
@@ -354,10 +354,10 @@ theorem exists_legal_pureProfile
 `WFCtx g.Γ` (distinct initial variable names) and base-type
 nonemptiness. Combines `exists_legal_pureProfile` with the three
 fields of the `WFProgram` bundle. -/
-@[reducible] noncomputable def LegalProgramPureProfile.instNonempty_of_wfctx
+@[reducible] noncomputable def FeasibleProgramPureProfile.instNonempty_of_wfctx
     (g : WFProgram P L) [∀ τ : L.Ty, Nonempty (L.Val τ)]
     (hctx : WFCtx (L := L) g.Γ) :
-    Nonempty (LegalProgramPureProfile g) := by
+    Nonempty (FeasibleProgramPureProfile g) := by
   obtain ⟨σ, hσ⟩ := exists_legal_pureProfile hctx g.wf g.legal
   exact ⟨fun who => ⟨σ who, hσ who⟩⟩
 

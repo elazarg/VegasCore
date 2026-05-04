@@ -17,7 +17,7 @@ strategy API without weakening the Vegas strategy spaces.
 
 noncomputable def movePureAtProgramCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
@@ -39,7 +39,7 @@ noncomputable def movePureAtProgramCursor
 
 noncomputable def movePureStrategyAtProgramCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (view : ViewEnv who Γ) :
@@ -61,7 +61,7 @@ noncomputable def movePureStrategyAtProgramCursor
 
 theorem movePureAtProgramCursor_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (view : ViewEnv who Γ) :
@@ -85,7 +85,7 @@ theorem movePureAtProgramCursor_eq_strategy
 
 @[simp] theorem movePureAtProgramCursor_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -100,7 +100,7 @@ theorem movePureAtProgramCursor_eq_strategy
 
 @[simp] theorem movePureStrategyAtProgramCursor_commit_owner
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    {who : P} (σ : LegalProgramPureStrategy g who)
+    {who : P} (σ : FeasibleProgramPureStrategy g who)
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -115,7 +115,7 @@ theorem movePureAtProgramCursor_eq_strategy
 
 theorem headPureKernel_legal_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -127,16 +127,16 @@ theorem headPureKernel_legal_atCursor
         (projectViewEnv who ρ)) ρ = true := by
   let raw : ProgramPureProfile g.prog :=
     fun i => (σ i).val
-  have hraw : raw.IsLegal := fun i => (σ i).2
-  have hcursor : (suffix.pureProfile raw).IsLegal :=
+  have hraw : raw.RespectsGuards := fun i => (σ i).2
+  have hcursor : (suffix.pureProfile raw).RespectsGuards :=
     suffix.pureProfile_isLegal hraw
   have hsite := hcursor who
-  simp [ProgramPureStrategy.IsLegal] at hsite
+  simp [ProgramPureStrategy.RespectsGuards] at hsite
   simpa [raw] using hsite.1 ρ
 
 theorem headPureStrategyKernel_legal_atCursor
     (g : WFProgram P L) (_hctx : WFCtx g.Γ)
-    {who : P} (σ : LegalProgramPureStrategy g who)
+    {who : P} (σ : FeasibleProgramPureStrategy g who)
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
@@ -147,7 +147,7 @@ theorem headPureStrategyKernel_legal_atCursor
         (suffix.pureStrategy who σ.val))
         (projectViewEnv who ρ)) ρ = true := by
   have hcursor :
-      (suffix.pureStrategy who σ.val).IsLegal
+      (suffix.pureStrategy who σ.val).RespectsGuards
         (.commit x who R k) :=
     suffix.pureStrategy_isLegal who σ.2
   let σc :
@@ -155,14 +155,14 @@ theorem headPureStrategyKernel_legal_atCursor
         ProgramPureStrategy who k := by
     simpa [ProgramPureStrategy] using suffix.pureStrategy who σ.val
   have hsite :
-      σc.1.IsLegalAt (x := x) (who := who)
-          (b := b) R ∧ σc.2.IsLegal k := by
-    simpa [ProgramPureStrategy.IsLegal, σc] using hcursor
+      σc.1.RespectsGuard (x := x) (who := who)
+          (b := b) R ∧ σc.2.RespectsGuards k := by
+    simpa [ProgramPureStrategy.RespectsGuards, σc] using hcursor
   simpa [ProgramPureStrategy.headKernel, σc] using hsite.1 ρ
 
 noncomputable def movePureAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     Option (ProgramAction g.prog who) :=
   movePureAtProgramCursor g hctx σ who w.1.suffix
@@ -170,7 +170,7 @@ noncomputable def movePureAtCursorWorld
 
 noncomputable def movePureStrategyAtCursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (w : CursorCheckedWorld g) :
     Option (ProgramAction g.prog who) :=
   movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
@@ -178,7 +178,7 @@ noncomputable def movePureStrategyAtCursorWorld
 
 theorem movePureAtProgramCursor_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (env : VEnv L Γ) :
@@ -219,7 +219,7 @@ theorem movePureAtProgramCursor_availableAt
 
 theorem movePureStrategyAtProgramCursor_availableAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (env : VEnv L Γ) :
@@ -265,7 +265,7 @@ theorem movePureStrategyAtProgramCursor_availableAt
 
 theorem movePureAtCursorWorld_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     movePureAtCursorWorld g hctx σ who w ∈
       (observedProgramFOSG g hctx).availableMovesAtState w who := by
@@ -296,7 +296,7 @@ theorem movePureAtCursorWorld_available
 
 theorem movePureStrategyAtCursorWorld_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (w : CursorCheckedWorld g) :
     movePureStrategyAtCursorWorld g hctx who σ w ∈
       (observedProgramFOSG g hctx).availableMovesAtState w who := by
@@ -327,12 +327,12 @@ theorem movePureStrategyAtCursorWorld_available
 
 theorem moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) {Γ : VCtx P L} {p : VegasCore P L Γ}
     (suffix : ProgramSuffix g.prog p)
     (view : ViewEnv who Γ) :
     moveAtProgramCursorPMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ) who suffix view =
+        (FeasibleProgramPureProfile.toBehavioralPMF σ) who suffix view =
       PMF.pure (movePureAtProgramCursor g hctx σ who suffix view) := by
   cases p with
   | ret payoffs =>
@@ -350,11 +350,11 @@ theorem moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
           fun i => (σ i).val
         have hprofile :
             suffix.behavioralProfilePMF
-                (fun i => ((LegalProgramPureProfile.toBehavioralPMF
+                (fun i => ((FeasibleProgramPureProfile.toBehavioralPMF
                   (g := g) σ) i).val) =
               ProgramPureProfile.toBehavioralPMF
                 (.commit x who R k) (suffix.pureProfile raw) := by
-          simpa [raw, LegalProgramPureProfile.toBehavioralPMF] using
+          simpa [raw, FeasibleProgramPureProfile.toBehavioralPMF] using
             ProgramSuffix.behavioralProfilePMF_toBehavioralPMF
               (s := suffix) raw
         simp [moveAtProgramCursorPMF, movePureAtProgramCursor, hprofile,
@@ -365,10 +365,10 @@ theorem moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
 
 theorem moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     moveAtCursorWorldPMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ) who w =
+        (FeasibleProgramPureProfile.toBehavioralPMF σ) who w =
       PMF.pure (movePureAtCursorWorld g hctx σ who w) := by
   exact moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
     g hctx σ who w.1.suffix
@@ -376,7 +376,7 @@ theorem moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
 
 noncomputable def moveAtProgramObservationPMF?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P)
     (obs : PrivateObs g who × PublicObs g hctx) :
     PMF (Option (ProgramAction g.prog who)) := by
@@ -386,7 +386,7 @@ noncomputable def moveAtProgramObservationPMF?
 
 theorem moveAtProgramObservationPMF?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P) (w : CursorCheckedWorld g) :
     moveAtProgramObservationPMF? g hctx σ who
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
@@ -404,7 +404,7 @@ theorem moveAtProgramObservationPMF?_of_cursorWorld
 target. -/
 noncomputable def movePureAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (obs : PrivateObs g who × PublicObs g hctx) :
     Option (ProgramAction g.prog who) := by
@@ -414,7 +414,7 @@ noncomputable def movePureAtProgramObservation?
 
 noncomputable def movePureStrategyAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (obs : PrivateObs g who × PublicObs g hctx) :
     Option (ProgramAction g.prog who) := by
   let priv := obs.1
@@ -423,11 +423,11 @@ noncomputable def movePureStrategyAtProgramObservation?
 
 theorem moveAtProgramObservationPMF?_toBehavioralPMF_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (obs : PrivateObs g who × PublicObs g hctx) :
     moveAtProgramObservationPMF? g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ) who obs =
+        (FeasibleProgramPureProfile.toBehavioralPMF σ) who obs =
       PMF.pure (movePureAtProgramObservation? g hctx σ who obs) := by
   unfold moveAtProgramObservationPMF? movePureAtProgramObservation?
   exact moveAtProgramCursorPMF_toBehavioralPMF_eq_pure
@@ -435,7 +435,7 @@ theorem moveAtProgramObservationPMF?_toBehavioralPMF_eq_pure
 
 theorem movePureAtProgramObservation?_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (obs : PrivateObs g who × PublicObs g hctx) :
     movePureAtProgramObservation? g hctx σ who obs =
@@ -445,7 +445,7 @@ theorem movePureAtProgramObservation?_eq_strategy
 
 theorem movePureAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     movePureAtProgramObservation? g hctx σ who
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
@@ -461,7 +461,7 @@ theorem movePureAtProgramObservation?_of_cursorWorld
 
 theorem movePureStrategyAtProgramObservation?_of_cursorWorld
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (w : CursorCheckedWorld g) :
     movePureStrategyAtProgramObservation? g hctx who σ
       (privateObsOfCursorWorld who w, publicObsOfCursorWorld w) =
@@ -480,7 +480,7 @@ program-action FOSG. Use `toObservedProgramLegalPureProfile` when the target
 type requires FOSG legality. -/
 noncomputable def programPureProfileCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     GameTheory.FOSG.PureProfile (observedProgramFOSG g hctx) :=
   GameTheory.FOSG.PureProfile.ofLatestObservation
     (G := observedProgramFOSG g hctx)
@@ -490,7 +490,7 @@ noncomputable def programPureProfileCandidate
 
 noncomputable def programPureStrategyCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
     GameTheory.FOSG.PureStrategy (observedProgramFOSG g hctx) who :=
   GameTheory.FOSG.PureStrategy.ofLatestObservation
     (G := observedProgramFOSG g hctx)
@@ -502,7 +502,7 @@ noncomputable def programPureStrategyCandidate
 
 theorem programPureProfileCandidate_eq_strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) (who : P) :
+    (σ : FeasibleProgramPureProfile g) (who : P) :
     programPureProfileCandidate g hctx σ who =
       programPureStrategyCandidate g hctx who (σ who) := by
   funext s
@@ -524,7 +524,7 @@ theorem programPureProfileCandidate_eq_strategy
 
 @[simp] theorem programPureStrategyCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
     programPureStrategyCandidate g hctx who σ
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       movePureStrategyAtCursorWorld g hctx who σ
@@ -538,7 +538,7 @@ theorem programPureProfileCandidate_eq_strategy
 
 theorem programPureStrategyCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (h : (observedProgramFOSG g hctx).History) :
     programPureStrategyCandidate g hctx who σ (h.playerView who) =
       movePureStrategyAtCursorWorld g hctx who σ h.lastState := by
@@ -565,7 +565,7 @@ theorem programPureStrategyCandidate_history
 
 theorem programPureStrategyCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who)
+    (who : P) (σ : FeasibleProgramPureStrategy g who)
     (h : (observedProgramFOSG g hctx).History) :
     programPureStrategyCandidate g hctx who σ (h.playerView who) ∈
       (observedProgramFOSG g hctx).availableMoves h who := by
@@ -576,7 +576,7 @@ theorem programPureStrategyCandidate_available
 
 @[simp] theorem programPureProfileCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) (who : P) :
+    (σ : FeasibleProgramPureProfile g) (who : P) :
     programPureProfileCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       movePureAtCursorWorld g hctx σ who (CursorCheckedWorld.initial g hctx) := by
@@ -585,7 +585,7 @@ theorem programPureStrategyCandidate_available
 
 theorem programPureProfileCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History) :
     programPureProfileCandidate g hctx σ who (h.playerView who) =
@@ -614,7 +614,7 @@ theorem programPureProfileCandidate_history
 
 theorem programPureProfileCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History) :
     programPureProfileCandidate g hctx σ who (h.playerView who) ∈
@@ -628,7 +628,7 @@ theorem programPureProfileCandidate_available
 finite observed-program FOSG. -/
 noncomputable def toObservedProgramLegalPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     (observedProgramFOSG g hctx).LegalPureProfile :=
   fun who =>
     ⟨programPureProfileCandidate g hctx σ who, by
@@ -640,14 +640,14 @@ strategy space of the observed-program FOSG. This is the finite strategy space
 used by the reachable-coordinate FOSG Kuhn theorem. -/
 noncomputable def toObservedProgramReachableLegalPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     (observedProgramFOSG g hctx).ReachableLegalPureProfile :=
   fun who =>
     (toObservedProgramLegalPureProfile g hctx σ who).restrictReachable
 
 noncomputable def toObservedProgramReachableLegalPureStrategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (who : P) (σ : LegalProgramPureStrategy g who) :
+    (who : P) (σ : FeasibleProgramPureStrategy g who) :
     (observedProgramFOSG g hctx).ReachableLegalPureStrategy who := by
   refine ⟨(programPureStrategyCandidate g hctx who σ).restrictReachable, ?_⟩
   intro h
@@ -656,7 +656,7 @@ noncomputable def toObservedProgramReachableLegalPureStrategy
 
 noncomputable def toObservedProgramReachableMixedPureProfile
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
     GameTheory.FOSG.Kuhn.ReachableMixedProfile
       (G := observedProgramFOSG g hctx) :=
   fun who =>
@@ -664,7 +664,7 @@ noncomputable def toObservedProgramReachableMixedPureProfile
 
 theorem toObservedProgramReachableLegalPureProfile_eq_component
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     toObservedProgramReachableLegalPureProfile g hctx σ =
       fun who => toObservedProgramReachableLegalPureStrategy g hctx who (σ who) := by
   funext who
@@ -678,10 +678,10 @@ theorem toObservedProgramReachableLegalPureProfile_eq_component
 theorem toObservedProgramReachableMixedPureProfile_joint
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     [Fintype P]
-    [∀ who, Fintype (LegalProgramPureStrategy g who)]
+    [∀ who, Fintype (FeasibleProgramPureStrategy g who)]
     [∀ who : P, Fintype (Option (ProgramAction g.prog who))]
     [Fintype (observedProgramFOSG g hctx).History]
-    (μ : ∀ who, PMF (LegalProgramPureStrategy g who)) :
+    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
     GameTheory.FOSG.Kuhn.reachableMixedProfileJoint
         (G := observedProgramFOSG g hctx)
         (toObservedProgramReachableMixedPureProfile g hctx μ) =
@@ -707,7 +707,7 @@ theorem toObservedProgramReachableMixedPureProfile_joint
 
 noncomputable def programBehavioralProfilePMFCandidate
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) :
     GameTheory.FOSG.BehavioralProfile (observedProgramFOSG g hctx) :=
   GameTheory.FOSG.BehavioralProfile.ofLatestObservation
     (G := observedProgramFOSG g hctx)
@@ -717,7 +717,7 @@ noncomputable def programBehavioralProfilePMFCandidate
 
 @[simp] theorem programBehavioralProfilePMFCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) (who : P) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) (who : P) :
     programBehavioralProfilePMFCandidate g hctx σ who
       ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
       moveAtCursorWorldPMF g hctx σ who (CursorCheckedWorld.initial g hctx) := by
@@ -726,7 +726,7 @@ noncomputable def programBehavioralProfilePMFCandidate
 
 theorem programBehavioralProfilePMFCandidate_history
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History) :
     programBehavioralProfilePMFCandidate g hctx σ who (h.playerView who) =
@@ -755,11 +755,11 @@ theorem programBehavioralProfilePMFCandidate_history
 
 theorem programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g)
+    (σ : FeasibleProgramPureProfile g)
     (who : P)
     (s : (observedProgramFOSG g hctx).InfoState who) :
     programBehavioralProfilePMFCandidate g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ) who s =
+        (FeasibleProgramPureProfile.toBehavioralPMF σ) who s =
       PMF.pure (programPureProfileCandidate g hctx σ who s) := by
   unfold programBehavioralProfilePMFCandidate programPureProfileCandidate
   cases hobs :
@@ -782,7 +782,7 @@ theorem programBehavioralProfilePMFCandidate_toBehavioralPMF_eq_pure
 
 theorem programBehavioralProfilePMFCandidate_support_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g)
+    (σ : FeasibleProgramBehavioralProfilePMF g)
     (who : P)
     (h : (observedProgramFOSG g hctx).History)
     {oi : Option (ProgramAction g.prog who)}
@@ -799,7 +799,7 @@ theorem programBehavioralProfilePMFCandidate_support_available
 profile of the finite observed-program FOSG. -/
 noncomputable def toObservedProgramLegalBehavioralProfilePMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) :
     (observedProgramFOSG g hctx).LegalBehavioralProfile :=
   fun who =>
     ⟨programBehavioralProfilePMFCandidate g hctx σ who, by
@@ -809,15 +809,15 @@ noncomputable def toObservedProgramLegalBehavioralProfilePMF
 
 @[simp] theorem toObservedProgramLegalBehavioralProfilePMF_apply
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : SyntaxLegalProgramBehavioralProfilePMF g) (who : P) :
+    (σ : FeasibleProgramBehavioralProfilePMF g) (who : P) :
     ((toObservedProgramLegalBehavioralProfilePMF g hctx σ who).1) =
       programBehavioralProfilePMFCandidate g hctx σ who := rfl
 
 theorem toObservedProgramLegalBehavioralProfilePMF_toBehavioralPMF
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : LegalProgramPureProfile g) :
+    (σ : FeasibleProgramPureProfile g) :
     toObservedProgramLegalBehavioralProfilePMF g hctx
-        (LegalProgramPureProfile.toBehavioralPMF σ) =
+        (FeasibleProgramPureProfile.toBehavioralPMF σ) =
       (observedProgramFOSG g hctx).legalPureToBehavioral
         (toObservedProgramLegalPureProfile g hctx σ) := by
   funext who

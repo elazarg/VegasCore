@@ -19,7 +19,7 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 noncomputable def Game (g : WFProgram P L) : GameTheory.KernelGame P :=
-  toKernelGame g
+  behavioralKernelGame g
 
 /-- Strategy profiles for a Vegas program are exactly the profiles of its
 kernel-game image. -/

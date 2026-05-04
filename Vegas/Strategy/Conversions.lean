@@ -92,8 +92,8 @@ behavioral profile. -/
 theorem toBehavioral_IsLegal :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     (σ : ProgramPureProfile p) →
-    σ.IsLegal →
-    (ProgramPureProfile.toBehavioral p σ).IsLegal
+    σ.RespectsGuards →
+    (ProgramPureProfile.toBehavioral p σ).RespectsGuards
   | _, .ret _, _, _ => fun _ => trivial
   | _, .letExpr _ _ k, σ, hσ =>
       toBehavioral_IsLegal k σ hσ
@@ -102,12 +102,12 @@ theorem toBehavioral_IsLegal :
   | _, .reveal _ _ _ _ k, σ, hσ =>
       toBehavioral_IsLegal k σ hσ
   | _, .commit x who_c (b := b) R k, σ, hσ => by
-      have htail : (ProgramPureProfile.tail σ).IsLegal := by
+      have htail : (ProgramPureProfile.tail σ).RespectsGuards := by
         intro j
         by_cases hj : who_c = j
         · subst hj
-          have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
-          dsimp [ProgramPureStrategy.IsLegal] at hσ_who
+          have hσ_who : (σ who_c).RespectsGuards (.commit x who_c R k) := hσ who_c
+          dsimp [ProgramPureStrategy.RespectsGuards] at hσ_who
           dsimp [ProgramPureProfile.tail]
           split at hσ_who
           · rename_i h
@@ -116,8 +116,8 @@ theorem toBehavioral_IsLegal :
               exact hσ_who.2
             · exact absurd rfl ‹_›
           · exact absurd rfl ‹_›
-        · have hσ_j : (σ j).IsLegal (.commit x who_c R k) := hσ j
-          dsimp [ProgramPureStrategy.IsLegal] at hσ_j
+        · have hσ_j : (σ j).RespectsGuards (.commit x who_c R k) := hσ j
+          dsimp [ProgramPureStrategy.RespectsGuards] at hσ_j
           dsimp [ProgramPureProfile.tail]
           split at hσ_j
           · rename_i h
@@ -129,9 +129,9 @@ theorem toBehavioral_IsLegal :
       intro i
       by_cases hi : who_c = i
       · subst hi
-        have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
-        dsimp [ProgramPureProfile.toBehavioral, ProgramPureStrategy.IsLegal,
-          ProgramBehavioralStrategy.IsLegal] at hσ_who ⊢
+        have hσ_who : (σ who_c).RespectsGuards (.commit x who_c R k) := hσ who_c
+        dsimp [ProgramPureProfile.toBehavioral, ProgramPureStrategy.RespectsGuards,
+          ProgramBehavioralStrategy.RespectsGuards] at hσ_who ⊢
         split at hσ_who
         · rename_i h_owner_eq
           split
@@ -145,7 +145,7 @@ theorem toBehavioral_IsLegal :
               simpa using hrec
           · exact absurd rfl ‹_›
         · exact absurd rfl ‹_›
-      · dsimp [ProgramPureProfile.toBehavioral, ProgramBehavioralStrategy.IsLegal]
+      · dsimp [ProgramPureProfile.toBehavioral, ProgramBehavioralStrategy.RespectsGuards]
         split
         · rename_i h_who_c_eq_i
           exact absurd h_who_c_eq_i hi
@@ -155,8 +155,8 @@ theorem toBehavioral_IsLegal :
 theorem toBehavioralPMF_IsLegal :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
     (σ : ProgramPureProfile p) →
-    σ.IsLegal →
-    (ProgramPureProfile.toBehavioralPMF p σ).IsLegal
+    σ.RespectsGuards →
+    (ProgramPureProfile.toBehavioralPMF p σ).RespectsGuards
   | _, .ret _, _, _ => fun _ => trivial
   | _, .letExpr _ _ k, σ, hσ =>
       toBehavioralPMF_IsLegal k σ hσ
@@ -165,20 +165,20 @@ theorem toBehavioralPMF_IsLegal :
   | _, .reveal _ _ _ _ k, σ, hσ =>
       toBehavioralPMF_IsLegal k σ hσ
   | _, .commit x who_c (b := b) R k, σ, hσ => by
-      have htail : (ProgramPureProfile.tail σ).IsLegal := by
+      have htail : (ProgramPureProfile.tail σ).RespectsGuards := by
         intro j
         by_cases hj : who_c = j
         · subst hj
-          have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
-          dsimp [ProgramPureStrategy.IsLegal] at hσ_who
+          have hσ_who : (σ who_c).RespectsGuards (.commit x who_c R k) := hσ who_c
+          dsimp [ProgramPureStrategy.RespectsGuards] at hσ_who
           dsimp [ProgramPureProfile.tail]
           split at hσ_who
           · split
             · exact hσ_who.2
             · exact absurd rfl ‹_›
           · exact absurd rfl ‹_›
-        · have hσ_j : (σ j).IsLegal (.commit x who_c R k) := hσ j
-          dsimp [ProgramPureStrategy.IsLegal] at hσ_j
+        · have hσ_j : (σ j).RespectsGuards (.commit x who_c R k) := hσ j
+          dsimp [ProgramPureStrategy.RespectsGuards] at hσ_j
           dsimp [ProgramPureProfile.tail]
           split at hσ_j
           · rename_i h
@@ -190,9 +190,9 @@ theorem toBehavioralPMF_IsLegal :
       intro i
       by_cases hi : who_c = i
       · subst hi
-        have hσ_who : (σ who_c).IsLegal (.commit x who_c R k) := hσ who_c
-        dsimp [ProgramPureProfile.toBehavioralPMF, ProgramPureStrategy.IsLegal,
-          ProgramBehavioralStrategyPMF.IsLegal] at hσ_who ⊢
+        have hσ_who : (σ who_c).RespectsGuards (.commit x who_c R k) := hσ who_c
+        dsimp [ProgramPureProfile.toBehavioralPMF, ProgramPureStrategy.RespectsGuards,
+          ProgramBehavioralStrategyPMF.RespectsGuards] at hσ_who ⊢
         split at hσ_who
         · split
           · refine ⟨?_, ?_⟩
@@ -209,7 +209,7 @@ theorem toBehavioralPMF_IsLegal :
           · exact absurd rfl ‹_›
         · exact absurd rfl ‹_›
       · dsimp [ProgramPureProfile.toBehavioralPMF,
-          ProgramBehavioralStrategyPMF.IsLegal]
+          ProgramBehavioralStrategyPMF.RespectsGuards]
         split
         · rename_i h
           exact absurd h hi
@@ -218,26 +218,26 @@ theorem toBehavioralPMF_IsLegal :
 end ProgramPureProfile
 
 /-- Lift a legal pure profile to a legal behavioral profile. -/
-noncomputable def LegalProgramPureProfile.toBehavioral
-    {g : WFProgram P L} (σ : LegalProgramPureProfile g) :
-    LegalProgramBehavioralProfile g :=
+noncomputable def FeasibleProgramPureProfile.toBehavioral
+    {g : WFProgram P L} (σ : FeasibleProgramPureProfile g) :
+    FeasibleProgramBehavioralProfile g :=
   let rawPure : ProgramPureProfile g.prog := fun i => (σ i).val
-  let rawPureLegal : ProgramPureProfile.IsLegal rawPure := fun i => (σ i).2
+  let rawPureLegal : ProgramPureProfile.RespectsGuards rawPure := fun i => (σ i).2
   let rawBeh : ProgramBehavioralProfile g.prog :=
     ProgramPureProfile.toBehavioral g.prog rawPure
-  let rawBehLegal : ProgramBehavioralProfile.IsLegal rawBeh :=
+  let rawBehLegal : ProgramBehavioralProfile.RespectsGuards rawBeh :=
     ProgramPureProfile.toBehavioral_IsLegal g.prog rawPure rawPureLegal
   fun i => ⟨rawBeh i, rawBehLegal i⟩
 
 /-- Lift a legal pure profile to a legal PMF behavioral profile. -/
-noncomputable def LegalProgramPureProfile.toBehavioralPMF
-    {g : WFProgram P L} (σ : LegalProgramPureProfile g) :
-    SyntaxLegalProgramBehavioralProfilePMF g :=
+noncomputable def FeasibleProgramPureProfile.toBehavioralPMF
+    {g : WFProgram P L} (σ : FeasibleProgramPureProfile g) :
+    FeasibleProgramBehavioralProfilePMF g :=
   let rawPure : ProgramPureProfile g.prog := fun i => (σ i).val
-  let rawPureLegal : ProgramPureProfile.IsLegal rawPure := fun i => (σ i).2
+  let rawPureLegal : ProgramPureProfile.RespectsGuards rawPure := fun i => (σ i).2
   let rawBeh : ProgramBehavioralProfilePMF g.prog :=
     ProgramPureProfile.toBehavioralPMF g.prog rawPure
-  let rawBehLegal : ProgramBehavioralProfilePMF.IsLegal rawBeh :=
+  let rawBehLegal : ProgramBehavioralProfilePMF.RespectsGuards rawBeh :=
     ProgramPureProfile.toBehavioralPMF_IsLegal g.prog rawPure rawPureLegal
   fun i => ⟨rawBeh i, rawBehLegal i⟩
 
@@ -349,8 +349,8 @@ theorem ProgramBehavioralKernelPMF.ofFDist_IsLegalAt
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
     (κ : ProgramBehavioralKernel who Γ b)
-    (hκ : κ.IsLegalAt R) :
-    (ProgramBehavioralKernelPMF.ofFDist κ).IsLegalAt R := by
+    (hκ : κ.RespectsGuard R) :
+    (ProgramBehavioralKernelPMF.ofFDist κ).RespectsGuard R := by
   intro ρ v hv
   exact hκ ρ v
     (mem_fdist_support_of_mem_toPMF_support
@@ -363,11 +363,11 @@ namespace ProgramBehavioralProfile
 theorem toPMFProfile_isLegal :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
       {σ : ProgramBehavioralProfile p} →
-      σ.IsLegal →
-      (toPMFProfile p σ).IsLegal
+      σ.RespectsGuards →
+      (toPMFProfile p σ).RespectsGuards
   | _, .ret _, σ, hσ => by
       intro who
-      simp [ProgramBehavioralStrategyPMF.IsLegal]
+      simp [ProgramBehavioralStrategyPMF.RespectsGuards]
   | _, .letExpr _ _ k, σ, hσ => by
       intro who
       exact toPMFProfile_isLegal k (σ := fun i => σ i) hσ who
@@ -382,15 +382,15 @@ theorem toPMFProfile_isLegal :
             ProgramBehavioralStrategy who k := by
           simpa [ProgramBehavioralStrategy] using σ who
         have hsite :
-            σpair.1.IsLegalAt R ∧
-              ProgramBehavioralStrategy.IsLegal (who := who) k σpair.2 := by
+            σpair.1.RespectsGuard R ∧
+              ProgramBehavioralStrategy.RespectsGuards (who := who) k σpair.2 := by
           have hraw := hσ who
-          simpa [ProgramBehavioralStrategy.IsLegal, σpair] using hraw
+          simpa [ProgramBehavioralStrategy.RespectsGuards, σpair] using hraw
         have htail :=
           toPMFProfile_isLegal k
             (σ := ProgramBehavioralProfile.tail σ)
             (ProgramBehavioralProfile.tail_isLegal hσ) who
-        simpa [toPMFProfile, ProgramBehavioralStrategyPMF.IsLegal, σpair]
+        simpa [toPMFProfile, ProgramBehavioralStrategyPMF.RespectsGuards, σpair]
           using And.intro
             (ProgramBehavioralKernelPMF.ofFDist_IsLegalAt σpair.1 hsite.1)
             htail
@@ -398,7 +398,7 @@ theorem toPMFProfile_isLegal :
           toPMFProfile_isLegal k
             (σ := ProgramBehavioralProfile.tail σ)
             (ProgramBehavioralProfile.tail_isLegal hσ) i
-        simpa [toPMFProfile, h, ProgramBehavioralStrategyPMF.IsLegal]
+        simpa [toPMFProfile, h, ProgramBehavioralStrategyPMF.RespectsGuards]
           using htail
   | _, .reveal _ _ _ _ k, σ, hσ => by
       intro who
@@ -406,20 +406,20 @@ theorem toPMFProfile_isLegal :
 
 end ProgramBehavioralProfile
 
-namespace LegalProgramBehavioralProfile
+namespace FeasibleProgramBehavioralProfile
 
 /-- Convert a legal FDist behavioral profile to the corresponding legal PMF
 behavioral profile. -/
 noncomputable def toPMFProfile
     {g : WFProgram P L}
-    (σ : LegalProgramBehavioralProfile g) :
-    SyntaxLegalProgramBehavioralProfilePMF g :=
+    (σ : FeasibleProgramBehavioralProfile g) :
+    FeasibleProgramBehavioralProfilePMF g :=
   let raw : ProgramBehavioralProfile g.prog := fun i => (σ i).val
-  let hraw : raw.IsLegal := fun i => (σ i).2
+  let hraw : raw.RespectsGuards := fun i => (σ i).2
   fun i =>
     ⟨ProgramBehavioralProfile.toPMFProfile g.prog raw i,
       ProgramBehavioralProfile.toPMFProfile_isLegal g.prog hraw i⟩
 
-end LegalProgramBehavioralProfile
+end FeasibleProgramBehavioralProfile
 
 end Vegas
