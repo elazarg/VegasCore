@@ -1,4 +1,5 @@
 import Vegas.FOSG.Observed.Kernel
+import Vegas.Protocol.StrategicCompatibility
 import Vegas.StrategicPMF
 
 namespace Vegas
@@ -763,8 +764,18 @@ theorem observedProgramCollapsedOutcomeKernelPMF_eq_toKernelGamePMF
     R.map_observe_runDist_eq_value
       (syntaxSteps g.prog)
       (observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
-  simpa [R, observedProgramCollapsedOutcomeValuePMF,
-    observedProgramCollapsedOutcomeKernelPMF] using hclosure
+  have hrun :
+      observedProgramCollapsedOutcomeKernelPMF g hctx LF β fallback =
+        (graphMachine g hctx).outcomeKernel
+          (lawOfBehavioralPMF
+            (collapsedLegalBehavioralProfilePMF g hctx β fallback) hctx).val
+          (syntaxSteps g.prog) := by
+    rw [GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
+    simpa [R, observedProgramCollapsedOutcomeValuePMF,
+      observedProgramCollapsedOutcomeKernelPMF] using hclosure
+  exact hrun.trans
+    (lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
+      (collapsedLegalBehavioralProfilePMF g hctx β fallback) hctx)
 
 end Observed
 

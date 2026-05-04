@@ -1,4 +1,5 @@
 import Vegas.FOSG.Observed.Kernel
+import Vegas.Protocol.StrategicCompatibility
 import Vegas.StrategicPMF
 
 namespace Vegas
@@ -30,8 +31,15 @@ theorem observedProgramOutcomeKernelPMF_eq_toKernelGamePMF
     R.map_observe_runDist_eq_value
       (syntaxSteps g.prog)
       (observedProgramFOSG_initial_remainingSyntaxSteps_le g hctx)
-  simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
-    using hclosure
+  have hrun :
+      observedProgramOutcomeKernelPMF g hctx LF σ =
+        (graphMachine g hctx).outcomeKernel
+          (lawOfBehavioralPMF σ hctx).val (syntaxSteps g.prog) := by
+    rw [GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
+    simpa [R, observedProgramOutcomeValuePMF, observedProgramOutcomeKernelPMF]
+      using hclosure
+  exact hrun.trans
+    (lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF σ hctx)
 
 /-- Pure-strategy outcome preservation for the observed-program FOSG.
 

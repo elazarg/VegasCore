@@ -14,7 +14,8 @@ real-valued behavioral strategies.
 The PMF strategy carrier lives in `Vegas.Strategy.PMF`; the syntax-recursive
 PMF evaluator lives in `Vegas.Strategy.PMFSemantics`; carrier conversions live
 in `Vegas.Strategy.Conversions`. This file keeps the agreement theorems and
-legacy syntax-recursive PMF kernel-game packaging.
+the PMF behavioral `KernelGame` presentation, whose public kernel is
+machine-backed.
 
 Key agreement theorems:
 * `outcomeDistBehavioralPMF_toBehavioralPMF_eq` — pure lift through PMF layer
@@ -139,39 +140,32 @@ theorem outcomeDistBehavioralPMF_toPMFProfile_eq
       simpa [outcomeDistBehavioralPMF, outcomeDistBehavioral,
         ProgramBehavioralProfile.toPMFProfile] using ih σ _ hd
 
-/-! ## Syntax-recursive PMF behavioral kernel game -/
+/-! ## PMF behavioral kernel game -/
 
-/-- PMF-valued syntax-recursive behavioral kernel game for a checked Vegas
-program.
+/-- PMF-valued behavioral kernel game for a checked Vegas program.
 
 Unlike `toKernelGame`, this game uses `PMF` behavioral strategies directly.
 That matters for Kuhn mixed-to-behavioral results: an arbitrary mixed strategy
 over pure profiles can induce real-valued behavioral probabilities, which need
 not be representable by Vegas' rational `FDist` kernels.
 
-This is a syntax presentation. The primary checked-program PMF behavioral
-carrier is the machine-derived `LegalProgramBehavioralProfilePMF` in
-`Vegas.FOSG`; syntax-facing client APIs should be related to that IR carrier by
-explicit equivalence theorems. -/
-noncomputable def toKernelGamePMF (g : WFProgram P L) : GameTheory.KernelGame P where
-  Strategy := SyntaxLegalProgramBehavioralStrategyPMF g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    outcomeDistBehavioralPMF g.prog g.normalized (fun i => (σ i).val) g.env
+The outcome kernel is the checked graph-machine kernel at the bundle's context
+proof. -/
+noncomputable def toKernelGamePMF (g : WFProgram P L) : GameTheory.KernelGame P :=
+  toMachineKernelGamePMF g g.wctx
 
 @[simp] theorem toKernelGamePMF_outcomeKernel
     (g : WFProgram P L) (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     (toKernelGamePMF g).outcomeKernel σ =
-      outcomeDistBehavioralPMF g.prog g.normalized (fun i => (σ i).val) g.env := rfl
+      (graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioralPMF σ g.wctx).val (syntaxSteps g.prog) := rfl
 
 @[simp] theorem toKernelGamePMF_udist
     (g : WFProgram P L) (σ : SyntaxLegalProgramBehavioralProfilePMF g) :
     (toKernelGamePMF g).udist σ =
-      PMF.map (fun o : Outcome P => fun i => (o i : ℝ))
-        (outcomeDistBehavioralPMF g.prog g.normalized
-          (fun i => (σ i).val) g.env) := by
-  rfl
+      ((graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioralPMF σ g.wctx).val (syntaxSteps g.prog)).bind
+        (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
 /-- The PMF conversion of an FDist behavioral profile has the same outcome
 kernel as the original FDist-valued kernel game profile. -/
@@ -181,20 +175,7 @@ theorem toKernelGamePMF_outcomeKernel_toPMFProfile_eq_toKernelGame
     (toKernelGamePMF g).outcomeKernel
         (LegalProgramBehavioralProfile.toPMFProfile σ) =
       (toKernelGame g).outcomeKernel σ := by
-  let raw : ProgramBehavioralProfile g.prog := fun i => (σ i).val
-  have heq :
-      outcomeDistBehavioralPMF g.prog g.normalized
-          (fun i =>
-            ((LegalProgramBehavioralProfile.toPMFProfile σ) i).val)
-          g.env =
-        (outcomeDistBehavioral g.prog raw g.env).toPMF
-          (outcomeDistBehavioral_totalWeight_eq_one
-            (p := g.prog) (σ := raw) g.normalized) := by
-    simpa [raw, LegalProgramBehavioralProfile.toPMFProfile] using
-      outcomeDistBehavioralPMF_toPMFProfile_eq
-        (p := g.prog) (σ := raw) (env := g.env) (hd := g.normalized)
-  simpa [toKernelGamePMF_outcomeKernel, toKernelGame_outcomeKernel, raw]
-    using heq
+  rfl
 
 /-- The PMF behavioral lift of a legal pure profile has the same outcome
 kernel as the fixed-program pure strategic form. -/
@@ -204,18 +185,6 @@ theorem toKernelGamePMF_outcomeKernel_eq_toStrategicKernelGame_toBehavioralPMF
     (toKernelGamePMF g).outcomeKernel
         (LegalProgramPureProfile.toBehavioralPMF σ) =
       (toStrategicKernelGame g).outcomeKernel σ := by
-  have heq :
-      outcomeDistBehavioralPMF g.prog g.normalized
-          (fun i => ((LegalProgramPureProfile.toBehavioralPMF (g := g) σ) i).val)
-          g.env =
-        (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
-          (outcomeDistPure_totalWeight_eq_one
-            (p := g.prog) (σ := fun i => (σ i).val)
-            g.normalized) :=
-    outcomeDistBehavioralPMF_toBehavioralPMF_eq
-      (p := g.prog)
-      (σ := fun i => (σ i).val) (env := g.env) (hd := g.normalized)
-  simp only [toKernelGamePMF_outcomeKernel, toStrategicKernelGame_outcomeKernel,
-    heq]
+  rfl
 
 end Vegas

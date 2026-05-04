@@ -9,12 +9,13 @@ import Vegas.Strategy.Pure
 /-!
 # Fixed-Program Pure Strategic Form
 
-This file defines a finite pure strategic form for a fixed Vegas program.
+This file defines the pure strategic form for a fixed Vegas program.
 
 Unlike a global policy space over all contexts and guards, `ProgramPureStrategy
 who p` contains one deterministic choice rule for each commit site of the fixed
-program `p` owned by `who`. The carrier itself lives in `Vegas.Strategy.Pure`;
-this file keeps the legacy pure outcome evaluator and kernel-game packaging.
+program `p` owned by `who`. The carrier itself lives in `Vegas.Strategy.Pure`.
+This file keeps the legacy pure outcome evaluator for compatibility; the public
+pure `KernelGame` constructor is machine-backed.
 -/
 
 namespace Vegas
@@ -113,47 +114,30 @@ theorem outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
       simpa [outcomeDistBehavioral, outcomeDistPure, ProgramPureProfile.toBehavioral] using
         ih σ _
 
-/-- Fixed-program pure strategic form of a Vegas program. -/
-noncomputable def toStrategicKernelGame (g : WFProgram P L) : GameTheory.KernelGame P where
-  Strategy := LegalProgramPureStrategy g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
-      (outcomeDistPure_totalWeight_eq_one
-        (p := g.prog) (σ := fun i => (σ i).val)
-        g.normalized)
+/-- Fixed-program pure strategic form of a Vegas program.
+
+The outcome kernel is the checked graph-machine kernel at the bundle's context
+proof. -/
+noncomputable def toStrategicKernelGame (g : WFProgram P L) :
+    GameTheory.KernelGame P :=
+  toMachineStrategicKernelGame g g.wctx
 
 @[simp] theorem toStrategicKernelGame_outcomeKernel
     (g : WFProgram P L)
     (σ : LegalProgramPureProfile g) :
     (toStrategicKernelGame g).outcomeKernel σ =
-      (outcomeDistPure g.prog (fun i => (σ i).val) g.env).toPMF
-        (outcomeDistPure_totalWeight_eq_one
-          (p := g.prog) (σ := fun i => (σ i).val)
-          g.normalized) := rfl
+      (graphMachine g g.wctx).outcomeKernel
+        (lawOfPure σ g.wctx).val (syntaxSteps g.prog) := rfl
 
 @[simp] theorem toStrategicKernelGame_Strategy (g : WFProgram P L) :
     (toStrategicKernelGame g).Strategy = LegalProgramPureStrategy g := rfl
 
-/-- Expected utility in the fixed-program pure strategic form matches the Vegas
-expected payoff computed from `outcomeDistPure`. -/
+/-- `toStrategicKernelGame` is the machine-native pure kernel at `g.wctx`. -/
 theorem toStrategicKernelGame_eu
     (g : WFProgram P L)
     (σ : LegalProgramPureProfile g) (who : P) :
     (toStrategicKernelGame g).eu σ who =
-      (outcomeDistPure g.prog (fun i => (σ i).val) g.env).sum
-        (fun o w => (w : ℝ) * (o who : ℝ)) := by
-  let hnorm :=
-    outcomeDistPure_totalWeight_eq_one
-      (p := g.prog) (σ := fun i => (σ i).val)
-      (env := g.env) g.normalized
-  simpa [GameTheory.KernelGame.eu, toStrategicKernelGame, hnorm,
-    NNRat.toNNReal_coe_real] using
-    (FDist.expect_toPMF_eq_sum
-      (d := outcomeDistPure g.prog (fun i => (σ i).val) g.env)
-      (h := hnorm)
-      (f := fun o => (o who : ℝ)))
+      (toMachineStrategicKernelGame g g.wctx).eu σ who := rfl
 
 /-- The legal behavioral lift of a legal pure profile has the same outcome
 kernel as the fixed-program pure strategic form. -/
@@ -163,15 +147,29 @@ theorem toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral
     (toKernelGame g).outcomeKernel
         (LegalProgramPureProfile.toBehavioral σ) =
       (toStrategicKernelGame g).outcomeKernel σ := by
-  have heq :
-      outcomeDistBehavioral g.prog
-          (fun i => ((LegalProgramPureProfile.toBehavioral (g := g) σ) i).val)
-          g.env =
-        outcomeDistPure g.prog (fun i => (σ i).val) g.env :=
-    outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
-      (p := g.prog)
-      (σ := fun i => (σ i).val) (env := g.env)
-  simp only [toKernelGame_outcomeKernel, toStrategicKernelGame_outcomeKernel, heq]
+  change (graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioralPMF
+          (LegalProgramBehavioralProfile.toPMFProfile
+            (LegalProgramPureProfile.toBehavioral σ)) g.wctx).val
+        (syntaxSteps g.prog) =
+      (graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioralPMF
+          (LegalProgramPureProfile.toBehavioralPMF σ) g.wctx).val
+        (syntaxSteps g.prog)
+  congr 2
+  ext cfg
+  rw [show
+      LegalProgramBehavioralProfile.toPMFProfile
+          (LegalProgramPureProfile.toBehavioral σ) =
+        LegalProgramPureProfile.toBehavioralPMF σ by
+      funext who
+      apply Subtype.ext
+      simpa [LegalProgramBehavioralProfile.toPMFProfile,
+        LegalProgramPureProfile.toBehavioral,
+        LegalProgramPureProfile.toBehavioralPMF] using
+        congrFun
+          (ProgramBehavioralProfile.toPMFProfile_toBehavioral_eq_toBehavioralPMF
+            g.prog (fun i => (σ i).val)) who]
 
 /-- The legal behavioral lift of a legal pure profile has the same expected
 utility as the fixed-program pure strategic form. -/
@@ -181,15 +179,9 @@ theorem toKernelGame_eu_eq_toStrategicKernelGame_toBehavioral
     (toKernelGame g).eu
         (LegalProgramPureProfile.toBehavioral σ) who =
       (toStrategicKernelGame g).eu σ who := by
-  have heq :
-      outcomeDistBehavioral g.prog
-          (fun i => ((LegalProgramPureProfile.toBehavioral (g := g) σ) i).val)
-          g.env =
-        outcomeDistPure g.prog (fun i => (σ i).val) g.env :=
-    outcomeDistBehavioral_toBehavioral_eq_outcomeDistPure
-      (p := g.prog)
-      (σ := fun i => (σ i).val) (env := g.env)
-  rw [toKernelGame_eu, toStrategicKernelGame_eu, heq]
+  unfold GameTheory.KernelGame.eu
+  rw [toKernelGame_outcomeKernel_eq_toStrategicKernelGame_toBehavioral]
+  rfl
 
 /-- Pure Nash equilibrium of the fixed-program Vegas strategic form. -/
 def IsPureNash (g : WFProgram P L) (σ : LegalProgramPureProfile g) : Prop :=

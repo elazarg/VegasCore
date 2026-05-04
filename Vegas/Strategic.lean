@@ -1,12 +1,13 @@
 import GameTheory.Core.KernelGame
+import Vegas.Protocol.Strategic
 import Vegas.Strategy.Behavioral
 
 /-!
 # Strategic semantics bridge
 
 The fixed-program behavioral carrier lives in `Vegas.Strategy.Behavioral`;
-this file keeps the legacy behavioral evaluator and packages that carrier as a
-`KernelGame`.
+this file keeps the legacy behavioral evaluator for compatibility. The public
+`toKernelGame` constructor is machine-backed.
 -/
 
 namespace Vegas
@@ -85,56 +86,31 @@ theorem outcomeDistBehavioral_totalWeight_eq_one
 /-- Vegas denotational semantics as a `KernelGame` whose strategies are the
 fixed program's local *guard-legal* behavioral strategies.
 
-Consumes a `WFProgram` bundle. The `Strategy` field is the legal subtype
-`LegalProgramBehavioralStrategy g`, so game-theoretic solution concepts
-(Nash, dominance, etc.) applied to the resulting `KernelGame` quantify
-only over strategies that respect every commit guard. `wf`, `normalized`,
-and `legal` together carry the side conditions the Vegas protocol
-requires; `normalized` is what proves the outcome kernel sums to `1`. -/
-noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P where
-  Strategy := LegalProgramBehavioralStrategy g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    (outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
-      (outcomeDistBehavioral_totalWeight_eq_one
-        (p := g.prog) (σ := fun i => (σ i).val) g.normalized)
+This is the public behavioral strategic form. Its outcome kernel is the
+checked graph-machine kernel at the program bundle's context proof. -/
+noncomputable def toKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
+  toMachineKernelGame g g.wctx
 
 @[simp] theorem toKernelGame_outcomeKernel
     (g : WFProgram P L)
     (σ : LegalProgramBehavioralProfile g) :
     (toKernelGame g).outcomeKernel σ =
-      (outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
-        (outcomeDistBehavioral_totalWeight_eq_one
-          (p := g.prog) (σ := fun i => (σ i).val)
-          g.normalized) := rfl
+      (graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioral σ g.wctx).val (syntaxSteps g.prog) := rfl
 
 @[simp] theorem toKernelGame_udist
     (g : WFProgram P L)
     (σ : LegalProgramBehavioralProfile g) :
     (toKernelGame g).udist σ =
-      ((outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).toPMF
-        (outcomeDistBehavioral_totalWeight_eq_one
-          (p := g.prog) (σ := fun i => (σ i).val)
-          g.normalized)).bind
-        (fun o => PMF.pure (fun i => (o i : ℝ))) := rfl
+      ((graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioral σ g.wctx).val (syntaxSteps g.prog)).bind
+        (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
-/-- Expected utility in the kernel game matches Vegas expected payoff. -/
+/-- `toKernelGame` is the machine-native behavioral kernel at `g.wctx`. -/
 theorem toKernelGame_eu
     (g : WFProgram P L)
     (σ : LegalProgramBehavioralProfile g) (who : P) :
     (toKernelGame g).eu σ who =
-      (outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env).sum
-        (fun o w => (w : ℝ) * (o who : ℝ)) := by
-  let hnorm :=
-    outcomeDistBehavioral_totalWeight_eq_one
-      (p := g.prog) (σ := fun i => (σ i).val) (env := g.env)
-      g.normalized
-  simpa [GameTheory.KernelGame.eu, toKernelGame, hnorm,
-    NNRat.toNNReal_coe_real] using
-    (FDist.expect_toPMF_eq_sum
-      (d := outcomeDistBehavioral g.prog (fun i => (σ i).val) g.env)
-      (h := hnorm)
-      (f := fun o => (o who : ℝ)))
+      (toMachineKernelGame g g.wctx).eu σ who := rfl
 
 end Vegas

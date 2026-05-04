@@ -7,9 +7,9 @@ import Vegas.Protocol.StrategicCompatibility
 /-!
 # Protocol-native semantics for Vegas
 
-This file defines Vegas's solution concepts directly in terms of the
-protocol's own `outcomeDistBehavioral` semantics (rather than through
-the `toKernelGame` bridge) and proves that the two definitions agree.
+This file defines Vegas's legacy protocol-EU view directly in terms of the
+syntax-recursive `outcomeDistBehavioral` evaluator and proves that it agrees
+with the machine-backed public `toKernelGame`.
 The purpose is to make the protocol picture explicit in-tree: what a
 Vegas Nash equilibrium *means* at the protocol level is exactly the
 statement of `ProtocolNash`, and the existing `Vegas.IsNash` (defined
@@ -46,6 +46,7 @@ The file has two regions.
 namespace Vegas
 
 open GameTheory
+open FOSGBridge
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
@@ -63,14 +64,39 @@ noncomputable def protocolEU (g : WFProgram P L)
 @[simp] theorem toKernelGame_eu_eq_protocolEU (g : WFProgram P L)
     (σ : LegalProgramBehavioralProfile g) (i : P) :
     (toKernelGame g).eu σ i = protocolEU g σ i := by
-  simpa [protocolEU] using
-    toKernelGame_eu (g := g) (σ := σ) (who := i)
+  let raw : ProgramBehavioralProfile g.prog := fun j => (σ j).val
+  let hnorm :
+      (outcomeDistBehavioral g.prog raw g.env).totalWeight = 1 :=
+    outcomeDistBehavioral_totalWeight_eq_one
+      (p := g.prog) (σ := raw) (env := g.env) g.normalized
+  have hkernel :
+      (toKernelGame g).outcomeKernel σ =
+        (outcomeDistBehavioral g.prog raw g.env).toPMF hnorm := by
+    change (graphMachine g g.wctx).outcomeKernel
+        (lawOfBehavioral σ g.wctx).val (syntaxSteps g.prog) =
+      (outcomeDistBehavioral g.prog raw g.env).toPMF hnorm
+    rw [lawOfBehavioral]
+    rw [GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF]
+    simpa [Observed.cursorVegasOutcomeKernelPMF,
+      CursorCheckedWorld.initial, CursorWorldData.prog,
+      CursorWorldData.suffix, ProgramCursor.toSuffix,
+      ProgramCursor.toSuffixFrom, ProgramSuffix.behavioralProfilePMF,
+      ProgramCursor.prog, raw, hnorm,
+      LegalProgramBehavioralProfile.toPMFProfile] using
+      outcomeDistBehavioralPMF_toPMFProfile_eq
+        (p := g.prog) (σ := raw) (env := g.env) (hd := g.normalized)
+  unfold GameTheory.KernelGame.eu
+  rw [hkernel]
+  simpa [protocolEU, raw, hnorm, NNRat.toNNReal_coe_real] using
+    (FDist.expect_toPMF_eq_sum
+      (d := outcomeDistBehavioral g.prog raw g.env)
+      (h := hnorm)
+      (f := fun o => (o i : ℝ)))
 
 @[simp] theorem Game_eu_eq_protocolEU (g : WFProgram P L)
     (σ : StrategyProfile g) (i : P) :
     (Game g).eu σ i = protocolEU g σ i := by
   unfold Game
-  rw [toMachineKernelGame_eu_eq_toKernelGame]
   exact toKernelGame_eu_eq_protocolEU g σ i
 
 @[simp] theorem eu_eq_protocolEU (g : WFProgram P L)

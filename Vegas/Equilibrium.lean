@@ -1,5 +1,4 @@
 import Vegas.Strategic
-import Vegas.Protocol.Strategic
 import GameTheory.Concepts.SolutionConcepts
 import GameTheory.Core.GameProperties
 
@@ -20,7 +19,7 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 noncomputable def Game (g : WFProgram P L) : GameTheory.KernelGame P :=
-  toMachineKernelGame g g.wctx
+  toKernelGame g
 
 /-- Strategy profiles for a Vegas program are exactly the profiles of its
 kernel-game image. -/

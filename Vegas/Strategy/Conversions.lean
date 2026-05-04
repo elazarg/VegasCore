@@ -282,6 +282,60 @@ noncomputable def toPMFProfile :
 
 end ProgramBehavioralProfile
 
+@[simp] theorem ProgramBehavioralKernelPMF.ofFDist_ofPure
+    {who : P} {Γ : VCtx P L} {b : L.Ty}
+    (κ : PureKernel who Γ b) :
+    ProgramBehavioralKernelPMF.ofFDist
+        (ProgramBehavioralKernel.ofPure κ) =
+      ProgramBehavioralKernelPMF.ofPure κ := by
+  ext view
+  simp [ProgramBehavioralKernelPMF.ofFDist, ProgramBehavioralKernelPMF.ofPure,
+    ProgramBehavioralKernel.ofPure, FDist.toPMF_pure]
+
+namespace ProgramBehavioralProfile
+
+/-- Converting the deterministic behavioral lift of a pure profile to PMF is
+the same PMF profile as the direct pure-to-PMF lift. -/
+theorem toPMFProfile_toBehavioral_eq_toBehavioralPMF :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      (σ : ProgramPureProfile p) →
+      toPMFProfile p (ProgramPureProfile.toBehavioral p σ) =
+        ProgramPureProfile.toBehavioralPMF p σ
+  | _, .ret _, σ => by
+      funext who
+      rfl
+  | _, .letExpr _ _ k, σ => by
+      funext who
+      simp [toPMFProfile, ProgramPureProfile.toBehavioral,
+        ProgramPureProfile.toBehavioralPMF,
+        toPMFProfile_toBehavioral_eq_toBehavioralPMF k σ]
+  | _, .sample _ _ k, σ => by
+      funext who
+      simp [toPMFProfile, ProgramPureProfile.toBehavioral,
+        ProgramPureProfile.toBehavioralPMF,
+        toPMFProfile_toBehavioral_eq_toBehavioralPMF k σ]
+  | _, .commit _ who R k, σ => by
+      funext i
+      by_cases h : who = i
+      · subst i
+        simp only [toPMFProfile, ProgramPureProfile.toBehavioralPMF, dite_true]
+        rw [ProgramPureProfile.tail_toBehavioral]
+        simp [ProgramPureProfile.toBehavioral,
+          toPMFProfile_toBehavioral_eq_toBehavioralPMF k
+            (ProgramPureProfile.tail σ)]
+      · simp only [toPMFProfile, ProgramPureProfile.toBehavioralPMF, h, dite_false]
+        rw [ProgramPureProfile.tail_toBehavioral]
+        simp [
+          toPMFProfile_toBehavioral_eq_toBehavioralPMF k
+            (ProgramPureProfile.tail σ)]
+  | _, .reveal _ _ _ _ k, σ => by
+      funext who
+      simp [toPMFProfile, ProgramPureProfile.toBehavioral,
+        ProgramPureProfile.toBehavioralPMF,
+        toPMFProfile_toBehavioral_eq_toBehavioralPMF k σ]
+
+end ProgramBehavioralProfile
+
 private theorem mem_fdist_support_of_mem_toPMF_support
     {α : Type} [DecidableEq α] {d : FDist α} {h : d.totalWeight = 1} {a : α}
     (ha : a ∈ (d.toPMF h).support) :

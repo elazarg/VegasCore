@@ -1025,12 +1025,12 @@ theorem toFiniteGraphMachineFOSG_vegasPure_runDist_eq_toMachineStrategicKernelGa
           (CursorCheckedWorld.initial g hctx) =
         (toKernelGamePMF g).outcomeKernel
           (LegalProgramPureProfile.toBehavioralPMF σ) := by
-    simp [Observed.cursorVegasOutcomeKernelPMF,
-      CursorCheckedWorld.initial, CursorWorldData.prog,
-      CursorWorldData.suffix, ProgramCursor.toSuffix,
-      ProgramCursor.toSuffixFrom, ProgramSuffix.behavioralProfilePMF,
-      ProgramCursor.prog]
-    rfl
+    exact
+      (GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_cursorVegasOutcomeKernelPMF
+        (g := g) (hctx := hctx)
+        (σ := LegalProgramPureProfile.toBehavioralPMF σ)).symm.trans
+        (GraphEventLaw.lawOfBehavioralPMF_outcomeKernel_eq_toKernelGamePMF
+          (g := g) (LegalProgramPureProfile.toBehavioralPMF σ) hctx)
   have hmachine :
       PMF.map (graphMachineFOSGHistoryOutcome g hctx (syntaxSteps g.prog))
           ((toFiniteGraphMachineFOSG g hctx).runDist
