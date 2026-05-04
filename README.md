@@ -110,7 +110,7 @@ type is named `FeasibleProgramBehavioralProfilePMF`; it is a presentation
 that should be proved equivalent to the IR carrier when exposed to clients.
 
 ```lean
-kuhn_mixedPureRealization_total_finite
+kuhn_mixedPureRealization_finite
 ```
 
 The cursor-world observed adapter remains as a syntax-projection layer. It is

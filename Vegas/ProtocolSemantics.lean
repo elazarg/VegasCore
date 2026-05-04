@@ -34,8 +34,6 @@ The file has two regions.
   `ReachableKuhnPMF g hctx LF : Prop` is the
   observed-adapter reachable strategy-space version used by the syntax-facing
   projection route.
-  `TotalMixedPureRealizationPMF g hctx LF : Prop` is kept as a
-  backwards-facing name for the same IR-based behavioral target.
   `ProtocolRationalMixedPureRealizationProperty g : Prop` is the corresponding
   FDist-valued target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
@@ -243,47 +241,6 @@ theorem reachableKuhnPMF_finite
     ReachableKuhnPMF g hctx LF := by
   intro μ
   exact mixedPureRealization_reachable_finite
-    g hctx LF μ
-
-/-- Main PMF mixed-to-behavioral realization target.
-
-Despite the historical name, the witness is now the IR-based behavioral profile
-carrier: a reachable profile of the syntax-horizon FOSG derived from the
-checked protocol machine. A syntax-oriented client profile should be added as a
-separate presentation theorem against this target. -/
-def TotalMixedPureRealizationPMF
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
-  ∀ (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)),
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : SequentialBehavioralProfilePMF g hctx,
-      sequentialOutcomeKernelPMF g hctx LF β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ)
-
-/-- Mixed-to-behavioral realization for concrete finite Vegas programs in the
-IR-based behavioral profile space. -/
-theorem mixedPureRealization_total_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : SequentialBehavioralProfilePMF g hctx,
-      sequentialOutcomeKernelPMF g hctx LF β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
-  exact mixedPureRealization_sequential_finite
-    g hctx LF μ
-
-/-- Concrete finite IR-based realization theorem. -/
-theorem totalMixedPureRealizationPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    TotalMixedPureRealizationPMF g hctx LF := by
-  intro μ
-  exact mixedPureRealization_total_finite
     g hctx LF μ
 
 /-- FDist-valued mixed-pure realization target.
