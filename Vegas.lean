@@ -10,7 +10,6 @@ import Vegas.Config
 import Vegas.Finite
 import Vegas.Examples
 import Vegas.BigStep
-import Vegas.SmallStep
 import Vegas.ViewKernel
 import Vegas.Strategy.Behavioral
 import Vegas.Strategy.Pure
