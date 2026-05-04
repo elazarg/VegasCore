@@ -61,8 +61,8 @@ noncomputable def protocolEU (g : WFProgram P L)
 
 @[simp] theorem Game_eu_eq_protocolEU (g : WFProgram P L)
     (σ : StrategyProfile g) (i : P) :
-    (Game g).eu σ i = protocolEU g σ i := by
-  unfold Game
+    (behavioralKernelGame g).eu σ i = protocolEU g σ i := by
+  unfold behavioralKernelGame
   exact behavioralKernelGame_eu_eq_protocolEU g σ i
 
 @[simp] theorem eu_eq_protocolEU (g : WFProgram P L)

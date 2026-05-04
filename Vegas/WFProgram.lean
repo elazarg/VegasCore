@@ -8,7 +8,7 @@ the static obligations needed to produce a game-theoretic object from it:
 `WFCtx` (distinct initial bindings), `WF` (fresh bindings,
 reveal-completeness, view-scoping), `NormalizedDists` (sample distributions sum
 to 1), and `Legal` (every commit site has a feasible action). User-facing game
-APIs downstream — `behavioralKernelGame`, `Game`, `IsNash`, `IsPureNash`, `IsεNash`,
+APIs downstream — `behavioralKernelGame`, `behavioralKernelGame`, `IsNash`, `IsPureNash`, `IsεNash`,
 and the equilibrium-family predicates — consume `WFProgram` rather than a raw
 `VegasCore` plus separate side conditions. This is the API boundary where raw,
 unchecked syntax becomes a "real" game.
