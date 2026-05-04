@@ -77,19 +77,6 @@ noncomputable def protocolEU (g : WFProgram P L)
     Vegas.eu g σ i = protocolEU g σ i := by
   simp [eu]
 
-@[simp] theorem MachineGame_eu_eq_protocolEU
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-  (σ : StrategyProfile g) (i : P) :
-    (MachineGame g hctx).eu σ i = protocolEU g σ i := by
-  rw [MachineGame_eu_eq_Game]
-  exact Game_eu_eq_protocolEU g σ i
-
-@[simp] theorem machineEu_eq_protocolEU
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : StrategyProfile g) (i : P) :
-    machineEu g hctx σ i = protocolEU g σ i := by
-  rw [machineEu_eq_eu, eu_eq_protocolEU]
-
 /-- Protocol-level Nash equilibrium: no player can improve their
 protocol-level expected utility by a unilateral deviation within
 the guard-legal strategy space. -/
@@ -110,12 +97,6 @@ theorem isNash_iff_protocolNash (g : WFProgram P L)
   · intro h who s'
     have := h who s'
     simpa using this
-
-theorem machineIsNash_iff_protocolNash
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : StrategyProfile g) :
-    MachineIsNash g hctx σ ↔ ProtocolNash g σ := by
-  rw [machineIsNash_iff_isNash, isNash_iff_protocolNash]
 
 /-- Protocol-level best response: `s` maximises player `who`'s
 protocol-level expected utility among all legal deviations, holding
