@@ -1,5 +1,6 @@
 import GameTheory.Languages.FOSG.OutcomeClosure
 import Vegas.FOSG.Observed.Pure
+import Vegas.StrategicPMF
 
 namespace Vegas
 namespace FOSGBridge

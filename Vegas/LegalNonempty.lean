@@ -1,4 +1,4 @@
-import Vegas.PureStrategic
+import Vegas.Strategy.Pure
 
 /-!
 # Nonempty instance for guard-legal pure profiles

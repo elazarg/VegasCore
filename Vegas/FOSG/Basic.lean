@@ -4,9 +4,7 @@ import GameTheory.Languages.FOSG.Compile
 import GameTheory.Languages.FOSG.Kuhn
 import Vegas.FOSG.Action
 import Vegas.FOSG.Runtime
-import Vegas.Strategic
-import Vegas.PureStrategic
-import Vegas.StrategicPMF
+import Vegas.Strategy.Conversions
 import Vegas.LegalNonempty
 import Vegas.Finite
 import Vegas.ViewKernel
