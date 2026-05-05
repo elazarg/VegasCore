@@ -367,6 +367,15 @@ namespace Configuration
 
 variable {G : Vegas.ProtocolGraph Player L}
 
+@[ext] theorem ext
+    {left right : G.Configuration}
+    (hresult : left.result = right.result) :
+    left = right := by
+  cases left
+  cases right
+  cases hresult
+  rfl
+
 /-- Empty initial configuration. Initial field values belong to the graph, not
 to an executed node result. -/
 def initial (G : Vegas.ProtocolGraph Player L) : G.Configuration where
@@ -587,6 +596,68 @@ noncomputable def withResult
     · have holdResult : cfg.result candidate = some candidateSlice := by
         simpa [updateResult, hcandidate] using hcandidateResult
       exact cfg.legal holdResult
+
+/-- A distinct frontier node remains on the frontier after executing another
+frontier node. Executing one ready graph event only records that event's
+result; it does not invalidate any other ready event. -/
+theorem withResult_mem_frontier_of_ne
+    (cfg : G.Configuration)
+    {first second : G.Node} {slice : WriteSlice G}
+    (hfirst : first ∈ cfg.frontier)
+    (hsecond : second ∈ cfg.frontier)
+    (hne : second ≠ first)
+    (hlegal : G.sliceLegal first slice) :
+    second ∈ (cfg.withResult slice hfirst hlegal).frontier := by
+  classical
+  rw [mem_frontier_iff] at hsecond ⊢
+  rcases hsecond with ⟨hnode, hnone, hprereqs⟩
+  refine ⟨hnode, ?_, ?_⟩
+  · simpa [withResult, updateResult, hne] using hnone
+  · intro prereq hpre
+    have hdone := hprereqs hpre
+    have hdoneData := (G.mem_done_iff cfg.result prereq).mp hdone
+    refine (G.mem_done_iff
+      (cfg.withResult slice hfirst hlegal).result prereq).mpr ?_
+    refine ⟨hdoneData.1, ?_⟩
+    by_cases hpreq : prereq = first
+    · subst prereq
+      simp [withResult, updateResult]
+    · simpa [withResult, updateResult, hpreq] using hdoneData.2
+
+/-- Frontier execution has a diamond property: two distinct ready graph events
+can be linearized in either order, and after both have executed the same
+extensional configuration is reached. -/
+theorem withResult_comm
+    (cfg : G.Configuration)
+    {left right : G.Node} {leftSlice rightSlice : WriteSlice G}
+    (hleft : left ∈ cfg.frontier)
+    (hright : right ∈ cfg.frontier)
+    (hne : left ≠ right)
+    (hleftLegal : G.sliceLegal left leftSlice)
+    (hrightLegal : G.sliceLegal right rightSlice) :
+    let hrightAfterLeft :=
+      cfg.withResult_mem_frontier_of_ne
+        hleft hright (Ne.symm hne) hleftLegal
+    let hleftAfterRight :=
+      cfg.withResult_mem_frontier_of_ne
+        hright hleft hne hrightLegal
+    (cfg.withResult leftSlice hleft hleftLegal).withResult
+        rightSlice hrightAfterLeft hrightLegal =
+      (cfg.withResult rightSlice hright hrightLegal).withResult
+        leftSlice hleftAfterRight hleftLegal := by
+  classical
+  dsimp
+  apply Configuration.ext
+  funext candidate
+  by_cases hcLeft : candidate = left
+  · subst candidate
+    have hleftRight : left ≠ right := hne
+    simp [withResult, updateResult, hleftRight]
+  · by_cases hcRight : candidate = right
+    · subst candidate
+      have hrightLeft : right ≠ left := Ne.symm hne
+      simp [withResult, updateResult, hrightLeft]
+    · simp [withResult, updateResult, hcLeft, hcRight]
 
 end Configuration
 

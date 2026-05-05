@@ -2,6 +2,7 @@ import Vegas.Protocol.Graph
 import Vegas.Protocol.Machine
 import Vegas.Protocol.GraphMachine
 import Vegas.Protocol.SyntaxGraph
+import Vegas.Protocol.StateSufficiency
 import Vegas.Protocol.Trace
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Strategic

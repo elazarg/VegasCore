@@ -80,6 +80,34 @@ machine state. A machine step executes one enabled graph event: a player-owned
 frontier node via a legal write slice, or a non-player frontier node via the
 internal event channel.
 
+\begin{theorem}[Frontier stability]
+Let \(C\) be a protocol graph configuration. If \(a\) and \(b\) are distinct
+nodes on the frontier of \(C\), then after executing \(a\) with any legal result
+slice, \(b\) is still on the frontier of the successor configuration.
+
+In Lean this is \leanref{ProtocolGraph.Configuration.withResult_mem_frontier_of_ne}.
+\end{theorem}
+
+\begin{theorem}[Frontier diamond]
+Let \(a\) and \(b\) be distinct frontier nodes of a configuration \(C\). Let
+\(s_a\) and \(s_b\) be legal result slices for \(a\) and \(b\), respectively.
+Then the two linearizations reach the same extensional configuration:
+\[
+  (C[a \mapsto s_a])[b \mapsto s_b]
+  =
+  (C[b \mapsto s_b])[a \mapsto s_a].
+\]
+
+In Lean this is \leanref{ProtocolGraph.Configuration.withResult_comm}.
+\end{theorem}
+
+Thus a user may read a frontier execution linearly without losing semantic
+content: the linear order is presentation data. Intermediate transcripts may
+record which ready event happened first, but independent frontier events cannot
+race to change the final physical state. Any strategically relevant dependency
+must already be represented as a graph dependency, and therefore prevents the
+dependent event from being on the same frontier.
+
 \section{FOSG As A View}
 
 \leanref{Machine.FOSGView} derives a sequential game-theoretic view from any
