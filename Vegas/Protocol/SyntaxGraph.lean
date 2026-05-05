@@ -1053,6 +1053,86 @@ noncomputable def sliceLegal
       ∃ value : L.Val target.ty,
         slice = ProgramField.singleSlice target (.clear value)
 
+/-- A legal slice contains a stored value for every semantic field written by
+the node. -/
+theorem sliceLegal_writeField_isSome
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (legal : Legal p) (normalized : NormalizedDists p)
+    (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
+    {field : ProgramField p}
+    (hlegal : sliceLegal legal normalized node slice)
+    (hwrite :
+      field ∈
+        (ProgramNode.sem legal normalized node).writeFields) :
+    ∃ stored : ProtocolGraph.StoredValue (L.Val field.ty),
+      slice field = some stored := by
+  classical
+  cases hsem : ProgramNode.sem legal normalized node with
+  | assign target expr =>
+      rw [sliceLegal, hsem] at hlegal
+      change ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.clear value) at hlegal
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq :
+          write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      rcases hlegal with ⟨value, rfl⟩
+      exact ⟨.clear value, by simp⟩
+  | sample target dist =>
+      rw [sliceLegal, hsem] at hlegal
+      change ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.clear value) at hlegal
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq :
+          write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      rcases hlegal with ⟨value, rfl⟩
+      exact ⟨.clear value, by simp⟩
+  | commit owner target guard =>
+      rw [sliceLegal, hsem] at hlegal
+      change ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.hidden value) at hlegal
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq :
+          write = ProtocolGraph.FieldWrite.hidden owner target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      rcases hlegal with ⟨value, rfl⟩
+      exact ⟨.hidden value, by simp⟩
+  | reveal source target hty =>
+      rw [sliceLegal, hsem] at hlegal
+      change ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.clear value) at hlegal
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq :
+          write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      rcases hlegal with ⟨value, rfl⟩
+      exact ⟨.clear value, by simp⟩
+
 /-- Dynamic legality for player-chosen source graph slices. Only commit nodes
 have an actor, so only commits admit legal player slices. -/
 noncomputable def actionLegal
@@ -1110,6 +1190,28 @@ theorem exists_actionLegal_of_reads_available
         exact ⟨value, rfl⟩
       · rw [actionLegal, hsem]
         exact ⟨havailable, value, hvalue, rfl⟩
+
+/-- A completed source node makes every field it semantically writes available
+in the source-level extensional value lookup. -/
+theorem value?_isSome_of_completed_write
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
+    (legal : Legal p) (normalized : NormalizedDists p)
+    {result : ProgramNode p → Option (ProgramField.WriteSlice p)}
+    {writer : ProgramNode p} {field : ProgramField p}
+    (hdone : (result writer).isSome)
+    (hcfgLegal :
+      ∀ {node slice},
+        result node = some slice →
+          ProgramNode.sliceLegal legal normalized node slice)
+    (hwrite :
+      field ∈ (ProgramNode.sem legal normalized writer).writeFields) :
+    (ProgramField.value? env result field).isSome := by
+  rcases Option.isSome_iff_exists.mp hdone with ⟨slice, hresult⟩
+  have hsliceLegal : ProgramNode.sliceLegal legal normalized writer slice :=
+    hcfgLegal hresult
+  rcases ProgramNode.sliceLegal_writeField_isSome legal normalized writer
+      hsliceLegal hwrite with ⟨stored, hstored⟩
+  exact ProgramField.value?_isSome_of_result_slice env hresult hstored
 
 /-- Internal kernel for source graph nodes. Assignment and reveal nodes are
 deterministic; sample nodes use the checked PMF distribution; commit nodes are
