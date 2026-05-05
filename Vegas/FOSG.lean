@@ -186,9 +186,9 @@ noncomputable def toFiniteFOSGPureStrategyCandidate
   GameTheory.FOSG.PureStrategy.ofLatestObservation
     (G := toFiniteFOSG g hctx)
     (i := who)
-    (Observed.movePureStrategyAtCursorWorld
+    (movePureStrategyAtCursorWorld
       g hctx who σ (CursorCheckedWorld.initial g hctx))
-    (Observed.movePureStrategyAtProgramObservation? g hctx who σ)
+    (movePureStrategyAtProgramObservation? g hctx who σ)
 
 @[simp] theorem toFiniteFOSGPureStrategyCandidate_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -196,7 +196,7 @@ noncomputable def toFiniteFOSGPureStrategyCandidate
     toFiniteFOSGPureStrategyCandidate g hctx who σ
         ((GameTheory.FOSG.History.nil
           (toFiniteFOSG g hctx)).playerView who) =
-      Observed.movePureStrategyAtCursorWorld
+      movePureStrategyAtCursorWorld
         g hctx who σ (CursorCheckedWorld.initial g hctx) := by
   simp [toFiniteFOSGPureStrategyCandidate]
 
@@ -206,7 +206,7 @@ theorem toFiniteFOSGPureStrategyCandidate_history
     (h : (toFiniteFOSG g hctx).History) :
     toFiniteFOSGPureStrategyCandidate g hctx who σ
         (h.playerView who) =
-      Observed.movePureStrategyAtCursorWorld
+      movePureStrategyAtCursorWorld
         g hctx who σ
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState) := by
@@ -220,9 +220,9 @@ theorem toFiniteFOSGPureStrategyCandidate_history
           rfl
     rw [hh]
     change
-      Observed.movePureStrategyAtCursorWorld
+      movePureStrategyAtCursorWorld
           g hctx who σ (CursorCheckedWorld.initial g hctx) =
-        Observed.movePureStrategyAtCursorWorld
+        movePureStrategyAtCursorWorld
           g hctx who σ
           (cursorWorldOfGraphConfiguration g hctx
             (ActionGraph.Configuration.initial
@@ -246,7 +246,7 @@ theorem toFiniteFOSGPureStrategyCandidate_history
             (syntaxSteps g.prog) who h hnil
     simp [toFiniteFOSGPureStrategyCandidate,
       GameTheory.FOSG.PureStrategy.ofLatestObservation, hlatest,
-      Observed.movePureStrategyAtProgramObservation?_of_cursorWorld]
+      movePureStrategyAtProgramObservation?_of_cursorWorld]
 
 theorem toFiniteFOSGPureStrategyCandidate_available
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -262,15 +262,15 @@ theorem toFiniteFOSGPureStrategyCandidate_available
       finiteFOSG_terminal_endpoint_of_cutoff
         g hctx h hcut
     let move :=
-      Observed.movePureStrategyAtCursorWorld
+      movePureStrategyAtCursorWorld
         g hctx who σ
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState)
     have hobsAvail :
-        move ∈ (observedProgramFOSG g hctx).availableMovesAtState
+        move ∈ (cursorFOSG g hctx).availableMovesAtState
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) who :=
-      Observed.movePureStrategyAtCursorWorld_available
+      movePureStrategyAtCursorWorld_available
         g hctx who σ
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState)
@@ -300,7 +300,7 @@ theorem toFiniteFOSGPureStrategyCandidate_available
                   CursorCheckedWorld.availableProgramActions
                     (cursorWorldOfGraphConfiguration
                       g hctx h.lastState.lastState) who := by
-            simpa [move, observedProgramFOSG,
+            simpa [move, cursorFOSG,
               GameTheory.FOSG.availableMovesAtState,
               GameTheory.FOSG.locallyLegalAtState, hmove] using hobsAvail
           exact hpair.1
@@ -310,14 +310,14 @@ theorem toFiniteFOSGPureStrategyCandidate_available
       finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
         g hctx who h hcut
     have hobs :
-        Observed.movePureStrategyAtCursorWorld
+        movePureStrategyAtCursorWorld
             g hctx who σ
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState) ∈
-          (observedProgramFOSG g hctx).availableMovesAtState
+          (cursorFOSG g hctx).availableMovesAtState
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState) who :=
-      Observed.movePureStrategyAtCursorWorld_available
+      movePureStrategyAtCursorWorld_available
         g hctx who σ
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState)
@@ -372,7 +372,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                 g hctx dst.lastState))
           ((toFiniteFOSG g hctx).transition
             h.lastState action)) =
-      Observed.checkedProfileStepPMF g hctx
+      checkedProfileStepPMF g hctx
         (FeasibleProgramPureProfile.toBehavioralPMF σ)
         (CheckedWorld.ofCursorChecked (hctx := hctx)
           (cursorWorldOfGraphConfiguration
@@ -450,19 +450,19 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
             simpa [G, toFiniteFOSG,
               finiteFOSG] using htrans
       _ =
-          Observed.checkedProfileStepPMF g hctx
+          checkedProfileStepPMF g hctx
             (FeasibleProgramPureProfile.toBehavioralPMF σ)
             (CheckedWorld.ofCursorChecked (hctx := hctx)
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)) := by
-            apply Observed.checkedTransition_eq_checkedProfileStepPMF_of_active_empty
+            apply checkedTransition_eq_checkedProfileStepPMF_of_active_empty
             simpa [active, CheckedWorld.ofCursorChecked,
               active] using hactiveCursor
   · have hne : (G.active h.lastState).Nonempty :=
       Finset.nonempty_iff_ne_empty.mpr hactive
     rcases hne with ⟨who, hmem⟩
     have hmemCursor :
-        who ∈ (observedProgramFOSG g hctx).active
+        who ∈ (cursorFOSG g hctx).active
           (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) := by
       have hmemRaw :
           who ∈
@@ -482,9 +482,9 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
         simpa [fosgView_active_eq_cursor_active_of_not_terminal
           g hctx h.lastState.pref hnotGraph,
           Machine.BoundedRunPrefix.lastState] using hmemRaw
-      simpa [observedProgramFOSG,
+      simpa [cursorFOSG,
         Machine.BoundedRunPrefix.lastState] using hmem'
-    rcases Observed.observedProgram_active_mem_commitData
+    rcases cursorFOSG_active_mem_commitData
         g hctx
         (cursorWorldOfGraphConfiguration
           g hctx h.lastState.lastState) hmemCursor with
@@ -499,7 +499,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
               (cursorWorldOfGraphConfiguration
                 g hctx dst.lastState))
           (G.transition h.lastState action) =
-        Observed.checkedCommitContinuation
+        checkedCommitContinuation
           g hctx env suffix wctx fresh viewScoped normalized legal
           (action.1 who) := by
       intro action
@@ -564,7 +564,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                 finiteFOSG,
                 selectedEvent, selectedAction] using htrans
         _ =
-            Observed.checkedCommitContinuation
+            checkedCommitContinuation
               g hctx env suffix wctx fresh viewScoped normalized legal
               (action.1 who) := by
               rw [checkedTransition_congr_checkedWorld
@@ -573,7 +573,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                 (ha₂ := by
                   simpa [CheckedJointActionLegal, active, terminal,
                     availableActions, CheckedWorld.toWorld] using haRaw)]
-              simpa [Observed.checkedCommitContinuation, hselectedWho] using
+              simpa [checkedCommitContinuation, hselectedWho] using
                 checkedTransition_commit_eq_programActionContinuation
                   g hctx env suffix wctx fresh viewScoped
                   normalized legal selectedAction haRaw
@@ -591,7 +591,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
         =
           (G.legalActionLaw β h hterm).bind
             (fun action =>
-              Observed.checkedCommitContinuation
+              checkedCommitContinuation
                 g hctx env suffix wctx fresh viewScoped normalized legal
                 (action.1 who)) := by
             congr
@@ -599,13 +599,13 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
             exact hK action
       _ =
           ((β.toProfile who) (h.playerView who)).bind
-            (Observed.checkedCommitContinuation
+            (checkedCommitContinuation
               g hctx env suffix wctx fresh viewScoped normalized legal) := by
             exact G.legalActionLaw_bind_coord β h hterm who
-              (Observed.checkedCommitContinuation
+              (checkedCommitContinuation
                 g hctx env suffix wctx fresh viewScoped normalized legal)
       _ =
-          Observed.checkedProfileStepPMF g hctx
+          checkedProfileStepPMF g hctx
             (FeasibleProgramPureProfile.toBehavioralPMF σ)
             (CheckedWorld.ofCursorChecked (hctx := hctx)
               (cursorWorldOfGraphConfiguration
@@ -613,7 +613,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
             have hprofile :
                 ((β.toProfile who) (h.playerView who)) =
                   PMF.pure
-                    (Observed.movePureStrategyAtCursorWorld
+                    (movePureStrategyAtCursorWorld
                       g hctx who (σ who)
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState)) := by
@@ -623,7 +623,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                         g hctx σ).toProfile who).extend
                       (h.playerView who)) =
                   PMF.pure
-                    (Observed.movePureStrategyAtCursorWorld
+                    (movePureStrategyAtCursorWorld
                       g hctx who (σ who)
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState))
@@ -634,7 +634,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                         g hctx who (σ who)).1
                       (G.reachableInfoStateOfHistory who h)) =
                   PMF.pure
-                    (Observed.movePureStrategyAtCursorWorld
+                    (movePureStrategyAtCursorWorld
                       g hctx who (σ who)
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState))
@@ -644,7 +644,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                         g hctx who (σ who)).1.restrictReachable
                       (G.reachableInfoStateOfHistory who h)) =
                   PMF.pure
-                    (Observed.movePureStrategyAtCursorWorld
+                    (movePureStrategyAtCursorWorld
                       g hctx who (σ who)
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState))
@@ -654,7 +654,7 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
                       g hctx who (σ who)
                       ((G.reachableInfoStateOfHistory who h).1)) =
                   PMF.pure
-                    (Observed.movePureStrategyAtCursorWorld
+                    (movePureStrategyAtCursorWorld
                       g hctx who (σ who)
                       (cursorWorldOfGraphConfiguration
                         g hctx h.lastState.lastState))
@@ -663,30 +663,30 @@ theorem toFiniteFOSG_pure_actionLaw_bind_checkedTransition_eq_checkedProfileStep
               rfl
             rw [hprofile]
             have hpureMove :
-                Observed.movePureAtCursorWorld g hctx σ who
+                movePureAtCursorWorld g hctx σ who
                     (cursorWorldOfGraphConfiguration
                       g hctx h.lastState.lastState) =
-                  Observed.movePureStrategyAtCursorWorld
+                  movePureStrategyAtCursorWorld
                     g hctx who (σ who)
                     (cursorWorldOfGraphConfiguration
                       g hctx h.lastState.lastState) := by
-              unfold Observed.movePureAtCursorWorld
-                Observed.movePureStrategyAtCursorWorld
-              exact Observed.movePureAtProgramCursor_eq_strategy
+              unfold movePureAtCursorWorld
+                movePureStrategyAtCursorWorld
+              exact movePureAtProgramCursor_eq_strategy
                 g hctx σ who _ _
             rw [← hpureMove]
-            rw [← Observed.moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
+            rw [← moveAtCursorWorldPMF_toBehavioralPMF_eq_pure
               g hctx σ who
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)]
-            rw [← Observed.moveAtCheckedWorldPMF_ofCursorChecked
+            rw [← moveAtCheckedWorldPMF_ofCursorChecked
               g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
               who
               (cursorWorldOfGraphConfiguration
                 g hctx h.lastState.lastState)]
             rw [hchecked]
             exact
-              Observed.moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
+              moveAtProgramCursorPMF_bind_commitContinuation_eq_checkedProfileStepPMF
                 g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
                 env suffix wctx fresh viewScoped normalized legal
 
@@ -712,7 +712,7 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
       (cursorWorldOfGraphConfiguration
         g hctx h.lastState.lastState)
   value := fun h =>
-    Observed.cursorVegasOutcomeKernelPMF
+    cursorVegasOutcomeKernelPMF
       (FeasibleProgramPureProfile.toBehavioralPMF σ)
       (cursorWorldOfGraphConfiguration
         g hctx h.lastState.lastState)
@@ -745,7 +745,7 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
     have hcursor :=
       finiteFOSG_cursor_terminal_of_terminal
         g hctx h hterm'
-    exact Observed.cursorVegasOutcomeKernelPMF_terminal
+    exact cursorVegasOutcomeKernelPMF_terminal
       (hctx := hctx) (FeasibleProgramPureProfile.toBehavioralPMF σ)
       (cursorWorldOfGraphConfiguration
         g hctx h.lastState.lastState) hcursor
@@ -763,7 +763,7 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
           (fun action =>
             (G.transition h.lastState action).bind
               (fun dst =>
-                Observed.cursorVegasOutcomeKernelPMF
+                cursorVegasOutcomeKernelPMF
                   (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx
@@ -772,7 +772,7 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
           (fun action =>
             (G.transition h.lastState action).bind
               (fun dst =>
-                Observed.cursorVegasOutcomeKernelPMF
+                cursorVegasOutcomeKernelPMF
                   (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx dst.lastState))) := by
@@ -781,13 +781,13 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
             refine Math.ProbabilityMassFunction.bind_congr_on_support
               (G.transition h.lastState action)
               (fun dst =>
-                Observed.cursorVegasOutcomeKernelPMF
+                cursorVegasOutcomeKernelPMF
                   (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx
                     (h.extendByOutcome action dst).lastState.lastState))
               (fun dst =>
-                Observed.cursorVegasOutcomeKernelPMF
+                cursorVegasOutcomeKernelPMF
                   (FeasibleProgramPureProfile.toBehavioralPMF σ)
                   (cursorWorldOfGraphConfiguration
                     g hctx dst.lastState)) ?_
@@ -811,7 +811,7 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
                   (cursorWorldOfGraphConfiguration
                     g hctx dst.lastState))
               (G.transition h.lastState action))).bind
-            (Observed.checkedVegasOutcomeKernelPMF
+            (checkedVegasOutcomeKernelPMF
               (hctx := hctx)
               (FeasibleProgramPureProfile.toBehavioralPMF σ)) := by
             rw [PMF.bind_bind]
@@ -819,29 +819,29 @@ noncomputable def finiteFOSGPureOutcomeValuePMF
             funext action
             simp [PMF.map, PMF.bind_bind, Function.comp_def]
       _ =
-        (Observed.checkedProfileStepPMF g hctx
+        (checkedProfileStepPMF g hctx
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState))).bind
-          (Observed.checkedVegasOutcomeKernelPMF
+          (checkedVegasOutcomeKernelPMF
             (hctx := hctx)
             (FeasibleProgramPureProfile.toBehavioralPMF σ)) := by
             rw [hcheckedStep]
       _ =
-        Observed.checkedVegasOutcomeKernelPMF
+        checkedVegasOutcomeKernelPMF
           (hctx := hctx)
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CheckedWorld.ofCursorChecked (hctx := hctx)
             (cursorWorldOfGraphConfiguration
               g hctx h.lastState.lastState)) := by
-            exact Observed.checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
+            exact checkedProfileStepPMF_bind_checkedVegasOutcomeKernelPMF
               g hctx (FeasibleProgramPureProfile.toBehavioralPMF σ)
               (CheckedWorld.ofCursorChecked (hctx := hctx)
                 (cursorWorldOfGraphConfiguration
                   g hctx h.lastState.lastState))
       _ =
-        Observed.cursorVegasOutcomeKernelPMF
+        cursorVegasOutcomeKernelPMF
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (cursorWorldOfGraphConfiguration
             g hctx h.lastState.lastState) := rfl
@@ -898,7 +898,7 @@ theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
         change syntaxSteps g.prog ≤ syntaxSteps g.prog
         exact Nat.le_refl _)
   have hvalue :
-      Observed.cursorVegasOutcomeKernelPMF
+      cursorVegasOutcomeKernelPMF
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CursorCheckedWorld.initial g hctx) =
         (pmfBehavioralKernelGame g).outcomeKernel
@@ -916,7 +916,7 @@ theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
             ((toFiniteFOSG g hctx).legalPureToBehavioral
               (toFiniteFOSGReachableLegalPureProfile
                 g hctx σ).extend)) =
-        Observed.cursorVegasOutcomeKernelPMF
+        cursorVegasOutcomeKernelPMF
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CursorCheckedWorld.initial g hctx) := by
     simpa [fosgHistoryOutcome, graphMachine,

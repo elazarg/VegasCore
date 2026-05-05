@@ -94,7 +94,7 @@ alphabet.
 
 This is the finite executable FOSG target for program-action strategy and
 equilibrium transport. -/
-noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
+noncomputable def cursorFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     GameTheory.FOSG P (CursorCheckedWorld g)
       (fun who : P => ProgramAction g.prog who)
       (fun who : P => PrivateObs g who)
@@ -117,12 +117,12 @@ noncomputable def observedProgramFOSG (g : WFProgram P L) (hctx : WFCtx g.Γ) :
     intro w hterm
     exact cursor_nonterminal_exists_program_legal hterm
 
-theorem observedProgram_availableMovesAtState_eq_of_privateObs_eq
+theorem cursorFOSG_availableMovesAtState_eq_of_privateObs_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (w₁ w₂ : CursorCheckedWorld g)
     (hpriv : privateObsOfCursorWorld who w₁ = privateObsOfCursorWorld who w₂) :
-    (observedProgramFOSG g hctx).availableMovesAtState w₁ who =
-      (observedProgramFOSG g hctx).availableMovesAtState w₂ who := by
+    (cursorFOSG g hctx).availableMovesAtState w₁ who =
+      (cursorFOSG g hctx).availableMovesAtState w₂ who := by
   have h :=
     availableProgramMovesAt_eq_of_privateObs_eq
       g who w₁ w₂ hpriv
@@ -134,11 +134,11 @@ theorem observedProgram_availableMovesAtState_eq_of_privateObs_eq
     simp [h]
   cases oi with
   | none =>
-      simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+      simpa [cursorFOSG, GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
         CursorCheckedWorld.toWorld, active] using hmem
   | some ai =>
-      simpa [observedProgramFOSG, GameTheory.FOSG.availableMovesAtState,
+      simpa [cursorFOSG, GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, CursorCheckedWorld.availableProgramMovesAt,
         CursorCheckedWorld.availableProgramActions,
         CursorCheckedWorld.availableProgramActionsAt,
@@ -147,47 +147,47 @@ theorem observedProgram_availableMovesAtState_eq_of_privateObs_eq
 
 /-- The observed-program FOSG transition is the checked transition after
 forgetting cursor keys and erasing program-local actions. -/
-theorem observedProgramTransition_map_checkedWorld_eq_checkedTransition
+theorem cursorFOSGTransition_map_checkedWorld_eq_checkedTransition
     {g : WFProgram P L} {hctx : WFCtx g.Γ}
     (w : CursorCheckedWorld g)
-    (a : (observedProgramFOSG g hctx).LegalAction w) :
+    (a : (cursorFOSG g hctx).LegalAction w) :
     PMF.map (CheckedWorld.ofCursorChecked (hctx := hctx))
-        ((observedProgramFOSG g hctx).transition w a) =
+        ((cursorFOSG g hctx).transition w a) =
       checkedTransition
         (CheckedWorld.ofCursorChecked (hctx := hctx) w)
         ⟨ProgramJointAction.toAction a.1,
           CursorProgramJointActionLegal.toAction a.2⟩ := by
-  simpa [observedProgramFOSG] using
+  simpa [cursorFOSG] using
     cursorProgramTransition_map_checkedWorld
       (hctx := hctx) w a
 
 
-/-- Finite-world helper for `observedProgramFOSG`. -/
-@[reducible] noncomputable def observedProgramFOSG.instFintypeWorld
+/-- Finite-world helper for `cursorFOSG`. -/
+@[reducible] noncomputable def cursorFOSG.instFintypeWorld
     (g : WFProgram P L) (_hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
     Fintype (CursorCheckedWorld g) :=
   CursorCheckedWorld.instFintype g LF
 
-/-- Per-player finite action helper for `observedProgramFOSG`. -/
-@[reducible] noncomputable def observedProgramFOSG.instFintypeAction
+/-- Per-player finite action helper for `cursorFOSG`. -/
+@[reducible] noncomputable def cursorFOSG.instFintypeAction
     (g : WFProgram P L) (_hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (who : P) :
     Fintype (ProgramAction g.prog who) :=
   ProgramAction.instFintype LF g.prog who
 
 /-- Per-player optional-action finite helper for FOSG execution APIs. -/
-@[reducible] noncomputable def observedProgramFOSG.instFintypeOptionAction
+@[reducible] noncomputable def cursorFOSG.instFintypeOptionAction
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (who : P) :
     Fintype (Option (ProgramAction g.prog who)) := by
   let _ : Fintype (ProgramAction g.prog who) :=
-    observedProgramFOSG.instFintypeAction g hctx LF who
+    cursorFOSG.instFintypeAction g hctx LF who
   infer_instance
 
 /-- Terminal decidability helper for FOSG execution APIs. -/
-@[reducible] noncomputable def observedProgramFOSG.instDecidablePredTerminal
+@[reducible] noncomputable def cursorFOSG.instDecidablePredTerminal
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    DecidablePred (observedProgramFOSG g hctx).terminal :=
+    DecidablePred (cursorFOSG g hctx).terminal :=
   Classical.decPred _
 
 /-- Project a cursor-world endpoint to the Vegas payoff outcome it represents.

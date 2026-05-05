@@ -1125,14 +1125,14 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (who : P) :
     Fintype ((graphMachine g hctx).Action who) :=
-  observedProgramFOSG.instFintypeAction g hctx LF who
+  cursorFOSG.instFintypeAction g hctx LF who
 
 /-- Finite optional-action helper for the checked graph machine. -/
 @[reducible] noncomputable def graphMachine.instFintypeOptionAction
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
     (who : P) :
     Fintype (Option ((graphMachine g hctx).Action who)) :=
-  observedProgramFOSG.instFintypeOptionAction g hctx LF who
+  cursorFOSG.instFintypeOptionAction g hctx LF who
 
 /-- Finite primitive-event helper for the checked graph machine. -/
 @[reducible] noncomputable def graphMachine.instFintypeEvent
@@ -1141,7 +1141,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
     Fintype (graphMachine g hctx).Event := by
   classical
   letI : ∀ who : P, Fintype (ProgramAction g.prog who) :=
-    fun who => observedProgramFOSG.instFintypeAction g hctx LF who
+    fun who => cursorFOSG.instFintypeAction g hctx LF who
   letI : Fintype InternalEvent := by
     dsimp [InternalEvent]
     infer_instance
@@ -2148,7 +2148,7 @@ theorem finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
     (h : (finiteFOSG g hctx).History)
     (hcut : ¬ syntaxSteps g.prog ≤ h.lastState.pref.events.length) :
     (finiteFOSG g hctx).availableMoves h who =
-      (observedProgramFOSG g hctx).availableMovesAtState
+      (cursorFOSG g hctx).availableMovesAtState
         (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState) who := by
   have hnotGraph :=
     finiteFOSG_not_graph_terminal_of_not_cutoff
@@ -2430,7 +2430,7 @@ theorem finiteFOSG_legalObservable
           g hctx who h hcut,
         finiteFOSG_availableMoves_eq_observedProgram_of_not_cutoff
           g hctx who h' hcut']
-      exact observedProgram_availableMovesAtState_eq_of_privateObs_eq
+      exact cursorFOSG_availableMovesAtState_eq_of_privateObs_eq
         g hctx who
         (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState)
         (cursorWorldOfGraphConfiguration g hctx h'.lastState.lastState)

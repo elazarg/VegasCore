@@ -5,34 +5,33 @@ namespace Vegas
 open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
-namespace Observed
 
 noncomputable def programLatestObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (s : (observedProgramFOSG g hctx).InfoState who) :
+    (s : (cursorFOSG g hctx).InfoState who) :
     Option (PrivateObs g who × PublicObs g hctx) :=
   GameTheory.FOSG.InfoState.latestObservation?
-    (G := observedProgramFOSG g hctx) (i := who) s
+    (G := cursorFOSG g hctx) (i := who) s
 
 /-- Appending one concrete observed-program step records the destination cursor
 world's observation as the latest player observation. -/
 theorem programLatestObservation?_history_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
+    (h : (cursorFOSG g hctx).History)
+    (e : (cursorFOSG g hctx).Step)
     (hsrc : e.src = h.lastState) :
     programLatestObservation? g hctx who ((h.appendStep e hsrc).playerView who) =
       some (privateObsOfCursorWorld who (h.appendStep e hsrc).lastState,
         publicObsOfCursorWorld (h.appendStep e hsrc).lastState) := by
-  simpa [programLatestObservation?, observedProgramFOSG] using
+  simpa [programLatestObservation?, cursorFOSG] using
     GameTheory.FOSG.History.latestObservation?_playerView_appendStep
-      (G := observedProgramFOSG g hctx) h who e hsrc
+      (G := cursorFOSG g hctx) h who e hsrc
 
 /-- The initial observed-program history has no latest program observation. -/
 @[simp] theorem programLatestObservation?_history_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) :
     programLatestObservation? g hctx who
-        ((GameTheory.FOSG.History.nil (observedProgramFOSG g hctx)).playerView who) =
+        ((GameTheory.FOSG.History.nil (cursorFOSG g hctx)).playerView who) =
       none := by
   simp [programLatestObservation?]
 
@@ -40,12 +39,12 @@ theorem programLatestObservation?_history_appendStep
 private/public observation as the latest program observation for every player. -/
 theorem programLatestObservation?_history_of_ne_nil
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h : (observedProgramFOSG g hctx).History)
+    (h : (cursorFOSG g hctx).History)
     (hne : h.steps ≠ []) :
     programLatestObservation? g hctx who (h.playerView who) =
       some (privateObsOfCursorWorld who h.lastState,
         publicObsOfCursorWorld h.lastState) := by
-  let G := observedProgramFOSG g hctx
+  let G := cursorFOSG g hctx
   cases h with
   | mk steps chain =>
       induction steps using List.reverseRecOn with
@@ -175,7 +174,7 @@ private noncomputable def embeddedOwnCommitEvents
     {k : VegasCore P L ((x, .hidden owner b) :: Γ)}
     (emb : CursorEmbedding (P := P) (L := L) g who (.commit x owner R k))
     (env : VEnv L ((x, .hidden owner b) :: Γ)) :
-    (observedProgramFOSG g hctx).InfoState who :=
+    (cursorFOSG g hctx).InfoState who :=
   if howner : owner = who then
     by
       subst owner
@@ -194,7 +193,7 @@ private noncomputable def cursorPlayerViewFrom
     {Γ : VCtx P L} → {root : VegasCore P L Γ} →
     (emb : CursorEmbedding (P := P) (L := L) g who root) →
     (c : ProgramCursor root) → VEnv L c.Γ →
-      (observedProgramFOSG g hctx).InfoState who
+      (cursorFOSG g hctx).InfoState who
   | _, .ret _payoffs, _emb, .here, _env => []
   | _, .letExpr _x _e _k, _emb, .here, _env => []
   | _, .letExpr _x _e _k, emb, .letExpr c, env =>
@@ -235,7 +234,7 @@ decreasing_by
 private noncomputable def cursorPlayerView
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (c : ProgramCursor g.prog) (env : VEnv L c.Γ) :
-    (observedProgramFOSG g hctx).InfoState who :=
+    (cursorFOSG g hctx).InfoState who :=
   cursorPlayerViewFrom g hctx who (CursorEmbedding.id g who) c env
 
 private theorem cursorPlayerView_initial
@@ -462,7 +461,7 @@ private noncomputable def cursorStepPlayerViewFrom
     (emb : CursorEmbedding (P := P) (L := L) g who root)
     (pa : ProgramJointAction g)
     (dstC : ProgramCursor root) (dstEnv : VEnv L dstC.Γ) :
-    (observedProgramFOSG g hctx).InfoState who :=
+    (cursorFOSG g hctx).InfoState who :=
   match pa who with
   | some ai =>
       [GameTheory.FOSG.PlayerEvent.act ai,
@@ -715,16 +714,16 @@ private theorem cursorLegal_mem_availableProgramMovesAt
 private theorem cursorPlayerView_step
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
     (src dst : CursorCheckedWorld g)
-    (a : (observedProgramFOSG g hctx).LegalAction src)
-    (hsupp : (observedProgramFOSG g hctx).transition src a dst ≠ 0) :
+    (a : (cursorFOSG g hctx).LegalAction src)
+    (hsupp : (cursorFOSG g hctx).transition src a dst ≠ 0) :
     cursorPlayerView g hctx who dst.1.cursor dst.1.env =
       cursorPlayerView g hctx who src.1.cursor src.1.env ++
         (GameTheory.FOSG.Step.playerView
           ({ src := src, act := a, dst := dst, support := hsupp } :
-            (observedProgramFOSG g hctx).Step) who) := by
+            (cursorFOSG g hctx).Step) who) := by
   have hmem :
       dst ∈ (cursorProgramTransition src a).support := by
-    simpa [observedProgramFOSG, PMF.mem_support_iff] using hsupp
+    simpa [cursorFOSG, PMF.mem_support_iff] using hsupp
   rw [cursorProgramTransition] at hmem
   rcases (PMF.mem_support_map_iff _ _ _).mp hmem with ⟨s, hs, hdst⟩
   subst hdst
@@ -759,19 +758,19 @@ private theorem cursorPlayerView_step
         (GameTheory.FOSG.Step.playerView
           ({ src := src, act := a, dst := CursorRuntimeState.toChecked s,
              support := hsupp } :
-            (observedProgramFOSG g hctx).Step) who) := by
+            (cursorFOSG g hctx).Step) who) := by
     cases hact : a.1 who with
     | none =>
         simp [cursorStepPlayerViewFrom, GameTheory.FOSG.Step.playerView,
           GameTheory.FOSG.Step.ownAction?, GameTheory.FOSG.Step.privateObs,
-          GameTheory.FOSG.Step.publicObs, observedProgramFOSG,
+          GameTheory.FOSG.Step.publicObs, cursorFOSG,
           CursorRuntimeState.toChecked, embeddedPrivateObs, embeddedPublicObs,
           CursorEmbedding.id, privateObsOfCursorEnv, privateObsOfCursorWorld,
           publicObsOfCursorEnv, publicObsOfCursorWorld, hact]
     | some ai =>
         simp [cursorStepPlayerViewFrom, GameTheory.FOSG.Step.playerView,
           GameTheory.FOSG.Step.ownAction?, GameTheory.FOSG.Step.privateObs,
-          GameTheory.FOSG.Step.publicObs, observedProgramFOSG,
+          GameTheory.FOSG.Step.publicObs, cursorFOSG,
           CursorRuntimeState.toChecked, embeddedPrivateObs, embeddedPublicObs,
           CursorEmbedding.id, privateObsOfCursorEnv, privateObsOfCursorWorld,
           publicObsOfCursorEnv, publicObsOfCursorWorld, hact]
@@ -780,12 +779,12 @@ private theorem cursorPlayerView_step
   rw [hbase, hstep]
   simp [GameTheory.FOSG.Step.playerView, GameTheory.FOSG.Step.ownAction?,
     GameTheory.FOSG.Step.privateObs, GameTheory.FOSG.Step.publicObs,
-    observedProgramFOSG, CursorRuntimeState.toChecked]
+    cursorFOSG, CursorRuntimeState.toChecked]
 
 private theorem cursorPlayerView_appendStep
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h : (observedProgramFOSG g hctx).History)
-    (e : (observedProgramFOSG g hctx).Step)
+    (h : (cursorFOSG g hctx).History)
+    (e : (cursorFOSG g hctx).Step)
     (hsrc : e.src = h.lastState) :
     cursorPlayerView g hctx who
         (h.appendStep e hsrc).lastState.1.cursor
@@ -800,15 +799,15 @@ private theorem cursorPlayerView_appendStep
       change cursorPlayerView g hctx who dst.1.cursor dst.1.env =
         cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env ++
           (({ src := h.lastState, act := act, dst := dst, support := support } :
-              (observedProgramFOSG g hctx).Step).playerView who)
+              (cursorFOSG g hctx).Step).playerView who)
       exact cursorPlayerView_step g hctx who h.lastState dst act support
 
 private theorem playerView_eq_cursorPlayerView
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h : (observedProgramFOSG g hctx).History) :
+    (h : (cursorFOSG g hctx).History) :
     h.playerView who =
       cursorPlayerView g hctx who h.lastState.1.cursor h.lastState.1.env := by
-  let G := observedProgramFOSG g hctx
+  let G := cursorFOSG g hctx
   cases h with
   | mk steps chain =>
       revert chain
@@ -876,7 +875,7 @@ profile is indexed by the current commit-site cursor and `ViewEnv`.
 -/
 theorem playerView_eq_of_privateObsOfLastState_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (h h' : (observedProgramFOSG g hctx).History)
+    (h h' : (cursorFOSG g hctx).History)
     (hobs :
       privateObsOfCursorWorld who h.lastState =
         privateObsOfCursorWorld who h'.lastState) :
@@ -900,8 +899,8 @@ lemma identifies the FOSG information states, so the profile lookup is the
 same. -/
 theorem legalBehavioralProfile_apply_eq_of_privateObsOfLastState_eq
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P)
-    (β : (observedProgramFOSG g hctx).LegalBehavioralProfile)
-    (h h' : (observedProgramFOSG g hctx).History)
+    (β : (cursorFOSG g hctx).LegalBehavioralProfile)
+    (h h' : (cursorFOSG g hctx).History)
     (hobs :
       privateObsOfCursorWorld who h.lastState =
         privateObsOfCursorWorld who h'.lastState) :
@@ -911,16 +910,16 @@ theorem legalBehavioralProfile_apply_eq_of_privateObsOfLastState_eq
 
 theorem observedProgramFOSG_legalObservable
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (observedProgramFOSG g hctx).LegalObservable := by
+    (cursorFOSG g hctx).LegalObservable := by
   intro who h h' hInfo
   by_cases hnil : h.steps = []
   · have h_eq_nil :
-        h = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+        h = GameTheory.FOSG.History.nil (cursorFOSG g hctx) :=
       GameTheory.FOSG.History.ext hnil
     subst h_eq_nil
     by_cases hnil' : h'.steps = []
     · have h'_eq_nil :
-          h' = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+          h' = GameTheory.FOSG.History.nil (cursorFOSG g hctx) :=
         GameTheory.FOSG.History.ext hnil'
       subst h'_eq_nil
       rfl
@@ -931,7 +930,7 @@ theorem observedProgramFOSG_legalObservable
       cases hlatest
   · by_cases hnil' : h'.steps = []
     · have h'_eq_nil :
-          h' = GameTheory.FOSG.History.nil (observedProgramFOSG g hctx) :=
+          h' = GameTheory.FOSG.History.nil (cursorFOSG g hctx) :=
         GameTheory.FOSG.History.ext hnil'
       subst h'_eq_nil
       have hlatest :=
@@ -949,9 +948,8 @@ theorem observedProgramFOSG_legalObservable
             privateObsOfCursorWorld who h'.lastState :=
         congrArg Prod.fst hobs
       simpa [GameTheory.FOSG.availableMoves] using
-        observedProgram_availableMovesAtState_eq_of_privateObs_eq
+        cursorFOSG_availableMovesAtState_eq_of_privateObs_eq
           g hctx who h.lastState h'.lastState hpriv
 
-end Observed
 
 end Vegas

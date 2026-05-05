@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Base
+import Vegas.FOSG.Cursor.Base
 
 namespace Vegas
 
@@ -6,7 +6,6 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-namespace Observed
 /-! ## PMF behavioral profile candidate
 
 The following definitions build the program-action FOSG behavioral profile
@@ -172,18 +171,18 @@ theorem moveAtCursorWorldPMF_support_available
     (who : P) (w : CursorCheckedWorld g)
     {oi : Option (ProgramAction g.prog who)}
     (hoi : oi ∈ (moveAtCursorWorldPMF g hctx σ who w).support) :
-    oi ∈ (observedProgramFOSG g hctx).availableMovesAtState w who := by
+    oi ∈ (cursorFOSG g hctx).availableMovesAtState w who := by
   have hlocal :=
     moveAtProgramCursorPMF_support_availableAt
       g hctx σ who w.1.suffix w.1.env hoi
   cases oi with
   | none =>
-      simpa [moveAtCursorWorldPMF, observedProgramFOSG,
+      simpa [moveAtCursorWorldPMF, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld] using hlocal
   | some ai =>
-      simpa [moveAtCursorWorldPMF, observedProgramFOSG,
+      simpa [moveAtCursorWorldPMF, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
@@ -191,6 +190,5 @@ theorem moveAtCursorWorldPMF_support_available
         CursorCheckedWorld.availableProgramMovesAt, availableActions,
         CursorCheckedWorld.toWorld, availableActions] using hlocal
 
-end Observed
 
 end Vegas

@@ -1,5 +1,5 @@
 import GameTheory.Languages.FOSG.OutcomeClosure
-import Vegas.FOSG.Observed.Pure
+import Vegas.FOSG.Cursor.Pure
 import Vegas.Strategy.PMFSemantics
 
 namespace Vegas
@@ -8,7 +8,6 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-namespace Observed
 /-! ## Projected outcome kernel
 
 GameTheory's generic FOSG compiler uses terminal histories as kernel-game
@@ -250,12 +249,12 @@ theorem checkedTransition_eq_checkedProfileStepPMF_of_active_empty
 /-- If a player is active in the observed-program FOSG, the cursor endpoint is
 a commit node owned by that player, and all checked-world projections expose
 the same commit data. -/
-theorem observedProgram_active_mem_commitData
+theorem cursorFOSG_active_mem_commitData
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (w : CursorCheckedWorld g)
     {who : P}
     (hmem : who ∈
-      (observedProgramFOSG g hctx).active w) :
+      (cursorFOSG g hctx).active w) :
     ∃ (Γ : VCtx P L) (x : VarId) (b : L.Ty)
       (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
       (k : VegasCore P L ((x, .hidden who b) :: Γ))
@@ -283,24 +282,24 @@ theorem observedProgram_active_mem_commitData
           rcases valid with ⟨wctx, fresh, viewScoped, normalized, legal⟩
           cases hprog : cursor.prog with
           | ret payoffs =>
-              simp [observedProgramFOSG, active,
+              simp [cursorFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | letExpr x e k =>
-              simp [observedProgramFOSG, active,
+              simp [cursorFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | sample x D k =>
-              simp [observedProgramFOSG, active,
+              simp [cursorFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | reveal y owner x hx k =>
-              simp [observedProgramFOSG, active,
+              simp [cursorFOSG, active,
                 CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                 hprog] at hmem
           | commit x owner R k =>
               have hwho : who = owner := by
-                simpa [observedProgramFOSG, active,
+                simpa [cursorFOSG, active,
                   CursorCheckedWorld.toWorld, CursorWorldData.prog, active,
                   hprog] using hmem
               subst who
@@ -464,6 +463,5 @@ theorem cursorVegasOutcomeKernelPMF_terminal
     hchecked
 
 
-end Observed
 
 end Vegas

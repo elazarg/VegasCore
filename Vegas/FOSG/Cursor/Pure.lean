@@ -1,4 +1,4 @@
-import Vegas.FOSG.Observed.Behavioral
+import Vegas.FOSG.Cursor.Behavioral
 
 namespace Vegas
 
@@ -6,7 +6,6 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-namespace Observed
 /-! ## Pure profile candidate
 
 The pure transport is the deterministic counterpart of the behavioral transport
@@ -267,7 +266,7 @@ theorem movePureAtCursorWorld_available
     (σ : FeasibleProgramPureProfile g)
     (who : P) (w : CursorCheckedWorld g) :
     movePureAtCursorWorld g hctx σ who w ∈
-      (observedProgramFOSG g hctx).availableMovesAtState w who := by
+      (cursorFOSG g hctx).availableMovesAtState w who := by
   have hlocal :=
     movePureAtProgramCursor_availableAt
       g hctx σ who w.1.suffix w.1.env
@@ -276,7 +275,7 @@ theorem movePureAtCursorWorld_available
       change movePureAtProgramCursor g hctx σ who w.1.suffix
           (projectViewEnv who (VEnv.eraseEnv w.1.env)) = none at hmove
       rw [hmove] at hlocal
-      simpa [movePureAtCursorWorld, observedProgramFOSG,
+      simpa [movePureAtCursorWorld, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
@@ -285,7 +284,7 @@ theorem movePureAtCursorWorld_available
       change movePureAtProgramCursor g hctx σ who w.1.suffix
           (projectViewEnv who (VEnv.eraseEnv w.1.env)) = some ai at hmove
       rw [hmove] at hlocal
-      simpa [movePureAtCursorWorld, observedProgramFOSG,
+      simpa [movePureAtCursorWorld, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
@@ -298,7 +297,7 @@ theorem movePureStrategyAtCursorWorld_available
     (who : P) (σ : FeasibleProgramPureStrategy g who)
     (w : CursorCheckedWorld g) :
     movePureStrategyAtCursorWorld g hctx who σ w ∈
-      (observedProgramFOSG g hctx).availableMovesAtState w who := by
+      (cursorFOSG g hctx).availableMovesAtState w who := by
   have hlocal :=
     movePureStrategyAtProgramCursor_availableAt
       g hctx who σ w.1.suffix w.1.env
@@ -307,7 +306,7 @@ theorem movePureStrategyAtCursorWorld_available
       change movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
           (projectViewEnv who (VEnv.eraseEnv w.1.env)) = none at hmove
       rw [hmove] at hlocal
-      simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
+      simpa [movePureStrategyAtCursorWorld, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramMovesAt, CursorCheckedWorld.toWorld,
@@ -316,7 +315,7 @@ theorem movePureStrategyAtCursorWorld_available
       change movePureStrategyAtProgramCursor g hctx who σ w.1.suffix
           (projectViewEnv who (VEnv.eraseEnv w.1.env)) = some ai at hmove
       rw [hmove] at hlocal
-      simpa [movePureStrategyAtCursorWorld, observedProgramFOSG,
+      simpa [movePureStrategyAtCursorWorld, cursorFOSG,
         GameTheory.FOSG.availableMovesAtState,
         GameTheory.FOSG.locallyLegalAtState, active,
         CursorCheckedWorld.availableProgramActions,
@@ -399,7 +398,7 @@ theorem moveAtProgramObservationPMF?_of_cursorWorld
   rw [privateObsOfCursorWorld_eraseEnv]
   rfl
 
-/-- Program-action pure observation lookup for the final `observedProgramFOSG`
+/-- Program-action pure observation lookup for the final `cursorFOSG`
 target. -/
 noncomputable def movePureAtProgramObservation?
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
@@ -474,5 +473,4 @@ theorem movePureStrategyAtProgramObservation?_of_cursorWorld
   rw [privateObsOfCursorWorld_eraseEnv]
   rfl
 
-end Observed
 end Vegas
