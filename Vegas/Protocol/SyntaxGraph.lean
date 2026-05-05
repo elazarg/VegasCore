@@ -447,6 +447,113 @@ def writtenBy :
       .revealTail (ofCurrent k (.mk (x := y) (τ := .pub _) .here))
   | _, _, .revealTail node => .revealTail (writtenBy node)
 
+/-- Structural source of a final program field: either it is an initial field
+from the program's input context, or it is written by a unique source node.
+
+This follows the syntax tree instead of searching completed result slices, so
+field lookup is stable under unrelated frontier updates. -/
+def source :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      ProgramField p → VCtxField P L Γ ⊕ ProgramNode p
+  | _, .ret _, .retField field => .inl field
+  | _, .letExpr _ _ _, .letTail field =>
+      match source field with
+      | .inl (.mk .here) => .inr .letHere
+      | .inl (.mk (.there h)) => .inl (.mk h)
+      | .inr node => .inr (.letTail node)
+  | _, .sample _ _ _, .sampleTail field =>
+      match source field with
+      | .inl (.mk .here) => .inr .sampleHere
+      | .inl (.mk (.there h)) => .inl (.mk h)
+      | .inr node => .inr (.sampleTail node)
+  | _, .commit _ _ _ _, .commitTail field =>
+      match source field with
+      | .inl (.mk .here) => .inr .commitHere
+      | .inl (.mk (.there h)) => .inl (.mk h)
+      | .inr node => .inr (.commitTail node)
+  | _, .reveal _ _ _ _ _, .revealTail field =>
+      match source field with
+      | .inl (.mk .here) => .inr .revealHere
+      | .inl (.mk (.there h)) => .inl (.mk h)
+      | .inr node => .inr (.revealTail node)
+
+/-- The unique source node that writes this field, if the field is not part of
+the program's input context. -/
+def writer? :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      ProgramField p → Option (ProgramNode p)
+  | _, _, field =>
+      match source field with
+      | .inl _ => none
+      | .inr node => some node
+
+@[simp] theorem source_ofCurrent :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      (field : VCtxField P L Γ) →
+        ProgramField.source (ProgramField.ofCurrent p field) = Sum.inl field
+  | _, .ret _, field => by
+      rfl
+  | _, .letExpr _ _ k, field => by
+      cases field with
+      | mk h =>
+          simp [ProgramField.ofCurrent, ProgramField.source,
+            VCtxField.weakenHead, source_ofCurrent k]
+  | _, .sample _ _ k, field => by
+      cases field with
+      | mk h =>
+          simp [ProgramField.ofCurrent, ProgramField.source,
+            VCtxField.weakenHead, source_ofCurrent k]
+  | _, .commit _ _ _ k, field => by
+      cases field with
+      | mk h =>
+          simp [ProgramField.ofCurrent, ProgramField.source,
+            VCtxField.weakenHead, source_ofCurrent k]
+  | _, .reveal _ _ _ _ k, field => by
+      cases field with
+      | mk h =>
+          simp [ProgramField.ofCurrent, ProgramField.source,
+            VCtxField.weakenHead, source_ofCurrent k]
+
+@[simp] theorem source_writtenBy :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      (node : ProgramNode p) →
+        ProgramField.source (ProgramField.writtenBy node) = Sum.inr node
+  | _, .letExpr _ _ _, .letHere => by
+      simp [ProgramField.source, ProgramField.writtenBy]
+  | _, .letExpr _ _ _, .letTail node => by
+      simp [ProgramField.source, ProgramField.writtenBy, source_writtenBy node]
+  | _, .sample _ _ _, .sampleHere => by
+      simp [ProgramField.source, ProgramField.writtenBy]
+  | _, .sample _ _ _, .sampleTail node => by
+      simp [ProgramField.source, ProgramField.writtenBy, source_writtenBy node]
+  | _, .commit _ _ _ _, .commitHere => by
+      simp [ProgramField.source, ProgramField.writtenBy]
+  | _, .commit _ _ _ _, .commitTail node => by
+      simp [ProgramField.source, ProgramField.writtenBy, source_writtenBy node]
+  | _, .reveal _ _ _ _ _, .revealHere => by
+      simp [ProgramField.source, ProgramField.writtenBy]
+  | _, .reveal _ _ _ _ _, .revealTail node => by
+      simp [ProgramField.source, ProgramField.writtenBy, source_writtenBy node]
+
+@[simp] theorem writer?_writtenBy
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (node : ProgramNode p) :
+    ProgramField.writer? (ProgramField.writtenBy node) = some node := by
+  simp [ProgramField.writer?]
+
+theorem writer?_eq_none_of_mem_currentFields
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    {field : ProgramField p}
+    (hmem : field ∈ currentFields p) :
+    ProgramField.writer? field = none := by
+  classical
+  unfold currentFields at hmem
+  have hlist :
+      field ∈
+        (VCtxField.enumerate Γ).map (fun current => ofCurrent p current) :=
+    List.mem_toFinset.mp hmem
+  rcases List.mem_map.mp hlist with ⟨current, _hcurrent, rfl⟩
+  simp [ProgramField.writer?]
+
 theorem letTail_currentFields_or_eq_writtenBy_letHere
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
@@ -832,30 +939,27 @@ noncomputable def value?
     (result : ProgramNode p → Option (WriteSlice p))
     (field : ProgramField p) :
     Option (L.Val field.ty) := by
-  classical
   exact
-    if h :
-        ∃ node slice stored,
-          result node = some slice ∧ slice field = some stored then
-      let stored := Classical.choose (Classical.choose_spec
-        (Classical.choose_spec h))
-      some stored.raw
-    else
-      initialValue? p env field
+    match writer? field with
+    | some node =>
+        match result node with
+        | some slice =>
+            match slice field with
+            | some stored => some stored.raw
+            | none => initialValue? p env field
+        | none => initialValue? p env field
+    | none => initialValue? p env field
 
 theorem value?_isSome_of_result_slice
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     {result : ProgramNode p → Option (WriteSlice p)}
     {field : ProgramField p} {node : ProgramNode p} {slice : WriteSlice p}
     {stored : ProtocolGraph.StoredValue (L.Val field.ty)}
+    (hwriter : writer? field = some node)
     (hresult : result node = some slice)
     (hslice : slice field = some stored) :
     (value? env result field).isSome := by
-  classical
-  unfold value?
-  rw [dif_pos]
-  · simp
-  · exact ⟨node, slice, stored, hresult, hslice⟩
+  simp [value?, hwriter, hresult, hslice]
 
 theorem value?_isSome_of_initialValue?
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
@@ -863,15 +967,40 @@ theorem value?_isSome_of_initialValue?
     {field : ProgramField p}
     (hinitial : (initialValue? p env field).isSome) :
     (value? env result field).isSome := by
+  cases hwriter : writer? field with
+  | none =>
+      simpa [value?, hwriter] using hinitial
+  | some node =>
+      cases hresult : result node with
+      | none =>
+          simpa [value?, hwriter, hresult] using hinitial
+      | some slice =>
+          cases hslice : slice field with
+          | none =>
+              simpa [value?, hwriter, hresult, hslice] using hinitial
+          | some stored =>
+              simp [value?, hwriter, hresult, hslice]
+
+theorem value?_update_of_writer?_ne
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
+    {result : ProgramNode p → Option (WriteSlice p)}
+    {field : ProgramField p} {node : ProgramNode p}
+    {slice : WriteSlice p}
+    (hne : ProgramField.writer? field ≠ some node) :
+    ProgramField.value? env
+        (fun candidate => if candidate = node then some slice else result candidate)
+        field =
+      ProgramField.value? env result field := by
   classical
-  unfold value?
-  by_cases h :
-      ∃ node slice stored,
-        result node = some slice ∧ slice field = some stored
-  · rw [dif_pos h]
-    simp
-  · rw [dif_neg h]
-    exact hinitial
+  cases hwriter : ProgramField.writer? field with
+  | none =>
+      simp [ProgramField.value?, hwriter]
+  | some writer =>
+      have hwriter_ne : writer ≠ node := by
+        intro heq
+        subst writer
+        exact hne hwriter
+      simp [ProgramField.value?, hwriter, hwriter_ne]
 
 /-- A read environment assembled from a result assignment and a proof that all
 declared reads are already available. -/
@@ -1711,6 +1840,113 @@ theorem writtenBy_mem_writeFields :
           (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
           legal normalized node)
 
+/-- Every generated source node writes exactly its structural result field. -/
+theorem eq_writtenBy_of_mem_writeFields
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (hctx : WFCtx Γ) (fresh : FreshBindings p)
+    (hscoped : ViewScoped p) (legal : Legal p)
+    (normalized : NormalizedDists p)
+    (node : ProgramNode p) {field : ProgramField p}
+    (hwrite :
+      field ∈
+        (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
+    field = ProgramField.writtenBy node := by
+  classical
+  cases hsem : ProgramNode.sem hctx fresh hscoped legal normalized node with
+  | assign target expr =>
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      have htarget :
+          target ∈
+            (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields := by
+        rw [hsem]
+        simp [ProtocolGraph.NodeSem.writeFields,
+          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
+      rw [hsem] at hboth
+      have htarget :
+          ProgramField.writtenBy node = target := by
+        simpa [ProtocolGraph.NodeSem.writeFields,
+          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
+      exact htarget.symm
+  | sample target dist =>
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
+      rw [hsem] at hboth
+      have htarget :
+          ProgramField.writtenBy node = target := by
+        simpa [ProtocolGraph.NodeSem.writeFields,
+          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
+      exact htarget.symm
+  | commit owner target guard =>
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq : write = ProtocolGraph.FieldWrite.hidden owner target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
+      rw [hsem] at hboth
+      have htarget :
+          ProgramField.writtenBy node = target := by
+        simpa [ProtocolGraph.NodeSem.writeFields,
+          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
+      exact htarget.symm
+  | reveal source target hty =>
+      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rcases hwrite with ⟨write, hwrite, hfield⟩
+      rw [hsem] at hwrite
+      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
+        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+      subst write
+      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      symm at hfield
+      subst field
+      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
+      rw [hsem] at hboth
+      have htarget :
+          ProgramField.writtenBy node = target := by
+        simpa [ProtocolGraph.NodeSem.writeFields,
+          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
+      exact htarget.symm
+
+/-- Membership in a generated node's write set identifies the field's
+structural writer. -/
+theorem writer?_eq_some_of_mem_writeFields
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (hctx : WFCtx Γ) (fresh : FreshBindings p)
+    (hscoped : ViewScoped p) (legal : Legal p)
+    (normalized : NormalizedDists p)
+    (node : ProgramNode p) {field : ProgramField p}
+    (hwrite :
+      field ∈
+        (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
+    ProgramField.writer? field = some node := by
+  have hfield :
+      field = ProgramField.writtenBy node :=
+    eq_writtenBy_of_mem_writeFields
+      hctx fresh hscoped legal normalized node hwrite
+  subst field
+  exact ProgramField.writer?_writtenBy node
+
 /-- Source reads are causally available: a node reads either an initial current
 field of the enclosing program or a field written by an earlier source node. -/
 theorem read_current_or_prior_write :
@@ -1857,6 +2093,52 @@ noncomputable def prereqs
         field ∈ (ProgramNode.sem hctx fresh hscoped legal normalized node).reads ∧
           field ∈
             (ProgramNode.sem hctx fresh hscoped legal normalized prior).writeFields
+
+/-- The source graph's prerequisites are exactly the causal read dependencies:
+if a node reads a field written by another source node, that writer is a
+prerequisite of the reader. -/
+theorem writer_mem_prereqs_of_read_write
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (hctx : WFCtx Γ) (fresh : FreshBindings p)
+    (hscoped : ViewScoped p) (legal : Legal p)
+    (normalized : NormalizedDists p)
+    {reader writer : ProgramNode p} {field : ProgramField p}
+    (hread :
+      field ∈
+        (ProgramNode.sem hctx fresh hscoped legal normalized reader).reads)
+    (hwrite :
+      field ∈
+        (ProgramNode.sem hctx fresh hscoped legal normalized writer).writeFields) :
+    writer ∈
+      ProgramNode.prereqs hctx fresh hscoped legal normalized reader := by
+  classical
+  rcases ProgramNode.read_current_or_prior_write
+      hctx fresh hscoped legal normalized reader hread with
+    hcurrent | hprior
+  · have hnone :
+        ProgramField.writer? field = none :=
+      ProgramField.writer?_eq_none_of_mem_currentFields hcurrent
+    have hsome :
+        ProgramField.writer? field = some writer :=
+      ProgramNode.writer?_eq_some_of_mem_writeFields
+        hctx fresh hscoped legal normalized writer hwrite
+    rw [hsome] at hnone
+    simp at hnone
+  · rcases hprior with ⟨prior, hrank, hpriorWrite⟩
+    have hpriorWriter :
+        ProgramField.writer? field = some prior :=
+      ProgramNode.writer?_eq_some_of_mem_writeFields
+        hctx fresh hscoped legal normalized prior hpriorWrite
+    have hwriterWriter :
+        ProgramField.writer? field = some writer :=
+      ProgramNode.writer?_eq_some_of_mem_writeFields
+        hctx fresh hscoped legal normalized writer hwrite
+    have hwriter_eq : writer = prior := by
+      rw [hwriterWriter] at hpriorWriter
+      exact Option.some.inj hpriorWriter
+    subst writer
+    exact Finset.mem_filter.mpr
+      ⟨ProgramNode.mem_finset p prior, hrank, ⟨field, hread, hpriorWrite⟩⟩
 
 /-- A source graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
@@ -2198,7 +2480,13 @@ theorem value?_isSome_of_completed_write
     hcfgLegal hresult
   rcases ProgramNode.sliceLegal_writeField_isSome hctx fresh hscoped
       legal normalized writer hsliceLegal hwrite with ⟨stored, hstored⟩
-  exact ProgramField.value?_isSome_of_result_slice env hresult hstored
+  have hfield :
+      field = ProgramField.writtenBy writer :=
+    ProgramNode.eq_writtenBy_of_mem_writeFields
+      hctx fresh hscoped legal normalized writer hwrite
+  subst field
+  exact ProgramField.value?_isSome_of_result_slice env
+    (ProgramField.writer?_writtenBy writer) hresult hstored
 
 /-- Internal kernel for source graph nodes. Assignment and reveal nodes are
 deterministic; sample nodes use the checked PMF distribution; commit nodes are
@@ -2393,7 +2681,7 @@ noncomputable def syntaxGraphConfigValue?
     (cfg : (syntaxProtocolGraph g).Configuration)
     (field : ProgramField g.prog) :
     Option (L.Val field.ty) :=
-  (syntaxProtocolGraph g).value? cfg.result field
+  ProgramField.value? g.env cfg.result field
 
 /-- Public observation for the graph-native syntax machine. -/
 noncomputable def syntaxGraphPublicView
