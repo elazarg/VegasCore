@@ -381,6 +381,19 @@ def writtenBy :
       .revealTail (ofCurrent k (.mk (x := y) (τ := .pub _) .here))
   | _, _, .revealTail node => .revealTail (writtenBy node)
 
+/-- Storage mode of the field written by a source node. -/
+def writeMode :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      ProgramNode p → ProtocolGraph.WriteMode
+  | _, _, .letHere => .clear
+  | _, _, .letTail node => writeMode node
+  | _, _, .sampleHere => .clear
+  | _, _, .sampleTail node => writeMode node
+  | _, _, .commitHere => .hidden
+  | _, _, .commitTail node => writeMode node
+  | _, _, .revealHere => .clear
+  | _, _, .revealTail node => writeMode node
+
 /-- Hidden field read by a reveal node. For non-reveal nodes this is `none`. -/
 def revealSource? :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
@@ -528,6 +541,13 @@ noncomputable def singleSlice
       some (cast (by rw [h]) value)
     else
       none
+
+@[simp] theorem singleSlice_self
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (field : ProgramField p)
+    (value : ProtocolGraph.StoredValue (L.Val field.ty)) :
+    singleSlice field value field = some value := by
+  simp [singleSlice]
 
 /-- Initial value of a final field, if it comes from the initial context. -/
 noncomputable def initialValue?
@@ -971,21 +991,34 @@ shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
 noncomputable def sliceLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (normalized : NormalizedDists p)
+    (_normalized : NormalizedDists p)
     (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
-  match sem normalized node with
-  | .assign field _ =>
-      ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.clear value)
-  | .sample field _ =>
-      ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.clear value)
-  | .commit _ field _ =>
-      ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.hidden value)
-  | .reveal _ target _ =>
-      ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.clear value)
+  match ProgramField.writeMode node with
+  | .clear =>
+      ∃ value : L.Val (ProgramField.writtenBy node).ty,
+        slice =
+          ProgramField.singleSlice (ProgramField.writtenBy node)
+            (.clear value)
+  | .hidden =>
+      ∃ value : L.Val (ProgramField.writtenBy node).ty,
+        slice =
+          ProgramField.singleSlice (ProgramField.writtenBy node)
+            (.hidden value)
+
+/-- A legal source-node slice contains a value for the field written by that
+node. -/
+theorem sliceLegal_writtenBy_isSome
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (normalized : NormalizedDists p)
+    (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
+    (hlegal : sliceLegal normalized node slice) :
+    (slice (ProgramField.writtenBy node)).isSome := by
+  cases hmode : ProgramField.writeMode node <;>
+    rw [sliceLegal, hmode] at hlegal
+  · rcases hlegal with ⟨value, rfl⟩
+    simp
+  · rcases hlegal with ⟨value, rfl⟩
+    simp
 
 /-- Dynamic legality for player-chosen source graph slices. Only commit nodes
 have an actor, so only commits admit legal player slices. -/
