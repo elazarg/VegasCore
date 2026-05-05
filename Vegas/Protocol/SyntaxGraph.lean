@@ -881,6 +881,182 @@ noncomputable def revealNodeSem
   | .commit owner field guard => .commit owner (.revealTail field) (revealGuard guard)
   | .reveal source target hty => .reveal (.revealTail source) (.revealTail target) hty
 
+theorem mem_reads_letNodeSem
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField (.letExpr x e k)}
+    (h : field ∈ (letNodeSem sem).reads) :
+    ∃ inner, field = .letTail inner ∧ inner ∈ sem.reads := by
+  cases sem with
+  | assign target expr =>
+      simp [letNodeSem, letExpr, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | sample target dist =>
+      simp [letNodeSem, letDist, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | commit who target guard =>
+      simp [letNodeSem, letGuard, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | reveal source target hty =>
+      simp [letNodeSem, ProtocolGraph.NodeSem.reads] at h
+      exact ⟨source, h, by simp [ProtocolGraph.NodeSem.reads]⟩
+
+theorem mem_reads_sampleNodeSem
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField (.sample x D k)}
+    (h : field ∈ (sampleNodeSem sem).reads) :
+    ∃ inner, field = .sampleTail inner ∧ inner ∈ sem.reads := by
+  cases sem with
+  | assign target expr =>
+      simp [sampleNodeSem, sampleExpr, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | sample target dist =>
+      simp [sampleNodeSem, sampleDist, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | commit who target guard =>
+      simp [sampleNodeSem, sampleGuard, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | reveal source target hty =>
+      simp [sampleNodeSem, ProtocolGraph.NodeSem.reads] at h
+      exact ⟨source, h, by simp [ProtocolGraph.NodeSem.reads]⟩
+
+theorem mem_reads_commitNodeSem
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField (.commit x who R k)}
+    (h : field ∈ (commitNodeSem sem).reads) :
+    ∃ inner, field = .commitTail inner ∧ inner ∈ sem.reads := by
+  cases sem with
+  | assign target expr =>
+      simp [commitNodeSem, commitExpr, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | sample target dist =>
+      simp [commitNodeSem, commitDist, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | commit owner target guard =>
+      simp [commitNodeSem, commitGuard, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | reveal source target hty =>
+      simp [commitNodeSem, ProtocolGraph.NodeSem.reads] at h
+      exact ⟨source, h, by simp [ProtocolGraph.NodeSem.reads]⟩
+
+theorem mem_reads_revealNodeSem
+    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField (.reveal y who x hx k)}
+    (h : field ∈ (revealNodeSem sem).reads) :
+    ∃ inner, field = .revealTail inner ∧ inner ∈ sem.reads := by
+  cases sem with
+  | assign target expr =>
+      simp [revealNodeSem, revealExpr, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | sample target dist =>
+      simp [revealNodeSem, revealDist, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | commit owner target guard =>
+      simp [revealNodeSem, revealGuard, ProtocolGraph.NodeSem.reads] at h
+      rcases h with ⟨inner, hinner, hfield⟩
+      exact ⟨inner, hfield.symm, hinner⟩
+  | reveal source target hty =>
+      simp [revealNodeSem, ProtocolGraph.NodeSem.reads] at h
+      exact ⟨source, h, by simp [ProtocolGraph.NodeSem.reads]⟩
+
+theorem letTail_mem_writeFields_of_mem
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField k}
+    (h : field ∈ sem.writeFields) :
+    ProgramField.letTail (e := e) field ∈
+      (letNodeSem (e := e) sem).writeFields := by
+  cases sem <;>
+    simp [letNodeSem, ProtocolGraph.NodeSem.writeFields,
+      ProtocolGraph.NodeSem.writes] at h ⊢
+  · exact congrArg ProgramField.letTail h
+  · exact congrArg ProgramField.letTail h
+  · exact congrArg ProgramField.letTail h
+  · exact congrArg ProgramField.letTail h
+
+theorem sampleTail_mem_writeFields_of_mem
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField k}
+    (h : field ∈ sem.writeFields) :
+    ProgramField.sampleTail (D := D) field ∈
+      (sampleNodeSem (D := D) sem).writeFields := by
+  cases sem <;>
+    simp [sampleNodeSem, ProtocolGraph.NodeSem.writeFields,
+      ProtocolGraph.NodeSem.writes] at h ⊢
+  · exact congrArg ProgramField.sampleTail h
+  · exact congrArg ProgramField.sampleTail h
+  · exact congrArg ProgramField.sampleTail h
+  · exact congrArg ProgramField.sampleTail h
+
+theorem commitTail_mem_writeFields_of_mem
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField k}
+    (h : field ∈ sem.writeFields) :
+    ProgramField.commitTail (R := R) field ∈
+      (commitNodeSem (R := R) sem).writeFields := by
+  cases sem <;>
+    simp [commitNodeSem, ProtocolGraph.NodeSem.writeFields,
+      ProtocolGraph.NodeSem.writes] at h ⊢
+  · exact congrArg ProgramField.commitTail h
+  · exact congrArg ProgramField.commitTail h
+  · exact congrArg ProgramField.commitTail h
+  · exact congrArg ProgramField.commitTail h
+
+theorem revealTail_mem_writeFields_of_mem
+    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
+      (fun field => field.ty)}
+    {field : ProgramField k}
+    (h : field ∈ sem.writeFields) :
+    ProgramField.revealTail (x := x) (hx := hx) field ∈
+      (revealNodeSem (x := x) (hx := hx) sem).writeFields := by
+  cases sem <;>
+    simp [revealNodeSem, ProtocolGraph.NodeSem.writeFields,
+      ProtocolGraph.NodeSem.writes] at h ⊢
+  · exact congrArg ProgramField.revealTail h
+  · exact congrArg ProgramField.revealTail h
+  · exact congrArg ProgramField.revealTail h
+  · exact congrArg ProgramField.revealTail h
+
 end Wrap
 
 /-- Final visibility context reached after all source nodes of a program have
