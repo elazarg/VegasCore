@@ -38,6 +38,14 @@ def raw : StoredValue α → α
   | .clear value => value
   | .hidden value => value
 
+noncomputable instance instFintype [Fintype α] : Fintype (StoredValue α) := by
+  classical
+  refine Fintype.mk
+    (((Finset.univ : Finset α).image StoredValue.clear) ∪
+      ((Finset.univ : Finset α).image StoredValue.hidden)) ?_
+  intro value
+  cases value <;> simp
+
 end StoredValue
 
 /-- A semantic field write in a protocol node. -/
@@ -575,6 +583,52 @@ noncomputable def withResult
       exact cfg.legal holdResult
 
 end Configuration
+
+/-- Graph configurations are finite when nodes, fields, and every field value
+domain are finite. The configuration invariant is proof data over a finite
+result assignment. -/
+@[reducible] noncomputable instance Configuration.instFintype
+    (G : Vegas.ProtocolGraph Player L)
+    [Fintype G.Node] [Fintype G.Field]
+    [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
+    Fintype G.Configuration := by
+  classical
+  letI : ∀ field : G.Field,
+      Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
+    fun _ => inferInstance
+  letI : Fintype (WriteSlice G) := by
+    dsimp [WriteSlice]
+    infer_instance
+  letI : Fintype (ResultAssignment G) := by
+    dsimp [ResultAssignment]
+    infer_instance
+  let ValidResult : Type :=
+    { result : ResultAssignment G //
+      (∀ {node}, (result node).isSome → node ∈ G.nodes) ∧
+      (∀ {node prereq},
+        (result node).isSome → prereq ∈ G.prereqs node →
+          (result prereq).isSome) ∧
+      (∀ {node slice}, result node = some slice → G.sliceLegal node slice) }
+  haveI : Fintype ValidResult := by
+    dsimp [ValidResult]
+    infer_instance
+  let e : G.Configuration ≃ ValidResult :=
+    { toFun := fun cfg =>
+        ⟨cfg.result, cfg.result_nodes, cfg.closed, cfg.legal⟩
+      invFun := fun result =>
+        { result := result.1
+          result_nodes := result.2.1
+          closed := result.2.2.1
+          legal := result.2.2.2 }
+      left_inv := by
+        intro cfg
+        cases cfg
+        rfl
+      right_inv := by
+        intro result
+        cases result
+        rfl }
+  exact Fintype.ofEquiv ValidResult e.symm
 
 end ProtocolGraph
 

@@ -38,12 +38,64 @@ structure PlayerAction (G : Vegas.ProtocolGraph Player L) (_who : Player) where
   node : G.Node
   slice : G.WriteSlice
 
+namespace PlayerAction
+
+/-- Player actions are finite when graph nodes, fields, and field values are
+finite. -/
+@[reducible] noncomputable instance instFintype
+    (G : Vegas.ProtocolGraph Player L) (who : Player)
+    [Fintype G.Node] [Fintype G.Field]
+    [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
+    Fintype (PlayerAction G who) := by
+  classical
+  letI : ∀ field : G.Field,
+      Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
+    fun _ => inferInstance
+  letI : Fintype G.WriteSlice := by
+    dsimp [ProtocolGraph.WriteSlice]
+    infer_instance
+  let e : PlayerAction G who ≃ G.Node × G.WriteSlice :=
+    { toFun := fun action => (action.node, action.slice)
+      invFun := fun pair => { node := pair.1, slice := pair.2 }
+      left_inv := by
+        intro action
+        cases action
+        rfl
+      right_inv := by
+        intro pair
+        cases pair
+        rfl }
+  exact Fintype.ofEquiv (G.Node × G.WriteSlice) e.symm
+
+end PlayerAction
+
 /-- Internal graph events execute ready non-player nodes. `idle` is never
 available; it only gives terminal FOSG presentations a total internal turn
 without inventing an executable graph node. -/
 inductive InternalEvent (G : Vegas.ProtocolGraph Player L) where
   | node (node : G.Node)
   | idle
+
+namespace InternalEvent
+
+/-- Internal graph events are finite when graph nodes are finite. -/
+@[reducible] noncomputable instance instFintype
+    (G : Vegas.ProtocolGraph Player L) [Fintype G.Node] :
+    Fintype (InternalEvent G) := by
+  classical
+  letI : DecidableEq (InternalEvent G) := Classical.decEq _
+  refine Fintype.mk
+    (((Finset.univ : Finset G.Node).image InternalEvent.node) ∪
+      {InternalEvent.idle}) ?_
+  intro event
+  cases event with
+  | node node =>
+      exact Finset.mem_union.mpr
+        (Or.inl (Finset.mem_image.mpr ⟨node, Finset.mem_univ _, rfl⟩))
+  | idle =>
+      simp
+
+end InternalEvent
 
 /-- Observation/outcome interface needed to expose a graph as a `Machine`.
 

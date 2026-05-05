@@ -99,6 +99,13 @@ theorem mem_enumerate :
     (Γ : VCtx P L) : Fintype (VCtxField P L Γ) :=
   Fintype.ofList (enumerate Γ) mem_enumerate
 
+@[reducible] noncomputable def finiteTypeOfProof
+    {Γ : VCtx P L} (hΓ : FiniteVCtxProof Γ)
+    (field : VCtxField P L Γ) : FiniteType L field.ty := by
+  cases field with
+  | mk h =>
+      exact ⟨FiniteVCtxProof.fintypeOfHasVar hΓ h⟩
+
 end VCtxField
 
 /-- Source protocol-event occurrence. There is one node for every non-`ret`
@@ -514,6 +521,43 @@ theorem mem_enumerate :
     {Γ : VCtx P L} (p : VegasCore P L Γ) :
     Fintype (ProgramField p) :=
   Fintype.ofList (enumerate p) mem_enumerate
+
+@[reducible] noncomputable def finiteTypeOfProof :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      FiniteVCtxProof Γ → FiniteProgramProof p →
+        (field : ProgramField p) → FiniteType L field.ty
+  | _, .ret _, hΓ, .ret, .retField field =>
+      VCtxField.finiteTypeOfProof hΓ field
+  | _, .letExpr (x := x) (b := b) _ _k,
+      hΓ, .letExpr head tail, .letTail field =>
+      finiteTypeOfProof
+        (show FiniteVCtxProof ((x, .pub b) :: _) from
+          .cons head hΓ)
+        tail field
+  | _, .sample (x := x) (b := b) _ _k,
+      hΓ, .sample head tail, .sampleTail field =>
+      finiteTypeOfProof
+        (show FiniteVCtxProof ((x, .pub b) :: _) from
+          .cons head hΓ)
+        tail field
+  | _, .commit (x := x) (who := who) (b := b) _ _k,
+      hΓ, .commit head tail, .commitTail field =>
+      finiteTypeOfProof
+        (show FiniteVCtxProof ((x, .hidden who b) :: _) from
+          .cons head hΓ)
+        tail field
+  | _, .reveal (y := y) (b := b) _ _ _ _k,
+      hΓ, .reveal head tail, .revealTail field =>
+      finiteTypeOfProof
+        (show FiniteVCtxProof ((y, .pub b) :: _) from
+          .cons head hΓ)
+        tail field
+
+@[reducible] noncomputable def instFintypeValue
+    (g : WFProgram P L) [hfinite : FiniteDomains g]
+    (field : ProgramField g.prog) :
+    Fintype (L.Val field.ty) :=
+  (finiteTypeOfProof hfinite.context.proof hfinite.program.proof field).fintype
 
 /-- Finset of final fields. -/
 noncomputable def finset {Γ : VCtx P L} (p : VegasCore P L Γ) :
@@ -1842,5 +1886,108 @@ noncomputable def syntaxGraphFOSGView
     (syntaxGraphMachine g).FOSGView :=
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasAvailablePlayerActions g)
+
+/-- Finite state helper for the graph-native syntax machine. -/
+@[reducible] noncomputable instance syntaxGraphMachine.instFintypeState
+    (g : WFProgram P L) [FiniteDomains g] :
+    Fintype (syntaxGraphMachine g).State := by
+  classical
+  letI : Fintype (ProgramNode g.prog) :=
+    ProgramNode.instFintype g.prog
+  letI : Fintype (ProgramField g.prog) :=
+    ProgramField.instFintype g.prog
+  letI :
+      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
+    fun field => ProgramField.instFintypeValue g field
+  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
+    syntaxProtocolGraph, ProtocolGraph.Configuration,
+    ProtocolGraph.ResultAssignment, ProtocolGraph.WriteSlice]
+  infer_instance
+
+/-- Finite action helper for the graph-native syntax machine. -/
+@[reducible] noncomputable instance syntaxGraphMachine.instFintypeAction
+    (g : WFProgram P L) [FiniteDomains g] (who : P) :
+    Fintype ((syntaxGraphMachine g).Action who) := by
+  classical
+  letI : Fintype (ProgramNode g.prog) :=
+    ProgramNode.instFintype g.prog
+  letI : Fintype (ProgramField g.prog) :=
+    ProgramField.instFintype g.prog
+  letI :
+      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
+    fun field => ProgramField.instFintypeValue g field
+  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
+    ProtocolGraph.PlayerAction, syntaxProtocolGraph,
+    ProtocolGraph.WriteSlice]
+  infer_instance
+
+/-- Finite optional-action helper for the graph-native syntax machine. -/
+@[reducible] noncomputable instance syntaxGraphMachine.instFintypeOptionAction
+    (g : WFProgram P L) [FiniteDomains g] (who : P) :
+    Fintype (Option ((syntaxGraphMachine g).Action who)) := by
+  classical
+  letI : Fintype ((syntaxGraphMachine g).Action who) :=
+    syntaxGraphMachine.instFintypeAction g who
+  infer_instance
+
+/-- Finite internal-event helper for the graph-native syntax machine. -/
+@[reducible] noncomputable instance syntaxGraphMachine.instFintypeInternal
+    (g : WFProgram P L) :
+    Fintype (syntaxGraphMachine g).Internal := by
+  classical
+  letI : Fintype (ProgramNode g.prog) :=
+    ProgramNode.instFintype g.prog
+  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
+    ProtocolGraph.InternalEvent, syntaxProtocolGraph]
+  infer_instance
+
+/-- Finite primitive-event helper for the graph-native syntax machine. -/
+@[reducible] noncomputable instance syntaxGraphMachine.instFintypeEvent
+    (g : WFProgram P L) [FiniteDomains g] [Fintype P] :
+    Fintype (syntaxGraphMachine g).Event := by
+  classical
+  letI : ∀ who : P, Fintype ((syntaxGraphMachine g).Action who) :=
+    fun who => syntaxGraphMachine.instFintypeAction g who
+  letI : Fintype (syntaxGraphMachine g).Internal :=
+    syntaxGraphMachine.instFintypeInternal g
+  let playEvents : Finset (syntaxGraphMachine g).Event :=
+    (Finset.univ :
+      Finset (Sigma fun who : P => (syntaxGraphMachine g).Action who)).image
+        (fun x => Machine.Event.play x.1 x.2)
+  let internalEvents : Finset (syntaxGraphMachine g).Event :=
+    (Finset.univ : Finset (syntaxGraphMachine g).Internal).image
+      (fun event => Machine.Event.internal event)
+  refine Fintype.mk (playEvents ∪ internalEvents) ?_
+  intro event
+  cases event with
+  | play who action =>
+      exact Finset.mem_union.mpr
+        (Or.inl
+          (Finset.mem_image.mpr
+            ⟨⟨who, action⟩, Finset.mem_univ _, rfl⟩))
+  | internal event =>
+      exact Finset.mem_union.mpr
+        (Or.inr
+          (Finset.mem_image.mpr
+            ⟨event, Finset.mem_univ _, rfl⟩))
+
+/-- Finite-history helper for bounded graph-native syntax FOSG views. -/
+@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeBoundedHistory
+    (g : WFProgram P L) (horizon : Nat)
+    [Fintype P] [FiniteDomains g] :
+    Fintype (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) := by
+  classical
+  haveI :
+      Fintype ((syntaxGraphMachine g).BoundedRunPrefix horizon) :=
+    Machine.BoundedRunPrefix.instFintype
+  exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
+    (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
+    ((syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon)
+
+/-- Terminal decidability for bounded graph-native syntax FOSG views. -/
+noncomputable instance syntaxGraphFOSGView.instDecidablePredBoundedTerminal
+    (g : WFProgram P L) (horizon : Nat) :
+    DecidablePred (((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
+  Classical.decPred _
 
 end Vegas
