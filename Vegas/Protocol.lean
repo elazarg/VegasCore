@@ -35,10 +35,10 @@ This entrypoint exposes the executable protocol construction path:
   `Machine.traceDist` and the terminal-outcome marginal
   `Machine.outcomeKernel`. These are the canonical machine-level trace
   semantics.
-* `Vegas.Protocol.FOSG` derives sequential FOSG views directly from `Machine`
-  through `Machine.FOSGView`, using `Machine.RunPrefix` event/state prefixes
-  as worlds. `Machine.FOSGView.transition_map_lastState_eq_step` projects each
-  derived FOSG transition back to the selected `Machine.step`.
+* `Vegas.Protocol.FOSG` derives checkpoint FOSG views directly from `Machine`
+  through `Machine.FOSGView`. Worlds are machine states, bounded presentations
+  add only a depth counter, and the view owns the player-facing round-action
+  alphabet.
 * `Vegas.Protocol.Strategic` packages the finite syntax-graph FOSG view as
   Vegas `KernelGame` constructors.
 * `Vegas.Protocol.Backend` states operational refinement obligations for
@@ -51,11 +51,10 @@ This entrypoint exposes the executable protocol construction path:
   `PMF M.Outcome` distributions. No external syntactic strategy space
   (e.g. `pureKernelGame`) appears in the statement.
 
-Schedulers and linearizations are presentation data for traces, sequential
-syntax, FOSG histories, or backend transaction orderings. They refine machine
-events for a particular view; they are not part of
-`syntaxGraphMachine`, and scheduled views must prove that they collapse to the
-same machine-derived semantics.
+Schedulers and linearizations are presentation data for traces, source syntax,
+FOSG histories, or backend transaction orderings. They refine machine events
+for a particular view; they are not part of `syntaxGraphMachine`, and scheduled
+views must prove that they collapse to the same machine-derived semantics.
 
 The intended theorem is therefore not "machine and every sequential
 presentation are definitionally the same"; it is a strategic correspondence

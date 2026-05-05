@@ -36,9 +36,9 @@ variable {M : Machine Player}
 mixed profile and running the machine under that pure profile. -/
 noncomputable def outcomeFromMixed
     (view : M.FOSGView)
-    [Fintype Player] [Fintype M.RunPrefix]
+    [Fintype Player] [Fintype M.State]
     [Fintype view.toFOSG.History]
-    [∀ i, Fintype (Option (M.Action i))]
+    [∀ i, Fintype (Option (view.Act i))]
     [DecidablePred view.toFOSG.terminal]
     (μ : view.MixedProfile) (horizon : Nat) :
     PMF M.Outcome :=
@@ -59,13 +59,13 @@ external syntactic strategy space.
 
 `hLeg` is the legal-observability hypothesis on the derived FOSG (perfect
 recall up to the FOSG observation factoring); finiteness of `Player`,
-`M.RunPrefix`, `view.toFOSG.History`, and `Option (M.Action _)` packages the
+`M.State`, `view.toFOSG.History`, and `Option (view.Act _)` packages the
 finite-horizon assumption. -/
 theorem kuhn_mixed_to_behavioral
     (view : M.FOSGView)
-    [Fintype Player] [Fintype M.RunPrefix]
+    [Fintype Player] [Fintype M.State]
     [Fintype view.toFOSG.History]
-    [∀ i, Fintype (Option (M.Action i))]
+    [∀ i, Fintype (Option (view.Act i))]
     [DecidablePred view.toFOSG.terminal]
     (hLeg : view.toFOSG.LegalObservable)
     (μ : view.MixedProfile) (horizon : Nat) :
@@ -82,17 +82,18 @@ theorem kuhn_mixed_to_behavioral
 /-! ## Bounded-horizon variant
 
 The same Machine-native Kuhn theorem stated for the horizon-bounded FOSG view
-`view.toBoundedFOSG horizon`. Worlds are `M.BoundedRunPrefix horizon`; this is
+`view.toBoundedFOSG horizon`. Worlds are `M.BoundedState horizon`; this is
 the form that matches finite Vegas-program executions, where the action graph
-fixes the horizon and the bounded run prefix is automatically `Fintype`.
+fixes the horizon and the bounded state presentation is automatically
+`Fintype`.
 -/
 
 /-- Outcome distribution from sampling a bounded pure profile and running. -/
 noncomputable def boundedOutcomeFromMixed
     (view : M.FOSGView) (horizon : Nat)
-    [Fintype Player] [Fintype (M.BoundedRunPrefix horizon)]
+    [Fintype Player] [Fintype (M.BoundedState horizon)]
     [Fintype (view.toBoundedFOSG horizon).History]
-    [∀ i, Fintype (Option (M.Action i))]
+    [∀ i, Fintype (Option (view.Act i))]
     [DecidablePred (view.toBoundedFOSG horizon).terminal]
     (μ : view.BoundedMixedProfile horizon)
     (steps : Nat) : PMF M.Outcome :=
@@ -111,9 +112,9 @@ is discharged by an existing legal-observability proof for the bounded view.
 theorem kuhn_mixed_to_behavioral_bounded
     (view : M.FOSGView) (horizon : Nat)
     [Fintype Player]
-    [Fintype (M.BoundedRunPrefix horizon)]
+    [Fintype (M.BoundedState horizon)]
     [Fintype (view.toBoundedFOSG horizon).History]
-    [∀ i, Fintype (Option (M.Action i))]
+    [∀ i, Fintype (Option (view.Act i))]
     [DecidablePred (view.toBoundedFOSG horizon).terminal]
     (hLeg : (view.toBoundedFOSG horizon).LegalObservable)
     (μ : view.BoundedMixedProfile horizon) (steps : Nat) :

@@ -1578,15 +1578,6 @@ end ProgramField
 
 namespace ProgramNode
 
-/-- Conservative source-order prerequisites. This is graph-native state
-without cursors: the dependency relation is a static relation on source
-occurrences, not a runtime program point. -/
-noncomputable def prereqs
-    {Γ : VCtx P L} (p : VegasCore P L Γ) (node : ProgramNode p) :
-    Finset (ProgramNode p) := by
-  classical
-  exact (finset p).filter fun prior => prior.rank < node.rank
-
 /-- Semantic payload of a source occurrence, expressed over the final field set
 of the enclosing program. -/
 noncomputable def sem :
@@ -1847,6 +1838,25 @@ theorem read_current_or_prior_write :
         right
         refine ⟨.revealTail prior, Nat.succ_lt_succ hrank, ?_⟩
         exact ProgramField.Wrap.revealTail_mem_writeFields_of_mem hwrite
+
+/-- Causal prerequisites of a source node.
+
+A source node depends on earlier source nodes whose writes it reads. Source
+order remains only as the acyclicity certificate: unrelated source occurrences
+are allowed to share a frontier. -/
+noncomputable def prereqs
+    {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (hctx : WFCtx Γ) (fresh : FreshBindings p)
+    (hscoped : ViewScoped p) (legal : Legal p)
+    (normalized : NormalizedDists p) (node : ProgramNode p) :
+    Finset (ProgramNode p) := by
+  classical
+  exact (finset p).filter fun prior =>
+    prior.rank < node.rank ∧
+      ∃ field,
+        field ∈ (ProgramNode.sem hctx fresh hscoped legal normalized node).reads ∧
+          field ∈
+            (ProgramNode.sem hctx fresh hscoped legal normalized prior).writeFields
 
 /-- A source graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
@@ -2242,12 +2252,9 @@ end ProgramNode
 
 /-- Checked Vegas syntax compiled to the graph-native protocol graph.
 
-This is the new semantic object that should replace cursor/action-graph
-execution. It is intentionally conservative about prerequisites for now:
-source occurrence rank gives an acyclic graph without storing a runtime cursor.
-The dependency relation can be narrowed later by replacing
-`ProgramNode.prereqs`; the machine carrier and configuration representation do
-not change. -/
+This is the graph-native semantic object.  Source occurrences become graph
+nodes, and prerequisites are the causal read dependencies between them; source
+order is retained only as the rank function proving acyclicity. -/
 noncomputable def syntaxProtocolGraph
     (g : WFProgram P L) : ProtocolGraph P L where
   Node := ProgramNode g.prog
@@ -2260,14 +2267,15 @@ noncomputable def syntaxProtocolGraph
   fieldOwner := fun field => field.owner
   initial := ProgramField.initialValue? g.prog g.env
   sem := ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
-  prereqs := ProgramNode.prereqs g.prog
+  prereqs := ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
+    g.legal g.normalized
   rank := fun node => node.rank
   prereqs_subset_nodes := by
     intro node prereq _hnode hpre
     exact (Finset.mem_filter.mp hpre).1
   prereq_rank_lt := by
     intro node prereq _hnode hpre
-    exact (Finset.mem_filter.mp hpre).2
+    exact (Finset.mem_filter.mp hpre).2.1
   read_fields_mem := by
     intro node field _hnode _hfield
     exact ProgramField.mem_finset g.prog field
@@ -2330,9 +2338,12 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
         g.prog g.env hcurrent)
   · rcases hprior with ⟨prior, hrank, hwrite⟩
     have hpre : prior ∈ (syntaxProtocolGraph g).prereqs node := by
-      change prior ∈ ProgramNode.prereqs g.prog node
+      change prior ∈
+        ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized node
       exact Finset.mem_filter.mpr
-        ⟨ProgramNode.mem_finset g.prog prior, hrank⟩
+        ⟨ProgramNode.mem_finset g.prog prior, hrank,
+          ⟨read, hread, hwrite⟩⟩
     have hdone : (cfg.result prior).isSome :=
       cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre
     have hcfgLegal :
@@ -2621,21 +2632,45 @@ noncomputable def syntaxGraphFOSGView
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasAvailablePlayerActions g)
 
-/-- The canonical selected syntax-graph turn is public-observation determined:
-the public observation records enough completed-node information to recover the
-frontier, and the selected turn only inspects that frontier and static node
-semantics. -/
-theorem syntaxGraph_turn_eq_of_publicView_eq
+/-- Player round-action availability in the syntax graph is determined by the
+public transcript together with the acting player's private observation. -/
+theorem syntaxGraph_roundAvailable_eq_of_observation_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    ProtocolGraph.roundAvailable (syntaxProtocolGraph g) left who =
+      ProtocolGraph.roundAvailable (syntaxProtocolGraph g) right who := by
+  classical
+  have hfrontierEq := syntaxGraphPublicView_frontier_eq_of_eq g hpub
+  ext action
+  constructor
+  · intro haction node hfrontier hactor
+    have hfrontierLeft : node ∈ left.frontier := by
+      simpa [hfrontierEq] using hfrontier
+    rcases haction hfrontierLeft hactor with ⟨hslice, hlegal⟩
+    exact ⟨hslice,
+      syntaxGraph_actionLegal_of_observe_eq g who hfrontier
+        hactor hpriv hlegal⟩
+  · intro haction node hfrontier hactor
+    have hfrontierRight : node ∈ right.frontier := by
+      simpa [hfrontierEq] using hfrontier
+    rcases haction hfrontierRight hactor with ⟨hslice, hlegal⟩
+    exact ⟨hslice,
+      syntaxGraph_actionLegal_of_observe_eq g who hfrontier
+        hactor hpriv.symm hlegal⟩
+
+/-- The active-player set of a syntax-graph frontier round is determined by
+the public transcript. -/
+theorem syntaxGraph_roundActive_eq_of_publicView_eq
     (g : WFProgram P L)
     {left right : (syntaxProtocolGraph g).Configuration}
     (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
-    ProtocolGraph.turn (syntaxProtocolGraph g)
-        (syntaxGraphMachineInterface g) left =
-      ProtocolGraph.turn (syntaxProtocolGraph g)
-        (syntaxGraphMachineInterface g) right := by
+    ProtocolGraph.roundActive (syntaxProtocolGraph g) left =
+      ProtocolGraph.roundActive (syntaxProtocolGraph g) right := by
   classical
   have hfrontier := syntaxGraphPublicView_frontier_eq_of_eq g hpub
-  unfold ProtocolGraph.turn ProtocolGraph.selectedFrontierNode?
+  unfold ProtocolGraph.roundActive
   rw [hfrontier]
 
 /-- At a bounded syntax-graph FOSG state before the cutoff, legal optional
@@ -2643,41 +2678,34 @@ moves are determined by the player's latest private observation and the public
 transcript. -/
 theorem syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
     (g : WFProgram P L) (horizon : Nat) (who : P)
-    {left right : (syntaxGraphMachine g).BoundedRunPrefix horizon}
-    (hcut : ¬ horizon ≤ left.pref.events.length)
-    (hcut' : ¬ horizon ≤ right.pref.events.length)
+    {left right : (syntaxGraphMachine g).BoundedState horizon}
+    (hcut : ¬ horizon ≤ left.depth)
+    (hcut' : ¬ horizon ≤ right.depth)
     (hpriv :
-      syntaxGraphObserve g who left.lastState =
-        syntaxGraphObserve g who right.lastState)
+      syntaxGraphObserve g who left.state =
+        syntaxGraphObserve g who right.state)
     (hpub :
-      syntaxGraphPublicView g left.lastState =
-        syntaxGraphPublicView g right.lastState) :
+      syntaxGraphPublicView g left.state =
+        syntaxGraphPublicView g right.state) :
     ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
         left who =
       ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
         right who := by
   classical
-  have hturn :
-      (syntaxGraphFOSGView g).turn left.pref =
-        (syntaxGraphFOSGView g).turn right.pref := by
-    simpa [syntaxGraphFOSGView, ProtocolGraph.toFOSGView,
-      Machine.BoundedRunPrefix.lastState] using
-      syntaxGraph_turn_eq_of_publicView_eq g hpub
-  have havailable :
-      (syntaxGraphMachine g).available left.lastState who =
-        (syntaxGraphMachine g).available right.lastState who := by
-    simpa [syntaxGraphMachine, ProtocolGraph.toMachine] using
-      syntaxGraph_available_eq_of_observation_eq g who hpriv hpub
-  have havailablePref :
-      (syntaxGraphMachine g).available left.pref.lastState who =
-        (syntaxGraphMachine g).available right.pref.lastState who := by
-    simpa [Machine.BoundedRunPrefix.lastState] using havailable
+  have hroundActive :
+      ProtocolGraph.roundActive (syntaxProtocolGraph g) left.state =
+        ProtocolGraph.roundActive (syntaxProtocolGraph g) right.state :=
+    syntaxGraph_roundActive_eq_of_publicView_eq g hpub
+  have hroundAvailable :
+      ProtocolGraph.roundAvailable (syntaxProtocolGraph g) left.state who =
+        ProtocolGraph.roundAvailable (syntaxProtocolGraph g) right.state who :=
+    syntaxGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
   have hactive :
       ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left =
         ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right := by
     ext player
     simp [Machine.FOSGView.boundedActive, hcut, hcut',
-      Machine.FOSGView.active, hturn]
+      syntaxGraphFOSGView, ProtocolGraph.toFOSGView, hroundActive]
   have hactions :
       ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
           left who =
@@ -2685,7 +2713,7 @@ theorem syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
           right who := by
     ext action
     simp [Machine.FOSGView.boundedAvailableActions, hcut, hcut',
-      Machine.FOSGView.availableActions, hturn, havailablePref]
+      syntaxGraphFOSGView, ProtocolGraph.toFOSGView, hroundAvailable]
   ext move
   cases move with
   | none =>
@@ -2767,29 +2795,28 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
         rw [hlenEq, hnil']
         rfl
       exact hnil (List.eq_nil_of_length_eq_zero hlen0)
-    have heventLen :=
+    have hdepthLen :=
       (syntaxGraphFOSGView g)
-        |>.toBoundedFOSG_history_events_length horizon h
-    have heventLen' :=
+        |>.toBoundedFOSG_history_depth horizon h
+    have hdepthLen' :=
       (syntaxGraphFOSGView g)
-        |>.toBoundedFOSG_history_events_length horizon h'
+        |>.toBoundedFOSG_history_depth horizon h'
     have hcutEq :
-        (horizon ≤ h.lastState.pref.events.length) ↔
-          (horizon ≤ h'.lastState.pref.events.length) := by
-      have heqEvents :
-          h.lastState.pref.events.length =
-            h'.lastState.pref.events.length := by
+        (horizon ≤ h.lastState.depth) ↔
+          (horizon ≤ h'.lastState.depth) := by
+      have heqDepth :
+          h.lastState.depth = h'.lastState.depth := by
         calc
-          h.lastState.pref.events.length = h.steps.length := heventLen
+          h.lastState.depth = h.steps.length := hdepthLen
           _ = h'.steps.length := hlenEq
-          _ = h'.lastState.pref.events.length := heventLen'.symm
+          _ = h'.lastState.depth := hdepthLen'.symm
       constructor
       · intro hle
-        exact heqEvents ▸ hle
+        exact heqDepth ▸ hle
       · intro hle
-        exact heqEvents.symm ▸ hle
-    by_cases hcut : horizon ≤ h.lastState.pref.events.length
-    · have hcut' : horizon ≤ h'.lastState.pref.events.length :=
+        exact heqDepth.symm ▸ hle
+    by_cases hcut : horizon ≤ h.lastState.depth
+    · have hcut' : horizon ≤ h'.lastState.depth :=
         hcutEq.mp hcut
       have hInactive : who ∉ G.active h.lastState := by
         simp [G, Machine.FOSGView.boundedActive, hcut]
@@ -2798,7 +2825,7 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
       rw [G.availableMoves_eq_singleton_none_of_not_mem_active h hInactive,
         G.availableMoves_eq_singleton_none_of_not_mem_active h' hInactive']
     · have hcut' :
-          ¬ horizon ≤ h'.lastState.pref.events.length := by
+          ¬ horizon ≤ h'.lastState.depth := by
         intro hle
         exact hcut (hcutEq.mpr hle)
       have hlatest :=
@@ -2810,8 +2837,8 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
           GameTheory.FOSG.InfoState.latestObservation?
               (G := G) (i := who) (h.playerView who) =
             some
-              (syntaxGraphObserve g who h.lastState.lastState,
-                syntaxGraphPublicView g h.lastState.lastState) := by
+              (syntaxGraphObserve g who h.lastState.state,
+                syntaxGraphPublicView g h.lastState.state) := by
         simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
           syntaxGraphMachineInterface] using
           (syntaxGraphFOSGView g)
@@ -2821,8 +2848,8 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
           GameTheory.FOSG.InfoState.latestObservation?
               (G := G) (i := who) (h'.playerView who) =
             some
-              (syntaxGraphObserve g who h'.lastState.lastState,
-                syntaxGraphPublicView g h'.lastState.lastState) := by
+              (syntaxGraphObserve g who h'.lastState.state,
+                syntaxGraphPublicView g h'.lastState.state) := by
         simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
           syntaxGraphMachineInterface] using
           (syntaxGraphFOSGView g)
@@ -2831,12 +2858,12 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
       rw [hlatest₁, hlatest₂] at hlatest
       injection hlatest with hobs
       have hpriv :
-          syntaxGraphObserve g who h.lastState.lastState =
-            syntaxGraphObserve g who h'.lastState.lastState :=
+          syntaxGraphObserve g who h.lastState.state =
+            syntaxGraphObserve g who h'.lastState.state :=
         congrArg Prod.fst hobs
       have hpub :
-          syntaxGraphPublicView g h.lastState.lastState =
-            syntaxGraphPublicView g h'.lastState.lastState :=
+          syntaxGraphPublicView g h.lastState.state =
+            syntaxGraphPublicView g h'.lastState.state :=
         congrArg Prod.snd hobs
       simpa [GameTheory.FOSG.availableMoves] using
         syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
@@ -2883,6 +2910,42 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
   classical
   letI : Fintype ((syntaxGraphMachine g).Action who) :=
     syntaxGraphMachine.instFintypeAction g who
+  infer_instance
+
+/-- Finite FOSG round-action helper for the graph-native syntax FOSG view. -/
+@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeAct
+    (g : WFProgram P L) [FiniteDomains g] (who : P) :
+    Fintype ((syntaxGraphFOSGView g).Act who) := by
+  classical
+  letI : Fintype (ProgramNode g.prog) :=
+    ProgramNode.instFintype g.prog
+  letI : Fintype (ProgramField g.prog) :=
+    ProgramField.instFintype g.prog
+  letI :
+      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
+    fun field => ProgramField.instFintypeValue g field
+  haveI : Fintype (syntaxProtocolGraph g).Node := by
+    change Fintype (ProgramNode g.prog)
+    exact ProgramNode.instFintype g.prog
+  haveI : Fintype (syntaxProtocolGraph g).Field := by
+    change Fintype (ProgramField g.prog)
+    exact ProgramField.instFintype g.prog
+  haveI :
+      ∀ field : (syntaxProtocolGraph g).Field,
+        Fintype (L.Val ((syntaxProtocolGraph g).fieldTy field)) := by
+    intro field
+    change Fintype (L.Val field.ty)
+    exact ProgramField.instFintypeValue g field
+  change Fintype (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g) who)
+  exact ProtocolGraph.PlayerRoundAction.instFintype (syntaxProtocolGraph g) who
+
+/-- Finite optional FOSG round-action helper for graph-native syntax views. -/
+@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeOptionAct
+    (g : WFProgram P L) [FiniteDomains g] (who : P) :
+    Fintype (Option ((syntaxGraphFOSGView g).Act who)) := by
+  classical
+  letI : Fintype ((syntaxGraphFOSGView g).Act who) :=
+    syntaxGraphFOSGView.instFintypeAct g who
   infer_instance
 
 /-- Finite internal-event helper for the graph-native syntax machine. -/
@@ -2933,8 +2996,11 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
     Fintype (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) := by
   classical
   haveI :
-      Fintype ((syntaxGraphMachine g).BoundedRunPrefix horizon) :=
-    Machine.BoundedRunPrefix.instFintype
+      Fintype ((syntaxGraphMachine g).BoundedState horizon) :=
+    Machine.BoundedState.instFintype
+  haveI :
+      ∀ who : P, Fintype (Option ((syntaxGraphFOSGView g).Act who)) :=
+    fun who => syntaxGraphFOSGView.instFintypeOptionAct g who
   exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
     (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
     ((syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon)

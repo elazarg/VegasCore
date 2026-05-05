@@ -6,9 +6,10 @@ import Vegas.Protocol.FOSG
 This module interprets an extensional `ProtocolGraph.Configuration` as the
 generic asynchronous `Machine` carrier.
 
-The primitive machine step executes one ready graph node.  A frontier is the
-set of schedulable nodes; it is not resolved as a batch and it is not stored in
-the state.
+The primitive machine step executes one ready graph node.  The FOSG
+presentation below exposes whole frontier rounds: it batches the current
+frontier into one player-facing transition while the primitive machine remains
+the executable carrier.
 -/
 
 namespace Vegas
@@ -68,6 +69,40 @@ finite. -/
   exact Fintype.ofEquiv (G.Node × G.WriteSlice) e.symm
 
 end PlayerAction
+
+/-- Player-facing action for a frontier round.  The action supplies a candidate
+write slice for each graph node; state-local availability uses only the slices
+for frontier nodes owned by the player. -/
+structure PlayerRoundAction (G : Vegas.ProtocolGraph Player L) (_who : Player) where
+  slice : G.Node → G.WriteSlice
+
+namespace PlayerRoundAction
+
+@[reducible] noncomputable instance instFintype
+    (G : Vegas.ProtocolGraph Player L) (who : Player)
+    [Fintype G.Node] [Fintype G.Field]
+    [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
+    Fintype (PlayerRoundAction G who) := by
+  classical
+  letI : ∀ field : G.Field,
+      Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
+    fun _ => inferInstance
+  letI : Fintype G.WriteSlice := by
+    dsimp [ProtocolGraph.WriteSlice]
+    infer_instance
+  let e : PlayerRoundAction G who ≃ (G.Node → G.WriteSlice) :=
+    { toFun := fun action => action.slice
+      invFun := fun slice => { slice := slice }
+      left_inv := by
+        intro action
+        cases action
+        rfl
+      right_inv := by
+        intro slice
+        rfl }
+  exact Fintype.ofEquiv (G.Node → G.WriteSlice) e.symm
+
+end PlayerRoundAction
 
 /-- Internal graph events execute ready non-player nodes. `idle` is never
 available; it only gives terminal FOSG presentations a total internal turn
@@ -197,99 +232,132 @@ noncomputable def toMachine
     (cfg : (G.toMachine iface).State) :
     (G.toMachine iface).terminal cfg = cfg.terminal := rfl
 
-/-- Pick one frontier node when the frontier is nonempty. -/
-noncomputable def selectedFrontierNode?
+/-- Players who own at least one node in the current frontier. -/
+noncomputable def roundActive
     (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration) :
-    Option G.Node := by
+    Finset Player := by
   classical
-  exact
-    if h : cfg.frontier.Nonempty then
-      some h.choose
-    else
-      none
+  exact cfg.frontier.biUnion fun node =>
+    match (G.sem node).actor with
+    | some who => {who}
+    | none => ∅
 
-theorem selectedFrontierNode?_eq_some_mem
+theorem mem_roundActive_iff
     (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
-    {node : G.Node}
-    (hselect : selectedFrontierNode? G cfg = some node) :
-    node ∈ cfg.frontier := by
+    (who : Player) :
+    who ∈ roundActive G cfg ↔
+      ∃ node, node ∈ cfg.frontier ∧ (G.sem node).actor = some who := by
   classical
-  unfold selectedFrontierNode? at hselect
-  split at hselect
-  · rename_i hnonempty
-    cases hselect
-    exact hnonempty.choose_spec
-  · simp at hselect
+  unfold roundActive
+  constructor
+  · intro hmem
+    rcases Finset.mem_biUnion.mp hmem with ⟨node, hfrontier, hwho⟩
+    cases hactor : (G.sem node).actor with
+    | none =>
+        simp [hactor] at hwho
+    | some owner =>
+        have howner : who = owner := by
+          simpa [hactor] using hwho
+        subst who
+        exact ⟨node, hfrontier, hactor⟩
+  · intro h
+    rcases h with ⟨node, hfrontier, hactor⟩
+    exact Finset.mem_biUnion.mpr
+      ⟨node, hfrontier, by simp [hactor]⟩
 
-theorem selectedFrontierNode?_some_of_not_terminal
+/-- Round actions available to a player at a graph configuration. -/
+def roundAvailable
     (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
-    (hterminal : ¬ cfg.terminal) :
-    ∃ node, selectedFrontierNode? G cfg = some node ∧
-      node ∈ cfg.frontier := by
-  classical
-  have hnonempty : cfg.frontier.Nonempty :=
-    cfg.frontier_nonempty_of_not_terminal hterminal
-  refine ⟨hnonempty.choose, ?_, hnonempty.choose_spec⟩
-  unfold selectedFrontierNode?
-  simp [hnonempty]
+    (who : Player) : Set (PlayerRoundAction G who) :=
+  { action |
+      ∀ {node},
+        node ∈ cfg.frontier →
+        (G.sem node).actor = some who →
+          G.sliceLegal node (action.slice node) ∧
+            G.actionLegal cfg.result node (action.slice node) }
 
-/-- Canonical selected turn for a protocol-graph configuration. -/
-noncomputable def turn
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
-    (cfg : G.Configuration) :
-    (G.toMachine iface).Turn :=
-  match selectedFrontierNode? G cfg with
-  | some node =>
-      match (G.sem node).actor with
-      | some who => .play who
-      | none => .internal (.node node)
-  | none => .internal .idle
+/-- Execute one node from a frontier round using the joint round action.
+Unavailable primitive events stutter through the underlying total machine step;
+frontier soundness lemmas show the intended round nodes remain available across
+linearizations. -/
+noncomputable def roundStepNode
+    (G : Vegas.ProtocolGraph Player L)
+    (joint : JointAction (PlayerRoundAction G))
+    (node : G.Node) (cfg : G.Configuration) :
+    PMF G.Configuration :=
+  match (G.sem node).actor with
+  | some who =>
+      match joint who with
+      | some action =>
+          stepPlay G who { node := node, slice := action.slice node } cfg
+      | none => PMF.pure cfg
+  | none => stepInternal G (.node node) cfg
 
-/-- FOSG presentation of a protocol-graph machine, assuming player-owned
-frontier nodes are never action-deadlocked. -/
+/-- Execute the current frontier as one FOSG round.  The list order is a
+definition device only; the frontier commutation theorems are the semantic
+justification that this hides no scheduler-relevant order. -/
+noncomputable def roundTransition
+    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G)) :
+    PMF G.Configuration :=
+  cfg.frontier.toList.foldl
+    (fun acc node => acc.bind fun state => roundStepNode G joint node state)
+    (PMF.pure cfg)
+
+/-- FOSG presentation of a protocol-graph machine by frontier rounds, assuming
+player-owned frontier nodes are never action-deadlocked. -/
 noncomputable def toFOSGView
     (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
     (hplayer : G.HasAvailablePlayerActions) :
     (G.toMachine iface).FOSGView where
-  turn := fun pref => turn G iface pref.lastState
-  terminal_not_play := by
-    intro pref player hterminal hplay
-    unfold turn at hplay
-    cases hselect : selectedFrontierNode? G pref.lastState with
-    | none =>
-        simp [hselect] at hplay
-    | some node =>
-        have hfrontier :=
-          selectedFrontierNode?_eq_some_mem G pref.lastState hselect
-        cases hactor : (G.sem node).actor with
-        | none =>
-            rw [hselect] at hplay
-            simp [hactor] at hplay
-        | some who =>
-            rw [hselect] at hplay
-            simp [hactor] at hplay
-            exact (pref.lastState.not_terminal_of_mem_frontier hfrontier)
-              hterminal
-  turn_available := by
-    intro pref hterminal
-    rcases selectedFrontierNode?_some_of_not_terminal G pref.lastState
-        hterminal with ⟨node, hselect, hfrontier⟩
-    unfold turn
-    rw [hselect]
-    cases hactor : (G.sem node).actor with
-    | none =>
-        simpa [hactor, Machine.Turn.AvailableAt, toMachine] using
-          (show (InternalEvent.node node : InternalEvent G) ∈
-            availableInternal G pref.lastState from ⟨hfrontier, hactor⟩)
-    | some who =>
-        rcases hplayer pref.lastState hfrontier hactor with
-          ⟨slice, hslice, haction⟩
-        simpa [hactor, Machine.Turn.AvailableAt, toMachine] using
-          (show ∃ action : PlayerAction G who,
-              action ∈ available G pref.lastState who from
-            ⟨⟨node, slice⟩, hfrontier, hactor, hslice, haction⟩)
-  reward := fun _ _ dst who =>
-    iface.utility (iface.outcome dst.lastState) who
+  Act := PlayerRoundAction G
+  active := roundActive G
+  availableActions := roundAvailable G
+  transition := fun cfg action => roundTransition G cfg action.1
+  reward := fun _ _ dst who => iface.utility (iface.outcome dst) who
+  terminal_active_eq_empty := by
+    intro cfg hterminal
+    apply Finset.eq_empty_iff_forall_notMem.mpr
+    intro who hmem
+    rcases (mem_roundActive_iff G cfg who).mp hmem with
+      ⟨node, hfrontier, _hactor⟩
+    exact (cfg.not_terminal_of_mem_frontier hfrontier) hterminal
+  nonterminal_exists_legal := by
+    intro cfg hterminal
+    classical
+    let mkSlice (who : Player) (node : G.Node) : G.WriteSlice :=
+      if h : node ∈ cfg.frontier ∧ (G.sem node).actor = some who then
+        Classical.choose (hplayer cfg h.1 h.2)
+      else
+        fun _ => none
+    let joint : JointAction (PlayerRoundAction G) := fun who =>
+      if who ∈ roundActive G cfg then
+        some { slice := mkSlice who }
+      else
+        none
+    refine ⟨joint, hterminal, ?_⟩
+    intro who
+    by_cases hactive : who ∈ roundActive G cfg
+    · have hjoint : joint who = some { slice := mkSlice who } := by
+        simp [joint, hactive]
+      rw [hjoint]
+      refine ⟨hactive, ?_⟩
+      intro node hfrontier hactor
+      have hnode : node ∈ cfg.frontier ∧ (G.sem node).actor = some who :=
+        ⟨hfrontier, hactor⟩
+      change
+        G.sliceLegal node (mkSlice who node) ∧
+          G.actionLegal cfg.result node (mkSlice who node)
+      unfold mkSlice
+      split
+      · rename_i h
+        exact Classical.choose_spec (hplayer cfg h.1 h.2)
+      · rename_i h
+        exact False.elim (h hnode)
+    · have hjoint : joint who = none := by
+        simp [joint, hactive]
+      rw [hjoint]
+      exact hactive
 
 end ProtocolGraph
 

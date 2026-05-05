@@ -110,11 +110,12 @@ dependent event from being on the same frontier.
 
 \section{FOSG As A View}
 
-\leanref{Machine.FOSGView} derives a sequential game-theoretic view from any
-protocol machine. Worlds are bounded machine run prefixes. The FOSG transition
-selects one machine event and wraps the resulting \leanref{Machine.step} with
-history. Thus FOSG is the sequential game-theoretic interface to the same
-machine, not a second execution semantics.
+\leanref{Machine.FOSGView} derives a game-theoretic checkpoint view from a
+protocol machine. Worlds are machine states; bounded views add only a depth
+counter. A FOSG transition is a player-facing frontier round with its own
+round-action alphabet, while the underlying machine remains the executable
+primitive-event carrier. Thus FOSG is the strategic interface to the same
+machine state space, not a second execution semantics.
 
 The finite checked-program view is obtained from
 \leanref{syntaxGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}

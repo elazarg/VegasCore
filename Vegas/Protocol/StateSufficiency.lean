@@ -135,14 +135,14 @@ the bounded presentation cutoff. -/
 theorem syntaxGraph_availableMoves_eq_of_currentObservation_eq
     (g : WFProgram P L) (horizon : Nat) (who : P)
     {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
-    (hcut : ¬ horizon ≤ h.lastState.pref.events.length)
-    (hcut' : ¬ horizon ≤ h'.lastState.pref.events.length)
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
     (hpriv :
-      syntaxGraphObserve g who h.lastState.lastState =
-        syntaxGraphObserve g who h'.lastState.lastState)
+      syntaxGraphObserve g who h.lastState.state =
+        syntaxGraphObserve g who h'.lastState.state)
     (hpub :
-      syntaxGraphPublicView g h.lastState.lastState =
-        syntaxGraphPublicView g h'.lastState.lastState) :
+      syntaxGraphPublicView g h.lastState.state =
+        syntaxGraphPublicView g h'.lastState.state) :
     ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who =
       ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h' who := by
   simpa [GameTheory.FOSG.availableMoves] using
@@ -155,8 +155,8 @@ current optional move set. -/
 theorem syntaxGraph_availableMoves_eq_of_latestObservation_eq
     (g : WFProgram P L) (horizon : Nat) (who : P)
     {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
-    (hcut : ¬ horizon ≤ h.lastState.pref.events.length)
-    (hcut' : ¬ horizon ≤ h'.lastState.pref.events.length)
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
     (hne : h.steps ≠ [])
     (hne' : h'.steps ≠ [])
     (hlatest :
@@ -173,8 +173,8 @@ theorem syntaxGraph_availableMoves_eq_of_latestObservation_eq
       GameTheory.FOSG.InfoState.latestObservation?
           (G := G) (i := who) (h.playerView who) =
         some
-          (syntaxGraphObserve g who h.lastState.lastState,
-            syntaxGraphPublicView g h.lastState.lastState) := by
+          (syntaxGraphObserve g who h.lastState.state,
+            syntaxGraphPublicView g h.lastState.state) := by
     simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
       syntaxGraphMachineInterface] using
       (syntaxGraphFOSGView g)
@@ -184,8 +184,8 @@ theorem syntaxGraph_availableMoves_eq_of_latestObservation_eq
       GameTheory.FOSG.InfoState.latestObservation?
           (G := G) (i := who) (h'.playerView who) =
         some
-          (syntaxGraphObserve g who h'.lastState.lastState,
-            syntaxGraphPublicView g h'.lastState.lastState) := by
+          (syntaxGraphObserve g who h'.lastState.state,
+            syntaxGraphPublicView g h'.lastState.state) := by
     simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
       syntaxGraphMachineInterface] using
       (syntaxGraphFOSGView g)
@@ -200,12 +200,12 @@ theorem syntaxGraph_availableMoves_eq_of_latestObservation_eq
   rw [hlatest₁, hlatest₂] at hlatestG
   injection hlatestG with hobs
   have hpriv :
-      syntaxGraphObserve g who h.lastState.lastState =
-        syntaxGraphObserve g who h'.lastState.lastState :=
+      syntaxGraphObserve g who h.lastState.state =
+        syntaxGraphObserve g who h'.lastState.state :=
     congrArg Prod.fst hobs
   have hpub :
-      syntaxGraphPublicView g h.lastState.lastState =
-        syntaxGraphPublicView g h'.lastState.lastState :=
+      syntaxGraphPublicView g h.lastState.state =
+        syntaxGraphPublicView g h'.lastState.state :=
     congrArg Prod.snd hobs
   exact
     syntaxGraph_availableMoves_eq_of_currentObservation_eq
