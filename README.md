@@ -26,26 +26,24 @@ game-theoretic views of the same program.
 
 ### Feasible Strategies
 
-Commit guards constrain the actions available to players. VegasCore reflects
-that in the strategy types exposed by the game APIs: behavioral and pure
-strategies are guard-respecting subtypes, so equilibrium statements quantify
-over strategies that respect the program's guards, not over arbitrary
-functions. (FOSG-side joint-action *legality* is a separate concept;
-guard-respecting strategy carriers are named `Feasible*` to disambiguate.)
+Commit guards constrain the actions available to players. The semantic game
+APIs use reachable-legal strategies of the finite graph-machine FOSG. The
+syntax-indexed `Feasible*` carriers still exist as a presentation/compiler
+layer for source strategies, not as the owner of strategic semantics.
 
 The main types are:
 
-- `FeasibleProgramBehavioralStrategy g who`
-- `FeasibleProgramBehavioralProfile g`
-- `FeasibleProgramPureStrategy g who`
-- `FeasibleProgramPureProfile g`
+- `pureStrategyAt g hctx who`
+- `behavioralStrategyPMFAt g hctx who`
+- `pureKernelGame g LF`
+- `pmfBehavioralKernelGame g LF`
 
 ### Strategic-Form Game APIs
 
-VegasCore turns a checked program into `GameTheory.KernelGame`s:
+VegasCore turns a finite checked program into `GameTheory.KernelGame`s:
 
-- `behavioralKernelGame g` for behavioral strategies;
-- `pureKernelGame g` for pure strategies.
+- `pmfBehavioralKernelGame g LF` for PMF behavioral FOSG strategies;
+- `pureKernelGame g LF` for pure FOSG strategies.
 
 The wrappers in `Vegas.Equilibrium`, `Vegas.PureStrategic`, and
 `Vegas.GameProperties` expose the usual game-theoretic vocabulary directly on
@@ -75,58 +73,32 @@ machine, and `toFiniteFOSG` is its syntax-horizon finite view. `toFOSG` and
 The primary Vegas-facing finite sequential realization theorem is:
 
 ```lean
-kuhn_mixedPureRealization_finite
+kuhn_finite
 ```
 
 It says that, for a finite checked Vegas program, every independent mixed
-profile over feasible (guard-respecting) pure strategies has a reachable legal
-PMF behavioral profile in the syntax-horizon graph-machine-derived FOSG with
-the same distribution over payoff outcomes.
+profile over reachable legal pure strategies of the finite graph-machine FOSG
+has a reachable legal PMF behavioral profile with the same distribution over
+payoff outcomes.
 
 The preservation statement is about the outcome distribution. Expected-utility
 equalities are corollaries of that distribution equality.
 
-The underlying machine-derived finite FOSG theorems are:
+The underlying machine-derived finite FOSG theorem is:
 
 ```lean
-toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist
-toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist
-toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
+kuhn_finiteKernelGame
 ```
 
-The last theorem transports product-mixed Vegas feasible pure strategies
-directly into the finite graph-machine-derived FOSG reachable pure strategy
-space and collapses the pure side to the native `pureKernelGame` outcome
-kernel.
-The local bridge behind this collapse is:
-
-```lean
-toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame
-```
-
-The IR-side checked-program PMF behavioral profile type is
-`SequentialBehavioralProfilePMF g hctx`, which wraps a reachable legal
-behavioral profile of `toFiniteFOSG g hctx`. The syntax-recursive presentation
-is named `FeasibleProgramBehavioralProfilePMF`; it is a presentation that
-should be proved equivalent to the IR carrier when exposed to clients.
-
-The cursor-world observed adapter remains as a syntax-projection layer. It is
-not a second semantics; its run and outcome laws are used only through
-machine-derived bridge theorems.
+The syntax-recursive `Feasible*` strategy presentations remain available under
+`Vegas.Strategy.*` for client-facing compilation work, but they are not the
+semantic strategy carriers used by Kuhn or the public kernel games.
 
 ### Protocol-Level Statements
 
-`Vegas.ProtocolSemantics` states the same strategic concepts directly in terms
-of the program's outcome semantics and proves that they agree with the
-`KernelGame` wrappers:
-
-- `ProtocolNash` agrees with `IsNash`;
-- `ProtocolBestResponse` agrees with `IsBestResponse`;
-- `ProtocolDominant` agrees with `IsDominant`;
-- `ProtocolStrictNash` agrees with `IsStrictNash`.
-
-Use these when you want a statement phrased directly over the Vegas protocol
-semantics rather than over the strategic-form wrapper.
+`Vegas.ProtocolSemantics` packages the finite protocol-level Kuhn property
+over the graph-machine FOSG kernel games as `KuhnPMF` and proves
+`kuhnPMF_finite`.
 
 ### Protocol Carrier
 
@@ -160,14 +132,10 @@ view, and projection lemmas showing that available graph steps agree with the
 cursor transition. The observed cursor-world adapter is retained only as a
 syntax-facing projection layer and is related back to the checked transition
 by direct bridge lemmas.
-`Vegas/Protocol/EventLaw.lean` adapts pure, FDist behavioral, and PMF
-behavioral Vegas profiles to graph-machine `LegalEventLaw`s, and
-`Vegas/Protocol/Strategic.lean` packages those event laws as machine-backed
-`KernelGame` constructors. The public `pureKernelGame g` /
-`behavioralKernelGame g` / `pmfBehavioralKernelGame g` defined in
-`Vegas/{PureStrategic,Strategic,StrategicPMF}.lean` are thin reductions to
-these constructors; their outcome kernels are *definitionally* the graph
-machine's outcome kernels.
+`Vegas/Protocol/EventLaw.lean` adapts syntax-facing profiles to graph-machine
+event laws. `Vegas/Protocol/Strategic.lean` defines the canonical finite FOSG
+`KernelGame` constructors; the public `pureKernelGame g LF` and
+`pmfBehavioralKernelGame g LF` wrappers reduce to those constructors.
 Runtime distribution-preservation should use
 `Machine.StochasticStepRefinement`; the weak refinement relation is only
 support-level.
@@ -182,9 +150,8 @@ Vegas/
   Config.lean              -- neutral runtime worlds and syntax-step measure
   WF.lean                  -- well-formedness, legality, normalization
   WFProgram.lean           -- checked-program bundle
-  PureStrategic.lean       -- pure strategic-form game (machine-backed)
-  Strategic.lean           -- FDist behavioral strategic-form game
-  StrategicPMF.lean        -- PMF behavioral strategic-form game
+  PureStrategic.lean       -- pure FOSG strategic-form game
+  StrategicPMF.lean        -- PMF behavioral FOSG strategic-form game
   Equilibrium.lean         -- Nash, dominance, correlated equilibrium, welfare
   GameProperties.lean      -- approximate Nash, potential games, zero-sum, etc.
   ProtocolSemantics.lean   -- protocol-level definitions and correspondence

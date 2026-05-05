@@ -1,5 +1,4 @@
 import Vegas.PureStrategic
-import Vegas.Strategic
 
 /-!
 # PMF Behavioral Strategic Semantics
@@ -21,13 +20,8 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- PMF-valued behavioral kernel game for a checked Vegas program.
 
-Unlike `behavioralKernelGame`, this game uses `PMF` behavioral strategies directly.
-That matters for Kuhn mixed-to-behavioral results: an arbitrary mixed strategy
-over pure profiles can induce real-valued behavioral probabilities, which need
-not be representable by Vegas' rational `FDist` kernels.
-
-The outcome kernel is the checked graph-machine kernel at the bundle's context
-proof. -/
+The outcome kernel is the finite graph-machine FOSG run distribution at the
+bundle's context proof. -/
 noncomputable def pmfBehavioralKernelGame [Fintype P]
     (g : WFProgram P L) (LF : FiniteValuation L) : GameTheory.KernelGame P :=
   pmfBehavioralKernelGameAt g g.wctx LF

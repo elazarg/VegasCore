@@ -138,9 +138,8 @@ end Machine
 Specialization of the Machine-native bounded Kuhn theorem to the graph machine
 of a checked Vegas program. The witness, the input mixed profile, and the
 asserted distributional equality are all stated against
-`graphMachine g hctx` and `fosgView g hctx`; no syntactic
-strategy space (`FeasibleProgramPureStrategy`, `SequentialBehavioralProfilePMF`)
-or dual outcome kernel (`pureKernelGame`) is used.
+`graphMachine g hctx` and `fosgView g hctx`; no syntactic strategy space or
+syntax-side outcome kernel is used.
 -/
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
@@ -155,9 +154,8 @@ at the syntactic horizon.
 The witness β is a behavioral profile of the bounded graph-machine FOSG view;
 the equality is between two `PMF (graphMachine g hctx).Outcome` distributions
 produced by running the machine under the realized strategies. Compared to
-the legacy `kuhn_mixedPureRealization_finite`,
-the surface here mentions only `graphMachine`/`fosgView` — no
-strategic-kernel detour. -/
+syntax-facing realization statements, the surface here mentions only
+`graphMachine`/`fosgView`. -/
 theorem kuhn_mixed_to_behavioral_vegas
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L)

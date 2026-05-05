@@ -3,7 +3,6 @@ import Vegas.Protocol.Machine
 import Vegas.Protocol.Trace
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Checked
-import Vegas.Protocol.EventLaw
 import Vegas.Protocol.Strategic
 import Vegas.Protocol.Backend
 import Vegas.Protocol.Kuhn
@@ -43,10 +42,8 @@ This entrypoint exposes the executable protocol construction path.
   graph steps are proved to project to the corresponding checked cursor
   transition, so the cursor evaluator remains a proof tool rather than a second
   machine semantics.
-* `Vegas.Protocol.EventLaw` adapts legal pure, FDist behavioral, and PMF
-  behavioral Vegas profiles to legal graph-machine event laws.
-* `Vegas.Protocol.Strategic` packages those event laws as machine-native
-  `KernelGame` constructors over the existing legal strategy spaces.
+* `Vegas.Protocol.Strategic` packages the finite graph-machine FOSG view as
+  machine-native `KernelGame` constructors.
 * `Vegas.Protocol.Backend` states operational refinement obligations for
   reactive runtimes, including a probability-preserving
   `Machine.StochasticStepRefinement` for backend distribution-preservation

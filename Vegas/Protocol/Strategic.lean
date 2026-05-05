@@ -1,105 +1,14 @@
-import Vegas.Protocol.EventLaw
+import Vegas.Protocol.Checked
 
 /-!
 # Strategic kernel games
 
 This module exposes the canonical finite graph-machine FOSG strategic forms.
-The older syntax-strategy event-law games remain under explicit `syntax*`
-names as a temporary compatibility layer while syntax-facing compilers are
-moved out of the semantic path.
 -/
 
 namespace Vegas
 
 open GameTheory
-
-namespace GraphEventLaw
-
-variable {P : Type} [DecidableEq P] {L : IExpr}
-
-/-- Syntax-pure strategic form whose outcome kernel is the checked graph
-machine through the event-law adapter. -/
-noncomputable def syntaxPureKernelGameAt
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := FeasibleProgramPureStrategy g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    (graphMachine g hctx).outcomeKernel
-      (pureEventLaw σ hctx).val (syntaxSteps g.prog)
-
-@[simp] theorem syntaxPureKernelGameAt_outcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : FeasibleProgramPureProfile g) :
-    (syntaxPureKernelGameAt g hctx).outcomeKernel σ =
-      (graphMachine g hctx).outcomeKernel
-        (pureEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
-
-@[simp] theorem syntaxPureKernelGameAt_Strategy
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (syntaxPureKernelGameAt g hctx).Strategy =
-      FeasibleProgramPureStrategy g := rfl
-
-/-- PMF behavioral strategic form whose outcome kernel is the checked graph
-machine through the event-law adapter. -/
-noncomputable def syntaxPMFBehavioralKernelGameAt
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := FeasibleProgramBehavioralStrategyPMF g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    (graphMachine g hctx).outcomeKernel
-      (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog)
-
-@[simp] theorem syntaxPMFBehavioralKernelGameAt_outcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (syntaxPMFBehavioralKernelGameAt g hctx).outcomeKernel σ =
-      (graphMachine g hctx).outcomeKernel
-        (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
-
-@[simp] theorem syntaxPMFBehavioralKernelGameAt_Strategy
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (syntaxPMFBehavioralKernelGameAt g hctx).Strategy =
-      FeasibleProgramBehavioralStrategyPMF g := rfl
-
-/-- FDist behavioral strategic form whose outcome kernel is the checked graph
-machine through the event-law adapter. -/
-noncomputable def syntaxBehavioralKernelGameAt
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
-  Strategy := FeasibleProgramBehavioralStrategy g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := fun σ =>
-    (graphMachine g hctx).outcomeKernel
-      (behavioralEventLaw σ hctx).val (syntaxSteps g.prog)
-
-@[simp] theorem syntaxBehavioralKernelGameAt_outcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (σ : FeasibleProgramBehavioralProfile g) :
-    (syntaxBehavioralKernelGameAt g hctx).outcomeKernel σ =
-      (graphMachine g hctx).outcomeKernel
-        (behavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
-
-@[simp] theorem syntaxBehavioralKernelGameAt_Strategy
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (syntaxBehavioralKernelGameAt g hctx).Strategy =
-      FeasibleProgramBehavioralStrategy g := rfl
-
-end GraphEventLaw
-
-export GraphEventLaw
-  (syntaxPureKernelGameAt syntaxPMFBehavioralKernelGameAt
-    syntaxBehavioralKernelGameAt)
-
-/-! ## Finite FOSG-native kernel games
-
-These constructors are the replacement semantic surface. Their strategy spaces
-are reachable legal strategies of the bounded graph-machine FOSG, and their
-outcome kernels are the bounded FOSG run distributions marginalized to Vegas
-outcomes. The old event-law constructors above stay temporarily while
-downstream files are flipped one at a time.
--/
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 

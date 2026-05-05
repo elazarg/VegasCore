@@ -14,7 +14,6 @@ import Vegas.Strategy.Pure
 import Vegas.Strategy.PMF
 import Vegas.Strategy.Conversions
 import Vegas.PureStrategic
-import Vegas.Strategic
 import Vegas.Equilibrium
 import Vegas.GameProperties
 import Vegas.Corollaries.Equilibrium
