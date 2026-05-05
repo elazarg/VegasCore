@@ -2930,6 +2930,17 @@ noncomputable def syntaxGraphFOSGHistoryEventBlocks
     (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h
 
+/-- Primitive machine events represented by one syntax-graph FOSG frontier
+round. -/
+noncomputable def syntaxGraphRoundPrimitiveEvents
+    (g : WFProgram P L)
+    (cfg : (syntaxGraphMachine g).State)
+    (joint : GameTheory.JointAction (syntaxGraphFOSGView g).Act) :
+    List (syntaxGraphMachine g).Event := by
+  simpa [syntaxGraphMachine, syntaxGraphFOSGView] using
+    (ProtocolGraph.roundPrimitiveEvents (syntaxProtocolGraph g)
+      (syntaxGraphMachineInterface g) cfg joint)
+
 /-- Every bounded syntax-graph FOSG history is backed by a primitive machine
 blocked run whose support contains the same checkpoint state. -/
 theorem syntaxGraphFOSGHistory_state_mem_runEventBlocksFrom_support
@@ -2944,6 +2955,36 @@ theorem syntaxGraphFOSGHistory_state_mem_runEventBlocksFrom_support
     (ProtocolGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
       (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h)
+
+/-- One bounded syntax-graph FOSG transition, projected to the history's
+extracted event-block prefix and successor checkpoint state, is exactly the
+corresponding primitive machine blocked run. -/
+theorem syntaxGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (action :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+        h.lastState)) :
+    PMF.map
+        (fun dst =>
+          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
+              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+            dst.state))
+        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+          h.lastState action) =
+      PMF.map
+        (fun next =>
+          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
+              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+            next))
+        ((syntaxGraphMachine g).runEventBlocksFrom
+          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+          h.lastState.state) := by
+  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
+    syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
+    (ProtocolGraph.boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
 
 /-- Player round-action availability in the syntax graph is determined by the
 public transcript together with the acting player's private observation. -/

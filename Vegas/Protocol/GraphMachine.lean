@@ -652,6 +652,54 @@ theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
     (boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
       G iface hplayer horizon h.chain)
 
+/-- One bounded graph-FOSG transition, projected to the history's extracted
+event-block prefix and the successor checkpoint state, is exactly the
+corresponding primitive machine blocked run. -/
+theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History))
+    (action :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).LegalAction
+        h.lastState)) :
+    PMF.map
+        (fun dst =>
+          (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+              [roundPrimitiveEvents G iface h.lastState.state action.1],
+            dst.state))
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          h.lastState action) =
+      PMF.map
+        (fun next =>
+          (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+              [roundPrimitiveEvents G iface h.lastState.state action.1],
+            next))
+        ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state) := by
+  let attach : (G.toMachine iface).State →
+      List (List (G.toMachine iface).Event) × (G.toMachine iface).State :=
+    fun next =>
+      (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+          [roundPrimitiveEvents G iface h.lastState.state action.1],
+        next)
+  have hstate :=
+    toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+      (G := G) (iface := iface) (hplayer := hplayer)
+      (horizon := horizon) (state := h.lastState) (action := action)
+  change
+    PMF.map (fun dst => attach dst.state)
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          h.lastState action) =
+      PMF.map attach
+        ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state)
+  rw [← hstate]
+  rw [PMF.map_comp]
+  rfl
+
 end ProtocolGraph
 
 end Vegas
