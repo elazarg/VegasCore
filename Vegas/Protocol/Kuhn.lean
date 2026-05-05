@@ -32,52 +32,6 @@ namespace FOSGView
 
 variable {M : Machine Player}
 
-/-- Machine-native pure strategy on a FOSG view: a reachable legal pure
-strategy of the derived FOSG. -/
-abbrev PureStrategy (view : M.FOSGView) (player : Player) : Type :=
-  view.toFOSG.ReachableLegalPureStrategy player
-
-/-- Machine-native pure profile: one `PureStrategy` per player. -/
-abbrev PureProfile (view : M.FOSGView) : Type :=
-  view.toFOSG.ReachableLegalPureProfile
-
-/-- Machine-native behavioral profile: a reachable legal behavioral profile of
-the derived FOSG. -/
-abbrev BehavioralProfile (view : M.FOSGView) : Type :=
-  view.toFOSG.ReachableLegalBehavioralProfile
-
-/-- Machine-native independent mixed profile over pure strategies. -/
-abbrev MixedProfile (view : M.FOSGView) : Type :=
-  ∀ player, PMF (view.PureStrategy player)
-
-/-- Project a FOSG-history terminal world to a machine outcome. -/
-noncomputable def historyOutcome
-    (view : M.FOSGView) (h : view.toFOSG.History) : M.Outcome :=
-  M.outcome h.lastState.lastState
-
-/-- Outcome distribution from running the machine under a behavioral profile,
-marginalized over the FOSG view to a `PMF M.Outcome`. -/
-noncomputable def outcomeFromBehavioral
-    (view : M.FOSGView)
-    [Fintype Player] [Fintype M.RunPrefix]
-    [∀ i, Fintype (Option (M.Action i))]
-    [DecidablePred view.toFOSG.terminal]
-    (β : view.BehavioralProfile) (horizon : Nat) :
-    PMF M.Outcome :=
-  PMF.map view.historyOutcome (view.toFOSG.runDist horizon β.extend)
-
-/-- Outcome distribution from running the machine under one realized pure
-profile (lifted to behavioral). -/
-noncomputable def outcomeFromPure
-    (view : M.FOSGView)
-    [Fintype Player] [Fintype M.RunPrefix]
-    [∀ i, Fintype (Option (M.Action i))]
-    [DecidablePred view.toFOSG.terminal]
-    (π : view.PureProfile) (horizon : Nat) :
-    PMF M.Outcome :=
-  PMF.map view.historyOutcome
-    (view.toFOSG.runDist horizon (view.toFOSG.legalPureToBehavioral π.extend))
-
 /-- Outcome distribution from sampling a pure profile from the independent
 mixed profile and running the machine under that pure profile. -/
 noncomputable def outcomeFromMixed
@@ -132,52 +86,6 @@ The same Machine-native Kuhn theorem stated for the horizon-bounded FOSG view
 the form that matches finite Vegas-program executions, where the action graph
 fixes the horizon and the bounded run prefix is automatically `Fintype`.
 -/
-
-/-- Machine-native pure strategy on a bounded FOSG view. -/
-abbrev BoundedPureStrategy
-    (view : M.FOSGView) (horizon : Nat) (player : Player) : Type :=
-  (view.toBoundedFOSG horizon).ReachableLegalPureStrategy player
-
-/-- Machine-native pure profile on a bounded FOSG view. -/
-abbrev BoundedPureProfile (view : M.FOSGView) (horizon : Nat) : Type :=
-  (view.toBoundedFOSG horizon).ReachableLegalPureProfile
-
-/-- Machine-native behavioral profile on a bounded FOSG view. -/
-abbrev BoundedBehavioralProfile (view : M.FOSGView) (horizon : Nat) : Type :=
-  (view.toBoundedFOSG horizon).ReachableLegalBehavioralProfile
-
-/-- Machine-native independent mixed profile on a bounded FOSG view. -/
-abbrev BoundedMixedProfile (view : M.FOSGView) (horizon : Nat) : Type :=
-  ∀ player, PMF (view.BoundedPureStrategy horizon player)
-
-/-- Project a bounded-FOSG history terminal world to a machine outcome. -/
-noncomputable def boundedHistoryOutcome
-    (view : M.FOSGView) (horizon : Nat)
-    (h : (view.toBoundedFOSG horizon).History) : M.Outcome :=
-  M.outcome h.lastState.lastState
-
-/-- Outcome distribution under a bounded behavioral profile. -/
-noncomputable def boundedOutcomeFromBehavioral
-    (view : M.FOSGView) (horizon : Nat)
-    [Fintype Player] [Fintype (M.BoundedRunPrefix horizon)]
-    [∀ i, Fintype (Option (M.Action i))]
-    [DecidablePred (view.toBoundedFOSG horizon).terminal]
-    (β : view.BoundedBehavioralProfile horizon)
-    (steps : Nat) : PMF M.Outcome :=
-  PMF.map (view.boundedHistoryOutcome horizon)
-    ((view.toBoundedFOSG horizon).runDist steps β.extend)
-
-/-- Outcome distribution under one bounded pure profile. -/
-noncomputable def boundedOutcomeFromPure
-    (view : M.FOSGView) (horizon : Nat)
-    [Fintype Player] [Fintype (M.BoundedRunPrefix horizon)]
-    [∀ i, Fintype (Option (M.Action i))]
-    [DecidablePred (view.toBoundedFOSG horizon).terminal]
-    (π : view.BoundedPureProfile horizon)
-    (steps : Nat) : PMF M.Outcome :=
-  PMF.map (view.boundedHistoryOutcome horizon)
-    ((view.toBoundedFOSG horizon).runDist steps
-      ((view.toBoundedFOSG horizon).legalPureToBehavioral π.extend))
 
 /-- Outcome distribution from sampling a bounded pure profile and running. -/
 noncomputable def boundedOutcomeFromMixed
