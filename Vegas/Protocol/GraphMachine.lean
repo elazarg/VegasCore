@@ -700,6 +700,79 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
   rw [PMF.map_comp]
   rfl
 
+/-- One-step form matching `FOSG.History.runDistFrom`: if the sampled bounded
+destination extends the FOSG history, then the extracted block prefix and
+checkpoint state have the same distribution as the primitive machine blocked
+run for the selected frontier round. -/
+theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History))
+    (action :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).LegalAction
+        h.lastState)) :
+    PMF.map
+        (fun dst =>
+          let h' := h.extendByOutcome action dst
+          (boundedFOSGHistoryEventBlocks G iface hplayer horizon h',
+            h'.lastState.state))
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          h.lastState action) =
+      PMF.map
+        (fun next =>
+          (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+              [roundPrimitiveEvents G iface h.lastState.state action.1],
+            next))
+        ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state) := by
+  let transition :=
+    (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+      h.lastState action)
+  have hproject :
+      PMF.map
+          (fun dst =>
+            let h' := h.extendByOutcome action dst
+            (boundedFOSGHistoryEventBlocks G iface hplayer horizon h',
+              h'.lastState.state))
+          transition =
+        PMF.map
+          (fun dst =>
+            (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+                [roundPrimitiveEvents G iface h.lastState.state action.1],
+              dst.state))
+          transition := by
+    change
+      transition.bind
+          (fun dst =>
+            PMF.pure
+              (let h' := h.extendByOutcome action dst
+              (boundedFOSGHistoryEventBlocks G iface hplayer horizon h',
+                h'.lastState.state))) =
+        transition.bind
+          (fun dst =>
+            PMF.pure
+              (boundedFOSGHistoryEventBlocks G iface hplayer horizon h ++
+                  [roundPrimitiveEvents G iface h.lastState.state action.1],
+                dst.state))
+    refine Math.ProbabilityMassFunction.bind_congr_on_support
+      transition _ _ ?_
+    intro dst hdst
+    have hsuppLocal : transition dst ≠ 0 :=
+      (PMF.mem_support_iff _ _).1 hdst
+    have hsupp :
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          h.lastState action) dst ≠ 0 := by
+      simpa [transition] using hsuppLocal
+    rw [GameTheory.FOSG.History.extendByOutcome_of_support
+      (h := h) (a := action) (dst := dst) hsupp]
+    simp [boundedFOSGHistoryEventBlocks, boundedFOSGStepEventBlocks]
+  rw [hproject]
+  exact
+    boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+      G iface hplayer horizon h action
+
 end ProtocolGraph
 
 end Vegas

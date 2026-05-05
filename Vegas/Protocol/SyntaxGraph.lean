@@ -2986,6 +2986,36 @@ theorem syntaxGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
       (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
 
+/-- One-step form matching `FOSG.History.runDistFrom` for syntax graphs:
+extend the FOSG history by the sampled bounded destination, then project to
+the extracted primitive event blocks and checkpoint state. -/
+theorem syntaxGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (action :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+        h.lastState)) :
+    PMF.map
+        (fun dst =>
+          let h' := h.extendByOutcome action dst
+          (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+            h'.lastState.state))
+        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+          h.lastState action) =
+      PMF.map
+        (fun next =>
+          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
+              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+            next))
+        ((syntaxGraphMachine g).runEventBlocksFrom
+          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+          h.lastState.state) := by
+  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
+    syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
+    (ProtocolGraph.boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
+
 /-- Player round-action availability in the syntax graph is determined by the
 public transcript together with the acting player's private observation. -/
 theorem syntaxGraph_roundAvailable_eq_of_observation_eq
