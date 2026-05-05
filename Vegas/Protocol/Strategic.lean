@@ -234,6 +234,160 @@ theorem pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome
     syntaxBlockedTraceOutcome] using
     (behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β).symm
 
+/-- The blocked-trace pure game refines the public pure game by the public
+outcome projection. The load-bearing field is PMF preservation of outcome
+kernels under `syntaxBlockedTraceOutcome`. -/
+noncomputable def pureKernelGameAt.blockedTraceProjection
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.Simulation
+      (pureKernelGameAt g) (pureBlockedTraceKernelGameAt g) :=
+  GameTheory.KernelGame.Morphism.ofOutcomeProjection
+    (fun _ strategy => strategy)
+    (syntaxBlockedTraceOutcome g)
+    (fun π => pureBlockedTraceKernelGameAt_outcomeKernel_map_outcome g π)
+    (fun _ trace _ => by
+      funext who
+      rfl)
+
+/-- The blocked-trace PMF behavioral game refines the public PMF behavioral
+game by the public outcome projection. The load-bearing field is PMF
+preservation of outcome kernels under `syntaxBlockedTraceOutcome`. -/
+noncomputable def pmfBehavioralKernelGameAt.blockedTraceProjection
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.Simulation
+      (pmfBehavioralKernelGameAt g)
+      (pmfBehavioralBlockedTraceKernelGameAt g) :=
+  GameTheory.KernelGame.Morphism.ofOutcomeProjection
+    (fun _ strategy => strategy)
+    (syntaxBlockedTraceOutcome g)
+    (fun β =>
+      pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome g β)
+    (fun _ trace _ => by
+      funext who
+      rfl)
+
+/-- Pure strategic-form play and blocked-trace play give the same expected
+utility. -/
+theorem pureBlockedTraceKernelGameAt_eu_eq
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) (who : P) :
+    (pureBlockedTraceKernelGameAt g).eu π who =
+      (pureKernelGameAt g).eu π who := by
+  classical
+  let horizon := syntaxSteps g.prog
+  let G := (syntaxGraphFOSGView g).toBoundedFOSG horizon
+  let σ := GameTheory.FOSG.legalPureToBehavioral G π.extend
+  let start := GameTheory.FOSG.History.nil G
+  let run := GameTheory.FOSG.History.runDistFrom G σ horizon start
+  let projectTrace : G.History → syntaxBlockedTraceAt g :=
+    fun h' => (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+      h'.lastState.state)
+  let projectOutcome : G.History → Outcome P :=
+    fun h' => (syntaxGraphMachine g).outcome h'.lastState.state
+  have htrace :
+      (pureBlockedTraceKernelGameAt g).outcomeKernel π =
+        PMF.map projectTrace run := by
+    have h :=
+      syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+        (g := g) (horizon := horizon) (σ := σ) (n := horizon)
+        (h := start)
+    simpa [pureBlockedTraceKernelGameAt, pureBlockedTraceOutcomeKernelAt,
+      projectTrace, run, start, σ, G, horizon] using h.symm
+  have hpublic :
+      (pureKernelGameAt g).outcomeKernel π =
+        PMF.map projectOutcome run := by
+    rfl
+  calc
+    (pureBlockedTraceKernelGameAt g).eu π who =
+        Math.Probability.expect
+          ((pureBlockedTraceKernelGameAt g).outcomeKernel π)
+          (fun trace => (pureBlockedTraceKernelGameAt g).utility trace who) := rfl
+    _ =
+        Math.Probability.expect (PMF.map projectTrace run)
+          (fun trace => (pureBlockedTraceKernelGameAt g).utility trace who) := by
+          rw [htrace]
+          rfl
+    _ =
+        ∑ h' : G.History,
+          (run h').toReal *
+            (pureBlockedTraceKernelGameAt g).utility (projectTrace h') who := by
+          rw [Math.Probability.expect_map_fintype_source]
+    _ =
+        ∑ h' : G.History,
+          (run h').toReal *
+            (pureKernelGameAt g).utility (projectOutcome h') who := by
+          rfl
+    _ =
+        Math.Probability.expect (PMF.map projectOutcome run)
+          (fun outcome => (pureKernelGameAt g).utility outcome who) := by
+          rw [Math.Probability.expect_map_fintype_source]
+    _ = (pureKernelGameAt g).eu π who := by
+          rw [← hpublic]
+          rfl
+
+/-- PMF behavioral strategic-form play and blocked-trace play give the same
+expected utility. -/
+theorem pmfBehavioralBlockedTraceKernelGameAt_eu_eq
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) (who : P) :
+    (pmfBehavioralBlockedTraceKernelGameAt g).eu β who =
+      (pmfBehavioralKernelGameAt g).eu β who := by
+  classical
+  let horizon := syntaxSteps g.prog
+  let G := (syntaxGraphFOSGView g).toBoundedFOSG horizon
+  let σ := β.extend
+  let start := GameTheory.FOSG.History.nil G
+  let run := GameTheory.FOSG.History.runDistFrom G σ horizon start
+  let projectTrace : G.History → syntaxBlockedTraceAt g :=
+    fun h' => (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+      h'.lastState.state)
+  let projectOutcome : G.History → Outcome P :=
+    fun h' => (syntaxGraphMachine g).outcome h'.lastState.state
+  have htrace :
+      (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β =
+        PMF.map projectTrace run := by
+    have h :=
+      syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+        (g := g) (horizon := horizon) (σ := σ) (n := horizon)
+        (h := start)
+    simpa [pmfBehavioralBlockedTraceKernelGameAt,
+      behavioralBlockedTraceOutcomeKernelPMFAt,
+      projectTrace, run, start, σ, G, horizon] using h.symm
+  have hpublic :
+      (pmfBehavioralKernelGameAt g).outcomeKernel β =
+        PMF.map projectOutcome run := by
+    rfl
+  calc
+    (pmfBehavioralBlockedTraceKernelGameAt g).eu β who =
+        Math.Probability.expect
+          ((pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β)
+          (fun trace =>
+            (pmfBehavioralBlockedTraceKernelGameAt g).utility trace who) := rfl
+    _ =
+        Math.Probability.expect (PMF.map projectTrace run)
+          (fun trace =>
+            (pmfBehavioralBlockedTraceKernelGameAt g).utility trace who) := by
+          rw [htrace]
+          rfl
+    _ =
+        ∑ h' : G.History,
+          (run h').toReal *
+            (pmfBehavioralBlockedTraceKernelGameAt g).utility
+              (projectTrace h') who := by
+          rw [Math.Probability.expect_map_fintype_source]
+    _ =
+        ∑ h' : G.History,
+          (run h').toReal *
+            (pmfBehavioralKernelGameAt g).utility (projectOutcome h') who := by
+          rfl
+    _ =
+        Math.Probability.expect (PMF.map projectOutcome run)
+          (fun outcome => (pmfBehavioralKernelGameAt g).utility outcome who) := by
+          rw [Math.Probability.expect_map_fintype_source]
+    _ = (pmfBehavioralKernelGameAt g).eu β who := by
+          rw [← hpublic]
+          rfl
+
 /-- Pure strategic-form play and blocked-trace play induce the same joint
 utility distribution. -/
 noncomputable def pureKernelGameAt.blockedTraceBisimulation
@@ -256,6 +410,17 @@ noncomputable def pureKernelGameAt.blockedTraceBisimulation
       (syntaxBlockedTraceOutcome g)
       (fun outcome =>
         PMF.pure ((pureKernelGameAt g).utility outcome))).symm
+
+/-- Pure strategic-form play and blocked-trace play are EU-preserving
+bisimilar kernel games. -/
+noncomputable def pureKernelGameAt.blockedTraceEUBisimulation
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.EUGameIsomorphism
+      (pureKernelGameAt g) (pureBlockedTraceKernelGameAt g) where
+  toGameIsomorphism := pureKernelGameAt.blockedTraceBisimulation g
+  eu_preserved := by
+    intro π who
+    exact pureBlockedTraceKernelGameAt_eu_eq g π who
 
 /-- PMF behavioral strategic-form play and blocked-trace play induce the same
 joint utility distribution. -/
@@ -280,5 +445,18 @@ noncomputable def pmfBehavioralKernelGameAt.blockedTraceBisimulation
       (syntaxBlockedTraceOutcome g)
       (fun outcome =>
         PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))).symm
+
+/-- PMF behavioral strategic-form play and blocked-trace play are
+EU-preserving bisimilar kernel games. -/
+noncomputable def pmfBehavioralKernelGameAt.blockedTraceEUBisimulation
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.EUGameIsomorphism
+      (pmfBehavioralKernelGameAt g)
+      (pmfBehavioralBlockedTraceKernelGameAt g) where
+  toGameIsomorphism :=
+    pmfBehavioralKernelGameAt.blockedTraceBisimulation g
+  eu_preserved := by
+    intro β who
+    exact pmfBehavioralBlockedTraceKernelGameAt_eu_eq g β who
 
 end Vegas
