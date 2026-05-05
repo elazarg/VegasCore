@@ -1,4 +1,4 @@
-import Vegas.Protocol.ActionGraph
+import Vegas.Protocol.Graph
 import GameTheory.Core.KernelGame
 import GameTheory.Languages.InfoModel
 

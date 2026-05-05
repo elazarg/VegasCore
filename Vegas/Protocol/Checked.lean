@@ -1,3 +1,4 @@
+import Vegas.Protocol.ActionGraph
 import Vegas.Protocol.FOSG
 import Vegas.FOSG.Observation
 
