@@ -76,14 +76,14 @@ KuhnPMF g
 kuhnPMF_finite g
 ```
 
-These are stated in Vegas kernel-game terms. FOSG appears in the proof layer,
-not as a separate user-facing game model.
+These are stated in Vegas kernel-game terms. The finite FOSG view supplies the
+information-state strategy spaces and outcome kernels behind those games.
 
 ## Protocol Core
 
 `Vegas/Protocol/` contains the executable protocol semantics:
 
-- `Graph.lean`: proof-carrying dependency and visibility graph.
+- `Graph.lean`: dependency and visibility graph with configuration invariants.
 - `Machine.lean`: probabilistic observation-aware machine carrier.
 - `GraphMachine.lean`: interpretation of graph configurations as machine
   states.
@@ -147,5 +147,5 @@ lake build Vegas
 
 VegasCore has a single graph-native protocol denotation for checked programs.
 Public strategic games and the finite Kuhn theorem are stated over Vegas
-kernel-game names. The FOSG construction supplies the finite sequential-game
-structure used to prove those results.
+kernel-game names. FOSG views supply histories, observations, reachable-legal
+strategies, and finite-horizon outcome kernels.

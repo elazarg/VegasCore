@@ -13,7 +13,7 @@
 
 \begin{abstract}
 VegasCore is a Lean~4 mechanization of finite games written as programs.
-Checked Vegas syntax is compiled to a proof-carrying protocol graph; that
+Checked Vegas syntax is compiled to an invariant-carrying protocol graph; that
 graph is interpreted as a probabilistic, observation-aware machine; sequential
 FOSG views and kernel games are derived from the machine. The supported
 semantic path is
@@ -32,7 +32,7 @@ machine is the semantic owner.
 \section{Checked Programs}
 
 The public boundary is \leanref{WFProgram}. A checked program contains the
-root context, source program, initial environment, and proof obligations for
+root context, source program, initial environment, and facts for
 freshness, scoped visibility, reveal completeness, sample normalization, and
 nonempty legal commit guards.
 
@@ -58,7 +58,7 @@ probabilistic observation-aware machine carrier \\
 \leanref{Protocol/GraphMachine.lean} &
 graph configurations as machine states \\
 \leanref{Protocol/SyntaxGraph.lean} &
-checked syntax to protocol graph, with finiteness and observability proofs \\
+checked syntax to protocol graph, with finiteness and observability facts \\
 \leanref{Protocol/Trace.lean} &
 bounded event/state traces and machine outcome kernels \\
 \leanref{Protocol/FOSG.lean} &
@@ -85,8 +85,8 @@ internal event channel.
 \leanref{Machine.FOSGView} derives a sequential game-theoretic view from any
 protocol machine. Worlds are bounded machine run prefixes. The FOSG transition
 selects one machine event and wraps the resulting \leanref{Machine.step} with
-history. Thus FOSG is a proof and theorem-transfer layer, not a second
-execution semantics.
+history. Thus FOSG is the sequential game-theoretic interface to the same
+machine, not a second execution semantics.
 
 The finite checked-program view is obtained from
 \leanref{syntaxGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}
@@ -133,9 +133,10 @@ The main Vegas-facing finite mixed-to-behavioral theorem is
 \end{array}
 \]
 
-The corresponding named protocol property is \leanref{KuhnPMF}, with proof
+The corresponding named protocol property is \leanref{KuhnPMF}, realized by
 \leanref{kuhnPMF_finite}. These are stated in Vegas kernel-game terms. The
-proof uses the bounded FOSG view and upstream finite Kuhn theorem internally.
+bounded FOSG view is the finite sequential game to which Kuhn's theorem
+applies.
 
 \section{Public Interfaces}
 
