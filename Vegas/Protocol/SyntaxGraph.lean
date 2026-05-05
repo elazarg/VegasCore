@@ -381,19 +381,6 @@ def writtenBy :
       .revealTail (ofCurrent k (.mk (x := y) (τ := .pub _) .here))
   | _, _, .revealTail node => .revealTail (writtenBy node)
 
-/-- Storage mode of the field written by a source node. -/
-def writeMode :
-    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      ProgramNode p → ProtocolGraph.WriteMode
-  | _, _, .letHere => .clear
-  | _, _, .letTail node => writeMode node
-  | _, _, .sampleHere => .clear
-  | _, _, .sampleTail node => writeMode node
-  | _, _, .commitHere => .hidden
-  | _, _, .commitTail node => writeMode node
-  | _, _, .revealHere => .clear
-  | _, _, .revealTail node => writeMode node
-
 /-- Hidden field read by a reveal node. For non-reveal nodes this is `none`. -/
 def revealSource? :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
@@ -1050,34 +1037,21 @@ shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
 noncomputable def sliceLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (_legal : Legal p) (_normalized : NormalizedDists p)
-    (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
-  match ProgramField.writeMode node with
-  | .clear =>
-      ∃ value : L.Val (ProgramField.writtenBy node).ty,
-        slice =
-          ProgramField.singleSlice (ProgramField.writtenBy node)
-            (.clear value)
-  | .hidden =>
-      ∃ value : L.Val (ProgramField.writtenBy node).ty,
-        slice =
-          ProgramField.singleSlice (ProgramField.writtenBy node)
-            (.hidden value)
-
-/-- A legal source-node slice contains a value for the field written by that
-node. -/
-theorem sliceLegal_writtenBy_isSome
-    {Γ : VCtx P L} {p : VegasCore P L Γ}
     (legal : Legal p) (normalized : NormalizedDists p)
-    (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
-    (hlegal : sliceLegal legal normalized node slice) :
-    (slice (ProgramField.writtenBy node)).isSome := by
-  cases hmode : ProgramField.writeMode node <;>
-    rw [sliceLegal, hmode] at hlegal
-  · rcases hlegal with ⟨value, rfl⟩
-    simp
-  · rcases hlegal with ⟨value, rfl⟩
-    simp
+    (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
+  match sem legal normalized node with
+  | .assign field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.clear value)
+  | .sample field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.clear value)
+  | .commit _ field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.hidden value)
+  | .reveal _ target _ =>
+      ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.clear value)
 
 /-- Dynamic legality for player-chosen source graph slices. Only commit nodes
 have an actor, so only commits admit legal player slices. -/
@@ -1099,6 +1073,43 @@ noncomputable def actionLegal
             true ∧
           slice = ProgramField.singleSlice field (.hidden value)
   | .reveal _ _ _ => False
+
+/-- If the declared reads of a player-owned node are available, then that
+node has a legal concrete graph action. -/
+theorem exists_actionLegal_of_reads_available
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
+    (legal : Legal p) (normalized : NormalizedDists p)
+    (result : ProgramNode p → Option (ProgramField.WriteSlice p))
+    (node : ProgramNode p) {who : P}
+    (hactor : (sem legal normalized node).actor = some who)
+    (hreads :
+      ∀ read, read ∈ (sem legal normalized node).reads →
+        (ProgramField.value? env result read).isSome) :
+    ∃ slice,
+      sliceLegal legal normalized node slice ∧
+        actionLegal env legal normalized result node slice := by
+  cases hsem : sem legal normalized node with
+  | assign field expr =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | sample field dist =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | reveal source target hty =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | commit owner field guard =>
+      have havailable :
+          ∀ read, read ∈ guard.reads →
+            (ProgramField.value? env result read).isSome := by
+        intro read hread
+        exact hreads read (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      let ρ :=
+        ProgramField.readEnvOfResult env result guard.reads havailable
+      rcases guard.satisfiable ρ with ⟨value, hvalue⟩
+      let slice := ProgramField.singleSlice field (.hidden value)
+      refine ⟨slice, ?_, ?_⟩
+      · rw [sliceLegal, hsem]
+        exact ⟨value, rfl⟩
+      · rw [actionLegal, hsem]
+        exact ⟨havailable, value, hvalue, rfl⟩
 
 /-- Internal kernel for source graph nodes. Assignment and reveal nodes are
 deterministic; sample nodes use the checked PMF distribution; commit nodes are
