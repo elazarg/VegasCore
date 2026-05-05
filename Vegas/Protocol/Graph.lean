@@ -68,6 +68,7 @@ def mode : FieldWrite Player Field → WriteMode
 end FieldWrite
 
 /-- Values of the fields read by a graph expression. -/
+@[ext]
 structure ReadEnv (L : IExpr) (Field : Type)
     (fieldTy : Field → L.Ty) (reads : Finset Field) where
   value : (field : Field) → field ∈ reads → L.Val (fieldTy field)

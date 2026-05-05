@@ -126,6 +126,252 @@ theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
       g (writer := first) (reader := second)
       (slice := firstSlice) hsecond hread).symm
 
+/-- The read environment of a frontier node is unchanged after executing a
+different frontier node, for any read set contained in that node's semantic
+reads. -/
+theorem syntaxGraph_readEnvOfResult_withResult_eq_of_frontier_reads
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {first second : ProgramNode g.prog}
+    {firstSlice : ProgramField.WriteSlice g.prog}
+    {hfirst : first ∈ cfg.frontier}
+    {hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice}
+    {reads : Finset (ProgramField g.prog)}
+    (hsecond : second ∈ cfg.frontier)
+    (hreads :
+      reads ⊆
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized second).reads)
+    {availableAfter :
+      ∀ field, field ∈ reads →
+        (ProgramField.value? g.env
+          ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+          field).isSome}
+    {availableBefore :
+      ∀ field, field ∈ reads →
+        (ProgramField.value? g.env cfg.result field).isSome} :
+    ProgramField.readEnvOfResult g.env
+        ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+        reads availableAfter =
+      ProgramField.readEnvOfResult g.env cfg.result reads availableBefore := by
+  ext field hmem
+  exact
+    ProgramField.readEnvOfResult_value_eq_of_value?_eq
+      g.env
+      (left := (cfg.withResult firstSlice hfirst hfirstLegal).result)
+      (right := cfg.result)
+      (availableLeft := availableAfter)
+      (availableRight := availableBefore)
+      (field := field) (hleft := hmem) (hright := hmem)
+      (syntaxGraph_value?_withResult_eq_of_frontier_read
+        g (writer := first) (reader := second)
+        (slice := firstSlice) hsecond (hreads hmem))
+
+/-- Internal kernels for frontier nodes are stable under execution of a
+different frontier node.  Thus the stochastic part of a frontier round is not
+an artifact of the chosen linearization order. -/
+theorem syntaxGraph_internalKernel_after_frontier_withResult_of_ne
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {first second : ProgramNode g.prog}
+    {firstSlice : ProgramField.WriteSlice g.prog}
+    (hfirst : first ∈ cfg.frontier)
+    (hsecond : second ∈ cfg.frontier)
+    (hne : second ≠ first)
+    (hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice) :
+    (syntaxProtocolGraph g).internalKernel second
+        ((cfg.withResult firstSlice hfirst hfirstLegal).result) =
+      (syntaxProtocolGraph g).internalKernel second cfg.result := by
+  classical
+  have hsecondAfter :
+      second ∈ (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
+    cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
+  change
+    ProgramNode.internalKernel g.env g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized second
+        ((cfg.withResult firstSlice hfirst hfirstLegal).result) =
+      ProgramNode.internalKernel g.env g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized second cfg.result
+  cases hsem :
+      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized second with
+  | assign field expr =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withResult firstSlice hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ expr.reads →
+              (ProgramField.value? g.env
+                ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+                read).isSome then
+          PMF.pure
+            (ProgramField.singleSlice field
+              (.clear (expr.eval
+                (ProgramField.readEnvOfResult g.env
+                  ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+                  expr.reads available))))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog)) =
+        (if available :
+            ∀ read, read ∈ expr.reads →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          PMF.pure
+            (ProgramField.singleSlice field
+              (.clear (expr.eval
+                (ProgramField.readEnvOfResult g.env cfg.result
+                  expr.reads available))))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              expr.reads availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              expr.reads availableBefore :=
+        syntaxGraph_readEnvOfResult_withResult_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+  | sample field dist =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withResult firstSlice hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ dist.reads →
+              (ProgramField.value? g.env
+                ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+                read).isSome then
+          PMF.map
+            (fun value => ProgramField.singleSlice field (.clear value))
+            (dist.eval
+              (ProgramField.readEnvOfResult g.env
+                ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+                dist.reads available))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog)) =
+        (if available :
+            ∀ read, read ∈ dist.reads →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          PMF.map
+            (fun value => ProgramField.singleSlice field (.clear value))
+            (dist.eval
+              (ProgramField.readEnvOfResult g.env cfg.result
+                dist.reads available))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              dist.reads availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              dist.reads availableBefore :=
+        syntaxGraph_readEnvOfResult_withResult_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+  | commit owner field guard =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+  | reveal source target hty =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withResult firstSlice hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+              (ProgramField.value? g.env
+                ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+                read).isSome then
+          let ρ :=
+            ProgramField.readEnvOfResult g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              ({source} : Finset (ProgramField g.prog)) available
+          PMF.pure
+            (ProgramField.singleSlice target
+              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog)) =
+        (if available :
+            ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          let ρ :=
+            ProgramField.readEnvOfResult g.env cfg.result
+              ({source} : Finset (ProgramField g.prog)) available
+          PMF.pure
+            (ProgramField.singleSlice target
+              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
+        else
+          PMF.pure (ProgramField.emptySlice g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+              ({source} : Finset (ProgramField g.prog)) availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              ({source} : Finset (ProgramField g.prog)) availableBefore :=
+        syntaxGraph_readEnvOfResult_withResult_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+
 /-- A player primitive event for a frontier node remains available after a
 different frontier node has executed. -/
 theorem syntaxGraph_available_after_frontier_withResult_of_ne
