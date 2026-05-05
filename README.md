@@ -218,7 +218,6 @@ Vegas/
     Checked.lean           -- checked Vegas programs as machines
     EventLaw.lean          -- strategy-profile to event-law adapters
     Strategic.lean         -- machine-backed KernelGame constructors
-    StrategicCompatibility.lean -- legacy/machine kernel-game bridges
     Kuhn.lean              -- Machine-native Kuhn realization theorem
     Backend.lean           -- machine-to-machine backend refinement obligations
 
