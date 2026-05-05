@@ -381,6 +381,91 @@ def writtenBy :
       .revealTail (ofCurrent k (.mk (x := y) (τ := .pub _) .here))
   | _, _, .revealTail node => .revealTail (writtenBy node)
 
+theorem letTail_currentFields_or_eq_writtenBy_letHere
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {e : L.Expr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {field : ProgramField k}
+    (h : field ∈ currentFields k) :
+    ProgramField.letTail (e := e) field ∈
+        currentFields (.letExpr x e k) ∨
+      ProgramField.letTail (e := e) field =
+        ProgramField.writtenBy
+          (.letHere (x := x) (e := e) (k := k)) := by
+  classical
+  unfold currentFields at h ⊢
+  simp [VCtxField.enumerate, ofCurrent] at h ⊢
+  rcases h with hhead | htail
+  · right
+    subst field
+    simp [writtenBy]
+  · left
+    exact htail
+
+theorem sampleTail_currentFields_or_eq_writtenBy_sampleHere
+    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
+    {D : L.DistExpr (erasePubVCtx Γ) b}
+    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {field : ProgramField k}
+    (h : field ∈ currentFields k) :
+    ProgramField.sampleTail (D := D) field ∈
+        currentFields (.sample x D k) ∨
+      ProgramField.sampleTail (D := D) field =
+        ProgramField.writtenBy
+          (.sampleHere (x := x) (D := D) (k := k)) := by
+  classical
+  unfold currentFields at h ⊢
+  simp [VCtxField.enumerate, ofCurrent] at h ⊢
+  rcases h with hhead | htail
+  · right
+    subst field
+    simp [writtenBy]
+  · left
+    exact htail
+
+theorem commitTail_currentFields_or_eq_writtenBy_commitHere
+    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
+    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {field : ProgramField k}
+    (h : field ∈ currentFields k) :
+    ProgramField.commitTail (R := R) field ∈
+        currentFields (.commit x who R k) ∨
+      ProgramField.commitTail (R := R) field =
+        ProgramField.writtenBy
+          (.commitHere (x := x) (who := who) (R := R) (k := k)) := by
+  classical
+  unfold currentFields at h ⊢
+  simp [VCtxField.enumerate, ofCurrent] at h ⊢
+  rcases h with hhead | htail
+  · right
+    subst field
+    simp [writtenBy]
+  · left
+    exact htail
+
+theorem revealTail_currentFields_or_eq_writtenBy_revealHere
+    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {field : ProgramField k}
+    (h : field ∈ currentFields k) :
+    ProgramField.revealTail (x := x) (hx := hx) field ∈
+        currentFields (.reveal y who x hx k) ∨
+      ProgramField.revealTail (x := x) (hx := hx) field =
+        ProgramField.writtenBy
+          (.revealHere (y := y) (who := who) (x := x) (hx := hx)
+            (k := k)) := by
+  classical
+  unfold currentFields at h ⊢
+  simp [VCtxField.enumerate, ofCurrent] at h ⊢
+  rcases h with hhead | htail
+  · right
+    subst field
+    simp [writtenBy]
+  · left
+    exact htail
+
 /-- Hidden field read by a reveal node. For non-reveal nodes this is `none`. -/
 def revealSource? :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
@@ -1207,6 +1292,158 @@ noncomputable def sem :
       .reveal source target (hsource.trans htarget.symm)
   | _, .reveal _ _ _ _ _, legal, normalized, .revealTail node =>
       ProgramField.Wrap.revealNodeSem (sem legal normalized node)
+
+/-- Every source node semantically writes its syntactic result field. -/
+theorem writtenBy_mem_writeFields :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      (legal : Legal p) → (normalized : NormalizedDists p) →
+      (node : ProgramNode p) →
+        ProgramField.writtenBy node ∈
+          (ProgramNode.sem legal normalized node).writeFields
+  | _, .letExpr x e k, legal, normalized, .letHere => by
+      simp [ProgramNode.sem, ProgramField.writtenBy,
+        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
+        ProtocolGraph.FieldWrite.field]
+  | _, .letExpr _ _ k, legal, normalized, .letTail node => by
+      exact ProgramField.Wrap.letTail_mem_writeFields_of_mem
+        (writtenBy_mem_writeFields (p := k) legal normalized node)
+  | _, .sample x D k, legal, normalized, .sampleHere => by
+      simp [ProgramNode.sem, ProgramField.writtenBy,
+        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
+        ProtocolGraph.FieldWrite.field]
+  | _, .sample _ _ k, legal, normalized, .sampleTail node => by
+      exact ProgramField.Wrap.sampleTail_mem_writeFields_of_mem
+        (writtenBy_mem_writeFields (p := k) legal normalized.2 node)
+  | _, .commit x who R k, legal, normalized, .commitHere => by
+      simp [ProgramNode.sem, ProgramField.writtenBy,
+        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
+        ProtocolGraph.FieldWrite.field]
+  | _, .commit _ _ _ k, legal, normalized, .commitTail node => by
+      exact ProgramField.Wrap.commitTail_mem_writeFields_of_mem
+        (writtenBy_mem_writeFields (p := k) legal.2 normalized node)
+  | _, .reveal y who x hx k, legal, normalized, .revealHere => by
+      simp [ProgramNode.sem, ProgramField.writtenBy,
+        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
+        ProtocolGraph.FieldWrite.field]
+  | _, .reveal _ _ _ _ k, legal, normalized, .revealTail node => by
+      exact ProgramField.Wrap.revealTail_mem_writeFields_of_mem
+        (writtenBy_mem_writeFields (p := k) legal normalized node)
+
+/-- Source reads are causally available: a node reads either an initial current
+field of the enclosing program or a field written by an earlier source node. -/
+theorem read_current_or_prior_write :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      (legal : Legal p) → (normalized : NormalizedDists p) →
+      (node : ProgramNode p) → {field : ProgramField p} →
+      field ∈ (ProgramNode.sem legal normalized node).reads →
+        field ∈ ProgramField.currentFields p ∨
+          ∃ prior : ProgramNode p,
+            prior.rank < node.rank ∧
+              field ∈
+                (ProgramNode.sem legal normalized prior).writeFields
+  | _, .letExpr x e k, legal, normalized, .letHere, field, hread => by
+      left
+      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
+        ProgramField.castGraphExpr, ProgramField.publicGraphExpr] using hread
+  | _, .letExpr x e k, legal, normalized, .letTail node, field, hread => by
+      rcases ProgramField.Wrap.mem_reads_letNodeSem hread with
+        ⟨inner, rfl, hinner⟩
+      have hrec :=
+        read_current_or_prior_write (p := k) legal normalized node hinner
+      rcases hrec with hcurrent | hprior
+      ·
+          cases ProgramField.letTail_currentFields_or_eq_writtenBy_letHere
+              (e := e) hcurrent with
+          | inl houter => exact Or.inl houter
+          | inr hwriteEq =>
+              right
+              refine ⟨.letHere, by simp [ProgramNode.rank], ?_⟩
+              simpa [hwriteEq] using
+                (writtenBy_mem_writeFields legal normalized
+                  (.letHere (x := x) (e := e) (k := k)))
+      ·
+          rcases hprior with ⟨prior, hrank, hwrite⟩
+          right
+          refine ⟨.letTail prior, Nat.succ_lt_succ hrank, ?_⟩
+          exact ProgramField.Wrap.letTail_mem_writeFields_of_mem hwrite
+  | _, .sample x D k, legal, normalized, .sampleHere, field, hread => by
+      left
+      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
+        ProgramField.castGraphDist, ProgramField.publicGraphDist] using hread
+  | _, .sample x D k, legal, normalized, .sampleTail node, field, hread => by
+      rcases ProgramField.Wrap.mem_reads_sampleNodeSem hread with
+        ⟨inner, rfl, hinner⟩
+      have hrec :=
+        read_current_or_prior_write (p := k) legal normalized.2 node hinner
+      rcases hrec with hcurrent | hprior
+      ·
+          cases ProgramField.sampleTail_currentFields_or_eq_writtenBy_sampleHere
+              (D := D) hcurrent with
+          | inl houter => exact Or.inl houter
+          | inr hwriteEq =>
+              right
+              refine ⟨.sampleHere, by simp [ProgramNode.rank], ?_⟩
+              simpa [hwriteEq] using
+                (writtenBy_mem_writeFields legal normalized
+                  (.sampleHere (x := x) (D := D) (k := k)))
+      ·
+          rcases hprior with ⟨prior, hrank, hwrite⟩
+          right
+          refine ⟨.sampleTail prior, Nat.succ_lt_succ hrank, ?_⟩
+          exact ProgramField.Wrap.sampleTail_mem_writeFields_of_mem hwrite
+  | _, .commit x who R k, legal, normalized, .commitHere, field, hread => by
+      left
+      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
+        ProgramField.commitGraphGuard] using hread
+  | _, .commit x who R k, legal, normalized, .commitTail node, field, hread => by
+      rcases ProgramField.Wrap.mem_reads_commitNodeSem hread with
+        ⟨inner, rfl, hinner⟩
+      have hrec :=
+        read_current_or_prior_write (p := k) legal.2 normalized node hinner
+      rcases hrec with hcurrent | hprior
+      ·
+          cases ProgramField.commitTail_currentFields_or_eq_writtenBy_commitHere
+              (R := R) hcurrent with
+          | inl houter => exact Or.inl houter
+          | inr hwriteEq =>
+              right
+              refine ⟨.commitHere, by simp [ProgramNode.rank], ?_⟩
+              simpa [hwriteEq] using
+                (writtenBy_mem_writeFields legal normalized
+                  (.commitHere (x := x) (who := who) (R := R) (k := k)))
+      ·
+          rcases hprior with ⟨prior, hrank, hwrite⟩
+          right
+          refine ⟨.commitTail prior, Nat.succ_lt_succ hrank, ?_⟩
+          exact ProgramField.Wrap.commitTail_mem_writeFields_of_mem hwrite
+  | _, .reveal y who x hx k, legal, normalized, .revealHere, field, hread => by
+      left
+      simp [ProgramNode.sem, ProtocolGraph.NodeSem.reads] at hread
+      subst field
+      exact ProgramField.ofCurrent_mem_currentFields
+        (.reveal y who x hx k) (.mk hx)
+  | _, .reveal y who x hx k, legal, normalized, .revealTail node, field, hread => by
+      rcases ProgramField.Wrap.mem_reads_revealNodeSem hread with
+        ⟨inner, rfl, hinner⟩
+      have hrec :=
+        read_current_or_prior_write (p := k) legal normalized node hinner
+      rcases hrec with hcurrent | hprior
+      ·
+          cases ProgramField.revealTail_currentFields_or_eq_writtenBy_revealHere
+              (x := x) (hx := hx) hcurrent with
+          | inl houter => exact Or.inl houter
+          | inr hwriteEq =>
+              right
+              refine ⟨.revealHere, by simp [ProgramNode.rank], ?_⟩
+              simpa [hwriteEq] using
+                (writtenBy_mem_writeFields legal normalized
+                  (.revealHere (y := y) (who := who) (x := x) (hx := hx)
+                    (k := k)))
+      ·
+          rcases hprior with ⟨prior, hrank, hwrite⟩
+          right
+          refine ⟨.revealTail prior, Nat.succ_lt_succ hrank, ?_⟩
+          exact ProgramField.Wrap.revealTail_mem_writeFields_of_mem hwrite
 
 /-- A source graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
