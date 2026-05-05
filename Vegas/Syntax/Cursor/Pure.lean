@@ -1,4 +1,4 @@
-import Vegas.FOSG.Cursor.Behavioral
+import Vegas.Syntax.Cursor.Behavioral
 
 namespace Vegas
 

@@ -1,7 +1,7 @@
 import Vegas.Protocol.Trace
 import Vegas.Protocol.Checked
-import Vegas.FOSG.Cursor.Kernel
-import Vegas.Strategy.Conversions
+import Vegas.Syntax.Cursor.Kernel
+import Vegas.Syntax.Strategy.Conversions
 
 /-!
 # Strategic profiles as graph-machine event laws

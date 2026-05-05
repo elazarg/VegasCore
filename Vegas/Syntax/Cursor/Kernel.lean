@@ -1,6 +1,6 @@
 import GameTheory.Languages.FOSG.OutcomeClosure
-import Vegas.FOSG.Cursor.Pure
-import Vegas.Strategy.PMFSemantics
+import Vegas.Syntax.Cursor.Pure
+import Vegas.Syntax.Strategy.PMFSemantics
 
 namespace Vegas
 

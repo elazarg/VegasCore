@@ -56,9 +56,9 @@ This entrypoint exposes the executable protocol construction path.
 
 `Vegas.FOSG` exposes `toGraphFOSG` and
 `toFiniteFOSG` as the graph-machine sequential views;
-`toFOSG` is an alias for the same carrier.
-`toObservedFOSG` is the finite cursor-world adapter used for
-syntax-facing projection proofs, not a semantic owner.
+`toFOSG` is an alias for the same carrier. The cursor-world adapter
+`cursorFOSG` is used for syntax-facing projection proofs, not as a semantic
+owner.
 
 Schedulers and linearizations are presentation data for traces, sequential
 syntax, FOSG histories, or backend transaction orderings. They refine machine

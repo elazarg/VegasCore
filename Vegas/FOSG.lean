@@ -18,9 +18,8 @@ elaborates to `syntaxActionGraph`, then to
 single graph machine. The `toFOSG`/`toBoundedFOSG` names are aliases for that
 same graph-machine presentation.
 
-The cursor-world FOSG is still exposed as `toObservedFOSG`. It is not a
-semantic owner; it is a syntax-facing projection layer related back to the
-machine-derived semantics.
+The cursor-world adapter `cursorFOSG` remains as a projection proof tool for
+syntax-facing modules. It is not a semantic owner.
 -/
 
 /-- Canonical sequential denotation of a checked Vegas program as a FOSG.

@@ -91,7 +91,7 @@ kuhn_finiteKernelGame
 ```
 
 The syntax-recursive `Feasible*` strategy presentations remain available under
-`Vegas.Strategy.*` for client-facing compilation work, but they are not the
+`Vegas.Syntax.Strategy.*` for client-facing compilation work, but they are not the
 semantic strategy carriers used by Kuhn or the public kernel games.
 
 ### Protocol-Level Statements
@@ -132,7 +132,7 @@ view, and projection lemmas showing that available graph steps agree with the
 cursor transition. The observed cursor-world adapter is retained only as a
 syntax-facing projection layer and is related back to the checked transition
 by direct bridge lemmas.
-`Vegas/Protocol/EventLaw.lean` adapts syntax-facing profiles to graph-machine
+`Vegas/Syntax/EventLaw.lean` adapts syntax-facing profiles to graph-machine
 event laws. `Vegas/Protocol/Strategic.lean` defines the canonical finite FOSG
 `KernelGame` constructors; the public `pureKernelGame g LF` and
 `pmfBehavioralKernelGame g LF` wrappers reduce to those constructors.
@@ -160,22 +160,11 @@ Vegas/
   FOSG.lean                -- checked FOSG entrypoint
   Examples.lean            -- small checked examples
 
-  Strategy/
-    Pure.lean              -- guard-respecting pure strategy carriers
-    Behavioral.lean        -- FDist behavioral strategy carriers
-    PMF.lean               -- PMF behavioral strategy carriers
-    PMFSemantics.lean      -- PMF outcome evaluator
-    Conversions.lean       -- pure/behavioral/PMF lifts and bridges
-
   FOSG/
     Runtime.lean           -- active players and broad action availability
     Action.lean            -- program-local finite action alphabet
     Basic.lean             -- suffix/cursor checked-state machinery
     Observation.lean       -- finite observed FOSG adapter
-    SmallStep.lean         -- checked PMF small-step bridge
-    Cursor/                -- cursor-world step utilities (strategy
-                              lookup at cursors, CheckedWorld step
-                              kernel, commit-continuation helpers)
 
   Protocol/
     ActionGraph.lean       -- proof-carrying dependency/visibility graph
@@ -183,10 +172,15 @@ Vegas/
     Trace.lean             -- bounded event/state traces and outcome kernel
     FOSG.lean              -- machine-derived sequential FOSG views
     Checked.lean           -- checked Vegas programs as machines
-    EventLaw.lean          -- strategy-profile to event-law adapters
     Strategic.lean         -- machine-backed KernelGame constructors
     Kuhn.lean              -- Machine-native Kuhn realization theorem
     Backend.lean           -- machine-to-machine backend refinement obligations
+
+  Syntax/
+    Strategy/              -- syntax-recursive source strategy presentations
+    Cursor/                -- cursor strategy lookup and checked-step bridges
+    EventLaw.lean          -- source-profile to event-law adapters
+    LegalNonempty.lean     -- source-profile existence helpers
 
   Corollaries/
     Equilibrium.lean

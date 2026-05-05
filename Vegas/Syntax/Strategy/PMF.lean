@@ -1,12 +1,12 @@
-import Vegas.Strategy.Behavioral
+import Vegas.Syntax.Strategy.Behavioral
 
 /-!
 # Fixed-program PMF behavioral strategy carriers
 
 This module contains the syntax-recursive PMF-valued behavioral strategy space
 and guard-legality predicates. PMF outcome evaluation lives in
-`Vegas.Strategy.PMFSemantics`; strategic-form packaging remains in
-`Vegas.StrategicPMF` while the collapse proceeds.
+`Vegas.Syntax.Strategy.PMFSemantics`; canonical strategic-form packaging lives
+in the FOSG-native `Vegas.StrategicPMF` layer.
 -/
 
 namespace Vegas

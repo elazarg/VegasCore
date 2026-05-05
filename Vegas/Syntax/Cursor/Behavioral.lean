@@ -1,4 +1,5 @@
-import Vegas.FOSG.Cursor.Base
+import Vegas.Syntax.Cursor.Base
+import Vegas.Syntax.Strategy.Suffix
 
 namespace Vegas
 

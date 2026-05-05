@@ -1,4 +1,4 @@
-import Vegas.Strategy.PMF
+import Vegas.Syntax.Strategy.PMF
 
 /-!
 # Fixed-program PMF behavioral outcome semantics

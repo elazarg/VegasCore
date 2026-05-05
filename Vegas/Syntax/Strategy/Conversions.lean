@@ -1,5 +1,5 @@
-import Vegas.Strategy.PMF
-import Vegas.Strategy.Pure
+import Vegas.Syntax.Strategy.PMF
+import Vegas.Syntax.Strategy.Pure
 
 /-!
 # Fixed-program strategy carrier conversions

@@ -374,9 +374,9 @@ then to \leanref{Protocol.Checked.graphMachine}. The public graph-machine FOSG
 aliases are \leanref{toGraphFOSG} and
 \leanref{toFiniteFOSG};
 \leanref{toFOSG} is an alias for the same graph-derived carrier.
-The cursor-world FOSG remains as \leanref{toObservedFOSG}, a finite
-adapter used for syntax-recursive behavioral-profile projection. It is related
-back to the checked transition by bridge theorems.
+The cursor-world adapter remains as \leanref{cursorFOSG}, a finite proof tool
+for syntax-recursive projection. It is related back to the checked transition
+by bridge theorems.
 
 \subsection{Runtime, Actions, and Cursors}
 
@@ -434,8 +434,8 @@ the generic reachable mixed-to-behavioral target, graph-history projection
 invariants, legal-observability proof, and the Vegas-pure collapse to the native
 strategic kernel game.
 
-\leanref{toObservedFOSG} names the finite observed adapter.
-Internally, \leanref{observedProgramFOSG} uses cursor worlds, program-local
+\leanref{cursorFOSG} names the finite observed adapter.
+It uses cursor worlds, program-local
 actions, and private observations consisting of the player's current program
 cursor and view environment. The public observation channel is trivial because
 public bindings already appear in every player's private view.
@@ -457,13 +457,9 @@ The observed adapter proves:
 \(\FDist\)-valued small-step layer. Its continuation value is
 \leanref{outcomeValuePMF}.
 
-The theorem \leanref{stepPMF_bind_outcomeValuePMF} is the checked analogue of
-raw one-step value preservation. The theorem
-\leanref{legalActionLaw_bind_transition_eq_stepPMF} states that the FOSG legal
-action law followed by the FOSG transition collapses to this checked step after
-forgetting cursor keys. Finally,
-\leanref{mappedRunDist_eq_pmfBehavioralKernelGame} connects the observed FOSG run
-distribution to the PMF strategic game API.
+The cursor bridge is now a syntax-facing proof layer: it relates cursor steps
+and source-profile event laws back to the checked machine transition, while the
+public strategic game API is stated over the graph-machine FOSG directly.
 
 \subsection{Kuhn-Style Realization}
 
@@ -556,9 +552,9 @@ graph-history projection invariant and generic Kuhn target \\
 \leanref{pmfBehavioralKernelGame} &
 PMF strategic-form game &
 outcome kernel agrees with checked semantics \\
-\leanref{toObservedFOSG} &
+\leanref{cursorFOSG} &
 finite observed adapter &
-\leanref{mappedRunDist_eq_pmfBehavioralKernelGame} \\
+checked-transition bridge \\
 \leanref{ProtocolSemantics} &
 protocol-facing solution concepts &
 correspondence with strategic wrappers \\
