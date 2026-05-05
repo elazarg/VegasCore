@@ -1746,19 +1746,43 @@ def syntaxReadsAvailableAtFrontier
       ∀ read, read ∈ (ProgramNode.sem g.legal g.normalized node).reads →
         (ProgramField.value? g.env cfg.result read).isSome
 
-/-- Once frontier read availability is known, source graph commits cannot
-deadlock: the generated guard carries a satisfying action for the available
-read environment. -/
-theorem syntaxProtocolGraph_hasAvailablePlayerActions_of_readsAvailable
-    (g : WFProgram P L)
-    (hreads : syntaxReadsAvailableAtFrontier g) :
+/-- Source graph frontier reads are available in every configuration. -/
+theorem syntaxReadsAvailableAtFrontier_of_wfProgram
+    (g : WFProgram P L) :
+    syntaxReadsAvailableAtFrontier g := by
+  intro cfg node hfrontier read hread
+  rcases ProgramNode.read_current_or_prior_write
+      g.legal g.normalized node hread with hcurrent | hprior
+  · exact ProgramField.value?_isSome_of_initialValue? g.env
+      (ProgramField.initialValue?_isSome_of_mem_currentFields
+        g.prog g.env hcurrent)
+  · rcases hprior with ⟨prior, hrank, hwrite⟩
+    have hpre : prior ∈ (syntaxProtocolGraph g).prereqs node := by
+      change prior ∈ ProgramNode.prereqs g.prog node
+      exact Finset.mem_filter.mpr
+        ⟨ProgramNode.mem_finset g.prog prior, hrank⟩
+    have hdone : (cfg.result prior).isSome :=
+      cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre
+    have hcfgLegal :
+        ∀ {node slice},
+          cfg.result node = some slice →
+            ProgramNode.sliceLegal g.legal g.normalized node slice := by
+      intro node slice hresult
+      simpa [syntaxProtocolGraph] using cfg.legal hresult
+    exact ProgramNode.value?_isSome_of_completed_write
+      g.env g.legal g.normalized hdone hcfgLegal hwrite
+
+/-- Source graph commits cannot deadlock: the generated guard carries a
+satisfying action for the available read environment. -/
+theorem syntaxProtocolGraph_hasAvailablePlayerActions
+    (g : WFProgram P L) :
     (syntaxProtocolGraph g).HasAvailablePlayerActions := by
   intro cfg node who hfrontier hactor
   rcases ProgramNode.exists_actionLegal_of_reads_available
       g.env g.legal g.normalized cfg.result node
       (who := who)
       (by simpa [syntaxProtocolGraph] using hactor)
-      (hreads cfg hfrontier) with
+      (syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
     ⟨slice, hslice, haction⟩
   exact ⟨slice, hslice, haction⟩
 
@@ -1812,14 +1836,11 @@ noncomputable def syntaxGraphMachine
     (g : WFProgram P L) : Machine P :=
   (syntaxProtocolGraph g).toMachine (syntaxGraphMachineInterface g)
 
-/-- FOSG view of the graph-native syntax machine, parameterized by the static
-frontier-read availability invariant. The remaining consolidation task is to
-prove `syntaxReadsAvailableAtFrontier` for every `WFProgram`. -/
+/-- FOSG view of the graph-native syntax machine. -/
 noncomputable def syntaxGraphFOSGView
-    (g : WFProgram P L)
-    (hreads : syntaxReadsAvailableAtFrontier g) :
+    (g : WFProgram P L) :
     (syntaxGraphMachine g).FOSGView :=
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
-    (syntaxProtocolGraph_hasAvailablePlayerActions_of_readsAvailable g hreads)
+    (syntaxProtocolGraph_hasAvailablePlayerActions g)
 
 end Vegas
