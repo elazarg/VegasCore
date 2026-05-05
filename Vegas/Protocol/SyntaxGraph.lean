@@ -17,6 +17,9 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+attribute [local instance] ProtocolGraph.nodeDecEq
+attribute [local instance] ProtocolGraph.fieldDecEq
+
 /-- A field occurrence in a visibility context. -/
 inductive VCtxField (P : Type) (L : IExpr) :
     VCtx P L → Type where
@@ -2322,6 +2325,115 @@ theorem syntaxGraphObserve_value?_eq_of_eq
   have h := congrArg (fun obs => obs.value? field) hobs
   simpa [syntaxGraphObserve, hvisible] using h
 
+/-- Dynamic action legality for a commit transfers across configurations that
+agree on the committing player's observation, provided the target node is still
+on the frontier.  The only nontrivial case is a commit guard: generated graph
+guards are invariant under changes to hidden reads outside the player's view. -/
+theorem syntaxGraph_actionLegal_of_observe_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    {node : ProgramNode g.prog}
+    {slice : ProgramField.WriteSlice g.prog}
+    (hfrontierRight : node ∈ right.frontier)
+    (hactor :
+      ((syntaxProtocolGraph g).sem node).actor = some who)
+    (hobs : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (haction :
+      (syntaxProtocolGraph g).actionLegal left.result node slice) :
+    (syntaxProtocolGraph g).actionLegal right.result node slice := by
+  classical
+  change
+    (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+      g.legal g.normalized node).actor = some who at hactor
+  change
+    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
+      g.legal g.normalized left.result node slice at haction
+  change
+    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
+      g.legal g.normalized right.result node slice
+  cases hsem :
+      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized node with
+  | assign field expr =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | sample field dist =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | reveal source target hty =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | commit owner field guard =>
+      have howner : owner = who := by
+        simpa [ProtocolGraph.NodeSem.actor, hsem] using hactor
+      subst owner
+      rw [ProgramNode.actionLegal, hsem] at haction ⊢
+      rcases haction with
+        ⟨availableLeft, value, hguardEval, hslice⟩
+      have availableRight :
+          ∀ read, read ∈ guard.reads →
+            (ProgramField.value? g.env right.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          right hfrontierRight read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      refine ⟨availableRight, value, ?_, hslice⟩
+      let ρleft :=
+        ProgramField.readEnvOfResult g.env left.result
+          guard.reads availableLeft
+      let ρright :=
+        ProgramField.readEnvOfResult g.env right.result
+          guard.reads availableRight
+      have hguardEq :
+          guard.eval value ρleft = guard.eval value ρright := by
+        apply guard.eval_eq_of_visible_eq
+        intro read hleft hright hvisible
+        have hreadVisible :
+            read.owner = none ∨ read.owner = some who :=
+          ProgramNode.guard_visibleReads_owner_of_sem_commit
+            g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
+            node hsem read hvisible
+        have hvalueEq :
+            ProgramField.value? g.env left.result read =
+              ProgramField.value? g.env right.result read := by
+          have hsyntax :=
+            syntaxGraphObserve_value?_eq_of_eq g who hobs hreadVisible
+          simpa [syntaxGraphConfigValue?, syntaxProtocolGraph,
+            ProtocolGraph.value?, ProgramField.value?] using hsyntax
+        simpa [ρleft, ρright] using
+          (ProgramField.readEnvOfResult_value_eq_of_value?_eq
+            g.env (left := left.result) (right := right.result)
+            (availableLeft := availableLeft)
+            (availableRight := availableRight)
+            (field := read) (hleft := hleft) (hright := hright)
+            hvalueEq)
+      rw [← hguardEq]
+      exact hguardEval
+
+/-- Player action availability in the syntax graph is determined by the public
+transcript together with the acting player's private observation. -/
+theorem syntaxGraph_available_eq_of_observation_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    ProtocolGraph.available (syntaxProtocolGraph g) left who =
+      ProtocolGraph.available (syntaxProtocolGraph g) right who := by
+  classical
+  ext action
+  constructor
+  · intro haction
+    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    have hfrontierRight : action.node ∈ right.frontier := by
+      simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
+    exact ⟨hfrontierRight, hactor, hslice,
+      syntaxGraph_actionLegal_of_observe_eq g who hfrontierRight
+        hactor hpriv hlegal⟩
+  · intro haction
+    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    have hfrontierLeft : action.node ∈ left.frontier := by
+      simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
+    exact ⟨hfrontierLeft, hactor, hslice,
+      syntaxGraph_actionLegal_of_observe_eq g who hfrontierLeft
+        hactor hpriv.symm hlegal⟩
+
 /-- Outcome projection for the graph-native syntax machine. Nonterminal or
 ill-assembled configurations project to the default zero outcome. -/
 noncomputable def syntaxGraphOutcome
@@ -2354,6 +2466,227 @@ noncomputable def syntaxGraphFOSGView
     (syntaxGraphMachine g).FOSGView :=
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasAvailablePlayerActions g)
+
+/-- The canonical selected syntax-graph turn is public-observation determined:
+the public observation records enough completed-node information to recover the
+frontier, and the selected turn only inspects that frontier and static node
+semantics. -/
+theorem syntaxGraph_turn_eq_of_publicView_eq
+    (g : WFProgram P L)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    ProtocolGraph.turn (syntaxProtocolGraph g)
+        (syntaxGraphMachineInterface g) left =
+      ProtocolGraph.turn (syntaxProtocolGraph g)
+        (syntaxGraphMachineInterface g) right := by
+  classical
+  have hfrontier := syntaxGraphPublicView_frontier_eq_of_eq g hpub
+  unfold ProtocolGraph.turn ProtocolGraph.selectedFrontierNode?
+  rw [hfrontier]
+
+/-- At a bounded syntax-graph FOSG state before the cutoff, legal optional
+moves are determined by the player's latest private observation and the public
+transcript. -/
+theorem syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {left right : (syntaxGraphMachine g).BoundedRunPrefix horizon}
+    (hcut : ¬ horizon ≤ left.pref.events.length)
+    (hcut' : ¬ horizon ≤ right.pref.events.length)
+    (hpriv :
+      syntaxGraphObserve g who left.lastState =
+        syntaxGraphObserve g who right.lastState)
+    (hpub :
+      syntaxGraphPublicView g left.lastState =
+        syntaxGraphPublicView g right.lastState) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
+        left who =
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
+        right who := by
+  classical
+  have hturn :
+      (syntaxGraphFOSGView g).turn left.pref =
+        (syntaxGraphFOSGView g).turn right.pref := by
+    simpa [syntaxGraphFOSGView, ProtocolGraph.toFOSGView,
+      Machine.BoundedRunPrefix.lastState] using
+      syntaxGraph_turn_eq_of_publicView_eq g hpub
+  have havailable :
+      (syntaxGraphMachine g).available left.lastState who =
+        (syntaxGraphMachine g).available right.lastState who := by
+    simpa [syntaxGraphMachine, ProtocolGraph.toMachine] using
+      syntaxGraph_available_eq_of_observation_eq g who hpriv hpub
+  have havailablePref :
+      (syntaxGraphMachine g).available left.pref.lastState who =
+        (syntaxGraphMachine g).available right.pref.lastState who := by
+    simpa [Machine.BoundedRunPrefix.lastState] using havailable
+  have hactive :
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left =
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right := by
+    ext player
+    simp [Machine.FOSGView.boundedActive, hcut, hcut',
+      Machine.FOSGView.active, hturn]
+  have hactions :
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+          left who =
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+          right who := by
+    ext action
+    simp [Machine.FOSGView.boundedAvailableActions, hcut, hcut',
+      Machine.FOSGView.availableActions, hturn, havailablePref]
+  ext move
+  cases move with
+  | none =>
+      change
+        who ∉ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left ↔
+          who ∉ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right
+      rw [hactive]
+  | some action =>
+      change
+        who ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left ∧
+            action ∈
+              ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+                left who ↔
+          who ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right ∧
+            action ∈
+              ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+                right who
+      rw [hactive, hactions]
+
+/-- Bounded graph-native syntax FOSGs satisfy the legal-observability
+condition required by Kuhn's theorem. -/
+theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
+    (g : WFProgram P L) (horizon : Nat) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalObservable := by
+  intro who h h' hInfo
+  let G := (syntaxGraphFOSGView g).toBoundedFOSG horizon
+  have hobsLen :
+      (GameTheory.FOSG.InfoState.observationEvents
+        (G := G) (i := who) (h.playerView who)).length =
+        h.steps.length := by
+    simpa [G] using
+      (syntaxGraphFOSGView g)
+        |>.toBoundedFOSG_history_playerView_observationEvents_length
+          horizon h who
+  have hobsLen' :
+      (GameTheory.FOSG.InfoState.observationEvents
+        (G := G) (i := who) (h'.playerView who)).length =
+        h'.steps.length := by
+    simpa [G] using
+      (syntaxGraphFOSGView g)
+        |>.toBoundedFOSG_history_playerView_observationEvents_length
+          horizon h' who
+  have hlenEq : h.steps.length = h'.steps.length := by
+    have hlen :=
+      congrArg
+        (fun s =>
+          (GameTheory.FOSG.InfoState.observationEvents
+            (G := G) (i := who) s).length)
+        hInfo
+    change
+      (GameTheory.FOSG.InfoState.observationEvents
+        (G := G) (i := who) (h.playerView who)).length =
+        (GameTheory.FOSG.InfoState.observationEvents
+          (G := G) (i := who) (h'.playerView who)).length at hlen
+    rw [hobsLen, hobsLen'] at hlen
+    exact hlen
+  by_cases hnil : h.steps = []
+  · have hnil' : h'.steps = [] := by
+      have hlen0 : h'.steps.length = 0 := by
+        rw [← hlenEq, hnil]
+        rfl
+      exact List.eq_nil_of_length_eq_zero hlen0
+    have hh : h = GameTheory.FOSG.History.nil G := by
+      cases h with
+      | mk steps chain =>
+          cases hnil
+          rfl
+    have hh' : h' = GameTheory.FOSG.History.nil G := by
+      cases h' with
+      | mk steps chain =>
+          cases hnil'
+          rfl
+    subst hh
+    subst hh'
+    rfl
+  · have hnil' : h'.steps ≠ [] := by
+      intro hnil'
+      have hlen0 : h.steps.length = 0 := by
+        rw [hlenEq, hnil']
+        rfl
+      exact hnil (List.eq_nil_of_length_eq_zero hlen0)
+    have heventLen :=
+      (syntaxGraphFOSGView g)
+        |>.toBoundedFOSG_history_events_length horizon h
+    have heventLen' :=
+      (syntaxGraphFOSGView g)
+        |>.toBoundedFOSG_history_events_length horizon h'
+    have hcutEq :
+        (horizon ≤ h.lastState.pref.events.length) ↔
+          (horizon ≤ h'.lastState.pref.events.length) := by
+      have heqEvents :
+          h.lastState.pref.events.length =
+            h'.lastState.pref.events.length := by
+        calc
+          h.lastState.pref.events.length = h.steps.length := heventLen
+          _ = h'.steps.length := hlenEq
+          _ = h'.lastState.pref.events.length := heventLen'.symm
+      constructor
+      · intro hle
+        exact heqEvents ▸ hle
+      · intro hle
+        exact heqEvents.symm ▸ hle
+    by_cases hcut : horizon ≤ h.lastState.pref.events.length
+    · have hcut' : horizon ≤ h'.lastState.pref.events.length :=
+        hcutEq.mp hcut
+      have hInactive : who ∉ G.active h.lastState := by
+        simpa [G, Machine.FOSGView.boundedActive, hcut]
+      have hInactive' : who ∉ G.active h'.lastState := by
+        simpa [G, Machine.FOSGView.boundedActive, hcut']
+      rw [G.availableMoves_eq_singleton_none_of_not_mem_active h hInactive,
+        G.availableMoves_eq_singleton_none_of_not_mem_active h' hInactive']
+    · have hcut' :
+          ¬ horizon ≤ h'.lastState.pref.events.length := by
+        intro hle
+        exact hcut (hcutEq.mpr hle)
+      have hlatest :=
+        congrArg
+          (GameTheory.FOSG.InfoState.latestObservation?
+            (G := G) (i := who))
+          hInfo
+      have hlatest₁ :
+          GameTheory.FOSG.InfoState.latestObservation?
+              (G := G) (i := who) (h.playerView who) =
+            some
+              (syntaxGraphObserve g who h.lastState.lastState,
+                syntaxGraphPublicView g h.lastState.lastState) := by
+        simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
+          syntaxGraphMachineInterface] using
+          (syntaxGraphFOSGView g)
+            |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
+              horizon who h hnil
+      have hlatest₂ :
+          GameTheory.FOSG.InfoState.latestObservation?
+              (G := G) (i := who) (h'.playerView who) =
+            some
+              (syntaxGraphObserve g who h'.lastState.lastState,
+                syntaxGraphPublicView g h'.lastState.lastState) := by
+        simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
+          syntaxGraphMachineInterface] using
+          (syntaxGraphFOSGView g)
+            |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
+              horizon who h' hnil'
+      rw [hlatest₁, hlatest₂] at hlatest
+      injection hlatest with hobs
+      have hpriv :
+          syntaxGraphObserve g who h.lastState.lastState =
+            syntaxGraphObserve g who h'.lastState.lastState :=
+        congrArg Prod.fst hobs
+      have hpub :
+          syntaxGraphPublicView g h.lastState.lastState =
+            syntaxGraphPublicView g h'.lastState.lastState :=
+        congrArg Prod.snd hobs
+      simpa [GameTheory.FOSG.availableMoves] using
+        syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
+          g horizon who hcut hcut' hpriv hpub
 
 /-- Finite state helper for the graph-native syntax machine. -/
 @[reducible] noncomputable instance syntaxGraphMachine.instFintypeState
