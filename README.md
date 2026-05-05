@@ -113,7 +113,8 @@ Vegas/
   ProtocolSemantics.lean   -- protocol-level Kuhn property
   Protocol.lean            -- protocol entrypoint
   Kuhn.lean                -- Vegas-facing mixed-to-behavioral realization
-  Examples.lean            -- small checked examples
+  Examples.lean            -- examples entrypoint
+  Examples/                -- checked Prisoners, Pennies, Sexes, Monty Hall
 
   Protocol/
     Graph.lean
