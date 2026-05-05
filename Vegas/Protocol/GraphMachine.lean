@@ -700,6 +700,228 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
   rw [PMF.map_comp]
   rfl
 
+/-- Binding a continuation over one bounded graph-FOSG transition is the same
+as binding that continuation over the corresponding primitive machine blocked
+run, with the bounded presentation depth reattached to the checkpoint state. -/
+theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History))
+    (action :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).LegalAction
+        h.lastState))
+    {α : Type}
+    (K : (G.toMachine iface).BoundedState horizon → PMF α) :
+    ((((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          h.lastState action).bind K) =
+      ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state).bind
+        (fun next =>
+          K (h.lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle => action.2.1 (Or.inr hle)))
+            next)) := by
+  rw [Machine.FOSGView.toBoundedFOSG_transition]
+  change
+    (PMF.map
+        (fun next =>
+          h.lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle => action.2.1 (Or.inr hle)))
+            next)
+        (roundTransition G h.lastState.state action.1)).bind K =
+      ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state).bind
+        (fun next =>
+          K (h.lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle => action.2.1 (Or.inr hle)))
+            next))
+  rw [PMF.bind_map]
+  rw [roundTransition_eq_runEventsFrom_roundPrimitiveEvents
+    (G := G) (iface := iface) (cfg := h.lastState.state)
+    (joint := action.1)]
+  rw [Machine.runEventBlocksFrom_singleton]
+  rfl
+
+/-- History-dependent blocked primitive trace distribution induced by a
+bounded graph-FOSG behavioral profile.
+
+The state of this process is still the FOSG history: strategies are allowed to
+depend on information-state history.  The machine contribution at each
+nonterminal FOSG round is the primitive event block selected by that round. -/
+noncomputable def boundedFOSGBlockTraceDistFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)) :
+    Nat →
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History) →
+        PMF (List (List (G.toMachine iface).Event) × (G.toMachine iface).State)
+  | 0, h =>
+      PMF.pure
+        (boundedFOSGHistoryEventBlocks G iface hplayer horizon h,
+          h.lastState.state)
+  | n + 1, h => by
+      classical
+      exact
+        if hterm :
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal
+              h.lastState then
+          PMF.pure
+            (boundedFOSGHistoryEventBlocks G iface hplayer horizon h,
+              h.lastState.state)
+        else
+          (GameTheory.FOSG.legalActionLaw
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)
+            σ h hterm).bind fun action =>
+            ((G.toMachine iface).runEventBlocksFrom
+              [roundPrimitiveEvents G iface h.lastState.state action.1]
+              h.lastState.state).bind fun next =>
+                boundedFOSGBlockTraceDistFrom
+                  G iface hplayer horizon σ n
+                  (h.extendByOutcome action
+                    (h.lastState.succ
+                      (Nat.lt_of_not_ge
+                        (fun hle => action.2.1 (Or.inr hle)))
+                      next))
+
+@[simp] theorem boundedFOSGBlockTraceDistFrom_zero
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History)) :
+    boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ 0 h =
+      PMF.pure
+        (boundedFOSGHistoryEventBlocks G iface hplayer horizon h,
+          h.lastState.state) := rfl
+
+theorem boundedFOSGBlockTraceDistFrom_succ_terminal
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))
+    (n : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History))
+    (hterm :
+      ((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal
+        h.lastState) :
+    boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ (n + 1) h =
+      PMF.pure
+        (boundedFOSGHistoryEventBlocks G iface hplayer horizon h,
+          h.lastState.state) := by
+  have hterm' :
+      (G.toFOSGView iface hplayer).boundedTerminal horizon h.lastState := by
+    simpa [Machine.FOSGView.toBoundedFOSG_terminal] using hterm
+  simp [boundedFOSGBlockTraceDistFrom, hterm']
+
+theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))
+    (n : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History))
+    (hterm :
+      ¬ ((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal
+        h.lastState) :
+    boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ (n + 1) h =
+      (GameTheory.FOSG.legalActionLaw
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)
+        σ h hterm).bind fun action =>
+        ((G.toMachine iface).runEventBlocksFrom
+          [roundPrimitiveEvents G iface h.lastState.state action.1]
+          h.lastState.state).bind fun next =>
+            boundedFOSGBlockTraceDistFrom
+              G iface hplayer horizon σ n
+              (h.extendByOutcome action
+                (h.lastState.succ
+                  (Nat.lt_of_not_ge
+                    (fun hle => action.2.1 (Or.inr hle)))
+                  next)) := by
+  have hterm' :
+      ¬ (G.toFOSGView iface hplayer).boundedTerminal horizon h.lastState := by
+    simpa [Machine.FOSGView.toBoundedFOSG_terminal] using hterm
+  simp [boundedFOSGBlockTraceDistFrom, hterm']
+
+/-- Bounded graph-FOSG execution, projected to extracted primitive event blocks
+and checkpoint state, equals the history-dependent blocked machine trace
+distribution induced by the same behavioral profile. -/
+theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    [Fintype ((G.toMachine iface).BoundedState horizon)]
+    [DecidablePred
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal)]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)) :
+    ∀ (n : Nat)
+      (h :
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History)),
+      PMF.map
+          (fun h' =>
+            (boundedFOSGHistoryEventBlocks G iface hplayer horizon h',
+              h'.lastState.state))
+          (GameTheory.FOSG.History.runDistFrom
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) σ n h) =
+        boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ n h
+  | 0, h => by
+      rw [GameTheory.FOSG.History.runDistFrom_zero]
+      rw [boundedFOSGBlockTraceDistFrom_zero]
+      rw [PMF.pure_map]
+  | n + 1, h => by
+      let BFOSG := (G.toFOSGView iface hplayer).toBoundedFOSG horizon
+      by_cases hterm : BFOSG.terminal h.lastState
+      · rw [GameTheory.FOSG.History.runDistFrom_succ_terminal
+          (G := BFOSG) σ n h hterm]
+        rw [boundedFOSGBlockTraceDistFrom_succ_terminal
+          (G := G) (iface := iface) (hplayer := hplayer)
+          (horizon := horizon) σ n h hterm]
+        rw [PMF.pure_map]
+      · rw [GameTheory.FOSG.History.runDistFrom_succ_nonterminal
+          (G := BFOSG) σ n h hterm]
+        rw [boundedFOSGBlockTraceDistFrom_succ_nonterminal
+          (G := G) (iface := iface) (hplayer := hplayer)
+          (horizon := horizon) σ n h hterm]
+        rw [PMF.map_bind]
+        congr
+        funext action
+        rw [PMF.map_bind]
+        conv_lhs =>
+          arg 2
+          intro dst
+          rw [boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+            G iface hplayer horizon σ n (h.extendByOutcome action dst)]
+        exact
+          boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+            G iface hplayer horizon h action
+            (fun dst =>
+              boundedFOSGBlockTraceDistFrom
+                G iface hplayer horizon σ n
+                (h.extendByOutcome action dst))
+
 /-- One-step form matching `FOSG.History.runDistFrom`: if the sampled bounded
 destination extends the FOSG history, then the extracted block prefix and
 checkpoint state have the same distribution as the primitive machine blocked

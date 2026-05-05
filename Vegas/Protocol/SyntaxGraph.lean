@@ -2986,6 +2986,33 @@ theorem syntaxGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
       (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
 
+/-- Continuation form of one syntax-graph FOSG transition: binding over the
+bounded FOSG transition is the same as binding over the primitive blocked
+machine run and reattaching the bounded presentation depth. -/
+theorem syntaxGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (action :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+        h.lastState))
+    {α : Type}
+    (K : (syntaxGraphMachine g).BoundedState horizon → PMF α) :
+    ((((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+          h.lastState action).bind K) =
+      ((syntaxGraphMachine g).runEventBlocksFrom
+          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+          h.lastState.state).bind
+        (fun next =>
+          K (h.lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle => action.2.1 (Or.inr hle)))
+            next)) := by
+  simpa [syntaxGraphMachine, syntaxGraphFOSGView,
+    syntaxGraphRoundPrimitiveEvents] using
+    (ProtocolGraph.boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action K)
+
 /-- One-step form matching `FOSG.History.runDistFrom` for syntax graphs:
 extend the FOSG history by the sampled bounded destination, then project to
 the extracted primitive event blocks and checkpoint state. -/
@@ -3394,5 +3421,81 @@ noncomputable instance syntaxGraphFOSGView.instDecidablePredBoundedTerminal
     (g : WFProgram P L) (horizon : Nat) :
     DecidablePred (((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
   Classical.decPred _
+
+/-- History-dependent blocked primitive trace distribution induced by a
+bounded syntax-graph FOSG behavioral profile. -/
+noncomputable def syntaxGraphFOSGBlockTraceDistFrom
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon)) :
+    Nat →
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) →
+        PMF (List (List (syntaxGraphMachine g).Event) ×
+          (syntaxGraphMachine g).State) := by
+  letI :
+      ∀ player,
+        Fintype
+          (Option
+            (((syntaxProtocolGraph g).toFOSGView
+              (syntaxGraphMachineInterface g)
+              (syntaxProtocolGraph_hasAvailablePlayerActions g)).Act
+                player)) := by
+    intro player
+    simpa [syntaxGraphFOSGView] using
+      (syntaxGraphFOSGView.instFintypeOptionAct g player)
+  simpa [syntaxGraphMachine, syntaxGraphFOSGView] using
+    (ProtocolGraph.boundedFOSGBlockTraceDistFrom
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon σ)
+
+/-- Bounded syntax-graph FOSG execution, projected to extracted primitive
+event blocks and checkpoint state, equals the history-dependent blocked
+machine trace distribution induced by the same behavioral profile. -/
+theorem syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon))
+    (n : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    PMF.map
+        (fun h' =>
+          (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+            h'.lastState.state))
+        (GameTheory.FOSG.History.runDistFrom
+          ((syntaxGraphFOSGView g).toBoundedFOSG horizon) σ n h) =
+      syntaxGraphFOSGBlockTraceDistFrom g horizon σ n h := by
+  letI :
+      ∀ player,
+        Fintype
+          (Option
+            (((syntaxProtocolGraph g).toFOSGView
+              (syntaxGraphMachineInterface g)
+              (syntaxProtocolGraph_hasAvailablePlayerActions g)).Act
+                player)) := by
+    intro player
+    simpa [syntaxGraphFOSGView] using
+      (syntaxGraphFOSGView.instFintypeOptionAct g player)
+  letI :
+      Fintype
+        (((syntaxProtocolGraph g).toMachine
+          (syntaxGraphMachineInterface g)).BoundedState horizon) := by
+    simpa [syntaxGraphMachine] using
+      (inferInstance : Fintype ((syntaxGraphMachine g).BoundedState horizon))
+  letI :
+      DecidablePred
+        ((((syntaxProtocolGraph g).toFOSGView
+          (syntaxGraphMachineInterface g)
+          (syntaxProtocolGraph_hasAvailablePlayerActions g)).toBoundedFOSG
+            horizon).terminal) :=
+    Classical.decPred _
+  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
+    syntaxGraphFOSGView, syntaxGraphFOSGBlockTraceDistFrom] using
+    (ProtocolGraph.boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon σ n h)
 
 end Vegas
