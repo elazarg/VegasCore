@@ -7,8 +7,8 @@ import Vegas.FOSG.Observation
 This module is the concrete bridge from checked Vegas syntax to the canonical
 `Protocol.Machine` carrier.
 
-Checked syntax first elaborates to `syntaxActionGraph`; `graphSemantics` then
-interprets that graph as the canonical probabilistic machine `graphMachine`.
+Checked syntax first elaborates to `syntaxActionGraph`; `graphMachine` then
+executes that graph as the canonical probabilistic machine.
 The implementation still reuses the existing cursor-keyed execution functions
 (`CursorCheckedWorld`, `ProgramAction`, and `cursorProgramTransition`) as the
 value-level evaluator for graph steps, but the executable carrier exposed by
@@ -757,25 +757,21 @@ theorem graphStepInternal_done_eq_advance_of_available_of_support
   rw [← htarget]
   rfl
 
-/-- Checked Vegas syntax as a direct action-graph semantics.
-
-This is the source denotation for checked programs in the protocol layer:
-`syntaxActionGraph` supplies the finite IR/frontier structure, while this
-record supplies the dependent action alphabet, stochastic cursor execution,
-observations, outcomes, and utilities. -/
-noncomputable def graphSemantics
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    ActionGraph.Semantics (syntaxActionGraph g) where
-  Value := CursorCheckedWorld g
-  Choice := fun who => ProgramAction g.prog who
+/-- Canonical checked protocol machine executing the syntax action graph. -/
+noncomputable def graphMachine
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) : Machine P where
+  State := GraphConfiguration g
+  Action := fun who => ProgramAction g.prog who
   Internal := InternalEvent
   Public := PublicObs g hctx
   Obs := fun who => PrivateObs g who
   Outcome := Outcome P
+  init := ActionGraph.Configuration.initial (syntaxActionGraph g)
   available := graphAvailable g hctx
   availableInternal := graphAvailableInternal g hctx
   stepPlay := graphStepPlay g hctx
   stepInternal := graphStepInternal g hctx
+  terminal := ActionGraph.Configuration.isTerminal
   publicView := fun cfg =>
     publicObsOfCursorWorld (hctx := hctx)
       (cursorWorldOfGraphConfiguration g hctx cfg)
@@ -785,23 +781,6 @@ noncomputable def graphSemantics
   outcome := fun cfg =>
     cursorWorldOutcome (cursorWorldOfGraphConfiguration g hctx cfg)
   utility := fun outcome who => (outcome who : ℝ)
-  stepPlay_done_eq_or_advance := by
-    intro who action source target hmem
-    exact graphStepPlay_done_eq_or_advance_of_support
-      g hctx hmem
-  stepInternal_done_eq_or_advance := by
-    intro event source target hmem
-    exact graphStepInternal_done_eq_or_advance_of_support
-      g hctx hmem
-  terminal_iff_completeAt := by
-    intro cfg
-    rfl
-
-/-- Canonical checked protocol machine, obtained from
-`syntaxActionGraph -> ActionGraph.Semantics -> Machine`. -/
-noncomputable def graphMachine
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) : Machine P :=
-  (graphSemantics g hctx).toMachine
 
 @[simp] theorem graphMachine_init
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
@@ -1268,7 +1247,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
   | internal internalEvent =>
       have hinternal :
           internalEvent ∈ graphAvailableInternal g hctx state := by
-        simpa [graphMachine, graphSemantics] using havailable
+        simpa [graphMachine] using havailable
       exact cursorProgramJointActionLegal_of_mem_availableProgramMovesAt
         g hcursor (by
           intro who
@@ -1281,7 +1260,7 @@ theorem cursorProgramJointActionLegal_of_graphMachine_available
   | play who action =>
       have hgraphAvailable :
           action ∈ graphAvailable g hctx state who := by
-        simpa [graphMachine, graphSemantics] using havailable
+        simpa [graphMachine] using havailable
       have haction :
           action ∈ CursorCheckedWorld.availableProgramActions w who :=
         hgraphAvailable.2
@@ -1382,7 +1361,7 @@ theorem graphMachine_step_map_cursorWorld_eq_cursorProgramTransition_of_availabl
   | play who action =>
       have hgraphAvailable :
           action ∈ graphAvailable g hctx state who := by
-        simpa [graphMachine, graphSemantics] using havailable
+        simpa [graphMachine] using havailable
       rw [Machine.step_play]
       change
         PMF.map (cursorWorldOfGraphConfiguration g hctx)
@@ -1400,7 +1379,7 @@ theorem graphMachine_step_map_cursorWorld_eq_cursorProgramTransition_of_availabl
   | internal internalEvent =>
       have hgraphAvailable :
           internalEvent ∈ graphAvailableInternal g hctx state := by
-        simpa [graphMachine, graphSemantics] using havailable
+        simpa [graphMachine] using havailable
       rw [Machine.step_internal]
       change
         PMF.map (cursorWorldOfGraphConfiguration g hctx)
@@ -1526,19 +1505,19 @@ theorem graphMachine_step_support_done_eq_advance_of_event_available
   | play who action =>
       have hgraphAvailable :
           action ∈ graphAvailable g hctx state who := by
-        simpa [graphMachine, graphSemantics] using havailable
-      simpa [Machine.step_play, graphMachine, graphSemantics] using
+        simpa [graphMachine] using havailable
+      simpa [Machine.step_play, graphMachine] using
         graphStepPlay_done_eq_advance_of_available_of_support
           g hctx hgraphAvailable (by
-            simpa [Machine.step_play, graphMachine, graphSemantics] using hmem)
+            simpa [Machine.step_play, graphMachine] using hmem)
   | internal internalEvent =>
       have hgraphAvailable :
           internalEvent ∈ graphAvailableInternal g hctx state := by
-        simpa [graphMachine, graphSemantics] using havailable
-      simpa [Machine.step_internal, graphMachine, graphSemantics] using
+        simpa [graphMachine] using havailable
+      simpa [Machine.step_internal, graphMachine] using
         graphStepInternal_done_eq_advance_of_available_of_support
           g hctx hgraphAvailable (by
-            simpa [Machine.step_internal, graphMachine, graphSemantics] using hmem)
+            simpa [Machine.step_internal, graphMachine] using hmem)
 
 /-- The bounded graph-machine FOSG transition is the checked transition for
 the primitive event selected by the FOSG legal action, after projecting graph
@@ -2039,8 +2018,6 @@ theorem finiteFOSG_cursor_terminal_of_graph_terminal
     (h : (finiteFOSG g hctx).History)
     (hgraph : (graphMachine g hctx).terminal h.lastState.lastState) :
     terminal (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld := by
-  change terminal
-    (cursorWorldOfGraphConfiguration g hctx h.lastState.lastState).toWorld
   rw [(CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
     (w := cursorWorldOfGraphConfiguration g hctx h.lastState.lastState))]
   by_contra hnotZero
@@ -2397,7 +2374,7 @@ theorem finiteFOSG_legalObservable
                 (cursorWorldOfGraphConfiguration g hctx
                   h.lastState.lastState)) := by
         simpa [G, finiteFOSG, boundedFOSG,
-          graphMachine, graphSemantics] using
+          graphMachine] using
           (fosgView g hctx)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               (syntaxSteps g.prog) who h hnil
@@ -2411,7 +2388,7 @@ theorem finiteFOSG_legalObservable
                 (cursorWorldOfGraphConfiguration g hctx
                   h'.lastState.lastState)) := by
         simpa [G, finiteFOSG, boundedFOSG,
-          graphMachine, graphSemantics] using
+          graphMachine] using
           (fosgView g hctx)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               (syntaxSteps g.prog) who h' hnil'

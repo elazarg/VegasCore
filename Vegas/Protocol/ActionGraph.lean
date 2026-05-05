@@ -14,10 +14,10 @@ validation facts needed by compiler-preservation certificates. Backend-oriented
 action DAGs can elaborate to this structure when they can supply the required
 evidence.
 
-Strategic claims should be proved for the executable machine denoted by
-`ActionGraph.Semantics.toMachine`. This file defines the graph language, its
-local invariants, and frontier-resolution structure; the actual machine
-constructor lives in `Vegas.Protocol.Machine` to avoid an import cycle.
+Strategic claims should be proved for the executable machine that interprets
+these action graphs. This file defines the graph language, its local
+invariants, and frontier-resolution structure; checked programs instantiate
+the machine directly in `Vegas.Protocol.Checked`.
 -/
 
 namespace Vegas

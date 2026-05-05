@@ -240,7 +240,7 @@ theorem toFiniteFOSGPureStrategyCandidate_history
                 g hctx h.lastState.lastState)) := by
       simpa [toFiniteFOSG, finiteFOSG,
         boundedFOSG,
-        graphMachine, graphSemantics] using
+        graphMachine] using
         (fosgView g hctx)
           |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
             (syntaxSteps g.prog) who h hnil
@@ -920,7 +920,7 @@ theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
           (FeasibleProgramPureProfile.toBehavioralPMF σ)
           (CursorCheckedWorld.initial g hctx) := by
     simpa [fosgHistoryOutcome, graphMachine,
-      graphSemantics, graphMachine_init,
+      graphMachine_init,
       cursorWorldOfGraphConfiguration_initial, R,
       finiteFOSGPureOutcomeValuePMF] using hclosure
   rw [hmachine, hvalue]

@@ -23,8 +23,8 @@ This entrypoint exposes the executable protocol construction path.
   prototype is design input, not an unproved specification.
 * `Vegas.Protocol.Machine` is the single probabilistic, observation-aware
   execution carrier. Its primitive step is one enabled player move or one
-  internal protocol event. `ActionGraph.Semantics.toMachine` is the direct
-  source denotation: its state is exactly `ActionGraph.Configuration`, player
+  internal protocol event. Checked programs instantiate this carrier directly
+  as `graphMachine`; its state is exactly `ActionGraph.Configuration`, player
   steps merge one frontier packet, and the sole internal event finalizes the
   current frontier. Extra implementation state belongs in backend refinement,
   not in the source machine.
@@ -39,8 +39,7 @@ This entrypoint exposes the executable protocol construction path.
   prefixes as worlds. `Machine.FOSGView.transition_map_lastState_eq_step`
   projects each derived FOSG transition back to the selected `Machine.step`.
 * `Vegas.Protocol.Checked` elaborates checked syntax to
-  `syntaxActionGraph`, interprets it with `graphSemantics`, and
-  exposes `graphMachine` plus `fosg`. Available
+  `syntaxActionGraph` and exposes `graphMachine` plus `fosg`. Available
   graph steps are proved to project to the corresponding checked cursor
   transition, so the cursor evaluator remains a proof tool rather than a second
   machine semantics.
@@ -67,8 +66,8 @@ syntax-facing projection proofs, not a semantic owner.
 Schedulers and linearizations are presentation data for traces, sequential
 syntax, FOSG histories, or backend transaction orderings. They refine machine
 events for a particular view; they are not part of
-`ActionGraph.Semantics.toMachine`, and scheduled views must prove that
-they collapse to the same machine-derived semantics.
+`graphMachine`, and scheduled views must prove that they collapse to the same
+machine-derived semantics.
 
 The intended theorem is therefore not "machine and every sequential
 presentation are definitionally the same"; it is a strategic correspondence

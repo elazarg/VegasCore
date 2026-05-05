@@ -2536,7 +2536,7 @@ noncomputable def cursorTransitionState
       ({ Γ := c.Γ, prog := c.prog, env := env } : World P L) a) →
     PMF (CursorRuntimeState root)
   | .ret payoffs, .here, env, valid, a, ha =>
-      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, _a, _ha =>
       let wctx := valid.1
       let fresh := valid.2.1
@@ -2682,7 +2682,7 @@ theorem cursorTransitionState_map_toCheckedWorldFromSuffix
             CheckedWorld.toWorld] using ha⟩)
     (fun {Γ} {p} suffix env valid a ha => by
       cases p
-      · exact False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
+      · exact False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
       · simp [cursorTransitionState, checkedTransition,
           CursorRuntimeState.toCheckedWorldFromSuffix,
           ProgramCursor.toCheckedWorldFromSuffix, ProgramCursor.prog,
@@ -2840,7 +2840,7 @@ theorem cursorTransitionState_massInvariant
       cursorTransitionState c env valid a₁ ha₁ dst =
         cursorTransitionState c env valid a₂ ha₂ dst
   | .ret payoffs, .here, env, valid, a₁, a₂, ha₁, _ha₂, dst, _h₁, _h₂ =>
-      False.elim (ha₁.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
+      False.elim (ha₁.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
       simp [cursorTransitionState] at h₁ h₂ ⊢
   | .sample x D k, .here, env, valid, a₁, a₂, ha₁, ha₂, dst, h₁, h₂ => by
@@ -3100,7 +3100,7 @@ theorem cursorTransitionState_remainingSyntaxSteps
     cursorTransitionState c env valid a ha dst ≠ 0 →
       syntaxSteps dst.cursor.prog + 1 = syntaxSteps c.prog
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
-      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
       have hmem :
           dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
@@ -3220,7 +3220,7 @@ theorem cursorTransitionState_rootEnv_eq
       ProgramCursor.rootEnv dst.cursor dst.env =
         ProgramCursor.rootEnv c env
   | .ret payoffs, .here, env, valid, a, ha, dst, _hsupp =>
-      False.elim (ha.1 (by simp [ProgramCursor.Γ, ProgramCursor.prog, terminal]))
+      False.elim (ha.1 (by simp [ProgramCursor.prog, terminal]))
   | .letExpr x e k, .here, env, valid, a, ha, dst, hsupp => by
       have hmem :
           dst ∈ (cursorTransitionState ProgramCursor.here env valid a ha).support := by
