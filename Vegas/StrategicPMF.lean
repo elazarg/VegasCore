@@ -1,6 +1,5 @@
 import Vegas.PureStrategic
 import Vegas.Strategic
-import Vegas.Strategy.Conversions
 
 /-!
 # PMF Behavioral Strategic Semantics
@@ -10,9 +9,8 @@ This file mirrors `Vegas.Strategic` and `Vegas.PureStrategic` but uses `PMF`
 distributions). The PMF layer is needed for theorem backends that produce
 real-valued behavioral strategies.
 
-The PMF strategy carrier lives in `Vegas.Strategy.PMF`; the syntax-recursive
-carrier conversions live in `Vegas.Strategy.Conversions`. The public PMF
-behavioral `KernelGame` presentation is machine-backed.
+The PMF strategy carrier is the reachable legal behavioral-strategy space of
+the finite graph-machine FOSG at the program's syntax horizon.
 -/
 
 namespace Vegas
@@ -30,40 +28,21 @@ not be representable by Vegas' rational `FDist` kernels.
 
 The outcome kernel is the checked graph-machine kernel at the bundle's context
 proof. -/
-noncomputable def pmfBehavioralKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
-  syntaxPMFBehavioralKernelGameAt g g.wctx
+noncomputable def pmfBehavioralKernelGame [Fintype P]
+    (g : WFProgram P L) (LF : FiniteValuation L) : GameTheory.KernelGame P :=
+  pmfBehavioralKernelGameAt g g.wctx LF
 
 @[simp] theorem pmfBehavioralKernelGame_outcomeKernel
-    (g : WFProgram P L) (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (pmfBehavioralKernelGame g).outcomeKernel σ =
-      (graphMachine g g.wctx).outcomeKernel
-        (pmfBehavioralEventLaw σ g.wctx).val (syntaxSteps g.prog) := rfl
+    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
+    (σ : (pmfBehavioralKernelGame g LF).Profile) :
+    (pmfBehavioralKernelGame g LF).outcomeKernel σ =
+      (pmfBehavioralKernelGameAt g g.wctx LF).outcomeKernel σ := rfl
 
 @[simp] theorem pmfBehavioralKernelGame_udist
-    (g : WFProgram P L) (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (pmfBehavioralKernelGame g).udist σ =
-      ((graphMachine g g.wctx).outcomeKernel
-        (pmfBehavioralEventLaw σ g.wctx).val (syntaxSteps g.prog)).bind
+    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
+    (σ : (pmfBehavioralKernelGame g LF).Profile) :
+    (pmfBehavioralKernelGame g LF).udist σ =
+      ((pmfBehavioralKernelGameAt g g.wctx LF).outcomeKernel σ).bind
         (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
-
-/-- The PMF conversion of an FDist behavioral profile has the same outcome
-kernel as the original FDist-valued kernel game profile. -/
-theorem pmfBehavioralKernelGame_outcomeKernel_toPMFProfile_eq_behavioralKernelGame
-    (g : WFProgram P L)
-    (σ : FeasibleProgramBehavioralProfile g) :
-    (pmfBehavioralKernelGame g).outcomeKernel
-        (FeasibleProgramBehavioralProfile.toPMFProfile σ) =
-      (behavioralKernelGame g).outcomeKernel σ := by
-  rfl
-
-/-- The PMF behavioral lift of a legal pure profile has the same outcome
-kernel as the fixed-program pure strategic form. -/
-theorem pmfBehavioralKernelGame_outcomeKernel_eq_pureKernelGame_toBehavioralPMF
-    (g : WFProgram P L)
-    (σ : FeasibleProgramPureProfile g) :
-    (pmfBehavioralKernelGame g).outcomeKernel
-        (FeasibleProgramPureProfile.toBehavioralPMF σ) =
-      (pureKernelGame g).outcomeKernel σ := by
-  rfl
 
 end Vegas
