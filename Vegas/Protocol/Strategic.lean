@@ -95,6 +95,34 @@ noncomputable def pureKernelGameAt
           (fosgView g hctx).boundedOutcomeFromPure
             (syntaxSteps g.prog) π (syntaxSteps g.prog)) := rfl
 
+/-- Finite pure strategies for the public pure kernel game. The implementation
+uses the graph-machine FOSG finite-history package, but the instance head is
+the Vegas kernel-game strategy carrier. -/
+noncomputable instance pureKernelGameAt.instFintypeStrategy
+    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    (LF : FiniteValuation L) (who : P) :
+    Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
+  classical
+  letI : Fintype (graphMachine g hctx).State :=
+    graphMachine.instFintypeState g hctx LF
+  letI : ∀ who : P,
+      Fintype (Option ((graphMachine g hctx).Action who)) :=
+    fun who => graphMachine.instFintypeOptionAction g hctx LF who
+  letI : Fintype (graphMachine g hctx).Event :=
+    graphMachine.instFintypeEvent g hctx LF
+  letI :
+      Fintype
+        ((graphMachine g hctx).BoundedRunPrefix
+          (syntaxSteps g.prog)) :=
+    Machine.BoundedRunPrefix.instFintype
+  letI : Fintype
+      (((fosgView g hctx).toBoundedFOSG
+        (syntaxSteps g.prog)).History) :=
+    boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
+  dsimp [pureKernelGameAt, pureStrategyAt,
+    Machine.FOSGView.BoundedPureStrategy]
+  infer_instance
+
 /-- Finite FOSG-native PMF behavioral strategic form of a checked Vegas
 program. -/
 noncomputable def pmfBehavioralKernelGameAt

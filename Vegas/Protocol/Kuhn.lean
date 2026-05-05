@@ -133,7 +133,7 @@ end FOSGView
 
 end Machine
 
-/-! ## Vegas program corollary
+/-! ## Checked graph-machine FOSG corollary
 
 Specialization of the Machine-native bounded Kuhn theorem to the graph machine
 of a checked Vegas program. The witness, the input mixed profile, and the
@@ -144,7 +144,7 @@ syntax-side outcome kernel is used.
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- **Machine-native Kuhn for a checked Vegas program.**
+/-- **Graph-FOSG Kuhn helper for a checked Vegas program.**
 
 The graph machine `graphMachine g hctx` is the executable protocol carrier of
 a checked Vegas program. This corollary applies
@@ -153,10 +153,10 @@ at the syntactic horizon.
 
 The witness β is a behavioral profile of the bounded graph-machine FOSG view;
 the equality is between two `PMF (graphMachine g hctx).Outcome` distributions
-produced by running the machine under the realized strategies. Compared to
-syntax-facing realization statements, the surface here mentions only
-`graphMachine`/`fosgView`. -/
-theorem kuhn_mixed_to_behavioral_vegas
+produced by running the machine under the realized strategies. This is a
+protocol/FOSG helper; the public Vegas theorem is `kuhn_finiteKernelGame`
+below, stated over the Vegas kernel-game API. -/
+theorem kuhn_mixed_to_behavioral_graphFOSG
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L)
     (μ :
@@ -213,7 +213,7 @@ theorem kuhn_mixed_to_behavioral_vegas
   exact (fosgView g hctx).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
-/-- Finite Vegas Kuhn theorem stated directly for the FOSG-native kernel games.
+/-- Finite Vegas Kuhn theorem stated directly for the public kernel games.
 
 This is the replacement headline shape: the independent mixed profile ranges
 over the pure strategy carrier of `pureKernelGameAt`, and the behavioral
@@ -223,30 +223,6 @@ theorem kuhn_finiteKernelGame
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L)
     (μ : ∀ who, PMF ((pureKernelGameAt g hctx LF).Strategy who)) :
-    letI : Fintype (graphMachine g hctx).State :=
-      graphMachine.instFintypeState g hctx LF
-    letI : ∀ who : P,
-        Fintype (Option ((graphMachine g hctx).Action who)) :=
-      fun who => graphMachine.instFintypeOptionAction g hctx LF who
-    letI : Fintype (graphMachine g hctx).Event :=
-      graphMachine.instFintypeEvent g hctx LF
-    letI : Fintype
-        ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
-      Machine.BoundedRunPrefix.instFintype
-    letI : Fintype
-        (((fosgView g hctx).toBoundedFOSG
-            (syntaxSteps g.prog)).History) :=
-      boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
-    letI : DecidablePred
-        (((fosgView g hctx).toBoundedFOSG
-            (syntaxSteps g.prog)).terminal) :=
-      Classical.decPred _
-    letI : ∀ who : P,
-        Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
-      intro who
-      dsimp [pureKernelGameAt, pureStrategyAt,
-        Machine.FOSGView.BoundedPureStrategy]
-      infer_instance
     ∃ β : (pmfBehavioralKernelGameAt g hctx LF).Profile,
       (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
