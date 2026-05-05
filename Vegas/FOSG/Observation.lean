@@ -190,108 +190,6 @@ theorem observedProgramTransition_map_checkedWorld_eq_checkedTransition
     DecidablePred (observedProgramFOSG g hctx).terminal :=
   Classical.decPred _
 
-/-- Along any chained realized path in `observedProgramFOSG`, elapsed history
-length plus remaining syntax steps is constant. -/
-theorem observedProgramFOSG_stepChain_remainingSyntaxSteps
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (w : CursorCheckedWorld g)
-    {es : List (observedProgramFOSG g hctx).Step}
-    (hchain : (observedProgramFOSG g hctx).StepChainFrom w es) :
-    ((observedProgramFOSG g hctx).lastStateFrom w es).remainingSyntaxSteps +
-        es.length = w.remainingSyntaxSteps := by
-  induction es generalizing w with
-  | nil =>
-      simp [GameTheory.FOSG.lastStateFrom]
-  | cons e es ih =>
-      rcases hchain with ⟨hsrc, htail⟩
-      subst hsrc
-      have hdec :
-          e.dst.remainingSyntaxSteps + 1 = e.src.remainingSyntaxSteps := by
-        simpa [observedProgramFOSG] using
-          cursorProgramTransition_remainingSyntaxSteps
-            (g := g)
-            e.src e.act e.dst e.support
-      have htailInv := ih (w := e.dst) htail
-      simp [GameTheory.FOSG.lastStateFrom] at htailInv ⊢
-      omega
-
-/-- For every realized history of the cursor-world target, elapsed length plus
-remaining syntax steps is the source program's syntax-step bound. -/
-theorem observedProgramFOSG_history_remainingSyntaxSteps
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (observedProgramFOSG g hctx).History) :
-    h.lastState.remainingSyntaxSteps + h.steps.length = syntaxSteps g.prog := by
-  simpa [GameTheory.FOSG.History.lastState, observedProgramFOSG,
-    CursorCheckedWorld.remainingSyntaxSteps, CursorWorldData.prog] using
-    observedProgramFOSG_stepChain_remainingSyntaxSteps
-      g hctx (CursorCheckedWorld.initial g hctx) h.chain
-
-/-- The cursor-world observed program FOSG is bounded by the number of
-operational syntax nodes in the source Vegas program. -/
-theorem observedProgramFOSG_boundedHorizon
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (observedProgramFOSG g hctx).BoundedHorizon (syntaxSteps g.prog) := by
-  intro h hlen
-  have hinv := observedProgramFOSG_history_remainingSyntaxSteps
-    g hctx h
-  rw [hlen] at hinv
-  have hzero : h.lastState.remainingSyntaxSteps = 0 := by
-    omega
-  exact (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
-    (g := g) (w := h.lastState)).2 hzero
-
-/-- The cursor-world observed FOSG has exact syntactic horizon: a realized
-history is terminal exactly when it has consumed all operational syntax nodes
-of the source program. -/
-theorem observedProgramFOSG_exactHorizon
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (observedProgramFOSG g hctx).ExactHorizon (syntaxSteps g.prog) := by
-  intro h
-  constructor
-  · intro hterm
-    have hinv := observedProgramFOSG_history_remainingSyntaxSteps
-      g hctx h
-    have hzero : h.lastState.remainingSyntaxSteps = 0 :=
-      (CursorCheckedWorld.terminal_iff_remainingSyntaxSteps_eq_zero
-        (g := g) (w := h.lastState)).1 hterm
-    omega
-  · intro hlen
-    exact observedProgramFOSG_boundedHorizon g hctx h hlen
-
-/-- Finite-history helper for the cursor-world observed FOSG. -/
-@[reducible] noncomputable def observedProgramFOSG.instFintypeHistory
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P] :
-    Fintype (observedProgramFOSG g hctx).History := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
-    (G := observedProgramFOSG g hctx)
-    (observedProgramFOSG_boundedHorizon g hctx)
-
-/-- The bounded run distribution of the observed-program FOSG, with the finite
-execution instances fixed by `FiniteValuation`. -/
-noncomputable def observedProgramRunDist
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
-    (σ : (observedProgramFOSG g hctx).LegalBehavioralProfile) :
-    PMF (observedProgramFOSG g hctx).History := by
-  letI : Fintype (CursorCheckedWorld g) :=
-    observedProgramFOSG.instFintypeWorld g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option (ProgramAction g.prog who)) :=
-    fun who =>
-      observedProgramFOSG.instFintypeOptionAction
-        g hctx LF who
-  letI : DecidablePred (observedProgramFOSG g hctx).terminal :=
-    observedProgramFOSG.instDecidablePredTerminal g hctx
-  exact (observedProgramFOSG g hctx).runDist (syntaxSteps g.prog) σ
-
 /-- Project a cursor-world endpoint to the Vegas payoff outcome it represents.
 
 Only `ret` worlds carry a protocol outcome. The nonterminal branch is a
@@ -303,11 +201,5 @@ def cursorWorldOutcome
   | .ret payoffs => evalPayoffs payoffs w.1.env
   | _ => 0
 
-/-- Project a terminal-history outcome from the observed-program FOSG back to
-the Vegas payoff outcome carried by its final cursor world. -/
-noncomputable def observedProgramHistoryOutcome
-    (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (h : (observedProgramFOSG g hctx).History) : Outcome P :=
-  cursorWorldOutcome h.lastState
 
 end Vegas
