@@ -22,24 +22,24 @@ proof. -/
 noncomputable def pureKernelGame [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  pureKernelGameAt g g.wctx
+  pureKernelGameAt g
 
 @[simp] theorem pureKernelGame_outcomeKernel
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pureKernelGame g).Profile) :
     (pureKernelGame g).outcomeKernel σ =
-      (pureKernelGameAt g g.wctx).outcomeKernel σ := rfl
+      (pureKernelGameAt g).outcomeKernel σ := rfl
 
 @[simp] theorem pureKernelGame_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pureKernelGame g).Strategy = pureStrategyAt g g.wctx := rfl
+    (pureKernelGame g).Strategy = pureStrategyAt g := rfl
 
-/-- `pureKernelGame` is the machine-native pure kernel at `g.wctx`. -/
+/-- `pureKernelGame` is the graph-native syntax-machine pure kernel. -/
 theorem pureKernelGame_eu
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pureKernelGame g).Profile) (who : P) :
     (pureKernelGame g).eu σ who =
-      (pureKernelGameAt g g.wctx).eu σ who := rfl
+      (pureKernelGameAt g).eu σ who := rfl
 
 /-- Pure Nash equilibrium of the fixed-program Vegas strategic form. -/
 def IsPureNash [Fintype P] (g : WFProgram P L) [FiniteDomains g]

@@ -91,7 +91,15 @@ structure GraphDist (L : IExpr) (Field : Type) [DecidableEq Field]
 structure GraphGuard (L : IExpr) (Field : Type) [DecidableEq Field]
     (fieldTy : Field → L.Ty) (field : Field) where
   reads : Finset Field
+  visibleReads : Finset Field
+  visibleReads_subset_reads : visibleReads ⊆ reads
   eval : L.Val (fieldTy field) → ReadEnv L Field fieldTy reads → Bool
+  eval_eq_of_visible_eq :
+    ∀ {value : L.Val (fieldTy field)}
+      (ρ₁ ρ₂ : ReadEnv L Field fieldTy reads),
+      (∀ read (h₁ : read ∈ reads) (h₂ : read ∈ reads),
+        read ∈ visibleReads → ρ₁.value read h₁ = ρ₂.value read h₂) →
+        eval value ρ₁ = eval value ρ₂
   satisfiable :
     (ρ : ReadEnv L Field fieldTy reads) →
       ∃ value : L.Val (fieldTy field), eval value ρ = true

@@ -24,19 +24,19 @@ The outcome kernel is the finite graph-machine FOSG run distribution at the
 bundle's context proof. -/
 noncomputable def pmfBehavioralKernelGame [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] : GameTheory.KernelGame P :=
-  pmfBehavioralKernelGameAt g g.wctx
+  pmfBehavioralKernelGameAt g
 
 @[simp] theorem pmfBehavioralKernelGame_outcomeKernel
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).outcomeKernel σ =
-      (pmfBehavioralKernelGameAt g g.wctx).outcomeKernel σ := rfl
+      (pmfBehavioralKernelGameAt g).outcomeKernel σ := rfl
 
 @[simp] theorem pmfBehavioralKernelGame_udist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).udist σ =
-      ((pmfBehavioralKernelGameAt g g.wctx).outcomeKernel σ).bind
+      ((pmfBehavioralKernelGameAt g).outcomeKernel σ).bind
         (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
 end Vegas
