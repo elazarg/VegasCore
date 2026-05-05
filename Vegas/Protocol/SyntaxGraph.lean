@@ -489,7 +489,11 @@ commit value is supplied separately from the current graph environment. -/
 noncomputable def commitGraphGuard
     {Γ : VCtx P L} (p : VegasCore P L Γ) {x : VarId} {b : L.Ty}
     (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
-    (field : ProgramField p) (hty : field.ty = b) :
+    (field : ProgramField p) (hty : field.ty = b)
+    (hlegal :
+      ∀ env : Env L.Val (eraseVCtx Γ),
+        ∃ a : L.Val b,
+          evalGuard (Player := P) (L := L) R a env = true) :
     ProtocolGraph.GraphGuard L (ProgramField p)
       (fun field => field.ty) field where
   reads := currentFields p
@@ -497,6 +501,12 @@ noncomputable def commitGraphGuard
     evalGuard (Player := P) (L := L) R
       (cast (by rw [hty]) value)
       (VEnv.eraseEnv (currentReadEnvToVEnv p ρ))
+  satisfiable := by
+    intro ρ
+    rcases hlegal (VEnv.eraseEnv (currentReadEnvToVEnv p ρ)) with
+      ⟨value, hvalue⟩
+    refine ⟨cast (by rw [hty]) value, ?_⟩
+    simpa [evalGuard] using hvalue
 
 /-- Transport a graph expression across an equality of result types. -/
 noncomputable def castGraphExpr
@@ -795,6 +805,7 @@ noncomputable def letGuard
       (fun field => field.ty) (.letTail field) where
   reads := guard.reads.image ProgramField.letTail
   eval := fun value ρ => guard.eval value (letReadEnv ρ)
+  satisfiable := fun ρ => guard.satisfiable (letReadEnv ρ)
 
 noncomputable def sampleGuard
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
@@ -807,6 +818,7 @@ noncomputable def sampleGuard
       (fun field => field.ty) (.sampleTail field) where
   reads := guard.reads.image ProgramField.sampleTail
   eval := fun value ρ => guard.eval value (sampleReadEnv ρ)
+  satisfiable := fun ρ => guard.satisfiable (sampleReadEnv ρ)
 
 noncomputable def commitGuard
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
@@ -819,6 +831,7 @@ noncomputable def commitGuard
       (fun field => field.ty) (.commitTail field) where
   reads := guard.reads.image ProgramField.commitTail
   eval := fun value ρ => guard.eval value (commitReadEnv ρ)
+  satisfiable := fun ρ => guard.satisfiable (commitReadEnv ρ)
 
 noncomputable def revealGuard
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
@@ -831,6 +844,7 @@ noncomputable def revealGuard
       (fun field => field.ty) (.revealTail field) where
   reads := guard.reads.image ProgramField.revealTail
   eval := fun value ρ => guard.eval value (revealReadEnv ρ)
+  satisfiable := fun ρ => guard.satisfiable (revealReadEnv ρ)
 
 noncomputable def letNodeSem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
@@ -963,10 +977,10 @@ noncomputable def prereqs
 of the enclosing program. -/
 noncomputable def sem :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      NormalizedDists p → ProgramNode p →
+      Legal p → NormalizedDists p → ProgramNode p →
       ProtocolGraph.NodeSem P (ProgramField p) L
         (fun field => field.ty)
-  | _, .letExpr x (b := b) e k, normalized, .letHere =>
+  | _, .letExpr x (b := b) e k, _legal, normalized, .letHere =>
       let target : ProgramField (.letExpr x e k) :=
         ProgramField.writtenBy (.letHere (x := x) (e := e) (k := k))
       have htarget : target.ty = b := by
@@ -978,9 +992,9 @@ noncomputable def sem :
       .assign target
         (ProgramField.castGraphExpr htarget.symm
           (ProgramField.publicGraphExpr (.letExpr x e k) e))
-  | _, .letExpr _ _ _, normalized, .letTail node =>
-      ProgramField.Wrap.letNodeSem (sem normalized node)
-  | _, .sample x (b := b) D k, normalized, .sampleHere =>
+  | _, .letExpr _ _ _, legal, normalized, .letTail node =>
+      ProgramField.Wrap.letNodeSem (sem legal normalized node)
+  | _, .sample x (b := b) D k, _legal, normalized, .sampleHere =>
       let target : ProgramField (.sample x D k) :=
         ProgramField.writtenBy (.sampleHere (x := x) (D := D) (k := k))
       have htarget : target.ty = b := by
@@ -992,9 +1006,9 @@ noncomputable def sem :
       .sample target
         (ProgramField.castGraphDist htarget.symm
           (ProgramField.publicGraphDist (.sample x D k) D normalized.1))
-  | _, .sample _ _ _, normalized, .sampleTail node =>
-      ProgramField.Wrap.sampleNodeSem (sem normalized.2 node)
-  | _, .commit x who (b := b) R k, normalized, .commitHere =>
+  | _, .sample _ _ _, legal, normalized, .sampleTail node =>
+      ProgramField.Wrap.sampleNodeSem (sem legal normalized.2 node)
+  | _, .commit x who (b := b) R k, legal, normalized, .commitHere =>
       let target : ProgramField (.commit x who R k) :=
         ProgramField.writtenBy (.commitHere (x := x) (who := who)
           (R := R) (k := k))
@@ -1006,10 +1020,10 @@ noncomputable def sem :
         rfl
       .commit who target
         (ProgramField.commitGraphGuard (.commit x who R k) R
-          target htarget)
-  | _, .commit _ _ _ _, normalized, .commitTail node =>
-      ProgramField.Wrap.commitNodeSem (sem normalized node)
-  | _, .reveal y who x (b := b) hx k, normalized, .revealHere =>
+          target htarget legal.1)
+  | _, .commit _ _ _ _, legal, normalized, .commitTail node =>
+      ProgramField.Wrap.commitNodeSem (sem legal.2 normalized node)
+  | _, .reveal y who x (b := b) hx k, _legal, normalized, .revealHere =>
       let source : ProgramField (.reveal y who x hx k) :=
         .revealTail (ProgramField.ofCurrent k (.mk (VHasVar.there hx)))
       let target : ProgramField (.reveal y who x hx k) :=
@@ -1028,15 +1042,15 @@ noncomputable def sem :
         rw [ProgramField.ty_ofCurrent]
         rfl
       .reveal source target (hsource.trans htarget.symm)
-  | _, .reveal _ _ _ _ _, normalized, .revealTail node =>
-      ProgramField.Wrap.revealNodeSem (sem normalized node)
+  | _, .reveal _ _ _ _ _, legal, normalized, .revealTail node =>
+      ProgramField.Wrap.revealNodeSem (sem legal normalized node)
 
 /-- A source graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
 noncomputable def sliceLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (_normalized : NormalizedDists p)
+    (_legal : Legal p) (_normalized : NormalizedDists p)
     (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
   match ProgramField.writeMode node with
   | .clear =>
@@ -1054,9 +1068,9 @@ noncomputable def sliceLegal
 node. -/
 theorem sliceLegal_writtenBy_isSome
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (normalized : NormalizedDists p)
+    (legal : Legal p) (normalized : NormalizedDists p)
     (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
-    (hlegal : sliceLegal normalized node slice) :
+    (hlegal : sliceLegal legal normalized node slice) :
     (slice (ProgramField.writtenBy node)).isSome := by
   cases hmode : ProgramField.writeMode node <;>
     rw [sliceLegal, hmode] at hlegal
@@ -1069,10 +1083,10 @@ theorem sliceLegal_writtenBy_isSome
 have an actor, so only commits admit legal player slices. -/
 noncomputable def actionLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (normalized : NormalizedDists p)
+    (legal : Legal p) (normalized : NormalizedDists p)
     (result : ProgramNode p → Option (ProgramField.WriteSlice p))
     (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
-  match sem normalized node with
+  match sem legal normalized node with
   | .assign _ _ => False
   | .sample _ _ => False
   | .commit _ field guard =>
@@ -1091,13 +1105,13 @@ deterministic; sample nodes use the checked PMF distribution; commit nodes are
 not internal. -/
 noncomputable def internalKernel
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (normalized : NormalizedDists p)
+    (legal : Legal p) (normalized : NormalizedDists p)
     (node : ProgramNode p)
     (result : ProgramNode p → Option (ProgramField.WriteSlice p)) :
     PMF (ProgramField.WriteSlice p) := by
   classical
   exact
-    match hsem : sem normalized node with
+    match hsem : sem legal normalized node with
     | .assign field expr =>
         if available :
             ∀ read, read ∈ expr.reads →
@@ -1154,7 +1168,7 @@ noncomputable def syntaxProtocolGraph
   fieldTy := fun field => field.ty
   fieldOwner := fun field => field.owner
   initial := ProgramField.initialValue? g.prog g.env
-  sem := ProgramNode.sem g.normalized
+  sem := ProgramNode.sem g.legal g.normalized
   prereqs := ProgramNode.prereqs g.prog
   rank := fun node => node.rank
   prereqs_subset_nodes := by
@@ -1171,7 +1185,7 @@ noncomputable def syntaxProtocolGraph
     exact ProgramField.mem_finset g.prog write.field
   no_duplicate_writes := by
     intro node field left right _hnode hleft hright hleftField hrightField
-    cases hsem : ProgramNode.sem g.normalized node with
+    cases hsem : ProgramNode.sem g.legal g.normalized node with
     | assign target expr =>
         simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
         subst left
@@ -1192,9 +1206,9 @@ noncomputable def syntaxProtocolGraph
         subst left
         subst right
         rfl
-  sliceLegal := ProgramNode.sliceLegal g.normalized
-  actionLegal := ProgramNode.actionLegal g.env g.normalized
-  internalKernel := ProgramNode.internalKernel g.env g.normalized
+  sliceLegal := ProgramNode.sliceLegal g.legal g.normalized
+  actionLegal := ProgramNode.actionLegal g.env g.legal g.normalized
+  internalKernel := ProgramNode.internalKernel g.env g.legal g.normalized
 
 /-- Private observation of the graph-native syntax machine: the visible part
 of the extensional field assignment. -/

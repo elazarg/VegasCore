@@ -84,6 +84,9 @@ structure GraphGuard (L : IExpr) (Field : Type) [DecidableEq Field]
     (fieldTy : Field → L.Ty) (field : Field) where
   reads : Finset Field
   eval : L.Val (fieldTy field) → ReadEnv L Field fieldTy reads → Bool
+  satisfiable :
+    (ρ : ReadEnv L Field fieldTy reads) →
+      ∃ value : L.Val (fieldTy field), eval value ρ = true
 
 /-- Protocol meaning attached to one graph node.
 
