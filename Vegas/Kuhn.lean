@@ -1,4 +1,4 @@
-import Vegas.ProtocolSemantics
+import Vegas.Protocol.Kuhn
 
 /-!
 # Kuhn realization for Vegas
@@ -16,29 +16,41 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Finite Vegas mixed-to-behavioral realization.
 
-Every independent mixed profile over guard-legal pure strategies has a
-machine-derived PMF behavioral realization with the same distribution over
-payoff outcomes. The behavioral witness is a reachable feasible profile of
-the syntax-horizon FOSG derived from the checked protocol machine; the
-preserved distribution is the native Vegas pure strategic outcome kernel. -/
-theorem kuhn_mixedPureRealization_finite
+Every independent mixed profile over reachable legal pure strategies of the
+finite graph-machine FOSG has a PMF behavioral realization with the same
+distribution over payoff outcomes. -/
+theorem kuhn_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : SequentialBehavioralProfilePMF g hctx,
-      sequentialOutcomeKernelPMF g hctx LF β =
+    (μ : ∀ who, PMF ((finitePureKernelGameAt g hctx LF).Strategy who)) :
+    letI : Fintype (graphMachine g hctx).State :=
+      graphMachine.instFintypeState g hctx LF
+    letI : ∀ who : P,
+        Fintype (Option ((graphMachine g hctx).Action who)) :=
+      fun who => graphMachine.instFintypeOptionAction g hctx LF who
+    letI : Fintype (graphMachine g hctx).Event :=
+      graphMachine.instFintypeEvent g hctx LF
+    letI : Fintype
+        ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
+      Machine.BoundedRunPrefix.instFintype
+    letI : Fintype
+        (((fosgView g hctx).toBoundedFOSG
+            (syntaxSteps g.prog)).History) :=
+      boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
+    letI : DecidablePred
+        (((fosgView g hctx).toBoundedFOSG
+            (syntaxSteps g.prog)).terminal) :=
+      Classical.decPred _
+    letI : ∀ who : P,
+        Fintype ((finitePureKernelGameAt g hctx LF).Strategy who) := by
+      intro who
+      dsimp [finitePureKernelGameAt, finitePureStrategyAt,
+        Machine.FOSGView.BoundedPureStrategy]
+      infer_instance
+    ∃ β : (finiteBehavioralKernelGamePMFAt g hctx LF).Profile,
+      (finiteBehavioralKernelGamePMFAt g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
-  exact mixedPureRealization_sequential_finite
-    g hctx LF μ
-
-/-- The finite Vegas Kuhn property, packaged as a reusable proposition. -/
-theorem sequentialKuhnPropertyPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    SequentialKuhnPMF g hctx LF := by
-  exact sequentialKuhnPMF_finite g hctx LF
+          (fun π => (finitePureKernelGameAt g hctx LF).outcomeKernel π) := by
+  exact kuhn_finiteKernelGame g hctx LF μ
 
 end Vegas
