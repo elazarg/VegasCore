@@ -34,35 +34,11 @@ theorem kuhn_mixedPureRealization_finite
   exact mixedPureRealization_sequential_finite
     g hctx LF μ
 
-/-- Finite Vegas mixed-to-behavioral realization in the reachable strategy
-space of the observed adapter. This names the syntax-recursive projection
-route, not the primary behavioral semantics. -/
-theorem kuhn_mixedPureRealization_reachable_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
-      reachableProgramOutcomeKernelPMF g hctx LF β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
-  exact mixedPureRealization_reachable_finite
-    g hctx LF μ
-
 /-- The finite Vegas Kuhn property, packaged as a reusable proposition. -/
 theorem sequentialKuhnPropertyPMF_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
     SequentialKuhnPMF g hctx LF := by
   exact sequentialKuhnPMF_finite g hctx LF
-
-/-- The finite reachable Vegas Kuhn property, packaged as a reusable
-proposition. -/
-theorem reachableKuhnPropertyPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    ReachableKuhnPMF g hctx LF := by
-  exact reachableKuhnPMF_finite g hctx LF
 
 end Vegas

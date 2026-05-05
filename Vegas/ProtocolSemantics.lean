@@ -31,9 +31,6 @@ The file has two regions.
   behavioural profile for `toFiniteFOSG`. The PMF target is
   essential: arbitrary mixed pure profiles can induce real-valued behavioural
   probabilities, while the original `FDist` behavioural game is rational-valued.
-  `ReachableKuhnPMF g hctx LF : Prop` is the
-  observed-adapter reachable strategy-space version used by the syntax-facing
-  projection route.
   `ProtocolRationalMixedPureRealizationProperty g : Prop` is the corresponding
   FDist-valued target for rational behavioural witnesses.
   `ProtocolCorrelatedPureRealizationPropertyPMF g : Prop` is the stronger
@@ -196,50 +193,6 @@ theorem sequentialKuhnPMF_finite
     SequentialKuhnPMF g hctx LF := by
   intro μ
   exact mixedPureRealization_sequential_finite
-    g hctx LF μ
-
-/-- The protocol-level Kuhn property for a concrete finite Vegas program:
-every independent mixed profile over guard-legal pure strategies admits a
-reachable PMF behavioural profile of the observed adapter with the same
-outcome distribution.
-
-The PMF target is part of the mathematical statement. Vegas' `FDist`
-behavioural strategies have rational weights, so they cannot represent all
-behavioural probabilities induced by arbitrary `PMF` mixtures over pure
-strategies. The behavioral witness is indexed only by reachable observed
-program histories and is retained only as a syntax-facing projection target. -/
-def ReachableKuhnPMF [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) : Prop :=
-  ∀ (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)),
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
-      reachableProgramOutcomeKernelPMF g hctx LF β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ)
-
-/-- Reachable mixed-to-behavioral realization for concrete finite Vegas
-programs. The witness is not a total strategy. -/
-theorem mixedPureRealization_reachable_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF (FeasibleProgramPureStrategy g who)) :
-    letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
-      fun who => FeasibleProgramPureStrategy.instFintype g LF who
-    ∃ β : ReachableProgramBehavioralProfilePMF g hctx,
-      reachableProgramOutcomeKernelPMF g hctx LF β =
-        (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
-  exact reachableProgram_mixedPure_realizedByBehavioralPMF_finite
-    g hctx LF μ
-
-/-- Concrete finite reachable-strategy realization theorem. -/
-theorem reachableKuhnPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
-    ReachableKuhnPMF g hctx LF := by
-  intro μ
-  exact mixedPureRealization_reachable_finite
     g hctx LF μ
 
 /-- FDist-valued mixed-pure realization target.
