@@ -2920,6 +2920,31 @@ noncomputable def syntaxGraphFOSGView
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasAvailablePlayerActions g)
 
+/-- Primitive machine event blocks extracted from a bounded syntax-graph FOSG
+history. Each block is one frontier round of the public FOSG view. -/
+noncomputable def syntaxGraphFOSGHistoryEventBlocks
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    List (List (syntaxGraphMachine g).Event) :=
+  ProtocolGraph.boundedFOSGHistoryEventBlocks
+    (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+    (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h
+
+/-- Every bounded syntax-graph FOSG history is backed by a primitive machine
+blocked run whose support contains the same checkpoint state. -/
+theorem syntaxGraphFOSGHistory_state_mem_runEventBlocksFrom_support
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    h.lastState.state ∈
+      ((syntaxGraphMachine g).runEventBlocksFrom
+        (syntaxGraphFOSGHistoryEventBlocks g horizon h)
+        (syntaxGraphMachine g).init).support := by
+  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
+    syntaxGraphFOSGView] using
+    (ProtocolGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
+      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
+      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h)
+
 /-- Player round-action availability in the syntax graph is determined by the
 public transcript together with the acting player's private observation. -/
 theorem syntaxGraph_roundAvailable_eq_of_observation_eq

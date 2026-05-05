@@ -556,6 +556,102 @@ theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
   rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom]
   simp
 
+/-- Primitive event blocks extracted from a bounded graph-FOSG step list.
+
+Each bounded FOSG step is one frontier round.  This projection forgets the
+sampled checkpoint destination and keeps the primitive machine event block
+selected by the round action at the step source. -/
+noncomputable def boundedFOSGStepEventBlocks
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (steps :
+      List (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).Step)) :
+    List (List (G.toMachine iface).Event) :=
+  steps.map fun step =>
+    roundPrimitiveEvents G iface step.src.state step.act.1
+
+/-- Primitive event blocks extracted from a bounded graph-FOSG history. -/
+noncomputable def boundedFOSGHistoryEventBlocks
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History)) :
+    List (List (G.toMachine iface).Event) :=
+  boundedFOSGStepEventBlocks G iface hplayer horizon h.steps
+
+/-- Every realized bounded graph-FOSG step chain is backed by a primitive
+machine blocked run whose support contains the same checkpoint endpoint. -/
+theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat) :
+    ∀ {start : (G.toMachine iface).BoundedState horizon}
+      {steps :
+        List (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).Step)},
+      ((G.toFOSGView iface hplayer).toBoundedFOSG horizon).StepChainFrom
+          start steps →
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).lastStateFrom
+            start steps).state ∈
+          ((G.toMachine iface).runEventBlocksFrom
+            (boundedFOSGStepEventBlocks G iface hplayer horizon steps)
+            start.state).support
+  | start, [], _hchain => by
+      simp [boundedFOSGStepEventBlocks, GameTheory.FOSG.lastStateFrom]
+  | start, step :: steps, hchain => by
+      rcases hchain with ⟨hsrc, htail⟩
+      cases hsrc
+      let block : List (G.toMachine iface).Event :=
+        roundPrimitiveEvents G iface step.src.state step.act.1
+      have hblock :
+          step.dst.state ∈
+            ((G.toMachine iface).runEventBlocksFrom [block]
+              step.src.state).support := by
+        have hmap :
+            step.dst.state ∈
+              (PMF.map (fun bounded => bounded.state)
+                (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+                  step.src step.act)).support := by
+          exact (PMF.mem_support_map_iff _ _ _).2
+            ⟨step.dst, (PMF.mem_support_iff _ _).2 step.support, rfl⟩
+        rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+          (G := G) (iface := iface) (hplayer := hplayer)
+          (horizon := horizon) (state := step.src) (action := step.act)] at hmap
+        simpa [block] using hmap
+      have htailSupport :
+          (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).lastStateFrom
+              step.dst steps).state ∈
+            ((G.toMachine iface).runEventBlocksFrom
+              (boundedFOSGStepEventBlocks G iface hplayer horizon steps)
+              step.dst.state).support :=
+        boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+          G iface hplayer horizon htail
+      change
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).lastStateFrom
+            step.dst steps).state ∈
+          ((G.toMachine iface).runEventBlocksFrom
+            ([block] ++
+              boundedFOSGStepEventBlocks G iface hplayer horizon steps)
+            step.src.state).support
+      rw [Machine.runEventBlocksFrom_append]
+      rw [PMF.mem_support_bind_iff]
+      exact ⟨step.dst.state, hblock, htailSupport⟩
+
+/-- Every realized bounded graph-FOSG history extracts a primitive machine
+blocked trace whose endpoint support contains the history's checkpoint state. -/
+theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History)) :
+    h.lastState.state ∈
+      ((G.toMachine iface).runEventBlocksFrom
+        (boundedFOSGHistoryEventBlocks G iface hplayer horizon h)
+        (G.toMachine iface).init).support := by
+  simpa [boundedFOSGHistoryEventBlocks,
+    boundedFOSGStepEventBlocks, GameTheory.FOSG.History.lastState,
+    ProtocolGraph.toMachine_init] using
+    (boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+      G iface hplayer horizon h.chain)
+
 end ProtocolGraph
 
 end Vegas

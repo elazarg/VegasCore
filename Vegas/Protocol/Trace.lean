@@ -153,6 +153,19 @@ theorem runEventBlocksFrom_eq_runEventsFrom_flatten
       rw [← runEventsFrom_append]
       rfl
 
+/-- Executing appended event-block lists is Kleisli composition of the two
+blocked runs. -/
+theorem runEventBlocksFrom_append
+    (M : Machine Player) (blocks₁ blocks₂ : List (List M.Event))
+    (state : M.State) :
+    M.runEventBlocksFrom (blocks₁ ++ blocks₂) state =
+      (M.runEventBlocksFrom blocks₁ state).bind fun current =>
+        M.runEventBlocksFrom blocks₂ current := by
+  rw [runEventBlocksFrom]
+  rw [List.foldl_append]
+  rw [runEventBlocksFrom_foldl_eq_bind]
+  rfl
+
 /-- One scheduled machine step. -/
 noncomputable def stepDist
     (M : Machine Player) (law : M.EventLaw) (state : M.State) :
