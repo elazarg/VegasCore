@@ -535,6 +535,27 @@ theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom
   exact roundTransition_eq_runEventsFrom_roundPrimitiveEvents
     G iface state.state action.1
 
+/-- One bounded graph-FOSG transition, projected back to graph configurations,
+is one blocked primitive machine run.  This is the one-step form used by
+trace-level simulations: FOSG histories compose blocks; primitive machine
+traces flatten them. -/
+theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions)
+    (horizon : Nat)
+    (state : (G.toMachine iface).BoundedState horizon)
+    (action :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).LegalAction
+        state)) :
+    PMF.map (fun bounded => bounded.state)
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          state action) =
+      (G.toMachine iface).runEventBlocksFrom
+        [roundPrimitiveEvents G iface state.state action.1]
+        state.state := by
+  rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom]
+  simp
+
 end ProtocolGraph
 
 end Vegas
