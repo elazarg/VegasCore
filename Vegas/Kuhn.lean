@@ -20,13 +20,12 @@ Every independent mixed profile over reachable legal pure strategies of the
 finite Vegas pure kernel game has a PMF behavioral realization with the same
 distribution over payoff outcomes. -/
 theorem kuhn_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) [FiniteDomains g]
-    (μ : ∀ who, PMF ((pureKernelGameAt g hctx).Strategy who)) :
-    ∃ β : (pmfBehavioralKernelGameAt g hctx).Profile,
-      (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
+    ∃ β : (pmfBehavioralKernelGameAt g).Profile,
+      (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g hctx).outcomeKernel π) := by
-  exact kuhn_finiteKernelGame g hctx μ
+          (fun π => (pureKernelGameAt g).outcomeKernel π) := by
+  exact kuhn_finiteKernelGame g μ
 
 end Vegas

@@ -1,5 +1,4 @@
 import Vegas.Protocol.FOSG
-import Vegas.Protocol.Checked
 import Vegas.Protocol.Strategic
 import GameTheory.Languages.FOSG.Kuhn
 
@@ -133,48 +132,48 @@ end FOSGView
 
 end Machine
 
-/-! ## Checked graph-machine FOSG corollary
+/-! ## Checked syntax-graph FOSG corollary
 
-Specialization of the Machine-native bounded Kuhn theorem to the graph machine
+Specialization of the Machine-native bounded Kuhn theorem to the syntax graph
 of a checked Vegas program. The witness, the input mixed profile, and the
-asserted distributional equality are all stated against
-`graphMachine g hctx` and `fosgView g hctx`; no syntactic strategy space or
-syntax-side outcome kernel is used.
+asserted distributional equality are all stated against the graph-native syntax
+machine and `syntaxGraphFOSGView g`; no cursor or syntax-recursive strategy
+space is used.
 -/
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- **Graph-FOSG Kuhn helper for a checked Vegas program.**
+/-- **Syntax-graph FOSG Kuhn helper for a checked Vegas program.**
 
-The graph machine `graphMachine g hctx` is the executable protocol carrier of
-a checked Vegas program. This corollary applies
+The graph-native syntax machine `syntaxGraphMachine g` is the executable
+protocol carrier of a checked Vegas program. This corollary applies
 `Machine.FOSGView.kuhn_mixed_to_behavioral_bounded` to its canonical FOSG view
 at the syntactic horizon.
 
-The witness β is a behavioral profile of the bounded graph-machine FOSG view;
-the equality is between two `PMF (graphMachine g hctx).Outcome` distributions
+The witness β is a behavioral profile of the bounded syntax-graph FOSG view;
+the equality is between two `PMF (syntaxGraphMachine g).Outcome` distributions
 produced by running the machine under the realized strategies. This is a
 protocol/FOSG helper; the public Vegas theorem is `kuhn_finiteKernelGame`
 below, stated over the Vegas kernel-game API. -/
-theorem kuhn_mixed_to_behavioral_graphFOSG
-    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [FiniteDomains g]
+theorem kuhn_mixed_to_behavioral_syntaxGraph
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (μ :
-      (fosgView g hctx).BoundedMixedProfile (syntaxSteps g.prog))
+      (syntaxGraphFOSGView g).BoundedMixedProfile (syntaxSteps g.prog))
     (steps : Nat) :
     ∃ β :
-      (fosgView g hctx).BoundedBehavioralProfile
+      (syntaxGraphFOSGView g).BoundedBehavioralProfile
         (syntaxSteps g.prog),
-      (fosgView g hctx).boundedOutcomeFromBehavioral
+      (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral
           (syntaxSteps g.prog) β steps =
-        (fosgView g hctx).boundedOutcomeFromMixed
+        (syntaxGraphFOSGView g).boundedOutcomeFromMixed
           (syntaxSteps g.prog) μ steps := by
   classical
   have hLeg :
-      ((fosgView g hctx).toBoundedFOSG
+      ((syntaxGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
-    finiteFOSG_legalObservable g hctx
-  exact (fosgView g hctx).kuhn_mixed_to_behavioral_bounded
+    syntaxGraphFOSGView_toBoundedFOSG_legalObservable g
+      (syntaxSteps g.prog)
+  exact (syntaxGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
 /-- Finite Vegas Kuhn theorem stated directly for the public kernel games.
@@ -184,20 +183,20 @@ over the pure strategy carrier of `pureKernelGameAt`, and the behavioral
 witness inhabits the PMF behavioral carrier of `pmfBehavioralKernelGameAt`.
 The equality is an equality of the games' public outcome kernels. -/
 theorem kuhn_finiteKernelGame
-    [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    [FiniteDomains g]
-    (μ : ∀ who, PMF ((pureKernelGameAt g hctx).Strategy who)) :
-    ∃ β : (pmfBehavioralKernelGameAt g hctx).Profile,
-      (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
+    ∃ β : (pmfBehavioralKernelGameAt g).Profile,
+      (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g hctx).outcomeKernel π) := by
+          (fun π => (pureKernelGameAt g).outcomeKernel π) := by
   classical
   have hLeg :
-      ((fosgView g hctx).toBoundedFOSG
+      ((syntaxGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
-    finiteFOSG_legalObservable g hctx
+    syntaxGraphFOSGView_toBoundedFOSG_legalObservable g
+      (syntaxSteps g.prog)
   obtain ⟨β, hβ⟩ :=
-    (fosgView g hctx).kuhn_mixed_to_behavioral_bounded
+    (syntaxGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
       (syntaxSteps g.prog) hLeg μ (syntaxSteps g.prog)
   refine ⟨β, ?_⟩
   simpa [pmfBehavioralKernelGameAt,

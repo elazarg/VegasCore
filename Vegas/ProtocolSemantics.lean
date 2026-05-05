@@ -19,20 +19,19 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- Finite protocol-level Kuhn property for the graph-machine FOSG kernel
 games. -/
 def KuhnPMF [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) [FiniteDomains g] : Prop :=
-  ∀ (μ : ∀ who, PMF ((pureKernelGameAt g hctx).Strategy who)),
-    ∃ β : (pmfBehavioralKernelGameAt g hctx).Profile,
-      (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
+    [FiniteDomains g] : Prop :=
+  ∀ (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)),
+    ∃ β : (pmfBehavioralKernelGameAt g).Profile,
+      (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g hctx).outcomeKernel π)
+          (fun π => (pureKernelGameAt g).outcomeKernel π)
 
 /-- The finite Vegas kernel games satisfy Kuhn's mixed-to-PMF
 behavioral realization property. -/
 theorem kuhnPMF_finite
-    [Fintype P] (g : WFProgram P L)
-    (hctx : WFCtx g.Γ) [FiniteDomains g] :
-    KuhnPMF g hctx := by
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    KuhnPMF g := by
   intro μ
-  exact kuhn_finite g hctx μ
+  exact kuhn_finite g μ
 
 end Vegas
