@@ -1003,6 +1003,41 @@ theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
       (GameTheory.FOSG.History.nil
         ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)))
 
+/-- Public bounded pure outcome kernel of a graph-FOSG view, computed as the
+machine outcome map of the blocked primitive trace distribution induced by the
+pure profile's behavioral embedding. -/
+theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    [Fintype ((G.toMachine iface).BoundedState horizon)]
+    [DecidablePred
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal)]
+    (π :
+      ((G.toFOSGView iface hplayer).BoundedPureProfile horizon))
+    (steps : Nat) :
+    ((G.toFOSGView iface hplayer).boundedOutcomeFromPure
+        horizon π steps) =
+      PMF.map
+        (fun trace => (G.toMachine iface).outcome trace.2)
+        (boundedFOSGBlockTraceDistFrom G iface hplayer horizon
+          (GameTheory.FOSG.legalPureToBehavioral
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) π.extend)
+          steps
+          (GameTheory.FOSG.History.nil
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))) := by
+  simpa [Machine.FOSGView.boundedOutcomeFromPure,
+    Machine.FOSGView.boundedHistoryOutcome, GameTheory.FOSG.runDist] using
+    (boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+      (G := G) (iface := iface) (hplayer := hplayer)
+      (horizon := horizon)
+      (GameTheory.FOSG.legalPureToBehavioral
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) π.extend)
+      steps
+      (GameTheory.FOSG.History.nil
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)))
+
 /-- One-step form matching `FOSG.History.runDistFrom`: if the sampled bounded
 destination extends the FOSG history, then the extracted block prefix and
 checkpoint state have the same distribution as the primitive machine blocked
