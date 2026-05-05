@@ -295,6 +295,19 @@ noncomputable def value?
     else
       G.initial field
 
+theorem value?_isSome_of_result_slice
+    (G : Vegas.ProtocolGraph Player L) {result : G.ResultAssignment}
+    {field : G.Field} {node : G.Node} {slice : WriteSlice G}
+    {stored : StoredValue (L.Val (G.fieldTy field))}
+    (hresult : result node = some slice)
+    (hslice : slice field = some stored) :
+    (G.value? result field).isSome := by
+  classical
+  unfold value?
+  rw [dif_pos]
+  · simp
+  · exact ⟨node, slice, stored, hresult, hslice⟩
+
 /-- Result assignments agree on the prerequisites of a node. -/
 def AgreeOnPrereqs (G : Vegas.ProtocolGraph Player L)
     (left right : ResultAssignment G) (node : G.Node) : Prop :=

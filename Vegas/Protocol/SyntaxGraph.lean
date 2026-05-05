@@ -563,6 +563,23 @@ noncomputable def initialValue?
     else
       none
 
+/-- Current-context fields are available from the initial source environment. -/
+theorem initialValue?_isSome_of_mem_currentFields
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (env : VEnv L Γ)
+    {field : ProgramField p}
+    (hmem : field ∈ currentFields p) :
+    (initialValue? p env field).isSome := by
+  classical
+  unfold currentFields at hmem
+  have hlist :
+      field ∈
+        (VCtxField.enumerate Γ).map (fun current => ofCurrent p current) :=
+    List.mem_toFinset.mp hmem
+  rcases List.mem_map.mp hlist with ⟨current, _hcurrent, hfield⟩
+  unfold initialValue?
+  rw [dif_pos ⟨current, hfield⟩]
+  simp
+
 /-- Value of a final field under a partial node-result assignment. Written
 fields are read from their writer's completed slice; initial fields are read
 from the initial environment. -/
@@ -573,16 +590,44 @@ noncomputable def value?
     Option (L.Val field.ty) := by
   classical
   exact
-    if hwriter : ∃ node : ProgramNode p, ProgramField.writtenBy node = field then
-      let node := Classical.choose hwriter
-      match result node with
-      | none => none
-      | some slice =>
-          match slice field with
-          | none => none
-          | some stored => some stored.raw
+    if h :
+        ∃ node slice stored,
+          result node = some slice ∧ slice field = some stored then
+      let stored := Classical.choose (Classical.choose_spec
+        (Classical.choose_spec h))
+      some stored.raw
     else
       initialValue? p env field
+
+theorem value?_isSome_of_result_slice
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
+    {result : ProgramNode p → Option (WriteSlice p)}
+    {field : ProgramField p} {node : ProgramNode p} {slice : WriteSlice p}
+    {stored : ProtocolGraph.StoredValue (L.Val field.ty)}
+    (hresult : result node = some slice)
+    (hslice : slice field = some stored) :
+    (value? env result field).isSome := by
+  classical
+  unfold value?
+  rw [dif_pos]
+  · simp
+  · exact ⟨node, slice, stored, hresult, hslice⟩
+
+theorem value?_isSome_of_initialValue?
+    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
+    {result : ProgramNode p → Option (WriteSlice p)}
+    {field : ProgramField p}
+    (hinitial : (initialValue? p env field).isSome) :
+    (value? env result field).isSome := by
+  classical
+  unfold value?
+  by_cases h :
+      ∃ node slice stored,
+        result node = some slice ∧ slice field = some stored
+  · rw [dif_pos h]
+    simp
+  · rw [dif_neg h]
+    exact hinitial
 
 /-- A read environment assembled from a result assignment and a proof that all
 declared reads are already available. -/
