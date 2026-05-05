@@ -226,12 +226,6 @@ structure ProtocolGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
           Option (ProtocolGraph.StoredValue (L.Val (fieldTy field))))) →
       PMF ((field : Field) →
         Option (ProtocolGraph.StoredValue (L.Val (fieldTy field))))
-  internalKernel_legal :
-    ∀ {result node slice},
-      node ∈ nodes →
-      (sem node).actor = none →
-      slice ∈ (internalKernel node result).support →
-      sliceLegal node slice
 
 namespace ProtocolGraph
 

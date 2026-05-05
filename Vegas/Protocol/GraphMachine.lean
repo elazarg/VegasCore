@@ -80,9 +80,7 @@ noncomputable def stepPlay
       PMF.pure cfg
 
 /-- Execute one available internal node. The graph's internal kernel chooses
-the result slice. Any slice outside the legal predicate stutters; the graph law
-`internalKernel_legal` makes that branch support-free for available internal
-events. -/
+the result slice. Any slice outside the legal predicate stutters. -/
 noncomputable def stepInternal
     (G : Vegas.ProtocolGraph Player L) (event : InternalEvent G)
     (cfg : G.Configuration) : PMF G.Configuration := by

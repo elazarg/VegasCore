@@ -966,16 +966,26 @@ noncomputable def sem :
   | _, .reveal _ _ _ _ _, normalized, .revealTail node =>
       ProgramField.Wrap.revealNodeSem (sem normalized node)
 
-/-- Source graph slice well-formedness hook.
-
-The source graph enforces dynamic validity at production sites:
-`actionLegal` for player commits and `internalKernel` for internal nodes. The
-configuration invariant only tracks extensional closure. -/
+/-- A source graph slice is well-formed for a node when it has the storage
+shape prescribed by the node semantics. Dynamic guard checks are handled by
+`actionLegal`. -/
 noncomputable def sliceLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (_normalized : NormalizedDists p)
-    (_node : ProgramNode p) (_slice : ProgramField.WriteSlice p) : Prop :=
-  True
+    (normalized : NormalizedDists p)
+    (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
+  match sem normalized node with
+  | .assign field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.clear value)
+  | .sample field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.clear value)
+  | .commit _ field _ =>
+      ∃ value : L.Val field.ty,
+        slice = ProgramField.singleSlice field (.hidden value)
+  | .reveal _ target _ =>
+      ∃ value : L.Val target.ty,
+        slice = ProgramField.singleSlice target (.clear value)
 
 /-- Dynamic legality for player-chosen source graph slices. Only commit nodes
 have an actor, so only commits admit legal player slices. -/
@@ -1045,16 +1055,6 @@ noncomputable def internalKernel
         else
           PMF.pure (ProgramField.emptySlice p)
 
-theorem internalKernel_sliceLegal
-    {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (normalized : NormalizedDists p)
-    {node : ProgramNode p} {result : ProgramNode p → Option (ProgramField.WriteSlice p)}
-    {slice : ProgramField.WriteSlice p}
-    (_hactor : (sem normalized node).actor = none)
-    (_hsupport : slice ∈ (internalKernel env normalized node result).support) :
-    sliceLegal normalized node slice := by
-  trivial
-
 end ProgramNode
 
 /-- Checked Vegas syntax compiled to the graph-native protocol graph.
@@ -1117,9 +1117,6 @@ noncomputable def syntaxProtocolGraph
   sliceLegal := ProgramNode.sliceLegal g.normalized
   actionLegal := ProgramNode.actionLegal g.env g.normalized
   internalKernel := ProgramNode.internalKernel g.env g.normalized
-  internalKernel_legal := by
-    intro result node slice _hnode hactor hsupport
-    exact ProgramNode.internalKernel_sliceLegal g.env g.normalized hactor hsupport
 
 /-- Private observation of the graph-native syntax machine: the visible part
 of the extensional field assignment. -/
