@@ -206,7 +206,9 @@ Vegas/
     Basic.lean             -- suffix/cursor checked-state machinery
     Observation.lean       -- finite observed FOSG adapter
     SmallStep.lean         -- checked PMF small-step bridge
-    Observed/              -- cursor-world adapter machinery
+    Cursor/                -- cursor-world step utilities (strategy
+                              lookup at cursors, CheckedWorld step
+                              kernel, commit-continuation helpers)
 
   Protocol/
     ActionGraph.lean       -- proof-carrying dependency/visibility graph
