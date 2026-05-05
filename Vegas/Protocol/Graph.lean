@@ -5,8 +5,6 @@ import Vegas.Core
 /-!
 # Protocol graphs
 
-This module is the intended replacement core for `Vegas.Protocol.ActionGraph`.
-
 The graph state is extensional: a configuration records which graph nodes have
 produced results, not the schedule prefix that produced them.  A frontier is
 computed from that partial result assignment.  Execution order is presentation

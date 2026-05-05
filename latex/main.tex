@@ -4,7 +4,7 @@
 
 \usepackage[margin=1in]{geometry}
 
-\title{VegasCore: Semantics and Game-Theoretic Bridges}
+\title{VegasCore: Graph-Native Protocol Semantics}
 \author{}
 \date{}
 
@@ -13,664 +13,140 @@
 
 \begin{abstract}
 VegasCore is a Lean~4 mechanization of finite games written as programs.
-A Vegas program combines deterministic computation, finite-support sampling,
-strategic commitments, and explicit reveals of private values. The core
-invariant is that information is represented in the program context: a binding
-is public, or hidden and owned by one player. Strategy spaces are indexed by
-the player's view of that context, so legal strategies talk only about
-information that the player can observe.
-
-The development exposes several related views of a checked Vegas program.
-The canonical outcome evaluator is the denotational distribution
-\(\outcomeDist\). Trace semantics decomposes that distribution into complete
-execution paths. Raw small-step semantics gives a labelled operational
-presentation and is proved to agree with the same outcome evaluator. Strategic
-and protocol-level APIs package the outcome semantics as game-theoretic
-solution concepts. The protocol machine is the executable semantic carrier for
-protocol reasoning. Checked syntax elaborates to an action graph, then to the
-graph machine. FOSG is a sequential game-theoretic view derived from that
-machine. The finite Kuhn proof stack targets that graph-machine FOSG; the
-cursor-world observed FOSG is a syntax-facing projection adapter, not a semantic
-owner.
+Checked Vegas syntax is compiled to a proof-carrying protocol graph; that
+graph is interpreted as a probabilistic, observation-aware machine; sequential
+FOSG views and kernel games are derived from the machine. The supported
+semantic path is
+\[
+  \WFP \longrightarrow \leanref{ProtocolGraph}
+  \longrightarrow \leanref{Machine}
+  \longrightarrow \leanref{Machine.FOSGView}
+  \longrightarrow \leanref{KernelGame}.
+\]
+The source language is the user-facing way to define games. The graph-native
+machine is the semantic owner.
 \end{abstract}
 
 \tableofcontents
 
-%% =====================================================================
-\section{Overview}\label{sec:overview}
-%% =====================================================================
+\section{Checked Programs}
 
-VegasCore connects a programming-language presentation of games to standard
-game-theoretic objects. The programming side provides syntax, typed
-environments, visibility annotations, and executable outcome distributions.
-The game-theoretic side provides strategy profiles, kernel games, equilibrium
-concepts, and finite sequential-game theorems.
+The public boundary is \leanref{WFProgram}. A checked program contains the
+root context, source program, initial environment, and proof obligations for
+freshness, scoped visibility, reveal completeness, sample normalization, and
+nonempty legal commit guards.
 
-The central user-facing object is a checked program:
-\[
-  g : \WFP.
-\]
-A checked program packages a Vegas program, an initial environment, and the
-facts required to treat the program as a finite game. From \(g\), the library
-derives legal strategy spaces, strategic-form games, protocol-native
-definitions, trace and small-step semantics, an executable protocol machine,
-and a machine-derived sequential FOSG denotation. These are not competing
-meanings of the program. They are different interfaces to the same outcome
-semantics, with bridge theorems recording the agreement.
+Visibility is represented in the program context. Bindings are public or
+hidden and owned by a player. Commit strategies and observations are indexed by
+the information available to the acting player, so hidden information owned by
+other players is not available to legal strategies.
 
-\begin{figure}[ht]
-\centering
-\fbox{\parbox{0.92\textwidth}{
+\section{Protocol Denotation}
+
+The executable protocol stack is concentrated in \leanref{Vegas.Protocol}.
+
 \begin{center}
 \small
-\begin{tabular}{@{}rcl@{}}
-Vegas syntax and environment
-  & \(\longrightarrow\) & \(\WFP\) \\[4pt]
-\(\WFP\)
-  & \(\xrightarrow{\;\outcomeDist\;}\) &
-  distribution over payoff outcomes \\[4pt]
-\(\WFP\)
-  & \(\xrightarrow{\;\mathrm{traceDist}\;}\) &
-  complete executions, weights, reachability \\[4pt]
-\(\WFP\)
-  & \(\xrightarrow{\;\mathrm{Step},\;\mathrm{Steps}\;}\) &
-  labelled operational execution \\[4pt]
-\(\WFP\)
-  & \(\xrightarrow{\;\toKG,\;\toStrategicKG\;}\) &
-  strategic-form kernel games \\[4pt]
-\(\WFP\)
-  & \(\xrightarrow{\;\mathrm{syntaxActionGraph},\;\mathrm{graphMachine}\;}\) &
-  executable graph machine \\[4pt]
-graph machine
-  & \(\xrightarrow{\;\mathrm{Machine.FOSGView}\;}\) &
-  sequential FOSG denotation
+\begin{tabular}{@{}ll@{}}
+\toprule
+File & Role \\
+\midrule
+\leanref{Protocol/Graph.lean} &
+dependency and visibility graph \\
+\leanref{Protocol/Machine.lean} &
+probabilistic observation-aware machine carrier \\
+\leanref{Protocol/GraphMachine.lean} &
+graph configurations as machine states \\
+\leanref{Protocol/SyntaxGraph.lean} &
+checked syntax to protocol graph, with finiteness and observability proofs \\
+\leanref{Protocol/Trace.lean} &
+bounded event/state traces and machine outcome kernels \\
+\leanref{Protocol/FOSG.lean} &
+sequential FOSG views derived from machines \\
+\leanref{Protocol/Strategic.lean} &
+finite syntax-graph kernel-game constructors \\
+\leanref{Protocol/Kuhn.lean} &
+machine-native and Vegas-facing Kuhn realization theorems \\
+\leanref{Protocol/Backend.lean} &
+machine-to-machine backend refinement obligations \\
+\bottomrule
 \end{tabular}
 \end{center}
-}}
-\caption{The semantic stack. \(\outcomeDist\) is the canonical outcome
-semantics; the other layers expose structure or game-theoretic interfaces and
-are related back to it by agreement theorems.}
-\label{fig:stack}
-\end{figure}
 
-The direction of dependency is intentional. The neutral runtime configuration
-type lives in \leanref{Vegas.Config}. Raw small-step semantics depends on that
-neutral runtime and on the denotational evaluator. Protocol reasoning goes
-through \leanref{Protocol.ActionGraph} and \leanref{Protocol.Machine}. FOSG,
-strategic collapses, and backend refinement obligations should be derived
-from that executable carrier.
+A protocol graph configuration is an extensional partial assignment of graph
+node results, together with the invariant that completed nodes are closed under
+dependencies. The frontier is computed from the assignment; it is not cached as
+machine state. A machine step executes one enabled graph event: a player-owned
+frontier node via a legal write slice, or a non-player frontier node via the
+internal event channel.
 
-%% =====================================================================
-\section{The Program Model}\label{sec:model}
-%% =====================================================================
+\section{FOSG As A View}
 
-\subsection{Contexts and Visibility}
+\leanref{Machine.FOSGView} derives a sequential game-theoretic view from any
+protocol machine. Worlds are bounded machine run prefixes. The FOSG transition
+selects one machine event and wraps the resulting \leanref{Machine.step} with
+history. Thus FOSG is a proof and theorem-transfer layer, not a second
+execution semantics.
 
-The core syntax is indexed by a visibility context:
+The finite checked-program view is obtained from
+\leanref{syntaxGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}
+provides the information-state-indexed strategy carriers used by the public
+kernel games.
+
+\section{Strategic API}
+
+For a finite checked program \(g\), the public strategic carriers are:
 \[
-  \VCtx : \mathrm{List}\;(\mathrm{VarId} \times \mathrm{visibility}).
-\]
-A binding is either public, written \(\pub\), or hidden and owned by a player,
-written \(\hid(i)\). This annotation is the main information-flow device in
-VegasCore. A player's view of the context keeps public variables and that
-player's hidden variables; other hidden variables are not available.
-
-The same idea appears at the environment level. A full environment contains
-all realized values. A player view environment is a projection of the full
-environment to the variables visible to that player. Commit strategies consume
-view environments, not full environments, which is what prevents a strategy
-from depending on hidden information owned by someone else.
-
-\subsection{Core Constructs}
-
-The core language has five constructs:
-\begin{itemize}[nosep]
-\item \(\Ret\): terminate with payoff expressions;
-\item \(\Let\): compute a public deterministic binding;
-\item \(\Sample\): sample a public value from a finite distribution;
-\item \(\Commit\): let a player choose a hidden value satisfying a guard;
-\item \(\Reveal\): publish a previously hidden value.
-\end{itemize}
-
-\(\Let\) and \(\Reveal\) are deterministic administrative steps. \(\Sample\)
-is nature's probabilistic step. \(\Commit\) is the strategic step. The final
-payoff expressions are evaluated in the public environment at \(\Ret\).
-
-\subsection{Checked Programs}
-
-The public boundary is \leanref{WFProgram}. A checked program contains:
-\begin{itemize}[nosep]
-\item the root context, program, and initial environment;
-\item freshness and scoped visibility facts;
-\item distribution normalization for all samples;
-\item commit legality, meaning every guard admits at least one legal action.
-\end{itemize}
-
-This boundary is deliberately strong. Once a program has crossed it, downstream
-game APIs can quantify over legal strategy spaces without restating basic
-program well-formedness at every theorem. The proof obligations also prevent
-deadlock in the sequential denotation: every nonterminal checked state has a
-legal continuation.
-
-%% =====================================================================
-\section{Outcome Semantics}\label{sec:outcome}
-%% =====================================================================
-
-\subsection{Finite Distributions}
-
-The raw evaluator uses \(\FDist{A}\), a finite weighted distribution over
-values of type \(A\). Its weights live in \(\mathbb{Q}_{\ge 0}\). Normalization
-is proved separately and is available after a program is checked. PMF-based
-interfaces are used where the surrounding game-theory library expects
-probability mass functions.
-
-\subsection{Canonical Evaluator}
-
-The canonical raw outcome evaluator is:
-\[
-  \outcomeDist\; \sigma\; p\; env : \FDist{\Outcome}.
-\]
-Here \(\sigma\) is an omniscient operational profile. The evaluator recurses
-through the program:
-\begin{itemize}[nosep]
-\item \(\Ret\) evaluates payoff expressions;
-\item \(\Let\) extends the environment with the deterministic value;
-\item \(\Sample\) binds over the sample distribution;
-\item \(\Commit\) binds over the profile's commit distribution;
-\item \(\Reveal\) copies a hidden value into a public binding.
-\end{itemize}
-
-The evaluator is the reference semantics for raw execution. Other raw
-presentations either compute a projection of the same choices or are stated as
-agreement theorems against this evaluator.
-
-\subsection{Trace Semantics}
-
-\leanref{Vegas.TraceSemantics} defines complete execution traces. A trace
-records the realized values at every \(\Sample\) and \(\Commit\) site.
-Deterministic \(\Let\) and \(\Reveal\) nodes are present structurally but do
-not add probabilistic choices.
-
-The trace layer provides:
-\begin{itemize}[nosep]
-\item \leanref{traceOutcome}, the outcome reached by a complete trace;
-\item \leanref{traceWeight}, the product of sample and commit weights;
-\item \leanref{traceDist}, the distribution over complete traces;
-\item reachability predicates such as \leanref{CanReach} and \leanref{Reach};
-\item commutation results for independent commits and reveals.
-\end{itemize}
-
-The key relationship is that summing trace weights by outcome recovers
-\(\outcomeDist\). This makes trace semantics the pathwise explanation of the
-canonical evaluator.
-
-\subsection{Raw Small-Step Semantics}
-
-\leanref{Vegas.SmallStep} defines a labelled one-step relation over neutral
-runtime worlds:
-\[
-  \mathrm{Step}\; \sigma\; w\; d.
-\]
-A world is a program suffix paired with an environment. A one-step transition
-returns a finite distribution over labelled target worlds. Labels are
-\(\tau\) for deterministic administrative steps, sample labels for nature
-values, and commit labels for strategic values.
-
-There are two small-step notions:
-\begin{itemize}[nosep]
-\item \leanref{Step} records the outgoing one-step distribution;
-\item \leanref{Steps} records qualitative multi-step reachability through
-      positive-mass supported edges.
-\end{itemize}
-
-\leanref{Steps} intentionally consumes \leanref{StepSupport}, not bare
-\leanref{Step}. A multi-step edge therefore represents a target with positive
-one-step mass. The relation itself is qualitative; the probabilistic mass of
-complete labelled runs is carried by \leanref{labelDist}.
-
-The raw small-step evaluator is:
-\[
-  \mathrm{runSmallStep}\; \sigma\; w
-    \coloneqq \outcomeDist\; \sigma\; w.prog\; w.env.
-\]
-This definition makes \(\outcomeDist\) canonical and avoids a second recursive
-outcome evaluator. The small-step content is supplied by the theorem
-\leanref{step_bind_runSmallStep}, which states that one supported operational
-step followed by \leanref{runSmallStep} has the same outcome value as the
-source world.
-
-\subsection{Trace and Small-Step Agreement}
-
-The small-step labels are a projection of traces:
-\[
-  \mathrm{traceLabels}\;p\;t : \mathrm{List}\;(\mathrm{Label}).
-\]
-The theorem \leanref{labelDist_eq_traceDist_map_traceLabels} states that the
-complete-run label distribution is exactly \(\mathrm{traceDist}\) mapped
-through this projection. Support lemmas then connect positive-mass label runs
-to positive-weight traces, and admissibility turns those traces into legal
-execution witnesses.
-
-Together, the raw semantic picture is:
-\[
-  \mathrm{labelDist}
-    = \mathrm{map}\;\mathrm{traceLabels}\;\mathrm{traceDist},
-  \qquad
-  \mathrm{runSmallStep}
-    = \outcomeDist.
-\]
-The first equation relates the observable operational labels to traces. The
-second says that outcome evaluation remains the canonical denotation.
-
-%% =====================================================================
-\section{Strategic and Protocol Views}\label{sec:strategic}
-%% =====================================================================
-
-\subsection{Legal Strategy Spaces}
-
-Commit guards constrain the values a player may choose. VegasCore reflects
-that constraint in the strategy types:
-\begin{itemize}[nosep]
-\item \leanref{FeasibleProgramBehavioralStrategy};
-\item \leanref{FeasibleProgramBehavioralProfile};
-\item \leanref{FeasibleProgramPureStrategy};
-\item \leanref{FeasibleProgramPureProfile};
-\item PMF variants for probabilistic behavioral strategies.
-\end{itemize}
-
-The public APIs therefore quantify over guard-legal strategies. This keeps
-protocol legality out of theorem side conditions and makes illegal deviations
-unrepresentable in the usual equilibrium statements.
-
-\subsection{Strategic-Form Kernel Games}
-
-The behavioral strategic-form wrapper is \leanref{behavioralKernelGame}. The pure
-strategic-form wrapper is \leanref{pureKernelGame}. Both are
-\leanref{GameTheory.KernelGame}s whose outcome kernels are induced by the
-Vegas outcome semantics.
-
-The strategic wrapper files expose Vegas-facing names for standard solution
-concepts: Nash equilibrium, strict Nash equilibrium, best response, dominance,
-correlated equilibrium, welfare, approximate equilibrium, potential games, and
-zero-sum or constant-sum properties. Corollary files transport generic
-\leanref{GameTheory} theorems through these wrappers.
-
-\subsection{Protocol-Native Statements}
-
-\leanref{Vegas.ProtocolSemantics} states strategic concepts directly over the
-program's outcome semantics. This is useful when the desired statement should
-refer to the protocol rather than to a strategic-form wrapper.
-
-The correspondence theorems say that the two presentations agree:
-\begin{itemize}[nosep]
-\item \leanref{ProtocolNash} agrees with \leanref{IsNash};
-\item \leanref{ProtocolBestResponse} agrees with \leanref{IsBestResponse};
-\item \leanref{ProtocolDominant} agrees with \leanref{IsDominant};
-\item \leanref{ProtocolStrictNash} agrees with \leanref{IsStrictNash}.
-\end{itemize}
-
-Thus the protocol-facing definitions are not a separate game model. They are
-the same outcome semantics presented without first naming the kernel-game
-wrapper.
-
-\subsection{Executable Protocol Carrier}
-
-\leanref{Vegas.Protocol} is the executable carrier path for protocol and
-runtime reasoning. \leanref{Vegas.Protocol.ActionGraph} is the finite
-dependency/visibility language. Its structural execution order is frontier
-resolution: all currently ready actions form one layer. The graph-level
-frontier sequence is deterministic; schedulers only appear when a later view
-serializes or refines a frontier layer. \leanref{ActionGraph.Semantics}
-supplies the executable value domains, choice kernels, observations, outcomes,
-and utilities, and \leanref{ActionGraph.Semantics.toMachine} turns that
-semantics into the protocol machine. The existing Kotlin frontier
-implementation in \texttt{../vegas} is design evidence for this shape, not a
-source specification; VegasCore chooses the carrier by the Lean invariants and
-projection theorems it can support.
-
-\leanref{Vegas.Protocol.Machine} is the single probabilistic, observation-aware
-execution carrier: one primitive step is one enabled player move or one
-internal protocol event. \leanref{Vegas.Protocol.FOSG} derives sequential FOSG
-views directly from this carrier through \leanref{Machine.FOSGView}. The FOSG
-worlds are \leanref{Machine.RunPrefix} event/state prefixes, and
-\leanref{Machine.FOSGView.transition_map_lastState_eq_step} projects every
-derived FOSG transition back to the selected \leanref{Machine.step}. The
-profile-induced one-step law is
-\leanref{Machine.FOSGView.legalActionLaw_bind_transition_lastState_eq_machine_stepDist}.
-
-\leanref{Vegas.Protocol.Checked.syntaxActionGraph} is the checked syntax
-elaboration to the graph language, and
-\leanref{Vegas.Protocol.Checked.graphMachine} is the direct graph-machine
-denotation. \leanref{Vegas.Protocol.Checked.fosg} and
-\leanref{Vegas.Protocol.Checked.finiteFOSG} are the sequential
-views derived from that machine. Available graph events project to the checked
-cursor transition on reachable nonterminal cursor states, and finite graph
-histories preserve the syntax-step accounting after projection to
-\leanref{CursorCheckedWorld}.
-Runtime backends are related to the same carrier by machine-to-machine
-refinement obligations in \leanref{Vegas.Protocol.Backend}. Distribution-
-preserving runtime proofs should use
-\leanref{Machine.StochasticStepRefinement}; the weak refinement relation is
-only support-level. Schedulers and linearizations are presentation data for
-traces, FOSG histories, or backend transaction orderings, not inputs to the
-graph denotation.
-
-%% =====================================================================
-\section{Sequential FOSG Denotation}\label{sec:fosg}
-%% =====================================================================
-
-\subsection{Role of FOSG}
-
-The FOSG bridge is a sequential game-theoretic view derived from the protocol
-machine. It treats execution prefixes as worlds, with state-dependent action
-availability and information-state-indexed behavioral strategies. In the direct
-path, \leanref{Machine.FOSGView} selects the primitive machine source exposed at
-each \leanref{Machine.RunPrefix}; the FOSG transition is still the selected
-\leanref{Machine.step}, wrapped with prefix history.
-
-This layer is game-theoretic rather than foundational for protocol execution.
-Checked syntax elaborates to \leanref{Protocol.Checked.syntaxActionGraph} and
-then to \leanref{Protocol.Checked.graphMachine}. The public graph-machine FOSG
-aliases are \leanref{toGraphFOSG} and
-\leanref{toFiniteFOSG};
-\leanref{toFOSG} is an alias for the same graph-derived carrier.
-The cursor-world adapter remains as \leanref{cursorFOSG}, a finite proof tool
-for syntax-recursive projection. It is related back to the checked transition
-by bridge theorems.
-
-\subsection{Runtime, Actions, and Cursors}
-
-The FOSG code is split into layers:
-\begin{itemize}[nosep]
-\item \leanref{Vegas.FOSG.Runtime}: active players, broad action availability,
-      terminality aliases, and joint-action legality over neutral worlds;
-\item \leanref{Vegas.FOSG.Action}: commit cursors and finite program-local
-      actions;
-\item \leanref{Vegas.FOSG.Basic}: suffix and cursor machinery, checked
-      worlds, transitions, and preservation facts;
-\item \leanref{Vegas.FOSG.Observation}: the finite observed adapter;
-\item \leanref{Vegas.FOSG.Observed.*}: behavioral, pure, collapse,
-      refinement, and kernel proofs;
-\item \leanref{Vegas.FOSG.SmallStep}: checked PMF small-step aliases and
-      bridge lemmas.
-\end{itemize}
-
-The broad action type is useful for local semantic statements: a player action
-is a typed value. The executable FOSG target uses \leanref{ProgramAction}
-instead. A program action is a commit cursor paired with a value of that
-commit's type. This avoids requiring the entire language universe of types to
-be finite; only the values that occur at program-local commit sites matter.
-
-\subsection{CheckedWorld and CursorCheckedWorld}
-
-There are two checked state representations because they serve different
-proof obligations.
-
-\leanref{CheckedWorld} is the proof-friendly semantic state. It stores the
-current program suffix, environment, and local obligations needed by the
-checked transition: context well-formedness, freshness, scoped visibility,
-normalization, and legality. This is convenient for recursive semantic
-arguments and for relating checked PMF steps to \(\outcomeDist\).
-
-\leanref{CursorCheckedWorld} is the finite executable carrier for the observed
-FOSG. It keys states by a \leanref{ProgramCursor} into the fixed root program
-and an environment at that cursor. The cursor identifies the current
-continuation inside the original program, which is needed for a fixed global
-strategy profile to be projected to the current suffix. The carrier is finite
-under finite value types because cursors are drawn from one finite program and
-environments range over finite value sets.
-
-The two representations are connected by projections such as
-\leanref{ofCursorChecked}. FOSG execution uses the cursor-keyed carrier;
-semantic comparison often projects back to checked worlds.
-
-\subsection{Graph-Machine and Observed FOSG}
-
-\leanref{toGraphFOSG} exposes the direct graph-machine sequential
-denotation, and \leanref{toFiniteFOSG} is its
-syntax-horizon bounded view. Its transition kernel is the graph-machine step,
-wrapped with bounded prefix history. The graph-machine finite FOSG already has
-the generic reachable mixed-to-behavioral target, graph-history projection
-invariants, legal-observability proof, and the Vegas-pure collapse to the native
-strategic kernel game.
-
-\leanref{cursorFOSG} names the finite observed adapter.
-It uses cursor worlds, program-local
-actions, and private observations consisting of the player's current program
-cursor and view environment. The public observation channel is trivial because
-public bindings already appear in every player's private view.
-
-The observed adapter proves:
-\begin{itemize}[nosep]
-\item legal observability for the compiled FOSG;
-\item bounded horizon by \leanref{syntaxSteps};
-\item finite world and action instances under \leanref{FiniteValuation};
-\item transition agreement after forgetting cursor keys;
-\item run and outcome preservation after mapping histories to machine traces
-      and Vegas outcomes.
-\end{itemize}
-
-\subsection{Checked Small-Step Bridge}
-
-\leanref{Vegas.FOSG.SmallStep} exposes the checked PMF one-step kernel as
-\leanref{stepPMF}. This is the legal, view-indexed counterpart of the raw
-\(\FDist\)-valued small-step layer. Its continuation value is
-\leanref{outcomeValuePMF}.
-
-The cursor bridge is now a syntax-facing proof layer: it relates cursor steps
-and source-profile event laws back to the checked machine transition, while the
-public strategic game API is stated over the graph-machine FOSG directly.
-
-\subsection{Kuhn-Style Realization}
-
-The primary public finite mixed-to-behavioral realization theorem is:
-\[
-  \leanref{kuhn_mixedPureRealization_finite}.
-\]
-It says that, for a finite checked Vegas program, every independent mixed
-profile over legal pure strategies has a reachable legal PMF behavioral profile
-in the syntax-horizon graph-machine-derived FOSG with the same distribution over
-payoff outcomes.
-
-The machine-derived finite FOSG has a direct reachable
-mixed-to-behavioral realization theorem:
-\[
-  \leanref{toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_runDist}.
-\]
-Its outcome-pushforward form is
-\[
-  \leanref{toFiniteFOSG_reachableMixedPure_realizedByLegalBehavioral_mappedRunDist}.
-\]
-The product-mixed Vegas-pure specialization is
-\[
-  \leanref{toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist}.
-\]
-It transports Vegas legal pure strategies into the finite graph-machine-derived FOSG
-reachable pure strategy space, and its pure side is already collapsed to the
-native \leanref{pureKernelGame} outcome kernel. The local pure-side
-bridge is
-\[
-  \leanref{toFiniteFOSG_vegasPure_runDist_eq_pureKernelGame}.
-\]
-
-The syntax-recursive Vegas behavioral-profile projection theorem is still:
-\[
-  \leanref{kuhn_mixedPureRealization_finite}.
-\]
-That theorem uses the observed adapter for the final syntax-profile collapse:
-\[
-\begin{array}{c}
-\text{mixed legal pure Vegas profile} \\
-\downarrow \\
-\text{observed finite FOSG} \\
-\downarrow \\
-\text{FOSG behavioral witness preserving terminal-history outcomes} \\
-\downarrow \\
-\text{collapsed legal Vegas behavioral profile preserving } \Outcome.
+\begin{array}{ll}
+\leanref{pureStrategyAt}\;g\;i &
+\text{pure reachable-legal strategy for player } i,\\
+\leanref{behavioralStrategyPMFAt}\;g\;i &
+\text{PMF behavioral reachable-legal strategy for player } i,\\
+\leanref{pureKernelGame}\;g &
+\text{pure strategic-form kernel game},\\
+\leanref{pmfBehavioralKernelGame}\;g &
+\text{PMF behavioral strategic-form kernel game}.
 \end{array}
 \]
-The preservation statement is distributional. Expected-utility equalities are
-corollaries obtained by mapping utilities over the equal outcome distribution.
 
-%% =====================================================================
-\section{Relationship Table}\label{sec:relationship}
-%% =====================================================================
+Equilibrium, dominance, welfare, potential-game, zero-sum, and related
+predicates in \leanref{Vegas.Equilibrium}, \leanref{Vegas.PureStrategic}, and
+\leanref{Vegas.GameProperties} are wrappers over these kernel games. Illegal
+deviations are excluded by the strategy carrier.
 
-\begin{center}
-\small
-\begin{tabular}{@{}lll@{}}
-\toprule
-Layer & Purpose & Main agreement point \\
-\midrule
-\leanref{outcomeDist} &
-canonical raw evaluator &
-reference outcome distribution \\
-\leanref{traceDist} &
-complete path decomposition &
-maps and sums back to \(\outcomeDist\) \\
-\leanref{labelDist} &
-observable small-step labels &
-\leanref{labelDist_eq_traceDist_map_traceLabels} \\
-\leanref{runSmallStep} &
-world-packaged raw outcome value &
-\leanref{runSmallStep_eq_outcomeDist} \\
-\leanref{stepPMF} &
-checked legal PMF one-step kernel &
-\leanref{stepPMF_bind_outcomeValuePMF} \\
-\leanref{ActionGraph.Semantics} &
-frontier-based protocol IR semantics &
-\leanref{ActionGraph.Semantics.toMachine} \\
-\leanref{Protocol.Machine} &
-probabilistic observation-aware machine &
-bounded collapse to \leanref{KernelGame} \\
-\leanref{Protocol.FOSG} &
-machine-derived sequential FOSG views &
-projected one-step law over bounded prefixes \\
-\leanref{toFiniteFOSG} &
-graph-machine finite FOSG &
-graph-history projection invariant and generic Kuhn target \\
-\leanref{pmfBehavioralKernelGame} &
-PMF strategic-form game &
-outcome kernel agrees with checked semantics \\
-\leanref{cursorFOSG} &
-finite observed adapter &
-checked-transition bridge \\
-\leanref{ProtocolSemantics} &
-protocol-facing solution concepts &
-correspondence with strategic wrappers \\
-\bottomrule
-\end{tabular}
-\end{center}
+\section{Kuhn Realization}
 
-This table is the intended way to read the multiple semantic files. The
-development has one canonical payoff-outcome meaning; the other layers expose
-path structure, operational structure, strategic-form interfaces, or
-sequential game-theoretic structure.
+The main Vegas-facing finite mixed-to-behavioral theorem is
+\leanref{kuhn_finite}. In Lean shape:
+\[
+\begin{array}{l}
+\forall \mu : \prod_i
+  \PMF{(\leanref{pureKernelGameAt}\;g).\leanref{Strategy}\;i},\\
+\quad \exists \beta : (\leanref{pmfBehavioralKernelGameAt}\;g).\leanref{Profile},\\
+\quad
+  (\leanref{pmfBehavioralKernelGameAt}\;g).\leanref{outcomeKernel}\;\beta
+  =
+  \leanref{Math.PMFProduct.pmfPi}\;\mu
+    \bind
+    (\lambda \pi,\,
+      (\leanref{pureKernelGameAt}\;g).\leanref{outcomeKernel}\;\pi).
+\end{array}
+\]
 
-%% =====================================================================
-\section{Repository Map}\label{sec:repo}
-%% =====================================================================
+The corresponding named protocol property is \leanref{KuhnPMF}, with proof
+\leanref{kuhnPMF_finite}. These are stated in Vegas kernel-game terms. The
+proof uses the bounded FOSG view and upstream finite Kuhn theorem internally.
 
-\begin{center}
-\small
-\begin{tabular}{@{}p{0.27\textwidth}p{0.65\textwidth}@{}}
-\toprule
-Area & Main files \\
-\midrule
-Core language &
-  \leanref{Core.lean}, \leanref{ExprSimple.lean},
-  \leanref{VegasSimple.lean} \\
-Checked programs &
-  \leanref{WF.lean}, \leanref{WFProgram.lean},
-  \leanref{LegalNonempty.lean} \\
-Runtime and raw semantics &
-  \leanref{Config.lean}, \leanref{BigStep.lean},
-  \leanref{TraceSemantics.lean}, \leanref{TraceCorollaries.lean},
-  \leanref{SmallStep.lean}, \leanref{SmallStep/*} \\
-Strategic-form APIs &
-  \leanref{Strategic.lean}, \leanref{StrategicPMF.lean},
-  \leanref{PureStrategic.lean}, \leanref{Equilibrium.lean},
-  \leanref{GameProperties.lean} \\
-Protocol semantics &
-  \leanref{ProtocolSemantics.lean}, \leanref{Protocol.lean},
-  \leanref{Protocol/*} \\
-Sequential FOSG bridge &
-  \leanref{FOSG.lean}, \leanref{FOSG/Runtime.lean},
-  \leanref{FOSG/Action.lean}, \leanref{FOSG/Basic.lean},
-  \leanref{FOSG/Observation.lean}, \leanref{FOSG/Observed/*},
-  \leanref{FOSG/SmallStep.lean} \\
-Finite realization &
-  \leanref{Kuhn.lean}, \leanref{FOSG.lean} \\
-Examples &
-  \leanref{Examples.lean} \\
-\bottomrule
-\end{tabular}
-\end{center}
+\section{Public Interfaces}
 
-A useful reading order is:
+The user-facing flow is:
+
 \begin{enumerate}[nosep]
-\item \leanref{Core.lean} and \leanref{WFProgram.lean} for the checked-program
-      boundary;
-\item \leanref{BigStep.lean} for the canonical evaluator;
-\item \leanref{TraceSemantics.lean} and \leanref{SmallStep/*} for path and
-      operational structure;
-\item \leanref{Strategic.lean}, \leanref{StrategicPMF.lean}, and
-      \leanref{ProtocolSemantics.lean} for strategic APIs;
-\item \leanref{Protocol.lean}, \leanref{Protocol/Machine.lean}, and
-      \leanref{Protocol/FOSG.lean} for the executable carrier and
-      machine-derived FOSG view;
-\item \leanref{FOSG.lean} and the split \leanref{FOSG/*} files for the
-      graph-machine FOSG entrypoints, finite Kuhn theorem, and observed
-      projection route.
+\item users write checked Vegas programs;
+\item checked syntax compiles to \leanref{ProtocolGraph};
+\item the graph is interpreted as \leanref{Machine};
+\item FOSG views derive finite sequential-game structure from the machine;
+\item public kernel games and theorem statements use Vegas names.
 \end{enumerate}
-
-%% =====================================================================
-\section{Design Principles}\label{sec:principles}
-%% =====================================================================
-
-\paragraph{Keep the checked boundary explicit.}
-Raw syntax is useful for constructing examples and proving structural lemmas,
-but public game-theoretic APIs should consume \leanref{WFProgram}. This keeps
-freshness, scoped visibility, normalization, and non-deadlock assumptions in
-one place.
-
-\paragraph{Make illegal strategies unrepresentable.}
-The legal strategy spaces are subtypes whose choices satisfy commit guards.
-Equilibrium and dominance statements therefore quantify over legal deviations
-by construction.
-
-\paragraph{Keep \(\outcomeDist\) canonical.}
-Trace semantics, labelled small-step semantics, strategic wrappers, and the
-FOSG bridge all point back to the same payoff-outcome distribution. This avoids
-having multiple recursive outcome evaluators that later need to be declared
-equivalent.
-
-\paragraph{Derive FOSG from the machine.}
-FOSG is the right abstraction for finite sequential-game reasoning: histories,
-observations, legal actions, bounded horizon, and Kuhn-style realization. It
-is a view of \leanref{Protocol.Machine}, not a second execution semantics. The
-graph-machine finite FOSG is the intended carrier and carries the direct finite
-Kuhn theorem plus product-mixed Vegas-pure specialization. The checked-program
-observed FOSG remains only for syntax-facing projection proofs, and its run law
-is proved back to the checked transition.
-
-\paragraph{Separate semantic state from finite execution keys.}
-\leanref{CheckedWorld} is convenient for semantic preservation. 
-\leanref{CursorCheckedWorld} is convenient for finite observed-game execution.
-The projection between them keeps both proof styles available without forcing
-one representation to serve every purpose.
-
-%% =====================================================================
-\section{Conclusion}\label{sec:conclusion}
-%% =====================================================================
-
-VegasCore gives checked Vegas programs a single canonical payoff-outcome
-semantics and several proved-compatible interfaces. Trace and small-step
-semantics explain execution structure. Strategic and protocol APIs expose the
-same semantics as solution concepts. Checked syntax now flows through
-action graph to graph machine, and sequential FOSG views are derived from that
-machine. The remaining consolidation work is runtime-facing: proving concrete
-backend machines refine the graph machine with the same outcome distributions
-and strategy spaces under the stated implementation assumptions.
 
 \end{document}
