@@ -1221,6 +1221,32 @@ noncomputable def syntaxProtocolGraph
   actionLegal := ProgramNode.actionLegal g.env g.legal g.normalized
   internalKernel := ProgramNode.internalKernel g.env g.legal g.normalized
 
+/-- Static read-availability invariant needed by the graph FOSG view: every
+declared read of every frontier node has a value in the extensional graph
+configuration. -/
+def syntaxReadsAvailableAtFrontier
+    (g : WFProgram P L) : Prop :=
+  ∀ (cfg : (syntaxProtocolGraph g).Configuration) {node : ProgramNode g.prog},
+    node ∈ cfg.frontier →
+      ∀ read, read ∈ (ProgramNode.sem g.legal g.normalized node).reads →
+        (ProgramField.value? g.env cfg.result read).isSome
+
+/-- Once frontier read availability is known, source graph commits cannot
+deadlock: the generated guard carries a satisfying action for the available
+read environment. -/
+theorem syntaxProtocolGraph_hasAvailablePlayerActions_of_readsAvailable
+    (g : WFProgram P L)
+    (hreads : syntaxReadsAvailableAtFrontier g) :
+    (syntaxProtocolGraph g).HasAvailablePlayerActions := by
+  intro cfg node who hfrontier hactor
+  rcases ProgramNode.exists_actionLegal_of_reads_available
+      g.env g.legal g.normalized cfg.result node
+      (who := who)
+      (by simpa [syntaxProtocolGraph] using hactor)
+      (hreads cfg hfrontier) with
+    ⟨slice, hslice, haction⟩
+  exact ⟨slice, hslice, haction⟩
+
 /-- Private observation of the graph-native syntax machine: the visible part
 of the extensional field assignment. -/
 structure SyntaxPrivateObs (g : WFProgram P L) (who : P) where
@@ -1270,5 +1296,15 @@ noncomputable def syntaxGraphMachineInterface
 noncomputable def syntaxGraphMachine
     (g : WFProgram P L) : Machine P :=
   (syntaxProtocolGraph g).toMachine (syntaxGraphMachineInterface g)
+
+/-- FOSG view of the graph-native syntax machine, parameterized by the static
+frontier-read availability invariant. The remaining consolidation task is to
+prove `syntaxReadsAvailableAtFrontier` for every `WFProgram`. -/
+noncomputable def syntaxGraphFOSGView
+    (g : WFProgram P L)
+    (hreads : syntaxReadsAvailableAtFrontier g) :
+    (syntaxGraphMachine g).FOSGView :=
+  (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
+    (syntaxProtocolGraph_hasAvailablePlayerActions_of_readsAvailable g hreads)
 
 end Vegas
