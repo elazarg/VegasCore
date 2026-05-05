@@ -3,13 +3,11 @@ import Vegas.PureStrategic
 /-!
 # PMF Behavioral Strategic Semantics
 
-This file mirrors `Vegas.Strategic` and `Vegas.PureStrategic` but uses `PMF`
-(Mathlib's probability mass functions) instead of `FDist` (rational Finsupp
-distributions). The PMF layer is needed for theorem backends that produce
-real-valued behavioral strategies.
+This file defines the PMF behavioral strategic form for checked Vegas
+programs.
 
-The PMF strategy carrier is the reachable legal behavioral-strategy space of
-the finite graph-machine FOSG at the program's syntax horizon.
+The PMF strategy carrier is the reachable legal behavioral-strategy space at
+the program's finite syntax horizon.
 -/
 
 namespace Vegas
@@ -20,8 +18,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- PMF-valued behavioral kernel game for a checked Vegas program.
 
-The outcome kernel is the finite graph-machine FOSG run distribution at the
-bundle's context proof. -/
+The outcome kernel is `behavioralOutcomeKernelPMFAt`. -/
 noncomputable def pmfBehavioralKernelGame [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] : GameTheory.KernelGame P :=
   pmfBehavioralKernelGameAt g
@@ -30,13 +27,13 @@ noncomputable def pmfBehavioralKernelGame [Fintype P]
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).outcomeKernel σ =
-      (pmfBehavioralKernelGameAt g).outcomeKernel σ := rfl
+      behavioralOutcomeKernelPMFAt g σ := rfl
 
 @[simp] theorem pmfBehavioralKernelGame_udist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).udist σ =
-      ((pmfBehavioralKernelGameAt g).outcomeKernel σ).bind
+      (behavioralOutcomeKernelPMFAt g σ).bind
         (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
 end Vegas

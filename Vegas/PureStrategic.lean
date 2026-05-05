@@ -7,8 +7,8 @@ import Vegas.Protocol.Strategic
 # Fixed-Program Pure Strategic Form
 
 This file defines the pure strategic form for a fixed Vegas program. Its
-strategy carrier is the reachable legal pure-strategy space of the finite
-graph-machine FOSG at the program's syntax horizon.
+strategy carrier is the reachable legal pure-strategy space at the program's
+finite syntax horizon.
 -/
 
 namespace Vegas
@@ -17,8 +17,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Fixed-program pure strategic form of a Vegas program.
 
-The outcome kernel is the checked graph-machine kernel at the bundle's context
-proof. -/
+The outcome kernel is `pureOutcomeKernelAt`. -/
 noncomputable def pureKernelGame [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
@@ -28,13 +27,14 @@ noncomputable def pureKernelGame [Fintype P]
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pureKernelGame g).Profile) :
     (pureKernelGame g).outcomeKernel σ =
-      (pureKernelGameAt g).outcomeKernel σ := rfl
+      pureOutcomeKernelAt g σ := rfl
 
 @[simp] theorem pureKernelGame_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     (pureKernelGame g).Strategy = pureStrategyAt g := rfl
 
-/-- `pureKernelGame` is the graph-native syntax-machine pure kernel. -/
+/-- `pureKernelGame` is the finite pure strategic form of a checked Vegas
+program. -/
 theorem pureKernelGame_eu
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (σ : (pureKernelGame g).Profile) (who : P) :
