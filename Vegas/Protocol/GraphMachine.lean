@@ -922,6 +922,87 @@ theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
                 G iface hplayer horizon σ n
                 (h.extendByOutcome action dst))
 
+/-- Outcome projection of bounded graph-FOSG execution equals outcome
+projection of the corresponding history-dependent blocked machine trace
+distribution. -/
+theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    [Fintype ((G.toMachine iface).BoundedState horizon)]
+    [DecidablePred
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal)]
+    (σ :
+      GameTheory.FOSG.LegalBehavioralProfile
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))
+    (n : Nat)
+    (h :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History)) :
+    PMF.map
+        (fun h' => (G.toMachine iface).outcome h'.lastState.state)
+        (GameTheory.FOSG.History.runDistFrom
+          ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) σ n h) =
+      PMF.map
+        (fun trace => (G.toMachine iface).outcome trace.2)
+        (boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ n h) := by
+  let project :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).History) →
+        List (List (G.toMachine iface).Event) × (G.toMachine iface).State :=
+    fun h' =>
+      (boundedFOSGHistoryEventBlocks G iface hplayer horizon h',
+        h'.lastState.state)
+  let observe :
+      List (List (G.toMachine iface).Event) × (G.toMachine iface).State →
+        (G.toMachine iface).Outcome :=
+    fun trace => (G.toMachine iface).outcome trace.2
+  calc
+    PMF.map
+        (fun h' => (G.toMachine iface).outcome h'.lastState.state)
+        (GameTheory.FOSG.History.runDistFrom
+          ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) σ n h)
+        =
+      PMF.map observe
+        (PMF.map project
+          (GameTheory.FOSG.History.runDistFrom
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon) σ n h)) := by
+          rw [PMF.map_comp]
+          rfl
+    _ =
+      PMF.map observe
+        (boundedFOSGBlockTraceDistFrom G iface hplayer horizon σ n h) := by
+          rw [boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+            (G := G) (iface := iface) (hplayer := hplayer)
+            (horizon := horizon) σ n h]
+
+/-- Public bounded behavioral outcome kernel of a graph-FOSG view, computed as
+the machine outcome map of the induced blocked primitive trace distribution. -/
+theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option ((G.toFOSGView iface hplayer).Act player))]
+    [Fintype ((G.toMachine iface).BoundedState horizon)]
+    [DecidablePred
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).terminal)]
+    (β :
+      ((G.toFOSGView iface hplayer).BoundedBehavioralProfile horizon))
+    (steps : Nat) :
+    ((G.toFOSGView iface hplayer).boundedOutcomeFromBehavioral
+        horizon β steps) =
+      PMF.map
+        (fun trace => (G.toMachine iface).outcome trace.2)
+        (boundedFOSGBlockTraceDistFrom G iface hplayer horizon β.extend steps
+          (GameTheory.FOSG.History.nil
+            ((G.toFOSGView iface hplayer).toBoundedFOSG horizon))) := by
+  simpa [Machine.FOSGView.boundedOutcomeFromBehavioral,
+    Machine.FOSGView.boundedHistoryOutcome, GameTheory.FOSG.runDist] using
+    (boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+      (G := G) (iface := iface) (hplayer := hplayer)
+      (horizon := horizon) β.extend steps
+      (GameTheory.FOSG.History.nil
+        ((G.toFOSGView iface hplayer).toBoundedFOSG horizon)))
+
 /-- One-step form matching `FOSG.History.runDistFrom`: if the sampled bounded
 destination extends the FOSG history, then the extracted block prefix and
 checkpoint state have the same distribution as the primitive machine blocked
