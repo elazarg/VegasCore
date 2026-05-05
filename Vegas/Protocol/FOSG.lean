@@ -331,12 +331,27 @@ noncomputable def toBoundedFOSG (view : M.FOSGView) (horizon : Nat) :
         (view.boundedActionToAction horizon state action)).map
         (fun next =>
           state.succ
-            (by
-              have hnot : ¬ horizon ≤ state.depth := by
-                intro hle
-                exact action.2.1 (Or.inr hle)
-              exact Nat.lt_of_not_ge hnot)
+            (Nat.lt_of_not_ge
+              (fun hle => action.2.1 (Or.inr hle)))
             next) := rfl
+
+/-- Projecting a bounded FOSG transition back to machine states removes only
+the presentation depth counter. -/
+theorem toBoundedFOSG_transition_map_state
+    (view : M.FOSGView) (horizon : Nat)
+    (state : M.BoundedState horizon)
+    (action : (view.toBoundedFOSG horizon).LegalAction state) :
+    PMF.map (fun bounded => bounded.state)
+        ((view.toBoundedFOSG horizon).transition state action) =
+      view.transition state.state
+        (view.boundedActionToAction horizon state action) := by
+  rw [toBoundedFOSG_transition]
+  trans
+      (view.transition state.state
+        (view.boundedActionToAction horizon state action)).map id
+  · rw [PMF.map_comp]
+    congr
+  · exact PMF.map_id _
 
 @[simp] theorem toBoundedFOSG_privObs
     (view : M.FOSGView) (horizon : Nat) (player : Player)

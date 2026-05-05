@@ -1,4 +1,5 @@
 import Vegas.Protocol.FOSG
+import Vegas.Protocol.Trace
 
 /-!
 # Protocol graph machines
@@ -293,6 +294,141 @@ noncomputable def roundStepNode
       | none => PMF.pure cfg
   | none => stepInternal G (.node node) cfg
 
+/-- Primitive machine event selected for one graph node by a frontier-round
+joint action. Missing player coordinates are represented by the graph machine's
+unavailable `idle` internal event, whose total step stutters. Legal round
+actions never need this fallback for current frontier nodes. -/
+noncomputable def roundPrimitiveEvent
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (joint : JointAction (PlayerRoundAction G)) (node : G.Node) :
+    (G.toMachine iface).Event :=
+  match (G.sem node).actor with
+  | some who =>
+      match joint who with
+      | some action =>
+          .play who { node := node, slice := action.slice node }
+      | none => .internal .idle
+  | none => .internal (.node node)
+
+@[simp] theorem toMachine_step_roundPrimitiveEvent
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (joint : JointAction (PlayerRoundAction G))
+    (node : G.Node) (cfg : G.Configuration) :
+    (G.toMachine iface).step
+        (roundPrimitiveEvent G iface joint node) cfg =
+      roundStepNode G joint node cfg := by
+  cases hactor : (G.sem node).actor with
+  | none =>
+      simp [roundPrimitiveEvent, roundStepNode, Machine.step, toMachine,
+        hactor]
+  | some who =>
+      cases hmove : joint who <;>
+        simp [roundPrimitiveEvent, roundStepNode, Machine.step, toMachine,
+          stepInternal, hactor, hmove]
+
+/-- A legal frontier-round joint action selects an available primitive machine
+event for every node in the current frontier. -/
+theorem roundPrimitiveEvent_available_of_legal
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    {cfg : G.Configuration}
+    {joint : JointAction (PlayerRoundAction G)}
+    (hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint)
+    {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
+    (G.toMachine iface).EventAvailable cfg
+      (roundPrimitiveEvent G iface joint node) := by
+  classical
+  cases hactor : (G.sem node).actor with
+  | none =>
+      have hevent :
+          roundPrimitiveEvent G iface joint node =
+            Machine.Event.internal (InternalEvent.node node) := by
+        simp [roundPrimitiveEvent, hactor]
+      rw [hevent]
+      change
+        (InternalEvent.node node : InternalEvent G) ∈
+          availableInternal G cfg
+      exact ⟨hfrontier, hactor⟩
+  | some who =>
+      have hactive : who ∈ roundActive G cfg :=
+        (mem_roundActive_iff G cfg who).mpr
+          ⟨node, hfrontier, hactor⟩
+      have hcoord := hlegal.2 who
+      cases hmove : joint who with
+      | none =>
+          have hnot : who ∉ roundActive G cfg := by
+            simpa [hmove] using hcoord
+          exact False.elim (hnot hactive)
+      | some action =>
+          have hpair :
+              who ∈ roundActive G cfg ∧
+                action ∈ roundAvailable G cfg who := by
+            simpa [hmove] using hcoord
+          have hnodeLegal :
+              G.sliceLegal node (action.slice node) ∧
+                G.actionLegal cfg.result node (action.slice node) :=
+            hpair.2 hfrontier hactor
+          have hevent :
+              roundPrimitiveEvent G iface joint node =
+                Machine.Event.play who
+                  ({ node := node, slice := action.slice node } :
+                    PlayerAction G who) := by
+            simp [roundPrimitiveEvent, hactor, hmove]
+          rw [hevent]
+          change
+            { node := node, slice := action.slice node } ∈
+              available G cfg who
+          exact ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
+
+/-- The primitive machine event list represented by one frontier round. The
+order is the canonical `Finset.toList` order used by `roundTransition`; order
+invariance is a separate theorem about independent frontier nodes. -/
+noncomputable def roundPrimitiveEvents
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G)) :
+    List (G.toMachine iface).Event :=
+  cfg.frontier.toList.map (roundPrimitiveEvent G iface joint)
+
+/-- Every primitive event listed for a legal frontier round is available at the
+round's source configuration. Availability after earlier events in a
+linearization is the separate frontier-stability theorem. -/
+theorem mem_roundPrimitiveEvents_available_of_legal
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    {cfg : G.Configuration}
+    {joint : JointAction (PlayerRoundAction G)}
+    (hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint)
+    {event : (G.toMachine iface).Event}
+    (hmem : event ∈ roundPrimitiveEvents G iface cfg joint) :
+    (G.toMachine iface).EventAvailable cfg event := by
+  classical
+  rcases List.mem_map.mp hmem with ⟨node, hnode, rfl⟩
+  have hfrontier : node ∈ cfg.frontier := by
+    simpa using hnode
+  exact roundPrimitiveEvent_available_of_legal
+    G iface hlegal hfrontier
+
+private theorem runEventsFrom_roundPrimitiveEvents_go
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (joint : JointAction (PlayerRoundAction G))
+    (nodes : List G.Node) (acc : PMF G.Configuration) :
+    (nodes.map (roundPrimitiveEvent G iface joint)).foldl
+        (fun acc event => acc.bind fun current =>
+          (G.toMachine iface).step event current)
+        acc =
+      nodes.foldl
+        (fun acc node => acc.bind fun current =>
+          roundStepNode G joint node current)
+        acc := by
+  induction nodes generalizing acc with
+  | nil => rfl
+  | cons node nodes ih =>
+      simp [List.map, List.foldl,
+        toMachine_step_roundPrimitiveEvent, ih]
+
 /-- Execute the current frontier as one FOSG round.  The list order is a
 definition device only; the frontier commutation theorems are the semantic
 justification that this hides no scheduler-relevant order. -/
@@ -303,6 +439,21 @@ noncomputable def roundTransition
   cfg.frontier.toList.foldl
     (fun acc node => acc.bind fun state => roundStepNode G joint node state)
     (PMF.pure cfg)
+
+/-- A graph frontier round is exactly the primitive machine run obtained by
+executing the round's canonical frontier event list. -/
+theorem roundTransition_eq_runEventsFrom_roundPrimitiveEvents
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G)) :
+    roundTransition G cfg joint =
+      (G.toMachine iface).runEventsFrom
+        (roundPrimitiveEvents G iface cfg joint) cfg := by
+  classical
+  rw [roundTransition, roundPrimitiveEvents, Machine.runEventsFrom]
+  exact
+    (runEventsFrom_roundPrimitiveEvents_go G iface joint
+      cfg.frontier.toList (PMF.pure cfg)).symm
 
 /-- FOSG presentation of a protocol-graph machine by frontier rounds, assuming
 player-owned frontier nodes are never action-deadlocked. -/
@@ -358,6 +509,31 @@ noncomputable def toFOSGView
         simp [joint, hactive]
       rw [hjoint]
       exact hactive
+
+/-- One bounded graph-FOSG transition, projected back to graph configurations,
+is the primitive machine run of the round's canonical frontier event list. -/
+theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hplayer : G.HasAvailablePlayerActions)
+    (horizon : Nat)
+    (state : (G.toMachine iface).BoundedState horizon)
+    (action :
+      (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).LegalAction
+        state)) :
+    PMF.map (fun bounded => bounded.state)
+        (((G.toFOSGView iface hplayer).toBoundedFOSG horizon).transition
+          state action) =
+      (G.toMachine iface).runEventsFrom
+        (roundPrimitiveEvents G iface state.state action.1)
+        state.state := by
+  rw [Machine.FOSGView.toBoundedFOSG_transition_map_state]
+  change
+    roundTransition G state.state action.1 =
+      (G.toMachine iface).runEventsFrom
+        (roundPrimitiveEvents G iface state.state action.1)
+        state.state
+  exact roundTransition_eq_runEventsFrom_roundPrimitiveEvents
+    G iface state.state action.1
 
 end ProtocolGraph
 

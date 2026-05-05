@@ -443,6 +443,22 @@ theorem result_some_of_prereq_of_mem_frontier
   have hdone := cfg.prereq_done_of_mem_frontier h hpre
   exact (G.mem_done_iff cfg.result prereq).mp hdone |>.2
 
+/-- No current frontier node is a prerequisite of another current frontier
+node. This is the graph-level independence fact behind frontier rounds:
+dependencies must have already been completed before a node reaches the
+frontier. -/
+theorem not_prereq_of_mem_frontier
+    {cfg : G.Configuration} {first second : G.Node}
+    (hfirst : first ∈ cfg.frontier)
+    (hsecond : second ∈ cfg.frontier) :
+    first ∉ G.prereqs second := by
+  intro hpre
+  have hdone : (cfg.result first).isSome :=
+    cfg.result_some_of_prereq_of_mem_frontier hsecond hpre
+  have hnone : (cfg.result first).isNone :=
+    cfg.not_done_of_mem_frontier hfirst
+  cases hresult : cfg.result first <;> simp [hresult] at hdone hnone
+
 theorem not_terminal_of_mem_frontier
     {cfg : G.Configuration} {node : G.Node}
     (h : node ∈ cfg.frontier) :

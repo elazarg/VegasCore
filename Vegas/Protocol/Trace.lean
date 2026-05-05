@@ -28,6 +28,30 @@ namespace Machine
 
 variable {Player : Type}
 
+/-- Execute a fixed primitive event list from a given state, returning only the
+final state. This is the state marginal of a scheduled finite trace with the
+schedule stored outside the machine. -/
+noncomputable def runEventsFrom
+    (M : Machine Player) (events : List M.Event) (state : M.State) :
+    PMF M.State :=
+  events.foldl
+    (fun acc event => acc.bind fun current => M.step event current)
+    (PMF.pure state)
+
+@[simp] theorem runEventsFrom_nil
+    (M : Machine Player) (state : M.State) :
+    M.runEventsFrom [] state = PMF.pure state := rfl
+
+theorem runEventsFrom_cons
+    (M : Machine Player) (event : M.Event)
+    (events : List M.Event) (state : M.State) :
+    M.runEventsFrom (event :: events) state =
+      events.foldl
+        (fun acc nextEvent => acc.bind fun current =>
+          M.step nextEvent current)
+        (M.step event state) := by
+  simp [runEventsFrom]
+
 /-- One scheduled machine step. -/
 noncomputable def stepDist
     (M : Machine Player) (law : M.EventLaw) (state : M.State) :
