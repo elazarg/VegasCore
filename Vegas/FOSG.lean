@@ -69,29 +69,29 @@ noncomputable def fosgHistoryOutcome
   (graphMachine g hctx).outcome h.lastState.lastState
 
 /-- Outcome kernel for a reachable behavioral profile of the graph-machine
-finite FOSG. Finite enumeration instances are fixed by `LF` and kept inside
-the definition. -/
+finite FOSG. Finite enumeration instances are derived from the program-local
+finite-domain evidence and kept inside the definition. -/
 noncomputable def finiteFOSGReachableBehavioralOutcomeKernel
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    [Fintype P]
+    (g : WFProgram P L) (hctx : WFCtx g.Γ)
+    [FiniteDomains g] [Fintype P]
     (β : (toFiniteFOSG g hctx).ReachableLegalBehavioralProfile) :
     PMF (Outcome P) := by
   classical
   letI : Fintype (graphMachine g hctx).State :=
-    graphMachine.instFintypeState g hctx LF
+    graphMachine.instFintypeState g hctx
   letI : ∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who)) :=
     fun who => graphMachine.instFintypeOptionAction
-      g hctx LF who
+      g hctx who
   letI : Fintype (graphMachine g hctx).Event :=
-    graphMachine.instFintypeEvent g hctx LF
+    graphMachine.instFintypeEvent g hctx
   letI :
       Fintype
         ((graphMachine g hctx).BoundedRunPrefix
           (syntaxSteps g.prog)) :=
     Machine.BoundedRunPrefix.instFintype
   letI : Fintype (toFiniteFOSG g hctx).History :=
-    finiteFOSG.instFintypeHistory g hctx LF
+    finiteFOSG.instFintypeHistory g hctx
   letI : DecidablePred (toFiniteFOSG g hctx).terminal :=
     Classical.decPred _
   exact

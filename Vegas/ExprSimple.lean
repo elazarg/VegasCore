@@ -1,3 +1,4 @@
+import Mathlib.Data.Int.Interval
 import Vegas.Core
 
 /-!
@@ -15,11 +16,13 @@ abbrev Player : Type := Nat
 inductive BaseTy where
   | int : BaseTy
   | bool : BaseTy
+  | range (lo hi : Int) : BaseTy
 deriving Repr, DecidableEq
 
 abbrev Val : BaseTy → Type
   | .int => Int
   | .bool => Bool
+  | .range lo hi => Set.Icc lo hi
 
 instance : DecidableEq (Val b) := by
   cases b <;> infer_instance
@@ -34,9 +37,10 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | var (x : VarId) (h : HasVar Γ x b) : Expr Γ b
   | constInt (i : Int) : Expr Γ .int
   | constBool (b : Bool) : Expr Γ .bool
+  | constRange {lo hi : Int} (v : Val (.range lo hi)) :
+      Expr Γ (.range lo hi)
   | addInt (l r : Expr Γ .int) : Expr Γ .int
-  | eqInt (l r : Expr Γ .int) : Expr Γ .bool
-  | eqBool (l r : Expr Γ .bool) : Expr Γ .bool
+  | eq (l r : Expr Γ b) : Expr Γ .bool
   | andBool (l r : Expr Γ .bool) : Expr Γ .bool
   | notBool (e : Expr Γ .bool) : Expr Γ .bool
   | ite (c : Expr Γ .bool) (t f : Expr Γ b) : Expr Γ b
@@ -45,9 +49,9 @@ def evalExpr : Expr Γ b → PlainEnv Γ → Val b
   | .var _ h, env => env.get h
   | .constInt i, _ => i
   | .constBool b, _ => b
+  | .constRange v, _ => v
   | .addInt l r, env => evalExpr l env + evalExpr r env
-  | .eqInt l r, env => decide (evalExpr l env = evalExpr r env)
-  | .eqBool l r, env => decide (evalExpr l env = evalExpr r env)
+  | .eq l r, env => decide (evalExpr l env = evalExpr r env)
   | .andBool l r, env => evalExpr l env && evalExpr r env
   | .notBool e, env => !(evalExpr e env)
   | .ite c t f, env => if evalExpr c env then evalExpr t env else evalExpr f env
@@ -57,9 +61,9 @@ def exprDeps : Expr Γ b → Finset VarId
   | .var x _ => {x}
   | .constInt _ => ∅
   | .constBool _ => ∅
+  | .constRange _ => ∅
   | .addInt l r => exprDeps l ∪ exprDeps r
-  | .eqInt l r => exprDeps l ∪ exprDeps r
-  | .eqBool l r => exprDeps l ∪ exprDeps r
+  | .eq l r => exprDeps l ∪ exprDeps r
   | .andBool l r => exprDeps l ∪ exprDeps r
   | .notBool e => exprDeps e
   | .ite c t f => exprDeps c ∪ exprDeps t ∪ exprDeps f
@@ -73,15 +77,12 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     exact ha x _ h (Finset.mem_singleton.mpr rfl)
   | constInt _ => rfl
   | constBool _ => rfl
+  | constRange _ => rfl
   | addInt l r ihl ihr =>
     simp only [evalExpr]
     rw [ihl (ha.mono Finset.subset_union_left),
         ihr (ha.mono Finset.subset_union_right)]
-  | eqInt l r ihl ihr =>
-    simp only [evalExpr]
-    rw [ihl (ha.mono Finset.subset_union_left),
-        ihr (ha.mono Finset.subset_union_right)]
-  | eqBool l r ihl ihr =>
+  | eq l r ihl ihr =>
     simp only [evalExpr]
     rw [ihl (ha.mono Finset.subset_union_left),
         ihr (ha.mono Finset.subset_union_right)]
@@ -135,9 +136,9 @@ def Expr.weakenAfterHead
   | .var z (.there h') => .var z (.there (.there h'))
   | .constInt i => .constInt i
   | .constBool v => .constBool v
+  | .constRange v => .constRange v
   | .addInt l r => .addInt l.weakenAfterHead r.weakenAfterHead
-  | .eqInt l r => .eqInt l.weakenAfterHead r.weakenAfterHead
-  | .eqBool l r => .eqBool l.weakenAfterHead r.weakenAfterHead
+  | .eq l r => .eq l.weakenAfterHead r.weakenAfterHead
   | .andBool l r => .andBool l.weakenAfterHead r.weakenAfterHead
   | .notBool e => .notBool e.weakenAfterHead
   | .ite c t f => .ite c.weakenAfterHead t.weakenAfterHead f.weakenAfterHead
@@ -155,11 +156,11 @@ theorem evalExpr_weakenAfterHead
       simp [Expr.weakenAfterHead, evalExpr]
   | constBool v =>
       simp [Expr.weakenAfterHead, evalExpr]
+  | constRange v =>
+      simp [Expr.weakenAfterHead, evalExpr]
   | addInt l r ihl ihr =>
       simp [Expr.weakenAfterHead, evalExpr, ihl, ihr]
-  | eqInt l r ihl ihr =>
-      simp [Expr.weakenAfterHead, evalExpr, ihl, ihr]
-  | eqBool l r ihl ihr =>
+  | eq l r ihl ihr =>
       simp [Expr.weakenAfterHead, evalExpr, ihl, ihr]
   | andBool l r ihl ihr =>
       simp [Expr.weakenAfterHead, evalExpr, ihl, ihr]
@@ -178,6 +179,7 @@ def Expr.dropAfterHead
   | .var z (.there (.there h')) => .var z (.there h')
   | .constInt i => .constInt i
   | .constBool v => .constBool v
+  | .constRange v => .constRange v
   | .addInt l r =>
       .addInt
         (l.dropAfterHead (by
@@ -188,18 +190,8 @@ def Expr.dropAfterHead
           intro hmem
           apply hy
           simp [exprDeps, hmem]))
-  | .eqInt l r =>
-      .eqInt
-        (l.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (r.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-  | .eqBool l r =>
-      .eqBool
+  | .eq l r =>
+      .eq
         (l.dropAfterHead (by
           intro hmem
           apply hy
@@ -261,6 +253,8 @@ theorem evalExpr_dropAfterHead
       simp [Expr.dropAfterHead, evalExpr]
   | constBool v =>
       simp [Expr.dropAfterHead, evalExpr]
+  | constRange v =>
+      simp [Expr.dropAfterHead, evalExpr]
   | addInt l r ihl ihr =>
       simp only [Expr.dropAfterHead, evalExpr]
       rw [ihl (by
@@ -271,17 +265,7 @@ theorem evalExpr_dropAfterHead
             intro hmem
             apply hy
             simp [exprDeps, hmem])]
-  | eqInt l r ihl ihr =>
-      simp only [Expr.dropAfterHead, evalExpr, decide_eq_decide]
-      rw [ihl (by
-            intro hmem
-            apply hy
-            simp [exprDeps, hmem]),
-          ihr (by
-            intro hmem
-            apply hy
-            simp [exprDeps, hmem])]
-  | eqBool l r ihl ihr =>
+  | eq l r ihl ihr =>
       simp only [Expr.dropAfterHead, evalExpr, decide_eq_decide]
       rw [ihl (by
             intro hmem
@@ -360,6 +344,17 @@ def simpleExpr : Vegas.IExpr where
   distDeps := @distExprDeps
   expr_deps_sound := @expr_deps_sound
   dist_deps_sound := @dist_deps_sound
+
+noncomputable instance finiteType_bool : FiniteType simpleExpr .bool where
+  fintype := by
+    change Fintype Bool
+    infer_instance
+
+noncomputable instance finiteType_range (lo hi : Int) :
+    FiniteType simpleExpr (.range lo hi) where
+  fintype := by
+    change Fintype (Set.Icc lo hi)
+    infer_instance
 
 abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
 abbrev VCtxSimple : Type := Vegas.VCtx Player simpleExpr
@@ -442,9 +437,9 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .var y h => .var y (.there h)
   | .constInt i => .constInt i
   | .constBool v => .constBool v
+  | .constRange v => .constRange v
   | .addInt l r => .addInt l.weaken r.weaken
-  | .eqInt l r => .eqInt l.weaken r.weaken
-  | .eqBool l r => .eqBool l.weaken r.weaken
+  | .eq l r => .eq l.weaken r.weaken
   | .andBool l r => .andBool l.weaken r.weaken
   | .notBool e => .notBool e.weaken
   | .ite c t f => .ite c.weaken t.weaken f.weaken
@@ -456,9 +451,9 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | var _ _ => rfl
   | constInt _ => rfl
   | constBool _ => rfl
+  | constRange _ => rfl
   | addInt l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
-  | eqInt l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
-  | eqBool l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
+  | eq l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | andBool l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | notBool e ih => simp [Expr.weaken, evalExpr, ih]
   | ite c t f ihc iht ihf => simp [Expr.weaken, evalExpr, ihc, iht, ihf]
@@ -468,9 +463,9 @@ def exprVars : Expr Γ b → List VarId
   | .var x _ => [x]
   | .constInt _ => []
   | .constBool _ => []
+  | .constRange _ => []
   | .addInt l r => exprVars l ++ exprVars r
-  | .eqInt l r => exprVars l ++ exprVars r
-  | .eqBool l r => exprVars l ++ exprVars r
+  | .eq l r => exprVars l ++ exprVars r
   | .andBool l r => exprVars l ++ exprVars r
   | .notBool e => exprVars e
   | .ite c t f => exprVars c ++ exprVars t ++ exprVars f

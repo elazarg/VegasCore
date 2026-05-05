@@ -551,6 +551,25 @@ def rootEnv
   | .commit c => VEnv.tail (rootEnv c env)
   | .reveal c => VEnv.tail (rootEnv c env)
 
+/-- Finite-domain evidence for the context at a cursor endpoint, inherited
+from finite evidence for the root context and root program. -/
+def finiteVCtxProof
+    {Γ₀ : VCtx P L} {root : VegasCore P L Γ₀}
+    (c : ProgramCursor root)
+    (hΓ : FiniteVCtxProof Γ₀)
+    (hp : FiniteProgramProof root) :
+    FiniteVCtxProof c.Γ :=
+  match c, hp with
+  | .here, _ => hΓ
+  | .letExpr c, .letExpr head tail =>
+      finiteVCtxProof c (.cons head hΓ) tail
+  | .sample c, .sample head tail =>
+      finiteVCtxProof c (.cons head hΓ) tail
+  | .commit c, .commit head tail =>
+      finiteVCtxProof c (.cons head hΓ) tail
+  | .reveal c, .reveal head tail =>
+      finiteVCtxProof c (.cons head hΓ) tail
+
 namespace CommitCursor
 
 /-- Forget that a cursor points specifically at an owned commit site. -/
@@ -872,12 +891,16 @@ def Valid {g : WFProgram P L} (d : CursorWorldData g) : Prop :=
 
 /-- Cursor-keyed world data is finite under finite value types. -/
 @[reducible] noncomputable def instFintype
-    (g : WFProgram P L) (LF : FiniteValuation L) :
+    (g : WFProgram P L) [hfinite : FiniteDomains g] :
     Fintype (CursorWorldData g) := by
   let _ : Fintype (ProgramCursor g.prog) :=
     ProgramCursor.instFintype g.prog
   have hEnv : ∀ c : ProgramCursor g.prog,
-      Fintype (VEnv L c.Γ) := fun c => VEnv.instFintype LF
+      Fintype (VEnv L c.Γ) := fun c =>
+    let _ : FiniteVCtx c.Γ :=
+      { proof := ProgramCursor.finiteVCtxProof c
+          hfinite.context.proof hfinite.program.proof }
+    inferInstance
   let e :
       CursorWorldData g ≃
         Sigma (fun c : ProgramCursor g.prog =>
@@ -931,10 +954,10 @@ theorem terminal_iff_remainingSyntaxSteps_eq_zero
 types. `Fintype.ofFinite` avoids requiring decidability of the proof-bearing
 `Valid` predicate. -/
 @[reducible] noncomputable def instFintype
-    (g : WFProgram P L) (LF : FiniteValuation L) :
+    (g : WFProgram P L) [FiniteDomains g] :
     Fintype (CursorCheckedWorld g) := by
   let _ : Fintype (CursorWorldData g) :=
-    CursorWorldData.instFintype g LF
+    CursorWorldData.instFintype g
   exact Fintype.ofFinite (CursorCheckedWorld g)
 
 /-- Initial state for the finite cursor-keyed checked-world carrier. -/

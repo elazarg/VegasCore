@@ -115,6 +115,29 @@ types are finite. -/
   exact Fintype.ofList (enumerate who p)
     (fun c => mem_enumerate c)
 
+/-- Recover the finite value-domain evidence for the commit site pointed to by
+a commit cursor, from finite-domain evidence for the root program. -/
+@[reducible] def finiteTypeOfProof {who : P} :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      FiniteProgramProof p → (c : CommitCursor who p) →
+        FiniteType L (ty c)
+  | _, .letExpr _ _ _, .letExpr _ tail, .letExpr c =>
+      finiteTypeOfProof tail c
+  | _, .sample _ _ _, .sample _ tail, .sample c =>
+      finiteTypeOfProof tail c
+  | _, .commit _ _ _ _, .commit head _tail, .here =>
+      head
+  | _, .commit _ _ _ _, .commit _head tail, .commit c =>
+      finiteTypeOfProof tail c
+  | _, .reveal _ _ _ _ _, .reveal _ tail, .reveal c =>
+      finiteTypeOfProof tail c
+
+@[reducible] noncomputable def instFintypeValue
+    {who : P} {Γ : VCtx P L} {p : VegasCore P L Γ}
+    [hp : FiniteProgram p] (c : CommitCursor who p) :
+    Fintype (L.Val (ty c)) :=
+  (finiteTypeOfProof hp.proof c).fintype
+
 end CommitCursor
 
 /-- Program-local action alphabet: choose one owned commit site and a value of
@@ -139,19 +162,18 @@ dependent cursor proof shape. -/
     DecidableEq (ProgramAction p who) :=
   Classical.decEq _
 
-/-- Program-local actions are finite when the value types that occur in the
-language are finite. This avoids the stronger and usually wrong requirement
-that the global sigma alphabet `Action L who` be finite. -/
+/-- Program-local actions are finite when the value types at that program's
+owned commit sites are finite. -/
 @[reducible] noncomputable def instFintype
-    (LF : FiniteValuation L) {Γ : VCtx P L}
-    (p : VegasCore P L Γ) (who : P) :
+    {Γ : VCtx P L} (p : VegasCore P L Γ) (who : P)
+    [FiniteProgram p] :
     Fintype (ProgramAction p who) := by
   classical
   let _ : Fintype (CommitCursor who p) :=
     CommitCursor.instFintype who p
   have hVal : ∀ c : CommitCursor who p,
       Fintype (L.Val (CommitCursor.ty c)) :=
-    fun c => LF.fintypeVal (CommitCursor.ty c)
+    fun c => CommitCursor.instFintypeValue c
   let e :
       ProgramAction p who ≃
         Sigma (fun c : CommitCursor who p =>

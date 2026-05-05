@@ -32,10 +32,10 @@ def hvb'_in_eΓ4 : HasVar (erasePubVCtx Γ4) vb' .bool := .here
 
 def mpPayoff : PayoffMap Γ4 :=
   ⟨[ (0, .ite
-        (.eqBool (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
+        (.eq (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
         (.constInt 1) (.constInt (-1))),
      (1, .ite
-        (.eqBool (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
+        (.eq (.var va' hva'_in_eΓ4) (.var vb' hvb'_in_eΓ4))
         (.constInt (-1)) (.constInt 1))
    ], by decide⟩
 

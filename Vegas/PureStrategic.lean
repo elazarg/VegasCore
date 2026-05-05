@@ -20,59 +20,59 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 The outcome kernel is the checked graph-machine kernel at the bundle's context
 proof. -/
 noncomputable def pureKernelGame [Fintype P]
-    (g : WFProgram P L) (LF : FiniteValuation L) :
+    (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  pureKernelGameAt g g.wctx LF
+  pureKernelGameAt g g.wctx
 
 @[simp] theorem pureKernelGame_outcomeKernel
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pureKernelGame g LF).Profile) :
-    (pureKernelGame g LF).outcomeKernel σ =
-      (pureKernelGameAt g g.wctx LF).outcomeKernel σ := rfl
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pureKernelGame g).Profile) :
+    (pureKernelGame g).outcomeKernel σ =
+      (pureKernelGameAt g g.wctx).outcomeKernel σ := rfl
 
 @[simp] theorem pureKernelGame_Strategy
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L) :
-    (pureKernelGame g LF).Strategy = pureStrategyAt g g.wctx := rfl
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pureKernelGame g).Strategy = pureStrategyAt g g.wctx := rfl
 
 /-- `pureKernelGame` is the machine-native pure kernel at `g.wctx`. -/
 theorem pureKernelGame_eu
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pureKernelGame g LF).Profile) (who : P) :
-    (pureKernelGame g LF).eu σ who =
-      (pureKernelGameAt g g.wctx LF).eu σ who := rfl
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pureKernelGame g).Profile) (who : P) :
+    (pureKernelGame g).eu σ who =
+      (pureKernelGameAt g g.wctx).eu σ who := rfl
 
 /-- Pure Nash equilibrium of the fixed-program Vegas strategic form. -/
-def IsPureNash [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pureKernelGame g LF).Profile) : Prop :=
-  (pureKernelGame g LF).IsNash σ
+def IsPureNash [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pureKernelGame g).Profile) : Prop :=
+  (pureKernelGame g).IsNash σ
 
 /-- Pure dominant strategy in the fixed-program Vegas strategic form. -/
-def IsPureDominant [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (who : P) (s : (pureKernelGame g LF).Strategy who) : Prop :=
-  (pureKernelGame g LF).IsDominant who s
+def IsPureDominant [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (who : P) (s : (pureKernelGame g).Strategy who) : Prop :=
+  (pureKernelGame g).IsDominant who s
 
 /-- Pure best response in the fixed-program Vegas strategic form. -/
 def IsPureBestResponse [Fintype P] (g : WFProgram P L)
-    (LF : FiniteValuation L) (who : P)
-    (σ : (pureKernelGame g LF).Profile)
-    (s : (pureKernelGame g LF).Strategy who) : Prop :=
-  (pureKernelGame g LF).IsBestResponse who σ s
+    [FiniteDomains g] (who : P)
+    (σ : (pureKernelGame g).Profile)
+    (s : (pureKernelGame g).Strategy who) : Prop :=
+  (pureKernelGame g).IsBestResponse who σ s
 
 /-- Pure strict Nash equilibrium of the fixed-program Vegas strategic form. -/
-def IsPureStrictNash [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pureKernelGame g LF).Profile) : Prop :=
-  (pureKernelGame g LF).IsStrictNash σ
+def IsPureStrictNash [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pureKernelGame g).Profile) : Prop :=
+  (pureKernelGame g).IsStrictNash σ
 
 /-- Exact potential for the fixed-program Vegas strategic form. -/
 def IsPureExactPotential [Fintype P] (g : WFProgram P L)
-    (LF : FiniteValuation L)
-    (Φ : (pureKernelGame g LF).Profile → ℝ) : Prop :=
-  (pureKernelGame g LF).IsExactPotential Φ
+    [FiniteDomains g]
+    (Φ : (pureKernelGame g).Profile → ℝ) : Prop :=
+  (pureKernelGame g).IsExactPotential Φ
 
 /-- Ordinal potential for the fixed-program Vegas strategic form. -/
 def IsPureOrdinalPotential [Fintype P] (g : WFProgram P L)
-    (LF : FiniteValuation L)
-    (Φ : (pureKernelGame g LF).Profile → ℝ) : Prop :=
-  (pureKernelGame g LF).IsOrdinalPotential Φ
+    [FiniteDomains g]
+    (Φ : (pureKernelGame g).Profile → ℝ) : Prop :=
+  (pureKernelGame g).IsOrdinalPotential Φ
 
 end Vegas

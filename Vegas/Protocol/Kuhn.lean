@@ -158,28 +158,10 @@ protocol/FOSG helper; the public Vegas theorem is `kuhn_finiteKernelGame`
 below, stated over the Vegas kernel-game API. -/
 theorem kuhn_mixed_to_behavioral_graphFOSG
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L)
+    [FiniteDomains g]
     (μ :
       (fosgView g hctx).BoundedMixedProfile (syntaxSteps g.prog))
     (steps : Nat) :
-    letI : Fintype (graphMachine g hctx).State :=
-      graphMachine.instFintypeState g hctx LF
-    letI : ∀ who : P,
-        Fintype (Option ((graphMachine g hctx).Action who)) :=
-      fun who => graphMachine.instFintypeOptionAction g hctx LF who
-    letI : Fintype (graphMachine g hctx).Event :=
-      graphMachine.instFintypeEvent g hctx LF
-    letI : Fintype
-        ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
-      Machine.BoundedRunPrefix.instFintype
-    letI : Fintype
-        (((fosgView g hctx).toBoundedFOSG
-            (syntaxSteps g.prog)).History) :=
-      boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
-    letI : DecidablePred
-        (((fosgView g hctx).toBoundedFOSG
-            (syntaxSteps g.prog)).terminal) :=
-      Classical.decPred _
     ∃ β :
       (fosgView g hctx).BoundedBehavioralProfile
         (syntaxSteps g.prog),
@@ -188,24 +170,6 @@ theorem kuhn_mixed_to_behavioral_graphFOSG
         (fosgView g hctx).boundedOutcomeFromMixed
           (syntaxSteps g.prog) μ steps := by
   classical
-  letI : Fintype (graphMachine g hctx).State :=
-    graphMachine.instFintypeState g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option ((graphMachine g hctx).Action who)) :=
-    fun who => graphMachine.instFintypeOptionAction g hctx LF who
-  letI : Fintype (graphMachine g hctx).Event :=
-    graphMachine.instFintypeEvent g hctx LF
-  letI : Fintype
-      ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
-    Machine.BoundedRunPrefix.instFintype
-  letI : Fintype
-      (((fosgView g hctx).toBoundedFOSG
-          (syntaxSteps g.prog)).History) :=
-    boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
-  letI : DecidablePred
-      (((fosgView g hctx).toBoundedFOSG
-          (syntaxSteps g.prog)).terminal) :=
-    Classical.decPred _
   have hLeg :
       ((fosgView g hctx).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
@@ -221,37 +185,13 @@ witness inhabits the PMF behavioral carrier of `pmfBehavioralKernelGameAt`.
 The equality is an equality of the games' public outcome kernels. -/
 theorem kuhn_finiteKernelGame
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L)
-    (μ : ∀ who, PMF ((pureKernelGameAt g hctx LF).Strategy who)) :
-    ∃ β : (pmfBehavioralKernelGameAt g hctx LF).Profile,
-      (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
+    [FiniteDomains g]
+    (μ : ∀ who, PMF ((pureKernelGameAt g hctx).Strategy who)) :
+    ∃ β : (pmfBehavioralKernelGameAt g hctx).Profile,
+      (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g hctx LF).outcomeKernel π) := by
+          (fun π => (pureKernelGameAt g hctx).outcomeKernel π) := by
   classical
-  letI : Fintype (graphMachine g hctx).State :=
-    graphMachine.instFintypeState g hctx LF
-  letI : ∀ who : P,
-      Fintype (Option ((graphMachine g hctx).Action who)) :=
-    fun who => graphMachine.instFintypeOptionAction g hctx LF who
-  letI : Fintype (graphMachine g hctx).Event :=
-    graphMachine.instFintypeEvent g hctx LF
-  letI : Fintype
-      ((graphMachine g hctx).BoundedRunPrefix (syntaxSteps g.prog)) :=
-    Machine.BoundedRunPrefix.instFintype
-  letI : Fintype
-      (((fosgView g hctx).toBoundedFOSG
-          (syntaxSteps g.prog)).History) :=
-    boundedFOSG.instFintypeHistory g hctx (syntaxSteps g.prog)
-  letI : DecidablePred
-      (((fosgView g hctx).toBoundedFOSG
-          (syntaxSteps g.prog)).terminal) :=
-    Classical.decPred _
-  letI : ∀ who : P,
-      Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
-    intro who
-    dsimp [pureKernelGameAt, pureStrategyAt,
-      Machine.FOSGView.BoundedPureStrategy]
-    infer_instance
   have hLeg :
       ((fosgView g hctx).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=

@@ -1087,40 +1087,40 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
           CursorWorldData.prog, availableActions, w, hprog] at hfalse
 
 /-- Finite state helper for the checked graph machine. -/
-@[reducible] noncomputable def graphMachine.instFintypeState
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
+@[reducible] noncomputable instance graphMachine.instFintypeState
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g] :
     Fintype (graphMachine g hctx).State := by
   classical
   letI : Fintype (ProgramCursor g.prog) :=
     ProgramCursor.instFintype g.prog
   letI : DecidableEq (CursorCheckedWorld g) := Classical.decEq _
   letI : Fintype (CursorCheckedWorld g) :=
-    CursorCheckedWorld.instFintype g LF
+    CursorCheckedWorld.instFintype g
   change Fintype (GraphConfiguration g)
   infer_instance
 
 /-- Finite action helper for the checked graph machine. -/
-@[reducible] noncomputable def graphMachine.instFintypeAction
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+@[reducible] noncomputable instance graphMachine.instFintypeAction
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g]
     (who : P) :
     Fintype ((graphMachine g hctx).Action who) :=
-  cursorFOSG.instFintypeAction g hctx LF who
+  cursorFOSG.instFintypeAction g hctx who
 
 /-- Finite optional-action helper for the checked graph machine. -/
-@[reducible] noncomputable def graphMachine.instFintypeOptionAction
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+@[reducible] noncomputable instance graphMachine.instFintypeOptionAction
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g]
     (who : P) :
     Fintype (Option ((graphMachine g hctx).Action who)) :=
-  cursorFOSG.instFintypeOptionAction g hctx LF who
+  cursorFOSG.instFintypeOptionAction g hctx who
 
 /-- Finite primitive-event helper for the checked graph machine. -/
-@[reducible] noncomputable def graphMachine.instFintypeEvent
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+@[reducible] noncomputable instance graphMachine.instFintypeEvent
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g]
     [Fintype P] :
     Fintype (graphMachine g hctx).Event := by
   classical
   letI : ∀ who : P, Fintype (ProgramAction g.prog who) :=
-    fun who => cursorFOSG.instFintypeAction g hctx LF who
+    fun who => cursorFOSG.instFintypeAction g hctx who
   letI : Fintype InternalEvent := by
     dsimp [InternalEvent]
     infer_instance
@@ -1149,7 +1149,7 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
             ⟨event, Finset.mem_univ _, rfl⟩))
 
 /-- Finite-history helper for bounded graph-machine FOSG views. -/
-@[reducible] noncomputable def boundedFOSG.instFintypeHistory
+@[reducible] noncomputable instance boundedFOSG.instFintypeHistory
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
     [Fintype P]
     [Fintype (graphMachine g hctx).State]
@@ -1164,18 +1164,32 @@ theorem fosgView_availableActions_eq_cursor_availableProgramActions_of_not_termi
     (G := boundedFOSG g hctx horizon)
     ((fosgView g hctx).toBoundedFOSG_boundedHorizon horizon)
 
+/-- Finite-history instance for the bounded FOSG view in its direct view form. -/
+@[reducible] noncomputable instance fosgView.instFintypeBoundedHistory
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat)
+    [Fintype P] [FiniteDomains g] :
+    Fintype (((fosgView g hctx).toBoundedFOSG horizon).History) := by
+  change Fintype (boundedFOSG g hctx horizon).History
+  infer_instance
+
+/-- Terminal decidability for the bounded FOSG view in its direct view form. -/
+noncomputable instance fosgView.instDecidablePredBoundedTerminal
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) (horizon : Nat) :
+    DecidablePred (((fosgView g hctx).toBoundedFOSG horizon).terminal) :=
+  Classical.decPred _
+
 /-- Finite-history helper for the syntax-horizon graph-machine FOSG. -/
-@[reducible] noncomputable def finiteFOSG.instFintypeHistory
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+@[reducible] noncomputable instance finiteFOSG.instFintypeHistory
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g]
     [Fintype P] :
     Fintype (finiteFOSG g hctx).History := by
   letI : Fintype (graphMachine g hctx).State :=
-    graphMachine.instFintypeState g hctx LF
+    graphMachine.instFintypeState g hctx
   letI : ∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who)) :=
-    fun who => graphMachine.instFintypeOptionAction g hctx LF who
+    fun who => graphMachine.instFintypeOptionAction g hctx who
   letI : Fintype (graphMachine g hctx).Event :=
-    graphMachine.instFintypeEvent g hctx LF
+    graphMachine.instFintypeEvent g hctx
   exact boundedFOSG.instFintypeHistory
     g hctx (syntaxSteps g.prog)
 

@@ -37,19 +37,19 @@ abbrev behavioralProfilePMFAt
 /-- Finite FOSG-native pure strategic form of a checked Vegas program. -/
 noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) : GameTheory.KernelGame P where
+    [FiniteDomains g] : GameTheory.KernelGame P where
   Strategy := pureStrategyAt g hctx
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun π => by
     classical
     letI : Fintype (graphMachine g hctx).State :=
-      graphMachine.instFintypeState g hctx LF
+      graphMachine.instFintypeState g hctx
     letI : ∀ who : P,
         Fintype (Option ((graphMachine g hctx).Action who)) :=
-      fun who => graphMachine.instFintypeOptionAction g hctx LF who
+      fun who => graphMachine.instFintypeOptionAction g hctx who
     letI : Fintype (graphMachine g hctx).Event :=
-      graphMachine.instFintypeEvent g hctx LF
+      graphMachine.instFintypeEvent g hctx
     letI :
         Fintype
           ((graphMachine g hctx).BoundedRunPrefix
@@ -65,23 +65,23 @@ noncomputable def pureKernelGameAt
 
 @[simp] theorem pureKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) :
-    (pureKernelGameAt g hctx LF).Strategy =
+    [FiniteDomains g] :
+    (pureKernelGameAt g hctx).Strategy =
       pureStrategyAt g hctx := rfl
 
 @[simp] theorem pureKernelGameAt_outcomeKernel
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) (π : pureProfileAt g hctx) :
-    (pureKernelGameAt g hctx LF).outcomeKernel π =
+    [FiniteDomains g] (π : pureProfileAt g hctx) :
+    (pureKernelGameAt g hctx).outcomeKernel π =
       (by
         classical
         letI : Fintype (graphMachine g hctx).State :=
-          graphMachine.instFintypeState g hctx LF
+          graphMachine.instFintypeState g hctx
         letI : ∀ who : P,
             Fintype (Option ((graphMachine g hctx).Action who)) :=
-          fun who => graphMachine.instFintypeOptionAction g hctx LF who
+          fun who => graphMachine.instFintypeOptionAction g hctx who
         letI : Fintype (graphMachine g hctx).Event :=
-          graphMachine.instFintypeEvent g hctx LF
+          graphMachine.instFintypeEvent g hctx
         letI :
             Fintype
               ((graphMachine g hctx).BoundedRunPrefix
@@ -100,16 +100,16 @@ uses the graph-machine FOSG finite-history package, but the instance head is
 the Vegas kernel-game strategy carrier. -/
 noncomputable instance pureKernelGameAt.instFintypeStrategy
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) (who : P) :
-    Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
+    [FiniteDomains g] (who : P) :
+    Fintype ((pureKernelGameAt g hctx).Strategy who) := by
   classical
   letI : Fintype (graphMachine g hctx).State :=
-    graphMachine.instFintypeState g hctx LF
+    graphMachine.instFintypeState g hctx
   letI : ∀ who : P,
       Fintype (Option ((graphMachine g hctx).Action who)) :=
-    fun who => graphMachine.instFintypeOptionAction g hctx LF who
+    fun who => graphMachine.instFintypeOptionAction g hctx who
   letI : Fintype (graphMachine g hctx).Event :=
-    graphMachine.instFintypeEvent g hctx LF
+    graphMachine.instFintypeEvent g hctx
   letI :
       Fintype
         ((graphMachine g hctx).BoundedRunPrefix
@@ -127,19 +127,19 @@ noncomputable instance pureKernelGameAt.instFintypeStrategy
 program. -/
 noncomputable def pmfBehavioralKernelGameAt
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) : GameTheory.KernelGame P where
+    [FiniteDomains g] : GameTheory.KernelGame P where
   Strategy := behavioralStrategyPMFAt g hctx
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun β => by
     classical
     letI : Fintype (graphMachine g hctx).State :=
-      graphMachine.instFintypeState g hctx LF
+      graphMachine.instFintypeState g hctx
     letI : ∀ who : P,
         Fintype (Option ((graphMachine g hctx).Action who)) :=
-      fun who => graphMachine.instFintypeOptionAction g hctx LF who
+      fun who => graphMachine.instFintypeOptionAction g hctx who
     letI : Fintype (graphMachine g hctx).Event :=
-      graphMachine.instFintypeEvent g hctx LF
+      graphMachine.instFintypeEvent g hctx
     letI :
         Fintype
           ((graphMachine g hctx).BoundedRunPrefix
@@ -155,23 +155,23 @@ noncomputable def pmfBehavioralKernelGameAt
 
 @[simp] theorem pmfBehavioralKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) :
-    (pmfBehavioralKernelGameAt g hctx LF).Strategy =
+    [FiniteDomains g] :
+    (pmfBehavioralKernelGameAt g hctx).Strategy =
       behavioralStrategyPMFAt g hctx := rfl
 
 @[simp] theorem pmfBehavioralKernelGameAt_outcomeKernel
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) (β : behavioralProfilePMFAt g hctx) :
-    (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
+    [FiniteDomains g] (β : behavioralProfilePMFAt g hctx) :
+    (pmfBehavioralKernelGameAt g hctx).outcomeKernel β =
       (by
         classical
         letI : Fintype (graphMachine g hctx).State :=
-          graphMachine.instFintypeState g hctx LF
+          graphMachine.instFintypeState g hctx
         letI : ∀ who : P,
             Fintype (Option ((graphMachine g hctx).Action who)) :=
-          fun who => graphMachine.instFintypeOptionAction g hctx LF who
+          fun who => graphMachine.instFintypeOptionAction g hctx who
         letI : Fintype (graphMachine g hctx).Event :=
-          graphMachine.instFintypeEvent g hctx LF
+          graphMachine.instFintypeEvent g hctx
         letI :
             Fintype
               ((graphMachine g hctx).BoundedRunPrefix

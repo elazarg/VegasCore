@@ -57,20 +57,33 @@ def tailOwn
     simpa [ProgramPureStrategy] using σ
   exact σ'.2
 
-noncomputable instance instFintype
-    (LF : FiniteValuation L) (who : P) :
+@[reducible] noncomputable def fintypeOfProof
+    (who : P) :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
-      Fintype (ProgramPureStrategy who p)
-  | _, .ret _ => inferInstanceAs (Fintype PUnit)
-  | _, .letExpr _ _ k => instFintype LF who k
-  | _, .sample _ _ k => instFintype LF who k
-  | Γ, .commit _ owner (b := b) _ k =>
+      FiniteVCtxProof Γ → FiniteProgramProof p →
+        Fintype (ProgramPureStrategy who p)
+  | _, .ret _, _hΓ, .ret => inferInstanceAs (Fintype PUnit)
+  | _, .letExpr _ _ k, hΓ, .letExpr head tail =>
+      fintypeOfProof who k (.cons head hΓ) tail
+  | _, .sample _ _ k, hΓ, .sample head tail =>
+      fintypeOfProof who k (.cons head hΓ) tail
+  | Γ, .commit _ owner (b := b) _ k, hΓ, hp =>
       match decEq owner who with
       | isTrue h =>
-          let _ : Fintype (ViewEnv who Γ) :=
-            Vegas.Env.instFintype
-              (L := L) (LF := LF) (Γ := eraseVCtx (viewVCtx who Γ))
-          let _ : Fintype (L.Val b) := LF.fintypeVal b
+          let head : FiniteType L b := by
+            cases hp with
+            | commit head _ => exact head
+          let tail : FiniteProgramProof k := by
+            cases hp with
+            | commit _ tail => exact tail
+          let _ : FiniteVCtx (viewVCtx who Γ) :=
+            { proof := hΓ.view who }
+          let _ : FiniteCtx (eraseVCtx (viewVCtx who Γ)) :=
+            FiniteVCtx.erase
+          let _ : Fintype (ViewEnv who Γ) := by
+            dsimp [ViewEnv]
+            infer_instance
+          let _ : Fintype (L.Val b) := head.fintype
           let _ : Fintype (PureKernel who Γ b) := by
             classical
             dsimp [PureKernel]
@@ -79,9 +92,9 @@ noncomputable instance instFintype
               (fun _ => L.Val b)
               (Classical.decEq _)
               inferInstance
-              (fun _ => LF.fintypeVal b)
+              (fun _ => head.fintype)
           let _ : Fintype (ProgramPureStrategy who k) :=
-            instFintype LF who k
+            fintypeOfProof who k (.cons head hΓ) tail
           by
             simpa [ProgramPureStrategy, h] using
               inferInstanceAs
@@ -89,8 +102,22 @@ noncomputable instance instFintype
                   ProgramPureStrategy who k))
       | isFalse h =>
           by
-            simpa [ProgramPureStrategy, h] using instFintype LF who k
-  | _, .reveal _ _ _ _ k => instFintype LF who k
+            let head : FiniteType L b := by
+              cases hp with
+              | commit head _ => exact head
+            let tail : FiniteProgramProof k := by
+              cases hp with
+              | commit _ tail => exact tail
+            simpa [ProgramPureStrategy, h] using
+              fintypeOfProof who k (.cons head hΓ) tail
+  | _, .reveal _ _ _ _ k, hΓ, .reveal head tail =>
+      fintypeOfProof who k (.cons head hΓ) tail
+
+noncomputable instance instFintype
+    (who : P) {Γ : VCtx P L} (p : VegasCore P L Γ)
+    [hΓ : FiniteVCtx Γ] [hp : FiniteProgram p] :
+    Fintype (ProgramPureStrategy who p) :=
+  fintypeOfProof who p hΓ.proof hp.proof
 
 end ProgramPureStrategy
 
@@ -111,8 +138,8 @@ def tail
       · simpa [ProgramPureStrategy, h] using σ i
 
 noncomputable instance instFintype
-    (LF : FiniteValuation L) [Fintype P]
-    {Γ : VCtx P L} (p : VegasCore P L Γ) :
+    [Fintype P] {Γ : VCtx P L} (p : VegasCore P L Γ)
+    [hΓ : FiniteVCtx Γ] [hp : FiniteProgram p] :
     Fintype (ProgramPureProfile p) := by
   classical
   dsimp [ProgramPureProfile]
@@ -121,7 +148,7 @@ noncomputable instance instFintype
     (fun who => ProgramPureStrategy who p)
     inferInstance
     inferInstance
-    (fun who => ProgramPureStrategy.instFintype LF who p)
+    (fun who => ProgramPureStrategy.instFintype who p)
 
 end ProgramPureProfile
 
@@ -211,23 +238,25 @@ abbrev FeasibleProgramPureProfile (g : WFProgram P L) : Type :=
   ∀ who, FeasibleProgramPureStrategy g who
 
 /-- Classical `Fintype` on the per-player guard-legal pure strategy
-subtype. Requires `FiniteValuation L` and uses `Classical.dec` for
+subtype. Uses the program's finite-domain evidence and `Classical.dec` for
 decidability of the legality predicate. -/
-@[reducible] noncomputable def FeasibleProgramPureStrategy.instFintype
-    (g : WFProgram P L) (LF : FiniteValuation L) (who : P) :
+@[reducible] noncomputable instance FeasibleProgramPureStrategy.instFintype
+    (g : WFProgram P L) [FiniteDomains g] (who : P) :
     Fintype (FeasibleProgramPureStrategy g who) := by
   classical
+  letI : FiniteVCtx g.Γ := (inferInstance : FiniteDomains g).context
+  letI : FiniteProgram g.prog := (inferInstance : FiniteDomains g).program
   let _ : Fintype (ProgramPureStrategy who g.prog) :=
-    ProgramPureStrategy.instFintype (L := L) LF who g.prog
+    ProgramPureStrategy.instFintype who g.prog
   exact Subtype.fintype _
 
 /-- Classical `Fintype` on the joint guard-legal pure profile. -/
-@[reducible] noncomputable def FeasibleProgramPureProfile.instFintype
-    (g : WFProgram P L) (LF : FiniteValuation L) [Fintype P] :
+@[reducible] noncomputable instance FeasibleProgramPureProfile.instFintype
+    (g : WFProgram P L) [FiniteDomains g] [Fintype P] :
     Fintype (FeasibleProgramPureProfile g) := by
   classical
   have h : ∀ who, Fintype (FeasibleProgramPureStrategy g who) := fun who =>
-    FeasibleProgramPureStrategy.instFintype g LF who
+    FeasibleProgramPureStrategy.instFintype g who
   exact Pi.instFintype
 
 end Vegas

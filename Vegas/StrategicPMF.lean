@@ -23,20 +23,20 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 The outcome kernel is the finite graph-machine FOSG run distribution at the
 bundle's context proof. -/
 noncomputable def pmfBehavioralKernelGame [Fintype P]
-    (g : WFProgram P L) (LF : FiniteValuation L) : GameTheory.KernelGame P :=
-  pmfBehavioralKernelGameAt g g.wctx LF
+    (g : WFProgram P L) [FiniteDomains g] : GameTheory.KernelGame P :=
+  pmfBehavioralKernelGameAt g g.wctx
 
 @[simp] theorem pmfBehavioralKernelGame_outcomeKernel
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pmfBehavioralKernelGame g LF).Profile) :
-    (pmfBehavioralKernelGame g LF).outcomeKernel σ =
-      (pmfBehavioralKernelGameAt g g.wctx LF).outcomeKernel σ := rfl
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pmfBehavioralKernelGame g).Profile) :
+    (pmfBehavioralKernelGame g).outcomeKernel σ =
+      (pmfBehavioralKernelGameAt g g.wctx).outcomeKernel σ := rfl
 
 @[simp] theorem pmfBehavioralKernelGame_udist
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : (pmfBehavioralKernelGame g LF).Profile) :
-    (pmfBehavioralKernelGame g LF).udist σ =
-      ((pmfBehavioralKernelGameAt g g.wctx LF).outcomeKernel σ).bind
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pmfBehavioralKernelGame g).Profile) :
+    (pmfBehavioralKernelGame g).udist σ =
+      ((pmfBehavioralKernelGameAt g g.wctx).outcomeKernel σ).bind
         (fun o : Outcome P => PMF.pure (fun i => (o i : ℝ))) := rfl
 
 end Vegas

@@ -49,4 +49,17 @@ structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where
   normalized : NormalizedDists prog
   legal : Legal prog
 
+/-- A checked program with finite initial state and finite operational domains.
+This is proof/evidence, not a semantic parameter of the game. -/
+class FiniteDomains {P : Type} [DecidableEq P] {L : IExpr}
+    (g : WFProgram P L) where
+  context : FiniteVCtx g.Γ
+  program : FiniteProgram g.prog
+
+instance finiteDomains_of {P : Type} [DecidableEq P] {L : IExpr}
+    (g : WFProgram P L) [FiniteVCtx g.Γ] [FiniteProgram g.prog] :
+    FiniteDomains g where
+  context := inferInstance
+  program := inferInstance
+
 end Vegas

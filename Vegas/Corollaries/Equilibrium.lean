@@ -17,63 +17,63 @@ open GameTheory
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 theorem isNash_iff_bestResponse
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : StrategyProfile g LF) :
-    IsNash g LF σ ↔
-      ∀ who, IsBestResponse g LF who σ (σ who) := by
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : StrategyProfile g) :
+    IsNash g σ ↔
+      ∀ who, IsBestResponse g who σ (σ who) := by
   simpa [IsNash, IsBestResponse] using
     (KernelGame.isNash_iff_bestResponse
-      (G := pmfBehavioralKernelGame g LF) σ)
+      (G := pmfBehavioralKernelGame g) σ)
 
 theorem IsNash_iff_IsNashFor_eu
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : StrategyProfile g LF) :
-    IsNash g LF σ ↔ IsNashFor g LF (euPref g LF) σ := by
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : StrategyProfile g) :
+    IsNash g σ ↔ IsNashFor g (euPref g) σ := by
   simpa [IsNash, IsNashFor, euPref] using
     (KernelGame.IsNash_iff_IsNashFor_eu
-      (G := pmfBehavioralKernelGame g LF) σ)
+      (G := pmfBehavioralKernelGame g) σ)
 
 theorem dominant_is_nash
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : StrategyProfile g LF)
-    (hdom : ∀ who, IsDominant g LF who (σ who)) :
-    IsNash g LF σ := by
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : StrategyProfile g)
+    (hdom : ∀ who, IsDominant g who (σ who)) :
+    IsNash g σ := by
   simpa [IsNash, IsDominant] using
     (KernelGame.dominant_is_nash
-      (G := pmfBehavioralKernelGame g LF) σ hdom)
+      (G := pmfBehavioralKernelGame g) σ hdom)
 
 theorem isNash_iff_no_improving
-    [Fintype P] (g : WFProgram P L) (LF : FiniteValuation L)
-    (σ : StrategyProfile g LF) :
-    IsNash g LF σ ↔
-      ¬ ∃ (who : P) (s' : Strategy g LF who),
-        eu g LF (Function.update σ who s') who > eu g LF σ who := by
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : StrategyProfile g) :
+    IsNash g σ ↔
+      ¬ ∃ (who : P) (s' : Strategy g who),
+        eu g (Function.update σ who s') who > eu g σ who := by
   simpa [IsNash, eu, Strategy] using
     (KernelGame.isNash_iff_no_improving
-      (G := pmfBehavioralKernelGame g LF) (σ := σ))
+      (G := pmfBehavioralKernelGame g) (σ := σ))
 
 theorem IsStrictNash.isNash
-    [Fintype P] {g : WFProgram P L} {LF : FiniteValuation L}
-    {σ : StrategyProfile g LF} (hstrict : IsStrictNash g LF σ) :
-    IsNash g LF σ := by
+    [Fintype P] {g : WFProgram P L} [FiniteDomains g]
+    {σ : StrategyProfile g} (hstrict : IsStrictNash g σ) :
+    IsNash g σ := by
   simpa [IsStrictNash, IsNash] using
     (KernelGame.IsStrictNash.isNash
-      (G := pmfBehavioralKernelGame g LF) hstrict)
+      (G := pmfBehavioralKernelGame g) hstrict)
 
 theorem nash_pure_isCorrelatedEq
-    [Fintype P] {g : WFProgram P L} {LF : FiniteValuation L}
-    {σ : StrategyProfile g LF} (hN : IsNash g LF σ) :
-    IsCorrelatedEq g LF (PMF.pure σ) := by
+    [Fintype P] {g : WFProgram P L} [FiniteDomains g]
+    {σ : StrategyProfile g} (hN : IsNash g σ) :
+    IsCorrelatedEq g (PMF.pure σ) := by
   simpa [IsNash, IsCorrelatedEq] using
     (KernelGame.nash_pure_isCorrelatedEq
-      (G := pmfBehavioralKernelGame g LF) hN)
+      (G := pmfBehavioralKernelGame g) hN)
 
 theorem nash_pure_isCoarseCorrelatedEq
-    [Fintype P] {g : WFProgram P L} {LF : FiniteValuation L}
-    {σ : StrategyProfile g LF} (hN : IsNash g LF σ) :
-    IsCoarseCorrelatedEq g LF (PMF.pure σ) := by
+    [Fintype P] {g : WFProgram P L} [FiniteDomains g]
+    {σ : StrategyProfile g} (hN : IsNash g σ) :
+    IsCoarseCorrelatedEq g (PMF.pure σ) := by
   simpa [IsNash, IsCoarseCorrelatedEq] using
     (KernelGame.nash_pure_isCoarseCorrelatedEq
-      (G := pmfBehavioralKernelGame g LF) hN)
+      (G := pmfBehavioralKernelGame g) hN)
 
 end Vegas

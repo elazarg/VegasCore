@@ -164,24 +164,26 @@ theorem cursorFOSGTransition_map_checkedWorld_eq_checkedTransition
 
 /-- Finite-world helper for `cursorFOSG`. -/
 @[reducible] noncomputable def cursorFOSG.instFintypeWorld
-    (g : WFProgram P L) (_hctx : WFCtx g.Γ) (LF : FiniteValuation L) :
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ) [FiniteDomains g] :
     Fintype (CursorCheckedWorld g) :=
-  CursorCheckedWorld.instFintype g LF
+  CursorCheckedWorld.instFintype g
 
 /-- Per-player finite action helper for `cursorFOSG`. -/
 @[reducible] noncomputable def cursorFOSG.instFintypeAction
-    (g : WFProgram P L) (_hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (g : WFProgram P L) (_hctx : WFCtx g.Γ) [FiniteDomains g]
     (who : P) :
-    Fintype (ProgramAction g.prog who) :=
-  ProgramAction.instFintype LF g.prog who
+    Fintype (ProgramAction g.prog who) := by
+  let _ : FiniteProgram g.prog :=
+    (inferInstance : FiniteDomains g).program
+  exact ProgramAction.instFintype g.prog who
 
 /-- Per-player optional-action finite helper for FOSG execution APIs. -/
 @[reducible] noncomputable def cursorFOSG.instFintypeOptionAction
-    (g : WFProgram P L) (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
+    (g : WFProgram P L) (hctx : WFCtx g.Γ) [FiniteDomains g]
     (who : P) :
     Fintype (Option (ProgramAction g.prog who)) := by
   let _ : Fintype (ProgramAction g.prog who) :=
-    cursorFOSG.instFintypeAction g hctx LF who
+    cursorFOSG.instFintypeAction g hctx who
   infer_instance
 
 /-- Terminal decidability helper for FOSG execution APIs. -/
