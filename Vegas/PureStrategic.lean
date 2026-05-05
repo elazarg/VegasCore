@@ -27,7 +27,7 @@ The outcome kernel is the checked graph-machine kernel at the bundle's context
 proof. -/
 noncomputable def pureKernelGame (g : WFProgram P L) :
     GameTheory.KernelGame P :=
-  pureKernelGameAt g g.wctx
+  syntaxPureKernelGameAt g g.wctx
 
 @[simp] theorem pureKernelGame_outcomeKernel
     (g : WFProgram P L)
@@ -44,7 +44,7 @@ theorem pureKernelGame_eu
     (g : WFProgram P L)
     (σ : FeasibleProgramPureProfile g) (who : P) :
     (pureKernelGame g).eu σ who =
-      (pureKernelGameAt g g.wctx).eu σ who := rfl
+      (syntaxPureKernelGameAt g g.wctx).eu σ who := rfl
 
 /-- The legal behavioral lift of a legal pure profile has the same outcome
 kernel as the fixed-program pure strategic form. -/

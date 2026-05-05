@@ -218,13 +218,13 @@ theorem kuhn_mixed_to_behavioral_vegas
 /-- Finite Vegas Kuhn theorem stated directly for the FOSG-native kernel games.
 
 This is the replacement headline shape: the independent mixed profile ranges
-over the pure strategy carrier of `finitePureKernelGameAt`, and the behavioral
-witness inhabits the PMF behavioral carrier of `finiteBehavioralKernelGamePMFAt`.
+over the pure strategy carrier of `pureKernelGameAt`, and the behavioral
+witness inhabits the PMF behavioral carrier of `pmfBehavioralKernelGameAt`.
 The equality is an equality of the games' public outcome kernels. -/
 theorem kuhn_finiteKernelGame
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L)
-    (μ : ∀ who, PMF ((finitePureKernelGameAt g hctx LF).Strategy who)) :
+    (μ : ∀ who, PMF ((pureKernelGameAt g hctx LF).Strategy who)) :
     letI : Fintype (graphMachine g hctx).State :=
       graphMachine.instFintypeState g hctx LF
     letI : ∀ who : P,
@@ -244,15 +244,15 @@ theorem kuhn_finiteKernelGame
             (syntaxSteps g.prog)).terminal) :=
       Classical.decPred _
     letI : ∀ who : P,
-        Fintype ((finitePureKernelGameAt g hctx LF).Strategy who) := by
+        Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
       intro who
-      dsimp [finitePureKernelGameAt, finitePureStrategyAt,
+      dsimp [pureKernelGameAt, pureStrategyAt,
         Machine.FOSGView.BoundedPureStrategy]
       infer_instance
-    ∃ β : (finiteBehavioralKernelGamePMFAt g hctx LF).Profile,
-      (finiteBehavioralKernelGamePMFAt g hctx LF).outcomeKernel β =
+    ∃ β : (pmfBehavioralKernelGameAt g hctx LF).Profile,
+      (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (finitePureKernelGameAt g hctx LF).outcomeKernel π) := by
+          (fun π => (pureKernelGameAt g hctx LF).outcomeKernel π) := by
   classical
   letI : Fintype (graphMachine g hctx).State :=
     graphMachine.instFintypeState g hctx LF
@@ -273,9 +273,9 @@ theorem kuhn_finiteKernelGame
           (syntaxSteps g.prog)).terminal) :=
     Classical.decPred _
   letI : ∀ who : P,
-      Fintype ((finitePureKernelGameAt g hctx LF).Strategy who) := by
+      Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
     intro who
-    dsimp [finitePureKernelGameAt, finitePureStrategyAt,
+    dsimp [pureKernelGameAt, pureStrategyAt,
       Machine.FOSGView.BoundedPureStrategy]
     infer_instance
   have hLeg :
@@ -286,8 +286,8 @@ theorem kuhn_finiteKernelGame
     (fosgView g hctx).kuhn_mixed_to_behavioral_bounded
       (syntaxSteps g.prog) hLeg μ (syntaxSteps g.prog)
   refine ⟨β, ?_⟩
-  simpa [finiteBehavioralKernelGamePMFAt,
-    finitePureKernelGameAt, Machine.FOSGView.boundedOutcomeFromMixed,
+  simpa [pmfBehavioralKernelGameAt,
+    pureKernelGameAt, Machine.FOSGView.boundedOutcomeFromMixed,
     GameTheory.FOSG.Kuhn.reachableMixedProfileJoint] using hβ
 
 end Vegas

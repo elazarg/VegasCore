@@ -19,7 +19,7 @@ fixed program's local *guard-legal* behavioral strategies.
 This is the public behavioral strategic form. Its outcome kernel is the
 checked graph-machine kernel at the program bundle's context proof. -/
 noncomputable def behavioralKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
-  behavioralKernelGameAt g g.wctx
+  syntaxBehavioralKernelGameAt g g.wctx
 
 @[simp] theorem behavioralKernelGame_outcomeKernel
     (g : WFProgram P L)
@@ -41,6 +41,6 @@ theorem behavioralKernelGame_eu
     (g : WFProgram P L)
     (σ : FeasibleProgramBehavioralProfile g) (who : P) :
     (behavioralKernelGame g).eu σ who =
-      (behavioralKernelGameAt g g.wctx).eu σ who := rfl
+      (syntaxBehavioralKernelGameAt g g.wctx).eu σ who := rfl
 
 end Vegas

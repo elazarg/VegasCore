@@ -67,7 +67,7 @@ theorem pureEventLaw_outcomeKernel_eq_pureKernelGame
 theorem pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramPureProfile g) :
-    (pureKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxPureKernelGameAt g hctx).outcomeKernel σ =
       (pureKernelGame g).outcomeKernel σ :=
   pureEventLaw_outcomeKernel_eq_pureKernelGame σ hctx
 
@@ -76,29 +76,29 @@ proof. -/
 theorem pureKernelGameAt_eu_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramPureProfile g) (who : P) :
-    (pureKernelGameAt g hctx).eu σ who =
+    (syntaxPureKernelGameAt g hctx).eu σ who =
       (pureKernelGame g).eu σ who := by
   unfold GameTheory.KernelGame.eu
   rw [pureKernelGameAt_outcomeKernel_eq_pureKernelGame]
-  simp [pureKernelGameAt, pureKernelGame]
+  simp [syntaxPureKernelGameAt, pureKernelGame]
 
 /-- Utility distributions are unchanged by changing the pure kernel's context
 proof. -/
 theorem pureKernelGameAt_udist_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramPureProfile g) :
-    (pureKernelGameAt g hctx).udist σ =
+    (syntaxPureKernelGameAt g hctx).udist σ =
       (pureKernelGame g).udist σ := by
   unfold GameTheory.KernelGame.udist
   rw [pureKernelGameAt_outcomeKernel_eq_pureKernelGame]
-  simp [pureKernelGameAt, pureKernelGame]
+  simp [syntaxPureKernelGameAt, pureKernelGame]
 
 /-- Binding a distribution over pure profiles is unchanged by changing the
 pure kernel's context proof. -/
 theorem bind_pureKernelGameAt_outcomeKernel_eq_pureKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (μ : PMF (FeasibleProgramPureProfile g)) :
-    μ.bind (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) =
+    μ.bind (fun σ => (syntaxPureKernelGameAt g hctx).outcomeKernel σ) =
       μ.bind (fun σ => (pureKernelGame g).outcomeKernel σ) := by
   refine Math.ProbabilityMassFunction.bind_congr_on_support μ _ _ ?_
   intro σ _
@@ -110,7 +110,7 @@ behavioral kernel. -/
 theorem pmfBehavioralKernelGameAt_outcomeKernel_eq_pmfBehavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (pmfBehavioralKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxPMFBehavioralKernelGameAt g hctx).outcomeKernel σ =
       (pmfBehavioralKernelGame g).outcomeKernel σ :=
   pmfBehavioralEventLaw_outcomeKernel_eq_pmfBehavioralKernelGame σ hctx
 
@@ -119,29 +119,30 @@ context proof. -/
 theorem pmfBehavioralKernelGameAt_eu_eq_pmfBehavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfilePMF g) (who : P) :
-    (pmfBehavioralKernelGameAt g hctx).eu σ who =
+    (syntaxPMFBehavioralKernelGameAt g hctx).eu σ who =
       (pmfBehavioralKernelGame g).eu σ who := by
   unfold GameTheory.KernelGame.eu
   rw [pmfBehavioralKernelGameAt_outcomeKernel_eq_pmfBehavioralKernelGame]
-  simp [pmfBehavioralKernelGameAt, pmfBehavioralKernelGame]
+  simp [syntaxPMFBehavioralKernelGameAt, pmfBehavioralKernelGame]
 
 /-- Utility distributions are unchanged by changing the PMF behavioral kernel's
 context proof. -/
 theorem pmfBehavioralKernelGameAt_udist_eq_pmfBehavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (pmfBehavioralKernelGameAt g hctx).udist σ =
+    (syntaxPMFBehavioralKernelGameAt g hctx).udist σ =
       (pmfBehavioralKernelGame g).udist σ := by
   unfold GameTheory.KernelGame.udist
   rw [pmfBehavioralKernelGameAt_outcomeKernel_eq_pmfBehavioralKernelGame]
-  simp [pmfBehavioralKernelGameAt, pmfBehavioralKernelGame]
+  simp [syntaxPMFBehavioralKernelGameAt, pmfBehavioralKernelGame]
 
 /-- Binding a distribution over PMF behavioral profiles is unchanged by
 changing the PMF behavioral kernel's context proof. -/
 theorem bind_pmfBehavioralKernelGameAt_outcomeKernel_eq_pmfBehavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (μ : PMF (FeasibleProgramBehavioralProfilePMF g)) :
-    μ.bind (fun σ => (pmfBehavioralKernelGameAt g hctx).outcomeKernel σ) =
+    μ.bind (fun σ =>
+        (syntaxPMFBehavioralKernelGameAt g hctx).outcomeKernel σ) =
       μ.bind (fun σ => (pmfBehavioralKernelGame g).outcomeKernel σ) := by
   refine Math.ProbabilityMassFunction.bind_congr_on_support μ _ _ ?_
   intro σ _
@@ -152,7 +153,7 @@ FDist behavioral kernel. -/
 theorem behavioralKernelGameAt_outcomeKernel_eq_behavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfile g) :
-    (behavioralKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxBehavioralKernelGameAt g hctx).outcomeKernel σ =
       (behavioralKernelGame g).outcomeKernel σ :=
   behavioralEventLaw_outcomeKernel_eq_behavioralKernelGame σ hctx
 
@@ -161,29 +162,29 @@ context proof. -/
 theorem behavioralKernelGameAt_eu_eq_behavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfile g) (who : P) :
-    (behavioralKernelGameAt g hctx).eu σ who =
+    (syntaxBehavioralKernelGameAt g hctx).eu σ who =
       (behavioralKernelGame g).eu σ who := by
   unfold GameTheory.KernelGame.eu
   rw [behavioralKernelGameAt_outcomeKernel_eq_behavioralKernelGame]
-  simp [behavioralKernelGameAt, behavioralKernelGame]
+  simp [syntaxBehavioralKernelGameAt, behavioralKernelGame]
 
 /-- Utility distributions are unchanged by changing the FDist behavioral
 kernel's context proof. -/
 theorem behavioralKernelGameAt_udist_eq_behavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfile g) :
-    (behavioralKernelGameAt g hctx).udist σ =
+    (syntaxBehavioralKernelGameAt g hctx).udist σ =
       (behavioralKernelGame g).udist σ := by
   unfold GameTheory.KernelGame.udist
   rw [behavioralKernelGameAt_outcomeKernel_eq_behavioralKernelGame]
-  simp [behavioralKernelGameAt, behavioralKernelGame]
+  simp [syntaxBehavioralKernelGameAt, behavioralKernelGame]
 
 /-- Binding a distribution over FDist behavioral profiles is unchanged by
 changing the FDist behavioral kernel's context proof. -/
 theorem bind_behavioralKernelGameAt_outcomeKernel_eq_behavioralKernelGame
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (μ : PMF (FeasibleProgramBehavioralProfile g)) :
-    μ.bind (fun σ => (behavioralKernelGameAt g hctx).outcomeKernel σ) =
+    μ.bind (fun σ => (syntaxBehavioralKernelGameAt g hctx).outcomeKernel σ) =
       μ.bind (fun σ => (behavioralKernelGame g).outcomeKernel σ) := by
   refine Math.ProbabilityMassFunction.bind_congr_on_support μ _ _ ?_
   intro σ _

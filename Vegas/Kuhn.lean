@@ -22,7 +22,7 @@ distribution over payoff outcomes. -/
 theorem kuhn_finite
     [Fintype P] (g : WFProgram P L)
     (hctx : WFCtx g.Γ) (LF : FiniteValuation L)
-    (μ : ∀ who, PMF ((finitePureKernelGameAt g hctx LF).Strategy who)) :
+    (μ : ∀ who, PMF ((pureKernelGameAt g hctx LF).Strategy who)) :
     letI : Fintype (graphMachine g hctx).State :=
       graphMachine.instFintypeState g hctx LF
     letI : ∀ who : P,
@@ -42,15 +42,15 @@ theorem kuhn_finite
             (syntaxSteps g.prog)).terminal) :=
       Classical.decPred _
     letI : ∀ who : P,
-        Fintype ((finitePureKernelGameAt g hctx LF).Strategy who) := by
+        Fintype ((pureKernelGameAt g hctx LF).Strategy who) := by
       intro who
-      dsimp [finitePureKernelGameAt, finitePureStrategyAt,
+      dsimp [pureKernelGameAt, pureStrategyAt,
         Machine.FOSGView.BoundedPureStrategy]
       infer_instance
-    ∃ β : (finiteBehavioralKernelGamePMFAt g hctx LF).Profile,
-      (finiteBehavioralKernelGamePMFAt g hctx LF).outcomeKernel β =
+    ∃ β : (pmfBehavioralKernelGameAt g hctx LF).Profile,
+      (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (finitePureKernelGameAt g hctx LF).outcomeKernel π) := by
+          (fun π => (pureKernelGameAt g hctx LF).outcomeKernel π) := by
   exact kuhn_finiteKernelGame g hctx LF μ
 
 end Vegas

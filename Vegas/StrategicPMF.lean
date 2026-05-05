@@ -31,7 +31,7 @@ not be representable by Vegas' rational `FDist` kernels.
 The outcome kernel is the checked graph-machine kernel at the bundle's context
 proof. -/
 noncomputable def pmfBehavioralKernelGame (g : WFProgram P L) : GameTheory.KernelGame P :=
-  pmfBehavioralKernelGameAt g g.wctx
+  syntaxPMFBehavioralKernelGameAt g g.wctx
 
 @[simp] theorem pmfBehavioralKernelGame_outcomeKernel
     (g : WFProgram P L) (σ : FeasibleProgramBehavioralProfilePMF g) :

@@ -1,12 +1,12 @@
 import Vegas.Protocol.EventLaw
 
 /-!
-# Machine-native strategic kernel games
+# Strategic kernel games
 
-This module gives the syntax-facing Vegas strategy spaces a machine-native
-`KernelGame` presentation. The strategy carriers are the existing legal
-strategy types, while outcome kernels run through the checked graph machine and
-the event-law adapters from `Vegas.Protocol.EventLaw`.
+This module exposes the canonical finite graph-machine FOSG strategic forms.
+The older syntax-strategy event-law games remain under explicit `syntax*`
+names as a temporary compatibility layer while syntax-facing compilers are
+moved out of the semantic path.
 -/
 
 namespace Vegas
@@ -17,8 +17,9 @@ namespace GraphEventLaw
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Pure strategic form whose outcome kernel is the checked graph machine. -/
-noncomputable def pureKernelGameAt
+/-- Syntax-pure strategic form whose outcome kernel is the checked graph
+machine through the event-law adapter. -/
+noncomputable def syntaxPureKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
   Strategy := FeasibleProgramPureStrategy g
   Outcome := Outcome P
@@ -27,21 +28,21 @@ noncomputable def pureKernelGameAt
     (graphMachine g hctx).outcomeKernel
       (pureEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem pureKernelGameAt_outcomeKernel
+@[simp] theorem syntaxPureKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramPureProfile g) :
-    (pureKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxPureKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
         (pureEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem pureKernelGameAt_Strategy
+@[simp] theorem syntaxPureKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (pureKernelGameAt g hctx).Strategy =
+    (syntaxPureKernelGameAt g hctx).Strategy =
       FeasibleProgramPureStrategy g := rfl
 
 /-- PMF behavioral strategic form whose outcome kernel is the checked graph
-machine. -/
-noncomputable def pmfBehavioralKernelGameAt
+machine through the event-law adapter. -/
+noncomputable def syntaxPMFBehavioralKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
   Strategy := FeasibleProgramBehavioralStrategyPMF g
   Outcome := Outcome P
@@ -50,21 +51,21 @@ noncomputable def pmfBehavioralKernelGameAt
     (graphMachine g hctx).outcomeKernel
       (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem pmfBehavioralKernelGameAt_outcomeKernel
+@[simp] theorem syntaxPMFBehavioralKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfilePMF g) :
-    (pmfBehavioralKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxPMFBehavioralKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
         (pmfBehavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem pmfBehavioralKernelGameAt_Strategy
+@[simp] theorem syntaxPMFBehavioralKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (pmfBehavioralKernelGameAt g hctx).Strategy =
+    (syntaxPMFBehavioralKernelGameAt g hctx).Strategy =
       FeasibleProgramBehavioralStrategyPMF g := rfl
 
 /-- FDist behavioral strategic form whose outcome kernel is the checked graph
-machine. -/
-noncomputable def behavioralKernelGameAt
+machine through the event-law adapter. -/
+noncomputable def syntaxBehavioralKernelGameAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : GameTheory.KernelGame P where
   Strategy := FeasibleProgramBehavioralStrategy g
   Outcome := Outcome P
@@ -73,22 +74,23 @@ noncomputable def behavioralKernelGameAt
     (graphMachine g hctx).outcomeKernel
       (behavioralEventLaw σ hctx).val (syntaxSteps g.prog)
 
-@[simp] theorem behavioralKernelGameAt_outcomeKernel
+@[simp] theorem syntaxBehavioralKernelGameAt_outcomeKernel
     (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (σ : FeasibleProgramBehavioralProfile g) :
-    (behavioralKernelGameAt g hctx).outcomeKernel σ =
+    (syntaxBehavioralKernelGameAt g hctx).outcomeKernel σ =
       (graphMachine g hctx).outcomeKernel
         (behavioralEventLaw σ hctx).val (syntaxSteps g.prog) := rfl
 
-@[simp] theorem behavioralKernelGameAt_Strategy
+@[simp] theorem syntaxBehavioralKernelGameAt_Strategy
     (g : WFProgram P L) (hctx : WFCtx g.Γ) :
-    (behavioralKernelGameAt g hctx).Strategy =
+    (syntaxBehavioralKernelGameAt g hctx).Strategy =
       FeasibleProgramBehavioralStrategy g := rfl
 
 end GraphEventLaw
 
 export GraphEventLaw
-  (pureKernelGameAt pmfBehavioralKernelGameAt behavioralKernelGameAt)
+  (syntaxPureKernelGameAt syntaxPMFBehavioralKernelGameAt
+    syntaxBehavioralKernelGameAt)
 
 /-! ## Finite FOSG-native kernel games
 
@@ -103,31 +105,31 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Pure strategy carrier of the finite graph-machine FOSG at the program's
 syntax horizon. -/
-abbrev finitePureStrategyAt
+abbrev pureStrategyAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) : Type :=
   (fosgView g hctx).BoundedPureStrategy (syntaxSteps g.prog) who
 
 /-- Pure profile carrier of the finite graph-machine FOSG. -/
-abbrev finitePureProfileAt
+abbrev pureProfileAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : Type :=
   (fosgView g hctx).BoundedPureProfile (syntaxSteps g.prog)
 
 /-- PMF behavioral strategy carrier of the finite graph-machine FOSG at the
 program's syntax horizon. -/
-abbrev finiteBehavioralStrategyPMFAt
+abbrev behavioralStrategyPMFAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) (who : P) : Type :=
   (fosgView g hctx).BoundedBehavioralStrategy (syntaxSteps g.prog) who
 
 /-- PMF behavioral profile carrier of the finite graph-machine FOSG. -/
-abbrev finiteBehavioralProfilePMFAt
+abbrev behavioralProfilePMFAt
     (g : WFProgram P L) (hctx : WFCtx g.Γ) : Type :=
   (fosgView g hctx).BoundedBehavioralProfile (syntaxSteps g.prog)
 
 /-- Finite FOSG-native pure strategic form of a checked Vegas program. -/
-noncomputable def finitePureKernelGameAt
+noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L) : GameTheory.KernelGame P where
-  Strategy := finitePureStrategyAt g hctx
+  Strategy := pureStrategyAt g hctx
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun π => by
@@ -152,16 +154,16 @@ noncomputable def finitePureKernelGameAt
       (fosgView g hctx).boundedOutcomeFromPure
         (syntaxSteps g.prog) π (syntaxSteps g.prog)
 
-@[simp] theorem finitePureKernelGameAt_Strategy
+@[simp] theorem pureKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L) :
-    (finitePureKernelGameAt g hctx LF).Strategy =
-      finitePureStrategyAt g hctx := rfl
+    (pureKernelGameAt g hctx LF).Strategy =
+      pureStrategyAt g hctx := rfl
 
-@[simp] theorem finitePureKernelGameAt_outcomeKernel
+@[simp] theorem pureKernelGameAt_outcomeKernel
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) (π : finitePureProfileAt g hctx) :
-    (finitePureKernelGameAt g hctx LF).outcomeKernel π =
+    (LF : FiniteValuation L) (π : pureProfileAt g hctx) :
+    (pureKernelGameAt g hctx LF).outcomeKernel π =
       (by
         classical
         letI : Fintype (graphMachine g hctx).State :=
@@ -186,10 +188,10 @@ noncomputable def finitePureKernelGameAt
 
 /-- Finite FOSG-native PMF behavioral strategic form of a checked Vegas
 program. -/
-noncomputable def finiteBehavioralKernelGamePMFAt
+noncomputable def pmfBehavioralKernelGameAt
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L) : GameTheory.KernelGame P where
-  Strategy := finiteBehavioralStrategyPMFAt g hctx
+  Strategy := behavioralStrategyPMFAt g hctx
   Outcome := Outcome P
   utility := fun o i => (o i : ℝ)
   outcomeKernel := fun β => by
@@ -214,16 +216,16 @@ noncomputable def finiteBehavioralKernelGamePMFAt
       (fosgView g hctx).boundedOutcomeFromBehavioral
         (syntaxSteps g.prog) β (syntaxSteps g.prog)
 
-@[simp] theorem finiteBehavioralKernelGamePMFAt_Strategy
+@[simp] theorem pmfBehavioralKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
     (LF : FiniteValuation L) :
-    (finiteBehavioralKernelGamePMFAt g hctx LF).Strategy =
-      finiteBehavioralStrategyPMFAt g hctx := rfl
+    (pmfBehavioralKernelGameAt g hctx LF).Strategy =
+      behavioralStrategyPMFAt g hctx := rfl
 
-@[simp] theorem finiteBehavioralKernelGamePMFAt_outcomeKernel
+@[simp] theorem pmfBehavioralKernelGameAt_outcomeKernel
     [Fintype P] (g : WFProgram P L) (hctx : WFCtx g.Γ)
-    (LF : FiniteValuation L) (β : finiteBehavioralProfilePMFAt g hctx) :
-    (finiteBehavioralKernelGamePMFAt g hctx LF).outcomeKernel β =
+    (LF : FiniteValuation L) (β : behavioralProfilePMFAt g hctx) :
+    (pmfBehavioralKernelGameAt g hctx LF).outcomeKernel β =
       (by
         classical
         letI : Fintype (graphMachine g hctx).State :=

@@ -888,7 +888,7 @@ theorem toFiniteFOSG_vegasPure_runDist_eq_pureKernelGameAt
           ((toFiniteFOSG g hctx).legalPureToBehavioral
             (toFiniteFOSGReachableLegalPureProfile
               g hctx σ).extend)) =
-      (pureKernelGameAt g hctx).outcomeKernel σ := by
+      (syntaxPureKernelGameAt g hctx).outcomeKernel σ := by
   classical
   let R := finiteFOSGPureOutcomeValuePMF g hctx σ
   have hclosure :=
@@ -1007,7 +1007,7 @@ theorem toFiniteFOSG_vegasMixedPure_realizedByLegalBehavioral_mappedRunDist
           ((toFiniteFOSG g hctx).runDist
             (syntaxSteps g.prog) β.extend) =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+          (fun σ => (syntaxPureKernelGameAt g hctx).outcomeKernel σ) := by
   letI : Fintype (toFiniteFOSG g hctx).History :=
     Fintype.ofFinite _
   obtain ⟨β, hβ⟩ :=
@@ -1070,7 +1070,7 @@ theorem sequential_mixedPure_realizedByBehavioralPMF_finite
     ∃ β : SequentialBehavioralProfilePMF g hctx,
       sequentialOutcomeKernelPMF g hctx LF β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun σ => (pureKernelGameAt g hctx).outcomeKernel σ) := by
+          (fun σ => (syntaxPureKernelGameAt g hctx).outcomeKernel σ) := by
   classical
   letI : ∀ who, Fintype (FeasibleProgramPureStrategy g who) :=
     fun who => FeasibleProgramPureStrategy.instFintype g LF who
