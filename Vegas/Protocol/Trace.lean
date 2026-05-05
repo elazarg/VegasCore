@@ -52,6 +52,107 @@ theorem runEventsFrom_cons
         (M.step event state) := by
   simp [runEventsFrom]
 
+/-- Folding a primitive event list over an arbitrary input distribution is the
+same as binding that distribution into `runEventsFrom`. -/
+private theorem runEventsFrom_foldl_eq_bind
+    (M : Machine Player) (events : List M.Event) (acc : PMF M.State) :
+    events.foldl
+        (fun acc event => acc.bind fun current => M.step event current)
+        acc =
+      acc.bind fun current => M.runEventsFrom events current := by
+  induction events generalizing acc with
+  | nil =>
+      change acc = acc.bind PMF.pure
+      exact (PMF.bind_pure acc).symm
+  | cons event events ih =>
+      change
+        events.foldl
+            (fun acc event => acc.bind fun current => M.step event current)
+            (acc.bind fun current => M.step event current) =
+          acc.bind fun current => M.runEventsFrom (event :: events) current
+      rw [ih, PMF.bind_bind]
+      congr
+      funext current
+      rw [runEventsFrom_cons]
+      exact (ih (M.step event current)).symm
+
+/-- Executing appended event lists is Kleisli composition of the two runs. -/
+theorem runEventsFrom_append
+    (M : Machine Player) (events₁ events₂ : List M.Event)
+    (state : M.State) :
+    M.runEventsFrom (events₁ ++ events₂) state =
+      (M.runEventsFrom events₁ state).bind fun current =>
+        M.runEventsFrom events₂ current := by
+  rw [runEventsFrom]
+  rw [List.foldl_append]
+  rw [runEventsFrom_foldl_eq_bind]
+  rfl
+
+/-- Execute a sequence of macro steps, where each macro step is represented by
+a list of primitive machine events.  This is the trace shape induced by a
+frontier-round FOSG presentation. -/
+noncomputable def runEventBlocksFrom
+    (M : Machine Player) (blocks : List (List M.Event)) (state : M.State) :
+    PMF M.State :=
+  blocks.foldl
+    (fun acc events => acc.bind fun current => M.runEventsFrom events current)
+    (PMF.pure state)
+
+@[simp] theorem runEventBlocksFrom_nil
+    (M : Machine Player) (state : M.State) :
+    M.runEventBlocksFrom [] state = PMF.pure state := rfl
+
+@[simp] theorem runEventBlocksFrom_singleton
+    (M : Machine Player) (events : List M.Event) (state : M.State) :
+    M.runEventBlocksFrom [events] state = M.runEventsFrom events state := by
+  simp [runEventBlocksFrom]
+
+/-- Folding event blocks over an arbitrary input distribution is the same as
+binding that distribution into `runEventBlocksFrom`. -/
+private theorem runEventBlocksFrom_foldl_eq_bind
+    (M : Machine Player) (blocks : List (List M.Event))
+    (acc : PMF M.State) :
+    blocks.foldl
+        (fun acc events => acc.bind fun current => M.runEventsFrom events current)
+        acc =
+      acc.bind fun current => M.runEventBlocksFrom blocks current := by
+  induction blocks generalizing acc with
+  | nil =>
+      change acc = acc.bind PMF.pure
+      exact (PMF.bind_pure acc).symm
+  | cons events blocks ih =>
+      change
+        blocks.foldl
+            (fun acc events => acc.bind fun current =>
+              M.runEventsFrom events current)
+            (acc.bind fun current => M.runEventsFrom events current) =
+          acc.bind fun current =>
+            M.runEventBlocksFrom (events :: blocks) current
+      rw [ih, PMF.bind_bind]
+      congr
+      funext current
+      rw [runEventBlocksFrom]
+      simp only [List.foldl_cons, PMF.pure_bind]
+      exact (ih (M.runEventsFrom events current)).symm
+
+/-- Running event blocks is the same as running their flattened primitive event
+list. -/
+theorem runEventBlocksFrom_eq_runEventsFrom_flatten
+    (M : Machine Player) (blocks : List (List M.Event)) (state : M.State) :
+    M.runEventBlocksFrom blocks state =
+      M.runEventsFrom blocks.flatten state := by
+  induction blocks generalizing state with
+  | nil =>
+      rfl
+  | cons events blocks ih =>
+      rw [runEventBlocksFrom]
+      simp only [List.foldl_cons]
+      rw [runEventBlocksFrom_foldl_eq_bind]
+      simp only [PMF.pure_bind]
+      simp_rw [ih]
+      rw [← runEventsFrom_append]
+      rfl
+
 /-- One scheduled machine step. -/
 noncomputable def stepDist
     (M : Machine Player) (law : M.EventLaw) (state : M.State) :
