@@ -54,6 +54,44 @@ noncomputable def behavioralOutcomeKernelPMFAt
     (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral
       (syntaxSteps g.prog) β (syntaxSteps g.prog)
 
+/-- Pure strategic-form outcomes are machine-outcome projections of the
+blocked primitive trace distribution induced by the finite syntax-graph FOSG
+view. -/
+theorem pureOutcomeKernelAt_eq_blockTraceDist
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) :
+    pureOutcomeKernelAt g π =
+      PMF.map
+        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
+          (GameTheory.FOSG.legalPureToBehavioral
+            ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
+            π.extend)
+          (syntaxSteps g.prog)
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG
+              (syntaxSteps g.prog)))) := by
+  simp [pureOutcomeKernelAt,
+    syntaxGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist]
+
+/-- PMF behavioral strategic-form outcomes are machine-outcome projections of
+the blocked primitive trace distribution induced by the finite syntax-graph
+FOSG view. -/
+theorem behavioralOutcomeKernelPMFAt_eq_blockTraceDist
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) :
+    behavioralOutcomeKernelPMFAt g β =
+      PMF.map
+        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
+          β.extend
+          (syntaxSteps g.prog)
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG
+              (syntaxSteps g.prog)))) := by
+  simp [behavioralOutcomeKernelPMFAt,
+    syntaxGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist]
+
 /-- Finite pure strategic form of a checked Vegas program. -/
 noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :

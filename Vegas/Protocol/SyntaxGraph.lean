@@ -3498,4 +3498,110 @@ theorem syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
       (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon σ n h)
 
+/-- Bounded behavioral outcome kernel of the syntax-graph FOSG view, computed
+as the machine outcome projection of the induced blocked primitive trace
+distribution. -/
+theorem syntaxGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (β : (syntaxGraphFOSGView g).BoundedBehavioralProfile horizon)
+    (steps : Nat) :
+    (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral
+        horizon β steps =
+      PMF.map
+        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG horizon))) := by
+  let run :=
+    GameTheory.FOSG.History.runDistFrom
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) β.extend steps
+      (GameTheory.FOSG.History.nil
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon))
+  let project :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) →
+        List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State :=
+    fun h' =>
+      (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+        h'.lastState.state)
+  let observe :
+      List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State →
+        (syntaxGraphMachine g).Outcome :=
+    fun trace => (syntaxGraphMachine g).outcome trace.2
+  calc
+    (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral horizon β steps =
+      PMF.map
+        (fun h' => (syntaxGraphMachine g).outcome h'.lastState.state)
+        run := by
+          rfl
+    _ = PMF.map observe (PMF.map project run) := by
+          rw [PMF.map_comp]
+          rfl
+    _ =
+      PMF.map observe
+        (syntaxGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG horizon))) := by
+          rw [syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+            (g := g) (horizon := horizon) (σ := β.extend)
+            (n := steps)
+            (h := GameTheory.FOSG.History.nil
+              ((syntaxGraphFOSGView g).toBoundedFOSG horizon))]
+
+/-- Bounded pure outcome kernel of the syntax-graph FOSG view, computed as
+the machine outcome projection of the blocked primitive trace distribution
+induced by the pure profile's behavioral embedding. -/
+theorem syntaxGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (π : (syntaxGraphFOSGView g).BoundedPureProfile horizon)
+    (steps : Nat) :
+    (syntaxGraphFOSGView g).boundedOutcomeFromPure
+        horizon π steps =
+      PMF.map
+        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphFOSGBlockTraceDistFrom g horizon
+          (GameTheory.FOSG.legalPureToBehavioral
+            ((syntaxGraphFOSGView g).toBoundedFOSG horizon) π.extend)
+          steps
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG horizon))) := by
+  let σ :=
+    GameTheory.FOSG.legalPureToBehavioral
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) π.extend
+  let run :=
+    GameTheory.FOSG.History.runDistFrom
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) σ steps
+      (GameTheory.FOSG.History.nil
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon))
+  let project :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) →
+        List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State :=
+    fun h' =>
+      (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+        h'.lastState.state)
+  let observe :
+      List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State →
+        (syntaxGraphMachine g).Outcome :=
+    fun trace => (syntaxGraphMachine g).outcome trace.2
+  calc
+    (syntaxGraphFOSGView g).boundedOutcomeFromPure horizon π steps =
+      PMF.map
+        (fun h' => (syntaxGraphMachine g).outcome h'.lastState.state)
+        run := by
+          rfl
+    _ = PMF.map observe (PMF.map project run) := by
+          rw [PMF.map_comp]
+          rfl
+    _ =
+      PMF.map observe
+        (syntaxGraphFOSGBlockTraceDistFrom g horizon σ steps
+          (GameTheory.FOSG.History.nil
+            ((syntaxGraphFOSGView g).toBoundedFOSG horizon))) := by
+          rw [syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+            (g := g) (horizon := horizon) (σ := σ)
+            (n := steps)
+            (h := GameTheory.FOSG.History.nil
+              ((syntaxGraphFOSGView g).toBoundedFOSG horizon))]
+
 end Vegas
