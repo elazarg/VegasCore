@@ -385,6 +385,86 @@ theorem result_some_of_prereq_of_mem_frontier
   have hdone := cfg.prereq_done_of_mem_frontier h hpre
   exact (G.mem_done_iff cfg.result prereq).mp hdone |>.2
 
+theorem not_terminal_of_mem_frontier
+    {cfg : G.Configuration} {node : G.Node}
+    (h : node ∈ cfg.frontier) :
+    ¬ cfg.terminal := by
+  intro hterminal
+  have hnodes : node ∈ G.nodes := cfg.mem_nodes_of_mem_frontier h
+  have hnone : (cfg.result node).isNone :=
+    cfg.not_done_of_mem_frontier h
+  have hdone : node ∈ cfg.done := hterminal hnodes
+  have hsome : (cfg.result node).isSome :=
+    (G.mem_done_iff cfg.result node).mp hdone |>.2
+  cases hresult : cfg.result node <;> simp [hresult] at hnone hsome
+
+/-- A nonterminal configuration has some unfinished graph node. -/
+theorem exists_unfinished_of_not_terminal
+    {cfg : G.Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    ∃ node, node ∈ G.nodes ∧ (cfg.result node).isNone := by
+  classical
+  simp only [terminal, Finset.not_subset] at hterminal
+  rcases hterminal with ⟨node, hnode, hnot_done⟩
+  refine ⟨node, hnode, ?_⟩
+  cases hresult : cfg.result node with
+  | none => rfl
+  | some slice =>
+      exfalso
+      apply hnot_done
+      exact (G.mem_done_iff cfg.result node).mpr (by simp [hnode, hresult])
+
+/-- If the configuration is nonterminal, a minimal unfinished node is ready. -/
+theorem exists_ready_of_not_terminal
+    {cfg : G.Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    ∃ node, cfg.Ready node := by
+  classical
+  rcases cfg.exists_unfinished_of_not_terminal hterminal with
+    ⟨witness, hwitness_node, hwitness_unfinished⟩
+  let unfinished : Finset G.Node :=
+    G.nodes.filter fun node => (cfg.result node).isNone
+  have hwitness_none : cfg.result witness = none := by
+    cases hresult : cfg.result witness with
+    | none => rfl
+    | some slice => simp [hresult] at hwitness_unfinished
+  have hunfinished_nonempty : unfinished.Nonempty := by
+    refine ⟨witness, ?_⟩
+    simp [unfinished, hwitness_node, hwitness_none]
+  rcases Finset.exists_min_image unfinished G.rank hunfinished_nonempty with
+    ⟨node, hnode_unfinished, hmin⟩
+  have hnode : node ∈ G.nodes := (Finset.mem_filter.mp hnode_unfinished).1
+  have hnode_unfinished' : (cfg.result node).isNone :=
+    (Finset.mem_filter.mp hnode_unfinished).2
+  refine ⟨node, ⟨hnode, hnode_unfinished', ?_⟩⟩
+  intro prereq hpre
+  have hpre_node : prereq ∈ G.nodes :=
+    G.prereqs_subset_nodes hnode hpre
+  by_contra hpre_not_done
+  have hpre_unfinished : (cfg.result prereq).isNone := by
+    cases hresult : cfg.result prereq with
+    | none => rfl
+    | some slice =>
+        exfalso
+        apply hpre_not_done
+        exact (G.mem_done_iff cfg.result prereq).mpr
+          (by simp [hpre_node, hresult])
+  have hpre_none : cfg.result prereq = none := by
+    cases hresult : cfg.result prereq with
+    | none => rfl
+    | some slice => simp [hresult] at hpre_unfinished
+  have hle : G.rank node ≤ G.rank prereq :=
+    hmin prereq (by simp [unfinished, hpre_node, hpre_none])
+  exact (Nat.not_lt_of_ge hle) (G.prereq_rank_lt hnode hpre)
+
+/-- A nonterminal configuration has a nonempty executable frontier. -/
+theorem frontier_nonempty_of_not_terminal
+    {cfg : G.Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    cfg.frontier.Nonempty := by
+  rcases cfg.exists_ready_of_not_terminal hterminal with ⟨node, hready⟩
+  exact ⟨node, (cfg.mem_frontier_iff node).mpr hready⟩
+
 /-- Replace the result at one node. -/
 noncomputable def updateResult
     (cfg : G.Configuration) (node : G.Node) (slice : WriteSlice G) :
