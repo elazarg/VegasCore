@@ -1,3 +1,4 @@
+import GameTheory.Core.GameSimulation
 import Vegas.Config
 import Vegas.Protocol.SyntaxGraph
 
@@ -92,6 +93,76 @@ theorem behavioralOutcomeKernelPMFAt_eq_blockTraceDist
   simp [behavioralOutcomeKernelPMFAt,
     syntaxGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist]
 
+/-- Machine blocked trace outcomes induced by the bounded syntax-graph FOSG
+view: the primitive event blocks executed so far, paired with the resulting
+checkpoint state. -/
+abbrev syntaxBlockedTraceAt
+    (g : WFProgram P L) : Type :=
+  List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State
+
+/-- Public outcome read from a blocked machine trace. -/
+noncomputable def syntaxBlockedTraceOutcome
+    (g : WFProgram P L) :
+    syntaxBlockedTraceAt g → Outcome P :=
+  fun trace => (syntaxGraphMachine g).outcome trace.2
+
+/-- Utility read from a blocked machine trace through its public outcome. -/
+noncomputable def syntaxBlockedTraceUtility
+    (g : WFProgram P L) :
+    syntaxBlockedTraceAt g → GameTheory.Payoff P :=
+  fun trace who => ((syntaxBlockedTraceOutcome g trace) who : ℝ)
+
+/-- Blocked primitive trace kernel induced by a pure profile. -/
+noncomputable def pureBlockedTraceOutcomeKernelAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) : PMF (syntaxBlockedTraceAt g) :=
+  syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
+    (GameTheory.FOSG.legalPureToBehavioral
+      ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
+      π.extend)
+    (syntaxSteps g.prog)
+    (GameTheory.FOSG.History.nil
+      ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)))
+
+/-- Blocked primitive trace kernel induced by a PMF behavioral profile. -/
+noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) : PMF (syntaxBlockedTraceAt g) :=
+  syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
+    β.extend
+    (syntaxSteps g.prog)
+    (GameTheory.FOSG.History.nil
+      ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)))
+
+/-- Finite pure strategic form whose outcomes are blocked primitive machine
+traces rather than just terminal public outcomes. -/
+noncomputable def pureBlockedTraceKernelGameAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame P where
+  Strategy := pureStrategyAt g
+  Outcome := syntaxBlockedTraceAt g
+  utility := syntaxBlockedTraceUtility g
+  outcomeKernel := pureBlockedTraceOutcomeKernelAt g
+
+@[simp] theorem pureBlockedTraceKernelGameAt_Strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pureBlockedTraceKernelGameAt g).Strategy = pureStrategyAt g := rfl
+
+/-- Finite PMF behavioral strategic form whose outcomes are blocked primitive
+machine traces rather than just terminal public outcomes. -/
+noncomputable def pmfBehavioralBlockedTraceKernelGameAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame P where
+  Strategy := behavioralStrategyPMFAt g
+  Outcome := syntaxBlockedTraceAt g
+  utility := syntaxBlockedTraceUtility g
+  outcomeKernel := behavioralBlockedTraceOutcomeKernelPMFAt g
+
+@[simp] theorem pmfBehavioralBlockedTraceKernelGameAt_Strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pmfBehavioralBlockedTraceKernelGameAt g).Strategy =
+      behavioralStrategyPMFAt g := rfl
+
 /-- Finite pure strategic form of a checked Vegas program. -/
 noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
@@ -138,5 +209,76 @@ noncomputable def pmfBehavioralKernelGameAt
     (β : behavioralProfilePMFAt g) :
     (pmfBehavioralKernelGameAt g).outcomeKernel β =
       behavioralOutcomeKernelPMFAt g β := rfl
+
+/-- Projecting pure blocked-trace outcomes to public outcomes gives the public
+pure strategic-form outcome kernel. -/
+theorem pureBlockedTraceKernelGameAt_outcomeKernel_map_outcome
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) :
+    PMF.map (syntaxBlockedTraceOutcome g)
+        ((pureBlockedTraceKernelGameAt g).outcomeKernel π) =
+      (pureKernelGameAt g).outcomeKernel π := by
+  simpa [pureBlockedTraceKernelGameAt, pureKernelGameAt,
+    syntaxBlockedTraceOutcome] using
+    (pureOutcomeKernelAt_eq_blockTraceDist g π).symm
+
+/-- Projecting PMF behavioral blocked-trace outcomes to public outcomes gives
+the public PMF behavioral strategic-form outcome kernel. -/
+theorem pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) :
+    PMF.map (syntaxBlockedTraceOutcome g)
+        ((pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β) =
+      (pmfBehavioralKernelGameAt g).outcomeKernel β := by
+  simpa [pmfBehavioralBlockedTraceKernelGameAt, pmfBehavioralKernelGameAt,
+    syntaxBlockedTraceOutcome] using
+    (behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β).symm
+
+/-- Pure strategic-form play and blocked-trace play induce the same joint
+utility distribution. -/
+noncomputable def pureKernelGameAt.blockedTraceBisimulation
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.Bisimulation
+      (pureKernelGameAt g) (pureBlockedTraceKernelGameAt g) where
+  stratEquiv := fun _ => Equiv.refl _
+  udist_preserved := by
+    intro π
+    change
+      ((pureBlockedTraceKernelGameAt g).outcomeKernel π).bind
+          (fun trace =>
+            PMF.pure ((pureBlockedTraceKernelGameAt g).utility trace)) =
+        ((pureKernelGameAt g).outcomeKernel π).bind
+          (fun outcome =>
+            PMF.pure ((pureKernelGameAt g).utility outcome))
+    rw [← pureBlockedTraceKernelGameAt_outcomeKernel_map_outcome g π]
+    exact (PMF.bind_map
+      ((pureBlockedTraceKernelGameAt g).outcomeKernel π)
+      (syntaxBlockedTraceOutcome g)
+      (fun outcome =>
+        PMF.pure ((pureKernelGameAt g).utility outcome))).symm
+
+/-- PMF behavioral strategic-form play and blocked-trace play induce the same
+joint utility distribution. -/
+noncomputable def pmfBehavioralKernelGameAt.blockedTraceBisimulation
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.KernelGame.Bisimulation
+      (pmfBehavioralKernelGameAt g)
+      (pmfBehavioralBlockedTraceKernelGameAt g) where
+  stratEquiv := fun _ => Equiv.refl _
+  udist_preserved := by
+    intro β
+    change
+      ((pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β).bind
+          (fun trace =>
+            PMF.pure ((pmfBehavioralBlockedTraceKernelGameAt g).utility trace)) =
+        ((pmfBehavioralKernelGameAt g).outcomeKernel β).bind
+          (fun outcome =>
+            PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))
+    rw [← pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome g β]
+    exact (PMF.bind_map
+      ((pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β)
+      (syntaxBlockedTraceOutcome g)
+      (fun outcome =>
+        PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))).symm
 
 end Vegas
