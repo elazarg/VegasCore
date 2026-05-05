@@ -2645,6 +2645,212 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
       g.env g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
       hdone hcfgLegal hwrite
 
+/-- Dynamic commit legality transfers across syntax-graph configurations that
+agree on the visible reads of the guard attached to the node. The frontier
+hypothesis supplies availability of the guard reads in the target
+configuration. -/
+theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
+    (g : WFProgram P L)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    {node : ProgramNode g.prog}
+    {slice : ProgramField.WriteSlice g.prog}
+    (hfrontierRight : node ∈ right.frontier)
+    (hvisible :
+      ∀ {owner : P} {target : ProgramField g.prog}
+        {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+          (fun field => field.ty) target},
+        ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node =
+            .commit owner target guard →
+          ∀ read, read ∈ guard.visibleReads →
+            ProgramField.value? g.env left.result read =
+              ProgramField.value? g.env right.result read)
+    (haction :
+      (syntaxProtocolGraph g).actionLegal left.result node slice) :
+    (syntaxProtocolGraph g).actionLegal right.result node slice := by
+  classical
+  change
+    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
+      g.legal g.normalized left.result node slice at haction
+  change
+    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
+      g.legal g.normalized right.result node slice
+  cases hsem :
+      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized node with
+  | assign field expr =>
+      simp [ProgramNode.actionLegal, hsem] at haction
+  | sample field dist =>
+      simp [ProgramNode.actionLegal, hsem] at haction
+  | reveal source target hty =>
+      simp [ProgramNode.actionLegal, hsem] at haction
+  | commit owner field guard =>
+      rw [ProgramNode.actionLegal, hsem] at haction ⊢
+      rcases haction with
+        ⟨availableLeft, value, hguardEval, hslice⟩
+      have availableRight :
+          ∀ read, read ∈ guard.reads →
+            (ProgramField.value? g.env right.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+          right hfrontierRight read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      refine ⟨availableRight, value, ?_, hslice⟩
+      let ρleft :=
+        ProgramField.readEnvOfResult g.env left.result
+          guard.reads availableLeft
+      let ρright :=
+        ProgramField.readEnvOfResult g.env right.result
+          guard.reads availableRight
+      have hguardEq :
+          guard.eval value ρleft = guard.eval value ρright := by
+        apply guard.eval_eq_of_visible_eq
+        intro read hleft hright hreadVisible
+        have hvalueEq :
+            ProgramField.value? g.env left.result read =
+              ProgramField.value? g.env right.result read := by
+          exact hvisible (owner := owner) (target := field) (guard := guard)
+            hsem read hreadVisible
+        simpa [ρleft, ρright] using
+          (ProgramField.readEnvOfResult_value_eq_of_value?_eq
+            g.env (left := left.result) (right := right.result)
+            (availableLeft := availableLeft)
+            (availableRight := availableRight)
+            (field := read) (hleft := hleft) (hright := hright)
+            hvalueEq)
+      rw [← hguardEq]
+      exact hguardEval
+
+/-- A current frontier node cannot be the structural writer of a field read by
+another current frontier node.  If it were, the writer would be a prerequisite
+of the reader, contradicting simultaneous frontier membership. -/
+theorem syntaxGraph_writer?_ne_of_frontier_read
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {writer reader : ProgramNode g.prog} {field : ProgramField g.prog}
+    (hwriterFrontier : writer ∈ cfg.frontier)
+    (hreaderFrontier : reader ∈ cfg.frontier)
+    (hread :
+      field ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized reader).reads) :
+    ProgramField.writer? field ≠ some writer := by
+  intro hfieldWriter
+  rcases ProgramNode.read_current_or_prior_write
+      g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized reader hread with
+    hcurrent | hprior
+  · have hnone :
+        ProgramField.writer? field = none :=
+      ProgramField.writer?_eq_none_of_mem_currentFields hcurrent
+    rw [hfieldWriter] at hnone
+    simp at hnone
+  · rcases hprior with ⟨prior, hrank, hpriorWrite⟩
+    have hpriorWriter :
+        ProgramField.writer? field = some prior :=
+      ProgramNode.writer?_eq_some_of_mem_writeFields
+        g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized prior hpriorWrite
+    rw [hfieldWriter] at hpriorWriter
+    have hwriter_eq_prior : writer = prior :=
+      Option.some.inj hpriorWriter
+    subst prior
+    have hpre :
+        writer ∈ (syntaxProtocolGraph g).prereqs reader := by
+      change writer ∈
+        ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized reader
+      exact Finset.mem_filter.mpr
+        ⟨ProgramNode.mem_finset g.prog writer, hrank,
+          ⟨field, hread, hpriorWrite⟩⟩
+    exact
+      (ProtocolGraph.Configuration.not_prereq_of_mem_frontier
+        hwriterFrontier hreaderFrontier) hpre
+
+/-- Executing one frontier node leaves every read of another current frontier
+node unchanged. -/
+theorem syntaxGraph_value?_withResult_eq_of_frontier_read
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {writer reader : ProgramNode g.prog}
+    {slice : ProgramField.WriteSlice g.prog}
+    {hwriterFrontier : writer ∈ cfg.frontier}
+    {hwriterLegal : (syntaxProtocolGraph g).sliceLegal writer slice}
+    {field : ProgramField g.prog}
+    (hreaderFrontier : reader ∈ cfg.frontier)
+    (hread :
+      field ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized reader).reads) :
+    ProgramField.value? g.env
+        ((cfg.withResult slice hwriterFrontier hwriterLegal).result) field =
+      ProgramField.value? g.env cfg.result field := by
+  classical
+  have hne :
+      ProgramField.writer? field ≠ some writer :=
+    syntaxGraph_writer?_ne_of_frontier_read g
+      hwriterFrontier hreaderFrontier hread
+  simpa [ProtocolGraph.Configuration.withResult,
+    ProtocolGraph.Configuration.updateResult] using
+    (ProgramField.value?_update_of_writer?_ne
+      (env := g.env) (result := cfg.result) (field := field)
+      (node := writer) (slice := slice) hne)
+
+/-- Dynamic commit legality for one frontier node is stable after executing a
+different frontier node. -/
+theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {first second : ProgramNode g.prog}
+    {firstSlice secondSlice : ProgramField.WriteSlice g.prog}
+    (hfirst : first ∈ cfg.frontier)
+    (hsecond : second ∈ cfg.frontier)
+    (hne : second ≠ first)
+    (hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice)
+    (hsecondAction :
+      (syntaxProtocolGraph g).actionLegal cfg.result second secondSlice) :
+    (syntaxProtocolGraph g).actionLegal
+      ((cfg.withResult firstSlice hfirst hfirstLegal).result)
+      second secondSlice := by
+  classical
+  have hsecondAfter :
+      second ∈ (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
+    cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
+  refine
+    syntaxGraph_actionLegal_of_guardVisibleValue_eq
+      g hsecondAfter ?_ hsecondAction
+  intro owner target guard hsem read hreadVisible
+  have hread :
+      read ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized second).reads := by
+    rw [hsem]
+    exact guard.visibleReads_subset_reads hreadVisible
+  exact
+    (syntaxGraph_value?_withResult_eq_of_frontier_read
+      g (writer := first) (reader := second)
+      (slice := firstSlice) hsecond hread).symm
+
+/-- A player primitive event for a frontier node remains available after a
+different frontier node has executed. -/
+theorem syntaxGraph_available_after_frontier_withResult_of_ne
+    (g : WFProgram P L) (who : P)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {first : ProgramNode g.prog}
+    {firstSlice : ProgramField.WriteSlice g.prog}
+    {action : ProtocolGraph.PlayerAction (syntaxProtocolGraph g) who}
+    (hfirst : first ∈ cfg.frontier)
+    (hne : action.node ≠ first)
+    (hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice)
+    (haction :
+      action ∈ ProtocolGraph.available (syntaxProtocolGraph g) cfg who) :
+    action ∈ ProtocolGraph.available (syntaxProtocolGraph g)
+      (cfg.withResult firstSlice hfirst hfirstLegal) who := by
+  rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+  exact ⟨
+    cfg.withResult_mem_frontier_of_ne hfirst hfrontier hne hfirstLegal,
+    hactor,
+    hslice,
+    syntaxGraph_actionLegal_after_frontier_withResult_of_ne
+      g hfirst hfrontier hne hfirstLegal hlegal⟩
+
 /-- Source graph commits cannot deadlock: the generated guard carries a
 satisfying action for the available read environment. -/
 theorem syntaxProtocolGraph_hasAvailablePlayerActions
@@ -2658,6 +2864,18 @@ theorem syntaxProtocolGraph_hasAvailablePlayerActions
       (syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
     ⟨slice, hslice, haction⟩
   exact ⟨slice, hslice, haction⟩
+
+/-- Source graph frontier rounds are stable: executing one frontier node cannot
+invalidate a player action for another current frontier node. -/
+theorem syntaxProtocolGraph_hasStableFrontierRounds
+    (g : WFProgram P L) :
+    (syntaxProtocolGraph g).HasStableFrontierRounds where
+  availablePlayerActions := syntaxProtocolGraph_hasAvailablePlayerActions g
+  actionStable := by
+    intro cfg first firstSlice hfirst who action hfrontier hne
+      hfirstLegal haction
+    exact syntaxGraph_available_after_frontier_withResult_of_ne
+      g who hfirst hne hfirstLegal haction
 
 /-- Public observation of the graph-native syntax machine.
 
@@ -2918,7 +3136,7 @@ noncomputable def syntaxGraphFOSGView
     (g : WFProgram P L) :
     (syntaxGraphMachine g).FOSGView :=
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
-    (syntaxProtocolGraph_hasAvailablePlayerActions g)
+    (syntaxProtocolGraph_hasStableFrontierRounds g)
 
 /-- Primitive machine event blocks extracted from a bounded syntax-graph FOSG
 history. Each block is one frontier round of the public FOSG view. -/
@@ -2928,7 +3146,7 @@ noncomputable def syntaxGraphFOSGHistoryEventBlocks
     List (List (syntaxGraphMachine g).Event) :=
   ProtocolGraph.boundedFOSGHistoryEventBlocks
     (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-    (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h
+    (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h
 
 /-- Primitive machine events represented by one syntax-graph FOSG frontier
 round. -/
@@ -2954,7 +3172,7 @@ theorem syntaxGraphFOSGHistory_state_mem_runEventBlocksFrom_support
     syntaxGraphFOSGView] using
     (ProtocolGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h)
 
 /-- One bounded syntax-graph FOSG transition, projected to the history's
 extracted event-block prefix and successor checkpoint state, is exactly the
@@ -2984,7 +3202,7 @@ theorem syntaxGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
     syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
     (ProtocolGraph.boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action)
 
 /-- Continuation form of one syntax-graph FOSG transition: binding over the
 bounded FOSG transition is the same as binding over the primitive blocked
@@ -3011,7 +3229,7 @@ theorem syntaxGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
     syntaxGraphRoundPrimitiveEvents] using
     (ProtocolGraph.boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action K)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action K)
 
 /-- One-step form matching `FOSG.History.runDistFrom` for syntax graphs:
 extend the FOSG history by the sampled bounded destination, then project to
@@ -3041,7 +3259,7 @@ theorem syntaxGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlock
     syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
     (ProtocolGraph.boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon h action)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action)
 
 /-- Player round-action availability in the syntax graph is determined by the
 public transcript together with the acting player's private observation. -/
@@ -3440,7 +3658,7 @@ noncomputable def syntaxGraphFOSGBlockTraceDistFrom
           (Option
             (((syntaxProtocolGraph g).toFOSGView
               (syntaxGraphMachineInterface g)
-              (syntaxProtocolGraph_hasAvailablePlayerActions g)).Act
+              (syntaxProtocolGraph_hasStableFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [syntaxGraphFOSGView] using
@@ -3448,7 +3666,7 @@ noncomputable def syntaxGraphFOSGBlockTraceDistFrom
   simpa [syntaxGraphMachine, syntaxGraphFOSGView] using
     (ProtocolGraph.boundedFOSGBlockTraceDistFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon σ)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon σ)
 
 /-- Bounded syntax-graph FOSG execution, projected to extracted primitive
 event blocks and checkpoint state, equals the history-dependent blocked
@@ -3474,7 +3692,7 @@ theorem syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
           (Option
             (((syntaxProtocolGraph g).toFOSGView
               (syntaxGraphMachineInterface g)
-              (syntaxProtocolGraph_hasAvailablePlayerActions g)).Act
+              (syntaxProtocolGraph_hasStableFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [syntaxGraphFOSGView] using
@@ -3489,14 +3707,14 @@ theorem syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
       DecidablePred
         ((((syntaxProtocolGraph g).toFOSGView
           (syntaxGraphMachineInterface g)
-          (syntaxProtocolGraph_hasAvailablePlayerActions g)).toBoundedFOSG
+          (syntaxProtocolGraph_hasStableFrontierRounds g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
   simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
     syntaxGraphFOSGView, syntaxGraphFOSGBlockTraceDistFrom] using
     (ProtocolGraph.boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
       (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasAvailablePlayerActions g) horizon σ n h)
+      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon σ n h)
 
 /-- Bounded behavioral outcome kernel of the syntax-graph FOSG view, computed
 as the machine outcome projection of the induced blocked primitive trace
