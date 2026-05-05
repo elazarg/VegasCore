@@ -276,6 +276,25 @@ end WriteSlice
 abbrev ResultAssignment (G : Vegas.ProtocolGraph Player L) : Type :=
   (node : G.Node) → Option (WriteSlice G)
 
+/-- Value of a graph field under a partial result assignment. Completed node
+slices override initial values; if no completed slice has written the field,
+the graph initial value is used. -/
+noncomputable def value?
+    (G : Vegas.ProtocolGraph Player L) (result : G.ResultAssignment)
+    (field : G.Field) : Option (L.Val (G.fieldTy field)) := by
+  classical
+  exact
+    if h :
+        ∃ node slice stored,
+          result node = some slice ∧ slice field = some stored then
+      let node := Classical.choose h
+      let slice := Classical.choose (Classical.choose_spec h)
+      let stored := Classical.choose (Classical.choose_spec
+        (Classical.choose_spec h))
+      some stored.raw
+    else
+      G.initial field
+
 /-- Result assignments agree on the prerequisites of a node. -/
 def AgreeOnPrereqs (G : Vegas.ProtocolGraph Player L)
     (left right : ResultAssignment G) (node : G.Node) : Prop :=

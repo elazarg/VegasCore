@@ -1162,7 +1162,7 @@ noncomputable def syntaxGraphConfigValue?
     (cfg : (syntaxProtocolGraph g).Configuration)
     (field : ProgramField g.prog) :
     Option (L.Val field.ty) :=
-  ProgramField.value? g.env cfg.result field
+  (syntaxProtocolGraph g).value? cfg.result field
 
 /-- Player observation for the graph-native syntax machine. -/
 noncomputable def syntaxGraphObserve
