@@ -3,6 +3,7 @@ import Vegas.Core
 import Vegas.ExprSimple
 import Vegas.VegasSimple
 import Vegas.VegasLang
+import Vegas.VegasLangNullable
 import Vegas.WF
 import Vegas.Scope
 import Vegas.WFProgram

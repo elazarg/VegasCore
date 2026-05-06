@@ -17,15 +17,58 @@ inductive BaseTy where
   | int : BaseTy
   | bool : BaseTy
   | range (lo hi : Int) : BaseTy
+  | option (b : BaseTy) : BaseTy
 deriving Repr, DecidableEq
 
 abbrev Val : BaseTy → Type
   | .int => Int
   | .bool => Bool
   | .range lo hi => Set.Icc lo hi
+  | .option b => Option (Val b)
 
-instance : DecidableEq (Val b) := by
-  cases b <;> infer_instance
+def instDecidableEqVal : (b : BaseTy) → DecidableEq (Val b)
+  | .int => inferInstance
+  | .bool => inferInstance
+  | .range _ _ => inferInstance
+  | .option b =>
+      letI : DecidableEq (Val b) := instDecidableEqVal b
+      inferInstance
+
+instance : DecidableEq (Val b) := instDecidableEqVal b
+
+def BaseTy.NonNullable : BaseTy → Prop
+  | .option _ => False
+  | _ => True
+
+class CommitPayloadTy (b : BaseTy) : Prop where
+  nonNullable : b.NonNullable
+
+class DefaultVal (b : BaseTy) where
+  defaultVal : Val b
+
+instance : CommitPayloadTy .int where
+  nonNullable := trivial
+
+instance : DefaultVal .int where
+  defaultVal := 0
+
+instance : CommitPayloadTy .bool where
+  nonNullable := trivial
+
+instance : DefaultVal .bool where
+  defaultVal := false
+
+instance (lo hi : Int) : CommitPayloadTy (.range lo hi) where
+  nonNullable := trivial
+
+noncomputable instance (lo hi : Int) [h : Nonempty (Val (.range lo hi))] :
+    DefaultVal (.range lo hi) where
+  defaultVal := Classical.choice h
+
+theorem not_commitPayloadTy_option (b : BaseTy) :
+    ¬ CommitPayloadTy (.option b) := by
+  intro h
+  exact h.nonNullable
 
 /-- Plain (non-visibility) context over `BaseTy`. -/
 abbrev CtxSimple : Type := Vegas.Ctx BaseTy
@@ -39,6 +82,12 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | constBool (b : Bool) : Expr Γ .bool
   | constRange {lo hi : Int} (v : Val (.range lo hi)) :
       Expr Γ (.range lo hi)
+  | none {b : BaseTy} : Expr Γ (.option b)
+  | some {b : BaseTy} (e : Expr Γ b) : Expr Γ (.option b)
+  | isSome {b : BaseTy} (e : Expr Γ (.option b)) : Expr Γ .bool
+  | isNone {b : BaseTy} (e : Expr Γ (.option b)) : Expr Γ .bool
+  | getD {b : BaseTy} (e : Expr Γ (.option b)) (fallback : Expr Γ b) :
+      Expr Γ b
   | addInt (l r : Expr Γ .int) : Expr Γ .int
   | eq (l r : Expr Γ b) : Expr Γ .bool
   | andBool (l r : Expr Γ .bool) : Expr Γ .bool
@@ -50,6 +99,11 @@ def evalExpr : Expr Γ b → PlainEnv Γ → Val b
   | .constInt i, _ => i
   | .constBool b, _ => b
   | .constRange v, _ => v
+  | .none, _ => none
+  | .some e, env => some (evalExpr e env)
+  | .isSome e, env => (evalExpr e env).isSome
+  | .isNone e, env => (evalExpr e env).isNone
+  | .getD e fallback, env => (evalExpr e env).getD (evalExpr fallback env)
   | .addInt l r, env => evalExpr l env + evalExpr r env
   | .eq l r, env => decide (evalExpr l env = evalExpr r env)
   | .andBool l r, env => evalExpr l env && evalExpr r env
@@ -62,6 +116,11 @@ def exprDeps : Expr Γ b → Finset VarId
   | .constInt _ => ∅
   | .constBool _ => ∅
   | .constRange _ => ∅
+  | .none => ∅
+  | .some e => exprDeps e
+  | .isSome e => exprDeps e
+  | .isNone e => exprDeps e
+  | .getD e fallback => exprDeps e ∪ exprDeps fallback
   | .addInt l r => exprDeps l ∪ exprDeps r
   | .eq l r => exprDeps l ∪ exprDeps r
   | .andBool l r => exprDeps l ∪ exprDeps r
@@ -78,6 +137,20 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
   | constInt _ => rfl
   | constBool _ => rfl
   | constRange _ => rfl
+  | none => rfl
+  | some e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | isSome e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | isNone e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | getD e fallback ihe ihf =>
+    simp only [evalExpr]
+    rw [ihe (ha.mono Finset.subset_union_left),
+        ihf (ha.mono Finset.subset_union_right)]
   | addInt l r ihl ihr =>
     simp only [evalExpr]
     rw [ihl (ha.mono Finset.subset_union_left),
@@ -137,6 +210,11 @@ def Expr.weakenAfterHead
   | .constInt i => .constInt i
   | .constBool v => .constBool v
   | .constRange v => .constRange v
+  | .none => .none
+  | .some e => .some e.weakenAfterHead
+  | .isSome e => .isSome e.weakenAfterHead
+  | .isNone e => .isNone e.weakenAfterHead
+  | .getD e fallback => .getD e.weakenAfterHead fallback.weakenAfterHead
   | .addInt l r => .addInt l.weakenAfterHead r.weakenAfterHead
   | .eq l r => .eq l.weakenAfterHead r.weakenAfterHead
   | .andBool l r => .andBool l.weakenAfterHead r.weakenAfterHead
@@ -158,6 +236,16 @@ theorem evalExpr_weakenAfterHead
       simp [Expr.weakenAfterHead, evalExpr]
   | constRange v =>
       simp [Expr.weakenAfterHead, evalExpr]
+  | none =>
+      simp [Expr.weakenAfterHead, evalExpr]
+  | some e ih =>
+      simp [Expr.weakenAfterHead, evalExpr, ih]
+  | isSome e ih =>
+      simp [Expr.weakenAfterHead, evalExpr, ih]
+  | isNone e ih =>
+      simp [Expr.weakenAfterHead, evalExpr, ih]
+  | getD e fallback ihe ihf =>
+      simp [Expr.weakenAfterHead, evalExpr, ihe, ihf]
   | addInt l r ihl ihr =>
       simp [Expr.weakenAfterHead, evalExpr, ihl, ihr]
   | eq l r ihl ihr =>
@@ -180,6 +268,32 @@ def Expr.dropAfterHead
   | .constInt i => .constInt i
   | .constBool v => .constBool v
   | .constRange v => .constRange v
+  | .none => .none
+  | .some e =>
+      .some (e.dropAfterHead (by
+        intro hmem
+        apply hy
+        simpa [exprDeps] using hmem))
+  | .isSome e =>
+      .isSome (e.dropAfterHead (by
+        intro hmem
+        apply hy
+        simpa [exprDeps] using hmem))
+  | .isNone e =>
+      .isNone (e.dropAfterHead (by
+        intro hmem
+        apply hy
+        simpa [exprDeps] using hmem))
+  | .getD e fallback =>
+      .getD
+        (e.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
+        (fallback.dropAfterHead (by
+          intro hmem
+          apply hy
+          simp [exprDeps, hmem]))
   | .addInt l r =>
       .addInt
         (l.dropAfterHead (by
@@ -255,6 +369,36 @@ theorem evalExpr_dropAfterHead
       simp [Expr.dropAfterHead, evalExpr]
   | constRange v =>
       simp [Expr.dropAfterHead, evalExpr]
+  | none =>
+      simp [Expr.dropAfterHead, evalExpr]
+  | some e ih =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ih (by
+            intro hmem
+            apply hy
+            simpa [exprDeps] using hmem)]
+  | isSome e ih =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ih (by
+            intro hmem
+            apply hy
+            simpa [exprDeps] using hmem)]
+  | isNone e ih =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ih (by
+            intro hmem
+            apply hy
+            simpa [exprDeps] using hmem)]
+  | getD e fallback ihe ihf =>
+      simp only [Expr.dropAfterHead, evalExpr]
+      rw [ihe (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem]),
+          ihf (by
+            intro hmem
+            apply hy
+            simp [exprDeps, hmem])]
   | addInt l r ihl ihr =>
       simp only [Expr.dropAfterHead, evalExpr]
       rw [ihl (by
@@ -356,6 +500,13 @@ noncomputable instance finiteType_range (lo hi : Int) :
     change Fintype (Set.Icc lo hi)
     infer_instance
 
+noncomputable instance finiteType_option (b : BaseTy)
+    [FiniteType simpleExpr b] : FiniteType simpleExpr (.option b) where
+  fintype := by
+    letI : Fintype (Val b) := FiniteType.fintype (L := simpleExpr) (τ := b)
+    change Fintype (Option (Val b))
+    infer_instance
+
 abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
 abbrev VCtxSimple : Type := Vegas.VCtx Player simpleExpr
 abbrev VHasVarSimple : VCtxSimple → VarId → BindTySimple → Type :=
@@ -438,6 +589,11 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .constInt i => .constInt i
   | .constBool v => .constBool v
   | .constRange v => .constRange v
+  | .none => .none
+  | .some e => .some e.weaken
+  | .isSome e => .isSome e.weaken
+  | .isNone e => .isNone e.weaken
+  | .getD e fallback => .getD e.weaken fallback.weaken
   | .addInt l r => .addInt l.weaken r.weaken
   | .eq l r => .eq l.weaken r.weaken
   | .andBool l r => .andBool l.weaken r.weaken
@@ -452,11 +608,152 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | constInt _ => rfl
   | constBool _ => rfl
   | constRange _ => rfl
+  | none => rfl
+  | some e ih => simp [Expr.weaken, evalExpr, ih]
+  | isSome e ih => simp [Expr.weaken, evalExpr, ih]
+  | isNone e ih => simp [Expr.weaken, evalExpr, ih]
+  | getD e fallback ihe ihf => simp [Expr.weaken, evalExpr, ihe, ihf]
   | addInt l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | eq l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | andBool l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | notBool e ih => simp [Expr.weaken, evalExpr, ih]
   | ite c t f ihc iht ihf => simp [Expr.weaken, evalExpr, ihc, iht, ihf]
+
+def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
+  | .int, i => .constInt i
+  | .bool, b => .constBool b
+  | .range _ _, v => .constRange v
+  | .option _, Option.none => .none
+  | .option _, Option.some v => .some (Expr.constVal v)
+
+def Expr.replaceHeadWithGetD
+    {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
+    (fallback : Val b) :
+    Expr ((x, b) :: Γ) c → Expr ((x, .option b) :: Γ) c
+  | .var _ .here =>
+      .getD (.var x .here) (.constVal fallback)
+  | .var z (.there h') =>
+      .var z (.there h')
+  | .constInt i => .constInt i
+  | .constBool v => .constBool v
+  | .constRange v => .constRange v
+  | .none => .none
+  | .some e => .some (e.replaceHeadWithGetD fallback)
+  | .isSome e => .isSome (e.replaceHeadWithGetD fallback)
+  | .isNone e => .isNone (e.replaceHeadWithGetD fallback)
+  | .getD e fb =>
+      .getD (e.replaceHeadWithGetD fallback)
+        (fb.replaceHeadWithGetD fallback)
+  | .addInt l r =>
+      .addInt (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .eq l r =>
+      .eq (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .andBool l r =>
+      .andBool (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .notBool e =>
+      .notBool (e.replaceHeadWithGetD fallback)
+  | .ite c t f =>
+      .ite (c.replaceHeadWithGetD fallback)
+        (t.replaceHeadWithGetD fallback)
+        (f.replaceHeadWithGetD fallback)
+
+theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
+    (v : Val b) (env : PlainEnv Γ) :
+    evalExpr (Expr.constVal v) env = v := by
+  induction b with
+  | int => simp [Expr.constVal, evalExpr]
+  | bool => simp [Expr.constVal, evalExpr]
+  | range lo hi => simp [Expr.constVal, evalExpr]
+  | option b ih =>
+      cases v with
+      | none => simp [Expr.constVal, evalExpr]
+      | some v =>
+          simp [Expr.constVal, evalExpr, ih]
+
+theorem evalExpr_replaceHeadWithGetD_some
+    {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
+    (fallback : Val b) (e : Expr ((x, b) :: Γ) c)
+    (v : Val b) (env : PlainEnv Γ) :
+    evalExpr (e.replaceHeadWithGetD fallback)
+        (Env.cons (x := x) (some v) env) =
+      evalExpr e (Env.cons (x := x) v env) := by
+  induction e with
+  | var z h =>
+      cases h <;> simp [Expr.replaceHeadWithGetD, evalExpr, evalExpr_constVal]
+  | constInt i =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
+  | constBool v =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
+  | constRange v =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
+  | none =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
+  | some e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | isSome e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | isNone e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | getD e fb ihe ihf =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihe, ihf]
+  | addInt l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | eq l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | andBool l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | notBool e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | ite c t f ihc iht ihf =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihc, iht, ihf]
+
+def Expr.nullableCommitGuardWithFallback
+    {Γ : CtxSimple} {x : VarId} {b : BaseTy}
+    (fallback : Val b) (R : Expr ((x, b) :: Γ) .bool) :
+    Expr ((x, .option b) :: Γ) .bool :=
+  .ite (.isNone (.var x .here)) (.constBool true)
+    (R.replaceHeadWithGetD fallback)
+
+def Expr.nullableCommitGuard
+    {Γ : CtxSimple} {x : VarId} {b : BaseTy} [DefaultVal b]
+    (R : Expr ((x, b) :: Γ) .bool) :
+    Expr ((x, .option b) :: Γ) .bool :=
+  Expr.nullableCommitGuardWithFallback DefaultVal.defaultVal R
+
+@[simp] theorem evalExpr_nullableCommitGuard_none
+    {Γ : CtxSimple} {x : VarId} {b : BaseTy} [DefaultVal b]
+    (R : Expr ((x, b) :: Γ) .bool)
+    (env : PlainEnv Γ) :
+    evalExpr (Expr.nullableCommitGuard R)
+        (Env.cons (x := x) Option.none env) = true := by
+  simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr]
+
+theorem evalExpr_nullableCommitGuard_some
+    {Γ : CtxSimple} {x : VarId} {b : BaseTy} [DefaultVal b]
+    (R : Expr ((x, b) :: Γ) .bool)
+    (v : Val b) (env : PlainEnv Γ) :
+    evalExpr (Expr.nullableCommitGuard R)
+        (Env.cons (x := x) (some v) env) =
+      evalExpr R (Env.cons (x := x) v env) := by
+  simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr,
+    evalExpr_replaceHeadWithGetD_some DefaultVal.defaultVal R v env]
+
+theorem nullableCommitGuard_satisfiable
+    {P : Type} [DecidableEq P] {Γ : VCtx P simpleExpr}
+    {x : VarId} {b : BaseTy} [DefaultVal b]
+    (R : Expr ((x, b) :: eraseVCtx Γ) .bool) :
+    ∀ env : Env Val (eraseVCtx Γ),
+      ∃ a : Val (.option b),
+        Vegas.evalGuard (Player := P) (L := simpleExpr)
+          (Expr.nullableCommitGuard R) a env = true := by
+  intro env
+  refine ⟨Option.none, ?_⟩
+  change evalExpr (Expr.nullableCommitGuard R)
+      (Env.cons (x := x) Option.none env) = true
+  simp
 
 /-- Extract variable IDs referenced by an expression (as a list). -/
 def exprVars : Expr Γ b → List VarId
@@ -464,6 +761,11 @@ def exprVars : Expr Γ b → List VarId
   | .constInt _ => []
   | .constBool _ => []
   | .constRange _ => []
+  | .none => []
+  | .some e => exprVars e
+  | .isSome e => exprVars e
+  | .isNone e => exprVars e
+  | .getD e fallback => exprVars e ++ exprVars fallback
   | .addInt l r => exprVars l ++ exprVars r
   | .eq l r => exprVars l ++ exprVars r
   | .andBool l r => exprVars l ++ exprVars r

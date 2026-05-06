@@ -261,11 +261,22 @@ still satisfy \TT{expr_deps_sound} or \TT{dist_deps_sound}.
 
 \paragraph{Concrete instance.}
 \TT{simpleExpr} (in \TT{Vegas/ExprSimple.lean}) instantiates \TT{IExpr} with
-$\Ty = \{\intt, \bool, \mathsf{range}\,\ell\,h\}$ and the obvious values, an
-expression syntax with constants, addition, equality, boolean conjunction
-and negation, and \texttt{ite}, plus distributions built either as a weighted
-list of $(v, q)$ pairs or by guarded choice. All examples in the codebase
-use \TT{simpleExpr}.
+$\Ty = \{\intt, \bool, \mathsf{range}\,\ell\,h,
+\mathsf{option}\,b\}$ and the obvious values, where
+$\Val(\mathsf{option}\,b)=\mathrm{Option}(\Val(b))$. Its expression syntax
+has constants, addition, equality, boolean conjunction and negation,
+\texttt{ite}, and the option constructors/eliminators
+\TT{none}, \TT{some}, \TT{isSome}, \TT{isNone}, and \TT{getD}, plus
+distributions built either as a weighted list of $(v, q)$ pairs or by guarded
+choice. All current \TT{VegasLang} programs use \TT{simpleExpr}.
+
+Two small type classes are part of the concrete instance rather than the
+generic \TT{IExpr} interface. \TT{CommitPayloadTy} marks the non-nullable
+types that may be written as explicit surface commit payloads; in particular
+\TT{not_commitPayloadTy_option} rules out explicit user commits of
+\TT{BaseTy.option b}. \TT{DefaultVal} supplies the fallback needed to embed a
+guard over $b$ into a guard over \TT{option b}; the fallback is used only under
+\TT{getD} in the non-null branch.
 
 \subsection{Plain typed contexts: \TT{Ctx}, \TT{HasVar}, \TT{Env}}
 
@@ -417,31 +428,82 @@ $(x, \pub\,b)$ in every downstream view, so strategy types do not change; and
 \label{def:VegasLang}
 
 \paragraph{Lean.}
-\TT{inductive VegasLang (P : Type) (L : IExpr) : VCtx P L} $\to$ \TT{Type}
-mirrors the five \TT{VegasCore} constructors and adds:
+\TT{inductive VegasLang (P : Type) [DecidableEq P] :
+VCtx P simpleExpr} $\to$ \TT{Type}
+mirrors the five \TT{VegasCore} constructors over \TT{simpleExpr} and adds
+simultaneous yield phases plus nullable \TT{yield} sugar:
 \[
-  \TT{simultaneous} :
-    \TT{VegasLangBlock P L } \Gamma\,\Delta
-    \to \TT{VegasLang P L } \Delta
-    \to \TT{VegasLang P L } \Gamma .
+\begin{array}{@{}l@{}}
+  \TT{simultaneous} : \\[-1pt]
+    \qquad(\phi : \TT{VegasYieldPhase P } \Gamma\,[]\,\Delta)
+      \to \phi.\TT{DistinctActors} \to \\[1pt]
+    \qquad\TT{VegasLang P } \Delta
+      \to \TT{VegasLang P } \Gamma, \\[2pt]
+  \Gamma_{\mathsf{yield}} =
+    \begin{array}[t]{@{}l@{}}
+    ((y,\pub\,(\mathsf{option}\,b))::\\
+    \quad(x,\hid\,p\,(\mathsf{option}\,b))::\Gamma),
+    \end{array}
+    \\[2pt]
+  \TT{yield} :
+    [\TT{CommitPayloadTy }b] \to [\TT{DefaultVal }b] \to
+    \Expr((x,b)::\erasectx{\Gamma},\bool) \to \\[1pt]
+    \qquad\TT{VegasLang P }\Gamma_{\mathsf{yield}}
+    \to \TT{VegasLang P }\Gamma .
+\end{array}
 \]
-The companion \TT{VegasLangBlock P L}~$\Gamma\,\Delta$ is a typed,
-nonterminal block of \Let{}, \Sample{}, \Commit{}, and \Reveal{} actions that
-transforms context $\Gamma$ into context $\Delta$. The lowering functions are:
+\TT{VegasYieldPhase P}~$\Gamma\,\pi\,\Delta$ is a typed list of same-phase
+\TT{yield}s. Its guards are all typed over the original pre-phase context
+$\Gamma$, not over the accumulated hidden prefix $\pi$, so a guard cannot
+mention another same-phase yielded variable. The phase also carries the
+\TT{DistinctActors} side condition.
+The relevant lowering functions are:
 \begin{quote}
-\TT{VegasLangBlock.lowerWith : VegasLangBlock P L }$\Gamma\,\Delta$
-  \TT{ -> VegasCore P L }$\Delta$ \TT{ -> VegasCore P L }$\Gamma$\\
-\TT{VegasLang.lower : VegasLang P L }$\Gamma$ \TT{ -> VegasCore P L }$\Gamma$
+\TT{VegasYieldPhase.lowerWith : VegasYieldPhase P }$\Gamma\,\pi\,\Delta$
+  \TT{ -> VegasCore P simpleExpr }$\Delta$
+  \TT{ -> VegasCore P simpleExpr }$(\pi\TT{ ++ }\Gamma)$\\
+\TT{VegasLang.lower : VegasLang P }$\Gamma$
+  \TT{ -> VegasCore P simpleExpr }$\Gamma$
 \end{quote}
+\TT{VegasLangBlock} remains in the codebase as a lower-level experimental
+block syntax, but it is no longer the surface meaning of \TT{simultaneous}.
 
 \paragraph{Math.}
-\TT{VegasLang} is a surface language, not a second denotation. Its meaning is
-definitionally the \TT{VegasCore} program obtained by \TT{VegasLang.lower}.
-The simultaneous constructor records that a source author intends a block of
-actions to be presented together. Lowering still chooses a deterministic
-linear presentation order; after lowering, the syntax-graph compiler computes
-causal prerequisites from reads and writes. Thus independent block actions
-share a protocol-graph frontier, while dependent actions do not.
+\TT{VegasLang} is an elaborated typed surface language, not a second
+denotation. Its meaning is definitionally the \TT{VegasCore} program obtained
+by \TT{VegasLang.lower}. A thinner parser-level source language need not
+construct this intermediate syntax: it can generate a fresh hidden commitment
+name for \TT{yield}, translate ordinary reads to the immediately revealed
+public name, translate owner-private reads to the hidden commitment name, and
+emit \TT{VegasCore} directly.
+The simultaneous constructor records that a source author intends several
+public strategic moves, by distinct actors, to be presented together. Lowering
+first emits all hidden nullable commits in source order and only then emits the
+public reveals. After lowering, the syntax-graph compiler computes causal
+prerequisites from reads and writes: the same-phase commits share a
+protocol-graph frontier, while reveals depend on the committed secrets.
+
+\paragraph{Nullable yields.}
+The ordinary surface \Commit{} constructor is restricted by
+\TT{CommitPayloadTy}, so programmers cannot explicitly commit an optional
+value. The user-facing public-move sugar is \TT{yield}. Lowering changes the
+internal core payload type from $b$ to \TT{BaseTy.option b}, replaces the
+guard $R$ by
+\TT{Expr.nullableCommitGuard R}. This lifted guard accepts \TT{none}
+unconditionally and agrees with $R$ on \TT{some v}; hence
+\TT{nullableCommitGuard_satisfiable} proves the core \Legal{} obligation by
+choosing \TT{none}.
+
+The strategic cost is intentionally pushed into the continuation. After a
+surface \TT{yield}, the revealed public value has type \TT{option b}. Payoff
+and continuation expressions must inspect it with \TT{isNone}, \TT{isSome},
+or \TT{getD}. Thus feasibility is obtained by construction, while the type
+system forces the protocol author to decide how a null/abort branch affects
+later payoffs.
+
+\TT{commitNullable} remains as a lower-level constructor/compatibility spelling
+for experiments that want to expose the hidden optional commitment directly.
+The intended user-level command is \TT{yield}.
 
 \paragraph{Current scope.}
 The surface language keeps \Let{} because \TT{VegasCore} keeps \Let{}.
@@ -1474,21 +1536,22 @@ Identical commit/reveal shape to Prisoners. Payoff expressions use
 match.
 
 \paragraph{\TT{VegasLang} surface presentation.}
-\TT{Examples/VegasLang.lean} rewrites this example with the two initial
-commitments inside a single \TT{VegasLang.simultaneous} block:
+\TT{Examples/VegasLang.lean} gives a surface version where the two public
+choices are a single simultaneous yield phase:
 \begin{quote}\small\ttfamily
-.simultaneous simultaneousCommitBlock\\
-\hspace*{1em}(.reveal matcherPublic matcher matcherSecret \_\\
-\hspace*{2em}(.reveal mismatcherPublic mismatcher mismatcherSecret \_\\
-\hspace*{3em}(.ret [(matcher, matcherPayoff), (mismatcher, mismatcherPayoff)])))
+.simultaneous simultaneousYieldPhase simultaneousYieldPhase\_distinct\\
+\hspace*{1em}(.ret [(matcher, matcherYieldPayoff),\\
+\hspace*{3em}(mismatcher, mismatcherYieldPayoff)])
 \end{quote}
-The file proves
+Here each public choice has type \TT{option bool}; the payoff expressions use
+\TT{getD} to decide how the null branch is handled. The file proves
 \[
-  \TT{VegasLang.lower langProgram = program}
+  \TT{VegasLang.lower langProgram = coreProgram}
 \]
-by \TT{rfl}. This is the intended contract for the surface layer: its
-lowering is transparent enough that existing checked \TT{VegasCore} examples
-can be recovered definitionally.
+by \TT{rfl}, where \TT{coreProgram} is the explicit nullable-commit program
+with both commits emitted before either reveal. This is the intended contract
+for the surface layer: its lowering is transparent enough that the generated
+\TT{VegasCore} shape can be inspected definitionally.
 
 \paragraph{Pedagogical role.}
 This example is the smallest where mixed strategies are necessary. The
@@ -1582,6 +1645,40 @@ checks the payoff expression at both coin outcomes, packages the program as a
 minimal example a reviewer should inspect when asking whether \Let{} and
 \Sample{} are actually exercised by checked programs.
 
+\subsection{NullableCommit}
+
+\TT{Examples/NullableCommit.lean} is the surface-language smoke test for
+nullable yields. The example uses an impossible boolean guard
+\TT{impossibleBoolGuard := .constBool false}. A normal core commit with this
+guard would fail \Legal{}, because no boolean value satisfies it. The
+\TT{VegasLang.yield} surface spelling lowers to a core commit of
+type \TT{BaseTy.option .bool} with guard
+\TT{Expr.nullableCommitGuard impossibleBoolGuard}; the file proves
+\[
+  \TT{VegasLang.lower langProgram = coreProgram}
+\]
+by \TT{rfl}, and proves \TT{lowered_program_legal} using
+\TT{nullableCommitGuard_satisfiable}.
+
+The same file connects nullable yields to a simple griefing criterion. It
+defines \TT{NonCostlyGriefing} for two moves, ``abort'' and ``honest'': the
+abort is non-costly for the actor and strictly worse for the victim. Under
+\TT{badActorPayoff}/\TT{badVictimPayoff}, the null branch leaves the actor at
+utility $0$ while charging the victim $-10$, so
+\TT{bad_null_is_noncostly_griefing} proves that \TT{none} is a non-costly
+griefing move. Under \TT{goodActorPayoff}/\TT{goodVictimPayoff}, the null
+branch charges the actor $-10$, and the theorems
+\TT{good_null_is_punished} and \TT{good_null_not_noncostly_griefing} prove
+that the same null move is no longer non-costly.
+
+\paragraph{Strategic lesson.}
+Nullable yield makes an infeasible guarded action legal by adding an explicit
+abort value. It does not decide who pays for that abort. Because the revealed
+value has option type, later payoff expressions must handle \TT{none}. If the
+author handles it by harming only the counterparty, the program exposes a
+griefing action; if the author punishes the nulling player, that particular
+non-costly griefing opportunity is removed.
+
 \subsection{BackendExamples}
 
 \TT{Examples/BackendExamples.lean} uses \TT{StochasticStepRefinement.refl} as
@@ -1631,8 +1728,8 @@ For a reader landing on the codebase for the first time, we suggest:
 \item Read this supplement's \S\ref{sec:birdseye} and the main report's
   abstract.
 \item Skim \TT{Vegas/VegasLang.lean} for the surface syntax and its lowering
-  into \TT{VegasCore}; the current surface adds simultaneous blocks but no
-  handlers.
+  into \TT{VegasCore}; the current surface adds simultaneous yield phases and
+  nullable yields, but no handlers.
 \item Read \TT{Vegas/Core.lean} top to bottom, focusing on \TT{IExpr}, the
   \TT{VCtx} family, and \TT{VegasCore}.
 \item Skim \TT{Vegas/WF.lean}, \TT{Vegas/Scope.lean}, \TT{Vegas/WFProgram.lean}
