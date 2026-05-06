@@ -63,7 +63,7 @@ notation; (iii) a short prose paragraph explaining the construct and
 (e.g.~\TT{Vegas.WFProgram}). Cross-references match the names used in the
 main report.
 
-We use the macros from the main paper: $\WFP$, $\Outcome$, $\FDist{\cdot}$,
+We use the macros from the main paper: $\WFP$, $\Outcome$, $\FWeight{\cdot}$,
 $\PMF{\cdot}$, $\bind$, $\Players$, $\view{\cdot}$, $\pubctx{\cdot}$,
 $\erasectx{\cdot}$, $\erasepub{\cdot}$, $\Reach$, $\CanReach$. Where the
 supplement introduces additional notation we mark it locally.
@@ -71,8 +71,8 @@ supplement introduces additional notation we mark it locally.
 \subsection{Bird's-eye view}
 \label{sec:birdseye}
 A Vegas program is a syntactic description of a finite game. Its meaning is
-obtained in five stages, each of which contributes its own vocabulary. We
-list them in the order definitions will appear.
+obtained through the layers below, each of which contributes its own
+vocabulary. We list them in the order definitions will appear.
 
 \begin{center}
 \begin{tikzpicture}[
@@ -80,7 +80,7 @@ list them in the order definitions will appear.
     minimum width=2.7cm, minimum height=1cm},
   arr/.style = {-{Stealth[length=2mm,width=2mm]}, thick},
 ]
-\node (lang)  {\textbf{Language}\\\TT{IExpr}, \TT{FDist}};
+\node (lang)  {\textbf{Language}\\\TT{IExpr}, \TT{FWeight}};
 \node[right=4mm of lang] (vis) {\textbf{Visibility}\\\TT{VCtx}, \TT{viewVCtx}};
 \node[right=4mm of vis] (syn) {\textbf{Source}\\\TT{VegasCore},\\\TT{WFProgram}};
 \node[below=10mm of syn] (graph) {\textbf{Graph}\\\TT{ProtocolGraph}\\\TT{Configuration}};
@@ -170,26 +170,26 @@ frontier of a configuration
 % =====================================================================
 \section{The Probability and Language Layer}
 
-\subsection{Finite-support distributions: \TT{FDist}}
-\label{def:FDist}
+\subsection{Finite-support weights: \TT{FWeight}}
+\label{def:FWeight}
 
 \paragraph{Lean.}
 \begin{quote}
-\TT{abbrev FDist (}$\alpha$\TT{) [DecidableEq }$\alpha$\TT{] := }$\alpha \to_0 \mathbb{Q}_{\ge 0}$
+\TT{abbrev FWeight (}$\alpha$\TT{) [DecidableEq }$\alpha$\TT{] := }$\alpha \to_0 \mathbb{Q}_{\ge 0}$
 \end{quote}
 together with the operations \TT{pure}, \TT{zero}, \TT{bind}, \TT{map},
 \TT{ofList}, \TT{totalWeight}, and the bridge \TT{toPMF} into Mathlib's
 measure-theoretic $\PMF{\cdot}$.
 
 \paragraph{Math.}
-$\FDist{\alpha}$ is the set of finitely-supported, non-negative-rational
-sub-probability measures on $\alpha$:
+$\FWeight{\alpha}$ is the set of finitely-supported, non-negative-rational
+weight functions on $\alpha$:
 \[
-  \FDist{\alpha} \;=\; \bigl\{ \mu : \alpha \to \NNQ \;\bigm|\; |\mathrm{supp}\,\mu| < \infty \bigr\}.
+  \FWeight{\alpha} \;=\; \bigl\{ \mu : \alpha \to \NNQ \;\bigm|\; |\mathrm{supp}\,\mu| < \infty \bigr\}.
 \]
 The total mass $w(\mu) = \sum_{a} \mu(a)$ ranges over $[0, \infty)$;
-normalised distributions are those with $w(\mu)=1$. The standard monad
-operations are
+normalised weights, written \TT{FProb} in Lean, are those with $w(\mu)=1$.
+The standard monad operations are
 \[
   \mathrm{pure}(x)(a) = [a = x],\quad
   \mu \bind f = \sum_{a} \mu(a)\cdot f(a),\quad
@@ -197,15 +197,16 @@ operations are
 \]
 
 \paragraph{Why this and not $\PMF{\cdot}$.}
-Three reasons: (i) sub-probability allows intermediate \texttt{bind}-trees
-to be built without per-step normalisation proofs; (ii) rational weights make
-distributions decidably equal and concrete examples mechanically inspectable;
-(iii) decidable support is necessary to construct \texttt{Finsupp}-backed
-distributions computably. The conversion \TT{toPMF} is one-way and is
-the single exit point into Mathlib's measure theory.
+Three reasons: (i) raw weights allow intermediate \texttt{bind}-trees to be
+built without per-step normalisation proofs; (ii) rational weights make
+finite weights decidably equal and concrete examples mechanically
+inspectable; (iii) decidable support is necessary to construct
+\texttt{Finsupp}-backed weights computably. The conversion \TT{toPMF}
+requires a proof of total weight $1$, is one-way, and is the single exit
+point into Mathlib's measure theory.
 
 \paragraph{Key laws.}
-The monad laws hold; in particular distributions \emph{commute}
+The monad laws hold; in particular finite weights \emph{commute}
 ($\mu_1 \bind \lambda x.\, \mu_2 \bind \lambda y.\, f(x,y) = \mu_2 \bind \lambda y.\, \mu_1 \bind \lambda x.\, f(x,y)$),
 which is what licenses commit-commit commutation in the program semantics.
 Normalisation propagates: if $w(\mu)=1$ and $w(f(a))=1$ for every $a$ in
@@ -224,7 +225,7 @@ $\mathrm{supp}(\mu)$, then $w(\mu \bind f) = 1$.
 \item \emph{Expression syntax}: \TT{Expr}~$\Gamma$~$\tau$; an evaluator
   \TT{eval}; a static dependency over-approximation \TT{exprDeps}.
 \item \emph{Distribution syntax}: \TT{DistExpr}~$\Gamma$~$\tau$;
-  \TT{evalDist} into $\FDist{\Val(\tau)}$; \TT{distDeps}.
+  \TT{evalDist} into $\FWeight{\Val(\tau)}$; \TT{distDeps}.
 \item \emph{Structural lemmas}: \TT{extendAfterHead} (insert an unrelated
   binding after the head) and \TT{dropAfterHead} (remove a head-after binding
   the expression does not depend on).
@@ -239,8 +240,16 @@ and the analogous law for distributions.
 
 \paragraph{Math.}
 This is the abstract interface of a typed expression language with finite
-distributions. The \emph{soundness} laws are the only nontrivial axioms;
-they justify treating syntactic dependency as a sound visibility analysis.
+weights. The \emph{soundness} laws are the only nontrivial axioms; they
+justify treating syntactic dependency as a sound visibility analysis.
+
+\paragraph{Trusted interface obligation.}
+\TT{IExpr} is an abstraction boundary. The Vegas proofs do not inspect the
+internal syntax of an expression language; they rely on each \TT{IExpr}
+instance to prove that \TT{exprDeps} and \TT{distDeps} are sound
+over-approximations of semantic reads. An instance may over-report
+dependencies, but it cannot under-report a semantically relevant read and
+still satisfy \TT{expr_deps_sound} or \TT{dist_deps_sound}.
 
 \paragraph{Concrete instance.}
 \TT{simpleExpr} (in \TT{Vegas/ExprSimple.lean}) instantiates \TT{IExpr} with
@@ -304,15 +313,15 @@ returning $\tau$ in both cases.
 \end{quote}
 
 \paragraph{Math.}
-$\view{p}\Gamma$ is the sublist of bindings observable by player $p$;
+$\view{p}$ is the sublist of bindings of $\Gamma$ observable by player $p$;
 $\pubctx{\Gamma}$ is the sublist of public bindings:
 \[
-  \view{p}\Gamma \;=\; \bigl[(x, \tau) \in \Gamma \;\big|\; p \text{ can see } \tau\bigr],
+  \view{p} \;=\; \bigl[(x, \tau) \in \Gamma \;\big|\; p \text{ can see } \tau\bigr],
   \qquad
   \pubctx{\Gamma} \;=\; \bigl[(x, \pub\,\tau) \in \Gamma\bigr].
 \]
 Public bindings are visible to every player, so $\pubctx{\Gamma} \subseteq
-\view{p}\Gamma$ as multisets.
+\view{p}$ as multisets.
 
 \subsection{Erasure to plain contexts: \TT{eraseVCtx}, \TT{erasePubVCtx}}
 \label{def:erase}
@@ -328,9 +337,15 @@ There are two erasures because there are two consumers:
   \erasectx{\Gamma} = [(x, \tau.\mathrm{base}) \mid (x,\tau) \in \Gamma], \quad
   \erasepub{\Gamma} = [(x, \tau) \mid (x, \pub\,\tau) \in \Gamma].
 \]
-The key lemma is the commutation $\erasectx{\pubctx{\Gamma}} =
-\erasepub{\Gamma}$: erasing the public-fragment context yields exactly the
-public erasure.
+The key Lean lemma \TT{eraseVCtx_pubVCtx} says these two computational
+routes from $\Gamma$ to a plain context agree: applying \TT{eraseVCtx}
+after first restricting to the public fragment via \TT{pubVCtx} produces
+the same list of name-type pairs as applying \TT{erasePubVCtx} directly.
+The supplement's notation $\erasectx{\pubctx{\Gamma}}$ and
+$\erasepub{\Gamma}$ both render as $\|\Gamma^{\pub}\|$, which makes the
+identity look notationally trivial; the Lean content is a genuine
+induction on $\Gamma$ relating two distinct functions on visibility
+contexts.
 
 \paragraph{Two erased contexts, by design.}
 The full erased context $\erasectx{\Gamma}$ is what \emph{commit guards} and
@@ -354,13 +369,13 @@ with five constructors. Schematically:
 \Ret~\bar p
   & : & \VCtx \to \mathrm{VegasCore}\,\VCtx \\
 \Let~x = e;~k
-  & : & \mathsf{Expr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
+  & : & \mathsf{Expr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
 \Sample~x \sim D;~k
-  & : & \mathsf{DistExpr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
+  & : & \mathsf{DistExpr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
 \Commit_{p}~x \mid R;~k
-  & : & \mathsf{Expr}((x,b)::\erasectx{\Gamma}, \bool) \times \mathrm{VegasCore}((x,\hid p\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
+  & : & \mathsf{Expr}((x,b)::\erasectx{\Gamma}, \bool) \times \mathrm{VegasCore}((x,\hid\,p\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
 \Reveal~y := x;~k
-  & : & \mathrm{VHasVar}\,\Gamma\,x\,(\hid p\,b) \times \mathrm{VegasCore}((y,\pub b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
+  & : & \mathrm{VHasVar}\,\Gamma\,x\,(\hid\,p\,b) \times \mathrm{VegasCore}((y,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
 \end{array}
 \]
 
@@ -379,12 +394,12 @@ any variable, so a separate predicate \TT{GuardUsesOnly} is needed to enforce
 that it only reads what the committing player can see (\S\ref{def:scope}).
 
 \paragraph{Why \Let{} is kept rather than encoded.}
-$\Let x = e;~k$ is semantically equivalent to $\Sample x \sim \delta_e;~k$
+$\Let~x = e;~k$ is semantically equivalent to $\Sample~x \sim \delta_e;~k$
 where $\delta_e$ is the Dirac mass at $e$. The codebase keeps \Let{} as a
 distinct constructor for four reasons: (i) it would otherwise force \TT{IExpr}
 to expose a \TT{Expr} $\to$ \TT{DistExpr} lift; (ii) it keeps program
 representation linear in surface size; (iii) it preserves the binding
-$(x, \pub b)$ in every downstream view, so strategy types do not change; and
+$(x, \pub\,b)$ in every downstream view, so strategy types do not change; and
 (iv) the surface syntax makes randomness visually distinct from bookkeeping.
 
 \subsection{Visibility predicates: \TT{publicVars}, \TT{visibleVars},
@@ -439,11 +454,11 @@ commitment depends only on what they can see}.
 \node[bind, hid, right=4mm of a] (b) {$x_2: \hid\,p_2\,\intt$};
 \node[bind, hid, right=4mm of b] (c) {$x_3: \hid\,p_1\,\bool$};
 \node[bind, pub, right=4mm of c] (d) {$x_4: \pub\,\intt$};
-\node[view, fit=(a)(c)(d), label={[font=\small,blue!60]above:$\view{p_1}\Gamma$}] {};
+\node[view, fit=(a)(c)(d), label={[font=\small,blue!60]above:$\view{p_1}$}] {};
 \end{tikzpicture}
 \end{center}
 
-The dashed box marks $\view{p_1}\Gamma$: $p_1$ sees the public bindings
+The dashed box marks $\view{p_1}$: $p_1$ sees the public bindings
 $x_1$, $x_4$ and her own hidden binding $x_3$, but not $x_2$ (owned by
 $p_2$).
 
@@ -506,8 +521,9 @@ type $b$ and ambient erased environment $\rho$,
 \]
 This is a \emph{strategic non-deadlock}: the game never reaches a position
 where the active player has no legal action. \NormDists{} is the
-probabilistic well-formedness condition: each sample's evalDist is a true
-probability distribution, not a sub-probability one.
+probabilistic well-formedness condition: each sample's evalDist is a
+normalised finite weight, hence a true probability distribution after the
+\TT{toPMF} bridge.
 
 \paragraph{Decidability caveat.}
 Both predicates are decidable when value domains are finite (the relevant
@@ -646,7 +662,7 @@ data:
   result assignment of already-completed nodes. For player commit actions
   this is where the \emph{guard} is evaluated against the proposed action
   and the current public/owner-visible reads.
-\item \emph{internalKernel}: a $\PMF$ over write slices for non-player
+\item \emph{internalKernel}: a $\mathrm{PMF}$ over write slices for non-player
   (\texttt{assign}, \texttt{sample}, \texttt{reveal}) nodes — these are
   internal events of the machine, not player actions. For \texttt{assign}
   and \texttt{reveal} this is a Dirac kernel; for \texttt{sample} it is the
@@ -768,7 +784,7 @@ is total.
 \paragraph{Total step kernels, separate availability.}
 The transition kernels are total functions; \emph{legality} of an event is a
 \emph{separate} predicate. The graph-machine instance (next subsection)
-implements a stuttering convention — unavailable events return $\PMF.\mathrm{pure}\,s$
+implements a stuttering convention — unavailable events return $\mathrm{PMF}.\mathrm{pure}\,s$
 — but the abstract \TT{Machine} carrier does not pre-commit to it; the
 kernel is exposed unconstrained so backends can choose their reaction.
 
@@ -801,7 +817,7 @@ time, total in the same way as the abstract machine.
 \paragraph{Math.}
 Reading the graph as a machine, an event is the execution of one frontier
 node. \TT{stepPlay} stutters on unavailable actions (returns
-$\PMF.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
+$\mathrm{PMF}.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
 into the configuration. The graph's diamond property and stability of
 frontier reads (\TT{withResult_comm} and the lemmas in
 \TT{FrontierStability.lean}) are exactly what is needed to lift this
@@ -865,10 +881,10 @@ owned frontier node.
 \paragraph{Why FOSG and not extensive form.}
 Standard extensive-form games index strategies by histories; FOSG indexes
 strategies by \emph{information sets}, which are equivalence classes of
-histories under per-player observation. This is the standard modern formalism
-for finite imperfect-information games; the GameTheory submodule of this
-project formalises FOSGs once and Vegas wires its machine semantics into the
-existing carrier.
+histories under per-player observation. FOSG is a modern state-based
+formalism that cleanly separates public and private observation; the
+GameTheory submodule of this project formalises FOSGs once and Vegas wires
+its machine semantics into the existing carrier.
 
 \subsection{The canonical EFG presentation}
 
@@ -905,9 +921,9 @@ games are presented with a strict horizon — a hard prerequisite for many of
 the finite-game theorems imported from the GameTheory library. The bounded
 view exposes outcome kernels
 \[
-  \mathrm{outcomeFromPure}_h\,\pi : \PMF\,(\Outcome\,M),
+  \mathrm{outcomeFromPure}_h\,\pi : \PMF{\Outcome\,M},
   \qquad
-  \mathrm{outcomeFromBehavioral}_h\,\beta : \PMF\,(\Outcome\,M),
+  \mathrm{outcomeFromBehavioral}_h\,\beta : \PMF{\Outcome\,M},
 \]
 from pure and behavioural profiles respectively. The horizon $h$ is fixed
 by the program: \TT{syntaxSteps} (\TT{Vegas/Config.lean}) counts every
@@ -986,7 +1002,7 @@ returning \texttt{none} at information states where $p$ is not active and
 \texttt{some}\,$a$ at active ones. A \emph{behavioural strategy} is
 \[
   \mathrm{ReachableBehavioralStrategy}\,p \;=\;
-    \mathrm{ReachableInfoState}\,p \;\to\; \PMF\,(\mathrm{Option}\,(\mathrm{Act}\,p)).
+    \mathrm{ReachableInfoState}\,p \;\to\; \PMF{\mathrm{Option}\,(\mathrm{Act}\,p)}.
 \]
 The Vegas \emph{legal} carriers (\TT{LegalPureProfile},
 \TT{LegalBehavioralProfile}) further restrict the support: at any reachable
@@ -1218,11 +1234,19 @@ independent mixed profile over the pure strategy carrier of
 distribution}. Symbolically, with $\KG^{\mathrm{pure}}$ and
 $\KG^{\mathrm{beh}}$ the two kernel games:
 \[
-  \forall \mu \in \textstyle\prod_p \PMF\,S_p^{\mathrm{pure}}.\;\;
+  \forall \mu \in \textstyle\prod_p \PMF{S_p^{\mathrm{pure}}}.\;\;
   \exists \beta : \mathrm{Profile}(\KG^{\mathrm{beh}}).\;\;
     K^{\mathrm{beh}}(\beta) \;=\;
     \bigl(\textstyle\prod_p \mu_p\bigr) \bind K^{\mathrm{pure}}.
 \]
+
+\paragraph{Hypotheses behind the slogan.}
+The Lean statement is a Kuhn-style realisation theorem, not merely the
+textbook phrase ``perfect recall'' copied verbatim. It is routed through the
+bounded FOSG view of the syntax-graph machine: finite domains provide the
+finite-horizon carriers, and the required information condition is
+\TT{LegalObservable} for the bounded FOSG, proved for checked syntax graphs
+from the visibility and graph-stability invariants.
 
 \paragraph{Why this is the headline theorem.}
 Pure strategies are easy to read and define; behavioural strategies are
@@ -1482,7 +1506,7 @@ guard depending on two earlier bindings — and it uses the bounded
 whose purpose is not strategic novelty but constructor coverage. It uses a
 deterministic \Let{} to bind a public boolean flag, then a public \Sample{}
 from a fair coin, then \Ret{} with payoff $1$ exactly when both are true. The
-file proves the \TT{FDist.totalWeight} normalisation obligation for the sample,
+file proves the \TT{FWeight.totalWeight} normalisation obligation for the sample,
 checks the payoff expression at both coin outcomes, packages the program as a
 \TT{WFProgram}, and exposes the generated behavioural kernel game. This is the
 minimal example a reviewer should inspect when asking whether \Let{} and
@@ -1509,10 +1533,12 @@ decision nodes followed by a chance transition. For
 decision node followed by chance. The same file also retains the public
 outcome-law theorem for each example:
 \[
-  \mathrm{map}(\mathrm{publicOutcome})\,
-  \mathrm{EFG.outcomeKernel}(\mathrm{translated}\ \beta)
-  =
-  \mathrm{pmfBehavioralKernelGameAt}(g).\mathrm{outcomeKernel}(\beta).
+\begin{aligned}
+  & \mathrm{map}(\mathrm{publicOutcome})\,
+    \mathrm{EFG.outcomeKernel}(\mathrm{translated}\ \beta) \\
+  & \qquad =\;
+    \mathrm{pmfBehavioralKernelGameAt}(g).\mathrm{outcomeKernel}(\beta).
+\end{aligned}
 \]
 This is the intended notion of ``translated to the expected EFG'': expected
 up to the canonical FOSG-to-EFG serialisation, with explicit checked tree

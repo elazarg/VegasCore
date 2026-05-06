@@ -56,8 +56,8 @@ theorem flagValue_eval :
 
 set_option linter.style.nativeDecide false in
 theorem fairCoin_totalWeight (env : Env simpleExpr.Val (erasePubVCtx Γ1)) :
-    FDist.totalWeight (evalDistExpr fairCoin env) = 1 := by
-  change FDist.totalWeight (FDist.ofList [(true, 1 / 2), (false, 1 / 2)]) = 1
+    FWeight.totalWeight (evalDistExpr fairCoin env) = 1 := by
+  change FWeight.totalWeight (FWeight.ofList [(true, 1 / 2), (false, 1 / 2)]) = 1
   native_decide
 
 theorem payoff_true :

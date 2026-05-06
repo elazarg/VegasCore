@@ -104,8 +104,8 @@ inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
 
-def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FDist (Val b)
-  | .weighted entries, _ => FDist.ofList entries
+def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FWeight (Val b)
+  | .weighted entries, _ => FWeight.ofList entries
   | .ite c t f, env =>
       if evalExpr c env then evalDistExpr t env else evalDistExpr f env
 
@@ -477,7 +477,7 @@ def distExprVars : DistExpr Γ b → List VarId
 
 @[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (entries : List (Val b × ℚ≥0)) (env : PlainEnv Γ) :
-    evalDistExpr (.weighted entries) env = FDist.ofList entries := rfl
+    evalDistExpr (.weighted entries) env = FWeight.ofList entries := rfl
 
 theorem evalDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}

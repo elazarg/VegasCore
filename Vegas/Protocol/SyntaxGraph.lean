@@ -785,7 +785,7 @@ noncomputable def publicGraphDist
     (D : L.DistExpr (erasePubVCtx Γ) b)
     (normalized :
       ∀ env : VEnv L Γ,
-        FDist.totalWeight (L.evalDist D (VEnv.eraseSampleEnv env)) = 1) :
+        FWeight.totalWeight (L.evalDist D (VEnv.eraseSampleEnv env)) = 1) :
     ProtocolGraph.GraphDist L (ProgramField p)
       (fun field => field.ty) b where
   reads := currentFields p

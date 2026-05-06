@@ -141,7 +141,7 @@ namespace DistExpr
 abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}
     (D : DistExpr (erasePubVCtx Γ) b) : Prop :=
   ∀ env : VEnvSimple Γ,
-    FDist.totalWeight (evalDistExpr D (VEnv.eraseSampleEnv env)) = 1
+    FWeight.totalWeight (evalDistExpr D (VEnv.eraseSampleEnv env)) = 1
 
 end DistExpr
 
@@ -152,16 +152,16 @@ def NormalizedDists {P : Type} [DecidableEq P]
   | _, .ret _ => True
   | _, .letExpr _ _ k => NormalizedDists k
   | _, .sample _ D' k =>
-    (∀ env, FDist.totalWeight (L.evalDist D' (VEnv.eraseSampleEnv env)) = 1) ∧
+    (∀ env, FWeight.totalWeight (L.evalDist D' (VEnv.eraseSampleEnv env)) = 1) ∧
     NormalizedDists k
   | _, .commit _ _ _ k => NormalizedDists k
   | _, .reveal _ _ _ _ k => NormalizedDists k
 
 theorem DistExpr.Normalized_ite {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b}
-    (ht : ∀ env, FDist.totalWeight (evalDistExpr t env) = 1)
-    (hf : ∀ env, FDist.totalWeight (evalDistExpr f env) = 1) :
-    ∀ env, FDist.totalWeight (evalDistExpr (.ite c t f) env) = 1 := by
+    (ht : ∀ env, FWeight.totalWeight (evalDistExpr t env) = 1)
+    (hf : ∀ env, FWeight.totalWeight (evalDistExpr f env) = 1) :
+    ∀ env, FWeight.totalWeight (evalDistExpr (.ite c t f) env) = 1 := by
   intro env
   by_cases hc : evalExpr c env
   · simp only [evalDistExpr, hc]; exact ht env

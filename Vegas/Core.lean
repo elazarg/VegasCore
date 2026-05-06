@@ -1,4 +1,4 @@
-import Vegas.FDist
+import Vegas.FWeight
 
 /-!
 # Generic protocol interface
@@ -239,9 +239,9 @@ structure IExpr where
             eval e (Env.cons (x := x) vx (Env.cons (x := y) vy env))
   /-- Typed distribution syntax. -/
   DistExpr : Ctx Ty → Ty → Type
-  /-- Denotational evaluation of a distribution into `FDist (Val τ)`. -/
+  /-- Denotational evaluation of a distribution into `FWeight (Val τ)`. -/
   evalDist : {Γ : Ctx Ty} → {τ : Ty} →
-    DistExpr Γ τ → Env Val Γ → @FDist (Val τ) decEqVal
+    DistExpr Γ τ → Env Val Γ → @FWeight (Val τ) decEqVal
   /-- Static over-approximation of variables a distribution reads. -/
   distDeps : {Γ : Ctx Ty} → {τ : Ty} → DistExpr Γ τ → Finset VarId
   /-- Soundness of `exprDeps`: if two environments agree on the declared
@@ -257,7 +257,7 @@ structure IExpr where
 
 -- Promote the `decEqTy` and `decEqVal` interface fields to instances. After
 -- this, `DecidableEq (L.Val τ)` is automatically available for any `L : IExpr`,
--- which is what lets `FDist (L.Val τ)` and similar `Finsupp`-backed
+-- which is what lets `FWeight (L.Val τ)` and similar `Finsupp`-backed
 -- constructions type-check downstream.
 attribute [instance] IExpr.decEqTy IExpr.decEqVal
 
@@ -745,7 +745,7 @@ end VEnv
 
 The `Finsupp` representation is load-bearing: it aggregates per-player
 contributions by summing on matching keys, and its decidable equality is
-required for `FDist (Outcome Player)` to type-check. Players absent from
+required for `FWeight (Outcome Player)` to type-check. Players absent from
 a `.support` default to payoff `0`, which matches the "only named players
 are paid" semantics. -/
 abbrev Outcome (Player : Type) [DecidableEq Player] := Player →₀ Int
@@ -830,8 +830,8 @@ observable activity in a multi-party computation:
 The fifth constructor, `letExpr`, is **administrative**: Semantically,
 `letExpr x e k` is equivalent to `sample x (Dirac e) k`: if the language
 provided a point-mass distribution constructor `Dirac : L.Expr → L.DistExpr`
-with `L.evalDist (Dirac e) = FDist.pure ∘ L.eval e`, then `bind` on a
-Dirac distribution reduces by `FDist.pure_bind` to the direct
+with `L.evalDist (Dirac e) = FWeight.pure ∘ L.eval e`, then `bind` on a
+Dirac distribution reduces by `FWeight.pure_bind` to the direct
 extension we do here. The constructor is kept as a distinct form
 despite this equivalence, for four reasons:
 

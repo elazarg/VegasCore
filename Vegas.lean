@@ -1,4 +1,4 @@
-import Vegas.FDist
+import Vegas.FWeight
 import Vegas.Core
 import Vegas.ExprSimple
 import Vegas.VegasSimple

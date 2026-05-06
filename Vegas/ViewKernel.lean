@@ -25,7 +25,7 @@ abbrev PureKernel (who : P) (Γ : VCtx P L) (b : L.Ty) : Type :=
 
 /-- A behavioral choice rule indexed by a player's actual view. -/
 abbrev BehavioralKernel (who : P) (Γ : VCtx P L) (b : L.Ty) : Type :=
-  ViewEnv who Γ → FDist (L.Val b)
+  ViewEnv who Γ → FWeight (L.Val b)
 
 private theorem visibleVars_cons_of_canSee_true
     {who : P} {y : VarId} {σ : BindTy P L} {Γ : VCtx P L}
