@@ -380,14 +380,14 @@ with five constructors. Schematically:
 \]
 
 \paragraph{Math.}
-A program is a typed sequence of \emph{events} terminated by a \Ret. Four
-constructors model observable activity in a multi-party computation: \Sample
-(a public coin), \Commit (a sealed choice by a player), \Reveal (a sealed
-value made public), and \Ret (the protocol terminates and pays out). One
-constructor, \Let, is administrative.
+A program is a typed sequence of \emph{events} terminated by a \Ret{}. Four
+constructors model observable activity in a multi-party computation:
+\Sample{} (a public coin), \Commit{} (a sealed choice by a player),
+\Reveal{} (a sealed value made public), and \Ret{} (the protocol terminates
+and pays out). One constructor, \Let, is administrative.
 
 The argument types follow the visibility discipline of the previous
-subsection: \Let, \Sample, and the payoffs at \Ret type their bodies over
+subsection: \Let, \Sample, and the payoffs at \Ret{} type their bodies over
 $\erasepub{\Gamma}$ so they cannot mention hidden state, while \Commit's
 guard $R$ types over $(x,b)::\erasectx{\Gamma}$ — syntactically it can read
 any variable, so a separate predicate \TT{GuardUsesOnly} is needed to enforce
@@ -426,7 +426,7 @@ written $\rho_1 \sim_p \rho_2$, if they agree on all variables in
 $\mathrm{visibleVars}(p, \Gamma)$. The \TT{GuardUsesOnly} predicate says a
 commit guard $R$ for player $p$ proposing variable $x$ depends only on
 $\{x\} \cup \mathrm{visibleVars}(p, \Gamma)$. Finally
-$\mathtt{ViewScoped}\,p$ is the recursive judgement that holds at \Commit
+$\mathtt{ViewScoped}\,p$ is the recursive judgement that holds at \Commit{}
 nodes and is forwarded transparently across other constructors.
 
 \paragraph{Soundness.}
@@ -439,28 +439,26 @@ extended context $(x, b) :: \erasectx{\Gamma}$ and we must know $x$ is not
 already in $\Gamma$. This is the formal statement that \emph{a player's
 commitment depends only on what they can see}.
 
-\subsection{Visualising visibility}
-
-\begin{center}
-\begin{tikzpicture}[
-  every node/.style = {draw, rounded corners, font=\small, inner sep=3pt},
-  bind/.style = {fill=gray!10, minimum width=2.4cm},
-  pub/.style = {fill=green!12},
-  hid/.style = {fill=red!12},
-  view/.style = {draw=blue!60, dashed, very thick, rounded corners,
-    inner sep=6pt},
-]
-\node[bind, pub] (a) {$x_1: \pub\,\bool$};
-\node[bind, hid, right=4mm of a] (b) {$x_2: \hid\,p_2\,\intt$};
-\node[bind, hid, right=4mm of b] (c) {$x_3: \hid\,p_1\,\bool$};
-\node[bind, pub, right=4mm of c] (d) {$x_4: \pub\,\intt$};
-\node[view, fit=(a)(c)(d), label={[font=\small,blue!60]above:$\view{p_1}$}] {};
-\end{tikzpicture}
-\end{center}
-
-The dashed box marks $\view{p_1}$: $p_1$ sees the public bindings
-$x_1$, $x_4$ and her own hidden binding $x_3$, but not $x_2$ (owned by
-$p_2$).
+\paragraph{Worked example.}
+For a four-binding context
+\[
+  \Gamma \;=\;
+    \bigl[\,(x_1,\,\pub\,\bool),\;
+            (x_2,\,\hid\,p_2\,\intt),\;
+            (x_3,\,\hid\,p_1\,\bool),\;
+            (x_4,\,\pub\,\intt)\,\bigr],
+\]
+the per-player views are
+\begin{align*}
+  \view{p_1} &=
+    \bigl[\,(x_1,\,\pub\,\bool),\;(x_3,\,\hid\,p_1\,\bool),\;(x_4,\,\pub\,\intt)\,\bigr],
+    \\
+  \view{p_2} &=
+    \bigl[\,(x_1,\,\pub\,\bool),\;(x_2,\,\hid\,p_2\,\intt),\;(x_4,\,\pub\,\intt)\,\bigr],
+\end{align*}
+and $\pubctx{\Gamma} = \bigl[(x_1,\pub\,\bool),\,(x_4,\pub\,\intt)\bigr]$.
+Neither player sees both hidden bindings; the two views overlap exactly on
+$\pubctx{\Gamma}$.
 
 % =====================================================================
 \section{Well-formedness Obligations}
@@ -476,8 +474,8 @@ $\mathrm{Fresh}(x, \Gamma)$ says $x$ does not appear in $\Gamma$. A
 \emph{well-formed context} $\mathrm{WFCtx}\,\Gamma$ is one with no repeated names
 ($\mathtt{Nodup}\,(\Gamma.\mathtt{map}\,\mathtt{fst})$). The recursive
 predicate $\mathrm{FreshBindings}$ asserts that every binder introduced by
-\Let, \Sample, \Commit, or \Reveal is fresh in its enclosing context, i.e.\
-the program is in static-single-assignment form.
+\Let, \Sample, \Commit, or \Reveal{} is fresh in its enclosing context,
+i.e.\ the program is in static-single-assignment form.
 
 \paragraph{Why.}
 Unique names eliminate accidental shadowing in the visibility analysis and
