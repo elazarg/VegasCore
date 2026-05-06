@@ -166,6 +166,70 @@ theorem runEventBlocksFrom_append
   rw [runEventBlocksFrom_foldl_eq_bind]
   rfl
 
+/-- A blocked machine trace records the event blocks executed so far and the
+current checkpoint state. -/
+abbrev BlockTrace (M : Machine Player) : Type :=
+  List (List M.Event) × M.State
+
+/-- A history-dependent law for selecting the next block of primitive events.
+
+The law sees the blocked trace prefix, not only the current state. This matches
+strategic schedulers whose choices can depend on public/history information
+while still running through the machine's primitive transition semantics. -/
+abbrev BlockLaw (M : Machine Player) : Type :=
+  M.BlockTrace → PMF (List M.Event)
+
+/-- Bounded blocked trace distribution from an arbitrary blocked trace prefix.
+Execution stops once the current state is terminal; otherwise one event block is
+sampled, run through the primitive machine semantics, and appended to the
+prefix. -/
+noncomputable def blockTraceDistFrom
+    (M : Machine Player) (law : M.BlockLaw) :
+    Nat → M.BlockTrace → PMF M.BlockTrace
+  | 0, trace => PMF.pure trace
+  | horizon + 1, trace => by
+      classical
+      exact
+        if M.terminal trace.2 then
+          PMF.pure trace
+        else
+          (law trace).bind fun block =>
+            (M.runEventBlocksFrom [block] trace.2).bind fun next =>
+              M.blockTraceDistFrom law horizon
+                (trace.1 ++ [block], next)
+
+@[simp] theorem blockTraceDistFrom_zero
+    (M : Machine Player) (law : M.BlockLaw) (trace : M.BlockTrace) :
+    M.blockTraceDistFrom law 0 trace = PMF.pure trace := rfl
+
+theorem blockTraceDistFrom_succ_terminal
+    (M : Machine Player) (law : M.BlockLaw)
+    (horizon : Nat) (trace : M.BlockTrace)
+    (hterminal : M.terminal trace.2) :
+    M.blockTraceDistFrom law (horizon + 1) trace = PMF.pure trace := by
+  simp [blockTraceDistFrom, hterminal]
+
+theorem blockTraceDistFrom_succ_nonterminal
+    (M : Machine Player) (law : M.BlockLaw)
+    (horizon : Nat) (trace : M.BlockTrace)
+    (hterminal : ¬ M.terminal trace.2) :
+    M.blockTraceDistFrom law (horizon + 1) trace =
+      (law trace).bind fun block =>
+        (M.runEventBlocksFrom [block] trace.2).bind fun next =>
+          M.blockTraceDistFrom law horizon
+            (trace.1 ++ [block], next) := by
+  simp [blockTraceDistFrom, hterminal]
+
+/-- Bounded blocked trace distribution from the machine initial state. -/
+noncomputable def blockTraceDist
+    (M : Machine Player) (law : M.BlockLaw) (horizon : Nat) :
+    PMF M.BlockTrace :=
+  M.blockTraceDistFrom law horizon ([], M.init)
+
+@[simp] theorem blockTraceDist_zero
+    (M : Machine Player) (law : M.BlockLaw) :
+    M.blockTraceDist law 0 = PMF.pure ([], M.init) := rfl
+
 /-- One scheduled machine step. -/
 noncomputable def stepDist
     (M : Machine Player) (law : M.EventLaw) (state : M.State) :

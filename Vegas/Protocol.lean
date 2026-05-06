@@ -8,6 +8,7 @@ import Vegas.Protocol.Trace
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Strategic
 import Vegas.Protocol.Backend
+import Vegas.Protocol.BackendKernelGame
 import Vegas.Protocol.Kuhn
 
 /-!
@@ -46,6 +47,9 @@ This entrypoint exposes the executable protocol construction path:
   reactive runtimes, including a probability-preserving
   `Machine.StochasticStepRefinement` for backend distribution-preservation
   proofs.
+* `Vegas.Protocol.BackendKernelGame` packages a backend refinement plus a
+  compatible block-law lift as a backend blocked-trace `KernelGame` and
+  transports Nash equilibria from the canonical spec blocked-trace game.
 * `Vegas.Protocol.Kuhn` exposes `Machine.FOSGView.kuhn_mixed_to_behavioral`,
   a machine-native Kuhn realization theorem. The witness is a
   `Machine.FOSGView.BehavioralProfile`; the equality is between two
