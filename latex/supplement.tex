@@ -97,9 +97,11 @@ vocabulary. We list them in the order definitions will appear.
 \end{center}
 
 \noindent The arrows are read as ``defines on top of''. The substantive
-mathematical work happens at the protocol-graph level, where a syntax tree is
-turned into a DAG with extensional state, and at the FOSG checkpoint level,
-where the game-theoretic round structure is recovered.
+mathematical work happens at the protocol-graph level, where a syntax tree
+is turned into a DAG with \emph{extensional} state — the configuration
+records only which nodes have produced which results, not the schedule
+that produced them — and at the FOSG checkpoint level, where the
+game-theoretic round structure is recovered.
 
 \subsection{A glossary for the cross-disciplinary reader}
 
@@ -195,6 +197,11 @@ The standard monad operations are
   \mu \bind f = \sum_{a} \mu(a)\cdot f(a),\quad
   \mathrm{map}\,g\,\mu = \sum_{a} \mu(a)\cdot \mathrm{pure}(g(a)).
 \]
+(The trio $\mathrm{pure}$, $\bind$, $\mathrm{map}$ is the standard PL
+vocabulary for a structured computational effect: $\mathrm{pure}$ injects a
+value as a degenerate distribution, $\bind$ sequences a stochastic step
+with a continuation indexed by the result, and $\mathrm{map}$ is the
+pushforward through a deterministic function.)
 
 \paragraph{Why this and not $\PMF{\cdot}$.}
 Three reasons: (i) raw weights allow intermediate \texttt{bind}-trees to be
@@ -206,7 +213,8 @@ requires a proof of total weight $1$, is one-way, and is the single exit
 point into Mathlib's measure theory.
 
 \paragraph{Key laws.}
-The monad laws hold; in particular finite weights \emph{commute}
+The \emph{monad laws} (left/right identity for $\mathrm{pure}$, and
+associativity of $\bind$) hold; in particular finite weights \emph{commute}
 ($\mu_1 \bind \lambda x.\, \mu_2 \bind \lambda y.\, f(x,y) = \mu_2 \bind \lambda y.\, \mu_1 \bind \lambda x.\, f(x,y)$),
 which is what licenses commit-commit commutation in the program semantics.
 Normalisation propagates: if $w(\mu)=1$ and $w(f(a))=1$ for every $a$ in
@@ -272,8 +280,10 @@ use \TT{simpleExpr}.
 A \emph{context} $\Gamma$ is a list of typed variable bindings; an
 \emph{environment} $\rho \in \Env(\Gamma)$ assigns a value to each binding.
 \TT{HasVar} is a typed de~Bruijn membership proof; under \TT{Nodup} (no
-repeated names) it is a subsingleton, so environment lookup is
-proof-irrelevant.
+repeated names) it is a \emph{subsingleton} (any two such proofs are
+definitionally equal), so environment lookup is \emph{proof-irrelevant}
+(the value depends only on the variable and its type, not on which
+membership witness was used).
 
 \paragraph{Why \TT{HasVar} is in \TT{Type} and not \TT{Prop}.}
 The \TT{Env} datatype pattern-matches on \TT{HasVar} to retrieve values;
@@ -475,7 +485,9 @@ $\mathrm{Fresh}(x, \Gamma)$ says $x$ does not appear in $\Gamma$. A
 ($\mathtt{Nodup}\,(\Gamma.\mathtt{map}\,\mathtt{fst})$). The recursive
 predicate $\mathrm{FreshBindings}$ asserts that every binder introduced by
 \Let, \Sample, \Commit, or \Reveal{} is fresh in its enclosing context,
-i.e.\ the program is in static-single-assignment form.
+i.e.\ the program is in \emph{static-single-assignment} form (every
+variable name is bound by exactly one program point and is never
+reassigned).
 
 \paragraph{Why.}
 Unique names eliminate accidental shadowing in the visibility analysis and
@@ -782,9 +794,11 @@ is total.
 \paragraph{Total step kernels, separate availability.}
 The transition kernels are total functions; \emph{legality} of an event is a
 \emph{separate} predicate. The graph-machine instance (next subsection)
-implements a stuttering convention — unavailable events return $\mathrm{PMF}.\mathrm{pure}\,s$
-— but the abstract \TT{Machine} carrier does not pre-commit to it; the
-kernel is exposed unconstrained so backends can choose their reaction.
+implements a \emph{stuttering} convention — unavailable events leave the
+state unchanged, returning $\mathrm{PMF}.\mathrm{pure}\,s$ (a Dirac mass
+at the source state). The abstract \TT{Machine} carrier does not
+pre-commit to that convention; the kernel is exposed unconstrained so
+backends can choose their reaction.
 
 \subsection{Run prefixes, schedulers, traces}
 
@@ -1290,10 +1304,14 @@ named players are paid'' is the same in either form.
 \TT{Vegas/Protocol/Backend.lean}).
 
 \paragraph{Math.}
-The codebase formalises two notions of machine-to-machine refinement:
+\emph{Refinement} here is the verification-style relation ``the
+implementation cannot be distinguished from the specification by any
+externally observable behaviour''. Concretely, a refinement is a state
+projection $\pi : S_{\mathrm{Impl}} \to S_{\mathrm{Spec}}$ satisfying
+matching conditions on transitions. The codebase formalises two strengths:
 \begin{itemize}
 \item \emph{Weak step refinement.} Implementation external (player) events
-  match a specification event under a state projection; internal events
+  match a specification event under the state projection; internal events
   preserve the projected state.
 \item \emph{Stochastic step refinement.} A strictly stronger version: the
   pushforward of the implementation step kernel through the projection equals
