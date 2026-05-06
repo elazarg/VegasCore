@@ -468,8 +468,6 @@ The relevant lowering functions are:
 \TT{VegasLang.lower : VegasLang P }$\Gamma$
   \TT{ -> VegasCore P simpleExpr }$\Gamma$
 \end{quote}
-\TT{VegasLangBlock} is a lower-level experimental block syntax. The
-\TT{simultaneous} constructor uses \TT{VegasYieldPhase}.
 
 \paragraph{Math.}
 \TT{VegasLang} is an elaborated typed surface language, not a second
@@ -505,10 +503,6 @@ and continuation expressions must inspect it with \TT{isNone}, \TT{isSome},
 or \TT{getD}. Thus feasibility is obtained by construction, while the type
 system forces the protocol author to decide how a null/abort branch affects
 later payoffs.
-
-\TT{commitNullable} is a lower-level constructor/compatibility spelling for
-experiments that expose the hidden optional commitment directly.
-The intended user-level command is \TT{yield}.
 
 \paragraph{Current scope.}
 The surface language keeps \Let{} because \TT{VegasCore} keeps \Let{}.

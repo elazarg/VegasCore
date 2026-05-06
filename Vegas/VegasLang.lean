@@ -39,47 +39,6 @@ def Expr.weakenAfterHeadVCtx {P : Type} {Γ : VCtx P simpleExpr}
       (Expr.weakenAfterHeadVCtx rest e).weakenAfterHead
         (y := y) (σ := σ.base)
 
-/-- A lower-level nonterminal action block. It is available for experiments
-and compatibility aliases; `VegasLang.simultaneous` uses `VegasYieldPhase`
-instead. The indices record the context transformer implemented by the block. -/
-inductive VegasLangBlock (P : Type) [DecidableEq P] :
-    VCtx P simpleExpr → VCtx P simpleExpr → Type where
-  /-- Empty block. -/
-  | nil {Γ : VCtx P simpleExpr} :
-      VegasLangBlock P Γ Γ
-  /-- Deterministic public binding inside a block. -/
-  | letExpr {Γ Δ : VCtx P simpleExpr} (x : VarId) {b : BaseTy}
-      (e : Expr (erasePubVCtx Γ) b)
-      (rest : VegasLangBlock P ((x, .pub b) :: Γ) Δ) :
-      VegasLangBlock P Γ Δ
-  /-- Public sample inside a block. -/
-  | sample {Γ Δ : VCtx P simpleExpr} (x : VarId) {b : BaseTy}
-      (D : DistExpr (erasePubVCtx Γ) b)
-      (rest : VegasLangBlock P ((x, .pub b) :: Γ) Δ) :
-      VegasLangBlock P Γ Δ
-  /-- Strategic hidden commitment whose guard is accepted as-is. Surface
-  payloads cannot be explicitly nullable. -/
-  | commit {Γ Δ : VCtx P simpleExpr} (x : VarId) (who : P) {b : BaseTy}
-      [CommitPayloadTy b]
-      (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
-      (rest : VegasLangBlock P ((x, .hidden who b) :: Γ) Δ) :
-      VegasLangBlock P Γ Δ
-  /-- Lower-level strategic hidden commitment that may become `none` if no
-  guarded value is available. The supplied guard constrains only the `some`
-  branch; `none` is always feasible. The continuation must handle `option b`. -/
-  | commitNullable {Γ Δ : VCtx P simpleExpr} (x : VarId) (who : P)
-      {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
-      (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
-      (rest : VegasLangBlock P
-        ((x, .hidden who (BaseTy.option b)) :: Γ) Δ) :
-      VegasLangBlock P Γ Δ
-  /-- Reveal inside a block. -/
-  | reveal {Γ Δ : VCtx P simpleExpr} (y : VarId) (who : P) (x : VarId)
-      {b : BaseTy}
-      (hx : VHasVar Γ x (.hidden who b))
-      (rest : VegasLangBlock P ((y, .pub b) :: Γ) Δ) :
-      VegasLangBlock P Γ Δ
-
 /-- A simultaneous yield phase. All guards are typed over the original
 pre-phase context `Γ`, not over the hidden-prefix index, so a guard cannot
 mention another yield from the same phase. Lowering commits every yielded value
@@ -144,8 +103,7 @@ def lowerWith {Γ : VCtx P simpleExpr} :
 end VegasYieldPhase
 
 /-- Surface Vegas syntax. This mirrors `VegasCore`, specializes it to
-`simpleExpr`, and adds simultaneous yield phases, nullable yield sugar, and nullable
-commitments. -/
+`simpleExpr`, and adds simultaneous yield phases and nullable yield sugar. -/
 inductive VegasLang (P : Type) [DecidableEq P] :
     VCtx P simpleExpr → Type where
   /-- Terminate with public payoff expressions. -/
@@ -168,14 +126,6 @@ inductive VegasLang (P : Type) [DecidableEq P] :
       [CommitPayloadTy b]
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
       (k : VegasLang P ((x, .hidden who b) :: Γ)) :
-      VegasLang P Γ
-  /-- Lower-level strategic hidden commitment that may become `none` if no
-  guarded value is available. The supplied guard constrains only the `some`
-  branch; `none` is always feasible. The continuation must handle `option b`. -/
-  | commitNullable {Γ : VCtx P simpleExpr} (x : VarId) (who : P)
-      {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
-      (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
-      (k : VegasLang P ((x, .hidden who (BaseTy.option b)) :: Γ)) :
       VegasLang P Γ
   /-- Public strategic move, lowered as a nullable hidden commitment followed
   by a public reveal of the optional value. The two names are separate because
@@ -204,33 +154,6 @@ inductive VegasLang (P : Type) [DecidableEq P] :
       (k : VegasLang P Δ) :
       VegasLang P Γ
 
-namespace VegasLangBlock
-
-/-- Lower a simultaneous block by prefixing its actions onto a core
-continuation. -/
-def lowerWith :
-    {Γ Δ : VCtx P simpleExpr} →
-      VegasLangBlock P Γ Δ → VegasCore P simpleExpr Δ →
-        VegasCore P simpleExpr Γ
-  | _, _, .nil, k => k
-  | _, _, .letExpr x e rest, k =>
-      .letExpr x e (lowerWith rest k)
-  | _, _, .sample x D rest, k =>
-      .sample x D (lowerWith rest k)
-  | _, _, @VegasLangBlock.commit _ _ _ _ x who _ _ R rest, k =>
-      .commit x who R (lowerWith rest k)
-  | _, _, @VegasLangBlock.commitNullable _ _ _ _ x who b _ _ R rest, k =>
-      .commit x who (b := BaseTy.option b)
-        (Expr.nullableCommitGuard R) (lowerWith rest k)
-  | _, _, .reveal y who x hx rest, k =>
-      .reveal y who x hx (lowerWith rest k)
-
-@[simp] theorem lowerWith_nil
-    {Γ : VCtx P simpleExpr} (k : VegasCore P simpleExpr Γ) :
-    lowerWith (VegasLangBlock.nil (P := P)) k = k := rfl
-
-end VegasLangBlock
-
 namespace VegasLang
 
 /-- Public alias for simultaneous yield phases under the `VegasLang`
@@ -246,9 +169,6 @@ def lower :
   | _, .letExpr x e k => .letExpr x e (lower k)
   | _, .sample x D k => .sample x D (lower k)
   | _, @VegasLang.commit _ _ _ x who _ _ R k => .commit x who R (lower k)
-  | _, @VegasLang.commitNullable _ _ _ x who b _ _ R k =>
-      .commit x who (b := BaseTy.option b)
-        (Expr.nullableCommitGuard R) (lower k)
   | _, @VegasLang.yield _ _ _ secret pubVar who b _ _ R k =>
       .commit secret who (b := BaseTy.option b)
         (Expr.nullableCommitGuard R)
@@ -269,17 +189,6 @@ def lower :
     (k : VegasLang P Δ) :
     lower (VegasLang.simultaneous phase hactors k) =
       VegasYieldPhase.lowerWith phase (lower k) := rfl
-
-theorem legal_lower_commitNullable {Γ : VCtx P simpleExpr}
-    (x : VarId) (who : P) {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
-    (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
-    (k : VegasLang P ((x, .hidden who (BaseTy.option b)) :: Γ))
-    (hlegal : Legal (lower k)) :
-    Legal (lower (VegasLang.commitNullable x who R k)) := by
-  -- The original guard is not required to be feasible; it constrains only
-  -- non-null commitments. `none` witnesses the lowered core guard.
-  dsimp [lower, Legal]
-  exact ⟨nullableCommitGuard_satisfiable R, hlegal⟩
 
 @[simp] theorem lower_yield {Γ : VCtx P simpleExpr}
     (secret pubVar : VarId) (who : P) {b : BaseTy}
