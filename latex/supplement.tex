@@ -347,15 +347,16 @@ There are two erasures because there are two consumers:
   \erasectx{\Gamma} = [(x, \tau.\mathrm{base}) \mid (x,\tau) \in \Gamma], \quad
   \erasepub{\Gamma} = [(x, \tau) \mid (x, \pub\,\tau) \in \Gamma].
 \]
-The key Lean lemma \TT{eraseVCtx_pubVCtx} says these two computational
-routes from $\Gamma$ to a plain context agree: applying \TT{eraseVCtx}
-after first restricting to the public fragment via \TT{pubVCtx} produces
-the same list of name-type pairs as applying \TT{erasePubVCtx} directly.
-The supplement's notation $\erasectx{\pubctx{\Gamma}}$ and
-$\erasepub{\Gamma}$ both render as $\|\Gamma^{\pub}\|$, which makes the
-identity look notationally trivial; the Lean content is a genuine
-induction on $\Gamma$ relating two distinct functions on visibility
-contexts.
+The key commutation lemma (\TT{eraseVCtx_pubVCtx}) says that the two
+projections — restrict to the public fragment, and forget visibility
+tags — commute:
+\[
+  \erasectx{\pubctx{\Gamma}} \;=\; \pubctx{\erasectx{\Gamma}}.
+\]
+Either route produces the public erasure, for which we keep the
+shorthand $\erasepub{\Gamma}$. Operationally this is what lets
+$\erasepub{\Gamma}$-shaped goals be discharged by reasoning about
+$\erasectx{\Gamma}$.
 
 \paragraph{Two erased contexts, by design.}
 The full erased context $\erasectx{\Gamma}$ is what \emph{commit guards} and
