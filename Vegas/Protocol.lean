@@ -8,6 +8,7 @@ import Vegas.Protocol.FrontierStability
 import Vegas.Protocol.Trace
 import Vegas.Protocol.FOSG
 import Vegas.Protocol.Strategic
+import Vegas.Protocol.EFG
 import Vegas.Protocol.Backend
 import Vegas.Protocol.BackendKernelGame
 import Vegas.Protocol.Kuhn
@@ -48,6 +49,9 @@ This entrypoint exposes the executable protocol construction path:
   alphabet.
 * `Vegas.Protocol.Strategic` packages the finite syntax-graph FOSG view as
   Vegas `KernelGame` constructors.
+* `Vegas.Protocol.EFG` applies the GameTheory FOSG-to-augmented-EFG bridge to
+  checked programs and proves that the resulting canonical EFG preserves the
+  same generated behavioral public-outcome distribution.
 * `Vegas.Protocol.Backend` states operational refinement obligations for
   reactive runtimes, including a probability-preserving
   `Machine.StochasticStepRefinement` for backend distribution-preservation

@@ -6,6 +6,7 @@ import Vegas.Examples.SyntaxConstructors
 import Vegas.Examples.BackendExamples
 import Vegas.Examples.SolutionConcepts
 import Vegas.Examples.StrategicSemantics
+import Vegas.Examples.EFGTranslation
 
 /-!
 # Vegas examples

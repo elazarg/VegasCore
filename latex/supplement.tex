@@ -6,6 +6,13 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,decorations.pathreplacing}
 
+% Be more tolerant about line breaking, since identifier-heavy paragraphs
+% can produce unbreakable tokens longer than a column.
+\sloppy
+\emergencystretch=3em
+\hbadness=10000
+\hfuzz=4pt
+
 % Local additions for the supplement.
 \newcommand{\TT}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
@@ -214,9 +221,9 @@ $\mathrm{supp}(\mu)$, then $w(\mu \bind f) = 1$.
   $\Val : \Ty \to \mathbf{Type}$; decidable equality on each;
   distinguished $\bool, \intt \in \Ty$ with projections to Lean's
   \TT{Bool} and \TT{Int}.
-\item \emph{Expression syntax}: \TT{Expr~$\Gamma$~$\tau$}; an evaluator
+\item \emph{Expression syntax}: \TT{Expr}~$\Gamma$~$\tau$; an evaluator
   \TT{eval}; a static dependency over-approximation \TT{exprDeps}.
-\item \emph{Distribution syntax}: \TT{DistExpr~$\Gamma$~$\tau$};
+\item \emph{Distribution syntax}: \TT{DistExpr}~$\Gamma$~$\tau$;
   \TT{evalDist} into $\FDist{\Val(\tau)}$; \TT{distDeps}.
 \item \emph{Structural lemmas}: \TT{extendAfterHead} (insert an unrelated
   binding after the head) and \TT{dropAfterHead} (remove a head-after binding
@@ -590,7 +597,7 @@ syntactic over-approximation.
 \paragraph{The visibility split inside guards.}
 A \TT{GraphGuard} keeps a subset \TT{visibleReads} $\subseteq$ \TT{reads}
 of \emph{visible} reads, plus a soundness obligation
-\TT{eval\_eq\_of\_visible\_eq}: any two read environments that agree on the
+\TT{eval_eq_of_visible_eq}: any two read environments that agree on the
 visible part must give the same Boolean. Conceptually, the guard's value
 depends on the public-or-owner-visible reads only; the additional
 \texttt{reads} are tolerated for syntactic convenience but cannot affect
@@ -733,10 +740,15 @@ asynchronous execution carrier into which it is interpreted.
 \paragraph{Math.}
 A \emph{machine} is a tuple
 \[
-  M \;=\; \bigl(S, \{A_p\}_p, I, \mathrm{Pub}, \{O_p\}_p, \Outcome,
-    s_0,\; \mathrm{avail}, \mathrm{availInt},\;
-    \mathrm{stepPlay}, \mathrm{stepInternal},\;
-    \mathrm{term}, \mathrm{pubView}, \mathrm{obs}, \mathrm{out}, u\bigr)
+\begin{aligned}
+  M \;=\; \bigl(\;
+    & S,\; \{A_p\}_p,\; I,\; \mathrm{Pub},\; \{O_p\}_p,\; \Outcome,\;
+       s_0, \\
+    & \mathrm{avail},\; \mathrm{availInt},\;
+       \mathrm{stepPlay},\; \mathrm{stepInternal},\\
+    & \mathrm{term},\; \mathrm{pubView},\; \mathrm{obs},\; \mathrm{out},\; u
+  \;\bigr)
+\end{aligned}
 \]
 of: a state space; per-player action sets; an internal-event set; a public
 observation type and per-player observation types; an outcome type with
@@ -791,7 +803,7 @@ Reading the graph as a machine, an event is the execution of one frontier
 node. \TT{stepPlay} stutters on unavailable actions (returns
 $\PMF.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
 into the configuration. The graph's diamond property and stability of
-frontier reads (\TT{withResult\_comm} and the lemmas in
+frontier reads (\TT{withResult_comm} and the lemmas in
 \TT{FrontierStability.lean}) are exactly what is needed to lift this
 asynchronous, single-event view into a \emph{round-based} FOSG view in
 which a player's round-action covers the entire owned frontier.
@@ -819,7 +831,7 @@ The shift from machine to game-theoretic structure happens at this layer.
 \subsection{Bounded states}
 
 \paragraph{Lean.}
-\TT{structure BoundedState (M : Machine P) (horizon : Nat) where state, depth, depth\_le}.
+\TT{structure BoundedState (M : Machine P) (horizon : Nat) where state, depth, depth_le}.
 
 \paragraph{Math.}
 A \emph{bounded state} pairs a machine state with a depth counter, used to
@@ -835,9 +847,9 @@ underlying machine state remains semantic.
 \TT{Act : P} $\to$ \TT{Type} \\
 \TT{active : M.State} $\to$ \TT{Finset P} \\
 \TT{availableActions : M.State} $\to$ \TT{(p : P)} $\to$ \TT{Set (Act p)} \\
-\TT{transition : M.State} $\to$ \TT{\{a // legal\}} $\to$ \TT{PMF M.State} \\
-\TT{reward : M.State} $\to$ \TT{\{a // legal\}} $\to$ \TT{M.State} $\to$ \TT{P} $\to$ $\mathbb{R}$ \\
-(\TT{terminal\_active\_eq\_empty}, \TT{nonterminal\_exists\_legal})
+\TT{transition : M.State} $\to$ \TT{ {a // legal} } $\to$ \TT{PMF M.State} \\
+\TT{reward : M.State} $\to$ \TT{ {a // legal} } $\to$ \TT{M.State} $\to$ \TT{P} $\to$ $\mathbb{R}$ \\
+(\TT{terminal_active_eq_empty}, \TT{nonterminal_exists_legal})
 \end{quote}
 
 \paragraph{Math.}
@@ -857,6 +869,33 @@ histories under per-player observation. This is the standard modern formalism
 for finite imperfect-information games; the GameTheory submodule of this
 project formalises FOSGs once and Vegas wires its machine semantics into the
 existing carrier.
+
+\subsection{The canonical EFG presentation}
+
+\paragraph{Lean.}
+\TT{Vegas/Protocol/EFG.lean} applies GameTheory's
+\TT{FOSG.AugmentedEFGBridge} to the bounded syntax-graph FOSG:
+\begin{quote}
+\TT{syntaxGraphEFGAt g : EFG.EFGGame} \\
+\TT{syntaxGraphEFGBehavioralProfileAt g beta} \\
+\TT{syntaxGraphEFGAt_outcomeKernel_map_publicOutcome}
+\end{quote}
+The bridge tree is not a hand-written textbook tree. It is the canonical
+serialisation of one FOSG round: one EFG decision opportunity per player
+(over optional local moves), followed by a chance node for the FOSG
+transition. Translated legal FOSG strategies put all mass on \TT{none} for
+inactive players, so these administrative decision opportunities do not add
+strategic freedom.
+
+\paragraph{Tree structure, not only distributions.}
+The semantic adequacy theorem says that projecting EFG terminal histories
+back to public Vegas outcomes gives the same outcome law as
+\TT{pmfBehavioralKernelGameAt}. For reviewers who want to see the actual
+tree spine, \TT{EFG.GameTree.HasDecisionChainThenChance} records the
+structural predicate ``$n$ sequential decisions followed by chance''. The
+example file \TT{Examples/EFGTranslation.lean} proves this predicate for the
+first generated round of the checked examples. Thus the code now checks both
+the law induced by the EFG and the expected root shape of the generated tree.
 
 \subsection{Bounded FOSGs and outcome kernels}
 
@@ -1035,7 +1074,7 @@ and public games as a \TT{KernelGame.Simulation} (definitionally a
 \TT{Morphism}, which preserves utility distributions
 $\mathrm{udist}$ — i.e.\ the joint distribution over payoff vectors — under
 profile mapping). It also provides explicit expected-utility equality
-lemmas (\TT{pureBlockedTraceKernelGameAt\_eu\_eq} and the behavioural
+lemmas (\TT{pureBlockedTraceKernelGameAt_eu_eq} and the behavioural
 counterpart) and \TT{Bisimulation}/\TT{EUBisimulation} objects packaging
 the blocked-trace versus public direction symmetrically. So reasoning at
 either game level is sound: outcome-projection preserves utility
@@ -1048,12 +1087,14 @@ distributions and EU is provably equal across the projection.
 \TT{Vegas/Protocol/LinearRead.lean} defines
 \TT{syntaxLinearRead g := ProgramNode.enumerate g.prog} and proves:
 \begin{quote}
-\TT{syntaxLinearRead\_sufficient :}\\
+\TT{syntaxLinearRead_sufficient :}\\
 \quad if a compiled syntax-graph configuration is nonterminal, then some
 unfinished source node of minimal source rank is on the executable frontier.
 \end{quote}
 The reusable graph-level theorem is
-\TT{ProtocolGraph.Configuration.exists\_rank\_minimal\_ready\_of\_not\_terminal}.
+\begin{quote}
+\TT{ProtocolGraph.Configuration.exists_rank_minimal_ready_of_not_terminal}.
+\end{quote}
 
 \paragraph{Math.}
 The source-order rank on \TT{ProgramNode}s is a topological order for the
@@ -1130,8 +1171,8 @@ throughout for expected utility.
   $\sup_\sigma \mathrm{socialWelfare}(\sigma)$ (\TT{ciSup}; finite-profile
   variants are picked up by Mathlib's boundedness lemmas). Vegas also
   re-exports \TT{bestNashWelfare} and \TT{worstNashWelfare}, plus the
-  comparison lemmas \TT{worstNashWelfare\_le\_bestNashWelfare} and
-  \TT{bestNashWelfare\_le\_optimalWelfare}. \\
+  comparison lemmas \TT{worstNashWelfare_le_bestNashWelfare} and
+  \TT{bestNashWelfare_le_optimalWelfare}. \\
 \bottomrule
 \end{tabular}
 
@@ -1144,8 +1185,8 @@ $\mathtt{pref} = \mathtt{euPref}$ (i.e., expected-value comparison).
 \paragraph{Existence corollaries.}
 \TT{Vegas/Corollaries/GameProperties.lean} now exposes three finite-game
 existence theorems through the Vegas-facing API:
-\TT{mixedNash\_exists}, \TT{correlatedEq\_exists}, and
-\TT{coarseCorrelatedEq\_exists}. These are direct wrappers around the
+\TT{mixedNash_exists}, \TT{correlatedEq_exists}, and
+\TT{coarseCorrelatedEq_exists}. These are direct wrappers around the
 GameTheory fixed-point and correlated-equilibrium existence theorems for the
 kernel game \TT{pmfBehavioralKernelGame g}; they are intentionally stated at
 the PMF-over-strategies level and do not by themselves construct a named
@@ -1157,7 +1198,7 @@ source-level policy.
 \paragraph{Lean.}
 \begin{quote}
 \TT{KernelGame.mixedExtension G : KernelGame}; \\
-\TT{Vegas.kuhn\_finite}: as in the main report.
+\TT{Vegas.kuhn_finite}: as in the main report.
 \end{quote}
 
 \paragraph{Math.}
@@ -1170,7 +1211,7 @@ distribution and applies the underlying kernel:
     \bind \lambda \sigma. K(\sigma).
 \]
 
-\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn\_finite}): every
+\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}): every
 independent mixed profile over the pure strategy carrier of
 \TT{pureKernelGameAt}$\,g$ is matched by a behavioural profile of
 \TT{pmfBehavioralKernelGameAt}$\,g$ with the \emph{same outcome
@@ -1248,8 +1289,8 @@ schedulers, gossip) that does not appear in the source language. Refinement
 is the way to attest that the user's reasoning at the FOSG/kernel-game level
 remains valid against an implementation, without growing a second
 ``implementation semantics'' inside the source language. Trace-level
-projection lemmas (\TT{runEventsFrom\_project\_eq},
-\TT{blockTraceDist\_project\_eq}) carry the refinement from primitive
+projection lemmas (\TT{runEventsFrom_project_eq},
+\TT{blockTraceDist_project_eq}) carry the refinement from primitive
 events to whole runs.
 
 \paragraph{Backend kernel-game transport.}
@@ -1281,15 +1322,17 @@ lift and obtains an EU-preserving morphism from the implementation into
 the canonical Vegas blocked-trace game.
 
 \paragraph{Transport proofs use the morphism API.}
-The public pullback theorems
-\TT{backendBlockedTraceKernelGameAt\_isNash\_pullback} and
-\TT{backendPMFBehavioralBlockedTraceKernelGameAt\_isNash\_pullback} are now
-proved by applying \TT{KernelGame.EUMorphism.nash\_of\_nash}. The composed
+The two public pullback theorems
+\begin{quote}
+\TT{backendBlockedTraceKernelGameAt_isNash_pullback}, \\
+\TT{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}
+\end{quote}
+are proved by applying \TT{KernelGame.EUMorphism.nash_of_nash}. The composed
 ``public game to backend'' theorems first use the Stage-1
-\TT{EUGameIsomorphism.nash\_iff} between public and blocked-trace games, then
-the backend morphism. Thus the code exercises the same morphism composition
-story stated in the report rather than repeating expected-utility
-calculations locally.
+\TT{EUGameIsomorphism.nash_iff} between public and blocked-trace games,
+then the backend morphism. Thus the code exercises the same morphism
+composition story stated in the report rather than repeating
+expected-utility calculations locally.
 
 % =====================================================================
 \section{Worked Examples}
@@ -1356,7 +1399,7 @@ match.
 \paragraph{Pedagogical role.}
 This example is the smallest where mixed strategies are necessary. The
 kernel game produced by \TT{pmfBehavioralKernelGame} carries enough
-information to express mixed-Nash claims. \TT{kuhn\_finite} is a
+information to express mixed-Nash claims. \TT{kuhn_finite} is a
 \emph{realisation} theorem (every mixed pure profile is matched by a
 behavioural profile with the same outcome distribution); it does not
 itself construct or prove the existence of any equilibrium. Existence
@@ -1455,6 +1498,26 @@ machine. This is intentionally boring: it is a small executable witness that
 the backend-refinement API is usable before a real implementation supplies
 extra state or internal events.
 
+\subsection{EFGTranslation}
+
+\TT{Examples/EFGTranslation.lean} checks the extensive-form presentation of
+the examples, not merely their induced outcome distributions. For
+\TT{Prisoners}, \TT{MatchingPennies}, \TT{BattleOfTheSexes}, and
+\TT{MontyHall}, the file proves that the first generated EFG round has two
+decision nodes followed by a chance transition. For
+\TT{SyntaxConstructors}, whose player type has one inhabitant, it proves one
+decision node followed by chance. The same file also retains the public
+outcome-law theorem for each example:
+\[
+  \mathrm{map}(\mathrm{publicOutcome})\,
+  \mathrm{EFG.outcomeKernel}(\mathrm{translated}\ \beta)
+  =
+  \mathrm{pmfBehavioralKernelGameAt}(g).\mathrm{outcomeKernel}(\beta).
+\]
+This is the intended notion of ``translated to the expected EFG'': expected
+up to the canonical FOSG-to-EFG serialisation, with explicit checked tree
+shape at the root.
+
 \subsection{StrategicSemantics}
 
 The file \TT{Examples/StrategicSemantics.lean} is an exploratory worked
@@ -1482,8 +1545,8 @@ For a reader landing on the codebase for the first time, we suggest:
   \TT{Vegas/Protocol/GraphMachine.lean} to see the abstract carrier and its
   graph instance.
 \item Read \TT{Vegas/Protocol/FOSG.lean} for the FOSG view, then
-  \TT{Vegas/Protocol/Strategic.lean}, \TT{Vegas/Kuhn.lean}, and one of the
-  \TT{Vegas/Examples/} files.
+  \TT{Vegas/Protocol/EFG.lean}, \TT{Vegas/Protocol/Strategic.lean},
+  \TT{Vegas/Kuhn.lean}, and one of the \TT{Vegas/Examples/} files.
 \item Browse \TT{Vegas/Equilibrium.lean}, \TT{Vegas/PureStrategic.lean},
   \TT{Vegas/GameProperties.lean} for the public solution-concept names.
 \end{enumerate}
