@@ -532,6 +532,77 @@ theorem exists_ready_of_not_terminal
     hmin prereq (by simp [unfinished, hpre_node, hpre_none])
   exact (Nat.not_lt_of_ge hle) (G.prereq_rank_lt hnode hpre)
 
+/-- A rank-minimal unfinished node is ready.
+
+This is the graph-level form of the "linear read is sufficient" principle:
+if a reader scans nodes in the graph's rank order and stops at the first
+unfinished node, that node is executable. Dependencies cannot be waiting
+behind it, because prerequisites have strictly smaller rank. -/
+theorem ready_of_rank_minimal_unfinished
+    {cfg : G.Configuration} {node : G.Node}
+    (hnode : node ∈ G.nodes)
+    (hunfinished : (cfg.result node).isNone)
+    (hmin :
+      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
+        G.rank node ≤ G.rank other) :
+    cfg.Ready node := by
+  refine ⟨hnode, hunfinished, ?_⟩
+  intro prereq hpre
+  have hpre_node : prereq ∈ G.nodes :=
+    G.prereqs_subset_nodes hnode hpre
+  by_contra hpre_not_done
+  have hpre_unfinished : (cfg.result prereq).isNone := by
+    cases hresult : cfg.result prereq with
+    | none => rfl
+    | some slice =>
+        exfalso
+        apply hpre_not_done
+        exact (G.mem_done_iff cfg.result prereq).mpr
+          (by simp [hpre_node, hresult])
+  exact (Nat.not_lt_of_ge (hmin prereq hpre_node hpre_unfinished))
+    (G.prereq_rank_lt hnode hpre)
+
+/-- Every nonterminal graph configuration has a ready node that is
+rank-minimal among all unfinished nodes.
+
+Equivalently: the rank-ordered linear presentation never gets stuck before
+the graph execution does. -/
+theorem exists_rank_minimal_ready_of_not_terminal
+    {cfg : G.Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    ∃ node, cfg.Ready node ∧
+      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
+        G.rank node ≤ G.rank other := by
+  classical
+  rcases cfg.exists_unfinished_of_not_terminal hterminal with
+    ⟨witness, hwitness_node, hwitness_unfinished⟩
+  let unfinished : Finset G.Node :=
+    G.nodes.filter fun node => (cfg.result node).isNone
+  have hwitness_none : cfg.result witness = none := by
+    cases hresult : cfg.result witness with
+    | none => rfl
+    | some slice => simp [hresult] at hwitness_unfinished
+  have hunfinished_nonempty : unfinished.Nonempty := by
+    refine ⟨witness, ?_⟩
+    simp [unfinished, hwitness_node, hwitness_none]
+  rcases Finset.exists_min_image unfinished G.rank hunfinished_nonempty with
+    ⟨node, hnode_unfinished, hmin⟩
+  have hnode : node ∈ G.nodes := (Finset.mem_filter.mp hnode_unfinished).1
+  have hnode_unfinished' : (cfg.result node).isNone :=
+    (Finset.mem_filter.mp hnode_unfinished).2
+  have hmin' :
+      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
+        G.rank node ≤ G.rank other := by
+    intro other hother hother_unfinished
+    have hother_none : cfg.result other = none := by
+      cases hresult : cfg.result other with
+      | none => rfl
+      | some slice => simp [hresult] at hother_unfinished
+    exact hmin other (by simp [unfinished, hother, hother_none])
+  exact ⟨node,
+    cfg.ready_of_rank_minimal_unfinished hnode hnode_unfinished' hmin',
+    hmin'⟩
+
 /-- A nonterminal configuration has a nonempty executable frontier. -/
 theorem frontier_nonempty_of_not_terminal
     {cfg : G.Configuration}

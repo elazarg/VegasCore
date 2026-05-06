@@ -2,6 +2,7 @@ import Vegas.Protocol.Graph
 import Vegas.Protocol.Machine
 import Vegas.Protocol.GraphMachine
 import Vegas.Protocol.SyntaxGraph
+import Vegas.Protocol.LinearRead
 import Vegas.Protocol.StateSufficiency
 import Vegas.Protocol.FrontierStability
 import Vegas.Protocol.Trace
@@ -33,6 +34,10 @@ This entrypoint exposes the executable protocol construction path:
 * `Vegas.Protocol.SyntaxGraph` compiles checked Vegas syntax to a
   `ProtocolGraph`, defines the canonical `syntaxGraphMachine`, and proves the
   finite and legal-observability facts needed by the FOSG/Kuhn layer.
+* `Vegas.Protocol.LinearRead` states the programmer-facing straight-line
+  reading theorem: scanning source nodes by source rank never gets stuck before
+  the graph semantics does; a rank-minimal unfinished source node is on the
+  executable frontier.
 * `Vegas.Protocol.Trace` defines the bounded event/state trace distribution
   `Machine.traceDist` and the terminal-outcome marginal
   `Machine.outcomeKernel`. These are the canonical machine-level trace

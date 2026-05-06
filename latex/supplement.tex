@@ -1041,6 +1041,38 @@ the blocked-trace versus public direction symmetrically. So reasoning at
 either game level is sound: outcome-projection preserves utility
 distributions and EU is provably equal across the projection.
 
+\subsection{Linear source reading}
+\label{def:LinearRead}
+
+\paragraph{Lean.}
+\TT{Vegas/Protocol/LinearRead.lean} defines
+\TT{syntaxLinearRead g := ProgramNode.enumerate g.prog} and proves:
+\begin{quote}
+\TT{syntaxLinearRead\_sufficient :}\\
+\quad if a compiled syntax-graph configuration is nonterminal, then some
+unfinished source node of minimal source rank is on the executable frontier.
+\end{quote}
+The reusable graph-level theorem is
+\TT{ProtocolGraph.Configuration.exists\_rank\_minimal\_ready\_of\_not\_terminal}.
+
+\paragraph{Math.}
+The source-order rank on \TT{ProgramNode}s is a topological order for the
+compiled protocol graph: every prerequisite of a node has strictly smaller
+rank. Therefore a reader who scans the source program in rank order and stops
+at the first unfinished source event has found an event whose dependencies
+are already complete. The graph semantics may execute independent frontier
+nodes in other orders, but the straight-line source presentation never blocks
+early.
+
+\paragraph{Scope.}
+This is not a second syntax-recursive small-step semantics. It is the
+``no-stuck linear read'' half of the programmer-facing story: source order is
+a sufficient presentation of the dependency graph. The stronger strategic
+claim — that all stable frontier schedules induce observationally equivalent
+player histories and hence equivalent kernel games — is handled by the
+frontier-stability, blocked-trace, and morphism layers rather than by
+reintroducing a separate recursive runtime.
+
 \subsection{Solution concepts (Vegas-facing wrappers)}
 \label{def:solution}
 
