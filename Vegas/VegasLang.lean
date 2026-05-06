@@ -4,7 +4,9 @@ import Vegas.WF
 # Surface Vegas language
 
 `VegasLang` is a small surface syntax over the concrete `ExprSimple` language
-that lowers to the generic `VegasCore simpleExpr`.
+that lowers to the generic `VegasCore simpleExpr`. This concrete
+specialization is deliberate: nullable yields rely on `BaseTy.option`,
+`CommitPayloadTy`, and `DefaultVal`.
 
 The surface keeps the existing core actions, adds simultaneous yield phases, and
 lowers guarded public `yield`s through internal `option T` commitments.
@@ -29,15 +31,17 @@ def Expr.weakenAfterHeadVCtx {P : Type} {Γ : VCtx P simpleExpr}
     (pref : VCtx P simpleExpr)
     (e : Expr ((x, τ) :: eraseVCtx Γ) b) :
     Expr ((x, τ) :: eraseVCtx (pref ++ Γ)) b :=
+  -- Preserve the proposed action at the head while inserting an accumulated
+  -- hidden prefix underneath it.
   match pref with
   | [] => e
   | (y, σ) :: rest =>
       (Expr.weakenAfterHeadVCtx rest e).weakenAfterHead
         (y := y) (σ := σ.base)
 
-/-- A nonterminal sequence of surface actions intended to be presented as one
-simultaneous block. The indices record the context transformer implemented by
-the block. -/
+/-- A lower-level nonterminal action block. It is available for experiments
+and compatibility aliases; `VegasLang.simultaneous` uses `VegasYieldPhase`
+instead. The indices record the context transformer implemented by the block. -/
 inductive VegasLangBlock (P : Type) [DecidableEq P] :
     VCtx P simpleExpr → VCtx P simpleExpr → Type where
   /-- Empty block. -/
@@ -60,8 +64,9 @@ inductive VegasLangBlock (P : Type) [DecidableEq P] :
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
       (rest : VegasLangBlock P ((x, .hidden who b) :: Γ) Δ) :
       VegasLangBlock P Γ Δ
-  /-- Strategic hidden commitment that may become `none` if no guarded value is
-  available. The continuation must handle `option b`. -/
+  /-- Lower-level strategic hidden commitment that may become `none` if no
+  guarded value is available. The supplied guard constrains only the `some`
+  branch; `none` is always feasible. The continuation must handle `option b`. -/
   | commitNullable {Γ Δ : VCtx P simpleExpr} (x : VarId) (who : P)
       {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
@@ -147,8 +152,7 @@ inductive VegasLang (P : Type) [DecidableEq P] :
   | ret {Γ : VCtx P simpleExpr}
       (payoffs : List (P × Expr (erasePubVCtx Γ) .int)) :
       VegasLang P Γ
-  /-- Deterministic public binding. This stays in the surface and lowers to
-  core `letExpr`; we are not removing `let` from `VegasCore` for now. -/
+  /-- Deterministic public binding. This lowers to core `letExpr`. -/
   | letExpr {Γ : VCtx P simpleExpr} (x : VarId) {b : BaseTy}
       (e : Expr (erasePubVCtx Γ) b)
       (k : VegasLang P ((x, .pub b) :: Γ)) :
@@ -165,8 +169,9 @@ inductive VegasLang (P : Type) [DecidableEq P] :
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
       (k : VegasLang P ((x, .hidden who b) :: Γ)) :
       VegasLang P Γ
-  /-- Strategic hidden commitment that may become `none` if no guarded value is
-  available. The continuation must handle `option b`. -/
+  /-- Lower-level strategic hidden commitment that may become `none` if no
+  guarded value is available. The supplied guard constrains only the `some`
+  branch; `none` is always feasible. The continuation must handle `option b`. -/
   | commitNullable {Γ : VCtx P simpleExpr} (x : VarId) (who : P)
       {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
@@ -271,6 +276,8 @@ theorem legal_lower_commitNullable {Γ : VCtx P simpleExpr}
     (k : VegasLang P ((x, .hidden who (BaseTy.option b)) :: Γ))
     (hlegal : Legal (lower k)) :
     Legal (lower (VegasLang.commitNullable x who R k)) := by
+  -- The original guard is not required to be feasible; it constrains only
+  -- non-null commitments. `none` witnesses the lowered core guard.
   dsimp [lower, Legal]
   exact ⟨nullableCommitGuard_satisfiable R, hlegal⟩
 

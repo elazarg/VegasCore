@@ -268,7 +268,10 @@ has constants, addition, equality, boolean conjunction and negation,
 \texttt{ite}, and the option constructors/eliminators
 \TT{none}, \TT{some}, \TT{isSome}, \TT{isNone}, and \TT{getD}, plus
 distributions built either as a weighted list of $(v, q)$ pairs or by guarded
-choice. All current \TT{VegasLang} programs use \TT{simpleExpr}.
+choice. The \TT{VegasLang} programs in this development use \TT{simpleExpr}.
+The \TT{VegasLang} nullable-yield layer is intentionally concrete over this
+instance; another expression language would need its own option type,
+non-nullable commit-payload predicate, and default-value operation.
 
 Two small type classes are part of the concrete instance rather than the
 generic \TT{IExpr} interface. \TT{CommitPayloadTy} marks the non-nullable
@@ -465,8 +468,8 @@ The relevant lowering functions are:
 \TT{VegasLang.lower : VegasLang P }$\Gamma$
   \TT{ -> VegasCore P simpleExpr }$\Gamma$
 \end{quote}
-\TT{VegasLangBlock} remains in the codebase as a lower-level experimental
-block syntax, but it is no longer the surface meaning of \TT{simultaneous}.
+\TT{VegasLangBlock} is a lower-level experimental block syntax. The
+\TT{simultaneous} constructor uses \TT{VegasYieldPhase}.
 
 \paragraph{Math.}
 \TT{VegasLang} is an elaborated typed surface language, not a second
@@ -487,12 +490,14 @@ protocol-graph frontier, while reveals depend on the committed secrets.
 The ordinary surface \Commit{} constructor is restricted by
 \TT{CommitPayloadTy}, so programmers cannot explicitly commit an optional
 value. The user-facing public-move sugar is \TT{yield}. Lowering changes the
-internal core payload type from $b$ to \TT{BaseTy.option b}, replaces the
+internal core payload type from $b$ to \TT{BaseTy.option b}, and replaces the
 guard $R$ by
 \TT{Expr.nullableCommitGuard R}. This lifted guard accepts \TT{none}
 unconditionally and agrees with $R$ on \TT{some v}; hence
 \TT{nullableCommitGuard_satisfiable} proves the core \Legal{} obligation by
 choosing \TT{none}.
+The user-supplied guard is not required to be feasible: it constrains the
+\TT{some} branch, while \TT{none} is always a legal lowered commitment.
 
 The strategic cost is intentionally pushed into the continuation. After a
 surface \TT{yield}, the revealed public value has type \TT{option b}. Payoff
@@ -501,8 +506,8 @@ or \TT{getD}. Thus feasibility is obtained by construction, while the type
 system forces the protocol author to decide how a null/abort branch affects
 later payoffs.
 
-\TT{commitNullable} remains as a lower-level constructor/compatibility spelling
-for experiments that want to expose the hidden optional commitment directly.
+\TT{commitNullable} is a lower-level constructor/compatibility spelling for
+experiments that expose the hidden optional commitment directly.
 The intended user-level command is \TT{yield}.
 
 \paragraph{Current scope.}
@@ -1536,22 +1541,26 @@ Identical commit/reveal shape to Prisoners. Payoff expressions use
 match.
 
 \paragraph{\TT{VegasLang} surface presentation.}
-\TT{Examples/VegasLang.lean} gives a surface version where the two public
-choices are a single simultaneous yield phase:
+\TT{Examples/VegasLang.lean} contains two surface presentations. The
+non-nullable presentation uses the core-shaped \TT{commit}/\TT{reveal}
+constructors and proves
+\[
+  \TT{VegasLang.lower canonicalLangProgram = game.prog}
+\]
+by \TT{rfl}. The nullable presentation uses a single simultaneous yield phase:
 \begin{quote}\small\ttfamily
 .simultaneous simultaneousYieldPhase simultaneousYieldPhase\_distinct\\
 \hspace*{1em}(.ret [(matcher, matcherYieldPayoff),\\
 \hspace*{3em}(mismatcher, mismatcherYieldPayoff)])
 \end{quote}
 Here each public choice has type \TT{option bool}; the payoff expressions use
-\TT{getD} to decide how the null branch is handled. The file proves
+\TT{getD} to decide how the null branch is handled. This nullable presentation
+therefore lowers to a different core program, and the file proves
 \[
   \TT{VegasLang.lower langProgram = coreProgram}
 \]
 by \TT{rfl}, where \TT{coreProgram} is the explicit nullable-commit program
-with both commits emitted before either reveal. This is the intended contract
-for the surface layer: its lowering is transparent enough that the generated
-\TT{VegasCore} shape can be inspected definitionally.
+with both commits emitted before either reveal.
 
 \paragraph{Pedagogical role.}
 This example is the smallest where mixed strategies are necessary. The

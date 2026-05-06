@@ -6,7 +6,8 @@ import Vegas.Examples.MatchingPennies
 
 This file demonstrates that the surface `VegasLang` syntax can present
 simultaneous nullable public `yield`s and lower definitionally to the expected
-`VegasCore` commit/reveal sequence.
+`VegasCore` commit/reveal sequence. It also includes a non-nullable
+Matching Pennies presentation that lowers to the canonical checked core game.
 -/
 
 namespace Vegas
@@ -15,6 +16,27 @@ namespace MatchingPennies
 
 abbrev Lang (Γ : Ctx) := VegasLang Player Γ
 abbrev LangPhase (Γ Δ : Ctx) := VegasLang.Phase Player Γ Δ
+
+/-- Matching Pennies written with the core-shaped, non-nullable `VegasLang`
+constructors. -/
+noncomputable abbrev canonicalLangProgram : Lang Γ0 :=
+  .commit matcherSecret Player.matcher (b := .bool) (.constBool true)
+    (.commit mismatcherSecret Player.mismatcher (b := .bool) (.constBool true)
+      (.reveal matcherPublic Player.matcher matcherSecret hMatcherSecretΓ2
+        (.reveal mismatcherPublic Player.mismatcher
+          mismatcherSecret hMismatcherSecretΓ3
+          (.ret [(Player.matcher, matcherPayoff),
+            (Player.mismatcher, mismatcherPayoff)]))))
+
+/-- The non-nullable surface presentation lowers definitionally to the
+canonical checked core program. -/
+theorem lower_canonicalLangProgram :
+    VegasLang.lower canonicalLangProgram = program := rfl
+
+/-- Equivalently, the non-nullable surface presentation lowers to the program
+stored in `game`. -/
+theorem lower_canonicalLangProgram_eq_game_prog :
+    VegasLang.lower canonicalLangProgram = game.prog := rfl
 
 abbrev ΓYield : Ctx :=
   [(matcherPublic, .pub (BaseTy.option .bool)),
