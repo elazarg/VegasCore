@@ -2,6 +2,8 @@ import Vegas.Examples.Prisoners
 import Vegas.Examples.MatchingPennies
 import Vegas.Examples.BattleOfTheSexes
 import Vegas.Examples.MontyHall
+import Vegas.Examples.SolutionConcepts
+import Vegas.Examples.StrategicSemantics
 
 /-!
 # Vegas examples
