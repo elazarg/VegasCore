@@ -4,3 +4,4 @@ CLAUDE.md
 .claude/settings.local.json
 ephemeral/
 .codex
+texput.log

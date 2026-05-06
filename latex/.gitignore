@@ -8,3 +8,6 @@
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+
+# Local rendering scratch (preview PNGs, helper scripts, etc.).
+_*
