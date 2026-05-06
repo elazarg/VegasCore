@@ -7,6 +7,8 @@ import GameTheory.Concepts.ZeroSum
 import GameTheory.Concepts.ConstantSum
 import GameTheory.Concepts.WelfareTheorems
 import GameTheory.Theorems.NashExistence
+import GameTheory.Theorems.NashExistenceMixed
+import GameTheory.Theorems.CorrelatedEqExistence
 
 /-!
 # Vegas structural game-theory corollaries
@@ -105,5 +107,71 @@ theorem IsTeamGame.socialWelfare_eq
   simpa [IsTeamGame, socialWelfare, eu] using
     (KernelGame.IsTeamGame.socialWelfare_eq
       (G := pmfBehavioralKernelGame g) hteam σ i)
+
+theorem worstNashWelfare_le_bestNashWelfare
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [Fintype (StrategyProfile g)]
+    (hN : ∃ σ : StrategyProfile g, IsNash g σ) :
+    worstNashWelfare g hN ≤ bestNashWelfare g hN := by
+  simpa [worstNashWelfare, bestNashWelfare, IsNash] using
+    (KernelGame.worstNashWelfare_le_bestNashWelfare
+      (G := pmfBehavioralKernelGame g)
+      (by simpa [IsNash] using hN))
+
+theorem bestNashWelfare_le_optimalWelfare
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [Fintype (StrategyProfile g)]
+    (hN : ∃ σ : StrategyProfile g, IsNash g σ)
+    (hbdd : BddAbove (Set.range (fun τ : StrategyProfile g => socialWelfare g τ))) :
+    bestNashWelfare g hN ≤ optimalWelfare g := by
+  have hbdd' :
+      BddAbove
+        (Set.range (fun τ : (pmfBehavioralKernelGame g).Profile =>
+          (pmfBehavioralKernelGame g).socialWelfare τ)) := by
+    exact hbdd
+  simpa [bestNashWelfare, optimalWelfare, socialWelfare, IsNash] using
+    (KernelGame.bestNashWelfare_le_optimalWelfare
+      (G := pmfBehavioralKernelGame g)
+      (by simpa [IsNash] using hN)
+      hbdd')
+
+set_option linter.unusedFintypeInType false in
+theorem mixedNash_exists
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    [Fintype (Outcome P)] :
+    ∃ σ : MixedStrategyProfile g, IsMixedNash g σ := by
+  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
+    change Fintype (Outcome P)
+    infer_instance
+  simpa [MixedStrategyProfile, IsMixedNash] using
+    (KernelGame.mixed_nash_exists (pmfBehavioralKernelGame g))
+
+set_option linter.unusedFintypeInType false in
+theorem correlatedEq_exists
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    [Fintype (Outcome P)] :
+    ∃ μ : CorrelatedProfile g, IsCorrelatedEq g μ := by
+  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
+    change Fintype (Outcome P)
+    infer_instance
+  simpa [CorrelatedProfile, StrategyProfile, IsCorrelatedEq] using
+    (KernelGame.correlatedEq_exists (pmfBehavioralKernelGame g))
+
+set_option linter.unusedFintypeInType false in
+theorem coarseCorrelatedEq_exists
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    [Fintype (Outcome P)] :
+    ∃ μ : CorrelatedProfile g, IsCoarseCorrelatedEq g μ := by
+  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
+    change Fintype (Outcome P)
+    infer_instance
+  simpa [CorrelatedProfile, StrategyProfile, IsCoarseCorrelatedEq] using
+    (KernelGame.coarseCorrelatedEq_exists (pmfBehavioralKernelGame g))
 
 end Vegas

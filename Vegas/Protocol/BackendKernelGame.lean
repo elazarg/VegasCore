@@ -369,20 +369,12 @@ theorem backendBlockedTraceKernelGameAt_isNash_pullback
     {σ : pureProfileAt g}
     (h : (pureBlockedTraceKernelGameAt g).IsNash σ) :
     (backendBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  classical
-  intro who s'
-  have hspec := h who s'
-  have hσ := backendBlockedTraceKernelGameAt_eu_eq g R lift σ who
-  have hdev :=
-    backendBlockedTraceKernelGameAt_eu_eq g R lift
-      (Function.update σ who s') who
-  calc
-    (backendBlockedTraceKernelGameAt g R lift).eu σ who =
-        (pureBlockedTraceKernelGameAt g).eu σ who := hσ
-    _ ≥ (pureBlockedTraceKernelGameAt g).eu
-        (Function.update σ who s') who := hspec
-    _ = (backendBlockedTraceKernelGameAt g R lift).eu
-        (Function.update σ who s') who := hdev.symm
+  exact
+    GameTheory.KernelGame.EUMorphism.nash_of_nash
+      (G := backendBlockedTraceKernelGameAt g R lift)
+      (H := pureBlockedTraceKernelGameAt g)
+      (R.toBackendBlockedTraceMorphism g lift)
+      (σ := σ) h
 
 /-- Composed Stage 1 + backend transport: Nash equilibria of the public pure
 kernel game pull back to the backend blocked-trace game. -/
@@ -394,27 +386,11 @@ theorem backendBlockedTraceKernelGameAt_isNash_pullback_pure
     {σ : pureProfileAt g}
     (h : (pureKernelGameAt g).IsNash σ) :
     (backendBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  classical
-  intro who s'
-  have hpure := h who s'
-  have hbackendσ :=
-    backendBlockedTraceKernelGameAt_eu_eq g R lift σ who
-  have hbackendDev :=
-    backendBlockedTraceKernelGameAt_eu_eq g R lift
-      (Function.update σ who s') who
-  have hblockedσ :=
-    pureBlockedTraceKernelGameAt_eu_eq g σ who
-  have hblockedDev :=
-    pureBlockedTraceKernelGameAt_eu_eq g (Function.update σ who s') who
-  calc
-    (backendBlockedTraceKernelGameAt g R lift).eu σ who =
-        (pureBlockedTraceKernelGameAt g).eu σ who := hbackendσ
-    _ = (pureKernelGameAt g).eu σ who := hblockedσ
-    _ ≥ (pureKernelGameAt g).eu (Function.update σ who s') who := hpure
-    _ = (pureBlockedTraceKernelGameAt g).eu
-        (Function.update σ who s') who := hblockedDev.symm
-    _ = (backendBlockedTraceKernelGameAt g R lift).eu
-        (Function.update σ who s') who := hbackendDev.symm
+  have hblocked : (pureBlockedTraceKernelGameAt g).IsNash σ := by
+    simpa using
+      ((pureKernelGameAt.blockedTraceEUBisimulation g).nash_iff σ).mp h
+  exact backendBlockedTraceKernelGameAt_isNash_pullback g R lift
+    hblocked
 
 /-- Nash equilibria of the canonical PMF-behavioral spec blocked-trace game
 pull back to any backend equipped with a compatible behavioral block-law lift. -/
@@ -426,22 +402,12 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralBlockedTraceKernelGameAt g).IsNash σ) :
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  classical
-  intro who s'
-  have hspec := h who s'
-  have hσ :=
-    backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
-      g R lift σ who
-  have hdev :=
-    backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
-      g R lift (Function.update σ who s') who
-  calc
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu σ who =
-        (pmfBehavioralBlockedTraceKernelGameAt g).eu σ who := hσ
-    _ ≥ (pmfBehavioralBlockedTraceKernelGameAt g).eu
-        (Function.update σ who s') who := hspec
-    _ = (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu
-        (Function.update σ who s') who := hdev.symm
+  exact
+    GameTheory.KernelGame.EUMorphism.nash_of_nash
+      (G := backendPMFBehavioralBlockedTraceKernelGameAt g R lift)
+      (H := pmfBehavioralBlockedTraceKernelGameAt g)
+      (R.toBackendPMFBehavioralBlockedTraceMorphism g lift)
+      (σ := σ) h
 
 /-- Composed Stage 1 + backend transport: Nash equilibria of the public
 PMF-behavioral kernel game pull back to the backend PMF-behavioral
@@ -454,29 +420,10 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback_behavioral
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralKernelGameAt g).IsNash σ) :
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  classical
-  intro who s'
-  have hbehavioral := h who s'
-  have hbackendσ :=
-    backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
-      g R lift σ who
-  have hbackendDev :=
-    backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
-      g R lift (Function.update σ who s') who
-  have hblockedσ :=
-    pmfBehavioralBlockedTraceKernelGameAt_eu_eq g σ who
-  have hblockedDev :=
-    pmfBehavioralBlockedTraceKernelGameAt_eu_eq
-      g (Function.update σ who s') who
-  calc
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu σ who =
-        (pmfBehavioralBlockedTraceKernelGameAt g).eu σ who := hbackendσ
-    _ = (pmfBehavioralKernelGameAt g).eu σ who := hblockedσ
-    _ ≥ (pmfBehavioralKernelGameAt g).eu
-        (Function.update σ who s') who := hbehavioral
-    _ = (pmfBehavioralBlockedTraceKernelGameAt g).eu
-        (Function.update σ who s') who := hblockedDev.symm
-    _ = (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu
-        (Function.update σ who s') who := hbackendDev.symm
+  have hblocked : (pmfBehavioralBlockedTraceKernelGameAt g).IsNash σ := by
+    simpa using
+      ((pmfBehavioralKernelGameAt.blockedTraceEUBisimulation g).nash_iff σ).mp h
+  exact backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback g R lift
+    hblocked
 
 end Vegas

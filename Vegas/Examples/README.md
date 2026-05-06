@@ -9,6 +9,10 @@ The examples are organized by the layer of the stack they exercise.
 - `BattleOfTheSexes.lean`: a coordination game with two pure equilibria.
 - `MontyHall.lean`: a small protocol with legality constraints on the host's
   action and payoff facts about switching versus staying.
+- `SyntaxConstructors.lean`: a minimal checked program that exercises
+  deterministic `letExpr` and public `sample`.
+- `BackendExamples.lean`: the identity backend refinement and its trace
+  projection theorem, used as a small backend API smoke test.
 
 These files are good entry points for a programmer writing a new Vegas program:
 define the source program, prove well-formedness/legal guards/finite domains,
@@ -53,5 +57,4 @@ using the generated games, not only hand-written normal-form models.
 - a generated-strategy proof for a named policy, such as "always defect" or
   "always switch";
 - a trace-level theorem about an explicit run of Monty Hall;
-- a backend-refinement example once backend transport has a small reference
-  implementation.
+- a non-identity backend refinement with internal events.

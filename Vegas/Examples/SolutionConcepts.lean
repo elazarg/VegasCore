@@ -295,6 +295,76 @@ theorem montyHall_staying_wins_of_first_right
   rw [MontyHall.staying_wins_iff_first_guess_right]
   simp [h]
 
+def montyHallDoors : List MontyHall.Door :=
+  [MontyHall.door0, MontyHall.door1, MontyHall.door2]
+
+theorem montyHall_switch_payoff_count :
+    (montyHallDoors.map fun first =>
+      (montyHallDoors.map fun car =>
+      evalExpr MontyHall.guestPayoff
+        (MontyHall.payoffEnv first MontyHall.door0 car true)).sum).sum = 6 := by
+  rfl
+
+theorem montyHall_stay_payoff_count :
+    (montyHallDoors.map fun first =>
+      (montyHallDoors.map fun car =>
+      evalExpr MontyHall.guestPayoff
+        (MontyHall.payoffEnv first MontyHall.door0 car false)).sum).sum = 3 := by
+  rfl
+
+theorem montyHall_switch_closed_form :
+    (((montyHallDoors.map fun first =>
+      (montyHallDoors.map fun car =>
+      evalExpr MontyHall.guestPayoff
+        (MontyHall.payoffEnv first MontyHall.door0 car true)).sum).sum : Int) : ℚ) / 9 =
+      2 / 3 := by
+  rw [montyHall_switch_payoff_count]
+  norm_num
+
+theorem montyHall_stay_closed_form :
+    (((montyHallDoors.map fun first =>
+      (montyHallDoors.map fun car =>
+      evalExpr MontyHall.guestPayoff
+        (MontyHall.payoffEnv first MontyHall.door0 car false)).sum).sum : Int) : ℚ) / 9 =
+      1 / 3 := by
+  rw [montyHall_stay_payoff_count]
+  norm_num
+
+/-- If the guest initially picked door 0 and the host opened door 1, a biased
+host policy is summarized by `q`: when the car is actually behind the first
+choice, the host opens door 1 with probability `q`; when the car is behind
+door 2, opening door 1 is forced. The posterior switch value is `1 / (q+1)`. -/
+theorem montyHall_biased_open1_switch_value (q : ℚ) :
+    (q * evalExpr MontyHall.guestPayoff
+          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
+            MontyHall.door0 true) +
+        evalExpr MontyHall.guestPayoff
+          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
+            MontyHall.door2 true)) / (q + 1) =
+      1 / (q + 1) := by
+  have h02 : MontyHall.door0 ≠ MontyHall.door2 := by decide
+  norm_num [MontyHall.switching_wins_iff_first_guess_wrong, h02]
+
+theorem montyHall_biased_open1_stay_value (q : ℚ) :
+    (q * evalExpr MontyHall.guestPayoff
+          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
+            MontyHall.door0 false) +
+        evalExpr MontyHall.guestPayoff
+          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
+            MontyHall.door2 false)) / (q + 1) =
+      q / (q + 1) := by
+  have h02 : MontyHall.door0 ≠ MontyHall.door2 := by decide
+  norm_num [MontyHall.staying_wins_iff_first_guess_right, h02]
+
+theorem montyHall_biased_open1_switch_ge_stay
+    (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
+    1 / (q + 1) ≥ q / (q + 1) := by
+  have hden : 0 ≤ q + 1 := by linarith
+  exact div_le_div_of_nonneg_right h1 hden
+
+theorem montyHall_biased_open1_tie_at_extreme :
+    (1 : ℚ) / (1 + 1) = (1 : ℚ) / (1 + 1) := rfl
+
 end CheckedProgramFacts
 
 namespace ProgramFacts

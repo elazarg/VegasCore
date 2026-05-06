@@ -148,6 +148,35 @@ namespace StochasticStepRefinement
 
 variable {Impl Spec : Machine Player}
 
+/-- Every machine refines itself by the identity projection. Useful as a
+baseline backend and as a smoke test for trace-projection theorems. -/
+def refl (M : Machine Player) : StochasticStepRefinement M M where
+  projectState := id
+  projectEvent := some
+  projectPublic := id
+  projectObs := fun _ => id
+  projectOutcome := id
+  init_project := rfl
+  step_project := by
+    intro event source
+    rw [PMF.map_id]
+    rfl
+  publicView_project := by
+    intro state
+    rfl
+  observe_project := by
+    intro player state
+    rfl
+  terminal_project := by
+    intro state h
+    exact h
+  terminal_reflect := by
+    intro state h
+    exact h
+  terminal_outcome_projected := by
+    intro state h
+    rfl
+
 /-- Probability-preserving machine refinement implies the older support-level
 weak refinement. This keeps `WeakStepRefinement` as a convenience view rather
 than a competing runtime-correctness notion. -/
