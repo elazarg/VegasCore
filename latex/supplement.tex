@@ -82,7 +82,7 @@ vocabulary. We list them in the order definitions will appear.
 ]
 \node (lang)  {\textbf{Language}\\\TT{IExpr}, \TT{FWeight}};
 \node[right=4mm of lang] (vis) {\textbf{Visibility}\\\TT{VCtx}, \TT{viewVCtx}};
-\node[right=4mm of vis] (syn) {\textbf{Source}\\\TT{VegasCore},\\\TT{WFProgram}};
+\node[right=4mm of vis] (syn) {\textbf{Source}\\\TT{VegasLang},\\\TT{VegasCore},\\\TT{WFProgram}};
 \node[below=10mm of syn] (graph) {\textbf{Graph}\\\TT{ProtocolGraph}\\\TT{Configuration}};
 \node[left=4mm of graph] (mach) {\textbf{Machine}\\\TT{Machine},\\events};
 \node[left=4mm of mach] (fosg) {\textbf{FOSG view}\\\TT{Machine.FOSGView}};
@@ -412,6 +412,42 @@ to expose a \TT{Expr} $\to$ \TT{DistExpr} lift; (ii) it keeps program
 representation linear in surface size; (iii) it preserves the binding
 $(x, \pub\,b)$ in every downstream view, so strategy types do not change; and
 (iv) the surface syntax makes randomness visually distinct from bookkeeping.
+
+\subsection{Surface syntax: \TT{VegasLang}}
+\label{def:VegasLang}
+
+\paragraph{Lean.}
+\TT{inductive VegasLang (P : Type) (L : IExpr) : VCtx P L} $\to$ \TT{Type}
+mirrors the five \TT{VegasCore} constructors and adds:
+\[
+  \TT{simultaneous} :
+    \TT{VegasLangBlock P L } \Gamma\,\Delta
+    \to \TT{VegasLang P L } \Delta
+    \to \TT{VegasLang P L } \Gamma .
+\]
+The companion \TT{VegasLangBlock P L}~$\Gamma\,\Delta$ is a typed,
+nonterminal block of \Let{}, \Sample{}, \Commit{}, and \Reveal{} actions that
+transforms context $\Gamma$ into context $\Delta$. The lowering functions are:
+\begin{quote}
+\TT{VegasLangBlock.lowerWith : VegasLangBlock P L }$\Gamma\,\Delta$
+  \TT{ -> VegasCore P L }$\Delta$ \TT{ -> VegasCore P L }$\Gamma$\\
+\TT{VegasLang.lower : VegasLang P L }$\Gamma$ \TT{ -> VegasCore P L }$\Gamma$
+\end{quote}
+
+\paragraph{Math.}
+\TT{VegasLang} is a surface language, not a second denotation. Its meaning is
+definitionally the \TT{VegasCore} program obtained by \TT{VegasLang.lower}.
+The simultaneous constructor records that a source author intends a block of
+actions to be presented together. Lowering still chooses a deterministic
+linear presentation order; after lowering, the syntax-graph compiler computes
+causal prerequisites from reads and writes. Thus independent block actions
+share a protocol-graph frontier, while dependent actions do not.
+
+\paragraph{Current scope.}
+The surface language keeps \Let{} because \TT{VegasCore} keeps \Let{}.
+It also deliberately omits quit handlers. Handler support is a later
+extension because a strategic quit changes the action space and control flow;
+it is not merely a value-level option.
 
 \subsection{Visibility predicates: \TT{publicVars}, \TT{visibleVars},
   \TT{ObsEq}, \TT{GuardUsesOnly}, \TT{ViewScoped}}
@@ -1437,6 +1473,23 @@ Identical commit/reveal shape to Prisoners. Payoff expressions use
 \TT{simpleExpr}'s \TT{eq} on the two public bindings to test for a
 match.
 
+\paragraph{\TT{VegasLang} surface presentation.}
+\TT{Examples/VegasLang.lean} rewrites this example with the two initial
+commitments inside a single \TT{VegasLang.simultaneous} block:
+\begin{quote}\small\ttfamily
+.simultaneous simultaneousCommitBlock\\
+\hspace*{1em}(.reveal matcherPublic matcher matcherSecret \_\\
+\hspace*{2em}(.reveal mismatcherPublic mismatcher mismatcherSecret \_\\
+\hspace*{3em}(.ret [(matcher, matcherPayoff), (mismatcher, mismatcherPayoff)])))
+\end{quote}
+The file proves
+\[
+  \TT{VegasLang.lower langProgram = program}
+\]
+by \TT{rfl}. This is the intended contract for the surface layer: its
+lowering is transparent enough that existing checked \TT{VegasCore} examples
+can be recovered definitionally.
+
 \paragraph{Pedagogical role.}
 This example is the smallest where mixed strategies are necessary. The
 kernel game produced by \TT{pmfBehavioralKernelGame} carries enough
@@ -1577,6 +1630,9 @@ For a reader landing on the codebase for the first time, we suggest:
 \begin{enumerate}[nosep]
 \item Read this supplement's \S\ref{sec:birdseye} and the main report's
   abstract.
+\item Skim \TT{Vegas/VegasLang.lean} for the surface syntax and its lowering
+  into \TT{VegasCore}; the current surface adds simultaneous blocks but no
+  handlers.
 \item Read \TT{Vegas/Core.lean} top to bottom, focusing on \TT{IExpr}, the
   \TT{VCtx} family, and \TT{VegasCore}.
 \item Skim \TT{Vegas/WF.lean}, \TT{Vegas/Scope.lean}, \TT{Vegas/WFProgram.lean}
