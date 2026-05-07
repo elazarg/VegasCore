@@ -90,6 +90,23 @@ theorem checkedProgram_terminalOutcome_eq_evalPayoffs
           evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
   syntaxGraphOutcome_eq_evalPayoffs_of_terminal g hterminal
 
+/-- A checked game that is played legally to completion reaches its declared
+payoff rule. -/
+theorem checkedProgram_wholeGame_reaches_declared_payoff_rule
+    (g : WFProgram P L)
+    (h :
+      (((syntaxGraphFOSGView g).toBoundedFOSG
+        (syntaxSteps g.prog)).History))
+    (hcomplete :
+      ((syntaxGraphFOSGView g).toBoundedFOSG
+        (syntaxSteps g.prog)).terminal h.lastState) :
+    ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
+      ProgramField.finalEnv? g.prog
+          (syntaxGraphConfigValue? g h.lastState.state) = some env ∧
+        syntaxGraphOutcome g h.lastState.state =
+          evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
+  syntaxGraph_wholeGame_reaches_declared_payoff_rule g h hcomplete
+
 /-- Omniscient progress for the bounded syntax-graph FOSG: every nonterminal
 state admits at least one legal joint action. -/
 theorem checkedProgram_boundedFOSG_exists_legal_of_not_terminal

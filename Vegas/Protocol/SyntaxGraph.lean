@@ -1,5 +1,6 @@
 import Vegas.Protocol.GraphMachine
 import Vegas.WFProgram
+import Vegas.Config
 
 /-!
 # Syntax occurrence graph
@@ -213,6 +214,20 @@ theorem mem_enumerate :
       exact List.mem_cons_of_mem _ <|
         List.mem_map.mpr ⟨node, mem_enumerate node, rfl⟩
 
+/-- The source-node enumeration has one entry for each non-`ret` constructor. -/
+theorem length_enumerate :
+    {Γ : VCtx P L} → (p : VegasCore P L Γ) →
+      (enumerate p).length = syntaxSteps p
+  | _, .ret _ => rfl
+  | _, .letExpr _ _ k => by
+      simp [enumerate, syntaxSteps, length_enumerate k]
+  | _, .sample _ _ k => by
+      simp [enumerate, syntaxSteps, length_enumerate k]
+  | _, .commit _ _ _ k => by
+      simp [enumerate, syntaxSteps, length_enumerate k]
+  | _, .reveal _ _ _ _ k => by
+      simp [enumerate, syntaxSteps, length_enumerate k]
+
 @[reducible] noncomputable instance instDecidableEq
     {Γ : VCtx P L} (p : VegasCore P L Γ) :
     DecidableEq (ProgramNode p) :=
@@ -234,6 +249,18 @@ noncomputable def finset {Γ : VCtx P L} (p : VegasCore P L Γ) :
     node ∈ finset p := by
   classical
   exact List.mem_toFinset.mpr (mem_enumerate node)
+
+/-- The source-node finset is bounded by the syntactic length of the source
+program. -/
+theorem finset_card_le_syntaxSteps
+    {Γ : VCtx P L} (p : VegasCore P L Γ) :
+    (finset p).card ≤ syntaxSteps p := by
+  classical
+  calc
+    (finset p).card = (enumerate p).toFinset.card := rfl
+    _ ≤ (enumerate p).length := by
+      exact List.toFinset_card_le (enumerate p)
+    _ = syntaxSteps p := length_enumerate p
 
 end ProgramNode
 
@@ -2849,6 +2876,571 @@ noncomputable def syntaxGraphFOSGView
     (syntaxGraphMachine g).FOSGView :=
   (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
     (syntaxProtocolGraph_hasStableFrontierRounds g)
+
+private theorem protocolGraph_done_subset_nodes
+    {G : ProtocolGraph P L} (cfg : G.Configuration) :
+    cfg.done ⊆ G.nodes := by
+  intro node hdone
+  exact (G.mem_done_iff cfg.result node).mp hdone |>.1
+
+private theorem protocolGraph_withResult_done_subset
+    {G : ProtocolGraph P L} (cfg : G.Configuration)
+    {node : G.Node} {slice : G.WriteSlice}
+    (hfrontier : node ∈ cfg.frontier)
+    (hlegal : G.sliceLegal node slice) :
+    cfg.done ⊆ (cfg.withResult slice hfrontier hlegal).done := by
+  intro candidate hdone
+  have hdoneData := (G.mem_done_iff cfg.result candidate).mp hdone
+  refine (G.mem_done_iff
+    (cfg.withResult slice hfrontier hlegal).result candidate).mpr ?_
+  refine ⟨hdoneData.1, ?_⟩
+  by_cases hcandidate : candidate = node
+  · subst candidate
+    simp [ProtocolGraph.Configuration.withResult,
+      ProtocolGraph.Configuration.updateResult]
+  · simpa [ProtocolGraph.Configuration.withResult,
+      ProtocolGraph.Configuration.updateResult, hcandidate] using hdoneData.2
+
+private theorem protocolGraph_withResult_done_card_succ_le
+    {G : ProtocolGraph P L} (cfg : G.Configuration)
+    {node : G.Node} {slice : G.WriteSlice}
+    (hfrontier : node ∈ cfg.frontier)
+    (hlegal : G.sliceLegal node slice) :
+    cfg.done.card + 1 ≤
+      (cfg.withResult slice hfrontier hlegal).done.card := by
+  classical
+  have hsubset :
+      insert node cfg.done ⊆
+        (cfg.withResult slice hfrontier hlegal).done := by
+    intro candidate hcandidate
+    rcases Finset.mem_insert.mp hcandidate with hnode | hdone
+    · subst candidate
+      refine (G.mem_done_iff
+        (cfg.withResult slice hfrontier hlegal).result node).mpr ?_
+      exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by simp
+        [ProtocolGraph.Configuration.withResult,
+          ProtocolGraph.Configuration.updateResult]⟩
+    · exact protocolGraph_withResult_done_subset cfg hfrontier hlegal hdone
+  have hnotDone : node ∉ cfg.done := by
+    intro hdone
+    have hdoneSome := (G.mem_done_iff cfg.result node).mp hdone |>.2
+    have hnone := cfg.not_done_of_mem_frontier hfrontier
+    cases hresult : cfg.result node <;> simp [hresult] at hdoneSome hnone
+  have hcard := Finset.card_le_card hsubset
+  simpa [Finset.card_insert_of_notMem hnotDone] using hcard
+
+private theorem protocolGraph_roundStepNode_done_subset
+    {G : ProtocolGraph P L}
+    (joint : GameTheory.JointAction (ProtocolGraph.PlayerRoundAction G))
+    (node : G.Node)
+    {cfg dst : G.Configuration}
+    (hsupp :
+      dst ∈ (ProtocolGraph.roundStepNode G joint node cfg).support) :
+    cfg.done ⊆ dst.done := by
+  classical
+  unfold ProtocolGraph.roundStepNode at hsupp
+  cases hactor : (G.sem node).actor with
+  | some who =>
+      cases hmove : joint who with
+      | none =>
+          have hdst : dst = cfg := by
+            simpa [hactor, hmove] using hsupp
+          subst dst
+          intro candidate hdone
+          exact hdone
+      | some action =>
+          by_cases havailable :
+              ({ node := node, slice := action.slice node } :
+                ProtocolGraph.PlayerAction G who) ∈
+                ProtocolGraph.available G cfg who
+          · have hdst :
+                dst =
+                  cfg.withResult (action.slice node)
+                    havailable.1 havailable.2.2.1 := by
+              simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+                hactor, hmove, havailable] using hsupp
+            subst dst
+            exact protocolGraph_withResult_done_subset cfg
+              havailable.1 havailable.2.2.1
+          · have hdst : dst = cfg := by
+              simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+                hactor, hmove, havailable] using hsupp
+            subst dst
+            intro candidate hdone
+            exact hdone
+  | none =>
+      by_cases havailable :
+          (ProtocolGraph.InternalEvent.node node : ProtocolGraph.InternalEvent G) ∈
+            ProtocolGraph.availableInternal G cfg
+      · have hsuppBind :
+            dst ∈
+              ((G.internalKernel node cfg.result).bind fun slice =>
+                if hlegal : G.sliceLegal node slice then
+                  PMF.pure (cfg.withResult slice
+                    (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+                    hlegal)
+                else
+                  PMF.pure cfg).support := by
+          simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+            hactor, havailable] using hsupp
+        rw [PMF.mem_support_bind_iff] at hsuppBind
+        rcases hsuppBind with ⟨slice, _hslice, hdst⟩
+        split at hdst
+        · rename_i hlegal
+          have hdstEq :
+              dst =
+                cfg.withResult slice
+                  (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+                  hlegal := by
+            simpa using hdst
+          subst dst
+          exact protocolGraph_withResult_done_subset cfg
+            (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+            hlegal
+        · have hdstEq : dst = cfg := by
+            simpa using hdst
+          subst dst
+          intro candidate hdone
+          exact hdone
+      · have hdst : dst = cfg := by
+          simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+            hactor, havailable] using hsupp
+        subst dst
+        intro candidate hdone
+        exact hdone
+
+private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {node : ProgramNode g.prog}
+    (hfrontier : node ∈ cfg.frontier)
+    (hactor : ((syntaxProtocolGraph g).sem node).actor = none)
+    {slice : ProgramField.WriteSlice g.prog}
+    (hsupp :
+      slice ∈
+        ((syntaxProtocolGraph g).internalKernel node cfg.result).support) :
+    (syntaxProtocolGraph g).sliceLegal node slice := by
+  classical
+  change
+    slice ∈
+      (ProgramNode.internalKernel g.env g.obligations node cfg.result).support at hsupp
+  unfold ProgramNode.internalKernel at hsupp
+  change (ProgramNode.sem g.obligations node).actor = none at hactor
+  change ProgramNode.sliceLegal g.obligations node slice
+  cases hsem : ProgramNode.sem g.obligations node with
+  | assign target expr =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        slice ∈
+          (if available :
+              ∀ read, read ∈ expr.reads →
+                (ProgramField.value? g.env cfg.result read).isSome then
+            PMF.pure
+              (ProgramField.singleSlice target
+                (.clear
+                  (expr.eval
+                    (ProgramField.readEnvOfResult g.env cfg.result
+                      expr.reads available))))
+          else
+            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      have hslice :
+          slice =
+            ProgramField.singleSlice target
+              (.clear
+                (expr.eval
+                  (ProgramField.readEnvOfResult g.env cfg.result
+                    expr.reads havailable))) := by
+        simpa using hsupp
+      subst slice
+      rw [ProgramNode.sliceLegal, hsem]
+      exact ⟨_, rfl⟩
+  | sample target dist =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        slice ∈
+          (if available :
+              ∀ read, read ∈ dist.reads →
+                (ProgramField.value? g.env cfg.result read).isSome then
+            PMF.map
+              (fun value => ProgramField.singleSlice target (.clear value))
+              (dist.eval
+                (ProgramField.readEnvOfResult g.env cfg.result
+                  dist.reads available))
+          else
+            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp hsupp with
+        ⟨value, _hvalue, hslice⟩
+      rw [← hslice]
+      rw [ProgramNode.sliceLegal, hsem]
+      exact ⟨value, rfl⟩
+  | commit owner target guard =>
+      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+  | reveal source target hty =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+      change
+        slice ∈
+          (if available :
+              ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+                (ProgramField.value? g.env cfg.result read).isSome then
+            (let ρ :=
+              ProgramField.readEnvOfResult g.env cfg.result
+                ({source} : Finset (ProgramField g.prog)) available
+            PMF.pure
+              (ProgramField.singleSlice target
+                (.clear (cast (by rw [hty])
+                  (ρ.value source (by simp))))))
+          else
+            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      let ρ :=
+        ProgramField.readEnvOfResult g.env cfg.result
+          ({source} : Finset (ProgramField g.prog)) havailable
+      have hslice :
+          slice =
+            ProgramField.singleSlice target
+              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))) := by
+        simpa using hsupp
+      subst slice
+      rw [ProgramNode.sliceLegal, hsem]
+      exact ⟨_, rfl⟩
+
+private theorem syntaxGraph_roundStepNode_done_card_succ_le_of_legal
+    (g : WFProgram P L)
+    {cfg dst : (syntaxProtocolGraph g).Configuration}
+    {joint : GameTheory.JointAction
+      (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))}
+    (hjoint :
+      GameTheory.JointActionLegal
+        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
+        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
+        ProtocolGraph.Configuration.terminal
+        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        cfg joint)
+    {node : ProgramNode g.prog}
+    (hfrontier : node ∈ cfg.frontier)
+    (hsupp :
+      dst ∈
+        (ProtocolGraph.roundStepNode (syntaxProtocolGraph g) joint node cfg).support) :
+    cfg.done.card + 1 ≤ dst.done.card := by
+  classical
+  cases hactor : ((syntaxProtocolGraph g).sem node).actor with
+  | some who =>
+      have hactive :
+          who ∈ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg :=
+        (ProtocolGraph.mem_roundActive_iff (syntaxProtocolGraph g) cfg who).mpr
+          ⟨node, hfrontier, hactor⟩
+      have hcoord := hjoint.2 who
+      cases hmove : joint who with
+      | none =>
+          have hnot : who ∉ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg := by
+            simpa [hmove] using hcoord
+          exact False.elim (hnot hactive)
+      | some action =>
+          have hpair :
+              who ∈ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg ∧
+                action ∈ ProtocolGraph.roundAvailable
+                  (syntaxProtocolGraph g) cfg who := by
+            simpa [hmove] using hcoord
+          have hnodeLegal :
+              (syntaxProtocolGraph g).sliceLegal node (action.slice node) ∧
+                (syntaxProtocolGraph g).actionLegal cfg.result node
+                  (action.slice node) :=
+            hpair.2 hfrontier hactor
+          have havailable :
+              ({ node := node, slice := action.slice node } :
+                ProtocolGraph.PlayerAction (syntaxProtocolGraph g) who) ∈
+                ProtocolGraph.available (syntaxProtocolGraph g) cfg who :=
+            ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
+          have hdst :
+              dst = cfg.withResult (action.slice node)
+                hfrontier hnodeLegal.1 := by
+            simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+              hactor, hmove, havailable] using hsupp
+          subst dst
+          exact protocolGraph_withResult_done_card_succ_le cfg
+            hfrontier hnodeLegal.1
+  | none =>
+      have havailable :
+          (ProtocolGraph.InternalEvent.node node :
+            ProtocolGraph.InternalEvent (syntaxProtocolGraph g)) ∈
+            ProtocolGraph.availableInternal (syntaxProtocolGraph g) cfg := by
+        exact ⟨hfrontier, hactor⟩
+      let hfrontier' : node ∈ cfg.frontier := hfrontier
+      have hsuppBind :
+          dst ∈
+            (((syntaxProtocolGraph g).internalKernel node cfg.result).bind
+              fun slice =>
+                if hlegal : (syntaxProtocolGraph g).sliceLegal node slice then
+                  PMF.pure (cfg.withResult slice hfrontier' hlegal)
+                else
+                  PMF.pure cfg).support := by
+        simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+          hactor, havailable, hfrontier'] using hsupp
+      rw [PMF.mem_support_bind_iff] at hsuppBind
+      rcases hsuppBind with ⟨slice, hslice, hdstSupport⟩
+      have hlegal :
+          (syntaxProtocolGraph g).sliceLegal node slice :=
+        syntaxGraph_internalKernel_sliceLegal_of_mem_support g
+          hfrontier hactor hslice
+      rw [dif_pos hlegal] at hdstSupport
+      have hdst : dst = cfg.withResult slice hfrontier' hlegal := by
+        simpa using hdstSupport
+      subst dst
+      exact protocolGraph_withResult_done_card_succ_le cfg hfrontier' hlegal
+
+private theorem protocolGraph_roundTransition_go_done_card_lower_bound
+    {G : ProtocolGraph P L}
+    (joint : GameTheory.JointAction (ProtocolGraph.PlayerRoundAction G))
+    (nodes : List G.Node)
+    {acc : PMF G.Configuration} {lower : Nat}
+    (hacc :
+      ∀ cfg : G.Configuration, cfg ∈ acc.support → lower ≤ cfg.done.card)
+    {dst : G.Configuration}
+    (hsupp :
+      dst ∈
+        (nodes.foldl
+          (fun acc node =>
+            acc.bind fun state => ProtocolGraph.roundStepNode G joint node state)
+          acc).support) :
+    lower ≤ dst.done.card := by
+  induction nodes generalizing acc with
+  | nil =>
+      simpa using hacc dst hsupp
+  | cons node nodes ih =>
+      apply ih
+      · intro mid hmid
+        rw [PMF.mem_support_bind_iff] at hmid
+        rcases hmid with ⟨src : G.Configuration, hsrc, hstep⟩
+        have hsrcLower : lower ≤ src.done.card := hacc src hsrc
+        have hsubset : src.done ⊆ mid.done :=
+          protocolGraph_roundStepNode_done_subset joint node hstep
+        exact Nat.le_trans hsrcLower (Finset.card_le_card hsubset)
+      · simpa [List.foldl_cons] using hsupp
+
+private theorem syntaxGraph_roundTransition_done_card_succ_le_of_legal
+    (g : WFProgram P L)
+    {cfg dst : (syntaxProtocolGraph g).Configuration}
+    {joint : GameTheory.JointAction
+      (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))}
+    (hjoint :
+      GameTheory.JointActionLegal
+        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
+        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
+        ProtocolGraph.Configuration.terminal
+        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        cfg joint)
+    (hnotTerminal : ¬ cfg.terminal)
+    (hsupp :
+      dst ∈
+        (ProtocolGraph.roundTransition (syntaxProtocolGraph g) cfg joint).support) :
+    cfg.done.card + 1 ≤ dst.done.card := by
+  classical
+  rcases cfg.frontier_nonempty_of_not_terminal hnotTerminal with
+    ⟨first, hfirstFrontier⟩
+  rw [ProtocolGraph.roundTransition] at hsupp
+  cases hlist : cfg.frontier.toList with
+  | nil =>
+      have hfirstList : first ∈ cfg.frontier.toList := by
+        simpa using hfirstFrontier
+      simp [hlist] at hfirstList
+  | cons head rest =>
+      have hheadFrontier : head ∈ cfg.frontier := by
+        have hheadList : head ∈ cfg.frontier.toList := by
+          simp [hlist]
+        simpa using hheadList
+      have hsuppRest :
+          dst ∈
+            (rest.foldl
+              (fun acc node =>
+                acc.bind fun state =>
+                  ProtocolGraph.roundStepNode
+                    (syntaxProtocolGraph g) joint node state)
+              (ProtocolGraph.roundStepNode
+                (syntaxProtocolGraph g) joint head cfg)).support := by
+        simpa [hlist, List.foldl_cons] using hsupp
+      exact
+        protocolGraph_roundTransition_go_done_card_lower_bound
+          (G := syntaxProtocolGraph g) joint rest
+          (acc := ProtocolGraph.roundStepNode
+            (syntaxProtocolGraph g) joint head cfg)
+          (lower := cfg.done.card + 1)
+          (fun mid hmid =>
+            syntaxGraph_roundStepNode_done_card_succ_le_of_legal
+              g hjoint hheadFrontier hmid)
+          hsuppRest
+
+private theorem syntaxGraph_boundedFOSG_step_done_card_succ_le
+    (g : WFProgram P L) (horizon : Nat)
+    {src dst : (syntaxGraphMachine g).BoundedState horizon}
+    {action :
+      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction src)}
+    (hsupp :
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+        src action dst ≠ 0) :
+    src.state.done.card + 1 ≤ dst.state.done.card := by
+  classical
+  let rawAction :=
+    (syntaxGraphFOSGView g).boundedActionToAction horizon src action
+  have hnotGraph : ¬ (syntaxGraphMachine g).terminal src.state := by
+    intro hgraph
+    exact action.2.1 (by
+      rw [Machine.FOSGView.toBoundedFOSG_terminal]
+      exact Or.inl hgraph)
+  have hboundedMem :
+      dst ∈
+        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+          src action).support :=
+    (PMF.mem_support_iff _ _).2 hsupp
+  have hstateMem :
+      dst.state ∈
+        (PMF.map (fun bounded => bounded.state)
+          (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+            src action)).support :=
+    (PMF.mem_support_map_iff _ _ _).2
+      ⟨dst, hboundedMem, rfl⟩
+  rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hstateMem
+  have hroundMem :
+      dst.state ∈
+        (ProtocolGraph.roundTransition (syntaxProtocolGraph g)
+          src.state rawAction.1).support := by
+    simpa [rawAction, syntaxGraphFOSGView, syntaxGraphMachine,
+      ProtocolGraph.toFOSGView] using hstateMem
+  have hroundLegal :
+      GameTheory.JointActionLegal
+        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
+        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
+        ProtocolGraph.Configuration.terminal
+        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        src.state rawAction.1 := by
+    simpa [rawAction, syntaxGraphFOSGView, syntaxGraphMachine,
+      ProtocolGraph.toFOSGView] using rawAction.2
+  exact syntaxGraph_roundTransition_done_card_succ_le_of_legal
+    g hroundLegal hnotGraph hroundMem
+
+private theorem syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+    (g : WFProgram P L) (horizon : Nat) :
+    ∀ {start : (syntaxGraphMachine g).BoundedState horizon}
+      {steps : List (((syntaxGraphFOSGView g).toBoundedFOSG horizon).Step)},
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).StepChainFrom
+          start steps →
+        start.state.done.card + steps.length ≤
+          (((syntaxGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
+            start steps).state.done.card
+  | start, [], _hchain => by
+      simp [GameTheory.FOSG.lastStateFrom]
+  | start, step :: steps, hchain => by
+      rcases hchain with ⟨hsrc, htail⟩
+      have hstartDone :
+          start.state.done.card = step.src.state.done.card := by
+        rw [← hsrc]
+      have hstep :
+          step.src.state.done.card + 1 ≤ step.dst.state.done.card :=
+        syntaxGraph_boundedFOSG_step_done_card_succ_le
+          g horizon step.support
+      have htailDone :
+          step.dst.state.done.card + steps.length ≤
+            (((syntaxGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
+              step.dst steps).state.done.card :=
+        syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+          (g := g) (horizon := horizon) htail
+      simp [GameTheory.FOSG.lastStateFrom, hstartDone]
+      omega
+
+private theorem syntaxGraph_boundedFOSG_history_done_card_ge_depth
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    h.lastState.depth ≤ h.lastState.state.done.card := by
+  have hchainDone :
+      ((Machine.BoundedState.init (syntaxGraphMachine g) horizon).state.done.card) +
+          h.steps.length ≤ h.lastState.state.done.card := by
+    simpa [GameTheory.FOSG.History.lastState,
+      Machine.FOSGView.toBoundedFOSG_init] using
+      (syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+        (g := g) (horizon := horizon) h.chain)
+  have hinitDone :
+      ((Machine.BoundedState.init (syntaxGraphMachine g) horizon).state.done.card) =
+        0 := by
+    simp [syntaxGraphMachine, ProtocolGraph.toMachine,
+      ProtocolGraph.Configuration.initial, ProtocolGraph.Configuration.done,
+      ProtocolGraph.done]
+  have hstepsDone : h.steps.length ≤ h.lastState.state.done.card := by
+    omega
+  have hdepth :
+      h.lastState.depth = h.steps.length :=
+    (syntaxGraphFOSGView g).toBoundedFOSG_history_depth horizon h
+  omega
+
+private theorem syntaxGraph_terminal_of_done_card_ge_syntaxSteps
+    (g : WFProgram P L)
+    (cfg : (syntaxProtocolGraph g).Configuration)
+    (hcard : syntaxSteps g.prog ≤ cfg.done.card) :
+    cfg.terminal := by
+  have hnodesCard :
+      (syntaxProtocolGraph g).nodes.card ≤ syntaxSteps g.prog := by
+    change (ProgramNode.finset g.prog).card ≤ syntaxSteps g.prog
+    exact ProgramNode.finset_card_le_syntaxSteps g.prog
+  have hnodes_le_done :
+      (syntaxProtocolGraph g).nodes.card ≤ cfg.done.card :=
+    Nat.le_trans hnodesCard hcard
+  have hdone_subset :
+      cfg.done ⊆ (syntaxProtocolGraph g).nodes :=
+    protocolGraph_done_subset_nodes cfg
+  have hdone_eq_nodes :
+      cfg.done = (syntaxProtocolGraph g).nodes :=
+    Finset.eq_of_subset_of_card_le hdone_subset hnodes_le_done
+  intro node hnode
+  rw [hdone_eq_nodes]
+  exact hnode
+
+/-- A checked game that is played legally to completion reaches its declared
+payoff rule. The internal bound is the number of source steps in the checked
+program. -/
+theorem syntaxGraph_wholeGame_reaches_declared_payoff_rule
+    (g : WFProgram P L)
+    (h :
+      (((syntaxGraphFOSGView g).toBoundedFOSG
+        (syntaxSteps g.prog)).History))
+    (hcomplete :
+      ((syntaxGraphFOSGView g).toBoundedFOSG
+        (syntaxSteps g.prog)).terminal h.lastState) :
+    ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
+      ProgramField.finalEnv? g.prog
+          (syntaxGraphConfigValue? g h.lastState.state) = some env ∧
+        syntaxGraphOutcome g h.lastState.state =
+          evalPayoffs (ProgramField.finalPayoffs g.prog) env := by
+  have hgraphTerminal :
+      (syntaxGraphMachine g).terminal h.lastState.state := by
+    rw [Machine.FOSGView.toBoundedFOSG_terminal] at hcomplete
+    rcases hcomplete with hterminal | hcut
+    · exact hterminal
+    · have hdoneDepth :=
+        syntaxGraph_boundedFOSG_history_done_card_ge_depth
+          g (syntaxSteps g.prog) h
+      have hdoneSteps : syntaxSteps g.prog ≤ h.lastState.state.done.card := by
+        omega
+      exact syntaxGraph_terminal_of_done_card_ge_syntaxSteps
+        g h.lastState.state hdoneSteps
+  exact syntaxGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
 
 /-- Primitive machine event blocks extracted from a bounded syntax-graph FOSG
 history. Each block is one frontier round of the public FOSG view. -/
