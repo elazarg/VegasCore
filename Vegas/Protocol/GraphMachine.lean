@@ -298,6 +298,34 @@ def roundAvailable
           G.sliceLegal node (action.slice node) ∧
             G.actionLegal cfg.result node (action.slice node) }
 
+/-- Player-facing optional menu for a frontier round.
+
+The `none` move means the player is not called in this frontier round. A
+`some action` move means the player is active and the round action is legal for
+every current frontier node owned by that player. -/
+def roundMenu
+    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (who : Player) : Set (Option (PlayerRoundAction G who)) :=
+  { move |
+    match move with
+    | none => who ∉ roundActive G cfg
+    | some action =>
+        who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who }
+
+@[simp] theorem mem_roundMenu_none
+    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (who : Player) :
+    (none : Option (PlayerRoundAction G who)) ∈ roundMenu G cfg who ↔
+      who ∉ roundActive G cfg := by
+  rfl
+
+@[simp] theorem mem_roundMenu_some
+    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (who : Player) (action : PlayerRoundAction G who) :
+    some action ∈ roundMenu G cfg who ↔
+      who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who := by
+  rfl
+
 /-- Execute one node from a frontier round using the joint round action.
 Unavailable primitive events stutter through the underlying total machine step;
 frontier soundness lemmas show the intended round nodes remain available across

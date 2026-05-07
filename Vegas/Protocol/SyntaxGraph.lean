@@ -3356,6 +3356,25 @@ theorem syntaxGraph_roundActive_eq_of_publicView_eq
   unfold ProtocolGraph.roundActive
   rw [hfrontier]
 
+/-- Player-facing frontier-round menus in the syntax graph are determined by
+the public transcript together with the player's private observation.
+
+This is the protocol-level "the player knows what they can do" invariant:
+two configurations indistinguishable to `who` offer the same optional menu to
+`who`, including whether `who` is called at all. -/
+theorem syntaxGraph_roundMenu_eq_of_observation_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    ProtocolGraph.roundMenu (syntaxProtocolGraph g) left who =
+      ProtocolGraph.roundMenu (syntaxProtocolGraph g) right who := by
+  have hactive :=
+    syntaxGraph_roundActive_eq_of_publicView_eq g hpub
+  have havailable :=
+    syntaxGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
+  simp [ProtocolGraph.roundMenu, hactive, havailable]
+
 /-- At a bounded syntax-graph FOSG state before the cutoff, legal optional
 moves are determined by the player's latest private observation and the public
 transcript. -/
