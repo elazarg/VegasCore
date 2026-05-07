@@ -87,7 +87,7 @@ noncomputable def bind (d : FWeight α) (f : α → FWeight β) : FWeight β :=
 /-- Pushforward of `d` along `g`. If `g` is not injective, the weights of
 collided keys add. -/
 noncomputable def map (g : α → β) (d : FWeight α) : FWeight β :=
-  d.sum (fun a w => Finsupp.single (g a) w)
+  d.mapDomain g
 
 /-- Total mass of `d` — the sum of weights over the support. Equals `1`
 exactly for normalized weights. -/
@@ -158,7 +158,7 @@ The conditional handles the case where `g` collides keys; `map_apply_injective`
 and `map_apply_of_forall_ne` are the two clean specializations that avoid it. -/
 theorem map_apply (g : α → β) (d : FWeight α) (b : β) :
     (d.map g) b = d.support.sum (fun a => if g a = b then d a else 0) := by
-  simp only [map, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.single_apply]
+  simp [map, Finsupp.mapDomain, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.single_apply]
 
 /-- "`P` holds at every value with positive weight". The standard idiom for
 expressing semantic side conditions on a finite weight — for example, the
@@ -288,12 +288,7 @@ theorem totalWeight_bind_of_normalized {d : FWeight α} {f : α → FWeight β}
 theorem map_apply_injective (g : α → β) (d : FWeight α) (a : α)
     (hinj : Function.Injective g) :
     (d.map g) (g a) = d a := by
-  rw [map_apply]
-  simp only [hinj.eq_iff]
-  rw [Finset.sum_ite_eq' d.support a (fun x => d x)]
-  split
-  · rfl
-  · next h => simp [Finsupp.mem_support_iff] at h; exact h.symm
+  simpa [map] using Finsupp.mapDomain_apply (f := g) hinj d a
 
 /-- A point `b` outside the image of `g` on the support of `d` carries weight
 `0` in the pushforward. The companion to `map_apply_injective` for the
@@ -317,31 +312,21 @@ theorem map_pure (g : α → β) (a : α) :
 
 theorem map_map {γ : Type} [DecidableEq γ] (f : α → β) (g : β → γ) (d : FWeight α) :
     (d.map f).map g = d.map (g ∘ f) := by
-  simp only [map]
-  rw [Finsupp.sum_sum_index (fun _ => Finsupp.single_zero _)
-    (fun _ _ _ => Finsupp.single_add _ _ _)]
-  have hz : ∀ b : β, (fun x : ℚ≥0 => Finsupp.single (g b) x) 0 = 0 := fun b =>
-    Finsupp.single_zero _
-  simp_rw [show ∀ b w, (Finsupp.single (f b) w).sum (fun x => Finsupp.single (g x)) =
-    Finsupp.single (g (f b)) w from fun b w => Finsupp.sum_single_index (hz (f b))]
-  rfl
+  simpa [map] using (Finsupp.mapDomain_comp (v := d) (f := f) (g := g)).symm
 
 theorem bind_map (d : FWeight α) (f : α → FWeight β) {γ : Type} [DecidableEq γ]
     (g : β → γ) :
     (d.bind f).map g = d.bind (fun a => (f a).map g) := by
   simp only [bind, map]
-  rw [Finsupp.sum_sum_index (fun _ => Finsupp.single_zero _)
-    (fun _ _ _ => Finsupp.single_add _ _ _)]
-  congr 1
-  ext a w
-  rw [Finsupp.sum_mapRange_index (fun _ => Finsupp.single_zero _)]
-  simp only [Finsupp.sum, Finsupp.mapRange_apply, Finsupp.finset_sum_apply,
-    Finsupp.single_apply]
-  congr 1
-  rw [Finset.mul_sum]
-  apply Finset.sum_congr rfl
-  intro b _
-  split <;> simp [mul_zero]
+  change (Finsupp.mapDomain.addMonoidHom g)
+      (d.sum fun a w => Finsupp.mapRange (fun x => w * x) (mul_zero w) (f a)) =
+    d.sum fun a w => Finsupp.mapRange (fun x => w * x) (mul_zero w) (Finsupp.mapDomain g (f a))
+  rw [map_finsuppSum]
+  apply Finsupp.sum_congr
+  intro a _
+  exact Finsupp.mapDomain_mapRange
+    (f := g) (v := f a) (g := fun x : ℚ≥0 => d a * x)
+    (h0 := mul_zero (d a)) (hadd := by intro x y; exact mul_add (d a) x y)
 
 theorem bind_assoc {γ : Type} [DecidableEq γ]
     (d : FWeight α) (f : α → FWeight β) (g : β → FWeight γ) :
@@ -391,10 +376,9 @@ theorem bind_pure_comp (d : FWeight α) (g : α → β) :
 theorem totalWeight_map (d : FWeight α) (g : α → β) :
     FWeight.totalWeight (FWeight.map g d) = FWeight.totalWeight d := by
   simp only [FWeight.map, FWeight.totalWeight]
-  rw [Finsupp.sum_sum_index (fun _ => rfl) (fun _ _ _ => rfl)]
-  apply Finset.sum_congr rfl
-  intro a _
-  simp [Finsupp.sum_single_index]
+  let h : β → ℚ≥0 →+ ℚ≥0 := fun _ => AddMonoidHom.id ℚ≥0
+  simpa [h] using
+    (Finsupp.sum_mapDomain_index_addMonoidHom (f := g) (s := d) (h := h))
 
 end FWeight
 
