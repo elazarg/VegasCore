@@ -2764,6 +2764,62 @@ theorem syntaxGraph_writer?_ne_of_frontier_read
       (ProtocolGraph.Configuration.not_prereq_of_mem_frontier
         hwriterFrontier hreaderFrontier) hpre
 
+/-- A frontier node cannot share the frontier with a node that reads one of the
+fields it writes.  This packages the `writer?` formulation in terms of the
+semantic write set exposed by `NodeSem.writeFields`. -/
+theorem syntaxGraph_writer_not_frontier_with_reader_of_read_write
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {writer reader : ProgramNode g.prog} {field : ProgramField g.prog}
+    (hwriterFrontier : writer ∈ cfg.frontier)
+    (hreaderFrontier : reader ∈ cfg.frontier)
+    (hread :
+      field ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized reader).reads)
+    (hwrite :
+      field ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized writer).writeFields) :
+    False := by
+  have hwriter :
+      ProgramField.writer? field = some writer :=
+    ProgramNode.writer?_eq_some_of_mem_writeFields
+      g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized writer hwrite
+  exact
+    (syntaxGraph_writer?_ne_of_frontier_read g
+      hwriterFrontier hreaderFrontier hread) hwriter
+
+/-- A reveal node and a later node that reads the reveal target cannot share a
+frontier.  In the current alias-writing reveal semantics, the reveal event is
+the writer of the public alias; any post-reveal use must wait for that write.
+
+This is the regression guard for the reveal-ordering invariant: changing reveal
+so it no longer writes a value field must replace this dependency with an
+equally explicit reveal-token dependency. -/
+theorem syntaxGraph_reveal_not_frontier_with_reader_of_target
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    {revealer reader : ProgramNode g.prog}
+    {source target : ProgramField g.prog}
+    {hty : source.ty = target.ty}
+    (hrevealFrontier : revealer ∈ cfg.frontier)
+    (hreaderFrontier : reader ∈ cfg.frontier)
+    (hsem :
+      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+        g.legal g.normalized revealer =
+        ProtocolGraph.NodeSem.reveal source target hty)
+    (hread :
+      target ∈
+        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
+          g.legal g.normalized reader).reads) :
+    False := by
+  apply syntaxGraph_writer_not_frontier_with_reader_of_read_write
+    g hrevealFrontier hreaderFrontier hread
+  rw [hsem]
+  simp [ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
+    ProtocolGraph.FieldWrite.field]
+
 /-- Executing one frontier node leaves every read of another current frontier
 node unchanged. -/
 theorem syntaxGraph_value?_withResult_eq_of_frontier_read
