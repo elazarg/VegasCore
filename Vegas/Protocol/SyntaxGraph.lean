@@ -2557,6 +2557,30 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
       g.env g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
       hdone hcfgLegal hwrite
 
+/-- Two syntax-graph configurations agree on every read that can affect a
+generated commit guard. -/
+def AgreeOnGuardVisibleReads
+    (g : WFProgram P L)
+    (left right : (syntaxProtocolGraph g).Configuration)
+    (node : ProgramNode g.prog) : Prop :=
+  ∀ {owner : P} {target : ProgramField g.prog}
+    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+      (fun field => field.ty) target},
+    ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node =
+        .commit owner target guard →
+      ∀ read, read ∈ guard.visibleReads →
+        ProgramField.value? g.env left.result read =
+          ProgramField.value? g.env right.result read
+
+theorem AgreeOnGuardVisibleReads.symm
+    {g : WFProgram P L}
+    {left right : (syntaxProtocolGraph g).Configuration}
+    {node : ProgramNode g.prog}
+    (h : AgreeOnGuardVisibleReads g left right node) :
+    AgreeOnGuardVisibleReads g right left node := by
+  intro owner target guard hsem read hread
+  exact (h hsem read hread).symm
+
 /-- Dynamic commit legality transfers across syntax-graph configurations that
 agree on the visible reads of the guard attached to the node. The frontier
 hypothesis supplies availability of the guard reads in the target
@@ -2567,15 +2591,7 @@ theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
     {node : ProgramNode g.prog}
     {slice : ProgramField.WriteSlice g.prog}
     (hfrontierRight : node ∈ right.frontier)
-    (hvisible :
-      ∀ {owner : P} {target : ProgramField g.prog}
-        {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
-          (fun field => field.ty) target},
-        ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node =
-            .commit owner target guard →
-          ∀ read, read ∈ guard.visibleReads →
-            ProgramField.value? g.env left.result read =
-              ProgramField.value? g.env right.result read)
+    (hvisible : AgreeOnGuardVisibleReads g left right node)
     (haction :
       (syntaxProtocolGraph g).actionLegal left.result node slice) :
     (syntaxProtocolGraph g).actionLegal right.result node slice := by
@@ -2620,8 +2636,8 @@ theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
         have hvalueEq :
             ProgramField.value? g.env left.result read =
               ProgramField.value? g.env right.result read := by
-          exact hvisible (owner := owner) (target := field) (guard := guard)
-            hsem read hreadVisible
+          exact hvisible (owner := owner) (target := field)
+            (guard := guard) hsem read hreadVisible
         simpa [ρleft, ρright] using
           (ProgramField.readEnvOfResult_value_eq_of_value?_eq
             g.env (left := left.result) (right := right.result)

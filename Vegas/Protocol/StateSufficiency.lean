@@ -25,15 +25,7 @@ theorem syntaxGraph_available_eq_of_publicView_eq_of_guardVisibleValue_eq
     {left right : (syntaxProtocolGraph g).Configuration}
     (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right)
     (hvisible :
-      ∀ {node : ProgramNode g.prog} {owner : P}
-        {target : ProgramField g.prog}
-        {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
-          (fun field => field.ty) target},
-        ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node =
-            .commit owner target guard →
-          ∀ read, read ∈ guard.visibleReads →
-            ProgramField.value? g.env left.result read =
-              ProgramField.value? g.env right.result read) :
+      ∀ node, AgreeOnGuardVisibleReads g left right node) :
     ProtocolGraph.available (syntaxProtocolGraph g) left who =
       ProtocolGraph.available (syntaxProtocolGraph g) right who := by
   classical
@@ -45,14 +37,14 @@ theorem syntaxGraph_available_eq_of_publicView_eq_of_guardVisibleValue_eq
       simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
     exact ⟨hfrontierRight, hactor, hslice,
       syntaxGraph_actionLegal_of_guardVisibleValue_eq g hfrontierRight
-        (fun hsem read hread => hvisible hsem read hread) hlegal⟩
+        (hvisible action.node) hlegal⟩
   · intro haction
     rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
     have hfrontierLeft : action.node ∈ left.frontier := by
       simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
     exact ⟨hfrontierLeft, hactor, hslice,
       syntaxGraph_actionLegal_of_guardVisibleValue_eq g hfrontierLeft
-        (fun hsem read hread => (hvisible hsem read hread).symm) hlegal⟩
+        (AgreeOnGuardVisibleReads.symm (hvisible action.node)) hlegal⟩
 
 /-- Current machine observations determine the bounded FOSG optional moves at
 the endpoint of two syntax-graph histories, provided neither endpoint is past
