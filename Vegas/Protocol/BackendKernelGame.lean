@@ -173,6 +173,33 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
       (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
   exact h'.trans (lift.specLaw_sound β)
 
+/-- Projecting backend blocked traces to syntax states agrees with projecting
+canonical syntax blocked traces to their checkpoint state. -/
+theorem backendProjectedStateDist_eq
+    (g : WFProgram P L)
+    {Impl : Machine P}
+    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    {backendDist : PMF Impl.BlockTrace}
+    {specDist : PMF (syntaxGraphMachine g).BlockTrace}
+    (hproject : PMF.map R.projectBlockTrace backendDist = specDist) :
+    PMF.map (fun trace : Impl.BlockTrace => R.projectState trace.2)
+        backendDist =
+      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+        specDist := by
+  have h :=
+    congrArg (fun μ =>
+      PMF.map
+        (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2) μ)
+      hproject
+  change
+    PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+        (PMF.map R.projectBlockTrace backendDist) =
+      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+        specDist at h
+  rw [PMF.map_comp] at h
+  simpa [Machine.StochasticStepRefinement.projectBlockTrace, Function.comp_def]
+    using h
+
 /-- Backend blocked-trace play and canonical spec blocked-trace play have the
 same expected utility for every pure profile. -/
 theorem backendBlockedTraceKernelGameAt_eu_eq
@@ -202,20 +229,9 @@ theorem backendBlockedTraceKernelGameAt_eu_eq
         g R lift π
   have hstate :
       PMF.map backendState backendDist = PMF.map specState specDist := by
-    have h :=
-      congrArg (fun μ =>
-        PMF.map
-          (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2) μ)
-        hproject
-    change
-      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
-          (PMF.map R.projectBlockTrace backendDist) =
-        PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
-          specDist at h
-    rw [PMF.map_comp] at h
     simpa [backendState, specState, backendDist, specDist,
-      Machine.StochasticStepRefinement.projectBlockTrace, Function.comp_def]
-      using h
+      Machine.StochasticStepRefinement.projectBlockTrace]
+      using backendProjectedStateDist_eq g R hproject
   calc
     (backendBlockedTraceKernelGameAt g R lift).eu π who =
         Math.Probability.expect backendDist
@@ -269,20 +285,9 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
         g R lift β
   have hstate :
       PMF.map backendState backendDist = PMF.map specState specDist := by
-    have h :=
-      congrArg (fun μ =>
-        PMF.map
-          (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2) μ)
-        hproject
-    change
-      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
-          (PMF.map R.projectBlockTrace backendDist) =
-        PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
-          specDist at h
-    rw [PMF.map_comp] at h
     simpa [backendState, specState, backendDist, specDist,
-      Machine.StochasticStepRefinement.projectBlockTrace, Function.comp_def]
-      using h
+      Machine.StochasticStepRefinement.projectBlockTrace]
+      using backendProjectedStateDist_eq g R hproject
   calc
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu β who =
         Math.Probability.expect backendDist
