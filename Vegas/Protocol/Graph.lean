@@ -144,6 +144,14 @@ def writes :
   | .commit who field _ => [FieldWrite.hidden who field]
   | .reveal _ target _ => [FieldWrite.clear target]
 
+/-- The unique field targeted by this node's write. -/
+def writeTarget :
+    NodeSem Player Field L fieldTy → Field
+  | .assign field _ => field
+  | .sample field _ => field
+  | .commit _ field _ => field
+  | .reveal _ target _ => target
+
 /-- A node writes a field if one of its semantic writes targets that field. -/
 def WritesField (sem : NodeSem Player Field L fieldTy) (field : Field) : Prop :=
   ∃ write ∈ sem.writes, write.field = field
@@ -180,6 +188,18 @@ noncomputable def writeMode
     field ∈ sem.writeFields ↔ sem.WritesField field := by
   classical
   simp [writeFields, WritesField]
+
+@[simp] theorem writeFields_eq_singleton
+    (sem : NodeSem Player Field L fieldTy) :
+    sem.writeFields = {sem.writeTarget} := by
+  classical
+  cases sem <;> simp [writeFields, writes, writeTarget, FieldWrite.field]
+
+theorem mem_writeFields_iff_eq_writeTarget
+    (sem : NodeSem Player Field L fieldTy) (field : Field) :
+    field ∈ sem.writeFields ↔ field = sem.writeTarget := by
+  rw [writeFields_eq_singleton]
+  simp
 
 end NodeSem
 

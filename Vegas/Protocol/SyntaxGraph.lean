@@ -1488,32 +1488,28 @@ theorem letTail_mem_writeFields_of_mem
   cases sem with
   | assign target expr =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [letNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [letNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | sample target dist =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [letNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [letNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | commit who target guard =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [letNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [letNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | reveal source target hty =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [letNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [letNodeSem, ProtocolGraph.NodeSem.writeTarget]
 
 theorem sampleTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
@@ -1528,32 +1524,28 @@ theorem sampleTail_mem_writeFields_of_mem
   cases sem with
   | assign target expr =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | sample target dist =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | commit who target guard =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | reveal source target hty =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [sampleNodeSem, ProtocolGraph.NodeSem.writeTarget]
 
 theorem commitTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
@@ -1568,32 +1560,28 @@ theorem commitTail_mem_writeFields_of_mem
   cases sem with
   | assign target expr =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [commitNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [commitNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | sample target dist =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [commitNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [commitNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | commit owner target guard =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [commitNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [commitNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | reveal source target hty =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [commitNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [commitNodeSem, ProtocolGraph.NodeSem.writeTarget]
 
 theorem revealTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
@@ -1608,32 +1596,28 @@ theorem revealTail_mem_writeFields_of_mem
   cases sem with
   | assign target expr =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [revealNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [revealNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | sample target dist =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [revealNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [revealNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | commit owner target guard =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [revealNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [revealNodeSem, ProtocolGraph.NodeSem.writeTarget]
   | reveal source target hty =>
       have hfield : field = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using h
+        simpa [ProtocolGraph.NodeSem.writeTarget] using
+          (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp h
       subst target
-      simp [revealNodeSem, ProtocolGraph.NodeSem.writeFields,
-        ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
+      simp [revealNodeSem, ProtocolGraph.NodeSem.writeTarget]
 
 end Wrap
 
@@ -1849,82 +1833,12 @@ theorem eq_writtenBy_of_mem_writeFields
       field ∈
         (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
     field = ProgramField.writtenBy node := by
-  classical
-  cases hsem : ProgramNode.sem hctx fresh hscoped legal normalized node with
-  | assign target expr =>
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
-      rcases hwrite with ⟨write, hwrite, hfield⟩
-      rw [hsem] at hwrite
-      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
-      subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
-      symm at hfield
-      subst field
-      have htarget :
-          target ∈
-            (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields := by
-        rw [hsem]
-        simp [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field]
-      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
-      rw [hsem] at hboth
-      have htarget :
-          ProgramField.writtenBy node = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
-      exact htarget.symm
-  | sample target dist =>
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
-      rcases hwrite with ⟨write, hwrite, hfield⟩
-      rw [hsem] at hwrite
-      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
-      subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
-      symm at hfield
-      subst field
-      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
-      rw [hsem] at hboth
-      have htarget :
-          ProgramField.writtenBy node = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
-      exact htarget.symm
-  | commit owner target guard =>
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
-      rcases hwrite with ⟨write, hwrite, hfield⟩
-      rw [hsem] at hwrite
-      have hwrite_eq : write = ProtocolGraph.FieldWrite.hidden owner target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
-      subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
-      symm at hfield
-      subst field
-      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
-      rw [hsem] at hboth
-      have htarget :
-          ProgramField.writtenBy node = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
-      exact htarget.symm
-  | reveal source target hty =>
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
-      rcases hwrite with ⟨write, hwrite, hfield⟩
-      rw [hsem] at hwrite
-      have hwrite_eq : write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
-      subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
-      symm at hfield
-      subst field
-      have hboth := writtenBy_mem_writeFields hctx fresh hscoped legal normalized node
-      rw [hsem] at hboth
-      have htarget :
-          ProgramField.writtenBy node = target := by
-        simpa [ProtocolGraph.NodeSem.writeFields,
-          ProtocolGraph.NodeSem.writes, ProtocolGraph.FieldWrite.field] using hboth
-      exact htarget.symm
+  have hfield :=
+    (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp hwrite
+  have hwritten :=
+    (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp
+      (writtenBy_mem_writeFields hctx fresh hscoped legal normalized node)
+  exact hfield.trans hwritten.symm
 
 /-- Membership in a generated node's write set identifies the field's
 structural writer. -/
