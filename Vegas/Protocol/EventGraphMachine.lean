@@ -2,12 +2,12 @@ import Vegas.Protocol.FOSG
 import Vegas.Protocol.Trace
 
 /-!
-# Protocol graph machines
+# Event Graph Machines
 
-This module interprets an extensional `ProtocolGraph.Configuration` as the
+This module interprets an extensional `EventGraph.Configuration` as the
 generic asynchronous `Machine` carrier.
 
-The primitive machine step executes one ready graph node.  The FOSG
+The primitive machine step executes one enabled event node. The FOSG
 presentation below exposes whole frontier rounds: it batches the current
 frontier into one player-facing transition while the primitive machine remains
 the executable carrier.
@@ -15,37 +15,37 @@ the executable carrier.
 
 namespace Vegas
 
-namespace ProtocolGraph
+namespace EventGraph
 
 open GameTheory
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-attribute [local instance] ProtocolGraph.nodeDecEq
-attribute [local instance] ProtocolGraph.fieldDecEq
+attribute [local instance] EventGraph.nodeDecEq
+attribute [local instance] EventGraph.fieldDecEq
 
 /-- Player-owned frontier nodes have at least one legal concrete action. -/
-def HasAvailablePlayerActions (G : Vegas.ProtocolGraph Player L) : Prop :=
+def HasAvailablePlayerActions (G : Vegas.EventGraph Player L) : Prop :=
   ∀ (cfg : G.Configuration) {node : G.Node} {who : Player},
     node ∈ cfg.frontier →
     (G.sem node).actor = some who →
       ∃ slice, G.sliceLegal node slice ∧
         G.actionLegal cfg.result node slice
 
-/-- Static player action alphabet for a protocol graph: choose a graph node
+/-- Static player action alphabet for an event graph: choose an event node
 and a result slice for that node. State-local availability restricts this to
-ready nodes owned by the player and legal slices for the current result
+enabled nodes owned by the player and legal slices for the current result
 assignment. -/
-structure PlayerAction (G : Vegas.ProtocolGraph Player L) (_who : Player) where
+structure PlayerAction (G : Vegas.EventGraph Player L) (_who : Player) where
   node : G.Node
   slice : G.WriteSlice
 
 namespace PlayerAction
 
-/-- Player actions are finite when graph nodes, fields, and field values are
+/-- Player actions are finite when event nodes, fields, and field values are
 finite. -/
 @[reducible] noncomputable instance instFintype
-    (G : Vegas.ProtocolGraph Player L) (who : Player)
+    (G : Vegas.EventGraph Player L) (who : Player)
     [Fintype G.Node] [Fintype G.Field]
     [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
     Fintype (PlayerAction G who) := by
@@ -54,7 +54,7 @@ finite. -/
       Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
     fun _ => inferInstance
   letI : Fintype G.WriteSlice := by
-    dsimp [ProtocolGraph.WriteSlice]
+    dsimp [EventGraph.WriteSlice]
     infer_instance
   let e : PlayerAction G who ≃ G.Node × G.WriteSlice :=
     { toFun := fun action => (action.node, action.slice)
@@ -72,15 +72,15 @@ finite. -/
 end PlayerAction
 
 /-- Player-facing action for a frontier round.  The action supplies a candidate
-write slice for each graph node; state-local availability uses only the slices
+write slice for each event node; state-local availability uses only the slices
 for frontier nodes owned by the player. -/
-structure PlayerRoundAction (G : Vegas.ProtocolGraph Player L) (_who : Player) where
+structure PlayerRoundAction (G : Vegas.EventGraph Player L) (_who : Player) where
   slice : G.Node → G.WriteSlice
 
 namespace PlayerRoundAction
 
 @[reducible] noncomputable instance instFintype
-    (G : Vegas.ProtocolGraph Player L) (who : Player)
+    (G : Vegas.EventGraph Player L) (who : Player)
     [Fintype G.Node] [Fintype G.Field]
     [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
     Fintype (PlayerRoundAction G who) := by
@@ -89,7 +89,7 @@ namespace PlayerRoundAction
       Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
     fun _ => inferInstance
   letI : Fintype G.WriteSlice := by
-    dsimp [ProtocolGraph.WriteSlice]
+    dsimp [EventGraph.WriteSlice]
     infer_instance
   let e : PlayerRoundAction G who ≃ (G.Node → G.WriteSlice) :=
     { toFun := fun action => action.slice
@@ -105,18 +105,18 @@ namespace PlayerRoundAction
 
 end PlayerRoundAction
 
-/-- Internal graph events execute ready non-player nodes. `idle` is never
+/-- Internal events execute enabled non-player nodes. `idle` is never
 available; it only gives terminal FOSG presentations a total internal turn
-without inventing an executable graph node. -/
-inductive InternalEvent (G : Vegas.ProtocolGraph Player L) where
+without inventing an executable event node. -/
+inductive InternalEvent (G : Vegas.EventGraph Player L) where
   | node (node : G.Node)
   | idle
 
 namespace InternalEvent
 
-/-- Internal graph events are finite when graph nodes are finite. -/
+/-- Internal events are finite when event nodes are finite. -/
 @[reducible] noncomputable instance instFintype
-    (G : Vegas.ProtocolGraph Player L) [Fintype G.Node] :
+    (G : Vegas.EventGraph Player L) [Fintype G.Node] :
     Fintype (InternalEvent G) := by
   classical
   letI : DecidableEq (InternalEvent G) := Classical.decEq _
@@ -135,9 +135,9 @@ end InternalEvent
 
 /-- Observation/outcome interface needed to expose a graph as a `Machine`.
 
-Execution is graph-native; this structure only says how completed graph state
+Execution is native to the event graph; this structure only says how completed event-graph state
 is observed and scored. -/
-structure MachineInterface (G : Vegas.ProtocolGraph Player L) where
+structure MachineInterface (G : Vegas.EventGraph Player L) where
   Public : Type
   Obs : Player → Type
   Outcome : Type
@@ -148,7 +148,7 @@ structure MachineInterface (G : Vegas.ProtocolGraph Player L) where
 
 /-- Player actions available at a graph configuration. -/
 def available
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) : Set (PlayerAction G who) :=
   { action |
       action.node ∈ cfg.frontier ∧
@@ -158,7 +158,7 @@ def available
 
 /-- Internal events available at a graph configuration. -/
 def availableInternal
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration) :
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration) :
     Set (InternalEvent G) :=
   { event |
       match event with
@@ -174,7 +174,7 @@ second field says that once a player action for one frontier node is legal, it
 remains legal after any different frontier node in the same source frontier has
 been recorded.  This is the graph-level condition ruling out player-action
 legality races inside a batched frontier round. -/
-structure HasStableFrontierRounds (G : Vegas.ProtocolGraph Player L) : Prop where
+structure HasStableFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
   availablePlayerActions : G.HasAvailablePlayerActions
   actionStable :
     ∀ (cfg : G.Configuration)
@@ -191,7 +191,7 @@ structure HasStableFrontierRounds (G : Vegas.ProtocolGraph Player L) : Prop wher
 /-- Execute one available player node. Unavailable events stutter, matching the
 total-step convention of `Machine`. -/
 noncomputable def stepPlay
-    (G : Vegas.ProtocolGraph Player L) (who : Player)
+    (G : Vegas.EventGraph Player L) (who : Player)
     (action : PlayerAction G who) (cfg : G.Configuration) :
     PMF G.Configuration := by
   classical
@@ -204,7 +204,7 @@ noncomputable def stepPlay
 /-- Execute one available internal node. The graph's internal kernel chooses
 the result slice. Any slice outside the legal predicate stutters. -/
 noncomputable def stepInternal
-    (G : Vegas.ProtocolGraph Player L) (event : InternalEvent G)
+    (G : Vegas.EventGraph Player L) (event : InternalEvent G)
     (cfg : G.Configuration) : PMF G.Configuration := by
   classical
   exact
@@ -224,9 +224,9 @@ noncomputable def stepInternal
           PMF.pure cfg
     | .idle => PMF.pure cfg
 
-/-- Canonical asynchronous machine for a protocol graph. -/
+/-- Canonical asynchronous machine for an event graph. -/
 noncomputable def toMachine
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G) :
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G) :
     Machine Player where
   State := G.Configuration
   Action := PlayerAction G
@@ -246,17 +246,17 @@ noncomputable def toMachine
   utility := iface.utility
 
 @[simp] theorem toMachine_init
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G) :
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G) :
     (G.toMachine iface).init = Configuration.initial G := rfl
 
 @[simp] theorem toMachine_terminal
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : (G.toMachine iface).State) :
     (G.toMachine iface).terminal cfg = cfg.terminal := rfl
 
 /-- Players who own at least one node in the current frontier. -/
 noncomputable def roundActive
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration) :
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration) :
     Finset Player := by
   classical
   exact cfg.frontier.biUnion fun node =>
@@ -265,7 +265,7 @@ noncomputable def roundActive
     | none => ∅
 
 theorem mem_roundActive_iff
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) :
     who ∈ roundActive G cfg ↔
       ∃ node, node ∈ cfg.frontier ∧ (G.sem node).actor = some who := by
@@ -289,7 +289,7 @@ theorem mem_roundActive_iff
 
 /-- Round actions available to a player at a graph configuration. -/
 def roundAvailable
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) : Set (PlayerRoundAction G who) :=
   { action |
       ∀ {node},
@@ -304,7 +304,7 @@ The `none` move means the player is not called in this frontier round. A
 `some action` move means the player is active and the round action is legal for
 every current frontier node owned by that player. -/
 def roundMenu
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) : Set (Option (PlayerRoundAction G who)) :=
   { move |
     match move with
@@ -313,14 +313,14 @@ def roundMenu
         who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who }
 
 @[simp] theorem mem_roundMenu_none
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) :
     (none : Option (PlayerRoundAction G who)) ∈ roundMenu G cfg who ↔
       who ∉ roundActive G cfg := by
   rfl
 
 @[simp] theorem mem_roundMenu_some
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) (action : PlayerRoundAction G who) :
     some action ∈ roundMenu G cfg who ↔
       who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who := by
@@ -331,7 +331,7 @@ Unavailable primitive events stutter through the underlying total machine step;
 frontier soundness lemmas show the intended round nodes remain available across
 linearizations. -/
 noncomputable def roundStepNode
-    (G : Vegas.ProtocolGraph Player L)
+    (G : Vegas.EventGraph Player L)
     (joint : JointAction (PlayerRoundAction G))
     (node : G.Node) (cfg : G.Configuration) :
     PMF G.Configuration :=
@@ -343,12 +343,12 @@ noncomputable def roundStepNode
       | none => PMF.pure cfg
   | none => stepInternal G (.node node) cfg
 
-/-- Primitive machine event selected for one graph node by a frontier-round
+/-- Primitive machine event selected for one event node by a frontier-round
 joint action. Missing player coordinates are represented by the graph machine's
 unavailable `idle` internal event, whose total step stutters. Legal round
 actions never need this fallback for current frontier nodes. -/
 noncomputable def roundPrimitiveEvent
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (joint : JointAction (PlayerRoundAction G)) (node : G.Node) :
     (G.toMachine iface).Event :=
   match (G.sem node).actor with
@@ -360,7 +360,7 @@ noncomputable def roundPrimitiveEvent
   | none => .internal (.node node)
 
 @[simp] theorem toMachine_step_roundPrimitiveEvent
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (joint : JointAction (PlayerRoundAction G))
     (node : G.Node) (cfg : G.Configuration) :
     (G.toMachine iface).step
@@ -378,7 +378,7 @@ noncomputable def roundPrimitiveEvent
 /-- A legal frontier-round joint action selects an available primitive machine
 event for every node in the current frontier. -/
 theorem roundPrimitiveEvent_available_of_legal
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg : G.Configuration}
     {joint : JointAction (PlayerRoundAction G)}
     (hlegal :
@@ -434,7 +434,7 @@ theorem roundPrimitiveEvent_available_of_legal
 different node in a legal frontier round remains available after this frontier
 node has executed. -/
 theorem roundPrimitiveEvent_available_after_withResult_of_ne
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     {cfg : G.Configuration}
     {joint : JointAction (PlayerRoundAction G)}
@@ -513,7 +513,7 @@ theorem roundPrimitiveEvent_available_after_withResult_of_ne
 order is the canonical `Finset.toList` order used by `roundTransition`; order
 invariance is a separate theorem about independent frontier nodes. -/
 noncomputable def roundPrimitiveEvents
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
     (joint : JointAction (PlayerRoundAction G)) :
     List (G.toMachine iface).Event :=
@@ -523,7 +523,7 @@ noncomputable def roundPrimitiveEvents
 round's source configuration. Availability after earlier events in a
 linearization is the separate frontier-stability theorem. -/
 theorem mem_roundPrimitiveEvents_available_of_legal
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg : G.Configuration}
     {joint : JointAction (PlayerRoundAction G)}
     (hlegal :
@@ -540,7 +540,7 @@ theorem mem_roundPrimitiveEvents_available_of_legal
     G iface hlegal hfrontier
 
 private theorem runEventsFrom_roundPrimitiveEvents_go
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (joint : JointAction (PlayerRoundAction G))
     (nodes : List G.Node) (acc : PMF G.Configuration) :
     (nodes.map (roundPrimitiveEvent G iface joint)).foldl
@@ -560,9 +560,9 @@ private theorem runEventsFrom_roundPrimitiveEvents_go
 /-- Execute the current frontier as one FOSG round.  The list order is a
 definition device; `HasStableFrontierRounds` is the hypothesis that source-legal
 player actions do not stutter while this linearization is executed.  Stronger
-order-invariance facts are proved for syntax graphs in `FrontierStability`. -/
+order-invariance facts are proved for event graphs in `FrontierStability`. -/
 noncomputable def roundTransition
-    (G : Vegas.ProtocolGraph Player L) (cfg : G.Configuration)
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (joint : JointAction (PlayerRoundAction G)) :
     PMF G.Configuration :=
   cfg.frontier.toList.foldl
@@ -572,7 +572,7 @@ noncomputable def roundTransition
 /-- A graph frontier round is exactly the primitive machine run obtained by
 executing the round's canonical frontier event list. -/
 theorem roundTransition_eq_runEventsFrom_roundPrimitiveEvents
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
     (joint : JointAction (PlayerRoundAction G)) :
     roundTransition G cfg joint =
@@ -586,7 +586,7 @@ theorem roundTransition_eq_runEventsFrom_roundPrimitiveEvents
 
 /-- FOSG presentation of a protocol-graph machine by stable frontier rounds. -/
 noncomputable def toFOSGView
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) :
     (G.toMachine iface).FOSGView where
   Act := PlayerRoundAction G
@@ -639,12 +639,12 @@ noncomputable def toFOSGView
       rw [hjoint]
       exact hactive
 
-/-- The optional-move set of the FOSG induced by a protocol graph is the
+/-- The optional-move set of the FOSG induced by an event graph is the
 graph-level `roundMenu`.  Bridges the strategic FOSG carrier (which pairs
 each player's optional round move with a `none` for inactive rounds) and the
 direct configuration-level menu. -/
 @[simp] theorem toFOSGView_toFOSG_availableMovesAtState_eq_roundMenu
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     (cfg : G.Configuration) (who : Player) :
     (G.toFOSGView iface hsound).toFOSG.availableMovesAtState cfg who =
@@ -655,7 +655,7 @@ direct configuration-level menu. -/
 /-- The bounded-FOSG version: before the horizon cutoff, optional round moves
 agree with the player-facing graph menu. -/
 theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat) (who : Player)
     (state : (G.toMachine iface).BoundedState horizon)
     (hcut : ¬ horizon ≤ state.depth) :
@@ -679,7 +679,7 @@ theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
 /-- One bounded graph-FOSG transition, projected back to graph configurations,
 is the primitive machine run of the round's canonical frontier event list. -/
 theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     (horizon : Nat)
     (state : (G.toMachine iface).BoundedState horizon)
@@ -706,7 +706,7 @@ is one blocked primitive machine run.  This is the one-step form used by
 trace-level simulations: FOSG histories compose blocks; primitive machine
 traces flatten them. -/
 theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     (horizon : Nat)
     (state : (G.toMachine iface).BoundedState horizon)
@@ -728,7 +728,7 @@ Each bounded FOSG step is one frontier round.  This projection forgets the
 sampled checkpoint destination and keeps the primitive machine event block
 selected by the round action at the step source. -/
 noncomputable def boundedFOSGStepEventBlocks
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (steps :
       List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)) :
@@ -738,7 +738,7 @@ noncomputable def boundedFOSGStepEventBlocks
 
 /-- Primitive event blocks extracted from a bounded graph-FOSG history. -/
 noncomputable def boundedFOSGHistoryEventBlocks
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
@@ -748,7 +748,7 @@ noncomputable def boundedFOSGHistoryEventBlocks
 /-- Every realized bounded graph-FOSG step chain is backed by a primitive
 machine blocked run whose support contains the same checkpoint endpoint. -/
 theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat) :
     ∀ {start : (G.toMachine iface).BoundedState horizon}
       {steps :
@@ -804,7 +804,7 @@ theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
 /-- Every realized bounded graph-FOSG history extracts a primitive machine
 blocked trace whose endpoint support contains the history's checkpoint state. -/
 theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
@@ -814,7 +814,7 @@ theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
         (G.toMachine iface).init).support := by
   simpa [boundedFOSGHistoryEventBlocks,
     boundedFOSGStepEventBlocks, GameTheory.FOSG.History.lastState,
-    ProtocolGraph.toMachine_init] using
+    EventGraph.toMachine_init] using
     (boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
       G iface hsound horizon h.chain)
 
@@ -822,7 +822,7 @@ theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
 event-block prefix and the successor checkpoint state, is exactly the
 corresponding primitive machine blocked run. -/
 theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History))
@@ -870,7 +870,7 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
 as binding that continuation over the corresponding primitive machine blocked
 run, with the bounded presentation depth reattached to the checkpoint state. -/
 theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History))
@@ -920,7 +920,7 @@ The state of this process is still the FOSG history: strategies are allowed to
 depend on information-state history.  The machine contribution at each
 nonterminal FOSG round is the primitive event block selected by that round. -/
 noncomputable def boundedFOSGBlockTraceDistFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -959,7 +959,7 @@ noncomputable def boundedFOSGBlockTraceDistFrom
                       next))
 
 @[simp] theorem boundedFOSGBlockTraceDistFrom_zero
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -974,7 +974,7 @@ noncomputable def boundedFOSGBlockTraceDistFrom
           h.lastState.state) := rfl
 
 theorem boundedFOSGBlockTraceDistFrom_succ_terminal
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -997,7 +997,7 @@ theorem boundedFOSGBlockTraceDistFrom_succ_terminal
   simp [boundedFOSGBlockTraceDistFrom, hterm']
 
 theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -1033,7 +1033,7 @@ theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
 and checkpoint state, equals the history-dependent blocked machine trace
 distribution induced by the same behavioral profile. -/
 theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -1092,7 +1092,7 @@ theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
 projection of the corresponding history-dependent blocked machine trace
 distribution. -/
 theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -1144,7 +1144,7 @@ theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
 /-- Public bounded behavioral outcome kernel of a graph-FOSG view, computed as
 the machine outcome map of the induced blocked primitive trace distribution. -/
 theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -1173,7 +1173,7 @@ theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
 machine outcome map of the blocked primitive trace distribution induced by the
 pure profile's behavioral embedding. -/
 theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
@@ -1209,7 +1209,7 @@ destination extends the FOSG history, then the extracted block prefix and
 checkpoint state have the same distribution as the primitive machine blocked
 run for the selected frontier round. -/
 theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
-    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History))
@@ -1277,6 +1277,6 @@ theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFro
     boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
       G iface hsound horizon h action
 
-end ProtocolGraph
+end EventGraph
 
 end Vegas

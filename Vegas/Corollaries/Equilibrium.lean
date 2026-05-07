@@ -7,7 +7,7 @@ import GameTheory.Concepts.NashCorrelatedEq
 /-!
 # Equilibrium Corollaries
 
-Basic equilibrium facts for the PMF behavioral graph-machine FOSG game.
+Basic equilibrium facts for the PMF behavioral event-graph machine FOSG game.
 -/
 
 namespace Vegas

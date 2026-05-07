@@ -16,14 +16,14 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- Two distinct frontier executions commute extensionally. -/
 theorem frontier_execution_commutes
     (g : WFProgram P L)
-    (cfg : (syntaxProtocolGraph g).Configuration)
+    (cfg : (programEventGraph g).Configuration)
     {left right : ProgramNode g.prog}
     {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
     (hleft : left ∈ cfg.frontier)
     (hright : right ∈ cfg.frontier)
     (hne : left ≠ right)
-    (hleftLegal : (syntaxProtocolGraph g).sliceLegal left leftSlice)
-    (hrightLegal : (syntaxProtocolGraph g).sliceLegal right rightSlice) :
+    (hleftLegal : (programEventGraph g).sliceLegal left leftSlice)
+    (hrightLegal : (programEventGraph g).sliceLegal right rightSlice) :
     let hrightAfterLeft :=
       cfg.withResult_mem_frontier_of_ne
         hleft hright (Ne.symm hne) hleftLegal

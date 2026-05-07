@@ -3,17 +3,17 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Vegas.Core
 
 /-!
-# Protocol graphs
+# Event Graphs
 
-The graph state is extensional: a configuration records which graph nodes have
-produced results, not the schedule prefix that produced them.  A frontier is
-computed from that partial result assignment.  Execution order is presentation
-and proof data; it is not stored in the semantic state.
+The event-graph state is extensional: a configuration records which event
+nodes have produced results, not the schedule prefix that produced them. A
+frontier is computed from that partial result assignment. Execution order is
+presentation and proof data; it is not stored in the semantic state.
 -/
 
 namespace Vegas
 
-namespace ProtocolGraph
+namespace EventGraph
 
 /-- How a node write is stored before player-specific redaction. -/
 inductive WriteMode where
@@ -67,27 +67,27 @@ def mode : FieldWrite Player Field → WriteMode
 
 end FieldWrite
 
-/-- Values of the fields read by a graph expression. -/
+/-- Values of the fields read by an event-graph expression. -/
 @[ext]
 structure ReadEnv (L : IExpr) (Field : Type)
     (fieldTy : Field → L.Ty) (reads : Finset Field) where
   value : (field : Field) → field ∈ reads → L.Val (fieldTy field)
 
-/-- A graph-local expression. Unlike source expressions, this evaluates from
+/-- An event-graph-local expression. Unlike source expressions, this evaluates from
 only the fields it declares as reads. -/
-structure GraphExpr (L : IExpr) (Field : Type) [DecidableEq Field]
+structure EventExpr (L : IExpr) (Field : Type) [DecidableEq Field]
     (fieldTy : Field → L.Ty) (ty : L.Ty) where
   reads : Finset Field
   eval : ReadEnv L Field fieldTy reads → L.Val ty
 
-/-- A graph-local probability kernel. -/
-structure GraphDist (L : IExpr) (Field : Type) [DecidableEq Field]
+/-- An event-graph-local probability kernel. -/
+structure EventDist (L : IExpr) (Field : Type) [DecidableEq Field]
     (fieldTy : Field → L.Ty) (ty : L.Ty) where
   reads : Finset Field
   eval : ReadEnv L Field fieldTy reads → PMF (L.Val ty)
 
-/-- A graph-local commit guard. -/
-structure GraphGuard (L : IExpr) (Field : Type) [DecidableEq Field]
+/-- An event-graph-local commit guard. -/
+structure EventGuard (L : IExpr) (Field : Type) [DecidableEq Field]
     (fieldTy : Field → L.Ty) (field : Field) where
   reads : Finset Field
   visibleReads : Finset Field
@@ -122,7 +122,7 @@ noncomputable def comapFields
 
 end ReadEnv
 
-namespace GraphExpr
+namespace EventExpr
 
 variable {L : IExpr}
 variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
@@ -131,16 +131,16 @@ variable {ty : L.Ty}
 
 /-- Transport a graph expression through a field map preserving field types. -/
 noncomputable def mapFields
-    (expr : GraphExpr L Field fieldTy ty)
+    (expr : EventExpr L Field fieldTy ty)
     (f : Field → Field')
     (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    GraphExpr L Field' fieldTy' ty where
+    EventExpr L Field' fieldTy' ty where
   reads := expr.reads.image f
   eval := fun ρ => expr.eval (ReadEnv.comapFields f hty ρ)
 
-end GraphExpr
+end EventExpr
 
-namespace GraphDist
+namespace EventDist
 
 variable {L : IExpr}
 variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
@@ -149,16 +149,16 @@ variable {ty : L.Ty}
 
 /-- Transport a graph distribution through a field map preserving field types. -/
 noncomputable def mapFields
-    (dist : GraphDist L Field fieldTy ty)
+    (dist : EventDist L Field fieldTy ty)
     (f : Field → Field')
     (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    GraphDist L Field' fieldTy' ty where
+    EventDist L Field' fieldTy' ty where
   reads := dist.reads.image f
   eval := fun ρ => dist.eval (ReadEnv.comapFields f hty ρ)
 
-end GraphDist
+end EventDist
 
-namespace GraphGuard
+namespace EventGuard
 
 variable {L : IExpr}
 variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
@@ -167,10 +167,10 @@ variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
 /-- Transport a graph guard through a field map preserving field types. -/
 noncomputable def mapFields
     {field : Field}
-    (guard : GraphGuard L Field fieldTy field)
+    (guard : EventGuard L Field fieldTy field)
     (f : Field → Field')
     (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    GraphGuard L Field' fieldTy' (f field) where
+    EventGuard L Field' fieldTy' (f field) where
   reads := guard.reads.image f
   visibleReads := guard.visibleReads.image f
   visibleReads_subset_reads := by
@@ -199,31 +199,31 @@ noncomputable def mapFields
 
 @[simp] theorem reads_mapFields
     {field : Field}
-    (guard : GraphGuard L Field fieldTy field)
+    (guard : EventGuard L Field fieldTy field)
     (f : Field → Field')
     (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
     (guard.mapFields f hty).reads = guard.reads.image f := rfl
 
 @[simp] theorem visibleReads_mapFields
     {field : Field}
-    (guard : GraphGuard L Field fieldTy field)
+    (guard : EventGuard L Field fieldTy field)
     (f : Field → Field')
     (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
     (guard.mapFields f hty).visibleReads =
       guard.visibleReads.image f := rfl
 
-end GraphGuard
+end EventGuard
 
-/-- Protocol meaning attached to one graph node.
+/-- Protocol meaning attached to one event node.
 
 This is intentionally semantic, not backend metadata.  Visibility is computed
 from the writes: clear writes are public/revealed, hidden writes are commits. -/
 inductive NodeSem (Player Field : Type) [DecidableEq Field]
     (L : IExpr) (fieldTy : Field → L.Ty) where
-  | assign (field : Field) (expr : GraphExpr L Field fieldTy (fieldTy field))
-  | sample (field : Field) (dist : GraphDist L Field fieldTy (fieldTy field))
+  | assign (field : Field) (expr : EventExpr L Field fieldTy (fieldTy field))
+  | sample (field : Field) (dist : EventDist L Field fieldTy (fieldTy field))
   | commit (who : Player) (field : Field)
-      (guard : GraphGuard L Field fieldTy field)
+      (guard : EventGuard L Field fieldTy field)
   | reveal (source target : Field) (sameTy : fieldTy source = fieldTy target)
 
 namespace NodeSem
@@ -342,7 +342,7 @@ noncomputable def writeFields
 
 /-- Storage mode for a field written by this node, if any.
 
-Conflicting duplicate writes are ruled out by `ProtocolGraph` well-formedness.
+Conflicting duplicate writes are ruled out by `EventGraph` well-formedness.
 Hidden wins here only to make this projection total. -/
 noncomputable def writeMode
     (sem : NodeSem Player Field L fieldTy) (field : Field) :
@@ -387,17 +387,17 @@ theorem mem_writeFields_mapFields_of_mem
 
 end NodeSem
 
-end ProtocolGraph
+end EventGraph
 
 /-- A checked protocol dependency graph.
 
-`ProtocolGraph` is protocol-specific.  Nodes have semantic payloads; fields are
+`EventGraph` is protocol-specific.  Nodes have semantic payloads; fields are
 typed storage locations; dependencies are the causal/readability order used to
 compute the executable frontier.
 
 The graph deliberately does not store a separate visibility map.  Field
 visibility is a computed property of `sem node`. -/
-structure ProtocolGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
+structure EventGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
   Node : Type
   Field : Type
   nodeDecEq : DecidableEq Node
@@ -407,7 +407,7 @@ structure ProtocolGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
   fieldTy : Field → L.Ty
   fieldOwner : Field → Option Player
   initial : (field : Field) → Option (L.Val (fieldTy field))
-  sem : Node → @ProtocolGraph.NodeSem Player Field fieldDecEq L fieldTy
+  sem : Node → @EventGraph.NodeSem Player Field fieldDecEq L fieldTy
   prereqs : Node → Finset Node
   rank : Node → Nat
   prereqs_subset_nodes :
@@ -431,38 +431,38 @@ structure ProtocolGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
   sliceLegal :
     Node →
       ((field : Field) →
-        Option (ProtocolGraph.StoredValue (L.Val (fieldTy field)))) →
+        Option (EventGraph.StoredValue (L.Val (fieldTy field)))) →
       Prop
   actionLegal :
     ((node : Node) →
         Option ((field : Field) →
-          Option (ProtocolGraph.StoredValue (L.Val (fieldTy field))))) →
+          Option (EventGraph.StoredValue (L.Val (fieldTy field))))) →
       Node →
       ((field : Field) →
-        Option (ProtocolGraph.StoredValue (L.Val (fieldTy field)))) →
+        Option (EventGraph.StoredValue (L.Val (fieldTy field)))) →
       Prop
   internalKernel :
     Node →
       ((node : Node) →
         Option ((field : Field) →
-          Option (ProtocolGraph.StoredValue (L.Val (fieldTy field))))) →
+          Option (EventGraph.StoredValue (L.Val (fieldTy field))))) →
       PMF ((field : Field) →
-        Option (ProtocolGraph.StoredValue (L.Val (fieldTy field))))
+        Option (EventGraph.StoredValue (L.Val (fieldTy field))))
 
-namespace ProtocolGraph
+namespace EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-attribute [local instance] ProtocolGraph.nodeDecEq
-attribute [local instance] ProtocolGraph.fieldDecEq
+attribute [local instance] EventGraph.nodeDecEq
+attribute [local instance] EventGraph.fieldDecEq
 
 /-- A typed write slice produced by one node. -/
-abbrev WriteSlice (G : Vegas.ProtocolGraph Player L) : Type :=
+abbrev WriteSlice (G : Vegas.EventGraph Player L) : Type :=
   (field : G.Field) → Option (StoredValue (L.Val (G.fieldTy field)))
 
 namespace WriteSlice
 
-variable (G : Vegas.ProtocolGraph Player L)
+variable (G : Vegas.EventGraph Player L)
 
 /-- The empty result slice. -/
 def empty : WriteSlice G :=
@@ -495,14 +495,14 @@ noncomputable def single
 end WriteSlice
 
 /-- Extensional partial node-result assignment. -/
-abbrev ResultAssignment (G : Vegas.ProtocolGraph Player L) : Type :=
+abbrev ResultAssignment (G : Vegas.EventGraph Player L) : Type :=
   (node : G.Node) → Option (WriteSlice G)
 
 /-- Value of a graph field under a partial result assignment. Completed node
 slices override initial values; if no completed slice has written the field,
 the graph initial value is used. -/
 noncomputable def value?
-    (G : Vegas.ProtocolGraph Player L) (result : G.ResultAssignment)
+    (G : Vegas.EventGraph Player L) (result : G.ResultAssignment)
     (field : G.Field) : Option (L.Val (G.fieldTy field)) := by
   classical
   exact
@@ -518,7 +518,7 @@ noncomputable def value?
       G.initial field
 
 theorem value?_isSome_of_result_slice
-    (G : Vegas.ProtocolGraph Player L) {result : G.ResultAssignment}
+    (G : Vegas.EventGraph Player L) {result : G.ResultAssignment}
     {field : G.Field} {node : G.Node} {slice : WriteSlice G}
     {stored : StoredValue (L.Val (G.fieldTy field))}
     (hresult : result node = some slice)
@@ -531,30 +531,30 @@ theorem value?_isSome_of_result_slice
   · exact ⟨node, slice, stored, hresult, hslice⟩
 
 /-- Result assignments agree on the prerequisites of a node. -/
-def AgreeOnPrereqs (G : Vegas.ProtocolGraph Player L)
+def AgreeOnPrereqs (G : Vegas.EventGraph Player L)
     (left right : ResultAssignment G) (node : G.Node) : Prop :=
   ∀ prereq, prereq ∈ G.prereqs node → left prereq = right prereq
 
 /-- Nodes that have already produced a result. -/
-noncomputable def done (G : Vegas.ProtocolGraph Player L)
+noncomputable def done (G : Vegas.EventGraph Player L)
     (result : ResultAssignment G) : Finset G.Node := by
   classical
   exact G.nodes.filter fun node => (result node).isSome
 
 @[simp] theorem mem_done_iff
-    (G : Vegas.ProtocolGraph Player L) (result : ResultAssignment G)
+    (G : Vegas.EventGraph Player L) (result : ResultAssignment G)
     (node : G.Node) :
     node ∈ G.done result ↔ node ∈ G.nodes ∧ (result node).isSome := by
   classical
   simp [done]
 
-/-- Extensional machine configuration for a protocol graph.
+/-- Extensional machine configuration for an event graph.
 
 The closure invariant says completed nodes are lower-closed under graph
 dependencies.  The legality invariant says every stored node result is a
 well-formed slice for that node. Dynamic action legality is checked at the
 machine frontier instead of being cached in the configuration. -/
-structure Configuration (G : Vegas.ProtocolGraph Player L) where
+structure Configuration (G : Vegas.EventGraph Player L) where
   result : ResultAssignment G
   result_nodes :
     ∀ {node}, (result node).isSome → node ∈ G.nodes
@@ -570,7 +570,7 @@ structure Configuration (G : Vegas.ProtocolGraph Player L) where
 
 namespace Configuration
 
-variable {G : Vegas.ProtocolGraph Player L}
+variable {G : Vegas.EventGraph Player L}
 
 @[ext] theorem ext
     {left right : G.Configuration}
@@ -583,7 +583,7 @@ variable {G : Vegas.ProtocolGraph Player L}
 
 /-- Empty initial configuration. Initial field values belong to the graph, not
 to an executed node result. -/
-def initial (G : Vegas.ProtocolGraph Player L) : G.Configuration where
+def initial (G : Vegas.EventGraph Player L) : G.Configuration where
   result := fun _ => none
   result_nodes := by
     intro node h
@@ -599,27 +599,27 @@ def initial (G : Vegas.ProtocolGraph Player L) : G.Configuration where
 noncomputable def done (cfg : G.Configuration) : Finset G.Node :=
   G.done cfg.result
 
-/-- A graph node is ready when it is unfinished and all prerequisites are
+/-- An event node is enabled when it is unfinished and all prerequisites are
 finished. -/
-def Ready (cfg : G.Configuration) (node : G.Node) : Prop :=
+def Enabled (cfg : G.Configuration) (node : G.Node) : Prop :=
   node ∈ G.nodes ∧
     (cfg.result node).isNone ∧
       G.prereqs node ⊆ cfg.done
 
-/-- The executable frontier: currently schedulable graph events. -/
+/-- The frontier: the current enabled event set. -/
 noncomputable def frontier (cfg : G.Configuration) : Finset G.Node := by
   classical
-  exact G.nodes.filter fun node => cfg.Ready node
+  exact G.nodes.filter fun node => cfg.Enabled node
 
-/-- Terminal configurations have completed every graph node. -/
+/-- Terminal configurations have completed every event node. -/
 def terminal (cfg : G.Configuration) : Prop :=
   G.nodes ⊆ cfg.done
 
 @[simp] theorem mem_frontier_iff
     (cfg : G.Configuration) (node : G.Node) :
-    node ∈ cfg.frontier ↔ cfg.Ready node := by
+    node ∈ cfg.frontier ↔ cfg.Enabled node := by
   classical
-  simp [frontier, Ready]
+  simp [frontier, Enabled]
 
 theorem mem_nodes_of_mem_frontier
     {cfg : G.Configuration} {node : G.Node}
@@ -677,7 +677,7 @@ theorem not_terminal_of_mem_frontier
     (G.mem_done_iff cfg.result node).mp hdone |>.2
   cases hresult : cfg.result node <;> simp [hresult] at hnone hsome
 
-/-- A nonterminal configuration has some unfinished graph node. -/
+/-- A nonterminal configuration has some unfinished event node. -/
 theorem exists_unfinished_of_not_terminal
     {cfg : G.Configuration}
     (hterminal : ¬ cfg.terminal) :
@@ -693,11 +693,11 @@ theorem exists_unfinished_of_not_terminal
       apply hnot_done
       exact (G.mem_done_iff cfg.result node).mpr (by simp [hnode, hresult])
 
-/-- If the configuration is nonterminal, a minimal unfinished node is ready. -/
-theorem exists_ready_of_not_terminal
+/-- If the configuration is nonterminal, a minimal unfinished node is enabled. -/
+theorem exists_enabled_of_not_terminal
     {cfg : G.Configuration}
     (hterminal : ¬ cfg.terminal) :
-    ∃ node, cfg.Ready node := by
+    ∃ node, cfg.Enabled node := by
   classical
   rcases cfg.exists_unfinished_of_not_terminal hterminal with
     ⟨witness, hwitness_node, hwitness_unfinished⟩
@@ -736,20 +736,20 @@ theorem exists_ready_of_not_terminal
     hmin prereq (by simp [unfinished, hpre_node, hpre_none])
   exact (Nat.not_lt_of_ge hle) (G.prereq_rank_lt hnode hpre)
 
-/-- A rank-minimal unfinished node is ready.
+/-- A rank-minimal unfinished node is enabled.
 
 This is the graph-level form of the "linear read is sufficient" principle:
 if a reader scans nodes in the graph's rank order and stops at the first
 unfinished node, that node is executable. Dependencies cannot be waiting
 behind it, because prerequisites have strictly smaller rank. -/
-theorem ready_of_rank_minimal_unfinished
+theorem enabled_of_rank_minimal_unfinished
     {cfg : G.Configuration} {node : G.Node}
     (hnode : node ∈ G.nodes)
     (hunfinished : (cfg.result node).isNone)
     (hmin :
       ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
         G.rank node ≤ G.rank other) :
-    cfg.Ready node := by
+    cfg.Enabled node := by
   refine ⟨hnode, hunfinished, ?_⟩
   intro prereq hpre
   have hpre_node : prereq ∈ G.nodes :=
@@ -766,15 +766,15 @@ theorem ready_of_rank_minimal_unfinished
   exact (Nat.not_lt_of_ge (hmin prereq hpre_node hpre_unfinished))
     (G.prereq_rank_lt hnode hpre)
 
-/-- Every nonterminal graph configuration has a ready node that is
+/-- Every nonterminal event-graph configuration has an enabled node that is
 rank-minimal among all unfinished nodes.
 
 Equivalently: the rank-ordered linear presentation never gets stuck before
 the graph execution does. -/
-theorem exists_rank_minimal_ready_of_not_terminal
+theorem exists_rank_minimal_enabled_of_not_terminal
     {cfg : G.Configuration}
     (hterminal : ¬ cfg.terminal) :
-    ∃ node, cfg.Ready node ∧
+    ∃ node, cfg.Enabled node ∧
       ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
         G.rank node ≤ G.rank other := by
   classical
@@ -804,7 +804,7 @@ theorem exists_rank_minimal_ready_of_not_terminal
       | some slice => simp [hresult] at hother_unfinished
     exact hmin other (by simp [unfinished, hother, hother_none])
   exact ⟨node,
-    cfg.ready_of_rank_minimal_unfinished hnode hnode_unfinished' hmin',
+    cfg.enabled_of_rank_minimal_unfinished hnode hnode_unfinished' hmin',
     hmin'⟩
 
 /-- A nonterminal configuration has a nonempty executable frontier. -/
@@ -812,8 +812,8 @@ theorem frontier_nonempty_of_not_terminal
     {cfg : G.Configuration}
     (hterminal : ¬ cfg.terminal) :
     cfg.frontier.Nonempty := by
-  rcases cfg.exists_ready_of_not_terminal hterminal with ⟨node, hready⟩
-  exact ⟨node, (cfg.mem_frontier_iff node).mpr hready⟩
+  rcases cfg.exists_enabled_of_not_terminal hterminal with ⟨node, henabled⟩
+  exact ⟨node, (cfg.mem_frontier_iff node).mpr henabled⟩
 
 /-- Replace the result at one node. -/
 noncomputable def updateResult
@@ -836,7 +836,7 @@ noncomputable def updateResult
   classical
   simp [updateResult, h]
 
-/-- Execute one ready graph node with a legal result, producing the extensional
+/-- Execute one enabled event node with a legal result, producing the extensional
 successor configuration. -/
 noncomputable def withResult
     (cfg : G.Configuration) {node : G.Node} (slice : WriteSlice G)
@@ -890,8 +890,8 @@ noncomputable def withResult
       exact cfg.legal holdResult
 
 /-- A distinct frontier node remains on the frontier after executing another
-frontier node. Executing one ready graph event only records that event's
-result; it does not invalidate any other ready event. -/
+frontier node. Executing one enabled event only records that event's
+result; it does not invalidate any other enabled event. -/
 theorem withResult_mem_frontier_of_ne
     (cfg : G.Configuration)
     {first second : G.Node} {slice : WriteSlice G}
@@ -916,7 +916,7 @@ theorem withResult_mem_frontier_of_ne
       simp [withResult, updateResult]
     · simpa [withResult, updateResult, hpreq] using hdoneData.2
 
-/-- Frontier execution has a diamond property: two distinct ready graph events
+/-- Frontier execution has a diamond property: two distinct enabled events
 can be linearized in either order, and after both have executed the same
 extensional configuration is reached. -/
 theorem withResult_comm
@@ -957,7 +957,7 @@ end Configuration
 domain are finite. The configuration invariant is proof data over a finite
 result assignment. -/
 @[reducible] noncomputable instance Configuration.instFintype
-    (G : Vegas.ProtocolGraph Player L)
+    (G : Vegas.EventGraph Player L)
     [Fintype G.Node] [Fintype G.Field]
     [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
     Fintype G.Configuration := by
@@ -999,6 +999,6 @@ result assignment. -/
         rfl }
   exact Fintype.ofEquiv ValidResult e.symm
 
-end ProtocolGraph
+end EventGraph
 
 end Vegas

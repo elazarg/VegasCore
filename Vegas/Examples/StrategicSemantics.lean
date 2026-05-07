@@ -35,10 +35,10 @@ noncomputable def defaultPureStrategy
     (pureKernelGame g).Strategy who := by
   classical
   let horizon := syntaxSteps g.prog
-  let G := (syntaxGraphFOSGView g).toBoundedFOSG horizon
+  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
   let hLeg : G.LegalObservable := by
     simpa [G, horizon] using
-      syntaxGraphFOSGView_toBoundedFOSG_legalObservable g horizon
+      eventGraphFOSGView_toBoundedFOSG_legalObservable g horizon
   let chooseMove : G.ReachablePureStrategy who := fun s =>
     Classical.choose (G.availableMoves_nonempty (Classical.choose s.2) who)
   refine ⟨chooseMove, ?_⟩
@@ -193,18 +193,18 @@ noncomputable def rowCommitNode : ProgramNode Prisoners.program :=
 (`false` means defect in `Prisoners.lean`). -/
 noncomputable def rowDefectSlice : ProgramField.WriteSlice Prisoners.program :=
   ProgramField.singleSlice (ProgramField.writtenBy rowCommitNode)
-    (ProtocolGraph.StoredValue.hidden false)
+    (EventGraph.StoredValue.hidden false)
 
 /-- The generated protocol-graph player action corresponding to Row's
 source-level choice to defect at the first commitment. -/
 noncomputable def rowDefectAction :
-    ProtocolGraph.PlayerAction
-      (syntaxProtocolGraph Prisoners.game) Prisoners.Player.row where
+    EventGraph.PlayerAction
+      (programEventGraph Prisoners.game) Prisoners.Player.row where
   node := rowCommitNode
   slice := rowDefectSlice
 
 theorem rowDefectSlice_legal :
-    (syntaxProtocolGraph Prisoners.game).sliceLegal
+    (programEventGraph Prisoners.game).sliceLegal
       rowCommitNode rowDefectSlice := by
   change ProgramNode.sliceLegal Prisoners.game.obligations
     rowCommitNode rowDefectSlice
@@ -214,13 +214,13 @@ theorem rowDefectSlice_legal :
   exact ⟨false, rfl⟩
 
 theorem rowDefectAction_legal_initial :
-    (syntaxProtocolGraph Prisoners.game).actionLegal
-      (ProtocolGraph.Configuration.initial
-        (syntaxProtocolGraph Prisoners.game)).result
+    (programEventGraph Prisoners.game).actionLegal
+      (EventGraph.Configuration.initial
+        (programEventGraph Prisoners.game)).result
       rowCommitNode rowDefectSlice := by
   change ProgramNode.actionLegal Prisoners.game.env Prisoners.game.obligations
-    (ProtocolGraph.Configuration.initial
-      (syntaxProtocolGraph Prisoners.game)).result
+    (EventGraph.Configuration.initial
+      (programEventGraph Prisoners.game)).result
     rowCommitNode rowDefectSlice
   unfold ProgramNode.actionLegal
   unfold ProgramNode.sem
@@ -230,7 +230,7 @@ theorem rowDefectAction_legal_initial :
     have hread_empty := hread
     simp only [Prisoners.game, Prisoners.Γ0, eraseVCtx_nil, eraseVCtx_cons,
       erasePubVCtx_cons_pub, erasePubVCtx_cons_hidden, erasePubVCtx_nil,
-      ProgramField.commitGraphGuard, ProgramField.currentFields,
+      ProgramField.commitEventGuard, ProgramField.currentFields,
       VCtxField.enumerate, List.map_nil, List.toFinset_nil] at hread_empty
     cases hread_empty
   · rfl
@@ -251,12 +251,12 @@ theorem rowCommitNode_prereqs_eq_empty :
 
 theorem rowCommitNode_initial_frontier :
     rowCommitNode ∈
-      (ProtocolGraph.Configuration.initial
-        (syntaxProtocolGraph Prisoners.game)).frontier := by
-  apply (ProtocolGraph.Configuration.mem_frontier_iff
-    (cfg := ProtocolGraph.Configuration.initial
-      (syntaxProtocolGraph Prisoners.game)) rowCommitNode).mpr
-  rw [ProtocolGraph.Configuration.Ready]
+      (EventGraph.Configuration.initial
+        (programEventGraph Prisoners.game)).frontier := by
+  apply (EventGraph.Configuration.mem_frontier_iff
+    (cfg := EventGraph.Configuration.initial
+      (programEventGraph Prisoners.game)) rowCommitNode).mpr
+  rw [EventGraph.Configuration.Enabled]
   refine ⟨?_, ?_, ?_⟩
   · exact ProgramNode.mem_finset Prisoners.program rowCommitNode
   · rfl
@@ -272,7 +272,7 @@ theorem rowCommitNode_actor :
       some Prisoners.Player.row := by
   have hsem : ∃ field guard,
       ProgramNode.sem Prisoners.game.obligations rowCommitNode =
-          ProtocolGraph.NodeSem.commit Prisoners.Player.row field guard := by
+          EventGraph.NodeSem.commit Prisoners.Player.row field guard := by
     unfold ProgramNode.sem
     dsimp [rowCommitNode, Prisoners.game, Prisoners.program]
     refine ⟨_, _, rfl⟩
@@ -281,9 +281,9 @@ theorem rowCommitNode_actor :
   rfl
 
 theorem rowDefectAction_available_initial :
-    rowDefectAction ∈ ProtocolGraph.available
-      (syntaxProtocolGraph Prisoners.game)
-      (ProtocolGraph.Configuration.initial (syntaxProtocolGraph Prisoners.game))
+    rowDefectAction ∈ EventGraph.available
+      (programEventGraph Prisoners.game)
+      (EventGraph.Configuration.initial (programEventGraph Prisoners.game))
       Prisoners.Player.row := by
   refine ⟨rowCommitNode_initial_frontier, ?_,
     rowDefectSlice_legal, rowDefectAction_legal_initial⟩

@@ -1,5 +1,5 @@
 import Vegas.ViewProjection
-import Vegas.Protocol.SyntaxGraph
+import Vegas.Protocol.ProgramEventGraph
 
 /-!
 # Visibility Soundness Theorems
@@ -57,7 +57,7 @@ theorem commitGuard_eval_eq_of_projectView_eq
 @[simp] theorem ProgramField.singleSlice_ne
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     {field other : ProgramField p}
-    (value : ProtocolGraph.StoredValue (L.Val field.ty))
+    (value : EventGraph.StoredValue (L.Val field.ty))
     (h : other ≠ field) :
     ProgramField.singleSlice field value other = none := by
   simp [ProgramField.singleSlice, h]
@@ -67,28 +67,28 @@ private theorem ProgramNode.commit_target_owner_of_sem :
       (obs : ProgramNode.ProgramObligations p) →
       (node : ProgramNode p) →
       {commitWho : P} → {target : ProgramField p} →
-      {guard : ProtocolGraph.GraphGuard L (ProgramField p)
+      {guard : EventGraph.EventGuard L (ProgramField p)
         (fun field => field.ty) target} →
       ProgramNode.sem obs node =
-        ProtocolGraph.NodeSem.commit commitWho target guard →
+        EventGraph.NodeSem.commit commitWho target guard →
       target.owner = some commitWho
   | _, .letExpr x e k, obs, .letHere, _, _, _, hsem => by
       simp [ProgramNode.sem] at hsem
   | _, .letExpr x e k, obs, .letTail node, commitWho, target, guard, hsem => by
       cases hinner : ProgramNode.sem obs.letTail node with
       | assign field expr =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.letTail innerTarget)
+              EventGraph.NodeSem.commit owner (.letTail innerTarget)
                   (innerGuard.mapFields ProgramField.letTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields]
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields]
               using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
@@ -101,18 +101,18 @@ private theorem ProgramNode.commit_target_owner_of_sem :
   | _, .sample x D k, obs, .sampleTail node, commitWho, target, guard, hsem => by
       cases hinner : ProgramNode.sem obs.sampleTail node with
       | assign field expr =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.sampleTail innerTarget)
+              EventGraph.NodeSem.commit owner (.sampleTail innerTarget)
                   (innerGuard.mapFields ProgramField.sampleTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields]
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields]
               using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
@@ -122,11 +122,11 @@ private theorem ProgramNode.commit_target_owner_of_sem :
             ProgramNode.commit_target_owner_of_sem obs.sampleTail node hinner
   | _, .commit x who (b := b) R k, obs, .commitHere, commitWho, target, guard, hsem => by
       change
-        ProtocolGraph.NodeSem.commit who
+        EventGraph.NodeSem.commit who
             (ProgramField.writtenBy
               (.commitHere (x := x) (who := who) (R := R) (k := k)))
             _ =
-          ProtocolGraph.NodeSem.commit commitWho target guard at hsem
+          EventGraph.NodeSem.commit commitWho target guard at hsem
       injection hsem with howner htarget hguard
       subst commitWho
       subst target
@@ -138,18 +138,18 @@ private theorem ProgramNode.commit_target_owner_of_sem :
   | _, .commit x who R k, obs, .commitTail node, commitWho, target, guard, hsem => by
       cases hinner : ProgramNode.sem obs.commitTail node with
       | assign field expr =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.commitTail innerTarget)
+              EventGraph.NodeSem.commit owner (.commitTail innerTarget)
                   (innerGuard.mapFields ProgramField.commitTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields]
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields]
               using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
@@ -162,18 +162,18 @@ private theorem ProgramNode.commit_target_owner_of_sem :
   | _, .reveal y who x hx k, obs, .revealTail node, commitWho, target, guard, hsem => by
       cases hinner : ProgramNode.sem obs.revealTail node with
       | assign field expr =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.revealTail innerTarget)
+              EventGraph.NodeSem.commit owner (.revealTail innerTarget)
                   (innerGuard.mapFields ProgramField.revealTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [ProgramNode.sem, hinner, ProtocolGraph.NodeSem.mapFields]
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [ProgramNode.sem, hinner, EventGraph.NodeSem.mapFields]
               using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
@@ -187,11 +187,11 @@ private theorem ProgramNode.writer?_ne_of_ne_commit_target
     (obs : ProgramNode.ProgramObligations p)
     (node : ProgramNode p)
     {owner : P} {field candidate : ProgramField p}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField p)
+    {guard : EventGraph.EventGuard L (ProgramField p)
       (fun field => field.ty) field}
     (hsem :
       ProgramNode.sem obs node =
-        ProtocolGraph.NodeSem.commit owner field guard)
+        EventGraph.NodeSem.commit owner field guard)
     (hne : candidate ≠ field) :
     ProgramField.writer? candidate ≠ some node := by
   intro hwriter
@@ -209,8 +209,8 @@ private theorem ProgramNode.writer?_ne_of_ne_commit_target
   have hfieldWrite :
       field ∈ (ProgramNode.sem obs node).writeFields := by
     rw [hsem]
-    simp [ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-      ProtocolGraph.FieldWrite.field]
+    simp [EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+      EventGraph.FieldWrite.field]
   have hfieldEq : field = ProgramField.writtenBy node :=
     ProgramNode.eq_writtenBy_of_mem_writeFields obs node hfieldWrite
   exact hne (hcandidateEq.trans hfieldEq.symm)
@@ -219,23 +219,23 @@ private theorem ProgramNode.writer?_ne_of_ne_commit_target
 
 /-- Hidden commit payload changes do not alter public observation, beyond the
 public fact that the commit node has completed. -/
-theorem syntaxGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
+theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {owner : P} {field : ProgramField g.prog}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
     {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
-        ProtocolGraph.NodeSem.commit owner field guard)
-    (hleftLegal : (syntaxProtocolGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (syntaxProtocolGraph g).sliceLegal node rightSlice) :
-    syntaxGraphPublicView g
+        EventGraph.NodeSem.commit owner field guard)
+    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
+    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    eventGraphPublicView g
         (cfg.withResult leftSlice hfrontier hleftLegal) =
-      syntaxGraphPublicView g
+      eventGraphPublicView g
         (cfg.withResult rightSlice hfrontier hrightLegal) := by
   classical
   have htargetOwner : field.owner = some owner :=
@@ -247,8 +247,8 @@ theorem syntaxGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
   rcases hrightLegal with ⟨rightValue, rfl⟩
   ext candidate
   · by_cases hcandidate : candidate = node
-    · simp [syntaxGraphPublicView, ProtocolGraph.Configuration.withResult,
-        ProtocolGraph.Configuration.updateResult, hcandidate]
+    · simp [eventGraphPublicView, EventGraph.Configuration.withResult,
+        EventGraph.Configuration.updateResult, hcandidate]
     · change
         (if candidate = node then
             some (ProgramField.singleSlice field (.hidden leftValue))
@@ -263,10 +263,10 @@ theorem syntaxGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         subst candidate
         simp [htargetOwner] at hpublic
       have hvalueEq :
-          syntaxGraphConfigValue? g
+          eventGraphConfigValue? g
               (cfg.withResult (ProgramField.singleSlice field (.hidden leftValue))
                 hfrontier hleftLegal) candidate =
-            syntaxGraphConfigValue? g
+            eventGraphConfigValue? g
               (cfg.withResult (ProgramField.singleSlice field (.hidden rightValue))
                 hfrontier hrightLegal) candidate := by
         have hwriterNe :
@@ -274,56 +274,56 @@ theorem syntaxGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
           ProgramNode.writer?_ne_of_ne_commit_target
             g.obligations node hsem hne
         have hleftSame :
-            syntaxGraphConfigValue? g
+            eventGraphConfigValue? g
                 (cfg.withResult
                   (ProgramField.singleSlice field (.hidden leftValue))
                   hfrontier hleftLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
-          simpa [syntaxGraphConfigValue?,
-            ProtocolGraph.Configuration.withResult,
-            ProtocolGraph.Configuration.updateResult] using
+          simpa [eventGraphConfigValue?,
+            EventGraph.Configuration.withResult,
+            EventGraph.Configuration.updateResult] using
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
               (slice := ProgramField.singleSlice field (.hidden leftValue))
               hwriterNe
         have hrightSame :
-            syntaxGraphConfigValue? g
+            eventGraphConfigValue? g
                 (cfg.withResult
                   (ProgramField.singleSlice field (.hidden rightValue))
                   hfrontier hrightLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
-          simpa [syntaxGraphConfigValue?,
-            ProtocolGraph.Configuration.withResult,
-            ProtocolGraph.Configuration.updateResult] using
+          simpa [eventGraphConfigValue?,
+            EventGraph.Configuration.withResult,
+            EventGraph.Configuration.updateResult] using
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
               (slice := ProgramField.singleSlice field (.hidden rightValue))
               hwriterNe
         exact hleftSame.trans hrightSame.symm
-      simp [syntaxGraphPublicView, hpublic, hvalueEq]
-    · simp [syntaxGraphPublicView, hpublic]
+      simp [eventGraphPublicView, hpublic, hvalueEq]
+    · simp [eventGraphPublicView, hpublic]
 
 /-- A hidden commit payload is invisible to every player other than its owner. -/
-theorem syntaxGraph_hiddenCommit_observe_eq_of_ne_owner
+theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
     (g : WFProgram P L) (receiver owner : P)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {field : ProgramField g.prog}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
     {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
-        ProtocolGraph.NodeSem.commit owner field guard)
+        EventGraph.NodeSem.commit owner field guard)
     (hne : receiver ≠ owner)
-    (hleftLegal : (syntaxProtocolGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (syntaxProtocolGraph g).sliceLegal node rightSlice) :
-    syntaxGraphObserve g receiver
+    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
+    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    eventGraphObserve g receiver
         (cfg.withResult leftSlice hfrontier hleftLegal) =
-      syntaxGraphObserve g receiver
+      eventGraphObserve g receiver
         (cfg.withResult rightSlice hfrontier hrightLegal) := by
   classical
   have htargetOwner : field.owner = some owner :=
@@ -344,10 +344,10 @@ theorem syntaxGraph_hiddenCommit_observe_eq_of_ne_owner
           Option.some.inj (htargetOwner.symm.trans hreceiver)
         exact hne howner.symm
     have hvalueEq :
-        syntaxGraphConfigValue? g
+        eventGraphConfigValue? g
             (cfg.withResult (ProgramField.singleSlice field (.hidden leftValue))
               hfrontier hleftLegal) candidate =
-          syntaxGraphConfigValue? g
+          eventGraphConfigValue? g
             (cfg.withResult (ProgramField.singleSlice field (.hidden rightValue))
               hfrontier hrightLegal) candidate := by
       have hwriterNe :
@@ -355,64 +355,64 @@ theorem syntaxGraph_hiddenCommit_observe_eq_of_ne_owner
         ProgramNode.writer?_ne_of_ne_commit_target
           g.obligations node hsem hneTarget
       have hleftSame :
-          syntaxGraphConfigValue? g
+          eventGraphConfigValue? g
               (cfg.withResult
                 (ProgramField.singleSlice field (.hidden leftValue))
                 hfrontier hleftLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
-        simpa [syntaxGraphConfigValue?,
-          ProtocolGraph.Configuration.withResult,
-          ProtocolGraph.Configuration.updateResult] using
+        simpa [eventGraphConfigValue?,
+          EventGraph.Configuration.withResult,
+          EventGraph.Configuration.updateResult] using
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
             (slice := ProgramField.singleSlice field (.hidden leftValue))
             hwriterNe
       have hrightSame :
-          syntaxGraphConfigValue? g
+          eventGraphConfigValue? g
               (cfg.withResult
                 (ProgramField.singleSlice field (.hidden rightValue))
                 hfrontier hrightLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
-        simpa [syntaxGraphConfigValue?,
-          ProtocolGraph.Configuration.withResult,
-          ProtocolGraph.Configuration.updateResult] using
+        simpa [eventGraphConfigValue?,
+          EventGraph.Configuration.withResult,
+          EventGraph.Configuration.updateResult] using
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
             (slice := ProgramField.singleSlice field (.hidden rightValue))
             hwriterNe
       exact hleftSame.trans hrightSame.symm
-    simp [syntaxGraphObserve, hvisible, hvalueEq]
-  · simp [syntaxGraphObserve, hvisible]
+    simp [eventGraphObserve, hvisible, hvalueEq]
+  · simp [eventGraphObserve, hvisible]
 
 /-- The owner of a hidden commit can observe the committed payload after the
 commit node has executed. -/
-theorem syntaxGraph_hiddenCommit_observe_owner_sees_payload
+theorem eventGraph_hiddenCommit_observe_owner_sees_payload
     (g : WFProgram P L) (owner : P)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {field : ProgramField g.prog}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
     {slice : ProgramField.WriteSlice g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (_hsem :
       ProgramNode.sem g.obligations node =
-        ProtocolGraph.NodeSem.commit owner field guard)
+        EventGraph.NodeSem.commit owner field guard)
     (hvisible : field.VisibleTo owner)
-    (hlegal : (syntaxProtocolGraph g).sliceLegal node slice) :
-    (syntaxGraphObserve g owner
+    (hlegal : (programEventGraph g).sliceLegal node slice) :
+    (eventGraphObserve g owner
         (cfg.withResult slice hfrontier hlegal)).value? field =
-      syntaxGraphConfigValue? g
+      eventGraphConfigValue? g
         (cfg.withResult slice hfrontier hlegal) field := by
-  simp [syntaxGraphObserve, hvisible]
+  simp [eventGraphObserve, hvisible]
 
 /-- Reveal nodes are the declassification primitive: the public observation of
 the reveal target is exactly the target's graph value after the reveal step. -/
-theorem syntaxGraph_reveal_is_declassification
+theorem eventGraph_reveal_is_declassification
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {source target : ProgramField g.prog}
     {sameTy : source.ty = target.ty}
@@ -420,32 +420,32 @@ theorem syntaxGraph_reveal_is_declassification
     (hfrontier : node ∈ cfg.frontier)
     (_hsem :
       ProgramNode.sem g.obligations node =
-        ProtocolGraph.NodeSem.reveal source target sameTy)
+        EventGraph.NodeSem.reveal source target sameTy)
     (hpublic : target.owner = none)
-    (hlegal : (syntaxProtocolGraph g).sliceLegal node slice) :
-    (syntaxGraphPublicView g
+    (hlegal : (programEventGraph g).sliceLegal node slice) :
+    (eventGraphPublicView g
         (cfg.withResult slice hfrontier hlegal)).value? target =
-      syntaxGraphConfigValue? g
+      eventGraphConfigValue? g
         (cfg.withResult slice hfrontier hlegal) target := by
-  simp [syntaxGraphPublicView, hpublic]
+  simp [eventGraphPublicView, hpublic]
 
 /-- Terminal outcomes are equal for terminal configurations whose assembled
 final environments have equal public erasures. -/
 theorem terminalOutcome_eq_of_erasePubEnv_eq
     (g : WFProgram P L)
-    {left right : (syntaxProtocolGraph g).Configuration}
+    {left right : (programEventGraph g).Configuration}
     (_hleftTerminal : left.terminal)
     (_hrightTerminal : right.terminal)
     {leftEnv rightEnv : VEnv L (ProgramField.finalVCtx g.prog)}
     (hleftEnv :
-      ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g left) =
+      ProgramField.finalEnv? g.prog (eventGraphConfigValue? g left) =
         some leftEnv)
     (hrightEnv :
-      ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g right) =
+      ProgramField.finalEnv? g.prog (eventGraphConfigValue? g right) =
         some rightEnv)
     (hpub : VEnv.erasePubEnv leftEnv = VEnv.erasePubEnv rightEnv) :
-    syntaxGraphOutcome g left = syntaxGraphOutcome g right := by
-  simp [syntaxGraphOutcome, hleftEnv, hrightEnv,
+    eventGraphOutcome g left = eventGraphOutcome g right := by
+  simp [eventGraphOutcome, hleftEnv, hrightEnv,
     evalPayoffs_eq_of_erasePubEnv_eq (payoffs := ProgramField.finalPayoffs g.prog)
       hpub]
 
@@ -484,47 +484,47 @@ and the receiver's private observation are unchanged by changing only that
 payload. -/
 theorem commit_payload_no_signal_to_nonowner
     (g : WFProgram P L) (receiver owner : P)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {field : ProgramField g.prog}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
     {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
-        ProtocolGraph.NodeSem.commit owner field guard)
+        EventGraph.NodeSem.commit owner field guard)
     (hne : receiver ≠ owner)
-    (hleftLegal : (syntaxProtocolGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (syntaxProtocolGraph g).sliceLegal node rightSlice) :
-    syntaxGraphPublicView g
+    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
+    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    eventGraphPublicView g
         (cfg.withResult leftSlice hfrontier hleftLegal) =
-        syntaxGraphPublicView g
+        eventGraphPublicView g
           (cfg.withResult rightSlice hfrontier hrightLegal) ∧
-      syntaxGraphObserve g receiver
+      eventGraphObserve g receiver
         (cfg.withResult leftSlice hfrontier hleftLegal) =
-        syntaxGraphObserve g receiver
+        eventGraphObserve g receiver
           (cfg.withResult rightSlice hfrontier hrightLegal) := by
   exact
-    ⟨syntaxGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
+    ⟨eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         g hfrontier hsem hleftLegal hrightLegal,
-      syntaxGraph_hiddenCommit_observe_eq_of_ne_owner
+      eventGraph_hiddenCommit_observe_eq_of_ne_owner
         g receiver owner hfrontier hsem hne hleftLegal hrightLegal⟩
 
 /-- If two configurations agree on every field visible to a player, then that
 player's current private observation is the same in both configurations. -/
 theorem unrevealed_hidden_values_no_signal
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
+    {left right : (programEventGraph g).Configuration}
     (hvisible :
       ∀ field : ProgramField g.prog,
         field.VisibleTo who →
-          syntaxGraphConfigValue? g left field =
-            syntaxGraphConfigValue? g right field) :
-    syntaxGraphObserve g who left = syntaxGraphObserve g who right := by
+          eventGraphConfigValue? g left field =
+            eventGraphConfigValue? g right field) :
+    eventGraphObserve g who left = eventGraphObserve g who right := by
   ext field
   by_cases hfield : field.VisibleTo who
-  · simp [syntaxGraphObserve, hfield, hvisible field hfield]
-  · simp [syntaxGraphObserve, hfield]
+  · simp [eventGraphObserve, hfield, hvisible field hfield]
+  · simp [eventGraphObserve, hfield]
 
 end Vegas

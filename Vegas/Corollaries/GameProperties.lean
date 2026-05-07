@@ -13,7 +13,7 @@ import GameTheory.Theorems.CorrelatedEqExistence
 /-!
 # Vegas structural game-theory corollaries
 
-Selected structural corollaries for the PMF behavioral graph-machine FOSG game.
+Selected structural corollaries for the PMF behavioral event-graph machine FOSG game.
 -/
 
 namespace Vegas

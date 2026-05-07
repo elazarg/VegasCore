@@ -18,7 +18,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- The bounded FOSG used by the finite strategy semantics of a checked Vegas
 program. -/
 noncomputable abbrev strategyFOSG (g : WFProgram P L) :=
-  (syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)
+  (eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)
 
 /-- Reachable information states at the finite strategy horizon. -/
 abbrev StrategyInfoState
@@ -28,7 +28,7 @@ abbrev StrategyInfoState
 /-- Optional local moves at the finite strategy horizon. -/
 abbrev StrategyMove
     (g : WFProgram P L) (who : P) : Type :=
-  Option ((syntaxGraphFOSGView g).Act who)
+  Option ((eventGraphFOSGView g).Act who)
 
 /-- Local availability of an optional move at a reachable information state. -/
 def MoveAvailableAtInfo

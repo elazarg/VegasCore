@@ -80,22 +80,22 @@ end IdentityBackend
 
 noncomputable abbrev syntaxConstructorIdentityBackend :
     Machine.StochasticStepRefinement
-      (syntaxGraphMachine SyntaxConstructors.game)
-      (syntaxGraphMachine SyntaxConstructors.game) :=
+      (eventGraphMachine SyntaxConstructors.game)
+      (eventGraphMachine SyntaxConstructors.game) :=
   Machine.StochasticStepRefinement.refl
-    (syntaxGraphMachine SyntaxConstructors.game)
+    (eventGraphMachine SyntaxConstructors.game)
 
 theorem syntaxConstructorIdentityBackend_traceProjection
-    (law : (syntaxGraphMachine SyntaxConstructors.game).BlockLaw)
+    (law : (eventGraphMachine SyntaxConstructors.game).BlockLaw)
     (horizon : Nat)
-    (trace : (syntaxGraphMachine SyntaxConstructors.game).BlockTrace) :
+    (trace : (eventGraphMachine SyntaxConstructors.game).BlockTrace) :
     PMF.map syntaxConstructorIdentityBackend.projectBlockTrace
-        ((syntaxGraphMachine SyntaxConstructors.game).blockTraceDistFrom
+        ((eventGraphMachine SyntaxConstructors.game).blockTraceDistFrom
           law horizon trace) =
-      (syntaxGraphMachine SyntaxConstructors.game).blockTraceDistFrom
+      (eventGraphMachine SyntaxConstructors.game).blockTraceDistFrom
         law horizon trace :=
   IdentityBackend.refl_blockTraceDist_project_eq
-    (syntaxGraphMachine SyntaxConstructors.game) law horizon trace
+    (eventGraphMachine SyntaxConstructors.game) law horizon trace
 
 end BackendExamples
 end Examples

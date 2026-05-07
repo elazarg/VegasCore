@@ -4,7 +4,7 @@ import Vegas.Protocol.Strategic
 /-!
 # Extensive-form presentation of checked programs
 
-The native Vegas execution path is syntax graph -> machine -> FOSG -> kernel
+The native Vegas execution path is event graph -> machine -> FOSG -> kernel
 game.  GameTheory also provides a canonical FOSG-to-augmented-EFG bridge. This
 file packages that bridge for checked Vegas programs and proves that the EFG
 presentation preserves the generated behavioral outcome distribution.
@@ -57,17 +57,17 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Finite private observations for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeObs
+/-- Finite private observations for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeObs
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype ((syntaxGraphMachine g).Obs who) := by
+    Fintype ((eventGraphMachine g).Obs who) := by
   classical
   letI : Fintype (ProgramField g.prog) :=
     ProgramField.instFintype g.prog
   letI :
       ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
     fun field => ProgramField.instFintypeValue g field
-  change Fintype (SyntaxPrivateObs g who)
+  change Fintype (ProgramPrivateObs g who)
   exact Fintype.ofEquiv
     ((field : ProgramField g.prog) → Option (L.Val field.ty))
     { toFun := fun values => { value? := values }
@@ -80,17 +80,17 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
         cases obs
         rfl }
 
-/-- Decidable equality for private observations of the graph-native syntax
+/-- Decidable equality for private observations of the program event-graph
 machine. -/
-noncomputable instance syntaxGraphMachine.instDecidableEqObs
+noncomputable instance eventGraphMachine.instDecidableEqObs
     (g : WFProgram P L) (who : P) :
-    DecidableEq ((syntaxGraphMachine g).Obs who) :=
+    DecidableEq ((eventGraphMachine g).Obs who) :=
   Classical.decEq _
 
-/-- Finite public observations for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypePublic
+/-- Finite public observations for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypePublic
     (g : WFProgram P L) [FiniteDomains g] :
-    Fintype (syntaxGraphMachine g).Public := by
+    Fintype (eventGraphMachine g).Public := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
@@ -99,7 +99,7 @@ noncomputable instance syntaxGraphMachine.instDecidableEqObs
   letI :
       ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
     fun field => ProgramField.instFintypeValue g field
-  change Fintype (SyntaxPublicObs g)
+  change Fintype (ProgramPublicObs g)
   exact Fintype.ofEquiv
     ((ProgramNode g.prog → Bool) ×
       ((field : ProgramField g.prog) → Option (L.Val field.ty)))
@@ -114,55 +114,55 @@ noncomputable instance syntaxGraphMachine.instDecidableEqObs
         cases obs
         rfl }
 
-/-- Decidable equality for public observations of the graph-native syntax
+/-- Decidable equality for public observations of the program event-graph
 machine. -/
-noncomputable instance syntaxGraphMachine.instDecidableEqPublic
+noncomputable instance eventGraphMachine.instDecidableEqPublic
     (g : WFProgram P L) :
-    DecidableEq (syntaxGraphMachine g).Public :=
+    DecidableEq (eventGraphMachine g).Public :=
   Classical.decEq _
 
-/-- Decidable equality for graph-native syntax FOSG round actions. -/
-noncomputable instance syntaxGraphFOSGView.instDecidableEqAct
+/-- Decidable equality for event-graph FOSG round actions. -/
+noncomputable instance eventGraphFOSGView.instDecidableEqAct
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    DecidableEq ((syntaxGraphFOSGView g).Act who) :=
+    DecidableEq ((eventGraphFOSGView g).Act who) :=
   Classical.decEq _
 
-/-- Bounded syntax-graph FOSG used by the EFG bridge for a checked program. -/
-noncomputable abbrev syntaxGraphBoundedFOSGAt
+/-- Bounded event-graph FOSG used by the EFG bridge for a checked program. -/
+noncomputable abbrev eventGraphBoundedFOSGAt
     (g : WFProgram P L) :=
-  (syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)
+  (eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)
 
 /-- Canonical augmented EFG presentation of a checked Vegas program.
 
 This is obtained by applying the GameTheory FOSG-to-EFG bridge to the bounded
-syntax-graph FOSG at the program's source horizon. -/
-noncomputable abbrev syntaxGraphEFGAt
+event-graph FOSG at the program's source horizon. -/
+noncomputable abbrev eventGraphEFGAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :=
   GameTheory.FOSG.AugmentedEFGBridge.toPlainEFGOfBoundedHorizon
-    (G := syntaxGraphBoundedFOSGAt g)
-    ((syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon
+    (G := eventGraphBoundedFOSGAt g)
+    ((eventGraphFOSGView g).toBoundedFOSG_boundedHorizon
       (syntaxSteps g.prog))
 
 /-- Translate a generated Vegas behavioral profile to the canonical EFG
 behavioral profile. -/
-noncomputable def syntaxGraphEFGBehavioralProfileAt
+noncomputable def eventGraphEFGBehavioralProfileAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :=
   GameTheory.FOSG.AugmentedEFGBridge.translateBehavioralProfile
-    (G := syntaxGraphBoundedFOSGAt g)
+    (G := eventGraphBoundedFOSGAt g)
     (k := syntaxSteps g.prog)
     β.extend
 
 /-- Project a canonical EFG history outcome back to the public Vegas outcome. -/
-noncomputable def syntaxGraphEFGPublicOutcomeAt
+noncomputable def eventGraphEFGPublicOutcomeAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (syntaxGraphBoundedFOSGAt g).History → Outcome P :=
-  fun h => (syntaxGraphFOSGView g).boundedHistoryOutcome
+    (eventGraphBoundedFOSGAt g).History → Outcome P :=
+  fun h => (eventGraphFOSGView g).boundedHistoryOutcome
     (syntaxSteps g.prog) h
 
 /-- Player translation from the canonical EFG's finite player indices back to
 the original Vegas players. -/
-noncomputable def syntaxGraphEFGOrigPlayerAt
+noncomputable def eventGraphEFGOrigPlayerAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.FOSG.AugmentedEFGBridge.PlayerIx (ι := P) → P := by
   classical
@@ -172,24 +172,24 @@ noncomputable def syntaxGraphEFGOrigPlayerAt
       (ι := P)
       p
 
-/-- The root bounded syntax-graph FOSG history is nonterminal when the source
+/-- The root bounded event-graph FOSG history is nonterminal when the source
 program has at least one protocol node and the presentation horizon is
 positive. -/
-theorem syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+theorem eventGraphBoundedFOSGAt_root_not_terminal_of_node
     (g : WFProgram P L) [FiniteDomains g]
     (node : ProgramNode g.prog)
     (hsteps : 0 < syntaxSteps g.prog) :
-    ¬ (syntaxGraphBoundedFOSGAt g).terminal
+    ¬ (eventGraphBoundedFOSGAt g).terminal
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt g)).lastState := by
+          (eventGraphBoundedFOSGAt g)).lastState := by
   intro hterminal
   rcases hterminal with hmachine | hcut
-  · have hnode : node ∈ (syntaxProtocolGraph g).nodes := by
+  · have hnode : node ∈ (programEventGraph g).nodes := by
       exact ProgramNode.mem_finset g.prog node
     have hdone := hmachine hnode
-    simp [syntaxGraphMachine, ProtocolGraph.toMachine,
-      ProtocolGraph.Configuration.done, ProtocolGraph.done,
-      ProtocolGraph.Configuration.initial] at hdone
+    simp [eventGraphMachine, EventGraph.toMachine,
+      EventGraph.Configuration.done, EventGraph.done,
+      EventGraph.Configuration.initial] at hdone
   · simp [GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root] at hcut
     omega
 
@@ -200,24 +200,24 @@ projecting EFG histories to public outcomes.
 This is the example-facing "translated to the expected EFG" theorem: the EFG
 tree is the canonical serialization of the generated FOSG, and its public
 outcome law is exactly the Vegas strategic semantics. -/
-theorem syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+theorem eventGraphEFGAt_outcomeKernel_map_publicOutcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt g)
-        ((syntaxGraphEFGAt g).toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt g β)) =
+    PMF.map (eventGraphEFGPublicOutcomeAt g)
+        ((eventGraphEFGAt g).toKernelGame.outcomeKernel
+          (eventGraphEFGBehavioralProfileAt g β)) =
       (pmfBehavioralKernelGameAt g).outcomeKernel β := by
   classical
   have hbridge :
-      (syntaxGraphEFGAt g).toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt g β) =
-        (syntaxGraphBoundedFOSGAt g).runDist
+      (eventGraphEFGAt g).toKernelGame.outcomeKernel
+          (eventGraphEFGBehavioralProfileAt g β) =
+        (eventGraphBoundedFOSGAt g).runDist
           (syntaxSteps g.prog) β.extend := by
-    simpa [syntaxGraphEFGAt, syntaxGraphEFGBehavioralProfileAt,
-      syntaxGraphBoundedFOSGAt] using
+    simpa [eventGraphEFGAt, eventGraphEFGBehavioralProfileAt,
+      eventGraphBoundedFOSGAt] using
       (GameTheory.FOSG.AugmentedEFGBridge.toPlainEFGOfBoundedHorizon_outcomeKernel_eq_runDist
-          (G := syntaxGraphBoundedFOSGAt g)
-          ((syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon
+          (G := eventGraphBoundedFOSGAt g)
+          ((eventGraphFOSGView g).toBoundedFOSG_boundedHorizon
             (syntaxSteps g.prog))
           β.extend)
   rw [hbridge]

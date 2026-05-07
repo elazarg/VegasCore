@@ -4,7 +4,7 @@
 
 \usepackage[margin=1in]{geometry}
 
-\title{VegasCore: Graph-Native Protocol Semantics}
+\title{VegasCore: Event-Graph-Native Protocol Semantics}
 \author{}
 \date{}
 
@@ -13,17 +13,17 @@
 
 \begin{abstract}
 VegasCore is a Lean~4 mechanization of finite games written as programs.
-Checked Vegas syntax is compiled to an invariant-carrying protocol graph; that
+Checked Vegas syntax is elaborated to an invariant-carrying event graph; that
 graph is interpreted as a probabilistic, observation-aware machine; sequential
 FOSG views and kernel games are derived from the machine. The supported
 semantic path is
 \[
-  \WFP \longrightarrow \leanref{ProtocolGraph}
+  \WFP \longrightarrow \leanref{EventGraph}
   \longrightarrow \leanref{Machine}
   \longrightarrow \leanref{Machine.FOSGView}
   \longrightarrow \leanref{KernelGame}.
 \]
-The source language is the user-facing way to define games. The graph-native
+The source language is the user-facing way to define games. The event-graph
 machine is the semantic owner.
 \end{abstract}
 
@@ -51,20 +51,20 @@ The executable protocol stack is concentrated in \leanref{Vegas.Protocol}.
 \toprule
 File & Role \\
 \midrule
-\leanref{Protocol/Graph.lean} &
-dependency and visibility graph \\
+\leanref{Protocol/EventGraph.lean} &
+finite typed event graph \\
 \leanref{Protocol/Machine.lean} &
 probabilistic observation-aware machine carrier \\
-\leanref{Protocol/GraphMachine.lean} &
-graph configurations as machine states \\
-\leanref{Protocol/SyntaxGraph.lean} &
-checked syntax to protocol graph, with finiteness and observability facts \\
+\leanref{Protocol/EventGraphMachine.lean} &
+event-graph configurations as machine states \\
+\leanref{Protocol/ProgramEventGraph.lean} &
+checked syntax elaborated to an event graph, with finiteness and observability facts \\
 \leanref{Protocol/Trace.lean} &
 bounded event/state traces and machine outcome kernels \\
 \leanref{Protocol/FOSG.lean} &
 sequential FOSG views derived from machines \\
 \leanref{Protocol/Strategic.lean} &
-finite syntax-graph kernel-game constructors \\
+finite program event-graph kernel-game constructors \\
 \leanref{Protocol/Kuhn.lean} &
 machine-native and Vegas-facing Kuhn realization theorems \\
 \leanref{Protocol/Backend.lean} &
@@ -73,19 +73,19 @@ machine-to-machine backend refinement obligations \\
 \end{tabular}
 \end{center}
 
-A protocol graph configuration is an extensional partial assignment of graph
+An event graph configuration is an extensional partial assignment of graph
 node results, together with the invariant that completed nodes are closed under
 dependencies. The frontier is computed from the assignment; it is not cached as
-machine state. A machine step executes one enabled graph event: a player-owned
+machine state. A machine step executes one enabled event: a player-owned
 frontier node via a legal write slice, or a non-player frontier node via the
 internal event channel.
 
 \begin{theorem}[Frontier stability]
-Let \(C\) be a protocol graph configuration. If \(a\) and \(b\) are distinct
+Let \(C\) be an event graph configuration. If \(a\) and \(b\) are distinct
 nodes on the frontier of \(C\), then after executing \(a\) with any legal result
 slice, \(b\) is still on the frontier of the successor configuration.
 
-In Lean this is \leanref{ProtocolGraph.Configuration.withResult_mem_frontier_of_ne}.
+In Lean this is \leanref{EventGraph.Configuration.withResult_mem_frontier_of_ne}.
 \end{theorem}
 
 \begin{theorem}[Frontier diamond]
@@ -98,14 +98,14 @@ Then the two linearizations reach the same extensional configuration:
   (C[b \mapsto s_b])[a \mapsto s_a].
 \]
 
-In Lean this is \leanref{ProtocolGraph.Configuration.withResult_comm}.
+In Lean this is \leanref{EventGraph.Configuration.withResult_comm}.
 \end{theorem}
 
 Thus a user may read a frontier execution linearly without losing semantic
 content: the linear order is presentation data. Intermediate transcripts may
-record which ready event happened first, but independent frontier events cannot
+record which enabled event happened first, but independent frontier events cannot
 race to change the final physical state. Any strategically relevant dependency
-must already be represented as a graph dependency, and therefore prevents the
+must already be represented as an event-graph dependency, and therefore prevents the
 dependent event from being on the same frontier.
 
 \section{FOSG As A View}
@@ -118,7 +118,7 @@ primitive-event carrier. Thus FOSG is the strategic interface to the same
 machine state space, not a second execution semantics.
 
 The finite checked-program view is obtained from
-\leanref{syntaxGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}
+\leanref{eventGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}
 provides the information-state-indexed strategy carriers used by the public
 kernel games.
 
@@ -173,7 +173,7 @@ The user-facing flow is:
 
 \begin{enumerate}[nosep]
 \item users write checked Vegas programs;
-\item checked syntax compiles to \leanref{ProtocolGraph};
+\item checked syntax elaborates to \leanref{EventGraph};
 \item the graph is interpreted as \leanref{Machine};
 \item FOSG views derive finite sequential-game structure from the machine;
 \item public kernel games and theorem statements use Vegas names.

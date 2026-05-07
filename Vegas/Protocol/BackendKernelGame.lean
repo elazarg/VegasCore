@@ -20,7 +20,7 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Per-pure-profile block-law lift from the canonical syntax machine to a
+/-- Per-pure-profile block-law lift from the canonical event-graph machine to a
 backend implementation.
 
 `specLaw_sound` is the bridge to the Stage 1 blocked-trace game: running the
@@ -29,38 +29,38 @@ spec block law for the syntax horizon must reproduce the existing
 structure BackendPureBlockLawLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g)) where
-  specLaw : pureProfileAt g → (syntaxGraphMachine g).BlockLaw
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
+  specLaw : pureProfileAt g → (eventGraphMachine g).BlockLaw
   backendLaw : pureProfileAt g → Impl.BlockLaw
   compatible :
     ∀ π, R.BlockLawCompatible (backendLaw π) (specLaw π)
   specLaw_sound :
     ∀ π,
-      (syntaxGraphMachine g).blockTraceDist
+      (eventGraphMachine g).blockTraceDist
           (specLaw π) (syntaxSteps g.prog) =
         (pureBlockedTraceKernelGameAt g).outcomeKernel π
 
-/-- Per-PMF-behavioral-profile block-law lift from the canonical syntax
+/-- Per-PMF-behavioral-profile block-law lift from the canonical event-graph
 machine to a backend implementation. -/
 structure BackendBehavioralBlockLawLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g)) where
-  specLaw : behavioralProfilePMFAt g → (syntaxGraphMachine g).BlockLaw
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
+  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).BlockLaw
   backendLaw : behavioralProfilePMFAt g → Impl.BlockLaw
   compatible :
     ∀ β, R.BlockLawCompatible (backendLaw β) (specLaw β)
   specLaw_sound :
     ∀ β,
-      (syntaxGraphMachine g).blockTraceDist
+      (eventGraphMachine g).blockTraceDist
           (specLaw β) (syntaxSteps g.prog) =
         (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
 
 /-- Backend blocked trace utility, read by projecting the backend terminal
-state back to the canonical syntax machine state. -/
+state back to the canonical event-graph machine state. -/
 noncomputable def backendBlockedTraceUtility
     (g : WFProgram P L) {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g)) :
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) :
     Impl.BlockTrace → GameTheory.Payoff P :=
   fun trace => syntaxBlockedTraceUtility g (R.projectBlockTrace trace)
 
@@ -72,7 +72,7 @@ implementation events. -/
 noncomputable def backendBlockedTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R) :
     GameTheory.KernelGame P where
   Strategy := pureStrategyAt g
@@ -85,7 +85,7 @@ noncomputable def backendBlockedTraceKernelGameAt
 noncomputable def backendPMFBehavioralBlockedTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R) :
     GameTheory.KernelGame P where
   Strategy := behavioralStrategyPMFAt g
@@ -97,7 +97,7 @@ noncomputable def backendPMFBehavioralBlockedTraceKernelGameAt
 @[simp] theorem backendBlockedTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R) :
     (backendBlockedTraceKernelGameAt g R lift).Strategy = pureStrategyAt g :=
   rfl
@@ -105,7 +105,7 @@ noncomputable def backendPMFBehavioralBlockedTraceKernelGameAt
 @[simp] theorem backendPMFBehavioralBlockedTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R) :
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).Strategy =
       behavioralStrategyPMFAt g :=
@@ -116,7 +116,7 @@ spec blocked-trace outcome kernel. -/
 theorem backendBlockedTraceKernelGameAt_outcomeKernel_map_project
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R)
     (π : pureProfileAt g) :
     PMF.map R.projectBlockTrace
@@ -130,7 +130,7 @@ theorem backendBlockedTraceKernelGameAt_outcomeKernel_map_project
       PMF.map R.projectBlockTrace
           (Impl.blockTraceDistFrom (lift.backendLaw π)
             (syntaxSteps g.prog) ([], Impl.init)) =
-        (syntaxGraphMachine g).blockTraceDist
+        (eventGraphMachine g).blockTraceDist
           (lift.specLaw π) (syntaxSteps g.prog) := by
     simpa [Machine.blockTraceDist,
       Machine.StochasticStepRefinement.projectBlockTrace, R.init_project]
@@ -147,7 +147,7 @@ the canonical spec PMF-behavioral blocked-trace outcome kernel. -/
 theorem backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R)
     (β : behavioralProfilePMFAt g) :
     PMF.map R.projectBlockTrace
@@ -161,7 +161,7 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
       PMF.map R.projectBlockTrace
           (Impl.blockTraceDistFrom (lift.backendLaw β)
             (syntaxSteps g.prog) ([], Impl.init)) =
-        (syntaxGraphMachine g).blockTraceDist
+        (eventGraphMachine g).blockTraceDist
           (lift.specLaw β) (syntaxSteps g.prog) := by
     simpa [Machine.blockTraceDist,
       Machine.StochasticStepRefinement.projectBlockTrace, R.init_project]
@@ -178,23 +178,23 @@ canonical syntax blocked traces to their checkpoint state. -/
 theorem backendProjectedStateDist_eq
     (g : WFProgram P L)
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     {backendDist : PMF Impl.BlockTrace}
-    {specDist : PMF (syntaxGraphMachine g).BlockTrace}
+    {specDist : PMF (eventGraphMachine g).BlockTrace}
     (hproject : PMF.map R.projectBlockTrace backendDist = specDist) :
     PMF.map (fun trace : Impl.BlockTrace => R.projectState trace.2)
         backendDist =
-      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+      PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
         specDist := by
   have h :=
     congrArg (fun μ =>
       PMF.map
-        (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2) μ)
+        (fun trace : (eventGraphMachine g).BlockTrace => trace.2) μ)
       hproject
   change
-    PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+    PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
         (PMF.map R.projectBlockTrace backendDist) =
-      PMF.map (fun trace : (syntaxGraphMachine g).BlockTrace => trace.2)
+      PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
         specDist at h
   rw [PMF.map_comp] at h
   simpa [Machine.StochasticStepRefinement.projectBlockTrace, Function.comp_def]
@@ -205,7 +205,7 @@ same expected utility for every pure profile. -/
 theorem backendBlockedTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R)
     (π : pureProfileAt g) (who : P) :
     (backendBlockedTraceKernelGameAt g R lift).eu π who =
@@ -215,12 +215,12 @@ theorem backendBlockedTraceKernelGameAt_eu_eq
     (backendBlockedTraceKernelGameAt g R lift).outcomeKernel π
   let specDist :=
     (pureBlockedTraceKernelGameAt g).outcomeKernel π
-  let backendState : Impl.BlockTrace → (syntaxGraphMachine g).State :=
+  let backendState : Impl.BlockTrace → (eventGraphMachine g).State :=
     fun trace => R.projectState trace.2
-  let specState : (syntaxGraphMachine g).BlockTrace →
-      (syntaxGraphMachine g).State :=
+  let specState : (eventGraphMachine g).BlockTrace →
+      (eventGraphMachine g).State :=
     fun trace => trace.2
-  let stateUtility : (syntaxGraphMachine g).State → ℝ :=
+  let stateUtility : (eventGraphMachine g).State → ℝ :=
     fun state => syntaxBlockedTraceUtility g ([], state) who
   have hproject :
       PMF.map R.projectBlockTrace backendDist = specDist := by
@@ -261,7 +261,7 @@ PMF-behavioral blocked-trace play have the same expected utility. -/
 theorem backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R)
     (β : behavioralProfilePMFAt g) (who : P) :
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu β who =
@@ -271,12 +271,12 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
     (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).outcomeKernel β
   let specDist :=
     (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
-  let backendState : Impl.BlockTrace → (syntaxGraphMachine g).State :=
+  let backendState : Impl.BlockTrace → (eventGraphMachine g).State :=
     fun trace => R.projectState trace.2
-  let specState : (syntaxGraphMachine g).BlockTrace →
-      (syntaxGraphMachine g).State :=
+  let specState : (eventGraphMachine g).BlockTrace →
+      (eventGraphMachine g).State :=
     fun trace => trace.2
-  let stateUtility : (syntaxGraphMachine g).State → ℝ :=
+  let stateUtility : (eventGraphMachine g).State → ℝ :=
     fun state => syntaxBlockedTraceUtility g ([], state) who
   have hproject :
       PMF.map R.projectBlockTrace backendDist = specDist := by
@@ -319,7 +319,7 @@ to pull Nash equilibria back from the spec to the backend. -/
 noncomputable def Machine.StochasticStepRefinement.toBackendBlockedTraceMorphism
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R) :
     GameTheory.KernelGame.EUMorphism
       (backendBlockedTraceKernelGameAt g R lift)
@@ -343,7 +343,7 @@ PMF-behavioral spec blocked-trace game by projecting backend traces. -/
 noncomputable def Machine.StochasticStepRefinement.toBackendPMFBehavioralBlockedTraceMorphism
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R) :
     GameTheory.KernelGame.EUMorphism
       (backendPMFBehavioralBlockedTraceKernelGameAt g R lift)
@@ -369,7 +369,7 @@ backend equipped with a compatible block-law lift. -/
 theorem backendBlockedTraceKernelGameAt_isNash_pullback
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R)
     {σ : pureProfileAt g}
     (h : (pureBlockedTraceKernelGameAt g).IsNash σ) :
@@ -386,7 +386,7 @@ kernel game pull back to the backend blocked-trace game. -/
 theorem backendBlockedTraceKernelGameAt_isNash_pullback_pure
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendPureBlockLawLift g R)
     {σ : pureProfileAt g}
     (h : (pureKernelGameAt g).IsNash σ) :
@@ -402,7 +402,7 @@ pull back to any backend equipped with a compatible behavioral block-law lift. -
 theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R)
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralBlockedTraceKernelGameAt g).IsNash σ) :
@@ -420,7 +420,7 @@ blocked-trace game. -/
 theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback_behavioral
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
-    (R : Machine.StochasticStepRefinement Impl (syntaxGraphMachine g))
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
     (lift : BackendBehavioralBlockLawLift g R)
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralKernelGameAt g).IsNash σ) :

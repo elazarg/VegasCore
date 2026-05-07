@@ -1,25 +1,24 @@
-import Vegas.Protocol.GraphMachine
+import Vegas.Protocol.EventGraphMachine
 import Vegas.WFProgram
 import Vegas.Config
 
 /-!
-# Syntax occurrence graph
+# Program Event Graph
 
-This file introduces source-occurrence identifiers used by the compiler from
-checked Vegas syntax to `ProtocolGraph`.
+This file elaborates a checked Vegas program to its canonical `EventGraph`.
 
-These are not runtime cursors. `ProgramNode` names protocol events introduced
-by the source term. `ProgramField` names storage fields in the final protocol
-state. Runtime state remains the extensional result assignment from
-`ProtocolGraph.Configuration`.
+`ProgramNode` names protocol events introduced by the source term, and
+`ProgramField` names storage fields in the final protocol state. These are not
+runtime cursors: runtime state remains the extensional result assignment from
+`EventGraph.Configuration`.
 -/
 
 namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-attribute [local instance] ProtocolGraph.nodeDecEq
-attribute [local instance] ProtocolGraph.fieldDecEq
+attribute [local instance] EventGraph.nodeDecEq
+attribute [local instance] EventGraph.fieldDecEq
 
 /-- A field occurrence in a visibility context. -/
 inductive VCtxField (P : Type) (L : IExpr) :
@@ -449,7 +448,7 @@ theorem ofCurrent_mem_currentFields
 current fields. -/
 noncomputable def currentReadEnvToVEnv
     {Γ : VCtx P L} (p : VegasCore P L Γ)
-    (ρ : ProtocolGraph.ReadEnv L (ProgramField p)
+    (ρ : EventGraph.ReadEnv L (ProgramField p)
       (fun field => field.ty) (currentFields p)) :
     VEnv L Γ :=
   fun x τ h =>
@@ -1009,27 +1008,27 @@ noncomputable def finset {Γ : VCtx P L} (p : VegasCore P L Γ) :
   exact List.mem_toFinset.mpr (mem_enumerate field)
 
 /-- Interpret a source expression over the public current context as a
-graph-local expression. The read set is the current source scope; this is
+event-graph-local expression. The read set is the current source scope; this is
 intentionally conservative until source-expression dependency projection is
 made explicit. -/
-noncomputable def publicGraphExpr
+noncomputable def publicEventExpr
     {Γ : VCtx P L} (p : VegasCore P L Γ) {b : L.Ty}
     (e : L.Expr (erasePubVCtx Γ) b) :
-    ProtocolGraph.GraphExpr L (ProgramField p)
+    EventGraph.EventExpr L (ProgramField p)
       (fun field => field.ty) b where
   reads := currentFields p
   eval := fun ρ =>
     L.eval e (VEnv.erasePubEnv (currentReadEnvToVEnv p ρ))
 
 /-- Interpret a source distribution over the public current context as a
-graph-local PMF kernel. Normalization is supplied by the checked program. -/
-noncomputable def publicGraphDist
+event-graph-local PMF kernel. Normalization is supplied by the checked program. -/
+noncomputable def publicEventDist
     {Γ : VCtx P L} (p : VegasCore P L Γ) {b : L.Ty}
     (D : L.DistExpr (erasePubVCtx Γ) b)
     (normalized :
       ∀ env : VEnv L Γ,
         FWeight.totalWeight (L.evalDist D (VEnv.eraseSampleEnv env)) = 1) :
-    ProtocolGraph.GraphDist L (ProgramField p)
+    EventGraph.EventDist L (ProgramField p)
       (fun field => field.ty) b where
   reads := currentFields p
   eval := fun ρ =>
@@ -1037,9 +1036,9 @@ noncomputable def publicGraphDist
         (VEnv.eraseSampleEnv (currentReadEnvToVEnv p ρ))).toPMF
       (normalized (currentReadEnvToVEnv p ρ))
 
-/-- Interpret a source commit guard as a graph-local guard. The proposed
-commit value is supplied separately from the current graph environment. -/
-noncomputable def commitGraphGuard
+/-- Interpret a source commit guard as an event-graph-local guard. The proposed
+commit value is supplied separately from the current event-graph environment. -/
+noncomputable def commitEventGuard
     {Γ : VCtx P L} (p : VegasCore P L Γ) {x : VarId} {b : L.Ty}
     {who : P} (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
     (field : ProgramField p) (hty : field.ty = b)
@@ -1051,7 +1050,7 @@ noncomputable def commitGraphGuard
       ∀ env : Env L.Val (eraseVCtx Γ),
         ∃ a : L.Val b,
           evalGuard (Player := P) (L := L) R a env = true) :
-    ProtocolGraph.GraphGuard L (ProgramField p)
+    EventGraph.EventGuard L (ProgramField p)
       (fun field => field.ty) field where
   reads := currentFields p
   visibleReads := visibleCurrentFields p who
@@ -1094,23 +1093,23 @@ noncomputable def commitGraphGuard
     simpa [evalGuard] using hvalue
 
 /-- Transport a graph expression across an equality of result types. -/
-noncomputable def castGraphExpr
+noncomputable def castEventExpr
     {Γ : VCtx P L} {p : VegasCore P L Γ} {src dst : L.Ty}
     (h : src = dst)
-    (expr : ProtocolGraph.GraphExpr L (ProgramField p)
+    (expr : EventGraph.EventExpr L (ProgramField p)
       (fun field => field.ty) src) :
-    ProtocolGraph.GraphExpr L (ProgramField p)
+    EventGraph.EventExpr L (ProgramField p)
       (fun field => field.ty) dst where
   reads := expr.reads
   eval := fun ρ => cast (by rw [h]) (expr.eval ρ)
 
 /-- Transport a graph distribution across an equality of result types. -/
-noncomputable def castGraphDist
+noncomputable def castEventDist
     {Γ : VCtx P L} {p : VegasCore P L Γ} {src dst : L.Ty}
     (h : src = dst)
-    (dist : ProtocolGraph.GraphDist L (ProgramField p)
+    (dist : EventGraph.EventDist L (ProgramField p)
       (fun field => field.ty) src) :
-    ProtocolGraph.GraphDist L (ProgramField p)
+    EventGraph.EventDist L (ProgramField p)
       (fun field => field.ty) dst where
   reads := dist.reads
   eval := fun ρ => cast (by rw [h]) (dist.eval ρ)
@@ -1118,7 +1117,7 @@ noncomputable def castGraphDist
 /-- A write slice over the final field set of a source program. -/
 abbrev WriteSlice {Γ : VCtx P L} (p : VegasCore P L Γ) : Type :=
   (field : ProgramField p) →
-    Option (ProtocolGraph.StoredValue (L.Val field.ty))
+    Option (EventGraph.StoredValue (L.Val field.ty))
 
 /-- Empty source write slice. -/
 def emptySlice {Γ : VCtx P L} (p : VegasCore P L Γ) :
@@ -1129,7 +1128,7 @@ def emptySlice {Γ : VCtx P L} (p : VegasCore P L Γ) :
 noncomputable def singleSlice
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
-    (value : ProtocolGraph.StoredValue (L.Val field.ty)) :
+    (value : EventGraph.StoredValue (L.Val field.ty)) :
     WriteSlice p :=
   fun other =>
     if h : other = field then
@@ -1140,7 +1139,7 @@ noncomputable def singleSlice
 @[simp] theorem singleSlice_self
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
-    (value : ProtocolGraph.StoredValue (L.Val field.ty)) :
+    (value : EventGraph.StoredValue (L.Val field.ty)) :
     singleSlice field value field = some value := by
   simp [singleSlice]
 
@@ -1198,7 +1197,7 @@ theorem value?_isSome_of_result_slice
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     {result : ProgramNode p → Option (WriteSlice p)}
     {field : ProgramField p} {node : ProgramNode p} {slice : WriteSlice p}
-    {stored : ProtocolGraph.StoredValue (L.Val field.ty)}
+    {stored : EventGraph.StoredValue (L.Val field.ty)}
     (hwriter : writer? field = some node)
     (hresult : result node = some slice)
     (hslice : slice field = some stored) :
@@ -1254,7 +1253,7 @@ noncomputable def readEnvOfResult
     (reads : Finset (ProgramField p))
     (available :
       ∀ field, field ∈ reads → (value? env result field).isSome) :
-    ProtocolGraph.ReadEnv L (ProgramField p) (fun field => field.ty) reads where
+    EventGraph.ReadEnv L (ProgramField p) (fun field => field.ty) reads where
   value field hmem :=
     Classical.choose
       (Option.isSome_iff_exists.mp (available field hmem))
@@ -1425,7 +1424,7 @@ of the enclosing program. -/
 noncomputable def sem :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
       ProgramObligations p → ProgramNode p →
-      ProtocolGraph.NodeSem P (ProgramField p) L
+      EventGraph.NodeSem P (ProgramField p) L
         (fun field => field.ty)
   | _, .letExpr x (b := b) e k, obs, .letHere =>
       let target : ProgramField (.letExpr x e k) :=
@@ -1437,8 +1436,8 @@ noncomputable def sem :
         rw [ProgramField.ty_ofCurrent]
         rfl
       .assign target
-        (ProgramField.castGraphExpr htarget.symm
-          (ProgramField.publicGraphExpr (.letExpr x e k) e))
+        (ProgramField.castEventExpr htarget.symm
+          (ProgramField.publicEventExpr (.letExpr x e k) e))
   | _, .letExpr x e k, obs, .letTail node =>
       (sem obs.letTail node).mapFields
         ProgramField.letTail (fun _ => rfl)
@@ -1452,8 +1451,8 @@ noncomputable def sem :
         rw [ProgramField.ty_ofCurrent]
         rfl
       .sample target
-        (ProgramField.castGraphDist htarget.symm
-          (ProgramField.publicGraphDist (.sample x D k) D obs.normalized.1))
+        (ProgramField.castEventDist htarget.symm
+          (ProgramField.publicEventDist (.sample x D k) D obs.normalized.1))
   | _, .sample x D k, obs, .sampleTail node =>
       (sem obs.sampleTail node).mapFields ProgramField.sampleTail
         (fun _ => rfl)
@@ -1468,7 +1467,7 @@ noncomputable def sem :
         rw [ProgramField.ty_ofCurrent]
         rfl
       .commit who target
-        (ProgramField.commitGraphGuard (.commit x who R k) R
+        (ProgramField.commitEventGuard (.commit x who R k) R
           target htarget obs.hctx obs.fresh.1 obs.hscoped.1 obs.legal.1)
   | _, .commit x who R k, obs, .commitTail node =>
       (sem obs.commitTail node).mapFields ProgramField.commitTail
@@ -1504,34 +1503,34 @@ theorem writtenBy_mem_writeFields :
           (ProgramNode.sem obs node).writeFields
   | _, .letExpr x e k, obs, .letHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
-        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-        ProtocolGraph.FieldWrite.field]
+        EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+        EventGraph.FieldWrite.field]
   | _, .letExpr _ _ k, obs, .letTail node => by
-      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+      exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.letTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k) obs.letTail node)
   | _, .sample x D k, obs, .sampleHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
-        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-        ProtocolGraph.FieldWrite.field]
+        EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+        EventGraph.FieldWrite.field]
   | _, .sample _ _ k, obs, .sampleTail node => by
-      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+      exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.sampleTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k) obs.sampleTail node)
   | _, .commit x who R k, obs, .commitHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
-        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-        ProtocolGraph.FieldWrite.field]
+        EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+        EventGraph.FieldWrite.field]
   | _, .commit _ _ _ k, obs, .commitTail node => by
-      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+      exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.commitTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k) obs.commitTail node)
   | _, .reveal y who x hx k, obs, .revealHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
-        ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-        ProtocolGraph.FieldWrite.field]
+        EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+        EventGraph.FieldWrite.field]
   | _, .reveal _ _ _ _ k, obs, .revealTail node => by
-      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+      exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.revealTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k) obs.revealTail node)
 
@@ -1545,9 +1544,9 @@ theorem eq_writtenBy_of_mem_writeFields
         (ProgramNode.sem obs node).writeFields) :
     field = ProgramField.writtenBy node := by
   have hfield :=
-    (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp hwrite
+    (EventGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp hwrite
   have hwritten :=
-    (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp
+    (EventGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp
       (writtenBy_mem_writeFields obs node)
   exact hfield.trans hwritten.symm
 
@@ -1581,8 +1580,8 @@ theorem read_current_or_prior_write :
                 (ProgramNode.sem obs prior).writeFields
   | _, .letExpr x e k, obs, .letHere, field, hread => by
       left
-      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
-        ProgramField.castGraphExpr, ProgramField.publicGraphExpr] using hread
+      simpa [ProgramNode.sem, EventGraph.NodeSem.reads,
+        ProgramField.castEventExpr, ProgramField.publicEventExpr] using hread
   | _, .letExpr x e k, obs, .letTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
@@ -1592,7 +1591,7 @@ theorem read_current_or_prior_write :
           field ∈ ((ProgramNode.sem (p := k) obs.letTail node).mapFields
             ProgramField.letTail hty).reads := by
         simpa [ProgramNode.sem] using hread
-      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
+      rcases EventGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k) obs.letTail node hinner
@@ -1609,12 +1608,12 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.letTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.letTail) (hty := hty) hwrite
   | _, .sample x D k, obs, .sampleHere, field, hread => by
       left
-      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
-        ProgramField.castGraphDist, ProgramField.publicGraphDist] using hread
+      simpa [ProgramNode.sem, EventGraph.NodeSem.reads,
+        ProgramField.castEventDist, ProgramField.publicEventDist] using hread
   | _, .sample x D k, obs, .sampleTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
@@ -1624,7 +1623,7 @@ theorem read_current_or_prior_write :
           field ∈ ((ProgramNode.sem (p := k) obs.sampleTail node).mapFields
             ProgramField.sampleTail hty).reads := by
         simpa [ProgramNode.sem] using hread
-      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
+      rcases EventGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k) obs.sampleTail node hinner
@@ -1641,12 +1640,12 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.sampleTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.sampleTail) (hty := hty) hwrite
   | _, .commit x who R k, obs, .commitHere, field, hread => by
       left
-      simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
-        ProgramField.commitGraphGuard] using hread
+      simpa [ProgramNode.sem, EventGraph.NodeSem.reads,
+        ProgramField.commitEventGuard] using hread
   | _, .commit x who R k, obs, .commitTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
@@ -1656,7 +1655,7 @@ theorem read_current_or_prior_write :
           field ∈ ((ProgramNode.sem (p := k) obs.commitTail node).mapFields
             ProgramField.commitTail hty).reads := by
         simpa [ProgramNode.sem] using hread
-      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
+      rcases EventGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k) obs.commitTail node hinner
@@ -1673,13 +1672,13 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.commitTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.commitTail) (hty := hty) hwrite
   | _, .reveal y who x hx k, obs, .revealHere, field, hread => by
       left
       have hfield :
           field = ProgramField.ofCurrent (.reveal y who x hx k) (.mk hx) := by
-        simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads] using hread
+        simpa [ProgramNode.sem, EventGraph.NodeSem.reads] using hread
       rw [hfield]
       exact ProgramField.ofCurrent_mem_currentFields
         (.reveal y who x hx k) (.mk hx)
@@ -1693,7 +1692,7 @@ theorem read_current_or_prior_write :
           field ∈ ((ProgramNode.sem (p := k) obs.revealTail node).mapFields
             ProgramField.revealTail hty).reads := by
         simpa [ProgramNode.sem] using hread
-      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
+      rcases EventGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k) obs.revealTail node hinner
@@ -1711,7 +1710,7 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.revealTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.revealTail) (hty := hty) hwrite
 
 /-- Causal prerequisites of a source node.
@@ -1731,7 +1730,7 @@ noncomputable def prereqs
           field ∈
             (ProgramNode.sem obs prior).writeFields
 
-/-- The source graph's prerequisites are exactly the causal read dependencies:
+/-- The program event graph's prerequisites are exactly the causal read dependencies:
 if a node reads a field written by another source node, that writer is a
 prerequisite of the reader. -/
 theorem writer_mem_prereqs_of_read_write
@@ -1772,7 +1771,7 @@ theorem writer_mem_prereqs_of_read_write
     exact Finset.mem_filter.mpr
       ⟨ProgramNode.mem_finset p prior, hrank, ⟨field, hread, hpriorWrite⟩⟩
 
-/-- A source graph slice is well-formed for a node when it has the storage
+/-- A program event graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
 noncomputable def sliceLegal
@@ -1804,7 +1803,7 @@ theorem sliceLegal_writeField_isSome
     (hwrite :
       field ∈
         (ProgramNode.sem obs node).writeFields) :
-    ∃ stored : ProtocolGraph.StoredValue (L.Val field.ty),
+    ∃ stored : EventGraph.StoredValue (L.Val field.ty),
       slice field = some stored := by
   classical
   cases hsem : ProgramNode.sem obs node with
@@ -1812,14 +1811,14 @@ theorem sliceLegal_writeField_isSome
       rw [sliceLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
         slice = ProgramField.singleSlice target (.clear value) at hlegal
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
       have hwrite_eq :
-          write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+          write = EventGraph.FieldWrite.clear target := by
+        simpa [EventGraph.NodeSem.writes] using hwrite
       subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      dsimp [EventGraph.FieldWrite.field] at hfield
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
@@ -1828,14 +1827,14 @@ theorem sliceLegal_writeField_isSome
       rw [sliceLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
         slice = ProgramField.singleSlice target (.clear value) at hlegal
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
       have hwrite_eq :
-          write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+          write = EventGraph.FieldWrite.clear target := by
+        simpa [EventGraph.NodeSem.writes] using hwrite
       subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      dsimp [EventGraph.FieldWrite.field] at hfield
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
@@ -1844,14 +1843,14 @@ theorem sliceLegal_writeField_isSome
       rw [sliceLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
         slice = ProgramField.singleSlice target (.hidden value) at hlegal
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
       have hwrite_eq :
-          write = ProtocolGraph.FieldWrite.hidden owner target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+          write = EventGraph.FieldWrite.hidden owner target := by
+        simpa [EventGraph.NodeSem.writes] using hwrite
       subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      dsimp [EventGraph.FieldWrite.field] at hfield
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
@@ -1860,20 +1859,20 @@ theorem sliceLegal_writeField_isSome
       rw [sliceLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
         slice = ProgramField.singleSlice target (.clear value) at hlegal
-      rw [ProtocolGraph.NodeSem.mem_writeFields_iff] at hwrite
+      rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
       have hwrite_eq :
-          write = ProtocolGraph.FieldWrite.clear target := by
-        simpa [ProtocolGraph.NodeSem.writes] using hwrite
+          write = EventGraph.FieldWrite.clear target := by
+        simpa [EventGraph.NodeSem.writes] using hwrite
       subst write
-      dsimp [ProtocolGraph.FieldWrite.field] at hfield
+      dsimp [EventGraph.FieldWrite.field] at hfield
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
       exact ⟨.clear value, by simp⟩
 
-/-- Dynamic legality for player-chosen source graph slices. Only commit nodes
+/-- Dynamic legality for player-chosen program event graph slices. Only commit nodes
 have an actor, so only commits admit legal player slices. -/
 noncomputable def actionLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
@@ -1912,17 +1911,17 @@ theorem exists_actionLegal_of_reads_available
         actionLegal env obs result node slice := by
   cases hsem : sem obs node with
   | assign field expr =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | sample field dist =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | reveal source target hty =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | commit owner field guard =>
       have havailable :
           ∀ read, read ∈ guard.reads →
             (ProgramField.value? env result read).isSome := by
         intro read hread
-        exact hreads read (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+        exact hreads read (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       let ρ :=
         ProgramField.readEnvOfResult env result guard.reads havailable
       rcases guard.satisfiable ρ with ⟨value, hvalue⟩
@@ -1934,14 +1933,14 @@ theorem exists_actionLegal_of_reads_available
         exact ⟨havailable, value, hvalue, rfl⟩
 
 /-- Visible reads of a generated commit guard are exactly fields visible to the
-committing player.  This is the bridge from graph-local guard invariance to
+committing player.  This is the bridge from event-graph-local guard invariance to
 the FOSG player's private observation. -/
 theorem guard_visibleReads_owner_of_sem_commit :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
       (obs : ProgramObligations p) →
       (node : ProgramNode p) →
       {commitWho : P} → {target : ProgramField p} →
-      {guard : ProtocolGraph.GraphGuard L (ProgramField p)
+      {guard : EventGraph.EventGuard L (ProgramField p)
         (fun field => field.ty) target} →
       sem obs node =
         .commit commitWho target guard →
@@ -1953,18 +1952,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
       cases hinner :
           sem obs.letTail node with
       | assign field expr =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.letTail innerTarget)
+              EventGraph.NodeSem.commit owner (.letTail innerTarget)
                   (innerGuard.mapFields ProgramField.letTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [sem, hinner, EventGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -1982,18 +1981,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
       cases hinner :
           sem obs.sampleTail node with
       | assign field expr =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.sampleTail innerTarget)
+              EventGraph.NodeSem.commit owner (.sampleTail innerTarget)
                   (innerGuard.mapFields ProgramField.sampleTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [sem, hinner, EventGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -2008,7 +2007,7 @@ theorem guard_visibleReads_owner_of_sem_commit :
   | _, .commit x who R k, obs, .commitHere, commitWho, target, guard, hsem => by
       intro read hread
       have hsem' := by
-        simpa [sem, ProgramField.commitGraphGuard] using hsem
+        simpa [sem, ProgramField.commitEventGuard] using hsem
       rcases hsem' with ⟨howner, htarget, hguard⟩
       subst commitWho
       subst target
@@ -2018,18 +2017,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
       cases hinner :
           sem obs.commitTail node with
       | assign field expr =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.commitTail innerTarget)
+              EventGraph.NodeSem.commit owner (.commitTail innerTarget)
                   (innerGuard.mapFields ProgramField.commitTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [sem, hinner, EventGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -2047,18 +2046,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
       cases hinner :
           sem obs.revealTail node with
       | assign field expr =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, EventGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
-              ProtocolGraph.NodeSem.commit owner (.revealTail innerTarget)
+              EventGraph.NodeSem.commit owner (.revealTail innerTarget)
                   (innerGuard.mapFields ProgramField.revealTail
                     (fun _ => rfl)) =
-                ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
+                EventGraph.NodeSem.commit commitWho target guard := by
+            simpa [sem, hinner, EventGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -2100,7 +2099,7 @@ theorem value?_isSome_of_completed_write
   exact ProgramField.value?_isSome_of_result_slice env
     (ProgramField.writer?_writtenBy writer) hresult hstored
 
-/-- Internal kernel for source graph nodes. Assignment and reveal nodes are
+/-- Internal kernel for source event nodes. Assignment and reveal nodes are
 deterministic; sample nodes use the checked PMF distribution; commit nodes are
 not internal. -/
 noncomputable def internalKernel
@@ -2161,13 +2160,13 @@ def obligations (g : WFProgram P L) :
 
 end WFProgram
 
-/-- Checked Vegas syntax compiled to the graph-native protocol graph.
+/-- Checked Vegas syntax elaborated to the canonical event graph.
 
-This is the graph-native semantic object.  Source occurrences become graph
-nodes, and prerequisites are the causal read dependencies between them; source
-order is retained only as the rank function proving acyclicity. -/
-noncomputable def syntaxProtocolGraph
-    (g : WFProgram P L) : ProtocolGraph P L where
+This is the semantic event graph for the checked program. Source occurrences
+become event nodes, and prerequisites are the causal read dependencies between
+them; source order is retained only as the rank function proving acyclicity. -/
+noncomputable def programEventGraph
+    (g : WFProgram P L) : EventGraph P L where
   Node := ProgramNode g.prog
   Field := ProgramField g.prog
   nodeDecEq := ProgramNode.instDecidableEq g.prog
@@ -2196,22 +2195,22 @@ noncomputable def syntaxProtocolGraph
     intro node field left right _hnode hleft hright hleftField hrightField
     cases hsem : ProgramNode.sem g.obligations node with
     | assign target expr =>
-        simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
+        simp [EventGraph.NodeSem.writes, hsem] at hleft hright
         subst left
         subst right
         rfl
     | sample target dist =>
-        simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
+        simp [EventGraph.NodeSem.writes, hsem] at hleft hright
         subst left
         subst right
         rfl
     | commit who target guard =>
-        simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
+        simp [EventGraph.NodeSem.writes, hsem] at hleft hright
         subst left
         subst right
         rfl
     | reveal source target hty =>
-        simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
+        simp [EventGraph.NodeSem.writes, hsem] at hleft hright
         subst left
         subst right
         rfl
@@ -2222,18 +2221,18 @@ noncomputable def syntaxProtocolGraph
 /-- Static read-availability invariant needed by the graph FOSG view: every
 declared read of every frontier node has a value in the extensional graph
 configuration. -/
-def syntaxReadsAvailableAtFrontier
+def programReadsAvailableAtFrontier
     (g : WFProgram P L) : Prop :=
-  ∀ (cfg : (syntaxProtocolGraph g).Configuration) {node : ProgramNode g.prog},
+  ∀ (cfg : (programEventGraph g).Configuration) {node : ProgramNode g.prog},
     node ∈ cfg.frontier →
       ∀ read, read ∈
         (ProgramNode.sem g.obligations node).reads →
         (ProgramField.value? g.env cfg.result read).isSome
 
 /-- Source graph frontier reads are available in every configuration. -/
-theorem syntaxReadsAvailableAtFrontier_of_wfProgram
+theorem programReadsAvailableAtFrontier_of_wfProgram
     (g : WFProgram P L) :
-    syntaxReadsAvailableAtFrontier g := by
+    programReadsAvailableAtFrontier g := by
   intro cfg node hfrontier read hread
   rcases ProgramNode.read_current_or_prior_write
       g.obligations node hread with
@@ -2242,7 +2241,7 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
       (ProgramField.initialValue?_isSome_of_mem_currentFields
         g.prog g.env hcurrent)
   · rcases hprior with ⟨prior, hrank, hwrite⟩
-    have hpre : prior ∈ (syntaxProtocolGraph g).prereqs node := by
+    have hpre : prior ∈ (programEventGraph g).prereqs node := by
       change prior ∈
         ProgramNode.prereqs g.obligations node
       exact Finset.mem_filter.mpr
@@ -2255,18 +2254,18 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
           cfg.result node = some slice →
             ProgramNode.sliceLegal g.obligations node slice := by
       intro node slice hresult
-      simpa [syntaxProtocolGraph] using cfg.legal hresult
+      simpa [programEventGraph] using cfg.legal hresult
     exact ProgramNode.value?_isSome_of_completed_write
       g.env g.obligations hdone hcfgLegal hwrite
 
-/-- Two syntax-graph configurations agree on every read that can affect a
+/-- Two event-graph configurations agree on every read that can affect a
 generated commit guard. -/
 def AgreeOnGuardVisibleReads
     (g : WFProgram P L)
-    (left right : (syntaxProtocolGraph g).Configuration)
+    (left right : (programEventGraph g).Configuration)
     (node : ProgramNode g.prog) : Prop :=
   ∀ {owner : P} {target : ProgramField g.prog}
-    {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (fun field => field.ty) target},
     ProgramNode.sem g.obligations node =
         .commit owner target guard →
@@ -2276,27 +2275,27 @@ def AgreeOnGuardVisibleReads
 
 theorem AgreeOnGuardVisibleReads.symm
     {g : WFProgram P L}
-    {left right : (syntaxProtocolGraph g).Configuration}
+    {left right : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     (h : AgreeOnGuardVisibleReads g left right node) :
     AgreeOnGuardVisibleReads g right left node := by
   intro owner target guard hsem read hread
   exact (h hsem read hread).symm
 
-/-- Dynamic commit legality transfers across syntax-graph configurations that
+/-- Dynamic commit legality transfers across event-graph configurations that
 agree on the visible reads of the guard attached to the node. The frontier
 hypothesis supplies availability of the guard reads in the target
 configuration. -/
-theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
+theorem eventGraph_actionLegal_of_guardVisibleValue_eq
     (g : WFProgram P L)
-    {left right : (syntaxProtocolGraph g).Configuration}
+    {left right : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {slice : ProgramField.WriteSlice g.prog}
     (hfrontierRight : node ∈ right.frontier)
     (hvisible : AgreeOnGuardVisibleReads g left right node)
     (haction :
-      (syntaxProtocolGraph g).actionLegal left.result node slice) :
-    (syntaxProtocolGraph g).actionLegal right.result node slice := by
+      (programEventGraph g).actionLegal left.result node slice) :
+    (programEventGraph g).actionLegal right.result node slice := by
   classical
   change
     ProgramNode.actionLegal g.env g.obligations left.result node slice at haction
@@ -2318,9 +2317,9 @@ theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
           ∀ read, read ∈ guard.reads →
             (ProgramField.value? g.env right.result read).isSome := by
         intro read hread
-        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+        exact programReadsAvailableAtFrontier_of_wfProgram g
           right hfrontierRight read
-          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       refine ⟨availableRight, value, ?_, hslice⟩
       let ρleft :=
         ProgramField.readEnvOfResult g.env left.result
@@ -2350,9 +2349,9 @@ theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
 /-- A current frontier node cannot be the structural writer of a field read by
 another current frontier node.  If it were, the writer would be a prerequisite
 of the reader, contradicting simultaneous frontier membership. -/
-theorem syntaxGraph_writer?_ne_of_frontier_read
+theorem eventGraph_writer?_ne_of_frontier_read
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {writer reader : ProgramNode g.prog} {field : ProgramField g.prog}
     (hwriterFrontier : writer ∈ cfg.frontier)
     (hreaderFrontier : reader ∈ cfg.frontier)
@@ -2379,22 +2378,22 @@ theorem syntaxGraph_writer?_ne_of_frontier_read
       Option.some.inj hpriorWriter
     subst prior
     have hpre :
-        writer ∈ (syntaxProtocolGraph g).prereqs reader := by
+        writer ∈ (programEventGraph g).prereqs reader := by
       change writer ∈
         ProgramNode.prereqs g.obligations reader
       exact Finset.mem_filter.mpr
         ⟨ProgramNode.mem_finset g.prog writer, hrank,
           ⟨field, hread, hpriorWrite⟩⟩
     exact
-      (ProtocolGraph.Configuration.not_prereq_of_mem_frontier
+      (EventGraph.Configuration.not_prereq_of_mem_frontier
         hwriterFrontier hreaderFrontier) hpre
 
 /-- A frontier node cannot share the frontier with a node that reads one of the
 fields it writes.  This packages the `writer?` formulation in terms of the
 semantic write set exposed by `NodeSem.writeFields`. -/
-theorem syntaxGraph_writer_not_frontier_with_reader_of_read_write
+theorem eventGraph_writer_not_frontier_with_reader_of_read_write
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {writer reader : ProgramNode g.prog} {field : ProgramField g.prog}
     (hwriterFrontier : writer ∈ cfg.frontier)
     (hreaderFrontier : reader ∈ cfg.frontier)
@@ -2410,7 +2409,7 @@ theorem syntaxGraph_writer_not_frontier_with_reader_of_read_write
     ProgramNode.writer?_eq_some_of_mem_writeFields
       g.obligations writer hwrite
   exact
-    (syntaxGraph_writer?_ne_of_frontier_read g
+    (eventGraph_writer?_ne_of_frontier_read g
       hwriterFrontier hreaderFrontier hread) hwriter
 
 /-- A reveal node and a later node that reads the reveal target cannot share a
@@ -2420,9 +2419,9 @@ the writer of the public alias; any post-reveal use must wait for that write.
 This is the regression guard for the reveal-ordering invariant: changing reveal
 so it no longer writes a value field must replace this dependency with an
 equally explicit reveal-token dependency. -/
-theorem syntaxGraph_reveal_not_frontier_with_reader_of_target
+theorem eventGraph_reveal_not_frontier_with_reader_of_target
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {revealer reader : ProgramNode g.prog}
     {source target : ProgramField g.prog}
     {hty : source.ty = target.ty}
@@ -2430,26 +2429,26 @@ theorem syntaxGraph_reveal_not_frontier_with_reader_of_target
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations revealer =
-        ProtocolGraph.NodeSem.reveal source target hty)
+        EventGraph.NodeSem.reveal source target hty)
     (hread :
       target ∈
         (ProgramNode.sem g.obligations reader).reads) :
     False := by
-  apply syntaxGraph_writer_not_frontier_with_reader_of_read_write
+  apply eventGraph_writer_not_frontier_with_reader_of_read_write
     g hrevealFrontier hreaderFrontier hread
   rw [hsem]
-  simp [ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
-    ProtocolGraph.FieldWrite.field]
+  simp [EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
+    EventGraph.FieldWrite.field]
 
 /-- Executing one frontier node leaves every read of another current frontier
 node unchanged. -/
-theorem syntaxGraph_value?_withResult_eq_of_frontier_read
+theorem eventGraph_value?_withResult_eq_of_frontier_read
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {writer reader : ProgramNode g.prog}
     {slice : ProgramField.WriteSlice g.prog}
     {hwriterFrontier : writer ∈ cfg.frontier}
-    {hwriterLegal : (syntaxProtocolGraph g).sliceLegal writer slice}
+    {hwriterLegal : (programEventGraph g).sliceLegal writer slice}
     {field : ProgramField g.prog}
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread :
@@ -2461,28 +2460,28 @@ theorem syntaxGraph_value?_withResult_eq_of_frontier_read
   classical
   have hne :
       ProgramField.writer? field ≠ some writer :=
-    syntaxGraph_writer?_ne_of_frontier_read g
+    eventGraph_writer?_ne_of_frontier_read g
       hwriterFrontier hreaderFrontier hread
-  simpa [ProtocolGraph.Configuration.withResult,
-    ProtocolGraph.Configuration.updateResult] using
+  simpa [EventGraph.Configuration.withResult,
+    EventGraph.Configuration.updateResult] using
     (ProgramField.value?_update_of_writer?_ne
       (env := g.env) (result := cfg.result) (field := field)
       (node := writer) (slice := slice) hne)
 
 /-- Dynamic commit legality for one frontier node is stable after executing a
 different frontier node. -/
-theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
+theorem eventGraph_actionLegal_after_frontier_withResult_of_ne
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {first second : ProgramNode g.prog}
     {firstSlice secondSlice : ProgramField.WriteSlice g.prog}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice)
+    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice)
     (hsecondAction :
-      (syntaxProtocolGraph g).actionLegal cfg.result second secondSlice) :
-    (syntaxProtocolGraph g).actionLegal
+      (programEventGraph g).actionLegal cfg.result second secondSlice) :
+    (programEventGraph g).actionLegal
       ((cfg.withResult firstSlice hfirst hfirstLegal).result)
       second secondSlice := by
   classical
@@ -2490,7 +2489,7 @@ theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
       second ∈ (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
     cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
   refine
-    syntaxGraph_actionLegal_of_guardVisibleValue_eq
+    eventGraph_actionLegal_of_guardVisibleValue_eq
       g hsecondAfter ?_ hsecondAction
   intro owner target guard hsem read hreadVisible
   have hread :
@@ -2499,91 +2498,91 @@ theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
     rw [hsem]
     exact guard.visibleReads_subset_reads hreadVisible
   exact
-    (syntaxGraph_value?_withResult_eq_of_frontier_read
+    (eventGraph_value?_withResult_eq_of_frontier_read
       g (writer := first) (reader := second)
       (slice := firstSlice) hsecond hread).symm
 
 /-- A player primitive event for a frontier node remains available after a
 different frontier node has executed. -/
-theorem syntaxGraph_available_after_frontier_withResult_of_ne
+theorem eventGraph_available_after_frontier_withResult_of_ne
     (g : WFProgram P L) (who : P)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {first : ProgramNode g.prog}
     {firstSlice : ProgramField.WriteSlice g.prog}
-    {action : ProtocolGraph.PlayerAction (syntaxProtocolGraph g) who}
+    {action : EventGraph.PlayerAction (programEventGraph g) who}
     (hfirst : first ∈ cfg.frontier)
     (hne : action.node ≠ first)
-    (hfirstLegal : (syntaxProtocolGraph g).sliceLegal first firstSlice)
+    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice)
     (haction :
-      action ∈ ProtocolGraph.available (syntaxProtocolGraph g) cfg who) :
-    action ∈ ProtocolGraph.available (syntaxProtocolGraph g)
+      action ∈ EventGraph.available (programEventGraph g) cfg who) :
+    action ∈ EventGraph.available (programEventGraph g)
       (cfg.withResult firstSlice hfirst hfirstLegal) who := by
   rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
   exact ⟨
     cfg.withResult_mem_frontier_of_ne hfirst hfrontier hne hfirstLegal,
     hactor,
     hslice,
-    syntaxGraph_actionLegal_after_frontier_withResult_of_ne
+    eventGraph_actionLegal_after_frontier_withResult_of_ne
       g hfirst hfrontier hne hfirstLegal hlegal⟩
 
 /-- Source graph commits cannot deadlock: the generated guard carries a
 satisfying action for the available read environment. -/
-theorem syntaxProtocolGraph_hasAvailablePlayerActions
+theorem programEventGraph_hasAvailablePlayerActions
     (g : WFProgram P L) :
-    (syntaxProtocolGraph g).HasAvailablePlayerActions := by
+    (programEventGraph g).HasAvailablePlayerActions := by
   intro cfg node who hfrontier hactor
   rcases ProgramNode.exists_actionLegal_of_reads_available
       g.env g.obligations cfg.result node
       (who := who)
-      (by simpa [syntaxProtocolGraph] using hactor)
-      (syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
+      (by simpa [programEventGraph] using hactor)
+      (programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
     ⟨slice, hslice, haction⟩
   exact ⟨slice, hslice, haction⟩
 
 /-- Source graph frontier rounds are stable: executing one frontier node cannot
 invalidate a player action for another current frontier node. -/
-theorem syntaxProtocolGraph_hasStableFrontierRounds
+theorem programEventGraph_hasStableFrontierRounds
     (g : WFProgram P L) :
-    (syntaxProtocolGraph g).HasStableFrontierRounds where
-  availablePlayerActions := syntaxProtocolGraph_hasAvailablePlayerActions g
+    (programEventGraph g).HasStableFrontierRounds where
+  availablePlayerActions := programEventGraph_hasAvailablePlayerActions g
   actionStable := by
     intro cfg first firstSlice hfirst who action hfrontier hne
       hfirstLegal haction
-    exact syntaxGraph_available_after_frontier_withResult_of_ne
+    exact eventGraph_available_after_frontier_withResult_of_ne
       g who hfirst hne hfirstLegal haction
 
-/-- Public observation of the graph-native syntax machine.
+/-- Public observation of the program event-graph machine.
 
 This is the protocol transcript that every player may use for legality:
-which graph nodes have already produced a result, together with public field
+which event nodes have already produced a result, together with public field
 values. It deliberately does not expose hidden field values. -/
 @[ext]
-structure SyntaxPublicObs (g : WFProgram P L) where
+structure ProgramPublicObs (g : WFProgram P L) where
   done : ProgramNode g.prog → Bool
   value? : (field : ProgramField g.prog) → Option (L.Val field.ty)
 
-/-- Private observation of the graph-native syntax machine: the visible part
+/-- Private observation of the program event-graph machine: the visible part
 of the extensional field assignment. -/
 @[ext]
-structure SyntaxPrivateObs (g : WFProgram P L) (who : P) where
+structure ProgramPrivateObs (g : WFProgram P L) (who : P) where
   value? : (field : ProgramField g.prog) → Option (L.Val field.ty)
 
-/-- Recover a field value from a graph-native syntax configuration. -/
-noncomputable def syntaxGraphConfigValue?
+/-- Recover a field value from an event-graph configuration. -/
+noncomputable def eventGraphConfigValue?
     (g : WFProgram P L)
-    (cfg : (syntaxProtocolGraph g).Configuration)
+    (cfg : (programEventGraph g).Configuration)
     (field : ProgramField g.prog) :
     Option (L.Val field.ty) :=
   ProgramField.value? g.env cfg.result field
 
-/-- Terminal graph-native syntax configurations assign a value to every source
+/-- Terminal event-graph configurations assign a value to every source
 storage field. -/
-theorem syntaxGraphConfigValue?_isSome_of_terminal
+theorem eventGraphConfigValue?_isSome_of_terminal
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     (hterminal : cfg.terminal)
     (field : ProgramField g.prog) :
-    (syntaxGraphConfigValue? g cfg field).isSome := by
+    (eventGraphConfigValue? g cfg field).isSome := by
   classical
   cases hsource : ProgramField.source field with
   | inl current =>
@@ -2600,81 +2599,81 @@ theorem syntaxGraphConfigValue?_isSome_of_terminal
           field = ProgramField.writtenBy writer :=
         ProgramField.eq_writtenBy_of_source_eq_inr hsource
       subst field
-      have hnode : writer ∈ (syntaxProtocolGraph g).nodes := by
+      have hnode : writer ∈ (programEventGraph g).nodes := by
         change writer ∈ ProgramNode.finset g.prog
         exact ProgramNode.mem_finset g.prog writer
-      have hdoneMem : writer ∈ (syntaxProtocolGraph g).done cfg.result :=
+      have hdoneMem : writer ∈ (programEventGraph g).done cfg.result :=
         hterminal hnode
       have hdone : (cfg.result writer).isSome :=
-        ((syntaxProtocolGraph g).mem_done_iff cfg.result writer).mp hdoneMem |>.2
+        ((programEventGraph g).mem_done_iff cfg.result writer).mp hdoneMem |>.2
       exact ProgramNode.value?_isSome_of_completed_write
         g.env g.obligations hdone
         (by
           intro node slice hresult
-          simpa [syntaxProtocolGraph] using cfg.legal hresult)
+          simpa [programEventGraph] using cfg.legal hresult)
         (ProgramNode.writtenBy_mem_writeFields g.obligations writer)
 
-/-- Terminal graph-native syntax configurations assemble the final source
+/-- Terminal event-graph configurations assemble the final source
 environment. -/
-theorem syntaxGraph_finalEnv?_isSome_of_terminal
+theorem eventGraph_finalEnv?_isSome_of_terminal
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     (hterminal : cfg.terminal) :
-    (ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg)).isSome := by
+    (ProgramField.finalEnv? g.prog (eventGraphConfigValue? g cfg)).isSome := by
   classical
   unfold ProgramField.finalEnv?
   rw [dif_pos]
   · simp
   · intro field
-    exact syntaxGraphConfigValue?_isSome_of_terminal g hterminal
+    exact eventGraphConfigValue?_isSome_of_terminal g hterminal
       (ProgramField.ofFinal g.prog field)
 
-/-- Public observation for the graph-native syntax machine. -/
-noncomputable def syntaxGraphPublicView
+/-- Public observation for the program event-graph machine. -/
+noncomputable def eventGraphPublicView
     (g : WFProgram P L)
-    (cfg : (syntaxProtocolGraph g).Configuration) :
-    SyntaxPublicObs g where
+    (cfg : (programEventGraph g).Configuration) :
+    ProgramPublicObs g where
   done := fun node => (cfg.result node).isSome
   value? := fun field =>
     if field.owner = none then
-      syntaxGraphConfigValue? g cfg field
+      eventGraphConfigValue? g cfg field
     else
       none
 
-/-- Player observation for the graph-native syntax machine. -/
-noncomputable def syntaxGraphObserve
+/-- Player observation for the program event-graph machine. -/
+noncomputable def eventGraphObserve
     (g : WFProgram P L) (who : P)
-    (cfg : (syntaxProtocolGraph g).Configuration) :
-    SyntaxPrivateObs g who where
+    (cfg : (programEventGraph g).Configuration) :
+    ProgramPrivateObs g who where
   value? := fun field =>
     if field.VisibleTo who then
-      syntaxGraphConfigValue? g cfg field
+      eventGraphConfigValue? g cfg field
     else
       none
 
-theorem syntaxGraphPublicView_done_eq_of_eq
+theorem eventGraphPublicView_done_eq_of_eq
     (g : WFProgram P L)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hobs : syntaxGraphPublicView g left = syntaxGraphPublicView g right)
+    {left right : (programEventGraph g).Configuration}
+    (hobs : eventGraphPublicView g left = eventGraphPublicView g right)
     (node : ProgramNode g.prog) :
     (left.result node).isSome = (right.result node).isSome := by
   have h := congrArg (fun obs => obs.done node) hobs
-  simpa [syntaxGraphPublicView] using h
+  simpa [eventGraphPublicView] using h
 
-theorem syntaxGraphPublicView_frontier_eq_of_eq
+theorem eventGraphPublicView_frontier_eq_of_eq
     (g : WFProgram P L)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hobs : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    {left right : (programEventGraph g).Configuration}
+    (hobs : eventGraphPublicView g left = eventGraphPublicView g right) :
     left.frontier = right.frontier := by
   classical
   apply Finset.ext
   intro node
   constructor
   · intro hnode
-    rw [ProtocolGraph.Configuration.mem_frontier_iff] at hnode ⊢
+    rw [EventGraph.Configuration.mem_frontier_iff] at hnode ⊢
     refine ⟨hnode.1, ?_, ?_⟩
     · have hsome :=
-        syntaxGraphPublicView_done_eq_of_eq g hobs node
+        eventGraphPublicView_done_eq_of_eq g hobs node
       have hnone :
           (left.result node).isNone = (right.result node).isNone := by
         cases hleft : left.result node <;>
@@ -2684,18 +2683,18 @@ theorem syntaxGraphPublicView_frontier_eq_of_eq
     · intro prereq hpre
       have hdone := hnode.2.2 hpre
       have hdoneData :=
-        ((syntaxProtocolGraph g).mem_done_iff left.result prereq).mp hdone
+        ((programEventGraph g).mem_done_iff left.result prereq).mp hdone
       have hsome :=
-        syntaxGraphPublicView_done_eq_of_eq g hobs prereq
+        eventGraphPublicView_done_eq_of_eq g hobs prereq
       have hsomeRight : (right.result prereq).isSome := by
         simpa [hsome] using hdoneData.2
-      exact ((syntaxProtocolGraph g).mem_done_iff right.result prereq).mpr
+      exact ((programEventGraph g).mem_done_iff right.result prereq).mpr
         ⟨hdoneData.1, hsomeRight⟩
   · intro hnode
-    rw [ProtocolGraph.Configuration.mem_frontier_iff] at hnode ⊢
+    rw [EventGraph.Configuration.mem_frontier_iff] at hnode ⊢
     refine ⟨hnode.1, ?_, ?_⟩
     · have hsome :=
-        syntaxGraphPublicView_done_eq_of_eq g hobs node
+        eventGraphPublicView_done_eq_of_eq g hobs node
       have hnone :
           (left.result node).isNone = (right.result node).isNone := by
         cases hleft : left.result node <;>
@@ -2705,41 +2704,41 @@ theorem syntaxGraphPublicView_frontier_eq_of_eq
     · intro prereq hpre
       have hdone := hnode.2.2 hpre
       have hdoneData :=
-        ((syntaxProtocolGraph g).mem_done_iff right.result prereq).mp hdone
+        ((programEventGraph g).mem_done_iff right.result prereq).mp hdone
       have hsome :=
-        syntaxGraphPublicView_done_eq_of_eq g hobs prereq
+        eventGraphPublicView_done_eq_of_eq g hobs prereq
       have hsomeLeft : (left.result prereq).isSome := by
         simpa [hsome] using hdoneData.2
-      exact ((syntaxProtocolGraph g).mem_done_iff left.result prereq).mpr
+      exact ((programEventGraph g).mem_done_iff left.result prereq).mpr
         ⟨hdoneData.1, hsomeLeft⟩
 
-theorem syntaxGraphObserve_value?_eq_of_eq
+theorem eventGraphObserve_value?_eq_of_eq
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hobs : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    {left right : (programEventGraph g).Configuration}
+    (hobs : eventGraphObserve g who left = eventGraphObserve g who right)
     {field : ProgramField g.prog}
     (hvisible : field.VisibleTo who) :
-    syntaxGraphConfigValue? g left field =
-      syntaxGraphConfigValue? g right field := by
+    eventGraphConfigValue? g left field =
+      eventGraphConfigValue? g right field := by
   have h := congrArg (fun obs => obs.value? field) hobs
-  simpa [syntaxGraphObserve, hvisible] using h
+  simpa [eventGraphObserve, hvisible] using h
 
 /-- Dynamic action legality for a commit transfers across configurations that
 agree on the committing player's observation, provided the target node is still
 on the frontier.  The only nontrivial case is a commit guard: generated graph
 guards are invariant under changes to hidden reads outside the player's view. -/
-theorem syntaxGraph_actionLegal_of_observe_eq
+theorem eventGraph_actionLegal_of_observe_eq
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
+    {left right : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     {slice : ProgramField.WriteSlice g.prog}
     (hfrontierRight : node ∈ right.frontier)
     (hactor :
-      ((syntaxProtocolGraph g).sem node).actor = some who)
-    (hobs : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+      ((programEventGraph g).sem node).actor = some who)
+    (hobs : eventGraphObserve g who left = eventGraphObserve g who right)
     (haction :
-      (syntaxProtocolGraph g).actionLegal left.result node slice) :
-    (syntaxProtocolGraph g).actionLegal right.result node slice := by
+      (programEventGraph g).actionLegal left.result node slice) :
+    (programEventGraph g).actionLegal right.result node slice := by
   classical
   change
     (ProgramNode.sem g.obligations node).actor = some who at hactor
@@ -2750,14 +2749,14 @@ theorem syntaxGraph_actionLegal_of_observe_eq
   cases hsem :
       ProgramNode.sem g.obligations node with
   | assign field expr =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | sample field dist =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | reveal source target hty =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | commit owner field guard =>
       have howner : owner = who := by
-        simpa [ProtocolGraph.NodeSem.actor, hsem] using hactor
+        simpa [EventGraph.NodeSem.actor, hsem] using hactor
       subst owner
       rw [ProgramNode.actionLegal, hsem] at haction ⊢
       rcases haction with
@@ -2766,9 +2765,9 @@ theorem syntaxGraph_actionLegal_of_observe_eq
           ∀ read, read ∈ guard.reads →
             (ProgramField.value? g.env right.result read).isSome := by
         intro read hread
-        exact syntaxReadsAvailableAtFrontier_of_wfProgram g
+        exact programReadsAvailableAtFrontier_of_wfProgram g
           right hfrontierRight read
-          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       refine ⟨availableRight, value, ?_, hslice⟩
       let ρleft :=
         ProgramField.readEnvOfResult g.env left.result
@@ -2788,9 +2787,9 @@ theorem syntaxGraph_actionLegal_of_observe_eq
             ProgramField.value? g.env left.result read =
               ProgramField.value? g.env right.result read := by
           have hsyntax :=
-            syntaxGraphObserve_value?_eq_of_eq g who hobs hreadVisible
-          simpa [syntaxGraphConfigValue?, syntaxProtocolGraph,
-            ProtocolGraph.value?, ProgramField.value?] using hsyntax
+            eventGraphObserve_value?_eq_of_eq g who hobs hreadVisible
+          simpa [eventGraphConfigValue?, programEventGraph,
+            EventGraph.value?, ProgramField.value?] using hsyntax
         simpa [ρleft, ρright] using
           (ProgramField.readEnvOfResult_value_eq_of_value?_eq
             g.env (left := left.result) (right := right.result)
@@ -2801,90 +2800,90 @@ theorem syntaxGraph_actionLegal_of_observe_eq
       rw [← hguardEq]
       exact hguardEval
 
-/-- Player action availability in the syntax graph is determined by the public
+/-- Player action availability in the event graph is determined by the public
 transcript together with the acting player's private observation. -/
-theorem syntaxGraph_available_eq_of_observation_eq
+theorem eventGraph_available_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
-    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
-    ProtocolGraph.available (syntaxProtocolGraph g) left who =
-      ProtocolGraph.available (syntaxProtocolGraph g) right who := by
+    {left right : (programEventGraph g).Configuration}
+    (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
+    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
+    EventGraph.available (programEventGraph g) left who =
+      EventGraph.available (programEventGraph g) right who := by
   classical
   ext action
   constructor
   · intro haction
     rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
     have hfrontierRight : action.node ∈ right.frontier := by
-      simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
+      simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
     exact ⟨hfrontierRight, hactor, hslice,
-      syntaxGraph_actionLegal_of_observe_eq g who hfrontierRight
+      eventGraph_actionLegal_of_observe_eq g who hfrontierRight
         hactor hpriv hlegal⟩
   · intro haction
     rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
     have hfrontierLeft : action.node ∈ left.frontier := by
-      simpa [syntaxGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
+      simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
     exact ⟨hfrontierLeft, hactor, hslice,
-      syntaxGraph_actionLegal_of_observe_eq g who hfrontierLeft
+      eventGraph_actionLegal_of_observe_eq g who hfrontierLeft
         hactor hpriv.symm hlegal⟩
 
-/-- Outcome projection for the graph-native syntax machine. Nonterminal or
+/-- Outcome projection for the program event-graph machine. Nonterminal or
 ill-assembled configurations project to the default zero outcome. -/
-noncomputable def syntaxGraphOutcome
+noncomputable def eventGraphOutcome
     (g : WFProgram P L)
-    (cfg : (syntaxProtocolGraph g).Configuration) : Outcome P :=
-  match ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg) with
+    (cfg : (programEventGraph g).Configuration) : Outcome P :=
+  match ProgramField.finalEnv? g.prog (eventGraphConfigValue? g cfg) with
   | some env => evalPayoffs (ProgramField.finalPayoffs g.prog) env
   | none => 0
 
-/-- Terminal graph-native syntax configurations evaluate outcomes from the
+/-- Terminal event-graph configurations evaluate outcomes from the
 assembled final source environment. -/
-theorem syntaxGraphOutcome_eq_evalPayoffs_of_terminal
+theorem eventGraphOutcome_eq_evalPayoffs_of_terminal
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     (hterminal : cfg.terminal) :
     ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
-      ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg) = some env ∧
-        syntaxGraphOutcome g cfg =
+      ProgramField.finalEnv? g.prog (eventGraphConfigValue? g cfg) = some env ∧
+        eventGraphOutcome g cfg =
           evalPayoffs (ProgramField.finalPayoffs g.prog) env := by
   rcases Option.isSome_iff_exists.mp
-      (syntaxGraph_finalEnv?_isSome_of_terminal g hterminal) with
+      (eventGraph_finalEnv?_isSome_of_terminal g hterminal) with
     ⟨env, henv⟩
   refine ⟨env, henv, ?_⟩
-  simp [syntaxGraphOutcome, henv]
+  simp [eventGraphOutcome, henv]
 
-/-- Observation/outcome interface for the graph-native syntax machine. -/
-noncomputable def syntaxGraphMachineInterface
+/-- Observation/outcome interface for the program event-graph machine. -/
+noncomputable def eventGraphMachineInterface
     (g : WFProgram P L) :
-    ProtocolGraph.MachineInterface (syntaxProtocolGraph g) where
-  Public := SyntaxPublicObs g
-  Obs := fun who => SyntaxPrivateObs g who
+    EventGraph.MachineInterface (programEventGraph g) where
+  Public := ProgramPublicObs g
+  Obs := fun who => ProgramPrivateObs g who
   Outcome := Outcome P
-  publicView := syntaxGraphPublicView g
-  observe := syntaxGraphObserve g
-  outcome := syntaxGraphOutcome g
+  publicView := eventGraphPublicView g
+  observe := eventGraphObserve g
+  outcome := eventGraphOutcome g
   utility := fun outcome who => (outcome who : ℝ)
 
-/-- Graph-native machine obtained directly from checked Vegas syntax. -/
-noncomputable def syntaxGraphMachine
+/-- Canonical event-graph machine elaborated from a checked Vegas program. -/
+noncomputable def eventGraphMachine
     (g : WFProgram P L) : Machine P :=
-  (syntaxProtocolGraph g).toMachine (syntaxGraphMachineInterface g)
+  (programEventGraph g).toMachine (eventGraphMachineInterface g)
 
-/-- FOSG view of the graph-native syntax machine. -/
-noncomputable def syntaxGraphFOSGView
+/-- FOSG view of the program event-graph machine. -/
+noncomputable def eventGraphFOSGView
     (g : WFProgram P L) :
-    (syntaxGraphMachine g).FOSGView :=
-  (syntaxProtocolGraph g).toFOSGView (syntaxGraphMachineInterface g)
-    (syntaxProtocolGraph_hasStableFrontierRounds g)
+    (eventGraphMachine g).FOSGView :=
+  (programEventGraph g).toFOSGView (eventGraphMachineInterface g)
+    (programEventGraph_hasStableFrontierRounds g)
 
-private theorem protocolGraph_done_subset_nodes
-    {G : ProtocolGraph P L} (cfg : G.Configuration) :
+private theorem eventGraph_done_subset_nodes
+    {G : EventGraph P L} (cfg : G.Configuration) :
     cfg.done ⊆ G.nodes := by
   intro node hdone
   exact (G.mem_done_iff cfg.result node).mp hdone |>.1
 
-private theorem protocolGraph_withResult_done_subset
-    {G : ProtocolGraph P L} (cfg : G.Configuration)
+private theorem eventGraph_withResult_done_subset
+    {G : EventGraph P L} (cfg : G.Configuration)
     {node : G.Node} {slice : G.WriteSlice}
     (hfrontier : node ∈ cfg.frontier)
     (hlegal : G.sliceLegal node slice) :
@@ -2896,13 +2895,13 @@ private theorem protocolGraph_withResult_done_subset
   refine ⟨hdoneData.1, ?_⟩
   by_cases hcandidate : candidate = node
   · subst candidate
-    simp [ProtocolGraph.Configuration.withResult,
-      ProtocolGraph.Configuration.updateResult]
-  · simpa [ProtocolGraph.Configuration.withResult,
-      ProtocolGraph.Configuration.updateResult, hcandidate] using hdoneData.2
+    simp [EventGraph.Configuration.withResult,
+      EventGraph.Configuration.updateResult]
+  · simpa [EventGraph.Configuration.withResult,
+      EventGraph.Configuration.updateResult, hcandidate] using hdoneData.2
 
-private theorem protocolGraph_withResult_done_card_succ_le
-    {G : ProtocolGraph P L} (cfg : G.Configuration)
+private theorem eventGraph_withResult_done_card_succ_le
+    {G : EventGraph P L} (cfg : G.Configuration)
     {node : G.Node} {slice : G.WriteSlice}
     (hfrontier : node ∈ cfg.frontier)
     (hlegal : G.sliceLegal node slice) :
@@ -2918,9 +2917,9 @@ private theorem protocolGraph_withResult_done_card_succ_le
       refine (G.mem_done_iff
         (cfg.withResult slice hfrontier hlegal).result node).mpr ?_
       exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by simp
-        [ProtocolGraph.Configuration.withResult,
-          ProtocolGraph.Configuration.updateResult]⟩
-    · exact protocolGraph_withResult_done_subset cfg hfrontier hlegal hdone
+        [EventGraph.Configuration.withResult,
+          EventGraph.Configuration.updateResult]⟩
+    · exact eventGraph_withResult_done_subset cfg hfrontier hlegal hdone
   have hnotDone : node ∉ cfg.done := by
     intro hdone
     have hdoneSome := (G.mem_done_iff cfg.result node).mp hdone |>.2
@@ -2929,16 +2928,16 @@ private theorem protocolGraph_withResult_done_card_succ_le
   have hcard := Finset.card_le_card hsubset
   simpa [Finset.card_insert_of_notMem hnotDone] using hcard
 
-private theorem protocolGraph_roundStepNode_done_subset
-    {G : ProtocolGraph P L}
-    (joint : GameTheory.JointAction (ProtocolGraph.PlayerRoundAction G))
+private theorem eventGraph_roundStepNode_done_subset
+    {G : EventGraph P L}
+    (joint : GameTheory.JointAction (EventGraph.PlayerRoundAction G))
     (node : G.Node)
     {cfg dst : G.Configuration}
     (hsupp :
-      dst ∈ (ProtocolGraph.roundStepNode G joint node cfg).support) :
+      dst ∈ (EventGraph.roundStepNode G joint node cfg).support) :
     cfg.done ⊆ dst.done := by
   classical
-  unfold ProtocolGraph.roundStepNode at hsupp
+  unfold EventGraph.roundStepNode at hsupp
   cases hactor : (G.sem node).actor with
   | some who =>
       cases hmove : joint who with
@@ -2951,37 +2950,37 @@ private theorem protocolGraph_roundStepNode_done_subset
       | some action =>
           by_cases havailable :
               ({ node := node, slice := action.slice node } :
-                ProtocolGraph.PlayerAction G who) ∈
-                ProtocolGraph.available G cfg who
+                EventGraph.PlayerAction G who) ∈
+                EventGraph.available G cfg who
           · have hdst :
                 dst =
                   cfg.withResult (action.slice node)
                     havailable.1 havailable.2.2.1 := by
-              simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+              simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
                 hactor, hmove, havailable] using hsupp
             subst dst
-            exact protocolGraph_withResult_done_subset cfg
+            exact eventGraph_withResult_done_subset cfg
               havailable.1 havailable.2.2.1
           · have hdst : dst = cfg := by
-              simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+              simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
                 hactor, hmove, havailable] using hsupp
             subst dst
             intro candidate hdone
             exact hdone
   | none =>
       by_cases havailable :
-          (ProtocolGraph.InternalEvent.node node : ProtocolGraph.InternalEvent G) ∈
-            ProtocolGraph.availableInternal G cfg
+          (EventGraph.InternalEvent.node node : EventGraph.InternalEvent G) ∈
+            EventGraph.availableInternal G cfg
       · have hsuppBind :
             dst ∈
               ((G.internalKernel node cfg.result).bind fun slice =>
                 if hlegal : G.sliceLegal node slice then
                   PMF.pure (cfg.withResult slice
-                    (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+                    (by simpa [EventGraph.availableInternal, hactor] using havailable)
                     hlegal)
                 else
                   PMF.pure cfg).support := by
-          simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+          simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
             hactor, havailable] using hsupp
         rw [PMF.mem_support_bind_iff] at hsuppBind
         rcases hsuppBind with ⟨slice, _hslice, hdst⟩
@@ -2990,12 +2989,12 @@ private theorem protocolGraph_roundStepNode_done_subset
           have hdstEq :
               dst =
                 cfg.withResult slice
-                  (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+                  (by simpa [EventGraph.availableInternal, hactor] using havailable)
                   hlegal := by
             simpa using hdst
           subst dst
-          exact protocolGraph_withResult_done_subset cfg
-            (by simpa [ProtocolGraph.availableInternal, hactor] using havailable)
+          exact eventGraph_withResult_done_subset cfg
+            (by simpa [EventGraph.availableInternal, hactor] using havailable)
             hlegal
         · have hdstEq : dst = cfg := by
             simpa using hdst
@@ -3003,23 +3002,23 @@ private theorem protocolGraph_roundStepNode_done_subset
           intro candidate hdone
           exact hdone
       · have hdst : dst = cfg := by
-          simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+          simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
             hactor, havailable] using hsupp
         subst dst
         intro candidate hdone
         exact hdone
 
-private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
+private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
     (g : WFProgram P L)
-    {cfg : (syntaxProtocolGraph g).Configuration}
+    {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     (hfrontier : node ∈ cfg.frontier)
-    (hactor : ((syntaxProtocolGraph g).sem node).actor = none)
+    (hactor : ((programEventGraph g).sem node).actor = none)
     {slice : ProgramField.WriteSlice g.prog}
     (hsupp :
       slice ∈
-        ((syntaxProtocolGraph g).internalKernel node cfg.result).support) :
-    (syntaxProtocolGraph g).sliceLegal node slice := by
+        ((programEventGraph g).internalKernel node cfg.result).support) :
+    (programEventGraph g).sliceLegal node slice := by
   classical
   change
     slice ∈
@@ -3034,8 +3033,8 @@ private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
           ∀ read, read ∈ expr.reads →
             (ProgramField.value? g.env cfg.result read).isSome := by
         intro read hread
-        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
         slice ∈
           (if available :
@@ -3067,8 +3066,8 @@ private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
           ∀ read, read ∈ dist.reads →
             (ProgramField.value? g.env cfg.result read).isSome := by
         intro read hread
-        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
         slice ∈
           (if available :
@@ -3088,15 +3087,15 @@ private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
       rw [ProgramNode.sliceLegal, hsem]
       exact ⟨value, rfl⟩
   | commit owner target guard =>
-      simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
   | reveal source target hty =>
       rw [hsem] at hsupp
       have havailable :
           ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
             (ProgramField.value? g.env cfg.result read).isSome := by
         intro read hread
-        exact syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [ProtocolGraph.NodeSem.reads, hsem] using hread)
+        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
         slice ∈
           (if available :
@@ -3124,93 +3123,93 @@ private theorem syntaxGraph_internalKernel_sliceLegal_of_mem_support
       rw [ProgramNode.sliceLegal, hsem]
       exact ⟨_, rfl⟩
 
-private theorem syntaxGraph_roundStepNode_done_card_succ_le_of_legal
+private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
     (g : WFProgram P L)
-    {cfg dst : (syntaxProtocolGraph g).Configuration}
+    {cfg dst : (programEventGraph g).Configuration}
     {joint : GameTheory.JointAction
-      (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))}
+      (EventGraph.PlayerRoundAction (programEventGraph g))}
     (hjoint :
       GameTheory.JointActionLegal
-        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
-        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
-        ProtocolGraph.Configuration.terminal
-        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        (EventGraph.PlayerRoundAction (programEventGraph g))
+        (EventGraph.roundActive (programEventGraph g))
+        EventGraph.Configuration.terminal
+        (EventGraph.roundAvailable (programEventGraph g))
         cfg joint)
     {node : ProgramNode g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsupp :
       dst ∈
-        (ProtocolGraph.roundStepNode (syntaxProtocolGraph g) joint node cfg).support) :
+        (EventGraph.roundStepNode (programEventGraph g) joint node cfg).support) :
     cfg.done.card + 1 ≤ dst.done.card := by
   classical
-  cases hactor : ((syntaxProtocolGraph g).sem node).actor with
+  cases hactor : ((programEventGraph g).sem node).actor with
   | some who =>
       have hactive :
-          who ∈ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg :=
-        (ProtocolGraph.mem_roundActive_iff (syntaxProtocolGraph g) cfg who).mpr
+          who ∈ EventGraph.roundActive (programEventGraph g) cfg :=
+        (EventGraph.mem_roundActive_iff (programEventGraph g) cfg who).mpr
           ⟨node, hfrontier, hactor⟩
       have hcoord := hjoint.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg := by
+          have hnot : who ∉ EventGraph.roundActive (programEventGraph g) cfg := by
             simpa [hmove] using hcoord
           exact False.elim (hnot hactive)
       | some action =>
           have hpair :
-              who ∈ ProtocolGraph.roundActive (syntaxProtocolGraph g) cfg ∧
-                action ∈ ProtocolGraph.roundAvailable
-                  (syntaxProtocolGraph g) cfg who := by
+              who ∈ EventGraph.roundActive (programEventGraph g) cfg ∧
+                action ∈ EventGraph.roundAvailable
+                  (programEventGraph g) cfg who := by
             simpa [hmove] using hcoord
           have hnodeLegal :
-              (syntaxProtocolGraph g).sliceLegal node (action.slice node) ∧
-                (syntaxProtocolGraph g).actionLegal cfg.result node
+              (programEventGraph g).sliceLegal node (action.slice node) ∧
+                (programEventGraph g).actionLegal cfg.result node
                   (action.slice node) :=
             hpair.2 hfrontier hactor
           have havailable :
               ({ node := node, slice := action.slice node } :
-                ProtocolGraph.PlayerAction (syntaxProtocolGraph g) who) ∈
-                ProtocolGraph.available (syntaxProtocolGraph g) cfg who :=
+                EventGraph.PlayerAction (programEventGraph g) who) ∈
+                EventGraph.available (programEventGraph g) cfg who :=
             ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
           have hdst :
               dst = cfg.withResult (action.slice node)
                 hfrontier hnodeLegal.1 := by
-            simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepPlay,
+            simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
               hactor, hmove, havailable] using hsupp
           subst dst
-          exact protocolGraph_withResult_done_card_succ_le cfg
+          exact eventGraph_withResult_done_card_succ_le cfg
             hfrontier hnodeLegal.1
   | none =>
       have havailable :
-          (ProtocolGraph.InternalEvent.node node :
-            ProtocolGraph.InternalEvent (syntaxProtocolGraph g)) ∈
-            ProtocolGraph.availableInternal (syntaxProtocolGraph g) cfg := by
+          (EventGraph.InternalEvent.node node :
+            EventGraph.InternalEvent (programEventGraph g)) ∈
+            EventGraph.availableInternal (programEventGraph g) cfg := by
         exact ⟨hfrontier, hactor⟩
       let hfrontier' : node ∈ cfg.frontier := hfrontier
       have hsuppBind :
           dst ∈
-            (((syntaxProtocolGraph g).internalKernel node cfg.result).bind
+            (((programEventGraph g).internalKernel node cfg.result).bind
               fun slice =>
-                if hlegal : (syntaxProtocolGraph g).sliceLegal node slice then
+                if hlegal : (programEventGraph g).sliceLegal node slice then
                   PMF.pure (cfg.withResult slice hfrontier' hlegal)
                 else
                   PMF.pure cfg).support := by
-        simpa [ProtocolGraph.roundStepNode, ProtocolGraph.stepInternal,
+        simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
           hactor, havailable, hfrontier'] using hsupp
       rw [PMF.mem_support_bind_iff] at hsuppBind
       rcases hsuppBind with ⟨slice, hslice, hdstSupport⟩
       have hlegal :
-          (syntaxProtocolGraph g).sliceLegal node slice :=
-        syntaxGraph_internalKernel_sliceLegal_of_mem_support g
+          (programEventGraph g).sliceLegal node slice :=
+        eventGraph_internalKernel_sliceLegal_of_mem_support g
           hfrontier hactor hslice
       rw [dif_pos hlegal] at hdstSupport
       have hdst : dst = cfg.withResult slice hfrontier' hlegal := by
         simpa using hdstSupport
       subst dst
-      exact protocolGraph_withResult_done_card_succ_le cfg hfrontier' hlegal
+      exact eventGraph_withResult_done_card_succ_le cfg hfrontier' hlegal
 
-private theorem protocolGraph_roundTransition_go_done_card_lower_bound
-    {G : ProtocolGraph P L}
-    (joint : GameTheory.JointAction (ProtocolGraph.PlayerRoundAction G))
+private theorem eventGraph_roundTransition_go_done_card_lower_bound
+    {G : EventGraph P L}
+    (joint : GameTheory.JointAction (EventGraph.PlayerRoundAction G))
     (nodes : List G.Node)
     {acc : PMF G.Configuration} {lower : Nat}
     (hacc :
@@ -3220,7 +3219,7 @@ private theorem protocolGraph_roundTransition_go_done_card_lower_bound
       dst ∈
         (nodes.foldl
           (fun acc node =>
-            acc.bind fun state => ProtocolGraph.roundStepNode G joint node state)
+            acc.bind fun state => EventGraph.roundStepNode G joint node state)
           acc).support) :
     lower ≤ dst.done.card := by
   induction nodes generalizing acc with
@@ -3233,31 +3232,31 @@ private theorem protocolGraph_roundTransition_go_done_card_lower_bound
         rcases hmid with ⟨src : G.Configuration, hsrc, hstep⟩
         have hsrcLower : lower ≤ src.done.card := hacc src hsrc
         have hsubset : src.done ⊆ mid.done :=
-          protocolGraph_roundStepNode_done_subset joint node hstep
+          eventGraph_roundStepNode_done_subset joint node hstep
         exact Nat.le_trans hsrcLower (Finset.card_le_card hsubset)
       · simpa [List.foldl_cons] using hsupp
 
-private theorem syntaxGraph_roundTransition_done_card_succ_le_of_legal
+private theorem eventGraph_roundTransition_done_card_succ_le_of_legal
     (g : WFProgram P L)
-    {cfg dst : (syntaxProtocolGraph g).Configuration}
+    {cfg dst : (programEventGraph g).Configuration}
     {joint : GameTheory.JointAction
-      (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))}
+      (EventGraph.PlayerRoundAction (programEventGraph g))}
     (hjoint :
       GameTheory.JointActionLegal
-        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
-        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
-        ProtocolGraph.Configuration.terminal
-        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        (EventGraph.PlayerRoundAction (programEventGraph g))
+        (EventGraph.roundActive (programEventGraph g))
+        EventGraph.Configuration.terminal
+        (EventGraph.roundAvailable (programEventGraph g))
         cfg joint)
     (hnotTerminal : ¬ cfg.terminal)
     (hsupp :
       dst ∈
-        (ProtocolGraph.roundTransition (syntaxProtocolGraph g) cfg joint).support) :
+        (EventGraph.roundTransition (programEventGraph g) cfg joint).support) :
     cfg.done.card + 1 ≤ dst.done.card := by
   classical
   rcases cfg.frontier_nonempty_of_not_terminal hnotTerminal with
     ⟨first, hfirstFrontier⟩
-  rw [ProtocolGraph.roundTransition] at hsupp
+  rw [EventGraph.roundTransition] at hsupp
   cases hlist : cfg.frontier.toList with
   | nil =>
       have hfirstList : first ∈ cfg.frontier.toList := by
@@ -3273,78 +3272,78 @@ private theorem syntaxGraph_roundTransition_done_card_succ_le_of_legal
             (rest.foldl
               (fun acc node =>
                 acc.bind fun state =>
-                  ProtocolGraph.roundStepNode
-                    (syntaxProtocolGraph g) joint node state)
-              (ProtocolGraph.roundStepNode
-                (syntaxProtocolGraph g) joint head cfg)).support := by
+                  EventGraph.roundStepNode
+                    (programEventGraph g) joint node state)
+              (EventGraph.roundStepNode
+                (programEventGraph g) joint head cfg)).support := by
         simpa [hlist, List.foldl_cons] using hsupp
       exact
-        protocolGraph_roundTransition_go_done_card_lower_bound
-          (G := syntaxProtocolGraph g) joint rest
-          (acc := ProtocolGraph.roundStepNode
-            (syntaxProtocolGraph g) joint head cfg)
+        eventGraph_roundTransition_go_done_card_lower_bound
+          (G := programEventGraph g) joint rest
+          (acc := EventGraph.roundStepNode
+            (programEventGraph g) joint head cfg)
           (lower := cfg.done.card + 1)
           (fun mid hmid =>
-            syntaxGraph_roundStepNode_done_card_succ_le_of_legal
+            eventGraph_roundStepNode_done_card_succ_le_of_legal
               g hjoint hheadFrontier hmid)
           hsuppRest
 
-private theorem syntaxGraph_boundedFOSG_step_done_card_succ_le
+private theorem eventGraph_boundedFOSG_step_done_card_succ_le
     (g : WFProgram P L) (horizon : Nat)
-    {src dst : (syntaxGraphMachine g).BoundedState horizon}
+    {src dst : (eventGraphMachine g).BoundedState horizon}
     {action :
-      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction src)}
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction src)}
     (hsupp :
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).transition
         src action dst ≠ 0) :
     src.state.done.card + 1 ≤ dst.state.done.card := by
   classical
   let rawAction :=
-    (syntaxGraphFOSGView g).boundedActionToAction horizon src action
-  have hnotGraph : ¬ (syntaxGraphMachine g).terminal src.state := by
+    (eventGraphFOSGView g).boundedActionToAction horizon src action
+  have hnotGraph : ¬ (eventGraphMachine g).terminal src.state := by
     intro hgraph
     exact action.2.1 (by
       rw [Machine.FOSGView.toBoundedFOSG_terminal]
       exact Or.inl hgraph)
   have hboundedMem :
       dst ∈
-        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           src action).support :=
     (PMF.mem_support_iff _ _).2 hsupp
   have hstateMem :
       dst.state ∈
         (PMF.map (fun bounded => bounded.state)
-          (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+          (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
             src action)).support :=
     (PMF.mem_support_map_iff _ _ _).2
       ⟨dst, hboundedMem, rfl⟩
   rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hstateMem
   have hroundMem :
       dst.state ∈
-        (ProtocolGraph.roundTransition (syntaxProtocolGraph g)
+        (EventGraph.roundTransition (programEventGraph g)
           src.state rawAction.1).support := by
-    simpa [rawAction, syntaxGraphFOSGView, syntaxGraphMachine,
-      ProtocolGraph.toFOSGView] using hstateMem
+    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
+      EventGraph.toFOSGView] using hstateMem
   have hroundLegal :
       GameTheory.JointActionLegal
-        (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g))
-        (ProtocolGraph.roundActive (syntaxProtocolGraph g))
-        ProtocolGraph.Configuration.terminal
-        (ProtocolGraph.roundAvailable (syntaxProtocolGraph g))
+        (EventGraph.PlayerRoundAction (programEventGraph g))
+        (EventGraph.roundActive (programEventGraph g))
+        EventGraph.Configuration.terminal
+        (EventGraph.roundAvailable (programEventGraph g))
         src.state rawAction.1 := by
-    simpa [rawAction, syntaxGraphFOSGView, syntaxGraphMachine,
-      ProtocolGraph.toFOSGView] using rawAction.2
-  exact syntaxGraph_roundTransition_done_card_succ_le_of_legal
+    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
+      EventGraph.toFOSGView] using rawAction.2
+  exact eventGraph_roundTransition_done_card_succ_le_of_legal
     g hroundLegal hnotGraph hroundMem
 
-private theorem syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+private theorem eventGraph_boundedFOSG_stepChain_done_card_ge_length
     (g : WFProgram P L) (horizon : Nat) :
-    ∀ {start : (syntaxGraphMachine g).BoundedState horizon}
-      {steps : List (((syntaxGraphFOSGView g).toBoundedFOSG horizon).Step)},
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).StepChainFrom
+    ∀ {start : (eventGraphMachine g).BoundedState horizon}
+      {steps : List (((eventGraphFOSGView g).toBoundedFOSG horizon).Step)},
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).StepChainFrom
           start steps →
         start.state.done.card + steps.length ≤
-          (((syntaxGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
+          (((eventGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
             start steps).state.done.card
   | start, [], _hchain => by
       simp [GameTheory.FOSG.lastStateFrom]
@@ -3355,58 +3354,58 @@ private theorem syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
         rw [← hsrc]
       have hstep :
           step.src.state.done.card + 1 ≤ step.dst.state.done.card :=
-        syntaxGraph_boundedFOSG_step_done_card_succ_le
+        eventGraph_boundedFOSG_step_done_card_succ_le
           g horizon step.support
       have htailDone :
           step.dst.state.done.card + steps.length ≤
-            (((syntaxGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
+            (((eventGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
               step.dst steps).state.done.card :=
-        syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+        eventGraph_boundedFOSG_stepChain_done_card_ge_length
           (g := g) (horizon := horizon) htail
       simp [GameTheory.FOSG.lastStateFrom, hstartDone]
       omega
 
-private theorem syntaxGraph_boundedFOSG_history_done_card_ge_depth
+private theorem eventGraph_boundedFOSG_history_done_card_ge_depth
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     h.lastState.depth ≤ h.lastState.state.done.card := by
   have hchainDone :
-      ((Machine.BoundedState.init (syntaxGraphMachine g) horizon).state.done.card) +
+      ((Machine.BoundedState.init (eventGraphMachine g) horizon).state.done.card) +
           h.steps.length ≤ h.lastState.state.done.card := by
     simpa [GameTheory.FOSG.History.lastState,
       Machine.FOSGView.toBoundedFOSG_init] using
-      (syntaxGraph_boundedFOSG_stepChain_done_card_ge_length
+      (eventGraph_boundedFOSG_stepChain_done_card_ge_length
         (g := g) (horizon := horizon) h.chain)
   have hinitDone :
-      ((Machine.BoundedState.init (syntaxGraphMachine g) horizon).state.done.card) =
+      ((Machine.BoundedState.init (eventGraphMachine g) horizon).state.done.card) =
         0 := by
-    simp [syntaxGraphMachine, ProtocolGraph.toMachine,
-      ProtocolGraph.Configuration.initial, ProtocolGraph.Configuration.done,
-      ProtocolGraph.done]
+    simp [eventGraphMachine, EventGraph.toMachine,
+      EventGraph.Configuration.initial, EventGraph.Configuration.done,
+      EventGraph.done]
   have hstepsDone : h.steps.length ≤ h.lastState.state.done.card := by
     omega
   have hdepth :
       h.lastState.depth = h.steps.length :=
-    (syntaxGraphFOSGView g).toBoundedFOSG_history_depth horizon h
+    (eventGraphFOSGView g).toBoundedFOSG_history_depth horizon h
   omega
 
-private theorem syntaxGraph_terminal_of_done_card_ge_syntaxSteps
+private theorem eventGraph_terminal_of_done_card_ge_syntaxSteps
     (g : WFProgram P L)
-    (cfg : (syntaxProtocolGraph g).Configuration)
+    (cfg : (programEventGraph g).Configuration)
     (hcard : syntaxSteps g.prog ≤ cfg.done.card) :
     cfg.terminal := by
   have hnodesCard :
-      (syntaxProtocolGraph g).nodes.card ≤ syntaxSteps g.prog := by
+      (programEventGraph g).nodes.card ≤ syntaxSteps g.prog := by
     change (ProgramNode.finset g.prog).card ≤ syntaxSteps g.prog
     exact ProgramNode.finset_card_le_syntaxSteps g.prog
   have hnodes_le_done :
-      (syntaxProtocolGraph g).nodes.card ≤ cfg.done.card :=
+      (programEventGraph g).nodes.card ≤ cfg.done.card :=
     Nat.le_trans hnodesCard hcard
   have hdone_subset :
-      cfg.done ⊆ (syntaxProtocolGraph g).nodes :=
-    protocolGraph_done_subset_nodes cfg
+      cfg.done ⊆ (programEventGraph g).nodes :=
+    eventGraph_done_subset_nodes cfg
   have hdone_eq_nodes :
-      cfg.done = (syntaxProtocolGraph g).nodes :=
+      cfg.done = (programEventGraph g).nodes :=
     Finset.eq_of_subset_of_card_le hdone_subset hnodes_le_done
   intro node hnode
   rw [hdone_eq_nodes]
@@ -3415,167 +3414,167 @@ private theorem syntaxGraph_terminal_of_done_card_ge_syntaxSteps
 /-- A checked game that is played legally to completion reaches its declared
 payoff rule. The internal bound is the number of source steps in the checked
 program. -/
-theorem syntaxGraph_wholeGame_reaches_declared_payoff_rule
+theorem eventGraph_wholeGame_reaches_declared_payoff_rule
     (g : WFProgram P L)
     (h :
-      (((syntaxGraphFOSGView g).toBoundedFOSG
+      (((eventGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).History))
     (hcomplete :
-      ((syntaxGraphFOSGView g).toBoundedFOSG
+      ((eventGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).terminal h.lastState) :
     ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
       ProgramField.finalEnv? g.prog
-          (syntaxGraphConfigValue? g h.lastState.state) = some env ∧
-        syntaxGraphOutcome g h.lastState.state =
+          (eventGraphConfigValue? g h.lastState.state) = some env ∧
+        eventGraphOutcome g h.lastState.state =
           evalPayoffs (ProgramField.finalPayoffs g.prog) env := by
   have hgraphTerminal :
-      (syntaxGraphMachine g).terminal h.lastState.state := by
+      (eventGraphMachine g).terminal h.lastState.state := by
     rw [Machine.FOSGView.toBoundedFOSG_terminal] at hcomplete
     rcases hcomplete with hterminal | hcut
     · exact hterminal
     · have hdoneDepth :=
-        syntaxGraph_boundedFOSG_history_done_card_ge_depth
+        eventGraph_boundedFOSG_history_done_card_ge_depth
           g (syntaxSteps g.prog) h
       have hdoneSteps : syntaxSteps g.prog ≤ h.lastState.state.done.card := by
         omega
-      exact syntaxGraph_terminal_of_done_card_ge_syntaxSteps
+      exact eventGraph_terminal_of_done_card_ge_syntaxSteps
         g h.lastState.state hdoneSteps
-  exact syntaxGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
+  exact eventGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
 
-/-- Primitive machine event blocks extracted from a bounded syntax-graph FOSG
+/-- Primitive machine event blocks extracted from a bounded event-graph FOSG
 history. Each block is one frontier round of the public FOSG view. -/
-noncomputable def syntaxGraphFOSGHistoryEventBlocks
+noncomputable def eventGraphFOSGHistoryEventBlocks
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    List (List (syntaxGraphMachine g).Event) :=
-  ProtocolGraph.boundedFOSGHistoryEventBlocks
-    (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-    (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    List (List (eventGraphMachine g).Event) :=
+  EventGraph.boundedFOSGHistoryEventBlocks
+    (programEventGraph g) (eventGraphMachineInterface g)
+    (programEventGraph_hasStableFrontierRounds g) horizon h
 
-/-- Primitive machine events represented by one syntax-graph FOSG frontier
+/-- Primitive machine events represented by one event-graph FOSG frontier
 round. -/
-noncomputable def syntaxGraphRoundPrimitiveEvents
+noncomputable def eventGraphRoundPrimitiveEvents
     (g : WFProgram P L)
-    (cfg : (syntaxGraphMachine g).State)
-    (joint : GameTheory.JointAction (syntaxGraphFOSGView g).Act) :
-    List (syntaxGraphMachine g).Event := by
-  simpa [syntaxGraphMachine, syntaxGraphFOSGView] using
-    (ProtocolGraph.roundPrimitiveEvents (syntaxProtocolGraph g)
-      (syntaxGraphMachineInterface g) cfg joint)
+    (cfg : (eventGraphMachine g).State)
+    (joint : GameTheory.JointAction (eventGraphFOSGView g).Act) :
+    List (eventGraphMachine g).Event := by
+  simpa [eventGraphMachine, eventGraphFOSGView] using
+    (EventGraph.roundPrimitiveEvents (programEventGraph g)
+      (eventGraphMachineInterface g) cfg joint)
 
-/-- Every bounded syntax-graph FOSG history is backed by a primitive machine
+/-- Every bounded event-graph FOSG history is backed by a primitive machine
 blocked run whose support contains the same checkpoint state. -/
-theorem syntaxGraphFOSGHistory_state_mem_runEventBlocksFrom_support
+theorem eventGraphFOSGHistory_state_mem_runEventBlocksFrom_support
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     h.lastState.state ∈
-      ((syntaxGraphMachine g).runEventBlocksFrom
-        (syntaxGraphFOSGHistoryEventBlocks g horizon h)
-        (syntaxGraphMachine g).init).support := by
-  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
-    syntaxGraphFOSGView] using
-    (ProtocolGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
-      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h)
+      ((eventGraphMachine g).runEventBlocksFrom
+        (eventGraphFOSGHistoryEventBlocks g horizon h)
+        (eventGraphMachine g).init).support := by
+  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+    eventGraphFOSGView] using
+    (EventGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasStableFrontierRounds g) horizon h)
 
-/-- One bounded syntax-graph FOSG transition, projected to the history's
+/-- One bounded event-graph FOSG transition, projected to the history's
 extracted event-block prefix and successor checkpoint state, is exactly the
 corresponding primitive machine blocked run. -/
-theorem syntaxGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+theorem eventGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
-      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
         h.lastState)) :
     PMF.map
         (fun dst =>
-          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
-              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             dst.state))
-        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
-              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             next))
-        ((syntaxGraphMachine g).runEventBlocksFrom
-          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+        ((eventGraphMachine g).runEventBlocksFrom
+          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state) := by
-  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
-    syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
-    (ProtocolGraph.boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
-      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action)
+  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+    eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
+    (EventGraph.boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasStableFrontierRounds g) horizon h action)
 
-/-- Continuation form of one syntax-graph FOSG transition: binding over the
+/-- Continuation form of one event-graph FOSG transition: binding over the
 bounded FOSG transition is the same as binding over the primitive blocked
 machine run and reattaching the bounded presentation depth. -/
-theorem syntaxGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
+theorem eventGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
-      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
         h.lastState))
     {α : Type}
-    (K : (syntaxGraphMachine g).BoundedState horizon → PMF α) :
-    ((((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+    (K : (eventGraphMachine g).BoundedState horizon → PMF α) :
+    ((((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action).bind K) =
-      ((syntaxGraphMachine g).runEventBlocksFrom
-          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+      ((eventGraphMachine g).runEventBlocksFrom
+          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state).bind
         (fun next =>
           K (h.lastState.succ
             (Nat.lt_of_not_ge
               (fun hle => action.2.1 (Or.inr hle)))
             next)) := by
-  simpa [syntaxGraphMachine, syntaxGraphFOSGView,
-    syntaxGraphRoundPrimitiveEvents] using
-    (ProtocolGraph.boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
-      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action K)
+  simpa [eventGraphMachine, eventGraphFOSGView,
+    eventGraphRoundPrimitiveEvents] using
+    (EventGraph.boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasStableFrontierRounds g) horizon h action K)
 
-/-- One-step form matching `FOSG.History.runDistFrom` for syntax graphs:
+/-- One-step form matching `FOSG.History.runDistFrom` for event graphs:
 extend the FOSG history by the sampled bounded destination, then project to
 the extracted primitive event blocks and checkpoint state. -/
-theorem syntaxGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+theorem eventGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History))
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
-      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
         h.lastState)) :
     PMF.map
         (fun dst =>
           let h' := h.extendByOutcome action dst
-          (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+          (eventGraphFOSGHistoryEventBlocks g horizon h',
             h'.lastState.state))
-        (((syntaxGraphFOSGView g).toBoundedFOSG horizon).transition
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (syntaxGraphFOSGHistoryEventBlocks g horizon h ++
-              [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1],
+          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             next))
-        ((syntaxGraphMachine g).runEventBlocksFrom
-          [syntaxGraphRoundPrimitiveEvents g h.lastState.state action.1]
+        ((eventGraphMachine g).runEventBlocksFrom
+          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state) := by
-  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
-    syntaxGraphFOSGView, syntaxGraphRoundPrimitiveEvents] using
-    (ProtocolGraph.boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
-      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon h action)
+  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+    eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
+    (EventGraph.boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasStableFrontierRounds g) horizon h action)
 
-/-- Player round-action availability in the syntax graph is determined by the
+/-- Player round-action availability in the event graph is determined by the
 public transcript together with the acting player's private observation. -/
-theorem syntaxGraph_roundAvailable_eq_of_observation_eq
+theorem eventGraph_roundAvailable_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
-    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
-    ProtocolGraph.roundAvailable (syntaxProtocolGraph g) left who =
-      ProtocolGraph.roundAvailable (syntaxProtocolGraph g) right who := by
+    {left right : (programEventGraph g).Configuration}
+    (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
+    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
+    EventGraph.roundAvailable (programEventGraph g) left who =
+      EventGraph.roundAvailable (programEventGraph g) right who := by
   classical
-  have hfrontierEq := syntaxGraphPublicView_frontier_eq_of_eq g hpub
+  have hfrontierEq := eventGraphPublicView_frontier_eq_of_eq g hpub
   ext action
   constructor
   · intro haction node hfrontier hactor
@@ -3583,121 +3582,121 @@ theorem syntaxGraph_roundAvailable_eq_of_observation_eq
       simpa [hfrontierEq] using hfrontier
     rcases haction hfrontierLeft hactor with ⟨hslice, hlegal⟩
     exact ⟨hslice,
-      syntaxGraph_actionLegal_of_observe_eq g who hfrontier
+      eventGraph_actionLegal_of_observe_eq g who hfrontier
         hactor hpriv hlegal⟩
   · intro haction node hfrontier hactor
     have hfrontierRight : node ∈ right.frontier := by
       simpa [hfrontierEq] using hfrontier
     rcases haction hfrontierRight hactor with ⟨hslice, hlegal⟩
     exact ⟨hslice,
-      syntaxGraph_actionLegal_of_observe_eq g who hfrontier
+      eventGraph_actionLegal_of_observe_eq g who hfrontier
         hactor hpriv.symm hlegal⟩
 
-/-- The active-player set of a syntax-graph frontier round is determined by
+/-- The active-player set of an event-graph frontier round is determined by
 the public transcript. -/
-theorem syntaxGraph_roundActive_eq_of_publicView_eq
+theorem eventGraph_roundActive_eq_of_publicView_eq
     (g : WFProgram P L)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
-    ProtocolGraph.roundActive (syntaxProtocolGraph g) left =
-      ProtocolGraph.roundActive (syntaxProtocolGraph g) right := by
+    {left right : (programEventGraph g).Configuration}
+    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
+    EventGraph.roundActive (programEventGraph g) left =
+      EventGraph.roundActive (programEventGraph g) right := by
   classical
-  have hfrontier := syntaxGraphPublicView_frontier_eq_of_eq g hpub
-  unfold ProtocolGraph.roundActive
+  have hfrontier := eventGraphPublicView_frontier_eq_of_eq g hpub
+  unfold EventGraph.roundActive
   rw [hfrontier]
 
-/-- Player-facing frontier-round menus in the syntax graph are determined by
+/-- Player-facing frontier-round menus in the event graph are determined by
 the public transcript together with the player's private observation.
 
 This is the protocol-level "the player knows what they can do" invariant:
 two configurations indistinguishable to `who` offer the same optional menu to
 `who`, including whether `who` is called at all. -/
-theorem syntaxGraph_roundMenu_eq_of_observation_eq
+theorem eventGraph_roundMenu_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
-    {left right : (syntaxProtocolGraph g).Configuration}
-    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
-    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
-    ProtocolGraph.roundMenu (syntaxProtocolGraph g) left who =
-      ProtocolGraph.roundMenu (syntaxProtocolGraph g) right who := by
+    {left right : (programEventGraph g).Configuration}
+    (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
+    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
+    EventGraph.roundMenu (programEventGraph g) left who =
+      EventGraph.roundMenu (programEventGraph g) right who := by
   have hactive :=
-    syntaxGraph_roundActive_eq_of_publicView_eq g hpub
+    eventGraph_roundActive_eq_of_publicView_eq g hpub
   have havailable :=
-    syntaxGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
-  simp [ProtocolGraph.roundMenu, hactive, havailable]
+    eventGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
+  simp [EventGraph.roundMenu, hactive, havailable]
 
-/-- At a bounded syntax-graph FOSG state before the cutoff, legal optional
+/-- At a bounded event-graph FOSG state before the cutoff, legal optional
 moves are determined by the player's latest private observation and the public
 transcript. -/
-theorem syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
+theorem eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
     (g : WFProgram P L) (horizon : Nat) (who : P)
-    {left right : (syntaxGraphMachine g).BoundedState horizon}
+    {left right : (eventGraphMachine g).BoundedState horizon}
     (hcut : ¬ horizon ≤ left.depth)
     (hcut' : ¬ horizon ≤ right.depth)
     (hpriv :
-      syntaxGraphObserve g who left.state =
-        syntaxGraphObserve g who right.state)
+      eventGraphObserve g who left.state =
+        eventGraphObserve g who right.state)
     (hpub :
-      syntaxGraphPublicView g left.state =
-        syntaxGraphPublicView g right.state) :
-    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
+      eventGraphPublicView g left.state =
+        eventGraphPublicView g right.state) :
+    ((eventGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
         left who =
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
         right who := by
   classical
   have hroundActive :
-      ProtocolGraph.roundActive (syntaxProtocolGraph g) left.state =
-        ProtocolGraph.roundActive (syntaxProtocolGraph g) right.state :=
-    syntaxGraph_roundActive_eq_of_publicView_eq g hpub
+      EventGraph.roundActive (programEventGraph g) left.state =
+        EventGraph.roundActive (programEventGraph g) right.state :=
+    eventGraph_roundActive_eq_of_publicView_eq g hpub
   have hroundAvailable :
-      ProtocolGraph.roundAvailable (syntaxProtocolGraph g) left.state who =
-        ProtocolGraph.roundAvailable (syntaxProtocolGraph g) right.state who :=
-    syntaxGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
+      EventGraph.roundAvailable (programEventGraph g) left.state who =
+        EventGraph.roundAvailable (programEventGraph g) right.state who :=
+    eventGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
   have hactive :
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left =
-        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right := by
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).active left =
+        ((eventGraphFOSGView g).toBoundedFOSG horizon).active right := by
     ext player
     simp [Machine.FOSGView.boundedActive, hcut, hcut',
-      syntaxGraphFOSGView, ProtocolGraph.toFOSGView, hroundActive]
+      eventGraphFOSGView, EventGraph.toFOSGView, hroundActive]
   have hactions :
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
           left who =
-        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+        ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
           right who := by
     ext action
     simp [Machine.FOSGView.boundedAvailableActions, hcut, hcut',
-      syntaxGraphFOSGView, ProtocolGraph.toFOSGView, hroundAvailable]
+      eventGraphFOSGView, EventGraph.toFOSGView, hroundAvailable]
   ext move
   cases move with
   | none =>
       change
-        who ∉ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left ↔
-          who ∉ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right
+        who ∉ ((eventGraphFOSGView g).toBoundedFOSG horizon).active left ↔
+          who ∉ ((eventGraphFOSGView g).toBoundedFOSG horizon).active right
       rw [hactive]
   | some action =>
       change
-        who ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active left ∧
+        who ∈ ((eventGraphFOSGView g).toBoundedFOSG horizon).active left ∧
             action ∈
-              ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+              ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
                 left who ↔
-          who ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).active right ∧
+          who ∈ ((eventGraphFOSGView g).toBoundedFOSG horizon).active right ∧
             action ∈
-              ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions
+              ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
                 right who
       rw [hactive, hactions]
 
-/-- Bounded graph-native syntax FOSGs satisfy the legal-observability
+/-- Bounded event-graph FOSGs satisfy the legal-observability
 condition required by Kuhn's theorem. -/
-theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
+theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
     (g : WFProgram P L) (horizon : Nat) :
-    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalObservable := by
+    ((eventGraphFOSGView g).toBoundedFOSG horizon).LegalObservable := by
   intro who h h' hInfo
-  let G := (syntaxGraphFOSGView g).toBoundedFOSG horizon
+  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
   have hobsLen :
       (GameTheory.FOSG.InfoState.observationEvents
         (G := G) (i := who) (h.playerView who)).length =
         h.steps.length := by
     simpa [G] using
-      (syntaxGraphFOSGView g)
+      (eventGraphFOSGView g)
         |>.toBoundedFOSG_history_playerView_observationEvents_length
           horizon h who
   have hobsLen' :
@@ -3705,7 +3704,7 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
         (G := G) (i := who) (h'.playerView who)).length =
         h'.steps.length := by
     simpa [G] using
-      (syntaxGraphFOSGView g)
+      (eventGraphFOSGView g)
         |>.toBoundedFOSG_history_playerView_observationEvents_length
           horizon h' who
   have hlenEq : h.steps.length = h'.steps.length := by
@@ -3748,10 +3747,10 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
         rfl
       exact hnil (List.eq_nil_of_length_eq_zero hlen0)
     have hdepthLen :=
-      (syntaxGraphFOSGView g)
+      (eventGraphFOSGView g)
         |>.toBoundedFOSG_history_depth horizon h
     have hdepthLen' :=
-      (syntaxGraphFOSGView g)
+      (eventGraphFOSGView g)
         |>.toBoundedFOSG_history_depth horizon h'
     have hcutEq :
         (horizon ≤ h.lastState.depth) ↔
@@ -3789,42 +3788,42 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
           GameTheory.FOSG.InfoState.latestObservation?
               (G := G) (i := who) (h.playerView who) =
             some
-              (syntaxGraphObserve g who h.lastState.state,
-                syntaxGraphPublicView g h.lastState.state) := by
-        simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
-          syntaxGraphMachineInterface] using
-          (syntaxGraphFOSGView g)
+              (eventGraphObserve g who h.lastState.state,
+                eventGraphPublicView g h.lastState.state) := by
+        simpa [G, eventGraphMachine, EventGraph.toMachine,
+          eventGraphMachineInterface] using
+          (eventGraphFOSGView g)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               horizon who h hnil
       have hlatest₂ :
           GameTheory.FOSG.InfoState.latestObservation?
               (G := G) (i := who) (h'.playerView who) =
             some
-              (syntaxGraphObserve g who h'.lastState.state,
-                syntaxGraphPublicView g h'.lastState.state) := by
-        simpa [G, syntaxGraphMachine, ProtocolGraph.toMachine,
-          syntaxGraphMachineInterface] using
-          (syntaxGraphFOSGView g)
+              (eventGraphObserve g who h'.lastState.state,
+                eventGraphPublicView g h'.lastState.state) := by
+        simpa [G, eventGraphMachine, EventGraph.toMachine,
+          eventGraphMachineInterface] using
+          (eventGraphFOSGView g)
             |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
               horizon who h' hnil'
       rw [hlatest₁, hlatest₂] at hlatest
       injection hlatest with hobs
       have hpriv :
-          syntaxGraphObserve g who h.lastState.state =
-            syntaxGraphObserve g who h'.lastState.state :=
+          eventGraphObserve g who h.lastState.state =
+            eventGraphObserve g who h'.lastState.state :=
         congrArg Prod.fst hobs
       have hpub :
-          syntaxGraphPublicView g h.lastState.state =
-            syntaxGraphPublicView g h'.lastState.state :=
+          eventGraphPublicView g h.lastState.state =
+            eventGraphPublicView g h'.lastState.state :=
         congrArg Prod.snd hobs
       simpa [GameTheory.FOSG.availableMoves] using
-        syntaxGraph_boundedAvailableMovesAtState_eq_of_observation_eq
+        eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
           g horizon who hcut hcut' hpriv hpub
 
-/-- Finite state helper for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeState
+/-- Finite state helper for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeState
     (g : WFProgram P L) [FiniteDomains g] :
-    Fintype (syntaxGraphMachine g).State := by
+    Fintype (eventGraphMachine g).State := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
@@ -3833,15 +3832,15 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
   letI :
       ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
     fun field => ProgramField.instFintypeValue g field
-  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
-    syntaxProtocolGraph, ProtocolGraph.Configuration,
-    ProtocolGraph.ResultAssignment, ProtocolGraph.WriteSlice]
+  dsimp [eventGraphMachine, EventGraph.toMachine,
+    programEventGraph, EventGraph.Configuration,
+    EventGraph.ResultAssignment, EventGraph.WriteSlice]
   infer_instance
 
-/-- Finite action helper for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeAction
+/-- Finite action helper for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeAction
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype ((syntaxGraphMachine g).Action who) := by
+    Fintype ((eventGraphMachine g).Action who) := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
@@ -3850,24 +3849,24 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
   letI :
       ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
     fun field => ProgramField.instFintypeValue g field
-  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
-    ProtocolGraph.PlayerAction, syntaxProtocolGraph,
-    ProtocolGraph.WriteSlice]
+  dsimp [eventGraphMachine, EventGraph.toMachine,
+    EventGraph.PlayerAction, programEventGraph,
+    EventGraph.WriteSlice]
   infer_instance
 
-/-- Finite optional-action helper for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeOptionAction
+/-- Finite optional-action helper for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeOptionAction
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype (Option ((syntaxGraphMachine g).Action who)) := by
+    Fintype (Option ((eventGraphMachine g).Action who)) := by
   classical
-  letI : Fintype ((syntaxGraphMachine g).Action who) :=
-    syntaxGraphMachine.instFintypeAction g who
+  letI : Fintype ((eventGraphMachine g).Action who) :=
+    eventGraphMachine.instFintypeAction g who
   infer_instance
 
-/-- Finite FOSG round-action helper for the graph-native syntax FOSG view. -/
-@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeAct
+/-- Finite FOSG round-action helper for the event-graph FOSG view. -/
+@[reducible] noncomputable instance eventGraphFOSGView.instFintypeAct
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype ((syntaxGraphFOSGView g).Act who) := by
+    Fintype ((eventGraphFOSGView g).Act who) := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
@@ -3876,56 +3875,56 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
   letI :
       ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
     fun field => ProgramField.instFintypeValue g field
-  haveI : Fintype (syntaxProtocolGraph g).Node := by
+  haveI : Fintype (programEventGraph g).Node := by
     change Fintype (ProgramNode g.prog)
     exact ProgramNode.instFintype g.prog
-  haveI : Fintype (syntaxProtocolGraph g).Field := by
+  haveI : Fintype (programEventGraph g).Field := by
     change Fintype (ProgramField g.prog)
     exact ProgramField.instFintype g.prog
   haveI :
-      ∀ field : (syntaxProtocolGraph g).Field,
-        Fintype (L.Val ((syntaxProtocolGraph g).fieldTy field)) := by
+      ∀ field : (programEventGraph g).Field,
+        Fintype (L.Val ((programEventGraph g).fieldTy field)) := by
     intro field
     change Fintype (L.Val field.ty)
     exact ProgramField.instFintypeValue g field
-  change Fintype (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g) who)
-  exact ProtocolGraph.PlayerRoundAction.instFintype (syntaxProtocolGraph g) who
+  change Fintype (EventGraph.PlayerRoundAction (programEventGraph g) who)
+  exact EventGraph.PlayerRoundAction.instFintype (programEventGraph g) who
 
-/-- Finite optional FOSG round-action helper for graph-native syntax views. -/
-@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeOptionAct
+/-- Finite optional FOSG round-action helper for event-graph views. -/
+@[reducible] noncomputable instance eventGraphFOSGView.instFintypeOptionAct
     (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype (Option ((syntaxGraphFOSGView g).Act who)) := by
+    Fintype (Option ((eventGraphFOSGView g).Act who)) := by
   classical
-  letI : Fintype ((syntaxGraphFOSGView g).Act who) :=
-    syntaxGraphFOSGView.instFintypeAct g who
+  letI : Fintype ((eventGraphFOSGView g).Act who) :=
+    eventGraphFOSGView.instFintypeAct g who
   infer_instance
 
-/-- Finite internal-event helper for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeInternal
+/-- Finite internal-event helper for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeInternal
     (g : WFProgram P L) :
-    Fintype (syntaxGraphMachine g).Internal := by
+    Fintype (eventGraphMachine g).Internal := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
-  dsimp [syntaxGraphMachine, ProtocolGraph.toMachine,
-    ProtocolGraph.InternalEvent, syntaxProtocolGraph]
+  dsimp [eventGraphMachine, EventGraph.toMachine,
+    EventGraph.InternalEvent, programEventGraph]
   infer_instance
 
-/-- Finite primitive-event helper for the graph-native syntax machine. -/
-@[reducible] noncomputable instance syntaxGraphMachine.instFintypeEvent
+/-- Finite primitive-event helper for the program event-graph machine. -/
+@[reducible] noncomputable instance eventGraphMachine.instFintypeEvent
     (g : WFProgram P L) [FiniteDomains g] [Fintype P] :
-    Fintype (syntaxGraphMachine g).Event := by
+    Fintype (eventGraphMachine g).Event := by
   classical
-  letI : ∀ who : P, Fintype ((syntaxGraphMachine g).Action who) :=
-    fun who => syntaxGraphMachine.instFintypeAction g who
-  letI : Fintype (syntaxGraphMachine g).Internal :=
-    syntaxGraphMachine.instFintypeInternal g
-  let playEvents : Finset (syntaxGraphMachine g).Event :=
+  letI : ∀ who : P, Fintype ((eventGraphMachine g).Action who) :=
+    fun who => eventGraphMachine.instFintypeAction g who
+  letI : Fintype (eventGraphMachine g).Internal :=
+    eventGraphMachine.instFintypeInternal g
+  let playEvents : Finset (eventGraphMachine g).Event :=
     (Finset.univ :
-      Finset (Sigma fun who : P => (syntaxGraphMachine g).Action who)).image
+      Finset (Sigma fun who : P => (eventGraphMachine g).Action who)).image
         (fun x => Machine.Event.play x.1 x.2)
-  let internalEvents : Finset (syntaxGraphMachine g).Event :=
-    (Finset.univ : Finset (syntaxGraphMachine g).Internal).image
+  let internalEvents : Finset (eventGraphMachine g).Event :=
+    (Finset.univ : Finset (eventGraphMachine g).Internal).image
       (fun event => Machine.Event.internal event)
   refine Fintype.mk (playEvents ∪ internalEvents) ?_
   intro event
@@ -3941,218 +3940,218 @@ theorem syntaxGraphFOSGView_toBoundedFOSG_legalObservable
           (Finset.mem_image.mpr
             ⟨event, Finset.mem_univ _, rfl⟩))
 
-/-- Finite-history helper for bounded graph-native syntax FOSG views. -/
-@[reducible] noncomputable instance syntaxGraphFOSGView.instFintypeBoundedHistory
+/-- Finite-history helper for bounded event-graph FOSG views. -/
+@[reducible] noncomputable instance eventGraphFOSGView.instFintypeBoundedHistory
     (g : WFProgram P L) (horizon : Nat)
     [Fintype P] [FiniteDomains g] :
-    Fintype (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) := by
+    Fintype (((eventGraphFOSGView g).toBoundedFOSG horizon).History) := by
   classical
   haveI :
-      Fintype ((syntaxGraphMachine g).BoundedState horizon) :=
+      Fintype ((eventGraphMachine g).BoundedState horizon) :=
     Machine.BoundedState.instFintype
   haveI :
-      ∀ who : P, Fintype (Option ((syntaxGraphFOSGView g).Act who)) :=
-    fun who => syntaxGraphFOSGView.instFintypeOptionAct g who
+      ∀ who : P, Fintype (Option ((eventGraphFOSGView g).Act who)) :=
+    fun who => eventGraphFOSGView.instFintypeOptionAct g who
   exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
-    (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
-    ((syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon)
+    (G := (eventGraphFOSGView g).toBoundedFOSG horizon)
+    ((eventGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon)
 
-/-- Terminal decidability for bounded graph-native syntax FOSG views. -/
-noncomputable instance syntaxGraphFOSGView.instDecidablePredBoundedTerminal
+/-- Terminal decidability for bounded event-graph FOSG views. -/
+noncomputable instance eventGraphFOSGView.instDecidablePredBoundedTerminal
     (g : WFProgram P L) (horizon : Nat) :
-    DecidablePred (((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
+    DecidablePred (((eventGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
   Classical.decPred _
 
 /-- History-dependent blocked primitive trace distribution induced by a
-bounded syntax-graph FOSG behavioral profile. -/
-noncomputable def syntaxGraphFOSGBlockTraceDistFrom
+bounded event-graph FOSG behavioral profile. -/
+noncomputable def eventGraphFOSGBlockTraceDistFrom
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (σ :
       GameTheory.FOSG.LegalBehavioralProfile
-        ((syntaxGraphFOSGView g).toBoundedFOSG horizon)) :
+        ((eventGraphFOSGView g).toBoundedFOSG horizon)) :
     Nat →
-      (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) →
-        PMF (List (List (syntaxGraphMachine g).Event) ×
-          (syntaxGraphMachine g).State) := by
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).History) →
+        PMF (List (List (eventGraphMachine g).Event) ×
+          (eventGraphMachine g).State) := by
   letI :
       ∀ player,
         Fintype
           (Option
-            (((syntaxProtocolGraph g).toFOSGView
-              (syntaxGraphMachineInterface g)
-              (syntaxProtocolGraph_hasStableFrontierRounds g)).Act
+            (((programEventGraph g).toFOSGView
+              (eventGraphMachineInterface g)
+              (programEventGraph_hasStableFrontierRounds g)).Act
                 player)) := by
     intro player
-    simpa [syntaxGraphFOSGView] using
-      (syntaxGraphFOSGView.instFintypeOptionAct g player)
-  simpa [syntaxGraphMachine, syntaxGraphFOSGView] using
-    (ProtocolGraph.boundedFOSGBlockTraceDistFrom
-      (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-      (syntaxProtocolGraph_hasStableFrontierRounds g) horizon σ)
+    simpa [eventGraphFOSGView] using
+      (eventGraphFOSGView.instFintypeOptionAct g player)
+  simpa [eventGraphMachine, eventGraphFOSGView] using
+    (EventGraph.boundedFOSGBlockTraceDistFrom
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasStableFrontierRounds g) horizon σ)
 
-/-- Bounded syntax-graph FOSG execution, projected to extracted primitive
+/-- Bounded event-graph FOSG execution, projected to extracted primitive
 event blocks and checkpoint state, equals the history-dependent blocked
 machine trace distribution induced by the same behavioral profile. -/
-theorem syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+theorem eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (σ :
       GameTheory.FOSG.LegalBehavioralProfile
-        ((syntaxGraphFOSGView g).toBoundedFOSG horizon))
+        ((eventGraphFOSGView g).toBoundedFOSG horizon))
     (n : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     PMF.map
         (fun h' =>
-          (syntaxGraphFOSGHistoryEventBlocks g horizon h',
+          (eventGraphFOSGHistoryEventBlocks g horizon h',
             h'.lastState.state))
         (GameTheory.FOSG.History.runDistFrom
-          ((syntaxGraphFOSGView g).toBoundedFOSG horizon) σ n h) =
-      syntaxGraphFOSGBlockTraceDistFrom g horizon σ n h := by
+          ((eventGraphFOSGView g).toBoundedFOSG horizon) σ n h) =
+      eventGraphFOSGBlockTraceDistFrom g horizon σ n h := by
   letI :
       ∀ player,
         Fintype
           (Option
-            (((syntaxProtocolGraph g).toFOSGView
-              (syntaxGraphMachineInterface g)
-              (syntaxProtocolGraph_hasStableFrontierRounds g)).Act
+            (((programEventGraph g).toFOSGView
+              (eventGraphMachineInterface g)
+              (programEventGraph_hasStableFrontierRounds g)).Act
                 player)) := by
     intro player
-    simpa [syntaxGraphFOSGView] using
-      (syntaxGraphFOSGView.instFintypeOptionAct g player)
+    simpa [eventGraphFOSGView] using
+      (eventGraphFOSGView.instFintypeOptionAct g player)
   letI :
       Fintype
-        (((syntaxProtocolGraph g).toMachine
-          (syntaxGraphMachineInterface g)).BoundedState horizon) := by
-    simpa [syntaxGraphMachine] using
-      (inferInstance : Fintype ((syntaxGraphMachine g).BoundedState horizon))
+        (((programEventGraph g).toMachine
+          (eventGraphMachineInterface g)).BoundedState horizon) := by
+    simpa [eventGraphMachine] using
+      (inferInstance : Fintype ((eventGraphMachine g).BoundedState horizon))
   letI :
       DecidablePred
-        ((((syntaxProtocolGraph g).toFOSGView
-          (syntaxGraphMachineInterface g)
-          (syntaxProtocolGraph_hasStableFrontierRounds g)).toBoundedFOSG
+        ((((programEventGraph g).toFOSGView
+          (eventGraphMachineInterface g)
+          (programEventGraph_hasStableFrontierRounds g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
-  simpa [syntaxGraphFOSGHistoryEventBlocks, syntaxGraphMachine,
-    syntaxGraphFOSGView, syntaxGraphFOSGBlockTraceDistFrom] using
-      (ProtocolGraph.boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
-        (syntaxProtocolGraph g) (syntaxGraphMachineInterface g)
-        (syntaxProtocolGraph_hasStableFrontierRounds g) horizon σ n h)
+  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+    eventGraphFOSGView, eventGraphFOSGBlockTraceDistFrom] using
+      (EventGraph.boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+        (programEventGraph g) (eventGraphMachineInterface g)
+        (programEventGraph_hasStableFrontierRounds g) horizon σ n h)
 
-/-- Initial history of the bounded syntax-graph FOSG presentation. -/
-noncomputable def syntaxGraphInitialHistory
+/-- Initial history of the bounded event-graph FOSG presentation. -/
+noncomputable def eventGraphInitialHistory
     (g : WFProgram P L) (horizon : Nat) :
-    (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History) :=
+    (((eventGraphFOSGView g).toBoundedFOSG horizon).History) :=
   GameTheory.FOSG.History.nil
-    ((syntaxGraphFOSGView g).toBoundedFOSG horizon)
+    ((eventGraphFOSGView g).toBoundedFOSG horizon)
 
-/-- Project a bounded syntax-graph FOSG history to primitive event blocks and
+/-- Project a bounded event-graph FOSG history to primitive event blocks and
 the checkpoint machine state. -/
-noncomputable def syntaxGraphHistoryTrace
+noncomputable def eventGraphHistoryTrace
     (g : WFProgram P L) (horizon : Nat)
-    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    List (List (syntaxGraphMachine g).Event) × (syntaxGraphMachine g).State :=
-  (syntaxGraphFOSGHistoryEventBlocks g horizon h, h.lastState.state)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    List (List (eventGraphMachine g).Event) × (eventGraphMachine g).State :=
+  (eventGraphFOSGHistoryEventBlocks g horizon h, h.lastState.state)
 
-/-- Outcome extracted from a blocked syntax-graph trace. -/
-noncomputable def syntaxGraphTraceOutcome
+/-- Outcome extracted from a blocked event-graph trace. -/
+noncomputable def eventGraphTraceOutcome
     (g : WFProgram P L)
     (trace :
-      List (List (syntaxGraphMachine g).Event) ×
-        (syntaxGraphMachine g).State) :
-    (syntaxGraphMachine g).Outcome :=
-  (syntaxGraphMachine g).outcome trace.2
+      List (List (eventGraphMachine g).Event) ×
+        (eventGraphMachine g).State) :
+    (eventGraphMachine g).Outcome :=
+  (eventGraphMachine g).outcome trace.2
 
-/-- Bounded behavioral outcome kernel of the syntax-graph FOSG view, computed
+/-- Bounded behavioral outcome kernel of the event-graph FOSG view, computed
 as the machine outcome projection of the induced blocked primitive trace
 distribution. -/
-theorem syntaxGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
+theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
-    (β : (syntaxGraphFOSGView g).BoundedBehavioralProfile horizon)
+    (β : (eventGraphFOSGView g).BoundedBehavioralProfile horizon)
     (steps : Nat) :
-    (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral
+    (eventGraphFOSGView g).boundedOutcomeFromBehavioral
         horizon β steps =
       PMF.map
-        (syntaxGraphTraceOutcome g)
-        (syntaxGraphFOSGBlockTraceDistFrom g horizon β.extend steps
-          (syntaxGraphInitialHistory g horizon)) := by
+        (eventGraphTraceOutcome g)
+        (eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+          (eventGraphInitialHistory g horizon)) := by
   let run :=
     GameTheory.FOSG.History.runDistFrom
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) β.extend steps
-      (syntaxGraphInitialHistory g horizon)
+      ((eventGraphFOSGView g).toBoundedFOSG horizon) β.extend steps
+      (eventGraphInitialHistory g horizon)
   calc
-    (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral horizon β steps =
+    (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon β steps =
       PMF.map
-        (fun h' => (syntaxGraphMachine g).outcome h'.lastState.state)
+        (fun h' => (eventGraphMachine g).outcome h'.lastState.state)
         run := by
           rfl
-    _ = PMF.map (syntaxGraphTraceOutcome g)
-          (PMF.map (syntaxGraphHistoryTrace g horizon) run) := by
+    _ = PMF.map (eventGraphTraceOutcome g)
+          (PMF.map (eventGraphHistoryTrace g horizon) run) := by
           rw [PMF.map_comp]
           rfl
     _ =
-      PMF.map (syntaxGraphTraceOutcome g)
-        (syntaxGraphFOSGBlockTraceDistFrom g horizon β.extend steps
-          (syntaxGraphInitialHistory g horizon)) := by
+      PMF.map (eventGraphTraceOutcome g)
+        (eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+          (eventGraphInitialHistory g horizon)) := by
           have htrace :
-              PMF.map (syntaxGraphHistoryTrace g horizon) run =
-                syntaxGraphFOSGBlockTraceDistFrom g horizon β.extend steps
-                  (syntaxGraphInitialHistory g horizon) := by
-            simpa [syntaxGraphHistoryTrace, run] using
-              (syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+              PMF.map (eventGraphHistoryTrace g horizon) run =
+                eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+                  (eventGraphInitialHistory g horizon) := by
+            simpa [eventGraphHistoryTrace, run] using
+              (eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
                 (g := g) (horizon := horizon) (σ := β.extend)
                 (n := steps)
-                (h := syntaxGraphInitialHistory g horizon))
+                (h := eventGraphInitialHistory g horizon))
           rw [htrace]
 
-/-- Bounded pure outcome kernel of the syntax-graph FOSG view, computed as
+/-- Bounded pure outcome kernel of the event-graph FOSG view, computed as
 the machine outcome projection of the blocked primitive trace distribution
 induced by the pure profile's behavioral embedding. -/
-theorem syntaxGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
+theorem eventGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
-    (π : (syntaxGraphFOSGView g).BoundedPureProfile horizon)
+    (π : (eventGraphFOSGView g).BoundedPureProfile horizon)
     (steps : Nat) :
-    (syntaxGraphFOSGView g).boundedOutcomeFromPure
+    (eventGraphFOSGView g).boundedOutcomeFromPure
         horizon π steps =
       PMF.map
-        (syntaxGraphTraceOutcome g)
-        (syntaxGraphFOSGBlockTraceDistFrom g horizon
+        (eventGraphTraceOutcome g)
+        (eventGraphFOSGBlockTraceDistFrom g horizon
           (GameTheory.FOSG.legalPureToBehavioral
-            ((syntaxGraphFOSGView g).toBoundedFOSG horizon) π.extend)
+            ((eventGraphFOSGView g).toBoundedFOSG horizon) π.extend)
           steps
-          (syntaxGraphInitialHistory g horizon)) := by
+          (eventGraphInitialHistory g horizon)) := by
   let σ :=
     GameTheory.FOSG.legalPureToBehavioral
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) π.extend
+      ((eventGraphFOSGView g).toBoundedFOSG horizon) π.extend
   let run :=
     GameTheory.FOSG.History.runDistFrom
-      ((syntaxGraphFOSGView g).toBoundedFOSG horizon) σ steps
-      (syntaxGraphInitialHistory g horizon)
+      ((eventGraphFOSGView g).toBoundedFOSG horizon) σ steps
+      (eventGraphInitialHistory g horizon)
   calc
-    (syntaxGraphFOSGView g).boundedOutcomeFromPure horizon π steps =
+    (eventGraphFOSGView g).boundedOutcomeFromPure horizon π steps =
       PMF.map
-        (fun h' => (syntaxGraphMachine g).outcome h'.lastState.state)
+        (fun h' => (eventGraphMachine g).outcome h'.lastState.state)
         run := by
           rfl
-    _ = PMF.map (syntaxGraphTraceOutcome g)
-          (PMF.map (syntaxGraphHistoryTrace g horizon) run) := by
+    _ = PMF.map (eventGraphTraceOutcome g)
+          (PMF.map (eventGraphHistoryTrace g horizon) run) := by
           rw [PMF.map_comp]
           rfl
     _ =
-      PMF.map (syntaxGraphTraceOutcome g)
-        (syntaxGraphFOSGBlockTraceDistFrom g horizon σ steps
-          (syntaxGraphInitialHistory g horizon)) := by
+      PMF.map (eventGraphTraceOutcome g)
+        (eventGraphFOSGBlockTraceDistFrom g horizon σ steps
+          (eventGraphInitialHistory g horizon)) := by
           have htrace :
-              PMF.map (syntaxGraphHistoryTrace g horizon) run =
-                syntaxGraphFOSGBlockTraceDistFrom g horizon σ steps
-                  (syntaxGraphInitialHistory g horizon) := by
-            simpa [syntaxGraphHistoryTrace, run] using
-              (syntaxGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+              PMF.map (eventGraphHistoryTrace g horizon) run =
+                eventGraphFOSGBlockTraceDistFrom g horizon σ steps
+                  (eventGraphInitialHistory g horizon) := by
+            simpa [eventGraphHistoryTrace, run] using
+              (eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
                 (g := g) (horizon := horizon) (σ := σ)
                 (n := steps)
-                (h := syntaxGraphInitialHistory g horizon))
+                (h := eventGraphInitialHistory g horizon))
           rw [htrace]
 
 end Vegas

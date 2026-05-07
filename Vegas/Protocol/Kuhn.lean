@@ -83,7 +83,7 @@ theorem kuhn_mixed_to_behavioral
 
 The same Machine-native Kuhn theorem stated for the horizon-bounded FOSG view
 `view.toBoundedFOSG horizon`. Worlds are `M.BoundedState horizon`; this is
-the form that matches finite Vegas-program executions, where the action graph
+the form that matches finite Vegas-program executions, where the event graph
 fixes the horizon and the bounded state presentation is automatically
 `Fintype`.
 -/
@@ -105,7 +105,7 @@ noncomputable def boundedOutcomeFromMixed
 
 The same realization theorem as `kuhn_mixed_to_behavioral`, stated on the
 horizon-bounded FOSG view. This is the form that applies to finite Vegas
-protocols: when the action graph fixes a syntactic step bound,
+protocols: when the event graph fixes a syntactic step bound,
 `(view.toBoundedFOSG horizon).History` is automatically `Fintype` and `hLeg`
 is discharged by an existing legal-observability proof for the bounded view.
 -/
@@ -133,48 +133,48 @@ end FOSGView
 
 end Machine
 
-/-! ## Checked syntax-graph FOSG corollary
+/-! ## Checked event-graph FOSG corollary
 
-Specialization of the Machine-native bounded Kuhn theorem to the syntax graph
+Specialization of the machine-native bounded Kuhn theorem to the event graph
 of a checked Vegas program. The witness, the input mixed profile, and the
-asserted distributional equality are all stated against the graph-native syntax
-machine and `syntaxGraphFOSGView g`; no cursor or syntax-recursive strategy
+asserted distributional equality are all stated against the canonical event-graph
+machine and `eventGraphFOSGView g`; no cursor or syntax-recursive strategy
 space is used.
 -/
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- **Syntax-graph FOSG Kuhn helper for a checked Vegas program.**
+/-- **Event-graph FOSG Kuhn helper for a checked Vegas program.**
 
-The graph-native syntax machine `syntaxGraphMachine g` is the executable
+The canonical event-graph machine `eventGraphMachine g` is the executable
 protocol carrier of a checked Vegas program. This corollary applies
 `Machine.FOSGView.kuhn_mixed_to_behavioral_bounded` to its canonical FOSG view
 at the syntactic horizon.
 
-The witness β is a behavioral profile of the bounded syntax-graph FOSG view;
-the equality is between two `PMF (syntaxGraphMachine g).Outcome` distributions
+The witness β is a behavioral profile of the bounded event-graph FOSG view;
+the equality is between two `PMF (eventGraphMachine g).Outcome` distributions
 produced by running the machine under the realized strategies. This is a
 protocol/FOSG helper; the public Vegas theorem is `kuhn_finiteKernelGame`
 below, stated over the Vegas kernel-game API. -/
-theorem kuhn_mixed_to_behavioral_syntaxGraph
+theorem kuhn_mixed_to_behavioral_eventGraph
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (μ :
-      (syntaxGraphFOSGView g).BoundedMixedProfile (syntaxSteps g.prog))
+      (eventGraphFOSGView g).BoundedMixedProfile (syntaxSteps g.prog))
     (steps : Nat) :
     ∃ β :
-      (syntaxGraphFOSGView g).BoundedBehavioralProfile
+      (eventGraphFOSGView g).BoundedBehavioralProfile
         (syntaxSteps g.prog),
-      (syntaxGraphFOSGView g).boundedOutcomeFromBehavioral
+      (eventGraphFOSGView g).boundedOutcomeFromBehavioral
           (syntaxSteps g.prog) β steps =
-        (syntaxGraphFOSGView g).boundedOutcomeFromMixed
+        (eventGraphFOSGView g).boundedOutcomeFromMixed
           (syntaxSteps g.prog) μ steps := by
   classical
   have hLeg :
-      ((syntaxGraphFOSGView g).toBoundedFOSG
+      ((eventGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
-    syntaxGraphFOSGView_toBoundedFOSG_legalObservable g
+    eventGraphFOSGView_toBoundedFOSG_legalObservable g
       (syntaxSteps g.prog)
-  exact (syntaxGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
+  exact (eventGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
 /-- Finite Vegas Kuhn theorem stated directly for the public kernel games.
@@ -192,12 +192,12 @@ theorem kuhn_finiteKernelGame
           (fun π => (pureKernelGameAt g).outcomeKernel π) := by
   classical
   have hLeg :
-      ((syntaxGraphFOSGView g).toBoundedFOSG
+      ((eventGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).LegalObservable :=
-    syntaxGraphFOSGView_toBoundedFOSG_legalObservable g
+    eventGraphFOSGView_toBoundedFOSG_legalObservable g
       (syntaxSteps g.prog)
   obtain ⟨β, hβ⟩ :=
-    (syntaxGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
+    (eventGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
       (syntaxSteps g.prog) hLeg μ (syntaxSteps g.prog)
   refine ⟨β, ?_⟩
   simpa [pmfBehavioralKernelGameAt,

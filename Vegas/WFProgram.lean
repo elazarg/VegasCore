@@ -21,7 +21,7 @@ each recursive subprogram would be painful and irrelevant.
 **Strategy-level guard admissibility.** The program-level `Legal`
 predicate only promises that every commit site *admits* some guard-
 satisfying action. The semantic game APIs close the gap by using reachable
-legal strategies of the graph-machine FOSG: illegal moves are not available in
+legal strategies of the event-graph machine FOSG: illegal moves are not available in
 the carrier quantified over by equilibrium predicates and downstream
 corollaries.
 -/

@@ -23,18 +23,18 @@ open GameTheory
 namespace Prisoners
 
 noncomputable def efg : EFG.EFGGame :=
-  syntaxGraphEFGAt Examples.Prisoners.game
+  eventGraphEFGAt Examples.Prisoners.game
 
 theorem player_count :
     efg.inf.n = Fintype.card Examples.Prisoners.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
     (β : (pmfBehavioralKernelGame Examples.Prisoners.game).Profile) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt Examples.Prisoners.game)
+    PMF.map (eventGraphEFGPublicOutcomeAt Examples.Prisoners.game)
         (efg.toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt Examples.Prisoners.game β)) =
+          (eventGraphEFGBehavioralProfileAt Examples.Prisoners.game β)) =
       (pmfBehavioralKernelGame Examples.Prisoners.game).outcomeKernel β :=
-  syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+  eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.Prisoners.game β
 
 /-- The generated Prisoner's Dilemma EFG starts with a decision node. -/
@@ -42,19 +42,19 @@ theorem tree_root_decision :
     ∃ (p0 : efg.inf.Player) (I0 : efg.inf.Infoset p0)
       (next0 : efg.inf.Act I0 → EFG.GameTree efg.inf efg.Outcome),
       efg.tree = EFG.GameTree.decision I0 next0 := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change ∃ (p0 : _) (I0 : _) (next0 : _),
     GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.Prisoners.game)
+        (G := eventGraphBoundedFOSGAt Examples.Prisoners.game)
         (syntaxSteps Examples.Prisoners.game.prog) (3 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.Prisoners.game)) =
+          (eventGraphBoundedFOSGAt Examples.Prisoners.game)) =
       EFG.GameTree.decision I0 next0
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · rw [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom]
     have hcard : 0 < Fintype.card Examples.Prisoners.Player := by decide
     simp [hcard]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.Prisoners.game
       (ProgramNode.commitHere : ProgramNode Examples.Prisoners.game.prog)
       (by decide)
@@ -65,18 +65,18 @@ transition. -/
 theorem tree_first_round_two_decisions_then_chance :
     EFG.GameTree.HasDecisionChainThenChance
       (Fintype.card Examples.Prisoners.Player) efg.tree := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change EFG.GameTree.HasDecisionChainThenChance
     (Fintype.card Examples.Prisoners.Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.Prisoners.game)
+        (G := eventGraphBoundedFOSGAt Examples.Prisoners.game)
         (syntaxSteps Examples.Prisoners.game.prog) (3 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.Prisoners.game)))
+          (eventGraphBoundedFOSGAt Examples.Prisoners.game)))
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · simp [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom,
       show Fintype.card Examples.Prisoners.Player = 2 by decide]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.Prisoners.game
       (ProgramNode.commitHere : ProgramNode Examples.Prisoners.game.prog)
       (by decide)
@@ -86,18 +86,18 @@ end Prisoners
 namespace MatchingPennies
 
 noncomputable def efg : EFG.EFGGame :=
-  syntaxGraphEFGAt Examples.MatchingPennies.game
+  eventGraphEFGAt Examples.MatchingPennies.game
 
 theorem player_count :
     efg.inf.n = Fintype.card Examples.MatchingPennies.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
     (β : (pmfBehavioralKernelGame Examples.MatchingPennies.game).Profile) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt Examples.MatchingPennies.game)
+    PMF.map (eventGraphEFGPublicOutcomeAt Examples.MatchingPennies.game)
         (efg.toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt Examples.MatchingPennies.game β)) =
+          (eventGraphEFGBehavioralProfileAt Examples.MatchingPennies.game β)) =
       (pmfBehavioralKernelGame Examples.MatchingPennies.game).outcomeKernel β :=
-  syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+  eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.MatchingPennies.game β
 
 /-- The generated Matching Pennies EFG starts with a decision node. -/
@@ -105,19 +105,19 @@ theorem tree_root_decision :
     ∃ (p0 : efg.inf.Player) (I0 : efg.inf.Infoset p0)
       (next0 : efg.inf.Act I0 → EFG.GameTree efg.inf efg.Outcome),
       efg.tree = EFG.GameTree.decision I0 next0 := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change ∃ (p0 : _) (I0 : _) (next0 : _),
     GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.MatchingPennies.game)
+        (G := eventGraphBoundedFOSGAt Examples.MatchingPennies.game)
         (syntaxSteps Examples.MatchingPennies.game.prog) (3 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.MatchingPennies.game)) =
+          (eventGraphBoundedFOSGAt Examples.MatchingPennies.game)) =
       EFG.GameTree.decision I0 next0
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · rw [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom]
     have hcard : 0 < Fintype.card Examples.MatchingPennies.Player := by decide
     simp [hcard]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.MatchingPennies.game
       (ProgramNode.commitHere : ProgramNode Examples.MatchingPennies.game.prog)
       (by decide)
@@ -126,18 +126,18 @@ theorem tree_root_decision :
 theorem tree_first_round_two_decisions_then_chance :
     EFG.GameTree.HasDecisionChainThenChance
       (Fintype.card Examples.MatchingPennies.Player) efg.tree := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change EFG.GameTree.HasDecisionChainThenChance
     (Fintype.card Examples.MatchingPennies.Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.MatchingPennies.game)
+        (G := eventGraphBoundedFOSGAt Examples.MatchingPennies.game)
         (syntaxSteps Examples.MatchingPennies.game.prog) (3 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.MatchingPennies.game)))
+          (eventGraphBoundedFOSGAt Examples.MatchingPennies.game)))
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · simp [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom,
       show Fintype.card Examples.MatchingPennies.Player = 2 by decide]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.MatchingPennies.game
       (ProgramNode.commitHere : ProgramNode Examples.MatchingPennies.game.prog)
       (by decide)
@@ -147,36 +147,36 @@ end MatchingPennies
 namespace BattleOfTheSexes
 
 noncomputable def efg : EFG.EFGGame :=
-  syntaxGraphEFGAt Examples.BattleOfTheSexes.game
+  eventGraphEFGAt Examples.BattleOfTheSexes.game
 
 theorem player_count :
     efg.inf.n = Fintype.card Examples.BattleOfTheSexes.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
     (β : (pmfBehavioralKernelGame Examples.BattleOfTheSexes.game).Profile) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt Examples.BattleOfTheSexes.game)
+    PMF.map (eventGraphEFGPublicOutcomeAt Examples.BattleOfTheSexes.game)
         (efg.toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt Examples.BattleOfTheSexes.game β)) =
+          (eventGraphEFGBehavioralProfileAt Examples.BattleOfTheSexes.game β)) =
       (pmfBehavioralKernelGame Examples.BattleOfTheSexes.game).outcomeKernel β :=
-  syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+  eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.BattleOfTheSexes.game β
 
 /-- Battle of the Sexes first-round tree spine: two decisions, then chance. -/
 theorem tree_first_round_two_decisions_then_chance :
     EFG.GameTree.HasDecisionChainThenChance
       (Fintype.card Examples.BattleOfTheSexes.Player) efg.tree := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change EFG.GameTree.HasDecisionChainThenChance
     (Fintype.card Examples.BattleOfTheSexes.Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.BattleOfTheSexes.game)
+        (G := eventGraphBoundedFOSGAt Examples.BattleOfTheSexes.game)
         (syntaxSteps Examples.BattleOfTheSexes.game.prog) (3 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.BattleOfTheSexes.game)))
+          (eventGraphBoundedFOSGAt Examples.BattleOfTheSexes.game)))
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · simp [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom,
       show Fintype.card Examples.BattleOfTheSexes.Player = 2 by decide]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.BattleOfTheSexes.game
       (ProgramNode.commitHere : ProgramNode Examples.BattleOfTheSexes.game.prog)
       (by decide)
@@ -186,18 +186,18 @@ end BattleOfTheSexes
 namespace MontyHall
 
 noncomputable def efg : EFG.EFGGame :=
-  syntaxGraphEFGAt Examples.MontyHall.game
+  eventGraphEFGAt Examples.MontyHall.game
 
 theorem player_count :
     efg.inf.n = Fintype.card Examples.MontyHall.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
     (β : (pmfBehavioralKernelGame Examples.MontyHall.game).Profile) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt Examples.MontyHall.game)
+    PMF.map (eventGraphEFGPublicOutcomeAt Examples.MontyHall.game)
         (efg.toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt Examples.MontyHall.game β)) =
+          (eventGraphEFGBehavioralProfileAt Examples.MontyHall.game β)) =
       (pmfBehavioralKernelGame Examples.MontyHall.game).outcomeKernel β :=
-  syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+  eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.MontyHall.game β
 
 /-- Monty Hall first-round tree spine: two decisions, then chance. The first
@@ -207,18 +207,18 @@ non-`none` support. -/
 theorem tree_first_round_two_decisions_then_chance :
     EFG.GameTree.HasDecisionChainThenChance
       (Fintype.card Examples.MontyHall.Player) efg.tree := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change EFG.GameTree.HasDecisionChainThenChance
     (Fintype.card Examples.MontyHall.Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.MontyHall.game)
+        (G := eventGraphBoundedFOSGAt Examples.MontyHall.game)
         (syntaxSteps Examples.MontyHall.game.prog) (7 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.MontyHall.game)))
+          (eventGraphBoundedFOSGAt Examples.MontyHall.game)))
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · simp [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom,
       show Fintype.card Examples.MontyHall.Player = 2 by decide]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.MontyHall.game
       (ProgramNode.commitHere : ProgramNode Examples.MontyHall.game.prog)
       (by decide)
@@ -228,18 +228,18 @@ end MontyHall
 namespace SyntaxConstructors
 
 noncomputable def efg : EFG.EFGGame :=
-  syntaxGraphEFGAt Examples.SyntaxConstructors.game
+  eventGraphEFGAt Examples.SyntaxConstructors.game
 
 theorem player_count :
     efg.inf.n = Fintype.card Examples.SyntaxConstructors.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
     (β : (pmfBehavioralKernelGame Examples.SyntaxConstructors.game).Profile) :
-    PMF.map (syntaxGraphEFGPublicOutcomeAt Examples.SyntaxConstructors.game)
+    PMF.map (eventGraphEFGPublicOutcomeAt Examples.SyntaxConstructors.game)
         (efg.toKernelGame.outcomeKernel
-          (syntaxGraphEFGBehavioralProfileAt Examples.SyntaxConstructors.game β)) =
+          (eventGraphEFGBehavioralProfileAt Examples.SyntaxConstructors.game β)) =
       (pmfBehavioralKernelGame Examples.SyntaxConstructors.game).outcomeKernel β :=
-  syntaxGraphEFGAt_outcomeKernel_map_publicOutcome
+  eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.SyntaxConstructors.game β
 
 /-- The constructor-smoke example has one player, so each nonterminal bridge
@@ -248,18 +248,18 @@ internal; the decision opportunity is the bridge's uniform optional-move layer. 
 theorem tree_first_round_one_decision_then_chance :
     EFG.GameTree.HasDecisionChainThenChance
       (Fintype.card Examples.SyntaxConstructors.Player) efg.tree := by
-  unfold efg syntaxGraphEFGAt
+  unfold efg eventGraphEFGAt
   change EFG.GameTree.HasDecisionChainThenChance
     (Fintype.card Examples.SyntaxConstructors.Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
-        (G := syntaxGraphBoundedFOSGAt Examples.SyntaxConstructors.game)
+        (G := eventGraphBoundedFOSGAt Examples.SyntaxConstructors.game)
         (syntaxSteps Examples.SyntaxConstructors.game.prog) (1 + 1)
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
-          (syntaxGraphBoundedFOSGAt Examples.SyntaxConstructors.game)))
+          (eventGraphBoundedFOSGAt Examples.SyntaxConstructors.game)))
   rw [GameTheory.FOSG.AugmentedEFGBridge.tree_fromHistory_succ_nonterminal]
   · simp [GameTheory.FOSG.AugmentedEFGBridge.Tree.choosePlayersFrom,
       show Fintype.card Examples.SyntaxConstructors.Player = 1 by decide]
-  · exact syntaxGraphBoundedFOSGAt_root_not_terminal_of_node
+  · exact eventGraphBoundedFOSGAt_root_not_terminal_of_node
       Examples.SyntaxConstructors.game
       (ProgramNode.letHere : ProgramNode Examples.SyntaxConstructors.game.prog)
       (by decide)

@@ -16,7 +16,7 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Finite protocol-level Kuhn property for the graph-machine FOSG kernel
+/-- Finite protocol-level Kuhn property for the event-graph machine FOSG kernel
 games. -/
 def KuhnPMF [Fintype P] (g : WFProgram P L)
     [FiniteDomains g] : Prop :=

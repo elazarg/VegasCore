@@ -6,7 +6,7 @@ import GameTheory.Core.GameProperties
 # Vegas equilibrium wrappers
 
 Game-theoretic vocabulary for finite Vegas programs, transported through the
-PMF behavioral graph-machine FOSG kernel game.
+PMF behavioral event-graph machine FOSG kernel game.
 -/
 
 namespace Vegas

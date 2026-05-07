@@ -7,7 +7,7 @@ import GameTheory.Theorems.NashExistence
 /-!
 # Pure-strategic corollaries
 
-Corollaries for the finite graph-machine FOSG pure strategic form.
+Corollaries for the finite event-graph machine FOSG pure strategic form.
 -/
 
 namespace Vegas

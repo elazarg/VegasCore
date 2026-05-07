@@ -28,7 +28,7 @@
 
 \begin{abstract}
 This document is a companion to the technical report \emph{VegasCore:
-Graph-Native Protocol Semantics}. The report describes the architecture in
+Event-Graph-Native Protocol Semantics}. The report describes the architecture in
 the language of types and theorems; this supplement collects the
 \emph{definitions with mathematical content} that a careful reader needs in
 order to navigate the Lean codebase. Each entry pairs the Lean form with an
@@ -44,7 +44,7 @@ PL machinery in terms they can map to standard game forms.
 
 The supplement is organised bottom-up along the same path as the main report:
 the ambient probabilistic and language layers, then visibility-aware syntax,
-then well-formedness, then the protocol graph and its machine semantics,
+then well-formedness, then the event graph and its machine semantics,
 then FOSG views, kernel games, and the public solution-concept API. It
 finishes with a tour of the worked examples.
 \end{abstract}
@@ -83,7 +83,7 @@ vocabulary. We list them in the order definitions will appear.
 \node (lang)  {\textbf{Language}\\\TT{IExpr}, \TT{FWeight}};
 \node[right=4mm of lang] (vis) {\textbf{Visibility}\\\TT{VCtx}, \TT{viewVCtx}};
 \node[right=4mm of vis] (syn) {\textbf{Source}\\\TT{VegasLang},\\\TT{VegasCore},\\\TT{WFProgram}};
-\node[below=10mm of syn] (graph) {\textbf{Graph}\\\TT{ProtocolGraph}\\\TT{Configuration}};
+\node[below=10mm of syn] (graph) {\textbf{Event graph}\\\TT{EventGraph}\\\TT{Configuration}};
 \node[left=4mm of graph] (mach) {\textbf{Machine}\\\TT{Machine},\\events};
 \node[left=4mm of mach] (fosg) {\textbf{FOSG view}\\\TT{Machine.FOSGView}};
 \node[below=10mm of fosg] (kg) {\textbf{Kernel game}\\\TT{KernelGame}\\(public API)};
@@ -97,7 +97,7 @@ vocabulary. We list them in the order definitions will appear.
 \end{center}
 
 \noindent The arrows are read as ``defines on top of''. The substantive
-mathematical work happens at the protocol-graph level, where a syntax tree
+mathematical work happens at the event-graph level, where a syntax tree
 is turned into a DAG with \emph{extensional} state — the configuration
 records only which nodes have produced which results, not the schedule
 that produced them — and at the FOSG checkpoint level, where the
@@ -151,7 +151,7 @@ typed binding $(x, \hid\,p\,\tau)$
 \Ret~$\bar{p}$
   & terminal node carrying the payoff vector $\bar p$ \\
 \midrule
-\TT{ProtocolGraph}
+\TT{EventGraph}
   & the game tree, but DAG-shaped and order-quotiented \\
 \TT{Configuration}
   & a partially-played history (closed under causal deps) \\
@@ -485,9 +485,9 @@ emit \TT{VegasCore} directly.
 The simultaneous constructor records that a source author intends several
 public strategic moves, by distinct actors, to be presented together. Lowering
 first emits all hidden nullable commits in source order and only then emits the
-public reveals. After lowering, the syntax-graph compiler computes causal
+public reveals. After lowering, the program event-graph elaborator computes causal
 prerequisites from reads and writes: the same-phase commits share a
-protocol-graph frontier, while reveals depend on the committed secrets.
+event-graph frontier, while reveals depend on the committed secrets.
 
 \paragraph{Nullable yields.}
 The ordinary surface \Commit{} constructor is restricted by
@@ -676,18 +676,18 @@ and \TT{ViewScoped}, so the bundle in fact records six independent facts.
 Every public game-theoretic API in the codebase consumes \WFP, never raw
 \TT{VegasCore}.
 
-\paragraph{Syntax-graph obligation bundle.}
-The syntax-graph compiler has an additional local packaging layer:
+\paragraph{Program event-graph obligation bundle.}
+The program event-graph elaborator has an additional local packaging layer:
 \TT{ProgramNode.ProgramObligations p} bundles exactly the static facts needed
 to interpret a source occurrence,
 \TT{hctx}, \TT{fresh}, \TT{hscoped}, \TT{legal}, and \TT{normalized}.  Its
 tail projections \TT{letTail}, \TT{sampleTail}, \TT{commitTail}, and
 \TT{revealTail} encode the recursive proof payloads for suffix programs.
 \TT{WFProgram.obligations} builds this bundle from a checked program $g$ and
-is what \TT{syntaxProtocolGraph} passes to \TT{ProgramNode.sem},
+is what \TT{programEventGraph} passes to \TT{ProgramNode.sem},
 \TT{prereqs}, \TT{sliceLegal}, \TT{actionLegal}, and
 \TT{internalKernel}. This is proof/API plumbing: it does not add a new
-semantic side condition, but it keeps the generated syntax graph layer from
+semantic side condition, but it keeps the generated program event graph layer from
 threading five separate proof arguments through every recursive call.
 
 \paragraph{Finite domains.}
@@ -698,9 +698,9 @@ strategic-form} games but is genuinely separate from \WFP{} because payoff
 expressions return $\intt$, which is not finite.
 
 % =====================================================================
-\section{The Protocol Graph}
+\section{The Event Graph}
 
-The first nontrivial semantic step compiles a checked source program into a
+The first nontrivial semantic step elaborates a checked source program into a
 DAG with extensional state. This subsection introduces the carrier; its
 soundness theorems (frontier diamond and stability) are stated in the main
 report.
@@ -718,27 +718,27 @@ report.
 A \emph{stored value} is a value tagged with whether it is currently public
 (\textsf{clear}) or sealed (\textsf{hidden}). A \emph{write slice} is a
 partial function from fields to stored values: it records what fields a
-single graph node writes when it executes. The empty slice is the all-\textsf{none}
+single event node writes when it executes. The empty slice is the all-\textsf{none}
 function; \texttt{single} writes one field.
 
-\subsection{Graph-local expressions, distributions, and guards}
-\label{def:graph-local}
+\subsection{Event-graph-local expressions, distributions, and guards}
+\label{def:event-graph-local}
 
 \paragraph{Lean.}
 \TT{ReadEnv} packages the values of a declared finite read set;
-\TT{GraphExpr} (deterministic), \TT{GraphDist} (PMF-valued), and
-\TT{GraphGuard} (boolean, with a \emph{visible}-versus-opaque read split and a
+\TT{EventExpr} (deterministic), \TT{EventDist} (PMF-valued), and
+\TT{EventGuard} (boolean, with a \emph{visible}-versus-opaque read split and a
 satisfiability obligation) take such read environments and return a value, a
 distribution, or a Boolean.
 
 \paragraph{Math.}
-A graph-local construct evaluates from \emph{only the fields it declares as
-reads}. This is a graph-level analogue of the source-level \TT{exprDeps}:
-the graph carries explicit local dependency information rather than a
+An event-graph-local construct evaluates from \emph{only the fields it declares as
+reads}. This is an event-graph-level analogue of the source-level \TT{exprDeps}:
+the event graph carries explicit local dependency information rather than a
 syntactic over-approximation.
 
 \paragraph{The visibility split inside guards.}
-A \TT{GraphGuard} keeps a subset \TT{visibleReads} $\subseteq$ \TT{reads}
+A \TT{EventGuard} keeps a subset \TT{visibleReads} $\subseteq$ \TT{reads}
 of \emph{visible} reads, plus a soundness obligation
 \TT{eval_eq_of_visible_eq}: any two read environments that agree on the
 visible part must give the same Boolean. Conceptually, the guard's value
@@ -753,7 +753,7 @@ truth value.
 \TT{assign}, \TT{sample}, \TT{commit}, \TT{reveal}.
 
 \paragraph{Math.}
-Each graph node carries one of four semantic payloads, mirroring (but not
+Each event node carries one of four semantic payloads, mirroring (but not
 identical to) the four non-\Ret{} source constructors. Several projections
 are derived: $\mathrm{actor}$ (which player owns this node, if any),
 $\mathrm{reads}$ (the fields read), $\mathrm{writes}$ (the field-write list),
@@ -766,12 +766,12 @@ internal. The single-field-write convention is exposed as the simp lemma
 
 \paragraph{Field reindexing.}
 \TT{NodeSem.mapFields} transports a node-semantic payload through a field map
-that preserves field types. It is the workhorse used by the syntax-graph
-compiler to reuse the abstract \TT{NodeSem} carrier over its concrete program
+that preserves field types. It is the workhorse used by the program event-graph
+elaborator to reuse the abstract \TT{NodeSem} carrier over its concrete program
 fields rather than maintaining a parallel ad-hoc layer.
 
-\subsection{The protocol graph itself: \TT{ProtocolGraph}}
-\label{def:ProtocolGraph}
+\subsection{The event graph itself: \TT{EventGraph}}
+\label{def:EventGraph}
 
 \paragraph{Lean (key fields).}
 \begin{quote}
@@ -786,7 +786,7 @@ fields rather than maintaining a parallel ad-hoc layer.
 \end{quote}
 
 \paragraph{Math.}
-A \emph{protocol graph} is a finite, ranked DAG of typed nodes over a finite
+A \emph{event graph} is a finite, ranked DAG of typed nodes over a finite
 set of typed fields, equipped with three pieces of legality and execution
 data:
 \begin{itemize}\itemsep1pt
@@ -808,7 +808,7 @@ data:
 
 \paragraph{Why the rank.}
 The \texttt{rank} field is a strict topological order witness; it is the
-termination measure for inductions over graph executions. The DAG itself
+termination measure for inductions over event-graph executions. The DAG itself
 encodes \emph{causal} dependency: a node may only execute when its
 prerequisites have produced results.
 
@@ -825,7 +825,7 @@ prerequisites have produced results.
 \end{quote}
 
 \paragraph{Math.}
-A \emph{configuration} of a protocol graph is an extensional record of which
+A \emph{configuration} of an event graph is an extensional record of which
 nodes have produced results. The dependency-closure invariant says that if
 $n$ has a result, all of its prerequisites have results too:
 \[
@@ -834,7 +834,7 @@ $n$ has a result, all of its prerequisites have results too:
   \mathrm{result}(q)\ \mathrm{is\ }\mathsf{some}.
 \]
 The \emph{frontier} is the set of unfinished nodes whose prerequisites are
-all finished: nodes that are \emph{ready} to execute. Crucially, the
+all finished: nodes that are \emph{enabled} to execute. Crucially, the
 frontier is \emph{computed} from the result assignment, not stored.
 
 \paragraph{Why extensional state.}
@@ -877,7 +877,7 @@ result.
 % =====================================================================
 \section{Machines}
 
-The protocol graph is a static description; \TT{Machine} is the abstract
+The event graph is a static description; \TT{Machine} is the abstract
 asynchronous execution carrier into which it is interpreted.
 
 \subsection{The machine carrier}
@@ -920,7 +920,7 @@ is total.
 
 \paragraph{Total step kernels, separate availability.}
 The transition kernels are total functions; \emph{legality} of an event is a
-\emph{separate} predicate. The graph-machine instance (next subsection)
+\emph{separate} predicate. The event-graph machine instance (next subsection)
 implements a \emph{stuttering} convention — unavailable events leave the
 state unchanged, returning $\mathrm{PMF}.\mathrm{pure}\,s$ (a Dirac mass
 at the source state). The abstract \TT{Machine} carrier does not
@@ -943,10 +943,10 @@ length $n$. Marginalising on the final state and projecting via $\mathrm{out}$
 gives the \emph{outcome kernel} $\mathrm{outcomeKernelFrom}_\lambda$ of the
 machine.
 
-\subsection{The graph-machine interpretation}
+\subsection{The event-graph machine interpretation}
 
 \paragraph{Lean.}
-\TT{Vegas/Protocol/GraphMachine.lean} interprets a protocol graph as a
+\TT{Vegas/Protocol/EventGraphMachine.lean} interprets an event graph as a
 machine: \TT{State := Configuration}; player actions are
 \TT{PlayerAction G p :=} $\Sigma$\TT{ node, WriteSlice} ranging over frontier nodes
 owned by $p$ with a legal slice; internal events are non-player frontier
@@ -954,10 +954,10 @@ nodes; \TT{stepPlay} and \TT{stepInternal} execute one frontier node at a
 time, total in the same way as the abstract machine.
 
 \paragraph{Math.}
-Reading the graph as a machine, an event is the execution of one frontier
+Reading the event graph as a machine, an event is the execution of one frontier
 node. \TT{stepPlay} stutters on unavailable actions (returns
 $\mathrm{PMF}.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
-into the configuration. The graph's diamond property and stability of
+into the configuration. The event graph's diamond property and stability of
 frontier reads (\TT{withResult_comm} and the lemmas in
 \TT{FrontierStability.lean}) are exactly what is needed to lift this
 asynchronous, single-event view into a \emph{round-based} FOSG view in
@@ -1014,16 +1014,16 @@ players choose round-actions from \TT{Act}, the state transitions
 stochastically, and a per-player reward is paid out at the transition.
 Crucially, the round-action alphabet \TT{Act} is independent of the
 machine action alphabet \TT{M.Action}: a single round may consist of many
-machine events. For graph protocols, a round-action is a slice for every
+machine events. For event-graph protocols, a round-action is a slice for every
 owned frontier node.
 
 \paragraph{Round menus and observation equivalence.}
-For graph machines the player-facing menu at a frontier round is packaged
-as \TT{ProtocolGraph.roundMenu G cfg who}: a set of optional round-actions
+For event-graph machines the player-facing menu at a frontier round is packaged
+as \TT{EventGraph.roundMenu G cfg who}: a set of optional round-actions
 where \texttt{none} means the player is not active in the current round and
 \texttt{some action} means the player is active and \texttt{action} is legal
 on every frontier node they own. The accompanying theorem
-\TT{syntaxGraph_roundMenu_eq_of_observation_eq} shows that two configurations
+\TT{eventGraph_roundMenu_eq_of_observation_eq} shows that two configurations
 that are indistinguishable to a player offer that player the same menu —
 the structural form of ``a player's available choices depend only on what
 they observe.''
@@ -1040,11 +1040,11 @@ its machine semantics into the existing carrier.
 
 \paragraph{Lean.}
 \TT{Vegas/Protocol/EFG.lean} applies GameTheory's
-\TT{FOSG.AugmentedEFGBridge} to the bounded syntax-graph FOSG:
+\TT{FOSG.AugmentedEFGBridge} to the bounded program event-graph FOSG:
 \begin{quote}
-\TT{syntaxGraphEFGAt g : EFG.EFGGame} \\
-\TT{syntaxGraphEFGBehavioralProfileAt g beta} \\
-\TT{syntaxGraphEFGAt_outcomeKernel_map_publicOutcome}
+\TT{eventGraphEFGAt g : EFG.EFGGame} \\
+\TT{eventGraphEFGBehavioralProfileAt g beta} \\
+\TT{eventGraphEFGAt_outcomeKernel_map_publicOutcome}
 \end{quote}
 The bridge tree is not a hand-written textbook tree. It is the canonical
 serialisation of one FOSG round: one EFG decision opportunity per player
@@ -1079,7 +1079,7 @@ from pure and behavioural profiles respectively. The horizon $h$ is fixed
 by the program: \TT{syntaxSteps} (\TT{Vegas/Config.lean}) counts every
 source constructor except \Ret, including administrative \Let{}s. The depth
 counter in \TT{BoundedState} is presentation data needed to prove the
-\emph{FOSG tree's} finiteness; the underlying graph is already finite, but
+\emph{FOSG tree's} finiteness; the underlying event graph is already finite, but
 without bounding the FOSG presentation could in principle re-visit
 configurations.
 
@@ -1254,20 +1254,20 @@ distributions and EU is provably equal across the projection.
 \TT{syntaxLinearRead g := ProgramNode.enumerate g.prog} and proves:
 \begin{quote}
 \TT{syntaxLinearRead_sufficient :}\\
-\quad if a compiled syntax-graph configuration is nonterminal, then some
+\quad if a program event-graph configuration is nonterminal, then some
 unfinished source node of minimal source rank is on the executable frontier.
 \end{quote}
-The reusable graph-level theorem is
+The reusable event-graph-level theorem is
 \begin{quote}
-\TT{ProtocolGraph.Configuration.exists_rank_minimal_ready_of_not_terminal}.
+\TT{EventGraph.Configuration.exists_rank_minimal_enabled_of_not_terminal}.
 \end{quote}
 
 \paragraph{Math.}
 The source-order rank on \TT{ProgramNode}s is a topological order for the
-compiled protocol graph: every prerequisite of a node has strictly smaller
+elaborated event graph: every prerequisite of a node has strictly smaller
 rank. Therefore a reader who scans the source program in rank order and stops
 at the first unfinished source event has found an event whose dependencies
-are already complete. The graph semantics may execute independent frontier
+are already complete. The event-graph semantics may execute independent frontier
 nodes in other orders, but the straight-line source presentation never blocks
 early.
 
@@ -1393,9 +1393,9 @@ $\KG^{\mathrm{beh}}$ the two kernel games:
 \paragraph{Hypotheses behind the slogan.}
 The Lean statement is a Kuhn-style realisation theorem, not merely the
 textbook phrase ``perfect recall'' copied verbatim. It is routed through the
-bounded FOSG view of the syntax-graph machine: finite domains provide the
+bounded FOSG view of the program event-graph machine: finite domains provide the
 finite-horizon carriers, and the required information condition is
-\TT{LegalObservable} for the bounded FOSG, proved for checked syntax graphs
+\TT{LegalObservable} for the bounded FOSG, proved for checked program event graphs
 from the visibility and graph-stability invariants.
 
 \paragraph{Why this is the headline theorem.}
@@ -1727,7 +1727,7 @@ non-costly griefing opportunity is removed.
 \TT{Examples/BackendExamples.lean} uses \TT{StochasticStepRefinement.refl} as
 an identity backend. It proves that identity projection preserves event
 blocks, block traces, compatible block laws, and blocked-trace distributions,
-then instantiates the result for the \TT{SyntaxConstructors.game} syntax graph
+then instantiates the result for the \TT{SyntaxConstructors.game} program event graph
 machine. This is intentionally boring: it is a small executable witness that
 the backend-refinement API is usable before a real implementation supplies
 extra state or internal events.
@@ -1767,11 +1767,11 @@ strategy \TT{defaultPureStrategy} witnessing that the strategy carrier is
 inhabited. It then specialises these theorems to each example
 (Prisoners, Matching Pennies, Battle of the Sexes, Monty Hall,
 SyntaxConstructors), and for Prisoners additionally spells out the explicit
-protocol-graph nodes and field assignments — \TT{rowCommitNode},
+event-graph nodes and field assignments — \TT{rowCommitNode},
 \TT{rowDefectSlice}, \TT{rowDefectAction} — and exercises \TT{sliceLegal} and
 \TT{actionLegal} directly. It is the recommended starting point for a reader
-who wants to see \emph{how} the source compiler maps individual constructors
-to graph data, and \emph{how} the public-game and blocked-trace-game views
+who wants to see \emph{how} the source elaborator maps individual constructors
+to event-graph data, and \emph{how} the public-game and blocked-trace-game views
 relate at the strategic API.
 
 % =====================================================================
@@ -1788,11 +1788,11 @@ For a reader landing on the codebase for the first time, we suggest:
   \TT{VCtx} family, and \TT{VegasCore}.
 \item Skim \TT{Vegas/WF.lean}, \TT{Vegas/Scope.lean}, \TT{Vegas/WFProgram.lean}
   for the well-formedness story.
-\item Read \TT{Vegas/Protocol/Graph.lean} top to bottom: the shape of
-  \TT{ProtocolGraph} and \TT{Configuration}, the diamond and stability
+\item Read \TT{Vegas/Protocol/EventGraph.lean} top to bottom: the shape of
+  \TT{EventGraph} and \TT{Configuration}, the diamond and stability
   theorems.
 \item Skim \TT{Vegas/Protocol/Machine.lean} and
-  \TT{Vegas/Protocol/GraphMachine.lean} to see the abstract carrier and its
+  \TT{Vegas/Protocol/EventGraphMachine.lean} to see the abstract carrier and its
   graph instance.
 \item Read \TT{Vegas/Protocol/FOSG.lean} for the FOSG view, then
   \TT{Vegas/Protocol/EFG.lean}, \TT{Vegas/Protocol/Strategic.lean},
