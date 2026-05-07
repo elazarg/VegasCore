@@ -290,6 +290,18 @@ def reads :
   | reveal source target hsameTy =>
       simp [mapFields, reads]
 
+theorem mem_reads_mapFields
+    {sem : NodeSem Player Field L fieldTy}
+    {f : Field → Field'}
+    {hty : ∀ field, fieldTy' (f field) = fieldTy field}
+    {field' : Field'}
+    (h : field' ∈ (sem.mapFields f hty).reads) :
+    ∃ field, field' = f field ∧ field ∈ sem.reads := by
+  have h' : field' ∈ sem.reads.image f := by
+    simpa using h
+  rcases Finset.mem_image.mp h' with ⟨field, hfield, hfield'⟩
+  exact ⟨field, hfield'.symm, hfield⟩
+
 /-- Semantic writes produced by this node. -/
 def writes :
     NodeSem Player Field L fieldTy → List (FieldWrite Player Field)

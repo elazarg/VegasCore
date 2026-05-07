@@ -1045,170 +1045,6 @@ theorem readEnvOfResult_value_eq_of_value?_eq
     exact hleftValue.symm
   exact Option.some.inj hsome
 
-namespace Wrap
-
-noncomputable def letNodeSem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
-      ProtocolGraph.NodeSem P (ProgramField (.letExpr x e k)) L
-        (fun field => field.ty) :=
-  fun sem => sem.mapFields ProgramField.letTail (fun _ => rfl)
-
-noncomputable def sampleNodeSem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
-    ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
-      ProtocolGraph.NodeSem P (ProgramField (.sample x D k)) L
-        (fun field => field.ty) :=
-  fun sem => sem.mapFields ProgramField.sampleTail (fun _ => rfl)
-
-noncomputable def commitNodeSem
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
-    ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
-      ProtocolGraph.NodeSem P (ProgramField (.commit x who R k)) L
-        (fun field => field.ty) :=
-  fun sem => sem.mapFields ProgramField.commitTail (fun _ => rfl)
-
-noncomputable def revealNodeSem
-    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)} :
-    ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
-      ProtocolGraph.NodeSem P (ProgramField (.reveal y who x hx k)) L
-        (fun field => field.ty) :=
-  fun sem => sem.mapFields ProgramField.revealTail (fun _ => rfl)
-
-theorem mem_reads_letNodeSem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField (.letExpr x e k)}
-    (h : field ∈ (letNodeSem sem).reads) :
-    ∃ inner, field = .letTail inner ∧ inner ∈ sem.reads := by
-  have h' : field ∈ sem.reads.image ProgramField.letTail := by
-    simpa [letNodeSem] using h
-  rcases Finset.mem_image.mp h' with ⟨inner, hinner, hfield⟩
-  exact ⟨inner, hfield.symm, hinner⟩
-
-theorem mem_reads_sampleNodeSem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField (.sample x D k)}
-    (h : field ∈ (sampleNodeSem sem).reads) :
-    ∃ inner, field = .sampleTail inner ∧ inner ∈ sem.reads := by
-  have h' : field ∈ sem.reads.image ProgramField.sampleTail := by
-    simpa [sampleNodeSem] using h
-  rcases Finset.mem_image.mp h' with ⟨inner, hinner, hfield⟩
-  exact ⟨inner, hfield.symm, hinner⟩
-
-theorem mem_reads_commitNodeSem
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField (.commit x who R k)}
-    (h : field ∈ (commitNodeSem sem).reads) :
-    ∃ inner, field = .commitTail inner ∧ inner ∈ sem.reads := by
-  have h' : field ∈ sem.reads.image ProgramField.commitTail := by
-    simpa [commitNodeSem] using h
-  rcases Finset.mem_image.mp h' with ⟨inner, hinner, hfield⟩
-  exact ⟨inner, hfield.symm, hinner⟩
-
-theorem mem_reads_revealNodeSem
-    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField (.reveal y who x hx k)}
-    (h : field ∈ (revealNodeSem sem).reads) :
-    ∃ inner, field = .revealTail inner ∧ inner ∈ sem.reads := by
-  have h' : field ∈ sem.reads.image ProgramField.revealTail := by
-    simpa [revealNodeSem] using h
-  rcases Finset.mem_image.mp h' with ⟨inner, hinner, hfield⟩
-  exact ⟨inner, hfield.symm, hinner⟩
-
-theorem letTail_mem_writeFields_of_mem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField k}
-    (h : field ∈ sem.writeFields) :
-    ProgramField.letTail (e := e) field ∈
-      (letNodeSem (e := e) sem).writeFields := by
-  change ProgramField.letTail (e := e) field ∈
-    (sem.mapFields ProgramField.letTail (fun _ => rfl)).writeFields
-  exact
-    (ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
-      (sem := sem) (field := field) (f := ProgramField.letTail)
-      (hty := fun _ => rfl) h)
-
-theorem sampleTail_mem_writeFields_of_mem
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField k}
-    (h : field ∈ sem.writeFields) :
-    ProgramField.sampleTail (D := D) field ∈
-      (sampleNodeSem (D := D) sem).writeFields := by
-  change ProgramField.sampleTail (D := D) field ∈
-    (sem.mapFields ProgramField.sampleTail (fun _ => rfl)).writeFields
-  exact
-    (ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
-      (sem := sem) (field := field) (f := ProgramField.sampleTail)
-      (hty := fun _ => rfl) h)
-
-theorem commitTail_mem_writeFields_of_mem
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField k}
-    (h : field ∈ sem.writeFields) :
-    ProgramField.commitTail (R := R) field ∈
-      (commitNodeSem (R := R) sem).writeFields := by
-  change ProgramField.commitTail (R := R) field ∈
-    (sem.mapFields ProgramField.commitTail (fun _ => rfl)).writeFields
-  exact
-    (ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
-      (sem := sem) (field := field) (f := ProgramField.commitTail)
-      (hty := fun _ => rfl) h)
-
-theorem revealTail_mem_writeFields_of_mem
-    {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
-    {sem : ProtocolGraph.NodeSem P (ProgramField k) L
-      (fun field => field.ty)}
-    {field : ProgramField k}
-    (h : field ∈ sem.writeFields) :
-    ProgramField.revealTail (x := x) (hx := hx) field ∈
-      (revealNodeSem (x := x) (hx := hx) sem).writeFields := by
-  change ProgramField.revealTail (x := x) (hx := hx) field ∈
-    (sem.mapFields ProgramField.revealTail (fun _ => rfl)).writeFields
-  exact
-    (ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
-      (sem := sem) (field := field) (f := ProgramField.revealTail)
-      (hty := fun _ => rfl) h)
-
-end Wrap
-
 /-- Final visibility context reached after all source nodes of a program have
 executed. -/
 def finalVCtx : {Γ : VCtx P L} → VegasCore P L Γ → VCtx P L
@@ -1300,8 +1136,8 @@ noncomputable def sem :
           (ProgramField.publicGraphExpr (.letExpr x e k) e))
   | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
       .letTail node =>
-      ProgramField.Wrap.letNodeSem
-        (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized node)
+      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized node).mapFields
+        ProgramField.letTail (fun _ => rfl)
   | _, .sample x (b := b) D k, _hctx, _fresh, _scoped,
       _legal, normalized, .sampleHere =>
       let target : ProgramField (.sample x D k) :=
@@ -1317,9 +1153,9 @@ noncomputable def sem :
           (ProgramField.publicGraphDist (.sample x D k) D normalized.1))
   | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
       .sampleTail node =>
-      ProgramField.Wrap.sampleNodeSem
-        (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized.2 node)
+      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
+        legal normalized.2 node).mapFields ProgramField.sampleTail
+          (fun _ => rfl)
   | _, .commit x who (b := b) R k, hctx, fresh, hscoped,
       legal, normalized, .commitHere =>
       let target : ProgramField (.commit x who R k) :=
@@ -1336,9 +1172,9 @@ noncomputable def sem :
           target htarget hctx fresh.1 hscoped.1 legal.1)
   | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
       .commitTail node =>
-      ProgramField.Wrap.commitNodeSem
-        (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-          legal.2 normalized node)
+      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
+        legal.2 normalized node).mapFields ProgramField.commitTail
+          (fun _ => rfl)
   | _, .reveal y who x (b := b) hx k, _hctx, _fresh, _scoped,
       _legal, normalized, .revealHere =>
       let source : ProgramField (.reveal y who x hx k) :=
@@ -1361,9 +1197,9 @@ noncomputable def sem :
       .reveal source target (hsource.trans htarget.symm)
   | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
       .revealTail node =>
-      ProgramField.Wrap.revealNodeSem
-        (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized node)
+      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
+        legal normalized node).mapFields ProgramField.revealTail
+          (fun _ => rfl)
 
 /-- Every source node semantically writes its syntactic result field. -/
 theorem writtenBy_mem_writeFields :
@@ -1379,7 +1215,8 @@ theorem writtenBy_mem_writeFields :
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
   | _, .letExpr _ _ k, hctx, fresh, hscoped, legal, normalized, .letTail node => by
-      exact ProgramField.Wrap.letTail_mem_writeFields_of_mem
+      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        (f := ProgramField.letTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k)
           (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized node)
   | _, .sample x D k, hctx, fresh, hscoped, legal, normalized, .sampleHere => by
@@ -1387,7 +1224,8 @@ theorem writtenBy_mem_writeFields :
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
   | _, .sample _ _ k, hctx, fresh, hscoped, legal, normalized, .sampleTail node => by
-      exact ProgramField.Wrap.sampleTail_mem_writeFields_of_mem
+      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        (f := ProgramField.sampleTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k)
           (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
           legal normalized.2 node)
@@ -1396,7 +1234,8 @@ theorem writtenBy_mem_writeFields :
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
   | _, .commit _ _ _ k, hctx, fresh, hscoped, legal, normalized, .commitTail node => by
-      exact ProgramField.Wrap.commitTail_mem_writeFields_of_mem
+      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        (f := ProgramField.commitTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k)
           (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
           legal.2 normalized node)
@@ -1405,7 +1244,8 @@ theorem writtenBy_mem_writeFields :
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
   | _, .reveal _ _ _ _ k, hctx, fresh, hscoped, legal, normalized, .revealTail node => by
-      exact ProgramField.Wrap.revealTail_mem_writeFields_of_mem
+      exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+        (f := ProgramField.revealTail) (hty := fun _ => rfl)
         (writtenBy_mem_writeFields (p := k)
           (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
           legal normalized node)
@@ -1468,7 +1308,16 @@ theorem read_current_or_prior_write :
         ProgramField.castGraphExpr, ProgramField.publicGraphExpr] using hread
   | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
       .letTail node, field, hread => by
-      rcases ProgramField.Wrap.mem_reads_letNodeSem hread with
+      let hty :
+          ∀ field : ProgramField k,
+            (ProgramField.letTail (e := e) field).ty = field.ty :=
+        fun _ => rfl
+      have hread' :
+          field ∈ ((ProgramNode.sem (p := k)
+            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized
+            node).mapFields ProgramField.letTail hty).reads := by
+        simpa [ProgramNode.sem] using hread
+      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k)
@@ -1487,7 +1336,8 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.letTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProgramField.Wrap.letTail_mem_writeFields_of_mem hwrite
+        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+          (f := ProgramField.letTail) (hty := hty) hwrite
   | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
       .sampleHere, field, hread => by
       left
@@ -1495,7 +1345,17 @@ theorem read_current_or_prior_write :
         ProgramField.castGraphDist, ProgramField.publicGraphDist] using hread
   | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
       .sampleTail node, field, hread => by
-      rcases ProgramField.Wrap.mem_reads_sampleNodeSem hread with
+      let hty :
+          ∀ field : ProgramField k,
+            (ProgramField.sampleTail (D := D) field).ty = field.ty :=
+        fun _ => rfl
+      have hread' :
+          field ∈ ((ProgramNode.sem (p := k)
+            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal
+            normalized.2 node).mapFields ProgramField.sampleTail
+              hty).reads := by
+        simpa [ProgramNode.sem] using hread
+      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k)
@@ -1514,7 +1374,8 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.sampleTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProgramField.Wrap.sampleTail_mem_writeFields_of_mem hwrite
+        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+          (f := ProgramField.sampleTail) (hty := hty) hwrite
   | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
       .commitHere, field, hread => by
       left
@@ -1522,7 +1383,17 @@ theorem read_current_or_prior_write :
         ProgramField.commitGraphGuard] using hread
   | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
       .commitTail node, field, hread => by
-      rcases ProgramField.Wrap.mem_reads_commitNodeSem hread with
+      let hty :
+          ∀ field : ProgramField k,
+            (ProgramField.commitTail (R := R) field).ty = field.ty :=
+        fun _ => rfl
+      have hread' :
+          field ∈ ((ProgramNode.sem (p := k)
+            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2 legal.2
+            normalized node).mapFields ProgramField.commitTail
+              hty).reads := by
+        simpa [ProgramNode.sem] using hread
+      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k)
@@ -1541,7 +1412,8 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.commitTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProgramField.Wrap.commitTail_mem_writeFields_of_mem hwrite
+        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+          (f := ProgramField.commitTail) (hty := hty) hwrite
   | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
       .revealHere, field, hread => by
       left
@@ -1553,7 +1425,17 @@ theorem read_current_or_prior_write :
         (.reveal y who x hx k) (.mk hx)
   | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
       .revealTail node, field, hread => by
-      rcases ProgramField.Wrap.mem_reads_revealNodeSem hread with
+      let hty :
+          ∀ field : ProgramField k,
+            (ProgramField.revealTail (x := x) (hx := hx) field).ty =
+              field.ty :=
+        fun _ => rfl
+      have hread' :
+          field ∈ ((ProgramNode.sem (p := k)
+            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized
+            node).mapFields ProgramField.revealTail hty).reads := by
+        simpa [ProgramNode.sem] using hread
+      rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
         read_current_or_prior_write (p := k)
@@ -1573,7 +1455,8 @@ theorem read_current_or_prior_write :
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.revealTail prior, Nat.succ_lt_succ hrank, ?_⟩
-        exact ProgramField.Wrap.revealTail_mem_writeFields_of_mem hwrite
+        exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
+          (f := ProgramField.revealTail) (hty := hty) hwrite
 
 /-- Causal prerequisites of a source node.
 
@@ -1830,22 +1713,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
           sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
             legal normalized node with
       | assign field expr =>
-          simp [sem, hinner, ProgramField.Wrap.letNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProgramField.Wrap.letNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProgramField.Wrap.letNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
               ProtocolGraph.NodeSem.commit owner (.letTail innerTarget)
                   (innerGuard.mapFields ProgramField.letTail
                     (fun _ => rfl)) =
                 ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProgramField.Wrap.letNodeSem,
-              ProtocolGraph.NodeSem.mapFields] using hsem
+            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -1867,22 +1746,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
           sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
             legal normalized.2 node with
       | assign field expr =>
-          simp [sem, hinner, ProgramField.Wrap.sampleNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProgramField.Wrap.sampleNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProgramField.Wrap.sampleNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
               ProtocolGraph.NodeSem.commit owner (.sampleTail innerTarget)
                   (innerGuard.mapFields ProgramField.sampleTail
                     (fun _ => rfl)) =
                 ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProgramField.Wrap.sampleNodeSem,
-              ProtocolGraph.NodeSem.mapFields] using hsem
+            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -1911,22 +1786,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
           sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
             legal.2 normalized node with
       | assign field expr =>
-          simp [sem, hinner, ProgramField.Wrap.commitNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProgramField.Wrap.commitNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProgramField.Wrap.commitNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
               ProtocolGraph.NodeSem.commit owner (.commitTail innerTarget)
                   (innerGuard.mapFields ProgramField.commitTail
                     (fun _ => rfl)) =
                 ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProgramField.Wrap.commitNodeSem,
-              ProtocolGraph.NodeSem.mapFields] using hsem
+            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
@@ -1948,22 +1819,18 @@ theorem guard_visibleReads_owner_of_sem_commit :
           sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
             legal normalized node with
       | assign field expr =>
-          simp [sem, hinner, ProgramField.Wrap.revealNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
-          simp [sem, hinner, ProgramField.Wrap.revealNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | reveal source innerTarget hty =>
-          simp [sem, hinner, ProgramField.Wrap.revealNodeSem,
-            ProtocolGraph.NodeSem.mapFields] at hsem
+          simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | commit owner innerTarget innerGuard =>
           have hsem' :
               ProtocolGraph.NodeSem.commit owner (.revealTail innerTarget)
                   (innerGuard.mapFields ProgramField.revealTail
                     (fun _ => rfl)) =
                 ProtocolGraph.NodeSem.commit commitWho target guard := by
-            simpa [sem, hinner, ProgramField.Wrap.revealNodeSem,
-              ProtocolGraph.NodeSem.mapFields] using hsem
+            simpa [sem, hinner, ProtocolGraph.NodeSem.mapFields] using hsem
           injection hsem' with howner htarget hguard
           subst commitWho
           subst target
