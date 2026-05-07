@@ -99,4 +99,35 @@ theorem checkedProgram_boundedFOSG_legal_iff_forall_locallyLegal
             state who (action who) :=
   ((syntaxGraphFOSGView g).toBoundedFOSG horizon).legal_iff_forall
 
+/-- Checked syntax graphs cannot deadlock before terminality. -/
+theorem checkedProgram_no_deadlock_before_terminal
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    cfg.frontier.Nonempty :=
+  cfg.frontier_nonempty_of_not_terminal hterminal
+
+/-- In every nonterminal checked syntax-graph configuration, a rank-minimal
+unfinished source node is executable. -/
+theorem checkedProgram_every_source_node_eventually_frontier_or_done
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : ¬ cfg.terminal) :
+    ∃ node : ProgramNode g.prog,
+      node ∈ cfg.frontier ∧
+        ∀ other : ProgramNode g.prog,
+          other ∈ ProgramNode.finset g.prog →
+            (cfg.result other).isNone →
+              node.rank ≤ other.rank :=
+  syntaxLinearRead_sufficient g cfg hterminal
+
+/-- Syntax-graph terminality is exactly completion of all graph nodes. -/
+theorem checkedProgram_terminal_iff_all_nodes_done
+    (g : WFProgram P L)
+    (cfg : (syntaxProtocolGraph g).Configuration) :
+    cfg.terminal ↔
+      (syntaxProtocolGraph g).nodes ⊆
+        (syntaxProtocolGraph g).done cfg.result :=
+  Iff.rfl
+
 end Vegas
