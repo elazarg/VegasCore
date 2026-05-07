@@ -20,3 +20,4 @@ import Vegas.Corollaries.PureStrategic
 import Vegas.ProtocolSemantics
 import Vegas.Protocol
 import Vegas.Kuhn
+import Vegas.Theorems
