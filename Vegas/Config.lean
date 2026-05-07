@@ -45,28 +45,28 @@ def terminal (w : World P L) : Prop :=
 @[simp] theorem terminal_letExpr
     {Γ : VCtx P L} {env : VEnv L Γ} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
     terminal ({ Γ := Γ, prog := VegasCore.letExpr x e k, env := env } : World P L) =
       False := rfl
 
 @[simp] theorem terminal_sample
     {Γ : VCtx P L} {env : VEnv L Γ} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
     terminal ({ Γ := Γ, prog := VegasCore.sample x D k, env := env } : World P L) =
       False := rfl
 
 @[simp] theorem terminal_commit
     {Γ : VCtx P L} {env : VEnv L Γ} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
     terminal ({ Γ := Γ, prog := VegasCore.commit x who R k, env := env } : World P L) =
       False := rfl
 
 @[simp] theorem terminal_reveal
     {Γ : VCtx P L} {env : VEnv L Γ} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x ⟨b, .hidden who⟩}
-    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} :
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)} :
     terminal ({ Γ := Γ, prog := VegasCore.reveal y who x hx k, env := env } : World P L) =
       False := rfl
 
@@ -89,25 +89,25 @@ def syntaxSteps :
 @[simp] theorem syntaxSteps_letExpr
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
     syntaxSteps (.letExpr x e k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_sample
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .pub b) :: Γ)} :
     syntaxSteps (.sample x D k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_commit
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} :
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
     syntaxSteps (.commit x who R k) = syntaxSteps k + 1 := rfl
 
 @[simp] theorem syntaxSteps_reveal
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x ⟨b, .hidden who⟩}
-    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} :
+    {hx : VHasVar Γ x (.hidden who b)}
+    {k : VegasCore P L ((y, .pub b) :: Γ)} :
     syntaxSteps (.reveal y who x hx k) = syntaxSteps k + 1 := rfl
 
 /-- A program has no remaining syntax steps exactly at `ret`. -/

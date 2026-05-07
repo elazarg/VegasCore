@@ -26,24 +26,24 @@ def colPublic : VarId := 3
 
 abbrev Γ0 : Ctx := []
 abbrev Γ2 : Ctx :=
-  [(colSecret, ⟨.bool, .hidden Player.col⟩),
-   (rowSecret, ⟨.bool, .hidden Player.row⟩)]
+  [(colSecret, .hidden Player.col .bool),
+   (rowSecret, .hidden Player.row .bool)]
 abbrev Γ3 : Ctx :=
-  [(rowPublic, ⟨.bool, .pub⟩),
-   (colSecret, ⟨.bool, .hidden Player.col⟩),
-   (rowSecret, ⟨.bool, .hidden Player.row⟩)]
+  [(rowPublic, .pub .bool),
+   (colSecret, .hidden Player.col .bool),
+   (rowSecret, .hidden Player.row .bool)]
 abbrev Γ4 : Ctx :=
-  [(colPublic, ⟨.bool, .pub⟩),
-   (rowPublic, ⟨.bool, .pub⟩),
-   (colSecret, ⟨.bool, .hidden Player.col⟩),
-   (rowSecret, ⟨.bool, .hidden Player.row⟩)]
+  [(colPublic, .pub .bool),
+   (rowPublic, .pub .bool),
+   (colSecret, .hidden Player.col .bool),
+   (rowSecret, .hidden Player.row .bool)]
 
 def hRowSecretΓ2 :
-    VHasVar Γ2 rowSecret ⟨.bool, .hidden Player.row⟩ :=
+    VHasVar Γ2 rowSecret (.hidden Player.row .bool) :=
   .there .here
 
 def hColSecretΓ3 :
-    VHasVar Γ3 colSecret ⟨.bool, .hidden Player.col⟩ :=
+    VHasVar Γ3 colSecret (.hidden Player.col .bool) :=
   .there .here
 
 def hColPublicPayoff :

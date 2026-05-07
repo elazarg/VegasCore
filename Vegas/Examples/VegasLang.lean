@@ -39,10 +39,10 @@ theorem lower_canonicalLangProgram_eq_game_prog :
     VegasLang.lower canonicalLangProgram = game.prog := rfl
 
 abbrev ΓYield : Ctx :=
-  [(matcherPublic, ⟨BaseTy.option .bool, .pub⟩),
-   (mismatcherPublic, ⟨BaseTy.option .bool, .pub⟩),
-   (mismatcherSecret, ⟨BaseTy.option .bool, .hidden Player.mismatcher⟩),
-   (matcherSecret, ⟨BaseTy.option .bool, .hidden Player.matcher⟩)]
+  [(matcherPublic, .pub (BaseTy.option .bool)),
+   (mismatcherPublic, .pub (BaseTy.option .bool)),
+   (mismatcherSecret, .hidden Player.mismatcher (BaseTy.option .bool)),
+   (matcherSecret, .hidden Player.matcher (BaseTy.option .bool))]
 
 def hMatcherYieldPublic :
     HasVar (erasePubVCtx ΓYield) matcherPublic (BaseTy.option .bool) :=

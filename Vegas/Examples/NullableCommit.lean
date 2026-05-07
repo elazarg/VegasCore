@@ -23,13 +23,13 @@ def victim : Player := 1
 abbrev Γ0 : VCtx Player simpleExpr := []
 
 abbrev Γ1 : VCtx Player simpleExpr :=
-  [(secret, ⟨BaseTy.option .bool, .hidden 0⟩)]
+  [(secret, .hidden 0 (BaseTy.option .bool))]
 
 abbrev Γ2 : VCtx Player simpleExpr :=
-  [(publicVar, ⟨BaseTy.option .bool, .pub⟩),
-   (secret, ⟨BaseTy.option .bool, .hidden 0⟩)]
+  [(publicVar, .pub (BaseTy.option .bool)),
+   (secret, .hidden 0 (BaseTy.option .bool))]
 
-def hSecretΓ1 : VHasVar Γ1 secret ⟨BaseTy.option .bool, .hidden actor⟩ :=
+def hSecretΓ1 : VHasVar Γ1 secret (.hidden actor (BaseTy.option .bool)) :=
   .here
 
 def hPublicΓ2 : HasVar (erasePubVCtx Γ2) publicVar (BaseTy.option .bool) :=

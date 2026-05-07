@@ -26,24 +26,24 @@ def mismatcherPublic : VarId := 3
 
 abbrev Γ0 : Ctx := []
 abbrev Γ2 : Ctx :=
-  [(mismatcherSecret, ⟨.bool, .hidden Player.mismatcher⟩),
-   (matcherSecret, ⟨.bool, .hidden Player.matcher⟩)]
+  [(mismatcherSecret, .hidden Player.mismatcher .bool),
+   (matcherSecret, .hidden Player.matcher .bool)]
 abbrev Γ3 : Ctx :=
-  [(matcherPublic, ⟨.bool, .pub⟩),
-   (mismatcherSecret, ⟨.bool, .hidden Player.mismatcher⟩),
-   (matcherSecret, ⟨.bool, .hidden Player.matcher⟩)]
+  [(matcherPublic, .pub .bool),
+   (mismatcherSecret, .hidden Player.mismatcher .bool),
+   (matcherSecret, .hidden Player.matcher .bool)]
 abbrev Γ4 : Ctx :=
-  [(mismatcherPublic, ⟨.bool, .pub⟩),
-   (matcherPublic, ⟨.bool, .pub⟩),
-   (mismatcherSecret, ⟨.bool, .hidden Player.mismatcher⟩),
-   (matcherSecret, ⟨.bool, .hidden Player.matcher⟩)]
+  [(mismatcherPublic, .pub .bool),
+   (matcherPublic, .pub .bool),
+   (mismatcherSecret, .hidden Player.mismatcher .bool),
+   (matcherSecret, .hidden Player.matcher .bool)]
 
 def hMatcherSecretΓ2 :
-    VHasVar Γ2 matcherSecret ⟨.bool, .hidden Player.matcher⟩ :=
+    VHasVar Γ2 matcherSecret (.hidden Player.matcher .bool) :=
   .there .here
 
 def hMismatcherSecretΓ3 :
-    VHasVar Γ3 mismatcherSecret ⟨.bool, .hidden Player.mismatcher⟩ :=
+    VHasVar Γ3 mismatcherSecret (.hidden Player.mismatcher .bool) :=
   .there .here
 
 def hMismatcherPublicPayoff :

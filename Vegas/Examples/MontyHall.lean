@@ -68,64 +68,64 @@ def carPublic : VarId := 7
 
 abbrev Γ0 : Ctx := []
 abbrev Γ1 : Ctx :=
-  [(carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(carSecret, .hidden Player.host DoorTy)]
 abbrev Γ2 : Ctx :=
-  [(firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ3 : Ctx :=
-  [(firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ4 : Ctx :=
-  [(openedSecret, ⟨DoorTy, .hidden Player.host⟩),
-   (firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(openedSecret, .hidden Player.host DoorTy),
+   (firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ5 : Ctx :=
-  [(openedPublic, ⟨DoorTy, .pub⟩),
-   (openedSecret, ⟨DoorTy, .hidden Player.host⟩),
-   (firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(openedPublic, .pub DoorTy),
+   (openedSecret, .hidden Player.host DoorTy),
+   (firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ6 : Ctx :=
-  [(switchSecret, ⟨.bool, .hidden Player.guest⟩),
-   (openedPublic, ⟨DoorTy, .pub⟩),
-   (openedSecret, ⟨DoorTy, .hidden Player.host⟩),
-   (firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(switchSecret, .hidden Player.guest .bool),
+   (openedPublic, .pub DoorTy),
+   (openedSecret, .hidden Player.host DoorTy),
+   (firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ7 : Ctx :=
-  [(switchPublic, ⟨.bool, .pub⟩),
-   (switchSecret, ⟨.bool, .hidden Player.guest⟩),
-   (openedPublic, ⟨DoorTy, .pub⟩),
-   (openedSecret, ⟨DoorTy, .hidden Player.host⟩),
-   (firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(switchPublic, .pub .bool),
+   (switchSecret, .hidden Player.guest .bool),
+   (openedPublic, .pub DoorTy),
+   (openedSecret, .hidden Player.host DoorTy),
+   (firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 abbrev Γ8 : Ctx :=
-  [(carPublic, ⟨DoorTy, .pub⟩),
-   (switchPublic, ⟨.bool, .pub⟩),
-   (switchSecret, ⟨.bool, .hidden Player.guest⟩),
-   (openedPublic, ⟨DoorTy, .pub⟩),
-   (openedSecret, ⟨DoorTy, .hidden Player.host⟩),
-   (firstPublic, ⟨DoorTy, .pub⟩),
-   (firstSecret, ⟨DoorTy, .hidden Player.guest⟩),
-   (carSecret, ⟨DoorTy, .hidden Player.host⟩)]
+  [(carPublic, .pub DoorTy),
+   (switchPublic, .pub .bool),
+   (switchSecret, .hidden Player.guest .bool),
+   (openedPublic, .pub DoorTy),
+   (openedSecret, .hidden Player.host DoorTy),
+   (firstPublic, .pub DoorTy),
+   (firstSecret, .hidden Player.guest DoorTy),
+   (carSecret, .hidden Player.host DoorTy)]
 
 def hFirstSecretΓ2 :
-    VHasVar Γ2 firstSecret ⟨DoorTy, .hidden Player.guest⟩ :=
+    VHasVar Γ2 firstSecret (.hidden Player.guest DoorTy) :=
   .here
 
 def hOpenedSecretΓ4 :
-    VHasVar Γ4 openedSecret ⟨DoorTy, .hidden Player.host⟩ :=
+    VHasVar Γ4 openedSecret (.hidden Player.host DoorTy) :=
   .here
 
 def hSwitchSecretΓ6 :
-    VHasVar Γ6 switchSecret ⟨.bool, .hidden Player.guest⟩ :=
+    VHasVar Γ6 switchSecret (.hidden Player.guest .bool) :=
   .here
 
 def hCarSecretΓ7 :
-    VHasVar Γ7 carSecret ⟨DoorTy, .hidden Player.host⟩ :=
+    VHasVar Γ7 carSecret (.hidden Player.host DoorTy) :=
   .there (.there (.there (.there (.there (.there .here)))))
 
 def hOpenedCandidateGuard :

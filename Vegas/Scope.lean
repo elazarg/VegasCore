@@ -103,7 +103,7 @@ theorem mem_viewVCtx_map_fst_of_visible
       · subst hown
         simp only [visibleVars, ite_true] at hx
         have hsee :
-            canSee (L := L) who (⟨υ, .hidden who⟩ : BindTy P L) = true := by
+            canSee (L := L) who (.hidden who υ : BindTy P L) = true := by
           simp [canSee, Visibility.canSee]
         simp only [viewVCtx, hsee, if_true, List.map_cons, List.mem_cons]
         rcases Finset.mem_insert.mp hx with rfl | hx
@@ -111,7 +111,7 @@ theorem mem_viewVCtx_map_fst_of_visible
         · exact Or.inr (by simpa using ih hx)
       · simp only [visibleVars, hown, ite_false] at hx
         have hsee :
-            canSee (L := L) who (⟨υ, .hidden owner⟩ : BindTy P L) = false := by
+            canSee (L := L) who (.hidden owner υ : BindTy P L) = false := by
           simp [canSee, Visibility.canSee, hown]
         simp only [viewVCtx, hsee]
         simpa using ih hx
@@ -198,7 +198,7 @@ def WF {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
 theorem ViewScoped.commit_guard_usesOnly
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
+    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     (hsc : ViewScoped (.commit x who R k)) :
     GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R :=
   hsc.1
@@ -264,7 +264,7 @@ theorem not_mem_visibleVars_hidden_other
     {Γ : VCtx P L} {x : VarId} {who owner : P} {τ : L.Ty}
     (hfresh : Fresh x Γ)
     (hneq : who ≠ owner) :
-    x ∉ visibleVars (L := L) who ((x, ⟨τ, .hidden owner⟩) :: Γ) := by
+    x ∉ visibleVars (L := L) who ((x, .hidden owner τ) :: Γ) := by
   intro hx
   apply hfresh
   exact mem_visibleVars_map_fst (L := L) (who := who) (by simpa [visibleVars, hneq] using hx)
@@ -274,11 +274,11 @@ theorem not_mem_visibleVars_hidden_other
 theorem GuardUsesOnly.not_mem_hidden_other
     {Γ : VCtx P L}
     {x₁ x₂ : VarId} {who₁ who₂ : P} {b₁ b₂ : L.Ty}
-    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ)) L.bool}
-    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ))
+    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
+    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, .hidden who₁ b₁) :: Γ))
       (x := x₂) (who := who₂) R)
     (hfresh₁ : Fresh x₁ Γ)
-    (hfresh₂ : Fresh x₂ ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ))
+    (hfresh₂ : Fresh x₂ ((x₁, .hidden who₁ b₁) :: Γ))
     (hneq : who₂ ≠ who₁) :
     x₁ ∉ L.exprDeps R := by
   intro hx
