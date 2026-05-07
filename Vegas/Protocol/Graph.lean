@@ -103,6 +103,117 @@ structure GraphGuard (L : IExpr) (Field : Type) [DecidableEq Field]
     (ρ : ReadEnv L Field fieldTy reads) →
       ∃ value : L.Val (fieldTy field), eval value ρ = true
 
+namespace ReadEnv
+
+variable {L : IExpr}
+variable {Field Field' : Type} [DecidableEq Field']
+variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
+
+/-- Pull a read environment on mapped fields back to the source fields. -/
+noncomputable def comapFields
+    {reads : Finset Field}
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field)
+    (ρ : ReadEnv L Field' fieldTy' (reads.image f)) :
+    ReadEnv L Field fieldTy reads where
+  value field hmem :=
+    cast (by rw [hty field])
+      (ρ.value (f field) (Finset.mem_image.mpr ⟨field, hmem, rfl⟩))
+
+end ReadEnv
+
+namespace GraphExpr
+
+variable {L : IExpr}
+variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
+variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
+variable {ty : L.Ty}
+
+/-- Transport a graph expression through a field map preserving field types. -/
+noncomputable def mapFields
+    (expr : GraphExpr L Field fieldTy ty)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    GraphExpr L Field' fieldTy' ty where
+  reads := expr.reads.image f
+  eval := fun ρ => expr.eval (ReadEnv.comapFields f hty ρ)
+
+end GraphExpr
+
+namespace GraphDist
+
+variable {L : IExpr}
+variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
+variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
+variable {ty : L.Ty}
+
+/-- Transport a graph distribution through a field map preserving field types. -/
+noncomputable def mapFields
+    (dist : GraphDist L Field fieldTy ty)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    GraphDist L Field' fieldTy' ty where
+  reads := dist.reads.image f
+  eval := fun ρ => dist.eval (ReadEnv.comapFields f hty ρ)
+
+end GraphDist
+
+namespace GraphGuard
+
+variable {L : IExpr}
+variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
+variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
+
+/-- Transport a graph guard through a field map preserving field types. -/
+noncomputable def mapFields
+    {field : Field}
+    (guard : GraphGuard L Field fieldTy field)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    GraphGuard L Field' fieldTy' (f field) where
+  reads := guard.reads.image f
+  visibleReads := guard.visibleReads.image f
+  visibleReads_subset_reads := by
+    intro read hread
+    rcases Finset.mem_image.mp hread with ⟨inner, hinner, rfl⟩
+    exact Finset.mem_image.mpr
+      ⟨inner, guard.visibleReads_subset_reads hinner, rfl⟩
+  eval := fun value ρ =>
+    guard.eval (cast (by rw [hty field]) value)
+      (ReadEnv.comapFields f hty ρ)
+  eval_eq_of_visible_eq := by
+    intro value ρ₁ ρ₂ hvisible
+    apply guard.eval_eq_of_visible_eq
+    intro read h₁ h₂ hreadVisible
+    simpa [ReadEnv.comapFields] using
+      hvisible (f read)
+        (Finset.mem_image.mpr ⟨read, h₁, rfl⟩)
+        (Finset.mem_image.mpr ⟨read, h₂, rfl⟩)
+        (Finset.mem_image.mpr ⟨read, hreadVisible, rfl⟩)
+  satisfiable := by
+    intro ρ
+    rcases guard.satisfiable (ReadEnv.comapFields f hty ρ) with
+      ⟨value, hvalue⟩
+    refine ⟨cast (by rw [← hty field]) value, ?_⟩
+    simpa using hvalue
+
+@[simp] theorem reads_mapFields
+    {field : Field}
+    (guard : GraphGuard L Field fieldTy field)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (guard.mapFields f hty).reads = guard.reads.image f := rfl
+
+@[simp] theorem visibleReads_mapFields
+    {field : Field}
+    (guard : GraphGuard L Field fieldTy field)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (guard.mapFields f hty).visibleReads =
+      guard.visibleReads.image f := rfl
+
+end GraphGuard
+
 /-- Protocol meaning attached to one graph node.
 
 This is intentionally semantic, not backend metadata.  Visibility is computed
@@ -120,6 +231,34 @@ namespace NodeSem
 variable {Player Field : Type} [DecidableEq Field]
 variable {L : IExpr} {fieldTy : Field → L.Ty}
 
+variable {Field' : Type} [DecidableEq Field'] {fieldTy' : Field' → L.Ty}
+
+/-- Transport a node semantic payload through a field map preserving field
+types. -/
+noncomputable def mapFields
+    (sem : NodeSem Player Field L fieldTy)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    NodeSem Player Field' L fieldTy' :=
+  match sem with
+  | .assign field expr =>
+      .assign (f field) {
+        reads := expr.reads.image f
+        eval := fun ρ =>
+          cast (by rw [hty field])
+            (expr.eval (ReadEnv.comapFields f hty ρ)) }
+  | .sample field dist =>
+      .sample (f field) {
+        reads := dist.reads.image f
+        eval := fun ρ =>
+          cast (by rw [hty field])
+            (dist.eval (ReadEnv.comapFields f hty ρ)) }
+  | .commit who field guard =>
+      .commit who (f field) (guard.mapFields f hty)
+  | .reveal source target hsameTy =>
+      .reveal (f source) (f target)
+        (by rw [hty source, hty target, hsameTy])
+
 /-- Player responsible for this node, if any. -/
 def actor :
     NodeSem Player Field L fieldTy → Option Player
@@ -136,6 +275,21 @@ def reads :
   | .commit _ _ guard => guard.reads
   | .reveal source _ _ => {source}
 
+@[simp] theorem reads_mapFields
+    (sem : NodeSem Player Field L fieldTy)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (sem.mapFields f hty).reads = sem.reads.image f := by
+  cases sem with
+  | assign field expr =>
+      simp [mapFields, reads]
+  | sample field dist =>
+      simp [mapFields, reads]
+  | commit who field guard =>
+      rfl
+  | reveal source target hsameTy =>
+      simp [mapFields, reads]
+
 /-- Semantic writes produced by this node. -/
 def writes :
     NodeSem Player Field L fieldTy → List (FieldWrite Player Field)
@@ -151,6 +305,13 @@ def writeTarget :
   | .sample field _ => field
   | .commit _ field _ => field
   | .reveal _ target _ => target
+
+@[simp] theorem writeTarget_mapFields
+    (sem : NodeSem Player Field L fieldTy)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (sem.mapFields f hty).writeTarget = f sem.writeTarget := by
+  cases sem <;> simp [mapFields, writeTarget]
 
 /-- A node writes a field if one of its semantic writes targets that field. -/
 def WritesField (sem : NodeSem Player Field L fieldTy) (field : Field) : Prop :=
@@ -199,6 +360,17 @@ theorem mem_writeFields_iff_eq_writeTarget
     (sem : NodeSem Player Field L fieldTy) (field : Field) :
     field ∈ sem.writeFields ↔ field = sem.writeTarget := by
   rw [writeFields_eq_singleton]
+  simp
+
+theorem mem_writeFields_mapFields_of_mem
+    {sem : NodeSem Player Field L fieldTy}
+    {f : Field → Field'}
+    {hty : ∀ field, fieldTy' (f field) = fieldTy field}
+    {field : Field}
+    (h : field ∈ sem.writeFields) :
+    f field ∈ (sem.mapFields f hty).writeFields := by
+  rw [mem_writeFields_iff_eq_writeTarget] at h ⊢
+  rw [h]
   simp
 
 end NodeSem
