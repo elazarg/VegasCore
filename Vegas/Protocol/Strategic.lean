@@ -63,15 +63,13 @@ theorem pureOutcomeKernelAt_eq_blockTraceDist
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphTraceOutcome g)
         (syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
           (GameTheory.FOSG.legalPureToBehavioral
             ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
             π.extend)
           (syntaxSteps g.prog)
-          (GameTheory.FOSG.History.nil
-            ((syntaxGraphFOSGView g).toBoundedFOSG
-              (syntaxSteps g.prog)))) := by
+          (syntaxGraphInitialHistory g (syntaxSteps g.prog))) := by
   simp [pureOutcomeKernelAt,
     syntaxGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist]
 
@@ -83,13 +81,11 @@ theorem behavioralOutcomeKernelPMFAt_eq_blockTraceDist
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (fun trace => (syntaxGraphMachine g).outcome trace.2)
+        (syntaxGraphTraceOutcome g)
         (syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
           β.extend
           (syntaxSteps g.prog)
-          (GameTheory.FOSG.History.nil
-            ((syntaxGraphFOSGView g).toBoundedFOSG
-              (syntaxSteps g.prog)))) := by
+          (syntaxGraphInitialHistory g (syntaxSteps g.prog))) := by
   simp [behavioralOutcomeKernelPMFAt,
     syntaxGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist]
 
@@ -121,8 +117,7 @@ noncomputable def pureBlockedTraceOutcomeKernelAt
       ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
       π.extend)
     (syntaxSteps g.prog)
-    (GameTheory.FOSG.History.nil
-      ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)))
+    (syntaxGraphInitialHistory g (syntaxSteps g.prog))
 
 /-- Blocked primitive trace kernel induced by a PMF behavioral profile. -/
 noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
@@ -131,8 +126,7 @@ noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
   syntaxGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
     β.extend
     (syntaxSteps g.prog)
-    (GameTheory.FOSG.History.nil
-      ((syntaxGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)))
+    (syntaxGraphInitialHistory g (syntaxSteps g.prog))
 
 /-- Finite pure strategic form whose outcomes are blocked primitive machine
 traces rather than just terminal public outcomes. -/
@@ -292,7 +286,8 @@ theorem pureBlockedTraceKernelGameAt_eu_eq
         (g := g) (horizon := horizon) (σ := σ) (n := horizon)
         (h := start)
     simpa [pureBlockedTraceKernelGameAt, pureBlockedTraceOutcomeKernelAt,
-      projectTrace, run, start, σ, G, horizon] using h.symm
+      syntaxGraphInitialHistory, projectTrace, run, start, σ, G, horizon]
+      using h.symm
   have hpublic :
       (pureKernelGameAt g).outcomeKernel π =
         PMF.map projectOutcome run := by
@@ -352,7 +347,8 @@ theorem pmfBehavioralBlockedTraceKernelGameAt_eu_eq
         (h := start)
     simpa [pmfBehavioralBlockedTraceKernelGameAt,
       behavioralBlockedTraceOutcomeKernelPMFAt,
-      projectTrace, run, start, σ, G, horizon] using h.symm
+      syntaxGraphInitialHistory, projectTrace, run, start, σ, G, horizon]
+      using h.symm
   have hpublic :
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         PMF.map projectOutcome run := by
