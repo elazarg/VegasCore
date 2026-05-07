@@ -217,6 +217,11 @@ structure IExpr where
   /-- A static over-approximation of the variables an expression reads.
   Sound by `expr_deps_sound`. -/
   exprDeps : {Γ : Ctx Ty} → {τ : Ty} → Expr Γ τ → Finset VarId
+  /-- Dependency sets mention only variables available in the expression
+  context. This is the structural companion to semantic dependency soundness. -/
+  expr_deps_context :
+    ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ),
+      ∀ x, x ∈ exprDeps e → x ∈ Γ.map Prod.fst
   /-- Weakening: an expression over `(x, τ) :: Γ` can be retyped over
   `(x, τ) :: (y, σ) :: Γ` without changing its meaning. The first of two
   structural laws supporting commit-commit commutativity. -/

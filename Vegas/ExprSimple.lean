@@ -127,6 +127,70 @@ def exprDeps : Expr Γ b → Finset VarId
   | .notBool e => exprDeps e
   | .ite c t f => exprDeps c ∪ exprDeps t ∪ exprDeps f
 
+theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
+    (e : Expr Γ b) :
+    ∀ x, x ∈ exprDeps e → x ∈ Γ.map Prod.fst := by
+  induction e with
+  | var x h =>
+      intro y hy
+      have hyx : y = x := Finset.mem_singleton.mp (by simpa [exprDeps] using hy)
+      subst y
+      exact HasVar.mem_map_fst h
+  | constInt _ =>
+      intro y hy
+      simp [exprDeps] at hy
+  | constBool _ =>
+      intro y hy
+      simp [exprDeps] at hy
+  | constRange _ =>
+      intro y hy
+      simp [exprDeps] at hy
+  | none =>
+      intro y hy
+      simp [exprDeps] at hy
+  | some e ih =>
+      intro y hy
+      exact ih y hy
+  | isSome e ih =>
+      intro y hy
+      exact ih y hy
+  | isNone e ih =>
+      intro y hy
+      exact ih y hy
+  | getD e fallback ihe ihf =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihe y hy
+      · exact ihf y hy
+  | addInt l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | eq l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | andBool l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | notBool e ih =>
+      intro y hy
+      exact ih y hy
+  | ite c t f ihc iht ihf =>
+      intro y hy
+      have hy' :
+          y ∈ exprDeps c ∨ y ∈ exprDeps t ∨ y ∈ exprDeps f := by
+        simpa [exprDeps] using hy
+      rcases hy' with hyc | htf
+      · exact ihc y hyc
+      · rcases htf with hyt | hyf
+        · exact iht y hyt
+        · exact ihf y hyf
+
 theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     (e : Expr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
     (ha : AgreesOn ρ₁ ρ₂ (exprDeps e)) :
@@ -452,6 +516,7 @@ def simpleExpr : Vegas.IExpr where
   Expr := Expr
   eval := @evalExpr
   exprDeps := @exprDeps
+  expr_deps_context := @expr_deps_context
   extendAfterHead := by
     intro Γ x y τ σ b e
     refine ⟨e.weakenAfterHead, ?_⟩

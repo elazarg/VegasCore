@@ -449,10 +449,6 @@ theorem terminalOutcome_eq_of_erasePubEnv_eq
     evalPayoffs_eq_of_erasePubEnv_eq (payoffs := ProgramField.finalPayoffs g.prog)
       hpub]
 
-def ExprDepsRespectContext (L : IExpr) : Prop :=
-  ∀ {Γ : Ctx L.Ty} {τ : L.Ty} (e : L.Expr Γ τ),
-    ∀ x, x ∈ L.exprDeps e → x ∈ Γ.map Prod.fst
-
 omit [DecidableEq P] in
 private theorem erasePubVCtx_map_fst_subset_publicVars :
     {Γ : VCtx P L} →
@@ -476,13 +472,12 @@ private theorem erasePubVCtx_map_fst_subset_publicVars :
 omit [DecidableEq P] in
 /-- Payoff expressions mention only public/revealed variables. -/
 theorem payoff_expr_no_hidden_dependency
-    (hdeps : ExprDepsRespectContext L)
     {Γ : VCtx P L}
     (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
     ∀ entry ∈ payoffs, L.exprDeps entry.2 ⊆ publicVars (L := L) Γ := by
   intro entry _hentry x hx
   exact erasePubVCtx_map_fst_subset_publicVars (Γ := Γ) x
-    (hdeps entry.2 x hx)
+    (L.expr_deps_context entry.2 x hx)
 
 /-- A hidden commit payload cannot signal to a non-owner: public observation
 and the receiver's private observation are unchanged by changing only that
