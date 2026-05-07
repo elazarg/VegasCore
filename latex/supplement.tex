@@ -316,15 +316,20 @@ on each binding.
 \label{def:BindTy}
 
 \paragraph{Lean.}
-\TT{inductive BindTy (Player : Type) (L : IExpr)} with constructors
-\TT{pub (}$\tau$\TT{)} and \TT{hidden (owner : Player) (}$\tau$\TT{)}.
+\TT{inductive Visibility (Player : Type)} with constructors
+\TT{pub} and \TT{hidden (owner : Player)}. Then
+\TT{structure BindTy (Player : Type) (L : IExpr)} has fields
+\TT{base : L.Ty} and \TT{visibility : Visibility Player}. The namespace
+\TT{BindTy} provides smart constructors \TT{.pub (}$\tau$\TT{)} and
+\TT{.hidden (owner : Player) (}$\tau$\TT{)}.
 
 \paragraph{Math.}
 A binding type is either \emph{public} ($\pub\,\tau$, visible to all) or
 \emph{hidden} ($\hid\,p\,\tau$, visible only to its owner $p$). The information
 model is intentionally \emph{owner-or-all}: there are no group-visibility
-constructors. The function \TT{BindTy.base} forgets the visibility tag,
-returning $\tau$ in both cases.
+constructors. Internally, the base type is an immutable field and visibility is
+independent metadata: reveal-like operations change visibility by introducing a
+fresh public alias, not by changing the variable's base type.
 
 \subsection{Visibility contexts and views: \TT{VCtx}, \TT{viewVCtx}, \TT{pubVCtx}}
 \label{def:VCtx}
@@ -365,7 +370,7 @@ The key commutation lemma (\TT{eraseVCtx_pubVCtx}) says that the two
 projections — restrict to the public fragment, and forget visibility
 tags — commute:
 \[
-  \erasectx{\pubctx{\Gamma}} \;=\; \pubctx{\erasectx{\Gamma}}.
+  \erasectx{\pubctx{\Gamma}} \;=\; \erasepub{\Gamma}.
 \]
 Either route produces the public erasure, for which we keep the
 shorthand $\erasepub{\Gamma}$. Operationally this is what lets
