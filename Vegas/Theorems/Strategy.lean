@@ -1,5 +1,6 @@
 import Vegas.Protocol.StateSufficiency
 import Vegas.Protocol.Strategic
+import Vegas.Strategy
 import Vegas.Theorems.Progress
 
 /-!
@@ -241,5 +242,58 @@ theorem availableActionsAtHistory_nonempty_of_not_terminal_active
       refine ⟨act, ?_⟩
       rw [FOSG.mem_availableActionsAtHistory_iff]
       simpa [FOSG.locallyLegalAtState, haction] using hlocal
+
+/-- Every reachable-legal pure strategy chooses only locally available
+information-state moves. -/
+theorem checkedProgram_pureStrategy_chooses_available_info_moves
+    (g : WFProgram P L) (who : P) (σ : pureStrategyAt g who) :
+    PureStrategyChoosesOnly g who (MoveAvailableAtInfo g who) σ :=
+  pureStrategy_chooses_available g who σ
+
+/-- Every reachable-legal behavioral strategy supports only locally available
+information-state moves. -/
+theorem checkedProgram_behavioralStrategy_supports_available_info_moves
+    (g : WFProgram P L) (who : P)
+    (σ : behavioralStrategyPMFAt g who) :
+    BehavioralStrategySupportsOnly g who (MoveAvailableAtInfo g who) σ :=
+  behavioralStrategy_supports_available g who σ
+
+/-- In any checked Vegas PMF-behavioral strategic form, a Nash profile cannot
+play a strictly dominated strategy. -/
+theorem checkedProgram_nash_avoids_strictly_dominated_strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    {σ : StrategyProfile g} (hN : IsNash g σ)
+    (who : P) {s : Strategy g who}
+    (hdom : StrictlyDominates g who s (σ who)) :
+    False :=
+  IsNash.not_strictly_dominated_strategy hN hdom
+
+/-- In any checked Vegas PMF-behavioral strategic form, repairably bad
+strategies cannot occur in Nash profiles. -/
+theorem checkedProgram_nash_avoids_repairable_bad_strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (who : P) (R : StrictDominationRepair g who)
+    {σ : StrategyProfile g} (hN : IsNash g σ) :
+    ¬ R.Bad (σ who) :=
+  R.nash_avoids_bad hN
+
+/-- In any checked Vegas pure strategic form, a pure Nash profile cannot play a
+strictly dominated pure strategy. -/
+theorem checkedProgram_pureNash_avoids_strictly_dominated_strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    {σ : pureProfileAt g} (hN : IsPureNash g σ)
+    (who : P) {s : pureStrategyAt g who}
+    (hdom : PureStrictlyDominates g who s (σ who)) :
+    False :=
+  IsPureNash.not_strictly_dominated_strategy hN hdom
+
+/-- In any checked Vegas pure strategic form, repairably bad pure strategies
+cannot occur in pure Nash profiles. -/
+theorem checkedProgram_pureNash_avoids_repairable_bad_strategy
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (who : P) (R : PureStrictDominationRepair g who)
+    {σ : pureProfileAt g} (hN : IsPureNash g σ) :
+    ¬ R.Bad (σ who) :=
+  R.nash_avoids_bad hN
 
 end Vegas
