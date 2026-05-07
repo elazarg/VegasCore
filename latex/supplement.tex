@@ -103,6 +103,65 @@ records only which nodes have produced which results, not the schedule
 that produced them — and at the FOSG checkpoint level, where the
 game-theoretic round structure is recovered.
 
+\subsection{Code organisation}
+\label{sec:code-organisation}
+
+The Lean modules follow the semantic ownership of the construction, not a
+single compiler package.  The internal Vegas pipeline uses source-owned
+\TT{ToX} names:
+\[
+  \TT{Lang.ToCore}
+  \;\longrightarrow\;
+  \TT{Core.ToEventGraph}
+  \;\longrightarrow\;
+  \TT{EventGraph.ToMachine}.
+\]
+These are the definitional arrows of Vegas itself.  In contrast,
+\TT{GameBridge/} contains optional bridges from the Vegas semantics to
+external game-form infrastructure, such as FOSG and EFG.  Operational
+implementation refinement lives in \TT{Backend/}; it is not a game-form
+bridge.  Native Vegas strategic semantics live in \TT{Strategic/}; removing
+the FOSG bridge would not remove the fact that checked Vegas programs have
+strategy carriers, profiles, outcome kernels, and equilibrium predicates.
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.25\textwidth}p{0.66\textwidth}@{}}
+\toprule
+Folder & Role \\
+\midrule
+\TT{Base/}
+  & Common finite-weight, expression, context, visibility, environment, and
+    payoff infrastructure shared by core syntax and event graphs. \\
+\TT{Lang/}
+  & Concrete/surface language layers, including \TT{VegasLang} and its
+    lowering to \TT{VegasCore}. \\
+\TT{Core/}
+  & \TT{VegasCore}, static well-formedness, checked programs, view kernels,
+    and the elaboration \TT{Core.ToEventGraph}.  The elaboration is split into
+    \TT{ToEventGraph/Nodes}, \TT{Fields}, \TT{Obligations}, and
+    \TT{Construction}. \\
+\TT{EventGraph/}
+  & The central event-graph object, configurations, frontier facts, and the
+    internal interpretation \TT{EventGraph.ToMachine}. \\
+\TT{Machine/}
+  & Generic operational machine carrier and primitive trace semantics. \\
+\TT{Strategic/}
+  & Vegas-native strategic semantics: strategy carriers, kernel games,
+    expected utility, equilibrium vocabulary, dominance, and transport. \\
+\TT{GameBridge/}
+  & Bridges from Vegas semantics to FOSG/EFG machinery and the FOSG-based Kuhn
+    realisation bridge. \\
+\TT{Backend/}
+  & Runtime/backend refinement obligations and backend blocked-trace
+    kernel-game transport. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Compatibility modules with the old names, especially under \TT{Vegas/Protocol/}
+and top-level names such as \TT{Vegas/PureStrategic.lean}, currently re-export
+the new modules.  They are import shims, not the ownership structure.
+
 \subsection{A glossary for the cross-disciplinary reader}
 
 \paragraph{For PL readers.}
@@ -946,8 +1005,8 @@ machine.
 \subsection{The event-graph machine interpretation}
 
 \paragraph{Lean.}
-\TT{Vegas/Protocol/EventGraphMachine.lean} interprets an event graph as a
-machine: \TT{State := Configuration}; player actions are
+\TT{Vegas/EventGraph/ToMachine.lean} interprets an event graph as a machine:
+\TT{State := Configuration}; player actions are
 \TT{PlayerAction G p :=} $\Sigma$\TT{ node, WriteSlice} ranging over frontier nodes
 owned by $p$ with a legal slice; internal events are non-player frontier
 nodes; \TT{stepPlay} and \TT{stepInternal} execute one frontier node at a
@@ -959,9 +1018,10 @@ node. \TT{stepPlay} stutters on unavailable actions (returns
 $\mathrm{PMF}.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
 into the configuration. The event graph's diamond property and stability of
 frontier reads (\TT{withResult_comm} and the lemmas in
-\TT{FrontierStability.lean}) are exactly what is needed to lift this
+\TT{Vegas/GameBridge/FOSG/FrontierStability.lean}) are exactly what is needed to lift this
 asynchronous, single-event view into a \emph{round-based} FOSG view in
-which a player's round-action covers the entire owned frontier.
+which a player's round-action covers the entire owned frontier.  That lift
+lives in \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean}.
 
 \paragraph{Stable frontier rounds: \TT{HasStableFrontierRounds}.}
 \label{def:stableFrontier}
@@ -975,7 +1035,7 @@ then after executing any other frontier node \texttt{first} legally, $a$ is
 still available. Without stability, two players' frontier choices could
 \emph{race} — one execution could invalidate the other's still-pending
 action — and round-level batching would be ill-defined. Vegas's syntax
-graphs satisfy this predicate (\TT{Protocol/FrontierStability.lean}); a
+graphs satisfy this predicate (\TT{GameBridge/FOSG/FrontierStability.lean}); a
 backend graph need not.
 
 % =====================================================================
@@ -1039,7 +1099,7 @@ its machine semantics into the existing carrier.
 \subsection{The canonical EFG presentation}
 
 \paragraph{Lean.}
-\TT{Vegas/Protocol/EFG.lean} applies GameTheory's
+\TT{Vegas/GameBridge/EFG/FromEventGraph.lean} applies GameTheory's
 \TT{FOSG.AugmentedEFGBridge} to the bounded program event-graph FOSG:
 \begin{quote}
 \TT{eventGraphEFGAt g : EFG.EFGGame} \\
@@ -1184,7 +1244,7 @@ utility function. The four games span two orthogonal axes:
   primitive-event blocks and their endpoint machine state.
 \end{itemize}
 The blocked-trace games refine the public games by an outcome projection,
-and \TT{Strategic.lean} packages this refinement (next paragraph).
+and \TT{Strategic/KernelGame.lean} packages this refinement (next paragraph).
 
 \paragraph{Re-exports.}
 The unsuffixed names \TT{Vegas.pureKernelGame} and
@@ -1235,7 +1295,7 @@ machine state. Their utility factors through the projection to the public
 outcome: $\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\mathrm{state}))$.
 
 \paragraph{Refinement layer.}
-\TT{Strategic.lean} packages the relationship between the blocked-trace
+\TT{Strategic/KernelGame.lean} packages the relationship between the blocked-trace
 and public games as a \TT{KernelGame.Simulation} (definitionally a
 \TT{Morphism}, which preserves utility distributions
 $\mathrm{udist}$ — i.e.\ the joint distribution over payoff vectors — under
@@ -1250,7 +1310,7 @@ distributions and EU is provably equal across the projection.
 \label{def:LinearRead}
 
 \paragraph{Lean.}
-\TT{Vegas/Protocol/LinearRead.lean} defines
+\TT{Vegas/Core/LinearRead.lean} defines
 \TT{syntaxLinearRead g := ProgramNode.enumerate g.prog} and proves:
 \begin{quote}
 \TT{syntaxLinearRead_sufficient :}\\
@@ -1287,8 +1347,8 @@ The Vegas wrappers (\TT{Vegas.IsNash}, \TT{IsBestResponse}, \TT{IsDominant},
 \ldots) are thin re-exports of GameTheory's preference-parameterised
 predicates over the PMF behavioural kernel game
 \TT{pmfBehavioralKernelGame g}. They are spread across
-\TT{Vegas/Equilibrium.lean} (Nash, dominance, correlated equilibria, social
-welfare) and \TT{Vegas/GameProperties.lean} (approximate Nash, potentials,
+\TT{Vegas/Strategic/Equilibrium.lean} (Nash, dominance, correlated equilibria, social
+welfare) and \TT{Vegas/Strategic/Properties.lean} (approximate Nash, potentials,
 constant-sum, welfare and price-of-anarchy). We list the underlying
 mathematical definitions; for each, the Lean wrapper has the form
 $\TT{Vegas.}X = (\TT{pmfBehavioralKernelGame}\,g).X$. We use $\EU(\sigma, p)$
@@ -1439,7 +1499,7 @@ named players are paid'' is the same in either form.
 \paragraph{Lean.}
 \TT{structure WeakStepRefinement Impl Spec where ...} and
 \TT{structure StochasticStepRefinement Impl Spec where ...} (in
-\TT{Vegas/Protocol/Backend.lean}).
+\TT{Vegas/Backend/Refinement.lean}).
 
 \paragraph{Math.}
 \emph{Refinement} here is the verification-style relation ``the
@@ -1472,7 +1532,7 @@ projection lemmas (\TT{runEventsFrom_project_eq},
 events to whole runs.
 
 \paragraph{Backend kernel-game transport.}
-The file \TT{Vegas/Protocol/BackendKernelGame.lean} packages a
+The file \TT{Vegas/Backend/KernelGame.lean} packages a
 \TT{StochasticStepRefinement} as a kernel-game morphism. The data are:
 \begin{itemize}\itemsep1pt
 \item \TT{BackendPureBlockLawLift}~$g~R$: a per-pure-profile pair of
@@ -1781,24 +1841,27 @@ For a reader landing on the codebase for the first time, we suggest:
 \begin{enumerate}[nosep]
 \item Read this supplement's \S\ref{sec:birdseye} and the main report's
   abstract.
-\item Skim \TT{Vegas/VegasLang.lean} for the surface syntax and its lowering
+\item Skim \TT{Vegas/Lang/Basic.lean} for the surface syntax and its lowering
   into \TT{VegasCore}; the current surface adds simultaneous yield phases and
   nullable yields, but no handlers.
-\item Read \TT{Vegas/Core.lean} top to bottom, focusing on \TT{IExpr}, the
-  \TT{VCtx} family, and \TT{VegasCore}.
-\item Skim \TT{Vegas/WF.lean}, \TT{Vegas/Scope.lean}, \TT{Vegas/WFProgram.lean}
+\item Read \TT{Vegas/Base/Basic.lean} and \TT{Vegas/Core/Basic.lean}, focusing
+  on \TT{IExpr}, the \TT{VCtx} family, and \TT{VegasCore}.
+\item Skim \TT{Vegas/Core/WF.lean}, \TT{Vegas/Core/Scope.lean},
+  \TT{Vegas/Core/Program.lean}
   for the well-formedness story.
-\item Read \TT{Vegas/Protocol/EventGraph.lean} top to bottom: the shape of
+\item Read \TT{Vegas/EventGraph/Basic.lean} top to bottom: the shape of
   \TT{EventGraph} and \TT{Configuration}, the diamond and stability
   theorems.
-\item Skim \TT{Vegas/Protocol/Machine.lean} and
-  \TT{Vegas/Protocol/EventGraphMachine.lean} to see the abstract carrier and its
-  graph instance.
-\item Read \TT{Vegas/Protocol/FOSG.lean} for the FOSG view, then
-  \TT{Vegas/Protocol/EFG.lean}, \TT{Vegas/Protocol/Strategic.lean},
-  \TT{Vegas/Kuhn.lean}, and one of the \TT{Vegas/Examples/} files.
-\item Browse \TT{Vegas/Equilibrium.lean}, \TT{Vegas/PureStrategic.lean},
-  \TT{Vegas/GameProperties.lean} for the public solution-concept names.
+\item Skim \TT{Vegas/Machine/Basic.lean} and
+  \TT{Vegas/EventGraph/ToMachine.lean} to see the abstract carrier and its
+  event-graph instance.
+\item Read \TT{Vegas/GameBridge/FOSG/Basic.lean} for the FOSG view, then
+  \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean},
+  \TT{Vegas/GameBridge/EFG/FromEventGraph.lean},
+  \TT{Vegas/Strategic/KernelGame.lean}, \TT{Vegas/Strategic/Kuhn.lean}, and one
+  of the \TT{Vegas/Examples/} files.
+\item Browse \TT{Vegas/Strategic/Equilibrium.lean}, \TT{Vegas/Strategic/Pure.lean},
+  \TT{Vegas/Strategic/Properties.lean} for the public solution-concept names.
 \end{enumerate}
 
 \noindent The corollary files in \TT{Vegas/Corollaries/} transport

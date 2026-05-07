@@ -1,5 +1,5 @@
-import Vegas.ViewProjection
-import Vegas.Protocol.ProgramEventGraph
+import Vegas.Core.ViewProjection
+import Vegas.Core.ToEventGraph
 
 /-!
 # Visibility Soundness Theorems

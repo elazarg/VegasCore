@@ -1,7 +1,7 @@
-import Vegas.Strategy.Vocabulary
-import Vegas.Strategy.Local
-import Vegas.Strategy.Domination
-import Vegas.Strategy.Transport
+import Vegas.Strategic.Vocabulary
+import Vegas.Strategic.Local
+import Vegas.Strategic.Domination
+import Vegas.Strategic.Transport
 
 /-!
 # Vegas strategy infrastructure

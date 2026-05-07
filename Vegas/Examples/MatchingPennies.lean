@@ -1,4 +1,4 @@
-import Vegas.StrategicPMF
+import Vegas.Strategic.BehavioralPMF
 
 /-!
 # Matching Pennies

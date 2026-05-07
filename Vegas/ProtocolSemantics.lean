@@ -1,4 +1,4 @@
-import Vegas.Kuhn
+import Vegas.Strategic.Kuhn
 
 /-!
 # Protocol-level semantic properties

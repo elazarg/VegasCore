@@ -1,4 +1,4 @@
-import Vegas.PureStrategic
+import Vegas.Strategic.Pure
 import GameTheory.Concepts.BestResponse
 import GameTheory.Concepts.NashProperties
 import GameTheory.Concepts.PotentialGame

@@ -20,11 +20,13 @@ reveals, normalized samples, and nonempty legal commit guards.
 The supported semantic path is:
 
 ```text
-WFProgram -> ProtocolGraph -> Machine -> FOSG view -> KernelGame
+WFProgram -> EventGraph -> Machine -> Strategic kernel games
 ```
 
-The source syntax is a convenient way to define the game. The strategic
-semantics are owned by the graph-native machine and its finite FOSG view.
+The source syntax is a convenient way to define the game. The central semantic
+object is the event graph; the machine is its operational interpretation.
+Vegas-native strategic semantics live under `Vegas/Strategic/`. FOSG and EFG
+are bridges under `Vegas/GameBridge/`, not the ownership point of the semantics.
 
 ### Strategy And Game Carriers
 
@@ -42,7 +44,8 @@ finite syntax-graph FOSG. Illegal deviations are excluded by the carrier type.
 
 ### Game-Theoretic Vocabulary
 
-`Vegas.Equilibrium`, `Vegas.PureStrategic`, and `Vegas.GameProperties` expose
+`Vegas.Strategic.Equilibrium`, `Vegas.Strategic.Pure`, and
+`Vegas.Strategic.Properties` expose
 standard game-theoretic predicates directly on Vegas kernel games:
 
 - expected utility: `eu`, `mixedEu`, `correlatedEu`;
@@ -79,58 +82,42 @@ kuhnPMF_finite g
 These are stated in Vegas kernel-game terms. The finite FOSG view supplies the
 information-state strategy spaces and outcome kernels behind those games.
 
-## Protocol Core
+## Semantic Spine
 
-`Vegas/Protocol/` contains the executable protocol semantics:
+The internal Vegas pipeline uses source-owned `ToX` modules:
 
-- `Graph.lean`: dependency and visibility graph with configuration invariants.
-- `Machine.lean`: probabilistic observation-aware machine carrier.
-- `GraphMachine.lean`: interpretation of graph configurations as machine
-  states.
-- `SyntaxGraph.lean`: compiler from checked Vegas syntax to `ProtocolGraph`,
-  plus finiteness and legal-observability facts.
-- `Trace.lean`: bounded event/state traces and machine outcome kernels.
-- `FOSG.lean`: sequential FOSG views derived from machines.
-- `Strategic.lean`: finite syntax-graph kernel-game constructors.
-- `Kuhn.lean`: machine-native and Vegas-facing Kuhn realization theorems.
-- `Backend.lean`: machine-to-machine backend refinement obligations.
+- `Lang/ToCore.lean`: surface-to-core lowering.
+- `Core/ToEventGraph.lean`: elaborates checked `VegasCore` programs to the
+  canonical `EventGraph`; the implementation is split under
+  `Core/ToEventGraph/` into nodes, fields, obligations, and construction.
+- `EventGraph/ToMachine.lean`: interprets event-graph configurations as the
+  operational `Machine`.
+
+Other layers consume that spine:
+
+- `Strategic/`: Vegas-native strategy carriers, kernel games, equilibrium
+  vocabulary, dominance, transport, and Kuhn-facing public names.
+- `GameBridge/`: FOSG/EFG bridges and FOSG-backed realization machinery.
+- `Backend/`: operational/runtime refinement and backend blocked-trace games.
 
 ## Repository Map
 
 ```text
 Vegas/
-  Core.lean                -- core language
-  ExprSimple.lean          -- concrete expression language
-  VegasSimple.lean         -- simple instantiation
-  Config.lean              -- runtime worlds and syntax-step measure
-  WF.lean                  -- well-formedness, legality, normalization
-  WFProgram.lean           -- checked-program bundle
-  Finite.lean              -- finite-domain package
-  PureStrategic.lean       -- pure syntax-graph strategic-form game
-  StrategicPMF.lean        -- PMF behavioral strategic-form game
-  Equilibrium.lean         -- Nash, dominance, correlated equilibrium, welfare
-  GameProperties.lean      -- approximate Nash, potential games, zero-sum, etc.
-  ProtocolSemantics.lean   -- protocol-level Kuhn property
-  Protocol.lean            -- protocol entrypoint
-  Kuhn.lean                -- Vegas-facing mixed-to-behavioral realization
-  Examples.lean            -- examples entrypoint
+  Base/                    -- shared weights, expression interface, contexts
+  Lang/                    -- concrete/surface language layers
+  Core/                    -- VegasCore, WFProgram, checking, ToEventGraph
+  EventGraph/              -- central graph object, frontier facts, ToMachine
+  Machine/                 -- generic operational carrier and traces
+  Strategic/               -- native Vegas strategic semantics
+  GameBridge/              -- FOSG/EFG bridges
+  Backend/                 -- implementation refinement
+  Theorems/                -- project-facing theorem names
+  Corollaries/             -- transported GameTheory results
   Examples/                -- checked Prisoners, Pennies, Sexes, Monty Hall
 
-  Protocol/
-    Graph.lean
-    Machine.lean
-    GraphMachine.lean
-    SyntaxGraph.lean
-    Trace.lean
-    FOSG.lean
-    Strategic.lean
-    Kuhn.lean
-    Backend.lean
-
-  Corollaries/
-    Equilibrium.lean
-    PureStrategic.lean
-    GameProperties.lean
+Compatibility shims remain at the old top-level and `Vegas/Protocol/` module
+paths for now.
 
 GameTheory/                -- submodule with the general game-theory library
 ```

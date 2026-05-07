@@ -1,5 +1,5 @@
-import Vegas.Equilibrium
-import Vegas.GameProperties
+import Vegas.Strategic.Equilibrium
+import Vegas.Strategic.Properties
 import GameTheory.Concepts.BestResponse
 import GameTheory.Concepts.NashProperties
 import GameTheory.Concepts.NashCorrelatedEq

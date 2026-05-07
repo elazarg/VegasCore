@@ -1,4 +1,4 @@
-import Vegas.VegasLang
+import Vegas.Lang.Basic
 
 /-!
 # Nullable yield example

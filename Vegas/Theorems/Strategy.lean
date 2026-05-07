@@ -1,5 +1,5 @@
-import Vegas.Protocol.StateSufficiency
-import Vegas.Protocol.Strategic
+import Vegas.GameBridge.FOSG.StateSufficiency
+import Vegas.Strategic.KernelGame
 import Vegas.Strategy
 import Vegas.Theorems.Progress
 

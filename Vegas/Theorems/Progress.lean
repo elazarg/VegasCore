@@ -1,4 +1,5 @@
-import Vegas.Protocol.LinearRead
+import Vegas.Core.LinearRead
+import Vegas.GameBridge.FOSG.FromCore
 
 /-!
 # Progress Theorems

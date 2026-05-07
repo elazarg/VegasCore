@@ -1,4 +1,4 @@
-import Vegas.Protocol.Strategic
+import Vegas.Strategic.KernelGame
 import Vegas.Theorems.Visibility
 
 /-!

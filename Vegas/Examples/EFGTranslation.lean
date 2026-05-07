@@ -3,7 +3,7 @@ import Vegas.Examples.MatchingPennies
 import Vegas.Examples.BattleOfTheSexes
 import Vegas.Examples.MontyHall
 import Vegas.Examples.SyntaxConstructors
-import Vegas.Protocol.EFG
+import Vegas.GameBridge.EFG.FromEventGraph
 
 /-!
 # EFG translation examples

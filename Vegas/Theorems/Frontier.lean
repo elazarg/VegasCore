@@ -1,4 +1,4 @@
-import Vegas.Protocol.FrontierStability
+import Vegas.GameBridge.FOSG.FrontierStability
 
 /-!
 # Frontier Theorems

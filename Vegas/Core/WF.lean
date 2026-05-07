@@ -1,0 +1,170 @@
+import Vegas.Core.Simple
+
+/-!
+# Vegas well-formedness and side conditions
+
+Static predicates on Vegas protocols: SSA-style freshness, reveal completeness,
+legality, admissibility, and normalization obligations.
+-/
+
+namespace Vegas
+
+def Fresh {P : Type} {L : Vegas.IExpr}
+    (x : VarId) (Γ : Vegas.VCtx P L) : Prop :=
+  x ∉ Γ.map Prod.fst
+
+def WFCtx {P : Type} {L : Vegas.IExpr}
+    (Γ : Vegas.VCtx P L) : Prop :=
+  (Γ.map Prod.fst).Nodup
+
+instance {P : Type} {L : Vegas.IExpr} {x : VarId}
+    {Γ : Vegas.VCtx P L} : Decidable (Fresh x Γ) :=
+  inferInstanceAs (Decidable (x ∉ _))
+
+def FreshBindings {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
+  | _, .ret _ => True
+  | Γ, .letExpr x _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .sample x _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .commit x _ _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .reveal y _ _ _ k => Fresh y Γ ∧ FreshBindings k
+
+def decidableFreshBindings {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) → Decidable (FreshBindings p)
+  | _, .ret _ => .isTrue trivial
+  | _, .letExpr _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .sample _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .commit _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+
+instance {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+    {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
+    Decidable (FreshBindings p) := decidableFreshBindings p
+
+/-- Every committed secret is revealed exactly once. `pending` tracks
+    commit variables awaiting revelation. -/
+def RevealComplete {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → List VarId → Vegas.VegasCore P L Γ → Prop
+  | _, pending, .ret _ => pending = []
+  | _, pending, .letExpr _ _ k => RevealComplete pending k
+  | _, pending, .sample _ _ k => RevealComplete pending k
+  | _, pending, .commit x _ _ k => RevealComplete (x :: pending) k
+  | _, pending, .reveal _ _ x _ k =>
+    x ∈ pending ∧ RevealComplete (pending.filter (· ≠ x)) k
+
+instance : DecidableEq VarId := inferInstanceAs (DecidableEq Nat)
+
+def decidableRevealComplete {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} →
+    (pending : List VarId) → (p : Vegas.VegasCore P L Γ) →
+    Decidable (RevealComplete pending p)
+  | _, _, .ret _ => inferInstanceAs (Decidable (_ = []))
+  | _, pending, .letExpr _ _ k => decidableRevealComplete pending k
+  | _, pending, .sample _ _ k => decidableRevealComplete pending k
+  | _, pending, .commit x _ _ k => decidableRevealComplete (x :: pending) k
+  | _, pending, .reveal _ _ x _ k =>
+    @instDecidableAnd _ _ (inferInstance) (decidableRevealComplete (pending.filter (· ≠ x)) k)
+
+instance {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+    {pending : List VarId} {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
+    Decidable (RevealComplete pending p) := decidableRevealComplete pending p
+
+@[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
+    WFCtx (L := L) (P := P) [] := List.nodup_nil
+
+theorem WFCtx.cons {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L}
+    (hfresh : Fresh x Γ) (hwf : WFCtx Γ) :
+    WFCtx ((x, τ) :: Γ) := by
+  change (((x, τ) :: Γ).map Prod.fst).Nodup
+  exact List.Nodup.cons hfresh hwf
+
+theorem WFCtx.tail {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
+    WFCtx ((x, τ) :: Γ) → WFCtx Γ := by
+  intro h; exact (List.nodup_cons.mp h).2
+
+theorem WFCtx.fresh_head {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
+    WFCtx ((x, τ) :: Γ) → Fresh x Γ := by
+  intro h; exact (List.nodup_cons.mp h).1
+
+theorem Fresh_viewVCtx {P : Type} [DecidableEq P] {L : IExpr}
+    {x : VarId} {p : P} {Γ : VCtx P L}
+    (hfresh : Fresh x Γ) : Fresh x (viewVCtx p Γ) :=
+  fun hmem => hfresh (viewVCtx_map_fst_sub hmem)
+
+theorem WFCtx.viewVCtx {P : Type} [DecidableEq P] {L : IExpr}
+    {p : P} {Γ : VCtx P L}
+    (hctx : WFCtx Γ) : WFCtx (viewVCtx p Γ) := by
+  induction Γ generalizing p with
+  | nil => exact WFCtx_nil
+  | cons hd tl ih =>
+      obtain ⟨x, τ⟩ := hd
+      have hfresh : Fresh x tl := WFCtx.fresh_head hctx
+      have htail : WFCtx tl := WFCtx.tail hctx
+      cases hsee : canSee p τ with
+      | false =>
+          change WFCtx (if canSee p τ then (x, τ) :: Vegas.viewVCtx p tl else Vegas.viewVCtx p tl)
+          rw [hsee]
+          exact ih (p := p) htail
+      | true =>
+          change WFCtx (if canSee p τ then (x, τ) :: Vegas.viewVCtx p tl else Vegas.viewVCtx p tl)
+          rw [hsee]
+          exact WFCtx.cons (Fresh_viewVCtx (p := p) hfresh) (ih (p := p) htail)
+
+def Legal {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
+  | _, .ret _ => True
+  | _, .letExpr _ _ k => Legal k
+  | _, .sample _ _ k => Legal k
+  | Γ, .commit _ _who (b := b) R k =>
+    (∀ env : Env L.Val (Vegas.eraseVCtx Γ),
+        ∃ a : L.Val b, Vegas.evalGuard (Player := P) (L := L) R a env = true) ∧
+    Legal k
+  | _, .reveal _ _ _ _ k => Legal k
+
+namespace DistExpr
+
+abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}
+    (D : DistExpr (erasePubVCtx Γ) b) : Prop :=
+  ∀ env : VEnvSimple Γ,
+    FWeight.totalWeight (evalDistExpr D (VEnv.eraseSampleEnv env)) = 1
+
+end DistExpr
+
+def NormalizedDists {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
+  | _, .ret _ => True
+  | _, .letExpr _ _ k => NormalizedDists k
+  | _, .sample _ D' k =>
+    (∀ env, FWeight.totalWeight (L.evalDist D' (VEnv.eraseSampleEnv env)) = 1) ∧
+    NormalizedDists k
+  | _, .commit _ _ _ k => NormalizedDists k
+  | _, .reveal _ _ _ _ k => NormalizedDists k
+
+theorem DistExpr.Normalized_ite {Γ : CtxSimple} {b : BaseTy}
+    {c : Expr Γ .bool} {t f : DistExpr Γ b}
+    (ht : ∀ env, FWeight.totalWeight (evalDistExpr t env) = 1)
+    (hf : ∀ env, FWeight.totalWeight (evalDistExpr f env) = 1) :
+    ∀ env, FWeight.totalWeight (evalDistExpr (.ite c t f) env) = 1 := by
+  intro env
+  by_cases hc : evalExpr c env
+  · simp only [evalDistExpr, hc]; exact ht env
+  · simp only [evalDistExpr, hc]; exact hf env
+
+end Vegas

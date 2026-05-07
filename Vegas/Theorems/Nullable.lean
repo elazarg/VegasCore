@@ -1,4 +1,4 @@
-import Vegas.NullableCompile
+import Vegas.Lang.Nullable
 import Vegas.Strategy
 
 /-!

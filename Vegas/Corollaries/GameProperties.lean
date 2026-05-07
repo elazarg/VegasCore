@@ -1,4 +1,4 @@
-import Vegas.GameProperties
+import Vegas.Strategic.Properties
 import GameTheory.Concepts.DominanceSolvability
 import GameTheory.Concepts.IndividualRationality
 import GameTheory.Concepts.PotentialGame

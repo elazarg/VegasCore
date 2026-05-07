@@ -1,4 +1,4 @@
-import Vegas.Protocol.Backend
+import Vegas.Backend.Refinement
 
 /-!
 # Backend Refinement Theorems
