@@ -25,14 +25,14 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- Variable identifiers publicly observable in a visibility context. -/
 def publicVars : VCtx P L → Finset VarId
   | [] => ∅
-  | (x, .pub _) :: Γ => insert x (publicVars Γ)
-  | (_, .hidden _ _) :: Γ => publicVars Γ
+  | (x, ⟨_, .pub⟩) :: Γ => insert x (publicVars Γ)
+  | (_, ⟨_, .hidden _⟩) :: Γ => publicVars Γ
 
 /-- Variable identifiers observable to player `who` in a visibility context. -/
 def visibleVars (who : P) : VCtx P L → Finset VarId
   | [] => ∅
-  | (x, .pub _) :: Γ => insert x (visibleVars who Γ)
-  | (x, .hidden owner _) :: Γ =>
+  | (x, ⟨_, .pub⟩) :: Γ => insert x (visibleVars who Γ)
+  | (x, ⟨_, .hidden owner⟩) :: Γ =>
       if who = owner then insert x (visibleVars who Γ) else visibleVars who Γ
 
 /-- Public variables are visible to every player. -/
@@ -45,13 +45,13 @@ theorem publicVars_subset_visibleVars
       simp [publicVars] at hx
   | cons hd tl ih =>
       obtain ⟨z, τ⟩ := hd
-      cases τ with
-      | pub b =>
+      match τ with
+      | ⟨b, .pub⟩ =>
           intro y hy
           rcases Finset.mem_insert.mp hy with rfl | hy
           · exact Finset.mem_insert_self _ _
           · exact Finset.mem_insert_of_mem (ih hy)
-      | hidden owner b =>
+      | ⟨b, .hidden owner⟩ =>
           by_cases hown : who = owner
           · intro y hy
             simpa [visibleVars, hown] using Finset.mem_insert_of_mem (ih hy)
@@ -67,13 +67,13 @@ theorem mem_visibleVars_map_fst
       simp [visibleVars] at hx
   | cons hd tl ih =>
       obtain ⟨z, τ⟩ := hd
-      cases τ with
-      | pub b =>
+      match τ with
+      | ⟨b, .pub⟩ =>
           intro hx
           rcases Finset.mem_insert.mp (by simpa [visibleVars] using hx) with rfl | htl
           · simp
           · exact List.mem_cons_of_mem _ (ih htl)
-      | hidden owner b =>
+      | ⟨b, .hidden owner⟩ =>
           by_cases hown : who = owner
           · intro hx
             subst hown
@@ -92,23 +92,29 @@ theorem mem_viewVCtx_map_fst_of_visible
   | nil => simp [visibleVars] at hx
   | cons hd tl ih =>
     obtain ⟨z, σ⟩ := hd
-    cases σ with
-    | pub υ =>
+    match σ with
+    | ⟨υ, .pub⟩ =>
       simp only [visibleVars] at hx
       rcases Finset.mem_insert.mp hx with rfl | hx
       · simp [viewVCtx, canSee]
       · have := ih hx; simp [viewVCtx, canSee, this]
-    | hidden owner υ =>
+    | ⟨υ, .hidden owner⟩ =>
       by_cases hown : who = owner
       · subst hown
         simp only [visibleVars, ite_true] at hx
-        simp only [viewVCtx, canSee]
+        have hsee :
+            canSee (L := L) who (⟨υ, .hidden who⟩ : BindTy P L) = true := by
+          simp [canSee, Visibility.canSee]
+        simp only [viewVCtx, hsee, if_true, List.map_cons, List.mem_cons]
         rcases Finset.mem_insert.mp hx with rfl | hx
-        · exact List.mem_cons_self ..
-        · exact List.mem_cons_of_mem _ (ih hx)
+        · exact Or.inl rfl
+        · exact Or.inr (by simpa using ih hx)
       · simp only [visibleVars, hown, ite_false] at hx
-        simp only [viewVCtx, canSee, hown]
-        exact ih hx
+        have hsee :
+            canSee (L := L) who (⟨υ, .hidden owner⟩ : BindTy P L) = false := by
+          simp [canSee, Visibility.canSee, hown]
+        simp only [viewVCtx, hsee]
+        simpa using ih hx
 
 /-- Two erased environments are observationally equivalent for player `who`
     when they agree on every variable visible to `who`. -/
@@ -192,7 +198,7 @@ def WF {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
 theorem ViewScoped.commit_guard_usesOnly
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     (hsc : ViewScoped (.commit x who R k)) :
     GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R :=
   hsc.1
@@ -258,7 +264,7 @@ theorem not_mem_visibleVars_hidden_other
     {Γ : VCtx P L} {x : VarId} {who owner : P} {τ : L.Ty}
     (hfresh : Fresh x Γ)
     (hneq : who ≠ owner) :
-    x ∉ visibleVars (L := L) who ((x, .hidden owner τ) :: Γ) := by
+    x ∉ visibleVars (L := L) who ((x, ⟨τ, .hidden owner⟩) :: Γ) := by
   intro hx
   apply hfresh
   exact mem_visibleVars_map_fst (L := L) (who := who) (by simpa [visibleVars, hneq] using hx)
@@ -268,11 +274,11 @@ theorem not_mem_visibleVars_hidden_other
 theorem GuardUsesOnly.not_mem_hidden_other
     {Γ : VCtx P L}
     {x₁ x₂ : VarId} {who₁ who₂ : P} {b₁ b₂ : L.Ty}
-    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
-    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, .hidden who₁ b₁) :: Γ))
+    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ)) L.bool}
+    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ))
       (x := x₂) (who := who₂) R)
     (hfresh₁ : Fresh x₁ Γ)
-    (hfresh₂ : Fresh x₂ ((x₁, .hidden who₁ b₁) :: Γ))
+    (hfresh₂ : Fresh x₂ ((x₁, ⟨b₁, .hidden who₁⟩) :: Γ))
     (hneq : who₂ ≠ who₁) :
     x₁ ∉ L.exprDeps R := by
   intro hx

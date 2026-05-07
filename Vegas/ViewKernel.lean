@@ -32,10 +32,10 @@ private theorem visibleVars_cons_of_canSee_true
     (hsee : canSee who σ = true) :
     visibleVars who ((y, σ) :: Γ) =
       insert y (visibleVars who Γ) := by
-  cases σ with
-  | pub b =>
+  match σ with
+  | ⟨b, .pub⟩ =>
       simp [visibleVars]
-  | hidden owner b =>
+  | ⟨b, .hidden owner⟩ =>
       by_cases hown : who = owner
       · simp [visibleVars, hown]
       · simp [canSee, hown] at hsee
@@ -45,10 +45,10 @@ private theorem visibleVars_cons_of_canSee_false
     (hsee : canSee who σ = false) :
     visibleVars who ((y, σ) :: Γ) =
       visibleVars who Γ := by
-  cases σ with
-  | pub b =>
+  match σ with
+  | ⟨b, .pub⟩ =>
       simp [canSee] at hsee
-  | hidden owner b =>
+  | ⟨b, .hidden owner⟩ =>
       by_cases hown : who = owner
       · simp [canSee, hown] at hsee
       · simp [visibleVars, hown]
@@ -204,9 +204,9 @@ theorem projectViewEnv_cons_eq
   have hobs : ObsEq (Γ := Γ) who (VEnv.eraseEnv env₁) (VEnv.eraseEnv env₂) := by
     intro y' σ₀ hy' hvis'
     have hvis_ext : y' ∈ visibleVars who ((x, τ) :: Γ) := by
-      cases τ with
-      | pub b => simp [visibleVars, hvis']
-      | hidden owner b =>
+      match τ with
+      | ⟨b, .pub⟩ => simp [visibleVars, hvis']
+      | ⟨b, .hidden owner⟩ =>
         simp only [visibleVars]
         split <;> simp_all [Finset.mem_insert]
     have := hobs_ext y' σ₀ (.there hy') hvis_ext

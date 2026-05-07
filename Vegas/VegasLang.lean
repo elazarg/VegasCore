@@ -53,9 +53,9 @@ inductive VegasYieldPhase (P : Type) [DecidableEq P]
       {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
       (R : Expr ((secret, b) :: eraseVCtx Γ) .bool)
       (rest : VegasYieldPhase P Γ
-        ((secret, .hidden who (BaseTy.option b)) :: pref) final) :
+        ((secret, ⟨BaseTy.option b, .hidden who⟩) :: pref) final) :
       VegasYieldPhase P Γ pref
-        ((pubVar, .pub (BaseTy.option b)) :: final)
+        ((pubVar, ⟨BaseTy.option b, .pub⟩) :: final)
 
 namespace VegasYieldPhase
 
@@ -113,19 +113,19 @@ inductive VegasLang (P : Type) [DecidableEq P] :
   /-- Deterministic public binding. This lowers to core `letExpr`. -/
   | letExpr {Γ : VCtx P simpleExpr} (x : VarId) {b : BaseTy}
       (e : Expr (erasePubVCtx Γ) b)
-      (k : VegasLang P ((x, .pub b) :: Γ)) :
+      (k : VegasLang P ((x, ⟨b, .pub⟩) :: Γ)) :
       VegasLang P Γ
   /-- Public sample. -/
   | sample {Γ : VCtx P simpleExpr} (x : VarId) {b : BaseTy}
       (D : DistExpr (erasePubVCtx Γ) b)
-      (k : VegasLang P ((x, .pub b) :: Γ)) :
+      (k : VegasLang P ((x, ⟨b, .pub⟩) :: Γ)) :
       VegasLang P Γ
   /-- Strategic hidden commitment whose guard is accepted as-is. Surface
   payloads cannot be explicitly nullable. -/
   | commit {Γ : VCtx P simpleExpr} (x : VarId) (who : P) {b : BaseTy}
       [CommitPayloadTy b]
       (R : Expr ((x, b) :: eraseVCtx Γ) .bool)
-      (k : VegasLang P ((x, .hidden who b) :: Γ)) :
+      (k : VegasLang P ((x, ⟨b, .hidden who⟩) :: Γ)) :
       VegasLang P Γ
   /-- Public strategic move, lowered as a nullable hidden commitment followed
   by a public reveal of the optional value. The two names are separate because
@@ -136,14 +136,14 @@ inductive VegasLang (P : Type) [DecidableEq P] :
       {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
       (R : Expr ((secret, b) :: eraseVCtx Γ) .bool)
       (k : VegasLang P
-        ((pubVar, .pub (BaseTy.option b)) ::
-          (secret, .hidden who (BaseTy.option b)) :: Γ)) :
+        ((pubVar, ⟨BaseTy.option b, .pub⟩) ::
+          (secret, ⟨BaseTy.option b, .hidden who⟩) :: Γ)) :
       VegasLang P Γ
   /-- Reveal a hidden commitment as a fresh public alias. -/
   | reveal {Γ : VCtx P simpleExpr} (y : VarId) (who : P) (x : VarId)
       {b : BaseTy}
-      (hx : VHasVar Γ x (.hidden who b))
-      (k : VegasLang P ((y, .pub b) :: Γ)) :
+      (hx : VHasVar Γ x ⟨b, .hidden who⟩)
+      (k : VegasLang P ((y, ⟨b, .pub⟩) :: Γ)) :
       VegasLang P Γ
   /-- Present a same-phase collection of nullable public yields. Guards are
   checked against the pre-phase context, and distinct actors are required at
@@ -195,8 +195,8 @@ def lower :
     [CommitPayloadTy b] [DefaultVal b]
     (R : Expr ((secret, b) :: eraseVCtx Γ) .bool)
     (k : VegasLang P
-      ((pubVar, .pub (BaseTy.option b)) ::
-        (secret, .hidden who (BaseTy.option b)) :: Γ)) :
+      ((pubVar, ⟨BaseTy.option b, .pub⟩) ::
+        (secret, ⟨BaseTy.option b, .hidden who⟩) :: Γ)) :
     lower (VegasLang.yield secret pubVar who R k) =
       VegasCore.commit secret who (b := BaseTy.option b)
         (Expr.nullableCommitGuard R)

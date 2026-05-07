@@ -44,9 +44,7 @@ def ty (field : VCtxField P L Γ) : L.Ty :=
 
 /-- Owner of a context field, if hidden. Public fields have no owner. -/
 def owner (field : VCtxField P L Γ) : Option P :=
-  match field.bindTy with
-  | .pub _ => none
-  | .hidden who _ => some who
+  field.bindTy.owner
 
 /-- Look up this context field in a visibility environment. -/
 def value (env : VEnv L Γ) :
@@ -118,45 +116,45 @@ inductive ProgramNode :
   | letHere
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {e : L.Expr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)} :
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
       ProgramNode (.letExpr x e k)
   | letTail
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {e : L.Expr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (node : ProgramNode k) :
       ProgramNode (.letExpr x e k)
   | sampleHere
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {D : L.DistExpr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)} :
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
       ProgramNode (.sample x D k)
   | sampleTail
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {D : L.DistExpr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (node : ProgramNode k) :
       ProgramNode (.sample x D k)
   | commitHere
       {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
       {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-      {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
+      {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} :
       ProgramNode (.commit x who R k)
   | commitTail
       {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
       {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-      {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
       (node : ProgramNode k) :
       ProgramNode (.commit x who R k)
   | revealHere
       {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-      {hx : VHasVar Γ x (.hidden who b)}
-      {k : VegasCore P L ((y, .pub b) :: Γ)} :
+      {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+      {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} :
       ProgramNode (.reveal y who x hx k)
   | revealTail
       {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-      {hx : VHasVar Γ x (.hidden who b)}
-      {k : VegasCore P L ((y, .pub b) :: Γ)}
+      {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+      {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
       (node : ProgramNode k) :
       ProgramNode (.reveal y who x hx k)
 
@@ -250,25 +248,25 @@ inductive ProgramField :
   | letTail
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {e : L.Expr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (field : ProgramField k) :
       ProgramField (.letExpr x e k)
   | sampleTail
       {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {D : L.DistExpr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (field : ProgramField k) :
       ProgramField (.sample x D k)
   | commitTail
       {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
       {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-      {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
       (field : ProgramField k) :
       ProgramField (.commit x who R k)
   | revealTail
       {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-      {hx : VHasVar Γ x (.hidden who b)}
-      {k : VegasCore P L ((y, .pub b) :: Γ)}
+      {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+      {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
       (field : ProgramField k) :
       ProgramField (.reveal y who x hx k)
 
@@ -308,14 +306,14 @@ def ofCurrent :
       VCtxField P L Γ → ProgramField p
   | _, .ret _, field => .retField field
   | _, .letExpr x _ k, field =>
-      .letTail (ofCurrent k (field.weakenHead (x := x) (τ := .pub _)))
+      .letTail (ofCurrent k (field.weakenHead (x := x) (τ := ⟨_, .pub⟩)))
   | _, .sample x _ k, field =>
-      .sampleTail (ofCurrent k (field.weakenHead (x := x) (τ := .pub _)))
+      .sampleTail (ofCurrent k (field.weakenHead (x := x) (τ := ⟨_, .pub⟩)))
   | _, .commit x who _ k, field =>
       .commitTail
-        (ofCurrent k (field.weakenHead (x := x) (τ := .hidden who _)))
+        (ofCurrent k (field.weakenHead (x := x) (τ := ⟨_, .hidden who⟩)))
   | _, .reveal y _ _ _ k, field =>
-      .revealTail (ofCurrent k (field.weakenHead (x := y) (τ := .pub _)))
+      .revealTail (ofCurrent k (field.weakenHead (x := y) (τ := ⟨_, .pub⟩)))
 
 @[simp] theorem ty_ofCurrent :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
@@ -323,13 +321,13 @@ def ofCurrent :
         (ofCurrent p field).ty = field.ty
   | _, .ret _, field => rfl
   | _, .letExpr _ _ k, field => by
-      simpa using ty_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using ty_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
   | _, .sample _ _ k, field => by
-      simpa using ty_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using ty_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
   | _, .commit _ who _ k, field => by
-      simpa using ty_ofCurrent k (field.weakenHead (τ := .hidden who _))
+      simpa using ty_ofCurrent k (field.weakenHead (τ := ⟨_, .hidden who⟩))
   | _, .reveal _ _ _ _ k, field => by
-      simpa using ty_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using ty_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
 
 @[simp] theorem owner_ofCurrent :
     {Γ : VCtx P L} → (p : VegasCore P L Γ) →
@@ -337,13 +335,13 @@ def ofCurrent :
         (ofCurrent p field).owner = field.owner
   | _, .ret _, field => rfl
   | _, .letExpr _ _ k, field => by
-      simpa using owner_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using owner_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
   | _, .sample _ _ k, field => by
-      simpa using owner_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using owner_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
   | _, .commit _ who _ k, field => by
-      simpa using owner_ofCurrent k (field.weakenHead (τ := .hidden who _))
+      simpa using owner_ofCurrent k (field.weakenHead (τ := ⟨_, .hidden who⟩))
   | _, .reveal _ _ _ _ k, field => by
-      simpa using owner_ofCurrent k (field.weakenHead (τ := .pub _))
+      simpa using owner_ofCurrent k (field.weakenHead (τ := ⟨_, .pub⟩))
 
 theorem owner_eq_none_or_some_of_visible
     {Γ : VCtx P L} (hctx : WFCtx Γ) {who : P}
@@ -355,11 +353,11 @@ theorem owner_eq_none_or_some_of_visible
       induction h with
       | here =>
           rename_i Γ x τ
-          cases τ with
-          | pub _ =>
+          match τ with
+          | ⟨_, .pub⟩ =>
               left
               rfl
-          | hidden owner b =>
+          | ⟨b, .hidden owner⟩ =>
               by_cases hwho : who = owner
               · subst owner
                 right
@@ -374,14 +372,14 @@ theorem owner_eq_none_or_some_of_visible
           have htail : WFCtx Γ := WFCtx.tail hctx
           have hfresh : Fresh y Γ := WFCtx.fresh_head hctx
           have hvisibleTail : x ∈ visibleVars (L := L) who Γ := by
-            cases τ' with
-            | pub _ =>
+            match τ' with
+            | ⟨_, .pub⟩ =>
                 simp only [visibleVars] at hvisible
                 rcases Finset.mem_insert.mp hvisible with hxy | htailVisible
                 · exact False.elim
                     (hfresh (by simpa [← hxy] using HasVar.mem_map_fst h))
                 · exact htailVisible
-            | hidden owner _ =>
+            | ⟨_, .hidden owner⟩ =>
                 by_cases hwho : who = owner
                 · subst owner
                   simp only [visibleVars, ↓reduceIte] at hvisible
@@ -435,16 +433,16 @@ def writtenBy :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
       ProgramNode p → ProgramField p
   | _, _, .letHere (x := x) (k := k) =>
-      .letTail (ofCurrent k (.mk (x := x) (τ := .pub _) .here))
+      .letTail (ofCurrent k (.mk (x := x) (τ := ⟨_, .pub⟩) .here))
   | _, _, .letTail node => .letTail (writtenBy node)
   | _, _, .sampleHere (x := x) (k := k) =>
-      .sampleTail (ofCurrent k (.mk (x := x) (τ := .pub _) .here))
+      .sampleTail (ofCurrent k (.mk (x := x) (τ := ⟨_, .pub⟩) .here))
   | _, _, .sampleTail node => .sampleTail (writtenBy node)
   | _, _, .commitHere (x := x) (who := who) (k := k) =>
-      .commitTail (ofCurrent k (.mk (x := x) (τ := .hidden who _) .here))
+      .commitTail (ofCurrent k (.mk (x := x) (τ := ⟨_, .hidden who⟩) .here))
   | _, _, .commitTail node => .commitTail (writtenBy node)
   | _, _, .revealHere (y := y) (k := k) =>
-      .revealTail (ofCurrent k (.mk (x := y) (τ := .pub _) .here))
+      .revealTail (ofCurrent k (.mk (x := y) (τ := ⟨_, .pub⟩) .here))
   | _, _, .revealTail node => .revealTail (writtenBy node)
 
 /-- Structural source of a final program field: either it is an initial field
@@ -557,7 +555,7 @@ theorem writer?_eq_none_of_mem_currentFields
 theorem letTail_currentFields_or_eq_writtenBy_letHere
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (h : field ∈ currentFields k) :
     ProgramField.letTail (e := e) field ∈
@@ -585,7 +583,7 @@ theorem letTail_currentFields_or_eq_writtenBy_letHere
 theorem sampleTail_currentFields_or_eq_writtenBy_sampleHere
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (h : field ∈ currentFields k) :
     ProgramField.sampleTail (D := D) field ∈
@@ -613,7 +611,7 @@ theorem sampleTail_currentFields_or_eq_writtenBy_sampleHere
 theorem commitTail_currentFields_or_eq_writtenBy_commitHere
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     {field : ProgramField k}
     (h : field ∈ currentFields k) :
     ProgramField.commitTail (R := R) field ∈
@@ -640,8 +638,8 @@ theorem commitTail_currentFields_or_eq_writtenBy_commitHere
 
 theorem revealTail_currentFields_or_eq_writtenBy_revealHere
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (h : field ∈ currentFields k) :
     ProgramField.revealTail (x := x) (hx := hx) field ∈
@@ -725,25 +723,25 @@ theorem mem_enumerate :
   | _, .letExpr (x := x) (b := b) _ _k,
       hΓ, .letExpr head tail, .letTail field =>
       finiteTypeOfProof
-        (show FiniteVCtxProof ((x, .pub b) :: _) from
+        (show FiniteVCtxProof ((x, ⟨b, .pub⟩) :: _) from
           .cons head hΓ)
         tail field
   | _, .sample (x := x) (b := b) _ _k,
       hΓ, .sample head tail, .sampleTail field =>
       finiteTypeOfProof
-        (show FiniteVCtxProof ((x, .pub b) :: _) from
+        (show FiniteVCtxProof ((x, ⟨b, .pub⟩) :: _) from
           .cons head hΓ)
         tail field
   | _, .commit (x := x) (who := who) (b := b) _ _k,
       hΓ, .commit head tail, .commitTail field =>
       finiteTypeOfProof
-        (show FiniteVCtxProof ((x, .hidden who b) :: _) from
+        (show FiniteVCtxProof ((x, ⟨b, .hidden who⟩) :: _) from
           .cons head hΓ)
         tail field
   | _, .reveal (y := y) (b := b) _ _ _ _k,
       hΓ, .reveal head tail, .revealTail field =>
       finiteTypeOfProof
-        (show FiniteVCtxProof ((y, .pub b) :: _) from
+        (show FiniteVCtxProof ((y, ⟨b, .pub⟩) :: _) from
           .cons head hΓ)
         tail field
 
@@ -1052,7 +1050,7 @@ namespace Wrap
 noncomputable def letReadEnv
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {reads : Finset (ProgramField k)}
     (ρ : ProtocolGraph.ReadEnv L (ProgramField (.letExpr x e k))
       (fun field => field.ty) (reads.image ProgramField.letTail)) :
@@ -1065,7 +1063,7 @@ noncomputable def letReadEnv
 noncomputable def sampleReadEnv
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {reads : Finset (ProgramField k)}
     (ρ : ProtocolGraph.ReadEnv L (ProgramField (.sample x D k))
       (fun field => field.ty) (reads.image ProgramField.sampleTail)) :
@@ -1078,7 +1076,7 @@ noncomputable def sampleReadEnv
 noncomputable def commitReadEnv
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     {reads : Finset (ProgramField k)}
     (ρ : ProtocolGraph.ReadEnv L (ProgramField (.commit x who R k))
       (fun field => field.ty) (reads.image ProgramField.commitTail)) :
@@ -1090,8 +1088,8 @@ noncomputable def commitReadEnv
 
 noncomputable def revealReadEnv
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     {reads : Finset (ProgramField k)}
     (ρ : ProtocolGraph.ReadEnv L (ProgramField (.reveal y who x hx k))
       (fun field => field.ty) (reads.image ProgramField.revealTail)) :
@@ -1104,7 +1102,7 @@ noncomputable def revealReadEnv
 noncomputable def letExpr
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (expr : ProtocolGraph.GraphExpr L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphExpr L (ProgramField (.letExpr x e k))
@@ -1115,7 +1113,7 @@ noncomputable def letExpr
 noncomputable def sampleExpr
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (expr : ProtocolGraph.GraphExpr L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphExpr L (ProgramField (.sample x D k))
@@ -1126,7 +1124,7 @@ noncomputable def sampleExpr
 noncomputable def commitExpr
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} {ty : L.Ty}
     (expr : ProtocolGraph.GraphExpr L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphExpr L (ProgramField (.commit x who R k))
@@ -1136,8 +1134,8 @@ noncomputable def commitExpr
 
 noncomputable def revealExpr
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)} {ty : L.Ty}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (expr : ProtocolGraph.GraphExpr L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphExpr L (ProgramField (.reveal y who x hx k))
@@ -1148,7 +1146,7 @@ noncomputable def revealExpr
 noncomputable def letDist
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (dist : ProtocolGraph.GraphDist L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphDist L (ProgramField (.letExpr x e k))
@@ -1159,7 +1157,7 @@ noncomputable def letDist
 noncomputable def sampleDist
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (dist : ProtocolGraph.GraphDist L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphDist L (ProgramField (.sample x D k))
@@ -1170,7 +1168,7 @@ noncomputable def sampleDist
 noncomputable def commitDist
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)} {ty : L.Ty}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} {ty : L.Ty}
     (dist : ProtocolGraph.GraphDist L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphDist L (ProgramField (.commit x who R k))
@@ -1180,8 +1178,8 @@ noncomputable def commitDist
 
 noncomputable def revealDist
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)} {ty : L.Ty}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} {ty : L.Ty}
     (dist : ProtocolGraph.GraphDist L (ProgramField k)
       (fun field => field.ty) ty) :
     ProtocolGraph.GraphDist L (ProgramField (.reveal y who x hx k))
@@ -1192,7 +1190,7 @@ noncomputable def revealDist
 noncomputable def letGuard
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (guard : ProtocolGraph.GraphGuard L (ProgramField k)
       (fun field => field.ty) field) :
@@ -1219,7 +1217,7 @@ noncomputable def letGuard
 noncomputable def sampleGuard
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (guard : ProtocolGraph.GraphGuard L (ProgramField k)
       (fun field => field.ty) field) :
@@ -1246,7 +1244,7 @@ noncomputable def sampleGuard
 noncomputable def commitGuard
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     {field : ProgramField k}
     (guard : ProtocolGraph.GraphGuard L (ProgramField k)
       (fun field => field.ty) field) :
@@ -1272,8 +1270,8 @@ noncomputable def commitGuard
 
 noncomputable def revealGuard
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     {field : ProgramField k}
     (guard : ProtocolGraph.GraphGuard L (ProgramField k)
       (fun field => field.ty) field) :
@@ -1300,7 +1298,7 @@ noncomputable def revealGuard
 noncomputable def letNodeSem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
     ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
       ProtocolGraph.NodeSem P (ProgramField (.letExpr x e k)) L
         (fun field => field.ty)
@@ -1312,7 +1310,7 @@ noncomputable def letNodeSem
 noncomputable def sampleNodeSem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)} :
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)} :
     ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
       ProtocolGraph.NodeSem P (ProgramField (.sample x D k)) L
         (fun field => field.ty)
@@ -1324,7 +1322,7 @@ noncomputable def sampleNodeSem
 noncomputable def commitNodeSem
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)} :
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)} :
     ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
       ProtocolGraph.NodeSem P (ProgramField (.commit x who R k)) L
         (fun field => field.ty)
@@ -1335,8 +1333,8 @@ noncomputable def commitNodeSem
 
 noncomputable def revealNodeSem
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)} :
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)} :
     ProtocolGraph.NodeSem P (ProgramField k) L (fun field => field.ty) →
       ProtocolGraph.NodeSem P (ProgramField (.reveal y who x hx k)) L
         (fun field => field.ty)
@@ -1348,7 +1346,7 @@ noncomputable def revealNodeSem
 theorem mem_reads_letNodeSem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField (.letExpr x e k)}
@@ -1381,7 +1379,7 @@ theorem mem_reads_letNodeSem
 theorem mem_reads_sampleNodeSem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField (.sample x D k)}
@@ -1414,7 +1412,7 @@ theorem mem_reads_sampleNodeSem
 theorem mem_reads_commitNodeSem
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField (.commit x who R k)}
@@ -1446,8 +1444,8 @@ theorem mem_reads_commitNodeSem
 
 theorem mem_reads_revealNodeSem
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField (.reveal y who x hx k)}
@@ -1480,7 +1478,7 @@ theorem mem_reads_revealNodeSem
 theorem letTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField k}
@@ -1520,7 +1518,7 @@ theorem letTail_mem_writeFields_of_mem
 theorem sampleTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField k}
@@ -1560,7 +1558,7 @@ theorem sampleTail_mem_writeFields_of_mem
 theorem commitTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField k}
@@ -1599,8 +1597,8 @@ theorem commitTail_mem_writeFields_of_mem
 
 theorem revealTail_mem_writeFields_of_mem
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x (⟨b, .hidden who⟩)}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     {sem : ProtocolGraph.NodeSem P (ProgramField k) L
       (fun field => field.ty)}
     {field : ProgramField k}
@@ -1722,7 +1720,7 @@ noncomputable def sem :
       have htarget : target.ty = b := by
         change
           (ProgramField.ofCurrent k
-            (.mk (x := x) (τ := .pub b) .here)).ty = b
+            (.mk (x := x) (τ := ⟨b, .pub⟩) .here)).ty = b
         rw [ProgramField.ty_ofCurrent]
         rfl
       .assign target
@@ -1739,7 +1737,7 @@ noncomputable def sem :
       have htarget : target.ty = b := by
         change
           (ProgramField.ofCurrent k
-            (.mk (x := x) (τ := .pub b) .here)).ty = b
+            (.mk (x := x) (τ := ⟨b, .pub⟩) .here)).ty = b
         rw [ProgramField.ty_ofCurrent]
         rfl
       .sample target
@@ -1758,7 +1756,7 @@ noncomputable def sem :
       have htarget : target.ty = b := by
         change
           (ProgramField.ofCurrent k
-            (.mk (x := x) (τ := .hidden who b) .here)).ty = b
+            (.mk (x := x) (τ := ⟨b, .hidden who⟩) .here)).ty = b
         rw [ProgramField.ty_ofCurrent]
         rfl
       .commit who target
@@ -1785,7 +1783,7 @@ noncomputable def sem :
       have htarget : target.ty = b := by
         change
           (ProgramField.ofCurrent k
-            (.mk (x := y) (τ := .pub b) .here)).ty = b
+            (.mk (x := y) (τ := ⟨b, .pub⟩) .here)).ty = b
         rw [ProgramField.ty_ofCurrent]
         rfl
       .reveal source target (hsource.trans htarget.symm)

@@ -263,25 +263,73 @@ attribute [instance] IExpr.decEqTy IExpr.decEqVal
 
 /-! ## Visibility-tagged contexts -/
 
-/-- Visibility-aware binding types over an abstract language.
+/-- Visibility metadata for a binding.
 
-A binding is either `pub τ` (visible to everyone) or `hidden owner τ`
-(visible only to its owner). The information model is *owner-or-all*: a
-secret either belongs to you, or you cannot see it. There is no
+This is deliberately separate from the binding's base type: reveal-like
+operations change visibility, while the type associated with a variable name is
+an immutable typing fact. The information model is *owner-or-all*: a secret
+either belongs to one player, or it is visible to everyone. There is no
 group-visibility constructor. -/
-inductive BindTy (Player : Type) (L : IExpr) where
-  | pub (τ : L.Ty)
-  | hidden (owner : Player) (τ : L.Ty)
+inductive Visibility (Player : Type) where
+  | pub
+  | hidden (owner : Player)
+  deriving DecidableEq
+
+namespace Visibility
+
+/-- Owner recorded in visibility metadata, if the binding is hidden. -/
+def owner {Player : Type} : Visibility Player → Option Player
+  | .pub => none
+  | .hidden owner => some owner
+
+@[simp] theorem owner_pub {Player : Type} :
+    owner (.pub : Visibility Player) = none := rfl
+
+@[simp] theorem owner_hidden {Player : Type} (owner : Player) :
+    Visibility.owner (.hidden owner) = some owner := rfl
+
+/-- Can player `p` observe this visibility class? -/
+def canSee {Player : Type} [DecidableEq Player]
+    (p : Player) : Visibility Player → Bool
+  | .pub => true
+  | .hidden owner => decide (p = owner)
+
+@[simp] theorem canSee_pub {Player : Type} [DecidableEq Player] (p : Player) :
+    canSee p (.pub : Visibility Player) = true := rfl
+
+@[simp] theorem canSee_hidden {Player : Type} [DecidableEq Player]
+    (p owner : Player) :
+    canSee p (.hidden owner : Visibility Player) = decide (p = owner) := rfl
+
+end Visibility
+
+/-- Visibility-aware binding type over an abstract language.
+
+The representation is factored into an immutable `base` type and independent
+visibility metadata. Code should construct bindings explicitly as
+`⟨base, visibility⟩`, so places that change visibility do not look like they
+also changed the underlying type. -/
+structure BindTy (Player : Type) (L : IExpr) where
+  base : L.Ty
+  visibility : Visibility Player
   deriving DecidableEq
 
 namespace BindTy
 
-/-- Project a binding type to its underlying `L.Ty`, ignoring visibility.
-The function appears wherever a `VEnv` value is consumed: the env stores
-`L.Val τ.base` regardless of whether `τ` is public or hidden. -/
-def base {Player : Type} {L : IExpr} : BindTy Player L → L.Ty
-  | .pub τ => τ
-  | .hidden _ τ => τ
+/-- Owner of a binding, if it is hidden. Public bindings have no owner. -/
+abbrev owner {Player : Type} {L : IExpr} (τ : BindTy Player L) : Option Player :=
+  τ.visibility.owner
+
+/-- Whether a binding is statically public. -/
+abbrev isPublic {Player : Type} {L : IExpr} (τ : BindTy Player L) : Prop :=
+  τ.visibility = .pub
+
+@[simp] theorem owner_public {Player : Type} {L : IExpr} (τ : L.Ty) :
+    (⟨τ, .pub⟩ : BindTy Player L).owner = none := rfl
+
+@[simp] theorem owner_hidden {Player : Type} {L : IExpr}
+    (owner : Player) (τ : L.Ty) :
+    (⟨τ, .hidden owner⟩ : BindTy Player L).owner = some owner := rfl
 
 end BindTy
 
@@ -390,10 +438,9 @@ end VEnv
 
 /-- Can player `p` observe a binding of type `τ`? True for public bindings
 and for hidden bindings owned by `p`. -/
-def canSee {Player : Type} [DecidableEq Player] {L : IExpr}
-    (p : Player) : BindTy Player L → Bool
-  | .pub _ => true
-  | .hidden q _ => decide (p = q)
+abbrev canSee {Player : Type} [DecidableEq Player] {L : IExpr}
+    (p : Player) (τ : BindTy Player L) : Bool :=
+  τ.visibility.canSee p
 
 /-- Player-local visible subcontext. -/
 def viewVCtx {Player : Type} [DecidableEq Player] {L : IExpr}
@@ -457,8 +504,8 @@ end VHasVar
 /-- Public-only fragment of a visibility context. -/
 def pubVCtx {Player : Type} {L : IExpr} : VCtx Player L → VCtx Player L
   | [] => []
-  | (x, .pub τ) :: Γ => (x, .pub τ) :: pubVCtx Γ
-  | (_, .hidden _ _) :: Γ => pubVCtx Γ
+  | (x, ⟨τ, .pub⟩) :: Γ => (x, ⟨τ, .pub⟩) :: pubVCtx Γ
+  | (_, ⟨_, .hidden _⟩) :: Γ => pubVCtx Γ
 
 namespace VHasVar
 
@@ -470,13 +517,13 @@ def ofPubVCtx {Player : Type} {L : IExpr}
   | cons hd tl ih =>
     obtain ⟨y, σ⟩ := hd
     match σ with
-    | .pub υ =>
+    | ⟨υ, .pub⟩ =>
       simp only [pubVCtx]
       intro h
       match h with
       | .here => exact .here
       | .there h' => exact .there (ih h')
-    | .hidden q υ =>
+    | ⟨υ, .hidden q⟩ =>
       simp only [pubVCtx]
       intro h
       exact .there (ih h)
@@ -526,19 +573,19 @@ theorem eraseVCtx_map_fst {Player : Type} {L : IExpr} {Γ : VCtx Player L} :
 def erasePubVCtx {Player : Type} {L : IExpr} :
     VCtx Player L → Ctx L.Ty
   | [] => []
-  | (x, .pub τ) :: Γ => (x, τ) :: erasePubVCtx Γ
-  | (_, .hidden _ _) :: Γ => erasePubVCtx Γ
+  | (x, ⟨τ, .pub⟩) :: Γ => (x, τ) :: erasePubVCtx Γ
+  | (_, ⟨_, .hidden _⟩) :: Γ => erasePubVCtx Γ
 
 @[simp] theorem erasePubVCtx_nil {Player : Type} {L : IExpr} :
     @erasePubVCtx Player L [] = [] := rfl
 
 @[simp] theorem erasePubVCtx_cons_pub {Player : Type} {L : IExpr}
     {x : VarId} {τ : L.Ty} {Γ : VCtx Player L} :
-    erasePubVCtx ((x, BindTy.pub τ) :: Γ) = (x, τ) :: erasePubVCtx Γ := rfl
+    erasePubVCtx ((x, ⟨τ, .pub⟩) :: Γ) = (x, τ) :: erasePubVCtx Γ := rfl
 
 @[simp] theorem erasePubVCtx_cons_hidden {Player : Type} {L : IExpr}
     {x : VarId} {p : Player} {τ : L.Ty} {Γ : VCtx Player L} :
-    erasePubVCtx ((x, BindTy.hidden p τ) :: Γ) = erasePubVCtx Γ := rfl
+    erasePubVCtx ((x, ⟨τ, .hidden p⟩) :: Γ) = erasePubVCtx Γ := rfl
 
 /-- Every name in `erasePubVCtx Γ` also appears in any player's view of `Γ`,
 since public bindings are visible to everyone. -/
@@ -552,13 +599,13 @@ theorem erasePubVCtx_map_fst_sub_viewVCtx
   | cons a Γ' ih =>
     intro x hx
     match a with
-    | (y, .pub b) =>
-      simp only [erasePubVCtx_cons_pub, viewVCtx, canSee, ite_true,
-        List.map_cons, List.mem_cons] at hx ⊢
-      exact hx.elim .inl (fun h => .inr (ih x h))
-    | (y, .hidden p b) =>
+    | (y, ⟨b, .pub⟩) =>
+      simp only [erasePubVCtx_cons_pub, viewVCtx, canSee,
+        Visibility.canSee_pub, if_true, List.map_cons, List.mem_cons] at hx ⊢
+      exact hx.elim Or.inl (fun h => Or.inr (ih x h))
+    | (y, ⟨b, .hidden p⟩) =>
       simp only [erasePubVCtx_cons_hidden, viewVCtx] at hx ⊢
-      by_cases h : canSee who (.hidden p b)
+      by_cases h : canSee who ⟨b, .hidden p⟩
       · simp only [h, ite_true, List.map_cons, List.mem_cons]
         right; exact ih x hx
       · simp only [h]
@@ -573,8 +620,8 @@ theorem eraseVCtx_pubVCtx {Player : Type} {L : IExpr}
   | cons hd tl ih =>
     obtain ⟨x, τ⟩ := hd
     match τ with
-    | .pub b => simp [pubVCtx, erasePubVCtx, BindTy.base, ih]
-    | .hidden p b => simp [pubVCtx, erasePubVCtx, ih]
+    | ⟨b, .pub⟩ => simp [pubVCtx, erasePubVCtx, ih]
+    | ⟨b, .hidden p⟩ => simp [pubVCtx, erasePubVCtx, ih]
 
 /-- A VHasVar proof induces a HasVar proof in the erased context. -/
 def VHasVar.toErased {Player : Type} {L : IExpr}
@@ -597,18 +644,18 @@ def HasVar.toVHasVar {Player : Type} {L : IExpr} :
 corresponding `pub` binding. The structural inverse to `VHasVar.toErasedPub`. -/
 def HasVar.toVHasVarPub {Player : Type} {L : IExpr}
     {Γ : VCtx Player L} {x : VarId} {τ : L.Ty} :
-    HasVar (erasePubVCtx Γ) x τ → VHasVar (pubVCtx Γ) x (.pub τ) := by
+    HasVar (erasePubVCtx Γ) x τ → VHasVar (pubVCtx Γ) x ⟨τ, .pub⟩ := by
   induction Γ with
   | nil => intro h; exact nomatch h
   | cons hd tl ih =>
     obtain ⟨y, σ⟩ := hd
-    cases σ with
-    | pub υ =>
+    match σ with
+    | ⟨υ, .pub⟩ =>
       simp only [erasePubVCtx, pubVCtx]; intro h
       cases h with
       | here => exact .here
       | there h' => exact .there (ih h')
-    | hidden p υ =>
+    | ⟨υ, .hidden p⟩ =>
       simp only [erasePubVCtx, pubVCtx]; intro h; exact ih h
 
 /-- A VHasVar in pubVCtx induces a HasVar in erasePubVCtx. -/
@@ -642,10 +689,10 @@ def erasePubEnv {Player : Type} {L : IExpr} :
     {Γ : VCtx Player L} → VEnv L Γ →
     Env L.Val (erasePubVCtx Γ)
   | [], _ => Env.empty L.Val
-  | ((_, .pub _) :: Γ'), env =>
+  | ((_, ⟨_, .pub⟩) :: Γ'), env =>
     Env.cons (env.get .here)
       (erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h)))
-  | ((_, .hidden _ _) :: Γ'), env =>
+  | ((_, ⟨_, .hidden _⟩) :: Γ'), env =>
     erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h))
 
 /-- Pointwise formula for `erasePubEnv`: looking up at an erased-pub position
@@ -656,19 +703,19 @@ equals looking up the original VEnv at the corresponding `pub` binding. -/
     {x : VarId} {τ : L.Ty}
     (hx : HasVar (erasePubVCtx Γ) x τ) :
     erasePubEnv env x τ hx =
-      env x (.pub τ) (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) := by
+      env x ⟨τ, .pub⟩ (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hx)) := by
   induction Γ generalizing x τ with
   | nil => exact nomatch hx
   | cons hd tl ih =>
     obtain ⟨y, σ⟩ := hd
-    cases σ with
-    | pub υ =>
+    match σ with
+    | ⟨υ, .pub⟩ =>
       cases hx with
       | here => rfl
       | there hx' =>
         simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
           (ih (env := fun a b h => env a b (VHasVar.there h)) hx')
-    | hidden p υ =>
+    | ⟨υ, .hidden p⟩ =>
       simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
         (ih (env := fun a b h => env a b (VHasVar.there h)) hx)
 
@@ -846,7 +893,7 @@ despite this equivalence, for four reasons:
     named binding keeps the program linear in its surface size, which
     also keeps `exprDeps` accounting local.
 
-3. **View-shape stability.** The public binding `(x, .pub b)` appears
+3. **View-shape stability.** The public binding `(x, ⟨b, .pub⟩)` appears
     in every downstream `viewVCtx who Γ'`. Erasing `letExpr` would
     remove `x` from the context, changing the types of every
     behavioral kernel that observed `x`. "A strategy depending on `x`
@@ -868,14 +915,14 @@ inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
   `e` reads only public state. -/
   | letExpr {Γ} (x : VarId) {b : L.Ty}
       (e : L.Expr (erasePubVCtx Γ) b)
-      (k : VegasCore Player L ((x, .pub b) :: Γ)) :
+      (k : VegasCore Player L ((x, ⟨b, .pub⟩) :: Γ)) :
       VegasCore Player L Γ
   /-- Sample from `D'` and bind the result as a fresh public variable.
   `D'` reads only public state (nature has no private knowledge); the
   sampled value is observable to all. -/
   | sample {Γ} (x : VarId) {b : L.Ty}
       (D' : L.DistExpr (erasePubVCtx Γ) b)
-      (k : VegasCore Player L ((x, .pub b) :: Γ)) :
+      (k : VegasCore Player L ((x, ⟨b, .pub⟩) :: Γ)) :
       VegasCore Player L Γ
   /-- Player `who` commits to a value of type `b`, subject to guard `R`.
   The guard is typed over `(x, b) :: eraseVCtx Γ` (the proposed action on
@@ -884,14 +931,14 @@ inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
   result is bound as `hidden who b`, visible only to `who`. -/
   | commit {Γ} (x : VarId) (who : Player) {b : L.Ty}
       (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
-      (k : VegasCore Player L ((x, .hidden who b) :: Γ)) :
+      (k : VegasCore Player L ((x, ⟨b, .hidden who⟩) :: Γ)) :
       VegasCore Player L Γ
   /-- Disclose a previously hidden variable `x` as a fresh public alias `y`.
   The membership witness `hx` must show `x` is currently hidden, owned by
   `who`. -/
   | reveal {Γ} (y : VarId) (who : Player) (x : VarId) {b : L.Ty}
-      (hx : VHasVar Γ x (.hidden who b))
-      (k : VegasCore Player L ((y, .pub b) :: Γ)) :
+      (hx : VHasVar Γ x ⟨b, .hidden who⟩)
+      (k : VegasCore Player L ((y, ⟨b, .pub⟩) :: Γ)) :
       VegasCore Player L Γ
 
 /-! ## Finite operational domains (opt-in)
@@ -1045,23 +1092,23 @@ inductive FiniteProgramProof {P : Type} [DecidableEq P] {L : IExpr} :
       FiniteProgramProof (.ret payoffs)
   | letExpr {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {e : L.Expr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.letExpr x e k)
   | sample {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {D : L.DistExpr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.sample x D k)
   | commit {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
       {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-      {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+      {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.commit x who R k)
   | reveal {Γ : VCtx P L} {y : VarId} {who : P}
       {x : VarId} {b : L.Ty}
-      {hx : VHasVar Γ x (.hidden who b)}
-      {k : VegasCore P L ((y, .pub b) :: Γ)}
+      {hx : VHasVar Γ x ⟨b, .hidden who⟩}
+      {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.reveal y who x hx k)
 
@@ -1079,7 +1126,7 @@ instance finiteProgram_ret {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_letExpr {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.letExpr x e k) where
   proof := .letExpr (inferInstance : FiniteType L b)
@@ -1088,7 +1135,7 @@ instance finiteProgram_letExpr {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_sample {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .pub⟩) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.sample x D k) where
   proof := .sample (inferInstance : FiniteType L b)
@@ -1097,7 +1144,7 @@ instance finiteProgram_sample {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_commit {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, ⟨b, .hidden who⟩) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.commit x who R k) where
   proof := .commit (inferInstance : FiniteType L b)
@@ -1106,8 +1153,8 @@ instance finiteProgram_commit {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_reveal {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {y : VarId} {who : P}
     {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
-    {k : VegasCore P L ((y, .pub b) :: Γ)}
+    {hx : VHasVar Γ x ⟨b, .hidden who⟩}
+    {k : VegasCore P L ((y, ⟨b, .pub⟩) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.reveal y who x hx k) where
   proof := .reveal (inferInstance : FiniteType L b)

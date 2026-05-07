@@ -26,24 +26,24 @@ def footballFanPublic : VarId := 3
 
 abbrev Γ0 : Ctx := []
 abbrev Γ2 : Ctx :=
-  [(footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+  [(footballFanSecret, ⟨.bool, .hidden Player.footballFan⟩),
+   (operaFanSecret, ⟨.bool, .hidden Player.operaFan⟩)]
 abbrev Γ3 : Ctx :=
-  [(operaFanPublic, .pub .bool),
-   (footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+  [(operaFanPublic, ⟨.bool, .pub⟩),
+   (footballFanSecret, ⟨.bool, .hidden Player.footballFan⟩),
+   (operaFanSecret, ⟨.bool, .hidden Player.operaFan⟩)]
 abbrev Γ4 : Ctx :=
-  [(footballFanPublic, .pub .bool),
-   (operaFanPublic, .pub .bool),
-   (footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+  [(footballFanPublic, ⟨.bool, .pub⟩),
+   (operaFanPublic, ⟨.bool, .pub⟩),
+   (footballFanSecret, ⟨.bool, .hidden Player.footballFan⟩),
+   (operaFanSecret, ⟨.bool, .hidden Player.operaFan⟩)]
 
 def hOperaFanSecretΓ2 :
-    VHasVar Γ2 operaFanSecret (.hidden Player.operaFan .bool) :=
+    VHasVar Γ2 operaFanSecret ⟨.bool, .hidden Player.operaFan⟩ :=
   .there .here
 
 def hFootballFanSecretΓ3 :
-    VHasVar Γ3 footballFanSecret (.hidden Player.footballFan .bool) :=
+    VHasVar Γ3 footballFanSecret ⟨.bool, .hidden Player.footballFan⟩ :=
   .there .here
 
 def hFootballFanPublicPayoff :

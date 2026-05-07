@@ -22,8 +22,8 @@ def flag : VarId := 0
 def coin : VarId := 1
 
 abbrev Γ0 : Ctx := []
-abbrev Γ1 : Ctx := [(flag, .pub .bool)]
-abbrev Γ2 : Ctx := [(coin, .pub .bool), (flag, .pub .bool)]
+abbrev Γ1 : Ctx := [(flag, ⟨.bool, .pub⟩)]
+abbrev Γ2 : Ctx := [(coin, ⟨.bool, .pub⟩), (flag, ⟨.bool, .pub⟩)]
 
 def hCoinPayoff : HasVar (erasePubVCtx Γ2) coin .bool :=
   .here
