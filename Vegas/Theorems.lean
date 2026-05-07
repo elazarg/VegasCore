@@ -1,5 +1,7 @@
 import Vegas.ProtocolSemantics
 import Vegas.Protocol.Backend
+import Vegas.Protocol.LinearRead
+import Vegas.Protocol.StateSufficiency
 
 /-!
 # Project theorem index
@@ -7,6 +9,11 @@ import Vegas.Protocol.Backend
 This file collects the main Vegas semantic claims under short project-facing
 names. The proofs here are intentionally shallow wrappers over the files that
 own the substantive arguments.
+
+The Vegas soundness facts collected here are operational and informational:
+checked games have legal continuations at nonterminal states, bounded
+presentations reach their horizon, and player-facing menus are determined by
+the observations available to the acting player.
 -/
 
 namespace Vegas
@@ -33,7 +40,7 @@ theorem checkedProgram_hasAvailablePlayerActions
   syntaxProtocolGraph_hasAvailablePlayerActions g
 
 /-- Checked source graphs admit stable frontier rounds: executing one frontier
-node cannot invalidate another source-legal frontier action. -/
+node preserves source-legal frontier actions for the remaining frontier. -/
 theorem checkedProgram_hasStableFrontierRounds
     (g : WFProgram P L) :
     (syntaxProtocolGraph g).HasStableFrontierRounds :=
@@ -45,6 +52,216 @@ theorem checkedProgram_boundedFOSG_legalObservable
     (g : WFProgram P L) (horizon : Nat) :
     ((syntaxGraphFOSGView g).toBoundedFOSG horizon).LegalObservable :=
   syntaxGraphFOSGView_toBoundedFOSG_legalObservable g horizon
+
+/-! ## Execution and observation soundness -/
+
+/-- Source-linear reading has a ready next event whenever the syntax graph is
+nonterminal. -/
+theorem checkedProgram_linearRead_sufficient
+    (g : WFProgram P L)
+    (cfg : (syntaxProtocolGraph g).Configuration)
+    (hterminal : ¬ cfg.terminal) :
+    ∃ node : ProgramNode g.prog,
+      node ∈ cfg.frontier ∧
+        ∀ other : ProgramNode g.prog,
+          other ∈ ProgramNode.finset g.prog →
+            (cfg.result other).isNone →
+              node.rank ≤ other.rank :=
+  syntaxLinearRead_sufficient g cfg hterminal
+
+/-- Terminal syntax-graph configurations assemble the final source environment
+used by payoff evaluation. -/
+theorem checkedProgram_terminalFinalEnv_isSome
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : cfg.terminal) :
+    (ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg)).isSome :=
+  syntaxGraph_finalEnv?_isSome_of_terminal g hterminal
+
+/-- Terminal syntax-graph outcomes are the declared payoff expressions evaluated
+in the assembled final source environment. -/
+theorem checkedProgram_terminalOutcome_eq_evalPayoffs
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : cfg.terminal) :
+    ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
+      ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg) = some env ∧
+        syntaxGraphOutcome g cfg =
+          evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
+  syntaxGraphOutcome_eq_evalPayoffs_of_terminal g hterminal
+
+/-- Omniscient progress for the bounded syntax-graph FOSG: every nonterminal
+state admits at least one legal joint action. -/
+theorem checkedProgram_boundedFOSG_exists_legal_of_not_terminal
+    (g : WFProgram P L) (horizon : Nat)
+    {state : (syntaxGraphMachine g).BoundedState horizon}
+    (hterminal :
+      ¬ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal state) :
+    ∃ action : JointAction (syntaxGraphFOSGView g).Act,
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).legal state action :=
+  ((syntaxGraphFOSGView g).toBoundedFOSG horizon).exists_legal_of_not_terminal
+    hterminal
+
+/-- The bounded syntax-graph FOSG reaches terminal/cutoff by its presentation
+horizon. -/
+theorem checkedProgram_boundedFOSG_boundedHorizon
+    (g : WFProgram P L) (horizon : Nat) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).BoundedHorizon horizon :=
+  (syntaxGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon
+
+/-- Terminal bounded syntax-graph FOSG states have no legal joint action. -/
+theorem checkedProgram_boundedFOSG_not_legal_of_terminal
+    (g : WFProgram P L) (horizon : Nat)
+    {state : (syntaxGraphMachine g).BoundedState horizon}
+    {action : JointAction (syntaxGraphFOSGView g).Act}
+    (hterminal :
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal state) :
+    ¬ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).legal state action :=
+  ((syntaxGraphFOSGView g).toBoundedFOSG horizon).not_legal_of_terminal
+    hterminal
+
+/-- Joint-action legality in the bounded syntax-graph FOSG decomposes into
+nonterminality and per-player local optional-move legality. -/
+theorem checkedProgram_boundedFOSG_legal_iff_forall_locallyLegal
+    (g : WFProgram P L) (horizon : Nat)
+    {state : (syntaxGraphMachine g).BoundedState horizon}
+    {action : JointAction (syntaxGraphFOSGView g).Act} :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).legal state action ↔
+      ¬ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).terminal state ∧
+        ∀ who,
+          ((syntaxGraphFOSGView g).toBoundedFOSG horizon).locallyLegalAtState
+            state who (action who) :=
+  ((syntaxGraphFOSGView g).toBoundedFOSG horizon).legal_iff_forall
+
+/-- A player's whole frontier-round optional menu is determined by the public
+transcript together with that player's private observation. -/
+theorem checkedProgram_roundMenu_eq_of_observation_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right) :
+    ProtocolGraph.roundMenu (syntaxProtocolGraph g) left who =
+      ProtocolGraph.roundMenu (syntaxProtocolGraph g) right who :=
+  syntaxGraph_roundMenu_eq_of_observation_eq g who hpriv hpub
+
+/-- Membership in a player's frontier-round menu is transported across equal
+public transcript and private observation. -/
+theorem checkedProgram_roundMenu_mem_iff_of_observation_eq
+    (g : WFProgram P L) (who : P)
+    {left right : (syntaxProtocolGraph g).Configuration}
+    (hpriv : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
+    (hpub : syntaxGraphPublicView g left = syntaxGraphPublicView g right)
+    (move :
+      Option (ProtocolGraph.PlayerRoundAction (syntaxProtocolGraph g) who)) :
+    move ∈ ProtocolGraph.roundMenu (syntaxProtocolGraph g) left who ↔
+      move ∈ ProtocolGraph.roundMenu (syntaxProtocolGraph g) right who := by
+  rw [checkedProgram_roundMenu_eq_of_observation_eq g who hpriv hpub]
+
+/-- At the current bounded FOSG history endpoint, a player's available optional
+moves are determined by the current private and public observations, provided
+both histories are before the presentation cutoff. -/
+theorem checkedProgram_availableMoves_eq_of_currentObservation_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
+    (hpriv :
+      syntaxGraphObserve g who h.lastState.state =
+        syntaxGraphObserve g who h'.lastState.state)
+    (hpub :
+      syntaxGraphPublicView g h.lastState.state =
+        syntaxGraphPublicView g h'.lastState.state) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who =
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h' who :=
+  syntaxGraph_availableMoves_eq_of_currentObservation_eq
+    g horizon who hcut hcut' hpriv hpub
+
+/-- Membership in the current optional move set is transported by equality of
+current private and public observations. -/
+theorem checkedProgram_availableMoves_mem_iff_of_currentObservation_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
+    (hpriv :
+      syntaxGraphObserve g who h.lastState.state =
+        syntaxGraphObserve g who h'.lastState.state)
+    (hpub :
+      syntaxGraphPublicView g h.lastState.state =
+        syntaxGraphPublicView g h'.lastState.state)
+    (move : Option ((syntaxGraphFOSGView g).Act who)) :
+    move ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who ↔
+      move ∈
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h' who := by
+  rw [checkedProgram_availableMoves_eq_of_currentObservation_eq
+    g horizon who hcut hcut' hpriv hpub]
+
+/-- For nonempty bounded FOSG histories before cutoff, equality of latest
+private/public observations determines a player's whole optional move set. -/
+theorem checkedProgram_availableMoves_eq_of_latestObservation_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
+    (hne : h.steps ≠ [])
+    (hne' : h'.steps ≠ [])
+    (hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
+          (i := who) (h.playerView who) =
+        GameTheory.FOSG.InfoState.latestObservation?
+          (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
+          (i := who) (h'.playerView who)) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who =
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h' who :=
+  syntaxGraph_availableMoves_eq_of_latestObservation_eq
+    g horizon who hcut hcut' hne hne' hlatest
+
+/-- Membership in the current optional move set is transported by equality of
+latest private/public observations. -/
+theorem checkedProgram_availableMoves_mem_iff_of_latestObservation_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
+    (hcut : ¬ horizon ≤ h.lastState.depth)
+    (hcut' : ¬ horizon ≤ h'.lastState.depth)
+    (hne : h.steps ≠ [])
+    (hne' : h'.steps ≠ [])
+    (hlatest :
+      GameTheory.FOSG.InfoState.latestObservation?
+          (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
+          (i := who) (h.playerView who) =
+        GameTheory.FOSG.InfoState.latestObservation?
+          (G := (syntaxGraphFOSGView g).toBoundedFOSG horizon)
+          (i := who) (h'.playerView who))
+    (move : Option ((syntaxGraphFOSGView g).Act who)) :
+    move ∈ ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who ↔
+      move ∈
+        ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h' who := by
+  rw [checkedProgram_availableMoves_eq_of_latestObservation_eq
+    g horizon who hcut hcut' hne hne' hlatest]
+
+/-- Equal FOSG player views determine equal concrete action sets at histories. -/
+theorem checkedProgram_availableActions_eq_of_playerView_eq
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    {h h' : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)}
+    (hinfo : h.playerView who = h'.playerView who) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActionsAtHistory
+        h who =
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActionsAtHistory
+        h' who :=
+  ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableActions_eq_of_playerView_eq
+    (checkedProgram_boundedFOSG_legalObservable g horizon) who hinfo
+
+/-- The optional move set attached to a reachable information state is the same
+as the optional move set at any history realizing that information state. -/
+theorem checkedProgram_availableMovesAtInfoState_eq_of_history
+    (g : WFProgram P L) (horizon : Nat) (who : P)
+    (h : (((syntaxGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtInfoState
+        who (h.playerView who) =
+      ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMoves h who :=
+  ((syntaxGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtInfoState_eq_of_history
+    (checkedProgram_boundedFOSG_legalObservable g horizon) who h
 
 /-! ## Outcome adequacy -/
 

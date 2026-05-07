@@ -538,6 +538,225 @@ def writer? :
   | _, .reveal _ _ _ _ _, .revealTail node => by
       simp [ProgramField.source, ProgramField.writtenBy, source_writtenBy node]
 
+/-- A field whose structural source is an input-context field is that current
+field embedded into the program's final field set. -/
+theorem eq_ofCurrent_of_source_eq_inl :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      {field : ProgramField p} → {current : VCtxField P L Γ} →
+        ProgramField.source field = Sum.inl current →
+          field = ProgramField.ofCurrent p current
+  | _, .ret _, .retField field, current, h => by
+      cases h
+      rfl
+  | _, .letExpr x e k, .letTail field, current, h => by
+      cases hsource : ProgramField.source field with
+      | inl inner =>
+          cases inner with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  simp [ProgramField.source, hsource] at h
+              | there htail =>
+                  have hcurrent :
+                      (VCtxField.mk htail : VCtxField P L _) = current := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hcurrent
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k (VCtxField.mk (VHasVar.there htail)) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.ofCurrent, VCtxField.weakenHead]
+      | inr node =>
+          simp [ProgramField.source, hsource] at h
+  | _, .sample x D k, .sampleTail field, current, h => by
+      cases hsource : ProgramField.source field with
+      | inl inner =>
+          cases inner with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  simp [ProgramField.source, hsource] at h
+              | there htail =>
+                  have hcurrent :
+                      (VCtxField.mk htail : VCtxField P L _) = current := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hcurrent
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k (VCtxField.mk (VHasVar.there htail)) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.ofCurrent, VCtxField.weakenHead]
+      | inr node =>
+          simp [ProgramField.source, hsource] at h
+  | _, .commit x who R k, .commitTail field, current, h => by
+      cases hsource : ProgramField.source field with
+      | inl inner =>
+          cases inner with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  simp [ProgramField.source, hsource] at h
+              | there htail =>
+                  have hcurrent :
+                      (VCtxField.mk htail : VCtxField P L _) = current := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hcurrent
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k (VCtxField.mk (VHasVar.there htail)) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.ofCurrent, VCtxField.weakenHead]
+      | inr node =>
+          simp [ProgramField.source, hsource] at h
+  | _, .reveal y who x hx k, .revealTail field, current, h => by
+      cases hsource : ProgramField.source field with
+      | inl inner =>
+          cases inner with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  simp [ProgramField.source, hsource] at h
+              | there htail =>
+                  have hcurrent :
+                      (VCtxField.mk htail : VCtxField P L _) = current := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hcurrent
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k (VCtxField.mk (VHasVar.there htail)) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.ofCurrent, VCtxField.weakenHead]
+      | inr node =>
+          simp [ProgramField.source, hsource] at h
+
+/-- A field whose structural source is a source node is the field written by
+that node. -/
+theorem eq_writtenBy_of_source_eq_inr :
+    {Γ : VCtx P L} → {p : VegasCore P L Γ} →
+      {field : ProgramField p} → {node : ProgramNode p} →
+        ProgramField.source field = Sum.inr node →
+          field = ProgramField.writtenBy node
+  | _, .ret _, .retField field, node, h => by
+      simp [ProgramField.source] at h
+  | _, .letExpr x e k, .letTail field, node, h => by
+      cases hsource : ProgramField.source field with
+      | inl current =>
+          cases current with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  have hnode :
+                      ProgramNode.letHere (x := x) (e := e) (k := k) = node := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hnode
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k
+                          (VCtxField.mk (x := x) (τ := .pub _) VHasVar.here) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.writtenBy]
+              | there htail =>
+                  simp [ProgramField.source, hsource] at h
+      | inr inner =>
+          have hnode : ProgramNode.letTail inner = node := by
+            simpa [ProgramField.source, hsource] using h
+          cases hnode
+          have hfield : field = ProgramField.writtenBy inner :=
+            eq_writtenBy_of_source_eq_inr hsource
+          rw [hfield]
+          rfl
+  | _, .sample x D k, .sampleTail field, node, h => by
+      cases hsource : ProgramField.source field with
+      | inl current =>
+          cases current with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  have hnode :
+                      ProgramNode.sampleHere (x := x) (D := D) (k := k) = node := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hnode
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k
+                          (VCtxField.mk (x := x) (τ := .pub _) VHasVar.here) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.writtenBy]
+              | there htail =>
+                  simp [ProgramField.source, hsource] at h
+      | inr inner =>
+          have hnode : ProgramNode.sampleTail inner = node := by
+            simpa [ProgramField.source, hsource] using h
+          cases hnode
+          have hfield : field = ProgramField.writtenBy inner :=
+            eq_writtenBy_of_source_eq_inr hsource
+          rw [hfield]
+          rfl
+  | _, .commit x who R k, .commitTail field, node, h => by
+      cases hsource : ProgramField.source field with
+      | inl current =>
+          cases current with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  have hnode :
+                      ProgramNode.commitHere (x := x) (who := who) (R := R)
+                        (k := k) = node := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hnode
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k
+                          (VCtxField.mk (x := x) (τ := .hidden who _) VHasVar.here) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.writtenBy]
+              | there htail =>
+                  simp [ProgramField.source, hsource] at h
+      | inr inner =>
+          have hnode : ProgramNode.commitTail inner = node := by
+            simpa [ProgramField.source, hsource] using h
+          cases hnode
+          have hfield : field = ProgramField.writtenBy inner :=
+            eq_writtenBy_of_source_eq_inr hsource
+          rw [hfield]
+          rfl
+  | _, .reveal y who x hx k, .revealTail field, node, h => by
+      cases hsource : ProgramField.source field with
+      | inl current =>
+          cases current with
+          | mk hvar =>
+              cases hvar with
+              | here =>
+                  have hnode :
+                      ProgramNode.revealHere (y := y) (who := who) (x := x)
+                        (hx := hx) (k := k) = node := by
+                    simpa [ProgramField.source, hsource] using h
+                  cases hnode
+                  have hfield :
+                      field =
+                        ProgramField.ofCurrent k
+                          (VCtxField.mk (x := y) (τ := .pub _) VHasVar.here) :=
+                    eq_ofCurrent_of_source_eq_inl hsource
+                  rw [hfield]
+                  simp [ProgramField.writtenBy]
+              | there htail =>
+                  simp [ProgramField.source, hsource] at h
+      | inr inner =>
+          have hnode : ProgramNode.revealTail inner = node := by
+            simpa [ProgramField.source, hsource] using h
+          cases hnode
+          have hfield : field = ProgramField.writtenBy inner :=
+            eq_writtenBy_of_source_eq_inr hsource
+          rw [hfield]
+          rfl
+
 @[simp] theorem writer?_writtenBy
     {Γ : VCtx P L} {p : VegasCore P L Γ} (node : ProgramNode p) :
     ProgramField.writer? (ProgramField.writtenBy node) = some node := by
@@ -2330,6 +2549,59 @@ noncomputable def syntaxGraphConfigValue?
     Option (L.Val field.ty) :=
   ProgramField.value? g.env cfg.result field
 
+/-- Terminal graph-native syntax configurations assign a value to every source
+storage field. -/
+theorem syntaxGraphConfigValue?_isSome_of_terminal
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : cfg.terminal)
+    (field : ProgramField g.prog) :
+    (syntaxGraphConfigValue? g cfg field).isSome := by
+  classical
+  cases hsource : ProgramField.source field with
+  | inl current =>
+      have hfield :
+          field = ProgramField.ofCurrent g.prog current :=
+        ProgramField.eq_ofCurrent_of_source_eq_inl hsource
+      subst field
+      exact ProgramField.value?_isSome_of_initialValue? g.env
+        (ProgramField.initialValue?_isSome_of_mem_currentFields
+          g.prog g.env
+          (ProgramField.ofCurrent_mem_currentFields g.prog current))
+  | inr writer =>
+      have hfield :
+          field = ProgramField.writtenBy writer :=
+        ProgramField.eq_writtenBy_of_source_eq_inr hsource
+      subst field
+      have hnode : writer ∈ (syntaxProtocolGraph g).nodes := by
+        change writer ∈ ProgramNode.finset g.prog
+        exact ProgramNode.mem_finset g.prog writer
+      have hdoneMem : writer ∈ (syntaxProtocolGraph g).done cfg.result :=
+        hterminal hnode
+      have hdone : (cfg.result writer).isSome :=
+        ((syntaxProtocolGraph g).mem_done_iff cfg.result writer).mp hdoneMem |>.2
+      exact ProgramNode.value?_isSome_of_completed_write
+        g.env g.obligations hdone
+        (by
+          intro node slice hresult
+          simpa [syntaxProtocolGraph] using cfg.legal hresult)
+        (ProgramNode.writtenBy_mem_writeFields g.obligations writer)
+
+/-- Terminal graph-native syntax configurations assemble the final source
+environment. -/
+theorem syntaxGraph_finalEnv?_isSome_of_terminal
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : cfg.terminal) :
+    (ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg)).isSome := by
+  classical
+  unfold ProgramField.finalEnv?
+  rw [dif_pos]
+  · simp
+  · intro field
+    exact syntaxGraphConfigValue?_isSome_of_terminal g hterminal
+      (ProgramField.ofFinal g.prog field)
+
 /-- Public observation for the graph-native syntax machine. -/
 noncomputable def syntaxGraphPublicView
     (g : WFProgram P L)
@@ -2537,6 +2809,22 @@ noncomputable def syntaxGraphOutcome
   match ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg) with
   | some env => evalPayoffs (ProgramField.finalPayoffs g.prog) env
   | none => 0
+
+/-- Terminal graph-native syntax configurations evaluate outcomes from the
+assembled final source environment. -/
+theorem syntaxGraphOutcome_eq_evalPayoffs_of_terminal
+    (g : WFProgram P L)
+    {cfg : (syntaxProtocolGraph g).Configuration}
+    (hterminal : cfg.terminal) :
+    ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
+      ProgramField.finalEnv? g.prog (syntaxGraphConfigValue? g cfg) = some env ∧
+        syntaxGraphOutcome g cfg =
+          evalPayoffs (ProgramField.finalPayoffs g.prog) env := by
+  rcases Option.isSome_iff_exists.mp
+      (syntaxGraph_finalEnv?_isSome_of_terminal g hterminal) with
+    ⟨env, henv⟩
+  refine ⟨env, henv, ?_⟩
+  simp [syntaxGraphOutcome, henv]
 
 /-- Observation/outcome interface for the graph-native syntax machine. -/
 noncomputable def syntaxGraphMachineInterface
