@@ -299,6 +299,11 @@ def owner : {Γ : VCtx P L} → {p : VegasCore P L Γ} →
   | _, _, .commitTail field => field.owner
   | _, _, .revealTail field => field.owner
 
+/-- A field is observable by a player when it is public or owned by that player. -/
+abbrev VisibleTo {Γ : VCtx P L} {p : VegasCore P L Γ}
+    (who : P) (field : ProgramField p) : Prop :=
+  field.owner = none ∨ field.owner = some who
+
 /-- Embed a field from the current context into the final field set of a
 program. -/
 def ofCurrent :
@@ -403,7 +408,7 @@ noncomputable def visibleCurrentFields
     Finset (ProgramField p) := by
   classical
   exact (currentFields p).filter
-    (fun field => field.owner = none ∨ field.owner = some who)
+    (fun field => field.VisibleTo who)
 
 theorem ofCurrent_mem_currentFields
     {Γ : VCtx P L} (p : VegasCore P L Γ)
@@ -833,7 +838,8 @@ noncomputable def commitGraphGuard
         owner_eq_none_or_some_of_visible hctx current hyvisible
       exact Finset.mem_filter.mpr
         ⟨hmem, by
-          simpa [read, current, ProgramField.owner_ofCurrent] using howner⟩
+          simpa [ProgramField.VisibleTo, read, current,
+            ProgramField.owner_ofCurrent] using howner⟩
     have heq := hvisible read hmem hmem hvisibleRead
     have hnodup : ((eraseVCtx Γ).map Prod.fst).Nodup := by
       simpa [eraseVCtx_map_fst] using hctx
@@ -2232,7 +2238,7 @@ theorem guard_visibleReads_owner_of_sem_commit :
       sem hctx fresh hscoped legal normalized node =
         .commit commitWho target guard →
       ∀ read, read ∈ guard.visibleReads →
-        read.owner = none ∨ read.owner = some commitWho
+        read.VisibleTo commitWho
   | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
       .letHere, _, _, _, hsem => by
       simp [sem] at hsem
@@ -2903,7 +2909,7 @@ noncomputable def syntaxGraphObserve
     (cfg : (syntaxProtocolGraph g).Configuration) :
     SyntaxPrivateObs g who where
   value? := fun field =>
-    if field.owner = none ∨ field.owner = some who then
+    if field.VisibleTo who then
       syntaxGraphConfigValue? g cfg field
     else
       none
@@ -2974,7 +2980,7 @@ theorem syntaxGraphObserve_value?_eq_of_eq
     {left right : (syntaxProtocolGraph g).Configuration}
     (hobs : syntaxGraphObserve g who left = syntaxGraphObserve g who right)
     {field : ProgramField g.prog}
-    (hvisible : field.owner = none ∨ field.owner = some who) :
+    (hvisible : field.VisibleTo who) :
     syntaxGraphConfigValue? g left field =
       syntaxGraphConfigValue? g right field := by
   have h := congrArg (fun obs => obs.value? field) hobs
@@ -3041,7 +3047,7 @@ theorem syntaxGraph_actionLegal_of_observe_eq
         apply guard.eval_eq_of_visible_eq
         intro read hleft hright hvisible
         have hreadVisible :
-            read.owner = none ∨ read.owner = some who :=
+            read.VisibleTo who :=
           ProgramNode.guard_visibleReads_owner_of_sem_commit
             g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
             node hsem read hvisible
