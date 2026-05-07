@@ -557,6 +557,39 @@ theorem writer?_eq_none_of_mem_currentFields
   rcases List.mem_map.mp hlist with ⟨current, _hcurrent, rfl⟩
   simp [ProgramField.writer?]
 
+private theorem tail_currentFields_or_eq_writtenBy_here
+    {Γ : VCtx P L} {x : VarId} {τ : BindTy P L}
+    {p : VegasCore P L Γ} {k : VegasCore P L ((x, τ) :: Γ)}
+    (tail : ProgramField k → ProgramField p)
+    (head : ProgramNode p)
+    (tail_there :
+      ∀ {y σ} (h : VHasVar Γ y σ),
+        tail (ofCurrent k (.mk (VHasVar.there h))) =
+          ofCurrent p (.mk h))
+    (tail_here :
+      tail (ofCurrent k (.mk (x := x) (τ := τ) VHasVar.here)) =
+        ProgramField.writtenBy head)
+    {field : ProgramField k}
+    (h : field ∈ currentFields k) :
+    tail field ∈ currentFields p ∨
+      tail field = ProgramField.writtenBy head := by
+  classical
+  unfold currentFields at h ⊢
+  simp only [List.mem_toFinset, List.mem_map] at h ⊢
+  rcases h with ⟨current, _hcurrent, hfield⟩
+  cases current with
+  | mk hvar =>
+      cases hvar with
+      | here =>
+          right
+          rw [← hfield]
+          exact tail_here
+      | there htail =>
+          left
+          refine ⟨.mk htail, VCtxField.mem_enumerate (.mk htail), ?_⟩
+          rw [← hfield]
+          exact (tail_there htail).symm
+
 theorem letTail_currentFields_or_eq_writtenBy_letHere
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {e : L.Expr (erasePubVCtx Γ) b}
@@ -568,22 +601,12 @@ theorem letTail_currentFields_or_eq_writtenBy_letHere
       ProgramField.letTail (e := e) field =
         ProgramField.writtenBy
           (.letHere (x := x) (e := e) (k := k)) := by
-  classical
-  unfold currentFields at h ⊢
-  simp only [List.mem_toFinset, List.mem_map] at h ⊢
-  rcases h with ⟨current, _hcurrent, hfield⟩
-  cases current with
-  | mk hvar =>
-      cases hvar with
-      | here =>
-          right
-          rw [← hfield]
-          simp [writtenBy]
-      | there htail =>
-          left
-          refine ⟨.mk htail, VCtxField.mem_enumerate (.mk htail), ?_⟩
-          rw [← hfield]
-          rfl
+  exact tail_currentFields_or_eq_writtenBy_here
+    (p := .letExpr x e k) (k := k) ProgramField.letTail
+    (ProgramNode.letHere (x := x) (e := e) (k := k))
+    (by intro _ _ _; rfl)
+    (by simp [ProgramField.writtenBy])
+    h
 
 theorem sampleTail_currentFields_or_eq_writtenBy_sampleHere
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
@@ -596,22 +619,12 @@ theorem sampleTail_currentFields_or_eq_writtenBy_sampleHere
       ProgramField.sampleTail (D := D) field =
         ProgramField.writtenBy
           (.sampleHere (x := x) (D := D) (k := k)) := by
-  classical
-  unfold currentFields at h ⊢
-  simp only [List.mem_toFinset, List.mem_map] at h ⊢
-  rcases h with ⟨current, _hcurrent, hfield⟩
-  cases current with
-  | mk hvar =>
-      cases hvar with
-      | here =>
-          right
-          rw [← hfield]
-          simp [writtenBy]
-      | there htail =>
-          left
-          refine ⟨.mk htail, VCtxField.mem_enumerate (.mk htail), ?_⟩
-          rw [← hfield]
-          rfl
+  exact tail_currentFields_or_eq_writtenBy_here
+    (p := .sample x D k) (k := k) ProgramField.sampleTail
+    (ProgramNode.sampleHere (x := x) (D := D) (k := k))
+    (by intro _ _ _; rfl)
+    (by simp [ProgramField.writtenBy])
+    h
 
 theorem commitTail_currentFields_or_eq_writtenBy_commitHere
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
@@ -624,22 +637,12 @@ theorem commitTail_currentFields_or_eq_writtenBy_commitHere
       ProgramField.commitTail (R := R) field =
         ProgramField.writtenBy
           (.commitHere (x := x) (who := who) (R := R) (k := k)) := by
-  classical
-  unfold currentFields at h ⊢
-  simp only [List.mem_toFinset, List.mem_map] at h ⊢
-  rcases h with ⟨current, _hcurrent, hfield⟩
-  cases current with
-  | mk hvar =>
-      cases hvar with
-      | here =>
-          right
-          rw [← hfield]
-          simp [writtenBy]
-      | there htail =>
-          left
-          refine ⟨.mk htail, VCtxField.mem_enumerate (.mk htail), ?_⟩
-          rw [← hfield]
-          rfl
+  exact tail_currentFields_or_eq_writtenBy_here
+    (p := .commit x who R k) (k := k) ProgramField.commitTail
+    (ProgramNode.commitHere (x := x) (who := who) (R := R) (k := k))
+    (by intro _ _ _; rfl)
+    (by simp [ProgramField.writtenBy])
+    h
 
 theorem revealTail_currentFields_or_eq_writtenBy_revealHere
     {Γ : VCtx P L} {y : VarId} {who : P} {x : VarId} {b : L.Ty}
@@ -653,22 +656,13 @@ theorem revealTail_currentFields_or_eq_writtenBy_revealHere
         ProgramField.writtenBy
           (.revealHere (y := y) (who := who) (x := x) (hx := hx)
             (k := k)) := by
-  classical
-  unfold currentFields at h ⊢
-  simp only [List.mem_toFinset, List.mem_map] at h ⊢
-  rcases h with ⟨current, _hcurrent, hfield⟩
-  cases current with
-  | mk hvar =>
-      cases hvar with
-      | here =>
-          right
-          rw [← hfield]
-          simp [writtenBy]
-      | there htail =>
-          left
-          refine ⟨.mk htail, VCtxField.mem_enumerate (.mk htail), ?_⟩
-          rw [← hfield]
-          rfl
+  exact tail_currentFields_or_eq_writtenBy_here
+    (p := .reveal y who x hx k) (k := k) ProgramField.revealTail
+    (ProgramNode.revealHere (y := y) (who := who) (x := x)
+      (hx := hx) (k := k))
+    (by intro _ _ _; rfl)
+    (by simp [ProgramField.writtenBy])
+    h
 
 /-- Hidden field read by a reveal node. For non-reveal nodes this is `none`. -/
 def revealSource? :
