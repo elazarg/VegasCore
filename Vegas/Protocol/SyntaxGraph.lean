@@ -1113,16 +1113,75 @@ end ProgramField
 
 namespace ProgramNode
 
+/-- Static obligations needed to interpret a program occurrence in the syntax
+graph layer. -/
+structure ProgramObligations {Γ : VCtx P L} (p : VegasCore P L Γ) where
+  hctx : WFCtx Γ
+  fresh : FreshBindings p
+  hscoped : ViewScoped p
+  legal : Legal p
+  normalized : NormalizedDists p
+
+namespace ProgramObligations
+
+def letTail :
+    {Γ : VCtx P L} → {x : VarId} → {b : L.Ty} →
+      {e : L.Expr (erasePubVCtx Γ) b} →
+      {k : VegasCore P L ((x, .pub b) :: Γ)} →
+      ProgramObligations (.letExpr x e k) → ProgramObligations k
+  | _, _, _, _, _, obs =>
+      { hctx := WFCtx.cons obs.fresh.1 obs.hctx
+        fresh := obs.fresh.2
+        hscoped := obs.hscoped
+        legal := obs.legal
+        normalized := obs.normalized }
+
+def sampleTail :
+    {Γ : VCtx P L} → {x : VarId} → {b : L.Ty} →
+      {D : L.DistExpr (erasePubVCtx Γ) b} →
+      {k : VegasCore P L ((x, .pub b) :: Γ)} →
+      ProgramObligations (.sample x D k) → ProgramObligations k
+  | _, _, _, _, _, obs =>
+      { hctx := WFCtx.cons obs.fresh.1 obs.hctx
+        fresh := obs.fresh.2
+        hscoped := obs.hscoped
+        legal := obs.legal
+        normalized := obs.normalized.2 }
+
+def commitTail :
+    {Γ : VCtx P L} → {x : VarId} → {who : P} → {b : L.Ty} →
+      {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool} →
+      {k : VegasCore P L ((x, .hidden who b) :: Γ)} →
+      ProgramObligations (.commit x who R k) → ProgramObligations k
+  | _, _, _, _, _, _, obs =>
+      { hctx := WFCtx.cons obs.fresh.1 obs.hctx
+        fresh := obs.fresh.2
+        hscoped := obs.hscoped.2
+        legal := obs.legal.2
+        normalized := obs.normalized }
+
+def revealTail :
+    {Γ : VCtx P L} → {y : VarId} → {who : P} → {x : VarId} →
+      {b : L.Ty} → {hx : VHasVar Γ x (.hidden who b)} →
+      {k : VegasCore P L ((y, .pub b) :: Γ)} →
+      ProgramObligations (.reveal y who x hx k) → ProgramObligations k
+  | _, _, _, _, _, _, _, obs =>
+      { hctx := WFCtx.cons obs.fresh.1 obs.hctx
+        fresh := obs.fresh.2
+        hscoped := obs.hscoped
+        legal := obs.legal
+        normalized := obs.normalized }
+
+end ProgramObligations
+
 /-- Semantic payload of a source occurrence, expressed over the final field set
 of the enclosing program. -/
 noncomputable def sem :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      WFCtx Γ → FreshBindings p → ViewScoped p →
-      Legal p → NormalizedDists p → ProgramNode p →
+      ProgramObligations p → ProgramNode p →
       ProtocolGraph.NodeSem P (ProgramField p) L
         (fun field => field.ty)
-  | _, .letExpr x (b := b) e k, _hctx, _fresh, _scoped,
-      _legal, normalized, .letHere =>
+  | _, .letExpr x (b := b) e k, obs, .letHere =>
       let target : ProgramField (.letExpr x e k) :=
         ProgramField.writtenBy (.letHere (x := x) (e := e) (k := k))
       have htarget : target.ty = b := by
@@ -1134,12 +1193,10 @@ noncomputable def sem :
       .assign target
         (ProgramField.castGraphExpr htarget.symm
           (ProgramField.publicGraphExpr (.letExpr x e k) e))
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
-      .letTail node =>
-      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized node).mapFields
+  | _, .letExpr x e k, obs, .letTail node =>
+      (sem obs.letTail node).mapFields
         ProgramField.letTail (fun _ => rfl)
-  | _, .sample x (b := b) D k, _hctx, _fresh, _scoped,
-      _legal, normalized, .sampleHere =>
+  | _, .sample x (b := b) D k, obs, .sampleHere =>
       let target : ProgramField (.sample x D k) :=
         ProgramField.writtenBy (.sampleHere (x := x) (D := D) (k := k))
       have htarget : target.ty = b := by
@@ -1150,14 +1207,11 @@ noncomputable def sem :
         rfl
       .sample target
         (ProgramField.castGraphDist htarget.symm
-          (ProgramField.publicGraphDist (.sample x D k) D normalized.1))
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
-      .sampleTail node =>
-      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-        legal normalized.2 node).mapFields ProgramField.sampleTail
-          (fun _ => rfl)
-  | _, .commit x who (b := b) R k, hctx, fresh, hscoped,
-      legal, normalized, .commitHere =>
+          (ProgramField.publicGraphDist (.sample x D k) D obs.normalized.1))
+  | _, .sample x D k, obs, .sampleTail node =>
+      (sem obs.sampleTail node).mapFields ProgramField.sampleTail
+        (fun _ => rfl)
+  | _, .commit x who (b := b) R k, obs, .commitHere =>
       let target : ProgramField (.commit x who R k) :=
         ProgramField.writtenBy (.commitHere (x := x) (who := who)
           (R := R) (k := k))
@@ -1169,14 +1223,11 @@ noncomputable def sem :
         rfl
       .commit who target
         (ProgramField.commitGraphGuard (.commit x who R k) R
-          target htarget hctx fresh.1 hscoped.1 legal.1)
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
-      .commitTail node =>
-      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-        legal.2 normalized node).mapFields ProgramField.commitTail
-          (fun _ => rfl)
-  | _, .reveal y who x (b := b) hx k, _hctx, _fresh, _scoped,
-      _legal, normalized, .revealHere =>
+          target htarget obs.hctx obs.fresh.1 obs.hscoped.1 obs.legal.1)
+  | _, .commit x who R k, obs, .commitTail node =>
+      (sem obs.commitTail node).mapFields ProgramField.commitTail
+        (fun _ => rfl)
+  | _, .reveal y who x (b := b) hx k, obs, .revealHere =>
       let source : ProgramField (.reveal y who x hx k) :=
         .revealTail (ProgramField.ofCurrent k (.mk (VHasVar.there hx)))
       let target : ProgramField (.reveal y who x hx k) :=
@@ -1195,95 +1246,78 @@ noncomputable def sem :
         rw [ProgramField.ty_ofCurrent]
         rfl
       .reveal source target (hsource.trans htarget.symm)
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
-      .revealTail node =>
-      (sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-        legal normalized node).mapFields ProgramField.revealTail
-          (fun _ => rfl)
+  | _, .reveal y who x hx k, obs, .revealTail node =>
+      (sem obs.revealTail node).mapFields ProgramField.revealTail
+        (fun _ => rfl)
 
 /-- Every source node semantically writes its syntactic result field. -/
 theorem writtenBy_mem_writeFields :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      (hctx : WFCtx Γ) → (fresh : FreshBindings p) →
-      (hscoped : ViewScoped p) →
-      (legal : Legal p) → (normalized : NormalizedDists p) →
-      (node : ProgramNode p) →
+      (obs : ProgramObligations p) → (node : ProgramNode p) →
         ProgramField.writtenBy node ∈
-          (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized, .letHere => by
+          (ProgramNode.sem obs node).writeFields
+  | _, .letExpr x e k, obs, .letHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
-  | _, .letExpr _ _ k, hctx, fresh, hscoped, legal, normalized, .letTail node => by
+  | _, .letExpr _ _ k, obs, .letTail node => by
       exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.letTail) (hty := fun _ => rfl)
-        (writtenBy_mem_writeFields (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized node)
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized, .sampleHere => by
+        (writtenBy_mem_writeFields (p := k) obs.letTail node)
+  | _, .sample x D k, obs, .sampleHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
-  | _, .sample _ _ k, hctx, fresh, hscoped, legal, normalized, .sampleTail node => by
+  | _, .sample _ _ k, obs, .sampleTail node => by
       exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.sampleTail) (hty := fun _ => rfl)
-        (writtenBy_mem_writeFields (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized.2 node)
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized, .commitHere => by
+        (writtenBy_mem_writeFields (p := k) obs.sampleTail node)
+  | _, .commit x who R k, obs, .commitHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
-  | _, .commit _ _ _ k, hctx, fresh, hscoped, legal, normalized, .commitTail node => by
+  | _, .commit _ _ _ k, obs, .commitTail node => by
       exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.commitTail) (hty := fun _ => rfl)
-        (writtenBy_mem_writeFields (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-          legal.2 normalized node)
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized, .revealHere => by
+        (writtenBy_mem_writeFields (p := k) obs.commitTail node)
+  | _, .reveal y who x hx k, obs, .revealHere => by
       simp [ProgramNode.sem, ProgramField.writtenBy,
         ProtocolGraph.NodeSem.writeFields, ProtocolGraph.NodeSem.writes,
         ProtocolGraph.FieldWrite.field]
-  | _, .reveal _ _ _ _ k, hctx, fresh, hscoped, legal, normalized, .revealTail node => by
+  | _, .reveal _ _ _ _ k, obs, .revealTail node => by
       exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
         (f := ProgramField.revealTail) (hty := fun _ => rfl)
-        (writtenBy_mem_writeFields (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized node)
+        (writtenBy_mem_writeFields (p := k) obs.revealTail node)
 
 /-- Every generated source node writes exactly its structural result field. -/
 theorem eq_writtenBy_of_mem_writeFields
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p)
-    (hscoped : ViewScoped p) (legal : Legal p)
-    (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (node : ProgramNode p) {field : ProgramField p}
     (hwrite :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
+        (ProgramNode.sem obs node).writeFields) :
     field = ProgramField.writtenBy node := by
   have hfield :=
     (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp hwrite
   have hwritten :=
     (ProtocolGraph.NodeSem.mem_writeFields_iff_eq_writeTarget _ _).mp
-      (writtenBy_mem_writeFields hctx fresh hscoped legal normalized node)
+      (writtenBy_mem_writeFields obs node)
   exact hfield.trans hwritten.symm
 
 /-- Membership in a generated node's write set identifies the field's
 structural writer. -/
 theorem writer?_eq_some_of_mem_writeFields
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p)
-    (hscoped : ViewScoped p) (legal : Legal p)
-    (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (node : ProgramNode p) {field : ProgramField p}
     (hwrite :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
+        (ProgramNode.sem obs node).writeFields) :
     ProgramField.writer? field = some node := by
   have hfield :
       field = ProgramField.writtenBy node :=
-    eq_writtenBy_of_mem_writeFields
-      hctx fresh hscoped legal normalized node hwrite
+    eq_writtenBy_of_mem_writeFields obs node hwrite
   subst field
   exact ProgramField.writer?_writtenBy node
 
@@ -1291,38 +1325,31 @@ theorem writer?_eq_some_of_mem_writeFields
 field of the enclosing program or a field written by an earlier source node. -/
 theorem read_current_or_prior_write :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      (hctx : WFCtx Γ) → (fresh : FreshBindings p) →
-      (hscoped : ViewScoped p) →
-      (legal : Legal p) → (normalized : NormalizedDists p) →
-      (node : ProgramNode p) → {field : ProgramField p} →
-      field ∈ (ProgramNode.sem hctx fresh hscoped legal normalized node).reads →
+      (obs : ProgramObligations p) → (node : ProgramNode p) →
+      {field : ProgramField p} →
+      field ∈ (ProgramNode.sem obs node).reads →
         field ∈ ProgramField.currentFields p ∨
           ∃ prior : ProgramNode p,
             prior.rank < node.rank ∧
               field ∈
-                (ProgramNode.sem hctx fresh hscoped legal normalized prior).writeFields
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
-      .letHere, field, hread => by
+                (ProgramNode.sem obs prior).writeFields
+  | _, .letExpr x e k, obs, .letHere, field, hread => by
       left
       simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
         ProgramField.castGraphExpr, ProgramField.publicGraphExpr] using hread
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
-      .letTail node, field, hread => by
+  | _, .letExpr x e k, obs, .letTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
             (ProgramField.letTail (e := e) field).ty = field.ty :=
         fun _ => rfl
       have hread' :
-          field ∈ ((ProgramNode.sem (p := k)
-            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized
-            node).mapFields ProgramField.letTail hty).reads := by
+          field ∈ ((ProgramNode.sem (p := k) obs.letTail node).mapFields
+            ProgramField.letTail hty).reads := by
         simpa [ProgramNode.sem] using hread
       rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
-        read_current_or_prior_write (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized node hinner
+        read_current_or_prior_write (p := k) obs.letTail node hinner
       rcases hrec with hcurrent | hprior
       · cases ProgramField.letTail_currentFields_or_eq_writtenBy_letHere
             (e := e) hcurrent with
@@ -1331,36 +1358,30 @@ theorem read_current_or_prior_write :
               right
               refine ⟨.letHere, by simp [ProgramNode.rank], ?_⟩
               simpa [hwriteEq] using
-                (writtenBy_mem_writeFields hctx fresh hscoped legal normalized
+                (writtenBy_mem_writeFields obs
                   (.letHere (x := x) (e := e) (k := k)))
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.letTail prior, Nat.succ_lt_succ hrank, ?_⟩
         exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.letTail) (hty := hty) hwrite
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
-      .sampleHere, field, hread => by
+  | _, .sample x D k, obs, .sampleHere, field, hread => by
       left
       simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
         ProgramField.castGraphDist, ProgramField.publicGraphDist] using hread
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
-      .sampleTail node, field, hread => by
+  | _, .sample x D k, obs, .sampleTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
             (ProgramField.sampleTail (D := D) field).ty = field.ty :=
         fun _ => rfl
       have hread' :
-          field ∈ ((ProgramNode.sem (p := k)
-            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal
-            normalized.2 node).mapFields ProgramField.sampleTail
-              hty).reads := by
+          field ∈ ((ProgramNode.sem (p := k) obs.sampleTail node).mapFields
+            ProgramField.sampleTail hty).reads := by
         simpa [ProgramNode.sem] using hread
       rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
-        read_current_or_prior_write (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized.2 node hinner
+        read_current_or_prior_write (p := k) obs.sampleTail node hinner
       rcases hrec with hcurrent | hprior
       · cases ProgramField.sampleTail_currentFields_or_eq_writtenBy_sampleHere
             (D := D) hcurrent with
@@ -1369,36 +1390,30 @@ theorem read_current_or_prior_write :
               right
               refine ⟨.sampleHere, by simp [ProgramNode.rank], ?_⟩
               simpa [hwriteEq] using
-                (writtenBy_mem_writeFields hctx fresh hscoped legal normalized
+                (writtenBy_mem_writeFields obs
                   (.sampleHere (x := x) (D := D) (k := k)))
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.sampleTail prior, Nat.succ_lt_succ hrank, ?_⟩
         exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.sampleTail) (hty := hty) hwrite
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
-      .commitHere, field, hread => by
+  | _, .commit x who R k, obs, .commitHere, field, hread => by
       left
       simpa [ProgramNode.sem, ProtocolGraph.NodeSem.reads,
         ProgramField.commitGraphGuard] using hread
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
-      .commitTail node, field, hread => by
+  | _, .commit x who R k, obs, .commitTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
             (ProgramField.commitTail (R := R) field).ty = field.ty :=
         fun _ => rfl
       have hread' :
-          field ∈ ((ProgramNode.sem (p := k)
-            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2 legal.2
-            normalized node).mapFields ProgramField.commitTail
-              hty).reads := by
+          field ∈ ((ProgramNode.sem (p := k) obs.commitTail node).mapFields
+            ProgramField.commitTail hty).reads := by
         simpa [ProgramNode.sem] using hread
       rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
-        read_current_or_prior_write (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-          legal.2 normalized node hinner
+        read_current_or_prior_write (p := k) obs.commitTail node hinner
       rcases hrec with hcurrent | hprior
       · cases ProgramField.commitTail_currentFields_or_eq_writtenBy_commitHere
             (R := R) hcurrent with
@@ -1407,15 +1422,14 @@ theorem read_current_or_prior_write :
               right
               refine ⟨.commitHere, by simp [ProgramNode.rank], ?_⟩
               simpa [hwriteEq] using
-                (writtenBy_mem_writeFields hctx fresh hscoped legal normalized
+                (writtenBy_mem_writeFields obs
                   (.commitHere (x := x) (who := who) (R := R) (k := k)))
       · rcases hprior with ⟨prior, hrank, hwrite⟩
         right
         refine ⟨.commitTail prior, Nat.succ_lt_succ hrank, ?_⟩
         exact ProtocolGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.commitTail) (hty := hty) hwrite
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
-      .revealHere, field, hread => by
+  | _, .reveal y who x hx k, obs, .revealHere, field, hread => by
       left
       have hfield :
           field = ProgramField.ofCurrent (.reveal y who x hx k) (.mk hx) := by
@@ -1423,24 +1437,20 @@ theorem read_current_or_prior_write :
       rw [hfield]
       exact ProgramField.ofCurrent_mem_currentFields
         (.reveal y who x hx k) (.mk hx)
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
-      .revealTail node, field, hread => by
+  | _, .reveal y who x hx k, obs, .revealTail node, field, hread => by
       let hty :
           ∀ field : ProgramField k,
             (ProgramField.revealTail (x := x) (hx := hx) field).ty =
               field.ty :=
         fun _ => rfl
       have hread' :
-          field ∈ ((ProgramNode.sem (p := k)
-            (WFCtx.cons fresh.1 hctx) fresh.2 hscoped legal normalized
-            node).mapFields ProgramField.revealTail hty).reads := by
+          field ∈ ((ProgramNode.sem (p := k) obs.revealTail node).mapFields
+            ProgramField.revealTail hty).reads := by
         simpa [ProgramNode.sem] using hread
       rcases ProtocolGraph.NodeSem.mem_reads_mapFields hread' with
         ⟨inner, rfl, hinner⟩
       have hrec :=
-        read_current_or_prior_write (p := k)
-          (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-          legal normalized node hinner
+        read_current_or_prior_write (p := k) obs.revealTail node hinner
       rcases hrec with hcurrent | hprior
       · cases ProgramField.revealTail_currentFields_or_eq_writtenBy_revealHere
             (x := x) (hx := hx) hcurrent with
@@ -1449,7 +1459,7 @@ theorem read_current_or_prior_write :
               right
               refine ⟨.revealHere, by simp [ProgramNode.rank], ?_⟩
               simpa [hwriteEq] using
-                (writtenBy_mem_writeFields hctx fresh hscoped legal normalized
+                (writtenBy_mem_writeFields obs
                   (.revealHere (y := y) (who := who) (x := x) (hx := hx)
                     (k := k)))
       · rcases hprior with ⟨prior, hrank, hwrite⟩
@@ -1465,57 +1475,50 @@ order remains only as the acyclicity certificate: unrelated source occurrences
 are allowed to share a frontier. -/
 noncomputable def prereqs
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p)
-    (hscoped : ViewScoped p) (legal : Legal p)
-    (normalized : NormalizedDists p) (node : ProgramNode p) :
+    (obs : ProgramObligations p) (node : ProgramNode p) :
     Finset (ProgramNode p) := by
   classical
   exact (finset p).filter fun prior =>
     prior.rank < node.rank ∧
       ∃ field,
-        field ∈ (ProgramNode.sem hctx fresh hscoped legal normalized node).reads ∧
+        field ∈ (ProgramNode.sem obs node).reads ∧
           field ∈
-            (ProgramNode.sem hctx fresh hscoped legal normalized prior).writeFields
+            (ProgramNode.sem obs prior).writeFields
 
 /-- The source graph's prerequisites are exactly the causal read dependencies:
 if a node reads a field written by another source node, that writer is a
 prerequisite of the reader. -/
 theorem writer_mem_prereqs_of_read_write
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p)
-    (hscoped : ViewScoped p) (legal : Legal p)
-    (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     {reader writer : ProgramNode p} {field : ProgramField p}
     (hread :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized reader).reads)
+        (ProgramNode.sem obs reader).reads)
     (hwrite :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized writer).writeFields) :
+        (ProgramNode.sem obs writer).writeFields) :
     writer ∈
-      ProgramNode.prereqs hctx fresh hscoped legal normalized reader := by
+      ProgramNode.prereqs obs reader := by
   classical
   rcases ProgramNode.read_current_or_prior_write
-      hctx fresh hscoped legal normalized reader hread with
+      obs reader hread with
     hcurrent | hprior
   · have hnone :
         ProgramField.writer? field = none :=
       ProgramField.writer?_eq_none_of_mem_currentFields hcurrent
     have hsome :
         ProgramField.writer? field = some writer :=
-      ProgramNode.writer?_eq_some_of_mem_writeFields
-        hctx fresh hscoped legal normalized writer hwrite
+      ProgramNode.writer?_eq_some_of_mem_writeFields obs writer hwrite
     rw [hsome] at hnone
     simp at hnone
   · rcases hprior with ⟨prior, hrank, hpriorWrite⟩
     have hpriorWriter :
         ProgramField.writer? field = some prior :=
-      ProgramNode.writer?_eq_some_of_mem_writeFields
-        hctx fresh hscoped legal normalized prior hpriorWrite
+      ProgramNode.writer?_eq_some_of_mem_writeFields obs prior hpriorWrite
     have hwriterWriter :
         ProgramField.writer? field = some writer :=
-      ProgramNode.writer?_eq_some_of_mem_writeFields
-        hctx fresh hscoped legal normalized writer hwrite
+      ProgramNode.writer?_eq_some_of_mem_writeFields obs writer hwrite
     have hwriter_eq : writer = prior := by
       rw [hwriterWriter] at hpriorWriter
       exact Option.some.inj hpriorWriter
@@ -1528,10 +1531,9 @@ shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
 noncomputable def sliceLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
-  match sem hctx fresh hscoped legal normalized node with
+  match sem obs node with
   | .assign field _ =>
       ∃ value : L.Val field.ty,
         slice = ProgramField.singleSlice field (.clear value)
@@ -1549,18 +1551,17 @@ noncomputable def sliceLegal
 the node. -/
 theorem sliceLegal_writeField_isSome
     {Γ : VCtx P L} {p : VegasCore P L Γ}
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
     {field : ProgramField p}
-    (hlegal : sliceLegal hctx fresh hscoped legal normalized node slice)
+    (hlegal : sliceLegal obs node slice)
     (hwrite :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized node).writeFields) :
+        (ProgramNode.sem obs node).writeFields) :
     ∃ stored : ProtocolGraph.StoredValue (L.Val field.ty),
       slice field = some stored := by
   classical
-  cases hsem : ProgramNode.sem hctx fresh hscoped legal normalized node with
+  cases hsem : ProgramNode.sem obs node with
   | assign target expr =>
       rw [sliceLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
@@ -1630,11 +1631,10 @@ theorem sliceLegal_writeField_isSome
 have an actor, so only commits admit legal player slices. -/
 noncomputable def actionLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (result : ProgramNode p → Option (ProgramField.WriteSlice p))
     (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
-  match sem hctx fresh hscoped legal normalized node with
+  match sem obs node with
   | .assign _ _ => False
   | .sample _ _ => False
   | .commit _ field guard =>
@@ -1652,20 +1652,19 @@ noncomputable def actionLegal
 node has a legal concrete graph action. -/
 theorem exists_actionLegal_of_reads_available
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (result : ProgramNode p → Option (ProgramField.WriteSlice p))
     (node : ProgramNode p) {who : P}
     (hactor :
-      (sem hctx fresh hscoped legal normalized node).actor = some who)
+      (sem obs node).actor = some who)
     (hreads :
       ∀ read, read ∈
-        (sem hctx fresh hscoped legal normalized node).reads →
+        (sem obs node).reads →
         (ProgramField.value? env result read).isSome) :
     ∃ slice,
-      sliceLegal hctx fresh hscoped legal normalized node slice ∧
-        actionLegal env hctx fresh hscoped legal normalized result node slice := by
-  cases hsem : sem hctx fresh hscoped legal normalized node with
+      sliceLegal obs node slice ∧
+        actionLegal env obs result node slice := by
+  cases hsem : sem obs node with
   | assign field expr =>
       simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
   | sample field dist =>
@@ -1693,25 +1692,20 @@ committing player.  This is the bridge from graph-local guard invariance to
 the FOSG player's private observation. -/
 theorem guard_visibleReads_owner_of_sem_commit :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
-      (hctx : WFCtx Γ) → (fresh : FreshBindings p) →
-      (hscoped : ViewScoped p) →
-      (legal : Legal p) → (normalized : NormalizedDists p) →
+      (obs : ProgramObligations p) →
       (node : ProgramNode p) →
       {commitWho : P} → {target : ProgramField p} →
       {guard : ProtocolGraph.GraphGuard L (ProgramField p)
         (fun field => field.ty) target} →
-      sem hctx fresh hscoped legal normalized node =
+      sem obs node =
         .commit commitWho target guard →
       ∀ read, read ∈ guard.visibleReads →
         read.VisibleTo commitWho
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
-      .letHere, _, _, _, hsem => by
+  | _, .letExpr x e k, obs, .letHere, _, _, _, hsem => by
       simp [sem] at hsem
-  | _, .letExpr x e k, hctx, fresh, hscoped, legal, normalized,
-      .letTail node, commitWho, target, guard, hsem => by
+  | _, .letExpr x e k, obs, .letTail node, commitWho, target, guard, hsem => by
       cases hinner :
-          sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-            legal normalized node with
+          sem obs.letTail node with
       | assign field expr =>
           simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
@@ -1734,17 +1728,13 @@ theorem guard_visibleReads_owner_of_sem_commit :
             ⟨innerRead, hinnerRead, rfl⟩
           have howner :=
             guard_visibleReads_owner_of_sem_commit
-              (p := k) (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-              legal normalized node hinner innerRead hinnerRead
+              (p := k) obs.letTail node hinner innerRead hinnerRead
           simpa [ProgramField.owner] using howner
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
-      .sampleHere, _, _, _, hsem => by
+  | _, .sample x D k, obs, .sampleHere, _, _, _, hsem => by
       simp [sem] at hsem
-  | _, .sample x D k, hctx, fresh, hscoped, legal, normalized,
-      .sampleTail node, commitWho, target, guard, hsem => by
+  | _, .sample x D k, obs, .sampleTail node, commitWho, target, guard, hsem => by
       cases hinner :
-          sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-            legal normalized.2 node with
+          sem obs.sampleTail node with
       | assign field expr =>
           simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
@@ -1767,11 +1757,9 @@ theorem guard_visibleReads_owner_of_sem_commit :
             ⟨innerRead, hinnerRead, rfl⟩
           have howner :=
             guard_visibleReads_owner_of_sem_commit
-              (p := k) (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-              legal normalized.2 node hinner innerRead hinnerRead
+              (p := k) obs.sampleTail node hinner innerRead hinnerRead
           simpa [ProgramField.owner] using howner
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
-      .commitHere, commitWho, target, guard, hsem => by
+  | _, .commit x who R k, obs, .commitHere, commitWho, target, guard, hsem => by
       intro read hread
       have hsem' := by
         simpa [sem, ProgramField.commitGraphGuard] using hsem
@@ -1780,11 +1768,9 @@ theorem guard_visibleReads_owner_of_sem_commit :
       subst target
       cases hguard
       exact (Finset.mem_filter.mp hread).2
-  | _, .commit x who R k, hctx, fresh, hscoped, legal, normalized,
-      .commitTail node, commitWho, target, guard, hsem => by
+  | _, .commit x who R k, obs, .commitTail node, commitWho, target, guard, hsem => by
       cases hinner :
-          sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-            legal.2 normalized node with
+          sem obs.commitTail node with
       | assign field expr =>
           simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
@@ -1807,17 +1793,13 @@ theorem guard_visibleReads_owner_of_sem_commit :
             ⟨innerRead, hinnerRead, rfl⟩
           have howner :=
             guard_visibleReads_owner_of_sem_commit
-              (p := k) (WFCtx.cons fresh.1 hctx) fresh.2 hscoped.2
-              legal.2 normalized node hinner innerRead hinnerRead
+              (p := k) obs.commitTail node hinner innerRead hinnerRead
           simpa [ProgramField.owner] using howner
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
-      .revealHere, _, _, _, hsem => by
+  | _, .reveal y who x hx k, obs, .revealHere, _, _, _, hsem => by
       simp [sem] at hsem
-  | _, .reveal y who x hx k, hctx, fresh, hscoped, legal, normalized,
-      .revealTail node, commitWho, target, guard, hsem => by
+  | _, .reveal y who x hx k, obs, .revealTail node, commitWho, target, guard, hsem => by
       cases hinner :
-          sem (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-            legal normalized node with
+          sem obs.revealTail node with
       | assign field expr =>
           simp [sem, hinner, ProtocolGraph.NodeSem.mapFields] at hsem
       | sample field dist =>
@@ -1840,37 +1822,34 @@ theorem guard_visibleReads_owner_of_sem_commit :
             ⟨innerRead, hinnerRead, rfl⟩
           have howner :=
             guard_visibleReads_owner_of_sem_commit
-              (p := k) (WFCtx.cons fresh.1 hctx) fresh.2 hscoped
-              legal normalized node hinner innerRead hinnerRead
+              (p := k) obs.revealTail node hinner innerRead hinnerRead
           simpa [ProgramField.owner] using howner
 
 /-- A completed source node makes every field it semantically writes available
 in the source-level extensional value lookup. -/
 theorem value?_isSome_of_completed_write
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     {result : ProgramNode p → Option (ProgramField.WriteSlice p)}
     {writer : ProgramNode p} {field : ProgramField p}
     (hdone : (result writer).isSome)
     (hcfgLegal :
       ∀ {node slice},
         result node = some slice →
-          ProgramNode.sliceLegal hctx fresh hscoped legal normalized node slice)
+          ProgramNode.sliceLegal obs node slice)
     (hwrite :
       field ∈
-        (ProgramNode.sem hctx fresh hscoped legal normalized writer).writeFields) :
+        (ProgramNode.sem obs writer).writeFields) :
     (ProgramField.value? env result field).isSome := by
   rcases Option.isSome_iff_exists.mp hdone with ⟨slice, hresult⟩
   have hsliceLegal :
-      ProgramNode.sliceLegal hctx fresh hscoped legal normalized writer slice :=
+      ProgramNode.sliceLegal obs writer slice :=
     hcfgLegal hresult
-  rcases ProgramNode.sliceLegal_writeField_isSome hctx fresh hscoped
-      legal normalized writer hsliceLegal hwrite with ⟨stored, hstored⟩
+  rcases ProgramNode.sliceLegal_writeField_isSome obs writer hsliceLegal hwrite with
+    ⟨stored, hstored⟩
   have hfield :
       field = ProgramField.writtenBy writer :=
-    ProgramNode.eq_writtenBy_of_mem_writeFields
-      hctx fresh hscoped legal normalized writer hwrite
+    ProgramNode.eq_writtenBy_of_mem_writeFields obs writer hwrite
   subst field
   exact ProgramField.value?_isSome_of_result_slice env
     (ProgramField.writer?_writtenBy writer) hresult hstored
@@ -1880,14 +1859,13 @@ deterministic; sample nodes use the checked PMF distribution; commit nodes are
 not internal. -/
 noncomputable def internalKernel
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (hctx : WFCtx Γ) (fresh : FreshBindings p) (hscoped : ViewScoped p)
-    (legal : Legal p) (normalized : NormalizedDists p)
+    (obs : ProgramObligations p)
     (node : ProgramNode p)
     (result : ProgramNode p → Option (ProgramField.WriteSlice p)) :
     PMF (ProgramField.WriteSlice p) := by
   classical
   exact
-    match hsem : sem hctx fresh hscoped legal normalized node with
+    match hsem : sem obs node with
     | .assign field expr =>
         if available :
             ∀ read, read ∈ expr.reads →
@@ -1925,6 +1903,18 @@ noncomputable def internalKernel
 
 end ProgramNode
 
+namespace WFProgram
+
+def obligations (g : WFProgram P L) :
+    ProgramNode.ProgramObligations g.prog where
+  hctx := g.wctx
+  fresh := g.wf.1
+  hscoped := g.wf.2.2
+  legal := g.legal
+  normalized := g.normalized
+
+end WFProgram
+
 /-- Checked Vegas syntax compiled to the graph-native protocol graph.
 
 This is the graph-native semantic object.  Source occurrences become graph
@@ -1941,9 +1931,8 @@ noncomputable def syntaxProtocolGraph
   fieldTy := fun field => field.ty
   fieldOwner := fun field => field.owner
   initial := ProgramField.initialValue? g.prog g.env
-  sem := ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
-  prereqs := ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
-    g.legal g.normalized
+  sem := ProgramNode.sem g.obligations
+  prereqs := ProgramNode.prereqs g.obligations
   rank := fun node => node.rank
   prereqs_subset_nodes := by
     intro node prereq _hnode hpre
@@ -1959,8 +1948,7 @@ noncomputable def syntaxProtocolGraph
     exact ProgramField.mem_finset g.prog write.field
   no_duplicate_writes := by
     intro node field left right _hnode hleft hright hleftField hrightField
-    cases hsem : ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized node with
+    cases hsem : ProgramNode.sem g.obligations node with
     | assign target expr =>
         simp [ProtocolGraph.NodeSem.writes, hsem] at hleft hright
         subst left
@@ -1981,12 +1969,9 @@ noncomputable def syntaxProtocolGraph
         subst left
         subst right
         rfl
-  sliceLegal := ProgramNode.sliceLegal g.wctx g.wf.1 g.wf.2.2
-    g.legal g.normalized
-  actionLegal := ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
-    g.legal g.normalized
-  internalKernel := ProgramNode.internalKernel g.env g.wctx g.wf.1 g.wf.2.2
-    g.legal g.normalized
+  sliceLegal := ProgramNode.sliceLegal g.obligations
+  actionLegal := ProgramNode.actionLegal g.env g.obligations
+  internalKernel := ProgramNode.internalKernel g.env g.obligations
 
 /-- Static read-availability invariant needed by the graph FOSG view: every
 declared read of every frontier node has a value in the extensional graph
@@ -1996,8 +1981,7 @@ def syntaxReadsAvailableAtFrontier
   ∀ (cfg : (syntaxProtocolGraph g).Configuration) {node : ProgramNode g.prog},
     node ∈ cfg.frontier →
       ∀ read, read ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized node).reads →
+        (ProgramNode.sem g.obligations node).reads →
         (ProgramField.value? g.env cfg.result read).isSome
 
 /-- Source graph frontier reads are available in every configuration. -/
@@ -2006,7 +1990,7 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
     syntaxReadsAvailableAtFrontier g := by
   intro cfg node hfrontier read hread
   rcases ProgramNode.read_current_or_prior_write
-      g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node hread with
+      g.obligations node hread with
     hcurrent | hprior
   · exact ProgramField.value?_isSome_of_initialValue? g.env
       (ProgramField.initialValue?_isSome_of_mem_currentFields
@@ -2014,8 +1998,7 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
   · rcases hprior with ⟨prior, hrank, hwrite⟩
     have hpre : prior ∈ (syntaxProtocolGraph g).prereqs node := by
       change prior ∈
-        ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized node
+        ProgramNode.prereqs g.obligations node
       exact Finset.mem_filter.mpr
         ⟨ProgramNode.mem_finset g.prog prior, hrank,
           ⟨read, hread, hwrite⟩⟩
@@ -2024,13 +2007,11 @@ theorem syntaxReadsAvailableAtFrontier_of_wfProgram
     have hcfgLegal :
         ∀ {node slice},
           cfg.result node = some slice →
-            ProgramNode.sliceLegal g.wctx g.wf.1 g.wf.2.2
-              g.legal g.normalized node slice := by
+            ProgramNode.sliceLegal g.obligations node slice := by
       intro node slice hresult
       simpa [syntaxProtocolGraph] using cfg.legal hresult
     exact ProgramNode.value?_isSome_of_completed_write
-      g.env g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
-      hdone hcfgLegal hwrite
+      g.env g.obligations hdone hcfgLegal hwrite
 
 /-- Two syntax-graph configurations agree on every read that can affect a
 generated commit guard. -/
@@ -2041,7 +2022,7 @@ def AgreeOnGuardVisibleReads
   ∀ {owner : P} {target : ProgramField g.prog}
     {guard : ProtocolGraph.GraphGuard L (ProgramField g.prog)
       (fun field => field.ty) target},
-    ProgramNode.sem g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized node =
+    ProgramNode.sem g.obligations node =
         .commit owner target guard →
       ∀ read, read ∈ guard.visibleReads →
         ProgramField.value? g.env left.result read =
@@ -2072,14 +2053,11 @@ theorem syntaxGraph_actionLegal_of_guardVisibleValue_eq
     (syntaxProtocolGraph g).actionLegal right.result node slice := by
   classical
   change
-    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
-      g.legal g.normalized left.result node slice at haction
+    ProgramNode.actionLegal g.env g.obligations left.result node slice at haction
   change
-    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
-      g.legal g.normalized right.result node slice
+    ProgramNode.actionLegal g.env g.obligations right.result node slice
   cases hsem :
-      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized node with
+      ProgramNode.sem g.obligations node with
   | assign field expr =>
       simp [ProgramNode.actionLegal, hsem] at haction
   | sample field dist =>
@@ -2134,12 +2112,11 @@ theorem syntaxGraph_writer?_ne_of_frontier_read
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread :
       field ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized reader).reads) :
+        (ProgramNode.sem g.obligations reader).reads) :
     ProgramField.writer? field ≠ some writer := by
   intro hfieldWriter
   rcases ProgramNode.read_current_or_prior_write
-      g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized reader hread with
+      g.obligations reader hread with
     hcurrent | hprior
   · have hnone :
         ProgramField.writer? field = none :=
@@ -2150,7 +2127,7 @@ theorem syntaxGraph_writer?_ne_of_frontier_read
     have hpriorWriter :
         ProgramField.writer? field = some prior :=
       ProgramNode.writer?_eq_some_of_mem_writeFields
-        g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized prior hpriorWrite
+        g.obligations prior hpriorWrite
     rw [hfieldWriter] at hpriorWriter
     have hwriter_eq_prior : writer = prior :=
       Option.some.inj hpriorWriter
@@ -2158,8 +2135,7 @@ theorem syntaxGraph_writer?_ne_of_frontier_read
     have hpre :
         writer ∈ (syntaxProtocolGraph g).prereqs reader := by
       change writer ∈
-        ProgramNode.prereqs g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized reader
+        ProgramNode.prereqs g.obligations reader
       exact Finset.mem_filter.mpr
         ⟨ProgramNode.mem_finset g.prog writer, hrank,
           ⟨field, hread, hpriorWrite⟩⟩
@@ -2178,17 +2154,15 @@ theorem syntaxGraph_writer_not_frontier_with_reader_of_read_write
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread :
       field ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized reader).reads)
+        (ProgramNode.sem g.obligations reader).reads)
     (hwrite :
       field ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized writer).writeFields) :
+        (ProgramNode.sem g.obligations writer).writeFields) :
     False := by
   have hwriter :
       ProgramField.writer? field = some writer :=
     ProgramNode.writer?_eq_some_of_mem_writeFields
-      g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized writer hwrite
+      g.obligations writer hwrite
   exact
     (syntaxGraph_writer?_ne_of_frontier_read g
       hwriterFrontier hreaderFrontier hread) hwriter
@@ -2209,13 +2183,11 @@ theorem syntaxGraph_reveal_not_frontier_with_reader_of_target
     (hrevealFrontier : revealer ∈ cfg.frontier)
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hsem :
-      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized revealer =
+      ProgramNode.sem g.obligations revealer =
         ProtocolGraph.NodeSem.reveal source target hty)
     (hread :
       target ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized reader).reads) :
+        (ProgramNode.sem g.obligations reader).reads) :
     False := by
   apply syntaxGraph_writer_not_frontier_with_reader_of_read_write
     g hrevealFrontier hreaderFrontier hread
@@ -2236,8 +2208,7 @@ theorem syntaxGraph_value?_withResult_eq_of_frontier_read
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread :
       field ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized reader).reads) :
+        (ProgramNode.sem g.obligations reader).reads) :
     ProgramField.value? g.env
         ((cfg.withResult slice hwriterFrontier hwriterLegal).result) field =
       ProgramField.value? g.env cfg.result field := by
@@ -2278,8 +2249,7 @@ theorem syntaxGraph_actionLegal_after_frontier_withResult_of_ne
   intro owner target guard hsem read hreadVisible
   have hread :
       read ∈
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized second).reads := by
+        (ProgramNode.sem g.obligations second).reads := by
     rw [hsem]
     exact guard.visibleReads_subset_reads hreadVisible
   exact
@@ -2317,7 +2287,7 @@ theorem syntaxProtocolGraph_hasAvailablePlayerActions
     (syntaxProtocolGraph g).HasAvailablePlayerActions := by
   intro cfg node who hfrontier hactor
   rcases ProgramNode.exists_actionLegal_of_reads_available
-      g.env g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized cfg.result node
+      g.env g.obligations cfg.result node
       (who := who)
       (by simpa [syntaxProtocolGraph] using hactor)
       (syntaxReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
@@ -2473,17 +2443,13 @@ theorem syntaxGraph_actionLegal_of_observe_eq
     (syntaxProtocolGraph g).actionLegal right.result node slice := by
   classical
   change
-    (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-      g.legal g.normalized node).actor = some who at hactor
+    (ProgramNode.sem g.obligations node).actor = some who at hactor
   change
-    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
-      g.legal g.normalized left.result node slice at haction
+    ProgramNode.actionLegal g.env g.obligations left.result node slice at haction
   change
-    ProgramNode.actionLegal g.env g.wctx g.wf.1 g.wf.2.2
-      g.legal g.normalized right.result node slice
+    ProgramNode.actionLegal g.env g.obligations right.result node slice
   cases hsem :
-      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized node with
+      ProgramNode.sem g.obligations node with
   | assign field expr =>
       simp [ProtocolGraph.NodeSem.actor, hsem] at hactor
   | sample field dist =>
@@ -2518,8 +2484,7 @@ theorem syntaxGraph_actionLegal_of_observe_eq
         have hreadVisible :
             read.VisibleTo who :=
           ProgramNode.guard_visibleReads_owner_of_sem_commit
-            g.wctx g.wf.1 g.wf.2.2 g.legal g.normalized
-            node hsem read hvisible
+            g.obligations node hsem read hvisible
         have hvalueEq :
             ProgramField.value? g.env left.result read =
               ProgramField.value? g.env right.result read := by

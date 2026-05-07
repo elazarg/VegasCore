@@ -32,8 +32,7 @@ theorem syntaxGraph_readEnvOfResult_withResult_eq_of_frontier_reads
     (hsecond : second ∈ cfg.frontier)
     (hreads :
       reads ⊆
-        (ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-          g.legal g.normalized second).reads)
+        (ProgramNode.sem g.obligations second).reads)
     {availableAfter :
       ∀ field, field ∈ reads →
         (ProgramField.value? g.env
@@ -79,14 +78,11 @@ theorem syntaxGraph_internalKernel_after_frontier_withResult_of_ne
       second ∈ (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
     cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
   change
-    ProgramNode.internalKernel g.env g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized second
+    ProgramNode.internalKernel g.env g.obligations second
         ((cfg.withResult firstSlice hfirst hfirstLegal).result) =
-      ProgramNode.internalKernel g.env g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized second cfg.result
+      ProgramNode.internalKernel g.env g.obligations second cfg.result
   cases hsem :
-      ProgramNode.sem g.wctx g.wf.1 g.wf.2.2
-        g.legal g.normalized second with
+      ProgramNode.sem g.obligations second with
   | assign field expr =>
       unfold ProgramNode.internalKernel
       rw [hsem]

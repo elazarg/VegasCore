@@ -206,8 +206,7 @@ noncomputable def rowDefectAction :
 theorem rowDefectSlice_legal :
     (syntaxProtocolGraph Prisoners.game).sliceLegal
       rowCommitNode rowDefectSlice := by
-  change ProgramNode.sliceLegal Prisoners.game.wctx Prisoners.game.wf.1
-    Prisoners.game.wf.2.2 Prisoners.game.legal Prisoners.game.normalized
+  change ProgramNode.sliceLegal Prisoners.game.obligations
     rowCommitNode rowDefectSlice
   unfold ProgramNode.sliceLegal
   unfold ProgramNode.sem
@@ -219,9 +218,7 @@ theorem rowDefectAction_legal_initial :
       (ProtocolGraph.Configuration.initial
         (syntaxProtocolGraph Prisoners.game)).result
       rowCommitNode rowDefectSlice := by
-  change ProgramNode.actionLegal Prisoners.game.env Prisoners.game.wctx
-    Prisoners.game.wf.1 Prisoners.game.wf.2.2 Prisoners.game.legal
-    Prisoners.game.normalized
+  change ProgramNode.actionLegal Prisoners.game.env Prisoners.game.obligations
     (ProtocolGraph.Configuration.initial
       (syntaxProtocolGraph Prisoners.game)).result
     rowCommitNode rowDefectSlice
@@ -240,9 +237,7 @@ theorem rowDefectAction_legal_initial :
   · rfl
 
 theorem rowCommitNode_prereqs_eq_empty :
-    ProgramNode.prereqs Prisoners.game.wctx Prisoners.game.wf.1
-      Prisoners.game.wf.2.2 Prisoners.game.legal Prisoners.game.normalized
-      rowCommitNode = ∅ := by
+    ProgramNode.prereqs Prisoners.game.obligations rowCommitNode = ∅ := by
   classical
   apply Finset.ext
   intro prereq
@@ -267,20 +262,16 @@ theorem rowCommitNode_initial_frontier :
   · rfl
   · intro prereq hpre
     exfalso
-    change prereq ∈ ProgramNode.prereqs Prisoners.game.wctx
-      Prisoners.game.wf.1 Prisoners.game.wf.2.2 Prisoners.game.legal
-      Prisoners.game.normalized rowCommitNode at hpre
+    change prereq ∈ ProgramNode.prereqs Prisoners.game.obligations
+      rowCommitNode at hpre
     rw [rowCommitNode_prereqs_eq_empty] at hpre
     cases hpre
 
 theorem rowCommitNode_actor :
-    (ProgramNode.sem Prisoners.game.wctx Prisoners.game.wf.1
-      Prisoners.game.wf.2.2 Prisoners.game.legal Prisoners.game.normalized
-      rowCommitNode).actor = some Prisoners.Player.row := by
+    (ProgramNode.sem Prisoners.game.obligations rowCommitNode).actor =
+      some Prisoners.Player.row := by
   have hsem : ∃ field guard,
-      ProgramNode.sem Prisoners.game.wctx Prisoners.game.wf.1
-        Prisoners.game.wf.2.2 Prisoners.game.legal
-        Prisoners.game.normalized rowCommitNode =
+      ProgramNode.sem Prisoners.game.obligations rowCommitNode =
           ProtocolGraph.NodeSem.commit Prisoners.Player.row field guard := by
     unfold ProgramNode.sem
     dsimp [rowCommitNode, Prisoners.game, Prisoners.program]
@@ -296,9 +287,8 @@ theorem rowDefectAction_available_initial :
       Prisoners.Player.row := by
   refine ⟨rowCommitNode_initial_frontier, ?_,
     rowDefectSlice_legal, rowDefectAction_legal_initial⟩
-  change (ProgramNode.sem Prisoners.game.wctx Prisoners.game.wf.1
-    Prisoners.game.wf.2.2 Prisoners.game.legal Prisoners.game.normalized
-    rowCommitNode).actor = some Prisoners.Player.row
+  change (ProgramNode.sem Prisoners.game.obligations rowCommitNode).actor =
+    some Prisoners.Player.row
   exact rowCommitNode_actor
 
 theorem defaultProfile_eu_eq_blockedTrace

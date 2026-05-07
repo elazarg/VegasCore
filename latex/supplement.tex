@@ -676,6 +676,20 @@ and \TT{ViewScoped}, so the bundle in fact records six independent facts.
 Every public game-theoretic API in the codebase consumes \WFP, never raw
 \TT{VegasCore}.
 
+\paragraph{Syntax-graph obligation bundle.}
+The syntax-graph compiler has an additional local packaging layer:
+\TT{ProgramNode.ProgramObligations p} bundles exactly the static facts needed
+to interpret a source occurrence,
+\TT{hctx}, \TT{fresh}, \TT{hscoped}, \TT{legal}, and \TT{normalized}.  Its
+tail projections \TT{letTail}, \TT{sampleTail}, \TT{commitTail}, and
+\TT{revealTail} encode the recursive proof payloads for suffix programs.
+\TT{WFProgram.obligations} builds this bundle from a checked program $g$ and
+is what \TT{syntaxProtocolGraph} passes to \TT{ProgramNode.sem},
+\TT{prereqs}, \TT{sliceLegal}, \TT{actionLegal}, and
+\TT{internalKernel}. This is proof/API plumbing: it does not add a new
+semantic side condition, but it keeps the generated syntax graph layer from
+threading five separate proof arguments through every recursive call.
+
 \paragraph{Finite domains.}
 The class \TT{FiniteDomains}~$g$ provides instance evidence that all
 operational types in $g$ are finite (\TT{FiniteVCtx} for the initial context
@@ -740,11 +754,21 @@ truth value.
 
 \paragraph{Math.}
 Each graph node carries one of four semantic payloads, mirroring (but not
-identical to) the four non-\Ret{} source constructors. Three projections
+identical to) the four non-\Ret{} source constructors. Several projections
 are derived: $\mathrm{actor}$ (which player owns this node, if any),
-$\mathrm{reads}$ (the fields read), $\mathrm{writes}$ (the field-write list).
-Only \TT{commit} has an actor — \TT{assign}, \TT{sample}, and \TT{reveal}
-are internal.
+$\mathrm{reads}$ (the fields read), $\mathrm{writes}$ (the field-write list),
+$\mathrm{writeTarget}$ (the unique field this node writes), $\mathrm{writeFields}$
+(its singleton finset form), and the predicates \TT{WritesField} and
+\TT{WritesWithMode} that locate a write by field and storage mode. Only
+\TT{commit} has an actor — \TT{assign}, \TT{sample}, and \TT{reveal} are
+internal. The single-field-write convention is exposed as the simp lemma
+\TT{writeFields_eq_singleton}: every node writes exactly one field.
+
+\paragraph{Field reindexing.}
+\TT{NodeSem.mapFields} transports a node-semantic payload through a field map
+that preserves field types. It is the workhorse used by the syntax-graph
+compiler to reuse the abstract \TT{NodeSem} carrier over its concrete program
+fields rather than maintaining a parallel ad-hoc layer.
 
 \subsection{The protocol graph itself: \TT{ProtocolGraph}}
 \label{def:ProtocolGraph}
@@ -992,6 +1016,17 @@ Crucially, the round-action alphabet \TT{Act} is independent of the
 machine action alphabet \TT{M.Action}: a single round may consist of many
 machine events. For graph protocols, a round-action is a slice for every
 owned frontier node.
+
+\paragraph{Round menus and observation equivalence.}
+For graph machines the player-facing menu at a frontier round is packaged
+as \TT{ProtocolGraph.roundMenu G cfg who}: a set of optional round-actions
+where \texttt{none} means the player is not active in the current round and
+\texttt{some action} means the player is active and \texttt{action} is legal
+on every frontier node they own. The accompanying theorem
+\TT{syntaxGraph_roundMenu_eq_of_observation_eq} shows that two configurations
+that are indistinguishable to a player offer that player the same menu —
+the structural form of ``a player's available choices depend only on what
+they observe.''
 
 \paragraph{Why FOSG and not extensive form.}
 Standard extensive-form games index strategies by histories; FOSG indexes
@@ -1721,12 +1756,23 @@ shape at the root.
 
 \subsection{StrategicSemantics}
 
-The file \TT{Examples/StrategicSemantics.lean} is an exploratory worked
-example: it spells out the explicit protocol-graph nodes and field
-assignments produced by compiling Prisoners, and uses these to exercise the
-\TT{sliceLegal} and \TT{actionLegal} predicates. It is the recommended
-starting point for a reader who wants to see \emph{how} the source
-compiler maps individual constructors to graph data.
+The file \TT{Examples/StrategicSemantics.lean} packages the strategic side of
+the worked examples. It first proves three generic theorems for any checked
+program $g$: the public-game and blocked-trace-game expected utilities are
+equal (\TT{pure_eu_eq_blockedTrace} and \TT{behavioral_eu_eq_blockedTrace})
+and Nash and dominance predicates transport across the projection
+(\TT{pure_nash_iff_blockedTrace}, \TT{behavioral_nash_iff_blockedTrace},
+\TT{pure_dominant_iff_blockedTrace}), and exposes a generic legal pure
+strategy \TT{defaultPureStrategy} witnessing that the strategy carrier is
+inhabited. It then specialises these theorems to each example
+(Prisoners, Matching Pennies, Battle of the Sexes, Monty Hall,
+SyntaxConstructors), and for Prisoners additionally spells out the explicit
+protocol-graph nodes and field assignments — \TT{rowCommitNode},
+\TT{rowDefectSlice}, \TT{rowDefectAction} — and exercises \TT{sliceLegal} and
+\TT{actionLegal} directly. It is the recommended starting point for a reader
+who wants to see \emph{how} the source compiler maps individual constructors
+to graph data, and \emph{how} the public-game and blocked-trace-game views
+relate at the strategic API.
 
 % =====================================================================
 \section{Reading order}
