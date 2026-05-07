@@ -260,6 +260,39 @@ noncomputable def pmfBehavioralKernelGameAt.blockedTraceProjection
       funext who
       rfl)
 
+omit [DecidableEq P] in
+/-- If two outcome kernels are projections of the same finite source run and
+the projected utilities agree pointwise, their expected utility agrees. -/
+theorem expect_eq_of_projected_kernel
+    {α β γ : Type} [Finite α]
+    (run : PMF α)
+    (projectTrace : α → β) (projectOutcome : α → γ)
+    (traceUtility : β → P → ℝ) (outcomeUtility : γ → P → ℝ)
+    (who : P)
+    (hutility :
+      ∀ h, traceUtility (projectTrace h) who =
+        outcomeUtility (projectOutcome h) who) :
+    Math.Probability.expect (PMF.map projectTrace run)
+        (fun trace => traceUtility trace who) =
+      Math.Probability.expect (PMF.map projectOutcome run)
+        (fun outcome => outcomeUtility outcome who) := by
+  classical
+  letI := Fintype.ofFinite α
+  calc
+    Math.Probability.expect (PMF.map projectTrace run)
+        (fun trace => traceUtility trace who) =
+        ∑ h : α, (run h).toReal * traceUtility (projectTrace h) who := by
+          rw [Math.Probability.expect_map_fintype_source]
+    _ =
+        ∑ h : α, (run h).toReal * outcomeUtility (projectOutcome h) who := by
+          refine Finset.sum_congr rfl ?_
+          intro h _
+          rw [hutility h]
+    _ =
+      Math.Probability.expect (PMF.map projectOutcome run)
+        (fun outcome => outcomeUtility outcome who) := by
+          rw [Math.Probability.expect_map_fintype_source]
+
 /-- Pure strategic-form play and blocked-trace play give the same expected
 utility. -/
 theorem pureBlockedTraceKernelGameAt_eu_eq
@@ -303,19 +336,11 @@ theorem pureBlockedTraceKernelGameAt_eu_eq
           rw [htrace]
           rfl
     _ =
-        ∑ h' : G.History,
-          (run h').toReal *
-            (pureBlockedTraceKernelGameAt g).utility (projectTrace h') who := by
-          rw [Math.Probability.expect_map_fintype_source]
-    _ =
-        ∑ h' : G.History,
-          (run h').toReal *
-            (pureKernelGameAt g).utility (projectOutcome h') who := by
-          rfl
-    _ =
         Math.Probability.expect (PMF.map projectOutcome run)
           (fun outcome => (pureKernelGameAt g).utility outcome who) := by
-          rw [Math.Probability.expect_map_fintype_source]
+          exact expect_eq_of_projected_kernel run projectTrace projectOutcome
+            (pureBlockedTraceKernelGameAt g).utility
+            (pureKernelGameAt g).utility who (fun _ => rfl)
     _ = (pureKernelGameAt g).eu π who := by
           rw [← hpublic]
           rfl
@@ -366,20 +391,11 @@ theorem pmfBehavioralBlockedTraceKernelGameAt_eu_eq
           rw [htrace]
           rfl
     _ =
-        ∑ h' : G.History,
-          (run h').toReal *
-            (pmfBehavioralBlockedTraceKernelGameAt g).utility
-              (projectTrace h') who := by
-          rw [Math.Probability.expect_map_fintype_source]
-    _ =
-        ∑ h' : G.History,
-          (run h').toReal *
-            (pmfBehavioralKernelGameAt g).utility (projectOutcome h') who := by
-          rfl
-    _ =
         Math.Probability.expect (PMF.map projectOutcome run)
           (fun outcome => (pmfBehavioralKernelGameAt g).utility outcome who) := by
-          rw [Math.Probability.expect_map_fintype_source]
+          exact expect_eq_of_projected_kernel run projectTrace projectOutcome
+            (pmfBehavioralBlockedTraceKernelGameAt g).utility
+            (pmfBehavioralKernelGameAt g).utility who (fun _ => rfl)
     _ = (pmfBehavioralKernelGameAt g).eu β who := by
           rw [← hpublic]
           rfl
