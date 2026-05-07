@@ -257,6 +257,16 @@ theorem evalExpr_weakenAfterHead
   | ite c t f ihc iht ihf =>
       simp [Expr.weakenAfterHead, evalExpr, ihc, iht, ihf]
 
+private theorem not_mem_left_of_not_mem_union
+    {α : Type} [DecidableEq α] {a : α} {s t : Finset α}
+    (h : a ∉ s ∪ t) : a ∉ s :=
+  fun hs => h (Finset.mem_union_left t hs)
+
+private theorem not_mem_right_of_not_mem_union
+    {α : Type} [DecidableEq α] {a : α} {s t : Finset α}
+    (h : a ∉ s ∪ t) : a ∉ t :=
+  fun ht => h (Finset.mem_union_right s ht)
+
 def Expr.dropAfterHead
     {Γ : CtxSimple} {x y : VarId} {τ σ b : BaseTy}
     (e : Expr ((x, τ) :: (y, σ) :: Γ) b)
@@ -270,79 +280,48 @@ def Expr.dropAfterHead
   | .constRange v => .constRange v
   | .none => .none
   | .some e =>
-      .some (e.dropAfterHead (by
-        intro hmem
-        apply hy
-        simpa [exprDeps] using hmem))
+      .some (e.dropAfterHead (by simpa [exprDeps] using hy))
   | .isSome e =>
-      .isSome (e.dropAfterHead (by
-        intro hmem
-        apply hy
-        simpa [exprDeps] using hmem))
+      .isSome (e.dropAfterHead (by simpa [exprDeps] using hy))
   | .isNone e =>
-      .isNone (e.dropAfterHead (by
-        intro hmem
-        apply hy
-        simpa [exprDeps] using hmem))
+      .isNone (e.dropAfterHead (by simpa [exprDeps] using hy))
   | .getD e fallback =>
+      have hy' : y ∉ exprDeps e ∪ exprDeps fallback := by
+        simpa [exprDeps] using hy
       .getD
-        (e.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (fallback.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
+        (e.dropAfterHead (not_mem_left_of_not_mem_union hy'))
+        (fallback.dropAfterHead (not_mem_right_of_not_mem_union hy'))
   | .addInt l r =>
+      have hy' : y ∉ exprDeps l ∪ exprDeps r := by
+        simpa [exprDeps] using hy
       .addInt
-        (l.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (r.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
+        (l.dropAfterHead (not_mem_left_of_not_mem_union hy'))
+        (r.dropAfterHead (not_mem_right_of_not_mem_union hy'))
   | .eq l r =>
+      have hy' : y ∉ exprDeps l ∪ exprDeps r := by
+        simpa [exprDeps] using hy
       .eq
-        (l.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (r.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
+        (l.dropAfterHead (not_mem_left_of_not_mem_union hy'))
+        (r.dropAfterHead (not_mem_right_of_not_mem_union hy'))
   | .andBool l r =>
+      have hy' : y ∉ exprDeps l ∪ exprDeps r := by
+        simpa [exprDeps] using hy
       .andBool
-        (l.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (r.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
+        (l.dropAfterHead (not_mem_left_of_not_mem_union hy'))
+        (r.dropAfterHead (not_mem_right_of_not_mem_union hy'))
   | .notBool e =>
-      .notBool (e.dropAfterHead (by
-        intro hmem
-        apply hy
-        simpa [exprDeps] using hmem))
+      .notBool (e.dropAfterHead (by simpa [exprDeps] using hy))
   | .ite c t f =>
+      have hy' : y ∉ exprDeps c ∪ exprDeps t ∪ exprDeps f := by
+        simpa [exprDeps] using hy
       .ite
-        (c.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (t.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
-        (f.dropAfterHead (by
-          intro hmem
-          apply hy
-          simp [exprDeps, hmem]))
+        (c.dropAfterHead
+          (not_mem_left_of_not_mem_union
+            (not_mem_left_of_not_mem_union hy')))
+        (t.dropAfterHead
+          (not_mem_right_of_not_mem_union
+            (not_mem_left_of_not_mem_union hy')))
+        (f.dropAfterHead (not_mem_right_of_not_mem_union hy'))
 
 theorem evalExpr_dropAfterHead
     {Γ : CtxSimple} {x y : VarId} {τ σ b : BaseTy}
