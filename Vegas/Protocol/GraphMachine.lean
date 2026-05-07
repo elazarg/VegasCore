@@ -639,6 +639,43 @@ noncomputable def toFOSGView
       rw [hjoint]
       exact hactive
 
+/-- The optional-move set of the FOSG induced by a protocol graph is the
+graph-level `roundMenu`.  Bridges the strategic FOSG carrier (which pairs
+each player's optional round move with a `none` for inactive rounds) and the
+direct configuration-level menu. -/
+@[simp] theorem toFOSGView_toFOSG_availableMovesAtState_eq_roundMenu
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasStableFrontierRounds)
+    (cfg : G.Configuration) (who : Player) :
+    (G.toFOSGView iface hsound).toFOSG.availableMovesAtState cfg who =
+      G.roundMenu cfg who := by
+  ext move
+  cases move <;> rfl
+
+/-- The bounded-FOSG version: before the horizon cutoff, optional round moves
+agree with the player-facing graph menu. -/
+theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
+    (G : Vegas.ProtocolGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasStableFrontierRounds) (horizon : Nat) (who : Player)
+    (state : (G.toMachine iface).BoundedState horizon)
+    (hcut : ¬ horizon ≤ state.depth) :
+    ((G.toFOSGView iface hsound).toBoundedFOSG horizon).availableMovesAtState
+        state who =
+      G.roundMenu state.state who := by
+  ext move
+  rw [GameTheory.FOSG.mem_availableMovesAtState_iff]
+  cases move with
+  | none =>
+      change ¬ who ∈ Machine.FOSGView.boundedActive _ horizon state ↔ _
+      simp [Machine.FOSGView.boundedActive, hcut]
+      rfl
+  | some action =>
+      change who ∈ Machine.FOSGView.boundedActive _ horizon state ∧
+          action ∈ Machine.FOSGView.boundedAvailableActions _ horizon state who ↔ _
+      simp [Machine.FOSGView.boundedActive,
+        Machine.FOSGView.boundedAvailableActions, hcut]
+      rfl
+
 /-- One bounded graph-FOSG transition, projected back to graph configurations,
 is the primitive machine run of the round's canonical frontier event list. -/
 theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom
