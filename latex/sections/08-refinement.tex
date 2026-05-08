@@ -1,0 +1,143 @@
+\section{Backend refinement and transport}
+\label{sec:refinement}
+
+A real implementation of a protocol — a smart contract, a
+network-layer rewrite, a scheduler-equipped runtime — is rarely a
+literal event graph.  It has additional state (transactions,
+mempool order, gas, retry logic, network ordering), additional
+internal events (block production, message reordering), and possibly
+different action alphabets at the user-facing surface.  The
+\emph{refinement layer} is the formal account of how such an
+implementation is permitted to differ from the canonical event-graph
+machine while still preserving the strategic semantics that users
+were verifying.
+
+\subsection{Refinement of machines}
+\label{sec:ref:machines}
+
+A \emph{state projection} from an implementation machine $\Mach^I$
+to a specification machine $\Mach^S$ is a function $\proj : \State^I
+\to \State^S$ satisfying the boundary conditions
+\[
+  \proj(s_0^I) = s_0^S, \qquad
+  \term^S(\proj(s)) \;\Leftrightarrow\; \term^I(s)
+\]
+together with consistency on observations and outcomes:
+$\pubView^S \circ \proj = \pubView^I$, $\mathrm{obs}^S_p \circ \proj
+= \mathrm{obs}^I_p$, and $\out^S \circ \proj = \out^I$ on terminal
+states.  A refinement is a state projection plus a transition
+condition; the codebase formalises two strengths.
+
+\begin{definition}[Weak step refinement]
+\label{def:weak-ref}
+$\Mach^I \refines_w \Mach^S$ via $\proj$ iff every implementation
+external (player) event corresponds, under $\proj$, to a
+specification event:
+$\mathrm{step}_p^I(a, s) \bind \proj
+  = \mathrm{step}_p^S(\widetilde{a}, \proj(s))$
+for some specification action $\widetilde{a}$, and every
+implementation internal event preserves the projected state.
+\end{definition}
+
+\begin{definition}[Stochastic step refinement]
+\label{def:stoch-ref}
+$\Mach^I \refines_s \Mach^S$ via $\proj$ iff additionally the
+pushforward of the implementation step kernel through $\proj$
+\emph{equals} the specification's step kernel (with implementation
+internal events stuttering on the spec side).
+\end{definition}
+
+\Cref{def:stoch-ref} is strictly stronger: it equates the
+\emph{distributions} over post-step projected states, not just their
+supports.  Two weak refinements can both be valid yet assign
+different probabilities to the same projected outcome — for example,
+a fair-coin and a biased-coin implementation of the same
+$\Sample\,x \sim \mathrm{Bernoulli}$ both project deterministically
+to the same spec event but differ on the post-step state law, and
+strategic analysis is sensitive to that difference.  Probability-
+preserving transport theorems therefore require the stochastic
+form.  Every machine refines itself stochastically by the identity
+projection, providing a baseline backend.
+
+\designnote{Weak refinement is the standard verification-style
+condition~\citep{LynchVaandrager1995,AbadiLamport1991,Park1981Bisimulation}:
+projection commutes with transitions modulo internal stuttering.
+The stochastic strengthening tracks distributions, not just
+supports~\citep{Segala1995Probabilistic}.}
+
+\subsection{Trace-level transport}
+\label{sec:ref:trace}
+
+Refinement at the per-step level lifts to a refinement at the
+trace level: for any scheduler $\lambda^I$ on $\Mach^I$, the
+projection of its trace distribution matches the trace
+distribution of the projected scheduler on $\Mach^S$.  The
+codebase records this as
+$\mathrm{runEventsFrom\_project\_eq}$ and
+$\mathrm{blockTraceDist\_project\_eq}$, with the latter exposing
+the projection at the FOSG-block granularity.
+
+\subsection{Backend kernel-game transport}
+\label{sec:ref:kg}
+
+The strategic transport theorems are stated as
+\emph{expected-utility-preserving morphisms} from a backend
+kernel game to the canonical Vegas blocked-trace kernel game.  A
+\emph{compatible block-law lift} is, intuitively, a per-profile
+choice of how the spec graph and the implementation each generate a
+distribution over event-block traces, plus a proof that the two
+generations match through $R$ — that is, the implementation's
+block-law projected through $R$ equals the spec's, and the spec's
+reproduces the canonical blocked-trace outcome kernel.  The
+construction therefore takes:
+\begin{itemize}\itemsep1pt
+\item a stochastic refinement $R$ from the implementation machine
+  to the spec event-graph machine, and
+\item a compatible block-law lift, in the pure or PMF-behavioural
+  form depending on the target kernel game.
+\end{itemize}
+
+These data assemble into a kernel-game morphism
+\[
+  \mathrm{backendBlockedTraceKernelGame}(g, R)
+  \;\longrightarrow\;
+  \mathrm{specBlockedTraceKernelGame}(g)
+\]
+that preserves expected utility.  The headline corollary is the
+\emph{Nash pullback}:
+
+\begin{theorem}[Backend Nash transport]
+\label{thm:backend-nash}
+Let $g$ be a checked program and $R$ a stochastic step refinement
+from $\Mach^I$ to $\Mach_{\mathsf{eg}(g)}$, with a compatible
+block-law lift.  Then for any profile $\Profile$ of the spec
+blocked-trace kernel game,
+\[
+  \mathrm{IsNash}_{\mathrm{spec}}(\Profile)
+  \;\Longrightarrow\;
+  \mathrm{IsNash}_{\mathrm{backend}}(\Profile)
+\]
+(\emph{Nash pullback} along the backend-to-spec morphism).  The
+same holds for the PMF-behavioural variant, and combined with
+\Cref{thm:trace-public} (trace-to-public agreement) yields the
+composed ``public spec game $\to$ backend blocked-trace game''
+pullback for both pure and behavioural Nash.
+\end{theorem}
+
+The pullback is a one-way transport: an equilibrium proved on the
+spec game holds on the backend game.  The reverse direction (a
+backend equilibrium implies a spec equilibrium) does not in general
+follow from the morphism, because the backend may admit profiles
+outside the image of the spec strategy carrier.
+
+The intended workflow is then explicit: \emph{reason about the
+canonical spec public game; prove the implementation refines it;
+transport the equilibria}.
+
+\paragraph{Lean correspondence.}
+Supplement~\S8 (backend layer): \TT{WeakStepRefinement},
+\TT{StochasticStepRefinement}, the trace-projection lemmas,
+\TT{BackendPureBlockLawLift}, \TT{BackendBehavioralBlockLawLift},
+and the two pullback theorems
+(\TT{backendBlockedTraceKernelGameAt\_isNash\_pullback},
+\TT{backendPMFBehavioralBlockedTraceKernelGameAt\_isNash\_pullback}).

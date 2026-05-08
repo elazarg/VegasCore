@@ -1,0 +1,129 @@
+\section{Machines: an asynchronous probabilistic carrier}
+\label{sec:machines}
+
+The event graph of \S\ref{sec:eventgraphs} is a static description.
+Game-theoretic constructions need an operational object: states,
+actions, transitions, observations, and outcomes.  We introduce a
+generic \emph{machine} carrier and exhibit the canonical event-graph
+machine as one of its instances.  The same machine carrier is the
+target of the backend refinement layer (\S\ref{sec:refinement}), so
+backend implementations and the canonical event-graph semantics live
+in the same universe.
+
+\subsection{The machine carrier}
+\label{sec:mach:carrier}
+
+A \emph{machine} on a player set $\Players$ is a tuple
+\[
+  \Mach = \bigl(\;
+    \State,\; \{\Action_p\}_p,\; \Internal,\; \Pubobs,\; \{\Obs_p\}_p,\;
+    \Outcome,\;
+    s_0,\;
+    \avail,\; \availInt,\;
+    \stepPlay,\; \stepInt,\;
+    \term,\; \pubView,\; \mathrm{obs},\; \out,\; u
+  \;\bigr)
+\]
+of a state space $\State$; per-player action types $\{\Action_p\}$;
+an internal-event type $\Internal$; a public observation type
+$\Pubobs$ and per-player observation types $\{\Obs_p\}$; an outcome
+type $\Outcome$ with utility $u : \Outcome \to (\Players \to
+\mathbb{R})$; an initial state $s_0$; two availability predicates
+\begin{align*}
+  \avail    &: (p : \Players) \to \Action_p \to \State \to \Prop, \\
+  \availInt &: \Internal \to \State \to \Prop,
+\end{align*}
+two transition kernels
+\begin{align*}
+  \stepPlay &: (p : \Players) \to \Action_p \to \State \to \PMF{\State}, \\
+  \stepInt  &: \Internal \to \State \to \PMF{\State},
+\end{align*}
+a terminal predicate $\term : \State \to \Prop$, and projections
+$\pubView : \State \to \Pubobs$, $\mathrm{obs}_p : \State \to \Obs_p$,
+$\out : \State \to \Outcome$.  A primitive \emph{event} is either
+$(\mathsf{play}, p, a)$ for $a \in \Action_p$ or $(\mathsf{internal},
+e)$ for $e \in \Internal$.
+
+\designnote{The transition kernels are \emph{total}.  Legality of an
+event is a separate predicate ($\avail$ or $\availInt$).  Total
+kernels make composition and trace semantics easy to write:
+$\stepPlay$ never returns a partial result.  The standard
+implementation choice for unavailable events is to \emph{stutter} —
+return $\delta_s$ at the source state — and the event-graph instance
+below makes that choice.  But the abstract carrier does not commit
+to it; a backend may legitimately reduce to an absorbing failure
+state instead, and the refinement theorems still go through, as long
+as the projection commutes with both choices on the spec side.}
+
+\subsection{Schedulers, traces, and outcome kernels}
+\label{sec:mach:traces}
+
+A \emph{scheduler} (or \emph{event law}) is a state-indexed law
+$\lambda : \State \to \PMF{\Event}$ that selects the next event from
+each state.  We say $\lambda$ is \emph{legal} if its support at any
+non-terminal state is contained in the available events.  Iterating
+$\lambda$ for $n$ steps from $s_0$ yields a distribution over
+length-$n$ event-state traces, $\mathrm{Tr}_n(\Mach, \lambda) \in
+\PMF{\mathrm{RunPrefix}_n}$.  Marginalising on the final state and
+projecting via $\out$ yields the \emph{outcome kernel}
+\[
+  \mathrm{outcomeKernel}_\lambda \in \PMF{\Outcome}.
+\]
+
+The outcome kernel is the bridge between operational traces and
+game-theoretic objects: every kernel game built later
+(\S\ref{sec:fosg-strategies}) factors through some
+$\mathrm{outcomeKernel}_\lambda$ for an appropriate scheduler
+constructed from the strategy profile.
+
+\subsection{The event-graph machine}
+\label{sec:mach:eg-instance}
+
+The event-graph instance is the canonical interpretation of an
+event graph $\EG$ as a machine $\Mach_{\EG}$:
+\begin{itemize}\itemsep1pt
+\item $\State = \Cfg(\EG)$, the configurations of $\EG$.
+\item $\Action_p = \{(n, s) : n \in \Nodes,\, \actor(n) = p,\,
+  s \in \Slice(n)\}$, a frontier node owned by $p$ paired with a
+  candidate write slice.
+\item $\Internal = \{(n) : n \in \Nodes,\, \actor(n) = \bot\} \cup
+  \{\mathsf{idle}\}$, a frontier non-player node, with an
+  always-unavailable $\mathsf{idle}$ added to keep the type
+  inhabited at terminal states.
+\item $\avail(p, (n, s), C)$ holds iff $n \in \frontier(C)$,
+  $\actor(n) = p$, $\mathrm{sliceLegal}(n, s)$, and
+  $\mathrm{actionLegal}(C, n, s)$.
+\item $\stepPlay(p, (n, s), C) = \delta_{C[n \mapsto s]}$ when the
+  action is available, $\delta_C$ (stuttering) otherwise.
+\item $\stepInt(n, C) = \mathrm{internalKernel}(n, C) \bind
+  \lambda s.\,\delta_{C[n \mapsto s]}$ when $n$ is enabled, $\delta_C$
+  otherwise.
+\item $\term(C)$ holds iff $\frontier(C) = \emptyset$.
+\item $\out(C)$ is the public outcome of a terminal configuration
+  (the public projection of the payoff slice at the $\Ret$ node).
+\item $\pubView$ projects $C$ to the visible-to-all public state;
+  $\mathrm{obs}_p(C)$ projects to $p$'s view.
+\end{itemize}
+
+\Cref{thm:diamond,thm:barrier} immediately become statements about
+$\Mach_{\EG}$: independent player events commute, and a player
+action whose underlying node is a prior commit of an enabled reveal
+is unavailable at any configuration where the reveal is enabled.
+
+\begin{remark}[Stuttering vs.\ blocking]
+\label{rem:stutter}
+The choice to stutter on unavailable events makes $\stepPlay$ and
+$\stepInt$ total without introducing an extra ``error'' state.  An
+externally observable consequence is that strategies that prescribe
+an unavailable action effectively waste a turn.  This is benign:
+strategy carriers later (\S\ref{sec:fosg-strategies}) are restricted
+to legal actions by construction, so the stuttering branch is
+never reached for a strategy in the carrier — but it makes the
+base machine semantics robust to off-carrier inputs, which is
+useful for refinement reasoning.
+\end{remark}
+
+\paragraph{Lean correspondence.}
+Supplement~\S6.1 (machine carrier), \S6.2 (run prefixes,
+schedulers, traces), \S6.3 (the event-graph machine
+interpretation).

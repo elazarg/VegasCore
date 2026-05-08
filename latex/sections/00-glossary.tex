@@ -1,0 +1,96 @@
+\section{How to read this report}
+\label{sec:glossary}
+
+This report develops a mechanised semantics for a finite probabilistic
+game-description language.  The intended reader has a working knowledge
+of finite extensive-form games (players, information sets, mixed and
+behavioural strategies, Nash equilibrium) but is not assumed to know
+the modern factored-observation formalism, the Lean proof assistant,
+or the specific corner of programming-language semantics that
+underlies the construction.  We make three concessions to that mixed
+audience.
+
+\paragraph{Math first, Lean on the side.}
+The body of the report uses ordinary mathematical notation.  Lean
+identifiers appear only when their type or naming choice is itself the
+subject of a design discussion; otherwise they are deferred to the
+companion definitional supplement, which is the authoritative
+cross-reference for every mathematical object introduced here.  Each
+section ends with a brief \emph{Lean correspondence} note pointing to
+the relevant supplement subsections.
+
+\paragraph{Glossary.}
+The following terms are used pervasively.  Readers from one
+discipline can usually skip the entries that match their background.
+
+\begin{description}[itemsep=0pt,leftmargin=1.2em,style=nextline]
+\item[Finite-support distribution / probability mass function (PMF).]
+  A function $\mu : \alpha \to [0,1]$ with finite support and
+  $\sum_x \mu(x) = 1$.  We write $\PMF{\alpha}$ for the set of such
+  functions.  $\PMF{\cdot}$ is a monad: the bind operator
+  $\mu \bind f = \sum_x \mu(x)\,f(x)$ chains a stochastic step with a
+  continuation indexed by its result, and the unit $\delta_x$
+  (\emph{Dirac}) is the point mass at $x$.
+\item[Finite-weight function.]
+  An auxiliary unnormalised version, $\FWeight{\alpha} = \alpha \to_0
+  \NNQ$, used internally during construction; converting to a PMF
+  requires a side proof of total mass $1$.
+\item[Kuhn's theorem (finite realisation form).]
+  In a finite extensive-form game with sufficient observability,
+  every mixed strategy over pure contingent plans induces the same
+  outcome distribution as some behavioural strategy that randomises
+  locally at each information set~\citep{Kuhn1953}.  The classical
+  statement requires \emph{perfect recall}; the finite-Kuhn
+  theorem of this report (\S\ref{sec:presentations}) is the
+  bounded-FOSG analogue and is conditioned on a corresponding
+  legal-observability hypothesis discharged from visibility and
+  frontier stability.
+\item[Factored-observation stochastic game (FOSG).]
+  A modern state-based formalism for finite extensive-form games with
+  imperfect information~\citep{Kovarik2022}: each round, an active set
+  of players picks actions from local alphabets, the state transitions
+  stochastically, and per-player observations are emitted.  FOSGs
+  separate cleanly from extensive-form trees by indexing strategies on
+  per-player observation sequences rather than on global histories.
+\item[Extensive-form game (EFG).]
+  The classical tree presentation, with chance and decision nodes,
+  per-player information sets, and outcomes at the leaves.
+\item[Kernel game.]
+  A minimal strategic-form carrier sufficient to define expected utility
+  and Nash equilibrium: a per-player strategy type, an outcome type, a
+  stochastic kernel from joint strategies to outcomes, and a utility
+  $u : \Outcome \to \Players \to \mathbb{R}$.  Distinct from a
+  normal-form game in that strategies need not be hand-written
+  actions: they may be functions from observations to actions, and
+  outcomes may carry more than a payoff vector.
+\item[Static-single-assignment (SSA).]
+  A standard programming-language convention~\citep{cytron1991efficiently}
+  in which every variable is assigned at exactly one program point.  A
+  program in SSA form has a unique definition site for each name; we
+  exploit this to make every event node carry a unique write target.
+\item[Event structure / dependency graph.]
+  In concurrency theory~\citep{NielsenPlotkinWinskel1981,Winskel1986EventStructures}
+  an event structure abstracts a process by its events and a causal
+  dependency relation; independent events are unordered and may be
+  permuted without affecting the resulting state.  Our event graphs
+  are a typed, finite, asymmetric variant adapted to the protocol
+  setting.
+\item[Refinement / forward simulation.]
+  A binary relation between an implementation and a specification
+  asserting that the implementation cannot be distinguished from the
+  specification by any externally observable behaviour.  Conventionally
+  proved by exhibiting a state projection and matching transitions
+  step-by-step~\citep{LynchVaandrager1995,AbadiLamport1991}.
+\item[Visibility / view.]
+  The information-set structure of a multi-party protocol, presented
+  here as a binding-level discipline: every variable is either public
+  or hidden to a single owner, and every program point exposes a
+  per-player projected context.
+\end{description}
+
+\paragraph{Lean correspondence.}
+For a top-down map from the bird's-eye picture to file paths, see
+supplement~\S1.  Cross-references in this report use the supplement's
+\TT{Vegas.X} naming.  Every theorem and definition stated here is
+mechanised; the supplement records the exact Lean type and field
+list.

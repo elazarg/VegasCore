@@ -1,0 +1,293 @@
+\section{Event graphs}
+\label{sec:eventgraphs}
+
+The event graph is the central object of the construction.  It turns
+the syntax tree of a checked program into a finite directed acyclic
+graph of typed event nodes with explicit dependency edges, and
+replaces the implicit ``state along the spine'' of an interpreter
+with an extensional partial assignment from nodes to their write
+slices.  The strategically relevant content of a configuration is
+\emph{which} events have produced which results, not the order in
+which they were produced.
+
+\subsection{Nodes, fields, and slices}
+\label{sec:eg:nodes-fields}
+
+An \emph{event graph} is a tuple
+\[
+  \EG = \bigl(
+    \Nodes, \Fields, \mathrm{fieldTy}, \mathrm{fieldOwner},
+    \mathrm{initial}, \mathrm{sem}, \prereq, \rank,
+    \mathrm{sliceLegal}, \mathrm{actionLegal}, \mathrm{internalKernel}
+  \bigr)
+\]
+of finite typed-DAG data and three pieces of legality and execution
+data.  We unpack each in turn.
+
+\subsubsection*{Nodes and fields}
+
+$\Nodes$ is a finite set of \emph{event nodes} with decidable
+equality.  $\Fields$ is a finite set of \emph{typed storage fields},
+each with a base type given by $\mathrm{fieldTy} : \Fields \to \Ty$
+and an optional owner $\mathrm{fieldOwner} : \Fields \to
+\mathrm{Option}(\Players)$.  The function $\mathrm{initial}(f)$
+optionally provides an initial value for each field; absent fields
+are uninitialised until written.
+
+\subsubsection*{Stored values and write slices}
+
+A field's storage is a \emph{stored value}: a value of the field's
+base type, tagged as either \textsf{clear} (currently public) or
+\textsf{hidden} (sealed).  A \emph{write slice} for a node $n$ is a
+partial map
+\[
+  s : \Fields \;\rightharpoonup\; \mathrm{StoredValue},
+\]
+indicating which fields $n$ writes when it executes.  Every node
+writes exactly one field — this convention, the
+\emph{single-target} discipline, is key to the symbolic accounting
+of who writes what.
+
+\subsubsection*{Node semantics}
+
+Each node carries a \emph{node semantic} payload
+$\mathrm{sem}(n)$ in one of four shapes:
+\[
+  \mathrm{NodeSem} \;::=\;
+    \mathsf{assign}
+    \;\mid\;
+    \mathsf{sample}
+    \;\mid\;
+    \mathsf{commit}_p
+    \;\mid\;
+    \mathsf{reveal}.
+\]
+Only $\mathsf{commit}_p$ has an actor; $\mathsf{assign}$,
+$\mathsf{sample}$, and $\mathsf{reveal}$ are internal events of the
+machine.  Several derived projections are used pervasively:
+$\actor(n)$, $\readsOf(n)$ (a finset of fields read), and
+$\writeOf(n)$ (the unique target of the node's write).
+
+\subsubsection*{Prerequisites and rank}
+
+The function $\prereq : \Nodes \to \mathrm{Finset}(\Nodes)$ records
+the dependency relation, with the structural invariant that
+$\prereq(n) \subseteq \Nodes$ and (\emph{strict topological order})
+\[
+  \forall n.\; \forall q \in \prereq(n).\; \rank(q) < \rank(n).
+\]
+$\rank : \Nodes \to \mathbb{N}$ is a strict topological-order
+witness that serves as the termination measure for inductions over
+graph executions.  The $\prereq$ relation, not the rank, is what
+encodes \emph{semantic} dependency.
+
+\subsubsection*{Three pieces of legality and execution data}
+
+\begin{description}[itemsep=2pt]
+\item[$\mathrm{sliceLegal}(n, s)$ — \emph{shape}.]
+  Predicate on a node and a candidate write slice.  Purely
+  structural: it checks that $s$ writes the expected field, with the
+  expected base type, with the expected visibility (clear/hidden)
+  for the node's $\mathrm{NodeSem}$.  Does not consult guards or
+  results of other nodes.
+\item[$\mathrm{actionLegal}(C, n, s)$ — \emph{dynamic}.]
+  Predicate that may consult the result assignment $C$ of
+  already-completed nodes.  For a player commit node, this is where
+  the guard is evaluated against the proposed action and the
+  current visible reads of the actor.
+\item[$\mathrm{internalKernel}(n, C) \in \PMF{\Slice(n)}$.]
+  Stochastic kernel for non-player ($\mathsf{assign}$,
+  $\mathsf{sample}$, $\mathsf{reveal}$) nodes.  $\mathsf{assign}$
+  and $\mathsf{reveal}$ kernels are Dirac; $\mathsf{sample}$ is the
+  source-level distribution, evaluated against the public state.
+\end{description}
+
+\designnote{The split between \emph{shape} (\textsf{sliceLegal}) and
+\emph{dynamic} (\textsf{actionLegal}) is the structural analogue of
+the split between typing and the \emph{guard-uses-only}
+predicate of
+\S\ref{sec:source-language}: both put the part that can be checked
+by a syntactic over-approximation in one place, and the part that
+must consult the actual run-time state in another.  Internal kernels
+are stochastic but never depend on the schedule, only on the result
+assignment, which is what allows commit-internal commutation lemmas
+to be stated as kernel equalities rather than as schedule-quantified
+ones.}
+
+\subsection{Configurations and the frontier}
+\label{sec:eg:configurations}
+
+\subsubsection*{Configurations}
+
+A \emph{configuration} of $\EG$ is an extensional record of which
+nodes have produced which results:
+\begin{equation}
+\label{eq:configuration}
+  C : \Nodes \;\rightharpoonup\; \Slice(\cdot),
+\end{equation}
+satisfying three invariants.  (i) \emph{Result-nodes}: every $n$
+with $C(n) = \mathsf{some}\,s$ is in $\Nodes$.  (ii)
+\emph{Closed under prerequisites}: if $C(n) = \mathsf{some}\,s$ then
+$C(q) = \mathsf{some}\,s_q$ for every $q \in \prereq(n)$.  (iii)
+\emph{Locally legal}: for each completed node $n$, the recorded
+slice satisfies $\mathrm{sliceLegal}(n, C(n))$.
+
+\subsubsection*{The frontier}
+
+The frontier of $C$ is the set of unfinished nodes whose
+prerequisites have all completed:
+\begin{equation}
+\label{eq:frontier}
+  \frontier(C) \;=\;
+    \bigl\{\, n \in \Nodes \;\big|\;
+      C(n) = \mathsf{none}
+      \text{ and } \forall q \in \prereq(n).\, C(q) \neq \mathsf{none}
+    \,\bigr\}.
+\end{equation}
+The frontier is \emph{computed}, not stored.  This single design
+decision is responsible for most of the diamond properties below: a
+schedule is not part of the configuration, so two linearisations
+that finish the same set of nodes with the same per-node slices
+yield literally the same configuration.
+
+\begin{example}[Configurations of the Matching-Pennies graph]
+For the Matching-Pennies graph of \S\ref{sec:intro:matching-pennies},
+the initial configuration $C_0$ has $C_0(n) = \mathsf{none}$
+everywhere, $\frontier(C_0) = \{\Commit_{\textsf{m}},
+\Commit_{\textsf{m'}}\}$.  After both commits have completed (with
+slices $s_{\textsf{m}}, s_{\textsf{m'}}$), the configuration $C_2$
+records $C_2(\Commit_{\textsf{m}}) = s_{\textsf{m}}$ and
+$C_2(\Commit_{\textsf{m'}}) = s_{\textsf{m'}}$, with
+$\frontier(C_2) = \{\Reveal_{\textsf{m}}, \Reveal_{\textsf{m'}}\}$.
+The order in which the two commits were scheduled is not visible to
+$C_2$.
+\end{example}
+
+\subsection{Frontier preservation and the diamond}
+\label{sec:eg:diamond}
+
+We can now state the two structural theorems that justify the
+extensional, scheduler-free design.
+
+\begin{theorem}[Frontier preservation]
+\label{thm:front-preserv}
+Let $C$ be a configuration, and let $a, b \in \frontier(C)$ with
+$a \neq b$.  If $s_a$ is a slice for $a$ with $\mathrm{sliceLegal}
+(a, s_a)$, then in the successor configuration $C[a \mapsto s_a]$,
+the node $b$ is still on the frontier.
+\end{theorem}
+
+\begin{theorem}[Frontier diamond]
+\label{thm:diamond}
+Let $C$ be a configuration, $a, b \in \frontier(C)$ with $a \neq b$,
+and $s_a, s_b$ legal slices for $a, b$ respectively.  Then
+\[
+  \bigl(C[a \mapsto s_a]\bigr)[b \mapsto s_b]
+  \;=\;
+  \bigl(C[b \mapsto s_b]\bigr)[a \mapsto s_a]
+\]
+as configurations.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+\Cref{thm:front-preserv}: $b$ is unfinished in $C$, hence in
+$C[a\mapsto s_a]$ since $a \neq b$.  Its prerequisites are completed
+in $C$ and remain completed in any extension, so $b$'s frontier
+membership survives.  \Cref{thm:diamond}: configurations are
+extensional functions, and the two updates write disjoint
+node-keys; the resulting partial maps agree pointwise.  The closure
+and local-legality invariants hold for either order by symmetry.
+\end{proof}
+
+\Cref{thm:diamond} is the formal sense in which the order of
+independent events is irrelevant: \emph{any} two linearisations of
+the same set of frontier choices produce the same configuration.
+
+\subsection{Adequacy: lowering preserves declared payoffs}
+\label{sec:eg:adequacy}
+
+The elaboration $\mathsf{VegasCore} \to \mathsf{EventGraph}$ assigns
+each source constructor an event node, with the SSA discipline
+making the storage field of the unique writer of each variable
+unambiguous.  Adequacy is the obligation that this preserves
+declared payoffs.
+
+\begin{theorem}[Adequacy]
+\label{thm:adequacy}
+Let $g$ be a checked program with payoff list $\overline{p}$ at its
+$\Ret$.  For any terminal configuration $C$ of the elaborated graph
+$\mathsf{eg}(g)$, the public outcome assigned by the event graph
+agrees with $\mathrm{evalPayoffs}(\overline{p}, \rho_C)$, where
+$\rho_C$ is the public-projected environment induced by $C$.
+\end{theorem}
+
+The proof is a structural induction over the source program: each
+source constructor's elaborated node performs the exact source-level
+side-effect (read, sample, write, expose), so the public environment
+read at $\Ret$ matches the source-level public environment at the
+same program point.
+
+\subsection{Commit/reveal information barrier}
+\label{sec:eg:barrier}
+
+\Cref{thm:diamond} says \emph{independent} events commute.  We also
+need a \emph{dependency} theorem: that every reveal depends on every
+prior commit, including those whose payload it does not directly
+read.  This is what protects the strategic story from a
+``$\Reveal$ races ahead of an unmade commitment'' pathology.
+
+The elaborator emits, for each $\Reveal$ node, prerequisites
+including:
+\begin{itemize}\itemsep0pt
+\item the commit node that wrote the revealed payload, and
+\item every $\mathsf{commit}$ node that lexically precedes the
+  reveal in the source order.
+\end{itemize}
+The second item is the \emph{phase barrier}; it is what distinguishes
+the event-graph elaboration from a naive ``track only causal reads''
+elaboration.  The next theorem records its strategic consequence.
+
+\begin{theorem}[Commit/reveal information barrier]
+\label{thm:barrier}
+For any configuration $C$ and any reveal node $r$:
+\[
+  r \in \frontier(C)
+  \;\Longrightarrow\;
+  \forall c \in \mathrm{priorCommits}(r).\;
+  C(c) \neq \mathsf{none}.
+\]
+Equivalently: a reveal cannot be frontier-simultaneous with any
+unfinished prior commit.
+\end{theorem}
+
+\begin{corollary}[Strategy-surface form]
+\label{cor:barrier-strat}
+At any configuration $C$ where reveal $r$ is on the frontier, no
+player action whose underlying node is a prior commit of $r$ is
+available to its actor.
+\end{corollary}
+
+\Cref{thm:barrier} is a direct unfolding of the
+prerequisite-closure invariant of configurations: $r \in
+\frontier(C)$ requires every $q \in \prereq(r)$ to satisfy $C(q) =
+\mathsf{some}\,s_q$, and every prior commit of $r$ is in $\prereq(r)$
+by elaboration.  \Cref{cor:barrier-strat} re-expresses the same fact
+in the strategic vocabulary that becomes available in
+\S\ref{sec:fosg-strategies}.
+
+\designnote{The elaborator could in principle emit a sparser
+prerequisite relation that records only causal reads.  The barrier
+fails for such a relation: a reveal that does not read a sibling's
+commit payload could otherwise become enabled before the sibling
+commits, allowing the sibling's strategy to condition on the
+revealed value.  The phase prerequisites are the price of preserving
+the simultaneous-move semantics that the protocol writer wrote
+down.  This is a place where the dependency graph carries strictly
+more information than the per-node causal read-set alone.}
+
+\paragraph{Lean correspondence.}
+Supplement~\S5 (event graph): \TT{NodeSem}, \TT{EventGraph},
+\TT{Configuration}, \TT{frontier}, the diamond and barrier theorems
+(\TT{withResult\_comm}, \TT{withResult\_mem\_frontier\_of\_ne},
+\TT{eventGraph\_priorCommit\_not\_frontier\_with\_reveal},
+\TT{prior\_commit\_not\_available\_when\_reveal\_frontier}).

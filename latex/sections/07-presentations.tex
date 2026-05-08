@@ -1,0 +1,116 @@
+\section{Presentations: extensive form and Kuhn realisation}
+\label{sec:presentations}
+
+The kernel games of \S\ref{sec:fosg-strategies} are the primary
+strategic-form interface.  Two further results are needed to make
+the construction interoperate with the textbook tradition: an
+extensive-form presentation that agrees with the kernel game on
+public outcomes, and a finite Kuhn realisation theorem that links
+mixed and behavioural strategies.
+
+\subsection{The canonical EFG presentation}
+\label{sec:pres:efg}
+
+For each checked program $g$, the codebase produces a canonical
+extensive-form game $\mathsf{efg}(g)$ by serialising the bounded
+event-graph FOSG view: each FOSG round becomes a block of $|
+\Players|$ sequential decision opportunities (each over the player's
+local round-action alphabet, augmented with $\mathsf{none}$ for
+inactive players) followed by a chance node implementing the FOSG
+transition.
+
+\begin{theorem}[EFG presentation adequacy]
+\label{thm:efg}
+For every checked program $g$ and every legal behavioural profile
+$\beta$ of $\mathsf{efg}(g)$, the EFG outcome kernel projected to
+the public outcome agrees with the behavioural kernel game's
+outcome kernel:
+\[
+  \mathrm{map}(\mathrm{publicOf})
+    \,\bigl(\mathrm{outcomeKernel}_{\mathsf{efg}(g)}\,\beta\bigr)
+  \;=\;
+  K^{\mathrm{beh}}_{\mathrm{public}}(g)\,\bigl(
+    \mathrm{translate}(\beta)
+  \bigr),
+\]
+where $\mathrm{translate}$ is the canonical retraction from the
+augmented EFG to the FOSG.
+\end{theorem}
+
+The proof is by induction on the bounded FOSG depth, exploiting the
+fact that translated legal FOSG behavioural strategies put all mass
+on $\mathsf{none}$ for inactive players, so the administrative
+decision opportunities at the EFG layer add no strategic freedom.
+
+\designnote{The EFG bridge is intentionally a \emph{view}, not the
+semantic owner.  The authoritative semantics is the event-graph
+machine; the EFG is a presentation that respects the public outcome
+law.  This preserves the two strategically irrelevant features of
+the EFG — the arbitrary linearisation of independent same-round
+events, and the introduction of administrative no-op decision
+opportunities — without making them part of the underlying game.}
+
+\subsection{Mixed extension and the finite Kuhn theorem}
+\label{sec:pres:kuhn}
+
+The \emph{mixed extension} of a finite kernel game $\KG$ replaces
+each strategy space $S_p$ by $\PMF{S_p}$ and pushes the outcome
+kernel through the independent product:
+\begin{equation}
+\label{eq:mixed-extension}
+  \Kmix(\mu)
+  \;=\;
+  \bigl({\textstyle\bigotimes_p}\,\mu_p\bigr) \bind \Kpure.
+\end{equation}
+
+Kuhn's classical theorem~\citep{Kuhn1953} says that in finite
+extensive-form games with perfect recall, mixed strategies over pure
+contingent plans and behavioural strategies are realisationally
+equivalent.  The finite Kuhn theorem of this construction is its
+direct counterpart for the event-graph machine.
+
+\begin{theorem}[Finite Kuhn realisation]
+\label{thm:kuhn}
+For every checked program $g$, every
+independent mixed profile
+$\mu \in \prod_p \PMF{S_p^{\mathrm{pure}}}$ over pure strategies of
+$\mathrm{pureKernelGame}(g)$ admits a behavioural profile $\beta$ of
+$\mathrm{pmfBehavioralKernelGame}(g)$ with the same public outcome
+distribution:
+\[
+  \Kbeh(\beta)
+  \;=\;
+  \bigl({\textstyle\bigotimes_p}\,\mu_p\bigr) \bind \Kpure.
+\]
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+$\beta$ is constructed pointwise on reachable information states:
+at each $I \in \mathrm{ReachableInfoState}(p)$, $\beta_p(I)$ is the
+posterior distribution over actions induced by $\mu_p$ conditional
+on the history class realising $I$.  The mechanised hypothesis
+behind the realisation is a bounded-FOSG \emph{legal-observability}
+condition: every reachable information state of $p$ has a
+well-defined induced action distribution under any
+$\mu_p \in \PMF{S_p^{\mathrm{pure}}}$, and the FOSG observation map
+factors through the configuration.  This condition plays the role
+that perfect recall plays in the classical statement
+\citep{Kuhn1953}, and is discharged for checked event-graph
+programs from the visibility discipline of
+\S\ref{sec:source-language} together with frontier stability
+(\Cref{thm:stability}).  The kernel equality then follows from the
+commutativity of the PMF monad and the configuration-extensionality
+that underpins the frontier diamond.
+\end{proof}
+
+\Cref{thm:kuhn} is the formal contract between the surface API
+($\mathrm{pureKernelGame}$, easy to read and define) and the
+analysis API ($\mathrm{pmfBehavioralKernelGame}$, the carrier on
+which equilibrium predicates are defined).  It does not by itself
+construct an equilibrium; existence follows from composing
+realisation with a fixed-point theorem (\S\ref{sec:fosg-strategies}).
+
+\paragraph{Lean correspondence.}
+Supplement~\S6.4 (canonical EFG presentation), \S7.6 (mixed extension
+and Kuhn realisation: \TT{kuhn\_finite},
+\TT{eventGraphEFGAt\_outcomeKernel\_map\_publicOutcome}).

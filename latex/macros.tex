@@ -20,6 +20,7 @@
 \newtheorem{example}[theorem]{Example}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
+\newtheorem{notation}[theorem]{Notation}
 
 % ── Players and sets ──────────────────────────────────────────────────
 \newcommand{\Players}{\mathcal{I}}
@@ -106,3 +107,54 @@
 
 % ── Lean references ───────────────────────────────────────────────────
 \newcommand{\leanref}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\TT}[1]{\texttt{#1}}
+
+% ── Event graphs and configurations ───────────────────────────────────
+\newcommand{\EG}{\mathcal{E}}                       % an event graph
+\newcommand{\Nodes}{\mathsf{N}}                     % node set
+\newcommand{\Fields}{\mathsf{F}}                    % field set
+\newcommand{\prereq}{\mathrm{prereq}}
+\newcommand{\Cfg}{\mathsf{Cfg}}                     % configurations of an EG
+\newcommand{\frontier}{\mathrm{front}}              % frontier of a config
+\newcommand{\Slice}{\mathsf{Slice}}                 % write slice
+\newcommand{\writeOf}{\mathrm{write}}
+\newcommand{\readsOf}{\mathrm{reads}}
+\newcommand{\actor}{\mathrm{actor}}
+\newcommand{\rank}{\mathrm{rank}}
+
+% ── Machines ──────────────────────────────────────────────────────────
+\newcommand{\Mach}{M}
+\newcommand{\State}{\mathsf{S}}
+\newcommand{\Action}{\mathsf{A}}
+\newcommand{\Internal}{\mathsf{I}}
+\newcommand{\Pubobs}{\mathsf{Pub}}
+\newcommand{\Obs}{\mathsf{Obs}}
+\newcommand{\stepPlay}{\mathrm{stepPlay}}
+\newcommand{\stepInt}{\mathrm{stepInt}}
+\newcommand{\avail}{\mathrm{avail}}
+\newcommand{\availInt}{\mathrm{availInt}}
+\newcommand{\term}{\mathrm{term}}
+\newcommand{\pubView}{\mathrm{pubView}}
+\newcommand{\out}{\mathrm{out}}
+\newcommand{\Event}{\mathsf{Ev}}
+
+% ── FOSG / EFG views ──────────────────────────────────────────────────
+\newcommand{\FOSG}{\mathrm{FOSG}}
+\newcommand{\EFG}{\mathrm{EFG}}
+\newcommand{\Act}{\mathsf{Act}}
+\newcommand{\InfoState}{\mathsf{I}}
+\newcommand{\activeSet}{\mathrm{active}}
+
+% ── Solution concepts / kernels ───────────────────────────────────────
+\newcommand{\Sol}{\mathrm{Sol}}
+\newcommand{\Kbeh}{K^{\mathrm{beh}}}
+\newcommand{\Kpure}{K^{\mathrm{pure}}}
+\newcommand{\Kmix}{K^{\mathrm{mix}}}
+
+% ── Refinement ────────────────────────────────────────────────────────
+\newcommand{\proj}{\pi}
+\newcommand{\refines}{\sqsubseteq}
+
+% ── Boxes for design notes / Lean correspondence ──────────────────────
+\newcommand{\designnote}[1]{\par\smallskip\noindent\emph{Design note.} #1\par\smallskip}
+\newcommand{\leancorr}[1]{\par\smallskip\noindent\emph{Lean correspondence.} #1\par\smallskip}

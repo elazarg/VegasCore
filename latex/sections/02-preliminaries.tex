@@ -1,0 +1,109 @@
+\section{Mathematical preliminaries}
+\label{sec:preliminaries}
+
+We collect the ambient probabilistic and language-level notation.  All
+data is finite: player sets, action domains, value types, programs,
+event graphs, and reachable strategy spaces.  Distributions are
+finite-support PMFs; continuous types and measure-theoretic kernels
+are out of scope (\S\ref{sec:discussion}).
+
+\subsection{Finite-support distributions}
+\label{sec:prelim:pmf}
+
+\begin{definition}[PMF]
+\label{def:pmf}
+For a type $\alpha$ with decidable equality, a \emph{probability mass
+function} is a finite-support function
+$\mu : \alpha \to [0,1]$ with $\sum_{x \in \mathrm{supp}(\mu)} \mu(x)
+= 1$.  We write $\PMF{\alpha}$ for the set of such functions.
+\end{definition}
+
+The PMF construction is a \emph{commutative monad}~\citep{Giry1982,Moggi1991}:
+\begin{align*}
+  \mathsf{pure}(x)(a) &= [a = x],\\
+  (\mu \bind f)(b)    &= {\textstyle\sum_{a \in \alpha}}\,\mu(a)\cdot f(a)(b),\\
+  \mathrm{map}(g)\,\mu &= \mu \bind (\mathsf{pure}\circ g).
+\end{align*}
+Commutativity (i.e.\ that $\mu_1 \bind \lambda x.\mu_2 \bind \lambda y.f(x,y)
+= \mu_2 \bind \lambda y.\mu_1 \bind \lambda x.f(x,y)$) is what
+ultimately licenses the frontier diamond at the probabilistic level:
+two independent stochastic steps may be linearised in either order.
+
+\begin{remark}[Finite weights vs.\ PMFs]
+\label{rem:fweight}
+Inside the construction we work with an unnormalised auxiliary,
+$\FWeight{\alpha} = \alpha \to_0 \NNQ$, the type of finite-support
+$\mathbb{Q}_{\ge 0}$-valued weight functions.  Rational weights are
+decidably equal, finite weights compose without per-step normalisation
+proofs, and the bridge $\mathrm{toPMF} : \FWeight{\alpha} \to
+\PMF{\alpha}$ takes a single proof of total mass one.  Unless
+otherwise stated, the body of the report uses $\PMF{\cdot}$;
+$\FWeight{\cdot}$ surfaces only when the construction itself is being
+discussed.
+\end{remark}
+
+\begin{notation}[Dirac and product]
+\label{not:dirac-product}
+$\delta_x \in \PMF{\alpha}$ denotes the point mass at $x$, equal to
+$\mathsf{pure}(x)$.  For a finite player set $\Players$ and a family
+$\{\mu_p : \PMF{S_p}\}_{p \in \Players}$, the \emph{independent
+product} $\bigotimes_{p}\mu_p \in \PMF{\prod_p S_p}$ is the joint PMF
+$(\bigotimes_p \mu_p)(\sigma) = \prod_p \mu_p(\sigma_p)$.  We use the
+shorthand $\Kbeh, \Kpure, \Kmix$ for behavioural, pure, and
+mixed-extension kernels later.
+\end{notation}
+
+\subsection{Typed contexts and environments}
+\label{sec:prelim:contexts}
+
+A \emph{typed context} is a list of typed bindings,
+\[
+  \Gamma = [(x_1, \tau_1), \dots, (x_n, \tau_n)],
+\]
+with each $\tau_i$ drawn from a small fixed type universe (described
+in \S\ref{sec:source-language}).  An \emph{environment} for $\Gamma$
+is a dependent assignment $\rho \in \Env(\Gamma)$ that maps each
+binding to a value of its declared type.  The supplement formalises
+this with a typed de~Bruijn membership relation $\mathrm{HasVar}\,
+\Gamma\,x\,\tau$; the only formal subtlety is that environment lookup
+is proof-irrelevant when $\Gamma$ has unique names, which is the case
+for all checked programs.
+
+We write $\rho \mathrel{\equiv_S} \rho'$ for two environments that
+agree on a variable set $S$.  The fundamental soundness law of the
+expression language (\S\ref{sec:source-language}) is then
+\emph{evaluation respects the dependency set}:
+$\rho \mathrel{\equiv_{\mathrm{deps}(e)}} \rho'$ implies
+$\mathrm{eval}(e, \rho) = \mathrm{eval}(e, \rho')$, and similarly for
+distribution expressions.
+
+\subsection{Notation conventions}
+\label{sec:prelim:notation}
+
+Throughout the report, $\Players$ denotes a finite set of players
+with decidable equality, generic player names $p, q$, and we use:
+\begin{itemize}\itemsep1pt
+\item $\Outcome = \Players \to_0 \mathbb{Z}$, the type of public
+  finitely-supported integer payoff vectors (the notation
+  $\alpha \to_0 \beta$ denotes functions $\alpha \to \beta$ with
+  finite support, i.e.\ taking the zero of $\beta$ outside a
+  finite set);
+\item $u : \Outcome \to (\Players \to \mathbb{R})$ for the canonical
+  utility (the integer-coercion);
+\item $\Profile$ for a strategy profile and $\Profile_{-p}$ for the
+  partial profile of $p$'s opponents;
+\item $\EU(\Profile, p)$ for the expected utility of profile
+  $\Profile$ to player $p$;
+\item $\KG = (\{S_p\}_p, \Outcome, K, u)$ for a kernel game with
+  per-player strategy types, outcome type, outcome kernel, and
+  utility (\S\ref{sec:fosg-strategies});
+\item $\mu \otimes \nu$ for an independent product distribution.
+\end{itemize}
+We use $\mathsf{sans-serif}$ for type-level constants
+($\Cfg$, $\State$, $\Action$), $\mathit{italics}$ for nodes and
+mathematical objects, and $\mathrm{roman}$ for predicates and
+projections.  $\mathbb{1}_{\varphi}$ is the Iverson bracket.
+
+\paragraph{Lean correspondence.}  Supplement~\S2 (probability and
+language layer) and \S3 (visibility-aware syntax) cover the formal
+versions of the objects introduced in this section.

@@ -1,0 +1,105 @@
+\section{Intended uses}
+\label{sec:applications}
+
+The construction is general — any finite multi-party protocol with
+public coins, sealed commitments, public reveals, and deterministic
+public payoffs fits — but the design choices were guided by a
+particular family of intended uses.  This section sketches them.
+None of the patterns described here require new machinery on top of
+what \S\ref{sec:source-language}--\S\ref{sec:refinement} provide.
+
+\subsection{Sealed-bid auctions and mechanism design}
+
+A sealed-bid auction~\citep{Vickrey1961,Myerson1981OptimalAuction}
+is the canonical commit/reveal protocol: bidders simultaneously
+sealed-bid in a commit phase, the bids are then revealed, and the
+allocation and payments are public functions of the revealed
+bids.  In the present framework:
+\begin{itemize}\itemsep1pt
+\item Each bidder's bid is a $\Commit$ with a guard restricting
+  the value to the bid domain (e.g.\ a bounded integer range).
+\item The bids are revealed in a single phase; the
+  commit/reveal information barrier (\Cref{thm:barrier}) prevents
+  any bidder from observing another bidder's bid before placing
+  their own.
+\item Allocation rules are public payoff expressions over the
+  revealed bids; the four kernel games then expose these as
+  strategic-form games whose equilibrium predicates are the standard
+  incentive-compatibility, individual-rationality, and revenue
+  notions.
+\item Backend refinement (\S\ref{sec:refinement}) is the formal
+  link to a contract or auction-house implementation.  A
+  stochastic-refinement proof rules out implementation traces in
+  which a sealed bid becomes observable before the reveal phase,
+  closing the class of attacks based on observation-before-reveal
+  in the surrounding execution
+  environment~\citep{Daian2020Flash}.
+\end{itemize}
+
+\subsection{Commit-reveal voting and governance}
+
+Voting protocols with privacy-preserving ballots use the same
+commit/reveal pattern with optional abort.  The visibility
+discipline of the surface language makes the standard
+strategy-proofness questions of social-choice
+theory~\citep{GibbardSatterthwaite} expressible directly: a
+voting rule is \emph{strategy-proof} if truthful reporting weakly
+dominates every alternative for every voter, which is the
+dominance predicate on the kernel game generated from the protocol.  The
+\emph{nullable yield} surface form (\S\ref{sec:source:surface}) is
+the protocol-level mechanism for ``a voter who refuses to reveal
+contributes a $\mathsf{none}$ ballot,'' with the consequence that
+later payoff expressions must explicitly handle the abstaining
+voter.  Whether the protocol punishes, ignores, or rewards
+abstention is a payoff-expression decision exposed by the type
+system, not an implementation detail; the same is true for
+threshold-of-revealers structures.
+
+\subsection{Escrow with disputes}
+
+Two-party escrow is a small but instructive example with a
+non-trivial guard.  Buyer and seller commit to delivery and
+acceptance evidence; on reveal, a payoff schedule depends on
+whether the evidence agrees, with a dispute branch handled by a
+public coin or third-party reveal.  The non-trivial guard appears
+on the dispute resolver's commit (it must select a value consistent
+with prior reveals); the guard-uses-only predicate ensures the
+guard reads only the resolver's view.
+
+\subsection{Coordination games}
+
+Battle-of-the-sexes-style coordination games — where multiple pure
+Nash equilibria coexist and a mixed equilibrium quantifies the
+coordination failure — fit directly: two simultaneous commits, two
+reveals, payoff expressions encoding the coordination preference.
+The kernel game exposes both the pure equilibria and, via mixed
+extension, the mixed one.  Bayesian games with genuinely private
+signals~\citep{Harsanyi1967} require a hidden-randomness primitive
+that the present surface language does not yet expose ($\Sample$
+draws are public); this is a natural extension discussed in
+\S\ref{sec:disc:ext}.
+
+\subsection{Equilibrium analysis pipelines}
+
+The kernel-game API exposes everything an external solver needs to
+compute equilibria: a strategy carrier, a profile-to-outcome
+distribution kernel, and a utility.  Existence corollaries for
+mixed Nash, correlated equilibrium, and coarse correlated
+equilibrium follow directly from finite-game fixed-point theorems
+\citep{Nash1951,Aumann1974}.  External equilibrium-computation
+tools (e.g.\ Gambit~\citep{McKelveyMcLennanTurocy2006Gambit},
+PRISM-games~\citep{KwiatkowskaNormanParkerSantos2020PRISMGames})
+can be driven by exporting either the kernel game or the
+canonical EFG presentation; the correctness of such an export is a
+checked theorem about the bridge, not an after-the-fact
+sanity check.
+
+\subsection{What this framework does not address}
+
+The intended scope is finite, terminating, public-payoff protocols
+with discrete value domains and finite-support stochastic samples.
+Applications outside this scope — continuous bid spaces, infinite
+horizons, measure-theoretic kernels, mechanism design with arbitrary
+type spaces, or solution concepts that depend on continuous best-
+response correspondences — would require extensions discussed in
+\S\ref{sec:discussion}.

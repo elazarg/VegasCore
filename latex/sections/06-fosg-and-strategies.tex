@@ -1,0 +1,312 @@
+\section{FOSG views, strategies, and kernel games}
+\label{sec:fosg-strategies}
+
+The shift from operational machine to game-theoretic structure
+happens at this layer.  We define the FOSG view on top of a
+machine, exhibit the event-graph FOSG view, build pure and
+PMF-behavioural strategy carriers from the view, and present four
+canonical kernel games over which the standard
+solution-concept inventory is defined.
+
+\subsection{Why FOSG}
+
+The factored-observation stochastic game formalism
+\citep{Kovarik2022} indexes strategies by sequences of per-player
+observations and packages chance and decision in the same
+transition.  Two of its features fit the construction directly.
+First, a player's epistemic state is given by their per-step
+observation sequence — the same data that the visibility discipline
+of \S\ref{sec:source-language} produces from the source program.
+Second, FOSG admits a round-batched view of an asynchronous
+machine: a single FOSG round collapses many primitive events of
+the underlying machine into one transition, which is exactly the
+shape we want for the event-graph machine.
+
+\subsection{The FOSG view}
+\label{sec:fosg:view}
+
+A \emph{FOSG view} on top of a machine $\Mach$ is a tuple
+\[
+  \mathcal{V} = \bigl(
+    \{\Act_p\}_p,\;
+    \activeSet : \State \to \mathrm{Finset}(\Players),\;
+    \mathrm{availActions},\;
+    \mathrm{transition},\;
+    \mathrm{reward}
+  \bigr)
+\]
+of: a per-player round-action alphabet $\Act_p$ (independent of
+$\Mach$'s action type); an \emph{active set} $\activeSet(s)$ at each
+state; a per-player legal-action predicate
+$\mathrm{availActions}(s, p) \subseteq \Act_p$; a transition
+kernel
+\[
+  \mathrm{transition} : (s : \State) \times
+    \{\,\sigma : \mathrm{JointAction}\,\Act \mid
+      \mathrm{legal}(s, \sigma)\,\}
+    \to \PMF{\State},
+\]
+and a per-player reward function $\mathrm{reward}$ paid on the
+transition.  Two side conditions hold: terminal states have empty
+active sets, and non-terminal states admit at least one legal joint
+action.
+
+\subsubsection*{The event-graph FOSG view}
+
+Concretely, one FOSG round of the event-graph machine
+$\Mach_{\EG}$ is the following batched transition.  At a
+configuration $C$, the active set is the set of players who own at
+least one frontier node.  Each active player simultaneously selects
+a write slice for every frontier node they own.  Those player nodes
+then execute concurrently, advancing the configuration via the
+frontier diamond (\Cref{thm:diamond}).  Every internal node that
+becomes enabled in the new configuration then fires
+(deterministically for $\mathsf{assign}$ and $\mathsf{reveal}$,
+stochastically for $\mathsf{sample}$), and the round ends when the
+frontier contains only player-owned nodes again — or, if the
+frontier is empty, the round is terminal.  A whole batch of this
+kind is one FOSG transition; per-player observations and rewards
+are emitted at its boundary.
+
+The FOSG round-action alphabet is therefore static: independently
+of the configuration, $\Act_p$ is the type
+\[
+  \Act_p \;=\; \mathrm{Option}\Bigl(
+    (n : \Nodes_p) \to \mathrm{Slice}(n)
+  \Bigr),
+\]
+where $\Nodes_p$ is the set of nodes owned by $p$ in $\EG$ and
+$\mathsf{none}$ denotes \emph{not active in this round}.  The
+configuration enters at the level of \emph{availability}, not the
+alphabet: at configuration $C$, the available actions for $p$ are
+those $\mathsf{some}\,a$ whose underlying nodes lie in
+$\frontier(C) \cap \{n : \actor(n) = p\}$ and whose slices are
+legal there.  Keeping the alphabet static means strategy types do
+not depend on the run-time configuration; the per-state menu is
+recovered by intersecting with the frontier.
+The transition collapses one frontier batch — the player events
+owned by the active set, executed concurrently, followed by all
+internal events that newly become enabled — into one FOSG step.
+
+\subsubsection*{The stability condition}
+
+The collapse from machine to FOSG is sound only when frontier
+choices do not interfere across players.  This is the
+\emph{frontier-stability} condition: if action $a$ for player $p$ is
+available at $C$, $a$'s node is on $\frontier(C)$ with $a.n \neq
+n^\star$, and any other frontier node $n^\star$ executes legally,
+then $a$ is still available at the resulting configuration.
+
+\begin{theorem}[Frontier stability for elaborated event graphs]
+\label{thm:stability}
+For every elaborated graph $\mathsf{eg}(g)$ of a checked program
+$g$, frontier stability holds.
+\end{theorem}
+
+The proof is a case analysis on the kinds of frontier nodes:
+distinct commits do not write to each other's storage (by SSA),
+distinct internal nodes likewise, and the
+$\mathrm{actionLegal}$ predicate of a commit reads only owner-visible
+or public fields, none of which are written by other players'
+frontier slices (by the guard-uses-only predicate).
+
+\Cref{thm:stability} is what makes the round-batched view
+well-defined: without it, two simultaneously selected frontier
+choices could interfere, and the FOSG transition would be
+ambiguous.
+
+\subsection{Reachable information states and strategies}
+\label{sec:fosg:strategies}
+
+For the bounded FOSG view of a checked program, the set of
+\emph{information states} of player $p$ is the set of equivalence
+classes of FOSG histories under $p$'s observation.  We work with the
+\emph{reachable} subset:
+\[
+  \mathrm{ReachableInfoState}(p) =
+    \bigl\{\, I \in \InfoState_p \mid
+      \exists h \in \mathrm{History}.\, h.\mathrm{view}_p = I \,\bigr\},
+\]
+i.e.\ those information states realised by \emph{some} history in
+the FOSG.  Reachability is a purely combinatorial property of
+histories, not a property quantified over profiles; this keeps the
+strategy carrier definable without circularly referring to the
+profiles that range over it.
+
+A \emph{pure strategy} for $p$ is a function
+\[
+  \sigma^{\mathrm{pure}}_p : \mathrm{ReachableInfoState}(p)
+    \to \mathrm{Option}(\Act_p),
+\]
+returning $\mathsf{none}$ at information states where $p$ is not
+active and $\mathsf{some}\,a$ at active ones.  A
+\emph{behavioural strategy} is the analogous function valued in
+$\PMF{\mathrm{Option}(\Act_p)}$.
+
+The \emph{legal} carriers further restrict: at every reachable
+information state where $p$ is active, the chosen $\mathsf{some}\,a$
+satisfies $a \in \mathrm{availActions}(h, p)$ for some realising
+history $h$.  This is what closes the gap from program-level
+\emph{Legal} (existence of a legal action at each commit site) to
+\emph{strategic} legality (every strategy in the carrier prescribes
+only legal actions): illegal moves are absent from the carrier, not
+filtered after the fact.
+
+\designnote{Reachability-pruning matters because illegal moves of
+unreachable information states would otherwise pollute the
+carrier without affecting any equilibrium.  Pruning is purely
+combinatorial: it does not require quantifying over profiles.  The
+carrier is still finite by the bounded horizon imposed in
+\S\ref{sec:fosg:horizon}.}
+
+\subsection{Bounded horizon and outcome kernels}
+\label{sec:fosg:horizon}
+
+A finite event graph admits a finite execution horizon: the source
+program has a finite syntax-step count
+$h(g) = |\,\mathrm{constructors of }\,g \text{ except }\Ret\,|$, and
+no FOSG round can advance the depth counter beyond $h(g)$.  Bounding
+the FOSG presentation by $h(g)$ produces a finite-tree-shaped game
+to which the GameTheory library's finite-game theorems apply.
+
+The bounded view exposes outcome kernels for both pure and
+behavioural profiles:
+\begin{align*}
+  \mathrm{outcomeFromPure}_h\,\pi      &\in \PMF{\Outcome}, \\
+  \mathrm{outcomeFromBehavioral}_h\,\beta &\in \PMF{\Outcome}.
+\end{align*}
+
+\subsection{The four canonical kernel games}
+\label{sec:fosg:kernel-games}
+
+We can now define the standard strategic-form objects.  A
+\emph{kernel game} is the minimal strategic-form carrier on top of
+which expected-utility solution concepts make sense:
+\begin{equation}
+\label{eq:kernel-game}
+  \KG \;=\; \bigl(\,
+    \{S_p\}_p,\, O,\, K : {\textstyle\prod_p} S_p \to \PMF{O},\,
+    u : O \to (\Players \to \mathbb{R})\,\bigr).
+\end{equation}
+Expected utility is then the obvious functional
+\begin{equation}
+\label{eq:eu}
+  \EU(\Profile, p) \;=\;
+  \mathbb{E}_{\omega \sim K(\Profile)}\bigl[u(\omega)(p)\bigr].
+\end{equation}
+
+For a checked program $g$, four kernel games are exposed:
+\begin{center}
+\small
+\begin{tabular}{@{}lp{0.55\textwidth}@{}}
+\toprule
+Name & Carrier and outcomes \\
+\midrule
+$\mathrm{pureKernelGame}(g)$ &
+  pure strategies; outcomes in $\Outcome$ (public payoff). \\
+$\mathrm{pmfBehavioralKernelGame}(g)$ &
+  PMF behavioural strategies; outcomes in $\Outcome$. \\
+$\mathrm{pureBlockedTraceKernelGame}(g)$ &
+  pure strategies; outcomes in $\mathrm{BlockedTrace}(g)$. \\
+$\mathrm{pmfBehavioralBlockedTraceKernelGame}(g)$ &
+  PMF behavioural; outcomes in $\mathrm{BlockedTrace}(g)$. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A \emph{blocked trace} is the sequence, indexed by FOSG round, of
+all primitive event-block executions that took place during that
+round, paired with the configuration reached at the round's end.
+It is strictly more informative than the public outcome — which
+records only the final public state — and is the natural object on
+which to compare the canonical event-graph machine to a backend
+implementation, since the latter may produce additional
+implementation-specific events within the same round.  The two
+axes of the kernel-game table above are then \emph{strategy
+carrier} (pure vs.\ PMF-behavioural) and \emph{outcome shape}
+(public payoff vs.\ blocked-trace).  The blocked-trace games
+\emph{refine} the public games by an outcome projection.
+
+\subsection{Trace-to-public agreement}
+\label{sec:fosg:trace-public}
+
+The blocked-trace games are useful for refinement reasoning
+(\S\ref{sec:refinement}); the public games are what users
+intuitively reason about.  We need to know that they agree, both at
+the kernel level and at the level of expected utility.
+
+\begin{theorem}[Trace-to-public agreement]
+\label{thm:trace-public}
+For every checked program $g$, the public-outcome map applied to
+the blocked-trace kernel agrees with the public outcome kernel,
+\begin{align*}
+  \mathrm{map}(\mathrm{publicOf})\,\circ\,
+    K^{\mathrm{pure}}_{\mathrm{blocked}}
+  &= K^{\mathrm{pure}}_{\mathrm{public}}, \\
+  \mathrm{map}(\mathrm{publicOf})\,\circ\,
+    K^{\mathrm{beh}}_{\mathrm{blocked}}
+  &= K^{\mathrm{beh}}_{\mathrm{public}},
+\end{align*}
+and expected utilities are equal under the corresponding profile
+inclusions.  Solution concepts (Nash, dominance) transport across
+the projection: a strategy is best-response in the public game iff
+it is best-response in the blocked-trace game.
+\end{theorem}
+
+The proof packages the projection as a kernel-game
+\emph{simulation} — a structural morphism that pushes outcome
+distributions through a deterministic function while preserving
+utility.  In this case the simulation is in fact an
+\emph{EU-isomorphism}: the blocked-trace outcome retains
+strategically inert per-event-block detail on top of the public
+outcome, so the projection is information-losing but not
+\emph{utility}-losing, and equilibrium predicates transport in both
+directions.  This is the structural reason for the iff in the
+trace-to-public statement, and is what distinguishes it from the
+backend morphism of \S\ref{sec:refinement}, which is genuinely
+one-way: the implementation may admit profiles that no spec
+strategy realises.
+
+\subsection{Solution concepts}
+\label{sec:fosg:solution}
+
+The standard inventory is defined uniformly on
+$\mathrm{pmfBehavioralKernelGame}(g)$.  We list the most important
+predicates here and refer to the supplement for the complete table
+and the corresponding existence corollaries.
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Nash equilibrium.} $\mathrm{IsNash}(\Profile)$ iff
+  $\forall p,\, \forall s'_p.\, \EU(\Profile, p) \ge
+  \EU(\Profile[p \mapsto s'_p], p)$.
+\item \textbf{Best response.} $\mathrm{IsBestResponse}(p, \Profile,
+  s)$ iff $s$ maximises $\EU(\Profile[p \mapsto \cdot], p)$.
+\item \textbf{Dominance.} $\mathrm{WeaklyDominates}(p, s, t)$ iff
+  $s$'s payoff weakly dominates $t$'s for $p$ uniformly in opponents'
+  partial profiles.  Strict version with $>$.
+\item \textbf{Correlated and coarse correlated equilibrium.}
+  $\mathrm{IsCorrelatedEq}(\mu)$~\citep{Aumann1974} for a profile
+  distribution $\mu$, and the coarse variant restricting to
+  constant deviations.
+\item \textbf{Pareto efficiency, social welfare.} $\Profile$ is
+  Pareto efficient iff no $\Profile'$ weakly improves all players
+  with strict improvement for some $p$.  Social welfare is
+  $\sum_p \EU(\Profile, p)$.
+\item \textbf{Potential games}~\citep{MonderShapley1996}. A potential
+  $\Phi : \prod_p S_p \to \mathbb{R}$ tracking unilateral
+  deviations exactly (exact potential) or in sign only (ordinal
+  potential).
+\item \textbf{Zero-sum and team games.}  Constant total payoff and
+  identical per-player utility, respectively.
+\end{itemize}
+
+The library exposes finite-game existence corollaries
+($\mathrm{mixedNash\_exists}$,
+$\mathrm{correlatedEq\_exists}$, $\mathrm{coarseCorrelatedEq\_exists}$)
+as wrappers around the GameTheory library's fixed-point and
+correlated-equilibrium theorems.
+
+\paragraph{Lean correspondence.}
+Supplement~\S6 (machines), \S7.1--\S7.4 (FOSG view, strategies,
+kernel games, simulation/bisimulation), \S7.5
+(reachable info states), \S7.7 (solution concepts).

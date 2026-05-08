@@ -1,0 +1,144 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Architectural commitments}
+
+Three architectural commitments shape the construction.
+
+\paragraph{Dependency, not syntax, is the carrier of meaning.}
+The semantic owner is the event graph, not the source program.  A
+consequence is that two source programs that elaborate to the same
+event graph are strategically indistinguishable — by construction,
+not by an after-the-fact equivalence proof.  This frees the surface
+language to add ergonomic constructors (simultaneous yields,
+nullable yields, future handlers) without changing the strategic
+semantics; lowering is the only translation that can change the
+event-graph shape.
+
+\paragraph{Configurations are extensional.}
+A configuration records which nodes have produced which results;
+schedules are not part of the state.  This is what makes the
+frontier diamond (\Cref{thm:diamond}) definitional rather than a
+quotient construction.  The cost is that an interpreter that wants
+to walk a specific schedule must recover that schedule explicitly
+(e.g.\ via the source-order linear read of supplement~\S7.4); the
+cost is small in practice.
+
+\paragraph{Visibility is bound, not used.}
+Every binding has a visibility tag; expression typing then
+projects the context down to public or hidden as required.  The
+discipline is owner-or-all: there is no group-visibility
+constructor, and reveal-like operations introduce a fresh public
+alias rather than mutating visibility.  Both decisions keep the
+view algebra small (two erasures and a per-player view) and let
+guard-uses-only-style predicates be about \emph{dependency
+sets}, not about typing rules.
+
+\subsection{Limitations}
+\label{sec:disc:limits}
+
+\paragraph{Finiteness.}  Player sets, value domains, programs, event
+graphs, and reachable strategy carriers are finite.  Distributions
+are finite-support PMFs.  Continuous types and measure-theoretic
+kernels~\citep{Giry1982,Kozen1981} are out of scope; the bridge
+from $\FWeight{\cdot}$ to mathlib's $\PMF{\cdot}$ is one-way and
+takes a normalisation proof, with no measure-theoretic continuation.
+
+\paragraph{No quit handlers.}  The surface language deliberately
+omits user-level quit handlers.  A strategic quit changes the
+action space and the control-flow shape, neither of which is a
+value-level effect; supporting it would require adding a
+prerequisite-cancellation rule to the event graph and revisiting
+the frontier-stability proof.  Nullable yields are the present
+substitute for ``opt out of revealing.''
+
+\paragraph{Solution-concept inventory.}  The strategic API exposes
+Nash, dominance, correlated and coarse correlated equilibria,
+potential-game predicates, zero-sum/team predicates, social welfare,
+and Pareto efficiency.  Refinement-based equilibrium concepts
+(subgame-perfect equilibria, sequential equilibria,
+trembling-hand~\citep{Selten1975}) are not yet exposed because the
+event-graph view does not maintain a sub-game decomposition; this
+is mechanical to add.
+
+\paragraph{Decidability.}  The static obligations of
+\S\ref{sec:source:wf} — contextual well-formedness, fresh
+bindings, reveal completeness, and distribution normalisation —
+are decidable.  Legality is decidable when value domains are
+finite, which is the standing assumption.  The Nash predicate and friends are quantifier-bounded
+over finite carriers, so they are decidable in principle; whether
+they are computable in useful time is a separate question
+\citep{DaskalakisGoldbergPapadimitriou2009}.
+
+\subsection{Natural extensions}
+\label{sec:disc:ext}
+
+\paragraph{Mechanism design under epistemic types.}
+Bayesian games with type
+spaces~\citep{Harsanyi1967,MyersonGameTheory} fit by adding a
+$\Sample$ layer that produces per-player private types via $\Commit$
+of the $\Sample$ output.  The type system already supports this; a
+mechanism-design library can be packaged as a checked
+WFProgram-builder over a type-space schema.
+
+\paragraph{Concurrent and partial-information protocols at scale.}
+The event graph is naturally an event structure in the sense of
+\citet{Winskel1986EventStructures,NielsenPlotkinWinskel1981}.
+Concurrent-game-semantic
+techniques~\citep{RidemanWinskel2011Concurrent,
+CastellanYoshidaSessionGame,
+AbramskyJagadeesan1994,HylandOng2000PCF}
+and session-typed multi-party
+protocols~\citep{HondaYoshidaCarbone2008MPST} suggest two
+extensions: typed channel structure beyond the
+single-public-write SSA convention, and a richer notion of session
+that tracks delegated authority.  Both are layerable on top of the
+present event-graph carrier.
+
+\paragraph{Cryptographic backends.}
+The commit/reveal pattern is operationally a cryptographic
+commitment scheme~\citep{Blum1983CoinFlipping,
+GoldwasserMicaliRivest1988,Pedersen1991Commitment}.  The current
+construction abstracts the commitment as a sealed-then-revealed
+binding; a refinement layer that models hash-based or
+homomorphic-commitment implementations would be a natural backend
+under \Cref{def:stoch-ref}, with the cryptographic soundness
+property appearing as a side condition on $\refines_s$.
+
+\paragraph{Compositional structure.}
+Every checked program produces a kernel game, and morphisms between
+kernel games are EU-preserving.  This suggests a categorical
+structure on checked programs analogous to compositional game
+theory~\citep{GhaniHedgesWinschel2018CGT,Hedges2016CGT};
+making the composition explicit (parallel,
+sequential, and conditional combinators on checked programs)
+would let large protocols be assembled from small ones with
+machine-checked strategic-structure preservation.
+
+\paragraph{Concurrent-strategy realisation.}
+\Cref{thm:kuhn} gives the realisation half of the classical
+mixed-vs-behavioural correspondence.  In a concurrent-strategy
+setting (where a player can commit to a function of \emph{joint}
+information across simultaneous events), the corresponding
+realisation theorem is more delicate, and the formalism naturally
+intersects logical accounts of partial information
+\citep{HintikkaSandu1989,MannSanduSevenster2011IFL}.
+
+\subsection{Outlook}
+
+The construction settles a small but central question: when the
+strategic content of a finite multi-party protocol is mechanically
+extracted from the program, what is the right primary semantic
+object?  The answer it offers is the dependency graph of events,
+with extensional configurations and a checked frontier.  The
+strategic-form, FOSG, EFG, and backend views are then
+\emph{presentations} of this object that come with their own
+sanity-check theorems (public-outcome agreement, Kuhn realisation,
+refinement transport).
+
+The deeper benefit is that future extensions — compositional
+combinators, larger surface notation, richer cryptographic backends,
+mechanism-design packaging — can all be added as new
+presentations or new lowerings without touching the central
+event-graph theorems.  Adequacy at the boundary is a checked
+theorem; the inside of the boundary is free.
