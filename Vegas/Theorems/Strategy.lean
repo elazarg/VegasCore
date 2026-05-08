@@ -5,6 +5,7 @@ import Vegas.Strategic.Local
 import Vegas.Strategic.Domination
 import Vegas.Strategic.Transport
 import Vegas.Theorems.Progress
+import Vegas.Theorems.Visibility
 
 /-!
 # Strategy-Surface Theorems
@@ -219,6 +220,37 @@ theorem legal_strategy_never_selects_illegal_action
       ((eventGraphFOSGView g).toBoundedFOSG
         (syntaxSteps g.prog)).availableMoves h who := by
   exact σ.2 h
+
+/-- If an earlier commit is blocked by a frontier reveal, no strategy-facing
+machine action for that commit is available.  This is the strategy-surface
+form of the commit/reveal information barrier. -/
+theorem prior_commit_not_available_when_reveal_frontier
+    (g : WFProgram P L) (who : P)
+    {cfg : (programEventGraph g).Configuration}
+    {commit reveal : ProgramNode g.prog}
+    {owner : P} {field : ProgramField g.prog}
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
+      (ProgramField.ty (p := g.prog)) field}
+    {source target : ProgramField g.prog}
+    {hty : source.ty = target.ty}
+    {action : EventGraph.PlayerAction (programEventGraph g) who}
+    (hrevealFrontier : reveal ∈ cfg.frontier)
+    (hcommit :
+      ProgramNode.sem g.obligations commit =
+        EventGraph.NodeSem.commit owner field guard)
+    (hreveal :
+      ProgramNode.sem g.obligations reveal =
+        EventGraph.NodeSem.reveal source target hty)
+    (hrank : commit.rank < reveal.rank)
+    (hactionNode : action.node = commit) :
+    action ∉ EventGraph.available (programEventGraph g) cfg who := by
+  intro havailable
+  rcases havailable with ⟨hcommitFrontier, _hactor, _hslice, _haction⟩
+  have hcommitFrontier' : commit ∈ cfg.frontier := by
+    rw [← hactionNode]
+    exact hcommitFrontier
+  exact reveal_not_frontier_with_prior_commit
+    g hcommitFrontier' hrevealFrontier hcommit hreveal hrank
 
 /-- Active players before terminal/cutoff have a nonempty concrete action set. -/
 theorem availableActionsAtHistory_nonempty_of_not_terminal_active

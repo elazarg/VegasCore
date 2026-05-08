@@ -103,7 +103,7 @@ theorem programReadsAvailableAtFrontier_of_wfProgram
         ProgramNode.prereqs g.obligations node
       exact Finset.mem_filter.mpr
         ⟨ProgramNode.mem_finset g.prog prior, hrank,
-          ⟨read, hread, hwrite⟩⟩
+          Or.inl ⟨read, hread, hwrite⟩⟩
     have hdone : (cfg.result prior).isSome :=
       cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre
     have hcfgLegal :
@@ -240,7 +240,7 @@ theorem eventGraph_writer?_ne_of_frontier_read
         ProgramNode.prereqs g.obligations reader
       exact Finset.mem_filter.mpr
         ⟨ProgramNode.mem_finset g.prog writer, hrank,
-          ⟨field, hread, hpriorWrite⟩⟩
+          Or.inl ⟨field, hread, hpriorWrite⟩⟩
     exact
       (EventGraph.Configuration.not_prereq_of_mem_frontier
         hwriterFrontier hreaderFrontier) hpre
@@ -296,6 +296,40 @@ theorem eventGraph_reveal_not_frontier_with_reader_of_target
   rw [hsem]
   simp [EventGraph.NodeSem.writeFields, EventGraph.NodeSem.writes,
     EventGraph.FieldWrite.field]
+
+/-- An earlier commit and a reveal cannot share a frontier.
+
+This is the information-barrier invariant for commit/reveal protocols.  A
+reveal may read only its own hidden payload, but semantically it must wait for
+every earlier commit to complete, otherwise a player could observe the revealed
+value before choosing an earlier same-phase commitment. -/
+theorem eventGraph_priorCommit_not_frontier_with_reveal
+    (g : WFProgram P L)
+    {cfg : (programEventGraph g).Configuration}
+    {commit reveal : ProgramNode g.prog}
+    {owner : P} {field : ProgramField g.prog}
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
+      (ProgramField.ty (p := g.prog)) field}
+    {source target : ProgramField g.prog}
+    {hty : source.ty = target.ty}
+    (hcommitFrontier : commit ∈ cfg.frontier)
+    (hrevealFrontier : reveal ∈ cfg.frontier)
+    (hcommit :
+      ProgramNode.sem g.obligations commit =
+        EventGraph.NodeSem.commit owner field guard)
+    (hreveal :
+      ProgramNode.sem g.obligations reveal =
+        EventGraph.NodeSem.reveal source target hty)
+    (hrank : commit.rank < reveal.rank) :
+    False := by
+  have hpre : commit ∈ (programEventGraph g).prereqs reveal := by
+    change commit ∈ ProgramNode.prereqs g.obligations reveal
+    exact Finset.mem_filter.mpr
+      ⟨ProgramNode.mem_finset g.prog commit, hrank,
+        Or.inr ⟨by rw [hreveal]; rfl, by rw [hcommit]; rfl⟩⟩
+  exact
+    (EventGraph.Configuration.not_prereq_of_mem_frontier
+      hcommitFrontier hrevealFrontier) hpre
 
 /-- Executing one frontier node leaves every read of another current frontier
 node unchanged. -/

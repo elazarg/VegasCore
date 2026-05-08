@@ -429,6 +429,32 @@ theorem eventGraph_reveal_is_declassification
         (cfg.withResult slice hfrontier hlegal) target := by
   simp [eventGraphPublicView, hpublic]
 
+/-- Commit/reveal information barrier: no reveal can be frontier-simultaneous
+with an earlier commit.  This is stronger than saying the reveal reads its own
+payload; it prevents a revealed value from becoming observable before all
+earlier same-phase commitments have been chosen. -/
+theorem reveal_not_frontier_with_prior_commit
+    (g : WFProgram P L)
+    {cfg : (programEventGraph g).Configuration}
+    {commit reveal : ProgramNode g.prog}
+    {owner : P} {field : ProgramField g.prog}
+    {guard : EventGraph.EventGuard L (ProgramField g.prog)
+      (ProgramField.ty (p := g.prog)) field}
+    {source target : ProgramField g.prog}
+    {hty : source.ty = target.ty}
+    (hcommitFrontier : commit ∈ cfg.frontier)
+    (hrevealFrontier : reveal ∈ cfg.frontier)
+    (hcommit :
+      ProgramNode.sem g.obligations commit =
+        EventGraph.NodeSem.commit owner field guard)
+    (hreveal :
+      ProgramNode.sem g.obligations reveal =
+        EventGraph.NodeSem.reveal source target hty)
+    (hrank : commit.rank < reveal.rank) :
+    False :=
+  eventGraph_priorCommit_not_frontier_with_reveal
+    g hcommitFrontier hrevealFrontier hcommit hreveal hrank
+
 /-- Terminal outcomes are equal for terminal configurations whose assembled
 final environments have equal public erasures. -/
 theorem terminalOutcome_eq_of_erasePubEnv_eq

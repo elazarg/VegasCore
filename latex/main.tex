@@ -91,7 +91,9 @@ the independence that the source tree cannot display:
 \[
 \begin{array}{ccccc}
 \Commit_{\mathit{matcher}} &&&& \Commit_{\mathit{mismatcher}}\\
-\downarrow &&&& \downarrow\\
+& \searrow && \swarrow &\\
+&& \text{all commits complete} &&\\
+& \swarrow && \searrow &\\
 \Reveal_{\mathit{matcher}} &&&& \Reveal_{\mathit{mismatcher}}\\
 & \searrow && \swarrow &\\
 && \Ret && .
@@ -100,8 +102,9 @@ the independence that the source tree cannot display:
 Initially, the two commits are both frontier nodes.  Executing the matcher
 commit first or the mismatcher commit first is only a linearisation choice; it
 does not change the event-graph configuration reached after both commits.
-The frontier diamond theorem in \S4 is precisely the general statement behind
-this example.
+Only then can either reveal become frontier.  The frontier diamond theorem in
+\S4 explains the commit commutation; the commit/reveal information barrier in
+\S2.1 prevents a reveal from racing ahead of a still-unmade prior commitment.
 
 \subsection{Companion Supplement}
 
@@ -221,6 +224,11 @@ The main checked contracts are the following.
   The finite Kuhn theorem \leanref{kuhn_finite} realises every independent
   mixed pure profile by a PMF behavioural profile with the same public outcome
   distribution.
+\item \emph{Commit/reveal information barrier.}
+  A reveal cannot be frontier-simultaneous with any earlier commit.  The graph
+  theorem is \leanref{reveal_not_frontier_with_prior_commit}; the
+  strategy-surface corollary is
+  \leanref{prior_commit_not_available_when_reveal_frontier}.
 \item \emph{Backend transport.}
   A stochastic refinement plus compatible block-law lift gives equality of
   projected backend and specification trace laws, equality of expected
@@ -449,10 +457,13 @@ the public payoff expressions:
 \]
 
 The event graph supplies the concurrency story: both commits are initially
-enabled, each reveal depends only on the corresponding commit, and the payoff
-node depends on both reveals.  The FOSG view supplies the strategic story:
-each player's strategy is indexed by the observations available at its
-decision point.  The EFG bridge supplies the conventional tree story:
+enabled, but neither reveal is enabled until both prior commits have completed.
+Each reveal reads its own secret payload; semantically, it also waits behind
+the whole commit phase so no player observes a reveal before choosing an
+earlier commitment.  The payoff node depends on both reveals.  The FOSG view
+supplies the strategic story: each player's strategy is indexed by the
+observations available at its decision point.  The EFG bridge supplies the
+conventional tree story:
 \leanref{eventGraphEFGAt} serialises each FOSG round into decision nodes and
 chance, and the public outcome law of the translated EFG is the same law as
 the Vegas behavioural kernel game.

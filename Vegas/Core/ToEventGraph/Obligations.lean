@@ -368,11 +368,15 @@ theorem read_current_or_prior_write :
         exact EventGraph.NodeSem.mem_writeFields_mapFields_of_mem
           (f := ProgramField.revealTail) (hty := hty) hwrite
 
-/-- Causal prerequisites of a source node.
+/-- Prerequisites of a source node.
 
-A source node depends on earlier source nodes whose writes it reads. Source
-order remains only as the acyclicity certificate: unrelated source occurrences
-are allowed to share a frontier. -/
+A source node depends on earlier source nodes whose writes it reads.  Reveal
+nodes also depend on all earlier commit nodes.  This second clause is not a
+storage dependency; it is the commit/reveal information barrier.  In a
+simultaneous-yield lowering, all commits in the phase must happen before any
+reveal in the phase can expose information.  Source order remains only as the
+acyclicity certificate outside these semantic dependencies: unrelated
+non-reveal source occurrences are allowed to share a frontier. -/
 noncomputable def prereqs
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (obs : ProgramObligations p) (node : ProgramNode p) :
@@ -380,10 +384,12 @@ noncomputable def prereqs
   classical
   exact (finset p).filter fun prior =>
     prior.rank < node.rank ∧
-      ∃ field,
-        field ∈ (ProgramNode.sem obs node).reads ∧
-          field ∈
-            (ProgramNode.sem obs prior).writeFields
+      ((∃ field,
+          field ∈ (ProgramNode.sem obs node).reads ∧
+            field ∈
+              (ProgramNode.sem obs prior).writeFields) ∨
+        ((ProgramNode.sem obs node).isReveal = true ∧
+          (ProgramNode.sem obs prior).isCommit = true))
 
 /-- The program event graph's prerequisites are exactly the causal read dependencies:
 if a node reads a field written by another source node, that writer is a
@@ -424,7 +430,8 @@ theorem writer_mem_prereqs_of_read_write
       exact Option.some.inj hpriorWriter
     subst writer
     exact Finset.mem_filter.mpr
-      ⟨ProgramNode.mem_finset p prior, hrank, ⟨field, hread, hpriorWrite⟩⟩
+      ⟨ProgramNode.mem_finset p prior, hrank,
+        Or.inl ⟨field, hread, hpriorWrite⟩⟩
 
 /-- A program event graph slice is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by

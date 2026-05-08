@@ -233,6 +233,18 @@ variable {L : IExpr} {fieldTy : Field → L.Ty}
 
 variable {Field' : Type} [DecidableEq Field'] {fieldTy' : Field' → L.Ty}
 
+/-- Whether this node is a player commit. -/
+def isCommit :
+    NodeSem Player Field L fieldTy → Bool
+  | .commit .. => true
+  | _ => false
+
+/-- Whether this node reveals a previously hidden field. -/
+def isReveal :
+    NodeSem Player Field L fieldTy → Bool
+  | .reveal .. => true
+  | _ => false
+
 /-- Transport a node semantic payload through a field map preserving field
 types. -/
 noncomputable def mapFields
