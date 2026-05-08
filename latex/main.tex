@@ -6,18 +6,19 @@
 
 \title{VegasCore: Event-Graph-Native Semantics for Programmed Games}
 \author{}
-\date{}
+\date{May 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-VegasCore is a Lean~4 development for writing finite games as typed programs
-and obtaining their strategic semantics mechanically.  A checked program is
-lowered to a dependency-aware event graph; the event graph is interpreted as an
-asynchronous probabilistic machine; game-theoretic objects are then derived as
-views of that machine rather than as a separate source-level interpreter.  The
-central semantic spine is
+VegasCore takes the unusual step of making a dependency graph, not the source
+program or an extensive-form tree, the carrier of game-theoretic meaning.
+Users write finite games as typed programs.  A checked program is lowered to a
+dependency-aware event graph; the graph is interpreted as an asynchronous
+probabilistic machine; strategic forms, factored-observation stochastic games
+(FOSGs), extensive-form games (EFGs), and backend refinement obligations are
+then derived as views of that machine.  The central semantic spine is
 \[
   \leanref{Lang.ToCore}
   \longrightarrow
@@ -26,10 +27,13 @@ central semantic spine is
   \leanref{EventGraph.ToMachine}.
 \]
 On top of this spine, VegasCore exposes native strategy carriers and kernel
-games, optional bridges to FOSG and EFG presentations, and backend refinement
-obligations for implementations.  The companion supplement gives the exact
-Lean definitions and field lists; this report focuses on the design, the main
-semantic invariants, and the theorem surface that users are meant to rely on.
+games, optional bridges to FOSG and EFG presentations, and refinement
+theorems for implementations.  The headline results are frontier commutation
+for independent events, preservation of public outcome laws across trace and
+EFG presentations, finite mixed-to-behavioural realisation, and Nash transport
+to refined backends.  The companion supplement gives the exact Lean
+definitions and field lists; this report explains the design and the theorem
+surface that users are meant to rely on.
 \end{abstract}
 
 \tableofcontents
@@ -59,32 +63,100 @@ same event-graph semantics.  The code does not ask the reader to trust that
 several interpreters agree.  Agreement is proved where presentation boundaries
 are introduced.
 
+\subsection{A First Example}
+
+Matching Pennies is a useful small example because the source program is
+sequential, while the intended game has two simultaneous private choices.  In
+the surface language, the program can be read schematically as:
+\begin{verbatim}
+simultaneous
+  yield matcherSecret    matcherPublic    matcher    true
+  yield mismatcherSecret mismatcherPublic mismatcher true
+ret [
+  matcher    := if matcherPublic == mismatcherPublic then  1 else -1,
+  mismatcher := if matcherPublic == mismatcherPublic then -1 else  1
+]
+\end{verbatim}
+The checked Lean example is \leanref{Vegas.Examples.MatchingPennies}; the
+surface lowering example is \leanref{Vegas.Examples.VegasLang}.  The
+lowered core program is a commit/reveal protocol, but the event graph recovers
+the independence that the source tree cannot display:
+\[
+\begin{array}{ccccc}
+\Commit_{\mathit{matcher}} &&&& \Commit_{\mathit{mismatcher}}\\
+\downarrow &&&& \downarrow\\
+\Reveal_{\mathit{matcher}} &&&& \Reveal_{\mathit{mismatcher}}\\
+& \searrow && \swarrow &\\
+&& \Ret && .
+\end{array}
+\]
+Initially, the two commits are both frontier nodes.  Executing the matcher
+commit first or the mismatcher commit first is only a linearisation choice; it
+does not change the event-graph configuration reached after both commits.
+The frontier diamond theorem in \S4 is precisely the general statement behind
+this example.
+
 \paragraph{Companion supplement.}
 The supplement is intentionally definition-heavy.  It records the exact Lean
 structures, constructors, and file ownership.  This report uses Lean names such
 as \leanref{VegasCore}, \leanref{EventGraph.Configuration}, and
 \leanref{pmfBehavioralKernelGame}; when a type signature or field list matters,
-the supplement is the authoritative reference.
+the supplement is the authoritative reference.  In particular, see supplement
+\S4 for checked programs, \S5 for event graphs, \S6 for machines and FOSG
+views, \S7 for the strategic API, \S9 for backend refinement, and \S10 for
+examples.
+
+\subsection{Terminology}
+
+A probability mass function (PMF) is a finite-support probability
+distribution.  A kernel game is the reusable strategic-form carrier from the
+GameTheory library: it packages per-player strategy types, an outcome kernel
+from profiles to distributions over outcomes, and utilities.  It is close to a
+normal-form game, except that outcomes may be probabilistic and the strategy
+types need not be hand-written normal-form actions.
+
+A factored-observation stochastic game (FOSG) is a state-based game
+presentation in which players act from information states induced by their
+observations.  An extensive-form game (EFG) is the usual tree presentation of
+sequential play.  VegasCore treats both as presentations of the event-graph
+machine, not as independent denotations.  Kuhn's theorem is the classical
+perfect-recall result that mixed strategies over pure contingent plans can be
+realised by behavioural strategies; here it is used in the finite,
+PMF-valued form stated in \S7.
 
 \section{Semantic Spine}
 
 The development is organised around semantic ownership rather than around a
 single compiler directory:
 \[
-\begin{array}{ccccc}
-\text{surface language} & \longrightarrow & \text{checked core}
-  & \longrightarrow & \text{event graph} \\
-\leanref{VegasLang} && \leanref{VegasCore} && \leanref{EventGraph} \\
-&&& \searrow & \downarrow \\
-&&&& \leanref{Machine}.
+\begin{array}{c}
+\leanref{VegasLang}
+  \longrightarrow
+\leanref{VegasCore}
+  \longrightarrow
+\leanref{EventGraph}
+  \longrightarrow
+\leanref{Machine}.
 \end{array}
 \]
-The corresponding Lean modules are:
-\[
-\begin{array}{lll}
+The compiler-edge modules are:
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
 \leanref{Vegas.Lang.ToCore} &
 \leanref{Vegas.Core.ToEventGraph} &
 \leanref{Vegas.EventGraph.ToMachine}.
+\end{tabular}
+\end{center}
+The strategic and presentation layers then consume the machine:
+\[
+\begin{array}{ccccc}
+\leanref{Machine} & \longrightarrow & \leanref{Vegas.Strategic}
+  & \longrightarrow & \leanref{KernelGame},\\
+\leanref{Machine} & \longrightarrow & \leanref{Vegas.GameBridge}
+  & \longrightarrow & \text{FOSG/EFG views},\\
+\leanref{Machine} & \longleftarrow & \leanref{Vegas.Backend}
+  && \text{refined implementations}.
 \end{array}
 \]
 The direction is deliberate: each source layer owns its translation to the next
@@ -97,6 +169,53 @@ currently FOSG and EFG.  \leanref{Vegas.Backend} contains operational
 refinement obligations for runtimes.  These layers are not interchangeable:
 strategic semantics are part of Vegas, while FOSG and EFG are presentations and
 bridges.
+
+\subsection{Theorem Inventory}
+
+The main checked contracts are the following.
+\begin{enumerate}[nosep]
+\item \emph{Lowering contracts.}
+  Surface programs lower definitionally to core programs.  The main lowerer is
+  \leanref{VegasLang.lower}; the nullable compiler is proved equal to it by:
+\begin{center}
+\small\leanref{nullableCompile_eq_lower}.
+\end{center}
+  The examples record definitional lowerings for the Matching Pennies programs.
+\item \emph{Event-graph adequacy.}
+  The construction \leanref{programEventGraph} gives a finite DAG whose
+  prerequisites are causal read dependencies.  Terminal event-graph outcomes
+  agree with the declared payoff expressions by
+  \leanref{eventGraphOutcome_eq_evalPayoffs_of_terminal}.
+\item \emph{Frontier commutation.}
+  Distinct enabled event nodes preserve each other's availability and commute
+  extensionally; these are the frontier preservation and frontier diamond
+  theorems stated in \S4.
+\item \emph{Trace-to-public agreement.}
+  Projecting blocked traces to public outcomes gives the public pure and PMF
+  behavioural kernel games; expected utilities agree after the same
+  projection.  The representative Lean names are:
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}l@{}}
+\leanref{pureBlockedTraceKernelGameAt_outcomeKernel_map_outcome}\\
+\leanref{pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome}\\
+\leanref{pureBlockedTraceKernelGameAt_eu_eq}\quad
+\leanref{pmfBehavioralBlockedTraceKernelGameAt_eu_eq}.
+\end{tabular}
+\end{center}
+\item \emph{Presentation and realisation.}
+  The EFG bridge preserves public outcome laws; the Lean theorem is
+\begin{center}
+\scriptsize\leanref{eventGraphEFGAt_outcomeKernel_map_publicOutcome}.
+\end{center}
+  The finite Kuhn theorem \leanref{kuhn_finite} realises every independent
+  mixed pure profile by a PMF behavioural profile with the same public outcome
+  distribution.
+\item \emph{Backend transport.}
+  A stochastic refinement plus compatible block-law lift gives equality of
+  projected backend and specification trace laws, equality of expected
+  utilities, and Nash pullback theorems for pure and PMF behavioural games.
+\end{enumerate}
 
 \section{Checked Programs}
 
@@ -121,7 +240,9 @@ the public erasure of the context, while commit guards are typed over the full
 erased context and constrained by \leanref{GuardUsesOnly}.  This separates
 expressiveness from information discipline: a guard can be written against the
 ambient state, but the well-formedness proof says its truth is determined by the
-acting player's view.
+acting player's view.  For example, a guard may mention a hidden variable such
+as a player's own sealed card; \leanref{GuardUsesOnly} is the proof that the
+guard's truth cannot change when another player's hidden state changes.
 
 The current surface language, \leanref{VegasLang}, is an elaborated typed layer
 over the concrete expression language \leanref{simpleExpr}.  It keeps the core
@@ -224,14 +345,12 @@ The unsuffixed \leanref{pureKernelGame} and
 
 The strategy carriers are reachability-pruned and legal by construction.
 Illegal deviations are not filtered out after the fact; they are absent from
-the carrier over which equilibrium predicates quantify.  The standard
-solution-concept names, including \leanref{IsNash},
-\leanref{IsBestResponse}, \leanref{IsDominant},
-\leanref{StrictlyDominates}, \leanref{IsCorrelatedEq},
-\leanref{IsExactPotential}, \leanref{IsZeroSum}, and welfare quantities such
-as \leanref{socialWelfare}, are Vegas-facing definitions over
-\leanref{pmfBehavioralKernelGame}.  The pure counterparts live over
-\leanref{pureKernelGame}.
+the carrier over which equilibrium predicates quantify.  Vegas then exposes
+the standard solution-concept inventory over these games: Nash equilibrium,
+best response, dominance, correlated equilibrium, potential-game predicates,
+zero-sum predicates, and welfare quantities.  The representative names are
+\leanref{IsNash}, \leanref{IsBestResponse}, and \leanref{socialWelfare};
+the full inventory is in supplement \S7.
 
 The blocked-trace games retain the primitive event blocks and endpoint machine
 state as outcomes.  They are useful for proving that operational refinements
@@ -248,8 +367,10 @@ blocked traces to public outcomes; the code packages these projections as
 The main finite realisation theorem is \leanref{kuhn_finite}.  It states that
 for any finite checked program, every independent mixed profile over pure
 strategies has a PMF behavioural profile with the same public outcome
-distribution.  Writing \(K_{\mathit{beh}}\) and \(K_{\mathit{pure}}\) for the
-two outcome kernels, the statement has the shape:
+distribution.  Writing \(\mu\) for the independent mixed profile, \(\beta\) for
+its behavioural realisation, and \(K_{\mathit{beh}}\) and
+\(K_{\mathit{pure}}\) for the two outcome kernels, the statement has the
+shape:
 \[
   K_{\mathit{beh}}(\beta)
   =
@@ -276,7 +397,8 @@ interpreter.
 \section{Backend Refinement}
 
 The backend layer is for implementations that have more machinery than the
-source language: transactions, mempools, scheduler choices, batching, network
+source language.  A contract runtime, for example, is not an event graph: it
+may have transactions, mempool order, scheduler choices, batching, network
 state, or runtime bookkeeping.  Such implementations are represented as
 machines and related to the canonical event-graph machine by refinement.
 
@@ -295,24 +417,52 @@ backend blocked-trace games under the supplied refinement data.  This is the
 intended verification workflow: reason about the canonical Vegas semantics,
 then prove that a runtime implements it.
 
-\section{Examples}
+\section{Worked Example Revisited}
 
-The examples are deliberately small but cover the important surfaces of the
-development:
-\begin{center}
-\small
-\begin{tabular}{@{}ll@{}}
-\leanref{Vegas.Examples.Prisoners} & checked strategic game,\\
-\leanref{Vegas.Examples.MatchingPennies} & checked strategic game,\\
-\leanref{Vegas.Examples.BattleOfTheSexes} & checked strategic game,\\
-\leanref{Vegas.Examples.MontyHall} & checked strategic game,\\
-\leanref{Vegas.Examples.VegasLang} & surface lowering,\\
-\leanref{Vegas.Examples.NullableCommit} & nullable-yield discipline,\\
-\leanref{Vegas.Examples.SyntaxConstructors} & generated nodes and slices.
-\end{tabular}
-\end{center}
-The EFG and backend examples demonstrate that the bridge and refinement layers
-are usable rather than merely abstract.
+The Matching Pennies example from the introduction reaches all three public
+semantic views.  The checked program \leanref{Vegas.Examples.MatchingPennies.game}
+is a \leanref{WFProgram}; its generated public games are
+\leanref{pureKernelGame} and \leanref{pmfBehavioralKernelGame}.  The theorem
+\leanref{payoffs_zero_sum} checks the intended payoff invariant directly on
+the public payoff expressions:
+\[
+  u_{\mathit{matcher}}(h,t) + u_{\mathit{mismatcher}}(h,t) = 0.
+\]
+
+The event graph supplies the concurrency story: both commits are initially
+enabled, each reveal depends only on the corresponding commit, and the payoff
+node depends on both reveals.  The FOSG view supplies the strategic story:
+each player's strategy is indexed by the observations available at its
+decision point.  The EFG bridge supplies the conventional tree story:
+\leanref{eventGraphEFGAt} serialises each FOSG round into decision nodes and
+chance, and the public outcome law of the translated EFG is the same law as
+the Vegas behavioural kernel game.
+
+Thus the example can be read in three equivalent ways.  As a program, it is a
+commit/reveal implementation of simultaneous play.  As an event graph, it has
+two independent initial actions.  As a kernel game, it is the familiar
+zero-sum Matching Pennies game, with mixed pure strategies and behavioural
+strategies related by \leanref{kuhn_finite}.
+
+\section{Related Work and Scope}
+
+VegasCore sits between programming-language semantics and formal game theory.
+Normal-form games are compact but erase protocol order and observations.
+Extensive-form games expose order, but force independent events into an
+arbitrary tree order.  FOSGs are closer to the state-based operational view,
+and the GameTheory library in this repository supplies the reusable FOSG,
+EFG, and kernel-game infrastructure.  VegasCore's contribution is the checked
+compiler path from visibility-aware programs to event graphs and then to those
+game-theoretic presentations.
+
+The scope is intentionally finite.  Player sets, relevant value domains,
+program syntax, event graphs, and strategy carriers are finite in the theorem
+surface described here.  Distributions are finite-support PMFs; continuous
+types and measure-theoretic kernels are out of scope.  The backend layer states
+refinement obligations and proves transport theorems, but it does not claim
+that every concrete runtime model has already been supplied.  Mechanism-design
+libraries can be connected through the generated kernel games, but they are not
+part of the core compiler semantics.
 
 \section{Conclusion}
 
