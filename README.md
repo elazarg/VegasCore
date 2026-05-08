@@ -116,9 +116,6 @@ Vegas/
   Corollaries/             -- transported GameTheory results
   Examples/                -- checked Prisoners, Pennies, Sexes, Monty Hall
 
-Compatibility shims remain at the old top-level and `Vegas/Protocol/` module
-paths for now.
-
 GameTheory/                -- submodule with the general game-theory library
 ```
 

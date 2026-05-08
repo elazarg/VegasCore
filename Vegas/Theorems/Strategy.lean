@@ -1,6 +1,9 @@
 import Vegas.GameBridge.FOSG.StateSufficiency
 import Vegas.Strategic.KernelGame
-import Vegas.Strategy
+import Vegas.Strategic.Vocabulary
+import Vegas.Strategic.Local
+import Vegas.Strategic.Domination
+import Vegas.Strategic.Transport
 import Vegas.Theorems.Progress
 
 /-!

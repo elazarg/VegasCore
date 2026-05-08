@@ -158,10 +158,6 @@ Folder & Role \\
 \end{tabular}
 \end{center}
 
-Compatibility modules with the old names, especially under \TT{Vegas/Protocol/}
-and top-level names such as \TT{Vegas/PureStrategic.lean}, currently re-export
-the new modules.  They are import shims, not the ownership structure.
-
 \subsection{A glossary for the cross-disciplinary reader}
 
 \paragraph{For PL readers.}
@@ -319,7 +315,7 @@ dependencies, but it cannot under-report a semantically relevant read and
 still satisfy \TT{expr_deps_sound} or \TT{dist_deps_sound}.
 
 \paragraph{Concrete instance.}
-\TT{simpleExpr} (in \TT{Vegas/ExprSimple.lean}) instantiates \TT{IExpr} with
+\TT{simpleExpr} (in \TT{Vegas/Lang/ExprSimple.lean}) instantiates \TT{IExpr} with
 $\Ty = \{\intt, \bool, \mathsf{range}\,\ell\,h,
 \mathsf{option}\,b\}$ and the obvious values, where
 $\Val(\mathsf{option}\,b)=\mathrm{Option}(\Val(b))$. Its expression syntax
@@ -1136,7 +1132,7 @@ view exposes outcome kernels
   \mathrm{outcomeFromBehavioral}_h\,\beta : \PMF{\Outcome\,M},
 \]
 from pure and behavioural profiles respectively. The horizon $h$ is fixed
-by the program: \TT{syntaxSteps} (\TT{Vegas/Config.lean}) counts every
+by the program: \TT{syntaxSteps} (\TT{Vegas/Core/Config.lean}) counts every
 source constructor except \Ret, including administrative \Let{}s. The depth
 counter in \TT{BoundedState} is presentation data needed to prove the
 \emph{FOSG tree's} finiteness; the underlying event graph is already finite, but

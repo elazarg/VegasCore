@@ -1,5 +1,8 @@
 import Vegas.Lang.Nullable
-import Vegas.Strategy
+import Vegas.Strategic.Vocabulary
+import Vegas.Strategic.Local
+import Vegas.Strategic.Domination
+import Vegas.Strategic.Transport
 
 /-!
 # Nullable Compilation Theorems

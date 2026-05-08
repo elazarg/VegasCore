@@ -1,1 +1,0 @@
-import Vegas.Core.Finite
