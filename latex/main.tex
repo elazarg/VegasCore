@@ -5,7 +5,7 @@
 \usepackage[margin=1in]{geometry}
 
 \title{VegasCore: Event-Graph-Native Semantics for Programmed Games}
-\author{}
+\author{Elazar Gershuni\\\texttt{elazarg@gmail.com}}
 \date{May 2026}
 
 \begin{document}
@@ -48,13 +48,15 @@ players can observe, deviations must be legal at the point where they are made,
 and equivalent linearisations of independent events should not produce different
 semantics.
 
-VegasCore formalises this protocol-to-game passage in Lean.  The user-facing
-input is a checked Vegas program, \leanref{WFProgram}.  The semantic owner,
-however, is not the source syntax and not a hand-written extensive-form tree.
-It is the event graph, \leanref{EventGraph}: a finite dependency graph whose
-configurations record which event nodes have produced which results.  The graph
-is then interpreted as a generic observation-aware \leanref{Machine}; strategic
-objects are derived from this machine by the FOSG and kernel-game layers.
+VegasCore formalises this protocol-to-game passage in Lean~4
+\cite{deMouraUllrich2021}, using the same ecosystem as mathlib
+\cite{mathlib2020}.  The user-facing input is a checked Vegas program,
+\leanref{WFProgram}.  The semantic owner, however, is not the source syntax
+and not a hand-written extensive-form tree.  It is the event graph,
+\leanref{EventGraph}: a finite dependency graph whose configurations record
+which event nodes have produced which results.  The graph is then interpreted
+as a generic observation-aware \leanref{Machine}; strategic objects are
+derived from this machine by the FOSG and kernel-game layers.
 
 The immediate benefit of this architecture is that the operational and
 strategic stories share the same state space.  A machine trace, a FOSG history,
@@ -77,6 +79,11 @@ ret [
   mismatcher := if matcherPublic == mismatcherPublic then -1 else  1
 ]
 \end{verbatim}
+Each \leanref{yield} line gives a hidden variable, the public variable it will
+later reveal into, the acting player, and a guard.  Here the guard is
+\leanref{true}, so both players always have both Boolean actions available.
+This is the surface \leanref{VegasLang} form; the core \leanref{VegasCore}
+lowering replaces the simultaneous block by paired commit/reveal nodes.
 The checked Lean example is \leanref{Vegas.Examples.MatchingPennies}; the
 surface lowering example is \leanref{Vegas.Examples.VegasLang}.  The
 lowered core program is a commit/reveal protocol, but the event graph recovers
@@ -96,7 +103,8 @@ does not change the event-graph configuration reached after both commits.
 The frontier diamond theorem in \S4 is precisely the general statement behind
 this example.
 
-\paragraph{Companion supplement.}
+\subsection{Companion Supplement}
+
 The supplement is intentionally definition-heavy.  It records the exact Lean
 structures, constructors, and file ownership.  This report uses Lean names such
 as \leanref{VegasCore}, \leanref{EventGraph.Configuration}, and
@@ -117,12 +125,14 @@ types need not be hand-written normal-form actions.
 
 A factored-observation stochastic game (FOSG) is a state-based game
 presentation in which players act from information states induced by their
-observations.  An extensive-form game (EFG) is the usual tree presentation of
-sequential play.  VegasCore treats both as presentations of the event-graph
-machine, not as independent denotations.  Kuhn's theorem is the classical
-perfect-recall result that mixed strategies over pure contingent plans can be
-realised by behavioural strategies; here it is used in the finite,
-PMF-valued form stated in \S7.
+observations; the terminology follows Kova\v{r}\'ik et al.'s connection
+between FOSGs and EFGs \cite{Kovarik2022}.  An extensive-form game (EFG) is
+the usual tree presentation of sequential play.  VegasCore treats both as
+presentations of the event-graph machine, not as independent denotations.
+Kuhn's theorem is the classical perfect-recall result that mixed strategies
+over pure contingent plans can be realised by behavioural strategies
+\cite{Kuhn1953}; here it is used in the finite, PMF-valued form stated in
+\S7.
 
 \section{Semantic Spine}
 
@@ -155,8 +165,8 @@ The strategic and presentation layers then consume the machine:
   & \longrightarrow & \leanref{KernelGame},\\
 \leanref{Machine} & \longrightarrow & \leanref{Vegas.GameBridge}
   & \longrightarrow & \text{FOSG/EFG views},\\
-\leanref{Machine} & \longleftarrow & \leanref{Vegas.Backend}
-  && \text{refined implementations}.
+\text{refined impl. machines} & \longrightarrow & \leanref{Vegas.Backend}
+  & \longrightarrow & \leanref{Machine}\ \text{spec}.
 \end{array}
 \]
 The direction is deliberate: each source layer owns its translation to the next
@@ -174,7 +184,7 @@ bridges.
 
 The main checked contracts are the following.
 \begin{enumerate}[nosep]
-\item \emph{Lowering contracts.}
+\item \emph{Lowering correctness.}
   Surface programs lower definitionally to core programs.  The main lowerer is
   \leanref{VegasLang.lower}; the nullable compiler is proved equal to it by:
 \begin{center}
@@ -328,18 +338,19 @@ graph remains the common object below both.
 
 For a finite checked program \(g\), VegasCore exposes four canonical kernel
 games:
-\[
-\begin{array}{l}
-\leanref{pureKernelGameAt}\;g
-  \quad\text{pure strategies, public outcomes},\\
-\leanref{pmfBehavioralKernelGameAt}\;g
-  \quad\text{PMF behavioural strategies, public outcomes},\\
-\leanref{pureBlockedTraceKernelGameAt}\;g
-  \quad\text{pure strategies, blocked machine-trace outcomes},\\
-\leanref{pmfBehavioralBlockedTraceKernelGameAt}\;g\\
-\qquad\text{PMF behavioural strategies, blocked machine-trace outcomes}.
-\end{array}
-\]
+\begin{center}
+\small
+\begin{tabular}{@{}lp{0.46\textwidth}@{}}
+\leanref{pureKernelGameAt}\;\(g\) &
+  pure strategies, public outcomes,\\
+\leanref{pmfBehavioralKernelGameAt}\;\(g\) &
+  PMF behavioural strategies, public outcomes,\\
+\leanref{pureBlockedTraceKernelGameAt}\;\(g\) &
+  pure strategies, blocked machine-trace outcomes,\\
+\leanref{pmfBehavioralBlockedTraceKernelGameAt}\;\(g\) &
+  PMF behavioural strategies, blocked machine-trace outcomes.
+\end{tabular}
+\end{center}
 The unsuffixed \leanref{pureKernelGame} and
 \leanref{pmfBehavioralKernelGame} are the fixed-program public APIs.
 
@@ -377,6 +388,8 @@ shape:
   \leanref{Math.PMFProduct.pmfPi}(\mu)
     \bind (\lambda \pi, K_{\mathit{pure}}(\pi)).
 \]
+Here \leanref{Math.PMFProduct.pmfPi} is the independent product PMF over the
+players' mixed strategies.
 The supplement records the exact Lean types of these games and their outcome
 kernel fields.
 The project-facing property \leanref{KuhnPMF} and theorem
@@ -409,12 +422,18 @@ is stronger: it preserves the projected next-state PMF exactly.  The latter is
 the relation used for probability-preserving backend results.
 
 The backend kernel-game layer packages a refinement plus block-law lifts as
-EU-preserving morphisms.  The public pullback theorems
-\leanref{backendBlockedTraceKernelGameAt_isNash_pullback} and
-\leanref{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback} say that
-Nash equilibria established for the canonical spec game transport to the
-backend blocked-trace games under the supplied refinement data.  This is the
-intended verification workflow: reason about the canonical Vegas semantics,
+EU-preserving morphisms.  The blocked-trace pullback and behavioural pullback
+theorems,
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}l@{}}
+\leanref{backendBlockedTraceKernelGameAt_isNash_pullback}\\
+\leanref{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback},
+\end{tabular}
+\end{center}
+say that Nash equilibria established for the canonical spec game transport to
+the backend blocked-trace games under the supplied refinement data.  This is
+the intended verification workflow: reason about the canonical Vegas semantics,
 then prove that a runtime implements it.
 
 \section{Worked Example Revisited}
@@ -449,11 +468,11 @@ strategies related by \leanref{kuhn_finite}.
 VegasCore sits between programming-language semantics and formal game theory.
 Normal-form games are compact but erase protocol order and observations.
 Extensive-form games expose order, but force independent events into an
-arbitrary tree order.  FOSGs are closer to the state-based operational view,
-and the GameTheory library in this repository supplies the reusable FOSG,
-EFG, and kernel-game infrastructure.  VegasCore's contribution is the checked
-compiler path from visibility-aware programs to event graphs and then to those
-game-theoretic presentations.
+arbitrary tree order.  FOSGs are closer to the state-based operational view
+\cite{Kovarik2022}, and the GameTheory library in this repository supplies
+the reusable FOSG, EFG, and kernel-game infrastructure.  VegasCore's
+contribution is the checked compiler path from visibility-aware programs to
+event graphs and then to those game-theoretic presentations.
 
 The scope is intentionally finite.  Player sets, relevant value domains,
 program syntax, event graphs, and strategy carriers are finite in the theorem
@@ -466,13 +485,48 @@ part of the core compiler semantics.
 
 \section{Conclusion}
 
-VegasCore's main design choice is to make the event graph the central semantic
-object.  Source programs define event graphs; event graphs define machines;
-machines support strategic views, trace semantics, EFG presentations, and
-backend refinements.  This keeps the trusted path narrow.  The core theorem
-surface then says that independent frontier events commute, finite strategic
-games are generated with legal information-state strategies, mixed pure play is
-realised behaviourally, and implementation machines can be related back to the
-canonical semantics by explicit refinement obligations.
+The Matching Pennies example is the small picture: a sequential program, an
+event graph with independent initial commits, and a familiar zero-sum strategic
+game all denote the same object.  The broader design is to make that pattern
+the default: source programs define event graphs, event graphs define machines,
+and every game-theoretic or backend view proves how it projects back.
+
+Natural next steps are richer surface notation, concrete backend models,
+larger mechanism examples, and eventually infinite-horizon or measure-theoretic
+extensions.  The current report is deliberately narrower: finite programs,
+finite-support probability, and checked presentation boundaries.
+
+\begin{thebibliography}{9}
+
+\bibitem{Kuhn1953}
+Harold W. Kuhn.
+\newblock Extensive games and the problem of information.
+\newblock In H. W. Kuhn and A. W. Tucker, editors,
+\emph{Contributions to the Theory of Games II}, Annals of Mathematics Studies
+28, pages 193--216. Princeton University Press, 1953.
+
+\bibitem{Kovarik2022}
+Vojt\v{e}ch Kova\v{r}\'ik, Martin Schmid, Neil Burch, Michael Bowling, and
+Viliam Lis\'y.
+\newblock Rethinking formal models of partially observable multiagent decision
+making.
+\newblock \emph{Artificial Intelligence}, 303:103645, 2022.
+\newblock doi:10.1016/j.artint.2021.103645.
+
+\bibitem{deMouraUllrich2021}
+Leonardo de Moura and Sebastian Ullrich.
+\newblock The Lean 4 theorem prover and programming language.
+\newblock In \emph{Automated Deduction -- CADE 28}, Lecture Notes in Computer
+Science 12699, pages 625--635. Springer, 2021.
+\newblock doi:10.1007/978-3-030-79876-5\_37.
+
+\bibitem{mathlib2020}
+The mathlib Community.
+\newblock The Lean mathematical library.
+\newblock In \emph{Proceedings of the 9th ACM SIGPLAN International Conference
+on Certified Programs and Proofs}, CPP 2020, pages 367--381. ACM, 2020.
+\newblock doi:10.1145/3372885.3373824.
+
+\end{thebibliography}
 
 \end{document}
