@@ -4,7 +4,7 @@
 
 \usepackage[margin=1in]{geometry}
 
-\title{VegasCore: Event-Graph-Native Protocol Semantics}
+\title{VegasCore: Event-Graph-Native Semantics for Programmed Games}
 \author{}
 \date{}
 
@@ -12,171 +12,317 @@
 \maketitle
 
 \begin{abstract}
-VegasCore is a Lean~4 mechanization of finite games written as programs.
-Checked Vegas syntax is elaborated to an invariant-carrying event graph; that
-graph is interpreted as a probabilistic, observation-aware machine; sequential
-FOSG views and kernel games are derived from the machine. The supported
-semantic path is
+VegasCore is a Lean~4 development for writing finite games as typed programs
+and obtaining their strategic semantics mechanically.  A checked program is
+lowered to a dependency-aware event graph; the event graph is interpreted as an
+asynchronous probabilistic machine; game-theoretic objects are then derived as
+views of that machine rather than as a separate source-level interpreter.  The
+central semantic spine is
 \[
-  \WFP \longrightarrow \leanref{EventGraph}
-  \longrightarrow \leanref{Machine}
-  \longrightarrow \leanref{Machine.FOSGView}
-  \longrightarrow \leanref{KernelGame}.
+  \leanref{Lang.ToCore}
+  \longrightarrow
+  \leanref{Core.ToEventGraph}
+  \longrightarrow
+  \leanref{EventGraph.ToMachine}.
 \]
-The source language is the user-facing way to define games. The event-graph
-machine is the semantic owner.
+On top of this spine, VegasCore exposes native strategy carriers and kernel
+games, optional bridges to FOSG and EFG presentations, and backend refinement
+obligations for implementations.  The companion supplement gives the exact
+Lean definitions and field lists; this report focuses on the design, the main
+semantic invariants, and the theorem surface that users are meant to rely on.
 \end{abstract}
 
 \tableofcontents
 
+\section{Introduction}
+
+Many games are easier to describe as protocols than as normal forms.  A player
+commits to a value, a public random sample is drawn, a hidden value is later
+revealed, and payoffs are computed from the public transcript.  The mathematical
+game is implicit in these operational steps: strategies are constrained by what
+players can observe, deviations must be legal at the point where they are made,
+and equivalent linearisations of independent events should not produce different
+semantics.
+
+VegasCore formalises this protocol-to-game passage in Lean.  The user-facing
+input is a checked Vegas program, \leanref{WFProgram}.  The semantic owner,
+however, is not the source syntax and not a hand-written extensive-form tree.
+It is the event graph, \leanref{EventGraph}: a finite dependency graph whose
+configurations record which event nodes have produced which results.  The graph
+is then interpreted as a generic observation-aware \leanref{Machine}; strategic
+objects are derived from this machine by the FOSG and kernel-game layers.
+
+The immediate benefit of this architecture is that the operational and
+strategic stories share the same state space.  A machine trace, a FOSG history,
+an EFG presentation, and a backend execution are different presentations of the
+same event-graph semantics.  The code does not ask the reader to trust that
+several interpreters agree.  Agreement is proved where presentation boundaries
+are introduced.
+
+\paragraph{Companion supplement.}
+The supplement is intentionally definition-heavy.  It records the exact Lean
+structures, constructors, and file ownership.  This report uses Lean names such
+as \leanref{VegasCore}, \leanref{EventGraph.Configuration}, and
+\leanref{pmfBehavioralKernelGame}; when a type signature or field list matters,
+the supplement is the authoritative reference.
+
+\section{Semantic Spine}
+
+The development is organised around semantic ownership rather than around a
+single compiler directory:
+\[
+\begin{array}{ccccc}
+\text{surface language} & \longrightarrow & \text{checked core}
+  & \longrightarrow & \text{event graph} \\
+\leanref{VegasLang} && \leanref{VegasCore} && \leanref{EventGraph} \\
+&&& \searrow & \downarrow \\
+&&&& \leanref{Machine}.
+\end{array}
+\]
+The corresponding Lean modules are:
+\[
+\begin{array}{lll}
+\leanref{Vegas.Lang.ToCore} &
+\leanref{Vegas.Core.ToEventGraph} &
+\leanref{Vegas.EventGraph.ToMachine}.
+\end{array}
+\]
+The direction is deliberate: each source layer owns its translation to the next
+semantic object.
+
+Other folders consume this spine.  \leanref{Vegas.Strategic} contains the
+native Vegas strategy carriers and kernel games.  \leanref{Vegas.GameBridge}
+contains bridges from the Vegas semantics to external game-form infrastructure,
+currently FOSG and EFG.  \leanref{Vegas.Backend} contains operational
+refinement obligations for runtimes.  These layers are not interchangeable:
+strategic semantics are part of Vegas, while FOSG and EFG are presentations and
+bridges.
+
 \section{Checked Programs}
 
-The public boundary is \leanref{WFProgram}. A checked program contains the
-root context, source program, initial environment, and facts for
-freshness, scoped visibility, reveal completeness, sample normalization, and
-nonempty legal commit guards.
+A raw \leanref{VegasCore} term is typed syntax.  A \leanref{WFProgram} is the
+point where syntax becomes a game description.  It packages the root context,
+the program, an initial environment, and the static obligations needed by the
+semantic pipeline:
+\[
+  \leanref{WFCtx},\quad
+  \leanref{WF},\quad
+  \leanref{NormalizedDists},\quad
+  \leanref{Legal}.
+\]
+The supplement gives the exact structure.  Conceptually, these obligations say:
+variables are fresh, visibility scopes are respected, committed values are
+eventually revealed, samples are probability distributions, and every commit
+site has at least one action satisfying its guard.
 
-Visibility is represented in the program context. Bindings are public or
-hidden and owned by a player. Commit strategies and observations are indexed by
-the information available to the acting player, so hidden information owned by
-other players is not available to legal strategies.
+The visibility discipline is simple and intentionally strong.  Bindings are
+public or hidden to a single owner.  Public computations and payoffs read only
+the public erasure of the context, while commit guards are typed over the full
+erased context and constrained by \leanref{GuardUsesOnly}.  This separates
+expressiveness from information discipline: a guard can be written against the
+ambient state, but the well-formedness proof says its truth is determined by the
+acting player's view.
 
-\section{Protocol Denotation}
+The current surface language, \leanref{VegasLang}, is an elaborated typed layer
+over the concrete expression language \leanref{simpleExpr}.  It keeps the core
+constructors and adds nullable public yields and simultaneous yield phases.
+Lowering is definitional:
+\[
+  \leanref{VegasLang.lower},\qquad
+  \leanref{VegasLang.compileNullable}
+  : \leanref{VegasLang} \to \leanref{VegasCore}.
+\]
+The surface layer therefore improves ergonomics without adding a second
+denotation.
 
-The executable protocol stack is concentrated in \leanref{Vegas.Protocol}.
+\section{Event Graphs}
 
-\begin{center}
-\small
-\begin{tabular}{@{}ll@{}}
-\toprule
-File & Role \\
-\midrule
-\leanref{Protocol/EventGraph.lean} &
-finite typed event graph \\
-\leanref{Protocol/Machine.lean} &
-probabilistic observation-aware machine carrier \\
-\leanref{Protocol/EventGraphMachine.lean} &
-event-graph configurations as machine states \\
-\leanref{Protocol/ProgramEventGraph.lean} &
-checked syntax elaborated to an event graph, with finiteness and observability facts \\
-\leanref{Protocol/Trace.lean} &
-bounded event/state traces and machine outcome kernels \\
-\leanref{Protocol/FOSG.lean} &
-sequential FOSG views derived from machines \\
-\leanref{Protocol/Strategic.lean} &
-finite program event-graph kernel-game constructors \\
-\leanref{Protocol/Kuhn.lean} &
-machine-native and Vegas-facing Kuhn realization theorems \\
-\leanref{Protocol/Backend.lean} &
-machine-to-machine backend refinement obligations \\
-\bottomrule
-\end{tabular}
-\end{center}
+The event graph is the central object of the development.  It turns a checked
+program tree into a finite graph of event nodes, typed storage fields, read
+sets, write slices, and dependency edges.  An event-graph configuration is not
+a log.  It is an extensional partial assignment from nodes to their result
+slices, with proofs that completed nodes are in the graph, closed under
+prerequisites, and locally well-shaped.
 
-An event graph configuration is an extensional partial assignment of graph
-node results, together with the invariant that completed nodes are closed under
-dependencies. The frontier is computed from the assignment; it is not cached as
-machine state. A machine step executes one enabled event: a player-owned
-frontier node via a legal write slice, or a non-player frontier node via the
-internal event channel.
+The graph frontier is computed from this assignment:
+\[
+  \text{frontier} =
+  \{\, n \mid n \text{ is unfinished and every prerequisite of } n
+      \text{ is finished}\,\}.
+\]
+No schedule is stored in the machine state.  This is the main reason the
+event graph is a better semantic object than a sequential interpreter: when two
+enabled nodes are independent, the state reached after executing both should be
+the same regardless of the order in which a presentation chooses to show them.
 
-\begin{theorem}[Frontier stability]
-Let \(C\) be an event graph configuration. If \(a\) and \(b\) are distinct
-nodes on the frontier of \(C\), then after executing \(a\) with any legal result
-slice, \(b\) is still on the frontier of the successor configuration.
+\begin{theorem}[Frontier preservation]
+Let \(C\) be an event-graph configuration.  If \(a\) and \(b\) are distinct
+frontier nodes of \(C\), then after executing \(a\) with a legal slice, \(b\)
+is still on the frontier of the successor configuration.
 
-In Lean this is \leanref{EventGraph.Configuration.withResult_mem_frontier_of_ne}.
+In Lean this is
+\leanref{EventGraph.Configuration.withResult_mem_frontier_of_ne}.
 \end{theorem}
 
 \begin{theorem}[Frontier diamond]
-Let \(a\) and \(b\) be distinct frontier nodes of a configuration \(C\). Let
-\(s_a\) and \(s_b\) be legal result slices for \(a\) and \(b\), respectively.
-Then the two linearizations reach the same extensional configuration:
+Let \(a\) and \(b\) be distinct frontier nodes of a configuration \(C\).  If
+\(s_a\) and \(s_b\) are legal result slices for those nodes, then the two
+linearisations agree extensionally:
 \[
   (C[a \mapsto s_a])[b \mapsto s_b]
   =
   (C[b \mapsto s_b])[a \mapsto s_a].
 \]
-
 In Lean this is \leanref{EventGraph.Configuration.withResult_comm}.
 \end{theorem}
 
-Thus a user may read a frontier execution linearly without losing semantic
-content: the linear order is presentation data. Intermediate transcripts may
-record which enabled event happened first, but independent frontier events cannot
-race to change the final physical state. Any strategically relevant dependency
-must already be represented as an event-graph dependency, and therefore prevents the
-dependent event from being on the same frontier.
+These facts are small, but they carry much of the design.  Any strategically
+relevant dependency must be represented in the graph.  Once two events share a
+frontier, their relative order is presentation data, not semantic data.
 
-\section{FOSG As A View}
+\section{Machines and FOSG Views}
 
-\leanref{Machine.FOSGView} derives a game-theoretic checkpoint view from a
-protocol machine. Worlds are machine states; bounded views add only a depth
-counter. A FOSG transition is a player-facing frontier round with its own
-round-action alphabet, while the underlying machine remains the executable
-primitive-event carrier. Thus FOSG is the strategic interface to the same
-machine state space, not a second execution semantics.
+\leanref{Machine} is the operational carrier.  A primitive machine event is
+either a player action or an internal event; transitions are PMF-valued; states
+expose public and player-local observations.  The interpretation
+\leanref{EventGraph.toMachine} uses event-graph configurations as states.
+Player actions choose a frontier node and a write slice.  Internal events
+execute non-player frontier nodes.  Unavailable event-graph actions stutter,
+making the step functions total while keeping legality as a separate predicate.
 
-The finite checked-program view is obtained from
-\leanref{eventGraphFOSGView}. Its bounded version at \leanref{syntaxSteps}
-provides the information-state-indexed strategy carriers used by the public
-kernel games.
+The FOSG layer is a checkpoint view of a machine, not another machine.  A
+\leanref{Machine.FOSGView} chooses a round-level action alphabet
+\leanref{Act}, active players, legal round actions, and a transition kernel.
+For event graphs, a round action can cover every frontier node owned by a
+player; the underlying machine still executes primitive events.  The stability
+condition \leanref{HasStableFrontierRounds} is the proof obligation that makes
+this batching sound.
 
-\section{Strategic API}
+This distinction matters.  The machine explains execution.  The FOSG view
+explains strategic observation and information-state strategies.  The event
+graph remains the common object below both.
 
-For a finite checked program \(g\), the public strategic carriers are:
-\[
-\begin{array}{ll}
-\leanref{pureStrategyAt}\;g\;i &
-\text{pure reachable-legal strategy for player } i,\\
-\leanref{behavioralStrategyPMFAt}\;g\;i &
-\text{PMF behavioral reachable-legal strategy for player } i,\\
-\leanref{pureKernelGame}\;g &
-\text{pure strategic-form kernel game},\\
-\leanref{pmfBehavioralKernelGame}\;g &
-\text{PMF behavioral strategic-form kernel game}.
-\end{array}
-\]
+\section{Strategic Semantics}
+\label{sec:strategic}
 
-Equilibrium, dominance, welfare, potential-game, zero-sum, and related
-predicates in \leanref{Vegas.Equilibrium}, \leanref{Vegas.PureStrategic}, and
-\leanref{Vegas.GameProperties} are wrappers over these kernel games. Illegal
-deviations are excluded by the strategy carrier.
-
-\section{Kuhn Realization}
-
-The main Vegas-facing finite mixed-to-behavioral theorem is
-\leanref{kuhn_finite}. In Lean shape:
+For a finite checked program \(g\), VegasCore exposes four canonical kernel
+games:
 \[
 \begin{array}{l}
-\forall \mu : \prod_i
-  \PMF{(\leanref{pureKernelGameAt}\;g).\leanref{Strategy}\;i},\\
-\quad \exists \beta : (\leanref{pmfBehavioralKernelGameAt}\;g).\leanref{Profile},\\
-\quad
-  (\leanref{pmfBehavioralKernelGameAt}\;g).\leanref{outcomeKernel}\;\beta
-  =
-  \leanref{Math.PMFProduct.pmfPi}\;\mu
-    \bind
-    (\lambda \pi,\,
-      (\leanref{pureKernelGameAt}\;g).\leanref{outcomeKernel}\;\pi).
+\leanref{pureKernelGameAt}\;g
+  \quad\text{pure strategies, public outcomes},\\
+\leanref{pmfBehavioralKernelGameAt}\;g
+  \quad\text{PMF behavioural strategies, public outcomes},\\
+\leanref{pureBlockedTraceKernelGameAt}\;g
+  \quad\text{pure strategies, blocked machine-trace outcomes},\\
+\leanref{pmfBehavioralBlockedTraceKernelGameAt}\;g\\
+\qquad\text{PMF behavioural strategies, blocked machine-trace outcomes}.
 \end{array}
 \]
+The unsuffixed \leanref{pureKernelGame} and
+\leanref{pmfBehavioralKernelGame} are the fixed-program public APIs.
 
-The corresponding named protocol property is \leanref{KuhnPMF}, realized by
-\leanref{kuhnPMF_finite}. These are stated in Vegas kernel-game terms. The
-bounded FOSG view is the finite sequential game to which Kuhn's theorem
-applies.
+The strategy carriers are reachability-pruned and legal by construction.
+Illegal deviations are not filtered out after the fact; they are absent from
+the carrier over which equilibrium predicates quantify.  The standard
+solution-concept names, including \leanref{IsNash},
+\leanref{IsBestResponse}, \leanref{IsDominant},
+\leanref{StrictlyDominates}, \leanref{IsCorrelatedEq},
+\leanref{IsExactPotential}, \leanref{IsZeroSum}, and welfare quantities such
+as \leanref{socialWelfare}, are Vegas-facing definitions over
+\leanref{pmfBehavioralKernelGame}.  The pure counterparts live over
+\leanref{pureKernelGame}.
 
-\section{Public Interfaces}
+The blocked-trace games retain the primitive event blocks and endpoint machine
+state as outcomes.  They are useful for proving that operational refinements
+and public strategic games agree.  The public games are obtained by projecting
+blocked traces to public outcomes; the code packages these projections as
+\begin{center}
+\leanref{KernelGame.Simulation}\qquad
+\leanref{KernelGame.Bisimulation}\qquad
+\leanref{KernelGame.EUBisimulation}.
+\end{center}
 
-The user-facing flow is:
+\section{Realisation and EFG Presentation}
 
-\begin{enumerate}[nosep]
-\item users write checked Vegas programs;
-\item checked syntax elaborates to \leanref{EventGraph};
-\item the graph is interpreted as \leanref{Machine};
-\item FOSG views derive finite sequential-game structure from the machine;
-\item public kernel games and theorem statements use Vegas names.
-\end{enumerate}
+The main finite realisation theorem is \leanref{kuhn_finite}.  It states that
+for any finite checked program, every independent mixed profile over pure
+strategies has a PMF behavioural profile with the same public outcome
+distribution.  Writing \(K_{\mathit{beh}}\) and \(K_{\mathit{pure}}\) for the
+two outcome kernels, the statement has the shape:
+\[
+  K_{\mathit{beh}}(\beta)
+  =
+  \leanref{Math.PMFProduct.pmfPi}(\mu)
+    \bind (\lambda \pi, K_{\mathit{pure}}(\pi)).
+\]
+The supplement records the exact Lean types of these games and their outcome
+kernel fields.
+The project-facing property \leanref{KuhnPMF} and theorem
+\leanref{kuhnPMF_finite} record the same fact as a named protocol-level
+claim.
+
+VegasCore also exposes an EFG bridge, but the bridge is intentionally not the
+semantic owner.  \leanref{eventGraphEFGAt} applies GameTheory's canonical
+FOSG-to-augmented-EFG construction to the bounded event-graph FOSG.  Theorem
+\begin{center}
+\small\leanref{eventGraphEFGAt_outcomeKernel_map_publicOutcome}
+\end{center}
+proves that the translated EFG behavioural profile induces the same public
+outcome law as the Vegas behavioural kernel game.  The EFG is therefore a
+checked presentation of the event-graph semantics, not an alternate
+interpreter.
+
+\section{Backend Refinement}
+
+The backend layer is for implementations that have more machinery than the
+source language: transactions, mempools, scheduler choices, batching, network
+state, or runtime bookkeeping.  Such implementations are represented as
+machines and related to the canonical event-graph machine by refinement.
+
+\leanref{WeakStepRefinement} is a one-step simulation relation.  Implementation
+events either project to specification events or are internal stuttering steps
+under the projected specification state.  \leanref{StochasticStepRefinement}
+is stronger: it preserves the projected next-state PMF exactly.  The latter is
+the relation used for probability-preserving backend results.
+
+The backend kernel-game layer packages a refinement plus block-law lifts as
+EU-preserving morphisms.  The public pullback theorems
+\leanref{backendBlockedTraceKernelGameAt_isNash_pullback} and
+\leanref{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback} say that
+Nash equilibria established for the canonical spec game transport to the
+backend blocked-trace games under the supplied refinement data.  This is the
+intended verification workflow: reason about the canonical Vegas semantics,
+then prove that a runtime implements it.
+
+\section{Examples}
+
+The examples are deliberately small but cover the important surfaces of the
+development:
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\leanref{Vegas.Examples.Prisoners} & checked strategic game,\\
+\leanref{Vegas.Examples.MatchingPennies} & checked strategic game,\\
+\leanref{Vegas.Examples.BattleOfTheSexes} & checked strategic game,\\
+\leanref{Vegas.Examples.MontyHall} & checked strategic game,\\
+\leanref{Vegas.Examples.VegasLang} & surface lowering,\\
+\leanref{Vegas.Examples.NullableCommit} & nullable-yield discipline,\\
+\leanref{Vegas.Examples.SyntaxConstructors} & generated nodes and slices.
+\end{tabular}
+\end{center}
+The EFG and backend examples demonstrate that the bridge and refinement layers
+are usable rather than merely abstract.
+
+\section{Conclusion}
+
+VegasCore's main design choice is to make the event graph the central semantic
+object.  Source programs define event graphs; event graphs define machines;
+machines support strategic views, trace semantics, EFG presentations, and
+backend refinements.  This keeps the trusted path narrow.  The core theorem
+surface then says that independent frontier events commute, finite strategic
+games are generated with legal information-state strategies, mixed pure play is
+realised behaviourally, and implementation machines can be related back to the
+canonical semantics by explicit refinement obligations.
 
 \end{document}
