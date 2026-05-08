@@ -282,11 +282,14 @@ $\mathrm{supp}(\mu)$, then $w(\mu \bind f) = 1$.
 \TT{IExpr} is a record with the following fields, grouped by role:
 \begin{itemize}\itemsep1pt
 \item \emph{Types and values}: $\Ty : \mathbf{Type}$;
-  $\Val : \Ty \to \mathbf{Type}$; decidable equality on each;
+  $\Val : \Ty \to \mathbf{Type}$; \TT{decEqTy : DecidableEq Ty};
+  \TT{decEqVal :} $\forall \tau,$ \TT{DecidableEq (Val}~$\tau$\TT{)};
   distinguished $\bool, \intt \in \Ty$ with projections to Lean's
   \TT{Bool} and \TT{Int}.
 \item \emph{Expression syntax}: \TT{Expr}~$\Gamma$~$\tau$; an evaluator
-  \TT{eval}; a static dependency over-approximation \TT{exprDeps}.
+  \TT{eval}; a static dependency over-approximation \TT{exprDeps}; and
+  \TT{expr_deps_context}, which proves dependencies mention only variables
+  in the expression context.
 \item \emph{Distribution syntax}: \TT{DistExpr}~$\Gamma$~$\tau$;
   \TT{evalDist} into $\FWeight{\Val(\tau)}$; \TT{distDeps}.
 \item \emph{Structural lemmas}: \TT{extendAfterHead} (insert an unrelated
@@ -828,17 +831,24 @@ fields rather than maintaining a parallel ad-hoc layer.
 \subsection{The event graph itself: \TT{EventGraph}}
 \label{def:EventGraph}
 
-\paragraph{Lean (key fields).}
+\paragraph{Lean.}
 \begin{quote}
-\TT{Node, Field : Type}, both decidable\\
+\TT{Node, Field : Type}\\
+\TT{nodeDecEq : DecidableEq Node}, \TT{fieldDecEq : DecidableEq Field}\\
 \TT{nodes : Finset Node}, \TT{fields : Finset Field}\\
 \TT{fieldTy : Field} $\to$ \TT{L.Ty}, \TT{fieldOwner : Field} $\to$ \TT{Option P}\\
 \TT{initial : (f : Field)} $\to$ \TT{Option (L.Val (fieldTy f))}\\
 \TT{sem : Node} $\to$ \TT{NodeSem}, \TT{prereqs : Node} $\to$ \TT{Finset Node}\\
-\TT{rank : Node} $\to$ \TT{Nat} \quad\textemdash\quad strict on prereqs\\
-\TT{sliceLegal, actionLegal : ...} \quad\textemdash\quad static and dynamic legality\\
-\TT{internalKernel} \quad\textemdash\quad PMF for non-player nodes
+\TT{rank : Node} $\to$ \TT{Nat}\\
+\TT{prereqs_subset_nodes}, \TT{prereq_rank_lt}\\
+\TT{read_fields_mem}, \TT{write_fields_mem}, \TT{no_duplicate_writes}\\
+\TT{sliceLegal : Node} $\to$ \TT{WriteSlice} $\to$ \TT{Prop}\\
+\TT{actionLegal : ResultAssignment} $\to$ \TT{Node} $\to$ \TT{WriteSlice} $\to$ \TT{Prop}\\
+\TT{internalKernel : Node} $\to$ \TT{ResultAssignment} $\to$ \TT{PMF WriteSlice}
 \end{quote}
+The last three lines use the namespace abbreviations \TT{WriteSlice G} and
+\TT{ResultAssignment G}; these are definitionally the raw dependent function
+types appearing in the structure fields.
 
 \paragraph{Math.}
 A \emph{event graph} is a finite, ranked DAG of typed nodes over a finite
@@ -875,7 +885,9 @@ prerequisites have produced results.
 \TT{abbrev ResultAssignment G := G.Node} $\to$ \TT{Option (WriteSlice G)} \\
 \TT{structure Configuration G where}\\
 \quad\TT{result : ResultAssignment G}\\
-\quad\TT{(closed under prereqs, legal slices, results in nodes)}\\
+\quad\TT{result_nodes :} completed nodes belong to \TT{G.nodes}\\
+\quad\TT{closed :} completed nodes are closed under \TT{G.prereqs}\\
+\quad\TT{legal :} stored slices satisfy \TT{G.sliceLegal}\\
 \TT{noncomputable def frontier (cfg : Configuration G) : Finset G.Node}
 \end{quote}
 
@@ -1002,11 +1014,14 @@ machine.
 
 \paragraph{Lean.}
 \TT{Vegas/EventGraph/ToMachine.lean} interprets an event graph as a machine:
-\TT{State := Configuration}; player actions are
-\TT{PlayerAction G p :=} $\Sigma$\TT{ node, WriteSlice} ranging over frontier nodes
-owned by $p$ with a legal slice; internal events are non-player frontier
-nodes; \TT{stepPlay} and \TT{stepInternal} execute one frontier node at a
-time, total in the same way as the abstract machine.
+\TT{State := Configuration}; \TT{Action := PlayerAction G};
+\TT{Internal := InternalEvent G}.  A \TT{PlayerAction G p} is a structure
+with fields \TT{node : G.Node} and \TT{slice : G.WriteSlice}; availability
+restricts it to frontier nodes owned by $p$ with a legal slice. Internal
+events are \TT{InternalEvent.node n} for non-player frontier nodes plus an
+unavailable \TT{idle} constructor. \TT{stepPlay} and \TT{stepInternal}
+execute one frontier node at a time, total in the same way as the abstract
+machine.
 
 \paragraph{Math.}
 Reading the event graph as a machine, an event is the execution of one frontier
@@ -1052,14 +1067,20 @@ underlying machine state remains semantic.
 \subsection{The FOSG view: \TT{Machine.FOSGView}}
 \label{def:FOSGView}
 
-\paragraph{Lean (key fields).}
+\paragraph{Lean.}
 \TT{structure FOSGView (M : Machine P) where}
 \begin{quote}
 \TT{Act : P} $\to$ \TT{Type} \\
 \TT{active : M.State} $\to$ \TT{Finset P} \\
 \TT{availableActions : M.State} $\to$ \TT{(p : P)} $\to$ \TT{Set (Act p)} \\
-\TT{transition : M.State} $\to$ \TT{ {a // legal} } $\to$ \TT{PMF M.State} \\
-\TT{reward : M.State} $\to$ \TT{ {a // legal} } $\to$ \TT{M.State} $\to$ \TT{P} $\to$ $\mathbb{R}$ \\
+\TT{transition : (state : M.State)} $\to$
+  \TT{ \{a : JointAction Act //}
+  \TT{ JointActionLegal Act active M.terminal availableActions state a\}} $\to$
+  \TT{PMF M.State} \\
+\TT{reward : (src : M.State)} $\to$
+  \TT{ \{a : JointAction Act //}
+  \TT{ JointActionLegal Act active M.terminal availableActions src a\}} $\to$
+  \TT{M.State} $\to$ \TT{P} $\to$ $\mathbb{R}$ \\
 (\TT{terminal_active_eq_empty}, \TT{nonterminal_exists_legal})
 \end{quote}
 
@@ -1242,9 +1263,9 @@ utility function. The four games span two orthogonal axes:
 The blocked-trace games refine the public games by an outcome projection,
 and \TT{Strategic/KernelGame.lean} packages this refinement (next paragraph).
 
-\paragraph{Re-exports.}
+\paragraph{Unsuffixed APIs.}
 The unsuffixed names \TT{Vegas.pureKernelGame} and
-\TT{Vegas.pmfBehavioralKernelGame} are simple re-exports of their
+\TT{Vegas.pmfBehavioralKernelGame} are thin definitions equal to their
 \texttt{*At} counterparts under \TT{[Fintype P]} and \TT{[FiniteDomains g]};
 they are definitionally equal, so all theorems transport.
 
@@ -1336,11 +1357,11 @@ player histories and hence equivalent kernel games — is handled by the
 frontier-stability, blocked-trace, and morphism layers rather than by
 reintroducing a separate recursive runtime.
 
-\subsection{Solution concepts (Vegas-facing wrappers)}
+\subsection{Solution concepts (Vegas-facing definitions)}
 \label{def:solution}
 
-The Vegas wrappers (\TT{Vegas.IsNash}, \TT{IsBestResponse}, \TT{IsDominant},
-\ldots) are thin re-exports of GameTheory's preference-parameterised
+The Vegas definitions (\TT{Vegas.IsNash}, \TT{IsBestResponse}, \TT{IsDominant},
+\ldots) are thin wrappers around GameTheory's preference-parameterised
 predicates over the PMF behavioural kernel game
 \TT{pmfBehavioralKernelGame g}. They are spread across
 \TT{Vegas/Strategic/Equilibrium.lean} (Nash, dominance, correlated equilibria, social
@@ -1392,7 +1413,7 @@ throughout for expected utility.
 \TT{optimalWelfare} &
   $\sup_\sigma \mathrm{socialWelfare}(\sigma)$ (\TT{ciSup}; finite-profile
   variants are picked up by Mathlib's boundedness lemmas). Vegas also
-  re-exports \TT{bestNashWelfare} and \TT{worstNashWelfare}, plus the
+  defines \TT{bestNashWelfare} and \TT{worstNashWelfare}, plus the
   comparison lemmas \TT{worstNashWelfare_le_bestNashWelfare} and
   \TT{bestNashWelfare_le_optimalWelfare}. \\
 \bottomrule
@@ -1405,7 +1426,7 @@ The Vegas-named EU versions arise by instantiating
 $\mathtt{pref} = \mathtt{euPref}$ (i.e., expected-value comparison).
 
 \paragraph{Existence corollaries.}
-\TT{Vegas/Corollaries/GameProperties.lean} now exposes three finite-game
+\TT{Vegas/Corollaries/GameProperties.lean} exposes three finite-game
 existence theorems through the Vegas-facing API:
 \TT{mixedNash_exists}, \TT{correlatedEq_exists}, and
 \TT{coarseCorrelatedEq_exists}. These are direct wrappers around the
@@ -1493,9 +1514,24 @@ named players are paid'' is the same in either form.
 \label{def:Backend}
 
 \paragraph{Lean.}
-\TT{structure WeakStepRefinement Impl Spec where ...} and
-\TT{structure StochasticStepRefinement Impl Spec where ...} (in
-\TT{Vegas/Backend/Refinement.lean}).
+\TT{Vegas/Backend/Refinement.lean} defines two machine-to-machine relations.
+Both carry
+\begin{quote}
+\TT{projectState}, \TT{projectEvent}, \TT{projectPublic},
+\TT{projectObs}, \TT{projectOutcome}, and \TT{init_project}.
+\end{quote}
+\TT{WeakStepRefinement Impl Spec} then adds
+\begin{quote}
+\TT{external_step_sound}, \TT{internal_step_projectState_eq},
+\TT{publicView_project}, \TT{observe_project}, \TT{terminal_project},
+\TT{terminal_outcome_projected}.
+\end{quote}
+\TT{StochasticStepRefinement Impl Spec} instead adds
+\begin{quote}
+\TT{step_project}, \TT{publicView_project}, \TT{observe_project},
+\TT{terminal_project}, \TT{terminal_reflect},
+\TT{terminal_outcome_projected}.
+\end{quote}
 
 \paragraph{Math.}
 \emph{Refinement} here is the verification-style relation ``the
