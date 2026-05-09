@@ -25,6 +25,18 @@ theorem evalPayoffs_eq_of_erasePubEnv_eq
   unfold evalPayoffs
   rw [hpub]
 
+/-- Sample distributions are evaluated on the public erasure of the current
+environment. There is no private-sample primitive in the current core
+language. -/
+theorem sample_distribution_env_eq_public_env
+    {P : Type} {L : IExpr} {Γ : VCtx P L} (env : VEnv L Γ) :
+    VEnv.eraseSampleEnv env = VEnv.erasePubEnv env := rfl
+
+/-- The sample typing context is definitionally the public context. -/
+theorem sample_context_eq_public_context
+    {P : Type} {L : IExpr} (Γ : VCtx P L) :
+    sampleVCtx Γ = pubVCtx Γ := rfl
+
 /-- Commit-guard evaluation is invariant under changes outside the committing
 player's observation, provided the guard satisfies the Vegas scoping judgment. -/
 theorem commitGuard_eval_eq_of_observation_eq
