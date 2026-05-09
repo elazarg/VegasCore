@@ -34,5 +34,6 @@ import Vegas.Strategic.KernelGame
 import Vegas.GameBridge.EFG.FromEventGraph
 import Vegas.Backend.Refinement
 import Vegas.Backend.KernelGame
+import Vegas.Export.KernelGame
 import Vegas.Strategic.Kuhn
 import Vegas.Theorems
