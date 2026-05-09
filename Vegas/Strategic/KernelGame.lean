@@ -108,6 +108,11 @@ noncomputable def syntaxBlockedTraceUtility
     syntaxBlockedTraceAt g → GameTheory.Payoff P :=
   fun trace who => ((syntaxBlockedTraceOutcome g trace) who : ℝ)
 
+/-- Canonical utility for payoff-vector outcomes. -/
+noncomputable def publicOutcomeUtility :
+    Outcome P → GameTheory.Payoff P :=
+  fun outcome who => (outcome who : ℝ)
+
 /-- Blocked primitive trace kernel induced by a pure profile. -/
 noncomputable def pureBlockedTraceOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
@@ -128,43 +133,84 @@ noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
     (syntaxSteps g.prog)
     (eventGraphInitialHistory g (syntaxSteps g.prog))
 
+/-! ## Game forms -/
+
+/-- Finite pure game form of a checked Vegas program, before utility is
+attached. -/
+noncomputable def pureGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := pureStrategyAt g
+  Outcome := Outcome P
+  outcomeKernel := pureOutcomeKernelAt g
+
+/-- Finite PMF-behavioral game form of a checked Vegas program, before utility
+is attached. -/
+noncomputable def pmfBehavioralGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := behavioralStrategyPMFAt g
+  Outcome := Outcome P
+  outcomeKernel := behavioralOutcomeKernelPMFAt g
+
+/-- Finite pure game form whose outcomes are blocked primitive machine traces. -/
+noncomputable def pureBlockedTraceGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := pureStrategyAt g
+  Outcome := syntaxBlockedTraceAt g
+  outcomeKernel := pureBlockedTraceOutcomeKernelAt g
+
+/-- Finite PMF-behavioral game form whose outcomes are blocked primitive
+machine traces. -/
+noncomputable def pmfBehavioralBlockedTraceGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := behavioralStrategyPMFAt g
+  Outcome := syntaxBlockedTraceAt g
+  outcomeKernel := behavioralBlockedTraceOutcomeKernelPMFAt g
+
 /-- Finite pure strategic form whose outcomes are blocked primitive machine
 traces rather than just terminal public outcomes. -/
 noncomputable def pureBlockedTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    GameTheory.KernelGame P where
-  Strategy := pureStrategyAt g
-  Outcome := syntaxBlockedTraceAt g
-  utility := syntaxBlockedTraceUtility g
-  outcomeKernel := pureBlockedTraceOutcomeKernelAt g
+    GameTheory.KernelGame P :=
+  (pureBlockedTraceGameFormAt g).withUtility (syntaxBlockedTraceUtility g)
 
 @[simp] theorem pureBlockedTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     (pureBlockedTraceKernelGameAt g).Strategy = pureStrategyAt g := rfl
 
+@[simp] theorem pureBlockedTraceKernelGameAt_toGameForm
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pureBlockedTraceKernelGameAt g).toGameForm =
+      pureBlockedTraceGameFormAt g := by
+  rfl
+
 /-- Finite PMF behavioral strategic form whose outcomes are blocked primitive
 machine traces rather than just terminal public outcomes. -/
 noncomputable def pmfBehavioralBlockedTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    GameTheory.KernelGame P where
-  Strategy := behavioralStrategyPMFAt g
-  Outcome := syntaxBlockedTraceAt g
-  utility := syntaxBlockedTraceUtility g
-  outcomeKernel := behavioralBlockedTraceOutcomeKernelPMFAt g
+    GameTheory.KernelGame P :=
+  (pmfBehavioralBlockedTraceGameFormAt g).withUtility
+    (syntaxBlockedTraceUtility g)
 
 @[simp] theorem pmfBehavioralBlockedTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     (pmfBehavioralBlockedTraceKernelGameAt g).Strategy =
       behavioralStrategyPMFAt g := rfl
 
+@[simp] theorem pmfBehavioralBlockedTraceKernelGameAt_toGameForm
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pmfBehavioralBlockedTraceKernelGameAt g).toGameForm =
+      pmfBehavioralBlockedTraceGameFormAt g := by
+  rfl
+
 /-- Finite pure strategic form of a checked Vegas program. -/
 noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    GameTheory.KernelGame P where
-  Strategy := pureStrategyAt g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := pureOutcomeKernelAt g
+    GameTheory.KernelGame P :=
+  (pureGameFormAt g).withUtility publicOutcomeUtility
 
 @[simp] theorem pureKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
@@ -174,6 +220,11 @@ noncomputable def pureKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     (pureKernelGameAt g).outcomeKernel π = pureOutcomeKernelAt g π := rfl
+
+@[simp] theorem pureKernelGameAt_toGameForm
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pureKernelGameAt g).toGameForm = pureGameFormAt g := by
+  rfl
 
 /-- Finite pure strategies for the public pure kernel game. -/
 noncomputable instance pureKernelGameAt.instFintypeStrategy
@@ -187,11 +238,8 @@ noncomputable instance pureKernelGameAt.instFintypeStrategy
 /-- Finite PMF behavioral strategic form of a checked Vegas program. -/
 noncomputable def pmfBehavioralKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    GameTheory.KernelGame P where
-  Strategy := behavioralStrategyPMFAt g
-  Outcome := Outcome P
-  utility := fun o i => (o i : ℝ)
-  outcomeKernel := behavioralOutcomeKernelPMFAt g
+    GameTheory.KernelGame P :=
+  (pmfBehavioralGameFormAt g).withUtility publicOutcomeUtility
 
 @[simp] theorem pmfBehavioralKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
@@ -203,6 +251,12 @@ noncomputable def pmfBehavioralKernelGameAt
     (β : behavioralProfilePMFAt g) :
     (pmfBehavioralKernelGameAt g).outcomeKernel β =
       behavioralOutcomeKernelPMFAt g β := rfl
+
+@[simp] theorem pmfBehavioralKernelGameAt_toGameForm
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pmfBehavioralKernelGameAt g).toGameForm =
+      pmfBehavioralGameFormAt g := by
+  rfl
 
 /-- Projecting pure blocked-trace outcomes to public outcomes gives the public
 pure strategic-form outcome kernel. -/

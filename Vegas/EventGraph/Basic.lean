@@ -271,6 +271,20 @@ noncomputable def mapFields
       .reveal (f source) (f target)
         (by rw [hty source, hty target, hsameTy])
 
+@[simp] theorem isCommit_mapFields
+    (sem : NodeSem Player Field L fieldTy)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (sem.mapFields f hty).isCommit = sem.isCommit := by
+  cases sem <;> rfl
+
+@[simp] theorem isReveal_mapFields
+    (sem : NodeSem Player Field L fieldTy)
+    (f : Field → Field')
+    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
+    (sem.mapFields f hty).isReveal = sem.isReveal := by
+  cases sem <;> rfl
+
 /-- Player responsible for this node, if any. -/
 def actor :
     NodeSem Player Field L fieldTy → Option Player

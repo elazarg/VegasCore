@@ -142,6 +142,90 @@ theorem behavioralGame_outcomeKernel
     (σ : behavioralGame.Profile) :
     behavioralGame.outcomeKernel σ = behavioralOutcomeKernelPMFAt game σ := rfl
 
+/-! ## Generated graph reveal-barrier regression -/
+
+/-- The source node for the matcher's initial sealed commitment. -/
+noncomputable def matcherCommitNode : ProgramNode program :=
+  .commitHere
+
+/-- The source node for the mismatcher's initial sealed commitment. -/
+noncomputable def mismatcherCommitNode : ProgramNode program :=
+  .commitTail .commitHere
+
+/-- The source node for revealing the matcher's sealed commitment. -/
+noncomputable def matcherRevealNode : ProgramNode program :=
+  .commitTail (.commitTail .revealHere)
+
+/-- The source node for revealing the mismatcher's sealed commitment. -/
+noncomputable def mismatcherRevealNode : ProgramNode program :=
+  .commitTail (.commitTail (.revealTail .revealHere))
+
+theorem matcherRevealNode_isReveal :
+    (ProgramNode.sem game.obligations matcherRevealNode).isReveal = true := by
+  decide
+
+theorem mismatcherRevealNode_isReveal :
+    (ProgramNode.sem game.obligations mismatcherRevealNode).isReveal = true := by
+  decide
+
+theorem matcherCommitNode_isCommit :
+    (ProgramNode.sem game.obligations matcherCommitNode).isCommit = true := by
+  decide
+
+theorem mismatcherCommitNode_isCommit :
+    (ProgramNode.sem game.obligations mismatcherCommitNode).isCommit = true := by
+  decide
+
+/-- Regression guard: the first reveal waits for the other player's prior
+commit, even though it does not read that commit's payload. -/
+theorem mismatcherCommit_prereq_matcherReveal :
+    mismatcherCommitNode ∈
+      (programEventGraph game).prereqs matcherRevealNode := by
+  classical
+  change mismatcherCommitNode ∈
+    ProgramNode.prereqs game.obligations matcherRevealNode
+  unfold ProgramNode.prereqs
+  refine Finset.mem_filter.mpr ⟨
+    ProgramNode.mem_finset program mismatcherCommitNode, ?_, ?_⟩
+  · decide
+  · right
+    constructor
+    · exact matcherRevealNode_isReveal
+    · exact mismatcherCommitNode_isCommit
+
+/-- Regression guard: the second reveal still depends on the earlier matcher
+commit through the phase barrier. -/
+theorem matcherCommit_prereq_mismatcherReveal :
+    matcherCommitNode ∈
+      (programEventGraph game).prereqs mismatcherRevealNode := by
+  classical
+  change matcherCommitNode ∈
+    ProgramNode.prereqs game.obligations mismatcherRevealNode
+  unfold ProgramNode.prereqs
+  refine Finset.mem_filter.mpr ⟨
+    ProgramNode.mem_finset program matcherCommitNode, ?_, ?_⟩
+  · decide
+  · right
+    constructor
+    · exact mismatcherRevealNode_isReveal
+    · exact matcherCommitNode_isCommit
+
+theorem mismatcherCommit_not_frontier_with_matcherReveal
+    (cfg : (programEventGraph game).Configuration)
+    (hcommit : mismatcherCommitNode ∈ cfg.frontier)
+    (hreveal : matcherRevealNode ∈ cfg.frontier) :
+    False :=
+  (EventGraph.Configuration.not_prereq_of_mem_frontier
+    hcommit hreveal) mismatcherCommit_prereq_matcherReveal
+
+theorem matcherCommit_not_frontier_with_mismatcherReveal
+    (cfg : (programEventGraph game).Configuration)
+    (hcommit : matcherCommitNode ∈ cfg.frontier)
+    (hreveal : mismatcherRevealNode ∈ cfg.frontier) :
+    False :=
+  (EventGraph.Configuration.not_prereq_of_mem_frontier
+    hcommit hreveal) matcherCommit_prereq_mismatcherReveal
+
 end MatchingPennies
 end Examples
 end Vegas

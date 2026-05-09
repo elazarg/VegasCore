@@ -1,4 +1,4 @@
-import Vegas.Backend.Refinement
+import Vegas.Backend.KernelGame
 
 /-!
 # Backend Refinement Theorems
@@ -60,13 +60,33 @@ theorem backend_cannot_introduce_public_signal_under_refinement
       R.projectPublic (Impl.publicView state) :=
   R.publicView_project state
 
-/- TODO:
-theorem backend_nash_transport ...
+/-- Backend refinement plus a compatible pure block-law lift transports Nash
+equilibria from the public pure specification game to the backend blocked-trace
+game. -/
+theorem backend_pure_nash_transport
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    {Impl : Machine P}
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
+    (lift : BackendPureBlockLawLift g R)
+    {σ : pureProfileAt g}
+    (h : (pureKernelGameAt g).IsNash σ) :
+    (backendBlockedTraceKernelGameAt g R lift).IsNash σ :=
+  backendBlockedTraceKernelGameAt_isNash_pullback_pure g R lift h
 
-Backend refinement plus compatible block-law lifts should transport Nash
-equilibria from the canonical specification game to the backend game. The
-statement needs a dedicated backend game morphism/equilibrium-transport
-interface, rather than a placeholder predicate.
--/
+/-- Backend refinement plus a compatible PMF-behavioral block-law lift
+transports Nash equilibria from the public PMF-behavioral specification game to
+the backend blocked-trace game. -/
+theorem backend_behavioral_nash_transport
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    {Impl : Machine P}
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
+    (lift : BackendBehavioralBlockLawLift g R)
+    {σ : behavioralProfilePMFAt g}
+    (h : (pmfBehavioralKernelGameAt g).IsNash σ) :
+    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).IsNash σ :=
+  backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback_behavioral
+    g R lift h
 
 end Vegas

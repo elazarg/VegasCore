@@ -15,6 +15,19 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- Fixed-program pure game form of a Vegas program, before utility is
+attached. -/
+noncomputable def pureGameForm [Fintype P]
+    (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P :=
+  pureGameFormAt g
+
+@[simp] theorem pureGameForm_outcomeKernel
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pureGameForm g).Profile) :
+    (pureGameForm g).outcomeKernel σ =
+      pureOutcomeKernelAt g σ := rfl
+
 /-- Fixed-program pure strategic form of a Vegas program.
 
 The outcome kernel is `pureOutcomeKernelAt`. -/
@@ -40,6 +53,11 @@ theorem pureKernelGame_eu
     (σ : (pureKernelGame g).Profile) (who : P) :
     (pureKernelGame g).eu σ who =
       (pureKernelGameAt g).eu σ who := rfl
+
+@[simp] theorem pureKernelGame_toGameForm
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    (pureKernelGame g).toGameForm = pureGameForm g := by
+  rfl
 
 /-- Pure Nash equilibrium of the fixed-program Vegas strategic form. -/
 def IsPureNash [Fintype P] (g : WFProgram P L) [FiniteDomains g]
