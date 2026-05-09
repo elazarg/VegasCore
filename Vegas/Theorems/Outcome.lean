@@ -96,6 +96,24 @@ theorem checkedProgram_behavioralOutcome_eq_blockTrace
           (eventGraphInitialHistory g (syntaxSteps g.prog))) :=
   behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β
 
+/-- Pure public-state game-form outcomes are the public observation projection
+of blocked machine traces. -/
+theorem checkedProgram_purePublicStateOutcome_eq_blockTrace
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) :
+    purePublicStateOutcomeKernelAt g π =
+      PMF.map (syntaxBlockedTracePublicState g)
+        (pureBlockedTraceOutcomeKernelAt g π) := rfl
+
+/-- PMF behavioral public-state game-form outcomes are the public observation
+projection of blocked machine traces. -/
+theorem checkedProgram_behavioralPublicStateOutcome_eq_blockTrace
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) :
+    behavioralPublicStateOutcomeKernelPMFAt g β =
+      PMF.map (syntaxBlockedTracePublicState g)
+        (behavioralBlockedTraceOutcomeKernelPMFAt g β) := rfl
+
 /-- Equality after projecting blocked traces to syntax outcomes gives equality
 of the induced outcome laws. -/
 theorem outcomeKernel_eq_of_traceOutcome_eq

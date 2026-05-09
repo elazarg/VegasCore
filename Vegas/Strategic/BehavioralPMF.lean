@@ -14,6 +14,20 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-! ## PMF behavioral terminal-public-state game form -/
+
+/-- PMF-valued behavioral game form whose outcomes are terminal public machine
+states, before payoff projection. -/
+noncomputable def pmfBehavioralPublicStateGameForm [Fintype P]
+    (g : WFProgram P L) [FiniteDomains g] : GameTheory.GameForm P :=
+  pmfBehavioralPublicStateGameFormAt g
+
+@[simp] theorem pmfBehavioralPublicStateGameForm_outcomeKernel
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (pmfBehavioralPublicStateGameForm g).Profile) :
+    (pmfBehavioralPublicStateGameForm g).outcomeKernel σ =
+      behavioralPublicStateOutcomeKernelPMFAt g σ := rfl
+
 /-! ## PMF behavioral game form -/
 
 /-- PMF-valued behavioral game form for a checked Vegas program, before utility

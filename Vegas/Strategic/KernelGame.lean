@@ -102,6 +102,16 @@ noncomputable def syntaxBlockedTraceOutcome
     syntaxBlockedTraceAt g → Outcome P :=
   fun trace => (eventGraphMachine g).outcome trace.2
 
+/-- Terminal public state read from a blocked machine trace.
+
+This is the public observation carried by the event-graph machine: completed
+nodes plus public field values. It is intentionally separate from
+`Outcome P`, which is only the payoff-vector projection. -/
+noncomputable def syntaxBlockedTracePublicState
+    (g : WFProgram P L) :
+    syntaxBlockedTraceAt g → ProgramPublicObs g :=
+  fun trace => eventGraphPublicView g trace.2
+
 /-- Utility read from a blocked machine trace through its public outcome. -/
 noncomputable def syntaxBlockedTraceUtility
     (g : WFProgram P L) :
@@ -133,7 +143,40 @@ noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
     (syntaxSteps g.prog)
     (eventGraphInitialHistory g (syntaxSteps g.prog))
 
+/-- Pure terminal-public-state outcome kernel induced by a pure profile. -/
+noncomputable def purePublicStateOutcomeKernelAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : pureProfileAt g) : PMF (ProgramPublicObs g) :=
+  PMF.map (syntaxBlockedTracePublicState g)
+    (pureBlockedTraceOutcomeKernelAt g π)
+
+/-- PMF-behavioral terminal-public-state outcome kernel induced by a
+behavioral profile. -/
+noncomputable def behavioralPublicStateOutcomeKernelPMFAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : behavioralProfilePMFAt g) : PMF (ProgramPublicObs g) :=
+  PMF.map (syntaxBlockedTracePublicState g)
+    (behavioralBlockedTraceOutcomeKernelPMFAt g β)
+
 /-! ## Game forms -/
+
+/-- Finite pure game form whose outcomes are terminal public machine states,
+not payoff vectors. -/
+noncomputable def purePublicStateGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := pureStrategyAt g
+  Outcome := ProgramPublicObs g
+  outcomeKernel := purePublicStateOutcomeKernelAt g
+
+/-- Finite PMF-behavioral game form whose outcomes are terminal public machine
+states, not payoff vectors. -/
+noncomputable def pmfBehavioralPublicStateGameFormAt
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P where
+  Strategy := behavioralStrategyPMFAt g
+  Outcome := ProgramPublicObs g
+  outcomeKernel := behavioralPublicStateOutcomeKernelPMFAt g
 
 /-- Finite pure game form of a checked Vegas program, before utility is
 attached. -/
@@ -187,6 +230,12 @@ noncomputable def pureBlockedTraceKernelGameAt
       pureBlockedTraceGameFormAt g := by
   rfl
 
+@[simp] theorem purePublicStateGameFormAt_outcomeKernel
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (π : (purePublicStateGameFormAt g).Profile) :
+    (purePublicStateGameFormAt g).outcomeKernel π =
+      purePublicStateOutcomeKernelAt g π := rfl
+
 /-- Finite PMF behavioral strategic form whose outcomes are blocked primitive
 machine traces rather than just terminal public outcomes. -/
 noncomputable def pmfBehavioralBlockedTraceKernelGameAt
@@ -205,6 +254,12 @@ noncomputable def pmfBehavioralBlockedTraceKernelGameAt
     (pmfBehavioralBlockedTraceKernelGameAt g).toGameForm =
       pmfBehavioralBlockedTraceGameFormAt g := by
   rfl
+
+@[simp] theorem pmfBehavioralPublicStateGameFormAt_outcomeKernel
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (β : (pmfBehavioralPublicStateGameFormAt g).Profile) :
+    (pmfBehavioralPublicStateGameFormAt g).outcomeKernel β =
+      behavioralPublicStateOutcomeKernelPMFAt g β := rfl
 
 /-- Finite pure strategic form of a checked Vegas program. -/
 noncomputable def pureKernelGameAt

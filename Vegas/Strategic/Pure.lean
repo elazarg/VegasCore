@@ -15,6 +15,19 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- Fixed-program pure game form whose outcomes are terminal public machine
+states, before payoff projection. -/
+noncomputable def purePublicStateGameForm [Fintype P]
+    (g : WFProgram P L) [FiniteDomains g] :
+    GameTheory.GameForm P :=
+  purePublicStateGameFormAt g
+
+@[simp] theorem purePublicStateGameForm_outcomeKernel
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (σ : (purePublicStateGameForm g).Profile) :
+    (purePublicStateGameForm g).outcomeKernel σ =
+      purePublicStateOutcomeKernelAt g σ := rfl
+
 /-- Fixed-program pure game form of a Vegas program, before utility is
 attached. -/
 noncomputable def pureGameForm [Fintype P]
