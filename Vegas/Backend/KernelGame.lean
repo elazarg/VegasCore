@@ -56,6 +56,66 @@ structure BackendBehavioralBlockLawLift
           (specLaw β) (syntaxSteps g.prog) =
         (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
 
+/-- A specification-side pure block law, packaged independently of any
+backend.  This is the missing bridge between a strategic profile and the
+machine-level `BlockLaw` interface. -/
+structure PureSpecBlockLaw
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
+  specLaw : pureProfileAt g → (eventGraphMachine g).BlockLaw
+  specLaw_sound :
+    ∀ π,
+      (eventGraphMachine g).blockTraceDist
+          (specLaw π) (syntaxSteps g.prog) =
+        (pureBlockedTraceKernelGameAt g).outcomeKernel π
+
+/-- A specification-side PMF-behavioral block law, packaged independently of
+any backend. -/
+structure BehavioralSpecBlockLaw
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
+  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).BlockLaw
+  specLaw_sound :
+    ∀ β,
+      (eventGraphMachine g).blockTraceDist
+          (specLaw β) (syntaxSteps g.prog) =
+        (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
+
+namespace PureSpecBlockLaw
+
+/-- The identity backend lift induced by a proved pure spec block law. -/
+noncomputable def identityBackendLift
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (law : PureSpecBlockLaw g) :
+    BackendPureBlockLawLift g
+      (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
+  specLaw := law.specLaw
+  backendLaw := law.specLaw
+  compatible := by
+    intro π
+    exact Machine.StochasticStepRefinement.refl_blockLawCompatible
+      (eventGraphMachine g) (law.specLaw π)
+  specLaw_sound := law.specLaw_sound
+
+end PureSpecBlockLaw
+
+namespace BehavioralSpecBlockLaw
+
+/-- The identity backend lift induced by a proved PMF-behavioral spec block
+law. -/
+noncomputable def identityBackendLift
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (law : BehavioralSpecBlockLaw g) :
+    BackendBehavioralBlockLawLift g
+      (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
+  specLaw := law.specLaw
+  backendLaw := law.specLaw
+  compatible := by
+    intro β
+    exact Machine.StochasticStepRefinement.refl_blockLawCompatible
+      (eventGraphMachine g) (law.specLaw β)
+  specLaw_sound := law.specLaw_sound
+
+end BehavioralSpecBlockLaw
+
 /-- Backend blocked trace utility, read by projecting the backend terminal
 state back to the canonical event-graph machine state. -/
 noncomputable def backendBlockedTraceUtility

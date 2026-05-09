@@ -89,4 +89,24 @@ theorem backend_behavioral_nash_transport
   backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback_behavioral
     g R lift h
 
+/-- A proved pure specification block law gives the canonical identity-backend
+lift. This is the reusable smoke-test instance for backend transport. -/
+noncomputable def backend_pure_identity_lift
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    (law : PureSpecBlockLaw g) :
+    BackendPureBlockLawLift g
+      (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) :=
+  PureSpecBlockLaw.identityBackendLift g law
+
+/-- A proved PMF-behavioral specification block law gives the canonical
+identity-backend lift. -/
+noncomputable def backend_behavioral_identity_lift
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    (law : BehavioralSpecBlockLaw g) :
+    BackendBehavioralBlockLawLift g
+      (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) :=
+  BehavioralSpecBlockLaw.identityBackendLift g law
+
 end Vegas

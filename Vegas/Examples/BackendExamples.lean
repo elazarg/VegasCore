@@ -21,44 +21,18 @@ theorem refl_projectEventBlock (block : List M.Event) :
     (((Vegas.Machine.StochasticStepRefinement.refl M :
       Vegas.Machine.StochasticStepRefinement M M).projectEventBlock block)) =
       block := by
-  simp [Vegas.Machine.StochasticStepRefinement.projectEventBlock,
-    Vegas.Machine.StochasticStepRefinement.refl]
+  exact Vegas.Machine.StochasticStepRefinement.refl_projectEventBlock M block
 
 theorem refl_projectBlockTrace (trace : M.BlockTrace) :
     (((Vegas.Machine.StochasticStepRefinement.refl M :
       Vegas.Machine.StochasticStepRefinement M M).projectBlockTrace trace)) =
       trace := by
-  cases trace with
-  | mk blocks state =>
-      change
-        (blocks.map
-            (Vegas.Machine.StochasticStepRefinement.refl M :
-              Vegas.Machine.StochasticStepRefinement M M).projectEventBlock,
-          state) = (blocks, state)
-      congr
-      induction blocks with
-      | nil => simp
-      | cons block blocks ih =>
-          simpa [ih] using refl_projectEventBlock M block
+  exact Vegas.Machine.StochasticStepRefinement.refl_projectBlockTrace M trace
 
 theorem refl_blockLawCompatible (law : M.BlockLaw) :
     (Vegas.Machine.StochasticStepRefinement.refl M :
       Vegas.Machine.StochasticStepRefinement M M).BlockLawCompatible law law := by
-  intro trace
-  rw [refl_projectBlockTrace]
-  have hblock :
-      (fun block : List M.Event =>
-        (Vegas.Machine.StochasticStepRefinement.refl M :
-          Vegas.Machine.StochasticStepRefinement M M).projectEventBlock block) = id := by
-    funext block
-    exact refl_projectEventBlock M block
-  change PMF.map
-      (fun block : List M.Event =>
-        (Vegas.Machine.StochasticStepRefinement.refl M :
-          Vegas.Machine.StochasticStepRefinement M M).projectEventBlock block)
-      (law trace) = law trace
-  rw [hblock]
-  exact PMF.map_id (law trace)
+  exact Vegas.Machine.StochasticStepRefinement.refl_blockLawCompatible M law
 
 theorem refl_blockTraceDist_project_eq
     (law : M.BlockLaw) (horizon : Nat) (trace : M.BlockTrace) :
@@ -69,12 +43,11 @@ theorem refl_blockTraceDist_project_eq
       M.blockTraceDistFrom law horizon trace := by
   let R : Vegas.Machine.StochasticStepRefinement M M :=
     Vegas.Machine.StochasticStepRefinement.refl M
-  have hproject := Vegas.Machine.StochasticStepRefinement.blockTraceDist_project_eq
-    R law law (refl_blockLawCompatible M law) horizon trace
-  have htrace : R.projectBlockTrace = id := by
-    funext trace
-    exact refl_projectBlockTrace M trace
-  simpa [R, htrace] using hproject
+  simpa [R] using
+    Vegas.Machine.StochasticStepRefinement.blockTraceDist_project_eq
+      R law law
+      (Vegas.Machine.StochasticStepRefinement.refl_blockLawCompatible M law)
+      horizon trace
 
 end IdentityBackend
 

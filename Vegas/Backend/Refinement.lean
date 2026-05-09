@@ -287,6 +287,24 @@ def projectBlockTrace
         R.projectState state) := by
   simp [projectBlockTrace]
 
+@[simp] theorem refl_projectEventBlock
+    (M : Machine Player) (block : List M.Event) :
+    ((refl M).projectEventBlock block) = block := by
+  simp [projectEventBlock, refl]
+
+@[simp] theorem refl_projectBlockTrace
+    (M : Machine Player) (trace : M.BlockTrace) :
+    ((refl M).projectBlockTrace trace) = trace := by
+  cases trace with
+  | mk blocks state =>
+      change (blocks.map (refl M).projectEventBlock, state) =
+        (blocks, state)
+      congr
+      induction blocks with
+      | nil => simp
+      | cons block blocks ih =>
+          simp [ih]
+
 /-- Projecting a fixed implementation event run gives the same state
 distribution as running the externally visible specification events. -/
 theorem runEventsFrom_project_eq
@@ -368,6 +386,21 @@ def BlockLawCompatible
   ∀ trace : Impl.BlockTrace,
     PMF.map R.projectEventBlock (lawImpl trace) =
       lawSpec (R.projectBlockTrace trace)
+
+theorem refl_blockLawCompatible
+    (M : Machine Player) (law : M.BlockLaw) :
+    (refl M).BlockLawCompatible law law := by
+  intro trace
+  rw [refl_projectBlockTrace]
+  have hblock :
+      (fun block : List M.Event => (refl M).projectEventBlock block) = id := by
+    funext block
+    exact refl_projectEventBlock M block
+  change PMF.map
+      (fun block : List M.Event => (refl M).projectEventBlock block)
+      (law trace) = law trace
+  rw [hblock]
+  exact PMF.map_id (law trace)
 
 /-- A strategy/scheduler lift for a fixed specification block law. The
 refinement remains machine-to-machine; this structure supplies the extra
