@@ -133,17 +133,18 @@ graph as a machine.
 On top of the machine, three kinds of consumers are defined:
 
 \begin{itemize}\itemsep1pt
-\item \textbf{Native strategic semantics} — strategy carriers, kernel
-  games, expected utility, Nash equilibrium, dominance, correlated
-  equilibria, potential predicates, and so on, built directly from
-  the FOSG view of the machine.  The Vegas-facing strategic API is
-  part of this construction; the underlying generic kernel-game
-  and FOSG infrastructure is supplied by the GameTheory library on
-  top of which Vegas is layered.
+\item \textbf{Strategic semantics} — strategy carriers, game forms,
+  kernel games, expected utility, Nash equilibrium, dominance,
+  correlated equilibria, potential predicates, and so on.  In the
+  current Lean code these Vegas-facing strategic carriers are built
+  from the bounded FOSG view of the event-graph machine.  The FOSG
+  view is a checked presentation of the machine, not an independent
+  denotation; a fully machine-native strategy carrier is a remaining
+  refactoring target.
 \item \textbf{Optional presentation bridges} — the canonical
   serialisation of the FOSG view into an extensive-form tree.  The
-  bridge is checked: the tree's public outcome law agrees with the
-  behavioural kernel game's.
+  bridge is checked: the tree's payoff-vector outcome law agrees
+  with the behavioural kernel game's.
 \item \textbf{Backend refinement} — relations between an
   implementation machine (potentially with extra runtime structure,
   scheduling, internal events) and the canonical event-graph
@@ -181,17 +182,19 @@ decisions behind it.  The theorem-level contributions are:
 
 \item \emph{Trace-to-public agreement
   (\S\ref{sec:fosg-strategies}).}  The blocked-trace pure and
-  PMF-behavioural kernel games agree with their public projections
-  on outcome kernels and on expected utilities.
+  PMF-behavioural kernel games agree with their payoff projections
+  on outcome kernels and on expected utilities.  Terminal-public-
+  state game forms expose the public observation separately from the
+  payoff-vector kernel games.
 
 \item \emph{Finite Kuhn realisation
   (\S\ref{sec:presentations}).}  Every independent mixed pure
   profile is matched by a PMF-behavioural profile with identical
-  public outcome distribution.
+  payoff-vector outcome distribution.
 
 \item \emph{EFG presentation
   (\S\ref{sec:presentations}).}  The canonical FOSG-to-EFG bridge
-  preserves public outcome laws.
+  preserves payoff-vector outcome laws.
 
 \item \emph{Stochastic-refinement transport
   (\S\ref{sec:refinement}).}  A stochastic step refinement plus a
@@ -207,7 +210,7 @@ fixes notation for finite probability and typed contexts.
 visibility discipline.  \S\ref{sec:eventgraphs} defines event graphs
 and proves the frontier theorems.  \S\ref{sec:machines} lifts a
 graph to a machine.  \S\ref{sec:fosg-strategies} introduces the FOSG
-view, the strategic API, and the four canonical kernel games.
+view, the strategic API, and the canonical game forms and kernel games.
 \S\ref{sec:presentations} states the EFG presentation theorem and
 the finite Kuhn realisation.  \S\ref{sec:refinement} is the backend
 refinement layer.  \S\ref{sec:applications} sketches intended uses.

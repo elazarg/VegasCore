@@ -5,7 +5,7 @@ The kernel games of \S\ref{sec:fosg-strategies} are the primary
 strategic-form interface.  Two further results are needed to make
 the construction interoperate with the textbook tradition: an
 extensive-form presentation that agrees with the kernel game on
-public outcomes, and a finite Kuhn realisation theorem that links
+payoff-vector outcomes, and a finite Kuhn realisation theorem that links
 mixed and behavioural strategies.
 
 \subsection{The canonical EFG presentation}
@@ -23,7 +23,7 @@ transition.
 \label{thm:efg}
 For every checked program $g$ and every legal behavioural profile
 $\beta$ of $\mathsf{efg}(g)$, the EFG outcome kernel projected to
-the public outcome agrees with the behavioural kernel game's
+the payoff-vector outcome agrees with the behavioural kernel game's
 outcome kernel:
 \[
   \mathrm{map}(\mathrm{publicOf})
@@ -44,8 +44,8 @@ decision opportunities at the EFG layer add no strategic freedom.
 
 \designnote{The EFG bridge is intentionally a \emph{view}, not the
 semantic owner.  The authoritative semantics is the event-graph
-machine; the EFG is a presentation that respects the public outcome
-law.  This preserves the two strategically irrelevant features of
+machine; the EFG is a presentation that respects the payoff-vector
+outcome law.  This preserves the two strategically irrelevant features of
 the EFG — the arbitrary linearisation of independent same-round
 events, and the introduction of administrative no-op decision
 opportunities — without making them part of the underlying game.}
@@ -75,7 +75,7 @@ For every checked program $g$, every
 independent mixed profile
 $\mu \in \prod_p \PMF{S_p^{\mathrm{pure}}}$ over pure strategies of
 $\mathrm{pureKernelGame}(g)$ admits a behavioural profile $\beta$ of
-$\mathrm{pmfBehavioralKernelGame}(g)$ with the same public outcome
+$\mathrm{pmfBehavioralKernelGame}(g)$ with the same payoff-vector outcome
 distribution:
 \[
   \Kbeh(\beta)

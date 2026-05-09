@@ -14,7 +14,7 @@
 \hfuzz=4pt
 
 % Local additions for the supplement.
-\newcommand{\TT}[1]{\texttt{\detokenize{#1}}}
+\renewcommand{\TT}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
 \newcommand{\DefRef}[1]{\hyperref[def:#1]{\TT{#1}}}
 
@@ -117,12 +117,14 @@ single compiler package.  The internal Vegas pipeline uses source-owned
   \TT{EventGraph.ToMachine}.
 \]
 These are the definitional arrows of Vegas itself.  In contrast,
-\TT{GameBridge/} contains optional bridges from the Vegas semantics to
-external game-form infrastructure, such as FOSG and EFG.  Operational
-implementation refinement lives in \TT{Backend/}; it is not a game-form
-bridge.  Native Vegas strategic semantics live in \TT{Strategic/}; removing
-the FOSG bridge would not remove the fact that checked Vegas programs have
-strategy carriers, profiles, outcome kernels, and equilibrium predicates.
+\TT{GameBridge/} contains presentation bridges from the Vegas machine
+semantics to FOSG and EFG infrastructure.  Operational implementation
+refinement lives in \TT{Backend/}; it is not a game-form bridge.  The
+current Vegas-facing strategic carriers in \TT{Strategic/} are built from
+the bounded FOSG view of the event-graph machine.  The event graph and
+machine remain the semantic source of truth, but a fully machine-native
+strategy layer is still a refactoring target rather than something already
+implemented.
 
 \begin{center}\small
 \begin{tabular}{@{}p{0.25\textwidth}p{0.66\textwidth}@{}}
@@ -146,14 +148,18 @@ Folder & Role \\
 \TT{Machine/}
   & Generic operational machine carrier and primitive trace semantics. \\
 \TT{Strategic/}
-  & Vegas-native strategic semantics: strategy carriers, kernel games,
-    expected utility, equilibrium vocabulary, dominance, and transport. \\
+  & Vegas-facing strategic API: FOSG-based strategy carriers, game forms,
+    kernel games, expected utility, equilibrium vocabulary, dominance, and
+    transport. \\
 \TT{GameBridge/}
   & Bridges from Vegas semantics to FOSG/EFG machinery and the FOSG-based Kuhn
     realisation bridge. \\
 \TT{Backend/}
   & Runtime/backend refinement obligations and backend blocked-trace
     kernel-game transport. \\
+\TT{Export/}
+  & Thin export-facing API for finite pure kernel games; currently an oracle
+    and enumeration package, not a solver file writer. \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -673,8 +679,8 @@ follows from the finite syntax tree, captured by \TT{syntaxSteps}\label{def:synt
 horizon-bounded FOSG presentation. Payoff expressions type-check over the
 public context regardless of revelation; what \texttt{RevealComplete} buys
 is that all committed information becomes available to all players for
-inspection (and, implicitly, that no commitment is irrelevant to the
-public outcome).
+inspection before termination.  It does not imply that every commitment
+matters to the payoff expression.
 
 \subsection{Legality and normalisation: \TT{Legal}, \TT{NormalizedDists}}
 \label{def:legal}\label{def:Legal}\label{def:NormalizedDists}
@@ -1037,8 +1043,9 @@ into the configuration. The event graph's diamond property and stability of
 frontier reads (\TT{withResult_comm}\label{def:withResult_comm} and the lemmas in
 \TT{Vegas/GameBridge/FOSG/FrontierStability.lean}) are exactly what is needed to lift this
 asynchronous, single-event view into a \emph{round-based} FOSG view in
-which a player's round-action covers the entire owned frontier.  That lift
-lives in \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean}.
+which a round executes the current frontier in a canonical list order while
+player round-actions supply slices for the player-owned nodes in that
+frontier.  That lift lives in \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean}.
 
 \paragraph{Stable frontier rounds: \TT{HasStableFrontierRounds}.}
 \label{def:stableFrontier}
@@ -1097,15 +1104,17 @@ players choose round-actions from \TT{Act}\label{def:Act}, the state transitions
 stochastically, and a per-player reward is paid out at the transition.
 Crucially, the round-action alphabet \TT{Act} is independent of the
 machine action alphabet \TT{M.Action}\label{def:M.Action}: a single round may consist of many
-machine events. For event-graph protocols, a round-action is a slice for every
-owned frontier node.
+machine events. For event-graph protocols, a \TT{PlayerRoundAction}\label{def:PlayerRoundAction}
+is a total assignment of candidate slices to graph nodes; the round menu
+uses only the coordinates for the player's owned current-frontier nodes.
 
 \paragraph{Round menus and observation equivalence.}
 For event-graph machines the player-facing menu at a frontier round is packaged
 as \TT{EventGraph.roundMenu G cfg who}: a set of optional round-actions
 where \texttt{none} means the player is not active in the current round and
-\texttt{some action} means the player is active and \texttt{action} is legal
-on every frontier node they own. The accompanying theorem
+\texttt{some action} means the player is active and \texttt{action}'s relevant
+coordinates are legal on every current frontier node they own. Irrelevant
+coordinates of the total slice assignment are ignored. The accompanying theorem
 \TT{eventGraph_roundMenu_eq_of_observation_eq}\label{def:eventGraph_roundMenu_eq_of_observation_eq} shows that two configurations
 that are indistinguishable to a player offer that player the same menu —
 the structural form of ``a player's available choices depend only on what
@@ -1189,17 +1198,20 @@ configurations.
 \end{center}
 
 \noindent The machine is the bottom layer (every primitive event explicit);
-the FOSG view collapses each \emph{frontier batch} into a single FOSG round
-whose action alphabet is a slice for every owned frontier node. Internal
-events are absorbed silently. The stability predicate of
-\S\ref{def:stableFrontier} is what makes this collapse well-defined.
+the FOSG view turns the current frontier into a single FOSG round by executing
+\TT{cfg.frontier.toList}. Player-owned nodes read the selected round-action
+slices, and internal nodes use their event-graph kernels. Nodes newly enabled
+while this list runs are left for a later round. The stability predicate of
+\S\ref{def:stableFrontier} and the frontier linearisation theorem are what
+make this presentation independent of strategically irrelevant scheduling
+choices.
 
 % =====================================================================
 \section{The Strategic API}
 \label{sec:strategic}
 
-For a checked program $g$, the codebase exposes a small public API of
-strategy spaces and kernel games.
+For a checked program $g$, the codebase exposes a public API of strategy
+spaces, game forms, and kernel games.
 
 \subsection{Strategies and profiles}
 \label{def:strategies}
@@ -1245,33 +1257,45 @@ history $h$. \emph{This is what closes the gap from program-level \Legal{}
 to strategic legality}: illegal moves are simply not in the strategy carrier
 for the equilibrium predicates to range over.
 
-\subsection{The four kernel games}
+\subsection{Game forms and kernel games}
 \label{def:kernelgames}
 
 \paragraph{Lean.}
 \begin{quote}
-\TT{pureKernelGameAt g} (and \TT{Vegas.pureKernelGame}\label{def:Vegas.pureKernelGame}) — pure strategies, public outcome $\Outcome\,\Players$.\\
-\TT{pmfBehavioralKernelGameAt g} (and \TT{Vegas.pmfBehavioralKernelGame}\label{def:Vegas.pmfBehavioralKernelGame}) — PMF behavioural strategies, public outcome.\\
+\TT{pureGameFormAt g}\label{def:pureGameFormAt} — pure strategies, payoff-vector outcome.\\
+\TT{pmfBehavioralGameFormAt g}\label{def:pmfBehavioralGameFormAt} — PMF behavioural strategies, payoff-vector outcome.\\
+\TT{purePublicStateGameFormAt g}\label{def:purePublicStateGameFormAt} — pure strategies, terminal public-state outcome.\\
+\TT{pmfBehavioralPublicStateGameFormAt g}\label{def:pmfBehavioralPublicStateGameFormAt} — PMF behavioural strategies, terminal public-state outcome.\\
+\TT{pureBlockedTraceGameFormAt g}\label{def:pureBlockedTraceGameFormAt} — pure strategies, blocked-trace outcome.\\
+\TT{pmfBehavioralBlockedTraceGameFormAt g}\label{def:pmfBehavioralBlockedTraceGameFormAt} — PMF behavioural strategies, blocked-trace outcome.\\[2pt]
+\TT{pureKernelGameAt g} (and \TT{Vegas.pureKernelGame}\label{def:Vegas.pureKernelGame}) — pure strategies, payoff-vector outcome $\Outcome\,\Players$.\\
+\TT{pmfBehavioralKernelGameAt g} (and \TT{Vegas.pmfBehavioralKernelGame}\label{def:Vegas.pmfBehavioralKernelGame}) — PMF behavioural strategies, payoff-vector outcome.\\
 \TT{pureBlockedTraceKernelGameAt g} — pure strategies, blocked-trace outcome.\\
 \TT{pmfBehavioralBlockedTraceKernelGameAt g} — PMF behavioural strategies, blocked-trace outcome.
 \end{quote}
 
 \paragraph{Math.}
-Each is an instance of \TT{GameTheory.KernelGame}\label{def:GameTheory.KernelGame}: per-player strategy types,
-an outcome type, a stochastic kernel from profiles to outcomes, and a
-utility function. The four games span two orthogonal axes:
+A \TT{GameTheory.GameForm}\label{def:GameTheory.GameForm} contains per-player strategy
+types, an outcome type, and a stochastic kernel from profiles to outcomes.
+A \TT{GameTheory.KernelGame}\label{def:GameTheory.KernelGame} adds a utility function. The payoff-vector
+and blocked-trace game forms have canonical utilities and therefore produce
+the four kernel games. The terminal-public-state forms intentionally stop at
+the game-form level: they expose the final public observation as data, not a
+payoff interpretation. The kernel games span two orthogonal axes:
 \begin{itemize}\itemsep1pt
 \item \emph{Strategy carrier}: pure vs.\ PMF-behavioural.
-\item \emph{Outcome shape}: the public payoff $\Outcome\,\Players$ versus
+\item \emph{Outcome shape}: the payoff vector $\Outcome\,\Players$ versus
   the richer \texttt{syntaxBlockedTraceAt}\,$g$ which retains the per-round
   primitive-event blocks and their endpoint machine state.
 \end{itemize}
-The blocked-trace games refine the public games by an outcome projection,
+The blocked-trace games refine the payoff-vector games by an outcome projection,
 and \TT{Strategic/KernelGame.lean} packages this refinement (next paragraph).
 
 \paragraph{Unsuffixed APIs.}
-The unsuffixed names \TT{Vegas.pureKernelGame} and
-\TT{Vegas.pmfBehavioralKernelGame} are thin definitions equal to their
+The unsuffixed names \TT{Vegas.pureGameForm},
+\TT{Vegas.purePublicStateGameForm}, \TT{Vegas.pureKernelGame},
+\TT{Vegas.pmfBehavioralGameForm}, \TT{Vegas.pmfBehavioralPublicStateGameForm},
+and \TT{Vegas.pmfBehavioralKernelGame} are thin definitions equal to their
 \texttt{*At} counterparts under \TT{[Fintype P]} and \TT{[FiniteDomains g]};
 they are definitionally equal, so all theorems transport.
 
@@ -1303,23 +1327,25 @@ Splitting $K$ from $u$ separates \emph{protocol} (\TT{GameForm}\label{def:GameFo
 \emph{preference}, which is what enables preference-parameterised solution
 concepts (next subsection).
 
-\paragraph{Two outcome types in the codebase.}
+\paragraph{Outcome types in the codebase.}
 Vegas itself defines a simpler protocol-level outcome,
 $\Outcome\,\Players = \Players \to_0 \mathbb{Z}$ (\S\ref{sec:outcomes}). The
-public kernel games \TT{pureKernelGameAt}\label{def:pureKernelGameAt} and \TT{pmfBehavioralKernelGameAt}
+payoff-vector kernel games \TT{pureKernelGameAt}\label{def:pureKernelGameAt} and \TT{pmfBehavioralKernelGameAt}
 take $O = \Outcome\,\Players$ and use the coercion
-$u(o)(p) = (o\,p : \mathbb{R})$. The blocked-trace games set $O$ to
+$u(o)(p) = (o\,p : \mathbb{R})$. The public-state game forms set
+$O$ to the terminal \TT{ProgramPublicObs}\,$g$ and have no canonical
+utility attached. The blocked-trace games set $O$ to
 \[
   \mathtt{syntaxBlockedTraceAt}\,g \;=\;
     [\![\mathrm{event\ blocks}]\!] \times \mathtt{State}_M
 \]
 — each FOSG round's primitive-event block, paired with the round's endpoint
-machine state. Their utility factors through the projection to the public
-outcome: $\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\mathrm{state}))$.
+machine state. Their utility factors through the projection to the payoff
+vector: $\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\mathrm{state}))$.
 
 \paragraph{Refinement layer.}
 \TT{Strategic/KernelGame.lean} packages the relationship between the blocked-trace
-and public games as a \TT{KernelGame.Simulation}\label{def:KernelGame.Simulation} (definitionally a
+and payoff-vector games as a \TT{KernelGame.Simulation}\label{def:KernelGame.Simulation} (definitionally a
 \TT{Morphism}\label{def:Morphism}, which preserves utility distributions
 $\mathrm{udist}$ — i.e.\ the joint distribution over payoff vectors — under
 profile mapping). It also provides explicit expected-utility equality
@@ -1475,8 +1501,8 @@ distribution and applies the underlying kernel:
 \emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}\label{def:kuhn_finite}): every
 independent mixed profile over the pure strategy carrier of
 \TT{pureKernelGameAt}$\,g$ is matched by a behavioural profile of
-\TT{pmfBehavioralKernelGameAt}$\,g$ with the \emph{same outcome
-distribution}. Symbolically, with $\KG^{\mathrm{pure}}$ and
+\TT{pmfBehavioralKernelGameAt}$\,g$ with the \emph{same payoff-vector
+outcome distribution}. Symbolically, with $\KG^{\mathrm{pure}}$ and
 $\KG^{\mathrm{beh}}$ the two kernel games:
 \[
   \forall \mu \in \textstyle\prod_p \PMF{S_p^{\mathrm{pure}}}.\;\;
@@ -1500,6 +1526,28 @@ realisation says that for every mixture over the simple objects we can
 build a behavioural-profile witness with identical observable behaviour.
 This is the formal contract between the surface API (\TT{pureKernelGame}\label{def:pureKernelGame})
 and the analysis API (\TT{pmfBehavioralKernelGame}).
+
+\subsection{Finite pure kernel-game export}
+\label{def:KernelGameExport}
+
+\paragraph{Lean.}
+\TT{Vegas/Export/KernelGame.lean} defines
+\begin{quote}
+\TT{structure KernelGameExport}\label{def:KernelGameExport.structure} \\
+\TT{KernelGameExport.ofKernelGame}\label{def:KernelGameExport.ofKernelGame} \\
+\TT{pureKernelGameExport}\label{def:pureKernelGameExport} \\
+\TT{pureBlockedTraceKernelGameExport}\label{def:pureBlockedTraceKernelGameExport}
+\end{quote}
+
+\paragraph{Math and scope.}
+The export object packages a finite pure kernel game as the ingredients a
+solver adapter needs: the original player and strategy types, finite lists of
+players and strategies, an outcome-kernel oracle, and a utility function. It
+is an API boundary, not a file format. In particular, it does not enumerate
+PMF-behavioural strategies, whose carrier contains probability-valued
+functions, and it does not provide a universal finite list of payoff-vector
+outcomes. Adapters to Gambit, PRISM-games, or another solver should be
+separate code using this object or the canonical EFG presentation.
 
 % =====================================================================
 \section{Outcome and utility evaluation}
@@ -1585,11 +1633,15 @@ events to whole runs.
 The file \TT{Vegas/Backend/KernelGame.lean} packages a
 \TT{StochasticStepRefinement}\label{def:StochasticStepRefinement} as a kernel-game morphism. The data are:
 \begin{itemize}\itemsep1pt
+\item \TT{PureSpecBlockLaw}\label{def:PureSpecBlockLaw}~$g$: a per-pure-profile
+  specification block law plus a proof that it reproduces the canonical
+  \TT{pureBlockedTraceKernelGameAt}\label{def:pureBlockedTraceKernelGameAt} outcome kernel.
+\item \TT{BehavioralSpecBlockLaw}\label{def:BehavioralSpecBlockLaw}~$g$: the analogous
+  package for PMF behavioural profiles.
 \item \TT{BackendPureBlockLawLift}\label{def:BackendPureBlockLawLift}~$g~R$: a per-pure-profile pair of
   block-laws (one for the spec graph machine, one for the implementation),
-  proved \emph{compatible} via \TT{R.BlockLawCompatible}\label{def:R.BlockLawCompatible}, and \emph{sound}
-  in the sense that the spec block-law reproduces the canonical
-  \TT{pureBlockedTraceKernelGameAt}\label{def:pureBlockedTraceKernelGameAt} outcome kernel.
+  proved \emph{compatible} via \TT{R.BlockLawCompatible}\label{def:R.BlockLawCompatible}, and tied to
+  a sound specification law.
 \item \TT{BackendBehavioralBlockLawLift}\label{def:BackendBehavioralBlockLawLift}~$g~R$: the analogous datum for PMF
   behavioural profiles.
 \item \TT{backendBlockedTraceKernelGameAt}\label{def:backendBlockedTraceKernelGameAt}: a kernel game whose strategy
@@ -1607,7 +1659,14 @@ The file \TT{Vegas/Backend/KernelGame.lean} packages a
 \end{itemize}
 A backend author supplies \TT{StochasticStepRefinement} plus a block-law
 lift and obtains an EU-preserving morphism from the implementation into
-the canonical Vegas blocked-trace game.
+the canonical Vegas blocked-trace game.  The separation between
+\TT{PureSpecBlockLaw}/\TT{BehavioralSpecBlockLaw} and backend lifts is
+intentional: FOSG blocked traces are indexed by bounded FOSG histories, while
+machine block laws are indexed by machine blocked traces, so the code asks for
+the soundness proof instead of treating such a conversion as definitional.
+For the identity refinement, \TT{PureSpecBlockLaw.identityBackendLift}\label{def:PureSpecBlockLaw.identityBackendLift}
+and \TT{BehavioralSpecBlockLaw.identityBackendLift}\label{def:BehavioralSpecBlockLaw.identityBackendLift}
+reuse the same packaged soundness proof.
 
 \paragraph{Transport proofs use the morphism API.}
 The two public pullback theorems
@@ -1616,8 +1675,8 @@ The two public pullback theorems
 \TT{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}\label{def:backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}
 \end{quote}
 are proved by applying \TT{KernelGame.EUMorphism.nash_of_nash}\label{def:KernelGame.EUMorphism.nash_of_nash}. The composed
-``public game to backend'' theorems first use the Stage-1
-\TT{EUGameIsomorphism.nash_iff}\label{def:EUGameIsomorphism.nash_iff} between public and blocked-trace games,
+``payoff-vector game to backend'' theorems first use the Stage-1
+\TT{EUGameIsomorphism.nash_iff}\label{def:EUGameIsomorphism.nash_iff} between payoff-vector and blocked-trace games,
 then the backend morphism. Thus the code exercises the same morphism
 composition story stated in the report rather than repeating
 expected-utility calculations locally.
@@ -1644,7 +1703,9 @@ defect). The bimatrix:
 \mathsf{D} & (3,0) & (1,1)
 \end{array}
 \]
-Unique Nash: $(\mathsf{D}, \mathsf{D})$. Defect is dominant for both.
+Unique Nash: $(\mathsf{D}, \mathsf{D})$. Defect is dominant for both. The
+Lean file now contains the complete source-level payoff table and proves
+strict dominance of defect and uniqueness of the source action-profile Nash.
 
 \paragraph{Vegas encoding.}
 Two \Commit{}s (one per player), each followed later by a \Reveal{}, then
@@ -1675,11 +1736,10 @@ Two players, $\mathsf{matcher}$ and $\mathsf{mismatcher}$, simultaneously
 choose Heads/Tails. The matcher is paid $+1$ on a match, $-1$ otherwise; the
 mismatcher's payoff is the matcher's negated. Textbook fact: no pure Nash
 exists; the unique mixed Nash plays each action with probability $1/2$.
-The Vegas example mechanises the per-payoff calculations (zero-sum
-identities on the payoff expressions). The non-existence of a pure Nash
-is proved separately in a hand-written deterministic kernel-game example,
-not on the generated kernel game from the checked Vegas program; the
-analytical mixed Nash is textbook context, not a Lean theorem.
+The Vegas example mechanises the complete source-level payoff table,
+zero-sum identities on the payoff expressions, and a direct proof that no
+source action profile is Nash. The analytical mixed Nash remains textbook
+context, not a Lean theorem about the generated protocol game.
 
 \paragraph{Vegas encoding.}
 Identical commit/reveal shape to Prisoners: the two commits are simultaneous
@@ -1732,11 +1792,15 @@ Two players prefer to coordinate but disagree on which venue:
 \mathsf{Football} & (0,0) & (1,2)
 \end{array}
 \]
-Two strict pure Nash equilibria, plus a mixed one.
+Two strict pure Nash equilibria, plus a mixed one. The Lean file contains the
+complete source-level payoff table and proves that the only source
+action-profile Nash equilibria are the two coordinated profiles.
 
 \paragraph{Vegas encoding.}
 Same shape as the previous two. The interest is purely game-theoretic
-(multiple equilibria), not protocol-level.
+(multiple equilibria), not protocol-level; the example records that
+characterisation at the source action-profile level rather than relying only
+on prose.
 
 \subsection{Monty Hall}
 
@@ -1853,7 +1917,7 @@ the examples, not merely their induced outcome distributions. For
 \TT{MontyHall}\label{def:MontyHall}, the file proves that the first generated EFG round has two
 decision nodes followed by a chance transition. For
 \TT{SyntaxConstructors}\label{def:SyntaxConstructors}, whose player type has one inhabitant, it proves one
-decision node followed by chance. The same file also retains the public
+decision node followed by chance. The same file also retains the payoff-vector
 outcome-law theorem for each example:
 \[
 \begin{aligned}
@@ -1871,8 +1935,8 @@ shape at the root.
 
 The file \TT{Examples/StrategicSemantics.lean} packages the strategic side of
 the worked examples. It first proves three generic theorems for any checked
-program $g$: the public-game and blocked-trace-game expected utilities are
-equal (\TT{pure_eu_eq_blockedTrace}\label{def:pure_eu_eq_blockedTrace} and \TT{behavioral_eu_eq_blockedTrace}\label{def:behavioral_eu_eq_blockedTrace})
+program $g$: the payoff-vector-game and blocked-trace-game expected utilities
+are equal (\TT{pure_eu_eq_blockedTrace}\label{def:pure_eu_eq_blockedTrace} and \TT{behavioral_eu_eq_blockedTrace}\label{def:behavioral_eu_eq_blockedTrace})
 and Nash and dominance predicates transport across the projection
 (\TT{pure_nash_iff_blockedTrace}\label{def:pure_nash_iff_blockedTrace}, \TT{behavioral_nash_iff_blockedTrace}\label{def:behavioral_nash_iff_blockedTrace},
 \TT{pure_dominant_iff_blockedTrace}\label{def:pure_dominant_iff_blockedTrace}), and exposes a generic legal pure
@@ -1884,8 +1948,8 @@ event-graph nodes and field assignments — \TT{rowCommitNode}\label{def:rowComm
 \TT{rowDefectSlice}\label{def:rowDefectSlice}, \TT{rowDefectAction}\label{def:rowDefectAction} — and exercises \TT{sliceLegal} and
 \TT{actionLegal} directly. It is the recommended starting point for a reader
 who wants to see \emph{how} the source elaborator maps individual constructors
-to event-graph data, and \emph{how} the public-game and blocked-trace-game views
-relate at the strategic API.
+to event-graph data, and \emph{how} the payoff-vector-game and
+blocked-trace-game views relate at the strategic API.
 
 % =====================================================================
 \section{Reading order}
@@ -1911,8 +1975,9 @@ For a reader landing on the codebase for the first time, we suggest:
 \item Read \TT{Vegas/GameBridge/FOSG/Basic.lean} for the FOSG view, then
   \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean},
   \TT{Vegas/GameBridge/EFG/FromEventGraph.lean},
-  \TT{Vegas/Strategic/KernelGame.lean}, \TT{Vegas/Strategic/Kuhn.lean}, and one
-  of the \TT{Vegas/Examples/} files.
+  \TT{Vegas/Strategic/KernelGame.lean}, \TT{Vegas/Strategic/Kuhn.lean},
+  \TT{Vegas/Export/KernelGame.lean}, and one of the \TT{Vegas/Examples/}
+  files.
 \item Browse \TT{Vegas/Strategic/Equilibrium.lean}, \TT{Vegas/Strategic/Pure.lean},
   \TT{Vegas/Strategic/Properties.lean} for the public solution-concept names.
 \end{enumerate}

@@ -68,11 +68,11 @@ supports~\citep{Segala1995Probabilistic}.}
 \subsection{Trace-level transport}
 \label{sec:ref:trace}
 
-Refinement at the per-step level lifts to a refinement at the
-trace level: for any scheduler $\lambda^I$ on $\Mach^I$, the
-projection of its trace distribution matches the trace
-distribution of the projected scheduler on $\Mach^S$.  The
-codebase records this as
+Refinement at the per-step level lifts to a refinement at the trace
+level for compatible event laws: when an implementation law and a
+specification law are related through the refinement projection,
+the projection of the implementation trace distribution matches the
+specification trace distribution.  The codebase records this as
 $\mathrm{runEventsFrom\_project\_eq}$ and
 $\mathrm{blockTraceDist\_project\_eq}$, with the latter exposing
 the projection at the FOSG-block granularity.
@@ -97,6 +97,17 @@ construction therefore takes:
   form depending on the target kernel game.
 \end{itemize}
 
+The block-law lift is explicit on purpose.  The FOSG blocked-trace
+kernel is indexed by bounded FOSG histories, whereas a machine
+block law sees only machine blocked traces.  The code therefore
+does not silently identify the two.  Instead, \TT{PureSpecBlockLaw}
+and \TT{BehavioralSpecBlockLaw} package a specification block law
+with the proof that it reproduces the canonical Vegas blocked-trace
+kernel; backend lifts then relate an implementation law to that
+packaged spec law.  The identity backend wrappers reuse the same
+package rather than treating a canonical law conversion as
+definitionally available.
+
 These data assemble into a kernel-game morphism
 \[
   \mathrm{backendBlockedTraceKernelGame}(g, R)
@@ -120,7 +131,7 @@ blocked-trace kernel game,
 (\emph{Nash pullback} along the backend-to-spec morphism).  The
 same holds for the PMF-behavioural variant, and combined with
 \Cref{thm:trace-public} (trace-to-public agreement) yields the
-composed ``public spec game $\to$ backend blocked-trace game''
+composed ``payoff-vector spec game $\to$ backend blocked-trace game''
 pullback for both pure and behavioural Nash.
 \end{theorem}
 
@@ -131,12 +142,13 @@ follow from the morphism, because the backend may admit profiles
 outside the image of the spec strategy carrier.
 
 The intended workflow is then explicit: \emph{reason about the
-canonical spec public game; prove the implementation refines it;
-transport the equilibria}.
+canonical spec payoff-vector game; prove the implementation refines
+it; transport the equilibria}.
 
 \paragraph{Lean correspondence.}
 Supplement~\S8 (backend layer): \TT{WeakStepRefinement},
 \TT{StochasticStepRefinement}, the trace-projection lemmas,
+\TT{PureSpecBlockLaw}, \TT{BehavioralSpecBlockLaw},
 \TT{BackendPureBlockLawLift}, \TT{BackendBehavioralBlockLawLift},
 and the two pullback theorems
 (\TT{backendBlockedTraceKernelGameAt\_isNash\_pullback},

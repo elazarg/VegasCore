@@ -59,7 +59,29 @@ and Pareto efficiency.  Refinement-based equilibrium concepts
 (subgame-perfect equilibria, sequential equilibria,
 trembling-hand~\citep{Selten1975}) are not yet exposed because the
 event-graph view does not maintain a sub-game decomposition; this
-is mechanical to add.
+would require an additional presentation or subgame API rather than
+only another predicate on the existing kernel games.
+
+\paragraph{FOSG-based strategic carriers.}  The event graph and
+machine are the semantic source of truth, but the current
+Vegas-facing pure and PMF-behavioural strategy carriers are routed
+through the bounded FOSG view.  This is a checked view of the
+machine, not a separate semantics.  A fully machine-native strategy
+layer would reduce indirection and make the ``game form first''
+story cleaner, but it is not yet the implemented carrier.
+
+\paragraph{Public samples only.}  The source $\Sample$ constructor
+draws a public coin.  It is suitable for public randomness, but it
+does not create private Harsanyi types or hidden chance moves.
+Those require either a new hidden/private sample primitive or an
+explicit external type parameter that a player commits to under the
+visibility discipline.
+
+\paragraph{Solver export.}  The code now has a finite pure
+kernel-game export object with player/strategy enumerations and
+kernel/utility oracles.  It is deliberately narrower than a
+complete solver interchange format, and the PMF-behavioural carrier
+is not exported as a finite strategy list.
 
 \paragraph{Decidability.}  The static obligations of
 \S\ref{sec:source:wf} — contextual well-formedness, fresh
@@ -75,11 +97,13 @@ they are computable in useful time is a separate question
 
 \paragraph{Mechanism design under epistemic types.}
 Bayesian games with type
-spaces~\citep{Harsanyi1967,MyersonGameTheory} fit by adding a
-$\Sample$ layer that produces per-player private types via $\Commit$
-of the $\Sample$ output.  The type system already supports this; a
-mechanism-design library can be packaged as a checked
-WFProgram-builder over a type-space schema.
+spaces~\citep{Harsanyi1967,MyersonGameTheory} are close to the
+intended scope but need one more primitive: private type draws.
+The current $\Sample$ layer is public, so it cannot by itself
+generate hidden per-player types.  A mechanism-design library could
+be packaged as a checked \TT{WFProgram} builder over a type-space
+schema once the source language has either hidden samples or an
+external typed-input interface.
 
 \paragraph{Concurrent and partial-information protocols at scale.}
 The event graph is naturally an event structure in the sense of
@@ -133,7 +157,7 @@ object?  The answer it offers is the dependency graph of events,
 with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
-sanity-check theorems (public-outcome agreement, Kuhn realisation,
+sanity-check theorems (payoff-vector agreement, Kuhn realisation,
 refinement transport).
 
 The deeper benefit is that future extensions — compositional

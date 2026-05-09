@@ -4,9 +4,9 @@
 The shift from operational machine to game-theoretic structure
 happens at this layer.  We define the FOSG view on top of a
 machine, exhibit the event-graph FOSG view, build pure and
-PMF-behavioural strategy carriers from the view, and present four
-canonical kernel games over which the standard
-solution-concept inventory is defined.
+PMF-behavioural strategy carriers from the view, and present the
+game forms and kernel games over which the standard solution-concept
+inventory is defined.
 
 \subsection{Why FOSG}
 
@@ -54,39 +54,43 @@ action.
 \subsubsection*{The event-graph FOSG view}
 
 Concretely, one FOSG round of the event-graph machine
-$\Mach_{\EG}$ is the following batched transition.  At a
+$\Mach_{\EG}$ is a canonical whole-frontier transition.  At a
 configuration $C$, the active set is the set of players who own at
-least one frontier node.  Each active player simultaneously selects
-a write slice for every frontier node they own.  Those player nodes
-then execute concurrently, advancing the configuration via the
-frontier diamond (\Cref{thm:diamond}).  Every internal node that
-becomes enabled in the new configuration then fires
-(deterministically for $\mathsf{assign}$ and $\mathsf{reveal}$,
-stochastically for $\mathsf{sample}$), and the round ends when the
-frontier contains only player-owned nodes again — or, if the
-frontier is empty, the round is terminal.  A whole batch of this
-kind is one FOSG transition; per-player observations and rewards
-are emitted at its boundary.
+least one current frontier node.  Each active player selects a
+round-action that contains candidate write slices; availability
+checks only the slices for that player's owned nodes in
+$\frontier(C)$.  The transition then executes every node currently
+in $\frontier(C)$ exactly once, in the canonical
+$\frontier(C).\mathrm{toList}$ order.  Player-owned nodes use the
+selected player slices; internal nodes use the event graph's
+internal kernels (deterministic for $\mathsf{assign}$ and
+$\mathsf{reveal}$, stochastic for $\mathsf{sample}$).  Nodes that
+become enabled while this list is being executed wait for a later
+FOSG round.
 
-The FOSG round-action alphabet is therefore static: independently
-of the configuration, $\Act_p$ is the type
+The FOSG round-action alphabet is static: independently of the
+configuration, $\Act_p$ is the type
 \[
-  \Act_p \;=\; \mathrm{Option}\Bigl(
-    (n : \Nodes_p) \to \mathrm{Slice}(n)
-  \Bigr),
+  \Act_p \;=\; (n : \Nodes) \to \mathrm{Slice}(n),
 \]
-where $\Nodes_p$ is the set of nodes owned by $p$ in $\EG$ and
-$\mathsf{none}$ denotes \emph{not active in this round}.  The
-configuration enters at the level of \emph{availability}, not the
-alphabet: at configuration $C$, the available actions for $p$ are
-those $\mathsf{some}\,a$ whose underlying nodes lie in
-$\frontier(C) \cap \{n : \actor(n) = p\}$ and whose slices are
-legal there.  Keeping the alphabet static means strategy types do
-not depend on the run-time configuration; the per-state menu is
-recovered by intersecting with the frontier.
-The transition collapses one frontier batch — the player events
-owned by the active set, executed concurrently, followed by all
-internal events that newly become enabled — into one FOSG step.
+with the FOSG menu using $\mathsf{Option}(\Act_p)$ so that
+$\mathsf{none}$ denotes \emph{not active in this round}.  The total
+function is intentionally wider than the current menu: irrelevant
+coordinates are ignored.  The configuration enters at the level of
+\emph{availability}, not the alphabet.  At configuration $C$, the
+available $\mathsf{some}\,a$ actions for $p$ are those whose slices
+are legal on every node in
+$\frontier(C) \cap \{n : \actor(n) = p\}$.  Keeping the alphabet
+static means strategy types do not depend on the run-time
+configuration; the per-state menu is recovered by intersecting with
+the frontier.
+
+The list order inside the round is definitional presentation data.
+The frontier diamond and its whole-frontier linearisation theorem
+state that, for the same current frontier and slices, independent
+frontier nodes reach the same endpoint regardless of admissible
+linearisation.  The code therefore does not rely on the canonical
+list order carrying strategic information.
 
 \subsubsection*{The stability condition}
 
@@ -176,12 +180,20 @@ behavioural profiles:
   \mathrm{outcomeFromBehavioral}_h\,\beta &\in \PMF{\Outcome}.
 \end{align*}
 
-\subsection{The four canonical kernel games}
+\subsection{Game forms and kernel games}
 \label{sec:fosg:kernel-games}
 
-We can now define the standard strategic-form objects.  A
-\emph{kernel game} is the minimal strategic-form carrier on top of
-which expected-utility solution concepts make sense:
+We first separate \emph{game form} from \emph{preference}.  A game
+form contains per-player strategy types, an outcome type, and a
+profile-to-outcome kernel, but no utility.  Vegas exposes game
+forms for payoff-vector outcomes, terminal public-state outcomes,
+and blocked-trace outcomes.  The terminal-public-state game forms
+are useful when the caller wants the final public observation itself
+rather than only the payoff vector.
+
+A \emph{kernel game} attaches utility to a game form and is the
+minimal strategic-form carrier on top of which expected-utility
+solution concepts make sense:
 \begin{equation}
 \label{eq:kernel-game}
   \KG \;=\; \bigl(\,
@@ -195,7 +207,8 @@ Expected utility is then the obvious functional
   \mathbb{E}_{\omega \sim K(\Profile)}\bigl[u(\omega)(p)\bigr].
 \end{equation}
 
-For a checked program $g$, four kernel games are exposed:
+For a checked program $g$, the payoff-vector and blocked-trace game
+forms have canonical utilities, so four kernel games are exposed:
 \begin{center}
 \small
 \begin{tabular}{@{}lp{0.55\textwidth}@{}}
@@ -217,28 +230,27 @@ $\mathrm{pmfBehavioralBlockedTraceKernelGame}(g)$ &
 A \emph{blocked trace} is the sequence, indexed by FOSG round, of
 all primitive event-block executions that took place during that
 round, paired with the configuration reached at the round's end.
-It is strictly more informative than the public outcome — which
-records only the final public state — and is the natural object on
-which to compare the canonical event-graph machine to a backend
-implementation, since the latter may produce additional
-implementation-specific events within the same round.  The two
-axes of the kernel-game table above are then \emph{strategy
+It is strictly more informative than the payoff-vector outcome and
+is the natural object on which to compare the canonical event-graph
+machine to a backend implementation, since the latter may produce
+additional implementation-specific events within the same round.
+The two axes of the kernel-game table above are then \emph{strategy
 carrier} (pure vs.\ PMF-behavioural) and \emph{outcome shape}
-(public payoff vs.\ blocked-trace).  The blocked-trace games
-\emph{refine} the public games by an outcome projection.
+(payoff vector vs.\ blocked trace).  The blocked-trace games
+\emph{refine} the payoff-vector games by an outcome projection.
 
 \subsection{Trace-to-public agreement}
 \label{sec:fosg:trace-public}
 
 The blocked-trace games are useful for refinement reasoning
-(\S\ref{sec:refinement}); the public games are what users
-intuitively reason about.  We need to know that they agree, both at
+(\S\ref{sec:refinement}); the payoff-vector games are what users
+usually reason about.  We need to know that they agree, both at
 the kernel level and at the level of expected utility.
 
 \begin{theorem}[Trace-to-public agreement]
 \label{thm:trace-public}
-For every checked program $g$, the public-outcome map applied to
-the blocked-trace kernel agrees with the public outcome kernel,
+For every checked program $g$, the payoff projection applied to
+the blocked-trace kernel agrees with the payoff-vector outcome kernel,
 \begin{align*}
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
     K^{\mathrm{pure}}_{\mathrm{blocked}}
@@ -249,8 +261,8 @@ the blocked-trace kernel agrees with the public outcome kernel,
 \end{align*}
 and expected utilities are equal under the corresponding profile
 inclusions.  Solution concepts (Nash, dominance) transport across
-the projection: a strategy is best-response in the public game iff
-it is best-response in the blocked-trace game.
+the projection: a strategy is best-response in the payoff-vector game
+iff it is best-response in the blocked-trace game.
 \end{theorem}
 
 The proof packages the projection as a kernel-game
