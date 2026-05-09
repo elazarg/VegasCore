@@ -977,6 +977,118 @@ theorem withResult_comm
       simp [withResult, updateResult, hrightLeft]
     · simp [withResult, updateResult, hcLeft, hcRight]
 
+/-- Execute a whole frontier extensionally by recording one legal result slice
+for each node in the current frontier and leaving every non-frontier result as
+it was.
+
+This is not a scheduler. It is the canonical endpoint that any legal
+linearization of the same source frontier and same sampled/player slices must
+reach. -/
+noncomputable def withFrontierResults
+    (cfg : G.Configuration)
+    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
+    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier)) :
+    G.Configuration where
+  result := fun candidate =>
+    if hfrontier : candidate ∈ cfg.frontier then
+      some (slice candidate hfrontier)
+    else
+      cfg.result candidate
+  result_nodes := by
+    classical
+    intro candidate hsome
+    by_cases hfrontier : candidate ∈ cfg.frontier
+    · exact cfg.mem_nodes_of_mem_frontier hfrontier
+    · have hold : (cfg.result candidate).isSome := by
+        dsimp only
+        rw [dif_neg hfrontier] at hsome
+        exact hsome
+      exact cfg.result_nodes hold
+  closed := by
+    classical
+    intro candidate prereq hcandidateDone hpre
+    by_cases hcandidateFrontier : candidate ∈ cfg.frontier
+    · have hpreDone : (cfg.result prereq).isSome :=
+        cfg.result_some_of_prereq_of_mem_frontier hcandidateFrontier hpre
+      by_cases hpreFrontier : prereq ∈ cfg.frontier
+      · dsimp only
+        rw [dif_pos hpreFrontier]
+        rfl
+      · dsimp only
+        rw [dif_neg hpreFrontier]
+        exact hpreDone
+    · have hcandidateOld : (cfg.result candidate).isSome := by
+        rw [dif_neg hcandidateFrontier] at hcandidateDone
+        exact hcandidateDone
+      have hpreDone : (cfg.result prereq).isSome :=
+        cfg.closed hcandidateOld hpre
+      by_cases hpreFrontier : prereq ∈ cfg.frontier
+      · dsimp only
+        rw [dif_pos hpreFrontier]
+        rfl
+      · dsimp only
+        rw [dif_neg hpreFrontier]
+        exact hpreDone
+  legal := by
+    classical
+    intro candidate candidateSlice hcandidateResult
+    by_cases hfrontier : candidate ∈ cfg.frontier
+    · rw [dif_pos hfrontier] at hcandidateResult
+      have hslice : slice candidate hfrontier = candidateSlice := by
+        simpa using hcandidateResult
+      subst candidateSlice
+      exact hlegal candidate hfrontier
+    · have holdResult : cfg.result candidate = some candidateSlice := by
+        rw [dif_neg hfrontier] at hcandidateResult
+        exact hcandidateResult
+      exact cfg.legal holdResult
+
+@[simp] theorem withFrontierResults_result_of_mem
+    (cfg : G.Configuration)
+    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
+    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
+    (cfg.withFrontierResults slice hlegal).result node =
+      some (slice node hfrontier) := by
+  classical
+  dsimp [withFrontierResults]
+  rw [dif_pos hfrontier]
+
+@[simp] theorem withFrontierResults_result_of_not_mem
+    (cfg : G.Configuration)
+    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
+    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    {node : G.Node} (hfrontier : node ∉ cfg.frontier) :
+    (cfg.withFrontierResults slice hlegal).result node =
+      cfg.result node := by
+  classical
+  dsimp [withFrontierResults]
+  rw [dif_neg hfrontier]
+
+/-- A configuration is the canonical whole-frontier result iff it records the
+chosen slice at every source-frontier node and leaves every non-frontier node's
+result unchanged. This is the extensional form of frontier linearization
+invariance: scheduler order is not part of the endpoint once the per-node
+results are fixed. -/
+theorem eq_withFrontierResults_of_result_eq
+    (cfg dst : G.Configuration)
+    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
+    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    (honFrontier :
+      ∀ node (hfrontier : node ∈ cfg.frontier),
+        dst.result node = some (slice node hfrontier))
+    (hoffFrontier :
+      ∀ node, node ∉ cfg.frontier → dst.result node = cfg.result node) :
+    dst = cfg.withFrontierResults slice hlegal := by
+  classical
+  apply Configuration.ext
+  funext node
+  by_cases hfrontier : node ∈ cfg.frontier
+  · rw [honFrontier node hfrontier]
+    rw [withFrontierResults_result_of_mem cfg slice hlegal hfrontier]
+  · rw [hoffFrontier node hfrontier]
+    rw [withFrontierResults_result_of_not_mem cfg slice hlegal hfrontier]
+
 end Configuration
 
 /-- Graph configurations are finite when nodes, fields, and every field value
