@@ -80,6 +80,70 @@ theorem payoffs_zero_sum (matcher mismatcher : Bool) :
   cases matcher <;> cases mismatcher <;>
     rfl
 
+/-- Complete payoff table of the source-level Boolean choices. -/
+theorem payoff_table (matcher mismatcher : Bool) :
+    (evalExpr matcherPayoff (payoffEnv matcher mismatcher),
+      evalExpr mismatcherPayoff (payoffEnv matcher mismatcher)) =
+      match matcher, mismatcher with
+      | true, true => (1, -1)
+      | true, false => (-1, 1)
+      | false, true => (-1, 1)
+      | false, false => (1, -1) := by
+  cases matcher <;> cases mismatcher <;> rfl
+
+theorem mismatcher_switch_from_match_gt (choice : Bool) :
+    evalExpr mismatcherPayoff (payoffEnv choice (!choice)) >
+      evalExpr mismatcherPayoff (payoffEnv choice choice) := by
+  cases choice <;> decide
+
+theorem matcher_switch_from_mismatch_gt
+    (matcher mismatcher : Bool) (h : matcher ≠ mismatcher) :
+    evalExpr matcherPayoff (payoffEnv mismatcher mismatcher) >
+      evalExpr matcherPayoff (payoffEnv matcher mismatcher) := by
+  cases matcher <;> cases mismatcher <;> simp at h <;> decide
+
+abbrev ActionProfile := Player → Bool
+
+def actionPayoff (σ : ActionProfile) : Player → Int
+  | Player.matcher =>
+      evalExpr matcherPayoff
+        (payoffEnv (σ Player.matcher) (σ Player.mismatcher))
+  | Player.mismatcher =>
+      evalExpr mismatcherPayoff
+        (payoffEnv (σ Player.matcher) (σ Player.mismatcher))
+
+def IsActionNash (σ : ActionProfile) : Prop :=
+  ∀ who alt, actionPayoff σ who ≥
+    actionPayoff (Function.update σ who alt) who
+
+theorem no_actionNash (σ : ActionProfile) :
+    ¬ IsActionNash σ := by
+  intro hσ
+  by_cases hmatch : σ Player.matcher = σ Player.mismatcher
+  · have hdev := hσ Player.mismatcher (!(σ Player.mismatcher))
+    have hbad :
+        evalExpr mismatcherPayoff
+            (payoffEnv (σ Player.matcher) (!(σ Player.mismatcher))) ≤
+          evalExpr mismatcherPayoff
+            (payoffEnv (σ Player.matcher) (σ Player.mismatcher)) := by
+      simpa [actionPayoff, hmatch] using hdev
+    exact
+      (not_le_of_gt
+        (by
+          simpa [hmatch] using
+            mismatcher_switch_from_match_gt (σ Player.mismatcher))) hbad
+  · have hdev := hσ Player.matcher (σ Player.mismatcher)
+    have hbad :
+        evalExpr matcherPayoff
+            (payoffEnv (σ Player.mismatcher) (σ Player.mismatcher)) ≤
+          evalExpr matcherPayoff
+            (payoffEnv (σ Player.matcher) (σ Player.mismatcher)) := by
+      simpa [actionPayoff] using hdev
+    exact
+      (not_le_of_gt
+        (matcher_switch_from_mismatch_gt
+          (σ Player.matcher) (σ Player.mismatcher) hmatch)) hbad
+
 noncomputable abbrev program : Prog Γ0 :=
   .commit matcherSecret Player.matcher (b := .bool) (.constBool true)
     (.commit mismatcherSecret Player.mismatcher (b := .bool) (.constBool true)

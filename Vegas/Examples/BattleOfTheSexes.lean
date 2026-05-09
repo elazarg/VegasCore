@@ -88,6 +88,17 @@ theorem football_football_payoff :
       evalExpr footballFanPayoff (payoffEnv false false) = 2 := by
   exact ⟨rfl, rfl⟩
 
+/-- Complete payoff table of the source-level Boolean choices. -/
+theorem payoff_table (operaFan footballFan : Bool) :
+    (evalExpr operaFanPayoff (payoffEnv operaFan footballFan),
+      evalExpr footballFanPayoff (payoffEnv operaFan footballFan)) =
+      match operaFan, footballFan with
+      | true, true => (2, 1)
+      | true, false => (0, 0)
+      | false, true => (0, 0)
+      | false, false => (1, 2) := by
+  cases operaFan <;> cases footballFan <;> rfl
+
 theorem mismatch_payoff (operaFan footballFan : Bool)
     (h : operaFan ≠ footballFan) :
     evalExpr operaFanPayoff (payoffEnv operaFan footballFan) = 0 ∧
@@ -96,6 +107,91 @@ theorem mismatch_payoff (operaFan footballFan : Bool)
     simp_all [payoffEnv, operaFanPayoff, footballFanPayoff, sameVenue,
       operaFanChoice, footballFanChoice, hOperaFanPublicPayoff,
       hFootballFanPublicPayoff, Env.get, Env.cons, evalExpr]
+
+theorem operaFan_match_opera_gt :
+    evalExpr operaFanPayoff (payoffEnv true true) >
+      evalExpr operaFanPayoff (payoffEnv false true) := by
+  decide
+
+theorem operaFan_match_football_gt :
+    evalExpr operaFanPayoff (payoffEnv false false) >
+      evalExpr operaFanPayoff (payoffEnv true false) := by
+  decide
+
+theorem footballFan_match_opera_gt :
+    evalExpr footballFanPayoff (payoffEnv true true) >
+      evalExpr footballFanPayoff (payoffEnv true false) := by
+  decide
+
+theorem footballFan_match_football_gt :
+    evalExpr footballFanPayoff (payoffEnv false false) >
+      evalExpr footballFanPayoff (payoffEnv false true) := by
+  decide
+
+abbrev ActionProfile := Player → Bool
+
+def actionPayoff (σ : ActionProfile) : Player → Int
+  | Player.operaFan =>
+      evalExpr operaFanPayoff
+        (payoffEnv (σ Player.operaFan) (σ Player.footballFan))
+  | Player.footballFan =>
+      evalExpr footballFanPayoff
+        (payoffEnv (σ Player.operaFan) (σ Player.footballFan))
+
+def IsActionNash (σ : ActionProfile) : Prop :=
+  ∀ who alt, actionPayoff σ who ≥
+    actionPayoff (Function.update σ who alt) who
+
+def operaProfile : ActionProfile
+  | Player.operaFan => true
+  | Player.footballFan => true
+
+def footballProfile : ActionProfile
+  | Player.operaFan => false
+  | Player.footballFan => false
+
+theorem operaProfile_actionNash : IsActionNash operaProfile := by
+  intro who alt
+  cases who <;> cases alt <;> decide
+
+theorem footballProfile_actionNash : IsActionNash footballProfile := by
+  intro who alt
+  cases who <;> cases alt <;> decide
+
+theorem actionNash_eq_opera_or_football
+    (σ : ActionProfile) (hσ : IsActionNash σ) :
+    σ = operaProfile ∨ σ = footballProfile := by
+  cases hopera : σ Player.operaFan <;>
+    cases hfootball : σ Player.footballFan
+  · right
+    funext who
+    cases who <;> simp [footballProfile, hopera, hfootball]
+  · have hdev := hσ Player.operaFan true
+    have hbad :
+        evalExpr operaFanPayoff (payoffEnv true true) ≤
+          evalExpr operaFanPayoff (payoffEnv false true) := by
+      simpa [actionPayoff, hopera, hfootball] using hdev
+    exact False.elim ((not_le_of_gt operaFan_match_opera_gt) hbad)
+  · have hdev := hσ Player.footballFan true
+    have hbad :
+        evalExpr footballFanPayoff (payoffEnv true true) ≤
+          evalExpr footballFanPayoff (payoffEnv true false) := by
+      simpa [actionPayoff, hopera, hfootball] using hdev
+    exact False.elim ((not_le_of_gt footballFan_match_opera_gt) hbad)
+  · left
+    funext who
+    cases who <;> simp [operaProfile, hopera, hfootball]
+
+theorem actionNash_iff_opera_or_football (σ : ActionProfile) :
+    IsActionNash σ ↔ σ = operaProfile ∨ σ = footballProfile := by
+  constructor
+  · exact actionNash_eq_opera_or_football σ
+  · intro h
+    rcases h with h | h
+    · subst σ
+      exact operaProfile_actionNash
+    · subst σ
+      exact footballProfile_actionNash
 
 noncomputable abbrev program : Prog Γ0 :=
   .commit operaFanSecret Player.operaFan (b := .bool) (.constBool true)

@@ -82,15 +82,96 @@ theorem defect_defect_payoff :
       evalExpr colPayoff (payoffEnv false false) = 1 := by
   exact ⟨rfl, rfl⟩
 
-theorem row_defect_payoff_ge_cooperate (col : Bool) :
-    evalExpr rowPayoff (payoffEnv false col) ≥
+/-- Complete payoff table of the source-level Boolean choices. -/
+theorem payoff_table (row col : Bool) :
+    (evalExpr rowPayoff (payoffEnv row col),
+      evalExpr colPayoff (payoffEnv row col)) =
+      match row, col with
+      | true, true => (2, 2)
+      | true, false => (0, 3)
+      | false, true => (3, 0)
+      | false, false => (1, 1) := by
+  cases row <;> cases col <;> rfl
+
+theorem row_defect_payoff_gt_cooperate (col : Bool) :
+    evalExpr rowPayoff (payoffEnv false col) >
       evalExpr rowPayoff (payoffEnv true col) := by
   cases col <;> decide
 
-theorem col_defect_payoff_ge_cooperate (row : Bool) :
-    evalExpr colPayoff (payoffEnv row false) ≥
+theorem col_defect_payoff_gt_cooperate (row : Bool) :
+    evalExpr colPayoff (payoffEnv row false) >
       evalExpr colPayoff (payoffEnv row true) := by
   cases row <;> decide
+
+theorem row_defect_payoff_ge_cooperate (col : Bool) :
+    evalExpr rowPayoff (payoffEnv false col) ≥
+      evalExpr rowPayoff (payoffEnv true col) :=
+  le_of_lt (row_defect_payoff_gt_cooperate col)
+
+theorem col_defect_payoff_ge_cooperate (row : Bool) :
+    evalExpr colPayoff (payoffEnv row false) ≥
+      evalExpr colPayoff (payoffEnv row true) :=
+  le_of_lt (col_defect_payoff_gt_cooperate row)
+
+abbrev ActionProfile := Player → Bool
+
+def actionPayoff (σ : ActionProfile) : Player → Int
+  | Player.row => evalExpr rowPayoff (payoffEnv (σ Player.row) (σ Player.col))
+  | Player.col => evalExpr colPayoff (payoffEnv (σ Player.row) (σ Player.col))
+
+def IsActionNash (σ : ActionProfile) : Prop :=
+  ∀ who alt, actionPayoff σ who ≥
+    actionPayoff (Function.update σ who alt) who
+
+def defectProfile : ActionProfile
+  | Player.row => false
+  | Player.col => false
+
+theorem defectProfile_actionNash : IsActionNash defectProfile := by
+  intro who alt
+  cases who <;> cases alt <;> decide
+
+theorem actionNash_eq_defectProfile
+    (σ : ActionProfile) (hσ : IsActionNash σ) :
+    σ = defectProfile := by
+  have hrowFalse : σ Player.row = false := by
+    cases hrow : σ Player.row
+    · rfl
+    · cases hcol : σ Player.col
+      · have hdev := hσ Player.row false
+        have hbad :
+            evalExpr rowPayoff (payoffEnv false false) ≤
+              evalExpr rowPayoff (payoffEnv true false) := by
+          simpa [actionPayoff, hrow, hcol] using hdev
+        exact False.elim
+          ((not_le_of_gt (row_defect_payoff_gt_cooperate false)) hbad)
+      · have hdev := hσ Player.row false
+        have hbad :
+            evalExpr rowPayoff (payoffEnv false true) ≤
+              evalExpr rowPayoff (payoffEnv true true) := by
+          simpa [actionPayoff, hrow, hcol] using hdev
+        exact False.elim
+          ((not_le_of_gt (row_defect_payoff_gt_cooperate true)) hbad)
+  have hcolFalse : σ Player.col = false := by
+    cases hcol : σ Player.col
+    · rfl
+    · have hdev := hσ Player.col false
+      have hbad :
+          evalExpr colPayoff (payoffEnv false false) ≤
+            evalExpr colPayoff (payoffEnv false true) := by
+        simpa [actionPayoff, hrowFalse, hcol] using hdev
+      exact False.elim
+        ((not_le_of_gt (col_defect_payoff_gt_cooperate false)) hbad)
+  funext who
+  cases who <;> simp [defectProfile, hrowFalse, hcolFalse]
+
+theorem actionNash_iff_defectProfile (σ : ActionProfile) :
+    IsActionNash σ ↔ σ = defectProfile := by
+  constructor
+  · exact actionNash_eq_defectProfile σ
+  · intro h
+    subst σ
+    exact defectProfile_actionNash
 
 noncomputable abbrev program : Prog Γ0 :=
   .commit rowSecret Player.row (b := .bool) (.constBool true)
