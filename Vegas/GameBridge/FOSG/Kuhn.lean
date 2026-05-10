@@ -1,5 +1,6 @@
 import Vegas.GameBridge.FOSG.Basic
 import Vegas.GameBridge.FOSG.FromCore
+import Vegas.GameBridge.FOSG.NativeEquiv
 import Vegas.Strategic.KernelGame
 import GameTheory.Languages.FOSG.Kuhn
 
