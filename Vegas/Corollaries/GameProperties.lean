@@ -135,42 +135,56 @@ theorem bestNashWelfare_le_optimalWelfare
       (by simpa [IsNash] using hN)
       hbdd')
 
-set_option linter.unusedFintypeInType false in
 theorem mixedNash_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     [∀ who, Fintype (Strategy g who)]
     [∀ who, Nonempty (Strategy g who)]
-    [Fintype (Outcome P)] :
+    [Finite (Outcome P)] :
     ∃ σ : MixedStrategyProfile g, IsMixedNash g σ := by
+  letI : Finite (pmfBehavioralKernelGame g).Outcome := by
+    change Finite (Outcome P)
+    infer_instance
   letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
     change Fintype (Outcome P)
-    infer_instance
+    exact Fintype.ofFinite _
   simpa [MixedStrategyProfile, IsMixedNash] using
     (KernelGame.mixed_nash_exists (pmfBehavioralKernelGame g))
 
-set_option linter.unusedFintypeInType false in
 theorem correlatedEq_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Finite (Strategy g who)]
     [∀ who, Nonempty (Strategy g who)]
-    [Fintype (Outcome P)] :
+    [Finite (Outcome P)] :
     ∃ μ : CorrelatedProfile g, IsCorrelatedEq g μ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
+  letI : Finite (pmfBehavioralKernelGame g).Outcome := by
+    change Finite (Outcome P)
+    infer_instance
   letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
     change Fintype (Outcome P)
-    infer_instance
+    exact Fintype.ofFinite _
   simpa [CorrelatedProfile, StrategyProfile, IsCorrelatedEq] using
     (KernelGame.correlatedEq_exists (pmfBehavioralKernelGame g))
 
-set_option linter.unusedFintypeInType false in
 theorem coarseCorrelatedEq_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Finite (Strategy g who)]
     [∀ who, Nonempty (Strategy g who)]
-    [Fintype (Outcome P)] :
+    [Finite (Outcome P)] :
     ∃ μ : CorrelatedProfile g, IsCoarseCorrelatedEq g μ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
+  letI : Finite (pmfBehavioralKernelGame g).Outcome := by
+    change Finite (Outcome P)
+    infer_instance
   letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
     change Fintype (Outcome P)
-    infer_instance
+    exact Fintype.ofFinite _
   simpa [CorrelatedProfile, StrategyProfile, IsCoarseCorrelatedEq] using
     (KernelGame.coarseCorrelatedEq_exists (pmfBehavioralKernelGame g))
 

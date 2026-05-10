@@ -54,11 +54,11 @@ def payoffEnv (sampled : Bool) : Env simpleExpr.Val (erasePubVCtx Γ2) :=
 theorem flagValue_eval :
     evalExpr flagValue (Env.empty simpleExpr.Val) = true := rfl
 
-set_option linter.style.nativeDecide false in
 theorem fairCoin_totalWeight (env : Env simpleExpr.Val (erasePubVCtx Γ1)) :
     FWeight.totalWeight (evalDistExpr fairCoin env) = 1 := by
   change FWeight.totalWeight (FWeight.ofList [(true, 1 / 2), (false, 1 / 2)]) = 1
-  native_decide
+  unfold FWeight.totalWeight FWeight.ofList FWeight.ofListWeight Finsupp.sum
+  norm_num [FWeight.ofListWeight]
 
 theorem payoff_true :
     evalExpr payoff (payoffEnv true) = 1 := rfl

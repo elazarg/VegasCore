@@ -445,7 +445,6 @@ noncomputable def fosgReachableInfoToNative
 
 /-! ## Strategy transport -/
 
-set_option linter.flexible false in
 theorem availableMoves_nativeToFOSG
     (g : WFProgram P L) (horizon : Nat)
     (h : (eventGraphRoundView g).BoundedHistory horizon) (who : P) :
@@ -464,12 +463,13 @@ theorem availableMoves_nativeToFOSG
         eventGraphFOSGView, EventGraph.toRoundView, EventGraph.toFOSGView,
         Machine.RoundView.boundedActive, Machine.FOSGView.boundedActive]
   | some _action =>
-      simp [Machine.RoundView.boundedLocallyLegalAtState,
-        GameTheory.FOSG.locallyLegalAtState, eventGraphRoundView,
-        eventGraphFOSGView, EventGraph.toRoundView, EventGraph.toFOSGView,
-        Machine.RoundView.boundedActive, Machine.FOSGView.boundedActive,
-        Machine.RoundView.boundedAvailableActions,
-        Machine.FOSGView.boundedAvailableActions]
+      simp only [GameTheory.FOSG.locallyLegalAtState, eventGraphFOSGView,
+        EventGraph.toFOSGView, eventGraphRoundView, EventGraph.toRoundView,
+        Machine.FOSGView.toBoundedFOSG_active, Machine.FOSGView.boundedActive,
+        Machine.FOSGView.toBoundedFOSG_availableActions,
+        Machine.FOSGView.boundedAvailableActions,
+        Machine.RoundView.boundedLocallyLegalAtState, Machine.RoundView.boundedActive,
+        Machine.RoundView.boundedAvailableActions, and_congr_right_iff]
       intro _hactive
       rfl
 
