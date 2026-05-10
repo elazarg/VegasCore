@@ -27,14 +27,14 @@ The PMF construction is a \emph{commutative monad}~\citep{Giry1982,Moggi1991}:
 Commutativity (i.e.\ that $\mu_1 \bind \lambda x.\mu_2 \bind \lambda y.f(x,y)
 = \mu_2 \bind \lambda y.\mu_1 \bind \lambda x.f(x,y)$) is what
 ultimately licenses the frontier diamond at the probabilistic level:
-two independent stochastic steps may be linearised in either order.
+two independent stochastic steps may be linearized in either order.
 
 \begin{remark}[Finite weights vs.\ PMFs]
 \label{rem:fweight}
 Inside the construction we work with an unnormalized auxiliary,
 $\FWeight{\alpha} = \alpha \to_0 \NNQ$, the type of finite-support
 $\mathbb{Q}_{\ge 0}$-valued weight functions.  Rational weights are
-decidably equal, finite weights compose without per-step normalisation
+decidably equal, finite weights compose without per-step normalization
 proofs, and the bridge $\mathrm{toPMF} : \FWeight{\alpha} \to
 \PMF{\alpha}$ takes a single proof of total mass one.  Unless
 otherwise stated, the body of the report uses $\PMF{\cdot}$;

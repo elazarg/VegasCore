@@ -193,8 +193,9 @@ connects the same rounds to the library's sequential-game theorems.
 
 % Native/FOSG outcome transport
 \draw[transportedge] (fosg.east) -- (kg.west)
-   node[midway, above=0pt, font=\scriptsize\itshape, text=black!75]
-   {outcome transport};
+   node[midway, above=1pt, font=\scriptsize\itshape,
+        text=black!75, align=center]
+   {outcome\\transport};
 
 \end{tikzpicture}
 \end{center}
@@ -299,7 +300,7 @@ the total mass and abbreviating Iverson brackets $[P]$,
   (\mathrm{map}\,g\,\mu)(b) &\;:=\; \textstyle\sum_{a : g(a)=b} \mu(a).
 \end{align*}
 Normalized weights — those with $w(\mu) = 1$ — are written
-\TT{FProb}\label{def:FProb} in Lean. The trio $(\mathrm{pure}, \bind, \mathrm{map})$
+\TT{FProb}\label{def:FProb}. The trio $(\mathrm{pure}, \bind, \mathrm{map})$
 is the standard structure of a probability monad: $\mathrm{pure}$ injects a
 value as a Dirac mass, $\bind$ sequences a stochastic step with a
 continuation indexed by its result, and $\mathrm{map}$ is the pushforward

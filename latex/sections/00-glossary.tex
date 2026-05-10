@@ -1,7 +1,7 @@
 \section{How to read this report}
 \label{sec:glossary}
 
-This report develops a mechanised semantics for a finite probabilistic
+This report develops a mechanized semantics for a finite probabilistic
 game-description language.  The intended reader has a working knowledge
 of finite extensive-form games (players, information sets, mixed and
 behavioral strategies, Nash equilibrium) but is not assumed to know
@@ -35,10 +35,10 @@ discipline can usually skip the entries that match their background.
   An auxiliary unnormalized version, $\FWeight{\alpha} = \alpha \to_0
   \NNQ$, used internally during construction; converting to a PMF
   requires a side proof of total mass $1$.
-\item[Kuhn's theorem (finite realisation form).]
+\item[Kuhn's theorem (finite realization form).]
   In a finite extensive-form game with sufficient observability,
   every mixed strategy over pure contingent plans induces the same
-  outcome distribution as some behavioral strategy that randomises
+  outcome distribution as some behavioral strategy that randomizes
   locally at each information set~\citep{Kuhn1953}.  The classical
   statement requires \emph{perfect recall}.  In the current Lean
   development the bounded-FOSG theorem is unconditional on the FOSG
@@ -91,5 +91,5 @@ discipline can usually skip the entries that match their background.
 For a top-down map from the bird's-eye picture to file paths, see
 supplement~\S1.  Cross-references in this report use the supplement's
 \TT{Vegas.X} naming.  Every theorem and definition stated here is
-mechanised; the supplement records the exact Lean type and field
+mechanized; the supplement records the exact Lean type and field
 list.

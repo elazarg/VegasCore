@@ -15,7 +15,7 @@ different orders should denote the same game.
 In the present construction, the primary semantic object is the
 \emph{dependency relation between events} — a finite event structure
 in the sense of \citet{NielsenPlotkinWinskel1981,Winskel1986EventStructures},
-specialised to the protocol setting.  A program is checked, lowered to a finite directed acyclic
+specialized to the protocol setting.  A program is checked, lowered to a finite directed acyclic
 graph of events, and that graph is read as a probabilistic machine.
 Strategic-form, FOSG, and EFG presentations of the machine are then
 derived as checked \emph{views}, never as independent denotations.
@@ -107,7 +107,7 @@ restated for the FOSG, EFG, or kernel-game views derived later.
 \subsection{The semantic spine}
 \label{sec:intro:spine}
 
-The construction is organised as a sequence of definitional arrows,
+The construction is organized as a sequence of definitional arrows,
 each owned by the source layer:
 \begin{equation*}
   \mathsf{VegasLang}
@@ -125,7 +125,7 @@ $\mathsf{VegasCore}$, which exposes five constructors:
 $\Let$, $\Sample$, $\Commit$, $\Reveal$, $\Ret$.  A checked program
 ($\mathsf{WFProgram}$) bundles a core program with the static
 obligations that turn it into a game description: contextual
-freshness, reveal completeness, distribution normalisation, view
+freshness, reveal completeness, distribution normalization, view
 scoping, and at-least-one-legal-action per commit site.  Elaboration
 turns a checked program into an event graph; interpretation reads the
 graph as a machine.
@@ -141,7 +141,7 @@ On top of the machine, three kinds of consumers are defined:
   presentation used for FOSG/EFG/Kuhn bridge theorems, not the
   definition of the strategy carrier.
 \item \textbf{Optional presentation bridges} — the canonical
-  serialisation of the FOSG view into an extensive-form tree.  The
+  serialization of the FOSG view into an extensive-form tree.  The
   bridge is checked: the tree's payoff-vector outcome law agrees
   with the behavioral kernel game's.
 \item \textbf{Backend refinement} — relations between an
@@ -154,7 +154,7 @@ On top of the machine, three kinds of consumers are defined:
 \subsection{Contributions and theorem inventory}
 \label{sec:intro:contributions}
 
-This report is a description of the mechanised theory and the design
+This report is a description of the mechanized theory and the design
 decisions behind it.  The theorem-level contributions are:
 
 \begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
@@ -186,9 +186,9 @@ decisions behind it.  The theorem-level contributions are:
   state game forms expose the public observation separately from the
   payoff-vector kernel games.
 
-\item \emph{Finite Kuhn realisation
+\item \emph{Finite Kuhn realization
   (\S\ref{sec:presentations}).}  The bounded event-graph FOSG
-  presentation satisfies the mixed-to-behavioral realisation
+  presentation satisfies the mixed-to-behavioral realization
   theorem.  The native kernel-game theorem is stated directly over
   $\mathrm{pureKernelGame}$ and $\mathrm{pmfBehavioralKernelGame}$,
   using the proved native/FOSG outcome-law transport.
@@ -205,7 +205,7 @@ decisions behind it.  The theorem-level contributions are:
   morphism.
 \end{enumerate}
 
-The remainder is organised as follows.  \S\ref{sec:preliminaries}
+The remainder is organized as follows.  \S\ref{sec:preliminaries}
 fixes notation for finite probability and typed contexts.
 \S\ref{sec:source-language} gives the source language and its
 visibility discipline.  \S\ref{sec:eventgraphs} defines event graphs
@@ -213,7 +213,7 @@ and proves the frontier theorems.  \S\ref{sec:machines} lifts a
 graph to a machine.  \S\ref{sec:fosg-strategies} introduces native
 round views, the strategic API, and the canonical game forms and kernel games.
 \S\ref{sec:presentations} states the EFG presentation theorem and
-the finite Kuhn realisation.  \S\ref{sec:refinement} is the backend
+the finite Kuhn realization.  \S\ref{sec:refinement} is the backend
 refinement layer.  \S\ref{sec:applications} sketches intended uses.
 \S\ref{sec:discussion} closes with scope, limitations, and natural
 extensions.

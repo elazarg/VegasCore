@@ -222,7 +222,7 @@ turn it into a game description:
   point.
 \item \emph{Reveal completeness}: every committed value is revealed
   exactly once before the program reaches $\Ret$.
-\item \emph{Distribution normalisation}: every $\Sample$
+\item \emph{Distribution normalization}: every $\Sample$
   distribution sums to weight $1$.
 \item \emph{Legality}: at every $\Commit$ site for player $p$ with
   guard $R$ over type $b$ and ambient erased environment $\rho$,
@@ -236,7 +236,7 @@ $\mathsf{VegasCore}$ is never a public input.
 
 \designnote{The five obligations are independent.  Freshness and
 $\mathrm{WFCtx}$ are static and decidable.  Reveal completeness is a
-finite tree-walk, also decidable.  Distribution normalisation reduces
+finite tree-walk, also decidable.  Distribution normalization reduces
 to checking finitely-many rational sums.  Legality is decidable when
 value domains are finite, which they are for all checked examples
 and is the standing assumption of the strategic API.  We resist the

@@ -1,11 +1,11 @@
-\section{Presentations: extensive form and Kuhn realisation}
+\section{Presentations: extensive form and Kuhn realization}
 \label{sec:presentations}
 
 The kernel games of \S\ref{sec:fosg-strategies} are the primary
 strategic-form interface.  Two further results are needed to make
 the construction interoperate with the textbook tradition: an
 extensive-form presentation of the FOSG view, and a finite Kuhn
-realisation theorem that links mixed and behavioral strategies.
+realization theorem that links mixed and behavioral strategies.
 The native strategic layer is not defined through these presentations;
 their connection to native strategies is proved as native/FOSG transport.
 
@@ -13,7 +13,7 @@ their connection to native strategies is proved as native/FOSG transport.
 \label{sec:pres:efg}
 
 For each checked program $g$, the codebase produces a canonical
-extensive-form game $\mathsf{efg}(g)$ by serialising the bounded
+extensive-form game $\mathsf{efg}(g)$ by serializing the bounded
 event-graph FOSG view: each FOSG round becomes a block of $|
 \Players|$ sequential decision opportunities (each over the player's
 local round-action alphabet, augmented with $\mathsf{none}$ for
@@ -48,7 +48,7 @@ outcome law of the bounded FOSG presentation.  Relating that FOSG law
 to the native Vegas strategy carrier is handled by the native/FOSG
 outcome-law transport theorem.  This preserves the two
 strategically irrelevant features of the EFG — the arbitrary
-linearisation of independent same-round events, and the introduction of
+linearization of independent same-round events, and the introduction of
 administrative no-op decision opportunities — without making them part
 of the underlying game.}
 
@@ -67,13 +67,13 @@ kernel through the independent product:
 
 Kuhn's classical theorem~\citep{Kuhn1953} says that in finite
 extensive-form games with perfect recall, mixed strategies over pure
-contingent plans and behavioral strategies are realisationally
-equivalent.  The unconditional theorem currently mechanised in Vegas is
+contingent plans and behavioral strategies are realizationally
+equivalent.  The unconditional theorem currently mechanized in Vegas is
 the bounded event-graph FOSG counterpart.  The native public theorem is
 stated over the native kernel games and proves the FOSG/native transport
 needed to reuse that theorem.
 
-\begin{theorem}[Finite native Kuhn realisation]
+\begin{theorem}[Finite native Kuhn realization]
 \label{thm:kuhn}
 For every checked program $g$, every independent mixed profile
 $\mu \in \prod_p \PMF{S_p^{\mathrm{pure}}}$ over pure strategies of
@@ -92,7 +92,7 @@ On the bounded FOSG carrier, $\beta$ is constructed pointwise on
 reachable information states: at each
 $I \in \mathrm{ReachableInfoState}(p)$, $\beta_p(I)$ is the posterior
 distribution over actions induced by $\mu_p$ conditional on the
-history class realising $I$.  The FOSG proof uses the
+history class realizing $I$.  The FOSG proof uses the
 \emph{LegalObservable} theorem for checked event-graph FOSGs.  The
 native theorem transports the mixed profile into the FOSG carrier,
 applies the FOSG realization theorem, transports the behavioral witness
@@ -103,12 +103,12 @@ behavioral outcome-law equivalence theorems.
 \Cref{thm:kuhn} is the intended contract between the pure-strategy API
 and the PMF-behavioral analysis API.  It does not by itself construct an
 equilibrium; existence follows from
-composing realisation with a fixed-point theorem
+composing realization with a fixed-point theorem
 (\S\ref{sec:fosg-strategies}).
 
 \paragraph{Lean correspondence.}
-Supplement~\S6.4 (canonical EFG presentation), \S7.6 (mixed extension
-and Kuhn realisation: \TT{kuhn\_finite}, \TT{kuhn\_finiteKernelGame},
+Supplement~\S7.4 (canonical EFG presentation), \S8.6 (mixed extension
+and Kuhn realization: \TT{kuhn\_finite}, \TT{kuhn\_finiteKernelGame},
 \TT{boundedOutcomeFromPure\_nativeToFOSG},
 \TT{boundedOutcomeFromBehavioral\_nativeToFOSG},
 \TT{eventGraphEFGAt\_outcomeKernel\_map\_publicOutcome}).

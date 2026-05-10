@@ -42,7 +42,7 @@ graphs, and reachable strategy carriers are finite.  Distributions
 are finite-support PMFs.  Continuous types and measure-theoretic
 kernels~\citep{Giry1982,Kozen1981} are out of scope; the bridge
 from $\FWeight{\cdot}$ to mathlib's $\PMF{\cdot}$ is one-way and
-takes a normalisation proof, with no measure-theoretic continuation.
+takes a normalization proof, with no measure-theoretic continuation.
 
 \paragraph{No quit handlers.}  The surface language deliberately
 omits user-level quit handlers.  A strategic quit changes the
@@ -67,7 +67,7 @@ PMF-behavioral strategy carriers are native round-view carriers over the
 event-graph machine.  The bounded FOSG view remains the presentation used
 for the generic FOSG Kuhn theorem and the canonical FOSG-to-EFG bridge.
 The native/FOSG outcome-law transport needed for the public Kuhn theorem
-is mechanised; what is not yet exposed is a single native augmented-EFG
+is mechanized; what is not yet exposed is a single native augmented-EFG
 object whose theorem states the composed FOSG-to-EFG and native/FOSG
 adequacy result at once.
 
@@ -86,7 +86,7 @@ is not exported as a finite strategy list.
 
 \paragraph{Decidability.}  The static obligations of
 \S\ref{sec:source:wf} — contextual well-formedness, fresh
-bindings, reveal completeness, and distribution normalisation —
+bindings, reveal completeness, and distribution normalization —
 are decidable.  Legality is decidable when value domains are
 finite, which is the standing assumption.  The Nash predicate and friends are quantifier-bounded
 over finite carriers, so they are decidable in principle; whether
@@ -140,12 +140,12 @@ sequential, and conditional combinators on checked programs)
 would let large protocols be assembled from small ones with
 machine-checked strategic-structure preservation.
 
-\paragraph{Concurrent-strategy realisation.}
-\Cref{thm:kuhn} gives the realisation half of the classical
+\paragraph{Concurrent-strategy realization.}
+\Cref{thm:kuhn} gives the realization half of the classical
 mixed-vs-behavioral correspondence.  In a concurrent-strategy
 setting (where a player can commit to a function of \emph{joint}
 information across simultaneous events), the corresponding
-realisation theorem is more delicate, and the formalism naturally
+realization theorem is more delicate, and the formalism naturally
 intersects logical accounts of partial information
 \citep{HintikkaSandu1989,MannSanduSevenster2011IFL}.
 
@@ -159,7 +159,7 @@ with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
 adequacy and transport theorems
-(payoff-vector agreement, FOSG Kuhn realisation, EFG presentation
+(payoff-vector agreement, FOSG Kuhn realization, EFG presentation
 adequacy, refinement transport).
 
 The deeper benefit is that future extensions — compositional

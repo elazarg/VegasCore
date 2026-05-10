@@ -32,7 +32,7 @@ each with a base type given by $\mathrm{fieldTy} : \Fields \to \Ty$
 and an optional owner $\mathrm{fieldOwner} : \Fields \to
 \mathrm{Option}(\Players)$.  The function $\mathrm{initial}(f)$
 optionally provides an initial value for each field; absent fields
-are uninitialised until written.
+are uninitialized until written.
 
 \subsubsection*{Stored values and write slices}
 
@@ -146,7 +146,7 @@ prerequisites have all completed:
 \end{equation}
 The frontier is \emph{computed}, not stored.  This single design
 decision is responsible for most of the diamond properties below: a
-schedule is not part of the configuration, so two linearisations
+schedule is not part of the configuration, so two linearizations
 that finish the same set of nodes with the same per-node slices
 yield literally the same configuration.
 
@@ -200,7 +200,7 @@ and local-legality invariants hold for either order by symmetry.
 \end{proof}
 
 \Cref{thm:diamond} is the formal sense in which the order of
-independent events is irrelevant: \emph{any} two linearisations of
+independent events is irrelevant: \emph{any} two linearizations of
 the same set of frontier choices produce the same configuration.
 
 \subsection{Adequacy: lowering preserves declared payoffs}
