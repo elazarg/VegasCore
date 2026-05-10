@@ -23,46 +23,6 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
-/-- A concrete legal generated pure strategy for any player in any checked
-program.
-
-This is intentionally generic: it demonstrates how the generated strategy
-carrier is inhabited. Source-specific examples can replace the choice step by
-a hand-written policy such as “commit `false` at my first commit node.”
--/
-noncomputable def defaultPureStrategy
-    (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    (pureKernelGame g).Strategy who := by
-  classical
-  let horizon := syntaxSteps g.prog
-  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
-  let hLeg : G.LegalObservable := by
-    simpa [G, horizon] using
-      eventGraphFOSGView_toBoundedFOSG_legalObservable g horizon
-  let chooseMove : G.ReachablePureStrategy who := fun s =>
-    Classical.choose (G.availableMoves_nonempty (Classical.choose s.2) who)
-  refine ⟨chooseMove, ?_⟩
-  intro h
-  dsimp [chooseMove]
-  let s : G.ReachableInfoState who := G.reachableInfoStateOfHistory who h
-  let witness : G.History := Classical.choose s.2
-  have hwitness : witness.playerView who = s.1 := by
-    simpa [witness] using Classical.choose_spec s.2
-  have hchosen :
-      Classical.choose (G.availableMoves_nonempty witness who) ∈
-        G.availableMoves witness who :=
-    Classical.choose_spec (G.availableMoves_nonempty witness who)
-  have hview : witness.playerView who = h.playerView who := by
-    simpa [s] using hwitness
-  have hEq := G.availableMoves_eq_of_playerView_eq hLeg who hview
-  exact hEq ▸ hchosen
-
-/-- A concrete generated pure profile for any checked program. -/
-noncomputable def defaultPureProfile
-    (g : WFProgram P L) [FiniteDomains g] :
-    (pureKernelGame g).Profile :=
-  fun who => defaultPureStrategy g who
-
 /-- For any checked program, public pure-strategic play and pure blocked-trace
 play have the same expected utility. -/
 theorem pure_eu_eq_blockedTrace
@@ -174,15 +134,14 @@ theorem behavioral_nash_iff_blockedTrace
               (Function.update β who s') who
 
 /-- Every finite checked Vegas program satisfies the PMF behavioral
-realization theorem for mixed profiles over pure strategies. -/
-theorem kuhnPMF (g : WFProgram P L) [FiniteDomains g] : KuhnPMF g :=
-  kuhnPMF_finite g
+realization theorem for mixed profiles over pure strategies, once the
+native/FOSG Kuhn bridge obligation has been discharged. -/
+theorem kuhnPMF
+    (g : WFProgram P L) [FiniteDomains g]
+    (bridge : NativeFOSGKuhnBridge g) : KuhnPMF g :=
+  kuhnPMF_finite g bridge
 
 namespace Prisoners
-
-noncomputable def defaultProfile :
-    (pureKernelGame Prisoners.game).Profile :=
-  StrategicSemantics.defaultPureProfile Prisoners.game
 
 /-- The source node for Row's first commitment in the Prisoner's Dilemma
 program. -/
@@ -291,13 +250,6 @@ theorem rowDefectAction_available_initial :
     some Prisoners.Player.row
   exact rowCommitNode_actor
 
-theorem defaultProfile_eu_eq_blockedTrace
-    (who : Prisoners.Player) :
-    (pureBlockedTraceKernelGameAt Prisoners.game).eu defaultProfile who =
-      (pureKernelGame Prisoners.game).eu defaultProfile who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace
-    Prisoners.game defaultProfile who
-
 theorem pure_eu_eq_blockedTrace
     (π : (pureKernelGame Prisoners.game).Profile)
     (who : Prisoners.Player) :
@@ -317,23 +269,14 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt Prisoners.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace Prisoners.game β
 
-theorem kuhnPMF : KuhnPMF Prisoners.game :=
-  StrategicSemantics.kuhnPMF Prisoners.game
+theorem kuhnPMF
+    (bridge : NativeFOSGKuhnBridge Prisoners.game) :
+    KuhnPMF Prisoners.game :=
+  StrategicSemantics.kuhnPMF Prisoners.game bridge
 
 end Prisoners
 
 namespace MatchingPennies
-
-noncomputable def defaultProfile :
-    (pureKernelGame MatchingPennies.game).Profile :=
-  StrategicSemantics.defaultPureProfile MatchingPennies.game
-
-theorem defaultProfile_nash_iff_blockedTrace :
-    (pureKernelGame MatchingPennies.game).IsNash defaultProfile ↔
-      (pureBlockedTraceKernelGameAt MatchingPennies.game).IsNash
-        defaultProfile :=
-  StrategicSemantics.pure_nash_iff_blockedTrace
-    MatchingPennies.game defaultProfile
 
 theorem pure_eu_eq_blockedTrace
     (π : (pureKernelGame MatchingPennies.game).Profile)
@@ -354,16 +297,14 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt MatchingPennies.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace MatchingPennies.game β
 
-theorem kuhnPMF : KuhnPMF MatchingPennies.game :=
-  StrategicSemantics.kuhnPMF MatchingPennies.game
+theorem kuhnPMF
+    (bridge : NativeFOSGKuhnBridge MatchingPennies.game) :
+    KuhnPMF MatchingPennies.game :=
+  StrategicSemantics.kuhnPMF MatchingPennies.game bridge
 
 end MatchingPennies
 
 namespace BattleOfTheSexes
-
-noncomputable def defaultProfile :
-    (pureKernelGame BattleOfTheSexes.game).Profile :=
-  StrategicSemantics.defaultPureProfile BattleOfTheSexes.game
 
 theorem pure_eu_eq_blockedTrace
     (π : (pureKernelGame BattleOfTheSexes.game).Profile)
@@ -384,23 +325,14 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt BattleOfTheSexes.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace BattleOfTheSexes.game β
 
-theorem kuhnPMF : KuhnPMF BattleOfTheSexes.game :=
-  StrategicSemantics.kuhnPMF BattleOfTheSexes.game
+theorem kuhnPMF
+    (bridge : NativeFOSGKuhnBridge BattleOfTheSexes.game) :
+    KuhnPMF BattleOfTheSexes.game :=
+  StrategicSemantics.kuhnPMF BattleOfTheSexes.game bridge
 
 end BattleOfTheSexes
 
 namespace MontyHall
-
-noncomputable def defaultProfile :
-    (pureKernelGame MontyHall.game).Profile :=
-  StrategicSemantics.defaultPureProfile MontyHall.game
-
-theorem defaultProfile_eu_eq_blockedTrace
-    (who : MontyHall.Player) :
-    (pureBlockedTraceKernelGameAt MontyHall.game).eu defaultProfile who =
-      (pureKernelGame MontyHall.game).eu defaultProfile who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace
-    MontyHall.game defaultProfile who
 
 theorem pure_eu_eq_blockedTrace
     (π : (pureKernelGame MontyHall.game).Profile)
@@ -421,8 +353,10 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt MontyHall.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace MontyHall.game β
 
-theorem kuhnPMF : KuhnPMF MontyHall.game :=
-  StrategicSemantics.kuhnPMF MontyHall.game
+theorem kuhnPMF
+    (bridge : NativeFOSGKuhnBridge MontyHall.game) :
+    KuhnPMF MontyHall.game :=
+  StrategicSemantics.kuhnPMF MontyHall.game bridge
 
 end MontyHall
 

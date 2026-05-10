@@ -29,11 +29,15 @@ theorem player_count :
     efg.inf.n = Fintype.card Examples.Prisoners.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
-    (β : (pmfBehavioralKernelGame Examples.Prisoners.game).Profile) :
+    (β :
+      (eventGraphFOSGView Examples.Prisoners.game).BoundedBehavioralProfile
+        (syntaxSteps Examples.Prisoners.game.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt Examples.Prisoners.game)
         (efg.toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt Examples.Prisoners.game β)) =
-      (pmfBehavioralKernelGame Examples.Prisoners.game).outcomeKernel β :=
+      (eventGraphFOSGView Examples.Prisoners.game).boundedOutcomeFromBehavioral
+        (syntaxSteps Examples.Prisoners.game.prog) β
+        (syntaxSteps Examples.Prisoners.game.prog) :=
   eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.Prisoners.game β
 
@@ -92,11 +96,15 @@ theorem player_count :
     efg.inf.n = Fintype.card Examples.MatchingPennies.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
-    (β : (pmfBehavioralKernelGame Examples.MatchingPennies.game).Profile) :
+    (β :
+      (eventGraphFOSGView Examples.MatchingPennies.game).BoundedBehavioralProfile
+        (syntaxSteps Examples.MatchingPennies.game.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt Examples.MatchingPennies.game)
         (efg.toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt Examples.MatchingPennies.game β)) =
-      (pmfBehavioralKernelGame Examples.MatchingPennies.game).outcomeKernel β :=
+      (eventGraphFOSGView Examples.MatchingPennies.game).boundedOutcomeFromBehavioral
+        (syntaxSteps Examples.MatchingPennies.game.prog) β
+        (syntaxSteps Examples.MatchingPennies.game.prog) :=
   eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.MatchingPennies.game β
 
@@ -153,11 +161,15 @@ theorem player_count :
     efg.inf.n = Fintype.card Examples.BattleOfTheSexes.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
-    (β : (pmfBehavioralKernelGame Examples.BattleOfTheSexes.game).Profile) :
+    (β :
+      (eventGraphFOSGView Examples.BattleOfTheSexes.game).BoundedBehavioralProfile
+        (syntaxSteps Examples.BattleOfTheSexes.game.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt Examples.BattleOfTheSexes.game)
         (efg.toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt Examples.BattleOfTheSexes.game β)) =
-      (pmfBehavioralKernelGame Examples.BattleOfTheSexes.game).outcomeKernel β :=
+      (eventGraphFOSGView Examples.BattleOfTheSexes.game).boundedOutcomeFromBehavioral
+        (syntaxSteps Examples.BattleOfTheSexes.game.prog) β
+        (syntaxSteps Examples.BattleOfTheSexes.game.prog) :=
   eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.BattleOfTheSexes.game β
 
@@ -192,11 +204,15 @@ theorem player_count :
     efg.inf.n = Fintype.card Examples.MontyHall.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
-    (β : (pmfBehavioralKernelGame Examples.MontyHall.game).Profile) :
+    (β :
+      (eventGraphFOSGView Examples.MontyHall.game).BoundedBehavioralProfile
+        (syntaxSteps Examples.MontyHall.game.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt Examples.MontyHall.game)
         (efg.toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt Examples.MontyHall.game β)) =
-      (pmfBehavioralKernelGame Examples.MontyHall.game).outcomeKernel β :=
+      (eventGraphFOSGView Examples.MontyHall.game).boundedOutcomeFromBehavioral
+        (syntaxSteps Examples.MontyHall.game.prog) β
+        (syntaxSteps Examples.MontyHall.game.prog) :=
   eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.MontyHall.game β
 
@@ -234,11 +250,15 @@ theorem player_count :
     efg.inf.n = Fintype.card Examples.SyntaxConstructors.Player := rfl
 
 theorem outcomeKernel_map_publicOutcome
-    (β : (pmfBehavioralKernelGame Examples.SyntaxConstructors.game).Profile) :
+    (β :
+      (eventGraphFOSGView Examples.SyntaxConstructors.game).BoundedBehavioralProfile
+        (syntaxSteps Examples.SyntaxConstructors.game.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt Examples.SyntaxConstructors.game)
         (efg.toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt Examples.SyntaxConstructors.game β)) =
-      (pmfBehavioralKernelGame Examples.SyntaxConstructors.game).outcomeKernel β :=
+      (eventGraphFOSGView Examples.SyntaxConstructors.game).boundedOutcomeFromBehavioral
+        (syntaxSteps Examples.SyntaxConstructors.game.prog) β
+        (syntaxSteps Examples.SyntaxConstructors.game.prog) :=
   eventGraphEFGAt_outcomeKernel_map_publicOutcome
     Examples.SyntaxConstructors.game β
 

@@ -53,18 +53,14 @@ theorem checkedProgram_terminalOutcome_eq_evalPayoffs
 payoff rule. -/
 theorem checkedProgram_wholeGame_reaches_declared_payoff_rule
     (g : WFProgram P L)
-    (h :
-      (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).History))
-    (hcomplete :
-      ((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).terminal h.lastState) :
+    (h : (eventGraphRoundView g).BoundedHistory (syntaxSteps g.prog))
+    (hcomplete : (eventGraphMachine g).terminal h.lastState.state) :
     ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
       ProgramField.finalEnv? g.prog
           (eventGraphConfigValue? g h.lastState.state) = some env ∧
         eventGraphOutcome g h.lastState.state =
           evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
-  eventGraph_wholeGame_reaches_declared_payoff_rule g h hcomplete
+  eventGraphOutcome_eq_evalPayoffs_of_terminal g hcomplete
 
 /-- Pure strategic-form outcomes are exactly the event-graph machine blocked
 trace outcomes projected to payoff outcomes. -/
@@ -73,13 +69,8 @@ theorem checkedProgram_pureOutcome_eq_blockTrace
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-          (GameTheory.FOSG.legalPureToBehavioral
-            ((eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
-            π.extend)
-          (syntaxSteps g.prog)
-          (eventGraphInitialHistory g (syntaxSteps g.prog))) :=
+        (syntaxBlockedTraceOutcome g)
+        (pureBlockedTraceOutcomeKernelAt g π) :=
   pureOutcomeKernelAt_eq_blockTraceDist g π
 
 /-- PMF behavioral strategic-form outcomes are exactly the event-graph machine
@@ -89,11 +80,8 @@ theorem checkedProgram_behavioralOutcome_eq_blockTrace
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-          β.extend
-          (syntaxSteps g.prog)
-          (eventGraphInitialHistory g (syntaxSteps g.prog))) :=
+        (syntaxBlockedTraceOutcome g)
+        (behavioralBlockedTraceOutcomeKernelPMFAt g β) :=
   behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β
 
 /-- Pure public-state game-form outcomes are the public observation projection
@@ -120,10 +108,10 @@ theorem outcomeKernel_eq_of_traceOutcome_eq
     (g : WFProgram P L)
     {left right : PMF (syntaxBlockedTraceAt g)}
     (h :
-      PMF.map (eventGraphTraceOutcome g) left =
-        PMF.map (eventGraphTraceOutcome g) right) :
-    PMF.map (eventGraphTraceOutcome g) left =
-      PMF.map (eventGraphTraceOutcome g) right :=
+      PMF.map (syntaxBlockedTraceOutcome g) left =
+        PMF.map (syntaxBlockedTraceOutcome g) right) :
+    PMF.map (syntaxBlockedTraceOutcome g) left =
+      PMF.map (syntaxBlockedTraceOutcome g) right :=
   h
 
 private theorem ProgramField.finalEnv?_erasePubEnv_eq_of_public_values

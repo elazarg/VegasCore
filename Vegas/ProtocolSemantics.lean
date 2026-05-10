@@ -29,9 +29,10 @@ def KuhnPMF [Fintype P] (g : WFProgram P L)
 /-- The finite Vegas kernel games satisfy Kuhn's mixed-to-PMF
 behavioral realization property. -/
 theorem kuhnPMF_finite
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (bridge : NativeFOSGKuhnBridge g) :
     KuhnPMF g := by
   intro μ
-  exact kuhn_finite g μ
+  exact kuhn_finite g bridge μ
 
 end Vegas

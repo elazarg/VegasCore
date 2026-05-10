@@ -15,27 +15,28 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- The bounded FOSG used by the finite strategy semantics of a checked Vegas
-program. -/
-noncomputable abbrev strategyFOSG (g : WFProgram P L) :=
-  (eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog)
+/-- The native bounded round view used by the finite strategy semantics of a
+checked Vegas program. -/
+noncomputable abbrev strategyRoundView (g : WFProgram P L) :=
+  eventGraphRoundView g
 
 /-- Reachable information states at the finite strategy horizon. -/
 abbrev StrategyInfoState
     (g : WFProgram P L) (who : P) : Type :=
-  (strategyFOSG g).ReachableInfoState who
+  (strategyRoundView g).ReachableInfoState (syntaxSteps g.prog) who
 
 /-- Optional local moves at the finite strategy horizon. -/
 abbrev StrategyMove
     (g : WFProgram P L) (who : P) : Type :=
-  Option ((eventGraphFOSGView g).Act who)
+  Option ((strategyRoundView g).Act who)
 
 /-- Local availability of an optional move at a reachable information state. -/
 def MoveAvailableAtInfo
     (g : WFProgram P L) (who : P)
     (info : StrategyInfoState g who)
     (move : StrategyMove g who) : Prop :=
-  move ∈ (strategyFOSG g).availableMovesAtInfoState who info.1
+  move ∈ (strategyRoundView g).boundedAvailableMovesAtInfoState
+    (syntaxSteps g.prog) who info.1
 
 /-- A pure strategy chooses only moves satisfying `Allowed` at every reachable
 information state. -/
@@ -193,16 +194,19 @@ theorem pureStrategy_chooses_available
   intro info
   rcases info with ⟨s, h, hs⟩
   have hinfo :
-      (strategyFOSG g).reachableInfoStateOfHistory who h =
+      (strategyRoundView g).reachableInfoStateOfHistory
+          (syntaxSteps g.prog) who h =
         (⟨s, ⟨h, hs⟩⟩ : StrategyInfoState g who) := by
     apply Subtype.ext
     exact hs
   have hlegal :
       σ.1 (⟨s, ⟨h, hs⟩⟩ : StrategyInfoState g who) ∈
-        (strategyFOSG g).availableMoves h who := by
+        (strategyRoundView g).boundedAvailableMoves
+          (syntaxSteps g.prog) h who := by
     simpa [hinfo] using σ.2 h
   have hmem :=
-    (strategyFOSG g).mem_availableMovesAtInfoState_of_history h hlegal
+    (strategyRoundView g).mem_boundedAvailableMovesAtInfoState_of_history
+      h hlegal
   simpa [MoveAvailableAtInfo, hs] using hmem
 
 /-- The reachable-legal behavioral strategy carrier supports only moves
@@ -214,18 +218,23 @@ theorem behavioralStrategy_supports_available
   intro info move hsupport
   rcases info with ⟨s, h, hs⟩
   have hinfo :
-      (strategyFOSG g).reachableInfoStateOfHistory who h =
+      (strategyRoundView g).reachableInfoStateOfHistory
+          (syntaxSteps g.prog) who h =
         (⟨s, ⟨h, hs⟩⟩ : StrategyInfoState g who) := by
     apply Subtype.ext
     exact hs
   have hsupport' :
       move ∈
-        (σ.1 ((strategyFOSG g).reachableInfoStateOfHistory who h)).support := by
+        (σ.1 ((strategyRoundView g).reachableInfoStateOfHistory
+          (syntaxSteps g.prog) who h)).support := by
     simpa [hinfo] using hsupport
-  have hlegal : move ∈ (strategyFOSG g).availableMoves h who :=
+  have hlegal :
+      move ∈ (strategyRoundView g).boundedAvailableMoves
+        (syntaxSteps g.prog) h who :=
     σ.2 h hsupport'
   have hmem :=
-    (strategyFOSG g).mem_availableMovesAtInfoState_of_history h hlegal
+    (strategyRoundView g).mem_boundedAvailableMovesAtInfoState_of_history
+      h hlegal
   simpa [MoveAvailableAtInfo, hs] using hmem
 
 /-- Every reachable-legal pure profile chooses only locally available moves. -/

@@ -1,4 +1,5 @@
 import GameTheory.Languages.FOSG.Theorems
+import Vegas.GameBridge.FOSG.FromCore
 import Vegas.Strategic.KernelGame
 
 /-!
@@ -147,7 +148,9 @@ noncomputable abbrev eventGraphEFGAt
 behavioral profile. -/
 noncomputable def eventGraphEFGBehavioralProfileAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (β : behavioralProfilePMFAt g) :=
+    (β :
+      (eventGraphFOSGView g).BoundedBehavioralProfile
+        (syntaxSteps g.prog)) :=
   GameTheory.FOSG.AugmentedEFGBridge.translateBehavioralProfile
     (G := eventGraphBoundedFOSGAt g)
     (k := syntaxSteps g.prog)
@@ -194,19 +197,23 @@ theorem eventGraphBoundedFOSGAt_root_not_terminal_of_node
     omega
 
 /-- The canonical EFG presentation has the same public outcome distribution as
-the generated PMF behavioral kernel game, after translating the profile and
-projecting EFG histories to public outcomes.
+the generated bounded FOSG behavioral presentation, after translating the
+profile and projecting EFG histories to public outcomes.
 
 This is the example-facing "translated to the expected EFG" theorem: the EFG
-tree is the canonical serialization of the generated FOSG, and its public
-outcome law is exactly the Vegas strategic semantics. -/
+tree is the canonical serialization of the generated FOSG.  Relating this
+FOSG law to the native Vegas strategic semantics is a separate bridge
+obligation. -/
 theorem eventGraphEFGAt_outcomeKernel_map_publicOutcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (β : behavioralProfilePMFAt g) :
+    (β :
+      (eventGraphFOSGView g).BoundedBehavioralProfile
+        (syntaxSteps g.prog)) :
     PMF.map (eventGraphEFGPublicOutcomeAt g)
         ((eventGraphEFGAt g).toKernelGame.outcomeKernel
           (eventGraphEFGBehavioralProfileAt g β)) =
-      (pmfBehavioralKernelGameAt g).outcomeKernel β := by
+      (eventGraphFOSGView g).boundedOutcomeFromBehavioral
+        (syntaxSteps g.prog) β (syntaxSteps g.prog) := by
   classical
   have hbridge :
       (eventGraphEFGAt g).toKernelGame.outcomeKernel

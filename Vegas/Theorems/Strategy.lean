@@ -171,13 +171,13 @@ theorem available_moves_invariant_under_unseen_hidden_values
 /-- Pure strategies are extensional in player information state. -/
 theorem pureStrategy_ext_of_playerView_eq
     (g : WFProgram P L) (who : P) (σ : pureStrategyAt g who)
-    {h h' : (((eventGraphFOSGView g).toBoundedFOSG
-      (syntaxSteps g.prog)).History)}
+    {h h' : (eventGraphRoundView g).BoundedHistory
+      (syntaxSteps g.prog)}
     (hview : h.playerView who = h'.playerView who) :
-    σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h) =
-      σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h') := by
+    σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h) =
+      σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h') := by
   apply congrArg σ.1
   apply Subtype.ext
   simpa using hview
@@ -185,13 +185,13 @@ theorem pureStrategy_ext_of_playerView_eq
 /-- Behavioral strategies are extensional in player information state. -/
 theorem behavioralStrategy_ext_of_playerView_eq
     (g : WFProgram P L) (who : P) (σ : behavioralStrategyPMFAt g who)
-    {h h' : (((eventGraphFOSGView g).toBoundedFOSG
-      (syntaxSteps g.prog)).History)}
+    {h h' : (eventGraphRoundView g).BoundedHistory
+      (syntaxSteps g.prog)}
     (hview : h.playerView who = h'.playerView who) :
-    σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h) =
-      σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h') := by
+    σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h) =
+      σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h') := by
   apply congrArg σ.1
   apply Subtype.ext
   simpa using hview
@@ -200,25 +200,25 @@ theorem behavioralStrategy_ext_of_playerView_eq
 state. -/
 theorem strategy_cannot_condition_on_unseen_hidden_values
     (g : WFProgram P L) (who : P) (σ : pureStrategyAt g who)
-    {h h' : (((eventGraphFOSGView g).toBoundedFOSG
-      (syntaxSteps g.prog)).History)}
+    {h h' : (eventGraphRoundView g).BoundedHistory
+      (syntaxSteps g.prog)}
     (hview : h.playerView who = h'.playerView who) :
-    σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h) =
-      σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h') :=
+    σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h) =
+      σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h') :=
   pureStrategy_ext_of_playerView_eq g who σ hview
 
 /-- The reachable-legal pure strategy carrier never selects an unavailable
 optional move at a realizing history. -/
 theorem legal_strategy_never_selects_illegal_action
     (g : WFProgram P L) (who : P) (σ : pureStrategyAt g who)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG
-      (syntaxSteps g.prog)).History)) :
-    σ.1 (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).reachableInfoStateOfHistory who h) ∈
-      ((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).availableMoves h who := by
+    (h : (eventGraphRoundView g).BoundedHistory
+      (syntaxSteps g.prog)) :
+    σ.1 ((eventGraphRoundView g).reachableInfoStateOfHistory
+        (syntaxSteps g.prog) who h) ∈
+      (eventGraphRoundView g).boundedAvailableMoves
+        (syntaxSteps g.prog) h who := by
   exact σ.2 h
 
 /-- If an earlier commit is blocked by a frontier reveal, no strategy-facing

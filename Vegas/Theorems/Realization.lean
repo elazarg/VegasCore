@@ -16,19 +16,22 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 /-- Finite checked Vegas programs satisfy mixed-to-PMF-behavioral realization
 over the project kernel-game carriers. -/
 theorem checkedProgram_kuhnPMF
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (bridge : NativeFOSGKuhnBridge g) :
     KuhnPMF g :=
-  kuhnPMF_finite g
+  kuhnPMF_finite g bridge
 
 /-- Independent mixed profiles over pure strategies have PMF behavioral
-realizations with the same payoff-outcome distribution. -/
+realizations with the same payoff-outcome distribution, once the native/FOSG
+Kuhn bridge obligation has been discharged. -/
 theorem checkedProgram_mixed_to_behavioral
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (bridge : NativeFOSGKuhnBridge g)
     (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
     ∃ β : (pmfBehavioralKernelGameAt g).Profile,
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
           (fun π => (pureKernelGameAt g).outcomeKernel π) :=
-  kuhn_finite g μ
+  kuhn_finite g bridge μ
 
 end Vegas

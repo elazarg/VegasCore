@@ -1,4 +1,5 @@
 import Vegas.GameBridge.FOSG.Basic
+import Vegas.GameBridge.FOSG.FromCore
 import Vegas.Strategic.KernelGame
 import GameTheory.Languages.FOSG.Kuhn
 
@@ -177,31 +178,31 @@ theorem kuhn_mixed_to_behavioral_eventGraph
   exact (eventGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
-/-- Finite Vegas Kuhn theorem stated directly for the public kernel games.
+/-- Native/FOSG bridge obligation for the finite Vegas Kuhn theorem.
 
-This is the replacement headline shape: the independent mixed profile ranges
-over the pure strategy carrier of `pureKernelGameAt`, and the behavioral
-witness inhabits the PMF behavioral carrier of `pmfBehavioralKernelGameAt`.
-The equality is an equality of the games' public outcome kernels. -/
-theorem kuhn_finiteKernelGame
+The FOSG theorem above is unconditional on the FOSG carriers.  The public
+native kernel-game theorem additionally needs the still-separate proof that
+native reachable strategies and the event-graph FOSG reachable strategies
+realize the same mixed and behavioral outcome laws. -/
+structure NativeFOSGKuhnBridge
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] : Prop where
+  realize :
+    ∀ μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who),
+      ∃ β : (pmfBehavioralKernelGameAt g).Profile,
+        (pmfBehavioralKernelGameAt g).outcomeKernel β =
+          (Math.PMFProduct.pmfPi μ).bind
+            (fun π => (pureKernelGameAt g).outcomeKernel π)
+
+/-- Finite Vegas Kuhn theorem stated directly for the public kernel games,
+conditional on the native/FOSG strategy-equivalence bridge. -/
+theorem kuhn_finiteKernelGame_of_nativeFOSGBridge
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (bridge : NativeFOSGKuhnBridge g)
     (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
     ∃ β : (pmfBehavioralKernelGameAt g).Profile,
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g).outcomeKernel π) := by
-  classical
-  have hLeg :
-      ((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).LegalObservable :=
-    eventGraphFOSGView_toBoundedFOSG_legalObservable g
-      (syntaxSteps g.prog)
-  obtain ⟨β, hβ⟩ :=
-    (eventGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
-      (syntaxSteps g.prog) hLeg μ (syntaxSteps g.prog)
-  refine ⟨β, ?_⟩
-  simpa [pmfBehavioralKernelGameAt,
-    pureKernelGameAt, Machine.FOSGView.boundedOutcomeFromMixed,
-    GameTheory.FOSG.Kuhn.reachableMixedProfileJoint] using hβ
+          (fun π => (pureKernelGameAt g).outcomeKernel π) :=
+  bridge.realize μ
 
 end Vegas
