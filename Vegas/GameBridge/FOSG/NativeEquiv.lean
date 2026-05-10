@@ -1045,6 +1045,238 @@ theorem legalActionLaw_fosgToNative
     rw [Machine.RoundView.legalActionLaw_apply]
     exact (jointActionDist_fosgToNative g horizon β h a.1).symm
 
+theorem boundedTransition_nativeToFOSG
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (eventGraphRoundView g).BoundedHistory horizon)
+    (a : (eventGraphRoundView g).BoundedLegalAction horizon h.lastState) :
+    ((eventGraphFOSGView g).toBoundedFOSG horizon).transition
+        (nativeHistoryToFOSG g horizon h).lastState
+        (nativeLegalActionToFOSG g horizon h a) =
+      (eventGraphRoundView g).boundedTransition horizon h.lastState a := by
+  rw [Machine.FOSGView.toBoundedFOSG_transition,
+    Machine.RoundView.boundedTransition]
+  have hsucc :
+      (fun next =>
+          (nativeHistoryToFOSG g horizon h).lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle =>
+                (nativeLegalActionToFOSG g horizon h a).2.1
+                  (Or.inr hle)))
+            next) =
+        (fun next =>
+          h.lastState.succ
+            (Nat.lt_of_not_ge
+              (fun hle => a.2.1 (Or.inr hle)))
+            next) := by
+    funext next
+    apply Machine.BoundedState.ext <;>
+      simp [nativeHistoryToFOSG_lastState g horizon h]
+  have hraw :
+      (eventGraphFOSGView g).transition
+          (nativeHistoryToFOSG g horizon h).lastState.state
+          ((eventGraphFOSGView g).boundedActionToAction horizon
+            (nativeHistoryToFOSG g horizon h).lastState
+            (nativeLegalActionToFOSG g horizon h a)) =
+        (eventGraphRoundView g).transition h.lastState.state
+          ((eventGraphRoundView g).boundedActionToAction horizon
+            h.lastState a) := by
+    change
+      (programEventGraph g).roundTransition
+          (nativeHistoryToFOSG g horizon h).lastState.state
+          (nativeLegalActionToFOSG g horizon h a).1 =
+      (programEventGraph g).roundTransition h.lastState.state a.1
+    simp [nativeLegalActionToFOSG, nativeHistoryToFOSG_lastState g horizon h]
+  rw [hsucc, hraw]
+
+theorem nativeHistoryToFOSG_snoc
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (eventGraphRoundView g).BoundedHistory horizon)
+    (a : (eventGraphRoundView g).BoundedLegalAction horizon h.lastState)
+    (dst : (eventGraphMachine g).BoundedState horizon)
+    (hsupp :
+      (eventGraphRoundView g).boundedTransition horizon h.lastState a dst ≠ 0) :
+    nativeHistoryToFOSG g horizon (h.snoc a dst hsupp) =
+      (nativeHistoryToFOSG g horizon h).snoc
+        (nativeLegalActionToFOSG g horizon h a) dst
+        (by
+          rw [boundedTransition_nativeToFOSG g horizon h a]
+          exact hsupp) := by
+  apply GameTheory.FOSG.History.ext
+  simp [nativeHistoryToFOSG, Machine.RoundView.BoundedHistory.snoc,
+    GameTheory.FOSG.History.snoc, nativeStepToFOSG,
+    nativeLegalActionToFOSG]
+  constructor
+  · exact (nativeHistoryToFOSG_lastState g horizon h).symm
+  · apply (Subtype.heq_iff_coe_eq ?_).2
+    · rfl
+    · intro joint
+      constructor
+      · intro hlegal
+        exact (nativeLegalActionToFOSG g horizon h ⟨joint, hlegal⟩).2
+      · intro hlegal
+        exact (fosgLegalActionToNativeOfNativeHistory g horizon h
+          ⟨joint, hlegal⟩).2
+
+theorem nativeHistoryToFOSG_extendByOutcome
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (eventGraphRoundView g).BoundedHistory horizon)
+    (a : (eventGraphRoundView g).BoundedLegalAction horizon h.lastState)
+    (dst : (eventGraphMachine g).BoundedState horizon) :
+    nativeHistoryToFOSG g horizon
+        (h.extendByOutcome a dst) =
+      (nativeHistoryToFOSG g horizon h).extendByOutcome
+        (nativeLegalActionToFOSG g horizon h a) dst := by
+  by_cases hsupp :
+      (eventGraphRoundView g).boundedTransition horizon h.lastState a dst = 0
+  · have hzero :
+        ((eventGraphFOSGView g).toBoundedFOSG horizon).transition
+            (nativeHistoryToFOSG g horizon h).lastState
+            (nativeLegalActionToFOSG g horizon h a) dst = 0 := by
+      rw [boundedTransition_nativeToFOSG g horizon h a]
+      exact hsupp
+    rw [GameTheory.FOSG.History.extendByOutcome_of_no_support
+      (h := nativeHistoryToFOSG g horizon h)
+      (a := nativeLegalActionToFOSG g horizon h a)
+      (dst := dst) hzero]
+    simp [Machine.RoundView.BoundedHistory.extendByOutcome, hsupp]
+  · have hsuppF :
+        ((eventGraphFOSGView g).toBoundedFOSG horizon).transition
+            (nativeHistoryToFOSG g horizon h).lastState
+            (nativeLegalActionToFOSG g horizon h a) dst ≠ 0 := by
+      rw [boundedTransition_nativeToFOSG g horizon h a]
+      exact hsupp
+    rw [GameTheory.FOSG.History.extendByOutcome_of_support
+      (h := nativeHistoryToFOSG g horizon h)
+      (a := nativeLegalActionToFOSG g horizon h a)
+      (dst := dst) hsuppF]
+    simp [Machine.RoundView.BoundedHistory.extendByOutcome, hsupp]
+    exact nativeHistoryToFOSG_snoc g horizon h a dst hsupp
+
+/-! ## Execution laws -/
+
+theorem runDistFrom_nativeToFOSG
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (β : (eventGraphRoundView g).BoundedBehavioralProfile horizon) :
+    ∀ (n : Nat) (h : (eventGraphRoundView g).BoundedHistory horizon),
+      PMF.map (nativeHistoryToFOSG g horizon)
+        (Machine.RoundView.BoundedHistory.runDistFrom
+          (view := eventGraphRoundView g) (horizon := horizon) β n h) =
+        GameTheory.FOSG.History.runDistFrom
+          ((eventGraphFOSGView g).toBoundedFOSG horizon)
+          (nativeBehavioralProfileToFOSG g horizon β).extend n
+          (nativeHistoryToFOSG g horizon h)
+  | 0, h => by
+      rw [Machine.RoundView.BoundedHistory.runDistFrom_zero]
+      rw [GameTheory.FOSG.History.runDistFrom_zero]
+      rw [PMF.pure_map]
+  | n + 1, h => by
+      let BFOSG := (eventGraphFOSGView g).toBoundedFOSG horizon
+      by_cases hterm :
+          (eventGraphRoundView g).boundedTerminal horizon h.lastState
+      · have htermF : BFOSG.terminal (nativeHistoryToFOSG g horizon h).lastState :=
+          (terminal_nativeToFOSG g horizon h).2 hterm
+        rw [Machine.RoundView.BoundedHistory.runDistFrom_succ_terminal
+          (view := eventGraphRoundView g) (horizon := horizon) β n h hterm]
+        rw [GameTheory.FOSG.History.runDistFrom_succ_terminal
+          (G := BFOSG) (nativeBehavioralProfileToFOSG g horizon β).extend
+          n (nativeHistoryToFOSG g horizon h) htermF]
+        rw [PMF.pure_map]
+      · have htermF :
+            ¬ BFOSG.terminal (nativeHistoryToFOSG g horizon h).lastState := by
+          intro ht
+          exact hterm ((terminal_nativeToFOSG g horizon h).1 ht)
+        rw [Machine.RoundView.BoundedHistory.runDistFrom_succ_nonterminal
+          (view := eventGraphRoundView g) (horizon := horizon) β n h hterm]
+        rw [GameTheory.FOSG.History.runDistFrom_succ_nonterminal
+          (G := BFOSG) (nativeBehavioralProfileToFOSG g horizon β).extend
+          n (nativeHistoryToFOSG g horizon h) htermF]
+        rw [PMF.map_bind]
+        conv_lhs =>
+          arg 2
+          intro action
+          rw [PMF.map_bind]
+          arg 2
+          intro dst
+          rw [runDistFrom_nativeToFOSG g horizon β n
+            (h.extendByOutcome action dst)]
+          rw [nativeHistoryToFOSG_extendByOutcome g horizon h action dst]
+        rw [← legalActionLaw_nativeToFOSG g horizon β h hterm]
+        rw [PMF.bind_map]
+        congr
+        funext action
+        simp only [Function.comp_apply, BFOSG]
+        rw [boundedTransition_nativeToFOSG g horizon h action]
+
+theorem runDist_nativeToFOSG
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (β : (eventGraphRoundView g).BoundedBehavioralProfile horizon)
+    (steps : Nat) :
+    PMF.map (nativeHistoryToFOSG g horizon)
+        ((eventGraphRoundView g).runDist horizon steps β) =
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).runDist steps
+        (nativeBehavioralProfileToFOSG g horizon β).extend := by
+  simpa [Machine.RoundView.runDist, GameTheory.FOSG.runDist,
+    Machine.RoundView.BoundedHistory.nil, GameTheory.FOSG.History.nil,
+    nativeHistoryToFOSG] using
+    runDistFrom_nativeToFOSG g horizon β steps
+      (Machine.RoundView.BoundedHistory.nil (eventGraphRoundView g) horizon)
+
+@[simp] theorem boundedHistoryOutcome_nativeHistoryToFOSG
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (eventGraphRoundView g).BoundedHistory horizon) :
+    (eventGraphFOSGView g).boundedHistoryOutcome horizon
+        (nativeHistoryToFOSG g horizon h) =
+      (eventGraphMachine g).outcome h.lastState.state := by
+  simp [Machine.FOSGView.boundedHistoryOutcome]
+
+theorem boundedOutcomeFromBehavioral_nativeToFOSG
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (β : (eventGraphRoundView g).BoundedBehavioralProfile horizon)
+    (steps : Nat) :
+    (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon
+        (nativeBehavioralProfileToFOSG g horizon β) steps =
+      (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon β steps := by
+  let nativeRun :=
+    (eventGraphRoundView g).runDist horizon steps β
+  let observeNative :
+      (eventGraphRoundView g).BoundedHistory horizon →
+        (eventGraphMachine g).Outcome :=
+    fun h => (eventGraphMachine g).outcome h.lastState.state
+  calc
+    (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon
+        (nativeBehavioralProfileToFOSG g horizon β) steps =
+      PMF.map ((eventGraphFOSGView g).boundedHistoryOutcome horizon)
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).runDist steps
+          (nativeBehavioralProfileToFOSG g horizon β).extend) := by
+          rfl
+    _ = PMF.map ((eventGraphFOSGView g).boundedHistoryOutcome horizon)
+        (PMF.map (nativeHistoryToFOSG g horizon) nativeRun) := by
+          rw [← runDist_nativeToFOSG g horizon β steps]
+    _ = PMF.map observeNative nativeRun := by
+          rw [PMF.map_comp]
+          have hobs :
+              ((eventGraphFOSGView g).boundedHistoryOutcome horizon ∘
+                  nativeHistoryToFOSG g horizon) = observeNative := by
+            funext h
+            simp [observeNative]
+          rw [hobs]
+    _ = (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon β steps := by
+          rw [Machine.RoundView.boundedOutcomeFromBehavioral,
+            Machine.RoundView.boundedBlockTraceFromBehavioral]
+          rw [PMF.map_comp]
+          have hobs :
+              ((fun trace : (eventGraphMachine g).BlockTrace =>
+                  (eventGraphMachine g).outcome trace.2) ∘
+                (eventGraphRoundView g).boundedHistoryTrace horizon) =
+                (fun h : (eventGraphRoundView g).BoundedHistory horizon =>
+                  (eventGraphMachine g).outcome h.lastState.state) := by
+            funext h
+            rfl
+          rw [hobs]
+
 end NativeFOSG
 
 end Vegas
