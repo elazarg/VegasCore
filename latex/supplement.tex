@@ -55,18 +55,21 @@ finishes with a tour of the worked examples.
 \section{How To Read This Document}
 
 \subsection{Conventions}
-For each definition we present three items: (i) the Lean signature, often
-shortened to the names and types that carry mathematical content, with
-implementation noise stripped; (ii) a mathematical equivalent in standard
-notation; (iii) a short prose paragraph explaining the construct and
-\emph{why it exists}. The Lean name is given in monospace
-(e.g.~\TT{Vegas.WFProgram}\label{def:Vegas.WFProgram}). Cross-references match the names used in the
-main report.
+Each definition is presented as a shaded \emph{Lean box} containing
+the actual Lean signature (with implementation noise stripped and
+implicit binders elided where they only add clutter), followed by
+prose that introduces the mathematical content, draws out
+displayed equations where they clarify, and explains why each piece
+exists. Defined names appear in monospace and link to their
+definition site (e.g.~\DefRef{Vegas.WFProgram}\label{def:Vegas.WFProgram});
+cross-references match the names used in the main report. Lean
+identifiers that are not Vegas concepts (e.g.\ Mathlib types like
+\TT{Finset}, \TT{PMF}) are typeset but not hyperlinked.
 
-We use the macros from the main paper: $\WFP$, $\Outcome$, $\FWeight{\cdot}$,
+We use the macros from the main paper: $\WFP$, $\Outcome$, $\FW$,
 $\PMF{\cdot}$, $\bind$, $\Players$, $\view{\cdot}$, $\pubctx{\cdot}$,
-$\erasectx{\cdot}$, $\erasepub{\cdot}$, $\Reach$, $\CanReach$. Where the
-supplement introduces additional notation we mark it locally.
+$\erasectx{\cdot}$, $\erasepub{\cdot}$, $\Reach$, $\CanReach$.
+Additional notation introduced in the supplement is marked locally.
 
 \subsection{Bird's-eye view}
 \label{sec:birdseye}
@@ -1641,7 +1644,7 @@ definitionally a \DefRef{Morphism}\label{def:Morphism} preserving the
 joint utility-distribution $\mathrm{udist}$ over payoff vectors under
 profile mapping. Explicit expected-utility-equality lemmas
 \DefRef{pureBlockedTraceKernelGameAt_eu_eq}\label{def:pureBlockedTraceKernelGameAt_eu_eq}
-and its behavioural counterpart, plus the symmetric
+and its behavioral counterpart, plus the symmetric
 \DefRef{Bisimulation}\label{def:Bisimulation} and
 \DefRef{EUBisimulation}\label{def:EUBisimulation} objects, certify that
 reasoning at either game level is sound: outcome projection preserves
@@ -1698,7 +1701,7 @@ The Vegas definitions
 \DefRef{IsBestResponse}\label{def:IsBestResponse},
 \DefRef{IsDominant}\label{def:IsDominant}, \ldots) are thin wrappers
 around GameTheory's preference-parameterised predicates over the
-PMF-behavioural kernel game \TT{pmfBehavioralKernelGame g}. They cover
+PMF-behavioral kernel game \TT{pmfBehavioralKernelGame g}. They cover
 Nash, dominance, correlated and coarse-correlated equilibria, social
 welfare, approximate Nash, potentials, and constant-sum/team
 properties. For each, the Lean wrapper has the form
@@ -1840,7 +1843,7 @@ def pureBlockedTraceKernelGameExport ...\label{def:pureBlockedTraceKernelGameExp
 as the ingredients a solver adapter needs: the original player and
 strategy types, finite lists of players and strategies, an
 outcome-kernel oracle, and a utility function. It is an API boundary,
-not a file format. It does not enumerate PMF-behavioural strategies,
+not a file format. It does not enumerate PMF-behavioral strategies,
 whose carrier contains probability-valued functions, nor does it
 provide a universal finite list of payoff-vector outcomes. Adapters to
 Gambit, PRISM-games, or another solver are separate code building on
@@ -1910,7 +1913,7 @@ structure StochasticStepRefinement (Impl Spec : Machine P) extends \ldots where\
 
 \emph{Refinement} is the verification-style relation: an implementation
 is indistinguishable from a specification by any externally observable
-behaviour. Concretely, a refinement is a state projection
+behavior. Concretely, a refinement is a state projection
 $\pi : S_{\mathrm{Impl}} \to S_{\mathrm{Spec}}$ subject to matching
 conditions on transitions. Two strengths are formalised:
 \begin{itemize}\itemsep1pt
@@ -1959,18 +1962,18 @@ def toBackendBlockedTraceMorphism ... : KernelGame.EUMorphism\label{def:toBacken
   \DefRef{pureBlockedTraceKernelGameAt}\label{def:pureBlockedTraceKernelGameAt}
   outcome kernel.
 \item \DefRef{BehavioralSpecBlockLaw}~$g$ is the analogous package for
-  PMF behavioural profiles.
+  PMF behavioral profiles.
 \item \DefRef{BackendPureBlockLawLift}~$g~R$ pairs per-pure-profile
   block-laws — one for the spec graph machine, one for the
   implementation — proved compatible via
   \DefRef{R.BlockLawCompatible}\label{def:R.BlockLawCompatible}
   and tied to a sound specification law.
 \item \DefRef{BackendBehavioralBlockLawLift}~$g~R$ is the analogous
-  datum for PMF behavioural profiles.
+  datum for PMF behavioral profiles.
 \item \DefRef{backendBlockedTraceKernelGameAt} is a kernel game whose
   strategy spaces are the canonical Vegas pure strategies but whose
   outcomes are full implementation block-traces.
-\item \DefRef{toBackendBlockedTraceMorphism} and its behavioural
+\item \DefRef{toBackendBlockedTraceMorphism} and its behavioral
   counterpart expose, for every refinement plus lift, a
   \DefRef{KernelGame.EUMorphism} in the direction
   \[
@@ -2074,13 +2077,14 @@ completed. Payoff expressions use \TT{simpleExpr}'s \TT{eq} on the two public
 bindings to test for a match.
 
 \paragraph{\TT{VegasLang} surface presentation.}
-\TT{Examples/VegasLang.lean} contains two surface presentations. The
-non-nullable presentation uses the core-shaped \TT{commit}/\TT{reveal}
-constructors and proves
+Two surface presentations are checked. The non-nullable presentation
+uses the core-shaped \DefRef{commit}/\DefRef{reveal} constructors and
+proves
 \[
   \TT{VegasLang.lower canonicalLangProgram = game.prog}
 \]
-by \TT{rfl}\label{def:rfl}. The nullable presentation uses a single simultaneous yield phase:
+by \DefRef{rfl}\label{def:rfl}. The nullable presentation uses a single
+simultaneous yield phase:
 \begin{quote}\small\ttfamily
 .simultaneous simultaneousYieldPhase simultaneousYieldPhase\_distinct\\
 \hspace*{1em}(.ret [(matcher, matcherYieldPayoff),\\
@@ -2096,14 +2100,14 @@ by \TT{rfl}, where \TT{coreProgram}\label{def:coreProgram} is the explicit nulla
 with both commits emitted before either reveal.
 
 \paragraph{Pedagogical role.}
-This example is the smallest where mixed strategies are necessary. The
-kernel game produced by \TT{pmfBehavioralKernelGame} carries enough
-information to express mixed-Nash claims. \TT{kuhn_finite} is a
-\emph{realisation} theorem (every mixed pure profile is matched by a
-behavioral profile with the same outcome distribution); it does not
-itself construct or prove the existence of any equilibrium. Existence
-proofs would compose Kuhn realisation with a separate fixed-point
-existence theorem.
+This is the smallest example where mixed strategies are necessary. The
+kernel game produced by \DefRef{pmfBehavioralKernelGame} carries
+enough information to express mixed-Nash claims.
+\DefRef{kuhn_finite} is a \emph{realisation}
+theorem — every mixed pure profile is matched by a behavioral
+profile with the same outcome distribution — and does not itself
+construct or prove the existence of any equilibrium. Existence proofs
+compose Kuhn realisation with a separate fixed-point existence theorem.
 
 \subsection{Battle of the Sexes}
 
@@ -2181,41 +2185,49 @@ guard depending on two earlier bindings — and it uses the bounded
 
 \subsection{SyntaxConstructors}
 
-\TT{Examples/SyntaxConstructors.lean} is a deliberately tiny checked program
-whose purpose is not strategic novelty but constructor coverage. It uses a
-deterministic \Let{} to bind a public boolean flag, then a public \Sample{}
-from a fair coin, then \Ret{} with payoff $1$ exactly when both are true. The
-file proves the \TT{FWeight.totalWeight}\label{def:FWeight.totalWeight} normalisation obligation for the sample,
-checks the payoff expression at both coin outcomes, packages the program as a
-\TT{WFProgram}, and exposes the generated behavioral kernel game. This is the
-minimal example a reviewer should inspect when asking whether \Let{} and
-\Sample{} are actually exercised by checked programs.
+\DefRef{SyntaxConstructors.game}\label{def:SyntaxConstructors.game} is
+a tiny checked program whose purpose is constructor coverage rather
+than strategic novelty. It uses a deterministic \Let{} to bind a
+public boolean flag, then a public \Sample{} from a fair coin, then
+\Ret{} with payoff $1$ exactly when both are true. The example proves
+the
+\DefRef{FWeight.totalWeight}\label{def:FWeight.totalWeight}
+normalisation obligation for the sample, checks the payoff expression
+at both coin outcomes, packages the program as a \DefRef{WFProgram},
+and exposes the generated behavioral kernel game. It is the minimal
+witness that \Let{} and \Sample{} are exercised by checked programs.
 
 \subsection{NullableCommit}
 
-\TT{Examples/NullableCommit.lean} is the surface-language smoke test for
-nullable yields. The example uses an impossible boolean guard
-\TT{impossibleBoolGuard := .constBool false}. A normal core commit with this
-guard would fail \Legal{}, because no boolean value satisfies it. The
-\TT{VegasLang.yield}\label{def:VegasLang.yield} surface spelling lowers to a core commit of
-type \TT{BaseTy.option .bool} with guard
-\TT{Expr.nullableCommitGuard impossibleBoolGuard}; the file proves
+The surface-language smoke test for nullable yields uses an impossible
+boolean guard $\TT{impossibleBoolGuard} := \TT{.constBool false}$. A
+core commit with this guard would fail \Legal{}, because no boolean
+value satisfies it. The
+\DefRef{VegasLang.yield}\label{def:VegasLang.yield} surface spelling
+lowers to a core commit of type \TT{BaseTy.option .bool} with guard
+$\TT{Expr.nullableCommitGuard}\,\TT{impossibleBoolGuard}$; the example
+proves
 \[
   \TT{VegasLang.lower langProgram = coreProgram}
 \]
-by \TT{rfl}, and proves \TT{lowered_program_legal}\label{def:lowered_program_legal} using
-\TT{nullableCommitGuard_satisfiable}.
+by \DefRef{rfl}, and proves
+\DefRef{lowered_program_legal}\label{def:lowered_program_legal} via
+\DefRef{nullableCommitGuard_satisfiable}.
 
-The same file connects nullable yields to a simple griefing criterion. It
-defines \TT{NonCostlyGriefing}\label{def:NonCostlyGriefing} for two moves, ``abort'' and ``honest'': the
-abort is non-costly for the actor and strictly worse for the victim. Under
-\TT{badActorPayoff}\label{def:badActorPayoff}/\TT{badVictimPayoff}\label{def:badVictimPayoff}, the null branch leaves the actor at
-utility $0$ while charging the victim $-10$, so
-\TT{bad_null_is_noncostly_griefing}\label{def:bad_null_is_noncostly_griefing} proves that \TT{none} is a non-costly
-griefing move. Under \TT{goodActorPayoff}\label{def:goodActorPayoff}/\TT{goodVictimPayoff}\label{def:goodVictimPayoff}, the null
-branch charges the actor $-10$, and the theorems
-\TT{good_null_is_punished}\label{def:good_null_is_punished} and \TT{good_null_not_noncostly_griefing}\label{def:good_null_not_noncostly_griefing} prove
-that the same null move is no longer non-costly.
+The example also connects nullable yields to a griefing criterion.
+\DefRef{NonCostlyGriefing}\label{def:NonCostlyGriefing} defines, for
+two moves ``abort'' and ``honest,'' that the abort is non-costly for
+the actor and strictly worse for the victim. Under
+\DefRef{badActorPayoff}\label{def:badActorPayoff}/\DefRef{badVictimPayoff}\label{def:badVictimPayoff}
+the null branch leaves the actor at utility $0$ while charging the
+victim $-10$, so
+\DefRef{bad_null_is_noncostly_griefing}\label{def:bad_null_is_noncostly_griefing}
+proves that \TT{none} is a non-costly griefing move. Under
+\DefRef{goodActorPayoff}\label{def:goodActorPayoff}/\DefRef{goodVictimPayoff}\label{def:goodVictimPayoff}
+the null branch charges the actor $-10$, and the theorems
+\DefRef{good_null_is_punished}\label{def:good_null_is_punished} and
+\DefRef{good_null_not_noncostly_griefing}\label{def:good_null_not_noncostly_griefing}
+prove that the same null move is no longer non-costly.
 
 \paragraph{Strategic lesson.}
 Nullable yield makes an infeasible guarded action legal by adding an explicit
@@ -2227,23 +2239,28 @@ non-costly griefing opportunity is removed.
 
 \subsection{BackendExamples}
 
-\TT{Examples/BackendExamples.lean} uses \TT{StochasticStepRefinement.refl} as
-an identity backend. It proves that identity projection preserves event
-blocks, block traces, compatible block laws, and blocked-trace distributions,
-then instantiates the result for the \TT{SyntaxConstructors.game}\label{def:SyntaxConstructors.game} program event graph
-machine. This is intentionally boring: it is a small executable witness that
-the backend-refinement API is usable before a real implementation supplies
-extra state or internal events.
+The backend smoke test uses \DefRef{StochasticStepRefinement.refl} as
+an identity backend. It proves that identity projection preserves
+event blocks, block traces, compatible block laws, and blocked-trace
+distributions, then instantiates the result for the
+\DefRef{SyntaxConstructors.game} program event-graph machine. The
+example is a small executable witness that the backend-refinement API
+is usable before a real implementation supplies extra state or
+internal events.
 
 \subsection{EFGTranslation}
 
-\TT{Examples/EFGTranslation.lean} checks the extensive-form presentation of
-the examples, not merely their induced outcome distributions. For
-\TT{Prisoners}\label{def:Prisoners}, \TT{MatchingPennies}\label{def:MatchingPennies}, \TT{BattleOfTheSexes}\label{def:BattleOfTheSexes}, and
-\TT{MontyHall}\label{def:MontyHall}, the file proves that the first generated EFG round has two
-decision nodes followed by a chance transition. For
-\TT{SyntaxConstructors}\label{def:SyntaxConstructors}, whose player type has one inhabitant, it proves one
-decision node followed by chance. The same file also retains the payoff-vector
+The EFG-translation smoke test checks the extensive-form presentation
+of the examples, not merely their induced outcome distributions. For
+\DefRef{Prisoners}\label{def:Prisoners},
+\DefRef{MatchingPennies}\label{def:MatchingPennies},
+\DefRef{BattleOfTheSexes}\label{def:BattleOfTheSexes}, and
+\DefRef{MontyHall}\label{def:MontyHall}, the file proves that the first
+generated EFG round has two decision nodes followed by a chance
+transition. For
+\DefRef{SyntaxConstructors}\label{def:SyntaxConstructors}, whose
+player type has one inhabitant, it proves one decision node followed
+by chance. The same file also retains the payoff-vector
 outcome-law theorem for each example:
 \[
 \begin{aligned}
@@ -2262,21 +2279,29 @@ separate named theorem.
 
 \subsection{StrategicSemantics}
 
-The file \TT{Examples/StrategicSemantics.lean} packages the strategic side of
-the worked examples. It first proves three generic theorems for any checked
-program $g$: the payoff-vector-game and blocked-trace-game expected utilities
-are equal (\TT{pure_eu_eq_blockedTrace}\label{def:pure_eu_eq_blockedTrace} and \TT{behavioral_eu_eq_blockedTrace}\label{def:behavioral_eu_eq_blockedTrace})
+The strategic-side packaging of the worked examples first proves
+three generic theorems for any checked program $g$: the
+payoff-vector-game and blocked-trace-game expected utilities are
+equal
+(\DefRef{pure_eu_eq_blockedTrace}\label{def:pure_eu_eq_blockedTrace}
+and
+\DefRef{behavioral_eu_eq_blockedTrace}\label{def:behavioral_eu_eq_blockedTrace}),
 and Nash and dominance predicates transport across the projection
-(\TT{pure_nash_iff_blockedTrace}\label{def:pure_nash_iff_blockedTrace}, \TT{behavioral_nash_iff_blockedTrace}\label{def:behavioral_nash_iff_blockedTrace},
-\TT{pure_dominant_iff_blockedTrace}\label{def:pure_dominant_iff_blockedTrace}). It then specialises these theorems to each example
-(Prisoners, Matching Pennies, Battle of the Sexes, Monty Hall,
-SyntaxConstructors), and for Prisoners additionally spells out the explicit
-event-graph nodes and field assignments — \TT{rowCommitNode}\label{def:rowCommitNode},
-\TT{rowDefectSlice}\label{def:rowDefectSlice}, \TT{rowDefectAction}\label{def:rowDefectAction} — and exercises \TT{sliceLegal} and
-\TT{actionLegal} directly. It is the recommended starting point for a reader
-who wants to see \emph{how} the source elaborator maps individual constructors
-to event-graph data, and \emph{how} the payoff-vector-game and
-blocked-trace-game views relate at the strategic API.
+(\DefRef{pure_nash_iff_blockedTrace}\label{def:pure_nash_iff_blockedTrace},
+\DefRef{behavioral_nash_iff_blockedTrace}\label{def:behavioral_nash_iff_blockedTrace},
+\DefRef{pure_dominant_iff_blockedTrace}\label{def:pure_dominant_iff_blockedTrace}).
+It then specialises these theorems to each example (Prisoners,
+Matching Pennies, Battle of the Sexes, Monty Hall, SyntaxConstructors)
+and, for Prisoners, additionally spells out the explicit event-graph
+nodes and field assignments —
+\DefRef{rowCommitNode}\label{def:rowCommitNode},
+\DefRef{rowDefectSlice}\label{def:rowDefectSlice},
+\DefRef{rowDefectAction}\label{def:rowDefectAction} — exercising
+\DefRef{sliceLegal} and \DefRef{actionLegal} directly. This is the
+recommended starting point for a reader who wants to see \emph{how}
+the source elaborator maps individual constructors to event-graph
+data, and \emph{how} the payoff-vector-game and blocked-trace-game
+views relate at the strategic API.
 
 % =====================================================================
 \section{Reading order}
