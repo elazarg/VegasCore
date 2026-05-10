@@ -1102,9 +1102,11 @@ theorem nativeHistoryToFOSG_snoc
           rw [boundedTransition_nativeToFOSG g horizon h a]
           exact hsupp) := by
   apply GameTheory.FOSG.History.ext
-  simp [nativeHistoryToFOSG, Machine.RoundView.BoundedHistory.snoc,
-    GameTheory.FOSG.History.snoc, nativeStepToFOSG,
-    nativeLegalActionToFOSG]
+  simp only [nativeHistoryToFOSG_steps,
+    Machine.RoundView.BoundedHistory.steps_snoc, List.map_append,
+    List.map_cons, List.map_nil, FOSG.History.steps_snoc,
+    List.append_cancel_left_eq, List.cons.injEq, and_true,
+    nativeStepToFOSG, nativeLegalActionToFOSG, FOSG.Step.mk.injEq]
   constructor
   · exact (nativeHistoryToFOSG_lastState g horizon h).symm
   · apply (Subtype.heq_iff_coe_eq ?_).2
@@ -1149,7 +1151,8 @@ theorem nativeHistoryToFOSG_extendByOutcome
       (h := nativeHistoryToFOSG g horizon h)
       (a := nativeLegalActionToFOSG g horizon h a)
       (dst := dst) hsuppF]
-    simp [Machine.RoundView.BoundedHistory.extendByOutcome, hsupp]
+    rw [Machine.RoundView.BoundedHistory.extendByOutcome_of_support
+      (h := h) (action := a) (dst := dst) hsupp]
     exact nativeHistoryToFOSG_snoc g horizon h a dst hsupp
 
 /-! ## Execution laws -/

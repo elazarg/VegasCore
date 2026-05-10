@@ -22,7 +22,7 @@ open scoped BigOperators
 
 namespace Machine
 
-variable {Player : Type} [DecidableEq Player]
+variable {Player : Type}
 
 /-- A player-facing round view of a machine.  The action alphabet is owned by
 the view because a strategic round need not be a single primitive machine
@@ -955,6 +955,32 @@ noncomputable def legalPureToBehavioral
         (view := view) (horizon := horizon) σ.toProfile
         (fun p => (σ p).2)) player⟩
 
+namespace BoundedHistory
+
+variable {view : M.RoundView} {horizon : Nat}
+
+/-- Total history extension by a legal action and candidate destination. If the
+transition mass is zero, the history is left unchanged; this branch contributes
+zero mass inside the induced PMF kernels. -/
+noncomputable def extendByOutcome
+    (h : view.BoundedHistory horizon)
+    (action : view.BoundedLegalAction horizon h.lastState)
+    (dst : M.BoundedState horizon) :
+    view.BoundedHistory horizon :=
+  if hsupp : view.boundedTransition horizon h.lastState action dst ≠ 0 then
+    h.snoc action dst hsupp
+  else h
+
+theorem extendByOutcome_of_support
+    (h : view.BoundedHistory horizon)
+    (action : view.BoundedLegalAction horizon h.lastState)
+    (dst : M.BoundedState horizon)
+    (hsupp : view.boundedTransition horizon h.lastState action dst ≠ 0) :
+    h.extendByOutcome action dst = h.snoc action dst hsupp := by
+  simp [extendByOutcome, hsupp]
+
+end BoundedHistory
+
 section Execution
 
 variable [Fintype Player]
@@ -1108,28 +1134,6 @@ noncomputable def legalActionLaw
   rw [legalActionLaw, PMF.ofFintype_apply]
 
 namespace BoundedHistory
-
-variable {view : M.RoundView} {horizon : Nat}
-
-/-- Total history extension by a legal action and candidate destination. If the
-transition mass is zero, the history is left unchanged; this branch contributes
-zero mass inside the induced PMF kernels. -/
-noncomputable def extendByOutcome
-    (h : view.BoundedHistory horizon)
-    (action : view.BoundedLegalAction horizon h.lastState)
-    (dst : M.BoundedState horizon) :
-    view.BoundedHistory horizon :=
-  if hsupp : view.boundedTransition horizon h.lastState action dst ≠ 0 then
-    h.snoc action dst hsupp
-  else h
-
-theorem extendByOutcome_of_support
-    (h : view.BoundedHistory horizon)
-    (action : view.BoundedLegalAction horizon h.lastState)
-    (dst : M.BoundedState horizon)
-    (hsupp : view.boundedTransition horizon h.lastState action dst ≠ 0) :
-    h.extendByOutcome action dst = h.snoc action dst hsupp := by
-  simp [extendByOutcome, hsupp]
 
 /-- Horizon-bounded run distribution on native bounded histories induced by a
 legal behavioral profile. Terminal histories absorb. -/
