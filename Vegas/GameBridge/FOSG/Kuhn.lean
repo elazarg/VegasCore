@@ -179,31 +179,95 @@ theorem kuhn_mixed_to_behavioral_eventGraph
   exact (eventGraphFOSGView g).kuhn_mixed_to_behavioral_bounded
     (syntaxSteps g.prog) hLeg μ steps
 
-/-- Native/FOSG bridge obligation for the finite Vegas Kuhn theorem.
-
-The FOSG theorem above is unconditional on the FOSG carriers.  The public
-native kernel-game theorem additionally needs the still-separate proof that
-native reachable strategies and the event-graph FOSG reachable strategies
-realize the same mixed and behavioral outcome laws. -/
-structure NativeFOSGKuhnBridge
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g] : Prop where
-  realize :
-    ∀ μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who),
-      ∃ β : (pmfBehavioralKernelGameAt g).Profile,
-        (pmfBehavioralKernelGameAt g).outcomeKernel β =
-          (Math.PMFProduct.pmfPi μ).bind
-            (fun π => (pureKernelGameAt g).outcomeKernel π)
-
-/-- Finite Vegas Kuhn theorem stated directly for the public kernel games,
-conditional on the native/FOSG strategy-equivalence bridge. -/
-theorem kuhn_finiteKernelGame_of_nativeFOSGBridge
+/-- Transport a native independent mixed profile to the event-graph FOSG
+presentation through the native/FOSG pure-strategy equivalence. -/
+noncomputable def nativeMixedProfileToFOSG
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (bridge : NativeFOSGKuhnBridge g)
+    (horizon : Nat)
+    (μ :
+      ∀ who,
+        PMF ((eventGraphRoundView g).BoundedPureStrategy horizon who)) :
+    (eventGraphFOSGView g).BoundedMixedProfile horizon :=
+  fun who =>
+    PMF.map (NativeFOSG.nativePureStrategyToFOSG g horizon who) (μ who)
+
+/-- Product mixed-profile transport commutes with the native/FOSG pure-profile
+equivalence. -/
+theorem reachableMixedProfileJoint_nativeToFOSG
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (μ :
+      ∀ who,
+        PMF ((eventGraphRoundView g).BoundedPureStrategy horizon who)) :
+    FOSG.Kuhn.reachableMixedProfileJoint
+        (G := (eventGraphFOSGView g).toBoundedFOSG horizon)
+        (nativeMixedProfileToFOSG g horizon μ) =
+      PMF.map (NativeFOSG.nativePureProfileToFOSG g horizon)
+        (Math.PMFProduct.pmfPi μ) := by
+  simpa [nativeMixedProfileToFOSG,
+    NativeFOSG.nativePureProfileToFOSG,
+    Math.ProbabilityMassFunction.pushforward] using
+    (Math.PMFProduct.pmfPi_push_coordwise μ
+      (fun who => NativeFOSG.nativePureStrategyToFOSG g horizon who)).symm
+
+/-- Finite Vegas Kuhn theorem stated directly for the public native kernel
+games.  The proof uses the FOSG Kuhn theorem only after transporting native
+pure strategies into the event-graph FOSG presentation, then transports the
+resulting behavioral witness and outcome laws back to the native machine
+semantics. -/
+theorem kuhn_finiteKernelGame
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
     ∃ β : (pmfBehavioralKernelGameAt g).Profile,
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
-          (fun π => (pureKernelGameAt g).outcomeKernel π) :=
-  bridge.realize μ
+          (fun π => (pureKernelGameAt g).outcomeKernel π) := by
+  classical
+  let horizon := syntaxSteps g.prog
+  let μF : (eventGraphFOSGView g).BoundedMixedProfile horizon :=
+    nativeMixedProfileToFOSG g horizon μ
+  obtain ⟨βF, hβF⟩ :=
+    kuhn_mixed_to_behavioral_eventGraph g μF horizon
+  let βN : (eventGraphRoundView g).BoundedBehavioralProfile horizon :=
+    NativeFOSG.fosgBehavioralProfileToNative g horizon βF
+  refine ⟨βN, ?_⟩
+  have hbehavioral :
+      (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon βN horizon =
+        (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon βF horizon := by
+    have htransport :=
+      NativeFOSG.boundedOutcomeFromBehavioral_nativeToFOSG
+        g horizon βN horizon
+    have hprofile :
+        NativeFOSG.nativeBehavioralProfileToFOSG g horizon βN = βF := by
+      funext who
+      simp [βN, NativeFOSG.nativeBehavioralProfileToFOSG,
+        NativeFOSG.fosgBehavioralProfileToNative]
+    rw [← htransport]
+    rw [hprofile]
+  have hmixed :
+      (eventGraphFOSGView g).boundedOutcomeFromMixed horizon μF horizon =
+        (Math.PMFProduct.pmfPi μ).bind
+          (fun π =>
+            (eventGraphRoundView g).boundedOutcomeFromPure horizon π horizon) := by
+    unfold Machine.FOSGView.boundedOutcomeFromMixed
+    rw [reachableMixedProfileJoint_nativeToFOSG g horizon μ]
+    rw [PMF.bind_map]
+    apply congrArg
+      (fun f =>
+        (Math.PMFProduct.pmfPi μ).bind f)
+    funext π
+    exact NativeFOSG.boundedOutcomeFromPure_nativeToFOSG g horizon π horizon
+  change
+    (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon βN horizon =
+      (Math.PMFProduct.pmfPi μ).bind
+        (fun π =>
+          (eventGraphRoundView g).boundedOutcomeFromPure horizon π horizon)
+  rw [hbehavioral]
+  have hβF' :
+      (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon βF horizon =
+        (eventGraphFOSGView g).boundedOutcomeFromMixed horizon μF horizon := by
+    simpa [horizon] using hβF
+  rw [hβF']
+  exact hmixed
 
 end Vegas

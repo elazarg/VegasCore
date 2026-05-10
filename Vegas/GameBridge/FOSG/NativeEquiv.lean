@@ -1277,6 +1277,64 @@ theorem boundedOutcomeFromBehavioral_nativeToFOSG
             rfl
           rw [hobs]
 
+theorem legalPureToBehavioral_nativeToFOSG_agree
+    (g : WFProgram P L) (horizon : Nat)
+    (π : (eventGraphRoundView g).BoundedPureProfile horizon)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
+    (who : P) :
+    ((nativeBehavioralProfileToFOSG g horizon
+          ((eventGraphRoundView g).legalPureToBehavioral horizon π)).extend).toProfile
+        who (h.playerView who) =
+      (((eventGraphFOSGView g).toBoundedFOSG horizon).legalPureToBehavioral
+          (nativePureProfileToFOSG g horizon π).extend).toProfile
+        who (h.playerView who) := by
+  change
+    ((nativeBehavioralProfileToFOSG g horizon
+          ((eventGraphRoundView g).legalPureToBehavioral horizon π) who).1).extend
+        (h.playerView who) =
+      PMF.pure (((nativePureProfileToFOSG g horizon π who).1).extend
+        (h.playerView who))
+  rw [GameTheory.FOSG.ReachableBehavioralStrategy.extend_apply_history]
+  rw [GameTheory.FOSG.ReachablePureStrategy.extend_apply_history]
+  simp [nativeBehavioralProfileToFOSG, nativeBehavioralStrategyToFOSG,
+    Machine.RoundView.legalPureToBehavioral, Machine.RoundView.pureToBehavioral,
+    Machine.RoundView.BoundedPureProfile.toProfile,
+    nativePureProfileToFOSG, nativePureStrategyToFOSG]
+  rfl
+
+theorem boundedOutcomeFromPure_nativeToFOSG
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (π : (eventGraphRoundView g).BoundedPureProfile horizon)
+    (steps : Nat) :
+    (eventGraphFOSGView g).boundedOutcomeFromPure horizon
+        (nativePureProfileToFOSG g horizon π) steps =
+      (eventGraphRoundView g).boundedOutcomeFromPure horizon π steps := by
+  let βN := (eventGraphRoundView g).legalPureToBehavioral horizon π
+  let βF := nativeBehavioralProfileToFOSG g horizon βN
+  let σF :=
+    ((eventGraphFOSGView g).toBoundedFOSG horizon).legalPureToBehavioral
+      (nativePureProfileToFOSG g horizon π).extend
+  have hrun :
+      ((eventGraphFOSGView g).toBoundedFOSG horizon).runDist steps σF =
+        ((eventGraphFOSGView g).toBoundedFOSG horizon).runDist steps βF.extend := by
+    apply GameTheory.FOSG.runDist_congr
+    intro h who
+    exact (legalPureToBehavioral_nativeToFOSG_agree g horizon π h who).symm
+  calc
+    (eventGraphFOSGView g).boundedOutcomeFromPure horizon
+        (nativePureProfileToFOSG g horizon π) steps =
+      PMF.map ((eventGraphFOSGView g).boundedHistoryOutcome horizon)
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).runDist steps σF) := by
+          rfl
+    _ = (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon βF steps := by
+          rw [hrun]
+          rfl
+    _ = (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon βN steps :=
+          boundedOutcomeFromBehavioral_nativeToFOSG g horizon βN steps
+    _ = (eventGraphRoundView g).boundedOutcomeFromPure horizon π steps := by
+          rfl
+
 end NativeFOSG
 
 end Vegas

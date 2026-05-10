@@ -21,12 +21,11 @@ finite Vegas pure kernel game has a PMF behavioral realization with the same
 distribution over payoff outcomes. -/
 theorem kuhn_finite
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (bridge : NativeFOSGKuhnBridge g)
     (μ : ∀ who, PMF ((pureKernelGameAt g).Strategy who)) :
     ∃ β : (pmfBehavioralKernelGameAt g).Profile,
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         (Math.PMFProduct.pmfPi μ).bind
           (fun π => (pureKernelGameAt g).outcomeKernel π) := by
-  exact kuhn_finiteKernelGame_of_nativeFOSGBridge g bridge μ
+  exact kuhn_finiteKernelGame g μ
 
 end Vegas

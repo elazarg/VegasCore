@@ -134,12 +134,10 @@ theorem behavioral_nash_iff_blockedTrace
               (Function.update β who s') who
 
 /-- Every finite checked Vegas program satisfies the PMF behavioral
-realization theorem for mixed profiles over pure strategies, once the
-native/FOSG Kuhn bridge obligation has been discharged. -/
+realization theorem for mixed profiles over pure strategies. -/
 theorem kuhnPMF
-    (g : WFProgram P L) [FiniteDomains g]
-    (bridge : NativeFOSGKuhnBridge g) : KuhnPMF g :=
-  kuhnPMF_finite g bridge
+    (g : WFProgram P L) [FiniteDomains g] : KuhnPMF g :=
+  kuhnPMF_finite g
 
 namespace Prisoners
 
@@ -269,10 +267,8 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt Prisoners.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace Prisoners.game β
 
-theorem kuhnPMF
-    (bridge : NativeFOSGKuhnBridge Prisoners.game) :
-    KuhnPMF Prisoners.game :=
-  StrategicSemantics.kuhnPMF Prisoners.game bridge
+theorem kuhnPMF : KuhnPMF Prisoners.game :=
+  StrategicSemantics.kuhnPMF Prisoners.game
 
 end Prisoners
 
@@ -297,10 +293,8 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt MatchingPennies.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace MatchingPennies.game β
 
-theorem kuhnPMF
-    (bridge : NativeFOSGKuhnBridge MatchingPennies.game) :
-    KuhnPMF MatchingPennies.game :=
-  StrategicSemantics.kuhnPMF MatchingPennies.game bridge
+theorem kuhnPMF : KuhnPMF MatchingPennies.game :=
+  StrategicSemantics.kuhnPMF MatchingPennies.game
 
 end MatchingPennies
 
@@ -325,10 +319,8 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt BattleOfTheSexes.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace BattleOfTheSexes.game β
 
-theorem kuhnPMF
-    (bridge : NativeFOSGKuhnBridge BattleOfTheSexes.game) :
-    KuhnPMF BattleOfTheSexes.game :=
-  StrategicSemantics.kuhnPMF BattleOfTheSexes.game bridge
+theorem kuhnPMF : KuhnPMF BattleOfTheSexes.game :=
+  StrategicSemantics.kuhnPMF BattleOfTheSexes.game
 
 end BattleOfTheSexes
 
@@ -353,10 +345,8 @@ theorem behavioral_nash_iff_blockedTrace
       (pmfBehavioralBlockedTraceKernelGameAt MontyHall.game).IsNash β :=
   StrategicSemantics.behavioral_nash_iff_blockedTrace MontyHall.game β
 
-theorem kuhnPMF
-    (bridge : NativeFOSGKuhnBridge MontyHall.game) :
-    KuhnPMF MontyHall.game :=
-  StrategicSemantics.kuhnPMF MontyHall.game bridge
+theorem kuhnPMF : KuhnPMF MontyHall.game :=
+  StrategicSemantics.kuhnPMF MontyHall.game
 
 end MontyHall
 
