@@ -62,13 +62,15 @@ event-graph view does not maintain a sub-game decomposition; this
 would require an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
-\paragraph{FOSG-based strategic carriers.}  The event graph and
-machine are the semantic source of truth, but the current
-Vegas-facing pure and PMF-behavioural strategy carriers are routed
-through the bounded FOSG view.  This is a checked view of the
-machine, not a separate semantics.  A fully machine-native strategy
-layer would reduce indirection and make the ``game form first''
-story cleaner, but it is not yet the implemented carrier.
+\paragraph{Native/FOSG bridge not yet discharged.}  The Vegas-facing
+pure and PMF-behavioural strategy carriers are now native round-view
+carriers over the event-graph machine.  The bounded FOSG view remains
+the presentation used for the generic FOSG Kuhn theorem and the
+canonical FOSG-to-EFG bridge.  What is still open is the full bridge
+proof that the native round-view carriers and bounded FOSG carriers
+realise exactly the same mixed, behavioural, and outcome laws.  The
+Lean API exposes this as an explicit argument to the native Kuhn
+statement instead of treating it as prose.
 
 \paragraph{Public samples only.}  The source $\Sample$ constructor
 draws a public coin.  It is suitable for public randomness, but it
@@ -157,8 +159,9 @@ object?  The answer it offers is the dependency graph of events,
 with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
-sanity-check theorems (payoff-vector agreement, Kuhn realisation,
-refinement transport).
+sanity-check theorems or explicit bridge obligations
+(payoff-vector agreement, FOSG Kuhn realisation, EFG presentation
+adequacy, refinement transport).
 
 The deeper benefit is that future extensions — compositional
 combinators, larger surface notation, richer cryptographic backends,

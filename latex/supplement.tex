@@ -121,10 +121,9 @@ These are the definitional arrows of Vegas itself.  In contrast,
 semantics to FOSG and EFG infrastructure.  Operational implementation
 refinement lives in \TT{Backend/}; it is not a game-form bridge.  The
 current Vegas-facing strategic carriers in \TT{Strategic/} are built from
-the bounded FOSG view of the event-graph machine.  The event graph and
-machine remain the semantic source of truth, but a fully machine-native
-strategy layer is still a refactoring target rather than something already
-implemented.
+the bounded native round view of the event-graph machine.  The bounded FOSG
+view is now a presentation bridge used by FOSG/EFG/Kuhn results, not the
+definition of the native strategy layer.
 
 \begin{center}\small
 \begin{tabular}{@{}p{0.25\textwidth}p{0.66\textwidth}@{}}
@@ -146,14 +145,16 @@ Folder & Role \\
   & The central event-graph object, configurations, frontier facts, and the
     internal interpretation \TT{EventGraph.ToMachine}. \\
 \TT{Machine/}
-  & Generic operational machine carrier and primitive trace semantics. \\
+  & Generic operational machine carrier, native round views, and primitive
+    trace semantics. \\
 \TT{Strategic/}
-  & Vegas-facing strategic API: FOSG-based strategy carriers, game forms,
+  & Vegas-facing strategic API: native strategy carriers, game forms,
     kernel games, expected utility, equilibrium vocabulary, dominance, and
     transport. \\
 \TT{GameBridge/}
-  & Bridges from Vegas semantics to FOSG/EFG machinery and the FOSG-based Kuhn
-    realisation bridge. \\
+  & Bridges from Vegas semantics to FOSG/EFG machinery and the FOSG Kuhn
+    realisation theorem, with explicit native/FOSG bridge obligations where
+    the native API depends on them. \\
 \TT{Backend/}
   & Runtime/backend refinement obligations and backend blocked-trace
     kernel-game transport. \\
@@ -1063,9 +1064,11 @@ graphs satisfy this predicate (\TT{GameBridge/FOSG/FrontierStability.lean}); a
 backend graph need not.
 
 % =====================================================================
-\section{FOSG Views}
+\section{Native Round and FOSG Views}
 
-The shift from machine to game-theoretic structure happens at this layer.
+The shift from machine to game-theoretic structure now happens through the
+native \TT{Machine.RoundView}\label{def:Machine.RoundView}.  The FOSG view is the parallel
+presentation used to reuse the GameTheory FOSG, EFG, and Kuhn machinery.
 
 \subsection{Bounded states}
 
@@ -1074,8 +1077,33 @@ The shift from machine to game-theoretic structure happens at this layer.
 
 \paragraph{Math.}
 A \emph{bounded state} pairs a machine state with a depth counter, used to
-present a finite-horizon FOSG. The counter is presentation data — the
-underlying machine state remains semantic.
+present finite-horizon native round and FOSG views. The counter is
+presentation data — the underlying machine state remains semantic.
+
+\subsection{The native round view: \TT{Machine.RoundView}}
+\label{def:RoundView}
+
+\paragraph{Lean.}
+\TT{structure RoundView (M : Machine P) where}
+\begin{quote}
+\TT{Act : P} $\to$ \TT{Type} \\
+\TT{active : M.State} $\to$ \TT{Finset P} \\
+\TT{availableActions : M.State} $\to$ \TT{(p : P)} $\to$ \TT{Set (Act p)} \\
+\TT{transition : (state : M.State)} $\to$
+  \TT{ \{a : JointAction Act //}
+  \TT{ JointActionLegal Act active M.terminal availableActions state a\}} $\to$
+  \TT{PMF M.State} \\
+\TT{eventBlock : M.State} $\to$ \TT{JointAction Act} $\to$ \TT{List M.Event} \\
+(\TT{terminal_active_eq_empty}, \TT{nonterminal_exists_legal})
+\end{quote}
+
+\paragraph{Math.}
+\TT{RoundView} is the Vegas-facing strategic view of a machine.  It packages
+round-action alphabets, active sets, available actions, the round transition,
+and the primitive event block represented by a round.  Its bounded histories,
+reachable information states, legal pure strategies, legal PMF-behavioural
+strategies, and outcome kernels are defined in \TT{Vegas/Machine/RoundView.lean}
+without importing FOSG.
 
 \subsection{The FOSG view: \TT{Machine.FOSGView}}
 \label{def:FOSGView}\label{def:Machine.FOSGView}
@@ -1099,8 +1127,8 @@ underlying machine state remains semantic.
 
 \paragraph{Math.}
 A \emph{factored-observation stochastic game view} on top of a machine is
-the \emph{round-level} view: at each state, a finite set of \emph{active}
-players choose round-actions from \TT{Act}\label{def:Act}, the state transitions
+the FOSG presentation counterpart of the native round view: at each state, a
+finite set of \emph{active} players choose round-actions from \TT{Act}\label{def:Act}, the state transitions
 stochastically, and a per-player reward is paid out at the transition.
 Crucially, the round-action alphabet \TT{Act} is independent of the
 machine action alphabet \TT{M.Action}\label{def:M.Action}: a single round may consist of many
@@ -1147,9 +1175,11 @@ strategic freedom.
 
 \paragraph{Tree structure, not only distributions.}
 The semantic adequacy theorem says that projecting EFG terminal histories
-back to public Vegas outcomes gives the same outcome law as
-\TT{pmfBehavioralKernelGameAt}\label{def:pmfBehavioralKernelGameAt}. For reviewers who want to see the actual
-tree spine, \TT{EFG.GameTree.HasDecisionChainThenChance}\label{def:EFG.GameTree.HasDecisionChainThenChance} records the
+back to public Vegas outcomes gives the same outcome law as the bounded
+event-graph FOSG behavioural presentation.  Relating that FOSG law to
+\TT{pmfBehavioralKernelGameAt}\label{def:pmfBehavioralKernelGameAt} is the native/FOSG strategy-equivalence
+bridge obligation. For reviewers who want to see the actual tree spine,
+\TT{EFG.GameTree.HasDecisionChainThenChance}\label{def:EFG.GameTree.HasDecisionChainThenChance} records the
 structural predicate ``$n$ sequential decisions followed by chance''. The
 example file \TT{Examples/EFGTranslation.lean} proves this predicate for the
 first generated round of the checked examples. Thus the code now checks both
@@ -1198,13 +1228,14 @@ configurations.
 \end{center}
 
 \noindent The machine is the bottom layer (every primitive event explicit);
-the FOSG view turns the current frontier into a single FOSG round by executing
-\TT{cfg.frontier.toList}. Player-owned nodes read the selected round-action
-slices, and internal nodes use their event-graph kernels. Nodes newly enabled
-while this list runs are left for a later round. The stability predicate of
-\S\ref{def:stableFrontier} and the frontier linearisation theorem are what
-make this presentation independent of strategically irrelevant scheduling
-choices.
+the native round view turns the current frontier into a single strategic
+round by executing \TT{cfg.frontier.toList}.  The FOSG view mirrors that same
+round as a presentation for the GameTheory FOSG infrastructure. Player-owned
+nodes read the selected round-action slices, and internal nodes use their
+event-graph kernels. Nodes newly enabled while this list runs are left for a
+later round. The stability predicate of \S\ref{def:stableFrontier} and the
+frontier linearisation theorem are what make this presentation independent of
+strategically irrelevant scheduling choices.
 
 % =====================================================================
 \section{The Strategic API}
@@ -1225,16 +1256,17 @@ spaces, game forms, and kernel games.
 \end{align*}
 
 \paragraph{Math.}
-For each player $p$ the FOSG view (\S\ref{def:FOSGView}) induces a finite
+For each player $p$ the native round view (\TT{eventGraphRoundView}\label{def:eventGraphRoundView})
+induces a finite
 set of \emph{information states} $\mathcal{I}_p$: equivalence classes of
-machine histories under $p$'s observation. The strategic carrier uses a
+bounded native round histories under $p$'s observation. The strategic carrier uses a
 \emph{reachability-pruned} version
 \[
   \mathrm{ReachableInfoState}\,p \;=\;
     \bigl\{\, s \in \mathcal{I}_p \;\bigm|\;
       \exists\, h : \mathrm{History}.\; h.\mathrm{playerView}\,p = s\,\bigr\}
 \]
-— information states \emph{realised by some history of the FOSG}, not by
+— information states \emph{realised by some native bounded history}, not by
 some \emph{positive-probability} profile run. (This is purely combinatorial
 and avoids quantifying over profiles in the carrier definition.)
 
@@ -1252,8 +1284,8 @@ returning \texttt{none} at information states where $p$ is not active and
 The Vegas \emph{legal} carriers (\TT{LegalPureProfile}\label{def:LegalPureProfile},
 \TT{LegalBehavioralProfile}\label{def:LegalBehavioralProfile}) further restrict the support: at any reachable
 information state where $p$ is active, the chosen \texttt{some}\,$a$ must
-satisfy $a \in \mathrm{availableMoves}\,p\,h$ for an underlying realising
-history $h$. \emph{This is what closes the gap from program-level \Legal{}
+satisfy $a \in \mathrm{availableMoves}\,p\,h$ for every native history $h$
+realising that information state. \emph{This is what closes the gap from program-level \Legal{}
 to strategic legality}: illegal moves are simply not in the strategy carrier
 for the equilibrium predicates to range over.
 
@@ -1339,7 +1371,7 @@ utility attached. The blocked-trace games set $O$ to
   \mathtt{syntaxBlockedTraceAt}\,g \;=\;
     [\![\mathrm{event\ blocks}]\!] \times \mathtt{State}_M
 \]
-— each FOSG round's primitive-event block, paired with the round's endpoint
+— each native round's primitive-event block, paired with the round's endpoint
 machine state. Their utility factors through the projection to the payoff
 vector: $\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\mathrm{state}))$.
 
@@ -1498,7 +1530,8 @@ distribution and applies the underlying kernel:
     \bind \lambda \sigma. K(\sigma).
 \]
 
-\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}\label{def:kuhn_finite}): every
+\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}\label{def:kuhn_finite}): once the
+native/FOSG strategy-equivalence bridge for $g$ has been supplied, every
 independent mixed profile over the pure strategy carrier of
 \TT{pureKernelGameAt}$\,g$ is matched by a behavioural profile of
 \TT{pmfBehavioralKernelGameAt}$\,g$ with the \emph{same payoff-vector
@@ -1513,11 +1546,14 @@ $\KG^{\mathrm{beh}}$ the two kernel games:
 
 \paragraph{Hypotheses behind the slogan.}
 The Lean statement is a Kuhn-style realisation theorem, not merely the
-textbook phrase ``perfect recall'' copied verbatim. It is routed through the
-bounded FOSG view of the program event-graph machine: finite domains provide the
-finite-horizon carriers, and the required information condition is
-\TT{LegalObservable}\label{def:LegalObservable} for the bounded FOSG, proved for checked program event graphs
-from the visibility and graph-stability invariants.
+textbook phrase ``perfect recall'' copied verbatim. The unconditional theorem
+is routed through the bounded FOSG view of the program event-graph machine:
+finite domains provide the finite-horizon FOSG carriers, and the required
+information condition is \TT{LegalObservable}\label{def:LegalObservable} for the bounded FOSG, proved for
+checked program event graphs from the visibility and graph-stability
+invariants. The public native theorem is deliberately conditional on
+\TT{NativeFOSGKuhnBridge}\label{def:NativeFOSGKuhnBridge}, the still-separate proof that native
+round-view strategies and FOSG strategies realise the same outcome laws.
 
 \paragraph{Why this is the headline theorem.}
 Pure strategies are easy to read and define; behavioural strategies are
@@ -1525,7 +1561,8 @@ what equilibrium analyses on extensive-form games actually use. The Kuhn
 realisation says that for every mixture over the simple objects we can
 build a behavioural-profile witness with identical observable behaviour.
 This is the formal contract between the surface API (\TT{pureKernelGame}\label{def:pureKernelGame})
-and the analysis API (\TT{pmfBehavioralKernelGame}).
+and the analysis API (\TT{pmfBehavioralKernelGame}) once the native/FOSG bridge
+has been discharged.
 
 \subsection{Finite pure kernel-game export}
 \label{def:KernelGameExport}
@@ -1924,12 +1961,13 @@ outcome-law theorem for each example:
   & \mathrm{map}(\mathrm{publicOutcome})\,
     \mathrm{EFG.outcomeKernel}(\mathrm{translated}\ \beta) \\
   & \qquad =\;
-    \mathrm{pmfBehavioralKernelGameAt}(g).\mathrm{outcomeKernel}(\beta).
+    \mathrm{boundedFOSGBehavioralOutcome}(g,\beta).
 \end{aligned}
 \]
 This is the intended notion of ``translated to the expected EFG'': expected
 up to the canonical FOSG-to-EFG serialisation, with explicit checked tree
-shape at the root.
+shape at the root.  The equality to the native Vegas PMF-behavioural kernel
+game is the separate native/FOSG bridge obligation.
 
 \subsection{StrategicSemantics}
 
@@ -1939,9 +1977,7 @@ program $g$: the payoff-vector-game and blocked-trace-game expected utilities
 are equal (\TT{pure_eu_eq_blockedTrace}\label{def:pure_eu_eq_blockedTrace} and \TT{behavioral_eu_eq_blockedTrace}\label{def:behavioral_eu_eq_blockedTrace})
 and Nash and dominance predicates transport across the projection
 (\TT{pure_nash_iff_blockedTrace}\label{def:pure_nash_iff_blockedTrace}, \TT{behavioral_nash_iff_blockedTrace}\label{def:behavioral_nash_iff_blockedTrace},
-\TT{pure_dominant_iff_blockedTrace}\label{def:pure_dominant_iff_blockedTrace}), and exposes a generic legal pure
-strategy \TT{defaultPureStrategy}\label{def:defaultPureStrategy} witnessing that the strategy carrier is
-inhabited. It then specialises these theorems to each example
+\TT{pure_dominant_iff_blockedTrace}\label{def:pure_dominant_iff_blockedTrace}). It then specialises these theorems to each example
 (Prisoners, Matching Pennies, Battle of the Sexes, Monty Hall,
 SyntaxConstructors), and for Prisoners additionally spells out the explicit
 event-graph nodes and field assignments — \TT{rowCommitNode}\label{def:rowCommitNode},
@@ -1972,7 +2008,10 @@ For a reader landing on the codebase for the first time, we suggest:
 \item Skim \TT{Vegas/Machine/Basic.lean} and
   \TT{Vegas/EventGraph/ToMachine.lean} to see the abstract carrier and its
   event-graph instance.
-\item Read \TT{Vegas/GameBridge/FOSG/Basic.lean} for the FOSG view, then
+\item Read \TT{Vegas/Machine/RoundView.lean},
+  \TT{Vegas/EventGraph/RoundView.lean}, and \TT{Vegas/Strategic/Native.lean}
+  for the native strategic carrier.
+\item Read \TT{Vegas/GameBridge/FOSG/Basic.lean} for the FOSG presentation, then
   \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean},
   \TT{Vegas/GameBridge/EFG/FromEventGraph.lean},
   \TT{Vegas/Strategic/KernelGame.lean}, \TT{Vegas/Strategic/Kuhn.lean},

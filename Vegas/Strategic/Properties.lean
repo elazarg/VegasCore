@@ -10,7 +10,7 @@ import GameTheory.Concepts.PriceOfAnarchy
 # Vegas game-theoretic properties
 
 Core game-theoretic property definitions for finite Vegas programs, transported
-through the PMF behavioral event-graph machine FOSG kernel game.
+through the native PMF behavioral event-graph machine kernel game.
 -/
 
 namespace Vegas

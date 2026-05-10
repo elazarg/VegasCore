@@ -4,7 +4,7 @@ import Vegas.Strategic.KernelGame
 import GameTheory.Languages.FOSG.Kuhn
 
 /-!
-# Machine-native Kuhn theorem
+# Machine-carried FOSG Kuhn theorem
 
 A Kuhn-style mixed-to-behavioral realization theorem stated entirely in terms
 of an asynchronous protocol `Machine` and one of its `FOSGView`s, with no
@@ -46,7 +46,7 @@ noncomputable def outcomeFromMixed
   (FOSG.Kuhn.reachableMixedProfileJoint (G := view.toFOSG) μ).bind
     (fun π => view.outcomeFromPure π horizon)
 
-/-- **Machine-native Kuhn theorem (mixed → behavioral).**
+/-- **Machine-carried FOSG Kuhn theorem (mixed → behavioral).**
 
 Given any FOSG view of a machine and any independent mixed profile of pure
 strategies, there exists a behavioral profile that produces the same
@@ -82,7 +82,7 @@ theorem kuhn_mixed_to_behavioral
 
 /-! ## Bounded-horizon variant
 
-The same Machine-native Kuhn theorem stated for the horizon-bounded FOSG view
+The same machine-carried FOSG Kuhn theorem stated for the horizon-bounded FOSG view
 `view.toBoundedFOSG horizon`. Worlds are `M.BoundedState horizon`; this is
 the form that matches finite Vegas-program executions, where the event graph
 fixes the horizon and the bounded state presentation is automatically
@@ -102,7 +102,7 @@ noncomputable def boundedOutcomeFromMixed
       (G := view.toBoundedFOSG horizon) μ).bind
     (fun π => view.boundedOutcomeFromPure horizon π steps)
 
-/-- **Machine-native Kuhn theorem (mixed → behavioral), bounded horizon.**
+/-- **Machine-carried FOSG Kuhn theorem (mixed → behavioral), bounded horizon.**
 
 The same realization theorem as `kuhn_mixed_to_behavioral`, stated on the
 horizon-bounded FOSG view. This is the form that applies to finite Vegas
@@ -136,9 +136,9 @@ end Machine
 
 /-! ## Checked event-graph FOSG corollary
 
-Specialization of the machine-native bounded Kuhn theorem to the event graph
-of a checked Vegas program. The witness, the input mixed profile, and the
-asserted distributional equality are all stated against the canonical event-graph
+Specialization of the bounded FOSG Kuhn theorem to the event graph of a
+checked Vegas program. The witness, the input mixed profile, and the asserted
+distributional equality are all stated against the canonical event-graph
 machine and `eventGraphFOSGView g`; no cursor or syntax-recursive strategy
 space is used.
 -/

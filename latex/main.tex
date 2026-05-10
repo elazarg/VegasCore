@@ -38,9 +38,10 @@ distribution normalisation, and at-least-one-legal-action obligations,
 then lowered definitionally to the event graph.  Configurations of the
 graph are extensional partial assignments from event nodes to write
 slices; the graph induces an asynchronous probabilistic
-\emph{machine}, and round-batched factored-observation stochastic-game
-(FOSG) and extensive-form-game (EFG) presentations are derived as
-checked views of that machine.  This report develops the construction
+\emph{machine}.  Native round views of that machine define the
+strategy carriers, game forms, and kernel games; round-batched
+factored-observation stochastic-game (FOSG) and extensive-form-game
+(EFG) presentations are derived as checked views.  This report develops the construction
 mathematically, states its main contracts as theorems, and explains
 the design choices that motivate them.
 
@@ -51,9 +52,8 @@ frontier), \textbf{trace-to-public agreement} (the canonical pure and
 PMF-behavioural kernel games agree with their blocked-trace
 refinements after payoff projection, while terminal-public-state game
 forms expose the non-payoff public observation separately),
-\textbf{finite Kuhn realisation}
-(every independent mixed pure profile is matched by a behavioural
-profile with the same payoff-vector outcome distribution), and
+\textbf{finite FOSG Kuhn realisation} with an explicit native/FOSG
+strategy-equivalence obligation for the native kernel-game statement, and
 \textbf{stochastic-refinement transport} (Nash equilibria pull back
 along compatible backend refinements).  All theorems are mechanised in
 Lean~4~\citep{deMouraUllrich2021} on top of mathlib~\citep{mathlib2020};

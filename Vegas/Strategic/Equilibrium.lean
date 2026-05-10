@@ -6,7 +6,7 @@ import GameTheory.Core.GameProperties
 # Vegas equilibrium wrappers
 
 Game-theoretic vocabulary for finite Vegas programs, transported through the
-PMF behavioral event-graph machine FOSG kernel game.
+native PMF behavioral event-graph machine kernel game.
 -/
 
 namespace Vegas
@@ -20,7 +20,7 @@ def StrategyProfile [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] : Type :=
   KernelGame.Profile (pmfBehavioralKernelGame g)
 
-/-- A single player's PMF behavioral strategy in the finite FOSG game. -/
+/-- A single player's PMF behavioral strategy in the finite native game. -/
 def Strategy [Fintype P]
     (g : WFProgram P L) [FiniteDomains g] (who : P) : Type :=
   (pmfBehavioralKernelGame g).Strategy who

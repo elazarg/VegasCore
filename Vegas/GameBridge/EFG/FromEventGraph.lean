@@ -5,10 +5,11 @@ import Vegas.Strategic.KernelGame
 /-!
 # Extensive-form presentation of checked programs
 
-The native Vegas execution path is event graph -> machine -> FOSG -> kernel
-game.  GameTheory also provides a canonical FOSG-to-augmented-EFG bridge. This
-file packages that bridge for checked Vegas programs and proves that the EFG
-presentation preserves the generated behavioral outcome distribution.
+The native Vegas execution path is event graph -> machine -> native strategic
+game form.  GameTheory also provides a canonical FOSG-to-augmented-EFG bridge.
+This file packages that bridge for the event-graph FOSG presentation of checked
+Vegas programs and proves that the EFG presentation preserves the generated
+FOSG behavioral outcome distribution.
 
 The generated EFG is intentionally not a hand-drawn textbook tree: each FOSG
 round is serialized as one EFG decision opportunity per player followed by a
