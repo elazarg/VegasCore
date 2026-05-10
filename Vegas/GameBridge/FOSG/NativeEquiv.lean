@@ -805,6 +805,42 @@ noncomputable def fosgLegalActionToNative
           active_fosgToNative g horizon h,
           availableActions_fosgToNative g horizon h who] using hpair
 
+noncomputable def nativeLegalActionToFOSGOfFOSGHistory
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
+    (a : (eventGraphRoundView g).BoundedLegalAction horizon
+      (fosgHistoryToNative g horizon h).lastState) :
+    (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+      h.lastState) := by
+  refine ⟨a.1, ?_⟩
+  rcases a.2 with ⟨hterm, hlocal⟩
+  refine ⟨?_, ?_⟩
+  · intro ht
+    exact hterm ((terminal_fosgToNative g horizon h).2 ht)
+  · intro who
+    have hloc := hlocal who
+    cases hmove : a.1 who with
+    | none =>
+        have hnot :
+            who ∉ (eventGraphRoundView g).boundedActive horizon
+              (fosgHistoryToNative g horizon h).lastState := by
+          simpa [Machine.RoundView.boundedLocallyLegalAtState, hmove]
+            using hloc
+        simpa [GameTheory.FOSG.locallyLegalAtState, hmove,
+          active_fosgToNative g horizon h] using hnot
+    | some choice =>
+        have hpair :
+            who ∈ (eventGraphRoundView g).boundedActive horizon
+                (fosgHistoryToNative g horizon h).lastState ∧
+              choice ∈
+                (eventGraphRoundView g).boundedAvailableActions horizon
+                  (fosgHistoryToNative g horizon h).lastState who := by
+          simpa [Machine.RoundView.boundedLocallyLegalAtState, hmove]
+            using hloc
+        simpa [GameTheory.FOSG.locallyLegalAtState, hmove,
+          active_fosgToNative g horizon h,
+          availableActions_fosgToNative g horizon h who] using hpair
+
 noncomputable def fosgLegalActionToNativeOfNativeHistory
     (g : WFProgram P L) (horizon : Nat)
     (h : (eventGraphRoundView g).BoundedHistory horizon)
@@ -854,6 +890,26 @@ noncomputable def fosgLegalActionToNativeOfNativeHistory
     (a : (eventGraphRoundView g).BoundedLegalAction horizon h.lastState) :
     fosgLegalActionToNativeOfNativeHistory g horizon h
         (nativeLegalActionToFOSG g horizon h a) = a := by
+  apply Subtype.ext
+  rfl
+
+@[simp] theorem nativeLegalActionToFOSGOfFOSGHistory_inverse
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
+    (a : (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
+      h.lastState)) :
+    nativeLegalActionToFOSGOfFOSGHistory g horizon h
+        (fosgLegalActionToNative g horizon h a) = a := by
+  apply Subtype.ext
+  rfl
+
+@[simp] theorem fosgLegalActionToNative_inverse
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
+    (a : (eventGraphRoundView g).BoundedLegalAction horizon
+      (fosgHistoryToNative g horizon h).lastState) :
+    fosgLegalActionToNative g horizon h
+        (nativeLegalActionToFOSGOfFOSGHistory g horizon h a) = a := by
   apply Subtype.ext
   rfl
 
@@ -945,6 +1001,49 @@ theorem legalActionLaw_nativeToFOSG
   · rw [Machine.RoundView.legalActionLaw_apply]
     rw [GameTheory.FOSG.legalActionLaw_apply]
     exact (jointActionDist_nativeToFOSG g horizon β h a.1).symm
+
+theorem legalActionLaw_fosgToNative
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    (horizon : Nat)
+    (β : (eventGraphFOSGView g).BoundedBehavioralProfile horizon)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
+    (hterm :
+      ¬ ((eventGraphFOSGView g).toBoundedFOSG horizon).terminal h.lastState) :
+    PMF.map (fosgLegalActionToNative g horizon h)
+        (((eventGraphFOSGView g).toBoundedFOSG horizon).legalActionLaw
+          β.extend h hterm) =
+      (eventGraphRoundView g).legalActionLaw horizon
+        (fosgBehavioralProfileToNative g horizon β)
+        (fosgHistoryToNative g horizon h)
+        (by
+          intro ht
+          exact hterm ((terminal_fosgToNative g horizon h).1 ht)) := by
+  classical
+  apply PMF.ext
+  intro a
+  rw [PMF.map_apply]
+  rw [tsum_fintype]
+  trans ((eventGraphFOSGView g).toBoundedFOSG horizon).legalActionLaw
+        β.extend h hterm
+        (nativeLegalActionToFOSGOfFOSGHistory g horizon h a)
+  · rw [Fintype.sum_eq_single
+      (nativeLegalActionToFOSGOfFOSGHistory g horizon h a)]
+    · have hinv :
+          a = fosgLegalActionToNative g horizon h
+            (nativeLegalActionToFOSGOfFOSGHistory g horizon h a) := by
+        exact (fosgLegalActionToNative_inverse g horizon h a).symm
+      rw [hinv]
+      simp
+    · intro b hb
+      by_cases heq : a = fosgLegalActionToNative g horizon h b
+      · exfalso
+        apply hb
+        apply Subtype.ext
+        exact (congrArg Subtype.val heq).symm
+      · rw [if_neg heq]
+  · rw [GameTheory.FOSG.legalActionLaw_apply]
+    rw [Machine.RoundView.legalActionLaw_apply]
+    exact (jointActionDist_fosgToNative g horizon β h a.1).symm
 
 end NativeFOSG
 
