@@ -143,7 +143,7 @@ On top of the machine, three kinds of consumers are defined:
 \item \textbf{Optional presentation bridges} — the canonical
   serialisation of the FOSG view into an extensive-form tree.  The
   bridge is checked: the tree's payoff-vector outcome law agrees
-  with the behavioural kernel game's.
+  with the behavioral kernel game's.
 \item \textbf{Backend refinement} — relations between an
   implementation machine (potentially with extra runtime structure,
   scheduling, internal events) and the canonical event-graph
@@ -181,17 +181,17 @@ decisions behind it.  The theorem-level contributions are:
 
 \item \emph{Trace-to-public agreement
   (\S\ref{sec:fosg-strategies}).}  The blocked-trace pure and
-  PMF-behavioural kernel games agree with their payoff projections
+  PMF-behavioral kernel games agree with their payoff projections
   on outcome kernels and on expected utilities.  Terminal-public-
   state game forms expose the public observation separately from the
   payoff-vector kernel games.
 
 \item \emph{Finite Kuhn realisation
   (\S\ref{sec:presentations}).}  The bounded event-graph FOSG
-  presentation satisfies the mixed-to-behavioural realisation
-  theorem.  The native kernel-game theorem is stated over
-  $\mathrm{pureKernelGame}$ and $\mathrm{pmfBehavioralKernelGame}$
-  with an explicit native/FOSG bridge obligation.
+  presentation satisfies the mixed-to-behavioral realisation
+  theorem.  The native kernel-game theorem is stated directly over
+  $\mathrm{pureKernelGame}$ and $\mathrm{pmfBehavioralKernelGame}$,
+  using the proved native/FOSG outcome-law transport.
 
 \item \emph{EFG presentation
   (\S\ref{sec:presentations}).}  The canonical FOSG-to-EFG bridge

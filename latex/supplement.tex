@@ -38,14 +38,14 @@ construct is for.
 The intended audience is twofold. We assume programming-languages background
 (typed contexts, monads, dependent types, well-formedness judgements) and
 provide informal definitions of the game-theoretic vocabulary; conversely we
-assume a reader familiar with Nash equilibria, behavioural strategies, and
+assume a reader familiar with Nash equilibria, behavioral strategies, and
 finite extensive-form games but new to the Lean formalisation, and explain the
 PL machinery in terms they can map to standard game forms.
 
 The supplement is organised bottom-up along the same path as the main report:
 the ambient probabilistic and language layers, then visibility-aware syntax,
 then well-formedness, then the event graph and its machine semantics,
-then FOSG views, kernel games, and the public solution-concept API. It
+then native round views, FOSG presentations, kernel games, and the public solution-concept API. It
 finishes with a tour of the worked examples.
 \end{abstract}
 
@@ -85,14 +85,18 @@ vocabulary. We list them in the order definitions will appear.
 \node[right=4mm of vis] (syn) {\textbf{Source}\\\TT{VegasLang},\\\TT{VegasCore},\\\TT{WFProgram}};
 \node[below=10mm of syn] (graph) {\textbf{Event graph}\\\TT{EventGraph}\\\TT{Configuration}};
 \node[left=4mm of graph] (mach) {\textbf{Machine}\\\TT{Machine},\\events};
-\node[left=4mm of mach] (fosg) {\textbf{FOSG view}\\\TT{Machine.FOSGView}};
-\node[below=10mm of fosg] (kg) {\textbf{Kernel game}\\\TT{KernelGame}\\(public API)};
+\node[below=10mm of mach] (round) {\textbf{Native round view}\\\TT{Machine.RoundView}};
+\node[below=10mm of round] (kg) {\textbf{Kernel game}\\\TT{KernelGame}\\(public API)};
+\node[left=4mm of round] (fosg) {\textbf{FOSG view}\\\TT{Machine.FOSGView}};
+\node[below=10mm of fosg] (efg) {\textbf{FOSG/EFG/Kuhn}\\\TT{GameBridge/FOSG}};
 \draw[arr] (lang) -- (vis);
 \draw[arr] (vis) -- (syn);
 \draw[arr] (syn) -- (graph);
 \draw[arr] (graph) -- (mach);
+\draw[arr] (mach) -- (round);
+\draw[arr] (round) -- (kg);
 \draw[arr] (mach) -- (fosg);
-\draw[arr] (fosg) -- (kg);
+\draw[arr] (fosg) -- (efg);
 \end{tikzpicture}
 \end{center}
 
@@ -100,8 +104,9 @@ vocabulary. We list them in the order definitions will appear.
 mathematical work happens at the event-graph level, where a syntax tree
 is turned into a DAG with \emph{extensional} state — the configuration
 records only which nodes have produced which results, not the schedule
-that produced them — and at the FOSG checkpoint level, where the
-game-theoretic round structure is recovered.
+that produced them — and at the native round-view level, where the
+game-theoretic strategy carriers are recovered.  The FOSG branch is a
+presentation/proof bridge used for EFG and Kuhn theorems.
 
 \subsection{Code organisation}
 \label{sec:code-organisation}\label{def:Lang.ToCore}\label{def:Core.ToEventGraph}\label{def:EventGraph.ToMachine}\label{def:Fields}\label{def:Obligations}\label{def:Construction}
@@ -153,8 +158,8 @@ Folder & Role \\
     transport. \\
 \TT{GameBridge/}
   & Bridges from Vegas semantics to FOSG/EFG machinery and the FOSG Kuhn
-    realisation theorem, with explicit native/FOSG bridge obligations where
-    the native API depends on them. \\
+    realisation theorem, including native/FOSG equivalence theorems that
+    transport those results back to the native API. \\
 \TT{Backend/}
   & Runtime/backend refinement obligations and backend blocked-trace
     kernel-game transport. \\
@@ -174,8 +179,8 @@ vectors. A \emph{strategy} is what a player intends to do; a \emph{profile} is
 one strategy per player. \emph{Expected utility} $\EU$ is the expected payoff
 under a profile. \emph{Nash equilibrium} is a profile from which no player
 gains by unilateral deviation. \emph{Mixed} strategies randomise over pure
-ones; \emph{behavioural} strategies randomise locally at each information set.
-\emph{Kuhn's theorem} says that under perfect recall mixed and behavioural
+ones; \emph{behavioral} strategies randomise locally at each information set.
+\emph{Kuhn's theorem} says that under perfect recall mixed and behavioral
 strategies are equivalent. A \emph{factored-observation stochastic game} (FOSG)
 is the modern formalism for finite extensive-form games with imperfect
 information; players observe local signals at each round.
@@ -226,7 +231,7 @@ frontier of a configuration
 \TT{KernelGame}
   & strategic-form game (strategies, outcome kernel, utility) \\
 \TT{pureKernelGame}, \TT{pmfBehavioralKernelGame}
-  & finite normal-form / behavioural-form view of a Vegas program \\
+  & finite normal-form / behavioral-form view of a Vegas program \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -237,390 +242,544 @@ frontier of a configuration
 \subsection{Finite-support weights: \TT{FWeight}}
 \label{def:FWeight}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{abbrev FWeight (}$\alpha$\TT{) [DecidableEq }$\alpha$\TT{] := }$\alpha \to_0 \mathbb{Q}_{\ge 0}$
-\end{quote}
-together with the operations \TT{pure}\label{def:pure}, \TT{zero}\label{def:zero}, \TT{bind}\label{def:bind}, \TT{map}\label{def:map},
-\TT{ofList}\label{def:ofList}, \TT{totalWeight}\label{def:totalWeight}, and the bridge \TT{toPMF}\label{def:toPMF} into Mathlib's
-measure-theoretic $\PMF{\cdot}$.
+\begin{leanbox}
+abbrev FWeight ($\alpha$ : Type) [DecidableEq $\alpha$] := $\alpha \to_0 \mathbb{Q}_{\ge 0}$\\[1pt]
+def pure       : $\alpha \to$ FWeight $\alpha$\label{def:pure}\\
+def zero       : FWeight $\alpha$\label{def:zero}\\
+noncomputable def bind : FWeight $\alpha \to (\alpha \to$ FWeight $\beta) \to$ FWeight $\beta$\label{def:bind}\\
+noncomputable def map  : $(\alpha \to \beta) \to$ FWeight $\alpha \to$ FWeight $\beta$\label{def:map}\\
+def ofList      : List $(\alpha \times \mathbb{Q}_{\ge 0}) \to$ FWeight $\alpha$\label{def:ofList}\\
+def totalWeight : FWeight $\alpha \to \mathbb{Q}_{\ge 0}$\label{def:totalWeight}\\
+def Normalized (d : FWeight $\alpha$) : Prop := d.totalWeight = 1\\
+def toPMF (d : FWeight $\alpha$) : d.Normalized $\to$ PMF $\alpha$\label{def:toPMF}
+\end{leanbox}
 
-\paragraph{Math.}
-$\FWeight{\alpha}$ is the set of finitely-supported, non-negative-rational
-weight functions on $\alpha$:
-\[
-  \FWeight{\alpha} \;=\; \bigl\{ \mu : \alpha \to \NNQ \;\bigm|\; |\mathrm{supp}\,\mu| < \infty \bigr\}.
-\]
-The total mass $w(\mu) = \sum_{a} \mu(a)$ ranges over $[0, \infty)$;
-normalised weights, written \TT{FProb}\label{def:FProb} in Lean, are those with $w(\mu)=1$.
-The standard monad operations are
-\[
-  \mathrm{pure}(x)(a) = [a = x],\quad
-  \mu \bind f = \sum_{a} \mu(a)\cdot f(a),\quad
-  \mathrm{map}\,g\,\mu = \sum_{a} \mu(a)\cdot \mathrm{pure}(g(a)).
-\]
-(The trio $\mathrm{pure}$, $\bind$, $\mathrm{map}$ is the standard PL
-vocabulary for a structured computational effect: $\mathrm{pure}$ injects a
-value as a degenerate distribution, $\bind$ sequences a stochastic step
-with a continuation indexed by the result, and $\mathrm{map}$ is the
-pushforward through a deterministic function.)
+A value of type $\FWeight{\alpha}$ is a finitely-supported,
+non-negative-rational weight function on $\alpha$. Writing $w(\mu)$ for
+the total mass and abbreviating Iverson brackets $[P]$,
+\begin{align*}
+  \FWeight{\alpha} &\;:=\; \bigl\{\, \mu : \alpha \to \NNQ \;\bigm|\; |\mathrm{supp}\,\mu| < \infty \,\bigr\}, \\
+  w(\mu) &\;:=\; \textstyle\sum_{a} \mu(a) \;\in\; \NNQ, \\
+  \mathrm{pure}(x)(a) &\;:=\; [\,a = x\,], \\
+  (\mu \bind f)(b) &\;:=\; \textstyle\sum_{a} \mu(a)\cdot f(a)(b), \\
+  (\mathrm{map}\,g\,\mu)(b) &\;:=\; \textstyle\sum_{a : g(a)=b} \mu(a).
+\end{align*}
+Normalized weights — those with $w(\mu) = 1$ — are written
+\TT{FProb}\label{def:FProb} in Lean. The trio $(\mathrm{pure}, \bind, \mathrm{map})$
+is the standard structure of a probability monad: $\mathrm{pure}$ injects a
+value as a Dirac mass, $\bind$ sequences a stochastic step with a
+continuation indexed by its result, and $\mathrm{map}$ is the pushforward
+through a deterministic function.
 
 \paragraph{Why this and not $\PMF{\cdot}$.}
-Three reasons: (i) raw weights allow intermediate \texttt{bind}-trees to be
-built without per-step normalisation proofs; (ii) rational weights make
-finite weights decidably equal and concrete examples mechanically
-inspectable; (iii) decidable support is necessary to construct
-\texttt{Finsupp}-backed weights computably. The conversion \TT{toPMF}
-requires a proof of total weight $1$, is one-way, and is the single exit
-point into Mathlib's measure theory.
+(i)~Raw weights let intermediate \TT{bind}-trees be built without
+per-step normalisation proofs. (ii)~Rational weights are decidably equal,
+so concrete examples are mechanically inspectable. (iii)~Decidable
+equality on $\alpha$ is required to construct the underlying \TT{Finsupp}
+computably. \TT{toPMF} requires a proof of $w(\mu) = 1$ and is the only
+bridge from $\FWeight{\cdot}$ into Mathlib's measure-theoretic $\PMF{\cdot}$.
 
 \paragraph{Key laws.}
-The \emph{monad laws} (left/right identity for $\mathrm{pure}$, and
-associativity of $\bind$) hold; in particular finite weights \emph{commute}
-($\mu_1 \bind \lambda x.\, \mu_2 \bind \lambda y.\, f(x,y) = \mu_2 \bind \lambda y.\, \mu_1 \bind \lambda x.\, f(x,y)$),
-which is what licenses commit-commit commutation in the program semantics.
-Normalisation propagates: if $w(\mu)=1$ and $w(f(a))=1$ for every $a$ in
-$\mathrm{supp}(\mu)$, then $w(\mu \bind f) = 1$.
+The monad laws hold (left/right identity of $\mathrm{pure}$, associativity
+of $\bind$). Finite weights \emph{commute},
+\[
+  \mu_1 \bind \lambda x.\, \mu_2 \bind \lambda y.\, f(x,y)
+  \;=\;
+  \mu_2 \bind \lambda y.\, \mu_1 \bind \lambda x.\, f(x,y),
+\]
+which licenses commit-commit commutation in the program semantics.
+Normalisation is preserved by $\bind$: if $w(\mu) = 1$ and $w(f(a)) = 1$
+for every $a \in \mathrm{supp}(\mu)$, then $w(\mu \bind f) = 1$.
 
 \subsection{The expression-language interface: \TT{IExpr}}
 \label{def:IExpr}
 
-\paragraph{Lean.}
-\TT{IExpr} is a record with the following fields, grouped by role:
-\begin{itemize}\itemsep1pt
-\item \emph{Types and values}: $\Ty : \mathbf{Type}$;
-  $\Val : \Ty \to \mathbf{Type}$; \TT{decEqTy : DecidableEq Ty};
-  \TT{decEqVal :} $\forall \tau,$ \TT{DecidableEq (Val}~$\tau$\TT{)};
-  distinguished $\bool, \intt \in \Ty$ with projections to Lean's
-  \TT{Bool}\label{def:Bool} and \TT{Int}\label{def:Int}.
-\item \emph{Expression syntax}: \TT{Expr}\label{def:Expr}~$\Gamma$~$\tau$; an evaluator
-  \TT{eval}\label{def:eval}; a static dependency over-approximation \TT{exprDeps}\label{def:exprDeps}; and
-  \TT{expr_deps_context}\label{def:expr_deps_context}, which proves dependencies mention only variables
-  in the expression context.
-\item \emph{Distribution syntax}: \TT{DistExpr}\label{def:DistExpr}~$\Gamma$~$\tau$;
-  \TT{evalDist}\label{def:evalDist} into $\FWeight{\Val(\tau)}$; \TT{distDeps}\label{def:distDeps}.
-\item \emph{Structural lemmas}: \TT{extendAfterHead}\label{def:extendAfterHead} (insert an unrelated
-  binding after the head) and \TT{dropAfterHead}\label{def:dropAfterHead} (remove a head-after binding
-  the expression does not depend on).
-\item \emph{Soundness laws}: the dependency sets faithfully predict the
-  read sets:
-\[
-  \mathrm{AgreesOn}(\rho_1, \rho_2, \mathtt{exprDeps}\,e) \;\implies\;
-  \mathtt{eval}\,e\,\rho_1 = \mathtt{eval}\,e\,\rho_2,
-\]
-and the analogous law for distributions.
+\DefRef{IExpr} is the abstract interface a Vegas program needs in order
+to type-check its expressions and distributions. It bundles five pieces
+of data — a typed universe, two distinguished base types, deterministic
+and distribution-valued syntax with their evaluators, and static
+dependency analyses — together with five laws tying the data together.
+Throughout, $\Gamma$ ranges over \TT{Ctx Ty} and $\tau, \sigma, b$ over
+\TT{Ty}; implicit binders for these are suppressed in the boxes below.
+
+\begin{leanbox}
+structure IExpr where\\[1pt]
+\bd Ty       : Type\\
+\bd Val      : Ty $\to$ Type\\
+\bd decEqTy  : DecidableEq Ty\\
+\bd decEqVal : $\forall$ \{$\tau$\}, DecidableEq (Val $\tau$)\\[2pt]
+\bd bool     : Ty\label{def:Bool}\\
+\bd toBool   : Val bool $\to$ Bool\\
+\bd int      : Ty\label{def:Int}\\
+\bd toInt    : Val int  $\to$ Int\\[2pt]
+\bd Expr     : Ctx Ty $\to$ Ty $\to$ Type\label{def:Expr}\\
+\bd eval     : Expr $\Gamma\,\tau \to$ Env Val $\Gamma \to$ Val $\tau$\label{def:eval}\\[2pt]
+\bd DistExpr : Ctx Ty $\to$ Ty $\to$ Type\label{def:DistExpr}\\
+\bd evalDist : DistExpr $\Gamma\,\tau \to$ Env Val $\Gamma \to$ FWeight (Val $\tau$)\label{def:evalDist}\\[2pt]
+\bd exprDeps : Expr $\Gamma\,\tau \to$ Finset VarId\label{def:exprDeps}\\
+\bd distDeps : DistExpr $\Gamma\,\tau \to$ Finset VarId\label{def:distDeps}\\[1pt]
+\bd -- laws follow
+\end{leanbox}
+
+\noindent The five field groups, separated by blank lines, play distinct roles.
+
+\begin{itemize}\itemsep2pt
+\item \emph{Typed universe.}
+  $\TT{Ty}$ is a Lean-level universe of embedded-language types;
+  $\TT{Val}$ associates to each $\tau \in \TT{Ty}$ the Lean type of its
+  values. Decidable equality on $\TT{Ty}$ and on each $\TT{Val}\,\tau$
+  is required for $\FW$-backed distributions to type-check
+  downstream; both are promoted to typeclass instances at structure
+  boundary.
+\item \emph{Distinguished base types.}
+  Two specific elements of $\TT{Ty}$ are named, with projections into
+  Lean's \DefRef{Bool} and \DefRef{Int}. Commit guards return
+  $\TT{Val}\,\TT{bool}$ and are read out via $\TT{toBool}$; per-player
+  payoffs return $\TT{Val}\,\TT{int}$ and are read out via $\TT{toInt}$.
+\item \emph{Expression syntax.}
+  $\DefRef{Expr}\,\Gamma\,\tau$ is the Lean type of well-typed
+  expressions over $\Gamma$ of type $\tau$.
+  $\DefRef{eval}\,e\,\rho$ is its denotation against an environment
+  $\rho \in \Env_{\TT{Val}}\Gamma$.
+\item \emph{Distribution syntax.} The same shape with
+  $\DefRef{DistExpr}\,\Gamma\,\tau$ inhabited by syntactic descriptions
+  of finite distributions over $\TT{Val}\,\tau$, and \DefRef{evalDist}
+  producing the corresponding $\FWeight{\TT{Val}\,\tau}$.
+\item \emph{Static dependency analyses.}
+  $\DefRef{exprDeps}\,e$ and $\DefRef{distDeps}\,d$ are syntactically
+  computed finite sets of variable identifiers. The intent is that
+  they over-approximate the variables an expression reads; the laws
+  pin down what ``reads'' means.
 \end{itemize}
 
-\paragraph{Math.}
-This is the abstract interface of a typed expression language with finite
-weights. The \emph{soundness} laws are the only nontrivial axioms; they
-justify treating syntactic dependency as a sound visibility analysis.
+\begin{leanbox}
+\bd -- ...continued\\[1pt]
+\bd expr\_deps\_context :\label{def:expr_deps_context}\\
+\bdd $\forall$ (e : Expr $\Gamma\,\tau$),\\
+\bdd \ \ $\forall$ x, x $\in$ exprDeps e $\to$ x $\in \Gamma$.map Prod.fst\\[3pt]
+\bd extendAfterHead :\label{def:extendAfterHead}\\
+\bdd $\forall$ (e : Expr ((x,$\tau$)::$\Gamma$) b),\\
+\bdd \ \ $\exists$ e' : Expr ((x,$\tau$)::(y,$\sigma$)::$\Gamma$) b,\\
+\bdd \ \ \ \ $\forall$ vx vy $\rho$,\\
+\bdd \ \ \ \ \ \ eval e' (vx, vy, $\rho$) = eval e (vx, $\rho$)\\[3pt]
+\bd dropAfterHead :\label{def:dropAfterHead}\\
+\bdd $\forall$ (e : Expr ((x,$\tau$)::(y,$\sigma$)::$\Gamma$) b),\\
+\bdd \ \ y $\notin$ exprDeps e $\to$\\
+\bdd \ \ $\exists$ e' : Expr ((x,$\tau$)::$\Gamma$) b,\\
+\bdd \ \ \ \ $\forall$ vx vy $\rho$,\\
+\bdd \ \ \ \ \ \ eval e' (vx, $\rho$) = eval e (vx, vy, $\rho$)\\[3pt]
+\bd expr\_deps\_sound :\label{def:expr_deps_sound}\\
+\bdd $\forall$ (e : Expr $\Gamma\,\tau$) ($\rho_1\,\rho_2$ : Env Val $\Gamma$),\\
+\bdd \ \ AgreesOn $\rho_1\,\rho_2$ (exprDeps e) $\to$\\
+\bdd \ \ \ \ eval e $\rho_1$ = eval e $\rho_2$\\[3pt]
+\bd dist\_deps\_sound :\label{def:dist_deps_sound}\\
+\bdd $\forall$ (d : DistExpr $\Gamma\,\tau$) ($\rho_1\,\rho_2$ : Env Val $\Gamma$),\\
+\bdd \ \ AgreesOn $\rho_1\,\rho_2$ (distDeps d) $\to$\\
+\bdd \ \ \ \ evalDist d $\rho_1$ = evalDist d $\rho_2$
+\end{leanbox}
+
+\noindent The five laws decompose into three groups.
+
+\begin{itemize}\itemsep2pt
+\item \emph{Well-typing of the dependency analysis}
+  (\DefRef{expr_deps_context}): every variable identifier reported by
+  $\mathtt{exprDeps}\,e$ already names a binding in $\Gamma$,
+  \[
+    \mathtt{exprDeps}\,e \;\subseteq\; \mathrm{names}(\Gamma).
+  \]
+\item \emph{Structural weakening}
+  (\DefRef{extendAfterHead}, \DefRef{dropAfterHead}): an expression in
+  context $(x,\tau)::\Gamma$ may be transported to
+  $(x,\tau)::(y,\sigma)::\Gamma$ by inserting an unrelated binding
+  after the head, and conversely a binding the expression does not
+  depend on may be removed. Symbolically, with $\mathtt{eval}\,e\,\rho$
+  the denotation,
+  \begin{align*}
+    \forall e \in \Expr((x,\tau)::\Gamma, b).\;
+    \exists\, e'.\;\;
+    & \mathtt{eval}\,e'\,(\langle x{=}vx\rangle\langle y{=}vy\rangle\rho)
+      = \mathtt{eval}\,e\,(\langle x{=}vx\rangle\rho), \\
+    \forall e \in \Expr((x,\tau)::(y,\sigma)::\Gamma, b),\;
+    y \notin \mathtt{exprDeps}\,e.\;
+    \exists\, e'.\;\;
+    & \mathtt{eval}\,e'\,(\langle x{=}vx\rangle\rho)
+      = \mathtt{eval}\,e\,(\langle x{=}vx\rangle\langle y{=}vy\rangle\rho).
+  \end{align*}
+  These two laws license commit-commit commutativity in the program
+  semantics: an expression evaluated past one binding can be
+  reformulated past two, and back.
+\item \emph{Dependency soundness}
+  (\DefRef{expr_deps_sound}, \DefRef{dist_deps_sound}): if two
+  environments agree on the declared dependencies, evaluation is
+  identical:
+  \[
+    \mathrm{AgreesOn}(\rho_1, \rho_2, \mathtt{exprDeps}\,e) \;\implies\;
+    \mathtt{eval}\,e\,\rho_1 = \mathtt{eval}\,e\,\rho_2,
+  \]
+  and likewise $\mathtt{distDeps} \implies \mathtt{evalDist}$. This is
+  the key semantic property: $\mathtt{exprDeps}$ may over-report variable
+  reads but it cannot \emph{miss} a read that affects the value.
+\end{itemize}
 
 \paragraph{Trusted interface obligation.}
-\TT{IExpr} is an abstraction boundary. The Vegas proofs do not inspect the
-internal syntax of an expression language; they rely on each \TT{IExpr}
-instance to prove that \TT{exprDeps} and \TT{distDeps} are sound
-over-approximations of semantic reads. An instance may over-report
-dependencies, but it cannot under-report a semantically relevant read and
-still satisfy \TT{expr_deps_sound}\label{def:expr_deps_sound} or \TT{dist_deps_sound}\label{def:dist_deps_sound}.
+The Vegas proofs never inspect the internal syntax of an expression
+language; they consume \DefRef{IExpr} purely through these laws. An
+instance may over-report dependencies, but it cannot under-report a
+semantically relevant read and still satisfy \DefRef{expr_deps_sound}
+or \DefRef{dist_deps_sound}.
 
 \paragraph{Concrete instance.}
-\TT{simpleExpr}\label{def:simpleExpr} (in \TT{Vegas/Lang/ExprSimple.lean}) instantiates \TT{IExpr} with
-$\Ty = \{\intt, \bool, \mathsf{range}\,\ell\,h,
-\mathsf{option}\,b\}$ and the obvious values, where
-$\Val(\mathsf{option}\,b)=\mathrm{Option}(\Val(b))$. Its expression syntax
-has constants, addition, equality, boolean conjunction and negation,
-\texttt{ite}, and the option constructors/eliminators
-\TT{none}\label{def:none}, \TT{some}\label{def:some}, \TT{isSome}\label{def:isSome}, \TT{isNone}\label{def:isNone}, and \TT{getD}\label{def:getD}, plus
-distributions built either as a weighted list of $(v, q)$ pairs or by guarded
-choice. The \TT{VegasLang} programs in this development use \TT{simpleExpr}.
-The \TT{VegasLang} nullable-yield layer is intentionally concrete over this
-instance; another expression language would need its own option type,
-non-nullable commit-payload predicate, and default-value operation.
+\DefRef{simpleExpr}\label{def:simpleExpr} instantiates \DefRef{IExpr}
+with
+\[
+  \Ty = \{\intt,\,\bool,\,\mathsf{range}\,\ell\,h,\,\mathsf{option}\,b\},
+  \qquad
+  \Val(\mathsf{option}\,b) = \mathrm{Option}(\Val(b)),
+\]
+and an expression syntax containing constants, addition, equality,
+boolean conjunction and negation, $\TT{ite}$, and option
+constructors/eliminators
+\DefRef{none}\label{def:none},
+\DefRef{some}\label{def:some},
+\DefRef{isSome}\label{def:isSome},
+\DefRef{isNone}\label{def:isNone},
+\DefRef{getD}\label{def:getD};
+distributions are built either as weighted lists of $(v, q)$ pairs or
+by guarded choice. All \TT{VegasLang} programs in this development use
+\DefRef{simpleExpr}.
 
-Two small type classes are part of the concrete instance rather than the
-generic \TT{IExpr} interface. \TT{CommitPayloadTy}\label{def:CommitPayloadTy} marks the non-nullable
-types that may be written as explicit surface commit payloads; in particular
-\TT{not_commitPayloadTy_option}\label{def:not_commitPayloadTy_option} rules out explicit user commits of
-\TT{BaseTy.option b}. \TT{DefaultVal}\label{def:DefaultVal} supplies the fallback needed to embed a
-guard over $b$ into a guard over \TT{option b}; the fallback is used only under
-\TT{getD} in the non-null branch.
+Two type classes accompany the concrete instance and are not part of
+the generic \DefRef{IExpr} interface:
+\begin{itemize}\itemsep1pt
+\item \DefRef{CommitPayloadTy}\label{def:CommitPayloadTy} marks the
+  non-nullable types admissible as explicit surface commit payloads.
+  The lemma
+  \DefRef{not_commitPayloadTy_option}\label{def:not_commitPayloadTy_option}
+  rules out explicit user commits at type \TT{BaseTy.option b}.
+\item \DefRef{DefaultVal}\label{def:DefaultVal} supplies the fallback
+  used to lift a guard over $b$ to a guard over \TT{option b}, fired
+  only under \DefRef{getD} in the non-null branch.
+\end{itemize}
+A different expression language would supply its own option type,
+non-nullable predicate, and default-value class to support the
+nullable yield layer.
 
 \subsection{Plain typed contexts: \TT{Ctx}, \TT{HasVar}, \TT{Env}}
 \label{def:Ctx}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{abbrev Ctx (Ty : Type) := List (VarId} $\times$ \TT{Ty)} \\
-\TT{inductive HasVar : Ctx Ty} $\to$ \TT{VarId}\label{def:VarId} $\to$ \TT{Ty} $\to$ \TT{Type}\label{def:Type}\\
-\TT{def Env (Val : Ty} $\to$ \TT{Type) (}$\Gamma$\TT{ : Ctx Ty) :=} \TT{(}$x$\TT{,}$\tau$\TT{)} $\to$ \TT{HasVar }$\Gamma$\TT{ }$x$\TT{ }$\tau$ $\to$ \TT{Val}\label{def:Val}~$\tau$
-\end{quote}
+\begin{leanbox}
+abbrev VarId : Type := Nat\label{def:VarId}\\
+abbrev Ctx (Ty : Type) := List (VarId $\times$ Ty)\\[2pt]
+inductive HasVar : Ctx Ty $\to$ VarId $\to$ Ty $\to$ Type\label{def:Type} where\\
+\bd | here  : HasVar ((x, $\tau$) :: $\Gamma$) x $\tau$\\
+\bd | there : HasVar $\Gamma$ x $\tau$ $\to$ HasVar ((y, $\tau'$) :: $\Gamma$) x $\tau$\\[2pt]
+def Env (Val : Ty $\to$ Type)\label{def:Val} : Ctx Ty $\to$ Type :=\\
+\bd fun $\Gamma\Rightarrow \forall$ x $\tau$, HasVar $\Gamma$ x $\tau \to$ Val $\tau$
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{context} $\Gamma$ is a list of typed variable bindings; an
-\emph{environment} $\rho \in \Env(\Gamma)$ assigns a value to each binding.
-\TT{HasVar} is a typed de~Bruijn membership proof; under \TT{Nodup}\label{def:Nodup} (no
-repeated names) it is a \emph{subsingleton} (any two such proofs are
-definitionally equal), so environment lookup is \emph{proof-irrelevant}
-(the value depends only on the variable and its type, not on which
-membership witness was used).
+A \emph{context} $\Gamma$ is a list of typed variable bindings, and an
+\emph{environment} $\rho \in \Env(\Gamma)$ assigns a value to each.
+$\TT{HasVar}\,\Gamma\,x\,\tau$ is a typed de~Bruijn membership witness.
+Under $\TT{Nodup}(\Gamma.\TT{map}\,\TT{fst})$\label{def:Nodup} — no
+repeated names — \TT{HasVar} is a subsingleton (any two witnesses are
+equal), so $\Env$-lookup is proof-irrelevant: the retrieved value depends
+on $x$ and $\tau$ only, not on the chosen witness.
 
-\paragraph{Why \TT{HasVar} is in \TT{Type} and not \TT{Prop}.}
-The \TT{Env}\label{def:Env} datatype pattern-matches on \TT{HasVar} to retrieve values;
-this requires \TT{HasVar} to live in the data universe. The single lemma
-\TT{Env.get_eq_of_nodup}\label{def:Env.get_eq_of_nodup} discharges the resulting proof-position equality
-once and for all.
+\paragraph{Why \TT{HasVar} is in \TT{Type}, not \TT{Prop}.}
+$\Env$ pattern-matches on \TT{HasVar} to retrieve values, which requires it
+to live in the data universe. The single lemma
+\TT{Env.get_eq_of_nodup}\label{def:Env.get_eq_of_nodup}\label{def:Env}
+discharges the resulting proof-position equality once and for all.
 
 % =====================================================================
 \section{Visibility-aware Syntax}
 
-The protocol layer cares not just about variables but about \emph{who can see
-which variable}. The standard PL apparatus is extended with a visibility tag
-on each binding.
+The protocol layer is concerned not just with variables but with
+\emph{who can see which variable}. The standard PL apparatus is extended
+with a visibility tag on each binding. Throughout this section, \TT{P}
+is the player type with \TT{[DecidableEq P]} and \TT{L} is an
+\DefRef{IExpr} instance.
 
 \subsection{Visibility tags: \TT{BindTy}}
 \label{def:BindTy}
 
-\paragraph{Lean.}
-\TT{inductive Visibility (Player : Type)} with constructors
-\TT{pub}\label{def:pub} and \TT{hidden (owner : Player)}. Then
-\TT{structure BindTy (Player : Type) (L : IExpr)} has fields
-\TT{base : L.Ty} and \TT{visibility : Visibility Player}. The namespace
-\TT{BindTy} provides smart constructors \TT{.pub (}$\tau$\TT{)} and
-\TT{.hidden (owner : Player) (}$\tau$\TT{)}.
+\begin{leanbox}
+inductive Visibility (Player : Type) where\\
+\bd | pub\label{def:pub}\\
+\bd | hidden (owner : Player)\\[3pt]
+structure BindTy (Player : Type) (L : IExpr) where\\
+\bd base       : L.Ty\\
+\bd visibility : Visibility Player
+\end{leanbox}
 
-\paragraph{Math.}
 A binding type is either \emph{public} ($\pub\,\tau$, visible to all) or
-\emph{hidden} ($\hid\,p\,\tau$, visible only to its owner $p$). The information
-model is intentionally \emph{owner-or-all}: there are no group-visibility
-constructors. Internally, the base type is an immutable field and visibility is
-independent metadata: reveal-like operations change visibility by introducing a
-fresh public alias, not by changing the variable's base type.
+\emph{hidden} ($\hid\,p\,\tau$, visible only to its owner $p$). The
+information model is \emph{owner-or-all}: a secret either belongs to one
+player, or is visible to everyone — there is no group-visibility
+constructor. The base type and visibility are independent fields:
+reveal-like operations change visibility by introducing a fresh public
+alias, not by mutating the variable's base type. Smart constructors
+$\TT{BindTy.pub}\,\tau$ and $\TT{BindTy.hidden}\,p\,\tau$ keep call
+sites readable while preserving the split representation.
 
 \subsection{Visibility contexts and views: \TT{VCtx}, \TT{viewVCtx}, \TT{pubVCtx}}
 \label{def:VCtx}\label{def:pubVCtx}\label{def:viewVCtx}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{abbrev VCtx (P : Type) (L : IExpr) := List (VarId} $\times$ \TT{BindTy P L)} \\
-\TT{def viewVCtx (p : P) : VCtx P L} $\to$ \TT{VCtx P L} \quad\textemdash\quad keeps only bindings $p$ can see.\\
-\TT{def pubVCtx : VCtx P L} $\to$ \TT{VCtx P L} \quad\textemdash\quad keeps only public bindings.
-\end{quote}
+\begin{leanbox}
+abbrev VCtx (P : Type) (L : IExpr) : Type :=\\
+\bd List (VarId $\times$ BindTy P L)\\[3pt]
+def viewVCtx (p : P) : VCtx P L $\to$ VCtx P L\\
+def pubVCtx          : VCtx P L $\to$ VCtx P L
+\end{leanbox}
 
-\paragraph{Math.}
-$\view{p}$ is the sublist of bindings of $\Gamma$ observable by player $p$;
-$\pubctx{\Gamma}$ is the sublist of public bindings:
+\DefRef{viewVCtx}~$p$ keeps only bindings player $p$ can see — public
+bindings and hidden bindings owned by $p$. \DefRef{pubVCtx} keeps only
+the public sublist. Writing $\view{p}$ for the player-$p$ view and
+$\pubctx{\Gamma}$ for the public fragment,
 \[
-  \view{p} \;=\; \bigl[(x, \tau) \in \Gamma \;\big|\; p \text{ can see } \tau\bigr],
+  \view{p} \;=\;
+    \bigl[(x, \tau) \in \Gamma \;\big|\; p \text{ can see } \tau\bigr],
   \qquad
-  \pubctx{\Gamma} \;=\; \bigl[(x, \pub\,\tau) \in \Gamma\bigr].
+  \pubctx{\Gamma} \;=\;
+    \bigl[(x, \pub\,\tau) \in \Gamma\bigr].
 \]
-Public bindings are visible to every player, so $\pubctx{\Gamma} \subseteq
-\view{p}$ as multisets.
+Public bindings are visible to every player, so $\pubctx{\Gamma}
+\subseteq \view{p}$ pointwise.
 
 \subsection{Erasure to plain contexts: \TT{eraseVCtx}, \TT{erasePubVCtx}}
 \label{def:erase}\label{def:erasePubVCtx}\label{def:eraseVCtx}
 
-\paragraph{Lean.}
-\TT{def eraseVCtx} forgets the visibility tag, returning a plain
-\TT{Ctx L.Ty}. \TT{def erasePubVCtx} keeps only public variables and
-forgets the tag.
+\begin{leanbox}
+def eraseVCtx    : VCtx P L $\to$ Ctx L.Ty\\
+def erasePubVCtx : VCtx P L $\to$ Ctx L.Ty
+\end{leanbox}
 
-\paragraph{Math.}
-There are two erasures because there are two consumers:
+\DefRef{eraseVCtx} forgets visibility tags entirely;
+\DefRef{erasePubVCtx} forgets visibility tags after restricting to the
+public sublist:
 \[
-  \erasectx{\Gamma} = [(x, \tau.\mathrm{base}) \mid (x,\tau) \in \Gamma], \quad
-  \erasepub{\Gamma} = [(x, \tau) \mid (x, \pub\,\tau) \in \Gamma].
+  \erasectx{\Gamma} \;=\;
+    [(x, \tau.\mathrm{base}) \mid (x,\tau) \in \Gamma],
+  \qquad
+  \erasepub{\Gamma} \;=\;
+    [(x, \tau) \mid (x, \pub\,\tau) \in \Gamma].
 \]
-The key commutation lemma (\TT{eraseVCtx_pubVCtx}\label{def:eraseVCtx_pubVCtx}) says that the two
-projections — restrict to the public fragment, and forget visibility
-tags — commute:
+The commutation lemma
+\DefRef{eraseVCtx_pubVCtx}\label{def:eraseVCtx_pubVCtx} says these two
+projections — public-restrict, then forget; or forget after
+public-restrict — produce the same plain context:
 \[
   \erasectx{\pubctx{\Gamma}} \;=\; \erasepub{\Gamma}.
 \]
-Either route produces the public erasure, for which we keep the
-shorthand $\erasepub{\Gamma}$. Operationally this is what lets
-$\erasepub{\Gamma}$-shaped goals be discharged by reasoning about
-$\erasectx{\Gamma}$.
 
-\paragraph{Two erased contexts, by design.}
-The full erased context $\erasectx{\Gamma}$ is what \emph{commit guards} and
-operational machinery type over: a guard is permitted to mention any
-variable, but a separate predicate restricts which it may actually depend
-on. The public-only erased context $\erasepub{\Gamma}$ is what
-\emph{deterministic let-bindings, samples, and payoff expressions} type over,
-since these by construction may not read hidden state. This split is the
-single design commitment around which the rest of the development is
+\paragraph{Why two erasures.}
+The full erased context $\erasectx{\Gamma}$ is what \emph{commit guards}
+and operational machinery type over: a guard may syntactically mention
+any variable, with a separate predicate restricting what it actually
+depends on. The public-only erased context $\erasepub{\Gamma}$ is what
+\emph{deterministic let-bindings, samples, and payoff expressions} type
+over, since these may not read hidden state. The split is the single
+design commitment around which the rest of the development is
 organised.
 
 \subsection{Source syntax: \TT{VegasCore}}
 \label{def:VegasCore}
 
-\paragraph{Lean.}
-\TT{inductive VegasCore (P : Type) (L : IExpr) : VCtx P L} $\to$ \TT{Type}
-with five constructors. Schematically:
-\[
-\arraycolsep=1pt
-\begin{array}{r@{\;}c@{\;}l}
-\Ret~\bar p
-  & : & \VCtx \to \mathrm{VegasCore}\,\VCtx \\
-\Let~x = e;~k
-  & : & \mathsf{Expr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
-\Sample~x \sim D;~k
-  & : & \mathsf{DistExpr}(\erasepub{\Gamma}, b) \times \mathrm{VegasCore}((x,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
-\Commit_{p}~x \mid R;~k
-  & : & \mathsf{Expr}((x,b)::\erasectx{\Gamma}, \bool) \times \mathrm{VegasCore}((x,\hid\,p\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
-\Reveal~y := x;~k
-  & : & \mathrm{VHasVar}\,\Gamma\,x\,(\hid\,p\,b) \times \mathrm{VegasCore}((y,\pub\,b)::\Gamma) \to \mathrm{VegasCore}\,\Gamma \\
-\end{array}
-\]
+\begin{leanbox}
+inductive VegasCore (P : Type) [DecidableEq P] (L : IExpr) :\\
+\bd VCtx P L $\to$ Type where\\[2pt]
+\bd | ret \{$\Gamma$\}\\
+\bdd (payoffs : List (P $\times$ L.Expr (erasePubVCtx $\Gamma$) L.int)) :\\
+\bdd VegasCore P L $\Gamma$\\[3pt]
+\bd | letExpr \{$\Gamma$\} (x : VarId) \{b : L.Ty\}\\
+\bdd (e : L.Expr (erasePubVCtx $\Gamma$) b)\\
+\bdd (k : VegasCore P L ((x, .pub b) :: $\Gamma$)) :\\
+\bdd VegasCore P L $\Gamma$\\[3pt]
+\bd | sample \{$\Gamma$\} (x : VarId) \{b : L.Ty\}\\
+\bdd (D : L.DistExpr (erasePubVCtx $\Gamma$) b)\\
+\bdd (k : VegasCore P L ((x, .pub b) :: $\Gamma$)) :\\
+\bdd VegasCore P L $\Gamma$\\[3pt]
+\bd | commit \{$\Gamma$\} (x : VarId) (who : P) \{b : L.Ty\}\\
+\bdd (R : L.Expr ((x, b) :: eraseVCtx $\Gamma$) L.bool)\\
+\bdd (k : VegasCore P L ((x, .hidden who b) :: $\Gamma$)) :\\
+\bdd VegasCore P L $\Gamma$\\[3pt]
+\bd | reveal \{$\Gamma$\} (y : VarId) (who : P) (x : VarId) \{b : L.Ty\}\\
+\bdd (hx : VHasVar $\Gamma$ x (.hidden who b))\\
+\bdd (k : VegasCore P L ((y, .pub b) :: $\Gamma$)) :\\
+\bdd VegasCore P L $\Gamma$
+\end{leanbox}
 
-\paragraph{Math.}
-A program is a typed sequence of \emph{events} terminated by a \Ret{}. Four
+A \DefRef{VegasCore}\,\TT{P}\,\TT{L}\,$\Gamma$ program is a typed
+sequence of events terminated by a \Ret{}, indexed by the visibility
+context $\Gamma$ in force at the point of writing. Four of the five
 constructors model observable activity in a multi-party computation:
 \Sample{} (a public coin), \Commit{} (a sealed choice by a player),
-\Reveal{} (a sealed value made public), and \Ret{} (the protocol terminates
-and pays out). One constructor, \Let, is administrative.
+\Reveal{} (a sealed value made public), and \Ret{} (the protocol
+terminates and pays out). The fifth, \Let, is administrative — a
+deterministic public binding.
 
-The argument types follow the visibility discipline of the previous
-subsection: \Let, \Sample, and the payoffs at \Ret{} type their bodies over
-$\erasepub{\Gamma}$ so they cannot mention hidden state, while \Commit's
-guard $R$ types over $(x,b)::\erasectx{\Gamma}$ — syntactically it can read
-any variable, so a separate predicate \TT{GuardUsesOnly}\label{def:GuardUsesOnly} is needed to enforce
-that it only reads what the committing player can see (\S\ref{def:scope}).
+\paragraph{Visibility discipline.}
+The constructor argument types track the visibility split established
+in \S\ref{def:erase}.
+\begin{itemize}\itemsep1pt
+\item \Let, \Sample, and \Ret's payoff list type their expressions over
+  $\erasepub{\Gamma}$, so they cannot mention hidden state at all.
+\item \Commit's guard $R$ types over $(x, b) :: \erasectx{\Gamma}$ —
+  the proposed action sitting on top of the \emph{full} erased context.
+  The guard can syntactically read any variable; the side predicate
+  \DefRef{GuardUsesOnly}\label{def:GuardUsesOnly} (\S\ref{def:scope})
+  semantically restricts it to the committing player's view.
+\item \Reveal{} requires a witness $\TT{VHasVar}\,\Gamma\,x\,(\hid\,p\,b)$
+  proving that $x$ is currently a hidden binding of player $p$;
+  successful revelation introduces a fresh public alias $(y, \pub\,b)$.
+\end{itemize}
 
 \paragraph{Why \Let{} is kept rather than encoded.}
-$\Let~x = e;~k$ is semantically equivalent to $\Sample~x \sim \delta_e;~k$
-where $\delta_e$ is the Dirac mass at $e$. The codebase keeps \Let{} as a
-distinct constructor for four reasons: (i) it would otherwise force \TT{IExpr}
-to expose a \TT{Expr} $\to$ \TT{DistExpr} lift; (ii) it keeps program
-representation linear in surface size; (iii) it preserves the binding
-$(x, \pub\,b)$ in every downstream view, so strategy types do not change; and
-(iv) the surface syntax makes randomness visually distinct from bookkeeping.
+$\Let~x = e;~k$ is semantically equivalent to
+$\Sample~x \sim \delta_e;~k$ where $\delta_e$ is the Dirac mass at $e$.
+The codebase keeps \Let{} as a distinct constructor for four reasons:
+(i) eliminating it would force \DefRef{IExpr} to expose an
+$\TT{Expr} \to \TT{DistExpr}$ lift; (ii) it keeps program representation
+linear in surface size; (iii) it preserves the binding $(x, \pub\,b)$ in
+every downstream view, so strategy types do not change; (iv) the
+surface syntax distinguishes randomness from bookkeeping visually.
 
 \subsection{Surface syntax: \TT{VegasLang}}
 \label{def:VegasLang}\label{def:simultaneous}
 
-\paragraph{Lean.}
-\TT{inductive VegasLang (P : Type) [DecidableEq P] :
-VCtx P simpleExpr} $\to$ \TT{Type}
-mirrors the five \TT{VegasCore} constructors over \TT{simpleExpr} and adds
-simultaneous yield phases plus nullable \TT{yield}\label{def:yield} sugar:
+\DefRef{VegasLang} mirrors the five \DefRef{VegasCore} constructors
+over \DefRef{simpleExpr} and adds two surface forms:
+\DefRef{yield}\label{def:yield} (a single nullable public move) and
+\DefRef{simultaneous} (a same-phase collection of yields by distinct
+actors). Its meaning is definitionally the core program produced by
+\DefRef{VegasLang.lower}\label{def:VegasLang.lower}.
+
+\begin{leanbox}
+inductive VegasLang (P : Type) [DecidableEq P] :\\
+\bd VCtx P simpleExpr $\to$ Type where\\[2pt]
+\bd | ret \ldots,\ letExpr \ldots,\ sample \ldots,\ commit \ldots,\ reveal \ldots
+  \hfill\textrm{\textit{(as in VegasCore)}}\\[3pt]
+\bd | yield \{$\Gamma$\} (secret pubVar : VarId) (who : P) \{b : BaseTy\}\\
+\bdd [CommitPayloadTy b] [DefaultVal b]\\
+\bdd (R : Expr ((secret, b) :: eraseVCtx $\Gamma$) .bool)\\
+\bdd (k : VegasLang P\\
+\bdd \ \ ((pubVar,\,.pub (BaseTy.option b)) ::\\
+\bdd \ \ \ \ (secret,\,.hidden who (BaseTy.option b)) :: $\Gamma$)) :\\
+\bdd VegasLang P $\Gamma$\\[3pt]
+\bd | simultaneous \{$\Gamma\,\Delta$\}\\
+\bdd (phase : VegasYieldPhase P $\Gamma$ [] $\Delta$)\\
+\bdd (hactors : phase.DistinctActors)\label{def:DistinctActors}\\
+\bdd (k : VegasLang P $\Delta$) :\\
+\bdd VegasLang P $\Gamma$
+\end{leanbox}
+
+A surface \DefRef{commit} is restricted by \DefRef{CommitPayloadTy}, so
+explicit user commits at type \TT{BaseTy.option b} are forbidden.
+\DefRef{yield} is the public-move sugar: it lowers to a hidden commit
+of type \TT{BaseTy.option b} guarded by
+$\TT{Expr.nullableCommitGuard}\,R$ followed by an immediate public
+reveal. Lowering the guard accepts \TT{none} unconditionally and agrees
+with $R$ on \TT{some v}, so the lowered commit is unconditionally
+satisfiable;
+\DefRef{nullableCommitGuard_satisfiable}\label{def:nullableCommitGuard_satisfiable}
+discharges the core \Legal{} obligation by choosing \TT{none}.
+
+After a surface \DefRef{yield}, the revealed public value has type
+\TT{option b}. Continuations and payoffs must inspect it with
+\DefRef{isNone}, \DefRef{isSome}, or \DefRef{getD} — feasibility is
+obtained by construction, but the type system forces the author to
+decide how a null branch affects later payoffs.
+
+\paragraph{Yield phases.}
+
+\begin{leanbox}
+inductive VegasYieldPhase (P : Type) [DecidableEq P]\\
+\bd ($\Gamma$ : VCtx P simpleExpr) :\\
+\bd VCtx P simpleExpr $\to$ VCtx P simpleExpr $\to$ Type where\\[2pt]
+\bd | nil \{pref\} : VegasYieldPhase P $\Gamma$ pref (pref ++ $\Gamma$)\\[3pt]
+\bd | yield \{pref final\}\\
+\bdd (secret pubVar : VarId) (who : P)\\
+\bdd \{b : BaseTy\} [CommitPayloadTy b] [DefaultVal b]\\
+\bdd (R : Expr ((secret, b) :: eraseVCtx $\Gamma$) .bool)\\
+\bdd (rest : VegasYieldPhase P $\Gamma$\\
+\bdd \ \ ((secret,\,.hidden who (BaseTy.option b)) :: pref) final) :\\
+\bdd VegasYieldPhase P $\Gamma$ pref\\
+\bdd \ \ ((pubVar,\,.pub (BaseTy.option b)) :: final)
+\end{leanbox}
+
+A \TT{VegasYieldPhase P}~$\Gamma\,\pi\,\Delta$ is a typed list of
+same-phase yields, with $\Gamma$ the shared pre-phase context, $\pi$
+the accumulated hidden prefix, and $\Delta$ the post-phase context. A
+critical detail: every guard $R$ is typed over $\erasectx{\Gamma}$, not
+over $\erasectx{\pi\,{++}\,\Gamma}$, so a guard cannot mention another
+yield from the same phase. The list also carries the side condition
+\TT{phase.DistinctActors} that no actor appears twice in the same phase.
+
+Lowering is two-stage:
 \[
-\begin{array}{@{}l@{}}
-  \TT{simultaneous} : \\[-1pt]
-    \qquad(\phi : \TT{VegasYieldPhase P } \Gamma\,[]\,\Delta)
-      \to \phi.\TT{DistinctActors} \to \\[1pt]
-    \qquad\TT{VegasLang P } \Delta
-      \to \TT{VegasLang P } \Gamma, \\[2pt]
-  \Gamma_{\mathsf{yield}} =
-    \begin{array}[t]{@{}l@{}}
-    ((y,\pub\,(\mathsf{option}\,b))::\\
-    \quad(x,\hid\,p\,(\mathsf{option}\,b))::\Gamma),
-    \end{array}
-    \\[2pt]
-  \TT{yield} :
-    [\TT{CommitPayloadTy }b] \to [\TT{DefaultVal }b] \to
-    \Expr((x,b)::\erasectx{\Gamma},\bool) \to \\[1pt]
-    \qquad\TT{VegasLang P }\Gamma_{\mathsf{yield}}
-    \to \TT{VegasLang P }\Gamma .
-\end{array}
+  \mathtt{VegasYieldPhase.lowerWith} :
+    \TT{Phase}\,\Gamma\,\pi\,\Delta \to
+    \mathrm{VegasCore}\,\Delta \to
+    \mathrm{VegasCore}\,(\pi\,{++}\,\Gamma),
 \]
-\TT{VegasYieldPhase P}~$\Gamma\,\pi\,\Delta$ is a typed list of same-phase
-\TT{yield}s. Its guards are all typed over the original pre-phase context
-$\Gamma$, not over the accumulated hidden prefix $\pi$, so a guard cannot
-mention another same-phase yielded variable. The phase also carries the
-\TT{DistinctActors}\label{def:DistinctActors} side condition.
-The relevant lowering functions are:
-\begin{quote}
-\TT{VegasYieldPhase.lowerWith : VegasYieldPhase P }$\Gamma\,\pi\,\Delta$
-  \TT{ -> VegasCore P simpleExpr }$\Delta$
-  \TT{ -> VegasCore P simpleExpr }$(\pi\TT{ ++ }\Gamma)$\\
-\TT{VegasLang.lower : VegasLang P }$\Gamma$
-  \TT{ -> VegasCore P simpleExpr }$\Gamma$
-\end{quote}
-
-\paragraph{Math.}
-\TT{VegasLang} is an elaborated typed surface language, not a second
-denotation. Its meaning is definitionally the \TT{VegasCore} program obtained
-by \TT{VegasLang.lower}\label{def:VegasLang.lower}. A thinner parser-level source language need not
-construct this intermediate syntax: it can generate a fresh hidden commitment
-name for \TT{yield}, translate ordinary reads to the immediately revealed
-public name, translate owner-private reads to the hidden commitment name, and
-emit \TT{VegasCore} directly.
-The simultaneous constructor records that a source author intends several
-public strategic moves, by distinct actors, to be presented together. Lowering
-first emits all hidden nullable commits in source order and only then emits the
-public reveals. After lowering, the program event-graph elaborator computes
-the commit/reveal information barrier explicitly: the same-phase commits share
-an event-graph frontier, while each reveal waits for all earlier commits in
-addition to reading the committed secret it exposes.
-
-\paragraph{Nullable yields.}
-The ordinary surface \Commit{} constructor is restricted by
-\TT{CommitPayloadTy}, so programmers cannot explicitly commit an optional
-value. The user-facing public-move sugar is \TT{yield}. Lowering changes the
-internal core payload type from $b$ to \TT{BaseTy.option b}, and replaces the
-guard $R$ by
-\TT{Expr.nullableCommitGuard R}. This lifted guard accepts \TT{none}
-unconditionally and agrees with $R$ on \TT{some v}; hence
-\TT{nullableCommitGuard_satisfiable}\label{def:nullableCommitGuard_satisfiable} proves the core \Legal{} obligation by
-choosing \TT{none}.
-The user-supplied guard is not required to be feasible: it constrains the
-\TT{some} branch, while \TT{none} is always a legal lowered commitment.
-
-The strategic cost is intentionally pushed into the continuation. After a
-surface \TT{yield}, the revealed public value has type \TT{option b}. Payoff
-and continuation expressions must inspect it with \TT{isNone}, \TT{isSome},
-or \TT{getD}. Thus feasibility is obtained by construction, while the type
-system forces the protocol author to decide how a null/abort branch affects
-later payoffs.
+\[
+  \mathtt{VegasLang.lower} :
+    \mathrm{VegasLang}\,\Gamma \to
+    \mathrm{VegasCore}\,\Gamma.
+\]
+The phase lowering emits all hidden nullable commits in source order
+\emph{first}, then a corresponding chain of public reveals. The program
+event-graph elaborator recovers the information barrier: same-phase
+commits share a frontier, and each reveal waits for all earlier commits
+in addition to reading the committed secret.
 
 \paragraph{Current scope.}
-The surface language keeps \Let{} because \TT{VegasCore} keeps \Let{}.
-It also deliberately omits quit handlers. Handler support is a later
-extension because a strategic quit changes the action space and control flow;
-it is not merely a value-level option.
+The surface keeps \Let{} because \DefRef{VegasCore} keeps \Let. It does
+not include quit handlers — a strategic quit changes the action space
+and control flow and is a future extension.
 
 \subsection{Visibility predicates: \TT{publicVars}, \TT{visibleVars},
-  \TT{ObsEq}\label{def:ObsEq}, \TT{GuardUsesOnly}, \TT{ViewScoped}\label{def:ViewScoped}}
-\label{def:scope}\label{def:publicVars}\label{def:visibleVars}
+  \TT{ObsEq}, \TT{GuardUsesOnly}, \TT{ViewScoped}}
+\label{def:scope}\label{def:publicVars}\label{def:visibleVars}\label{def:ObsEq}\label{def:ViewScoped}
 
-\paragraph{Lean.}
-\begin{align*}
-\mathtt{publicVars}\,\Gamma &: \mathrm{Finset}\,\mathrm{VarId} \\
-\mathtt{visibleVars}\,p\,\Gamma &: \mathrm{Finset}\,\mathrm{VarId} \\
-\mathtt{ObsEq}\,p\,\rho_1\,\rho_2 &\;:\;
-  \mathrm{AgreesOn}\,\rho_1\,\rho_2\,(\mathtt{visibleVars}\,p\,\Gamma) \\
-\mathtt{GuardUsesOnly}\,R &\;:\; \mathtt{exprDeps}\,R \subseteq
-  \mathrm{insert}\,x\,(\mathtt{visibleVars}\,p\,\Gamma) \\
-\mathtt{ViewScoped}\,p &\;:\;
-  \text{recursive judgement on programs}
-\end{align*}
+\begin{leanbox}
+def publicVars   : VCtx P L $\to$ Finset VarId\\
+def visibleVars  (p : P) : VCtx P L $\to$ Finset VarId\\[3pt]
+def ObsEq (p : P) ($\rho_1\,\rho_2$ : Env L.Val (eraseVCtx $\Gamma$)) : Prop :=\\
+\bd AgreesOn $\rho_1\,\rho_2$ (visibleVars p $\Gamma$)\\[3pt]
+def GuardUsesOnly (p : P) (x : VarId)\\
+\bd (R : L.Expr ((x, b) :: eraseVCtx $\Gamma$) L.bool) : Prop :=\\
+\bd L.exprDeps R $\subseteq$ insert x (visibleVars p $\Gamma$)\\[3pt]
+inductive ViewScoped : VegasCore P L $\Gamma$ $\to$ Prop\\
+\bd \hfill\textrm{\textit{(recursive judgement on programs)}}
+\end{leanbox}
 
-\paragraph{Math.}
-$\mathrm{publicVars}(\Gamma)$ and $\mathrm{visibleVars}(p, \Gamma)$ are the
-sets of variable identifiers that are public, respectively visible to player
-$p$. Two erased environments are \emph{observationally equivalent} for $p$,
-written $\rho_1 \sim_p \rho_2$, if they agree on all variables in
-$\mathrm{visibleVars}(p, \Gamma)$. The \TT{GuardUsesOnly} predicate says a
-commit guard $R$ for player $p$ proposing variable $x$ depends only on
-$\{x\} \cup \mathrm{visibleVars}(p, \Gamma)$. Finally
-$\mathtt{ViewScoped}\,p$ is the recursive judgement that holds at \Commit{}
-nodes and is forwarded transparently across other constructors.
+$\mathtt{publicVars}\,\Gamma$ and $\mathtt{visibleVars}(p, \Gamma)$ are
+the sets of variable identifiers that are, respectively, public in
+$\Gamma$ and visible to player $p$. Two erased environments are
+\emph{observationally equivalent} for $p$, written $\rho_1 \sim_p
+\rho_2$, when \DefRef{ObsEq}~$p$ holds — that is, when they agree on
+$\mathtt{visibleVars}(p, \Gamma)$. \DefRef{GuardUsesOnly} bounds a
+commit guard's dependencies: for player $p$ proposing $x$, the guard
+$R$ may depend only on $\{x\} \cup \mathtt{visibleVars}(p, \Gamma)$.
+\DefRef{ViewScoped}~$p$ is the recursive judgement on
+\DefRef{VegasCore} programs that fires \DefRef{GuardUsesOnly} at every
+\Commit{} site and is forwarded transparently across the other
+constructors.
 
 \paragraph{Soundness.}
-The pivotal lemma \TT{evalGuard_eq_of_obsEq}\label{def:evalGuard_eq_of_obsEq} says: \emph{provided the
-proposed action variable $x$ is fresh in $\Gamma$}, if the guard satisfies
-\TT{GuardUsesOnly} and $\rho_1 \sim_p \rho_2$, then evaluating the guard on
-a proposed action against $\rho_1$ or $\rho_2$ yields the same result. The
-freshness side condition is needed because $x$ shadows the head of the
-extended context $(x, b) :: \erasectx{\Gamma}$ and we must know $x$ is not
-already in $\Gamma$. This is the formal statement that \emph{a player's
-commitment depends only on what they can see}.
+The pivotal lemma
+\DefRef{evalGuard_eq_of_obsEq}\label{def:evalGuard_eq_of_obsEq}: if $x$
+is fresh in $\Gamma$, the guard satisfies \DefRef{GuardUsesOnly}, and
+$\rho_1 \sim_p \rho_2$, then evaluating the guard on a proposed action
+against either environment gives the same Boolean. The freshness side
+condition is needed because $x$ shadows the head of $(x,b) ::
+\erasectx{\Gamma}$ and we must know $x$ is not already in $\Gamma$.
+This is the formal statement that \emph{a player's commitment depends
+only on what they can see}.
 
 \paragraph{Worked example.}
-For a four-binding context
+For
 \[
   \Gamma \;=\;
     \bigl[\,(x_1,\,\pub\,\bool),\;
@@ -628,301 +787,376 @@ For a four-binding context
             (x_3,\,\hid\,p_1\,\bool),\;
             (x_4,\,\pub\,\intt)\,\bigr],
 \]
-the per-player views are
+the per-player views and the public fragment are
 \begin{align*}
   \view{p_1} &=
-    \bigl[\,(x_1,\,\pub\,\bool),\;(x_3,\,\hid\,p_1\,\bool),\;(x_4,\,\pub\,\intt)\,\bigr],
-    \\
+    \bigl[\,(x_1,\,\pub\,\bool),\,
+             (x_3,\,\hid\,p_1\,\bool),\,
+             (x_4,\,\pub\,\intt)\,\bigr], \\
   \view{p_2} &=
-    \bigl[\,(x_1,\,\pub\,\bool),\;(x_2,\,\hid\,p_2\,\intt),\;(x_4,\,\pub\,\intt)\,\bigr],
+    \bigl[\,(x_1,\,\pub\,\bool),\,
+             (x_2,\,\hid\,p_2\,\intt),\,
+             (x_4,\,\pub\,\intt)\,\bigr], \\
+  \pubctx{\Gamma} &=
+    \bigl[\,(x_1,\,\pub\,\bool),\,(x_4,\,\pub\,\intt)\,\bigr].
 \end{align*}
-and $\pubctx{\Gamma} = \bigl[(x_1,\pub\,\bool),\,(x_4,\pub\,\intt)\bigr]$.
-Neither player sees both hidden bindings; the two views overlap exactly on
-$\pubctx{\Gamma}$.
+Neither player sees both hidden bindings; the two views overlap exactly
+on $\pubctx{\Gamma}$.
 
 % =====================================================================
 \section{Well-formedness Obligations}
 
-A raw \TT{VegasCore} program is just a tree. To turn it into a game, four
-predicates must hold; they are bundled in \WFP.
+A raw \DefRef{VegasCore} program is just a tree. To read it as a game,
+four predicates must hold; they are bundled into the \WFP{} structure
+at the end of this section.
 
 \subsection{Freshness: \TT{Fresh}, \TT{FreshBindings}, \TT{WFCtx}}
 \label{def:fresh}\label{def:Fresh}\label{def:WFCtx}
 
-\paragraph{Math.}
-$\mathrm{Fresh}(x, \Gamma)$ says $x$ does not appear in $\Gamma$. A
-\emph{well-formed context} $\mathrm{WFCtx}\,\Gamma$ is one with no repeated names
-($\mathtt{Nodup}\,(\Gamma.\mathtt{map}\,\mathtt{fst})$). The recursive
-predicate $\mathrm{FreshBindings}$ asserts that every binder introduced by
-\Let, \Sample, \Commit, or \Reveal{} is fresh in its enclosing context,
-i.e.\ the program is in \emph{static-single-assignment} form (every
-variable name is bound by exactly one program point and is never
-reassigned).
+\begin{leanbox}
+def Fresh (x : VarId) ($\Gamma$ : VCtx P L) : Prop :=\\
+\bd x $\notin\,\Gamma$.map Prod.fst\\[3pt]
+def WFCtx ($\Gamma$ : VCtx P L) : Prop :=\\
+\bd ($\Gamma$.map Prod.fst).Nodup\\[3pt]
+def FreshBindings : VegasCore P L $\Gamma$ $\to$ Prop\\
+\bd | .ret \_              $\Rightarrow$ True\\
+\bd | .letExpr x \_ k      $\Rightarrow$ Fresh x $\Gamma$ $\land$ FreshBindings k\\
+\bd | .sample x \_ k       $\Rightarrow$ Fresh x $\Gamma$ $\land$ FreshBindings k\\
+\bd | .commit x \_ \_ k    $\Rightarrow$ Fresh x $\Gamma$ $\land$ FreshBindings k\\
+\bd | .reveal y \_ \_ \_ k $\Rightarrow$ Fresh y $\Gamma$ $\land$ FreshBindings k
+\end{leanbox}
 
-\paragraph{Why.}
-Unique names eliminate accidental shadowing in the visibility analysis and
-make environment lookups proof-irrelevant. They are decidable.
+$\fresh(x, \Gamma)$ says $x$ does not appear in $\Gamma$;
+\DefRef{WFCtx}~$\Gamma$ says no name appears twice in $\Gamma$;
+\DefRef{FreshBindings} recursively asserts that every binder introduced
+by \Let, \Sample, \Commit, or \Reveal{} is fresh in its enclosing
+context. Together they say the program is in \emph{static
+single-assignment form}: every variable name is bound at exactly one
+program point and never reassigned. Unique names remove shadowing in
+the visibility analysis and make environment lookups proof-irrelevant.
+All three predicates are decidable.
 
 \subsection{Reveal completeness: \TT{RevealComplete}}
 \label{def:reveal}\label{def:RevealComplete}
 
-\paragraph{Math.}
-$\mathrm{RevealComplete}(\mathrm{pending}, p)$ tracks the set of currently
-sealed commitments. At a \Commit{} node a fresh name is added; at a \Reveal{}
-node it must be present and is removed. At \Ret{} the pending set must be
-empty. Equivalently: every committed value is revealed exactly once before
-the game ends. Decidable.
+\begin{leanbox}
+def RevealComplete : List VarId $\to$ VegasCore P L $\Gamma$ $\to$ Prop\\
+\bd | pending, .ret \_           $\Rightarrow$ pending = []\\
+\bd | pending, .letExpr \_ \_ k  $\Rightarrow$ RevealComplete pending k\\
+\bd | pending, .sample \_ \_ k   $\Rightarrow$ RevealComplete pending k\\
+\bd | pending, .commit x \_ \_ k $\Rightarrow$ RevealComplete (x :: pending) k\\
+\bd | pending, .reveal \_ \_ x \_ k $\Rightarrow$\\
+\bdd x $\in$ pending $\land$ RevealComplete (pending.filter ($\cdot \neq$ x)) k
+\end{leanbox}
 
-\paragraph{Why.}
-Reveal completeness ensures every committed secret is publicly disclosed
-before the game ends. It is \emph{not} a termination property — termination
-follows from the finite syntax tree, captured by \TT{syntaxSteps}\label{def:syntaxSteps}, and the
-horizon-bounded FOSG presentation. Payoff expressions type-check over the
-public context regardless of revelation; what \texttt{RevealComplete} buys
-is that all committed information becomes available to all players for
-inspection before termination.  It does not imply that every commitment
-matters to the payoff expression.
+The \TT{pending} list tracks currently-sealed commitments. \Commit{}
+adds a fresh name; \Reveal{} requires the name to be in \TT{pending}
+and removes it; \Ret{} requires \TT{pending} to be empty. Equivalently:
+every committed value is revealed exactly once before the game ends.
+
+Reveal completeness is not a termination property — termination follows
+from the finite syntax tree, measured by
+\DefRef{syntaxSteps}\label{def:syntaxSteps}, and the horizon-bounded
+FOSG presentation. Payoff expressions type-check over the public
+context regardless; what \DefRef{RevealComplete} buys is that every
+committed value becomes available for inspection before payouts. It
+does not imply that every commitment matters to the payoff expression.
 
 \subsection{Legality and normalisation: \TT{Legal}, \TT{NormalizedDists}}
 \label{def:legal}\label{def:Legal}\label{def:NormalizedDists}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{def Legal} (program-level): every \Commit{} site has at least one
-proposed action satisfying the guard.\\
-\TT{def NormalizedDists}: every \Sample{} distribution sums to weight 1.
-\end{quote}
+\begin{leanbox}
+def Legal : VegasCore P L $\Gamma$ $\to$ Prop\\
+\bd | .ret \_              $\Rightarrow$ True\\
+\bd | .letExpr \_ \_ k     $\Rightarrow$ Legal k\\
+\bd | .sample \_ \_ k      $\Rightarrow$ Legal k\\
+\bd | .commit \_ \_ (b := b) R k $\Rightarrow$\\
+\bdd ($\forall$ $\rho$ : Env L.Val (eraseVCtx $\Gamma$),\\
+\bdd \ \ $\exists$ a : L.Val b, evalGuard R a $\rho$ = true)\\
+\bdd $\land$ Legal k\\
+\bd | .reveal \_ \_ \_ \_ k $\Rightarrow$ Legal k\\[3pt]
+def NormalizedDists : VegasCore P L $\Gamma$ $\to$ Prop\\
+\bd | .ret \_              $\Rightarrow$ True\\
+\bd | .letExpr \_ \_ k     $\Rightarrow$ NormalizedDists k\\
+\bd | .sample \_ D k       $\Rightarrow$\\
+\bdd ($\forall$ $\rho$, (L.evalDist D $\rho$).totalWeight = 1)\\
+\bdd $\land$ NormalizedDists k\\
+\bd | .commit \_ \_ \_ k   $\Rightarrow$ NormalizedDists k\\
+\bd | .reveal \_ \_ \_ \_ k $\Rightarrow$ NormalizedDists k
+\end{leanbox}
 
-\paragraph{Math.}
-\Legal{} says, at each \Commit{} site for player $p$ with guard $R$ over
-type $b$ and ambient erased environment $\rho$,
-\[
-  \exists\, a \in \Val(b).\, \mathrm{evalGuard}(R, a, \rho) = \mathsf{true}.
-\]
-This is a \emph{strategic non-deadlock}: the game never reaches a position
-where the active player has no legal action. \NormDists{} is the
-probabilistic well-formedness condition: each sample's evalDist is a
-normalised finite weight, hence a true probability distribution after the
-\TT{toPMF} bridge.
+\DefRef{Legal} asserts \emph{strategic non-deadlock} at every \Commit{}
+site: for any erased environment $\rho$, some action $a$ of type $b$
+satisfies the guard. \DefRef{NormalizedDists} asserts that every
+\Sample{}'s evaluated distribution has total weight $1$, so it is a
+genuine probability distribution after the \DefRef{toPMF} bridge.
 
-\paragraph{Decidability caveat.}
-Both predicates are decidable when value domains are finite (the relevant
-\TT{FiniteType}\label{def:FiniteType} instances are picked up by \TT{FiniteDomains}\label{def:FiniteDomains}). Without a
-finite-type assumption, the existential in \Legal{} ranges over an
+Both predicates are decidable when value domains are finite, with the
+relevant \DefRef{FiniteType}\label{def:FiniteType} instances picked up by
+\DefRef{FiniteDomains}\label{def:FiniteDomains}. Without a finite-type
+assumption, the existential in \DefRef{Legal} ranges over an
 arbitrarily large value space.
 
 \paragraph{Visibility note.}
-\Legal{} permits the witness $a$ to depend on the entire erased
+\DefRef{Legal} permits the witness $a$ to depend on the entire erased
 environment, while game-theoretic strategies must depend only on the
-player's view. The gap is closed at the strategic API: equilibrium predicates
-quantify over \emph{reachable legal} strategies of the FOSG view, in which
-illegal actions are not in the carrier (\S\ref{sec:strategic}).
+player's view. The gap closes at the strategic API: equilibrium
+predicates range over \emph{reachable legal} strategies of the native
+round view, in which illegal actions are not in the carrier.
 
 \subsection{The bundled checked program: \TT{WFProgram}}
 \label{def:WFProgram}
 
-\paragraph{Lean.}
-\TT{structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where}
-\begin{quote}
-$\Gamma$\TT{ : VCtx P L} \\
-\TT{prog : VegasCore P L }$\Gamma$ \\
-\TT{env : VEnv L }$\Gamma$ \\
-\TT{wctx : WFCtx }$\Gamma$ \\
-\TT{wf : WF prog} \quad\textemdash\quad fresh, reveal-complete, view-scoped\\
-\TT{normalized : NormalizedDists prog} \\
-\TT{legal : Legal prog}
-\end{quote}
+\begin{leanbox}
+structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where\\
+\bd $\Gamma$          : VCtx P L\\
+\bd prog       : VegasCore P L $\Gamma$\\
+\bd env        : VEnv L $\Gamma$\\
+\bd wctx       : WFCtx $\Gamma$\label{def:wctx}\\
+\bd wf         : WF prog\hfill\textrm{\textit{(FreshBindings $\land$ RevealComplete [] $\land$ ViewScoped)}}\\
+\bd normalized : NormalizedDists prog\label{def:normalized}\\
+\bd legal      : Legal prog
+\end{leanbox}
 
-\paragraph{Math.}
-A \WFP{} is the API boundary at which raw syntax becomes a \emph{game}: a
-program in some context $\Gamma$, an initial environment $\rho_0$, and four
-static obligations — \TT{wctx}\label{def:wctx}, \TT{wf}, \TT{normalized}\label{def:normalized}, \TT{legal} —
-needed to read the program as a finite stochastic extensive-form game.
-\TT{wf} itself is a triple of \TT{FreshBindings}\label{def:FreshBindings}, \TT{RevealComplete~[]},
-and \TT{ViewScoped}, so the bundle in fact records six independent facts.
-Every public game-theoretic API in the codebase consumes \WFP, never raw
-\TT{VegasCore}.
+A \WFP{} is the API boundary at which raw syntax becomes a game: a
+program in some initial context $\Gamma$, an initial environment
+$\rho_0$, and four static obligations. The \TT{wf} field unpacks into
+\DefRef{FreshBindings}\label{def:FreshBindings},
+$\DefRef{RevealComplete}\,[]$, and \DefRef{ViewScoped}, so the bundle
+records six independent facts in total. Every public game-theoretic API
+in the codebase consumes \WFP{}, never raw \DefRef{VegasCore}.
 
 \paragraph{Program event-graph obligation bundle.}
-The program event-graph elaborator has an additional local packaging layer:
-\TT{ProgramNode.ProgramObligations p} bundles exactly the static facts needed
-to interpret a source occurrence,
-\TT{hctx}\label{def:hctx}, \TT{fresh}, \TT{hscoped}\label{def:hscoped}, \TT{legal}, and \TT{normalized}.  Its
-tail projections \TT{letTail}\label{def:letTail}, \TT{sampleTail}\label{def:sampleTail}, \TT{commitTail}\label{def:commitTail}, and
-\TT{revealTail}\label{def:revealTail} encode the recursive proof payloads for suffix programs.
-\TT{WFProgram.obligations}\label{def:WFProgram.obligations} builds this bundle from a checked program $g$ and
-is what \TT{programEventGraph}\label{def:programEventGraph} passes to \TT{ProgramNode.sem}\label{def:ProgramNode.sem},
-\TT{prereqs}\label{def:prereqs}, \TT{sliceLegal}\label{def:sliceLegal}, \TT{actionLegal}\label{def:actionLegal}, and
-\TT{internalKernel}\label{def:internalKernel}. This is proof/API plumbing: it does not add a new
-semantic side condition, but it keeps the generated program event graph layer from
-threading five separate proof arguments through every recursive call.
+The event-graph elaborator uses a local repackaging,
+$\TT{ProgramNode.ProgramObligations}~p$, that bundles the same facts
+specialised to one source occurrence:
+\TT{hctx}\label{def:hctx}, \TT{fresh}, \TT{hscoped}\label{def:hscoped},
+\TT{legal}, \TT{normalized}. Its tail projections
+\TT{letTail}\label{def:letTail}, \TT{sampleTail}\label{def:sampleTail},
+\TT{commitTail}\label{def:commitTail}, and
+\TT{revealTail}\label{def:revealTail} carry the recursive proof
+payloads for suffix programs.
+\DefRef{WFProgram.obligations}\label{def:WFProgram.obligations} builds
+this bundle from a checked $g$ and is what
+\DefRef{programEventGraph}\label{def:programEventGraph} feeds to
+\DefRef{ProgramNode.sem}\label{def:ProgramNode.sem},
+\DefRef{prereqs}\label{def:prereqs},
+\DefRef{sliceLegal}\label{def:sliceLegal},
+\DefRef{actionLegal}\label{def:actionLegal}, and
+\DefRef{internalKernel}\label{def:internalKernel}. The repackaging adds
+no new semantic obligation; it keeps the elaborator from threading five
+separate proof arguments through every recursive call.
 
 \paragraph{Finite domains.}
-The class \TT{FiniteDomains}~$g$ provides instance evidence that all
-operational types in $g$ are finite (\TT{FiniteVCtx}\label{def:FiniteVCtx} for the initial context
-and \TT{FiniteProgram}\label{def:FiniteProgram} for the program). It is required for the \emph{public
-strategic-form} games but is genuinely separate from \WFP{} because payoff
-expressions return $\intt$, which is not finite.
+\DefRef{FiniteDomains}~$g$ supplies the instance evidence that all
+operational types in $g$ are finite —
+\DefRef{FiniteVCtx}\label{def:FiniteVCtx} for the initial context and
+\DefRef{FiniteProgram}\label{def:FiniteProgram} for the program. It is
+required for finite strategic-form games and is separate from \WFP{}
+because payoff expressions return $\intt$, which is not finite.
 
 % =====================================================================
 \section{The Event Graph}
+\label{sec:event-graph}
 
-The first nontrivial semantic step elaborates a checked source program into a
-DAG with extensional state. This subsection introduces the carrier; its
-soundness theorems (frontier diamond and stability) are stated in the main
-report.
+The first nontrivial semantic step elaborates a checked source program
+into a DAG with extensional state. This section introduces the carrier;
+its soundness theorems (frontier diamond and stability) are stated in
+the main report. Throughout this section, \TT{P} is the player type
+with \TT{[DecidableEq P]}, \TT{L} is an \DefRef{IExpr} instance, and
+$G$ is an \DefRef{EventGraph} (defined below).
 
 \subsection{Stored values and write slices}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{inductive WriteMode := clear | hidden} \\
-\TT{inductive StoredValue (}$\alpha$\TT{) := clear (}$v$\TT{) | hidden (}$v$\TT{)} \\
-\TT{abbrev WriteSlice G := (f : G.Field)} $\to$ \TT{Option (StoredValue (L.Val (G.fieldTy f)))}
-\end{quote}
+\begin{leanbox}
+inductive WriteMode where\\
+\bd | clear\\
+\bd | hidden\\[3pt]
+inductive StoredValue ($\alpha$ : Type) where\\
+\bd | clear  (value : $\alpha$)\\
+\bd | hidden (value : $\alpha$)\\[3pt]
+abbrev WriteSlice (G : EventGraph P L) : Type :=\\
+\bd (field : G.Field) $\to$ Option (StoredValue (L.Val (G.fieldTy field)))
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{stored value} is a value tagged with whether it is currently public
-(\textsf{clear}) or sealed (\textsf{hidden}). A \emph{write slice} is a
-partial function from fields to stored values: it records what fields a
-single event node writes when it executes. The empty slice is the all-\textsf{none}
-function; \texttt{single} writes one field.
+A \DefRef{StoredValue}\label{def:StoredValue} is a value tagged with
+whether it is currently public (\textsf{clear}) or sealed
+(\textsf{hidden}). A \DefRef{WriteSlice} is a partial function from
+fields to stored values: it records what fields a single event node
+writes when it executes. The empty slice is the all-\textsf{none}
+function; $\TT{WriteSlice.single}$ writes one field.
 
 \subsection{Event-graph-local expressions, distributions, and guards}
 \label{def:event-graph-local}
 
-\paragraph{Lean.}
-\TT{ReadEnv}\label{def:ReadEnv} packages the values of a declared finite read set;
-\TT{EventExpr}\label{def:EventExpr} (deterministic), \TT{EventDist}\label{def:EventDist} (PMF-valued), and
-\TT{EventGuard}\label{def:EventGuard} (boolean, with a \emph{visible}-versus-opaque read split and a
-satisfiability obligation) take such read environments and return a value, a
-distribution, or a Boolean.
+\begin{leanbox}
+structure ReadEnv (L : IExpr) (Field : Type)\label{def:ReadEnv}\\
+\bd (fieldTy : Field $\to$ L.Ty) (reads : Finset Field) where\\
+\bd value : (field : Field) $\to$ field $\in$ reads $\to$ L.Val (fieldTy field)\\[3pt]
+structure EventExpr (\ldots) (ty : L.Ty) where\\
+\bd reads : Finset Field\\
+\bd eval  : ReadEnv L Field fieldTy reads $\to$ L.Val ty\\[3pt]
+structure EventDist (\ldots) (ty : L.Ty) where\\
+\bd reads : Finset Field\\
+\bd eval  : ReadEnv L Field fieldTy reads $\to$ PMF (L.Val ty)\\[3pt]
+structure EventGuard (\ldots) (field : Field) where\\
+\bd reads        : Finset Field\\
+\bd visibleReads : Finset Field\\
+\bd visibleReads\_subset\_reads : visibleReads $\subseteq$ reads\\
+\bd eval : L.Val (fieldTy field) $\to$ ReadEnv \ldots reads $\to$ Bool\\
+\bd eval\_eq\_of\_visible\_eq :\\
+\bdd $\forall$ value $\rho_1\,\rho_2$, agree-on-visibleReads $\rho_1\,\rho_2$ $\to$\\
+\bdd \ \ eval value $\rho_1$ = eval value $\rho_2$\\
+\bd satisfiable : $\forall$ $\rho$, $\exists$ value, eval value $\rho$ = true
+\end{leanbox}
 
-\paragraph{Math.}
-An event-graph-local construct evaluates from \emph{only the fields it declares as
-reads}. This is an event-graph-level analogue of the source-level \TT{exprDeps}:
-the event graph carries explicit local dependency information rather than a
-syntactic over-approximation.
+\DefRef{ReadEnv} packages the values of a declared finite read set.
+\DefRef{EventExpr} is deterministic and \DefRef{EventDist} is
+PMF-valued; both evaluate from \emph{only} their declared reads, an
+event-graph-level analogue of the source-level
+$\DefRef{exprDeps}$.\label{def:EventExpr}\label{def:EventDist}
 
-\paragraph{The visibility split inside guards.}
-A \TT{EventGuard} keeps a subset \TT{visibleReads}\label{def:visibleReads} $\subseteq$ \TT{reads}\label{def:reads}
-of \emph{visible} reads, plus a soundness obligation
-\TT{eval_eq_of_visible_eq}\label{def:eval_eq_of_visible_eq}: any two read environments that agree on the
-visible part must give the same Boolean. Conceptually, the guard's value
-depends on the public-or-owner-visible reads only; the additional
-\texttt{reads} are tolerated for syntactic convenience but cannot affect
-truth value.
+\DefRef{EventGuard}\label{def:EventGuard} adds a visibility split
+inside guards: a sublist
+$\DefRef{visibleReads}\label{def:visibleReads} \subseteq
+\DefRef{reads}\label{def:reads}$ together with the soundness obligation
+\DefRef{eval_eq_of_visible_eq}\label{def:eval_eq_of_visible_eq} that
+read environments agreeing on \TT{visibleReads} produce the same
+Boolean. The remaining (opaque) reads are tolerated for syntactic
+convenience but cannot affect truth value. The
+\DefRef{satisfiable}\label{def:satisfiable} field bundles the
+existence-of-a-legal-action obligation directly into the guard.
 
 \subsection{Node semantics: \TT{NodeSem}}
 
-\paragraph{Lean.}
-\TT{inductive NodeSem (P)(F)(L)} with constructors
-\TT{assign}\label{def:assign}, \TT{sample}\label{def:sample}, \TT{commit}\label{def:commit}, \TT{reveal}.
+\begin{leanbox}
+inductive NodeSem (Player Field : Type) [DecidableEq Field]\\
+\bd (L : IExpr) (fieldTy : Field $\to$ L.Ty) where\\[2pt]
+\bd | assign (field : Field)\label{def:assign}\\
+\bdd (expr : EventExpr L Field fieldTy (fieldTy field))\\[2pt]
+\bd | sample (field : Field)\label{def:sample}\\
+\bdd (dist : EventDist L Field fieldTy (fieldTy field))\\[2pt]
+\bd | commit (who : Player) (field : Field)\label{def:commit}\\
+\bdd (guard : EventGuard L Field fieldTy field)\\[2pt]
+\bd | reveal (source target : Field)\\
+\bdd (sameTy : fieldTy source = fieldTy target)
+\end{leanbox}
 
-\paragraph{Math.}
-Each event node carries one of four semantic payloads, mirroring (but not
-identical to) the four non-\Ret{} source constructors. Several projections
-are derived: $\mathrm{actor}$ (which player owns this node, if any),
-$\mathrm{reads}$ (the fields read), $\mathrm{writes}$ (the field-write list),
-$\mathrm{writeTarget}$ (the unique field this node writes), $\mathrm{writeFields}$
-(its singleton finset form), and the predicates \TT{WritesField}\label{def:WritesField} and
-\TT{WritesWithMode}\label{def:WritesWithMode} that locate a write by field and storage mode. Only
-\TT{commit} has an actor — \TT{assign}, \TT{sample}, and \TT{reveal} are
-internal. The single-field-write convention is exposed as the simp lemma
-\TT{writeFields_eq_singleton}\label{def:writeFields_eq_singleton}: every node writes exactly one field.
-The Boolean recognisers \TT{NodeSem.isCommit}\label{def:NodeSem.isCommit} and
-\TT{NodeSem.isReveal}\label{def:NodeSem.isReveal} are used by the program
-event-graph prerequisites to state commit/reveal phase barriers independently
-of the storage fields read by a reveal.
+\DefRef{NodeSem}\label{def:NodeSem} is the per-node semantic payload.
+Four constructors mirror, but are not identical to, the four
+non-\Ret{} source constructors. Visibility is computed from the writes:
+clear writes are public/revealed, hidden writes are commits. Only
+\TT{commit} has an actor; \TT{assign}, \TT{sample}, and \TT{reveal}
+are internal events of the machine.
+
+A handful of derived projections are used elsewhere: $\actor(s)$,
+$\readsOf(s)$, $\writeOf(s)$, $\TT{writeTarget}(s)$, $\TT{writeFields}(s)$
+(the singleton finset form), and the witnesses
+\DefRef{WritesField}\label{def:WritesField} and
+\DefRef{WritesWithMode}\label{def:WritesWithMode} that locate a write
+by field and storage mode. The simp lemma
+\DefRef{writeFields_eq_singleton}\label{def:writeFields_eq_singleton}
+exposes the every-node-writes-exactly-one-field convention. The Boolean
+recognisers
+\DefRef{NodeSem.isCommit}\label{def:NodeSem.isCommit} and
+\DefRef{NodeSem.isReveal}\label{def:NodeSem.isReveal} let the
+program-event-graph prerequisites state commit/reveal phase barriers
+without inspecting the reveal's storage fields.
 
 \paragraph{Field reindexing.}
-\TT{NodeSem.mapFields}\label{def:NodeSem.mapFields} transports a node-semantic payload through a field map
-that preserves field types. It is the workhorse used by the program event-graph
-elaborator to reuse the abstract \TT{NodeSem}\label{def:NodeSem} carrier over its concrete program
-fields rather than maintaining a parallel ad-hoc layer.
+\DefRef{NodeSem.mapFields}\label{def:NodeSem.mapFields} transports a
+node-semantic payload along a field map preserving field types. The
+program event-graph elaborator uses it to reuse the abstract
+\DefRef{NodeSem} carrier over its concrete program fields rather than
+maintain a parallel layer.
 
 \subsection{The event graph itself: \TT{EventGraph}}
 \label{def:EventGraph}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{Node, Field : Type}\\
-\TT{nodeDecEq : DecidableEq Node}, \TT{fieldDecEq : DecidableEq Field}\\
-\TT{nodes : Finset Node}, \TT{fields : Finset Field}\\
-\TT{fieldTy : Field} $\to$ \TT{L.Ty}\label{def:L.Ty}, \TT{fieldOwner : Field} $\to$ \TT{Option P}\\
-\TT{initial : (f : Field)} $\to$ \TT{Option (L.Val (fieldTy f))}\\
-\TT{sem : Node} $\to$ \TT{NodeSem}, \TT{prereqs : Node} $\to$ \TT{Finset Node}\\
-\TT{rank : Node} $\to$ \TT{Nat}\label{def:Nat}\\
-\TT{prereqs_subset_nodes}\label{def:prereqs_subset_nodes}, \TT{prereq_rank_lt}\label{def:prereq_rank_lt}\\
-\TT{read_fields_mem}\label{def:read_fields_mem}, \TT{write_fields_mem}\label{def:write_fields_mem}, \TT{no_duplicate_writes}\label{def:no_duplicate_writes}\\
-\TT{sliceLegal : Node} $\to$ \TT{WriteSlice}\label{def:WriteSlice} $\to$ \TT{Prop}\label{def:Prop}\\
-\TT{actionLegal : ResultAssignment} $\to$ \TT{Node}\label{def:Node} $\to$ \TT{WriteSlice} $\to$ \TT{Prop}\\
-\TT{internalKernel : Node} $\to$ \TT{ResultAssignment}\label{def:ResultAssignment} $\to$ \TT{PMF WriteSlice}
-\end{quote}
-The last three lines use the namespace abbreviations \TT{WriteSlice G} and
-\TT{ResultAssignment G}; these are definitionally the raw dependent function
-types appearing in the structure fields.
+\begin{leanbox}
+structure EventGraph (P : Type) [DecidableEq P] (L : IExpr) where\\
+\bd Node, Field : Type\\
+\bd nodeDecEq  : DecidableEq Node\\
+\bd fieldDecEq : DecidableEq Field\\
+\bd nodes  : Finset Node\\
+\bd fields : Finset Field\\
+\bd fieldTy    : Field $\to$ L.Ty\label{def:L.Ty}\\
+\bd fieldOwner : Field $\to$ Option P\\
+\bd initial : (f : Field) $\to$ Option (L.Val (fieldTy f))\\[2pt]
+\bd sem     : Node $\to$ NodeSem P Field L fieldTy\\
+\bd prereqs : Node $\to$ Finset Node\\
+\bd rank    : Node $\to$ Nat\label{def:Nat}\\[2pt]
+\bd prereqs\_subset\_nodes\label{def:prereqs_subset_nodes}\\
+\bd prereq\_rank\_lt\label{def:prereq_rank_lt}\\
+\bd read\_fields\_mem\label{def:read_fields_mem}\\
+\bd write\_fields\_mem\label{def:write_fields_mem}\\
+\bd no\_duplicate\_writes\label{def:no_duplicate_writes}\\[2pt]
+\bd sliceLegal     : Node $\to$ WriteSlice $\to$ Prop\label{def:WriteSlice}\label{def:Prop}\\
+\bd actionLegal    : ResultAssignment $\to$ Node\label{def:Node} $\to$ WriteSlice $\to$ Prop\\
+\bd internalKernel : Node $\to$ ResultAssignment\label{def:ResultAssignment} $\to$ PMF WriteSlice
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{event graph} is a finite, ranked DAG of typed nodes over a finite
-set of typed fields, equipped with three pieces of legality and execution
-data:
+An \DefRef{EventGraph} is a finite, ranked DAG of typed nodes over a
+finite set of typed fields, with three pieces of legality and
+execution data:
 \begin{itemize}\itemsep1pt
-\item \emph{sliceLegal} (\emph{shape}): a predicate on a single node and a
-  candidate write slice. It is purely structural: for every kind of node,
-  it checks that the slice writes the expected fields with the expected
-  visibility/typing. It does \emph{not} consult guards or other nodes'
-  results.
-\item \emph{actionLegal} (\emph{dynamic}): a predicate that may consult the
-  result assignment of already-completed nodes. For player commit actions
-  this is where the \emph{guard} is evaluated against the proposed action
-  and the current public/owner-visible reads.
-\item \emph{internalKernel}: a $\mathrm{PMF}$ over write slices for non-player
-  (\texttt{assign}, \texttt{sample}, \texttt{reveal}) nodes — these are
-  internal events of the machine, not player actions. For \texttt{assign}
-  and \texttt{reveal} this is a Dirac kernel; for \texttt{sample} it is the
+\item $\TT{sliceLegal}$ \emph{(shape)}: a predicate on a single node
+  and a candidate write slice. Purely structural — for every kind of
+  node, it checks that the slice writes the expected fields with the
+  expected visibility and typing. It does \emph{not} consult guards or
+  other nodes' results.
+\item $\TT{actionLegal}$ \emph{(dynamic)}: a predicate that may consult
+  the result assignment of already-completed nodes. For player commit
+  actions this is where the guard is evaluated against the proposed
+  action and the current public/owner-visible reads.
+\item $\TT{internalKernel}$: a PMF over write slices for non-player
+  nodes (\TT{assign}, \TT{sample}, \TT{reveal}). For \TT{assign} and
+  \TT{reveal} this is a Dirac kernel; for \TT{sample} it is the
   source-level distribution evaluated at the current public state.
 \end{itemize}
-
-\paragraph{Why the rank.}
-The \texttt{rank} field is a strict topological order witness; it is the
-termination measure for inductions over event-graph executions. The DAG itself
-encodes \emph{causal} dependency: a node may only execute when its
-prerequisites have produced results.
+The DAG itself encodes \emph{causal} dependency via $\TT{prereqs}$: a
+node may only execute when its prerequisites have produced results.
+The $\TT{rank}$ field is a strict topological-order witness used as the
+termination measure in inductions over executions.
 
 \subsection{Configurations and the frontier}
 \label{def:Configuration}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{abbrev ResultAssignment G := G.Node} $\to$ \TT{Option (WriteSlice G)} \\
-\TT{structure Configuration G where}\\
-\quad\TT{result : ResultAssignment G}\\
-\quad\TT{result_nodes :} completed nodes belong to \TT{G.nodes}\label{def:G.nodes}\\
-\quad\TT{closed :} completed nodes are closed under \TT{G.prereqs}\label{def:G.prereqs}\\
-\quad\TT{legal :} stored slices satisfy \TT{G.sliceLegal}\label{def:G.sliceLegal}\\
-\TT{noncomputable def frontier (cfg : Configuration G) : Finset G.Node}
-\end{quote}
+\begin{leanbox}
+abbrev ResultAssignment (G : EventGraph P L) : Type :=\\
+\bd (node : G.Node) $\to$ Option (WriteSlice G)\\[3pt]
+structure Configuration (G : EventGraph P L) where\\
+\bd result : ResultAssignment G\\
+\bd result\_nodes :\\
+\bdd $\forall$ \{node\}, (result node).isSome $\to$ node $\in$ G.nodes\label{def:G.nodes}\\
+\bd closed :\\
+\bdd $\forall$ \{node prereq\},\\
+\bdd \ \ (result node).isSome $\to$ prereq $\in$ G.prereqs node\label{def:G.prereqs} $\to$\\
+\bdd \ \ (result prereq).isSome\\
+\bd legal :\\
+\bdd $\forall$ \{node slice\}, result node = some slice $\to$\\
+\bdd \ \ G.sliceLegal node slice\label{def:G.sliceLegal}\\[3pt]
+noncomputable def frontier (cfg : Configuration G) : Finset G.Node
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{configuration} of an event graph is an extensional record of which
-nodes have produced results. The dependency-closure invariant says that if
-$n$ has a result, all of its prerequisites have results too:
-\[
-  \mathrm{result}(n)\ \mathrm{is\ }\mathsf{some}
-  \;\implies\; \forall q \in \mathrm{prereqs}(n).\;
-  \mathrm{result}(q)\ \mathrm{is\ }\mathsf{some}.
-\]
-The \emph{frontier} is the set of unfinished nodes whose prerequisites are
-all finished: nodes that are \emph{enabled} to execute. Crucially, the
-frontier is \emph{computed} from the result assignment, not stored.
+A \DefRef{Configuration} extensionally records which nodes have
+produced results and what those results are. The
+\TT{closed}\,/\,$\TT{result\_nodes}$\,/\,\TT{legal} invariants say:
+completed nodes are in $G.\TT{nodes}$, the completed set is closed
+under prerequisites, and every stored slice satisfies
+$G.\TT{sliceLegal}$.
+
+The \emph{frontier} of a configuration is the set of unfinished nodes
+whose prerequisites are all finished — the nodes \emph{enabled} to
+execute. Crucially, the frontier is computed from the result
+assignment, not stored.
 
 \paragraph{Why extensional state.}
-Recording only the result assignment, not the order in which nodes were
-executed, makes the diamond property \emph{definitional}: two
-linearisations that finish the same set of nodes with the same per-node
-slices end up at literally the same configuration. A scheduling-based
-state would need a separate quotient.
+Storing only the result assignment, not the order in which nodes were
+executed, makes the diamond property definitional: two linearisations
+that finish the same set of nodes with the same per-node slices end up
+at literally the same configuration. A scheduling-based state would
+need a separate quotient.
 
 \paragraph{Diagram.}
 \begin{center}
@@ -957,114 +1191,129 @@ result.
 % =====================================================================
 \section{Machines}
 
-The event graph is a static description; \TT{Machine} is the abstract
-asynchronous execution carrier into which it is interpreted.
+An event graph is a static description; a \DefRef{Machine} is the
+abstract asynchronous execution carrier into which it is interpreted.
 
 \subsection{The machine carrier}
 \label{def:Machine}
 
-\paragraph{Lean.}
-\TT{structure Machine (P : Type)} with fields
-\TT{State, Action : P} $\to$ \TT{Type}, \TT{Internal, Public, Outcome},
-\TT{Obs : P} $\to$ \TT{Type}, \TT{init}\label{def:init}, \TT{available}\label{def:available},
-\TT{availableInternal}\label{def:availableInternal}, \TT{stepPlay}\label{def:stepPlay}, \TT{stepInternal}\label{def:stepInternal} (PMF-valued),
-\TT{terminal}\label{def:terminal}, \TT{publicView}\label{def:publicView}, \TT{observe}\label{def:observe}, \TT{outcome}\label{def:outcome}, \TT{utility}\label{def:utility}.
+\begin{leanbox}
+structure Machine (Player : Type) where\\
+\bd State    : Type\\
+\bd Action   : Player $\to$ Type\\
+\bd Internal : Type\\
+\bd Public   : Type\\
+\bd Obs      : Player $\to$ Type\\
+\bd Outcome  : Type\\[2pt]
+\bd init    : State\label{def:init}\\
+\bd available         : State $\to$ (p : Player) $\to$ Set (Action p)\label{def:available}\\
+\bd availableInternal : State $\to$ Set Internal\label{def:availableInternal}\\
+\bd stepPlay     : (p : Player) $\to$ Action p $\to$ State $\to$ PMF State\label{def:stepPlay}\\
+\bd stepInternal : Internal $\to$ State $\to$ PMF State\label{def:stepInternal}\\[2pt]
+\bd terminal   : State $\to$ Prop\label{def:terminal}\\
+\bd publicView : State $\to$ Public\label{def:publicView}\\
+\bd observe    : (p : Player) $\to$ State $\to$ Obs p\label{def:observe}\\
+\bd outcome    : State $\to$ Outcome\label{def:outcome}\\
+\bd utility    : Outcome $\to$ Payoff Player\label{def:utility}
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{machine} is a tuple
+A machine is a tuple
 \[
 \begin{aligned}
   M \;=\; \bigl(\;
     & S,\; \{A_p\}_p,\; I,\; \mathrm{Pub},\; \{O_p\}_p,\; \Outcome,\;
        s_0, \\
     & \mathrm{avail},\; \mathrm{availInt},\;
-       \mathrm{stepPlay},\; \mathrm{stepInternal},\\
-    & \mathrm{term},\; \mathrm{pubView},\; \mathrm{obs},\; \mathrm{out},\; u
-  \;\bigr)
+       \mathrm{stepPlay},\; \mathrm{stepInternal},\;
+       \mathrm{term},\; \mathrm{pubView},\; \mathrm{obs},\; \mathrm{out},\; u
+  \;\bigr),
 \end{aligned}
 \]
-of: a state space; per-player action sets; an internal-event set; a public
-observation type and per-player observation types; an outcome type with
-utility $u : \Outcome \to (\Players \to \mathbb{R})$; an initial state; two
-availability predicates (player-action $\mathrm{avail}$ and internal
-$\mathrm{availInt}$); two transition kernels:
-\[
-  \mathrm{stepPlay}_M : (p : \Players) \to A_p \to S \to \PMF S, \qquad
-  \mathrm{stepInternal}_M : I \to S \to \PMF S;
-\]
-a terminal predicate; and the projections to public/per-player observations
-and to the terminal outcome. A primitive \emph{event} is either
-$(\mathsf{play}, p, a)$ for $a \in A_p$ or $(\mathsf{internal}, e)$ for
-$e \in I$; the combined kernel $\mathrm{step}_M : \mathrm{Event}_M \times S \to \PMF S$
-is total.
+where $u : \Outcome \to (\Players \to \mathbb{R})$. A primitive
+\emph{event} is either $(\mathsf{play}, p, a)$ for $a \in A_p$ or
+$(\mathsf{internal}, e)$ for $e \in I$; the combined transition kernel
+$\mathrm{step}_M : \mathrm{Event}_M \times S \to \PMF S$ is total.
 
-\paragraph{Total step kernels, separate availability.}
-The transition kernels are total functions; \emph{legality} of an event is a
-\emph{separate} predicate. The event-graph machine instance (next subsection)
-implements a \emph{stuttering} convention — unavailable events leave the
-state unchanged, returning $\mathrm{PMF}.\mathrm{pure}\,s$ (a Dirac mass
-at the source state). The abstract \TT{Machine} carrier does not
-pre-commit to that convention; the kernel is exposed unconstrained so
-backends can choose their reaction.
+\paragraph{Total step, separate availability.}
+$\TT{stepPlay}$ and $\TT{stepInternal}$ are total functions; legality
+of an event is a \emph{separate} predicate. The event-graph machine
+instance below implements a \emph{stuttering} convention — unavailable
+events leave the state unchanged, returning $\mathrm{PMF.pure}\,s$. The
+abstract \DefRef{Machine} carrier does not pre-commit to that
+convention; the kernel is exposed unconstrained so backends can choose
+their reaction.
 
 \subsection{Run prefixes, schedulers, traces}
 
-\paragraph{Lean.}
-\TT{structure RunPrefix} pairs a list of events with a list of states with
-$|\mathrm{states}| = |\mathrm{events}| + 1$. \TT{abbrev EventLaw} is a
-function $S \to \PMF{\mathrm{Event}}$, with \TT{IsLegalEventLaw}\label{def:IsLegalEventLaw} the
-predicate that the law respects availability outside terminal states.
+\begin{leanbox}
+structure RunPrefix (M : Machine Player) where\label{def:RunPrefix}\\
+\bd events : List M.Event\\
+\bd states : List M.State\\
+\bd length\_eq : states.length = events.length + 1\\[3pt]
+abbrev EventLaw (M : Machine Player) : Type :=\label{def:EventLaw}\\
+\bd M.State $\to$ PMF M.Event\\[3pt]
+def IsLegalEventLaw (M : Machine Player) (law : M.EventLaw) : Prop :=\label{def:IsLegalEventLaw}\\
+\bd $\forall$ s, $\neg$ M.terminal s $\to$ $\forall$ \{e\},\\
+\bdd e $\in$ (law s).support $\to$ M.EventAvailable s e
+\end{leanbox}
 
-\paragraph{Math.}
-A \emph{scheduler} is a history-independent law $\lambda : S \to \PMF{\mathrm{Event}}$
-choosing the next event from a state. Iterating it for $n$ steps from $s_0$
-yields a distribution over $\mathrm{Tr}_n(M)$ — finite event-state traces of
-length $n$. Marginalising on the final state and projecting via $\mathrm{out}$
-gives the \emph{outcome kernel} $\mathrm{outcomeKernelFrom}_\lambda$ of the
-machine.
+A \DefRef{RunPrefix} pairs a list of $n$ events with a list of $n+1$
+states. An \DefRef{EventLaw} is a history-independent scheduler
+$\lambda : S \to \PMF{\mathrm{Event}}$ choosing the next event from a
+state; \DefRef{IsLegalEventLaw} requires the law to put mass only on
+currently available events at non-terminal states. Iterating a legal
+law for $n$ steps from $s_0$ yields a distribution over
+$\mathrm{Tr}_n(M)$ — finite event-state traces of length $n$.
+Marginalising on the final state and projecting via $\mathrm{out}$
+gives the outcome kernel $\mathrm{outcomeKernelFrom}_\lambda$.
 
 \subsection{The event-graph machine interpretation}
 
-\paragraph{Lean.}
-\TT{Vegas/EventGraph/ToMachine.lean} interprets an event graph as a machine:
-\TT{State := Configuration}; \TT{Action := PlayerAction G};
-\TT{Internal := InternalEvent G}.  A \TT{PlayerAction G p} is a structure
-with fields \TT{node : G.Node} and \TT{slice : G.WriteSlice}; availability
-restricts it to frontier nodes owned by $p$ with a legal slice. Internal
-events are \TT{InternalEvent.node n} for non-player frontier nodes plus an
-unavailable \TT{idle}\label{def:idle} constructor. \TT{stepPlay} and \TT{stepInternal}
-execute one frontier node at a time, total in the same way as the abstract
-machine.
+For an event graph $G$, the machine instance takes
+\[
+  \TT{State} := \DefRef{Configuration}\,G,
+  \quad
+  \TT{Action}\,p := \TT{PlayerAction}\,G\,p,
+  \quad
+  \TT{Internal} := \TT{InternalEvent}\,G.
+\]
+A $\TT{PlayerAction}\,G\,p$ is a pair $(n, \mathrm{slice})$ with $n :
+G.\TT{Node}$ and $\mathrm{slice} : G.\TT{WriteSlice}$; availability
+restricts it to frontier nodes owned by $p$ with a legal slice.
+Internal events are $\TT{InternalEvent.node}\,n$ for non-player
+frontier nodes, plus an always-unavailable
+\DefRef{idle}\label{def:idle} constructor.
 
-\paragraph{Math.}
-Reading the event graph as a machine, an event is the execution of one frontier
-node. \TT{stepPlay} stutters on unavailable actions (returns
-$\mathrm{PMF}.\mathrm{pure}\,\mathrm{cfg}$) and otherwise commits the chosen slice
-into the configuration. The event graph's diamond property and stability of
-frontier reads (\TT{withResult_comm}\label{def:withResult_comm} and the lemmas in
-\TT{Vegas/GameBridge/FOSG/FrontierStability.lean}) are exactly what is needed to lift this
-asynchronous, single-event view into a \emph{round-based} FOSG view in
-which a round executes the current frontier in a canonical list order while
-player round-actions supply slices for the player-owned nodes in that
-frontier.  That lift lives in \TT{Vegas/GameBridge/FOSG/FromEventGraph.lean}.
+Reading $G$ as a machine, an event is the execution of one frontier
+node. $\TT{stepPlay}$ stutters on unavailable actions (returns
+$\mathrm{PMF.pure}\,\mathrm{cfg}$) and otherwise commits the chosen
+slice. The diamond property and frontier-read stability lemmas
+(\DefRef{withResult_comm}\label{def:withResult_comm} and companions)
+provide the algebraic foundation for the round-based presentations of
+\S\ref{sec:round-fosg}.
 
 \paragraph{Stable frontier rounds: \TT{HasStableFrontierRounds}.}
 \label{def:stableFrontier}
-The lift from machine to FOSG is not unconditional: it requires the graph
-to satisfy the predicate \TT{HasStableFrontierRounds}\label{def:HasStableFrontierRounds}, which combines two
-conditions. \emph{Existence}: every player-owned frontier node has at
-least one available player action (\TT{HasAvailablePlayerActions}\label{def:HasAvailablePlayerActions}).
-\emph{Stability}: if an action $a$ for player $p$ is available at $\mathrm{cfg}$
-and $a$'s node is on the frontier with $a.\mathrm{node} \neq \mathrm{first}$,
-then after executing any other frontier node \texttt{first} legally, $a$ is
-still available. Without stability, two players' frontier choices could
-\emph{race} — one execution could invalidate the other's still-pending
-action — and round-level batching would be ill-defined. Vegas's syntax
-graphs satisfy this predicate (\TT{GameBridge/FOSG/FrontierStability.lean}); a
-backend graph need not.
+The lift from machine to FOSG requires the graph to satisfy
+\DefRef{HasStableFrontierRounds}\label{def:HasStableFrontierRounds},
+which combines two conditions:
+\begin{itemize}\itemsep1pt
+\item \emph{Existence.} Every player-owned frontier node has at least
+  one available player action
+  (\DefRef{HasAvailablePlayerActions}\label{def:HasAvailablePlayerActions}).
+\item \emph{Stability.} If an action $a$ for player $p$ is available
+  at $\mathrm{cfg}$ and $a.\TT{node}$ is on the frontier with
+  $a.\TT{node} \neq \TT{first}$, then after legally executing any
+  other frontier node $\TT{first}$, $a$ remains available.
+\end{itemize}
+Without stability, two players' frontier choices could race — one
+execution could invalidate the other's still-pending action — and
+round-level batching would be ill-defined. Vegas's source-elaborated
+event graphs satisfy this predicate; a generic backend graph need not.
 
 % =====================================================================
 \section{Native Round and FOSG Views}
+\label{sec:round-fosg}
 
 The shift from machine to game-theoretic structure now happens through the
 native \TT{Machine.RoundView}\label{def:Machine.RoundView}.  The FOSG view is the parallel
@@ -1101,7 +1350,7 @@ presentation data — the underlying machine state remains semantic.
 \TT{RoundView} is the Vegas-facing strategic view of a machine.  It packages
 round-action alphabets, active sets, available actions, the round transition,
 and the primitive event block represented by a round.  Its bounded histories,
-reachable information states, legal pure strategies, legal PMF-behavioural
+reachable information states, legal pure strategies, legal PMF-behavioral
 strategies, and outcome kernels are defined in \TT{Vegas/Machine/RoundView.lean}
 without importing FOSG.
 
@@ -1153,7 +1402,7 @@ Standard extensive-form games index strategies by histories; FOSG indexes
 strategies by \emph{information sets}, which are equivalence classes of
 histories under per-player observation. FOSG is a modern state-based
 formalism that cleanly separates public and private observation; the
-GameTheory submodule of this project formalises FOSGs once and Vegas wires
+GameTheory submodule of this project formalizes FOSGs once and Vegas wires
 its machine semantics into the existing carrier.
 
 \subsection{The canonical EFG presentation}
@@ -1176,9 +1425,10 @@ strategic freedom.
 \paragraph{Tree structure, not only distributions.}
 The semantic adequacy theorem says that projecting EFG terminal histories
 back to public Vegas outcomes gives the same outcome law as the bounded
-event-graph FOSG behavioural presentation.  Relating that FOSG law to
-\TT{pmfBehavioralKernelGameAt}\label{def:pmfBehavioralKernelGameAt} is the native/FOSG strategy-equivalence
-bridge obligation. For reviewers who want to see the actual tree spine,
+event-graph FOSG behavioral presentation.  The native/FOSG equivalence
+theorems in \TT{GameBridge/FOSG/NativeEquiv.lean} transport this law to
+\TT{pmfBehavioralKernelGameAt}\label{def:pmfBehavioralKernelGameAt}; the named EFG theorem itself is still
+stated at the FOSG presentation boundary. For reviewers who want to see the actual tree spine,
 \TT{EFG.GameTree.HasDecisionChainThenChance}\label{def:EFG.GameTree.HasDecisionChainThenChance} records the
 structural predicate ``$n$ sequential decisions followed by chance''. The
 example file \TT{Examples/EFGTranslation.lean} proves this predicate for the
@@ -1197,7 +1447,7 @@ view exposes outcome kernels
   \qquad
   \mathrm{outcomeFromBehavioral}_h\,\beta : \PMF{\Outcome\,M},
 \]
-from pure and behavioural profiles respectively. The horizon $h$ is fixed
+from pure and behavioral profiles respectively. The horizon $h$ is fixed
 by the program: \TT{syntaxSteps} (\TT{Vegas/Core/Config.lean}) counts every
 source constructor except \Ret, including administrative \Let{}s. The depth
 counter in \TT{BoundedState} is presentation data needed to prove the
@@ -1247,16 +1497,14 @@ spaces, game forms, and kernel games.
 \subsection{Strategies and profiles}
 \label{def:strategies}
 
-\paragraph{Lean.}
-\begin{align*}
-\mathtt{pureStrategyAt}\;g\;p &: \mathbf{Type} \\
-\mathtt{behavioralStrategyPMFAt}\;g\;p &: \mathbf{Type} \\
-\mathtt{pureProfileAt}\;g &: \mathbf{Type} \\
-\mathtt{behavioralProfilePMFAt}\;g &: \mathbf{Type}
-\end{align*}
+\begin{leanbox}
+def pureStrategyAt           (g : WFProgram P L) (p : P) : Type\\
+def behavioralStrategyPMFAt  (g : WFProgram P L) (p : P) : Type\\
+def pureProfileAt            (g : WFProgram P L)         : Type\\
+def behavioralProfilePMFAt   (g : WFProgram P L)         : Type
+\end{leanbox}
 
-\paragraph{Math.}
-For each player $p$ the native round view (\TT{eventGraphRoundView}\label{def:eventGraphRoundView})
+For each player $p$ the native round view (\DefRef{eventGraphRoundView}\label{def:eventGraphRoundView})
 induces a finite
 set of \emph{information states} $\mathcal{I}_p$: equivalence classes of
 bounded native round histories under $p$'s observation. The strategic carrier uses a
@@ -1276,7 +1524,7 @@ A pure strategy for $p$ is then
     \mathrm{ReachableInfoState}\,p \;\to\; \mathrm{Option}\,(\mathrm{Act}\,p),
 \]
 returning \texttt{none} at information states where $p$ is not active and
-\texttt{some}\,$a$ at active ones. A \emph{behavioural strategy} is
+\texttt{some}\,$a$ at active ones. A \emph{behavioral strategy} is
 \[
   \mathrm{ReachableBehavioralStrategy}\,p \;=\;
     \mathrm{ReachableInfoState}\,p \;\to\; \PMF{\mathrm{Option}\,(\mathrm{Act}\,p)}.
@@ -1292,21 +1540,27 @@ for the equilibrium predicates to range over.
 \subsection{Game forms and kernel games}
 \label{def:kernelgames}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{pureGameFormAt g}\label{def:pureGameFormAt} — pure strategies, payoff-vector outcome.\\
-\TT{pmfBehavioralGameFormAt g}\label{def:pmfBehavioralGameFormAt} — PMF behavioural strategies, payoff-vector outcome.\\
-\TT{purePublicStateGameFormAt g}\label{def:purePublicStateGameFormAt} — pure strategies, terminal public-state outcome.\\
-\TT{pmfBehavioralPublicStateGameFormAt g}\label{def:pmfBehavioralPublicStateGameFormAt} — PMF behavioural strategies, terminal public-state outcome.\\
-\TT{pureBlockedTraceGameFormAt g}\label{def:pureBlockedTraceGameFormAt} — pure strategies, blocked-trace outcome.\\
-\TT{pmfBehavioralBlockedTraceGameFormAt g}\label{def:pmfBehavioralBlockedTraceGameFormAt} — PMF behavioural strategies, blocked-trace outcome.\\[2pt]
-\TT{pureKernelGameAt g} (and \TT{Vegas.pureKernelGame}\label{def:Vegas.pureKernelGame}) — pure strategies, payoff-vector outcome $\Outcome\,\Players$.\\
-\TT{pmfBehavioralKernelGameAt g} (and \TT{Vegas.pmfBehavioralKernelGame}\label{def:Vegas.pmfBehavioralKernelGame}) — PMF behavioural strategies, payoff-vector outcome.\\
-\TT{pureBlockedTraceKernelGameAt g} — pure strategies, blocked-trace outcome.\\
-\TT{pmfBehavioralBlockedTraceKernelGameAt g} — PMF behavioural strategies, blocked-trace outcome.
-\end{quote}
+The codebase exposes six game forms and four kernel games for a
+checked program $g$, organised by strategy carrier and outcome shape.
 
-\paragraph{Math.}
+\begin{leanbox}
+-- payoff-vector outcomes\\
+def pureGameFormAt                        g\label{def:pureGameFormAt}\\
+def pmfBehavioralGameFormAt               g\label{def:pmfBehavioralGameFormAt}\\[2pt]
+-- terminal public-state outcomes\\
+def purePublicStateGameFormAt             g\label{def:purePublicStateGameFormAt}\\
+def pmfBehavioralPublicStateGameFormAt    g\label{def:pmfBehavioralPublicStateGameFormAt}\\[2pt]
+-- blocked-trace outcomes\\
+def pureBlockedTraceGameFormAt            g\label{def:pureBlockedTraceGameFormAt}\\
+def pmfBehavioralBlockedTraceGameFormAt   g\label{def:pmfBehavioralBlockedTraceGameFormAt}\\[3pt]
+-- kernel games (game form + canonical utility)\\
+def pureKernelGameAt                      g\label{def:Vegas.pureKernelGame}\\
+def pmfBehavioralKernelGameAt             g\label{def:Vegas.pmfBehavioralKernelGame}\\
+def pureBlockedTraceKernelGameAt          g\\
+def pmfBehavioralBlockedTraceKernelGameAt g
+\end{leanbox}
+
+
 A \TT{GameTheory.GameForm}\label{def:GameTheory.GameForm} contains per-player strategy
 types, an outcome type, and a stochastic kernel from profiles to outcomes.
 A \TT{GameTheory.KernelGame}\label{def:GameTheory.KernelGame} adds a utility function. The payoff-vector
@@ -1315,212 +1569,221 @@ the four kernel games. The terminal-public-state forms intentionally stop at
 the game-form level: they expose the final public observation as data, not a
 payoff interpretation. The kernel games span two orthogonal axes:
 \begin{itemize}\itemsep1pt
-\item \emph{Strategy carrier}: pure vs.\ PMF-behavioural.
+\item \emph{Strategy carrier}: pure vs.\ PMF-behavioral.
 \item \emph{Outcome shape}: the payoff vector $\Outcome\,\Players$ versus
   the richer \texttt{syntaxBlockedTraceAt}\,$g$ which retains the per-round
   primitive-event blocks and their endpoint machine state.
 \end{itemize}
-The blocked-trace games refine the payoff-vector games by an outcome projection,
-and \TT{Strategic/KernelGame.lean} packages this refinement (next paragraph).
+The blocked-trace games refine the payoff-vector games by an outcome
+projection, packaged as a kernel-game morphism (next subsection).
 
 \paragraph{Unsuffixed APIs.}
 The unsuffixed names \TT{Vegas.pureGameForm},
 \TT{Vegas.purePublicStateGameForm}, \TT{Vegas.pureKernelGame},
-\TT{Vegas.pmfBehavioralGameForm}, \TT{Vegas.pmfBehavioralPublicStateGameForm},
-and \TT{Vegas.pmfBehavioralKernelGame} are thin definitions equal to their
-\texttt{*At} counterparts under \TT{[Fintype P]} and \TT{[FiniteDomains g]};
-they are definitionally equal, so all theorems transport.
+\TT{Vegas.pmfBehavioralGameForm},
+\TT{Vegas.pmfBehavioralPublicStateGameForm}, and
+\TT{Vegas.pmfBehavioralKernelGame} are thin definitions equal to their
+\TT{*At} counterparts under \TT{[Fintype P]} and \TT{[FiniteDomains
+g]}; they are definitionally equal, so all theorems transport.
 
 \subsection{The kernel-game carrier}
 \label{def:KernelGame}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{structure KernelGame (}$\Players$\TT{) where} \\
-\quad\TT{Strategy : }$\Players$ $\to$ \TT{Type} \\
-\quad\TT{Outcome : Type} \\
-\quad\TT{utility : Outcome} $\to$ \TT{Payoff}\label{def:Payoff} $\Players$ \\
-\quad\TT{outcomeKernel : Kernel (}$\Pi$~\TT{i, Strategy i)} \TT{Outcome}\label{def:Outcome}
-\end{quote}
+\begin{leanbox}
+structure KernelGame ($\Players$ : Type) where\\
+\bd Strategy      : $\Players$ $\to$ Type\\
+\bd Outcome       : Type\label{def:Outcome}\\
+\bd utility       : Outcome $\to$ Payoff $\Players$\label{def:Payoff}\\
+\bd outcomeKernel : Kernel ($\Pi$ i, Strategy i) Outcome
+\end{leanbox}
 
-\paragraph{Math.}
 A \emph{kernel game} is the minimal object on top of which all
 expected-utility solution concepts can be defined:
 \[
-\KG \;=\; \bigl(\{S_p\}_p,\,O,\,K : \textstyle\prod_p S_p \to \PMF{O},\;
+\KG \;=\; \bigl(\{S_p\}_p,\,O,\,
+  K : \textstyle\prod_p S_p \to \PMF{O},\;
   u : O \to \mathrm{Payoff}\,\Players\bigr),
 \]
-where the payoff vector $\mathrm{Payoff}\,\Players \;=\; \Players \to \mathbb{R}$.
-Expected utility is the obvious functional
+where the payoff vector type is
+$\mathrm{Payoff}\,\Players = \Players \to \mathbb{R}$. Expected utility
+is
 \[
-  \EU(\sigma, p) \;=\; \mathbb{E}_{\omega \sim K(\sigma)}\bigl[u(\omega)(p)\bigr].
+  \EU(\sigma, p) \;=\;
+    \mathbb{E}_{\omega \sim K(\sigma)}\bigl[u(\omega)(p)\bigr].
 \]
-Splitting $K$ from $u$ separates \emph{protocol} (\TT{GameForm}\label{def:GameForm}) from
-\emph{preference}, which is what enables preference-parameterised solution
-concepts (next subsection).
+Splitting $K$ from $u$ separates \emph{protocol}
+(\DefRef{GameForm}\label{def:GameForm}) from \emph{preference}, which
+is what enables the preference-parameterised solution concepts of the
+next subsection.
 
 \paragraph{Outcome types in the codebase.}
-Vegas itself defines a simpler protocol-level outcome,
-$\Outcome\,\Players = \Players \to_0 \mathbb{Z}$ (\S\ref{sec:outcomes}). The
-payoff-vector kernel games \TT{pureKernelGameAt}\label{def:pureKernelGameAt} and \TT{pmfBehavioralKernelGameAt}
-take $O = \Outcome\,\Players$ and use the coercion
-$u(o)(p) = (o\,p : \mathbb{R})$. The public-state game forms set
-$O$ to the terminal \TT{ProgramPublicObs}\,$g$ and have no canonical
-utility attached. The blocked-trace games set $O$ to
+Vegas's protocol-level outcome is
+$\Outcome\,\Players = \Players \to_0 \mathbb{Z}$
+(\S\ref{sec:outcomes}). The payoff-vector kernel games
+\DefRef{pureKernelGameAt}\label{def:pureKernelGameAt} and
+\TT{pmfBehavioralKernelGameAt} take $O = \Outcome\,\Players$ and use
+the coercion $u(o)(p) = (o\,p : \mathbb{R})$. The public-state game
+forms set $O$ to the terminal \TT{ProgramPublicObs}\,$g$ and have no
+canonical utility. The blocked-trace games set $O$ to
 \[
   \mathtt{syntaxBlockedTraceAt}\,g \;=\;
-    [\![\mathrm{event\ blocks}]\!] \times \mathtt{State}_M
+    [\![\mathrm{event\ blocks}]\!] \times \mathtt{State}_M,
 \]
-— each native round's primitive-event block, paired with the round's endpoint
-machine state. Their utility factors through the projection to the payoff
-vector: $\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\mathrm{state}))$.
+each native round's primitive-event block paired with the round's
+endpoint machine state, with utility
+$\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\TT{state}))$.
 
 \paragraph{Refinement layer.}
-\TT{Strategic/KernelGame.lean} packages the relationship between the blocked-trace
-and payoff-vector games as a \TT{KernelGame.Simulation}\label{def:KernelGame.Simulation} (definitionally a
-\TT{Morphism}\label{def:Morphism}, which preserves utility distributions
-$\mathrm{udist}$ — i.e.\ the joint distribution over payoff vectors — under
-profile mapping). It also provides explicit expected-utility equality
-lemmas (\TT{pureBlockedTraceKernelGameAt_eu_eq}\label{def:pureBlockedTraceKernelGameAt_eu_eq} and the behavioural
-counterpart) and \TT{Bisimulation}\label{def:Bisimulation}/\TT{EUBisimulation}\label{def:EUBisimulation} objects packaging
-the blocked-trace versus public direction symmetrically. So reasoning at
-either game level is sound: outcome-projection preserves utility
-distributions and EU is provably equal across the projection.
+The relationship between the blocked-trace and payoff-vector games is
+packaged as a
+\DefRef{KernelGame.Simulation}\label{def:KernelGame.Simulation} —
+definitionally a \DefRef{Morphism}\label{def:Morphism} preserving the
+joint utility-distribution $\mathrm{udist}$ over payoff vectors under
+profile mapping. Explicit expected-utility-equality lemmas
+\DefRef{pureBlockedTraceKernelGameAt_eu_eq}\label{def:pureBlockedTraceKernelGameAt_eu_eq}
+and its behavioural counterpart, plus the symmetric
+\DefRef{Bisimulation}\label{def:Bisimulation} and
+\DefRef{EUBisimulation}\label{def:EUBisimulation} objects, certify that
+reasoning at either game level is sound: outcome projection preserves
+utility distributions, and EU is provably equal across the projection.
 
 \subsection{Linear source reading}
 \label{def:LinearRead}
 
-\paragraph{Lean.}
-\TT{Vegas/Core/LinearRead.lean} defines
-\TT{syntaxLinearRead g := ProgramNode.enumerate g.prog} and proves:
-\begin{quote}
-\TT{syntaxLinearRead_sufficient :}\\
-\quad if a program event-graph configuration is nonterminal, then some
-unfinished source node of minimal source rank is on the executable frontier.
-\end{quote}
-The reusable event-graph-level theorem is
-\begin{quote}
-\TT{EventGraph.Configuration.exists_rank_minimal_enabled_of_not_terminal}\label{def:EventGraph.Configuration.exists_rank_minimal_enabled_of_not_terminal}.
-\end{quote}
+\begin{leanbox}
+def syntaxLinearRead (g : WFProgram P L) : List (ProgramNode g) :=\\
+\bd ProgramNode.enumerate g.prog\\[3pt]
+theorem syntaxLinearRead\_sufficient :\\
+\bd $\forall$ (cfg : Configuration (programEventGraph g)),\\
+\bd \ \ $\neg$ cfg.terminal $\to$\\
+\bd \ \ $\exists$ n $\in$ syntaxLinearRead g,\\
+\bd \ \ \ \ n.rank-minimal $\land$ on-frontier cfg
+\end{leanbox}
 
-\paragraph{Math.}
-The source-order rank on \TT{ProgramNode}\label{def:ProgramNode}s is a topological order for the
-elaborated event graph: every prerequisite of a node has strictly smaller
-rank. Therefore a reader who scans the source program in rank order and stops
-at the first unfinished source event has found an event whose dependencies
-are already complete. The event-graph semantics may execute independent frontier
-nodes in other orders, but the straight-line source presentation never blocks
-early.
+The source-order rank on
+\DefRef{ProgramNode}\label{def:ProgramNode}s is a topological order
+for the elaborated event graph: every prerequisite of a node has
+strictly smaller rank. A reader who scans the program in rank order
+and stops at the first unfinished source event therefore lands on an
+event whose dependencies are already complete. Event-graph executions
+may take independent frontier nodes in other orders, but the
+straight-line source presentation never blocks early. The reusable
+event-graph-level theorem is
+\DefRef{EventGraph.Configuration.exists_rank_minimal_enabled_of_not_terminal}\label{def:EventGraph.Configuration.exists_rank_minimal_enabled_of_not_terminal}.
 
 \paragraph{Commit/reveal information barrier.}
-\begin{quote}\scriptsize
-\begin{tabular}{@{}l@{}}
-\TT{eventGraph_priorCommit_not_frontier_with_reveal}\label{def:eventGraph_priorCommit_not_frontier_with_reveal}\\
-\TT{reveal_not_frontier_with_prior_commit}\label{def:reveal_not_frontier_with_prior_commit}\\
-\TT{prior_commit_not_available_when_reveal_frontier}\label{def:prior_commit_not_available_when_reveal_frontier}
-\end{tabular}
-\end{quote}
-The graph theorem and project-facing wrapper
-state that an earlier commit and a reveal cannot be frontier-simultaneous.
-The strategy-surface corollary says that a player action for such an earlier
-commit is not available while the reveal is on the frontier. This is the
-theorem-level guard against observing a reveal before choosing an earlier
-same-phase commitment.
+Three theorems state that an earlier commit and a reveal of that
+commit cannot be frontier-simultaneous, and that the corresponding
+player action is unavailable while the reveal is on the frontier:
+\begin{itemize}\itemsep0pt
+\item \DefRef{eventGraph_priorCommit_not_frontier_with_reveal}\label{def:eventGraph_priorCommit_not_frontier_with_reveal} — the graph-level statement.
+\item \DefRef{reveal_not_frontier_with_prior_commit}\label{def:reveal_not_frontier_with_prior_commit} — its program-facing wrapper.
+\item \DefRef{prior_commit_not_available_when_reveal_frontier}\label{def:prior_commit_not_available_when_reveal_frontier} — the strategy-surface corollary.
+\end{itemize}
+This is the theorem-level guard against observing a reveal before
+choosing an earlier same-phase commitment.
 
 \paragraph{Role.}
-Source order is a readable topological schedule for the dependency graph:
-following it never gets stuck before the event graph is terminal. Strategic
-equivalence across stable frontier schedules is then proved by the
-frontier-stability, blocked-trace, and morphism layers.
+Source order is a readable topological schedule for the dependency
+graph: following it never gets stuck before the event graph is
+terminal. Strategic equivalence across stable frontier schedules is
+then proved by the frontier-stability, blocked-trace, and morphism
+layers.
 
 \subsection{Solution concepts (Vegas-facing definitions)}
 \label{def:solution}\label{def:IsNash}\label{def:IsStrictNash}\label{def:WeaklyDominates}\label{def:StrictlyDominates}\label{def:IsCorrelatedEq}\label{def:IsCoarseCorrelatedEq}\label{def:ParetoDominates}\label{def:IsParetoEfficient}\label{def:socialWelfare}\label{def:IsExactPotential}\label{def:IsOrdinalPotential}\label{def:IsZeroSum}\label{def:IsConstantSum}\label{def:IsTeamGame}\label{def:optimalWelfare}\label{def:bestNashWelfare}\label{def:worstNashWelfare}\label{def:worstNashWelfare_le_bestNashWelfare}\label{def:bestNashWelfare_le_optimalWelfare}\label{def:ciSup}
 
-The Vegas definitions (\TT{Vegas.IsNash}\label{def:Vegas.IsNash}, \TT{IsBestResponse}\label{def:IsBestResponse}, \TT{IsDominant}\label{def:IsDominant},
-\ldots) are thin wrappers around GameTheory's preference-parameterised
-predicates over the PMF behavioural kernel game
-\TT{pmfBehavioralKernelGame g}. They are spread across
-\TT{Vegas/Strategic/Equilibrium.lean} (Nash, dominance, correlated equilibria, social
-welfare) and \TT{Vegas/Strategic/Properties.lean} (approximate Nash, potentials,
-constant-sum, welfare and price-of-anarchy). We list the underlying
-mathematical definitions; for each, the Lean wrapper has the form
-$\TT{Vegas.}X = (\TT{pmfBehavioralKernelGame}\label{def:pmfBehavioralKernelGame}\,g).X$. We use $\EU(\sigma, p)$
-throughout for expected utility.
+The Vegas definitions
+(\DefRef{Vegas.IsNash}\label{def:Vegas.IsNash},
+\DefRef{IsBestResponse}\label{def:IsBestResponse},
+\DefRef{IsDominant}\label{def:IsDominant}, \ldots) are thin wrappers
+around GameTheory's preference-parameterised predicates over the
+PMF-behavioural kernel game \TT{pmfBehavioralKernelGame g}. They cover
+Nash, dominance, correlated and coarse-correlated equilibria, social
+welfare, approximate Nash, potentials, and constant-sum/team
+properties. For each, the Lean wrapper has the form
+$\TT{Vegas.}X = (\DefRef{pmfBehavioralKernelGame}\label{def:pmfBehavioralKernelGame}\,g).X$.
+We use $\EU(\sigma, p)$ for expected utility.
 
 \smallskip
 \noindent\begin{tabular}{@{}lp{0.55\textwidth}@{}}
 \toprule
 \textbf{Predicate} & \textbf{Mathematical content (over $\KG$, $\sigma : \Pi_p S_p$)} \\
 \midrule
-\TT{IsNash}~$\sigma$ &
+\DefRef{IsNash}~$\sigma$ &
   $\forall p,\, \forall s'_p \in S_p.\; \EU(\sigma, p) \ge \EU(\sigma[p \mapsto s'_p], p)$. \\
-\TT{IsStrictNash}~$\sigma$ &
+\DefRef{IsStrictNash}~$\sigma$ &
   As above with $>$ for $s'_p \neq \sigma_p$. \\
-\TT{IsBestResponse}~$p\,\sigma\,s$ &
+\DefRef{IsBestResponse}~$p\,\sigma\,s$ &
   $\forall s'.\; \EU(\sigma[p\mapsto s], p) \ge \EU(\sigma[p\mapsto s'], p)$. \\
-\TT{IsDominant}~$p\,s$ &
+\DefRef{IsDominant}~$p\,s$ &
   $\forall \sigma\, s'.\; \EU(\sigma[p\mapsto s], p) \ge \EU(\sigma[p\mapsto s'], p)$. \\
-\TT{WeaklyDominates}~$p\,s\,t$ &
+\DefRef{WeaklyDominates}~$p\,s\,t$ &
   $\forall \sigma_{-p}.\, \EU((s, \sigma_{-p}), p) \ge \EU((t, \sigma_{-p}), p)$. \\
-\TT{StrictlyDominates}~$p\,s\,t$ &
+\DefRef{StrictlyDominates}~$p\,s\,t$ &
   As above with $>$. \\
-\TT{IsCorrelatedEq}~$\mu$ &
+\DefRef{IsCorrelatedEq}~$\mu$ &
   Profile distribution $\mu$: no recommendation-dependent unilateral
   deviation strictly improves any player's outcome distribution. \\
-\TT{IsCoarseCorrelatedEq}~$\mu$ &
+\DefRef{IsCoarseCorrelatedEq}~$\mu$ &
   As above, restricted to constant deviations. \\
-\TT{ParetoDominates}~$\sigma\,\tau$ &
+\DefRef{ParetoDominates}~$\sigma\,\tau$ &
   $\forall p.\,\EU(\sigma, p) \ge \EU(\tau, p)$ and $\exists p.\,>$. \\
-\TT{IsParetoEfficient}~$\sigma$ &
+\DefRef{IsParetoEfficient}~$\sigma$ &
   $\nexists \tau.\; \mathrm{ParetoDominates}\,\tau\,\sigma$. \\
-\TT{socialWelfare}~$\sigma$ &
+\DefRef{socialWelfare}~$\sigma$ &
   $\sum_p \EU(\sigma, p)$. \\
-\TT{IsExactPotential}~$\Phi$ &
+\DefRef{IsExactPotential}~$\Phi$ &
   $\Phi : \Pi_p S_p \to \mathbb{R}$ such that
   $\Phi(\sigma[p\!\mapsto\!s']) - \Phi(\sigma) = \EU(\sigma[p\!\mapsto\!s'], p) - \EU(\sigma, p)$. \\
-\TT{IsOrdinalPotential}~$\Phi$ &
-  Sign-only version of above. \\
-\TT{IsZeroSum}, \TT{IsConstantSum}~$c$ &
+\DefRef{IsOrdinalPotential}~$\Phi$ &
+  Sign-only version. \\
+\DefRef{IsZeroSum}, \DefRef{IsConstantSum}~$c$ &
   $\sum_p u(\omega)(p)$ is constant ($=0$ or $=c$) on all outcomes. \\
-\TT{IsTeamGame} &
+\DefRef{IsTeamGame} &
   $u(\omega)(p) = u(\omega)(q)$ for all $p, q, \omega$. \\
 \texttt{Is}$\varepsilon$\texttt{Nash}~$\sigma$ &
   $\forall p\, s'_p.\, \EU(\sigma, p) + \varepsilon \ge \EU(\sigma[p\mapsto s'_p], p)$. \\
-\TT{optimalWelfare} &
-  $\sup_\sigma \mathrm{socialWelfare}(\sigma)$ (\TT{ciSup}; finite-profile
-  variants are picked up by Mathlib's boundedness lemmas). Vegas also
-  defines \TT{bestNashWelfare} and \TT{worstNashWelfare}, plus the
-  comparison lemmas \TT{worstNashWelfare_le_bestNashWelfare} and
-  \TT{bestNashWelfare_le_optimalWelfare}. \\
+\DefRef{optimalWelfare} &
+  $\sup_\sigma \mathrm{socialWelfare}(\sigma)$ (via \DefRef{ciSup};
+  finite-profile variants are picked up by Mathlib's boundedness
+  lemmas). Vegas also defines
+  \DefRef{bestNashWelfare} and \DefRef{worstNashWelfare}, with
+  comparison lemmas
+  \DefRef{worstNashWelfare_le_bestNashWelfare} and
+  \DefRef{bestNashWelfare_le_optimalWelfare}. \\
 \bottomrule
 \end{tabular}
 
 \paragraph{Preference parameterisation.}
-GameTheory exposes \TT{IsNashFor pref}, \TT{IsBestResponseFor pref}, etc.,
-where \TT{pref}\label{def:pref} is an arbitrary preference relation over $\PMF\Outcome$.
-The Vegas-named EU versions arise by instantiating
-$\mathtt{pref} = \mathtt{euPref}$ (i.e., expected-value comparison).
+GameTheory exposes $\TT{IsNashFor}\,\TT{pref}$,
+$\TT{IsBestResponseFor}\,\TT{pref}$, etc., where
+\DefRef{pref}\label{def:pref} is an arbitrary preference relation over
+$\PMF\Outcome$. The Vegas-named EU versions arise by instantiating
+$\mathtt{pref} = \mathtt{euPref}$ (expected-value comparison).
 
 \paragraph{Existence corollaries.}
-\TT{Vegas/Corollaries/GameProperties.lean} exposes three finite-game
-existence theorems through the Vegas-facing API:
-\TT{mixedNash_exists}\label{def:mixedNash_exists}, \TT{correlatedEq_exists}\label{def:correlatedEq_exists}, and
-\TT{coarseCorrelatedEq_exists}\label{def:coarseCorrelatedEq_exists}. These are direct wrappers around the
-GameTheory fixed-point and correlated-equilibrium existence theorems for the
-kernel game \TT{pmfBehavioralKernelGame g}; they are intentionally stated at
-the PMF-over-strategies level and do not by themselves construct a named
-source-level policy.
+Three finite-game existence theorems are exposed through the
+Vegas-facing API as direct wrappers of the GameTheory fixed-point and
+correlated-equilibrium existence results, instantiated at
+\TT{pmfBehavioralKernelGame g}:
+\DefRef{mixedNash_exists}\label{def:mixedNash_exists},
+\DefRef{correlatedEq_exists}\label{def:correlatedEq_exists}, and
+\DefRef{coarseCorrelatedEq_exists}\label{def:coarseCorrelatedEq_exists}.
+They are stated at the PMF-over-strategies level and do not themselves
+construct a named source-level policy.
 
 \subsection{Mixed extension and Kuhn realisation}
 \label{def:Kuhn}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{KernelGame.mixedExtension G : KernelGame}; \\
-\TT{Vegas.kuhn_finite}\label{def:Vegas.kuhn_finite}: as in the main report.
-\end{quote}
+\begin{leanbox}
+def KernelGame.mixedExtension (G : KernelGame $\Players$) : KernelGame $\Players$\\[3pt]
+theorem NativeFOSG.boundedOutcomeFromBehavioral\_nativeToFOSG\label{def:boundedOutcomeFromBehavioral_nativeToFOSG}\\
+theorem NativeFOSG.boundedOutcomeFromPure\_nativeToFOSG\label{def:boundedOutcomeFromPure_nativeToFOSG}\\[3pt]
+theorem kuhn\_finiteKernelGame\label{def:kuhn_finiteKernelGame}\\
+theorem Vegas.kuhn\_finite\label{def:Vegas.kuhn_finite}
+\end{leanbox}
 
-\paragraph{Math.}
 The \emph{mixed extension} of a finite kernel game $\KG$ replaces each
 strategy space $S_p$ by $\PMF S_p$. The outcome kernel of the extension
 samples $\sigma \sim \prod_p \mu_p$ from the independent product
@@ -1530,10 +1793,9 @@ distribution and applies the underlying kernel:
     \bind \lambda \sigma. K(\sigma).
 \]
 
-\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}\label{def:kuhn_finite}): once the
-native/FOSG strategy-equivalence bridge for $g$ has been supplied, every
+\emph{Kuhn realisation} for finite Vegas programs (\TT{kuhn_finite}\label{def:kuhn_finite}): every
 independent mixed profile over the pure strategy carrier of
-\TT{pureKernelGameAt}$\,g$ is matched by a behavioural profile of
+\TT{pureKernelGameAt}$\,g$ is matched by a behavioral profile of
 \TT{pmfBehavioralKernelGameAt}$\,g$ with the \emph{same payoff-vector
 outcome distribution}. Symbolically, with $\KG^{\mathrm{pure}}$ and
 $\KG^{\mathrm{beh}}$ the two kernel games:
@@ -1551,40 +1813,38 @@ is routed through the bounded FOSG view of the program event-graph machine:
 finite domains provide the finite-horizon FOSG carriers, and the required
 information condition is \TT{LegalObservable}\label{def:LegalObservable} for the bounded FOSG, proved for
 checked program event graphs from the visibility and graph-stability
-invariants. The public native theorem is deliberately conditional on
-\TT{NativeFOSGKuhnBridge}\label{def:NativeFOSGKuhnBridge}, the still-separate proof that native
-round-view strategies and FOSG strategies realise the same outcome laws.
+invariants. The public native theorem transports the FOSG realization through the proved
+native/FOSG equivalence: native pure profiles map to FOSG pure profiles,
+native behavioral profiles have the same bounded outcome law after transport,
+and pure-to-behavioral outcome laws agree on both sides.
 
 \paragraph{Why this is the headline theorem.}
-Pure strategies are easy to read and define; behavioural strategies are
+Pure strategies are easy to read and define; behavioral strategies are
 what equilibrium analyses on extensive-form games actually use. The Kuhn
 realisation says that for every mixture over the simple objects we can
-build a behavioural-profile witness with identical observable behaviour.
+build a behavioral-profile witness with identical observable behavior.
 This is the formal contract between the surface API (\TT{pureKernelGame}\label{def:pureKernelGame})
-and the analysis API (\TT{pmfBehavioralKernelGame}) once the native/FOSG bridge
-has been discharged.
+and the analysis API (\TT{pmfBehavioralKernelGame}).
 
 \subsection{Finite pure kernel-game export}
 \label{def:KernelGameExport}
 
-\paragraph{Lean.}
-\TT{Vegas/Export/KernelGame.lean} defines
-\begin{quote}
-\TT{structure KernelGameExport}\label{def:KernelGameExport.structure} \\
-\TT{KernelGameExport.ofKernelGame}\label{def:KernelGameExport.ofKernelGame} \\
-\TT{pureKernelGameExport}\label{def:pureKernelGameExport} \\
-\TT{pureBlockedTraceKernelGameExport}\label{def:pureBlockedTraceKernelGameExport}
-\end{quote}
+\begin{leanbox}
+structure KernelGameExport ($\Players$ : Type) where ...\label{def:KernelGameExport.structure}\\[3pt]
+def KernelGameExport.ofKernelGame ...\label{def:KernelGameExport.ofKernelGame}\\
+def pureKernelGameExport ...\label{def:pureKernelGameExport}\\
+def pureBlockedTraceKernelGameExport ...\label{def:pureBlockedTraceKernelGameExport}
+\end{leanbox}
 
-\paragraph{Math and scope.}
-The export object packages a finite pure kernel game as the ingredients a
-solver adapter needs: the original player and strategy types, finite lists of
-players and strategies, an outcome-kernel oracle, and a utility function. It
-is an API boundary, not a file format. In particular, it does not enumerate
-PMF-behavioural strategies, whose carrier contains probability-valued
-functions, and it does not provide a universal finite list of payoff-vector
-outcomes. Adapters to Gambit, PRISM-games, or another solver should be
-separate code using this object or the canonical EFG presentation.
+\DefRef{KernelGameExport.structure} packages a finite pure kernel game
+as the ingredients a solver adapter needs: the original player and
+strategy types, finite lists of players and strategies, an
+outcome-kernel oracle, and a utility function. It is an API boundary,
+not a file format. It does not enumerate PMF-behavioural strategies,
+whose carrier contains probability-valued functions, nor does it
+provide a universal finite list of payoff-vector outcomes. Adapters to
+Gambit, PRISM-games, or another solver are separate code building on
+this object or on the canonical EFG presentation.
 
 % =====================================================================
 \section{Outcome and utility evaluation}
@@ -1592,131 +1852,160 @@ separate code using this object or the canonical EFG presentation.
 
 \subsection{Outcomes: \TT{Outcome}, \TT{mkOutcome}, \TT{evalPayoffs}}
 
-\paragraph{Lean.}
-\begin{quote}
-\TT{abbrev Outcome (P : Type) [DecidableEq P] :=} $P \to_0 \mathbb{Z}$ \\
-\TT{def mkOutcome (entries : List (P} $\times$ \TT{Int)) : Outcome P} \\
-\TT{def evalPayoffs (payoffs : List (P} $\times$ \TT{L.Expr (erasePubVCtx }$\Gamma$\TT{) L.int)) : VEnv L }$\Gamma$ $\to$ \TT{Outcome P}
-\end{quote}
+\begin{leanbox}
+abbrev Outcome (P : Type) [DecidableEq P] := P $\to_0$ $\mathbb{Z}$\\[3pt]
+def mkOutcome (entries : List (P $\times$ Int)) : Outcome P\\[3pt]
+def evalPayoffs\\
+\bd (payoffs : List (P $\times$ L.Expr (erasePubVCtx $\Gamma$) L.int)) :\\
+\bd VEnv L $\Gamma$ $\to$ Outcome P
+\end{leanbox}
 
-\paragraph{Math.}
-A protocol \emph{outcome} is a finitely-supported $\mathbb{Z}$-valued payoff
-vector indexed by players: $\Outcome = \Players \to_0 \mathbb{Z}$.
-\TT{mkOutcome}\label{def:mkOutcome} sums duplicate keys; absent players default to payoff $0$.
-\TT{evalPayoffs}\label{def:evalPayoffs} takes the syntactic payoff list of a \Ret{} node, evaluates
-each integer expression in the public-erased environment, and packages the
-result.
+A protocol \emph{outcome} is a finitely-supported $\mathbb{Z}$-valued
+payoff vector indexed by players,
+$\Outcome\,\Players = \Players \to_0 \mathbb{Z}$.
+\DefRef{mkOutcome}\label{def:mkOutcome} sums duplicate keys; absent
+players default to payoff $0$.
+\DefRef{evalPayoffs}\label{def:evalPayoffs} takes a \Ret{} node's
+syntactic payoff list, evaluates each integer expression in the
+public-erased environment, and packages the result.
 
-\paragraph{Why \TT{Finsupp}, not \TT{P} $\to$ \TT{Int}.}
-\TT{Finsupp}\label{def:Finsupp} is decidably equal and decidably has-zero, both of which are
-needed for $\PMF{\Outcome}$ to type-check. The runtime semantics of ``only
-named players are paid'' is the same in either form.
+\paragraph{Why \TT{Finsupp}, not \TT{P}~$\to$~\TT{Int}.}
+\DefRef{Finsupp}\label{def:Finsupp} is decidably equal and decidably
+has-zero — both of which are needed for $\PMF{\Outcome}$ to
+type-check. The semantics of ``only named players are paid'' is the
+same either way.
 
 % =====================================================================
 \section{The Backend Layer (refinement)}
 \label{def:Backend}
 
-\paragraph{Lean.}
-\TT{Vegas/Backend/Refinement.lean} defines two machine-to-machine relations.
-Both carry
-\begin{quote}
-\TT{projectState}\label{def:projectState}, \TT{projectEvent}\label{def:projectEvent}, \TT{projectPublic}\label{def:projectPublic},
-\TT{projectObs}\label{def:projectObs}, \TT{projectOutcome}\label{def:projectOutcome}, and \TT{init_project}\label{def:init_project}.
-\end{quote}
-\TT{WeakStepRefinement Impl Spec} then adds
-\begin{quote}
-\TT{external_step_sound}\label{def:external_step_sound}, \TT{internal_step_projectState_eq}\label{def:internal_step_projectState_eq},
-\TT{publicView_project}\label{def:publicView_project}, \TT{observe_project}\label{def:observe_project}, \TT{terminal_project}\label{def:terminal_project},
-\TT{terminal_outcome_projected}\label{def:terminal_outcome_projected}.
-\end{quote}
-\TT{StochasticStepRefinement Impl Spec} instead adds
-\begin{quote}
-\TT{step_project}\label{def:step_project}, \TT{publicView_project}, \TT{observe_project},
-\TT{terminal_project}, \TT{terminal_reflect}\label{def:terminal_reflect},
-\TT{terminal_outcome_projected}.
-\end{quote}
+\subsection{Refinement relations}
 
-\paragraph{Math.}
-\emph{Refinement} here is the verification-style relation ``the
-implementation cannot be distinguished from the specification by any
-externally observable behaviour''. Concretely, a refinement is a state
-projection $\pi : S_{\mathrm{Impl}} \to S_{\mathrm{Spec}}$ satisfying
-matching conditions on transitions. The codebase formalises two strengths:
-\begin{itemize}
-\item \emph{Weak step refinement.} Implementation external (player) events
-  match a specification event under the state projection; internal events
-  preserve the projected state.
-\item \emph{Stochastic step refinement.} A strictly stronger version: the
-  pushforward of the implementation step kernel through the projection equals
-  the specification's kernel (with internal events stuttering on the spec
-  side). This implies weak refinement
-  (\TT{StochasticStepRefinement.toWeakStepRefinement}\label{def:StochasticStepRefinement.toWeakStepRefinement}).
+Both refinement structures carry projection data and an
+initial-state-preservation obligation:
+\begin{leanbox}
+-- common projection fields\\
+\bd projectState   : Impl.State $\to$ Spec.State\label{def:projectState}\\
+\bd projectEvent   : Impl.Event $\to$ Option Spec.Event\label{def:projectEvent}\\
+\bd projectPublic  : Impl.Public $\to$ Spec.Public\label{def:projectPublic}\\
+\bd projectObs     : (p : P) $\to$ Impl.Obs p $\to$ Spec.Obs p\label{def:projectObs}\\
+\bd projectOutcome : Impl.Outcome $\to$ Spec.Outcome\label{def:projectOutcome}\\
+\bd init\_project  : projectState Impl.init = Spec.init\label{def:init_project}
+\end{leanbox}
+
+\begin{leanbox}
+structure WeakStepRefinement (Impl Spec : Machine P) extends \ldots where\\
+\bd external\_step\_sound\label{def:external_step_sound}\\
+\bd internal\_step\_projectState\_eq\label{def:internal_step_projectState_eq}\\
+\bd publicView\_project\label{def:publicView_project}\\
+\bd observe\_project\label{def:observe_project}\\
+\bd terminal\_project\label{def:terminal_project}\\
+\bd terminal\_outcome\_projected\label{def:terminal_outcome_projected}\\[3pt]
+structure StochasticStepRefinement (Impl Spec : Machine P) extends \ldots where\label{def:StochasticStepRefinement}\\
+\bd step\_project\label{def:step_project}\\
+\bd publicView\_project,\ observe\_project,\ terminal\_project\\
+\bd terminal\_reflect\label{def:terminal_reflect}\\
+\bd terminal\_outcome\_projected
+\end{leanbox}
+
+\emph{Refinement} is the verification-style relation: an implementation
+is indistinguishable from a specification by any externally observable
+behaviour. Concretely, a refinement is a state projection
+$\pi : S_{\mathrm{Impl}} \to S_{\mathrm{Spec}}$ subject to matching
+conditions on transitions. Two strengths are formalised:
+\begin{itemize}\itemsep1pt
+\item \emph{Weak step refinement.} Implementation player events match a
+  specification event under the projection; internal events preserve
+  the projected state.
+\item \emph{Stochastic step refinement.} The strictly stronger version:
+  the pushforward of the implementation step kernel through the
+  projection equals the specification's kernel (with internal events
+  stuttering on the spec side). This implies weak refinement
+  (\DefRef{StochasticStepRefinement.toWeakStepRefinement}\label{def:StochasticStepRefinement.toWeakStepRefinement}).
 \end{itemize}
-Every machine also refines itself by \TT{StochasticStepRefinement.refl}\label{def:StochasticStepRefinement.refl}; this
-identity refinement is useful both as a baseline backend and as a compact
-smoke test for trace-projection theorems.
+Every machine refines itself
+(\DefRef{StochasticStepRefinement.refl}\label{def:StochasticStepRefinement.refl});
+the identity refinement serves both as a baseline backend and as a
+compact smoke test for trace-projection theorems.
 
 \paragraph{Why a separate layer.}
-Implementations on real runtimes have additional machinery (transactions,
-schedulers, gossip) that does not appear in the source language. Refinement
-is the way to attest that the user's reasoning at the FOSG/kernel-game level
-remains valid against an implementation, without growing a second
-``implementation semantics'' inside the source language. Trace-level
-projection lemmas (\TT{runEventsFrom_project_eq}\label{def:runEventsFrom_project_eq},
-\TT{blockTraceDist_project_eq}\label{def:blockTraceDist_project_eq}) carry the refinement from primitive
-events to whole runs.
+Real-runtime implementations carry machinery (transactions, schedulers,
+gossip) absent from the source language. Refinement attests that
+reasoning at the FOSG/kernel-game level transports to an implementation
+without growing a second ``implementation semantics'' inside the source
+language. Trace-level projection lemmas
+\DefRef{runEventsFrom_project_eq}\label{def:runEventsFrom_project_eq}
+and
+\DefRef{blockTraceDist_project_eq}\label{def:blockTraceDist_project_eq}
+carry the refinement from primitive events to whole runs.
 
-\paragraph{Backend kernel-game transport.}
-The file \TT{Vegas/Backend/KernelGame.lean} packages a
-\TT{StochasticStepRefinement}\label{def:StochasticStepRefinement} as a kernel-game morphism. The data are:
+\subsection{Backend kernel-game transport}
+
+A \DefRef{StochasticStepRefinement} packages into a kernel-game
+morphism via the following data:
+
+\begin{leanbox}
+structure PureSpecBlockLaw (g : WFProgram P L) where ...\label{def:PureSpecBlockLaw}\\
+structure BehavioralSpecBlockLaw (g : WFProgram P L) where ...\label{def:BehavioralSpecBlockLaw}\\[3pt]
+structure BackendPureBlockLawLift (g) (R) where ...\label{def:BackendPureBlockLawLift}\\
+structure BackendBehavioralBlockLawLift (g) (R) where ...\label{def:BackendBehavioralBlockLawLift}\\[3pt]
+def backendBlockedTraceKernelGameAt ... : KernelGame P\label{def:backendBlockedTraceKernelGameAt}\\
+def toBackendBlockedTraceMorphism ... : KernelGame.EUMorphism\label{def:toBackendBlockedTraceMorphism}\label{def:KernelGame.EUMorphism}
+\end{leanbox}
+
 \begin{itemize}\itemsep1pt
-\item \TT{PureSpecBlockLaw}\label{def:PureSpecBlockLaw}~$g$: a per-pure-profile
-  specification block law plus a proof that it reproduces the canonical
-  \TT{pureBlockedTraceKernelGameAt}\label{def:pureBlockedTraceKernelGameAt} outcome kernel.
-\item \TT{BehavioralSpecBlockLaw}\label{def:BehavioralSpecBlockLaw}~$g$: the analogous
-  package for PMF behavioural profiles.
-\item \TT{BackendPureBlockLawLift}\label{def:BackendPureBlockLawLift}~$g~R$: a per-pure-profile pair of
-  block-laws (one for the spec graph machine, one for the implementation),
-  proved \emph{compatible} via \TT{R.BlockLawCompatible}\label{def:R.BlockLawCompatible}, and tied to
-  a sound specification law.
-\item \TT{BackendBehavioralBlockLawLift}\label{def:BackendBehavioralBlockLawLift}~$g~R$: the analogous datum for PMF
-  behavioural profiles.
-\item \TT{backendBlockedTraceKernelGameAt}\label{def:backendBlockedTraceKernelGameAt}: a kernel game whose strategy
-  spaces are the canonical Vegas pure strategies but whose outcomes are
-  full implementation block-traces.
-\item \TT{toBackendBlockedTraceMorphism}\label{def:toBackendBlockedTraceMorphism} and its behavioural counterpart
-  expose, for every refinement plus lift, a \TT{KernelGame.EUMorphism}\label{def:KernelGame.EUMorphism}
-  whose direction is
+\item \DefRef{PureSpecBlockLaw}~$g$ is a per-pure-profile specification
+  block law plus a proof that it reproduces the canonical
+  \DefRef{pureBlockedTraceKernelGameAt}\label{def:pureBlockedTraceKernelGameAt}
+  outcome kernel.
+\item \DefRef{BehavioralSpecBlockLaw}~$g$ is the analogous package for
+  PMF behavioural profiles.
+\item \DefRef{BackendPureBlockLawLift}~$g~R$ pairs per-pure-profile
+  block-laws — one for the spec graph machine, one for the
+  implementation — proved compatible via
+  \DefRef{R.BlockLawCompatible}\label{def:R.BlockLawCompatible}
+  and tied to a sound specification law.
+\item \DefRef{BackendBehavioralBlockLawLift}~$g~R$ is the analogous
+  datum for PMF behavioural profiles.
+\item \DefRef{backendBlockedTraceKernelGameAt} is a kernel game whose
+  strategy spaces are the canonical Vegas pure strategies but whose
+  outcomes are full implementation block-traces.
+\item \DefRef{toBackendBlockedTraceMorphism} and its behavioural
+  counterpart expose, for every refinement plus lift, a
+  \DefRef{KernelGame.EUMorphism} in the direction
   \[
-    \mathrm{backend\ game}\;\longrightarrow\;\mathrm{spec\ blocked{-}trace\ game}.
+    \text{backend game} \;\longrightarrow\; \text{spec blocked-trace game},
   \]
-  This is the direction needed to \emph{pull Nash equilibria back from the
-  spec to the backend}: a Nash on the spec kernel game corresponds to a
-  Nash on the backend game by composition with the morphism.
+  the direction needed to \emph{pull Nash equilibria back from the
+  spec to the backend}.
 \end{itemize}
-A backend author supplies \TT{StochasticStepRefinement} plus a block-law
-lift and obtains an EU-preserving morphism from the implementation into
-the canonical Vegas blocked-trace game.  The separation between
-\TT{PureSpecBlockLaw}/\TT{BehavioralSpecBlockLaw} and backend lifts is
-intentional: FOSG blocked traces are indexed by bounded FOSG histories, while
-machine block laws are indexed by machine blocked traces, so the code asks for
-the soundness proof instead of treating such a conversion as definitional.
-For the identity refinement, \TT{PureSpecBlockLaw.identityBackendLift}\label{def:PureSpecBlockLaw.identityBackendLift}
-and \TT{BehavioralSpecBlockLaw.identityBackendLift}\label{def:BehavioralSpecBlockLaw.identityBackendLift}
+
+A backend author supplies a \DefRef{StochasticStepRefinement} plus a
+block-law lift and obtains an EU-preserving morphism from the
+implementation into the canonical Vegas blocked-trace game. The
+separation of \TT{PureSpecBlockLaw}/\TT{BehavioralSpecBlockLaw} from
+backend lifts is needed because FOSG blocked traces are indexed by
+bounded FOSG histories while machine block laws are indexed by machine
+blocked traces — the code asks for the soundness proof rather than
+treating the conversion as definitional. For the identity refinement,
+\DefRef{PureSpecBlockLaw.identityBackendLift}\label{def:PureSpecBlockLaw.identityBackendLift}
+and
+\DefRef{BehavioralSpecBlockLaw.identityBackendLift}\label{def:BehavioralSpecBlockLaw.identityBackendLift}
 reuse the same packaged soundness proof.
 
 \paragraph{Transport proofs use the morphism API.}
 The two public pullback theorems
-\begin{quote}
-\TT{backendBlockedTraceKernelGameAt_isNash_pullback}\label{def:backendBlockedTraceKernelGameAt_isNash_pullback}, \\
-\TT{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}\label{def:backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}
-\end{quote}
-are proved by applying \TT{KernelGame.EUMorphism.nash_of_nash}\label{def:KernelGame.EUMorphism.nash_of_nash}. The composed
-``payoff-vector game to backend'' theorems first use the Stage-1
-\TT{EUGameIsomorphism.nash_iff}\label{def:EUGameIsomorphism.nash_iff} between payoff-vector and blocked-trace games,
-then the backend morphism. Thus the code exercises the same morphism
-composition story stated in the report rather than repeating
-expected-utility calculations locally.
+\DefRef{backendBlockedTraceKernelGameAt_isNash_pullback}\label{def:backendBlockedTraceKernelGameAt_isNash_pullback}
+and
+\DefRef{backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}\label{def:backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback}
+are proved by applying
+\DefRef{KernelGame.EUMorphism.nash_of_nash}\label{def:KernelGame.EUMorphism.nash_of_nash}.
+The composed ``payoff-vector game to backend'' theorems first use
+\DefRef{EUGameIsomorphism.nash_iff}\label{def:EUGameIsomorphism.nash_iff}
+between payoff-vector and blocked-trace games, then the backend
+morphism. The code thus exercises the same morphism-composition story
+stated in the report rather than repeating expected-utility
+calculations locally.
 
 % =====================================================================
 \section{Worked Examples}
@@ -1811,7 +2100,7 @@ This example is the smallest where mixed strategies are necessary. The
 kernel game produced by \TT{pmfBehavioralKernelGame} carries enough
 information to express mixed-Nash claims. \TT{kuhn_finite} is a
 \emph{realisation} theorem (every mixed pure profile is matched by a
-behavioural profile with the same outcome distribution); it does not
+behavioral profile with the same outcome distribution); it does not
 itself construct or prove the existence of any equilibrium. Existence
 proofs would compose Kuhn realisation with a separate fixed-point
 existence theorem.
@@ -1898,7 +2187,7 @@ deterministic \Let{} to bind a public boolean flag, then a public \Sample{}
 from a fair coin, then \Ret{} with payoff $1$ exactly when both are true. The
 file proves the \TT{FWeight.totalWeight}\label{def:FWeight.totalWeight} normalisation obligation for the sample,
 checks the payoff expression at both coin outcomes, packages the program as a
-\TT{WFProgram}, and exposes the generated behavioural kernel game. This is the
+\TT{WFProgram}, and exposes the generated behavioral kernel game. This is the
 minimal example a reviewer should inspect when asking whether \Let{} and
 \Sample{} are actually exercised by checked programs.
 
@@ -1966,8 +2255,10 @@ outcome-law theorem for each example:
 \]
 This is the intended notion of ``translated to the expected EFG'': expected
 up to the canonical FOSG-to-EFG serialisation, with explicit checked tree
-shape at the root.  The equality to the native Vegas PMF-behavioural kernel
-game is the separate native/FOSG bridge obligation.
+shape at the root.  The equality to the native Vegas PMF-behavioral kernel
+game follows by composing this theorem with the native/FOSG behavioral outcome
+equivalence; that composed EFG-to-native corollary is not yet exposed as a
+separate named theorem.
 
 \subsection{StrategicSemantics}
 

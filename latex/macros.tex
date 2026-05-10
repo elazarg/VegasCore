@@ -52,7 +52,8 @@
 \newcommand{\Reveal}{\ensuremath{\mathbf{reveal}}}
 
 % ── Distributions ─────────────────────────────────────────────────────
-\newcommand{\FWeight}[1]{\mathcal{W}(#1)}
+\newcommand{\FW}{\mathcal{W}}
+\newcommand{\FWeight}[1]{\FW(#1)}
 \newcommand{\PMF}[1]{\mathrm{PMF}(#1)}
 
 % ── Denotational semantics ────────────────────────────────────────────
@@ -158,3 +159,22 @@
 % ── Boxes for design notes / Lean correspondence ──────────────────────
 \newcommand{\designnote}[1]{\par\smallskip\noindent\emph{Design note.} #1\par\smallskip}
 \newcommand{\leancorr}[1]{\par\smallskip\noindent\emph{Lean correspondence.} #1\par\smallskip}
+
+% ── Lean signature boxes ──────────────────────────────────────────────
+% A light-shaded, thin-ruled block for displaying Lean signatures.
+% Contents are typeset (not verbatim) so we can mix \TT, math, and Greek
+% as the rest of the document already does.
+\usepackage[most]{tcolorbox}
+\tcbset{
+  leanstyle/.style={
+    colback=black!3, colframe=black!30, boxrule=0.3pt, arc=1pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    breakable, enhanced jigsaw,
+    before skip=4pt, after skip=4pt,
+    fontupper=\footnotesize\ttfamily,
+  },
+}
+\newtcolorbox{leanbox}[1][]{leanstyle, #1}
+% Body-indent inside leanbox: visible 2-ish-space Lean-style indent.
+\newcommand{\bd}{\hspace*{1.6em}}
+\newcommand{\bdd}{\hspace*{3.2em}}

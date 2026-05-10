@@ -4,7 +4,7 @@
 The shift from operational machine to game-theoretic structure
 happens at this layer.  We define a native round view on top of a
 machine, exhibit the event-graph round view, build pure and
-PMF-behavioural strategy carriers from that view, and present the
+PMF-behavioral strategy carriers from that view, and present the
 game forms and kernel games over which the standard solution-concept
 inventory is defined.  The FOSG view mirrors the same round
 structure as a presentation layer; it is used by the FOSG, EFG, and
@@ -158,7 +158,7 @@ A \emph{pure strategy} for $p$ is a function
 \]
 returning $\mathsf{none}$ at information states where $p$ is not
 active and $\mathsf{some}\,a$ at active ones.  A
-\emph{behavioural strategy} is the analogous function valued in
+\emph{behavioral strategy} is the analogous function valued in
 $\PMF{\mathrm{Option}(\Act_p)}$.
 
 The \emph{legal} carriers further restrict: at every reachable
@@ -189,7 +189,7 @@ outcome kernels.  The FOSG presentation has the same horizon for the
 FOSG/EFG bridge theorems.
 
 The bounded view exposes outcome kernels for both pure and
-behavioural profiles:
+behavioral profiles:
 \begin{align*}
   \mathrm{outcomeFromPure}_h\,\pi      &\in \PMF{\Outcome}, \\
   \mathrm{outcomeFromBehavioral}_h\,\beta &\in \PMF{\Outcome}.
@@ -233,11 +233,11 @@ Name & Carrier and outcomes \\
 $\mathrm{pureKernelGame}(g)$ &
   pure strategies; outcomes in $\Outcome$ (public payoff). \\
 $\mathrm{pmfBehavioralKernelGame}(g)$ &
-  PMF behavioural strategies; outcomes in $\Outcome$. \\
+  PMF behavioral strategies; outcomes in $\Outcome$. \\
 $\mathrm{pureBlockedTraceKernelGame}(g)$ &
   pure strategies; outcomes in $\mathrm{BlockedTrace}(g)$. \\
 $\mathrm{pmfBehavioralBlockedTraceKernelGame}(g)$ &
-  PMF behavioural; outcomes in $\mathrm{BlockedTrace}(g)$. \\
+  PMF behavioral; outcomes in $\mathrm{BlockedTrace}(g)$. \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -250,7 +250,7 @@ is the natural object on which to compare the canonical event-graph
 machine to a backend implementation, since the latter may produce
 additional implementation-specific events within the same round.
 The two axes of the kernel-game table above are then \emph{strategy
-carrier} (pure vs.\ PMF-behavioural) and \emph{outcome shape}
+carrier} (pure vs.\ PMF-behavioral) and \emph{outcome shape}
 (payoff vector vs.\ blocked trace).  The blocked-trace games
 \emph{refine} the payoff-vector games by an outcome projection.
 

@@ -5,9 +5,9 @@ The kernel games of \S\ref{sec:fosg-strategies} are the primary
 strategic-form interface.  Two further results are needed to make
 the construction interoperate with the textbook tradition: an
 extensive-form presentation of the FOSG view, and a finite Kuhn
-realisation theorem that links mixed and behavioural strategies.
+realisation theorem that links mixed and behavioral strategies.
 The native strategic layer is not defined through these presentations;
-their connection to native strategies is an explicit bridge obligation.
+their connection to native strategies is proved as native/FOSG transport.
 
 \subsection{The canonical EFG presentation}
 \label{sec:pres:efg}
@@ -23,7 +23,7 @@ transition.
 \begin{theorem}[EFG presentation adequacy]
 \label{thm:efg}
 For every checked program $g$ and every bounded event-graph FOSG
-behavioural profile $\beta$, the translated EFG outcome kernel
+behavioral profile $\beta$, the translated EFG outcome kernel
 projected to the payoff-vector outcome agrees with the bounded FOSG
 outcome kernel:
 \[
@@ -37,7 +37,7 @@ translation.
 \end{theorem}
 
 The proof is by induction on the bounded FOSG depth, exploiting the
-fact that translated legal FOSG behavioural strategies put all mass
+fact that translated legal FOSG behavioral strategies put all mass
 on $\mathsf{none}$ for inactive players, so the administrative
 decision opportunities at the EFG layer add no strategic freedom.
 
@@ -45,8 +45,8 @@ decision opportunities at the EFG layer add no strategic freedom.
 semantic owner.  The authoritative semantics is the event-graph
 machine; the EFG is a presentation that respects the payoff-vector
 outcome law of the bounded FOSG presentation.  Relating that FOSG law
-to the native Vegas strategy carrier is the same native/FOSG bridge
-obligation needed by the native Kuhn statement.  This preserves the two
+to the native Vegas strategy carrier is handled by the native/FOSG
+outcome-law transport theorem.  This preserves the two
 strategically irrelevant features of the EFG — the arbitrary
 linearisation of independent same-round events, and the introduction of
 administrative no-op decision opportunities — without making them part
@@ -67,18 +67,17 @@ kernel through the independent product:
 
 Kuhn's classical theorem~\citep{Kuhn1953} says that in finite
 extensive-form games with perfect recall, mixed strategies over pure
-contingent plans and behavioural strategies are realisationally
+contingent plans and behavioral strategies are realisationally
 equivalent.  The unconditional theorem currently mechanised in Vegas is
 the bounded event-graph FOSG counterpart.  The native public theorem is
-stated over the native kernel games and takes the native/FOSG
-strategy-equivalence bridge as an explicit argument.
+stated over the native kernel games and proves the FOSG/native transport
+needed to reuse that theorem.
 
-\begin{theorem}[Finite native Kuhn realisation, conditional bridge]
+\begin{theorem}[Finite native Kuhn realisation]
 \label{thm:kuhn}
-For every checked program $g$, assuming the native/FOSG strategy-equivalence
-bridge for $g$, every independent mixed profile
+For every checked program $g$, every independent mixed profile
 $\mu \in \prod_p \PMF{S_p^{\mathrm{pure}}}$ over pure strategies of
-$\mathrm{pureKernelGame}(g)$ admits a behavioural profile $\beta$ of
+$\mathrm{pureKernelGame}(g)$ admits a behavioral profile $\beta$ of
 $\mathrm{pmfBehavioralKernelGame}(g)$ with the same payoff-vector outcome
 distribution:
 \[
@@ -95,19 +94,21 @@ $I \in \mathrm{ReachableInfoState}(p)$, $\beta_p(I)$ is the posterior
 distribution over actions induced by $\mu_p$ conditional on the
 history class realising $I$.  The FOSG proof uses the
 \emph{LegalObservable} theorem for checked event-graph FOSGs.  The
-native theorem then applies the explicit bridge obligation, which is
-the still-separate proof that native round-view strategies and bounded
-FOSG strategies realise the same mixed and behavioural outcome laws.
+native theorem transports the mixed profile into the FOSG carrier,
+applies the FOSG realization theorem, transports the behavioral witness
+back to the native round-view carrier, and uses the native/FOSG pure and
+behavioral outcome-law equivalence theorems.
 \end{proof}
 
 \Cref{thm:kuhn} is the intended contract between the pure-strategy API
-and the PMF-behavioural analysis API.  The current Lean statement makes
-the remaining native/FOSG bridge visible rather than hiding it in prose.
-It does not by itself construct an equilibrium; existence follows from
+and the PMF-behavioral analysis API.  It does not by itself construct an
+equilibrium; existence follows from
 composing realisation with a fixed-point theorem
 (\S\ref{sec:fosg-strategies}).
 
 \paragraph{Lean correspondence.}
 Supplement~\S6.4 (canonical EFG presentation), \S7.6 (mixed extension
-and Kuhn realisation: \TT{kuhn\_finite}, \TT{NativeFOSGKuhnBridge},
+and Kuhn realisation: \TT{kuhn\_finite}, \TT{kuhn\_finiteKernelGame},
+\TT{boundedOutcomeFromPure\_nativeToFOSG},
+\TT{boundedOutcomeFromBehavioral\_nativeToFOSG},
 \TT{eventGraphEFGAt\_outcomeKernel\_map\_publicOutcome}).

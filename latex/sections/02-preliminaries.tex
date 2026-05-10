@@ -31,7 +31,7 @@ two independent stochastic steps may be linearised in either order.
 
 \begin{remark}[Finite weights vs.\ PMFs]
 \label{rem:fweight}
-Inside the construction we work with an unnormalised auxiliary,
+Inside the construction we work with an unnormalized auxiliary,
 $\FWeight{\alpha} = \alpha \to_0 \NNQ$, the type of finite-support
 $\mathbb{Q}_{\ge 0}$-valued weight functions.  Rational weights are
 decidably equal, finite weights compose without per-step normalisation
@@ -49,7 +49,7 @@ $\mathsf{pure}(x)$.  For a finite player set $\Players$ and a family
 $\{\mu_p : \PMF{S_p}\}_{p \in \Players}$, the \emph{independent
 product} $\bigotimes_{p}\mu_p \in \PMF{\prod_p S_p}$ is the joint PMF
 $(\bigotimes_p \mu_p)(\sigma) = \prod_p \mu_p(\sigma_p)$.  We use the
-shorthand $\Kbeh, \Kpure, \Kmix$ for behavioural, pure, and
+shorthand $\Kbeh, \Kpure, \Kmix$ for behavioral, pure, and
 mixed-extension kernels later.
 \end{notation}
 
@@ -63,7 +63,7 @@ A \emph{typed context} is a list of typed bindings,
 with each $\tau_i$ drawn from a small fixed type universe (described
 in \S\ref{sec:source-language}).  An \emph{environment} for $\Gamma$
 is a dependent assignment $\rho \in \Env(\Gamma)$ that maps each
-binding to a value of its declared type.  The supplement formalises
+binding to a value of its declared type.  The supplement formalizes
 this with a typed de~Bruijn membership relation $\mathrm{HasVar}\,
 \Gamma\,x\,\tau$; the only formal subtlety is that environment lookup
 is proof-irrelevant when $\Gamma$ has unique names, which is the case

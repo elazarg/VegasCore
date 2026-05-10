@@ -4,7 +4,7 @@
 This report develops a mechanised semantics for a finite probabilistic
 game-description language.  The intended reader has a working knowledge
 of finite extensive-form games (players, information sets, mixed and
-behavioural strategies, Nash equilibrium) but is not assumed to know
+behavioral strategies, Nash equilibrium) but is not assumed to know
 the modern factored-observation formalism, the Lean proof assistant,
 or the specific corner of programming-language semantics that
 underlies the construction.  We make three concessions to that mixed
@@ -32,18 +32,18 @@ discipline can usually skip the entries that match their background.
   continuation indexed by its result, and the unit $\delta_x$
   (\emph{Dirac}) is the point mass at $x$.
 \item[Finite-weight function.]
-  An auxiliary unnormalised version, $\FWeight{\alpha} = \alpha \to_0
+  An auxiliary unnormalized version, $\FWeight{\alpha} = \alpha \to_0
   \NNQ$, used internally during construction; converting to a PMF
   requires a side proof of total mass $1$.
 \item[Kuhn's theorem (finite realisation form).]
   In a finite extensive-form game with sufficient observability,
   every mixed strategy over pure contingent plans induces the same
-  outcome distribution as some behavioural strategy that randomises
+  outcome distribution as some behavioral strategy that randomises
   locally at each information set~\citep{Kuhn1953}.  The classical
   statement requires \emph{perfect recall}.  In the current Lean
   development the bounded-FOSG theorem is unconditional on the FOSG
-  carriers; the native Vegas kernel-game statement is exposed with an
-  explicit native/FOSG strategy-equivalence bridge obligation.
+  carriers; the native Vegas kernel-game statement follows by the
+  proved native/FOSG strategy-equivalence and outcome-law transport.
 \item[Factored-observation stochastic game (FOSG).]
   A modern state-based formalism for finite extensive-form games with
   imperfect information~\citep{Kovarik2022}: each round, an active set
@@ -77,7 +77,7 @@ discipline can usually skip the entries that match their background.
 \item[Refinement / forward simulation.]
   A binary relation between an implementation and a specification
   asserting that the implementation cannot be distinguished from the
-  specification by any externally observable behaviour.  Conventionally
+  specification by any externally observable behavior.  Conventionally
   proved by exhibiting a state projection and matching transitions
   step-by-step~\citep{LynchVaandrager1995,AbadiLamport1991}.
 \item[Visibility / view.]

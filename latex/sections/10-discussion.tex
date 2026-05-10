@@ -62,15 +62,14 @@ event-graph view does not maintain a sub-game decomposition; this
 would require an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
-\paragraph{Native/FOSG bridge not yet discharged.}  The Vegas-facing
-pure and PMF-behavioural strategy carriers are now native round-view
-carriers over the event-graph machine.  The bounded FOSG view remains
-the presentation used for the generic FOSG Kuhn theorem and the
-canonical FOSG-to-EFG bridge.  What is still open is the full bridge
-proof that the native round-view carriers and bounded FOSG carriers
-realise exactly the same mixed, behavioural, and outcome laws.  The
-Lean API exposes this as an explicit argument to the native Kuhn
-statement instead of treating it as prose.
+\paragraph{Presentation boundaries.}  The Vegas-facing pure and
+PMF-behavioral strategy carriers are native round-view carriers over the
+event-graph machine.  The bounded FOSG view remains the presentation used
+for the generic FOSG Kuhn theorem and the canonical FOSG-to-EFG bridge.
+The native/FOSG outcome-law transport needed for the public Kuhn theorem
+is mechanised; what is not yet exposed is a single native augmented-EFG
+object whose theorem states the composed FOSG-to-EFG and native/FOSG
+adequacy result at once.
 
 \paragraph{Public samples only.}  The source $\Sample$ constructor
 draws a public coin.  It is suitable for public randomness, but it
@@ -82,7 +81,7 @@ visibility discipline.
 \paragraph{Solver export.}  The code now has a finite pure
 kernel-game export object with player/strategy enumerations and
 kernel/utility oracles.  It is deliberately narrower than a
-complete solver interchange format, and the PMF-behavioural carrier
+complete solver interchange format, and the PMF-behavioral carrier
 is not exported as a finite strategy list.
 
 \paragraph{Decidability.}  The static obligations of
@@ -143,7 +142,7 @@ machine-checked strategic-structure preservation.
 
 \paragraph{Concurrent-strategy realisation.}
 \Cref{thm:kuhn} gives the realisation half of the classical
-mixed-vs-behavioural correspondence.  In a concurrent-strategy
+mixed-vs-behavioral correspondence.  In a concurrent-strategy
 setting (where a player can commit to a function of \emph{joint}
 information across simultaneous events), the corresponding
 realisation theorem is more delicate, and the formalism naturally
@@ -159,7 +158,7 @@ object?  The answer it offers is the dependency graph of events,
 with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
-sanity-check theorems or explicit bridge obligations
+adequacy and transport theorems
 (payoff-vector agreement, FOSG Kuhn realisation, EFG presentation
 adequacy, refinement transport).
 

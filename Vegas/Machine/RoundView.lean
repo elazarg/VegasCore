@@ -11,7 +11,8 @@ import Vegas.Machine.Trace
 A `RoundView` is the machine-native strategic game form used by Vegas.  It
 packages player-facing simultaneous rounds over machine states, finite-horizon
 histories, reachable legal strategies, and outcome kernels without routing
-through FOSG.  FOSG/EFG presentations are separate bridge obligations.
+through FOSG.  FOSG/EFG presentations are separate bridges with transport
+theorems back to this native carrier.
 -/
 
 namespace Vegas
