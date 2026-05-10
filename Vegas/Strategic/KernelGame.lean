@@ -1,6 +1,6 @@
 import GameTheory.Core.GameSimulation
 import Vegas.Core.Config
-import Vegas.GameBridge.FOSG.FromCore
+import Vegas.Strategic.Native
 
 /-!
 # Strategic kernel games
@@ -15,26 +15,6 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Pure strategy carrier at the program's finite syntax horizon. -/
-abbrev pureStrategyAt
-    (g : WFProgram P L) (who : P) : Type :=
-  (eventGraphFOSGView g).BoundedPureStrategy (syntaxSteps g.prog) who
-
-/-- Pure profile carrier at the program's finite syntax horizon. -/
-abbrev pureProfileAt
-    (g : WFProgram P L) : Type :=
-  (eventGraphFOSGView g).BoundedPureProfile (syntaxSteps g.prog)
-
-/-- PMF behavioral strategy carrier at the program's finite syntax horizon. -/
-abbrev behavioralStrategyPMFAt
-    (g : WFProgram P L) (who : P) : Type :=
-  (eventGraphFOSGView g).BoundedBehavioralStrategy (syntaxSteps g.prog) who
-
-/-- PMF behavioral profile carrier at the program's finite syntax horizon. -/
-abbrev behavioralProfilePMFAt
-    (g : WFProgram P L) : Type :=
-  (eventGraphFOSGView g).BoundedBehavioralProfile (syntaxSteps g.prog)
-
 /-- Outcome kernel of the finite pure strategic form of a checked Vegas
 program. -/
 noncomputable def pureOutcomeKernelAt
@@ -42,7 +22,7 @@ noncomputable def pureOutcomeKernelAt
     (π : pureProfileAt g) : PMF (Outcome P) := by
   classical
   exact
-    (eventGraphFOSGView g).boundedOutcomeFromPure
+    (eventGraphRoundView g).boundedOutcomeFromPure
       (syntaxSteps g.prog) π (syntaxSteps g.prog)
 
 /-- Outcome kernel of the finite PMF behavioral strategic form of a checked
@@ -52,49 +32,43 @@ noncomputable def behavioralOutcomeKernelPMFAt
     (β : behavioralProfilePMFAt g) : PMF (Outcome P) := by
   classical
   exact
-    (eventGraphFOSGView g).boundedOutcomeFromBehavioral
+    (eventGraphRoundView g).boundedOutcomeFromBehavioral
       (syntaxSteps g.prog) β (syntaxSteps g.prog)
 
 /-- Pure strategic-form outcomes are machine-outcome projections of the
-blocked primitive trace distribution induced by the finite event-graph FOSG
-view. -/
+native blocked primitive trace distribution induced by the finite event-graph
+round view. -/
 theorem pureOutcomeKernelAt_eq_blockTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-          (GameTheory.FOSG.legalPureToBehavioral
-            ((eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
-            π.extend)
-          (syntaxSteps g.prog)
-          (eventGraphInitialHistory g (syntaxSteps g.prog))) := by
-  simp [pureOutcomeKernelAt,
-    eventGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist]
+        (fun trace : (eventGraphMachine g).BlockTrace =>
+          (eventGraphMachine g).outcome trace.2)
+        ((eventGraphRoundView g).boundedBlockTraceFromPure
+          (syntaxSteps g.prog) π (syntaxSteps g.prog)) := by
+  rfl
 
 /-- PMF behavioral strategic-form outcomes are machine-outcome projections of
-the blocked primitive trace distribution induced by the finite event-graph
-FOSG view. -/
+the native blocked primitive trace distribution induced by the finite
+event-graph round view. -/
 theorem behavioralOutcomeKernelPMFAt_eq_blockTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-          β.extend
-          (syntaxSteps g.prog)
-          (eventGraphInitialHistory g (syntaxSteps g.prog))) := by
-  simp [behavioralOutcomeKernelPMFAt,
-    eventGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist]
+        (fun trace : (eventGraphMachine g).BlockTrace =>
+          (eventGraphMachine g).outcome trace.2)
+        ((eventGraphRoundView g).boundedBlockTraceFromBehavioral
+          (syntaxSteps g.prog) β (syntaxSteps g.prog)) := by
+  rfl
 
-/-- Machine blocked trace outcomes induced by the bounded event-graph FOSG
-view: the primitive event blocks executed so far, paired with the resulting
-checkpoint state. -/
+/-- Machine blocked trace outcomes induced by the bounded native event-graph
+round view: the primitive event blocks executed so far, paired with the
+resulting checkpoint state. -/
 abbrev syntaxBlockedTraceAt
     (g : WFProgram P L) : Type :=
-  List (List (eventGraphMachine g).Event) × (eventGraphMachine g).State
+  (eventGraphMachine g).BlockTrace
 
 /-- Public outcome read from a blocked machine trace. -/
 noncomputable def syntaxBlockedTraceOutcome
@@ -127,21 +101,15 @@ noncomputable def publicOutcomeUtility :
 noncomputable def pureBlockedTraceOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) : PMF (syntaxBlockedTraceAt g) :=
-  eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-    (GameTheory.FOSG.legalPureToBehavioral
-      ((eventGraphFOSGView g).toBoundedFOSG (syntaxSteps g.prog))
-      π.extend)
-    (syntaxSteps g.prog)
-    (eventGraphInitialHistory g (syntaxSteps g.prog))
+  (eventGraphRoundView g).boundedBlockTraceFromPure
+    (syntaxSteps g.prog) π (syntaxSteps g.prog)
 
 /-- Blocked primitive trace kernel induced by a PMF behavioral profile. -/
 noncomputable def behavioralBlockedTraceOutcomeKernelPMFAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) : PMF (syntaxBlockedTraceAt g) :=
-  eventGraphFOSGBlockTraceDistFrom g (syntaxSteps g.prog)
-    β.extend
-    (syntaxSteps g.prog)
-    (eventGraphInitialHistory g (syntaxSteps g.prog))
+  (eventGraphRoundView g).boundedBlockTraceFromBehavioral
+    (syntaxSteps g.prog) β (syntaxSteps g.prog)
 
 /-- Pure terminal-public-state outcome kernel induced by a pure profile. -/
 noncomputable def purePublicStateOutcomeKernelAt
@@ -287,7 +255,6 @@ noncomputable instance pureKernelGameAt.instFintypeStrategy
     Fintype ((pureKernelGameAt g).Strategy who) := by
   classical
   change Fintype (pureStrategyAt g who)
-  dsimp [pureStrategyAt, Machine.FOSGView.BoundedPureStrategy]
   infer_instance
 
 /-- Finite PMF behavioral strategic form of a checked Vegas program. -/
@@ -322,7 +289,7 @@ theorem pureBlockedTraceKernelGameAt_outcomeKernel_map_outcome
         ((pureBlockedTraceKernelGameAt g).outcomeKernel π) =
       (pureKernelGameAt g).outcomeKernel π := by
   simpa [pureBlockedTraceKernelGameAt, pureKernelGameAt,
-    syntaxBlockedTraceOutcome] using
+    pureBlockedTraceOutcomeKernelAt, syntaxBlockedTraceOutcome] using
     (pureOutcomeKernelAt_eq_blockTraceDist g π).symm
 
 /-- Projecting PMF behavioral blocked-trace outcomes to public outcomes gives
@@ -334,7 +301,7 @@ theorem pmfBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_outcome
         ((pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β) =
       (pmfBehavioralKernelGameAt g).outcomeKernel β := by
   simpa [pmfBehavioralBlockedTraceKernelGameAt, pmfBehavioralKernelGameAt,
-    syntaxBlockedTraceOutcome] using
+    behavioralBlockedTraceOutcomeKernelPMFAt, syntaxBlockedTraceOutcome] using
     (behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β).symm
 
 /-- The blocked-trace pure game refines the public pure game by the public
@@ -411,28 +378,32 @@ theorem pureBlockedTraceKernelGameAt_eu_eq
       (pureKernelGameAt g).eu π who := by
   classical
   let horizon := syntaxSteps g.prog
-  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
-  let σ := GameTheory.FOSG.legalPureToBehavioral G π.extend
-  let start := GameTheory.FOSG.History.nil G
-  let run := GameTheory.FOSG.History.runDistFrom G σ horizon start
-  let projectTrace : G.History → syntaxBlockedTraceAt g :=
-    fun h' => (eventGraphFOSGHistoryEventBlocks g horizon h',
-      h'.lastState.state)
-  let projectOutcome : G.History → Outcome P :=
+  let G := eventGraphRoundView g
+  let σ := G.legalPureToBehavioral horizon π
+  let run := G.runDist horizon horizon σ
+  let projectTrace : G.BoundedHistory horizon → syntaxBlockedTraceAt g :=
+    fun h' => G.boundedHistoryTrace horizon h'
+  let projectOutcome : G.BoundedHistory horizon → Outcome P :=
     fun h' => (eventGraphMachine g).outcome h'.lastState.state
+  letI : Fintype (G.BoundedHistory horizon) :=
+    G.instFintypeBoundedHistory horizon
   have htrace :
       (pureBlockedTraceKernelGameAt g).outcomeKernel π =
         PMF.map projectTrace run := by
-    have h :=
-      eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
-        (g := g) (horizon := horizon) (σ := σ) (n := horizon)
-        (h := start)
-    simpa [pureBlockedTraceKernelGameAt, pureBlockedTraceOutcomeKernelAt,
-      eventGraphInitialHistory, projectTrace, run, start, σ, G, horizon]
-      using h.symm
+    simp [pureBlockedTraceKernelGameAt, pureBlockedTraceOutcomeKernelAt,
+      pureBlockedTraceGameFormAt,
+      Machine.RoundView.boundedBlockTraceFromPure,
+      Machine.RoundView.boundedBlockTraceFromBehavioral,
+      Machine.RoundView.runDist, projectTrace, run, σ, G, horizon]
   have hpublic :
       (pureKernelGameAt g).outcomeKernel π =
         PMF.map projectOutcome run := by
+    rw [pureKernelGameAt_outcomeKernel]
+    dsimp [pureOutcomeKernelAt, Machine.RoundView.boundedOutcomeFromPure,
+      Machine.RoundView.boundedBlockTraceFromPure,
+      Machine.RoundView.boundedBlockTraceFromBehavioral,
+      Machine.RoundView.runDist, projectOutcome, run, σ, G, horizon]
+    rw [PMF.map_comp]
     rfl
   calc
     (pureBlockedTraceKernelGameAt g).eu π who =
@@ -463,29 +434,32 @@ theorem pmfBehavioralBlockedTraceKernelGameAt_eu_eq
       (pmfBehavioralKernelGameAt g).eu β who := by
   classical
   let horizon := syntaxSteps g.prog
-  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
-  let σ := β.extend
-  let start := GameTheory.FOSG.History.nil G
-  let run := GameTheory.FOSG.History.runDistFrom G σ horizon start
-  let projectTrace : G.History → syntaxBlockedTraceAt g :=
-    fun h' => (eventGraphFOSGHistoryEventBlocks g horizon h',
-      h'.lastState.state)
-  let projectOutcome : G.History → Outcome P :=
+  let G := eventGraphRoundView g
+  let σ := β
+  let run := G.runDist horizon horizon σ
+  let projectTrace : G.BoundedHistory horizon → syntaxBlockedTraceAt g :=
+    fun h' => G.boundedHistoryTrace horizon h'
+  let projectOutcome : G.BoundedHistory horizon → Outcome P :=
     fun h' => (eventGraphMachine g).outcome h'.lastState.state
+  letI : Fintype (G.BoundedHistory horizon) :=
+    G.instFintypeBoundedHistory horizon
   have htrace :
       (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β =
         PMF.map projectTrace run := by
-    have h :=
-      eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
-        (g := g) (horizon := horizon) (σ := σ) (n := horizon)
-        (h := start)
-    simpa [pmfBehavioralBlockedTraceKernelGameAt,
+    simp [pmfBehavioralBlockedTraceKernelGameAt,
       behavioralBlockedTraceOutcomeKernelPMFAt,
-      eventGraphInitialHistory, projectTrace, run, start, σ, G, horizon]
-      using h.symm
+      pmfBehavioralBlockedTraceGameFormAt,
+      Machine.RoundView.boundedBlockTraceFromBehavioral,
+      Machine.RoundView.runDist, projectTrace, run, σ, G, horizon]
   have hpublic :
       (pmfBehavioralKernelGameAt g).outcomeKernel β =
         PMF.map projectOutcome run := by
+    rw [pmfBehavioralKernelGameAt_outcomeKernel]
+    dsimp [behavioralOutcomeKernelPMFAt,
+      Machine.RoundView.boundedOutcomeFromBehavioral,
+      Machine.RoundView.boundedBlockTraceFromBehavioral,
+      Machine.RoundView.runDist, projectOutcome, run, σ, G, horizon]
+    rw [PMF.map_comp]
     rfl
   calc
     (pmfBehavioralBlockedTraceKernelGameAt g).eu β who =
