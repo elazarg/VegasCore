@@ -329,16 +329,19 @@ and the corresponding existence corollaries.
 
 A mixed-extension profile is simply a profile of PMFs, one over each
 player's strategy carrier.  Fixed-point existence theorems assume
-finite nonempty strategy carriers and a finite outcome carrier.  The
-library exposes finite-game existence corollaries
+finite nonempty strategy carriers, together with either a finite outcome
+carrier or a bounded-utility hypothesis.  The library exposes
+finite-outcome existence corollaries
 ($\mathrm{mixedNash\_exists}$,
 $\mathrm{correlatedEq\_exists}$, $\mathrm{coarseCorrelatedEq\_exists}$)
-as wrappers around the GameTheory library's fixed-point and
-correlated-equilibrium theorems.  For the payoff-vector game
+and bounded-utility variants as wrappers around the GameTheory
+library's fixed-point and correlated-equilibrium theorems.  For the
+payoff-vector game
 $O = \Outcome\,\Players = \Players \to_0 \mathbb{Z}$,
-finite outcomes are therefore a separate hypothesis; finite public-state
-or bounded-history presentations are the natural carriers for
-unconditional finite-game existence statements.
+finite outcomes are a separate hypothesis.  Blocked-trace
+presentations use the bounded-utility theorem instead: their trace
+carrier contains unbounded lists, but the payoff read from a trace
+depends only on the finite event-graph state.
 
 \paragraph{Lean correspondence.}
 Supplement~\S6 (machines), \S7.2--\S7.3 (native round view, FOSG

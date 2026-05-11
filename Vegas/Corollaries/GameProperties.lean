@@ -153,6 +153,49 @@ theorem mixedNash_exists
   simpa [MixedStrategyProfile, IsMixedNash] using
     (KernelGame.mixed_nash_exists (pmfBehavioralKernelGame g))
 
+theorem mixedNash_exists_of_bounded
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Finite (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    {C : P → ℝ}
+    (hbd : ∀ who outcome,
+      |(pmfBehavioralKernelGame g).utility outcome who| ≤ C who) :
+    ∃ σ : MixedStrategyProfile g, IsMixedNash g σ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
+  simpa [MixedStrategyProfile, IsMixedNash] using
+    (KernelGame.mixed_nash_exists_of_bounded (pmfBehavioralKernelGame g) hbd)
+
+theorem pureBlockedTraceKernelGameAt_utility_bounded
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
+    ∃ C : P → ℝ, ∀ who trace,
+      |(pureBlockedTraceKernelGameAt g).utility trace who| ≤ C who := by
+  classical
+  refine ⟨fun who =>
+    (Math.Probability.exists_abs_bound_of_finite
+      (fun state : (eventGraphMachine g).State =>
+        (pureBlockedTraceKernelGameAt g).utility ([], state) who)).choose, ?_⟩
+  intro who trace
+  simpa [pureBlockedTraceKernelGameAt, syntaxBlockedTraceUtility] using
+    (Math.Probability.exists_abs_bound_of_finite
+      (fun state : (eventGraphMachine g).State =>
+        (pureBlockedTraceKernelGameAt g).utility ([], state) who)).choose_spec trace.2
+
+theorem pureBlockedTrace_mixedNash_exists
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Nonempty ((pureBlockedTraceKernelGameAt g).Strategy who)] :
+    ∃ σ : ∀ who, PMF ((pureBlockedTraceKernelGameAt g).Strategy who),
+      (pureBlockedTraceKernelGameAt g).mixedExtension.IsNash σ := by
+  classical
+  letI : ∀ who, Fintype ((pureBlockedTraceKernelGameAt g).Strategy who) := by
+    intro who
+    change Fintype (pureStrategyAt g who)
+    infer_instance
+  obtain ⟨C, hbd⟩ := pureBlockedTraceKernelGameAt_utility_bounded g
+  exact KernelGame.mixed_nash_exists_of_bounded (pureBlockedTraceKernelGameAt g) hbd
+
 theorem correlatedEq_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     [∀ who, Finite (Strategy g who)]
@@ -166,11 +209,27 @@ theorem correlatedEq_exists
   letI : Finite (pmfBehavioralKernelGame g).Outcome := by
     change Finite (Outcome P)
     infer_instance
-  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
-    change Fintype (Outcome P)
-    exact Fintype.ofFinite _
   simpa [CorrelatedProfile, StrategyProfile, IsCorrelatedEq] using
     (KernelGame.correlatedEq_exists (pmfBehavioralKernelGame g))
+
+theorem correlatedEq_exists_of_bounded
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Finite (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    {C : P → ℝ}
+    (hbd : ∀ who outcome,
+      |(pmfBehavioralKernelGame g).utility outcome who| ≤ C who) :
+    ∃ μ : CorrelatedProfile g, IsCorrelatedEq g μ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
+  obtain ⟨σ, hN⟩ :=
+    KernelGame.mixed_nash_exists_of_bounded (pmfBehavioralKernelGame g) hbd
+  exact ⟨Math.PMFProduct.pmfPi σ, by
+    simpa [CorrelatedProfile, StrategyProfile, IsCorrelatedEq] using
+      (KernelGame.mixed_nash_isCorrelatedEq_of_bounded
+        (G := pmfBehavioralKernelGame g) σ hN hbd)⟩
 
 theorem coarseCorrelatedEq_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
@@ -185,10 +244,26 @@ theorem coarseCorrelatedEq_exists
   letI : Finite (pmfBehavioralKernelGame g).Outcome := by
     change Finite (Outcome P)
     infer_instance
-  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
-    change Fintype (Outcome P)
-    exact Fintype.ofFinite _
   simpa [CorrelatedProfile, StrategyProfile, IsCoarseCorrelatedEq] using
     (KernelGame.coarseCorrelatedEq_exists (pmfBehavioralKernelGame g))
+
+theorem coarseCorrelatedEq_exists_of_bounded
+    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
+    [∀ who, Finite (Strategy g who)]
+    [∀ who, Nonempty (Strategy g who)]
+    {C : P → ℝ}
+    (hbd : ∀ who outcome,
+      |(pmfBehavioralKernelGame g).utility outcome who| ≤ C who) :
+    ∃ μ : CorrelatedProfile g, IsCoarseCorrelatedEq g μ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
+  obtain ⟨σ, hN⟩ :=
+    KernelGame.mixed_nash_exists_of_bounded (pmfBehavioralKernelGame g) hbd
+  exact ⟨Math.PMFProduct.pmfPi σ, by
+    simpa [CorrelatedProfile, StrategyProfile, IsCoarseCorrelatedEq] using
+      (KernelGame.mixed_nash_isCoarseCorrelatedEq_of_bounded
+        (G := pmfBehavioralKernelGame g) σ hN hbd)⟩
 
 end Vegas

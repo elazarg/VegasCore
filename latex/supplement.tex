@@ -1865,17 +1865,30 @@ existence results as wrappers around \TT{pmfBehavioralKernelGame g}:
 \DefRef{mixedNash_exists}\label{def:mixedNash_exists},
 \DefRef{correlatedEq_exists}\label{def:correlatedEq_exists}, and
 \DefRef{coarseCorrelatedEq_exists}\label{def:coarseCorrelatedEq_exists}.
-These are finite-game theorems in the library sense: their Lean
-statements require finite nonempty strategy carriers and a finite
-outcome carrier.  \TT{FiniteDomains g} supplies the finite operational
-domains and the finite pure/reachable carriers used by the game
-presentations; the behavioral strategy finiteness required by these
-generic wrappers is stated explicitly when needed.  The outcome
-hypothesis is separate because Vegas outcomes are payoff vectors,
-$\Outcome\,P = P \to_0 \mathbb{Z}$.  The wrappers are conditional
-corollaries for finite-outcome presentations of a Vegas game.  They are
-stated at the PMF-over-strategies level and do not themselves construct
-a named source-level policy.
+These finite-outcome wrappers require finite nonempty strategy carriers
+and a finite outcome carrier.  Vegas also exposes bounded-utility
+variants,
+\DefRef{mixedNash_exists_of_bounded}\label{def:mixedNash_exists_of_bounded},
+\DefRef{correlatedEq_exists_of_bounded}\label{def:correlatedEq_exists_of_bounded},
+and
+\DefRef{coarseCorrelatedEq_exists_of_bounded}\label{def:coarseCorrelatedEq_exists_of_bounded},
+which replace the finite-outcome hypothesis by a global utility bound.
+\TT{FiniteDomains g} supplies the finite operational domains and the
+finite pure/reachable carriers used by the game presentations; the
+behavioral strategy finiteness required by these generic wrappers is
+stated explicitly when needed.  The outcome hypothesis is separate
+because Vegas outcomes are payoff vectors,
+$\Outcome\,P = P \to_0 \mathbb{Z}$.  The wrappers are stated at the
+PMF-over-strategies level and do not themselves construct a named
+source-level policy.
+
+The source side needed for Kuhn-style equilibrium transport is better
+served by the blocked-trace presentation.  Its outcome carrier is
+\TT{List (List Event)} $\times$ \TT{State}, so it is not finite as a type, but its
+utility depends only on the finite checkpoint state.  The theorem
+\DefRef{pureBlockedTrace_mixedNash_exists}\label{def:pureBlockedTrace_mixedNash_exists}
+therefore obtains a mixed Nash equilibrium for the pure blocked-trace
+kernel game from bounded utility rather than from finite outcomes.
 
 \subsection{Mixed extension and Kuhn simulations}
 \label{def:Kuhn}
