@@ -137,16 +137,17 @@ theorem bestNashWelfare_le_optimalWelfare
 
 theorem mixedNash_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)]
+    [∀ who, Finite (Strategy g who)]
     [∀ who, Nonempty (Strategy g who)]
     [Finite (Outcome P)] :
     ∃ σ : MixedStrategyProfile g, IsMixedNash g σ := by
+  letI : ∀ who, Finite ((pmfBehavioralKernelGame g).Strategy who) := by
+    intro who
+    change Finite (Strategy g who)
+    infer_instance
   letI : Finite (pmfBehavioralKernelGame g).Outcome := by
     change Finite (Outcome P)
     infer_instance
-  letI : Fintype (pmfBehavioralKernelGame g).Outcome := by
-    change Fintype (Outcome P)
-    exact Fintype.ofFinite _
   simpa [MixedStrategyProfile, IsMixedNash] using
     (KernelGame.mixed_nash_exists (pmfBehavioralKernelGame g))
 

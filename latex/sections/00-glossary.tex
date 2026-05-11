@@ -35,15 +35,18 @@ discipline can usually skip the entries that match their background.
   An auxiliary unnormalized version, $\FWeight{\alpha} = \alpha \to_0
   \NNQ$, used internally during construction; converting to a PMF
   requires a side proof of total mass $1$.
-\item[Kuhn's theorem (finite realization form).]
+\item[Kuhn's theorem (finite realization and deviation form).]
   In a finite extensive-form game with sufficient observability,
   every mixed strategy over pure contingent plans induces the same
   outcome distribution as some behavioral strategy that randomizes
   locally at each information set~\citep{Kuhn1953}.  The classical
-  statement requires \emph{perfect recall}.  In the current Lean
-  development the bounded-FOSG theorem is unconditional on the FOSG
-  carriers; the native Vegas kernel-game statement follows by the
-  proved native/FOSG strategy-equivalence and outcome-law transport.
+  statement requires \emph{perfect recall}.  In this formalization, the
+  bounded-FOSG theorem is stated directly on the finite-horizon FOSG
+  carriers.  The same construction is packaged as a unilateral-deviation
+  simulation: every behavioral deviation has a mixed-pure deviation with
+  the same finite-horizon history law.  The native Vegas payoff-law
+  statement follows by the proved native/FOSG strategy-equivalence and
+  outcome-law transport.
 \item[Factored-observation stochastic game (FOSG).]
   A modern state-based formalism for finite extensive-form games with
   imperfect information~\citep{Kovarik2022}: each round, an active set

@@ -1,11 +1,11 @@
-\section{Presentations: extensive form and Kuhn realization}
+\section{Presentations: extensive form and Kuhn simulations}
 \label{sec:presentations}
 
 The kernel games of \S\ref{sec:fosg-strategies} are the primary
 strategic-form interface.  Two further results are needed to make
 the construction interoperate with the textbook tradition: an
-extensive-form presentation of the FOSG view, and a finite Kuhn
-realization theorem that links mixed and behavioral strategies.
+extensive-form presentation of the FOSG view, and finite Kuhn
+realization/deviation theorems that link mixed and behavioral strategies.
 The native strategic layer is not defined through these presentations;
 their connection to native strategies is proved as native/FOSG transport.
 
@@ -52,12 +52,12 @@ linearization of independent same-round events, and the introduction of
 administrative no-op decision opportunities — without making them part
 of the underlying game.}
 
-\subsection{Mixed extension and the finite Kuhn theorem}
+\subsection{Mixed extension and finite Kuhn simulations}
 \label{sec:pres:kuhn}
 
-The \emph{mixed extension} of a finite kernel game $\KG$ replaces
-each strategy space $S_p$ by $\PMF{S_p}$ and pushes the outcome
-kernel through the independent product:
+For a finite player set, the \emph{mixed extension} of a kernel game
+$\KG$ replaces each strategy space $S_p$ by $\PMF{S_p}$ and pushes the
+outcome kernel through the independent product:
 \begin{equation}
 \label{eq:mixed-extension}
   \Kmix(\mu)
@@ -68,10 +68,11 @@ kernel through the independent product:
 Kuhn's classical theorem~\citep{Kuhn1953} says that in finite
 extensive-form games with perfect recall, mixed strategies over pure
 contingent plans and behavioral strategies are realizationally
-equivalent.  The unconditional theorem currently mechanized in Vegas is
-the bounded event-graph FOSG counterpart.  The native public theorem is
-stated over the native kernel games and proves the FOSG/native transport
-needed to reuse that theorem.
+equivalent.  The bounded event-graph FOSG presentation carries two
+forms of this theorem: a realization equality and a Nash
+deviation-simulation theorem.  The native public theorem is stated over
+the native kernel games and proves the FOSG/native transport needed to
+reuse the realization equality.
 
 \begin{theorem}[Finite native Kuhn realization]
 \label{thm:kuhn}
@@ -87,14 +88,28 @@ distribution:
 \]
 \end{theorem}
 
+\begin{theorem}[Finite FOSG Kuhn deviation simulation]
+\label{thm:kuhn-devsim}
+For the bounded event-graph FOSG presentation of a checked program, the
+game form whose strategies are mixed pure reachable strategies
+Nash-simulates the game form whose strategies are legal reachable
+behavioral strategies.  Equivalently, for every mixed profile $\mu$ and
+its canonical behavioral realization $\beta$, every behavioral
+unilateral deviation $\beta'_p$ has a mixed pure unilateral deviation
+$\mu'_p$ with the same finite-horizon history law.
+\end{theorem}
+
 \begin{proof}[Proof sketch]
 On the bounded FOSG carrier, $\beta$ is constructed pointwise on
 reachable information states: at each
 $I \in \mathrm{ReachableInfoState}(p)$, $\beta_p(I)$ is the posterior
 distribution over actions induced by $\mu_p$ conditional on the
 history class realizing $I$.  The FOSG proof uses the
-\emph{LegalObservable} theorem for checked event-graph FOSGs.  The
-native theorem transports the mixed profile into the FOSG carrier,
+\emph{LegalObservable} theorem for checked event-graph FOSGs.  For the
+deviation-simulation theorem, the same construction is applied after
+substituting the deviating player's behavioral strategy, producing the
+matching mixed pure deviation with the same history law.  The native
+theorem transports the mixed profile into the FOSG carrier,
 applies the FOSG realization theorem, transports the behavioral witness
 back to the native round-view carrier, and uses the native/FOSG pure and
 behavioral outcome-law equivalence theorems.
@@ -102,13 +117,15 @@ behavioral outcome-law equivalence theorems.
 
 \Cref{thm:kuhn} is the intended contract between the pure-strategy API
 and the PMF-behavioral analysis API.  It does not by itself construct an
-equilibrium; existence follows from
-composing realization with a fixed-point theorem
-(\S\ref{sec:fosg-strategies}).
+equilibrium.  Equilibrium transport uses
+\Cref{thm:kuhn-devsim}; existence supplies a source mixed equilibrium
+from a finite-game fixed-point theorem (\S\ref{sec:fosg-strategies}).
 
 \paragraph{Lean correspondence.}
 Supplement~\S7.4 (canonical EFG presentation), \S8.6 (mixed extension
-and Kuhn realization: \TT{kuhn\_finite}, \TT{kuhn\_finiteKernelGame},
+and Kuhn simulations: \TT{kuhn\_finite}, \TT{kuhn\_finiteKernelGame},
+\TT{reachableKuhnNashDeviationSimulation},
+\TT{reachableKuhn\_target\_nashFor\_of\_source\_nashFor},
 \TT{boundedOutcomeFromPure\_nativeToFOSG},
 \TT{boundedOutcomeFromBehavioral\_nativeToFOSG},
 \TT{eventGraphEFGAt\_outcomeKernel\_map\_publicOutcome}).

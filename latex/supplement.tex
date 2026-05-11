@@ -1866,30 +1866,34 @@ existence results as wrappers around \TT{pmfBehavioralKernelGame g}:
 \DefRef{correlatedEq_exists}\label{def:correlatedEq_exists}, and
 \DefRef{coarseCorrelatedEq_exists}\label{def:coarseCorrelatedEq_exists}.
 These are finite-game theorems in the library sense: their Lean
-statements require finite strategy carriers and a finite outcome
-carrier. \TT{FiniteDomains g} supplies the former for the behavioral
-strategy spaces, while the latter is a separate hypothesis because
-Vegas outcomes are payoff vectors,
-$\Outcome\,P = P \to_0 \mathbb{Z}$. Thus the current wrappers are best
-read as conditional corollaries for finite-outcome presentations of a
-Vegas game. They are stated at the PMF-over-strategies level and do
-not themselves construct a named source-level policy.
+statements require finite nonempty strategy carriers and a finite
+outcome carrier.  \TT{FiniteDomains g} supplies the finite operational
+domains and the finite pure/reachable carriers used by the game
+presentations; the behavioral strategy finiteness required by these
+generic wrappers is stated explicitly when needed.  The outcome
+hypothesis is separate because Vegas outcomes are payoff vectors,
+$\Outcome\,P = P \to_0 \mathbb{Z}$.  The wrappers are conditional
+corollaries for finite-outcome presentations of a Vegas game.  They are
+stated at the PMF-over-strategies level and do not themselves construct
+a named source-level policy.
 
-\subsection{Mixed extension and Kuhn realization}
+\subsection{Mixed extension and Kuhn simulations}
 \label{def:Kuhn}
 
 \begin{leanbox}
 def KernelGame.mixedExtension (G : KernelGame $\Players$) : KernelGame $\Players$\\[3pt]
 theorem NativeFOSG.boundedOutcomeFromBehavioral\_nativeToFOSG\label{def:boundedOutcomeFromBehavioral_nativeToFOSG}\\
 theorem NativeFOSG.boundedOutcomeFromPure\_nativeToFOSG\label{def:boundedOutcomeFromPure_nativeToFOSG}\\[3pt]
+theorem FOSG.Kuhn.reachableKuhnNashDeviationSimulation\label{def:reachableKuhnNashDeviationSimulation}\\
+theorem FOSG.Kuhn.reachableKuhn\_target\_nashFor\_of\_source\_nashFor\label{def:reachableKuhn_target_nashFor_of_source_nashFor}\\[3pt]
 theorem kuhn\_finiteKernelGame\label{def:kuhn_finiteKernelGame}\\
 theorem Vegas.kuhn\_finite\label{def:Vegas.kuhn_finite}
 \end{leanbox}
 
-The \emph{mixed extension} of a finite kernel game $\KG$ replaces each
-strategy space $S_p$ by $\PMF S_p$. The outcome kernel of the extension
-samples $\sigma \sim \prod_p \mu_p$ from the independent product
-distribution and applies the underlying kernel:
+For a finite player set, the \emph{mixed extension} of a kernel game
+$\KG$ replaces each strategy space $S_p$ by $\PMF S_p$. The outcome
+kernel of the extension samples $\sigma \sim \prod_p \mu_p$ from the
+independent product distribution and applies the underlying kernel:
 \[
   K^{\mathrm{mix}}(\mu) \;=\; \bigl(\textstyle\prod_p \mu_p\bigr)
     \bind \lambda \sigma. K(\sigma).
@@ -1910,8 +1914,8 @@ $\KG^{\mathrm{beh}}$ the two kernel games:
 
 \paragraph{Hypotheses behind the slogan.}
 The Lean statement is a Kuhn-style realization theorem, not merely the
-textbook phrase ``perfect recall'' copied verbatim. The unconditional theorem
-is routed through the bounded FOSG view of the program event-graph machine:
+textbook phrase ``perfect recall'' copied verbatim. The theorem is routed
+through the bounded FOSG view of the program event-graph machine:
 finite domains provide the finite-horizon FOSG carriers, and the required
 information condition is \TT{LegalObservable}\label{def:LegalObservable} for the bounded FOSG, proved for
 checked program event graphs from the visibility and graph-stability
@@ -1919,6 +1923,16 @@ invariants. The public native theorem transports the FOSG realization through th
 native/FOSG equivalence: native pure profiles map to FOSG pure profiles,
 native behavioral profiles have the same bounded outcome law after transport,
 and pure-to-behavioral outcome laws agree on both sides.
+
+GameTheory also packages the bounded FOSG construction as a
+\DefRef{reachableKuhnNashDeviationSimulation}: the mixed pure reachable
+game form Nash-simulates the behavioral reachable game form.  The theorem
+\DefRef{reachableKuhn_target_nashFor_of_source_nashFor} is the
+corresponding Nash-transfer statement.  In concrete terms, a behavioral
+unilateral deviation against the Kuhn-realized profile has a mixed pure
+unilateral deviation with the same finite-horizon history law, so Nash
+optimality transfers from the mixed pure source game to the behavioral
+target game.
 
 \paragraph{Why this is the headline theorem.}
 Pure strategies are easy to read and define; behavioral strategies are
@@ -2132,7 +2146,7 @@ defect). The bimatrix:
 \end{array}
 \]
 Unique Nash: $(\mathsf{D}, \mathsf{D})$. Defect is dominant for both. The
-Lean file now contains the complete source-level payoff table and proves
+Lean file contains the complete source-level payoff table and proves
 strict dominance of defect and uniqueness of the source action-profile Nash.
 
 \paragraph{Vegas encoding.}
@@ -2204,9 +2218,10 @@ kernel game produced by \DefRef{pmfBehavioralKernelGame} carries
 enough information to express mixed-Nash claims.
 \DefRef{kuhn_finite} is a \emph{realization}
 theorem — every mixed pure profile is matched by a behavioral
-profile with the same outcome distribution — and does not itself
-construct or prove the existence of any equilibrium. Existence proofs
-compose Kuhn realization with a separate fixed-point existence theorem.
+profile with the same outcome distribution.  The FOSG theorem
+\DefRef{reachableKuhnNashDeviationSimulation} supplies the
+deviation-simulation structure needed for Nash transfer once a
+finite-carrier mixed Nash theorem supplies a source mixed equilibrium.
 
 \subsection{Battle of the Sexes}
 
@@ -2263,7 +2278,7 @@ guard depending on two earlier bindings — and it uses the bounded
 \item The example does not introduce a \Sample{} for the car location: the
   host \Commit{}s it. To recover the textbook ``car uniformly placed''
   analysis, one would quantify in the equilibrium claim over (mixed) host
-  strategies. The examples now include a finite enumeration proof of the
+  strategies. The examples include a finite enumeration proof of the
   familiar closed forms: switching has average value $2/3$ and staying has
   average value $1/3$ under the uniform door count.
 \item The host's distribution over legal doors can itself be informative.

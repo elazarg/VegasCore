@@ -79,19 +79,16 @@ def MixedStrategy [Fintype P]
   PMF (Strategy g who)
 
 def MixedStrategyProfile [Fintype P]
-    (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)] : Type :=
+    (g : WFProgram P L) [FiniteDomains g] : Type :=
   KernelGame.Profile (pmfBehavioralKernelGame g).mixedExtension
 
 def IsMixedNash [Fintype P]
     (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)]
     (σ : MixedStrategyProfile g) : Prop :=
   (pmfBehavioralKernelGame g).mixedExtension.IsNash σ
 
 noncomputable def mixedEu [Fintype P]
     (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Fintype (Strategy g who)]
     (σ : MixedStrategyProfile g) (who : P) : ℝ :=
   (pmfBehavioralKernelGame g).mixedExtension.eu σ who
 

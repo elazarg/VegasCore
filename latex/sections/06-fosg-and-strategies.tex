@@ -24,12 +24,12 @@ machine: a single FOSG round collapses many primitive events of
 the underlying machine into one transition, which is exactly the
 shape we want for the event-graph machine.
 
-The native strategic layer now uses this round-batched shape
-directly, without routing the definitions through FOSG.  FOSG is
-still important: it is the external game-theory presentation used to
-reuse the GameTheory library's FOSG-to-EFG bridge and finite Kuhn
-theorem.  The relationship between the native round view and the
-FOSG presentation is therefore a bridge theorem, not a definition.
+The native strategic layer uses this round-batched shape directly; the
+definitions do not route through FOSG.  FOSG provides the external
+game-theory presentation used to reuse the GameTheory library's
+FOSG-to-EFG bridge and finite Kuhn theorem.  The relationship between
+the native round view and the FOSG presentation is therefore a bridge
+theorem, not a definition.
 
 \subsection{The native round view and FOSG presentation}
 \label{sec:fosg:view}
@@ -327,11 +327,18 @@ and the corresponding existence corollaries.
   identical per-player utility, respectively.
 \end{itemize}
 
-The library exposes finite-game existence corollaries
+A mixed-extension profile is simply a profile of PMFs, one over each
+player's strategy carrier.  Fixed-point existence theorems assume
+finite nonempty strategy carriers and a finite outcome carrier.  The
+library exposes finite-game existence corollaries
 ($\mathrm{mixedNash\_exists}$,
 $\mathrm{correlatedEq\_exists}$, $\mathrm{coarseCorrelatedEq\_exists}$)
 as wrappers around the GameTheory library's fixed-point and
-correlated-equilibrium theorems.
+correlated-equilibrium theorems.  For the payoff-vector game
+$O = \Outcome\,\Players = \Players \to_0 \mathbb{Z}$,
+finite outcomes are therefore a separate hypothesis; finite public-state
+or bounded-history presentations are the natural carriers for
+unconditional finite-game existence statements.
 
 \paragraph{Lean correspondence.}
 Supplement~\S6 (machines), \S7.2--\S7.3 (native round view, FOSG
