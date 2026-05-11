@@ -110,9 +110,10 @@ theorem IsTeamGame.socialWelfare_eq
 
 theorem worstNashWelfare_le_bestNashWelfare
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [Fintype (StrategyProfile g)]
+    [Finite (StrategyProfile g)]
     (hN : ∃ σ : StrategyProfile g, IsNash g σ) :
     worstNashWelfare g hN ≤ bestNashWelfare g hN := by
+  letI : Fintype (StrategyProfile g) := Fintype.ofFinite _
   simpa [worstNashWelfare, bestNashWelfare, IsNash] using
     (KernelGame.worstNashWelfare_le_bestNashWelfare
       (G := pmfBehavioralKernelGame g)
@@ -120,10 +121,11 @@ theorem worstNashWelfare_le_bestNashWelfare
 
 theorem bestNashWelfare_le_optimalWelfare
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [Fintype (StrategyProfile g)]
+    [Finite (StrategyProfile g)]
     (hN : ∃ σ : StrategyProfile g, IsNash g σ)
     (hbdd : BddAbove (Set.range (fun τ : StrategyProfile g => socialWelfare g τ))) :
     bestNashWelfare g hN ≤ optimalWelfare g := by
+  letI : Fintype (StrategyProfile g) := Fintype.ofFinite _
   have hbdd' :
       BddAbove
         (Set.range (fun τ : (pmfBehavioralKernelGame g).Profile =>

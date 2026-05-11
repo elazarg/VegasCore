@@ -110,16 +110,18 @@ noncomputable def optimalWelfare [Fintype P]
 
 noncomputable def bestNashWelfare [Fintype P]
     (g : WFProgram P L) [FiniteDomains g]
-    [Fintype (StrategyProfile g)]
-    (hN : ∃ σ : StrategyProfile g, IsNash g σ) : ℝ :=
-  (pmfBehavioralKernelGame g).bestNashWelfare (by
+    [Finite (StrategyProfile g)]
+    (hN : ∃ σ : StrategyProfile g, IsNash g σ) : ℝ := by
+  letI : Fintype (StrategyProfile g) := Fintype.ofFinite _
+  exact (pmfBehavioralKernelGame g).bestNashWelfare (by
     simpa [IsNash] using hN)
 
 noncomputable def worstNashWelfare [Fintype P]
     (g : WFProgram P L) [FiniteDomains g]
-    [Fintype (StrategyProfile g)]
-    (hN : ∃ σ : StrategyProfile g, IsNash g σ) : ℝ :=
-  (pmfBehavioralKernelGame g).worstNashWelfare (by
+    [Finite (StrategyProfile g)]
+    (hN : ∃ σ : StrategyProfile g, IsNash g σ) : ℝ := by
+  letI : Fintype (StrategyProfile g) := Fintype.ofFinite _
+  exact (pmfBehavioralKernelGame g).worstNashWelfare (by
     simpa [IsNash] using hN)
 
 end Vegas
