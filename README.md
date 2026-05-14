@@ -99,6 +99,23 @@ Other layers consume that spine:
   vocabulary, dominance, transport, and Kuhn-facing public names.
 - `GameBridge/`: FOSG/EFG bridges and FOSG-backed realization machinery.
 - `Backend/`: operational/runtime refinement and backend blocked-trace games.
+- `Theorems/`: project-facing theorem names, organized by topic. Generic
+  event-graph facts live in topic submodules named `EventGraph`; facts that
+  rely on generated checked `VegasCore` syntax live in `CheckedProgram`
+  submodules.
+
+Current theorem topics are:
+
+- `GraphShape`: static shape and dependency facts for `programEventGraph g`.
+- `Progress`: generic event-graph progress and checked-program progress/FOSG
+  availability.
+- `Frontier`: generic frontier diamonds, round presentation, and
+  checked-program frontier stability.
+- `Visibility`: information-flow soundness and checked-program observation
+  locality.
+- `Outcome`: terminal payoff and outcome-kernel adequacy.
+- `Strategy`, `Realization`, `Backend`, and `Nullable`: strategic,
+  realization, implementation-refinement, and nullable-language claims.
 
 ## Repository Map
 
@@ -112,7 +129,7 @@ Vegas/
   Strategic/               -- native Vegas strategic semantics
   GameBridge/              -- FOSG/EFG bridges
   Backend/                 -- implementation refinement
-  Theorems/                -- project-facing theorem names
+  Theorems/                -- topic-first project-facing theorem names
   Corollaries/             -- transported GameTheory results
   Examples/                -- checked Prisoners, Pennies, Sexes, Monty Hall
 

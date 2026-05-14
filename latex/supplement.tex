@@ -247,8 +247,9 @@ Folder & Contents \\
     \TT{Core.ToEventGraph} (split into \TT{Nodes}, \TT{Fields},
     \TT{Obligations}, \TT{Construction}). \\
 \TT{EventGraph/}
-  & \DefRef{EventGraph}, configurations, frontier theorems, and the
-    interpretation \TT{EventGraph.ToMachine}. \\
+  & \DefRef{EventGraph}, configurations, generic local execution
+    lemmas, round views, and the interpretation
+    \TT{EventGraph.ToMachine}. \\
 \TT{Machine/}
   & Abstract \DefRef{Machine} carrier, native round views, primitive
     trace semantics. \\
@@ -264,6 +265,13 @@ Folder & Contents \\
   & Machine-to-machine refinement (weak and stochastic) and
     blocked-trace kernel-game transport from a backend
     implementation. \\
+\TT{Theorems/}
+  & Topic-first theorem index. Roots such as \TT{Progress},
+    \TT{Frontier}, \TT{Visibility}, and \TT{Outcome} re-export
+    focused submodules; \TT{EventGraph} submodules contain generic
+    graph facts, while \TT{CheckedProgram} submodules contain facts
+    that rely on the generated checked \TT{VegasCore} graph
+    \TT{programEventGraph g}. \\
 \TT{Export/}
   & Finite pure kernel-game export object: an oracle and enumeration
     package suitable for solver adapters, not a file format. \\
@@ -2446,8 +2454,15 @@ For a reader landing on the codebase for the first time, we suggest:
   \TT{Vegas/Core/Program.lean}
   for the well-formedness story.
 \item Read \TT{Vegas/EventGraph/Basic.lean} top to bottom: the shape of
-  \TT{EventGraph} and \TT{Configuration}, the diamond and stability
-  theorems.
+  \TT{EventGraph}, \TT{Configuration}, and the generic local execution
+  lemmas.
+\item Read the topic theorem modules
+  \TT{Theorems/Progress/EventGraph.lean} and
+  \TT{Theorems/Frontier/EventGraph.lean} for generic graph progress
+  and diamond facts. Then read the \TT{CheckedProgram} submodules
+  under \TT{Theorems/GraphShape}, \TT{Theorems/Progress}, and
+  \TT{Theorems/Frontier} for the characterization facts that require
+  \TT{programEventGraph g}.
 \item Skim \TT{Vegas/Machine/Basic.lean} and
   \TT{Vegas/EventGraph/ToMachine.lean} to see the abstract carrier and its
   event-graph instance.
