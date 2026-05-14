@@ -472,7 +472,6 @@ theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
-    [Fintype ((G.toMachine iface).BoundedState horizon)]
     [DecidablePred
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).terminal)]
     (σ :
@@ -531,7 +530,6 @@ theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
-    [Fintype ((G.toMachine iface).BoundedState horizon)]
     [DecidablePred
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).terminal)]
     (σ :

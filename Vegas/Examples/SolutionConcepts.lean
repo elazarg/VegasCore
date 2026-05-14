@@ -3,6 +3,7 @@ import Vegas.Examples.MatchingPennies
 import Vegas.Examples.BattleOfTheSexes
 import Vegas.Examples.MontyHall
 import GameTheory.Concepts.BestResponse
+import GameTheory.Concepts.DominanceSolvable
 import GameTheory.Concepts.PotentialGame
 import GameTheory.Concepts.ZeroSum
 import GameTheory.Auctions.Vickrey
@@ -90,7 +91,7 @@ theorem defect_isDominant (who : Fin 2) : game.IsDominant who defect := by
 
 theorem defect_isBestResponse (who : Fin 2) (σ : game.Profile) :
     game.IsBestResponse who σ defect :=
-  KernelGame.dominant_isBestResponse game who defect σ (defect_isDominant who)
+  (defect_isDominant who).isBestResponse σ
 
 theorem defect_defect_isNash : game.IsNash defectProfile :=
   KernelGame.dominant_is_nash game defectProfile (fun i => defect_isDominant i)

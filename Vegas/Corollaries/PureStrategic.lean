@@ -1,5 +1,6 @@
 import Vegas.Strategic.Pure
 import GameTheory.Concepts.BestResponse
+import GameTheory.Concepts.DominanceSolvable
 import GameTheory.Concepts.NashProperties
 import GameTheory.Concepts.PotentialGame
 import GameTheory.Theorems.NashExistence
@@ -45,8 +46,8 @@ theorem pure_dominant_isBestResponse
     (hdom : IsPureDominant g who s) :
     IsPureBestResponse g who σ s := by
   simpa [IsPureDominant, IsPureBestResponse] using
-    (GameTheory.KernelGame.dominant_isBestResponse
-      (G := pureKernelGame g) who s σ hdom)
+    (GameTheory.KernelGame.IsDominant.isBestResponse
+      (G := pureKernelGame g) (who := who) (s := s) hdom σ)
 
 /-- Pure Nash is equivalent to the absence of a strictly improving pure
 unilateral deviation. -/
