@@ -1,6 +1,7 @@
 /.lake
 .env
 CLAUDE.md
+AGENTS.md
 .claude/settings.local.json
 ephemeral/
 .codex
