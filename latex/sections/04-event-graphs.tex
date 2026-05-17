@@ -34,17 +34,17 @@ and an optional owner $\mathrm{fieldOwner} : \Fields \to
 optionally provides an initial value for each field; absent fields
 are uninitialized until written.
 
-\subsubsection*{Stored values and field patches}
+\subsubsection*{Write modes and field patches}
 
-A field's storage is a \emph{stored value}: a value of the field's
-base type, tagged as either \textsf{clear} (currently public) or
-\textsf{hidden} (sealed).  A \emph{field patch} for a node $n$ is a
-partial map
+A \emph{write mode} classifies a semantic write as either
+\textsf{clear} (public/revealed) or \textsf{hidden} (committed). A
+\emph{field patch} for a node $n$ is a partial map
 \[
-  s : \Fields \;\rightharpoonup\; \mathrm{StoredValue},
+  s : \Fields \;\rightharpoonup\; \mathrm{Val},
 \]
-indicating which fields $n$ writes when it executes.  Every node
-writes exactly one field — this convention, the
+indicating the raw typed values that $n$ writes when it executes.  The
+write mode is recovered from $\mathrm{sem}(n)$ rather than duplicated in
+the patch payload.  Every node writes exactly one field — this convention, the
 \emph{single-target} discipline, is key to the symbolic accounting
 of who writes what.
 

@@ -111,10 +111,10 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
                 read).isSome then
           PMF.pure
             (ProgramField.singlePatch field
-              (.clear (expr.eval
+              (expr.eval
                 (ProgramField.readEnvOfResult g.env
                   ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
-                  expr.reads available))))
+                  expr.reads available)))
         else
           PMF.pure (ProgramField.emptyPatch g.prog)) =
         (if available :
@@ -122,9 +122,9 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
               (ProgramField.value? g.env cfg.result read).isSome then
           PMF.pure
             (ProgramField.singlePatch field
-              (.clear (expr.eval
+              (expr.eval
                 (ProgramField.readEnvOfResult g.env cfg.result
-                  expr.reads available))))
+                  expr.reads available)))
         else
           PMF.pure (ProgramField.emptyPatch g.prog))
       rw [dif_pos availableAfter, dif_pos availableBefore]
@@ -167,7 +167,7 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
                 ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
                 read).isSome then
           PMF.map
-            (fun value => ProgramField.singlePatch field (.clear value))
+            (fun value => ProgramField.singlePatch field value)
             (dist.eval
               (ProgramField.readEnvOfResult g.env
                 ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
@@ -178,7 +178,7 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
             ∀ read, read ∈ dist.reads →
               (ProgramField.value? g.env cfg.result read).isSome then
           PMF.map
-            (fun value => ProgramField.singlePatch field (.clear value))
+            (fun value => ProgramField.singlePatch field value)
             (dist.eval
               (ProgramField.readEnvOfResult g.env cfg.result
                 dist.reads available))
@@ -232,7 +232,7 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
               ({source} : Finset (ProgramField g.prog)) available
           PMF.pure
             (ProgramField.singlePatch target
-              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
+              (cast (by rw [hty]) (ρ.value source (by simp))))
         else
           PMF.pure (ProgramField.emptyPatch g.prog)) =
         (if available :
@@ -243,7 +243,7 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
               ({source} : Finset (ProgramField g.prog)) available
           PMF.pure
             (ProgramField.singlePatch target
-              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
+              (cast (by rw [hty]) (ρ.value source (by simp))))
         else
           PMF.pure (ProgramField.emptyPatch g.prog))
       rw [dif_pos availableAfter, dif_pos availableBefore]

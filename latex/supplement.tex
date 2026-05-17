@@ -1009,24 +1009,22 @@ the main report. Throughout this section, \TT{P} is the player type
 with \TT{[DecidableEq P]}, \TT{L} is an \DefRef{IExpr} instance, and
 $G$ is an \DefRef{EventGraph} (defined below).
 
-\subsection{Stored values and field patches}
+\subsection{Write modes and field patches}
 
 \begin{leanbox}
 inductive WriteMode where\\
 \bd | clear\\
 \bd | hidden\\[3pt]
-inductive StoredValue ($\alpha$ : Type) where\\
-\bd | clear  (value : $\alpha$)\\
-\bd | hidden (value : $\alpha$)\\[3pt]
 abbrev FieldPatch (G : EventGraph P L) : Type :=\\
-\bd (field : G.Field) $\to$ Option (StoredValue (L.Val (G.fieldTy field)))
+\bd (field : G.Field) $\to$ Option (L.Val (G.fieldTy field))
 \end{leanbox}
 
-A \DefRef{StoredValue}\label{def:StoredValue} is a value tagged with
-whether it is currently public (\textsf{clear}) or sealed
-(\textsf{hidden}). A \DefRef{FieldPatch} is a partial function from
-fields to stored values: it records what fields a single event node
-writes when it executes. The empty patch is the all-\textsf{none}
+\DefRef{WriteMode}\label{def:WriteMode} classifies semantic writes as
+public/revealed (\textsf{clear}) or committed (\textsf{hidden}). A
+\DefRef{FieldPatch} is a partial function from fields to raw typed
+values: it records what fields a single event node writes when it
+executes. The write mode is recovered from the node's semantic write,
+not stored in the patch payload. The empty patch is the all-\textsf{none}
 function; $\TT{FieldPatch.single}$ writes one field.
 
 \subsection{Event-graph-local expressions, distributions, and guards}

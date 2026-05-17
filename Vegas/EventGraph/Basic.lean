@@ -8,43 +8,18 @@ import Vegas.Base.Basic
 The event-graph state is extensional: a configuration records which event
 nodes have produced results, not the schedule prefix that produced them. A
 frontier is computed from that partial result assignment. Execution order is
-presentation and proof data; it is not stored in the semantic state.
+presentation and proof data; it is not part of the semantic state.
 -/
 
 namespace Vegas
 
 namespace EventGraph
 
-/-- How a node write is stored before player-specific redaction. -/
+/-- How a node write is classified before player-specific redaction. -/
 inductive WriteMode where
   | clear
   | hidden
   deriving DecidableEq, Repr
-
-/-- One typed stored value. -/
-inductive StoredValue (α : Type) where
-  | clear (value : α)
-  | hidden (value : α)
-  deriving DecidableEq, Repr
-
-namespace StoredValue
-
-variable {α : Type}
-
-/-- Forget whether a stored value is currently public or sealed. -/
-def raw : StoredValue α → α
-  | .clear value => value
-  | .hidden value => value
-
-noncomputable instance instFintype [Fintype α] : Fintype (StoredValue α) := by
-  classical
-  refine Fintype.mk
-    (((Finset.univ : Finset α).image StoredValue.clear) ∪
-      ((Finset.univ : Finset α).image StoredValue.hidden)) ?_
-  intro value
-  cases value <;> simp
-
-end StoredValue
 
 /-- A semantic field write in a protocol node. -/
 inductive FieldWrite (Player Field : Type) where
@@ -457,23 +432,23 @@ structure EventGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
   patchLegal :
     Node →
       ((field : Field) →
-        Option (EventGraph.StoredValue (L.Val (fieldTy field)))) →
+        Option (L.Val (fieldTy field))) →
       Prop
   actionLegal :
     ((node : Node) →
         Option ((field : Field) →
-          Option (EventGraph.StoredValue (L.Val (fieldTy field))))) →
+          Option (L.Val (fieldTy field)))) →
       Node →
       ((field : Field) →
-        Option (EventGraph.StoredValue (L.Val (fieldTy field)))) →
+        Option (L.Val (fieldTy field))) →
       Prop
   internalKernel :
     Node →
       ((node : Node) →
         Option ((field : Field) →
-          Option (EventGraph.StoredValue (L.Val (fieldTy field))))) →
+          Option (L.Val (fieldTy field)))) →
       PMF ((field : Field) →
-        Option (EventGraph.StoredValue (L.Val (fieldTy field))))
+        Option (L.Val (fieldTy field)))
 
 namespace EventGraph
 
@@ -484,7 +459,7 @@ attribute [local instance] EventGraph.fieldDecEq
 
 /-- A typed field patch produced by one node. -/
 abbrev FieldPatch (G : Vegas.EventGraph Player L) : Type :=
-  (field : G.Field) → Option (StoredValue (L.Val (G.fieldTy field)))
+  (field : G.Field) → Option (L.Val (G.fieldTy field))
 
 namespace FieldPatch
 
@@ -497,7 +472,7 @@ def empty : FieldPatch G :=
 /-- A singleton field patch writing one field. -/
 noncomputable def single
     (field : G.Field)
-    (value : StoredValue (L.Val (G.fieldTy field))) :
+    (value : L.Val (G.fieldTy field)) :
     FieldPatch G :=
   fun other =>
     if h : other = field then
@@ -507,13 +482,13 @@ noncomputable def single
 
 @[simp] theorem single_self
     (field : G.Field)
-    (value : StoredValue (L.Val (G.fieldTy field))) :
+    (value : L.Val (G.fieldTy field)) :
     single G field value field = some value := by
   simp [single]
 
 @[simp] theorem single_ne
     {field other : G.Field}
-    (value : StoredValue (L.Val (G.fieldTy field)))
+    (value : L.Val (G.fieldTy field))
     (h : other ≠ field) :
     single G field value other = none := by
   simp [single, h]
@@ -533,28 +508,28 @@ noncomputable def value?
   classical
   exact
     if h :
-        ∃ node patch stored,
-          result node = some patch ∧ patch field = some stored then
+        ∃ node patch value,
+          result node = some patch ∧ patch field = some value then
       let node := Classical.choose h
       let patch := Classical.choose (Classical.choose_spec h)
-      let stored := Classical.choose (Classical.choose_spec
+      let value := Classical.choose (Classical.choose_spec
         (Classical.choose_spec h))
-      some stored.raw
+      some value
     else
       G.initial field
 
 theorem value?_isSome_of_result_patch
     (G : Vegas.EventGraph Player L) {result : G.ResultAssignment}
     {field : G.Field} {node : G.Node} {patch : FieldPatch G}
-    {stored : StoredValue (L.Val (G.fieldTy field))}
+    {value : L.Val (G.fieldTy field)}
     (hresult : result node = some patch)
-    (hpatch : patch field = some stored) :
+    (hpatch : patch field = some value) :
     (G.value? result field).isSome := by
   classical
   unfold value?
   rw [dif_pos]
   · simp
-  · exact ⟨node, patch, stored, hresult, hpatch⟩
+  · exact ⟨node, patch, value, hresult, hpatch⟩
 
 /-- Result assignments agree on the prerequisites of a node. -/
 def AgreeOnPrereqs (G : Vegas.EventGraph Player L)
@@ -577,8 +552,8 @@ noncomputable def done (G : Vegas.EventGraph Player L)
 /-- Extensional machine configuration for an event graph.
 
 The closure invariant says completed nodes are lower-closed under graph
-dependencies.  The legality invariant says every stored node result is a
-well-formed patch for that node. Dynamic action legality is checked at the
+dependencies.  The legality invariant says every node result is a
+well-formed field patch for that node. Dynamic action legality is checked at the
 machine frontier instead of being cached in the configuration. -/
 structure Configuration (G : Vegas.EventGraph Player L) where
   result : ResultAssignment G
@@ -1101,7 +1076,7 @@ result assignment. -/
     Fintype G.Configuration := by
   classical
   letI : ∀ field : G.Field,
-      Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
+      Fintype (Option (L.Val (G.fieldTy field))) :=
     fun _ => inferInstance
   letI : Fintype (FieldPatch G) := by
     dsimp [FieldPatch]

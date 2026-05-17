@@ -48,7 +48,7 @@ finite. -/
     Fintype (PlayerAction G who) := by
   classical
   letI : ∀ field : G.Field,
-      Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
+      Fintype (Option (L.Val (G.fieldTy field))) :=
     fun _ => inferInstance
   letI : Fintype G.FieldPatch := by
     dsimp [EventGraph.FieldPatch]

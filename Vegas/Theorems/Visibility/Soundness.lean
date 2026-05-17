@@ -69,7 +69,7 @@ theorem commitGuard_eval_eq_of_projectView_eq
 @[simp] theorem ProgramField.singlePatch_ne
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     {field other : ProgramField p}
-    (value : EventGraph.StoredValue (L.Val field.ty))
+    (value : L.Val field.ty)
     (h : other ≠ field) :
     ProgramField.singlePatch field value other = none := by
   simp [ProgramField.singlePatch, h]
@@ -263,10 +263,10 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         EventGraph.Configuration.updatePatch, hcandidate]
     · change
         (if candidate = node then
-            some (ProgramField.singlePatch field (.hidden leftValue))
+            some (ProgramField.singlePatch field leftValue)
           else cfg.result candidate).isSome =
           (if candidate = node then
-            some (ProgramField.singlePatch field (.hidden rightValue))
+            some (ProgramField.singlePatch field rightValue)
           else cfg.result candidate).isSome
       rw [if_neg hcandidate, if_neg hcandidate]
   · by_cases hpublic : candidate.owner = none
@@ -276,10 +276,10 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         simp [htargetOwner] at hpublic
       have hvalueEq :
           eventGraphConfigValue? g
-              (cfg.withPatch (ProgramField.singlePatch field (.hidden leftValue))
+              (cfg.withPatch (ProgramField.singlePatch field leftValue)
                 hfrontier hleftLegal) candidate =
             eventGraphConfigValue? g
-              (cfg.withPatch (ProgramField.singlePatch field (.hidden rightValue))
+              (cfg.withPatch (ProgramField.singlePatch field rightValue)
                 hfrontier hrightLegal) candidate := by
         have hwriterNe :
             ProgramField.writer? candidate ≠ some node :=
@@ -288,7 +288,7 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         have hleftSame :
             eventGraphConfigValue? g
                 (cfg.withPatch
-                  (ProgramField.singlePatch field (.hidden leftValue))
+                  (ProgramField.singlePatch field leftValue)
                   hfrontier hleftLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
           simpa [eventGraphConfigValue?,
@@ -297,12 +297,12 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
-              (patch := ProgramField.singlePatch field (.hidden leftValue))
+              (patch := ProgramField.singlePatch field leftValue)
               hwriterNe
         have hrightSame :
             eventGraphConfigValue? g
                 (cfg.withPatch
-                  (ProgramField.singlePatch field (.hidden rightValue))
+                  (ProgramField.singlePatch field rightValue)
                   hfrontier hrightLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
           simpa [eventGraphConfigValue?,
@@ -311,7 +311,7 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
-              (patch := ProgramField.singlePatch field (.hidden rightValue))
+              (patch := ProgramField.singlePatch field rightValue)
               hwriterNe
         exact hleftSame.trans hrightSame.symm
       simp [eventGraphPublicView, hpublic, hvalueEq]
@@ -357,10 +357,10 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
         exact hne howner.symm
     have hvalueEq :
         eventGraphConfigValue? g
-            (cfg.withPatch (ProgramField.singlePatch field (.hidden leftValue))
+            (cfg.withPatch (ProgramField.singlePatch field leftValue)
               hfrontier hleftLegal) candidate =
           eventGraphConfigValue? g
-            (cfg.withPatch (ProgramField.singlePatch field (.hidden rightValue))
+            (cfg.withPatch (ProgramField.singlePatch field rightValue)
               hfrontier hrightLegal) candidate := by
       have hwriterNe :
           ProgramField.writer? candidate ≠ some node :=
@@ -369,7 +369,7 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
       have hleftSame :
           eventGraphConfigValue? g
               (cfg.withPatch
-                (ProgramField.singlePatch field (.hidden leftValue))
+                (ProgramField.singlePatch field leftValue)
                 hfrontier hleftLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
         simpa [eventGraphConfigValue?,
@@ -378,12 +378,12 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
-            (patch := ProgramField.singlePatch field (.hidden leftValue))
+            (patch := ProgramField.singlePatch field leftValue)
             hwriterNe
       have hrightSame :
           eventGraphConfigValue? g
               (cfg.withPatch
-                (ProgramField.singlePatch field (.hidden rightValue))
+                (ProgramField.singlePatch field rightValue)
                 hfrontier hrightLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
         simpa [eventGraphConfigValue?,
@@ -392,7 +392,7 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
-            (patch := ProgramField.singlePatch field (.hidden rightValue))
+            (patch := ProgramField.singlePatch field rightValue)
             hwriterNe
       exact hleftSame.trans hrightSame.symm
     simp [eventGraphObserve, hvisible, hvalueEq]

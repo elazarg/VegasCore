@@ -191,20 +191,18 @@ private theorem eventGraph_internalKernel_patchLegal_of_mem_support
                 (ProgramField.value? g.env cfg.result read).isSome then
             PMF.pure
               (ProgramField.singlePatch target
-                (.clear
-                  (expr.eval
-                    (ProgramField.readEnvOfResult g.env cfg.result
-                      expr.reads available))))
+                (expr.eval
+                  (ProgramField.readEnvOfResult g.env cfg.result
+                    expr.reads available)))
           else
             PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
       rw [dif_pos havailable] at hsupp
       have hpatch :
           patch =
             ProgramField.singlePatch target
-              (.clear
-                (expr.eval
-                  (ProgramField.readEnvOfResult g.env cfg.result
-                    expr.reads havailable))) := by
+              (expr.eval
+                (ProgramField.readEnvOfResult g.env cfg.result
+                  expr.reads havailable)) := by
         simpa using hsupp
       subst patch
       rw [ProgramNode.patchLegal, hsem]
@@ -223,7 +221,7 @@ private theorem eventGraph_internalKernel_patchLegal_of_mem_support
               ∀ read, read ∈ dist.reads →
                 (ProgramField.value? g.env cfg.result read).isSome then
             PMF.map
-              (fun value => ProgramField.singlePatch target (.clear value))
+              (fun value => ProgramField.singlePatch target value)
               (dist.eval
                 (ProgramField.readEnvOfResult g.env cfg.result
                   dist.reads available))
@@ -255,8 +253,8 @@ private theorem eventGraph_internalKernel_patchLegal_of_mem_support
                 ({source} : Finset (ProgramField g.prog)) available
             PMF.pure
               (ProgramField.singlePatch target
-                (.clear (cast (by rw [hty])
-                  (ρ.value source (by simp))))))
+                (cast (by rw [hty])
+                  (ρ.value source (by simp)))))
           else
             PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
       rw [dif_pos havailable] at hsupp
@@ -266,7 +264,7 @@ private theorem eventGraph_internalKernel_patchLegal_of_mem_support
       have hpatch :
           patch =
             ProgramField.singlePatch target
-              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))) := by
+              (cast (by rw [hty]) (ρ.value source (by simp))) := by
         simpa using hsupp
       subst patch
       rw [ProgramNode.patchLegal, hsem]

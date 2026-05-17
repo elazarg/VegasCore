@@ -150,7 +150,7 @@ noncomputable def rowCommitNode : ProgramNode Prisoners.program :=
 (`false` means defect in `Prisoners.lean`). -/
 noncomputable def rowDefectPatch : ProgramField.FieldPatch Prisoners.program :=
   ProgramField.singlePatch (ProgramField.writtenBy rowCommitNode)
-    (EventGraph.StoredValue.hidden false)
+    false
 
 /-- The generated protocol-graph player action corresponding to Row's
 source-level choice to defect at the first commitment. -/

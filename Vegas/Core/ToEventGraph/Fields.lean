@@ -865,7 +865,7 @@ noncomputable def castEventDist
 /-- A field patch over the final field set of a source program. -/
 abbrev FieldPatch {Γ : VCtx P L} (p : VegasCore P L Γ) : Type :=
   (field : ProgramField p) →
-    Option (EventGraph.StoredValue (L.Val field.ty))
+    Option (L.Val field.ty)
 
 /-- Empty source field patch. -/
 def emptyPatch {Γ : VCtx P L} (p : VegasCore P L Γ) :
@@ -876,7 +876,7 @@ def emptyPatch {Γ : VCtx P L} (p : VegasCore P L Γ) :
 noncomputable def singlePatch
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
-    (value : EventGraph.StoredValue (L.Val field.ty)) :
+    (value : L.Val field.ty) :
     FieldPatch p :=
   fun other =>
     if h : other = field then
@@ -887,7 +887,7 @@ noncomputable def singlePatch
 @[simp] theorem singlePatch_self
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
-    (value : EventGraph.StoredValue (L.Val field.ty)) :
+    (value : L.Val field.ty) :
     singlePatch field value field = some value := by
   simp [singlePatch]
 
@@ -936,7 +936,7 @@ noncomputable def value?
         match result node with
         | some patch =>
             match patch field with
-            | some stored => some stored.raw
+            | some value => some value
             | none => initialValue? p env field
         | none => initialValue? p env field
     | none => initialValue? p env field
@@ -945,10 +945,10 @@ theorem value?_isSome_of_result_patch
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     {result : ProgramNode p → Option (FieldPatch p)}
     {field : ProgramField p} {node : ProgramNode p} {patch : FieldPatch p}
-    {stored : EventGraph.StoredValue (L.Val field.ty)}
+    {value : L.Val field.ty}
     (hwriter : writer? field = some node)
     (hresult : result node = some patch)
-    (hpatch : patch field = some stored) :
+    (hpatch : patch field = some value) :
     (value? env result field).isSome := by
   simp [value?, hwriter, hresult, hpatch]
 
@@ -969,7 +969,7 @@ theorem value?_isSome_of_initialValue?
           cases hpatch : patch field with
           | none =>
               simpa [value?, hwriter, hresult, hpatch] using hinitial
-          | some stored =>
+          | some value =>
               simp [value?, hwriter, hresult, hpatch]
 
 theorem value?_update_of_writer?_ne

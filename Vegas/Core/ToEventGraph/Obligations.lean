@@ -443,19 +443,18 @@ noncomputable def patchLegal
   match sem obs node with
   | .assign field _ =>
       ∃ value : L.Val field.ty,
-        patch = ProgramField.singlePatch field (.clear value)
+        patch = ProgramField.singlePatch field value
   | .sample field _ =>
       ∃ value : L.Val field.ty,
-        patch = ProgramField.singlePatch field (.clear value)
+        patch = ProgramField.singlePatch field value
   | .commit _ field _ =>
       ∃ value : L.Val field.ty,
-        patch = ProgramField.singlePatch field (.hidden value)
+        patch = ProgramField.singlePatch field value
   | .reveal _ target _ =>
       ∃ value : L.Val target.ty,
-        patch = ProgramField.singlePatch target (.clear value)
+        patch = ProgramField.singlePatch target value
 
-/-- A legal patch contains a stored value for every semantic field written by
-the node. -/
+/-- A legal patch contains a value for every semantic field written by the node. -/
 theorem patchLegal_writeField_isSome
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (obs : ProgramObligations p)
@@ -465,14 +464,14 @@ theorem patchLegal_writeField_isSome
     (hwrite :
       field ∈
         (ProgramNode.sem obs node).writeFields) :
-    ∃ stored : EventGraph.StoredValue (L.Val field.ty),
-      patch field = some stored := by
+    ∃ value : L.Val field.ty,
+      patch field = some value := by
   classical
   cases hsem : ProgramNode.sem obs node with
   | assign target expr =>
       rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        patch = ProgramField.singlePatch target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target value at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -484,11 +483,11 @@ theorem patchLegal_writeField_isSome
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
-      exact ⟨.clear value, by simp⟩
+      exact ⟨value, by simp⟩
   | sample target dist =>
       rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        patch = ProgramField.singlePatch target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target value at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -500,11 +499,11 @@ theorem patchLegal_writeField_isSome
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
-      exact ⟨.clear value, by simp⟩
+      exact ⟨value, by simp⟩
   | commit owner target guard =>
       rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        patch = ProgramField.singlePatch target (.hidden value) at hlegal
+        patch = ProgramField.singlePatch target value at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -516,11 +515,11 @@ theorem patchLegal_writeField_isSome
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
-      exact ⟨.hidden value, by simp⟩
+      exact ⟨value, by simp⟩
   | reveal source target hty =>
       rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        patch = ProgramField.singlePatch target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target value at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -532,7 +531,7 @@ theorem patchLegal_writeField_isSome
       symm at hfield
       subst field
       rcases hlegal with ⟨value, rfl⟩
-      exact ⟨.clear value, by simp⟩
+      exact ⟨value, by simp⟩
 
 /-- Dynamic legality for player-chosen program event graph patches. Only commit nodes
 have an actor, so only commits admit legal player patches. -/
@@ -552,7 +551,7 @@ noncomputable def actionLegal
           guard.eval value
               (ProgramField.readEnvOfResult env result guard.reads available) =
             true ∧
-          patch = ProgramField.singlePatch field (.hidden value)
+          patch = ProgramField.singlePatch field value
   | .reveal _ _ _ => False
 
 /-- If the declared reads of a player-owned node are available, then that
@@ -587,7 +586,7 @@ theorem exists_actionLegal_of_reads_available
       let ρ :=
         ProgramField.readEnvOfResult env result guard.reads havailable
       rcases guard.satisfiable ρ with ⟨value, hvalue⟩
-      let patch := ProgramField.singlePatch field (.hidden value)
+      let patch := ProgramField.singlePatch field value
       refine ⟨patch, ?_, ?_⟩
       · rw [patchLegal, hsem]
         exact ⟨value, rfl⟩
@@ -779,8 +778,8 @@ noncomputable def internalKernel
               (ProgramField.value? env result read).isSome then
           PMF.pure
             (ProgramField.singlePatch field
-              (.clear (expr.eval
-                (ProgramField.readEnvOfResult env result expr.reads available))))
+              (expr.eval
+                (ProgramField.readEnvOfResult env result expr.reads available)))
         else
           PMF.pure (ProgramField.emptyPatch p)
     | .sample field dist =>
@@ -788,7 +787,7 @@ noncomputable def internalKernel
             ∀ read, read ∈ dist.reads →
               (ProgramField.value? env result read).isSome then
           PMF.map
-            (fun value => ProgramField.singlePatch field (.clear value))
+            (fun value => ProgramField.singlePatch field value)
             (dist.eval
               (ProgramField.readEnvOfResult env result dist.reads available))
         else
@@ -804,7 +803,7 @@ noncomputable def internalKernel
               ({source} : Finset (ProgramField p)) available
           PMF.pure
             (ProgramField.singlePatch target
-              (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
+              (cast (by rw [hty]) (ρ.value source (by simp))))
         else
           PMF.pure (ProgramField.emptyPatch p)
 
