@@ -168,33 +168,33 @@ theorem mixedNash_exists_of_bounded
   simpa [MixedStrategyProfile, IsMixedNash] using
     (KernelGame.mixed_nash_exists_of_bounded (pmfBehavioralKernelGame g) hbd)
 
-theorem pureBlockedTraceKernelGameAt_utility_bounded
+theorem pureEventBatchTraceKernelGameAt_utility_bounded
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     ∃ C : P → ℝ, ∀ who trace,
-      |(pureBlockedTraceKernelGameAt g).utility trace who| ≤ C who := by
+      |(pureEventBatchTraceKernelGameAt g).utility trace who| ≤ C who := by
   classical
   refine ⟨fun who =>
     (Math.Probability.exists_abs_bound_of_finite
       (fun state : (eventGraphMachine g).State =>
-        (pureBlockedTraceKernelGameAt g).utility ([], state) who)).choose, ?_⟩
+        (pureEventBatchTraceKernelGameAt g).utility ([], state) who)).choose, ?_⟩
   intro who trace
-  simpa [pureBlockedTraceKernelGameAt, syntaxBlockedTraceUtility] using
+  simpa [pureEventBatchTraceKernelGameAt, syntaxEventBatchTraceUtility] using
     (Math.Probability.exists_abs_bound_of_finite
       (fun state : (eventGraphMachine g).State =>
-        (pureBlockedTraceKernelGameAt g).utility ([], state) who)).choose_spec trace.2
+        (pureEventBatchTraceKernelGameAt g).utility ([], state) who)).choose_spec trace.2
 
-theorem pureBlockedTrace_mixedNash_exists
+theorem pureEventBatchTrace_mixedNash_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    [∀ who, Nonempty ((pureBlockedTraceKernelGameAt g).Strategy who)] :
-    ∃ σ : ∀ who, PMF ((pureBlockedTraceKernelGameAt g).Strategy who),
-      (pureBlockedTraceKernelGameAt g).mixedExtension.IsNash σ := by
+    [∀ who, Nonempty ((pureEventBatchTraceKernelGameAt g).Strategy who)] :
+    ∃ σ : ∀ who, PMF ((pureEventBatchTraceKernelGameAt g).Strategy who),
+      (pureEventBatchTraceKernelGameAt g).mixedExtension.IsNash σ := by
   classical
-  letI : ∀ who, Fintype ((pureBlockedTraceKernelGameAt g).Strategy who) := by
+  letI : ∀ who, Fintype ((pureEventBatchTraceKernelGameAt g).Strategy who) := by
     intro who
     change Fintype (pureStrategyAt g who)
     infer_instance
-  obtain ⟨C, hbd⟩ := pureBlockedTraceKernelGameAt_utility_bounded g
-  exact KernelGame.mixed_nash_exists_of_bounded (pureBlockedTraceKernelGameAt g) hbd
+  obtain ⟨C, hbd⟩ := pureEventBatchTraceKernelGameAt_utility_bounded g
+  exact KernelGame.mixed_nash_exists_of_bounded (pureEventBatchTraceKernelGameAt g) hbd
 
 theorem correlatedEq_exists
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]

@@ -3,9 +3,9 @@
 
 A real implementation of a protocol — a smart contract, a
 network-layer rewrite, a scheduler-equipped runtime — is rarely a
-literal event graph.  It has additional state (transactions,
-mempool order, gas, retry logic, network ordering), additional
-internal events (block production, message reordering), and possibly
+literal event graph.  It has additional state (queues,
+retry logic, network ordering), additional
+internal events (scheduler ticks, message reordering), and possibly
 different action alphabets at the user-facing surface.  The
 \emph{refinement layer} is the formal account of how such an
 implementation is permitted to differ from the canonical event-graph
@@ -74,35 +74,35 @@ specification law are related through the refinement projection,
 the projection of the implementation trace distribution matches the
 specification trace distribution.  The codebase records this as
 $\mathrm{runEventsFrom\_project\_eq}$ and
-$\mathrm{blockTraceDist\_project\_eq}$, with the latter exposing
-the projection at the FOSG-block granularity.
+$\mathrm{eventBatchTraceDist\_project\_eq}$, with the latter exposing
+the projection at the FOSG-round/event-batch granularity.
 
 \subsection{Backend kernel-game transport}
 \label{sec:ref:kg}
 
 The strategic transport theorems are stated as
 \emph{expected-utility-preserving morphisms} from a backend
-kernel game to the canonical Vegas blocked-trace kernel game.  A
-\emph{compatible block-law lift} is, intuitively, a per-profile
+kernel game to the canonical Vegas event-batch trace kernel game.  A
+\emph{compatible event-batch law lift} is, intuitively, a per-profile
 choice of how the spec graph and the implementation each generate a
-distribution over event-block traces, plus a proof that the two
+distribution over event-batch traces, plus a proof that the two
 generations match through $R$ — that is, the implementation's
-block-law projected through $R$ equals the spec's, and the spec's
-reproduces the canonical blocked-trace outcome kernel.  The
+event-batch law projected through $R$ equals the spec's, and the spec's
+reproduces the canonical event-batch trace outcome kernel.  The
 construction therefore takes:
 \begin{itemize}\itemsep1pt
 \item a stochastic refinement $R$ from the implementation machine
   to the spec event-graph machine, and
-\item a compatible block-law lift, in the pure or PMF-behavioral
+\item a compatible event-batch law lift, in the pure or PMF-behavioral
   form depending on the target kernel game.
 \end{itemize}
 
-The block-law lift is explicit on purpose.  The FOSG blocked-trace
+The event-batch law lift is explicit on purpose.  The FOSG event-batch trace
 kernel is indexed by bounded FOSG histories, whereas a machine
-block law sees only machine blocked traces.  The code therefore
-does not silently identify the two.  Instead, \TT{PureSpecBlockLaw}
-and \TT{BehavioralSpecBlockLaw} package a specification block law
-with the proof that it reproduces the canonical Vegas blocked-trace
+event-batch law sees only machine event-batch traces.  The code therefore
+does not silently identify the two.  Instead, \TT{PureSpecEventBatchLaw}
+and \TT{BehavioralSpecEventBatchLaw} package a specification event-batch law
+with the proof that it reproduces the canonical Vegas event-batch trace
 kernel; backend lifts then relate an implementation law to that
 packaged spec law.  The identity backend wrappers reuse the same
 package rather than treating a canonical law conversion as
@@ -110,9 +110,9 @@ definitionally available.
 
 These data assemble into a kernel-game morphism
 \[
-  \mathrm{backendBlockedTraceKernelGame}(g, R)
+  \mathrm{backendEventBatchTraceKernelGame}(g, R)
   \;\longrightarrow\;
-  \mathrm{specBlockedTraceKernelGame}(g)
+  \mathrm{specEventBatchTraceKernelGame}(g)
 \]
 that preserves expected utility.  The headline corollary is the
 \emph{Nash pullback}:
@@ -121,8 +121,8 @@ that preserves expected utility.  The headline corollary is the
 \label{thm:backend-nash}
 Let $g$ be a checked program and $R$ a stochastic step refinement
 from $\Mach^I$ to $\Mach_{\mathsf{eg}(g)}$, with a compatible
-block-law lift.  Then for any profile $\Profile$ of the spec
-blocked-trace kernel game,
+event-batch law lift.  Then for any profile $\Profile$ of the spec
+event-batch trace kernel game,
 \[
   \mathrm{IsNash}_{\mathrm{spec}}(\Profile)
   \;\Longrightarrow\;
@@ -131,7 +131,7 @@ blocked-trace kernel game,
 (\emph{Nash pullback} along the backend-to-spec morphism).  The
 same holds for the PMF-behavioral variant, and combined with
 \Cref{thm:trace-public} (trace-to-public agreement) yields the
-composed ``payoff-vector spec game $\to$ backend blocked-trace game''
+composed ``payoff-vector spec game $\to$ backend event-batch trace game''
 pullback for both pure and behavioral Nash.
 \end{theorem}
 
@@ -148,8 +148,8 @@ it; transport the equilibria}.
 \paragraph{Lean correspondence.}
 Supplement~\S10 (backend layer): \TT{WeakStepRefinement},
 \TT{StochasticStepRefinement}, the trace-projection lemmas,
-\TT{PureSpecBlockLaw}, \TT{BehavioralSpecBlockLaw},
-\TT{BackendPureBlockLawLift}, \TT{BackendBehavioralBlockLawLift},
+\TT{PureSpecEventBatchLaw}, \TT{BehavioralSpecEventBatchLaw},
+\TT{BackendPureEventBatchLawLift}, \TT{BackendBehavioralEventBatchLawLift},
 and the two pullback theorems
-(\TT{backendBlockedTraceKernelGameAt\_isNash\_pullback},
-\TT{backendPMFBehavioralBlockedTraceKernelGameAt\_isNash\_pullback}).
+(\TT{backendEventBatchTraceKernelGameAt\_isNash\_pullback},
+\TT{backendPMFBehavioralEventBatchTraceKernelGameAt\_isNash\_pullback}).

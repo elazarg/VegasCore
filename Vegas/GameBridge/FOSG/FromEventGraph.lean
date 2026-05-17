@@ -137,10 +137,10 @@ theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom
     G iface state.state action.1
 
 /-- One bounded graph-FOSG transition, projected back to graph configurations,
-is one blocked primitive machine run.  This is the one-step form used by
-trace-level simulations: FOSG histories compose blocks; primitive machine
+is one event-batched primitive machine run.  This is the one-step form used by
+trace-level simulations: FOSG histories compose event batches; primitive machine
 traces flatten them. -/
-theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     (horizon : Nat)
@@ -151,18 +151,18 @@ theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
     PMF.map (fun bounded => bounded.state)
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
           state action) =
-      (G.toMachine iface).runEventBlocksFrom
+      (G.toMachine iface).runEventBatchesFrom
         [roundPrimitiveEvents G iface state.state action.1]
         state.state := by
   rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventsFrom]
   simp
 
-/-- Primitive event blocks extracted from a bounded graph-FOSG step list.
+/-- Primitive event batches extracted from a bounded graph-FOSG step list.
 
 Each bounded FOSG step is one frontier round.  This projection forgets the
-sampled checkpoint destination and keeps the primitive machine event block
+sampled checkpoint destination and keeps the primitive machine event batch
 selected by the round action at the step source. -/
-noncomputable def boundedFOSGStepEventBlocks
+noncomputable def boundedFOSGStepEventBatches
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (steps :
@@ -171,18 +171,18 @@ noncomputable def boundedFOSGStepEventBlocks
   steps.map fun step =>
     roundPrimitiveEvents G iface step.src.state step.act.1
 
-/-- Primitive event blocks extracted from a bounded graph-FOSG history. -/
-noncomputable def boundedFOSGHistoryEventBlocks
+/-- Primitive event batches extracted from a bounded graph-FOSG history. -/
+noncomputable def boundedFOSGHistoryEventBatches
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     List (List (G.toMachine iface).Event) :=
-  boundedFOSGStepEventBlocks G iface hsound horizon h.steps
+  boundedFOSGStepEventBatches G iface hsound horizon h.steps
 
 /-- Every realized bounded graph-FOSG step chain is backed by a primitive
-machine blocked run whose support contains the same checkpoint endpoint. -/
-theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+machine event-batch run whose support contains the same checkpoint endpoint. -/
+theorem boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat) :
     ∀ {start : (G.toMachine iface).BoundedState horizon}
@@ -192,19 +192,19 @@ theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
           start steps →
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
             start steps).state ∈
-          ((G.toMachine iface).runEventBlocksFrom
-            (boundedFOSGStepEventBlocks G iface hsound horizon steps)
+          ((G.toMachine iface).runEventBatchesFrom
+            (boundedFOSGStepEventBatches G iface hsound horizon steps)
             start.state).support
   | start, [], _hchain => by
-      simp [boundedFOSGStepEventBlocks, GameTheory.FOSG.lastStateFrom]
+      simp [boundedFOSGStepEventBatches, GameTheory.FOSG.lastStateFrom]
   | start, step :: steps, hchain => by
       rcases hchain with ⟨hsrc, htail⟩
       cases hsrc
-      let block : List (G.toMachine iface).Event :=
+      let batch : List (G.toMachine iface).Event :=
         roundPrimitiveEvents G iface step.src.state step.act.1
-      have hblock :
+      have hbatch :
           step.dst.state ∈
-            ((G.toMachine iface).runEventBlocksFrom [block]
+            ((G.toMachine iface).runEventBatchesFrom [batch]
               step.src.state).support := by
         have hmap :
             step.dst.state ∈
@@ -213,50 +213,50 @@ theorem boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
                   step.src step.act)).support := by
           exact (PMF.mem_support_map_iff _ _ _).2
             ⟨step.dst, (PMF.mem_support_iff _ _).2 step.support, rfl⟩
-        rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+        rw [toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBatchesFrom
           (G := G) (iface := iface) (hsound := hsound)
           (horizon := horizon) (state := step.src) (action := step.act)] at hmap
-        simpa [block] using hmap
+        simpa [batch] using hmap
       have htailSupport :
           (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
               step.dst steps).state ∈
-            ((G.toMachine iface).runEventBlocksFrom
-              (boundedFOSGStepEventBlocks G iface hsound horizon steps)
+            ((G.toMachine iface).runEventBatchesFrom
+              (boundedFOSGStepEventBatches G iface hsound horizon steps)
               step.dst.state).support :=
-        boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+        boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
           G iface hsound horizon htail
       change
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
             step.dst steps).state ∈
-          ((G.toMachine iface).runEventBlocksFrom
-            ([block] ++
-              boundedFOSGStepEventBlocks G iface hsound horizon steps)
+          ((G.toMachine iface).runEventBatchesFrom
+            ([batch] ++
+              boundedFOSGStepEventBatches G iface hsound horizon steps)
             step.src.state).support
-      rw [Machine.runEventBlocksFrom_append]
+      rw [Machine.runEventBatchesFrom_append]
       rw [PMF.mem_support_bind_iff]
-      exact ⟨step.dst.state, hblock, htailSupport⟩
+      exact ⟨step.dst.state, hbatch, htailSupport⟩
 
 /-- Every realized bounded graph-FOSG history extracts a primitive machine
-blocked trace whose endpoint support contains the history's checkpoint state. -/
-theorem boundedFOSGHistory_state_mem_runEventBlocksFrom_support
+event-batch trace whose endpoint support contains the history's checkpoint state. -/
+theorem boundedFOSGHistory_state_mem_runEventBatchesFrom_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     h.lastState.state ∈
-      ((G.toMachine iface).runEventBlocksFrom
-        (boundedFOSGHistoryEventBlocks G iface hsound horizon h)
+      ((G.toMachine iface).runEventBatchesFrom
+        (boundedFOSGHistoryEventBatches G iface hsound horizon h)
         (G.toMachine iface).init).support := by
-  simpa [boundedFOSGHistoryEventBlocks,
-    boundedFOSGStepEventBlocks, GameTheory.FOSG.History.lastState,
+  simpa [boundedFOSGHistoryEventBatches,
+    boundedFOSGStepEventBatches, GameTheory.FOSG.History.lastState,
     EventGraph.toMachine_init] using
-    (boundedFOSGStepEventBlocks_lastState_mem_runEventBlocksFrom_support
+    (boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
       G iface hsound horizon h.chain)
 
 /-- One bounded graph-FOSG transition, projected to the history's extracted
-event-block prefix and the successor checkpoint state, is exactly the
-corresponding primitive machine blocked run. -/
-theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+event-batch prefix and the successor checkpoint state, is exactly the
+corresponding primitive machine event-batch run. -/
+theorem boundedFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
@@ -266,27 +266,27 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
         h.lastState)) :
     PMF.map
         (fun dst =>
-          (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+          (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
               [roundPrimitiveEvents G iface h.lastState.state action.1],
             dst.state))
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+          (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
               [roundPrimitiveEvents G iface h.lastState.state action.1],
             next))
-        ((G.toMachine iface).runEventBlocksFrom
+        ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state) := by
   let attach : (G.toMachine iface).State →
       List (List (G.toMachine iface).Event) × (G.toMachine iface).State :=
     fun next =>
-      (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+      (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
           [roundPrimitiveEvents G iface h.lastState.state action.1],
         next)
   have hstate :=
-    toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBlocksFrom
+    toFOSGView_toBoundedFOSG_transition_map_state_eq_runEventBatchesFrom
       (G := G) (iface := iface) (hsound := hsound)
       (horizon := horizon) (state := h.lastState) (action := action)
   change
@@ -294,7 +294,7 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map attach
-        ((G.toMachine iface).runEventBlocksFrom
+        ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state)
   rw [← hstate]
@@ -302,9 +302,9 @@ theorem boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
   rfl
 
 /-- Binding a continuation over one bounded graph-FOSG transition is the same
-as binding that continuation over the corresponding primitive machine blocked
+as binding that continuation over the corresponding primitive machine event-batch
 run, with the bounded presentation depth reattached to the checkpoint state. -/
-theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+theorem boundedFOSG_transition_bind_eq_runEventBatchesFrom_bind
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
@@ -316,7 +316,7 @@ theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
     (K : (G.toMachine iface).BoundedState horizon → PMF α) :
     ((((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
           h.lastState action).bind K) =
-      ((G.toMachine iface).runEventBlocksFrom
+      ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state).bind
         (fun next =>
@@ -333,7 +333,7 @@ theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
               (fun hle => action.2.1 (Or.inr hle)))
             next)
         (roundTransition G h.lastState.state action.1)).bind K =
-      ((G.toMachine iface).runEventBlocksFrom
+      ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state).bind
         (fun next =>
@@ -345,16 +345,16 @@ theorem boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
   rw [roundTransition_eq_runEventsFrom_roundPrimitiveEvents
     (G := G) (iface := iface) (cfg := h.lastState.state)
     (joint := action.1)]
-  rw [Machine.runEventBlocksFrom_singleton]
+  rw [Machine.runEventBatchesFrom_singleton]
   rfl
 
-/-- History-dependent blocked primitive trace distribution induced by a
+/-- History-dependent event-batched primitive trace distribution induced by a
 bounded graph-FOSG behavioral profile.
 
 The state of this process is still the FOSG history: strategies are allowed to
 depend on information-state history.  The machine contribution at each
-nonterminal FOSG round is the primitive event block selected by that round. -/
-noncomputable def boundedFOSGBlockTraceDistFrom
+nonterminal FOSG round is the primitive event batch selected by that round. -/
+noncomputable def boundedFOSGEventBatchTraceDistFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -367,7 +367,7 @@ noncomputable def boundedFOSGBlockTraceDistFrom
         PMF (List (List (G.toMachine iface).Event) × (G.toMachine iface).State)
   | 0, h =>
       PMF.pure
-        (boundedFOSGHistoryEventBlocks G iface hsound horizon h,
+        (boundedFOSGHistoryEventBatches G iface hsound horizon h,
           h.lastState.state)
   | n + 1, h => by
       classical
@@ -376,16 +376,16 @@ noncomputable def boundedFOSGBlockTraceDistFrom
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon).terminal
               h.lastState then
           PMF.pure
-            (boundedFOSGHistoryEventBlocks G iface hsound horizon h,
+            (boundedFOSGHistoryEventBatches G iface hsound horizon h,
               h.lastState.state)
         else
           (GameTheory.FOSG.legalActionLaw
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon)
             σ h hterm).bind fun action =>
-            ((G.toMachine iface).runEventBlocksFrom
+            ((G.toMachine iface).runEventBatchesFrom
               [roundPrimitiveEvents G iface h.lastState.state action.1]
               h.lastState.state).bind fun next =>
-                boundedFOSGBlockTraceDistFrom
+                boundedFOSGEventBatchTraceDistFrom
                   G iface hsound horizon σ n
                   (h.extendByOutcome action
                     (h.lastState.succ
@@ -393,7 +393,7 @@ noncomputable def boundedFOSGBlockTraceDistFrom
                         (fun hle => action.2.1 (Or.inr hle)))
                       next))
 
-@[simp] theorem boundedFOSGBlockTraceDistFrom_zero
+@[simp] theorem boundedFOSGEventBatchTraceDistFrom_zero
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -403,12 +403,12 @@ noncomputable def boundedFOSGBlockTraceDistFrom
         ((G.toFOSGView iface hsound).toBoundedFOSG horizon))
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
-    boundedFOSGBlockTraceDistFrom G iface hsound horizon σ 0 h =
+    boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ 0 h =
       PMF.pure
-        (boundedFOSGHistoryEventBlocks G iface hsound horizon h,
+        (boundedFOSGHistoryEventBatches G iface hsound horizon h,
           h.lastState.state) := rfl
 
-theorem boundedFOSGBlockTraceDistFrom_succ_terminal
+theorem boundedFOSGEventBatchTraceDistFrom_succ_terminal
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -422,16 +422,16 @@ theorem boundedFOSGBlockTraceDistFrom_succ_terminal
     (hterm :
       ((G.toFOSGView iface hsound).toBoundedFOSG horizon).terminal
         h.lastState) :
-    boundedFOSGBlockTraceDistFrom G iface hsound horizon σ (n + 1) h =
+    boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ (n + 1) h =
       PMF.pure
-        (boundedFOSGHistoryEventBlocks G iface hsound horizon h,
+        (boundedFOSGHistoryEventBatches G iface hsound horizon h,
           h.lastState.state) := by
   have hterm' :
       (G.toFOSGView iface hsound).boundedTerminal horizon h.lastState := by
     simpa [Machine.FOSGView.toBoundedFOSG_terminal] using hterm
-  simp [boundedFOSGBlockTraceDistFrom, hterm']
+  simp [boundedFOSGEventBatchTraceDistFrom, hterm']
 
-theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
+theorem boundedFOSGEventBatchTraceDistFrom_succ_nonterminal
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -445,14 +445,14 @@ theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
     (hterm :
       ¬ ((G.toFOSGView iface hsound).toBoundedFOSG horizon).terminal
         h.lastState) :
-    boundedFOSGBlockTraceDistFrom G iface hsound horizon σ (n + 1) h =
+    boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ (n + 1) h =
       (GameTheory.FOSG.legalActionLaw
         ((G.toFOSGView iface hsound).toBoundedFOSG horizon)
         σ h hterm).bind fun action =>
-        ((G.toMachine iface).runEventBlocksFrom
+        ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state).bind fun next =>
-            boundedFOSGBlockTraceDistFrom
+            boundedFOSGEventBatchTraceDistFrom
               G iface hsound horizon σ n
               (h.extendByOutcome action
                 (h.lastState.succ
@@ -462,12 +462,12 @@ theorem boundedFOSGBlockTraceDistFrom_succ_nonterminal
   have hterm' :
       ¬ (G.toFOSGView iface hsound).boundedTerminal horizon h.lastState := by
     simpa [Machine.FOSGView.toBoundedFOSG_terminal] using hterm
-  simp [boundedFOSGBlockTraceDistFrom, hterm']
+  simp [boundedFOSGEventBatchTraceDistFrom, hterm']
 
-/-- Bounded graph-FOSG execution, projected to extracted primitive event blocks
-and checkpoint state, equals the history-dependent blocked machine trace
+/-- Bounded graph-FOSG execution, projected to extracted primitive event batches
+and checkpoint state, equals the history-dependent event-batch machine trace
 distribution induced by the same behavioral profile. -/
-theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+theorem boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -482,27 +482,27 @@ theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)),
       PMF.map
           (fun h' =>
-            (boundedFOSGHistoryEventBlocks G iface hsound horizon h',
+            (boundedFOSGHistoryEventBatches G iface hsound horizon h',
               h'.lastState.state))
           (GameTheory.FOSG.History.runDistFrom
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon) σ n h) =
-        boundedFOSGBlockTraceDistFrom G iface hsound horizon σ n h
+        boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ n h
   | 0, h => by
       rw [GameTheory.FOSG.History.runDistFrom_zero]
-      rw [boundedFOSGBlockTraceDistFrom_zero]
+      rw [boundedFOSGEventBatchTraceDistFrom_zero]
       rw [PMF.pure_map]
   | n + 1, h => by
       let BFOSG := (G.toFOSGView iface hsound).toBoundedFOSG horizon
       by_cases hterm : BFOSG.terminal h.lastState
       · rw [GameTheory.FOSG.History.runDistFrom_succ_terminal
           (G := BFOSG) σ n h hterm]
-        rw [boundedFOSGBlockTraceDistFrom_succ_terminal
+        rw [boundedFOSGEventBatchTraceDistFrom_succ_terminal
           (G := G) (iface := iface) (hsound := hsound)
           (horizon := horizon) σ n h hterm]
         rw [PMF.pure_map]
       · rw [GameTheory.FOSG.History.runDistFrom_succ_nonterminal
           (G := BFOSG) σ n h hterm]
-        rw [boundedFOSGBlockTraceDistFrom_succ_nonterminal
+        rw [boundedFOSGEventBatchTraceDistFrom_succ_nonterminal
           (G := G) (iface := iface) (hsound := hsound)
           (horizon := horizon) σ n h hterm]
         rw [PMF.map_bind]
@@ -512,20 +512,20 @@ theorem boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
         conv_lhs =>
           arg 2
           intro dst
-          rw [boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+          rw [boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
             G iface hsound horizon σ n (h.extendByOutcome action dst)]
         exact
-          boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+          boundedFOSG_transition_bind_eq_runEventBatchesFrom_bind
             G iface hsound horizon h action
             (fun dst =>
-              boundedFOSGBlockTraceDistFrom
+              boundedFOSGEventBatchTraceDistFrom
                 G iface hsound horizon σ n
                 (h.extendByOutcome action dst))
 
 /-- Outcome projection of bounded graph-FOSG execution equals outcome
-projection of the corresponding history-dependent blocked machine trace
+projection of the corresponding history-dependent event-batch machine trace
 distribution. -/
-theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+theorem boundedFOSG_runDistFrom_map_outcome_eq_eventBatchTraceDistFrom_map_outcome
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -544,12 +544,12 @@ theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
           ((G.toFOSGView iface hsound).toBoundedFOSG horizon) σ n h) =
       PMF.map
         (fun trace => (G.toMachine iface).outcome trace.2)
-        (boundedFOSGBlockTraceDistFrom G iface hsound horizon σ n h) := by
+        (boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ n h) := by
   let project :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History) →
         List (List (G.toMachine iface).Event) × (G.toMachine iface).State :=
     fun h' =>
-      (boundedFOSGHistoryEventBlocks G iface hsound horizon h',
+      (boundedFOSGHistoryEventBatches G iface hsound horizon h',
         h'.lastState.state)
   let observe :
       List (List (G.toMachine iface).Event) × (G.toMachine iface).State →
@@ -569,14 +569,14 @@ theorem boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
           rfl
     _ =
       PMF.map observe
-        (boundedFOSGBlockTraceDistFrom G iface hsound horizon σ n h) := by
-          rw [boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+        (boundedFOSGEventBatchTraceDistFrom G iface hsound horizon σ n h) := by
+          rw [boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
             (G := G) (iface := iface) (hsound := hsound)
             (horizon := horizon) σ n h]
 
 /-- Public bounded behavioral outcome kernel of a graph-FOSG view, computed as
-the machine outcome map of the induced blocked primitive trace distribution. -/
-theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
+the machine outcome map of the induced event-batched primitive trace distribution. -/
+theorem boundedFOSG_outcomeFromBehavioral_eq_eventBatchTraceDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -591,21 +591,21 @@ theorem boundedFOSG_outcomeFromBehavioral_eq_blockTraceDist
         horizon β steps) =
       PMF.map
         (fun trace => (G.toMachine iface).outcome trace.2)
-        (boundedFOSGBlockTraceDistFrom G iface hsound horizon β.extend steps
+        (boundedFOSGEventBatchTraceDistFrom G iface hsound horizon β.extend steps
           (GameTheory.FOSG.History.nil
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon))) := by
   simpa [Machine.FOSGView.boundedOutcomeFromBehavioral,
     Machine.FOSGView.boundedHistoryOutcome, GameTheory.FOSG.runDist] using
-    (boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+    (boundedFOSG_runDistFrom_map_outcome_eq_eventBatchTraceDistFrom_map_outcome
       (G := G) (iface := iface) (hsound := hsound)
       (horizon := horizon) β.extend steps
       (GameTheory.FOSG.History.nil
         ((G.toFOSGView iface hsound).toBoundedFOSG horizon)))
 
 /-- Public bounded pure outcome kernel of a graph-FOSG view, computed as the
-machine outcome map of the blocked primitive trace distribution induced by the
+machine outcome map of the event-batched primitive trace distribution induced by the
 pure profile's behavioral embedding. -/
-theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
+theorem boundedFOSG_outcomeFromPure_eq_eventBatchTraceDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     [Fintype Player]
@@ -620,7 +620,7 @@ theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
         horizon π steps) =
       PMF.map
         (fun trace => (G.toMachine iface).outcome trace.2)
-        (boundedFOSGBlockTraceDistFrom G iface hsound horizon
+        (boundedFOSGEventBatchTraceDistFrom G iface hsound horizon
           (GameTheory.FOSG.legalPureToBehavioral
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon) π.extend)
           steps
@@ -628,7 +628,7 @@ theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
             ((G.toFOSGView iface hsound).toBoundedFOSG horizon))) := by
   simpa [Machine.FOSGView.boundedOutcomeFromPure,
     Machine.FOSGView.boundedHistoryOutcome, GameTheory.FOSG.runDist] using
-    (boundedFOSG_runDistFrom_map_outcome_eq_blockTraceDistFrom_map_outcome
+    (boundedFOSG_runDistFrom_map_outcome_eq_eventBatchTraceDistFrom_map_outcome
       (G := G) (iface := iface) (hsound := hsound)
       (horizon := horizon)
       (GameTheory.FOSG.legalPureToBehavioral
@@ -638,10 +638,10 @@ theorem boundedFOSG_outcomeFromPure_eq_blockTraceDist
         ((G.toFOSGView iface hsound).toBoundedFOSG horizon)))
 
 /-- One-step form matching `FOSG.History.runDistFrom`: if the sampled bounded
-destination extends the FOSG history, then the extracted block prefix and
-checkpoint state have the same distribution as the primitive machine blocked
+destination extends the FOSG history, then the extracted event-batch prefix and
+checkpoint state have the same distribution as the primitive machine event-batch
 run for the selected frontier round. -/
-theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+theorem boundedFOSG_transition_map_extend_eventBatches_state_eq_runEventBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds) (horizon : Nat)
     (h :
@@ -652,16 +652,16 @@ theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFro
     PMF.map
         (fun dst =>
           let h' := h.extendByOutcome action dst
-          (boundedFOSGHistoryEventBlocks G iface hsound horizon h',
+          (boundedFOSGHistoryEventBatches G iface hsound horizon h',
             h'.lastState.state))
         (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+          (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
               [roundPrimitiveEvents G iface h.lastState.state action.1],
             next))
-        ((G.toMachine iface).runEventBlocksFrom
+        ((G.toMachine iface).runEventBatchesFrom
           [roundPrimitiveEvents G iface h.lastState.state action.1]
           h.lastState.state) := by
   let transition :=
@@ -671,12 +671,12 @@ theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFro
       PMF.map
           (fun dst =>
             let h' := h.extendByOutcome action dst
-            (boundedFOSGHistoryEventBlocks G iface hsound horizon h',
+            (boundedFOSGHistoryEventBatches G iface hsound horizon h',
               h'.lastState.state))
           transition =
         PMF.map
           (fun dst =>
-            (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+            (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
                 [roundPrimitiveEvents G iface h.lastState.state action.1],
               dst.state))
           transition := by
@@ -685,12 +685,12 @@ theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFro
           (fun dst =>
             PMF.pure
               (let h' := h.extendByOutcome action dst
-              (boundedFOSGHistoryEventBlocks G iface hsound horizon h',
+              (boundedFOSGHistoryEventBatches G iface hsound horizon h',
                 h'.lastState.state))) =
         transition.bind
           (fun dst =>
             PMF.pure
-              (boundedFOSGHistoryEventBlocks G iface hsound horizon h ++
+              (boundedFOSGHistoryEventBatches G iface hsound horizon h ++
                   [roundPrimitiveEvents G iface h.lastState.state action.1],
                 dst.state))
     refine Math.ProbabilityMassFunction.bind_congr_on_support
@@ -704,10 +704,10 @@ theorem boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFro
       simpa [transition] using hsuppLocal
     rw [GameTheory.FOSG.History.extendByOutcome_of_support
       (h := h) (a := action) (dst := dst) hsupp]
-    simp [boundedFOSGHistoryEventBlocks, boundedFOSGStepEventBlocks]
+    simp [boundedFOSGHistoryEventBatches, boundedFOSGStepEventBatches]
   rw [hproject]
   exact
-    boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+    boundedFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
       G iface hsound horizon h action
 
 end EventGraph

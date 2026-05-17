@@ -63,56 +63,56 @@ theorem checkedProgram_wholeGame_reaches_declared_payoff_rule
           evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
   eventGraphOutcome_eq_evalPayoffs_of_terminal g hcomplete
 
-/-- Pure strategic-form outcomes are exactly the event-graph machine blocked
+/-- Pure strategic-form outcomes are exactly the event-graph machine event-batch
 trace outcomes projected to payoff outcomes. -/
-theorem checkedProgram_pureOutcome_eq_blockTrace
+theorem checkedProgram_pureOutcome_eq_eventBatchTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (syntaxBlockedTraceOutcome g)
-        (pureBlockedTraceOutcomeKernelAt g π) :=
-  pureOutcomeKernelAt_eq_blockTraceDist g π
+        (syntaxEventBatchTraceOutcome g)
+        (pureEventBatchTraceOutcomeKernelAt g π) :=
+  pureOutcomeKernelAt_eq_eventBatchTraceDist g π
 
 /-- PMF behavioral strategic-form outcomes are exactly the event-graph machine
-blocked trace outcomes projected to payoff outcomes. -/
-theorem checkedProgram_behavioralOutcome_eq_blockTrace
+event-batch trace outcomes projected to payoff outcomes. -/
+theorem checkedProgram_behavioralOutcome_eq_eventBatchTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (syntaxBlockedTraceOutcome g)
-        (behavioralBlockedTraceOutcomeKernelPMFAt g β) :=
-  behavioralOutcomeKernelPMFAt_eq_blockTraceDist g β
+        (syntaxEventBatchTraceOutcome g)
+        (behavioralEventBatchTraceOutcomeKernelPMFAt g β) :=
+  behavioralOutcomeKernelPMFAt_eq_eventBatchTraceDist g β
 
 /-- Pure public-state game-form outcomes are the public observation projection
-of blocked machine traces. -/
-theorem checkedProgram_purePublicStateOutcome_eq_blockTrace
+of event-batch machine traces. -/
+theorem checkedProgram_purePublicStateOutcome_eq_eventBatchTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     purePublicStateOutcomeKernelAt g π =
-      PMF.map (syntaxBlockedTracePublicState g)
-        (pureBlockedTraceOutcomeKernelAt g π) := rfl
+      PMF.map (syntaxEventBatchTracePublicState g)
+        (pureEventBatchTraceOutcomeKernelAt g π) := rfl
 
 /-- PMF behavioral public-state game-form outcomes are the public observation
-projection of blocked machine traces. -/
-theorem checkedProgram_behavioralPublicStateOutcome_eq_blockTrace
+projection of event-batch machine traces. -/
+theorem checkedProgram_behavioralPublicStateOutcome_eq_eventBatchTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralPublicStateOutcomeKernelPMFAt g β =
-      PMF.map (syntaxBlockedTracePublicState g)
-        (behavioralBlockedTraceOutcomeKernelPMFAt g β) := rfl
+      PMF.map (syntaxEventBatchTracePublicState g)
+        (behavioralEventBatchTraceOutcomeKernelPMFAt g β) := rfl
 
-/-- Equality after projecting blocked traces to syntax outcomes gives equality
+/-- Equality after projecting event-batch traces to syntax outcomes gives equality
 of the induced outcome laws. -/
 theorem outcomeKernel_eq_of_traceOutcome_eq
     (g : WFProgram P L)
-    {left right : PMF (syntaxBlockedTraceAt g)}
+    {left right : PMF (syntaxEventBatchTraceAt g)}
     (h :
-      PMF.map (syntaxBlockedTraceOutcome g) left =
-        PMF.map (syntaxBlockedTraceOutcome g) right) :
-    PMF.map (syntaxBlockedTraceOutcome g) left =
-      PMF.map (syntaxBlockedTraceOutcome g) right :=
+      PMF.map (syntaxEventBatchTraceOutcome g) left =
+        PMF.map (syntaxEventBatchTraceOutcome g) right) :
+    PMF.map (syntaxEventBatchTraceOutcome g) left =
+      PMF.map (syntaxEventBatchTraceOutcome g) right :=
   h
 
 private theorem ProgramField.finalEnv?_erasePubEnv_eq_of_public_values

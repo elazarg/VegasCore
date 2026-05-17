@@ -98,7 +98,7 @@ Other layers consume that spine:
 - `Strategic/`: Vegas-native strategy carriers, kernel games, equilibrium
   vocabulary, dominance, transport, and Kuhn-facing public names.
 - `GameBridge/`: FOSG/EFG bridges and FOSG-backed realization machinery.
-- `Backend/`: operational/runtime refinement and backend blocked-trace games.
+- `Backend/`: operational/runtime refinement and backend event-batch trace games.
 - `Theorems/`: project-facing theorem names, organized by topic. Generic
   event-graph facts live in topic submodules named `EventGraph`; facts that
   rely on generated checked `VegasCore` syntax live in `CheckedProgram`

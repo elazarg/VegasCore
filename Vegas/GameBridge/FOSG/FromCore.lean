@@ -590,13 +590,13 @@ theorem eventGraph_wholeGame_reaches_declared_payoff_rule
         g h.lastState.state hdoneSteps
   exact eventGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
 
-/-- Primitive machine event blocks extracted from a bounded event-graph FOSG
-history. Each block is one frontier round of the public FOSG view. -/
-noncomputable def eventGraphFOSGHistoryEventBlocks
+/-- Primitive machine event batches extracted from a bounded event-graph FOSG
+history. Each event batch is one frontier round of the public FOSG view. -/
+noncomputable def eventGraphFOSGHistoryEventBatches
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     List (List (eventGraphMachine g).Event) :=
-  EventGraph.boundedFOSGHistoryEventBlocks
+  EventGraph.boundedFOSGHistoryEventBatches
     (programEventGraph g) (eventGraphMachineInterface g)
     (programEventGraph_hasStableFrontierRounds g) horizon h
 
@@ -612,24 +612,24 @@ noncomputable def eventGraphRoundPrimitiveEvents
       (eventGraphMachineInterface g) cfg joint)
 
 /-- Every bounded event-graph FOSG history is backed by a primitive machine
-blocked run whose support contains the same checkpoint state. -/
-theorem eventGraphFOSGHistory_state_mem_runEventBlocksFrom_support
+event-batch run whose support contains the same checkpoint state. -/
+theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     h.lastState.state ∈
-      ((eventGraphMachine g).runEventBlocksFrom
-        (eventGraphFOSGHistoryEventBlocks g horizon h)
+      ((eventGraphMachine g).runEventBatchesFrom
+        (eventGraphFOSGHistoryEventBatches g horizon h)
         (eventGraphMachine g).init).support := by
-  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView] using
-    (EventGraph.boundedFOSGHistory_state_mem_runEventBlocksFrom_support
+    (EventGraph.boundedFOSGHistory_state_mem_runEventBatchesFrom_support
       (programEventGraph g) (eventGraphMachineInterface g)
       (programEventGraph_hasStableFrontierRounds g) horizon h)
 
 /-- One bounded event-graph FOSG transition, projected to the history's
-extracted event-block prefix and successor checkpoint state, is exactly the
-corresponding primitive machine blocked run. -/
-theorem eventGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+extracted event-batch prefix and successor checkpoint state, is exactly the
+corresponding primitive machine event-batch run. -/
+theorem eventGraphFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
@@ -637,29 +637,29 @@ theorem eventGraphFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
         h.lastState)) :
     PMF.map
         (fun dst =>
-          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+          (eventGraphFOSGHistoryEventBatches g horizon h ++
               [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             dst.state))
         (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+          (eventGraphFOSGHistoryEventBatches g horizon h ++
               [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             next))
-        ((eventGraphMachine g).runEventBlocksFrom
+        ((eventGraphMachine g).runEventBatchesFrom
           [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state) := by
-  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_map_eventBlocks_state_eq_runEventBlocksFrom
+    (EventGraph.boundedFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
       (programEventGraph g) (eventGraphMachineInterface g)
       (programEventGraph_hasStableFrontierRounds g) horizon h action)
 
 /-- Continuation form of one event-graph FOSG transition: binding over the
-bounded FOSG transition is the same as binding over the primitive blocked
+bounded FOSG transition is the same as binding over the primitive event-batch
 machine run and reattaching the bounded presentation depth. -/
-theorem eventGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
+theorem eventGraphFOSG_transition_bind_eq_runEventBatchesFrom_bind
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
@@ -669,7 +669,7 @@ theorem eventGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
     (K : (eventGraphMachine g).BoundedState horizon → PMF α) :
     ((((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action).bind K) =
-      ((eventGraphMachine g).runEventBlocksFrom
+      ((eventGraphMachine g).runEventBatchesFrom
           [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state).bind
         (fun next =>
@@ -679,14 +679,14 @@ theorem eventGraphFOSG_transition_bind_eq_runEventBlocksFrom_bind
             next)) := by
   simpa [eventGraphMachine, eventGraphFOSGView,
     eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_bind_eq_runEventBlocksFrom_bind
+    (EventGraph.boundedFOSG_transition_bind_eq_runEventBatchesFrom_bind
       (programEventGraph g) (eventGraphMachineInterface g)
       (programEventGraph_hasStableFrontierRounds g) horizon h action K)
 
 /-- One-step form matching `FOSG.History.runDistFrom` for event graphs:
 extend the FOSG history by the sampled bounded destination, then project to
-the extracted primitive event blocks and checkpoint state. -/
-theorem eventGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+the extracted primitive event batches and checkpoint state. -/
+theorem eventGraphFOSG_transition_map_extend_eventBatches_state_eq_runEventBatchesFrom
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
     (action :
@@ -695,21 +695,21 @@ theorem eventGraphFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocks
     PMF.map
         (fun dst =>
           let h' := h.extendByOutcome action dst
-          (eventGraphFOSGHistoryEventBlocks g horizon h',
+          (eventGraphFOSGHistoryEventBatches g horizon h',
             h'.lastState.state))
         (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
           h.lastState action) =
       PMF.map
         (fun next =>
-          (eventGraphFOSGHistoryEventBlocks g horizon h ++
+          (eventGraphFOSGHistoryEventBatches g horizon h ++
               [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
             next))
-        ((eventGraphMachine g).runEventBlocksFrom
+        ((eventGraphMachine g).runEventBatchesFrom
           [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
           h.lastState.state) := by
-  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_map_extend_eventBlocks_state_eq_runEventBlocksFrom
+    (EventGraph.boundedFOSG_transition_map_extend_eventBatches_state_eq_runEventBatchesFrom
       (programEventGraph g) (eventGraphMachineInterface g)
       (programEventGraph_hasStableFrontierRounds g) horizon h action)
 
@@ -1111,9 +1111,9 @@ noncomputable instance eventGraphFOSGView.instDecidablePredBoundedTerminal
     DecidablePred (((eventGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
   Classical.decPred _
 
-/-- History-dependent blocked primitive trace distribution induced by a
+/-- History-dependent event-batched primitive trace distribution induced by a
 bounded event-graph FOSG behavioral profile. -/
-noncomputable def eventGraphFOSGBlockTraceDistFrom
+noncomputable def eventGraphFOSGEventBatchTraceDistFrom
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (σ :
@@ -1135,14 +1135,14 @@ noncomputable def eventGraphFOSGBlockTraceDistFrom
     simpa [eventGraphFOSGView] using
       (eventGraphFOSGView.instFintypeOptionAct g player)
   simpa [eventGraphMachine, eventGraphFOSGView] using
-    (EventGraph.boundedFOSGBlockTraceDistFrom
+    (EventGraph.boundedFOSGEventBatchTraceDistFrom
       (programEventGraph g) (eventGraphMachineInterface g)
       (programEventGraph_hasStableFrontierRounds g) horizon σ)
 
 /-- Bounded event-graph FOSG execution, projected to extracted primitive
-event blocks and checkpoint state, equals the history-dependent blocked
+event batches and checkpoint state, equals the history-dependent event-batch
 machine trace distribution induced by the same behavioral profile. -/
-theorem eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (σ :
@@ -1152,11 +1152,11 @@ theorem eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     PMF.map
         (fun h' =>
-          (eventGraphFOSGHistoryEventBlocks g horizon h',
+          (eventGraphFOSGHistoryEventBatches g horizon h',
             h'.lastState.state))
         (GameTheory.FOSG.History.runDistFrom
           ((eventGraphFOSGView g).toBoundedFOSG horizon) σ n h) =
-      eventGraphFOSGBlockTraceDistFrom g horizon σ n h := by
+      eventGraphFOSGEventBatchTraceDistFrom g horizon σ n h := by
   letI :
       ∀ player,
         Fintype
@@ -1181,9 +1181,9 @@ theorem eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
           (programEventGraph_hasStableFrontierRounds g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
-  simpa [eventGraphFOSGHistoryEventBlocks, eventGraphMachine,
-    eventGraphFOSGView, eventGraphFOSGBlockTraceDistFrom] using
-      (EventGraph.boundedFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
+    eventGraphFOSGView, eventGraphFOSGEventBatchTraceDistFrom] using
+      (EventGraph.boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
         (programEventGraph g) (eventGraphMachineInterface g)
         (programEventGraph_hasStableFrontierRounds g) horizon σ n h)
 
@@ -1194,15 +1194,15 @@ noncomputable def eventGraphInitialHistory
   GameTheory.FOSG.History.nil
     ((eventGraphFOSGView g).toBoundedFOSG horizon)
 
-/-- Project a bounded event-graph FOSG history to primitive event blocks and
+/-- Project a bounded event-graph FOSG history to primitive event batches and
 the checkpoint machine state. -/
 noncomputable def eventGraphHistoryTrace
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     List (List (eventGraphMachine g).Event) × (eventGraphMachine g).State :=
-  (eventGraphFOSGHistoryEventBlocks g horizon h, h.lastState.state)
+  (eventGraphFOSGHistoryEventBatches g horizon h, h.lastState.state)
 
-/-- Outcome extracted from a blocked event-graph trace. -/
+/-- Outcome extracted from an event-batch event-graph trace. -/
 noncomputable def eventGraphTraceOutcome
     (g : WFProgram P L)
     (trace :
@@ -1212,9 +1212,9 @@ noncomputable def eventGraphTraceOutcome
   (eventGraphMachine g).outcome trace.2
 
 /-- Bounded behavioral outcome kernel of the event-graph FOSG view, computed
-as the machine outcome projection of the induced blocked primitive trace
+as the machine outcome projection of the induced event-batched primitive trace
 distribution. -/
-theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
+theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_eventBatchTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (β : (eventGraphFOSGView g).BoundedBehavioralProfile horizon)
@@ -1223,7 +1223,7 @@ theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
         horizon β steps =
       PMF.map
         (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+        (eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
           (eventGraphInitialHistory g horizon)) := by
   let run :=
     GameTheory.FOSG.History.runDistFrom
@@ -1241,23 +1241,23 @@ theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_blockTraceDist
           rfl
     _ =
       PMF.map (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+        (eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
           (eventGraphInitialHistory g horizon)) := by
           have htrace :
               PMF.map (eventGraphHistoryTrace g horizon) run =
-                eventGraphFOSGBlockTraceDistFrom g horizon β.extend steps
+                eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
                   (eventGraphInitialHistory g horizon) := by
             simpa [eventGraphHistoryTrace, run] using
-              (eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+              (eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
                 (g := g) (horizon := horizon) (σ := β.extend)
                 (n := steps)
                 (h := eventGraphInitialHistory g horizon))
           rw [htrace]
 
 /-- Bounded pure outcome kernel of the event-graph FOSG view, computed as
-the machine outcome projection of the blocked primitive trace distribution
+the machine outcome projection of the event-batched primitive trace distribution
 induced by the pure profile's behavioral embedding. -/
-theorem eventGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
+theorem eventGraphFOSG_boundedOutcomeFromPure_eq_eventBatchTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (horizon : Nat)
     (π : (eventGraphFOSGView g).BoundedPureProfile horizon)
@@ -1266,7 +1266,7 @@ theorem eventGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
         horizon π steps =
       PMF.map
         (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g horizon
+        (eventGraphFOSGEventBatchTraceDistFrom g horizon
           (GameTheory.FOSG.legalPureToBehavioral
             ((eventGraphFOSGView g).toBoundedFOSG horizon) π.extend)
           steps
@@ -1290,14 +1290,14 @@ theorem eventGraphFOSG_boundedOutcomeFromPure_eq_blockTraceDist
           rfl
     _ =
       PMF.map (eventGraphTraceOutcome g)
-        (eventGraphFOSGBlockTraceDistFrom g horizon σ steps
+        (eventGraphFOSGEventBatchTraceDistFrom g horizon σ steps
           (eventGraphInitialHistory g horizon)) := by
           have htrace :
               PMF.map (eventGraphHistoryTrace g horizon) run =
-                eventGraphFOSGBlockTraceDistFrom g horizon σ steps
+                eventGraphFOSGEventBatchTraceDistFrom g horizon σ steps
                   (eventGraphInitialHistory g horizon) := by
             simpa [eventGraphHistoryTrace, run] using
-              (eventGraphFOSG_runDistFrom_map_eventBlocks_state_eq_blockTraceDistFrom
+              (eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
                 (g := g) (horizon := horizon) (σ := σ)
                 (n := steps)
                 (h := eventGraphInitialHistory g horizon))

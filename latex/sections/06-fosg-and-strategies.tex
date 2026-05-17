@@ -41,7 +41,7 @@ A \emph{round view} on top of a machine $\Mach$ is a tuple
     \activeSet : \State \to \mathrm{Finset}(\Players),\;
     \mathrm{availActions},\;
     \mathrm{transition},\;
-    \mathrm{eventBlock}
+    \mathrm{eventBatch}
   \bigr)
 \]
 of: a per-player round-action alphabet $\Act_p$ (independent of
@@ -55,7 +55,7 @@ kernel
       \mathrm{legal}(s, \sigma)\,\}
     \to \PMF{\State},
 \]
-and an event-block projection recording which primitive machine
+and an event-batch projection recording which primitive machine
 events are represented by the round.  Two side conditions hold:
 terminal states have empty
 active sets, and non-terminal states admit at least one legal joint
@@ -202,7 +202,7 @@ We first separate \emph{game form} from \emph{preference}.  A game
 form contains per-player strategy types, an outcome type, and a
 profile-to-outcome kernel, but no utility.  Vegas exposes game
 forms for payoff-vector outcomes, terminal public-state outcomes,
-and blocked-trace outcomes.  The terminal-public-state game forms
+and event-batch trace outcomes.  The terminal-public-state game forms
 are useful when the caller wants the final public observation itself
 rather than only the payoff vector.
 
@@ -222,7 +222,7 @@ Expected utility is then the obvious functional
   \mathbb{E}_{\omega \sim K(\Profile)}\bigl[u(\omega)(p)\bigr].
 \end{equation}
 
-For a checked program $g$, the payoff-vector and blocked-trace game
+For a checked program $g$, the payoff-vector and event-batch trace game
 forms have canonical utilities, so four kernel games are exposed:
 \begin{center}
 \small
@@ -234,16 +234,16 @@ $\mathrm{pureKernelGame}(g)$ &
   pure strategies; outcomes in $\Outcome$ (public payoff). \\
 $\mathrm{pmfBehavioralKernelGame}(g)$ &
   PMF behavioral strategies; outcomes in $\Outcome$. \\
-$\mathrm{pureBlockedTraceKernelGame}(g)$ &
-  pure strategies; outcomes in $\mathrm{BlockedTrace}(g)$. \\
-$\mathrm{pmfBehavioralBlockedTraceKernelGame}(g)$ &
-  PMF behavioral; outcomes in $\mathrm{BlockedTrace}(g)$. \\
+$\mathrm{pureEventBatchTraceKernelGame}(g)$ &
+  pure strategies; outcomes in $\mathrm{EventBatchTrace}(g)$. \\
+$\mathrm{pmfBehavioralEventBatchTraceKernelGame}(g)$ &
+  PMF behavioral; outcomes in $\mathrm{EventBatchTrace}(g)$. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A \emph{blocked trace} is the sequence, indexed by native round, of
-all primitive event-block executions that took place during that
+A \emph{event-batch trace} is the sequence, indexed by native round, of
+all primitive event-batch executions that took place during that
 round, paired with the configuration reached at the round's end.
 It is strictly more informative than the payoff-vector outcome and
 is the natural object on which to compare the canonical event-graph
@@ -251,13 +251,13 @@ machine to a backend implementation, since the latter may produce
 additional implementation-specific events within the same round.
 The two axes of the kernel-game table above are then \emph{strategy
 carrier} (pure vs.\ PMF-behavioral) and \emph{outcome shape}
-(payoff vector vs.\ blocked trace).  The blocked-trace games
+(payoff vector vs.\ event-batch trace).  The event-batch trace games
 \emph{refine} the payoff-vector games by an outcome projection.
 
 \subsection{Trace-to-public agreement}
 \label{sec:fosg:trace-public}
 
-The blocked-trace games are useful for refinement reasoning
+The event-batch trace games are useful for refinement reasoning
 (\S\ref{sec:refinement}); the payoff-vector games are what users
 usually reason about.  We need to know that they agree, both at
 the kernel level and at the level of expected utility.
@@ -265,27 +265,27 @@ the kernel level and at the level of expected utility.
 \begin{theorem}[Trace-to-public agreement]
 \label{thm:trace-public}
 For every checked program $g$, the payoff projection applied to
-the blocked-trace kernel agrees with the payoff-vector outcome kernel,
+the event-batch trace kernel agrees with the payoff-vector outcome kernel,
 \begin{align*}
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{pure}}_{\mathrm{blocked}}
+    K^{\mathrm{pure}}_{\mathrm{eventbatch}}
   &= K^{\mathrm{pure}}_{\mathrm{public}}, \\
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{beh}}_{\mathrm{blocked}}
+    K^{\mathrm{beh}}_{\mathrm{eventbatch}}
   &= K^{\mathrm{beh}}_{\mathrm{public}},
 \end{align*}
 and expected utilities are equal under the corresponding profile
 inclusions.  Solution concepts (Nash, dominance) transport across
 the projection: a strategy is best-response in the payoff-vector game
-iff it is best-response in the blocked-trace game.
+iff it is best-response in the event-batch trace game.
 \end{theorem}
 
 The proof packages the projection as a kernel-game
 \emph{simulation} — a structural morphism that pushes outcome
 distributions through a deterministic function while preserving
 utility.  In this case the simulation is in fact an
-\emph{EU-isomorphism}: the blocked-trace outcome retains
-strategically inert per-event-block detail on top of the public
+\emph{EU-isomorphism}: the event-batch trace outcome retains
+strategically inert per-event-batch detail on top of the public
 outcome, so the projection is information-losing but not
 \emph{utility}-losing, and equilibrium predicates transport in both
 directions.  This is the structural reason for the iff in the
@@ -338,7 +338,7 @@ and bounded-utility variants as wrappers around the GameTheory
 library's fixed-point and correlated-equilibrium theorems.  For the
 payoff-vector game
 $O = \Outcome\,\Players = \Players \to_0 \mathbb{Z}$,
-finite outcomes are a separate hypothesis.  Blocked-trace
+finite outcomes are a separate hypothesis.  Event-batch trace
 presentations use the bounded-utility theorem instead: their trace
 carrier contains unbounded lists, but the payoff read from a trace
 depends only on the finite event-graph state.

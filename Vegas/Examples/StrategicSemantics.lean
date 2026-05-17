@@ -11,7 +11,7 @@ import Vegas.Corollaries.Equilibrium
 
 Examples showing how checked Vegas programs enter the generated strategic and
 trace games. These statements are deliberately phrased over `WFProgram`s,
-`pureKernelGame`, `pmfBehavioralKernelGame`, and blocked-trace games rather
+`pureKernelGame`, `pmfBehavioralKernelGame`, and event-batch trace games rather
 than over hand-written normal-form games.
 -/
 
@@ -23,114 +23,114 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
-/-- For any checked program, public pure-strategic play and pure blocked-trace
+/-- For any checked program, public pure-strategic play and pure event-batch trace
 play have the same expected utility. -/
-theorem pure_eu_eq_blockedTrace
+theorem pure_eu_eq_eventBatchTrace
     (g : WFProgram P L) [FiniteDomains g]
     (π : (pureKernelGame g).Profile) (who : P) :
-    (pureBlockedTraceKernelGameAt g).eu π who =
+    (pureEventBatchTraceKernelGameAt g).eu π who =
       (pureKernelGame g).eu π who :=
-  pureBlockedTraceKernelGameAt_eu_eq g π who
+  pureEventBatchTraceKernelGameAt_eu_eq g π who
 
 /-- For any checked program, pure Nash is invariant under replacing public
-outcomes by full blocked traces. -/
-theorem pure_nash_iff_blockedTrace
+outcomes by full event-batch traces. -/
+theorem pure_nash_iff_eventBatchTrace
     (g : WFProgram P L) [FiniteDomains g]
     (π : (pureKernelGame g).Profile) :
     (pureKernelGame g).IsNash π ↔
-      (pureBlockedTraceKernelGameAt g).IsNash π := by
+      (pureEventBatchTraceKernelGameAt g).IsNash π := by
   constructor
   · intro h who s'
     have hpure := h who s'
     calc
-      (pureBlockedTraceKernelGameAt g).eu π who =
+      (pureEventBatchTraceKernelGameAt g).eu π who =
           (pureKernelGame g).eu π who :=
-            pure_eu_eq_blockedTrace g π who
+            pure_eu_eq_eventBatchTrace g π who
       _ ≥ (pureKernelGame g).eu (Function.update π who s') who := hpure
-      _ = (pureBlockedTraceKernelGameAt g).eu
+      _ = (pureEventBatchTraceKernelGameAt g).eu
           (Function.update π who s') who :=
-            (pure_eu_eq_blockedTrace g (Function.update π who s') who).symm
+            (pure_eu_eq_eventBatchTrace g (Function.update π who s') who).symm
   · intro h who s'
     have htrace := h who s'
     calc
       (pureKernelGame g).eu π who =
-          (pureBlockedTraceKernelGameAt g).eu π who :=
-            (pure_eu_eq_blockedTrace g π who).symm
-      _ ≥ (pureBlockedTraceKernelGameAt g).eu
+          (pureEventBatchTraceKernelGameAt g).eu π who :=
+            (pure_eu_eq_eventBatchTrace g π who).symm
+      _ ≥ (pureEventBatchTraceKernelGameAt g).eu
           (Function.update π who s') who := htrace
       _ = (pureKernelGame g).eu (Function.update π who s') who :=
-            pure_eu_eq_blockedTrace g (Function.update π who s') who
+            pure_eu_eq_eventBatchTrace g (Function.update π who s') who
 
 /-- Dominant pure strategies are invariant under the same public/trace
 presentation change. -/
-theorem pure_dominant_iff_blockedTrace
+theorem pure_dominant_iff_eventBatchTrace
     (g : WFProgram P L) [FiniteDomains g]
     (who : P) (s : (pureKernelGame g).Strategy who) :
     (pureKernelGame g).IsDominant who s ↔
-      (pureBlockedTraceKernelGameAt g).IsDominant who s := by
+      (pureEventBatchTraceKernelGameAt g).IsDominant who s := by
   constructor
   · intro h σ s'
     have hpure := h σ s'
     calc
-      (pureBlockedTraceKernelGameAt g).eu (Function.update σ who s) who =
+      (pureEventBatchTraceKernelGameAt g).eu (Function.update σ who s) who =
           (pureKernelGame g).eu (Function.update σ who s) who :=
-            pure_eu_eq_blockedTrace g (Function.update σ who s) who
+            pure_eu_eq_eventBatchTrace g (Function.update σ who s) who
       _ ≥ (pureKernelGame g).eu (Function.update σ who s') who := hpure
-      _ = (pureBlockedTraceKernelGameAt g).eu
+      _ = (pureEventBatchTraceKernelGameAt g).eu
           (Function.update σ who s') who :=
-            (pure_eu_eq_blockedTrace g (Function.update σ who s') who).symm
+            (pure_eu_eq_eventBatchTrace g (Function.update σ who s') who).symm
   · intro h σ s'
     have htrace := h σ s'
     calc
       (pureKernelGame g).eu (Function.update σ who s) who =
-          (pureBlockedTraceKernelGameAt g).eu
+          (pureEventBatchTraceKernelGameAt g).eu
             (Function.update σ who s) who :=
-            (pure_eu_eq_blockedTrace g (Function.update σ who s) who).symm
-      _ ≥ (pureBlockedTraceKernelGameAt g).eu
+            (pure_eu_eq_eventBatchTrace g (Function.update σ who s) who).symm
+      _ ≥ (pureEventBatchTraceKernelGameAt g).eu
           (Function.update σ who s') who := htrace
       _ = (pureKernelGame g).eu (Function.update σ who s') who :=
-            pure_eu_eq_blockedTrace g (Function.update σ who s') who
+            pure_eu_eq_eventBatchTrace g (Function.update σ who s') who
 
 /-- For any checked program, PMF-behavioral public play and PMF-behavioral
-blocked-trace play have the same expected utility. -/
-theorem behavioral_eu_eq_blockedTrace
+event-batch trace play have the same expected utility. -/
+theorem behavioral_eu_eq_eventBatchTrace
     (g : WFProgram P L) [FiniteDomains g]
     (β : (pmfBehavioralKernelGame g).Profile) (who : P) :
-    (pmfBehavioralBlockedTraceKernelGameAt g).eu β who =
+    (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who =
       (pmfBehavioralKernelGame g).eu β who :=
-  pmfBehavioralBlockedTraceKernelGameAt_eu_eq g β who
+  pmfBehavioralEventBatchTraceKernelGameAt_eu_eq g β who
 
 /-- PMF-behavioral Nash is invariant under replacing public outcomes by full
-blocked traces. -/
-theorem behavioral_nash_iff_blockedTrace
+event-batch traces. -/
+theorem behavioral_nash_iff_eventBatchTrace
     (g : WFProgram P L) [FiniteDomains g]
     (β : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).IsNash β ↔
-      (pmfBehavioralBlockedTraceKernelGameAt g).IsNash β := by
+      (pmfBehavioralEventBatchTraceKernelGameAt g).IsNash β := by
   constructor
   · intro h who s'
     have hbehavioral := h who s'
     calc
-      (pmfBehavioralBlockedTraceKernelGameAt g).eu β who =
+      (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who =
           (pmfBehavioralKernelGame g).eu β who :=
-            behavioral_eu_eq_blockedTrace g β who
+            behavioral_eu_eq_eventBatchTrace g β who
       _ ≥ (pmfBehavioralKernelGame g).eu
           (Function.update β who s') who := hbehavioral
-      _ = (pmfBehavioralBlockedTraceKernelGameAt g).eu
+      _ = (pmfBehavioralEventBatchTraceKernelGameAt g).eu
           (Function.update β who s') who :=
-            (behavioral_eu_eq_blockedTrace g
+            (behavioral_eu_eq_eventBatchTrace g
               (Function.update β who s') who).symm
   · intro h who s'
     have htrace := h who s'
     calc
       (pmfBehavioralKernelGame g).eu β who =
-          (pmfBehavioralBlockedTraceKernelGameAt g).eu β who :=
-            (behavioral_eu_eq_blockedTrace g β who).symm
-      _ ≥ (pmfBehavioralBlockedTraceKernelGameAt g).eu
+          (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who :=
+            (behavioral_eu_eq_eventBatchTrace g β who).symm
+      _ ≥ (pmfBehavioralEventBatchTraceKernelGameAt g).eu
           (Function.update β who s') who := htrace
       _ = (pmfBehavioralKernelGame g).eu
           (Function.update β who s') who :=
-            behavioral_eu_eq_blockedTrace g
+            behavioral_eu_eq_eventBatchTrace g
               (Function.update β who s') who
 
 /-- Every finite checked Vegas program satisfies the PMF behavioral
@@ -248,24 +248,24 @@ theorem rowDefectAction_available_initial :
     some Prisoners.Player.row
   exact rowCommitNode_actor
 
-theorem pure_eu_eq_blockedTrace
+theorem pure_eu_eq_eventBatchTrace
     (π : (pureKernelGame Prisoners.game).Profile)
     (who : Prisoners.Player) :
-    (pureBlockedTraceKernelGameAt Prisoners.game).eu π who =
+    (pureEventBatchTraceKernelGameAt Prisoners.game).eu π who =
       (pureKernelGame Prisoners.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace Prisoners.game π who
+  StrategicSemantics.pure_eu_eq_eventBatchTrace Prisoners.game π who
 
-theorem pure_nash_iff_blockedTrace
+theorem pure_nash_iff_eventBatchTrace
     (π : (pureKernelGame Prisoners.game).Profile) :
     (pureKernelGame Prisoners.game).IsNash π ↔
-      (pureBlockedTraceKernelGameAt Prisoners.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_blockedTrace Prisoners.game π
+      (pureEventBatchTraceKernelGameAt Prisoners.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_eventBatchTrace Prisoners.game π
 
-theorem behavioral_nash_iff_blockedTrace
+theorem behavioral_nash_iff_eventBatchTrace
     (β : (pmfBehavioralKernelGame Prisoners.game).Profile) :
     (pmfBehavioralKernelGame Prisoners.game).IsNash β ↔
-      (pmfBehavioralBlockedTraceKernelGameAt Prisoners.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_blockedTrace Prisoners.game β
+      (pmfBehavioralEventBatchTraceKernelGameAt Prisoners.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_eventBatchTrace Prisoners.game β
 
 theorem kuhnPMF : KuhnPMF Prisoners.game :=
   StrategicSemantics.kuhnPMF Prisoners.game
@@ -274,24 +274,24 @@ end Prisoners
 
 namespace MatchingPennies
 
-theorem pure_eu_eq_blockedTrace
+theorem pure_eu_eq_eventBatchTrace
     (π : (pureKernelGame MatchingPennies.game).Profile)
     (who : MatchingPennies.Player) :
-    (pureBlockedTraceKernelGameAt MatchingPennies.game).eu π who =
+    (pureEventBatchTraceKernelGameAt MatchingPennies.game).eu π who =
       (pureKernelGame MatchingPennies.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace MatchingPennies.game π who
+  StrategicSemantics.pure_eu_eq_eventBatchTrace MatchingPennies.game π who
 
-theorem pure_nash_iff_blockedTrace
+theorem pure_nash_iff_eventBatchTrace
     (π : (pureKernelGame MatchingPennies.game).Profile) :
     (pureKernelGame MatchingPennies.game).IsNash π ↔
-      (pureBlockedTraceKernelGameAt MatchingPennies.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_blockedTrace MatchingPennies.game π
+      (pureEventBatchTraceKernelGameAt MatchingPennies.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_eventBatchTrace MatchingPennies.game π
 
-theorem behavioral_nash_iff_blockedTrace
+theorem behavioral_nash_iff_eventBatchTrace
     (β : (pmfBehavioralKernelGame MatchingPennies.game).Profile) :
     (pmfBehavioralKernelGame MatchingPennies.game).IsNash β ↔
-      (pmfBehavioralBlockedTraceKernelGameAt MatchingPennies.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_blockedTrace MatchingPennies.game β
+      (pmfBehavioralEventBatchTraceKernelGameAt MatchingPennies.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_eventBatchTrace MatchingPennies.game β
 
 theorem kuhnPMF : KuhnPMF MatchingPennies.game :=
   StrategicSemantics.kuhnPMF MatchingPennies.game
@@ -300,24 +300,24 @@ end MatchingPennies
 
 namespace BattleOfTheSexes
 
-theorem pure_eu_eq_blockedTrace
+theorem pure_eu_eq_eventBatchTrace
     (π : (pureKernelGame BattleOfTheSexes.game).Profile)
     (who : BattleOfTheSexes.Player) :
-    (pureBlockedTraceKernelGameAt BattleOfTheSexes.game).eu π who =
+    (pureEventBatchTraceKernelGameAt BattleOfTheSexes.game).eu π who =
       (pureKernelGame BattleOfTheSexes.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace BattleOfTheSexes.game π who
+  StrategicSemantics.pure_eu_eq_eventBatchTrace BattleOfTheSexes.game π who
 
-theorem pure_nash_iff_blockedTrace
+theorem pure_nash_iff_eventBatchTrace
     (π : (pureKernelGame BattleOfTheSexes.game).Profile) :
     (pureKernelGame BattleOfTheSexes.game).IsNash π ↔
-      (pureBlockedTraceKernelGameAt BattleOfTheSexes.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_blockedTrace BattleOfTheSexes.game π
+      (pureEventBatchTraceKernelGameAt BattleOfTheSexes.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_eventBatchTrace BattleOfTheSexes.game π
 
-theorem behavioral_nash_iff_blockedTrace
+theorem behavioral_nash_iff_eventBatchTrace
     (β : (pmfBehavioralKernelGame BattleOfTheSexes.game).Profile) :
     (pmfBehavioralKernelGame BattleOfTheSexes.game).IsNash β ↔
-      (pmfBehavioralBlockedTraceKernelGameAt BattleOfTheSexes.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_blockedTrace BattleOfTheSexes.game β
+      (pmfBehavioralEventBatchTraceKernelGameAt BattleOfTheSexes.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_eventBatchTrace BattleOfTheSexes.game β
 
 theorem kuhnPMF : KuhnPMF BattleOfTheSexes.game :=
   StrategicSemantics.kuhnPMF BattleOfTheSexes.game
@@ -326,24 +326,24 @@ end BattleOfTheSexes
 
 namespace MontyHall
 
-theorem pure_eu_eq_blockedTrace
+theorem pure_eu_eq_eventBatchTrace
     (π : (pureKernelGame MontyHall.game).Profile)
     (who : MontyHall.Player) :
-    (pureBlockedTraceKernelGameAt MontyHall.game).eu π who =
+    (pureEventBatchTraceKernelGameAt MontyHall.game).eu π who =
       (pureKernelGame MontyHall.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_blockedTrace MontyHall.game π who
+  StrategicSemantics.pure_eu_eq_eventBatchTrace MontyHall.game π who
 
-theorem pure_nash_iff_blockedTrace
+theorem pure_nash_iff_eventBatchTrace
     (π : (pureKernelGame MontyHall.game).Profile) :
     (pureKernelGame MontyHall.game).IsNash π ↔
-      (pureBlockedTraceKernelGameAt MontyHall.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_blockedTrace MontyHall.game π
+      (pureEventBatchTraceKernelGameAt MontyHall.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_eventBatchTrace MontyHall.game π
 
-theorem behavioral_nash_iff_blockedTrace
+theorem behavioral_nash_iff_eventBatchTrace
     (β : (pmfBehavioralKernelGame MontyHall.game).Profile) :
     (pmfBehavioralKernelGame MontyHall.game).IsNash β ↔
-      (pmfBehavioralBlockedTraceKernelGameAt MontyHall.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_blockedTrace MontyHall.game β
+      (pmfBehavioralEventBatchTraceKernelGameAt MontyHall.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_eventBatchTrace MontyHall.game β
 
 theorem kuhnPMF : KuhnPMF MontyHall.game :=
   StrategicSemantics.kuhnPMF MontyHall.game

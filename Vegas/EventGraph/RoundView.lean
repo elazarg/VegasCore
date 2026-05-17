@@ -30,7 +30,7 @@ noncomputable def toRoundView
   active := roundActive G
   availableActions := roundAvailable G
   transition := fun cfg action => roundTransition G cfg action.1
-  eventBlock := fun cfg joint => roundPrimitiveEvents G iface cfg joint
+  eventBatch := fun cfg joint => roundPrimitiveEvents G iface cfg joint
   terminal_active_eq_empty := by
     intro cfg hterminal
     apply Finset.eq_empty_iff_forall_notMem.mpr

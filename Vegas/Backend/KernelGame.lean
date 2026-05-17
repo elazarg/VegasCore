@@ -6,10 +6,10 @@ import Vegas.Strategic.KernelGame
 
 This module packages a backend machine refinement as a kernel-game morphism.
 The strategic carriers are the same carriers as the canonical Vegas games; the
-backend outcome keeps the full implementation blocked trace.
+backend outcome keeps the full implementation event-batch trace.
 
 The only extra datum beyond `StochasticStepRefinement` is a per-profile
-history-dependent block-law lift, supplied per profile. This keeps machine
+history-dependent event-batch-law lift, supplied per profile. This keeps machine
 refinement independent of strategic scheduling while giving backend users a
 precise place to supply the runtime scheduler/transaction-lift witness.
 -/
@@ -20,280 +20,280 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Per-pure-profile block-law lift from the canonical event-graph machine to a
+/-- Per-pure-profile event-batch-law lift from the canonical event-graph machine to a
 backend implementation.
 
-`specLaw_sound` is the bridge to the Stage 1 blocked-trace game: running the
-spec block law for the syntax horizon must reproduce the existing
-`pureBlockedTraceKernelGameAt` outcome kernel. -/
-structure BackendPureBlockLawLift
+`specLaw_sound` is the bridge to the Stage 1 event-batch trace game: running the
+spec event-batch law for the syntax horizon must reproduce the existing
+`pureEventBatchTraceKernelGameAt` outcome kernel. -/
+structure BackendPureEventBatchLawLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
-  specLaw : pureProfileAt g → (eventGraphMachine g).BlockLaw
-  backendLaw : pureProfileAt g → Impl.BlockLaw
+  specLaw : pureProfileAt g → (eventGraphMachine g).EventBatchLaw
+  backendLaw : pureProfileAt g → Impl.EventBatchLaw
   compatible :
-    ∀ π, R.BlockLawCompatible (backendLaw π) (specLaw π)
+    ∀ π, R.EventBatchLawCompatible (backendLaw π) (specLaw π)
   specLaw_sound :
     ∀ π,
-      (eventGraphMachine g).blockTraceDist
+      (eventGraphMachine g).eventBatchTraceDist
           (specLaw π) (syntaxSteps g.prog) =
-        (pureBlockedTraceKernelGameAt g).outcomeKernel π
+        (pureEventBatchTraceKernelGameAt g).outcomeKernel π
 
-/-- Per-PMF-behavioral-profile block-law lift from the canonical event-graph
+/-- Per-PMF-behavioral-profile event-batch-law lift from the canonical event-graph
 machine to a backend implementation. -/
-structure BackendBehavioralBlockLawLift
+structure BackendBehavioralEventBatchLawLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
-  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).BlockLaw
-  backendLaw : behavioralProfilePMFAt g → Impl.BlockLaw
+  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).EventBatchLaw
+  backendLaw : behavioralProfilePMFAt g → Impl.EventBatchLaw
   compatible :
-    ∀ β, R.BlockLawCompatible (backendLaw β) (specLaw β)
+    ∀ β, R.EventBatchLawCompatible (backendLaw β) (specLaw β)
   specLaw_sound :
     ∀ β,
-      (eventGraphMachine g).blockTraceDist
+      (eventGraphMachine g).eventBatchTraceDist
           (specLaw β) (syntaxSteps g.prog) =
-        (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
+        (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β
 
-/-- A specification-side pure block law, packaged independently of any
+/-- A specification-side pure event-batch law, packaged independently of any
 backend.  This is the missing bridge between a strategic profile and the
-machine-level `BlockLaw` interface. -/
-structure PureSpecBlockLaw
+machine-level `EventBatchLaw` interface. -/
+structure PureSpecEventBatchLaw
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
-  specLaw : pureProfileAt g → (eventGraphMachine g).BlockLaw
+  specLaw : pureProfileAt g → (eventGraphMachine g).EventBatchLaw
   specLaw_sound :
     ∀ π,
-      (eventGraphMachine g).blockTraceDist
+      (eventGraphMachine g).eventBatchTraceDist
           (specLaw π) (syntaxSteps g.prog) =
-        (pureBlockedTraceKernelGameAt g).outcomeKernel π
+        (pureEventBatchTraceKernelGameAt g).outcomeKernel π
 
-/-- A specification-side PMF-behavioral block law, packaged independently of
+/-- A specification-side PMF-behavioral event-batch law, packaged independently of
 any backend. -/
-structure BehavioralSpecBlockLaw
+structure BehavioralSpecEventBatchLaw
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
-  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).BlockLaw
+  specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).EventBatchLaw
   specLaw_sound :
     ∀ β,
-      (eventGraphMachine g).blockTraceDist
+      (eventGraphMachine g).eventBatchTraceDist
           (specLaw β) (syntaxSteps g.prog) =
-        (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
+        (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β
 
-namespace PureSpecBlockLaw
+namespace PureSpecEventBatchLaw
 
-/-- The identity backend lift induced by a proved pure spec block law. -/
+/-- The identity backend lift induced by a proved pure spec event-batch law. -/
 noncomputable def identityBackendLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (law : PureSpecBlockLaw g) :
-    BackendPureBlockLawLift g
+    (law : PureSpecEventBatchLaw g) :
+    BackendPureEventBatchLawLift g
       (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
   specLaw := law.specLaw
   backendLaw := law.specLaw
   compatible := by
     intro π
-    exact Machine.StochasticStepRefinement.refl_blockLawCompatible
+    exact Machine.StochasticStepRefinement.refl_eventBatchLawCompatible
       (eventGraphMachine g) (law.specLaw π)
   specLaw_sound := law.specLaw_sound
 
-end PureSpecBlockLaw
+end PureSpecEventBatchLaw
 
-namespace BehavioralSpecBlockLaw
+namespace BehavioralSpecEventBatchLaw
 
-/-- The identity backend lift induced by a proved PMF-behavioral spec block
+/-- The identity backend lift induced by a proved PMF-behavioral spec event batch
 law. -/
 noncomputable def identityBackendLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (law : BehavioralSpecBlockLaw g) :
-    BackendBehavioralBlockLawLift g
+    (law : BehavioralSpecEventBatchLaw g) :
+    BackendBehavioralEventBatchLawLift g
       (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
   specLaw := law.specLaw
   backendLaw := law.specLaw
   compatible := by
     intro β
-    exact Machine.StochasticStepRefinement.refl_blockLawCompatible
+    exact Machine.StochasticStepRefinement.refl_eventBatchLawCompatible
       (eventGraphMachine g) (law.specLaw β)
   specLaw_sound := law.specLaw_sound
 
-end BehavioralSpecBlockLaw
+end BehavioralSpecEventBatchLaw
 
-/-- Backend blocked trace utility, read by projecting the backend terminal
+/-- Backend event-batch trace utility, read by projecting the backend terminal
 state back to the canonical event-graph machine state. -/
-noncomputable def backendBlockedTraceUtility
+noncomputable def backendEventBatchTraceUtility
     (g : WFProgram P L) {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) :
-    Impl.BlockTrace → GameTheory.Payoff P :=
-  fun trace => syntaxBlockedTraceUtility g (R.projectBlockTrace trace)
+    Impl.EventBatchTrace → GameTheory.Payoff P :=
+  fun trace => syntaxEventBatchTraceUtility g (R.projectEventBatchTrace trace)
 
-/-- Backend block-trace kernel game for a backend/refinement/law-lift triple.
+/-- Backend event-batch trace kernel game for a backend/refinement/law-lift triple.
 
 Strategies are the canonical pure Vegas strategies. Outcomes are full backend
-blocked traces, so downstream backend-specific statements can still inspect
+event-batch traces, so downstream backend-specific statements can still inspect
 implementation events. -/
-noncomputable def backendBlockedTraceKernelGameAt
+noncomputable def backendEventBatchTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R) :
+    (lift : BackendPureEventBatchLawLift g R) :
     GameTheory.KernelGame P where
   Strategy := pureStrategyAt g
-  Outcome := Impl.BlockTrace
-  utility := backendBlockedTraceUtility g R
+  Outcome := Impl.EventBatchTrace
+  utility := backendEventBatchTraceUtility g R
   outcomeKernel := fun π =>
-    Impl.blockTraceDist (lift.backendLaw π) (syntaxSteps g.prog)
+    Impl.eventBatchTraceDist (lift.backendLaw π) (syntaxSteps g.prog)
 
-/-- Backend blocked-trace kernel game for PMF behavioral profiles. -/
-noncomputable def backendPMFBehavioralBlockedTraceKernelGameAt
+/-- Backend event-batch trace kernel game for PMF behavioral profiles. -/
+noncomputable def backendPMFBehavioralEventBatchTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R) :
+    (lift : BackendBehavioralEventBatchLawLift g R) :
     GameTheory.KernelGame P where
   Strategy := behavioralStrategyPMFAt g
-  Outcome := Impl.BlockTrace
-  utility := backendBlockedTraceUtility g R
+  Outcome := Impl.EventBatchTrace
+  utility := backendEventBatchTraceUtility g R
   outcomeKernel := fun β =>
-    Impl.blockTraceDist (lift.backendLaw β) (syntaxSteps g.prog)
+    Impl.eventBatchTraceDist (lift.backendLaw β) (syntaxSteps g.prog)
 
-@[simp] theorem backendBlockedTraceKernelGameAt_Strategy
+@[simp] theorem backendEventBatchTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R) :
-    (backendBlockedTraceKernelGameAt g R lift).Strategy = pureStrategyAt g :=
+    (lift : BackendPureEventBatchLawLift g R) :
+    (backendEventBatchTraceKernelGameAt g R lift).Strategy = pureStrategyAt g :=
   rfl
 
-@[simp] theorem backendPMFBehavioralBlockedTraceKernelGameAt_Strategy
+@[simp] theorem backendPMFBehavioralEventBatchTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R) :
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).Strategy =
+    (lift : BackendBehavioralEventBatchLawLift g R) :
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).Strategy =
       behavioralStrategyPMFAt g :=
   rfl
 
-/-- Projecting the backend blocked-trace outcome kernel gives the canonical
-spec blocked-trace outcome kernel. -/
-theorem backendBlockedTraceKernelGameAt_outcomeKernel_map_project
+/-- Projecting the backend event-batch trace outcome kernel gives the canonical
+spec event-batch trace outcome kernel. -/
+theorem backendEventBatchTraceKernelGameAt_outcomeKernel_map_project
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R)
+    (lift : BackendPureEventBatchLawLift g R)
     (π : pureProfileAt g) :
-    PMF.map R.projectBlockTrace
-        ((backendBlockedTraceKernelGameAt g R lift).outcomeKernel π) =
-      (pureBlockedTraceKernelGameAt g).outcomeKernel π := by
+    PMF.map R.projectEventBatchTrace
+        ((backendEventBatchTraceKernelGameAt g R lift).outcomeKernel π) =
+      (pureEventBatchTraceKernelGameAt g).outcomeKernel π := by
   have h :=
-    R.blockTraceDist_project_eq
+    R.eventBatchTraceDist_project_eq
       (lift.specLaw π) (lift.backendLaw π) (lift.compatible π)
       (syntaxSteps g.prog) ([], Impl.init)
   have h' :
-      PMF.map R.projectBlockTrace
-          (Impl.blockTraceDistFrom (lift.backendLaw π)
+      PMF.map R.projectEventBatchTrace
+          (Impl.eventBatchTraceDistFrom (lift.backendLaw π)
             (syntaxSteps g.prog) ([], Impl.init)) =
-        (eventGraphMachine g).blockTraceDist
+        (eventGraphMachine g).eventBatchTraceDist
           (lift.specLaw π) (syntaxSteps g.prog) := by
-    simpa [Machine.blockTraceDist,
-      Machine.StochasticStepRefinement.projectBlockTrace, R.init_project]
+    simpa [Machine.eventBatchTraceDist,
+      Machine.StochasticStepRefinement.projectEventBatchTrace, R.init_project]
       using h
   change
-    PMF.map R.projectBlockTrace
-        (Impl.blockTraceDistFrom (lift.backendLaw π)
+    PMF.map R.projectEventBatchTrace
+        (Impl.eventBatchTraceDistFrom (lift.backendLaw π)
           (syntaxSteps g.prog) ([], Impl.init)) =
-      (pureBlockedTraceKernelGameAt g).outcomeKernel π
+      (pureEventBatchTraceKernelGameAt g).outcomeKernel π
   exact h'.trans (lift.specLaw_sound π)
 
-/-- Projecting the backend PMF-behavioral blocked-trace outcome kernel gives
-the canonical spec PMF-behavioral blocked-trace outcome kernel. -/
-theorem backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
+/-- Projecting the backend PMF-behavioral event-batch trace outcome kernel gives
+the canonical spec PMF-behavioral event-batch trace outcome kernel. -/
+theorem backendPMFBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_project
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R)
+    (lift : BackendBehavioralEventBatchLawLift g R)
     (β : behavioralProfilePMFAt g) :
-    PMF.map R.projectBlockTrace
-        ((backendPMFBehavioralBlockedTraceKernelGameAt g R lift).outcomeKernel β) =
-      (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β := by
+    PMF.map R.projectEventBatchTrace
+        ((backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).outcomeKernel β) =
+      (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β := by
   have h :=
-    R.blockTraceDist_project_eq
+    R.eventBatchTraceDist_project_eq
       (lift.specLaw β) (lift.backendLaw β) (lift.compatible β)
       (syntaxSteps g.prog) ([], Impl.init)
   have h' :
-      PMF.map R.projectBlockTrace
-          (Impl.blockTraceDistFrom (lift.backendLaw β)
+      PMF.map R.projectEventBatchTrace
+          (Impl.eventBatchTraceDistFrom (lift.backendLaw β)
             (syntaxSteps g.prog) ([], Impl.init)) =
-        (eventGraphMachine g).blockTraceDist
+        (eventGraphMachine g).eventBatchTraceDist
           (lift.specLaw β) (syntaxSteps g.prog) := by
-    simpa [Machine.blockTraceDist,
-      Machine.StochasticStepRefinement.projectBlockTrace, R.init_project]
+    simpa [Machine.eventBatchTraceDist,
+      Machine.StochasticStepRefinement.projectEventBatchTrace, R.init_project]
       using h
   change
-    PMF.map R.projectBlockTrace
-        (Impl.blockTraceDistFrom (lift.backendLaw β)
+    PMF.map R.projectEventBatchTrace
+        (Impl.eventBatchTraceDistFrom (lift.backendLaw β)
           (syntaxSteps g.prog) ([], Impl.init)) =
-      (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
+      (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β
   exact h'.trans (lift.specLaw_sound β)
 
-/-- Projecting backend blocked traces to syntax states agrees with projecting
-canonical syntax blocked traces to their checkpoint state. -/
+/-- Projecting backend event-batch traces to syntax states agrees with projecting
+canonical syntax event-batch traces to their checkpoint state. -/
 theorem backendProjectedStateDist_eq
     (g : WFProgram P L)
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    {backendDist : PMF Impl.BlockTrace}
-    {specDist : PMF (eventGraphMachine g).BlockTrace}
-    (hproject : PMF.map R.projectBlockTrace backendDist = specDist) :
-    PMF.map (fun trace : Impl.BlockTrace => R.projectState trace.2)
+    {backendDist : PMF Impl.EventBatchTrace}
+    {specDist : PMF (eventGraphMachine g).EventBatchTrace}
+    (hproject : PMF.map R.projectEventBatchTrace backendDist = specDist) :
+    PMF.map (fun trace : Impl.EventBatchTrace => R.projectState trace.2)
         backendDist =
-      PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
+      PMF.map (fun trace : (eventGraphMachine g).EventBatchTrace => trace.2)
         specDist := by
   have h :=
     congrArg (fun μ =>
       PMF.map
-        (fun trace : (eventGraphMachine g).BlockTrace => trace.2) μ)
+        (fun trace : (eventGraphMachine g).EventBatchTrace => trace.2) μ)
       hproject
   change
-    PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
-        (PMF.map R.projectBlockTrace backendDist) =
-      PMF.map (fun trace : (eventGraphMachine g).BlockTrace => trace.2)
+    PMF.map (fun trace : (eventGraphMachine g).EventBatchTrace => trace.2)
+        (PMF.map R.projectEventBatchTrace backendDist) =
+      PMF.map (fun trace : (eventGraphMachine g).EventBatchTrace => trace.2)
         specDist at h
   rw [PMF.map_comp] at h
-  simpa [Machine.StochasticStepRefinement.projectBlockTrace, Function.comp_def]
+  simpa [Machine.StochasticStepRefinement.projectEventBatchTrace, Function.comp_def]
     using h
 
-/-- Backend blocked-trace play and canonical spec blocked-trace play have the
+/-- Backend event-batch trace play and canonical spec event-batch trace play have the
 same expected utility for every pure profile. -/
-theorem backendBlockedTraceKernelGameAt_eu_eq
+theorem backendEventBatchTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R)
+    (lift : BackendPureEventBatchLawLift g R)
     (π : pureProfileAt g) (who : P) :
-    (backendBlockedTraceKernelGameAt g R lift).eu π who =
-      (pureBlockedTraceKernelGameAt g).eu π who := by
+    (backendEventBatchTraceKernelGameAt g R lift).eu π who =
+      (pureEventBatchTraceKernelGameAt g).eu π who := by
   classical
   let backendDist :=
-    (backendBlockedTraceKernelGameAt g R lift).outcomeKernel π
+    (backendEventBatchTraceKernelGameAt g R lift).outcomeKernel π
   let specDist :=
-    (pureBlockedTraceKernelGameAt g).outcomeKernel π
-  let backendState : Impl.BlockTrace → (eventGraphMachine g).State :=
+    (pureEventBatchTraceKernelGameAt g).outcomeKernel π
+  let backendState : Impl.EventBatchTrace → (eventGraphMachine g).State :=
     fun trace => R.projectState trace.2
-  let specState : (eventGraphMachine g).BlockTrace →
+  let specState : (eventGraphMachine g).EventBatchTrace →
       (eventGraphMachine g).State :=
     fun trace => trace.2
   let stateUtility : (eventGraphMachine g).State → ℝ :=
-    fun state => syntaxBlockedTraceUtility g ([], state) who
+    fun state => syntaxEventBatchTraceUtility g ([], state) who
   have hproject :
-      PMF.map R.projectBlockTrace backendDist = specDist := by
+      PMF.map R.projectEventBatchTrace backendDist = specDist := by
     simpa [backendDist, specDist] using
-      backendBlockedTraceKernelGameAt_outcomeKernel_map_project
+      backendEventBatchTraceKernelGameAt_outcomeKernel_map_project
         g R lift π
   have hstate :
       PMF.map backendState backendDist = PMF.map specState specDist := by
     simpa [backendState, specState, backendDist, specDist,
-      Machine.StochasticStepRefinement.projectBlockTrace]
+      Machine.StochasticStepRefinement.projectEventBatchTrace]
       using backendProjectedStateDist_eq g R hproject
   calc
-    (backendBlockedTraceKernelGameAt g R lift).eu π who =
+    (backendEventBatchTraceKernelGameAt g R lift).eu π who =
         Math.Probability.expect backendDist
           (fun trace => stateUtility (backendState trace)) := by
           rfl
@@ -311,45 +311,45 @@ theorem backendBlockedTraceKernelGameAt_eu_eq
           (fun trace => stateUtility (specState trace)) := by
           exact Math.Probability.expect_map_fintype_target
             specDist specState stateUtility
-    _ = (pureBlockedTraceKernelGameAt g).eu π who := by
-          simp [GameTheory.KernelGame.eu, pureBlockedTraceKernelGameAt,
-            syntaxBlockedTraceUtility, syntaxBlockedTraceOutcome,
+    _ = (pureEventBatchTraceKernelGameAt g).eu π who := by
+          simp [GameTheory.KernelGame.eu, pureEventBatchTraceKernelGameAt,
+            syntaxEventBatchTraceUtility, syntaxEventBatchTraceOutcome,
             stateUtility, specState, specDist]
 
-/-- Backend PMF-behavioral blocked-trace play and canonical spec
-PMF-behavioral blocked-trace play have the same expected utility. -/
-theorem backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
+/-- Backend PMF-behavioral event-batch trace play and canonical spec
+PMF-behavioral event-batch trace play have the same expected utility. -/
+theorem backendPMFBehavioralEventBatchTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R)
+    (lift : BackendBehavioralEventBatchLawLift g R)
     (β : behavioralProfilePMFAt g) (who : P) :
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu β who =
-      (pmfBehavioralBlockedTraceKernelGameAt g).eu β who := by
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).eu β who =
+      (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who := by
   classical
   let backendDist :=
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).outcomeKernel β
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).outcomeKernel β
   let specDist :=
-    (pmfBehavioralBlockedTraceKernelGameAt g).outcomeKernel β
-  let backendState : Impl.BlockTrace → (eventGraphMachine g).State :=
+    (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β
+  let backendState : Impl.EventBatchTrace → (eventGraphMachine g).State :=
     fun trace => R.projectState trace.2
-  let specState : (eventGraphMachine g).BlockTrace →
+  let specState : (eventGraphMachine g).EventBatchTrace →
       (eventGraphMachine g).State :=
     fun trace => trace.2
   let stateUtility : (eventGraphMachine g).State → ℝ :=
-    fun state => syntaxBlockedTraceUtility g ([], state) who
+    fun state => syntaxEventBatchTraceUtility g ([], state) who
   have hproject :
-      PMF.map R.projectBlockTrace backendDist = specDist := by
+      PMF.map R.projectEventBatchTrace backendDist = specDist := by
     simpa [backendDist, specDist] using
-      backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
+      backendPMFBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_project
         g R lift β
   have hstate :
       PMF.map backendState backendDist = PMF.map specState specDist := by
     simpa [backendState, specState, backendDist, specDist,
-      Machine.StochasticStepRefinement.projectBlockTrace]
+      Machine.StochasticStepRefinement.projectEventBatchTrace]
       using backendProjectedStateDist_eq g R hproject
   calc
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).eu β who =
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).eu β who =
         Math.Probability.expect backendDist
           (fun trace => stateUtility (backendState trace)) := by
           rfl
@@ -367,53 +367,53 @@ theorem backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
           (fun trace => stateUtility (specState trace)) := by
           exact Math.Probability.expect_map_fintype_target
             specDist specState stateUtility
-    _ = (pmfBehavioralBlockedTraceKernelGameAt g).eu β who := by
+    _ = (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who := by
           simp [GameTheory.KernelGame.eu,
-            pmfBehavioralBlockedTraceKernelGameAt,
-            syntaxBlockedTraceUtility, syntaxBlockedTraceOutcome,
+            pmfBehavioralEventBatchTraceKernelGameAt,
+            syntaxEventBatchTraceUtility, syntaxEventBatchTraceOutcome,
             stateUtility, specState, specDist]
 
-/-- The backend blocked-trace game maps to the canonical spec blocked-trace
+/-- The backend event-batch trace game maps to the canonical spec event-batch trace
 game by projecting backend traces to spec traces. This is the direction needed
 to pull Nash equilibria back from the spec to the backend. -/
-noncomputable def Machine.StochasticStepRefinement.toBackendBlockedTraceMorphism
+noncomputable def Machine.StochasticStepRefinement.toBackendEventBatchTraceMorphism
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R) :
+    (lift : BackendPureEventBatchLawLift g R) :
     GameTheory.KernelGame.EUMorphism
-      (backendBlockedTraceKernelGameAt g R lift)
-      (pureBlockedTraceKernelGameAt g) where
+      (backendEventBatchTraceKernelGameAt g R lift)
+      (pureEventBatchTraceKernelGameAt g) where
   toMorphism :=
     GameTheory.KernelGame.Morphism.ofOutcomeEmbedding
       (fun _ strategy => strategy)
-      R.projectBlockTrace
+      R.projectEventBatchTrace
       (fun π =>
-        (backendBlockedTraceKernelGameAt_outcomeKernel_map_project
+        (backendEventBatchTraceKernelGameAt_outcomeKernel_map_project
           g R lift π).symm)
       (fun _ => by
         funext who
         rfl)
   eu_preserved := by
     intro π who
-    exact (backendBlockedTraceKernelGameAt_eu_eq g R lift π who).symm
+    exact (backendEventBatchTraceKernelGameAt_eu_eq g R lift π who).symm
 
-/-- PMF-behavioral backend blocked-trace game maps to the canonical
-PMF-behavioral spec blocked-trace game by projecting backend traces. -/
-noncomputable def Machine.StochasticStepRefinement.toBackendPMFBehavioralBlockedTraceMorphism
+/-- PMF-behavioral backend event-batch trace game maps to the canonical
+PMF-behavioral spec event-batch trace game by projecting backend traces. -/
+noncomputable def Machine.StochasticStepRefinement.toBackendPMFBehavioralEventBatchTraceMorphism
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R) :
+    (lift : BackendBehavioralEventBatchLawLift g R) :
     GameTheory.KernelGame.EUMorphism
-      (backendPMFBehavioralBlockedTraceKernelGameAt g R lift)
-      (pmfBehavioralBlockedTraceKernelGameAt g) where
+      (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift)
+      (pmfBehavioralEventBatchTraceKernelGameAt g) where
   toMorphism :=
     GameTheory.KernelGame.Morphism.ofOutcomeEmbedding
       (fun _ strategy => strategy)
-      R.projectBlockTrace
+      R.projectEventBatchTrace
       (fun β =>
-        (backendPMFBehavioralBlockedTraceKernelGameAt_outcomeKernel_map_project
+        (backendPMFBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_project
           g R lift β).symm)
       (fun _ => by
         funext who
@@ -421,74 +421,74 @@ noncomputable def Machine.StochasticStepRefinement.toBackendPMFBehavioralBlocked
   eu_preserved := by
     intro β who
     exact
-      (backendPMFBehavioralBlockedTraceKernelGameAt_eu_eq
+      (backendPMFBehavioralEventBatchTraceKernelGameAt_eu_eq
         g R lift β who).symm
 
-/-- Nash equilibria of the canonical spec blocked-trace game pull back to any
-backend equipped with a compatible block-law lift. -/
-theorem backendBlockedTraceKernelGameAt_isNash_pullback
+/-- Nash equilibria of the canonical spec event-batch trace game pull back to any
+backend equipped with a compatible event-batch-law lift. -/
+theorem backendEventBatchTraceKernelGameAt_isNash_pullback
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R)
+    (lift : BackendPureEventBatchLawLift g R)
     {σ : pureProfileAt g}
-    (h : (pureBlockedTraceKernelGameAt g).IsNash σ) :
-    (backendBlockedTraceKernelGameAt g R lift).IsNash σ := by
+    (h : (pureEventBatchTraceKernelGameAt g).IsNash σ) :
+    (backendEventBatchTraceKernelGameAt g R lift).IsNash σ := by
   exact
     GameTheory.KernelGame.EUMorphism.nash_of_nash
-      (G := backendBlockedTraceKernelGameAt g R lift)
-      (H := pureBlockedTraceKernelGameAt g)
-      (R.toBackendBlockedTraceMorphism g lift)
+      (G := backendEventBatchTraceKernelGameAt g R lift)
+      (H := pureEventBatchTraceKernelGameAt g)
+      (R.toBackendEventBatchTraceMorphism g lift)
       (σ := σ) h
 
 /-- Composed Stage 1 + backend transport: Nash equilibria of the public pure
-kernel game pull back to the backend blocked-trace game. -/
-theorem backendBlockedTraceKernelGameAt_isNash_pullback_pure
+kernel game pull back to the backend event-batch trace game. -/
+theorem backendEventBatchTraceKernelGameAt_isNash_pullback_pure
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendPureBlockLawLift g R)
+    (lift : BackendPureEventBatchLawLift g R)
     {σ : pureProfileAt g}
     (h : (pureKernelGameAt g).IsNash σ) :
-    (backendBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  have hblocked : (pureBlockedTraceKernelGameAt g).IsNash σ := by
+    (backendEventBatchTraceKernelGameAt g R lift).IsNash σ := by
+  have hEventBatch : (pureEventBatchTraceKernelGameAt g).IsNash σ := by
     simpa using
-      ((pureKernelGameAt.blockedTraceEUBisimulation g).nash_iff σ).mp h
-  exact backendBlockedTraceKernelGameAt_isNash_pullback g R lift
-    hblocked
+      ((pureKernelGameAt.eventBatchTraceEUBisimulation g).nash_iff σ).mp h
+  exact backendEventBatchTraceKernelGameAt_isNash_pullback g R lift
+    hEventBatch
 
-/-- Nash equilibria of the canonical PMF-behavioral spec blocked-trace game
-pull back to any backend equipped with a compatible behavioral block-law lift. -/
-theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback
+/-- Nash equilibria of the canonical PMF-behavioral spec event-batch trace game
+pull back to any backend equipped with a compatible behavioral event-batch-law lift. -/
+theorem backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R)
+    (lift : BackendBehavioralEventBatchLawLift g R)
     {σ : behavioralProfilePMFAt g}
-    (h : (pmfBehavioralBlockedTraceKernelGameAt g).IsNash σ) :
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).IsNash σ := by
+    (h : (pmfBehavioralEventBatchTraceKernelGameAt g).IsNash σ) :
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).IsNash σ := by
   exact
     GameTheory.KernelGame.EUMorphism.nash_of_nash
-      (G := backendPMFBehavioralBlockedTraceKernelGameAt g R lift)
-      (H := pmfBehavioralBlockedTraceKernelGameAt g)
-      (R.toBackendPMFBehavioralBlockedTraceMorphism g lift)
+      (G := backendPMFBehavioralEventBatchTraceKernelGameAt g R lift)
+      (H := pmfBehavioralEventBatchTraceKernelGameAt g)
+      (R.toBackendPMFBehavioralEventBatchTraceMorphism g lift)
       (σ := σ) h
 
 /-- Composed Stage 1 + backend transport: Nash equilibria of the public
 PMF-behavioral kernel game pull back to the backend PMF-behavioral
-blocked-trace game. -/
-theorem backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback_behavioral
+event-batch trace game. -/
+theorem backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback_behavioral
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
-    (lift : BackendBehavioralBlockLawLift g R)
+    (lift : BackendBehavioralEventBatchLawLift g R)
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralKernelGameAt g).IsNash σ) :
-    (backendPMFBehavioralBlockedTraceKernelGameAt g R lift).IsNash σ := by
-  have hblocked : (pmfBehavioralBlockedTraceKernelGameAt g).IsNash σ := by
+    (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).IsNash σ := by
+  have hEventBatch : (pmfBehavioralEventBatchTraceKernelGameAt g).IsNash σ := by
     simpa using
-      ((pmfBehavioralKernelGameAt.blockedTraceEUBisimulation g).nash_iff σ).mp h
-  exact backendPMFBehavioralBlockedTraceKernelGameAt_isNash_pullback g R lift
-    hblocked
+      ((pmfBehavioralKernelGameAt.eventBatchTraceEUBisimulation g).nash_iff σ).mp h
+  exact backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback g R lift
+    hEventBatch
 
 end Vegas

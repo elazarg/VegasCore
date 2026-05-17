@@ -91,101 +91,101 @@ theorem runEventsFrom_append
 /-- Execute a sequence of macro steps, where each macro step is represented by
 a list of primitive machine events.  This is the trace shape induced by a
 frontier-round FOSG presentation. -/
-noncomputable def runEventBlocksFrom
-    (M : Machine Player) (blocks : List (List M.Event)) (state : M.State) :
+noncomputable def runEventBatchesFrom
+    (M : Machine Player) (batches : List (List M.Event)) (state : M.State) :
     PMF M.State :=
-  blocks.foldl
+  batches.foldl
     (fun acc events => acc.bind fun current => M.runEventsFrom events current)
     (PMF.pure state)
 
-@[simp] theorem runEventBlocksFrom_nil
+@[simp] theorem runEventBatchesFrom_nil
     (M : Machine Player) (state : M.State) :
-    M.runEventBlocksFrom [] state = PMF.pure state := rfl
+    M.runEventBatchesFrom [] state = PMF.pure state := rfl
 
-@[simp] theorem runEventBlocksFrom_singleton
+@[simp] theorem runEventBatchesFrom_singleton
     (M : Machine Player) (events : List M.Event) (state : M.State) :
-    M.runEventBlocksFrom [events] state = M.runEventsFrom events state := by
-  simp [runEventBlocksFrom]
+    M.runEventBatchesFrom [events] state = M.runEventsFrom events state := by
+  simp [runEventBatchesFrom]
 
-/-- Folding event blocks over an arbitrary input distribution is the same as
-binding that distribution into `runEventBlocksFrom`. -/
-private theorem runEventBlocksFrom_foldl_eq_bind
-    (M : Machine Player) (blocks : List (List M.Event))
+/-- Folding event batches over an arbitrary input distribution is the same as
+binding that distribution into `runEventBatchesFrom`. -/
+private theorem runEventBatchesFrom_foldl_eq_bind
+    (M : Machine Player) (batches : List (List M.Event))
     (acc : PMF M.State) :
-    blocks.foldl
+    batches.foldl
         (fun acc events => acc.bind fun current => M.runEventsFrom events current)
         acc =
-      acc.bind fun current => M.runEventBlocksFrom blocks current := by
-  induction blocks generalizing acc with
+      acc.bind fun current => M.runEventBatchesFrom batches current := by
+  induction batches generalizing acc with
   | nil =>
       change acc = acc.bind PMF.pure
       exact (PMF.bind_pure acc).symm
-  | cons events blocks ih =>
+  | cons events batches ih =>
       change
-        blocks.foldl
+        batches.foldl
             (fun acc events => acc.bind fun current =>
               M.runEventsFrom events current)
             (acc.bind fun current => M.runEventsFrom events current) =
           acc.bind fun current =>
-            M.runEventBlocksFrom (events :: blocks) current
+            M.runEventBatchesFrom (events :: batches) current
       rw [ih, PMF.bind_bind]
       congr
       funext current
-      rw [runEventBlocksFrom]
+      rw [runEventBatchesFrom]
       simp only [List.foldl_cons, PMF.pure_bind]
       exact (ih (M.runEventsFrom events current)).symm
 
-/-- Running event blocks is the same as running their flattened primitive event
+/-- Running event batches is the same as running their flattened primitive event
 list. -/
-theorem runEventBlocksFrom_eq_runEventsFrom_flatten
-    (M : Machine Player) (blocks : List (List M.Event)) (state : M.State) :
-    M.runEventBlocksFrom blocks state =
-      M.runEventsFrom blocks.flatten state := by
-  induction blocks generalizing state with
+theorem runEventBatchesFrom_eq_runEventsFrom_flatten
+    (M : Machine Player) (batches : List (List M.Event)) (state : M.State) :
+    M.runEventBatchesFrom batches state =
+      M.runEventsFrom batches.flatten state := by
+  induction batches generalizing state with
   | nil =>
       rfl
-  | cons events blocks ih =>
-      rw [runEventBlocksFrom]
+  | cons events batches ih =>
+      rw [runEventBatchesFrom]
       simp only [List.foldl_cons]
-      rw [runEventBlocksFrom_foldl_eq_bind]
+      rw [runEventBatchesFrom_foldl_eq_bind]
       simp only [PMF.pure_bind]
       simp_rw [ih]
       rw [← runEventsFrom_append]
       rfl
 
-/-- Executing appended event-block lists is Kleisli composition of the two
-blocked runs. -/
-theorem runEventBlocksFrom_append
-    (M : Machine Player) (blocks₁ blocks₂ : List (List M.Event))
+/-- Executing appended event-batch lists is Kleisli composition of the two
+event-batch runs. -/
+theorem runEventBatchesFrom_append
+    (M : Machine Player) (batches₁ batches₂ : List (List M.Event))
     (state : M.State) :
-    M.runEventBlocksFrom (blocks₁ ++ blocks₂) state =
-      (M.runEventBlocksFrom blocks₁ state).bind fun current =>
-        M.runEventBlocksFrom blocks₂ current := by
-  rw [runEventBlocksFrom]
+    M.runEventBatchesFrom (batches₁ ++ batches₂) state =
+      (M.runEventBatchesFrom batches₁ state).bind fun current =>
+        M.runEventBatchesFrom batches₂ current := by
+  rw [runEventBatchesFrom]
   rw [List.foldl_append]
-  rw [runEventBlocksFrom_foldl_eq_bind]
+  rw [runEventBatchesFrom_foldl_eq_bind]
   rfl
 
-/-- A blocked machine trace records the event blocks executed so far and the
+/-- An event-batch machine trace records the event batches executed so far and the
 current checkpoint state. -/
-abbrev BlockTrace (M : Machine Player) : Type :=
+abbrev EventBatchTrace (M : Machine Player) : Type :=
   List (List M.Event) × M.State
 
-/-- A history-dependent law for selecting the next block of primitive events.
+/-- A history-dependent law for selecting the next event batch of primitive events.
 
-The law sees the blocked trace prefix, not only the current state. This matches
+The law sees the event-batch trace prefix, not only the current state. This matches
 strategic schedulers whose choices can depend on public/history information
 while still running through the machine's primitive transition semantics. -/
-abbrev BlockLaw (M : Machine Player) : Type :=
-  M.BlockTrace → PMF (List M.Event)
+abbrev EventBatchLaw (M : Machine Player) : Type :=
+  M.EventBatchTrace → PMF (List M.Event)
 
-/-- Bounded blocked trace distribution from an arbitrary blocked trace prefix.
-Execution stops once the current state is terminal; otherwise one event block is
+/-- Bounded event-batch trace distribution from an arbitrary event-batch trace prefix.
+Execution stops once the current state is terminal; otherwise one event batch is
 sampled, run through the primitive machine semantics, and appended to the
 prefix. -/
-noncomputable def blockTraceDistFrom
-    (M : Machine Player) (law : M.BlockLaw) :
-    Nat → M.BlockTrace → PMF M.BlockTrace
+noncomputable def eventBatchTraceDistFrom
+    (M : Machine Player) (law : M.EventBatchLaw) :
+    Nat → M.EventBatchTrace → PMF M.EventBatchTrace
   | 0, trace => PMF.pure trace
   | horizon + 1, trace => by
       classical
@@ -193,42 +193,42 @@ noncomputable def blockTraceDistFrom
         if M.terminal trace.2 then
           PMF.pure trace
         else
-          (law trace).bind fun block =>
-            (M.runEventBlocksFrom [block] trace.2).bind fun next =>
-              M.blockTraceDistFrom law horizon
-                (trace.1 ++ [block], next)
+          (law trace).bind fun batch =>
+            (M.runEventBatchesFrom [batch] trace.2).bind fun next =>
+              M.eventBatchTraceDistFrom law horizon
+                (trace.1 ++ [batch], next)
 
-@[simp] theorem blockTraceDistFrom_zero
-    (M : Machine Player) (law : M.BlockLaw) (trace : M.BlockTrace) :
-    M.blockTraceDistFrom law 0 trace = PMF.pure trace := rfl
+@[simp] theorem eventBatchTraceDistFrom_zero
+    (M : Machine Player) (law : M.EventBatchLaw) (trace : M.EventBatchTrace) :
+    M.eventBatchTraceDistFrom law 0 trace = PMF.pure trace := rfl
 
-theorem blockTraceDistFrom_succ_terminal
-    (M : Machine Player) (law : M.BlockLaw)
-    (horizon : Nat) (trace : M.BlockTrace)
+theorem eventBatchTraceDistFrom_succ_terminal
+    (M : Machine Player) (law : M.EventBatchLaw)
+    (horizon : Nat) (trace : M.EventBatchTrace)
     (hterminal : M.terminal trace.2) :
-    M.blockTraceDistFrom law (horizon + 1) trace = PMF.pure trace := by
-  simp [blockTraceDistFrom, hterminal]
+    M.eventBatchTraceDistFrom law (horizon + 1) trace = PMF.pure trace := by
+  simp [eventBatchTraceDistFrom, hterminal]
 
-theorem blockTraceDistFrom_succ_nonterminal
-    (M : Machine Player) (law : M.BlockLaw)
-    (horizon : Nat) (trace : M.BlockTrace)
+theorem eventBatchTraceDistFrom_succ_nonterminal
+    (M : Machine Player) (law : M.EventBatchLaw)
+    (horizon : Nat) (trace : M.EventBatchTrace)
     (hterminal : ¬ M.terminal trace.2) :
-    M.blockTraceDistFrom law (horizon + 1) trace =
-      (law trace).bind fun block =>
-        (M.runEventBlocksFrom [block] trace.2).bind fun next =>
-          M.blockTraceDistFrom law horizon
-            (trace.1 ++ [block], next) := by
-  simp [blockTraceDistFrom, hterminal]
+    M.eventBatchTraceDistFrom law (horizon + 1) trace =
+      (law trace).bind fun batch =>
+        (M.runEventBatchesFrom [batch] trace.2).bind fun next =>
+          M.eventBatchTraceDistFrom law horizon
+            (trace.1 ++ [batch], next) := by
+  simp [eventBatchTraceDistFrom, hterminal]
 
-/-- Bounded blocked trace distribution from the machine initial state. -/
-noncomputable def blockTraceDist
-    (M : Machine Player) (law : M.BlockLaw) (horizon : Nat) :
-    PMF M.BlockTrace :=
-  M.blockTraceDistFrom law horizon ([], M.init)
+/-- Bounded event-batch trace distribution from the machine initial state. -/
+noncomputable def eventBatchTraceDist
+    (M : Machine Player) (law : M.EventBatchLaw) (horizon : Nat) :
+    PMF M.EventBatchTrace :=
+  M.eventBatchTraceDistFrom law horizon ([], M.init)
 
-@[simp] theorem blockTraceDist_zero
-    (M : Machine Player) (law : M.BlockLaw) :
-    M.blockTraceDist law 0 = PMF.pure ([], M.init) := rfl
+@[simp] theorem eventBatchTraceDist_zero
+    (M : Machine Player) (law : M.EventBatchLaw) :
+    M.eventBatchTraceDist law 0 = PMF.pure ([], M.init) := rfl
 
 /-- One scheduled machine step. -/
 noncomputable def stepDist

@@ -1268,10 +1268,10 @@ theorem boundedOutcomeFromBehavioral_nativeToFOSG
           rw [hobs]
     _ = (eventGraphRoundView g).boundedOutcomeFromBehavioral horizon β steps := by
           rw [Machine.RoundView.boundedOutcomeFromBehavioral,
-            Machine.RoundView.boundedBlockTraceFromBehavioral]
+            Machine.RoundView.boundedEventBatchTraceFromBehavioral]
           rw [PMF.map_comp]
           have hobs :
-              ((fun trace : (eventGraphMachine g).BlockTrace =>
+              ((fun trace : (eventGraphMachine g).EventBatchTrace =>
                   (eventGraphMachine g).outcome trace.2) ∘
                 (eventGraphRoundView g).boundedHistoryTrace horizon) =
                 (fun h : (eventGraphRoundView g).BoundedHistory horizon =>

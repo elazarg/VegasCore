@@ -3,7 +3,7 @@ import Vegas.Machine.Trace
 /-!
 # Backend refinement
 
-Backends such as blockchain runtimes are represented by the same
+Backends such as external runtimes are represented by the same
 `Protocol.Machine` carrier as protocol specifications. Runtime correctness is
 therefore a relation between machines, not a second state-machine semantics.
 
@@ -256,53 +256,53 @@ theorem projected_outcome_of_terminal
       Spec.outcome (R.projectState state) :=
   R.terminal_outcome_projected hterminal
 
-/-- Project one implementation event block to the externally visible
-specification event block, dropping implementation-internal events. -/
-def projectEventBlock
-    (R : StochasticStepRefinement Impl Spec) (block : List Impl.Event) :
+/-- Project one implementation event batch to the externally visible
+specification event batch, dropping implementation-internal events. -/
+def projectEventBatch
+    (R : StochasticStepRefinement Impl Spec) (batch : List Impl.Event) :
     List Spec.Event :=
-  block.filterMap R.projectEvent
+  batch.filterMap R.projectEvent
 
-/-- Project an implementation blocked trace to the corresponding
-specification blocked trace. -/
-def projectBlockTrace
+/-- Project an implementation event-batch trace to the corresponding
+specification event-batch trace. -/
+def projectEventBatchTrace
     (R : StochasticStepRefinement Impl Spec) :
-    Impl.BlockTrace → Spec.BlockTrace :=
-  fun trace => (trace.1.map R.projectEventBlock, R.projectState trace.2)
+    Impl.EventBatchTrace → Spec.EventBatchTrace :=
+  fun trace => (trace.1.map R.projectEventBatch, R.projectState trace.2)
 
-@[simp] theorem projectBlockTrace_fst
-    (R : StochasticStepRefinement Impl Spec) (trace : Impl.BlockTrace) :
-    (R.projectBlockTrace trace).1 = trace.1.map R.projectEventBlock := rfl
+@[simp] theorem projectEventBatchTrace_fst
+    (R : StochasticStepRefinement Impl Spec) (trace : Impl.EventBatchTrace) :
+    (R.projectEventBatchTrace trace).1 = trace.1.map R.projectEventBatch := rfl
 
-@[simp] theorem projectBlockTrace_snd
-    (R : StochasticStepRefinement Impl Spec) (trace : Impl.BlockTrace) :
-    (R.projectBlockTrace trace).2 = R.projectState trace.2 := rfl
+@[simp] theorem projectEventBatchTrace_snd
+    (R : StochasticStepRefinement Impl Spec) (trace : Impl.EventBatchTrace) :
+    (R.projectEventBatchTrace trace).2 = R.projectState trace.2 := rfl
 
-@[simp] theorem projectBlockTrace_append_block
+@[simp] theorem projectEventBatchTrace_append_batch
     (R : StochasticStepRefinement Impl Spec)
-    (trace : Impl.BlockTrace) (block : List Impl.Event)
+    (trace : Impl.EventBatchTrace) (batch : List Impl.Event)
     (state : Impl.State) :
-    R.projectBlockTrace (trace.1 ++ [block], state) =
-      ((R.projectBlockTrace trace).1 ++ [R.projectEventBlock block],
+    R.projectEventBatchTrace (trace.1 ++ [batch], state) =
+      ((R.projectEventBatchTrace trace).1 ++ [R.projectEventBatch batch],
         R.projectState state) := by
-  simp [projectBlockTrace]
+  simp [projectEventBatchTrace]
 
-@[simp] theorem refl_projectEventBlock
-    (M : Machine Player) (block : List M.Event) :
-    ((refl M).projectEventBlock block) = block := by
-  simp [projectEventBlock, refl]
+@[simp] theorem refl_projectEventBatch
+    (M : Machine Player) (batch : List M.Event) :
+    ((refl M).projectEventBatch batch) = batch := by
+  simp [projectEventBatch, refl]
 
-@[simp] theorem refl_projectBlockTrace
-    (M : Machine Player) (trace : M.BlockTrace) :
-    ((refl M).projectBlockTrace trace) = trace := by
+@[simp] theorem refl_projectEventBatchTrace
+    (M : Machine Player) (trace : M.EventBatchTrace) :
+    ((refl M).projectEventBatchTrace trace) = trace := by
   cases trace with
-  | mk blocks state =>
-      change (blocks.map (refl M).projectEventBlock, state) =
-        (blocks, state)
+  | mk batches state =>
+      change (batches.map (refl M).projectEventBatch, state) =
+        (batches, state)
       congr
-      induction blocks with
+      induction batches with
       | nil => simp
-      | cons block blocks ih =>
+      | cons batch batches ih =>
           simp [ih]
 
 /-- Projecting a fixed implementation event run gives the same state
@@ -311,7 +311,7 @@ theorem runEventsFrom_project_eq
     (R : StochasticStepRefinement Impl Spec)
     (events : List Impl.Event) (state : Impl.State) :
     (Impl.runEventsFrom events state).map R.projectState =
-      Spec.runEventsFrom (R.projectEventBlock events)
+      Spec.runEventsFrom (R.projectEventBatch events)
         (R.projectState state) := by
   induction events generalizing state with
   | nil =>
@@ -322,7 +322,7 @@ theorem runEventsFrom_project_eq
       change
         PMF.map R.projectState
           (Impl.runEventsFrom ([event] ++ events) state) =
-        Spec.runEventsFrom (R.projectEventBlock (event :: events))
+        Spec.runEventsFrom (R.projectEventBatch (event :: events))
           (R.projectState state)
       rw [Impl.runEventsFrom_append]
       have hsingle :
@@ -333,13 +333,13 @@ theorem runEventsFrom_project_eq
       simp_rw [ih]
       change
         (Impl.step event state).bind
-            ((fun s => Spec.runEventsFrom (R.projectEventBlock events) s) ∘
+            ((fun s => Spec.runEventsFrom (R.projectEventBatch events) s) ∘
               R.projectState) =
-          Spec.runEventsFrom (R.projectEventBlock (event :: events))
+          Spec.runEventsFrom (R.projectEventBatch (event :: events))
             (R.projectState state)
       rw [← PMF.bind_map]
       rw [R.step_project event state]
-      simp only [projectEventBlock, List.filterMap_cons]
+      simp only [projectEventBatch, List.filterMap_cons]
       cases h : R.projectEvent event with
       | none =>
           simp
@@ -359,127 +359,127 @@ theorem runEventsFrom_project_eq
             simp [Machine.runEventsFrom]
           rw [hsingleSpec]
 
-/-- Projecting a fixed implementation block run gives the same state
-distribution as running the projected specification blocks. -/
-theorem runEventBlocksFrom_project_eq
+/-- Projecting a fixed implementation event-batch run gives the same state
+distribution as running the projected specification event batches. -/
+theorem runEventBatchesFrom_project_eq
     (R : StochasticStepRefinement Impl Spec)
-    (blocks : List (List Impl.Event)) (state : Impl.State) :
-    (Impl.runEventBlocksFrom blocks state).map R.projectState =
-      Spec.runEventBlocksFrom (blocks.map R.projectEventBlock)
+    (batches : List (List Impl.Event)) (state : Impl.State) :
+    (Impl.runEventBatchesFrom batches state).map R.projectState =
+      Spec.runEventBatchesFrom (batches.map R.projectEventBatch)
         (R.projectState state) := by
-  rw [Impl.runEventBlocksFrom_eq_runEventsFrom_flatten]
-  rw [Spec.runEventBlocksFrom_eq_runEventsFrom_flatten]
+  rw [Impl.runEventBatchesFrom_eq_runEventsFrom_flatten]
+  rw [Spec.runEventBatchesFrom_eq_runEventsFrom_flatten]
   rw [R.runEventsFrom_project_eq]
   change
-    Spec.runEventsFrom (List.filterMap R.projectEvent blocks.flatten)
+    Spec.runEventsFrom (List.filterMap R.projectEvent batches.flatten)
         (R.projectState state) =
-      Spec.runEventsFrom (List.map (List.filterMap R.projectEvent) blocks).flatten
+      Spec.runEventsFrom (List.map (List.filterMap R.projectEvent) batches).flatten
         (R.projectState state)
   rw [List.filterMap_flatten]
 
-/-- Compatibility between a backend block law and a specification block law:
-sampling a backend block and projecting it must give the same distribution as
-sampling the specification block from the projected trace. -/
-def BlockLawCompatible
+/-- Compatibility between a backend event-batch law and a specification event-batch law:
+sampling a backend event batch and projecting it must give the same distribution as
+sampling the specification event batch from the projected trace. -/
+def EventBatchLawCompatible
     (R : StochasticStepRefinement Impl Spec)
-    (lawImpl : Impl.BlockLaw) (lawSpec : Spec.BlockLaw) : Prop :=
-  ∀ trace : Impl.BlockTrace,
-    PMF.map R.projectEventBlock (lawImpl trace) =
-      lawSpec (R.projectBlockTrace trace)
+    (lawImpl : Impl.EventBatchLaw) (lawSpec : Spec.EventBatchLaw) : Prop :=
+  ∀ trace : Impl.EventBatchTrace,
+    PMF.map R.projectEventBatch (lawImpl trace) =
+      lawSpec (R.projectEventBatchTrace trace)
 
-theorem refl_blockLawCompatible
-    (M : Machine Player) (law : M.BlockLaw) :
-    (refl M).BlockLawCompatible law law := by
+theorem refl_eventBatchLawCompatible
+    (M : Machine Player) (law : M.EventBatchLaw) :
+    (refl M).EventBatchLawCompatible law law := by
   intro trace
-  rw [refl_projectBlockTrace]
-  have hblock :
-      (fun block : List M.Event => (refl M).projectEventBlock block) = id := by
-    funext block
-    exact refl_projectEventBlock M block
+  rw [refl_projectEventBatchTrace]
+  have hbatch :
+      (fun batch : List M.Event => (refl M).projectEventBatch batch) = id := by
+    funext batch
+    exact refl_projectEventBatch M batch
   change PMF.map
-      (fun block : List M.Event => (refl M).projectEventBlock block)
+      (fun batch : List M.Event => (refl M).projectEventBatch batch)
       (law trace) = law trace
-  rw [hblock]
+  rw [hbatch]
   exact PMF.map_id (law trace)
 
-/-- A strategy/scheduler lift for a fixed specification block law. The
+/-- A strategy/scheduler lift for a fixed specification event-batch law. The
 refinement remains machine-to-machine; this structure supplies the extra
 backend scheduling data needed to run a strategic profile on an implementation. -/
-structure RefinementBlockLawLift
+structure RefinementEventBatchLawLift
     (R : StochasticStepRefinement Impl Spec)
-    (lawSpec : Spec.BlockLaw) where
-  lawImpl : Impl.BlockLaw
-  compatible : R.BlockLawCompatible lawImpl lawSpec
+    (lawSpec : Spec.EventBatchLaw) where
+  lawImpl : Impl.EventBatchLaw
+  compatible : R.EventBatchLawCompatible lawImpl lawSpec
 
-/-- Trace-level outcome preservation for compatible history-dependent block
-laws. Projecting the backend blocked trace distribution gives exactly the
-specification blocked trace distribution. -/
-theorem blockTraceDist_project_eq
+/-- Trace-level outcome preservation for compatible history-dependent
+event-batch laws. Projecting the backend event-batch trace distribution gives exactly the
+specification event-batch trace distribution. -/
+theorem eventBatchTraceDist_project_eq
     (R : StochasticStepRefinement Impl Spec)
-    (lawSpec : Spec.BlockLaw) (lawImpl : Impl.BlockLaw)
-    (compat : R.BlockLawCompatible lawImpl lawSpec) :
-    ∀ (horizon : Nat) (trace : Impl.BlockTrace),
-      PMF.map R.projectBlockTrace
-          (Impl.blockTraceDistFrom lawImpl horizon trace) =
-        Spec.blockTraceDistFrom lawSpec horizon (R.projectBlockTrace trace)
+    (lawSpec : Spec.EventBatchLaw) (lawImpl : Impl.EventBatchLaw)
+    (compat : R.EventBatchLawCompatible lawImpl lawSpec) :
+    ∀ (horizon : Nat) (trace : Impl.EventBatchTrace),
+      PMF.map R.projectEventBatchTrace
+          (Impl.eventBatchTraceDistFrom lawImpl horizon trace) =
+        Spec.eventBatchTraceDistFrom lawSpec horizon (R.projectEventBatchTrace trace)
   | 0, trace => by
-      rw [Impl.blockTraceDistFrom_zero]
-      rw [Spec.blockTraceDistFrom_zero]
+      rw [Impl.eventBatchTraceDistFrom_zero]
+      rw [Spec.eventBatchTraceDistFrom_zero]
       rw [PMF.pure_map]
   | horizon + 1, trace => by
       by_cases hterm : Impl.terminal trace.2
-      · rw [Impl.blockTraceDistFrom_succ_terminal _ _ _ hterm]
-        rw [Spec.blockTraceDistFrom_succ_terminal _ _ _ (R.terminal_project hterm)]
+      · rw [Impl.eventBatchTraceDistFrom_succ_terminal _ _ _ hterm]
+        rw [Spec.eventBatchTraceDistFrom_succ_terminal _ _ _ (R.terminal_project hterm)]
         rw [PMF.pure_map]
       · have hspecTerm :
-            ¬ Spec.terminal (R.projectBlockTrace trace).2 := by
+            ¬ Spec.terminal (R.projectEventBatchTrace trace).2 := by
           intro h
           exact hterm (R.terminal_reflect h)
-        rw [Impl.blockTraceDistFrom_succ_nonterminal _ _ _ hterm]
-        rw [Spec.blockTraceDistFrom_succ_nonterminal _ _ _ hspecTerm]
+        rw [Impl.eventBatchTraceDistFrom_succ_nonterminal _ _ _ hterm]
+        rw [Spec.eventBatchTraceDistFrom_succ_nonterminal _ _ _ hspecTerm]
         rw [PMF.map_bind]
         simp_rw [PMF.map_bind]
-        simp_rw [blockTraceDist_project_eq R lawSpec lawImpl compat horizon]
+        simp_rw [eventBatchTraceDist_project_eq R lawSpec lawImpl compat horizon]
         conv_lhs =>
           arg 2
-          intro block
-          simp only [projectBlockTrace, List.map_append, List.map_cons,
+          intro batch
+          simp only [projectEventBatchTrace, List.map_append, List.map_cons,
             List.map_nil]
           change
-            (Impl.runEventBlocksFrom [block] trace.2).bind
+            (Impl.runEventBatchesFrom [batch] trace.2).bind
                 ((fun state =>
-                    Spec.blockTraceDistFrom lawSpec horizon
-                      ((R.projectBlockTrace trace).1 ++
-                        [R.projectEventBlock block], state)) ∘
+                    Spec.eventBatchTraceDistFrom lawSpec horizon
+                      ((R.projectEventBatchTrace trace).1 ++
+                        [R.projectEventBatch batch], state)) ∘
                   R.projectState)
           rw [← PMF.bind_map]
-          rw [R.runEventBlocksFrom_project_eq [block] trace.2]
+          rw [R.runEventBatchesFrom_project_eq [batch] trace.2]
         simp only [List.map_cons, List.map_nil]
         change
           (lawImpl trace).bind
-              ((fun specBlock =>
-                  (Spec.runEventBlocksFrom [specBlock]
-                      (R.projectBlockTrace trace).2).bind fun next =>
-                    Spec.blockTraceDistFrom lawSpec horizon
-                      ((R.projectBlockTrace trace).1 ++ [specBlock],
+              ((fun specBatch =>
+                  (Spec.runEventBatchesFrom [specBatch]
+                      (R.projectEventBatchTrace trace).2).bind fun next =>
+                    Spec.eventBatchTraceDistFrom lawSpec horizon
+                      ((R.projectEventBatchTrace trace).1 ++ [specBatch],
                         next)) ∘
-                R.projectEventBlock) =
-            (lawSpec (R.projectBlockTrace trace)).bind fun specBlock =>
-              (Spec.runEventBlocksFrom [specBlock]
-                  (R.projectBlockTrace trace).2).bind fun next =>
-                Spec.blockTraceDistFrom lawSpec horizon
-                  ((R.projectBlockTrace trace).1 ++ [specBlock], next)
+                R.projectEventBatch) =
+            (lawSpec (R.projectEventBatchTrace trace)).bind fun specBatch =>
+              (Spec.runEventBatchesFrom [specBatch]
+                  (R.projectEventBatchTrace trace).2).bind fun next =>
+                Spec.eventBatchTraceDistFrom lawSpec horizon
+                  ((R.projectEventBatchTrace trace).1 ++ [specBatch], next)
         rw [← PMF.bind_map]
         rw [compat trace]
 
-theorem RefinementBlockLawLift.blockTraceDist_project_eq
+theorem RefinementEventBatchLawLift.eventBatchTraceDist_project_eq
     (R : StochasticStepRefinement Impl Spec)
-    (lawSpec : Spec.BlockLaw) (lift : R.RefinementBlockLawLift lawSpec)
-    (horizon : Nat) (trace : Impl.BlockTrace) :
-    PMF.map R.projectBlockTrace
-        (Impl.blockTraceDistFrom lift.lawImpl horizon trace) =
-      Spec.blockTraceDistFrom lawSpec horizon (R.projectBlockTrace trace) :=
-  R.blockTraceDist_project_eq lawSpec lift.lawImpl lift.compatible
+    (lawSpec : Spec.EventBatchLaw) (lift : R.RefinementEventBatchLawLift lawSpec)
+    (horizon : Nat) (trace : Impl.EventBatchTrace) :
+    PMF.map R.projectEventBatchTrace
+        (Impl.eventBatchTraceDistFrom lift.lawImpl horizon trace) =
+      Spec.eventBatchTraceDistFrom lawSpec horizon (R.projectEventBatchTrace trace) :=
+  R.eventBatchTraceDist_project_eq lawSpec lift.lawImpl lift.compatible
     horizon trace
 
 end StochasticStepRefinement

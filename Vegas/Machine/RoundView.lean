@@ -36,7 +36,7 @@ structure RoundView (M : Machine Player) where
       {a : JointAction Act //
         JointActionLegal Act active M.terminal availableActions state a} →
       PMF M.State
-  eventBlock : M.State → JointAction Act → List M.Event
+  eventBatch : M.State → JointAction Act → List M.Event
   terminal_active_eq_empty :
     ∀ {state : M.State}, M.terminal state → active state = ∅
   nonterminal_exists_legal :
@@ -1201,39 +1201,39 @@ noncomputable def runDist
 
 end Execution
 
-/-- Primitive event blocks extracted from a native bounded history. -/
-noncomputable def boundedHistoryEventBlocks
+/-- Primitive event batches extracted from a native bounded history. -/
+noncomputable def boundedHistoryEventBatches
     (view : M.RoundView) (horizon : Nat)
     (h : view.BoundedHistory horizon) :
     List (List M.Event) :=
-  h.steps.map fun step => view.eventBlock step.src.state step.act.1
+  h.steps.map fun step => view.eventBatch step.src.state step.act.1
 
-/-- Project a native bounded history to primitive event blocks and checkpoint
+/-- Project a native bounded history to primitive event batches and checkpoint
 machine state. -/
 noncomputable def boundedHistoryTrace
     (view : M.RoundView) (horizon : Nat)
-    (h : view.BoundedHistory horizon) : M.BlockTrace :=
-  (view.boundedHistoryEventBlocks horizon h, h.lastState.state)
+    (h : view.BoundedHistory horizon) : M.EventBatchTrace :=
+  (view.boundedHistoryEventBatches horizon h, h.lastState.state)
 
-/-- Blocked primitive trace kernel induced by a native bounded behavioral
+/-- Event-batched primitive trace kernel induced by a native bounded behavioral
 profile. -/
-noncomputable def boundedBlockTraceFromBehavioral
+noncomputable def boundedEventBatchTraceFromBehavioral
     (view : M.RoundView) (horizon : Nat)
     [Fintype Player] [Fintype M.State]
     [∀ player, Fintype (Option (view.Act player))]
     (β : view.BoundedBehavioralProfile horizon)
-    (steps : Nat) : PMF M.BlockTrace :=
+    (steps : Nat) : PMF M.EventBatchTrace :=
   PMF.map (view.boundedHistoryTrace horizon)
     (view.runDist horizon steps β)
 
-/-- Blocked primitive trace kernel induced by a native bounded pure profile. -/
-noncomputable def boundedBlockTraceFromPure
+/-- Event-batched primitive trace kernel induced by a native bounded pure profile. -/
+noncomputable def boundedEventBatchTraceFromPure
     (view : M.RoundView) (horizon : Nat)
     [Fintype Player] [Fintype M.State]
     [∀ player, Fintype (Option (view.Act player))]
     (π : view.BoundedPureProfile horizon)
-    (steps : Nat) : PMF M.BlockTrace :=
-  view.boundedBlockTraceFromBehavioral horizon
+    (steps : Nat) : PMF M.EventBatchTrace :=
+  view.boundedEventBatchTraceFromBehavioral horizon
     (view.legalPureToBehavioral horizon π) steps
 
 /-- Outcome kernel induced by a native bounded behavioral profile. -/
@@ -1243,8 +1243,8 @@ noncomputable def boundedOutcomeFromBehavioral
     [∀ player, Fintype (Option (view.Act player))]
     (β : view.BoundedBehavioralProfile horizon)
     (steps : Nat) : PMF M.Outcome :=
-  PMF.map (fun trace : M.BlockTrace => M.outcome trace.2)
-    (view.boundedBlockTraceFromBehavioral horizon β steps)
+  PMF.map (fun trace : M.EventBatchTrace => M.outcome trace.2)
+    (view.boundedEventBatchTraceFromBehavioral horizon β steps)
 
 /-- Outcome kernel induced by a native bounded pure profile. -/
 noncomputable def boundedOutcomeFromPure
@@ -1253,8 +1253,8 @@ noncomputable def boundedOutcomeFromPure
     [∀ player, Fintype (Option (view.Act player))]
     (π : view.BoundedPureProfile horizon)
     (steps : Nat) : PMF M.Outcome :=
-  PMF.map (fun trace : M.BlockTrace => M.outcome trace.2)
-    (view.boundedBlockTraceFromPure horizon π steps)
+  PMF.map (fun trace : M.EventBatchTrace => M.outcome trace.2)
+    (view.boundedEventBatchTraceFromPure horizon π steps)
 
 end RoundView
 

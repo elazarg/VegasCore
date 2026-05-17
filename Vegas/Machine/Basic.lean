@@ -11,7 +11,7 @@ It is an observation-aware asynchronous state machine:
 * transitions are PMF-valued;
 * states expose public and player-local observations;
 
-The structure is deliberately generic. Concrete syntax and blockchain runtimes
+The structure is deliberately generic. Concrete syntax and external runtimes
 should elaborate to or refine this carrier before stating strategic claims.
 -/
 
@@ -23,7 +23,7 @@ open GameTheory
 
 The primitive execution event is a single enabled move: either one player makes
 one concrete choice, or the machine performs one internal protocol event such as
-frontier finalization. Simultaneous rounds, transaction schedules, FOSG
+frontier finalization. Simultaneous rounds, execution schedules, FOSG
 histories, and game-tree serializations are presentations derived from this
 carrier; they are not baked into it. -/
 structure Machine (Player : Type) where
