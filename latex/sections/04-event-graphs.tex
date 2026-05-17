@@ -86,10 +86,10 @@ encodes \emph{semantic} dependency.
 \begin{description}[itemsep=2pt]
 \item[$\mathrm{patchLegal}(n, s)$ — \emph{shape}.]
   Predicate on a node and a candidate field patch.  Purely
-  structural: it checks that $s$ writes the expected field, with the
-  expected base type, with the expected visibility (clear/hidden)
-  for the node's $\mathrm{NodeSem}$.  Does not consult guards or
-  results of other nodes.
+  structural: it checks that $s$ writes the expected field with the
+  expected base type.  The clear/hidden mode is determined by the
+  node's $\mathrm{NodeSem}$, not duplicated in the patch payload.  It
+  does not consult guards or results of other nodes.
 \item[$\mathrm{actionLegal}(C, n, s)$ — \emph{dynamic}.]
   Predicate that may consult the result assignment $C$ of
   already-completed nodes.  For a player commit node, this is where

@@ -1144,8 +1144,9 @@ execution data:
 \item $\TT{patchLegal}$ \emph{(shape)}: a predicate on a single node
   and a candidate field patch. Purely structural — for every kind of
   node, it checks that the patch writes the expected fields with the
-  expected visibility and typing. It does \emph{not} consult guards or
-  other nodes' results.
+  expected typing. The clear/hidden mode is determined by the node
+  semantics, not duplicated in the patch payload. It does \emph{not}
+  consult guards or other nodes' results.
 \item $\TT{actionLegal}$ \emph{(dynamic)}: a predicate that may consult
   the result assignment of already-completed nodes. For player commit
   actions this is where the guard is evaluated against the proposed
