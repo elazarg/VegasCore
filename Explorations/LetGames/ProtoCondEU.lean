@@ -77,7 +77,6 @@ theorem EU_Cond_eq_EU_of_isProb {Γ : L.Ctx}
 -- TODO: prove IsNash_WF ↔ IsNash_Cond under WFChanceOnProg
 -- This requires showing that WFChanceOnProg implies IsProb on the outcome distribution,
 -- which in turn depends on mass_bind_const / mass preservation through evalProto.
--- Leaving as sorry for now; depends on ProtoGameLemmas progress.
+-- Leaving this theorem family for now; depends on ProtoGameLemmas progress.
 
 end Proto
-

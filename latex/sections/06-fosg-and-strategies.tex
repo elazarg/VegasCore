@@ -55,8 +55,9 @@ kernel
       \mathrm{legal}(s, \sigma)\,\}
     \to \PMF{\State},
 \]
-and an event-batch projection recording which primitive machine
-events are represented by the round.  Two side conditions hold:
+and an event-batch projection recording, from source state, joint move,
+and realized destination, which primitive machine events are represented
+by the round. Two side conditions hold:
 terminal states have empty
 active sets, and non-terminal states admit at least one legal joint
 action.
@@ -102,32 +103,36 @@ frontier nodes reach the same endpoint regardless of admissible
 linearization.  The code therefore does not rely on the canonical
 list order carrying strategic information.
 
-\subsubsection*{The stability condition}
+\subsubsection*{Explicit realized event batches}
 
-The collapse from machine to FOSG is sound only when frontier
-choices do not interfere across players.  This is the
-\emph{frontier-stability} condition: if action $a$ for player $p$ is
-available at $C$, $a$'s node is on $\frontier(C)$ with $a.n \neq
-n^\star$, and any other frontier node $n^\star$ executes legally,
-then $a$ is still available at the resulting configuration.
+The collapse from machine to FOSG is tied back to primitive execution
+by an explicit batch distribution, not by hiding chance inside a node
+event.  The sampler walks $\frontier(C).\mathrm{toList}$, threads the
+configuration, and records the concrete primitive event at each source
+frontier node.  Player nodes record the selected player patch; internal
+nodes first sample the current internal kernel and then record
+$\mathrm{InternalEvent.node}(n,\mathit{patch})$ with the sampled patch.
+The view requires the independent-frontier-round condition: player choices
+that are available at the source remain available after earlier distinct
+frontier nodes execute, and internal kernels for distinct source-frontier nodes
+are unchanged by those earlier executions.  Thus supported batches record
+available primitive events rather than total-step stutters, and the canonical
+threaded order is a representative schedule justified by frontier
+independence.
 
-\begin{theorem}[Frontier stability for elaborated event graphs]
-\label{thm:stability}
-For every elaborated graph $\mathsf{eg}(g)$ of a checked program
-$g$, frontier stability holds.
+\begin{theorem}[Explicit batch execution]
+\label{thm:explicit-batch-execution}
+For every supported pair $(B,D)$ of the explicit round-batch distribution from
+an independent legal round $(C,\sigma)$, $B$ is an available primitive run from
+$C$ to $D$; in particular running the primitive event list $B$ from $C$ reaches
+$D$ with nonzero support.  Forgetting $B$ recovers the native round transition,
+and decorating every supported round destination with its realized event batch
+exactly recovers the explicit batch distribution.
 \end{theorem}
 
-The proof is a case analysis on the kinds of frontier nodes:
-distinct commits do not write to each other's storage (by SSA),
-distinct internal nodes likewise, and the
-$\mathrm{actionLegal}$ predicate of a commit reads only owner-visible
-or public fields, none of which are written by other players'
-frontier patches (by the guard-uses-only predicate).
-
-\Cref{thm:stability} is what makes the round-batched view
-well-defined: without it, two simultaneously selected frontier
-choices could interfere, and the FOSG transition would be
-ambiguous.
+Thus the FOSG transition kernel remains the round transition, while the
+native round view additionally exposes the realized primitive trace
+witness needed by backend-refinement arguments.
 
 The corresponding FOSG view uses the same action alphabet, active
 sets, available-action predicates, and transition kernel.  It adds the

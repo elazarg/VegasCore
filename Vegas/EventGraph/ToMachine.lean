@@ -72,25 +72,35 @@ end PlayerAction
 available; it only gives terminal FOSG presentations a total internal turn
 without inventing an executable event node. -/
 inductive InternalEvent (G : Vegas.EventGraph Player L) where
-  | node (node : G.Node)
+  | node (node : G.Node) (patch : G.FieldPatch)
   | idle
 
 namespace InternalEvent
 
-/-- Internal events are finite when event nodes are finite. -/
+/-- Internal events are finite when event nodes and field patches are finite. -/
 @[reducible] noncomputable instance instFintype
-    (G : Vegas.EventGraph Player L) [Fintype G.Node] :
+    (G : Vegas.EventGraph Player L) [Fintype G.Node] [Fintype G.Field]
+    [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
     Fintype (InternalEvent G) := by
   classical
+  letI : ∀ field : G.Field,
+      Fintype (Option (L.Val (G.fieldTy field))) :=
+    fun _ => inferInstance
+  letI : Fintype G.FieldPatch := by
+    dsimp [EventGraph.FieldPatch]
+    infer_instance
   letI : DecidableEq (InternalEvent G) := Classical.decEq _
   refine Fintype.mk
-    (((Finset.univ : Finset G.Node).image InternalEvent.node) ∪
+    (((Finset.univ : Finset (G.Node × G.FieldPatch)).image
+        (fun pair => InternalEvent.node pair.1 pair.2)) ∪
       {InternalEvent.idle}) ?_
   intro event
   cases event with
-  | node node =>
+  | node node patch =>
       exact Finset.mem_union.mpr
-        (Or.inl (Finset.mem_image.mpr ⟨node, Finset.mem_univ _, rfl⟩))
+        (Or.inl
+          (Finset.mem_image.mpr
+            ⟨(node, patch), Finset.mem_univ _, rfl⟩))
   | idle =>
       simp
 
@@ -125,19 +135,25 @@ def availableInternal
     Set (InternalEvent G) :=
   { event |
       match event with
-      | .node node =>
+      | .node node patch =>
           node ∈ cfg.frontier ∧
-            (G.sem node).actor = none
+            (G.sem node).actor = none ∧
+              patch ∈ (G.internalKernel node cfg.result).support
       | .idle => False }
 
-/-- Soundness condition for exposing graph frontiers as whole FOSG rounds.
+/-- Independence condition for exposing graph frontiers as strategic rounds.
 
-The first field prevents player-owned frontier nodes from deadlocking.  The
+The first field prevents player-owned frontier nodes from deadlocking. The
 second field says that once a player action for one frontier node is legal, it
 remains legal after any different frontier node in the same source frontier has
-been recorded.  This is the graph-level condition ruling out player-action
-legality races inside a batched frontier round. -/
-structure HasStableFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
+been recorded. This is the graph-level condition ruling out player-action
+legality races inside a batched frontier round. The third field gives the
+matching independence condition for internal chance: executing one frontier
+node cannot change the kernel sampled by a different source-frontier node.
+
+The canonical `frontier.toList` order used by round execution is therefore a
+representative linearization, not extra strategic content. -/
+structure HasIndependentFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
   availablePlayerActions : G.HasAvailablePlayerActions
   actionStable :
     ∀ (cfg : G.Configuration)
@@ -150,6 +166,16 @@ structure HasStableFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
       action ∈ available G cfg who →
         action ∈ available G
           (cfg.withPatch firstPatch hfirst hfirstLegal) who
+  internalKernelStable :
+    ∀ (cfg : G.Configuration)
+      {first second : G.Node} {firstPatch : G.FieldPatch}
+      (hfirst : first ∈ cfg.frontier)
+      (_ : second ∈ cfg.frontier)
+      (_ : second ≠ first)
+      (hfirstLegal : G.patchLegal first firstPatch),
+      G.internalKernel second
+          ((cfg.withPatch firstPatch hfirst hfirstLegal).result) =
+        G.internalKernel second cfg.result
 
 /-- Execute one available player node. Unavailable events stutter, matching the
 total-step convention of `Machine`. -/
@@ -164,25 +190,31 @@ noncomputable def stepPlay
     else
       PMF.pure cfg
 
-/-- Execute one available internal node. The graph's internal kernel chooses
-the field patch. Any patch outside the legal predicate stutters. -/
+/-- Execute one available internal node. The event carries the kernel-realized
+field patch, so this primitive step is deterministic. -/
 noncomputable def stepInternal
     (G : Vegas.EventGraph Player L) (event : InternalEvent G)
     (cfg : G.Configuration) : PMF G.Configuration := by
   classical
   exact
     match event with
-    | .node node =>
-        if h : (InternalEvent.node node : InternalEvent G) ∈
+    | .node node patch =>
+        if h : (InternalEvent.node node patch : InternalEvent G) ∈
             availableInternal G cfg then
           have hnode :
-              node ∈ cfg.frontier ∧ (G.sem node).actor = none := by
+              node ∈ cfg.frontier ∧
+                (G.sem node).actor = none ∧
+                  patch ∈ (G.internalKernel node cfg.result).support := by
             simpa [availableInternal] using h
-          (G.internalKernel node cfg.result).bind fun patch =>
-            if hlegal : G.patchLegal node patch then
-              PMF.pure (cfg.withPatch patch hnode.1 hlegal)
-            else
-              PMF.pure cfg
+          have hlegal : G.patchLegal node patch :=
+            G.internalKernel_support_legal
+              (cfg.mem_nodes_of_mem_frontier hnode.1)
+              (cfg.not_done_of_mem_frontier hnode.1)
+              (fun prereq hpre =>
+                cfg.result_some_of_prereq_of_mem_frontier hnode.1 hpre)
+              (fun hresult => cfg.legal hresult)
+              hnode.2.1 hnode.2.2
+          PMF.pure (cfg.withPatch patch hnode.1 hlegal)
         else
           PMF.pure cfg
     | .idle => PMF.pure cfg

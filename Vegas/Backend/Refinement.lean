@@ -71,12 +71,16 @@ This is the relation needed for runtime soundness statements that preserve
 outcome distributions. External implementation events project to a
 specification event and must have the same projected next-state PMF.
 Internal implementation events project to `none` and must be stuttering after
-state projection. The relation is still machine-to-machine; it does not add a
-second runtime semantics. -/
+state projection. `projectEventBatch` is the trace-level projection actually
+used by batch laws; it may normalize an implementation schedule, for example by
+canonicalizing independent frontier events before comparing with the
+specification batch. The relation is still machine-to-machine; it does not add
+a second runtime semantics. -/
 structure StochasticStepRefinement
     (Impl Spec : Machine Player) where
   projectState : Impl.State → Spec.State
   projectEvent : Impl.Event → Option Spec.Event
+  projectEventBatch : List Impl.Event → List Spec.Event
   projectPublic : Impl.Public → Spec.Public
   projectObs : (player : Player) → Impl.Obs player → Spec.Obs player
   projectOutcome : Impl.Outcome → Spec.Outcome
@@ -87,6 +91,10 @@ structure StochasticStepRefinement
         match projectEvent event with
         | some specEvent => Spec.step specEvent (projectState source)
         | none => PMF.pure (projectState source)
+  eventBatch_project :
+    ∀ (events : List Impl.Event) (source : Impl.State),
+      (Impl.runEventsFrom events source).map projectState =
+        Spec.runEventsFrom (projectEventBatch events) (projectState source)
   publicView_project :
     ∀ state,
       Spec.publicView (projectState state) =
@@ -153,12 +161,17 @@ baseline backend and as a smoke test for trace-projection theorems. -/
 def refl (M : Machine Player) : StochasticStepRefinement M M where
   projectState := id
   projectEvent := some
+  projectEventBatch := id
   projectPublic := id
   projectObs := fun _ => id
   projectOutcome := id
   init_project := rfl
   step_project := by
     intro event source
+    rw [PMF.map_id]
+    rfl
+  eventBatch_project := by
+    intro events source
     rw [PMF.map_id]
     rfl
   publicView_project := by
@@ -256,13 +269,6 @@ theorem projected_outcome_of_terminal
       Spec.outcome (R.projectState state) :=
   R.terminal_outcome_projected hterminal
 
-/-- Project one implementation event batch to the externally visible
-specification event batch, dropping implementation-internal events. -/
-def projectEventBatch
-    (R : StochasticStepRefinement Impl Spec) (batch : List Impl.Event) :
-    List Spec.Event :=
-  batch.filterMap R.projectEvent
-
 /-- Project an implementation event-batch trace to the corresponding
 specification event-batch trace. -/
 def projectEventBatchTrace
@@ -290,7 +296,7 @@ def projectEventBatchTrace
 @[simp] theorem refl_projectEventBatch
     (M : Machine Player) (batch : List M.Event) :
     ((refl M).projectEventBatch batch) = batch := by
-  simp [projectEventBatch, refl]
+  simp [refl]
 
 @[simp] theorem refl_projectEventBatchTrace
     (M : Machine Player) (trace : M.EventBatchTrace) :
@@ -312,52 +318,8 @@ theorem runEventsFrom_project_eq
     (events : List Impl.Event) (state : Impl.State) :
     (Impl.runEventsFrom events state).map R.projectState =
       Spec.runEventsFrom (R.projectEventBatch events)
-        (R.projectState state) := by
-  induction events generalizing state with
-  | nil =>
-      change PMF.map R.projectState (PMF.pure state) =
-        PMF.pure (R.projectState state)
-      rw [PMF.pure_map]
-  | cons event events ih =>
-      change
-        PMF.map R.projectState
-          (Impl.runEventsFrom ([event] ++ events) state) =
-        Spec.runEventsFrom (R.projectEventBatch (event :: events))
-          (R.projectState state)
-      rw [Impl.runEventsFrom_append]
-      have hsingle :
-          Impl.runEventsFrom [event] state = Impl.step event state := by
-        simp [Machine.runEventsFrom]
-      rw [hsingle]
-      rw [PMF.map_bind]
-      simp_rw [ih]
-      change
-        (Impl.step event state).bind
-            ((fun s => Spec.runEventsFrom (R.projectEventBatch events) s) ∘
-              R.projectState) =
-          Spec.runEventsFrom (R.projectEventBatch (event :: events))
-            (R.projectState state)
-      rw [← PMF.bind_map]
-      rw [R.step_project event state]
-      simp only [projectEventBatch, List.filterMap_cons]
-      cases h : R.projectEvent event with
-      | none =>
-          simp
-      | some specEvent =>
-          change
-            (Spec.step specEvent (R.projectState state)).bind
-                (fun current =>
-                  Spec.runEventsFrom (List.filterMap R.projectEvent events)
-                    current) =
-              Spec.runEventsFrom
-                ([specEvent] ++ List.filterMap R.projectEvent events)
-                (R.projectState state)
-          rw [Spec.runEventsFrom_append]
-          have hsingleSpec :
-              Spec.runEventsFrom [specEvent] (R.projectState state) =
-                Spec.step specEvent (R.projectState state) := by
-            simp [Machine.runEventsFrom]
-          rw [hsingleSpec]
+        (R.projectState state) :=
+  R.eventBatch_project events state
 
 /-- Projecting a fixed implementation event-batch run gives the same state
 distribution as running the projected specification event batches. -/
@@ -367,19 +329,44 @@ theorem runEventBatchesFrom_project_eq
     (Impl.runEventBatchesFrom batches state).map R.projectState =
       Spec.runEventBatchesFrom (batches.map R.projectEventBatch)
         (R.projectState state) := by
-  rw [Impl.runEventBatchesFrom_eq_runEventsFrom_flatten]
-  rw [Spec.runEventBatchesFrom_eq_runEventsFrom_flatten]
-  rw [R.runEventsFrom_project_eq]
-  change
-    Spec.runEventsFrom (List.filterMap R.projectEvent batches.flatten)
-        (R.projectState state) =
-      Spec.runEventsFrom (List.map (List.filterMap R.projectEvent) batches).flatten
-        (R.projectState state)
-  rw [List.filterMap_flatten]
+  induction batches generalizing state with
+  | nil =>
+      simp [PMF.pure_map]
+  | cons batch batches ih =>
+      change
+        PMF.map R.projectState
+          (Impl.runEventBatchesFrom ([batch] ++ batches) state) =
+        Spec.runEventBatchesFrom
+          ([R.projectEventBatch batch] ++ batches.map R.projectEventBatch)
+          (R.projectState state)
+      rw [Impl.runEventBatchesFrom_append]
+      rw [PMF.map_bind]
+      simp_rw [ih]
+      rw [Impl.runEventBatchesFrom_singleton]
+      change
+        (Impl.runEventsFrom batch state).bind
+            ((fun specState =>
+              Spec.runEventBatchesFrom (batches.map R.projectEventBatch)
+                specState) ∘ R.projectState) =
+          Spec.runEventBatchesFrom
+            ([R.projectEventBatch batch] ++ batches.map R.projectEventBatch)
+            (R.projectState state)
+      rw [← PMF.bind_map
+        (p := Impl.runEventsFrom batch state)
+        (f := R.projectState)
+        (q := fun specState =>
+          Spec.runEventBatchesFrom (batches.map R.projectEventBatch)
+            specState)]
+      rw [R.runEventsFrom_project_eq batch state]
+      rw [Spec.runEventBatchesFrom_append]
+      simp [Spec.runEventBatchesFrom_singleton]
 
-/-- Compatibility between a backend event-batch law and a specification event-batch law:
-sampling a backend event batch and projecting it must give the same distribution as
-sampling the specification event batch from the projected trace. -/
+/-- Compatibility between a backend event-batch law and a specification
+event-batch law: sampling a backend event batch and applying the refinement's
+batch projection must give the same distribution as sampling the specification
+event batch from the projected trace. The batch projection, not the pointwise
+event projection, is the comparison boundary for runtimes that use a different
+schedule for independent primitive events. -/
 def EventBatchLawCompatible
     (R : StochasticStepRefinement Impl Spec)
     (lawImpl : Impl.EventBatchLaw) (lawSpec : Spec.EventBatchLaw) : Prop :=

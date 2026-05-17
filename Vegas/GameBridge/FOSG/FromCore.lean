@@ -23,7 +23,7 @@ noncomputable def eventGraphFOSGView
     (g : WFProgram P L) :
     (eventGraphMachine g).FOSGView :=
   (programEventGraph g).toFOSGView (eventGraphMachineInterface g)
-    (programEventGraph_hasStableFrontierRounds g)
+    (programEventGraph_hasIndependentFrontierRounds g)
 
 private theorem eventGraph_done_subset_nodes
     {G : EventGraph P L} (cfg : G.Configuration) :
@@ -117,158 +117,40 @@ private theorem eventGraph_roundStepNode_done_subset
             intro candidate hdone
             exact hdone
   | none =>
+      simp only [hactor, PMF.mem_support_bind_iff] at hsupp
+      rcases hsupp with ⟨patch, _hpatch, hstepMass⟩
+      have hstep :
+          dst ∈
+            (G.stepInternal
+              (EventGraph.InternalEvent.node node patch) cfg).support :=
+        (PMF.mem_support_iff _ _).2 hstepMass
       by_cases havailable :
-          (EventGraph.InternalEvent.node node : EventGraph.InternalEvent G) ∈
+          (EventGraph.InternalEvent.node node patch :
+            EventGraph.InternalEvent G) ∈
             EventGraph.availableInternal G cfg
-      · have hsuppBind :
-            dst ∈
-              ((G.internalKernel node cfg.result).bind fun patch =>
-                if hlegal : G.patchLegal node patch then
-                  PMF.pure (cfg.withPatch patch
-                    (by simpa [EventGraph.availableInternal, hactor] using havailable)
-                    hlegal)
-                else
-                  PMF.pure cfg).support := by
-          simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
-            hactor, havailable] using hsupp
-        rw [PMF.mem_support_bind_iff] at hsuppBind
-        rcases hsuppBind with ⟨patch, _hpatch, hdst⟩
-        split at hdst
-        · rename_i hlegal
-          have hdstEq :
-              dst =
-                cfg.withPatch patch
-                  (by simpa [EventGraph.availableInternal, hactor] using havailable)
-                  hlegal := by
-            simpa using hdst
-          subst dst
-          exact eventGraph_withPatch_done_subset cfg
-            (by simpa [EventGraph.availableInternal, hactor] using havailable)
-            hlegal
-        · have hdstEq : dst = cfg := by
-            simpa using hdst
-          subst dst
-          intro candidate hdone
-          exact hdone
+      · have hnode :
+            node ∈ cfg.frontier ∧
+              (G.sem node).actor = none ∧
+                patch ∈ (G.internalKernel node cfg.result).support := by
+          simpa [EventGraph.availableInternal] using havailable
+        have hlegal : G.patchLegal node patch :=
+          G.internalKernel_support_legal
+            (cfg.mem_nodes_of_mem_frontier hnode.1)
+            (cfg.not_done_of_mem_frontier hnode.1)
+            (fun prereq hpre =>
+              cfg.result_some_of_prereq_of_mem_frontier hnode.1 hpre)
+            (fun hresult => cfg.legal hresult)
+            hnode.2.1 hnode.2.2
+        have hdst :
+            dst = cfg.withPatch patch hnode.1 hlegal := by
+          simpa [EventGraph.stepInternal, havailable, hnode, hlegal] using hstep
+        subst dst
+        exact eventGraph_withPatch_done_subset cfg hnode.1 hlegal
       · have hdst : dst = cfg := by
-          simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
-            hactor, havailable] using hsupp
+          simpa [EventGraph.stepInternal, havailable] using hstep
         subst dst
         intro candidate hdone
         exact hdone
-
-private theorem eventGraph_internalKernel_patchLegal_of_mem_support
-    (g : WFProgram P L)
-    {cfg : (programEventGraph g).Configuration}
-    {node : ProgramNode g.prog}
-    (hfrontier : node ∈ cfg.frontier)
-    (hactor : ((programEventGraph g).sem node).actor = none)
-    {patch : ProgramField.FieldPatch g.prog}
-    (hsupp :
-      patch ∈
-        ((programEventGraph g).internalKernel node cfg.result).support) :
-    (programEventGraph g).patchLegal node patch := by
-  classical
-  change
-    patch ∈
-      (ProgramNode.internalKernel g.env g.obligations node cfg.result).support at hsupp
-  unfold ProgramNode.internalKernel at hsupp
-  change (ProgramNode.sem g.obligations node).actor = none at hactor
-  change ProgramNode.patchLegal g.obligations node patch
-  cases hsem : ProgramNode.sem g.obligations node with
-  | assign target expr =>
-      rw [hsem] at hsupp
-      have havailable :
-          ∀ read, read ∈ expr.reads →
-            (ProgramField.value? g.env cfg.result read).isSome := by
-        intro read hread
-        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
-      change
-        patch ∈
-          (if available :
-              ∀ read, read ∈ expr.reads →
-                (ProgramField.value? g.env cfg.result read).isSome then
-            PMF.pure
-              (ProgramField.singlePatch target
-                (expr.eval
-                  (ProgramField.readEnvOfResult g.env cfg.result
-                    expr.reads available)))
-          else
-            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
-      rw [dif_pos havailable] at hsupp
-      have hpatch :
-          patch =
-            ProgramField.singlePatch target
-              (expr.eval
-                (ProgramField.readEnvOfResult g.env cfg.result
-                  expr.reads havailable)) := by
-        simpa using hsupp
-      subst patch
-      rw [ProgramNode.patchLegal, hsem]
-      exact ⟨_, rfl⟩
-  | sample target dist =>
-      rw [hsem] at hsupp
-      have havailable :
-          ∀ read, read ∈ dist.reads →
-            (ProgramField.value? g.env cfg.result read).isSome := by
-        intro read hread
-        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
-      change
-        patch ∈
-          (if available :
-              ∀ read, read ∈ dist.reads →
-                (ProgramField.value? g.env cfg.result read).isSome then
-            PMF.map
-              (fun value => ProgramField.singlePatch target value)
-              (dist.eval
-                (ProgramField.readEnvOfResult g.env cfg.result
-                  dist.reads available))
-          else
-            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
-      rw [dif_pos havailable] at hsupp
-      rcases (PMF.mem_support_map_iff _ _ _).mp hsupp with
-        ⟨value, _hvalue, hpatch⟩
-      rw [← hpatch]
-      rw [ProgramNode.patchLegal, hsem]
-      exact ⟨value, rfl⟩
-  | commit owner target guard =>
-      simp [EventGraph.NodeSem.actor, hsem] at hactor
-  | reveal source target hty =>
-      rw [hsem] at hsupp
-      have havailable :
-          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
-            (ProgramField.value? g.env cfg.result read).isSome := by
-        intro read hread
-        exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
-          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
-      change
-        patch ∈
-          (if available :
-              ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
-                (ProgramField.value? g.env cfg.result read).isSome then
-            (let ρ :=
-              ProgramField.readEnvOfResult g.env cfg.result
-                ({source} : Finset (ProgramField g.prog)) available
-            PMF.pure
-              (ProgramField.singlePatch target
-                (cast (by rw [hty])
-                  (ρ.value source (by simp)))))
-          else
-            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
-      rw [dif_pos havailable] at hsupp
-      let ρ :=
-        ProgramField.readEnvOfResult g.env cfg.result
-          ({source} : Finset (ProgramField g.prog)) havailable
-      have hpatch :
-          patch =
-            ProgramField.singlePatch target
-              (cast (by rw [hty]) (ρ.value source (by simp))) := by
-        simpa using hsupp
-      subst patch
-      rw [ProgramNode.patchLegal, hsem]
-      exact ⟨_, rfl⟩
 
 private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
     (g : WFProgram P L)
@@ -293,7 +175,8 @@ private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
   | some who =>
       have hactive :
           who ∈ EventGraph.roundActive (programEventGraph g) cfg :=
-        (EventGraph.mem_roundActive_iff (programEventGraph g) cfg who).mpr
+        (EventGraph.mem_roundActive_iff
+          (programEventGraph g) cfg who).mpr
           ⟨node, hfrontier, hactor⟩
       have hcoord := hjoint.2 who
       cases hmove : joint who with
@@ -326,62 +209,58 @@ private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
           exact eventGraph_withPatch_done_card_succ_le cfg
             hfrontier hnodeLegal.1
   | none =>
-      have havailable :
-          (EventGraph.InternalEvent.node node :
-            EventGraph.InternalEvent (programEventGraph g)) ∈
-            EventGraph.availableInternal (programEventGraph g) cfg := by
-        exact ⟨hfrontier, hactor⟩
-      let hfrontier' : node ∈ cfg.frontier := hfrontier
       have hsuppBind :
           dst ∈
             (((programEventGraph g).internalKernel node cfg.result).bind
               fun patch =>
-                if hlegal : (programEventGraph g).patchLegal node patch then
-                  PMF.pure (cfg.withPatch patch hfrontier' hlegal)
-                else
-                  PMF.pure cfg).support := by
-        simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
-          hactor, havailable, hfrontier'] using hsupp
+                EventGraph.stepInternal (programEventGraph g)
+                  (.node node patch) cfg).support := by
+        simpa [EventGraph.roundStepNode, hactor] using hsupp
       rw [PMF.mem_support_bind_iff] at hsuppBind
-      rcases hsuppBind with ⟨patch, hpatch, hdstSupport⟩
+      rcases hsuppBind with ⟨patch, hpatch, hstep⟩
+      have havailable :
+          (EventGraph.InternalEvent.node node patch :
+            EventGraph.InternalEvent (programEventGraph g)) ∈
+            EventGraph.availableInternal (programEventGraph g) cfg := by
+        exact ⟨hfrontier, hactor, hpatch⟩
       have hlegal :
           (programEventGraph g).patchLegal node patch :=
-        eventGraph_internalKernel_patchLegal_of_mem_support g
-          hfrontier hactor hpatch
-      rw [dif_pos hlegal] at hdstSupport
-      have hdst : dst = cfg.withPatch patch hfrontier' hlegal := by
-        simpa using hdstSupport
+        (programEventGraph g).internalKernel_support_legal
+          (cfg.mem_nodes_of_mem_frontier hfrontier)
+          (cfg.not_done_of_mem_frontier hfrontier)
+          (fun prereq hpre =>
+            cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre)
+          (fun hresult => cfg.legal hresult)
+          hactor hpatch
+      have hdst :
+          dst = cfg.withPatch patch hfrontier hlegal := by
+        simpa [EventGraph.stepInternal, havailable, hlegal] using hstep
       subst dst
-      exact eventGraph_withPatch_done_card_succ_le cfg hfrontier' hlegal
+      exact eventGraph_withPatch_done_card_succ_le cfg hfrontier hlegal
 
 private theorem eventGraph_roundTransition_go_done_card_lower_bound
     {G : EventGraph P L}
     (joint : GameTheory.JointAction (EventGraph.PlayerRoundAction G))
     (nodes : List G.Node)
-    {acc : PMF G.Configuration} {lower : Nat}
-    (hacc :
-      ∀ cfg : G.Configuration, cfg ∈ acc.support → lower ≤ cfg.done.card)
-    {dst : G.Configuration}
+    {current dst : G.Configuration} {lower : Nat}
+    (hcurrent : lower ≤ current.done.card)
     (hsupp :
-      dst ∈
-        (nodes.foldl
-          (fun acc node =>
-            acc.bind fun state => EventGraph.roundStepNode G joint node state)
-          acc).support) :
+      dst ∈ (EventGraph.roundTransitionGo G joint nodes current).support) :
     lower ≤ dst.done.card := by
-  induction nodes generalizing acc with
+  induction nodes generalizing current with
   | nil =>
-      simpa using hacc dst hsupp
+      have hdst : dst = current := by
+        simpa [EventGraph.roundTransitionGo] using hsupp
+      subst dst
+      exact hcurrent
   | cons node nodes ih =>
-      apply ih
-      · intro mid hmid
-        rw [PMF.mem_support_bind_iff] at hmid
-        rcases hmid with ⟨src : G.Configuration, hsrc, hstep⟩
-        have hsrcLower : lower ≤ src.done.card := hacc src hsrc
-        have hsubset : src.done ⊆ mid.done :=
-          eventGraph_roundStepNode_done_subset joint node hstep
-        exact Nat.le_trans hsrcLower (Finset.card_le_card hsubset)
-      · simpa [List.foldl_cons] using hsupp
+      simp only [EventGraph.roundTransitionGo, PMF.mem_support_bind_iff] at hsupp
+      rcases hsupp with ⟨mid, hmid, hdst⟩
+      have hsubset : current.done ⊆ mid.done :=
+        eventGraph_roundStepNode_done_subset joint node hmid
+      exact ih
+        (Nat.le_trans hcurrent (Finset.card_le_card hsubset))
+        hdst
 
 private theorem eventGraph_roundTransition_done_card_succ_le_of_legal
     (g : WFProgram P L)
@@ -416,24 +295,18 @@ private theorem eventGraph_roundTransition_done_card_succ_le_of_legal
         simpa using hheadList
       have hsuppRest :
           dst ∈
-            (rest.foldl
-              (fun acc node =>
-                acc.bind fun state =>
-                  EventGraph.roundStepNode
-                    (programEventGraph g) joint node state)
-              (EventGraph.roundStepNode
-                (programEventGraph g) joint head cfg)).support := by
-        simpa [hlist, List.foldl_cons] using hsupp
+            (EventGraph.roundTransitionGo
+              (programEventGraph g) joint (head :: rest) cfg).support := by
+        simpa [hlist] using hsupp
+      simp only [EventGraph.roundTransitionGo, PMF.mem_support_bind_iff] at hsuppRest
+      rcases hsuppRest with ⟨mid, hmid, hdstRest⟩
       exact
         eventGraph_roundTransition_go_done_card_lower_bound
           (G := programEventGraph g) joint rest
-          (acc := EventGraph.roundStepNode
-            (programEventGraph g) joint head cfg)
           (lower := cfg.done.card + 1)
-          (fun mid hmid =>
-            eventGraph_roundStepNode_done_card_succ_le_of_legal
-              g hjoint hheadFrontier hmid)
-          hsuppRest
+          (eventGraph_roundStepNode_done_card_succ_le_of_legal
+            g hjoint hheadFrontier hmid)
+          hdstRest
 
 private theorem eventGraph_boundedFOSG_step_done_card_succ_le
     (g : WFProgram P L) (horizon : Nat)
@@ -596,21 +469,40 @@ noncomputable def eventGraphFOSGHistoryEventBatches
     List (List (eventGraphMachine g).Event) :=
   EventGraph.boundedFOSGHistoryEventBatches
     (programEventGraph g) (eventGraphMachineInterface g)
-    (programEventGraph_hasStableFrontierRounds g) horizon h
+    (programEventGraph_hasIndependentFrontierRounds g) horizon h
 
-/-- Primitive machine events represented by one event-graph FOSG frontier
-round. -/
-noncomputable def eventGraphRoundPrimitiveEvents
+/-- Realized primitive machine events represented by one event-graph FOSG
+frontier round. Internal events carry the patch found in the realized
+destination. -/
+noncomputable def eventGraphRealizedEventBatch
     (g : WFProgram P L)
     (cfg : (eventGraphMachine g).State)
-    (joint : GameTheory.JointAction (eventGraphFOSGView g).Act) :
+    (joint : GameTheory.JointAction (eventGraphFOSGView g).Act)
+    (dst : (eventGraphMachine g).State) :
     List (eventGraphMachine g).Event := by
   simpa [eventGraphMachine, eventGraphFOSGView] using
-    (EventGraph.roundPrimitiveEvents (programEventGraph g)
-      (eventGraphMachineInterface g) cfg joint)
+    (EventGraph.realizedEventBatch (programEventGraph g)
+      (eventGraphMachineInterface g) cfg joint dst)
 
-/-- Every bounded event-graph FOSG history is backed by a primitive machine
-event-batch run whose support contains the same checkpoint state. -/
+/-- Every bounded event-graph FOSG history extracts primitive event batches
+whose events are available along the checkpoint execution from the machine
+initial state to the history's checkpoint state. -/
+theorem eventGraphFOSGHistory_state_availableRunBatchesFrom
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    (eventGraphMachine g).AvailableRunBatchesFrom
+      (eventGraphMachine g).init
+      (eventGraphFOSGHistoryEventBatches g horizon h)
+      h.lastState.state := by
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
+    eventGraphFOSGView] using
+    (EventGraph.boundedFOSGHistory_state_availableRunBatchesFrom
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasIndependentFrontierRounds g) horizon h)
+
+/-- Every bounded event-graph FOSG history extracts a primitive machine
+event-batch trace whose endpoint support contains the history's checkpoint
+state. -/
 theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
@@ -618,98 +510,9 @@ theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
       ((eventGraphMachine g).runEventBatchesFrom
         (eventGraphFOSGHistoryEventBatches g horizon h)
         (eventGraphMachine g).init).support := by
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView] using
-    (EventGraph.boundedFOSGHistory_state_mem_runEventBatchesFrom_support
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasStableFrontierRounds g) horizon h)
-
-/-- One bounded event-graph FOSG transition, projected to the history's
-extracted event-batch prefix and successor checkpoint state, is exactly the
-corresponding primitive machine event-batch run. -/
-theorem eventGraphFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
-    (action :
-      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
-        h.lastState)) :
-    PMF.map
-        (fun dst =>
-          (eventGraphFOSGHistoryEventBatches g horizon h ++
-              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
-            dst.state))
-        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-          h.lastState action) =
-      PMF.map
-        (fun next =>
-          (eventGraphFOSGHistoryEventBatches g horizon h ++
-              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
-            next))
-        ((eventGraphMachine g).runEventBatchesFrom
-          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
-          h.lastState.state) := by
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_map_eventBatches_state_eq_runEventBatchesFrom
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasStableFrontierRounds g) horizon h action)
-
-/-- Continuation form of one event-graph FOSG transition: binding over the
-bounded FOSG transition is the same as binding over the primitive event-batch
-machine run and reattaching the bounded presentation depth. -/
-theorem eventGraphFOSG_transition_bind_eq_runEventBatchesFrom_bind
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
-    (action :
-      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
-        h.lastState))
-    {α : Type}
-    (K : (eventGraphMachine g).BoundedState horizon → PMF α) :
-    ((((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-          h.lastState action).bind K) =
-      ((eventGraphMachine g).runEventBatchesFrom
-          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
-          h.lastState.state).bind
-        (fun next =>
-          K (h.lastState.succ
-            (Nat.lt_of_not_ge
-              (fun hle => action.2.1 (Or.inr hle)))
-            next)) := by
-  simpa [eventGraphMachine, eventGraphFOSGView,
-    eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_bind_eq_runEventBatchesFrom_bind
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasStableFrontierRounds g) horizon h action K)
-
-/-- One-step form matching `FOSG.History.runDistFrom` for event graphs:
-extend the FOSG history by the sampled bounded destination, then project to
-the extracted primitive event batches and checkpoint state. -/
-theorem eventGraphFOSG_transition_map_extend_eventBatches_state_eq_runEventBatchesFrom
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History))
-    (action :
-      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction
-        h.lastState)) :
-    PMF.map
-        (fun dst =>
-          let h' := h.extendByOutcome action dst
-          (eventGraphFOSGHistoryEventBatches g horizon h',
-            h'.lastState.state))
-        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-          h.lastState action) =
-      PMF.map
-        (fun next =>
-          (eventGraphFOSGHistoryEventBatches g horizon h ++
-              [eventGraphRoundPrimitiveEvents g h.lastState.state action.1],
-            next))
-        ((eventGraphMachine g).runEventBatchesFrom
-          [eventGraphRoundPrimitiveEvents g h.lastState.state action.1]
-          h.lastState.state) := by
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView, eventGraphRoundPrimitiveEvents] using
-    (EventGraph.boundedFOSG_transition_map_extend_eventBatches_state_eq_runEventBatchesFrom
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasStableFrontierRounds g) horizon h action)
+  exact
+    (eventGraphFOSGHistory_state_availableRunBatchesFrom
+      g horizon h).mem_runEventBatchesFrom_support
 
 /-- Player round-action availability in the event graph is determined by the
 public transcript together with the acting player's private observation. -/
@@ -1048,11 +851,16 @@ theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
 
 /-- Finite internal-event helper for the program event-graph machine. -/
 @[reducible] noncomputable instance eventGraphMachine.instFintypeInternal
-    (g : WFProgram P L) :
+    (g : WFProgram P L) [FiniteDomains g] :
     Fintype (eventGraphMachine g).Internal := by
   classical
   letI : Fintype (ProgramNode g.prog) :=
     ProgramNode.instFintype g.prog
+  letI : Fintype (ProgramField g.prog) :=
+    ProgramField.instFintype g.prog
+  letI :
+      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
+    fun field => ProgramField.instFintypeValue g field
   dsimp [eventGraphMachine, EventGraph.toMachine,
     EventGraph.InternalEvent, programEventGraph]
   infer_instance
@@ -1127,7 +935,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasStableFrontierRounds g)).Act
+              (programEventGraph_hasIndependentFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -1135,7 +943,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
   simpa [eventGraphMachine, eventGraphFOSGView] using
     (EventGraph.boundedFOSGEventBatchTraceDistFrom
       (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasStableFrontierRounds g) horizon σ)
+      (programEventGraph_hasIndependentFrontierRounds g) horizon σ)
 
 /-- Bounded event-graph FOSG execution, projected to extracted primitive
 event batches and checkpoint state, equals the history-dependent event-batch
@@ -1161,7 +969,7 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasStableFrontierRounds g)).Act
+              (programEventGraph_hasIndependentFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -1176,14 +984,14 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
       DecidablePred
         ((((programEventGraph g).toFOSGView
           (eventGraphMachineInterface g)
-          (programEventGraph_hasStableFrontierRounds g)).toBoundedFOSG
+          (programEventGraph_hasIndependentFrontierRounds g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
   simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView, eventGraphFOSGEventBatchTraceDistFrom] using
       (EventGraph.boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
         (programEventGraph g) (eventGraphMachineInterface g)
-        (programEventGraph_hasStableFrontierRounds g) horizon σ n h)
+        (programEventGraph_hasIndependentFrontierRounds g) horizon σ n h)
 
 /-- Initial history of the bounded event-graph FOSG presentation. -/
 noncomputable def eventGraphInitialHistory

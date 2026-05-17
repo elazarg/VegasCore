@@ -449,6 +449,16 @@ structure EventGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
           Option (L.Val (fieldTy field)))) →
       PMF ((field : Field) →
         Option (L.Val (fieldTy field)))
+  internalKernel_support_legal :
+    ∀ {node result patch},
+      node ∈ nodes →
+      (result node).isNone →
+      (∀ prereq, prereq ∈ prereqs node → (result prereq).isSome) →
+      (∀ {doneNode donePatch},
+        result doneNode = some donePatch → patchLegal doneNode donePatch) →
+      (sem node).actor = none →
+      patch ∈ (internalKernel node result).support →
+      patchLegal node patch
 
 namespace EventGraph
 

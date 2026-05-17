@@ -4,8 +4,8 @@ import Vegas.Machine.RoundView
 /-!
 # Native round views for event graphs
 
-This module packages stable event-graph frontiers as native machine
-`RoundView`s.  The FOSG bridge reuses the same frontier-round definitions but
+This module packages event-graph frontiers as native machine
+`RoundView`s. The FOSG bridge reuses the same frontier-round definitions but
 is not needed here.
 -/
 
@@ -20,17 +20,17 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- Native round-view presentation of a protocol-graph machine by stable
-frontier rounds. -/
+/-- Native round-view presentation of a protocol-graph machine by independent
+explicit frontier rounds. -/
 noncomputable def toRoundView
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasStableFrontierRounds) :
+    (hsound : G.HasIndependentFrontierRounds) :
     (G.toMachine iface).RoundView where
   Act := PlayerRoundAction G
   active := roundActive G
   availableActions := roundAvailable G
   transition := fun cfg action => roundTransition G cfg action.1
-  eventBatch := fun cfg joint => roundPrimitiveEvents G iface cfg joint
+  eventBatch := fun cfg joint dst => realizedEventBatch G iface cfg joint dst
   terminal_active_eq_empty := by
     intro cfg hterminal
     apply Finset.eq_empty_iff_forall_notMem.mpr

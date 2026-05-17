@@ -76,6 +76,17 @@ private theorem runEventsFrom_foldl_eq_bind
       rw [runEventsFrom_cons]
       exact (ih (M.step event current)).symm
 
+/-- Executing a nonempty event list is the first primitive step followed by the
+remaining fixed event list. -/
+theorem runEventsFrom_cons_bind
+    (M : Machine Player) (event : M.Event)
+    (events : List M.Event) (state : M.State) :
+    M.runEventsFrom (event :: events) state =
+      (M.step event state).bind fun current =>
+        M.runEventsFrom events current := by
+  rw [runEventsFrom_cons]
+  rw [runEventsFrom_foldl_eq_bind]
+
 /-- Executing appended event lists is Kleisli composition of the two runs. -/
 theorem runEventsFrom_append
     (M : Machine Player) (events₁ events₂ : List M.Event)
@@ -87,6 +98,36 @@ theorem runEventsFrom_append
   rw [List.foldl_append]
   rw [runEventsFrom_foldl_eq_bind]
   rfl
+
+/-- A fixed primitive event list is semantically available along one supported
+machine execution from a source state to a destination state. -/
+inductive AvailableRunFrom (M : Machine Player) :
+    M.State → List M.Event → M.State → Prop where
+  | nil (state : M.State) :
+      AvailableRunFrom M state [] state
+  | cons {source mid dst : M.State} {event : M.Event}
+      {events : List M.Event} :
+      M.EventAvailable source event →
+      mid ∈ (M.step event source).support →
+      AvailableRunFrom M mid events dst →
+      AvailableRunFrom M source (event :: events) dst
+
+namespace AvailableRunFrom
+
+theorem mem_runEventsFrom_support
+    {M : Machine Player} {source dst : M.State}
+    {events : List M.Event}
+    (hrun : M.AvailableRunFrom source events dst) :
+    dst ∈ (M.runEventsFrom events source).support := by
+  induction hrun with
+  | nil state =>
+      simp
+  | cons havailable hstep _ ih =>
+      rw [Machine.runEventsFrom_cons_bind]
+      rw [PMF.mem_support_bind_iff]
+      exact ⟨_, hstep, ih⟩
+
+end AvailableRunFrom
 
 /-- Execute a sequence of macro steps, where each macro step is represented by
 a list of primitive machine events.  This is the trace shape induced by a
@@ -165,6 +206,37 @@ theorem runEventBatchesFrom_append
   rw [List.foldl_append]
   rw [runEventBatchesFrom_foldl_eq_bind]
   rfl
+
+/-- A list of primitive event batches is semantically available along one
+supported checkpoint execution from a source state to a destination state. -/
+inductive AvailableRunBatchesFrom (M : Machine Player) :
+    M.State → List (List M.Event) → M.State → Prop where
+  | nil (state : M.State) :
+      AvailableRunBatchesFrom M state [] state
+  | cons {source mid dst : M.State} {batch : List M.Event}
+      {batches : List (List M.Event)} :
+      AvailableRunFrom M source batch mid →
+      AvailableRunBatchesFrom M mid batches dst →
+      AvailableRunBatchesFrom M source (batch :: batches) dst
+
+namespace AvailableRunBatchesFrom
+
+theorem mem_runEventBatchesFrom_support
+    {M : Machine Player} {source dst : M.State}
+    {batches : List (List M.Event)}
+    (hrun : M.AvailableRunBatchesFrom source batches dst) :
+    dst ∈ (M.runEventBatchesFrom batches source).support := by
+  induction hrun with
+  | nil state =>
+      simp
+  | cons hbatch _ ih =>
+      rw [Machine.runEventBatchesFrom]
+      simp only [List.foldl_cons, PMF.pure_bind]
+      rw [runEventBatchesFrom_foldl_eq_bind]
+      rw [PMF.mem_support_bind_iff]
+      exact ⟨_, hbatch.mem_runEventsFrom_support, ih⟩
+
+end AvailableRunBatchesFrom
 
 /-- An event-batch machine trace records the event batches executed so far and the
 current checkpoint state. -/

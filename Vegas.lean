@@ -26,7 +26,6 @@ import Vegas.Core.ToEventGraph
 import Vegas.GameBridge.FOSG.FromCore
 import Vegas.Core.LinearRead
 import Vegas.GameBridge.FOSG.StateSufficiency
-import Vegas.GameBridge.FOSG.FrontierStability
 import Vegas.Machine.Trace
 import Vegas.GameBridge.FOSG.Basic
 import Vegas.GameBridge.FOSG.FromEventGraph

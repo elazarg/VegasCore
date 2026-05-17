@@ -36,7 +36,7 @@ structure RoundView (M : Machine Player) where
       {a : JointAction Act //
         JointActionLegal Act active M.terminal availableActions state a} →
       PMF M.State
-  eventBatch : M.State → JointAction Act → List M.Event
+  eventBatch : M.State → JointAction Act → M.State → List M.Event
   terminal_active_eq_empty :
     ∀ {state : M.State}, M.terminal state → active state = ∅
   nonterminal_exists_legal :
@@ -1206,7 +1206,8 @@ noncomputable def boundedHistoryEventBatches
     (view : M.RoundView) (horizon : Nat)
     (h : view.BoundedHistory horizon) :
     List (List M.Event) :=
-  h.steps.map fun step => view.eventBatch step.src.state step.act.1
+  h.steps.map fun step =>
+    view.eventBatch step.src.state step.act.1 step.dst.state
 
 /-- Project a native bounded history to primitive event batches and checkpoint
 machine state. -/

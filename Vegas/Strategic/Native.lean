@@ -24,7 +24,7 @@ noncomputable def eventGraphRoundView
     (g : WFProgram P L) :
     (eventGraphMachine g).RoundView :=
   (programEventGraph g).toRoundView (eventGraphMachineInterface g)
-    (programEventGraph_hasStableFrontierRounds g)
+    (programEventGraph_hasIndependentFrontierRounds g)
 
 /-- Finite state helper for the native program event-graph round view. -/
 @[reducible] noncomputable instance eventGraphRoundView.instFintypeState

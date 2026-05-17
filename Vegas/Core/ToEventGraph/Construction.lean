@@ -17,6 +17,166 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
+/-- Frontier-style prerequisites make every declared read of a source node
+available in a raw result assignment. This is phrased before
+`programEventGraph` so it can discharge the graph constructor's guarded
+internal-kernel support obligation. -/
+private theorem programNode_reads_available_of_prereqs_done
+    (g : WFProgram P L)
+    {result :
+      ProgramNode g.prog → Option (ProgramField.FieldPatch g.prog)}
+    {node : ProgramNode g.prog}
+    (hprereqs :
+      ∀ prereq,
+        prereq ∈ ProgramNode.prereqs g.obligations node →
+          (result prereq).isSome)
+    (hresultLegal :
+      ∀ {doneNode donePatch},
+        result doneNode = some donePatch →
+          ProgramNode.patchLegal g.obligations doneNode donePatch)
+    {read : ProgramField g.prog}
+    (hread :
+      read ∈ (ProgramNode.sem g.obligations node).reads) :
+    (ProgramField.value? g.env result read).isSome := by
+  rcases ProgramNode.read_current_or_prior_write
+      g.obligations node hread with
+    hcurrent | hprior
+  · exact ProgramField.value?_isSome_of_initialValue? g.env
+      (ProgramField.initialValue?_isSome_of_mem_currentFields
+        g.prog g.env hcurrent)
+  · rcases hprior with ⟨prior, _hrank, hwrite⟩
+    have hpre :
+        prior ∈ ProgramNode.prereqs g.obligations node :=
+      ProgramNode.writer_mem_prereqs_of_read_write
+        g.obligations hread hwrite
+    have hdone : (result prior).isSome := hprereqs prior hpre
+    exact ProgramNode.value?_isSome_of_completed_write
+      g.env g.obligations hdone hresultLegal hwrite
+
+/-- Every patch in the guarded support of a source internal kernel has the
+node's legal patch shape. The frontier/result guards are needed because the
+kernel falls back to an empty patch when reads are unavailable. -/
+private theorem programNode_internalKernel_support_legal
+    (g : WFProgram P L)
+    {node : ProgramNode g.prog}
+    {result :
+      ProgramNode g.prog → Option (ProgramField.FieldPatch g.prog)}
+    {patch : ProgramField.FieldPatch g.prog}
+    (_hnode : node ∈ ProgramNode.finset g.prog)
+    (_hresultNone : (result node).isNone)
+    (hprereqs :
+      ∀ prereq,
+        prereq ∈ ProgramNode.prereqs g.obligations node →
+          (result prereq).isSome)
+    (hresultLegal :
+      ∀ {doneNode donePatch},
+        result doneNode = some donePatch →
+          ProgramNode.patchLegal g.obligations doneNode donePatch)
+    (hactor : (ProgramNode.sem g.obligations node).actor = none)
+    (hsupp :
+      patch ∈
+        (ProgramNode.internalKernel g.env g.obligations node result).support) :
+    ProgramNode.patchLegal g.obligations node patch := by
+  classical
+  unfold ProgramNode.internalKernel at hsupp
+  cases hsem : ProgramNode.sem g.obligations node with
+  | assign target expr =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env result read).isSome := by
+        intro read hread
+        exact programNode_reads_available_of_prereqs_done
+          g hprereqs hresultLegal
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        patch ∈
+          (if available :
+              ∀ read, read ∈ expr.reads →
+                (ProgramField.value? g.env result read).isSome then
+            PMF.pure
+              (ProgramField.singlePatch target
+                (expr.eval
+                  (ProgramField.readEnvOfResult g.env result
+                    expr.reads available)))
+          else
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      have hpatch :
+          patch =
+            ProgramField.singlePatch target
+              (expr.eval
+                (ProgramField.readEnvOfResult g.env result
+                  expr.reads havailable)) := by
+        simpa using hsupp
+      subst patch
+      rw [ProgramNode.patchLegal, hsem]
+      exact ⟨_, rfl⟩
+  | sample target dist =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env result read).isSome := by
+        intro read hread
+        exact programNode_reads_available_of_prereqs_done
+          g hprereqs hresultLegal
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        patch ∈
+          (if available :
+              ∀ read, read ∈ dist.reads →
+                (ProgramField.value? g.env result read).isSome then
+            PMF.map
+              (fun value => ProgramField.singlePatch target value)
+              (dist.eval
+                (ProgramField.readEnvOfResult g.env result
+                  dist.reads available))
+          else
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      rcases (PMF.mem_support_map_iff _ _ _).mp hsupp with
+        ⟨value, _hvalue, hpatch⟩
+      rw [← hpatch]
+      rw [ProgramNode.patchLegal, hsem]
+      exact ⟨value, rfl⟩
+  | commit owner target guard =>
+      simp [EventGraph.NodeSem.actor, hsem] at hactor
+  | reveal source target hty =>
+      rw [hsem] at hsupp
+      have havailable :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env result read).isSome := by
+        intro read hread
+        exact programNode_reads_available_of_prereqs_done
+          g hprereqs hresultLegal
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        patch ∈
+          (if available :
+              ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+                (ProgramField.value? g.env result read).isSome then
+            (let ρ :=
+              ProgramField.readEnvOfResult g.env result
+                ({source} : Finset (ProgramField g.prog)) available
+            PMF.pure
+              (ProgramField.singlePatch target
+                (cast (by rw [hty])
+                  (ρ.value source (by simp)))))
+          else
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
+      rw [dif_pos havailable] at hsupp
+      let ρ :=
+        ProgramField.readEnvOfResult g.env result
+          ({source} : Finset (ProgramField g.prog)) havailable
+      have hpatch :
+          patch =
+            ProgramField.singlePatch target
+              (cast (by rw [hty]) (ρ.value source (by simp))) := by
+        simpa using hsupp
+      subst patch
+      rw [ProgramNode.patchLegal, hsem]
+      exact ⟨_, rfl⟩
+
 /-- Checked Vegas syntax elaborated to the canonical event graph.
 
 This is the semantic event graph for the checked program. Source occurrences
@@ -74,6 +234,11 @@ noncomputable def programEventGraph
   patchLegal := ProgramNode.patchLegal g.obligations
   actionLegal := ProgramNode.actionLegal g.env g.obligations
   internalKernel := ProgramNode.internalKernel g.env g.obligations
+  internalKernel_support_legal := by
+    intro node result patch hnode hresultNone hprereqs hresultLegal
+      hactor hsupp
+    exact programNode_internalKernel_support_legal g hnode hresultNone
+      hprereqs hresultLegal hactor hsupp
 
 /-- Static read-availability invariant needed by the graph FOSG view: every
 declared read of every frontier node has a value in the extensional graph
@@ -430,17 +595,262 @@ theorem programEventGraph_hasAvailablePlayerActions
     ⟨patch, hpatch, haction⟩
   exact ⟨patch, hpatch, haction⟩
 
-/-- Source graph frontier rounds are stable: executing one frontier node cannot
-invalidate a player action for another current frontier node. -/
-theorem programEventGraph_hasStableFrontierRounds
+/-- The read environment of a frontier node is unchanged after executing a
+different frontier node, for any read set contained in that node's semantic
+reads. -/
+theorem eventGraph_readEnvOfResult_withPatch_eq_of_frontier_reads
+    (g : WFProgram P L)
+    {cfg : (programEventGraph g).Configuration}
+    {first second : ProgramNode g.prog}
+    {firstPatch : ProgramField.FieldPatch g.prog}
+    {hfirst : first ∈ cfg.frontier}
+    {hfirstLegal : (programEventGraph g).patchLegal first firstPatch}
+    {reads : Finset (ProgramField g.prog)}
+    (hsecond : second ∈ cfg.frontier)
+    (hreads :
+      reads ⊆
+        (ProgramNode.sem g.obligations second).reads)
+    {availableAfter :
+      ∀ field, field ∈ reads →
+        (ProgramField.value? g.env
+          ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+          field).isSome}
+    {availableBefore :
+      ∀ field, field ∈ reads →
+        (ProgramField.value? g.env cfg.result field).isSome} :
+    ProgramField.readEnvOfResult g.env
+        ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+        reads availableAfter =
+      ProgramField.readEnvOfResult g.env cfg.result reads availableBefore := by
+  ext field hmem
+  exact
+    ProgramField.readEnvOfResult_value_eq_of_value?_eq
+      g.env
+      (left := (cfg.withPatch firstPatch hfirst hfirstLegal).result)
+      (right := cfg.result)
+      (availableLeft := availableAfter)
+      (availableRight := availableBefore)
+      (field := field) (hleft := hmem) (hright := hmem)
+      (eventGraph_value?_withPatch_eq_of_frontier_read
+        g (writer := first) (reader := second)
+        (patch := firstPatch) hsecond (hreads hmem))
+
+/-- Internal kernels for frontier nodes are stable under execution of a
+different frontier node. -/
+theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
+    (g : WFProgram P L)
+    {cfg : (programEventGraph g).Configuration}
+    {first second : ProgramNode g.prog}
+    {firstPatch : ProgramField.FieldPatch g.prog}
+    (hfirst : first ∈ cfg.frontier)
+    (hsecond : second ∈ cfg.frontier)
+    (hne : second ≠ first)
+    (hfirstLegal : (programEventGraph g).patchLegal first firstPatch) :
+    (programEventGraph g).internalKernel second
+        ((cfg.withPatch firstPatch hfirst hfirstLegal).result) =
+      (programEventGraph g).internalKernel second cfg.result := by
+  classical
+  have hsecondAfter :
+      second ∈ (cfg.withPatch firstPatch hfirst hfirstLegal).frontier :=
+    cfg.withPatch_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
+  change
+    ProgramNode.internalKernel g.env g.obligations second
+        ((cfg.withPatch firstPatch hfirst hfirstLegal).result) =
+      ProgramNode.internalKernel g.env g.obligations second cfg.result
+  cases hsem :
+      ProgramNode.sem g.obligations second with
+  | assign field expr =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withPatch firstPatch hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ expr.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ expr.reads →
+              (ProgramField.value? g.env
+                ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+                read).isSome then
+          PMF.pure
+            (ProgramField.singlePatch field
+              (expr.eval
+                (ProgramField.readEnvOfResult g.env
+                  ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+                  expr.reads available)))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog)) =
+        (if available :
+            ∀ read, read ∈ expr.reads →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          PMF.pure
+            (ProgramField.singlePatch field
+              (expr.eval
+                (ProgramField.readEnvOfResult g.env cfg.result
+                  expr.reads available)))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              expr.reads availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              expr.reads availableBefore :=
+        eventGraph_readEnvOfResult_withPatch_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+  | sample field dist =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withPatch firstPatch hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ dist.reads →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ dist.reads →
+              (ProgramField.value? g.env
+                ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+                read).isSome then
+          PMF.map
+            (fun value => ProgramField.singlePatch field value)
+            (dist.eval
+              (ProgramField.readEnvOfResult g.env
+                ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+                dist.reads available))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog)) =
+        (if available :
+            ∀ read, read ∈ dist.reads →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          PMF.map
+            (fun value => ProgramField.singlePatch field value)
+            (dist.eval
+              (ProgramField.readEnvOfResult g.env cfg.result
+                dist.reads available))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              dist.reads availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              dist.reads availableBefore :=
+        eventGraph_readEnvOfResult_withPatch_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+  | commit owner field guard =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+  | reveal source target hty =>
+      unfold ProgramNode.internalKernel
+      rw [hsem]
+      let availableAfter :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          (cfg.withPatch firstPatch hfirst hfirstLegal)
+          hsecondAfter read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      let availableBefore :
+          ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+            (ProgramField.value? g.env cfg.result read).isSome := by
+        intro read hread
+        exact programReadsAvailableAtFrontier_of_wfProgram g
+          cfg hsecond read
+          (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      change
+        (if available :
+            ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+              (ProgramField.value? g.env
+                ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+                read).isSome then
+          let ρ :=
+            ProgramField.readEnvOfResult g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              ({source} : Finset (ProgramField g.prog)) available
+          PMF.pure
+            (ProgramField.singlePatch target
+              (cast (by rw [hty]) (ρ.value source (by simp))))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog)) =
+        (if available :
+            ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
+              (ProgramField.value? g.env cfg.result read).isSome then
+          let ρ := ProgramField.readEnvOfResult g.env cfg.result
+              ({source} : Finset (ProgramField g.prog)) available
+          PMF.pure
+            (ProgramField.singlePatch target
+              (cast (by rw [hty]) (ρ.value source (by simp))))
+        else
+          PMF.pure (ProgramField.emptyPatch g.prog))
+      rw [dif_pos availableAfter, dif_pos availableBefore]
+      have henv :
+          ProgramField.readEnvOfResult g.env
+              ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+              ({source} : Finset (ProgramField g.prog)) availableAfter =
+            ProgramField.readEnvOfResult g.env cfg.result
+              ({source} : Finset (ProgramField g.prog)) availableBefore :=
+        eventGraph_readEnvOfResult_withPatch_eq_of_frontier_reads
+          g hsecond
+          (by
+            intro read hread
+            simpa [EventGraph.NodeSem.reads, hsem] using hread)
+      rw [henv]
+
+/-- Source graph frontier rounds are independent: executing one frontier node
+cannot invalidate a player action or change an internal kernel for another
+current frontier node. -/
+theorem programEventGraph_hasIndependentFrontierRounds
     (g : WFProgram P L) :
-    (programEventGraph g).HasStableFrontierRounds where
+    (programEventGraph g).HasIndependentFrontierRounds where
   availablePlayerActions := programEventGraph_hasAvailablePlayerActions g
   actionStable := by
     intro cfg first firstPatch hfirst who action hfrontier hne
       hfirstLegal haction
     exact eventGraph_available_after_frontier_withPatch_of_ne
       g who hfirst hne hfirstLegal haction
+  internalKernelStable := by
+    intro cfg first second firstPatch hfirst hsecond hne hfirstLegal
+    exact eventGraph_internalKernel_after_frontier_withPatch_of_ne
+      g hfirst hsecond hne hfirstLegal
 
 /-- Public observation of the program event-graph machine.
 

@@ -9,9 +9,12 @@ The strategic carriers are the same carriers as the canonical Vegas games; the
 backend outcome keeps the full implementation event-batch trace.
 
 The only extra datum beyond `StochasticStepRefinement` is a per-profile
-history-dependent event-batch-law lift, supplied per profile. This keeps machine
-refinement independent of strategic scheduling while giving backend users a
-precise place to supply the runtime scheduler/transaction-lift witness.
+history-dependent event-batch-law lift, supplied per profile. The FOSG bridge
+constructs theorem-facing event-batch trace distributions, but this module does
+not infer a canonical `Machine.EventBatchLaw` from an arbitrary strategic
+profile. Keeping the law explicit keeps machine refinement independent of
+strategic scheduling while giving backend users a precise place to supply the
+runtime scheduler/transaction-lift witness.
 -/
 
 namespace Vegas

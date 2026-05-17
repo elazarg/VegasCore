@@ -49,7 +49,7 @@ omits user-level quit handlers.  A strategic quit changes the
 action space and the control-flow shape, neither of which is a
 value-level effect; supporting it would require adding a
 prerequisite-cancellation rule to the event graph and revisiting
-the frontier-stability proof.  Nullable yields are the present
+the frontier-read invariants.  Nullable yields are the present
 substitute for ``opt out of revealing.''
 
 \paragraph{Solution-concept inventory.}  The strategic API exposes

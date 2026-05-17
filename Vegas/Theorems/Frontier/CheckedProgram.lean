@@ -1,9 +1,9 @@
-import Vegas.GameBridge.FOSG.FrontierStability
+import Vegas.GameBridge.FOSG.StateSufficiency
 
 /-!
-# Checked-Program Frontier Stability
+# Checked-Program Frontier Independence
 
-Scheduler, linearization, and same-frontier stability facts that rely on the
+Scheduler, linearization, and same-frontier independence facts that rely on the
 graph having been generated from checked `VegasCore` syntax.
 -/
 
@@ -124,14 +124,6 @@ theorem programEventGraph_internalKernel_stable_after_other_frontier
       (programEventGraph g).internalKernel second cfg.result :=
   eventGraph_internalKernel_after_frontier_withPatch_of_ne
     g hfirst hsecond hne hfirstLegal
-
-/-- Checked program event graphs admit stable frontier rounds: executing one
-frontier node preserves source-legal frontier actions for the remaining
-frontier. -/
-theorem checkedProgram_hasStableFrontierRounds
-    (g : WFProgram P L) :
-    (programEventGraph g).HasStableFrontierRounds :=
-  programEventGraph_hasStableFrontierRounds g
 
 /-- Two distinct generated frontier executions commute extensionally. -/
 theorem checkedProgram_frontier_execution_commutes

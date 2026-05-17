@@ -6,7 +6,7 @@ import Vegas.Core.Scope
 
 Reusable view-indexed kernel primitives for Vegas strategies.
 
-The user-facing strategic objects now live in the fixed-program modules
+The user-facing strategic objects are defined in the fixed-program modules
 `Vegas.Strategic` and `Vegas.PureStrategic`. This file keeps only the common
 view/projection machinery they share.
 -/
