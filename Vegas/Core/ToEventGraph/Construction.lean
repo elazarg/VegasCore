@@ -71,7 +71,7 @@ noncomputable def programEventGraph
         subst left
         subst right
         rfl
-  sliceLegal := ProgramNode.sliceLegal g.obligations
+  patchLegal := ProgramNode.patchLegal g.obligations
   actionLegal := ProgramNode.actionLegal g.env g.obligations
   internalKernel := ProgramNode.internalKernel g.env g.obligations
 
@@ -107,10 +107,10 @@ theorem programReadsAvailableAtFrontier_of_wfProgram
     have hdone : (cfg.result prior).isSome :=
       cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre
     have hcfgLegal :
-        ∀ {node slice},
-          cfg.result node = some slice →
-            ProgramNode.sliceLegal g.obligations node slice := by
-      intro node slice hresult
+        ∀ {node patch},
+          cfg.result node = some patch →
+            ProgramNode.patchLegal g.obligations node patch := by
+      intro node patch hresult
       simpa [programEventGraph] using cfg.legal hresult
     exact ProgramNode.value?_isSome_of_completed_write
       g.env g.obligations hdone hcfgLegal hwrite
@@ -147,17 +147,17 @@ theorem eventGraph_actionLegal_of_guardVisibleValue_eq
     (g : WFProgram P L)
     {left right : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     (hfrontierRight : node ∈ right.frontier)
     (hvisible : AgreeOnGuardVisibleReads g left right node)
     (haction :
-      (programEventGraph g).actionLegal left.result node slice) :
-    (programEventGraph g).actionLegal right.result node slice := by
+      (programEventGraph g).actionLegal left.result node patch) :
+    (programEventGraph g).actionLegal right.result node patch := by
   classical
   change
-    ProgramNode.actionLegal g.env g.obligations left.result node slice at haction
+    ProgramNode.actionLegal g.env g.obligations left.result node patch at haction
   change
-    ProgramNode.actionLegal g.env g.obligations right.result node slice
+    ProgramNode.actionLegal g.env g.obligations right.result node patch
   cases hsem :
       ProgramNode.sem g.obligations node with
   | assign field expr =>
@@ -169,7 +169,7 @@ theorem eventGraph_actionLegal_of_guardVisibleValue_eq
   | commit owner field guard =>
       rw [ProgramNode.actionLegal, hsem] at haction ⊢
       rcases haction with
-        ⟨availableLeft, value, hguardEval, hslice⟩
+        ⟨availableLeft, value, hguardEval, hpatch⟩
       have availableRight :
           ∀ read, read ∈ guard.reads →
             (ProgramField.value? g.env right.result read).isSome := by
@@ -177,7 +177,7 @@ theorem eventGraph_actionLegal_of_guardVisibleValue_eq
         exact programReadsAvailableAtFrontier_of_wfProgram g
           right hfrontierRight read
           (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
-      refine ⟨availableRight, value, ?_, hslice⟩
+      refine ⟨availableRight, value, ?_, hpatch⟩
       let ρleft :=
         ProgramField.readEnvOfResult g.env left.result
           guard.reads availableLeft
@@ -333,52 +333,52 @@ theorem eventGraph_priorCommit_not_frontier_with_reveal
 
 /-- Executing one frontier node leaves every read of another current frontier
 node unchanged. -/
-theorem eventGraph_value?_withResult_eq_of_frontier_read
+theorem eventGraph_value?_withPatch_eq_of_frontier_read
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {writer reader : ProgramNode g.prog}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     {hwriterFrontier : writer ∈ cfg.frontier}
-    {hwriterLegal : (programEventGraph g).sliceLegal writer slice}
+    {hwriterLegal : (programEventGraph g).patchLegal writer patch}
     {field : ProgramField g.prog}
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread :
       field ∈
         (ProgramNode.sem g.obligations reader).reads) :
     ProgramField.value? g.env
-        ((cfg.withResult slice hwriterFrontier hwriterLegal).result) field =
+        ((cfg.withPatch patch hwriterFrontier hwriterLegal).result) field =
       ProgramField.value? g.env cfg.result field := by
   classical
   have hne :
       ProgramField.writer? field ≠ some writer :=
     eventGraph_writer?_ne_of_frontier_read g
       hwriterFrontier hreaderFrontier hread
-  simpa [EventGraph.Configuration.withResult,
-    EventGraph.Configuration.updateResult] using
+  simpa [EventGraph.Configuration.withPatch,
+    EventGraph.Configuration.updatePatch] using
     (ProgramField.value?_update_of_writer?_ne
       (env := g.env) (result := cfg.result) (field := field)
-      (node := writer) (slice := slice) hne)
+      (node := writer) (patch := patch) hne)
 
 /-- Dynamic commit legality for one frontier node is stable after executing a
 different frontier node. -/
-theorem eventGraph_actionLegal_after_frontier_withResult_of_ne
+theorem eventGraph_actionLegal_after_frontier_withPatch_of_ne
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {first second : ProgramNode g.prog}
-    {firstSlice secondSlice : ProgramField.WriteSlice g.prog}
+    {firstPatch secondPatch : ProgramField.FieldPatch g.prog}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice)
+    (hfirstLegal : (programEventGraph g).patchLegal first firstPatch)
     (hsecondAction :
-      (programEventGraph g).actionLegal cfg.result second secondSlice) :
+      (programEventGraph g).actionLegal cfg.result second secondPatch) :
     (programEventGraph g).actionLegal
-      ((cfg.withResult firstSlice hfirst hfirstLegal).result)
-      second secondSlice := by
+      ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+      second secondPatch := by
   classical
   have hsecondAfter :
-      second ∈ (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
-    cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
+      second ∈ (cfg.withPatch firstPatch hfirst hfirstLegal).frontier :=
+    cfg.withPatch_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
   refine
     eventGraph_actionLegal_of_guardVisibleValue_eq
       g hsecondAfter ?_ hsecondAction
@@ -389,31 +389,31 @@ theorem eventGraph_actionLegal_after_frontier_withResult_of_ne
     rw [hsem]
     exact guard.visibleReads_subset_reads hreadVisible
   exact
-    (eventGraph_value?_withResult_eq_of_frontier_read
+    (eventGraph_value?_withPatch_eq_of_frontier_read
       g (writer := first) (reader := second)
-      (slice := firstSlice) hsecond hread).symm
+      (patch := firstPatch) hsecond hread).symm
 
 /-- A player primitive event for a frontier node remains available after a
 different frontier node has executed. -/
-theorem eventGraph_available_after_frontier_withResult_of_ne
+theorem eventGraph_available_after_frontier_withPatch_of_ne
     (g : WFProgram P L) (who : P)
     {cfg : (programEventGraph g).Configuration}
     {first : ProgramNode g.prog}
-    {firstSlice : ProgramField.WriteSlice g.prog}
+    {firstPatch : ProgramField.FieldPatch g.prog}
     {action : EventGraph.PlayerAction (programEventGraph g) who}
     (hfirst : first ∈ cfg.frontier)
     (hne : action.node ≠ first)
-    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice)
+    (hfirstLegal : (programEventGraph g).patchLegal first firstPatch)
     (haction :
       action ∈ EventGraph.available (programEventGraph g) cfg who) :
     action ∈ EventGraph.available (programEventGraph g)
-      (cfg.withResult firstSlice hfirst hfirstLegal) who := by
-  rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+      (cfg.withPatch firstPatch hfirst hfirstLegal) who := by
+  rcases haction with ⟨hfrontier, hactor, hpatch, hlegal⟩
   exact ⟨
-    cfg.withResult_mem_frontier_of_ne hfirst hfrontier hne hfirstLegal,
+    cfg.withPatch_mem_frontier_of_ne hfirst hfrontier hne hfirstLegal,
     hactor,
-    hslice,
-    eventGraph_actionLegal_after_frontier_withResult_of_ne
+    hpatch,
+    eventGraph_actionLegal_after_frontier_withPatch_of_ne
       g hfirst hfrontier hne hfirstLegal hlegal⟩
 
 /-- Source graph commits cannot deadlock: the generated guard carries a
@@ -427,8 +427,8 @@ theorem programEventGraph_hasAvailablePlayerActions
       (who := who)
       (by simpa [programEventGraph] using hactor)
       (programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier) with
-    ⟨slice, hslice, haction⟩
-  exact ⟨slice, hslice, haction⟩
+    ⟨patch, hpatch, haction⟩
+  exact ⟨patch, hpatch, haction⟩
 
 /-- Source graph frontier rounds are stable: executing one frontier node cannot
 invalidate a player action for another current frontier node. -/
@@ -437,9 +437,9 @@ theorem programEventGraph_hasStableFrontierRounds
     (programEventGraph g).HasStableFrontierRounds where
   availablePlayerActions := programEventGraph_hasAvailablePlayerActions g
   actionStable := by
-    intro cfg first firstSlice hfirst who action hfrontier hne
+    intro cfg first firstPatch hfirst who action hfrontier hne
       hfirstLegal haction
-    exact eventGraph_available_after_frontier_withResult_of_ne
+    exact eventGraph_available_after_frontier_withPatch_of_ne
       g who hfirst hne hfirstLegal haction
 
 /-- Public observation of the program event-graph machine.
@@ -500,7 +500,7 @@ theorem eventGraphConfigValue?_isSome_of_terminal
       exact ProgramNode.value?_isSome_of_completed_write
         g.env g.obligations hdone
         (by
-          intro node slice hresult
+          intro node patch hresult
           simpa [programEventGraph] using cfg.legal hresult)
         (ProgramNode.writtenBy_mem_writeFields g.obligations writer)
 
@@ -622,21 +622,21 @@ theorem eventGraph_actionLegal_of_observe_eq
     (g : WFProgram P L) (who : P)
     {left right : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     (hfrontierRight : node ∈ right.frontier)
     (hactor :
       ((programEventGraph g).sem node).actor = some who)
     (hobs : eventGraphObserve g who left = eventGraphObserve g who right)
     (haction :
-      (programEventGraph g).actionLegal left.result node slice) :
-    (programEventGraph g).actionLegal right.result node slice := by
+      (programEventGraph g).actionLegal left.result node patch) :
+    (programEventGraph g).actionLegal right.result node patch := by
   classical
   change
     (ProgramNode.sem g.obligations node).actor = some who at hactor
   change
-    ProgramNode.actionLegal g.env g.obligations left.result node slice at haction
+    ProgramNode.actionLegal g.env g.obligations left.result node patch at haction
   change
-    ProgramNode.actionLegal g.env g.obligations right.result node slice
+    ProgramNode.actionLegal g.env g.obligations right.result node patch
   cases hsem :
       ProgramNode.sem g.obligations node with
   | assign field expr =>
@@ -651,7 +651,7 @@ theorem eventGraph_actionLegal_of_observe_eq
       subst owner
       rw [ProgramNode.actionLegal, hsem] at haction ⊢
       rcases haction with
-        ⟨availableLeft, value, hguardEval, hslice⟩
+        ⟨availableLeft, value, hguardEval, hpatch⟩
       have availableRight :
           ∀ read, read ∈ guard.reads →
             (ProgramField.value? g.env right.result read).isSome := by
@@ -659,7 +659,7 @@ theorem eventGraph_actionLegal_of_observe_eq
         exact programReadsAvailableAtFrontier_of_wfProgram g
           right hfrontierRight read
           (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
-      refine ⟨availableRight, value, ?_, hslice⟩
+      refine ⟨availableRight, value, ?_, hpatch⟩
       let ρleft :=
         ProgramField.readEnvOfResult g.env left.result
           guard.reads availableLeft
@@ -704,17 +704,17 @@ theorem eventGraph_available_eq_of_observation_eq
   ext action
   constructor
   · intro haction
-    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    rcases haction with ⟨hfrontier, hactor, hpatch, hlegal⟩
     have hfrontierRight : action.node ∈ right.frontier := by
       simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
-    exact ⟨hfrontierRight, hactor, hslice,
+    exact ⟨hfrontierRight, hactor, hpatch,
       eventGraph_actionLegal_of_observe_eq g who hfrontierRight
         hactor hpriv hlegal⟩
   · intro haction
-    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    rcases haction with ⟨hfrontier, hactor, hpatch, hlegal⟩
     have hfrontierLeft : action.node ∈ left.frontier := by
       simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
-    exact ⟨hfrontierLeft, hactor, hslice,
+    exact ⟨hfrontierLeft, hactor, hpatch,
       eventGraph_actionLegal_of_observe_eq g who hfrontierLeft
         hactor hpriv.symm hlegal⟩
 

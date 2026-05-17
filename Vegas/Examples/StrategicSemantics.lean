@@ -146,10 +146,10 @@ program. -/
 noncomputable def rowCommitNode : ProgramNode Prisoners.program :=
   .commitHere
 
-/-- Row's concrete compiled write slice for committing to `false`
+/-- Row's concrete compiled field patch for committing to `false`
 (`false` means defect in `Prisoners.lean`). -/
-noncomputable def rowDefectSlice : ProgramField.WriteSlice Prisoners.program :=
-  ProgramField.singleSlice (ProgramField.writtenBy rowCommitNode)
+noncomputable def rowDefectPatch : ProgramField.FieldPatch Prisoners.program :=
+  ProgramField.singlePatch (ProgramField.writtenBy rowCommitNode)
     (EventGraph.StoredValue.hidden false)
 
 /-- The generated protocol-graph player action corresponding to Row's
@@ -158,30 +158,30 @@ noncomputable def rowDefectAction :
     EventGraph.PlayerAction
       (programEventGraph Prisoners.game) Prisoners.Player.row where
   node := rowCommitNode
-  slice := rowDefectSlice
+  patch := rowDefectPatch
 
-theorem rowDefectSlice_legal :
-    (programEventGraph Prisoners.game).sliceLegal
-      rowCommitNode rowDefectSlice := by
-  change ProgramNode.sliceLegal Prisoners.game.obligations
-    rowCommitNode rowDefectSlice
-  unfold ProgramNode.sliceLegal
+theorem rowDefectPatch_legal :
+    (programEventGraph Prisoners.game).patchLegal
+      rowCommitNode rowDefectPatch := by
+  change ProgramNode.patchLegal Prisoners.game.obligations
+    rowCommitNode rowDefectPatch
+  unfold ProgramNode.patchLegal
   unfold ProgramNode.sem
-  dsimp [rowCommitNode, rowDefectSlice]
+  dsimp [rowCommitNode, rowDefectPatch]
   exact ⟨false, rfl⟩
 
 theorem rowDefectAction_legal_initial :
     (programEventGraph Prisoners.game).actionLegal
       (EventGraph.Configuration.initial
         (programEventGraph Prisoners.game)).result
-      rowCommitNode rowDefectSlice := by
+      rowCommitNode rowDefectPatch := by
   change ProgramNode.actionLegal Prisoners.game.env Prisoners.game.obligations
     (EventGraph.Configuration.initial
       (programEventGraph Prisoners.game)).result
-    rowCommitNode rowDefectSlice
+    rowCommitNode rowDefectPatch
   unfold ProgramNode.actionLegal
   unfold ProgramNode.sem
-  dsimp [rowCommitNode, rowDefectSlice]
+  dsimp [rowCommitNode, rowDefectPatch]
   refine ⟨?_, false, ?_, ?_⟩
   · intro read hread
     have hread_empty := hread
@@ -243,7 +243,7 @@ theorem rowDefectAction_available_initial :
       (EventGraph.Configuration.initial (programEventGraph Prisoners.game))
       Prisoners.Player.row := by
   refine ⟨rowCommitNode_initial_frontier, ?_,
-    rowDefectSlice_legal, rowDefectAction_legal_initial⟩
+    rowDefectPatch_legal, rowDefectAction_legal_initial⟩
   change (ProgramNode.sem Prisoners.game.obligations rowCommitNode).actor =
     some Prisoners.Player.row
   exact rowCommitNode_actor

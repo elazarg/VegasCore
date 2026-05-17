@@ -77,16 +77,16 @@ theorem programEventGraph_frontier_read_value_stable
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {writer reader : ProgramNode g.prog}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     {hwriterFrontier : writer ∈ cfg.frontier}
-    {hwriterLegal : (programEventGraph g).sliceLegal writer slice}
+    {hwriterLegal : (programEventGraph g).patchLegal writer patch}
     {field : ProgramField g.prog}
     (hreaderFrontier : reader ∈ cfg.frontier)
     (hread : field ∈ (ProgramNode.sem g.obligations reader).reads) :
     ProgramField.value? g.env
-        ((cfg.withResult slice hwriterFrontier hwriterLegal).result) field =
+        ((cfg.withPatch patch hwriterFrontier hwriterLegal).result) field =
       ProgramField.value? g.env cfg.result field :=
-  eventGraph_value?_withResult_eq_of_frontier_read
+  eventGraph_value?_withPatch_eq_of_frontier_read
     g hreaderFrontier hread
 
 /-- Dynamic commit legality for one generated frontier node is stable after
@@ -95,17 +95,17 @@ theorem programEventGraph_actionLegal_stable_after_other_frontier
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {first second : ProgramNode g.prog}
-    {firstSlice secondSlice : ProgramField.WriteSlice g.prog}
+    {firstPatch secondPatch : ProgramField.FieldPatch g.prog}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice)
+    (hfirstLegal : (programEventGraph g).patchLegal first firstPatch)
     (hsecondAction :
-      (programEventGraph g).actionLegal cfg.result second secondSlice) :
+      (programEventGraph g).actionLegal cfg.result second secondPatch) :
     (programEventGraph g).actionLegal
-      ((cfg.withResult firstSlice hfirst hfirstLegal).result)
-      second secondSlice :=
-  eventGraph_actionLegal_after_frontier_withResult_of_ne
+      ((cfg.withPatch firstPatch hfirst hfirstLegal).result)
+      second secondPatch :=
+  eventGraph_actionLegal_after_frontier_withPatch_of_ne
     g hfirst hsecond hne hfirstLegal hsecondAction
 
 /-- Internal kernels for generated frontier nodes are stable after executing a
@@ -114,15 +114,15 @@ theorem programEventGraph_internalKernel_stable_after_other_frontier
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {first second : ProgramNode g.prog}
-    {firstSlice : ProgramField.WriteSlice g.prog}
+    {firstPatch : ProgramField.FieldPatch g.prog}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hfirstLegal : (programEventGraph g).sliceLegal first firstSlice) :
+    (hfirstLegal : (programEventGraph g).patchLegal first firstPatch) :
     (programEventGraph g).internalKernel second
-        ((cfg.withResult firstSlice hfirst hfirstLegal).result) =
+        ((cfg.withPatch firstPatch hfirst hfirstLegal).result) =
       (programEventGraph g).internalKernel second cfg.result :=
-  eventGraph_internalKernel_after_frontier_withResult_of_ne
+  eventGraph_internalKernel_after_frontier_withPatch_of_ne
     g hfirst hsecond hne hfirstLegal
 
 /-- Checked program event graphs admit stable frontier rounds: executing one
@@ -138,72 +138,72 @@ theorem checkedProgram_frontier_execution_commutes
     (g : WFProgram P L)
     (cfg : (programEventGraph g).Configuration)
     {left right : ProgramNode g.prog}
-    {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
+    {leftPatch rightPatch : ProgramField.FieldPatch g.prog}
     (hleft : left ∈ cfg.frontier)
     (hright : right ∈ cfg.frontier)
     (hne : left ≠ right)
-    (hleftLegal : (programEventGraph g).sliceLegal left leftSlice)
-    (hrightLegal : (programEventGraph g).sliceLegal right rightSlice) :
+    (hleftLegal : (programEventGraph g).patchLegal left leftPatch)
+    (hrightLegal : (programEventGraph g).patchLegal right rightPatch) :
     let hrightAfterLeft :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hleft hright (Ne.symm hne) hleftLegal
     let hleftAfterRight :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hright hleft hne hrightLegal
-    (cfg.withResult leftSlice hleft hleftLegal).withResult
-        rightSlice hrightAfterLeft hrightLegal =
-      (cfg.withResult rightSlice hright hrightLegal).withResult
-        leftSlice hleftAfterRight hleftLegal :=
-  cfg.withResult_comm hleft hright hne hleftLegal hrightLegal
+    (cfg.withPatch leftPatch hleft hleftLegal).withPatch
+        rightPatch hrightAfterLeft hrightLegal =
+      (cfg.withPatch rightPatch hright hrightLegal).withPatch
+        leftPatch hleftAfterRight hleftLegal :=
+  cfg.withPatch_comm hleft hright hne hleftLegal hrightLegal
 
 /-- A complete frontier round is extensionally determined by the source
-frontier and the result slice chosen for each source-frontier node. Any
-linearization that records exactly those slices and leaves non-frontier nodes
+frontier and the field patch chosen for each source-frontier node. Any
+linearization that records exactly those patches and leaves non-frontier nodes
 unchanged reaches the canonical whole-frontier endpoint. -/
 theorem checkedProgram_frontier_round_linearization_invariant
     (g : WFProgram P L)
     (cfg dst : (programEventGraph g).Configuration)
-    (slice :
+    (patch :
       ∀ node, node ∈ cfg.frontier →
-        ProgramField.WriteSlice g.prog)
+        ProgramField.FieldPatch g.prog)
     (hlegal :
       ∀ node hfrontier,
-        (programEventGraph g).sliceLegal node (slice node hfrontier))
+        (programEventGraph g).patchLegal node (patch node hfrontier))
     (honFrontier :
       ∀ node (hfrontier : node ∈ cfg.frontier),
-        dst.result node = some (slice node hfrontier))
+        dst.result node = some (patch node hfrontier))
     (hoffFrontier :
       ∀ node, node ∉ cfg.frontier → dst.result node = cfg.result node) :
-    dst = cfg.withFrontierResults slice hlegal :=
-  EventGraph.Configuration.eq_withFrontierResults_of_result_eq
-    cfg dst slice hlegal honFrontier hoffFrontier
+    dst = cfg.withFrontierPatches patch hlegal :=
+  EventGraph.Configuration.eq_withFrontierPatches_of_result_eq
+    cfg dst patch hlegal honFrontier hoffFrontier
 
 /-- Two complete linearizations of the same source frontier and same per-node
-result slices end in the same extensional configuration. -/
+field patches end in the same extensional configuration. -/
 theorem checkedProgram_frontier_round_linearizations_agree
     (g : WFProgram P L)
     (cfg leftDst rightDst : (programEventGraph g).Configuration)
-    (slice :
+    (patch :
       ∀ node, node ∈ cfg.frontier →
-        ProgramField.WriteSlice g.prog)
+        ProgramField.FieldPatch g.prog)
     (hlegal :
       ∀ node hfrontier,
-        (programEventGraph g).sliceLegal node (slice node hfrontier))
+        (programEventGraph g).patchLegal node (patch node hfrontier))
     (hleftOn :
       ∀ node (hfrontier : node ∈ cfg.frontier),
-        leftDst.result node = some (slice node hfrontier))
+        leftDst.result node = some (patch node hfrontier))
     (hleftOff :
       ∀ node, node ∉ cfg.frontier → leftDst.result node = cfg.result node)
     (hrightOn :
       ∀ node (hfrontier : node ∈ cfg.frontier),
-        rightDst.result node = some (slice node hfrontier))
+        rightDst.result node = some (patch node hfrontier))
     (hrightOff :
       ∀ node, node ∉ cfg.frontier → rightDst.result node = cfg.result node) :
     leftDst = rightDst := by
   rw [checkedProgram_frontier_round_linearization_invariant
-    g cfg leftDst slice hlegal hleftOn hleftOff]
+    g cfg leftDst patch hlegal hleftOn hleftOff]
   rw [checkedProgram_frontier_round_linearization_invariant
-    g cfg rightDst slice hlegal hrightOn hrightOff]
+    g cfg rightDst patch hlegal hrightOn hrightOff]
 
 /-- Pairwise scheduler order is irrelevant for distinct nodes already in the
 same source frontier, at the public outcome level. -/
@@ -211,24 +211,24 @@ theorem checkedProgram_scheduler_order_irrelevant_for_independent_nodes
     (g : WFProgram P L)
     (cfg : (programEventGraph g).Configuration)
     {left right : ProgramNode g.prog}
-    {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
+    {leftPatch rightPatch : ProgramField.FieldPatch g.prog}
     (hleft : left ∈ cfg.frontier)
     (hright : right ∈ cfg.frontier)
     (hne : left ≠ right)
-    (hleftLegal : (programEventGraph g).sliceLegal left leftSlice)
-    (hrightLegal : (programEventGraph g).sliceLegal right rightSlice) :
+    (hleftLegal : (programEventGraph g).patchLegal left leftPatch)
+    (hrightLegal : (programEventGraph g).patchLegal right rightPatch) :
     let hrightAfterLeft :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hleft hright (Ne.symm hne) hleftLegal
     let hleftAfterRight :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hright hleft hne hrightLegal
     (eventGraphMachine g).outcome
-        ((cfg.withResult leftSlice hleft hleftLegal).withResult
-          rightSlice hrightAfterLeft hrightLegal) =
+        ((cfg.withPatch leftPatch hleft hleftLegal).withPatch
+          rightPatch hrightAfterLeft hrightLegal) =
       (eventGraphMachine g).outcome
-        ((cfg.withResult rightSlice hright hrightLegal).withResult
-          leftSlice hleftAfterRight hleftLegal) := by
+        ((cfg.withPatch rightPatch hright hrightLegal).withPatch
+          leftPatch hleftAfterRight hleftLegal) := by
   dsimp
   rw [checkedProgram_frontier_execution_commutes
     g cfg hleft hright hne hleftLegal hrightLegal]

@@ -227,7 +227,7 @@ def writtenBy :
 /-- Structural source of a final program field: either it is an initial field
 from the program's input context, or it is written by a unique source node.
 
-This follows the syntax tree instead of searching completed result slices, so
+This follows the syntax tree instead of searching completed field patches, so
 field lookup is stable under unrelated frontier updates. -/
 def source :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
@@ -862,34 +862,34 @@ noncomputable def castEventDist
   reads := dist.reads
   eval := fun ρ => cast (by rw [h]) (dist.eval ρ)
 
-/-- A write slice over the final field set of a source program. -/
-abbrev WriteSlice {Γ : VCtx P L} (p : VegasCore P L Γ) : Type :=
+/-- A field patch over the final field set of a source program. -/
+abbrev FieldPatch {Γ : VCtx P L} (p : VegasCore P L Γ) : Type :=
   (field : ProgramField p) →
     Option (EventGraph.StoredValue (L.Val field.ty))
 
-/-- Empty source write slice. -/
-def emptySlice {Γ : VCtx P L} (p : VegasCore P L Γ) :
-    WriteSlice p :=
+/-- Empty source field patch. -/
+def emptyPatch {Γ : VCtx P L} (p : VegasCore P L Γ) :
+    FieldPatch p :=
   fun _ => none
 
-/-- Singleton source write slice. -/
-noncomputable def singleSlice
+/-- Singleton source field patch. -/
+noncomputable def singlePatch
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
     (value : EventGraph.StoredValue (L.Val field.ty)) :
-    WriteSlice p :=
+    FieldPatch p :=
   fun other =>
     if h : other = field then
       some (cast (by rw [h]) value)
     else
       none
 
-@[simp] theorem singleSlice_self
+@[simp] theorem singlePatch_self
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (field : ProgramField p)
     (value : EventGraph.StoredValue (L.Val field.ty)) :
-    singleSlice field value field = some value := by
-  simp [singleSlice]
+    singlePatch field value field = some value := by
+  simp [singlePatch]
 
 /-- Initial value of a final field, if it comes from the initial context. -/
 noncomputable def initialValue?
@@ -923,38 +923,38 @@ theorem initialValue?_isSome_of_mem_currentFields
   simp
 
 /-- Value of a final field under a partial node-result assignment. Written
-fields are read from their writer's completed slice; initial fields are read
+fields are read from their writer's completed patch; initial fields are read
 from the initial environment. -/
 noncomputable def value?
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (result : ProgramNode p → Option (WriteSlice p))
+    (result : ProgramNode p → Option (FieldPatch p))
     (field : ProgramField p) :
     Option (L.Val field.ty) := by
   exact
     match writer? field with
     | some node =>
         match result node with
-        | some slice =>
-            match slice field with
+        | some patch =>
+            match patch field with
             | some stored => some stored.raw
             | none => initialValue? p env field
         | none => initialValue? p env field
     | none => initialValue? p env field
 
-theorem value?_isSome_of_result_slice
+theorem value?_isSome_of_result_patch
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    {result : ProgramNode p → Option (WriteSlice p)}
-    {field : ProgramField p} {node : ProgramNode p} {slice : WriteSlice p}
+    {result : ProgramNode p → Option (FieldPatch p)}
+    {field : ProgramField p} {node : ProgramNode p} {patch : FieldPatch p}
     {stored : EventGraph.StoredValue (L.Val field.ty)}
     (hwriter : writer? field = some node)
-    (hresult : result node = some slice)
-    (hslice : slice field = some stored) :
+    (hresult : result node = some patch)
+    (hpatch : patch field = some stored) :
     (value? env result field).isSome := by
-  simp [value?, hwriter, hresult, hslice]
+  simp [value?, hwriter, hresult, hpatch]
 
 theorem value?_isSome_of_initialValue?
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    {result : ProgramNode p → Option (WriteSlice p)}
+    {result : ProgramNode p → Option (FieldPatch p)}
     {field : ProgramField p}
     (hinitial : (initialValue? p env field).isSome) :
     (value? env result field).isSome := by
@@ -965,21 +965,21 @@ theorem value?_isSome_of_initialValue?
       cases hresult : result node with
       | none =>
           simpa [value?, hwriter, hresult] using hinitial
-      | some slice =>
-          cases hslice : slice field with
+      | some patch =>
+          cases hpatch : patch field with
           | none =>
-              simpa [value?, hwriter, hresult, hslice] using hinitial
+              simpa [value?, hwriter, hresult, hpatch] using hinitial
           | some stored =>
-              simp [value?, hwriter, hresult, hslice]
+              simp [value?, hwriter, hresult, hpatch]
 
 theorem value?_update_of_writer?_ne
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    {result : ProgramNode p → Option (WriteSlice p)}
+    {result : ProgramNode p → Option (FieldPatch p)}
     {field : ProgramField p} {node : ProgramNode p}
-    {slice : WriteSlice p}
+    {patch : FieldPatch p}
     (hne : ProgramField.writer? field ≠ some node) :
     ProgramField.value? env
-        (fun candidate => if candidate = node then some slice else result candidate)
+        (fun candidate => if candidate = node then some patch else result candidate)
         field =
       ProgramField.value? env result field := by
   classical
@@ -997,7 +997,7 @@ theorem value?_update_of_writer?_ne
 declared reads are already available. -/
 noncomputable def readEnvOfResult
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    (result : ProgramNode p → Option (WriteSlice p))
+    (result : ProgramNode p → Option (FieldPatch p))
     (reads : Finset (ProgramField p))
     (available :
       ∀ field, field ∈ reads → (value? env result field).isSome) :
@@ -1008,7 +1008,7 @@ noncomputable def readEnvOfResult
 
 theorem readEnvOfResult_value_eq_of_value?_eq
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
-    {left right : ProgramNode p → Option (WriteSlice p)}
+    {left right : ProgramNode p → Option (FieldPatch p)}
     {reads : Finset (ProgramField p)}
     {availableLeft :
       ∀ field, field ∈ reads → (value? env left field).isSome}

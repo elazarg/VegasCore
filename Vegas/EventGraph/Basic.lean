@@ -454,7 +454,7 @@ structure EventGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
       left.field = field →
       right.field = field →
       left = right
-  sliceLegal :
+  patchLegal :
     Node →
       ((field : Field) →
         Option (EventGraph.StoredValue (L.Val (fieldTy field)))) →
@@ -482,23 +482,23 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- A typed write slice produced by one node. -/
-abbrev WriteSlice (G : Vegas.EventGraph Player L) : Type :=
+/-- A typed field patch produced by one node. -/
+abbrev FieldPatch (G : Vegas.EventGraph Player L) : Type :=
   (field : G.Field) → Option (StoredValue (L.Val (G.fieldTy field)))
 
-namespace WriteSlice
+namespace FieldPatch
 
 variable (G : Vegas.EventGraph Player L)
 
-/-- The empty result slice. -/
-def empty : WriteSlice G :=
+/-- The empty field patch. -/
+def empty : FieldPatch G :=
   fun _ => none
 
-/-- A singleton result slice writing one field. -/
+/-- A singleton field patch writing one field. -/
 noncomputable def single
     (field : G.Field)
     (value : StoredValue (L.Val (G.fieldTy field))) :
-    WriteSlice G :=
+    FieldPatch G :=
   fun other =>
     if h : other = field then
       some (cast (by rw [h]) value)
@@ -518,14 +518,14 @@ noncomputable def single
     single G field value other = none := by
   simp [single, h]
 
-end WriteSlice
+end FieldPatch
 
 /-- Extensional partial node-result assignment. -/
 abbrev ResultAssignment (G : Vegas.EventGraph Player L) : Type :=
-  (node : G.Node) → Option (WriteSlice G)
+  (node : G.Node) → Option (FieldPatch G)
 
 /-- Value of a graph field under a partial result assignment. Completed node
-slices override initial values; if no completed slice has written the field,
+patches override initial values; if no completed patch has written the field,
 the graph initial value is used. -/
 noncomputable def value?
     (G : Vegas.EventGraph Player L) (result : G.ResultAssignment)
@@ -533,28 +533,28 @@ noncomputable def value?
   classical
   exact
     if h :
-        ∃ node slice stored,
-          result node = some slice ∧ slice field = some stored then
+        ∃ node patch stored,
+          result node = some patch ∧ patch field = some stored then
       let node := Classical.choose h
-      let slice := Classical.choose (Classical.choose_spec h)
+      let patch := Classical.choose (Classical.choose_spec h)
       let stored := Classical.choose (Classical.choose_spec
         (Classical.choose_spec h))
       some stored.raw
     else
       G.initial field
 
-theorem value?_isSome_of_result_slice
+theorem value?_isSome_of_result_patch
     (G : Vegas.EventGraph Player L) {result : G.ResultAssignment}
-    {field : G.Field} {node : G.Node} {slice : WriteSlice G}
+    {field : G.Field} {node : G.Node} {patch : FieldPatch G}
     {stored : StoredValue (L.Val (G.fieldTy field))}
-    (hresult : result node = some slice)
-    (hslice : slice field = some stored) :
+    (hresult : result node = some patch)
+    (hpatch : patch field = some stored) :
     (G.value? result field).isSome := by
   classical
   unfold value?
   rw [dif_pos]
   · simp
-  · exact ⟨node, slice, stored, hresult, hslice⟩
+  · exact ⟨node, patch, stored, hresult, hpatch⟩
 
 /-- Result assignments agree on the prerequisites of a node. -/
 def AgreeOnPrereqs (G : Vegas.EventGraph Player L)
@@ -578,7 +578,7 @@ noncomputable def done (G : Vegas.EventGraph Player L)
 
 The closure invariant says completed nodes are lower-closed under graph
 dependencies.  The legality invariant says every stored node result is a
-well-formed slice for that node. Dynamic action legality is checked at the
+well-formed patch for that node. Dynamic action legality is checked at the
 machine frontier instead of being cached in the configuration. -/
 structure Configuration (G : Vegas.EventGraph Player L) where
   result : ResultAssignment G
@@ -590,9 +590,9 @@ structure Configuration (G : Vegas.EventGraph Player L) where
       prereq ∈ G.prereqs node →
       (result prereq).isSome
   legal :
-    ∀ {node slice},
-      result node = some slice →
-      G.sliceLegal node slice
+    ∀ {node patch},
+      result node = some patch →
+      G.patchLegal node patch
 
 namespace Configuration
 
@@ -618,7 +618,7 @@ def initial (G : Vegas.EventGraph Player L) : G.Configuration where
     intro node prereq h
     simp at h
   legal := by
-    intro node slice h
+    intro node patch h
     simp at h
 
 /-- Completed nodes of a configuration. -/
@@ -714,7 +714,7 @@ theorem exists_unfinished_of_not_terminal
   refine ⟨node, hnode, ?_⟩
   cases hresult : cfg.result node with
   | none => rfl
-  | some slice =>
+  | some patch =>
       exfalso
       apply hnot_done
       exact (G.mem_done_iff cfg.result node).mpr (by simp [hnode, hresult])
@@ -732,7 +732,7 @@ theorem exists_enabled_of_not_terminal
   have hwitness_none : cfg.result witness = none := by
     cases hresult : cfg.result witness with
     | none => rfl
-    | some slice => simp [hresult] at hwitness_unfinished
+    | some patch => simp [hresult] at hwitness_unfinished
   have hunfinished_nonempty : unfinished.Nonempty := by
     refine ⟨witness, ?_⟩
     simp [unfinished, hwitness_node, hwitness_none]
@@ -749,7 +749,7 @@ theorem exists_enabled_of_not_terminal
   have hpre_unfinished : (cfg.result prereq).isNone := by
     cases hresult : cfg.result prereq with
     | none => rfl
-    | some slice =>
+    | some patch =>
         exfalso
         apply hpre_not_done
         exact (G.mem_done_iff cfg.result prereq).mpr
@@ -757,7 +757,7 @@ theorem exists_enabled_of_not_terminal
   have hpre_none : cfg.result prereq = none := by
     cases hresult : cfg.result prereq with
     | none => rfl
-    | some slice => simp [hresult] at hpre_unfinished
+    | some patch => simp [hresult] at hpre_unfinished
   have hle : G.rank node ≤ G.rank prereq :=
     hmin prereq (by simp [unfinished, hpre_node, hpre_none])
   exact (Nat.not_lt_of_ge hle) (G.prereq_rank_lt hnode hpre)
@@ -784,7 +784,7 @@ theorem enabled_of_rank_minimal_unfinished
   have hpre_unfinished : (cfg.result prereq).isNone := by
     cases hresult : cfg.result prereq with
     | none => rfl
-    | some slice =>
+    | some patch =>
         exfalso
         apply hpre_not_done
         exact (G.mem_done_iff cfg.result prereq).mpr
@@ -811,7 +811,7 @@ theorem exists_rank_minimal_enabled_of_not_terminal
   have hwitness_none : cfg.result witness = none := by
     cases hresult : cfg.result witness with
     | none => rfl
-    | some slice => simp [hresult] at hwitness_unfinished
+    | some patch => simp [hresult] at hwitness_unfinished
   have hunfinished_nonempty : unfinished.Nonempty := by
     refine ⟨witness, ?_⟩
     simp [unfinished, hwitness_node, hwitness_none]
@@ -827,7 +827,7 @@ theorem exists_rank_minimal_enabled_of_not_terminal
     have hother_none : cfg.result other = none := by
       cases hresult : cfg.result other with
       | none => rfl
-      | some slice => simp [hresult] at hother_unfinished
+      | some patch => simp [hresult] at hother_unfinished
     exact hmin other (by simp [unfinished, hother, hother_none])
   exact ⟨node,
     cfg.enabled_of_rank_minimal_unfinished hnode hnode_unfinished' hmin',
@@ -842,34 +842,34 @@ theorem frontier_nonempty_of_not_terminal
   exact ⟨node, (cfg.mem_frontier_iff node).mpr henabled⟩
 
 /-- Replace the result at one node. -/
-noncomputable def updateResult
-    (cfg : G.Configuration) (node : G.Node) (slice : WriteSlice G) :
+noncomputable def updatePatch
+    (cfg : G.Configuration) (node : G.Node) (patch : FieldPatch G) :
     ResultAssignment G := by
   classical
   exact fun candidate =>
-    if candidate = node then some slice else cfg.result candidate
+    if candidate = node then some patch else cfg.result candidate
 
-@[simp] theorem updateResult_self
-    (cfg : G.Configuration) (node : G.Node) (slice : WriteSlice G) :
-    updateResult cfg node slice node = some slice := by
+@[simp] theorem updatePatch_self
+    (cfg : G.Configuration) (node : G.Node) (patch : FieldPatch G) :
+    updatePatch cfg node patch node = some patch := by
   classical
-  simp [updateResult]
+  simp [updatePatch]
 
-@[simp] theorem updateResult_of_ne
+@[simp] theorem updatePatch_of_ne
     (cfg : G.Configuration) {node candidate : G.Node}
-    (slice : WriteSlice G) (h : candidate ≠ node) :
-    updateResult cfg node slice candidate = cfg.result candidate := by
+    (patch : FieldPatch G) (h : candidate ≠ node) :
+    updatePatch cfg node patch candidate = cfg.result candidate := by
   classical
-  simp [updateResult, h]
+  simp [updatePatch, h]
 
 /-- Execute one enabled event node with a legal result, producing the extensional
 successor configuration. -/
-noncomputable def withResult
-    (cfg : G.Configuration) {node : G.Node} (slice : WriteSlice G)
+noncomputable def withPatch
+    (cfg : G.Configuration) {node : G.Node} (patch : FieldPatch G)
     (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.sliceLegal node slice) :
+    (hlegal : G.patchLegal node patch) :
     G.Configuration where
-  result := updateResult cfg node slice
+  result := updatePatch cfg node patch
   result_nodes := by
     classical
     intro candidate hsome
@@ -877,7 +877,7 @@ noncomputable def withResult
     · subst candidate
       exact cfg.mem_nodes_of_mem_frontier hfrontier
     · have hold : (cfg.result candidate).isSome := by
-        simpa [updateResult, hcandidate] using hsome
+        simpa [updatePatch, hcandidate] using hsome
       exact cfg.result_nodes hold
   closed := by
     classical
@@ -891,9 +891,9 @@ noncomputable def withResult
         have hnodeNone : (cfg.result node).isNone :=
           cfg.not_done_of_mem_frontier hfrontier
         cases hnode : cfg.result node <;> simp [hnode] at hpreDone hnodeNone
-      · simpa [updateResult, hpreq] using hpreDone
+      · simpa [updatePatch, hpreq] using hpreDone
     · have hcandidateOld : (cfg.result candidate).isSome := by
-        simpa [updateResult, hcandidate] using hcandidateDone
+        simpa [updatePatch, hcandidate] using hcandidateDone
       have hpreOld : (cfg.result prereq).isSome :=
         cfg.closed hcandidateOld hpre
       by_cases hpreq : prereq = node
@@ -901,68 +901,68 @@ noncomputable def withResult
         have hnodeNone : (cfg.result node).isNone :=
           cfg.not_done_of_mem_frontier hfrontier
         cases hnode : cfg.result node <;> simp [hnode] at hpreOld hnodeNone
-      · simpa [updateResult, hpreq] using hpreOld
+      · simpa [updatePatch, hpreq] using hpreOld
   legal := by
     classical
-    intro candidate candidateSlice hcandidateResult
+    intro candidate candidatePatch hcandidateResult
     by_cases hcandidate : candidate = node
     · subst candidate
-      have hslice : slice = candidateSlice := by
-        simpa [updateResult] using hcandidateResult
-      subst candidateSlice
+      have hpatch : patch = candidatePatch := by
+        simpa [updatePatch] using hcandidateResult
+      subst candidatePatch
       exact hlegal
-    · have holdResult : cfg.result candidate = some candidateSlice := by
-        simpa [updateResult, hcandidate] using hcandidateResult
+    · have holdResult : cfg.result candidate = some candidatePatch := by
+        simpa [updatePatch, hcandidate] using hcandidateResult
       exact cfg.legal holdResult
 
 /-- A distinct frontier node remains on the frontier after executing another
 frontier node. Executing one enabled event only records that event's
 result; it does not invalidate any other enabled event. -/
-theorem withResult_mem_frontier_of_ne
+theorem withPatch_mem_frontier_of_ne
     (cfg : G.Configuration)
-    {first second : G.Node} {slice : WriteSlice G}
+    {first second : G.Node} {patch : FieldPatch G}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hlegal : G.sliceLegal first slice) :
-    second ∈ (cfg.withResult slice hfirst hlegal).frontier := by
+    (hlegal : G.patchLegal first patch) :
+    second ∈ (cfg.withPatch patch hfirst hlegal).frontier := by
   classical
   rw [mem_frontier_iff] at hsecond ⊢
   rcases hsecond with ⟨hnode, hnone, hprereqs⟩
   refine ⟨hnode, ?_, ?_⟩
-  · simpa [withResult, updateResult, hne] using hnone
+  · simpa [withPatch, updatePatch, hne] using hnone
   · intro prereq hpre
     have hdone := hprereqs hpre
     have hdoneData := (G.mem_done_iff cfg.result prereq).mp hdone
     refine (G.mem_done_iff
-      (cfg.withResult slice hfirst hlegal).result prereq).mpr ?_
+      (cfg.withPatch patch hfirst hlegal).result prereq).mpr ?_
     refine ⟨hdoneData.1, ?_⟩
     by_cases hpreq : prereq = first
     · subst prereq
-      simp [withResult, updateResult]
-    · simpa [withResult, updateResult, hpreq] using hdoneData.2
+      simp [withPatch, updatePatch]
+    · simpa [withPatch, updatePatch, hpreq] using hdoneData.2
 
 /-- Frontier execution has a diamond property: two distinct enabled events
 can be linearized in either order, and after both have executed the same
 extensional configuration is reached. -/
-theorem withResult_comm
+theorem withPatch_comm
     (cfg : G.Configuration)
-    {left right : G.Node} {leftSlice rightSlice : WriteSlice G}
+    {left right : G.Node} {leftPatch rightPatch : FieldPatch G}
     (hleft : left ∈ cfg.frontier)
     (hright : right ∈ cfg.frontier)
     (hne : left ≠ right)
-    (hleftLegal : G.sliceLegal left leftSlice)
-    (hrightLegal : G.sliceLegal right rightSlice) :
+    (hleftLegal : G.patchLegal left leftPatch)
+    (hrightLegal : G.patchLegal right rightPatch) :
     let hrightAfterLeft :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hleft hright (Ne.symm hne) hleftLegal
     let hleftAfterRight :=
-      cfg.withResult_mem_frontier_of_ne
+      cfg.withPatch_mem_frontier_of_ne
         hright hleft hne hrightLegal
-    (cfg.withResult leftSlice hleft hleftLegal).withResult
-        rightSlice hrightAfterLeft hrightLegal =
-      (cfg.withResult rightSlice hright hrightLegal).withResult
-        leftSlice hleftAfterRight hleftLegal := by
+    (cfg.withPatch leftPatch hleft hleftLegal).withPatch
+        rightPatch hrightAfterLeft hrightLegal =
+      (cfg.withPatch rightPatch hright hrightLegal).withPatch
+        leftPatch hleftAfterRight hleftLegal := by
   classical
   dsimp
   apply Configuration.ext
@@ -970,28 +970,28 @@ theorem withResult_comm
   by_cases hcLeft : candidate = left
   · subst candidate
     have hleftRight : left ≠ right := hne
-    simp [withResult, updateResult, hleftRight]
+    simp [withPatch, updatePatch, hleftRight]
   · by_cases hcRight : candidate = right
     · subst candidate
       have hrightLeft : right ≠ left := Ne.symm hne
-      simp [withResult, updateResult, hrightLeft]
-    · simp [withResult, updateResult, hcLeft, hcRight]
+      simp [withPatch, updatePatch, hrightLeft]
+    · simp [withPatch, updatePatch, hcLeft, hcRight]
 
-/-- Execute a whole frontier extensionally by recording one legal result slice
+/-- Execute a whole frontier extensionally by recording one legal field patch
 for each node in the current frontier and leaving every non-frontier result as
 it was.
 
 This is not a scheduler. It is the canonical endpoint that any legal
-linearization of the same source frontier and same sampled/player slices must
+linearization of the same source frontier and same sampled/player patches must
 reach. -/
-noncomputable def withFrontierResults
+noncomputable def withFrontierPatches
     (cfg : G.Configuration)
-    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
-    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier)) :
+    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
+    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier)) :
     G.Configuration where
   result := fun candidate =>
     if hfrontier : candidate ∈ cfg.frontier then
-      some (slice candidate hfrontier)
+      some (patch candidate hfrontier)
     else
       cfg.result candidate
   result_nodes := by
@@ -1031,63 +1031,63 @@ noncomputable def withFrontierResults
         exact hpreDone
   legal := by
     classical
-    intro candidate candidateSlice hcandidateResult
+    intro candidate candidatePatch hcandidateResult
     by_cases hfrontier : candidate ∈ cfg.frontier
     · rw [dif_pos hfrontier] at hcandidateResult
-      have hslice : slice candidate hfrontier = candidateSlice := by
+      have hpatch : patch candidate hfrontier = candidatePatch := by
         simpa using hcandidateResult
-      subst candidateSlice
+      subst candidatePatch
       exact hlegal candidate hfrontier
-    · have holdResult : cfg.result candidate = some candidateSlice := by
+    · have holdResult : cfg.result candidate = some candidatePatch := by
         rw [dif_neg hfrontier] at hcandidateResult
         exact hcandidateResult
       exact cfg.legal holdResult
 
-@[simp] theorem withFrontierResults_result_of_mem
+@[simp] theorem withFrontierPatches_result_of_mem
     (cfg : G.Configuration)
-    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
-    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
+    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
     {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
-    (cfg.withFrontierResults slice hlegal).result node =
-      some (slice node hfrontier) := by
+    (cfg.withFrontierPatches patch hlegal).result node =
+      some (patch node hfrontier) := by
   classical
-  dsimp [withFrontierResults]
+  dsimp [withFrontierPatches]
   rw [dif_pos hfrontier]
 
-@[simp] theorem withFrontierResults_result_of_not_mem
+@[simp] theorem withFrontierPatches_result_of_not_mem
     (cfg : G.Configuration)
-    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
-    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
+    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
     {node : G.Node} (hfrontier : node ∉ cfg.frontier) :
-    (cfg.withFrontierResults slice hlegal).result node =
+    (cfg.withFrontierPatches patch hlegal).result node =
       cfg.result node := by
   classical
-  dsimp [withFrontierResults]
+  dsimp [withFrontierPatches]
   rw [dif_neg hfrontier]
 
 /-- A configuration is the canonical whole-frontier result iff it records the
-chosen slice at every source-frontier node and leaves every non-frontier node's
+chosen patch at every source-frontier node and leaves every non-frontier node's
 result unchanged. This is the extensional form of frontier linearization
 invariance: scheduler order is not part of the endpoint once the per-node
 results are fixed. -/
-theorem eq_withFrontierResults_of_result_eq
+theorem eq_withFrontierPatches_of_result_eq
     (cfg dst : G.Configuration)
-    (slice : ∀ node, node ∈ cfg.frontier → WriteSlice G)
-    (hlegal : ∀ node hfrontier, G.sliceLegal node (slice node hfrontier))
+    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
+    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
     (honFrontier :
       ∀ node (hfrontier : node ∈ cfg.frontier),
-        dst.result node = some (slice node hfrontier))
+        dst.result node = some (patch node hfrontier))
     (hoffFrontier :
       ∀ node, node ∉ cfg.frontier → dst.result node = cfg.result node) :
-    dst = cfg.withFrontierResults slice hlegal := by
+    dst = cfg.withFrontierPatches patch hlegal := by
   classical
   apply Configuration.ext
   funext node
   by_cases hfrontier : node ∈ cfg.frontier
   · rw [honFrontier node hfrontier]
-    rw [withFrontierResults_result_of_mem cfg slice hlegal hfrontier]
+    rw [withFrontierPatches_result_of_mem cfg patch hlegal hfrontier]
   · rw [hoffFrontier node hfrontier]
-    rw [withFrontierResults_result_of_not_mem cfg slice hlegal hfrontier]
+    rw [withFrontierPatches_result_of_not_mem cfg patch hlegal hfrontier]
 
 end Configuration
 
@@ -1103,8 +1103,8 @@ result assignment. -/
   letI : ∀ field : G.Field,
       Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
     fun _ => inferInstance
-  letI : Fintype (WriteSlice G) := by
-    dsimp [WriteSlice]
+  letI : Fintype (FieldPatch G) := by
+    dsimp [FieldPatch]
     infer_instance
   letI : Fintype (ResultAssignment G) := by
     dsimp [ResultAssignment]
@@ -1115,7 +1115,7 @@ result assignment. -/
       (∀ {node prereq},
         (result node).isSome → prereq ∈ G.prereqs node →
           (result prereq).isSome) ∧
-      (∀ {node slice}, result node = some slice → G.sliceLegal node slice) }
+      (∀ {node patch}, result node = some patch → G.patchLegal node patch) }
   haveI : Fintype ValidResult := by
     dsimp [ValidResult]
     infer_instance

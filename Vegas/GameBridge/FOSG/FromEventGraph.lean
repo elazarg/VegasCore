@@ -39,20 +39,20 @@ noncomputable def toFOSGView
   nonterminal_exists_legal := by
     intro cfg hterminal
     classical
-    let mkSlice (who : Player) (node : G.Node) : G.WriteSlice :=
+    let mkPatch (who : Player) (node : G.Node) : G.FieldPatch :=
       if h : node ∈ cfg.frontier ∧ (G.sem node).actor = some who then
         Classical.choose (hsound.availablePlayerActions cfg h.1 h.2)
       else
         fun _ => none
     let joint : JointAction (PlayerRoundAction G) := fun who =>
       if who ∈ roundActive G cfg then
-        some { slice := mkSlice who }
+        some { patch := mkPatch who }
       else
         none
     refine ⟨joint, hterminal, ?_⟩
     intro who
     by_cases hactive : who ∈ roundActive G cfg
-    · have hjoint : joint who = some { slice := mkSlice who } := by
+    · have hjoint : joint who = some { patch := mkPatch who } := by
         simp [joint, hactive]
       rw [hjoint]
       refine ⟨hactive, ?_⟩
@@ -60,9 +60,9 @@ noncomputable def toFOSGView
       have hnode : node ∈ cfg.frontier ∧ (G.sem node).actor = some who :=
         ⟨hfrontier, hactor⟩
       change
-        G.sliceLegal node (mkSlice who node) ∧
-          G.actionLegal cfg.result node (mkSlice who node)
-      unfold mkSlice
+        G.patchLegal node (mkPatch who node) ∧
+          G.actionLegal cfg.result node (mkPatch who node)
+      unfold mkPatch
       split
       · rename_i h
         exact Classical.choose_spec

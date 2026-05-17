@@ -40,7 +40,7 @@ noncomputable def eventGraphRoundView
     fun field => ProgramField.instFintypeValue g field
   dsimp [eventGraphMachine, EventGraph.toMachine,
     programEventGraph, EventGraph.Configuration,
-    EventGraph.ResultAssignment, EventGraph.WriteSlice]
+    EventGraph.ResultAssignment, EventGraph.FieldPatch]
   infer_instance
 
 /-- Finite native round-action helper for event-graph round views. -/

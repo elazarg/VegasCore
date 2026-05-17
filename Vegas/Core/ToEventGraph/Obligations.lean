@@ -433,46 +433,46 @@ theorem writer_mem_prereqs_of_read_write
       ⟨ProgramNode.mem_finset p prior, hrank,
         Or.inl ⟨field, hread, hpriorWrite⟩⟩
 
-/-- A program event graph slice is well-formed for a node when it has the storage
+/-- A program event graph patch is well-formed for a node when it has the storage
 shape prescribed by the node semantics. Dynamic guard checks are handled by
 `actionLegal`. -/
-noncomputable def sliceLegal
+noncomputable def patchLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (obs : ProgramObligations p)
-    (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
+    (node : ProgramNode p) (patch : ProgramField.FieldPatch p) : Prop :=
   match sem obs node with
   | .assign field _ =>
       ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.clear value)
+        patch = ProgramField.singlePatch field (.clear value)
   | .sample field _ =>
       ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.clear value)
+        patch = ProgramField.singlePatch field (.clear value)
   | .commit _ field _ =>
       ∃ value : L.Val field.ty,
-        slice = ProgramField.singleSlice field (.hidden value)
+        patch = ProgramField.singlePatch field (.hidden value)
   | .reveal _ target _ =>
       ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.clear value)
+        patch = ProgramField.singlePatch target (.clear value)
 
-/-- A legal slice contains a stored value for every semantic field written by
+/-- A legal patch contains a stored value for every semantic field written by
 the node. -/
-theorem sliceLegal_writeField_isSome
+theorem patchLegal_writeField_isSome
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     (obs : ProgramObligations p)
-    (node : ProgramNode p) {slice : ProgramField.WriteSlice p}
+    (node : ProgramNode p) {patch : ProgramField.FieldPatch p}
     {field : ProgramField p}
-    (hlegal : sliceLegal obs node slice)
+    (hlegal : patchLegal obs node patch)
     (hwrite :
       field ∈
         (ProgramNode.sem obs node).writeFields) :
     ∃ stored : EventGraph.StoredValue (L.Val field.ty),
-      slice field = some stored := by
+      patch field = some stored := by
   classical
   cases hsem : ProgramNode.sem obs node with
   | assign target expr =>
-      rw [sliceLegal, hsem] at hlegal
+      rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target (.clear value) at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -486,9 +486,9 @@ theorem sliceLegal_writeField_isSome
       rcases hlegal with ⟨value, rfl⟩
       exact ⟨.clear value, by simp⟩
   | sample target dist =>
-      rw [sliceLegal, hsem] at hlegal
+      rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target (.clear value) at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -502,9 +502,9 @@ theorem sliceLegal_writeField_isSome
       rcases hlegal with ⟨value, rfl⟩
       exact ⟨.clear value, by simp⟩
   | commit owner target guard =>
-      rw [sliceLegal, hsem] at hlegal
+      rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.hidden value) at hlegal
+        patch = ProgramField.singlePatch target (.hidden value) at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -518,9 +518,9 @@ theorem sliceLegal_writeField_isSome
       rcases hlegal with ⟨value, rfl⟩
       exact ⟨.hidden value, by simp⟩
   | reveal source target hty =>
-      rw [sliceLegal, hsem] at hlegal
+      rw [patchLegal, hsem] at hlegal
       change ∃ value : L.Val target.ty,
-        slice = ProgramField.singleSlice target (.clear value) at hlegal
+        patch = ProgramField.singlePatch target (.clear value) at hlegal
       rw [EventGraph.NodeSem.mem_writeFields_iff] at hwrite
       rcases hwrite with ⟨write, hwrite, hfield⟩
       rw [hsem] at hwrite
@@ -534,13 +534,13 @@ theorem sliceLegal_writeField_isSome
       rcases hlegal with ⟨value, rfl⟩
       exact ⟨.clear value, by simp⟩
 
-/-- Dynamic legality for player-chosen program event graph slices. Only commit nodes
-have an actor, so only commits admit legal player slices. -/
+/-- Dynamic legality for player-chosen program event graph patches. Only commit nodes
+have an actor, so only commits admit legal player patches. -/
 noncomputable def actionLegal
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     (obs : ProgramObligations p)
-    (result : ProgramNode p → Option (ProgramField.WriteSlice p))
-    (node : ProgramNode p) (slice : ProgramField.WriteSlice p) : Prop :=
+    (result : ProgramNode p → Option (ProgramField.FieldPatch p))
+    (node : ProgramNode p) (patch : ProgramField.FieldPatch p) : Prop :=
   match sem obs node with
   | .assign _ _ => False
   | .sample _ _ => False
@@ -552,7 +552,7 @@ noncomputable def actionLegal
           guard.eval value
               (ProgramField.readEnvOfResult env result guard.reads available) =
             true ∧
-          slice = ProgramField.singleSlice field (.hidden value)
+          patch = ProgramField.singlePatch field (.hidden value)
   | .reveal _ _ _ => False
 
 /-- If the declared reads of a player-owned node are available, then that
@@ -560,7 +560,7 @@ node has a legal concrete graph action. -/
 theorem exists_actionLegal_of_reads_available
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     (obs : ProgramObligations p)
-    (result : ProgramNode p → Option (ProgramField.WriteSlice p))
+    (result : ProgramNode p → Option (ProgramField.FieldPatch p))
     (node : ProgramNode p) {who : P}
     (hactor :
       (sem obs node).actor = some who)
@@ -568,9 +568,9 @@ theorem exists_actionLegal_of_reads_available
       ∀ read, read ∈
         (sem obs node).reads →
         (ProgramField.value? env result read).isSome) :
-    ∃ slice,
-      sliceLegal obs node slice ∧
-        actionLegal env obs result node slice := by
+    ∃ patch,
+      patchLegal obs node patch ∧
+        actionLegal env obs result node patch := by
   cases hsem : sem obs node with
   | assign field expr =>
       simp [EventGraph.NodeSem.actor, hsem] at hactor
@@ -587,9 +587,9 @@ theorem exists_actionLegal_of_reads_available
       let ρ :=
         ProgramField.readEnvOfResult env result guard.reads havailable
       rcases guard.satisfiable ρ with ⟨value, hvalue⟩
-      let slice := ProgramField.singleSlice field (.hidden value)
-      refine ⟨slice, ?_, ?_⟩
-      · rw [sliceLegal, hsem]
+      let patch := ProgramField.singlePatch field (.hidden value)
+      refine ⟨patch, ?_, ?_⟩
+      · rw [patchLegal, hsem]
         exact ⟨value, rfl⟩
       · rw [actionLegal, hsem]
         exact ⟨havailable, value, hvalue, rfl⟩
@@ -737,28 +737,28 @@ in the source-level extensional value lookup. -/
 theorem value?_isSome_of_completed_write
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     (obs : ProgramObligations p)
-    {result : ProgramNode p → Option (ProgramField.WriteSlice p)}
+    {result : ProgramNode p → Option (ProgramField.FieldPatch p)}
     {writer : ProgramNode p} {field : ProgramField p}
     (hdone : (result writer).isSome)
     (hcfgLegal :
-      ∀ {node slice},
-        result node = some slice →
-          ProgramNode.sliceLegal obs node slice)
+      ∀ {node patch},
+        result node = some patch →
+          ProgramNode.patchLegal obs node patch)
     (hwrite :
       field ∈
         (ProgramNode.sem obs writer).writeFields) :
     (ProgramField.value? env result field).isSome := by
-  rcases Option.isSome_iff_exists.mp hdone with ⟨slice, hresult⟩
-  have hsliceLegal :
-      ProgramNode.sliceLegal obs writer slice :=
+  rcases Option.isSome_iff_exists.mp hdone with ⟨patch, hresult⟩
+  have hpatchLegal :
+      ProgramNode.patchLegal obs writer patch :=
     hcfgLegal hresult
-  rcases ProgramNode.sliceLegal_writeField_isSome obs writer hsliceLegal hwrite with
+  rcases ProgramNode.patchLegal_writeField_isSome obs writer hpatchLegal hwrite with
     ⟨stored, hstored⟩
   have hfield :
       field = ProgramField.writtenBy writer :=
     ProgramNode.eq_writtenBy_of_mem_writeFields obs writer hwrite
   subst field
-  exact ProgramField.value?_isSome_of_result_slice env
+  exact ProgramField.value?_isSome_of_result_patch env
     (ProgramField.writer?_writtenBy writer) hresult hstored
 
 /-- Internal kernel for source event nodes. Assignment and reveal nodes are
@@ -768,8 +768,8 @@ noncomputable def internalKernel
     {Γ : VCtx P L} {p : VegasCore P L Γ} (env : VEnv L Γ)
     (obs : ProgramObligations p)
     (node : ProgramNode p)
-    (result : ProgramNode p → Option (ProgramField.WriteSlice p)) :
-    PMF (ProgramField.WriteSlice p) := by
+    (result : ProgramNode p → Option (ProgramField.FieldPatch p)) :
+    PMF (ProgramField.FieldPatch p) := by
   classical
   exact
     match hsem : sem obs node with
@@ -778,23 +778,23 @@ noncomputable def internalKernel
             ∀ read, read ∈ expr.reads →
               (ProgramField.value? env result read).isSome then
           PMF.pure
-            (ProgramField.singleSlice field
+            (ProgramField.singlePatch field
               (.clear (expr.eval
                 (ProgramField.readEnvOfResult env result expr.reads available))))
         else
-          PMF.pure (ProgramField.emptySlice p)
+          PMF.pure (ProgramField.emptyPatch p)
     | .sample field dist =>
         if available :
             ∀ read, read ∈ dist.reads →
               (ProgramField.value? env result read).isSome then
           PMF.map
-            (fun value => ProgramField.singleSlice field (.clear value))
+            (fun value => ProgramField.singlePatch field (.clear value))
             (dist.eval
               (ProgramField.readEnvOfResult env result dist.reads available))
         else
-          PMF.pure (ProgramField.emptySlice p)
+          PMF.pure (ProgramField.emptyPatch p)
     | .commit _ _ _ =>
-        PMF.pure (ProgramField.emptySlice p)
+        PMF.pure (ProgramField.emptyPatch p)
     | .reveal source target hty =>
         if available :
             ∀ read, read ∈ ({source} : Finset (ProgramField p)) →
@@ -803,10 +803,10 @@ noncomputable def internalKernel
             ProgramField.readEnvOfResult env result
               ({source} : Finset (ProgramField p)) available
           PMF.pure
-            (ProgramField.singleSlice target
+            (ProgramField.singlePatch target
               (.clear (cast (by rw [hty]) (ρ.value source (by simp)))))
         else
-          PMF.pure (ProgramField.emptySlice p)
+          PMF.pure (ProgramField.emptyPatch p)
 
 end ProgramNode
 

@@ -66,13 +66,13 @@ theorem commitGuard_eval_eq_of_projectView_eq
     evalGuard (Player := P) (L := L) R a right :=
   evalGuard_eq_of_projectViewEnv_eq hctx hfresh hR hview
 
-@[simp] theorem ProgramField.singleSlice_ne
+@[simp] theorem ProgramField.singlePatch_ne
     {Γ : VCtx P L} {p : VegasCore P L Γ}
     {field other : ProgramField p}
     (value : EventGraph.StoredValue (L.Val field.ty))
     (h : other ≠ field) :
-    ProgramField.singleSlice field value other = none := by
-  simp [ProgramField.singleSlice, h]
+    ProgramField.singlePatch field value other = none := by
+  simp [ProgramField.singlePatch, h]
 
 private theorem ProgramNode.commit_target_owner_of_sem :
     {Γ : VCtx P L} → {p : VegasCore P L Γ} →
@@ -238,35 +238,35 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
     {owner : P} {field : ProgramField g.prog}
     {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
-    {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
+    {leftPatch rightPatch : ProgramField.FieldPatch g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
         EventGraph.NodeSem.commit owner field guard)
-    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    (hleftLegal : (programEventGraph g).patchLegal node leftPatch)
+    (hrightLegal : (programEventGraph g).patchLegal node rightPatch) :
     eventGraphPublicView g
-        (cfg.withResult leftSlice hfrontier hleftLegal) =
+        (cfg.withPatch leftPatch hfrontier hleftLegal) =
       eventGraphPublicView g
-        (cfg.withResult rightSlice hfrontier hrightLegal) := by
+        (cfg.withPatch rightPatch hfrontier hrightLegal) := by
   classical
   have htargetOwner : field.owner = some owner :=
     ProgramNode.commit_target_owner_of_sem g.obligations node hsem
-  change ProgramNode.sliceLegal g.obligations node leftSlice at hleftLegal
-  change ProgramNode.sliceLegal g.obligations node rightSlice at hrightLegal
-  rw [ProgramNode.sliceLegal, hsem] at hleftLegal hrightLegal
+  change ProgramNode.patchLegal g.obligations node leftPatch at hleftLegal
+  change ProgramNode.patchLegal g.obligations node rightPatch at hrightLegal
+  rw [ProgramNode.patchLegal, hsem] at hleftLegal hrightLegal
   rcases hleftLegal with ⟨leftValue, rfl⟩
   rcases hrightLegal with ⟨rightValue, rfl⟩
   ext candidate
   · by_cases hcandidate : candidate = node
-    · simp [eventGraphPublicView, EventGraph.Configuration.withResult,
-        EventGraph.Configuration.updateResult, hcandidate]
+    · simp [eventGraphPublicView, EventGraph.Configuration.withPatch,
+        EventGraph.Configuration.updatePatch, hcandidate]
     · change
         (if candidate = node then
-            some (ProgramField.singleSlice field (.hidden leftValue))
+            some (ProgramField.singlePatch field (.hidden leftValue))
           else cfg.result candidate).isSome =
           (if candidate = node then
-            some (ProgramField.singleSlice field (.hidden rightValue))
+            some (ProgramField.singlePatch field (.hidden rightValue))
           else cfg.result candidate).isSome
       rw [if_neg hcandidate, if_neg hcandidate]
   · by_cases hpublic : candidate.owner = none
@@ -276,10 +276,10 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         simp [htargetOwner] at hpublic
       have hvalueEq :
           eventGraphConfigValue? g
-              (cfg.withResult (ProgramField.singleSlice field (.hidden leftValue))
+              (cfg.withPatch (ProgramField.singlePatch field (.hidden leftValue))
                 hfrontier hleftLegal) candidate =
             eventGraphConfigValue? g
-              (cfg.withResult (ProgramField.singleSlice field (.hidden rightValue))
+              (cfg.withPatch (ProgramField.singlePatch field (.hidden rightValue))
                 hfrontier hrightLegal) candidate := by
         have hwriterNe :
             ProgramField.writer? candidate ≠ some node :=
@@ -287,31 +287,31 @@ theorem eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
             g.obligations node hsem hne
         have hleftSame :
             eventGraphConfigValue? g
-                (cfg.withResult
-                  (ProgramField.singleSlice field (.hidden leftValue))
+                (cfg.withPatch
+                  (ProgramField.singlePatch field (.hidden leftValue))
                   hfrontier hleftLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
           simpa [eventGraphConfigValue?,
-            EventGraph.Configuration.withResult,
-            EventGraph.Configuration.updateResult] using
+            EventGraph.Configuration.withPatch,
+            EventGraph.Configuration.updatePatch] using
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
-              (slice := ProgramField.singleSlice field (.hidden leftValue))
+              (patch := ProgramField.singlePatch field (.hidden leftValue))
               hwriterNe
         have hrightSame :
             eventGraphConfigValue? g
-                (cfg.withResult
-                  (ProgramField.singleSlice field (.hidden rightValue))
+                (cfg.withPatch
+                  (ProgramField.singlePatch field (.hidden rightValue))
                   hfrontier hrightLegal) candidate =
               ProgramField.value? g.env cfg.result candidate := by
           simpa [eventGraphConfigValue?,
-            EventGraph.Configuration.withResult,
-            EventGraph.Configuration.updateResult] using
+            EventGraph.Configuration.withPatch,
+            EventGraph.Configuration.updatePatch] using
             ProgramField.value?_update_of_writer?_ne
               (p := g.prog) g.env (result := cfg.result)
               (field := candidate) (node := node)
-              (slice := ProgramField.singleSlice field (.hidden rightValue))
+              (patch := ProgramField.singlePatch field (.hidden rightValue))
               hwriterNe
         exact hleftSame.trans hrightSame.symm
       simp [eventGraphPublicView, hpublic, hvalueEq]
@@ -325,24 +325,24 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
     {field : ProgramField g.prog}
     {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
-    {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
+    {leftPatch rightPatch : ProgramField.FieldPatch g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
         EventGraph.NodeSem.commit owner field guard)
     (hne : receiver ≠ owner)
-    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    (hleftLegal : (programEventGraph g).patchLegal node leftPatch)
+    (hrightLegal : (programEventGraph g).patchLegal node rightPatch) :
     eventGraphObserve g receiver
-        (cfg.withResult leftSlice hfrontier hleftLegal) =
+        (cfg.withPatch leftPatch hfrontier hleftLegal) =
       eventGraphObserve g receiver
-        (cfg.withResult rightSlice hfrontier hrightLegal) := by
+        (cfg.withPatch rightPatch hfrontier hrightLegal) := by
   classical
   have htargetOwner : field.owner = some owner :=
     ProgramNode.commit_target_owner_of_sem g.obligations node hsem
-  change ProgramNode.sliceLegal g.obligations node leftSlice at hleftLegal
-  change ProgramNode.sliceLegal g.obligations node rightSlice at hrightLegal
-  rw [ProgramNode.sliceLegal, hsem] at hleftLegal hrightLegal
+  change ProgramNode.patchLegal g.obligations node leftPatch at hleftLegal
+  change ProgramNode.patchLegal g.obligations node rightPatch at hrightLegal
+  rw [ProgramNode.patchLegal, hsem] at hleftLegal hrightLegal
   rcases hleftLegal with ⟨leftValue, rfl⟩
   rcases hrightLegal with ⟨rightValue, rfl⟩
   ext candidate
@@ -357,10 +357,10 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
         exact hne howner.symm
     have hvalueEq :
         eventGraphConfigValue? g
-            (cfg.withResult (ProgramField.singleSlice field (.hidden leftValue))
+            (cfg.withPatch (ProgramField.singlePatch field (.hidden leftValue))
               hfrontier hleftLegal) candidate =
           eventGraphConfigValue? g
-            (cfg.withResult (ProgramField.singleSlice field (.hidden rightValue))
+            (cfg.withPatch (ProgramField.singlePatch field (.hidden rightValue))
               hfrontier hrightLegal) candidate := by
       have hwriterNe :
           ProgramField.writer? candidate ≠ some node :=
@@ -368,31 +368,31 @@ theorem eventGraph_hiddenCommit_observe_eq_of_ne_owner
           g.obligations node hsem hneTarget
       have hleftSame :
           eventGraphConfigValue? g
-              (cfg.withResult
-                (ProgramField.singleSlice field (.hidden leftValue))
+              (cfg.withPatch
+                (ProgramField.singlePatch field (.hidden leftValue))
                 hfrontier hleftLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
         simpa [eventGraphConfigValue?,
-          EventGraph.Configuration.withResult,
-          EventGraph.Configuration.updateResult] using
+          EventGraph.Configuration.withPatch,
+          EventGraph.Configuration.updatePatch] using
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
-            (slice := ProgramField.singleSlice field (.hidden leftValue))
+            (patch := ProgramField.singlePatch field (.hidden leftValue))
             hwriterNe
       have hrightSame :
           eventGraphConfigValue? g
-              (cfg.withResult
-                (ProgramField.singleSlice field (.hidden rightValue))
+              (cfg.withPatch
+                (ProgramField.singlePatch field (.hidden rightValue))
                 hfrontier hrightLegal) candidate =
             ProgramField.value? g.env cfg.result candidate := by
         simpa [eventGraphConfigValue?,
-          EventGraph.Configuration.withResult,
-          EventGraph.Configuration.updateResult] using
+          EventGraph.Configuration.withPatch,
+          EventGraph.Configuration.updatePatch] using
           ProgramField.value?_update_of_writer?_ne
             (p := g.prog) g.env (result := cfg.result)
             (field := candidate) (node := node)
-            (slice := ProgramField.singleSlice field (.hidden rightValue))
+            (patch := ProgramField.singlePatch field (.hidden rightValue))
             hwriterNe
       exact hleftSame.trans hrightSame.symm
     simp [eventGraphObserve, hvisible, hvalueEq]
@@ -407,17 +407,17 @@ theorem eventGraph_hiddenCommit_observe_owner_sees_payload
     {field : ProgramField g.prog}
     {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (_hsem :
       ProgramNode.sem g.obligations node =
         EventGraph.NodeSem.commit owner field guard)
     (hvisible : field.VisibleTo owner)
-    (hlegal : (programEventGraph g).sliceLegal node slice) :
+    (hlegal : (programEventGraph g).patchLegal node patch) :
     (eventGraphObserve g owner
-        (cfg.withResult slice hfrontier hlegal)).value? field =
+        (cfg.withPatch patch hfrontier hlegal)).value? field =
       eventGraphConfigValue? g
-        (cfg.withResult slice hfrontier hlegal) field := by
+        (cfg.withPatch patch hfrontier hlegal) field := by
   simp [eventGraphObserve, hvisible]
 
 /-- Reveal nodes are the declassification primitive: the public observation of
@@ -428,17 +428,17 @@ theorem eventGraph_reveal_is_declassification
     {node : ProgramNode g.prog}
     {source target : ProgramField g.prog}
     {sameTy : source.ty = target.ty}
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (_hsem :
       ProgramNode.sem g.obligations node =
         EventGraph.NodeSem.reveal source target sameTy)
     (hpublic : target.owner = none)
-    (hlegal : (programEventGraph g).sliceLegal node slice) :
+    (hlegal : (programEventGraph g).patchLegal node patch) :
     (eventGraphPublicView g
-        (cfg.withResult slice hfrontier hlegal)).value? target =
+        (cfg.withPatch patch hfrontier hlegal)).value? target =
       eventGraphConfigValue? g
-        (cfg.withResult slice hfrontier hlegal) target := by
+        (cfg.withPatch patch hfrontier hlegal) target := by
   simp [eventGraphPublicView, hpublic]
 
 /-- Commit/reveal information barrier: no reveal can be frontier-simultaneous
@@ -527,22 +527,22 @@ theorem commit_payload_no_signal_to_nonowner
     {field : ProgramField g.prog}
     {guard : EventGraph.EventGuard L (ProgramField g.prog)
       (ProgramField.ty (p := g.prog)) field}
-    {leftSlice rightSlice : ProgramField.WriteSlice g.prog}
+    {leftPatch rightPatch : ProgramField.FieldPatch g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hsem :
       ProgramNode.sem g.obligations node =
         EventGraph.NodeSem.commit owner field guard)
     (hne : receiver ≠ owner)
-    (hleftLegal : (programEventGraph g).sliceLegal node leftSlice)
-    (hrightLegal : (programEventGraph g).sliceLegal node rightSlice) :
+    (hleftLegal : (programEventGraph g).patchLegal node leftPatch)
+    (hrightLegal : (programEventGraph g).patchLegal node rightPatch) :
     eventGraphPublicView g
-        (cfg.withResult leftSlice hfrontier hleftLegal) =
+        (cfg.withPatch leftPatch hfrontier hleftLegal) =
         eventGraphPublicView g
-          (cfg.withResult rightSlice hfrontier hrightLegal) ∧
+          (cfg.withPatch rightPatch hfrontier hrightLegal) ∧
       eventGraphObserve g receiver
-        (cfg.withResult leftSlice hfrontier hleftLegal) =
+        (cfg.withPatch leftPatch hfrontier hleftLegal) =
         eventGraphObserve g receiver
-          (cfg.withResult rightSlice hfrontier hrightLegal) := by
+          (cfg.withPatch rightPatch hfrontier hrightLegal) := by
   exact
     ⟨eventGraph_hiddenCommit_publicView_eq_of_payload_eq_except_hidden
         g hfrontier hsem hleftLegal hrightLegal,

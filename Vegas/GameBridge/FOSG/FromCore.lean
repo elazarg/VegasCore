@@ -31,44 +31,44 @@ private theorem eventGraph_done_subset_nodes
   intro node hdone
   exact (G.mem_done_iff cfg.result node).mp hdone |>.1
 
-private theorem eventGraph_withResult_done_subset
+private theorem eventGraph_withPatch_done_subset
     {G : EventGraph P L} (cfg : G.Configuration)
-    {node : G.Node} {slice : G.WriteSlice}
+    {node : G.Node} {patch : G.FieldPatch}
     (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.sliceLegal node slice) :
-    cfg.done ⊆ (cfg.withResult slice hfrontier hlegal).done := by
+    (hlegal : G.patchLegal node patch) :
+    cfg.done ⊆ (cfg.withPatch patch hfrontier hlegal).done := by
   intro candidate hdone
   have hdoneData := (G.mem_done_iff cfg.result candidate).mp hdone
   refine (G.mem_done_iff
-    (cfg.withResult slice hfrontier hlegal).result candidate).mpr ?_
+    (cfg.withPatch patch hfrontier hlegal).result candidate).mpr ?_
   refine ⟨hdoneData.1, ?_⟩
   by_cases hcandidate : candidate = node
   · subst candidate
-    simp [EventGraph.Configuration.withResult,
-      EventGraph.Configuration.updateResult]
-  · simpa [EventGraph.Configuration.withResult,
-      EventGraph.Configuration.updateResult, hcandidate] using hdoneData.2
+    simp [EventGraph.Configuration.withPatch,
+      EventGraph.Configuration.updatePatch]
+  · simpa [EventGraph.Configuration.withPatch,
+      EventGraph.Configuration.updatePatch, hcandidate] using hdoneData.2
 
-private theorem eventGraph_withResult_done_card_succ_le
+private theorem eventGraph_withPatch_done_card_succ_le
     {G : EventGraph P L} (cfg : G.Configuration)
-    {node : G.Node} {slice : G.WriteSlice}
+    {node : G.Node} {patch : G.FieldPatch}
     (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.sliceLegal node slice) :
+    (hlegal : G.patchLegal node patch) :
     cfg.done.card + 1 ≤
-      (cfg.withResult slice hfrontier hlegal).done.card := by
+      (cfg.withPatch patch hfrontier hlegal).done.card := by
   classical
   have hsubset :
       insert node cfg.done ⊆
-        (cfg.withResult slice hfrontier hlegal).done := by
+        (cfg.withPatch patch hfrontier hlegal).done := by
     intro candidate hcandidate
     rcases Finset.mem_insert.mp hcandidate with hnode | hdone
     · subst candidate
       refine (G.mem_done_iff
-        (cfg.withResult slice hfrontier hlegal).result node).mpr ?_
+        (cfg.withPatch patch hfrontier hlegal).result node).mpr ?_
       exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by simp
-        [EventGraph.Configuration.withResult,
-          EventGraph.Configuration.updateResult]⟩
-    · exact eventGraph_withResult_done_subset cfg hfrontier hlegal hdone
+        [EventGraph.Configuration.withPatch,
+          EventGraph.Configuration.updatePatch]⟩
+    · exact eventGraph_withPatch_done_subset cfg hfrontier hlegal hdone
   have hnotDone : node ∉ cfg.done := by
     intro hdone
     have hdoneSome := (G.mem_done_iff cfg.result node).mp hdone |>.2
@@ -98,17 +98,17 @@ private theorem eventGraph_roundStepNode_done_subset
           exact hdone
       | some action =>
           by_cases havailable :
-              ({ node := node, slice := action.slice node } :
+              ({ node := node, patch := action.patch node } :
                 EventGraph.PlayerAction G who) ∈
                 EventGraph.available G cfg who
           · have hdst :
                 dst =
-                  cfg.withResult (action.slice node)
+                  cfg.withPatch (action.patch node)
                     havailable.1 havailable.2.2.1 := by
               simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
                 hactor, hmove, havailable] using hsupp
             subst dst
-            exact eventGraph_withResult_done_subset cfg
+            exact eventGraph_withPatch_done_subset cfg
               havailable.1 havailable.2.2.1
           · have hdst : dst = cfg := by
               simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
@@ -122,9 +122,9 @@ private theorem eventGraph_roundStepNode_done_subset
             EventGraph.availableInternal G cfg
       · have hsuppBind :
             dst ∈
-              ((G.internalKernel node cfg.result).bind fun slice =>
-                if hlegal : G.sliceLegal node slice then
-                  PMF.pure (cfg.withResult slice
+              ((G.internalKernel node cfg.result).bind fun patch =>
+                if hlegal : G.patchLegal node patch then
+                  PMF.pure (cfg.withPatch patch
                     (by simpa [EventGraph.availableInternal, hactor] using havailable)
                     hlegal)
                 else
@@ -132,17 +132,17 @@ private theorem eventGraph_roundStepNode_done_subset
           simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
             hactor, havailable] using hsupp
         rw [PMF.mem_support_bind_iff] at hsuppBind
-        rcases hsuppBind with ⟨slice, _hslice, hdst⟩
+        rcases hsuppBind with ⟨patch, _hpatch, hdst⟩
         split at hdst
         · rename_i hlegal
           have hdstEq :
               dst =
-                cfg.withResult slice
+                cfg.withPatch patch
                   (by simpa [EventGraph.availableInternal, hactor] using havailable)
                   hlegal := by
             simpa using hdst
           subst dst
-          exact eventGraph_withResult_done_subset cfg
+          exact eventGraph_withPatch_done_subset cfg
             (by simpa [EventGraph.availableInternal, hactor] using havailable)
             hlegal
         · have hdstEq : dst = cfg := by
@@ -157,24 +157,24 @@ private theorem eventGraph_roundStepNode_done_subset
         intro candidate hdone
         exact hdone
 
-private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
+private theorem eventGraph_internalKernel_patchLegal_of_mem_support
     (g : WFProgram P L)
     {cfg : (programEventGraph g).Configuration}
     {node : ProgramNode g.prog}
     (hfrontier : node ∈ cfg.frontier)
     (hactor : ((programEventGraph g).sem node).actor = none)
-    {slice : ProgramField.WriteSlice g.prog}
+    {patch : ProgramField.FieldPatch g.prog}
     (hsupp :
-      slice ∈
+      patch ∈
         ((programEventGraph g).internalKernel node cfg.result).support) :
-    (programEventGraph g).sliceLegal node slice := by
+    (programEventGraph g).patchLegal node patch := by
   classical
   change
-    slice ∈
+    patch ∈
       (ProgramNode.internalKernel g.env g.obligations node cfg.result).support at hsupp
   unfold ProgramNode.internalKernel at hsupp
   change (ProgramNode.sem g.obligations node).actor = none at hactor
-  change ProgramNode.sliceLegal g.obligations node slice
+  change ProgramNode.patchLegal g.obligations node patch
   cases hsem : ProgramNode.sem g.obligations node with
   | assign target expr =>
       rw [hsem] at hsupp
@@ -185,29 +185,29 @@ private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
         exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
           (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
-        slice ∈
+        patch ∈
           (if available :
               ∀ read, read ∈ expr.reads →
                 (ProgramField.value? g.env cfg.result read).isSome then
             PMF.pure
-              (ProgramField.singleSlice target
+              (ProgramField.singlePatch target
                 (.clear
                   (expr.eval
                     (ProgramField.readEnvOfResult g.env cfg.result
                       expr.reads available))))
           else
-            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
       rw [dif_pos havailable] at hsupp
-      have hslice :
-          slice =
-            ProgramField.singleSlice target
+      have hpatch :
+          patch =
+            ProgramField.singlePatch target
               (.clear
                 (expr.eval
                   (ProgramField.readEnvOfResult g.env cfg.result
                     expr.reads havailable))) := by
         simpa using hsupp
-      subst slice
-      rw [ProgramNode.sliceLegal, hsem]
+      subst patch
+      rw [ProgramNode.patchLegal, hsem]
       exact ⟨_, rfl⟩
   | sample target dist =>
       rw [hsem] at hsupp
@@ -218,22 +218,22 @@ private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
         exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
           (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
-        slice ∈
+        patch ∈
           (if available :
               ∀ read, read ∈ dist.reads →
                 (ProgramField.value? g.env cfg.result read).isSome then
             PMF.map
-              (fun value => ProgramField.singleSlice target (.clear value))
+              (fun value => ProgramField.singlePatch target (.clear value))
               (dist.eval
                 (ProgramField.readEnvOfResult g.env cfg.result
                   dist.reads available))
           else
-            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
       rw [dif_pos havailable] at hsupp
       rcases (PMF.mem_support_map_iff _ _ _).mp hsupp with
-        ⟨value, _hvalue, hslice⟩
-      rw [← hslice]
-      rw [ProgramNode.sliceLegal, hsem]
+        ⟨value, _hvalue, hpatch⟩
+      rw [← hpatch]
+      rw [ProgramNode.patchLegal, hsem]
       exact ⟨value, rfl⟩
   | commit owner target guard =>
       simp [EventGraph.NodeSem.actor, hsem] at hactor
@@ -246,7 +246,7 @@ private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
         exact programReadsAvailableAtFrontier_of_wfProgram g cfg hfrontier read
           (by simpa [EventGraph.NodeSem.reads, hsem] using hread)
       change
-        slice ∈
+        patch ∈
           (if available :
               ∀ read, read ∈ ({source} : Finset (ProgramField g.prog)) →
                 (ProgramField.value? g.env cfg.result read).isSome then
@@ -254,22 +254,22 @@ private theorem eventGraph_internalKernel_sliceLegal_of_mem_support
               ProgramField.readEnvOfResult g.env cfg.result
                 ({source} : Finset (ProgramField g.prog)) available
             PMF.pure
-              (ProgramField.singleSlice target
+              (ProgramField.singlePatch target
                 (.clear (cast (by rw [hty])
                   (ρ.value source (by simp))))))
           else
-            PMF.pure (ProgramField.emptySlice g.prog)).support at hsupp
+            PMF.pure (ProgramField.emptyPatch g.prog)).support at hsupp
       rw [dif_pos havailable] at hsupp
       let ρ :=
         ProgramField.readEnvOfResult g.env cfg.result
           ({source} : Finset (ProgramField g.prog)) havailable
-      have hslice :
-          slice =
-            ProgramField.singleSlice target
+      have hpatch :
+          patch =
+            ProgramField.singlePatch target
               (.clear (cast (by rw [hty]) (ρ.value source (by simp)))) := by
         simpa using hsupp
-      subst slice
-      rw [ProgramNode.sliceLegal, hsem]
+      subst patch
+      rw [ProgramNode.patchLegal, hsem]
       exact ⟨_, rfl⟩
 
 private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
@@ -310,22 +310,22 @@ private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
                   (programEventGraph g) cfg who := by
             simpa [hmove] using hcoord
           have hnodeLegal :
-              (programEventGraph g).sliceLegal node (action.slice node) ∧
+              (programEventGraph g).patchLegal node (action.patch node) ∧
                 (programEventGraph g).actionLegal cfg.result node
-                  (action.slice node) :=
+                  (action.patch node) :=
             hpair.2 hfrontier hactor
           have havailable :
-              ({ node := node, slice := action.slice node } :
+              ({ node := node, patch := action.patch node } :
                 EventGraph.PlayerAction (programEventGraph g) who) ∈
                 EventGraph.available (programEventGraph g) cfg who :=
             ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
           have hdst :
-              dst = cfg.withResult (action.slice node)
+              dst = cfg.withPatch (action.patch node)
                 hfrontier hnodeLegal.1 := by
             simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
               hactor, hmove, havailable] using hsupp
           subst dst
-          exact eventGraph_withResult_done_card_succ_le cfg
+          exact eventGraph_withPatch_done_card_succ_le cfg
             hfrontier hnodeLegal.1
   | none =>
       have havailable :
@@ -337,24 +337,24 @@ private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
       have hsuppBind :
           dst ∈
             (((programEventGraph g).internalKernel node cfg.result).bind
-              fun slice =>
-                if hlegal : (programEventGraph g).sliceLegal node slice then
-                  PMF.pure (cfg.withResult slice hfrontier' hlegal)
+              fun patch =>
+                if hlegal : (programEventGraph g).patchLegal node patch then
+                  PMF.pure (cfg.withPatch patch hfrontier' hlegal)
                 else
                   PMF.pure cfg).support := by
         simpa [EventGraph.roundStepNode, EventGraph.stepInternal,
           hactor, havailable, hfrontier'] using hsupp
       rw [PMF.mem_support_bind_iff] at hsuppBind
-      rcases hsuppBind with ⟨slice, hslice, hdstSupport⟩
+      rcases hsuppBind with ⟨patch, hpatch, hdstSupport⟩
       have hlegal :
-          (programEventGraph g).sliceLegal node slice :=
-        eventGraph_internalKernel_sliceLegal_of_mem_support g
-          hfrontier hactor hslice
+          (programEventGraph g).patchLegal node patch :=
+        eventGraph_internalKernel_patchLegal_of_mem_support g
+          hfrontier hactor hpatch
       rw [dif_pos hlegal] at hdstSupport
-      have hdst : dst = cfg.withResult slice hfrontier' hlegal := by
+      have hdst : dst = cfg.withPatch patch hfrontier' hlegal := by
         simpa using hdstSupport
       subst dst
-      exact eventGraph_withResult_done_card_succ_le cfg hfrontier' hlegal
+      exact eventGraph_withPatch_done_card_succ_le cfg hfrontier' hlegal
 
 private theorem eventGraph_roundTransition_go_done_card_lower_bound
     {G : EventGraph P L}
@@ -729,15 +729,15 @@ theorem eventGraph_roundAvailable_eq_of_observation_eq
   · intro haction node hfrontier hactor
     have hfrontierLeft : node ∈ left.frontier := by
       simpa [hfrontierEq] using hfrontier
-    rcases haction hfrontierLeft hactor with ⟨hslice, hlegal⟩
-    exact ⟨hslice,
+    rcases haction hfrontierLeft hactor with ⟨hpatch, hlegal⟩
+    exact ⟨hpatch,
       eventGraph_actionLegal_of_observe_eq g who hfrontier
         hactor hpriv hlegal⟩
   · intro haction node hfrontier hactor
     have hfrontierRight : node ∈ right.frontier := by
       simpa [hfrontierEq] using hfrontier
-    rcases haction hfrontierRight hactor with ⟨hslice, hlegal⟩
-    exact ⟨hslice,
+    rcases haction hfrontierRight hactor with ⟨hpatch, hlegal⟩
+    exact ⟨hpatch,
       eventGraph_actionLegal_of_observe_eq g who hfrontier
         hactor hpriv.symm hlegal⟩
 
@@ -983,7 +983,7 @@ theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
     fun field => ProgramField.instFintypeValue g field
   dsimp [eventGraphMachine, EventGraph.toMachine,
     programEventGraph, EventGraph.Configuration,
-    EventGraph.ResultAssignment, EventGraph.WriteSlice]
+    EventGraph.ResultAssignment, EventGraph.FieldPatch]
   infer_instance
 
 /-- Finite action helper for the program event-graph machine. -/
@@ -1000,7 +1000,7 @@ theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
     fun field => ProgramField.instFintypeValue g field
   dsimp [eventGraphMachine, EventGraph.toMachine,
     EventGraph.PlayerAction, programEventGraph,
-    EventGraph.WriteSlice]
+    EventGraph.FieldPatch]
   infer_instance
 
 /-- Finite optional-action helper for the program event-graph machine. -/

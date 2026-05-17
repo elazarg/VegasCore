@@ -245,7 +245,7 @@ theorem prior_commit_not_available_when_reveal_frontier
     (hactionNode : action.node = commit) :
     action ∉ EventGraph.available (programEventGraph g) cfg who := by
   intro havailable
-  rcases havailable with ⟨hcommitFrontier, _hactor, _hslice, _haction⟩
+  rcases havailable with ⟨hcommitFrontier, _hactor, _hpatch, _haction⟩
   have hcommitFrontier' : commit ∈ cfg.frontier := by
     rw [← hactionNode]
     exact hcommitFrontier

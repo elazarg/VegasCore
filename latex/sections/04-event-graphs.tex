@@ -6,11 +6,11 @@ the syntax tree of a checked program into a finite directed acyclic
 graph of typed event nodes with explicit dependency edges, and
 replaces the implicit ``state along the spine'' of an interpreter
 with an extensional partial assignment from nodes to their write
-slices.  The strategically relevant content of a configuration is
+patches.  The strategically relevant content of a configuration is
 \emph{which} events have produced which results, not the order in
 which they were produced.
 
-\subsection{Nodes, fields, and slices}
+\subsection{Nodes, fields, and patches}
 \label{sec:eg:nodes-fields}
 
 An \emph{event graph} is a tuple
@@ -18,7 +18,7 @@ An \emph{event graph} is a tuple
   \EG = \bigl(
     \Nodes, \Fields, \mathrm{fieldTy}, \mathrm{fieldOwner},
     \mathrm{initial}, \mathrm{sem}, \prereq, \rank,
-    \mathrm{sliceLegal}, \mathrm{actionLegal}, \mathrm{internalKernel}
+    \mathrm{patchLegal}, \mathrm{actionLegal}, \mathrm{internalKernel}
   \bigr)
 \]
 of finite typed-DAG data and three pieces of legality and execution
@@ -34,11 +34,11 @@ and an optional owner $\mathrm{fieldOwner} : \Fields \to
 optionally provides an initial value for each field; absent fields
 are uninitialized until written.
 
-\subsubsection*{Stored values and write slices}
+\subsubsection*{Stored values and field patches}
 
 A field's storage is a \emph{stored value}: a value of the field's
 base type, tagged as either \textsf{clear} (currently public) or
-\textsf{hidden} (sealed).  A \emph{write slice} for a node $n$ is a
+\textsf{hidden} (sealed).  A \emph{field patch} for a node $n$ is a
 partial map
 \[
   s : \Fields \;\rightharpoonup\; \mathrm{StoredValue},
@@ -84,8 +84,8 @@ encodes \emph{semantic} dependency.
 \subsubsection*{Three pieces of legality and execution data}
 
 \begin{description}[itemsep=2pt]
-\item[$\mathrm{sliceLegal}(n, s)$ — \emph{shape}.]
-  Predicate on a node and a candidate write slice.  Purely
+\item[$\mathrm{patchLegal}(n, s)$ — \emph{shape}.]
+  Predicate on a node and a candidate field patch.  Purely
   structural: it checks that $s$ writes the expected field, with the
   expected base type, with the expected visibility (clear/hidden)
   for the node's $\mathrm{NodeSem}$.  Does not consult guards or
@@ -95,14 +95,14 @@ encodes \emph{semantic} dependency.
   already-completed nodes.  For a player commit node, this is where
   the guard is evaluated against the proposed action and the
   current visible reads of the actor.
-\item[$\mathrm{internalKernel}(n, C) \in \PMF{\Slice(n)}$.]
+\item[$\mathrm{internalKernel}(n, C) \in \PMF{\Patch(n)}$.]
   Stochastic kernel for non-player ($\mathsf{assign}$,
   $\mathsf{sample}$, $\mathsf{reveal}$) nodes.  $\mathsf{assign}$
   and $\mathsf{reveal}$ kernels are Dirac; $\mathsf{sample}$ is the
   source-level distribution, evaluated against the public state.
 \end{description}
 
-\designnote{The split between \emph{shape} (\textsf{sliceLegal}) and
+\designnote{The split between \emph{shape} (\textsf{patchLegal}) and
 \emph{dynamic} (\textsf{actionLegal}) is the structural analogue of
 the split between typing and the \emph{guard-uses-only}
 predicate of
@@ -123,14 +123,14 @@ A \emph{configuration} of $\EG$ is an extensional record of which
 nodes have produced which results:
 \begin{equation}
 \label{eq:configuration}
-  C : \Nodes \;\rightharpoonup\; \Slice(\cdot),
+  C : \Nodes \;\rightharpoonup\; \Patch(\cdot),
 \end{equation}
 satisfying three invariants.  (i) \emph{Result-nodes}: every $n$
 with $C(n) = \mathsf{some}\,s$ is in $\Nodes$.  (ii)
 \emph{Closed under prerequisites}: if $C(n) = \mathsf{some}\,s$ then
 $C(q) = \mathsf{some}\,s_q$ for every $q \in \prereq(n)$.  (iii)
 \emph{Locally legal}: for each completed node $n$, the recorded
-slice satisfies $\mathrm{sliceLegal}(n, C(n))$.
+patch satisfies $\mathrm{patchLegal}(n, C(n))$.
 
 \subsubsection*{The frontier}
 
@@ -147,7 +147,7 @@ prerequisites have all completed:
 The frontier is \emph{computed}, not stored.  This single design
 decision is responsible for most of the diamond properties below: a
 schedule is not part of the configuration, so two linearizations
-that finish the same set of nodes with the same per-node slices
+that finish the same set of nodes with the same per-node patches
 yield literally the same configuration.
 
 \begin{example}[Configurations of the Matching-Pennies graph]
@@ -155,7 +155,7 @@ For the Matching-Pennies graph of \S\ref{sec:intro:matching-pennies},
 the initial configuration $C_0$ has $C_0(n) = \mathsf{none}$
 everywhere, $\frontier(C_0) = \{\Commit_{\textsf{m}},
 \Commit_{\textsf{m'}}\}$.  After both commits have completed (with
-slices $s_{\textsf{m}}, s_{\textsf{m'}}$), the configuration $C_2$
+patches $s_{\textsf{m}}, s_{\textsf{m'}}$), the configuration $C_2$
 records $C_2(\Commit_{\textsf{m}}) = s_{\textsf{m}}$ and
 $C_2(\Commit_{\textsf{m'}}) = s_{\textsf{m'}}$, with
 $\frontier(C_2) = \{\Reveal_{\textsf{m}}, \Reveal_{\textsf{m'}}\}$.
@@ -172,7 +172,7 @@ extensional, scheduler-free design.
 \begin{theorem}[Frontier preservation]
 \label{thm:front-preserv}
 Let $C$ be a configuration, and let $a, b \in \frontier(C)$ with
-$a \neq b$.  If $s_a$ is a slice for $a$ with $\mathrm{sliceLegal}
+$a \neq b$.  If $s_a$ is a patch for $a$ with $\mathrm{patchLegal}
 (a, s_a)$, then in the successor configuration $C[a \mapsto s_a]$,
 the node $b$ is still on the frontier.
 \end{theorem}
@@ -180,7 +180,7 @@ the node $b$ is still on the frontier.
 \begin{theorem}[Frontier diamond]
 \label{thm:diamond}
 Let $C$ be a configuration, $a, b \in \frontier(C)$ with $a \neq b$,
-and $s_a, s_b$ legal slices for $a, b$ respectively.  Then
+and $s_a, s_b$ legal patches for $a, b$ respectively.  Then
 \[
   \bigl(C[a \mapsto s_a]\bigr)[b \mapsto s_b]
   \;=\;
@@ -288,6 +288,6 @@ more information than the per-node causal read-set alone.}
 \paragraph{Lean correspondence.}
 Supplement~\S5 (event graph): \TT{NodeSem}, \TT{EventGraph},
 \TT{Configuration}, \TT{frontier}, the diamond and barrier theorems
-(\TT{withResult\_comm}, \TT{withResult\_mem\_frontier\_of\_ne},
+(\TT{withPatch\_comm}, \TT{withPatch\_mem\_frontier\_of\_ne},
 \TT{eventGraph\_priorCommit\_not\_frontier\_with\_reveal},
 \TT{prior\_commit\_not\_available\_when\_reveal\_frontier}).

@@ -67,12 +67,12 @@ Concretely, one native round of the event-graph machine
 $\Mach_{\EG}$ is a canonical whole-frontier transition.  At a
 configuration $C$, the active set is the set of players who own at
 least one current frontier node.  Each active player selects a
-round-action that contains candidate write slices; availability
-checks only the slices for that player's owned nodes in
+round-action that contains candidate field patches; availability
+checks only the patches for that player's owned nodes in
 $\frontier(C)$.  The transition then executes every node currently
 in $\frontier(C)$ exactly once, in the canonical
 $\frontier(C).\mathrm{toList}$ order.  Player-owned nodes use the
-selected player slices; internal nodes use the event graph's
+selected player patches; internal nodes use the event graph's
 internal kernels (deterministic for $\mathsf{assign}$ and
 $\mathsf{reveal}$, stochastic for $\mathsf{sample}$).  Nodes that
 become enabled while this list is being executed wait for a later
@@ -81,14 +81,14 @@ round.
 The round-action alphabet is static: independently of the
 configuration, $\Act_p$ is the type
 \[
-  \Act_p \;=\; (n : \Nodes) \to \mathrm{Slice}(n),
+  \Act_p \;=\; (n : \Nodes) \to \mathrm{Patch}(n),
 \]
 with the player menu using $\mathsf{Option}(\Act_p)$ so that
 $\mathsf{none}$ denotes \emph{not active in this round}.  The total
 function is intentionally wider than the current menu: irrelevant
 coordinates are ignored.  The configuration enters at the level of
 \emph{availability}, not the alphabet.  At configuration $C$, the
-available $\mathsf{some}\,a$ actions for $p$ are those whose slices
+available $\mathsf{some}\,a$ actions for $p$ are those whose patches
 are legal on every node in
 $\frontier(C) \cap \{n : \actor(n) = p\}$.  Keeping the alphabet
 static means strategy types do not depend on the run-time
@@ -97,7 +97,7 @@ the frontier.
 
 The list order inside the round is definitional presentation data.
 The frontier diamond and its whole-frontier linearization theorem
-state that, for the same current frontier and slices, independent
+state that, for the same current frontier and patches, independent
 frontier nodes reach the same endpoint regardless of admissible
 linearization.  The code therefore does not rely on the canonical
 list order carrying strategic information.
@@ -122,7 +122,7 @@ distinct commits do not write to each other's storage (by SSA),
 distinct internal nodes likewise, and the
 $\mathrm{actionLegal}$ predicate of a commit reads only owner-visible
 or public fields, none of which are written by other players'
-frontier slices (by the guard-uses-only predicate).
+frontier patches (by the guard-uses-only predicate).
 
 \Cref{thm:stability} is what makes the round-batched view
 well-defined: without it, two simultaneously selected frontier

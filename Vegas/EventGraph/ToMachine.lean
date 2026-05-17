@@ -26,16 +26,16 @@ def HasAvailablePlayerActions (G : Vegas.EventGraph Player L) : Prop :=
   ∀ (cfg : G.Configuration) {node : G.Node} {who : Player},
     node ∈ cfg.frontier →
     (G.sem node).actor = some who →
-      ∃ slice, G.sliceLegal node slice ∧
-        G.actionLegal cfg.result node slice
+      ∃ patch, G.patchLegal node patch ∧
+        G.actionLegal cfg.result node patch
 
 /-- Static player action alphabet for an event graph: choose an event node
-and a result slice for that node. State-local availability restricts this to
-enabled nodes owned by the player and legal slices for the current result
+and a field patch for that node. State-local availability restricts this to
+enabled nodes owned by the player and legal patches for the current result
 assignment. -/
 structure PlayerAction (G : Vegas.EventGraph Player L) (_who : Player) where
   node : G.Node
-  slice : G.WriteSlice
+  patch : G.FieldPatch
 
 namespace PlayerAction
 
@@ -50,12 +50,12 @@ finite. -/
   letI : ∀ field : G.Field,
       Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
     fun _ => inferInstance
-  letI : Fintype G.WriteSlice := by
-    dsimp [EventGraph.WriteSlice]
+  letI : Fintype G.FieldPatch := by
+    dsimp [EventGraph.FieldPatch]
     infer_instance
-  let e : PlayerAction G who ≃ G.Node × G.WriteSlice :=
-    { toFun := fun action => (action.node, action.slice)
-      invFun := fun pair => { node := pair.1, slice := pair.2 }
+  let e : PlayerAction G who ≃ G.Node × G.FieldPatch :=
+    { toFun := fun action => (action.node, action.patch)
+      invFun := fun pair => { node := pair.1, patch := pair.2 }
       left_inv := by
         intro action
         cases action
@@ -64,7 +64,7 @@ finite. -/
         intro pair
         cases pair
         rfl }
-  exact Fintype.ofEquiv (G.Node × G.WriteSlice) e.symm
+  exact Fintype.ofEquiv (G.Node × G.FieldPatch) e.symm
 
 end PlayerAction
 
@@ -116,8 +116,8 @@ def available
   { action |
       action.node ∈ cfg.frontier ∧
         (G.sem action.node).actor = some who ∧
-          G.sliceLegal action.node action.slice ∧
-            G.actionLegal cfg.result action.node action.slice }
+          G.patchLegal action.node action.patch ∧
+            G.actionLegal cfg.result action.node action.patch }
 
 /-- Internal events available at a graph configuration. -/
 def availableInternal
@@ -141,15 +141,15 @@ structure HasStableFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
   availablePlayerActions : G.HasAvailablePlayerActions
   actionStable :
     ∀ (cfg : G.Configuration)
-      {first : G.Node} {firstSlice : G.WriteSlice}
+      {first : G.Node} {firstPatch : G.FieldPatch}
       (hfirst : first ∈ cfg.frontier)
       {who : Player} {action : PlayerAction G who}
       (_ : action.node ∈ cfg.frontier)
       (_ : action.node ≠ first)
-      (hfirstLegal : G.sliceLegal first firstSlice),
+      (hfirstLegal : G.patchLegal first firstPatch),
       action ∈ available G cfg who →
         action ∈ available G
-          (cfg.withResult firstSlice hfirst hfirstLegal) who
+          (cfg.withPatch firstPatch hfirst hfirstLegal) who
 
 /-- Execute one available player node. Unavailable events stutter, matching the
 total-step convention of `Machine`. -/
@@ -160,12 +160,12 @@ noncomputable def stepPlay
   classical
   exact
     if h : action ∈ available G cfg who then
-      PMF.pure (cfg.withResult action.slice h.1 h.2.2.1)
+      PMF.pure (cfg.withPatch action.patch h.1 h.2.2.1)
     else
       PMF.pure cfg
 
 /-- Execute one available internal node. The graph's internal kernel chooses
-the result slice. Any slice outside the legal predicate stutters. -/
+the field patch. Any patch outside the legal predicate stutters. -/
 noncomputable def stepInternal
     (G : Vegas.EventGraph Player L) (event : InternalEvent G)
     (cfg : G.Configuration) : PMF G.Configuration := by
@@ -178,9 +178,9 @@ noncomputable def stepInternal
           have hnode :
               node ∈ cfg.frontier ∧ (G.sem node).actor = none := by
             simpa [availableInternal] using h
-          (G.internalKernel node cfg.result).bind fun slice =>
-            if hlegal : G.sliceLegal node slice then
-              PMF.pure (cfg.withResult slice hnode.1 hlegal)
+          (G.internalKernel node cfg.result).bind fun patch =>
+            if hlegal : G.patchLegal node patch then
+              PMF.pure (cfg.withPatch patch hnode.1 hlegal)
             else
               PMF.pure cfg
         else

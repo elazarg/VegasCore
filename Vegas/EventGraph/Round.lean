@@ -22,10 +22,10 @@ attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
 /-- Player-facing action for a frontier round.  The action supplies a candidate
-write slice for each event node; state-local availability uses only the slices
+field patch for each event node; state-local availability uses only the patches
 for frontier nodes owned by the player. -/
 structure PlayerRoundAction (G : Vegas.EventGraph Player L) (_who : Player) where
-  slice : G.Node → G.WriteSlice
+  patch : G.Node → G.FieldPatch
 
 namespace PlayerRoundAction
 
@@ -38,20 +38,20 @@ namespace PlayerRoundAction
   letI : ∀ field : G.Field,
       Fintype (Option (StoredValue (L.Val (G.fieldTy field)))) :=
     fun _ => inferInstance
-  letI : Fintype G.WriteSlice := by
-    dsimp [EventGraph.WriteSlice]
+  letI : Fintype G.FieldPatch := by
+    dsimp [EventGraph.FieldPatch]
     infer_instance
-  let e : PlayerRoundAction G who ≃ (G.Node → G.WriteSlice) :=
-    { toFun := fun action => action.slice
-      invFun := fun slice => { slice := slice }
+  let e : PlayerRoundAction G who ≃ (G.Node → G.FieldPatch) :=
+    { toFun := fun action => action.patch
+      invFun := fun patch => { patch := patch }
       left_inv := by
         intro action
         cases action
         rfl
       right_inv := by
-        intro slice
+        intro patch
         rfl }
-  exact Fintype.ofEquiv (G.Node → G.WriteSlice) e.symm
+  exact Fintype.ofEquiv (G.Node → G.FieldPatch) e.symm
 
 end PlayerRoundAction
 
@@ -96,8 +96,8 @@ def roundAvailable
       ∀ {node},
         node ∈ cfg.frontier →
         (G.sem node).actor = some who →
-          G.sliceLegal node (action.slice node) ∧
-            G.actionLegal cfg.result node (action.slice node) }
+          G.patchLegal node (action.patch node) ∧
+            G.actionLegal cfg.result node (action.patch node) }
 
 /-- Player-facing optional menu for a frontier round.
 
@@ -140,7 +140,7 @@ noncomputable def roundStepNode
   | some who =>
       match joint who with
       | some action =>
-          stepPlay G who { node := node, slice := action.slice node } cfg
+          stepPlay G who { node := node, patch := action.patch node } cfg
       | none => PMF.pure cfg
   | none => stepInternal G (.node node) cfg
 
@@ -156,7 +156,7 @@ noncomputable def roundPrimitiveEvent
   | some who =>
       match joint who with
       | some action =>
-          .play who { node := node, slice := action.slice node }
+          .play who { node := node, patch := action.patch node }
       | none => .internal .idle
   | none => .internal (.node node)
 
@@ -216,25 +216,25 @@ theorem roundPrimitiveEvent_available_of_legal
                 action ∈ roundAvailable G cfg who := by
             simpa [hmove] using hcoord
           have hnodeLegal :
-              G.sliceLegal node (action.slice node) ∧
-                G.actionLegal cfg.result node (action.slice node) :=
+              G.patchLegal node (action.patch node) ∧
+                G.actionLegal cfg.result node (action.patch node) :=
             hpair.2 hfrontier hactor
           have hevent :
               roundPrimitiveEvent G iface joint node =
                 Machine.Event.play who
-                  ({ node := node, slice := action.slice node } :
+                  ({ node := node, patch := action.patch node } :
                     PlayerAction G who) := by
             simp [roundPrimitiveEvent, hactor, hmove]
           rw [hevent]
           change
-            { node := node, slice := action.slice node } ∈
+            { node := node, patch := action.patch node } ∈
               available G cfg who
           exact ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
 
 /-- Under stable frontier rounds, every primitive event selected for a
 different node in a legal frontier round remains available after this frontier
 node has executed. -/
-theorem roundPrimitiveEvent_available_after_withResult_of_ne
+theorem roundPrimitiveEvent_available_after_withPatch_of_ne
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (hsound : G.HasStableFrontierRounds)
     {cfg : G.Configuration}
@@ -243,21 +243,21 @@ theorem roundPrimitiveEvent_available_after_withResult_of_ne
       JointActionLegal (PlayerRoundAction G) (roundActive G)
         Configuration.terminal (roundAvailable G) cfg joint)
     {first second : G.Node}
-    {firstSlice : G.WriteSlice}
+    {firstPatch : G.FieldPatch}
     (hfirst : first ∈ cfg.frontier)
     (hsecond : second ∈ cfg.frontier)
     (hne : second ≠ first)
-    (hfirstLegal : G.sliceLegal first firstSlice) :
+    (hfirstLegal : G.patchLegal first firstPatch) :
     (G.toMachine iface).EventAvailable
-      (cfg.withResult firstSlice hfirst hfirstLegal)
+      (cfg.withPatch firstPatch hfirst hfirstLegal)
       (roundPrimitiveEvent G iface joint second) := by
   classical
   cases hactor : (G.sem second).actor with
   | none =>
       have hfrontierAfter :
           second ∈
-            (cfg.withResult firstSlice hfirst hfirstLegal).frontier :=
-        cfg.withResult_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
+            (cfg.withPatch firstPatch hfirst hfirstLegal).frontier :=
+        cfg.withPatch_mem_frontier_of_ne hfirst hsecond hne hfirstLegal
       have hevent :
           roundPrimitiveEvent G iface joint second =
             Machine.Event.internal
@@ -267,7 +267,7 @@ theorem roundPrimitiveEvent_available_after_withResult_of_ne
       change
         (InternalEvent.node second : InternalEvent G) ∈
           availableInternal G
-            (cfg.withResult firstSlice hfirst hfirstLegal)
+            (cfg.withPatch firstPatch hfirst hfirstLegal)
       exact ⟨hfrontierAfter, hactor⟩
   | some who =>
       have hactive : who ∈ roundActive G cfg :=
@@ -285,29 +285,29 @@ theorem roundPrimitiveEvent_available_after_withResult_of_ne
                 action ∈ roundAvailable G cfg who := by
             simpa [hmove] using hcoord
           have hnodeLegal :
-              G.sliceLegal second (action.slice second) ∧
+              G.patchLegal second (action.patch second) ∧
                 G.actionLegal cfg.result second
-                  (action.slice second) :=
+                  (action.patch second) :=
             hpair.2 hsecond hactor
           have havailable :
-              ({ node := second, slice := action.slice second } :
+              ({ node := second, patch := action.patch second } :
                 PlayerAction G who) ∈
                 available G
-                  (cfg.withResult firstSlice hfirst hfirstLegal) who :=
+                  (cfg.withPatch firstPatch hfirst hfirstLegal) who :=
             hsound.actionStable cfg hfirst hsecond hne hfirstLegal
               ⟨hsecond, hactor, hnodeLegal.1, hnodeLegal.2⟩
           have hevent :
               roundPrimitiveEvent G iface joint second =
                 Machine.Event.play who
-                  ({ node := second, slice := action.slice second } :
+                  ({ node := second, patch := action.patch second } :
                     PlayerAction G who) := by
             simp [roundPrimitiveEvent, hactor, hmove]
           rw [hevent]
           change
-            ({ node := second, slice := action.slice second } :
+            ({ node := second, patch := action.patch second } :
               PlayerAction G who) ∈
               available G
-                (cfg.withResult firstSlice hfirst hfirstLegal) who
+                (cfg.withPatch firstPatch hfirst hfirstLegal) who
           exact havailable
 
 /-- The primitive machine event list represented by one frontier round. The

@@ -32,17 +32,17 @@ theorem eventGraph_available_eq_of_publicView_eq_of_guardVisibleValue_eq
   ext action
   constructor
   · intro haction
-    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    rcases haction with ⟨hfrontier, hactor, hpatch, hlegal⟩
     have hfrontierRight : action.node ∈ right.frontier := by
       simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
-    exact ⟨hfrontierRight, hactor, hslice,
+    exact ⟨hfrontierRight, hactor, hpatch,
       eventGraph_actionLegal_of_guardVisibleValue_eq g hfrontierRight
         (hvisible action.node) hlegal⟩
   · intro haction
-    rcases haction with ⟨hfrontier, hactor, hslice, hlegal⟩
+    rcases haction with ⟨hfrontier, hactor, hpatch, hlegal⟩
     have hfrontierLeft : action.node ∈ left.frontier := by
       simpa [eventGraphPublicView_frontier_eq_of_eq g hpub] using hfrontier
-    exact ⟨hfrontierLeft, hactor, hslice,
+    exact ⟨hfrontierLeft, hactor, hpatch,
       eventGraph_actionLegal_of_guardVisibleValue_eq g hfrontierLeft
         (AgreeOnGuardVisibleReads.symm (hvisible action.node)) hlegal⟩
 

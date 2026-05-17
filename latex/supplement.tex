@@ -984,7 +984,7 @@ this bundle from a checked $g$ and is what
 \DefRef{programEventGraph}\label{def:programEventGraph} feeds to
 \DefRef{ProgramNode.sem}\label{def:ProgramNode.sem},
 \DefRef{prereqs}\label{def:prereqs},
-\DefRef{sliceLegal}\label{def:sliceLegal},
+\DefRef{patchLegal}\label{def:patchLegal},
 \DefRef{actionLegal}\label{def:actionLegal}, and
 \DefRef{internalKernel}\label{def:internalKernel}. The repackaging adds
 no new semantic obligation; it keeps the elaborator from threading five
@@ -1009,7 +1009,7 @@ the main report. Throughout this section, \TT{P} is the player type
 with \TT{[DecidableEq P]}, \TT{L} is an \DefRef{IExpr} instance, and
 $G$ is an \DefRef{EventGraph} (defined below).
 
-\subsection{Stored values and write slices}
+\subsection{Stored values and field patches}
 
 \begin{leanbox}
 inductive WriteMode where\\
@@ -1018,16 +1018,16 @@ inductive WriteMode where\\
 inductive StoredValue ($\alpha$ : Type) where\\
 \bd | clear  (value : $\alpha$)\\
 \bd | hidden (value : $\alpha$)\\[3pt]
-abbrev WriteSlice (G : EventGraph P L) : Type :=\\
+abbrev FieldPatch (G : EventGraph P L) : Type :=\\
 \bd (field : G.Field) $\to$ Option (StoredValue (L.Val (G.fieldTy field)))
 \end{leanbox}
 
 A \DefRef{StoredValue}\label{def:StoredValue} is a value tagged with
 whether it is currently public (\textsf{clear}) or sealed
-(\textsf{hidden}). A \DefRef{WriteSlice} is a partial function from
+(\textsf{hidden}). A \DefRef{FieldPatch} is a partial function from
 fields to stored values: it records what fields a single event node
-writes when it executes. The empty slice is the all-\textsf{none}
-function; $\TT{WriteSlice.single}$ writes one field.
+writes when it executes. The empty patch is the all-\textsf{none}
+function; $\TT{FieldPatch.single}$ writes one field.
 
 \subsection{Event-graph-local expressions, distributions, and guards}
 \label{def:event-graph-local}
@@ -1134,25 +1134,25 @@ structure EventGraph (P : Type) [DecidableEq P] (L : IExpr) where\\
 \bd read\_fields\_mem\label{def:read_fields_mem}\\
 \bd write\_fields\_mem\label{def:write_fields_mem}\\
 \bd no\_duplicate\_writes\label{def:no_duplicate_writes}\\[2pt]
-\bd sliceLegal     : Node $\to$ WriteSlice $\to$ Prop\label{def:WriteSlice}\label{def:Prop}\\
-\bd actionLegal    : ResultAssignment $\to$ Node\label{def:Node} $\to$ WriteSlice $\to$ Prop\\
-\bd internalKernel : Node $\to$ ResultAssignment\label{def:ResultAssignment} $\to$ PMF WriteSlice
+\bd patchLegal     : Node $\to$ FieldPatch $\to$ Prop\label{def:FieldPatch}\label{def:Prop}\\
+\bd actionLegal    : ResultAssignment $\to$ Node\label{def:Node} $\to$ FieldPatch $\to$ Prop\\
+\bd internalKernel : Node $\to$ ResultAssignment\label{def:ResultAssignment} $\to$ PMF FieldPatch
 \end{leanbox}
 
 An \DefRef{EventGraph} is a finite, ranked DAG of typed nodes over a
 finite set of typed fields, with three pieces of legality and
 execution data:
 \begin{itemize}\itemsep1pt
-\item $\TT{sliceLegal}$ \emph{(shape)}: a predicate on a single node
-  and a candidate write slice. Purely structural — for every kind of
-  node, it checks that the slice writes the expected fields with the
+\item $\TT{patchLegal}$ \emph{(shape)}: a predicate on a single node
+  and a candidate field patch. Purely structural — for every kind of
+  node, it checks that the patch writes the expected fields with the
   expected visibility and typing. It does \emph{not} consult guards or
   other nodes' results.
 \item $\TT{actionLegal}$ \emph{(dynamic)}: a predicate that may consult
   the result assignment of already-completed nodes. For player commit
   actions this is where the guard is evaluated against the proposed
   action and the current public/owner-visible reads.
-\item $\TT{internalKernel}$: a PMF over write slices for non-player
+\item $\TT{internalKernel}$: a PMF over field patches for non-player
   nodes (\TT{assign}, \TT{sample}, \TT{reveal}). For \TT{assign} and
   \TT{reveal} this is a Dirac kernel; for \TT{sample} it is the
   source-level distribution evaluated at the current public state.
@@ -1167,7 +1167,7 @@ termination measure in inductions over executions.
 
 \begin{leanbox}
 abbrev ResultAssignment (G : EventGraph P L) : Type :=\\
-\bd (node : G.Node) $\to$ Option (WriteSlice G)\\[3pt]
+\bd (node : G.Node) $\to$ Option (FieldPatch G)\\[3pt]
 structure Configuration (G : EventGraph P L) where\\
 \bd result : ResultAssignment G\\
 \bd result\_nodes :\\
@@ -1177,8 +1177,8 @@ structure Configuration (G : EventGraph P L) where\\
 \bdd \ \ (result node).isSome $\to$ prereq $\in$ G.prereqs node\label{def:G.prereqs} $\to$\\
 \bdd \ \ (result prereq).isSome\\
 \bd legal :\\
-\bdd $\forall$ \{node slice\}, result node = some slice $\to$\\
-\bdd \ \ G.sliceLegal node slice\label{def:G.sliceLegal}\\[3pt]
+\bdd $\forall$ \{node patch\}, result node = some patch $\to$\\
+\bdd \ \ G.patchLegal node patch\label{def:G.patchLegal}\\[3pt]
 noncomputable def frontier (cfg : Configuration G) : Finset G.Node
 \end{leanbox}
 
@@ -1186,8 +1186,8 @@ A \DefRef{Configuration} extensionally records which nodes have
 produced results and what those results are. The
 \TT{closed}\,/\,$\TT{result\_nodes}$\,/\,\TT{legal} invariants say:
 completed nodes are in $G.\TT{nodes}$, the completed set is closed
-under prerequisites, and every stored slice satisfies
-$G.\TT{sliceLegal}$.
+under prerequisites, and every stored patch satisfies
+$G.\TT{patchLegal}$.
 
 The \emph{frontier} of a configuration is the set of unfinished nodes
 whose prerequisites are all finished — the nodes \emph{enabled} to
@@ -1197,7 +1197,7 @@ assignment, not stored.
 \paragraph{Why extensional state.}
 Storing only the result assignment, not the order in which nodes were
 executed, makes the diamond property definitional: two linearizations
-that finish the same set of nodes with the same per-node slices end up
+that finish the same set of nodes with the same per-node patches end up
 at literally the same configuration. A scheduling-based state would
 need a separate quotient.
 
@@ -1251,7 +1251,7 @@ of \DefRef{EventGraph} from program-derived data:
   binding's base type and visibility.
 \item $\TT{initial}$ takes initial values from $g.\TT{env}$ for the
   pre-bound part of the context.
-\item $\TT{sem}$, \DefRef{prereqs}, \DefRef{sliceLegal},
+\item $\TT{sem}$, \DefRef{prereqs}, \DefRef{patchLegal},
   \DefRef{actionLegal}, and \DefRef{internalKernel} are all built
   from \DefRef{WFProgram.obligations} — the proof-payload bundle
   introduced in \S\ref{def:WFProgram}.
@@ -1361,8 +1361,8 @@ noncomputable def EventGraph.toMachine\\
 \DefRef{EventGraph.toMachine}\label{def:EventGraph.toMachine}
 interprets an event graph as a machine. The state space is
 $\DefRef{Configuration}\,G$; player actions are
-$\TT{PlayerAction}\,G\,p$, pairs $(n,\,\TT{slice})$ with
-$n : G.\TT{Node}$ and $\TT{slice} : G.\DefRef{WriteSlice}$;
+$\TT{PlayerAction}\,G\,p$, pairs $(n,\,\TT{patch})$ with
+$n : G.\TT{Node}$ and $\TT{patch} : G.\DefRef{FieldPatch}$;
 internal events are $\TT{InternalEvent.node}\,n$ for non-player
 frontier nodes, plus an always-unavailable
 \DefRef{idle}\label{def:idle}.
@@ -1371,10 +1371,10 @@ program-specific public-observation, per-player-observation, outcome,
 and utility data; everything else is fixed by the graph structure.
 
 Availability restricts player actions to frontier nodes owned by $p$
-with a legal slice. $\TT{stepPlay}$ stutters on unavailable actions
+with a legal patch. $\TT{stepPlay}$ stutters on unavailable actions
 (returns $\mathrm{PMF.pure}\,\mathrm{cfg}$) and otherwise commits the
-chosen slice. The diamond property and frontier-read stability lemmas
-(\DefRef{withResult_comm}\label{def:withResult_comm} and companions)
+chosen patch. The diamond property and frontier-read stability lemmas
+(\DefRef{withPatch_comm}\label{def:withPatch_comm} and companions)
 provide the algebraic foundation for the round-based presentations of
 \S\ref{sec:round-fosg}.
 
@@ -1452,7 +1452,7 @@ round-action alphabet is independent of $\DefRef{M.Action}\label{def:M.Action}$:
 a single round may consist of many machine events.
 
 For event-graph machines, a \DefRef{PlayerRoundAction}\label{def:PlayerRoundAction}
-is a total assignment of candidate write slices to graph nodes; the
+is a total assignment of candidate field patches to graph nodes; the
 round menu reads only the coordinates for the player's currently-owned
 frontier nodes. Bounded histories, reachable information states, legal
 pure and PMF-behavioural strategies, and outcome kernels are defined
@@ -1464,7 +1464,7 @@ is packaged as $\TT{EventGraph.roundMenu}~G~\TT{cfg}~\TT{who}$: a set
 of optional round-actions where $\TT{none}$ means the player is not
 active in the current round and $\TT{some}~a$ means the player is
 active and $a$'s relevant coordinates are legal on every current
-frontier node they own. Irrelevant coordinates of the total slice
+frontier node they own. Irrelevant coordinates of the total patch
 assignment are ignored. The theorem
 \DefRef{eventGraph_roundMenu_eq_of_observation_eq}\label{def:eventGraph_roundMenu_eq_of_observation_eq}
 states that two configurations indistinguishable to a player offer
@@ -1580,7 +1580,7 @@ FOSG presentation could in principle revisit configurations.
 \noindent The machine is the bottom layer; the round view turns the
 current frontier into one strategic round by executing
 $\TT{cfg.frontier.toList}$. Player-owned nodes read the selected
-round-action slices; internal nodes use their event-graph kernels.
+round-action patches; internal nodes use their event-graph kernels.
 Nodes newly enabled while this list runs are deferred to the next
 round. The stability predicate of \S\ref{def:stableFrontier} together
 with the frontier linearization theorem are what make this batching
@@ -2430,9 +2430,9 @@ Matching Pennies, Battle of the Sexes, Monty Hall, SyntaxConstructors)
 and, for Prisoners, additionally spells out the explicit event-graph
 nodes and field assignments —
 \DefRef{rowCommitNode}\label{def:rowCommitNode},
-\DefRef{rowDefectSlice}\label{def:rowDefectSlice},
+\DefRef{rowDefectPatch}\label{def:rowDefectPatch},
 \DefRef{rowDefectAction}\label{def:rowDefectAction} — exercising
-\DefRef{sliceLegal} and \DefRef{actionLegal} directly. This is the
+\DefRef{patchLegal} and \DefRef{actionLegal} directly. This is the
 recommended starting point for a reader who wants to see \emph{how}
 the source elaborator maps individual constructors to event-graph
 data, and \emph{how} the payoff-vector-game and event-batch trace-game

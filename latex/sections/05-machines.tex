@@ -84,14 +84,14 @@ event graph $\EG$ as a machine $\Mach_{\EG}$:
 \begin{itemize}\itemsep1pt
 \item $\State = \Cfg(\EG)$, the configurations of $\EG$.
 \item $\Action_p = \{(n, s) : n \in \Nodes,\, \actor(n) = p,\,
-  s \in \Slice(n)\}$, a frontier node owned by $p$ paired with a
-  candidate write slice.
+  s \in \Patch(n)\}$, a frontier node owned by $p$ paired with a
+  candidate field patch.
 \item $\Internal = \{(n) : n \in \Nodes,\, \actor(n) = \bot\} \cup
   \{\mathsf{idle}\}$, a frontier non-player node, with an
   always-unavailable $\mathsf{idle}$ added to keep the type
   inhabited at terminal states.
 \item $\avail(p, (n, s), C)$ holds iff $n \in \frontier(C)$,
-  $\actor(n) = p$, $\mathrm{sliceLegal}(n, s)$, and
+  $\actor(n) = p$, $\mathrm{patchLegal}(n, s)$, and
   $\mathrm{actionLegal}(C, n, s)$.
 \item $\stepPlay(p, (n, s), C) = \delta_{C[n \mapsto s]}$ when the
   action is available, $\delta_C$ (stuttering) otherwise.
@@ -100,7 +100,7 @@ event graph $\EG$ as a machine $\Mach_{\EG}$:
   otherwise.
 \item $\term(C)$ holds iff $\frontier(C) = \emptyset$.
 \item $\out(C)$ is the payoff-vector outcome of a terminal configuration
-  (the public projection of the payoff slice at the $\Ret$ node).
+  (the public projection of the payoff patch at the $\Ret$ node).
 \item $\pubView$ projects $C$ to the visible-to-all public state;
   $\mathrm{obs}_p(C)$ projects to $p$'s view.
 \end{itemize}
