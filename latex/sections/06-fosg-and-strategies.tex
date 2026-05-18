@@ -65,19 +65,18 @@ action.
 \subsubsection*{The event-graph round view}
 
 Concretely, one native round of the event-graph machine
-$\Mach_{\EG}$ is a canonical whole-frontier transition.  At a
+$\Mach_{\EG}$ is an order-free whole-frontier transition.  At a
 configuration $C$, the active set is the set of players who own at
 least one current frontier node.  Each active player selects a
 round-action that contains candidate field patches; availability
 checks only the patches for that player's owned nodes in
-$\frontier(C)$.  The transition then executes every node currently
-in $\frontier(C)$ exactly once, in the canonical
-$\frontier(C).\mathrm{toList}$ order.  Player-owned nodes use the
-selected player patches; internal nodes use the event graph's
-internal kernels (deterministic for $\mathsf{assign}$ and
-$\mathsf{reveal}$, stochastic for $\mathsf{sample}$).  Nodes that
-become enabled while this list is being executed wait for a later
-round.
+$\frontier(C)$.  The transition samples one field patch for every
+node currently in $\frontier(C)$ and extends the closed assignment by
+that whole-frontier realization.  Player-owned nodes use the selected
+player patches; internal nodes use the event graph's internal kernels
+(deterministic for $\mathsf{assign}$ and $\mathsf{reveal}$,
+stochastic for $\mathsf{sample}$).  Nodes that become enabled by this
+extension wait for a later round.
 
 The round-action alphabet is static: independently of the
 configuration, $\Act_p$ is the type
@@ -100,8 +99,9 @@ The list order inside the round is definitional presentation data.
 The frontier diamond and its whole-frontier linearization theorem
 state that, for the same current frontier and patches, independent
 frontier nodes reach the same endpoint regardless of admissible
-linearization.  The code therefore does not rely on the canonical
-list order carrying strategic information.
+linearization.  The native transition is therefore stated through the
+order-free frontier-realization kernel, with canonical lists used only
+for primitive execution witnesses.
 
 \subsubsection*{Explicit realized event batches}
 
@@ -125,14 +125,14 @@ independence.
 For every supported pair $(B,D)$ of the explicit round-batch distribution from
 an independent legal round $(C,\sigma)$, $B$ is an available primitive run from
 $C$ to $D$; in particular running the primitive event list $B$ from $C$ reaches
-$D$ with nonzero support.  Forgetting $B$ recovers the native round transition,
-and decorating every supported round destination with its realized event batch
-exactly recovers the explicit batch distribution.
+$D$ with nonzero support.  Forgetting $B$ recovers the scheduled
+representative transition, while the native transition samples the same
+whole-frontier realization directly.
 \end{theorem}
 
-Thus the FOSG transition kernel remains the round transition, while the
-native round view additionally exposes the realized primitive trace
-witness needed by backend-refinement arguments.
+Thus the FOSG and native transition kernels use the order-free
+frontier-realization transition, while the round view additionally exposes the
+realized primitive trace witness needed by backend-refinement arguments.
 
 The corresponding FOSG view uses the same action alphabet, active
 sets, available-action predicates, and transition kernel.  It adds the
@@ -207,7 +207,7 @@ We first separate \emph{game form} from \emph{preference}.  A game
 form contains per-player strategy types, an outcome type, and a
 profile-to-outcome kernel, but no utility.  Vegas exposes game
 forms for payoff-vector outcomes, terminal public-state outcomes,
-and event-batch trace outcomes.  The terminal-public-state game forms
+and realization-trace outcomes.  The terminal-public-state game forms
 are useful when the caller wants the final public observation itself
 rather than only the payoff vector.
 
@@ -227,7 +227,7 @@ Expected utility is then the obvious functional
   \mathbb{E}_{\omega \sim K(\Profile)}\bigl[u(\omega)(p)\bigr].
 \end{equation}
 
-For a checked program $g$, the payoff-vector and event-batch trace game
+For a checked program $g$, the payoff-vector and realization-trace game
 forms have canonical utilities, so four kernel games are exposed:
 \begin{center}
 \small
@@ -239,30 +239,30 @@ $\mathrm{pureKernelGame}(g)$ &
   pure strategies; outcomes in $\Outcome$ (public payoff). \\
 $\mathrm{pmfBehavioralKernelGame}(g)$ &
   PMF behavioral strategies; outcomes in $\Outcome$. \\
-$\mathrm{pureEventBatchTraceKernelGame}(g)$ &
-  pure strategies; outcomes in $\mathrm{EventBatchTrace}(g)$. \\
-$\mathrm{pmfBehavioralEventBatchTraceKernelGame}(g)$ &
-  PMF behavioral; outcomes in $\mathrm{EventBatchTrace}(g)$. \\
+$\mathrm{pureRealizationTraceKernelGame}(g)$ &
+  pure strategies; outcomes in $\mathrm{RealizationTrace}(g)$. \\
+$\mathrm{pmfBehavioralRealizationTraceKernelGame}(g)$ &
+  PMF behavioral; outcomes in $\mathrm{RealizationTrace}(g)$. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A \emph{event-batch trace} is the sequence, indexed by native round, of
-all primitive event-batch executions that took place during that
-round, paired with the configuration reached at the round's end.
+A \emph{realization trace} is a bounded native round history: it records
+the source state, legal joint round action, realized destination, and the
+primitive event batch extracted from that realized transition.
 It is strictly more informative than the payoff-vector outcome and
 is the natural object on which to compare the canonical event-graph
 machine to a backend implementation, since the latter may produce
 additional implementation-specific events within the same round.
 The two axes of the kernel-game table above are then \emph{strategy
 carrier} (pure vs.\ PMF-behavioral) and \emph{outcome shape}
-(payoff vector vs.\ event-batch trace).  The event-batch trace games
+(payoff vector vs.\ realization trace).  The realization trace games
 \emph{refine} the payoff-vector games by an outcome projection.
 
 \subsection{Trace-to-public agreement}
 \label{sec:fosg:trace-public}
 
-The event-batch trace games are useful for refinement reasoning
+The realization trace games are useful for refinement reasoning
 (\S\ref{sec:refinement}); the payoff-vector games are what users
 usually reason about.  We need to know that they agree, both at
 the kernel level and at the level of expected utility.
@@ -270,27 +270,27 @@ the kernel level and at the level of expected utility.
 \begin{theorem}[Trace-to-public agreement]
 \label{thm:trace-public}
 For every checked program $g$, the payoff projection applied to
-the event-batch trace kernel agrees with the payoff-vector outcome kernel,
+the realization trace kernel agrees with the payoff-vector outcome kernel,
 \begin{align*}
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{pure}}_{\mathrm{eventbatch}}
+    K^{\mathrm{pure}}_{\mathrm{realization}}
   &= K^{\mathrm{pure}}_{\mathrm{public}}, \\
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{beh}}_{\mathrm{eventbatch}}
+    K^{\mathrm{beh}}_{\mathrm{realization}}
   &= K^{\mathrm{beh}}_{\mathrm{public}},
 \end{align*}
 and expected utilities are equal under the corresponding profile
 inclusions.  Solution concepts (Nash, dominance) transport across
 the projection: a strategy is best-response in the payoff-vector game
-iff it is best-response in the event-batch trace game.
+iff it is best-response in the realization trace game.
 \end{theorem}
 
 The proof packages the projection as a kernel-game
 \emph{simulation} — a structural morphism that pushes outcome
 distributions through a deterministic function while preserving
 utility.  In this case the simulation is in fact an
-\emph{EU-isomorphism}: the event-batch trace outcome retains
-strategically inert per-event-batch detail on top of the public
+\emph{EU-isomorphism}: the realization trace outcome retains
+strategically inert round-realization detail on top of the public
 outcome, so the projection is information-losing but not
 \emph{utility}-losing, and equilibrium predicates transport in both
 directions.  This is the structural reason for the iff in the

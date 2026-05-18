@@ -79,6 +79,45 @@ theorem eventGraph_roundTransitionWithSchedule_eq_roundTransition
   EventGraph.roundTransitionWithSchedule_eq_roundTransition
     G hsound hlegal schedule
 
+/-- Every sampled order-free frontier realization carries legal patches. -/
+theorem eventGraph_frontierRealizationDist_support_legal
+    {G : EventGraph P L}
+    (cfg : G.Configuration)
+    (joint : JointAction (EventGraph.PlayerRoundAction G))
+    (hlegal :
+      JointActionLegal (EventGraph.PlayerRoundAction G)
+        (EventGraph.roundActive G)
+        EventGraph.Configuration.terminal
+        (EventGraph.roundAvailable G) cfg joint)
+    {realization : EventGraph.FrontierRealization G cfg}
+    (hsupp : realization ∈
+      (EventGraph.frontierRealizationDist G cfg joint hlegal).support) :
+    realization.Legal :=
+  EventGraph.frontierRealizationDist_support_legal
+    G cfg joint hlegal hsupp
+
+/-- Supported order-free round destinations are exactly whole-frontier
+extensions of supported legal realizations. -/
+theorem eventGraph_frontierRealizationTransition_support_extend
+    {G : EventGraph P L}
+    (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (EventGraph.PlayerRoundAction G) //
+        JointActionLegal (EventGraph.PlayerRoundAction G)
+          (EventGraph.roundActive G)
+          EventGraph.Configuration.terminal
+          (EventGraph.roundAvailable G) cfg joint })
+    {dst : G.Configuration}
+    (hdst : dst ∈
+      (EventGraph.frontierRealizationTransition G cfg joint).support) :
+    ∃ realization,
+      realization ∈
+        (EventGraph.frontierRealizationDist G cfg joint.1 joint.2).support ∧
+        ∃ hlegal : realization.Legal,
+          dst = cfg.extendFrontier realization hlegal :=
+  EventGraph.frontierRealizationTransition_support_extend
+    G cfg joint hdst
+
 /-- Local, legal explicit frontier batches are primitive runs whose
 events are available at the states where they execute. -/
 theorem eventGraph_explicitRoundBatchDist_support_availableRunFrom

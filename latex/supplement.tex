@@ -1379,12 +1379,13 @@ chosen patch. The diamond property and frontier-read invariance lemmas
 provide the algebraic foundation for the round-based presentations of
 \S\ref{sec:round-fosg}.
 
-\paragraph{Independent explicit frontier rounds: \TT{HasIndependentFrontierRounds}.}
+\paragraph{Local explicit frontier rounds: \TT{HasLocalFrontierRounds}.}
 \label{def:frontierRounds}
-The lift from machine to native round and FOSG views uses the canonical
-frontier order $\TT{cfg.frontier.toList}$ as a representative linearization.
+The lift from machine to native round and FOSG views uses an order-free
+frontier-realization transition. Canonical frontier lists are retained as
+representative primitive-execution witnesses.
 The required graph-side condition is
-\DefRef{HasIndependentFrontierRounds}\label{def:HasIndependentFrontierRounds}:
+\DefRef{HasLocalFrontierRounds}\label{def:HasLocalFrontierRounds}:
 it includes
 \DefRef{HasAvailablePlayerActions}\label{def:HasAvailablePlayerActions}
 for player-owned frontier nodes and an action-stability condition saying
@@ -1394,7 +1395,7 @@ stability: executing one frontier node cannot change the kernel sampled by a
 different source-frontier node. Internal stochastic choices are explicit in
 the primitive event identity: the round sampler records
 $\TT{InternalEvent.node}\,n\,\TT{patch}$ with the sampled patch. Supported
-independent explicit batches are then witnessed as available primitive
+explicit batches are then witnessed as available primitive
 $\TT{runEventsFrom}$ executions. The canonical order is proof/execution
 presentation, while the stability fields express the frontier independence
 expected from the event-graph abstraction.
@@ -1659,31 +1660,31 @@ def pmfBehavioralGameFormAt               g\label{def:pmfBehavioralGameFormAt}\\
 -- terminal public-state outcomes\\
 def purePublicStateGameFormAt             g\label{def:purePublicStateGameFormAt}\\
 def pmfBehavioralPublicStateGameFormAt    g\label{def:pmfBehavioralPublicStateGameFormAt}\\[2pt]
--- event-batch trace outcomes\\
-def pureEventBatchTraceGameFormAt            g\label{def:pureEventBatchTraceGameFormAt}\\
-def pmfBehavioralEventBatchTraceGameFormAt   g\label{def:pmfBehavioralEventBatchTraceGameFormAt}\\[3pt]
+-- realization trace outcomes\\
+def pureRealizationTraceGameFormAt            g\label{def:pureRealizationTraceGameFormAt}\\
+def pmfBehavioralRealizationTraceGameFormAt   g\label{def:pmfBehavioralRealizationTraceGameFormAt}\\[3pt]
 -- kernel games (game form + canonical utility)\\
 def pureKernelGameAt                      g\label{def:Vegas.pureKernelGame}\\
 def pmfBehavioralKernelGameAt             g\label{def:Vegas.pmfBehavioralKernelGame}\\
-def pureEventBatchTraceKernelGameAt          g\\
-def pmfBehavioralEventBatchTraceKernelGameAt g
+def pureRealizationTraceKernelGameAt          g\\
+def pmfBehavioralRealizationTraceKernelGameAt g
 \end{leanbox}
 
 
 A \TT{GameTheory.GameForm}\label{def:GameTheory.GameForm} contains per-player strategy
 types, an outcome type, and a stochastic kernel from profiles to outcomes.
 A \TT{GameTheory.KernelGame}\label{def:GameTheory.KernelGame} adds a utility function. The payoff-vector
-and event-batch trace game forms have canonical utilities and therefore produce
+and realization trace game forms have canonical utilities and therefore produce
 the four kernel games. The terminal-public-state forms intentionally stop at
 the game-form level: they expose the final public observation as data, not a
 payoff interpretation. The kernel games span two orthogonal axes:
 \begin{itemize}\itemsep1pt
 \item \emph{Strategy carrier}: pure vs.\ PMF-behavioral.
 \item \emph{Outcome shape}: the payoff vector $\Outcome\,\Players$ versus
-  the richer \texttt{syntaxEventBatchTraceAt}\,$g$ which retains the per-round
-  primitive-event batches and their endpoint machine state.
+  the richer \texttt{syntaxRealizationTraceAt}\,$g$ which retains bounded
+  native round histories and their realized primitive-event batches.
 \end{itemize}
-The event-batch trace games refine the payoff-vector games by an outcome
+The realization trace games refine the payoff-vector games by an outcome
 projection, packaged as a kernel-game morphism (next subsection).
 
 \paragraph{Unsuffixed APIs.}
@@ -1733,23 +1734,21 @@ $\Outcome\,\Players = \Players \to_0 \mathbb{Z}$
 \TT{pmfBehavioralKernelGameAt} take $O = \Outcome\,\Players$ and use
 the coercion $u(o)(p) = (o\,p : \mathbb{R})$. The public-state game
 forms set $O$ to the terminal \TT{ProgramPublicObs}\,$g$ and have no
-canonical utility. The event-batch trace games set $O$ to
+canonical utility. The realization trace games set $O$ to
 \[
-  \mathtt{syntaxEventBatchTraceAt}\,g \;=\;
-    [\![\mathrm{event\ batches}]\!] \times \mathtt{State}_M,
+  \mathtt{syntaxRealizationTraceAt}\,g,
 \]
-each native round's primitive-event batch paired with the round's
-endpoint machine state, with utility
-$\mathrm{tr} \mapsto u_{\mathrm{public}}(\mathrm{out}(\mathrm{tr}.\TT{state}))$.
+the bounded native round-history type, with utility read from the public
+outcome of the last checkpoint state.
 
 \paragraph{Refinement layer.}
-The relationship between the event-batch trace and payoff-vector games is
+The relationship between the realization trace and payoff-vector games is
 packaged as a
 \DefRef{KernelGame.Simulation}\label{def:KernelGame.Simulation} —
 definitionally a \DefRef{Morphism}\label{def:Morphism} preserving the
 joint utility-distribution $\mathrm{udist}$ over payoff vectors under
 profile mapping. Explicit expected-utility-equality lemmas
-\DefRef{pureEventBatchTraceKernelGameAt_eu_eq}\label{def:pureEventBatchTraceKernelGameAt_eu_eq}
+\DefRef{pureRealizationTraceKernelGameAt_eu_eq}\label{def:pureRealizationTraceKernelGameAt_eu_eq}
 and its behavioral counterpart, plus the symmetric
 \DefRef{Bisimulation}\label{def:Bisimulation} and
 \DefRef{EUBisimulation}\label{def:EUBisimulation} objects, certify that
@@ -1796,7 +1795,7 @@ choosing an earlier same-phase commitment.
 Source order is a readable topological schedule for the dependency
 graph: following it never gets stuck before the event graph is
 terminal. Strategic equivalence is then proved through the explicit
-event-batch trace and morphism layers.
+realization trace and morphism layers.
 
 \subsection{Solution concepts (Vegas-facing definitions)}
 \label{def:solution}\label{def:IsNash}\label{def:IsStrictNash}\label{def:WeaklyDominates}\label{def:StrictlyDominates}\label{def:IsCorrelatedEq}\label{def:IsCoarseCorrelatedEq}\label{def:ParetoDominates}\label{def:IsParetoEfficient}\label{def:socialWelfare}\label{def:IsExactPotential}\label{def:IsOrdinalPotential}\label{def:IsZeroSum}\label{def:IsConstantSum}\label{def:IsTeamGame}\label{def:optimalWelfare}\label{def:bestNashWelfare}\label{def:worstNashWelfare}\label{def:worstNashWelfare_le_bestNashWelfare}\label{def:bestNashWelfare_le_optimalWelfare}\label{def:ciSup}
@@ -1894,11 +1893,11 @@ PMF-over-strategies level and do not themselves construct a named
 source-level policy.
 
 The source side needed for Kuhn-style equilibrium transport is better
-served by the event-batch trace presentation.  Its outcome carrier is
-\TT{List (List Event)} $\times$ \TT{State}, so it is not finite as a type, but its
-utility depends only on the finite checkpoint state.  The theorem
-\DefRef{pureEventBatchTrace_mixedNash_exists}\label{def:pureEventBatchTrace_mixedNash_exists}
-therefore obtains a mixed Nash equilibrium for the pure event-batch trace
+served by the realization trace presentation.  Its outcome carrier is a
+bounded native round history, so its utility depends only on the finite
+checkpoint state.  The theorem
+\DefRef{pureRealizationTrace_mixedNash_exists}\label{def:pureRealizationTrace_mixedNash_exists}
+therefore obtains a mixed Nash equilibrium for the pure realization trace
 kernel game from bounded utility rather than from finite outcomes.
 
 \subsection{Mixed extension and Kuhn simulations}
@@ -1973,7 +1972,7 @@ and the analysis API (\TT{pmfBehavioralKernelGame}).
 structure KernelGameExport ($\Players$ : Type) where ...\label{def:KernelGameExport.structure}\\[3pt]
 def KernelGameExport.ofKernelGame ...\label{def:KernelGameExport.ofKernelGame}\\
 def pureKernelGameExport ...\label{def:pureKernelGameExport}\\
-def pureEventBatchTraceKernelGameExport ...\label{def:pureEventBatchTraceKernelGameExport}
+def pureRealizationTraceKernelGameExport ...\label{def:pureRealizationTraceKernelGameExport}
 \end{leanbox}
 
 \DefRef{KernelGameExport.structure} packages a finite pure kernel game
@@ -2095,8 +2094,7 @@ def toBackendEventBatchTraceMorphism ... : KernelGame.EUMorphism\label{def:toBac
 
 \begin{itemize}\itemsep1pt
 \item \DefRef{PureSpecEventBatchLaw}~$g$ is a per-pure-profile specification
-  event-batch law plus a proof that it reproduces the canonical
-  \DefRef{pureEventBatchTraceKernelGameAt}\label{def:pureEventBatchTraceKernelGameAt}
+  event-batch law plus a proof that it reproduces the canonical public
   outcome kernel.
 \item \DefRef{BehavioralSpecEventBatchLaw}~$g$ is the analogous package for
   PMF behavioral profiles.
@@ -2114,7 +2112,7 @@ def toBackendEventBatchTraceMorphism ... : KernelGame.EUMorphism\label{def:toBac
   counterpart expose, for every refinement plus lift, a
   \DefRef{KernelGame.EUMorphism} in the direction
   \[
-    \text{backend game} \;\longrightarrow\; \text{spec event-batch trace game},
+    \text{backend game} \;\longrightarrow\; \text{public spec game},
   \]
   the direction needed to \emph{pull Nash equilibria back from the
   spec to the backend}.
@@ -2122,7 +2120,7 @@ def toBackendEventBatchTraceMorphism ... : KernelGame.EUMorphism\label{def:toBac
 
 A backend author supplies a \DefRef{StochasticStepRefinement} plus a
 event-batch law lift and obtains an EU-preserving morphism from the
-implementation into the canonical Vegas event-batch trace game. The
+implementation into the canonical Vegas public game. The
 separation of \TT{PureSpecEventBatchLaw}/\TT{BehavioralSpecEventBatchLaw} from
 backend lifts is needed because FOSG event-batch traces are indexed by
 bounded FOSG histories while machine event-batch laws are indexed by machine
@@ -2140,11 +2138,9 @@ and
 \DefRef{backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback}\label{def:backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback}
 are proved by applying
 \DefRef{KernelGame.EUMorphism.nash_of_nash}\label{def:KernelGame.EUMorphism.nash_of_nash}.
-The composed ``payoff-vector game to backend'' theorems first use
-\DefRef{EUGameIsomorphism.nash_iff}\label{def:EUGameIsomorphism.nash_iff}
-between payoff-vector and event-batch trace games, then the backend
-morphism. The code thus exercises the same morphism-composition story
-stated in the report rather than repeating expected-utility
+The composed ``payoff-vector game to backend'' statement is direct here:
+the backend morphism already targets the public payoff-vector game. The code
+therefore uses the same morphism API without repeating expected-utility
 calculations locally.
 
 % =====================================================================
@@ -2419,15 +2415,15 @@ separate named theorem.
 
 The strategic-side packaging of the worked examples first proves
 three generic theorems for any checked program $g$: the
-payoff-vector-game and event-batch trace-game expected utilities are
+payoff-vector-game and realization trace-game expected utilities are
 equal
-(\DefRef{pure_eu_eq_eventBatchTrace}\label{def:pure_eu_eq_eventBatchTrace}
+(\DefRef{pure_eu_eq_realizationTrace}\label{def:pure_eu_eq_realizationTrace}
 and
-\DefRef{behavioral_eu_eq_eventBatchTrace}\label{def:behavioral_eu_eq_eventBatchTrace}),
+\DefRef{behavioral_eu_eq_realizationTrace}\label{def:behavioral_eu_eq_realizationTrace}),
 and Nash and dominance predicates transport across the projection
-(\DefRef{pure_nash_iff_eventBatchTrace}\label{def:pure_nash_iff_eventBatchTrace},
-\DefRef{behavioral_nash_iff_eventBatchTrace}\label{def:behavioral_nash_iff_eventBatchTrace},
-\DefRef{pure_dominant_iff_eventBatchTrace}\label{def:pure_dominant_iff_eventBatchTrace}).
+(\DefRef{pure_nash_iff_realizationTrace}\label{def:pure_nash_iff_realizationTrace},
+\DefRef{behavioral_nash_iff_realizationTrace}\label{def:behavioral_nash_iff_realizationTrace},
+\DefRef{pure_dominant_iff_realizationTrace}\label{def:pure_dominant_iff_realizationTrace}).
 It then specializes these theorems to each example (Prisoners,
 Matching Pennies, Battle of the Sexes, Monty Hall, SyntaxConstructors)
 and, for Prisoners, additionally spells out the explicit event-graph
@@ -2438,7 +2434,7 @@ nodes and field assignments —
 \DefRef{patchLegal} and \DefRef{actionLegal} directly. This is the
 recommended starting point for a reader who wants to see \emph{how}
 the source elaborator maps individual constructors to event-graph
-data, and \emph{how} the payoff-vector-game and event-batch trace-game
+data, and \emph{how} the payoff-vector-game and realization trace-game
 views relate at the strategic API.
 
 % =====================================================================

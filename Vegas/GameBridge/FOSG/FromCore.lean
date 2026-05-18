@@ -31,44 +31,38 @@ private theorem eventGraph_done_subset_nodes
   intro node hdone
   exact (G.mem_done_iff cfg.result node).mp hdone |>.1
 
-private theorem eventGraph_withPatch_done_subset
+private theorem eventGraph_extendFrontier_done_card_succ_le
     {G : EventGraph P L} (cfg : G.Configuration)
-    {node : G.Node} {patch : G.FieldPatch}
-    (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.patchLegal node patch) :
-    cfg.done ⊆ (cfg.withPatch patch hfrontier hlegal).done := by
-  intro candidate hdone
-  have hdoneData := (G.mem_done_iff cfg.result candidate).mp hdone
-  refine (G.mem_done_iff
-    (cfg.withPatch patch hfrontier hlegal).result candidate).mpr ?_
-  refine ⟨hdoneData.1, ?_⟩
-  by_cases hcandidate : candidate = node
-  · subst candidate
-    simp [EventGraph.Configuration.withPatch,
-      EventGraph.Configuration.updatePatch]
-  · simpa [EventGraph.Configuration.withPatch,
-      EventGraph.Configuration.updatePatch, hcandidate] using hdoneData.2
-
-private theorem eventGraph_withPatch_done_card_succ_le
-    {G : EventGraph P L} (cfg : G.Configuration)
-    {node : G.Node} {patch : G.FieldPatch}
-    (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.patchLegal node patch) :
+    {realization : EventGraph.FrontierRealization G cfg}
+    (hlegal : realization.Legal)
+    {node : G.Node}
+    (hfrontier : node ∈ cfg.frontier) :
     cfg.done.card + 1 ≤
-      (cfg.withPatch patch hfrontier hlegal).done.card := by
+      (cfg.extendFrontier realization hlegal).done.card := by
   classical
   have hsubset :
       insert node cfg.done ⊆
-        (cfg.withPatch patch hfrontier hlegal).done := by
+        (cfg.extendFrontier realization hlegal).done := by
     intro candidate hcandidate
-    rcases Finset.mem_insert.mp hcandidate with hnode | hdone
+    rcases Finset.mem_insert.mp hcandidate with hcandidate | hdone
     · subst candidate
       refine (G.mem_done_iff
-        (cfg.withPatch patch hfrontier hlegal).result node).mpr ?_
-      exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by simp
-        [EventGraph.Configuration.withPatch,
-          EventGraph.Configuration.updatePatch]⟩
-    · exact eventGraph_withPatch_done_subset cfg hfrontier hlegal hdone
+        (cfg.extendFrontier realization hlegal).result node).mpr ?_
+      exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by
+        simp [EventGraph.Configuration.extendFrontier_result_of_mem
+          cfg realization hlegal hfrontier]⟩
+    · have hdoneData := (G.mem_done_iff cfg.result candidate).mp hdone
+      have hnotFrontier : candidate ∉ cfg.frontier := by
+        intro hcandidateFrontier
+        have hsome := hdoneData.2
+        have hnone := cfg.not_done_of_mem_frontier hcandidateFrontier
+        cases hresult : cfg.result candidate <;>
+          simp [hresult] at hsome hnone
+      refine (G.mem_done_iff
+        (cfg.extendFrontier realization hlegal).result candidate).mpr ?_
+      exact ⟨hdoneData.1, by
+        simpa [EventGraph.Configuration.extendFrontier_result_of_not_mem
+          cfg realization hlegal hnotFrontier] using hdoneData.2⟩
   have hnotDone : node ∉ cfg.done := by
     intro hdone
     have hdoneSome := (G.mem_done_iff cfg.result node).mp hdone |>.2
@@ -76,237 +70,6 @@ private theorem eventGraph_withPatch_done_card_succ_le
     cases hresult : cfg.result node <;> simp [hresult] at hdoneSome hnone
   have hcard := Finset.card_le_card hsubset
   simpa [Finset.card_insert_of_notMem hnotDone] using hcard
-
-private theorem eventGraph_roundStepNode_done_subset
-    {G : EventGraph P L}
-    (joint : GameTheory.JointAction (EventGraph.PlayerRoundAction G))
-    (node : G.Node)
-    {cfg dst : G.Configuration}
-    (hsupp :
-      dst ∈ (EventGraph.roundStepNode G joint node cfg).support) :
-    cfg.done ⊆ dst.done := by
-  classical
-  unfold EventGraph.roundStepNode at hsupp
-  cases hactor : (G.sem node).actor with
-  | some who =>
-      cases hmove : joint who with
-      | none =>
-          have hdst : dst = cfg := by
-            simpa [hactor, hmove] using hsupp
-          subst dst
-          intro candidate hdone
-          exact hdone
-      | some action =>
-          by_cases havailable :
-              ({ node := node, patch := action.patch node } :
-                EventGraph.PlayerAction G who) ∈
-                EventGraph.available G cfg who
-          · have hdst :
-                dst =
-                  cfg.withPatch (action.patch node)
-                    havailable.1 havailable.2.2.1 := by
-              simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
-                hactor, hmove, havailable] using hsupp
-            subst dst
-            exact eventGraph_withPatch_done_subset cfg
-              havailable.1 havailable.2.2.1
-          · have hdst : dst = cfg := by
-              simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
-                hactor, hmove, havailable] using hsupp
-            subst dst
-            intro candidate hdone
-            exact hdone
-  | none =>
-      simp only [hactor, PMF.mem_support_bind_iff] at hsupp
-      rcases hsupp with ⟨patch, _hpatch, hstepMass⟩
-      have hstep :
-          dst ∈
-            (G.stepInternal
-              (EventGraph.InternalEvent.node node patch) cfg).support :=
-        (PMF.mem_support_iff _ _).2 hstepMass
-      by_cases havailable :
-          (EventGraph.InternalEvent.node node patch :
-            EventGraph.InternalEvent G) ∈
-            EventGraph.availableInternal G cfg
-      · have hnode :
-            node ∈ cfg.frontier ∧
-              (G.sem node).actor = none ∧
-                patch ∈ (G.internalKernel node cfg.result).support := by
-          simpa [EventGraph.availableInternal] using havailable
-        have hlegal : G.patchLegal node patch :=
-          G.internalKernel_support_legal
-            (cfg.mem_nodes_of_mem_frontier hnode.1)
-            (cfg.not_done_of_mem_frontier hnode.1)
-            (fun prereq hpre =>
-              cfg.result_some_of_prereq_of_mem_frontier hnode.1 hpre)
-            (fun hresult => cfg.legal hresult)
-            hnode.2.1 hnode.2.2
-        have hdst :
-            dst = cfg.withPatch patch hnode.1 hlegal := by
-          simpa [EventGraph.stepInternal, havailable, hnode, hlegal] using hstep
-        subst dst
-        exact eventGraph_withPatch_done_subset cfg hnode.1 hlegal
-      · have hdst : dst = cfg := by
-          simpa [EventGraph.stepInternal, havailable] using hstep
-        subst dst
-        intro candidate hdone
-        exact hdone
-
-private theorem eventGraph_roundStepNode_done_card_succ_le_of_legal
-    (g : WFProgram P L)
-    {cfg dst : (programEventGraph g).Configuration}
-    {joint : GameTheory.JointAction
-      (EventGraph.PlayerRoundAction (programEventGraph g))}
-    (hjoint :
-      GameTheory.JointActionLegal
-        (EventGraph.PlayerRoundAction (programEventGraph g))
-        (EventGraph.roundActive (programEventGraph g))
-        EventGraph.Configuration.terminal
-        (EventGraph.roundAvailable (programEventGraph g))
-        cfg joint)
-    {node : ProgramNode g.prog}
-    (hfrontier : node ∈ cfg.frontier)
-    (hsupp :
-      dst ∈
-        (EventGraph.roundStepNode (programEventGraph g) joint node cfg).support) :
-    cfg.done.card + 1 ≤ dst.done.card := by
-  classical
-  cases hactor : ((programEventGraph g).sem node).actor with
-  | some who =>
-      have hactive :
-          who ∈ EventGraph.roundActive (programEventGraph g) cfg :=
-        (EventGraph.mem_roundActive_iff
-          (programEventGraph g) cfg who).mpr
-          ⟨node, hfrontier, hactor⟩
-      have hcoord := hjoint.2 who
-      cases hmove : joint who with
-      | none =>
-          have hnot : who ∉ EventGraph.roundActive (programEventGraph g) cfg := by
-            simpa [hmove] using hcoord
-          exact False.elim (hnot hactive)
-      | some action =>
-          have hpair :
-              who ∈ EventGraph.roundActive (programEventGraph g) cfg ∧
-                action ∈ EventGraph.roundAvailable
-                  (programEventGraph g) cfg who := by
-            simpa [hmove] using hcoord
-          have hnodeLegal :
-              (programEventGraph g).patchLegal node (action.patch node) ∧
-                (programEventGraph g).actionLegal cfg.result node
-                  (action.patch node) :=
-            hpair.2 hfrontier hactor
-          have havailable :
-              ({ node := node, patch := action.patch node } :
-                EventGraph.PlayerAction (programEventGraph g) who) ∈
-                EventGraph.available (programEventGraph g) cfg who :=
-            ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩
-          have hdst :
-              dst = cfg.withPatch (action.patch node)
-                hfrontier hnodeLegal.1 := by
-            simpa [EventGraph.roundStepNode, EventGraph.stepPlay,
-              hactor, hmove, havailable] using hsupp
-          subst dst
-          exact eventGraph_withPatch_done_card_succ_le cfg
-            hfrontier hnodeLegal.1
-  | none =>
-      have hsuppBind :
-          dst ∈
-            (((programEventGraph g).internalKernel node cfg.result).bind
-              fun patch =>
-                EventGraph.stepInternal (programEventGraph g)
-                  (.node node patch) cfg).support := by
-        simpa [EventGraph.roundStepNode, hactor] using hsupp
-      rw [PMF.mem_support_bind_iff] at hsuppBind
-      rcases hsuppBind with ⟨patch, hpatch, hstep⟩
-      have havailable :
-          (EventGraph.InternalEvent.node node patch :
-            EventGraph.InternalEvent (programEventGraph g)) ∈
-            EventGraph.availableInternal (programEventGraph g) cfg := by
-        exact ⟨hfrontier, hactor, hpatch⟩
-      have hlegal :
-          (programEventGraph g).patchLegal node patch :=
-        (programEventGraph g).internalKernel_support_legal
-          (cfg.mem_nodes_of_mem_frontier hfrontier)
-          (cfg.not_done_of_mem_frontier hfrontier)
-          (fun prereq hpre =>
-            cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre)
-          (fun hresult => cfg.legal hresult)
-          hactor hpatch
-      have hdst :
-          dst = cfg.withPatch patch hfrontier hlegal := by
-        simpa [EventGraph.stepInternal, havailable, hlegal] using hstep
-      subst dst
-      exact eventGraph_withPatch_done_card_succ_le cfg hfrontier hlegal
-
-private theorem eventGraph_roundTransition_go_done_card_lower_bound
-    {G : EventGraph P L}
-    (joint : GameTheory.JointAction (EventGraph.PlayerRoundAction G))
-    (nodes : List G.Node)
-    {current dst : G.Configuration} {lower : Nat}
-    (hcurrent : lower ≤ current.done.card)
-    (hsupp :
-      dst ∈ (EventGraph.roundTransitionGo G joint nodes current).support) :
-    lower ≤ dst.done.card := by
-  induction nodes generalizing current with
-  | nil =>
-      have hdst : dst = current := by
-        simpa [EventGraph.roundTransitionGo] using hsupp
-      subst dst
-      exact hcurrent
-  | cons node nodes ih =>
-      simp only [EventGraph.roundTransitionGo, PMF.mem_support_bind_iff] at hsupp
-      rcases hsupp with ⟨mid, hmid, hdst⟩
-      have hsubset : current.done ⊆ mid.done :=
-        eventGraph_roundStepNode_done_subset joint node hmid
-      exact ih
-        (Nat.le_trans hcurrent (Finset.card_le_card hsubset))
-        hdst
-
-private theorem eventGraph_roundTransition_done_card_succ_le_of_legal
-    (g : WFProgram P L)
-    {cfg dst : (programEventGraph g).Configuration}
-    {joint : GameTheory.JointAction
-      (EventGraph.PlayerRoundAction (programEventGraph g))}
-    (hjoint :
-      GameTheory.JointActionLegal
-        (EventGraph.PlayerRoundAction (programEventGraph g))
-        (EventGraph.roundActive (programEventGraph g))
-        EventGraph.Configuration.terminal
-        (EventGraph.roundAvailable (programEventGraph g))
-        cfg joint)
-    (hnotTerminal : ¬ cfg.terminal)
-    (hsupp :
-      dst ∈
-        (EventGraph.roundTransition (programEventGraph g) cfg joint).support) :
-    cfg.done.card + 1 ≤ dst.done.card := by
-  classical
-  rcases cfg.frontier_nonempty_of_not_terminal hnotTerminal with
-    ⟨first, hfirstFrontier⟩
-  rw [EventGraph.roundTransition] at hsupp
-  cases hlist : cfg.frontier.toList with
-  | nil =>
-      have hfirstList : first ∈ cfg.frontier.toList := by
-        simpa using hfirstFrontier
-      simp [hlist] at hfirstList
-  | cons head rest =>
-      have hheadFrontier : head ∈ cfg.frontier := by
-        have hheadList : head ∈ cfg.frontier.toList := by
-          simp [hlist]
-        simpa using hheadList
-      have hsuppRest :
-          dst ∈
-            (EventGraph.roundTransitionGo
-              (programEventGraph g) joint (head :: rest) cfg).support := by
-        simpa [hlist] using hsupp
-      simp only [EventGraph.roundTransitionGo, PMF.mem_support_bind_iff] at hsuppRest
-      rcases hsuppRest with ⟨mid, hmid, hdstRest⟩
-      exact
-        eventGraph_roundTransition_go_done_card_lower_bound
-          (G := programEventGraph g) joint rest
-          (lower := cfg.done.card + 1)
-          (eventGraph_roundStepNode_done_card_succ_le_of_legal
-            g hjoint hheadFrontier hmid)
-          hdstRest
 
 private theorem eventGraph_boundedFOSG_step_done_card_succ_le
     (g : WFProgram P L) (horizon : Nat)
@@ -338,12 +101,6 @@ private theorem eventGraph_boundedFOSG_step_done_card_succ_le
     (PMF.mem_support_map_iff _ _ _).2
       ⟨dst, hboundedMem, rfl⟩
   rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hstateMem
-  have hroundMem :
-      dst.state ∈
-        (EventGraph.roundTransition (programEventGraph g)
-          src.state rawAction.1).support := by
-    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
-      EventGraph.toFOSGView] using hstateMem
   have hroundLegal :
       GameTheory.JointActionLegal
         (EventGraph.PlayerRoundAction (programEventGraph g))
@@ -353,8 +110,21 @@ private theorem eventGraph_boundedFOSG_step_done_card_succ_le
         src.state rawAction.1 := by
     simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
       EventGraph.toFOSGView] using rawAction.2
-  exact eventGraph_roundTransition_done_card_succ_le_of_legal
-    g hroundLegal hnotGraph hroundMem
+  have hfrontierMem :
+      dst.state ∈
+        (EventGraph.frontierRealizationTransition (programEventGraph g)
+          src.state ⟨rawAction.1, hroundLegal⟩).support := by
+    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
+      EventGraph.toFOSGView] using hstateMem
+  rcases EventGraph.frontierRealizationTransition_support_extend
+      (programEventGraph g) src.state ⟨rawAction.1, hroundLegal⟩
+      hfrontierMem with
+    ⟨realization, _hrealizationSupport, hrealizationLegal, hdst⟩
+  rcases src.state.frontier_nonempty_of_not_terminal hnotGraph with
+    ⟨node, hnodeFrontier⟩
+  rw [hdst]
+  exact eventGraph_extendFrontier_done_card_succ_le
+    src.state hrealizationLegal hnodeFrontier
 
 private theorem eventGraph_boundedFOSG_stepChain_done_card_ge_length
     (g : WFProgram P L) (horizon : Nat) :
@@ -483,36 +253,6 @@ noncomputable def eventGraphRealizedEventBatch
   simpa [eventGraphMachine, eventGraphFOSGView] using
     (EventGraph.realizedEventBatch (programEventGraph g)
       (eventGraphMachineInterface g) cfg joint dst)
-
-/-- Every bounded event-graph FOSG history extracts primitive event batches
-whose events are available along the checkpoint execution from the machine
-initial state to the history's checkpoint state. -/
-theorem eventGraphFOSGHistory_state_availableRunBatchesFrom
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    (eventGraphMachine g).AvailableRunBatchesFrom
-      (eventGraphMachine g).init
-      (eventGraphFOSGHistoryEventBatches g horizon h)
-      h.lastState.state := by
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView] using
-    (EventGraph.boundedFOSGHistory_state_availableRunBatchesFrom
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasLocalFrontierRounds g) horizon h)
-
-/-- Every bounded event-graph FOSG history extracts a primitive machine
-event-batch trace whose endpoint support contains the history's checkpoint
-state. -/
-theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    h.lastState.state ∈
-      ((eventGraphMachine g).runEventBatchesFrom
-        (eventGraphFOSGHistoryEventBatches g horizon h)
-        (eventGraphMachine g).init).support := by
-  exact
-    (eventGraphFOSGHistory_state_availableRunBatchesFrom
-      g horizon h).mem_runEventBatchesFrom_support
 
 /-- Player round-action availability in the event graph is determined by the
 public transcript together with the acting player's private observation. -/

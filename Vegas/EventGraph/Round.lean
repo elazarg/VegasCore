@@ -1259,6 +1259,227 @@ theorem roundTransitionGo_preserves_internalKernel_of_not_mem
           G hsound joint hmid hcandidate hne
       exact (ih hcandidateMid hnotData.2 hdstRest).trans hkernelMid
 
+/-- A legal player action for a source-frontier node remains available after
+recording any disjoint subset of the same source frontier. -/
+theorem available_after_withNodePatches_of_not_mem
+    (G : Vegas.EventGraph Player L)
+    (hsound : G.HasLocalFrontierRounds)
+    (cfg : G.Configuration)
+    {nodes : Finset G.Node}
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → G.FieldPatch)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {who : Player} {action : PlayerAction G who}
+    (hnotmem : action.node ∉ nodes)
+    (haction : action ∈ available G cfg who) :
+    action ∈ available G
+      (cfg.withNodePatches nodes hsubset patch hlegal) who := by
+  classical
+  induction nodes using Finset.induction with
+  | empty =>
+      simpa [Configuration.withNodePatches] using haction
+  | @insert first rest hfirstNotRest ih =>
+      have hrestSubset : rest ⊆ cfg.frontier := by
+        intro candidate hcandidate
+        exact hsubset (Finset.mem_insert_of_mem hcandidate)
+      let restPatch : ∀ node, node ∈ rest → G.FieldPatch :=
+        fun node hnode => patch node (Finset.mem_insert_of_mem hnode)
+      have hrestLegal :
+          ∀ node hnode, G.patchLegal node (restPatch node hnode) := by
+        intro node hnode
+        exact hlegal node (Finset.mem_insert_of_mem hnode)
+      have hactionRest :
+          action ∈ available G
+            (cfg.withNodePatches rest hrestSubset restPatch hrestLegal) who :=
+        ih hrestSubset restPatch hrestLegal
+          (by
+            intro hmem
+            exact hnotmem (Finset.mem_insert_of_mem hmem))
+      have hfirstFrontier : first ∈ cfg.frontier :=
+        hsubset (Finset.mem_insert_self first rest)
+      have hfirstCurrent :
+          first ∈
+            (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).frontier :=
+        cfg.withNodePatches_mem_frontier_of_not_mem
+          hrestSubset restPatch hrestLegal hfirstFrontier hfirstNotRest
+      let firstPatch : G.FieldPatch :=
+        patch first (Finset.mem_insert_self first rest)
+      have hfirstLegal : G.patchLegal first firstPatch := by
+        exact hlegal first (Finset.mem_insert_self first rest)
+      have hne : action.node ≠ first := by
+        intro heq
+        apply hnotmem
+        simp [heq]
+      have hafter :
+          action ∈ available G
+            ((cfg.withNodePatches rest hrestSubset restPatch hrestLegal).withPatch
+              firstPatch hfirstCurrent hfirstLegal) who :=
+        hsound.actionStable
+          (cfg.withNodePatches rest hrestSubset restPatch hrestLegal)
+          hfirstCurrent hactionRest.1 hne hfirstLegal hactionRest
+      let insertedPatch :
+          ∀ candidate, candidate ∈ insert first rest → G.FieldPatch :=
+        fun candidate hcandidate =>
+          if h : candidate = first then
+            firstPatch
+          else
+            restPatch candidate (by
+              rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+              · exact False.elim (h hmem)
+              · exact hmem)
+      have insertedLegal :
+          ∀ candidate hcandidate,
+            G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+        intro candidate hcandidate
+        dsimp [insertedPatch]
+        split
+        · subst candidate
+          exact hfirstLegal
+        · rename_i hneCandidate
+          exact hrestLegal candidate (by
+            rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+            · exact False.elim (hneCandidate hmem)
+            · exact hmem)
+      have hinsertEq :
+          (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).withPatch
+              firstPatch hfirstCurrent hfirstLegal =
+            cfg.withNodePatches (insert first rest) hsubset
+              insertedPatch insertedLegal := by
+        simpa [firstPatch, restPatch, insertedPatch, insertedLegal] using
+          (cfg.withNodePatches_insert_eq_withPatch
+            hrestSubset restPatch hrestLegal hfirstFrontier
+            hfirstNotRest firstPatch hfirstLegal)
+      have hpatchCongr :
+          cfg.withNodePatches (insert first rest) hsubset
+              insertedPatch insertedLegal =
+            cfg.withNodePatches (insert first rest) hsubset
+              patch hlegal := by
+        apply Configuration.withNodePatches_congr
+        intro candidate hc₁ hc₂
+        dsimp [insertedPatch, restPatch, firstPatch]
+        by_cases hcandidate : candidate = first
+        · subst candidate
+          simp
+        · simp [hcandidate]
+      simpa [hinsertEq, hpatchCongr] using hafter
+
+/-- Internal kernels for a source-frontier node are unchanged after recording
+any disjoint subset of the same source frontier. -/
+theorem internalKernel_after_withNodePatches_of_not_mem
+    (G : Vegas.EventGraph Player L)
+    (hsound : G.HasLocalFrontierRounds)
+    (cfg : G.Configuration)
+    {nodes : Finset G.Node}
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → G.FieldPatch)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {candidate : G.Node}
+    (hcandidate : candidate ∈ cfg.frontier)
+    (hnotmem : candidate ∉ nodes) :
+    G.internalKernel candidate
+        (cfg.withNodePatches nodes hsubset patch hlegal).result =
+      G.internalKernel candidate cfg.result := by
+  classical
+  induction nodes using Finset.induction with
+  | empty =>
+      simp [Configuration.withNodePatches]
+  | @insert first rest hfirstNotRest ih =>
+      have hrestSubset : rest ⊆ cfg.frontier := by
+        intro node hnode
+        exact hsubset (Finset.mem_insert_of_mem hnode)
+      let restPatch : ∀ node, node ∈ rest → G.FieldPatch :=
+        fun node hnode => patch node (Finset.mem_insert_of_mem hnode)
+      have hrestLegal :
+          ∀ node hnode, G.patchLegal node (restPatch node hnode) := by
+        intro node hnode
+        exact hlegal node (Finset.mem_insert_of_mem hnode)
+      have hkernelRest :
+          G.internalKernel candidate
+              (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).result =
+            G.internalKernel candidate cfg.result :=
+        ih hrestSubset restPatch hrestLegal
+          (by
+            intro hmem
+            exact hnotmem (Finset.mem_insert_of_mem hmem))
+      have hfirstFrontier : first ∈ cfg.frontier :=
+        hsubset (Finset.mem_insert_self first rest)
+      have hfirstCurrent :
+          first ∈
+            (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).frontier :=
+        cfg.withNodePatches_mem_frontier_of_not_mem
+          hrestSubset restPatch hrestLegal hfirstFrontier hfirstNotRest
+      have hcandidateCurrent :
+          candidate ∈
+            (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).frontier :=
+        cfg.withNodePatches_mem_frontier_of_not_mem
+          hrestSubset restPatch hrestLegal hcandidate
+          (by
+            intro hmem
+            exact hnotmem (Finset.mem_insert_of_mem hmem))
+      let firstPatch : G.FieldPatch :=
+        patch first (Finset.mem_insert_self first rest)
+      have hfirstLegal : G.patchLegal first firstPatch :=
+        hlegal first (Finset.mem_insert_self first rest)
+      have hne : candidate ≠ first := by
+        intro heq
+        apply hnotmem
+        simp [heq]
+      have hkernelStep :
+          G.internalKernel candidate
+              (((cfg.withNodePatches rest hrestSubset restPatch hrestLegal).withPatch
+                firstPatch hfirstCurrent hfirstLegal).result) =
+            G.internalKernel candidate
+              (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).result :=
+        hsound.internalKernelStable
+          (cfg.withNodePatches rest hrestSubset restPatch hrestLegal)
+          hfirstCurrent hcandidateCurrent hne hfirstLegal
+      let insertedPatch :
+          ∀ candidate, candidate ∈ insert first rest → G.FieldPatch :=
+        fun candidate hcandidate =>
+          if h : candidate = first then
+            firstPatch
+          else
+            restPatch candidate (by
+              rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+              · exact False.elim (h hmem)
+              · exact hmem)
+      have insertedLegal :
+          ∀ candidate hcandidate,
+            G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+        intro node hnode
+        dsimp [insertedPatch]
+        split
+        · subst node
+          exact hfirstLegal
+        · rename_i hneNode
+          exact hrestLegal node (by
+            rcases Finset.mem_insert.mp hnode with hmem | hmem
+            · exact False.elim (hneNode hmem)
+            · exact hmem)
+      have hinsertEq :
+          (cfg.withNodePatches rest hrestSubset restPatch hrestLegal).withPatch
+              firstPatch hfirstCurrent hfirstLegal =
+            cfg.withNodePatches (insert first rest) hsubset
+              insertedPatch insertedLegal := by
+        simpa [firstPatch, restPatch, insertedPatch, insertedLegal] using
+          (cfg.withNodePatches_insert_eq_withPatch
+            hrestSubset restPatch hrestLegal hfirstFrontier
+            hfirstNotRest firstPatch hfirstLegal)
+      have hpatchCongr :
+          cfg.withNodePatches (insert first rest) hsubset
+              insertedPatch insertedLegal =
+            cfg.withNodePatches (insert first rest) hsubset
+              patch hlegal := by
+        apply Configuration.withNodePatches_congr
+        intro node h₁ h₂
+        dsimp [insertedPatch, restPatch, firstPatch]
+        by_cases hnode : node = first
+        · subst node
+          simp
+        · simp [hnode]
+      rw [← hpatchCongr, ← hinsertEq]
+      exact hkernelStep.trans hkernelRest
+
 private theorem roundTransitionGo_result_eq_of_not_mem
     (G : Vegas.EventGraph Player L)
     (joint : JointAction (PlayerRoundAction G))
@@ -2174,12 +2395,13 @@ noncomputable def roundTransitionWithSchedule
     PMF G.Configuration :=
   roundTransitionGo G joint schedule.nodes cfg
 
-/-- Execute the current frontier as one native graph round.
+/-- Execute the current frontier in the canonical list order.
 
-The implementation uses `frontier.toList` as a canonical representative
-linearization. For graph views exposed through `HasLocalFrontierRounds`,
-frontier independence justifies treating this order as proof/execution
-presentation rather than additional strategic content. -/
+This is the scheduled operational representative used for primitive
+event-batch witnesses. The native round-view transition is the order-free
+`frontierRealizationTransition`; for graph views exposed through
+`HasLocalFrontierRounds`, frontier independence justifies treating this
+canonical list as proof/execution presentation rather than strategic content. -/
 noncomputable def roundTransition
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (joint : JointAction (PlayerRoundAction G)) :
@@ -2220,6 +2442,94 @@ noncomputable def frontierRealizationDist
     (Math.PMFProduct.pmfPi
       (fun idx => frontierPatchDist G cfg joint hlegal idx))
 
+/-- Coordinate support for a sampled order-free frontier realization. -/
+theorem frontierRealizationDist_support_coord
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G))
+    (hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint)
+    {realization : FrontierRealization G cfg}
+    (hsupp : realization ∈
+      (frontierRealizationDist G cfg joint hlegal).support)
+    (idx : FrontierIndex G cfg) :
+    realization.patch idx ∈
+      (frontierPatchDist G cfg joint hlegal idx).support := by
+  classical
+  rcases (PMF.mem_support_map_iff _ _ _).mp hsupp with
+    ⟨patches, hpatches, hrealization⟩
+  subst realization
+  have hmass :
+      (Math.PMFProduct.pmfPi
+        (fun idx => frontierPatchDist G cfg joint hlegal idx)) patches ≠ 0 :=
+    (PMF.mem_support_iff _ _).mp hpatches
+  have hprod :
+      (∏ idx : FrontierIndex G cfg,
+        frontierPatchDist G cfg joint hlegal idx (patches idx)) ≠ 0 := by
+    simpa [Math.PMFProduct.pmfPi_apply] using hmass
+  have hcoord_ne :
+      frontierPatchDist G cfg joint hlegal idx (patches idx) ≠ 0 :=
+    (Finset.prod_ne_zero_iff).mp hprod idx (Finset.mem_univ idx)
+  exact (PMF.mem_support_iff _ _).mpr hcoord_ne
+
+/-- Every realization sampled by the order-free frontier law carries legal
+patches. Player coordinates are legal by the joint-action legality proof;
+internal coordinates are legal by `internalKernel_support_legal`. -/
+theorem frontierRealizationDist_support_legal
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G))
+    (hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint)
+    {realization : FrontierRealization G cfg}
+    (hsupp : realization ∈
+      (frontierRealizationDist G cfg joint hlegal).support) :
+    realization.Legal := by
+  classical
+  intro idx
+  have hcoord :=
+    frontierRealizationDist_support_coord G cfg joint hlegal hsupp idx
+  cases hactor : (G.sem idx.1).actor with
+  | none =>
+      have hcoord :
+          realization.patch idx ∈
+            (G.internalKernel idx.1 cfg.result).support :=
+        by simpa [frontierPatchDist, hactor] using hcoord
+      exact
+        G.internalKernel_support_legal
+          (cfg.mem_nodes_of_mem_frontier idx.2)
+          (cfg.not_done_of_mem_frontier idx.2)
+          (fun prereq hpre =>
+            cfg.result_some_of_prereq_of_mem_frontier idx.2 hpre)
+          (fun hresult => cfg.legal hresult)
+          hactor hcoord
+  | some who =>
+      have hactive : who ∈ roundActive G cfg :=
+        (mem_roundActive_iff G cfg who).mpr ⟨idx.1, idx.2, hactor⟩
+      have hcoordLegal := hlegal.2 who
+      cases hmove : joint who with
+      | none =>
+          have hnot : who ∉ roundActive G cfg := by
+            simpa [hmove] using hcoordLegal
+          exact False.elim (hnot hactive)
+      | some action =>
+          have hround :
+              who ∈ roundActive G cfg ∧
+                action ∈ roundAvailable G cfg who := by
+            simpa [hmove] using hcoordLegal
+          have hpatch :
+              realization.patch idx = action.patch idx.1 := by
+            have hmem :
+                realization.patch idx ∈
+                  (PMF.pure (action.patch idx.1) : PMF G.FieldPatch).support :=
+              by simpa [frontierPatchDist, hactor, hmove] using hcoord
+            simpa using
+              (PMF.mem_support_pure_iff (action.patch idx.1)
+                (realization.patch idx)).mp hmem
+          change G.patchLegal idx.1 (realization.patch idx)
+          rw [hpatch]
+          exact (hround.2 idx.2 hactor).1
+
 /-- Order-free state transition induced by a legal frontier realization. The
 fallback branch is unreachable on the support of well-formed event graphs; it
 keeps the function total over Lean's unconstrained PMF samples. -/
@@ -2238,10 +2548,61 @@ noncomputable def frontierRealizationTransition
       else
         PMF.pure cfg
 
+/-- Supported order-free round destinations come from a supported legal
+frontier realization. -/
+theorem frontierRealizationTransition_support_extend
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (PlayerRoundAction G) //
+        JointActionLegal (PlayerRoundAction G) (roundActive G)
+          Configuration.terminal (roundAvailable G) cfg joint })
+    {dst : G.Configuration}
+    (hdst : dst ∈ (frontierRealizationTransition G cfg joint).support) :
+    ∃ realization,
+      realization ∈
+        (frontierRealizationDist G cfg joint.1 joint.2).support ∧
+        ∃ hlegal : realization.Legal,
+          dst = cfg.extendFrontier realization hlegal := by
+  classical
+  unfold frontierRealizationTransition at hdst
+  rw [PMF.mem_support_bind_iff] at hdst
+  rcases hdst with ⟨realization, hrealization, hdst⟩
+  have hlegalSupport :
+      realization.Legal :=
+    frontierRealizationDist_support_legal G cfg joint.1 joint.2 hrealization
+  refine ⟨realization, hrealization, hlegalSupport, ?_⟩
+  by_cases hlegal : realization.Legal
+  · have hdst' :
+        dst ∈ (PMF.pure (cfg.extendFrontier realization hlegal)).support := by
+      simpa [hlegal] using hdst
+    exact (PMF.mem_support_pure_iff
+      (cfg.extendFrontier realization hlegal) dst).mp hdst'
+  · exact False.elim (hlegal hlegalSupport)
+
+/-- The order-free transition is extensional in the configuration and the
+underlying joint action; legality proof terms are irrelevant. -/
+theorem frontierRealizationTransition_congr
+    (G : Vegas.EventGraph Player L)
+    {cfg₁ cfg₂ : G.Configuration}
+    (hcfg : cfg₁ = cfg₂)
+    {joint₁ :
+      { joint : JointAction (PlayerRoundAction G) //
+        JointActionLegal (PlayerRoundAction G) (roundActive G)
+          Configuration.terminal (roundAvailable G) cfg₁ joint }}
+    {joint₂ :
+      { joint : JointAction (PlayerRoundAction G) //
+        JointActionLegal (PlayerRoundAction G) (roundActive G)
+          Configuration.terminal (roundAvailable G) cfg₂ joint }}
+    (hjoint : joint₁.1 = joint₂.1) :
+    frontierRealizationTransition G cfg₁ joint₁ =
+      frontierRealizationTransition G cfg₂ joint₂ := by
+  subst cfg₂
+  apply congrArg (frontierRealizationTransition G cfg₁)
+  exact Subtype.ext hjoint
+
 /-- Any explicit source-frontier schedule induces the same state kernel as the
-canonical representative schedule. This is the public round-law boundary:
-`frontier.toList` is a chosen linearization, not part of the event-graph
-semantics. -/
+canonical scheduled representative. Thus `frontier.toList` is a chosen
+linearization, not semantic event-graph content. -/
 theorem roundTransitionWithSchedule_eq_roundTransition
     (G : Vegas.EventGraph Player L)
     (hsound : G.HasLocalFrontierRounds)
@@ -2277,7 +2638,7 @@ noncomputable def explicitRoundBatchDist
   explicitRoundBatchWalk G iface cfg joint
 
 /-- Forgetting realized primitive events from the explicit batch distribution
-recovers the native round transition. -/
+recovers the canonical scheduled representative transition. -/
 theorem explicitRoundBatchDist_map_state_eq_roundTransition
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
@@ -2289,8 +2650,8 @@ theorem explicitRoundBatchDist_map_state_eq_roundTransition
   unfold roundTransition
   exact explicitRoundBatchGo_map_state G iface joint cfg.frontier.toList [] cfg
 
-/-- Decorating every native round destination with its realized primitive event
-batch is exactly the operational explicit-batch distribution. -/
+/-- Decorating every scheduled round destination with its realized primitive
+event batch is exactly the operational explicit-batch distribution. -/
 theorem roundTransition_map_realizedEventBatch_eq_explicitRoundBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)

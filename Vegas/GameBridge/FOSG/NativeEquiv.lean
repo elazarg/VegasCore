@@ -1081,11 +1081,19 @@ theorem boundedTransition_nativeToFOSG
           ((eventGraphRoundView g).boundedActionToAction horizon
             h.lastState a) := by
     change
-      (programEventGraph g).roundTransition
+      (programEventGraph g).frontierRealizationTransition
           (nativeHistoryToFOSG g horizon h).lastState.state
-          (nativeLegalActionToFOSG g horizon h a).1 =
-      (programEventGraph g).roundTransition h.lastState.state a.1
-    simp [nativeLegalActionToFOSG, nativeHistoryToFOSG_lastState g horizon h]
+          ((eventGraphFOSGView g).boundedActionToAction horizon
+            (nativeHistoryToFOSG g horizon h).lastState
+            (nativeLegalActionToFOSG g horizon h a)) =
+        (programEventGraph g).frontierRealizationTransition
+          h.lastState.state
+          ((eventGraphRoundView g).boundedActionToAction horizon
+            h.lastState a)
+    apply EventGraph.frontierRealizationTransition_congr
+    · exact congrArg (fun state => state.state)
+        (nativeHistoryToFOSG_lastState g horizon h)
+    · rfl
   rw [hsucc, hraw]
 
 theorem nativeHistoryToFOSG_snoc

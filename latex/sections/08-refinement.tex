@@ -82,13 +82,13 @@ the projection at the FOSG-round/event-batch granularity.
 
 The strategic transport theorems are stated as
 \emph{expected-utility-preserving morphisms} from a backend
-kernel game to the canonical Vegas event-batch trace kernel game.  A
+kernel game to the public Vegas specification kernel game.  A
 \emph{compatible event-batch law lift} is, intuitively, a per-profile
 choice of how the spec graph and the implementation each generate a
 distribution over event-batch traces, plus a proof that the two
 generations match through $R$ — that is, the implementation's
 event-batch law projected through $R$ equals the spec's, and the spec's
-reproduces the canonical event-batch trace outcome kernel.  The
+reproduces the canonical public outcome kernel.  The
 construction therefore takes:
 \begin{itemize}\itemsep1pt
 \item a stochastic refinement $R$ from the implementation machine
@@ -102,7 +102,7 @@ kernel is indexed by bounded FOSG histories, whereas a machine
 event-batch law sees only machine event-batch traces.  The code therefore
 does not silently identify the two.  Instead, \TT{PureSpecEventBatchLaw}
 and \TT{BehavioralSpecEventBatchLaw} package a specification event-batch law
-with the proof that it reproduces the canonical Vegas event-batch trace
+with the proof that it reproduces the canonical Vegas public outcome
 kernel; backend lifts then relate an implementation law to that
 packaged spec law.  The identity backend wrappers reuse the same
 package rather than treating a canonical law conversion as
@@ -112,7 +112,7 @@ These data assemble into a kernel-game morphism
 \[
   \mathrm{backendEventBatchTraceKernelGame}(g, R)
   \;\longrightarrow\;
-  \mathrm{specEventBatchTraceKernelGame}(g)
+  \mathrm{pureKernelGame}(g)
 \]
 that preserves expected utility.  The headline corollary is the
 \emph{Nash pullback}:
@@ -122,17 +122,14 @@ that preserves expected utility.  The headline corollary is the
 Let $g$ be a checked program and $R$ a stochastic step refinement
 from $\Mach^I$ to $\Mach_{\mathsf{eg}(g)}$, with a compatible
 event-batch law lift.  Then for any profile $\Profile$ of the spec
-event-batch trace kernel game,
+public kernel game,
 \[
   \mathrm{IsNash}_{\mathrm{spec}}(\Profile)
   \;\Longrightarrow\;
   \mathrm{IsNash}_{\mathrm{backend}}(\Profile)
 \]
 (\emph{Nash pullback} along the backend-to-spec morphism).  The
-same holds for the PMF-behavioral variant, and combined with
-\Cref{thm:trace-public} (trace-to-public agreement) yields the
-composed ``payoff-vector spec game $\to$ backend event-batch trace game''
-pullback for both pure and behavioral Nash.
+same direct pullback holds for the PMF-behavioral variant.
 \end{theorem}
 
 The pullback is a one-way transport: an equilibrium proved on the

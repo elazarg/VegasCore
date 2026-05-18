@@ -29,7 +29,7 @@ noncomputable def toRoundView
   Act := PlayerRoundAction G
   active := roundActive G
   availableActions := roundAvailable G
-  transition := fun cfg action => roundTransition G cfg action.1
+  transition := fun cfg action => frontierRealizationTransition G cfg action
   eventBatch := fun cfg joint dst => realizedEventBatch G iface cfg joint dst
   terminal_active_eq_empty := by
     intro cfg hterminal

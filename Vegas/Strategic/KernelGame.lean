@@ -177,7 +177,8 @@ noncomputable def pmfBehavioralGameFormAt
   Outcome := Outcome P
   outcomeKernel := behavioralOutcomeKernelPMFAt g
 
-/-- Finite pure game form whose outcomes are event-batched primitive machine traces. -/
+/-- Finite pure game form whose outcomes are bounded order-free realization
+traces. -/
 noncomputable def pureRealizationTraceGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
@@ -185,8 +186,8 @@ noncomputable def pureRealizationTraceGameFormAt
   Outcome := syntaxRealizationTraceAt g
   outcomeKernel := pureRealizationTraceOutcomeKernelAt g
 
-/-- Finite PMF-behavioral game form whose outcomes are event-batched primitive
-machine traces. -/
+/-- Finite PMF-behavioral game form whose outcomes are bounded order-free
+realization traces. -/
 noncomputable def pmfBehavioralRealizationTraceGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
@@ -194,7 +195,7 @@ noncomputable def pmfBehavioralRealizationTraceGameFormAt
   Outcome := syntaxRealizationTraceAt g
   outcomeKernel := behavioralRealizationTraceOutcomeKernelPMFAt g
 
-/-- Finite pure strategic form whose outcomes are event-batched primitive machine
+/-- Finite pure strategic form whose outcomes are bounded order-free realization
 traces rather than just terminal public outcomes. -/
 noncomputable def pureRealizationTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
@@ -217,8 +218,8 @@ noncomputable def pureRealizationTraceKernelGameAt
     (purePublicStateGameFormAt g).outcomeKernel π =
       purePublicStateOutcomeKernelAt g π := rfl
 
-/-- Finite PMF behavioral strategic form whose outcomes are event-batched primitive
-machine traces rather than just terminal public outcomes. -/
+/-- Finite PMF behavioral strategic form whose outcomes are bounded order-free
+realization traces rather than just terminal public outcomes. -/
 noncomputable def pmfBehavioralRealizationTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=

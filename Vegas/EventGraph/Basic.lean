@@ -971,6 +971,216 @@ theorem withPatch_comm
       simp [withPatch, updatePatch, hrightLeft]
     · simp [withPatch, updatePatch, hcLeft, hcRight]
 
+/-- Record legal patches for a finite subset of the current frontier, leaving
+all other node results unchanged. This is the prefix form of
+`withFrontierPatches`: it describes the extensional state reached after any
+schedule prefix that executes exactly `nodes`. -/
+noncomputable def withNodePatches
+    (cfg : G.Configuration)
+    (nodes : Finset G.Node)
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → FieldPatch G)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode)) :
+    G.Configuration where
+  result := fun candidate =>
+    if hnode : candidate ∈ nodes then
+      some (patch candidate hnode)
+    else
+      cfg.result candidate
+  result_nodes := by
+    classical
+    intro candidate hsome
+    by_cases hnode : candidate ∈ nodes
+    · exact cfg.mem_nodes_of_mem_frontier (hsubset hnode)
+    · have hold : (cfg.result candidate).isSome := by
+        dsimp only
+        rw [dif_neg hnode] at hsome
+        exact hsome
+      exact cfg.result_nodes hold
+  closed := by
+    classical
+    intro candidate prereq hcandidateDone hpre
+    by_cases hcandidateNode : candidate ∈ nodes
+    · have hpreDone : (cfg.result prereq).isSome :=
+        cfg.result_some_of_prereq_of_mem_frontier
+          (hsubset hcandidateNode) hpre
+      by_cases hpreNode : prereq ∈ nodes
+      · dsimp only
+        rw [dif_pos hpreNode]
+        rfl
+      · dsimp only
+        rw [dif_neg hpreNode]
+        exact hpreDone
+    · have hcandidateOld : (cfg.result candidate).isSome := by
+        rw [dif_neg hcandidateNode] at hcandidateDone
+        exact hcandidateDone
+      have hpreDone : (cfg.result prereq).isSome :=
+        cfg.closed hcandidateOld hpre
+      by_cases hpreNode : prereq ∈ nodes
+      · dsimp only
+        rw [dif_pos hpreNode]
+        rfl
+      · dsimp only
+        rw [dif_neg hpreNode]
+        exact hpreDone
+  legal := by
+    classical
+    intro candidate candidatePatch hcandidateResult
+    by_cases hnode : candidate ∈ nodes
+    · rw [dif_pos hnode] at hcandidateResult
+      have hpatch : patch candidate hnode = candidatePatch := by
+        simpa using hcandidateResult
+      subst candidatePatch
+      exact hlegal candidate hnode
+    · have holdResult : cfg.result candidate = some candidatePatch := by
+        rw [dif_neg hnode] at hcandidateResult
+        exact hcandidateResult
+      exact cfg.legal holdResult
+
+@[simp] theorem withNodePatches_result_of_mem
+    (cfg : G.Configuration)
+    (nodes : Finset G.Node)
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → FieldPatch G)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {node : G.Node} (hnode : node ∈ nodes) :
+    (cfg.withNodePatches nodes hsubset patch hlegal).result node =
+      some (patch node hnode) := by
+  classical
+  dsimp [withNodePatches]
+  rw [dif_pos hnode]
+
+@[simp] theorem withNodePatches_result_of_not_mem
+    (cfg : G.Configuration)
+    (nodes : Finset G.Node)
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → FieldPatch G)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {node : G.Node} (hnode : node ∉ nodes) :
+    (cfg.withNodePatches nodes hsubset patch hlegal).result node =
+      cfg.result node := by
+  classical
+  dsimp [withNodePatches]
+  rw [dif_neg hnode]
+
+/-- Partial-frontier extension is extensional in the selected patches. -/
+theorem withNodePatches_congr
+    (cfg : G.Configuration)
+    (nodes : Finset G.Node)
+    {hsubset₁ hsubset₂ : nodes ⊆ cfg.frontier}
+    {patch₁ patch₂ : ∀ node, node ∈ nodes → FieldPatch G}
+    {hlegal₁ : ∀ node hnode, G.patchLegal node (patch₁ node hnode)}
+    {hlegal₂ : ∀ node hnode, G.patchLegal node (patch₂ node hnode)}
+    (hpatch :
+      ∀ node (h₁ h₂ : node ∈ nodes), patch₁ node h₁ = patch₂ node h₂) :
+    cfg.withNodePatches nodes hsubset₁ patch₁ hlegal₁ =
+      cfg.withNodePatches nodes hsubset₂ patch₂ hlegal₂ := by
+  classical
+  apply Configuration.ext
+  funext candidate
+  by_cases hnode : candidate ∈ nodes
+  · rw [withNodePatches_result_of_mem cfg nodes hsubset₁ patch₁ hlegal₁ hnode]
+    rw [withNodePatches_result_of_mem cfg nodes hsubset₂ patch₂ hlegal₂ hnode]
+    rw [hpatch candidate hnode hnode]
+  · rw [withNodePatches_result_of_not_mem cfg nodes hsubset₁ patch₁ hlegal₁ hnode]
+    rw [withNodePatches_result_of_not_mem cfg nodes hsubset₂ patch₂ hlegal₂ hnode]
+
+/-- A source-frontier node that is not in the executed subset remains enabled
+after recording that subset. -/
+theorem withNodePatches_mem_frontier_of_not_mem
+    (cfg : G.Configuration)
+    {nodes : Finset G.Node}
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → FieldPatch G)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {candidate : G.Node}
+    (hcandidate : candidate ∈ cfg.frontier)
+    (hnotmem : candidate ∉ nodes) :
+    candidate ∈
+      (cfg.withNodePatches nodes hsubset patch hlegal).frontier := by
+  classical
+  rw [mem_frontier_iff] at hcandidate ⊢
+  rcases hcandidate with ⟨hnode, hnone, hprereqs⟩
+  refine ⟨hnode, ?_, ?_⟩
+  · simpa [withNodePatches, hnotmem] using hnone
+  · intro prereq hpre
+    have hdone := hprereqs hpre
+    have hdoneData := (G.mem_done_iff cfg.result prereq).mp hdone
+    refine (G.mem_done_iff
+      (cfg.withNodePatches nodes hsubset patch hlegal).result prereq).mpr ?_
+    refine ⟨hdoneData.1, ?_⟩
+    by_cases hpreNode : prereq ∈ nodes
+    · simp [withNodePatches, hpreNode]
+    · simpa [withNodePatches, hpreNode] using hdoneData.2
+
+/-- Adding one more source-frontier patch to a partial-frontier extension is the
+same extensional state as extending by the inserted subset at once. -/
+theorem withNodePatches_insert_eq_withPatch
+    (cfg : G.Configuration)
+    {nodes : Finset G.Node}
+    (hsubset : nodes ⊆ cfg.frontier)
+    (patch : ∀ node, node ∈ nodes → FieldPatch G)
+    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
+    {node : G.Node}
+    (hfrontier : node ∈ cfg.frontier)
+    (hnotmem : node ∉ nodes)
+    (nodePatch : FieldPatch G)
+    (hnodeLegal : G.patchLegal node nodePatch) :
+    let inserted : Finset G.Node := insert node nodes
+    let insertedSubset : inserted ⊆ cfg.frontier := by
+      intro candidate hcandidate
+      rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+      · subst candidate
+        exact hfrontier
+      · exact hsubset hcandidate
+    let insertedPatch :
+        ∀ candidate, candidate ∈ inserted → FieldPatch G := fun candidate hcandidate =>
+      if h : candidate = node then
+        nodePatch
+      else
+        patch candidate (by
+          have hmem := (Finset.mem_insert.mp hcandidate)
+          rcases hmem with hmem | hmem
+          · exact False.elim (h hmem)
+          · exact hmem)
+    let insertedLegal :
+        ∀ candidate hcandidate,
+          G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+      intro candidate hcandidate
+      dsimp [insertedPatch]
+      split
+      · subst candidate
+        exact hnodeLegal
+      · rename_i hne
+        exact hlegal candidate (by
+          rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+          · exact False.elim (hne hmem)
+          · exact hmem)
+    (cfg.withNodePatches nodes hsubset patch hlegal).withPatch
+        nodePatch
+        (cfg.withNodePatches_mem_frontier_of_not_mem
+          hsubset patch hlegal hfrontier hnotmem)
+        hnodeLegal =
+      cfg.withNodePatches inserted insertedSubset insertedPatch
+        insertedLegal := by
+  classical
+  dsimp
+  apply Configuration.ext
+  funext candidate
+  by_cases hcnode : candidate = node
+  · subst candidate
+    simp [withPatch, updatePatch, withNodePatches]
+  · by_cases hcmem : candidate ∈ nodes
+    · have hcinsert : candidate ∈ insert node nodes :=
+        Finset.mem_insert_of_mem hcmem
+      simp [withPatch, updatePatch, withNodePatches, hcnode, hcmem]
+    · have hcinsert : candidate ∉ insert node nodes := by
+        intro h
+        rcases Finset.mem_insert.mp h with h | h
+        · exact hcnode h
+        · exact hcmem h
+      simp [withPatch, updatePatch, withNodePatches, hcnode, hcmem]
+
 /-- Execute a whole frontier extensionally by recording one legal field patch
 for each node in the current frontier and leaving every non-frontier result as
 it was.

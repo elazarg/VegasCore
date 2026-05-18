@@ -27,7 +27,7 @@ noncomputable def toFOSGView
   Act := PlayerRoundAction G
   active := roundActive G
   availableActions := roundAvailable G
-  transition := fun cfg action => roundTransition G cfg action.1
+  transition := fun cfg action => frontierRealizationTransition G cfg action
   reward := fun _ _ dst who => iface.utility (iface.outcome dst) who
   terminal_active_eq_empty := by
     intro cfg hterminal
@@ -111,75 +111,6 @@ theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
         Machine.FOSGView.boundedAvailableActions, hcut]
       rfl
 
-/-- One bounded graph-FOSG transition, projected back to graph configurations,
-is the state marginal of the explicit realized-batch distribution. -/
-theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_explicitRoundBatchDist
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds)
-    (horizon : Nat)
-    (state : (G.toMachine iface).BoundedState horizon)
-    (action :
-      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).LegalAction
-        state)) :
-    PMF.map (fun bounded => bounded.state)
-        (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-          state action) =
-      PMF.map Prod.snd
-        (explicitRoundBatchDist G iface state.state action.1) := by
-  rw [Machine.FOSGView.toBoundedFOSG_transition_map_state]
-  change
-    roundTransition G state.state action.1 =
-      PMF.map Prod.snd
-        (explicitRoundBatchDist G iface state.state action.1)
-  exact (explicitRoundBatchDist_map_state_eq_roundTransition
-    G iface state.state action.1).symm
-
-/-- One bounded graph-FOSG transition, decorated with the realized primitive
-event batch extracted from its destination, is exactly the explicit realized
-batch distribution for the underlying frontier round. -/
-theorem toFOSGView_toBoundedFOSG_transition_map_realizedBatch_state_eq_explicitRoundBatchDist
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds)
-    (horizon : Nat)
-    (state : (G.toMachine iface).BoundedState horizon)
-    (action :
-      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).LegalAction
-        state)) :
-    PMF.map
-        (fun bounded =>
-          (realizedEventBatch G iface state.state action.1 bounded.state,
-            bounded.state))
-        (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-          state action) =
-      explicitRoundBatchDist G iface state.state action.1 := by
-  let decorate : G.Configuration → List (G.toMachine iface).Event × G.Configuration :=
-    fun dst => (realizedEventBatch G iface state.state action.1 dst, dst)
-  calc
-    PMF.map
-        (fun bounded =>
-          (realizedEventBatch G iface state.state action.1 bounded.state,
-            bounded.state))
-        (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-          state action)
-        = PMF.map decorate
-            (PMF.map (fun bounded => bounded.state)
-              (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-                state action)) := by
-          exact (PMF.map_comp
-            (p := (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-              state action))
-            (f := fun bounded => bounded.state)
-            (g := decorate)).symm
-    _ = PMF.map decorate (roundTransition G state.state action.1) := by
-          apply congrArg (PMF.map decorate)
-          simpa [toFOSGView] using
-            (Machine.FOSGView.toBoundedFOSG_transition_map_state
-              (G.toFOSGView iface hsound) horizon state action)
-    _ = explicitRoundBatchDist G iface state.state action.1 := by
-          simpa [decorate] using
-            roundTransition_map_realizedEventBatch_eq_explicitRoundBatchDist
-              G iface state.state action.1
-
 /-- Primitive event batches extracted from a bounded graph-FOSG step list.
 
 Each bounded FOSG step is one frontier round.  Internal chance patches are read
@@ -201,128 +132,6 @@ noncomputable def boundedFOSGHistoryEventBatches
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     List (List (G.toMachine iface).Event) :=
   boundedFOSGStepEventBatches G iface hsound horizon h.steps
-
-/-- Every realized bounded graph-FOSG step chain is backed by primitive
-event-batch executions whose events are available at the states where they run. -/
-theorem boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
-    ∀ {start : (G.toMachine iface).BoundedState horizon}
-      {steps :
-        List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)},
-      ((G.toFOSGView iface hsound).toBoundedFOSG horizon).StepChainFrom
-          start steps →
-        (G.toMachine iface).AvailableRunBatchesFrom start.state
-            (boundedFOSGStepEventBatches G iface hsound horizon steps)
-            (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
-              start steps).state
-  | start, [], _hchain => by
-      simp [boundedFOSGStepEventBatches, GameTheory.FOSG.lastStateFrom,
-        Machine.AvailableRunBatchesFrom.nil]
-  | start, step :: steps, hchain => by
-      rcases hchain with ⟨hsrc, htail⟩
-      cases hsrc
-      let batch : List (G.toMachine iface).Event :=
-        realizedEventBatch G iface step.src.state step.act.1
-          step.dst.state
-      have hstateSupport :
-          step.dst.state ∈
-            (roundTransition G step.src.state step.act.1).support := by
-        have hmap :
-            step.dst.state ∈
-              (PMF.map (fun bounded => bounded.state)
-                (((G.toFOSGView iface hsound).toBoundedFOSG horizon).transition
-                  step.src step.act)).support := by
-          exact (PMF.mem_support_map_iff _ _ _).2
-            ⟨step.dst, (PMF.mem_support_iff _ _).2 step.support, rfl⟩
-        rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hmap
-        change step.dst.state ∈
-          (roundTransition G step.src.state step.act.1).support at hmap
-        exact hmap
-      have hexplicit :
-          (batch, step.dst.state) ∈
-            (explicitRoundBatchDist G iface step.src.state
-              step.act.1).support := by
-        simpa [batch] using
-          (realizedEventBatch_mem_explicitRoundBatchDist_support
-            G iface hstateSupport)
-      have hlegal :
-          JointActionLegal (PlayerRoundAction G) (roundActive G)
-            Configuration.terminal (roundAvailable G)
-            step.src.state step.act.1 := by
-        simpa [toFOSGView] using
-          ((G.toFOSGView iface hsound).boundedActionToAction
-            horizon step.src step.act).2
-      have hbatch :
-          (G.toMachine iface).AvailableRunFrom
-            step.src.state batch step.dst.state := by
-        simpa [batch] using
-          (explicitRoundBatchDist_support_availableRunFrom
-            G iface hsound hlegal hexplicit)
-      have htailSupport :
-          (G.toMachine iface).AvailableRunBatchesFrom
-              step.dst.state
-              (boundedFOSGStepEventBatches G iface hsound horizon steps)
-              (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
-                step.dst steps).state :=
-        boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
-          G iface hsound horizon htail
-      simpa [boundedFOSGStepEventBatches, batch] using
-        Machine.AvailableRunBatchesFrom.cons hbatch htailSupport
-
-/-- Every realized bounded graph-FOSG step chain is backed by a primitive
-machine event-batch run whose support contains the same checkpoint endpoint. -/
-theorem boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
-    ∀ {start : (G.toMachine iface).BoundedState horizon}
-      {steps :
-        List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)},
-      ((G.toFOSGView iface hsound).toBoundedFOSG horizon).StepChainFrom
-          start steps →
-        (((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
-            start steps).state ∈
-          ((G.toMachine iface).runEventBatchesFrom
-            (boundedFOSGStepEventBatches G iface hsound horizon steps)
-            start.state).support := by
-  intro start steps hchain
-  exact
-    (boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
-      G iface hsound horizon hchain).mem_runEventBatchesFrom_support
-
-/-- Every realized bounded graph-FOSG history extracts primitive event batches
-whose events are available along the checkpoint execution from the machine
-initial state to the history's checkpoint state. -/
-theorem boundedFOSGHistory_state_availableRunBatchesFrom
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
-    (h :
-      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
-    (G.toMachine iface).AvailableRunBatchesFrom
-      (G.toMachine iface).init
-      (boundedFOSGHistoryEventBatches G iface hsound horizon h)
-      h.lastState.state := by
-  simpa [boundedFOSGHistoryEventBatches,
-    boundedFOSGStepEventBatches, GameTheory.FOSG.History.lastState,
-    EventGraph.toMachine_init] using
-    (boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
-      G iface hsound horizon h.chain)
-
-/-- Every realized bounded graph-FOSG history extracts a primitive machine
-event-batch trace whose endpoint support contains the history's checkpoint
-state. -/
-theorem boundedFOSGHistory_state_mem_runEventBatchesFrom_support
-    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
-    (h :
-      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
-    h.lastState.state ∈
-      ((G.toMachine iface).runEventBatchesFrom
-        (boundedFOSGHistoryEventBatches G iface hsound horizon h)
-        (G.toMachine iface).init).support := by
-  exact
-    (boundedFOSGHistory_state_availableRunBatchesFrom
-      G iface hsound horizon h).mem_runEventBatchesFrom_support
 
 /-- History-dependent event-batched primitive trace distribution induced by a
 bounded graph-FOSG behavioral profile.
