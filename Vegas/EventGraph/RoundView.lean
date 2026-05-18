@@ -1,11 +1,11 @@
-import Vegas.EventGraph.Round
+import Vegas.EventGraph.Frontier
 import Vegas.Machine.RoundView
 
 /-!
 # Native round views for event graphs
 
 This module packages event-graph frontiers as native machine
-`RoundView`s. The FOSG bridge reuses the same frontier-round definitions but
+`RoundView`s. The FOSG bridge reuses the same frontier-step definitions but
 is not needed here.
 -/
 
@@ -20,22 +20,22 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- Native round-view presentation of a protocol-graph machine by local explicit
-frontier rounds. -/
+/-- Native round-view presentation of a protocol-graph machine by local
+frontier steps. -/
 noncomputable def toRoundView
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) :
+    (hsound : G.HasLocalFrontierSteps) :
     (G.toMachine iface).RoundView where
-  Act := PlayerRoundAction G
-  active := roundActive G
-  availableActions := roundAvailable G
+  Act := PlayerFrontierAction G
+  active := frontierActive G
+  availableActions := frontierAvailable G
   transition := fun cfg action => frontierRealizationTransition G cfg action
   eventBatch := fun cfg joint dst => realizedEventBatch G iface cfg joint dst
   terminal_active_eq_empty := by
     intro cfg hterminal
     apply Finset.eq_empty_iff_forall_notMem.mpr
     intro who hmem
-    rcases (mem_roundActive_iff G cfg who).mp hmem with
+    rcases (mem_frontierActive_iff G cfg who).mp hmem with
       ⟨node, hfrontier, _hactor⟩
     exact (cfg.not_terminal_of_mem_frontier hfrontier) hterminal
   nonterminal_exists_legal := by
@@ -46,14 +46,14 @@ noncomputable def toRoundView
         Classical.choose (hsound.availablePlayerActions cfg h.1 h.2)
       else
         fun _ => none
-    let joint : JointAction (PlayerRoundAction G) := fun who =>
-      if who ∈ roundActive G cfg then
+    let joint : JointAction (PlayerFrontierAction G) := fun who =>
+      if who ∈ frontierActive G cfg then
         some { patch := mkPatch who }
       else
         none
     refine ⟨joint, hterminal, ?_⟩
     intro who
-    by_cases hactive : who ∈ roundActive G cfg
+    by_cases hactive : who ∈ frontierActive G cfg
     · have hjoint : joint who = some { patch := mkPatch who } := by
         simp [joint, hactive]
       rw [hjoint]
@@ -80,7 +80,7 @@ noncomputable def toRoundView
 is an available machine run from the step source to the step destination. -/
 theorem boundedRoundStepEventBatch_availableRunFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierSteps) (horizon : Nat)
     (step : ((G.toRoundView iface hsound).BoundedStep horizon)) :
     (G.toMachine iface).AvailableRunFrom step.src.state
       ((G.toRoundView iface hsound).eventBatch step.src.state step.act.1
@@ -111,7 +111,7 @@ theorem boundedRoundStepEventBatch_availableRunFrom
 
 private theorem boundedRoundStepBatches_availableRunBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
+    (hsound : G.HasLocalFrontierSteps) (horizon : Nat) :
     ∀ {start : (G.toMachine iface).BoundedState horizon}
       {steps : List ((G.toRoundView iface hsound).BoundedStep horizon)},
       (G.toRoundView iface hsound).StepChainFrom horizon start steps →
@@ -144,7 +144,7 @@ an available machine batch run from the machine initial state to the history
 state. -/
 theorem boundedRoundHistory_availableRunBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierSteps) (horizon : Nat)
     (h : ((G.toRoundView iface hsound).BoundedHistory horizon)) :
     (G.toMachine iface).AvailableRunBatchesFrom (G.toMachine iface).init
       ((G.toRoundView iface hsound).boundedHistoryEventBatches horizon h)
@@ -157,7 +157,7 @@ theorem boundedRoundHistory_availableRunBatchesFrom
 /-- Nonzero-support form of `boundedRoundHistory_availableRunBatchesFrom`. -/
 theorem boundedRoundHistory_state_mem_runEventBatchesFrom_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierSteps) (horizon : Nat)
     (h : ((G.toRoundView iface hsound).BoundedHistory horizon)) :
     h.lastState.state ∈
       ((G.toMachine iface).runEventBatchesFrom

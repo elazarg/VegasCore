@@ -398,6 +398,7 @@ structure RefinementEventBatchLawLift
     (R : StochasticStepRefinement Impl Spec)
     (lawSpec : Spec.EventBatchLaw) where
   lawImpl : Impl.EventBatchLaw
+  legalImpl : Impl.IsLegalEventBatchLaw lawImpl
   compatible : R.EventBatchLawCompatible lawImpl lawSpec
 
 /-- Trace-level outcome preservation for compatible history-dependent

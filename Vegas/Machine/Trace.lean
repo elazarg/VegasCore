@@ -131,7 +131,7 @@ end AvailableRunFrom
 
 /-- Execute a sequence of macro steps, where each macro step is represented by
 a list of primitive machine events.  This is the trace shape induced by a
-frontier-round FOSG presentation. -/
+frontier-step FOSG presentation. -/
 noncomputable def runEventBatchesFrom
     (M : Machine Player) (batches : List (List M.Event)) (state : M.State) :
     PMF M.State :=
@@ -250,6 +250,18 @@ strategic schedulers whose choices can depend on public/history information
 while still running through the machine's primitive transition semantics. -/
 abbrev EventBatchLaw (M : Machine Player) : Type :=
   M.EventBatchTrace → PMF (List M.Event)
+
+/-- A history-dependent event-batch law is legal when every supported batch from
+a nonterminal checkpoint has an available primitive execution from that
+checkpoint. -/
+def IsLegalEventBatchLaw (M : Machine Player) (law : M.EventBatchLaw) : Prop :=
+  ∀ trace, ¬ M.terminal trace.2 → ∀ {batch},
+    batch ∈ (law trace).support →
+      ∃ dst, M.AvailableRunFrom trace.2 batch dst
+
+/-- Event-batch laws bundled with their primitive availability proof. -/
+abbrev LegalEventBatchLaw (M : Machine Player) : Type :=
+  { law : M.EventBatchLaw // M.IsLegalEventBatchLaw law }
 
 /-- Bounded event-batch trace distribution from an arbitrary event-batch trace prefix.
 Execution stops once the current state is terminal; otherwise one event batch is

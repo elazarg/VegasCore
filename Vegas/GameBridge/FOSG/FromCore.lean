@@ -23,7 +23,7 @@ noncomputable def eventGraphFOSGView
     (g : WFProgram P L) :
     (eventGraphMachine g).FOSGView :=
   (programEventGraph g).toFOSGView (eventGraphMachineInterface g)
-    (programEventGraph_hasLocalFrontierRounds g)
+    (programEventGraph_hasLocalFrontierSteps g)
 
 private theorem eventGraph_done_subset_nodes
     {G : EventGraph P L} (cfg : G.Configuration) :
@@ -103,10 +103,10 @@ private theorem eventGraph_boundedFOSG_step_done_card_succ_le
   rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hstateMem
   have hroundLegal :
       GameTheory.JointActionLegal
-        (EventGraph.PlayerRoundAction (programEventGraph g))
-        (EventGraph.roundActive (programEventGraph g))
+        (EventGraph.PlayerFrontierAction (programEventGraph g))
+        (EventGraph.frontierActive (programEventGraph g))
         EventGraph.Configuration.terminal
-        (EventGraph.roundAvailable (programEventGraph g))
+        (EventGraph.frontierAvailable (programEventGraph g))
         src.state rawAction.1 := by
     simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
       EventGraph.toFOSGView] using rawAction.2
@@ -232,14 +232,14 @@ theorem eventGraph_wholeGame_reaches_declared_payoff_rule
   exact eventGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
 
 /-- Primitive machine event batches extracted from a bounded event-graph FOSG
-history. Each event batch is one frontier round of the public FOSG view. -/
+history. Each event batch is one frontier step of the public FOSG view. -/
 noncomputable def eventGraphFOSGHistoryEventBatches
     (g : WFProgram P L) (horizon : Nat)
     (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
     List (List (eventGraphMachine g).Event) :=
   EventGraph.boundedFOSGHistoryEventBatches
     (programEventGraph g) (eventGraphMachineInterface g)
-    (programEventGraph_hasLocalFrontierRounds g) horizon h
+    (programEventGraph_hasLocalFrontierSteps g) horizon h
 
 /-- Program-specialized availability witness for the primitive batches
 extracted from a bounded event-graph FOSG history. -/
@@ -253,7 +253,7 @@ theorem eventGraphFOSGHistory_availableRunBatchesFrom
     eventGraphFOSGView] using
     (EventGraph.boundedFOSGHistory_availableRunBatchesFrom
       (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasLocalFrontierRounds g) horizon h)
+      (programEventGraph_hasLocalFrontierSteps g) horizon h)
 
 /-- Program-specialized support theorem for primitive batches extracted from a
 bounded event-graph FOSG history. -/
@@ -268,7 +268,7 @@ theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
     (eventGraphFOSGHistory_availableRunBatchesFrom g horizon h)
 
 /-- Realized primitive machine events represented by one event-graph FOSG
-frontier round. Internal events carry the patch found in the realized
+frontier step. Internal events carry the patch found in the realized
 destination. -/
 noncomputable def eventGraphRealizedEventBatch
     (g : WFProgram P L)
@@ -282,13 +282,13 @@ noncomputable def eventGraphRealizedEventBatch
 
 /-- Player round-action availability in the event graph is determined by the
 public transcript together with the acting player's private observation. -/
-theorem eventGraph_roundAvailable_eq_of_observation_eq
+theorem eventGraph_frontierAvailable_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
     {left right : (programEventGraph g).Configuration}
     (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
     (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.roundAvailable (programEventGraph g) left who =
-      EventGraph.roundAvailable (programEventGraph g) right who := by
+    EventGraph.frontierAvailable (programEventGraph g) left who =
+      EventGraph.frontierAvailable (programEventGraph g) right who := by
   classical
   have hfrontierEq := eventGraphPublicView_frontier_eq_of_eq g hpub
   ext action
@@ -308,37 +308,37 @@ theorem eventGraph_roundAvailable_eq_of_observation_eq
       eventGraph_actionLegal_of_observe_eq g who hfrontier
         hactor hpriv.symm hlegal⟩
 
-/-- The active-player set of an event-graph frontier round is determined by
+/-- The active-player set of an event-graph frontier step is determined by
 the public transcript. -/
-theorem eventGraph_roundActive_eq_of_publicView_eq
+theorem eventGraph_frontierActive_eq_of_publicView_eq
     (g : WFProgram P L)
     {left right : (programEventGraph g).Configuration}
     (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.roundActive (programEventGraph g) left =
-      EventGraph.roundActive (programEventGraph g) right := by
+    EventGraph.frontierActive (programEventGraph g) left =
+      EventGraph.frontierActive (programEventGraph g) right := by
   classical
   have hfrontier := eventGraphPublicView_frontier_eq_of_eq g hpub
-  unfold EventGraph.roundActive
+  unfold EventGraph.frontierActive
   rw [hfrontier]
 
-/-- Player-facing frontier-round menus in the event graph are determined by
+/-- Player-facing frontier-step menus in the event graph are determined by
 the public transcript together with the player's private observation.
 
 This is the protocol-level "the player knows what they can do" invariant:
 two configurations indistinguishable to `who` offer the same optional menu to
 `who`, including whether `who` is called at all. -/
-theorem eventGraph_roundMenu_eq_of_observation_eq
+theorem eventGraph_frontierMenu_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
     {left right : (programEventGraph g).Configuration}
     (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
     (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.roundMenu (programEventGraph g) left who =
-      EventGraph.roundMenu (programEventGraph g) right who := by
+    EventGraph.frontierMenu (programEventGraph g) left who =
+      EventGraph.frontierMenu (programEventGraph g) right who := by
   have hactive :=
-    eventGraph_roundActive_eq_of_publicView_eq g hpub
+    eventGraph_frontierActive_eq_of_publicView_eq g hpub
   have havailable :=
-    eventGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
-  simp [EventGraph.roundMenu, hactive, havailable]
+    eventGraph_frontierAvailable_eq_of_observation_eq g who hpriv hpub
+  simp [EventGraph.frontierMenu, hactive, havailable]
 
 /-- At a bounded event-graph FOSG state before the cutoff, legal optional
 moves are determined by the player's latest private observation and the public
@@ -359,20 +359,20 @@ theorem eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
       ((eventGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
         right who := by
   classical
-  have hroundActive :
-      EventGraph.roundActive (programEventGraph g) left.state =
-        EventGraph.roundActive (programEventGraph g) right.state :=
-    eventGraph_roundActive_eq_of_publicView_eq g hpub
-  have hroundAvailable :
-      EventGraph.roundAvailable (programEventGraph g) left.state who =
-        EventGraph.roundAvailable (programEventGraph g) right.state who :=
-    eventGraph_roundAvailable_eq_of_observation_eq g who hpriv hpub
+  have hfrontierActive :
+      EventGraph.frontierActive (programEventGraph g) left.state =
+        EventGraph.frontierActive (programEventGraph g) right.state :=
+    eventGraph_frontierActive_eq_of_publicView_eq g hpub
+  have hfrontierAvailable :
+      EventGraph.frontierAvailable (programEventGraph g) left.state who =
+        EventGraph.frontierAvailable (programEventGraph g) right.state who :=
+    eventGraph_frontierAvailable_eq_of_observation_eq g who hpriv hpub
   have hactive :
       ((eventGraphFOSGView g).toBoundedFOSG horizon).active left =
         ((eventGraphFOSGView g).toBoundedFOSG horizon).active right := by
     ext player
     simp [Machine.FOSGView.boundedActive, hcut, hcut',
-      eventGraphFOSGView, EventGraph.toFOSGView, hroundActive]
+      eventGraphFOSGView, EventGraph.toFOSGView, hfrontierActive]
   have hactions :
       ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
           left who =
@@ -380,7 +380,7 @@ theorem eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
           right who := by
     ext action
     simp [Machine.FOSGView.boundedAvailableActions, hcut, hcut',
-      eventGraphFOSGView, EventGraph.toFOSGView, hroundAvailable]
+      eventGraphFOSGView, EventGraph.toFOSGView, hfrontierAvailable]
   ext move
   cases move with
   | none =>
@@ -603,8 +603,8 @@ theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
     intro field
     change Fintype (L.Val field.ty)
     exact ProgramField.instFintypeValue g field
-  change Fintype (EventGraph.PlayerRoundAction (programEventGraph g) who)
-  exact EventGraph.PlayerRoundAction.instFintype (programEventGraph g) who
+  change Fintype (EventGraph.PlayerFrontierAction (programEventGraph g) who)
+  exact EventGraph.PlayerFrontierAction.instFintype (programEventGraph g) who
 
 /-- Finite optional FOSG round-action helper for event-graph views. -/
 @[reducible] noncomputable instance eventGraphFOSGView.instFintypeOptionAct
@@ -701,7 +701,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasLocalFrontierRounds g)).Act
+              (programEventGraph_hasLocalFrontierSteps g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -709,7 +709,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
   simpa [eventGraphMachine, eventGraphFOSGView] using
     (EventGraph.boundedFOSGEventBatchTraceDistFrom
       (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasLocalFrontierRounds g) horizon σ)
+      (programEventGraph_hasLocalFrontierSteps g) horizon σ)
 
 /-- Bounded event-graph FOSG execution, projected to extracted primitive
 event batches and checkpoint state, equals the history-dependent event-batch
@@ -735,7 +735,7 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasLocalFrontierRounds g)).Act
+              (programEventGraph_hasLocalFrontierSteps g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -750,14 +750,14 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
       DecidablePred
         ((((programEventGraph g).toFOSGView
           (eventGraphMachineInterface g)
-          (programEventGraph_hasLocalFrontierRounds g)).toBoundedFOSG
+          (programEventGraph_hasLocalFrontierSteps g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
   simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView, eventGraphFOSGEventBatchTraceDistFrom] using
       (EventGraph.boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
         (programEventGraph g) (eventGraphMachineInterface g)
-        (programEventGraph_hasLocalFrontierRounds g) horizon σ n h)
+        (programEventGraph_hasLocalFrontierSteps g) horizon σ n h)
 
 /-- Initial history of the bounded event-graph FOSG presentation. -/
 noncomputable def eventGraphInitialHistory

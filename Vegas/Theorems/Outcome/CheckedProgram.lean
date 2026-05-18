@@ -65,54 +65,54 @@ theorem checkedProgram_wholeGame_reaches_declared_payoff_rule
 
 /-- Pure strategic-form outcomes are exactly the event-graph realization-trace
 outcomes projected to payoff outcomes. -/
-theorem checkedProgram_pureOutcome_eq_realizationTrace
+theorem checkedProgram_pureOutcome_eq_roundHistory
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (syntaxRealizationTraceOutcome g)
-        (pureRealizationTraceOutcomeKernelAt g π) :=
-  pureOutcomeKernelAt_eq_realizationTraceDist g π
+        (syntaxRoundHistoryOutcome g)
+        (pureRoundHistoryOutcomeKernelAt g π) :=
+  pureOutcomeKernelAt_eq_roundHistoryDist g π
 
 /-- PMF behavioral strategic-form outcomes are exactly the event-graph
 realization-trace outcomes projected to payoff outcomes. -/
-theorem checkedProgram_behavioralOutcome_eq_realizationTrace
+theorem checkedProgram_behavioralOutcome_eq_roundHistory
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (syntaxRealizationTraceOutcome g)
-        (behavioralRealizationTraceOutcomeKernelPMFAt g β) :=
-  behavioralOutcomeKernelPMFAt_eq_realizationTraceDist g β
+        (syntaxRoundHistoryOutcome g)
+        (behavioralRoundHistoryOutcomeKernelPMFAt g β) :=
+  behavioralOutcomeKernelPMFAt_eq_roundHistoryDist g β
 
 /-- Pure public-state game-form outcomes are the public observation projection
-of realization traces. -/
-theorem checkedProgram_purePublicStateOutcome_eq_realizationTrace
+of round histories. -/
+theorem checkedProgram_purePublicStateOutcome_eq_roundHistory
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     purePublicStateOutcomeKernelAt g π =
-      PMF.map (syntaxRealizationTracePublicState g)
-        (pureRealizationTraceOutcomeKernelAt g π) := rfl
+      PMF.map (syntaxRoundHistoryPublicState g)
+        (pureRoundHistoryOutcomeKernelAt g π) := rfl
 
 /-- PMF behavioral public-state game-form outcomes are the public observation
-projection of realization traces. -/
-theorem checkedProgram_behavioralPublicStateOutcome_eq_realizationTrace
+projection of round histories. -/
+theorem checkedProgram_behavioralPublicStateOutcome_eq_roundHistory
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralPublicStateOutcomeKernelPMFAt g β =
-      PMF.map (syntaxRealizationTracePublicState g)
-        (behavioralRealizationTraceOutcomeKernelPMFAt g β) := rfl
+      PMF.map (syntaxRoundHistoryPublicState g)
+        (behavioralRoundHistoryOutcomeKernelPMFAt g β) := rfl
 
-/-- Equality after projecting realization traces to syntax outcomes gives equality
+/-- Equality after projecting round histories to syntax outcomes gives equality
 of the induced outcome laws. -/
 theorem outcomeKernel_eq_of_traceOutcome_eq
     (g : WFProgram P L)
-    {left right : PMF (syntaxRealizationTraceAt g)}
+    {left right : PMF (syntaxRoundHistoryAt g)}
     (h :
-      PMF.map (syntaxRealizationTraceOutcome g) left =
-        PMF.map (syntaxRealizationTraceOutcome g) right) :
-    PMF.map (syntaxRealizationTraceOutcome g) left =
-      PMF.map (syntaxRealizationTraceOutcome g) right :=
+      PMF.map (syntaxRoundHistoryOutcome g) left =
+        PMF.map (syntaxRoundHistoryOutcome g) right) :
+    PMF.map (syntaxRoundHistoryOutcome g) left =
+      PMF.map (syntaxRoundHistoryOutcome g) right :=
   h
 
 private theorem ProgramField.finalEnv?_erasePubEnv_eq_of_public_values

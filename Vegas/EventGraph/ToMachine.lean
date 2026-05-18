@@ -141,13 +141,13 @@ def availableInternal
               patch ∈ (G.internalKernel node cfg.result).support
       | .idle => False }
 
-/-- Locality condition for exposing graph frontiers as strategic rounds.
+/-- Locality condition for exposing graph frontiers as strategic steps.
 
 The progress field prevents player-owned frontier nodes from deadlocking. The
 stability fields are the proof-facing form of graph locality: one source-frontier
 node cannot change player legality or internal chance for a distinct
 source-frontier node. -/
-structure HasLocalFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
+structure HasLocalFrontierSteps (G : Vegas.EventGraph Player L) : Prop where
   availablePlayerActions : G.HasAvailablePlayerActions
   actionStable :
     ∀ (cfg : G.Configuration)

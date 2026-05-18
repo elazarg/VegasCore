@@ -148,7 +148,7 @@ theorem checkedProgram_frontier_execution_commutes
         leftPatch hleftAfterRight hleftLegal :=
   cfg.withPatch_comm hleft hright hne hleftLegal hrightLegal
 
-/-- A complete frontier round is extensionally determined by the source
+/-- A complete frontier step is extensionally determined by the source
 frontier and the field patch chosen for each source-frontier node. Any
 linearization that records exactly those patches and leaves non-frontier nodes
 unchanged reaches the canonical whole-frontier endpoint. -/

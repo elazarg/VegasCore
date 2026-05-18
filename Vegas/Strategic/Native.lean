@@ -24,7 +24,7 @@ noncomputable def eventGraphRoundView
     (g : WFProgram P L) :
     (eventGraphMachine g).RoundView :=
   (programEventGraph g).toRoundView (eventGraphMachineInterface g)
-    (programEventGraph_hasLocalFrontierRounds g)
+    (programEventGraph_hasLocalFrontierSteps g)
 
 /-- Finite state helper for the native program event-graph round view. -/
 @[reducible] noncomputable instance eventGraphRoundView.instFintypeState
@@ -64,8 +64,8 @@ noncomputable def eventGraphRoundView
     intro field
     change Fintype (L.Val field.ty)
     exact ProgramField.instFintypeValue g field
-  change Fintype (EventGraph.PlayerRoundAction (programEventGraph g) who)
-  exact EventGraph.PlayerRoundAction.instFintype (programEventGraph g) who
+  change Fintype (EventGraph.PlayerFrontierAction (programEventGraph g) who)
+  exact EventGraph.PlayerFrontierAction.instFintype (programEventGraph g) who
 
 /-- Finite optional native round-action helper for event-graph round views. -/
 @[reducible] noncomputable instance eventGraphRoundView.instFintypeOptionAct

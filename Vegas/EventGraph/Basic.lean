@@ -669,7 +669,7 @@ theorem result_some_of_prereq_of_mem_frontier
   exact (G.mem_done_iff cfg.result prereq).mp hdone |>.2
 
 /-- No current frontier node is a prerequisite of another current frontier
-node. This is the graph-level independence fact behind frontier rounds:
+node. This is the graph-level independence fact behind frontier steps:
 dependencies must have already been completed before a node reaches the
 frontier. -/
 theorem not_prereq_of_mem_frontier

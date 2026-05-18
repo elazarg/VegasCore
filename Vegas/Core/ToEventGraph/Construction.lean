@@ -835,12 +835,12 @@ theorem eventGraph_internalKernel_after_frontier_withPatch_of_ne
             simpa [EventGraph.NodeSem.reads, hsem] using hread)
       rw [henv]
 
-/-- Source graph frontier rounds are local: executing one frontier node cannot
+/-- Source graph frontier steps are local: executing one frontier node cannot
 invalidate a player action or change an internal kernel for another current
 frontier node. -/
-theorem programEventGraph_hasLocalFrontierRounds
+theorem programEventGraph_hasLocalFrontierSteps
     (g : WFProgram P L) :
-    (programEventGraph g).HasLocalFrontierRounds where
+    (programEventGraph g).HasLocalFrontierSteps where
   availablePlayerActions := programEventGraph_hasAvailablePlayerActions g
   actionStable := by
     intro cfg first firstPatch hfirst who action hfrontier hne

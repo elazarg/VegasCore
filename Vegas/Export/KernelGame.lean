@@ -68,16 +68,16 @@ noncomputable def pureKernelGameExport
     KernelGameExport P :=
   KernelGameExport.ofKernelGame (pureKernelGameAt g)
 
-/-- Finite strategy export table for the pure realization trace Vegas game. -/
-noncomputable def pureRealizationTraceKernelGameExport
+/-- Finite strategy export table for the pure round history Vegas game. -/
+noncomputable def pureRoundHistoryKernelGameExport
     (g : WFProgram P L) [FiniteDomains g] :
     KernelGameExport P := by
   classical
-  letI : ∀ player, Fintype ((pureRealizationTraceKernelGameAt g).Strategy player) := by
+  letI : ∀ player, Fintype ((pureRoundHistoryKernelGameAt g).Strategy player) := by
     intro player
     change Fintype (pureStrategyAt g player)
     infer_instance
-  exact KernelGameExport.ofKernelGame (pureRealizationTraceKernelGameAt g)
+  exact KernelGameExport.ofKernelGame (pureRoundHistoryKernelGameAt g)
 
 end Export
 

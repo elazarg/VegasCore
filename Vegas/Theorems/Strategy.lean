@@ -20,29 +20,29 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- A player's whole frontier-round optional menu is determined by the public
+/-- A player's whole frontier-step optional menu is determined by the public
 transcript together with that player's private observation. -/
-theorem checkedProgram_roundMenu_eq_of_observation_eq
+theorem checkedProgram_frontierMenu_eq_of_observation_eq
     (g : WFProgram P L) (who : P)
     {left right : (programEventGraph g).Configuration}
     (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
     (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.roundMenu (programEventGraph g) left who =
-      EventGraph.roundMenu (programEventGraph g) right who :=
-  eventGraph_roundMenu_eq_of_observation_eq g who hpriv hpub
+    EventGraph.frontierMenu (programEventGraph g) left who =
+      EventGraph.frontierMenu (programEventGraph g) right who :=
+  eventGraph_frontierMenu_eq_of_observation_eq g who hpriv hpub
 
-/-- Membership in a player's frontier-round menu is transported across equal
+/-- Membership in a player's frontier-step menu is transported across equal
 public transcript and private observation. -/
-theorem checkedProgram_roundMenu_mem_iff_of_observation_eq
+theorem checkedProgram_frontierMenu_mem_iff_of_observation_eq
     (g : WFProgram P L) (who : P)
     {left right : (programEventGraph g).Configuration}
     (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
     (hpub : eventGraphPublicView g left = eventGraphPublicView g right)
     (move :
-      Option (EventGraph.PlayerRoundAction (programEventGraph g) who)) :
-    move ∈ EventGraph.roundMenu (programEventGraph g) left who ↔
-      move ∈ EventGraph.roundMenu (programEventGraph g) right who := by
-  rw [checkedProgram_roundMenu_eq_of_observation_eq g who hpriv hpub]
+      Option (EventGraph.PlayerFrontierAction (programEventGraph g) who)) :
+    move ∈ EventGraph.frontierMenu (programEventGraph g) left who ↔
+      move ∈ EventGraph.frontierMenu (programEventGraph g) right who := by
+  rw [checkedProgram_frontierMenu_eq_of_observation_eq g who hpriv hpub]
 
 /-- At the current bounded FOSG history endpoint, a player's available optional
 moves are determined by the current private and public observations, provided

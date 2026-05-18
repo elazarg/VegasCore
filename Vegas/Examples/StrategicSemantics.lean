@@ -11,7 +11,7 @@ import Vegas.Corollaries.Equilibrium
 
 Examples showing how checked Vegas programs enter the generated strategic and
 trace games. These statements are deliberately phrased over `WFProgram`s,
-`pureKernelGame`, `pmfBehavioralKernelGame`, and realization trace games rather
+`pureKernelGame`, `pmfBehavioralKernelGame`, and round history games rather
 than over hand-written normal-form games.
 -/
 
@@ -23,114 +23,114 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
-/-- For any checked program, public pure-strategic play and pure realization trace
+/-- For any checked program, public pure-strategic play and pure round history
 play have the same expected utility. -/
-theorem pure_eu_eq_realizationTrace
+theorem pure_eu_eq_roundHistory
     (g : WFProgram P L) [FiniteDomains g]
     (π : (pureKernelGame g).Profile) (who : P) :
-    (pureRealizationTraceKernelGameAt g).eu π who =
+    (pureRoundHistoryKernelGameAt g).eu π who =
       (pureKernelGame g).eu π who :=
-  pureRealizationTraceKernelGameAt_eu_eq g π who
+  pureRoundHistoryKernelGameAt_eu_eq g π who
 
 /-- For any checked program, pure Nash is invariant under replacing public
-outcomes by full realization traces. -/
-theorem pure_nash_iff_realizationTrace
+outcomes by full round histories. -/
+theorem pure_nash_iff_roundHistory
     (g : WFProgram P L) [FiniteDomains g]
     (π : (pureKernelGame g).Profile) :
     (pureKernelGame g).IsNash π ↔
-      (pureRealizationTraceKernelGameAt g).IsNash π := by
+      (pureRoundHistoryKernelGameAt g).IsNash π := by
   constructor
   · intro h who s'
     have hpure := h who s'
     calc
-      (pureRealizationTraceKernelGameAt g).eu π who =
+      (pureRoundHistoryKernelGameAt g).eu π who =
           (pureKernelGame g).eu π who :=
-            pure_eu_eq_realizationTrace g π who
+            pure_eu_eq_roundHistory g π who
       _ ≥ (pureKernelGame g).eu (Function.update π who s') who := hpure
-      _ = (pureRealizationTraceKernelGameAt g).eu
+      _ = (pureRoundHistoryKernelGameAt g).eu
           (Function.update π who s') who :=
-            (pure_eu_eq_realizationTrace g (Function.update π who s') who).symm
+            (pure_eu_eq_roundHistory g (Function.update π who s') who).symm
   · intro h who s'
     have htrace := h who s'
     calc
       (pureKernelGame g).eu π who =
-          (pureRealizationTraceKernelGameAt g).eu π who :=
-            (pure_eu_eq_realizationTrace g π who).symm
-      _ ≥ (pureRealizationTraceKernelGameAt g).eu
+          (pureRoundHistoryKernelGameAt g).eu π who :=
+            (pure_eu_eq_roundHistory g π who).symm
+      _ ≥ (pureRoundHistoryKernelGameAt g).eu
           (Function.update π who s') who := htrace
       _ = (pureKernelGame g).eu (Function.update π who s') who :=
-            pure_eu_eq_realizationTrace g (Function.update π who s') who
+            pure_eu_eq_roundHistory g (Function.update π who s') who
 
 /-- Dominant pure strategies are invariant under the same public/trace
 presentation change. -/
-theorem pure_dominant_iff_realizationTrace
+theorem pure_dominant_iff_roundHistory
     (g : WFProgram P L) [FiniteDomains g]
     (who : P) (s : (pureKernelGame g).Strategy who) :
     (pureKernelGame g).IsDominant who s ↔
-      (pureRealizationTraceKernelGameAt g).IsDominant who s := by
+      (pureRoundHistoryKernelGameAt g).IsDominant who s := by
   constructor
   · intro h σ s'
     have hpure := h σ s'
     calc
-      (pureRealizationTraceKernelGameAt g).eu (Function.update σ who s) who =
+      (pureRoundHistoryKernelGameAt g).eu (Function.update σ who s) who =
           (pureKernelGame g).eu (Function.update σ who s) who :=
-            pure_eu_eq_realizationTrace g (Function.update σ who s) who
+            pure_eu_eq_roundHistory g (Function.update σ who s) who
       _ ≥ (pureKernelGame g).eu (Function.update σ who s') who := hpure
-      _ = (pureRealizationTraceKernelGameAt g).eu
+      _ = (pureRoundHistoryKernelGameAt g).eu
           (Function.update σ who s') who :=
-            (pure_eu_eq_realizationTrace g (Function.update σ who s') who).symm
+            (pure_eu_eq_roundHistory g (Function.update σ who s') who).symm
   · intro h σ s'
     have htrace := h σ s'
     calc
       (pureKernelGame g).eu (Function.update σ who s) who =
-          (pureRealizationTraceKernelGameAt g).eu
+          (pureRoundHistoryKernelGameAt g).eu
             (Function.update σ who s) who :=
-            (pure_eu_eq_realizationTrace g (Function.update σ who s) who).symm
-      _ ≥ (pureRealizationTraceKernelGameAt g).eu
+            (pure_eu_eq_roundHistory g (Function.update σ who s) who).symm
+      _ ≥ (pureRoundHistoryKernelGameAt g).eu
           (Function.update σ who s') who := htrace
       _ = (pureKernelGame g).eu (Function.update σ who s') who :=
-            pure_eu_eq_realizationTrace g (Function.update σ who s') who
+            pure_eu_eq_roundHistory g (Function.update σ who s') who
 
 /-- For any checked program, PMF-behavioral public play and PMF-behavioral
-realization trace play have the same expected utility. -/
-theorem behavioral_eu_eq_realizationTrace
+round history play have the same expected utility. -/
+theorem behavioral_eu_eq_roundHistory
     (g : WFProgram P L) [FiniteDomains g]
     (β : (pmfBehavioralKernelGame g).Profile) (who : P) :
-    (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
+    (pmfBehavioralRoundHistoryKernelGameAt g).eu β who =
       (pmfBehavioralKernelGame g).eu β who :=
-  pmfBehavioralRealizationTraceKernelGameAt_eu_eq g β who
+  pmfBehavioralRoundHistoryKernelGameAt_eu_eq g β who
 
 /-- PMF-behavioral Nash is invariant under replacing public outcomes by full
-realization traces. -/
-theorem behavioral_nash_iff_realizationTrace
+round histories. -/
+theorem behavioral_nash_iff_roundHistory
     (g : WFProgram P L) [FiniteDomains g]
     (β : (pmfBehavioralKernelGame g).Profile) :
     (pmfBehavioralKernelGame g).IsNash β ↔
-      (pmfBehavioralRealizationTraceKernelGameAt g).IsNash β := by
+      (pmfBehavioralRoundHistoryKernelGameAt g).IsNash β := by
   constructor
   · intro h who s'
     have hbehavioral := h who s'
     calc
-      (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
+      (pmfBehavioralRoundHistoryKernelGameAt g).eu β who =
           (pmfBehavioralKernelGame g).eu β who :=
-            behavioral_eu_eq_realizationTrace g β who
+            behavioral_eu_eq_roundHistory g β who
       _ ≥ (pmfBehavioralKernelGame g).eu
           (Function.update β who s') who := hbehavioral
-      _ = (pmfBehavioralRealizationTraceKernelGameAt g).eu
+      _ = (pmfBehavioralRoundHistoryKernelGameAt g).eu
           (Function.update β who s') who :=
-            (behavioral_eu_eq_realizationTrace g
+            (behavioral_eu_eq_roundHistory g
               (Function.update β who s') who).symm
   · intro h who s'
     have htrace := h who s'
     calc
       (pmfBehavioralKernelGame g).eu β who =
-          (pmfBehavioralRealizationTraceKernelGameAt g).eu β who :=
-            (behavioral_eu_eq_realizationTrace g β who).symm
-      _ ≥ (pmfBehavioralRealizationTraceKernelGameAt g).eu
+          (pmfBehavioralRoundHistoryKernelGameAt g).eu β who :=
+            (behavioral_eu_eq_roundHistory g β who).symm
+      _ ≥ (pmfBehavioralRoundHistoryKernelGameAt g).eu
           (Function.update β who s') who := htrace
       _ = (pmfBehavioralKernelGame g).eu
           (Function.update β who s') who :=
-            behavioral_eu_eq_realizationTrace g
+            behavioral_eu_eq_roundHistory g
               (Function.update β who s') who
 
 /-- Every finite checked Vegas program satisfies the PMF behavioral
@@ -248,24 +248,24 @@ theorem rowDefectAction_available_initial :
     some Prisoners.Player.row
   exact rowCommitNode_actor
 
-theorem pure_eu_eq_realizationTrace
+theorem pure_eu_eq_roundHistory
     (π : (pureKernelGame Prisoners.game).Profile)
     (who : Prisoners.Player) :
-    (pureRealizationTraceKernelGameAt Prisoners.game).eu π who =
+    (pureRoundHistoryKernelGameAt Prisoners.game).eu π who =
       (pureKernelGame Prisoners.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_realizationTrace Prisoners.game π who
+  StrategicSemantics.pure_eu_eq_roundHistory Prisoners.game π who
 
-theorem pure_nash_iff_realizationTrace
+theorem pure_nash_iff_roundHistory
     (π : (pureKernelGame Prisoners.game).Profile) :
     (pureKernelGame Prisoners.game).IsNash π ↔
-      (pureRealizationTraceKernelGameAt Prisoners.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_realizationTrace Prisoners.game π
+      (pureRoundHistoryKernelGameAt Prisoners.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_roundHistory Prisoners.game π
 
-theorem behavioral_nash_iff_realizationTrace
+theorem behavioral_nash_iff_roundHistory
     (β : (pmfBehavioralKernelGame Prisoners.game).Profile) :
     (pmfBehavioralKernelGame Prisoners.game).IsNash β ↔
-      (pmfBehavioralRealizationTraceKernelGameAt Prisoners.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_realizationTrace Prisoners.game β
+      (pmfBehavioralRoundHistoryKernelGameAt Prisoners.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_roundHistory Prisoners.game β
 
 theorem kuhnPMF : KuhnPMF Prisoners.game :=
   StrategicSemantics.kuhnPMF Prisoners.game
@@ -274,24 +274,24 @@ end Prisoners
 
 namespace MatchingPennies
 
-theorem pure_eu_eq_realizationTrace
+theorem pure_eu_eq_roundHistory
     (π : (pureKernelGame MatchingPennies.game).Profile)
     (who : MatchingPennies.Player) :
-    (pureRealizationTraceKernelGameAt MatchingPennies.game).eu π who =
+    (pureRoundHistoryKernelGameAt MatchingPennies.game).eu π who =
       (pureKernelGame MatchingPennies.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_realizationTrace MatchingPennies.game π who
+  StrategicSemantics.pure_eu_eq_roundHistory MatchingPennies.game π who
 
-theorem pure_nash_iff_realizationTrace
+theorem pure_nash_iff_roundHistory
     (π : (pureKernelGame MatchingPennies.game).Profile) :
     (pureKernelGame MatchingPennies.game).IsNash π ↔
-      (pureRealizationTraceKernelGameAt MatchingPennies.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_realizationTrace MatchingPennies.game π
+      (pureRoundHistoryKernelGameAt MatchingPennies.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_roundHistory MatchingPennies.game π
 
-theorem behavioral_nash_iff_realizationTrace
+theorem behavioral_nash_iff_roundHistory
     (β : (pmfBehavioralKernelGame MatchingPennies.game).Profile) :
     (pmfBehavioralKernelGame MatchingPennies.game).IsNash β ↔
-      (pmfBehavioralRealizationTraceKernelGameAt MatchingPennies.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_realizationTrace MatchingPennies.game β
+      (pmfBehavioralRoundHistoryKernelGameAt MatchingPennies.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_roundHistory MatchingPennies.game β
 
 theorem kuhnPMF : KuhnPMF MatchingPennies.game :=
   StrategicSemantics.kuhnPMF MatchingPennies.game
@@ -300,24 +300,24 @@ end MatchingPennies
 
 namespace BattleOfTheSexes
 
-theorem pure_eu_eq_realizationTrace
+theorem pure_eu_eq_roundHistory
     (π : (pureKernelGame BattleOfTheSexes.game).Profile)
     (who : BattleOfTheSexes.Player) :
-    (pureRealizationTraceKernelGameAt BattleOfTheSexes.game).eu π who =
+    (pureRoundHistoryKernelGameAt BattleOfTheSexes.game).eu π who =
       (pureKernelGame BattleOfTheSexes.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_realizationTrace BattleOfTheSexes.game π who
+  StrategicSemantics.pure_eu_eq_roundHistory BattleOfTheSexes.game π who
 
-theorem pure_nash_iff_realizationTrace
+theorem pure_nash_iff_roundHistory
     (π : (pureKernelGame BattleOfTheSexes.game).Profile) :
     (pureKernelGame BattleOfTheSexes.game).IsNash π ↔
-      (pureRealizationTraceKernelGameAt BattleOfTheSexes.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_realizationTrace BattleOfTheSexes.game π
+      (pureRoundHistoryKernelGameAt BattleOfTheSexes.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_roundHistory BattleOfTheSexes.game π
 
-theorem behavioral_nash_iff_realizationTrace
+theorem behavioral_nash_iff_roundHistory
     (β : (pmfBehavioralKernelGame BattleOfTheSexes.game).Profile) :
     (pmfBehavioralKernelGame BattleOfTheSexes.game).IsNash β ↔
-      (pmfBehavioralRealizationTraceKernelGameAt BattleOfTheSexes.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_realizationTrace BattleOfTheSexes.game β
+      (pmfBehavioralRoundHistoryKernelGameAt BattleOfTheSexes.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_roundHistory BattleOfTheSexes.game β
 
 theorem kuhnPMF : KuhnPMF BattleOfTheSexes.game :=
   StrategicSemantics.kuhnPMF BattleOfTheSexes.game
@@ -326,24 +326,24 @@ end BattleOfTheSexes
 
 namespace MontyHall
 
-theorem pure_eu_eq_realizationTrace
+theorem pure_eu_eq_roundHistory
     (π : (pureKernelGame MontyHall.game).Profile)
     (who : MontyHall.Player) :
-    (pureRealizationTraceKernelGameAt MontyHall.game).eu π who =
+    (pureRoundHistoryKernelGameAt MontyHall.game).eu π who =
       (pureKernelGame MontyHall.game).eu π who :=
-  StrategicSemantics.pure_eu_eq_realizationTrace MontyHall.game π who
+  StrategicSemantics.pure_eu_eq_roundHistory MontyHall.game π who
 
-theorem pure_nash_iff_realizationTrace
+theorem pure_nash_iff_roundHistory
     (π : (pureKernelGame MontyHall.game).Profile) :
     (pureKernelGame MontyHall.game).IsNash π ↔
-      (pureRealizationTraceKernelGameAt MontyHall.game).IsNash π :=
-  StrategicSemantics.pure_nash_iff_realizationTrace MontyHall.game π
+      (pureRoundHistoryKernelGameAt MontyHall.game).IsNash π :=
+  StrategicSemantics.pure_nash_iff_roundHistory MontyHall.game π
 
-theorem behavioral_nash_iff_realizationTrace
+theorem behavioral_nash_iff_roundHistory
     (β : (pmfBehavioralKernelGame MontyHall.game).Profile) :
     (pmfBehavioralKernelGame MontyHall.game).IsNash β ↔
-      (pmfBehavioralRealizationTraceKernelGameAt MontyHall.game).IsNash β :=
-  StrategicSemantics.behavioral_nash_iff_realizationTrace MontyHall.game β
+      (pmfBehavioralRoundHistoryKernelGameAt MontyHall.game).IsNash β :=
+  StrategicSemantics.behavioral_nash_iff_roundHistory MontyHall.game β
 
 theorem kuhnPMF : KuhnPMF MontyHall.game :=
   StrategicSemantics.kuhnPMF MontyHall.game

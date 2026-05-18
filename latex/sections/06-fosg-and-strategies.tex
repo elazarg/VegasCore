@@ -112,7 +112,7 @@ configuration, and records the concrete primitive event at each source
 frontier node.  Player nodes record the selected player patch; internal
 nodes first sample the current internal kernel and then record
 $\mathrm{InternalEvent.node}(n,\mathit{patch})$ with the sampled patch.
-The view requires the independent-frontier-round condition: player choices
+The view requires the independent-frontier-step condition: player choices
 that are available at the source remain available after earlier distinct
 frontier nodes execute, and internal kernels for distinct source-frontier nodes
 are unchanged by those earlier executions.  Thus supported batches record
@@ -239,15 +239,15 @@ $\mathrm{pureKernelGame}(g)$ &
   pure strategies; outcomes in $\Outcome$ (public payoff). \\
 $\mathrm{pmfBehavioralKernelGame}(g)$ &
   PMF behavioral strategies; outcomes in $\Outcome$. \\
-$\mathrm{pureRealizationTraceKernelGame}(g)$ &
-  pure strategies; outcomes in $\mathrm{RealizationTrace}(g)$. \\
-$\mathrm{pmfBehavioralRealizationTraceKernelGame}(g)$ &
-  PMF behavioral; outcomes in $\mathrm{RealizationTrace}(g)$. \\
+$\mathrm{pureRoundHistoryKernelGame}(g)$ &
+  pure strategies; outcomes in $\mathrm{RoundHistory}(g)$. \\
+$\mathrm{pmfBehavioralRoundHistoryKernelGame}(g)$ &
+  PMF behavioral; outcomes in $\mathrm{RoundHistory}(g)$. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A \emph{realization trace} is a bounded native round history: it records
+A \emph{round history} is a bounded native round history: it records
 the source state, legal joint round action, realized destination, and the
 primitive event batch extracted from that realized transition.
 It is strictly more informative than the payoff-vector outcome and
@@ -256,13 +256,13 @@ machine to a backend implementation, since the latter may produce
 additional implementation-specific events within the same round.
 The two axes of the kernel-game table above are then \emph{strategy
 carrier} (pure vs.\ PMF-behavioral) and \emph{outcome shape}
-(payoff vector vs.\ realization trace).  The realization trace games
+(payoff vector vs.\ round history).  The round history games
 \emph{refine} the payoff-vector games by an outcome projection.
 
 \subsection{Trace-to-public agreement}
 \label{sec:fosg:trace-public}
 
-The realization trace games are useful for refinement reasoning
+The round history games are useful for refinement reasoning
 (\S\ref{sec:refinement}); the payoff-vector games are what users
 usually reason about.  We need to know that they agree, both at
 the kernel level and at the level of expected utility.
@@ -270,7 +270,7 @@ the kernel level and at the level of expected utility.
 \begin{theorem}[Trace-to-public agreement]
 \label{thm:trace-public}
 For every checked program $g$, the payoff projection applied to
-the realization trace kernel agrees with the payoff-vector outcome kernel,
+the round history kernel agrees with the payoff-vector outcome kernel,
 \begin{align*}
   \mathrm{map}(\mathrm{publicOf})\,\circ\,
     K^{\mathrm{pure}}_{\mathrm{realization}}
@@ -282,14 +282,14 @@ the realization trace kernel agrees with the payoff-vector outcome kernel,
 and expected utilities are equal under the corresponding profile
 inclusions.  Solution concepts (Nash, dominance) transport across
 the projection: a strategy is best-response in the payoff-vector game
-iff it is best-response in the realization trace game.
+iff it is best-response in the round history game.
 \end{theorem}
 
 The proof packages the projection as a kernel-game
 \emph{simulation} — a structural morphism that pushes outcome
 distributions through a deterministic function while preserving
 utility.  In this case the simulation is in fact an
-\emph{EU-isomorphism}: the realization trace outcome retains
+\emph{EU-isomorphism}: the round history outcome retains
 strategically inert round-realization detail on top of the public
 outcome, so the projection is information-losing but not
 \emph{utility}-losing, and equilibrium predicates transport in both

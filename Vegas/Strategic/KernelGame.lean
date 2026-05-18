@@ -37,7 +37,7 @@ noncomputable def behavioralOutcomeKernelPMFAt
 
 /-- Pure strategic-form outcomes are projections of the native realization
 trace distribution induced by the finite event-graph round view. -/
-theorem pureOutcomeKernelAt_eq_realizationTraceDist
+theorem pureOutcomeKernelAt_eq_roundHistoryDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
@@ -56,8 +56,8 @@ theorem pureOutcomeKernelAt_eq_realizationTraceDist
   rfl
 
 /-- PMF behavioral strategic-form outcomes are projections of the native
-realization trace distribution induced by the finite event-graph round view. -/
-theorem behavioralOutcomeKernelPMFAt_eq_realizationTraceDist
+round history distribution induced by the finite event-graph round view. -/
+theorem behavioralOutcomeKernelPMFAt_eq_roundHistoryDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
@@ -73,35 +73,35 @@ theorem behavioralOutcomeKernelPMFAt_eq_realizationTraceDist
   rw [PMF.map_comp]
   rfl
 
-/-- Order-free realization trace induced by the bounded native event-graph
+/-- Order-free round history induced by the bounded native event-graph
 round view. A bounded history records source state, legal joint action, and
-realized destination for each frontier round, without recording a primitive
+realized destination for each frontier step, without recording a primitive
 event schedule. -/
-abbrev syntaxRealizationTraceAt
+abbrev syntaxRoundHistoryAt
     (g : WFProgram P L) : Type :=
   (eventGraphRoundView g).BoundedHistory (syntaxSteps g.prog)
 
-/-- Public outcome read from a realization trace. -/
-noncomputable def syntaxRealizationTraceOutcome
+/-- Public outcome read from a round history. -/
+noncomputable def syntaxRoundHistoryOutcome
     (g : WFProgram P L) :
-    syntaxRealizationTraceAt g → Outcome P :=
+    syntaxRoundHistoryAt g → Outcome P :=
   fun trace => (eventGraphMachine g).outcome trace.lastState.state
 
-/-- Terminal public state read from a realization trace.
+/-- Terminal public state read from a round history.
 
 This is the public observation carried by the event-graph machine: completed
 nodes plus public field values. It is intentionally separate from
 `Outcome P`, which is only the payoff-vector projection. -/
-noncomputable def syntaxRealizationTracePublicState
+noncomputable def syntaxRoundHistoryPublicState
     (g : WFProgram P L) :
-    syntaxRealizationTraceAt g → ProgramPublicObs g :=
+    syntaxRoundHistoryAt g → ProgramPublicObs g :=
   fun trace => eventGraphPublicView g trace.lastState.state
 
-/-- Utility read from a realization trace through its public outcome. -/
-noncomputable def syntaxRealizationTraceUtility
+/-- Utility read from a round history through its public outcome. -/
+noncomputable def syntaxRoundHistoryUtility
     (g : WFProgram P L) :
-    syntaxRealizationTraceAt g → GameTheory.Payoff P :=
-  fun trace who => ((syntaxRealizationTraceOutcome g trace) who : ℝ)
+    syntaxRoundHistoryAt g → GameTheory.Payoff P :=
+  fun trace who => ((syntaxRoundHistoryOutcome g trace) who : ℝ)
 
 /-- Canonical utility for payoff-vector outcomes. -/
 noncomputable def publicOutcomeUtility :
@@ -109,18 +109,18 @@ noncomputable def publicOutcomeUtility :
   fun outcome who => (outcome who : ℝ)
 
 /-- Realization trace kernel induced by a pure profile. -/
-noncomputable def pureRealizationTraceOutcomeKernelAt
+noncomputable def pureRoundHistoryOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (π : pureProfileAt g) : PMF (syntaxRealizationTraceAt g) :=
+    (π : pureProfileAt g) : PMF (syntaxRoundHistoryAt g) :=
   (eventGraphRoundView g).runDist
     (syntaxSteps g.prog) (syntaxSteps g.prog)
     ((eventGraphRoundView g).legalPureToBehavioral
       (syntaxSteps g.prog) π)
 
 /-- Realization trace kernel induced by a PMF behavioral profile. -/
-noncomputable def behavioralRealizationTraceOutcomeKernelPMFAt
+noncomputable def behavioralRoundHistoryOutcomeKernelPMFAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (β : behavioralProfilePMFAt g) : PMF (syntaxRealizationTraceAt g) :=
+    (β : behavioralProfilePMFAt g) : PMF (syntaxRoundHistoryAt g) :=
   (eventGraphRoundView g).runDist
     (syntaxSteps g.prog) (syntaxSteps g.prog) β
 
@@ -128,16 +128,16 @@ noncomputable def behavioralRealizationTraceOutcomeKernelPMFAt
 noncomputable def purePublicStateOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) : PMF (ProgramPublicObs g) :=
-  PMF.map (syntaxRealizationTracePublicState g)
-    (pureRealizationTraceOutcomeKernelAt g π)
+  PMF.map (syntaxRoundHistoryPublicState g)
+    (pureRoundHistoryOutcomeKernelAt g π)
 
 /-- PMF-behavioral terminal-public-state outcome kernel induced by a
 behavioral profile. -/
 noncomputable def behavioralPublicStateOutcomeKernelPMFAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) : PMF (ProgramPublicObs g) :=
-  PMF.map (syntaxRealizationTracePublicState g)
-    (behavioralRealizationTraceOutcomeKernelPMFAt g β)
+  PMF.map (syntaxRoundHistoryPublicState g)
+    (behavioralRoundHistoryOutcomeKernelPMFAt g β)
 
 /-! ## Game forms -/
 
@@ -179,37 +179,37 @@ noncomputable def pmfBehavioralGameFormAt
 
 /-- Finite pure game form whose outcomes are bounded order-free realization
 traces. -/
-noncomputable def pureRealizationTraceGameFormAt
+noncomputable def pureRoundHistoryGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
   Strategy := pureStrategyAt g
-  Outcome := syntaxRealizationTraceAt g
-  outcomeKernel := pureRealizationTraceOutcomeKernelAt g
+  Outcome := syntaxRoundHistoryAt g
+  outcomeKernel := pureRoundHistoryOutcomeKernelAt g
 
 /-- Finite PMF-behavioral game form whose outcomes are bounded order-free
-realization traces. -/
-noncomputable def pmfBehavioralRealizationTraceGameFormAt
+round histories. -/
+noncomputable def pmfBehavioralRoundHistoryGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
   Strategy := behavioralStrategyPMFAt g
-  Outcome := syntaxRealizationTraceAt g
-  outcomeKernel := behavioralRealizationTraceOutcomeKernelPMFAt g
+  Outcome := syntaxRoundHistoryAt g
+  outcomeKernel := behavioralRoundHistoryOutcomeKernelPMFAt g
 
 /-- Finite pure strategic form whose outcomes are bounded order-free realization
 traces rather than just terminal public outcomes. -/
-noncomputable def pureRealizationTraceKernelGameAt
+noncomputable def pureRoundHistoryKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  (pureRealizationTraceGameFormAt g).withUtility (syntaxRealizationTraceUtility g)
+  (pureRoundHistoryGameFormAt g).withUtility (syntaxRoundHistoryUtility g)
 
-@[simp] theorem pureRealizationTraceKernelGameAt_Strategy
+@[simp] theorem pureRoundHistoryKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pureRealizationTraceKernelGameAt g).Strategy = pureStrategyAt g := rfl
+    (pureRoundHistoryKernelGameAt g).Strategy = pureStrategyAt g := rfl
 
-@[simp] theorem pureRealizationTraceKernelGameAt_toGameForm
+@[simp] theorem pureRoundHistoryKernelGameAt_toGameForm
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pureRealizationTraceKernelGameAt g).toGameForm =
-      pureRealizationTraceGameFormAt g := by
+    (pureRoundHistoryKernelGameAt g).toGameForm =
+      pureRoundHistoryGameFormAt g := by
   rfl
 
 @[simp] theorem purePublicStateGameFormAt_outcomeKernel
@@ -219,22 +219,22 @@ noncomputable def pureRealizationTraceKernelGameAt
       purePublicStateOutcomeKernelAt g π := rfl
 
 /-- Finite PMF behavioral strategic form whose outcomes are bounded order-free
-realization traces rather than just terminal public outcomes. -/
-noncomputable def pmfBehavioralRealizationTraceKernelGameAt
+round histories rather than just terminal public outcomes. -/
+noncomputable def pmfBehavioralRoundHistoryKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  (pmfBehavioralRealizationTraceGameFormAt g).withUtility
-    (syntaxRealizationTraceUtility g)
+  (pmfBehavioralRoundHistoryGameFormAt g).withUtility
+    (syntaxRoundHistoryUtility g)
 
-@[simp] theorem pmfBehavioralRealizationTraceKernelGameAt_Strategy
+@[simp] theorem pmfBehavioralRoundHistoryKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pmfBehavioralRealizationTraceKernelGameAt g).Strategy =
+    (pmfBehavioralRoundHistoryKernelGameAt g).Strategy =
       behavioralStrategyPMFAt g := rfl
 
-@[simp] theorem pmfBehavioralRealizationTraceKernelGameAt_toGameForm
+@[simp] theorem pmfBehavioralRoundHistoryKernelGameAt_toGameForm
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pmfBehavioralRealizationTraceKernelGameAt g).toGameForm =
-      pmfBehavioralRealizationTraceGameFormAt g := by
+    (pmfBehavioralRoundHistoryKernelGameAt g).toGameForm =
+      pmfBehavioralRoundHistoryGameFormAt g := by
   rfl
 
 @[simp] theorem pmfBehavioralPublicStateGameFormAt_outcomeKernel
@@ -294,87 +294,87 @@ noncomputable def pmfBehavioralKernelGameAt
       pmfBehavioralGameFormAt g := by
   rfl
 
-/-- Projecting pure realization trace outcomes to public outcomes gives the public
+/-- Projecting pure round history outcomes to public outcomes gives the public
 pure strategic-form outcome kernel. -/
-theorem pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome
+theorem pureRoundHistoryKernelGameAt_outcomeKernel_map_outcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
-    PMF.map (syntaxRealizationTraceOutcome g)
-        ((pureRealizationTraceKernelGameAt g).outcomeKernel π) =
+    PMF.map (syntaxRoundHistoryOutcome g)
+        ((pureRoundHistoryKernelGameAt g).outcomeKernel π) =
       (pureKernelGameAt g).outcomeKernel π := by
-  simpa [pureRealizationTraceKernelGameAt, pureKernelGameAt,
-    pureRealizationTraceOutcomeKernelAt, syntaxRealizationTraceOutcome] using
-    (pureOutcomeKernelAt_eq_realizationTraceDist g π).symm
+  simpa [pureRoundHistoryKernelGameAt, pureKernelGameAt,
+    pureRoundHistoryOutcomeKernelAt, syntaxRoundHistoryOutcome] using
+    (pureOutcomeKernelAt_eq_roundHistoryDist g π).symm
 
-/-- Projecting PMF behavioral realization trace outcomes to public outcomes gives
+/-- Projecting PMF behavioral round history outcomes to public outcomes gives
 the public PMF behavioral strategic-form outcome kernel. -/
-theorem pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome
+theorem pmfBehavioralRoundHistoryKernelGameAt_outcomeKernel_map_outcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
-    PMF.map (syntaxRealizationTraceOutcome g)
-        ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β) =
+    PMF.map (syntaxRoundHistoryOutcome g)
+        ((pmfBehavioralRoundHistoryKernelGameAt g).outcomeKernel β) =
       (pmfBehavioralKernelGameAt g).outcomeKernel β := by
-  simpa [pmfBehavioralRealizationTraceKernelGameAt, pmfBehavioralKernelGameAt,
-    behavioralRealizationTraceOutcomeKernelPMFAt, syntaxRealizationTraceOutcome] using
-    (behavioralOutcomeKernelPMFAt_eq_realizationTraceDist g β).symm
+  simpa [pmfBehavioralRoundHistoryKernelGameAt, pmfBehavioralKernelGameAt,
+    behavioralRoundHistoryOutcomeKernelPMFAt, syntaxRoundHistoryOutcome] using
+    (behavioralOutcomeKernelPMFAt_eq_roundHistoryDist g β).symm
 
-/-- The realization trace pure game refines the public pure game by the public
+/-- The round history pure game refines the public pure game by the public
 outcome projection. The load-bearing field is PMF preservation of outcome
-kernels under `syntaxRealizationTraceOutcome`. -/
-noncomputable def pureKernelGameAt.realizationTraceProjection
+kernels under `syntaxRoundHistoryOutcome`. -/
+noncomputable def pureKernelGameAt.roundHistoryProjection
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Simulation
-      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) :=
+      (pureKernelGameAt g) (pureRoundHistoryKernelGameAt g) :=
   GameTheory.KernelGame.Morphism.ofOutcomeProjection
     (fun _ strategy => strategy)
-    (syntaxRealizationTraceOutcome g)
-    (fun π => pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π)
+    (syntaxRoundHistoryOutcome g)
+    (fun π => pureRoundHistoryKernelGameAt_outcomeKernel_map_outcome g π)
     (fun _ trace _ => by
       funext who
       rfl)
 
-/-- The realization trace PMF behavioral game refines the public PMF behavioral
+/-- The round history PMF behavioral game refines the public PMF behavioral
 game by the public outcome projection. The load-bearing field is PMF
-preservation of outcome kernels under `syntaxRealizationTraceOutcome`. -/
-noncomputable def pmfBehavioralKernelGameAt.realizationTraceProjection
+preservation of outcome kernels under `syntaxRoundHistoryOutcome`. -/
+noncomputable def pmfBehavioralKernelGameAt.roundHistoryProjection
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Simulation
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralRealizationTraceKernelGameAt g) :=
+      (pmfBehavioralRoundHistoryKernelGameAt g) :=
   GameTheory.KernelGame.Morphism.ofOutcomeProjection
     (fun _ strategy => strategy)
-    (syntaxRealizationTraceOutcome g)
+    (syntaxRoundHistoryOutcome g)
     (fun β =>
-      pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β)
+      pmfBehavioralRoundHistoryKernelGameAt_outcomeKernel_map_outcome g β)
     (fun _ trace _ => by
       funext who
       rfl)
 
-/-- Pure strategic-form play and realization trace play give the same expected
+/-- Pure strategic-form play and round history play give the same expected
 utility. -/
-theorem pureRealizationTraceKernelGameAt_eu_eq
+theorem pureRoundHistoryKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) (who : P) :
-    (pureRealizationTraceKernelGameAt g).eu π who =
+    (pureRoundHistoryKernelGameAt g).eu π who =
       (pureKernelGameAt g).eu π who := by
   classical
-  let traceDist : PMF (syntaxRealizationTraceAt g) :=
-    (pureRealizationTraceKernelGameAt g).outcomeKernel π
-  let projectOutcome := syntaxRealizationTraceOutcome g
+  let traceDist : PMF (syntaxRoundHistoryAt g) :=
+    (pureRoundHistoryKernelGameAt g).outcomeKernel π
+  let projectOutcome := syntaxRoundHistoryOutcome g
   let utility := fun outcome : Outcome P => publicOutcomeUtility outcome who
-  letI : Fintype (syntaxRealizationTraceAt g) :=
+  letI : Fintype (syntaxRoundHistoryAt g) :=
     (eventGraphRoundView g).instFintypeBoundedHistory (syntaxSteps g.prog)
   have houtcome :
       PMF.map projectOutcome traceDist =
         (pureKernelGameAt g).outcomeKernel π := by
     simpa [traceDist, projectOutcome] using
-      pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π
+      pureRoundHistoryKernelGameAt_outcomeKernel_map_outcome g π
   calc
-    (pureRealizationTraceKernelGameAt g).eu π who =
+    (pureRoundHistoryKernelGameAt g).eu π who =
         Math.Probability.expect traceDist
           (fun trace => utility (projectOutcome trace)) := rfl
     _ =
-        ∑ trace : syntaxRealizationTraceAt g,
+        ∑ trace : syntaxRoundHistoryAt g,
           (traceDist trace).toReal * utility (projectOutcome trace) := by
           rw [Math.Probability.expect_eq_sum]
     _ =
@@ -385,31 +385,31 @@ theorem pureRealizationTraceKernelGameAt_eu_eq
           rw [houtcome]
           rfl
 
-/-- PMF behavioral strategic-form play and realization trace play give the same
+/-- PMF behavioral strategic-form play and round history play give the same
 expected utility. -/
-theorem pmfBehavioralRealizationTraceKernelGameAt_eu_eq
+theorem pmfBehavioralRoundHistoryKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) (who : P) :
-    (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
+    (pmfBehavioralRoundHistoryKernelGameAt g).eu β who =
       (pmfBehavioralKernelGameAt g).eu β who := by
   classical
-  let traceDist : PMF (syntaxRealizationTraceAt g) :=
-    (pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β
-  let projectOutcome := syntaxRealizationTraceOutcome g
+  let traceDist : PMF (syntaxRoundHistoryAt g) :=
+    (pmfBehavioralRoundHistoryKernelGameAt g).outcomeKernel β
+  let projectOutcome := syntaxRoundHistoryOutcome g
   let utility := fun outcome : Outcome P => publicOutcomeUtility outcome who
-  letI : Fintype (syntaxRealizationTraceAt g) :=
+  letI : Fintype (syntaxRoundHistoryAt g) :=
     (eventGraphRoundView g).instFintypeBoundedHistory (syntaxSteps g.prog)
   have houtcome :
       PMF.map projectOutcome traceDist =
         (pmfBehavioralKernelGameAt g).outcomeKernel β := by
     simpa [traceDist, projectOutcome] using
-      pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β
+      pmfBehavioralRoundHistoryKernelGameAt_outcomeKernel_map_outcome g β
   calc
-    (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
+    (pmfBehavioralRoundHistoryKernelGameAt g).eu β who =
         Math.Probability.expect traceDist
           (fun trace => utility (projectOutcome trace)) := rfl
     _ =
-        ∑ trace : syntaxRealizationTraceAt g,
+        ∑ trace : syntaxRoundHistoryAt g,
           (traceDist trace).toReal * utility (projectOutcome trace) := by
           rw [Math.Probability.expect_eq_sum]
     _ =
@@ -420,75 +420,75 @@ theorem pmfBehavioralRealizationTraceKernelGameAt_eu_eq
           rw [houtcome]
           rfl
 
-/-- Pure strategic-form play and realization trace play induce the same joint
+/-- Pure strategic-form play and round history play induce the same joint
 utility distribution. -/
-noncomputable def pureKernelGameAt.realizationTraceBisimulation
+noncomputable def pureKernelGameAt.roundHistoryBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Bisimulation
-      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) where
+      (pureKernelGameAt g) (pureRoundHistoryKernelGameAt g) where
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro π
     change
-      ((pureRealizationTraceKernelGameAt g).outcomeKernel π).bind
+      ((pureRoundHistoryKernelGameAt g).outcomeKernel π).bind
           (fun trace =>
-            PMF.pure ((pureRealizationTraceKernelGameAt g).utility trace)) =
+            PMF.pure ((pureRoundHistoryKernelGameAt g).utility trace)) =
         ((pureKernelGameAt g).outcomeKernel π).bind
           (fun outcome =>
             PMF.pure ((pureKernelGameAt g).utility outcome))
-    rw [← pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π]
+    rw [← pureRoundHistoryKernelGameAt_outcomeKernel_map_outcome g π]
     exact (PMF.bind_map
-      ((pureRealizationTraceKernelGameAt g).outcomeKernel π)
-      (syntaxRealizationTraceOutcome g)
+      ((pureRoundHistoryKernelGameAt g).outcomeKernel π)
+      (syntaxRoundHistoryOutcome g)
       (fun outcome =>
         PMF.pure ((pureKernelGameAt g).utility outcome))).symm
 
-/-- Pure strategic-form play and realization trace play are EU-preserving
+/-- Pure strategic-form play and round history play are EU-preserving
 bisimilar kernel games. -/
-noncomputable def pureKernelGameAt.realizationTraceEUBisimulation
+noncomputable def pureKernelGameAt.roundHistoryEUBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.EUGameIsomorphism
-      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) where
-  toGameIsomorphism := pureKernelGameAt.realizationTraceBisimulation g
+      (pureKernelGameAt g) (pureRoundHistoryKernelGameAt g) where
+  toGameIsomorphism := pureKernelGameAt.roundHistoryBisimulation g
   eu_preserved := by
     intro π who
-    exact pureRealizationTraceKernelGameAt_eu_eq g π who
+    exact pureRoundHistoryKernelGameAt_eu_eq g π who
 
-/-- PMF behavioral strategic-form play and realization trace play induce the same
+/-- PMF behavioral strategic-form play and round history play induce the same
 joint utility distribution. -/
-noncomputable def pmfBehavioralKernelGameAt.realizationTraceBisimulation
+noncomputable def pmfBehavioralKernelGameAt.roundHistoryBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Bisimulation
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralRealizationTraceKernelGameAt g) where
+      (pmfBehavioralRoundHistoryKernelGameAt g) where
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro β
     change
-      ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β).bind
+      ((pmfBehavioralRoundHistoryKernelGameAt g).outcomeKernel β).bind
           (fun trace =>
-            PMF.pure ((pmfBehavioralRealizationTraceKernelGameAt g).utility trace)) =
+            PMF.pure ((pmfBehavioralRoundHistoryKernelGameAt g).utility trace)) =
         ((pmfBehavioralKernelGameAt g).outcomeKernel β).bind
           (fun outcome =>
             PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))
-    rw [← pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β]
+    rw [← pmfBehavioralRoundHistoryKernelGameAt_outcomeKernel_map_outcome g β]
     exact (PMF.bind_map
-      ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β)
-      (syntaxRealizationTraceOutcome g)
+      ((pmfBehavioralRoundHistoryKernelGameAt g).outcomeKernel β)
+      (syntaxRoundHistoryOutcome g)
       (fun outcome =>
         PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))).symm
 
-/-- PMF behavioral strategic-form play and realization trace play are
+/-- PMF behavioral strategic-form play and round history play are
 EU-preserving bisimilar kernel games. -/
-noncomputable def pmfBehavioralKernelGameAt.realizationTraceEUBisimulation
+noncomputable def pmfBehavioralKernelGameAt.roundHistoryEUBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.EUGameIsomorphism
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralRealizationTraceKernelGameAt g) where
+      (pmfBehavioralRoundHistoryKernelGameAt g) where
   toGameIsomorphism :=
-    pmfBehavioralKernelGameAt.realizationTraceBisimulation g
+    pmfBehavioralKernelGameAt.roundHistoryBisimulation g
   eu_preserved := by
     intro β who
-    exact pmfBehavioralRealizationTraceKernelGameAt_eu_eq g β who
+    exact pmfBehavioralRoundHistoryKernelGameAt_eu_eq g β who
 
 end Vegas

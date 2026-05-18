@@ -4,11 +4,12 @@ import Vegas.EventGraph.ToMachine
 import Vegas.Machine.Trace
 
 /-!
-# Event-graph frontier rounds
+# Event-graph frontier strategic bridge
 
-This module defines the native player-facing round semantics of event graphs.
-The definitions are machine/event-graph facts, not FOSG presentation data.  FOSG
-and EFG bridges may reuse them as proof obligations.
+Event graphs execute asynchronously: a primitive machine step fires one
+frontier node. This module defines the strategic bridge that presents the
+current frontier as one simultaneous player step, plus the primitive event-batch
+witnesses that relate that presentation back to machine execution.
 -/
 
 namespace Vegas
@@ -22,19 +23,19 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- Player-facing action for a frontier round.  The action supplies a candidate
+/-- Player-facing action for a frontier step. The action supplies a candidate
 field patch for each event node; state-local availability uses only the patches
 for frontier nodes owned by the player. -/
-structure PlayerRoundAction (G : Vegas.EventGraph Player L) (_who : Player) where
+structure PlayerFrontierAction (G : Vegas.EventGraph Player L) (_who : Player) where
   patch : G.Node → G.FieldPatch
 
-namespace PlayerRoundAction
+namespace PlayerFrontierAction
 
 @[reducible] noncomputable instance instFintype
     (G : Vegas.EventGraph Player L) (who : Player)
     [Fintype G.Node] [Fintype G.Field]
     [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
-    Fintype (PlayerRoundAction G who) := by
+    Fintype (PlayerFrontierAction G who) := by
   classical
   letI : ∀ field : G.Field,
       Fintype (Option (L.Val (G.fieldTy field))) :=
@@ -42,7 +43,7 @@ namespace PlayerRoundAction
   letI : Fintype G.FieldPatch := by
     dsimp [EventGraph.FieldPatch]
     infer_instance
-  let e : PlayerRoundAction G who ≃ (G.Node → G.FieldPatch) :=
+  let e : PlayerFrontierAction G who ≃ (G.Node → G.FieldPatch) :=
     { toFun := fun action => action.patch
       invFun := fun patch => { patch := patch }
       left_inv := by
@@ -54,10 +55,10 @@ namespace PlayerRoundAction
         rfl }
   exact Fintype.ofEquiv (G.Node → G.FieldPatch) e.symm
 
-end PlayerRoundAction
+end PlayerFrontierAction
 
 /-- Players who own at least one node in the current frontier. -/
-noncomputable def roundActive
+noncomputable def frontierActive
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration) :
     Finset Player := by
   classical
@@ -66,13 +67,13 @@ noncomputable def roundActive
     | some who => {who}
     | none => ∅
 
-theorem mem_roundActive_iff
+theorem mem_frontierActive_iff
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) :
-    who ∈ roundActive G cfg ↔
+    who ∈ frontierActive G cfg ↔
       ∃ node, node ∈ cfg.frontier ∧ (G.sem node).actor = some who := by
   classical
-  unfold roundActive
+  unfold frontierActive
   constructor
   · intro hmem
     rcases Finset.mem_biUnion.mp hmem with ⟨node, hfrontier, hwho⟩
@@ -89,10 +90,10 @@ theorem mem_roundActive_iff
     exact Finset.mem_biUnion.mpr
       ⟨node, hfrontier, by simp [hactor]⟩
 
-/-- Round actions available to a player at a graph configuration. -/
-def roundAvailable
+/-- Frontier actions available to a player at a graph configuration. -/
+def frontierAvailable
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (who : Player) : Set (PlayerRoundAction G who) :=
+    (who : Player) : Set (PlayerFrontierAction G who) :=
   { action |
       ∀ {node},
         node ∈ cfg.frontier →
@@ -100,41 +101,41 @@ def roundAvailable
           G.patchLegal node (action.patch node) ∧
             G.actionLegal cfg.result node (action.patch node) }
 
-/-- Player-facing optional menu for a frontier round.
+/-- Player-facing optional menu for a frontier step.
 
-The `none` move means the player is not called in this frontier round. A
-`some action` move means the player is active and the round action is legal for
+The `none` move means the player is not called in this frontier step. A
+`some action` move means the player is active and the frontier action is legal for
 every current frontier node owned by that player. -/
-def roundMenu
+def frontierMenu
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (who : Player) : Set (Option (PlayerRoundAction G who)) :=
+    (who : Player) : Set (Option (PlayerFrontierAction G who)) :=
   { move |
     match move with
-    | none => who ∉ roundActive G cfg
+    | none => who ∉ frontierActive G cfg
     | some action =>
-        who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who }
+        who ∈ frontierActive G cfg ∧ action ∈ frontierAvailable G cfg who }
 
-@[simp] theorem mem_roundMenu_none
+@[simp] theorem mem_frontierMenu_none
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (who : Player) :
-    (none : Option (PlayerRoundAction G who)) ∈ roundMenu G cfg who ↔
-      who ∉ roundActive G cfg := by
+    (none : Option (PlayerFrontierAction G who)) ∈ frontierMenu G cfg who ↔
+      who ∉ frontierActive G cfg := by
   rfl
 
-@[simp] theorem mem_roundMenu_some
+@[simp] theorem mem_frontierMenu_some
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (who : Player) (action : PlayerRoundAction G who) :
-    some action ∈ roundMenu G cfg who ↔
-      who ∈ roundActive G cfg ∧ action ∈ roundAvailable G cfg who := by
+    (who : Player) (action : PlayerFrontierAction G who) :
+    some action ∈ frontierMenu G cfg who ↔
+      who ∈ frontierActive G cfg ∧ action ∈ frontierAvailable G cfg who := by
   rfl
 
-/-- Execute one node from a frontier round using the joint round action.
+/-- Execute one node from a frontier step using the joint frontier action.
 Unavailable primitive events stutter through the underlying total machine step;
-frontier soundness lemmas show the intended round nodes remain available across
+frontier soundness lemmas show the intended nodes remain available across
 linearizations. -/
-noncomputable def roundStepNode
+noncomputable def frontierStepNode
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node) (cfg : G.Configuration) :
     PMF G.Configuration :=
   match (G.sem node).actor with
@@ -161,12 +162,12 @@ private noncomputable def internalPrimitiveEvent
     (G.toMachine iface).Event :=
   .internal (.node node patch)
 
-/-- Primitive event associated with one source round node after the destination
+/-- Primitive event associated with one source frontier node after the destination
 state is known. Internal nodes read back the realized patch from the destination
-result; player nodes are determined by the joint round action. -/
+result; player nodes are determined by the joint frontier action. -/
 noncomputable def realizedNodeEvent
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node) (dst : G.Configuration) :
     (G.toMachine iface).Event :=
   match (G.sem node).actor with
@@ -198,9 +199,9 @@ noncomputable def realizedNodeEvent
       stepInternal G (.node node patch) cfg := by
   rfl
 
-private noncomputable def explicitRoundBatchStep
+private noncomputable def explicitFrontierBatchStep
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node)
     (acc : List (G.toMachine iface).Event × G.Configuration) :
     PMF (List (G.toMachine iface).Event × G.Configuration) := by
@@ -228,20 +229,20 @@ private noncomputable def explicitRoundBatchStep
         else
           PMF.pure (events ++ [(.internal .idle)], current)
 
-private theorem explicitRoundBatchStep_eq_map_roundStepNode_of_frontier
+private theorem explicitFrontierBatchStep_eq_map_frontierStepNode_of_frontier
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node)
     (events : List (G.toMachine iface).Event)
     (current : G.Configuration)
     (hfrontier : node ∈ current.frontier) :
-    explicitRoundBatchStep G iface joint node (events, current) =
+    explicitFrontierBatchStep G iface joint node (events, current) =
       PMF.map
         (fun next =>
           (events ++ [realizedNodeEvent G iface joint node next], next))
-        (roundStepNode G joint node current) := by
+        (frontierStepNode G joint node current) := by
   classical
-  unfold explicitRoundBatchStep roundStepNode
+  unfold explicitFrontierBatchStep frontierStepNode
   cases hactor : (G.sem node).actor with
   | some who =>
       cases hmove : joint who
@@ -296,9 +297,9 @@ private theorem explicitRoundBatchStep_eq_map_roundStepNode_of_frontier
       simp [realizedNodeEvent, internalPrimitiveEvent, hactor,
         EventGraph.Configuration.withPatch]
 
-private noncomputable def explicitRoundBatchGo
+private noncomputable def explicitFrontierBatchGo
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (nodes : List G.Node)
     (events : List (G.toMachine iface).Event)
     (current : G.Configuration) :
@@ -306,21 +307,21 @@ private noncomputable def explicitRoundBatchGo
   match nodes with
   | [] => PMF.pure (events, current)
   | node :: rest =>
-      (explicitRoundBatchStep G iface joint node (events, current)).bind
+      (explicitFrontierBatchStep G iface joint node (events, current)).bind
         fun next =>
-          explicitRoundBatchGo G iface joint rest next.1 next.2
+          explicitFrontierBatchGo G iface joint rest next.1 next.2
 
-noncomputable def roundTransitionGo
+noncomputable def scheduledFrontierTransitionGo
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (nodes : List G.Node)
     (current : G.Configuration) :
     PMF G.Configuration :=
   match nodes with
   | [] => PMF.pure current
   | node :: rest =>
-      (roundStepNode G joint node current).bind fun next =>
-        roundTransitionGo G joint rest next
+      (frontierStepNode G joint node current).bind fun next =>
+        scheduledFrontierTransitionGo G joint rest next
 
 private theorem stepPlay_eq_pure_of_available
     (G : Vegas.EventGraph Player L)
@@ -345,16 +346,16 @@ private theorem stepInternal_eq_pure_of_available
       PMF.pure (cfg.withPatch patch hfrontier hlegal) := by
   simp [stepInternal.eq_def, havailable]
 
-private theorem roundStepNode_result_eq_of_ne
+private theorem frontierStepNode_result_eq_of_ne
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     {node candidate : G.Node}
     (hne : candidate ≠ node)
     {current dst : G.Configuration}
-    (hsupp : dst ∈ (roundStepNode G joint node current).support) :
+    (hsupp : dst ∈ (frontierStepNode G joint node current).support) :
     dst.result candidate = current.result candidate := by
   classical
-  unfold roundStepNode at hsupp
+  unfold frontierStepNode at hsupp
   cases hactor : (G.sem node).actor with
   | some who =>
       cases hmove : joint who with
@@ -411,17 +412,17 @@ private theorem roundStepNode_result_eq_of_ne
         subst dst
         rfl
 
-private theorem roundStepNode_frontier_of_ne
+private theorem frontierStepNode_frontier_of_ne
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     {node candidate : G.Node}
     {current dst : G.Configuration}
     (hcandidate : candidate ∈ current.frontier)
     (hne : candidate ≠ node)
-    (hsupp : dst ∈ (roundStepNode G joint node current).support) :
+    (hsupp : dst ∈ (frontierStepNode G joint node current).support) :
     candidate ∈ dst.frontier := by
   classical
-  unfold roundStepNode at hsupp
+  unfold frontierStepNode at hsupp
   cases hactor : (G.sem node).actor with
   | some who =>
       cases hmove : joint who with
@@ -480,19 +481,19 @@ private theorem roundStepNode_frontier_of_ne
         subst dst
         exact hcandidate
 
-private theorem roundStepNode_preserves_available_of_ne
+private theorem frontierStepNode_preserves_available_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G))
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G))
     {node : G.Node}
     {current mid : G.Configuration}
-    (hmid : mid ∈ (roundStepNode G joint node current).support)
+    (hmid : mid ∈ (frontierStepNode G joint node current).support)
     {who : Player} {action : PlayerAction G who}
     (hne : action.node ≠ node)
     (haction : action ∈ available G current who) :
     action ∈ available G mid who := by
   classical
-  unfold roundStepNode at hmid
+  unfold frontierStepNode at hmid
   cases hactor : (G.sem node).actor with
   | some owner =>
       cases hmove : joint owner with
@@ -501,13 +502,13 @@ private theorem roundStepNode_preserves_available_of_ne
             simpa [hactor, hmove] using hmid
           subst mid
           exact haction
-      | some roundAction =>
+      | some frontierAction =>
           by_cases havailable :
-              ({ node := node, patch := roundAction.patch node } :
+              ({ node := node, patch := frontierAction.patch node } :
                 PlayerAction G owner) ∈ available G current owner
           · have hdst :
                 mid =
-                  current.withPatch (roundAction.patch node)
+                  current.withPatch (frontierAction.patch node)
                     havailable.1 havailable.2.2.1 := by
               simpa [stepPlay, hactor, hmove, havailable] using hmid
             subst mid
@@ -551,69 +552,69 @@ private theorem roundStepNode_preserves_available_of_ne
         subst mid
         exact haction
 
-private def roundNodeReady
+private def frontierNodeReady
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (cfg : G.Configuration) (node : G.Node) : Prop :=
   node ∈ cfg.frontier ∧
     match (G.sem node).actor with
     | some who =>
-        ∃ action : PlayerRoundAction G who,
+        ∃ action : PlayerFrontierAction G who,
           joint who = some action ∧
             ({ node := node, patch := action.patch node } :
               PlayerAction G who) ∈ available G cfg who
     | none => True
 
-private theorem roundNodeReady_of_legal
+private theorem frontierNodeReady_of_legal
     (G : Vegas.EventGraph Player L)
     {cfg : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     {node : G.Node}
     (hfrontier : node ∈ cfg.frontier) :
-    roundNodeReady G joint cfg node := by
+    frontierNodeReady G joint cfg node := by
   classical
   refine ⟨hfrontier, ?_⟩
   cases hactor : (G.sem node).actor with
   | none =>
       trivial
   | some who =>
-      have hactive : who ∈ roundActive G cfg :=
-        (mem_roundActive_iff G cfg who).mpr ⟨node, hfrontier, hactor⟩
+      have hactive : who ∈ frontierActive G cfg :=
+        (mem_frontierActive_iff G cfg who).mpr ⟨node, hfrontier, hactor⟩
       have hcoord := hlegal.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ roundActive G cfg := by
+          have hnot : who ∉ frontierActive G cfg := by
             simpa [hmove] using hcoord
           exact False.elim (hnot hactive)
       | some action =>
           have hpair :
-              who ∈ roundActive G cfg ∧
+              who ∈ frontierActive G cfg ∧
                 (∀ {node},
                   node ∈ cfg.frontier →
                   (G.sem node).actor = some who →
                     G.patchLegal node (action.patch node) ∧
                       G.actionLegal cfg.result node (action.patch node)) := by
-            simpa [hmove, roundAvailable] using hcoord
+            simpa [hmove, frontierAvailable] using hcoord
           have hnodeLegal := hpair.2 hfrontier hactor
           exact ⟨action, hmove,
             ⟨hfrontier, hactor, hnodeLegal.1, hnodeLegal.2⟩⟩
 
-private theorem roundStepNode_preserves_ready_of_ne
+private theorem frontierStepNode_preserves_ready_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G))
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G))
     {node candidate : G.Node}
     {current mid : G.Configuration}
-    (hmid : mid ∈ (roundStepNode G joint node current).support)
+    (hmid : mid ∈ (frontierStepNode G joint node current).support)
     (hne : candidate ≠ node)
-    (hready : roundNodeReady G joint current candidate) :
-    roundNodeReady G joint mid candidate := by
+    (hready : frontierNodeReady G joint current candidate) :
+    frontierNodeReady G joint mid candidate := by
   classical
   rcases hready with ⟨hcandidate, hdata⟩
-  refine ⟨roundStepNode_frontier_of_ne G joint hcandidate hne hmid, ?_⟩
+  refine ⟨frontierStepNode_frontier_of_ne G joint hcandidate hne hmid, ?_⟩
   cases hactor : (G.sem candidate).actor with
   | none =>
       simp [hactor] at hdata ⊢
@@ -621,22 +622,22 @@ private theorem roundStepNode_preserves_ready_of_ne
       rcases (by simpa [hactor] using hdata) with
         ⟨action, hmove, havailable⟩
       exact ⟨action, hmove,
-        roundStepNode_preserves_available_of_ne
+        frontierStepNode_preserves_available_of_ne
           G hsound joint hmid hne havailable⟩
 
-private theorem roundStepNode_comm_of_ready
+private theorem frontierStepNode_comm_of_ready
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G))
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G))
     (cfg : G.Configuration)
     {left right : G.Node}
     (hne : left ≠ right)
-    (hleftReady : roundNodeReady G joint cfg left)
-    (hrightReady : roundNodeReady G joint cfg right) :
-    (roundStepNode G joint left cfg).bind
-        (fun mid => roundStepNode G joint right mid) =
-      (roundStepNode G joint right cfg).bind
-        (fun mid => roundStepNode G joint left mid) := by
+    (hleftReady : frontierNodeReady G joint cfg left)
+    (hrightReady : frontierNodeReady G joint cfg right) :
+    (frontierStepNode G joint left cfg).bind
+        (fun mid => frontierStepNode G joint right mid) =
+      (frontierStepNode G joint right cfg).bind
+        (fun mid => frontierStepNode G joint left mid) := by
   classical
   rcases hleftReady with ⟨hleftFrontier, hleftData⟩
   rcases hrightReady with ⟨hrightFrontier, hrightData⟩
@@ -647,11 +648,11 @@ private theorem roundStepNode_comm_of_ready
       have hleftLegal : G.patchLegal left (leftAction.patch left) :=
         hleftAvail.2.2.1
       have hleftStep :
-          roundStepNode G joint left cfg =
+          frontierStepNode G joint left cfg =
             PMF.pure
               (cfg.withPatch (leftAction.patch left)
                 hleftFrontier hleftLegal) := by
-        simp [roundStepNode, hleftActor, hleftMove, stepPlay, hleftAvail]
+        simp [frontierStepNode, hleftActor, hleftMove, stepPlay, hleftAvail]
       cases hrightActor : (G.sem right).actor with
       | some rightWho =>
           rcases (by simpa [hrightActor] using hrightData) with
@@ -659,11 +660,11 @@ private theorem roundStepNode_comm_of_ready
           have hrightLegal : G.patchLegal right (rightAction.patch right) :=
             hrightAvail.2.2.1
           have hrightStep :
-              roundStepNode G joint right cfg =
+              frontierStepNode G joint right cfg =
                 PMF.pure
                   (cfg.withPatch (rightAction.patch right)
                     hrightFrontier hrightLegal) := by
-            simp [roundStepNode, hrightActor, hrightMove, stepPlay, hrightAvail]
+            simp [frontierStepNode, hrightActor, hrightMove, stepPlay, hrightAvail]
           let cfgLeft :=
             cfg.withPatch (leftAction.patch left) hleftFrontier hleftLegal
           let cfgRight :=
@@ -681,18 +682,18 @@ private theorem roundStepNode_comm_of_ready
             exact hsound.actionStable cfg hrightFrontier hleftFrontier
               hne hrightLegal hleftAvail
           have hrightStepAfterLeft :
-              roundStepNode G joint right cfgLeft =
+              frontierStepNode G joint right cfgLeft =
                 PMF.pure
                   (cfgLeft.withPatch (rightAction.patch right)
                     hrightAvailAfterLeft.1 hrightLegal) := by
-            simp [roundStepNode, hrightActor, hrightMove, stepPlay,
+            simp [frontierStepNode, hrightActor, hrightMove, stepPlay,
               hrightAvailAfterLeft]
           have hleftStepAfterRight :
-              roundStepNode G joint left cfgRight =
+              frontierStepNode G joint left cfgRight =
                 PMF.pure
                   (cfgRight.withPatch (leftAction.patch left)
                     hleftAvailAfterRight.1 hleftLegal) := by
-            simp [roundStepNode, hleftActor, hleftMove, stepPlay,
+            simp [frontierStepNode, hleftActor, hleftMove, stepPlay,
               hleftAvailAfterRight]
           have hcomm :
               cfgLeft.withPatch (rightAction.patch right)
@@ -713,7 +714,7 @@ private theorem roundStepNode_comm_of_ready
             hsound.internalKernelStable cfg hleftFrontier hrightFrontier
               (Ne.symm hne) hleftLegal
           rw [hleftStep, PMF.pure_bind]
-          unfold roundStepNode
+          unfold frontierStepNode
           simp only [hrightActor, hleftActor, hleftMove]
           rw [hrightKernelStable]
           rw [PMF.bind_bind]
@@ -795,11 +796,11 @@ private theorem roundStepNode_comm_of_ready
           have hrightLegal : G.patchLegal right (rightAction.patch right) :=
             hrightAvail.2.2.1
           have hrightStep :
-              roundStepNode G joint right cfg =
+              frontierStepNode G joint right cfg =
                 PMF.pure
                   (cfg.withPatch (rightAction.patch right)
                     hrightFrontier hrightLegal) := by
-            simp [roundStepNode, hrightActor, hrightMove, stepPlay, hrightAvail]
+            simp [frontierStepNode, hrightActor, hrightMove, stepPlay, hrightAvail]
           have hleftKernelStable :
               G.internalKernel left
                   (cfg.withPatch (rightAction.patch right)
@@ -808,7 +809,7 @@ private theorem roundStepNode_comm_of_ready
             hsound.internalKernelStable cfg hrightFrontier hleftFrontier
               hne hrightLegal
           rw [hrightStep, PMF.pure_bind]
-          unfold roundStepNode
+          unfold frontierStepNode
           simp only [hleftActor, hrightActor, hrightMove]
           rw [hleftKernelStable]
           rw [PMF.bind_bind]
@@ -884,7 +885,7 @@ private theorem roundStepNode_comm_of_ready
             G hleftAvailableAfterRight hleftFrontierAfterRight hleftLegal]
           exact congrArg PMF.pure hcomm
       | none =>
-          unfold roundStepNode
+          unfold frontierStepNode
           simp only [hleftActor, hrightActor]
           rw [PMF.bind_bind, PMF.bind_bind]
           have hleftNormalize :
@@ -1095,16 +1096,16 @@ private theorem roundStepNode_comm_of_ready
             G hleftAvailableAfterRight hleftFrontierAfterRight hleftLegal]
           exact congrArg PMF.pure hcomm
 
-private theorem roundTransitionGo_eq_of_perm_ready
+private theorem scheduledFrontierTransitionGo_eq_of_perm_ready
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G)) :
     ∀ {nodes₁ nodes₂ : List G.Node} {current : G.Configuration},
       nodes₁.Perm nodes₂ →
       nodes₁.Nodup →
-      (∀ node, node ∈ nodes₁ → roundNodeReady G joint current node) →
-        roundTransitionGo G joint nodes₁ current =
-          roundTransitionGo G joint nodes₂ current := by
+      (∀ node, node ∈ nodes₁ → frontierNodeReady G joint current node) →
+        scheduledFrontierTransitionGo G joint nodes₁ current =
+          scheduledFrontierTransitionGo G joint nodes₂ current := by
   intro nodes₁ nodes₂ current hperm
   induction hperm generalizing current with
   | nil =>
@@ -1114,12 +1115,12 @@ private theorem roundTransitionGo_eq_of_perm_ready
       intro hnodup hready
       have hnodupTail := (List.nodup_cons.mp hnodup).2
       have hnodeNotTail := (List.nodup_cons.mp hnodup).1
-      simp only [roundTransitionGo]
+      simp only [scheduledFrontierTransitionGo]
       refine Math.ProbabilityMassFunction.bind_congr_on_support
-        (roundStepNode G joint node current) _ _ ?_
+        (frontierStepNode G joint node current) _ _ ?_
       intro mid hmid
       exact ih hnodupTail (fun candidate hcandidate =>
-        roundStepNode_preserves_ready_of_ne G hsound joint hmid
+        frontierStepNode_preserves_ready_of_ne G hsound joint hmid
           (by
             intro heq
             subst candidate
@@ -1132,12 +1133,12 @@ private theorem roundTransitionGo_eq_of_perm_ready
         subst left
         exact (List.nodup_cons.mp hnodup).1 (by simp)
       have hleftReady :
-          roundNodeReady G joint current left := hready left (by simp)
+          frontierNodeReady G joint current left := hready left (by simp)
       have hrightReady :
-          roundNodeReady G joint current right := hready right (by simp)
-      simp only [roundTransitionGo]
+          frontierNodeReady G joint current right := hready right (by simp)
+      simp only [scheduledFrontierTransitionGo]
       rw [← PMF.bind_bind, ← PMF.bind_bind]
-      rw [roundStepNode_comm_of_ready
+      rw [frontierStepNode_comm_of_ready
         G hsound joint current hleftNeRight hleftReady hrightReady]
   | trans h₁ h₂ ih₁ ih₂ =>
       intro hnodup hready
@@ -1147,20 +1148,20 @@ private theorem roundTransitionGo_eq_of_perm_ready
       exact (ih₁ hnodup hready).trans (ih₂ hnodupMid hreadyMid)
 
 /-- Executing one frontier node does not change the internal kernel of a
-different frontier node under local frontier-round soundness. -/
-theorem roundStepNode_preserves_internalKernel_of_ne
+different frontier node under local frontier-step soundness. -/
+theorem frontierStepNode_preserves_internalKernel_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G))
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G))
     {node candidate : G.Node}
     {current mid : G.Configuration}
-    (hmid : mid ∈ (roundStepNode G joint node current).support)
+    (hmid : mid ∈ (frontierStepNode G joint node current).support)
     (hcandidate : candidate ∈ current.frontier)
     (hne : candidate ≠ node) :
     G.internalKernel candidate mid.result =
       G.internalKernel candidate current.result := by
   classical
-  unfold roundStepNode at hmid
+  unfold frontierStepNode at hmid
   cases hactor : (G.sem node).actor with
   | some owner =>
       cases hmove : joint owner with
@@ -1169,13 +1170,13 @@ theorem roundStepNode_preserves_internalKernel_of_ne
             simpa [hactor, hmove] using hmid
           subst mid
           rfl
-      | some roundAction =>
+      | some frontierAction =>
           by_cases havailable :
-              ({ node := node, patch := roundAction.patch node } :
+              ({ node := node, patch := frontierAction.patch node } :
                 PlayerAction G owner) ∈ available G current owner
           · have hdst :
                 mid =
-                  current.withPatch (roundAction.patch node)
+                  current.withPatch (frontierAction.patch node)
                     havailable.1 havailable.2.2.1 := by
               simpa [stepPlay, hactor, hmove, havailable] using hmid
             subst mid
@@ -1223,27 +1224,27 @@ theorem roundStepNode_preserves_internalKernel_of_ne
 kernel of a source-frontier node that the prefix does not execute. This is the
 kernel-stability form used to treat the canonical frontier order as a proof
 linearization. -/
-theorem roundTransitionGo_preserves_internalKernel_of_not_mem
+theorem scheduledFrontierTransitionGo_preserves_internalKernel_of_not_mem
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
-    (joint : JointAction (PlayerRoundAction G))
+    (hsound : G.HasLocalFrontierSteps)
+    (joint : JointAction (PlayerFrontierAction G))
     (nodes : List G.Node)
     {candidate : G.Node}
     {current dst : G.Configuration}
     (hcandidate : candidate ∈ current.frontier)
     (hnotmem : candidate ∉ nodes)
-    (hsupp : dst ∈ (roundTransitionGo G joint nodes current).support) :
+    (hsupp : dst ∈ (scheduledFrontierTransitionGo G joint nodes current).support) :
     G.internalKernel candidate dst.result =
       G.internalKernel candidate current.result := by
   classical
   induction nodes generalizing current with
   | nil =>
       have hdst : dst = current := by
-        simpa [roundTransitionGo] using hsupp
+        simpa [scheduledFrontierTransitionGo] using hsupp
       subst dst
       rfl
   | cons node rest ih =>
-      simp only [roundTransitionGo, PMF.mem_support_bind_iff] at hsupp
+      simp only [scheduledFrontierTransitionGo, PMF.mem_support_bind_iff] at hsupp
       rcases hsupp with ⟨mid, hmid, hdstRest⟩
       have hnotData : candidate ≠ node ∧ candidate ∉ rest := by
         simpa using hnotmem
@@ -1251,11 +1252,11 @@ theorem roundTransitionGo_preserves_internalKernel_of_not_mem
         intro h
         exact hnotData.1 h
       have hcandidateMid : candidate ∈ mid.frontier :=
-        roundStepNode_frontier_of_ne G joint hcandidate hne hmid
+        frontierStepNode_frontier_of_ne G joint hcandidate hne hmid
       have hkernelMid :
           G.internalKernel candidate mid.result =
             G.internalKernel candidate current.result :=
-        roundStepNode_preserves_internalKernel_of_ne
+        frontierStepNode_preserves_internalKernel_of_ne
           G hsound joint hmid hcandidate hne
       exact (ih hcandidateMid hnotData.2 hdstRest).trans hkernelMid
 
@@ -1263,7 +1264,7 @@ theorem roundTransitionGo_preserves_internalKernel_of_not_mem
 recording any disjoint subset of the same source frontier. -/
 theorem available_after_withNodePatches_of_not_mem
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     (cfg : G.Configuration)
     {nodes : Finset G.Node}
     (hsubset : nodes ⊆ cfg.frontier)
@@ -1367,7 +1368,7 @@ theorem available_after_withNodePatches_of_not_mem
 any disjoint subset of the same source frontier. -/
 theorem internalKernel_after_withNodePatches_of_not_mem
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     (cfg : G.Configuration)
     {nodes : Finset G.Node}
     (hsubset : nodes ⊆ cfg.frontier)
@@ -1480,24 +1481,24 @@ theorem internalKernel_after_withNodePatches_of_not_mem
       rw [← hpatchCongr, ← hinsertEq]
       exact hkernelStep.trans hkernelRest
 
-private theorem roundTransitionGo_result_eq_of_not_mem
+private theorem scheduledFrontierTransitionGo_result_eq_of_not_mem
     (G : Vegas.EventGraph Player L)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     {candidate : G.Node}
     (nodes : List G.Node)
     {current dst : G.Configuration}
     (hnotmem : candidate ∉ nodes)
-    (hsupp : dst ∈ (roundTransitionGo G joint nodes current).support) :
+    (hsupp : dst ∈ (scheduledFrontierTransitionGo G joint nodes current).support) :
     dst.result candidate = current.result candidate := by
   classical
   induction nodes generalizing current with
   | nil =>
       have hdst : dst = current := by
-        simpa [roundTransitionGo] using hsupp
+        simpa [scheduledFrontierTransitionGo] using hsupp
       subst dst
       rfl
   | cons node rest ih =>
-      simp only [roundTransitionGo, PMF.mem_support_bind_iff] at hsupp
+      simp only [scheduledFrontierTransitionGo, PMF.mem_support_bind_iff] at hsupp
       rcases hsupp with ⟨mid, hmid, hdst⟩
       have hne : candidate ≠ node := by
         intro h
@@ -1510,11 +1511,11 @@ private theorem roundTransitionGo_result_eq_of_not_mem
         dst.result candidate = mid.result candidate :=
           ih hnotmemRest hdst
         _ = current.result candidate :=
-          roundStepNode_result_eq_of_ne G joint hne hmid
+          frontierStepNode_result_eq_of_ne G joint hne hmid
 
 private theorem realizedNodeEvent_eq_of_result_eq
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node) {left right : G.Configuration}
     (hresult : left.result node = right.result node) :
     realizedNodeEvent G iface joint node left =
@@ -1527,31 +1528,31 @@ private theorem realizedNodeEvent_eq_of_result_eq
       cases hmove : joint who <;>
         simp [realizedNodeEvent, hactor, hmove]
 
-private theorem explicitRoundBatchStep_support_of_roundStepNode
+private theorem explicitFrontierBatchStep_support_of_frontierStepNode
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     {node : G.Node}
     {events : List (G.toMachine iface).Event}
     {current next : G.Configuration}
     (hfrontier : node ∈ current.frontier)
-    (hnext : next ∈ (roundStepNode G joint node current).support) :
+    (hnext : next ∈ (frontierStepNode G joint node current).support) :
     (events ++ [realizedNodeEvent G iface joint node next], next) ∈
-      (explicitRoundBatchStep G iface joint node
+      (explicitFrontierBatchStep G iface joint node
         (events, current)).support := by
   classical
-  rw [explicitRoundBatchStep_eq_map_roundStepNode_of_frontier
+  rw [explicitFrontierBatchStep_eq_map_frontierStepNode_of_frontier
     G iface joint node events current hfrontier]
   exact (PMF.mem_support_map_iff _ _ _).2 ⟨next, hnext, rfl⟩
 
-private theorem explicitRoundBatchStep_support_runEvent
+private theorem explicitFrontierBatchStep_support_runEvent
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node)
     {events events' : List (G.toMachine iface).Event}
     {current next : G.Configuration}
     (hsupp :
       (events', next) ∈
-        (explicitRoundBatchStep G iface joint node
+        (explicitFrontierBatchStep G iface joint node
           (events, current)).support) :
     ∃ event : (G.toMachine iface).Event,
       events' = events ++ [event] ∧
@@ -1562,11 +1563,11 @@ private theorem explicitRoundBatchStep_support_runEvent
       cases hmove : joint who with
       | none =>
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 PMF.pure
                   (events ++ [Machine.Event.internal InternalEvent.idle],
                     current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hmove]
           rw [hdist] at hsupp
@@ -1588,12 +1589,12 @@ private theorem explicitRoundBatchStep_support_runEvent
           let event :=
             playerPrimitiveEvent G iface who node (action.patch node)
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 PMF.map (fun next => (events ++ [event], next))
                   (stepPlay G who
                     { node := node, patch := action.patch node }
                     current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hmove, event, playerPrimitiveEvent]
           rw [hdist] at hsupp
@@ -1624,7 +1625,7 @@ private theorem explicitRoundBatchStep_support_runEvent
                   (stepInternal G (InternalEvent.node node patch)
                     current)).support := by
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 (G.internalKernel node current.result).bind fun patch =>
                   PMF.map
                     (fun next =>
@@ -1632,7 +1633,7 @@ private theorem explicitRoundBatchStep_support_runEvent
                         next))
                     (stepInternal G (InternalEvent.node node patch)
                       current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hfrontier]
           simpa [hdist] using hsupp
@@ -1651,11 +1652,11 @@ private theorem explicitRoundBatchStep_support_runEvent
       · have hpair : (events', next) =
             (events ++ [Machine.Event.internal InternalEvent.idle], current) := by
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 PMF.pure
                   (events ++ [Machine.Event.internal InternalEvent.idle],
                     current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hfrontier]
           rw [hdist] at hsupp
@@ -1672,13 +1673,13 @@ private theorem explicitRoundBatchStep_support_runEvent
         simp only [Machine.step, toMachine, stepInternal, PMF.support_pure]
         exact Set.mem_singleton current
 
-private theorem explicitRoundBatchStep_support_availableRunEvent
+private theorem explicitFrontierBatchStep_support_availableRunEvent
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (source : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) source joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) source joint)
     (node : G.Node)
     {events events' : List (G.toMachine iface).Event}
     {current next : G.Configuration}
@@ -1691,7 +1692,7 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
     (hsource : node ∈ source.frontier)
     (hsupp :
       (events', next) ∈
-        (explicitRoundBatchStep G iface joint node
+        (explicitFrontierBatchStep G iface joint node
           (events, current)).support) :
     ∃ event : (G.toMachine iface).Event,
       events' = events ++ [event] ∧
@@ -1700,25 +1701,25 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
   classical
   cases hactor : (G.sem node).actor with
   | some who =>
-      have hactive : who ∈ roundActive G source := by
-        rw [mem_roundActive_iff]
+      have hactive : who ∈ frontierActive G source := by
+        rw [mem_frontierActive_iff]
         exact ⟨node, hsource, hactor⟩
       have hlocal := hlegal.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ roundActive G source := by
+          have hnot : who ∉ frontierActive G source := by
             simpa [hmove] using hlocal
           exact False.elim (hnot hactive)
       | some action =>
           let event :=
             playerPrimitiveEvent G iface who node (action.patch node)
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 PMF.map (fun next => (events ++ [event], next))
                   (stepPlay G who
                     { node := node, patch := action.patch node }
                     current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hmove, event, playerPrimitiveEvent]
           rw [hdist] at hsupp
@@ -1733,8 +1734,8 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
               ({ node := node, patch := action.patch node } :
                 PlayerAction G who) ∈ available G source who := by
             have hpair :
-                who ∈ roundActive G source ∧
-                  action ∈ roundAvailable G source who := by
+                who ∈ frontierActive G source ∧
+                  action ∈ frontierAvailable G source who := by
               simpa [hmove] using hlocal
             have hnodeLegal := hpair.2 hsource hactor
             exact ⟨hsource, hactor, hnodeLegal.1, hnodeLegal.2⟩
@@ -1747,7 +1748,7 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
           · simpa [event, playerPrimitiveEvent, Machine.step, toMachine] using hnext'
   | none =>
       have hdist :
-          explicitRoundBatchStep G iface joint node (events, current) =
+          explicitFrontierBatchStep G iface joint node (events, current) =
             (G.internalKernel node current.result).bind fun patch =>
               PMF.map
                 (fun next =>
@@ -1755,7 +1756,7 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
                     next))
                 (stepInternal G (InternalEvent.node node patch)
                   current) := by
-        unfold explicitRoundBatchStep
+        unfold explicitFrontierBatchStep
         rw [hactor]
         simp [hcurrent]
       rw [hdist] at hsupp
@@ -1779,49 +1780,49 @@ private theorem explicitRoundBatchStep_support_availableRunEvent
       refine ⟨event, rfl, havailable, ?_⟩
       simpa [event, internalPrimitiveEvent, Machine.step, toMachine] using hnext'
 
-private theorem explicitRoundBatchStep_support_no_idle
+private theorem explicitFrontierBatchStep_support_no_idle
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (source : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node)
     {events events' : List (G.toMachine iface).Event}
     {current next : G.Configuration}
     (hcurrent : node ∈ current.frontier)
     (hsource : node ∈ source.frontier)
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) source joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) source joint)
     (hnoEvents :
       (Machine.Event.internal InternalEvent.idle :
         (G.toMachine iface).Event) ∉ events)
     (hsupp :
       (events', next) ∈
-        (explicitRoundBatchStep G iface joint node
+        (explicitFrontierBatchStep G iface joint node
           (events, current)).support) :
     (Machine.Event.internal InternalEvent.idle :
       (G.toMachine iface).Event) ∉ events' := by
   classical
   cases hactor : (G.sem node).actor with
   | some who =>
-      have hactive : who ∈ roundActive G source := by
-        rw [mem_roundActive_iff]
+      have hactive : who ∈ frontierActive G source := by
+        rw [mem_frontierActive_iff]
         exact ⟨node, hsource, hactor⟩
       have hlocal := hlegal.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ roundActive G source := by
+          have hnot : who ∉ frontierActive G source := by
             simpa [hmove] using hlocal
           exact False.elim (hnot hactive)
       | some action =>
           let event :=
             playerPrimitiveEvent G iface who node (action.patch node)
           have hdist :
-              explicitRoundBatchStep G iface joint node (events, current) =
+              explicitFrontierBatchStep G iface joint node (events, current) =
                 PMF.map (fun next => (events ++ [event], next))
                   (stepPlay G who
                     { node := node, patch := action.patch node }
                     current) := by
-            unfold explicitRoundBatchStep
+            unfold explicitFrontierBatchStep
             rw [hactor]
             simp [hmove, event, playerPrimitiveEvent]
           rw [hdist] at hsupp
@@ -1838,7 +1839,7 @@ private theorem explicitRoundBatchStep_support_no_idle
   | none =>
       by_cases hfrontier : node ∈ current.frontier
       · have hdist :
-            explicitRoundBatchStep G iface joint node (events, current) =
+            explicitFrontierBatchStep G iface joint node (events, current) =
               (G.internalKernel node current.result).bind fun patch =>
                 PMF.map
                   (fun next =>
@@ -1846,7 +1847,7 @@ private theorem explicitRoundBatchStep_support_no_idle
                       next))
                   (stepInternal G (InternalEvent.node node patch)
                     current) := by
-          unfold explicitRoundBatchStep
+          unfold explicitFrontierBatchStep
           rw [hactor]
           simp [hfrontier]
         rw [hdist] at hsupp
@@ -1865,16 +1866,16 @@ private theorem explicitRoundBatchStep_support_no_idle
         · simp [internalPrimitiveEvent] at hidle
       · exact False.elim (hfrontier hcurrent)
 
-private theorem explicitRoundBatchGo_support_runEventsFrom_suffix
+private theorem explicitFrontierBatchGo_support_runEventsFrom_suffix
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     ∀ (nodes : List G.Node)
       (events : List (G.toMachine iface).Event)
       (current : G.Configuration)
       {batch : List (G.toMachine iface).Event}
       {dst : G.Configuration},
       (batch, dst) ∈
-        (explicitRoundBatchGo G iface joint nodes events current).support →
+        (explicitFrontierBatchGo G iface joint nodes events current).support →
         ∃ suffix : List (G.toMachine iface).Event,
           batch = events ++ suffix ∧
             dst ∈
@@ -1882,7 +1883,7 @@ private theorem explicitRoundBatchGo_support_runEventsFrom_suffix
   | [], events, current, batch, dst, hsupp => by
       have hpure :
           (batch, dst) ∈ (PMF.pure (events, current)).support := by
-        simpa [explicitRoundBatchGo] using hsupp
+        simpa [explicitFrontierBatchGo] using hsupp
       have hpair : (batch, dst) = (events, current) :=
         (PMF.mem_support_pure_iff (events, current) (batch, dst)).mp hpure
       have hbatch : batch = events := congrArg Prod.fst hpair
@@ -1894,22 +1895,22 @@ private theorem explicitRoundBatchGo_support_runEventsFrom_suffix
       exact Set.mem_singleton current
   | node :: rest, events, current, batch, dst, hsupp => by
       classical
-      simp only [explicitRoundBatchGo, PMF.mem_support_bind_iff] at hsupp
+      simp only [explicitFrontierBatchGo, PMF.mem_support_bind_iff] at hsupp
       rcases hsupp with ⟨next, hstepMass, hrestMass⟩
       rcases next with ⟨events₁, mid⟩
       have hstepSupport :
           (events₁, mid) ∈
-            (explicitRoundBatchStep G iface joint node
+            (explicitFrontierBatchStep G iface joint node
               (events, current)).support :=
         (PMF.mem_support_iff _ _).2 hstepMass
       have hrestSupport :
           (batch, dst) ∈
-            (explicitRoundBatchGo G iface joint rest events₁ mid).support :=
+            (explicitFrontierBatchGo G iface joint rest events₁ mid).support :=
         (PMF.mem_support_iff _ _).2 hrestMass
-      rcases explicitRoundBatchStep_support_runEvent
+      rcases explicitFrontierBatchStep_support_runEvent
           G iface joint node hstepSupport with
         ⟨event, hevents₁, hstep⟩
-      rcases explicitRoundBatchGo_support_runEventsFrom_suffix
+      rcases explicitFrontierBatchGo_support_runEventsFrom_suffix
           G iface joint rest events₁ mid hrestSupport with
         ⟨suffix, hbatch, hrunRest⟩
       subst events₁
@@ -1926,14 +1927,14 @@ private theorem explicitRoundBatchGo_support_runEventsFrom_suffix
             (G.toMachine iface).runEventsFrom suffix current)
           dst).2 ⟨mid, hfirst, hrunRest⟩
 
-private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
+private theorem explicitFrontierBatchGo_support_availableRunFrom_suffix
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (source : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
-    (hsound : G.HasLocalFrontierRounds)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hsound : G.HasLocalFrontierSteps)
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) source joint) :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) source joint) :
     ∀ (nodes : List G.Node)
       (events : List (G.toMachine iface).Event)
       (current : G.Configuration)
@@ -1947,7 +1948,7 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
         action ∈ available G source who →
           action ∈ available G current who) →
       (batch, dst) ∈
-        (explicitRoundBatchGo G iface joint nodes events current).support →
+        (explicitFrontierBatchGo G iface joint nodes events current).support →
         ∃ suffix : List (G.toMachine iface).Event,
           batch = events ++ suffix ∧
             (G.toMachine iface).AvailableRunFrom current suffix dst
@@ -1955,7 +1956,7 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
       _havailable, hsupp => by
       have hpure :
           (batch, dst) ∈ (PMF.pure (events, current)).support := by
-        simpa [explicitRoundBatchGo] using hsupp
+        simpa [explicitFrontierBatchGo] using hsupp
       have hpair : (batch, dst) = (events, current) :=
         (PMF.mem_support_pure_iff (events, current) (batch, dst)).mp hpure
       have hbatch : batch = events := congrArg Prod.fst hpair
@@ -1969,31 +1970,31 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
       have hnodupData := List.nodup_cons.mp hnodup
       have hnodeNotRest : node ∉ rest := hnodupData.1
       have hrestNodup : rest.Nodup := hnodupData.2
-      simp only [explicitRoundBatchGo, PMF.mem_support_bind_iff] at hsupp
+      simp only [explicitFrontierBatchGo, PMF.mem_support_bind_iff] at hsupp
       rcases hsupp with ⟨next, hstepMass, hrestMass⟩
       rcases next with ⟨events₁, mid⟩
       have hstepSupport :
           (events₁, mid) ∈
-            (explicitRoundBatchStep G iface joint node
+            (explicitFrontierBatchStep G iface joint node
               (events, current)).support :=
         (PMF.mem_support_iff _ _).2 hstepMass
       have hrestSupport :
           (batch, dst) ∈
-            (explicitRoundBatchGo G iface joint rest events₁ mid).support :=
+            (explicitFrontierBatchGo G iface joint rest events₁ mid).support :=
         (PMF.mem_support_iff _ _).2 hrestMass
       have hnodeCurrent : node ∈ current.frontier :=
         hcurrent node (by simp)
       have hnodeSource : node ∈ source.frontier :=
         hsource node (by simp)
-      rcases explicitRoundBatchStep_support_availableRunEvent
+      rcases explicitFrontierBatchStep_support_availableRunEvent
           G iface source joint hlegal node
           (fun hnode haction => havailable (by simp [hnode]) haction)
           hnodeCurrent hnodeSource hstepSupport with
         ⟨event, hevents₁, heventAvailable, hstep⟩
-      have hmidRound :
-          mid ∈ (roundStepNode G joint node current).support := by
+      have hmidFrontierStep :
+          mid ∈ (frontierStepNode G joint node current).support := by
         have hstepSupport' := hstepSupport
-        rw [explicitRoundBatchStep_eq_map_roundStepNode_of_frontier
+        rw [explicitFrontierBatchStep_eq_map_frontierStepNode_of_frontier
           G iface joint node events current hnodeCurrent] at hstepSupport'
         rcases (PMF.mem_support_map_iff _ _ _).mp hstepSupport' with
           ⟨mid', hmid', hpair⟩
@@ -2014,8 +2015,8 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
           intro h
           subst candidate
           exact hnodeNotRest hcandidate
-        exact roundStepNode_frontier_of_ne
-          G joint hcandidateCurrent hne hmidRound
+        exact frontierStepNode_frontier_of_ne
+          G joint hcandidateCurrent hne hmidFrontierStep
       have havailableMid :
           ∀ {who : Player} {action : PlayerAction G who},
             action.node ∈ rest →
@@ -2028,10 +2029,10 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
           intro h
           subst node
           exact hnodeNotRest hmemRest
-        exact roundStepNode_preserves_available_of_ne
-          G hsound joint hmidRound hne hactionCurrent
+        exact frontierStepNode_preserves_available_of_ne
+          G hsound joint hmidFrontierStep hne hactionCurrent
       subst events₁
-      rcases explicitRoundBatchGo_support_availableRunFrom_suffix
+      rcases explicitFrontierBatchGo_support_availableRunFrom_suffix
           G iface source joint hsound hlegal rest
           (events ++ [event]) mid
           hrestNodup hrestSource hrestCurrent havailableMid
@@ -2041,37 +2042,37 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
       · simpa [List.append_assoc] using hbatch
       · exact Machine.AvailableRunFrom.cons heventAvailable hstep hrun
 
-private theorem explicitRoundBatchGo_support_of_roundTransitionGo_support
+private theorem explicitFrontierBatchGo_support_of_scheduledFrontierTransitionGo_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     ∀ (nodes : List G.Node)
       (events : List (G.toMachine iface).Event)
       {current dst : G.Configuration},
       nodes.Nodup →
       (∀ node, node ∈ nodes → node ∈ current.frontier) →
-      dst ∈ (roundTransitionGo G joint nodes current).support →
+      dst ∈ (scheduledFrontierTransitionGo G joint nodes current).support →
         (events ++ nodes.map (fun node =>
           realizedNodeEvent G iface joint node dst), dst) ∈
-          (explicitRoundBatchGo G iface joint nodes events current).support
+          (explicitFrontierBatchGo G iface joint nodes events current).support
   | [], events, current, dst, _hnodup, _hfrontier, hdst => by
       have hdstEq : dst = current := by
-        simpa [roundTransitionGo] using hdst
+        simpa [scheduledFrontierTransitionGo] using hdst
       subst dst
-      simp [explicitRoundBatchGo]
+      simp [explicitFrontierBatchGo]
   | node :: rest, events, current, dst, hnodup, hfrontier, hdst => by
       classical
       have hnodupData := List.nodup_cons.mp hnodup
       have hnodeNotRest : node ∉ rest := hnodupData.1
       have hrestNodup : rest.Nodup := hnodupData.2
-      simp only [roundTransitionGo, PMF.mem_support_bind_iff] at hdst
+      simp only [scheduledFrontierTransitionGo, PMF.mem_support_bind_iff] at hdst
       rcases hdst with ⟨mid, hmid, hdstRest⟩
       have hnodeFrontier : node ∈ current.frontier :=
         hfrontier node (by simp)
       have hstepSupport :
           (events ++ [realizedNodeEvent G iface joint node mid], mid) ∈
-            (explicitRoundBatchStep G iface joint node
+            (explicitFrontierBatchStep G iface joint node
               (events, current)).support :=
-        explicitRoundBatchStep_support_of_roundStepNode
+        explicitFrontierBatchStep_support_of_frontierStepNode
           G iface joint hnodeFrontier hmid
       have hrestFrontier :
           ∀ candidate, candidate ∈ rest → candidate ∈ mid.frontier := by
@@ -2083,22 +2084,22 @@ private theorem explicitRoundBatchGo_support_of_roundTransitionGo_support
           intro h
           subst candidate
           exact hnodeNotRest hcandidate
-        exact roundStepNode_frontier_of_ne
+        exact frontierStepNode_frontier_of_ne
           G joint hcandidateFrontier hne hmid
       have hrestSupport :
           ((events ++ [realizedNodeEvent G iface joint node mid]) ++
               rest.map (fun node =>
                 realizedNodeEvent G iface joint node dst), dst) ∈
-            (explicitRoundBatchGo G iface joint rest
+            (explicitFrontierBatchGo G iface joint rest
               (events ++ [realizedNodeEvent G iface joint node mid])
               mid).support :=
-        explicitRoundBatchGo_support_of_roundTransitionGo_support
+        explicitFrontierBatchGo_support_of_scheduledFrontierTransitionGo_support
           G iface joint rest
           (events ++ [realizedNodeEvent G iface joint node mid])
           hrestNodup hrestFrontier hdstRest
       have hresult :
           dst.result node = mid.result node :=
-        roundTransitionGo_result_eq_of_not_mem
+        scheduledFrontierTransitionGo_result_eq_of_not_mem
           G joint rest hnodeNotRest hdstRest
       have hevent :
           realizedNodeEvent G iface joint node mid =
@@ -2110,17 +2111,17 @@ private theorem explicitRoundBatchGo_support_of_roundTransitionGo_support
             (node :: rest).map
               (fun node => realizedNodeEvent G iface joint node dst),
           dst) ∈
-          ((explicitRoundBatchStep G iface joint node (events, current)).bind
+          ((explicitFrontierBatchStep G iface joint node (events, current)).bind
             fun next =>
-              explicitRoundBatchGo G iface joint rest next.1 next.2).support
+              explicitFrontierBatchGo G iface joint rest next.1 next.2).support
       rw [PMF.mem_support_bind_iff]
       refine ⟨(events ++ [realizedNodeEvent G iface joint node mid], mid),
         hstepSupport, ?_⟩
       simpa [List.map, List.append_assoc, hevent] using hrestSupport
 
-private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
+private theorem explicitFrontierBatchGo_eq_map_scheduledFrontierTransitionGo
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     ∀ (nodes : List G.Node)
       (events : List (G.toMachine iface).Event)
       {current : G.Configuration},
@@ -2130,10 +2131,10 @@ private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
             (fun dst =>
               (events ++ nodes.map (fun node =>
                 realizedNodeEvent G iface joint node dst), dst))
-            (roundTransitionGo G joint nodes current) =
-          explicitRoundBatchGo G iface joint nodes events current
+            (scheduledFrontierTransitionGo G joint nodes current) =
+          explicitFrontierBatchGo G iface joint nodes events current
   | [], events, current, _hnodup, _hfrontier => by
-      simp [roundTransitionGo, explicitRoundBatchGo, PMF.pure_map]
+      simp [scheduledFrontierTransitionGo, explicitFrontierBatchGo, PMF.pure_map]
   | node :: rest, events, current, hnodup, hfrontier => by
       classical
       have hnodupData := List.nodup_cons.mp hnodup
@@ -2141,13 +2142,13 @@ private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
       have hrestNodup : rest.Nodup := hnodupData.2
       have hnodeFrontier : node ∈ current.frontier :=
         hfrontier node (by simp)
-      rw [roundTransitionGo, explicitRoundBatchGo]
-      rw [explicitRoundBatchStep_eq_map_roundStepNode_of_frontier
+      rw [scheduledFrontierTransitionGo, explicitFrontierBatchGo]
+      rw [explicitFrontierBatchStep_eq_map_frontierStepNode_of_frontier
         G iface joint node events current hnodeFrontier]
       rw [PMF.map_bind]
       rw [PMF.bind_map]
       refine Math.ProbabilityMassFunction.bind_congr_on_support
-        (roundStepNode G joint node current) _ _ ?_
+        (frontierStepNode G joint node current) _ _ ?_
       intro mid hmid
       have hrestFrontier :
           ∀ candidate, candidate ∈ rest → candidate ∈ mid.frontier := by
@@ -2159,20 +2160,20 @@ private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
           intro h
           subst candidate
           exact hnodeNotRest hcandidate
-        exact roundStepNode_frontier_of_ne
+        exact frontierStepNode_frontier_of_ne
           G joint hcandidateFrontier hne hmid
       have hmap :
           PMF.map
               (fun dst =>
                 (events ++ (node :: rest).map (fun node =>
                   realizedNodeEvent G iface joint node dst), dst))
-              (roundTransitionGo G joint rest mid) =
+              (scheduledFrontierTransitionGo G joint rest mid) =
             PMF.map
               (fun dst =>
                 ((events ++ [realizedNodeEvent G iface joint node mid]) ++
                   rest.map (fun node =>
                     realizedNodeEvent G iface joint node dst), dst))
-              (roundTransitionGo G joint rest mid) := by
+              (scheduledFrontierTransitionGo G joint rest mid) := by
         rw [← PMF.bind_pure_comp
           (fun dst =>
             (events ++ (node :: rest).map (fun node =>
@@ -2183,11 +2184,11 @@ private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
               rest.map (fun node =>
                 realizedNodeEvent G iface joint node dst), dst))]
         refine Math.ProbabilityMassFunction.bind_congr_on_support
-          (roundTransitionGo G joint rest mid) _ _ ?_
+          (scheduledFrontierTransitionGo G joint rest mid) _ _ ?_
         intro dst hdst
         have hresult :
             dst.result node = mid.result node :=
-          roundTransitionGo_result_eq_of_not_mem
+          scheduledFrontierTransitionGo_result_eq_of_not_mem
             G joint rest hnodeNotRest hdst
         have hevent :
             realizedNodeEvent G iface joint node dst =
@@ -2196,21 +2197,21 @@ private theorem explicitRoundBatchGo_eq_map_roundTransitionGo
             G iface joint node hresult
         simp [List.map, List.append_assoc, hevent]
       rw [hmap]
-      exact explicitRoundBatchGo_eq_map_roundTransitionGo
+      exact explicitFrontierBatchGo_eq_map_scheduledFrontierTransitionGo
         G iface joint rest
         (events ++ [realizedNodeEvent G iface joint node mid])
         hrestNodup hrestFrontier
 
 /-- Stepwise distribution over a realized primitive event batch and destination
-of one frontier round. Internal stochastic choices are sampled before their
+of one frontier step. Internal stochastic choices are sampled before their
 deterministic primitive event is executed. This is the operational sampler used
 to justify the exported decorated event-batch distribution. -/
-private noncomputable def explicitRoundBatchWalk
+private noncomputable def explicitFrontierBatchWalk
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     PMF (List (G.toMachine iface).Event × G.Configuration) :=
-  explicitRoundBatchGo G iface joint cfg.frontier.toList [] cfg
+  explicitFrontierBatchGo G iface joint cfg.frontier.toList [] cfg
 
 /-- Extract the realized primitive event batch from a completed round source,
 joint action, and destination. For internal nodes, the destination result
@@ -2218,23 +2219,23 @@ determines which patch was realized. -/
 noncomputable def realizedEventBatch
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (dst : G.Configuration) :
     List (G.toMachine iface).Event :=
   cfg.frontier.toList.map fun node =>
     realizedNodeEvent G iface joint node dst
 
-private theorem explicitRoundBatchStep_map_state
+private theorem explicitFrontierBatchStep_map_state
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (node : G.Node)
     (events : List (G.toMachine iface).Event)
     (current : G.Configuration) :
     PMF.map Prod.snd
-        (explicitRoundBatchStep G iface joint node (events, current)) =
-      roundStepNode G joint node current := by
+        (explicitFrontierBatchStep G iface joint node (events, current)) =
+      frontierStepNode G joint node current := by
   classical
-  unfold explicitRoundBatchStep roundStepNode
+  unfold explicitFrontierBatchStep frontierStepNode
   cases hactor : (G.sem node).actor with
   | none =>
       by_cases hfrontier : node ∈ current.frontier
@@ -2251,13 +2252,13 @@ private theorem explicitRoundBatchStep_map_state
       | some action =>
           simp [hmove, PMF.map_comp, PMF.map_id]
 
-private theorem explicitRoundBatchGo_support_no_idle
+private theorem explicitFrontierBatchGo_support_no_idle
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (source : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) source joint) :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) source joint) :
     ∀ (nodes : List G.Node)
       (events : List (G.toMachine iface).Event)
       {current : G.Configuration}
@@ -2269,14 +2270,14 @@ private theorem explicitRoundBatchGo_support_no_idle
       (Machine.Event.internal InternalEvent.idle :
         (G.toMachine iface).Event) ∉ events →
       (batch, dst) ∈
-        (explicitRoundBatchGo G iface joint nodes events current).support →
+        (explicitFrontierBatchGo G iface joint nodes events current).support →
         (Machine.Event.internal InternalEvent.idle :
           (G.toMachine iface).Event) ∉ batch
   | [], events, current, batch, dst, _hnodup, _hsource, _hcurrent,
       hnoEvents, hsupp => by
       have hpure :
           (batch, dst) ∈ (PMF.pure (events, current)).support := by
-        simpa [explicitRoundBatchGo] using hsupp
+        simpa [explicitFrontierBatchGo] using hsupp
       have hpair : (batch, dst) = (events, current) :=
         (PMF.mem_support_pure_iff (events, current) (batch, dst)).mp hpure
       have hbatch : batch = events := congrArg Prod.fst hpair
@@ -2288,17 +2289,17 @@ private theorem explicitRoundBatchGo_support_no_idle
       have hnodupData := List.nodup_cons.mp hnodup
       have hnodeNotRest : node ∉ rest := hnodupData.1
       have hrestNodup : rest.Nodup := hnodupData.2
-      simp only [explicitRoundBatchGo, PMF.mem_support_bind_iff] at hsupp
+      simp only [explicitFrontierBatchGo, PMF.mem_support_bind_iff] at hsupp
       rcases hsupp with ⟨next, hstepMass, hrestMass⟩
       rcases next with ⟨events₁, mid⟩
       have hstepSupport :
           (events₁, mid) ∈
-            (explicitRoundBatchStep G iface joint node
+            (explicitFrontierBatchStep G iface joint node
               (events, current)).support :=
         (PMF.mem_support_iff _ _).2 hstepMass
       have hrestSupport :
           (batch, dst) ∈
-            (explicitRoundBatchGo G iface joint rest events₁ mid).support :=
+            (explicitFrontierBatchGo G iface joint rest events₁ mid).support :=
         (PMF.mem_support_iff _ _).2 hrestMass
       have hnodeCurrent : node ∈ current.frontier :=
         hcurrent node (by simp)
@@ -2307,19 +2308,19 @@ private theorem explicitRoundBatchGo_support_no_idle
       have hnoEvents₁ :
           (Machine.Event.internal InternalEvent.idle :
             (G.toMachine iface).Event) ∉ events₁ :=
-        explicitRoundBatchStep_support_no_idle
+        explicitFrontierBatchStep_support_no_idle
           G iface source joint node hnodeCurrent hnodeSource hlegal
           hnoEvents hstepSupport
-      have hmidRound :
-          mid ∈ (roundStepNode G joint node current).support := by
+      have hmidFrontierStep :
+          mid ∈ (frontierStepNode G joint node current).support := by
         have hmap :
             mid ∈
               (PMF.map Prod.snd
-                (explicitRoundBatchStep G iface joint node
+                (explicitFrontierBatchStep G iface joint node
                   (events, current))).support :=
           (PMF.mem_support_map_iff _ _ _).2
             ⟨(events₁, mid), hstepSupport, rfl⟩
-        rw [explicitRoundBatchStep_map_state] at hmap
+        rw [explicitFrontierBatchStep_map_state] at hmap
         exact hmap
       have hrestSource :
           ∀ candidate, candidate ∈ rest → candidate ∈ source.frontier := by
@@ -2335,30 +2336,30 @@ private theorem explicitRoundBatchGo_support_no_idle
           intro h
           subst candidate
           exact hnodeNotRest hcandidate
-        exact roundStepNode_frontier_of_ne
-          G joint hcandidateCurrent hne hmidRound
-      exact explicitRoundBatchGo_support_no_idle
+        exact frontierStepNode_frontier_of_ne
+          G joint hcandidateCurrent hne hmidFrontierStep
+      exact explicitFrontierBatchGo_support_no_idle
         G iface source joint hlegal rest events₁ hrestNodup
         hrestSource hrestCurrent hnoEvents₁ hrestSupport
 
-private theorem explicitRoundBatchGo_map_state
+private theorem explicitFrontierBatchGo_map_state
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (nodes : List G.Node)
     (events : List (G.toMachine iface).Event)
     (current : G.Configuration) :
     PMF.map Prod.snd
-        (explicitRoundBatchGo G iface joint nodes events current) =
-      roundTransitionGo G joint nodes current := by
+        (explicitFrontierBatchGo G iface joint nodes events current) =
+      scheduledFrontierTransitionGo G joint nodes current := by
   induction nodes generalizing events current with
   | nil =>
-      simp [explicitRoundBatchGo, roundTransitionGo, PMF.pure_map]
+      simp [explicitFrontierBatchGo, scheduledFrontierTransitionGo, PMF.pure_map]
   | cons node nodes ih =>
       classical
-      rw [explicitRoundBatchGo, roundTransitionGo]
+      rw [explicitFrontierBatchGo, scheduledFrontierTransitionGo]
       rw [PMF.map_bind]
       simp_rw [ih]
-      rw [← explicitRoundBatchStep_map_state G iface joint node events current]
+      rw [← explicitFrontierBatchStep_map_state G iface joint node events current]
       rw [PMF.bind_map]
       rfl
 
@@ -2387,36 +2388,36 @@ theorem perm_toCanonical
 
 end FrontierSchedule
 
-/-- Execute a frontier round using an explicit schedule. -/
-noncomputable def roundTransitionWithSchedule
+/-- Execute a frontier step using an explicit schedule. -/
+noncomputable def frontierTransitionWithSchedule
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (schedule : FrontierSchedule G cfg) :
     PMF G.Configuration :=
-  roundTransitionGo G joint schedule.nodes cfg
+  scheduledFrontierTransitionGo G joint schedule.nodes cfg
 
 /-- Execute the current frontier in the canonical list order.
 
 This is the scheduled operational representative used for primitive
 event-batch witnesses. The native round-view transition is the order-free
 `frontierRealizationTransition`; for graph views exposed through
-`HasLocalFrontierRounds`, frontier independence justifies treating this
+`HasLocalFrontierSteps`, frontier independence justifies treating this
 canonical list as proof/execution presentation rather than strategic content. -/
-noncomputable def roundTransition
+noncomputable def scheduledFrontierTransition
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     PMF G.Configuration :=
-  roundTransitionGo G joint cfg.frontier.toList cfg
+  scheduledFrontierTransitionGo G joint cfg.frontier.toList cfg
 
 /-- Patch distribution for one order-free frontier coordinate. Player-owned
 coordinates are fixed by the legal joint action; internal coordinates use the
 graph's internal kernel at the source configuration. -/
 noncomputable def frontierPatchDist
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (_hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     (idx : FrontierIndex G cfg) :
     PMF G.FieldPatch :=
   match (G.sem idx.1).actor with
@@ -2431,10 +2432,10 @@ round payload; list schedules are execution witnesses for samples of this
 distribution. -/
 noncomputable def frontierRealizationDist
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint) :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint) :
     PMF (FrontierRealization G cfg) :=
   PMF.map
     (fun patch : (idx : FrontierIndex G cfg) → G.FieldPatch =>
@@ -2445,10 +2446,10 @@ noncomputable def frontierRealizationDist
 /-- Coordinate support for a sampled order-free frontier realization. -/
 theorem frontierRealizationDist_support_coord
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     {realization : FrontierRealization G cfg}
     (hsupp : realization ∈
       (frontierRealizationDist G cfg joint hlegal).support)
@@ -2477,10 +2478,10 @@ patches. Player coordinates are legal by the joint-action legality proof;
 internal coordinates are legal by `internalKernel_support_legal`. -/
 theorem frontierRealizationDist_support_legal
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G))
+    (joint : JointAction (PlayerFrontierAction G))
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     {realization : FrontierRealization G cfg}
     (hsupp : realization ∈
       (frontierRealizationDist G cfg joint hlegal).support) :
@@ -2504,18 +2505,18 @@ theorem frontierRealizationDist_support_legal
           (fun hresult => cfg.legal hresult)
           hactor hcoord
   | some who =>
-      have hactive : who ∈ roundActive G cfg :=
-        (mem_roundActive_iff G cfg who).mpr ⟨idx.1, idx.2, hactor⟩
+      have hactive : who ∈ frontierActive G cfg :=
+        (mem_frontierActive_iff G cfg who).mpr ⟨idx.1, idx.2, hactor⟩
       have hcoordLegal := hlegal.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ roundActive G cfg := by
+          have hnot : who ∉ frontierActive G cfg := by
             simpa [hmove] using hcoordLegal
           exact False.elim (hnot hactive)
       | some action =>
           have hround :
-              who ∈ roundActive G cfg ∧
-                action ∈ roundAvailable G cfg who := by
+              who ∈ frontierActive G cfg ∧
+                action ∈ frontierAvailable G cfg who := by
             simpa [hmove] using hcoordLegal
           have hpatch :
               realization.patch idx = action.patch idx.1 := by
@@ -2530,15 +2531,500 @@ theorem frontierRealizationDist_support_legal
           rw [hpatch]
           exact (hround.2 idx.2 hactor).1
 
+/-- A patch sampled by one source-frontier coordinate distribution is legal for
+that coordinate. -/
+private theorem frontierPatchDist_support_legal
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    (idx : FrontierIndex G cfg)
+    {patch : G.FieldPatch}
+    (hpatch : patch ∈ (frontierPatchDist G cfg joint hlegal idx).support) :
+    G.patchLegal idx.1 patch := by
+  classical
+  cases hactor : (G.sem idx.1).actor with
+  | none =>
+      have hkernel : patch ∈ (G.internalKernel idx.1 cfg.result).support := by
+        simpa [frontierPatchDist, hactor] using hpatch
+      exact
+        G.internalKernel_support_legal
+          (cfg.mem_nodes_of_mem_frontier idx.2)
+          (cfg.not_done_of_mem_frontier idx.2)
+          (fun prereq hpre =>
+            cfg.result_some_of_prereq_of_mem_frontier idx.2 hpre)
+          (fun hresult => cfg.legal hresult)
+          hactor hkernel
+  | some who =>
+      have hactive : who ∈ frontierActive G cfg :=
+        (mem_frontierActive_iff G cfg who).mpr ⟨idx.1, idx.2, hactor⟩
+      have hcoord := hlegal.2 who
+      cases hmove : joint who with
+      | none =>
+          have hnot : who ∉ frontierActive G cfg := by
+            simpa [hmove] using hcoord
+          exact False.elim (hnot hactive)
+      | some action =>
+          have hround :
+              who ∈ frontierActive G cfg ∧
+                action ∈ frontierAvailable G cfg who := by
+            simpa [hmove] using hcoord
+          have hpatchEq : patch = action.patch idx.1 := by
+            have hpure :
+                patch ∈
+                  (PMF.pure (action.patch idx.1) :
+                    PMF G.FieldPatch).support := by
+              simpa [frontierPatchDist, hactor, hmove] using hpatch
+            exact
+              (PMF.mem_support_pure_iff
+                (action.patch idx.1) patch).mp hpure
+          rw [hpatchEq]
+          exact (hround.2 idx.2 hactor).1
+
+/-- Combine already-fixed prefix patches with sampled patches for the remaining
+source frontier. Coordinates in `done` are read from `donePatch`; every other
+source-frontier coordinate is read from `realization`. -/
+private noncomputable def combinedFrontierConfig
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    (realization : FrontierRealization G cfg)
+    (hrealLegal : realization.Legal) :
+    G.Configuration :=
+  cfg.withFrontierPatches
+    (fun node hfrontier =>
+      if hdone : node ∈ done then
+        donePatch node hdone
+      else
+        realization.patchAt node hfrontier)
+    (fun node hfrontier => by
+      by_cases hdone : node ∈ done
+      · simpa [hdone] using doneLegal node hdone
+      · simpa [hdone] using hrealLegal ⟨node, hfrontier⟩)
+
+private theorem combinedFrontierConfig_empty
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (realization : FrontierRealization G cfg)
+    (hrealLegal : realization.Legal) :
+    combinedFrontierConfig G cfg (done := ∅)
+      (fun _ hnode => False.elim (by simp at hnode))
+      (fun _ hnode => False.elim (by simp at hnode))
+      realization hrealLegal =
+      cfg.extendFrontier realization hrealLegal := by
+  classical
+  apply Configuration.ext
+  funext node
+  by_cases hfrontier : node ∈ cfg.frontier
+  · simp [combinedFrontierConfig, hfrontier, Configuration.extendFrontier]
+  · simp [combinedFrontierConfig, hfrontier, Configuration.extendFrontier]
+
+private theorem combinedFrontierConfig_of_cover
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    {done : Finset G.Node}
+    (hdoneSubset : done ⊆ cfg.frontier)
+    (hcover : ∀ node, node ∈ cfg.frontier → node ∈ done)
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    (realization : FrontierRealization G cfg)
+    (hrealLegal : realization.Legal) :
+    combinedFrontierConfig G cfg donePatch doneLegal realization hrealLegal =
+      cfg.withNodePatches done hdoneSubset donePatch doneLegal := by
+  classical
+  apply Configuration.ext
+  funext node
+  by_cases hfrontier : node ∈ cfg.frontier
+  · have hdone : node ∈ done := hcover node hfrontier
+    simp [combinedFrontierConfig, hfrontier, hdone]
+  · have hdone : node ∉ done := by
+      intro h
+      exact hfrontier (hdoneSubset h)
+    simp [combinedFrontierConfig, hfrontier, hdone]
+
+/-- A scheduled source-frontier node step is the source coordinate patch law
+followed by the deterministic prefix update. -/
+private theorem frontierStepNode_withNodePatches_eq_bind_patchDist
+    (G : Vegas.EventGraph Player L)
+    (hsound : G.HasLocalFrontierSteps)
+    {cfg : G.Configuration}
+    {joint : JointAction (PlayerFrontierAction G)}
+    (hjoint :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (hdoneSubset : done ⊆ cfg.frontier)
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    {node : G.Node}
+    (hnodeFrontier : node ∈ cfg.frontier)
+    (hnotDone : node ∉ done) :
+    let current := cfg.withNodePatches done hdoneSubset donePatch doneLegal
+    let hcurrentFrontier : node ∈ current.frontier :=
+      cfg.withNodePatches_mem_frontier_of_not_mem
+        hdoneSubset donePatch doneLegal hnodeFrontier hnotDone
+    frontierStepNode G joint node current =
+      (by
+        classical
+        exact
+          (frontierPatchDist G cfg joint hjoint
+            ⟨node, hnodeFrontier⟩).bind fun patch =>
+            if hpatch :
+                patch ∈
+                  (frontierPatchDist G cfg joint hjoint
+                    ⟨node, hnodeFrontier⟩).support then
+              PMF.pure
+                (current.withPatch patch hcurrentFrontier
+                  (frontierPatchDist_support_legal G cfg joint hjoint
+                    ⟨node, hnodeFrontier⟩ hpatch))
+            else
+              PMF.pure current) := by
+  classical
+  dsimp
+  let current := cfg.withNodePatches done hdoneSubset donePatch doneLegal
+  have hcurrentFrontier : node ∈ current.frontier :=
+    cfg.withNodePatches_mem_frontier_of_not_mem
+      hdoneSubset donePatch doneLegal hnodeFrontier hnotDone
+  cases hactor : (G.sem node).actor with
+  | some who =>
+      have hactive : who ∈ frontierActive G cfg :=
+        (mem_frontierActive_iff G cfg who).mpr
+          ⟨node, hnodeFrontier, hactor⟩
+      have hcoord := hjoint.2 who
+      cases hmove : joint who with
+      | none =>
+          have hnot : who ∉ frontierActive G cfg := by
+            simpa [hmove] using hcoord
+          exact False.elim (hnot hactive)
+      | some action =>
+          have hround :
+              who ∈ frontierActive G cfg ∧
+                action ∈ frontierAvailable G cfg who := by
+            simpa [hmove] using hcoord
+          have hactionSource :
+              ({ node := node, patch := action.patch node } :
+                PlayerAction G who) ∈ available G cfg who := by
+            exact
+              ⟨hnodeFrontier, hactor,
+                (hround.2 hnodeFrontier hactor).1,
+                (hround.2 hnodeFrontier hactor).2⟩
+          have hactionCurrent :
+              ({ node := node, patch := action.patch node } :
+                PlayerAction G who) ∈ available G current who := by
+            dsimp [current]
+            exact available_after_withNodePatches_of_not_mem
+              G hsound cfg hdoneSubset donePatch doneLegal hnotDone
+              hactionSource
+          rw [frontierStepNode]
+          simp only [hactor, hmove]
+          rw [stepPlay_eq_pure_of_available G hactionCurrent]
+          have hpure :
+              action.patch node ∈
+                (frontierPatchDist G cfg joint hjoint
+                  ⟨node, hnodeFrontier⟩).support := by
+            simp [frontierPatchDist, hactor, hmove]
+          have hcfg :
+              current.withPatch (action.patch node) hactionCurrent.1
+                  hactionCurrent.2.2.1 =
+                (cfg.withNodePatches done hdoneSubset donePatch doneLegal).withPatch
+                  (action.patch node) hcurrentFrontier
+                  (frontierPatchDist_support_legal G cfg joint hjoint
+                    ⟨node, hnodeFrontier⟩ hpure) := by
+            apply Configuration.ext
+            funext candidate
+            by_cases hcandidate : candidate = node
+            · subst candidate
+              simp [current, Configuration.withPatch,
+                Configuration.updatePatch]
+            · simp [current, Configuration.withPatch,
+                Configuration.updatePatch, hcandidate]
+          simpa [frontierPatchDist, hactor, hmove, hpure] using
+            congrArg PMF.pure hcfg
+  | none =>
+      have hkernel :
+          G.internalKernel node current.result =
+            G.internalKernel node cfg.result := by
+        dsimp [current]
+        exact internalKernel_after_withNodePatches_of_not_mem
+          G hsound cfg hdoneSubset donePatch doneLegal
+          hnodeFrontier hnotDone
+      rw [frontierStepNode]
+      simp only [hactor]
+      rw [hkernel]
+      simp only [frontierPatchDist, hactor]
+      change
+        ((G.internalKernel node cfg.result).bind fun patch =>
+          stepInternal G (InternalEvent.node node patch)
+            (cfg.withNodePatches done hdoneSubset donePatch doneLegal)) =
+        ((G.internalKernel node cfg.result).bind fun patch =>
+          if hpatch : patch ∈ (G.internalKernel node cfg.result).support then
+            PMF.pure
+              ((cfg.withNodePatches done hdoneSubset donePatch doneLegal).withPatch
+                patch hcurrentFrontier
+                (frontierPatchDist_support_legal G cfg joint hjoint
+                  ⟨node, hnodeFrontier⟩
+                  (by simpa [frontierPatchDist, hactor] using hpatch)))
+          else
+            PMF.pure current)
+      refine Math.ProbabilityMassFunction.bind_congr_on_support
+        (G.internalKernel node cfg.result) _ _ ?_
+      intro patch hpatch
+      have hpatchFrontier :
+          patch ∈
+            (frontierPatchDist G cfg joint hjoint
+              ⟨node, hnodeFrontier⟩).support := by
+        simpa [frontierPatchDist, hactor] using hpatch
+      have hpatchLegal : G.patchLegal node patch :=
+        frontierPatchDist_support_legal G cfg joint hjoint
+          ⟨node, hnodeFrontier⟩ hpatchFrontier
+      have havailable :
+          (InternalEvent.node node patch : InternalEvent G) ∈
+            availableInternal G current := by
+        refine ⟨hcurrentFrontier, hactor, ?_⟩
+        rw [hkernel]
+        exact hpatch
+      rw [stepInternal_eq_pure_of_available G havailable
+        hcurrentFrontier hpatchLegal]
+      have hne : ¬ (G.internalKernel node cfg.result) patch = 0 := by
+        simpa [PMF.mem_support_iff] using hpatch
+      have hcfg :
+          current.withPatch patch hcurrentFrontier hpatchLegal =
+            (cfg.withNodePatches done hdoneSubset donePatch doneLegal).withPatch
+              patch hcurrentFrontier
+              (frontierPatchDist_support_legal G cfg joint hjoint
+                ⟨node, hnodeFrontier⟩
+                (by simpa [frontierPatchDist, hactor] using hpatch)) := by
+        apply Configuration.ext
+        funext candidate
+        by_cases hcandidate : candidate = node
+        · subst candidate
+          simp [current, Configuration.withPatch, Configuration.updatePatch]
+        · simp [current, Configuration.withPatch, Configuration.updatePatch,
+            hcandidate]
+      simpa [hne] using congrArg PMF.pure hcfg
+
+/-- Source coordinate patch law with an executed prefix forced to its already
+sampled values. -/
+private noncomputable def frontierPatchDistWithDone
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (idx : FrontierIndex G cfg) :
+    PMF G.FieldPatch :=
+  if hdone : idx.1 ∈ done then
+    PMF.pure (donePatch idx.1 hdone)
+  else
+    frontierPatchDist G cfg joint hlegal idx
+
+private theorem frontierPatchDistWithDone_eq_source_of_not_mem
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    {idx : FrontierIndex G cfg}
+    (hnot : idx.1 ∉ done) :
+    frontierPatchDistWithDone G cfg joint hlegal donePatch idx =
+      frontierPatchDist G cfg joint hlegal idx := by
+  simp [frontierPatchDistWithDone, hnot]
+
+private theorem pmfPi_support_coord
+    {ι : Type} [Fintype ι]
+    {A : ι → Type}
+    (σ : ∀ i, PMF (A i))
+    {patches : ∀ i, A i}
+    (hsupp : patches ∈ (Math.PMFProduct.pmfPi σ).support)
+    (idx : ι) :
+    patches idx ∈ (σ idx).support := by
+  classical
+  have hmass :
+      (Math.PMFProduct.pmfPi σ) patches ≠ 0 :=
+    (PMF.mem_support_iff _ _).mp hsupp
+  have hprod :
+      (∏ idx, σ idx (patches idx)) ≠ 0 := by
+    simpa [Math.PMFProduct.pmfPi_apply] using hmass
+  have hcoord :
+      σ idx (patches idx) ≠ 0 :=
+    (Finset.prod_ne_zero_iff).mp hprod idx (Finset.mem_univ idx)
+  exact (PMF.mem_support_iff _ _).mpr hcoord
+
+private theorem frontierPatchDistWithDone_support_legal
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    {patches : FrontierIndex G cfg → G.FieldPatch}
+    (hsupp :
+      patches ∈
+        (Math.PMFProduct.pmfPi
+          (frontierPatchDistWithDone G cfg joint hlegal
+            donePatch)).support) :
+    ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (patches idx) := by
+  classical
+  intro idx
+  have hcoord :=
+    pmfPi_support_coord
+      (frontierPatchDistWithDone G cfg joint hlegal donePatch)
+      hsupp idx
+  by_cases hdone : idx.1 ∈ done
+  · have hpure :
+        patches idx ∈
+          (PMF.pure (donePatch idx.1 hdone) :
+            PMF G.FieldPatch).support := by
+        simpa [frontierPatchDistWithDone, hdone] using hcoord
+    have hpatch : patches idx = donePatch idx.1 hdone :=
+      (PMF.mem_support_pure_iff (donePatch idx.1 hdone)
+        (patches idx)).mp hpure
+    rw [hpatch]
+    exact doneLegal idx.1 hdone
+  · have hsource :
+        patches idx ∈
+          (frontierPatchDist G cfg joint hlegal idx).support := by
+        simpa [frontierPatchDistWithDone, hdone] using hcoord
+    exact frontierPatchDist_support_legal G cfg joint hlegal idx hsource
+
+private theorem frontierPatchDistWithDone_pointwise_legal
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    {patches : FrontierIndex G cfg → G.FieldPatch}
+    (hsupp :
+      ∀ idx : FrontierIndex G cfg,
+        patches idx ∈
+          (frontierPatchDistWithDone G cfg joint hlegal
+            donePatch idx).support) :
+    ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (patches idx) := by
+  classical
+  intro idx
+  have hcoord := hsupp idx
+  by_cases hdone : idx.1 ∈ done
+  · have hpure :
+        patches idx ∈
+          (PMF.pure (donePatch idx.1 hdone) :
+            PMF G.FieldPatch).support := by
+        simpa [frontierPatchDistWithDone, hdone] using hcoord
+    have hpatch : patches idx = donePatch idx.1 hdone :=
+      (PMF.mem_support_pure_iff (donePatch idx.1 hdone)
+        (patches idx)).mp hpure
+    rw [hpatch]
+    exact doneLegal idx.1 hdone
+  · have hsource :
+        patches idx ∈
+          (frontierPatchDist G cfg joint hlegal idx).support := by
+        simpa [frontierPatchDistWithDone, hdone] using hcoord
+    exact frontierPatchDist_support_legal G cfg joint hlegal idx hsource
+
+private noncomputable def configOfFrontierPatches
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (patches : FrontierIndex G cfg → G.FieldPatch)
+    (hlegal :
+      ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (patches idx)) :
+    G.Configuration :=
+  cfg.withFrontierPatches
+    (fun node hfrontier => patches ⟨node, hfrontier⟩)
+    (fun node hfrontier => hlegal ⟨node, hfrontier⟩)
+
+private noncomputable def frontierProductConfigDist
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (hdoneSubset : done ⊆ cfg.frontier)
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode)) :
+    PMF G.Configuration := by
+  classical
+  exact
+    (Math.PMFProduct.pmfPi
+      (frontierPatchDistWithDone G cfg joint hlegal donePatch)).bind
+      fun patches =>
+        if hsupp :
+            ∀ idx : FrontierIndex G cfg,
+              patches idx ∈
+                (frontierPatchDistWithDone G cfg joint hlegal
+                  donePatch idx).support then
+          PMF.pure
+            (configOfFrontierPatches G cfg patches
+              (frontierPatchDistWithDone_pointwise_legal G cfg joint hlegal
+                donePatch doneLegal hsupp))
+        else
+          PMF.pure (cfg.withNodePatches done hdoneSubset donePatch doneLegal)
+
+private theorem frontierPatchDistWithDone_insert_eq_update
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerFrontierAction G))
+    (hlegal :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    {node : G.Node} (hnodeFrontier : node ∈ cfg.frontier)
+    (nodePatch : G.FieldPatch) :
+    let inserted : Finset G.Node := insert node done
+    let insertedPatch :
+        ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+      fun candidate hcandidate =>
+        if h : candidate = node then
+          nodePatch
+        else
+          donePatch candidate (by
+            rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+            · exact False.elim (h hmem)
+            · exact hmem)
+    (fun idx =>
+      frontierPatchDistWithDone G cfg joint hlegal insertedPatch idx) =
+      Function.update
+        (fun idx =>
+          frontierPatchDistWithDone G cfg joint hlegal donePatch idx)
+        ⟨node, hnodeFrontier⟩
+        (PMF.pure nodePatch) := by
+  classical
+  funext idx
+  by_cases hidx : idx = ⟨node, hnodeFrontier⟩
+  · subst idx
+    simp [frontierPatchDistWithDone]
+  · have hidxNode : idx.1 ≠ node := by
+      intro hnode
+      apply hidx
+      apply Subtype.ext
+      exact hnode
+    simp [frontierPatchDistWithDone, Function.update_of_ne hidx,
+      hidxNode]
+
+private theorem configOfFrontierPatches_eq_extend
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (realization : FrontierRealization G cfg)
+    (hlegal : realization.Legal) :
+    configOfFrontierPatches G cfg realization.patch hlegal =
+      cfg.extendFrontier realization hlegal := by
+  rfl
+
 /-- Order-free state transition induced by a legal frontier realization. The
 fallback branch is unreachable on the support of well-formed event graphs; it
 keeps the function total over Lean's unconstrained PMF samples. -/
 noncomputable def frontierRealizationTransition
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (joint :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg joint }) :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
     PMF G.Configuration := by
   classical
   exact
@@ -2548,14 +3034,755 @@ noncomputable def frontierRealizationTransition
       else
         PMF.pure cfg
 
-/-- Supported order-free round destinations come from a supported legal
+/-- On the support of the order-free frontier realization law, the totality
+fallback in `frontierRealizationTransition` is unreachable. -/
+theorem frontierRealizationTransition_eq_bind_extendFrontier
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    frontierRealizationTransition G cfg joint =
+      (by
+        classical
+        exact
+          (frontierRealizationDist G cfg joint.1 joint.2).bind
+            fun realization =>
+              if hsupp :
+                  realization ∈
+                    (frontierRealizationDist G cfg joint.1 joint.2).support then
+                PMF.pure
+                  (cfg.extendFrontier realization
+                    (frontierRealizationDist_support_legal
+                      G cfg joint.1 joint.2 hsupp))
+              else
+                PMF.pure cfg) := by
+  classical
+  unfold frontierRealizationTransition
+  refine Math.ProbabilityMassFunction.bind_congr_on_support
+    (frontierRealizationDist G cfg joint.1 joint.2)
+    (fun realization =>
+      if hlegal : realization.Legal then
+        PMF.pure (cfg.extendFrontier realization hlegal)
+      else
+        PMF.pure cfg)
+    (fun realization =>
+      if hsupp :
+          realization ∈
+            (frontierRealizationDist G cfg joint.1 joint.2).support then
+        PMF.pure
+          (cfg.extendFrontier realization
+            (frontierRealizationDist_support_legal
+              G cfg joint.1 joint.2 hsupp))
+      else
+        PMF.pure cfg)
+    ?_
+  · intro realization hsupp
+    have hlegal :
+        realization.Legal :=
+      frontierRealizationDist_support_legal G cfg joint.1 joint.2 hsupp
+    simp [hlegal, hsupp]
+
+/-- Raw-product normal form for the order-free frontier transition. -/
+private theorem frontierRealizationTransition_eq_bind_configOfPatches
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    frontierRealizationTransition G cfg joint =
+      (by
+        classical
+        let sourceFamily :=
+          frontierPatchDist G cfg joint.1 joint.2
+        exact
+          (Math.PMFProduct.pmfPi sourceFamily).bind fun patches =>
+            if hsupp :
+                patches ∈ (Math.PMFProduct.pmfPi sourceFamily).support then
+              PMF.pure
+                (configOfFrontierPatches G cfg patches
+                  (frontierPatchDistWithDone_support_legal G cfg
+                    joint.1 joint.2
+                    (done := ∅)
+                    (fun node hnode => False.elim (by simp at hnode))
+                    (fun node hnode => False.elim (by simp at hnode))
+                    (by
+                      simpa [sourceFamily, frontierPatchDistWithDone] using
+                        hsupp)))
+            else
+              PMF.pure cfg) := by
+  classical
+  unfold frontierRealizationTransition frontierRealizationDist
+  rw [← PMF.bind_pure_comp
+    (fun patch : FrontierIndex G cfg → G.FieldPatch =>
+      ({ patch := patch } : FrontierRealization G cfg))
+    (Math.PMFProduct.pmfPi
+      (fun idx => frontierPatchDist G cfg joint.1 joint.2 idx))]
+  rw [PMF.bind_bind]
+  refine Math.ProbabilityMassFunction.bind_congr_on_support
+    (Math.PMFProduct.pmfPi
+      (fun idx => frontierPatchDist G cfg joint.1 joint.2 idx))
+    _ _ ?_
+  intro patches hsupp
+  have hrealSupp :
+      ({ patch := patches } : FrontierRealization G cfg) ∈
+        (PMF.map
+          (fun patch : FrontierIndex G cfg → G.FieldPatch =>
+            ({ patch := patch } : FrontierRealization G cfg))
+          (Math.PMFProduct.pmfPi
+            (fun idx => frontierPatchDist G cfg joint.1 joint.2 idx))).support :=
+    (PMF.mem_support_map_iff _ _ _).2 ⟨patches, hsupp, rfl⟩
+  have hrealLegal :
+      ({ patch := patches } : FrontierRealization G cfg).Legal :=
+    frontierRealizationDist_support_legal G cfg joint.1 joint.2 hrealSupp
+  have hpatchLegal :
+      ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (patches idx) :=
+    frontierPatchDistWithDone_support_legal G cfg joint.1 joint.2
+      (done := ∅)
+      (fun node hnode => False.elim (by simp at hnode))
+      (fun node hnode => False.elim (by simp at hnode))
+      (by simpa [frontierPatchDistWithDone] using hsupp)
+  have hcfg :
+      cfg.extendFrontier
+          ({ patch := patches } : FrontierRealization G cfg) hrealLegal =
+        configOfFrontierPatches G cfg patches hpatchLegal := by
+    rfl
+  simp [hrealLegal, hsupp, hcfg, configOfFrontierPatches]
+
+private theorem frontierProductConfigDist_empty_eq_frontierRealizationTransition
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    frontierProductConfigDist G cfg joint.1 joint.2
+      (done := ∅)
+      (by intro node hnode; simp at hnode)
+      (fun _ hnode => False.elim (by simp at hnode))
+      (fun _ hnode => False.elim (by simp at hnode)) =
+      frontierRealizationTransition G cfg joint := by
+  classical
+  rw [frontierRealizationTransition_eq_bind_configOfPatches]
+  unfold frontierProductConfigDist
+  let sourceFamily := frontierPatchDist G cfg joint.1 joint.2
+  change
+    (Math.PMFProduct.pmfPi sourceFamily).bind
+        (fun patches =>
+          if hpoint :
+              ∀ idx : FrontierIndex G cfg,
+                patches idx ∈ (sourceFamily idx).support then
+            PMF.pure
+              (configOfFrontierPatches G cfg patches
+                (frontierPatchDistWithDone_pointwise_legal G cfg
+                  joint.1 joint.2
+                  (done := ∅)
+                  (fun node hnode => False.elim (by simp at hnode))
+                  (fun node hnode => False.elim (by simp at hnode))
+                  (by simpa [sourceFamily, frontierPatchDistWithDone] using
+                    hpoint)))
+          else
+            PMF.pure
+              (cfg.withNodePatches ∅
+                (by intro node hnode; simp at hnode)
+                (fun _ hnode => False.elim (by simp at hnode))
+                (fun _ hnode => False.elim (by simp at hnode)))) =
+      (Math.PMFProduct.pmfPi sourceFamily).bind
+        (fun patches =>
+          if hsupp :
+              patches ∈
+                (Math.PMFProduct.pmfPi sourceFamily).support then
+            PMF.pure
+              (configOfFrontierPatches G cfg patches
+                (frontierPatchDistWithDone_support_legal G cfg
+                  joint.1 joint.2
+                  (done := ∅)
+                  (fun node hnode => False.elim (by simp at hnode))
+                  (fun node hnode => False.elim (by simp at hnode))
+                  (by simpa [sourceFamily, frontierPatchDistWithDone] using
+                    hsupp)))
+          else
+            PMF.pure cfg)
+  refine Math.ProbabilityMassFunction.bind_congr_on_support
+    (Math.PMFProduct.pmfPi sourceFamily) _ _ ?_
+  intro patches hsupp
+  have hpoint :
+      ∀ idx : FrontierIndex G cfg,
+        patches idx ∈ (sourceFamily idx).support := by
+    intro idx
+    exact pmfPi_support_coord sourceFamily hsupp idx
+  have hcfg :
+      configOfFrontierPatches G cfg patches
+          (frontierPatchDistWithDone_pointwise_legal G cfg
+            joint.1 joint.2
+            (done := ∅)
+            (fun node hnode => False.elim (by simp at hnode))
+            (fun node hnode => False.elim (by simp at hnode))
+            (by simpa [sourceFamily, frontierPatchDistWithDone] using
+              hpoint)) =
+        configOfFrontierPatches G cfg patches
+          (frontierPatchDistWithDone_support_legal G cfg
+            joint.1 joint.2
+            (done := ∅)
+            (fun node hnode => False.elim (by simp at hnode))
+            (fun node hnode => False.elim (by simp at hnode))
+            (by simpa [sourceFamily, frontierPatchDistWithDone] using
+              hsupp)) := by
+    apply Configuration.ext
+    funext node
+    by_cases hfrontier : node ∈ cfg.frontier
+    · simp [configOfFrontierPatches, hfrontier]
+    · simp [configOfFrontierPatches, hfrontier]
+  simp [hpoint, hsupp, hcfg]
+
+private theorem frontierProductConfigDist_of_cover
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    {joint : JointAction (PlayerFrontierAction G)}
+    (hjoint :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (hdoneSubset : done ⊆ cfg.frontier)
+    (hcover : ∀ node, node ∈ cfg.frontier → node ∈ done)
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode)) :
+    frontierProductConfigDist G cfg joint hjoint hdoneSubset
+      donePatch doneLegal =
+      PMF.pure (cfg.withNodePatches done hdoneSubset donePatch doneLegal) := by
+  classical
+  unfold frontierProductConfigDist
+  refine (Math.ProbabilityMassFunction.bind_congr_on_support
+    (Math.PMFProduct.pmfPi
+      (frontierPatchDistWithDone G cfg joint hjoint donePatch))
+    _ (fun _ => PMF.pure
+      (cfg.withNodePatches done hdoneSubset donePatch doneLegal)) ?_).trans ?_
+  · intro patches hsupp
+    have hpoint :
+        ∀ idx : FrontierIndex G cfg,
+          patches idx ∈
+            (frontierPatchDistWithDone G cfg joint hjoint
+              donePatch idx).support := by
+      intro idx
+      exact pmfPi_support_coord
+        (frontierPatchDistWithDone G cfg joint hjoint donePatch)
+        hsupp idx
+    have hcfg :
+        configOfFrontierPatches G cfg patches
+            (frontierPatchDistWithDone_pointwise_legal G cfg joint hjoint
+              donePatch doneLegal hpoint) =
+          cfg.withNodePatches done hdoneSubset donePatch doneLegal := by
+      apply Configuration.ext
+      funext node
+      by_cases hfrontier : node ∈ cfg.frontier
+      · have hdone : node ∈ done := hcover node hfrontier
+        have hpure :
+            patches ⟨node, hfrontier⟩ ∈
+              (PMF.pure (donePatch node hdone) :
+                PMF G.FieldPatch).support := by
+          simpa [frontierPatchDistWithDone, hdone] using
+            hpoint ⟨node, hfrontier⟩
+        have hpatch :
+            patches ⟨node, hfrontier⟩ = donePatch node hdone :=
+          (PMF.mem_support_pure_iff (donePatch node hdone)
+            (patches ⟨node, hfrontier⟩)).mp hpure
+        simp [configOfFrontierPatches, hfrontier, hdone, hpatch]
+      · have hdone : node ∉ done := by
+          intro h
+          exact hfrontier (hdoneSubset h)
+        simp [configOfFrontierPatches, hfrontier, hdone]
+    simp [hpoint, hcfg]
+  · simp [PMF.bind_const]
+
+private theorem frontierProductConfigDist_step
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    {joint : JointAction (PlayerFrontierAction G)}
+    (hjoint :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    {done : Finset G.Node}
+    (hdoneSubset : done ⊆ cfg.frontier)
+    (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+    (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode))
+    {node : G.Node}
+    (hnodeFrontier : node ∈ cfg.frontier)
+    (hnotDone : node ∉ done) :
+    let current := cfg.withNodePatches done hdoneSubset donePatch doneLegal
+    frontierProductConfigDist G cfg joint hjoint hdoneSubset
+      donePatch doneLegal =
+      (by
+        classical
+        exact
+          (frontierPatchDist G cfg joint hjoint
+            ⟨node, hnodeFrontier⟩).bind fun nodePatch =>
+            if hpatch :
+                nodePatch ∈
+                  (frontierPatchDist G cfg joint hjoint
+                    ⟨node, hnodeFrontier⟩).support then
+              let inserted : Finset G.Node := insert node done
+              let insertedSubset : inserted ⊆ cfg.frontier := by
+                intro candidate hcandidate
+                rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+                · subst candidate
+                  exact hnodeFrontier
+                · exact hdoneSubset hcandidate
+              let insertedPatch :
+                  ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+                fun candidate hcandidate =>
+                  if h : candidate = node then
+                    nodePatch
+                  else
+                    donePatch candidate (by
+                      rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                      · exact False.elim (h hmem)
+                      · exact hmem)
+              let insertedLegal :
+                  ∀ candidate hcandidate,
+                    G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+                intro candidate hcandidate
+                dsimp [insertedPatch]
+                split
+                · subst candidate
+                  exact frontierPatchDist_support_legal G cfg joint hjoint
+                    ⟨node, hnodeFrontier⟩ hpatch
+                · rename_i hne
+                  exact doneLegal candidate (by
+                    rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                    · exact False.elim (hne hmem)
+                    · exact hmem)
+              frontierProductConfigDist G cfg joint hjoint insertedSubset
+                insertedPatch insertedLegal
+            else
+              PMF.pure current) := by
+  classical
+  dsimp
+  let current := cfg.withNodePatches done hdoneSubset donePatch doneLegal
+  let idx : FrontierIndex G cfg := ⟨node, hnodeFrontier⟩
+  let familyDone :=
+    frontierPatchDistWithDone G cfg joint hjoint donePatch
+  let source := frontierPatchDist G cfg joint hjoint idx
+  have hfamilySource : Function.update familyDone idx source = familyDone := by
+    funext candidate
+    by_cases hcandidate : candidate = idx
+    · subst candidate
+      simp [familyDone, source, idx, frontierPatchDistWithDone, hnotDone]
+    · rw [Function.update_of_ne hcandidate]
+  unfold frontierProductConfigDist
+  change
+    (Math.PMFProduct.pmfPi familyDone).bind
+        (fun patches =>
+          if hpoint :
+              ∀ idx : FrontierIndex G cfg,
+                patches idx ∈ (familyDone idx).support then
+            PMF.pure
+              (configOfFrontierPatches G cfg patches
+                (frontierPatchDistWithDone_pointwise_legal G cfg joint hjoint
+                  donePatch doneLegal (by simpa [familyDone] using hpoint)))
+          else
+            PMF.pure current) =
+      source.bind fun nodePatch =>
+        if hpatch : nodePatch ∈ source.support then
+          let inserted : Finset G.Node := insert node done
+          let insertedSubset : inserted ⊆ cfg.frontier := by
+            intro candidate hcandidate
+            rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+            · subst candidate
+              exact hnodeFrontier
+            · exact hdoneSubset hcandidate
+          let insertedPatch :
+              ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+            fun candidate hcandidate =>
+              if h : candidate = node then
+                nodePatch
+              else
+                donePatch candidate (by
+                  rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                  · exact False.elim (h hmem)
+                  · exact hmem)
+          let insertedLegal :
+              ∀ candidate hcandidate,
+                G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+            intro candidate hcandidate
+            dsimp [insertedPatch]
+            split
+            · subst candidate
+              exact frontierPatchDist_support_legal G cfg joint hjoint
+                ⟨node, hnodeFrontier⟩ hpatch
+            · rename_i hne
+              exact doneLegal candidate (by
+                rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                · exact False.elim (hne hmem)
+                · exact hmem)
+          (Math.PMFProduct.pmfPi
+              (frontierPatchDistWithDone G cfg joint hjoint
+                insertedPatch)).bind
+            fun patches =>
+              if hpoint :
+                  ∀ idx : FrontierIndex G cfg,
+                    patches idx ∈
+                      (frontierPatchDistWithDone G cfg joint hjoint
+                        insertedPatch idx).support then
+                PMF.pure
+                  (configOfFrontierPatches G cfg patches
+                    (frontierPatchDistWithDone_pointwise_legal G cfg
+                      joint hjoint insertedPatch insertedLegal hpoint))
+              else
+                PMF.pure
+                  (cfg.withNodePatches inserted insertedSubset
+                    insertedPatch insertedLegal)
+        else
+          PMF.pure current
+  have hpmf :
+      Math.PMFProduct.pmfPi familyDone =
+        Math.PMFProduct.pmfPi (Function.update familyDone idx source) := by
+    exact congrArg Math.PMFProduct.pmfPi hfamilySource.symm
+  rw [hpmf]
+  rw [Math.PMFProduct.pmfPi_update_bind]
+  rw [PMF.bind_bind]
+  refine Math.ProbabilityMassFunction.bind_congr_on_support source _ _ ?_
+  intro nodePatch hnodePatch
+  have hpatchIff :
+      (if hpatch : nodePatch ∈ source.support then
+          let inserted : Finset G.Node := insert node done
+          let insertedSubset : inserted ⊆ cfg.frontier := by
+            intro candidate hcandidate
+            rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+            · subst candidate
+              exact hnodeFrontier
+            · exact hdoneSubset hcandidate
+          let insertedPatch :
+              ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+            fun candidate hcandidate =>
+              if h : candidate = node then
+                nodePatch
+              else
+                donePatch candidate (by
+                  rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                  · exact False.elim (h hmem)
+                  · exact hmem)
+          let insertedLegal :
+              ∀ candidate hcandidate,
+                G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+            intro candidate hcandidate
+            dsimp [insertedPatch]
+            split
+            · subst candidate
+              exact frontierPatchDist_support_legal G cfg joint hjoint
+                ⟨node, hnodeFrontier⟩ hpatch
+            · rename_i hne
+              exact doneLegal candidate (by
+                rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                · exact False.elim (hne hmem)
+                · exact hmem)
+          (Math.PMFProduct.pmfPi
+              (frontierPatchDistWithDone G cfg joint hjoint
+                insertedPatch)).bind
+            fun patches =>
+              if hpoint :
+                  ∀ idx : FrontierIndex G cfg,
+                    patches idx ∈
+                      (frontierPatchDistWithDone G cfg joint hjoint
+                        insertedPatch idx).support then
+                PMF.pure
+                  (configOfFrontierPatches G cfg patches
+                    (frontierPatchDistWithDone_pointwise_legal G cfg
+                      joint hjoint insertedPatch insertedLegal hpoint))
+              else
+                PMF.pure
+                  (cfg.withNodePatches inserted insertedSubset
+                    insertedPatch insertedLegal)
+        else
+          PMF.pure current) =
+        (let inserted : Finset G.Node := insert node done
+         let insertedSubset : inserted ⊆ cfg.frontier := by
+            intro candidate hcandidate
+            rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+            · subst candidate
+              exact hnodeFrontier
+            · exact hdoneSubset hcandidate
+          let insertedPatch :
+              ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+            fun candidate hcandidate =>
+              if h : candidate = node then
+                nodePatch
+              else
+                donePatch candidate (by
+                  rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                  · exact False.elim (h hmem)
+                  · exact hmem)
+          let insertedLegal :
+              ∀ candidate hcandidate,
+                G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+            intro candidate hcandidate
+            dsimp [insertedPatch]
+            split
+            · subst candidate
+              exact frontierPatchDist_support_legal G cfg joint hjoint
+                ⟨node, hnodeFrontier⟩ hnodePatch
+            · rename_i hne
+              exact doneLegal candidate (by
+                rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+                · exact False.elim (hne hmem)
+                · exact hmem)
+          (Math.PMFProduct.pmfPi
+              (frontierPatchDistWithDone G cfg joint hjoint
+                insertedPatch)).bind
+            fun patches =>
+              if hpoint :
+                  ∀ idx : FrontierIndex G cfg,
+                    patches idx ∈
+                      (frontierPatchDistWithDone G cfg joint hjoint
+                        insertedPatch idx).support then
+                PMF.pure
+                  (configOfFrontierPatches G cfg patches
+                    (frontierPatchDistWithDone_pointwise_legal G cfg
+                      joint hjoint insertedPatch insertedLegal hpoint))
+              else
+                PMF.pure
+                  (cfg.withNodePatches inserted insertedSubset
+                    insertedPatch insertedLegal)) := by
+    simp [hnodePatch]
+  rw [hpatchIff]
+  let inserted : Finset G.Node := insert node done
+  let insertedSubset : inserted ⊆ cfg.frontier := by
+    intro candidate hcandidate
+    rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+    · subst candidate
+      exact hnodeFrontier
+    · exact hdoneSubset hcandidate
+  let insertedPatch :
+      ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+    fun candidate hcandidate =>
+      if h : candidate = node then
+        nodePatch
+      else
+        donePatch candidate (by
+          rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+          · exact False.elim (h hmem)
+          · exact hmem)
+  let insertedLegal :
+      ∀ candidate hcandidate,
+        G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+    intro candidate hcandidate
+    dsimp [insertedPatch]
+    split
+    · subst candidate
+      exact frontierPatchDist_support_legal G cfg joint hjoint
+        ⟨node, hnodeFrontier⟩ hnodePatch
+    · rename_i hne
+      exact doneLegal candidate (by
+        rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+        · exact False.elim (hne hmem)
+        · exact hmem)
+  have hfamilyInserted :
+      (fun idx =>
+        frontierPatchDistWithDone G cfg joint hjoint insertedPatch idx) =
+        Function.update familyDone idx (PMF.pure nodePatch) := by
+    dsimp [insertedPatch, familyDone, idx]
+    exact frontierPatchDistWithDone_insert_eq_update
+      G cfg joint hjoint donePatch hnodeFrontier nodePatch
+  rw [← hfamilyInserted]
+  refine Math.ProbabilityMassFunction.bind_congr_on_support
+    (Math.PMFProduct.pmfPi
+      (frontierPatchDistWithDone G cfg joint hjoint insertedPatch)) _ _ ?_
+  intro patches hsupp
+  have hpointInserted :
+      ∀ idx : FrontierIndex G cfg,
+        patches idx ∈
+          (frontierPatchDistWithDone G cfg joint hjoint
+            insertedPatch idx).support := by
+    intro candidate
+    exact pmfPi_support_coord
+      (frontierPatchDistWithDone G cfg joint hjoint insertedPatch)
+      hsupp candidate
+  have hpointDone :
+      ∀ candidate : FrontierIndex G cfg,
+        patches candidate ∈ (familyDone candidate).support := by
+    intro candidate
+    by_cases hcandidate : candidate = idx
+    · subst candidate
+      have hpure :
+          patches idx ∈ (PMF.pure nodePatch : PMF G.FieldPatch).support := by
+        have hcoord :=
+          pmfPi_support_coord
+            (frontierPatchDistWithDone G cfg joint hjoint insertedPatch)
+            hsupp idx
+        have hfamilyAt := congrFun hfamilyInserted idx
+        rw [hfamilyAt] at hcoord
+        simpa [Function.update] using hcoord
+      have hpatchEq : patches idx = nodePatch :=
+        (PMF.mem_support_pure_iff nodePatch (patches idx)).mp hpure
+      rw [hpatchEq]
+      simpa [familyDone, source, idx, frontierPatchDistWithDone, hnotDone]
+        using hnodePatch
+    · have hcoord :=
+        pmfPi_support_coord
+          (frontierPatchDistWithDone G cfg joint hjoint insertedPatch)
+          hsupp candidate
+      have hsame :
+          frontierPatchDistWithDone G cfg joint hjoint insertedPatch candidate =
+            familyDone candidate := by
+        have hupdate :=
+          congrFun hfamilyInserted candidate
+        rw [Function.update_of_ne hcandidate] at hupdate
+        exact hupdate
+      simpa [hsame] using hcoord
+  have hcfg :
+      configOfFrontierPatches G cfg patches
+          (frontierPatchDistWithDone_pointwise_legal G cfg joint hjoint
+            donePatch doneLegal (by simpa [familyDone] using hpointDone)) =
+        configOfFrontierPatches G cfg patches
+          (frontierPatchDistWithDone_pointwise_legal G cfg joint hjoint
+            insertedPatch insertedLegal hpointInserted) := by
+    apply Configuration.ext
+    funext candidate
+    by_cases hfrontier : candidate ∈ cfg.frontier
+    · simp [configOfFrontierPatches, hfrontier]
+    · simp [configOfFrontierPatches, hfrontier]
+  rw [dif_pos (by simpa [familyDone] using hpointDone)]
+  rw [dif_pos hpointInserted]
+
+private theorem scheduledFrontierTransitionGo_eq_frontierProductConfigDist
+    (G : Vegas.EventGraph Player L)
+    (hsound : G.HasLocalFrontierSteps)
+    {cfg : G.Configuration}
+    {joint : JointAction (PlayerFrontierAction G)}
+    (hjoint :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint) :
+    ∀ (nodes : List G.Node) (done : Finset G.Node)
+      (_hnodup : nodes.Nodup)
+      (hdoneSubset : done ⊆ cfg.frontier)
+      (_hnodesSubset : ∀ node, node ∈ nodes → node ∈ cfg.frontier)
+      (_hdisjoint : ∀ node, node ∈ nodes → node ∉ done)
+      (_hcover : ∀ node, node ∈ cfg.frontier → node ∈ done ∨ node ∈ nodes)
+      (donePatch : ∀ node, node ∈ done → G.FieldPatch)
+      (doneLegal : ∀ node hnode, G.patchLegal node (donePatch node hnode)),
+        scheduledFrontierTransitionGo G joint nodes
+            (cfg.withNodePatches done hdoneSubset donePatch doneLegal) =
+          frontierProductConfigDist G cfg joint hjoint hdoneSubset
+            donePatch doneLegal
+  | [], done, _hnodup, hdoneSubset, _hnodesSubset, _hdisjoint, hcover,
+      donePatch, doneLegal => by
+      have hcoverDone :
+          ∀ node, node ∈ cfg.frontier → node ∈ done := by
+        intro node hfrontier
+        rcases hcover node hfrontier with hdone | hnodes
+        · exact hdone
+        · simp at hnodes
+      rw [scheduledFrontierTransitionGo]
+      rw [frontierProductConfigDist_of_cover
+        G cfg hjoint hdoneSubset hcoverDone donePatch doneLegal]
+  | node :: rest, done, hnodup, hdoneSubset, hnodesSubset,
+      hdisjoint, hcover, donePatch, doneLegal => by
+      classical
+      have hnodupData := List.nodup_cons.mp hnodup
+      have hnodeNotRest : node ∉ rest := hnodupData.1
+      have hrestNodup : rest.Nodup := hnodupData.2
+      have hnodeFrontier : node ∈ cfg.frontier :=
+        hnodesSubset node (by simp)
+      have hnodeNotDone : node ∉ done :=
+        hdisjoint node (by simp)
+      let current := cfg.withNodePatches done hdoneSubset donePatch doneLegal
+      have hcurrentFrontier : node ∈ current.frontier :=
+        cfg.withNodePatches_mem_frontier_of_not_mem
+          hdoneSubset donePatch doneLegal hnodeFrontier hnodeNotDone
+      rw [scheduledFrontierTransitionGo]
+      rw [frontierStepNode_withNodePatches_eq_bind_patchDist
+        G hsound hjoint hdoneSubset donePatch doneLegal
+        hnodeFrontier hnodeNotDone]
+      rw [PMF.bind_bind]
+      rw [frontierProductConfigDist_step G cfg hjoint hdoneSubset
+        donePatch doneLegal hnodeFrontier hnodeNotDone]
+      refine Math.ProbabilityMassFunction.bind_congr_on_support
+        (frontierPatchDist G cfg joint hjoint ⟨node, hnodeFrontier⟩)
+        _ _ ?_
+      intro nodePatch hnodePatch
+      let inserted : Finset G.Node := insert node done
+      have insertedSubset : inserted ⊆ cfg.frontier := by
+        intro candidate hcandidate
+        rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
+        · subst candidate
+          exact hnodeFrontier
+        · exact hdoneSubset hcandidate
+      let insertedPatch :
+          ∀ candidate, candidate ∈ inserted → G.FieldPatch :=
+        fun candidate hcandidate =>
+          if h : candidate = node then
+            nodePatch
+          else
+            donePatch candidate (by
+              rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+              · exact False.elim (h hmem)
+              · exact hmem)
+      have insertedLegal :
+          ∀ candidate hcandidate,
+            G.patchLegal candidate (insertedPatch candidate hcandidate) := by
+        intro candidate hcandidate
+        dsimp [insertedPatch]
+        split
+        · subst candidate
+          exact frontierPatchDist_support_legal G cfg joint hjoint
+            ⟨node, hnodeFrontier⟩ hnodePatch
+        · rename_i hne
+          exact doneLegal candidate (by
+            rcases Finset.mem_insert.mp hcandidate with hmem | hmem
+            · exact False.elim (hne hmem)
+            · exact hmem)
+      have hnextEq :
+          (current.withPatch nodePatch hcurrentFrontier
+              (frontierPatchDist_support_legal G cfg joint hjoint
+                ⟨node, hnodeFrontier⟩ hnodePatch)) =
+            cfg.withNodePatches inserted insertedSubset
+              insertedPatch insertedLegal := by
+        dsimp [current, inserted, insertedPatch, insertedLegal]
+        exact cfg.withNodePatches_insert_eq_withPatch
+          hdoneSubset donePatch doneLegal hnodeFrontier hnodeNotDone
+          nodePatch
+          (frontierPatchDist_support_legal G cfg joint hjoint
+            ⟨node, hnodeFrontier⟩ hnodePatch)
+      have hrestSubset :
+          ∀ candidate, candidate ∈ rest → candidate ∈ cfg.frontier := by
+        intro candidate hcandidate
+        exact hnodesSubset candidate (List.mem_cons_of_mem _ hcandidate)
+      have hrestDisjoint :
+          ∀ candidate, candidate ∈ rest → candidate ∉ inserted := by
+        intro candidate hcandidate hdone'
+        rcases Finset.mem_insert.mp hdone' with hcandidateNode | hdoneOld
+        · subst candidate
+          exact hnodeNotRest hcandidate
+        · exact hdisjoint candidate (List.mem_cons_of_mem _ hcandidate)
+            hdoneOld
+      have hrestCover :
+          ∀ candidate, candidate ∈ cfg.frontier →
+            candidate ∈ inserted ∨ candidate ∈ rest := by
+        intro candidate hcandidateFrontier
+        rcases hcover candidate hcandidateFrontier with hdoneOld | hnodes
+        · exact Or.inl (Finset.mem_insert_of_mem hdoneOld)
+        · rcases List.mem_cons.mp hnodes with hcandidateNode | hrest
+          · subst candidate
+            exact Or.inl (Finset.mem_insert_self node done)
+          · exact Or.inr hrest
+      have hih :
+          scheduledFrontierTransitionGo G joint rest
+              (cfg.withNodePatches inserted insertedSubset
+                insertedPatch insertedLegal) =
+            frontierProductConfigDist G cfg joint hjoint insertedSubset
+              insertedPatch insertedLegal :=
+        scheduledFrontierTransitionGo_eq_frontierProductConfigDist
+          G hsound hjoint rest inserted hrestNodup insertedSubset
+          hrestSubset hrestDisjoint hrestCover insertedPatch insertedLegal
+      rw [dif_pos hnodePatch]
+      rw [PMF.pure_bind]
+      rw [hnextEq]
+      simpa [hnodePatch] using hih
+
+/-- Supported order-free frontier destinations come from a supported legal
 frontier realization. -/
 theorem frontierRealizationTransition_support_extend
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
     (joint :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg joint })
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint })
     {dst : G.Configuration}
     (hdst : dst ∈ (frontierRealizationTransition G cfg joint).support) :
     ∃ realization,
@@ -2586,13 +3813,13 @@ theorem frontierRealizationTransition_congr
     {cfg₁ cfg₂ : G.Configuration}
     (hcfg : cfg₁ = cfg₂)
     {joint₁ :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg₁ joint }}
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg₁ joint }}
     {joint₂ :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg₂ joint }}
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg₂ joint }}
     (hjoint : joint₁.1 = joint₂.1) :
     frontierRealizationTransition G cfg₁ joint₁ =
       frontierRealizationTransition G cfg₂ joint₂ := by
@@ -2600,14 +3827,14 @@ theorem frontierRealizationTransition_congr
   apply congrArg (frontierRealizationTransition G cfg₁)
   exact Subtype.ext hjoint
 
-private theorem roundStepNode_support_withNodePatches_realization
+private theorem frontierStepNode_support_withNodePatches_realization
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     (hjoint :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     {realization : FrontierRealization G cfg}
     (hrealSupp : realization ∈
       (frontierRealizationDist G cfg joint hjoint).support)
@@ -2633,7 +3860,7 @@ private theorem roundStepNode_support_withNodePatches_realization
     let nodePatch := realization.patchAt node hnodeFrontier
     (current.withPatch nodePatch hcurrentFrontier
         (hrealLegal ⟨node, hnodeFrontier⟩)) ∈
-      (roundStepNode G joint node current).support := by
+      (frontierStepNode G joint node current).support := by
   classical
   dsimp
   let donePatch :
@@ -2657,18 +3884,18 @@ private theorem roundStepNode_support_withNodePatches_realization
       ⟨node, hnodeFrontier⟩
   cases hactor : (G.sem node).actor with
   | some who =>
-      have hactive : who ∈ roundActive G cfg :=
-        (mem_roundActive_iff G cfg who).mpr ⟨node, hnodeFrontier, hactor⟩
+      have hactive : who ∈ frontierActive G cfg :=
+        (mem_frontierActive_iff G cfg who).mpr ⟨node, hnodeFrontier, hactor⟩
       have hcoordLegal := hjoint.2 who
       cases hmove : joint who with
       | none =>
-          have hnot : who ∉ roundActive G cfg := by
+          have hnot : who ∉ frontierActive G cfg := by
             simpa [hmove] using hcoordLegal
           exact False.elim (hnot hactive)
       | some action =>
           have hround :
-              who ∈ roundActive G cfg ∧
-                action ∈ roundAvailable G cfg who := by
+              who ∈ frontierActive G cfg ∧
+                action ∈ frontierAvailable G cfg who := by
             simpa [hmove] using hcoordLegal
           have hactionSource :
               ({ node := node, patch := action.patch node } :
@@ -2689,10 +3916,10 @@ private theorem roundStepNode_support_withNodePatches_realization
               simpa [frontierPatchDist, hactor, hmove, nodePatch,
                 FrontierRealization.patchAt] using hcoord
             exact (PMF.mem_support_pure_iff (action.patch node) nodePatch).mp hmem
-          rw [show roundStepNode G joint node current =
+          rw [show frontierStepNode G joint node current =
               stepPlay G who { node := node, patch := action.patch node }
                 current by
-            simp [roundStepNode, hactor, hmove]]
+            simp [frontierStepNode, hactor, hmove]]
           change current.withPatch nodePatch hcurrentFrontier hnodeLegal ∈
             (stepPlay G who { node := node, patch := action.patch node }
               current).support
@@ -2730,7 +3957,7 @@ private theorem roundStepNode_support_withNodePatches_realization
           (InternalEvent.node node nodePatch : InternalEvent G) ∈
             availableInternal G current := by
         exact ⟨hcurrentFrontier, hactor, hpatchCurrent⟩
-      rw [roundStepNode, hactor]
+      rw [frontierStepNode, hactor]
       rw [PMF.mem_support_bind_iff]
       refine ⟨nodePatch, hpatchCurrent, ?_⟩
       have hstep :
@@ -2892,14 +4119,14 @@ private theorem extendFrontier_eq_withNodePatches_of_cover
         hrealLegal ⟨candidate, hdoneSubset hcandidate⟩)
       hdone]
 
-private theorem roundTransitionGo_support_extendFrontier_from_prefix
+private theorem scheduledFrontierTransitionGo_support_extendFrontier_from_prefix
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     (hjoint :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     {realization : FrontierRealization G cfg}
     (hrealSupp : realization ∈
       (frontierRealizationDist G cfg joint hjoint).support)
@@ -2920,7 +4147,7 @@ private theorem roundTransitionGo_support_extendFrontier_from_prefix
           fun candidate hcandidate =>
             hrealLegal ⟨candidate, hdoneSubset hcandidate⟩
         cfg.extendFrontier realization hrealLegal ∈
-          (roundTransitionGo G joint nodes
+          (scheduledFrontierTransitionGo G joint nodes
             (cfg.withNodePatches done hdoneSubset
               donePatch doneLegal)).support
   | [], done, _hnodup, hdoneSubset, _hnodesSubset, _hdisjoint, hcover => by
@@ -2933,7 +4160,7 @@ private theorem roundTransitionGo_support_extendFrontier_from_prefix
       have heq :=
         extendFrontier_eq_withNodePatches_of_cover
           G hrealLegal hdoneSubset hcoverDone
-      simp [roundTransitionGo, heq]
+      simp [scheduledFrontierTransitionGo, heq]
   | node :: rest, done, hnodup, hdoneSubset, hnodesSubset,
       hdisjoint, hcover => by
       classical
@@ -2962,9 +4189,9 @@ private theorem roundTransitionGo_support_extendFrontier_from_prefix
         current.withPatch nodePatch hcurrentFrontier
           (hrealLegal ⟨node, hnodeFrontier⟩)
       have hstep :
-          mid ∈ (roundStepNode G joint node current).support := by
+          mid ∈ (frontierStepNode G joint node current).support := by
         dsimp [mid, current, nodePatch, donePatch, doneLegal]
-        exact roundStepNode_support_withNodePatches_realization
+        exact frontierStepNode_support_withNodePatches_realization
           G hsound hjoint hrealSupp hrealLegal hdoneSubset
           hnodeFrontier hnodeNotDone
       let done' := insert node done
@@ -3013,38 +4240,38 @@ private theorem roundTransitionGo_support_extendFrontier_from_prefix
           · exact Or.inr hrest
       have hrest :
           cfg.extendFrontier realization hrealLegal ∈
-            (roundTransitionGo G joint rest
+            (scheduledFrontierTransitionGo G joint rest
               (cfg.withNodePatches done' hdoneSubset'
                 donePatch' doneLegal')).support :=
-        roundTransitionGo_support_extendFrontier_from_prefix
+        scheduledFrontierTransitionGo_support_extendFrontier_from_prefix
           G hsound hjoint hrealSupp hrealLegal rest done'
           hrestNodup hdoneSubset' hrestSubset hrestDisjoint hrestCover
       change cfg.extendFrontier realization hrealLegal ∈
-        (roundTransitionGo G joint (node :: rest) current).support
-      rw [roundTransitionGo.eq_def]
+        (scheduledFrontierTransitionGo G joint (node :: rest) current).support
+      rw [scheduledFrontierTransitionGo.eq_def]
       rw [PMF.mem_support_bind_iff]
       refine ⟨mid, hstep, ?_⟩
       simpa [hmid]
 
 /-- Every destination supported by the order-free frontier-realization
 transition is also supported by the canonical scheduled representative. -/
-theorem frontierRealizationTransition_support_roundTransition
+theorem frontierRealizationTransition_support_scheduledFrontierTransition
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg : G.Configuration}
     (joint :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg joint })
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint })
     {dst : G.Configuration}
     (hdst : dst ∈ (frontierRealizationTransition G cfg joint).support) :
-    dst ∈ (roundTransition G cfg joint.1).support := by
+    dst ∈ (scheduledFrontierTransition G cfg joint.1).support := by
   classical
   rcases frontierRealizationTransition_support_extend G cfg joint hdst with
     ⟨realization, hrealSupp, hrealLegal, hdstEq⟩
   subst dst
-  unfold roundTransition
-  exact roundTransitionGo_support_extendFrontier_from_prefix
+  unfold scheduledFrontierTransition
+  exact scheduledFrontierTransitionGo_support_extendFrontier_from_prefix
     G hsound joint.2 hrealSupp hrealLegal cfg.frontier.toList ∅
     (by simpa using cfg.frontier.nodup_toList)
     (by intro node hnode; simp at hnode)
@@ -3059,109 +4286,172 @@ theorem frontierRealizationTransition_support_roundTransition
 /-- Any explicit source-frontier schedule induces the same state kernel as the
 canonical scheduled representative. Thus `frontier.toList` is a chosen
 linearization, not semantic event-graph content. -/
-theorem roundTransitionWithSchedule_eq_roundTransition
+theorem frontierTransitionWithSchedule_eq_scheduledFrontierTransition
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     (schedule : FrontierSchedule G cfg) :
-    roundTransitionWithSchedule G cfg joint schedule =
-      roundTransition G cfg joint := by
+    frontierTransitionWithSchedule G cfg joint schedule =
+      scheduledFrontierTransition G cfg joint := by
   classical
-  unfold roundTransitionWithSchedule roundTransition
-  exact roundTransitionGo_eq_of_perm_ready G hsound joint
+  unfold frontierTransitionWithSchedule scheduledFrontierTransition
+  exact scheduledFrontierTransitionGo_eq_of_perm_ready G hsound joint
     schedule.perm_toCanonical schedule.nodup
     (fun node hnode =>
-      roundNodeReady_of_legal G hlegal
+      frontierNodeReady_of_legal G hlegal
         ((schedule.mem_iff node).1 hnode))
 
+/-- The order-free frontier transition and the canonical scheduled
+representative have the same destination distribution. -/
+theorem frontierRealizationTransition_eq_scheduledFrontierTransition
+    (G : Vegas.EventGraph Player L)
+    (hsound : G.HasLocalFrontierSteps)
+    {cfg : G.Configuration}
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    frontierRealizationTransition G cfg joint =
+      scheduledFrontierTransition G cfg joint.1 := by
+  classical
+  rw [← frontierProductConfigDist_empty_eq_frontierRealizationTransition
+    G cfg joint]
+  unfold scheduledFrontierTransition
+  exact
+    (scheduledFrontierTransitionGo_eq_frontierProductConfigDist
+      G hsound joint.2 cfg.frontier.toList ∅
+      (by simpa using cfg.frontier.nodup_toList)
+      (by intro node hnode; simp at hnode)
+      (by intro node hnode; exact Finset.mem_toList.mp hnode)
+      (by intro node hnode hdone; simp at hdone)
+      (by
+        intro node hfrontier
+        exact Or.inr (Finset.mem_toList.mpr hfrontier))
+      (fun _ hnode => by simp at hnode)
+      (fun _ hnode => by simp at hnode)).symm
+
 /-- Distribution over the realized primitive event batch and destination of one
-frontier round.
+frontier step.
 
 The sampler walks the source frontier in canonical order, sampling internal
 kernels from the threaded current result as their nodes are reached and
 recording the concrete primitive event that is executed. Under
-`HasLocalFrontierRounds`, the kernel-stability lemmas make this canonical
-walk a representative linearization of the local frontier round. -/
-noncomputable def explicitRoundBatchDist
+`HasLocalFrontierSteps`, the kernel-stability lemmas make this canonical
+walk a representative linearization of the local frontier step. -/
+noncomputable def explicitFrontierBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     PMF (List (G.toMachine iface).Event × G.Configuration) :=
-  explicitRoundBatchWalk G iface cfg joint
+  explicitFrontierBatchWalk G iface cfg joint
 
 /-- Forgetting realized primitive events from the explicit batch distribution
 recovers the canonical scheduled representative transition. -/
-theorem explicitRoundBatchDist_map_state_eq_roundTransition
+theorem explicitFrontierBatchDist_map_state_eq_scheduledFrontierTransition
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G)) :
-    PMF.map Prod.snd (explicitRoundBatchDist G iface cfg joint) =
-      roundTransition G cfg joint := by
+    (joint : JointAction (PlayerFrontierAction G)) :
+    PMF.map Prod.snd (explicitFrontierBatchDist G iface cfg joint) =
+      scheduledFrontierTransition G cfg joint := by
   classical
-  unfold explicitRoundBatchDist explicitRoundBatchWalk
-  unfold roundTransition
-  exact explicitRoundBatchGo_map_state G iface joint cfg.frontier.toList [] cfg
+  unfold explicitFrontierBatchDist explicitFrontierBatchWalk
+  unfold scheduledFrontierTransition
+  exact explicitFrontierBatchGo_map_state G iface joint cfg.frontier.toList [] cfg
 
 /-- Decorating every scheduled round destination with its realized primitive
 event batch is exactly the operational explicit-batch distribution. -/
-theorem roundTransition_map_realizedEventBatch_eq_explicitRoundBatchDist
+theorem scheduledFrontierTransition_map_realizedEventBatch_eq_explicitFrontierBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
-    (joint : JointAction (PlayerRoundAction G)) :
+    (joint : JointAction (PlayerFrontierAction G)) :
     PMF.map (fun dst => (realizedEventBatch G iface cfg joint dst, dst))
-        (roundTransition G cfg joint) =
-      explicitRoundBatchDist G iface cfg joint := by
+        (scheduledFrontierTransition G cfg joint) =
+      explicitFrontierBatchDist G iface cfg joint := by
   classical
-  unfold realizedEventBatch explicitRoundBatchDist explicitRoundBatchWalk
-  unfold roundTransition
+  unfold realizedEventBatch explicitFrontierBatchDist explicitFrontierBatchWalk
+  unfold scheduledFrontierTransition
   simpa using
-    (explicitRoundBatchGo_eq_map_roundTransitionGo
+    (explicitFrontierBatchGo_eq_map_scheduledFrontierTransitionGo
       G iface joint cfg.frontier.toList []
       (by simpa using cfg.frontier.nodup_toList)
       (by
         intro node hnode
         simpa using hnode))
 
+/-- Forgetting realized primitive events from the explicit batch distribution
+recovers the order-free frontier transition. -/
+theorem explicitFrontierBatchDist_map_state_eq_frontierRealizationTransition
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierSteps)
+    {cfg : G.Configuration}
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    PMF.map Prod.snd (explicitFrontierBatchDist G iface cfg joint.1) =
+      frontierRealizationTransition G cfg joint := by
+  rw [explicitFrontierBatchDist_map_state_eq_scheduledFrontierTransition]
+  exact (frontierRealizationTransition_eq_scheduledFrontierTransition
+    G hsound joint).symm
+
+/-- Decorating every order-free frontier destination with its realized
+primitive event batch is exactly the operational explicit-batch distribution. -/
+theorem frontierRealizationTransition_map_realizedEventBatch_eq_explicitFrontierBatchDist
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierSteps)
+    {cfg : G.Configuration}
+    (joint :
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint }) :
+    PMF.map (fun dst => (realizedEventBatch G iface cfg joint.1 dst, dst))
+        (frontierRealizationTransition G cfg joint) =
+      explicitFrontierBatchDist G iface cfg joint.1 := by
+  rw [frontierRealizationTransition_eq_scheduledFrontierTransition
+    G hsound joint]
+  exact scheduledFrontierTransition_map_realizedEventBatch_eq_explicitFrontierBatchDist
+    G iface cfg joint.1
+
 /-- Every supported explicit realized batch is executable as a primitive
 machine event trace from the round source to its recorded destination. -/
-theorem explicitRoundBatchDist_support_runEventsFrom
+theorem explicitFrontierBatchDist_support_runEventsFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     {batch : List (G.toMachine iface).Event}
     (hsupp : (batch, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint).support) :
+      (explicitFrontierBatchDist G iface cfg joint).support) :
     dst ∈ ((G.toMachine iface).runEventsFrom batch cfg).support := by
   classical
-  unfold explicitRoundBatchDist explicitRoundBatchWalk at hsupp
-  rcases explicitRoundBatchGo_support_runEventsFrom_suffix
+  unfold explicitFrontierBatchDist explicitFrontierBatchWalk at hsupp
+  rcases explicitFrontierBatchGo_support_runEventsFrom_suffix
       G iface joint cfg.frontier.toList [] cfg hsupp with
     ⟨suffix, hbatch, hrun⟩
   rw [hbatch]
   simpa using hrun
 
-/-- Under local frontier rounds, every supported explicit realized batch
+/-- Under local frontier-step locality, every supported explicit realized batch
 is a primitive machine run whose events are available at the states where they
 are executed. -/
-theorem explicitRoundBatchDist_support_availableRunFrom
+theorem explicitFrontierBatchDist_support_availableRunFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     {batch : List (G.toMachine iface).Event}
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     (hsupp : (batch, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint).support) :
+      (explicitFrontierBatchDist G iface cfg joint).support) :
     (G.toMachine iface).AvailableRunFrom cfg batch dst := by
   classical
-  unfold explicitRoundBatchDist explicitRoundBatchWalk at hsupp
-  rcases explicitRoundBatchGo_support_availableRunFrom_suffix
+  unfold explicitFrontierBatchDist explicitFrontierBatchWalk at hsupp
+  rcases explicitFrontierBatchGo_support_availableRunFrom_suffix
       G iface cfg joint hsound hlegal cfg.frontier.toList [] cfg
       (by simpa using cfg.frontier.nodup_toList)
       (by
@@ -3177,36 +4467,36 @@ theorem explicitRoundBatchDist_support_availableRunFrom
     ⟨suffix, hbatch, hrun⟩
   simpa [hbatch] using hrun
 
-/-- Nonzero-mass form of `explicitRoundBatchDist_support_runEventsFrom`, useful
+/-- Nonzero-mass form of `explicitFrontierBatchDist_support_runEventsFrom`, useful
 for callers phrased directly in PMF weights. -/
-theorem explicitRoundBatchDist_support_runEventsFrom_ne_zero
+theorem explicitFrontierBatchDist_support_runEventsFrom_ne_zero
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     {batch : List (G.toMachine iface).Event}
     (hsupp : (batch, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint).support) :
+      (explicitFrontierBatchDist G iface cfg joint).support) :
     ((G.toMachine iface).runEventsFrom batch cfg) dst ≠ 0 := by
   exact (PMF.mem_support_iff _ _).mp
-    (explicitRoundBatchDist_support_runEventsFrom G iface hsupp)
+    (explicitFrontierBatchDist_support_runEventsFrom G iface hsupp)
 
 /-- Legal source rounds never emit the totality-only idle fallback in supported
 explicit event batches. -/
-theorem explicitRoundBatchDist_support_no_idle
+theorem explicitFrontierBatchDist_support_no_idle
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     {batch : List (G.toMachine iface).Event}
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
     (hsupp : (batch, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint).support) :
+      (explicitFrontierBatchDist G iface cfg joint).support) :
     (Machine.Event.internal InternalEvent.idle :
       (G.toMachine iface).Event) ∉ batch := by
   classical
-  unfold explicitRoundBatchDist explicitRoundBatchWalk at hsupp
-  exact explicitRoundBatchGo_support_no_idle
+  unfold explicitFrontierBatchDist explicitFrontierBatchWalk at hsupp
+  exact explicitFrontierBatchGo_support_no_idle
     G iface cfg joint hlegal cfg.frontier.toList []
     (by simpa using cfg.frontier.nodup_toList)
     (by
@@ -3219,18 +4509,18 @@ theorem explicitRoundBatchDist_support_no_idle
     hsupp
 
 /-- Support-facing bridge form of the decorated explicit-batch theorem. -/
-theorem realizedEventBatch_mem_explicitRoundBatchDist_support
+theorem realizedEventBatch_mem_explicitFrontierBatchDist_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
-    (hdst : dst ∈ (roundTransition G cfg joint).support) :
+    {joint : JointAction (PlayerFrontierAction G)}
+    (hdst : dst ∈ (scheduledFrontierTransition G cfg joint).support) :
     (realizedEventBatch G iface cfg joint dst, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint).support := by
+      (explicitFrontierBatchDist G iface cfg joint).support := by
   classical
-  unfold explicitRoundBatchDist explicitRoundBatchWalk
-  unfold roundTransition at hdst
+  unfold explicitFrontierBatchDist explicitFrontierBatchWalk
+  unfold scheduledFrontierTransition at hdst
   simpa [realizedEventBatch] using
-    (explicitRoundBatchGo_support_of_roundTransitionGo_support
+    (explicitFrontierBatchGo_support_of_scheduledFrontierTransitionGo_support
       G iface joint cfg.frontier.toList []
       (by simpa using cfg.frontier.nodup_toList)
       (by
@@ -3238,21 +4528,21 @@ theorem realizedEventBatch_mem_explicitRoundBatchDist_support
         simpa using hnode)
       hdst)
 
-/-- Order-free round destinations have the same realized primitive batch
+/-- Order-free frontier destinations have the same realized primitive batch
 witness as the canonical scheduled representative. -/
-theorem realizedEventBatch_mem_explicitRoundBatchDist_support_of_frontier
+theorem realizedEventBatch_mem_explicitFrontierBatchDist_support_of_frontier
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg dst : G.Configuration}
     (joint :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg joint })
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint })
     (hdst : dst ∈ (frontierRealizationTransition G cfg joint).support) :
     (realizedEventBatch G iface cfg joint.1 dst, dst) ∈
-      (explicitRoundBatchDist G iface cfg joint.1).support :=
-  realizedEventBatch_mem_explicitRoundBatchDist_support G iface
-    (frontierRealizationTransition_support_roundTransition
+      (explicitFrontierBatchDist G iface cfg joint.1).support :=
+  realizedEventBatch_mem_explicitFrontierBatchDist_support G iface
+    (frontierRealizationTransition_support_scheduledFrontierTransition
       G hsound joint hdst)
 
 /-- Realized primitive batches extracted from the native order-free frontier
@@ -3260,34 +4550,34 @@ transition execute from the source configuration to the realized destination,
 with every primitive event available at its execution state. -/
 theorem realizedEventBatch_availableRunFrom_of_frontierRealizationTransition_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasLocalFrontierRounds)
+    (hsound : G.HasLocalFrontierSteps)
     {cfg dst : G.Configuration}
     (joint :
-      { joint : JointAction (PlayerRoundAction G) //
-        JointActionLegal (PlayerRoundAction G) (roundActive G)
-          Configuration.terminal (roundAvailable G) cfg joint })
+      { joint : JointAction (PlayerFrontierAction G) //
+        JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+          Configuration.terminal (frontierAvailable G) cfg joint })
     (hdst : dst ∈ (frontierRealizationTransition G cfg joint).support) :
     (G.toMachine iface).AvailableRunFrom cfg
       (realizedEventBatch G iface cfg joint.1 dst) dst :=
-  explicitRoundBatchDist_support_availableRunFrom G iface hsound joint.2
-    (realizedEventBatch_mem_explicitRoundBatchDist_support_of_frontier
+  explicitFrontierBatchDist_support_availableRunFrom G iface hsound joint.2
+    (realizedEventBatch_mem_explicitFrontierBatchDist_support_of_frontier
       G iface hsound joint hdst)
 
-/-- Legal supported round destinations have no totality-only idle fallback in
+/-- Legal supported scheduled frontier destinations have no totality-only idle fallback in
 their realized primitive event batch. -/
-theorem realizedEventBatch_no_idle_of_roundTransition_support
+theorem realizedEventBatch_no_idle_of_scheduledFrontierTransition_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     {cfg dst : G.Configuration}
-    {joint : JointAction (PlayerRoundAction G)}
+    {joint : JointAction (PlayerFrontierAction G)}
     (hlegal :
-      JointActionLegal (PlayerRoundAction G) (roundActive G)
-        Configuration.terminal (roundAvailable G) cfg joint)
-    (hdst : dst ∈ (roundTransition G cfg joint).support) :
+      JointActionLegal (PlayerFrontierAction G) (frontierActive G)
+        Configuration.terminal (frontierAvailable G) cfg joint)
+    (hdst : dst ∈ (scheduledFrontierTransition G cfg joint).support) :
     (Machine.Event.internal InternalEvent.idle :
       (G.toMachine iface).Event) ∉
       realizedEventBatch G iface cfg joint dst := by
-  exact explicitRoundBatchDist_support_no_idle G iface hlegal
-    (realizedEventBatch_mem_explicitRoundBatchDist_support
+  exact explicitFrontierBatchDist_support_no_idle G iface hlegal
+    (realizedEventBatch_mem_explicitFrontierBatchDist_support
       G iface hdst)
 
 end EventGraph

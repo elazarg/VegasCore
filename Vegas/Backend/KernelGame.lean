@@ -61,7 +61,8 @@ theorem behavioralCanonicalEventBatchTraceDistAt_map_outcome
 backend implementation.
 
 `specLaw_trace_eq` says that running the supplied specification event-batch law
-for the syntax horizon is exactly the canonical explicit event-batch trace law
+for the syntax horizon is exactly the canonical explicit event-batch trace
+distribution
 extracted from the order-free native round view. Payoff preservation is derived
 from this trace equality, not assumed directly. -/
 structure BackendPureEventBatchLawLift
@@ -70,6 +71,10 @@ structure BackendPureEventBatchLawLift
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
   specLaw : pureProfileAt g → (eventGraphMachine g).EventBatchLaw
   backendLaw : pureProfileAt g → Impl.EventBatchLaw
+  legal_spec :
+    ∀ π, (eventGraphMachine g).IsLegalEventBatchLaw (specLaw π)
+  legal_backend :
+    ∀ π, Impl.IsLegalEventBatchLaw (backendLaw π)
   compatible :
     ∀ π, R.EventBatchLawCompatible (backendLaw π) (specLaw π)
   specLaw_trace_eq :
@@ -86,6 +91,10 @@ structure BackendBehavioralEventBatchLawLift
     (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g)) where
   specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).EventBatchLaw
   backendLaw : behavioralProfilePMFAt g → Impl.EventBatchLaw
+  legal_spec :
+    ∀ β, (eventGraphMachine g).IsLegalEventBatchLaw (specLaw β)
+  legal_backend :
+    ∀ β, Impl.IsLegalEventBatchLaw (backendLaw β)
   compatible :
     ∀ β, R.EventBatchLawCompatible (backendLaw β) (specLaw β)
   specLaw_trace_eq :
@@ -94,23 +103,32 @@ structure BackendBehavioralEventBatchLawLift
           (specLaw β) (syntaxSteps g.prog) =
         behavioralCanonicalEventBatchTraceDistAt g β
 
-/-- A specification-side pure event-batch law, packaged independently of any
-backend.  This is the missing bridge between a strategic profile and the
-machine-level `EventBatchLaw` interface. -/
+/-- A specification-side pure event-batch law witness, packaged independently of
+any backend.
+
+The witness is explicit: this module does not construct a canonical
+machine-level `EventBatchLaw` from an arbitrary native strategic profile. -/
 structure PureSpecEventBatchLaw
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
   specLaw : pureProfileAt g → (eventGraphMachine g).EventBatchLaw
+  specLaw_legal :
+    ∀ π, (eventGraphMachine g).IsLegalEventBatchLaw (specLaw π)
   specLaw_trace_eq :
     ∀ π,
       (eventGraphMachine g).eventBatchTraceDist
           (specLaw π) (syntaxSteps g.prog) =
         pureCanonicalEventBatchTraceDistAt g π
 
-/-- A specification-side PMF-behavioral event-batch law, packaged independently of
-any backend. -/
+/-- A specification-side PMF-behavioral event-batch law witness, packaged
+independently of any backend.
+
+The witness is explicit: this module does not construct a canonical
+machine-level `EventBatchLaw` from an arbitrary native strategic profile. -/
 structure BehavioralSpecEventBatchLaw
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] where
   specLaw : behavioralProfilePMFAt g → (eventGraphMachine g).EventBatchLaw
+  specLaw_legal :
+    ∀ β, (eventGraphMachine g).IsLegalEventBatchLaw (specLaw β)
   specLaw_trace_eq :
     ∀ β,
       (eventGraphMachine g).eventBatchTraceDist
@@ -127,6 +145,8 @@ noncomputable def identityBackendLift
       (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
   specLaw := law.specLaw
   backendLaw := law.specLaw
+  legal_spec := law.specLaw_legal
+  legal_backend := law.specLaw_legal
   compatible := by
     intro π
     exact Machine.StochasticStepRefinement.refl_eventBatchLawCompatible
@@ -146,6 +166,8 @@ noncomputable def identityBackendLift
       (Machine.StochasticStepRefinement.refl (eventGraphMachine g)) where
   specLaw := law.specLaw
   backendLaw := law.specLaw
+  legal_spec := law.specLaw_legal
+  legal_backend := law.specLaw_legal
   compatible := by
     intro β
     exact Machine.StochasticStepRefinement.refl_eventBatchLawCompatible

@@ -5,7 +5,7 @@ import Vegas.Strategic.Native
 # Native/FOSG event-graph equivalence
 
 The native strategic semantics for checked programs is defined from
-`Machine.RoundView`.  The FOSG layer uses the same event-graph frontier rounds
+`Machine.RoundView`.  The FOSG layer uses the same event-graph frontier steps
 as a factored-observation presentation.  This file transports histories,
 information states, strategies, and bounded outcome kernels between the two
 presentations.
@@ -681,10 +681,10 @@ theorem active_nativeToFOSG
         (nativeHistoryToFOSG g horizon h).lastState =
       (eventGraphRoundView g).boundedActive horizon h.lastState := by
   change (if horizon ≤ (nativeHistoryToFOSG g horizon h).lastState.depth then
-      ∅ else (programEventGraph g).roundActive
+      ∅ else (programEventGraph g).frontierActive
         (nativeHistoryToFOSG g horizon h).lastState.state) =
     (if horizon ≤ h.lastState.depth then ∅ else
-      (programEventGraph g).roundActive h.lastState.state)
+      (programEventGraph g).frontierActive h.lastState.state)
   simp [nativeHistoryToFOSG_lastState g horizon h]
 
 theorem active_fosgToNative
@@ -694,10 +694,10 @@ theorem active_fosgToNative
         (fosgHistoryToNative g horizon h).lastState =
       ((eventGraphFOSGView g).toBoundedFOSG horizon).active h.lastState := by
   change (if horizon ≤ (fosgHistoryToNative g horizon h).lastState.depth then
-      ∅ else (programEventGraph g).roundActive
+      ∅ else (programEventGraph g).frontierActive
         (fosgHistoryToNative g horizon h).lastState.state) =
     (if horizon ≤ h.lastState.depth then ∅ else
-      (programEventGraph g).roundActive h.lastState.state)
+      (programEventGraph g).frontierActive h.lastState.state)
   simp [fosgHistoryToNative_lastState g horizon h]
 
 theorem availableActions_nativeToFOSG
@@ -710,11 +710,11 @@ theorem availableActions_nativeToFOSG
   ext action
   change (action ∈
       (if horizon ≤ (nativeHistoryToFOSG g horizon h).lastState.depth then
-        ∅ else (programEventGraph g).roundAvailable
+        ∅ else (programEventGraph g).frontierAvailable
           (nativeHistoryToFOSG g horizon h).lastState.state who)) ↔
     action ∈
       (if horizon ≤ h.lastState.depth then ∅ else
-        (programEventGraph g).roundAvailable h.lastState.state who)
+        (programEventGraph g).frontierAvailable h.lastState.state who)
   rw [nativeHistoryToFOSG_lastState g horizon h]
   exact Iff.rfl
 
@@ -729,11 +729,11 @@ theorem availableActions_fosgToNative
   ext action
   change (action ∈
       (if horizon ≤ (fosgHistoryToNative g horizon h).lastState.depth then
-        ∅ else (programEventGraph g).roundAvailable
+        ∅ else (programEventGraph g).frontierAvailable
           (fosgHistoryToNative g horizon h).lastState.state who)) ↔
     action ∈
       (if horizon ≤ h.lastState.depth then ∅ else
-        (programEventGraph g).roundAvailable h.lastState.state who)
+        (programEventGraph g).frontierAvailable h.lastState.state who)
   rw [fosgHistoryToNative_lastState g horizon h]
   exact Iff.rfl
 
