@@ -62,9 +62,8 @@ backend implementation.
 
 `specLaw_trace_eq` says that running the supplied specification event-batch law
 for the syntax horizon is exactly the canonical explicit event-batch trace
-distribution
-extracted from the order-free native round view. Payoff preservation is derived
-from this trace equality, not assumed directly. -/
+distribution extracted from the order-free native round view. Payoff
+preservation is derived from this trace equality, not assumed directly. -/
 structure BackendPureEventBatchLawLift
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     {Impl : Machine P}

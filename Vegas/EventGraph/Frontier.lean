@@ -10,6 +10,14 @@ Event graphs execute asynchronously: a primitive machine step fires one
 frontier node. This module defines the strategic bridge that presents the
 current frontier as one simultaneous player step, plus the primitive event-batch
 witnesses that relate that presentation back to machine execution.
+
+The current `RoundView` adapter uses a fixed player action type, so
+`PlayerFrontierAction` is represented as a total node-to-patch function even
+though only the active player-owned frontier slice is semantically used at a
+state. The longer-term EventGraph strategic layer should replace this
+coordinate-heavy carrier with policies over declared predecessor projections;
+this file keeps the existing adapter honest by making availability and realized
+event extraction depend only on the effective frontier slice.
 -/
 
 namespace Vegas
@@ -23,9 +31,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- Player-facing action for a frontier step. The action supplies a candidate
-field patch for each event node; state-local availability uses only the patches
-for frontier nodes owned by the player. -/
+/-- Player-facing action for a frontier step.
+
+This is a coordinate representation for the current `RoundView` adapter: the
+action supplies a candidate field patch for every event node, but state-local
+availability and realized primitive events use only patches for current
+frontier nodes owned by the player. -/
 structure PlayerFrontierAction (G : Vegas.EventGraph Player L) (_who : Player) where
   patch : G.Node → G.FieldPatch
 
