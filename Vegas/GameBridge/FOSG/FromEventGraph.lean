@@ -4,7 +4,7 @@ import Vegas.GameBridge.FOSG.Basic
 /-!
 # FOSG bridge for event graphs
 
-This module exposes independent event-graph frontiers as bounded FOSG rounds
+This module exposes local event-graph frontiers as bounded FOSG rounds
 and connects those rounds back to primitive machine traces.
 -/
 
@@ -19,10 +19,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- FOSG presentation of a protocol-graph machine by independent frontier rounds. -/
+/-- FOSG presentation of a protocol-graph machine by local frontier rounds. -/
 noncomputable def toFOSGView
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) :
+    (hsound : G.HasLocalFrontierRounds) :
     (G.toMachine iface).FOSGView where
   Act := PlayerRoundAction G
   active := roundActive G
@@ -80,7 +80,7 @@ each player's optional round move with a `none` for inactive rounds) and the
 direct configuration-level menu. -/
 @[simp] theorem toFOSGView_toFOSG_availableMovesAtState_eq_roundMenu
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (cfg : G.Configuration) (who : Player) :
     (G.toFOSGView iface hsound).toFOSG.availableMovesAtState cfg who =
       G.roundMenu cfg who := by
@@ -91,7 +91,7 @@ direct configuration-level menu. -/
 agree with the player-facing graph menu. -/
 theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat) (who : Player)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) (who : Player)
     (state : (G.toMachine iface).BoundedState horizon)
     (hcut : ¬ horizon ≤ state.depth) :
     ((G.toFOSGView iface hsound).toBoundedFOSG horizon).availableMovesAtState
@@ -115,7 +115,7 @@ theorem toFOSGView_toBoundedFOSG_availableMovesAtState_eq_roundMenu
 is the state marginal of the explicit realized-batch distribution. -/
 theorem toFOSGView_toBoundedFOSG_transition_map_state_eq_explicitRoundBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (horizon : Nat)
     (state : (G.toMachine iface).BoundedState horizon)
     (action :
@@ -139,7 +139,7 @@ event batch extracted from its destination, is exactly the explicit realized
 batch distribution for the underlying frontier round. -/
 theorem toFOSGView_toBoundedFOSG_transition_map_realizedBatch_state_eq_explicitRoundBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (horizon : Nat)
     (state : (G.toMachine iface).BoundedState horizon)
     (action :
@@ -186,7 +186,7 @@ Each bounded FOSG step is one frontier round.  Internal chance patches are read
 from the realized destination, so the batch is concrete. -/
 noncomputable def boundedFOSGStepEventBatches
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     (steps :
       List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)) :
     List (List (G.toMachine iface).Event) :=
@@ -196,7 +196,7 @@ noncomputable def boundedFOSGStepEventBatches
 /-- Primitive event batches extracted from a bounded graph-FOSG history. -/
 noncomputable def boundedFOSGHistoryEventBatches
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     List (List (G.toMachine iface).Event) :=
@@ -206,7 +206,7 @@ noncomputable def boundedFOSGHistoryEventBatches
 event-batch executions whose events are available at the states where they run. -/
 theorem boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat) :
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
     ∀ {start : (G.toMachine iface).BoundedState horizon}
       {steps :
         List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)},
@@ -274,7 +274,7 @@ theorem boundedFOSGStepEventBatches_lastState_availableRunBatchesFrom
 machine event-batch run whose support contains the same checkpoint endpoint. -/
 theorem boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat) :
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
     ∀ {start : (G.toMachine iface).BoundedState horizon}
       {steps :
         List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)},
@@ -295,7 +295,7 @@ whose events are available along the checkpoint execution from the machine
 initial state to the history's checkpoint state. -/
 theorem boundedFOSGHistory_state_availableRunBatchesFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     (G.toMachine iface).AvailableRunBatchesFrom
@@ -313,7 +313,7 @@ event-batch trace whose endpoint support contains the history's checkpoint
 state. -/
 theorem boundedFOSGHistory_state_mem_runEventBatchesFrom_support
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     (h :
       (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
     h.lastState.state ∈
@@ -332,7 +332,7 @@ depend on information-state history.  The machine contribution at each
 nonterminal FOSG round is the primitive event batch selected by that round. -/
 noncomputable def boundedFOSGEventBatchTraceDistFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     (σ :
@@ -366,7 +366,7 @@ noncomputable def boundedFOSGEventBatchTraceDistFrom
 
 @[simp] theorem boundedFOSGEventBatchTraceDistFrom_zero
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     (σ :
@@ -381,7 +381,7 @@ noncomputable def boundedFOSGEventBatchTraceDistFrom
 
 theorem boundedFOSGEventBatchTraceDistFrom_succ_terminal
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     (σ :
@@ -404,7 +404,7 @@ theorem boundedFOSGEventBatchTraceDistFrom_succ_terminal
 
 theorem boundedFOSGEventBatchTraceDistFrom_succ_nonterminal
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     (σ :
@@ -435,7 +435,7 @@ and checkpoint state, equals the history-dependent event-batch machine trace
 distribution induced by the same behavioral profile. -/
 theorem boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     [DecidablePred
@@ -485,7 +485,7 @@ projection of the corresponding history-dependent event-batch machine trace
 distribution. -/
 theorem boundedFOSG_runDistFrom_map_outcome_eq_eventBatchTraceDistFrom_map_outcome
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     [DecidablePred
@@ -536,7 +536,7 @@ theorem boundedFOSG_runDistFrom_map_outcome_eq_eventBatchTraceDistFrom_map_outco
 the machine outcome map of the induced event-batched primitive trace distribution. -/
 theorem boundedFOSG_outcomeFromBehavioral_eq_eventBatchTraceDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     [Fintype ((G.toMachine iface).BoundedState horizon)]
@@ -565,7 +565,7 @@ machine outcome map of the event-batched primitive trace distribution induced by
 pure profile's behavioral embedding. -/
 theorem boundedFOSG_outcomeFromPure_eq_eventBatchTraceDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) (horizon : Nat)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
     [Fintype Player]
     [∀ player, Fintype (Option ((G.toFOSGView iface hsound).Act player))]
     [Fintype ((G.toMachine iface).BoundedState horizon)]

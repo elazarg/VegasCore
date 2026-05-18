@@ -141,19 +141,13 @@ def availableInternal
               patch ∈ (G.internalKernel node cfg.result).support
       | .idle => False }
 
-/-- Independence condition for exposing graph frontiers as strategic rounds.
+/-- Locality condition for exposing graph frontiers as strategic rounds.
 
-The first field prevents player-owned frontier nodes from deadlocking. The
-second field says that once a player action for one frontier node is legal, it
-remains legal after any different frontier node in the same source frontier has
-been recorded. This is the graph-level condition ruling out player-action
-legality races inside a batched frontier round. The third field gives the
-matching independence condition for internal chance: executing one frontier
-node cannot change the kernel sampled by a different source-frontier node.
-
-The canonical `frontier.toList` order used by round execution is therefore a
-representative linearization, not extra strategic content. -/
-structure HasIndependentFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
+The progress field prevents player-owned frontier nodes from deadlocking. The
+stability fields are the proof-facing form of graph locality: one source-frontier
+node cannot change player legality or internal chance for a distinct
+source-frontier node. -/
+structure HasLocalFrontierRounds (G : Vegas.EventGraph Player L) : Prop where
   availablePlayerActions : G.HasAvailablePlayerActions
   actionStable :
     ∀ (cfg : G.Configuration)

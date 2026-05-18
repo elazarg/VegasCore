@@ -72,7 +72,7 @@ theorem backend_pure_nash_transport
     {σ : pureProfileAt g}
     (h : (pureKernelGameAt g).IsNash σ) :
     (backendEventBatchTraceKernelGameAt g R lift).IsNash σ :=
-  backendEventBatchTraceKernelGameAt_isNash_pullback_pure g R lift h
+  backendEventBatchTraceKernelGameAt_isNash_pullback g R lift h
 
 /-- Backend refinement plus a compatible PMF-behavioral event-batch-law lift
 transports Nash equilibria from the public PMF-behavioral specification game to
@@ -86,8 +86,7 @@ theorem backend_behavioral_nash_transport
     {σ : behavioralProfilePMFAt g}
     (h : (pmfBehavioralKernelGameAt g).IsNash σ) :
     (backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).IsNash σ :=
-  backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback_behavioral
-    g R lift h
+  backendPMFBehavioralEventBatchTraceKernelGameAt_isNash_pullback g R lift h
 
 /-- A proved pure specification event-batch law gives the canonical identity-backend
 lift. This is the reusable smoke-test instance for backend transport. -/

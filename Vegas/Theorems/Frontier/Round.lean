@@ -47,7 +47,7 @@ theorem eventGraph_roundTransition_map_realizedEventBatch_eq_explicitRoundBatchD
 kernel of a source-frontier node that the prefix does not execute. -/
 theorem eventGraph_roundTransitionGo_preserves_internalKernel_of_not_mem
     {G : EventGraph P L}
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (EventGraph.PlayerRoundAction G))
     (nodes : List G.Node)
     {candidate : G.Node}
@@ -65,7 +65,7 @@ theorem eventGraph_roundTransitionGo_preserves_internalKernel_of_not_mem
 canonical frontier-round representative. -/
 theorem eventGraph_roundTransitionWithSchedule_eq_roundTransition
     {G : EventGraph P L}
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     {cfg : G.Configuration}
     {joint : JointAction (EventGraph.PlayerRoundAction G)}
     (hlegal :
@@ -79,12 +79,12 @@ theorem eventGraph_roundTransitionWithSchedule_eq_roundTransition
   EventGraph.roundTransitionWithSchedule_eq_roundTransition
     G hsound hlegal schedule
 
-/-- Independent, legal explicit frontier batches are primitive runs whose
+/-- Local, legal explicit frontier batches are primitive runs whose
 events are available at the states where they execute. -/
 theorem eventGraph_explicitRoundBatchDist_support_availableRunFrom
     {G : EventGraph P L}
     (iface : EventGraph.MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     {cfg dst : G.Configuration}
     {joint : JointAction (EventGraph.PlayerRoundAction G)}
     {batch : List (G.toMachine iface).Event}

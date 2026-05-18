@@ -23,7 +23,7 @@ noncomputable def eventGraphFOSGView
     (g : WFProgram P L) :
     (eventGraphMachine g).FOSGView :=
   (programEventGraph g).toFOSGView (eventGraphMachineInterface g)
-    (programEventGraph_hasIndependentFrontierRounds g)
+    (programEventGraph_hasLocalFrontierRounds g)
 
 private theorem eventGraph_done_subset_nodes
     {G : EventGraph P L} (cfg : G.Configuration) :
@@ -469,7 +469,7 @@ noncomputable def eventGraphFOSGHistoryEventBatches
     List (List (eventGraphMachine g).Event) :=
   EventGraph.boundedFOSGHistoryEventBatches
     (programEventGraph g) (eventGraphMachineInterface g)
-    (programEventGraph_hasIndependentFrontierRounds g) horizon h
+    (programEventGraph_hasLocalFrontierRounds g) horizon h
 
 /-- Realized primitive machine events represented by one event-graph FOSG
 frontier round. Internal events carry the patch found in the realized
@@ -498,7 +498,7 @@ theorem eventGraphFOSGHistory_state_availableRunBatchesFrom
     eventGraphFOSGView] using
     (EventGraph.boundedFOSGHistory_state_availableRunBatchesFrom
       (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasIndependentFrontierRounds g) horizon h)
+      (programEventGraph_hasLocalFrontierRounds g) horizon h)
 
 /-- Every bounded event-graph FOSG history extracts a primitive machine
 event-batch trace whose endpoint support contains the history's checkpoint
@@ -935,7 +935,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasIndependentFrontierRounds g)).Act
+              (programEventGraph_hasLocalFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -943,7 +943,7 @@ noncomputable def eventGraphFOSGEventBatchTraceDistFrom
   simpa [eventGraphMachine, eventGraphFOSGView] using
     (EventGraph.boundedFOSGEventBatchTraceDistFrom
       (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasIndependentFrontierRounds g) horizon σ)
+      (programEventGraph_hasLocalFrontierRounds g) horizon σ)
 
 /-- Bounded event-graph FOSG execution, projected to extracted primitive
 event batches and checkpoint state, equals the history-dependent event-batch
@@ -969,7 +969,7 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
           (Option
             (((programEventGraph g).toFOSGView
               (eventGraphMachineInterface g)
-              (programEventGraph_hasIndependentFrontierRounds g)).Act
+              (programEventGraph_hasLocalFrontierRounds g)).Act
                 player)) := by
     intro player
     simpa [eventGraphFOSGView] using
@@ -984,14 +984,14 @@ theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDist
       DecidablePred
         ((((programEventGraph g).toFOSGView
           (eventGraphMachineInterface g)
-          (programEventGraph_hasIndependentFrontierRounds g)).toBoundedFOSG
+          (programEventGraph_hasLocalFrontierRounds g)).toBoundedFOSG
             horizon).terminal) :=
     Classical.decPred _
   simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
     eventGraphFOSGView, eventGraphFOSGEventBatchTraceDistFrom] using
       (EventGraph.boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
         (programEventGraph g) (eventGraphMachineInterface g)
-        (programEventGraph_hasIndependentFrontierRounds g) horizon σ n h)
+        (programEventGraph_hasLocalFrontierRounds g) horizon σ n h)
 
 /-- Initial history of the bounded event-graph FOSG presentation. -/
 noncomputable def eventGraphInitialHistory

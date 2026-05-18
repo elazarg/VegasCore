@@ -35,96 +35,109 @@ noncomputable def behavioralOutcomeKernelPMFAt
     (eventGraphRoundView g).boundedOutcomeFromBehavioral
       (syntaxSteps g.prog) β (syntaxSteps g.prog)
 
-/-- Pure strategic-form outcomes are machine-outcome projections of the
-native event-batched primitive trace distribution induced by the finite event-graph
-round view. -/
-theorem pureOutcomeKernelAt_eq_eventBatchTraceDist
+/-- Pure strategic-form outcomes are projections of the native realization
+trace distribution induced by the finite event-graph round view. -/
+theorem pureOutcomeKernelAt_eq_realizationTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
-      PMF.map
-        (fun trace : (eventGraphMachine g).EventBatchTrace =>
-          (eventGraphMachine g).outcome trace.2)
-        ((eventGraphRoundView g).boundedEventBatchTraceFromPure
-          (syntaxSteps g.prog) π (syntaxSteps g.prog)) := by
+      PMF.map (fun trace : (eventGraphRoundView g).BoundedHistory
+          (syntaxSteps g.prog) =>
+          (eventGraphMachine g).outcome trace.lastState.state)
+        ((eventGraphRoundView g).runDist
+          (syntaxSteps g.prog) (syntaxSteps g.prog)
+          ((eventGraphRoundView g).legalPureToBehavioral
+            (syntaxSteps g.prog) π)) := by
+  dsimp [pureOutcomeKernelAt, Machine.RoundView.boundedOutcomeFromPure,
+    Machine.RoundView.boundedEventBatchTraceFromPure,
+    Machine.RoundView.boundedEventBatchTraceFromBehavioral,
+    Machine.RoundView.boundedHistoryTrace]
+  rw [PMF.map_comp]
   rfl
 
-/-- PMF behavioral strategic-form outcomes are machine-outcome projections of
-the native event-batched primitive trace distribution induced by the finite
-event-graph round view. -/
-theorem behavioralOutcomeKernelPMFAt_eq_eventBatchTraceDist
+/-- PMF behavioral strategic-form outcomes are projections of the native
+realization trace distribution induced by the finite event-graph round view. -/
+theorem behavioralOutcomeKernelPMFAt_eq_realizationTraceDist
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
-      PMF.map
-        (fun trace : (eventGraphMachine g).EventBatchTrace =>
-          (eventGraphMachine g).outcome trace.2)
-        ((eventGraphRoundView g).boundedEventBatchTraceFromBehavioral
-          (syntaxSteps g.prog) β (syntaxSteps g.prog)) := by
+      PMF.map (fun trace : (eventGraphRoundView g).BoundedHistory
+          (syntaxSteps g.prog) =>
+          (eventGraphMachine g).outcome trace.lastState.state)
+        ((eventGraphRoundView g).runDist
+          (syntaxSteps g.prog) (syntaxSteps g.prog) β) := by
+  dsimp [behavioralOutcomeKernelPMFAt,
+    Machine.RoundView.boundedOutcomeFromBehavioral,
+    Machine.RoundView.boundedEventBatchTraceFromBehavioral,
+    Machine.RoundView.boundedHistoryTrace]
+  rw [PMF.map_comp]
   rfl
 
-/-- Machine event-batch trace outcomes induced by the bounded native event-graph
-round view: the primitive event batches executed so far, paired with the
-resulting checkpoint state. -/
-abbrev syntaxEventBatchTraceAt
+/-- Order-free realization trace induced by the bounded native event-graph
+round view. A bounded history records source state, legal joint action, and
+realized destination for each frontier round, without recording a primitive
+event schedule. -/
+abbrev syntaxRealizationTraceAt
     (g : WFProgram P L) : Type :=
-  (eventGraphMachine g).EventBatchTrace
+  (eventGraphRoundView g).BoundedHistory (syntaxSteps g.prog)
 
-/-- Public outcome read from an event-batch machine trace. -/
-noncomputable def syntaxEventBatchTraceOutcome
+/-- Public outcome read from a realization trace. -/
+noncomputable def syntaxRealizationTraceOutcome
     (g : WFProgram P L) :
-    syntaxEventBatchTraceAt g → Outcome P :=
-  fun trace => (eventGraphMachine g).outcome trace.2
+    syntaxRealizationTraceAt g → Outcome P :=
+  fun trace => (eventGraphMachine g).outcome trace.lastState.state
 
-/-- Terminal public state read from an event-batch machine trace.
+/-- Terminal public state read from a realization trace.
 
 This is the public observation carried by the event-graph machine: completed
 nodes plus public field values. It is intentionally separate from
 `Outcome P`, which is only the payoff-vector projection. -/
-noncomputable def syntaxEventBatchTracePublicState
+noncomputable def syntaxRealizationTracePublicState
     (g : WFProgram P L) :
-    syntaxEventBatchTraceAt g → ProgramPublicObs g :=
-  fun trace => eventGraphPublicView g trace.2
+    syntaxRealizationTraceAt g → ProgramPublicObs g :=
+  fun trace => eventGraphPublicView g trace.lastState.state
 
-/-- Utility read from an event-batch machine trace through its public outcome. -/
-noncomputable def syntaxEventBatchTraceUtility
+/-- Utility read from a realization trace through its public outcome. -/
+noncomputable def syntaxRealizationTraceUtility
     (g : WFProgram P L) :
-    syntaxEventBatchTraceAt g → GameTheory.Payoff P :=
-  fun trace who => ((syntaxEventBatchTraceOutcome g trace) who : ℝ)
+    syntaxRealizationTraceAt g → GameTheory.Payoff P :=
+  fun trace who => ((syntaxRealizationTraceOutcome g trace) who : ℝ)
 
 /-- Canonical utility for payoff-vector outcomes. -/
 noncomputable def publicOutcomeUtility :
     Outcome P → GameTheory.Payoff P :=
   fun outcome who => (outcome who : ℝ)
 
-/-- Event-batched primitive trace kernel induced by a pure profile. -/
-noncomputable def pureEventBatchTraceOutcomeKernelAt
+/-- Realization trace kernel induced by a pure profile. -/
+noncomputable def pureRealizationTraceOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (π : pureProfileAt g) : PMF (syntaxEventBatchTraceAt g) :=
-  (eventGraphRoundView g).boundedEventBatchTraceFromPure
-    (syntaxSteps g.prog) π (syntaxSteps g.prog)
+    (π : pureProfileAt g) : PMF (syntaxRealizationTraceAt g) :=
+  (eventGraphRoundView g).runDist
+    (syntaxSteps g.prog) (syntaxSteps g.prog)
+    ((eventGraphRoundView g).legalPureToBehavioral
+      (syntaxSteps g.prog) π)
 
-/-- Event-batched primitive trace kernel induced by a PMF behavioral profile. -/
-noncomputable def behavioralEventBatchTraceOutcomeKernelPMFAt
+/-- Realization trace kernel induced by a PMF behavioral profile. -/
+noncomputable def behavioralRealizationTraceOutcomeKernelPMFAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (β : behavioralProfilePMFAt g) : PMF (syntaxEventBatchTraceAt g) :=
-  (eventGraphRoundView g).boundedEventBatchTraceFromBehavioral
-    (syntaxSteps g.prog) β (syntaxSteps g.prog)
+    (β : behavioralProfilePMFAt g) : PMF (syntaxRealizationTraceAt g) :=
+  (eventGraphRoundView g).runDist
+    (syntaxSteps g.prog) (syntaxSteps g.prog) β
 
 /-- Pure terminal-public-state outcome kernel induced by a pure profile. -/
 noncomputable def purePublicStateOutcomeKernelAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) : PMF (ProgramPublicObs g) :=
-  PMF.map (syntaxEventBatchTracePublicState g)
-    (pureEventBatchTraceOutcomeKernelAt g π)
+  PMF.map (syntaxRealizationTracePublicState g)
+    (pureRealizationTraceOutcomeKernelAt g π)
 
 /-- PMF-behavioral terminal-public-state outcome kernel induced by a
 behavioral profile. -/
 noncomputable def behavioralPublicStateOutcomeKernelPMFAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) : PMF (ProgramPublicObs g) :=
-  PMF.map (syntaxEventBatchTracePublicState g)
-    (behavioralEventBatchTraceOutcomeKernelPMFAt g β)
+  PMF.map (syntaxRealizationTracePublicState g)
+    (behavioralRealizationTraceOutcomeKernelPMFAt g β)
 
 /-! ## Game forms -/
 
@@ -165,37 +178,37 @@ noncomputable def pmfBehavioralGameFormAt
   outcomeKernel := behavioralOutcomeKernelPMFAt g
 
 /-- Finite pure game form whose outcomes are event-batched primitive machine traces. -/
-noncomputable def pureEventBatchTraceGameFormAt
+noncomputable def pureRealizationTraceGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
   Strategy := pureStrategyAt g
-  Outcome := syntaxEventBatchTraceAt g
-  outcomeKernel := pureEventBatchTraceOutcomeKernelAt g
+  Outcome := syntaxRealizationTraceAt g
+  outcomeKernel := pureRealizationTraceOutcomeKernelAt g
 
 /-- Finite PMF-behavioral game form whose outcomes are event-batched primitive
 machine traces. -/
-noncomputable def pmfBehavioralEventBatchTraceGameFormAt
+noncomputable def pmfBehavioralRealizationTraceGameFormAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.GameForm P where
   Strategy := behavioralStrategyPMFAt g
-  Outcome := syntaxEventBatchTraceAt g
-  outcomeKernel := behavioralEventBatchTraceOutcomeKernelPMFAt g
+  Outcome := syntaxRealizationTraceAt g
+  outcomeKernel := behavioralRealizationTraceOutcomeKernelPMFAt g
 
 /-- Finite pure strategic form whose outcomes are event-batched primitive machine
 traces rather than just terminal public outcomes. -/
-noncomputable def pureEventBatchTraceKernelGameAt
+noncomputable def pureRealizationTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  (pureEventBatchTraceGameFormAt g).withUtility (syntaxEventBatchTraceUtility g)
+  (pureRealizationTraceGameFormAt g).withUtility (syntaxRealizationTraceUtility g)
 
-@[simp] theorem pureEventBatchTraceKernelGameAt_Strategy
+@[simp] theorem pureRealizationTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pureEventBatchTraceKernelGameAt g).Strategy = pureStrategyAt g := rfl
+    (pureRealizationTraceKernelGameAt g).Strategy = pureStrategyAt g := rfl
 
-@[simp] theorem pureEventBatchTraceKernelGameAt_toGameForm
+@[simp] theorem pureRealizationTraceKernelGameAt_toGameForm
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pureEventBatchTraceKernelGameAt g).toGameForm =
-      pureEventBatchTraceGameFormAt g := by
+    (pureRealizationTraceKernelGameAt g).toGameForm =
+      pureRealizationTraceGameFormAt g := by
   rfl
 
 @[simp] theorem purePublicStateGameFormAt_outcomeKernel
@@ -206,21 +219,21 @@ noncomputable def pureEventBatchTraceKernelGameAt
 
 /-- Finite PMF behavioral strategic form whose outcomes are event-batched primitive
 machine traces rather than just terminal public outcomes. -/
-noncomputable def pmfBehavioralEventBatchTraceKernelGameAt
+noncomputable def pmfBehavioralRealizationTraceKernelGameAt
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame P :=
-  (pmfBehavioralEventBatchTraceGameFormAt g).withUtility
-    (syntaxEventBatchTraceUtility g)
+  (pmfBehavioralRealizationTraceGameFormAt g).withUtility
+    (syntaxRealizationTraceUtility g)
 
-@[simp] theorem pmfBehavioralEventBatchTraceKernelGameAt_Strategy
+@[simp] theorem pmfBehavioralRealizationTraceKernelGameAt_Strategy
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pmfBehavioralEventBatchTraceKernelGameAt g).Strategy =
+    (pmfBehavioralRealizationTraceKernelGameAt g).Strategy =
       behavioralStrategyPMFAt g := rfl
 
-@[simp] theorem pmfBehavioralEventBatchTraceKernelGameAt_toGameForm
+@[simp] theorem pmfBehavioralRealizationTraceKernelGameAt_toGameForm
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
-    (pmfBehavioralEventBatchTraceKernelGameAt g).toGameForm =
-      pmfBehavioralEventBatchTraceGameFormAt g := by
+    (pmfBehavioralRealizationTraceKernelGameAt g).toGameForm =
+      pmfBehavioralRealizationTraceGameFormAt g := by
   rfl
 
 @[simp] theorem pmfBehavioralPublicStateGameFormAt_outcomeKernel
@@ -280,278 +293,201 @@ noncomputable def pmfBehavioralKernelGameAt
       pmfBehavioralGameFormAt g := by
   rfl
 
-/-- Projecting pure event-batch trace outcomes to public outcomes gives the public
+/-- Projecting pure realization trace outcomes to public outcomes gives the public
 pure strategic-form outcome kernel. -/
-theorem pureEventBatchTraceKernelGameAt_outcomeKernel_map_outcome
+theorem pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
-    PMF.map (syntaxEventBatchTraceOutcome g)
-        ((pureEventBatchTraceKernelGameAt g).outcomeKernel π) =
+    PMF.map (syntaxRealizationTraceOutcome g)
+        ((pureRealizationTraceKernelGameAt g).outcomeKernel π) =
       (pureKernelGameAt g).outcomeKernel π := by
-  simpa [pureEventBatchTraceKernelGameAt, pureKernelGameAt,
-    pureEventBatchTraceOutcomeKernelAt, syntaxEventBatchTraceOutcome] using
-    (pureOutcomeKernelAt_eq_eventBatchTraceDist g π).symm
+  simpa [pureRealizationTraceKernelGameAt, pureKernelGameAt,
+    pureRealizationTraceOutcomeKernelAt, syntaxRealizationTraceOutcome] using
+    (pureOutcomeKernelAt_eq_realizationTraceDist g π).symm
 
-/-- Projecting PMF behavioral event-batch trace outcomes to public outcomes gives
+/-- Projecting PMF behavioral realization trace outcomes to public outcomes gives
 the public PMF behavioral strategic-form outcome kernel. -/
-theorem pmfBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_outcome
+theorem pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
-    PMF.map (syntaxEventBatchTraceOutcome g)
-        ((pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β) =
+    PMF.map (syntaxRealizationTraceOutcome g)
+        ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β) =
       (pmfBehavioralKernelGameAt g).outcomeKernel β := by
-  simpa [pmfBehavioralEventBatchTraceKernelGameAt, pmfBehavioralKernelGameAt,
-    behavioralEventBatchTraceOutcomeKernelPMFAt, syntaxEventBatchTraceOutcome] using
-    (behavioralOutcomeKernelPMFAt_eq_eventBatchTraceDist g β).symm
+  simpa [pmfBehavioralRealizationTraceKernelGameAt, pmfBehavioralKernelGameAt,
+    behavioralRealizationTraceOutcomeKernelPMFAt, syntaxRealizationTraceOutcome] using
+    (behavioralOutcomeKernelPMFAt_eq_realizationTraceDist g β).symm
 
-/-- The event-batch trace pure game refines the public pure game by the public
+/-- The realization trace pure game refines the public pure game by the public
 outcome projection. The load-bearing field is PMF preservation of outcome
-kernels under `syntaxEventBatchTraceOutcome`. -/
-noncomputable def pureKernelGameAt.eventBatchTraceProjection
+kernels under `syntaxRealizationTraceOutcome`. -/
+noncomputable def pureKernelGameAt.realizationTraceProjection
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Simulation
-      (pureKernelGameAt g) (pureEventBatchTraceKernelGameAt g) :=
+      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) :=
   GameTheory.KernelGame.Morphism.ofOutcomeProjection
     (fun _ strategy => strategy)
-    (syntaxEventBatchTraceOutcome g)
-    (fun π => pureEventBatchTraceKernelGameAt_outcomeKernel_map_outcome g π)
+    (syntaxRealizationTraceOutcome g)
+    (fun π => pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π)
     (fun _ trace _ => by
       funext who
       rfl)
 
-/-- The event-batch trace PMF behavioral game refines the public PMF behavioral
+/-- The realization trace PMF behavioral game refines the public PMF behavioral
 game by the public outcome projection. The load-bearing field is PMF
-preservation of outcome kernels under `syntaxEventBatchTraceOutcome`. -/
-noncomputable def pmfBehavioralKernelGameAt.eventBatchTraceProjection
+preservation of outcome kernels under `syntaxRealizationTraceOutcome`. -/
+noncomputable def pmfBehavioralKernelGameAt.realizationTraceProjection
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Simulation
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralEventBatchTraceKernelGameAt g) :=
+      (pmfBehavioralRealizationTraceKernelGameAt g) :=
   GameTheory.KernelGame.Morphism.ofOutcomeProjection
     (fun _ strategy => strategy)
-    (syntaxEventBatchTraceOutcome g)
+    (syntaxRealizationTraceOutcome g)
     (fun β =>
-      pmfBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_outcome g β)
+      pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β)
     (fun _ trace _ => by
       funext who
       rfl)
 
-omit [DecidableEq P] in
-/-- If two outcome kernels are projections of the same finite source run and
-the projected utilities agree pointwise, their expected utility agrees. -/
-theorem expect_eq_of_projected_kernel
-    {α β γ : Type} [Finite α]
-    (run : PMF α)
-    (projectTrace : α → β) (projectOutcome : α → γ)
-    (traceUtility : β → P → ℝ) (outcomeUtility : γ → P → ℝ)
-    (who : P)
-    (hutility :
-      ∀ h, traceUtility (projectTrace h) who =
-        outcomeUtility (projectOutcome h) who) :
-    Math.Probability.expect (PMF.map projectTrace run)
-        (fun trace => traceUtility trace who) =
-      Math.Probability.expect (PMF.map projectOutcome run)
-        (fun outcome => outcomeUtility outcome who) := by
-  classical
-  letI := Fintype.ofFinite α
-  calc
-    Math.Probability.expect (PMF.map projectTrace run)
-        (fun trace => traceUtility trace who) =
-        ∑ h : α, (run h).toReal * traceUtility (projectTrace h) who := by
-          rw [Math.Probability.expect_map_fintype_source]
-    _ =
-        ∑ h : α, (run h).toReal * outcomeUtility (projectOutcome h) who := by
-          refine Finset.sum_congr rfl ?_
-          intro h _
-          rw [hutility h]
-    _ =
-      Math.Probability.expect (PMF.map projectOutcome run)
-        (fun outcome => outcomeUtility outcome who) := by
-          rw [Math.Probability.expect_map_fintype_source]
-
-/-- Pure strategic-form play and event-batch trace play give the same expected
+/-- Pure strategic-form play and realization trace play give the same expected
 utility. -/
-theorem pureEventBatchTraceKernelGameAt_eu_eq
+theorem pureRealizationTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) (who : P) :
-    (pureEventBatchTraceKernelGameAt g).eu π who =
+    (pureRealizationTraceKernelGameAt g).eu π who =
       (pureKernelGameAt g).eu π who := by
   classical
-  let horizon := syntaxSteps g.prog
-  let G := eventGraphRoundView g
-  let σ := G.legalPureToBehavioral horizon π
-  let run := G.runDist horizon horizon σ
-  let projectTrace : G.BoundedHistory horizon → syntaxEventBatchTraceAt g :=
-    fun h' => G.boundedHistoryTrace horizon h'
-  let projectOutcome : G.BoundedHistory horizon → Outcome P :=
-    fun h' => (eventGraphMachine g).outcome h'.lastState.state
-  letI : Fintype (G.BoundedHistory horizon) :=
-    G.instFintypeBoundedHistory horizon
-  have htrace :
-      (pureEventBatchTraceKernelGameAt g).outcomeKernel π =
-        PMF.map projectTrace run := by
-    simp [pureEventBatchTraceKernelGameAt, pureEventBatchTraceOutcomeKernelAt,
-      pureEventBatchTraceGameFormAt,
-      Machine.RoundView.boundedEventBatchTraceFromPure,
-      Machine.RoundView.boundedEventBatchTraceFromBehavioral,
-      Machine.RoundView.runDist, projectTrace, run, σ, G, horizon]
-  have hpublic :
-      (pureKernelGameAt g).outcomeKernel π =
-        PMF.map projectOutcome run := by
-    rw [pureKernelGameAt_outcomeKernel]
-    dsimp [pureOutcomeKernelAt, Machine.RoundView.boundedOutcomeFromPure,
-      Machine.RoundView.boundedEventBatchTraceFromPure,
-      Machine.RoundView.boundedEventBatchTraceFromBehavioral,
-      Machine.RoundView.runDist, projectOutcome, run, σ, G, horizon]
-    rw [PMF.map_comp]
-    rfl
+  let traceDist : PMF (syntaxRealizationTraceAt g) :=
+    (pureRealizationTraceKernelGameAt g).outcomeKernel π
+  let projectOutcome := syntaxRealizationTraceOutcome g
+  let utility := fun outcome : Outcome P => publicOutcomeUtility outcome who
+  letI : Fintype (syntaxRealizationTraceAt g) :=
+    (eventGraphRoundView g).instFintypeBoundedHistory (syntaxSteps g.prog)
+  have houtcome :
+      PMF.map projectOutcome traceDist =
+        (pureKernelGameAt g).outcomeKernel π := by
+    simpa [traceDist, projectOutcome] using
+      pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π
   calc
-    (pureEventBatchTraceKernelGameAt g).eu π who =
-        Math.Probability.expect
-          ((pureEventBatchTraceKernelGameAt g).outcomeKernel π)
-          (fun trace => (pureEventBatchTraceKernelGameAt g).utility trace who) := rfl
+    (pureRealizationTraceKernelGameAt g).eu π who =
+        Math.Probability.expect traceDist
+          (fun trace => utility (projectOutcome trace)) := rfl
     _ =
-        Math.Probability.expect (PMF.map projectTrace run)
-          (fun trace => (pureEventBatchTraceKernelGameAt g).utility trace who) := by
-          rw [htrace]
-          rfl
+        ∑ trace : syntaxRealizationTraceAt g,
+          (traceDist trace).toReal * utility (projectOutcome trace) := by
+          rw [Math.Probability.expect_eq_sum]
     _ =
-        Math.Probability.expect (PMF.map projectOutcome run)
-          (fun outcome => (pureKernelGameAt g).utility outcome who) := by
-          exact expect_eq_of_projected_kernel run projectTrace projectOutcome
-            (pureEventBatchTraceKernelGameAt g).utility
-            (pureKernelGameAt g).utility who (fun _ => rfl)
+        Math.Probability.expect (PMF.map projectOutcome traceDist)
+          utility := by
+          rw [Math.Probability.expect_map_fintype_source]
     _ = (pureKernelGameAt g).eu π who := by
-          rw [← hpublic]
+          rw [houtcome]
           rfl
 
-/-- PMF behavioral strategic-form play and event-batch trace play give the same
+/-- PMF behavioral strategic-form play and realization trace play give the same
 expected utility. -/
-theorem pmfBehavioralEventBatchTraceKernelGameAt_eu_eq
+theorem pmfBehavioralRealizationTraceKernelGameAt_eu_eq
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) (who : P) :
-    (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who =
+    (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
       (pmfBehavioralKernelGameAt g).eu β who := by
   classical
-  let horizon := syntaxSteps g.prog
-  let G := eventGraphRoundView g
-  let σ := β
-  let run := G.runDist horizon horizon σ
-  let projectTrace : G.BoundedHistory horizon → syntaxEventBatchTraceAt g :=
-    fun h' => G.boundedHistoryTrace horizon h'
-  let projectOutcome : G.BoundedHistory horizon → Outcome P :=
-    fun h' => (eventGraphMachine g).outcome h'.lastState.state
-  letI : Fintype (G.BoundedHistory horizon) :=
-    G.instFintypeBoundedHistory horizon
-  have htrace :
-      (pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β =
-        PMF.map projectTrace run := by
-    simp [pmfBehavioralEventBatchTraceKernelGameAt,
-      behavioralEventBatchTraceOutcomeKernelPMFAt,
-      pmfBehavioralEventBatchTraceGameFormAt,
-      Machine.RoundView.boundedEventBatchTraceFromBehavioral,
-      Machine.RoundView.runDist, projectTrace, run, σ, G, horizon]
-  have hpublic :
-      (pmfBehavioralKernelGameAt g).outcomeKernel β =
-        PMF.map projectOutcome run := by
-    rw [pmfBehavioralKernelGameAt_outcomeKernel]
-    dsimp [behavioralOutcomeKernelPMFAt,
-      Machine.RoundView.boundedOutcomeFromBehavioral,
-      Machine.RoundView.boundedEventBatchTraceFromBehavioral,
-      Machine.RoundView.runDist, projectOutcome, run, σ, G, horizon]
-    rw [PMF.map_comp]
-    rfl
+  let traceDist : PMF (syntaxRealizationTraceAt g) :=
+    (pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β
+  let projectOutcome := syntaxRealizationTraceOutcome g
+  let utility := fun outcome : Outcome P => publicOutcomeUtility outcome who
+  letI : Fintype (syntaxRealizationTraceAt g) :=
+    (eventGraphRoundView g).instFintypeBoundedHistory (syntaxSteps g.prog)
+  have houtcome :
+      PMF.map projectOutcome traceDist =
+        (pmfBehavioralKernelGameAt g).outcomeKernel β := by
+    simpa [traceDist, projectOutcome] using
+      pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β
   calc
-    (pmfBehavioralEventBatchTraceKernelGameAt g).eu β who =
-        Math.Probability.expect
-          ((pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β)
-          (fun trace =>
-            (pmfBehavioralEventBatchTraceKernelGameAt g).utility trace who) := rfl
+    (pmfBehavioralRealizationTraceKernelGameAt g).eu β who =
+        Math.Probability.expect traceDist
+          (fun trace => utility (projectOutcome trace)) := rfl
     _ =
-        Math.Probability.expect (PMF.map projectTrace run)
-          (fun trace =>
-            (pmfBehavioralEventBatchTraceKernelGameAt g).utility trace who) := by
-          rw [htrace]
-          rfl
+        ∑ trace : syntaxRealizationTraceAt g,
+          (traceDist trace).toReal * utility (projectOutcome trace) := by
+          rw [Math.Probability.expect_eq_sum]
     _ =
-        Math.Probability.expect (PMF.map projectOutcome run)
-          (fun outcome => (pmfBehavioralKernelGameAt g).utility outcome who) := by
-          exact expect_eq_of_projected_kernel run projectTrace projectOutcome
-            (pmfBehavioralEventBatchTraceKernelGameAt g).utility
-            (pmfBehavioralKernelGameAt g).utility who (fun _ => rfl)
+        Math.Probability.expect (PMF.map projectOutcome traceDist)
+          utility := by
+          rw [Math.Probability.expect_map_fintype_source]
     _ = (pmfBehavioralKernelGameAt g).eu β who := by
-          rw [← hpublic]
+          rw [houtcome]
           rfl
 
-/-- Pure strategic-form play and event-batch trace play induce the same joint
+/-- Pure strategic-form play and realization trace play induce the same joint
 utility distribution. -/
-noncomputable def pureKernelGameAt.eventBatchTraceBisimulation
+noncomputable def pureKernelGameAt.realizationTraceBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Bisimulation
-      (pureKernelGameAt g) (pureEventBatchTraceKernelGameAt g) where
+      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) where
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro π
     change
-      ((pureEventBatchTraceKernelGameAt g).outcomeKernel π).bind
+      ((pureRealizationTraceKernelGameAt g).outcomeKernel π).bind
           (fun trace =>
-            PMF.pure ((pureEventBatchTraceKernelGameAt g).utility trace)) =
+            PMF.pure ((pureRealizationTraceKernelGameAt g).utility trace)) =
         ((pureKernelGameAt g).outcomeKernel π).bind
           (fun outcome =>
             PMF.pure ((pureKernelGameAt g).utility outcome))
-    rw [← pureEventBatchTraceKernelGameAt_outcomeKernel_map_outcome g π]
+    rw [← pureRealizationTraceKernelGameAt_outcomeKernel_map_outcome g π]
     exact (PMF.bind_map
-      ((pureEventBatchTraceKernelGameAt g).outcomeKernel π)
-      (syntaxEventBatchTraceOutcome g)
+      ((pureRealizationTraceKernelGameAt g).outcomeKernel π)
+      (syntaxRealizationTraceOutcome g)
       (fun outcome =>
         PMF.pure ((pureKernelGameAt g).utility outcome))).symm
 
-/-- Pure strategic-form play and event-batch trace play are EU-preserving
+/-- Pure strategic-form play and realization trace play are EU-preserving
 bisimilar kernel games. -/
-noncomputable def pureKernelGameAt.eventBatchTraceEUBisimulation
+noncomputable def pureKernelGameAt.realizationTraceEUBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.EUGameIsomorphism
-      (pureKernelGameAt g) (pureEventBatchTraceKernelGameAt g) where
-  toGameIsomorphism := pureKernelGameAt.eventBatchTraceBisimulation g
+      (pureKernelGameAt g) (pureRealizationTraceKernelGameAt g) where
+  toGameIsomorphism := pureKernelGameAt.realizationTraceBisimulation g
   eu_preserved := by
     intro π who
-    exact pureEventBatchTraceKernelGameAt_eu_eq g π who
+    exact pureRealizationTraceKernelGameAt_eu_eq g π who
 
-/-- PMF behavioral strategic-form play and event-batch trace play induce the same
+/-- PMF behavioral strategic-form play and realization trace play induce the same
 joint utility distribution. -/
-noncomputable def pmfBehavioralKernelGameAt.eventBatchTraceBisimulation
+noncomputable def pmfBehavioralKernelGameAt.realizationTraceBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.Bisimulation
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralEventBatchTraceKernelGameAt g) where
+      (pmfBehavioralRealizationTraceKernelGameAt g) where
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro β
     change
-      ((pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β).bind
+      ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β).bind
           (fun trace =>
-            PMF.pure ((pmfBehavioralEventBatchTraceKernelGameAt g).utility trace)) =
+            PMF.pure ((pmfBehavioralRealizationTraceKernelGameAt g).utility trace)) =
         ((pmfBehavioralKernelGameAt g).outcomeKernel β).bind
           (fun outcome =>
             PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))
-    rw [← pmfBehavioralEventBatchTraceKernelGameAt_outcomeKernel_map_outcome g β]
+    rw [← pmfBehavioralRealizationTraceKernelGameAt_outcomeKernel_map_outcome g β]
     exact (PMF.bind_map
-      ((pmfBehavioralEventBatchTraceKernelGameAt g).outcomeKernel β)
-      (syntaxEventBatchTraceOutcome g)
+      ((pmfBehavioralRealizationTraceKernelGameAt g).outcomeKernel β)
+      (syntaxRealizationTraceOutcome g)
       (fun outcome =>
         PMF.pure ((pmfBehavioralKernelGameAt g).utility outcome))).symm
 
-/-- PMF behavioral strategic-form play and event-batch trace play are
+/-- PMF behavioral strategic-form play and realization trace play are
 EU-preserving bisimilar kernel games. -/
-noncomputable def pmfBehavioralKernelGameAt.eventBatchTraceEUBisimulation
+noncomputable def pmfBehavioralKernelGameAt.realizationTraceEUBisimulation
     [Fintype P] (g : WFProgram P L) [FiniteDomains g] :
     GameTheory.KernelGame.EUGameIsomorphism
       (pmfBehavioralKernelGameAt g)
-      (pmfBehavioralEventBatchTraceKernelGameAt g) where
+      (pmfBehavioralRealizationTraceKernelGameAt g) where
   toGameIsomorphism :=
-    pmfBehavioralKernelGameAt.eventBatchTraceBisimulation g
+    pmfBehavioralKernelGameAt.realizationTraceBisimulation g
   eu_preserved := by
     intro β who
-    exact pmfBehavioralEventBatchTraceKernelGameAt_eu_eq g β who
+    exact pmfBehavioralRealizationTraceKernelGameAt_eu_eq g β who
 
 end Vegas

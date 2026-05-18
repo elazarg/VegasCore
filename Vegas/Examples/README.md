@@ -41,7 +41,7 @@ strategic and trace presentations:
 - constructs a legal generated pure strategy/profile for any finite checked
   program;
 - proves pure expected utility, Nash, and dominance are invariant under
-  replacing public outcomes by event-batch traces;
+  replacing public outcomes by realization traces;
 - proves the corresponding PMF-behavioral Nash transport;
 - instantiates the Kuhn PMF theorem for the example programs;
 - proves that a concrete source-level Prisoner's Dilemma action compiles to an

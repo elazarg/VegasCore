@@ -20,11 +20,11 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 attribute [local instance] EventGraph.nodeDecEq
 attribute [local instance] EventGraph.fieldDecEq
 
-/-- Native round-view presentation of a protocol-graph machine by independent
-explicit frontier rounds. -/
+/-- Native round-view presentation of a protocol-graph machine by local explicit
+frontier rounds. -/
 noncomputable def toRoundView
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds) :
+    (hsound : G.HasLocalFrontierRounds) :
     (G.toMachine iface).RoundView where
   Act := PlayerRoundAction G
   active := roundActive G

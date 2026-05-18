@@ -63,56 +63,56 @@ theorem checkedProgram_wholeGame_reaches_declared_payoff_rule
           evalPayoffs (ProgramField.finalPayoffs g.prog) env :=
   eventGraphOutcome_eq_evalPayoffs_of_terminal g hcomplete
 
-/-- Pure strategic-form outcomes are exactly the event-graph machine event-batch
-trace outcomes projected to payoff outcomes. -/
-theorem checkedProgram_pureOutcome_eq_eventBatchTrace
+/-- Pure strategic-form outcomes are exactly the event-graph realization-trace
+outcomes projected to payoff outcomes. -/
+theorem checkedProgram_pureOutcome_eq_realizationTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     pureOutcomeKernelAt g π =
       PMF.map
-        (syntaxEventBatchTraceOutcome g)
-        (pureEventBatchTraceOutcomeKernelAt g π) :=
-  pureOutcomeKernelAt_eq_eventBatchTraceDist g π
+        (syntaxRealizationTraceOutcome g)
+        (pureRealizationTraceOutcomeKernelAt g π) :=
+  pureOutcomeKernelAt_eq_realizationTraceDist g π
 
-/-- PMF behavioral strategic-form outcomes are exactly the event-graph machine
-event-batch trace outcomes projected to payoff outcomes. -/
-theorem checkedProgram_behavioralOutcome_eq_eventBatchTrace
+/-- PMF behavioral strategic-form outcomes are exactly the event-graph
+realization-trace outcomes projected to payoff outcomes. -/
+theorem checkedProgram_behavioralOutcome_eq_realizationTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralOutcomeKernelPMFAt g β =
       PMF.map
-        (syntaxEventBatchTraceOutcome g)
-        (behavioralEventBatchTraceOutcomeKernelPMFAt g β) :=
-  behavioralOutcomeKernelPMFAt_eq_eventBatchTraceDist g β
+        (syntaxRealizationTraceOutcome g)
+        (behavioralRealizationTraceOutcomeKernelPMFAt g β) :=
+  behavioralOutcomeKernelPMFAt_eq_realizationTraceDist g β
 
 /-- Pure public-state game-form outcomes are the public observation projection
-of event-batch machine traces. -/
-theorem checkedProgram_purePublicStateOutcome_eq_eventBatchTrace
+of realization traces. -/
+theorem checkedProgram_purePublicStateOutcome_eq_realizationTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (π : pureProfileAt g) :
     purePublicStateOutcomeKernelAt g π =
-      PMF.map (syntaxEventBatchTracePublicState g)
-        (pureEventBatchTraceOutcomeKernelAt g π) := rfl
+      PMF.map (syntaxRealizationTracePublicState g)
+        (pureRealizationTraceOutcomeKernelAt g π) := rfl
 
 /-- PMF behavioral public-state game-form outcomes are the public observation
-projection of event-batch machine traces. -/
-theorem checkedProgram_behavioralPublicStateOutcome_eq_eventBatchTrace
+projection of realization traces. -/
+theorem checkedProgram_behavioralPublicStateOutcome_eq_realizationTrace
     [Fintype P] (g : WFProgram P L) [FiniteDomains g]
     (β : behavioralProfilePMFAt g) :
     behavioralPublicStateOutcomeKernelPMFAt g β =
-      PMF.map (syntaxEventBatchTracePublicState g)
-        (behavioralEventBatchTraceOutcomeKernelPMFAt g β) := rfl
+      PMF.map (syntaxRealizationTracePublicState g)
+        (behavioralRealizationTraceOutcomeKernelPMFAt g β) := rfl
 
-/-- Equality after projecting event-batch traces to syntax outcomes gives equality
+/-- Equality after projecting realization traces to syntax outcomes gives equality
 of the induced outcome laws. -/
 theorem outcomeKernel_eq_of_traceOutcome_eq
     (g : WFProgram P L)
-    {left right : PMF (syntaxEventBatchTraceAt g)}
+    {left right : PMF (syntaxRealizationTraceAt g)}
     (h :
-      PMF.map (syntaxEventBatchTraceOutcome g) left =
-        PMF.map (syntaxEventBatchTraceOutcome g) right) :
-    PMF.map (syntaxEventBatchTraceOutcome g) left =
-      PMF.map (syntaxEventBatchTraceOutcome g) right :=
+      PMF.map (syntaxRealizationTraceOutcome g) left =
+        PMF.map (syntaxRealizationTraceOutcome g) right) :
+    PMF.map (syntaxRealizationTraceOutcome g) left =
+      PMF.map (syntaxRealizationTraceOutcome g) right :=
   h
 
 private theorem ProgramField.finalEnv?_erasePubEnv_eq_of_public_values

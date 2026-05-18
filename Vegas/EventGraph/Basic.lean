@@ -559,13 +559,13 @@ noncomputable def done (G : Vegas.EventGraph Player L)
   classical
   simp [done]
 
-/-- Extensional machine configuration for an event graph.
+/-- Predecessor-closed partial node-result assignment for an event graph.
 
 The closure invariant says completed nodes are lower-closed under graph
 dependencies.  The legality invariant says every node result is a
 well-formed field patch for that node. Dynamic action legality is checked at the
 machine frontier instead of being cached in the configuration. -/
-structure Configuration (G : Vegas.EventGraph Player L) where
+structure ClosedAssignment (G : Vegas.EventGraph Player L) where
   result : ResultAssignment G
   result_nodes :
     ∀ {node}, (result node).isSome → node ∈ G.nodes
@@ -578,6 +578,15 @@ structure Configuration (G : Vegas.EventGraph Player L) where
     ∀ {node patch},
       result node = some patch →
       G.patchLegal node patch
+
+/-- Machine configuration for the native event-graph semantics.
+
+At the current abstraction level the machine state is exactly a
+predecessor-closed assignment. Keeping the configuration name separate leaves
+room for future operational state without making the graph assignment itself
+carry presentation-specific data. -/
+abbrev Configuration (G : Vegas.EventGraph Player L) : Type :=
+  ClosedAssignment G
 
 namespace Configuration
 
@@ -1073,6 +1082,87 @@ theorem eq_withFrontierPatches_of_result_eq
     rw [withFrontierPatches_result_of_mem cfg patch hlegal hfrontier]
   · rw [hoffFrontier node hfrontier]
     rw [withFrontierPatches_result_of_not_mem cfg patch hlegal hfrontier]
+
+end Configuration
+
+/-- The finite index of nodes enabled at a configuration. -/
+abbrev FrontierIndex (G : Vegas.EventGraph Player L)
+    (cfg : G.Configuration) : Type :=
+  { node : G.Node // node ∈ cfg.frontier }
+
+/-- Order-free assignment of one concrete field patch to every node in the
+current frontier. This is the semantic payload of a realized event-graph round;
+primitive event lists are schedules that realize this payload. -/
+structure FrontierRealization
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration) where
+  patch : FrontierIndex G cfg → FieldPatch G
+
+namespace FrontierRealization
+
+variable {G : Vegas.EventGraph Player L} {cfg : G.Configuration}
+
+/-- All patches in a frontier realization are legal for their nodes. -/
+def Legal (realization : FrontierRealization G cfg) : Prop :=
+  ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (realization.patch idx)
+
+/-- Patch selected for a frontier node. -/
+def patchAt (realization : FrontierRealization G cfg)
+    (node : G.Node) (hfrontier : node ∈ cfg.frontier) :
+    FieldPatch G :=
+  realization.patch ⟨node, hfrontier⟩
+
+@[ext] theorem ext
+    {left right : FrontierRealization G cfg}
+    (hpatch : ∀ idx, left.patch idx = right.patch idx) :
+    left = right := by
+  cases left with
+  | mk leftPatch =>
+      cases right with
+      | mk rightPatch =>
+          have h : leftPatch = rightPatch := by
+            funext idx
+            exact hpatch idx
+          cases h
+          rfl
+
+end FrontierRealization
+
+namespace Configuration
+
+variable {G : Vegas.EventGraph Player L}
+
+/-- Extend a configuration by recording one legal patch for every currently
+enabled frontier node. -/
+noncomputable def extendFrontier
+    (cfg : G.Configuration)
+    (realization : FrontierRealization G cfg)
+    (hlegal : realization.Legal) :
+    G.Configuration :=
+  cfg.withFrontierPatches
+    (fun node hfrontier => realization.patchAt node hfrontier)
+    (fun node hfrontier => hlegal ⟨node, hfrontier⟩)
+
+@[simp] theorem extendFrontier_result_of_mem
+    (cfg : G.Configuration)
+    (realization : FrontierRealization G cfg)
+    (hlegal : realization.Legal)
+    {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
+    (cfg.extendFrontier realization hlegal).result node =
+      some (realization.patchAt node hfrontier) := by
+  exact
+    withFrontierPatches_result_of_mem cfg
+      (fun node hfrontier => realization.patchAt node hfrontier)
+      (fun node hfrontier => hlegal ⟨node, hfrontier⟩)
+      hfrontier
+
+@[simp] theorem extendFrontier_result_of_not_mem
+    (cfg : G.Configuration)
+    (realization : FrontierRealization G cfg)
+    (hlegal : realization.Legal)
+    {node : G.Node} (hfrontier : node ∉ cfg.frontier) :
+    (cfg.extendFrontier realization hlegal).result node =
+      cfg.result node := by
+  simp [extendFrontier, hfrontier]
 
 end Configuration
 

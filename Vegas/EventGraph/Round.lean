@@ -1,4 +1,5 @@
 import GameTheory.Core.JointAction
+import Math.PMFProduct
 import Vegas.EventGraph.ToMachine
 import Vegas.Machine.Trace
 
@@ -481,7 +482,7 @@ private theorem roundStepNode_frontier_of_ne
 
 private theorem roundStepNode_preserves_available_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G))
     {node : G.Node}
     {current mid : G.Configuration}
@@ -602,7 +603,7 @@ private theorem roundNodeReady_of_legal
 
 private theorem roundStepNode_preserves_ready_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G))
     {node candidate : G.Node}
     {current mid : G.Configuration}
@@ -625,7 +626,7 @@ private theorem roundStepNode_preserves_ready_of_ne
 
 private theorem roundStepNode_comm_of_ready
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G))
     (cfg : G.Configuration)
     {left right : G.Node}
@@ -1096,7 +1097,7 @@ private theorem roundStepNode_comm_of_ready
 
 private theorem roundTransitionGo_eq_of_perm_ready
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G)) :
     ∀ {nodes₁ nodes₂ : List G.Node} {current : G.Configuration},
       nodes₁.Perm nodes₂ →
@@ -1146,10 +1147,10 @@ private theorem roundTransitionGo_eq_of_perm_ready
       exact (ih₁ hnodup hready).trans (ih₂ hnodupMid hreadyMid)
 
 /-- Executing one frontier node does not change the internal kernel of a
-different frontier node under independent frontier-round soundness. -/
+different frontier node under local frontier-round soundness. -/
 theorem roundStepNode_preserves_internalKernel_of_ne
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G))
     {node candidate : G.Node}
     {current mid : G.Configuration}
@@ -1224,7 +1225,7 @@ kernel-stability form used to treat the canonical frontier order as a proof
 linearization. -/
 theorem roundTransitionGo_preserves_internalKernel_of_not_mem
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (joint : JointAction (PlayerRoundAction G))
     (nodes : List G.Node)
     {candidate : G.Node}
@@ -1708,7 +1709,7 @@ private theorem explicitRoundBatchGo_support_availableRunFrom_suffix
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (source : G.Configuration)
     (joint : JointAction (PlayerRoundAction G))
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     (hlegal :
       JointActionLegal (PlayerRoundAction G) (roundActive G)
         Configuration.terminal (roundAvailable G) source joint) :
@@ -2144,7 +2145,7 @@ private theorem explicitRoundBatchGo_map_state
 
 The list order is an implementation schedule. Its membership proof says that
 the schedule has no semantic content beyond choosing an order in which to
-execute the same independent frontier. -/
+execute the same local frontier. -/
 structure FrontierSchedule
     (G : Vegas.EventGraph Player L) (cfg : G.Configuration) where
   nodes : List G.Node
@@ -2176,7 +2177,7 @@ noncomputable def roundTransitionWithSchedule
 /-- Execute the current frontier as one native graph round.
 
 The implementation uses `frontier.toList` as a canonical representative
-linearization. For graph views exposed through `HasIndependentFrontierRounds`,
+linearization. For graph views exposed through `HasLocalFrontierRounds`,
 frontier independence justifies treating this order as proof/execution
 presentation rather than additional strategic content. -/
 noncomputable def roundTransition
@@ -2185,13 +2186,65 @@ noncomputable def roundTransition
     PMF G.Configuration :=
   roundTransitionGo G joint cfg.frontier.toList cfg
 
+/-- Patch distribution for one order-free frontier coordinate. Player-owned
+coordinates are fixed by the legal joint action; internal coordinates use the
+graph's internal kernel at the source configuration. -/
+noncomputable def frontierPatchDist
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G))
+    (_hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint)
+    (idx : FrontierIndex G cfg) :
+    PMF G.FieldPatch :=
+  match (G.sem idx.1).actor with
+  | some who =>
+      match joint who with
+      | some action => PMF.pure (action.patch idx.1)
+      | none => PMF.pure (FieldPatch.empty G)
+  | none => G.internalKernel idx.1 cfg.result
+
+/-- Order-free distribution of one frontier realization. This is the semantic
+round payload; list schedules are execution witnesses for samples of this
+distribution. -/
+noncomputable def frontierRealizationDist
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint : JointAction (PlayerRoundAction G))
+    (hlegal :
+      JointActionLegal (PlayerRoundAction G) (roundActive G)
+        Configuration.terminal (roundAvailable G) cfg joint) :
+    PMF (FrontierRealization G cfg) :=
+  PMF.map
+    (fun patch : (idx : FrontierIndex G cfg) → G.FieldPatch =>
+      { patch := patch })
+    (Math.PMFProduct.pmfPi
+      (fun idx => frontierPatchDist G cfg joint hlegal idx))
+
+/-- Order-free state transition induced by a legal frontier realization. The
+fallback branch is unreachable on the support of well-formed event graphs; it
+keeps the function total over Lean's unconstrained PMF samples. -/
+noncomputable def frontierRealizationTransition
+    (G : Vegas.EventGraph Player L) (cfg : G.Configuration)
+    (joint :
+      { joint : JointAction (PlayerRoundAction G) //
+        JointActionLegal (PlayerRoundAction G) (roundActive G)
+          Configuration.terminal (roundAvailable G) cfg joint }) :
+    PMF G.Configuration := by
+  classical
+  exact
+    (frontierRealizationDist G cfg joint.1 joint.2).bind fun realization =>
+      if hlegal : realization.Legal then
+        PMF.pure (cfg.extendFrontier realization hlegal)
+      else
+        PMF.pure cfg
+
 /-- Any explicit source-frontier schedule induces the same state kernel as the
 canonical representative schedule. This is the public round-law boundary:
 `frontier.toList` is a chosen linearization, not part of the event-graph
 semantics. -/
 theorem roundTransitionWithSchedule_eq_roundTransition
     (G : Vegas.EventGraph Player L)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     {cfg : G.Configuration}
     {joint : JointAction (PlayerRoundAction G)}
     (hlegal :
@@ -2214,8 +2267,8 @@ frontier round.
 The sampler walks the source frontier in canonical order, sampling internal
 kernels from the threaded current result as their nodes are reached and
 recording the concrete primitive event that is executed. Under
-`HasIndependentFrontierRounds`, the kernel-stability lemmas make this canonical
-walk a representative linearization of the independent frontier round. -/
+`HasLocalFrontierRounds`, the kernel-stability lemmas make this canonical
+walk a representative linearization of the local frontier round. -/
 noncomputable def explicitRoundBatchDist
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
     (cfg : G.Configuration)
@@ -2274,12 +2327,12 @@ theorem explicitRoundBatchDist_support_runEventsFrom
   rw [hbatch]
   simpa using hrun
 
-/-- Under independent frontier rounds, every supported explicit realized batch
+/-- Under local frontier rounds, every supported explicit realized batch
 is a primitive machine run whose events are available at the states where they
 are executed. -/
 theorem explicitRoundBatchDist_support_availableRunFrom
     (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
-    (hsound : G.HasIndependentFrontierRounds)
+    (hsound : G.HasLocalFrontierRounds)
     {cfg dst : G.Configuration}
     {joint : JointAction (PlayerRoundAction G)}
     {batch : List (G.toMachine iface).Event}
