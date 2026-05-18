@@ -76,6 +76,96 @@ noncomputable def toRoundView
       rw [hjoint]
       exact hactive
 
+/-- The primitive batch extracted from one supported native bounded round step
+is an available machine run from the step source to the step destination. -/
+theorem boundedRoundStepEventBatch_availableRunFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (step : ((G.toRoundView iface hsound).BoundedStep horizon)) :
+    (G.toMachine iface).AvailableRunFrom step.src.state
+      ((G.toRoundView iface hsound).eventBatch step.src.state step.act.1
+        step.dst.state)
+      step.dst.state := by
+  classical
+  let view := G.toRoundView iface hsound
+  let joint := view.boundedActionToAction horizon step.src step.act
+  have hmemBounded :
+      step.dst ∈ (view.boundedTransition horizon step.src step.act).support :=
+    (PMF.mem_support_iff _ _).2 step.support
+  have hmemState :
+      step.dst.state ∈
+        (PMF.map (fun bounded => bounded.state)
+          (view.boundedTransition horizon step.src step.act)).support :=
+    (PMF.mem_support_map_iff _ _ _).2
+      ⟨step.dst, hmemBounded, rfl⟩
+  have hmap := view.boundedTransition_map_state horizon step.src step.act
+  rw [hmap] at hmemState
+  have hdst :
+      step.dst.state ∈
+        (frontierRealizationTransition G step.src.state joint).support := by
+    simpa [view, joint, toRoundView] using hmemState
+  simpa [view, joint, toRoundView, Machine.RoundView.boundedActionToAction]
+    using
+      (realizedEventBatch_availableRunFrom_of_frontierRealizationTransition_support
+        G iface hsound joint hdst)
+
+private theorem boundedRoundStepBatches_availableRunBatchesFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
+    ∀ {start : (G.toMachine iface).BoundedState horizon}
+      {steps : List ((G.toRoundView iface hsound).BoundedStep horizon)},
+      (G.toRoundView iface hsound).StepChainFrom horizon start steps →
+        (G.toMachine iface).AvailableRunBatchesFrom start.state
+          (steps.map fun step =>
+            (G.toRoundView iface hsound).eventBatch step.src.state step.act.1
+              step.dst.state)
+          (((G.toRoundView iface hsound).lastStateFrom horizon start steps).state)
+  | start, [], _hchain => by
+      simpa [Machine.RoundView.lastStateFrom] using
+        Machine.AvailableRunBatchesFrom.nil start.state
+  | start, step :: steps, hchain => by
+      rcases hchain with ⟨hsrc, htail⟩
+      subst start
+      change (G.toMachine iface).AvailableRunBatchesFrom step.src.state
+        ((G.toRoundView iface hsound).eventBatch step.src.state step.act.1
+          step.dst.state ::
+            steps.map fun step =>
+              (G.toRoundView iface hsound).eventBatch step.src.state
+                step.act.1 step.dst.state)
+        (((G.toRoundView iface hsound).lastStateFrom horizon step.dst steps).state)
+      exact Machine.AvailableRunBatchesFrom.cons
+        (boundedRoundStepEventBatch_availableRunFrom
+          G iface hsound horizon step)
+        (boundedRoundStepBatches_availableRunBatchesFrom
+          G iface hsound horizon htail)
+
+/-- Primitive batches extracted from a native bounded event-graph history form
+an available machine batch run from the machine initial state to the history
+state. -/
+theorem boundedRoundHistory_availableRunBatchesFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (h : ((G.toRoundView iface hsound).BoundedHistory horizon)) :
+    (G.toMachine iface).AvailableRunBatchesFrom (G.toMachine iface).init
+      ((G.toRoundView iface hsound).boundedHistoryEventBatches horizon h)
+      h.lastState.state := by
+  simpa [Machine.RoundView.boundedHistoryEventBatches,
+    Machine.RoundView.BoundedHistory.lastState] using
+    (boundedRoundStepBatches_availableRunBatchesFrom
+      G iface hsound horizon h.chain)
+
+/-- Nonzero-support form of `boundedRoundHistory_availableRunBatchesFrom`. -/
+theorem boundedRoundHistory_state_mem_runEventBatchesFrom_support
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (h : ((G.toRoundView iface hsound).BoundedHistory horizon)) :
+    h.lastState.state ∈
+      ((G.toMachine iface).runEventBatchesFrom
+        ((G.toRoundView iface hsound).boundedHistoryEventBatches horizon h)
+        (G.toMachine iface).init).support :=
+  Machine.AvailableRunBatchesFrom.mem_runEventBatchesFrom_support
+    (boundedRoundHistory_availableRunBatchesFrom G iface hsound horizon h)
+
 end EventGraph
 
 end Vegas

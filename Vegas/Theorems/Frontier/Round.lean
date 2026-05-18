@@ -118,6 +118,26 @@ theorem eventGraph_frontierRealizationTransition_support_extend
   EventGraph.frontierRealizationTransition_support_extend
     G cfg joint hdst
 
+/-- Order-free frontier-realization transitions are supported by the canonical
+scheduled round representative. This reconnects native round histories to
+primitive machine execution theorems. -/
+theorem eventGraph_frontierRealizationTransition_support_roundTransition
+    {G : EventGraph P L}
+    (hsound : G.HasLocalFrontierRounds)
+    {cfg : G.Configuration}
+    (joint :
+      { joint : JointAction (EventGraph.PlayerRoundAction G) //
+        JointActionLegal (EventGraph.PlayerRoundAction G)
+          (EventGraph.roundActive G)
+          EventGraph.Configuration.terminal
+          (EventGraph.roundAvailable G) cfg joint })
+    {dst : G.Configuration}
+    (hdst : dst ∈
+      (EventGraph.frontierRealizationTransition G cfg joint).support) :
+    dst ∈ (EventGraph.roundTransition G cfg joint.1).support :=
+  EventGraph.frontierRealizationTransition_support_roundTransition
+    G hsound joint hdst
+
 /-- Local, legal explicit frontier batches are primitive runs whose
 events are available at the states where they execute. -/
 theorem eventGraph_explicitRoundBatchDist_support_availableRunFrom
@@ -137,5 +157,40 @@ theorem eventGraph_explicitRoundBatchDist_support_availableRunFrom
     (G.toMachine iface).AvailableRunFrom cfg batch dst :=
   EventGraph.explicitRoundBatchDist_support_availableRunFrom
     G iface hsound hlegal hsupp
+
+/-- Realized batches extracted from native order-free round destinations are
+available primitive runs to that destination. -/
+theorem eventGraph_realizedEventBatch_availableRunFrom_of_frontier
+    {G : EventGraph P L}
+    (iface : EventGraph.MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds)
+    {cfg dst : G.Configuration}
+    (joint :
+      { joint : JointAction (EventGraph.PlayerRoundAction G) //
+        JointActionLegal (EventGraph.PlayerRoundAction G)
+          (EventGraph.roundActive G)
+          EventGraph.Configuration.terminal
+          (EventGraph.roundAvailable G) cfg joint })
+    (hdst : dst ∈
+      (EventGraph.frontierRealizationTransition G cfg joint).support) :
+    (G.toMachine iface).AvailableRunFrom cfg
+      (EventGraph.realizedEventBatch G iface cfg joint.1 dst) dst :=
+  EventGraph.realizedEventBatch_availableRunFrom_of_frontierRealizationTransition_support
+    G iface hsound joint hdst
+
+/-- Native bounded event-graph histories extract primitive batches that execute
+from the machine initial state to the history endpoint. -/
+theorem eventGraph_boundedRoundHistory_availableRunBatchesFrom
+    {G : EventGraph P L}
+    (iface : EventGraph.MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds)
+    (horizon : Nat)
+    (h :
+      ((G.toRoundView iface hsound).BoundedHistory horizon)) :
+    (G.toMachine iface).AvailableRunBatchesFrom (G.toMachine iface).init
+      ((G.toRoundView iface hsound).boundedHistoryEventBatches horizon h)
+      h.lastState.state :=
+  EventGraph.boundedRoundHistory_availableRunBatchesFrom
+    G iface hsound horizon h
 
 end Vegas

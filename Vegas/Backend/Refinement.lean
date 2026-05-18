@@ -74,8 +74,10 @@ Internal implementation events project to `none` and must be stuttering after
 state projection. `projectEventBatch` is the trace-level projection actually
 used by batch laws; it may normalize an implementation schedule, for example by
 canonicalizing independent frontier events before comparing with the
-specification batch. The relation is still machine-to-machine; it does not add
-a second runtime semantics. -/
+specification batch. The usual non-canonicalizing projection is
+`events.filterMap projectEvent`, with `eventBatch_project` proved by induction
+from `step_project`. The relation is still machine-to-machine; it does not add a
+second runtime semantics. -/
 structure StochasticStepRefinement
     (Impl Spec : Machine Player) where
   projectState : Impl.State → Spec.State

@@ -241,6 +241,32 @@ noncomputable def eventGraphFOSGHistoryEventBatches
     (programEventGraph g) (eventGraphMachineInterface g)
     (programEventGraph_hasLocalFrontierRounds g) horizon h
 
+/-- Program-specialized availability witness for the primitive batches
+extracted from a bounded event-graph FOSG history. -/
+theorem eventGraphFOSGHistory_availableRunBatchesFrom
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    (eventGraphMachine g).AvailableRunBatchesFrom (eventGraphMachine g).init
+      (eventGraphFOSGHistoryEventBatches g horizon h)
+      h.lastState.state := by
+  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
+    eventGraphFOSGView] using
+    (EventGraph.boundedFOSGHistory_availableRunBatchesFrom
+      (programEventGraph g) (eventGraphMachineInterface g)
+      (programEventGraph_hasLocalFrontierRounds g) horizon h)
+
+/-- Program-specialized support theorem for primitive batches extracted from a
+bounded event-graph FOSG history. -/
+theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
+    (g : WFProgram P L) (horizon : Nat)
+    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+    h.lastState.state ∈
+      ((eventGraphMachine g).runEventBatchesFrom
+        (eventGraphFOSGHistoryEventBatches g horizon h)
+        (eventGraphMachine g).init).support :=
+  Machine.AvailableRunBatchesFrom.mem_runEventBatchesFrom_support
+    (eventGraphFOSGHistory_availableRunBatchesFrom g horizon h)
+
 /-- Realized primitive machine events represented by one event-graph FOSG
 frontier round. Internal events carry the patch found in the realized
 destination. -/

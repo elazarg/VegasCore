@@ -133,6 +133,121 @@ noncomputable def boundedFOSGHistoryEventBatches
     List (List (G.toMachine iface).Event) :=
   boundedFOSGStepEventBatches G iface hsound horizon h.steps
 
+/-- The primitive batch extracted from one supported bounded FOSG step is an
+available machine run from the step source to the step destination. -/
+theorem boundedFOSGStepEventBatch_availableRunFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (step :
+      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)) :
+    (G.toMachine iface).AvailableRunFrom step.src.state
+      (realizedEventBatch G iface step.src.state step.act.1
+        step.dst.state)
+      step.dst.state := by
+  classical
+  let view := G.toFOSGView iface hsound
+  let joint := view.boundedActionToAction horizon step.src step.act
+  have hmemBounded :
+      step.dst ∈
+        ((view.toBoundedFOSG horizon).transition step.src step.act).support :=
+    (PMF.mem_support_iff _ _).2 step.support
+  have hmemState :
+      step.dst.state ∈
+        (PMF.map (fun bounded => bounded.state)
+          ((view.toBoundedFOSG horizon).transition step.src step.act)).support :=
+    (PMF.mem_support_map_iff _ _ _).2
+      ⟨step.dst, hmemBounded, rfl⟩
+  have hmap :=
+    view.toBoundedFOSG_transition_map_state horizon step.src step.act
+  rw [hmap] at hmemState
+  have hdst :
+      step.dst.state ∈
+        (frontierRealizationTransition G step.src.state joint).support := by
+    simpa [view, joint, toFOSGView] using hmemState
+  simpa [joint, Machine.FOSGView.boundedActionToAction] using
+    (realizedEventBatch_availableRunFrom_of_frontierRealizationTransition_support
+      G iface hsound joint hdst)
+
+/-- Event batches extracted from a bounded FOSG step chain form an available
+primitive batch run between the chain endpoints. -/
+theorem boundedFOSGStepEventBatches_availableRunBatchesFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat) :
+    ∀ {start : (G.toMachine iface).BoundedState horizon}
+      {steps :
+        List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)},
+      ((G.toFOSGView iface hsound).toBoundedFOSG horizon).StepChainFrom
+        start steps →
+        (G.toMachine iface).AvailableRunBatchesFrom start.state
+          (boundedFOSGStepEventBatches G iface hsound horizon steps)
+          ((((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
+            start steps).state)
+  | start, [], _hchain => by
+      simp [boundedFOSGStepEventBatches, GameTheory.FOSG.lastStateFrom,
+        Machine.AvailableRunBatchesFrom.nil]
+  | start, step :: steps, hchain => by
+      rcases hchain with ⟨hsrc, htail⟩
+      subst start
+      change (G.toMachine iface).AvailableRunBatchesFrom step.src.state
+        (realizedEventBatch G iface step.src.state step.act.1
+          step.dst.state ::
+            boundedFOSGStepEventBatches G iface hsound horizon steps)
+        ((((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
+          step.dst steps).state)
+      exact Machine.AvailableRunBatchesFrom.cons
+        (boundedFOSGStepEventBatch_availableRunFrom
+          G iface hsound horizon step)
+        (boundedFOSGStepEventBatches_availableRunBatchesFrom
+          G iface hsound horizon htail)
+
+/-- Nonzero-support form of
+`boundedFOSGStepEventBatches_availableRunBatchesFrom`. -/
+theorem boundedFOSGStepEventBatches_lastState_mem_runEventBatchesFrom_support
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    {start : (G.toMachine iface).BoundedState horizon}
+    {steps :
+      List (((G.toFOSGView iface hsound).toBoundedFOSG horizon).Step)}
+    (hchain :
+      ((G.toFOSGView iface hsound).toBoundedFOSG horizon).StepChainFrom
+        start steps) :
+    ((((G.toFOSGView iface hsound).toBoundedFOSG horizon).lastStateFrom
+      start steps).state) ∈
+      ((G.toMachine iface).runEventBatchesFrom
+        (boundedFOSGStepEventBatches G iface hsound horizon steps)
+        start.state).support :=
+  Machine.AvailableRunBatchesFrom.mem_runEventBatchesFrom_support
+    (boundedFOSGStepEventBatches_availableRunBatchesFrom
+      G iface hsound horizon hchain)
+
+/-- Event batches extracted from a bounded FOSG history form an available
+primitive batch run from the machine initial state to the history state. -/
+theorem boundedFOSGHistory_availableRunBatchesFrom
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
+    (G.toMachine iface).AvailableRunBatchesFrom (G.toMachine iface).init
+      (boundedFOSGHistoryEventBatches G iface hsound horizon h)
+      h.lastState.state := by
+  simpa [boundedFOSGHistoryEventBatches] using
+    (boundedFOSGStepEventBatches_availableRunBatchesFrom
+      G iface hsound horizon h.chain)
+
+/-- Nonzero-support form of
+`boundedFOSGHistory_availableRunBatchesFrom`. -/
+theorem boundedFOSGHistory_state_mem_runEventBatchesFrom_support
+    (G : Vegas.EventGraph Player L) (iface : MachineInterface G)
+    (hsound : G.HasLocalFrontierRounds) (horizon : Nat)
+    (h :
+      (((G.toFOSGView iface hsound).toBoundedFOSG horizon).History)) :
+    h.lastState.state ∈
+      ((G.toMachine iface).runEventBatchesFrom
+        (boundedFOSGHistoryEventBatches G iface hsound horizon h)
+        (G.toMachine iface).init).support :=
+  Machine.AvailableRunBatchesFrom.mem_runEventBatchesFrom_support
+    (boundedFOSGHistory_availableRunBatchesFrom G iface hsound horizon h)
+
 /-- History-dependent event-batched primitive trace distribution induced by a
 bounded graph-FOSG behavioral profile.
 
