@@ -2094,8 +2094,8 @@ def toBackendEventBatchTraceMorphism ... : KernelGame.EUMorphism\label{def:toBac
 
 \begin{itemize}\itemsep1pt
 \item \DefRef{PureSpecEventBatchLaw}~$g$ is a per-pure-profile specification
-  event-batch law plus a proof that it reproduces the canonical public
-  outcome kernel.
+  event-batch law plus a proof that it reproduces the canonical explicit
+  event-batch trace distribution induced by the native round view.
 \item \DefRef{BehavioralSpecEventBatchLaw}~$g$ is the analogous package for
   PMF behavioral profiles.
 \item \DefRef{BackendPureEventBatchLawLift}~$g~R$ pairs per-pure-profile
@@ -2124,8 +2124,8 @@ implementation into the canonical Vegas public game. The
 separation of \TT{PureSpecEventBatchLaw}/\TT{BehavioralSpecEventBatchLaw} from
 backend lifts is needed because FOSG event-batch traces are indexed by
 bounded FOSG histories while machine event-batch laws are indexed by machine
-event-batch traces — the code asks for the soundness proof rather than
-treating the conversion as definitional. For the identity refinement,
+event-batch traces — the code asks for a trace-level soundness proof
+rather than accepting outcome-level agreement. For the identity refinement,
 \DefRef{PureSpecEventBatchLaw.identityBackendLift}\label{def:PureSpecEventBatchLaw.identityBackendLift}
 and
 \DefRef{BehavioralSpecEventBatchLaw.identityBackendLift}\label{def:BehavioralSpecEventBatchLaw.identityBackendLift}

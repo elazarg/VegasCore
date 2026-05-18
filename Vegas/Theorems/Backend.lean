@@ -50,6 +50,35 @@ theorem backend_outcomeKernel_project_eq
   funext tr
   simpa [Function.comp_def] using houtcome tr.2
 
+/-- A pure-profile backend lift projects to the canonical specification
+event-batch trace distribution, not merely to the same public payoff law. -/
+theorem backend_pure_projectTrace_eq_canonical
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    {Impl : Machine P}
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
+    (lift : BackendPureEventBatchLawLift g R)
+    (π : pureProfileAt g) :
+    PMF.map R.projectEventBatchTrace
+        ((backendEventBatchTraceKernelGameAt g R lift).outcomeKernel π) =
+      pureCanonicalEventBatchTraceDistAt g π :=
+  backendEventBatchTraceKernelGameAt_projectTrace_eq_canonical g R lift π
+
+/-- A PMF-behavioral backend lift projects to the canonical specification
+event-batch trace distribution, not merely to the same public payoff law. -/
+theorem backend_behavioral_projectTrace_eq_canonical
+    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+    (g : WFProgram P L) [FiniteDomains g]
+    {Impl : Machine P}
+    (R : Machine.StochasticStepRefinement Impl (eventGraphMachine g))
+    (lift : BackendBehavioralEventBatchLawLift g R)
+    (β : behavioralProfilePMFAt g) :
+    PMF.map R.projectEventBatchTrace
+        ((backendPMFBehavioralEventBatchTraceKernelGameAt g R lift).outcomeKernel β) =
+      behavioralCanonicalEventBatchTraceDistAt g β :=
+  backendPMFBehavioralEventBatchTraceKernelGameAt_projectTrace_eq_canonical
+    g R lift β
+
 /-- Extra backend state and events cannot introduce projected public signals
 under stochastic refinement. -/
 theorem backend_cannot_introduce_public_signal_under_refinement

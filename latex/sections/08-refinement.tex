@@ -88,7 +88,9 @@ choice of how the spec graph and the implementation each generate a
 distribution over event-batch traces, plus a proof that the two
 generations match through $R$ — that is, the implementation's
 event-batch law projected through $R$ equals the spec's, and the spec's
-reproduces the canonical public outcome kernel.  The
+reproduces the canonical explicit event-batch trace distribution induced by
+the native order-free round view. Payoff preservation is then a corollary of
+projecting those traces to public outcomes.  The
 construction therefore takes:
 \begin{itemize}\itemsep1pt
 \item a stochastic refinement $R$ from the implementation machine
@@ -102,8 +104,8 @@ kernel is indexed by bounded FOSG histories, whereas a machine
 event-batch law sees only machine event-batch traces.  The code therefore
 does not silently identify the two.  Instead, \TT{PureSpecEventBatchLaw}
 and \TT{BehavioralSpecEventBatchLaw} package a specification event-batch law
-with the proof that it reproduces the canonical Vegas public outcome
-kernel; backend lifts then relate an implementation law to that
+with the proof that it reproduces the canonical Vegas event-batch trace
+distribution; backend lifts then relate an implementation law to that
 packaged spec law.  The identity backend wrappers reuse the same
 package rather than treating a canonical law conversion as
 definitionally available.
