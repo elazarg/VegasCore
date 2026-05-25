@@ -1,14 +1,20 @@
-import Vegas.Strategic.BehavioralPMF
+import Vegas.Examples.DependencySemantics
 
 /-!
 # Battle of the Sexes
 
-A checked Vegas encoding of Battle of the Sexes. The Boolean commitments use
-`true` for opera and `false` for football.
+Build-tested checked-program examples for the canonical frontier EventGraph
+semantics.
 -/
 
 namespace Vegas
 namespace Examples
+
+open GameTheory
+open ToEventGraph
+
+/-! ## Battle of the Sexes -/
+
 namespace BattleOfTheSexes
 
 inductive Player where
@@ -16,23 +22,20 @@ inductive Player where
   | footballFan
 deriving DecidableEq, Repr, Fintype
 
-abbrev Ctx := VCtx Player simpleExpr
-abbrev Prog (Γ : Ctx) := VegasCore Player simpleExpr Γ
-
 def operaFanSecret : VarId := 0
 def footballFanSecret : VarId := 1
 def operaFanPublic : VarId := 2
 def footballFanPublic : VarId := 3
 
-abbrev Γ0 : Ctx := []
-abbrev Γ2 : Ctx :=
+abbrev Γ0 : VCtx Player L := []
+abbrev Γ2 : VCtx Player L :=
   [(footballFanSecret, .hidden Player.footballFan .bool),
    (operaFanSecret, .hidden Player.operaFan .bool)]
-abbrev Γ3 : Ctx :=
+abbrev Γ3 : VCtx Player L :=
   [(operaFanPublic, .pub .bool),
    (footballFanSecret, .hidden Player.footballFan .bool),
    (operaFanSecret, .hidden Player.operaFan .bool)]
-abbrev Γ4 : Ctx :=
+abbrev Γ4 : VCtx Player L :=
   [(footballFanPublic, .pub .bool),
    (operaFanPublic, .pub .bool),
    (footballFanSecret, .hidden Player.footballFan .bool),
@@ -78,17 +81,6 @@ def payoffEnv (operaFan footballFan : Bool) :
   Env.cons (x := footballFanPublic) footballFan
     (Env.cons (x := operaFanPublic) operaFan (Env.empty simpleExpr.Val))
 
-theorem opera_opera_payoff :
-    evalExpr operaFanPayoff (payoffEnv true true) = 2 ∧
-      evalExpr footballFanPayoff (payoffEnv true true) = 1 := by
-  exact ⟨rfl, rfl⟩
-
-theorem football_football_payoff :
-    evalExpr operaFanPayoff (payoffEnv false false) = 1 ∧
-      evalExpr footballFanPayoff (payoffEnv false false) = 2 := by
-  exact ⟨rfl, rfl⟩
-
-/-- Complete payoff table of the source-level Boolean choices. -/
 theorem payoff_table (operaFan footballFan : Bool) :
     (evalExpr operaFanPayoff (payoffEnv operaFan footballFan),
       evalExpr footballFanPayoff (payoffEnv operaFan footballFan)) =
@@ -193,68 +185,117 @@ theorem actionNash_iff_opera_or_football (σ : ActionProfile) :
     · subst σ
       exact footballProfile_actionNash
 
-noncomputable abbrev program : Prog Γ0 :=
-  .commit operaFanSecret Player.operaFan (b := .bool) (.constBool true)
-    (.commit footballFanSecret Player.footballFan (b := .bool) (.constBool true)
-      (.reveal operaFanPublic Player.operaFan operaFanSecret hOperaFanSecretΓ2
+def core : VegasCore Player L Γ0 :=
+  .commit operaFanSecret Player.operaFan (trueGuard (x := operaFanSecret))
+    (.commit footballFanSecret Player.footballFan
+      (trueGuard (x := footballFanSecret))
+      (.reveal operaFanPublic Player.operaFan
+        operaFanSecret hOperaFanSecretΓ2
         (.reveal footballFanPublic Player.footballFan
           footballFanSecret hFootballFanSecretΓ3
           (.ret [(Player.operaFan, operaFanPayoff),
             (Player.footballFan, footballFanPayoff)]))))
 
-def viewScoped : ViewScoped program := by
-  dsimp [program, ViewScoped]
-  constructor
-  · intro z hz
-    simp [simpleExpr, exprDeps] at hz
-  · constructor
-    · intro z hz
-      simp [simpleExpr, exprDeps] at hz
-    · trivial
+noncomputable def graphProgram : GraphProgram Player L where
+  Γ := Γ0
+  prog := core
+  env := VEnv.empty L
+  wctx := WFCtx_nil
+  fresh := by
+    decide
+  normalized := by
+    trivial
 
-def legal : Legal program := by
-  dsimp [program, Legal]
-  constructor
-  · intro _env
-    exact ⟨true, rfl⟩
-  · constructor
+noncomputable def checkedProgram : WFProgram Player L where
+  core := graphProgram
+  reveals := by
+    decide
+  legal := by
+    constructor
     · intro _env
       exact ⟨true, rfl⟩
-    · trivial
+    · constructor
+      · intro _env
+        exact ⟨true, rfl⟩
+      · trivial
 
-def wf : WF program :=
-  ⟨by decide, by decide, viewScoped⟩
-
-def normalized : NormalizedDists program := by
-  simp [NormalizedDists]
-
-noncomputable def game : WFProgram Player simpleExpr where
-  Γ := Γ0
-  prog := program
-  env := VEnv.empty simpleExpr
-  wctx := WFCtx_nil
-  wf := wf
-  normalized := normalized
-  legal := legal
-
-noncomputable instance instFiniteDomains : FiniteDomains game where
+noncomputable instance instFiniteDomains : FiniteDomains checkedProgram where
   context := inferInstanceAs (FiniteVCtx Γ0)
-  program := inferInstanceAs (FiniteProgram program)
+  program :=
+    { proof :=
+        .commit inferInstance
+          (.commit inferInstance
+            (.reveal inferInstance
+              (.reveal inferInstance .ret))) }
 
-noncomputable def pureGame : GameTheory.KernelGame Player :=
-  pureKernelGame game
+noncomputable def compiled : CompiledProgram Player L :=
+  compile graphProgram
 
-noncomputable def behavioralGame : GameTheory.KernelGame Player :=
-  pmfBehavioralKernelGame game
+noncomputable def semantics :
+    FrontierGameSemantics checkedProgram :=
+  canonicalFrontierGameSemantics checkedProgram
 
-theorem pureGame_outcomeKernel
-    (σ : pureGame.Profile) :
-    pureGame.outcomeKernel σ = pureOutcomeKernelAt game σ := rfl
+theorem mixedPureToBehavioral_realizable :
+    MixedPureToBehavioralOutcomeKernelRealizable checkedProgram :=
+  MixedPureToBehavioralOutcomeKernelRealizable.canonical checkedProgram
 
-theorem behavioralGame_outcomeKernel
-    (σ : behavioralGame.Profile) :
-    behavioralGame.outcomeKernel σ = behavioralOutcomeKernelPMFAt game σ := rfl
+noncomputable example : KernelGame Player :=
+  semantics.pureGame
+
+noncomputable example : KernelGame Player :=
+  semantics.behavioralGame
+
+example : MixedPureToBehavioralOutcomeKernelRealizable checkedProgram :=
+  mixedPureToBehavioral_realizable
+
+theorem behavioralToCorrelatedPure
+    (behavioralProfile : semantics.behavioralGame.Profile) :
+    ∃ correlated : PMF semantics.pureGame.Profile,
+      semantics.behavioralGame.outcomeKernel behavioralProfile =
+        correlated.bind fun pureProfile =>
+          semantics.pureGame.outcomeKernel pureProfile :=
+  semantics.behavioralToCorrelatedPure behavioralProfile
+
+theorem behavioralToMixedPure_outcomeKernel
+    (behavioralProfile : semantics.behavioralGame.Profile) :
+    semantics.behavioralGame.outcomeKernel behavioralProfile =
+      semantics.mixedPureGame.outcomeKernel
+        (semantics.behavioralToMixedPure behavioralProfile) :=
+  semantics.behavioralToMixedPureOutcomeKernel behavioralProfile
+
+theorem compiled_nodeCount :
+    compiled.graph.nodeCount = 4 := by
+  simp [compiled, compile, graphProgram, core, trueGuard, compileCore,
+    EventGraph.Graph.nodeCount]
+
+noncomputable def node (n : Nat) (h : n < 4) :
+    Fin compiled.graph.nodeCount :=
+  ⟨n, by
+    rw [compiled_nodeCount]
+    exact h⟩
+
+noncomputable def node0 : Fin compiled.graph.nodeCount := node 0 (by decide)
+noncomputable def node1 : Fin compiled.graph.nodeCount := node 1 (by decide)
+noncomputable def node2 : Fin compiled.graph.nodeCount := node 2 (by decide)
+noncomputable def node3 : Fin compiled.graph.nodeCount := node 3 (by decide)
+
+example :
+    compiled.graph.prereqs node1 = ∅ := by
+  decide
+
+example :
+    compiled.graph.prereqs node2 = {node0, node1} := by
+  decide
+
+example :
+    compiled.graph.prereqs node3 = {node0, node1} := by
+  decide
+
+example :
+    compiled.payoffs.length = 2 := by
+  simp [compiled, compile, graphProgram, core, trueGuard, compileCore]
 
 end BattleOfTheSexes
+
 end Examples
 end Vegas

@@ -41,12 +41,13 @@ discipline can usually skip the entries that match their background.
   outcome distribution as some behavioral strategy that randomizes
   locally at each information set~\citep{Kuhn1953}.  The classical
   statement requires \emph{perfect recall}.  In this formalization, the
-  bounded-FOSG theorem is stated directly on the finite-horizon FOSG
-  carriers.  The same construction is packaged as a unilateral-deviation
-  simulation: every behavioral deviation has a mixed-pure deviation with
-  the same finite-horizon history law.  The native Vegas payoff-law
-  statement follows by the proved native/FOSG strategy-equivalence and
-  outcome-law transport.
+  public checked-program statement is a native completed-frontier
+  theorem.  Behavioral frontier profiles, product mixed pure frontier
+  profiles, and pure frontier profiles are packaged into an
+  outcome-level realization result, with Nash-safe unilateral-deviation
+  simulations for equilibrium transport.  FOSG and EFG bridges provide
+  payoff-faithful presentations of the same frontier semantics; they are
+  not the reduction used to prove the checked-program Kuhn statement.
 \item[Factored-observation stochastic game (FOSG).]
   A modern state-based formalism for finite extensive-form games with
   imperfect information~\citep{Kovarik2022}: each round, an active set
@@ -91,8 +92,7 @@ discipline can usually skip the entries that match their background.
 \end{description}
 
 \paragraph{Lean correspondence.}
-For a top-down map from the bird's-eye picture to file paths, see
-supplement~\S1.  Cross-references in this report use the supplement's
-\TT{Vegas.X} naming.  Every theorem and definition stated here is
-mechanized; the supplement records the exact Lean type and field
-list.
+For a top-down map from the semantic picture to file paths, see the
+supplement.  Cross-references in this report use the current Lean module
+and theorem names.  The supplement records the definition shapes and
+paper-facing theorem index used by the mechanization.

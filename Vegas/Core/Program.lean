@@ -1,63 +1,80 @@
 import Vegas.Core.Scope
 
 /-!
-# Well-formed Vegas programs
+# Checked Vegas programs
 
-This file defines `WFProgram`, the bundle that packages a Vegas program with
-the static obligations needed to produce a game-theoretic object from it:
-`WFCtx` (distinct initial bindings), `WF` (fresh bindings,
-reveal-completeness, view-scoping), `NormalizedDists` (sample distributions sum
-to 1), and `Legal` (every commit site has a feasible action). User-facing game
-APIs downstream — `pmfBehavioralKernelGame`, `pureKernelGame`, `IsNash`,
-`IsPureNash`, `IsεNash`,
-and the equilibrium-family predicates — consume `WFProgram` rather than a raw
-`VegasCore` plus separate side conditions. This is the API boundary where raw,
-unchecked syntax becomes a "real" game.
+This file separates the obligations needed for event-graph compilation from
+the stronger obligations expected at the checked-game boundary.
 
-The low-level PMF continuation evaluator used by the observed/FOSG bridge
-still operates on raw suffix programs, where constructing fresh bundles for
-each recursive subprogram would be painful and irrelevant.
+`GraphProgram` is the direct graph-construction input: context uniqueness,
+fresh bindings, and normalized samples. `WFProgram` adds reveal-completeness
+and guard legality. Guard legality is used by checked game construction to
+derive graph guard liveness and checkpoint progress. Reveal-completeness is a
+checked source invariant: every sealed source value is eventually opened by
+the source program. It is not needed for graph progress, because compiled graph
+progress is about executing the graph nodes that exist.
+
+Low-level continuation evaluators can operate on raw suffix programs, where
+constructing fresh bundles for each recursive subprogram would be painful and
+irrelevant.
 
 **Strategy-level guard admissibility.** The program-level `Legal`
-predicate only promises that every commit site *admits* some guard-
-satisfying action. The semantic game APIs close the gap by using reachable
-legal strategies of the event-graph round view: illegal moves are not available in
-the carrier quantified over by equilibrium predicates and downstream
-corollaries.
+predicate promises that every commit site admits some guard-satisfying action
+in the source-visible context. Compilation turns this into graph-level
+`GuardLive`, which is the nondeadlock fact used by checkpoint models and later
+strategic presentations.
 -/
 
 namespace Vegas
 
-/-- A Vegas program paired with its initial environment and the static
-well-formedness obligations needed to interpret it as a game.
+/-- A Vegas program paired with exactly the static obligations needed to
+compile it into an event graph.
 
 * `wctx`       — the initial context has distinct variable names.
-* `wf`         — the program is structurally well-formed: fresh bindings,
-  reveal-completeness, and view-scoping (see `WF` in `Vegas.Scope`).
+* `fresh`      — syntactic binders are SSA-fresh.
 * `normalized` — every sample site's distribution sums to `1`.
-* `legal`      — every commit site has at least one action satisfying its
-  guard (the game never deadlocks).
-
-`wf` already includes `RevealComplete []`, so the bundle does not carry a
-separate `reveals` field. -/
-structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where
+The compiler does not require reveal-completeness or guard legality. -/
+structure GraphProgram (P : Type) [DecidableEq P] (L : IExpr) where
   Γ : VCtx P L
   prog : VegasCore P L Γ
   env : VEnv L Γ
   wctx : WFCtx Γ
-  wf : WF prog
+  fresh : FreshBindings prog
   normalized : NormalizedDists prog
-  legal : Legal prog
+
+/-- A checked Vegas program at the game boundary.
+
+`core` is the graph-compilable program. `legal` feeds the graph guard-liveness
+and progress theorem layer. `reveals` records the source-level commitment
+discipline that no committed source value is left unopened by the program. -/
+structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where
+  core : GraphProgram P L
+  reveals : RevealComplete [] core.prog
+  legal : Legal core.prog
+
+namespace WFProgram
+
+variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- Every source variable introduced by a commit in a checked program is later
+opened by a reveal site in that source program. -/
+theorem committed_source_revealed (program : WFProgram P L) :
+    ∀ x, x ∈ CommittedVars program.core.prog →
+      x ∈ RevealedSources program.core.prog :=
+  RevealComplete.committed_revealed program.reveals
+
+end WFProgram
 
 /-- A checked program with finite initial state and finite operational domains.
 This is proof/evidence, not a semantic parameter of the game. -/
 class FiniteDomains {P : Type} [DecidableEq P] {L : IExpr}
     (g : WFProgram P L) where
-  context : FiniteVCtx g.Γ
-  program : FiniteProgram g.prog
+  context : FiniteVCtx g.core.Γ
+  program : FiniteProgram g.core.prog
 
 instance finiteDomains_of {P : Type} [DecidableEq P] {L : IExpr}
-    (g : WFProgram P L) [FiniteVCtx g.Γ] [FiniteProgram g.prog] :
+    (g : WFProgram P L)
+    [FiniteVCtx g.core.Γ] [FiniteProgram g.core.prog] :
     FiniteDomains g where
   context := inferInstance
   program := inferInstance

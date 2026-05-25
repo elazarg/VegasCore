@@ -1,11 +1,12 @@
-import Vegas.Strategic.BehavioralPMF
+import Vegas.Core.ToEventGraph.Games
 
 /-!
-# Finite kernel-game export
+# Kernel-game export tables
 
-This module provides a small in-Lean export object for solver adapters.  It is
-not a file format; it is the checked finite table that a JSON/CSV/solver
-backend can serialize without reinterpreting Vegas semantics.
+This module provides an in-Lean finite strategy table for solver or serializer
+adapters.  It does not prescribe an external file format; it packages the
+finite players, finite strategies, outcome kernel, and utility function without
+reinterpretation.
 -/
 
 namespace Vegas
@@ -16,68 +17,91 @@ open GameTheory
 
 /-- Finite strategy-table view of a kernel game.
 
-The table keeps the original strategy and outcome types, exposes finite
-player/strategy enumerations, and exposes the kernel/utility functions a
-downstream serializer needs.  The outcome type is not required to be finite:
-Vegas payoff outcomes use integer-valued finite maps, so their ambient type is
-infinite even when each generated distribution has finite support. -/
+The outcome type is not required to be finite.  Compiled Vegas outcome carriers
+can live in an ambient infinite type even when every generated distribution has
+finite support. -/
 structure KernelGameExport (P : Type) where
   Strategy : P → Type
   Outcome : Type
   players : List P
-  strategies : ∀ player, List (Strategy player)
-  outcomeProb : (∀ player, Strategy player) → Outcome → ENNReal
+  strategies : (player : P) → List (Strategy player)
+  outcomeProb : ((player : P) → Strategy player) → Outcome → ENNReal
   utility : Outcome → P → ℝ
 
 namespace KernelGameExport
 
 variable {P : Type}
 
-/-- Export any kernel game with finite player and strategy sets as an explicit
-strategy table plus kernel/utility oracles. -/
+/-- Export any kernel game with finite player and strategy carriers. -/
 noncomputable def ofKernelGame
-    [Fintype P] (G : KernelGame P)
-    [∀ player, Fintype (G.Strategy player)] :
+    [Fintype P] (game : KernelGame P)
+    [∀ player, Fintype (game.Strategy player)] :
     KernelGameExport P where
-  Strategy := G.Strategy
-  Outcome := G.Outcome
+  Strategy := game.Strategy
+  Outcome := game.Outcome
   players := Fintype.elems.toList
-  strategies := fun player => (Fintype.elems (α := G.Strategy player)).toList
-  outcomeProb := fun σ outcome => G.outcomeKernel σ outcome
-  utility := G.utility
+  strategies := fun player =>
+    (Fintype.elems (α := game.Strategy player)).toList
+  outcomeProb := fun profile outcome =>
+    game.outcomeKernel profile outcome
+  utility := game.utility
 
 @[simp] theorem ofKernelGame_outcomeProb
-    [Fintype P] (G : KernelGame P)
-    [∀ player, Fintype (G.Strategy player)]
-    (σ : G.Profile) (outcome : G.Outcome) :
-    (ofKernelGame G).outcomeProb σ outcome = G.outcomeKernel σ outcome := rfl
+    [Fintype P] (game : KernelGame P)
+    [∀ player, Fintype (game.Strategy player)]
+    (profile : game.Profile) (outcome : game.Outcome) :
+    (ofKernelGame game).outcomeProb profile outcome =
+      game.outcomeKernel profile outcome := rfl
 
 @[simp] theorem ofKernelGame_utility
-    [Fintype P] (G : KernelGame P)
-    [∀ player, Fintype (G.Strategy player)]
-    (outcome : G.Outcome) (player : P) :
-    (ofKernelGame G).utility outcome player = G.utility outcome player := rfl
+    [Fintype P] (game : KernelGame P)
+    [∀ player, Fintype (game.Strategy player)]
+    (outcome : game.Outcome) (player : P) :
+    (ofKernelGame game).utility outcome player =
+      game.utility outcome player := rfl
 
 end KernelGameExport
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
-/-- Finite strategy export table for the pure payoff-vector Vegas game. -/
-noncomputable def pureKernelGameExport
-    (g : WFProgram P L) [FiniteDomains g] :
-    KernelGameExport P :=
-  KernelGameExport.ofKernelGame (pureKernelGameAt g)
-
-/-- Finite strategy export table for the pure round history Vegas game. -/
-noncomputable def pureRoundHistoryKernelGameExport
-    (g : WFProgram P L) [FiniteDomains g] :
+/-- Export table for a checked program's pure-strategy frontier game. -/
+noncomputable def pureFrontierGame
+    (program : WFProgram P L) [FiniteDomains program] :
     KernelGameExport P := by
   classical
-  letI : ∀ player, Fintype ((pureRoundHistoryKernelGameAt g).Strategy player) := by
-    intro player
-    change Fintype (pureStrategyAt g player)
-    infer_instance
-  exact KernelGameExport.ofKernelGame (pureRoundHistoryKernelGameAt g)
+  letI :
+      ∀ player, Fintype (program.pureFrontierGame.Strategy player) :=
+    fun player => program.frontierSemantics.pureStrategyFintype player
+  exact KernelGameExport.ofKernelGame program.pureFrontierGame
+
+/-- Export table for the pure-strategy terminal-public frontier game. -/
+noncomputable def pureTerminalPublicFrontierGame
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGameExport P := by
+  classical
+  letI :
+      ∀ player,
+        Fintype (program.pureTerminalPublicFrontierGame.Strategy player) :=
+    fun player => by
+      change Fintype (program.pureFrontierGame.Strategy player)
+      exact program.frontierSemantics.pureStrategyFintype player
+  exact KernelGameExport.ofKernelGame
+    program.pureTerminalPublicFrontierGame
+
+/-- Export table for the pure-strategy frontier game with full round histories
+as outcomes. -/
+noncomputable def pureFrontierHistoryGame
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGameExport P := by
+  classical
+  letI :
+      ∀ player,
+        Fintype (program.pureFrontierHistoryKernelGame.Strategy player) :=
+    fun player => by
+      change Fintype (program.pureFrontierGame.Strategy player)
+      exact program.frontierSemantics.pureStrategyFintype player
+  exact KernelGameExport.ofKernelGame
+    program.pureFrontierHistoryKernelGame
 
 end Export
 

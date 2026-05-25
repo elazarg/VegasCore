@@ -214,6 +214,11 @@ structure IExpr where
   /-- A static over-approximation of the variables an expression reads.
   Sound by `expr_deps_sound`. -/
   exprDeps : {Γ : Ctx Ty} → {τ : Ty} → Expr Γ τ → Finset VarId
+  /-- Evaluate an expression from values for only its declared dependencies. -/
+  evalDeps :
+    {Γ : Ctx Ty} → {τ : Ty} → (e : Expr Γ τ) →
+      ((x : VarId) → (σ : Ty) → HasVar Γ x σ → x ∈ exprDeps e → Val σ) →
+        Val τ
   /-- Dependency sets mention only variables available in the expression
   context. This is the structural companion to semantic dependency soundness. -/
   expr_deps_context :
@@ -247,6 +252,26 @@ structure IExpr where
     DistExpr Γ τ → Env Val Γ → @FWeight (Val τ) decEqVal
   /-- Static over-approximation of variables a distribution reads. -/
   distDeps : {Γ : Ctx Ty} → {τ : Ty} → DistExpr Γ τ → Finset VarId
+  /-- Distribution dependency sets mention only variables available in the
+  distribution context. -/
+  dist_deps_context :
+    ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ),
+      ∀ x, x ∈ distDeps d → x ∈ Γ.map Prod.fst
+  /-- Evaluate a distribution from values for only its declared dependencies. -/
+  evalDistDeps :
+    {Γ : Ctx Ty} → {τ : Ty} → (d : DistExpr Γ τ) →
+      ((x : VarId) → (σ : Ty) → HasVar Γ x σ → x ∈ distDeps d → Val σ) →
+        @FWeight (Val τ) decEqVal
+  /-- Dependency-local expression evaluation agrees with full-environment
+  evaluation when supplied by that environment. -/
+  evalDeps_eq_eval :
+    ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ) (ρ : Env Val Γ),
+      evalDeps e (fun x σ h _ => ρ x σ h) = eval e ρ
+  /-- Dependency-local distribution evaluation agrees with full-environment
+  evaluation when supplied by that environment. -/
+  evalDistDeps_eq_evalDist :
+    ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ : Env Val Γ),
+      evalDistDeps d (fun x σ h _ => ρ x σ h) = evalDist d ρ
   /-- Soundness of `exprDeps`: if two environments agree on the declared
   dependency set, `eval` produces equal results. The semantic justification
   for treating `exprDeps` as a usable dependency tracker. -/
@@ -319,8 +344,7 @@ structure BindTy (Player : Type) (L : IExpr) where
 
 namespace BindTy
 
-/-- Smart constructor for a public binding. Keeps call sites close to the old
-`.pub τ` shape while preserving the split representation internally. -/
+/-- Smart constructor for a public binding. -/
 abbrev pub {Player : Type} {L : IExpr} (τ : L.Ty) : BindTy Player L :=
   ⟨τ, Visibility.pub⟩
 
@@ -490,12 +514,36 @@ theorem viewVCtx_map_fst_sub {Player : Type} [DecidableEq Player] {L : IExpr}
       · exact Or.inl rfl
       · exact Or.inr (ih htl)
 
+/-- Every binding in a player's view is either public or owned by that player. -/
+theorem viewVCtx_owner {Player : Type} [DecidableEq Player] {L : IExpr}
+    {Γ : VCtx Player L} {p : Player} {x : VarId} {τ : BindTy Player L}
+    (h : VHasVar (viewVCtx p Γ) x τ) :
+    τ.owner = none ∨ τ.owner = some p := by
+  induction Γ with
+  | nil => cases h
+  | cons hd tl ih =>
+      obtain ⟨headName, headTy⟩ := hd
+      simp only [viewVCtx] at h
+      split at h
+      · cases h with
+        | here =>
+            rename_i hsee
+            cases τ with
+            | mk base vis =>
+                cases vis with
+                | pub => simp [BindTy.owner]
+                | hidden owner =>
+                    simp [canSee, Visibility.canSee] at hsee
+                    right
+                    simp [BindTy.owner, hsee]
+        | there htail => exact ih htail
+      · exact ih h
+
 namespace VHasVar
 
-/-- Lift a `VHasVar` proof in `viewVCtx p Γ` to a `VHasVar` in `Γ`. Composes
-with `HasVar.toVHasVar` and `VHasVar.toErased` inside `projectViewEnv`
-(`Vegas.ViewKernel`) to project a full erased environment to its
-view-restricted erased form. -/
+/-- Lift a `VHasVar` proof in `viewVCtx p Γ` to a `VHasVar` in `Γ`. This is the
+typed witness bridge used whenever a player-visible context is embedded back
+into the full context. -/
 def ofViewVCtx {Player : Type} [DecidableEq Player] {L : IExpr}
     {p : Player} {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L} :
     VHasVar (viewVCtx p Γ) x τ → VHasVar Γ x τ := by
@@ -519,6 +567,26 @@ def pubVCtx {Player : Type} {L : IExpr} : VCtx Player L → VCtx Player L
   | [] => []
   | (x, ⟨τ, .pub⟩) :: Γ => (x, ⟨τ, .pub⟩) :: pubVCtx Γ
   | (_, ⟨_, .hidden _⟩) :: Γ => pubVCtx Γ
+
+/-- Every binding in the public projection is public. -/
+theorem pubVCtx_owner {Player : Type} {L : IExpr}
+    {Γ : VCtx Player L} {x : VarId} {τ : BindTy Player L}
+    (h : VHasVar (pubVCtx Γ) x τ) : τ.owner = none := by
+  induction Γ with
+  | nil => cases h
+  | cons hd tl ih =>
+      obtain ⟨headName, headTy⟩ := hd
+      cases headTy with
+      | mk base vis =>
+          cases vis with
+          | pub =>
+              simp only [pubVCtx] at h
+              cases h with
+              | here => rfl
+              | there htail => exact ih htail
+          | hidden owner =>
+              simp only [pubVCtx] at h
+              exact ih h
 
 namespace VHasVar
 
@@ -550,11 +618,10 @@ Erasure is the bridge to the embedded language: `IExpr.eval` and
 construct must erase its visibility-annotated context before evaluating
 expressions. Two erasures coexist:
 
-* `eraseVCtx` (full): used by commit guards and operational kernels —
-  syntactically able to reference any variable. Visibility of guards is
-  enforced semantically by `GuardUsesOnly` / `ViewScoped` in `Scope.lean`.
-* `erasePubVCtx` (public-only): used by `letExpr`, `sample`, and payoff
-  expressions — these may not depend on hidden state.
+* `eraseVCtx` (full): used by operational kernels and by commit guards after
+  projecting to the actor's `viewVCtx`.
+* `erasePubVCtx` (public-only): used by samples, payoff expressions, and
+  surface deterministic bindings — these may not depend on hidden state.
 
 The composition `eraseVCtx ∘ pubVCtx = erasePubVCtx` is the key
 commutation lemma (`eraseVCtx_pubVCtx`) that lets `erasePubVCtx`-shaped
@@ -635,6 +702,41 @@ theorem eraseVCtx_pubVCtx {Player : Type} {L : IExpr}
     match τ with
     | ⟨b, .pub⟩ => simp [pubVCtx, erasePubVCtx, ih]
     | ⟨b, .hidden p⟩ => simp [pubVCtx, erasePubVCtx, ih]
+
+namespace HasVar
+
+/-- A public variable is present in every player's erased view. -/
+def pubToView {Player : Type} [DecidableEq Player] {L : IExpr}
+    {Γ : VCtx Player L} {p : Player} {x : VarId} {τ : L.Ty} :
+    HasVar (erasePubVCtx Γ) x τ →
+      HasVar (eraseVCtx (viewVCtx p Γ)) x τ := by
+  induction Γ with
+  | nil =>
+      intro h
+      cases h
+  | cons hd tl ih =>
+      obtain ⟨y, σ⟩ := hd
+      cases σ with
+      | mk base visibility =>
+          cases visibility with
+          | pub =>
+              simp only [erasePubVCtx_cons_pub, viewVCtx, canSee,
+                Visibility.canSee_pub, if_true, eraseVCtx_cons]
+              intro h
+              cases h with
+              | here => exact .here
+              | there htail => exact .there (ih htail)
+          | hidden owner =>
+              simp only [erasePubVCtx_cons_hidden, viewVCtx]
+              by_cases hsee : canSee p (.hidden owner base)
+              · simp only [hsee, if_true, eraseVCtx_cons]
+                intro h
+                exact .there (ih h)
+              · simp only [hsee]
+                intro h
+                exact ih h
+
+end HasVar
 
 /-- A VHasVar proof induces a HasVar proof in the erased context. -/
 def VHasVar.toErased {Player : Type} {L : IExpr}
@@ -852,9 +954,9 @@ def evalPayoffs {Player : Type} [DecidableEq Player]
   mkOutcome (payoffs.map
     (fun pe => (pe.1, L.toInt (L.eval pe.2 (VEnv.erasePubEnv env)))))
 
-/-- Evaluate a commit guard against a proposed action and the full erased
-    environment. Visibility is enforced by dependency constraints on `R`,
-    not by restricting the environment type. -/
+/-- Evaluate a commit guard against a proposed action and an erased current
+environment. Core commit guards are instantiated with the acting player's view
+context, so visibility is enforced by the type of `R`. -/
 def evalGuard {Player : Type} [DecidableEq Player] {L : IExpr}
     {Γ : VCtx Player L} {b : L.Ty}
     {x : VarId}

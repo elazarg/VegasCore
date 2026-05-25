@@ -23,9 +23,11 @@ open GameTheory
 
 The primitive execution event is a single enabled move: either one player makes
 one concrete choice, or the machine performs one internal protocol event such as
-frontier finalization. Simultaneous rounds, execution schedules, FOSG
+frontier finalization. Simultaneous rounds, execution schedules, checkpoint
 histories, and game-tree serializations are presentations derived from this
-carrier; they are not baked into it. -/
+carrier; they are not baked into it. Outcomes are partial at this layer:
+nonterminal or malformed states can report no game payoff instead of forcing a
+cutoff convention into the base semantics. -/
 structure Machine (Player : Type) where
   State : Type
   Action : Player → Type
@@ -41,7 +43,7 @@ structure Machine (Player : Type) where
   terminal : State → Prop
   publicView : State → Public
   observe : (player : Player) → State → Obs player
-  outcome : State → Outcome
+  outcome : State → Option Outcome
   utility : Outcome → Payoff Player
 
 namespace Machine
@@ -74,9 +76,9 @@ def StepRel (M : Machine Player)
 /-- Event/state prefix for the asynchronous machine.
 
 The invariant records the execution-shape fact: a prefix with `n` primitive
-events has `n + 1` states. Derived views such as FOSG presentations use this
-as their world type so observations and strategy recall are attached to the
-same execution object as the machine run. -/
+events has `n + 1` states. Derived views can use this as their world type so
+observations and strategy recall are attached to the same execution object as
+the machine run. -/
 structure RunPrefix (M : Machine Player) where
   events : List M.Event
   states : List M.State
@@ -164,9 +166,9 @@ end RunPrefix
 
 /-- A law for selecting the next primitive event at a state.
 
-This is presentation data, not part of the machine. Different traces, FOSG
-views, runtime schedulers, or tests can supply different laws and then prove
-the preservation theorem they need. -/
+This is presentation data, not part of the machine. Different traces,
+checkpoint views, runtime schedulers, or tests can supply different laws and
+then prove the preservation theorem they need. -/
 abbrev EventLaw (M : Machine Player) : Type :=
   M.State → PMF M.Event
 

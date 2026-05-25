@@ -1,73 +1,67 @@
 \section{Introduction}
 \label{sec:intro}
 
-\subsection{Protocols vs.\ extensive forms}
+\subsection{Protocols vs. game trees}
 
-Many games are easier to write down as protocols than as normal forms.
-A player commits a value, a public random sample is drawn, a hidden
-value is later revealed, and payoffs are computed from the public
-transcript.  The mathematical game is implicit in these operational
-steps: strategies are constrained by what players can observe at each
-move, deviations must be legal at the point where they are taken, and
-two presentations that linearise the same independent events in
-different orders should denote the same game.
+Many finite games are naturally written as protocols.  A player commits
+to a private value, another player commits to a private value, a public
+sample is drawn, hidden values are revealed, and the terminal public
+state determines the payoffs.  Writing the same object directly as an
+extensive-form tree forces an arbitrary linearization of events that are
+intended to be simultaneous or independent.  The tree can repair that
+choice with information sets, but the independence structure is then
+spread across syntax and equivalence classes.
 
-In the present construction, the primary semantic object is the
-\emph{dependency relation between events} — a finite event structure
-in the sense of \citet{NielsenPlotkinWinskel1981,Winskel1986EventStructures},
-specialized to the protocol setting.  A program is checked, lowered to a finite directed acyclic
-graph of events, and that graph is read as a probabilistic machine.
-Strategic-form, FOSG, and EFG presentations of the machine are then
-derived as checked \emph{views}, never as independent denotations.
-The strategically irrelevant ordering of independent events is
-quotiented out by construction: configurations of the graph are
-extensional partial assignments from nodes to results, and the
-frontier — the set of currently enabled events — is computed from
-that assignment, not stored.
+VegasCore takes the dependency structure as primary.  A program is
+checked and compiled to a finite event graph.  The graph records which
+fields each event reads, which field each event writes, and which earlier
+events are prerequisites because they provide information needed at the
+event.  The graph state records only completed nodes and the typed store.
+It does not record the order in which independent nodes happened to
+complete.
 
-\subsection{A first example}
+The result is a schedule-agnostic operational semantics.  Primitive
+execution steps one available event at a time, but the scheduler is an
+external event law.  The strategic semantics use a frontier round view:
+players see checkpoint observations and choose for ready commit nodes;
+internal graph work is closed by the checkpoint policy.  This separates
+the robust game events of the language from implementation-level
+linearization detail.
+
+\subsection{A running example}
 \label{sec:intro:matching-pennies}
 
-Consider a Matching-Pennies-style protocol.  Two players, the
-\textsf{matcher} and the \textsf{mismatcher}, each commit a private
-boolean and later reveal it; the matcher is paid $+1$ on a match and
-$-1$ otherwise, while the mismatcher's payoff is the matcher's
-negated.  A natural protocol-style description is sequential:
+Consider a Matching-Pennies protocol.  The matcher and mismatcher each
+commit a hidden boolean, then both booleans are revealed.  The matcher
+gets \(+1\) on equality and \(-1\) otherwise; the mismatcher gets the
+opposite payoff.  A source program necessarily lists the constructors in
+some order, for example:
 \begin{quote}\small
 \begin{tabular}{@{}l@{}}
-$\Commit_{\textsf{m}}\,x_{\textsf{m}} \mid \mathtt{true};$\\
-$\Commit_{\textsf{m'}}\,x_{\textsf{m'}} \mid \mathtt{true};$\\
-$\Reveal\,y_{\textsf{m}}{:=}x_{\textsf{m}};$\\
-$\Reveal\,y_{\textsf{m'}}{:=}x_{\textsf{m'}};$\\
-$\Ret\,[\textsf{m}\!\mapsto\!\mathbb{1}_{y_{\textsf{m}}=y_{\textsf{m'}}} - \mathbb{1}_{y_{\textsf{m}}\neq y_{\textsf{m'}}},\
-\textsf{m'}\!\mapsto\!-\,\mathbb{1}_{y_{\textsf{m}}=y_{\textsf{m'}}} + \mathbb{1}_{y_{\textsf{m}}\neq y_{\textsf{m'}}}].$
+\(\Commit_{\mathsf{m}}\,x_{\mathsf{m}} \mid \mathsf{true};\)\\
+\(\Commit_{\mathsf{m'}}\,x_{\mathsf{m'}} \mid \mathsf{true};\)\\
+\(\Reveal\,y_{\mathsf{m}} := x_{\mathsf{m}};\)\\
+\(\Reveal\,y_{\mathsf{m'}} := x_{\mathsf{m'}};\)\\
+\(\Ret\,[\mathsf{m}\mapsto u(y_{\mathsf{m}},y_{\mathsf{m'}}),
+          \mathsf{m'}\mapsto -u(y_{\mathsf{m}},y_{\mathsf{m'}})].\)
 \end{tabular}
 \end{quote}
-The bindings $x_{\textsf{m}}, x_{\textsf{m'}}$ are hidden to their
-respective owners; the bindings $y_{\textsf{m}}, y_{\textsf{m'}}$
-are public.  Each $\Commit$ is annotated with a guard $\mathtt{true}$,
-meaning the player may legally play any boolean.
+The intended game is not sequential at the commitment phase.  The two
+commits are independent choices because neither player can observe the
+other player's hidden field before committing.
 
-This program is sequential, but the intended game is not: the two
-commitments are simultaneous private moves.  As an extensive-form
-tree, one must arbitrarily place either the matcher or the mismatcher
-at the root, and use information-set equivalence to assert that
-neither player observes the other's commit before making their own.
-
-In the event-graph picture, the diamond
 \begin{center}
 \begin{tikzpicture}[
   every node/.style={font=\small},
-  ev/.style={draw, rounded corners, inner sep=2pt, minimum width=1.6cm,
+  ev/.style={draw, rounded corners, inner sep=2pt, minimum width=1.8cm,
              minimum height=4mm, fill=blue!6},
   arr/.style={-{Stealth[length=2mm]}, thick},
-  ynode/.style={ev, fill=yellow!30},
 ]
-\node[ev] (cm) at (-2,1) {$\Commit_{\textsf{m}}\,x_{\textsf{m}}$};
-\node[ev] (cmp) at (2,1) {$\Commit_{\textsf{m'}}\,x_{\textsf{m'}}$};
-\node[ev] (rm) at (-2,-1) {$\Reveal\,y_{\textsf{m}}$};
-\node[ev] (rmp) at (2,-1) {$\Reveal\,y_{\textsf{m'}}$};
-\node[ev] (ret) at (0,-2.5) {$\Ret$};
+\node[ev] (cm) at (-2,1) {\(\Commit_{\mathsf{m}}\)};
+\node[ev] (cmp) at (2,1) {\(\Commit_{\mathsf{m'}}\)};
+\node[ev] (rm) at (-2,-1) {\(\Reveal_{\mathsf{m}}\)};
+\node[ev] (rmp) at (2,-1) {\(\Reveal_{\mathsf{m'}}\)};
+\node[ev] (ret) at (0,-2.5) {\(\Ret\)};
 \draw[arr] (cm) -- (rm);
 \draw[arr] (cmp) -- (rmp);
 \draw[arr] (cm) -- (rmp);
@@ -76,147 +70,87 @@ In the event-graph picture, the diamond
 \draw[arr] (rmp) -- (ret);
 \end{tikzpicture}
 \end{center}
-displays exactly the strategic structure: the two commits share the
-initial frontier, neither reveal can fire while a prior commit is
-still pending (the cross-arrows from each commit into the
-\emph{other} player's reveal are the protocol-level information
-barrier), and the payoff node depends on both reveals.  We
-distinguish two independent claims about this graph, both of which
-the construction will mechanise:
 
-\begin{description}[itemsep=2pt]
-\item[(D) Diamond.]
-  After both commits have completed, the configuration reached is
-  independent of which commit was scheduled first.
-\item[(B) Information barrier.]
-  At any configuration where the matcher's reveal is on the
-  frontier, the mismatcher's commit is no longer available — and
-  symmetrically.  No player can condition a commit on observing
-  another player's reveal.
-\end{description}
-
-(D) is structural: in the event-graph carrier, two configurations
-that finish the same set of nodes with the same per-node results are
-literally the same configuration, by extensionality.  (B) is a
-theorem about the prerequisite relation generated by lowering: a
-$\Reveal$ depends not only on its own committed payload but on every
-lexically prior commit.  Both claims live in the
-graph, not in the strategy carrier, which is why neither needs to be
-restated for the FOSG, EFG, or kernel-game views derived later.
+The two commit nodes share the initial frontier.  Each reveal depends on
+its own hidden source field, and the reveal phase also waits for prior
+commits.  This second dependency is the commit/reveal barrier: a reveal
+must not become available while an earlier commitment is still mutable.
+The barrier is graph structure, not a strategy-side convention.
 
 \subsection{The semantic spine}
 \label{sec:intro:spine}
 
-The construction is organized as a sequence of definitional arrows,
-each owned by the source layer:
-\begin{equation*}
+The construction has the following shape:
+\[
+\begin{aligned}
   \mathsf{VegasLang}
-  \;\xrightarrow{\;\mathsf{lower}\;}\;
+  &\xrightarrow{\;\mathsf{lower}\;}
   \mathsf{VegasCore}
-  \;\xrightarrow{\;\mathsf{elaborate}\;}\;
-  \mathsf{EventGraph}
-  \;\xrightarrow{\;\mathsf{interpret}\;}\;
-  \mathsf{Machine}.
-\end{equation*}
-$\mathsf{VegasLang}$ is the user-facing surface syntax (with
-simultaneous yield phases, optional yields, and surface-level
-ergonomics).  It lowers definitionally to the typed core
-$\mathsf{VegasCore}$, which exposes five constructors:
-$\Let$, $\Sample$, $\Commit$, $\Reveal$, $\Ret$.  A checked program
-($\mathsf{WFProgram}$) bundles a core program with the static
-obligations that turn it into a game description: contextual
-freshness, reveal completeness, distribution normalization, view
-scoping, and at-least-one-legal-action per commit site.  Elaboration
-turns a checked program into an event graph; interpretation reads the
-graph as a machine.
+  \xrightarrow{\;\mathsf{compile}\;}
+  \mathsf{EventGraph} \\
+  &\xrightarrow{\;\mathsf{primitiveMachine}\;}
+  \mathsf{Machine}
+  \xrightarrow{\;\mathsf{frontierRoundView}\;}
+  \mathsf{KernelGame}.
+\end{aligned}
+\]
+\(\mathsf{VegasLang}\) is a surface layer over the concrete expression
+language.  It contains administrative \(\Let\)-bindings and nullable
+yield sugar.  Lowering erases administrative lets by substitution and
+turns yields into a hidden optional commit followed by a reveal.  The
+maintained core, \(\mathsf{VegasCore}\), contains only protocol
+constructors: \(\Sample\), \(\Commit\), \(\Reveal\), and \(\Ret\).
 
-On top of the machine, three kinds of consumers are defined:
+Compilation from a \(\mathsf{GraphProgram}\) produces a
+\(\mathsf{CompiledProgram}\): a graph, a proof that the graph is
+well-formed, and terminal payoff projections.  Compilation does not
+need the stronger checked-game obligations.  A \(\mathsf{WFProgram}\)
+adds reveal completeness and legal commit guards; those obligations are
+used later to prove guard liveness, checkpoint progress, and the
+game-facing theorem surface.
 
-\begin{itemize}\itemsep1pt
-\item \textbf{Strategic semantics} — strategy carriers, game forms,
-  kernel games, expected utility, Nash equilibrium, dominance,
-  correlated equilibria, potential predicates, and so on.  These
-  Vegas-facing objects are built from the bounded native round view
-  of the event-graph machine.  The FOSG view is a checked
-  presentation used for FOSG/EFG/Kuhn bridge theorems, not the
-  definition of the strategy carrier.
-\item \textbf{Optional presentation bridges} — the canonical
-  serialization of the FOSG view into an extensive-form tree.  The
-  bridge is checked: the tree's payoff-vector outcome law agrees
-  with the behavioral kernel game's.
-\item \textbf{Backend refinement} — relations between an
-  implementation machine (potentially with extra runtime structure,
-  scheduling, internal events) and the canonical event-graph
-  machine, with theorems transporting Nash equilibria from the
-  specification to the implementation along compatible refinements.
-\end{itemize}
+The event graph is source-independent.  It is list-backed in the Lean
+implementation, but source syntax is not graph identity: graph fields
+are the initial fields followed by one output field per event row, and
+node ids are canonical numeric positions in the node list.  Two
+alpha-renamed surface programs can compile to equal graph data when
+their protocol structure is equal.
 
-\subsection{Contributions and theorem inventory}
+\subsection{Theorem inventory}
 \label{sec:intro:contributions}
 
-This report is a description of the mechanized theory and the design
-decisions behind it.  The theorem-level contributions are:
-
+The public theorem surface is organized around the following claims.
 \begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
-\item \emph{Definitional lowering.}  $\mathsf{VegasLang}$ programs
-  lower definitionally to $\mathsf{VegasCore}$; the nullable-yield
-  compiler is provably equal to the canonical lowering pointwise.
-  Concrete programs are checked by reflection.
-
-\item \emph{Event-graph adequacy.}  The elaboration
-  $\mathsf{VegasCore} \to \mathsf{EventGraph}$ produces a finite
-  ranked DAG whose terminal-configuration outcome agrees with the
-  declared payoff expressions.
-
-\item \emph{Frontier diamond and preservation
-  (\S\ref{sec:eventgraphs}).}  Distinct enabled nodes preserve each
-  other's enablement and commute extensionally.
-
-\item \emph{Commit/reveal information barrier
-  (\S\ref{sec:eventgraphs}).}  No reveal is on the frontier of any
-  configuration whose graph still has an unfinished prior commit.
-  The strategy-surface corollary states that a player action for
-  such a prior commit is unavailable while the reveal is on the
-  frontier.
-
-\item \emph{Trace-to-public agreement
-  (\S\ref{sec:fosg-strategies}).}  The realization-trace pure and
-  PMF-behavioral kernel games agree with their payoff projections
-  on outcome kernels and on expected utilities.  Terminal-public-
-  state game forms expose the public observation separately from the
-  payoff-vector kernel games.
-
-\item \emph{Finite Kuhn realization and deviation simulation
-  (\S\ref{sec:presentations}).}  The bounded event-graph FOSG
-  presentation satisfies the mixed-to-behavioral realization
-  theorem and the Nash deviation-simulation theorem: a behavioral
-  unilateral deviation can be matched by a mixed pure unilateral
-  deviation with the same history law.  The native kernel-game
-  realization theorem is stated directly over $\mathrm{pureKernelGame}$
-  and $\mathrm{pmfBehavioralKernelGame}$, using the proved native/FOSG
-  outcome-law transport.
-
-\item \emph{EFG presentation
-  (\S\ref{sec:presentations}).}  The canonical FOSG-to-EFG bridge
-  preserves payoff-vector outcome laws.
-
-\item \emph{Stochastic-refinement transport
-  (\S\ref{sec:refinement}).}  A stochastic step refinement plus a
-  compatible event-batch law lift yields an expected-utility-preserving
-  morphism from a backend kernel game into the public specification
-  kernel game; Nash equilibria pull back along this
-  morphism.
+\item \textbf{Compilation.}  Checked programs compile to well-formed,
+  source-free event graphs.  Payoff projections read only public fields
+  that are available by graph termination.
+\item \textbf{Progress.}  Source guard legality compiles to graph
+  \(\mathsf{GuardLive}\), and graph guard liveness gives progress for
+  the primitive downset checkpoint model.
+\item \textbf{Outcome adequacy.}  Terminal primitive-machine outcomes
+  agree with the source payoff expressions reconstructed from the
+  terminal compiled store.
+\item \textbf{Visibility.}  Commit reads are exactly the committing
+  player's visible dependency footprint; public samples and payoff
+  projections read declared public dependencies; reveals are the only
+  hidden-to-public flow.
+\item \textbf{Frontier semantics.}  Native pure, behavioral, and product
+  mixed-pure frontier games are defined from the canonical frontier
+  round view.  Their outcome kernels are source-payoff projections of
+  the same canonical run distribution.
+\item \textbf{FOSG and EFG presentations.}  The FOSG and EFG layers are
+  payoff-faithful presentations of the native frontier semantics.
+\item \textbf{Kuhn.}  Behavioral and product mixed-pure frontier profiles
+  are related by outcome-law realization and Nash-safe deviation
+  simulation at the canonical round-view information model.
+\item \textbf{Runtime refinement.}  A stochastic refinement plus an
+  adequate strategy-indexed trace law preserves the utility distribution
+  of the selected frontier game surface and pulls back Nash equilibria
+  under bounded-utility hypotheses.
 \end{enumerate}
 
-The remainder is organized as follows.  \S\ref{sec:preliminaries}
-fixes notation for finite probability and typed contexts.
-\S\ref{sec:source-language} gives the source language and its
-visibility discipline.  \S\ref{sec:eventgraphs} defines event graphs
-and proves the frontier theorems.  \S\ref{sec:machines} lifts a
-graph to a machine.  \S\ref{sec:fosg-strategies} introduces native
-round views, the strategic API, and the canonical game forms and kernel games.
-\S\ref{sec:presentations} states the EFG presentation theorem and
-the finite Kuhn realization.  \S\ref{sec:refinement} is the backend
-refinement layer.  \S\ref{sec:applications} sketches intended uses.
-\S\ref{sec:discussion} closes with scope, limitations, and natural
-extensions.
+\paragraph{Lean correspondence.}
+The paper-facing theorem index is \TT{Vegas.Core.Theorems.Claims}.
+The construction modules are \TT{Vegas.Lang}, \TT{Vegas.Core},
+\TT{Vegas.EventGraph}, \TT{Vegas.Core.ToEventGraph},
+\TT{Vegas.GameBridge}, \TT{Vegas.Export}, and \TT{Vegas.Machine}.

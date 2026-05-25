@@ -11,15 +11,10 @@ by stepping the machine `n` primitive events from the initial state, where each
 step samples an event from `law` and then samples a successor from
 `Machine.step`. `traceDistFrom` is the same starting from a given state.
 
-`outcomeKernelFrom` is the same terminal-outcome marginal, written as a
-state-recursive kernel from an arbitrary starting state. `outcomeKernel`
-specializes it to `M.init`. This is the distribution Kuhn-style realization
-theorems compare.
-
-These are *the* trace semantics for `Machine`. The earlier syntax-directed
-`Vegas.Trace` (Vegas/TraceSemantics.lean) is the equivalent notion at the
-checked-program IR level; the long-term direction is to derive its theorems
-from this machine-level trace and remove the redundant inductive layer.
+`outcomeKernelFrom` is the same outcome marginal, written as a state-recursive
+kernel from an arbitrary starting state. The result is partial because a
+bounded run can stop before a terminal outcome exists. `outcomeKernel`
+specializes it to `M.init`.
 -/
 
 namespace Vegas
@@ -114,6 +109,18 @@ inductive AvailableRunFrom (M : Machine Player) :
 
 namespace AvailableRunFrom
 
+theorem append
+    {M : Machine Player} {source mid dst : M.State}
+    {events₁ events₂ : List M.Event}
+    (left : M.AvailableRunFrom source events₁ mid)
+    (right : M.AvailableRunFrom mid events₂ dst) :
+    M.AvailableRunFrom source (events₁ ++ events₂) dst := by
+  induction left with
+  | nil state =>
+      simpa using right
+  | cons havailable hstep _ ih =>
+      exact .cons havailable hstep (ih right)
+
 theorem mem_runEventsFrom_support
     {M : Machine Player} {source dst : M.State}
     {events : List M.Event}
@@ -129,9 +136,73 @@ theorem mem_runEventsFrom_support
 
 end AvailableRunFrom
 
+/-- One semantically available primitive machine step with positive support.
+
+This is the labeled-transition-system view of `Machine`: total unavailable
+steps may exist at the raw transition surface, but refinement and trace
+theorems should use this relation. -/
+def AvailableStep (M : Machine Player)
+    (source : M.State) (event : M.Event) (target : M.State) : Prop :=
+  M.EventAvailable source event ∧
+    target ∈ (M.step event source).support
+
+/-- Reachability by semantically available primitive steps. -/
+def Reaches (M : Machine Player) (source target : M.State) : Prop :=
+  ∃ events, M.AvailableRunFrom source events target
+
+namespace AvailableStep
+
+theorem available {M : Machine Player} {source target : M.State}
+    {event : M.Event}
+    (hstep : M.AvailableStep source event target) :
+    M.EventAvailable source event :=
+  hstep.1
+
+theorem support {M : Machine Player} {source target : M.State}
+    {event : M.Event}
+    (hstep : M.AvailableStep source event target) :
+    target ∈ (M.step event source).support :=
+  hstep.2
+
+theorem availableRunFrom_singleton
+    {M : Machine Player} {source target : M.State} {event : M.Event}
+    (hstep : M.AvailableStep source event target) :
+    M.AvailableRunFrom source [event] target :=
+  .cons hstep.available hstep.support (.nil target)
+
+end AvailableStep
+
+namespace Reaches
+
+theorem refl (M : Machine Player) (state : M.State) :
+    M.Reaches state state :=
+  ⟨[], .nil state⟩
+
+theorem step {M : Machine Player} {source target : M.State}
+    {event : M.Event}
+    (hstep : M.AvailableStep source event target) :
+    M.Reaches source target :=
+  ⟨[event], hstep.availableRunFrom_singleton⟩
+
+theorem trans {M : Machine Player} {source mid target : M.State}
+    (hleft : M.Reaches source mid) (hright : M.Reaches mid target) :
+    M.Reaches source target := by
+  rcases hleft with ⟨eventsLeft, runLeft⟩
+  rcases hright with ⟨eventsRight, runRight⟩
+  exact ⟨eventsLeft ++ eventsRight, runLeft.append runRight⟩
+
+theorem mem_runEventsFrom_support
+    {M : Machine Player} {source target : M.State}
+    (hreaches : M.Reaches source target) :
+    ∃ events, target ∈ (M.runEventsFrom events source).support := by
+  rcases hreaches with ⟨events, hrun⟩
+  exact ⟨events, hrun.mem_runEventsFrom_support⟩
+
+end Reaches
+
 /-- Execute a sequence of macro steps, where each macro step is represented by
 a list of primitive machine events.  This is the trace shape induced by a
-frontier-step FOSG presentation. -/
+checkpoint or frontier-round presentation. -/
 noncomputable def runEventBatchesFrom
     (M : Machine Player) (batches : List (List M.Event)) (state : M.State) :
     PMF M.State :=
@@ -355,11 +426,12 @@ noncomputable def traceDist
     (M : Machine Player) (law : M.EventLaw) :
     M.traceDist law 0 = PMF.pure ([], [M.init]) := rfl
 
-/-- Outcome kernel induced by a scheduled event law, starting from an arbitrary
-machine state. -/
+/-- Partial outcome kernel induced by a scheduled event law, starting from an
+arbitrary machine state. A bounded horizon may stop before a terminal outcome
+exists, so the marginal is over `Option M.Outcome`. -/
 noncomputable def outcomeKernelFrom
     (M : Machine Player) (law : M.EventLaw) :
-    Nat → M.State → PMF M.Outcome
+    Nat → M.State → PMF (Option M.Outcome)
   | 0, state => PMF.pure (M.outcome state)
   | horizon + 1, state =>
       (law state).bind fun event =>
@@ -378,11 +450,11 @@ theorem outcomeKernelFrom_succ
         (M.step event state).bind fun next =>
           M.outcomeKernelFrom law horizon next := rfl
 
-/-- Outcome kernel induced by a scheduled event law from the machine initial
-state. -/
+/-- Partial outcome kernel induced by a scheduled event law from the machine
+initial state. -/
 noncomputable def outcomeKernel
     (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF M.Outcome :=
+    PMF (Option M.Outcome) :=
   M.outcomeKernelFrom law horizon M.init
 
 @[simp] theorem outcomeKernel_zero

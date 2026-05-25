@@ -1,4 +1,4 @@
-import Vegas.Core.ViewKernel
+import Vegas.Core.Scope
 
 /-!
 # Finite Infrastructure

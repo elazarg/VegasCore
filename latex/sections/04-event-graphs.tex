@@ -1,293 +1,166 @@
 \section{Event graphs}
 \label{sec:eventgraphs}
 
-The event graph is the central object of the construction.  It turns
-the syntax tree of a checked program into a finite directed acyclic
-graph of typed event nodes with explicit dependency edges, and
-replaces the implicit ``state along the spine'' of an interpreter
-with an extensional partial assignment from nodes to their write
-patches.  The strategically relevant content of a configuration is
-\emph{which} events have produced which results, not the order in
-which they were produced.
+The event graph is the semantic IR produced by core compilation.  It is
+small on purpose.  It does not store source names, source occurrences,
+rank metadata, custom patch legality predicates, or action kernels
+parallel to node semantics.  Those are either source-layer data or
+derived from the node row.
 
-\subsection{Nodes, fields, and patches}
-\label{sec:eg:nodes-fields}
+\subsection{Graph data}
+\label{sec:eg:data}
 
-An \emph{event graph} is a tuple
+An event graph is a pair of lists:
 \[
-  \EG = \bigl(
-    \Nodes, \Fields, \mathrm{fieldTy}, \mathrm{fieldOwner},
-    \mathrm{initial}, \mathrm{sem}, \prereq, \rank,
-    \mathrm{patchLegal}, \mathrm{actionLegal}, \mathrm{internalKernel}
-  \bigr)
+  \EG = (\mathsf{initialFields},\mathsf{nodes}).
 \]
-of finite typed-DAG data and three pieces of legality and execution
-data.  We unpack each in turn.
-
-\subsubsection*{Nodes and fields}
-
-$\Nodes$ is a finite set of \emph{event nodes} with decidable
-equality.  $\Fields$ is a finite set of \emph{typed storage fields},
-each with a base type given by $\mathrm{fieldTy} : \Fields \to \Ty$
-and an optional owner $\mathrm{fieldOwner} : \Fields \to
-\mathrm{Option}(\Players)$.  The function $\mathrm{initial}(f)$
-optionally provides an initial value for each field; absent fields
-are uninitialized until written.
-
-\subsubsection*{Write modes and field patches}
-
-A \emph{write mode} classifies a semantic write as either
-\textsf{clear} (public/revealed) or \textsf{hidden} (committed). A
-\emph{field patch} for a node $n$ is a partial map
+An initial field row contains a type, an optional owner, and an initial
+value.  An event node row contains the type and owner of its output
+field together with a semantic payload:
 \[
-  s : \Fields \;\rightharpoonup\; \mathrm{Val},
+  \mathsf{NodeSem} ::= \mathsf{sample}(D)
+    \mid \mathsf{commit}(p,R)
+    \mid \mathsf{reveal}(f).
 \]
-indicating the raw typed values that $n$ writes when it executes.  The
-write mode is recovered from $\mathrm{sem}(n)$ rather than duplicated in
-the patch payload.  Every node writes exactly one field — this convention, the
-\emph{single-target} discipline, is key to the symbolic accounting
-of who writes what.
-
-\subsubsection*{Node semantics}
-
-Each node carries a \emph{node semantic} payload
-$\mathrm{sem}(n)$ in one of four shapes:
+Initial field ids are \(0,\ldots,|\mathsf{initialFields}|-1\).  The
+output field of node \(n\) is
 \[
-  \mathrm{NodeSem} \;::=\;
-    \mathsf{assign}
-    \;\mid\;
-    \mathsf{sample}
-    \;\mid\;
-    \mathsf{commit}_p
-    \;\mid\;
-    \mathsf{reveal}.
+  \mathsf{nodeTarget}(n) = |\mathsf{initialFields}| + n.
 \]
-Only $\mathsf{commit}_p$ has an actor; $\mathsf{assign}$,
-$\mathsf{sample}$, and $\mathsf{reveal}$ are internal events of the
-machine.  Several derived projections are used pervasively:
-$\actor(n)$, $\readsOf(n)$ (a finset of fields read), and
-$\writeOf(n)$ (the unique target of the node's write).
+Thus event-field writers are not stored as a second map: the writer of
+an event field is determined by arithmetic on the graph row.
 
-\subsubsection*{Prerequisites and rank}
+The node payloads use typed field references.  Payload evaluation is not
+given the whole store.  Instead it receives a \(\mathsf{ReadEnv}\) for
+its declared typed read footprint.  This is the boundary that makes the
+read set semantic: graph-local code can only read fields that appear in
+its footprint.
 
-The function $\prereq : \Nodes \to \mathrm{Finset}(\Nodes)$ records
-the dependency relation, with the structural invariant that
-$\prereq(n) \subseteq \Nodes$ and (\emph{strict topological order})
+\subsection{Reads and well-formedness}
+\label{sec:eg:wf}
+
+The read footprint is the scheduling and observation footprint:
+\begin{itemize}\itemsep1pt
+\item a sample reads the public fields declared by its distribution;
+\item a commit choice footprint contains the fields visible to the
+  committing player at the commit site;
+\item a reveal reads the hidden source field being opened.
+\end{itemize}
+For commits this footprint is deliberately the information available to the
+choice, not the minimal syntactic dependency set of the guard expression.  A
+guard may ignore some of that environment; scheduling and player observation
+still use the larger choice footprint, because strategies may condition on the
+whole visible commit-site view.
+Graph well-formedness is a proposition.  For each node, every read field
+must already be available: it is either initial or written by an earlier
+node.  Public internal computations may read only public fields.  Commit
+choice footprints must be public or owned by the committing player.  A reveal must
+open a hidden field into a public output field of the same type.
+
+Graph reads are not raw SSA ancestry.  They are the information dependencies
+that can affect scheduling and player observation.  Pure administrative source
+lets are erased before this layer, so they do not create observable graph
+nodes.
+
+\subsection{Canonical prerequisites}
+\label{sec:eg:prereqs}
+
+Prerequisites are not stored in graph data.  They are derived
+canonically:
 \[
-  \forall n.\; \forall q \in \prereq(n).\; \rank(q) < \rank(n).
+  q \in \prereq(n)
+  \quad\Longleftrightarrow\quad
+  q < n \;\wedge\;
+  \bigl(\mathsf{nodeTarget}(q) \in \readsOf(n)
+    \;\vee\;
+    n\text{ is a reveal and }q\text{ is a commit}\bigr).
 \]
-$\rank : \Nodes \to \mathbb{N}$ is a strict topological-order
-witness that serves as the termination measure for inductions over
-graph executions.  The $\prereq$ relation, not the rank, is what
-encodes \emph{semantic} dependency.
+The first disjunct is the ordinary information dependency: an event
+that reads a field waits for the event that wrote the field.  The
+second disjunct is the commit/reveal barrier.  It makes a reveal wait
+for prior commits even when the reveal does not read their payloads.
+This is what enforces the simultaneous-commit discipline in protocols
+such as sealed bidding and Matching Pennies.
 
-\subsubsection*{Three pieces of legality and execution data}
+The negative cases are just as important.  Commit/commit pairs are
+independent unless the later commit choice footprint contains a field written
+by the earlier one.  Reveal/reveal pairs are independent at this abstraction
+level unless one reveal reads a field written by the other, which the
+current core does not generate.  Public samples do not wait for hidden
+commitments.
 
-\begin{description}[itemsep=2pt]
-\item[$\mathrm{patchLegal}(n, s)$ — \emph{shape}.]
-  Predicate on a node and a candidate field patch.  Purely
-  structural: it checks that $s$ writes the expected field with the
-  expected base type.  The clear/hidden mode is determined by the
-  node's $\mathrm{NodeSem}$, not duplicated in the patch payload.  It
-  does not consult guards or results of other nodes.
-\item[$\mathrm{actionLegal}(C, n, s)$ — \emph{dynamic}.]
-  Predicate that may consult the result assignment $C$ of
-  already-completed nodes.  For a player commit node, this is where
-  the guard is evaluated against the proposed action and the
-  current visible reads of the actor.
-\item[$\mathrm{internalKernel}(n, C) \in \PMF{\Patch(n)}$.]
-  Stochastic kernel for non-player ($\mathsf{assign}$,
-  $\mathsf{sample}$, $\mathsf{reveal}$) nodes.  $\mathsf{assign}$
-  and $\mathsf{reveal}$ kernels are Dirac; $\mathsf{sample}$ is the
-  source-level distribution, evaluated against the public state.
-\end{description}
-
-\designnote{The split between \emph{shape} (\textsf{patchLegal}) and
-\emph{dynamic} (\textsf{actionLegal}) is the structural analogue of
-the split between typing and the \emph{guard-uses-only}
-predicate of
-\S\ref{sec:source-language}: both put the part that can be checked
-by a syntactic over-approximation in one place, and the part that
-must consult the actual run-time state in another.  Internal kernels
-are stochastic but never depend on the schedule, only on the result
-assignment, which is what allows commit-internal commutation lemmas
-to be stated as kernel equalities rather than as schedule-quantified
-ones.}
-
-\subsection{Configurations and the frontier}
+\subsection{Configurations and availability}
 \label{sec:eg:configurations}
 
-\subsubsection*{Configurations}
+A configuration stores a finite set of completed nodes and a typed field
+store:
+\[
+  C = (\mathsf{done},\mathsf{store}).
+\]
+The initial configuration has no completed nodes and contains exactly the
+initial field values.  Completing a node records the node as done and
+writes its canonical output field.  There is no operation that completes
+a node while writing an arbitrary field.
 
-A \emph{configuration} of $\EG$ is an extensional record of which
-nodes have produced which results:
-\begin{equation}
-\label{eq:configuration}
-  C : \Nodes \;\rightharpoonup\; \Patch(\cdot),
-\end{equation}
-satisfying three invariants.  (i) \emph{Result-nodes}: every $n$
-with $C(n) = \mathsf{some}\,s$ is in $\Nodes$.  (ii)
-\emph{Closed under prerequisites}: if $C(n) = \mathsf{some}\,s$ then
-$C(q) = \mathsf{some}\,s_q$ for every $q \in \prereq(n)$.  (iii)
-\emph{Locally legal}: for each completed node $n$, the recorded
-patch satisfies $\mathrm{patchLegal}(n, C(n))$.
+A node is ready when it is not done and all canonical prerequisites are
+done.  A commit action is available when the node is ready, owned by the
+acting player, the action value has the guard type, the guard's choice
+environment can be built from the current store, and the guard evaluates
+to true.  An internal event is available when a ready sample or reveal can
+evaluate from the current store.
 
-\subsubsection*{The frontier}
-
-The frontier of $C$ is the set of unfinished nodes whose
-prerequisites have all completed:
-\begin{equation}
-\label{eq:frontier}
-  \frontier(C) \;=\;
-    \bigl\{\, n \in \Nodes \;\big|\;
-      C(n) = \mathsf{none}
-      \text{ and } \forall q \in \prereq(n).\, C(q) \neq \mathsf{none}
-    \,\bigr\}.
-\end{equation}
-The frontier is \emph{computed}, not stored.  This single design
-decision is responsible for most of the diamond properties below: a
-schedule is not part of the configuration, so two linearizations
-that finish the same set of nodes with the same per-node patches
-yield literally the same configuration.
-
-\begin{example}[Configurations of the Matching-Pennies graph]
-For the Matching-Pennies graph of \S\ref{sec:intro:matching-pennies},
-the initial configuration $C_0$ has $C_0(n) = \mathsf{none}$
-everywhere, $\frontier(C_0) = \{\Commit_{\textsf{m}},
-\Commit_{\textsf{m'}}\}$.  After both commits have completed (with
-patches $s_{\textsf{m}}, s_{\textsf{m'}}$), the configuration $C_2$
-records $C_2(\Commit_{\textsf{m}}) = s_{\textsf{m}}$ and
-$C_2(\Commit_{\textsf{m'}}) = s_{\textsf{m'}}$, with
-$\frontier(C_2) = \{\Reveal_{\textsf{m}}, \Reveal_{\textsf{m'}}\}$.
-The order in which the two commits were scheduled is not visible to
-$C_2$.
-\end{example}
-
-\subsection{Frontier preservation and the diamond}
+\subsection{Schedule independence}
 \label{sec:eg:diamond}
 
-We can now state the two structural theorems that justify the
-extensional, scheduler-free design.
+The graph layer proves local schedule-independence facts.  If two
+distinct available events are ready at the same configuration, completing
+one preserves availability of the other, because ready nodes do not read
+each other's output fields.  Supported results for the two events can be
+swapped to reach the same raw graph configuration.
 
-\begin{theorem}[Frontier preservation]
-\label{thm:front-preserv}
-Let $C$ be a configuration, and let $a, b \in \frontier(C)$ with
-$a \neq b$.  If $s_a$ is a patch for $a$ with $\mathrm{patchLegal}
-(a, s_a)$, then in the successor configuration $C[a \mapsto s_a]$,
-the node $b$ is still on the frontier.
-\end{theorem}
+These theorems do not assert that every real runtime hides every
+implementation trace.  They say that the graph state and graph
+observations are functions of the completed-node downset and field
+values, not of an irrelevant ordering witness.  Strategic presentations
+can therefore quotient or checkpoint primitive order without changing
+the graph-level state they observe.
 
 \begin{theorem}[Frontier diamond]
 \label{thm:diamond}
-Let $C$ be a configuration, $a, b \in \frontier(C)$ with $a \neq b$,
-and $s_a, s_b$ legal patches for $a, b$ respectively.  Then
-\[
-  \bigl(C[a \mapsto s_a]\bigr)[b \mapsto s_b]
-  \;=\;
-  \bigl(C[b \mapsto s_b]\bigr)[a \mapsto s_a]
-\]
-as configurations.
+For two distinct supported available primitive events at the same
+reachable configuration, there are two two-event batches, one executing
+the events in each order, whose final raw graph configurations are
+equal.  Consequently the public and player graph observations at the two
+checkpoints are equal.
 \end{theorem}
 
-\begin{proof}[Proof sketch]
-\Cref{thm:front-preserv}: $b$ is unfinished in $C$, hence in
-$C[a\mapsto s_a]$ since $a \neq b$.  Its prerequisites are completed
-in $C$ and remain completed in any extension, so $b$'s frontier
-membership survives.  \Cref{thm:diamond}: configurations are
-extensional functions, and the two updates write disjoint
-node-keys; the resulting partial maps agree pointwise.  The closure
-and local-legality invariants hold for either order by symmetry.
-\end{proof}
+\begin{theorem}[Commit/reveal barrier]
+\label{thm:barrier}
+If a reveal node is ready, every earlier commit node is already complete.
+Equivalently, a prior commit action is not available at a checkpoint where
+the reveal is ready.
+\end{theorem}
 
-\Cref{thm:diamond} is the formal sense in which the order of
-independent events is irrelevant: \emph{any} two linearizations of
-the same set of frontier choices produce the same configuration.
-
-\subsection{Adequacy: lowering preserves declared payoffs}
+\subsection{Compiler adequacy at the graph boundary}
 \label{sec:eg:adequacy}
 
-The elaboration $\mathsf{VegasCore} \to \mathsf{EventGraph}$ assigns
-each source constructor an event node, with the SSA discipline
-making the storage field of the unique writer of each variable
-unambiguous.  Adequacy is the obligation that this preserves
-declared payoffs.
-
-\begin{theorem}[Adequacy]
-\label{thm:adequacy}
-Let $g$ be a checked program with payoff list $\overline{p}$ at its
-$\Ret$.  For any terminal configuration $C$ of the elaborated graph
-$\mathsf{eg}(g)$, the payoff-vector outcome assigned by the event graph
-agrees with $\mathrm{evalPayoffs}(\overline{p}, \rho_C)$, where
-$\rho_C$ is the public-projected environment induced by $C$.
-\end{theorem}
-
-The proof is a structural induction over the source program: each
-source constructor's elaborated node performs the exact source-level
-side-effect (read, sample, write, expose), so the public environment
-read at $\Ret$ matches the source-level public environment at the
-same program point.
-
-\subsection{Commit/reveal information barrier}
-\label{sec:eg:barrier}
-
-\Cref{thm:diamond} says \emph{independent} events commute.  We also
-need a \emph{dependency} theorem: that every reveal depends on every
-prior commit, including those whose payload it does not directly
-read.  This is what protects the strategic story from a
-``$\Reveal$ races ahead of an unmade commitment'' pathology.
-
-The elaborator emits, for each $\Reveal$ node, prerequisites
-including:
-\begin{itemize}\itemsep0pt
-\item the commit node that wrote the revealed payload, and
-\item every $\mathsf{commit}$ node that lexically precedes the
-  reveal in the source order.
+Compilation produces a \(\mathsf{CompiledProgram}\) containing:
+\begin{itemize}\itemsep1pt
+\item a well-formed graph;
+\item payoff projections as graph-local \(\mathsf{EventPayoff}\)
+  entries;
+\item a proof that payoff reads are public and available by graph
+  termination.
 \end{itemize}
-The second item is the \emph{phase barrier}; it is what distinguishes
-the event-graph elaboration from a naive ``track only causal reads''
-elaboration.  The next theorem records its strategic consequence.
-
-\begin{theorem}[Commit/reveal information barrier]
-\label{thm:barrier}
-For any configuration $C$ and any reveal node $r$:
-\[
-  r \in \frontier(C)
-  \;\Longrightarrow\;
-  \forall c \in \mathrm{priorCommits}(r).\;
-  C(c) \neq \mathsf{none}.
-\]
-Equivalently: a reveal cannot be frontier-simultaneous with any
-unfinished prior commit.
-\end{theorem}
-
-\begin{corollary}[Strategy-surface form]
-\label{cor:barrier-strat}
-At any configuration $C$ where reveal $r$ is on the frontier, no
-player action whose underlying node is a prior commit of $r$ is
-available to its actor.
-\end{corollary}
-
-\Cref{thm:barrier} is a direct unfolding of the
-prerequisite-closure invariant of configurations: $r \in
-\frontier(C)$ requires every $q \in \prereq(r)$ to satisfy $C(q) =
-\mathsf{some}\,s_q$, and every prior commit of $r$ is in $\prereq(r)$
-by elaboration.  \Cref{cor:barrier-strat} re-expresses the same fact
-in the strategic vocabulary that becomes available in
-\S\ref{sec:fosg-strategies}.
-
-\designnote{The elaborator could in principle emit a sparser
-prerequisite relation that records only causal reads.  The barrier
-fails for such a relation: a reveal that does not read a sibling's
-commit payload could otherwise become enabled before the sibling
-commits, allowing the sibling's strategy to condition on the
-revealed value.  The phase prerequisites are the price of preserving
-the simultaneous-move semantics that the protocol writer wrote
-down.  This is a place where the dependency graph carries strictly
-more information than the per-node causal read-set alone.}
+For terminal reachable primitive-machine states, payoff projection is
+total and agrees with the source payoff expressions reconstructed from
+the terminal compiled store.
 
 \paragraph{Lean correspondence.}
-Supplement~\S5 (event graph): \TT{NodeSem}, \TT{EventGraph},
-\TT{Configuration}, \TT{frontier}, the diamond and barrier theorems
-(\TT{withPatch\_comm}, \TT{withPatch\_mem\_frontier\_of\_ne},
-\TT{eventGraph\_priorCommit\_not\_frontier\_with\_reveal},
-\TT{prior\_commit\_not\_available\_when\_reveal\_frontier}).
+Graph data and canonical prerequisites are in
+\TT{Vegas.EventGraph.Basic}.  Primitive execution, readiness,
+observations, and schedule-diamond lemmas are in
+\TT{Vegas.EventGraph.Execution} and \TT{Vegas.EventGraph.Batch}.  The
+compiler is \TT{Vegas.Core.ToEventGraph.Compiler}; source payoff
+adequacy is \TT{Vegas.Core.ToEventGraph.SourceAdequacy} and
+\TT{Vegas.Core.Theorems.Outcome}.

@@ -1,1426 +1,814 @@
 import Mathlib.Data.Finset.Basic
-import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Vegas.Base.Basic
 
 /-!
-# Event Graphs
+# Event graphs
 
-The event-graph state is extensional: a configuration records which event
-nodes have produced results, not the schedule prefix that produced them. A
-frontier is computed from that partial result assignment. Execution order is
-presentation and proof data; it is not part of the semantic state.
+An event graph is the protocol-level dependency object produced by compiling a
+checked Vegas program.  Nodes are protocol events, fields are typed storage
+locations, and `reads` is the scheduling dependency footprint.
+
+The graph uses canonical numeric ids.  Source syntax may guide allocation, but
+source occurrences are not graph identity.
 -/
 
 namespace Vegas
 
 namespace EventGraph
 
-/-- How a node write is classified before player-specific redaction. -/
-inductive WriteMode where
-  | clear
-  | hidden
-  deriving DecidableEq, Repr
+/-- A dynamically packaged language value. -/
+structure TypedValue (L : IExpr) where
+  ty : L.Ty
+  value : L.Val ty
 
-/-- A semantic field write in a protocol node. -/
-inductive FieldWrite (Player Field : Type) where
-  | clear (field : Field)
-  | hidden (owner : Player) (field : Field)
+namespace TypedValue
 
-namespace FieldWrite
+variable {L : IExpr}
 
-variable {Player Field : Type}
+/-- Try to read a typed value at a requested language type. -/
+noncomputable def as? (value : TypedValue L) (ty : L.Ty) :
+    Option (L.Val ty) :=
+  if h : value.ty = ty then
+    some (cast (by rw [h]) value.value)
+  else
+    none
 
-/-- The field touched by a write. -/
-def field : FieldWrite Player Field → Field
-  | .clear field => field
-  | .hidden _ field => field
+end TypedValue
 
-/-- The storage mode of a write. -/
-def mode : FieldWrite Player Field → WriteMode
-  | .clear _ => .clear
-  | .hidden _ _ => .hidden
+/-- Runtime field store used to evaluate node-local expressions. -/
+abbrev Store (L : IExpr) := Nat → Option (TypedValue L)
 
-end FieldWrite
+namespace Store
 
-/-- Values of the fields read by an event-graph expression. -/
-@[ext]
-structure ReadEnv (L : IExpr) (Field : Type)
-    (fieldTy : Field → L.Ty) (reads : Finset Field) where
-  value : (field : Field) → field ∈ reads → L.Val (fieldTy field)
+variable {L : IExpr}
 
-/-- An event-graph-local expression. Unlike source expressions, this evaluates from
-only the fields it declares as reads. -/
-structure EventExpr (L : IExpr) (Field : Type) [DecidableEq Field]
-    (fieldTy : Field → L.Ty) (ty : L.Ty) where
-  reads : Finset Field
-  eval : ReadEnv L Field fieldTy reads → L.Val ty
+/-- Read a field at an expected type. -/
+noncomputable def getAs (store : Store L) (field : Nat) (ty : L.Ty) :
+    Option (L.Val ty) :=
+  match store field with
+  | none => none
+  | some value => value.as? ty
 
-/-- An event-graph-local probability kernel. -/
-structure EventDist (L : IExpr) (Field : Type) [DecidableEq Field]
-    (fieldTy : Field → L.Ty) (ty : L.Ty) where
-  reads : Finset Field
-  eval : ReadEnv L Field fieldTy reads → PMF (L.Val ty)
+theorem getAs_cast (store : Store L) (field : Nat)
+    {source target : L.Ty} (hty : source = target)
+    {value : L.Val source}
+    (hget : getAs store field source = some value) :
+    getAs store field target =
+      some (cast (congrArg L.Val hty) value) := by
+  cases hty
+  exact hget
 
-/-- An event-graph-local commit guard. -/
-structure EventGuard (L : IExpr) (Field : Type) [DecidableEq Field]
-    (fieldTy : Field → L.Ty) (field : Field) where
-  reads : Finset Field
-  visibleReads : Finset Field
-  visibleReads_subset_reads : visibleReads ⊆ reads
-  eval : L.Val (fieldTy field) → ReadEnv L Field fieldTy reads → Bool
-  eval_eq_of_visible_eq :
-    ∀ {value : L.Val (fieldTy field)}
-      (ρ₁ ρ₂ : ReadEnv L Field fieldTy reads),
-      (∀ read (h₁ : read ∈ reads) (h₂ : read ∈ reads),
-        read ∈ visibleReads → ρ₁.value read h₁ = ρ₂.value read h₂) →
-        eval value ρ₁ = eval value ρ₂
-  satisfiable :
-    (ρ : ReadEnv L Field fieldTy reads) →
-      ∃ value : L.Val (fieldTy field), eval value ρ = true
+end Store
+
+/-- A graph field id together with the type expected at that field. -/
+structure FieldRef (L : IExpr) where
+  field : Nat
+  ty : L.Ty
+deriving DecidableEq
+
+namespace FieldRef
+
+variable {L : IExpr}
+
+/-- Project typed field references to the numeric dependency footprint used for
+scheduling. -/
+def fields (refs : Finset (FieldRef L)) : Finset Nat :=
+  refs.image FieldRef.field
+
+@[simp] theorem fields_empty :
+    fields (∅ : Finset (FieldRef L)) = ∅ := by
+  simp [fields]
+
+@[simp] theorem mem_fields_singleton {ref : FieldRef L} {field : Nat} :
+    field ∈ fields ({ref} : Finset (FieldRef L)) ↔ field = ref.field := by
+  simp [fields]
+
+end FieldRef
+
+/-- Restricted read environment supplied to graph-local computations.
+
+The environment exposes typed values only for the node's declared read
+footprint. Payload code has no access to the ambient graph store and cannot
+ask for a field at a type not listed in its `FieldRef` footprint. -/
+structure ReadEnv (L : IExpr) (reads : Finset (FieldRef L)) where
+  read : (ref : FieldRef L) → ref ∈ reads → L.Val ref.ty
 
 namespace ReadEnv
 
-variable {L : IExpr}
-variable {Field Field' : Type} [DecidableEq Field']
-variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
-
-/-- Pull a read environment on mapped fields back to the source fields. -/
-noncomputable def comapFields
-    {reads : Finset Field}
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field)
-    (ρ : ReadEnv L Field' fieldTy' (reads.image f)) :
-    ReadEnv L Field fieldTy reads where
-  value field hmem :=
-    cast (by rw [hty field])
-      (ρ.value (f field) (Finset.mem_image.mpr ⟨field, hmem, rfl⟩))
-
-end ReadEnv
-
-namespace EventExpr
-
-variable {L : IExpr}
-variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
-variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
-variable {ty : L.Ty}
-
-/-- Transport a graph expression through a field map preserving field types. -/
-noncomputable def mapFields
-    (expr : EventExpr L Field fieldTy ty)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    EventExpr L Field' fieldTy' ty where
-  reads := expr.reads.image f
-  eval := fun ρ => expr.eval (ReadEnv.comapFields f hty ρ)
-
-end EventExpr
-
-namespace EventDist
-
-variable {L : IExpr}
-variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
-variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
-variable {ty : L.Ty}
-
-/-- Transport a graph distribution through a field map preserving field types. -/
-noncomputable def mapFields
-    (dist : EventDist L Field fieldTy ty)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    EventDist L Field' fieldTy' ty where
-  reads := dist.reads.image f
-  eval := fun ρ => dist.eval (ReadEnv.comapFields f hty ρ)
-
-end EventDist
-
-namespace EventGuard
-
-variable {L : IExpr}
-variable {Field Field' : Type} [DecidableEq Field] [DecidableEq Field']
-variable {fieldTy : Field → L.Ty} {fieldTy' : Field' → L.Ty}
-
-/-- Transport a graph guard through a field map preserving field types. -/
-noncomputable def mapFields
-    {field : Field}
-    (guard : EventGuard L Field fieldTy field)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    EventGuard L Field' fieldTy' (f field) where
-  reads := guard.reads.image f
-  visibleReads := guard.visibleReads.image f
-  visibleReads_subset_reads := by
-    intro read hread
-    rcases Finset.mem_image.mp hread with ⟨inner, hinner, rfl⟩
-    exact Finset.mem_image.mpr
-      ⟨inner, guard.visibleReads_subset_reads hinner, rfl⟩
-  eval := fun value ρ =>
-    guard.eval (cast (by rw [hty field]) value)
-      (ReadEnv.comapFields f hty ρ)
-  eval_eq_of_visible_eq := by
-    intro value ρ₁ ρ₂ hvisible
-    apply guard.eval_eq_of_visible_eq
-    intro read h₁ h₂ hreadVisible
-    simpa [ReadEnv.comapFields] using
-      hvisible (f read)
-        (Finset.mem_image.mpr ⟨read, h₁, rfl⟩)
-        (Finset.mem_image.mpr ⟨read, h₂, rfl⟩)
-        (Finset.mem_image.mpr ⟨read, hreadVisible, rfl⟩)
-  satisfiable := by
-    intro ρ
-    rcases guard.satisfiable (ReadEnv.comapFields f hty ρ) with
-      ⟨value, hvalue⟩
-    refine ⟨cast (by rw [← hty field]) value, ?_⟩
-    simpa using hvalue
-
-@[simp] theorem reads_mapFields
-    {field : Field}
-    (guard : EventGuard L Field fieldTy field)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (guard.mapFields f hty).reads = guard.reads.image f := rfl
-
-@[simp] theorem visibleReads_mapFields
-    {field : Field}
-    (guard : EventGuard L Field fieldTy field)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (guard.mapFields f hty).visibleReads =
-      guard.visibleReads.image f := rfl
-
-end EventGuard
-
-/-- Protocol meaning attached to one event node.
-
-This is intentionally semantic, not backend metadata.  Visibility is computed
-from the writes: clear writes are public/revealed, hidden writes are commits. -/
-inductive NodeSem (Player Field : Type) [DecidableEq Field]
-    (L : IExpr) (fieldTy : Field → L.Ty) where
-  | assign (field : Field) (expr : EventExpr L Field fieldTy (fieldTy field))
-  | sample (field : Field) (dist : EventDist L Field fieldTy (fieldTy field))
-  | commit (who : Player) (field : Field)
-      (guard : EventGuard L Field fieldTy field)
-  | reveal (source target : Field) (sameTy : fieldTy source = fieldTy target)
-
-namespace NodeSem
-
-variable {Player Field : Type} [DecidableEq Field]
-variable {L : IExpr} {fieldTy : Field → L.Ty}
-
-variable {Field' : Type} [DecidableEq Field'] {fieldTy' : Field' → L.Ty}
-
-/-- Whether this node is a player commit. -/
-def isCommit :
-    NodeSem Player Field L fieldTy → Bool
-  | .commit .. => true
-  | _ => false
-
-/-- Whether this node reveals a previously hidden field. -/
-def isReveal :
-    NodeSem Player Field L fieldTy → Bool
-  | .reveal .. => true
-  | _ => false
-
-/-- Transport a node semantic payload through a field map preserving field
-types. -/
-noncomputable def mapFields
-    (sem : NodeSem Player Field L fieldTy)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    NodeSem Player Field' L fieldTy' :=
-  match sem with
-  | .assign field expr =>
-      .assign (f field) {
-        reads := expr.reads.image f
-        eval := fun ρ =>
-          cast (by rw [hty field])
-            (expr.eval (ReadEnv.comapFields f hty ρ)) }
-  | .sample field dist =>
-      .sample (f field) {
-        reads := dist.reads.image f
-        eval := fun ρ =>
-          cast (by rw [hty field])
-            (dist.eval (ReadEnv.comapFields f hty ρ)) }
-  | .commit who field guard =>
-      .commit who (f field) (guard.mapFields f hty)
-  | .reveal source target hsameTy =>
-      .reveal (f source) (f target)
-        (by rw [hty source, hty target, hsameTy])
-
-@[simp] theorem isCommit_mapFields
-    (sem : NodeSem Player Field L fieldTy)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (sem.mapFields f hty).isCommit = sem.isCommit := by
-  cases sem <;> rfl
-
-@[simp] theorem isReveal_mapFields
-    (sem : NodeSem Player Field L fieldTy)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (sem.mapFields f hty).isReveal = sem.isReveal := by
-  cases sem <;> rfl
-
-/-- Player responsible for this node, if any. -/
-def actor :
-    NodeSem Player Field L fieldTy → Option Player
-  | .assign _ _ => none
-  | .sample _ _ => none
-  | .commit who _ _ => some who
-  | .reveal _ _ _ => none
-
-/-- Fields read by this node. -/
-def reads :
-    NodeSem Player Field L fieldTy → Finset Field
-  | .assign _ expr => expr.reads
-  | .sample _ dist => dist.reads
-  | .commit _ _ guard => guard.reads
-  | .reveal source _ _ => {source}
-
-@[simp] theorem reads_mapFields
-    (sem : NodeSem Player Field L fieldTy)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (sem.mapFields f hty).reads = sem.reads.image f := by
-  cases sem with
-  | assign field expr =>
-      simp [mapFields, reads]
-  | sample field dist =>
-      simp [mapFields, reads]
-  | commit who field guard =>
-      rfl
-  | reveal source target hsameTy =>
-      simp [mapFields, reads]
-
-theorem mem_reads_mapFields
-    {sem : NodeSem Player Field L fieldTy}
-    {f : Field → Field'}
-    {hty : ∀ field, fieldTy' (f field) = fieldTy field}
-    {field' : Field'}
-    (h : field' ∈ (sem.mapFields f hty).reads) :
-    ∃ field, field' = f field ∧ field ∈ sem.reads := by
-  have h' : field' ∈ sem.reads.image f := by
-    simpa using h
-  rcases Finset.mem_image.mp h' with ⟨field, hfield, hfield'⟩
-  exact ⟨field, hfield'.symm, hfield⟩
-
-/-- Semantic writes produced by this node. -/
-def writes :
-    NodeSem Player Field L fieldTy → List (FieldWrite Player Field)
-  | .assign field _ => [FieldWrite.clear field]
-  | .sample field _ => [FieldWrite.clear field]
-  | .commit who field _ => [FieldWrite.hidden who field]
-  | .reveal _ target _ => [FieldWrite.clear target]
-
-/-- The unique field targeted by this node's write. -/
-def writeTarget :
-    NodeSem Player Field L fieldTy → Field
-  | .assign field _ => field
-  | .sample field _ => field
-  | .commit _ field _ => field
-  | .reveal _ target _ => target
-
-@[simp] theorem writeTarget_mapFields
-    (sem : NodeSem Player Field L fieldTy)
-    (f : Field → Field')
-    (hty : ∀ field, fieldTy' (f field) = fieldTy field) :
-    (sem.mapFields f hty).writeTarget = f sem.writeTarget := by
-  cases sem <;> simp [mapFields, writeTarget]
-
-/-- A node writes a field if one of its semantic writes targets that field. -/
-def WritesField (sem : NodeSem Player Field L fieldTy) (field : Field) : Prop :=
-  ∃ write ∈ sem.writes, write.field = field
-
-/-- A node writes a field with the given storage mode. -/
-def WritesWithMode
-    (sem : NodeSem Player Field L fieldTy) (field : Field) (mode : WriteMode) :
-    Prop :=
-  ∃ write ∈ sem.writes, write.field = field ∧ write.mode = mode
-
-/-- Fields written by a node. -/
-noncomputable def writeFields
-    (sem : NodeSem Player Field L fieldTy) : Finset Field :=
-  (sem.writes.map FieldWrite.field).toFinset
-
-/-- Storage mode for a field written by this node, if any.
-
-Conflicting duplicate writes are ruled out by `EventGraph` well-formedness.
-Hidden wins here only to make this projection total. -/
-noncomputable def writeMode
-    (sem : NodeSem Player Field L fieldTy) (field : Field) :
-    Option WriteMode := by
-  classical
-  exact
-    if sem.WritesWithMode field .hidden then
-      some .hidden
-    else if sem.WritesWithMode field .clear then
-      some .clear
-    else
-      none
-
-@[simp] theorem mem_writeFields_iff
-    (sem : NodeSem Player Field L fieldTy) (field : Field) :
-    field ∈ sem.writeFields ↔ sem.WritesField field := by
-  classical
-  simp [writeFields, WritesField]
-
-@[simp] theorem writeFields_eq_singleton
-    (sem : NodeSem Player Field L fieldTy) :
-    sem.writeFields = {sem.writeTarget} := by
-  classical
-  cases sem <;> simp [writeFields, writes, writeTarget, FieldWrite.field]
-
-theorem mem_writeFields_iff_eq_writeTarget
-    (sem : NodeSem Player Field L fieldTy) (field : Field) :
-    field ∈ sem.writeFields ↔ field = sem.writeTarget := by
-  rw [writeFields_eq_singleton]
-  simp
-
-theorem mem_writeFields_mapFields_of_mem
-    {sem : NodeSem Player Field L fieldTy}
-    {f : Field → Field'}
-    {hty : ∀ field, fieldTy' (f field) = fieldTy field}
-    {field : Field}
-    (h : field ∈ sem.writeFields) :
-    f field ∈ (sem.mapFields f hty).writeFields := by
-  rw [mem_writeFields_iff_eq_writeTarget] at h ⊢
-  rw [h]
-  simp
-
-end NodeSem
-
-end EventGraph
-
-/-- A checked protocol dependency graph.
-
-`EventGraph` is protocol-specific.  Nodes have semantic payloads; fields are
-typed storage locations; dependencies are the causal/readability order used to
-compute the executable frontier.
-
-The graph deliberately does not store a separate visibility map.  Field
-visibility is a computed property of `sem node`. -/
-structure EventGraph (Player : Type) [DecidableEq Player] (L : IExpr) where
-  Node : Type
-  Field : Type
-  nodeDecEq : DecidableEq Node
-  fieldDecEq : DecidableEq Field
-  nodes : Finset Node
-  fields : Finset Field
-  fieldTy : Field → L.Ty
-  fieldOwner : Field → Option Player
-  initial : (field : Field) → Option (L.Val (fieldTy field))
-  sem : Node → @EventGraph.NodeSem Player Field fieldDecEq L fieldTy
-  prereqs : Node → Finset Node
-  rank : Node → Nat
-  prereqs_subset_nodes :
-    ∀ {node prereq}, node ∈ nodes → prereq ∈ prereqs node → prereq ∈ nodes
-  prereq_rank_lt :
-    ∀ {node prereq}, node ∈ nodes → prereq ∈ prereqs node →
-      rank prereq < rank node
-  read_fields_mem :
-    ∀ {node field}, node ∈ nodes → field ∈ (sem node).reads → field ∈ fields
-  write_fields_mem :
-    ∀ {node write}, node ∈ nodes → write ∈ (sem node).writes →
-      write.field ∈ fields
-  no_duplicate_writes :
-    ∀ {node field left right},
-      node ∈ nodes →
-      left ∈ (sem node).writes →
-      right ∈ (sem node).writes →
-      left.field = field →
-      right.field = field →
-      left = right
-  patchLegal :
-    Node →
-      ((field : Field) →
-        Option (L.Val (fieldTy field))) →
-      Prop
-  actionLegal :
-    ((node : Node) →
-        Option ((field : Field) →
-          Option (L.Val (fieldTy field)))) →
-      Node →
-      ((field : Field) →
-        Option (L.Val (fieldTy field))) →
-      Prop
-  internalKernel :
-    Node →
-      ((node : Node) →
-        Option ((field : Field) →
-          Option (L.Val (fieldTy field)))) →
-      PMF ((field : Field) →
-        Option (L.Val (fieldTy field)))
-  internalKernel_support_legal :
-    ∀ {node result patch},
-      node ∈ nodes →
-      (result node).isNone →
-      (∀ prereq, prereq ∈ prereqs node → (result prereq).isSome) →
-      (∀ {doneNode donePatch},
-        result doneNode = some donePatch → patchLegal doneNode donePatch) →
-      (sem node).actor = none →
-      patch ∈ (internalKernel node result).support →
-      patchLegal node patch
-
-namespace EventGraph
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr}
-
-attribute [local instance] EventGraph.nodeDecEq
-attribute [local instance] EventGraph.fieldDecEq
-
-/-- A typed field patch produced by one node. -/
-abbrev FieldPatch (G : Vegas.EventGraph Player L) : Type :=
-  (field : G.Field) → Option (L.Val (G.fieldTy field))
-
-namespace FieldPatch
-
-variable (G : Vegas.EventGraph Player L)
-
-/-- The empty field patch. -/
-def empty : FieldPatch G :=
-  fun _ => none
-
-/-- A singleton field patch writing one field. -/
-noncomputable def single
-    (field : G.Field)
-    (value : L.Val (G.fieldTy field)) :
-    FieldPatch G :=
-  fun other =>
-    if h : other = field then
-      some (cast (by rw [h]) value)
-    else
-      none
-
-@[simp] theorem single_self
-    (field : G.Field)
-    (value : L.Val (G.fieldTy field)) :
-    single G field value field = some value := by
-  simp [single]
-
-@[simp] theorem single_ne
-    {field other : G.Field}
-    (value : L.Val (G.fieldTy field))
-    (h : other ≠ field) :
-    single G field value other = none := by
-  simp [single, h]
-
-end FieldPatch
-
-/-- Extensional partial node-result assignment. -/
-abbrev ResultAssignment (G : Vegas.EventGraph Player L) : Type :=
-  (node : G.Node) → Option (FieldPatch G)
-
-/-- Value of a graph field under a partial result assignment. Completed node
-patches override initial values; if no completed patch has written the field,
-the graph initial value is used. -/
-noncomputable def value?
-    (G : Vegas.EventGraph Player L) (result : G.ResultAssignment)
-    (field : G.Field) : Option (L.Val (G.fieldTy field)) := by
-  classical
-  exact
-    if h :
-        ∃ node patch value,
-          result node = some patch ∧ patch field = some value then
-      let node := Classical.choose h
-      let patch := Classical.choose (Classical.choose_spec h)
-      let value := Classical.choose (Classical.choose_spec
-        (Classical.choose_spec h))
-      some value
-    else
-      G.initial field
-
-theorem value?_isSome_of_result_patch
-    (G : Vegas.EventGraph Player L) {result : G.ResultAssignment}
-    {field : G.Field} {node : G.Node} {patch : FieldPatch G}
-    {value : L.Val (G.fieldTy field)}
-    (hresult : result node = some patch)
-    (hpatch : patch field = some value) :
-    (G.value? result field).isSome := by
-  classical
-  unfold value?
-  rw [dif_pos]
-  · simp
-  · exact ⟨node, patch, value, hresult, hpatch⟩
-
-/-- Result assignments agree on the prerequisites of a node. -/
-def AgreeOnPrereqs (G : Vegas.EventGraph Player L)
-    (left right : ResultAssignment G) (node : G.Node) : Prop :=
-  ∀ prereq, prereq ∈ G.prereqs node → left prereq = right prereq
-
-/-- Nodes that have already produced a result. -/
-noncomputable def done (G : Vegas.EventGraph Player L)
-    (result : ResultAssignment G) : Finset G.Node := by
-  classical
-  exact G.nodes.filter fun node => (result node).isSome
-
-@[simp] theorem mem_done_iff
-    (G : Vegas.EventGraph Player L) (result : ResultAssignment G)
-    (node : G.Node) :
-    node ∈ G.done result ↔ node ∈ G.nodes ∧ (result node).isSome := by
-  classical
-  simp [done]
-
-/-- Predecessor-closed partial node-result assignment for an event graph.
-
-The closure invariant says completed nodes are lower-closed under graph
-dependencies.  The legality invariant says every node result is a
-well-formed field patch for that node. Dynamic action legality is checked at the
-machine frontier instead of being cached in the configuration. -/
-structure ClosedAssignment (G : Vegas.EventGraph Player L) where
-  result : ResultAssignment G
-  result_nodes :
-    ∀ {node}, (result node).isSome → node ∈ G.nodes
-  closed :
-    ∀ {node prereq},
-      (result node).isSome →
-      prereq ∈ G.prereqs node →
-      (result prereq).isSome
-  legal :
-    ∀ {node patch},
-      result node = some patch →
-      G.patchLegal node patch
-
-/-- Machine configuration for the native event-graph semantics.
-
-At the current abstraction level the machine state is exactly a
-predecessor-closed assignment. Keeping the configuration name separate leaves
-room for future operational state without making the graph assignment itself
-carry presentation-specific data. -/
-abbrev Configuration (G : Vegas.EventGraph Player L) : Type :=
-  ClosedAssignment G
-
-namespace Configuration
-
-variable {G : Vegas.EventGraph Player L}
+variable {L : IExpr} {refs : Finset (FieldRef L)}
 
 @[ext] theorem ext
-    {left right : G.Configuration}
-    (hresult : left.result = right.result) :
+    {left right : ReadEnv L refs}
+    (hread :
+      ∀ ref (href : ref ∈ refs), left.read ref href = right.read ref href) :
     left = right := by
   cases left
   cases right
-  cases hresult
-  rfl
+  congr
+  funext ref href
+  exact hread ref href
 
-/-- Empty initial configuration. Initial field values belong to the graph, not
-to an executed node result. -/
-def initial (G : Vegas.EventGraph Player L) : G.Configuration where
-  result := fun _ => none
-  result_nodes := by
-    intro node h
-    simp at h
-  closed := by
-    intro node prereq h
-    simp at h
-  legal := by
-    intro node patch h
-    simp at h
+/-- Restrict a full store to a declared read footprint, given evidence that
+all declared typed reads are present at the requested types. -/
+noncomputable def ofStore (store : Store L) (refs : Finset (FieldRef L))
+    (available :
+      ∀ ref, ref ∈ refs → ∃ value, Store.getAs store ref.field ref.ty = some value) :
+    ReadEnv L refs where
+  read := fun ref href => Classical.choose (available ref href)
 
-/-- Completed nodes of a configuration. -/
-noncomputable def done (cfg : G.Configuration) : Finset G.Node :=
-  G.done cfg.result
-
-/-- An event node is enabled when it is unfinished and all prerequisites are
-finished. -/
-def Enabled (cfg : G.Configuration) (node : G.Node) : Prop :=
-  node ∈ G.nodes ∧
-    (cfg.result node).isNone ∧
-      G.prereqs node ⊆ cfg.done
-
-/-- The frontier: the current enabled event set. -/
-noncomputable def frontier (cfg : G.Configuration) : Finset G.Node := by
+/-- Try to restrict a store to a typed read footprint. This fails exactly when
+a declared read is absent or present at a different type. -/
+noncomputable def ofStore? (store : Store L) (refs : Finset (FieldRef L)) :
+    Option (ReadEnv L refs) := by
   classical
-  exact G.nodes.filter fun node => cfg.Enabled node
-
-/-- Terminal configurations have completed every event node. -/
-def terminal (cfg : G.Configuration) : Prop :=
-  G.nodes ⊆ cfg.done
-
-@[simp] theorem mem_frontier_iff
-    (cfg : G.Configuration) (node : G.Node) :
-    node ∈ cfg.frontier ↔ cfg.Enabled node := by
-  classical
-  simp [frontier, Enabled]
-
-theorem mem_nodes_of_mem_frontier
-    {cfg : G.Configuration} {node : G.Node}
-    (h : node ∈ cfg.frontier) :
-    node ∈ G.nodes :=
-  (cfg.mem_frontier_iff node).mp h |>.1
-
-theorem not_done_of_mem_frontier
-    {cfg : G.Configuration} {node : G.Node}
-    (h : node ∈ cfg.frontier) :
-    (cfg.result node).isNone :=
-  (cfg.mem_frontier_iff node).mp h |>.2.1
-
-theorem prereq_done_of_mem_frontier
-    {cfg : G.Configuration} {node prereq : G.Node}
-    (h : node ∈ cfg.frontier)
-    (hpre : prereq ∈ G.prereqs node) :
-    prereq ∈ cfg.done :=
-  (cfg.mem_frontier_iff node).mp h |>.2.2 hpre
-
-theorem result_some_of_prereq_of_mem_frontier
-    {cfg : G.Configuration} {node prereq : G.Node}
-    (h : node ∈ cfg.frontier)
-    (hpre : prereq ∈ G.prereqs node) :
-    (cfg.result prereq).isSome := by
-  have hdone := cfg.prereq_done_of_mem_frontier h hpre
-  exact (G.mem_done_iff cfg.result prereq).mp hdone |>.2
-
-/-- No current frontier node is a prerequisite of another current frontier
-node. This is the graph-level independence fact behind frontier steps:
-dependencies must have already been completed before a node reaches the
-frontier. -/
-theorem not_prereq_of_mem_frontier
-    {cfg : G.Configuration} {first second : G.Node}
-    (hfirst : first ∈ cfg.frontier)
-    (hsecond : second ∈ cfg.frontier) :
-    first ∉ G.prereqs second := by
-  intro hpre
-  have hdone : (cfg.result first).isSome :=
-    cfg.result_some_of_prereq_of_mem_frontier hsecond hpre
-  have hnone : (cfg.result first).isNone :=
-    cfg.not_done_of_mem_frontier hfirst
-  cases hresult : cfg.result first <;> simp [hresult] at hdone hnone
-
-theorem not_terminal_of_mem_frontier
-    {cfg : G.Configuration} {node : G.Node}
-    (h : node ∈ cfg.frontier) :
-    ¬ cfg.terminal := by
-  intro hterminal
-  have hnodes : node ∈ G.nodes := cfg.mem_nodes_of_mem_frontier h
-  have hnone : (cfg.result node).isNone :=
-    cfg.not_done_of_mem_frontier h
-  have hdone : node ∈ cfg.done := hterminal hnodes
-  have hsome : (cfg.result node).isSome :=
-    (G.mem_done_iff cfg.result node).mp hdone |>.2
-  cases hresult : cfg.result node <;> simp [hresult] at hnone hsome
-
-/-- A nonterminal configuration has some unfinished event node. -/
-theorem exists_unfinished_of_not_terminal
-    {cfg : G.Configuration}
-    (hterminal : ¬ cfg.terminal) :
-    ∃ node, node ∈ G.nodes ∧ (cfg.result node).isNone := by
-  classical
-  simp only [terminal, Finset.not_subset] at hterminal
-  rcases hterminal with ⟨node, hnode, hnot_done⟩
-  refine ⟨node, hnode, ?_⟩
-  cases hresult : cfg.result node with
-  | none => rfl
-  | some patch =>
-      exfalso
-      apply hnot_done
-      exact (G.mem_done_iff cfg.result node).mpr (by simp [hnode, hresult])
-
-/-- If the configuration is nonterminal, a minimal unfinished node is enabled. -/
-theorem exists_enabled_of_not_terminal
-    {cfg : G.Configuration}
-    (hterminal : ¬ cfg.terminal) :
-    ∃ node, cfg.Enabled node := by
-  classical
-  rcases cfg.exists_unfinished_of_not_terminal hterminal with
-    ⟨witness, hwitness_node, hwitness_unfinished⟩
-  let unfinished : Finset G.Node :=
-    G.nodes.filter fun node => (cfg.result node).isNone
-  have hwitness_none : cfg.result witness = none := by
-    cases hresult : cfg.result witness with
-    | none => rfl
-    | some patch => simp [hresult] at hwitness_unfinished
-  have hunfinished_nonempty : unfinished.Nonempty := by
-    refine ⟨witness, ?_⟩
-    simp [unfinished, hwitness_node, hwitness_none]
-  rcases Finset.exists_min_image unfinished G.rank hunfinished_nonempty with
-    ⟨node, hnode_unfinished, hmin⟩
-  have hnode : node ∈ G.nodes := (Finset.mem_filter.mp hnode_unfinished).1
-  have hnode_unfinished' : (cfg.result node).isNone :=
-    (Finset.mem_filter.mp hnode_unfinished).2
-  refine ⟨node, ⟨hnode, hnode_unfinished', ?_⟩⟩
-  intro prereq hpre
-  have hpre_node : prereq ∈ G.nodes :=
-    G.prereqs_subset_nodes hnode hpre
-  by_contra hpre_not_done
-  have hpre_unfinished : (cfg.result prereq).isNone := by
-    cases hresult : cfg.result prereq with
-    | none => rfl
-    | some patch =>
-        exfalso
-        apply hpre_not_done
-        exact (G.mem_done_iff cfg.result prereq).mpr
-          (by simp [hpre_node, hresult])
-  have hpre_none : cfg.result prereq = none := by
-    cases hresult : cfg.result prereq with
-    | none => rfl
-    | some patch => simp [hresult] at hpre_unfinished
-  have hle : G.rank node ≤ G.rank prereq :=
-    hmin prereq (by simp [unfinished, hpre_node, hpre_none])
-  exact (Nat.not_lt_of_ge hle) (G.prereq_rank_lt hnode hpre)
-
-/-- A rank-minimal unfinished node is enabled.
-
-This is the graph-level form of the "linear read is sufficient" principle:
-if a reader scans nodes in the graph's rank order and stops at the first
-unfinished node, that node is executable. Dependencies cannot be waiting
-behind it, because prerequisites have strictly smaller rank. -/
-theorem enabled_of_rank_minimal_unfinished
-    {cfg : G.Configuration} {node : G.Node}
-    (hnode : node ∈ G.nodes)
-    (hunfinished : (cfg.result node).isNone)
-    (hmin :
-      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
-        G.rank node ≤ G.rank other) :
-    cfg.Enabled node := by
-  refine ⟨hnode, hunfinished, ?_⟩
-  intro prereq hpre
-  have hpre_node : prereq ∈ G.nodes :=
-    G.prereqs_subset_nodes hnode hpre
-  by_contra hpre_not_done
-  have hpre_unfinished : (cfg.result prereq).isNone := by
-    cases hresult : cfg.result prereq with
-    | none => rfl
-    | some patch =>
-        exfalso
-        apply hpre_not_done
-        exact (G.mem_done_iff cfg.result prereq).mpr
-          (by simp [hpre_node, hresult])
-  exact (Nat.not_lt_of_ge (hmin prereq hpre_node hpre_unfinished))
-    (G.prereq_rank_lt hnode hpre)
-
-/-- Every nonterminal event-graph configuration has an enabled node that is
-rank-minimal among all unfinished nodes.
-
-Equivalently: the rank-ordered linear presentation never gets stuck before
-the graph execution does. -/
-theorem exists_rank_minimal_enabled_of_not_terminal
-    {cfg : G.Configuration}
-    (hterminal : ¬ cfg.terminal) :
-    ∃ node, cfg.Enabled node ∧
-      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
-        G.rank node ≤ G.rank other := by
-  classical
-  rcases cfg.exists_unfinished_of_not_terminal hterminal with
-    ⟨witness, hwitness_node, hwitness_unfinished⟩
-  let unfinished : Finset G.Node :=
-    G.nodes.filter fun node => (cfg.result node).isNone
-  have hwitness_none : cfg.result witness = none := by
-    cases hresult : cfg.result witness with
-    | none => rfl
-    | some patch => simp [hresult] at hwitness_unfinished
-  have hunfinished_nonempty : unfinished.Nonempty := by
-    refine ⟨witness, ?_⟩
-    simp [unfinished, hwitness_node, hwitness_none]
-  rcases Finset.exists_min_image unfinished G.rank hunfinished_nonempty with
-    ⟨node, hnode_unfinished, hmin⟩
-  have hnode : node ∈ G.nodes := (Finset.mem_filter.mp hnode_unfinished).1
-  have hnode_unfinished' : (cfg.result node).isNone :=
-    (Finset.mem_filter.mp hnode_unfinished).2
-  have hmin' :
-      ∀ other, other ∈ G.nodes → (cfg.result other).isNone →
-        G.rank node ≤ G.rank other := by
-    intro other hother hother_unfinished
-    have hother_none : cfg.result other = none := by
-      cases hresult : cfg.result other with
-      | none => rfl
-      | some patch => simp [hresult] at hother_unfinished
-    exact hmin other (by simp [unfinished, hother, hother_none])
-  exact ⟨node,
-    cfg.enabled_of_rank_minimal_unfinished hnode hnode_unfinished' hmin',
-    hmin'⟩
-
-/-- A nonterminal configuration has a nonempty executable frontier. -/
-theorem frontier_nonempty_of_not_terminal
-    {cfg : G.Configuration}
-    (hterminal : ¬ cfg.terminal) :
-    cfg.frontier.Nonempty := by
-  rcases cfg.exists_enabled_of_not_terminal hterminal with ⟨node, henabled⟩
-  exact ⟨node, (cfg.mem_frontier_iff node).mpr henabled⟩
-
-/-- Replace the result at one node. -/
-noncomputable def updatePatch
-    (cfg : G.Configuration) (node : G.Node) (patch : FieldPatch G) :
-    ResultAssignment G := by
-  classical
-  exact fun candidate =>
-    if candidate = node then some patch else cfg.result candidate
-
-@[simp] theorem updatePatch_self
-    (cfg : G.Configuration) (node : G.Node) (patch : FieldPatch G) :
-    updatePatch cfg node patch node = some patch := by
-  classical
-  simp [updatePatch]
-
-@[simp] theorem updatePatch_of_ne
-    (cfg : G.Configuration) {node candidate : G.Node}
-    (patch : FieldPatch G) (h : candidate ≠ node) :
-    updatePatch cfg node patch candidate = cfg.result candidate := by
-  classical
-  simp [updatePatch, h]
-
-/-- Execute one enabled event node with a legal result, producing the extensional
-successor configuration. -/
-noncomputable def withPatch
-    (cfg : G.Configuration) {node : G.Node} (patch : FieldPatch G)
-    (hfrontier : node ∈ cfg.frontier)
-    (hlegal : G.patchLegal node patch) :
-    G.Configuration where
-  result := updatePatch cfg node patch
-  result_nodes := by
-    classical
-    intro candidate hsome
-    by_cases hcandidate : candidate = node
-    · subst candidate
-      exact cfg.mem_nodes_of_mem_frontier hfrontier
-    · have hold : (cfg.result candidate).isSome := by
-        simpa [updatePatch, hcandidate] using hsome
-      exact cfg.result_nodes hold
-  closed := by
-    classical
-    intro candidate prereq hcandidateDone hpre
-    by_cases hcandidate : candidate = node
-    · subst candidate
-      have hpreDone : (cfg.result prereq).isSome :=
-        cfg.result_some_of_prereq_of_mem_frontier hfrontier hpre
-      by_cases hpreq : prereq = node
-      · subst prereq
-        have hnodeNone : (cfg.result node).isNone :=
-          cfg.not_done_of_mem_frontier hfrontier
-        cases hnode : cfg.result node <;> simp [hnode] at hpreDone hnodeNone
-      · simpa [updatePatch, hpreq] using hpreDone
-    · have hcandidateOld : (cfg.result candidate).isSome := by
-        simpa [updatePatch, hcandidate] using hcandidateDone
-      have hpreOld : (cfg.result prereq).isSome :=
-        cfg.closed hcandidateOld hpre
-      by_cases hpreq : prereq = node
-      · subst prereq
-        have hnodeNone : (cfg.result node).isNone :=
-          cfg.not_done_of_mem_frontier hfrontier
-        cases hnode : cfg.result node <;> simp [hnode] at hpreOld hnodeNone
-      · simpa [updatePatch, hpreq] using hpreOld
-  legal := by
-    classical
-    intro candidate candidatePatch hcandidateResult
-    by_cases hcandidate : candidate = node
-    · subst candidate
-      have hpatch : patch = candidatePatch := by
-        simpa [updatePatch] using hcandidateResult
-      subst candidatePatch
-      exact hlegal
-    · have holdResult : cfg.result candidate = some candidatePatch := by
-        simpa [updatePatch, hcandidate] using hcandidateResult
-      exact cfg.legal holdResult
-
-/-- A distinct frontier node remains on the frontier after executing another
-frontier node. Executing one enabled event only records that event's
-result; it does not invalidate any other enabled event. -/
-theorem withPatch_mem_frontier_of_ne
-    (cfg : G.Configuration)
-    {first second : G.Node} {patch : FieldPatch G}
-    (hfirst : first ∈ cfg.frontier)
-    (hsecond : second ∈ cfg.frontier)
-    (hne : second ≠ first)
-    (hlegal : G.patchLegal first patch) :
-    second ∈ (cfg.withPatch patch hfirst hlegal).frontier := by
-  classical
-  rw [mem_frontier_iff] at hsecond ⊢
-  rcases hsecond with ⟨hnode, hnone, hprereqs⟩
-  refine ⟨hnode, ?_, ?_⟩
-  · simpa [withPatch, updatePatch, hne] using hnone
-  · intro prereq hpre
-    have hdone := hprereqs hpre
-    have hdoneData := (G.mem_done_iff cfg.result prereq).mp hdone
-    refine (G.mem_done_iff
-      (cfg.withPatch patch hfirst hlegal).result prereq).mpr ?_
-    refine ⟨hdoneData.1, ?_⟩
-    by_cases hpreq : prereq = first
-    · subst prereq
-      simp [withPatch, updatePatch]
-    · simpa [withPatch, updatePatch, hpreq] using hdoneData.2
-
-/-- Frontier execution has a diamond property: two distinct enabled events
-can be linearized in either order, and after both have executed the same
-extensional configuration is reached. -/
-theorem withPatch_comm
-    (cfg : G.Configuration)
-    {left right : G.Node} {leftPatch rightPatch : FieldPatch G}
-    (hleft : left ∈ cfg.frontier)
-    (hright : right ∈ cfg.frontier)
-    (hne : left ≠ right)
-    (hleftLegal : G.patchLegal left leftPatch)
-    (hrightLegal : G.patchLegal right rightPatch) :
-    let hrightAfterLeft :=
-      cfg.withPatch_mem_frontier_of_ne
-        hleft hright (Ne.symm hne) hleftLegal
-    let hleftAfterRight :=
-      cfg.withPatch_mem_frontier_of_ne
-        hright hleft hne hrightLegal
-    (cfg.withPatch leftPatch hleft hleftLegal).withPatch
-        rightPatch hrightAfterLeft hrightLegal =
-      (cfg.withPatch rightPatch hright hrightLegal).withPatch
-        leftPatch hleftAfterRight hleftLegal := by
-  classical
-  dsimp
-  apply Configuration.ext
-  funext candidate
-  by_cases hcLeft : candidate = left
-  · subst candidate
-    have hleftRight : left ≠ right := hne
-    simp [withPatch, updatePatch, hleftRight]
-  · by_cases hcRight : candidate = right
-    · subst candidate
-      have hrightLeft : right ≠ left := Ne.symm hne
-      simp [withPatch, updatePatch, hrightLeft]
-    · simp [withPatch, updatePatch, hcLeft, hcRight]
-
-/-- Record legal patches for a finite subset of the current frontier, leaving
-all other node results unchanged. This is the prefix form of
-`withFrontierPatches`: it describes the extensional state reached after any
-schedule prefix that executes exactly `nodes`. -/
-noncomputable def withNodePatches
-    (cfg : G.Configuration)
-    (nodes : Finset G.Node)
-    (hsubset : nodes ⊆ cfg.frontier)
-    (patch : ∀ node, node ∈ nodes → FieldPatch G)
-    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode)) :
-    G.Configuration where
-  result := fun candidate =>
-    if hnode : candidate ∈ nodes then
-      some (patch candidate hnode)
-    else
-      cfg.result candidate
-  result_nodes := by
-    classical
-    intro candidate hsome
-    by_cases hnode : candidate ∈ nodes
-    · exact cfg.mem_nodes_of_mem_frontier (hsubset hnode)
-    · have hold : (cfg.result candidate).isSome := by
-        dsimp only
-        rw [dif_neg hnode] at hsome
-        exact hsome
-      exact cfg.result_nodes hold
-  closed := by
-    classical
-    intro candidate prereq hcandidateDone hpre
-    by_cases hcandidateNode : candidate ∈ nodes
-    · have hpreDone : (cfg.result prereq).isSome :=
-        cfg.result_some_of_prereq_of_mem_frontier
-          (hsubset hcandidateNode) hpre
-      by_cases hpreNode : prereq ∈ nodes
-      · dsimp only
-        rw [dif_pos hpreNode]
-        rfl
-      · dsimp only
-        rw [dif_neg hpreNode]
-        exact hpreDone
-    · have hcandidateOld : (cfg.result candidate).isSome := by
-        rw [dif_neg hcandidateNode] at hcandidateDone
-        exact hcandidateDone
-      have hpreDone : (cfg.result prereq).isSome :=
-        cfg.closed hcandidateOld hpre
-      by_cases hpreNode : prereq ∈ nodes
-      · dsimp only
-        rw [dif_pos hpreNode]
-        rfl
-      · dsimp only
-        rw [dif_neg hpreNode]
-        exact hpreDone
-  legal := by
-    classical
-    intro candidate candidatePatch hcandidateResult
-    by_cases hnode : candidate ∈ nodes
-    · rw [dif_pos hnode] at hcandidateResult
-      have hpatch : patch candidate hnode = candidatePatch := by
-        simpa using hcandidateResult
-      subst candidatePatch
-      exact hlegal candidate hnode
-    · have holdResult : cfg.result candidate = some candidatePatch := by
-        rw [dif_neg hnode] at hcandidateResult
-        exact hcandidateResult
-      exact cfg.legal holdResult
-
-@[simp] theorem withNodePatches_result_of_mem
-    (cfg : G.Configuration)
-    (nodes : Finset G.Node)
-    (hsubset : nodes ⊆ cfg.frontier)
-    (patch : ∀ node, node ∈ nodes → FieldPatch G)
-    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
-    {node : G.Node} (hnode : node ∈ nodes) :
-    (cfg.withNodePatches nodes hsubset patch hlegal).result node =
-      some (patch node hnode) := by
-  classical
-  dsimp [withNodePatches]
-  rw [dif_pos hnode]
-
-@[simp] theorem withNodePatches_result_of_not_mem
-    (cfg : G.Configuration)
-    (nodes : Finset G.Node)
-    (hsubset : nodes ⊆ cfg.frontier)
-    (patch : ∀ node, node ∈ nodes → FieldPatch G)
-    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
-    {node : G.Node} (hnode : node ∉ nodes) :
-    (cfg.withNodePatches nodes hsubset patch hlegal).result node =
-      cfg.result node := by
-  classical
-  dsimp [withNodePatches]
-  rw [dif_neg hnode]
-
-/-- Partial-frontier extension is extensional in the selected patches. -/
-theorem withNodePatches_congr
-    (cfg : G.Configuration)
-    (nodes : Finset G.Node)
-    {hsubset₁ hsubset₂ : nodes ⊆ cfg.frontier}
-    {patch₁ patch₂ : ∀ node, node ∈ nodes → FieldPatch G}
-    {hlegal₁ : ∀ node hnode, G.patchLegal node (patch₁ node hnode)}
-    {hlegal₂ : ∀ node hnode, G.patchLegal node (patch₂ node hnode)}
-    (hpatch :
-      ∀ node (h₁ h₂ : node ∈ nodes), patch₁ node h₁ = patch₂ node h₂) :
-    cfg.withNodePatches nodes hsubset₁ patch₁ hlegal₁ =
-      cfg.withNodePatches nodes hsubset₂ patch₂ hlegal₂ := by
-  classical
-  apply Configuration.ext
-  funext candidate
-  by_cases hnode : candidate ∈ nodes
-  · rw [withNodePatches_result_of_mem cfg nodes hsubset₁ patch₁ hlegal₁ hnode]
-    rw [withNodePatches_result_of_mem cfg nodes hsubset₂ patch₂ hlegal₂ hnode]
-    rw [hpatch candidate hnode hnode]
-  · rw [withNodePatches_result_of_not_mem cfg nodes hsubset₁ patch₁ hlegal₁ hnode]
-    rw [withNodePatches_result_of_not_mem cfg nodes hsubset₂ patch₂ hlegal₂ hnode]
-
-/-- A source-frontier node that is not in the executed subset remains enabled
-after recording that subset. -/
-theorem withNodePatches_mem_frontier_of_not_mem
-    (cfg : G.Configuration)
-    {nodes : Finset G.Node}
-    (hsubset : nodes ⊆ cfg.frontier)
-    (patch : ∀ node, node ∈ nodes → FieldPatch G)
-    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
-    {candidate : G.Node}
-    (hcandidate : candidate ∈ cfg.frontier)
-    (hnotmem : candidate ∉ nodes) :
-    candidate ∈
-      (cfg.withNodePatches nodes hsubset patch hlegal).frontier := by
-  classical
-  rw [mem_frontier_iff] at hcandidate ⊢
-  rcases hcandidate with ⟨hnode, hnone, hprereqs⟩
-  refine ⟨hnode, ?_, ?_⟩
-  · simpa [withNodePatches, hnotmem] using hnone
-  · intro prereq hpre
-    have hdone := hprereqs hpre
-    have hdoneData := (G.mem_done_iff cfg.result prereq).mp hdone
-    refine (G.mem_done_iff
-      (cfg.withNodePatches nodes hsubset patch hlegal).result prereq).mpr ?_
-    refine ⟨hdoneData.1, ?_⟩
-    by_cases hpreNode : prereq ∈ nodes
-    · simp [withNodePatches, hpreNode]
-    · simpa [withNodePatches, hpreNode] using hdoneData.2
-
-/-- Adding one more source-frontier patch to a partial-frontier extension is the
-same extensional state as extending by the inserted subset at once. -/
-theorem withNodePatches_insert_eq_withPatch
-    (cfg : G.Configuration)
-    {nodes : Finset G.Node}
-    (hsubset : nodes ⊆ cfg.frontier)
-    (patch : ∀ node, node ∈ nodes → FieldPatch G)
-    (hlegal : ∀ node hnode, G.patchLegal node (patch node hnode))
-    {node : G.Node}
-    (hfrontier : node ∈ cfg.frontier)
-    (hnotmem : node ∉ nodes)
-    (nodePatch : FieldPatch G)
-    (hnodeLegal : G.patchLegal node nodePatch) :
-    let inserted : Finset G.Node := insert node nodes
-    let insertedSubset : inserted ⊆ cfg.frontier := by
-      intro candidate hcandidate
-      rcases Finset.mem_insert.mp hcandidate with hcandidate | hcandidate
-      · subst candidate
-        exact hfrontier
-      · exact hsubset hcandidate
-    let insertedPatch :
-        ∀ candidate, candidate ∈ inserted → FieldPatch G := fun candidate hcandidate =>
-      if h : candidate = node then
-        nodePatch
-      else
-        patch candidate (by
-          have hmem := (Finset.mem_insert.mp hcandidate)
-          rcases hmem with hmem | hmem
-          · exact False.elim (h hmem)
-          · exact hmem)
-    let insertedLegal :
-        ∀ candidate hcandidate,
-          G.patchLegal candidate (insertedPatch candidate hcandidate) := by
-      intro candidate hcandidate
-      dsimp [insertedPatch]
-      split
-      · subst candidate
-        exact hnodeLegal
-      · rename_i hne
-        exact hlegal candidate (by
-          rcases Finset.mem_insert.mp hcandidate with hmem | hmem
-          · exact False.elim (hne hmem)
-          · exact hmem)
-    (cfg.withNodePatches nodes hsubset patch hlegal).withPatch
-        nodePatch
-        (cfg.withNodePatches_mem_frontier_of_not_mem
-          hsubset patch hlegal hfrontier hnotmem)
-        hnodeLegal =
-      cfg.withNodePatches inserted insertedSubset insertedPatch
-        insertedLegal := by
-  classical
-  dsimp
-  apply Configuration.ext
-  funext candidate
-  by_cases hcnode : candidate = node
-  · subst candidate
-    simp [withPatch, updatePatch, withNodePatches]
-  · by_cases hcmem : candidate ∈ nodes
-    · have hcinsert : candidate ∈ insert node nodes :=
-        Finset.mem_insert_of_mem hcmem
-      simp [withPatch, updatePatch, withNodePatches, hcnode, hcmem]
-    · have hcinsert : candidate ∉ insert node nodes := by
-        intro h
-        rcases Finset.mem_insert.mp h with h | h
-        · exact hcnode h
-        · exact hcmem h
-      simp [withPatch, updatePatch, withNodePatches, hcnode, hcmem]
-
-/-- Execute a whole frontier extensionally by recording one legal field patch
-for each node in the current frontier and leaving every non-frontier result as
-it was.
-
-This is not a scheduler. It is the canonical endpoint that any legal
-linearization of the same source frontier and same sampled/player patches must
-reach. -/
-noncomputable def withFrontierPatches
-    (cfg : G.Configuration)
-    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
-    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier)) :
-    G.Configuration where
-  result := fun candidate =>
-    if hfrontier : candidate ∈ cfg.frontier then
-      some (patch candidate hfrontier)
-    else
-      cfg.result candidate
-  result_nodes := by
-    classical
-    intro candidate hsome
-    by_cases hfrontier : candidate ∈ cfg.frontier
-    · exact cfg.mem_nodes_of_mem_frontier hfrontier
-    · have hold : (cfg.result candidate).isSome := by
-        dsimp only
-        rw [dif_neg hfrontier] at hsome
-        exact hsome
-      exact cfg.result_nodes hold
-  closed := by
-    classical
-    intro candidate prereq hcandidateDone hpre
-    by_cases hcandidateFrontier : candidate ∈ cfg.frontier
-    · have hpreDone : (cfg.result prereq).isSome :=
-        cfg.result_some_of_prereq_of_mem_frontier hcandidateFrontier hpre
-      by_cases hpreFrontier : prereq ∈ cfg.frontier
-      · dsimp only
-        rw [dif_pos hpreFrontier]
-        rfl
-      · dsimp only
-        rw [dif_neg hpreFrontier]
-        exact hpreDone
-    · have hcandidateOld : (cfg.result candidate).isSome := by
-        rw [dif_neg hcandidateFrontier] at hcandidateDone
-        exact hcandidateDone
-      have hpreDone : (cfg.result prereq).isSome :=
-        cfg.closed hcandidateOld hpre
-      by_cases hpreFrontier : prereq ∈ cfg.frontier
-      · dsimp only
-        rw [dif_pos hpreFrontier]
-        rfl
-      · dsimp only
-        rw [dif_neg hpreFrontier]
-        exact hpreDone
-  legal := by
-    classical
-    intro candidate candidatePatch hcandidateResult
-    by_cases hfrontier : candidate ∈ cfg.frontier
-    · rw [dif_pos hfrontier] at hcandidateResult
-      have hpatch : patch candidate hfrontier = candidatePatch := by
-        simpa using hcandidateResult
-      subst candidatePatch
-      exact hlegal candidate hfrontier
-    · have holdResult : cfg.result candidate = some candidatePatch := by
-        rw [dif_neg hfrontier] at hcandidateResult
-        exact hcandidateResult
-      exact cfg.legal holdResult
-
-@[simp] theorem withFrontierPatches_result_of_mem
-    (cfg : G.Configuration)
-    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
-    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
-    {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
-    (cfg.withFrontierPatches patch hlegal).result node =
-      some (patch node hfrontier) := by
-  classical
-  dsimp [withFrontierPatches]
-  rw [dif_pos hfrontier]
-
-@[simp] theorem withFrontierPatches_result_of_not_mem
-    (cfg : G.Configuration)
-    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
-    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
-    {node : G.Node} (hfrontier : node ∉ cfg.frontier) :
-    (cfg.withFrontierPatches patch hlegal).result node =
-      cfg.result node := by
-  classical
-  dsimp [withFrontierPatches]
-  rw [dif_neg hfrontier]
-
-/-- A configuration is the canonical whole-frontier result iff it records the
-chosen patch at every source-frontier node and leaves every non-frontier node's
-result unchanged. This is the extensional form of frontier linearization
-invariance: scheduler order is not part of the endpoint once the per-node
-results are fixed. -/
-theorem eq_withFrontierPatches_of_result_eq
-    (cfg dst : G.Configuration)
-    (patch : ∀ node, node ∈ cfg.frontier → FieldPatch G)
-    (hlegal : ∀ node hfrontier, G.patchLegal node (patch node hfrontier))
-    (honFrontier :
-      ∀ node (hfrontier : node ∈ cfg.frontier),
-        dst.result node = some (patch node hfrontier))
-    (hoffFrontier :
-      ∀ node, node ∉ cfg.frontier → dst.result node = cfg.result node) :
-    dst = cfg.withFrontierPatches patch hlegal := by
-  classical
-  apply Configuration.ext
-  funext node
-  by_cases hfrontier : node ∈ cfg.frontier
-  · rw [honFrontier node hfrontier]
-    rw [withFrontierPatches_result_of_mem cfg patch hlegal hfrontier]
-  · rw [hoffFrontier node hfrontier]
-    rw [withFrontierPatches_result_of_not_mem cfg patch hlegal hfrontier]
-
-end Configuration
-
-/-- The finite index of nodes enabled at a configuration. -/
-abbrev FrontierIndex (G : Vegas.EventGraph Player L)
-    (cfg : G.Configuration) : Type :=
-  { node : G.Node // node ∈ cfg.frontier }
-
-/-- Order-free assignment of one concrete field patch to every node in the
-current frontier. This is the semantic payload of a realized event-graph round;
-primitive event lists are schedules that realize this payload. -/
-structure FrontierRealization
-    (G : Vegas.EventGraph Player L) (cfg : G.Configuration) where
-  patch : FrontierIndex G cfg → FieldPatch G
-
-namespace FrontierRealization
-
-variable {G : Vegas.EventGraph Player L} {cfg : G.Configuration}
-
-/-- All patches in a frontier realization are legal for their nodes. -/
-def Legal (realization : FrontierRealization G cfg) : Prop :=
-  ∀ idx : FrontierIndex G cfg, G.patchLegal idx.1 (realization.patch idx)
-
-/-- Patch selected for a frontier node. -/
-def patchAt (realization : FrontierRealization G cfg)
-    (node : G.Node) (hfrontier : node ∈ cfg.frontier) :
-    FieldPatch G :=
-  realization.patch ⟨node, hfrontier⟩
-
-@[ext] theorem ext
-    {left right : FrontierRealization G cfg}
-    (hpatch : ∀ idx, left.patch idx = right.patch idx) :
-    left = right := by
-  cases left with
-  | mk leftPatch =>
-      cases right with
-      | mk rightPatch =>
-          have h : leftPatch = rightPatch := by
-            funext idx
-            exact hpatch idx
-          cases h
-          rfl
-
-end FrontierRealization
-
-namespace Configuration
-
-variable {G : Vegas.EventGraph Player L}
-
-/-- Extend a configuration by recording one legal patch for every currently
-enabled frontier node. -/
-noncomputable def extendFrontier
-    (cfg : G.Configuration)
-    (realization : FrontierRealization G cfg)
-    (hlegal : realization.Legal) :
-    G.Configuration :=
-  cfg.withFrontierPatches
-    (fun node hfrontier => realization.patchAt node hfrontier)
-    (fun node hfrontier => hlegal ⟨node, hfrontier⟩)
-
-@[simp] theorem extendFrontier_result_of_mem
-    (cfg : G.Configuration)
-    (realization : FrontierRealization G cfg)
-    (hlegal : realization.Legal)
-    {node : G.Node} (hfrontier : node ∈ cfg.frontier) :
-    (cfg.extendFrontier realization hlegal).result node =
-      some (realization.patchAt node hfrontier) := by
   exact
-    withFrontierPatches_result_of_mem cfg
-      (fun node hfrontier => realization.patchAt node hfrontier)
-      (fun node hfrontier => hlegal ⟨node, hfrontier⟩)
-      hfrontier
+    if h :
+        ∀ ref, ref ∈ refs →
+          ∃ value, Store.getAs store ref.field ref.ty = some value then
+      some (ofStore store refs h)
+    else
+      none
 
-@[simp] theorem extendFrontier_result_of_not_mem
-    (cfg : G.Configuration)
-    (realization : FrontierRealization G cfg)
-    (hlegal : realization.Legal)
-    {node : G.Node} (hfrontier : node ∉ cfg.frontier) :
-    (cfg.extendFrontier realization hlegal).result node =
-      cfg.result node := by
-  simp [extendFrontier, hfrontier]
+@[simp] theorem ofStore_read (store : Store L) (refs : Finset (FieldRef L))
+    (available :
+      ∀ ref, ref ∈ refs → ∃ value, Store.getAs store ref.field ref.ty = some value)
+    {ref : FieldRef L} (href : ref ∈ refs) :
+    Store.getAs store ref.field ref.ty =
+      some ((ofStore store refs available).read ref href) := by
+  unfold ofStore
+  exact Classical.choose_spec (available ref href)
 
-end Configuration
+theorem ofStore?_read {store : Store L} {refs : Finset (FieldRef L)}
+    {env : ReadEnv L refs}
+    (henv : ofStore? store refs = some env)
+    {ref : FieldRef L} (href : ref ∈ refs) :
+    Store.getAs store ref.field ref.ty = some (env.read ref href) := by
+  unfold ofStore? at henv
+  by_cases h :
+      ∀ ref, ref ∈ refs →
+        ∃ value, Store.getAs store ref.field ref.ty = some value
+  · rw [dif_pos h] at henv
+    cases henv
+    exact ofStore_read store refs h href
+  · rw [dif_neg h] at henv
+    cases henv
 
-/-- Graph configurations are finite when nodes, fields, and every field value
-domain are finite. The configuration invariant is proof data over a finite
-result assignment. -/
-@[reducible] noncomputable instance Configuration.instFintype
-    (G : Vegas.EventGraph Player L)
-    [Fintype G.Node] [Fintype G.Field]
-    [∀ field : G.Field, Fintype (L.Val (G.fieldTy field))] :
-    Fintype G.Configuration := by
-  classical
-  letI : ∀ field : G.Field,
-      Fintype (Option (L.Val (G.fieldTy field))) :=
-    fun _ => inferInstance
-  letI : Fintype (FieldPatch G) := by
-    dsimp [FieldPatch]
-    infer_instance
-  letI : Fintype (ResultAssignment G) := by
-    dsimp [ResultAssignment]
-    infer_instance
-  let ValidResult : Type :=
-    { result : ResultAssignment G //
-      (∀ {node}, (result node).isSome → node ∈ G.nodes) ∧
-      (∀ {node prereq},
-        (result node).isSome → prereq ∈ G.prereqs node →
-          (result prereq).isSome) ∧
-      (∀ {node patch}, result node = some patch → G.patchLegal node patch) }
-  haveI : Fintype ValidResult := by
-    dsimp [ValidResult]
-    infer_instance
-  let e : G.Configuration ≃ ValidResult :=
-    { toFun := fun cfg =>
-        ⟨cfg.result, cfg.result_nodes, cfg.closed, cfg.legal⟩
-      invFun := fun result =>
-        { result := result.1
-          result_nodes := result.2.1
-          closed := result.2.2.1
-          legal := result.2.2.2 }
-      left_inv := by
-        intro cfg
-        cases cfg
-        rfl
-      right_inv := by
-        intro result
-        cases result
-        rfl }
-  exact Fintype.ofEquiv ValidResult e.symm
+theorem ofStore_eq_of_getAs_eq
+    {left right : Store L} {refs : Finset (FieldRef L)}
+    (availableLeft :
+      ∀ ref, ref ∈ refs →
+        ∃ value, Store.getAs left ref.field ref.ty = some value)
+    (availableRight :
+      ∀ ref, ref ∈ refs →
+        ∃ value, Store.getAs right ref.field ref.ty = some value)
+    (heq :
+      ∀ ref, ref ∈ refs →
+        Store.getAs left ref.field ref.ty =
+          Store.getAs right ref.field ref.ty) :
+    ofStore left refs availableLeft =
+      ofStore right refs availableRight := by
+  ext ref href
+  unfold ofStore
+  have hleftAtRight :
+      Store.getAs right ref.field ref.ty =
+        some (Classical.choose (availableLeft ref href)) := by
+    rw [← heq ref href]
+    exact Classical.choose_spec (availableLeft ref href)
+  have hright :=
+    Classical.choose_spec (availableRight ref href)
+  rw [hright] at hleftAtRight
+  exact (Option.some.inj hleftAtRight).symm
+
+theorem ofStore?_eq_of_getAs_eq
+    {left right : Store L} {refs : Finset (FieldRef L)}
+    {env : ReadEnv L refs}
+    (henv : ofStore? left refs = some env)
+    (heq :
+      ∀ ref, ref ∈ refs →
+        Store.getAs left ref.field ref.ty =
+          Store.getAs right ref.field ref.ty) :
+    ofStore? right refs = some env := by
+  unfold ofStore? at henv ⊢
+  by_cases hleft :
+      ∀ ref, ref ∈ refs →
+        ∃ value, Store.getAs left ref.field ref.ty = some value
+  · rw [dif_pos hleft] at henv
+    have hright :
+        ∀ ref, ref ∈ refs →
+          ∃ value, Store.getAs right ref.field ref.ty = some value := by
+      intro ref href
+      rcases hleft ref href with ⟨value, hvalue⟩
+      exact ⟨value, by
+        rw [← heq ref href]
+        exact hvalue⟩
+    rw [dif_pos hright]
+    have hstore :
+        ofStore left refs hleft = ofStore right refs hright :=
+      ofStore_eq_of_getAs_eq hleft hright heq
+    rw [← hstore]
+    exact henv
+  · rw [dif_neg hleft] at henv
+    cases henv
+
+end ReadEnv
+
+/-- A graph-local finite probability distribution with an explicit dependency
+footprint. Source distributions cross the `FWeight → PMF` normalization bridge
+during compilation; executable graphs do not carry raw weights. -/
+structure EventDist (L : IExpr) where
+  ty : L.Ty
+  reads : Finset (FieldRef L)
+  eval : ReadEnv L reads → PMF (L.Val ty)
+
+/-- A commit guard. `choiceReads` is the player-visible information footprint
+available to the actor when choosing this commit. It may strictly contain the
+guard expression's syntactic reads; the guard evaluator receives the full
+choice view and may ignore unused fields. Scheduling and observation use this
+choice footprint, not a minimal guard-expression footprint. -/
+structure EventGuard (L : IExpr) where
+  ty : L.Ty
+  choiceReads : Finset (FieldRef L)
+  eval : L.Val ty → ReadEnv L choiceReads → Bool
+
+/-- A graph-local payoff projection. Payoff expressions are compiled to
+integers immediately so executable machines do not need to recover erased
+source types from an untyped list of graph expressions. -/
+structure EventPayoff (L : IExpr) where
+  reads : Finset (FieldRef L)
+  eval : ReadEnv L reads → Int
+
+/-- Semantic payload of one graph node. The output field is supplied by the
+graph row that contains the node, so the payload cannot disagree with field
+writer metadata. -/
+inductive NodeSem (Player : Type) (L : IExpr) where
+  | sample (dist : EventDist L)
+  | commit (who : Player) (guard : EventGuard L)
+  | reveal (source : Nat)
+
+namespace NodeSem
+
+variable {Player : Type} {L : IExpr}
+
+/-- Fields whose values are needed before this event can run or be chosen. -/
+def reads : NodeSem Player L → Finset Nat
+  | .sample dist => FieldRef.fields dist.reads
+  | .commit _ guard => FieldRef.fields guard.choiceReads
+  | .reveal source => {source}
+
+/-- Player who chooses at this node, if any. -/
+def actor : NodeSem Player L → Option Player
+  | .sample _ => none
+  | .commit who _ => some who
+  | .reveal _ => none
+
+/-- Commit-node test used by dependency construction. -/
+def isCommit : NodeSem Player L → Bool
+  | .commit _ _ => true
+  | _ => false
+
+/-- Reveal-node test used by dependency construction. -/
+def isReveal : NodeSem Player L → Bool
+  | .reveal _ => true
+  | _ => false
+
+end NodeSem
+
+/-- Origin of a field in the computed field view. This is not stored in graph
+data for event fields; event field origins are derived from the node index. -/
+inductive FieldSource (L : IExpr) : L.Ty → Type where
+  | initial {ty : L.Ty} (value : L.Val ty) : FieldSource L ty
+  | event {ty : L.Ty} (node : Nat) : FieldSource L ty
+
+/-- Metadata for an initial graph field. -/
+structure InitialField (Player : Type) (L : IExpr) where
+  ty : L.Ty
+  owner : Option Player
+  value : L.Val ty
+
+/-- A graph node together with the metadata of its output field. -/
+structure EventNode (Player : Type) (L : IExpr) where
+  ty : L.Ty
+  owner : Option Player
+  sem : NodeSem Player L
+
+/-- Computed metadata for a graph field. -/
+structure FieldSpec (Player : Type) (L : IExpr) where
+  ty : L.Ty
+  owner : Option Player
+  source : FieldSource L ty
+
+namespace FieldSpec
+
+variable {Player : Type} {L : IExpr}
+
+/-- Initial field value as a dynamic value. -/
+def initialValue? (field : FieldSpec Player L) : Option (TypedValue L) :=
+  match field.source with
+  | .initial value => some { ty := field.ty, value := value }
+  | .event _ => none
+
+end FieldSpec
+
+/-- A canonical event graph.
+
+Initial field ids are `0 ... initialFields.length - 1`. Event field ids are
+`initialFields.length + node`, so an event node owns its output field by
+construction. -/
+structure Graph (Player : Type) [DecidableEq Player] (L : IExpr) where
+  initialFields : List (InitialField Player L)
+  nodes : List (EventNode Player L)
+
+namespace Graph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+def nodeCount (G : Graph Player L) : Nat :=
+  G.nodes.length
+
+def fieldCount (G : Graph Player L) : Nat :=
+  G.initialFields.length + G.nodeCount
+
+/-- Canonical graph-node order, by numeric node id. -/
+def nodeOrder (G : Graph Player L) : List (Fin G.nodeCount) :=
+  List.finRange G.nodeCount
+
+@[simp] theorem mem_nodeOrder (G : Graph Player L)
+    (node : Fin G.nodeCount) :
+    node ∈ G.nodeOrder := by
+  unfold nodeOrder
+  exact List.mem_finRange node
+
+theorem nodeOrder_nodup (G : Graph Player L) :
+    G.nodeOrder.Nodup := by
+  unfold nodeOrder
+  exact List.nodup_finRange G.nodeCount
+
+def node? (G : Graph Player L) (node : Nat) : Option (NodeSem Player L) :=
+  match G.nodes[node]? with
+  | none => none
+  | some event => some event.sem
+
+theorem nodes_get_of_fin (G : Graph Player L)
+    (node : Fin G.nodeCount) :
+    ∃ event, G.nodes[node]? = some event := by
+  have hlt : (node : Nat) < G.nodes.length := by
+    change (node : Nat) < G.nodeCount
+    exact node.isLt
+  refine ⟨G.nodes[(node : Nat)], ?_⟩
+  change G.nodes[(node : Nat)]? = some G.nodes[(node : Nat)]
+  rw [List.getElem?_eq_getElem hlt]
+
+/-- The event row at a valid graph node. -/
+def nodeRow (G : Graph Player L)
+    (node : Fin G.nodeCount) : EventNode Player L :=
+  G.nodes[(node : Nat)]' (by
+    change (node : Nat) < G.nodeCount
+    exact node.isLt)
+
+@[simp] theorem nodes_get?_nodeRow (G : Graph Player L)
+    (node : Fin G.nodeCount) :
+    G.nodes[(node : Nat)]? = some (G.nodeRow node) := by
+  unfold nodeRow
+  rw [List.getElem?_eq_getElem]
+
+@[simp] theorem node?_nodeRow (G : Graph Player L)
+    (node : Fin G.nodeCount) :
+    G.node? node = some (G.nodeRow node).sem := by
+  unfold node?
+  simp
+
+/-- Package a graph-node-typed output value for the primitive machine
+boundary. -/
+def nodeTypedValue (G : Graph Player L)
+    (node : Fin G.nodeCount)
+    (value : L.Val (G.nodeRow node).ty) : TypedValue L where
+  ty := (G.nodeRow node).ty
+  value := value
+
+/-- Output field id owned by a graph node. -/
+def nodeTarget (G : Graph Player L) (node : Nat) : Nat :=
+  G.initialFields.length + node
+
+def field? (G : Graph Player L) (field : Nat) :
+    Option (FieldSpec Player L) :=
+  if _h : field < G.initialFields.length then
+    match G.initialFields[field]? with
+    | none => none
+    | some spec =>
+        some
+          { ty := spec.ty
+            owner := spec.owner
+            source := .initial spec.value }
+  else
+    let node := field - G.initialFields.length
+    match G.nodes[node]? with
+    | none => none
+    | some event =>
+        some
+          { ty := event.ty
+            owner := event.owner
+            source := .event node }
+
+/-- The field row at a valid graph field id. -/
+def fieldRow (G : Graph Player L)
+    (field : Fin G.fieldCount) : FieldSpec Player L :=
+  if hinit : (field : Nat) < G.initialFields.length then
+    let init := G.initialFields[(field : Nat)]' hinit
+    { ty := init.ty
+      owner := init.owner
+      source := .initial init.value }
+  else
+    let node : Nat := (field : Nat) - G.initialFields.length
+    have hnode : node < G.nodeCount := by
+      have hlt :
+          (field : Nat) < G.initialFields.length + G.nodeCount := by
+        have hlt' := field.isLt
+        change (field : Nat) < G.initialFields.length + G.nodeCount at hlt'
+        exact hlt'
+      have hge : G.initialFields.length ≤ (field : Nat) :=
+        Nat.le_of_not_gt hinit
+      dsimp [node]
+      omega
+    let event := G.nodes[node]' hnode
+    { ty := event.ty
+      owner := event.owner
+      source := .event node }
+
+@[simp] theorem fieldRow_mk_eq_mk (G : Graph Player L)
+    (field : Nat) (h₁ h₂ : field < G.fieldCount) :
+    G.fieldRow (⟨field, h₁⟩ : Fin G.fieldCount) =
+      G.fieldRow ⟨field, h₂⟩ := by
+  have hfin :
+      (⟨field, h₁⟩ : Fin G.fieldCount) = ⟨field, h₂⟩ := by
+    ext
+    rfl
+  rw [hfin]
+
+@[simp] theorem field?_fieldRow (G : Graph Player L)
+    (field : Fin G.fieldCount) :
+    G.field? (field : Nat) = some (G.fieldRow field) := by
+  by_cases hinit : (field : Nat) < G.initialFields.length
+  · simp [field?, fieldRow, hinit]
+  · have hnode :
+        (field : Nat) - G.initialFields.length < G.nodes.length := by
+      have hlt : (field : Nat) < G.initialFields.length + G.nodes.length := by
+        have hlt' := field.isLt
+        change (field : Nat) < G.initialFields.length + G.nodes.length at hlt'
+        exact hlt'
+      omega
+    simp [field?, fieldRow, hinit, List.getElem?_eq_getElem hnode]
+    constructor <;> rfl
+
+theorem field_lt_fieldCount_of_field?_some (G : Graph Player L)
+    {field : Nat} {spec : FieldSpec Player L}
+    (hfield : G.field? field = some spec) :
+    field < G.fieldCount := by
+  unfold field? at hfield
+  by_cases hinit : field < G.initialFields.length
+  · unfold fieldCount
+    omega
+  · simp only [hinit, ↓reduceDIte] at hfield
+    let node := field - G.initialFields.length
+    cases hnode : G.nodes[node]? with
+    | none =>
+        rw [hnode] at hfield
+        cases hfield
+    | some event =>
+        rw [hnode] at hfield
+        have hnodeLt : node < G.nodes.length :=
+          (List.getElem?_eq_some_iff.mp hnode).1
+        unfold fieldCount nodeCount
+        dsimp [node] at hnodeLt
+        omega
+
+theorem fieldRow_eq_of_field?_some (G : Graph Player L)
+    {field : Nat} {spec : FieldSpec Player L}
+    (hfield : G.field? field = some spec)
+    (hlt : field < G.fieldCount) :
+    G.fieldRow ⟨field, hlt⟩ = spec := by
+  have hrow := G.field?_fieldRow ⟨field, hlt⟩
+  rw [hfield] at hrow
+  exact (Option.some.inj hrow).symm
+
+@[simp] theorem field?_nodeTarget (G : Graph Player L)
+    {node : Nat} {event : EventNode Player L}
+    (hget : G.nodes[node]? = some event) :
+    G.field? (G.nodeTarget node) =
+      some { ty := event.ty, owner := event.owner, source := .event node } := by
+  unfold field? nodeTarget
+  have hnot : ¬ G.initialFields.length + node < G.initialFields.length := by
+    omega
+  simp [hnot, hget]
+
+theorem field_eq_nodeTarget_of_event_source (G : Graph Player L)
+    {field node : Nat} {spec : FieldSpec Player L}
+    (hget : G.field? field = some spec)
+    (hsource : spec.source = .event node) :
+    field = G.nodeTarget node := by
+  unfold field? at hget
+  split at hget
+  · rename_i hlt
+    cases hinit : G.initialFields[field]? with
+    | none =>
+        rw [hinit] at hget
+        cases hget
+    | some init =>
+        rw [hinit] at hget
+        cases hget
+        cases hsource
+  · rename_i hlt
+    dsimp at hget
+    cases hnode : G.nodes[field - G.initialFields.length]? with
+    | none =>
+        rw [hnode] at hget
+        cases hget
+    | some event =>
+        rw [hnode] at hget
+        cases hget
+        cases hsource
+        unfold nodeTarget
+        omega
+
+theorem node_get_of_field_event_source (G : Graph Player L)
+    {field node : Nat} {spec : FieldSpec Player L}
+    (hget : G.field? field = some spec)
+    (hsource : spec.source = .event node) :
+    ∃ event, G.nodes[node]? = some event := by
+  unfold field? at hget
+  split at hget
+  · cases hinit : G.initialFields[field]? with
+    | none =>
+        rw [hinit] at hget
+        cases hget
+    | some init =>
+        rw [hinit] at hget
+        cases hget
+        cases hsource
+  · cases hnode : G.nodes[field - G.initialFields.length]? with
+    | none =>
+        dsimp at hget
+        rw [hnode] at hget
+        cases hget
+    | some event =>
+        dsimp at hget
+        rw [hnode] at hget
+        cases hget
+        cases hsource
+        exact ⟨event, hnode⟩
+
+/-- Initial store of graph fields. -/
+def initialStore (G : Graph Player L) : Store L :=
+  fun field =>
+    match G.field? field with
+    | none => none
+    | some spec => spec.initialValue?
+
+/-- Whether a field value is available before a node runs. Initial fields are
+available from the start; event-written fields are available only to later
+nodes. -/
+def fieldAvailableBefore (G : Graph Player L) (node field : Nat) : Bool :=
+  match G.field? field with
+  | none => false
+  | some spec =>
+      match spec.source with
+      | .initial _ => true
+      | .event writer => decide (writer < node)
+
+/-- A typed field reference names a public graph field. -/
+def fieldRefPublic (G : Graph Player L) (ref : FieldRef L) : Prop :=
+  ∃ spec, G.field? ref.field = some spec ∧
+    spec.ty = ref.ty ∧ spec.owner = none
+
+/-- A typed field reference names a graph field visible to a player. -/
+def fieldRefVisibleTo (G : Graph Player L) (who : Player)
+    (ref : FieldRef L) : Prop :=
+  ∃ spec, G.field? ref.field = some spec ∧
+    spec.ty = ref.ty ∧ (spec.owner = none ∨ spec.owner = some who)
+
+/-- Proof-level node well-formedness. A node may read only fields that are
+available before it runs. Public internal computations read only public fields;
+commit choice footprints are visible to the actor; reveal opens a hidden source
+into a public event field of the same type. -/
+def nodeWFAt (G : Graph Player L) (node : Nat)
+    (event : EventNode Player L) : Prop :=
+  (∀ field, field ∈ event.sem.reads →
+    G.fieldAvailableBefore node field = true) ∧
+  match event.sem with
+  | .sample dist =>
+      event.ty = dist.ty ∧ event.owner = none ∧
+        ∀ ref, ref ∈ dist.reads → G.fieldRefPublic ref
+  | .commit who guard =>
+      event.ty = guard.ty ∧ event.owner = some who ∧
+        ∀ ref, ref ∈ guard.choiceReads → G.fieldRefVisibleTo who ref
+  | .reveal source =>
+      ∃ sourceSpec, G.field? source = some sourceSpec ∧
+        sourceSpec.ty = event.ty ∧ sourceSpec.owner.isSome ∧ event.owner = none
+
+/-- Well-formed raw graph: every stored numeric id resolves, every node target
+has the right type, owner, and field origin, commit choice footprints are
+visible to the actor, and reveals open hidden fields into public fields. Reads
+must be available before the node runs: either initial, or written by an earlier
+node. Public internal computations may read only public fields; hidden-to-public
+flow is represented only by reveal nodes. Event output fields are owned by their
+node by construction. Prerequisites are not stored; they are derived
+canonically from node payloads.
+-/
+def WF (G : Graph Player L) : Prop :=
+  ∀ node event, G.nodes[node]? = some event → G.nodeWFAt node event
+
+end Graph
+
+/-- Commit guards are live when every graph commit node admits some
+guard-satisfying action for every declared choice environment. -/
+def GuardLive {Player : Type} [DecidableEq Player] {L : IExpr}
+    (G : Graph Player L) : Prop :=
+  ∀ {node : Fin G.nodeCount} {row : EventNode Player L}
+    {who : Player} {guard : EventGuard L},
+    G.nodes[node]? = some row →
+    row.sem = .commit who guard →
+    ∀ env : ReadEnv L guard.choiceReads,
+      ∃ value : L.Val guard.ty, guard.eval value env = true
+
+/-- Evaluate graph payoff entries from a graph store. Failure is explicit:
+a missing payoff dependency produces `none`, not a silently truncated
+outcome. -/
+noncomputable def evalPayoffEntries? {Player : Type} [DecidableEq Player]
+    {L : IExpr} (payoffs : List (Player × EventPayoff L)) (store : Store L) :
+    Option (List (Player × Int)) :=
+  match payoffs with
+  | [] => some []
+  | payoff :: rest => do
+      let env ← ReadEnv.ofStore? store payoff.2.reads
+      let value := payoff.2.eval env
+      let entries ← evalPayoffEntries? rest store
+      some ((payoff.1, value) :: entries)
+
+/-- Evaluate graph payoff projections from a graph store. -/
+noncomputable def evalPayoffs? {Player : Type} [DecidableEq Player]
+    {L : IExpr} (payoffs : List (Player × EventPayoff L))
+    (store : Store L) : Option (Outcome Player) := do
+  let entries ← evalPayoffEntries? payoffs store
+  some (mkOutcome entries)
+
+theorem evalPayoffEntries?_isSome_of_available
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (payoffs : List (Player × EventPayoff L)) (store : Store L)
+    (available :
+      ∀ payoff, payoff ∈ payoffs →
+        ∀ ref, ref ∈ payoff.2.reads →
+          ∃ value, Store.getAs store ref.field ref.ty = some value) :
+    ∃ entries, evalPayoffEntries? payoffs store = some entries := by
+  induction payoffs with
+  | nil =>
+      exact ⟨[], rfl⟩
+  | cons payoff rest ih =>
+      have headAvailable :
+          ∀ ref, ref ∈ payoff.2.reads →
+            ∃ value, Store.getAs store ref.field ref.ty = some value := by
+        intro ref href
+        exact available payoff (by simp) ref href
+      have henvExists :
+          ∃ env, ReadEnv.ofStore? store payoff.2.reads = some env := by
+        unfold ReadEnv.ofStore?
+        by_cases h :
+            ∀ ref, ref ∈ payoff.2.reads →
+              ∃ value, Store.getAs store ref.field ref.ty = some value
+        · exact
+            ⟨ReadEnv.ofStore store payoff.2.reads h, by
+              rw [dif_pos h]⟩
+        · exact False.elim (h headAvailable)
+      have restAvailable :
+          ∀ payoff, payoff ∈ rest →
+            ∀ ref, ref ∈ payoff.2.reads →
+              ∃ value, Store.getAs store ref.field ref.ty = some value := by
+        intro restPayoff hrest ref href
+        exact available restPayoff (by simp [hrest]) ref href
+      rcases ih restAvailable with ⟨entries, hentries⟩
+      rcases henvExists with ⟨env, henv⟩
+      refine
+        ⟨(payoff.1, payoff.2.eval env) :: entries, ?_⟩
+      simp [evalPayoffEntries?, henv, hentries]
+
+theorem evalPayoffs?_isSome_of_available
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (payoffs : List (Player × EventPayoff L)) (store : Store L)
+    (available :
+      ∀ payoff, payoff ∈ payoffs →
+        ∀ ref, ref ∈ payoff.2.reads →
+          ∃ value, Store.getAs store ref.field ref.ty = some value) :
+    ∃ outcome, evalPayoffs? payoffs store = some outcome := by
+  rcases evalPayoffEntries?_isSome_of_available
+      payoffs store available with
+    ⟨entries, hentries⟩
+  exact ⟨mkOutcome entries, by simp [evalPayoffs?, hentries]⟩
+
+/-- Source-order reveal barrier.
+
+A reveal is source-causally after every earlier commit. This is an information
+semantics rule, not an execution convenience: a source-level reveal publishes
+information only after all earlier source-level commitments have become fixed.
+Otherwise a program fragment `commit; ...; reveal` could be implemented by a
+schedule in which the commitment observes information that the source program
+reveals only later. Reveals are not ordered after earlier reveals by this rule.
+-/
+def sourceOrderRevealBarrier? {Player : Type} {L : IExpr}
+    (nodes : List (EventNode Player L)) (node prior : Nat) : Bool :=
+  if prior < node then
+    match nodes[node]?, nodes[prior]? with
+    | some current, some prev =>
+        NodeSem.isReveal current.sem && NodeSem.isCommit prev.sem
+    | _, _ => false
+  else
+    false
+
+/-- Numeric dependency predicate used internally to compute graph prerequisites.
+
+A prior node is a prerequisite exactly when it writes a field read by the
+current node, or when `sourceOrderRevealBarrier?` says a prior source commit
+must be fixed before a later reveal. Thus unrelated commit/commit and
+reveal/reveal pairs stay unordered, while source-earlier commits are fixed
+before any later reveal publishes information. -/
+private def canonicalPrereq? {Player : Type} {L : IExpr}
+    (initialFieldCount : Nat) (nodes : List (EventNode Player L))
+    (node prior : Nat) : Bool :=
+  match nodes[node]? with
+  | none => false
+  | some current =>
+      if prior < node then
+        match nodes[prior]? with
+        | none => false
+        | some _prev =>
+            initialFieldCount + prior ∈ NodeSem.reads current.sem ||
+              sourceOrderRevealBarrier? nodes node prior
+      else
+        false
+
+namespace Graph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+/-- Canonical graph-causal prerequisites for a node. -/
+def prereqs (G : Graph Player L)
+    (node : Fin G.nodeCount) : Finset (Fin G.nodeCount) :=
+  (Finset.univ : Finset (Fin G.nodeCount)).filter fun prior =>
+    canonicalPrereq? G.initialFields.length G.nodes node prior = true
+
+/-- Canonical graph prerequisites always point to earlier node ids. -/
+theorem prereq_lt (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    (hprior : prior ∈ G.prereqs node) :
+    (prior : Nat) < (node : Nat) := by
+  unfold prereqs at hprior
+  have hcanon :
+      canonicalPrereq? G.initialFields.length G.nodes node prior = true := by
+    exact (Finset.mem_filter.mp hprior).2
+  unfold canonicalPrereq? at hcanon
+  cases hnode : G.nodes[(node : Nat)]? with
+  | none =>
+      simp [hnode] at hcanon
+  | some current =>
+      by_cases hlt : (prior : Nat) < (node : Nat)
+      · exact hlt
+      · simp [hnode, hlt] at hcanon
+
+theorem nodeTarget_mem_prereqs_of_read (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L}
+    (hnode : G.nodes[node]? = some event)
+    (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat))
+    (hread : G.nodeTarget prior ∈ event.sem.reads) :
+    prior ∈ G.prereqs node := by
+  unfold prereqs
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+  unfold canonicalPrereq?
+  change G.nodes[(node : Nat)]? = some event at hnode
+  change G.nodes[(prior : Nat)]? = some priorEvent at hprior
+  rw [hnode, hprior]
+  unfold nodeTarget at hread
+  simp only [hlt, ↓reduceIte, Bool.or_eq_true, decide_eq_true_eq]
+  exact Or.inl hread
+
+theorem prior_commit_mem_prereqs_of_reveal (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L}
+    (hnode : G.nodes[node]? = some event)
+    (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat))
+    (hreveal : NodeSem.isReveal event.sem = true)
+    (hcommit : NodeSem.isCommit priorEvent.sem = true) :
+    prior ∈ G.prereqs node := by
+  unfold prereqs
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+  unfold canonicalPrereq?
+  change G.nodes[(node : Nat)]? = some event at hnode
+  change G.nodes[(prior : Nat)]? = some priorEvent at hprior
+  rw [hnode, hprior]
+  simp only [hlt, ↓reduceIte, Bool.or_eq_true, decide_eq_true_eq]
+  right
+  simp [sourceOrderRevealBarrier?, hlt, hnode, hprior, hreveal, hcommit]
+
+end Graph
 
 end EventGraph
 

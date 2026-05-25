@@ -1,7 +1,7 @@
-name = "formal"
+name = "VegasCore"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["Vegas"]
+defaultTargets = ["Vegas", "VegasTests"]
 
 [[require]]
 name = "mathlib"
@@ -14,6 +14,14 @@ path = "GameTheory"
 
 [[lean_lib]]
 name = "Vegas"
+[lean_lib.leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[lean_lib]]
+name = "VegasTests"
 [lean_lib.leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
 relaxedAutoImplicit = false

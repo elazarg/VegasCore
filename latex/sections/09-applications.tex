@@ -1,9 +1,9 @@
 \section{Intended uses}
 \label{sec:applications}
 
-The construction is general — any finite multi-party protocol with
+The construction is general -- any finite multi-party protocol with
 public coins, sealed commitments, public reveals, and deterministic
-public payoffs fits — but the design choices were guided by a
+public payoffs fits -- but the design choices were guided by a
 particular family of intended uses.  This section sketches them.
 None of the patterns described here require new machinery on top of
 what \S\ref{sec:source-language}--\S\ref{sec:refinement} provide.
@@ -63,14 +63,14 @@ acceptance evidence; on reveal, a payoff schedule depends on
 whether the evidence agrees, with a dispute branch handled by a
 public coin or third-party reveal.  The non-trivial guard appears
 on the dispute resolver's commit (it must select a value consistent
-with prior reveals); the guard-uses-only predicate ensures the
-guard reads only the resolver's view.
+with prior reveals); the commit choice footprint contains only the
+resolver's view.
 
 \subsection{Coordination games}
 
-Battle-of-the-sexes-style coordination games — where multiple pure
+Battle-of-the-sexes-style coordination games -- where multiple pure
 Nash equilibria coexist and a mixed equilibrium quantifies the
-coordination failure — fit directly: two simultaneous commits, two
+coordination failure -- fit directly: two simultaneous commits, two
 reveals, payoff expressions encoding the coordination preference.
 The kernel game exposes both the pure equilibria and, via mixed
 extension, the mixed one.  Bayesian games with genuinely private
@@ -98,8 +98,8 @@ theorems \citep{Nash1951,Aumann1974}.
 
 The intended scope is finite, terminating, public-payoff protocols
 with discrete value domains and finite-support stochastic samples.
-Applications outside this scope — continuous bid spaces, infinite
+Applications outside this scope -- continuous bid spaces, infinite
 horizons, measure-theoretic kernels, mechanism design with arbitrary
 type spaces, or solution concepts that depend on continuous best-
-response correspondences — would require extensions discussed in
+response correspondences -- would require extensions discussed in
 \S\ref{sec:discussion}.

@@ -8,7 +8,7 @@ Three architectural commitments shape the construction.
 \paragraph{Dependency, not syntax, is the carrier of meaning.}
 The semantic owner is the event graph, not the source program.  A
 consequence is that two source programs that elaborate to the same
-event graph are strategically indistinguishable — by construction,
+event graph are strategically indistinguishable -- by construction,
 not by an after-the-fact equivalence proof.  This frees the surface
 language to add ergonomic constructors (simultaneous yields,
 nullable yields, future handlers) without changing the strategic
@@ -20,9 +20,9 @@ A configuration records which nodes have produced which results;
 schedules are not part of the state.  This is what makes the
 frontier diamond (\Cref{thm:diamond}) definitional rather than a
 quotient construction.  The cost is that an interpreter that wants
-to walk a specific schedule must recover that schedule explicitly
-(e.g.\ via the source-order linear read of supplement~\S7.4); the
-cost is small in practice.
+to walk a specific schedule must supply that schedule explicitly as an
+event law, batch witness, checkpoint policy, or runtime trace law.  The
+graph itself does not privilege a source linearization.
 
 \paragraph{Visibility is bound, not used.}
 Every binding has a visibility tag; expression typing then
@@ -64,12 +64,12 @@ only another predicate on the existing kernel games.
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
 PMF-behavioral strategy carriers are native round-view carriers over the
-event-graph machine.  The bounded FOSG view remains the presentation used
-for the generic FOSG Kuhn theorem and the canonical FOSG-to-EFG bridge.
-The native/FOSG outcome-law transport needed for the public Kuhn theorem
-is mechanized; what is not yet exposed is a single native augmented-EFG
-object whose theorem states the composed FOSG-to-EFG and native/FOSG
-adequacy result at once.
+event-graph machine.  The bounded FOSG view is the standard
+imperfect-information presentation, and the EFG layer is the serialized
+tree presentation obtained from it.  The public Kuhn theorems are stated
+and proved at the native completed-frontier level.  FOSG and EFG
+adequacy results can be composed with those theorems when an exported
+presentation is needed; they do not own the checked-program Kuhn proof.
 
 \paragraph{Public samples only.}  The source $\Sample$ constructor
 draws a public coin.  It is suitable for public randomness, but it
@@ -81,11 +81,11 @@ visibility discipline.
 \paragraph{Solver export.}  The finite pure kernel-game export object
 contains player/strategy enumerations and kernel/utility oracles.  It is
 deliberately narrower than a complete solver interchange format, and the
-PMF-behavioral carrier is not exported as a finite strategy list.
+behavioral carrier is not exported as a finite strategy list.
 
 \paragraph{Decidability.}  The static obligations of
-\S\ref{sec:source:wf} — contextual well-formedness, fresh
-bindings, reveal completeness, and distribution normalization —
+\S\ref{sec:source:wf} -- contextual well-formedness, fresh
+bindings, reveal completeness, and distribution normalization --
 are decidable.  Legality is decidable when value domains are
 finite, which is the standing assumption.  The Nash predicate and friends are quantifier-bounded
 over finite carriers, so they are decidable in principle; whether
@@ -126,7 +126,7 @@ GoldwasserMicaliRivest1988,Pedersen1991Commitment}.  The current
 construction abstracts the commitment as a sealed-then-revealed
 binding; a refinement layer that models hash-based or
 homomorphic-commitment implementations would be a natural backend
-under \Cref{def:stoch-ref}, with the cryptographic soundness
+under stochastic refinement, with the cryptographic soundness
 property appearing as a side condition on $\refines_s$.
 
 \paragraph{Compositional structure.}
@@ -140,7 +140,7 @@ would let large protocols be assembled from small ones with
 machine-checked strategic-structure preservation.
 
 \paragraph{Concurrent-strategy realization.}
-\Cref{thm:kuhn} gives the realization half of the classical
+The frontier Kuhn bridge gives the realization half of the classical
 mixed-vs-behavioral correspondence.  In a concurrent-strategy
 setting (where a player can commit to a function of \emph{joint}
 information across simultaneous events), the corresponding
@@ -158,12 +158,12 @@ with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
 adequacy and transport theorems
-(payoff-vector agreement, FOSG Kuhn realization, EFG presentation
+(payoff-vector agreement, native frontier Kuhn realization, EFG presentation
 adequacy, refinement transport).
 
-The deeper benefit is that future extensions — compositional
+The deeper benefit is that future extensions -- compositional
 combinators, larger surface notation, richer cryptographic backends,
-mechanism-design packaging — can all be added as new
+mechanism-design packaging -- can all be added as new
 presentations or new lowerings without touching the central
 event-graph theorems.  Adequacy at the boundary is a checked
 theorem; the inside of the boundary is free.

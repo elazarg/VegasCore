@@ -1,11 +1,16 @@
-import Vegas.Core.ToEventGraph.Nodes
-import Vegas.Core.ToEventGraph.Fields
-import Vegas.Core.ToEventGraph.Obligations
-import Vegas.Core.ToEventGraph.Construction
+import Vegas.Core.ToEventGraph.Checkpoint
+import Vegas.Core.ToEventGraph.RoundView
+import Vegas.Core.ToEventGraph.FiniteMachine
+import Vegas.Core.ToEventGraph.SourceAdequacy
+import Vegas.Core.ToEventGraph.Kuhn
+import Vegas.Core.ToEventGraph.Games
+import Vegas.Core.ToEventGraph.SolutionConcepts
+import Vegas.Core.ToEventGraph.Transport
 
 /-!
 # Core-to-event-graph elaboration
 
-Umbrella module for the checked-program elaboration into the canonical
-event graph.
+Checked Vegas programs compile directly to canonical event graphs with numeric
+field and node ids.  Strategic game construction additionally attaches an
+explicit checkpoint presentation policy.
 -/

@@ -11,8 +11,7 @@ import Vegas.Machine.Trace
 A `RoundView` is the machine-native strategic game form used by Vegas.  It
 packages player-facing simultaneous rounds over machine states, finite-horizon
 histories, reachable legal strategies, and outcome kernels without routing
-through FOSG.  FOSG/EFG presentations are separate bridges with transport
-theorems back to this native carrier.
+through a separate extensive-form presentation.
 -/
 
 namespace Vegas
@@ -36,6 +35,10 @@ structure RoundView (M : Machine Player) where
       {a : JointAction Act //
         JointActionLegal Act active M.terminal availableActions state a} →
       PMF M.State
+  /-- Ordered primitive events used to replay or audit one supported round
+  transition. This is not part of the strategic observation interface:
+  histories and information states are built from public/player observations,
+  not from this list. -/
   eventBatch : M.State → JointAction Act → M.State → List M.Event
   terminal_active_eq_empty :
     ∀ {state : M.State}, M.terminal state → active state = ∅
@@ -47,6 +50,24 @@ structure RoundView (M : Machine Player) where
 namespace RoundView
 
 variable {M : Machine Player}
+
+/-- A round view is operationally certified when every supported strategic
+round transition is replayable by the primitive machine events recorded in
+`eventBatch`.
+
+This is intentionally not a field of `RoundView`: some round views are only
+mathematical presentations. Refinement-facing bridges should require this
+certificate before making claims about primitive-machine traces. -/
+def OperationallyCertified (view : M.RoundView) : Prop :=
+  ∀ {state}
+    (action :
+      {a : JointAction view.Act //
+        JointActionLegal view.Act view.active M.terminal
+          view.availableActions state a})
+    {dst},
+      view.transition state action dst ≠ 0 →
+        M.AvailableRunFrom state
+          (view.eventBatch state action.1 dst) dst
 
 /-- Terminal predicate for a horizon-bounded round view. -/
 def boundedTerminal (_view : M.RoundView) (horizon : Nat)
@@ -528,6 +549,32 @@ def observationPart :
   | .act _ => none
   | .obs priv pub => some (priv, pub)
 
+/-- Finite player events from finite native actions and observations. -/
+@[reducible]
+noncomputable def instFintype
+    [Fintype (view.Act player)]
+    [Fintype (M.Obs player)]
+    [Fintype M.Public] :
+    Fintype (PlayerEvent view player) := by
+  classical
+  exact
+    Fintype.ofEquiv
+      (Sum (view.Act player) (M.Obs player × M.Public))
+      { toFun := fun event =>
+          match event with
+          | Sum.inl action => PlayerEvent.act action
+          | Sum.inr payload => PlayerEvent.obs payload.1 payload.2
+        invFun := fun event =>
+          match event with
+          | .act action => Sum.inl action
+          | .obs priv pub => Sum.inr (priv, pub)
+        left_inv := by
+          intro event
+          cases event <;> rfl
+        right_inv := by
+          intro event
+          cases event <;> rfl }
+
 end PlayerEvent
 
 /-- Player information states for a native round view. -/
@@ -610,6 +657,25 @@ def playerView (step : view.BoundedStep horizon) (player : Player) :
       [.act action, .obs (step.privateObs player) step.publicObs]
   | none => [.obs (step.privateObs player) step.publicObs]
 
+/-- If a player acts in a realized bounded step, that action is the first
+player-visible event for the step, followed by the resulting observation. -/
+theorem playerView_of_ownAction?_eq_some
+    (step : view.BoundedStep horizon) (player : Player)
+    {action : view.Act player}
+    (hact : step.ownAction? player = some action) :
+    step.playerView player =
+      [.act action, .obs (step.privateObs player) step.publicObs] := by
+  simp [playerView, hact]
+
+/-- If a player does not act in a realized bounded step, the step contributes
+only the resulting observation to that player's view. -/
+theorem playerView_of_ownAction?_eq_none
+    (step : view.BoundedStep horizon) (player : Player)
+    (hact : step.ownAction? player = none) :
+    step.playerView player =
+      [.obs (step.privateObs player) step.publicObs] := by
+  simp [playerView, hact]
+
 theorem latestObservation?_append_playerView
     (s : view.InfoState player) (step : view.BoundedStep horizon) :
     InfoState.latestObservation? (s ++ step.playerView player) =
@@ -619,6 +685,31 @@ theorem latestObservation?_append_playerView
       simp [playerView, hact, InfoState.latestObservation?_append_obs]
   | some action =>
       simp [playerView, hact, InfoState.latestObservation?_append_act_obs]
+
+/-- One realized bounded step contributes exactly one private/public
+observation to a player's information state. -/
+theorem observationEvents_playerView
+    (step : view.BoundedStep horizon) (player : Player) :
+    InfoState.observationEvents (step.playerView player) =
+      [(step.privateObs player, step.publicObs)] := by
+  cases hact : step.ownAction? player with
+  | none =>
+      simp [playerView, hact, InfoState.observationEvents,
+        PlayerEvent.observationPart]
+  | some action =>
+      simp [playerView, hact, InfoState.observationEvents,
+        PlayerEvent.observationPart]
+
+/-- One bounded step contributes at most two player-visible events: the
+player's own action, if any, and the resulting observation. -/
+theorem playerView_length_le_two
+    (step : view.BoundedStep horizon) (player : Player) :
+    (step.playerView player).length ≤ 2 := by
+  cases hact : step.ownAction? player with
+  | none =>
+      simp [playerView, hact]
+  | some action =>
+      simp [playerView, hact]
 
 end BoundedStep
 
@@ -638,6 +729,27 @@ def playerViewFrom (player : Player) :
   | [] => []
   | step :: steps => step.playerView player ++ playerViewFrom player steps
 
+/-- Observation events induced by a list of realized bounded steps. -/
+theorem observationEvents_playerViewFrom
+    (player : Player) :
+    ∀ steps : List (view.BoundedStep horizon),
+      InfoState.observationEvents
+          (playerViewFrom (view := view) player steps) =
+        steps.map fun step => (step.privateObs player, step.publicObs)
+  | [] => by
+      simp [playerViewFrom, InfoState.observationEvents]
+  | step :: steps => by
+      rw [playerViewFrom]
+      rw [InfoState.observationEvents, List.filterMap_append]
+      change
+        InfoState.observationEvents (step.playerView player) ++
+          InfoState.observationEvents (playerViewFrom player steps) =
+            (step.privateObs player, step.publicObs) ::
+              steps.map (fun step => (step.privateObs player, step.publicObs))
+      rw [BoundedStep.observationEvents_playerView]
+      rw [observationEvents_playerViewFrom player steps]
+      rfl
+
 /-- Public observation history of a bounded history. -/
 def publicView (h : view.BoundedHistory horizon) : List M.Public :=
   publicViewFrom h.steps
@@ -646,6 +758,219 @@ def publicView (h : view.BoundedHistory horizon) : List M.Public :=
 def playerView (h : view.BoundedHistory horizon) (player : Player) :
     view.InfoState player :=
   playerViewFrom player h.steps
+
+theorem playerViewFrom_append_singleton
+    (player : Player) (steps : List (view.BoundedStep horizon))
+    (step : view.BoundedStep horizon) :
+    playerViewFrom (view := view) player (steps ++ [step]) =
+      playerViewFrom (view := view) player steps ++ step.playerView player := by
+  induction steps with
+  | nil =>
+      simp [playerViewFrom]
+  | cons head tail ih =>
+      simp [playerViewFrom, ih, List.append_assoc]
+
+/-- A player's view contains one observation event for each realized bounded
+step. Own actions may add action events, but they do not change this count. -/
+theorem observationEvents_playerViewFrom_length
+    (player : Player) :
+    ∀ steps : List (view.BoundedStep horizon),
+      (InfoState.observationEvents
+          (playerViewFrom (view := view) player steps)).length =
+        steps.length
+  | [] => by
+      simp [playerViewFrom, InfoState.observationEvents]
+  | step :: steps => by
+      rw [playerViewFrom]
+      rw [InfoState.observationEvents, List.filterMap_append]
+      have htail :=
+        observationEvents_playerViewFrom_length player steps
+      change
+        (InfoState.observationEvents (step.playerView player) ++
+            InfoState.observationEvents
+              (playerViewFrom player steps)).length =
+          (step :: steps).length
+      rw [BoundedStep.observationEvents_playerView, List.length_append,
+        htail]
+      simp [Nat.add_comm]
+
+/-- A player's bounded-history view contains one observation event for each
+realized bounded step. -/
+theorem observationEvents_playerView_length
+    (h : view.BoundedHistory horizon) (player : Player) :
+    (InfoState.observationEvents (h.playerView player)).length =
+      h.steps.length := by
+  simpa [playerView] using
+    observationEvents_playerViewFrom_length
+      (view := view) (horizon := horizon) player h.steps
+
+/-- A player's raw information-state list has length at most twice the number
+of realized bounded steps. -/
+theorem playerViewFrom_length_le_two_mul
+    (player : Player) :
+    ∀ steps : List (view.BoundedStep horizon),
+      (playerViewFrom (view := view) player steps).length ≤
+        2 * steps.length
+  | [] => by
+      simp [playerViewFrom]
+  | step :: steps => by
+      rw [playerViewFrom, List.length_append]
+      have hstep :
+          (step.playerView player).length ≤ 2 :=
+        BoundedStep.playerView_length_le_two step player
+      have htail :
+          (playerViewFrom (view := view) player steps).length ≤
+            2 * steps.length :=
+        playerViewFrom_length_le_two_mul player steps
+      have hsum :
+          (step.playerView player).length +
+              (playerViewFrom (view := view) player steps).length ≤
+            2 + 2 * steps.length :=
+        Nat.add_le_add hstep htail
+      have htarget : 2 + 2 * steps.length = 2 * (step :: steps).length := by
+        simp
+        omega
+      exact hsum.trans_eq htarget
+
+/-- A player's bounded-history information state has length at most twice the
+presentation horizon. -/
+theorem playerView_length_le_two_mul_horizon
+    (h : view.BoundedHistory horizon) (player : Player) :
+    (h.playerView player).length ≤ 2 * horizon := by
+  unfold playerView
+  have hview :
+      (playerViewFrom (view := view) player h.steps).length ≤
+        2 * h.steps.length :=
+    playerViewFrom_length_le_two_mul
+      (view := view) (horizon := horizon) player h.steps
+  have hsteps : 2 * h.steps.length ≤ 2 * horizon :=
+    Nat.mul_le_mul_left 2 (view.history_length_le horizon h)
+  exact hview.trans hsteps
+
+/-- Equal player information states have equal endpoint presentation depth,
+because each realized bounded step contributes exactly one observation event. -/
+theorem depth_eq_of_playerView_eq
+    (h h' : view.BoundedHistory horizon) (player : Player)
+    (hinfo : h.playerView player = h'.playerView player) :
+    h.lastState.depth = h'.lastState.depth := by
+  have hobsLen :
+      (InfoState.observationEvents (h.playerView player)).length =
+        (InfoState.observationEvents (h'.playerView player)).length := by
+    rw [hinfo]
+  have hsteps :
+      h.steps.length = h'.steps.length := by
+    simpa [observationEvents_playerView_length] using hobsLen
+  calc
+    h.lastState.depth = h.steps.length := view.history_depth horizon h
+    _ = h'.steps.length := hsteps
+    _ = h'.lastState.depth := (view.history_depth horizon h').symm
+
+/-- Appending a concrete realized step appends exactly that step's player view. -/
+theorem playerView_appendStep
+    (h : view.BoundedHistory horizon)
+    (player : Player)
+    (step : view.BoundedStep horizon)
+    (hsrc : step.src = h.lastState) :
+    (h.appendStep step hsrc).playerView player =
+      h.playerView player ++ step.playerView player := by
+  simpa [playerView, appendStep] using
+    playerViewFrom_append_singleton
+      (view := view) (horizon := horizon) player h.steps step
+
+/-- Appending a supported legal action appends exactly the resulting realized
+step's player-visible events. -/
+theorem playerView_snoc
+    (h : view.BoundedHistory horizon)
+    (player : Player)
+    (action : view.BoundedLegalAction horizon h.lastState)
+    (dst : M.BoundedState horizon)
+    (support : view.boundedTransition horizon h.lastState action dst ≠ 0) :
+    (h.snoc action dst support).playerView player =
+      h.playerView player ++
+        (BoundedStep.playerView
+          (view := view) (horizon := horizon)
+          ⟨h.lastState, action, dst, support⟩ player) := by
+  simpa [snoc, appendStep] using
+    playerView_appendStep
+      (view := view) (horizon := horizon) h player
+      ⟨h.lastState, action, dst, support⟩ rfl
+
+/-- If player `player` acts in the realized step appended to a history, that
+step appends the selected action and then the resulting observation to the
+player's information state. -/
+theorem playerView_snoc_of_ownAction?_eq_some
+    (h : view.BoundedHistory horizon)
+    (player : Player)
+    (action : view.BoundedLegalAction horizon h.lastState)
+    (dst : M.BoundedState horizon)
+    (support : view.boundedTransition horizon h.lastState action dst ≠ 0)
+    {own : view.Act player}
+    (hact :
+      (⟨h.lastState, action, dst, support⟩ :
+        view.BoundedStep horizon).ownAction? player = some own) :
+    (h.snoc action dst support).playerView player =
+      h.playerView player ++
+        [.act own,
+          .obs (M.observe player dst.state) (M.publicView dst.state)] := by
+  rw [playerView_snoc]
+  rw [BoundedStep.playerView_of_ownAction?_eq_some
+    (step := ⟨h.lastState, action, dst, support⟩)
+    (player := player) hact]
+
+/-- Appending a concrete realized step updates the latest observation to the
+destination observation of that step. -/
+theorem latestObservation?_playerView_appendStep
+    (h : view.BoundedHistory horizon)
+    (player : Player)
+    (step : view.BoundedStep horizon)
+    (hsrc : step.src = h.lastState) :
+    InfoState.latestObservation?
+        ((h.appendStep step hsrc).playerView player) =
+      some (step.privateObs player, step.publicObs) := by
+  rw [playerView_appendStep]
+  exact BoundedStep.latestObservation?_append_playerView
+    (h.playerView player) step
+
+/-- In a nonempty bounded native history, the latest private/public
+observation is the observation of the endpoint machine state. -/
+theorem latestObservation?_history_of_ne_nil
+    (h : view.BoundedHistory horizon) (player : Player)
+    (hne : h.steps ≠ []) :
+    InfoState.latestObservation? (h.playerView player) =
+      some (M.observe player h.lastState.state,
+        M.publicView h.lastState.state) := by
+  cases h with
+  | mk steps chain =>
+      induction steps using List.reverseRecOn with
+      | nil =>
+          exact False.elim (hne rfl)
+      | append_singleton steps step ih =>
+          let hprefix : view.BoundedHistory horizon :=
+            { steps := steps
+              chain := StepChainFrom.left
+                (view := view) (steps₁ := steps) (steps₂ := [step]) chain }
+          have hright :
+              view.StepChainFrom horizon
+                (view.lastStateFrom horizon
+                  (BoundedState.init M horizon) steps)
+                [step] :=
+            StepChainFrom.right
+              (view := view) (steps₁ := steps) (steps₂ := [step]) chain
+          have hsrc : step.src = hprefix.lastState := by
+            simpa [hprefix, BoundedHistory.lastState, StepChainFrom] using
+              hright.1
+          let hfull : view.BoundedHistory horizon :=
+            hprefix.appendStep step hsrc
+          have hEq :
+              ({ steps := steps ++ [step], chain := chain } :
+                  view.BoundedHistory horizon) = hfull := by
+            ext
+            rfl
+          rw [hEq]
+          unfold hfull
+          simpa using
+            latestObservation?_playerView_appendStep
+              (view := view) hprefix player step hsrc
 
 end BoundedHistory
 
@@ -718,6 +1043,16 @@ theorem boundedAvailableMoves_nonempty
           simpa [boundedLocallyLegalAtState, hmove] using hbounded.2 player
       | some action =>
           simpa [boundedLocallyLegalAtState, hmove] using hbounded.2 player⟩
+
+/-- A round view has observable menus when a player's current information
+state determines that player's legal optional moves. Native legal strategies
+already quantify over all histories realizing the same information state; this
+predicate says those histories agree on the menu. -/
+def MenusObservable (view : M.RoundView) (horizon : Nat) : Prop :=
+  ∀ player (h h' : view.BoundedHistory horizon),
+    h.playerView player = h'.playerView player →
+      view.boundedAvailableMoves horizon h player =
+        view.boundedAvailableMoves horizon h' player
 
 /-- The legal optional moves associated with an information state. -/
 def boundedAvailableMovesAtInfoState
@@ -812,6 +1147,53 @@ noncomputable instance instFintypeReachableInfoState
   exact Fintype.ofFinite (view.ReachableInfoState horizon player)
 
 end FiniteHistory
+
+section FiniteInfoState
+
+variable (view : M.RoundView) (horizon : Nat)
+
+/-- Finite information-state enumeration from a finite player-visible event
+alphabet. This avoids requiring the whole machine state to be finite, which is
+important for graph machines whose raw store carrier is intentionally not a
+finite type. -/
+@[reducible]
+noncomputable def instFintypeReachableInfoStateOfFinitePlayerEvent
+    (player : Player)
+    [Fintype (PlayerEvent view player)] :
+    Fintype (view.ReachableInfoState horizon player) := by
+  classical
+  letI : DecidableEq (PlayerEvent view player) := Classical.decEq _
+  let enum :=
+    Math.BoundedLists.listsUpToLength
+      (Finset.univ : Finset (PlayerEvent view player)) (2 * horizon)
+  let f :
+      view.ReachableInfoState horizon player →
+        {xs : List (PlayerEvent view player) // xs ∈ enum} := fun info =>
+    ⟨info.1,
+      by
+        rcases info.2 with ⟨h, hinfo⟩
+        rw [← hinfo]
+        exact
+          Math.BoundedLists.mem_listsUpToLength_of_forall_mem
+            (s := (Finset.univ : Finset (PlayerEvent view player)))
+            (BoundedHistory.playerView_length_le_two_mul_horizon
+              (view := view) (horizon := horizon) h player)
+            (by intro event hevent; simp)⟩
+  have hf : Function.Injective f := by
+    intro left right h
+    apply Subtype.ext
+    exact
+      congrArg
+        (fun x : {xs : List (PlayerEvent view player) // xs ∈ enum} =>
+          (x : List (PlayerEvent view player))) h
+  haveI :
+      Finite {xs : List (PlayerEvent view player) // xs ∈ enum} :=
+    Finite.of_fintype _
+  haveI : Finite (view.ReachableInfoState horizon player) :=
+    Finite.of_injective f hf
+  exact Fintype.ofFinite (view.ReachableInfoState horizon player)
+
+end FiniteInfoState
 
 /-- Pure strategy over reachable native information states. -/
 abbrev ReachablePureStrategy
@@ -1009,6 +1391,30 @@ noncomputable def jointActionDist
   classical
   simp [jointActionDist, Math.PMFProduct.pmfPi_apply]
 
+theorem jointActionDist_legalPureToBehavioral_eq_pure
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (π : view.BoundedPureProfile horizon)
+    (h : view.BoundedHistory horizon) :
+    view.jointActionDist horizon (view.legalPureToBehavioral horizon π) h =
+      PMF.pure
+        (fun player =>
+          (π player).1
+            (view.reachableInfoStateOfHistory horizon player h)) := by
+  classical
+  rw [jointActionDist]
+  change
+    Math.PMFProduct.pmfPi
+        (fun player =>
+          PMF.pure
+            ((π player).1
+              (view.reachableInfoStateOfHistory horizon player h))) =
+      PMF.pure
+        (fun player =>
+          (π player).1
+            (view.reachableInfoStateOfHistory horizon player h))
+  exact Math.PMFProduct.pmfPi_pure _
+
 theorem legalBehavioralProfile_jointActionDist_eq_zero_of_not_legal
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
@@ -1133,6 +1539,150 @@ noncomputable def legalActionLaw
       view.jointActionDist horizon σ h a.1 := by
   rw [legalActionLaw, PMF.ofFintype_apply]
 
+theorem legalActionLaw_legalPureToBehavioral_eq_pure
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (π : view.BoundedPureProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState) :
+    view.legalActionLaw horizon
+        (view.legalPureToBehavioral horizon π) h hterm =
+      PMF.pure
+        ⟨fun player =>
+            (π player).1
+              (view.reachableInfoStateOfHistory horizon player h),
+          (view.boundedLegal_iff_forall horizon).2
+            ⟨hterm, fun player => (π player).2 h⟩⟩ := by
+  classical
+  let joint : JointAction view.Act := fun player =>
+    (π player).1 (view.reachableInfoStateOfHistory horizon player h)
+  let hlegal :
+      JointActionLegal view.Act (view.boundedActive horizon)
+        (view.boundedTerminal horizon)
+        (view.boundedAvailableActions horizon) h.lastState joint :=
+    (view.boundedLegal_iff_forall horizon).2
+      ⟨hterm, fun player => (π player).2 h⟩
+  apply PMF.ext
+  intro action
+  rw [legalActionLaw_apply,
+    jointActionDist_legalPureToBehavioral_eq_pure]
+  by_cases haction : action.1 = joint
+  · have hsub :
+        action = (⟨joint, hlegal⟩ :
+          view.BoundedLegalAction horizon h.lastState) := by
+      exact Subtype.ext haction
+    subst action
+    simp [joint]
+  · have hsub :
+        action ≠ (⟨joint, hlegal⟩ :
+          view.BoundedLegalAction horizon h.lastState) := by
+      intro hEq
+      exact haction (congrArg Subtype.val hEq)
+    simp [PMF.pure_apply, haction, hsub, joint]
+
+private theorem sum_subtype_eq_sum_ite
+    {α M₀ : Type} [Fintype α] [AddCommMonoid M₀]
+    {p : α → Prop} [DecidablePred p] (F : (a : α) → p a → M₀) :
+    (∑ x : { a : α // p a }, F x.1 x.2) =
+      ∑ a : α, if h : p a then F a h else 0 := by
+  classical
+  let f : α → M₀ := fun a => if h : p a then F a h else 0
+  have hsub :
+      (Finset.subtype p (Finset.univ : Finset α)).sum (fun x => f x.1) =
+        ∑ x : { a : α // p a }, F x.1 x.2 := by
+    have huniv :
+        Finset.subtype p (Finset.univ : Finset α) =
+          (Finset.univ : Finset { a : α // p a }) := by
+      ext x
+      simp
+    rw [huniv]
+    refine Finset.sum_congr rfl ?_
+    intro x _
+    simp only [f]
+    have hp : p x.1 := x.2
+    simp [hp]
+  calc
+    ∑ x : { a : α // p a }, F x.1 x.2 =
+        (Finset.subtype p (Finset.univ : Finset α)).sum
+          (fun x => f x.1) := hsub.symm
+    _ = ∑ a : α, if p a then f a else 0 := by
+      simpa [Finset.sum_filter] using
+        (Finset.sum_subtype_eq_sum_filter
+          (s := (Finset.univ : Finset α)) (p := p) (f := f))
+    _ = ∑ a : α, f a := by
+      refine Finset.sum_congr rfl ?_
+      intro a _
+      by_cases hp : p a <;> simp [f, hp]
+    _ = ∑ a : α, if h : p a then F a h else 0 := rfl
+
+open Classical in
+theorem legalActionLaw_bind_eq_jointActionDist_bind
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    {β : Type} (fallback : β)
+    (K : view.BoundedLegalAction horizon h.lastState → PMF β) :
+    (view.legalActionLaw horizon σ h hterm).bind K =
+      (view.jointActionDist horizon σ h).bind fun joint =>
+        if hlegal :
+            JointActionLegal view.Act (view.boundedActive horizon)
+              (view.boundedTerminal horizon)
+              (view.boundedAvailableActions horizon) h.lastState joint then
+          K ⟨joint, hlegal⟩
+        else
+          PMF.pure fallback := by
+  ext b
+  rw [PMF.bind_apply, PMF.bind_apply, tsum_fintype, tsum_fintype]
+  calc
+    ∑ action : view.BoundedLegalAction horizon h.lastState,
+        view.legalActionLaw horizon σ h hterm action *
+          K action b
+      =
+        ∑ action : view.BoundedLegalAction horizon h.lastState,
+          view.jointActionDist horizon σ h action.1 *
+            K action b := by
+          refine Finset.sum_congr rfl ?_
+          intro action _
+          rw [view.legalActionLaw_apply horizon σ h hterm]
+    _ =
+        ∑ joint : JointAction view.Act,
+          (if hlegal :
+              JointActionLegal view.Act (view.boundedActive horizon)
+                (view.boundedTerminal horizon)
+                (view.boundedAvailableActions horizon) h.lastState joint then
+            view.jointActionDist horizon σ h joint *
+              K ⟨joint, hlegal⟩ b
+          else 0) := by
+          exact
+            sum_subtype_eq_sum_ite
+              (F := fun joint hlegal =>
+                view.jointActionDist horizon σ h joint *
+                  K ⟨joint, hlegal⟩ b)
+    _ =
+        ∑ joint : JointAction view.Act,
+          view.jointActionDist horizon σ h joint *
+            (if hlegal :
+                JointActionLegal view.Act (view.boundedActive horizon)
+                  (view.boundedTerminal horizon)
+                  (view.boundedAvailableActions horizon) h.lastState joint then
+              K ⟨joint, hlegal⟩
+            else
+              PMF.pure fallback) b := by
+          refine Finset.sum_congr rfl ?_
+          intro joint _
+          by_cases hlegal :
+              JointActionLegal view.Act (view.boundedActive horizon)
+                (view.boundedTerminal horizon)
+                (view.boundedAvailableActions horizon) h.lastState joint
+          · simp [hlegal]
+          · have hzero :
+                view.jointActionDist horizon σ h joint = 0 :=
+              view.legalBehavioralProfile_jointActionDist_eq_zero_of_not_legal
+                horizon σ h hterm hlegal
+            simp [hlegal, hzero]
+
 namespace BoundedHistory
 
 /-- Horizon-bounded run distribution on native bounded histories induced by a
@@ -1140,7 +1690,6 @@ legal behavioral profile. Terminal histories absorb. -/
 noncomputable def runDistFrom
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
-    [Fintype M.State]
     (σ : view.BoundedBehavioralProfile horizon) :
     Nat → view.BoundedHistory horizon → PMF (view.BoundedHistory horizon)
   | 0, h => PMF.pure h
@@ -1156,7 +1705,6 @@ noncomputable def runDistFrom
 @[simp] theorem runDistFrom_zero
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
-    [Fintype M.State]
     (σ : view.BoundedBehavioralProfile horizon)
     (h : view.BoundedHistory horizon) :
     runDistFrom view horizon σ 0 h = PMF.pure h := rfl
@@ -1164,7 +1712,6 @@ noncomputable def runDistFrom
 @[simp] theorem runDistFrom_succ_terminal
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
-    [Fintype M.State]
     (σ : view.BoundedBehavioralProfile horizon)
     (n : Nat) (h : view.BoundedHistory horizon)
     (hterm : view.boundedTerminal horizon h.lastState) :
@@ -1175,7 +1722,6 @@ noncomputable def runDistFrom
 @[simp] theorem runDistFrom_succ_nonterminal
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
-    [Fintype M.State]
     (σ : view.BoundedBehavioralProfile horizon)
     (n : Nat) (h : view.BoundedHistory horizon)
     (hterm : ¬ view.boundedTerminal horizon h.lastState) :
@@ -1187,17 +1733,131 @@ noncomputable def runDistFrom
   classical
   simp [runDistFrom, hterm]
 
+theorem runDistFrom_terminal
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (n : Nat) (h : view.BoundedHistory horizon)
+    (hterm : view.boundedTerminal horizon h.lastState) :
+    runDistFrom view horizon σ n h = PMF.pure h := by
+  induction n with
+  | zero => rfl
+  | succ n _ =>
+      rw [runDistFrom_succ_terminal view horizon σ n h hterm]
+
+theorem runDistFrom_bind_runDistFrom
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (m n : Nat) (h : view.BoundedHistory horizon) :
+    (runDistFrom view horizon σ m h).bind
+        (fun h' => runDistFrom view horizon σ n h') =
+      runDistFrom view horizon σ (m + n) h := by
+  induction m generalizing h with
+  | zero =>
+      simp [runDistFrom]
+  | succ m ih =>
+      by_cases hterm : view.boundedTerminal horizon h.lastState
+      · rw [runDistFrom_succ_terminal view horizon σ m h hterm]
+        rw [PMF.pure_bind]
+        rw [runDistFrom_terminal view horizon σ n h hterm]
+        rw [runDistFrom_terminal view horizon σ (m + 1 + n) h hterm]
+      · rw [runDistFrom_succ_nonterminal view horizon σ m h hterm]
+        rw [PMF.bind_bind]
+        simp_rw [PMF.bind_bind]
+        conv_lhs =>
+          arg 2
+          ext action
+          arg 2
+          ext dst
+          rw [ih]
+        rw [show m + 1 + n = m + n + 1 by omega]
+        rw [runDistFrom_succ_nonterminal view horizon σ (m + n) h hterm]
+
+/-- Supported bounded executions either absorb at a bounded-terminal history,
+or realize all remaining round steps. -/
+theorem runDistFrom_support_terminal_or_length_ge
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon) :
+    ∀ n (start dst : view.BoundedHistory horizon),
+      dst ∈ (runDistFrom view horizon σ n start).support →
+        view.boundedTerminal horizon dst.lastState ∨
+          start.steps.length + n ≤ dst.steps.length
+  | 0, start, dst, hsupport => by
+      have hdst : dst = start := by
+        simpa [runDistFrom, PMF.support_pure, Set.mem_singleton_iff]
+          using hsupport
+      subst dst
+      exact Or.inr (by simp)
+  | n + 1, start, dst, hsupport => by
+      classical
+      by_cases hterm : view.boundedTerminal horizon start.lastState
+      · have hdst : dst = start := by
+          simpa [runDistFrom, hterm, PMF.support_pure,
+            Set.mem_singleton_iff] using hsupport
+        subst dst
+        exact Or.inl hterm
+      · have hsupport' :
+            dst ∈
+              ((view.legalActionLaw horizon σ start hterm).bind
+                fun action =>
+                  (view.boundedTransition horizon start.lastState action).bind
+                    fun next =>
+                      runDistFrom view horizon σ n
+                        (start.extendByOutcome action next)).support := by
+          simpa [runDistFrom, hterm] using hsupport
+        rw [PMF.mem_support_bind_iff] at hsupport'
+        rcases hsupport' with ⟨action, _haction, hnextSupport⟩
+        rw [PMF.mem_support_bind_iff] at hnextSupport
+        rcases hnextSupport with ⟨next, hnext, htail⟩
+        have hnextMass :
+            view.boundedTransition horizon start.lastState action next ≠ 0 :=
+          (PMF.mem_support_iff _ _).1 hnext
+        have hlenExtend :
+            (start.extendByOutcome action next).steps.length =
+              start.steps.length + 1 := by
+          rw [BoundedHistory.extendByOutcome_of_support
+            start action next hnextMass]
+          simp [BoundedHistory.snoc]
+        rcases
+            runDistFrom_support_terminal_or_length_ge
+              view horizon σ n
+              (start.extendByOutcome action next) dst htail with
+          hdstTerm | hlenTail
+        · exact Or.inl hdstTerm
+        · exact Or.inr (by omega)
+
 end BoundedHistory
 
 /-- Bounded run distribution from the initial native bounded history. -/
 noncomputable def runDist
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
-    [Fintype M.State]
     (steps : Nat) (σ : view.BoundedBehavioralProfile horizon) :
     PMF (view.BoundedHistory horizon) :=
   BoundedHistory.runDistFrom view horizon σ steps
     (BoundedHistory.nil view horizon)
+
+/-- Running exactly the bounded horizon from the initial history can only
+support bounded-terminal histories.  A supported run either reaches machine
+terminality earlier or consumes the full presentation cutoff. -/
+theorem runDist_support_terminal_at_horizon
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hsupport : h ∈ (view.runDist horizon horizon σ).support) :
+    view.boundedTerminal horizon h.lastState := by
+  rcases
+      BoundedHistory.runDistFrom_support_terminal_or_length_ge
+        view horizon σ horizon (BoundedHistory.nil view horizon) h
+        (by simpa [runDist] using hsupport) with
+    hterm | hlen
+  · exact hterm
+  · right
+    rw [view.history_depth horizon h]
+    simpa using hlen
 
 end Execution
 
@@ -1220,7 +1880,7 @@ noncomputable def boundedHistoryTrace
 profile. -/
 noncomputable def boundedEventBatchTraceFromBehavioral
     (view : M.RoundView) (horizon : Nat)
-    [Fintype Player] [Fintype M.State]
+    [Fintype Player]
     [∀ player, Fintype (Option (view.Act player))]
     (β : view.BoundedBehavioralProfile horizon)
     (steps : Nat) : PMF M.EventBatchTrace :=
@@ -1230,32 +1890,50 @@ noncomputable def boundedEventBatchTraceFromBehavioral
 /-- Event-batched primitive trace kernel induced by a native bounded pure profile. -/
 noncomputable def boundedEventBatchTraceFromPure
     (view : M.RoundView) (horizon : Nat)
-    [Fintype Player] [Fintype M.State]
+    [Fintype Player]
     [∀ player, Fintype (Option (view.Act player))]
     (π : view.BoundedPureProfile horizon)
     (steps : Nat) : PMF M.EventBatchTrace :=
   view.boundedEventBatchTraceFromBehavioral horizon
     (view.legalPureToBehavioral horizon π) steps
 
+@[simp] theorem boundedEventBatchTraceFromBehavioral_legalPureToBehavioral
+    (view : M.RoundView) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option (view.Act player))]
+    (π : view.BoundedPureProfile horizon) (steps : Nat) :
+    view.boundedEventBatchTraceFromBehavioral horizon
+        (view.legalPureToBehavioral horizon π) steps =
+      view.boundedEventBatchTraceFromPure horizon π steps := rfl
+
 /-- Outcome kernel induced by a native bounded behavioral profile. -/
 noncomputable def boundedOutcomeFromBehavioral
     (view : M.RoundView) (horizon : Nat)
-    [Fintype Player] [Fintype M.State]
+    [Fintype Player]
     [∀ player, Fintype (Option (view.Act player))]
     (β : view.BoundedBehavioralProfile horizon)
-    (steps : Nat) : PMF M.Outcome :=
+    (steps : Nat) : PMF (Option M.Outcome) :=
   PMF.map (fun trace : M.EventBatchTrace => M.outcome trace.2)
     (view.boundedEventBatchTraceFromBehavioral horizon β steps)
 
 /-- Outcome kernel induced by a native bounded pure profile. -/
 noncomputable def boundedOutcomeFromPure
     (view : M.RoundView) (horizon : Nat)
-    [Fintype Player] [Fintype M.State]
+    [Fintype Player]
     [∀ player, Fintype (Option (view.Act player))]
     (π : view.BoundedPureProfile horizon)
-    (steps : Nat) : PMF M.Outcome :=
+    (steps : Nat) : PMF (Option M.Outcome) :=
   PMF.map (fun trace : M.EventBatchTrace => M.outcome trace.2)
     (view.boundedEventBatchTraceFromPure horizon π steps)
+
+@[simp] theorem boundedOutcomeFromBehavioral_legalPureToBehavioral
+    (view : M.RoundView) (horizon : Nat)
+    [Fintype Player]
+    [∀ player, Fintype (Option (view.Act player))]
+    (π : view.BoundedPureProfile horizon) (steps : Nat) :
+    view.boundedOutcomeFromBehavioral horizon
+        (view.legalPureToBehavioral horizon π) steps =
+      view.boundedOutcomeFromPure horizon π steps := rfl
 
 end RoundView
 

@@ -1,154 +1,81 @@
-\section{Backend refinement and transport}
+\section{Runtime refinement and trace adequacy}
 \label{sec:refinement}
 
-A real implementation of a protocol — a smart contract, a
-network-layer rewrite, a scheduler-equipped runtime — is rarely a
-literal event graph.  It has additional state (queues,
-retry logic, network ordering), additional
-internal events (scheduler ticks, message reordering), and possibly
-different action alphabets at the user-facing surface.  The
-\emph{refinement layer} is the formal account of how such an
-implementation is permitted to differ from the canonical event-graph
-machine while still preserving the strategic semantics that users
-were verifying.
+\subsection{Runtime-general refinement}
 
-\subsection{Refinement of machines}
-\label{sec:ref:machines}
+The refinement layer relates a concrete implementation machine to the
+primitive event-graph machine.  It is deliberately runtime-general:
+blockchain runtimes are intended backends, but the formal interface talks
+about machines, states, observations, outcomes, and stochastic
+transition kernels.
 
-A \emph{state projection} from an implementation machine $\Mach^I$
-to a specification machine $\Mach^S$ is a function $\proj : \State^I
-\to \State^S$ satisfying the boundary conditions
-\[
-  \proj(s_0^I) = s_0^S, \qquad
-  \term^S(\proj(s)) \;\Leftrightarrow\; \term^I(s)
-\]
-together with consistency on observations and outcomes:
-$\pubView^S \circ \proj = \pubView^I$, $\mathrm{obs}^S_p \circ \proj
-= \mathrm{obs}^I_p$, and $\out^S \circ \proj = \out^I$ on terminal
-states.  A refinement is a state projection plus a transition
-condition; the codebase formalizes two strengths.
+A stochastic refinement supplies a projection from implementation states
+to specification states and proves that implementation transition laws
+project to the specification transition laws.  Internal implementation
+detail may be erased by the projection.  What matters is preservation of
+the observable machine behavior and of the probability laws used by the
+strategic analysis.
 
-\begin{definition}[Weak step refinement]
-\label{def:weak-ref}
-$\Mach^I \refines_w \Mach^S$ via $\proj$ iff every implementation
-external (player) event corresponds, under $\proj$, to a
-specification event:
-$\mathrm{step}_p^I(a, s) \bind \proj
-  = \mathrm{step}_p^S(\widetilde{a}, \proj(s))$
-for some specification action $\widetilde{a}$, and every
-implementation internal event preserves the projected state.
-\end{definition}
+\subsection{Trace game surfaces}
+\label{sec:ref:trace-surfaces}
 
-\begin{definition}[Stochastic step refinement]
-\label{def:stoch-ref}
-$\Mach^I \refines_s \Mach^S$ via $\proj$ iff additionally the
-pushforward of the implementation step kernel through $\proj$
-\emph{equals} the specification's step kernel (with implementation
-internal events stuttering on the spec side).
-\end{definition}
-
-\Cref{def:stoch-ref} is strictly stronger: it equates the
-\emph{distributions} over post-step projected states, not just their
-supports.  Two weak refinements can both be valid yet assign
-different probabilities to the same projected outcome — for example,
-a fair-coin and a biased-coin implementation of the same
-$\Sample\,x \sim \mathrm{Bernoulli}$ both project deterministically
-to the same spec event but differ on the post-step state law, and
-strategic analysis is sensitive to that difference.  Probability-
-preserving transport theorems therefore require the stochastic
-form.  Every machine refines itself stochastically by the identity
-projection, providing a baseline backend.
-
-\designnote{Weak refinement is the standard verification-style
-condition~\citep{LynchVaandrager1995,AbadiLamport1991,Park1981Bisimulation}:
-projection commutes with transitions modulo internal stuttering.
-The stochastic strengthening tracks distributions, not just
-supports~\citep{Segala1995Probabilistic}.}
-
-\subsection{Trace-level transport}
-\label{sec:ref:trace}
-
-Refinement at the per-step level lifts to a refinement at the trace
-level for compatible event laws: when an implementation law and a
-specification law are related through the refinement projection,
-the projection of the implementation trace distribution matches the
-specification trace distribution.  The codebase records this as
-$\mathrm{runEventsFrom\_project\_eq}$ and
-$\mathrm{eventBatchTraceDist\_project\_eq}$, with the latter exposing
-the projection at the FOSG-round/event-batch granularity.
-
-\subsection{Backend kernel-game transport}
-\label{sec:ref:kg}
-
-The strategic transport theorems are stated as
-\emph{expected-utility-preserving morphisms} from a backend
-kernel game to the public Vegas specification kernel game.  A
-\emph{compatible event-batch law lift} is, intuitively, a per-profile
-choice of how the spec graph and the implementation each generate a
-distribution over event-batch traces, plus a proof that the two
-generations match through $R$ — that is, the implementation's
-event-batch law projected through $R$ equals the spec's, and the spec's
-reproduces the canonical explicit event-batch trace distribution induced by
-the native order-free round view. Payoff preservation is then a corollary of
-projecting those traces to public outcomes.  The
-construction therefore takes:
+Runtime adequacy is stated uniformly for a selected frontier game
+surface.  A \(\mathsf{TraceGameSurface}\) packages:
 \begin{itemize}\itemsep1pt
-\item a stochastic refinement $R$ from the implementation machine
-  to the spec event-graph machine, and
-\item a compatible event-batch law lift, in the pure or PMF-behavioral
-  form depending on the target kernel game.
+\item a strategy-indexed kernel game to preserve;
+\item a primitive event-batch trace kernel realizing that game on the
+  compiled specification machine;
+\item a theorem that mapping primitive traces to utilities gives the same
+  joint utility distribution as the game.
 \end{itemize}
+The canonical surfaces are behavioral frontier play, pure frontier play,
+and product mixed-pure frontier play.
 
-The event-batch law lift is explicit on purpose.  The FOSG event-batch trace
-kernel is indexed by bounded FOSG histories, whereas a machine
-event-batch law sees only machine event-batch traces.  The code therefore
-does not silently identify the two.  Instead, \TT{PureSpecEventBatchLaw}
-and \TT{BehavioralSpecEventBatchLaw} package a specification event-batch law
-with the proof that it reproduces the canonical Vegas event-batch trace
-distribution; backend lifts then relate an implementation law to that
-packaged spec law.  The identity backend wrappers reuse the same
-package rather than treating a canonical law conversion as
-definitionally available.
+A \(\mathsf{TraceSpecEventBatchLaw}\) then gives a profile-indexed
+specification event-batch law whose finite trace distribution is exactly
+the trace kernel of the selected surface.  A
+\(\mathsf{RuntimeTraceAdequacy}\) adds an implementation law family and
+compatibility with the stochastic refinement.
 
-These data assemble into a kernel-game morphism
-\[
-  \mathrm{backendEventBatchTraceKernelGame}(g, R)
-  \;\longrightarrow\;
-  \mathrm{pureKernelGame}(g)
-\]
-that preserves expected utility.  The headline corollary is the
-\emph{Nash pullback}:
+\subsection{Transport theorem}
+\label{sec:ref:transport}
 
-\begin{theorem}[Backend Nash transport]
-\label{thm:backend-nash}
-Let $g$ be a checked program and $R$ a stochastic step refinement
-from $\Mach^I$ to $\Mach_{\mathsf{eg}(g)}$, with a compatible
-event-batch law lift.  Then for any profile $\Profile$ of the spec
-public kernel game,
-\[
-  \mathrm{IsNash}_{\mathrm{spec}}(\Profile)
-  \;\Longrightarrow\;
-  \mathrm{IsNash}_{\mathrm{backend}}(\Profile)
-\]
-(\emph{Nash pullback} along the backend-to-spec morphism).  The
-same direct pullback holds for the PMF-behavioral variant.
+The main transport statement is:
+\begin{theorem}[Runtime trace adequacy]
+\label{thm:runtime-trace}
+Let \(g\) be a checked finite-domain program, let \(S\) be one of its
+frontier trace game surfaces, and let an implementation machine refine
+the primitive compiled machine.  If the implementation supplies a
+strategy-indexed event-batch law compatible with a trace-adequate
+specification law, then the implementation trace game has the same joint
+utility distribution as \(S.\mathsf{game}\).
 \end{theorem}
 
-The pullback is a one-way transport: an equilibrium proved on the
-spec game holds on the backend game.  The reverse direction (a
-backend equilibrium implies a spec equilibrium) does not in general
-follow from the morphism, because the backend may admit profiles
-outside the image of the spec strategy carrier.
+Under bounded-utility hypotheses, Nash equilibria of the selected
+frontier surface pull back to Nash equilibria of the implementation
+trace game.  The theorem is one-way.  A backend may expose additional
+strategy space or implementation detail; refinement says that verified
+specification equilibria remain valid under compatible implementation
+laws, not that every implementation equilibrium is a specification
+equilibrium.
 
-The intended workflow is then explicit: \emph{reason about the
-canonical spec payoff-vector game; prove the implementation refines
-it; transport the equilibria}.
+\subsection{Identity and audited runtimes}
+
+The identity runtime is the baseline: the primitive compiled machine
+refines itself, and any trace-adequate specification law yields runtime
+adequacy by reflexivity.  The audited runtime is a small generic example
+in which the implementation executes an administrative audit tick before
+specification event batches; the refinement erases those ticks.
+
+These examples are smoke tests for the abstraction.  They do not bake any
+particular backend into VegasCore.
 
 \paragraph{Lean correspondence.}
-Supplement~\S10 (backend layer): \TT{WeakStepRefinement},
-\TT{StochasticStepRefinement}, the trace-projection lemmas,
-\TT{PureSpecEventBatchLaw}, \TT{BehavioralSpecEventBatchLaw},
-\TT{BackendPureEventBatchLawLift}, \TT{BackendBehavioralEventBatchLawLift},
-and the two pullback theorems
-(\TT{backendEventBatchTraceKernelGameAt\_isNash\_pullback},
-\TT{backendPMFBehavioralEventBatchTraceKernelGameAt\_isNash\_pullback}).
+Generic machine refinement is in \TT{Vegas.Machine.Refinement}.  The
+program-facing trace-adequacy surface is in
+\TT{Vegas.Core.Theorems.Refinement}: \TT{TraceGameSurface},
+\TT{TraceSpecEventBatchLaw}, \TT{RuntimeTraceAdequacy},
+\TT{behavioralFrontierTraceSurface}, \TT{pureFrontierTraceSurface},
+\TT{mixedPureFrontierTraceSurface}, and the
+\TT{implTraceGame\_udist\_surface} /
+\TT{implTraceGame\_nash\_of\_surface\_nash} theorems.

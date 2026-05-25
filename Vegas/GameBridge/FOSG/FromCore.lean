@@ -1,879 +1,616 @@
-import Vegas.Core.ToEventGraph
-import Vegas.GameBridge.FOSG.FromEventGraph
-import Vegas.Core.Finite
+import Vegas.Core.ToEventGraph.Games
+import Vegas.GameBridge.FOSG.RoundViewEquiv
 
 /-!
-# FOSG bridge for checked Vegas programs
+# Program frontier games as FOSGs
 
-This module packages checked-program event graphs as FOSG views and relates
-bounded FOSG histories to primitive event-graph machine traces.
+The canonical behavioral denotation of a checked finite program is a bounded
+factored-observation stochastic game at the frontier checkpoint level.  The
+native `Machine.RoundView` construction supplies the executable round kernel;
+the FOSG object is the standard game-form surface used for paper-facing
+strategic statements.
 -/
 
 namespace Vegas
 
 open GameTheory
 
-variable {P : Type} [DecidableEq P] {L : IExpr}
+namespace ToEventGraph
 
-attribute [local instance] EventGraph.nodeDecEq
-attribute [local instance] EventGraph.fieldDecEq
+variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+variable {program : WFProgram P L} [FiniteDomains program]
 
-/-- FOSG view of the program event-graph machine. -/
-noncomputable def eventGraphFOSGView
-    (g : WFProgram P L) :
-    (eventGraphMachine g).FOSGView :=
-  (programEventGraph g).toFOSGView (eventGraphMachineInterface g)
-    (programEventGraph_hasLocalFrontierSteps g)
+namespace FrontierGameSemantics
 
-private theorem eventGraph_done_subset_nodes
-    {G : EventGraph P L} (cfg : G.Configuration) :
-    cfg.done ⊆ G.nodes := by
-  intro node hdone
-  exact (G.mem_done_iff cfg.result node).mp hdone |>.1
+/-- FOSG denotation of the canonical behavioral frontier round view.  The zero
+cutoff is off the support of completed frontier runs; malformed cutoff states
+are still assigned an explicit payoff vector by the generic FOSG reward
+interface. -/
+noncomputable def fosg
+    (semantics : FrontierGameSemantics program) :=
+  (semantics.behavioral.view).toFOSG semantics.horizon (fun _ => 0)
 
-private theorem eventGraph_extendFrontier_done_card_succ_le
-    {G : EventGraph P L} (cfg : G.Configuration)
-    {realization : EventGraph.FrontierRealization G cfg}
-    (hlegal : realization.Legal)
-    {node : G.Node}
-    (hfrontier : node ∈ cfg.frontier) :
-    cfg.done.card + 1 ≤
-      (cfg.extendFrontier realization hlegal).done.card := by
-  classical
-  have hsubset :
-      insert node cfg.done ⊆
-        (cfg.extendFrontier realization hlegal).done := by
-    intro candidate hcandidate
-    rcases Finset.mem_insert.mp hcandidate with hcandidate | hdone
-    · subst candidate
-      refine (G.mem_done_iff
-        (cfg.extendFrontier realization hlegal).result node).mpr ?_
-      exact ⟨cfg.mem_nodes_of_mem_frontier hfrontier, by
-        simp [EventGraph.Configuration.extendFrontier_result_of_mem
-          cfg realization hlegal hfrontier]⟩
-    · have hdoneData := (G.mem_done_iff cfg.result candidate).mp hdone
-      have hnotFrontier : candidate ∉ cfg.frontier := by
-        intro hcandidateFrontier
-        have hsome := hdoneData.2
-        have hnone := cfg.not_done_of_mem_frontier hcandidateFrontier
-        cases hresult : cfg.result candidate <;>
-          simp [hresult] at hsome hnone
-      refine (G.mem_done_iff
-        (cfg.extendFrontier realization hlegal).result candidate).mpr ?_
-      exact ⟨hdoneData.1, by
-        simpa [EventGraph.Configuration.extendFrontier_result_of_not_mem
-          cfg realization hlegal hnotFrontier] using hdoneData.2⟩
-  have hnotDone : node ∉ cfg.done := by
-    intro hdone
-    have hdoneSome := (G.mem_done_iff cfg.result node).mp hdone |>.2
-    have hnone := cfg.not_done_of_mem_frontier hfrontier
-    cases hresult : cfg.result node <;> simp [hresult] at hdoneSome hnone
-  have hcard := Finset.card_le_card hsubset
-  simpa [Finset.card_insert_of_notMem hnotDone] using hcard
+/-- The frontier FOSG terminates within the completion horizon. -/
+theorem fosg_boundedHorizon
+    (semantics : FrontierGameSemantics program) :
+    semantics.fosg.BoundedHorizon semantics.horizon :=
+  Machine.RoundView.toFOSG_boundedHorizon
+    semantics.behavioral.view semantics.horizon (fun _ => 0)
 
-private theorem eventGraph_boundedFOSG_step_done_card_succ_le
-    (g : WFProgram P L) (horizon : Nat)
-    {src dst : (eventGraphMachine g).BoundedState horizon}
-    {action :
-      (((eventGraphFOSGView g).toBoundedFOSG horizon).LegalAction src)}
-    (hsupp :
-      ((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-        src action dst ≠ 0) :
-    src.state.done.card + 1 ≤ dst.state.done.card := by
-  classical
-  let rawAction :=
-    (eventGraphFOSGView g).boundedActionToAction horizon src action
-  have hnotGraph : ¬ (eventGraphMachine g).terminal src.state := by
-    intro hgraph
-    exact action.2.1 (by
-      rw [Machine.FOSGView.toBoundedFOSG_terminal]
-      exact Or.inl hgraph)
-  have hboundedMem :
-      dst ∈
-        (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-          src action).support :=
-    (PMF.mem_support_iff _ _).2 hsupp
-  have hstateMem :
-      dst.state ∈
-        (PMF.map (fun bounded => bounded.state)
-          (((eventGraphFOSGView g).toBoundedFOSG horizon).transition
-            src action)).support :=
-    (PMF.mem_support_map_iff _ _ _).2
-      ⟨dst, hboundedMem, rfl⟩
-  rw [Machine.FOSGView.toBoundedFOSG_transition_map_state] at hstateMem
-  have hroundLegal :
-      GameTheory.JointActionLegal
-        (EventGraph.PlayerFrontierAction (programEventGraph g))
-        (EventGraph.frontierActive (programEventGraph g))
-        EventGraph.Configuration.terminal
-        (EventGraph.frontierAvailable (programEventGraph g))
-        src.state rawAction.1 := by
-    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
-      EventGraph.toFOSGView] using rawAction.2
-  have hfrontierMem :
-      dst.state ∈
-        (EventGraph.frontierRealizationTransition (programEventGraph g)
-          src.state ⟨rawAction.1, hroundLegal⟩).support := by
-    simpa [rawAction, eventGraphFOSGView, eventGraphMachine,
-      EventGraph.toFOSGView] using hstateMem
-  rcases EventGraph.frontierRealizationTransition_support_extend
-      (programEventGraph g) src.state ⟨rawAction.1, hroundLegal⟩
-      hfrontierMem with
-    ⟨realization, _hrealizationSupport, hrealizationLegal, hdst⟩
-  rcases src.state.frontier_nonempty_of_not_terminal hnotGraph with
-    ⟨node, hnodeFrontier⟩
-  rw [hdst]
-  exact eventGraph_extendFrontier_done_card_succ_le
-    src.state hrealizationLegal hnodeFrontier
-
-private theorem eventGraph_boundedFOSG_stepChain_done_card_ge_length
-    (g : WFProgram P L) (horizon : Nat) :
-    ∀ {start : (eventGraphMachine g).BoundedState horizon}
-      {steps : List (((eventGraphFOSGView g).toBoundedFOSG horizon).Step)},
-      ((eventGraphFOSGView g).toBoundedFOSG horizon).StepChainFrom
-          start steps →
-        start.state.done.card + steps.length ≤
-          (((eventGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
-            start steps).state.done.card
-  | start, [], _hchain => by
-      simp [GameTheory.FOSG.lastStateFrom]
-  | start, step :: steps, hchain => by
-      rcases hchain with ⟨hsrc, htail⟩
-      have hstartDone :
-          start.state.done.card = step.src.state.done.card := by
-        rw [← hsrc]
-      have hstep :
-          step.src.state.done.card + 1 ≤ step.dst.state.done.card :=
-        eventGraph_boundedFOSG_step_done_card_succ_le
-          g horizon step.support
-      have htailDone :
-          step.dst.state.done.card + steps.length ≤
-            (((eventGraphFOSGView g).toBoundedFOSG horizon).lastStateFrom
-              step.dst steps).state.done.card :=
-        eventGraph_boundedFOSG_stepChain_done_card_ge_length
-          (g := g) (horizon := horizon) htail
-      simp [GameTheory.FOSG.lastStateFrom, hstartDone]
-      omega
-
-private theorem eventGraph_boundedFOSG_history_done_card_ge_depth
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    h.lastState.depth ≤ h.lastState.state.done.card := by
-  have hchainDone :
-      ((Machine.BoundedState.init (eventGraphMachine g) horizon).state.done.card) +
-          h.steps.length ≤ h.lastState.state.done.card := by
-    simpa [GameTheory.FOSG.History.lastState,
-      Machine.FOSGView.toBoundedFOSG_init] using
-      (eventGraph_boundedFOSG_stepChain_done_card_ge_length
-        (g := g) (horizon := horizon) h.chain)
-  have hinitDone :
-      ((Machine.BoundedState.init (eventGraphMachine g) horizon).state.done.card) =
-        0 := by
-    simp [eventGraphMachine, EventGraph.toMachine,
-      EventGraph.Configuration.initial, EventGraph.Configuration.done,
-      EventGraph.done]
-  have hstepsDone : h.steps.length ≤ h.lastState.state.done.card := by
-    omega
-  have hdepth :
-      h.lastState.depth = h.steps.length :=
-    (eventGraphFOSGView g).toBoundedFOSG_history_depth horizon h
-  omega
-
-private theorem eventGraph_terminal_of_done_card_ge_syntaxSteps
-    (g : WFProgram P L)
-    (cfg : (programEventGraph g).Configuration)
-    (hcard : syntaxSteps g.prog ≤ cfg.done.card) :
-    cfg.terminal := by
-  have hnodesCard :
-      (programEventGraph g).nodes.card ≤ syntaxSteps g.prog := by
-    change (ProgramNode.finset g.prog).card ≤ syntaxSteps g.prog
-    exact ProgramNode.finset_card_le_syntaxSteps g.prog
-  have hnodes_le_done :
-      (programEventGraph g).nodes.card ≤ cfg.done.card :=
-    Nat.le_trans hnodesCard hcard
-  have hdone_subset :
-      cfg.done ⊆ (programEventGraph g).nodes :=
-    eventGraph_done_subset_nodes cfg
-  have hdone_eq_nodes :
-      cfg.done = (programEventGraph g).nodes :=
-    Finset.eq_of_subset_of_card_le hdone_subset hnodes_le_done
-  intro node hnode
-  rw [hdone_eq_nodes]
-  exact hnode
-
-/-- A checked game that is played legally to completion reaches its declared
-payoff rule. The internal bound is the number of source steps in the checked
-program. -/
-theorem eventGraph_wholeGame_reaches_declared_payoff_rule
-    (g : WFProgram P L)
-    (h :
-      (((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).History))
-    (hcomplete :
-      ((eventGraphFOSGView g).toBoundedFOSG
-        (syntaxSteps g.prog)).terminal h.lastState) :
-    ∃ env : VEnv L (ProgramField.finalVCtx g.prog),
-      ProgramField.finalEnv? g.prog
-          (eventGraphConfigValue? g h.lastState.state) = some env ∧
-        eventGraphOutcome g h.lastState.state =
-          evalPayoffs (ProgramField.finalPayoffs g.prog) env := by
-  have hgraphTerminal :
-      (eventGraphMachine g).terminal h.lastState.state := by
-    rw [Machine.FOSGView.toBoundedFOSG_terminal] at hcomplete
-    rcases hcomplete with hterminal | hcut
-    · exact hterminal
-    · have hdoneDepth :=
-        eventGraph_boundedFOSG_history_done_card_ge_depth
-          g (syntaxSteps g.prog) h
-      have hdoneSteps : syntaxSteps g.prog ≤ h.lastState.state.done.card := by
-        omega
-      exact eventGraph_terminal_of_done_card_ge_syntaxSteps
-        g h.lastState.state hdoneSteps
-  exact eventGraphOutcome_eq_evalPayoffs_of_terminal g hgraphTerminal
-
-/-- Primitive machine event batches extracted from a bounded event-graph FOSG
-history. Each event batch is one frontier step of the public FOSG view. -/
-noncomputable def eventGraphFOSGHistoryEventBatches
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    List (List (eventGraphMachine g).Event) :=
-  EventGraph.boundedFOSGHistoryEventBatches
-    (programEventGraph g) (eventGraphMachineInterface g)
-    (programEventGraph_hasLocalFrontierSteps g) horizon h
-
-/-- Program-specialized availability witness for the primitive batches
-extracted from a bounded event-graph FOSG history. -/
-theorem eventGraphFOSGHistory_availableRunBatchesFrom
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    (eventGraphMachine g).AvailableRunBatchesFrom (eventGraphMachine g).init
-      (eventGraphFOSGHistoryEventBatches g horizon h)
-      h.lastState.state := by
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView] using
-    (EventGraph.boundedFOSGHistory_availableRunBatchesFrom
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasLocalFrontierSteps g) horizon h)
-
-/-- Program-specialized support theorem for primitive batches extracted from a
-bounded event-graph FOSG history. -/
-theorem eventGraphFOSGHistory_state_mem_runEventBatchesFrom_support
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    h.lastState.state ∈
-      ((eventGraphMachine g).runEventBatchesFrom
-        (eventGraphFOSGHistoryEventBatches g horizon h)
-        (eventGraphMachine g).init).support :=
-  Machine.AvailableRunBatchesFrom.mem_runEventBatchesFrom_support
-    (eventGraphFOSGHistory_availableRunBatchesFrom g horizon h)
-
-/-- Realized primitive machine events represented by one event-graph FOSG
-frontier step. Internal events carry the patch found in the realized
-destination. -/
-noncomputable def eventGraphRealizedEventBatch
-    (g : WFProgram P L)
-    (cfg : (eventGraphMachine g).State)
-    (joint : GameTheory.JointAction (eventGraphFOSGView g).Act)
-    (dst : (eventGraphMachine g).State) :
-    List (eventGraphMachine g).Event := by
-  simpa [eventGraphMachine, eventGraphFOSGView] using
-    (EventGraph.realizedEventBatch (programEventGraph g)
-      (eventGraphMachineInterface g) cfg joint dst)
-
-/-- Player round-action availability in the event graph is determined by the
-public transcript together with the acting player's private observation. -/
-theorem eventGraph_frontierAvailable_eq_of_observation_eq
-    (g : WFProgram P L) (who : P)
-    {left right : (programEventGraph g).Configuration}
-    (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
-    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.frontierAvailable (programEventGraph g) left who =
-      EventGraph.frontierAvailable (programEventGraph g) right who := by
-  classical
-  have hfrontierEq := eventGraphPublicView_frontier_eq_of_eq g hpub
-  ext action
-  constructor
-  · intro haction node hfrontier hactor
-    have hfrontierLeft : node ∈ left.frontier := by
-      simpa [hfrontierEq] using hfrontier
-    rcases haction hfrontierLeft hactor with ⟨hpatch, hlegal⟩
-    exact ⟨hpatch,
-      eventGraph_actionLegal_of_observe_eq g who hfrontier
-        hactor hpriv hlegal⟩
-  · intro haction node hfrontier hactor
-    have hfrontierRight : node ∈ right.frontier := by
-      simpa [hfrontierEq] using hfrontier
-    rcases haction hfrontierRight hactor with ⟨hpatch, hlegal⟩
-    exact ⟨hpatch,
-      eventGraph_actionLegal_of_observe_eq g who hfrontier
-        hactor hpriv.symm hlegal⟩
-
-/-- The active-player set of an event-graph frontier step is determined by
-the public transcript. -/
-theorem eventGraph_frontierActive_eq_of_publicView_eq
-    (g : WFProgram P L)
-    {left right : (programEventGraph g).Configuration}
-    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.frontierActive (programEventGraph g) left =
-      EventGraph.frontierActive (programEventGraph g) right := by
-  classical
-  have hfrontier := eventGraphPublicView_frontier_eq_of_eq g hpub
-  unfold EventGraph.frontierActive
-  rw [hfrontier]
-
-/-- Player-facing frontier-step menus in the event graph are determined by
-the public transcript together with the player's private observation.
-
-This is the protocol-level "the player knows what they can do" invariant:
-two configurations indistinguishable to `who` offer the same optional menu to
-`who`, including whether `who` is called at all. -/
-theorem eventGraph_frontierMenu_eq_of_observation_eq
-    (g : WFProgram P L) (who : P)
-    {left right : (programEventGraph g).Configuration}
-    (hpriv : eventGraphObserve g who left = eventGraphObserve g who right)
-    (hpub : eventGraphPublicView g left = eventGraphPublicView g right) :
-    EventGraph.frontierMenu (programEventGraph g) left who =
-      EventGraph.frontierMenu (programEventGraph g) right who := by
-  have hactive :=
-    eventGraph_frontierActive_eq_of_publicView_eq g hpub
-  have havailable :=
-    eventGraph_frontierAvailable_eq_of_observation_eq g who hpriv hpub
-  simp [EventGraph.frontierMenu, hactive, havailable]
-
-/-- At a bounded event-graph FOSG state before the cutoff, legal optional
-moves are determined by the player's latest private observation and the public
-transcript. -/
-theorem eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
-    (g : WFProgram P L) (horizon : Nat) (who : P)
-    {left right : (eventGraphMachine g).BoundedState horizon}
-    (hcut : ¬ horizon ≤ left.depth)
-    (hcut' : ¬ horizon ≤ right.depth)
-    (hpriv :
-      eventGraphObserve g who left.state =
-        eventGraphObserve g who right.state)
-    (hpub :
-      eventGraphPublicView g left.state =
-        eventGraphPublicView g right.state) :
-    ((eventGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
-        left who =
-      ((eventGraphFOSGView g).toBoundedFOSG horizon).availableMovesAtState
-        right who := by
-  classical
-  have hfrontierActive :
-      EventGraph.frontierActive (programEventGraph g) left.state =
-        EventGraph.frontierActive (programEventGraph g) right.state :=
-    eventGraph_frontierActive_eq_of_publicView_eq g hpub
-  have hfrontierAvailable :
-      EventGraph.frontierAvailable (programEventGraph g) left.state who =
-        EventGraph.frontierAvailable (programEventGraph g) right.state who :=
-    eventGraph_frontierAvailable_eq_of_observation_eq g who hpriv hpub
-  have hactive :
-      ((eventGraphFOSGView g).toBoundedFOSG horizon).active left =
-        ((eventGraphFOSGView g).toBoundedFOSG horizon).active right := by
-    ext player
-    simp [Machine.FOSGView.boundedActive, hcut, hcut',
-      eventGraphFOSGView, EventGraph.toFOSGView, hfrontierActive]
-  have hactions :
-      ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
-          left who =
-        ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
-          right who := by
-    ext action
-    simp [Machine.FOSGView.boundedAvailableActions, hcut, hcut',
-      eventGraphFOSGView, EventGraph.toFOSGView, hfrontierAvailable]
-  ext move
-  cases move with
-  | none =>
-      change
-        who ∉ ((eventGraphFOSGView g).toBoundedFOSG horizon).active left ↔
-          who ∉ ((eventGraphFOSGView g).toBoundedFOSG horizon).active right
-      rw [hactive]
-  | some action =>
-      change
-        who ∈ ((eventGraphFOSGView g).toBoundedFOSG horizon).active left ∧
-            action ∈
-              ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
-                left who ↔
-          who ∈ ((eventGraphFOSGView g).toBoundedFOSG horizon).active right ∧
-            action ∈
-              ((eventGraphFOSGView g).toBoundedFOSG horizon).availableActions
-                right who
-      rw [hactive, hactions]
-
-/-- Bounded event-graph FOSGs satisfy the legal-observability
-condition required by Kuhn's theorem. -/
-theorem eventGraphFOSGView_toBoundedFOSG_legalObservable
-    (g : WFProgram P L) (horizon : Nat) :
-    ((eventGraphFOSGView g).toBoundedFOSG horizon).LegalObservable := by
-  intro who h h' hInfo
-  let G := (eventGraphFOSGView g).toBoundedFOSG horizon
-  have hobsLen :
-      (GameTheory.FOSG.InfoState.observationEvents
-        (G := G) (i := who) (h.playerView who)).length =
-        h.steps.length := by
-    simpa [G] using
-      (eventGraphFOSGView g)
-        |>.toBoundedFOSG_history_playerView_observationEvents_length
-          horizon h who
-  have hobsLen' :
-      (GameTheory.FOSG.InfoState.observationEvents
-        (G := G) (i := who) (h'.playerView who)).length =
-        h'.steps.length := by
-    simpa [G] using
-      (eventGraphFOSGView g)
-        |>.toBoundedFOSG_history_playerView_observationEvents_length
-          horizon h' who
-  have hlenEq : h.steps.length = h'.steps.length := by
-    have hlen :=
-      congrArg
-        (fun s =>
-          (GameTheory.FOSG.InfoState.observationEvents
-            (G := G) (i := who) s).length)
-        hInfo
-    change
-      (GameTheory.FOSG.InfoState.observationEvents
-        (G := G) (i := who) (h.playerView who)).length =
-        (GameTheory.FOSG.InfoState.observationEvents
-          (G := G) (i := who) (h'.playerView who)).length at hlen
-    rw [hobsLen, hobsLen'] at hlen
-    exact hlen
-  by_cases hnil : h.steps = []
-  · have hnil' : h'.steps = [] := by
-      have hlen0 : h'.steps.length = 0 := by
-        rw [← hlenEq, hnil]
-        rfl
-      exact List.eq_nil_of_length_eq_zero hlen0
-    have hh : h = GameTheory.FOSG.History.nil G := by
-      cases h with
-      | mk steps chain =>
-          cases hnil
-          rfl
-    have hh' : h' = GameTheory.FOSG.History.nil G := by
-      cases h' with
-      | mk steps chain =>
-          cases hnil'
-          rfl
-    subst hh
-    subst hh'
-    rfl
-  · have hnil' : h'.steps ≠ [] := by
-      intro hnil'
-      have hlen0 : h.steps.length = 0 := by
-        rw [hlenEq, hnil']
-        rfl
-      exact hnil (List.eq_nil_of_length_eq_zero hlen0)
-    have hdepthLen :=
-      (eventGraphFOSGView g)
-        |>.toBoundedFOSG_history_depth horizon h
-    have hdepthLen' :=
-      (eventGraphFOSGView g)
-        |>.toBoundedFOSG_history_depth horizon h'
-    have hcutEq :
-        (horizon ≤ h.lastState.depth) ↔
-          (horizon ≤ h'.lastState.depth) := by
-      have heqDepth :
-          h.lastState.depth = h'.lastState.depth := by
-        calc
-          h.lastState.depth = h.steps.length := hdepthLen
-          _ = h'.steps.length := hlenEq
-          _ = h'.lastState.depth := hdepthLen'.symm
-      constructor
-      · intro hle
-        exact heqDepth ▸ hle
-      · intro hle
-        exact heqDepth.symm ▸ hle
-    by_cases hcut : horizon ≤ h.lastState.depth
-    · have hcut' : horizon ≤ h'.lastState.depth :=
-        hcutEq.mp hcut
-      have hInactive : who ∉ G.active h.lastState := by
-        simp [G, Machine.FOSGView.boundedActive, hcut]
-      have hInactive' : who ∉ G.active h'.lastState := by
-        simp [G, Machine.FOSGView.boundedActive, hcut']
-      rw [G.availableMoves_eq_singleton_none_of_not_mem_active h hInactive,
-        G.availableMoves_eq_singleton_none_of_not_mem_active h' hInactive']
-    · have hcut' :
-          ¬ horizon ≤ h'.lastState.depth := by
-        intro hle
-        exact hcut (hcutEq.mpr hle)
-      have hlatest :=
-        congrArg
-          (GameTheory.FOSG.InfoState.latestObservation?
-            (G := G) (i := who))
-          hInfo
-      have hlatest₁ :
-          GameTheory.FOSG.InfoState.latestObservation?
-              (G := G) (i := who) (h.playerView who) =
-            some
-              (eventGraphObserve g who h.lastState.state,
-                eventGraphPublicView g h.lastState.state) := by
-        simpa [G, eventGraphMachine, EventGraph.toMachine,
-          eventGraphMachineInterface] using
-          (eventGraphFOSGView g)
-            |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
-              horizon who h hnil
-      have hlatest₂ :
-          GameTheory.FOSG.InfoState.latestObservation?
-              (G := G) (i := who) (h'.playerView who) =
-            some
-              (eventGraphObserve g who h'.lastState.state,
-                eventGraphPublicView g h'.lastState.state) := by
-        simpa [G, eventGraphMachine, EventGraph.toMachine,
-          eventGraphMachineInterface] using
-          (eventGraphFOSGView g)
-            |>.toBoundedFOSG_latestObservation?_history_of_ne_nil
-              horizon who h' hnil'
-      rw [hlatest₁, hlatest₂] at hlatest
-      injection hlatest with hobs
-      have hpriv :
-          eventGraphObserve g who h.lastState.state =
-            eventGraphObserve g who h'.lastState.state :=
-        congrArg Prod.fst hobs
-      have hpub :
-          eventGraphPublicView g h.lastState.state =
-            eventGraphPublicView g h'.lastState.state :=
-        congrArg Prod.snd hobs
-      simpa [GameTheory.FOSG.availableMoves] using
-        eventGraph_boundedAvailableMovesAtState_eq_of_observation_eq
-          g horizon who hcut hcut' hpriv hpub
-
-/-- Finite state helper for the program event-graph machine. -/
-@[reducible] noncomputable instance eventGraphMachine.instFintypeState
-    (g : WFProgram P L) [FiniteDomains g] :
-    Fintype (eventGraphMachine g).State := by
-  classical
-  letI : Fintype (ProgramNode g.prog) :=
-    ProgramNode.instFintype g.prog
-  letI : Fintype (ProgramField g.prog) :=
-    ProgramField.instFintype g.prog
-  letI :
-      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
-    fun field => ProgramField.instFintypeValue g field
-  dsimp [eventGraphMachine, EventGraph.toMachine,
-    programEventGraph, EventGraph.Configuration,
-    EventGraph.ResultAssignment, EventGraph.FieldPatch]
-  infer_instance
-
-/-- Finite action helper for the program event-graph machine. -/
-@[reducible] noncomputable instance eventGraphMachine.instFintypeAction
-    (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype ((eventGraphMachine g).Action who) := by
-  classical
-  letI : Fintype (ProgramNode g.prog) :=
-    ProgramNode.instFintype g.prog
-  letI : Fintype (ProgramField g.prog) :=
-    ProgramField.instFintype g.prog
-  letI :
-      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
-    fun field => ProgramField.instFintypeValue g field
-  dsimp [eventGraphMachine, EventGraph.toMachine,
-    EventGraph.PlayerAction, programEventGraph,
-    EventGraph.FieldPatch]
-  infer_instance
-
-/-- Finite optional-action helper for the program event-graph machine. -/
-@[reducible] noncomputable instance eventGraphMachine.instFintypeOptionAction
-    (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype (Option ((eventGraphMachine g).Action who)) := by
-  classical
-  letI : Fintype ((eventGraphMachine g).Action who) :=
-    eventGraphMachine.instFintypeAction g who
-  infer_instance
-
-/-- Finite FOSG round-action helper for the event-graph FOSG view. -/
-@[reducible] noncomputable instance eventGraphFOSGView.instFintypeAct
-    (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype ((eventGraphFOSGView g).Act who) := by
-  classical
-  letI : Fintype (ProgramNode g.prog) :=
-    ProgramNode.instFintype g.prog
-  letI : Fintype (ProgramField g.prog) :=
-    ProgramField.instFintype g.prog
-  letI :
-      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
-    fun field => ProgramField.instFintypeValue g field
-  haveI : Fintype (programEventGraph g).Node := by
-    change Fintype (ProgramNode g.prog)
-    exact ProgramNode.instFintype g.prog
-  haveI : Fintype (programEventGraph g).Field := by
-    change Fintype (ProgramField g.prog)
-    exact ProgramField.instFintype g.prog
-  haveI :
-      ∀ field : (programEventGraph g).Field,
-        Fintype (L.Val ((programEventGraph g).fieldTy field)) := by
-    intro field
-    change Fintype (L.Val field.ty)
-    exact ProgramField.instFintypeValue g field
-  change Fintype (EventGraph.PlayerFrontierAction (programEventGraph g) who)
-  exact EventGraph.PlayerFrontierAction.instFintype (programEventGraph g) who
-
-/-- Finite optional FOSG round-action helper for event-graph views. -/
-@[reducible] noncomputable instance eventGraphFOSGView.instFintypeOptionAct
-    (g : WFProgram P L) [FiniteDomains g] (who : P) :
-    Fintype (Option ((eventGraphFOSGView g).Act who)) := by
-  classical
-  letI : Fintype ((eventGraphFOSGView g).Act who) :=
-    eventGraphFOSGView.instFintypeAct g who
-  infer_instance
-
-/-- Finite internal-event helper for the program event-graph machine. -/
-@[reducible] noncomputable instance eventGraphMachine.instFintypeInternal
-    (g : WFProgram P L) [FiniteDomains g] :
-    Fintype (eventGraphMachine g).Internal := by
-  classical
-  letI : Fintype (ProgramNode g.prog) :=
-    ProgramNode.instFintype g.prog
-  letI : Fintype (ProgramField g.prog) :=
-    ProgramField.instFintype g.prog
-  letI :
-      ∀ field : ProgramField g.prog, Fintype (L.Val field.ty) :=
-    fun field => ProgramField.instFintypeValue g field
-  dsimp [eventGraphMachine, EventGraph.toMachine,
-    EventGraph.InternalEvent, programEventGraph]
-  infer_instance
-
-/-- Finite primitive-event helper for the program event-graph machine. -/
-@[reducible] noncomputable instance eventGraphMachine.instFintypeEvent
-    (g : WFProgram P L) [FiniteDomains g] [Fintype P] :
-    Fintype (eventGraphMachine g).Event := by
-  classical
-  letI : ∀ who : P, Fintype ((eventGraphMachine g).Action who) :=
-    fun who => eventGraphMachine.instFintypeAction g who
-  letI : Fintype (eventGraphMachine g).Internal :=
-    eventGraphMachine.instFintypeInternal g
-  let playEvents : Finset (eventGraphMachine g).Event :=
-    (Finset.univ :
-      Finset (Sigma fun who : P => (eventGraphMachine g).Action who)).image
-        (fun x => Machine.Event.play x.1 x.2)
-  let internalEvents : Finset (eventGraphMachine g).Event :=
-    (Finset.univ : Finset (eventGraphMachine g).Internal).image
-      (fun event => Machine.Event.internal event)
-  refine Fintype.mk (playEvents ∪ internalEvents) ?_
-  intro event
-  cases event with
-  | play who action =>
-      exact Finset.mem_union.mpr
-        (Or.inl
-          (Finset.mem_image.mpr
-            ⟨⟨who, action⟩, Finset.mem_univ _, rfl⟩))
-  | internal event =>
-      exact Finset.mem_union.mpr
-        (Or.inr
-          (Finset.mem_image.mpr
-            ⟨event, Finset.mem_univ _, rfl⟩))
-
-/-- Finite-history helper for bounded event-graph FOSG views. -/
-@[reducible] noncomputable instance eventGraphFOSGView.instFintypeBoundedHistory
-    (g : WFProgram P L) (horizon : Nat)
-    [Fintype P] [FiniteDomains g] :
-    Fintype (((eventGraphFOSGView g).toBoundedFOSG horizon).History) := by
-  classical
-  haveI :
-      Fintype ((eventGraphMachine g).BoundedState horizon) :=
-    Machine.BoundedState.instFintype
-  haveI :
-      ∀ who : P, Fintype (Option ((eventGraphFOSGView g).Act who)) :=
-    fun who => eventGraphFOSGView.instFintypeOptionAct g who
-  exact GameTheory.FOSG.historyFintypeOfBoundedHorizon
-    (G := (eventGraphFOSGView g).toBoundedFOSG horizon)
-    ((eventGraphFOSGView g).toBoundedFOSG_boundedHorizon horizon)
-
-/-- Terminal decidability for bounded event-graph FOSG views. -/
-noncomputable instance eventGraphFOSGView.instDecidablePredBoundedTerminal
-    (g : WFProgram P L) (horizon : Nat) :
-    DecidablePred (((eventGraphFOSGView g).toBoundedFOSG horizon).terminal) :=
+noncomputable local instance instFosgTerminalDecidable
+    (semantics : FrontierGameSemantics program) :
+    DecidablePred semantics.fosg.terminal :=
   Classical.decPred _
 
-/-- History-dependent event-batched primitive trace distribution induced by a
-bounded event-graph FOSG behavioral profile. -/
-noncomputable def eventGraphFOSGEventBatchTraceDistFrom
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (horizon : Nat)
-    (σ :
-      GameTheory.FOSG.LegalBehavioralProfile
-        ((eventGraphFOSGView g).toBoundedFOSG horizon)) :
-    Nat →
-      (((eventGraphFOSGView g).toBoundedFOSG horizon).History) →
-        PMF (List (List (eventGraphMachine g).Event) ×
-          (eventGraphMachine g).State) := by
-  letI :
-      ∀ player,
-        Fintype
-          (Option
-            (((programEventGraph g).toFOSGView
-              (eventGraphMachineInterface g)
-              (programEventGraph_hasLocalFrontierSteps g)).Act
-                player)) := by
-    intro player
-    simpa [eventGraphFOSGView] using
-      (eventGraphFOSGView.instFintypeOptionAct g player)
-  simpa [eventGraphMachine, eventGraphFOSGView] using
-    (EventGraph.boundedFOSGEventBatchTraceDistFrom
-      (programEventGraph g) (eventGraphMachineInterface g)
-      (programEventGraph_hasLocalFrontierSteps g) horizon σ)
-
-/-- Bounded event-graph FOSG execution, projected to extracted primitive
-event batches and checkpoint state, equals the history-dependent event-batch
-machine trace distribution induced by the same behavioral profile. -/
-theorem eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (horizon : Nat)
-    (σ :
-      GameTheory.FOSG.LegalBehavioralProfile
-        ((eventGraphFOSGView g).toBoundedFOSG horizon))
-    (n : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
+/-- Running the frontier FOSG under the translated behavioral profile is the
+native bounded frontier run, with native histories repackaged as FOSG
+histories. -/
+theorem fosg_runDist_eq_map_behavioralHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile)
+    (steps : Nat) :
     PMF.map
-        (fun h' =>
-          (eventGraphFOSGHistoryEventBatches g horizon h',
-            h'.lastState.state))
-        (GameTheory.FOSG.History.runDistFrom
-          ((eventGraphFOSGView g).toBoundedFOSG horizon) σ n h) =
-      eventGraphFOSGEventBatchTraceDistFrom g horizon σ n h := by
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))
+        ((semantics.behavioral.view).runDist
+          semantics.horizon steps profile) =
+      semantics.fosg.runDist steps
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            semantics.behavioral.view semantics.horizon (fun _ => 0)
+            profile).extend := by
+  classical
+  simpa [fosg] using
+    Machine.RoundView.ToFOSG.runDist_historyOfBoundedHistory
+      (view := semantics.behavioral.view)
+      (horizon := semantics.horizon)
+      (cutoff := fun _ => 0)
+      profile steps
+
+/-- Pure frontier profiles run through the FOSG presentation by first applying
+the native pure-to-behavioral realization of the same frontier round view. -/
+theorem fosg_runDist_eq_map_pureHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.pureGame.Profile)
+    (steps : Nat) :
+    PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))
+        ((semantics.behavioral.view).runDist
+          semantics.horizon steps
+          ((semantics.behavioral.view).legalPureToBehavioral
+            semantics.horizon profile)) =
+      semantics.fosg.runDist steps
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            semantics.behavioral.view semantics.horizon (fun _ => 0)
+            ((semantics.behavioral.view).legalPureToBehavioral
+              semantics.horizon profile)).extend := by
+  simpa using
+    semantics.fosg_runDist_eq_map_behavioralHistory
+      ((semantics.behavioral.view).legalPureToBehavioral
+        semantics.horizon profile) steps
+
+/-- Transition-reward history kernel induced by the bounded frontier FOSG.
+Outcomes are FOSG histories; profiles are legal FOSG behavioral profiles. -/
+noncomputable def fosgHistoryKernelGame
+    (semantics : FrontierGameSemantics program) :
+    KernelGame P :=
+  Machine.RoundView.ToFOSG.historyKernelGame
+    semantics.behavioral.view semantics.horizon (fun _ => 0)
+
+/-- The FOSG history-kernel outcome law agrees with the native behavioral
+frontier run after translating profiles and repackaging histories. -/
+theorem fosgHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile) :
+    semantics.fosgHistoryKernelGame.outcomeKernel
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          semantics.behavioral.view semantics.horizon (fun _ => 0)
+          profile).extend =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))
+        ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon profile) := by
+  simpa [fosgHistoryKernelGame] using
+    Machine.RoundView.ToFOSG.historyKernelGame_outcomeKernel_eq_map_runDist
+      (view := semantics.behavioral.view)
+      (horizon := semantics.horizon)
+      (cutoff := fun _ => 0)
+      profile
+
+/-- Payoff-faithful FOSG history kernel whose utility is the final compiled
+machine payoff, not the cumulative FOSG transition reward.  This is the
+strategic FOSG denotation for compiled frontier games. -/
+noncomputable def fosgMachinePayoffHistoryKernelGame
+    (semantics : FrontierGameSemantics program) :
+    KernelGame P :=
+  Machine.RoundView.ToFOSG.machinePayoffHistoryKernelGame
+    semantics.behavioral.view semantics.horizon (fun _ => 0)
+
+/-- Restrict a payoff-facing FOSG behavioral profile back to the native
+bounded frontier profile it induces on reachable information states. -/
+noncomputable def behavioralProfileOfFOSGProfile
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.fosgMachinePayoffHistoryKernelGame.Profile) :
+    semantics.behavioralGame.Profile :=
+  Machine.RoundView.ToFOSG.boundedBehavioralProfileOfLegalBehavioralProfile
+    semantics.behavioral.view semantics.horizon (fun _ => 0) profile
+
+theorem fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          semantics.behavioral.view semantics.horizon (fun _ => 0)
+          profile).extend =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))
+        ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon profile) := by
+  simpa [fosgMachinePayoffHistoryKernelGame] using
+    Machine.RoundView.ToFOSG.machinePayoffHistoryKernelGame_outcomeKernel_eq_map_runDist
+      (view := semantics.behavioral.view)
+      (horizon := semantics.horizon)
+      (cutoff := fun _ => 0)
+      profile
+
+/-- Every payoff-facing FOSG profile is run-equivalent to its native reachable
+frontier restriction. -/
+theorem fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_restrictedBehavioralHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.fosgMachinePayoffHistoryKernelGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel profile =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))
+        ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon
+          (semantics.behavioralProfileOfFOSGProfile profile)) := by
+  simpa [fosgMachinePayoffHistoryKernelGame,
+    behavioralProfileOfFOSGProfile] using
+    Machine.RoundView.ToFOSG.runDist_eq_map_boundedBehavioralProfileOfLegalBehavioralProfile
+      (view := semantics.behavioral.view)
+      (horizon := semantics.horizon)
+      (cutoff := fun _ => 0)
+      profile semantics.horizon
+
+/-- The payoff-facing FOSG history kernel and the native behavioral completed
+history kernel induce the same joint utility distribution. -/
+theorem fosgMachinePayoffHistoryKernelGame_udist_behavioralHistoryKernelGame
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.udist
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          semantics.behavioral.view semantics.horizon (fun _ => 0)
+          profile).extend =
+      semantics.behavioralHistoryKernelGame.udist profile := by
+  change
+    (semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel
+          (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            semantics.behavioral.view semantics.horizon (fun _ => 0)
+            profile).extend).bind
+        (fun h =>
+          PMF.pure (semantics.fosgMachinePayoffHistoryKernelGame.utility h)) =
+      (semantics.behavioralHistoryKernel profile).bind
+        (fun h => PMF.pure (semantics.behavioralHistoryUtility h))
+  rw [semantics.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    profile]
+  change
+    (((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon profile).map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))).bind
+        (fun h =>
+          PMF.pure (semantics.fosgMachinePayoffHistoryKernelGame.utility h)) =
+      ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon profile).bind
+        (fun h => PMF.pure (semantics.behavioralHistoryUtility h))
+  rw [PMF.bind_map]
+  congr
+  funext history
+  apply congrArg PMF.pure
+  funext who
+  simp [fosgMachinePayoffHistoryKernelGame,
+    Machine.RoundView.ToFOSG.machinePayoffHistoryKernelGame,
+    FrontierGameSemantics.behavioralHistoryUtility,
+    FrontierGameSemantics.optionOutcomePayoff]
+  cases ((PrimitiveMachine (compile program.core)).outcome
+    history.lastState.state) <;> rfl
+
+/-- For arbitrary payoff-facing FOSG profiles, restricting the profile to the
+native reachable frontier surface preserves the joint utility distribution. -/
+theorem fosgMachinePayoffHistoryKernelGame_udist_restrictedBehavioralHistoryKernelGame
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.fosgMachinePayoffHistoryKernelGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.udist profile =
+      semantics.behavioralHistoryKernelGame.udist
+        (semantics.behavioralProfileOfFOSGProfile profile) := by
+  change
+    (semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel profile).bind
+        (fun h =>
+          PMF.pure (semantics.fosgMachinePayoffHistoryKernelGame.utility h)) =
+      (semantics.behavioralHistoryKernel
+          (semantics.behavioralProfileOfFOSGProfile profile)).bind
+        (fun h => PMF.pure (semantics.behavioralHistoryUtility h))
+  rw [
+    semantics.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_restrictedBehavioralHistory
+      profile]
+  change
+    (((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon
+          (semantics.behavioralProfileOfFOSGProfile profile)).map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0))).bind
+        (fun h =>
+          PMF.pure (semantics.fosgMachinePayoffHistoryKernelGame.utility h)) =
+      ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon
+          (semantics.behavioralProfileOfFOSGProfile profile)).bind
+        (fun h => PMF.pure (semantics.behavioralHistoryUtility h))
+  rw [PMF.bind_map]
+  congr
+  funext history
+  apply congrArg PMF.pure
+  funext who
+  simp [fosgMachinePayoffHistoryKernelGame,
+    Machine.RoundView.ToFOSG.machinePayoffHistoryKernelGame,
+    FrontierGameSemantics.behavioralHistoryUtility,
+    FrontierGameSemantics.optionOutcomePayoff]
+  cases ((PrimitiveMachine (compile program.core)).outcome
+    history.lastState.state) <;> rfl
+
+/-- The payoff-facing FOSG history kernel and the native behavioral frontier
+game induce the same joint utility distribution. -/
+theorem fosgMachinePayoffHistoryKernelGame_udist_behavioralGame
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.udist
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          semantics.behavioral.view semantics.horizon (fun _ => 0)
+          profile).extend =
+      semantics.behavioralGame.udist profile := by
+  rw [semantics.fosgMachinePayoffHistoryKernelGame_udist_behavioralHistoryKernelGame
+    profile]
+  exact semantics.behavioralHistoryKernelGame_udist profile
+
+/-- Arbitrary payoff-facing FOSG profiles have the same joint utility
+distribution as their native reachable frontier restriction. -/
+theorem fosgMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.fosgMachinePayoffHistoryKernelGame.Profile) :
+    semantics.fosgMachinePayoffHistoryKernelGame.udist profile =
+      semantics.behavioralGame.udist
+        (semantics.behavioralProfileOfFOSGProfile profile) := by
+  rw [
+    semantics.fosgMachinePayoffHistoryKernelGame_udist_restrictedBehavioralHistoryKernelGame
+      profile]
+  exact
+    semantics.behavioralHistoryKernelGame_udist
+      (semantics.behavioralProfileOfFOSGProfile profile)
+
+/-- Every supported payoff-facing FOSG history is backed by a native completed
+frontier history, a terminal graph checkpoint, and executable primitive event
+batches. -/
+theorem fosgMachinePayoffHistoryKernelGame_support_nativeHistory
+    (semantics : FrontierGameSemantics program)
+    (profile : semantics.behavioralGame.Profile)
+    {history : semantics.fosgMachinePayoffHistoryKernelGame.Outcome}
+    (hsupport :
+      history ∈
+        (semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel
+          (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            semantics.behavioral.view semantics.horizon (fun _ => 0)
+            profile).extend).support) :
+    ∃ nativeHistory : semantics.BehavioralHistory,
+      nativeHistory ∈
+        ((semantics.behavioral.view).runDist
+          semantics.horizon semantics.horizon profile).support ∧
+      Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          semantics.behavioral.view semantics.horizon (fun _ => 0)
+          nativeHistory = history ∧
+      EventGraph.Terminal (compile program.core).graph
+        nativeHistory.lastState.state.1 ∧
+      (PrimitiveMachine (compile program.core)).AvailableRunBatchesFrom
+        ((Machine.BoundedState.init
+          (PrimitiveMachine (compile program.core))
+          semantics.horizon).state)
+        ((semantics.behavioral.view).boundedHistoryEventBatches
+          semantics.horizon nativeHistory)
+        nativeHistory.lastState.state := by
+  classical
   letI :
       ∀ player,
         Fintype
           (Option
-            (((programEventGraph g).toFOSGView
-              (eventGraphMachineInterface g)
-              (programEventGraph_hasLocalFrontierSteps g)).Act
-                player)) := by
+            ((frontierRoundView
+              (compile program.core)
+              (frontierPresentation
+                (compile program.core)
+                (compile_guardLive program))
+              semantics.behavioral.semantics).Act player)) := by
     intro player
-    simpa [eventGraphFOSGView] using
-      (eventGraphFOSGView.instFintypeOptionAct g player)
-  letI :
-      Fintype
-        (((programEventGraph g).toMachine
-          (eventGraphMachineInterface g)).BoundedState horizon) := by
-    simpa [eventGraphMachine] using
-      (inferInstance : Fintype ((eventGraphMachine g).BoundedState horizon))
-  letI :
-      DecidablePred
-        ((((programEventGraph g).toFOSGView
-          (eventGraphMachineInterface g)
-          (programEventGraph_hasLocalFrontierSteps g)).toBoundedFOSG
-            horizon).terminal) :=
-    Classical.decPred _
-  simpa [eventGraphFOSGHistoryEventBatches, eventGraphMachine,
-    eventGraphFOSGView, eventGraphFOSGEventBatchTraceDistFrom] using
-      (EventGraph.boundedFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
-        (programEventGraph g) (eventGraphMachineInterface g)
-        (programEventGraph_hasLocalFrontierSteps g) horizon σ n h)
+    simpa [FrontierGameSemantics.behavioral,
+      CompletedFrontierBehavioralKernelGame.view] using
+      semantics.games.kuhnOptionalMoveFintype player
+  have hmap := hsupport
+  rw [semantics.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    profile] at hmap
+  rcases (PMF.mem_support_map_iff _ _ _).mp hmap with
+    ⟨nativeHistory, hnative, hhistory⟩
+  have hterminal :
+      EventGraph.Terminal (compile program.core).graph
+        nativeHistory.lastState.state.1 := by
+    simpa [FrontierGameSemantics.behavioral,
+      FrontierGameSemantics.horizon] using
+      ToEventGraph.FrontierRoundSemantics.runDist_support_terminal_of_completionBound
+        semantics.behavioral.semantics profile hnative
+  have hrun :
+      (PrimitiveMachine (compile program.core)).AvailableRunBatchesFrom
+        ((Machine.BoundedState.init
+          (PrimitiveMachine (compile program.core))
+          semantics.horizon).state)
+        ((semantics.behavioral.view).boundedHistoryEventBatches
+          semantics.horizon nativeHistory)
+        nativeHistory.lastState.state := by
+    simpa [FrontierGameSemantics.behavioral,
+      FrontierGameSemantics.horizon] using
+      ToEventGraph.FrontierRoundSemantics.boundedHistory_eventBatches_availableRun
+        semantics.behavioral.semantics nativeHistory
+  exact ⟨nativeHistory, hnative, hhistory, hterminal, hrun⟩
 
-/-- Initial history of the bounded event-graph FOSG presentation. -/
-noncomputable def eventGraphInitialHistory
-    (g : WFProgram P L) (horizon : Nat) :
-    (((eventGraphFOSGView g).toBoundedFOSG horizon).History) :=
-  GameTheory.FOSG.History.nil
-    ((eventGraphFOSGView g).toBoundedFOSG horizon)
+end FrontierGameSemantics
+end ToEventGraph
 
-/-- Project a bounded event-graph FOSG history to primitive event batches and
-the checkpoint machine state. -/
-noncomputable def eventGraphHistoryTrace
-    (g : WFProgram P L) (horizon : Nat)
-    (h : (((eventGraphFOSGView g).toBoundedFOSG horizon).History)) :
-    List (List (eventGraphMachine g).Event) × (eventGraphMachine g).State :=
-  (eventGraphFOSGHistoryEventBatches g horizon h, h.lastState.state)
+namespace WFProgram
 
-/-- Outcome extracted from an event-batch event-graph trace. -/
-noncomputable def eventGraphTraceOutcome
-    (g : WFProgram P L)
-    (trace :
-      List (List (eventGraphMachine g).Event) ×
-        (eventGraphMachine g).State) :
-    (eventGraphMachine g).Outcome :=
-  (eventGraphMachine g).outcome trace.2
+variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
-/-- Bounded behavioral outcome kernel of the event-graph FOSG view, computed
-as the machine outcome projection of the induced event-batched primitive trace
-distribution. -/
-theorem eventGraphFOSG_boundedOutcomeFromBehavioral_eq_eventBatchTraceDist
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (horizon : Nat)
-    (β : (eventGraphFOSGView g).BoundedBehavioralProfile horizon)
+/-- FOSG denotation of a checked program's canonical frontier game. -/
+noncomputable def frontierFOSG
+    (program : WFProgram P L) [FiniteDomains program] :=
+  program.frontierSemantics.fosg
+
+/-- The program frontier FOSG is bounded by the canonical completion horizon. -/
+theorem frontierFOSG_boundedHorizon
+    (program : WFProgram P L) [FiniteDomains program] :
+    program.frontierFOSG.BoundedHorizon program.frontierSemantics.horizon :=
+  program.frontierSemantics.fosg_boundedHorizon
+
+noncomputable local instance instFrontierFOSGTerminalDecidable
+    (program : WFProgram P L) [FiniteDomains program] :
+    DecidablePred program.frontierFOSG.terminal :=
+  Classical.decPred _
+
+/-- Program-facing execution law for the FOSG presentation of the canonical
+behavioral frontier game. -/
+theorem frontierFOSG_runDist_eq_map_behavioralHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile)
     (steps : Nat) :
-    (eventGraphFOSGView g).boundedOutcomeFromBehavioral
-        horizon β steps =
-      PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
-          (eventGraphInitialHistory g horizon)) := by
-  let run :=
-    GameTheory.FOSG.History.runDistFrom
-      ((eventGraphFOSGView g).toBoundedFOSG horizon) β.extend steps
-      (eventGraphInitialHistory g horizon)
-  calc
-    (eventGraphFOSGView g).boundedOutcomeFromBehavioral horizon β steps =
-      PMF.map
-        (fun h' => (eventGraphMachine g).outcome h'.lastState.state)
-        run := by
-          rfl
-    _ = PMF.map (eventGraphTraceOutcome g)
-          (PMF.map (eventGraphHistoryTrace g horizon) run) := by
-          rw [PMF.map_comp]
-          rfl
-    _ =
-      PMF.map (eventGraphTraceOutcome g)
-        (eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
-          (eventGraphInitialHistory g horizon)) := by
-          have htrace :
-              PMF.map (eventGraphHistoryTrace g horizon) run =
-                eventGraphFOSGEventBatchTraceDistFrom g horizon β.extend steps
-                  (eventGraphInitialHistory g horizon) := by
-            simpa [eventGraphHistoryTrace, run] using
-              (eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
-                (g := g) (horizon := horizon) (σ := β.extend)
-                (n := steps)
-                (h := eventGraphInitialHistory g horizon))
-          rw [htrace]
+    PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0))
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon steps profile) =
+      program.frontierFOSG.runDist steps
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            program.frontierSemantics.behavioral.view
+            program.frontierSemantics.horizon (fun _ => 0)
+            profile).extend := by
+  simpa [frontierFOSG, ToEventGraph.FrontierGameSemantics.fosg,
+    ToEventGraph.FrontierGameSemantics.horizon,
+    BehavioralFrontierProfile] using
+    program.frontierSemantics
+      |>.fosg_runDist_eq_map_behavioralHistory profile steps
 
-/-- Bounded pure outcome kernel of the event-graph FOSG view, computed as
-the machine outcome projection of the event-batched primitive trace distribution
-induced by the pure profile's behavioral embedding. -/
-theorem eventGraphFOSG_boundedOutcomeFromPure_eq_eventBatchTraceDist
-    [Fintype P] (g : WFProgram P L) [FiniteDomains g]
-    (horizon : Nat)
-    (π : (eventGraphFOSGView g).BoundedPureProfile horizon)
+/-- Program-facing pure-profile execution law for the FOSG presentation of the
+canonical frontier game. -/
+theorem frontierFOSG_runDist_eq_map_pureHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.PureFrontierProfile)
     (steps : Nat) :
-    (eventGraphFOSGView g).boundedOutcomeFromPure
-        horizon π steps =
-      PMF.map
-        (eventGraphTraceOutcome g)
-        (eventGraphFOSGEventBatchTraceDistFrom g horizon
-          (GameTheory.FOSG.legalPureToBehavioral
-            ((eventGraphFOSGView g).toBoundedFOSG horizon) π.extend)
-          steps
-          (eventGraphInitialHistory g horizon)) := by
-  let σ :=
-    GameTheory.FOSG.legalPureToBehavioral
-      ((eventGraphFOSGView g).toBoundedFOSG horizon) π.extend
-  let run :=
-    GameTheory.FOSG.History.runDistFrom
-      ((eventGraphFOSGView g).toBoundedFOSG horizon) σ steps
-      (eventGraphInitialHistory g horizon)
-  calc
-    (eventGraphFOSGView g).boundedOutcomeFromPure horizon π steps =
-      PMF.map
-        (fun h' => (eventGraphMachine g).outcome h'.lastState.state)
-        run := by
-          rfl
-    _ = PMF.map (eventGraphTraceOutcome g)
-          (PMF.map (eventGraphHistoryTrace g horizon) run) := by
-          rw [PMF.map_comp]
-          rfl
-    _ =
-      PMF.map (eventGraphTraceOutcome g)
-        (eventGraphFOSGEventBatchTraceDistFrom g horizon σ steps
-          (eventGraphInitialHistory g horizon)) := by
-          have htrace :
-              PMF.map (eventGraphHistoryTrace g horizon) run =
-                eventGraphFOSGEventBatchTraceDistFrom g horizon σ steps
-                  (eventGraphInitialHistory g horizon) := by
-            simpa [eventGraphHistoryTrace, run] using
-              (eventGraphFOSG_runDistFrom_map_eventBatches_state_eq_eventBatchTraceDistFrom
-                (g := g) (horizon := horizon) (σ := σ)
-                (n := steps)
-                (h := eventGraphInitialHistory g horizon))
-          rw [htrace]
+    PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0))
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon steps
+          ((program.frontierSemantics.behavioral.view).legalPureToBehavioral
+            program.frontierSemantics.horizon profile)) =
+      program.frontierFOSG.runDist steps
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            program.frontierSemantics.behavioral.view
+            program.frontierSemantics.horizon (fun _ => 0)
+            ((program.frontierSemantics.behavioral.view).legalPureToBehavioral
+              program.frontierSemantics.horizon profile)).extend := by
+  simpa [frontierFOSG, ToEventGraph.FrontierGameSemantics.fosg,
+    ToEventGraph.FrontierGameSemantics.horizon,
+    PureFrontierProfile] using
+    program.frontierSemantics
+      |>.fosg_runDist_eq_map_pureHistory profile steps
 
+/-- Program-facing transition-reward FOSG history kernel of the canonical
+frontier game. -/
+noncomputable def frontierFOSGHistoryKernelGame
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame P :=
+  program.frontierSemantics.fosgHistoryKernelGame
+
+/-- Program-facing FOSG history-kernel outcome law for behavioral frontier
+profiles. -/
+theorem frontierFOSGHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) :
+    program.frontierFOSGHistoryKernelGame.outcomeKernel
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0)
+          profile).extend =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0))
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon
+          program.frontierSemantics.horizon profile) := by
+  simpa [frontierFOSGHistoryKernelGame, BehavioralFrontierProfile] using
+    program.frontierSemantics
+      |>.fosgHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+        profile
+
+/-- Program-facing payoff-faithful FOSG history kernel with final machine
+payoff utility. -/
+noncomputable def frontierFOSGMachinePayoffHistoryKernelGame
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame P :=
+  program.frontierSemantics.fosgMachinePayoffHistoryKernelGame
+
+/-- Restrict a payoff-facing FOSG behavioral profile to the native reachable
+frontier profile it induces. -/
+noncomputable def behavioralFrontierProfileOfFOSGProfile
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.frontierFOSGMachinePayoffHistoryKernelGame.Profile) :
+    program.BehavioralFrontierProfile :=
+  program.frontierSemantics.behavioralProfileOfFOSGProfile profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.outcomeKernel
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0)
+          profile).extend =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0))
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon
+          program.frontierSemantics.horizon profile) := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    BehavioralFrontierProfile] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
+        profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_restrictedBehavioralHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.frontierFOSGMachinePayoffHistoryKernelGame.Profile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.outcomeKernel
+        profile =
+      PMF.map
+        (Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0))
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon
+          program.frontierSemantics.horizon
+          (program.behavioralFrontierProfileOfFOSGProfile profile)) := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    behavioralFrontierProfileOfFOSGProfile,
+    BehavioralFrontierProfile] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_restrictedBehavioralHistory
+        profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralHistoryKernelGame
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.udist
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0)
+          profile).extend =
+      program.behavioralFrontierHistoryKernelGame.udist profile := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    BehavioralFrontierProfile, behavioralFrontierHistoryKernelGame] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_udist_behavioralHistoryKernelGame
+        profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralGame
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.udist
+        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0)
+          profile).extend =
+      program.behavioralFrontierGame.udist profile := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    BehavioralFrontierProfile, behavioralFrontierGame] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_udist_behavioralGame profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_udist_restrictedBehavioralHistoryKernelGame
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.frontierFOSGMachinePayoffHistoryKernelGame.Profile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.udist profile =
+      program.behavioralFrontierHistoryKernelGame.udist
+        (program.behavioralFrontierProfileOfFOSGProfile profile) := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    behavioralFrontierProfileOfFOSGProfile, BehavioralFrontierProfile,
+    behavioralFrontierHistoryKernelGame] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_udist_restrictedBehavioralHistoryKernelGame
+        profile
+
+theorem frontierFOSGMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.frontierFOSGMachinePayoffHistoryKernelGame.Profile) :
+    program.frontierFOSGMachinePayoffHistoryKernelGame.udist profile =
+      program.behavioralFrontierGame.udist
+        (program.behavioralFrontierProfileOfFOSGProfile profile) := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    behavioralFrontierProfileOfFOSGProfile, BehavioralFrontierProfile,
+    behavioralFrontierGame] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
+        profile
+
+/-- Program-facing runtime witness for supported payoff-facing FOSG histories:
+each such FOSG history comes from a native completed frontier history with
+primitive event batches reaching a terminal graph checkpoint. -/
+theorem frontierFOSGMachinePayoffHistoryKernelGame_support_nativeHistory
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile)
+    {history : program.frontierFOSGMachinePayoffHistoryKernelGame.Outcome}
+    (hsupport :
+      history ∈
+        (program.frontierFOSGMachinePayoffHistoryKernelGame.outcomeKernel
+          (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
+            program.frontierSemantics.behavioral.view
+            program.frontierSemantics.horizon (fun _ => 0)
+            profile).extend).support) :
+    ∃ nativeHistory : program.BehavioralFrontierHistory,
+      nativeHistory ∈
+        ((program.frontierSemantics.behavioral.view).runDist
+          program.frontierSemantics.horizon
+          program.frontierSemantics.horizon profile).support ∧
+      Machine.RoundView.ToFOSG.historyOfBoundedHistory
+          program.frontierSemantics.behavioral.view
+          program.frontierSemantics.horizon (fun _ => 0)
+          nativeHistory = history ∧
+      EventGraph.Terminal (ToEventGraph.compile program.core).graph
+        nativeHistory.lastState.state.1 ∧
+      (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core)).AvailableRunBatchesFrom
+        ((Machine.BoundedState.init
+          (ToEventGraph.PrimitiveMachine
+            (ToEventGraph.compile program.core))
+          program.frontierSemantics.horizon).state)
+        ((program.frontierSemantics.behavioral.view).boundedHistoryEventBatches
+          program.frontierSemantics.horizon nativeHistory)
+        nativeHistory.lastState.state := by
+  simpa [frontierFOSGMachinePayoffHistoryKernelGame,
+    BehavioralFrontierProfile, BehavioralFrontierHistory] using
+    program.frontierSemantics
+      |>.fosgMachinePayoffHistoryKernelGame_support_nativeHistory
+        profile hsupport
+
+end WFProgram
 
 end Vegas

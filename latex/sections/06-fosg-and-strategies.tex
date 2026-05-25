@@ -1,355 +1,93 @@
-\section{Native round views, strategies, and kernel games}
+\section{Frontier strategies and game forms}
 \label{sec:fosg-strategies}
 
-The shift from operational machine to game-theoretic structure
-happens at this layer.  We define a native round view on top of a
-machine, exhibit the event-graph round view, build pure and
-PMF-behavioral strategy carriers from that view, and present the
-game forms and kernel games over which the standard solution-concept
-inventory is defined.  The FOSG view mirrors the same round
-structure as a presentation layer; it is used by the FOSG, EFG, and
-Kuhn bridges, not by the native strategy definitions.
+\subsection{Native round views}
 
-\subsection{Why native round views, and where FOSG enters}
+The Vegas-facing game semantics are native frontier round views over the
+primitive graph machine.  A round view supplies an active-player set,
+per-player available round actions, a legal joint-action predicate, a
+transition kernel, and a primitive event-batch witness for refinement
+reasoning.
 
-The factored-observation stochastic game formalism
-\citep{Kovarik2022} indexes strategies by sequences of per-player
-observations and packages chance and decision in the same
-transition.  Two of its features fit the construction directly.
-First, a player's epistemic state is given by their per-step
-observation sequence — the same data that the visibility discipline
-of \S\ref{sec:source-language} produces from the source program.
-Second, FOSG admits a round-batched view of an asynchronous
-machine: a single FOSG round collapses many primitive events of
-the underlying machine into one transition, which is exactly the
-shape we want for the event-graph machine.
+For a compiled program, the canonical frontier round has two phases.
+If internal graph nodes are ready, the round closes internal work before
+presenting a strategic choice.  Otherwise, if commit nodes are ready,
+each active player chooses actions for their ready commit nodes; the
+round executes the selected commit frontier and then closes newly ready
+internal work.  If neither internal work nor active commits exist and
+the state is nonterminal, graph well-formedness plus guard liveness rule
+out the case.
 
-The native strategic layer uses this round-batched shape directly; the
-definitions do not route through FOSG.  FOSG provides the external
-game-theory presentation used to reuse the GameTheory library's
-FOSG-to-EFG bridge and finite Kuhn theorem.  The relationship between
-the native round view and the FOSG presentation is therefore a bridge
-theorem, not a definition.
+This is a checkpoint semantics, not a primitive scheduler.  Primitive
+order inside the event batch is a proof witness used to connect to
+machines and refinements.  The player history records checkpoint
+observations.
 
-\subsection{The native round view and FOSG presentation}
-\label{sec:fosg:view}
-
-A \emph{round view} on top of a machine $\Mach$ is a tuple
-\[
-  \mathcal{V} = \bigl(
-    \{\Act_p\}_p,\;
-    \activeSet : \State \to \mathrm{Finset}(\Players),\;
-    \mathrm{availActions},\;
-    \mathrm{transition},\;
-    \mathrm{eventBatch}
-  \bigr)
-\]
-of: a per-player round-action alphabet $\Act_p$ (independent of
-$\Mach$'s action type); an \emph{active set} $\activeSet(s)$ at each
-state; a per-player legal-action predicate
-$\mathrm{availActions}(s, p) \subseteq \Act_p$; a transition
-kernel
-\[
-  \mathrm{transition} : (s : \State) \times
-    \{\,\sigma : \mathrm{JointAction}\,\Act \mid
-      \mathrm{legal}(s, \sigma)\,\}
-    \to \PMF{\State},
-\]
-and an event-batch projection recording, from source state, joint move,
-and realized destination, which primitive machine events are represented
-by the round. Two side conditions hold:
-terminal states have empty
-active sets, and non-terminal states admit at least one legal joint
-action.
-
-\subsubsection*{The event-graph round view}
-
-Concretely, one native round of the event-graph machine
-$\Mach_{\EG}$ is an order-free whole-frontier transition.  At a
-configuration $C$, the active set is the set of players who own at
-least one current frontier node.  Each active player selects a
-round-action that contains candidate field patches; availability
-checks only the patches for that player's owned nodes in
-$\frontier(C)$.  The transition samples one field patch for every
-node currently in $\frontier(C)$ and extends the closed assignment by
-that whole-frontier realization.  Player-owned nodes use the selected
-player patches; internal nodes use the event graph's internal kernels
-(deterministic for $\mathsf{assign}$ and $\mathsf{reveal}$,
-stochastic for $\mathsf{sample}$).  Nodes that become enabled by this
-extension wait for a later round.
-
-The round-action alphabet is static: independently of the
-configuration, $\Act_p$ is the type
-\[
-  \Act_p \;=\; (n : \Nodes) \to \mathrm{Patch}(n),
-\]
-with the player menu using $\mathsf{Option}(\Act_p)$ so that
-$\mathsf{none}$ denotes \emph{not active in this round}.  The total
-function is intentionally wider than the current menu: irrelevant
-coordinates are ignored.  The configuration enters at the level of
-\emph{availability}, not the alphabet.  At configuration $C$, the
-available $\mathsf{some}\,a$ actions for $p$ are those whose patches
-are legal on every node in
-$\frontier(C) \cap \{n : \actor(n) = p\}$.  Keeping the alphabet
-static means strategy types do not depend on the run-time
-configuration; the per-state menu is recovered by intersecting with
-the frontier.
-
-The list order inside the round is definitional presentation data.
-The frontier diamond and its whole-frontier linearization theorem
-state that, for the same current frontier and patches, independent
-frontier nodes reach the same endpoint regardless of admissible
-linearization.  The native transition is therefore stated through the
-order-free frontier-realization kernel, with canonical lists used only
-for primitive execution witnesses.
-
-\subsubsection*{Explicit realized event batches}
-
-The collapse from machine to FOSG is tied back to primitive execution
-by an explicit batch distribution, not by hiding chance inside a node
-event.  The sampler walks $\frontier(C).\mathrm{toList}$, threads the
-configuration, and records the concrete primitive event at each source
-frontier node.  Player nodes record the selected player patch; internal
-nodes first sample the current internal kernel and then record
-$\mathrm{InternalEvent.node}(n,\mathit{patch})$ with the sampled patch.
-The view requires the independent-frontier-step condition: player choices
-that are available at the source remain available after earlier distinct
-frontier nodes execute, and internal kernels for distinct source-frontier nodes
-are unchanged by those earlier executions.  Thus supported batches record
-available primitive events rather than total-step stutters, and the canonical
-threaded order is a representative schedule justified by frontier
-independence.
-
-\begin{theorem}[Explicit batch execution]
-\label{thm:explicit-batch-execution}
-For every supported pair $(B,D)$ of the explicit round-batch distribution from
-an independent legal round $(C,\sigma)$, $B$ is an available primitive run from
-$C$ to $D$; in particular running the primitive event list $B$ from $C$ reaches
-$D$ with nonzero support.  Forgetting $B$ recovers the scheduled
-representative transition, while the native transition samples the same
-whole-frontier realization directly.
-\end{theorem}
-
-Thus the FOSG and native transition kernels use the order-free
-frontier-realization transition, while the round view additionally exposes the
-realized primitive trace witness needed by backend-refinement arguments.
-
-The corresponding FOSG view uses the same action alphabet, active
-sets, available-action predicates, and transition kernel.  It adds the
-reward and observation fields required by the generic FOSG library.
-
-\subsection{Reachable information states and strategies}
+\subsection{Strategies}
 \label{sec:fosg:strategies}
 
-For the bounded native round view of a checked program, the set of
-\emph{information states} of player $p$ is the set of equivalence
-classes of bounded round histories under $p$'s observation.  We work with the
-\emph{reachable} subset:
-\[
-  \mathrm{ReachableInfoState}(p) =
-    \bigl\{\, I \in \InfoState_p \mid
-      \exists h \in \mathrm{History}.\, h.\mathrm{view}_p = I \,\bigr\},
-\]
-i.e.\ those information states realized by \emph{some} history in
-the native round view.  Reachability is a purely combinatorial property of
-histories, not a property quantified over profiles; this keeps the
-strategy carrier definable without circularly referring to the
-profiles that range over it.
+The bounded round view yields finite reachable information states for
+each player.  A pure frontier strategy maps each reachable information
+state to an optional round action.  A behavioral frontier strategy maps
+each reachable information state to a PMF over optional round actions.
+The legal carriers contain only strategies that choose available actions
+at every reachable information state.  Illegal actions are not filtered
+after the fact; they are absent from the strategy type used by the
+kernel game.
 
-A \emph{pure strategy} for $p$ is a function
-\[
-  \sigma^{\mathrm{pure}}_p : \mathrm{ReachableInfoState}(p)
-    \to \mathrm{Option}(\Act_p),
-\]
-returning $\mathsf{none}$ at information states where $p$ is not
-active and $\mathsf{some}\,a$ at active ones.  A
-\emph{behavioral strategy} is the analogous function valued in
-$\PMF{\mathrm{Option}(\Act_p)}$.
+The product mixed-pure game is the independent mixed extension of the
+pure frontier game.  It is the carrier used for finite Kuhn statements:
+each player samples a pure contingent plan once, independently of the
+other players, and then the sampled pure profile is run through the pure
+frontier outcome kernel.
 
-The \emph{legal} carriers further restrict: at every reachable
-information state where $p$ is active, the chosen $\mathsf{some}\,a$
-satisfies $a \in \mathrm{availActions}(h, p)$ at every native history
-that realizes that information state.  This is what closes the gap from program-level
-\emph{Legal} (existence of a legal action at each commit site) to
-\emph{strategic} legality (every strategy in the carrier prescribes
-only legal actions): illegal moves are absent from the carrier, not
-filtered after the fact.
-
-\designnote{Reachability-pruning matters because illegal moves of
-unreachable information states would otherwise pollute the
-carrier without affecting any equilibrium.  Pruning is purely
-combinatorial: it does not require quantifying over profiles.  The
-carrier is still finite by the bounded horizon imposed in
-\S\ref{sec:fosg:horizon}.}
-
-\subsection{Bounded horizon and outcome kernels}
-\label{sec:fosg:horizon}
-
-A finite event graph admits a finite execution horizon: the source
-program has a finite syntax-step count
-$h(g) = |\,\mathrm{constructors of }\,g \text{ except }\Ret\,|$, and
-no native round can advance the depth counter beyond $h(g)$.  Bounding
-the round view by $h(g)$ produces finite strategy carriers and finite
-outcome kernels.  The FOSG presentation has the same horizon for the
-FOSG/EFG bridge theorems.
-
-The bounded view exposes outcome kernels for both pure and
-behavioral profiles:
-\begin{align*}
-  \mathrm{outcomeFromPure}_h\,\pi      &\in \PMF{\Outcome}, \\
-  \mathrm{outcomeFromBehavioral}_h\,\beta &\in \PMF{\Outcome}.
-\end{align*}
-
-\subsection{Game forms and kernel games}
+\subsection{Kernel games}
 \label{sec:fosg:kernel-games}
 
-We first separate \emph{game form} from \emph{preference}.  A game
-form contains per-player strategy types, an outcome type, and a
-profile-to-outcome kernel, but no utility.  Vegas exposes game
-forms for payoff-vector outcomes, terminal public-state outcomes,
-and realization-trace outcomes.  The terminal-public-state game forms
-are useful when the caller wants the final public observation itself
-rather than only the payoff vector.
-
-A \emph{kernel game} attaches utility to a game form and is the
-minimal strategic-form carrier on top of which expected-utility
-solution concepts make sense:
-\begin{equation}
-\label{eq:kernel-game}
-  \KG \;=\; \bigl(\,
-    \{S_p\}_p,\, O,\, K : {\textstyle\prod_p} S_p \to \PMF{O},\,
-    u : O \to (\Players \to \mathbb{R})\,\bigr).
-\end{equation}
-Expected utility is then the obvious functional
-\begin{equation}
-\label{eq:eu}
-  \EU(\Profile, p) \;=\;
-  \mathbb{E}_{\omega \sim K(\Profile)}\bigl[u(\omega)(p)\bigr].
-\end{equation}
-
-For a checked program $g$, the payoff-vector and realization-trace game
-forms have canonical utilities, so four kernel games are exposed:
+A kernel game contains strategy carriers, an outcome type, a
+profile-to-outcome PMF, and a utility function:
+\[
+  \KG = (\{S_p\}_{p\in\Players}, O, K, u).
+\]
+VegasCore exposes the following canonical checked-program games:
 \begin{center}
 \small
-\begin{tabular}{@{}lp{0.55\textwidth}@{}}
+\begin{tabular}{@{}lp{0.56\textwidth}@{}}
 \toprule
-Name & Carrier and outcomes \\
+Name & Meaning \\
 \midrule
-$\mathrm{pureKernelGame}(g)$ &
-  pure strategies; outcomes in $\Outcome$ (public payoff). \\
-$\mathrm{pmfBehavioralKernelGame}(g)$ &
-  PMF behavioral strategies; outcomes in $\Outcome$. \\
-$\mathrm{pureRoundHistoryKernelGame}(g)$ &
-  pure strategies; outcomes in $\mathrm{RoundHistory}(g)$. \\
-$\mathrm{pmfBehavioralRoundHistoryKernelGame}(g)$ &
-  PMF behavioral; outcomes in $\mathrm{RoundHistory}(g)$. \\
+\(\mathrm{pureFrontierGame}(g)\) &
+  pure reachable frontier strategies, terminal payoff-vector outcomes. \\
+\(\mathrm{behavioralFrontierGame}(g)\) &
+  behavioral reachable frontier strategies, terminal payoff-vector outcomes. \\
+\(\mathrm{mixedPureFrontierGame}(g)\) &
+  product mixed pure strategies, terminal payoff-vector outcomes. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A \emph{round history} is a bounded native round history: it records
-the source state, legal joint round action, realized destination, and the
-primitive event batch extracted from that realized transition.
-It is strictly more informative than the payoff-vector outcome and
-is the natural object on which to compare the canonical event-graph
-machine to a backend implementation, since the latter may produce
-additional implementation-specific events within the same round.
-The two axes of the kernel-game table above are then \emph{strategy
-carrier} (pure vs.\ PMF-behavioral) and \emph{outcome shape}
-(payoff vector vs.\ round history).  The round history games
-\emph{refine} the payoff-vector games by an outcome projection.
-
-\subsection{Trace-to-public agreement}
-\label{sec:fosg:trace-public}
-
-The round history games are useful for refinement reasoning
-(\S\ref{sec:refinement}); the payoff-vector games are what users
-usually reason about.  We need to know that they agree, both at
-the kernel level and at the level of expected utility.
-
-\begin{theorem}[Trace-to-public agreement]
-\label{thm:trace-public}
-For every checked program $g$, the payoff projection applied to
-the round history kernel agrees with the payoff-vector outcome kernel,
-\begin{align*}
-  \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{pure}}_{\mathrm{realization}}
-  &= K^{\mathrm{pure}}_{\mathrm{public}}, \\
-  \mathrm{map}(\mathrm{publicOf})\,\circ\,
-    K^{\mathrm{beh}}_{\mathrm{realization}}
-  &= K^{\mathrm{beh}}_{\mathrm{public}},
-\end{align*}
-and expected utilities are equal under the corresponding profile
-inclusions.  Solution concepts (Nash, dominance) transport across
-the projection: a strategy is best-response in the payoff-vector game
-iff it is best-response in the round history game.
-\end{theorem}
-
-The proof packages the projection as a kernel-game
-\emph{simulation} — a structural morphism that pushes outcome
-distributions through a deterministic function while preserving
-utility.  In this case the simulation is in fact an
-\emph{EU-isomorphism}: the round history outcome retains
-strategically inert round-realization detail on top of the public
-outcome, so the projection is information-losing but not
-\emph{utility}-losing, and equilibrium predicates transport in both
-directions.  This is the structural reason for the iff in the
-trace-to-public statement, and is what distinguishes it from the
-backend morphism of \S\ref{sec:refinement}, which is genuinely
-one-way: the implementation may admit profiles that no spec
-strategy realizes.
+There are also completed/history variants used to prove source adequacy,
+trace adequacy, and bridge theorems.  These are proof surfaces rather than
+separate user-facing denotations.
 
 \subsection{Solution concepts}
 \label{sec:fosg:solution}
 
-The standard inventory is defined uniformly on
-$\mathrm{pmfBehavioralKernelGame}(g)$.  We list the most important
-predicates here and refer to the supplement for the complete table
-and the corresponding existence corollaries.
+Solution concepts are inherited from the generic game-theory library and
+specialized to the frontier games.  The public theorem modules expose
+Nash, epsilon-Nash, best response, weak and strict dominance,
+dominance-solvability, correlated and coarse correlated equilibrium,
+Pareto efficiency, individual rationality, rationalizability, exact and
+ordinal potentials, social welfare, price of anarchy/stability,
+guarantees, security levels, saddle points, constant-sum, zero-sum, and
+team-game predicates.
 
-\begin{itemize}\itemsep2pt
-\item \textbf{Nash equilibrium.} $\mathrm{IsNash}(\Profile)$ iff
-  $\forall p,\, \forall s'_p.\, \EU(\Profile, p) \ge
-  \EU(\Profile[p \mapsto s'_p], p)$.
-\item \textbf{Best response.} $\mathrm{IsBestResponse}(p, \Profile,
-  s)$ iff $s$ maximizes $\EU(\Profile[p \mapsto \cdot], p)$.
-\item \textbf{Dominance.} $\mathrm{WeaklyDominates}(p, s, t)$ iff
-  $s$'s payoff weakly dominates $t$'s for $p$ uniformly in opponents'
-  partial profiles.  Strict version with $>$.
-\item \textbf{Correlated and coarse correlated equilibrium.}
-  $\mathrm{IsCorrelatedEq}(\mu)$~\citep{Aumann1974} for a profile
-  distribution $\mu$, and the coarse variant restricting to
-  constant deviations.
-\item \textbf{Pareto efficiency, social welfare.} $\Profile$ is
-  Pareto efficient iff no $\Profile'$ weakly improves all players
-  with strict improvement for some $p$.  Social welfare is
-  $\sum_p \EU(\Profile, p)$.
-\item \textbf{Potential games}~\citep{MonderShapley1996}. A potential
-  $\Phi : \prod_p S_p \to \mathbb{R}$ tracking unilateral
-  deviations exactly (exact potential) or in sign only (ordinal
-  potential).
-\item \textbf{Zero-sum and team games.}  Constant total payoff and
-  identical per-player utility, respectively.
-\end{itemize}
-
-A mixed-extension profile is simply a profile of PMFs, one over each
-player's strategy carrier.  Fixed-point existence theorems assume
-finite nonempty strategy carriers, together with either a finite outcome
-carrier or a bounded-utility hypothesis.  The library exposes
-finite-outcome existence corollaries
-($\mathrm{mixedNash\_exists}$,
-$\mathrm{correlatedEq\_exists}$, $\mathrm{coarseCorrelatedEq\_exists}$)
-and bounded-utility variants as wrappers around the GameTheory
-library's fixed-point and correlated-equilibrium theorems.  For the
-payoff-vector game
-$O = \Outcome\,\Players = \Players \to_0 \mathbb{Z}$,
-finite outcomes are a separate hypothesis.  Event-batch trace
-presentations use the bounded-utility theorem instead: their trace
-carrier contains unbounded lists, but the payoff read from a trace
-depends only on the finite event-graph state.
+The specialization states the concepts at the level a Vegas programmer
+sees: the checked source program and its canonical frontier games.
 
 \paragraph{Lean correspondence.}
-Supplement~\S6 (machines), \S7.2--\S7.3 (native round view, FOSG
-presentation), \S8.1 (strategies and profiles, reachable information
-states), \S8.2--\S8.3 (game forms, kernel-game carrier,
-simulation/bisimulation), \S8.5 (solution concepts).
+Round-view semantics are in \TT{Vegas.Core.ToEventGraph.RoundView} and
+\TT{Vegas.Core.ToEventGraph.Games}.  Program-facing solution-concept
+wrappers are in \TT{Vegas.Core.ToEventGraph.SolutionConcepts} and
+\TT{Vegas.Core.Theorems.SolutionConcepts}.  Examples are in
+\TT{Vegas.Examples}.

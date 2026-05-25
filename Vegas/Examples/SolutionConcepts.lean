@@ -1,19 +1,18 @@
-import Vegas.Examples.Prisoners
+import Vegas.Core.Theorems.SolutionConcepts
 import Vegas.Examples.MatchingPennies
-import Vegas.Examples.BattleOfTheSexes
-import Vegas.Examples.MontyHall
+import Vegas.Examples.PrisonersDilemma
 import GameTheory.Concepts.BestResponse
-import GameTheory.Concepts.DominanceSolvable
 import GameTheory.Concepts.PotentialGame
+import GameTheory.Concepts.TeamGame
 import GameTheory.Concepts.ZeroSum
 import GameTheory.Auctions.Vickrey
 
 /-!
 # Solution-concept examples
 
-Small kernel-game examples that exercise the reusable GameTheory solution
-concepts used by Vegas: dominance, best response, Nash, strict Nash, zero-sum
-games, potential games, and second-price auction truthfulness.
+Small theorem checks for the reusable game-theory vocabulary used by compiled
+Vegas frontier games, plus one external Vickrey smoke test for the shared
+`GameTheory` mechanism library.
 -/
 
 open scoped BigOperators
@@ -25,33 +24,32 @@ namespace SolutionConcepts
 open GameTheory
 open Math.Probability
 
-/-- A deterministic strategic-form game whose outcome records the played profile.
+/-! ## Deterministic kernel-game checks -/
 
-Unlike `KernelGame.ofEU`, this keeps the outcome carrier small enough for
-outcome-level predicates such as `IsZeroSum` and `IsTeamGame` to be meaningful
-examples.
--/
+/-- A deterministic strategic-form game whose outcome records the played
+profile.  This keeps outcome-level predicates such as zero-sum and team-game
+properties meaningful. -/
 noncomputable def deterministicProfileGame {ι : Type} (Strategy : ι → Type)
     (utility : (∀ i, Strategy i) → Payoff ι) : KernelGame ι where
   Strategy := Strategy
   Outcome := ∀ i, Strategy i
   utility := utility
-  outcomeKernel := fun σ => PMF.pure σ
+  outcomeKernel := fun profile => PMF.pure profile
 
-@[simp] theorem deterministicProfileGame_outcomeKernel {ι : Type} (Strategy : ι → Type)
-    (utility : (∀ i, Strategy i) → Payoff ι) (σ : ∀ i, Strategy i) :
-    (deterministicProfileGame Strategy utility).outcomeKernel σ = PMF.pure σ := rfl
+@[simp] theorem deterministicProfileGame_outcomeKernel {ι : Type}
+    (Strategy : ι → Type)
+    (utility : (∀ i, Strategy i) → Payoff ι)
+    (profile : ∀ i, Strategy i) :
+    (deterministicProfileGame Strategy utility).outcomeKernel profile =
+      PMF.pure profile := rfl
 
-@[simp] theorem deterministicProfileGame_eu {ι : Type} (Strategy : ι → Type)
-    (utility : (∀ i, Strategy i) → Payoff ι) (σ : ∀ i, Strategy i) (i : ι) :
-    (deterministicProfileGame Strategy utility).eu σ i = utility σ i := by
+@[simp] theorem deterministicProfileGame_eu {ι : Type}
+    (Strategy : ι → Type)
+    (utility : (∀ i, Strategy i) → Payoff ι)
+    (profile : ∀ i, Strategy i) (player : ι) :
+    (deterministicProfileGame Strategy utility).eu profile player =
+      utility profile player := by
   simp [deterministicProfileGame, KernelGame.eu, expect_pure]
-
-/-- A reusable check for zero-one win/loss payoff pairs. -/
-theorem winLose_payoffs_sum_one (win : Bool) :
-    (if win = true then (1 : Int) else 0) +
-      (if win = true then (0 : Int) else 1) = 1 := by
-  cases win <;> rfl
 
 namespace PrisonersKernel
 
@@ -62,39 +60,45 @@ deriving DecidableEq, Fintype, Repr
 
 open Action
 
-/-- Prisoner's Dilemma payoffs with `defect` weakly dominant for both players. -/
-def utility (σ : Fin 2 → Action) : Payoff (Fin 2) := fun i =>
+/-- Prisoner's Dilemma payoffs with `defect` dominant for both players. -/
+def utility (profile : Fin 2 → Action) : Payoff (Fin 2) := fun player =>
   let rowPayoff : ℝ :=
-    match σ 0, σ 1 with
+    match profile 0, profile 1 with
     | cooperate, cooperate => 3
     | cooperate, defect => 0
     | defect, cooperate => 5
     | defect, defect => 1
   let colPayoff : ℝ :=
-    match σ 0, σ 1 with
+    match profile 0, profile 1 with
     | cooperate, cooperate => 3
     | cooperate, defect => 5
     | defect, cooperate => 0
     | defect, defect => 1
-  if i = 0 then rowPayoff else colPayoff
+  if player = 0 then rowPayoff else colPayoff
 
 noncomputable def game : KernelGame (Fin 2) :=
   deterministicProfileGame (fun _ => Action) utility
 
 def defectProfile : game.Profile := fun _ => defect
 
-theorem defect_isDominant (who : Fin 2) : game.IsDominant who defect := by
-  intro σ s'
-  fin_cases who <;> cases h0 : σ 0 <;> cases h1 : σ 1 <;> cases s' <;>
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1] <;>
-      norm_num
+theorem defect_isDominant (player : Fin 2) :
+    game.IsDominant player defect := by
+  intro profile alternative
+  fin_cases player <;>
+    cases h0 : profile 0 <;> cases h1 : profile 1 <;>
+    cases alternative <;>
+    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+      utility, h0, h1] <;>
+    norm_num
 
-theorem defect_isBestResponse (who : Fin 2) (σ : game.Profile) :
-    game.IsBestResponse who σ defect :=
-  (defect_isDominant who).isBestResponse σ
+theorem defect_isBestResponse
+    (player : Fin 2) (profile : game.Profile) :
+    game.IsBestResponse player profile defect :=
+  fun alternative => defect_isDominant player profile alternative
 
-theorem defect_defect_isNash : game.IsNash defectProfile :=
-  KernelGame.dominant_is_nash game defectProfile (fun i => defect_isDominant i)
+theorem defectProfile_isNash : game.IsNash defectProfile :=
+  KernelGame.dominant_is_nash game defectProfile
+    (fun player => defect_isDominant player)
 
 end PrisonersKernel
 
@@ -108,108 +112,123 @@ deriving DecidableEq, Fintype, Repr
 open Coin
 
 /-- Player 0 wants a match, player 1 wants a mismatch. -/
-def utility (σ : Fin 2 → Coin) : Payoff (Fin 2) := fun i =>
-  let row : ℝ := if σ 0 = σ 1 then 1 else -1
-  if i = 0 then row else -row
+def utility (profile : Fin 2 → Coin) : Payoff (Fin 2) := fun player =>
+  let row : ℝ := if profile 0 = profile 1 then 1 else -1
+  if player = 0 then row else -row
 
 noncomputable def game : KernelGame (Fin 2) :=
   deterministicProfileGame (fun _ => Coin) utility
 
 theorem isZeroSum : game.IsZeroSum := by
-  intro ω
-  cases h0 : ω 0 <;> cases h1 : ω 1 <;>
+  intro outcome
+  cases h0 : outcome 0 <;> cases h1 : outcome 1 <;>
     simp [game, deterministicProfileGame, utility, h0, h1]
 
-theorem no_pure_nash (σ : game.Profile) : ¬ game.IsNash σ := by
-  intro h
-  cases h0 : σ 0 <;> cases h1 : σ 1
-  · have hdev := h 1 tails
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1] at hdev
+theorem no_pure_nash (profile : game.Profile) :
+    ¬ game.IsNash profile := by
+  intro hNash
+  cases h0 : profile 0 <;> cases h1 : profile 1
+  · have hdev := hNash 1 tails
+    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+      utility, h0, h1] at hdev
     norm_num at hdev
-  · have hdev := h 0 tails
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1] at hdev
+  · have hdev := hNash 0 tails
+    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+      utility, h0, h1] at hdev
     norm_num at hdev
-  · have hdev := h 0 heads
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1] at hdev
+  · have hdev := hNash 0 heads
+    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+      utility, h0, h1] at hdev
     norm_num at hdev
-  · have hdev := h 1 heads
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1] at hdev
+  · have hdev := hNash 1 heads
+    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+      utility, h0, h1] at hdev
     norm_num at hdev
 
-theorem player0_eu_neg_player1 (σ : game.Profile) :
-    game.eu σ 0 = -game.eu σ 1 :=
+theorem player0_eu_neg_player1 (profile : game.Profile) :
+    game.eu profile 0 = -game.eu profile 1 := by
   letI : Fintype game.Outcome := by
     change Fintype (Fin 2 → Coin)
     infer_instance
-  isZeroSum.eu_neg σ
+  exact isZeroSum.eu_neg profile
 
 end MatchingPenniesKernel
 
 namespace CoordinationKernel
 
 inductive Venue where
-  | left
-  | right
+  | opera
+  | football
 deriving DecidableEq, Fintype, Repr
 
 open Venue
 
 /-- A common-interest coordination game. -/
-def utility (σ : Fin 2 → Venue) : Payoff (Fin 2) := fun _ =>
-  if σ 0 = σ 1 then (1 : ℝ) else 0
+def utility (profile : Fin 2 → Venue) : Payoff (Fin 2) := fun _ =>
+  if profile 0 = profile 1 then (1 : ℝ) else 0
 
 noncomputable def game : KernelGame (Fin 2) :=
   deterministicProfileGame (fun _ => Venue) utility
 
-def leftProfile : game.Profile := fun _ => left
+def operaProfile : game.Profile := fun _ => opera
 
-def rightProfile : game.Profile := fun _ => right
+def footballProfile : game.Profile := fun _ => football
 
-noncomputable def potential (σ : game.Profile) : ℝ :=
-  game.eu σ 0
+noncomputable def potential (profile : game.Profile) : ℝ :=
+  game.eu profile 0
 
-theorem left_isStrictNash : game.IsStrictNash leftProfile := by
-  intro who s' hne
-  fin_cases who <;> cases s' <;>
-    simp [leftProfile, game, deterministicProfileGame, KernelGame.eu, expect_pure, utility] at hne ⊢
+theorem operaProfile_isStrictNash :
+    game.IsStrictNash operaProfile := by
+  intro player alternative hne
+  fin_cases player <;> cases alternative <;>
+    simp [operaProfile, game, deterministicProfileGame, KernelGame.eu,
+      expect_pure, utility] at hne ⊢
 
-theorem right_isStrictNash : game.IsStrictNash rightProfile := by
-  intro who s' hne
-  fin_cases who <;> cases s' <;>
-    simp [rightProfile, game, deterministicProfileGame, KernelGame.eu,
+theorem footballProfile_isStrictNash :
+    game.IsStrictNash footballProfile := by
+  intro player alternative hne
+  fin_cases player <;> cases alternative <;>
+    simp [footballProfile, game, deterministicProfileGame, KernelGame.eu,
       expect_pure, utility] at hne ⊢
 
 theorem isTeamGame : game.IsTeamGame := by
-  intro ω i j
+  intro outcome player other
   simp [game, deterministicProfileGame, utility]
 
 theorem exactPotential : game.IsExactPotential potential := by
-  intro who σ s'
-  fin_cases who <;> cases h0 : σ 0 <;> cases h1 : σ 1 <;> cases s' <;>
-    simp [potential, game, deterministicProfileGame, KernelGame.eu, expect_pure, utility, h0, h1]
+  intro player profile alternative
+  fin_cases player <;>
+    cases h0 : profile 0 <;> cases h1 : profile 1 <;>
+    cases alternative <;>
+    simp [potential, game, deterministicProfileGame, KernelGame.eu,
+      expect_pure, utility, h0, h1]
 
-theorem left_potential_max (τ : game.Profile) : potential leftProfile ≥ potential τ := by
-  cases h0 : τ 0 <;> cases h1 : τ 1 <;>
-    simp [potential, leftProfile, game, deterministicProfileGame, KernelGame.eu, expect_pure,
-      utility, h0, h1]
+theorem opera_potential_max (profile : game.Profile) :
+    potential operaProfile ≥ potential profile := by
+  cases h0 : profile 0 <;> cases h1 : profile 1 <;>
+    simp [potential, operaProfile, game, deterministicProfileGame,
+      KernelGame.eu, expect_pure, utility, h0, h1]
 
-theorem left_isNash_from_potential : game.IsNash leftProfile :=
-  exactPotential.nash_of_maximizer left_potential_max
+theorem operaProfile_isNash_from_potential :
+    game.IsNash operaProfile :=
+  exactPotential.nash_of_maximizer opera_potential_max
 
 end CoordinationKernel
 
 namespace SecondPriceAuction
 
-/-- A concrete two-bidder second-price auction instance. -/
+/-- A concrete two-bidder second-price auction instance for the shared
+`GameTheory` Vickrey theorem surface. -/
 def values : Fin 2 → ℝ
   | 0 => 10
   | 1 => 7
 
-theorem truthful_isDominant (who : Fin 2) :
-    (vickreyGame values).IsDominant who (values who) :=
-  vickrey_truthful_isDominant values who
+theorem truthful_isDominant (player : Fin 2) :
+    (vickreyGame values).IsDominant player (values player) :=
+  vickrey_truthful_isDominant values player
 
-theorem truthful_isNash : (vickreyGame values).IsNash values :=
+theorem truthful_isNash :
+    (vickreyGame values).IsNash values :=
   vickrey_truthful_isNash values
 
 theorem bidder0_value : values 0 = 10 := rfl
@@ -218,180 +237,76 @@ theorem bidder1_value : values 1 = 7 := rfl
 
 end SecondPriceAuction
 
-namespace CheckedProgramFacts
+/-! ## Checked Vegas frontier games -/
 
-theorem prisoners_row_defect_dominates_checked (col : Bool) :
-    evalExpr Prisoners.rowPayoff (Prisoners.payoffEnv false col) ≥
-      evalExpr Prisoners.rowPayoff (Prisoners.payoffEnv true col) :=
-  Prisoners.row_defect_payoff_ge_cooperate col
+example
+    (profile :
+      Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierProfile)
+    (hdom :
+      ∀ player,
+        Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierDominant
+          player (profile player)) :
+    Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierNash
+      profile :=
+  Vegas.Examples.PrisonersDilemma.checkedProgram
+    |>.pureFrontier_dominant_profile_is_nash profile hdom
 
-theorem prisoners_col_defect_dominates_checked (row : Bool) :
-    evalExpr Prisoners.colPayoff (Prisoners.payoffEnv row false) ≥
-      evalExpr Prisoners.colPayoff (Prisoners.payoffEnv row true) :=
-  Prisoners.col_defect_payoff_ge_cooperate row
+example
+    (h :
+      Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierDominanceSolvable) :
+    ∃! profile :
+      Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierProfile,
+      Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierNash
+        profile :=
+  Vegas.Examples.PrisonersDilemma.checkedProgram
+    |>.pureFrontier_dominanceSolvable_exists_unique_nash h
 
-theorem matchingPennies_zero_sum_checked (matcher mismatcher : Bool) :
-    evalExpr MatchingPennies.matcherPayoff
-        (MatchingPennies.payoffEnv matcher mismatcher) +
-      evalExpr MatchingPennies.mismatcherPayoff
-        (MatchingPennies.payoffEnv matcher mismatcher) = 0 :=
-  MatchingPennies.payoffs_zero_sum matcher mismatcher
+example
+    (player : Vegas.Examples.PrisonersDilemma.Player) :
+    ∃ strategy :
+      Vegas.Examples.PrisonersDilemma.checkedProgram.PureFrontierStrategy
+        player,
+      Vegas.Examples.PrisonersDilemma.checkedProgram.pureFrontierWorstCaseEU
+          player strategy =
+        Vegas.Examples.PrisonersDilemma.checkedProgram.pureFrontierSecurityLevel
+          player :=
+  Vegas.Examples.PrisonersDilemma.checkedProgram
+    |>.pureFrontier_exists_securityStrategy player
 
-theorem battleOfTheSexes_total_payoff_checked (operaFan footballFan : Bool) :
-    evalExpr BattleOfTheSexes.operaFanPayoff
-        (BattleOfTheSexes.payoffEnv operaFan footballFan) +
-      evalExpr BattleOfTheSexes.footballFanPayoff
-        (BattleOfTheSexes.payoffEnv operaFan footballFan) =
-      if operaFan = footballFan then 3 else 0 := by
-  cases operaFan <;> cases footballFan <;> rfl
+example
+    (profile :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierProfile)
+    (hNash :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierNash profile) :
+    Vegas.Examples.matchingPenniesChecked.BehavioralFrontierεNash 0
+      profile :=
+  Vegas.Examples.matchingPenniesChecked
+    |>.behavioralFrontier_nash_is_epsilonNash hNash le_rfl
 
-theorem montyHall_host_open_not_first
-    (opened first firstHidden car : MontyHall.Door)
-    (h : evalGuard (Player := MontyHall.Player) (L := simpleExpr)
-        MontyHall.hostOpenGuard opened
-          (MontyHall.hostGuardEnv first firstHidden car) = true) :
-    opened ≠ first :=
-  (MontyHall.hostOpenGuard_iff opened first firstHidden car).1 h |>.1
+example
+    (profile :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierProfile)
+    (hdom :
+      ∀ player,
+        Vegas.Examples.matchingPenniesChecked.BehavioralFrontierDominant
+          player (profile player)) :
+    Vegas.Examples.matchingPenniesChecked.BehavioralFrontierNash profile :=
+  Vegas.Examples.matchingPenniesChecked
+    |>.behavioralFrontier_dominant_profile_is_nash profile hdom
 
-theorem montyHall_host_open_not_car
-    (opened first firstHidden car : MontyHall.Door)
-    (h : evalGuard (Player := MontyHall.Player) (L := simpleExpr)
-        MontyHall.hostOpenGuard opened
-          (MontyHall.hostGuardEnv first firstHidden car) = true) :
-    opened ≠ car :=
-  (MontyHall.hostOpenGuard_iff opened first firstHidden car).1 h |>.2
-
-theorem montyHall_guest_host_constant_sum
-    (first opened car : MontyHall.Door) (switch : Bool) :
-    evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first opened car switch) +
-      evalExpr MontyHall.hostPayoff
-        (MontyHall.payoffEnv first opened car switch) = 1 := by
-  let env := MontyHall.payoffEnv first opened car switch
-  change (if evalExpr MontyHall.guestWins env = true then (1 : Int) else 0) +
-      (if evalExpr MontyHall.guestWins env = true then (0 : Int) else 1) = 1
-  exact winLose_payoffs_sum_one (evalExpr MontyHall.guestWins env)
-
-theorem montyHall_switch_stay_complement
-    (first opened car : MontyHall.Door) :
-    evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first opened car true) +
-      evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first opened car false) = 1 := by
-  rw [MontyHall.switching_wins_iff_first_guess_wrong,
-    MontyHall.staying_wins_iff_first_guess_right]
-  split <;> norm_num
-
-theorem montyHall_switching_wins_of_first_wrong
-    (first opened car : MontyHall.Door) (h : first ≠ car) :
-    evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first opened car true) = 1 := by
-  rw [MontyHall.switching_wins_iff_first_guess_wrong]
-  simp [h]
-
-theorem montyHall_staying_wins_of_first_right
-    (first opened car : MontyHall.Door) (h : first = car) :
-    evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first opened car false) = 1 := by
-  rw [MontyHall.staying_wins_iff_first_guess_right]
-  simp [h]
-
-def montyHallDoors : List MontyHall.Door :=
-  [MontyHall.door0, MontyHall.door1, MontyHall.door2]
-
-theorem montyHall_switch_payoff_count :
-    (montyHallDoors.map fun first =>
-      (montyHallDoors.map fun car =>
-      evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first MontyHall.door0 car true)).sum).sum = 6 := by
-  rfl
-
-theorem montyHall_stay_payoff_count :
-    (montyHallDoors.map fun first =>
-      (montyHallDoors.map fun car =>
-      evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first MontyHall.door0 car false)).sum).sum = 3 := by
-  rfl
-
-theorem montyHall_switch_closed_form :
-    (((montyHallDoors.map fun first =>
-      (montyHallDoors.map fun car =>
-      evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first MontyHall.door0 car true)).sum).sum : Int) : ℚ) / 9 =
-      2 / 3 := by
-  rw [montyHall_switch_payoff_count]
-  norm_num
-
-theorem montyHall_stay_closed_form :
-    (((montyHallDoors.map fun first =>
-      (montyHallDoors.map fun car =>
-      evalExpr MontyHall.guestPayoff
-        (MontyHall.payoffEnv first MontyHall.door0 car false)).sum).sum : Int) : ℚ) / 9 =
-      1 / 3 := by
-  rw [montyHall_stay_payoff_count]
-  norm_num
-
-/-- If the guest initially picked door 0 and the host opened door 1, a biased
-host policy is summarized by `q`: when the car is actually behind the first
-choice, the host opens door 1 with probability `q`; when the car is behind
-door 2, opening door 1 is forced. The posterior switch value is `1 / (q+1)`. -/
-theorem montyHall_biased_open1_switch_value (q : ℚ) :
-    (q * evalExpr MontyHall.guestPayoff
-          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
-            MontyHall.door0 true) +
-        evalExpr MontyHall.guestPayoff
-          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
-            MontyHall.door2 true)) / (q + 1) =
-      1 / (q + 1) := by
-  have h02 : MontyHall.door0 ≠ MontyHall.door2 := by decide
-  norm_num [MontyHall.switching_wins_iff_first_guess_wrong, h02]
-
-theorem montyHall_biased_open1_stay_value (q : ℚ) :
-    (q * evalExpr MontyHall.guestPayoff
-          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
-            MontyHall.door0 false) +
-        evalExpr MontyHall.guestPayoff
-          (MontyHall.payoffEnv MontyHall.door0 MontyHall.door1
-            MontyHall.door2 false)) / (q + 1) =
-      q / (q + 1) := by
-  have h02 : MontyHall.door0 ≠ MontyHall.door2 := by decide
-  norm_num [MontyHall.staying_wins_iff_first_guess_right, h02]
-
-theorem montyHall_biased_open1_switch_ge_stay
-    (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
-    1 / (q + 1) ≥ q / (q + 1) := by
-  have hden : 0 ≤ q + 1 := by linarith
-  exact div_le_div_of_nonneg_right h1 hden
-
-theorem montyHall_biased_open1_tie_at_extreme :
-    (1 : ℚ) / (1 + 1) = (1 : ℚ) / (1 + 1) := rfl
-
-end CheckedProgramFacts
-
-namespace ProgramFacts
-
-theorem prisoners_horizon : syntaxSteps Prisoners.program = 4 := rfl
-
-theorem matchingPennies_horizon : syntaxSteps MatchingPennies.program = 4 := rfl
-
-theorem battleOfTheSexes_horizon : syntaxSteps BattleOfTheSexes.program = 4 := rfl
-
-theorem montyHall_horizon : syntaxSteps MontyHall.program = 8 := rfl
-
-theorem prisoners_finiteProgram : Nonempty (FiniteProgram Prisoners.program) :=
-  ⟨inferInstance⟩
-
-theorem matchingPennies_finiteProgram : Nonempty (FiniteProgram MatchingPennies.program) :=
-  ⟨inferInstance⟩
-
-theorem battleOfTheSexes_finiteProgram :
-    Nonempty (FiniteProgram BattleOfTheSexes.program) :=
-  ⟨inferInstance⟩
-
-theorem montyHall_finiteProgram : Nonempty (FiniteProgram MontyHall.program) :=
-  ⟨inferInstance⟩
-
-end ProgramFacts
+example
+    {potential :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierProfile → ℝ}
+    {profile :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierProfile}
+    (hpotential :
+      Vegas.Examples.matchingPenniesChecked.BehavioralFrontierExactPotential
+        potential)
+    (hmax : ∀ other, potential profile ≥ potential other) :
+    Vegas.Examples.matchingPenniesChecked.BehavioralFrontierNash profile :=
+  Vegas.Examples.matchingPenniesChecked
+    |>.behavioralFrontier_exactPotential_nash_of_maximizer
+      hpotential hmax
 
 end SolutionConcepts
 end Examples

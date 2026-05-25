@@ -3,16 +3,11 @@ import Vegas.Core.WF
 /-!
 # Visibility scoping and observation
 
-This file separates Vegas's raw operational core from the static visibility
-discipline it is intended to model.
-
-The core syntax is typed over full erased environments. The predicates here
-recover the intended information-flow discipline extrinsically:
+This file records visibility predicates and observation-equivalence lemmas for
+Vegas contexts. Commit guards in the core syntax are typed over the acting
+player's view, so commit visibility is enforced by the guard type itself.
 
 - `visibleVars who Γ` characterizes what player `who` can observe in context `Γ`
-- `GuardUsesOnly who x Γ R` states that commit guard `R` depends only on the
-  proposed action `x` and variables visible to `who`
-- `ViewScoped p` is the recursive scoping judgment for raw Vegas programs
 
 These predicates let us reason about visibility without re-encoding it into the
 raw core syntax.
@@ -116,6 +111,40 @@ theorem mem_viewVCtx_map_fst_of_visible
         simp only [viewVCtx, hsee]
         simpa using ih hx
 
+/-- Every variable in a projected view is visible in the original context. -/
+theorem mem_visibleVars_of_viewVCtx_map_fst
+    {who : P} {Γ : VCtx P L} {x : VarId}
+    (hx : x ∈ (viewVCtx who Γ).map Prod.fst) :
+    x ∈ visibleVars (L := L) who Γ := by
+  induction Γ with
+  | nil =>
+      simp [viewVCtx] at hx
+  | cons hd tl ih =>
+      obtain ⟨z, σ⟩ := hd
+      match σ with
+      | ⟨υ, .pub⟩ =>
+          simp only [viewVCtx, canSee, Visibility.canSee_pub, if_true,
+            List.map_cons, List.mem_cons] at hx
+          rcases hx with rfl | hx
+          · simp [visibleVars]
+          · exact Finset.mem_insert_of_mem (ih hx)
+      | ⟨υ, .hidden owner⟩ =>
+          by_cases hown : who = owner
+          · subst owner
+            have hsee :
+                canSee (L := L) who (.hidden who υ : BindTy P L) = true := by
+              simp [canSee, Visibility.canSee]
+            simp only [viewVCtx, hsee, if_true, List.map_cons,
+              List.mem_cons] at hx
+            rcases hx with rfl | hx
+            · simp [visibleVars]
+            · simpa [visibleVars] using Finset.mem_insert_of_mem (ih hx)
+          · have hsee :
+                canSee (L := L) who (.hidden owner υ : BindTy P L) = false := by
+              simp [canSee, Visibility.canSee, hown]
+            simp only [viewVCtx, hsee] at hx
+            simpa [visibleVars, hown] using ih hx
+
 /-- Two erased environments are observationally equivalent for player `who`
     when they agree on every variable visible to `who`. -/
 def ObsEq {Γ : VCtx P L} (who : P)
@@ -142,87 +171,9 @@ theorem ObsEq.trans {Γ : VCtx P L} {who : P}
   intro x τ hx hmem
   exact Eq.trans (h₁₂ x τ hx hmem) (h₂₃ x τ hx hmem)
 
-/-- If two erased environments agree on `S`, then extending both with the same
-    fresh variable/value yields agreement on `insert x S`. -/
-theorem AgreesOn.cons_insert_of_fresh
-    {P : Type} {L : IExpr} {Γ : VCtx P L}
-    {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
-    {S : Finset VarId} {x : VarId} {b : L.Ty} {a : L.Val b}
-    (hfresh : Fresh x Γ)
-    (h : AgreesOn ρ₁ ρ₂ S) :
-    AgreesOn (Env.cons (x := x) a ρ₁) (Env.cons (x := x) a ρ₂) (insert x S) := by
-  intro y τ hy hmem
-  cases hy with
-  | here => rfl
-  | there hy' =>
-      have hne : y ≠ x := by
-        intro hyx
-        apply hfresh
-        rw [← eraseVCtx_map_fst (Player := P) (L := L) (Γ := Γ)]
-        simpa [hyx] using HasVar.mem_map_fst hy'
-      have hmemS : y ∈ S := by
-        rcases Finset.mem_insert.mp hmem with rfl | hs
-        · exact False.elim (hne rfl)
-        · exact hs
-      simpa using h y τ hy' hmemS
-
-/-- Payoff expressions are already typed over the public context. This predicate
-    exists as a named scoping layer for the paper-facing static discipline. -/
-def PayoffUsesOnlyPublic
-    {Γ : VCtx P L}
-    (_payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) : Prop := True
-
-/-- A commit guard may depend only on the proposed value and variables visible
-    to the committing player. -/
-def GuardUsesOnly
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool) : Prop :=
-  L.exprDeps R ⊆ insert x (visibleVars (L := L) who Γ)
-
-/-- Recursive visibility-scoping judgment for raw Vegas programs. The only
-    nontrivial new obligation after the guard refactor is at commit nodes. -/
-def ViewScoped :
-    {Γ : VCtx P L} → VegasCore P L Γ → Prop
-  | _, .ret payoffs => PayoffUsesOnlyPublic payoffs
-  | _, .letExpr _ _ k => ViewScoped k
-  | _, .sample _ _ k => ViewScoped k
-  | Γ, .commit x who R k =>
-      GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R ∧ ViewScoped k
-  | _, .reveal _ _ _ _ k => ViewScoped k
-
-/-- Full well-formedness: fresh bindings, reveal completeness, and view scoping. -/
+/-- Full structural well-formedness: fresh bindings and reveal completeness. -/
 def WF {Γ : VCtx P L} (p : VegasCore P L Γ) : Prop :=
-  FreshBindings p ∧ RevealComplete [] p ∧ ViewScoped p
-
-/-- Convenience projection from a scoped commit node to its guard-scoping fact. -/
-theorem ViewScoped.commit_guard_usesOnly
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
-    (hsc : ViewScoped (.commit x who R k)) :
-    GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R :=
-  hsc.1
-
-/-- Guard evaluation is invariant under observationally equivalent erased
-    environments, provided the guard only depends on the committer's view and
-    the proposed action variable is fresh in the context. -/
-theorem evalGuard_eq_of_obsEq
-    {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
-    (hfresh : Fresh x Γ)
-    (hR : GuardUsesOnly (L := L) (Γ := Γ) (x := x) (who := who) R)
-    {a : L.Val b}
-    {ρ₁ ρ₂ : Env L.Val (eraseVCtx Γ)}
-    (hobs : ObsEq (L := L) (Γ := Γ) who ρ₁ ρ₂) :
-    evalGuard (Player := P) (L := L) R a ρ₁ =
-      evalGuard (Player := P) (L := L) R a ρ₂ := by
-  unfold evalGuard
-  apply congrArg L.toBool
-  apply L.expr_deps_sound
-  exact AgreesOn.mono
-    (AgreesOn.cons_insert_of_fresh (Γ := Γ)
-      (x := x) (b := b) (a := a) hfresh hobs)
-    hR
+  FreshBindings p ∧ RevealComplete [] p
 
 /-- Chosen witness for `IExpr.extendAfterHead`. -/
 noncomputable def extendAfterHeadExpr
@@ -268,25 +219,5 @@ theorem not_mem_visibleVars_hidden_other
   intro hx
   apply hfresh
   exact mem_visibleVars_map_fst (L := L) (who := who) (by simpa [visibleVars, hneq] using hx)
-
-/-- For a distinct player, the freshly committed hidden value is outside the
-    allowed dependency set of the next guard. -/
-theorem GuardUsesOnly.not_mem_hidden_other
-    {Γ : VCtx P L}
-    {x₁ x₂ : VarId} {who₁ who₂ : P} {b₁ b₂ : L.Ty}
-    {R : L.Expr ((x₂, b₂) :: eraseVCtx ((x₁, .hidden who₁ b₁) :: Γ)) L.bool}
-    (hR : GuardUsesOnly (L := L) (Γ := ((x₁, .hidden who₁ b₁) :: Γ))
-      (x := x₂) (who := who₂) R)
-    (hfresh₁ : Fresh x₁ Γ)
-    (hfresh₂ : Fresh x₂ ((x₁, .hidden who₁ b₁) :: Γ))
-    (hneq : who₂ ≠ who₁) :
-    x₁ ∉ L.exprDeps R := by
-  intro hx
-  have hx' := hR hx
-  rcases Finset.mem_insert.mp hx' with hxeq | hxvis
-  · apply hfresh₂
-    simp [hxeq]
-  · exact (not_mem_visibleVars_hidden_other (L := L) (Γ := Γ)
-      (x := x₁) (who := who₂) (owner := who₁) (τ := b₁) hfresh₁ hneq) hxvis
 
 end Vegas

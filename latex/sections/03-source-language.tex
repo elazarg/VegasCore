@@ -1,253 +1,125 @@
-\section{The source language and its visibility discipline}
+\section{The source language and visibility discipline}
 \label{sec:source-language}
 
-The carrier of game-theoretic meaning is the event graph, but the
-event graph is not what a programmer writes.  This section describes
-what a programmer writes: a small typed protocol calculus with
-five constructors, a visibility annotation on every binding, and
-five static obligations that turn a syntactic tree into a checked
-game description.  Two design decisions are made here that propagate
-through the rest of the construction: visibility is annotated on
-bindings rather than on uses, and well-formedness is split into
-five independent predicates rather than one monolithic condition.
+\subsection{Expression languages}
 
-\subsection{Source syntax}
-\label{sec:source:syntax}
+The core protocol syntax is parameterized by an expression language
+\(L\).  An expression language supplies a type universe \(\Ty\), a
+family of semantic values \(\Val(\tau)\), expression and distribution
+syntax, evaluation functions, finite dependency sets, and soundness
+laws saying that evaluation depends only on the declared dependencies.
+The event-graph compiler treats these dependencies as declared read
+footprints.  An instance may over-approximate, but it may not omit a
+semantic dependency.
 
-\subsubsection*{The expression layer}
+The surface language currently specializes to the simple expression
+language used by the examples.  That specialization is deliberate:
+nullable yield sugar needs options, default values, and a commitment
+payload predicate that are concrete to that expression language.  The
+maintained core remains generic in \(L\).
 
-Programs are written over a fixed but abstract \emph{expression
-language} $L$, which packages a type universe $\Ty$, a value family
-$\Val : \Ty \to \mathbf{Type}$ with decidable equality, an
-expression syntax $\Expr(\Gamma, \tau)$, an evaluator
-$\mathrm{eval}: \Expr(\Gamma,\tau) \times \Env(\Gamma) \to
-\Val(\tau)$, and an analogous distribution syntax $\mathrm{DistExpr}
-(\Gamma, \tau)$ with evaluator into $\FWeight{\Val(\tau)}$.  Each
-expression carries a syntactic dependency set $\mathrm{deps}(e)
-\subseteq \mathrm{vars}(\Gamma)$, and the language is required to
-prove the soundness law
-\begin{equation}
-\label{eq:eval-soundness}
-  \rho_1 \mathrel{\equiv_{\mathrm{deps}(e)}} \rho_2
-  \;\Longrightarrow\;
-  \mathrm{eval}(e, \rho_1) = \mathrm{eval}(e, \rho_2).
-\end{equation}
+\subsection{Visibility-aware contexts}
 
-The codebase ships a concrete instance with $\Ty = \{\intt, \bool,
-\mathsf{range}\,\ell\,h, \mathsf{option}\,b\}$ and the obvious
-constants, $+$, $=$, conjunction, negation, conditional, and option
-operators; this is sufficient for the worked examples.  Other
-expression languages may be substituted as long as
-(\ref{eq:eval-soundness}) holds.
-
-\designnote{The expression language is an abstraction boundary
-because the protocol-level theorems hold uniformly in the choice of
-syntactic primitives.  Vegas does not inspect expressions; it relies
-on $\mathrm{deps}$ being a sound over-approximation of semantic
-reads.  An instance may over-report dependencies, but it cannot
-under-report a semantically relevant read.}
-
-\subsubsection*{Visibility-tagged bindings}
-
-A \emph{visibility tag} on a binding is one of
+A visibility-aware binding has the form \((x,\pub\,\tau)\) or
+\((x,\hid\,p\,\tau)\).  A public binding is visible to every player; a
+hidden binding is visible only to its owner.  From a context \(\Gamma\)
+we use three projections:
 \[
-  \mathit{vis} \;::=\; \pub \;\mid\; \hid\,p,
+  \erasepub{\Gamma}, \qquad
+  \erasectx{\Gamma}, \qquad
+  \view{p}.
 \]
-where $p \in \Players$ is the unique \emph{owner}.  A typed,
-visibility-aware context is a list of triples
-$(x, \mathit{vis}, \tau)$.  Two derived contexts are used heavily:
-\begin{align*}
-  \pubctx{\Gamma} &= \bigl[(x, \pub, \tau) \in \Gamma\bigr]
-    && \text{the public sublist}, \\
-  \view{p}        &= \bigl[(x, \mathit{vis}, \tau) \in \Gamma
-    \mid \mathit{vis} = \pub \text{ or } \mathit{vis} = \hid\,p\bigr]
-    && \text{the view of player $p$}.
-\end{align*}
-Two erasures forget the visibility tag: $\erasectx{\Gamma}$ keeps
-all bindings, $\erasepub{\Gamma}$ keeps only public ones.  The two
-projections commute,
-\(
-  \erasectx{\pubctx{\Gamma}} = \erasepub{\Gamma},
-\)
-which is what allows results about $\erasepub{\Gamma}$-shaped goals
-to be discharged by reasoning about $\erasectx{\Gamma}$-shaped
-ones.
+The first keeps only public bindings and erases visibility.  The second
+keeps all bindings and erases visibility.  The third keeps public
+bindings plus bindings hidden to player \(p\).
 
-\subsubsection*{The five constructors}
+Core syntax is indexed by the visibility context, so ordinary variable
+lookup is proof-bearing.  Freshness and well-formed contexts make
+lookup proof-irrelevant: two proofs naming the same variable in the
+same checked context identify the same typed field during compilation.
 
-A core program is a typed sequence of \emph{events} terminated by
-$\Ret$:
+\subsection{Core protocol syntax}
+
+The maintained core has four constructors:
 \[
 \arraycolsep=1pt
 \begin{array}{r@{\;}c@{\;}l}
 \Ret\,\overline{p}
   & : & \mathsf{VegasCore}\,\Gamma, \\
-\Let\,x = e;\,k
-  & : & \Expr(\erasepub{\Gamma}, b) \times
-       \mathsf{VegasCore}((x,\pub\,b)::\Gamma)
-       \to \mathsf{VegasCore}\,\Gamma, \\
 \Sample\,x \sim D;\,k
   & : & \mathrm{DistExpr}(\erasepub{\Gamma}, b) \times
        \mathsf{VegasCore}((x,\pub\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma, \\
-\Commit_{p}\,x \mid R;\,k
-  & : & \Expr((x,b)::\erasectx{\Gamma}, \bool) \times
+\Commit_p\,x \mid R;\,k
+  & : & \Expr((x,b)::\erasectx{\view{p}}, \bool) \times
        \mathsf{VegasCore}((x,\hid\,p\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma, \\
 \Reveal\,y := x;\,k
-  & : & \mathrm{HasVar}\,\Gamma\,x\,(\hid\,p\,b) \times
+  & : & \mathrm{VHasVar}\,\Gamma\,x\,(\hid\,p\,b) \times
        \mathsf{VegasCore}((y,\pub\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma.
 \end{array}
 \]
-The four non-administrative constructors model the observable
-activity of a multi-party computation.  $\Sample$ is a public coin.
-$\Commit$ is a player's sealed choice, with a guard $R$ that
-restricts which values are legal.  $\Reveal$ makes a sealed value
-public.  $\Ret$ terminates and pays out.  $\Let$ is the only
-administrative form; we keep it for ergonomic and structural reasons
-discussed below.
+\(\Sample\) draws a public value.  \(\Commit\) asks player \(p\) to
+choose a hidden value satisfying a guard over the proposed action and
+the player's visible context.  \(\Reveal\) exposes a hidden value as a
+fresh public alias.  \(\Ret\) terminates with payoff expressions over
+the public context.
 
-The argument types enforce the visibility discipline syntactically.
-$\Let$ and $\Sample$ types their bodies over $\erasepub{\Gamma}$, so
-they cannot mention hidden state.  $\Reveal$ takes a typed
-membership $\mathrm{HasVar}\,\Gamma\,x\,(\hid\,p\,b)$, ensuring the
-revealed name is in scope and is hidden to player $p$.  $\Commit$
-allows its guard to mention the entire erased context — this is by
-design; see the next subsection.
+There is no core \(\Let\).  Deterministic administrative bindings live
+in the surface layer and are erased by substitution before graph
+compilation.  This keeps event graphs about protocol activity rather
+than source convenience.  If a deterministic value must be materialized
+as public protocol state, it should be expressed through a public sample
+or an explicit future protocol constructor, not through administrative
+\(\Let\).
 
-\designnote{Two visibility tags ($\pub, \hid\,p$) make the model
-\emph{owner-or-all}: there is no group-visibility constructor.  This
-is sufficient for the imperfect-information patterns standard in
-mechanism design (sealed bids, private signals, hidden card hands)
-and avoids a combinatorial explosion of view operators.  Reveal
-operations promote a hidden value to a public alias visible to
-all players, so they cannot be sequenced to expose a value to a
-proper subgroup; genuine group visibility is deliberately out of
-scope (\S\ref{sec:disc:ext}).}
-
-\designnote{$\Let\,x=e$ is semantically equivalent to
-$\Sample\,x\sim\delta_e$, but we keep it as a distinct constructor
-so that the expression language need not expose a lift
-$\Expr \to \mathrm{DistExpr}$, so that program size is linear in the
-surface text, and so that strategy types depend only on the
-binding's visibility, not on whether its value happens to be
-deterministic.}
-
-\subsection{The visibility discipline for guards}
-\label{sec:source:guards}
-
-The $\Commit$ guard $R$ types over the full erased context
-$(x,b)::\erasectx{\Gamma}$, allowing it to syntactically mention
-\emph{any} variable in scope, including hidden state owned by other
-players.  This is plainly stronger than the strategic intent: the
-acting player should not be able to condition a commit on opponents'
-hidden values.  We resolve the gap by carrying a separate predicate
-\emph{about the guard's dependency set} rather than restricting the
-typing rule:
-\begin{equation}
-\label{eq:guarduses}
-  \mathrm{GuardUsesOnly}_p(R)
-  \;\stackrel{\mathrm{def}}{=}\;
-  \mathrm{deps}(R) \subseteq \{x\} \cup \mathrm{visibleVars}(p, \Gamma).
-\end{equation}
-The pivotal soundness lemma is then
-\begin{equation}
-\label{eq:guard-obs-eq}
-  \rho_1 \mathrel{\equiv_{\mathrm{visibleVars}(p,\Gamma)}} \rho_2
-  \;\Longrightarrow\;
-  \mathrm{eval}(R, [x\mapsto a], \rho_1)
-  = \mathrm{eval}(R, [x\mapsto a], \rho_2)
-\end{equation}
-for any candidate action $a$ — provided the introduced action
-variable $x$ is fresh in $\Gamma$ (so it does not shadow an existing
-binding).
-
-\designnote{The split between typing and dependency-restriction is
-intentional.  A typing rule that forbade the guard from mentioning
-hidden variables would force the user to write a dedicated guard
-expression over a freshly projected context — adding a syntactic
-boundary that the elaborator would have to undo.  Carrying
-$\mathrm{GuardUsesOnly}_p$ as a side predicate keeps the surface
-syntax uniform while preserving the strategic invariant
-(\ref{eq:guard-obs-eq}).}
-
-\subsection{Surface ergonomics}
+\subsection{Surface syntax}
 \label{sec:source:surface}
 
-The surface language $\mathsf{VegasLang}$ is a strict elaboration
-over the core: it mirrors the five core constructors, plus two
-ergonomic additions.
+\(\mathsf{VegasLang}\) is the current surface language over the simple
+expression language.  It mirrors the protocol core and adds:
+\begin{itemize}\itemsep1pt
+\item administrative \(\Let\)-bindings, erased by the lowering
+  environment;
+\item nullable \(\mathsf{yield}\), lowered to a hidden optional commit
+  followed immediately by a public reveal of the optional value.
+\end{itemize}
 
-\paragraph{Simultaneous yield phases.}
-A simultaneous phase records a list of same-phase
-commit-then-reveal pairs by distinct actors.  Lowering emits all
-phase commitments first (in source order) and only afterwards emits
-the corresponding reveals; no commit in the same phase reads any
-other commit's name.  After lowering, the elaborator computes the
-phase's commit/reveal information barrier explicitly: the same-phase
-commits share an event-graph frontier, but each reveal waits for
-\emph{all} earlier commits, not only for its own committed payload.
+The lowering environment maps public surface variables to public core
+expressions and hidden variables to hidden core variables.  This is why
+surface lets do not allocate graph fields: later public references are
+rewritten to the defining expression, while hidden commitments remain
+stored values that can later be revealed.
 
-\paragraph{Nullable yields.}
-A surface yield is a public-move sugar where the revealed value has
-type $\mathsf{option}\,b$.  Lowering changes the internal commit
-payload type from $b$ to $\mathsf{option}\,b$ and lifts the
-user-supplied guard $R$ on $b$ to an internal guard
-$\mathsf{nullableCommitGuard}(R)$ on $\mathsf{option}\,b$ that
-agrees with $R$ on $\mathsf{some}\,v$ and accepts $\mathsf{none}$
-unconditionally.  Feasibility — \emph{Legal} below — is then
-discharged by choosing $\mathsf{none}$.
-
-\designnote{Nullable yields are the protocol-level mechanism for
-making an infeasible guard \emph{satisfiable by aborting}.  The
-strategic cost of aborting is intentionally not specified by the
-constructor: the revealed public has option type, so payoff
-expressions are forced by the type system to decide how the
-$\mathsf{none}$ branch affects later utilities.  A protocol designer
-can punish abort, reward abort, or leave it neutral; the language
-makes the decision explicit instead of letting it default silently.}
-
-\subsection{Static well-formedness}
+\subsection{Static obligations}
 \label{sec:source:wf}
 
-A raw $\mathsf{VegasCore}$ term is a tree.  Five static obligations
-turn it into a game description:
-\begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
-\item \emph{Contextual well-formedness} ($\mathrm{WFCtx}$): the
-  initial context has no repeated names.
-\item \emph{Fresh bindings}: every binder introduced by $\Let$,
-  $\Sample$, $\Commit$, or $\Reveal$ is fresh in its enclosing
-  context.  This is SSA: every name is bound at exactly one program
-  point.
-\item \emph{Reveal completeness}: every committed value is revealed
-  exactly once before the program reaches $\Ret$.
-\item \emph{Distribution normalization}: every $\Sample$
-  distribution sums to weight $1$.
-\item \emph{Legality}: at every $\Commit$ site for player $p$ with
-  guard $R$ over type $b$ and ambient erased environment $\rho$,
-  there exists a value $a \in \Val(b)$ with
-  $\mathrm{eval}(R, [x\mapsto a], \rho) = \mathsf{true}$.
-\end{enumerate}
-The bundle of a context, an initial environment, a checked program,
-and these five obligations is called a \emph{checked program}.  All
-public game-theoretic APIs consume a checked program; raw
-$\mathsf{VegasCore}$ is never a public input.
+The code distinguishes the obligations needed for graph construction
+from the obligations needed for checked game semantics.
 
-\designnote{The five obligations are independent.  Freshness and
-$\mathrm{WFCtx}$ are static and decidable.  Reveal completeness is a
-finite tree-walk, also decidable.  Distribution normalization reduces
-to checking finitely-many rational sums.  Legality is decidable when
-value domains are finite, which they are for all checked examples
-and is the standing assumption of the strategic API.  We resist the
-temptation to fold them into a single \emph{good-program} predicate:
-keeping them separate makes failures locally diagnosable and lets
-intermediate constructions (event graph, machine) require only the
-subsets they actually need.}
+\begin{description}[itemsep=2pt,leftmargin=1.2em,style=nextline]
+\item[\(\mathsf{GraphProgram}\).]
+  Contains an initial visibility context, a core program, an initial
+  environment, a well-formed-context proof, fresh-binder evidence, and
+  normalized sample distributions.  This is the minimal input to
+  \(\mathsf{compile}\).
+\item[\(\mathsf{WFProgram}\).]
+  Wraps a \(\mathsf{GraphProgram}\) and adds reveal completeness plus
+  commit-guard legality.  Reveal completeness states that committed
+  source values are eventually opened by the source program.  Legality
+  states that each commit guard admits at least one action in every
+  source-visible context.  These obligations are consumed by the
+  game-facing progress layer, not by raw graph allocation.
+\item[\(\mathsf{FiniteDomains}\).]
+  Evidence that all operational value domains introduced by the program
+  are finite.  This is needed to enumerate finite strategy carriers and
+  finite machine states.  Terminal payoff integers need not themselves
+  form a finite type.
+\end{description}
 
 \paragraph{Lean correspondence.}
-Source syntax: supplement~\S3 (visibility-aware syntax),
-\S3.4--\S3.5 (\TT{VegasCore}, \TT{VegasLang}), and \S3.6
-(\TT{GuardUsesOnly}, \TT{ViewScoped}).  Well-formedness:
-supplement~\S4 (\TT{WFCtx}, \TT{FreshBindings}, \TT{RevealComplete},
-\TT{NormalizedDists}, \TT{Legal}, \TT{WFProgram}).
+Core syntax is \TT{Vegas.Core.Basic}.  Checked-program bundles are in
+\TT{Vegas.Core.Program}.  Surface syntax and let-erasing lowering are
+in \TT{Vegas.Lang.Basic}.  The concrete well-formedness predicates are
+collected by \TT{Vegas.Core.WF}.

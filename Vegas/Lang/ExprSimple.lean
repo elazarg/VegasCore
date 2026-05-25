@@ -237,6 +237,84 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
     · exact ihf (ha.mono Finset.subset_union_right)
 
+def evalExprDeps : (e : Expr Γ b) →
+    ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
+      x ∈ exprDeps e → Val τ) → Val b
+  | .var x h, ρ => ρ x _ h (by simp [exprDeps])
+  | .constInt i, _ => i
+  | .constBool b, _ => b
+  | .constRange v, _ => v
+  | .none, _ => none
+  | .some e, ρ =>
+      some (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx)))
+  | .isSome e, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).isSome
+  | .isNone e, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).isNone
+  | .getD e fallback, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))).getD
+        (evalExprDeps fallback
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+  | .addInt l r, ρ =>
+      evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) +
+      evalExprDeps r
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .eq l r, ρ =>
+      decide
+        (evalExprDeps l
+            (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) =
+          evalExprDeps r
+            (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+  | .andBool l r, ρ =>
+      evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) &&
+      evalExprDeps r
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .notBool e, ρ =>
+      !(evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx)))
+  | .ite c t f, ρ =>
+      if evalExprDeps c
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) then
+        evalExprDeps t
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+      else
+        evalExprDeps f
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+
+theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
+    (e : Expr Γ b) (ρ : PlainEnv Γ) :
+    evalExprDeps e (fun x τ h _ => ρ x τ h) = evalExpr e ρ := by
+  induction e with
+  | var x h => rfl
+  | constInt _ => rfl
+  | constBool _ => rfl
+  | constRange _ => rfl
+  | none => rfl
+  | some e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | isSome e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | isNone e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | getD e fallback ihe ihf =>
+      simp [evalExprDeps, evalExpr, ihe, ihf]
+  | addInt l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | eq l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | andBool l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | notBool e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | ite c t f ihc iht ihf =>
+      simp [evalExprDeps, evalExpr, ihc, iht, ihf]
+
 inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
@@ -251,6 +329,24 @@ def distExprDeps : DistExpr Γ b → Finset VarId
   | .weighted _ => ∅
   | .ite c t f => exprDeps c ∪ distExprDeps t ∪ distExprDeps f
 
+theorem dist_deps_context {Γ : CtxSimple} {b : BaseTy}
+    (d : DistExpr Γ b) :
+    ∀ x, x ∈ distExprDeps d → x ∈ Γ.map Prod.fst := by
+  induction d with
+  | weighted _ =>
+      intro x hx
+      simp [distExprDeps] at hx
+  | ite c t f iht ihf =>
+      intro x hx
+      have hx' :
+          x ∈ exprDeps c ∨ x ∈ distExprDeps t ∨ x ∈ distExprDeps f := by
+        simpa [distExprDeps] using hx
+      rcases hx' with hxc | hrest
+      · exact expr_deps_context c x hxc
+      · rcases hrest with hxt | hxf
+        · exact iht x hxt
+        · exact ihf x hxf
+
 theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
     (d : DistExpr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
     (ha : AgreesOn ρ₁ ρ₂ (distExprDeps d)) :
@@ -264,6 +360,27 @@ theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
     split
     · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
     · exact ihf (ha.mono Finset.subset_union_right)
+
+def evalDistExprDeps : (d : DistExpr Γ b) →
+    ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
+      x ∈ distExprDeps d → Val τ) → FWeight (Val b)
+  | .weighted entries, _ => FWeight.ofList entries
+  | .ite c t f, ρ =>
+      if evalExprDeps c
+          (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx])) then
+        evalDistExprDeps t
+          (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
+      else
+        evalDistExprDeps f
+          (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
+
+theorem evalDistExprDeps_eq_evalDist {Γ : CtxSimple} {b : BaseTy}
+    (d : DistExpr Γ b) (ρ : PlainEnv Γ) :
+    evalDistExprDeps d (fun x τ h _ => ρ x τ h) = evalDistExpr d ρ := by
+  induction d with
+  | weighted _ => rfl
+  | ite c t f iht ihf =>
+      simp [evalDistExprDeps, evalDistExpr, evalExprDeps_eq_eval, iht, ihf]
 
 def Expr.weakenAfterHead
     {Γ : CtxSimple} {x y : VarId} {τ σ b : BaseTy}
@@ -516,6 +633,7 @@ def simpleExpr : Vegas.IExpr where
   Expr := Expr
   eval := @evalExpr
   exprDeps := @exprDeps
+  evalDeps := @evalExprDeps
   expr_deps_context := @expr_deps_context
   extendAfterHead := by
     intro Γ x y τ σ b e
@@ -530,6 +648,10 @@ def simpleExpr : Vegas.IExpr where
   DistExpr := DistExpr
   evalDist := @evalDistExpr
   distDeps := @distExprDeps
+  dist_deps_context := @dist_deps_context
+  evalDistDeps := @evalDistExprDeps
+  evalDeps_eq_eval := @evalExprDeps_eq_eval
+  evalDistDeps_eq_evalDist := @evalDistExprDeps_eq_evalDist
   expr_deps_sound := @expr_deps_sound
   dist_deps_sound := @dist_deps_sound
 
@@ -643,6 +765,43 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .andBool l r => .andBool l.weaken r.weaken
   | .notBool e => .notBool e.weaken
   | .ite c t f => .ite c.weaken t.weaken f.weaken
+
+/-- Substitute every variable in an expression through a typed expression
+environment. -/
+def Expr.substVars {Γ Δ : CtxSimple}
+    (σ : {x : VarId} → {b : BaseTy} → HasVar Γ x b → Expr Δ b) :
+    {b : BaseTy} → Expr Γ b → Expr Δ b
+  | _, .var _ h => σ h
+  | _, .constInt i => .constInt i
+  | _, .constBool v => .constBool v
+  | _, .constRange v => .constRange v
+  | _, .none => .none
+  | _, .some e => .some (e.substVars σ)
+  | _, .isSome e => .isSome (e.substVars σ)
+  | _, .isNone e => .isNone (e.substVars σ)
+  | _, .getD e fallback => .getD (e.substVars σ) (fallback.substVars σ)
+  | _, .addInt l r => .addInt (l.substVars σ) (r.substVars σ)
+  | _, .eq l r => .eq (l.substVars σ) (r.substVars σ)
+  | _, .andBool l r => .andBool (l.substVars σ) (r.substVars σ)
+  | _, .notBool e => .notBool (e.substVars σ)
+  | _, .ite c t f =>
+      .ite (c.substVars σ) (t.substVars σ) (f.substVars σ)
+
+/-- Substitute every variable in a distribution through a typed expression
+environment. -/
+def DistExpr.substVars {Γ Δ : CtxSimple}
+    (σ : {x : VarId} → {b : BaseTy} → HasVar Γ x b → Expr Δ b) :
+    {b : BaseTy} → DistExpr Γ b → DistExpr Δ b
+  | _, .weighted entries => .weighted entries
+  | _, .ite c t f =>
+      .ite (c.substVars σ) (t.substVars σ) (f.substVars σ)
+
+/-- Reinterpret a public expression in a player's visible erased context. -/
+def Expr.publicToView {P : Type} [DecidableEq P]
+    {Γ : VCtx P simpleExpr} {b : BaseTy} (who : P)
+    (e : Expr (erasePubVCtx Γ) b) :
+    Expr (eraseVCtx (viewVCtx who Γ)) b :=
+  e.substVars fun {x} {_} h => .var x (HasVar.pubToView (p := who) h)
 
 theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
     (e : Expr Γ b) (v : Val τ) (env : PlainEnv Γ) :

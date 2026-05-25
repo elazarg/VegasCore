@@ -8,13 +8,12 @@
                 decorations.pathreplacing}
 \usepackage[numbers,sort&compress]{natbib}
 
-% Identifier-heavy paragraphs occasionally produce overlong tokens; be
-% liberal about line breaking.
+% Identifier-heavy paragraphs occasionally produce overlong tokens.
 \sloppy
 \emergencystretch=3em
 
-\title{VegasCore: Event-Graph-Native Semantics for\\
-       Visibility-Aware Probabilistic Protocols and Games}
+\title{VegasCore: Event-Graph Semantics for\\
+       Visibility-Aware Probabilistic Games}
 \author{Elazar Gershuni\\\texttt{elazarg@gmail.com}}
 \date{May 2026}
 
@@ -22,45 +21,42 @@
 \maketitle
 
 \begin{abstract}
-A finite multi-party game can be specified by a program: each move is a
-guarded write, each random sample is a public coin, and payoffs are
-deterministic functions of the terminal public state.  The strategically
-relevant structure of such a program — who chooses what, what they can
-observe, and which choices are independent — is determined not by the
-syntax tree but by the dependency relation between events.  VegasCore
-takes this observation as a design commitment: the carrier of
-game-theoretic meaning is neither the source program nor a
-hand-written extensive-form tree, but a finite, visibility-aware
-\emph{event graph}.
+VegasCore is a small typed language for describing finite games as
+protocols: public samples, sealed player commitments, public reveals,
+and terminal payoff expressions.  The central semantic object is not
+the source syntax and not a hand-written extensive-form tree, but a
+finite visibility-aware \emph{event graph}.  Its nodes are protocol
+events; its fields are typed values; and its dependency relation records
+exactly the information that must be available before an event can run
+or before a player can choose a commitment.
 
-Programs are checked for static visibility, freshness, reveal completeness,
-distribution normalization, and at-least-one-legal-action obligations,
-then lowered definitionally to the event graph.  Configurations of the
-graph are extensional partial assignments from event nodes to write
-patches; the graph induces an asynchronous probabilistic
-\emph{machine}.  Native round views of that machine define the
-strategy carriers, game forms, and kernel games; round-batched
-factored-observation stochastic-game (FOSG) and extensive-form-game
-(EFG) presentations are derived as checked views.  This report develops the construction
-mathematically, states its main contracts as theorems, and explains
-the design choices that motivate them.
+The current construction separates three levels.  A \emph{graph
+program} contains exactly the static data needed to compile to a graph:
+unique initial names, fresh binders, and normalized samples.  A
+\emph{checked program} adds the game-facing obligations: reveal
+completeness and commit-guard liveness.  The compiled graph is
+source-independent and graph-native: administrative surface
+\(\Let\)-bindings are erased before core compilation, graph fields are
+computed from initial rows and event rows, and prerequisites are derived
+canonically rather than stored as independent semantic data.
 
-The headline results are: \textbf{frontier commutation} (independent
-events commute extensionally), \textbf{commit/reveal information
-barrier} (no reveal is enabled while a prior commit is still on the
-frontier), \textbf{trace-to-public agreement} (the canonical pure and
-PMF-behavioral kernel games agree with their realization-trace
-refinements after payoff projection, while terminal-public-state game
-forms expose the non-payoff public observation separately),
-\textbf{finite Kuhn realization and deviation simulation}: the bounded
-FOSG presentation has a Nash-transfer simulation from mixed pure
-strategies to behavioral strategies, and the native kernel games have a
-payoff-law realization theorem obtained by native/FOSG transport, and
-\textbf{stochastic-refinement transport} (Nash equilibria pull back
-along compatible backend refinements).  All theorems are mechanized in
-Lean~4~\citep{deMouraUllrich2021} on top of mathlib~\citep{mathlib2020};
-a companion definitional supplement records the exact Lean signatures
-referenced here.
+The primitive graph machine is schedule-agnostic: schedules are external
+event laws over currently available primitive events.  Game-theoretic
+semantics are built from a canonical frontier round view, which hides
+irrelevant primitive linearization and exposes player choices at
+checkpoints.  Native pure, behavioral, and product mixed-pure frontier
+kernel games are the Vegas-facing strategic denotations.  Bounded FOSG
+and EFG objects are derived presentations with payoff-adequacy theorems,
+not independent owners of the semantics.
+
+The mechanized theorem surface proves graph well-formedness of
+compilation, checkpoint progress from checked guard liveness, terminal
+source-payoff adequacy, native/FOSG/EFG utility-distribution adequacy,
+finite Kuhn realization and Nash-safe deviation simulation for frontier
+strategies, and runtime trace adequacy for stochastic refinements.  The
+refinement layer is runtime-general: an EVM backend is an intended
+consumer, but the language, event graph, machine, and strategic
+interfaces do not mention any blockchain-specific runtime.
 \end{abstract}
 
 \tableofcontents

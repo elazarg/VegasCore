@@ -21,8 +21,8 @@ program can therefore be evaluated against many strategy profiles.
 
 ## Classification
 
-Four of the five constructors are **protocol events** that model
-observable activity in a multi-party computation:
+The constructors are **protocol events** that model observable activity in a
+multi-party computation:
 
 * `ret` — the protocol terminates and players collect payoffs.
 * `sample` — nature draws from a public distribution; every player sees
@@ -33,48 +33,14 @@ observable activity in a multi-party computation:
   the only way to make hidden data observable; the timing of the reveal
   is under program control, distinguishing open play from sealed commitment.
 
-The fifth constructor, `letExpr`, is **administrative**: Semantically,
-`letExpr x e k` is equivalent to `sample x (Dirac e) k`: if the language
-provided a point-mass distribution constructor `Dirac : L.Expr → L.DistExpr`
-with `L.evalDist (Dirac e) = FWeight.pure ∘ L.eval e`, then `bind` on a
-Dirac distribution reduces by `FWeight.pure_bind` to the direct
-extension we do here. The constructor is kept as a distinct form
-despite this equivalence, for four reasons:
-
-1. **Smaller interface.** Eliminating `letExpr` would require `IExpr`
-    to expose a canonical `Expr → DistExpr` lift (or, equivalently, a
-    substitution operation). Keeping it means `IExpr` stays
-    dimensioned to its actual metatheory needs.
-
-2. **Linear term size.** Inlining a `let x = e` that is referenced
-    `n` times downstream would duplicate `e` into every reference
-    site — `n` copies in guards, distributions, and payoffs. The
-    named binding keeps the program linear in its surface size, which
-    also keeps `exprDeps` accounting local.
-
-3. **View-shape stability.** The public binding `(x, .pub b)` appears
-    in every downstream `viewVCtx who Γ'`. Erasing `letExpr` would
-    remove `x` from the context, changing the types of every
-    behavioral kernel that observed `x`. "A strategy depending on `x`
-    equals a strategy recomputing `e` from the earlier public view"
-    is true but requires a substitution/transport metatheorem that
-    currently isn't needed.
-
-4. **Reader intuition.** `let` and `sample` signal different intent:
-    one is bookkeeping, the other introduces randomness. A surface
-    reader encountering `sample x ~ Dirac(e)` would rightly ask "why
-    is this random?" when nothing stochastic is happening. -/
+Administrative deterministic bindings are surface syntax, not core protocol
+events. They are erased by the `VegasLang → VegasCore` lowering layer before
+event-graph compilation. -/
 inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
     VCtx Player L → Type where
   /-- Terminate with per-player payoffs. Each payoff expression is over the
   public-only erased context — payoffs cannot depend on hidden state. -/
   | ret {Γ} (payoffs : List (Player × L.Expr (erasePubVCtx Γ) L.int)) :
-      VegasCore Player L Γ
-  /-- Bind a deterministic expression `e` to a fresh public variable `x`.
-  `e` reads only public state. -/
-  | letExpr {Γ} (x : VarId) {b : L.Ty}
-      (e : L.Expr (erasePubVCtx Γ) b)
-      (k : VegasCore Player L ((x, .pub b) :: Γ)) :
       VegasCore Player L Γ
   /-- Sample from `D'` and bind the result as a fresh public variable.
   `D'` reads only public state (nature has no private knowledge); the
@@ -84,12 +50,10 @@ inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
       (k : VegasCore Player L ((x, .pub b) :: Γ)) :
       VegasCore Player L Γ
   /-- Player `who` commits to a value of type `b`, subject to guard `R`.
-  The guard is typed over `(x, b) :: eraseVCtx Γ` (the proposed action on
-  top of the *full* erased context). Visibility — that the guard depends
-  only on `who`'s view — is enforced semantically in `Scope.lean`. The
-  result is bound as `hidden who b`, visible only to `who`. -/
+  The guard is typed over the proposed action together with `who`'s current
+  view. The result is bound as `hidden who b`, visible only to `who`. -/
   | commit {Γ} (x : VarId) (who : Player) {b : L.Ty}
-      (R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool)
+      (R : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool)
       (k : VegasCore Player L ((x, .hidden who b) :: Γ)) :
       VegasCore Player L Γ
   /-- Disclose a previously hidden variable `x` as a fresh public alias `y`.
@@ -249,18 +213,13 @@ inductive FiniteProgramProof {P : Type} [DecidableEq P] {L : IExpr} :
   | ret {Γ : VCtx P L}
       {payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)} :
       FiniteProgramProof (.ret payoffs)
-  | letExpr {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-      {e : L.Expr (erasePubVCtx Γ) b}
-      {k : VegasCore P L ((x, .pub b) :: Γ)}
-      (head : FiniteType L b) (tail : FiniteProgramProof k) :
-      FiniteProgramProof (.letExpr x e k)
   | sample {Γ : VCtx P L} {x : VarId} {b : L.Ty}
       {D : L.DistExpr (erasePubVCtx Γ) b}
       {k : VegasCore P L ((x, .pub b) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.sample x D k)
   | commit {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-      {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+      {R : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
       {k : VegasCore P L ((x, .hidden who b) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.commit x who R k)
@@ -282,15 +241,6 @@ instance finiteProgram_ret {P : Type} [DecidableEq P] {L : IExpr}
     FiniteProgram (.ret payoffs) where
   proof := .ret
 
-instance finiteProgram_letExpr {P : Type} [DecidableEq P] {L : IExpr}
-    {Γ : VCtx P L} {x : VarId} {b : L.Ty}
-    {e : L.Expr (erasePubVCtx Γ) b}
-    {k : VegasCore P L ((x, .pub b) :: Γ)}
-    [FiniteType L b] [FiniteProgram k] :
-    FiniteProgram (.letExpr x e k) where
-  proof := .letExpr (inferInstance : FiniteType L b)
-    (FiniteProgram.proof (p := k))
-
 instance finiteProgram_sample {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {b : L.Ty}
     {D : L.DistExpr (erasePubVCtx Γ) b}
@@ -302,7 +252,7 @@ instance finiteProgram_sample {P : Type} [DecidableEq P] {L : IExpr}
 
 instance finiteProgram_commit {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
-    {R : L.Expr ((x, b) :: eraseVCtx Γ) L.bool}
+    {R : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
     {k : VegasCore P L ((x, .hidden who b) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.commit x who R k) where
