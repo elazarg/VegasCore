@@ -142,10 +142,14 @@ the finite pure completed-frontier game. Preference-parametric handles such as
 `BehavioralFrontierCoarseCorrelatedEqFor` delegate to the underlying
 `KernelGame` `*For` predicates; the theorem index records that the ordinary
 frontier predicates are their expected-utility specializations.
-The Nash-safe mixed-pure-to-behavioral Kuhn simulation is packaged there as
-`program.canonicalMixedPureToBehavioralFrontierDeviationSimulation`; the API
-transports mixed-pure Nash results to behavioral Nash results through that
-canonical deviation simulation.
+The strategy/deviation-level Kuhn package is exposed as
+`program.frontierKuhnStrategicEquivalence`.  It records the canonical
+mixed-pure-to-behavioral and behavioral-to-mixed-pure profile translations,
+outcome-kernel preservation in both directions, and one-player deviation
+matching across the two presentations.  The Nash-safe mixed-pure-to-behavioral
+simulation remains available as
+`program.canonicalMixedPureToBehavioralFrontierDeviationSimulation`; Nash
+transport is a downstream use of the deviation-level Kuhn facts.
 It also exposes `GameForm`s whose outcomes are completed frontier histories,
 public checkpoint-observation histories, and terminal public graph
 observations, so protocol observations can be analyzed without immediately
@@ -190,16 +194,16 @@ Outcome-kernel equality gives expected-utility equality for the transported
 profiles. The mixed-pure-to-behavioral Kuhn theorem is also packaged as a
 `KernelGame.ProfileRealization` by
 `FrontierGameSemantics.mixedPureToBehavioralProfileRealization`, which records
-the profile-level outcome-law relation in standard `GameTheory` form. Nash
-transport uses the stronger
-`FrontierGameSemantics.MixedPureToBehavioralDeviationSimulation`, whose
-canonical construction proves that every unilateral behavioral deviation from
-the canonical realization is matched by a one-player product mixed-pure
-deviation. The behavioral-to-product-mixed deviation simulation is packaged as
+the profile-level outcome-law relation in standard `GameTheory` form.  The
+stronger non-equilibrium API is `FrontierGameSemantics.KuhnStrategicEquivalence`
+and the program-facing `program.frontierKuhnStrategicEquivalence`; individual
+deviation facts include
+`program.mixedPureFrontier_behavioralDeviation_to_mixedPure`,
+`program.mixedPureFrontier_mixedDeviation_to_behavioral`, and
+`program.behavioralFrontier_deviation_to_mixedPure`.  Nash transport uses these
+deviation facts through the existing deviation-simulation wrappers, including
 `FrontierGameSemantics.behavioralToMixedPureNashDeviationSimulation` and
-`program.behavioralToMixedPureFrontierNashDeviationSimulation`: it is the
-Nash-safe ingredient for proving that if the induced product mixed-pure profile
-is Nash, then the original behavioral profile is Nash.
+`program.behavioralToMixedPureFrontierNashDeviationSimulation`.
 
 `Vegas.Core.ToEventGraph.Transport` provides EU-preserving morphisms and
 isomorphisms between completed frontier games. It also exposes the canonical

@@ -51,10 +51,21 @@ profile with the same payoff-vector outcome law.
 \begin{theorem}[Product mixed pure to behavioral]
 \label{thm:kuhn-mixed-to-beh}
 Every product mixed-pure frontier profile has a behavioral frontier
-profile with the same payoff-vector outcome law.  Moreover the
-translation is Nash-safe: unilateral deviations on the target side have
-matching unilateral deviations on the source side with the same relevant
-outcome law.
+profile with the same payoff-vector outcome law.  Moreover, around the
+canonical mixed-to-behavioral realization, unilateral deviations on
+either side have matching unilateral deviations on the other side with
+the same relevant outcome law.
+\end{theorem}
+
+\begin{theorem}[Frontier Kuhn strategic equivalence]
+\label{thm:kuhn-strategic-equivalence}
+The canonical completed-frontier mixed-pure and behavioral games form a
+strategy/deviation-level Kuhn equivalence: the two canonical profile
+translations preserve completed outcome kernels, behavioral deviations
+from arbitrary behavioral profiles have matching mixed-pure deviations,
+and mixed-pure or behavioral deviations from a canonical
+mixed-to-behavioral realization have matching deviations on the other
+side.
 \end{theorem}
 
 These are not merely EFG export facts.  They are program-facing facts
@@ -63,11 +74,12 @@ checked-program theorem is packaged by the native completed-frontier
 RoundView/Kuhn development: \(\mathrm{frontierCompleteOutcomeKuhn}\)
 relates \(\mathrm{behavioralFrontierGame}\),
 \(\mathrm{mixedPureFrontierGame}\), and
-\(\mathrm{pureFrontierGame}\) at outcome-kernel level, and the
-deviation-simulation wrappers provide Nash-safe transport.  FOSG and
-EFG adequacy theorems present the same frontier semantics to external
-game forms; they are not the semantic reduction behind this Kuhn
-statement.
+\(\mathrm{pureFrontierGame}\) at outcome-kernel level, while
+\(\mathrm{frontierKuhnStrategicEquivalence}\) packages the
+strategy/deviation content.  Nash-safe transport is a corollary of these
+deviation-matching facts.  FOSG and EFG adequacy theorems present the
+same frontier semantics to external game forms; they are not the
+semantic reduction behind this Kuhn statement.
 
 \paragraph{Lean correspondence.}
 Generic RoundView/FOSG and RoundView/EFG bridges are in
@@ -77,4 +89,8 @@ Generic RoundView/FOSG and RoundView/EFG bridges are in
 \TT{Vegas.GameBridge.EFG.FromCore}; exports are in
 \TT{Vegas.Export.FOSG} and \TT{Vegas.Export.EFG}.  Program-facing Kuhn
 facts are in \TT{Vegas.Core.ToEventGraph.Kuhn} and
-\TT{Vegas.Core.Theorems.Kuhn}.
+\TT{Vegas.Core.Theorems.Kuhn}; the public strategy/deviation package is
+\TT{frontierKuhnStrategicEquivalence\_schema}, with individual
+deviation facts such as
+\TT{mixedPureFrontier\_mixedDeviation\_to\_behavioral\_kernel} and
+\TT{behavioralFrontier\_deviation\_to\_mixedPure\_kernel}.

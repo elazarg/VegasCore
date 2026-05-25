@@ -809,6 +809,68 @@ theorem mixedToBehavioralUnilateralDeviationOutcomeKernel
       |>.mixedPureToBehavioralUnilateralDeviationOutcomeKernel_eq_of_menus
         semantics.menus mixed who deviation
 
+open Classical in
+/-- Updating one player's mixed-pure marginal leaves every other player's
+canonical behavioral realization unchanged. -/
+theorem mixedToBehavioralProfile_update_ne
+    (semantics : FrontierGameSemantics program)
+    (mixed : semantics.mixedPureGame.Profile)
+    {who player : P} (hne : player ≠ who)
+    (mixedDeviation : semantics.mixedPureGame.Strategy who) :
+    semantics.mixedToBehavioralProfile
+        (Function.update mixed who mixedDeviation) player =
+      semantics.mixedToBehavioralProfile mixed player := by
+  classical
+  let horizon := completionBound (compile program.core)
+  let view := semantics.games.view
+  letI : ∀ player, Fintype (Option (view.Act player)) :=
+    semantics.games.kuhnOptionalMoveFintype
+  letI :
+      ∀ player,
+        Finite ((view.kuhnModel horizon semantics.menus).InfoState player) :=
+    semantics.games.kuhnInfoFinite horizon semantics.menus
+  simpa [mixedToBehavioralProfile, mixedPureGame, pureGame,
+    behavioralGame, pure, behavioral, horizon, view] using
+    view.mixedPureToBehavioralProfile_update_ne
+      horizon semantics.menus mixed hne mixedDeviation
+
+open Classical in
+/-- Every unilateral mixed-pure deviation from a mixed profile has a matching
+unilateral behavioral deviation from its canonical Kuhn realization, with the
+same completed-game outcome kernel. -/
+theorem mixedToBehavioralMixedDeviationOutcomeKernel
+    (semantics : FrontierGameSemantics program)
+    (mixed : semantics.mixedPureGame.Profile)
+    (who : P)
+    (mixedDeviation : semantics.mixedPureGame.Strategy who) :
+    ∃ behavioralDeviation : semantics.behavioralGame.Strategy who,
+      semantics.mixedPureGame.outcomeKernel
+          (Function.update mixed who mixedDeviation) =
+        semantics.behavioralGame.outcomeKernel
+          (Function.update
+            (semantics.mixedToBehavioralProfile mixed)
+            who behavioralDeviation) := by
+  classical
+  let mixed' : semantics.mixedPureGame.Profile :=
+    Function.update mixed who mixedDeviation
+  let behavioralDeviation : semantics.behavioralGame.Strategy who :=
+    semantics.mixedToBehavioralProfile mixed' who
+  refine ⟨behavioralDeviation, ?_⟩
+  have hprofile :
+      Function.update
+          (semantics.mixedToBehavioralProfile mixed)
+          who behavioralDeviation =
+        semantics.mixedToBehavioralProfile mixed' := by
+    funext player
+    by_cases hplayer : player = who
+    · subst player
+      simp [behavioralDeviation]
+    · rw [Function.update_of_ne hplayer]
+      exact (semantics.mixedToBehavioralProfile_update_ne
+        mixed hplayer mixedDeviation).symm
+  rw [hprofile]
+  exact (semantics.mixedToBehavioralProfileOutcomeKernel mixed').symm
+
 /-- Mixed pure strategies can be realized by behavioral strategies with the
 same completed-game outcome kernel. -/
 theorem mixedToBehavioral
@@ -982,6 +1044,96 @@ theorem behavioralToMixedPure_update
   simpa [behavioralToMixedPure, horizon, view] using
     view.behavioralToMixedPure_update
       horizon semantics.menus behavioralProfile who deviation
+
+/-- Native completed-frontier Kuhn strategic equivalence.
+
+This is the strategy/deviation-level package behind the equilibrium-facing
+corollaries: mixed-pure and behavioral frontier profiles have canonical
+translations preserving completed outcome kernels, and one-player deviations
+can be matched across the two presentations. -/
+structure KuhnStrategicEquivalence
+    (semantics : FrontierGameSemantics program) where
+  mixedToBehavioral :
+    semantics.mixedPureGame.Profile → semantics.behavioralGame.Profile
+  behavioralToMixed :
+    semantics.behavioralGame.Profile → semantics.mixedPureGame.Profile
+  mixed_to_behavioral_outcome :
+    ∀ mixed,
+      semantics.behavioralGame.outcomeKernel (mixedToBehavioral mixed) =
+        semantics.mixedPureGame.outcomeKernel mixed
+  behavioral_to_mixed_outcome :
+    ∀ behavioral,
+      semantics.behavioralGame.outcomeKernel behavioral =
+        semantics.mixedPureGame.outcomeKernel (behavioralToMixed behavioral)
+  behavioral_deviation_to_mixed_deviation :
+    ∀ mixed (who : P)
+      (behavioralDeviation : semantics.behavioralGame.Strategy who),
+      ∃ mixedDeviation : semantics.mixedPureGame.Strategy who,
+        semantics.behavioralGame.outcomeKernel
+            (Function.update (mixedToBehavioral mixed)
+              who behavioralDeviation) =
+          semantics.mixedPureGame.outcomeKernel
+            (Function.update mixed who mixedDeviation)
+  mixed_deviation_to_behavioral_deviation :
+    ∀ mixed (who : P)
+      (mixedDeviation : semantics.mixedPureGame.Strategy who),
+      ∃ behavioralDeviation : semantics.behavioralGame.Strategy who,
+        semantics.mixedPureGame.outcomeKernel
+            (Function.update mixed who mixedDeviation) =
+          semantics.behavioralGame.outcomeKernel
+            (Function.update (mixedToBehavioral mixed)
+              who behavioralDeviation)
+  arbitrary_behavioral_deviation_to_mixed_deviation :
+    ∀ behavioral (who : P)
+      (behavioralDeviation : semantics.behavioralGame.Strategy who),
+      ∃ mixedDeviation : semantics.mixedPureGame.Strategy who,
+        semantics.behavioralGame.outcomeKernel
+            (Function.update behavioral who behavioralDeviation) =
+          semantics.mixedPureGame.outcomeKernel
+            (Function.update (behavioralToMixed behavioral)
+              who mixedDeviation)
+
+open Classical in
+/-- Canonical native completed-frontier Kuhn strategic equivalence. -/
+noncomputable def kuhnStrategicEquivalence
+    (semantics : FrontierGameSemantics program) :
+    KuhnStrategicEquivalence semantics where
+  mixedToBehavioral := semantics.mixedToBehavioralProfile
+  behavioralToMixed := semantics.behavioralToMixedPure
+  mixed_to_behavioral_outcome := by
+    intro mixed
+    simpa [mixedPureGame, pureGame, KernelGame.mixedExtension] using
+      semantics.mixedToBehavioralProfileOutcomeKernel mixed
+  behavioral_to_mixed_outcome := by
+    intro behavioral
+    exact semantics.behavioralToMixedPureOutcomeKernel behavioral
+  behavioral_deviation_to_mixed_deviation := by
+    intro mixed who behavioralDeviation
+    exact
+      ⟨semantics.behavioralStrategyToMixedPure who behavioralDeviation,
+        semantics.mixedToBehavioralUnilateralDeviationOutcomeKernel
+          mixed who behavioralDeviation⟩
+  mixed_deviation_to_behavioral_deviation := by
+    intro mixed who mixedDeviation
+    exact semantics.mixedToBehavioralMixedDeviationOutcomeKernel
+      mixed who mixedDeviation
+  arbitrary_behavioral_deviation_to_mixed_deviation := by
+    intro behavioral who behavioralDeviation
+    let deviated : semantics.behavioralGame.Profile :=
+      Function.update behavioral who behavioralDeviation
+    let mixedDeviation : semantics.mixedPureGame.Strategy who :=
+      (semantics.behavioralToMixedPure deviated) who
+    refine ⟨mixedDeviation, ?_⟩
+    have hupdate :
+        Function.update
+            (semantics.behavioralToMixedPure behavioral)
+            who mixedDeviation =
+          semantics.behavioralToMixedPure deviated := by
+      exact
+        (semantics.behavioralToMixedPure_update
+          behavioral who behavioralDeviation).symm
+    rw [hupdate]
+    exact semantics.behavioralToMixedPureOutcomeKernel deviated
 
 /-- The behavioral-to-product-mixed Kuhn direction as a standard one-way
 Nash deviation simulation. A target behavioral deviation is matched by the
@@ -1522,6 +1674,11 @@ abbrev BehavioralFrontierStrategy
     (program : WFProgram P L) [FiniteDomains program] (player : P) : Type :=
   (program.behavioralFrontierGame).Strategy player
 
+/-- Mixed-pure frontier strategies of a checked program. -/
+abbrev MixedPureFrontierStrategy
+    (program : WFProgram P L) [FiniteDomains program] (player : P) : Type :=
+  (program.mixedPureFrontierGame).Strategy player
+
 /-- Pure frontier strategy profiles of a checked program. -/
 abbrev PureFrontierProfile
     (program : WFProgram P L) [FiniteDomains program] : Type :=
@@ -1807,6 +1964,19 @@ abbrev MixedPureToBehavioralFrontierDeviationSimulation
   ToEventGraph.FrontierGameSemantics.MixedPureToBehavioralDeviationSimulation
     program.frontierSemantics
 
+/-- Program-facing strategy/deviation-level Kuhn equivalence package. -/
+abbrev FrontierKuhnStrategicEquivalence
+    (program : WFProgram P L) [FiniteDomains program] : Type :=
+  ToEventGraph.FrontierGameSemantics.KuhnStrategicEquivalence
+    program.frontierSemantics
+
+/-- Canonical strategy/deviation-level Kuhn equivalence for the completed
+frontier games of a checked program. -/
+noncomputable def frontierKuhnStrategicEquivalence
+    (program : WFProgram P L) [FiniteDomains program] :
+    program.FrontierKuhnStrategicEquivalence :=
+  program.frontierSemantics.kuhnStrategicEquivalence
+
 /-- Product mixed pure-strategy profile induced by a behavioral frontier
 profile. -/
 noncomputable def behavioralFrontierToMixedPure
@@ -1842,6 +2012,53 @@ noncomputable def canonicalMixedPureToBehavioralFrontierDeviationSimulation
     program.MixedPureToBehavioralFrontierDeviationSimulation :=
   program.frontierSemantics
     |>.canonicalMixedPureToBehavioralDeviationSimulation
+
+/-- Every unilateral behavioral deviation from the canonical behavioral
+realization of a mixed-pure frontier profile has a matching unilateral
+mixed-pure deviation with the same completed-frontier outcome kernel. -/
+theorem mixedPureFrontier_behavioralDeviation_to_mixedPure
+    (program : WFProgram P L) [FiniteDomains program]
+    (mixed : program.MixedPureFrontierProfile)
+    (who : P)
+    (behavioralDeviation : program.BehavioralFrontierStrategy who) :
+    ∃ mixedDeviation : program.MixedPureFrontierStrategy who,
+      program.behavioralFrontierGame.outcomeKernel
+          (Function.update
+            (program.mixedPureToBehavioralFrontierProfile mixed)
+            who behavioralDeviation) =
+        program.mixedPureFrontierGame.outcomeKernel
+          (Function.update mixed who mixedDeviation) := by
+  refine
+    ⟨program.frontierSemantics.behavioralStrategyToMixedPure
+      who behavioralDeviation, ?_⟩
+  simpa [frontierSemantics, behavioralFrontierGame, mixedPureFrontierGame,
+    mixedPureToBehavioralFrontierProfile, MixedPureFrontierProfile,
+    BehavioralFrontierStrategy, MixedPureFrontierStrategy] using
+    program.frontierSemantics
+      |>.mixedToBehavioralUnilateralDeviationOutcomeKernel
+        mixed who behavioralDeviation
+
+/-- Every unilateral mixed-pure deviation has a matching unilateral behavioral
+deviation from the canonical behavioral realization, with the same
+completed-frontier outcome kernel. -/
+theorem mixedPureFrontier_mixedDeviation_to_behavioral
+    (program : WFProgram P L) [FiniteDomains program]
+    (mixed : program.MixedPureFrontierProfile)
+    (who : P)
+    (mixedDeviation : program.MixedPureFrontierStrategy who) :
+    ∃ behavioralDeviation : program.BehavioralFrontierStrategy who,
+      program.mixedPureFrontierGame.outcomeKernel
+          (Function.update mixed who mixedDeviation) =
+        program.behavioralFrontierGame.outcomeKernel
+          (Function.update
+            (program.mixedPureToBehavioralFrontierProfile mixed)
+            who behavioralDeviation) := by
+  simpa [frontierSemantics, behavioralFrontierGame, mixedPureFrontierGame,
+    mixedPureToBehavioralFrontierProfile, MixedPureFrontierProfile,
+    BehavioralFrontierStrategy, MixedPureFrontierStrategy] using
+    program.frontierSemantics
+      |>.mixedToBehavioralMixedDeviationOutcomeKernel
+        mixed who mixedDeviation
 
 /-- Mixed pure strategies realize as behavioral strategies with the same
 completed-frontier outcome kernel. -/
@@ -1914,6 +2131,31 @@ theorem behavioralFrontier_to_mixedPure_outcomeKernel
     behavioralFrontierGame, mixedPureFrontierGame,
     BehavioralFrontierProfile, MixedPureFrontierProfile] using
     program.frontierSemantics.behavioralToMixedPureOutcomeKernel behavioral
+
+/-- Every unilateral behavioral deviation from an arbitrary behavioral
+frontier profile has a matching unilateral mixed-pure deviation from the
+profile induced by behavioral-to-product-mixed Kuhn realization. -/
+theorem behavioralFrontier_deviation_to_mixedPure
+    (program : WFProgram P L) [FiniteDomains program]
+    (behavioral : program.BehavioralFrontierProfile)
+    (who : P)
+    (behavioralDeviation : program.BehavioralFrontierStrategy who) :
+    ∃ mixedDeviation : program.MixedPureFrontierStrategy who,
+      program.behavioralFrontierGame.outcomeKernel
+          (Function.update behavioral who behavioralDeviation) =
+        program.mixedPureFrontierGame.outcomeKernel
+          (Function.update
+            (program.behavioralFrontierToMixedPure behavioral)
+            who mixedDeviation) := by
+  classical
+  let equivalence := program.frontierKuhnStrategicEquivalence
+  simpa [equivalence, frontierKuhnStrategicEquivalence,
+    behavioralFrontierToMixedPure, frontierSemantics,
+    behavioralFrontierGame, mixedPureFrontierGame,
+    BehavioralFrontierProfile, MixedPureFrontierProfile,
+    BehavioralFrontierStrategy, MixedPureFrontierStrategy] using
+    equivalence.arbitrary_behavioral_deviation_to_mixed_deviation
+      behavioral who behavioralDeviation
 
 /-- Behavioral frontier strategies induce product mixed pure strategies with
 the same joint utility distribution. -/

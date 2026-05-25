@@ -100,6 +100,10 @@ Kuhn realization is stated at the checked-program frontier level, where players
 can reason about the code-derived game surface.
 
 - `program.frontierCompleteOutcomeKuhn`
+- `program.frontierKuhnStrategicEquivalence`
+- `program.mixedPureFrontier_behavioralDeviation_to_mixedPure`
+- `program.mixedPureFrontier_mixedDeviation_to_behavioral`
+- `program.behavioralFrontier_deviation_to_mixedPure`
 - `program.mixedPureFrontier_udist_of_behavioral`
 - `program.behavioralFrontier_to_correlatedPure_kernel`
 - `program.behavioralFrontier_to_correlatedPure_eu_of_bounded`
@@ -108,9 +112,14 @@ can reason about the code-derived game surface.
 - `program.claim_kuhn_uses_canonical_roundView_information`
 - `program.claim_behavioral_strategies_are_roundView_local`
 
-The Nash-safe statements use deviation simulations, not only outcome-kernel
-equalities. The information model is the canonical completed-frontier
-`RoundView`: behavioral strategies are functions of player views in that model.
+The main non-equilibrium package is
+`program.frontierKuhnStrategicEquivalence`: it records the canonical
+mixed-pure-to-behavioral and behavioral-to-mixed-pure translations, outcome
+kernel preservation in both directions, and one-player deviation matching
+across the two strategy presentations. The Nash-safe statements are corollaries
+of this deviation-level content; they are not the primary Kuhn formulation.
+The information model is the canonical completed-frontier `RoundView`:
+behavioral strategies are functions of player views in that model.
 
 For source-independent graph users, construct the shared round view with
 `Vegas.EventGraph.frontierRoundView`. The Kuhn facts live on

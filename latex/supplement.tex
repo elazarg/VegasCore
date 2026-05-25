@@ -333,16 +333,24 @@ FOSG and EFG are presentation/export layers.  Their theorem surface
 states utility-distribution agreement with native frontier games, not a
 replacement definition of Vegas semantics.
 
-\begin{leanbox}
-theorem mixedPureFrontier\_udist\_of\_behavioral
-theorem behavioralFrontier\_udist\_of\_mixedPure
-theorem frontierCompleteOutcomeKuhn\_schema
+\begin{leanbox}[fontupper=\scriptsize\ttfamily]
+theorem mixedPureFrontier\_udist\_of\_behavioral\\
+theorem behavioralFrontier\_udist\_of\_mixedPure\\
+theorem frontierCompleteOutcomeKuhn\_schema\\
+noncomputable def frontierKuhnStrategicEquivalence\_schema\\
+theorem mixedPureFrontier\_mixedDeviation\_to\_behavioral\_kernel\\
+theorem mixedPureFrontier\_behavioralDeviation\_to\_mixedPure\_kernel\\
+theorem behavioralFrontier\_deviation\_to\_mixedPure\_kernel
 \end{leanbox}
 
 The public checked-program Kuhn path is native completed-frontier
 packaging.  \TT{frontierCompleteOutcomeKuhn} packages the two
-outcome-kernel directions over the completed frontier games, and the
-deviation-simulation wrappers provide Nash-safe transport.  FOSG and EFG
+outcome-kernel directions over the completed frontier games.
+\TT{frontierKuhnStrategicEquivalence\_schema} packages the stronger
+strategy/deviation-level statement: canonical profile translations
+preserve completed outcome kernels, and one-player deviations can be
+matched across the mixed-pure and behavioral presentations.  Nash-safe
+transport is a downstream use of these deviation facts.  FOSG and EFG
 exports are payoff-law presentations that can be composed with these
 facts; they are not the proof route for the public frontier Kuhn theorem.
 
