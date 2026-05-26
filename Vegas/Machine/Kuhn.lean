@@ -1,5 +1,24 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import GameTheory.Theorems.Kuhn
 import Vegas.Machine.KernelGame
+
+/-!
+# Kuhn adapter for native round views
+
+This module connects the native `Machine.RoundView` strategic presentation to
+the generic `ObsModelCore` Kuhn theorem. The adapter is proof-facing: public
+game semantics remain the `RoundView` bounded pure and behavioral kernel games.
+
+The adapter state is a bounded round history, not a raw machine state. This
+matters because a history records the realized player actions and observations,
+so the generic perfect-recall hypotheses can be stated over exactly the same
+information states used by native strategies.
+-/
 
 namespace ObsModelCore
 
@@ -51,19 +70,6 @@ theorem mixedToBehavioralProfileWithFallback_update_ne
 end MixedToBehavioralUpdate
 
 end ObsModelCore
-
-/-!
-# Kuhn adapter for native round views
-
-This module connects the native `Machine.RoundView` strategic presentation to
-the generic `ObsModelCore` Kuhn theorem.  The adapter is proof-facing: public
-game semantics remain the `RoundView` bounded pure/behavioral kernel games.
-
-The adapter state is a bounded round history, not a raw machine state.  This
-matters because a history records the realized player actions and observations,
-so the generic perfect-recall hypotheses can be stated over exactly the same
-information states used by native strategies.
--/
 
 namespace Vegas
 

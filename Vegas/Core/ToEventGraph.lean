@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import Vegas.Core.ToEventGraph.Checkpoint
 import Vegas.Core.ToEventGraph.RoundView
 import Vegas.Core.ToEventGraph.FiniteMachine

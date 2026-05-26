@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import Mathlib.Data.Finsupp.Basic
 import Mathlib.Data.NNRat.Defs
 import Mathlib.Data.NNRat.Order
@@ -151,14 +157,14 @@ explicitly when a pointwise formula is needed, for example in adequacy or
 support-correctness proofs. -/
 theorem bind_apply (d : FWeight α) (f : α → FWeight β) (b : β) :
     (d.bind f) b = d.support.sum (fun a => d a * (f a) b) := by
-  simp only [bind, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.mapRange_apply]
+  simp only [bind, Finsupp.sum, Finsupp.finsetSum_apply, Finsupp.mapRange_apply]
 
 /-- Pointwise unfolding of `map` to a finite sum over the support of `d`.
 The conditional handles the case where `g` collides keys; `map_apply_injective`
 and `map_apply_of_forall_ne` are the two clean specializations that avoid it. -/
 theorem map_apply (g : α → β) (d : FWeight α) (b : β) :
     (d.map g) b = d.support.sum (fun a => if g a = b then d a else 0) := by
-  simp [map, Finsupp.mapDomain, Finsupp.sum, Finsupp.finset_sum_apply, Finsupp.single_apply]
+  simp [map, Finsupp.mapDomain, Finsupp.sum, Finsupp.finsetSum_apply, Finsupp.single_apply]
 
 /-- "`P` holds at every value with positive weight". The standard idiom for
 expressing semantic side conditions on a finite weight — for example, the
@@ -341,7 +347,7 @@ theorem bind_assoc {γ : Type} [DecidableEq γ]
   rw [Finsupp.sum_mapRange_index
     (fun b => by ext x; simp [Finsupp.mapRange_apply, zero_mul])]
   ext c
-  simp only [Finsupp.sum, Finsupp.mapRange_apply, Finsupp.finset_sum_apply]
+  simp only [Finsupp.sum, Finsupp.mapRange_apply, Finsupp.finsetSum_apply]
   rw [Finset.mul_sum]
   congr 1
   apply Finset.sum_congr rfl
@@ -397,30 +403,26 @@ noncomputable def NNRat.toNNReal (q : ℚ≥0) : NNReal :=
   ⟨((q : ℚ) : ℝ), by exact_mod_cast q.coe_nonneg⟩
 
 theorem NNRat.toNNReal_one : NNRat.toNNReal 1 = 1 := by
-  unfold NNRat.toNNReal
-  ext
-  push_cast
-  ring
+  refine NNReal.coe_injective ?_
+  change (((1 : ℚ≥0) : ℚ) : ℝ) = 1
+  norm_num
 
 theorem NNRat.toNNReal_zero : NNRat.toNNReal 0 = 0 := by
-  unfold NNRat.toNNReal
-  ext
-  push_cast
-  ring
+  refine NNReal.coe_injective ?_
+  change (((0 : ℚ≥0) : ℚ) : ℝ) = 0
+  norm_num
 
 theorem NNRat.toNNReal_add (a b : ℚ≥0) :
     NNRat.toNNReal (a + b) = NNRat.toNNReal a + NNRat.toNNReal b := by
-  unfold NNRat.toNNReal
-  ext
-  push_cast
-  ring
+  refine NNReal.coe_injective ?_
+  change ((((a + b : ℚ≥0) : ℚ) : ℝ) = (((a : ℚ≥0) : ℚ) : ℝ) + (((b : ℚ≥0) : ℚ) : ℝ))
+  rw [NNRat.coe_add, Rat.cast_add]
 
 theorem NNRat.toNNReal_mul (a b : ℚ≥0) :
     NNRat.toNNReal (a * b) = NNRat.toNNReal a * NNRat.toNNReal b := by
-  unfold NNRat.toNNReal
-  ext
-  push_cast
-  ring
+  refine NNReal.coe_injective ?_
+  change ((((a * b : ℚ≥0) : ℚ) : ℝ) = (((a : ℚ≥0) : ℚ) : ℝ) * (((b : ℚ≥0) : ℚ) : ℝ))
+  rw [NNRat.coe_mul, Rat.cast_mul]
 
 theorem NNRat.toNNReal_coe_real (q : ℚ≥0) :
     ((NNRat.toNNReal q : NNReal) : ℝ) = (q : ℝ) := by
@@ -457,7 +459,7 @@ noncomputable def toPMF {γ : Type} [DecidableEq γ]
       calc
         d.support.sum (fun a => ((NNRat.toNNReal (d a) : NNReal) : ENNReal))
             = ((d.support.sum fun a => NNRat.toNNReal (d a) : NNReal) : ENNReal) := by
-                rw [← ENNReal.coe_finset_sum]
+                rw [← ENNReal.coe_finsetSum]
         _ = (NNRat.toNNReal (d.support.sum fun a => d a) : ENNReal) := by
               rw [NNRat.toNNReal_finset_sum]
         _ = 1 := by simp [hsum, NNRat.toNNReal_one])
@@ -498,7 +500,7 @@ theorem toPMF_map [DecidableEq α] [DecidableEq β]
   have hlhs :
       ((NNRat.toNNReal (∑ a ∈ d.support, if g a = b then d a else 0) : NNReal) : ENNReal) =
         ∑ a ∈ d.support, ((NNRat.toNNReal (if g a = b then d a else 0) : NNReal) : ENNReal) := by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finset_sum]
+    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finsetSum]
   rw [hlhs]
   apply Finset.sum_congr rfl
   intro a _
@@ -516,7 +518,7 @@ theorem toPMF_bind_apply [DecidableEq α] [DecidableEq β]
   rw [toPMF_apply, bind_apply]
   rw [show ((NNRat.toNNReal (d.support.sum fun a => d a * (f a) b) : NNReal) : ENNReal) =
       d.support.sum (fun a => ((NNRat.toNNReal (d a * (f a) b) : NNReal) : ENNReal)) from by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finset_sum]]
+    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finsetSum]]
   apply Finset.sum_congr rfl
   intro a _
   rw [NNRat.toNNReal_mul, ENNReal.coe_mul]

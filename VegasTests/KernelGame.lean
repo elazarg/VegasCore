@@ -1,6 +1,19 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import Vegas.GameBridge.EFG.FromRoundView
 import Vegas.GameBridge.FOSG.FromRoundView
 import Vegas.Machine.KernelGame
+
+/-!
+# Kernel game bridge tests
+
+This module checks the round-view bridges into kernel games, FOSG, and EFG on
+small finite-state and infinite-state examples.
+-/
 
 namespace VegasTests
 

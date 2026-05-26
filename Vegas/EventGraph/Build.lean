@@ -1,4 +1,17 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import Vegas.EventGraph.Basic
+
+/-!
+# Event graph construction lemmas
+
+This module proves the structural facts used to extend event graphs while
+preserving field lookup, visibility, availability, and well-formedness.
+-/
 
 namespace Vegas
 
