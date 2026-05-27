@@ -238,7 +238,7 @@ main semantic paths:
 | `Vegas.Examples.DependencySemantics` | compiler dependency footprints, commit choice footprints, raw graph validation |
 | `Vegas.Examples.MatchingPennies` | simultaneous hidden commits, finite frontier games, zero-sum payoff table |
 | `Vegas.Examples.MontyHall` | staged information flow, relevant reveal timing, FOSG/EFG payoff adequacy |
-| `Vegas.Examples.SolutionConcepts` | Nash, dominance, welfare, security, saddle-point, Vickrey truthfulness |
+| `Vegas.Examples.SolutionConcepts` | Nash, mixed Nash, dominance, welfare, security, saddle-point, Vickrey truthfulness |
 | `Vegas.Examples.EFGTranslation` | FOSG-to-EFG serialized decision-spine shape |
 | `Vegas.Examples.Claims` | paper-facing checked-program claim theorems on concrete games |
 | `Vegas.Examples.Refinement` | identity and encoded non-identity runtime refinement smoke tests |

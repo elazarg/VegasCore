@@ -5,6 +5,7 @@ import GameTheory.Concepts.BestResponse
 import GameTheory.Concepts.PotentialGame
 import GameTheory.Concepts.TeamGame
 import GameTheory.Concepts.ZeroSum
+import GameTheory.Concepts.BinaryMixed
 import GameTheory.Auctions.Vickrey
 
 /-!
@@ -111,6 +112,8 @@ deriving DecidableEq, Fintype, Repr
 
 open Coin
 
+private instance : Nonempty Coin := ⟨heads⟩
+
 /-- Player 0 wants a match, player 1 wants a mismatch. -/
 def utility (profile : Fin 2 → Coin) : Payoff (Fin 2) := fun player =>
   let row : ℝ := if profile 0 = profile 1 then 1 else -1
@@ -151,6 +154,69 @@ theorem player0_eu_neg_player1 (profile : game.Profile) :
     change Fintype (Fin 2 → Coin)
     infer_instance
   exact isZeroSum.eu_neg profile
+
+noncomputable instance : ∀ i : Fin 2, Nonempty (game.Strategy i) := fun _ => ⟨heads⟩
+noncomputable instance : ∀ i : Fin 2, Fintype (game.Strategy i) :=
+  fun _ => by change Fintype Coin; infer_instance
+noncomputable instance : Finite game.Outcome := by
+  change Finite (∀ _ : Fin 2, Coin); infer_instance
+noncomputable instance : Finite game.mixedExtension.Outcome := by
+  change Finite game.Outcome
+  infer_instance
+
+private def playerLabels : Fin 2 ≃ Bool where
+  toFun i := if i = 0 then true else false
+  invFun
+    | true => 0
+    | false => 1
+  left_inv := by
+    intro i
+    fin_cases i <;> simp
+  right_inv := by
+    intro b
+    cases b <;> simp
+
+/-- The binary action labels for matching pennies: `true` is heads and `false`
+is tails. -/
+private def labels : KernelGame.BinaryActionLabels game where
+  player := playerLabels
+  toBool := fun _ =>
+    { toFun := fun
+        | heads => true
+        | tails => false
+      invFun := fun
+        | true => heads
+        | false => tails
+      left_inv := by
+        intro a
+        cases a <;> rfl
+      right_inv := by
+        intro b
+        cases b <;> rfl }
+
+private def matchingPenniesLike : game.MatchingPenniesLike labels where
+  scale := 1
+  scale_pos := by norm_num
+  eu_true := by
+    intro a b
+    cases a <;> cases b <;>
+      simp [KernelGame.BinaryActionLabels.profile, KernelGame.BinaryActionLabels.action,
+        KernelGame.BinaryActionLabels.playerOf, labels, playerLabels, game,
+        deterministicProfileGame, KernelGame.eu, expect_pure, utility]
+  eu_false := by
+    intro a b
+    cases a <;> cases b <;>
+      simp [KernelGame.BinaryActionLabels.profile, KernelGame.BinaryActionLabels.action,
+        KernelGame.BinaryActionLabels.playerOf, labels, playerLabels, game,
+        deterministicProfileGame, KernelGame.eu, expect_pure, utility]
+
+theorem uniform_mixed_balanced :
+    game.IsUniformMixedBalanced :=
+  KernelGame.MatchingPenniesLike.uniformMixed_balanced matchingPenniesLike
+
+theorem uniform_mixed_nash :
+    game.mixedExtension.IsNash game.uniformMixedProfile :=
+  KernelGame.MatchingPenniesLike.uniformMixedProfile_isNash matchingPenniesLike
 
 end MatchingPenniesKernel
 
