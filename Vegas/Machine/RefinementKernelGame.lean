@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Machine.Refinement
-import GameTheory.Core.GameMorphism
+import GameTheory.Concepts.GameMorphism
 import GameTheory.Concepts.SolutionConcepts
 
 /-!

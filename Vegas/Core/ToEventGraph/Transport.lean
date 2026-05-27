@@ -1,5 +1,5 @@
 import Vegas.Core.ToEventGraph.Games
-import GameTheory.Core.GameMorphism
+import GameTheory.Concepts.GameMorphism
 
 /-!
 # Frontier game transport
