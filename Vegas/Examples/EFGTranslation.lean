@@ -21,6 +21,7 @@ open GameTheory
 namespace PrisonersDilemma
 
 open GameTheory
+open EFG
 open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
@@ -67,7 +68,7 @@ theorem plainEFG_first_round_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  apply DecisionSpineThenChance.fromHistory_succ_nonterminal
+  apply Tree.fromHistory_succ_nonterminal_decisionSpineThenChance
   intro hterminal
   simp [Machine.RoundView.toFOSG, Machine.RoundView.boundedTerminal,
     Machine.BoundedState.init] at hterminal
@@ -114,13 +115,14 @@ theorem plainEFG_full_tree_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  exact FullTreeShape.fromHistory _ _ _ _
+  exact Tree.fromHistory_fullTreeShape _ _ _ _
 
 end PrisonersDilemma
 
 namespace MatchingPenniesEFG
 
 open GameTheory
+open EFG
 open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
@@ -170,7 +172,7 @@ theorem plainEFG_first_round_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (matchingPenniesChecked.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  apply DecisionSpineThenChance.fromHistory_succ_nonterminal
+  apply Tree.fromHistory_succ_nonterminal_decisionSpineThenChance
   intro hterminal
   simp [Machine.RoundView.toFOSG, Machine.RoundView.boundedTerminal,
     Machine.BoundedState.init] at hterminal
@@ -220,13 +222,14 @@ theorem plainEFG_full_tree_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (matchingPenniesChecked.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  exact FullTreeShape.fromHistory _ _ _ _
+  exact Tree.fromHistory_fullTreeShape _ _ _ _
 
 end MatchingPenniesEFG
 
 namespace BattleOfTheSexes
 
 open GameTheory
+open EFG
 open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
@@ -274,7 +277,7 @@ theorem plainEFG_first_round_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  apply DecisionSpineThenChance.fromHistory_succ_nonterminal
+  apply Tree.fromHistory_succ_nonterminal_decisionSpineThenChance
   intro hterminal
   simp [Machine.RoundView.toFOSG, Machine.RoundView.boundedTerminal,
     Machine.BoundedState.init] at hterminal
@@ -322,13 +325,14 @@ theorem plainEFG_full_tree_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             4 (fun _ => 0))))
-  exact FullTreeShape.fromHistory _ _ _ _
+  exact Tree.fromHistory_fullTreeShape _ _ _ _
 
 end BattleOfTheSexes
 
 namespace MontyHall
 
 open GameTheory
+open EFG
 open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
@@ -376,7 +380,7 @@ theorem plainEFG_first_round_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             8 (fun _ => 0))))
-  apply DecisionSpineThenChance.fromHistory_succ_nonterminal
+  apply Tree.fromHistory_succ_nonterminal_decisionSpineThenChance
   intro hterminal
   simp [Machine.RoundView.toFOSG, Machine.RoundView.boundedTerminal,
     Machine.BoundedState.init] at hterminal
@@ -423,7 +427,7 @@ theorem plainEFG_full_tree_shape :
         (GameTheory.FOSG.AugmentedEFGBridge.SerialExec.root
           (checkedProgram.frontierSemantics.behavioral.view.toFOSG
             8 (fun _ => 0))))
-  exact FullTreeShape.fromHistory _ _ _ _
+  exact Tree.fromHistory_fullTreeShape _ _ _ _
 
 end MontyHall
 
