@@ -6,6 +6,7 @@ import GameTheory.Concepts.PotentialGame
 import GameTheory.Concepts.TeamGame
 import GameTheory.Concepts.ZeroSum
 import GameTheory.Concepts.BinaryMixed
+import GameTheory.Languages.NFG.Compile
 import GameTheory.Auctions.Vickrey
 
 /-!
@@ -26,31 +27,6 @@ open GameTheory
 open Math.Probability
 
 /-! ## Deterministic kernel-game checks -/
-
-/-- A deterministic strategic-form game whose outcome records the played
-profile.  This keeps outcome-level predicates such as zero-sum and team-game
-properties meaningful. -/
-noncomputable def deterministicProfileGame {ι : Type} (Strategy : ι → Type)
-    (utility : (∀ i, Strategy i) → Payoff ι) : KernelGame ι where
-  Strategy := Strategy
-  Outcome := ∀ i, Strategy i
-  utility := utility
-  outcomeKernel := fun profile => PMF.pure profile
-
-@[simp] theorem deterministicProfileGame_outcomeKernel {ι : Type}
-    (Strategy : ι → Type)
-    (utility : (∀ i, Strategy i) → Payoff ι)
-    (profile : ∀ i, Strategy i) :
-    (deterministicProfileGame Strategy utility).outcomeKernel profile =
-      PMF.pure profile := rfl
-
-@[simp] theorem deterministicProfileGame_eu {ι : Type}
-    (Strategy : ι → Type)
-    (utility : (∀ i, Strategy i) → Payoff ι)
-    (profile : ∀ i, Strategy i) (player : ι) :
-    (deterministicProfileGame Strategy utility).eu profile player =
-      utility profile player := by
-  simp [deterministicProfileGame, KernelGame.eu, expect_pure]
 
 namespace PrisonersKernel
 
@@ -77,8 +53,13 @@ def utility (profile : Fin 2 → Action) : Payoff (Fin 2) := fun player =>
     | defect, defect => 1
   if player = 0 then rowPayoff else colPayoff
 
+noncomputable def nfg : NFG.NFGGame (Fin 2) (fun _ => Action) where
+  Outcome := Fin 2 → Action
+  outcome := id
+  utility := utility
+
 noncomputable def game : KernelGame (Fin 2) :=
-  deterministicProfileGame (fun _ => Action) utility
+  nfg.toKernelGame
 
 def defectProfile : game.Profile := fun _ => defect
 
@@ -88,7 +69,7 @@ theorem defect_isDominant (player : Fin 2) :
   fin_cases player <;>
     cases h0 : profile 0 <;> cases h1 : profile 1 <;>
     cases alternative <;>
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+    simp [game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure,
       utility, h0, h1] <;>
     norm_num
 
@@ -119,32 +100,37 @@ def utility (profile : Fin 2 → Coin) : Payoff (Fin 2) := fun player =>
   let row : ℝ := if profile 0 = profile 1 then 1 else -1
   if player = 0 then row else -row
 
+noncomputable def nfg : NFG.NFGGame (Fin 2) (fun _ => Coin) where
+  Outcome := Fin 2 → Coin
+  outcome := id
+  utility := utility
+
 noncomputable def game : KernelGame (Fin 2) :=
-  deterministicProfileGame (fun _ => Coin) utility
+  nfg.toKernelGame
 
 theorem isZeroSum : game.IsZeroSum := by
   intro outcome
   cases h0 : outcome 0 <;> cases h1 : outcome 1 <;>
-    simp [game, deterministicProfileGame, utility, h0, h1]
+    simp [game, nfg, NFG.NFGGame.toKernelGame, utility, h0, h1]
 
 theorem no_pure_nash (profile : game.Profile) :
     ¬ game.IsNash profile := by
   intro hNash
   cases h0 : profile 0 <;> cases h1 : profile 1
   · have hdev := hNash 1 tails
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+    simp [game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure,
       utility, h0, h1] at hdev
     norm_num at hdev
   · have hdev := hNash 0 tails
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+    simp [game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure,
       utility, h0, h1] at hdev
     norm_num at hdev
   · have hdev := hNash 0 heads
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+    simp [game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure,
       utility, h0, h1] at hdev
     norm_num at hdev
   · have hdev := hNash 1 heads
-    simp [game, deterministicProfileGame, KernelGame.eu, expect_pure,
+    simp [game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure,
       utility, h0, h1] at hdev
     norm_num at hdev
 
@@ -202,13 +188,13 @@ private def matchingPenniesLike : game.MatchingPenniesLike labels where
     cases a <;> cases b <;>
       simp [KernelGame.BinaryActionLabels.profile, KernelGame.BinaryActionLabels.action,
         KernelGame.BinaryActionLabels.playerOf, labels, playerLabels, game,
-        deterministicProfileGame, KernelGame.eu, expect_pure, utility]
+        nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure, utility]
   eu_false := by
     intro a b
     cases a <;> cases b <;>
       simp [KernelGame.BinaryActionLabels.profile, KernelGame.BinaryActionLabels.action,
         KernelGame.BinaryActionLabels.playerOf, labels, playerLabels, game,
-        deterministicProfileGame, KernelGame.eu, expect_pure, utility]
+        nfg, NFG.NFGGame.toKernelGame, KernelGame.eu, expect_pure, utility]
 
 theorem uniform_mixed_balanced :
     game.IsUniformMixedBalanced :=
@@ -233,8 +219,13 @@ open Venue
 def utility (profile : Fin 2 → Venue) : Payoff (Fin 2) := fun _ =>
   if profile 0 = profile 1 then (1 : ℝ) else 0
 
+noncomputable def nfg : NFG.NFGGame (Fin 2) (fun _ => Venue) where
+  Outcome := Fin 2 → Venue
+  outcome := id
+  utility := utility
+
 noncomputable def game : KernelGame (Fin 2) :=
-  deterministicProfileGame (fun _ => Venue) utility
+  nfg.toKernelGame
 
 def operaProfile : game.Profile := fun _ => opera
 
@@ -247,32 +238,32 @@ theorem operaProfile_isStrictNash :
     game.IsStrictNash operaProfile := by
   intro player alternative hne
   fin_cases player <;> cases alternative <;>
-    simp [operaProfile, game, deterministicProfileGame, KernelGame.eu,
+    simp [operaProfile, game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu,
       expect_pure, utility] at hne ⊢
 
 theorem footballProfile_isStrictNash :
     game.IsStrictNash footballProfile := by
   intro player alternative hne
   fin_cases player <;> cases alternative <;>
-    simp [footballProfile, game, deterministicProfileGame, KernelGame.eu,
+    simp [footballProfile, game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu,
       expect_pure, utility] at hne ⊢
 
 theorem isTeamGame : game.IsTeamGame := by
   intro outcome player other
-  simp [game, deterministicProfileGame, utility]
+  simp [game, nfg, NFG.NFGGame.toKernelGame, utility]
 
 theorem exactPotential : game.IsExactPotential potential := by
   intro player profile alternative
   fin_cases player <;>
     cases h0 : profile 0 <;> cases h1 : profile 1 <;>
     cases alternative <;>
-    simp [potential, game, deterministicProfileGame, KernelGame.eu,
+    simp [potential, game, nfg, NFG.NFGGame.toKernelGame, KernelGame.eu,
       expect_pure, utility, h0, h1]
 
 theorem opera_potential_max (profile : game.Profile) :
     potential operaProfile ≥ potential profile := by
   cases h0 : profile 0 <;> cases h1 : profile 1 <;>
-    simp [potential, operaProfile, game, deterministicProfileGame,
+    simp [potential, operaProfile, game, nfg, NFG.NFGGame.toKernelGame,
       KernelGame.eu, expect_pure, utility, h0, h1]
 
 theorem operaProfile_isNash_from_potential :

@@ -21,7 +21,7 @@ open GameTheory
 namespace PrisonersDilemma
 
 open GameTheory
-open EFGBridge
+open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
     plainEFG.inf.n = Fintype.card Player := rfl
@@ -121,7 +121,7 @@ end PrisonersDilemma
 namespace MatchingPenniesEFG
 
 open GameTheory
-open EFGBridge
+open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
     matchingPenniesPlainEFG.inf.n = Fintype.card Player := rfl
@@ -227,7 +227,7 @@ end MatchingPenniesEFG
 namespace BattleOfTheSexes
 
 open GameTheory
-open EFGBridge
+open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
     checkedProgram.frontierPlainEFG.inf.n = Fintype.card Player := rfl
@@ -329,7 +329,7 @@ end BattleOfTheSexes
 namespace MontyHall
 
 open GameTheory
-open EFGBridge
+open GameTheory.FOSG.AugmentedEFGBridge
 
 theorem plainEFG_player_count :
     plainEFG.inf.n = Fintype.card Player := rfl

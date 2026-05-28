@@ -20,57 +20,6 @@ so the generic perfect-recall hypotheses can be stated over exactly the same
 information states used by native strategies.
 -/
 
-namespace ObsModelCore
-
-open Math.PMFProduct Math.ProbabilityMassFunction Math.ParameterizedChain
-
-variable {ι σ : Type} {Obs : ι → Type}
-variable {Act : (i : ι) → Obs i → Type}
-variable {O : ObsModelCore ι σ Obs Act}
-
-section MixedToBehavioralUpdate
-
-variable [DecidableEq ι] [Fintype ι] [∀ i o, Fintype (Act i o)]
-variable [∀ i, Fintype (O.InfoState i)]
-
-/-- A player update to the mixed profile does not change any other player's
-posterior action factor in the mixed-to-behavioral construction. -/
-theorem mixedToBehavioralFactorAt_update_ne
-    (μ : ∀ i, PMF (O.LocalStrategy i))
-    {who i : ι} (hne : i ≠ who)
-    (τ : PMF (O.LocalStrategy who))
-    (n : Nat) (ss : List σ) (π₀ : ObsModelCore.PureProfile O) :
-    mixedToBehavioralFactorAt (O := O)
-        (Function.update μ who τ) i n ss π₀ =
-      mixedToBehavioralFactorAt (O := O) μ i n ss π₀ := by
-  simp [mixedToBehavioralFactorAt, Function.update_of_ne hne]
-
-/-- A player update to the mixed profile does not change another player's
-behavioral strategy produced by the mixed-to-behavioral construction, provided
-the fallback profile is unchanged. -/
-theorem mixedToBehavioralProfileWithFallback_update_ne
-    (μ : ∀ i, PMF (O.LocalStrategy i))
-    (fallback : ObsModelCore.BehavioralProfile O)
-    {who i : ι} (hne : i ≠ who)
-    (τ : PMF (O.LocalStrategy who))
-    (v : O.InfoState i) :
-    mixedToBehavioralProfileWithFallback (O := O)
-        (Function.update μ who τ) fallback i v =
-      mixedToBehavioralProfileWithFallback (O := O) μ fallback i v := by
-  classical
-  unfold mixedToBehavioralProfileWithFallback
-  by_cases h :
-      ∃ (n : Nat) (ss : List σ) (π₀ : ObsModelCore.PureProfile O),
-        O.projectStates i ss = v ∧
-        pureRun (O.pureStep) O.init n π₀ ss ≠ 0
-  · rw [dif_pos h, dif_pos h]
-    simp [mixedToBehavioralFactorAt_update_ne (O := O) μ hne τ]
-  · rw [dif_neg h, dif_neg h]
-
-end MixedToBehavioralUpdate
-
-end ObsModelCore
-
 namespace Vegas
 
 open GameTheory
@@ -1815,7 +1764,7 @@ theorem behavioralStrategyToKuhnMixed_factorAt_of_ignores
             (view.kuhnModel horizon hMenus).init steps
             (Function.update profile player localStrategy) trace)) :
     Math.ProbabilityMassFunction.pushforward
-        (Math.ParameterizedChain.reweightPMF
+        (Math.ProbabilityMassFunction.reweightPMF
           (view.behavioralStrategyToKuhnMixed
             horizon hMenus player strategy)
           (fun localStrategy :
@@ -1849,7 +1798,7 @@ theorem behavioralStrategyToKuhnMixed_factorAt_of_ignores
           (Function.update profile player localStrategy) trace)
       (fun _ => PMF.coe_le_one _ trace)
   simpa [behavioralStrategyToKuhnMixed, O] using
-    Math.ParameterizedChain.reweightPMF_pmfPi_push_coord_of_ignores'
+    Math.PMFProduct.reweightPMF_pmfPi_push_coord_of_ignores'
       (A := fun info =>
         view.KuhnActionAtInfo horizon player info)
       (σ := view.behavioralStrategyToKuhn horizon player strategy)
@@ -1875,7 +1824,7 @@ theorem behavioralStrategyToKuhnMixed_factorAt
         ((view.kuhnModel horizon hMenus).pureStep)
         (view.kuhnModel horizon hMenus).init steps profile trace ≠ 0) :
     Math.ProbabilityMassFunction.pushforward
-        (Math.ParameterizedChain.reweightPMF
+        (Math.ProbabilityMassFunction.reweightPMF
           (view.behavioralStrategyToKuhnMixed
             horizon hMenus player strategy)
           (fun localStrategy :

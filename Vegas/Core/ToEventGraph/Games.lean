@@ -1268,23 +1268,22 @@ noncomputable def toNashDeviationSimulation
       MixedPureToBehavioralDeviationSimulation semantics) :
     KernelGame.NashDeviationSimulation
       semantics.mixedPureGame semantics.behavioralGame
-      semantics.mixedPureGame.Outcome where
-  viewG := { observe := id }
-  viewH := { observe := id }
-  rel := fun mixed behavioral => behavioral = simulation.realize mixed
-  law_eq := by
-    intro mixed behavioral hrel
-    subst behavioral
-    dsimp [GameForm.OutcomeView.law]
-    exact congrArg (PMF.map id) (simulation.outcome_eq mixed).symm
-  simulate_target_deviation := by
-    intro mixed behavioral hrel who behavioralDeviation
-    subst behavioral
-    rcases simulation.simulate_deviation mixed who behavioralDeviation with
-      ⟨mixedDeviation, hdeviation⟩
-    exact ⟨mixedDeviation, by
+      semantics.mixedPureGame.Outcome :=
+  KernelGame.NashDeviationSimulation.ofFunctionalRealization
+    ({ observe := id } : KernelGame.OutcomeView
+      semantics.mixedPureGame semantics.mixedPureGame.Outcome)
+    ({ observe := id } : KernelGame.OutcomeView
+      semantics.behavioralGame semantics.mixedPureGame.Outcome)
+    simulation.realize
+    (fun mixed => by
       dsimp [GameForm.OutcomeView.law]
-      exact congrArg (PMF.map id) hdeviation.symm⟩
+      exact congrArg (PMF.map id) (simulation.outcome_eq mixed).symm)
+    (fun mixed who behavioralDeviation => by
+      rcases simulation.simulate_deviation mixed who behavioralDeviation with
+        ⟨mixedDeviation, hdeviation⟩
+      exact ⟨mixedDeviation, by
+        dsimp [GameForm.OutcomeView.law]
+        exact congrArg (PMF.map id) hdeviation.symm⟩)
 
 /-- A deviation-preserving mixed-to-behavioral realization transports mixed
 Nash equilibria to behavioral Nash equilibria. -/
