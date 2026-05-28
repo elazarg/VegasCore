@@ -1790,7 +1790,7 @@ theorem behavioralStrategyToKuhnMixed_factorAt_of_ignores
             horizon hMenus player strategy localStrategy *
           Math.ParameterizedChain.pureRun O.pureStep O.init steps
             (Function.update profile player localStrategy) trace) ≠ ⊤ := by
-    exact ObsModelCore.sum_mul_pmf_ne_top
+    exact Math.ProbabilityMassFunction.sum_mul_pmf_ne_top
       (view.behavioralStrategyToKuhnMixed
         horizon hMenus player strategy)
       (fun localStrategy : O.LocalStrategy player =>
