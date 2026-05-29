@@ -1,12 +1,21 @@
 \section{Introduction}
 \label{sec:intro}
 
+VegasCore's contribution is a machine-checked path from a protocol
+program to the strategic games and backend proof obligations it denotes.
+This section motivates event graphs against ordinary game trees, works
+through a small Matching-Pennies example, sketches the semantic pipeline,
+explains where runtime backends fit relative to the graph machine, and
+then summarizes the main theorem surface.  The notation and glossary
+immediately after the introduction define recurring terms such as
+frontier, checkpoint, and kernel game.
+
 \subsection{Protocols vs. game trees}
 
-Many finite games are naturally written as protocols.  A player commits
-to a private value, another player commits to a private value, a public
-sample is drawn, hidden values are revealed, and the terminal public
-state determines the payoffs.  Writing the same object directly as an
+Many finite games are naturally written as protocols.  Each player
+commits to a private value, a public sample is drawn, hidden values are
+revealed, and the terminal public state determines the payoffs.  Writing
+the same object directly as an
 extensive-form tree forces an arbitrary linearization of events that are
 intended to be simultaneous or independent.  The tree can repair that
 choice with information sets, but the independence structure is then
@@ -22,11 +31,15 @@ complete.
 
 The result is a schedule-agnostic operational semantics.  Primitive
 execution steps one available event at a time, but the scheduler is an
-external event law.  The strategic semantics use a frontier round view:
-players see checkpoint observations and choose for ready commit nodes;
-internal graph work is closed by the checkpoint policy.  This separates
-the robust game events of the language from implementation-level
-linearization detail.
+external event law.  The strategic semantics use a frontier round view
+(a view of the currently ready graph boundary): players see checkpoint
+observations and choose for ready commit nodes; internal graph work is
+closed by the checkpoint policy.  This separates the schedule-agnostic
+game events of the language from implementation-level linearization
+detail.
+
+That separation is why the formal development factors protocol meaning
+through an event graph rather than generating an EFG directly.
 
 \subsection{A running example}
 \label{sec:intro:matching-pennies}
@@ -50,7 +63,8 @@ The intended game is not sequential at the commitment phase.  The two
 commits are independent choices because neither player can observe the
 other player's hidden field before committing.
 
-\begin{center}
+\begin{figure}[t]
+\centering
 \begin{tikzpicture}[
   every node/.style={font=\small},
   ev/.style={draw, rounded corners, inner sep=2pt, minimum width=1.8cm,
@@ -69,13 +83,25 @@ other player's hidden field before committing.
 \draw[arr] (rm) -- (ret);
 \draw[arr] (rmp) -- (ret);
 \end{tikzpicture}
-\end{center}
 
-The two commit nodes share the initial frontier.  Each reveal depends on
-its own hidden source field, and the reveal phase also waits for prior
-commits.  This second dependency is the commit/reveal barrier: a reveal
-must not become available while an earlier commitment is still mutable.
-The barrier is graph structure, not a strategy-side convention.
+\caption{Matching Pennies as an event graph.  Straight edges from a
+commit to its own reveal and from reveals to \(\Ret\) are data
+dependencies.  Cross-edges from one player's commit to the other
+player's reveal are barrier dependencies: they enforce that all earlier
+commitments are fixed before any reveal phase begins, but they carry no
+hidden payload.}
+\label{fig:matching-pennies-eg}
+\end{figure}
+
+In \Cref{fig:matching-pennies-eg}, the two commit nodes share the
+initial frontier, the graph boundary of currently ready events.  Each
+reveal depends on its own hidden source field, and the reveal phase also
+waits for prior commits.  This second dependency is the commit/reveal
+barrier: a reveal must not become available while an earlier commitment
+is still mutable.  The barrier is graph structure, not a strategy-side
+convention.  Thus the source text may list one commitment before the
+other, but the compiled game still presents them as simultaneous hidden
+choices.
 
 \subsection{The semantic spine}
 \label{sec:intro:spine}
@@ -116,10 +142,40 @@ node ids are canonical numeric positions in the node list.  Two
 alpha-renamed surface programs can compile to equal graph data when
 their protocol structure is equal.
 
-\subsection{Theorem inventory}
+The final arrow to \(\mathsf{KernelGame}\) is where strategic analysis
+starts.  A kernel game does not remember the syntax of the protocol; it
+remembers the strategy spaces, the probability law over outcomes, and
+the utility function.  The source-payoff adequacy theorems prove that
+the outcomes used there are exactly the source payoffs evaluated at
+terminal graph states.
+
+\subsection{Where runtime backends fit}
+\label{sec:intro:runtime-backends}
+
+Concrete runtimes enter below the primitive event-graph machine.  A
+smart-contract runtime, a payment-channel state machine, or a local
+simulator would be modeled as a lower-level machine: its states contain
+runtime storage and administrative data, its events model the relevant
+calls or operational steps, and its observations say what each player can
+infer from that runtime.  To connect such a machine to VegasCore, the
+backend proves a stochastic refinement to the primitive event-graph
+machine and supplies a trace law showing that the implementation realizes
+the selected frontier game surface.  Ethereum/EVM is one motivating
+instance of this backend pattern.
+
+This is intentionally stronger than saying that a contract ``looks like''
+the protocol on examples: the refinement proof identifies which
+implementation details are erased, which events correspond to graph
+events, and why the final utilities are unchanged.  Extra communication
+requires a separate strategy-space argument; \Cref{sec:ref:cheap-talk}
+gives the three sound positions.
+
+\subsection{Contributions and theorem surface}
 \label{sec:intro:contributions}
 
-The public theorem surface is organized around the following claims.
+The main contribution is the checked semantic path from protocol syntax
+to game presentations and runtime-refinement obligations.  The public
+theorem surface is organized around the following claims.
 \begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
 \item \textbf{Compilation.}  Checked programs compile to well-formed,
   source-free event graphs.  Payoff projections read only public fields
@@ -134,24 +190,28 @@ The public theorem surface is organized around the following claims.
   player's visible dependency footprint; public samples and payoff
   projections read declared public dependencies; reveals are the only
   hidden-to-public flow.
-\item \textbf{Frontier semantics.}  Native pure, behavioral, and product
+\item \textbf{Frontier semantics.}  Pure, behavioral, and product
   mixed-pure frontier games are defined from the canonical frontier
   round view.  Their outcome kernels are source-payoff projections of
   the same canonical run distribution.
 \item \textbf{FOSG and EFG presentations.}  The FOSG and EFG layers are
-  payoff-faithful presentations of the native frontier semantics.
+  payoff-faithful presentations of the frontier semantics.
 \item \textbf{Kuhn.}  Behavioral and product mixed-pure frontier profiles
-  are related by a native strategy/deviation equivalence at the canonical
+  are related by a strategy/deviation equivalence at the canonical
   round-view information model: outcome laws agree, and one-player
   deviations can be matched across the two presentations.
 \item \textbf{Runtime refinement.}  A stochastic refinement plus an
   adequate strategy-indexed trace law preserves the utility distribution
-  of the selected frontier game surface and pulls back Nash equilibria
-  under bounded-utility hypotheses.
+  of the selected frontier game surface.  With the strategy-space
+  conditions of \Cref{sec:ref:cheap-talk} and bounded utility for the
+  compared trace utilities, Nash equilibria on that surface pull back to
+  the implementation trace game.  The direction is one-way:
+  implementation equilibria do not automatically project back to
+  specification equilibria.
 \end{enumerate}
 
-\paragraph{Lean correspondence.}
-The paper-facing theorem index is \TT{Vegas.Core.Theorems.Claims}.
+\leancorr{The paper-facing theorem index is
+\TT{Vegas.Core.Theorems.Claims}.
 The construction modules are \TT{Vegas.Lang}, \TT{Vegas.Core},
 \TT{Vegas.EventGraph}, \TT{Vegas.Core.ToEventGraph},
-\TT{Vegas.GameBridge}, \TT{Vegas.Export}, and \TT{Vegas.Machine}.
+\TT{Vegas.GameBridge}, \TT{Vegas.Export}, and \TT{Vegas.Machine}.}

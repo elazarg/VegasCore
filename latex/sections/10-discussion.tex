@@ -6,14 +6,17 @@
 Three architectural commitments shape the construction.
 
 \paragraph{Dependency, not syntax, is the carrier of meaning.}
-The semantic owner is the event graph, not the source program.  A
+The semantic carrier is the event graph, not the source program.  A
 consequence is that two source programs that elaborate to the same
-event graph are strategically indistinguishable -- by construction,
-not by an after-the-fact equivalence proof.  This frees the surface
-language to add ergonomic constructors (simultaneous yields,
-nullable yields, future handlers) without changing the strategic
-semantics; lowering is the only translation that can change the
-event-graph shape.
+event graph are strategically indistinguishable by construction, not by
+an after-the-fact equivalence proof.  This frees the surface language to
+add ergonomic constructors (simultaneous yields, nullable yields, future
+handlers) without changing the strategic semantics; lowering is the only
+translation that can change the event-graph shape.
+
+This is also what makes backend work modular.  An implementation backend
+does not need to justify every surface syntactic convenience separately;
+it refines the compiled event graph.
 
 \paragraph{Configurations are extensional.}
 A configuration records which nodes have produced which results;
@@ -34,6 +37,33 @@ view algebra small (two erasures and a per-player view) and let
 guard-uses-only-style predicates be about \emph{dependency
 sets}, not about typing rules.
 
+\subsection{Related and parallel artifacts}
+\label{sec:disc:related-artifacts}
+
+\paragraph{The \texttt{vegas} compiler.}
+The Kotlin \texttt{vegas} compiler is parallel engineering work around
+the same semantic boundary.  It explores concrete surface syntax,
+typechecking, event-graph construction, analysis exports, and runtime
+backends.  Where it uses the same vocabulary (event graphs, guards,
+visibility, samples, and frontiers), the intended connection is a
+certificate-producing boundary: compiled artifacts should expose the
+VegasCore obligations they satisfy, such as freshness, reveal
+completeness, distribution normalization, guard liveness, payoff
+conservation, and backend refinement.
+
+\paragraph{ConCertLean as a contract-runtime target.}
+ConCertLean formalizes executable smart-contract chains in Lean:
+account balances, serialized contract state, typed contracts, contract
+calls, blocks, action queues, and induction principles for reachable
+traces.  This makes it a plausible lower-level target for the
+runtime-refinement API.  A backend package could realize a VegasCore
+event graph as one or more ConCertLean contracts and prove projection
+lemmas from ConCertLean chain states and calls to graph states and
+events.  If that direct target is too restrictive for a given backend,
+the same structure still gives a useful proof template: entry-point
+correctness, queue and block-step accounting, serialization soundness,
+and trace induction.
+
 \subsection{Limitations}
 \label{sec:disc:limits}
 
@@ -41,8 +71,9 @@ sets}, not about typing rules.
 graphs, and reachable strategy carriers are finite.  Distributions
 are finite-support PMFs.  Continuous types and measure-theoretic
 kernels~\citep{Giry1982,Kozen1981} are out of scope; the bridge
-from $\FWeight{\cdot}$ to mathlib's $\PMF{\cdot}$ is one-way and
-takes a normalization proof, with no measure-theoretic continuation.
+from $\FWeight{\cdot}$ to mathlib's $\PMF{\cdot}$~\citep{mathlib2020}
+is one-way and takes a normalization proof, with no measure-theoretic
+continuation.
 
 \paragraph{No quit handlers.}  The surface language deliberately
 omits user-level quit handlers.  A strategic quit changes the
@@ -56,10 +87,10 @@ substitute for ``opt out of revealing.''
 Nash, dominance, correlated and coarse correlated equilibria,
 potential-game predicates, zero-sum/team predicates, social welfare,
 and Pareto efficiency.  Refinement-based equilibrium concepts
-(subgame-perfect equilibria, sequential equilibria,
-trembling-hand~\citep{Selten1975}) are not yet exposed because the
-event-graph view does not maintain a sub-game decomposition; this
-would require an additional presentation or subgame API rather than
+(subgame-perfect and trembling-hand equilibria~\citep{Selten1975},
+and sequential equilibria~\citep{KrepsWilson1982}) are not yet exposed
+because the event-graph view does not maintain a sub-game decomposition;
+this would require an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
@@ -67,9 +98,30 @@ PMF-behavioral strategy carriers are native round-view carriers over the
 event-graph machine.  The bounded FOSG view is the standard
 imperfect-information presentation, and the EFG layer is the serialized
 tree presentation obtained from it.  The public Kuhn theorems are stated
-and proved at the native completed-frontier level.  FOSG and EFG
-adequacy results can be composed with those theorems when an exported
-presentation is needed; they do not own the checked-program Kuhn proof.
+and proved at the native completed-frontier level
+(\Cref{thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence}).
+FOSG and EFG adequacy results
+(\Cref{thm:fosg,thm:efg}) can be composed with those theorems when an
+exported presentation is needed; they are bridges for exported
+presentations, not the proof boundary for checked programs.
+
+\paragraph{Runtime backends are not included.}  The refinement interface
+is present, and the identity and audited runtimes exercise it.  Dedicated
+backend packages remain future work: EVM semantics, Solidity or Vyper
+compiler correctness, a ConCertLean adapter, mempool and gas models, and
+cryptographic commitment proofs are all examples of obligations that
+belong below the generic refinement boundary.
+
+\paragraph{Extra communication changes the game unless proved otherwise.}
+Refinement can hide additional implementation messages from the projected
+machine trace, but it does not automatically remove those messages from
+the concrete players' strategy spaces.  A backend that allows arbitrary
+observable messages must either make a closed-world/no-interesting-talk
+assumption, prove that the extra strategic coordinates form an inert
+extension, or expose a corresponding cheap-talk extension in the
+specification and state only the babbling-equilibrium transport result.
+This is not bookkeeping: cheap talk can create new non-babbling
+equilibria even when the messages have no direct payoff.
 
 \paragraph{Public samples only.}  The source $\Sample$ constructor
 draws a public coin.  It is suitable for public randomness, but it
@@ -83,14 +135,14 @@ contains player/strategy enumerations and kernel/utility oracles.  It is
 deliberately narrower than a complete solver interchange format, and the
 behavioral carrier is not exported as a finite strategy list.
 
-\paragraph{Decidability.}  The static obligations of
-\S\ref{sec:source:wf} -- contextual well-formedness, fresh
-bindings, reveal completeness, and distribution normalization --
-are decidable.  Legality is decidable when value domains are
-finite, which is the standing assumption.  The Nash predicate and friends are quantifier-bounded
-over finite carriers, so they are decidable in principle; whether
-they are computable in useful time is a separate question
-\citep{DaskalakisGoldbergPapadimitriou2009}.
+\paragraph{Decidability.}  The graph-program obligations listed in
+\Cref{sec:source:wf} are decidable: contextual well-formedness, fresh
+bindings, and distribution normalization.  The checked-program
+additions, reveal completeness and commit-guard legality, are also
+decidable under the standing finite-domain assumption.  The Nash and
+dominance predicates are quantifier-bounded over finite carriers, so
+they are decidable in principle; whether they are computable in useful
+time is a separate question \citep{DaskalakisGoldbergPapadimitriou2009}.
 
 \subsection{Natural extensions}
 \label{sec:disc:ext}
@@ -108,10 +160,10 @@ external typed-input interface.
 \paragraph{Concurrent and partial-information protocols at scale.}
 The event graph is naturally an event structure in the sense of
 \citet{Winskel1986EventStructures,NielsenPlotkinWinskel1981}.
-Concurrent-game-semantic
-techniques~\citep{RidemanWinskel2011Concurrent,
+Concurrent-game-semantic and process-calculus
+techniques~\citep{RideauWinskel2011Concurrent,
 CastellanYoshidaSessionGame,
-AbramskyJagadeesan1994,HylandOng2000PCF}
+AbramskyJagadeesan1994,HylandOng2000PCF,Milner1999PiCalculus}
 and session-typed multi-party
 protocols~\citep{HondaYoshidaCarbone2008MPST} suggest two
 extensions: typed channel structure beyond the
@@ -122,12 +174,26 @@ present event-graph carrier.
 \paragraph{Cryptographic backends.}
 The commit/reveal pattern is operationally a cryptographic
 commitment scheme~\citep{Blum1983CoinFlipping,
-GoldwasserMicaliRivest1988,Pedersen1991Commitment}.  The current
+Naor1991BitCommitment,Pedersen1991Commitment}.  The current
 construction abstracts the commitment as a sealed-then-revealed
 binding; a refinement layer that models hash-based or
 homomorphic-commitment implementations would be a natural backend
 under stochastic refinement, with the cryptographic soundness
 property appearing as a side condition on $\refines_s$.
+
+\paragraph{Contract-runtime refinement packages.}
+A backend package for an EVM-style runtime, a ConCertLean-style
+executable chain, or a payment-channel state machine would likely split
+into two layers.  The first layer would model enough runtime execution to
+define states, observations, event batches, terminal outcomes, and
+utility.  The second would prove a \(\mathsf{StochasticRefinement}\)
+from that machine to the compiled event-graph machine and instantiate
+\(\mathsf{RuntimeTraceAdequacy}\) for the chosen frontier surface.  This
+is the backend-facing use of the transport theorem
+(\Cref{thm:runtime-trace}).  It keeps runtime-specific questions, such
+as which observations are public and which administrative calls are
+semantically invisible, explicit in the backend proof instead of hidden
+in the VegasCore language.
 
 \paragraph{Compositional structure.}
 Every checked program produces a kernel game, and morphisms between
@@ -150,20 +216,19 @@ intersects logical accounts of partial information
 
 \subsection{Outlook}
 
-The construction settles a small but central question: when the
+The construction addresses a small but central question: when the
 strategic content of a finite multi-party protocol is mechanically
 extracted from the program, what is the right primary semantic
-object?  The answer it offers is the dependency graph of events,
+object?  The answer it offers is the event graph,
 with extensional configurations and a checked frontier.  The
 strategic-form, FOSG, EFG, and backend views are then
 \emph{presentations} of this object that come with their own
 adequacy and transport theorems
-(payoff-vector agreement, native frontier Kuhn realization, EFG presentation
-adequacy, refinement transport).
+(\Cref{thm:fosg,thm:efg,thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence,thm:runtime-trace}).
 
-The deeper benefit is that future extensions -- compositional
-combinators, larger surface notation, richer cryptographic backends,
-mechanism-design packaging -- can all be added as new
-presentations or new lowerings without touching the central
-event-graph theorems.  Adequacy at the boundary is a checked
-theorem; the inside of the boundary is free.
+The deeper benefit is that future extensions such as compositional
+combinators, larger surface notation, richer cryptographic backends, and
+mechanism-design packaging can all be added as new presentations or new
+lowerings without touching the central event-graph theorems.  Adequacy
+at the boundary is a checked theorem; the inside of the boundary is
+free.

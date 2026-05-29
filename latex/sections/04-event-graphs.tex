@@ -5,7 +5,10 @@ The event graph is the semantic IR produced by core compilation.  It is
 small on purpose.  It does not store source names, source occurrences,
 rank metadata, custom patch legality predicates, or action kernels
 parallel to node semantics.  Those are either source-layer data or
-derived from the node row.
+derived from the node row.  The graph is therefore a typed dependency
+graph, not a syntax tree: it records what must happen and what
+information each event may inspect, not how the programmer happened to
+spell the source program.
 
 \subsection{Graph data}
 \label{sec:eg:data}
@@ -22,6 +25,9 @@ field together with a semantic payload:
     \mid \mathsf{commit}(p,R)
     \mid \mathsf{reveal}(f).
 \]
+Event-graph node payloads use lowercase sans-serif names to distinguish
+them from the source-language constructors \(\Sample\), \(\Commit\),
+and \(\Reveal\).
 Initial field ids are \(0,\ldots,|\mathsf{initialFields}|-1\).  The
 output field of node \(n\) is
 \[
@@ -34,33 +40,38 @@ The node payloads use typed field references.  Payload evaluation is not
 given the whole store.  Instead it receives a \(\mathsf{ReadEnv}\) for
 its declared typed read footprint.  This is the boundary that makes the
 read set semantic: graph-local code can only read fields that appear in
-its footprint.
+its footprint.  If a runtime or presentation later claims that two events
+are independent, that claim is checked against these footprints.
 
 \subsection{Reads and well-formedness}
 \label{sec:eg:wf}
 
-The read footprint is the scheduling and observation footprint:
+The read footprint controls both scheduling and observation:
 \begin{itemize}\itemsep1pt
 \item a sample reads the public fields declared by its distribution;
 \item a commit choice footprint contains the fields visible to the
   committing player at the commit site;
 \item a reveal reads the hidden source field being opened.
 \end{itemize}
-For commits this footprint is deliberately the information available to the
-choice, not the minimal syntactic dependency set of the guard expression.  A
-guard may ignore some of that environment; scheduling and player observation
-still use the larger choice footprint, because strategies may condition on the
-whole visible commit-site view.
-Graph well-formedness is a proposition.  For each node, every read field
-must already be available: it is either initial or written by an earlier
-node.  Public internal computations may read only public fields.  Commit
-choice footprints must be public or owned by the committing player.  A reveal must
-open a hidden field into a public output field of the same type.
 
-Graph reads are not raw SSA ancestry.  They are the information dependencies
-that can affect scheduling and player observation.  Pure administrative source
-lets are erased before this layer, so they do not create observable graph
-nodes.
+The commit footprint is the player's visible context at the commit site,
+not the guard expression's syntactic dependencies.  A guard may ignore
+some of that environment; scheduling and player observation still use the
+larger choice footprint, because strategies may condition on the whole
+visible commit-site view.
+
+Graph well-formedness is the conjunction of the following facts: for
+each node, every read field must already be available; each read field
+is either initial or written by an earlier node; internal events with
+public output read only public fields; commit choice footprints are
+public or owned by the committing player; and a reveal opens a hidden
+field into a public output field of the same type.
+
+Graph reads are not raw SSA ancestry or a full program-dependence graph
+\citep{ferrante1987program}.  They are the information dependencies that
+can affect scheduling and player observation.  Pure administrative
+source lets are erased before this layer, so they do not create
+observable graph nodes.
 
 \subsection{Canonical prerequisites}
 \label{sec:eg:prereqs}
@@ -68,12 +79,15 @@ nodes.
 Prerequisites are not stored in graph data.  They are derived
 canonically:
 \[
+\begin{aligned}
   q \in \prereq(n)
   \quad\Longleftrightarrow\quad
-  q < n \;\wedge\;
-  \bigl(\mathsf{nodeTarget}(q) \in \readsOf(n)
-    \;\vee\;
-    n\text{ is a reveal and }q\text{ is a commit}\bigr).
+  &q < n \;\wedge\;
+    \bigl(\mathsf{nodeTarget}(q) \in \readsOf(n)\\
+  &\vee\;
+    (\mathsf{kind}(n)=\mathsf{reveal}
+     \wedge \mathsf{kind}(q)=\mathsf{commit})\bigr).
+\end{aligned}
 \]
 The first disjunct is the ordinary information dependency: an event
 that reads a field waits for the event that wrote the field.  The
@@ -82,7 +96,12 @@ for prior commits even when the reveal does not read their payloads.
 This is what enforces the simultaneous-commit discipline in protocols
 such as sealed bidding and Matching Pennies.
 
-The negative cases are just as important.  Commit/commit pairs are
+Making prerequisites canonical removes a source of unsoundness.  The
+compiler cannot accidentally store one dependency relation while the node
+semantics imply another one.  Given the list of nodes and their read
+footprints, the prerequisite relation is determined.
+
+The negative cases are as important.  Commit/commit pairs are
 independent unless the later commit choice footprint contains a field written
 by the earlier one.  Reveal/reveal pairs are independent at this abstraction
 level unless one reveal reads a field written by the other, which the
@@ -102,6 +121,11 @@ initial field values.  Completing a node records the node as done and
 writes its canonical output field.  There is no operation that completes
 a node while writing an arbitrary field.
 
+A \emph{raw} configuration is this graph data: a completed-node set and
+a store.  A \emph{reachable} configuration is a raw configuration paired
+with evidence that it arises from the initial configuration by legal
+primitive steps.
+
 A node is ready when it is not done and all canonical prerequisites are
 done.  A commit action is available when the node is ready, owned by the
 acting player, the action value has the guard type, the guard's choice
@@ -115,8 +139,9 @@ evaluate from the current store.
 The graph layer proves local schedule-independence facts.  If two
 distinct available events are ready at the same configuration, completing
 one preserves availability of the other, because ready nodes do not read
-each other's output fields.  Supported results for the two events can be
-swapped to reach the same raw graph configuration.
+each other's output fields.  Supported results for the two events, i.e.\
+events or result branches in the support of the relevant finite
+distribution, can be swapped to reach the same raw graph configuration.
 
 These theorems do not assert that every real runtime hides every
 implementation trace.  They say that the graph state and graph
@@ -125,14 +150,25 @@ values, not of an irrelevant ordering witness.  Strategic presentations
 can therefore quotient or checkpoint primitive order without changing
 the graph-level state they observe.
 
+This is the exact point where implementation work will later enter.  If
+a backend exposes timing, gas, mempool ordering, or other details, that
+extra information is not silently ignored by the graph semantics.  It
+must either be absent from the implementation observations being modeled
+or be accounted for in a runtime-level analysis/refinement assumption.
+
 \begin{theorem}[Frontier diamond]
 \label{thm:diamond}
-For two distinct supported available primitive events at the same
-reachable configuration, there are two two-event batches, one executing
-the events in each order, whose final raw graph configurations are
-equal.  Consequently the public and player graph observations at the two
-checkpoints are equal.
+For two distinct primitive events available at the same reachable
+configuration and supported by the canonical event law, there exist two
+length-two batches, one in each order, whose final raw graph
+configurations agree.  Consequently the public and player graph
+observations at the two checkpoints are equal.
 \end{theorem}
+
+\begin{proof}[Mechanized proof]
+See \TT{Vegas.Core.Theorems.Execution}; the named result is the
+compiled-graph adjacent-schedule diamond.
+\end{proof}
 
 \begin{theorem}[Commit/reveal barrier]
 \label{thm:barrier}
@@ -140,6 +176,11 @@ If a reveal node is ready, every earlier commit node is already complete.
 Equivalently, a prior commit action is not available at a checkpoint where
 the reveal is ready.
 \end{theorem}
+
+\begin{proof}[Mechanized proof]
+See \TT{Vegas.EventGraph.Basic} and \TT{Vegas.Core.Theorems.Visibility};
+the key graph lemma is \TT{prior\_commit\_mem\_prereqs\_of\_reveal}.
+\end{proof}
 
 \subsection{Compiler adequacy at the graph boundary}
 \label{sec:eg:adequacy}
@@ -156,11 +197,10 @@ For terminal reachable primitive-machine states, payoff projection is
 total and agrees with the source payoff expressions reconstructed from
 the terminal compiled store.
 
-\paragraph{Lean correspondence.}
-Graph data and canonical prerequisites are in
+\leancorr{Graph data and canonical prerequisites are in
 \TT{Vegas.EventGraph.Basic}.  Primitive execution, readiness,
 observations, and schedule-diamond lemmas are in
 \TT{Vegas.EventGraph.Execution} and \TT{Vegas.EventGraph.Batch}.  The
 compiler is \TT{Vegas.Core.ToEventGraph.Compiler}; source payoff
 adequacy is \TT{Vegas.Core.ToEventGraph.SourceAdequacy} and
-\TT{Vegas.Core.Theorems.Outcome}.
+\TT{Vegas.Core.Theorems.Outcome}.}

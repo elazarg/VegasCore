@@ -12,6 +12,12 @@ The event-graph compiler treats these dependencies as declared read
 footprints.  An instance may over-approximate, but it may not omit a
 semantic dependency.
 
+The phrase ``read footprint'' is literal.  If an expression says it
+depends on fields \(a\) and \(b\), then graph execution, observations,
+and proofs are allowed to treat \(a\) and \(b\) as the information that
+must be available.  The soundness law prevents a bad expression-language
+instance from secretly inspecting a field it did not declare.
+
 The surface language currently specializes to the simple expression
 language used by the examples.  That specialization is deliberate:
 nullable yield sugar needs options, default values, and a commitment
@@ -47,7 +53,7 @@ The maintained core has four constructors:
 \Ret\,\overline{p}
   & : & \mathsf{VegasCore}\,\Gamma, \\
 \Sample\,x \sim D;\,k
-  & : & \mathrm{DistExpr}(\erasepub{\Gamma}, b) \times
+  & : & \mathsf{Dist}_{b}(\erasepub{\Gamma}) \times
        \mathsf{VegasCore}((x,\pub\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma, \\
 \Commit_p\,x \mid R;\,k
@@ -55,16 +61,32 @@ The maintained core has four constructors:
        \mathsf{VegasCore}((x,\hid\,p\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma, \\
 \Reveal\,y := x;\,k
-  & : & \mathrm{VHasVar}\,\Gamma\,x\,(\hid\,p\,b) \times
+  & : & \mathsf{Var}_{\hid\,p\,b}(\Gamma) \times
        \mathsf{VegasCore}((y,\pub\,b)::\Gamma)
        \to \mathsf{VegasCore}\,\Gamma.
 \end{array}
 \]
+\(\mathsf{Dist}_{b}(\erasepub{\Gamma})\) denotes a distribution
+expression of type \(b\) in the public erasure of \(\Gamma\), and
+\(\mathsf{Var}_{\hid\,p\,b}(\Gamma)\) denotes a hidden \(b\)-typed
+variable owned by \(p\) in \(\Gamma\).
 \(\Sample\) draws a public value.  \(\Commit\) asks player \(p\) to
 choose a hidden value satisfying a guard over the proposed action and
 the player's visible context.  \(\Reveal\) exposes a hidden value as a
 fresh public alias.  \(\Ret\) terminates with payoff expressions over
 the public context.
+
+Read \(\Commit_p\) as follows: introduce a fresh hidden binding \(x:b\)
+owned by \(p\), under a guard \(R\) that may inspect both the proposed
+value \(x\) and the visibility-erased \(p\)-view of \(\Gamma\).
+
+A guard is the protocol's local admissibility test for a commitment.  It
+can depend on the proposed value and on what the committing player is
+allowed to see at that point.  It cannot depend on another player's
+hidden commitment unless that value has already been revealed.  This is
+the source-language counterpart of information sets in classical game
+trees, but it is enforced at the binding level instead of by drawing
+equivalence classes on tree nodes.
 
 There is no core \(\Let\).  Deterministic administrative bindings live
 in the surface layer and are erased by substitution before graph
@@ -118,8 +140,22 @@ from the obligations needed for checked game semantics.
   form a finite type.
 \end{description}
 
-\paragraph{Lean correspondence.}
-Core syntax is \TT{Vegas.Core.Basic}.  Checked-program bundles are in
+This split is important.  A graph can be allocated from syntax plus
+basic static hygiene, even before we know it is a good game.  A checked
+game needs more: it must not leave hidden commitments forever sealed
+when payoffs expect public data, and it must not present a player with a
+commitment point where every possible action is illegal.  Those are
+semantic obligations about play, so they live in \(\mathsf{WFProgram}\)
+rather than in the graph row format.
+
+In this terminology, a \emph{checked program} is a
+\(\mathsf{WFProgram}\), the input to the game-facing theorems.
+Compilation turns a \(\mathsf{GraphProgram}\) into a
+\(\mathsf{CompiledProgram}\) whose event graph is well formed; the
+additional checked-program obligations are then used by progress,
+frontier-game, and refinement theorems.
+
+\leancorr{Core syntax is \TT{Vegas.Core.Basic}.  Checked-program bundles are in
 \TT{Vegas.Core.Program}.  Surface syntax and let-erasing lowering are
 in \TT{Vegas.Lang.Basic}.  The concrete well-formedness predicates are
-collected by \TT{Vegas.Core.WF}.
+collected by \TT{Vegas.Core.WF}.}

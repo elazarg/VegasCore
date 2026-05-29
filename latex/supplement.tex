@@ -3,7 +3,11 @@
 \input{macros}
 
 \usepackage[margin=1in]{geometry}
+\usepackage{microtype}
 
+% The supplement quotes long Lean signatures and theorem names inline.
+% It therefore keeps a deliberately looser paragraph policy than the
+% report body, while still using microtype.
 \sloppy
 \emergencystretch=3em
 \hbadness=10000
@@ -199,7 +203,7 @@ def Graph.prereqs (G : Graph Player L)
 \end{leanbox}
 
 \TT{Graph.WF} enforces id validity, type compatibility, read
-availability, public reads for public internal computations, actor
+availability, public reads for internal events with public output, actor
 visibility for commit choice footprints, and hidden-to-public discipline for
 reveals.  \TT{Graph.prereqs} is canonical: a prior node is a
 prerequisite exactly when it writes a field read by the current node,

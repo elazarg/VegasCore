@@ -1,22 +1,27 @@
-\section{Frontier strategies and game forms}
+\section{Frontier strategies and kernel games}
 \label{sec:fosg-strategies}
 
 \subsection{Native round views}
 
-The Vegas-facing game semantics are native frontier round views over the
-primitive graph machine.  A round view supplies an active-player set,
-per-player available round actions, a legal joint-action predicate, a
-transition kernel, and a primitive event-batch witness for refinement
-reasoning.
+Building on the checkpoint primitives of \Cref{sec:mach:checkpoints},
+the round view is the strategic-level presentation of the primitive
+graph machine.  A round view supplies an active-player set, per-player
+available round actions, a legal joint-action predicate, a transition
+kernel, and a primitive event-batch witness for refinement reasoning.
+We call these games \emph{native} to distinguish the original round-view
+denotation from the FOSG and EFG presentations derived in
+\Cref{sec:presentations}.
 
-For a compiled program, the canonical frontier round has two phases.
-If internal graph nodes are ready, the round closes internal work before
-presenting a strategic choice.  Otherwise, if commit nodes are ready,
-each active player chooses actions for their ready commit nodes; the
-round executes the selected commit frontier and then closes newly ready
-internal work.  If neither internal work nor active commits exist and
-the state is nonterminal, graph well-formedness plus guard liveness rule
-out the case.
+The \emph{frontier} is the boundary between completed graph work and
+choices still waiting to be made.  For a compiled program, the canonical
+frontier round is:
+\begin{enumerate}[label=(\alph*),leftmargin=1.7em,itemsep=1pt]
+\item close any ready internal graph nodes;
+\item if commit nodes are ready, ask active players for actions, execute
+  the selected commit frontier, and close newly ready internal nodes.
+\end{enumerate}
+Graph well-formedness and guard liveness rule out the case of a
+nonterminal state with no internal work and no active commits.
 
 This is a checkpoint semantics, not a primitive scheduler.  Primitive
 order inside the event batch is a proof witness used to connect to
@@ -24,7 +29,7 @@ machines and refinements.  The player history records checkpoint
 observations.
 
 \subsection{Strategies}
-\label{sec:fosg:strategies}
+\label{sec:fosg-strategies-strategies}
 
 The bounded round view yields finite reachable information states for
 each player.  A pure frontier strategy maps each reachable information
@@ -35,33 +40,33 @@ at every reachable information state.  Illegal actions are not filtered
 after the fact; they are absent from the strategy type used by the
 kernel game.
 
-The product mixed-pure game is the independent mixed extension of the
-pure frontier game.  It is the carrier used for finite Kuhn statements:
-each player samples a pure contingent plan once, independently of the
-other players, and then the sampled pure profile is run through the pure
-frontier outcome kernel.
+Thus a pure strategy is a complete contingency plan: it says what the
+player would do at every reachable view, even views that may not occur
+under the final profile.  A behavioral strategy is a local randomized
+rule at each reachable view.  The product mixed-pure game is the
+independent mixed extension of the pure frontier game: each player
+samples a pure contingent plan once, independently of the other players,
+and then the sampled pure profile is run through the pure frontier
+outcome kernel.  This is the carrier used for finite Kuhn statements.
 
 \subsection{Kernel games}
-\label{sec:fosg:kernel-games}
+\label{sec:fosg-kernel-games}
 
 A kernel game contains strategy carriers, an outcome type, a
 profile-to-outcome PMF, and a utility function:
 \[
-  \KG = (\{S_p\}_{p\in\Players}, O, K, u).
+  \KG = (\{S_p\}_{p\in\Players}, \Outcome, K, u).
 \]
 VegasCore exposes the following canonical checked-program games:
 \begin{center}
 \small
-\begin{tabular}{@{}lp{0.56\textwidth}@{}}
+\begin{tabular}{@{}lll@{}}
 \toprule
-Name & Meaning \\
+Name & Strategies & Outcomes \\
 \midrule
-\(\mathrm{pureFrontierGame}(g)\) &
-  pure reachable frontier strategies, terminal payoff-vector outcomes. \\
-\(\mathrm{behavioralFrontierGame}(g)\) &
-  behavioral reachable frontier strategies, terminal payoff-vector outcomes. \\
-\(\mathrm{mixedPureFrontierGame}(g)\) &
-  product mixed pure strategies, terminal payoff-vector outcomes. \\
+\(\Kpure(g)\) & reachable pure frontier & terminal payoff vectors \\
+\(\Kbeh(g)\) & reachable behavioral frontier & terminal payoff vectors \\
+\(\Kmix(g)\) & product mixed-pure & terminal payoff vectors \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -70,24 +75,35 @@ There are also completed/history variants used to prove source adequacy,
 trace adequacy, and bridge theorems.  These are proof surfaces rather than
 separate user-facing denotations.
 
+The distinction matters for reading the code.  The public user-facing
+objects are the payoff-vector frontier games.  The completed and history
+games retain more execution structure so the proofs can show exactly how
+payoffs, FOSG histories, EFG histories, and runtime traces line up.
+
 \subsection{Solution concepts}
-\label{sec:fosg:solution}
+\label{sec:fosg-solution}
 
 Solution concepts are inherited from the generic game-theory library and
 specialized to the frontier games.  The public theorem modules expose
 Nash, mixed Nash, epsilon-Nash, best response, weak and strict dominance,
 dominance-solvability, correlated and coarse correlated equilibrium,
 Pareto efficiency, individual rationality, rationalizability, exact and
-ordinal potentials, social welfare, price of anarchy/stability,
-guarantees, security levels, saddle points, constant-sum, zero-sum, and
-team-game predicates.
+ordinal potentials~\citep{MondererShapley1996}, social welfare, price of
+anarchy/stability, guarantees, security levels, saddle points,
+constant-sum, zero-sum, minimax-theorem checks~\citep{vonNeumannMinimax},
+and team-game predicates.
 
 The specialization states the concepts at the level a Vegas programmer
 sees: the checked source program and its canonical frontier games.
+For example, a statement that a checked program has a
+\TT{BehavioralFrontierNash} profile is a statement about the
+strategy surface induced by the compiled event graph, not about a
+manually written normal-form payoff table.
 
-\paragraph{Lean correspondence.}
-Round-view semantics are in \TT{Vegas.Core.ToEventGraph.RoundView} and
-\TT{Vegas.Core.ToEventGraph.Games}.  Program-facing solution-concept
-wrappers are in \TT{Vegas.Core.ToEventGraph.SolutionConcepts} and
+\leancorr{Round-view semantics are in \TT{Vegas.Core.ToEventGraph.RoundView} and
+\TT{Vegas.Core.ToEventGraph.Games}; the canonical checked-program games
+are \TT{pureFrontierGame}, \TT{behavioralFrontierGame}, and
+\TT{mixedPureFrontierGame}.  Program-facing solution-concept wrappers
+are in \TT{Vegas.Core.ToEventGraph.SolutionConcepts} and
 \TT{Vegas.Core.Theorems.SolutionConcepts}.  Examples are in
-\TT{Vegas.Examples}.
+\TT{Vegas.Examples}.}

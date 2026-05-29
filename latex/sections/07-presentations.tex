@@ -1,22 +1,38 @@
-\section{FOSG, EFG, and Kuhn presentations}
+\section{FOSG and EFG presentations; Kuhn equivalence}
 \label{sec:presentations}
 
 \subsection{FOSG as a presentation}
 
 FOSG is the standard imperfect-information game-form presentation used
 by the broader library.  VegasCore does not define its strategic
-semantics by first translating to FOSG; native frontier games own the
+semantics by first translating to FOSG; native frontier games define the
 Vegas-facing semantics.  Instead, the checked frontier round view is
 exported as a bounded FOSG together with payoff-faithfulness theorems.
 
-The FOSG bridge is still mathematically central.  It states that the
-payoff-facing FOSG history kernel has the same joint utility
-distribution as the native behavioral frontier game, and that every
-exported FOSG profile restricts back to a native behavioral profile with
-the same utility distribution.  Thus FOSG is the standard presentation
-through which the paper can connect VegasCore to existing
+This is a presentation boundary.  A reader who already trusts FOSGs can
+use the exported FOSG to compare VegasCore games with standard
+imperfect-information models.  A reader auditing the compiler should
+look one layer earlier, at the frontier round view over the event graph.
+
+Although FOSG is a presentation rather than the semantic center, the
+bridge is mathematically central: it is the standard presentation
+through which the paper connects VegasCore to existing
 imperfect-information game theory without making FOSG an implementation
 IR.
+
+\begin{theorem}[FOSG payoff adequacy]
+\label{thm:fosg}
+Let \(R\) be the canonical frontier round view of a checked program.
+Translating any native behavioral frontier profile for \(R\) to the
+exported FOSG preserves the joint utility distribution.  Conversely,
+every exported FOSG profile restricts to a native behavioral frontier
+profile with the same joint utility distribution.
+\end{theorem}
+
+\begin{proof}[Mechanized proof]
+See \TT{Vegas.Core.Theorems.FOSG}, especially the behavioral and
+restricted-behavioral FOSG utility-distribution theorems.
+\end{proof}
 
 \subsection{EFG presentation}
 \label{sec:pres:efg}
@@ -27,20 +43,40 @@ presentation of the same payoff law.  It necessarily introduces a
 sequential representation of simultaneous or checkpointed actions, so it
 is not treated as the semantic owner.
 
+This is exactly the point of deriving the EFG instead of writing it by
+hand.  The tree is useful for export and comparison, but the theorem
+attached to it records that its utility distribution is the same as the
+frontier game it presents.
+
 \begin{theorem}[EFG payoff adequacy]
 \label{thm:efg}
-For every checked program and every native behavioral frontier profile,
-translation through the FOSG/EFG bridge preserves the joint utility
-distribution of the native behavioral frontier game.
+Let \(R\) be the canonical frontier round view of a checked program.
+For every native behavioral frontier profile for \(R\), the plain EFG
+export of \(R\) preserves the joint utility distribution of the native
+behavioral frontier game.
 \end{theorem}
 
-\subsection{Kuhn at the frontier information model}
+\begin{proof}[Mechanized proof]
+See \TT{Vegas.Core.Theorems.EFG}; the relevant statement is the
+frontier plain-EFG payoff-distribution theorem for behavioral profiles.
+\end{proof}
+
+\subsection{Kuhn under the frontier information model}
 \label{sec:pres:kuhn}
 
-Kuhn realization is stated for the canonical frontier information model:
-players reason about reachable checkpoint observations and available
-menus induced by the checked program.  The main theorem has two
-directions.
+We use \emph{Kuhn realization} to mean the finite equivalence between
+randomizing once over a complete contingent plan and randomizing locally
+at each reached decision point.  In VegasCore this is stated for the
+canonical frontier information model: players reason about reachable
+checkpoint observations and available menus induced by the checked
+program.  The main theorem has two directions.
+
+Informally, the theorem says that the two common ways to randomize a
+strategy agree for these finite frontier games.  A player may either
+sample a complete plan at the start, or randomize locally whenever their
+view reaches a decision point.  VegasCore proves that these
+presentations produce the same completed outcome laws, and that
+one-player deviations can be translated across the boundary.
 
 \begin{theorem}[Behavioral to product mixed pure]
 \label{thm:kuhn-beh-to-mixed}
@@ -54,7 +90,7 @@ Every product mixed-pure frontier profile has a behavioral frontier
 profile with the same payoff-vector outcome law.  Moreover, around the
 canonical mixed-to-behavioral realization, unilateral deviations on
 either side have matching unilateral deviations on the other side with
-the same relevant outcome law.
+the same outcome law on the deviating profile.
 \end{theorem}
 
 \begin{theorem}[Frontier Kuhn strategic equivalence]
@@ -68,21 +104,22 @@ mixed-to-behavioral realization have matching deviations on the other
 side.
 \end{theorem}
 
-These are not merely EFG export facts.  They are program-facing facts
-about the frontier games produced from VegasCore.  The public
-checked-program theorem is packaged by the native completed-frontier
-RoundView/Kuhn development: \(\mathrm{frontierCompleteOutcomeKuhn}\)
-relates \(\mathrm{behavioralFrontierGame}\),
-\(\mathrm{mixedPureFrontierGame}\), and
-\(\mathrm{pureFrontierGame}\) at outcome-kernel level, while
-\(\mathrm{frontierKuhnStrategicEquivalence}\) packages the
-strategy/deviation content.  Nash-safe transport is a corollary of these
-deviation-matching facts.  FOSG and EFG adequacy theorems present the
-same frontier semantics to external game forms; they are not the
-semantic reduction behind this Kuhn statement.
+\begin{proof}[Mechanized proofs]
+See \TT{Vegas.Core.Theorems.Kuhn}, especially the behavioral-to-mixed,
+mixed-to-behavioral, and frontier-complete outcome Kuhn theorems.
+\end{proof}
 
-\paragraph{Lean correspondence.}
-Generic RoundView/FOSG and RoundView/EFG bridges are in
+\Cref{thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence}
+are program-facing facts about the frontier games produced from
+VegasCore, not EFG-export side effects.
+The native completed-frontier RoundView/Kuhn development packages both
+outcome-kernel equivalence and strategy/deviation content.  Nash-safe
+transport is a corollary of these deviation-matching facts.  The FOSG
+and EFG adequacy theorems, \Cref{thm:fosg,thm:efg}, present the same
+frontier semantics to external game forms; they are not the semantic
+proof route for this Kuhn statement.
+
+\leancorr{Generic RoundView/FOSG and RoundView/EFG bridges are in
 \TT{Vegas.GameBridge.FOSG.FromRoundView} and
 \TT{Vegas.GameBridge.EFG.FromRoundView}.  Checked-program bridges are in
 \TT{Vegas.GameBridge.FOSG.FromCore} and
@@ -93,4 +130,4 @@ facts are in \TT{Vegas.Core.ToEventGraph.Kuhn} and
 \TT{frontierKuhnStrategicEquivalence\_schema}, with individual
 deviation facts such as
 \TT{mixedPureFrontier\_mixedDeviation\_to\_behavioral\_kernel} and
-\TT{behavioralFrontier\_deviation\_to\_mixedPure\_kernel}.
+\TT{behavioralFrontier\_deviation\_to\_mixedPure\_kernel}.}

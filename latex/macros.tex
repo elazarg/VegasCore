@@ -24,23 +24,19 @@
 
 % ── Players and sets ──────────────────────────────────────────────────
 \newcommand{\Players}{\mathcal{I}}
-\newcommand{\pl}[1]{i_{#1}}                % player subscript
 
 % ── Types and values ──────────────────────────────────────────────────
 \newcommand{\Ty}{\mathsf{Ty}}
 \newcommand{\Val}{\mathsf{Val}}
 \newcommand{\Expr}{\mathsf{Expr}}
 \newcommand{\bool}{\mathsf{bool}}
-\newcommand{\intt}{\mathsf{int}}
 
 % ── Visibility annotations ────────────────────────────────────────────
 \newcommand{\pub}{\ensuremath{\mathsf{pub}}}
 \newcommand{\hid}{\ensuremath{\mathsf{hid}}}
 
 % ── Contexts ──────────────────────────────────────────────────────────
-\newcommand{\VCtx}{\Gamma}
 \newcommand{\view}[1]{\Gamma\!\!\downarrow_{#1}}       % viewVCtx
-\newcommand{\pubctx}[1]{#1^{\pub}}                     % pubVCtx
 \newcommand{\erasectx}[1]{\| #1 \|}                    % eraseVCtx
 \newcommand{\erasepub}[1]{\| #1 \|^{\pub}}             % erasePubVCtx (public-only erasure operator)
 
@@ -52,113 +48,53 @@
 \newcommand{\Reveal}{\ensuremath{\mathbf{reveal}}}
 
 % ── Distributions ─────────────────────────────────────────────────────
-\newcommand{\FW}{\mathcal{W}}
-\newcommand{\FWeight}[1]{\FW(#1)}
+\newcommand{\FWeight}[1]{\mathcal{W}(#1)}
 \newcommand{\PMF}[1]{\mathrm{PMF}(#1)}
-
-% ── Denotational semantics ────────────────────────────────────────────
-\newcommand{\den}[1]{\llbracket #1 \rrbracket}         % \den{p}
-\newcommand{\densub}[2]{\llbracket #1 \rrbracket_{#2}} % \densub{p}{\sigma}
 
 % ── Outcomes ──────────────────────────────────────────────────────────
 \newcommand{\Outcome}{\mathcal{O}}
-\newcommand{\outcomeDist}{\mathrm{outcomeDist}}
 
 % ── Profiles and strategies ───────────────────────────────────────────
 \newcommand{\Profile}{\sigma}
-\newcommand{\CommitKernel}{\kappa}
-\newcommand{\Admissible}{\mathrm{Admissible}}
-
-% ── Traces ────────────────────────────────────────────────────────────
-\newcommand{\Tr}[1]{\mathrm{Tr}(#1)}
-\newcommand{\trweight}[1]{w_{#1}}                      % traceWeight
-\newcommand{\trout}{\mathrm{out}}                       % traceOutcome
 
 % ── Strategic bridge ──────────────────────────────────────────────────
 \newcommand{\KG}{\ensuremath{\mathcal{G}}}
-\newcommand{\toKG}{\ensuremath{\mathrm{game}}}
-\newcommand{\toStrategicKG}{\ensuremath{\mathrm{game}_{\mathrm{strat}}}}
 \newcommand{\EU}{\ensuremath{\mathrm{EU}}}
-\newcommand{\WFP}{\ensuremath{\mathrm{WFProgram}}}
-\newcommand{\IsLegal}{\ensuremath{\mathrm{IsLegal}}}
-\newcommand{\protocolEU}{\ensuremath{\mathrm{protocolEU}}}
-\newcommand{\ProtocolNash}{\ensuremath{\mathrm{ProtocolNash}}}
-\newcommand{\Prop}{\ensuremath{\mathsf{Prop}}}
-
-% ── Standing assumptions ──────────────────────────────────────────────
-\newcommand{\Legal}{\ensuremath{\mathrm{Legal}}}
-\newcommand{\DistinctActs}{\ensuremath{\mathrm{DistinctActs}}}
-\newcommand{\NormDists}{\ensuremath{\mathrm{NormalizedDists}}}
-\newcommand{\NormOn}{\ensuremath{\mathrm{NormalizedOn}}}
-\newcommand{\WF}{\ensuremath{\mathrm{WF}}}
-\newcommand{\FreshBindings}{\ensuremath{\mathrm{FreshBindings}}}
-\newcommand{\RevealComplete}{\ensuremath{\mathrm{RevealComplete}}}
 
 % ── Environments ──────────────────────────────────────────────────────
-\newcommand{\VEnv}{\ensuremath{\mathrm{VEnv}}}
 \newcommand{\Env}{\ensuremath{\mathrm{Env}}}
 
 % ── Misc math ─────────────────────────────────────────────────────────
 \newcommand{\NNQ}{\ensuremath{\mathbb{Q}_{\ge 0}}}
-\newcommand{\Reach}{\ensuremath{\mathrm{Reach}}}
-\newcommand{\CanReach}{\ensuremath{\mathrm{CanReach}}}
-\newcommand{\PlayerStrat}{\ensuremath{\mathrm{PlayerStrategy}}}
-\newcommand{\fresh}{\ensuremath{\mathrm{Fresh}}}
 \newcommand{\bind}{\mathbin{\gg\!=}}
 
 % ── Lean references ───────────────────────────────────────────────────
-\newcommand{\leanref}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\TT}[1]{\texttt{#1}}
 
 % ── Event graphs and configurations ───────────────────────────────────
 \newcommand{\EG}{\mathcal{E}}                       % an event graph
-\newcommand{\Nodes}{\mathsf{N}}                     % node set
-\newcommand{\Fields}{\mathsf{F}}                    % field set
 \newcommand{\prereq}{\mathrm{prereq}}
 \newcommand{\Cfg}{\mathsf{Cfg}}                     % configurations of an EG
-\newcommand{\frontier}{\mathrm{front}}              % frontier of a config
-\newcommand{\Patch}{\mathsf{Patch}}                 % field patch
-\newcommand{\writeOf}{\mathrm{write}}
 \newcommand{\readsOf}{\mathrm{reads}}
-\newcommand{\actor}{\mathrm{actor}}
-\newcommand{\rank}{\mathrm{rank}}
 
 % ── Machines ──────────────────────────────────────────────────────────
-\newcommand{\Mach}{M}
 \newcommand{\State}{\mathsf{S}}
 \newcommand{\Action}{\mathsf{A}}
-\newcommand{\Internal}{\mathsf{I}}
-\newcommand{\Pubobs}{\mathsf{Pub}}
-\newcommand{\Obs}{\mathsf{Obs}}
-\newcommand{\stepPlay}{\mathrm{stepPlay}}
-\newcommand{\stepInt}{\mathrm{stepInt}}
-\newcommand{\avail}{\mathrm{avail}}
-\newcommand{\availInt}{\mathrm{availInt}}
-\newcommand{\term}{\mathrm{term}}
-\newcommand{\pubView}{\mathrm{pubView}}
-\newcommand{\out}{\mathrm{out}}
-\newcommand{\Event}{\mathsf{Ev}}
-
-% ── FOSG / EFG views ──────────────────────────────────────────────────
-\newcommand{\FOSG}{\mathrm{FOSG}}
-\newcommand{\EFG}{\mathrm{EFG}}
-\newcommand{\Act}{\mathsf{Act}}
-\newcommand{\InfoState}{\mathsf{I}}
-\newcommand{\activeSet}{\mathrm{active}}
 
 % ── Solution concepts / kernels ───────────────────────────────────────
-\newcommand{\Sol}{\mathrm{Sol}}
 \newcommand{\Kbeh}{K^{\mathrm{beh}}}
 \newcommand{\Kpure}{K^{\mathrm{pure}}}
 \newcommand{\Kmix}{K^{\mathrm{mix}}}
 
 % ── Refinement ────────────────────────────────────────────────────────
-\newcommand{\proj}{\pi}
 \newcommand{\refines}{\sqsubseteq}
 
 % ── Boxes for design notes / Lean correspondence ──────────────────────
-\newcommand{\designnote}[1]{\par\smallskip\noindent\emph{Design note.} #1\par\smallskip}
-\newcommand{\leancorr}[1]{\par\smallskip\noindent\emph{Lean correspondence.} #1\par\smallskip}
+\newcommand{\leancorr}[1]{%
+  \par\smallskip
+  {\raggedright\hbadness=10000\emergencystretch=3em
+   \noindent\emph{Lean correspondence.} #1\par}%
+  \smallskip}
 
 % ── Lean signature boxes ──────────────────────────────────────────────
 % A light-shaded, thin-ruled block for displaying Lean signatures.
@@ -175,6 +111,3 @@
   },
 }
 \newtcolorbox{leanbox}[1][]{leanstyle, #1}
-% Body-indent inside leanbox: visible 2-ish-space Lean-style indent.
-\newcommand{\bd}{\hspace*{1.6em}}
-\newcommand{\bdd}{\hspace*{3.2em}}

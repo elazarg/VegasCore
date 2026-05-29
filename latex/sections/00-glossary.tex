@@ -1,23 +1,33 @@
-\section{How to read this report}
+\section{Notation and glossary}
 \label{sec:glossary}
 
-This report develops a mechanized semantics for a finite probabilistic
-game-description language.  The intended reader has a working knowledge
-of finite extensive-form games (players, information sets, mixed and
-behavioral strategies, Nash equilibrium) but is not assumed to know
-the modern factored-observation formalism, the Lean proof assistant,
-or the specific corner of programming-language semantics that
-underlies the construction.  We make three concessions to that mixed
-audience.
+This report explains a mechanized semantics for a finite probabilistic
+game-description language.  It is meant to be readable by someone who
+can read ordinary mathematical notation and programs, but who may not
+already know Lean~\citep{deMouraUllrich2021}, extensive-form game
+theory~\citep{vonNeumannMorgenstern1944,OsborneRubinstein1994,
+ShohamLeytonBrown2009}, refinement proofs, or programming-language
+semantics.  The recurring question is practical: given a protocol
+program, what strategic game does it define, and what must an
+implementation prove in order to preserve that game?
 
 \paragraph{Math first, Lean on the side.}
 The body of the report uses ordinary mathematical notation.  Lean
 identifiers appear only when their type or naming choice is itself the
-subject of a design discussion; otherwise they are deferred to the
-companion definitional supplement, which is the authoritative
-cross-reference for every mathematical object introduced here.  Each
-section ends with a brief \emph{Lean correspondence} note pointing to
-the relevant supplement subsections.
+subject of a design discussion.  Each section ends with a brief
+\emph{Lean correspondence} note pointing to the relevant module paths and
+public theorem names.  A reader who wants the story can read the report
+straight through; a reader auditing the code can follow those notes back
+into the Lean sources.
+
+\paragraph{Terminology.}
+Several words are used with their technical meanings.  A
+\emph{strategy} is a player's rule for what to do when that player
+reaches an observation.  A \emph{profile} is one strategy for every
+player.  A \emph{payoff law} is the probability distribution over final
+payoff vectors induced by a profile.  An \emph{adequacy theorem} says
+that two presentations produce the same payoff law, so analysis can move
+between them without changing the game.
 
 \paragraph{Glossary.}
 The following terms are used pervasively.  Readers from one
@@ -29,52 +39,70 @@ discipline can usually skip the entries that match their background.
   $\sum_x \mu(x) = 1$.  We write $\PMF{\alpha}$ for the set of such
   functions.  $\PMF{\cdot}$ is a monad: the bind operator
   $\mu \bind f = \sum_x \mu(x)\,f(x)$ chains a stochastic step with a
-  continuation indexed by its result, and the unit $\delta_x$
-  (\emph{Dirac}) is the point mass at $x$.
+  continuation indexed by its result, and the unit $\delta_x$ is the
+  Dirac point mass at $x$.
 \item[Finite-weight function.]
   An auxiliary unnormalized version, $\FWeight{\alpha} = \alpha \to_0
   \NNQ$, used internally during construction; converting to a PMF
   requires a side proof of total mass $1$.
 \item[Kuhn's theorem (finite realization and deviation form).]
-  In a finite extensive-form game with sufficient observability,
-  every mixed strategy over pure contingent plans induces the same
-  outcome distribution as some behavioral strategy that randomizes
-  locally at each information set~\citep{Kuhn1953}.  The classical
-  statement requires \emph{perfect recall}.  In this formalization, the
-  public checked-program statement is a native completed-frontier
-  theorem.  Behavioral frontier profiles, product mixed pure frontier
-  profiles, and pure frontier profiles are packaged into an
-  outcome-level realization result and a strategy/deviation-level
-  equivalence: unilateral deviations in one frontier presentation can be
-  matched by unilateral deviations in the other with the same completed
-  outcome law.  Nash transport is a downstream use of this package, not
-  the primary statement.  FOSG and EFG bridges provide payoff-faithful
-  presentations of the same frontier semantics; they are not the
-  reduction used to prove the checked-program Kuhn statement.
+  A way of saying that ``randomize once over a complete plan'' and
+  ``randomize locally whenever a decision point is reached'' are
+  equivalent when players do not forget what they previously knew
+  or did~\citep{Kuhn1953}.  In VegasCore the theorem is stronger than
+  equality of final payoffs: one-player deviations can be matched in the
+  directions needed for equilibrium transport, including around the
+  canonical mixed-to-behavioral realization (\Cref{sec:pres:kuhn}).
 \item[Factored-observation stochastic game (FOSG).]
-  A modern state-based formalism for finite extensive-form games with
-  imperfect information~\citep{Kovarik2022}: each round, an active set
-  of players picks actions from local alphabets, the state transitions
-  stochastically, and per-player observations are emitted.  FOSGs
-  separate cleanly from extensive-form trees by indexing strategies on
-  per-player observation sequences rather than on global histories.
+  A state-based presentation of finite games with hidden information
+  \citep{Kovarik2022}.  In each round, active players choose actions
+  from their local menus, the state changes, and each player receives an
+  observation.  VegasCore exports FOSGs so its frontier games can
+  be compared with a standard imperfect-information presentation.
 \item[Extensive-form game (EFG).]
   The classical tree presentation, with chance and decision nodes,
   per-player information sets, and outcomes at the leaves.
+\item[Frontier.]
+  The current decision boundary of the event graph: graph work whose
+  prerequisites are complete but whose protocol event has not yet been
+  executed.  Frontier round views close forced internal work and expose
+  the ready player commitments at this boundary.
+\item[Checkpoint.]
+  A game-facing observation point at which strategies are allowed to
+  react.  A checkpoint is not a claim that a concrete runtime literally
+  pauses there; it is the abstraction level at which frontier histories
+  record observations and choices.
 \item[Kernel game.]
-  A minimal strategic-form carrier sufficient to define expected utility
-  and Nash equilibrium: a per-player strategy type, an outcome type, a
-  stochastic kernel from joint strategies to outcomes, and a utility
-  $u : \Outcome \to \Players \to \mathbb{R}$.  Distinct from a
-  normal-form game in that strategies need not be hand-written
-  actions: they may be functions from observations to actions, and
-  outcomes may carry more than a payoff vector.
+  The smallest game object VegasCore needs for strategic analysis: for
+  each player a strategy type, an outcome type, a probability law from
+  strategy profiles to outcomes, and a utility function
+  $u : \Outcome \to \Players \to \mathbb{R}$.  The strategies may be
+  contingent rules over the frontier observations described in
+  \Cref{sec:fosg-strategies}, not just one-shot actions.  The word
+  \emph{kernel} here means a stochastic map from strategy profiles to
+  PMFs over outcomes, not a null-space.
+\item[Nash equilibrium.]
+  A profile where no single player can improve their expected utility by
+  changing only their own strategy while the others stay
+  fixed~\citep{Nash1951,OsborneRubinstein1994}.  The refinement results
+  in this report preserve selected Nash equilibria only for
+  implementation strategy spaces that match, project to, or are
+  explicitly related to the frontier strategy space.
+\item[Cheap talk / babbling.]
+  \emph{Cheap talk} is a payoff-free communication channel that players
+  may use before or during strategic play.  It is payoff-free, but not
+  automatically strategically irrelevant: players may coordinate through
+  the messages.  A \emph{babbling} profile is the special case where
+  players send fixed default messages and ignore all received messages.
+  The standard theorem is one-way: a base Nash equilibrium embeds as a
+  babbling equilibrium of the cheap-talk game, but cheap talk may create
+  additional non-babbling equilibria.
 \item[Static-single-assignment (SSA).]
   A standard programming-language convention~\citep{cytron1991efficiently}
   in which every variable is assigned at exactly one program point.  A
   program in SSA form has a unique definition site for each name; we
   exploit this to make every event node carry a unique write target.
-\item[Event structure / dependency graph.]
+\item[Event structure / event graph.]
   In concurrency theory~\citep{NielsenPlotkinWinskel1981,Winskel1986EventStructures}
   an event structure abstracts a process by its events and a causal
   dependency relation; independent events are unordered and may be
@@ -82,20 +110,21 @@ discipline can usually skip the entries that match their background.
   are a typed, finite, asymmetric variant adapted to the protocol
   setting.
 \item[Refinement / forward simulation.]
-  A binary relation between an implementation and a specification
-  asserting that the implementation cannot be distinguished from the
-  specification by any externally observable behavior.  Conventionally
-  proved by exhibiting a state projection and matching transitions
-  step-by-step~\citep{LynchVaandrager1995,AbadiLamport1991}.
+  A proof that a lower-level implementation behaves like a higher-level
+  specification after hiding implementation-only detail.  Concretely,
+  one supplies a projection from implementation states, events,
+  observations, and outcomes to specification states, events,
+  observations, and outcomes, and proves that implementation steps
+  project to specification steps with the same probability laws
+  \citep{LynchVaandrager1995,AbadiLamport1991}.  Bisimulation and
+  probabilistic transition-system accounts provide neighboring
+  formulations~\citep{Park1981Bisimulation,Milner1989Bisimulation,
+  Segala1995Probabilistic}.  For a contract backend, the implementation
+  might be a chain or contract-execution machine, and the specification
+  would be the primitive event-graph machine.
 \item[Visibility / view.]
   The information-set structure of a multi-party protocol, presented
   here as a binding-level discipline: every variable is either public
   or hidden to a single owner, and every program point exposes a
   per-player projected context.
 \end{description}
-
-\paragraph{Lean correspondence.}
-For a top-down map from the semantic picture to file paths, see the
-supplement.  Cross-references in this report use the current Lean module
-and theorem names.  The supplement records the definition shapes and
-paper-facing theorem index used by the mechanization.

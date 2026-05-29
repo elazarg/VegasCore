@@ -7,10 +7,10 @@
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.geometric,
                 decorations.pathreplacing}
 \usepackage[numbers,sort&compress]{natbib}
+\usepackage{microtype}
 
 % Identifier-heavy paragraphs occasionally produce overlong tokens.
-\sloppy
-\emergencystretch=3em
+\emergencystretch=1em
 
 \title{VegasCore: Event-Graph Semantics for\\
        Visibility-Aware Probabilistic Games}
@@ -21,48 +21,51 @@
 \maketitle
 
 \begin{abstract}
-VegasCore is a small typed language for describing finite games as
-protocols: public samples, sealed player commitments, public reveals,
-and terminal payoff expressions.  The central semantic object is not
-the source syntax and not a hand-written extensive-form tree, but a
-finite visibility-aware \emph{event graph}.  Its nodes are protocol
-events; its fields are typed values; and its dependency relation records
-exactly the information that must be available before an event can run
-or before a player can choose a commitment.
+VegasCore formalizes a semantic core for turning finite protocols
+into mathematical games.  A protocol may draw public randomness, ask
+players to make sealed commitments, reveal those commitments later, and
+compute terminal payoffs from public data.  The core question is simple
+to state: what game does the program describe?
 
-The current construction separates three levels.  A \emph{graph
-program} contains exactly the static data needed to compile to a graph:
-unique initial names, fresh binders, and normalized samples.  A
-\emph{checked program} adds the game-facing obligations: reveal
-completeness and commit-guard liveness.  The compiled graph is
-source-independent and graph-native: administrative surface
-\(\Let\)-bindings are erased before core compilation, graph fields are
-computed from initial rows and event rows, and prerequisites are derived
-canonically rather than stored as independent semantic data.
+The answer in this codebase is a finite, visibility-aware
+\emph{event graph}.  Nodes are protocol events, fields are typed stored
+values, and dependencies say which information must already be available
+before an event can run or before a player can choose a commitment.  This
+graph is the semantic center of VegasCore.  Source syntax is compiled
+away, administrative \(\Let\)-bindings are erased before graph
+construction, and extensive-form trees are treated as later
+presentations rather than as the program's primary meaning.
 
-The primitive graph machine is schedule-agnostic: schedules are external
-event laws over currently available primitive events.  Game-theoretic
-semantics are built from a canonical frontier round view, which hides
-irrelevant primitive linearization and exposes player choices at
-checkpoints.  Native pure, behavioral, and product mixed-pure frontier
-kernel games are the Vegas-facing strategic denotations.  Bounded FOSG
-and EFG objects are derived presentations with payoff-adequacy theorems,
-not independent owners of the semantics.
+The construction separates three concerns.  A \emph{graph program}
+contains exactly the static evidence needed to compile a source program
+to an event graph: unique initial names, fresh binders, and normalized
+sample distributions.  A \emph{checked program} adds the game-facing
+obligations: committed source values are eventually revealed, and commit
+guards always leave at least one legal action.  A canonical frontier
+round view then turns the compiled graph into the strategy surfaces a
+game theorist or solver expects: pure, behavioral, and product
+mixed-pure kernel games.  FOSG and EFG objects are derived, payoff-faithful
+presentations of the same frontier semantics.
 
-The mechanized theorem surface proves graph well-formedness of
-compilation, checkpoint progress from checked guard liveness, terminal
-source-payoff adequacy, native/FOSG/EFG utility-distribution adequacy,
-finite Kuhn strategic equivalence for frontier strategies and their
-one-player deviations, and runtime trace adequacy for stochastic
-refinements.  The refinement layer is runtime-general: an EVM backend is an intended
-consumer, but the language, event graph, machine, and strategic
-interfaces do not mention any blockchain-specific runtime.
+The mechanized theorem surface proves compilation to well-formed graphs,
+checkpoint progress, and source-payoff adequacy.  It also proves
+frontier/FOSG/EFG utility-law adequacy, finite Kuhn strategic
+equivalence for frontier strategies and one-player deviations, and
+runtime trace adequacy for stochastic refinements.  The refinement layer
+is deliberately runtime-general.
+Smart-contract runtimes, payment-channel state machines, and local
+simulators can all be related to the primitive event-graph machine by
+supplying state, event, observation, and outcome projections plus a
+compatible trace law.  Ethereum/EVM is one motivating instance; the
+language-, event-graph-, machine-, and strategic-level interfaces state
+obligations such a backend must discharge without baking in a particular
+runtime.
 \end{abstract}
 
 \tableofcontents
 
-\input{sections/00-glossary}
 \input{sections/01-introduction}
+\input{sections/00-glossary}
 \input{sections/02-preliminaries}
 \input{sections/03-source-language}
 \input{sections/04-event-graphs}
