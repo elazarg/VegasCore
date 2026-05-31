@@ -7,6 +7,10 @@ import Vegas.Examples.MatchingPennies
 /-!
 # Matching Pennies with opaque commit/reveal messages
 
+Property boundary: this file proves no plaintext in the visible runtime
+buffers by construction at lock checkpoints, not cryptographic hiding or a
+general no-profitable-front-running theorem.
+
 This fixture is the positive counterpart to
 `FrontrunningMessageInFlight`.  Players may inspect the message buffers before
 choosing, but the lock phase emits only opaque commitments.  Plaintext moves

@@ -3,6 +3,10 @@ import Vegas.Examples.ProtocolMessageBridge
 /-!
 # Message-aware protocol strategies
 
+Property boundary: this file preserves the explicit message-aware protocol
+game under an encoded backend; it does not erase message observations or prove
+front-running deviations unprofitable.
+
 This module keeps the next strategic step at the explicit protocol boundary.
 Strategies may choose an outgoing protocol message and then choose the real
 Bool action as a function of the delivered message profile. This is not an

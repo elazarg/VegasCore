@@ -6,6 +6,10 @@ import Vegas.Examples.CheapTalk
 /-!
 # Two-player explicit message protocol
 
+Property boundary: this file proves equivalence with an explicit cheap-talk
+protocol game and backend preservation; it does not erase message-conditioned
+strategies back to the original game.
+
 This fixture uses the real `Machine.messageInFlight` wrapper with two players.
 It models an explicit protocol where row and column players send Bool messages,
 the runtime delivers them through the pending queue, and then each player chooses

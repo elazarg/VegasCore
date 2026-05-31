@@ -4,6 +4,10 @@ import Vegas.Examples.BoolMessage
 /-!
 # Message-in-flight runtime refinement examples
 
+Property boundary: these examples prove runtime refinement and payoff/Nash
+preservation for inert message coordinates, not that message leaks are
+strategically harmless in every protocol.
+
 This module instantiates the message-in-flight machine wrapper on the Bool
 fixture. The implementation state contains a pending queue and a delivered log;
 send/deliver events project away, while the underlying source action projects

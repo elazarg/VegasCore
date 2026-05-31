@@ -3,6 +3,9 @@ import GameTheory.Concepts.Babbling
 /-!
 # Cheap talk
 
+Property boundary: this file proves game-theory facts about explicit
+cheap-talk strategy spaces, not runtime compilation or cryptographic security.
+
 This module separates three claims:
 
 * observable cheap talk has a larger contingent strategy space than inert
@@ -26,14 +29,6 @@ inductive TalkPlayer where
   | row
   | col
 deriving DecidableEq
-
-namespace TalkPlayer
-
-def other : TalkPlayer → TalkPlayer
-  | row => col
-  | col => row
-
-end TalkPlayer
 
 open TalkPlayer
 

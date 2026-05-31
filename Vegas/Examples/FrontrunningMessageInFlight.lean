@@ -3,6 +3,10 @@ import Vegas.Examples.TwoPlayerMessageProtocol
 /-!
 # Pending-message conditioning
 
+Property boundary: this file proves a concrete pending-message-conditioned
+Nash equilibrium, showing that front-running-style conditioning is modeled
+rather than erased.
+
 This fixture models the first strategic feature needed for frontrunning:
 a player may condition on messages that are in flight before the runtime
 delivers them.  The machine is still the concrete `messageInFlight` wrapper;

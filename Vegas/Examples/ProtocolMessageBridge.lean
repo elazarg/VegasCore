@@ -3,6 +3,10 @@ import Vegas.Examples.MessageInFlight
 /-!
 # Explicit protocol-message compilation bridge
 
+Property boundary: this file proves preservation of the explicit message
+protocol boundary under compilation, not that erased messages are strategically
+irrelevant.
+
 This Bool fixture checks the `compile(addMessages(game))` shape for the first
 runtime slice. The encoded message backend refines the explicit Bool
 message-in-flight protocol while preserving protocol-level `send` and `deliver`
