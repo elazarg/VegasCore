@@ -25,6 +25,8 @@ import Vegas.Machine.Kuhn
 import Vegas.Machine.Refinement
 import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
+import Vegas.Machine.MessageInFlight
+import Vegas.Machine.MessageSecurity
 import Vegas.GameBridge
 import Vegas.Export
 import GameTheory.Concepts.SolutionConcepts

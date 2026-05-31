@@ -84,7 +84,8 @@ theorem bounded_trace_game_nash_pullback
     [DecidableEq Player]
     (R : StochasticRefinement Impl Spec)
     {Strategy : Player → Type}
-    (lift : R.EventBatchLawFamilyLift Strategy)
+    {specFamily : Spec.EventBatchLawFamily Strategy}
+    (lift : R.EventBatchLawFamilyLift Strategy specFamily)
     (cutoff : Payoff Player) (horizon : Nat)
     {CImpl CSpec : Player → ℝ}
     (hbdImpl :
@@ -95,7 +96,7 @@ theorem bounded_trace_game_nash_pullback
         |eventBatchTraceUtility Spec cutoff trace player| ≤ CSpec player)
     {profile : ∀ player, Strategy player}
     (hNash :
-      (eventBatchTraceKernelGame Spec Strategy lift.spec cutoff horizon)
+      (eventBatchTraceKernelGame Spec Strategy specFamily cutoff horizon)
         |>.IsNash profile) :
     (eventBatchTraceKernelGame Impl Strategy lift.impl cutoff horizon)
       |>.IsNash profile :=
@@ -748,10 +749,55 @@ noncomputable def audited
 implementation law families. -/
 noncomputable def lift
     (bridge : RuntimeTraceAdequacy program surface R) :
-    R.EventBatchLawFamilyLift surface.game.Strategy where
-  spec := bridge.spec.toFamily
+    R.EventBatchLawFamilyLift surface.game.Strategy bridge.spec.toFamily where
   impl := bridge.impl
   compatible := bridge.compatible
+
+variable {Mid Low : Machine Player}
+variable {Rmid :
+    Machine.StochasticRefinement Mid
+    (ToEventGraph.PrimitiveMachine
+      (ToEventGraph.compile program.core))}
+variable {Rlow : Machine.StochasticRefinement Low Mid}
+
+/-- The composed law-family lift induced by lowering a runtime bridge through
+one more implementation layer. -/
+noncomputable def lowerLift
+    (bridge : RuntimeTraceAdequacy program surface Rmid)
+    (lower :
+      Rlow.EventBatchLawFamilyLift surface.game.Strategy bridge.impl) :
+    (Rmid.compose Rlow).EventBatchLawFamilyLift surface.game.Strategy
+      bridge.spec.toFamily :=
+  Machine.StochasticRefinement.EventBatchLawFamilyLift.compose
+    bridge.lift lower
+
+/-- Lower an existing runtime adequacy bridge through one more implementation
+layer. This is the tower-composition operation for runtime trace adequacy:
+the lower law family implements the bridge's current implementation law
+family, and refinement composition collapses both implementation layers back
+to the same primitive specification machine. -/
+noncomputable def lowerImpl
+    (bridge : RuntimeTraceAdequacy program surface Rmid)
+    (lower :
+      Rlow.EventBatchLawFamilyLift surface.game.Strategy bridge.impl) :
+    RuntimeTraceAdequacy program surface (Rmid.compose Rlow) where
+  spec := bridge.spec
+  impl := (lowerLift bridge lower).impl
+  compatible := (lowerLift bridge lower).compatible
+
+@[simp] theorem lowerLift_impl
+    (bridge : RuntimeTraceAdequacy program surface Rmid)
+    (lower :
+      Rlow.EventBatchLawFamilyLift surface.game.Strategy bridge.impl) :
+    (lowerLift bridge lower).impl = lower.impl :=
+  rfl
+
+@[simp] theorem lowerImpl_impl
+    (bridge : RuntimeTraceAdequacy program surface Rmid)
+    (lower :
+      Rlow.EventBatchLawFamilyLift surface.game.Strategy bridge.impl) :
+    (lowerImpl bridge lower).impl = lower.impl :=
+  rfl
 
 /-- Specification primitive trace game realized by the strategy law family. -/
 noncomputable def specTraceGame

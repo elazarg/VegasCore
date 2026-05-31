@@ -333,8 +333,7 @@ theorem liftEventBatchLaw_compatible (law : M.EventBatchLaw) :
 refinement. -/
 noncomputable def liftEventBatchLawFamily {Strategy : Player → Type}
     (family : M.EventBatchLawFamily Strategy) :
-    (refinement M).EventBatchLawFamilyLift Strategy where
-  spec := family
+    (refinement M).EventBatchLawFamilyLift Strategy family where
   impl :=
     { law := fun profile => liftEventBatchLaw M (family.law profile)
       legal := fun profile => liftEventBatchLaw_legal M (family.legal profile) }

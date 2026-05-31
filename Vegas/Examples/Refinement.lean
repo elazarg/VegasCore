@@ -183,7 +183,8 @@ noncomputable def unitIdentity :
   Machine.StochasticRefinement.refl unitMachine
 
 noncomputable def unitLawLift :
-    unitIdentity.EventBatchLawFamilyLift (fun _ : PUnit => PUnit) :=
+    unitIdentity.EventBatchLawFamilyLift (fun _ : PUnit => PUnit)
+      unitLawFamily :=
   Machine.StochasticRefinement.EventBatchLawFamilyLift.refl
     unitMachine unitLawFamily
 
@@ -194,7 +195,7 @@ example (profile : ∀ _player : PUnit, PUnit) :
             unitLawLift.impl (fun _ => 0) 2).outcomeKernel profile) =
       ((Machine.eventBatchTraceKernelGame
           unitMachine (fun _ : PUnit => PUnit)
-          unitLawLift.spec (fun _ => 0) 2).outcomeKernel profile) :=
+          unitLawFamily (fun _ => 0) 2).outcomeKernel profile) :=
   unitIdentity.eventBatchTraceKernelGame_projectTrace_eq
     unitLawLift (fun _ => 0) 2 profile
 
@@ -202,7 +203,7 @@ example (profile : ∀ _player : PUnit, PUnit)
     (hNash :
       (Machine.eventBatchTraceKernelGame
           unitMachine (fun _ : PUnit => PUnit)
-          unitLawLift.spec (fun _ => 0) 2).IsNash profile) :
+          unitLawFamily (fun _ => 0) 2).IsNash profile) :
     (Machine.eventBatchTraceKernelGame
         unitMachine (fun _ : PUnit => PUnit)
         unitLawLift.impl (fun _ => 0) 2).IsNash profile := by
@@ -500,8 +501,8 @@ noncomputable def encodedImplLawFamily :
             exact False.elim (hnonterminal (by simp [encodedImplMachine]))
 
 noncomputable def encodedLawLift :
-    encodedRefinement.EventBatchLawFamilyLift (fun _ : PUnit => Bool) where
-  spec := boolSpecLawFamily
+    encodedRefinement.EventBatchLawFamilyLift (fun _ : PUnit => Bool)
+      boolSpecLawFamily where
   impl := encodedImplLawFamily
   compatible := by
     intro profile trace
@@ -521,7 +522,7 @@ example (profile : ∀ _player : PUnit, Bool) :
             encodedLawLift.impl (fun _ => 0) 2).outcomeKernel profile) =
       ((Machine.eventBatchTraceKernelGame
           boolSpecMachine (fun _ : PUnit => Bool)
-          encodedLawLift.spec (fun _ => 0) 2).outcomeKernel profile) :=
+          boolSpecLawFamily (fun _ => 0) 2).outcomeKernel profile) :=
   encodedRefinement.eventBatchTraceKernelGame_projectTrace_eq
     encodedLawLift (fun _ => 0) 2 profile
 
@@ -562,7 +563,7 @@ example (profile : ∀ _player : PUnit, Bool)
     (hNash :
       (Machine.eventBatchTraceKernelGame
           boolSpecMachine (fun _ : PUnit => Bool)
-          encodedLawLift.spec (fun _ => 0) 2).IsNash profile) :
+          boolSpecLawFamily (fun _ => 0) 2).IsNash profile) :
     (Machine.eventBatchTraceKernelGame
         encodedImplMachine (fun _ : PUnit => Bool)
         encodedLawLift.impl (fun _ => 0) 2).IsNash profile := by

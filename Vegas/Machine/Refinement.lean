@@ -263,6 +263,93 @@ def refl (M : Machine Player) : StochasticRefinement M M where
     intro outcome player
     rfl
 
+variable {Low Mid : Machine Player}
+
+/-- Compose two stochastic refinements. The implementation-to-specification
+batch projection is the explicit composition of the two batch projections,
+not a derived pointwise event projection. -/
+def compose
+    (R₂ : StochasticRefinement Mid Spec)
+    (R₁ : StochasticRefinement Low Mid) :
+    StochasticRefinement Low Spec where
+  projectState := fun state => R₂.projectState (R₁.projectState state)
+  projectEvent? := fun event => (R₁.projectEvent? event).bind R₂.projectEvent?
+  projectEventBatch := fun events =>
+    R₂.projectEventBatch (R₁.projectEventBatch events)
+  projectPublic := fun view => R₂.projectPublic (R₁.projectPublic view)
+  projectObs := fun player obs =>
+    R₂.projectObs player (R₁.projectObs player obs)
+  projectOutcome := fun outcome => R₂.projectOutcome (R₁.projectOutcome outcome)
+  init_project := by
+    rw [R₁.init_project, R₂.init_project]
+  available_project := by
+    intro state event specEvent havailable hproject
+    cases hmid : R₁.projectEvent? event with
+    | none =>
+        simp [hmid] at hproject
+    | some midEvent =>
+        have hmidAvailable :
+            Mid.EventAvailable (R₁.projectState state) midEvent :=
+          R₁.available_project havailable hmid
+        rw [hmid] at hproject
+        exact R₂.available_project hmidAvailable hproject
+  step_project := by
+    intro event source
+    change
+      PMF.map (R₂.projectState ∘ R₁.projectState)
+          (Low.step event source) =
+        match Option.bind (R₁.projectEvent? event) R₂.projectEvent? with
+        | some specEvent =>
+            Spec.step specEvent (R₂.projectState (R₁.projectState source))
+        | none =>
+            PMF.pure (R₂.projectState (R₁.projectState source))
+    rw [← PMF.map_comp]
+    rw [R₁.step_project event source]
+    cases hmid : R₁.projectEvent? event with
+    | none =>
+        simp [PMF.pure_map]
+    | some midEvent =>
+        simpa using R₂.step_project midEvent (R₁.projectState source)
+  eventBatch_project := by
+    intro events source
+    change
+      PMF.map (R₂.projectState ∘ R₁.projectState)
+          (Low.runEventsFrom events source) =
+        Spec.runEventsFrom
+          (R₂.projectEventBatch (R₁.projectEventBatch events))
+          (R₂.projectState (R₁.projectState source))
+    rw [← PMF.map_comp]
+    rw [R₁.eventBatch_project events source]
+    exact
+      R₂.eventBatch_project (R₁.projectEventBatch events)
+        (R₁.projectState source)
+  publicView_project := by
+    intro state
+    rw [R₂.publicView_project]
+    rw [R₁.publicView_project]
+  observe_project := by
+    intro player state
+    rw [R₂.observe_project]
+    rw [R₁.observe_project]
+  terminal_project := by
+    intro state hterminal
+    exact R₂.terminal_project (R₁.terminal_project hterminal)
+  terminal_reflect := by
+    intro state hterminal
+    exact R₁.terminal_reflect (R₂.terminal_reflect hterminal)
+  outcome_project := by
+    intro state
+    change
+      Option.map (R₂.projectOutcome ∘ R₁.projectOutcome)
+          (Low.outcome state) =
+        Spec.outcome (R₂.projectState (R₁.projectState state))
+    rw [← Option.map_map]
+    rw [R₁.outcome_project state]
+    exact R₂.outcome_project (R₁.projectState state)
+  utility_project := by
+    intro outcome player
+    rw [R₂.utility_project, R₁.utility_project]
+
 /-- The probability-preserving refinement induces the support-level available
 step simulation used by reachability proofs. -/
 def toAvailableStepSimulation
@@ -316,6 +403,15 @@ def projectEventBatchTrace
     (R : StochasticRefinement Impl Spec) :
     Impl.EventBatchTrace → Spec.EventBatchTrace :=
   fun trace => (trace.1.map R.projectEventBatch, R.projectState trace.2)
+
+@[simp] theorem compose_projectEventBatchTrace
+    (R₂ : StochasticRefinement Mid Spec)
+    (R₁ : StochasticRefinement Low Mid)
+    (trace : Low.EventBatchTrace) :
+    (R₂.compose R₁).projectEventBatchTrace trace =
+      R₂.projectEventBatchTrace (R₁.projectEventBatchTrace trace) := by
+  rcases trace with ⟨batches, state⟩
+  simp [projectEventBatchTrace, compose, List.map_map, Function.comp_def]
 
 @[simp] theorem projectEventBatchTrace_fst
     (R : StochasticRefinement Impl Spec) (trace : Impl.EventBatchTrace) :
@@ -423,6 +519,27 @@ def EventBatchLawCompatible
   ∀ trace : Impl.EventBatchTrace,
     PMF.map R.projectEventBatch (lawImpl trace) =
       lawSpec (R.projectEventBatchTrace trace)
+
+/-- Event-batch-law compatibility is transitive through composed stochastic
+refinements. -/
+theorem EventBatchLawCompatible.trans
+    (R₂ : StochasticRefinement Mid Spec)
+    (R₁ : StochasticRefinement Low Mid)
+    {lawLow : Low.EventBatchLaw}
+    {lawMid : Mid.EventBatchLaw}
+    {lawSpec : Spec.EventBatchLaw}
+    (h₁ : R₁.EventBatchLawCompatible lawLow lawMid)
+    (h₂ : R₂.EventBatchLawCompatible lawMid lawSpec) :
+    (R₂.compose R₁).EventBatchLawCompatible lawLow lawSpec := by
+  intro trace
+  change
+    PMF.map (R₂.projectEventBatch ∘ R₁.projectEventBatch)
+        (lawLow trace) =
+      lawSpec ((R₂.compose R₁).projectEventBatchTrace trace)
+  rw [← PMF.map_comp]
+  rw [h₁ trace]
+  rw [h₂ (R₁.projectEventBatchTrace trace)]
+  rw [compose_projectEventBatchTrace]
 
 theorem refl_eventBatchLawCompatible
     (M : Machine Player) (law : M.EventBatchLaw) :

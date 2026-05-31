@@ -6,6 +6,17 @@ import Vegas.Examples.BattleOfTheSexes
 import Vegas.Examples.MontyHall
 import Vegas.Examples.SolutionConcepts
 import Vegas.Examples.Refinement
+import Vegas.Examples.RefinementComposition
+import Vegas.Examples.BatchCanonicalization
+import Vegas.Examples.BoolMessage
+import Vegas.Examples.StrategyInert
+import Vegas.Examples.MessageInFlight
+import Vegas.Examples.ProtocolMessageBridge
+import Vegas.Examples.MessageAwareProtocol
+import Vegas.Examples.CheapTalk
+import Vegas.Examples.TwoPlayerMessageProtocol
+import Vegas.Examples.FrontrunningMessageInFlight
+import Vegas.Examples.MatchingPenniesNoFrontRunning
 import Vegas.Examples.EFGTranslation
 import Vegas.Examples.Claims
 
