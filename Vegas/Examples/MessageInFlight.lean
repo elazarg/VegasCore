@@ -678,20 +678,10 @@ theorem auditedBoolMessageInFlightTraceUtility_bound
     |Machine.eventBatchTraceUtility
         (Machine.audited boolMessageInFlightMachine) (fun _ => 0)
         trace player| ≤ 1 := by
-  cases player
-  rcases trace with ⟨batches, state⟩
-  rcases state with ⟨messageState, audit⟩
-  rcases messageState with ⟨sourceState, pending, delivered⟩
-  cases sourceState with
-  | none =>
-      simp [Machine.eventBatchTraceUtility, Machine.audited,
-        boolMessageInFlightMachine, Machine.messageInFlight,
-        Machine.RoundView.optionOutcomeUtility, boolSpecMachine]
-  | some value =>
-      cases value <;>
-        simp [Machine.eventBatchTraceUtility, Machine.audited,
-          boolMessageInFlightMachine, Machine.messageInFlight,
-          Machine.RoundView.optionOutcomeUtility, boolSpecMachine]
+  exact
+    (Machine.audited.refinement boolMessageInFlightMachine)
+      |>.eventBatchTraceUtility_bound_project (fun _ => 0)
+        boolMessageInFlightTraceUtility_bound player trace
 
 example (message : Bool) :
     (Machine.eventBatchTraceKernelGame

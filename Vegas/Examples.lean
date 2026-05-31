@@ -16,7 +16,7 @@ import Vegas.Examples.MessageAwareProtocol
 import Vegas.Examples.CheapTalk
 import Vegas.Examples.TwoPlayerMessageProtocol
 import Vegas.Examples.FrontrunningMessageInFlight
-import Vegas.Examples.MatchingPenniesNoFrontRunning
+import Vegas.Examples.MatchingPenniesOpaqueCommitReveal
 import Vegas.Examples.EFGTranslation
 import Vegas.Examples.Claims
 

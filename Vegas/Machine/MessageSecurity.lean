@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Machine.Basic
 
 /-!
-# Message-buffer security predicates
+# Message-buffer plaintext predicates
 
 Small reusable predicates for stating when a public message buffer contains
 action-relevant plaintext.  Runtime examples instantiate `PlaintextPolicy` for

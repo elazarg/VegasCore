@@ -5,12 +5,16 @@ import Vegas.Machine.Audited
 import Vegas.Examples.MatchingPennies
 
 /-!
-# Matching Pennies without plaintext frontrunning
+# Matching Pennies with opaque commit/reveal messages
 
 This fixture is the positive counterpart to
-`FrontrunningMessageInFlight`.  Players may inspect the message buffer before
-choosing, but the pre-lock buffer contains only opaque commitments.  Plaintext
-moves appear only after both moves are locked in the hidden source state.
+`FrontrunningMessageInFlight`.  Players may inspect the message buffers before
+choosing, but the lock phase emits only opaque commitments.  Plaintext moves
+appear only after both moves are locked in the hidden source state.
+
+The checked claim is protocol faithfulness plus no plaintext in the runtime
+buffers at the lock checkpoints.  It is not a cryptographic hiding theorem or a
+general theorem that all front-running deviations are unprofitable.
 -/
 
 namespace Vegas
@@ -700,16 +704,19 @@ noncomputable def commitRevealMessageLawLift :
       CommitRevealStrategy commitRevealSourceLawFamily where
   impl := commitRevealMessageLawFamily
   compatible := by
-    intro profile trace
+    intro profile
+    change commitRevealMessageRefinement.EventBatchLawCompatible
+      (fun trace =>
+        PMF.pure (commitRevealMessageBatch profile trace.2.source))
+      (fun trace => PMF.pure (commitRevealSourceBatch profile trace.2))
+    apply Machine.StochasticRefinement.EventBatchLawCompatible.of_pure
+    intro trace
     rcases trace with ⟨batches, state⟩
     rcases state with ⟨source, pending, delivered⟩
     rcases source with
       ⟨aliceMove, bobMove, aliceRevealed, bobRevealed⟩
     cases aliceMove <;> cases bobMove <;>
       cases aliceRevealed <;> cases bobRevealed <;>
-      simp only [commitRevealMessageLawFamily, commitRevealMessageLaw,
-        commitRevealSourceLawFamily, commitRevealSourceLaw] <;>
-      rw [PMF.pure_map] <;>
       rfl
 
 noncomputable abbrev commitRevealSourceTraceGame : KernelGame Player :=
@@ -722,18 +729,20 @@ noncomputable abbrev commitRevealMessageTraceGame : KernelGame Player :=
     commitRevealMessageMachine CommitRevealStrategy
     commitRevealMessageLawFamily (fun _ => 0) 4
 
-theorem commitReveal_before_bob_lock_no_plaintext
+theorem commitReveal_before_bob_lock_buffers_no_plaintext
     (profile : ∀ player : Player, CommitRevealStrategy player) :
     PMF.map
         (fun trace =>
           (trace.2.pending,
-            commitRevealPlaintextPolicy.plaintexts trace.2.pending,
+            trace.2.delivered,
+            commitRevealPlaintextPolicy.plaintexts
+              (trace.2.pending ++ trace.2.delivered),
             trace.2.source.aliceMove,
             trace.2.source.bobMove))
         (commitRevealMessageMachine.eventBatchTraceDist
           (commitRevealMessageLaw profile) 1) =
       PMF.pure
-        (aliceCommitView, [], some (commitRevealActionProfile profile
+        (aliceCommitView, [], [], some (commitRevealActionProfile profile
           Player.alice), none) := by
   simp [Machine.eventBatchTraceDist, Machine.eventBatchTraceDistFrom,
     commitRevealMessageLaw, commitRevealMessageBatch,
@@ -745,12 +754,14 @@ theorem commitReveal_before_bob_lock_no_plaintext
     commitRevealPlaintextPolicy, Machine.PlaintextPolicy.plaintexts,
     PMF.pure_map]
 
-theorem commitReveal_after_two_no_plaintext_and_locked
+theorem commitReveal_after_two_buffers_no_plaintext_and_locked
     (profile : ∀ player : Player, CommitRevealStrategy player) :
     PMF.map
         (fun trace =>
           (trace.2.pending,
-            commitRevealPlaintextPolicy.plaintexts trace.2.pending,
+            trace.2.delivered,
+            commitRevealPlaintextPolicy.plaintexts
+              (trace.2.pending ++ trace.2.delivered),
             trace.2.source.aliceMove,
             trace.2.source.bobMove,
             trace.2.source.aliceRevealed,
@@ -758,7 +769,7 @@ theorem commitReveal_after_two_no_plaintext_and_locked
         (commitRevealMessageMachine.eventBatchTraceDist
           (commitRevealMessageLaw profile) 2) =
       PMF.pure
-        (aliceBobCommitView, [],
+        (aliceBobCommitView, [], [],
           some (commitRevealActionProfile profile Player.alice),
           some (commitRevealActionProfile profile Player.bob),
           false, false) := by
@@ -863,7 +874,7 @@ theorem commitRevealMessageTraceGame_no_pure_nash
       rw [commitRevealActionProfile_update_const]
       rfl
 
-/-! ## Audited backend preserves the no-plaintext protocol game -/
+/-! ## Audited backend preserves opaque commit/reveal payoff and Nash facts -/
 
 noncomputable def auditedCommitRevealMessageMachine : Machine Player :=
   Machine.audited commitRevealMessageMachine
@@ -898,19 +909,10 @@ theorem auditedCommitRevealMessageTraceUtility_bound
     (trace : auditedCommitRevealMessageMachine.EventBatchTrace) :
     |Machine.eventBatchTraceUtility auditedCommitRevealMessageMachine
         (fun _ => 0) trace player| ≤ 1 := by
-  rcases trace with ⟨batches, state⟩
-  rcases state with ⟨messageState, audit⟩
-  rcases messageState with ⟨source, pending, delivered⟩
-  rcases source with
-    ⟨aliceMove, bobMove, aliceRevealed, bobRevealed⟩
-  cases aliceMove <;> cases bobMove <;>
-    cases aliceRevealed <;> cases bobRevealed <;>
-    cases player <;>
-    simp [Machine.eventBatchTraceUtility, auditedCommitRevealMessageMachine,
-      Machine.audited, commitRevealMessageMachine, Machine.messageInFlight,
-      lockedMPMachine, Machine.RoundView.optionOutcomeUtility,
-      LockedMPState.outcome?, matchingPenniesRuntimeUtility]
-  all_goals split <;> norm_num
+  simpa [auditedCommitRevealMessageMachine] using
+    (Machine.audited.refinement commitRevealMessageMachine)
+      |>.eventBatchTraceUtility_bound_project (fun _ => 0)
+        commitRevealMessageTraceUtility_bound player trace
 
 theorem auditedCommitRevealMessage_eu_eq_matchingPennies
     (profile : ∀ player : Player, CommitRevealStrategy player)

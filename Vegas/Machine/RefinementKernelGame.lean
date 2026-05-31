@@ -369,6 +369,18 @@ theorem eventBatchTraceUtility_project
   rw [← R.outcome_project trace.2]
   exact R.optionOutcomeUtility_project cutoff (Impl.outcome trace.2)
 
+/-- Utility bounds pull back along a trace refinement. -/
+theorem eventBatchTraceUtility_bound_project
+    (R : StochasticRefinement Impl Spec)
+    (cutoff : Payoff Player) {C : Player → ℝ}
+    (hbdSpec :
+      ∀ player trace,
+        |eventBatchTraceUtility Spec cutoff trace player| ≤ C player)
+    (player : Player) (trace : Impl.EventBatchTrace) :
+    |eventBatchTraceUtility Impl cutoff trace player| ≤ C player := by
+  rw [← R.eventBatchTraceUtility_project cutoff trace]
+  exact hbdSpec player (R.projectEventBatchTrace trace)
+
 /-- Compatible event-batch law families induce a utility-distribution
 preserving kernel-game morphism from implementation traces to specification
 traces. -/

@@ -143,6 +143,203 @@ def projectEventBatch
   rw [projectEventBatch, List.filterMap_map]
   simp
 
+/-- Sending one message is a semantically available implementation step while
+the source machine is nonterminal. -/
+theorem sendAvailableStep
+    (state : (messageInFlight M Message).State)
+    (player : Player) (message : Message player)
+    (hnonterminal : ¬ M.terminal state.source) :
+    (messageInFlight M Message).AvailableStep state
+      (.play player (.send message))
+      { source := state.source,
+        pending := state.pending ++ [⟨player, message⟩],
+        delivered := state.delivered } := by
+  constructor
+  · exact hnonterminal
+  · change
+      ({ source := state.source,
+         pending := state.pending ++ [⟨player, message⟩],
+         delivered := state.delivered } :
+        (messageInFlight M Message).State) ∈
+        (PMF.pure
+          ({ source := state.source,
+             pending := state.pending ++ [⟨player, message⟩],
+             delivered := state.delivered } :
+            (messageInFlight M Message).State)).support
+    rw [PMF.support_pure]
+    exact Set.mem_singleton _
+
+/-- Sending one message as a singleton available run. -/
+theorem sendAvailableRunFrom
+    (state : (messageInFlight M Message).State)
+    (player : Player) (message : Message player)
+    (hnonterminal : ¬ M.terminal state.source) :
+    (messageInFlight M Message).AvailableRunFrom state
+      [.play player (.send message)]
+      { source := state.source,
+        pending := state.pending ++ [⟨player, message⟩],
+        delivered := state.delivered } :=
+  (sendAvailableStep M Message state player message hnonterminal)
+    |>.availableRunFrom_singleton
+
+/-- Delivering the head pending message is a semantically available
+implementation step while the source machine is nonterminal. -/
+theorem deliverAvailableStep
+    (source : M.State) (message : Sigma Message)
+    (rest delivered : List (Sigma Message))
+    (hnonterminal : ¬ M.terminal source) :
+    (messageInFlight M Message).AvailableStep
+      { source := source,
+        pending := message :: rest,
+        delivered := delivered }
+      (.internal .deliver)
+      { source := source,
+        pending := rest,
+        delivered := delivered ++ [message] } := by
+  constructor
+  · constructor
+    · intro hnil
+      cases hnil
+    · exact hnonterminal
+  · change
+      ({ source := source,
+         pending := rest,
+         delivered := delivered ++ [message] } :
+        (messageInFlight M Message).State) ∈
+        (PMF.pure
+          ({ source := source,
+             pending := rest,
+             delivered := delivered ++ [message] } :
+            (messageInFlight M Message).State)).support
+    rw [PMF.support_pure]
+    exact Set.mem_singleton _
+
+/-- Delivering the head pending message as a singleton available run. -/
+theorem deliverAvailableRunFrom
+    (source : M.State) (message : Sigma Message)
+    (rest delivered : List (Sigma Message))
+    (hnonterminal : ¬ M.terminal source) :
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := message :: rest,
+        delivered := delivered }
+      [.internal .deliver]
+      { source := source,
+        pending := rest,
+        delivered := delivered ++ [message] } :=
+  (deliverAvailableStep M Message source message rest delivered hnonterminal)
+    |>.availableRunFrom_singleton
+
+/-- Lifting one available source step preserves the message buffers. -/
+theorem liftAvailableStep
+    {source target : M.State} {event : M.Event}
+    (pending delivered : List (Sigma Message))
+    (hstep : M.AvailableStep source event target) :
+    (messageInFlight M Message).AvailableStep
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (liftEvent M Message event)
+      { source := target,
+        pending := pending,
+        delivered := delivered } := by
+  constructor
+  · cases event with
+    | play player action =>
+        change action ∈ M.available source player
+        exact hstep.available
+    | internal event =>
+        change event ∈ M.availableInternal source
+        exact hstep.available
+  · cases event with
+    | play player action =>
+        change
+          ({ source := target,
+             pending := pending,
+             delivered := delivered } :
+            (messageInFlight M Message).State) ∈
+            (PMF.map
+              (fun dst =>
+                ({ source := dst,
+                   pending := pending,
+                   delivered := delivered } :
+                  (messageInFlight M Message).State))
+              (M.stepPlay player action source)).support
+        exact (PMF.mem_support_map_iff _ _ _).mpr
+          ⟨target, hstep.support, rfl⟩
+    | internal event =>
+        change
+          ({ source := target,
+             pending := pending,
+             delivered := delivered } :
+            (messageInFlight M Message).State) ∈
+            (PMF.map
+              (fun dst =>
+                ({ source := dst,
+                   pending := pending,
+                   delivered := delivered } :
+                  (messageInFlight M Message).State))
+              (M.stepInternal event source)).support
+        exact (PMF.mem_support_map_iff _ _ _).mpr
+          ⟨target, hstep.support, rfl⟩
+
+/-- Lifting an available source run preserves the message buffers. -/
+theorem liftAvailableRunFrom
+    {source target : M.State} {events : List M.Event}
+    (pending delivered : List (Sigma Message))
+    (hrun : M.AvailableRunFrom source events target) :
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (events.map (liftEvent M Message))
+      { source := target,
+        pending := pending,
+        delivered := delivered } := by
+  induction hrun with
+  | nil state =>
+      exact Machine.AvailableRunFrom.nil _
+  | cons havailable hsupport _ ih =>
+      exact Machine.AvailableRunFrom.cons
+        (Machine.AvailableStep.available
+          (liftAvailableStep M Message pending delivered
+            ⟨havailable, hsupport⟩))
+        (Machine.AvailableStep.support
+          (liftAvailableStep M Message pending delivered
+            ⟨havailable, hsupport⟩))
+        ih
+
+/-- Sending a message from an empty buffer and immediately delivering it is
+available while the source machine is nonterminal. -/
+theorem sendDeliverAvailableRunFrom
+    (source : M.State) (delivered : List (Sigma Message))
+    (player : Player) (message : Message player)
+    (hnonterminal : ¬ M.terminal source) :
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := [],
+        delivered := delivered }
+      [.play player (.send message), .internal .deliver]
+      { source := source,
+        pending := [],
+        delivered := delivered ++ [⟨player, message⟩] } := by
+  let sent : Sigma Message := ⟨player, message⟩
+  change
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := [],
+        delivered := delivered }
+      ([.play player (.send message)] ++ [.internal .deliver])
+      { source := source,
+        pending := [],
+        delivered := delivered ++ [sent] }
+  exact
+    (sendAvailableRunFrom M Message
+      { source := source, pending := [], delivered := delivered }
+      player message hnonterminal).append
+      (deliverAvailableRunFrom M Message source sent [] delivered
+        hnonterminal)
+
 theorem runEventsFrom_project_eq
     (events : List (messageInFlight M Message).Event)
     (state : (messageInFlight M Message).State) :

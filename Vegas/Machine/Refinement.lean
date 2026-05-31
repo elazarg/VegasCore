@@ -520,6 +520,23 @@ def EventBatchLawCompatible
     PMF.map R.projectEventBatch (lawImpl trace) =
       lawSpec (R.projectEventBatchTrace trace)
 
+/-- Compatibility for deterministic event-batch laws reduces to equality of
+projected batches. -/
+theorem EventBatchLawCompatible.of_pure
+    (R : StochasticRefinement Impl Spec)
+    (implBatch : Impl.EventBatchTrace → List Impl.Event)
+    (specBatch : Spec.EventBatchTrace → List Spec.Event)
+    (hproject :
+      ∀ trace,
+        R.projectEventBatch (implBatch trace) =
+          specBatch (R.projectEventBatchTrace trace)) :
+    R.EventBatchLawCompatible
+      (fun trace => PMF.pure (implBatch trace))
+      (fun trace => PMF.pure (specBatch trace)) := by
+  intro trace
+  rw [PMF.pure_map]
+  exact congrArg PMF.pure (hproject trace)
+
 /-- Event-batch-law compatibility is transitive through composed stochastic
 refinements. -/
 theorem EventBatchLawCompatible.trans
