@@ -340,6 +340,387 @@ theorem sendDeliverAvailableRunFrom
       (deliverAvailableRunFrom M Message source sent [] delivered
         hnonterminal)
 
+section MapRefinement
+
+variable {Impl Spec : Machine Player}
+
+/-- Lift a source-machine state projection through the message-in-flight
+wrapper, preserving the runtime message buffers. -/
+def mapProjectState
+    (R : StochasticRefinement Impl Spec) :
+    (messageInFlight Impl Message).State →
+      (messageInFlight Spec Message).State :=
+  fun state =>
+    { source := R.projectState state.source,
+      pending := state.pending,
+      delivered := state.delivered }
+
+/-- Lift a source-machine event projection through the message-in-flight
+wrapper. Protocol send/deliver events survive; wrapped source events are
+projected by the underlying refinement. -/
+def mapProjectEvent?
+    (R : StochasticRefinement Impl Spec) :
+    (messageInFlight Impl Message).Event →
+      Option (messageInFlight Spec Message).Event
+  | .play player (.send message) =>
+      some (.play player (.send message))
+  | .play player (.spec action) =>
+      (R.projectEvent? (.play player action)).map
+        (liftEvent Spec Message)
+  | .internal .deliver =>
+      some (.internal .deliver)
+  | .internal (.spec event) =>
+      (R.projectEvent? (.internal event)).map
+        (liftEvent Spec Message)
+
+/-- Batch projection for a lifted source-machine refinement. -/
+def mapProjectEventBatch
+    (R : StochasticRefinement Impl Spec)
+    (batch : List (messageInFlight Impl Message).Event) :
+    List (messageInFlight Spec Message).Event :=
+  batch.filterMap (mapProjectEvent? Message R)
+
+@[simp] theorem mapProjectEventBatch_nil
+    (R : StochasticRefinement Impl Spec) :
+    mapProjectEventBatch Message R [] = [] := rfl
+
+theorem mapRefinement_step_project
+    (R : StochasticRefinement Impl Spec)
+    (event : (messageInFlight Impl Message).Event)
+    (state : (messageInFlight Impl Message).State) :
+    PMF.map (mapProjectState Message R)
+        ((messageInFlight Impl Message).step event state) =
+      match mapProjectEvent? Message R event with
+      | some specEvent =>
+          (messageInFlight Spec Message).step specEvent
+            (mapProjectState Message R state)
+      | none =>
+          PMF.pure (mapProjectState Message R state) := by
+  rcases state with ⟨source, pending, delivered⟩
+  cases event with
+  | play player action =>
+      cases action with
+      | send message =>
+          change
+            PMF.map (mapProjectState Message R)
+                (PMF.pure
+                  ({ source := source,
+                     pending := pending ++ [⟨player, message⟩],
+                     delivered := delivered } :
+                    (messageInFlight Impl Message).State)) =
+              PMF.pure
+                ({ source := R.projectState source,
+                   pending := pending ++ [⟨player, message⟩],
+                   delivered := delivered } :
+                  (messageInFlight Spec Message).State)
+          rw [PMF.pure_map]
+          rfl
+      | spec action =>
+          simp only [Machine.step_play, messageInFlight, mapProjectEvent?]
+          let restoreSpec (sourceValue : Spec.State) :
+              (messageInFlight Spec Message).State :=
+            { source := sourceValue,
+              pending := pending,
+              delivered := delivered }
+          have hstep := R.step_project (.play player action) source
+          simp only [Machine.step_play] at hstep
+          rw [PMF.map_comp]
+          change
+            PMF.map (restoreSpec ∘ R.projectState)
+                (Impl.stepPlay player action source) =
+              match Option.map (liftEvent Spec Message)
+                  (R.projectEvent? (.play player action)) with
+              | some specEvent =>
+                  (messageInFlight Spec Message).step
+                    specEvent
+                    (restoreSpec (R.projectState source))
+              | none => PMF.pure (restoreSpec (R.projectState source))
+          rw [← PMF.map_comp]
+          rw [hstep]
+          cases hproject : R.projectEvent? (.play player action) with
+          | none =>
+              rw [PMF.pure_map]
+              rfl
+          | some specEvent =>
+              cases specEvent with
+              | play specPlayer specAction =>
+                  change
+                    PMF.map restoreSpec
+                        (Spec.stepPlay specPlayer specAction
+                          (R.projectState source)) =
+                      PMF.map restoreSpec
+                        (Spec.stepPlay specPlayer specAction
+                          (R.projectState source))
+                  rfl
+              | internal specEvent =>
+                  change
+                    PMF.map restoreSpec
+                        (Spec.stepInternal specEvent
+                          (R.projectState source)) =
+                      PMF.map restoreSpec
+                        (Spec.stepInternal specEvent
+                          (R.projectState source))
+                  rfl
+  | internal event =>
+      cases event with
+      | deliver =>
+          cases pending with
+          | nil =>
+              change
+                PMF.map (mapProjectState Message R)
+                    (PMF.pure
+                      ({ source := source,
+                         pending := [],
+                         delivered := delivered } :
+                        (messageInFlight Impl Message).State)) =
+                  PMF.pure
+                    ({ source := R.projectState source,
+                       pending := [],
+                       delivered := delivered } :
+                      (messageInFlight Spec Message).State)
+              rw [PMF.pure_map]
+              rfl
+          | cons message rest =>
+              change
+                PMF.map (mapProjectState Message R)
+                    (PMF.pure
+                      ({ source := source,
+                         pending := rest,
+                         delivered := delivered ++ [message] } :
+                        (messageInFlight Impl Message).State)) =
+                  PMF.pure
+                    ({ source := R.projectState source,
+                       pending := rest,
+                       delivered := delivered ++ [message] } :
+                      (messageInFlight Spec Message).State)
+              rw [PMF.pure_map]
+              rfl
+      | spec event =>
+          simp only [Machine.step_internal, messageInFlight, mapProjectEvent?]
+          let restoreSpec (sourceValue : Spec.State) :
+              (messageInFlight Spec Message).State :=
+            { source := sourceValue,
+              pending := pending,
+              delivered := delivered }
+          have hstep := R.step_project (.internal event) source
+          simp only [Machine.step_internal] at hstep
+          rw [PMF.map_comp]
+          change
+            PMF.map (restoreSpec ∘ R.projectState)
+                (Impl.stepInternal event source) =
+              match Option.map (liftEvent Spec Message)
+                  (R.projectEvent? (.internal event)) with
+              | some specEvent =>
+                  (messageInFlight Spec Message).step
+                    specEvent
+                    (restoreSpec (R.projectState source))
+              | none => PMF.pure (restoreSpec (R.projectState source))
+          rw [← PMF.map_comp]
+          rw [hstep]
+          cases hproject : R.projectEvent? (.internal event) with
+          | none =>
+              rw [PMF.pure_map]
+              rfl
+          | some specEvent =>
+              cases specEvent with
+              | play specPlayer specAction =>
+                  change
+                    PMF.map restoreSpec
+                        (Spec.stepPlay specPlayer specAction
+                          (R.projectState source)) =
+                      PMF.map restoreSpec
+                        (Spec.stepPlay specPlayer specAction
+                          (R.projectState source))
+                  rfl
+              | internal specEvent =>
+                  change
+                    PMF.map restoreSpec
+                        (Spec.stepInternal specEvent
+                          (R.projectState source)) =
+                      PMF.map restoreSpec
+                        (Spec.stepInternal specEvent
+                          (R.projectState source))
+                  rfl
+
+theorem mapRefinement_runEventsFrom_project_eq
+    (R : StochasticRefinement Impl Spec)
+    (events : List (messageInFlight Impl Message).Event)
+    (state : (messageInFlight Impl Message).State) :
+    PMF.map (mapProjectState Message R)
+        ((messageInFlight Impl Message).runEventsFrom events state) =
+      (messageInFlight Spec Message).runEventsFrom
+        (mapProjectEventBatch Message R events)
+        (mapProjectState Message R state) := by
+  induction events generalizing state with
+  | nil =>
+      change
+        PMF.map (mapProjectState Message R) (PMF.pure state) =
+          PMF.pure (mapProjectState Message R state)
+      rw [PMF.pure_map]
+  | cons event events ih =>
+      rw [Machine.runEventsFrom_cons_bind]
+      rw [PMF.map_bind]
+      simp_rw [ih]
+      change
+        ((messageInFlight Impl Message).step event state).bind
+            ((fun specState =>
+                (messageInFlight Spec Message).runEventsFrom
+                  (mapProjectEventBatch Message R events)
+                  specState) ∘
+              mapProjectState Message R) =
+          (messageInFlight Spec Message).runEventsFrom
+            (mapProjectEventBatch Message R (event :: events))
+            (mapProjectState Message R state)
+      rw [← PMF.bind_map
+        (p := (messageInFlight Impl Message).step event state)
+        (f := mapProjectState Message R)
+        (q := fun specState =>
+          (messageInFlight Spec Message).runEventsFrom
+            (mapProjectEventBatch Message R events) specState)]
+      rw [mapRefinement_step_project Message R event state]
+      cases hproject : mapProjectEvent? Message R event with
+      | none =>
+          simp [mapProjectEventBatch, hproject, PMF.pure_bind]
+      | some specEvent =>
+          simp [mapProjectEventBatch, hproject,
+            Machine.runEventsFrom_cons_bind]
+
+/-- Lift a source-machine refinement through identical message-in-flight
+wrappers. The lifted refinement preserves protocol send/deliver events and
+projects only the wrapped source-machine events. -/
+noncomputable def mapRefinement
+    (R : StochasticRefinement Impl Spec) :
+    StochasticRefinement
+      (messageInFlight Impl Message) (messageInFlight Spec Message) where
+  projectState := mapProjectState Message R
+  projectEvent? := mapProjectEvent? Message R
+  projectEventBatch := mapProjectEventBatch Message R
+  projectPublic := fun view =>
+    (R.projectPublic view.1, view.2.1, view.2.2)
+  projectObs := fun player view =>
+    (R.projectObs player view.1, view.2.1, view.2.2)
+  projectOutcome := R.projectOutcome
+  init_project := by
+    change
+      ({ source := R.projectState Impl.init,
+         pending := [],
+         delivered := [] } :
+        (messageInFlight Spec Message).State) =
+      { source := Spec.init, pending := [], delivered := [] }
+    rw [R.init_project]
+  available_project := by
+    intro state event specEvent havailable hproject
+    rcases state with ⟨source, pending, delivered⟩
+    cases event with
+    | play player action =>
+        cases action with
+        | send message =>
+            cases hproject
+            change ¬ Spec.terminal (R.projectState source)
+            intro hterminal
+            exact havailable (R.terminal_reflect hterminal)
+        | spec action =>
+            change
+              Option.map (liftEvent Spec Message)
+                  (R.projectEvent? (.play player action)) =
+                some specEvent at hproject
+            cases hsource : R.projectEvent? (.play player action) with
+            | none =>
+                simp only [hsource, Option.map_none] at hproject
+                cases hproject
+            | some sourceSpecEvent =>
+                simp only [hsource, Option.map_some] at hproject
+                cases hproject
+                cases sourceSpecEvent with
+                | play specPlayer specAction =>
+                    change specAction ∈
+                      Spec.available (R.projectState source) specPlayer
+                    exact R.available_project
+                      (event := .play player action)
+                      havailable hsource
+                | internal specEvent =>
+                    change specEvent ∈
+                      Spec.availableInternal (R.projectState source)
+                    exact R.available_project
+                      (event := .play player action)
+                      havailable hsource
+    | internal event =>
+        cases event with
+        | deliver =>
+            cases hproject
+            rcases havailable with ⟨hpending, hnonterminal⟩
+            constructor
+            · exact hpending
+            · intro hterminal
+              exact hnonterminal (R.terminal_reflect hterminal)
+        | spec event =>
+            change
+              Option.map (liftEvent Spec Message)
+                  (R.projectEvent? (.internal event)) =
+                some specEvent at hproject
+            cases hsource : R.projectEvent? (.internal event) with
+            | none =>
+                simp only [hsource, Option.map_none] at hproject
+                cases hproject
+            | some sourceSpecEvent =>
+                simp only [hsource, Option.map_some] at hproject
+                cases hproject
+                cases sourceSpecEvent with
+                | play specPlayer specAction =>
+                    change specAction ∈
+                      Spec.available (R.projectState source) specPlayer
+                    exact R.available_project
+                      (event := .internal event)
+                      havailable hsource
+                | internal specEvent =>
+                    change specEvent ∈
+                      Spec.availableInternal (R.projectState source)
+                    exact R.available_project
+                      (event := .internal event)
+                      havailable hsource
+  step_project := by
+    intro event state
+    convert
+      (@mapRefinement_step_project Player Message Impl Spec R event state)
+      using 1
+    cases hproject : mapProjectEvent? Message R event <;> rfl
+  eventBatch_project := by
+    intro events state
+    show
+      PMF.map (mapProjectState Message R)
+          ((messageInFlight Impl Message).runEventsFrom events state) =
+        (messageInFlight Spec Message).runEventsFrom
+          (mapProjectEventBatch Message R events)
+          (mapProjectState Message R state)
+    exact
+      @mapRefinement_runEventsFrom_project_eq Player Message Impl Spec R
+        events state
+  publicView_project := by
+    intro state
+    rcases state with ⟨source, pending, delivered⟩
+    simp [mapProjectState, messageInFlight, R.publicView_project]
+  observe_project := by
+    intro player state
+    rcases state with ⟨source, pending, delivered⟩
+    simp [mapProjectState, messageInFlight, R.observe_project]
+  terminal_project := by
+    intro state hterminal
+    exact R.terminal_project hterminal
+  terminal_reflect := by
+    intro state hterminal
+    exact R.terminal_reflect hterminal
+  outcome_project := by
+    intro state
+    change
+      Option.map R.projectOutcome (Impl.outcome state.source) =
+        Spec.outcome (R.projectState state.source)
+    exact R.outcome_project state.source
+  utility_project := by
+    intro outcome player
+    exact R.utility_project outcome player
+
+end MapRefinement
+
 theorem runEventsFrom_project_eq
     (events : List (messageInFlight M Message).Event)
     (state : (messageInFlight M Message).State) :
