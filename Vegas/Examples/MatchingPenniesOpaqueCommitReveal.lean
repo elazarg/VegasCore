@@ -193,7 +193,10 @@ def commitRevealActionProfile
   | Player.alice => profile Player.alice []
   | Player.bob => profile Player.bob aliceCommitView
 
-theorem commitReveal_bobAction_independent_of_aliceStrategy
+/-- This is a projection fact about `commitRevealActionProfile`: Bob's action is
+read from the fixed opaque commit view by definition. It is not a separate
+cryptographic or incentive-hiding theorem. -/
+theorem commitRevealActionProfile_bob_ignores_aliceSlot_byDefinition
     (alice₁ alice₂ : CommitRevealStrategy Player.alice)
     (bob : CommitRevealStrategy Player.bob) :
     commitRevealActionProfile
@@ -733,7 +736,10 @@ noncomputable abbrev commitRevealMessageTraceGame : KernelGame Player :=
     commitRevealMessageMachine CommitRevealStrategy
     commitRevealMessageLawFamily (fun _ => 0) 4
 
-theorem commitReveal_before_bob_lock_buffers_no_plaintext
+/-- Under the concrete commit/reveal scheduler, the first checkpoint has only
+Alice's opaque commit in the visible buffers, so plaintext extraction is empty.
+-/
+theorem commitRevealLaw_before_bob_lock_buffers_plaintexts_empty
     (profile : ∀ player : Player, CommitRevealStrategy player) :
     PMF.map
         (fun trace =>
@@ -758,7 +764,10 @@ theorem commitReveal_before_bob_lock_buffers_no_plaintext
     commitRevealPlaintextPolicy, Machine.PlaintextPolicy.plaintexts,
     PMF.pure_map]
 
-theorem commitReveal_after_two_buffers_no_plaintext_and_locked
+/-- Under the concrete commit/reveal scheduler, the second checkpoint has both
+opaque commits in the visible buffers, no extracted plaintext, and both hidden
+moves locked. -/
+theorem commitRevealLaw_after_two_buffers_plaintexts_empty_and_locked
     (profile : ∀ player : Player, CommitRevealStrategy player) :
     PMF.map
         (fun trace =>

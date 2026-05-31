@@ -338,7 +338,8 @@ theorem copyPendingRowStrategy_eu
 /-- If column copies row's pending message, row cannot profitably alter its
 message bit and column cannot improve above payoff `1`.  This is a real
 strategic result at the pending-message runtime layer, not an erasure theorem
-back to the original simultaneous coordination game. -/
+back to the original simultaneous coordination game. Row's deviations are
+payoff-neutral at this profile; the result is Nash, not strict Nash. -/
 theorem copyPendingRowStrategy_nash :
     pendingFrontrunTraceGame.IsNash copyPendingRowStrategy := by
   intro player alternative
