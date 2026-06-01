@@ -63,7 +63,7 @@ discipline can usually skip the entries that match their background.
   The classical tree presentation, with chance and decision nodes,
   per-player information sets, and outcomes at the leaves.
 \item[Frontier.]
-  The current decision boundary of the event graph: graph work whose
+  The ready decision boundary of the event graph: graph work whose
   prerequisites are complete but whose protocol event has not yet been
   executed.  Frontier round views close forced internal work and expose
   the ready player commitments at this boundary.
@@ -120,8 +120,8 @@ discipline can usually skip the entries that match their background.
   probabilistic transition-system accounts provide neighboring
   formulations~\citep{Park1981Bisimulation,Milner1989Bisimulation,
   Segala1995Probabilistic}.  For a contract backend, the implementation
-  might be a chain or contract-execution machine, and the specification
-  would be the primitive event-graph machine.
+  is a chain or contract-execution machine, and the specification is the
+  primitive event-graph machine.
 \item[Visibility / view.]
   The information-set structure of a multi-party protocol, presented
   here as a binding-level discipline: every variable is either public

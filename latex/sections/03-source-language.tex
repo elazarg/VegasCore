@@ -18,7 +18,7 @@ and proofs are allowed to treat \(a\) and \(b\) as the information that
 must be available.  The soundness law prevents a bad expression-language
 instance from secretly inspecting a field it did not declare.
 
-The surface language currently specializes to the simple expression
+The surface language specializes to the simple expression
 language used by the examples.  That specialization is deliberate:
 nullable yield sugar needs options, default values, and a commitment
 payload predicate that are concrete to that expression language.  The
@@ -99,7 +99,7 @@ or an explicit future protocol constructor, not through administrative
 \subsection{Surface syntax}
 \label{sec:source:surface}
 
-\(\mathsf{VegasLang}\) is the current surface language over the simple
+\(\mathsf{VegasLang}\) is the surface language over the simple
 expression language.  It mirrors the protocol core and adds:
 \begin{itemize}\itemsep1pt
 \item administrative \(\Let\)-bindings, erased by the lowering

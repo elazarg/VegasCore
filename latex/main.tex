@@ -12,7 +12,7 @@
 % Identifier-heavy paragraphs occasionally produce overlong tokens.
 \emergencystretch=1em
 
-\title{VegasCore: Event-Graph Semantics for\\
+\title{VegasCore: Event-Graph Semantics and Runtime Refinement for\\
        Visibility-Aware Probabilistic Games}
 \author{Elazar Gershuni\\\texttt{elazarg@gmail.com}}
 \date{May 2026}
@@ -21,11 +21,14 @@
 \maketitle
 
 \begin{abstract}
-VegasCore formalizes a semantic core for turning finite protocols
-into mathematical games.  A protocol may draw public randomness, ask
-players to make sealed commitments, reveal those commitments later, and
-compute terminal payoffs from public data.  The core question is simple
-to state: what game does the program describe?
+VegasCore formalizes a semantic core for specifying finite protocols as
+mathematical games, proving game-theoretic and programming-language facts
+about those games, and transporting selected facts to lower-level runtime
+models.  A protocol may draw public randomness, ask players to make
+sealed commitments, reveal those commitments later, and compute terminal
+payoffs from public data.  The core question is simple to state: what
+game does the program describe, and which runtime executions preserve
+that game?
 
 The answer in this codebase is a finite, visibility-aware
 \emph{event graph}.  Nodes are protocol events, fields are typed stored
@@ -48,18 +51,21 @@ mixed-pure kernel games.  FOSG and EFG objects are derived, payoff-faithful
 presentations of the same frontier semantics.
 
 The mechanized theorem surface proves compilation to well-formed graphs,
-checkpoint progress, and source-payoff adequacy.  It also proves
-frontier/FOSG/EFG utility-law adequacy, finite Kuhn strategic
-equivalence for frontier strategies and one-player deviations, and
-runtime trace adequacy for stochastic refinements.  The refinement layer
-is deliberately runtime-general.
-Smart-contract runtimes, payment-channel state machines, and local
-simulators can all be related to the primitive event-graph machine by
-supplying state, event, observation, and outcome projections plus a
-compatible trace law.  Ethereum/EVM is one motivating instance; the
-language-, event-graph-, machine-, and strategic-level interfaces state
-obligations such a backend must discharge without baking in a particular
-runtime.
+checkpoint progress, visibility properties, and source-payoff adequacy.
+It also proves frontier/FOSG/EFG utility-law adequacy, finite Kuhn
+strategic equivalence for frontier strategies and one-player deviations,
+and runtime trace adequacy for composable stochastic refinements.  The
+refinement layer is deliberately runtime-general.  Smart-contract
+runtimes, payment-channel state machines, and local simulators can all be
+related to the primitive event-graph machine by supplying state, event,
+observation, and outcome projections plus compatible event-batch laws.
+Abstract backend layers instantiate this interface with audited and
+encoded runtimes, public message-in-flight buffers, inert and cheap-talk
+strategy bridges, and protocol examples whose utility and Nash facts are
+pulled through compiled runtime layers.  Ethereum/EVM is one motivating
+target; the language-,
+event-graph-, machine-, and strategic-level interfaces state obligations
+such a backend must discharge without baking in a particular runtime.
 \end{abstract}
 
 \tableofcontents

@@ -16,7 +16,7 @@
 \renewcommand{\TT}[1]{\texttt{\detokenize{#1}}}
 
 \title{VegasCore: Definitional Supplement\\
-\large Current Lean Mechanization Guide}
+\large Lean Mechanization Guide}
 \author{}
 \date{May 2026}
 
@@ -25,7 +25,7 @@
 
 \begin{abstract}
 This supplement is the code-facing companion to the VegasCore report.
-It records the current Lean architecture and the main definition and
+It records the Lean architecture and the main definition and
 theorem names used by the paper.  It is intentionally a supplement to
 VegasCore itself: the generic GameTheory library is a dependency and a
 target of bridge theorems, not a place where VegasCore-specific
@@ -206,8 +206,8 @@ def Graph.prereqs (G : Graph Player L)
 availability, public reads for internal events with public output, actor
 visibility for commit choice footprints, and hidden-to-public discipline for
 reveals.  \TT{Graph.prereqs} is canonical: a prior node is a
-prerequisite exactly when it writes a field read by the current node,
-or when the current node is a reveal and the prior node is a commit.
+prerequisite exactly when it writes a field read by the active node,
+or when the active node is a reveal and the prior node is a commit.
 
 \subsection{Execution}
 
@@ -251,7 +251,7 @@ noncomputable def compile (g : GraphProgram P L) : CompiledProgram P L
 The compiler is indexed by typed source contexts.  Variable lookup is
 proof-bearing; missing variables do not default to a field id.  Public
 surface lets have already been substituted away.  Commit reads are
-computed from the committing player's visible current fields; sample and
+computed from the committing player's visible active fields; sample and
 payoff reads use declared public dependencies; reveals read the hidden
 source field.
 
@@ -439,7 +439,10 @@ the semantic categories rather than a second exhaustive theorem list.
 
 End-to-end examples exercise language lowering, event-graph
 dependencies, frontier games, solution concepts, FOSG/EFG bridges, and
-refinement smoke tests.  The build target for these fixtures is separate
+runtime-refinement examples.  The runtime fixtures include compositional
+refinement, audited bookkeeping, encoded storage, message-in-flight
+buffers, cheap-talk protocol preservation, and opaque commit/reveal
+plaintext invariants.  The build target for these fixtures is separate
 from the top-level library export so that examples can remain regression
 tests without becoming the public import surface.
 

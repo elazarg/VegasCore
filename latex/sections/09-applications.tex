@@ -18,7 +18,7 @@ sealed-bid in a commit phase, the bids are then revealed, and the
 allocation and payments are public functions of the revealed
 bids.  The surrounding mechanism-design and algorithmic-game-theory
 background is standard~\citep{MasColellWhinstonGreen1995,
-NisanRoughgardenTardosVazirani2007}.  In the present framework:
+NisanRoughgardenTardosVazirani2007}.  In the framework:
 \begin{itemize}\itemsep1pt
 \item Each bidder's bid is a $\Commit$ with a guard restricting
   the value to the bid domain (e.g.\ a bounded integer range).
@@ -44,7 +44,7 @@ NisanRoughgardenTardosVazirani2007}.  In the present framework:
 
 A contract backend adds a machine whose state contains runtime storage
 and whose events model the relevant transaction, call, queue, or
-block-level actions.  It would then prove:
+block-level actions.  It proves:
 \begin{itemize}\itemsep1pt
 \item a projection from contract states and observations to the compiled
   event-graph machine;
@@ -60,6 +60,15 @@ runtime refinement API isolates.  They keep runtime-specific facts, such
 as what the execution environment reveals and which administrative steps
 are ignored, out of the language definition and inside the backend
 proof.
+
+Abstract compiled layers exercise this pattern.  Audited runtimes add
+erased administrative steps.  Encoded runtime examples replace
+source-level booleans with a lower-level storage encoding.
+Message-in-flight runtimes expose pending and delivered messages to
+players and then prove either inertness, explicit cheap-talk/protocol
+preservation, or a protocol-specific opacity invariant.  EVM and
+ConCertLean backends discharge the same kind of refinement obligations at
+their own runtime boundary.
 
 If the backend also admits additional communication, the refinement proof
 must be paired with one of the cheap-talk positions from
@@ -85,7 +94,7 @@ later payoff expressions must explicitly handle the abstaining
 voter.  Whether the protocol punishes, ignores, or rewards
 abstention is a payoff-expression decision exposed by the type
 system, not an implementation detail; the same is true for
-threshold-of-revealers structures.  In the current surface this is a
+threshold-of-revealers structures.  In the surface language this is a
 fixed-preference protocol-game statement; full social-choice
 strategy-proofness over private type spaces requires the type-space
 extension discussed in \Cref{sec:disc:ext}.
@@ -113,7 +122,7 @@ the payoff expression turns the same graph into a coordination game.
 The kernel game exposes both the pure equilibria and, via mixed
 extension, the mixed one.  Bayesian games with genuinely private
 signals~\citep{Harsanyi1967} require a hidden-randomness primitive
-that the present surface language does not yet expose ($\Sample$
+that the surface language does not expose ($\Sample$
 draws are public); this is a natural extension discussed in
 \Cref{sec:disc:ext}.
 
@@ -150,7 +159,7 @@ programming or direct finite constructions
 
 The intended scope is finite, terminating, public-payoff protocols
 with discrete value domains and finite-support stochastic samples.
-Applications outside this scope would require extensions discussed in
+Applications outside this scope require extensions discussed in
 \Cref{sec:discussion}, including:
 \begin{itemize}\itemsep1pt
 \item continuous bid spaces;

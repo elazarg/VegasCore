@@ -19,13 +19,22 @@ detail may be erased by the projection.  What matters is preservation of
 the observable machine behavior and of the probability laws used by the
 strategic analysis.
 
+The refinement relation is compositional.  If a low-level machine refines
+an intermediate machine and the intermediate machine refines the
+primitive event-graph machine, the two proofs compose to a single
+low-level-to-primitive refinement.  The same is true of compatible
+event-batch law families: a backend tower can add administrative audit
+steps, encoded storage, message queues, or other runtime structure one
+layer at a time, and then collapse those layers when applying the trace
+transport theorem.
+
 For this report, the \emph{specification} is the primitive machine
 obtained from the compiled event graph.  An \emph{implementation} is any
 lower-level machine whose behavior should realize that specification.
-For a contract backend, the implementation machine would model
+For a contract backend, the implementation machine models
 contract-level execution and runtime-visible observations; the projection
-would say which contract states and events count as which graph states
-and events.  Events that are purely administrative may project to no
+says which contract states and events count as which graph states and
+events.  Events that are purely administrative may project to no
 specification event, but then they must stutter at the specification
 level.
 
@@ -56,6 +65,12 @@ specification event-batch law whose finite trace distribution is exactly
 the trace kernel of the selected surface.  A
 \(\mathsf{RuntimeTraceAdequacy}\) adds an implementation law family and
 compatibility with the stochastic refinement.
+
+Legality of an event batch is support-wide: every intermediate state in
+the support of a probabilistic prefix must make the remaining suffix
+available.  This prevents a backend law from hiding an unavailable
+intermediate branch that later converges to an otherwise acceptable final
+state.  It is the batch-level counterpart of ordinary step availability.
 
 \subsection{Transport theorem}
 \label{sec:ref:transport}
@@ -96,10 +111,11 @@ There is a subtle strategy-space mismatch here.  A concrete runtime may
 permit players to exchange messages that are not part of the VegasCore
 event graph: transaction metadata, mempool signals, off-chain messages,
 or explicit no-op calls.  A refinement proof may erase those messages
-operationally, but erasure is not enough to show that the strategic game
-is unchanged.  If strategies in the concrete machine can condition on
-the extra messages, then the concrete strategy space is strictly larger
-than the frontier strategy space.
+operationally.  Strategic preservation additionally requires a relation
+between the concrete strategy space and the frontier strategy space.  If
+strategies in the concrete machine can condition on the extra messages,
+then the concrete strategy space is strictly larger than the frontier
+strategy space.
 
 There are three sound ways to use such a runtime model.
 
@@ -108,8 +124,7 @@ There are three sound ways to use such a runtime model.
   State that the analysis ignores out-of-band communication, or that the
   chosen implementation observation model does not expose it.  Then the
   refinement theorem applies to the selected strategy-indexed law family,
-  but it is not a theorem about all possible behavior around the deployed
-  system.
+  with scope limited to behavior represented by that observation model.
 \item[Inert extension.]
   Prove that the concrete game is an inert extension of the frontier
   game: every enriched strategy profile has exactly the same outcome law
@@ -125,30 +140,53 @@ There are three sound ways to use such a runtime model.
   the same message channel on the specification side and analyze the
   enlarged game.  The generic cheap-talk theorem gives the babbling
   result: every base Nash equilibrium embeds as an equilibrium where
-  players send default messages and ignore the channel.  It does
-  \emph{not} say that all equilibria are preserved, because cheap talk
-  can add coordination equilibria.
+  players send default messages and ignore the channel.  Cheap talk may
+  also add coordination equilibria, so the theorem deliberately preserves
+  the babbling equilibria rather than every equilibrium of the enlarged
+  game.
 \end{description}
 
 The third option is often the right statement for protocols that run in
-communicative environments.  It makes the extra communication explicit
-instead of pretending it is absent.  The second option is stronger but
-requires a proof that messages cannot affect the induced action law, even
-through contingent strategies.  A runtime with arbitrary additional
-observable messages should therefore not be called game-theoretically
-identical to the base frontier game unless it satisfies an inertness
-condition or the analysis is intentionally restricted to babbling/no-talk
-profiles.
+communicative environments because it makes the communication explicit.
+The second option is stronger and requires a proof that messages cannot
+affect the induced action law, even through contingent strategies.  A
+runtime with arbitrary additional observable messages is
+game-theoretically identical to the base frontier game only under an
+inertness condition or an intentionally restricted babbling/no-talk
+analysis.
 
-\subsection{Smoke-test runtimes}
-\label{sec:ref:smoke-tests}
+\subsection{Abstract runtime examples}
+\label{sec:ref:runtime-examples}
 
-The identity and audited runtimes are smoke tests for the abstraction.
+The identity and audited runtimes are minimal witnesses for the
+abstraction.
 The identity runtime is the baseline: the primitive compiled machine
 refines itself, and any trace-adequate specification law yields runtime
 adequacy by reflexivity.  The audited runtime executes an administrative
 audit tick before specification event batches; the refinement erases
-those ticks.  Neither example bakes a particular backend into VegasCore.
+those ticks.  Both instantiate the generic backend boundary.
+
+The message-in-flight runtime wraps a machine with public pending and
+delivered message buffers.  Send and delivery events are implementation
+events that refine away unless the specification deliberately models
+them, but the buffers remain visible in runtime observations.  This makes
+the model strong enough to express front-running-style behavior: a player
+may condition an action on a pending message before it is delivered.  The
+wrapper also prevents terminal traces from stranding pending messages:
+terminal-producing source events are unavailable until the pending queue
+has drained.
+
+The protocol examples use these pieces in two different ways.  Inert
+message coordinates are erased with no payoff effect, giving Nash
+transport by inert-extension theorems.  Observable cheap talk is modeled
+as an explicit enlarged protocol game; the compiled message runtime is
+then proved faithful to that enlarged game.  Erasing the message channel
+uses the inert or babbling hypotheses above.  The opaque commit/reveal
+Matching-Pennies example
+proves a scheduler invariant: every bounded message-runtime trace has no
+extracted plaintext before both hidden moves are locked.  That invariant
+is a protocol/runtime fact by construction; cryptographic hiding belongs
+to a cryptographic backend assumption.
 
 \leancorr{Generic machine refinement is in \TT{Vegas.Machine.Refinement}.  The
 program-facing trace-adequacy surface is in
@@ -162,4 +200,7 @@ GameTheory support for this strategy-space issue is in
 \TT{GameTheory.Core.InertExtension},
 \TT{GameTheory.Concepts.InertExtension},
 \TT{GameTheory.Core.Babbling}, and
-\TT{GameTheory.Concepts.Babbling}.}
+\TT{GameTheory.Concepts.Babbling}.  Runtime examples are in
+\TT{Vegas.Machine.Audited}, \TT{Vegas.Machine.MessageInFlight},
+\TT{Vegas.Machine.MessageSecurity}, and the message/refinement examples
+under \TT{Vegas.Examples}.}

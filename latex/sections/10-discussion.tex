@@ -56,11 +56,10 @@ ConCertLean formalizes executable smart-contract chains in Lean:
 account balances, serialized contract state, typed contracts, contract
 calls, blocks, action queues, and induction principles for reachable
 traces.  This makes it a plausible lower-level target for the
-runtime-refinement API.  A backend package could realize a VegasCore
-event graph as one or more ConCertLean contracts and prove projection
+runtime-refinement API.  A backend package realizes a VegasCore event
+graph as one or more ConCertLean contracts and proves projection
 lemmas from ConCertLean chain states and calls to graph states and
-events.  If that direct target is too restrictive for a given backend,
-the same structure still gives a useful proof template: entry-point
+events.  The same structure gives a useful proof template: entry-point
 correctness, queue and block-step accounting, serialization soundness,
 and trace induction.
 
@@ -78,9 +77,9 @@ continuation.
 \paragraph{No quit handlers.}  The surface language deliberately
 omits user-level quit handlers.  A strategic quit changes the
 action space and the control-flow shape, neither of which is a
-value-level effect; supporting it would require adding a
+value-level effect; supporting it requires adding a
 prerequisite-cancellation rule to the event graph and revisiting
-the frontier-read invariants.  Nullable yields are the present
+the frontier-read invariants.  Nullable yields are the language-level
 substitute for ``opt out of revealing.''
 
 \paragraph{Solution-concept inventory.}  The strategic API exposes
@@ -90,7 +89,7 @@ and Pareto efficiency.  Refinement-based equilibrium concepts
 (subgame-perfect and trembling-hand equilibria~\citep{Selten1975},
 and sequential equilibria~\citep{KrepsWilson1982}) are not yet exposed
 because the event-graph view does not maintain a sub-game decomposition;
-this would require an additional presentation or subgame API rather than
+this requires an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
@@ -105,12 +104,13 @@ FOSG and EFG adequacy results
 exported presentation is needed; they are bridges for exported
 presentations, not the proof boundary for checked programs.
 
-\paragraph{Runtime backends are not included.}  The refinement interface
-is present, and the identity and audited runtimes exercise it.  Dedicated
-backend packages remain future work: EVM semantics, Solidity or Vyper
-compiler correctness, a ConCertLean adapter, mempool and gas models, and
-cryptographic commitment proofs are all examples of obligations that
-belong below the generic refinement boundary.
+\paragraph{Concrete backend obligations.}  The refinement interface is
+compositional and is exercised by abstract backend layers: identity,
+audited bookkeeping, encoded storage examples, and message-in-flight
+protocol runtimes.  EVM semantics, Solidity or Vyper compiler
+correctness, a ConCertLean adapter, mempool and gas models, gas/fee
+utility effects, and cryptographic commitment proofs are concrete
+backend-package obligations below the generic refinement boundary.
 
 \paragraph{Extra communication changes the game unless proved otherwise.}
 Refinement can hide additional implementation messages from the projected
@@ -151,9 +151,9 @@ time is a separate question \citep{DaskalakisGoldbergPapadimitriou2009}.
 Bayesian games with type
 spaces~\citep{Harsanyi1967,MyersonGameTheory} are close to the
 intended scope but need one more primitive: private type draws.
-The current $\Sample$ layer is public, so it cannot by itself
-generate hidden per-player types.  A mechanism-design library could
-be packaged as a checked \TT{WFProgram} builder over a type-space
+The $\Sample$ layer is public, so it cannot by itself
+generate hidden per-player types.  A mechanism-design library is packaged
+as a checked \TT{WFProgram} builder over a type-space
 schema once the source language has either hidden samples or an
 external typed-input interface.
 
@@ -169,31 +169,35 @@ protocols~\citep{HondaYoshidaCarbone2008MPST} suggest two
 extensions: typed channel structure beyond the
 single-public-write SSA convention, and a richer notion of session
 that tracks delegated authority.  Both are layerable on top of the
-present event-graph carrier.
+event-graph carrier.
 
 \paragraph{Cryptographic backends.}
 The commit/reveal pattern is operationally a cryptographic
 commitment scheme~\citep{Blum1983CoinFlipping,
-Naor1991BitCommitment,Pedersen1991Commitment}.  The current
+Naor1991BitCommitment,Pedersen1991Commitment}.  The
 construction abstracts the commitment as a sealed-then-revealed
 binding; a refinement layer that models hash-based or
-homomorphic-commitment implementations would be a natural backend
+homomorphic-commitment implementations is a natural backend
 under stochastic refinement, with the cryptographic soundness
 property appearing as a side condition on $\refines_s$.
 
 \paragraph{Contract-runtime refinement packages.}
 A backend package for an EVM-style runtime, a ConCertLean-style
-executable chain, or a payment-channel state machine would likely split
-into two layers.  The first layer would model enough runtime execution to
-define states, observations, event batches, terminal outcomes, and
-utility.  The second would prove a \(\mathsf{StochasticRefinement}\)
-from that machine to the compiled event-graph machine and instantiate
+executable chain, or a payment-channel state machine splits into several
+layers.  The lower layers model enough runtime
+execution to define states, observations, event batches, terminal
+outcomes, and utility.  Intermediate layers add storage encodings,
+queues, block/mempool scheduling, logs, or administrative accounting.  A
+final proof composes the layer refinements into a
+\(\mathsf{StochasticRefinement}\) from the concrete machine to the
+compiled event-graph machine and instantiates
 \(\mathsf{RuntimeTraceAdequacy}\) for the chosen frontier surface.  This
 is the backend-facing use of the transport theorem
 (\Cref{thm:runtime-trace}).  It keeps runtime-specific questions, such
-as which observations are public and which administrative calls are
-semantically invisible, explicit in the backend proof instead of hidden
-in the VegasCore language.
+as which observations are public, which administrative calls are
+semantically invisible, which messages players may condition on, and
+which economic costs affect utility, explicit in the backend proof
+instead of hidden in the VegasCore language.
 
 \paragraph{Compositional structure.}
 Every checked program produces a kernel game, and morphisms between
@@ -202,7 +206,7 @@ structure on checked programs analogous to compositional game
 theory~\citep{GhaniHedgesWinschel2018CGT,Hedges2016CGT};
 making the composition explicit (parallel,
 sequential, and conditional combinators on checked programs)
-would let large protocols be assembled from small ones with
+lets large protocols be assembled from small ones with
 machine-checked strategic-structure preservation.
 
 \paragraph{Concurrent-strategy realization.}
@@ -218,17 +222,18 @@ intersects logical accounts of partial information
 
 The construction addresses a small but central question: when the
 strategic content of a finite multi-party protocol is mechanically
-extracted from the program, what is the right primary semantic
-object?  The answer it offers is the event graph,
+extracted from the program and carried toward a runtime, what is the
+right primary semantic object?  The answer it offers is the event graph,
 with extensional configurations and a checked frontier.  The
-strategic-form, FOSG, EFG, and backend views are then
+strategic-form, FOSG, EFG, and runtime views are then
 \emph{presentations} of this object that come with their own
 adequacy and transport theorems
 (\Cref{thm:fosg,thm:efg,thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence,thm:runtime-trace}).
 
-The deeper benefit is that future extensions such as compositional
-combinators, larger surface notation, richer cryptographic backends, and
-mechanism-design packaging can all be added as new presentations or new
-lowerings without touching the central event-graph theorems.  Adequacy
-at the boundary is a checked theorem; the inside of the boundary is
-free.
+The deeper benefit is that extensions such as compositional combinators,
+larger surface notation, richer cryptographic backends, and
+mechanism-design packaging can all be added as new presentations, new
+lowerings, or new backend refinement layers without touching the central
+event-graph theorems.  Adequacy at each boundary is a checked theorem;
+the inside of each boundary is free to use the representation that makes
+the next proof tractable.

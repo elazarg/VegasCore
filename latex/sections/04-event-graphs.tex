@@ -105,7 +105,7 @@ The negative cases are as important.  Commit/commit pairs are
 independent unless the later commit choice footprint contains a field written
 by the earlier one.  Reveal/reveal pairs are independent at this abstraction
 level unless one reveal reads a field written by the other, which the
-current core does not generate.  Public samples do not wait for hidden
+core language does not generate.  Public samples do not wait for hidden
 commitments.
 
 \subsection{Configurations and availability}
@@ -129,9 +129,9 @@ primitive steps.
 A node is ready when it is not done and all canonical prerequisites are
 done.  A commit action is available when the node is ready, owned by the
 acting player, the action value has the guard type, the guard's choice
-environment can be built from the current store, and the guard evaluates
+environment can be built from the active store, and the guard evaluates
 to true.  An internal event is available when a ready sample or reveal can
-evaluate from the current store.
+evaluate from the active store.
 
 \subsection{Schedule independence}
 \label{sec:eg:diamond}
