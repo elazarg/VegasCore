@@ -6,8 +6,11 @@ import Vegas.Machine.Refinement
 `Machine.messageInFlight` adds an implementation-level message buffer to an
 existing machine. Sends enqueue public messages, delivery moves one pending
 message to the delivered log, and both pending and delivered messages are
-visible in public and player observations. The refinement back to the source
-machine erases send/deliver events and forgets the message buffers.
+visible in public and player observations. Wrapped source events may run while
+messages are pending only when every supported source successor is nonterminal;
+terminal-producing source events must wait until the pending queue has drained.
+The refinement back to the source machine erases send/deliver events and
+forgets the message buffers.
 -/
 
 namespace Vegas
@@ -52,11 +55,21 @@ noncomputable def messageInFlight
   available := fun state player action =>
     match action with
     | .send _ => ¬ M.terminal state.source
-    | .spec sourceAction => sourceAction ∈ M.available state.source player
+    | .spec sourceAction =>
+        sourceAction ∈ M.available state.source player ∧
+          (state.pending = [] ∨
+            ∀ target,
+              target ∈ (M.stepPlay player sourceAction state.source).support →
+                ¬ M.terminal target)
   availableInternal := fun state event =>
     match event with
     | .deliver => state.pending ≠ [] ∧ ¬ M.terminal state.source
-    | .spec sourceEvent => sourceEvent ∈ M.availableInternal state.source
+    | .spec sourceEvent =>
+        sourceEvent ∈ M.availableInternal state.source ∧
+          (state.pending = [] ∨
+            ∀ target,
+              target ∈ (M.stepInternal sourceEvent state.source).support →
+                ¬ M.terminal target)
   stepPlay := fun player action state =>
     match action with
     | .send message =>
@@ -142,6 +155,73 @@ def projectEventBatch
       batch := by
   rw [projectEventBatch, List.filterMap_map]
   simp
+
+/-- Event batch that drains the current pending queue. -/
+def deliverAllEvents
+    (pending : List (Sigma Message)) :
+    List (messageInFlight M Message).Event :=
+  pending.map fun _ => .internal .deliver
+
+/-- Drain the pending queue, then run a suffix batch. This is definitionally
+convenient for concrete trace computations. -/
+def deliverAllThenEvents
+    (pending : List (Sigma Message))
+    (suffix : List (messageInFlight M Message).Event) :
+    List (messageInFlight M Message).Event :=
+  match pending with
+  | [] => suffix
+  | _ :: rest => .internal .deliver :: deliverAllThenEvents rest suffix
+
+@[simp] theorem deliverAllEvents_nil :
+    deliverAllEvents M Message [] = [] := rfl
+
+@[simp] theorem deliverAllEvents_cons
+    (message : Sigma Message) (rest : List (Sigma Message)) :
+    deliverAllEvents M Message (message :: rest) =
+      .internal .deliver :: deliverAllEvents M Message rest := rfl
+
+@[simp] theorem deliverAllThenEvents_nil
+    (suffix : List (messageInFlight M Message).Event) :
+    deliverAllThenEvents M Message [] suffix = suffix := rfl
+
+@[simp] theorem deliverAllThenEvents_cons
+    (message : Sigma Message) (rest : List (Sigma Message))
+    (suffix : List (messageInFlight M Message).Event) :
+    deliverAllThenEvents M Message (message :: rest) suffix =
+      .internal .deliver :: deliverAllThenEvents M Message rest suffix := rfl
+
+theorem deliverAllThenEvents_eq
+    (pending : List (Sigma Message))
+    (suffix : List (messageInFlight M Message).Event) :
+    deliverAllThenEvents M Message pending suffix =
+      deliverAllEvents M Message pending ++ suffix := by
+  induction pending with
+  | nil => rfl
+  | cons message rest ih =>
+      simp [deliverAllThenEvents, deliverAllEvents, ih]
+
+@[simp] theorem projectEventBatch_deliverAllEvents
+    (pending : List (Sigma Message)) :
+    projectEventBatch M Message (deliverAllEvents M Message pending) = [] := by
+  induction pending with
+  | nil => rfl
+  | cons message rest ih =>
+      simp [deliverAllEvents, projectEventBatch, projectEvent?]
+
+@[simp] theorem projectEventBatch_deliverAllThenEvents
+    (pending : List (Sigma Message))
+    (suffix : List (messageInFlight M Message).Event) :
+    projectEventBatch M Message
+        (deliverAllThenEvents M Message pending suffix) =
+      projectEventBatch M Message suffix := by
+  induction pending with
+  | nil => rfl
+  | cons message rest ih =>
+      change
+        List.filterMap (projectEvent? M Message)
+            (deliverAllThenEvents M Message rest suffix) =
+          List.filterMap (projectEvent? M Message) suffix
+      simpa [projectEventBatch] using ih
 
 /-- Sending one message is a semantically available implementation step while
 the source machine is nonterminal. -/
@@ -234,6 +314,10 @@ theorem deliverAvailableRunFrom
 theorem liftAvailableStep
     {source target : M.State} {event : M.Event}
     (pending delivered : List (Sigma Message))
+    (hqueue :
+      pending = [] ∨
+        ∀ target, target ∈ (M.step event source).support →
+          ¬ M.terminal target)
     (hstep : M.AvailableStep source event target) :
     (messageInFlight M Message).AvailableStep
       { source := source,
@@ -246,11 +330,21 @@ theorem liftAvailableStep
   constructor
   · cases event with
     | play player action =>
-        change action ∈ M.available source player
-        exact hstep.available
+        change action ∈ M.available source player ∧
+          (pending = [] ∨
+            ∀ target,
+              target ∈ (M.stepPlay player action source).support →
+                ¬ M.terminal target)
+        exact ⟨hstep.available, by
+          simpa [Machine.step_play] using hqueue⟩
     | internal event =>
-        change event ∈ M.availableInternal source
-        exact hstep.available
+        change event ∈ M.availableInternal source ∧
+          (pending = [] ∨
+            ∀ target,
+              target ∈ (M.stepInternal event source).support →
+                ¬ M.terminal target)
+        exact ⟨hstep.available, by
+          simpa [Machine.step_internal] using hqueue⟩
   · cases event with
     | play player action =>
         change
@@ -283,18 +377,19 @@ theorem liftAvailableStep
         exact (PMF.mem_support_map_iff _ _ _).mpr
           ⟨target, hstep.support, rfl⟩
 
-/-- Lifting an available source run preserves the message buffers. -/
+/-- Lifting an available source run from an empty pending queue preserves the
+delivered log and keeps the queue empty. -/
 theorem liftAvailableRunFrom
     {source target : M.State} {events : List M.Event}
-    (pending delivered : List (Sigma Message))
+    (delivered : List (Sigma Message))
     (hrun : M.AvailableRunFrom source events target) :
     (messageInFlight M Message).AvailableRunFrom
       { source := source,
-        pending := pending,
+        pending := [],
         delivered := delivered }
       (events.map (liftEvent M Message))
       { source := target,
-        pending := pending,
+        pending := [],
         delivered := delivered } := by
   induction hrun with
   | nil state =>
@@ -302,12 +397,83 @@ theorem liftAvailableRunFrom
   | cons havailable hsupport _ ih =>
       exact Machine.AvailableRunFrom.cons
         (Machine.AvailableStep.available
-          (liftAvailableStep M Message pending delivered
+          (liftAvailableStep M Message [] delivered
+            (Or.inl rfl)
             ⟨havailable, hsupport⟩))
         (Machine.AvailableStep.support
-          (liftAvailableStep M Message pending delivered
+          (liftAvailableStep M Message [] delivered
+            (Or.inl rfl)
             ⟨havailable, hsupport⟩))
         ih
+
+/-- Draining every pending message is available while the source machine is
+nonterminal. -/
+theorem deliverAllAvailableRunFrom
+    (source : M.State) (pending delivered : List (Sigma Message))
+    (hnonterminal : ¬ M.terminal source) :
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (deliverAllEvents M Message pending)
+      { source := source,
+        pending := [],
+        delivered := delivered ++ pending } := by
+  induction pending generalizing delivered with
+  | nil =>
+      simpa using
+        (Machine.AvailableRunFrom.nil (M := messageInFlight M Message)
+          ({ source := source,
+             pending := [],
+             delivered := delivered } :
+            (messageInFlight M Message).State))
+  | cons message rest ih =>
+      let src : (messageInFlight M Message).State :=
+        { source := source,
+          pending := message :: rest,
+          delivered := delivered }
+      let afterDeliver : (messageInFlight M Message).State :=
+        { source := source,
+          pending := rest,
+          delivered := delivered ++ [message] }
+      change
+        (messageInFlight M Message).AvailableRunFrom src
+          (.internal .deliver :: deliverAllEvents M Message rest)
+          { source := source,
+            pending := [],
+            delivered := delivered ++ (message :: rest) }
+      refine Machine.AvailableRunFrom.cons (mid := afterDeliver) ?_ ?_ ?_
+      · change src.pending ≠ [] ∧ ¬ M.terminal src.source
+        constructor
+        · intro hnil
+          cases hnil
+        · exact hnonterminal
+      · change afterDeliver ∈ (PMF.pure afterDeliver).support
+        rw [PMF.support_pure]
+        exact Set.mem_singleton _
+      · simpa [afterDeliver, List.append_assoc] using
+          ih (delivered ++ [message])
+
+/-- Drain pending messages, then run a lifted source event list from the empty
+queue. -/
+theorem deliverAllThenLiftAvailableRunFrom
+    {source target : M.State} {events : List M.Event}
+    (pending delivered : List (Sigma Message))
+    (hnonterminal : ¬ M.terminal source)
+    (hrun : M.AvailableRunFrom source events target) :
+    (messageInFlight M Message).AvailableRunFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (deliverAllThenEvents M Message pending
+        (events.map (liftEvent M Message)))
+      { source := target,
+        pending := [],
+        delivered := delivered ++ pending } := by
+  simpa [deliverAllThenEvents_eq] using
+    (deliverAllAvailableRunFrom M Message source pending delivered
+        hnonterminal).append
+      (liftAvailableRunFrom M Message (delivered ++ pending) hrun)
 
 /-- Sending a message from an empty buffer and immediately delivering it is
 available while the source machine is nonterminal. -/
@@ -620,6 +786,7 @@ noncomputable def mapRefinement
             intro hterminal
             exact havailable (R.terminal_reflect hterminal)
         | spec action =>
+            rcases havailable with ⟨havailableSource, hqueue⟩
             change
               Option.map (liftEvent Spec Message)
                   (R.projectEvent? (.play player action)) =
@@ -634,16 +801,56 @@ noncomputable def mapRefinement
                 cases sourceSpecEvent with
                 | play specPlayer specAction =>
                     change specAction ∈
-                      Spec.available (R.projectState source) specPlayer
-                    exact R.available_project
-                      (event := .play player action)
-                      havailable hsource
+                        Spec.available (R.projectState source) specPlayer ∧
+                      (pending = [] ∨
+                        ∀ target,
+                          target ∈
+                            (Spec.stepPlay specPlayer specAction
+                              (R.projectState source)).support →
+                            ¬ Spec.terminal target)
+                    constructor
+                    · exact R.available_project
+                        (event := .play player action)
+                        havailableSource hsource
+                    · cases hqueue with
+                      | inl hpending =>
+                          exact Or.inl hpending
+                      | inr hnonterminal =>
+                          exact Or.inr (by
+                            simpa [Machine.step_play] using
+                              R.step_support_nonterminal_project
+                                (event := .play player action)
+                                (source := source)
+                                hsource
+                                (by
+                                  simpa [Machine.step_play] using
+                                    hnonterminal))
                 | internal specEvent =>
                     change specEvent ∈
-                      Spec.availableInternal (R.projectState source)
-                    exact R.available_project
-                      (event := .play player action)
-                      havailable hsource
+                        Spec.availableInternal (R.projectState source) ∧
+                      (pending = [] ∨
+                        ∀ target,
+                          target ∈
+                            (Spec.stepInternal specEvent
+                              (R.projectState source)).support →
+                            ¬ Spec.terminal target)
+                    constructor
+                    · exact R.available_project
+                        (event := .play player action)
+                        havailableSource hsource
+                    · cases hqueue with
+                      | inl hpending =>
+                          exact Or.inl hpending
+                      | inr hnonterminal =>
+                          exact Or.inr (by
+                            simpa [Machine.step_internal] using
+                              R.step_support_nonterminal_project
+                                (event := .play player action)
+                                (source := source)
+                                hsource
+                                (by
+                                  simpa [Machine.step_play] using
+                                    hnonterminal))
     | internal event =>
         cases event with
         | deliver =>
@@ -654,6 +861,7 @@ noncomputable def mapRefinement
             · intro hterminal
               exact hnonterminal (R.terminal_reflect hterminal)
         | spec event =>
+            rcases havailable with ⟨havailableSource, hqueue⟩
             change
               Option.map (liftEvent Spec Message)
                   (R.projectEvent? (.internal event)) =
@@ -668,16 +876,56 @@ noncomputable def mapRefinement
                 cases sourceSpecEvent with
                 | play specPlayer specAction =>
                     change specAction ∈
-                      Spec.available (R.projectState source) specPlayer
-                    exact R.available_project
-                      (event := .internal event)
-                      havailable hsource
+                        Spec.available (R.projectState source) specPlayer ∧
+                      (pending = [] ∨
+                        ∀ target,
+                          target ∈
+                            (Spec.stepPlay specPlayer specAction
+                              (R.projectState source)).support →
+                            ¬ Spec.terminal target)
+                    constructor
+                    · exact R.available_project
+                        (event := .internal event)
+                        havailableSource hsource
+                    · cases hqueue with
+                      | inl hpending =>
+                          exact Or.inl hpending
+                      | inr hnonterminal =>
+                          exact Or.inr (by
+                            simpa [Machine.step_play] using
+                              R.step_support_nonterminal_project
+                                (event := .internal event)
+                                (source := source)
+                                hsource
+                                (by
+                                  simpa [Machine.step_internal] using
+                                    hnonterminal))
                 | internal specEvent =>
                     change specEvent ∈
-                      Spec.availableInternal (R.projectState source)
-                    exact R.available_project
-                      (event := .internal event)
-                      havailable hsource
+                        Spec.availableInternal (R.projectState source) ∧
+                      (pending = [] ∨
+                        ∀ target,
+                          target ∈
+                            (Spec.stepInternal specEvent
+                              (R.projectState source)).support →
+                            ¬ Spec.terminal target)
+                    constructor
+                    · exact R.available_project
+                        (event := .internal event)
+                        havailableSource hsource
+                    · cases hqueue with
+                      | inl hpending =>
+                          exact Or.inl hpending
+                      | inr hnonterminal =>
+                          exact Or.inr (by
+                            simpa [Machine.step_internal] using
+                              R.step_support_nonterminal_project
+                                (event := .internal event)
+                                (source := source)
+                                hsource
+                                (by
+                                  simpa [Machine.step_internal] using
+                                    hnonterminal))
   step_project := by
     intro event state
     convert
@@ -811,14 +1059,14 @@ noncomputable def refinement :
             simp [projectEvent?] at hproject
         | spec action =>
             cases hproject
-            exact havailable
+            exact havailable.1
     | internal event =>
         cases event with
         | deliver =>
             simp [projectEvent?] at hproject
         | spec event =>
             cases hproject
-            exact havailable
+            exact havailable.1
   step_project := by
     intro event source
     cases event with

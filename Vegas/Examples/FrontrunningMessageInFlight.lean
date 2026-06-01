@@ -165,9 +165,22 @@ noncomputable def pendingFrontrunLawFamily :
                 · change Machine.MessageInFlightAction.spec action ∈
                     coordinationMessageMachine.available src TalkPlayer.col
                   change action ∈
-                    coordinationMachine.available src.source TalkPlayer.col
-                  change action ∈ Set.univ
-                  exact Set.mem_univ action
+                      coordinationMachine.available src.source TalkPlayer.col ∧
+                    (src.pending = [] ∨
+                      ∀ target,
+                        target ∈
+                          (coordinationMachine.stepPlay TalkPlayer.col
+                            action src.source).support →
+                          ¬ coordinationMachine.terminal target)
+                  constructor
+                  · change action ∈ Set.univ
+                    exact Set.mem_univ action
+                  · right
+                    intro target htarget hterminal
+                    simp [coordinationMachine, CoordinationState.setAction,
+                      src] at htarget
+                    subst target
+                    simp [coordinationMachine] at hterminal
                 · change dst ∈
                     (PMF.map restore (PMF.pure finalSource)).support
                   rw [PMF.pure_map, PMF.support_pure]
@@ -209,9 +222,17 @@ noncomputable def pendingFrontrunLawFamily :
                 · change Machine.MessageInFlightAction.spec action ∈
                     coordinationMessageMachine.available src TalkPlayer.row
                   change action ∈
-                    coordinationMachine.available src.source TalkPlayer.row
-                  change action ∈ Set.univ
-                  exact Set.mem_univ action
+                      coordinationMachine.available src.source TalkPlayer.row ∧
+                    (src.pending = [] ∨
+                      ∀ target,
+                        target ∈
+                          (coordinationMachine.stepPlay TalkPlayer.row
+                            action src.source).support →
+                          ¬ coordinationMachine.terminal target)
+                  constructor
+                  · change action ∈ Set.univ
+                    exact Set.mem_univ action
+                  · exact Or.inl rfl
                 · change dst ∈
                     (PMF.map restore (PMF.pure finalSource)).support
                   rw [PMF.pure_map, PMF.support_pure]

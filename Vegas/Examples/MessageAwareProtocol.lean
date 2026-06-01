@@ -207,9 +207,17 @@ noncomputable def boolMessageAwareProtocolLawFamily :
                 · change Machine.MessageInFlightAction.spec action ∈
                     boolMessageInFlightMachine.available src PUnit.unit
                   change action ∈
-                    boolSpecMachine.available src.source PUnit.unit
-                  change action ∈ Set.univ
-                  exact Set.mem_univ action
+                      boolSpecMachine.available src.source PUnit.unit ∧
+                    (src.pending = [] ∨
+                      ∀ target,
+                        target ∈
+                          (boolSpecMachine.stepPlay PUnit.unit action
+                            src.source).support →
+                          ¬ boolSpecMachine.terminal target)
+                  constructor
+                  · change action ∈ Set.univ
+                    exact Set.mem_univ action
+                  · exact Or.inl rfl
                 · change dst ∈
                     (PMF.map restore (PMF.pure (some action))).support
                   rw [PMF.pure_map, PMF.support_pure]
@@ -348,9 +356,17 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
                 · change Machine.MessageInFlightInternal.spec PUnit.unit ∈
                     encodedMessageInFlightMachine.availableInternal src
                   change PUnit.unit ∈
-                    encodedImplMachine.availableInternal src.source
-                  change PUnit.unit ∈ Set.univ
-                  trivial
+                      encodedImplMachine.availableInternal src.source ∧
+                    (src.pending = [] ∨
+                      ∀ target,
+                        target ∈
+                          (encodedImplMachine.stepInternal PUnit.unit
+                            src.source).support →
+                          ¬ encodedImplMachine.terminal target)
+                  constructor
+                  · change PUnit.unit ∈ Set.univ
+                    trivial
+                  · exact Or.inl rfl
                 · change mid ∈
                     (PMF.map restore
                       (PMF.pure
@@ -363,9 +379,17 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
                   · change Machine.MessageInFlightAction.spec action ∈
                       encodedMessageInFlightMachine.available mid PUnit.unit
                     change action ∈
-                      encodedImplMachine.available mid.source PUnit.unit
-                    change action ∈ Set.univ
-                    exact Set.mem_univ action
+                        encodedImplMachine.available mid.source PUnit.unit ∧
+                      (mid.pending = [] ∨
+                        ∀ target,
+                          target ∈
+                            (encodedImplMachine.stepPlay PUnit.unit action
+                              mid.source).support →
+                            ¬ encodedImplMachine.terminal target)
+                    constructor
+                    · change action ∈ Set.univ
+                      exact Set.mem_univ action
+                    · exact Or.inl rfl
                   · change dst ∈
                       (PMF.map restore
                         (PMF.pure finalSource)).support

@@ -397,6 +397,30 @@ theorem projected_terminal_iff
     Spec.terminal (R.projectState state) ↔ Impl.terminal state :=
   ⟨R.terminal_reflect, R.terminal_project⟩
 
+/-- A projected step preserves the fact that every supported successor is
+nonterminal. This is useful for runtime wrappers whose administrative state
+must be drained before the wrapped source machine is allowed to terminate. -/
+theorem step_support_nonterminal_project
+    (R : StochasticRefinement Impl Spec)
+    {event : Impl.Event} {specEvent : Spec.Event}
+    {source : Impl.State}
+    (hlabel : R.projectEvent? event = some specEvent)
+    (hnonterminal :
+      ∀ target, target ∈ (Impl.step event source).support →
+        ¬ Impl.terminal target) :
+    ∀ target, target ∈
+        (Spec.step specEvent (R.projectState source)).support →
+      ¬ Spec.terminal target := by
+  intro target htarget hterminal
+  have hstep := R.projected_step_eq_spec_step (source := source) hlabel
+  rw [← hstep] at htarget
+  rcases (PMF.mem_support_map_iff _ _ _).mp htarget with
+    ⟨implTarget, himplTarget, hprojectTarget⟩
+  have himplTerminal : Impl.terminal implTarget := by
+    apply R.terminal_reflect
+    simpa [hprojectTarget] using hterminal
+  exact hnonterminal implTarget himplTarget himplTerminal
+
 /-- Project an implementation event-batch trace to the corresponding
 specification event-batch trace. -/
 def projectEventBatchTrace

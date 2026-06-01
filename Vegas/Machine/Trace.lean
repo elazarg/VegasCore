@@ -121,6 +121,17 @@ theorem append
   | cons havailable hstep _ ih =>
       exact .cons havailable hstep (ih right)
 
+theorem cons_inv
+    {M : Machine Player} {source dst : M.State}
+    {event : M.Event} {events : List M.Event}
+    (hrun : M.AvailableRunFrom source (event :: events) dst) :
+    ∃ mid, M.EventAvailable source event ∧
+      mid ∈ (M.step event source).support ∧
+      M.AvailableRunFrom mid events dst := by
+  cases hrun with
+  | cons havailable hstep htail =>
+      exact ⟨_, havailable, hstep, htail⟩
+
 theorem mem_runEventsFrom_support
     {M : Machine Player} {source dst : M.State}
     {events : List M.Event}

@@ -58,32 +58,45 @@ noncomputable def encodedMessageProtocolLawLift :
     intro profile trace
     rcases trace with ⟨batches, state⟩
     rcases state with ⟨encodedState, pending, delivered⟩
-    cases pending with
-    | nil =>
-        change
-          PMF.map encodedMessageProtocolProjectEventBatch
-              (PMF.pure
-                [.play PUnit.unit (.send (profile PUnit.unit).1),
-                  .internal .deliver,
-                  .internal (.spec PUnit.unit),
-                  .play PUnit.unit (.spec (profile PUnit.unit).2)]) =
-            PMF.pure
+    change
+      PMF.map encodedMessageProtocolProjectEventBatch
+          (PMF.pure
+            (Machine.messageInFlight.deliverAllThenEvents
+              encodedImplMachine (fun _ : PUnit => Bool) pending
               [.play PUnit.unit (.send (profile PUnit.unit).1),
                 .internal .deliver,
-                .play PUnit.unit (.spec (profile PUnit.unit).2)]
-        rw [PMF.pure_map]
+                .internal (.spec PUnit.unit),
+                .play PUnit.unit (.spec (profile PUnit.unit).2)])) =
+        PMF.pure
+          (Machine.messageInFlight.deliverAllThenEvents
+            boolSpecMachine (fun _ : PUnit => Bool) pending
+            [.play PUnit.unit (.send (profile PUnit.unit).1),
+              .internal .deliver,
+              .play PUnit.unit (.spec (profile PUnit.unit).2)])
+    rw [PMF.pure_map]
+    congr
+    induction pending with
+    | nil =>
         rfl
-    | cons old rest =>
+    | cons old rest ih =>
+        simp only [Machine.messageInFlight.deliverAllThenEvents_cons]
         change
-          PMF.map encodedMessageProtocolProjectEventBatch
-              (PMF.pure
+          .internal .deliver ::
+              encodedMessageProtocolProjectEventBatch
+                (Machine.messageInFlight.deliverAllThenEvents
+                  encodedImplMachine (fun _ : PUnit => Bool) rest
+                  [.play PUnit.unit (.send (profile PUnit.unit).1),
+                    .internal .deliver,
+                    .internal (.spec PUnit.unit),
+                    .play PUnit.unit
+                      (.spec (profile PUnit.unit).2)]) =
+            .internal .deliver ::
+              Machine.messageInFlight.deliverAllThenEvents
+                boolSpecMachine (fun _ : PUnit => Bool) rest
                 [.play PUnit.unit (.send (profile PUnit.unit).1),
-                  .internal (.spec PUnit.unit),
-                  .play PUnit.unit (.spec (profile PUnit.unit).2)]) =
-            PMF.pure
-              [.play PUnit.unit (.send (profile PUnit.unit).1),
-                .play PUnit.unit (.spec (profile PUnit.unit).2)]
-        rw [PMF.pure_map]
+                  .internal .deliver,
+                  .play PUnit.unit (.spec (profile PUnit.unit).2)]
+        rw [ih]
         rfl
 
 noncomputable def encodedMessageProtocolErasureRefinement :

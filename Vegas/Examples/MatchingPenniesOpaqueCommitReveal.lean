@@ -397,12 +397,12 @@ noncomputable def commitRevealMessageRefinement :
       lockedMPMachine :=
   Machine.messageInFlight.refinement lockedMPMachine CommitRevealMessageOf
 
-def commitRevealMessageBatch
+noncomputable def commitRevealMessageBatch
     (profile : ∀ player : Player, CommitRevealStrategy player)
-    (source : lockedMPMachine.State) :
+    (state : commitRevealMessageMachine.State) :
     List commitRevealMessageMachine.Event :=
-  match source.aliceMove, source.bobMove,
-      source.aliceRevealed, source.bobRevealed with
+  match state.source.aliceMove, state.source.bobMove,
+      state.source.aliceRevealed, state.source.bobRevealed with
     | none, none, false, false =>
         [.play Player.alice (.send .commit),
           .play Player.alice
@@ -417,14 +417,55 @@ def commitRevealMessageBatch
         [.play Player.alice (.send (.reveal aliceMove)),
           .play Player.alice (.spec .ackReveal)]
     | some _, some bobMove, true, false =>
-        [.play Player.bob (.send (.reveal bobMove)),
-          .play Player.bob (.spec .ackReveal)]
+        Machine.messageInFlight.deliverAllThenEvents lockedMPMachine
+          CommitRevealMessageOf state.pending
+          [.play Player.bob (.send (.reveal bobMove)),
+            .internal .deliver,
+            .play Player.bob (.spec .ackReveal)]
     | _, _, _, _ => []
 
 noncomputable def commitRevealMessageLaw
     (profile : ∀ player : Player, CommitRevealStrategy player) :
     commitRevealMessageMachine.EventBatchLaw :=
-  fun trace => PMF.pure (commitRevealMessageBatch profile trace.2.source)
+  fun trace => PMF.pure (commitRevealMessageBatch profile trace.2)
+
+theorem commitRevealMessage_sendDeliverSpecAvailableRunFrom
+    {source target : lockedMPMachine.State}
+    (pending delivered : List (Sigma CommitRevealMessageOf))
+    (player : Player) (message : CommitRevealMessageOf player)
+    (action : lockedMPMachine.Action player)
+    (hnonterminal : ¬ lockedMPMachine.terminal source)
+    (hrun : lockedMPMachine.AvailableRunFrom source
+      [.play player action] target) :
+    commitRevealMessageMachine.AvailableRunFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (Machine.messageInFlight.deliverAllThenEvents lockedMPMachine
+        CommitRevealMessageOf pending
+        [.play player (.send message),
+          .internal .deliver,
+          .play player (.spec action)])
+      { source := target,
+        pending := [],
+        delivered := delivered ++ pending ++ [⟨player, message⟩] } := by
+  let sent : Sigma CommitRevealMessageOf := ⟨player, message⟩
+  have hdrain :=
+    Machine.messageInFlight.deliverAllAvailableRunFrom
+      lockedMPMachine CommitRevealMessageOf source pending delivered
+      hnonterminal
+  have hsendDeliver :=
+    Machine.messageInFlight.sendDeliverAvailableRunFrom
+      lockedMPMachine CommitRevealMessageOf source (delivered ++ pending)
+      player message hnonterminal
+  have hlift :=
+    Machine.messageInFlight.liftAvailableRunFrom
+      lockedMPMachine CommitRevealMessageOf
+      (delivered ++ pending ++ [sent]) hrun
+  simpa [commitRevealMessageMachine,
+    Machine.messageInFlight.deliverAllThenEvents_eq, sent,
+    List.append_assoc] using
+    hdrain.append (hsendDeliver.append hlift)
 
 set_option linter.flexible false in
 theorem commitRevealMessageBatch_available
@@ -432,7 +473,7 @@ theorem commitRevealMessageBatch_available
     (state : commitRevealMessageMachine.State)
     (hnonterminal : ¬ commitRevealMessageMachine.terminal state) :
     ∃ dst, commitRevealMessageMachine.AvailableRunFrom state
-      (commitRevealMessageBatch profile state.source) dst := by
+      (commitRevealMessageBatch profile state) dst := by
   rcases state with ⟨source, pending, delivered⟩
   rcases source with
     ⟨aliceMove, bobMove, aliceRevealed, bobRevealed⟩
@@ -482,11 +523,25 @@ theorem commitRevealMessageBatch_available
                   (LockRevealAction.lock move) ∈
                   commitRevealMessageMachine.available afterSend Player.alice
                 change LockRevealAction.lock move ∈
-                  lockedMPMachine.available afterSend.source Player.alice
-                change (lockedMPMachine.available afterSend.source Player.alice)
-                  (LockRevealAction.lock move)
-                simp [lockedMPMachine, LockedMPState.move?, afterSend, src]
-                trivial
+                    lockedMPMachine.available afterSend.source Player.alice ∧
+                  (afterSend.pending = [] ∨
+                    ∀ target,
+                      target ∈
+                        (lockedMPMachine.stepPlay Player.alice
+                          (LockRevealAction.lock move)
+                          afterSend.source).support →
+                        ¬ lockedMPMachine.terminal target)
+                constructor
+                · change (lockedMPMachine.available afterSend.source
+                    Player.alice) (LockRevealAction.lock move)
+                  simp [lockedMPMachine, LockedMPState.move?, afterSend, src]
+                  trivial
+                · right
+                  intro target htarget hterminal
+                  simp [lockedMPMachine, LockedMPState.setMove, afterSend,
+                    src] at htarget
+                  subst target
+                  simp [lockedMPMachine, LockedMPState.outcome?] at hterminal
               · change dst ∈
                   (PMF.map restore
                     (PMF.pure
@@ -551,11 +606,25 @@ theorem commitRevealMessageBatch_available
                   (LockRevealAction.lock move) ∈
                   commitRevealMessageMachine.available afterSend Player.bob
                 change LockRevealAction.lock move ∈
-                  lockedMPMachine.available afterSend.source Player.bob
-                change (lockedMPMachine.available afterSend.source Player.bob)
-                  (LockRevealAction.lock move)
-                simp [lockedMPMachine, LockedMPState.move?, afterSend, src]
-                trivial
+                    lockedMPMachine.available afterSend.source Player.bob ∧
+                  (afterSend.pending = [] ∨
+                    ∀ target,
+                      target ∈
+                        (lockedMPMachine.stepPlay Player.bob
+                          (LockRevealAction.lock move)
+                          afterSend.source).support →
+                        ¬ lockedMPMachine.terminal target)
+                constructor
+                · change (lockedMPMachine.available afterSend.source
+                    Player.bob) (LockRevealAction.lock move)
+                  simp [lockedMPMachine, LockedMPState.move?, afterSend, src]
+                  trivial
+                · right
+                  intro target htarget hterminal
+                  simp [lockedMPMachine, LockedMPState.setMove, afterSend,
+                    src] at htarget
+                  subst target
+                  simp [lockedMPMachine, LockedMPState.outcome?] at hterminal
               · change dst ∈
                   (PMF.map restore
                     (PMF.pure
@@ -608,13 +677,27 @@ theorem commitRevealMessageBatch_available
                   LockRevealAction.ackReveal ∈
                   commitRevealMessageMachine.available afterSend Player.alice
                 change LockRevealAction.ackReveal ∈
-                  lockedMPMachine.available afterSend.source Player.alice
-                change
-                  (LockedMPState.move? afterSend.source Player.alice).isSome =
-                      true ∧
-                    LockedMPState.revealed afterSend.source Player.alice =
-                      false
-                constructor <;> rfl
+                    lockedMPMachine.available afterSend.source Player.alice ∧
+                  (afterSend.pending = [] ∨
+                    ∀ target,
+                      target ∈
+                        (lockedMPMachine.stepPlay Player.alice
+                          LockRevealAction.ackReveal
+                          afterSend.source).support →
+                        ¬ lockedMPMachine.terminal target)
+                constructor
+                · change
+                    (LockedMPState.move? afterSend.source Player.alice).isSome =
+                        true ∧
+                      LockedMPState.revealed afterSend.source Player.alice =
+                        false
+                  constructor <;> rfl
+                · right
+                  intro target htarget hterminal
+                  simp [lockedMPMachine, LockedMPState.markRevealed,
+                    afterSend, src] at htarget
+                  subst target
+                  simp [lockedMPMachine, LockedMPState.outcome?] at hterminal
               · change dst ∈
                   (PMF.map restore
                     (PMF.pure
@@ -638,55 +721,41 @@ theorem commitRevealMessageBatch_available
                     aliceRevealed := true, bobRevealed := false },
                 pending := pending,
                 delivered := delivered }
-            let afterSend : commitRevealMessageMachine.State :=
-              { source := src.source,
-                pending := pending ++ [sent],
-                delivered := delivered }
             let dst : commitRevealMessageMachine.State :=
               { source :=
                   { aliceMove := some aliceMove, bobMove := some bobMove,
                     aliceRevealed := true, bobRevealed := true },
-                pending := pending ++ [sent],
-                delivered := delivered }
-            let restore (sourceValue : LockedMPState) :
-                commitRevealMessageMachine.State :=
-              { source := sourceValue,
-                pending := pending ++ [sent],
-                delivered := delivered }
+                pending := [],
+                delivered := delivered ++ pending ++ [sent] }
+            have hsourceRun :
+                lockedMPMachine.AvailableRunFrom src.source
+                  [.play Player.bob LockRevealAction.ackReveal]
+                  { aliceMove := some aliceMove, bobMove := some bobMove,
+                    aliceRevealed := true, bobRevealed := true } := by
+              refine Machine.AvailableRunFrom.cons ?_ ?_
+                (Machine.AvailableRunFrom.nil _)
+              · change
+                  (LockedMPState.move? src.source Player.bob).isSome =
+                      true ∧
+                    LockedMPState.revealed src.source Player.bob = false
+                constructor <;> rfl
+              · simp [lockedMPMachine, LockedMPState.markRevealed, src]
+                exact Set.mem_singleton _
             refine ⟨dst, ?_⟩
             change commitRevealMessageMachine.AvailableRunFrom src
-              [.play Player.bob (.send (.reveal bobMove)),
-                .play Player.bob (.spec .ackReveal)] dst
-            refine Machine.AvailableRunFrom.cons (mid := afterSend) ?_ ?_ ?_
-            · change Machine.MessageInFlightAction.send
-                (CommitRevealMessage.reveal bobMove) ∈
-                commitRevealMessageMachine.available src Player.bob
-              exact hnonterminal
-            · change afterSend ∈ (PMF.pure afterSend).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
-            · refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                (Machine.AvailableRunFrom.nil _)
-              · change Machine.MessageInFlightAction.spec
-                  LockRevealAction.ackReveal ∈
-                  commitRevealMessageMachine.available afterSend Player.bob
-                change LockRevealAction.ackReveal ∈
-                  lockedMPMachine.available afterSend.source Player.bob
-                change
-                  (LockedMPState.move? afterSend.source Player.bob).isSome =
-                      true ∧
-                    LockedMPState.revealed afterSend.source Player.bob =
-                      false
-                constructor <;> rfl
-              · change dst ∈
-                  (PMF.map restore
-                    (PMF.pure
-                      { aliceMove := some aliceMove,
-                        bobMove := some bobMove,
-                        aliceRevealed := true,
-                        bobRevealed := true })).support
-                rw [PMF.pure_map, PMF.support_pure]
-                exact Set.mem_singleton _
+              (Machine.messageInFlight.deliverAllThenEvents lockedMPMachine
+                CommitRevealMessageOf pending
+                [.play Player.bob (.send (.reveal bobMove)),
+                  .internal .deliver,
+                  .play Player.bob (.spec .ackReveal)]) dst
+            simpa [dst, src, sent, List.append_assoc] using
+              commitRevealMessage_sendDeliverSpecAvailableRunFrom
+                pending delivered Player.bob (.reveal bobMove)
+                LockRevealAction.ackReveal
+                (by
+                  simpa [commitRevealMessageMachine,
+                    Machine.messageInFlight, src] using hnonterminal)
+                hsourceRun
           · exact
               ⟨{ source :=
                     { aliceMove := some aliceMove, bobMove := some bobMove,
@@ -701,7 +770,7 @@ noncomputable def commitRevealMessageLawFamily :
   legal := by
     intro profile trace hnonterminal batch hbatch
     change batch ∈ (PMF.pure
-      (commitRevealMessageBatch profile trace.2.source)).support at hbatch
+      (commitRevealMessageBatch profile trace.2)).support at hbatch
     rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
     subst batch
     exact commitRevealMessageBatch_available profile trace.2 hnonterminal
@@ -714,7 +783,7 @@ noncomputable def commitRevealMessageLawLift :
     intro profile
     change commitRevealMessageRefinement.EventBatchLawCompatible
       (fun trace =>
-        PMF.pure (commitRevealMessageBatch profile trace.2.source))
+        PMF.pure (commitRevealMessageBatch profile trace.2))
       (fun trace => PMF.pure (commitRevealSourceBatch profile trace.2))
     apply Machine.StochasticRefinement.EventBatchLawCompatible.of_pure
     intro trace
@@ -724,7 +793,19 @@ noncomputable def commitRevealMessageLawLift :
       ⟨aliceMove, bobMove, aliceRevealed, bobRevealed⟩
     cases aliceMove <;> cases bobMove <;>
       cases aliceRevealed <;> cases bobRevealed <;>
-      rfl
+      try rfl
+    rename_i aliceMove bobMove
+    change
+      Machine.messageInFlight.projectEventBatch lockedMPMachine
+          CommitRevealMessageOf
+          (Machine.messageInFlight.deliverAllThenEvents lockedMPMachine
+            CommitRevealMessageOf pending
+            [.play Player.bob (.send (.reveal bobMove)),
+              .internal .deliver,
+              .play Player.bob (.spec .ackReveal)]) =
+        [.play Player.bob LockRevealAction.ackReveal]
+    rw [Machine.messageInFlight.projectEventBatch_deliverAllThenEvents]
+    rfl
 
 noncomputable abbrev commitRevealSourceTraceGame : KernelGame Player :=
   Machine.eventBatchTraceKernelGame

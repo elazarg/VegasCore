@@ -118,16 +118,16 @@ theorem coordinationMessage_deliverAvailableRunFrom
 
 theorem coordinationMessage_specPlayAvailableRunFrom
     (source : CoordinationState)
-    (pending delivered : List (Sigma (fun _ : TalkPlayer => Bool)))
+    (delivered : List (Sigma (fun _ : TalkPlayer => Bool)))
     (player : TalkPlayer) (action : Bool)
     (havailable : action ∈ coordinationMachine.available source player) :
     coordinationMessageMachine.AvailableRunFrom
       { source := source,
-        pending := pending,
+        pending := [],
         delivered := delivered }
       [.play player (.spec action)]
       { source := source.setAction player action,
-        pending := pending,
+        pending := [],
         delivered := delivered } := by
   have hrun :
       coordinationMachine.AvailableRunFrom source
@@ -141,7 +141,7 @@ theorem coordinationMessage_specPlayAvailableRunFrom
       exact Set.mem_singleton _
   simpa [coordinationMessageMachine, Machine.messageInFlight.liftEvent] using
     Machine.messageInFlight.liftAvailableRunFrom coordinationMachine
-      (fun _ : TalkPlayer => Bool) pending delivered hrun
+      (fun _ : TalkPlayer => Bool) delivered hrun
 
 def deliveredTalkMessage? (player : TalkPlayer) :
     List (Sigma (fun _ : TalkPlayer => Bool)) → Option Bool
@@ -356,7 +356,7 @@ noncomputable def talkProtocolLawFamily :
                           CoordinationState.setAction] using
                           coordinationMessage_specPlayAvailableRunFrom
                             { rowAction := none, colAction := colAction }
-                            [] delivered TalkPlayer.row action
+                            delivered TalkPlayer.row action
                             (by
                               change action ∈ Set.univ
                               exact Set.mem_univ action)
@@ -398,7 +398,7 @@ noncomputable def talkProtocolLawFamily :
                               coordinationMessage_specPlayAvailableRunFrom
                                 { rowAction := some rowAction,
                                   colAction := none }
-                                [] delivered TalkPlayer.col action
+                                delivered TalkPlayer.col action
                                 (by
                                   change action ∈ Set.univ
                                   exact Set.mem_univ action)
@@ -925,7 +925,9 @@ noncomputable def encodedCoordinationMessageRefinement :
                 encodedCoordinationMessageProjectState,
                 EncodedCoordinationState.project,
                 EncodedCoordinationState.action?,
-                CoordinationState.action?] using havailable
+                EncodedCoordinationState.setAction,
+                CoordinationState.action?,
+                CoordinationState.setAction] using havailable
     | internal event =>
         cases event with
         | deliver =>
@@ -1207,9 +1209,17 @@ noncomputable def encodedTalkProtocolLawFamily :
                         encodedCoordinationMessageMachine.availableInternal
                           src
                       change PUnit.unit ∈
-                        encodedCoordinationMachine.availableInternal
-                          src.source
-                      trivial
+                          encodedCoordinationMachine.availableInternal
+                            src.source ∧
+                        (src.pending = [] ∨
+                          ∀ target,
+                            target ∈
+                              (encodedCoordinationMachine.stepInternal
+                                PUnit.unit src.source).support →
+                              ¬ encodedCoordinationMachine.terminal target)
+                      constructor
+                      · trivial
+                      · exact Or.inl rfl
                     · simp [encodedCoordinationMessageMachine,
                         Machine.messageInFlight, encodedCoordinationMachine,
                         Machine.step, src, mid, midSource]
@@ -1220,10 +1230,18 @@ noncomputable def encodedTalkProtocolLawFamily :
                           encodedCoordinationMessageMachine.available mid
                             TalkPlayer.row
                         change action ∈
-                          encodedCoordinationMachine.available mid.source
-                            TalkPlayer.row
-                        change action ∈ Set.univ
-                        exact Set.mem_univ action
+                            encodedCoordinationMachine.available mid.source
+                              TalkPlayer.row ∧
+                          (mid.pending = [] ∨
+                            ∀ target,
+                              target ∈
+                                (encodedCoordinationMachine.stepPlay
+                                  TalkPlayer.row action mid.source).support →
+                                ¬ encodedCoordinationMachine.terminal target)
+                        constructor
+                        · change action ∈ Set.univ
+                          exact Set.mem_univ action
+                        · exact Or.inl rfl
                       · simp [encodedCoordinationMessageMachine,
                           Machine.messageInFlight, encodedCoordinationMachine,
                           Machine.step, mid, dst, finalSource,
@@ -1276,9 +1294,18 @@ noncomputable def encodedTalkProtocolLawFamily :
                             encodedCoordinationMessageMachine.availableInternal
                               src
                           change PUnit.unit ∈
-                            encodedCoordinationMachine.availableInternal
-                              src.source
-                          trivial
+                              encodedCoordinationMachine.availableInternal
+                                src.source ∧
+                            (src.pending = [] ∨
+                              ∀ target,
+                                target ∈
+                                  (encodedCoordinationMachine.stepInternal
+                                    PUnit.unit src.source).support →
+                                  ¬ encodedCoordinationMachine.terminal
+                                    target)
+                          constructor
+                          · trivial
+                          · exact Or.inl rfl
                         · simp [encodedCoordinationMessageMachine,
                             Machine.messageInFlight, encodedCoordinationMachine,
                             Machine.step, src, mid, midSource]
@@ -1290,10 +1317,19 @@ noncomputable def encodedTalkProtocolLawFamily :
                                 encodedCoordinationMessageMachine.available mid
                                   TalkPlayer.col
                             change action ∈
-                              encodedCoordinationMachine.available mid.source
-                                TalkPlayer.col
-                            change action ∈ Set.univ
-                            exact Set.mem_univ action
+                                encodedCoordinationMachine.available
+                                  mid.source TalkPlayer.col ∧
+                              (mid.pending = [] ∨
+                                ∀ target,
+                                  target ∈
+                                    (encodedCoordinationMachine.stepPlay
+                                      TalkPlayer.col action mid.source).support →
+                                    ¬ encodedCoordinationMachine.terminal
+                                      target)
+                            constructor
+                            · change action ∈ Set.univ
+                              exact Set.mem_univ action
+                            · exact Or.inl rfl
                           · simp [encodedCoordinationMessageMachine,
                               Machine.messageInFlight,
                               encodedCoordinationMachine, Machine.step, mid,
