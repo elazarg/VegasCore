@@ -231,6 +231,186 @@ theorem claim_runtime_refinement_preserves_mixed_pure_udist
     simpa [mixedPureFrontierTraceSurface] using
       bridge.implTraceGame_udist_surface profile
 
+/-- Runtime refinements preserve the payoff-vector law induced by correlated
+behavioral frontier profile distributions. -/
+theorem claim_runtime_refinement_preserves_behavioral_correlated_utility_law
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R)
+    (profileLaw : program.BehavioralFrontierCorrelatedProfile) :
+    correlatedUtilityLaw bridge.implTraceGame profileLaw =
+      correlatedUtilityLaw program.behavioralFrontierGame profileLaw :=
+  by
+    simpa [behavioralFrontierTraceSurface] using
+      bridge.implTraceGame_correlatedUtilityLaw_surface profileLaw
+
+/-- Runtime refinements preserve the payoff-vector law induced by correlated
+pure frontier profile distributions. -/
+theorem claim_runtime_refinement_preserves_pure_correlated_utility_law
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (pureFrontierTraceSurface program) R)
+    (profileLaw : program.PureFrontierCorrelatedProfile) :
+    correlatedUtilityLaw bridge.implTraceGame profileLaw =
+      correlatedUtilityLaw program.pureFrontierGame profileLaw :=
+  by
+    simpa [pureFrontierTraceSurface] using
+      bridge.implTraceGame_correlatedUtilityLaw_surface profileLaw
+
+/-- Runtime refinements preserve the payoff-vector law induced by correlated
+product mixed-pure frontier profile distributions. -/
+theorem claim_runtime_refinement_preserves_mixed_pure_correlated_utility_law
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (mixedPureFrontierTraceSurface program) R)
+    (profileLaw : PMF program.MixedPureFrontierProfile) :
+    correlatedUtilityLaw bridge.implTraceGame profileLaw =
+      correlatedUtilityLaw program.mixedPureFrontierGame profileLaw :=
+  by
+    simpa [mixedPureFrontierTraceSurface] using
+      bridge.implTraceGame_correlatedUtilityLaw_surface profileLaw
+
+/-- Under trace adequacy and bounded utilities, behavioral correlated
+equilibrium is invariant between the frontend surface and the implementation
+trace game. -/
+theorem claim_runtime_refinement_behavioral_correlated_eq_iff
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R)
+    {CImpl CFrontier : P → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |program.behavioralFrontierGame.utility outcome player| ≤
+          CFrontier player)
+    (profileLaw : program.BehavioralFrontierCorrelatedProfile) :
+    bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
+      program.BehavioralFrontierCorrelatedEq profileLaw :=
+  by
+    simpa [behavioralFrontierTraceSurface,
+      WFProgram.BehavioralFrontierCorrelatedEq] using
+      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
+        hbdImpl hbdFrontier profileLaw
+
+/-- Under trace adequacy and bounded utilities, behavioral coarse-correlated
+equilibrium is invariant between the frontend surface and the implementation
+trace game. -/
+theorem claim_runtime_refinement_behavioral_coarse_correlated_eq_iff
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R)
+    {CImpl CFrontier : P → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |program.behavioralFrontierGame.utility outcome player| ≤
+          CFrontier player)
+    (profileLaw : program.BehavioralFrontierCorrelatedProfile) :
+    bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
+      program.BehavioralFrontierCoarseCorrelatedEq profileLaw :=
+  by
+    simpa [behavioralFrontierTraceSurface,
+      WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
+      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
+        hbdImpl hbdFrontier profileLaw
+
+/-- Under trace adequacy and bounded utilities, pure correlated equilibrium is
+invariant between the frontend surface and the implementation trace game. -/
+theorem claim_runtime_refinement_pure_correlated_eq_iff
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (pureFrontierTraceSurface program) R)
+    {CImpl CFrontier : P → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |program.pureFrontierGame.utility outcome player| ≤
+          CFrontier player)
+    (profileLaw : program.PureFrontierCorrelatedProfile) :
+    bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
+      program.PureFrontierCorrelatedEq profileLaw :=
+  by
+    simpa [pureFrontierTraceSurface,
+      WFProgram.PureFrontierCorrelatedEq] using
+      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
+        hbdImpl hbdFrontier profileLaw
+
+/-- Under trace adequacy and bounded utilities, pure coarse-correlated
+equilibrium is invariant between the frontend surface and the implementation
+trace game. -/
+theorem claim_runtime_refinement_pure_coarse_correlated_eq_iff
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (pureFrontierTraceSurface program) R)
+    {CImpl CFrontier : P → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |program.pureFrontierGame.utility outcome player| ≤
+          CFrontier player)
+    (profileLaw : program.PureFrontierCorrelatedProfile) :
+    bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
+      program.PureFrontierCoarseCorrelatedEq profileLaw :=
+  by
+    simpa [pureFrontierTraceSurface,
+      WFProgram.PureFrontierCoarseCorrelatedEq] using
+      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
+        hbdImpl hbdFrontier profileLaw
+
 /-- Under the same adequacy and bounded-utility hypotheses, behavioral
 frontier Nash profiles pull back to the implementation trace game. -/
 theorem claim_runtime_refinement_pulls_back_behavioral_nash

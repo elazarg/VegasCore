@@ -3,6 +3,8 @@ import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
 import Vegas.Core.ToEventGraph.SourceAdequacy
 import Vegas.GameBridge.FOSG.FromCore
+import GameTheory.Concepts.CorrelatedNashMixed
+import Math.ProbabilityMassFunction
 
 /-!
 # Runtime refinement facts
@@ -587,6 +589,16 @@ structure TraceGameSurface
                 (fun _ => 0) trace)) =
         game.udist profile
 
+/-- Payoff-vector law induced by a distribution over strategy profiles.
+
+This is the utility-distribution view of a correlated profile law; it is the
+right object for comparing trace/runtime presentations when the outcome
+carriers differ but utilities agree. -/
+noncomputable def correlatedUtilityLaw
+    (G : GameTheory.KernelGame Player) (profileLaw : PMF G.Profile) :
+    PMF (GameTheory.Payoff Player) :=
+  profileLaw.bind G.udist
+
 /-- Behavioral frontier play as a primitive-trace game surface. -/
 noncomputable def behavioralFrontierTraceSurface
     (program : WFProgram Player L) [FiniteDomains program] :
@@ -828,6 +840,194 @@ theorem implTraceGame_udist_surface
   exact
     hproject.symm.trans
       (bridge.spec.traceGame_udist_surface profile)
+
+/-- Trace adequacy preserves the payoff-vector law induced by any correlated
+distribution over the shared strategy-profile space. -/
+theorem implTraceGame_correlatedUtilityLaw_surface
+    (bridge : RuntimeTraceAdequacy program surface R)
+    (profileLaw : PMF surface.game.Profile) :
+    correlatedUtilityLaw bridge.implTraceGame profileLaw =
+      correlatedUtilityLaw surface.game profileLaw := by
+  unfold correlatedUtilityLaw
+  exact
+    Math.ProbabilityMassFunction.bind_congr_on_support
+      profileLaw bridge.implTraceGame.udist surface.game.udist
+      (fun profile _ => bridge.implTraceGame_udist_surface profile)
+
+/- Expected utilities agree between a trace-adequate implementation law and
+the frontier surface under bounded-utility hypotheses. -/
+private theorem implTraceGame_eu_surface_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player)
+    (profile : ∀ player, surface.game.Strategy player) (player : Player) :
+    bridge.implTraceGame.eu profile player =
+      surface.game.eu profile player := by
+  calc
+    bridge.implTraceGame.eu profile player =
+        Math.Probability.expect
+          (bridge.implTraceGame.udist profile) (fun payoff => payoff player) := by
+          exact
+            (bridge.implTraceGame.expect_udist_eq_eu_of_bounded
+              profile player (hbdImpl player)).symm
+    _ =
+        Math.Probability.expect
+          (surface.game.udist profile) (fun payoff => payoff player) := by
+          rw [bridge.implTraceGame_udist_surface profile]
+    _ = surface.game.eu profile player := by
+          exact
+            surface.game.expect_udist_eq_eu_of_bounded
+              profile player (hbdFrontier player)
+
+/- Correlated expected utilities agree between a trace-adequate implementation
+law and the frontier surface under bounded-utility hypotheses. -/
+private theorem implTraceGame_correlatedEu_surface_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player)
+    (profileLaw : PMF surface.game.Profile) (player : Player) :
+    bridge.implTraceGame.correlatedEu profileLaw player =
+      surface.game.correlatedEu profileLaw player := by
+  rw [bridge.implTraceGame.correlatedEu_eq_expect_eu_of_bounded
+    profileLaw player (hbdImpl player)]
+  rw [surface.game.correlatedEu_eq_expect_eu_of_bounded
+    profileLaw player (hbdFrontier player)]
+  exact
+    Math.ProbabilityMassFunction.expect_congr_on_support
+      profileLaw
+      (fun profile => bridge.implTraceGame.eu profile player)
+      (fun profile => surface.game.eu profile player)
+      (fun profile _ =>
+        bridge.implTraceGame_eu_surface_of_bounded
+          hbdImpl hbdFrontier profile player)
+
+/-- Correlated-equilibrium status is invariant between a trace-adequate
+implementation trace game and the frontier surface when utilities are bounded
+and the strategy-profile law is shared. -/
+theorem implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player)
+    (profileLaw : PMF surface.game.Profile) :
+    bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
+      surface.game.IsCorrelatedEq profileLaw := by
+  constructor
+  · intro hCE player dev
+    calc
+      surface.game.correlatedEu profileLaw player =
+          bridge.implTraceGame.correlatedEu profileLaw player := by
+            exact
+              (bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier profileLaw player).symm
+      _ ≥ bridge.implTraceGame.correlatedEu
+            (bridge.implTraceGame.unilateralDeviationDistribution
+              profileLaw player dev) player := hCE player dev
+      _ = surface.game.correlatedEu
+            (surface.game.unilateralDeviationDistribution
+              profileLaw player dev) player := by
+            simpa [GameTheory.KernelGame.unilateralDeviationDistribution,
+              GameTheory.KernelGame.deviationDistribution,
+              GameTheory.KernelGame.unilateralDeviation] using
+              bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (bridge.implTraceGame.unilateralDeviationDistribution
+                  profileLaw player dev) player
+  · intro hCE player dev
+    calc
+      bridge.implTraceGame.correlatedEu profileLaw player =
+          surface.game.correlatedEu profileLaw player := by
+            exact
+              bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier profileLaw player
+      _ ≥ surface.game.correlatedEu
+            (surface.game.unilateralDeviationDistribution
+              profileLaw player dev) player := hCE player dev
+      _ = bridge.implTraceGame.correlatedEu
+            (bridge.implTraceGame.unilateralDeviationDistribution
+              profileLaw player dev) player := by
+            simpa [GameTheory.KernelGame.unilateralDeviationDistribution,
+              GameTheory.KernelGame.deviationDistribution,
+              GameTheory.KernelGame.unilateralDeviation] using
+              (bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (bridge.implTraceGame.unilateralDeviationDistribution
+                  profileLaw player dev) player).symm
+
+/-- Coarse-correlated-equilibrium status is invariant between a trace-adequate
+implementation trace game and the frontier surface when utilities are bounded
+and the strategy-profile law is shared. -/
+theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player)
+    (profileLaw : PMF surface.game.Profile) :
+    bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
+      surface.game.IsCoarseCorrelatedEq profileLaw := by
+  constructor
+  · intro hCCE player alternative
+    calc
+      surface.game.correlatedEu profileLaw player =
+          bridge.implTraceGame.correlatedEu profileLaw player := by
+            exact
+              (bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier profileLaw player).symm
+      _ ≥ bridge.implTraceGame.correlatedEu
+            (bridge.implTraceGame.constantDeviationDistribution
+              profileLaw player alternative) player := hCCE player alternative
+      _ = surface.game.correlatedEu
+            (surface.game.constantDeviationDistribution
+              profileLaw player alternative) player := by
+            simpa [GameTheory.KernelGame.constantDeviationDistribution,
+              GameTheory.KernelGame.deviationDistribution,
+              GameTheory.KernelGame.constantDeviation] using
+              bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (bridge.implTraceGame.constantDeviationDistribution
+                  profileLaw player alternative) player
+  · intro hCCE player alternative
+    calc
+      bridge.implTraceGame.correlatedEu profileLaw player =
+          surface.game.correlatedEu profileLaw player := by
+            exact
+              bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier profileLaw player
+      _ ≥ surface.game.correlatedEu
+            (surface.game.constantDeviationDistribution
+              profileLaw player alternative) player := hCCE player alternative
+      _ = bridge.implTraceGame.correlatedEu
+            (bridge.implTraceGame.constantDeviationDistribution
+              profileLaw player alternative) player := by
+            simpa [GameTheory.KernelGame.constantDeviationDistribution,
+              GameTheory.KernelGame.deviationDistribution,
+              GameTheory.KernelGame.constantDeviation] using
+              (bridge.implTraceGame_correlatedEu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (bridge.implTraceGame.constantDeviationDistribution
+                  profileLaw player alternative) player).symm
 
 /-- Expected utilities agree between a trace-adequate specification law and
 the frontier surface under bounded-utility hypotheses. -/
