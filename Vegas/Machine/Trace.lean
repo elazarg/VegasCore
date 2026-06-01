@@ -147,6 +147,81 @@ theorem mem_runEventsFrom_support
 
 end AvailableRunFrom
 
+/-- A fixed primitive event list is semantically available from a source state
+along every supported intermediate execution path. This is the support-wide
+batch legality predicate needed by probabilistic runtimes: a legal batch may not
+hide unavailable intermediate branches that later converge to an otherwise
+available final state. -/
+def AvailableBatchFrom (M : Machine Player) :
+    M.State → List M.Event → Prop
+  | _, [] => True
+  | source, event :: events =>
+      M.EventAvailable source event ∧
+        ∀ mid, mid ∈ (M.step event source).support →
+          M.AvailableBatchFrom mid events
+
+namespace AvailableBatchFrom
+
+theorem nil {M : Machine Player} (source : M.State) :
+    M.AvailableBatchFrom source [] := by
+  trivial
+
+theorem cons {M : Machine Player} {source : M.State}
+    {event : M.Event} {events : List M.Event}
+    (havailable : M.EventAvailable source event)
+    (htail :
+      ∀ mid, mid ∈ (M.step event source).support →
+        M.AvailableBatchFrom mid events) :
+    M.AvailableBatchFrom source (event :: events) := by
+  exact ⟨havailable, htail⟩
+
+theorem singleton {M : Machine Player} {source : M.State}
+    {event : M.Event}
+    (havailable : M.EventAvailable source event) :
+    M.AvailableBatchFrom source [event] := by
+  refine cons havailable ?_
+  intro mid hmid
+  exact nil mid
+
+theorem append {M : Machine Player} {source : M.State}
+    {events₁ events₂ : List M.Event}
+    (hleft : M.AvailableBatchFrom source events₁)
+    (hright :
+      ∀ mid, mid ∈ (M.runEventsFrom events₁ source).support →
+        M.AvailableBatchFrom mid events₂) :
+    M.AvailableBatchFrom source (events₁ ++ events₂) := by
+  induction events₁ generalizing source with
+  | nil =>
+      exact hright source (by simp)
+  | cons event events ih =>
+      exact cons hleft.1 (by
+        intro mid hmid
+        exact ih (hleft.2 mid hmid) (by
+          intro dst hdst
+          exact hright dst (by
+            rw [Machine.runEventsFrom_cons_bind, PMF.mem_support_bind_iff]
+            exact ⟨mid, hmid, hdst⟩)))
+
+theorem availableRunFrom_of_mem_support
+    {M : Machine Player} {source dst : M.State} {events : List M.Event}
+    (hbatch : M.AvailableBatchFrom source events)
+    (hdst : dst ∈ (M.runEventsFrom events source).support) :
+    M.AvailableRunFrom source events dst := by
+  induction events generalizing source with
+  | nil =>
+      change dst ∈ (PMF.pure source).support at hdst
+      rw [PMF.support_pure] at hdst
+      subst dst
+      exact Machine.AvailableRunFrom.nil source
+  | cons event events ih =>
+      rw [Machine.runEventsFrom_cons_bind] at hdst
+      rw [PMF.mem_support_bind_iff] at hdst
+      rcases hdst with ⟨mid, hmid, hdst⟩
+      exact Machine.AvailableRunFrom.cons hbatch.1 hmid
+        (ih (hbatch.2 mid hmid) hdst)
+
+end AvailableBatchFrom
+
 /-- One semantically available primitive machine step with positive support.
 
 This is the labeled-transition-system view of `Machine`: total unavailable
@@ -334,12 +409,12 @@ abbrev EventBatchLaw (M : Machine Player) : Type :=
   M.EventBatchTrace → PMF (List M.Event)
 
 /-- A history-dependent event-batch law is legal when every supported batch from
-a nonterminal checkpoint has an available primitive execution from that
-checkpoint. -/
+a nonterminal checkpoint is semantically available for every state in the
+batch execution support. -/
 def IsLegalEventBatchLaw (M : Machine Player) (law : M.EventBatchLaw) : Prop :=
   ∀ trace, ¬ M.terminal trace.2 → ∀ {batch},
     batch ∈ (law trace).support →
-      ∃ dst, M.AvailableRunFrom trace.2 batch dst
+      M.AvailableBatchFrom trace.2 batch
 
 /-- Event-batch laws bundled with their primitive availability proof. -/
 abbrev LegalEventBatchLaw (M : Machine Player) : Type :=

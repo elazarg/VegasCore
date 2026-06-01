@@ -121,7 +121,7 @@ noncomputable def stutterSpecLawFamily :
     intro profile trace hnonterminal batch hbatch
     rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
     subst batch
-    exact ⟨trace.2, Machine.AvailableRunFrom.nil _⟩
+    exact Machine.AvailableBatchFrom.nil _
 
 noncomputable def stutterImplLawFamily :
     stutterMachine.EventBatchLawFamily (fun _ : PUnit => PUnit) where
@@ -131,14 +131,7 @@ noncomputable def stutterImplLawFamily :
     rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
     subst batch
     cases trace.2
-    refine ⟨PUnit.unit, ?_⟩
-    refine
-      Machine.AvailableRunFrom.cons ?_ ?_
-        (Machine.AvailableRunFrom.nil _)
-    · trivial
-    · change PUnit.unit ∈ (PMF.pure PUnit.unit).support
-      rw [PMF.support_pure]
-      exact Set.mem_singleton _
+    exact Machine.AvailableBatchFrom.singleton (by trivial)
 
 noncomputable def stutterBatchLawLift :
     stutterBatchRefinement.EventBatchLawFamilyLift

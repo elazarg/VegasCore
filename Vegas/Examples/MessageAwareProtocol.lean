@@ -125,57 +125,34 @@ noncomputable def boolMessageAwareProtocolLawFamily :
               { source := none,
                 pending := old :: rest,
                 delivered := delivered }
-            let dst : boolMessageInFlightMachine.State :=
-              { source := none,
-                pending := rest,
-                delivered := delivered ++ [old] }
-            refine ⟨dst, ?_⟩
-            change
-              boolMessageInFlightMachine.AvailableRunFrom src
-                [.internal .deliver] dst
-            refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-              (Machine.AvailableRunFrom.nil _)
-            · change Machine.MessageInFlightInternal.deliver ∈
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change Machine.MessageInFlightInternal.deliver ∈
                 boolMessageInFlightMachine.availableInternal src
-              change src.pending ≠ [] ∧ ¬ boolSpecMachine.terminal src.source
-              constructor
-              · change old :: rest ≠ []
-                intro hnil
-                cases hnil
-              · change ¬ boolSpecMachine.terminal none
-                simp [boolSpecMachine]
-            · change dst ∈ (PMF.pure dst).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
+                change src.pending ≠ [] ∧
+                  ¬ boolSpecMachine.terminal src.source
+                constructor
+                · change old :: rest ≠ []
+                  intro hnil
+                  cases hnil
+                · change ¬ boolSpecMachine.terminal none
+                  simp [boolSpecMachine])
         | nil =>
             cases delivered with
             | nil =>
                 rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
                 subst batch
-                let sent : Sigma (fun _ : PUnit.{1} => Bool) :=
-                  ⟨PUnit.unit, (profile PUnit.unit).1⟩
                 let src : boolMessageInFlightMachine.State :=
                   { source := none,
                     pending := [],
                     delivered := [] }
-                let dst : boolMessageInFlightMachine.State :=
-                  { source := none,
-                    pending := [sent],
-                    delivered := [] }
-                refine ⟨dst, ?_⟩
-                change
-                  boolMessageInFlightMachine.AvailableRunFrom src
-                    [.play PUnit.unit (.send (profile PUnit.unit).1)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.send
-                    (profile PUnit.unit).1 ∈
-                    boolMessageInFlightMachine.available src PUnit.unit
-                  change ¬ boolSpecMachine.terminal none
-                  simp [boolSpecMachine]
-                · change dst ∈ (PMF.pure dst).support
-                  rw [PMF.support_pure]
-                  exact Set.mem_singleton _
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.send
+                      (profile PUnit.unit).1 ∈
+                      boolMessageInFlightMachine.available src PUnit.unit
+                    change ¬ boolSpecMachine.terminal none
+                    simp [boolSpecMachine])
             | cons deliveredHead deliveredTail =>
                 rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
                 subst batch
@@ -188,25 +165,11 @@ noncomputable def boolMessageAwareProtocolLawFamily :
                   { source := none,
                     pending := [],
                     delivered := deliveredMessages }
-                let dst : boolMessageInFlightMachine.State :=
-                  { source := some action,
-                    pending := [],
-                    delivered := deliveredMessages }
-                let restore
-                    (sourceValue : Option Bool) :
-                    boolMessageInFlightMachine.State :=
-                  { source := sourceValue,
-                    pending := [],
-                    delivered := deliveredMessages }
-                refine ⟨dst, ?_⟩
-                change
-                  boolMessageInFlightMachine.AvailableRunFrom src
-                    [.play PUnit.unit (.spec action)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.spec action ∈
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.spec action ∈
                     boolMessageInFlightMachine.available src PUnit.unit
-                  change action ∈
+                    change action ∈
                       boolSpecMachine.available src.source PUnit.unit ∧
                     (src.pending = [] ∨
                       ∀ target,
@@ -214,14 +177,10 @@ noncomputable def boolMessageAwareProtocolLawFamily :
                           (boolSpecMachine.stepPlay PUnit.unit action
                             src.source).support →
                           ¬ boolSpecMachine.terminal target)
-                  constructor
-                  · change action ∈ Set.univ
-                    exact Set.mem_univ action
-                  · exact Or.inl rfl
-                · change dst ∈
-                    (PMF.map restore (PMF.pure (some action))).support
-                  rw [PMF.pure_map, PMF.support_pure]
-                  exact Set.mem_singleton _
+                    constructor
+                    · change action ∈ Set.univ
+                      exact Set.mem_univ action
+                    · exact Or.inl rfl)
 
 noncomputable def encodedMessageAwareProtocolLawFamily :
     encodedMessageInFlightMachine.EventBatchLawFamily
@@ -264,60 +223,36 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
               { source := { payload := none, audit := audit },
                 pending := old :: rest,
                 delivered := delivered }
-            let dst : encodedMessageInFlightMachine.State :=
-              { source := { payload := none, audit := audit },
-                pending := rest,
-                delivered := delivered ++ [old] }
-            refine ⟨dst, ?_⟩
-            change
-              encodedMessageInFlightMachine.AvailableRunFrom src
-                [.internal .deliver] dst
-            refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-              (Machine.AvailableRunFrom.nil _)
-            · change Machine.MessageInFlightInternal.deliver ∈
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change Machine.MessageInFlightInternal.deliver ∈
                 encodedMessageInFlightMachine.availableInternal src
-              change src.pending ≠ [] ∧
-                ¬ encodedImplMachine.terminal src.source
-              constructor
-              · change old :: rest ≠ []
-                intro hnil
-                cases hnil
-              · change ¬ encodedImplMachine.terminal
-                  { payload := none, audit := audit }
-                simp [encodedImplMachine]
-            · change dst ∈ (PMF.pure dst).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
+                change src.pending ≠ [] ∧
+                  ¬ encodedImplMachine.terminal src.source
+                constructor
+                · change old :: rest ≠ []
+                  intro hnil
+                  cases hnil
+                · change ¬ encodedImplMachine.terminal
+                    { payload := none, audit := audit }
+                  simp [encodedImplMachine])
         | nil =>
             cases delivered with
             | nil =>
                 rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
                 subst batch
-                let sent : Sigma (fun _ : PUnit.{1} => Bool) :=
-                  ⟨PUnit.unit, (profile PUnit.unit).1⟩
                 let src : encodedMessageInFlightMachine.State :=
                   { source := { payload := none, audit := audit },
                     pending := [],
                     delivered := [] }
-                let dst : encodedMessageInFlightMachine.State :=
-                  { source := { payload := none, audit := audit },
-                    pending := [sent],
-                    delivered := [] }
-                refine ⟨dst, ?_⟩
-                change
-                  encodedMessageInFlightMachine.AvailableRunFrom src
-                    [.play PUnit.unit (.send (profile PUnit.unit).1)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.send
-                    (profile PUnit.unit).1 ∈
-                    encodedMessageInFlightMachine.available src PUnit.unit
-                  change ¬ encodedImplMachine.terminal
-                    { payload := none, audit := audit }
-                  simp [encodedImplMachine]
-                · change dst ∈ (PMF.pure dst).support
-                  rw [PMF.support_pure]
-                  exact Set.mem_singleton _
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.send
+                      (profile PUnit.unit).1 ∈
+                      encodedMessageInFlightMachine.available src PUnit.unit
+                    change ¬ encodedImplMachine.terminal
+                      { payload := none, audit := audit }
+                    simp [encodedImplMachine])
             | cons deliveredHead deliveredTail =>
                 rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
                 subst batch
@@ -334,25 +269,11 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
                   { source := { payload := none, audit := audit + 1 },
                     pending := [],
                     delivered := deliveredMessages }
-                let finalSource : EncodedState :=
-                  { payload := some (encodeBool action),
-                    audit := audit + 1 }
-                let dst : encodedMessageInFlightMachine.State :=
-                  { source := finalSource,
-                    pending := [],
-                    delivered := deliveredMessages }
-                let restore
-                    (sourceValue : EncodedState) :
-                    encodedMessageInFlightMachine.State :=
-                  { source := sourceValue,
-                    pending := [],
-                    delivered := deliveredMessages }
-                refine ⟨dst, ?_⟩
                 change
-                  encodedMessageInFlightMachine.AvailableRunFrom src
+                  encodedMessageInFlightMachine.AvailableBatchFrom src
                     [.internal (.spec PUnit.unit),
-                      .play PUnit.unit (.spec action)] dst
-                refine Machine.AvailableRunFrom.cons (mid := mid) ?_ ?_ ?_
+                      .play PUnit.unit (.spec action)]
+                refine Machine.AvailableBatchFrom.cons ?_ ?_
                 · change Machine.MessageInFlightInternal.spec PUnit.unit ∈
                     encodedMessageInFlightMachine.availableInternal src
                   change PUnit.unit ∈
@@ -367,18 +288,24 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
                   · change PUnit.unit ∈ Set.univ
                     trivial
                   · exact Or.inl rfl
-                · change mid ∈
-                    (PMF.map restore
+                · intro mid' hmid'
+                  change mid' ∈
+                    (PMF.map
+                      (fun dst =>
+                        ({ source := dst,
+                           pending := [],
+                           delivered := deliveredMessages } :
+                          encodedMessageInFlightMachine.State))
                       (PMF.pure
                         ({ payload := none, audit := audit + 1 } :
-                          EncodedState))).support
-                  rw [PMF.pure_map, PMF.support_pure]
-                  exact Set.mem_singleton _
-                · refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                    (Machine.AvailableRunFrom.nil _)
-                  · change Machine.MessageInFlightAction.spec action ∈
+                          EncodedState))).support at hmid'
+                  rw [PMF.pure_map, PMF.support_pure] at hmid'
+                  subst mid'
+                  exact Machine.AvailableBatchFrom.singleton
+                    (by
+                      change Machine.MessageInFlightAction.spec action ∈
                       encodedMessageInFlightMachine.available mid PUnit.unit
-                    change action ∈
+                      change action ∈
                         encodedImplMachine.available mid.source PUnit.unit ∧
                       (mid.pending = [] ∨
                         ∀ target,
@@ -386,15 +313,10 @@ noncomputable def encodedMessageAwareProtocolLawFamily :
                             (encodedImplMachine.stepPlay PUnit.unit action
                               mid.source).support →
                             ¬ encodedImplMachine.terminal target)
-                    constructor
-                    · change action ∈ Set.univ
-                      exact Set.mem_univ action
-                    · exact Or.inl rfl
-                  · change dst ∈
-                      (PMF.map restore
-                        (PMF.pure finalSource)).support
-                    rw [PMF.pure_map, PMF.support_pure]
-                    exact Set.mem_singleton _
+                      constructor
+                      · change action ∈ Set.univ
+                        exact Set.mem_univ action
+                      · exact Or.inl rfl)
 
 noncomputable def encodedMessageAwareProtocolLawLift :
     encodedMessageProtocolRefinement.EventBatchLawFamilyLift

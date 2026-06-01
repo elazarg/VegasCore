@@ -80,69 +80,6 @@ noncomputable def coordinationMachine : Machine TalkPlayer where
 noncomputable def coordinationMessageMachine : Machine TalkPlayer :=
   Machine.messageInFlight coordinationMachine (fun _ : TalkPlayer => Bool)
 
-theorem coordinationMessage_sendAvailableRunFrom
-    (source : CoordinationState)
-    (pending delivered : List (Sigma (fun _ : TalkPlayer => Bool)))
-    (player : TalkPlayer) (message : Bool)
-    (hnonterminal : ¬ coordinationMachine.terminal source) :
-    coordinationMessageMachine.AvailableRunFrom
-      { source := source,
-        pending := pending,
-        delivered := delivered }
-      [.play player (.send message)]
-      { source := source,
-        pending := pending ++ [⟨player, message⟩],
-        delivered := delivered } := by
-  simpa [coordinationMessageMachine] using
-    Machine.messageInFlight.sendAvailableRunFrom coordinationMachine
-      (fun _ : TalkPlayer => Bool)
-      { source := source, pending := pending, delivered := delivered }
-      player message hnonterminal
-
-theorem coordinationMessage_deliverAvailableRunFrom
-    (source : CoordinationState)
-    (message : Sigma (fun _ : TalkPlayer => Bool))
-    (rest delivered : List (Sigma (fun _ : TalkPlayer => Bool)))
-    (hnonterminal : ¬ coordinationMachine.terminal source) :
-    coordinationMessageMachine.AvailableRunFrom
-      { source := source,
-        pending := message :: rest,
-        delivered := delivered }
-      [.internal .deliver]
-      { source := source,
-        pending := rest,
-        delivered := delivered ++ [message] } := by
-  simpa [coordinationMessageMachine] using
-    Machine.messageInFlight.deliverAvailableRunFrom coordinationMachine
-      (fun _ : TalkPlayer => Bool) source message rest delivered hnonterminal
-
-theorem coordinationMessage_specPlayAvailableRunFrom
-    (source : CoordinationState)
-    (delivered : List (Sigma (fun _ : TalkPlayer => Bool)))
-    (player : TalkPlayer) (action : Bool)
-    (havailable : action ∈ coordinationMachine.available source player) :
-    coordinationMessageMachine.AvailableRunFrom
-      { source := source,
-        pending := [],
-        delivered := delivered }
-      [.play player (.spec action)]
-      { source := source.setAction player action,
-        pending := [],
-        delivered := delivered } := by
-  have hrun :
-      coordinationMachine.AvailableRunFrom source
-        [.play player action] (source.setAction player action) := by
-    refine Machine.AvailableRunFrom.cons ?_ ?_
-      (Machine.AvailableRunFrom.nil _)
-    · exact havailable
-    · change source.setAction player action ∈
-        (PMF.pure (source.setAction player action)).support
-      rw [PMF.support_pure]
-      exact Set.mem_singleton _
-  simpa [coordinationMessageMachine, Machine.messageInFlight.liftEvent] using
-    Machine.messageInFlight.liftAvailableRunFrom coordinationMachine
-      (fun _ : TalkPlayer => Bool) delivered hrun
-
 def deliveredTalkMessage? (player : TalkPlayer) :
     List (Sigma (fun _ : TalkPlayer => Bool)) → Option Bool
   | [] => none
@@ -252,16 +189,14 @@ noncomputable def talkProtocolLawFamily :
           { source := source,
             pending := message :: rest,
             delivered := delivered }
-        let dst : coordinationMessageMachine.State :=
-          { source := source,
-            pending := rest,
-            delivered := delivered ++ [message] }
-        refine ⟨dst, ?_⟩
-        simpa [src, dst] using
-          coordinationMessage_deliverAvailableRunFrom source message rest
-            delivered
-            (by
-              simpa [coordinationMessageMachine, Machine.messageInFlight, src]
+        exact Machine.AvailableBatchFrom.singleton
+          (by
+            change src.pending ≠ [] ∧
+              ¬ coordinationMachine.terminal src.source
+            constructor
+            · intro hnil
+              cases hnil
+            · simpa [coordinationMessageMachine, Machine.messageInFlight, src]
                 using hnonterminal)
     | nil =>
         cases hrow :
@@ -279,17 +214,11 @@ noncomputable def talkProtocolLawFamily :
               { source := source,
                 pending := [],
                 delivered := delivered }
-            let dst : coordinationMessageMachine.State :=
-              { source := source,
-                pending := [sent],
-                delivered := delivered }
-            refine ⟨dst, ?_⟩
-            simpa [src, dst, sent] using
-              coordinationMessage_sendAvailableRunFrom source [] delivered
-                TalkPlayer.row (profile TalkPlayer.row).1
-                (by
-                  simpa [coordinationMessageMachine,
-                    Machine.messageInFlight, src] using hnonterminal)
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change ¬ coordinationMachine.terminal src.source
+                simpa [coordinationMessageMachine,
+                  Machine.messageInFlight, src] using hnonterminal)
         | some rowMessage =>
             cases hcol :
                 deliveredTalkMessage? TalkPlayer.col delivered with
@@ -306,17 +235,11 @@ noncomputable def talkProtocolLawFamily :
                   { source := source,
                     pending := [],
                     delivered := delivered }
-                let dst : coordinationMessageMachine.State :=
-                  { source := source,
-                    pending := [sent],
-                    delivered := delivered }
-                refine ⟨dst, ?_⟩
-                simpa [src, dst, sent] using
-                  coordinationMessage_sendAvailableRunFrom source [] delivered
-                    TalkPlayer.col (profile TalkPlayer.col).1
-                    (by
-                      simpa [coordinationMessageMachine,
-                        Machine.messageInFlight, src] using hnonterminal)
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change ¬ coordinationMachine.terminal src.source
+                    simpa [coordinationMessageMachine,
+                      Machine.messageInFlight, src] using hnonterminal)
             | some colMessage =>
                 cases source with
                 | mk rowAction colAction =>
@@ -336,30 +259,21 @@ noncomputable def talkProtocolLawFamily :
                                         colAction := colAction },
                             pending := [],
                             delivered := delivered }
-                        let dst : coordinationMessageMachine.State :=
-                          { source :=
-                              { rowAction := some action,
-                                colAction := colAction },
-                            pending := [],
-                            delivered := delivered }
-                        let finalSource : CoordinationState :=
-                          { rowAction := some action,
-                            colAction := colAction }
-                        let restore
-                            (sourceValue : CoordinationState) :
-                            coordinationMessageMachine.State :=
-                          { source := sourceValue,
-                            pending := [],
-                            delivered := delivered }
-                        refine ⟨dst, ?_⟩
-                        simpa [src, dst, finalSource, restore,
-                          CoordinationState.setAction] using
-                          coordinationMessage_specPlayAvailableRunFrom
-                            { rowAction := none, colAction := colAction }
-                            delivered TalkPlayer.row action
-                            (by
-                              change action ∈ Set.univ
-                              exact Set.mem_univ action)
+                        exact Machine.AvailableBatchFrom.singleton
+                          (by
+                            change action ∈
+                                coordinationMachine.available
+                                  src.source TalkPlayer.row ∧
+                              (src.pending = [] ∨
+                                ∀ target,
+                                  target ∈
+                                    (coordinationMachine.stepPlay
+                                      TalkPlayer.row action src.source).support →
+                                    ¬ coordinationMachine.terminal target)
+                            constructor
+                            · change action ∈ Set.univ
+                              exact Set.mem_univ action
+                            · exact Or.inl rfl)
                     | some rowAction =>
                         cases colAction with
                         | none =>
@@ -377,31 +291,22 @@ noncomputable def talkProtocolLawFamily :
                                             colAction := none },
                                 pending := [],
                                 delivered := delivered }
-                            let dst : coordinationMessageMachine.State :=
-                              { source :=
-                                  { rowAction := some rowAction,
-                                    colAction := some action },
-                                pending := [],
-                                delivered := delivered }
-                            let finalSource : CoordinationState :=
-                              { rowAction := some rowAction,
-                                colAction := some action }
-                            let restore
-                                (sourceValue : CoordinationState) :
-                                coordinationMessageMachine.State :=
-                              { source := sourceValue,
-                                pending := [],
-                                delivered := delivered }
-                            refine ⟨dst, ?_⟩
-                            simpa [src, dst, finalSource, restore,
-                              CoordinationState.setAction] using
-                              coordinationMessage_specPlayAvailableRunFrom
-                                { rowAction := some rowAction,
-                                  colAction := none }
-                                delivered TalkPlayer.col action
-                                (by
-                                  change action ∈ Set.univ
-                                  exact Set.mem_univ action)
+                            exact Machine.AvailableBatchFrom.singleton
+                              (by
+                                change action ∈
+                                    coordinationMachine.available
+                                      src.source TalkPlayer.col ∧
+                                  (src.pending = [] ∨
+                                    ∀ target,
+                                      target ∈
+                                        (coordinationMachine.stepPlay
+                                          TalkPlayer.col action
+                                          src.source).support →
+                                        ¬ coordinationMachine.terminal target)
+                                constructor
+                                · change action ∈ Set.univ
+                                  exact Set.mem_univ action
+                                · exact Or.inl rfl)
                         | some colAction =>
                             exact False.elim
                               (hnonterminal (by
@@ -1064,27 +969,14 @@ noncomputable def encodedTalkProtocolLawFamily :
                         audit := audit },
             pending := message :: rest,
             delivered := delivered }
-        let dst : encodedCoordinationMessageMachine.State :=
-          { source := { rowAction := rowAction,
-                        colAction := colAction,
-                        audit := audit },
-            pending := rest,
-            delivered := delivered ++ [message] }
-        refine ⟨dst, ?_⟩
-        change
-          encodedCoordinationMessageMachine.AvailableRunFrom src
-            [.internal .deliver] dst
-        refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-          (Machine.AvailableRunFrom.nil _)
-        · change Machine.MessageInFlightInternal.deliver ∈
+        exact Machine.AvailableBatchFrom.singleton
+          (by
+            change Machine.MessageInFlightInternal.deliver ∈
             encodedCoordinationMessageMachine.availableInternal src
-          constructor
-          · intro hnil
-            cases hnil
-          · exact hnonterminal
-        · change dst ∈ (PMF.pure dst).support
-          rw [PMF.support_pure]
-          exact Set.mem_singleton _
+            constructor
+            · intro hnil
+              cases hnil
+            · exact hnonterminal)
     | nil =>
         cases hrow :
             deliveredTalkMessage? TalkPlayer.row delivered with
@@ -1103,26 +995,13 @@ noncomputable def encodedTalkProtocolLawFamily :
                             audit := audit },
                 pending := [],
                 delivered := delivered }
-            let dst : encodedCoordinationMessageMachine.State :=
-              { source := { rowAction := rowAction,
-                            colAction := colAction,
-                            audit := audit },
-                pending := [sent],
-                delivered := delivered }
-            refine ⟨dst, ?_⟩
-            change
-              encodedCoordinationMessageMachine.AvailableRunFrom src
-                [.play TalkPlayer.row
-                  (.send (profile TalkPlayer.row).1)] dst
-            refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-              (Machine.AvailableRunFrom.nil _)
-            · change Machine.MessageInFlightAction.send
-                (profile TalkPlayer.row).1 ∈
-                encodedCoordinationMessageMachine.available src TalkPlayer.row
-              exact hnonterminal
-            · change dst ∈ (PMF.pure dst).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change Machine.MessageInFlightAction.send
+                  (profile TalkPlayer.row).1 ∈
+                  encodedCoordinationMessageMachine.available src
+                    TalkPlayer.row
+                exact hnonterminal)
         | some rowMessage =>
             cases hcol :
                 deliveredTalkMessage? TalkPlayer.col delivered with
@@ -1141,27 +1020,13 @@ noncomputable def encodedTalkProtocolLawFamily :
                                 audit := audit },
                     pending := [],
                     delivered := delivered }
-                let dst : encodedCoordinationMessageMachine.State :=
-                  { source := { rowAction := rowAction,
-                                colAction := colAction,
-                                audit := audit },
-                    pending := [sent],
-                    delivered := delivered }
-                refine ⟨dst, ?_⟩
-                change
-                  encodedCoordinationMessageMachine.AvailableRunFrom src
-                    [.play TalkPlayer.col
-                      (.send (profile TalkPlayer.col).1)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.send
-                    (profile TalkPlayer.col).1 ∈
-                    encodedCoordinationMessageMachine.available src
-                      TalkPlayer.col
-                  exact hnonterminal
-                · change dst ∈ (PMF.pure dst).support
-                  rw [PMF.support_pure]
-                  exact Set.mem_singleton _
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.send
+                      (profile TalkPlayer.col).1 ∈
+                      encodedCoordinationMessageMachine.available src
+                        TalkPlayer.col
+                    exact hnonterminal)
             | some colMessage =>
                 cases rowAction with
                 | none =>
@@ -1189,21 +1054,11 @@ noncomputable def encodedTalkProtocolLawFamily :
                       { source := midSource,
                         pending := [],
                         delivered := delivered }
-                    let finalSource : EncodedCoordinationState :=
-                      { rowAction := some (encodeTalkBool action),
-                        colAction := colAction,
-                        audit := audit + 1 }
-                    let dst : encodedCoordinationMessageMachine.State :=
-                      { source := finalSource,
-                        pending := [],
-                        delivered := delivered }
-                    refine ⟨dst, ?_⟩
                     change
-                      encodedCoordinationMessageMachine.AvailableRunFrom src
+                      encodedCoordinationMessageMachine.AvailableBatchFrom src
                         [.internal (.spec PUnit.unit),
-                          .play TalkPlayer.row (.spec action)] dst
-                    refine Machine.AvailableRunFrom.cons (mid := mid)
-                      ?_ ?_ ?_
+                          .play TalkPlayer.row (.spec action)]
+                    refine Machine.AvailableBatchFrom.cons ?_ ?_
                     · change Machine.MessageInFlightInternal.spec
                         PUnit.unit ∈
                         encodedCoordinationMessageMachine.availableInternal
@@ -1220,33 +1075,29 @@ noncomputable def encodedTalkProtocolLawFamily :
                       constructor
                       · trivial
                       · exact Or.inl rfl
-                    · simp [encodedCoordinationMessageMachine,
+                    · intro mid' hmid'
+                      simp [encodedCoordinationMessageMachine,
                         Machine.messageInFlight, encodedCoordinationMachine,
-                        Machine.step, src, mid, midSource]
-                      exact Set.mem_singleton _
-                    · refine Machine.AvailableRunFrom.cons (mid := dst)
-                        ?_ ?_ (Machine.AvailableRunFrom.nil _)
-                      · change Machine.MessageInFlightAction.spec action ∈
-                          encodedCoordinationMessageMachine.available mid
-                            TalkPlayer.row
-                        change action ∈
-                            encodedCoordinationMachine.available mid.source
-                              TalkPlayer.row ∧
-                          (mid.pending = [] ∨
-                            ∀ target,
-                              target ∈
-                                (encodedCoordinationMachine.stepPlay
-                                  TalkPlayer.row action mid.source).support →
-                                ¬ encodedCoordinationMachine.terminal target)
-                        constructor
-                        · change action ∈ Set.univ
-                          exact Set.mem_univ action
-                        · exact Or.inl rfl
-                      · simp [encodedCoordinationMessageMachine,
-                          Machine.messageInFlight, encodedCoordinationMachine,
-                          Machine.step, mid, dst, finalSource,
-                          EncodedCoordinationState.setAction]
-                        exact Set.mem_singleton _
+                        Machine.step, src] at hmid'
+                      subst mid'
+                      exact Machine.AvailableBatchFrom.singleton
+                        (by
+                          change Machine.MessageInFlightAction.spec action ∈
+                            encodedCoordinationMessageMachine.available mid
+                              TalkPlayer.row
+                          change action ∈
+                              encodedCoordinationMachine.available mid.source
+                                TalkPlayer.row ∧
+                            (mid.pending = [] ∨
+                              ∀ target,
+                                target ∈
+                                  (encodedCoordinationMachine.stepPlay
+                                    TalkPlayer.row action mid.source).support →
+                                  ¬ encodedCoordinationMachine.terminal target)
+                          constructor
+                          · change action ∈ Set.univ
+                            exact Set.mem_univ action
+                          · exact Or.inl rfl)
                 | some rowValue =>
                     cases colAction with
                     | none =>
@@ -1274,21 +1125,11 @@ noncomputable def encodedTalkProtocolLawFamily :
                           { source := midSource,
                             pending := [],
                             delivered := delivered }
-                        let finalSource : EncodedCoordinationState :=
-                          { rowAction := some rowValue,
-                            colAction := some (encodeTalkBool action),
-                            audit := audit + 1 }
-                        let dst : encodedCoordinationMessageMachine.State :=
-                          { source := finalSource,
-                            pending := [],
-                            delivered := delivered }
-                        refine ⟨dst, ?_⟩
                         change
-                          encodedCoordinationMessageMachine.AvailableRunFrom src
+                          encodedCoordinationMessageMachine.AvailableBatchFrom src
                             [.internal (.spec PUnit.unit),
-                              .play TalkPlayer.col (.spec action)] dst
-                        refine Machine.AvailableRunFrom.cons (mid := mid)
-                          ?_ ?_ ?_
+                              .play TalkPlayer.col (.spec action)]
+                        refine Machine.AvailableBatchFrom.cons ?_ ?_
                         · change Machine.MessageInFlightInternal.spec
                             PUnit.unit ∈
                             encodedCoordinationMessageMachine.availableInternal
@@ -1306,36 +1147,33 @@ noncomputable def encodedTalkProtocolLawFamily :
                           constructor
                           · trivial
                           · exact Or.inl rfl
-                        · simp [encodedCoordinationMessageMachine,
-                            Machine.messageInFlight, encodedCoordinationMachine,
-                            Machine.step, src, mid, midSource]
-                          exact Set.mem_singleton _
-                        · refine Machine.AvailableRunFrom.cons (mid := dst)
-                            ?_ ?_ (Machine.AvailableRunFrom.nil _)
-                          · change
-                              Machine.MessageInFlightAction.spec action ∈
-                                encodedCoordinationMessageMachine.available mid
-                                  TalkPlayer.col
-                            change action ∈
-                                encodedCoordinationMachine.available
-                                  mid.source TalkPlayer.col ∧
-                              (mid.pending = [] ∨
-                                ∀ target,
-                                  target ∈
-                                    (encodedCoordinationMachine.stepPlay
-                                      TalkPlayer.col action mid.source).support →
-                                    ¬ encodedCoordinationMachine.terminal
-                                      target)
-                            constructor
-                            · change action ∈ Set.univ
-                              exact Set.mem_univ action
-                            · exact Or.inl rfl
-                          · simp [encodedCoordinationMessageMachine,
-                              Machine.messageInFlight,
-                              encodedCoordinationMachine, Machine.step, mid,
-                              dst, finalSource,
-                              EncodedCoordinationState.setAction]
-                            exact Set.mem_singleton _
+                        · intro mid' hmid'
+                          simp [encodedCoordinationMessageMachine,
+                            Machine.messageInFlight,
+                            encodedCoordinationMachine, Machine.step, src]
+                            at hmid'
+                          subst mid'
+                          exact Machine.AvailableBatchFrom.singleton
+                            (by
+                              change
+                                Machine.MessageInFlightAction.spec action ∈
+                                  encodedCoordinationMessageMachine.available
+                                    mid TalkPlayer.col
+                              change action ∈
+                                  encodedCoordinationMachine.available
+                                    mid.source TalkPlayer.col ∧
+                                (mid.pending = [] ∨
+                                  ∀ target,
+                                    target ∈
+                                      (encodedCoordinationMachine.stepPlay
+                                        TalkPlayer.col action
+                                        mid.source).support →
+                                      ¬ encodedCoordinationMachine.terminal
+                                        target)
+                              constructor
+                              · change action ∈ Set.univ
+                                exact Set.mem_univ action
+                              · exact Or.inl rfl)
                     | some colValue =>
                         exact False.elim
                           (hnonterminal (by

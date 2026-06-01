@@ -141,6 +141,33 @@ theorem liftAvailableRunFrom
         (liftEvent_support (M := M) (state := (source, audit)) hsupport)
         ih
 
+/-- Lift any support-wide available original batch to the audited wrapper
+without changing the audit counter. -/
+theorem liftAvailableBatchFrom
+    {source : M.State} {events : List M.Event} (audit : Nat)
+    (hbatch : M.AvailableBatchFrom source events) :
+    (audited M).AvailableBatchFrom (source, audit)
+      (events.map (liftEvent M)) := by
+  induction events generalizing source with
+  | nil =>
+      exact Machine.AvailableBatchFrom.nil _
+  | cons event events ih =>
+      refine Machine.AvailableBatchFrom.cons ?_ ?_
+      · exact liftEvent_available (M := M) (state := (source, audit))
+          hbatch.1
+      · intro mid hmid
+        cases event with
+        | play player action =>
+            rcases (PMF.mem_support_map_iff _ _ _).mp hmid with
+              ⟨sourceMid, hsourceMid, hmidEq⟩
+            subst hmidEq
+            exact ih (hbatch.2 sourceMid hsourceMid)
+        | internal event =>
+            rcases (PMF.mem_support_map_iff _ _ _).mp hmid with
+              ⟨sourceMid, hsourceMid, hmidEq⟩
+            subst hmidEq
+            exact ih (hbatch.2 sourceMid hsourceMid)
+
 /-- A single audit tick is always an available administrative run. -/
 theorem auditTickAvailableRunFrom (state : (audited M).State) :
     (audited M).AvailableRunFrom state [.internal .tick]
@@ -162,6 +189,23 @@ theorem liftEventBatchAvailableRunFrom
   simpa [liftEventBatch] using
     (auditTickAvailableRunFrom M (source, audit)).append
       (liftAvailableRunFrom M (audit + 1) hrun)
+
+/-- Prefixing a support-wide available specification batch with one audit tick
+gives a support-wide available audited batch. -/
+theorem liftEventBatchAvailableBatchFrom
+    {source : M.State} {events : List M.Event} (audit : Nat)
+    (hbatch : M.AvailableBatchFrom source events) :
+    (audited M).AvailableBatchFrom (source, audit)
+      (liftEventBatch M events) := by
+  change (audited M).AvailableBatchFrom (source, audit)
+    (.internal .tick :: events.map (liftEvent M))
+  refine Machine.AvailableBatchFrom.cons ?_ ?_
+  · trivial
+  · intro mid hmid
+    change mid ∈ (PMF.pure (source, audit + 1)).support at hmid
+    rw [PMF.support_pure] at hmid
+    subst mid
+    exact liftAvailableBatchFrom M (audit + 1) hbatch
 
 /-- Running audited events and then projecting state is the same as erasing
 audit ticks and running the original events. -/
@@ -306,12 +350,11 @@ theorem liftEventBatchLaw_legal {law : M.EventBatchLaw}
   have hspecNonterminal :
       ¬ M.terminal ((refinement M).projectEventBatchTrace trace).2 := by
     exact hnonterminal
-  rcases hlegal ((refinement M).projectEventBatchTrace trace)
-      hspecNonterminal hspecBatch with
-    ⟨dst, hrun⟩
-  exact
-    ⟨(dst, trace.2.2 + 1),
-      liftEventBatchAvailableRunFrom M trace.2.2 hrun⟩
+  rcases trace with ⟨batches, state⟩
+  rcases state with ⟨source, audit⟩
+  exact liftEventBatchAvailableBatchFrom M audit
+    (hlegal ((refinement M).projectEventBatchTrace (batches, (source, audit)))
+      hspecNonterminal hspecBatch)
 
 /-- The lifted law is compatible with the original law under the audited
 refinement. -/

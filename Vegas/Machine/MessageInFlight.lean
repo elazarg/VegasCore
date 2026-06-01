@@ -406,6 +406,132 @@ theorem liftAvailableRunFrom
             ⟨havailable, hsupport⟩))
         ih
 
+/-- Running lifted source events from an empty message queue maps exactly over
+the source-machine event run and preserves the delivered log. -/
+theorem runEventsFrom_liftEvent
+    (events : List M.Event) (source : M.State)
+    (delivered : List (Sigma Message)) :
+    (messageInFlight M Message).runEventsFrom
+        (events.map (liftEvent M Message))
+        { source := source, pending := [], delivered := delivered } =
+      PMF.map
+        (fun dst =>
+          ({ source := dst,
+             pending := [],
+             delivered := delivered } :
+            (messageInFlight M Message).State))
+        (M.runEventsFrom events source) := by
+  induction events generalizing source with
+  | nil =>
+      change PMF.pure
+          ({ source := source, pending := [], delivered := delivered } :
+            (messageInFlight M Message).State) =
+        PMF.map
+          (fun dst =>
+            ({ source := dst, pending := [], delivered := delivered } :
+              (messageInFlight M Message).State))
+          (PMF.pure source)
+      rw [PMF.pure_map]
+  | cons event events ih =>
+      simp only [List.map_cons]
+      rw [Machine.runEventsFrom_cons_bind]
+      rw [Machine.runEventsFrom_cons_bind]
+      cases event with
+      | play player action =>
+          change
+            (PMF.map
+                (fun dst =>
+                  ({ source := dst,
+                     pending := [],
+                     delivered := delivered } :
+                    (messageInFlight M Message).State))
+                (M.stepPlay player action source)).bind
+                (fun current =>
+                  (messageInFlight M Message).runEventsFrom
+                    (events.map (liftEvent M Message)) current) =
+              PMF.map
+                (fun dst =>
+                  ({ source := dst,
+                     pending := [],
+                     delivered := delivered } :
+                    (messageInFlight M Message).State))
+                ((M.stepPlay player action source).bind
+                  fun current => M.runEventsFrom events current)
+          rw [PMF.bind_map]
+          rw [PMF.map_bind]
+          congr
+          funext current
+          exact ih current
+      | internal event =>
+          change
+            (PMF.map
+                (fun dst =>
+                  ({ source := dst,
+                     pending := [],
+                     delivered := delivered } :
+                    (messageInFlight M Message).State))
+                (M.stepInternal event source)).bind
+                (fun current =>
+                  (messageInFlight M Message).runEventsFrom
+                    (events.map (liftEvent M Message)) current) =
+              PMF.map
+                (fun dst =>
+                  ({ source := dst,
+                     pending := [],
+                     delivered := delivered } :
+                    (messageInFlight M Message).State))
+                ((M.stepInternal event source).bind
+                  fun current => M.runEventsFrom events current)
+          rw [PMF.bind_map]
+          rw [PMF.map_bind]
+          congr
+          funext current
+          exact ih current
+
+/-- Lifting a support-wide available source batch from an empty message queue
+gives a support-wide available message-in-flight batch. -/
+theorem liftAvailableBatchFrom
+    {source : M.State} {events : List M.Event}
+    (delivered : List (Sigma Message))
+    (hbatch : M.AvailableBatchFrom source events) :
+    (messageInFlight M Message).AvailableBatchFrom
+      { source := source,
+        pending := [],
+        delivered := delivered }
+      (events.map (liftEvent M Message)) := by
+  induction events generalizing source with
+  | nil =>
+      exact Machine.AvailableBatchFrom.nil _
+  | cons event events ih =>
+      refine Machine.AvailableBatchFrom.cons ?_ ?_
+      · cases event with
+        | play player action =>
+            change action ∈ M.available source player ∧
+              (([] : List (Sigma Message)) = [] ∨
+                ∀ target,
+                  target ∈ (M.stepPlay player action source).support →
+                    ¬ M.terminal target)
+            exact ⟨hbatch.1, Or.inl rfl⟩
+        | internal event =>
+            change event ∈ M.availableInternal source ∧
+              (([] : List (Sigma Message)) = [] ∨
+                ∀ target,
+                  target ∈ (M.stepInternal event source).support →
+                    ¬ M.terminal target)
+            exact ⟨hbatch.1, Or.inl rfl⟩
+      · intro mid hmid
+        cases event with
+        | play player action =>
+            rcases (PMF.mem_support_map_iff _ _ _).mp hmid with
+              ⟨sourceMid, hsourceMid, hmidEq⟩
+            subst hmidEq
+            exact ih (hbatch.2 sourceMid hsourceMid)
+        | internal event =>
+            rcases (PMF.mem_support_map_iff _ _ _).mp hmid with
+              ⟨sourceMid, hsourceMid, hmidEq⟩
+            subst hmidEq
+            exact ih (hbatch.2 sourceMid hsourceMid)
+
 /-- Draining every pending message is available while the source machine is
 nonterminal. -/
 theorem deliverAllAvailableRunFrom
@@ -475,6 +601,49 @@ theorem deliverAllThenLiftAvailableRunFrom
         hnonterminal).append
       (liftAvailableRunFrom M Message (delivered ++ pending) hrun)
 
+/-- Drain pending messages, then run a lifted support-wide source event batch
+from the empty queue. -/
+theorem deliverAllThenLiftAvailableBatchFrom
+    {source : M.State} {events : List M.Event}
+    (pending delivered : List (Sigma Message))
+    (hnonterminal : ¬ M.terminal source)
+    (hbatch : M.AvailableBatchFrom source events) :
+    (messageInFlight M Message).AvailableBatchFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (deliverAllThenEvents M Message pending
+        (events.map (liftEvent M Message))) := by
+  induction pending generalizing delivered with
+  | nil =>
+      exact liftAvailableBatchFrom M Message delivered hbatch
+  | cons message rest ih =>
+      let src : (messageInFlight M Message).State :=
+        { source := source,
+          pending := message :: rest,
+          delivered := delivered }
+      let afterDeliver : (messageInFlight M Message).State :=
+        { source := source,
+          pending := rest,
+          delivered := delivered ++ [message] }
+      change
+        (messageInFlight M Message).AvailableBatchFrom src
+          (.internal .deliver ::
+            deliverAllThenEvents M Message rest
+              (events.map (liftEvent M Message)))
+      refine Machine.AvailableBatchFrom.cons ?_ ?_
+      · change src.pending ≠ [] ∧ ¬ M.terminal src.source
+        constructor
+        · intro hnil
+          cases hnil
+        · exact hnonterminal
+      · intro mid hmid
+        change mid ∈ (PMF.pure afterDeliver).support at hmid
+        rw [PMF.support_pure] at hmid
+        subst mid
+        simpa [afterDeliver, List.append_assoc] using
+          ih (delivered ++ [message])
+
 /-- Sending a message from an empty buffer and immediately delivering it is
 available while the source machine is nonterminal. -/
 theorem sendDeliverAvailableRunFrom
@@ -505,6 +674,96 @@ theorem sendDeliverAvailableRunFrom
       player message hnonterminal).append
       (deliverAvailableRunFrom M Message source sent [] delivered
         hnonterminal)
+
+/-- Send, deliver, then execute a lifted support-wide source batch from an
+empty message queue. -/
+theorem sendDeliverThenLiftAvailableBatchFrom
+    {source : M.State} {events : List M.Event}
+    (delivered : List (Sigma Message))
+    (player : Player) (message : Message player)
+    (hnonterminal : ¬ M.terminal source)
+    (hbatch : M.AvailableBatchFrom source events) :
+    (messageInFlight M Message).AvailableBatchFrom
+      { source := source,
+        pending := [],
+        delivered := delivered }
+      (.play player (.send message) :: .internal .deliver ::
+        events.map (liftEvent M Message)) := by
+  let sent : Sigma Message := ⟨player, message⟩
+  let afterSend : (messageInFlight M Message).State :=
+    { source := source,
+      pending := [sent],
+      delivered := delivered }
+  let afterDeliver : (messageInFlight M Message).State :=
+    { source := source,
+      pending := [],
+      delivered := delivered ++ [sent] }
+  refine Machine.AvailableBatchFrom.cons ?_ ?_
+  · change ¬ M.terminal source
+    exact hnonterminal
+  · intro mid hmid
+    change mid ∈ (PMF.pure afterSend).support at hmid
+    rw [PMF.support_pure] at hmid
+    subst mid
+    refine Machine.AvailableBatchFrom.cons ?_ ?_
+    · change [sent] ≠ [] ∧ ¬ M.terminal source
+      constructor
+      · intro hnil
+        cases hnil
+      · exact hnonterminal
+    · intro mid hmid
+      change mid ∈ (PMF.pure afterDeliver).support at hmid
+      rw [PMF.support_pure] at hmid
+      subst mid
+      exact liftAvailableBatchFrom M Message (delivered ++ [sent])
+        hbatch
+
+/-- Drain pending messages, then send/deliver one message and execute a lifted
+support-wide source batch. -/
+theorem deliverAllThenSendDeliverLiftAvailableBatchFrom
+    {source : M.State} {events : List M.Event}
+    (pending delivered : List (Sigma Message))
+    (player : Player) (message : Message player)
+    (hnonterminal : ¬ M.terminal source)
+    (hbatch : M.AvailableBatchFrom source events) :
+    (messageInFlight M Message).AvailableBatchFrom
+      { source := source,
+        pending := pending,
+        delivered := delivered }
+      (deliverAllThenEvents M Message pending
+        (.play player (.send message) :: .internal .deliver ::
+          events.map (liftEvent M Message))) := by
+  induction pending generalizing delivered with
+  | nil =>
+      exact sendDeliverThenLiftAvailableBatchFrom M Message delivered
+        player message hnonterminal hbatch
+  | cons pendingMessage rest ih =>
+      let src : (messageInFlight M Message).State :=
+        { source := source,
+          pending := pendingMessage :: rest,
+          delivered := delivered }
+      let afterDeliver : (messageInFlight M Message).State :=
+        { source := source,
+          pending := rest,
+          delivered := delivered ++ [pendingMessage] }
+      change
+        (messageInFlight M Message).AvailableBatchFrom src
+          (.internal .deliver ::
+            deliverAllThenEvents M Message rest
+              (.play player (.send message) :: .internal .deliver ::
+                events.map (liftEvent M Message)))
+      refine Machine.AvailableBatchFrom.cons ?_ ?_
+      · change src.pending ≠ [] ∧ ¬ M.terminal src.source
+        constructor
+        · intro hnil
+          cases hnil
+        · exact hnonterminal
+      · intro mid hmid
+        change mid ∈ (PMF.pure afterDeliver).support at hmid
+        rw [PMF.support_pure] at hmid
+        subst mid
+        simpa [afterDeliver, List.append_assoc] using
+          ih (delivered ++ [pendingMessage])
 
 /-- One available message-in-flight step cannot produce a terminal state with
 messages still pending. -/

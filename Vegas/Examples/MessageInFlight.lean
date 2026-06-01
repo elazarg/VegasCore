@@ -64,50 +64,18 @@ noncomputable def boolMessageInFlightLawFamily :
     subst batch
     cases sourceState with
     | none =>
-        let sent : Sigma (fun _ : PUnit => Bool) :=
-          ⟨PUnit.unit, message⟩
-        let dst : boolMessageInFlightMachine.State :=
-          { source := some action,
-            pending := [],
-            delivered := delivered ++ pending ++ [sent] }
-        have hsourceRun :
-            boolSpecMachine.AvailableRunFrom none
-              [.play PUnit.unit action] (some action) := by
-          refine Machine.AvailableRunFrom.cons ?_ ?_
-            (Machine.AvailableRunFrom.nil _)
-          · change action ∈ Set.univ
-            exact Set.mem_univ action
-          · change some action ∈ (PMF.pure (some action)).support
-            rw [PMF.support_pure]
-            exact Set.mem_singleton _
-        refine ⟨dst, ?_⟩
-        change
-          boolMessageInFlightMachine.AvailableRunFrom
-            { source := none,
-              pending := pending,
-              delivered := delivered }
-            (Machine.messageInFlight.deliverAllThenEvents boolSpecMachine
-                (fun _ : PUnit => Bool) pending
-              [.play PUnit.unit (.send message),
-                .internal .deliver,
-                .play PUnit.unit (.spec action)])
-            dst
-        have hdrain :=
-          Machine.messageInFlight.deliverAllAvailableRunFrom
-            boolSpecMachine (fun _ : PUnit => Bool) none pending delivered
-            (by simp [boolSpecMachine])
-        have hsendDeliver :=
-          Machine.messageInFlight.sendDeliverAvailableRunFrom
-            boolSpecMachine (fun _ : PUnit => Bool) none
-            (delivered ++ pending) PUnit.unit message
-            (by simp [boolSpecMachine])
-        have hlift :=
-          Machine.messageInFlight.liftAvailableRunFrom
-            boolSpecMachine (fun _ : PUnit => Bool)
-            (delivered ++ pending ++ [sent]) hsourceRun
-        simpa [boolMessageInFlightMachine, dst, sent, List.append_assoc,
-          Machine.messageInFlight.deliverAllThenEvents_eq] using
-          hdrain.append (hsendDeliver.append hlift)
+        have hsourceBatch :
+            boolSpecMachine.AvailableBatchFrom none
+              [.play PUnit.unit action] :=
+          Machine.AvailableBatchFrom.singleton
+            (by
+              change action ∈ Set.univ
+              exact Set.mem_univ action)
+        simpa [boolMessageInFlightMachine,
+          Machine.messageInFlight.liftEvent] using
+          Machine.messageInFlight.deliverAllThenSendDeliverLiftAvailableBatchFrom
+            boolSpecMachine (fun _ : PUnit => Bool) pending delivered
+            PUnit.unit message (by simp [boolSpecMachine]) hsourceBatch
     | some value =>
         exact False.elim
           (hnonterminal (by
@@ -274,21 +242,14 @@ noncomputable def boolDelayedSpecLawFamily :
     | nil =>
         rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
         subst batch
-        exact ⟨state, Machine.AvailableRunFrom.nil _⟩
+        exact Machine.AvailableBatchFrom.nil _
     | cons first rest =>
         rw [PMF.support_pure, Set.mem_singleton_iff] at hbatch
         subst batch
         cases state with
         | none =>
-            refine ⟨some (profile PUnit.unit), ?_⟩
-            exact
-              Machine.AvailableRunFrom.cons
-                (by simp [boolSpecMachine])
-                (by
-                  change some (profile PUnit.unit) ∈
-                    (PMF.pure (some (profile PUnit.unit))).support
-                  rw [PMF.support_pure, Set.mem_singleton_iff])
-                (Machine.AvailableRunFrom.nil _)
+            exact Machine.AvailableBatchFrom.singleton
+              (by simp [boolSpecMachine])
         | some value =>
             exact False.elim (hnonterminal (by
               cases value <;> simp [boolSpecMachine]))
@@ -343,29 +304,16 @@ noncomputable def boolMessageInFlightDelayedLawFamily :
         subst batch
         cases sourceState with
         | none =>
-            let sent : Sigma (fun _ : PUnit => Bool) :=
-              ⟨PUnit.unit, message⟩
             let src : boolMessageInFlightMachine.State :=
               { source := none,
                 pending := pending,
                 delivered := delivered }
-            let dst : boolMessageInFlightMachine.State :=
-              { source := none,
-                pending := pending ++ [sent],
-                delivered := delivered }
-            refine ⟨dst, ?_⟩
-            change
-              boolMessageInFlightMachine.AvailableRunFrom src
-                [.play PUnit.unit (.send message)] dst
-            refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-              (Machine.AvailableRunFrom.nil _)
-            · change Machine.MessageInFlightAction.send message ∈
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change Machine.MessageInFlightAction.send message ∈
                 boolMessageInFlightMachine.available src PUnit.unit
-              change ¬ boolSpecMachine.terminal none
-              simp [boolSpecMachine]
-            · change dst ∈ (PMF.pure dst).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
+                change ¬ boolSpecMachine.terminal none
+                simp [boolSpecMachine])
         | some value =>
             exact False.elim (hnonterminal (by
               cases value <;>
@@ -387,35 +335,18 @@ noncomputable def boolMessageInFlightDelayedLawFamily :
         subst batch
         cases sourceState with
         | none =>
-            let dst : boolMessageInFlightMachine.State :=
-              { source := some action,
-                pending := [],
-                delivered := delivered ++ pending }
-            have hsourceRun :
-                boolSpecMachine.AvailableRunFrom none
-                  [.play PUnit.unit action] (some action) := by
-              refine Machine.AvailableRunFrom.cons ?_ ?_
-                (Machine.AvailableRunFrom.nil _)
-              · change action ∈ Set.univ
-                exact Set.mem_univ action
-              · change some action ∈ (PMF.pure (some action)).support
-                rw [PMF.support_pure]
-                exact Set.mem_singleton _
-            refine ⟨dst, ?_⟩
-            change
-              boolMessageInFlightMachine.AvailableRunFrom
-                { source := none,
-                  pending := pending,
-                  delivered := delivered }
-                (Machine.messageInFlight.deliverAllThenEvents boolSpecMachine
-                    (fun _ : PUnit => Bool) pending
-                  [.play PUnit.unit (.spec action)])
-                dst
-            have hrun :=
-              Machine.messageInFlight.deliverAllThenLiftAvailableRunFrom
+            have hsourceBatch :
+                boolSpecMachine.AvailableBatchFrom none
+                  [.play PUnit.unit action] :=
+              Machine.AvailableBatchFrom.singleton
+                (by
+                  change action ∈ Set.univ
+                  exact Set.mem_univ action)
+            simpa [boolMessageInFlightMachine,
+              Machine.messageInFlight.liftEvent] using
+              Machine.messageInFlight.deliverAllThenLiftAvailableBatchFrom
                 boolSpecMachine (fun _ : PUnit => Bool)
-                pending delivered (by simp [boolSpecMachine]) hsourceRun
-            simpa [boolMessageInFlightMachine, dst] using hrun
+                pending delivered (by simp [boolSpecMachine]) hsourceBatch
         | some value =>
             exact False.elim (hnonterminal (by
               cases value <;>
@@ -680,68 +611,28 @@ noncomputable def encodedMessageInFlightLawFamily :
     subst batch
     cases payload with
     | none =>
-        let sent : Sigma (fun _ : PUnit => Bool) :=
-          ⟨PUnit.unit, message⟩
         let afterInternalSource : EncodedState :=
           { payload := none, audit := audit + 1 }
-        let finalSource : EncodedState :=
-          { payload := some (encodeBool action),
-            audit := audit + 1 }
-        let dst : encodedMessageInFlightMachine.State :=
-          { source := finalSource,
-            pending := [],
-            delivered := delivered ++ pending ++ [sent] }
-        have hsourceRun :
-            encodedImplMachine.AvailableRunFrom
+        have hsourceBatch :
+            encodedImplMachine.AvailableBatchFrom
               { payload := none, audit := audit }
-              [.internal PUnit.unit, .play PUnit.unit action]
-              finalSource := by
-          refine Machine.AvailableRunFrom.cons (mid := afterInternalSource)
-            ?_ ?_ ?_
+              [.internal PUnit.unit, .play PUnit.unit action] := by
+          refine Machine.AvailableBatchFrom.cons ?_ ?_
           · change PUnit.unit ∈ Set.univ
             trivial
-          · change afterInternalSource ∈
-              (PMF.pure afterInternalSource).support
-            rw [PMF.support_pure]
-            exact Set.mem_singleton _
-          · refine Machine.AvailableRunFrom.cons ?_ ?_
-              (Machine.AvailableRunFrom.nil _)
-            · change action ∈ Set.univ
-              exact Set.mem_univ action
-            · change finalSource ∈ (PMF.pure finalSource).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
-        refine ⟨dst, ?_⟩
-        change
-          encodedMessageInFlightMachine.AvailableRunFrom
-            { source := { payload := none, audit := audit },
-              pending := pending,
-              delivered := delivered }
-            (Machine.messageInFlight.deliverAllThenEvents encodedImplMachine
-                (fun _ : PUnit => Bool) pending
-              [.play PUnit.unit (.send message),
-                .internal .deliver,
-                .internal (.spec PUnit.unit),
-                .play PUnit.unit (.spec action)])
-            dst
-        have hdrain :=
-          Machine.messageInFlight.deliverAllAvailableRunFrom
-            encodedImplMachine (fun _ : PUnit => Bool)
-            { payload := none, audit := audit } pending delivered
-            (by simp [encodedImplMachine])
-        have hsendDeliver :=
-          Machine.messageInFlight.sendDeliverAvailableRunFrom
-            encodedImplMachine (fun _ : PUnit => Bool)
-            { payload := none, audit := audit } (delivered ++ pending)
-            PUnit.unit message (by simp [encodedImplMachine])
-        have hlift :=
-          Machine.messageInFlight.liftAvailableRunFrom
-            encodedImplMachine (fun _ : PUnit => Bool)
-            (delivered ++ pending ++ [sent]) hsourceRun
-        simpa [encodedMessageInFlightMachine, dst, sent, finalSource,
-          afterInternalSource, List.append_assoc,
-          Machine.messageInFlight.deliverAllThenEvents_eq] using
-          hdrain.append (hsendDeliver.append hlift)
+          · intro mid hmid
+            change mid ∈ (PMF.pure afterInternalSource).support at hmid
+            rw [PMF.support_pure] at hmid
+            subst mid
+            exact Machine.AvailableBatchFrom.singleton
+              (by
+                change action ∈ Set.univ
+                exact Set.mem_univ action)
+        simpa [encodedMessageInFlightMachine,
+          Machine.messageInFlight.liftEvent] using
+          Machine.messageInFlight.deliverAllThenSendDeliverLiftAvailableBatchFrom
+            encodedImplMachine (fun _ : PUnit => Bool) pending delivered
+            PUnit.unit message (by simp [encodedImplMachine]) hsourceBatch
     | some value =>
         exact False.elim
           (hnonterminal (by

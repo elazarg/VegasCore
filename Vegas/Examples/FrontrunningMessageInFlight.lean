@@ -90,12 +90,7 @@ noncomputable def pendingFrontrunLawFamily :
           cases colAction <;> cases pending <;>
             simpa [pendingFrontrunLaw] using hbatch
         subst batch
-        exact
-          ⟨{ source := { rowAction := some rowAction,
-                         colAction := colAction },
-              pending := pending,
-              delivered := delivered },
-            Machine.AvailableRunFrom.nil _⟩
+        exact Machine.AvailableBatchFrom.nil _
     | none =>
         cases colAction with
         | none =>
@@ -107,30 +102,16 @@ noncomputable def pendingFrontrunLawFamily :
                         (.send (pendingFrontrunRowMessage profile))] := by
                   simpa [pendingFrontrunLaw] using hbatch
                 subst batch
-                let sent : Sigma (fun _ : TalkPlayer => Bool) :=
-                  ⟨TalkPlayer.row, pendingFrontrunRowMessage profile⟩
                 let src : coordinationMessageMachine.State :=
                   { source := { rowAction := none, colAction := none },
                     pending := [],
                     delivered := delivered }
-                let dst : coordinationMessageMachine.State :=
-                  { source := { rowAction := none, colAction := none },
-                    pending := [sent],
-                    delivered := delivered }
-                refine ⟨dst, ?_⟩
-                change
-                  coordinationMessageMachine.AvailableRunFrom src
-                    [.play TalkPlayer.row
-                      (.send (pendingFrontrunRowMessage profile))] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.send
-                    (pendingFrontrunRowMessage profile) ∈
-                    coordinationMessageMachine.available src TalkPlayer.row
-                  exact hnonterminal
-                · change dst ∈ (PMF.pure dst).support
-                  rw [PMF.support_pure]
-                  exact Set.mem_singleton _
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.send
+                      (pendingFrontrunRowMessage profile) ∈
+                      coordinationMessageMachine.available src TalkPlayer.row
+                    exact hnonterminal)
             | cons message rest =>
                 let action := pendingFrontrunColAction profile (message :: rest)
                 have hbatch_eq :
@@ -143,28 +124,11 @@ noncomputable def pendingFrontrunLawFamily :
                   { source := { rowAction := none, colAction := none },
                     pending := message :: rest,
                     delivered := delivered }
-                let dst : coordinationMessageMachine.State :=
-                  { source := { rowAction := none,
-                                colAction := some action },
-                    pending := message :: rest,
-                    delivered := delivered }
-                let finalSource : CoordinationState :=
-                  { rowAction := none, colAction := some action }
-                let restore
-                    (sourceValue : CoordinationState) :
-                    coordinationMessageMachine.State :=
-                  { source := sourceValue,
-                    pending := message :: rest,
-                    delivered := delivered }
-                refine ⟨dst, ?_⟩
-                change
-                  coordinationMessageMachine.AvailableRunFrom src
-                    [.play TalkPlayer.col (.spec action)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.spec action ∈
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.spec action ∈
                     coordinationMessageMachine.available src TalkPlayer.col
-                  change action ∈
+                    change action ∈
                       coordinationMachine.available src.source TalkPlayer.col ∧
                     (src.pending = [] ∨
                       ∀ target,
@@ -172,19 +136,15 @@ noncomputable def pendingFrontrunLawFamily :
                           (coordinationMachine.stepPlay TalkPlayer.col
                             action src.source).support →
                           ¬ coordinationMachine.terminal target)
-                  constructor
-                  · change action ∈ Set.univ
-                    exact Set.mem_univ action
-                  · right
-                    intro target htarget hterminal
-                    simp [coordinationMachine, CoordinationState.setAction,
-                      src] at htarget
-                    subst target
-                    simp [coordinationMachine] at hterminal
-                · change dst ∈
-                    (PMF.map restore (PMF.pure finalSource)).support
-                  rw [PMF.pure_map, PMF.support_pure]
-                  exact Set.mem_singleton _
+                    constructor
+                    · change action ∈ Set.univ
+                      exact Set.mem_univ action
+                    · right
+                      intro target htarget hterminal
+                      simp [coordinationMachine, CoordinationState.setAction,
+                        src] at htarget
+                      subst target
+                      simp [coordinationMachine] at hterminal)
         | some colAction =>
             cases pending with
             | nil =>
@@ -199,29 +159,11 @@ noncomputable def pendingFrontrunLawFamily :
                                 colAction := some colAction },
                     pending := [],
                     delivered := delivered }
-                let dst : coordinationMessageMachine.State :=
-                  { source := { rowAction := some action,
-                                colAction := some colAction },
-                    pending := [],
-                    delivered := delivered }
-                let finalSource : CoordinationState :=
-                  { rowAction := some action,
-                    colAction := some colAction }
-                let restore
-                    (sourceValue : CoordinationState) :
-                    coordinationMessageMachine.State :=
-                  { source := sourceValue,
-                    pending := [],
-                    delivered := delivered }
-                refine ⟨dst, ?_⟩
-                change
-                  coordinationMessageMachine.AvailableRunFrom src
-                    [.play TalkPlayer.row (.spec action)] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightAction.spec action ∈
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightAction.spec action ∈
                     coordinationMessageMachine.available src TalkPlayer.row
-                  change action ∈
+                    change action ∈
                       coordinationMachine.available src.source TalkPlayer.row ∧
                     (src.pending = [] ∨
                       ∀ target,
@@ -229,14 +171,10 @@ noncomputable def pendingFrontrunLawFamily :
                           (coordinationMachine.stepPlay TalkPlayer.row
                             action src.source).support →
                           ¬ coordinationMachine.terminal target)
-                  constructor
-                  · change action ∈ Set.univ
-                    exact Set.mem_univ action
-                  · exact Or.inl rfl
-                · change dst ∈
-                    (PMF.map restore (PMF.pure finalSource)).support
-                  rw [PMF.pure_map, PMF.support_pure]
-                  exact Set.mem_singleton _
+                    constructor
+                    · change action ∈ Set.univ
+                      exact Set.mem_univ action
+                    · exact Or.inl rfl)
             | cons message rest =>
                 have hbatch_eq :
                     batch = [.internal .deliver] := by
@@ -247,29 +185,17 @@ noncomputable def pendingFrontrunLawFamily :
                                 colAction := some colAction },
                     pending := message :: rest,
                     delivered := delivered }
-                let dst : coordinationMessageMachine.State :=
-                  { source := { rowAction := none,
-                                colAction := some colAction },
-                    pending := rest,
-                    delivered := delivered ++ [message] }
-                refine ⟨dst, ?_⟩
-                change
-                  coordinationMessageMachine.AvailableRunFrom src
-                    [.internal .deliver] dst
-                refine Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-                · change Machine.MessageInFlightInternal.deliver ∈
+                exact Machine.AvailableBatchFrom.singleton
+                  (by
+                    change Machine.MessageInFlightInternal.deliver ∈
                     coordinationMessageMachine.availableInternal src
-                  change src.pending ≠ [] ∧
+                    change src.pending ≠ [] ∧
                     ¬ coordinationMachine.terminal src.source
-                  constructor
-                  · change message :: rest ≠ []
-                    intro hnil
-                    cases hnil
-                  · exact hnonterminal
-                · change dst ∈ (PMF.pure dst).support
-                  rw [PMF.support_pure]
-                  exact Set.mem_singleton _
+                    constructor
+                    · change message :: rest ≠ []
+                      intro hnil
+                      cases hnil
+                    · exact hnonterminal)
 
 noncomputable abbrev pendingFrontrunTraceGame : KernelGame TalkPlayer :=
   Machine.eventBatchTraceKernelGame

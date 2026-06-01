@@ -443,16 +443,8 @@ noncomputable def boolSpecLawFamily :
     rcases trace with ⟨batches, state⟩
     cases state with
     | none =>
-        refine ⟨some (profile PUnit.unit), ?_⟩
-        exact
-          Machine.AvailableRunFrom.cons
-            (by simp [boolSpecMachine])
-            (by
-              change
-                some (profile PUnit.unit) ∈
-                  (PMF.pure (some (profile PUnit.unit))).support
-              rw [PMF.support_pure, Set.mem_singleton_iff])
-            (Machine.AvailableRunFrom.nil _)
+        exact Machine.AvailableBatchFrom.singleton
+          (by simp [boolSpecMachine])
     | some value =>
         exact False.elim (hnonterminal (by simp [boolSpecMachine]))
 
@@ -474,29 +466,20 @@ noncomputable def encodedImplLawFamily :
               { payload := none, audit := audit }
             let mid : encodedImplMachine.State :=
               { payload := none, audit := audit + 1 }
-            let dst : encodedImplMachine.State :=
-              { payload := some (encodeBool (profile PUnit.unit)),
-                audit := audit + 1 }
-            refine
-              ⟨dst, ?_⟩
             change
-              encodedImplMachine.AvailableRunFrom src
+              encodedImplMachine.AvailableBatchFrom src
                 [.internal PUnit.unit,
                   .play PUnit.unit (profile PUnit.unit)]
-                dst
-            refine Machine.AvailableRunFrom.cons (mid := mid) ?_ ?_ ?_
+            refine Machine.AvailableBatchFrom.cons ?_ ?_
             · simp [encodedImplMachine, src]
-            · change mid ∈ (PMF.pure mid).support
-              rw [PMF.support_pure]
-              exact Set.mem_singleton _
-            · refine
-                Machine.AvailableRunFrom.cons (mid := dst) ?_ ?_
-                  (Machine.AvailableRunFrom.nil _)
-              · cases profile PUnit.unit <;>
-                  simp [encodedImplMachine, mid]
-              · change dst ∈ (PMF.pure dst).support
-                rw [PMF.support_pure]
-                exact Set.mem_singleton _
+            · intro mid' hmid'
+              change mid' ∈ (PMF.pure mid).support at hmid'
+              rw [PMF.support_pure] at hmid'
+              subst mid'
+              exact Machine.AvailableBatchFrom.singleton
+                (by
+                  cases profile PUnit.unit <;>
+                    simp [encodedImplMachine, mid])
         | some value =>
             exact False.elim (hnonterminal (by simp [encodedImplMachine]))
 
