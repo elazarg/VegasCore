@@ -491,6 +491,70 @@ theorem coordinationMessageTraceUtility_bound
       Machine.RoundView.optionOutcomeUtility, CoordinationState.outcome?]
   all_goals split <;> norm_num
 
+/-- Any stochastic refinement into the explicit message protocol preserves the
+trace distribution after projecting implementation traces. -/
+theorem talkProtocolRefinement_projectTrace_eq
+    {Impl : Machine TalkPlayer}
+    (R : Machine.StochasticRefinement Impl coordinationMessageMachine)
+    (lift : R.EventBatchLawFamilyLift TalkProtocolStrategy
+      talkProtocolLawFamily)
+    (profile : ∀ player : TalkPlayer, TalkProtocolStrategy player) :
+    PMF.map R.projectEventBatchTrace
+        ((Machine.eventBatchTraceKernelGame
+          Impl TalkProtocolStrategy lift.impl (fun _ => 0) 6)
+          |>.outcomeKernel profile) =
+      ((Machine.eventBatchTraceKernelGame
+          coordinationMessageMachine TalkProtocolStrategy
+          talkProtocolLawFamily (fun _ => 0) 6)
+          |>.outcomeKernel profile) := by
+  exact R.eventBatchTraceKernelGame_projectTrace_eq
+    lift (fun _ => 0) 6 profile
+
+/-- Expected utility facts about the explicit cheap-talk protocol pull back
+through any bounded stochastic refinement into that protocol. -/
+theorem talkProtocolRefinement_eu_eq_cheapTalk
+    {Impl : Machine TalkPlayer}
+    (R : Machine.StochasticRefinement Impl coordinationMessageMachine)
+    (lift : R.EventBatchLawFamilyLift TalkProtocolStrategy
+      talkProtocolLawFamily)
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤ 1)
+    (profile : ∀ player : TalkPlayer, TalkProtocolStrategy player)
+    (player : TalkPlayer) :
+    (Machine.eventBatchTraceKernelGame
+        Impl TalkProtocolStrategy lift.impl (fun _ => 0) 6).eu
+      profile player =
+      coordinationCheapTalkGame.eu profile player := by
+  have h :=
+    (R.eventBatchTraceEUMorphismOfBounded
+      lift (fun _ => 0) 6
+      (CImpl := fun _ => 1) (CSpec := fun _ => 1)
+      hbdImpl coordinationMessageTraceUtility_bound).eu_preserved
+        profile player
+  rw [← h]
+  exact talkProtocolTraceGame_eu_eq_cheapTalk profile player
+
+/-- The faithful cheap-talk equilibrium pulls back through any bounded
+stochastic refinement into the explicit message protocol. -/
+theorem faithfulRowSignalTalkProtocol_refinement_nash
+    {Impl : Machine TalkPlayer}
+    (R : Machine.StochasticRefinement Impl coordinationMessageMachine)
+    (lift : R.EventBatchLawFamilyLift TalkProtocolStrategy
+      talkProtocolLawFamily)
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤ 1) :
+    (Machine.eventBatchTraceKernelGame
+        Impl TalkProtocolStrategy lift.impl (fun _ => 0) 6).IsNash
+      faithfulRowSignalTalkProtocolProfile := by
+  exact
+    R.eventBatchTraceKernelGame_nash_pullback_of_bounded
+      lift (fun _ => 0) 6
+      (CImpl := fun _ => 1) (CSpec := fun _ => 1)
+      hbdImpl coordinationMessageTraceUtility_bound
+      faithfulRowSignalTalkProtocol_nash
+
 /-! ## Audited compiled protocol layer -/
 
 noncomputable def auditedCoordinationMessageMachine : Machine TalkPlayer :=
@@ -526,10 +590,10 @@ theorem auditedTalkProtocol_projectTrace_eq
           coordinationMessageMachine TalkProtocolStrategy
           talkProtocolLawFamily (fun _ => 0) 6)
           |>.outcomeKernel profile) := by
-  exact
-    (Machine.audited.refinement coordinationMessageMachine)
-      |>.eventBatchTraceKernelGame_projectTrace_eq
-        auditedTalkProtocolLawLift (fun _ => 0) 6 profile
+  simpa [auditedCoordinationMessageMachine] using
+    talkProtocolRefinement_projectTrace_eq
+      (Machine.audited.refinement coordinationMessageMachine)
+      auditedTalkProtocolLawLift profile
 
 theorem auditedTalkProtocol_eu_eq_cheapTalk
     (profile : ∀ player : TalkPlayer, TalkProtocolStrategy player)
@@ -539,29 +603,22 @@ theorem auditedTalkProtocol_eu_eq_cheapTalk
         auditedTalkProtocolLawLift.impl (fun _ => 0) 6).eu
       profile player =
       coordinationCheapTalkGame.eu profile player := by
-  have h :=
-    ((Machine.audited.refinement coordinationMessageMachine)
-      |>.eventBatchTraceEUMorphismOfBounded
-        auditedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        auditedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound).eu_preserved profile player
   simpa [auditedCoordinationMessageMachine] using
-    h.symm.trans (talkProtocolTraceGame_eu_eq_cheapTalk profile player)
+    talkProtocolRefinement_eu_eq_cheapTalk
+      (Machine.audited.refinement coordinationMessageMachine)
+      auditedTalkProtocolLawLift
+      auditedCoordinationMessageTraceUtility_bound profile player
 
 theorem auditedFaithfulRowSignalTalkProtocol_nash :
     (Machine.eventBatchTraceKernelGame
         auditedCoordinationMessageMachine TalkProtocolStrategy
         auditedTalkProtocolLawLift.impl (fun _ => 0) 6).IsNash
       faithfulRowSignalTalkProtocolProfile := by
-  exact
-    (Machine.audited.refinement coordinationMessageMachine)
-      |>.eventBatchTraceKernelGame_nash_pullback_of_bounded
-        auditedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        auditedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound
-        faithfulRowSignalTalkProtocol_nash
+  simpa [auditedCoordinationMessageMachine] using
+    faithfulRowSignalTalkProtocol_refinement_nash
+      (Machine.audited.refinement coordinationMessageMachine)
+      auditedTalkProtocolLawLift
+      auditedCoordinationMessageTraceUtility_bound
 
 /-! ## Encoded-storage compiled protocol layer -/
 
@@ -1283,9 +1340,9 @@ theorem encodedTalkProtocol_projectTrace_eq
           talkProtocolLawFamily (fun _ => 0) 6)
           |>.outcomeKernel profile) := by
   exact
-    encodedCoordinationMessageRefinement
-      |>.eventBatchTraceKernelGame_projectTrace_eq
-        encodedTalkProtocolLawLift (fun _ => 0) 6 profile
+    talkProtocolRefinement_projectTrace_eq
+      encodedCoordinationMessageRefinement
+      encodedTalkProtocolLawLift profile
 
 theorem encodedTalkProtocol_finalState_six
     (profile : ∀ player : TalkPlayer, TalkProtocolStrategy player) :
@@ -1325,15 +1382,11 @@ theorem encodedTalkProtocol_eu_eq_cheapTalk
         encodedTalkProtocolLawLift.impl (fun _ => 0) 6).eu
       profile player =
       coordinationCheapTalkGame.eu profile player := by
-  have h :=
-    (encodedCoordinationMessageRefinement
-      |>.eventBatchTraceEUMorphismOfBounded
-        encodedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        encodedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound).eu_preserved profile player
-  rw [← h]
-  exact talkProtocolTraceGame_eu_eq_cheapTalk profile player
+  exact
+    talkProtocolRefinement_eu_eq_cheapTalk
+      encodedCoordinationMessageRefinement
+      encodedTalkProtocolLawLift
+      encodedCoordinationMessageTraceUtility_bound profile player
 
 theorem encodedFaithfulRowSignalTalkProtocol_nash :
     (Machine.eventBatchTraceKernelGame
@@ -1341,13 +1394,10 @@ theorem encodedFaithfulRowSignalTalkProtocol_nash :
         encodedTalkProtocolLawLift.impl (fun _ => 0) 6).IsNash
       faithfulRowSignalTalkProtocolProfile := by
   exact
-    encodedCoordinationMessageRefinement
-      |>.eventBatchTraceKernelGame_nash_pullback_of_bounded
-        encodedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        encodedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound
-        faithfulRowSignalTalkProtocol_nash
+    faithfulRowSignalTalkProtocol_refinement_nash
+      encodedCoordinationMessageRefinement
+      encodedTalkProtocolLawLift
+      encodedCoordinationMessageTraceUtility_bound
 
 /-! ## Audited encoded-storage backend -/
 
@@ -1398,10 +1448,10 @@ theorem auditedEncodedTalkProtocol_projectTrace_eq
           coordinationMessageMachine TalkProtocolStrategy
           talkProtocolLawFamily (fun _ => 0) 6)
           |>.outcomeKernel profile) := by
-  exact
-    auditedEncodedCoordinationMessageRefinement
-      |>.eventBatchTraceKernelGame_projectTrace_eq
-        auditedEncodedTalkProtocolLawLift (fun _ => 0) 6 profile
+  simpa [auditedEncodedCoordinationMessageMachine] using
+    talkProtocolRefinement_projectTrace_eq
+      auditedEncodedCoordinationMessageRefinement
+      auditedEncodedTalkProtocolLawLift profile
 
 theorem auditedEncodedTalkProtocol_eu_eq_cheapTalk
     (profile : ∀ player : TalkPlayer, TalkProtocolStrategy player)
@@ -1411,29 +1461,22 @@ theorem auditedEncodedTalkProtocol_eu_eq_cheapTalk
         auditedEncodedTalkProtocolLawLift.impl (fun _ => 0) 6).eu
       profile player =
       coordinationCheapTalkGame.eu profile player := by
-  have h :=
-    (auditedEncodedCoordinationMessageRefinement
-      |>.eventBatchTraceEUMorphismOfBounded
-        auditedEncodedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        auditedEncodedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound).eu_preserved profile player
-  rw [← h]
-  exact talkProtocolTraceGame_eu_eq_cheapTalk profile player
+  simpa [auditedEncodedCoordinationMessageMachine] using
+    talkProtocolRefinement_eu_eq_cheapTalk
+      auditedEncodedCoordinationMessageRefinement
+      auditedEncodedTalkProtocolLawLift
+      auditedEncodedCoordinationMessageTraceUtility_bound profile player
 
 theorem auditedEncodedFaithfulRowSignalTalkProtocol_nash :
     (Machine.eventBatchTraceKernelGame
         auditedEncodedCoordinationMessageMachine TalkProtocolStrategy
         auditedEncodedTalkProtocolLawLift.impl (fun _ => 0) 6).IsNash
       faithfulRowSignalTalkProtocolProfile := by
-  exact
-    auditedEncodedCoordinationMessageRefinement
-      |>.eventBatchTraceKernelGame_nash_pullback_of_bounded
-        auditedEncodedTalkProtocolLawLift (fun _ => 0) 6
-        (CImpl := fun _ => 1) (CSpec := fun _ => 1)
-        auditedEncodedCoordinationMessageTraceUtility_bound
-        coordinationMessageTraceUtility_bound
-        faithfulRowSignalTalkProtocol_nash
+  simpa [auditedEncodedCoordinationMessageMachine] using
+    faithfulRowSignalTalkProtocol_refinement_nash
+      auditedEncodedCoordinationMessageRefinement
+      auditedEncodedTalkProtocolLawLift
+      auditedEncodedCoordinationMessageTraceUtility_bound
 
 theorem rowSignalTalkProtocol_nash :
     (Machine.eventBatchTraceKernelGame
