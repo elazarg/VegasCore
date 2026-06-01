@@ -506,6 +506,128 @@ theorem sendDeliverAvailableRunFrom
       (deliverAvailableRunFrom M Message source sent [] delivered
         hnonterminal)
 
+/-- One available message-in-flight step cannot produce a terminal state with
+messages still pending. -/
+theorem availableStep_pending_nil_or_nonterminal
+    {state target : (messageInFlight M Message).State}
+    {event : (messageInFlight M Message).Event}
+    (hstep : (messageInFlight M Message).AvailableStep state event target) :
+    target.pending = [] ∨ ¬ (messageInFlight M Message).terminal target := by
+  rcases hstep with ⟨havailable, hsupport⟩
+  cases event with
+  | play player action =>
+      cases action with
+      | send message =>
+          right
+          change ¬ M.terminal target.source
+          have htarget :
+              target =
+                { source := state.source,
+                  pending := state.pending ++ [⟨player, message⟩],
+                  delivered := state.delivered } := by
+            change target ∈
+              (PMF.pure
+                ({ source := state.source,
+                   pending := state.pending ++ [⟨player, message⟩],
+                   delivered := state.delivered } :
+                  (messageInFlight M Message).State)).support at hsupport
+            rw [PMF.support_pure] at hsupport
+            exact hsupport
+          subst target
+          exact havailable
+      | spec action =>
+          change action ∈ M.available state.source player ∧
+            (state.pending = [] ∨
+              ∀ target,
+                target ∈ (M.stepPlay player action state.source).support →
+                  ¬ M.terminal target) at havailable
+          rcases
+              (PMF.mem_support_map_iff _ _ _).mp hsupport with
+            ⟨sourceTarget, hsourceSupport, htarget⟩
+          subst target
+          cases havailable.2 with
+          | inl hpending =>
+              left
+              exact hpending
+          | inr hnonterminal =>
+              right
+              change ¬ M.terminal sourceTarget
+              exact hnonterminal sourceTarget hsourceSupport
+  | internal event =>
+      cases event with
+      | deliver =>
+          right
+          change ¬ M.terminal target.source
+          cases hpending : state.pending with
+          | nil =>
+              exact False.elim (havailable.1 hpending)
+          | cons message rest =>
+            have htarget :
+                target =
+                  { source := state.source,
+                    pending := rest,
+                    delivered := state.delivered ++ [message] } := by
+              simpa [Machine.step_internal, messageInFlight, hpending] using
+                hsupport
+            subst target
+            exact havailable.2
+      | spec event =>
+          change event ∈ M.availableInternal state.source ∧
+            (state.pending = [] ∨
+              ∀ target,
+                target ∈ (M.stepInternal event state.source).support →
+                  ¬ M.terminal target) at havailable
+          rcases
+              (PMF.mem_support_map_iff _ _ _).mp hsupport with
+            ⟨sourceTarget, hsourceSupport, htarget⟩
+          subst target
+          cases havailable.2 with
+          | inl hpending =>
+              left
+              exact hpending
+          | inr hnonterminal =>
+              right
+              change ¬ M.terminal sourceTarget
+              exact hnonterminal sourceTarget hsourceSupport
+
+/-- Runs of the message-in-flight wrapper preserve the invariant that either
+no messages are pending or the wrapped source state is nonterminal. -/
+theorem availableRunFrom_pending_nil_or_nonterminal
+    {source target : (messageInFlight M Message).State}
+    {events : List (messageInFlight M Message).Event}
+    (hrun : (messageInFlight M Message).AvailableRunFrom source events target)
+    (hsource :
+      source.pending = [] ∨ ¬ (messageInFlight M Message).terminal source) :
+    target.pending = [] ∨ ¬ (messageInFlight M Message).terminal target := by
+  induction hrun with
+  | nil state =>
+      exact hsource
+  | cons havailable hsupport _ ih =>
+      exact ih
+        (availableStep_pending_nil_or_nonterminal M Message
+          ⟨havailable, hsupport⟩)
+
+/-- Any terminal state reachable from the wrapper initial state has drained
+all pending messages. -/
+theorem initAvailableRunFrom_terminal_pending_nil
+    {target : (messageInFlight M Message).State}
+    {events : List (messageInFlight M Message).Event}
+    (hrun :
+      (messageInFlight M Message).AvailableRunFrom
+        (messageInFlight M Message).init events target)
+    (hterminal : (messageInFlight M Message).terminal target) :
+    target.pending = [] := by
+  have hinvariant :
+      target.pending = [] ∨
+        ¬ (messageInFlight M Message).terminal target :=
+    availableRunFrom_pending_nil_or_nonterminal M Message hrun
+      (Or.inl rfl)
+  cases hinvariant with
+  | inl hpending =>
+      exact hpending
+  | inr hnonterminal =>
+      exact False.elim (hnonterminal hterminal)
+
 section MapRefinement
 
 variable {Impl Spec : Machine Player}
