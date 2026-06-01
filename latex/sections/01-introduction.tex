@@ -11,6 +11,62 @@ then summarizes the main theorem surface.  The notation and glossary
 immediately after the introduction define recurring terms such as
 frontier, checkpoint, and kernel game.
 
+\Cref{fig:overview} is a roadmap of the whole development: a protocol
+program is compiled to a visibility-aware event graph, which executes on a
+schedule-agnostic operational machine and presents as the strategic games on
+which equilibrium and information properties are proved; concrete runtimes
+enter from below as a composable tower of refinements that preserve the game's
+utilities, bottoming out at the on-chain execution that is the end goal.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=2.4mm]},
+  font=\small,
+  box/.style={draw, rounded corners, align=center, inner sep=4pt,
+              minimum height=9mm, text width=46mm},
+  core/.style={box, fill=blue!8, very thick},
+  side/.style={box, fill=green!8, text width=42mm},
+  goal/.style={box, dashed, fill=black!4, text width=46mm},
+  flow/.style={->, thick},
+  lab/.style={font=\footnotesize, midway, right=1mm, align=left},
+]
+% ── forward semantic spine (top-down) ────────────────────────────────
+\node[box]  (prog)  at (0,0)    {Protocol program\\{\footnotesize public samples \(\cdot\) sealed commits \(\cdot\) reveals \(\cdot\) payoffs}};
+\node[core] (graph) at (0,-2.1) {Visibility-aware \textbf{event graph}\\{\footnotesize the semantic center}};
+\node[box]  (mach)  at (0,-4.2) {Operational machine\\{\footnotesize schedule-agnostic execution}};
+\draw[flow] (prog)  -- node[lab]{compile\\{\scriptsize source syntax erased}} (graph);
+\draw[flow] (graph) -- node[lab]{execute} (mach);
+% ── strategic analysis surface (to the right) ────────────────────────
+\node[side] (games) at (7.2,-1.6) {Strategic games\\{\footnotesize pure \(\cdot\) behavioral \(\cdot\) mixed-pure}};
+\node[side] (pres)  at (7.2,-3.6) {FOSG / EFG presentations};
+\draw[flow] (mach.east) .. controls +(2.2,0) and +(-1.6,0) .. (games.west)
+  node[pos=0.55,above,font=\footnotesize,align=center]{frontier\\view};
+\draw[flow] (games) -- (pres);
+\node[align=left, text width=46mm, font=\footnotesize] at (7.2,0.4)
+  {\textbf{Prove \& analyze:} payoff adequacy, visibility, Kuhn equivalence,
+   Nash / equilibria};
+% ── runtime tower (bottom-up refinement) ─────────────────────────────
+\node[box]  (back) at (0,-6.4) {Abstract backend layers\\{\footnotesize audited steps \(\cdot\) encoded storage \(\cdot\) message buffers}};
+\node[goal] (evm)  at (0,-8.6) {\textbf{EVM / smart-contract runtime}\\{\footnotesize end goal: on-chain execution}};
+\draw[flow] (back) -- node[lab]{refines\\{\scriptsize utility-preserving}} (mach);
+\draw[flow] (evm)  -- node[lab]{refines\\{\scriptsize layers compose into a tower}} (back);
+% ── legend ───────────────────────────────────────────────────────────
+\node[draw, rounded corners, align=left, font=\scriptsize, fill=white,
+      inner sep=3pt, anchor=north west] at (4.6,-6.0)
+  {\tikz\node[draw,rounded corners,minimum width=4mm,minimum height=3mm,fill=blue!8]{};\ mechanized in this work\\
+   \tikz\node[draw,rounded corners,dashed,minimum width=4mm,minimum height=3mm,fill=black!4]{};\ motivating target};
+\end{tikzpicture}
+\caption{VegasCore at a glance.  Solid boxes are mechanized in this
+development.  The downward arrows are the forward semantics that turn a
+protocol into a game; the strategic surface on the right is where
+game-theoretic properties are proved.  Concrete runtimes enter from below as a
+\emph{tower} of utility-preserving refinements that compose down to the
+primitive machine; the EVM runtime (dashed) is the motivating endpoint the
+interfaces are designed to reach.}
+\label{fig:overview}
+\end{figure}
+
 \subsection{Protocols vs. game trees}
 
 Many finite games are naturally written as protocols.  Each player

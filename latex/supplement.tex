@@ -4,6 +4,8 @@
 
 \usepackage[margin=1in]{geometry}
 \usepackage{microtype}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
 
 % The supplement quotes long Lean signatures and theorem names inline.
 % It therefore keeps a deliberately looser paragraph policy than the
@@ -34,26 +36,167 @@ semantics or documentation live.
 
 \tableofcontents
 
+\section{Auditing the mechanization}
+\label{sec:audit}
+
+This section is for a reader who wants to convince themselves that the
+formalization means what the report claims, without reading proofs.
+
+\subsection{What is trusted, and what is not}
+
+In a Lean development the trusted surface is finite and specific.  Three
+things carry meaning that a human must check:
+\begin{enumerate}[itemsep=2pt,leftmargin=1.4em]
+\item the \emph{definitions} --- they decide what every concept denotes;
+\item the \emph{statements} of the top-level theorems --- they decide what is
+  actually proved;
+\item the \emph{trusted base} --- Lean's kernel and the axioms the theorems
+  invoke.
+\end{enumerate}
+Proofs are \emph{not} on this list: the kernel checks them, so an auditor never
+reads a proof body.  Auditing therefore reduces to reading definitions and
+theorem statements, after bounding the trusted base.
+
+The two reading surfaces are maintained in the code as curated indexes:
+\TT{Vegas.Core.Spec} lists the load-bearing \emph{definitions} in dependency
+order, and \TT{Vegas.Core.Theorems.Claims} lists the paper-facing
+\emph{theorem statements}.  Both are build-checked: \TT{Spec} pins each
+definition with a \texttt{\#check}, so a rename or removal breaks the build.
+
+\subsection{The trusted base}
+
+The development adds nothing to classical logic.  Every flagship claim --- from
+graph well-formedness through terminal-payoff adequacy to runtime-refinement
+utility preservation --- depends only on the three standard Lean axioms, with no
+\TT{sorry}, no project-specific \TT{axiom}, and no \TT{native_decide}:
+
+\begin{leanbox}
+\#print axioms Vegas.WFProgram.claim\_compiles\_to\_wellFormed\_eventGraph\\
+-- depends on axioms: [propext, Classical.choice, Quot.sound]\\
+-- identical for claim\_terminal\_outcome\_is\_source\_payoff\\
+-- and claim\_runtime\_refinement\_preserves\_behavioral\_udist
+\end{leanbox}
+
+\noindent
+This footprint is not just observed once; \TT{Vegas.Core.Spec} pins it with
+\texttt{\#guard\_msgs} assertions, so the build fails the moment it changes ---
+for instance, a stray \TT{sorry} would introduce \TT{sorryAx} and break the pin.
+The trusted base is thus a checked invariant, not a claim in prose.
+
+\subsection{A four-pass reading order}
+
+\begin{description}[itemsep=3pt,leftmargin=1.2em,style=nextline]
+\item[Pass 0 --- trusted base.]
+  Confirm the axiom footprint above and that no escape hatches
+  (\TT{sorry}, \TT{axiom}, \TT{unsafe}, \TT{native_decide}) appear in the
+  tree.  This bounds what ``trust'' costs.
+\item[Pass 1 --- definitions.]
+  Walk \TT{Vegas.Core.Spec} in order (\Cref{tab:audit-correspondence}).  For
+  each definition the question is faithfulness: does it encode the intended
+  concept, and does it \emph{forbid} what it must forbid?
+\item[Pass 2 --- statements.]
+  Read \TT{Vegas.Core.Theorems.Claims}.  For each claim, check that the
+  hypotheses are satisfiable and the conclusion is as strong as the prose
+  promises.  The classic failure is a true-but-vacuous theorem, visible only in
+  the statement.
+\item[Pass 3 --- witnesses.]
+  The build-tested \TT{Vegas.Examples} instantiate the definitions on concrete
+  games and fire the claims, ruling out the ``everything vacuous'' failure mode
+  by exhibiting real inhabitants.
+\end{description}
+
+\subsection{Definition correspondence and faithfulness questions}
+
+\Cref{tab:audit-correspondence} is the paper-facing rendering of
+\TT{Vegas.Core.Spec}: each load-bearing definition, where it lives, and the one
+question an auditor should ask of it.  Every Lean name here is \texttt{\#check}ed
+in \TT{Spec}, so the table cannot silently drift out of sync with the code.
+
+\begin{table}[h]
+\small
+\begin{tabular}{@{}p{0.16\textwidth}p{0.20\textwidth}p{0.55\textwidth}@{}}
+\toprule
+Paper object & Lean name & Faithfulness question \\
+\midrule
+\(L\) (expression language) & \TT{Vegas.IExpr} &
+  Does the soundness law genuinely confine evaluation to the declared read
+  footprint, so no instance can inspect an undeclared field? \\
+visibility contexts & \TT{Vegas.VCtx}, \TT{Vegas.VHasVar} &
+  Is lookup proof-bearing, and do \(\erasepub{\cdot}\), \(\erasectx{\cdot}\),
+  \(\view{p}\) keep exactly the right bindings? \\
+\(\mathsf{VegasCore}\) & \TT{Vegas.VegasCore} &
+  Is the commit guard typed over the committer's view only?  Does
+  \(\Reveal\) require an ownership witness?  Is there no \(\Let\)/leak of
+  hidden state? \\
+\(\mathsf{VegasLang}\) & \TT{Vegas.VegasLang} &
+  Does lowering erase administrative lets and preserve visibility? \\
+\(\mathsf{WFProgram}\) & \TT{Vegas.WFProgram} &
+  Are reveal-completeness and legality the right obligations, and are they
+  non-vacuous (inhabited, decidable)? \\
+\(\mathsf{Graph.WF}\) & \TT{Vegas.EventGraph.Graph.WF} &
+  Do the well-formedness clauses match the intended invariant (read
+  availability, visibility, reveal discipline)? \\
+\(\mathsf{compile}\) & \TT{Vegas.ToEventGraph.compile} &
+  Is variable lookup proof-bearing, and are reads computed from the
+  acting player's visible fields? \\
+\bottomrule
+\end{tabular}
+\caption{The trusted definition surface and its audit questions.  Mirrors
+\TT{Vegas.Core.Spec}.}
+\label{tab:audit-correspondence}
+\end{table}
+
 \section{Pipeline}
 
-The maintained semantic spine is:
-\[
-  \TT{VegasLang}
-  \to
-  \TT{VegasCore}
-  \to
-  \TT{EventGraph.Graph}
-  \to
-  \TT{Machine}
-  \to
-  \TT{KernelGame}.
-\]
+The maintained semantic spine, with the theorem certifying each step, is shown
+in \Cref{fig:pipeline}.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[round]},
+  box/.style={draw, rounded corners, align=center, inner sep=4pt,
+              font=\scriptsize\ttfamily, minimum height=9mm, text width=15mm},
+  lab/.style={font=\scriptsize, midway, above, align=center},
+  node distance=8mm and 10mm]
+  \node[box] (lang)  {VegasLang};
+  \node[box, right=of lang]  (core)  {VegasCore};
+  \node[box, right=of core]  (graph) {Graph\\graph.WF};
+  \node[box, right=of graph] (mach)  {Primitive Machine};
+  \node[box, right=of mach]  (games) {frontier Kernel Games};
+  \draw[->] (lang)  -- node[lab]{lower} (core);
+  \draw[->] (core)  -- node[lab]{compile\\(1)} (graph);
+  \draw[->] (graph) -- node[lab]{execute\\(2)} (mach);
+  \draw[->] (mach)  -- node[lab]{frontier\\(3)} (games);
+  \node[box, below=11mm of mach] (impl) {Impl Machine};
+  \draw[->] (impl) -- node[font=\scriptsize, midway, right, align=left]
+    {$\sqsubseteq$ + adequacy\\(4)} (mach);
+\end{tikzpicture}
+
+\smallskip
+{\footnotesize\raggedright
+\emph{Certified by:}
+(1)~\TT{claim_compiles_to_wellFormed_eventGraph};
+(2)~\TT{claim_terminal_outcome_is_source_payoff};
+(3)~\TT{claim_behavioral_frontier_outcome_kernel_is_source_projection}
+(and the pure analogue);
+(4)~\TT{claim_runtime_refinement_preserves_behavioral_udist}.\par}
+\caption{The compilation/refinement pipeline.  Horizontal arrows are the
+maintained forward semantics; the vertical arrow is a runtime refinement of the
+primitive machine.  Each labelled arrow is backed by a paper-facing claim in
+\TT{Vegas.Core.Theorems.Claims} whose trusted base is the three standard axioms
+(\Cref{sec:audit}).}
+\label{fig:pipeline}
+\end{figure}
+
 The first arrow is surface lowering.  It erases administrative
 \(\Let\)-bindings and lowers nullable yields to hidden optional
 commitments followed by reveals.  The second arrow is graph
 compilation.  The third is the primitive operational adapter.  The
 fourth is the frontier round-view construction that gives native
-strategic games.
+strategic games.  The vertical refinement edge relates a lower-level
+implementation machine to the primitive machine, and is the subject of the
+runtime-refinement transport theorems.
 
 \begin{center}\small
 \begin{tabular}{@{}p{0.30\textwidth}p{0.60\textwidth}@{}}
@@ -103,6 +246,13 @@ hidden values owned by the committing player.  Reveals introduce fresh
 public aliases for hidden values.  Terminal payoff expressions read the
 public context.
 
+\emph{Audit.}  The partial-information discipline lives in the constructor
+types: the commit guard is typed over \(\erasectx{\view{who}}\) (the committer's
+view only), and \(\Reveal\) takes a \TT{VHasVar} ownership witness, so a hidden
+value can be disclosed only by its owner and only if it really exists.  Because
+the inductive is indexed by the visibility context, well-scopedness is by
+construction --- there is no separate checker to trust.
+
 \subsection{Surface}
 
 \begin{leanbox}
@@ -144,6 +294,13 @@ structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where
 \TT{GraphProgram} is the minimal graph-construction input.
 \TT{WFProgram} is the checked game boundary.  The compiler consumes the
 former; progress and game-facing theorems consume the latter.
+
+\emph{Audit.}  The two faithfulness questions are whether the obligations are
+\emph{sufficient} (do \TT{RevealComplete} and \TT{Legal} rule out exactly the
+degenerate programs --- sealed commitments and deadlocked guards?) and whether
+they are \emph{non-vacuous}.  Non-vacuity is witnessed concretely by the games
+in \TT{Vegas.Examples}, which construct inhabitants of these structures and
+discharge the obligations.
 
 \section{Event Graphs}
 
@@ -208,6 +365,13 @@ visibility for commit choice footprints, and hidden-to-public discipline for
 reveals.  \TT{Graph.prereqs} is canonical: a prior node is a
 prerequisite exactly when it writes a field read by the active node,
 or when the active node is a reveal and the prior node is a commit.
+
+\emph{Audit.}  ``Well-formed'' means exactly the clauses of \TT{Graph.nodeWFAt}
+--- the predicate is where the invariant is \emph{defined}, not merely where it
+is proved.  The visibility-carrying clauses (public reads for public outputs,
+actor visibility for commit footprints, hidden-to-public reveal discipline) are
+what carry the source visibility discipline across compilation, so they are the
+clauses to read most carefully.
 
 \subsection{Execution}
 

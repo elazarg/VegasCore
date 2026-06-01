@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Mathlib.Data.Int.Interval
-import Vegas.Core.Basic
+import Vegas.Core.FiniteDomain
 
 /-!
 # Concrete Vegas expression layer

@@ -1,6 +1,7 @@
 import Vegas.Base.FWeight
 import Vegas.Base.Basic
 import Vegas.Core.Basic
+import Vegas.Core.FiniteDomain
 import Vegas.Core.Simple
 import Vegas.Core.WF
 import Vegas.Core.Scope
@@ -18,6 +19,7 @@ import Vegas.EventGraph.Batch
 import Vegas.EventGraph.RoundView
 import Vegas.EventGraph.Validate
 import Vegas.Core.ToEventGraph
+import Vegas.Core.Spec
 import Vegas.Core.Theorems
 import Vegas.Runtime.Codec
 import Vegas.Machine.KernelGame
