@@ -6,6 +6,9 @@ import Vegas.Examples.Refinement
 This module exercises the fact that `projectEventBatch` is independent
 refinement data. A backend can retain meaningful pointwise event projections
 while canonicalizing whole administrative batches away.
+
+The stuttering machine here is intentionally payoff-trivial; the examples test
+batch-projection and lift plumbing, not game-theoretic content.
 -/
 
 namespace Vegas

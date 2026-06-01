@@ -8,6 +8,10 @@ import Vegas.Examples.BoolMessage
 These examples isolate a small strategic-presentation step: enriching the
 strategy space with payoff-irrelevant message coordinates, then reindexing
 runtime law lifts through that enrichment.
+
+The stuttering machine in this file is a plumbing fixture: its utilities are
+constant, so the Nash examples exercise inert-extension transport rather than a
+substantive equilibrium claim.
 -/
 
 namespace Vegas
