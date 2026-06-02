@@ -1,4 +1,4 @@
-import Vegas.Core.ToEventGraph.Games
+import Vegas.Frontier.Games
 
 /-!
 # Kernel-game export tables

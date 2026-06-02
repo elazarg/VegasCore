@@ -30,7 +30,7 @@ profile with the same joint utility distribution.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
-See \TT{Vegas.Core.Theorems.FOSG}, especially the behavioral and
+See \TT{Vegas.Theorems.FOSG}, especially the behavioral and
 restricted-behavioral FOSG utility-distribution theorems.
 \end{proof}
 
@@ -57,7 +57,7 @@ behavioral frontier game.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
-See \TT{Vegas.Core.Theorems.EFG}; the relevant statement is the
+See \TT{Vegas.Theorems.EFG}; the relevant statement is the
 frontier plain-EFG payoff-distribution theorem for behavioral profiles.
 \end{proof}
 
@@ -105,7 +105,7 @@ side.
 \end{theorem}
 
 \begin{proof}[Mechanized proofs]
-See \TT{Vegas.Core.Theorems.Kuhn}, especially the behavioral-to-mixed,
+See \TT{Vegas.Theorems.Kuhn}, especially the behavioral-to-mixed,
 mixed-to-behavioral, and frontier-complete outcome Kuhn theorems.
 \end{proof}
 
@@ -120,13 +120,13 @@ frontier semantics to external game forms; they are not the semantic
 proof route for this Kuhn statement.
 
 \leancorr{Generic RoundView/FOSG and RoundView/EFG bridges are in
-\TT{Vegas.GameBridge.FOSG.FromRoundView} and
-\TT{Vegas.GameBridge.EFG.FromRoundView}.  Checked-program bridges are in
-\TT{Vegas.GameBridge.FOSG.FromCore} and
-\TT{Vegas.GameBridge.EFG.FromCore}; exports are in
+\TT{Vegas.Presentation.FOSG.FromRoundView} and
+\TT{Vegas.Presentation.EFG.FromRoundView}.  Checked-program bridges are in
+\TT{Vegas.Presentation.FOSG.FromCore} and
+\TT{Vegas.Presentation.EFG.FromCore}; exports are in
 \TT{Vegas.Export.FOSG} and \TT{Vegas.Export.EFG}.  Program-facing Kuhn
-facts are in \TT{Vegas.Core.ToEventGraph.Kuhn} and
-\TT{Vegas.Core.Theorems.Kuhn}; the public strategy/deviation package is
+facts are in \TT{Vegas.Frontier.Kuhn} and
+\TT{Vegas.Theorems.Kuhn}; the public strategy/deviation package is
 \TT{frontierKuhnStrategicEquivalence\_schema}, with individual
 deviation facts such as
 \TT{mixedPureFrontier\_mixedDeviation\_to\_behavioral\_kernel} and

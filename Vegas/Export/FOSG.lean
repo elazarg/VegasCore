@@ -1,4 +1,4 @@
-import Vegas.GameBridge.FOSG.FromCore
+import Vegas.Presentation.FOSG.FromCore
 
 /-!
 # FOSG denotation handles

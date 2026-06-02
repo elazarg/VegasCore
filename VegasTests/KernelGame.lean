@@ -4,8 +4,8 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.GameBridge.EFG.FromRoundView
-import Vegas.GameBridge.FOSG.FromRoundView
+import Vegas.Presentation.EFG.FromRoundView
+import Vegas.Presentation.FOSG.FromRoundView
 import Vegas.Machine.KernelGame
 
 /-!

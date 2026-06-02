@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Core.WF
+import Vegas.Core.Obligations
 
 /-!
 # Visibility scoping and observation

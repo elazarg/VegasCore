@@ -58,8 +58,8 @@ reads a proof body.  Auditing therefore reduces to reading definitions and
 theorem statements, after bounding the trusted base.
 
 The two reading surfaces are maintained in the code as curated indexes:
-\TT{Vegas.Core.Spec} lists the load-bearing \emph{definitions} in dependency
-order, and \TT{Vegas.Core.Theorems.Claims} lists the paper-facing
+\TT{Vegas.Spec} lists the load-bearing \emph{definitions} in dependency
+order, and \TT{Vegas.Theorems.Claims} lists the paper-facing
 \emph{theorem statements}.  Both are build-checked: \TT{Spec} pins each
 definition with a \texttt{\#check}, so a rename or removal breaks the build.
 
@@ -78,7 +78,7 @@ utility preservation --- depends only on the three standard Lean axioms, with no
 \end{leanbox}
 
 \noindent
-This footprint is not just observed once; \TT{Vegas.Core.Spec} pins it with
+This footprint is not just observed once; \TT{Vegas.Spec} pins it with
 \texttt{\#guard\_msgs} assertions, so the build fails the moment it changes ---
 for instance, a stray \TT{sorry} would introduce \TT{sorryAx} and break the pin.
 The trusted base is thus a checked invariant, not a claim in prose.
@@ -91,11 +91,11 @@ The trusted base is thus a checked invariant, not a claim in prose.
   (\TT{sorry}, \TT{axiom}, \TT{unsafe}, \TT{native_decide}) appear in the
   tree.  This bounds what ``trust'' costs.
 \item[Pass 1 --- definitions.]
-  Walk \TT{Vegas.Core.Spec} in order (\Cref{tab:audit-correspondence}).  For
+  Walk \TT{Vegas.Spec} in order (\Cref{tab:audit-correspondence}).  For
   each definition the question is faithfulness: does it encode the intended
   concept, and does it \emph{forbid} what it must forbid?
 \item[Pass 2 --- statements.]
-  Read \TT{Vegas.Core.Theorems.Claims}.  For each claim, check that the
+  Read \TT{Vegas.Theorems.Claims}.  For each claim, check that the
   hypotheses are satisfiable and the conclusion is as strong as the prose
   promises.  The classic failure is a true-but-vacuous theorem, visible only in
   the statement.
@@ -108,7 +108,7 @@ The trusted base is thus a checked invariant, not a claim in prose.
 \subsection{Definition correspondence and faithfulness questions}
 
 \Cref{tab:audit-correspondence} is the paper-facing rendering of
-\TT{Vegas.Core.Spec}: each load-bearing definition, where it lives, and the one
+\TT{Vegas.Spec}: each load-bearing definition, where it lives, and the one
 question an auditor should ask of it.  Every Lean name here is \texttt{\#check}ed
 in \TT{Spec}, so the table cannot silently drift out of sync with the code.
 
@@ -142,7 +142,7 @@ visibility contexts & \TT{Vegas.VCtx}, \TT{Vegas.VHasVar} &
 \bottomrule
 \end{tabular}
 \caption{The trusted definition surface and its audit questions.  Mirrors
-\TT{Vegas.Core.Spec}.}
+\TT{Vegas.Spec}.}
 \label{tab:audit-correspondence}
 \end{table}
 
@@ -184,7 +184,7 @@ in \Cref{fig:pipeline}.
 \caption{The compilation/refinement pipeline.  Horizontal arrows are the
 maintained forward semantics; the vertical arrow is a runtime refinement of the
 primitive machine.  Each labelled arrow is backed by a paper-facing claim in
-\TT{Vegas.Core.Theorems.Claims} whose trusted base is the three standard axioms
+\TT{Vegas.Theorems.Claims} whose trusted base is the three standard axioms
 (\Cref{sec:audit}).}
 \label{fig:pipeline}
 \end{figure}
@@ -203,23 +203,27 @@ runtime-refinement transport theorems.
 \toprule
 Module & Role \\
 \midrule
-\TT{Vegas.Base} & Expression interfaces, contexts, environments,
+\TT{Vegas.Foundation} & Expression interfaces, contexts, environments,
 finite weights, outcomes. \\
-\TT{Vegas.Lang} & Surface syntax over the simple expression language,
+\TT{Vegas.Language} & Surface syntax over the simple expression language,
 let erasure, nullable yield lowering. \\
-\TT{Vegas.Core} & Generic protocol core and checked-program
-obligations. \\
+\TT{Vegas.Core} & Generic protocol core, the simple expression language, and
+checked-program obligation predicates. \\
+\TT{Vegas.WellFormed} & Checked-program boundary: programs bundled with their
+obligation proofs. \\
 \TT{Vegas.EventGraph} & Source-independent graph IR, primitive
 execution, observations, batches. \\
-\TT{Vegas.Core.ToEventGraph} & Compiler, source adequacy, frontier
-round semantics, games, Kuhn bridge. \\
-\TT{Vegas.GameBridge} & FOSG and EFG presentations of round views and
+\TT{Vegas.Compile} & Checked-program to event-graph compiler and the
+checkpoint model. \\
+\TT{Vegas.Frontier} & Source adequacy, frontier round semantics, games,
+and the Kuhn bridge. \\
+\TT{Vegas.Presentation} & FOSG and EFG presentations of round views and
 checked programs. \\
 \TT{Vegas.Export} & Small export handles for kernel games, FOSG, and
 EFG presentations. \\
 \TT{Vegas.Machine} & Generic machine, traces, round views, refinement,
 Kuhn infrastructure. \\
-\TT{Vegas.Core.Theorems} & Paper-facing theorem surface over checked
+\TT{Vegas.Theorems} & Paper-facing theorem surface over checked
 programs. \\
 \bottomrule
 \end{tabular}
@@ -589,7 +593,7 @@ pulls surface Nash profiles back to the implementation trace game.
 
 \section{Paper-facing Theorem Surface}
 
-\TT{Vegas.Core.Theorems.Claims} collects theorem statements whose names
+\TT{Vegas.Theorems.Claims} collects theorem statements whose names
 mirror the paper claims.  The module covers compilation to well-formed
 source-free event graphs, checkpoint progress, terminal source-payoff
 adequacy, native frontier payoff adequacy, FOSG and EFG presentation

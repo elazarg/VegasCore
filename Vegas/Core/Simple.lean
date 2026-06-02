@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Lang.ExprSimple
+import Vegas.Core.ExprSimple
 
 /-!
 # Vegas protocol syntax

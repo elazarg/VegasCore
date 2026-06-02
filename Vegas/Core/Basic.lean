@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Base.Basic
+import Vegas.Foundation.Basic
 
 /-!
 # Vegas core syntax

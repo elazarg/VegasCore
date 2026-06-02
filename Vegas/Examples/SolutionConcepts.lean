@@ -1,4 +1,4 @@
-import Vegas.Core.Theorems.SolutionConcepts
+import Vegas.Theorems.SolutionConcepts
 import Vegas.Examples.MatchingPennies
 import Vegas.Examples.PrisonersDilemma
 import GameTheory.Concepts.BestResponse

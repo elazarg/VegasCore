@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Mathlib.Data.Finset.Basic
-import Vegas.Base.Basic
+import Vegas.Foundation.Basic
 
 /-!
 # Event graphs

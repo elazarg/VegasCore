@@ -166,7 +166,7 @@ observations at the two checkpoints are equal.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
-See \TT{Vegas.Core.Theorems.Execution}; the named result is the
+See \TT{Vegas.Theorems.Execution}; the named result is the
 compiled-graph adjacent-schedule diamond.
 \end{proof}
 
@@ -178,7 +178,7 @@ the reveal is ready.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
-See \TT{Vegas.EventGraph.Basic} and \TT{Vegas.Core.Theorems.Visibility};
+See \TT{Vegas.EventGraph.Basic} and \TT{Vegas.Theorems.Visibility};
 the key graph lemma is \TT{prior\_commit\_mem\_prereqs\_of\_reveal}.
 \end{proof}
 
@@ -201,6 +201,6 @@ the terminal compiled store.
 \TT{Vegas.EventGraph.Basic}.  Primitive execution, readiness,
 observations, and schedule-diamond lemmas are in
 \TT{Vegas.EventGraph.Execution} and \TT{Vegas.EventGraph.Batch}.  The
-compiler is \TT{Vegas.Core.ToEventGraph.Compiler}; source payoff
-adequacy is \TT{Vegas.Core.ToEventGraph.SourceAdequacy} and
-\TT{Vegas.Core.Theorems.Outcome}.}
+compiler is \TT{Vegas.Compile.Compiler}; source payoff
+adequacy is \TT{Vegas.Frontier.SourceAdequacy} and
+\TT{Vegas.Theorems.Outcome}.}

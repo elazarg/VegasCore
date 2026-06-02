@@ -50,7 +50,7 @@ checkpoints. For the primitive downset policy, compilation proves source
 `GuardLive` gives checkpoint progress. This policy is an operational
 schedule-abstraction layer; strategic frontier semantics are built separately.
 
-The primitive machine adapter in `Vegas.EventGraph.ToMachine` is an operational
+The primitive machine adapter in `Vegas.Machine.Adapter.ToMachine` is an operational
 protocol adapter. It is useful for execution and refinement reasoning, but it
 is not the final strategic game presentation.
 
@@ -96,12 +96,12 @@ History and public-observation game forms are exposed the same way, for
 example `program.pureFrontierHistoryGameForm` and
 `program.behavioralFrontierPublicHistoryGameForm`.
 
-`Vegas.GameBridge.FOSG` gives any native `Machine.RoundView` a bounded
+`Vegas.Presentation.FOSG` gives any native `Machine.RoundView` a bounded
 `GameTheory.FOSG` denotation, and exposes checked programs as
 `program.frontierFOSG`. The payoff-faithful FOSG strategic object is
 `program.frontierFOSGMachinePayoffHistoryKernelGame`: its outcomes are FOSG
 histories and its utility is the final compiled-machine payoff.
-`Vegas.GameBridge.EFG` serializes finite-state bounded round views through the
+`Vegas.Presentation.EFG` serializes finite-state bounded round views through the
 shared FOSG-to-EFG bridge. Checked finite programs expose the serialized
 frontier EFG as `program.frontierPlainEFG`, the payoff-facing EFG kernel game
 as `program.frontierPlainEFGMachinePayoffKernelGame`, and the FOSG/EFG utility
@@ -126,7 +126,7 @@ horizon, boundedness proof, and payoff-faithful history kernel as
 `Export.frontierFOSG`, with utility-distribution and Kuhn-compatibility
 theorems available from the export namespace.
 
-`Vegas.Core.ToEventGraph.SolutionConcepts` adds the matching program-facing
+`Vegas.Frontier.SolutionConcepts` adds the matching program-facing
 solution vocabulary for these games, including ε-Nash, best response,
 dominance, dominance solvability, security/maximin guarantees,
 two-player saddle-point vocabulary, Pareto efficiency, individual rationality,
@@ -205,12 +205,12 @@ deviation facts through the existing deviation-simulation wrappers, including
 `FrontierGameSemantics.behavioralToMixedPureNashDeviationSimulation` and
 `program.behavioralToMixedPureFrontierNashDeviationSimulation`.
 
-`Vegas.Core.ToEventGraph.Transport` provides EU-preserving morphisms and
+`Vegas.Frontier.Transport` provides EU-preserving morphisms and
 isomorphisms between completed frontier games. It also exposes the canonical
 pure-to-behavioral embedding as an EU-preserving morphism from a checked
 program's pure frontier game to its behavioral frontier game.
 
-`Vegas.Core.Theorems` is the theorem index for the current architecture. It
+`Vegas.Theorems` is the theorem index for the current architecture. It
 groups the intended public theorem surface by topic: compiled graph validity,
 execution/frontier behavior, progress, visibility/observations, outcome adequacy,
 strategy locality, nullable lowering, Kuhn realization, FOSG adequacy, runtime
@@ -304,21 +304,31 @@ analysis obligation unless a later adapter supplies a canonical policy.
 
 ## Repository Map
 
+The directory layout follows the dependency pipeline: each directory is a single
+layer, and imports flow strictly downward (`Frontier` imports `Compile`, never the
+reverse; nothing under `EventGraph` imports `Machine`).
+
 ```text
 Vegas/
-  Base/                    -- expression interface, values, visibility contexts
-  Lang/                    -- surface language and lowering to VegasCore
-  Core/                    -- VegasCore, GraphProgram/WFProgram, compiler input
-  Core/ToEventGraph/       -- graph compiler, checkpoint models, round views
-  Core/Theorems/           -- theorem index over the checked-program semantics
-  EventGraph/              -- graph semantics, execution, frontiers, batching
+  Foundation/              -- expression interface, values, visibility contexts
+  Core/                    -- the VegasCore source language
+  WellFormed/              -- WFProgram checked-game boundary + static obligations
+  Language/                -- surface language and lowering to Core
+  EventGraph/              -- source-free graph IR: execution, frontiers, batching
   Machine/                 -- operational machine, round views, kernel-game bridge
-  GameBridge/              -- FOSG/EFG presentations of native round views
+  Machine/Adapter/         -- EventGraph <-> Machine adapters
+  Machine/Kuhn/            -- Kuhn-theorem adapter for native round views
+  Compile/                 -- checked-program -> EventGraph compiler + checkpoint model
+  Frontier/                -- canonical strategic semantics over compiled graphs
+  Presentation/            -- FOSG/EFG presentations of native round views
   Export/                  -- finite kernel-game export tables
-  Examples/                -- build-tested example modules
   Runtime/                 -- runtime-general value codec proof interfaces
+  Theorems/                -- theorem index over the checked-program semantics
+  Spec.lean                -- trusted definition index (audit surface)
+  Examples/                -- build-tested example modules
 docs/semantics-spine.md    -- theorem-name map for paper-facing claims
 
+Vegas.lean                 -- build-all root: every module in dependency-layer order
 VegasTests.lean            -- regression target imported by the default build
 GameTheory/                -- submodule with the general game-theory library
 ```

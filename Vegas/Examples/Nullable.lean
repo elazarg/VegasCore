@@ -1,5 +1,5 @@
 import Vegas.Examples.DependencySemantics
-import Vegas.Core.Theorems.Nullable
+import Vegas.Theorems.Nullable
 
 /-!
 # Nullable and administrative lowering examples

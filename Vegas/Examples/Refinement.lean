@@ -1,4 +1,4 @@
-import Vegas.Core.Theorems.Refinement
+import Vegas.Theorems.Refinement
 import Vegas.Examples.MatchingPennies
 
 /-!

@@ -62,8 +62,8 @@ For source-independent graph users, the generic path is the graph
 There is no separate graph-native export facade.
 
 - `Vegas.EventGraph.frontierRoundView`
-- `Vegas.GameBridge.FOSG.FromRoundView`
-- `Vegas.GameBridge.EFG.FromRoundView`
+- `Vegas.Presentation.FOSG.FromRoundView`
+- `Vegas.Presentation.EFG.FromRoundView`
 
 ## EFG Presentation
 

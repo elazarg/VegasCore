@@ -1,12 +1,12 @@
-import Vegas.Core.ToEventGraph
+import Vegas.Frontier
 import Vegas.EventGraph.Validate
 import Vegas.Export.KernelGame
 import Vegas.Export.FOSG
 import Vegas.Export.EFG
-import Vegas.GameBridge.FOSG.FromCore
-import Vegas.GameBridge.EFG.FromCore
-import Vegas.Lang.Basic
-import Vegas.Lang.ExprSimple
+import Vegas.Presentation.FOSG.FromCore
+import Vegas.Presentation.EFG.FromCore
+import Vegas.Language.Basic
+import Vegas.Core.ExprSimple
 import GameTheory.Concepts.SolutionConcepts
 
 /-!

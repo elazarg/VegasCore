@@ -1,12 +1,12 @@
 import Vegas.Export.FOSG
 import Vegas.Export.KernelGame
-import Vegas.GameBridge.EFG.FromCore
+import Vegas.Presentation.EFG.FromCore
 
 /-!
 # EFG export handles
 
 In-Lean export handles for checked-program extensive-form presentations. The
-EFG object itself comes from `Vegas.GameBridge.EFG`; the payoff-facing kernel
+EFG object itself comes from `Vegas.Presentation.EFG`; the payoff-facing kernel
 game is packaged with its source FOSG presentation and a profile-translation
 adequacy law. The strategy carrier is behavioral and is therefore not a finite
 pure-strategy table; finite analysis remains on the pure frontier export

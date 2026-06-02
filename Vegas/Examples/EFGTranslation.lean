@@ -2,7 +2,7 @@ import Vegas.Examples.PrisonersDilemma
 import Vegas.Examples.MatchingPennies
 import Vegas.Examples.BattleOfTheSexes
 import Vegas.Examples.MontyHall
-import Vegas.GameBridge.EFG.FromRoundView
+import Vegas.Presentation.EFG.FromRoundView
 
 /-!
 # EFG translation examples
