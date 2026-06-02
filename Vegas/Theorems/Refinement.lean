@@ -3,7 +3,7 @@ import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
 import Vegas.Frontier.SourceAdequacy
 import Vegas.Presentation.FOSG.FromCore
-import GameTheory.Concepts.CorrelatedNashMixed
+import GameTheory.Concepts.Correlation.CorrelatedNashMixed
 import Math.ProbabilityMassFunction
 
 /-!

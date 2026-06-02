@@ -1,11 +1,11 @@
 import Vegas.Theorems.SolutionConcepts
 import Vegas.Examples.MatchingPennies
 import Vegas.Examples.PrisonersDilemma
-import GameTheory.Concepts.BestResponse
-import GameTheory.Concepts.PotentialGame
-import GameTheory.Concepts.TeamGame
-import GameTheory.Concepts.ZeroSum
-import GameTheory.Concepts.BinaryMixed
+import GameTheory.Concepts.Foundations.BestResponse
+import GameTheory.Concepts.Potential.PotentialGame
+import GameTheory.Concepts.Classes.TeamGame
+import GameTheory.Concepts.ZeroSum.ZeroSum
+import GameTheory.Concepts.Mixed.BinaryMixed
 import GameTheory.Languages.NFG.Compile
 import GameTheory.Auctions.Vickrey
 

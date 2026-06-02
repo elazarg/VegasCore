@@ -1,14 +1,14 @@
 import Vegas.Frontier.Games
 import GameTheory.Core.GameProperties
-import GameTheory.Concepts.ApproximateNash
-import GameTheory.Concepts.DominanceSolvability
-import GameTheory.Concepts.Minimax
-import GameTheory.Concepts.PotentialFIP
-import GameTheory.Concepts.PriceOfAnarchy
-import GameTheory.Concepts.Rationalizability
-import GameTheory.Concepts.SecurityStrategy
-import GameTheory.Concepts.StrictDominance
-import GameTheory.Concepts.WelfareTheorems
+import GameTheory.Concepts.Equilibrium.ApproximateNash
+import GameTheory.Concepts.Dominance.DominanceSolvability
+import GameTheory.Concepts.ZeroSum.Minimax
+import GameTheory.Concepts.Potential.PotentialFIP
+import GameTheory.Concepts.Welfare.PriceOfAnarchy
+import GameTheory.Concepts.Dominance.Rationalizability
+import GameTheory.Concepts.ZeroSum.SecurityStrategy
+import GameTheory.Concepts.Dominance.StrictDominance
+import GameTheory.Concepts.Welfare.WelfareTheorems
 
 /-!
 # Frontier solution concepts

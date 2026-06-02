@@ -7,7 +7,7 @@ import Vegas.Presentation.FOSG.FromCore
 import Vegas.Presentation.EFG.FromCore
 import Vegas.Language.Basic
 import Vegas.Core.ExprSimple
-import GameTheory.Concepts.SolutionConcepts
+import GameTheory.Concepts.Equilibrium.SolutionConcepts
 
 /-!
 # Event-graph compiler checks

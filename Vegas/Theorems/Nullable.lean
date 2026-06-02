@@ -1,6 +1,6 @@
 import Vegas.Frontier.SolutionConcepts
 import Vegas.Language.Nullable
-import GameTheory.Concepts.DominanceNash
+import GameTheory.Concepts.Dominance.DominanceNash
 
 /-!
 # Nullable lowering facts

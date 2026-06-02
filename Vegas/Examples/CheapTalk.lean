@@ -1,4 +1,4 @@
-import GameTheory.Concepts.Babbling
+import GameTheory.Concepts.Communication.Babbling
 
 /-!
 # Cheap talk

@@ -2,10 +2,10 @@ import Vegas.Frontier.Kuhn
 import Vegas.Frontier.SourceAdequacy
 import GameTheory.Core.GameForm
 import GameTheory.Core.GameSimulation
-import GameTheory.Concepts.DeviationSimulation
-import GameTheory.Concepts.SolutionConcepts
+import GameTheory.Concepts.Foundations.DeviationSimulation
+import GameTheory.Concepts.Equilibrium.SolutionConcepts
 import GameTheory.Theorems.CorrelatedEqExistence
-import GameTheory.Theorems.NashExistenceMixed
+import GameTheory.Concepts.Existence.NashExistenceMixed
 
 /-!
 # Program-facing compiled frontier games: semantics package

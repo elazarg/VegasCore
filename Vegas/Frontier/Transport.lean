@@ -1,5 +1,5 @@
 import Vegas.Frontier.Games
-import GameTheory.Concepts.GameMorphism
+import GameTheory.Concepts.Foundations.GameMorphism
 
 /-!
 # Frontier game transport

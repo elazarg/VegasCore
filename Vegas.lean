@@ -51,8 +51,8 @@ import Vegas.Spec
 import Vegas.Theorems
 
 -- Upstream game-theory analysis vocabulary this project reasons with.
-import GameTheory.Concepts.SolutionConcepts
-import GameTheory.Concepts.MixedExtension
+import GameTheory.Concepts.Equilibrium.SolutionConcepts
+import GameTheory.Concepts.Mixed.MixedExtension
 
 /-!
 # Vegas

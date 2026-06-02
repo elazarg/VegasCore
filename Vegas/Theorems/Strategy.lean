@@ -1,6 +1,6 @@
 import Vegas.Frontier.Games
 import Vegas.Frontier.SolutionConcepts
-import GameTheory.Concepts.DominanceNash
+import GameTheory.Concepts.Dominance.DominanceNash
 
 /-!
 # Strategy facts

@@ -5,9 +5,9 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Machine.Refinement
-import GameTheory.Concepts.GameMorphism
-import GameTheory.Concepts.InertExtension
-import GameTheory.Concepts.SolutionConcepts
+import GameTheory.Concepts.Foundations.GameMorphism
+import GameTheory.Concepts.Foundations.InertExtension
+import GameTheory.Concepts.Equilibrium.SolutionConcepts
 
 /-!
 # Kernel games induced by machine refinements
