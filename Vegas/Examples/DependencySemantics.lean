@@ -36,7 +36,7 @@ def boolRef (field : Nat) : EventGraph.FieldRef L where
 @[simp] theorem boolRef_field (field : Nat) :
     (boolRef field).field = field := rfl
 
-def hiddenChoice : EventGraph.EventGuard L where
+def sealedChoice : EventGraph.EventGuard L where
   ty := .bool
   choiceReads := ∅
   eval := fun _ _ => true
@@ -46,7 +46,7 @@ def revealedChoice : EventGraph.EventGuard L where
   choiceReads := {boolRef 1}
   eval := fun _ _ => true
 
-def hiddenReadChoice : EventGraph.EventGuard L where
+def sealedReadChoice : EventGraph.EventGuard L where
   ty := .bool
   choiceReads := {boolRef 0}
   eval := fun _ _ => true
@@ -80,8 +80,8 @@ noncomputable def constGraphDist
   eval := fun _ => PMF.pure value
 
 def twoHiddenCommitNodes : List (EventGraph.EventNode Player L) :=
-  [boolEvent (some .alice) (.commit .alice hiddenChoice),
-   boolEvent (some .bob) (.commit .bob hiddenChoice)]
+  [boolEvent (some .alice) (.commit .alice sealedChoice),
+   boolEvent (some .bob) (.commit .bob sealedChoice)]
 
 def twoHiddenCommitGraph : EventGraph.Graph Player L where
   initialFields := []
@@ -99,26 +99,26 @@ def twoHiddenCommitNode1 : Fin twoHiddenCommitGraph.nodeCount :=
 
 def wrongCommitOwnerGraph : EventGraph.Graph Player L where
   initialFields := []
-  nodes := [boolEvent none (.commit .alice hiddenChoice)]
+  nodes := [boolEvent none (.commit .alice sealedChoice)]
 
 example :
     wrongCommitOwnerGraph.valid = false := by
   rfl
 
-def hiddenReadLeakGraph : EventGraph.Graph Player L where
+def sealedReadLeakGraph : EventGraph.Graph Player L where
   initialFields := [boolInitialField (some .alice) false]
-  nodes := [boolEvent (some .bob) (.commit .bob hiddenReadChoice)]
+  nodes := [boolEvent (some .bob) (.commit .bob sealedReadChoice)]
 
 example :
-    hiddenReadLeakGraph.valid = false := by
+    sealedReadLeakGraph.valid = false := by
   decide
 
-noncomputable def hiddenPublicSampleGraph : EventGraph.Graph Player L where
+noncomputable def sealedPublicSampleGraph : EventGraph.Graph Player L where
   initialFields := [boolInitialField (some .alice) false]
   nodes := [boolEvent none (.sample (constGraphDist {boolRef 0} true))]
 
 example :
-    hiddenPublicSampleGraph.valid = false := by
+    sealedPublicSampleGraph.valid = false := by
   decide
 
 noncomputable def futureReadGraph : EventGraph.Graph Player L where
@@ -182,7 +182,7 @@ example :
 
 noncomputable def publicSampleAfterHiddenCommitNodes :
     List (EventGraph.EventNode Player L) :=
-  [boolEvent (some .alice) (.commit .alice hiddenChoice),
+  [boolEvent (some .alice) (.commit .alice sealedChoice),
    boolEvent none (.sample (constGraphDist ∅ true))]
 
 noncomputable def publicSampleAfterHiddenCommitGraph :
@@ -198,14 +198,14 @@ def publicSampleAfterHiddenCommitNode1 :
       EventGraph.Graph.nodeCount]⟩
 
 /-- A public computation with an empty declared footprint is not ordered after
-an unrelated hidden commit. -/
+an unrelated sealed commit. -/
 example :
     publicSampleAfterHiddenCommitGraph.prereqs
       publicSampleAfterHiddenCommitNode1 = ∅ := by
   decide
 
 def samePlayerCommitNodes : List (EventGraph.EventNode Player L) :=
-  [boolEvent (some .alice) (.commit .alice hiddenChoice),
+  [boolEvent (some .alice) (.commit .alice sealedChoice),
    boolEvent (some .alice) (.commit .alice ownHistoryChoice)]
 
 def samePlayerCommitGraph : EventGraph.Graph Player L where
@@ -239,15 +239,15 @@ def aliceTrueAction : EventGraph.CommitAction twoHiddenCommitGraph .alice where
 example :
     EventGraph.CommitAvailable twoHiddenCommitGraph twoHiddenCommitInit
       .alice aliceTrueAction := by
-  let row := boolEvent (some .alice) (.commit .alice hiddenChoice)
+  let row := boolEvent (some .alice) (.commit .alice sealedChoice)
   have henv :
-      ∃ env : EventGraph.ReadEnv L hiddenChoice.choiceReads,
+      ∃ env : EventGraph.ReadEnv L sealedChoice.choiceReads,
         EventGraph.ReadEnv.ofStore? twoHiddenCommitInit.store
-          hiddenChoice.choiceReads = some env := by
-    simp [hiddenChoice, EventGraph.ReadEnv.ofStore?]
+          sealedChoice.choiceReads = some env := by
+    simp [sealedChoice, EventGraph.ReadEnv.ofStore?]
   refine
     ⟨{ row := row
-       guard := hiddenChoice
+       guard := sealedChoice
        row_get := ?_
        sem_eq := ?_
        ready := ?_
@@ -273,8 +273,8 @@ example :
         decide
       rw [hpr]
       simp
-  · simp [aliceTrueAction, boolValue, hiddenChoice, EventGraph.TypedValue.as?]
-  · simp [hiddenChoice]
+  · simp [aliceTrueAction, boolValue, sealedChoice, EventGraph.TypedValue.as?]
+  · simp [sealedChoice]
 
 /-- Bob's independent commit has an empty choice footprint, so Alice's
 scheduled commit does not enter Bob's graph-causal view. -/
@@ -285,18 +285,18 @@ example :
   simp [EventGraph.Observation.value?, EventGraph.observe,
     EventGraph.Graph.fieldRow, afterAliceCommit, twoHiddenCommitInit,
     twoHiddenCommitNode1, twoHiddenCommitGraph, twoHiddenCommitNodes,
-    boolEvent, hiddenChoice, EventGraph.Config.initial, EventGraph.Config.completeNode,
+    boolEvent, sealedChoice, EventGraph.Config.initial, EventGraph.Config.completeNode,
     EventGraph.Ready, EventGraph.Graph.node?, EventGraph.Graph.nodeCount,
     EventGraph.Graph.prereqs]
 
 def revealThenCommitNodes : List (EventGraph.EventNode Player L) :=
-  [boolEvent (some .alice) (.commit .alice hiddenChoice),
+  [boolEvent (some .alice) (.commit .alice sealedChoice),
    boolEvent none (.reveal 0),
    boolEvent (some .bob) (.commit .bob revealedChoice)]
 
 def twoRevealNodes : List (EventGraph.EventNode Player L) :=
-  [boolEvent (some .alice) (.commit .alice hiddenChoice),
-   boolEvent (some .bob) (.commit .bob hiddenChoice),
+  [boolEvent (some .alice) (.commit .alice sealedChoice),
+   boolEvent (some .bob) (.commit .bob sealedChoice),
    boolEvent none (.reveal 0),
    boolEvent none (.reveal 1)]
 
@@ -439,9 +439,9 @@ example :
 def revealThenUnrelatedCommitGraph : EventGraph.Graph Player L where
   initialFields := []
   nodes :=
-    [boolEvent (some .alice) (.commit .alice hiddenChoice),
+    [boolEvent (some .alice) (.commit .alice sealedChoice),
      boolEvent none (.reveal 0),
-     boolEvent (some .bob) (.commit .bob hiddenChoice)]
+     boolEvent (some .bob) (.commit .bob sealedChoice)]
 
 def revealThenUnrelatedCommitNode2 :
     Fin revealThenUnrelatedCommitGraph.nodeCount :=
@@ -478,7 +478,7 @@ example :
   simp [EventGraph.Observation.value?, EventGraph.observe,
     EventGraph.Graph.fieldRow, afterUnrelatedReveal,
     revealThenUnrelatedCommitNode2, revealThenUnrelatedCommitGraph, boolEvent,
-    hiddenChoice, EventGraph.Ready, EventGraph.Graph.node?, EventGraph.Graph.nodeCount,
+    sealedChoice, EventGraph.Ready, EventGraph.Graph.node?, EventGraph.Graph.nodeCount,
     EventGraph.Graph.prereqs]
 
 /-! ## Compiler-path regressions -/
@@ -621,7 +621,7 @@ example :
     compileCore, EventGraph.Graph.nodeCount]
 
 /-- A later same-player commit choice footprint contains the player's prior
-hidden field in the compiled graph. -/
+sealed field in the compiled graph. -/
 example :
     (match (compile samePlayerCommitProgram).graph.node? 1 with
      | some sem => sem.reads
@@ -629,11 +629,11 @@ example :
   simp only [EventGraph.Graph.node?, compile, samePlayerCommitProgram,
     samePlayerCommitCore, viewVCtx, eraseVCtx_nil, trueGuard, canSee,
     Visibility.canSee, decide_true, ↓dreduceIte, eraseVCtx_cons,
-    erasePubVCtx_cons_hidden, erasePubVCtx_nil, initialState, compileCore,
+    erasePubVCtx_cons_sealed, erasePubVCtx_nil, initialState, compileCore,
     eventGuardOf, visibleFieldRefs, fieldRefsOfCtx_nil, fieldRefsOfCtx_cons,
     Finset.insert_empty, BuildState.addEvent_initialFields,
     BuildState.fromInitial_initialFields, BuildState.addEvent_nodes,
-    BuildState.fromInitial_nodes, BindTy.owner_hidden, List.nil_append,
+    BuildState.fromInitial_nodes, BindTy.owner_sealed, List.nil_append,
     List.cons_append, List.length_cons, List.length_nil, zero_add,
     Nat.reduceAdd, Order.lt_two_iff, Std.le_refl, getElem?_pos,
     List.getElem_cons_succ, List.getElem_cons_zero,
@@ -642,8 +642,8 @@ example :
   rw [BuildState.fieldOf_eq_of_nodup _ _
     (VHasVar.here :
       VHasVar
-        [(0, BindTy.hidden (L := L) Player.alice BaseTy.bool)]
-        0 (BindTy.hidden (L := L) Player.alice BaseTy.bool))]
+        [(0, BindTy.sealed (L := L) Player.alice BaseTy.bool)]
+        0 (BindTy.sealed (L := L) Player.alice BaseTy.bool))]
   rw [BuildState.addEvent_fieldOf_here]
   rfl
 
@@ -721,13 +721,13 @@ example :
   simp only [EventGraph.Graph.node?, compile, relevantRevealProgram,
     relevantRevealCore, viewVCtx, eraseVCtx_nil, trueGuard, canSee,
     Visibility.canSee, ↓dreduceIte, reduceCtorEq, decide_false,
-    Bool.false_eq_true, eraseVCtx_cons, erasePubVCtx_cons_hidden,
+    Bool.false_eq_true, eraseVCtx_cons, erasePubVCtx_cons_sealed,
     erasePubVCtx_cons_pub, erasePubVCtx_nil, initialState, compileCore,
     eventGuardOf, visibleFieldRefs, fieldRefsOfCtx_nil,
     BuildState.addEvent_fieldOf_here, fieldRefsOfCtx_cons,
     Finset.insert_empty, BuildState.addEvent_initialFields,
     BuildState.fromInitial_initialFields, BuildState.addEvent_nodes,
-    BuildState.fromInitial_nodes, BindTy.owner_hidden, List.nil_append,
+    BuildState.fromInitial_nodes, BindTy.owner_sealed, List.nil_append,
     BindTy.owner_public, List.cons_append, List.length_cons,
     List.length_nil, zero_add, Nat.reduceAdd, Nat.lt_add_one,
     getElem?_pos, List.getElem_cons_succ, List.getElem_cons_zero,
@@ -737,7 +737,7 @@ example :
     (VHasVar.here :
       VHasVar
         [(1, BindTy.pub (Player := Player) (L := L) BaseTy.bool),
-          (0, BindTy.hidden (L := L) Player.alice BaseTy.bool)]
+          (0, BindTy.sealed (L := L) Player.alice BaseTy.bool)]
         1 (BindTy.pub (Player := Player) (L := L) BaseTy.bool))]
   rw [BuildState.addEvent_fieldOf_here]
   simp only [BuildState.nextField, BuildState.nextNode,

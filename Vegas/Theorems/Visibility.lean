@@ -98,14 +98,14 @@ private theorem erasePubVCtx_map_fst_subset_publicVars
           rcases hx with rfl | htail
           · simp [publicVars]
           · exact Finset.mem_insert_of_mem (ih x htail)
-      | hidden owner =>
-          simp only [erasePubVCtx_cons_hidden] at hx
+      | sealed owner =>
+          simp only [erasePubVCtx_cons_sealed] at hx
           exact ih x hx
 
 /-- Payoff expressions mention only public source variables. This is the
-source-level noninterference boundary for terminal utility: hidden values can
+source-level noninterference boundary for terminal utility: sealed values can
 contribute to payoffs only by first being revealed into the public context. -/
-theorem payoff_expr_no_hidden_dependency
+theorem payoff_expr_no_sealed_dependency
     {Γ : VCtx P L}
     (payoffs : List (P × L.Expr (erasePubVCtx Γ) L.int)) :
     ∀ entry ∈ payoffs,
@@ -149,9 +149,9 @@ theorem commit_choice_reads_visible_of_wf
   rw [hsem] at hnodeWF
   exact hnodeWF.2.2.2 ref href
 
-/-- In a well-formed event graph, reveal nodes declassify hidden event data
+/-- In a well-formed event graph, reveal nodes declassify sealed event data
 into a public event field of the same type. -/
-theorem reveal_opens_hidden_source_of_wf
+theorem reveal_opens_sealed_source_of_wf
     {G : Graph Player L} (hwf : G.WF)
     {node : Nat} {event : EventNode Player L}
     {source : Nat}
@@ -166,7 +166,7 @@ theorem reveal_opens_hidden_source_of_wf
   exact hnodeWF.2
 
 /-- Paper-facing name for the EventGraph reveal invariant: a reveal opens a
-hidden source field into a public event output of the same type. -/
+sealed source field into a public event output of the same type. -/
 theorem eventGraph_reveal_is_declassification
     {G : Graph Player L} (hwf : G.WF)
     {node : Nat} {event : EventNode Player L}
@@ -176,7 +176,7 @@ theorem eventGraph_reveal_is_declassification
     ∃ sourceSpec, G.field? source = some sourceSpec ∧
       sourceSpec.ty = event.ty ∧ sourceSpec.owner.isSome ∧
       event.owner = none :=
-  reveal_opens_hidden_source_of_wf hwf hnode hsem
+  reveal_opens_sealed_source_of_wf hwf hnode hsem
 
 /-- Executing a reveal copies the source value into the reveal node's public
 output field. Together with `publicObserve`, this is the dynamic
@@ -193,8 +193,8 @@ theorem reveal_completion_copies_source_to_public_output
           (cfg.completeNode node { ty := row.ty, value := value }).store
           (G.nodeTarget node) row.ty =
         Store.getAs cfg.store source row.ty := by
-  rcases reveal_opens_hidden_source_of_wf hwf hnode hsem with
-    ⟨_sourceSpec, _hsource, _hty, _hhidden, hpublic⟩
+  rcases reveal_opens_sealed_source_of_wf hwf hnode hsem with
+    ⟨_sourceSpec, _hsource, _hty, _hsealed, hpublic⟩
   constructor
   · exact hpublic
   · rw [hvalue]
@@ -296,9 +296,9 @@ theorem ready_commit_observation_choice_reads_store
     rw [hrowEq, hsem]
   simp [observe, hsem', hready, hread]
 
-/-- Changing the payload written by a hidden commit node does not change the
-public observation. The completed event is public; the hidden payload is not. -/
-theorem hidden_commit_payload_no_public_signal
+/-- Changing the payload written by a sealed commit node does not change the
+public observation. The completed event is public; the sealed payload is not. -/
+theorem sealed_commit_payload_no_public_signal
     {G : Graph Player L} (hwf : G.WF) {cfg : Config G}
     {node : Fin G.nodeCount} {row : EventNode Player L}
     {owner : Player} {guard : EventGuard L}
@@ -351,11 +351,11 @@ theorem hidden_commit_payload_no_public_signal
         Config.nodeDone, Config.doneIds, hleftStore, hrightStore]
     · simp [publicObserve, hpublic]
 
-/-- Changing the payload written by a hidden commit node does not change a
+/-- Changing the payload written by a sealed commit node does not change a
 different player's graph observation. Non-owners may see that the commit
-completed, but a well-formed graph never exposes the hidden target field in a
+completed, but a well-formed graph never exposes the sealed target field in a
 non-owner ready commit view. -/
-theorem hidden_commit_payload_no_observe_signal_to_nonowner
+theorem sealed_commit_payload_no_observe_signal_to_nonowner
     {G : Graph Player L} (hwf : G.WF) {cfg : Config G}
     {node : Fin G.nodeCount} {row : EventNode Player L}
     {owner observer : Player} {guard : EventGuard L}
@@ -450,9 +450,9 @@ theorem frontier_available_actions_eq_of_observation_eq
       frontierAvailableActions G right who :=
   frontierAvailableActions_eq_of_observe_eq hwf hobs
 
-/-- A hidden commit payload cannot signal to a non-owner through the graph
+/-- A sealed commit payload cannot signal to a non-owner through the graph
 observation surface. The non-owner may observe completion, but not the chosen
-hidden value. -/
+sealed value. -/
 theorem commit_payload_no_signal_to_nonowner
     {G : Graph Player L} {cfg : Config G}
     {node : Fin G.nodeCount} {row : EventNode Player L}
@@ -468,14 +468,14 @@ theorem commit_payload_no_signal_to_nonowner
       observe G
         (cfg.completeNode node { ty := row.ty, value := right })
         observer :=
-  hidden_commit_payload_no_observe_signal_to_nonowner
+  sealed_commit_payload_no_observe_signal_to_nonowner
     hwf hnode hsem hne left right
 
 /-- Observation-equivalent states have the same local strategic menu. This is
-the EventGraph-level non-signalling statement for unrevealed hidden values:
+the EventGraph-level non-signalling statement for unrevealed sealed values:
 unrevealed storage matters strategically only if it changes the observer's
 defined graph observation. -/
-theorem unrevealed_hidden_values_no_signal
+theorem unrevealed_sealed_values_no_signal
     {G : Graph Player L}
     {left right : ReachableConfig G} {who : Player}
     (hwf : G.WF)
@@ -621,8 +621,8 @@ theorem compiled_commit_choice_reads_visible
     program.compiledGraph_wf hnode hsem href
 
 /-- Compiled graph reveal nodes are the only public declassification nodes:
-their source field is hidden and their output field is public. -/
-theorem compiled_reveal_opens_hidden_source
+their source field is sealed and their output field is public. -/
+theorem compiled_reveal_opens_sealed_source
     (program : WFProgram P L)
     {node : Nat} {event : EventGraph.EventNode P L}
     {source : Nat}
@@ -634,7 +634,7 @@ theorem compiled_reveal_opens_hidden_source
         some sourceSpec ∧
       sourceSpec.ty = event.ty ∧ sourceSpec.owner.isSome ∧
       event.owner = none :=
-  EventGraph.reveal_opens_hidden_source_of_wf
+  EventGraph.reveal_opens_sealed_source_of_wf
     program.compiledGraph_wf hnode hsem
 
 end WFProgram

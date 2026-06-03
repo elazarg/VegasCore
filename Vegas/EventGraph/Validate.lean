@@ -138,11 +138,11 @@ theorem validNodeAt_eq_true_iff (G : Graph Player L) (node : Nat)
               simp only [hsource, Bool.and_eq_true, decide_eq_true_eq,
                 allFields_eq_true]
               constructor
-              · rintro ⟨⟨⟨hty, hhidden⟩, howner⟩, hreads⟩
-                exact ⟨hreads, sourceSpec, rfl, hty, hhidden, howner⟩
-              · rintro ⟨hreads, _foundSpec, hget, hty, hhidden, howner⟩
+              · rintro ⟨⟨⟨hty, hsealed⟩, howner⟩, hreads⟩
+                exact ⟨hreads, sourceSpec, rfl, hty, hsealed, howner⟩
+              · rintro ⟨hreads, _foundSpec, hget, hty, hsealed, howner⟩
                 cases hget
-                exact ⟨⟨⟨hty, hhidden⟩, howner⟩, hreads⟩
+                exact ⟨⟨⟨hty, hsealed⟩, howner⟩, hreads⟩
 
 /-- Boolean graph well-formedness check for raw numeric ids. -/
 def valid (G : Graph Player L) : Bool :=

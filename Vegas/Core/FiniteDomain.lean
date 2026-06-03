@@ -170,12 +170,12 @@ inductive FiniteProgramProof {P : Type} [DecidableEq P] {L : IExpr} :
       FiniteProgramProof (.sample x D k)
   | commit {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
       {R : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
-      {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+      {k : VegasCore P L ((x, .sealed who b) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.commit x who R k)
   | reveal {Γ : VCtx P L} {y : VarId} {who : P}
       {x : VarId} {b : L.Ty}
-      {hx : VHasVar Γ x (.hidden who b)}
+      {hx : VHasVar Γ x (.sealed who b)}
       {k : VegasCore P L ((y, .pub b) :: Γ)}
       (head : FiniteType L b) (tail : FiniteProgramProof k) :
       FiniteProgramProof (.reveal y who x hx k)
@@ -203,7 +203,7 @@ instance finiteProgram_sample {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_commit {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {x : VarId} {who : P} {b : L.Ty}
     {R : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
-    {k : VegasCore P L ((x, .hidden who b) :: Γ)}
+    {k : VegasCore P L ((x, .sealed who b) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.commit x who R k) where
   proof := .commit (inferInstance : FiniteType L b)
@@ -212,7 +212,7 @@ instance finiteProgram_commit {P : Type} [DecidableEq P] {L : IExpr}
 instance finiteProgram_reveal {P : Type} [DecidableEq P] {L : IExpr}
     {Γ : VCtx P L} {y : VarId} {who : P}
     {x : VarId} {b : L.Ty}
-    {hx : VHasVar Γ x (.hidden who b)}
+    {hx : VHasVar Γ x (.sealed who b)}
     {k : VegasCore P L ((y, .pub b) :: Γ)}
     [FiniteType L b] [FiniteProgram k] :
     FiniteProgram (.reveal y who x hx k) where

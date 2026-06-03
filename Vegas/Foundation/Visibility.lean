@@ -27,34 +27,34 @@ either belongs to one player, or it is visible to everyone. There is no
 group-visibility constructor. -/
 inductive Visibility (Player : Type) where
   | pub
-  | hidden (owner : Player)
+  | sealed (owner : Player)
   deriving DecidableEq
 
 namespace Visibility
 
-/-- Owner recorded in visibility metadata, if the binding is hidden. -/
+/-- Owner recorded in visibility metadata, if the binding is sealed. -/
 def owner {Player : Type} : Visibility Player → Option Player
   | .pub => none
-  | .hidden owner => some owner
+  | .sealed owner => some owner
 
 @[simp] theorem owner_pub {Player : Type} :
     owner (.pub : Visibility Player) = none := rfl
 
-@[simp] theorem owner_hidden {Player : Type} (owner : Player) :
-    Visibility.owner (.hidden owner) = some owner := rfl
+@[simp] theorem owner_sealed {Player : Type} (owner : Player) :
+    Visibility.owner (.sealed owner) = some owner := rfl
 
 /-- Can player `p` observe this visibility class? -/
 def canSee {Player : Type} [DecidableEq Player]
     (p : Player) : Visibility Player → Bool
   | .pub => true
-  | .hidden owner => decide (p = owner)
+  | .sealed owner => decide (p = owner)
 
 @[simp] theorem canSee_pub {Player : Type} [DecidableEq Player] (p : Player) :
     canSee p (.pub : Visibility Player) = true := rfl
 
-@[simp] theorem canSee_hidden {Player : Type} [DecidableEq Player]
+@[simp] theorem canSee_sealed {Player : Type} [DecidableEq Player]
     (p owner : Player) :
-    canSee p (.hidden owner : Visibility Player) = decide (p = owner) := rfl
+    canSee p (.sealed owner : Visibility Player) = decide (p = owner) := rfl
 
 end Visibility
 
@@ -75,12 +75,12 @@ namespace BindTy
 abbrev pub {Player : Type} {L : IExpr} (τ : L.Ty) : BindTy Player L :=
   ⟨τ, Visibility.pub⟩
 
-/-- Smart constructor for a hidden binding owned by `owner`. -/
-abbrev hidden {Player : Type} {L : IExpr} (owner : Player) (τ : L.Ty) :
+/-- Smart constructor for a sealed binding owned by `owner`. -/
+abbrev sealed {Player : Type} {L : IExpr} (owner : Player) (τ : L.Ty) :
     BindTy Player L :=
-  ⟨τ, Visibility.hidden owner⟩
+  ⟨τ, Visibility.sealed owner⟩
 
-/-- Owner of a binding, if it is hidden. Public bindings have no owner. -/
+/-- Owner of a binding, if it is sealed. Public bindings have no owner. -/
 abbrev owner {Player : Type} {L : IExpr} (τ : BindTy Player L) : Option Player :=
   τ.visibility.owner
 
@@ -91,9 +91,9 @@ abbrev isPublic {Player : Type} {L : IExpr} (τ : BindTy Player L) : Prop :=
 @[simp] theorem owner_public {Player : Type} {L : IExpr} (τ : L.Ty) :
     (.pub τ : BindTy Player L).owner = none := rfl
 
-@[simp] theorem owner_hidden {Player : Type} {L : IExpr}
+@[simp] theorem owner_sealed {Player : Type} {L : IExpr}
     (owner : Player) (τ : L.Ty) :
-    (.hidden owner τ : BindTy Player L).owner = some owner := rfl
+    (.sealed owner τ : BindTy Player L).owner = some owner := rfl
 
 end BindTy
 

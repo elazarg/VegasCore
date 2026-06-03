@@ -9,7 +9,7 @@ import Vegas.Language.Basic
 /-!
 # Nullable guard facts
 
-Surface `yield` lowering uses nullable hidden commitments. This file records
+Surface `yield` lowering uses nullable sealed commitments. This file records
 the guard facts for those synthesized nullable commitments.
 -/
 

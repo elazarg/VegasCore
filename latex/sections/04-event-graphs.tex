@@ -51,7 +51,7 @@ The read footprint controls both scheduling and observation:
 \item a sample reads the public fields declared by its distribution;
 \item a commit choice footprint contains the fields visible to the
   committing player at the commit site;
-\item a reveal reads the hidden source field being opened.
+\item a reveal reads the sealed source field being opened.
 \end{itemize}
 
 The commit footprint is the player's visible context at the commit site,
@@ -64,7 +64,7 @@ Graph well-formedness is the conjunction of the following facts: for
 each node, every read field must already be available; each read field
 is either initial or written by an earlier node; internal events with
 public output read only public fields; commit choice footprints are
-public or owned by the committing player; and a reveal opens a hidden
+public or owned by the committing player; and a reveal opens a sealed
 field into a public output field of the same type.
 
 Graph reads are not raw SSA ancestry or a full program-dependence graph
@@ -105,7 +105,7 @@ The negative cases are as important.  Commit/commit pairs are
 independent unless the later commit choice footprint contains a field written
 by the earlier one.  Reveal/reveal pairs are independent at this abstraction
 level unless one reveal reads a field written by the other, which the
-core language does not generate.  Public samples do not wait for hidden
+core language does not generate.  Public samples do not wait for sealed
 commitments.
 
 \subsection{Configurations and availability}

@@ -63,19 +63,26 @@ mixed-extension frontier kernel games introduced in
 \subsection{Typed contexts and environments}
 \label{sec:prelim:contexts}
 
-A \emph{typed context} is a list of typed bindings,
+A \emph{typed context} associates each bound name with a type drawn
+from a small fixed type universe (described in
+\Cref{sec:source-language}).  Because the names in a checked program are
+unique (they are in SSA form), we read a context \emph{extensionally},
+as a finite map
 \[
-  \Gamma = [(x_1, \tau_1), \dots, (x_n, \tau_n)],
+  \Gamma : x \mapsto \tau,
 \]
-with each $\tau_i$ drawn from a small fixed type universe (described
-in \Cref{sec:source-language}).  An \emph{environment} for $\Gamma$
-is a dependent assignment $\rho \in \Env(\Gamma)$ that maps each
-binding to a value of its declared type.  In Lean, variable lookup
-carries a proof that the named variable is present with the requested
-type.  Checked contexts have unique names, so two proofs that refer to
-the same binding give the same value.  This is the formal reason the
-compiler can talk about field names without depending on arbitrary proof
-objects.
+and use map notation for it throughout: $\mathrm{dom}(\Gamma)$ for the
+bound names, $\Gamma(x)$ for the binding at $x$, and
+$\Gamma[x \mapsto \tau]$ for extension.  Lean represents the same data as
+an ordered list of bindings and recovers the map view from uniqueness of
+names; the order is a representational artifact and carries no source
+meaning.  An \emph{environment} for $\Gamma$ is a dependent assignment
+$\rho \in \Env(\Gamma)$ that maps each name to a value of its declared
+type.  In Lean, variable lookup carries a proof that the named variable
+is present with the requested type; because names are unique, two proofs
+that refer to the same binding give the same value.  This is the formal
+reason the compiler can talk about field names without depending on
+arbitrary proof objects.
 
 We write $\rho \mathrel{\equiv_S} \rho'$ for two environments that
 agree on a variable set $S$.  The fundamental soundness law of the

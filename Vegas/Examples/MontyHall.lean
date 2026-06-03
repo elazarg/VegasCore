@@ -71,64 +71,64 @@ def carPublic : VarId := 7
 
 abbrev Γ0 : VCtx Player L := []
 abbrev Γ1 : VCtx Player L :=
-  [(carSecret, .hidden Player.host DoorTy)]
+  [(carSecret, .sealed Player.host DoorTy)]
 abbrev Γ2 : VCtx Player L :=
-  [(firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+  [(firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ3 : VCtx Player L :=
   [(firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ4 : VCtx Player L :=
-  [(openedSecret, .hidden Player.host DoorTy),
+  [(openedSecret, .sealed Player.host DoorTy),
    (firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ5 : VCtx Player L :=
   [(openedPublic, .pub DoorTy),
-   (openedSecret, .hidden Player.host DoorTy),
+   (openedSecret, .sealed Player.host DoorTy),
    (firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ6 : VCtx Player L :=
-  [(switchSecret, .hidden Player.guest .bool),
+  [(switchSecret, .sealed Player.guest .bool),
    (openedPublic, .pub DoorTy),
-   (openedSecret, .hidden Player.host DoorTy),
+   (openedSecret, .sealed Player.host DoorTy),
    (firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ7 : VCtx Player L :=
   [(switchPublic, .pub .bool),
-   (switchSecret, .hidden Player.guest .bool),
+   (switchSecret, .sealed Player.guest .bool),
    (openedPublic, .pub DoorTy),
-   (openedSecret, .hidden Player.host DoorTy),
+   (openedSecret, .sealed Player.host DoorTy),
    (firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 abbrev Γ8 : VCtx Player L :=
   [(carPublic, .pub DoorTy),
    (switchPublic, .pub .bool),
-   (switchSecret, .hidden Player.guest .bool),
+   (switchSecret, .sealed Player.guest .bool),
    (openedPublic, .pub DoorTy),
-   (openedSecret, .hidden Player.host DoorTy),
+   (openedSecret, .sealed Player.host DoorTy),
    (firstPublic, .pub DoorTy),
-   (firstSecret, .hidden Player.guest DoorTy),
-   (carSecret, .hidden Player.host DoorTy)]
+   (firstSecret, .sealed Player.guest DoorTy),
+   (carSecret, .sealed Player.host DoorTy)]
 
 def hFirstSecretΓ2 :
-    VHasVar Γ2 firstSecret (.hidden Player.guest DoorTy) :=
+    VHasVar Γ2 firstSecret (.sealed Player.guest DoorTy) :=
   .here
 
 def hOpenedSecretΓ4 :
-    VHasVar Γ4 openedSecret (.hidden Player.host DoorTy) :=
+    VHasVar Γ4 openedSecret (.sealed Player.host DoorTy) :=
   .here
 
 def hSwitchSecretΓ6 :
-    VHasVar Γ6 switchSecret (.hidden Player.guest .bool) :=
+    VHasVar Γ6 switchSecret (.sealed Player.guest .bool) :=
   .here
 
 def hCarSecretΓ7 :
-    VHasVar Γ7 carSecret (.hidden Player.host DoorTy) :=
+    VHasVar Γ7 carSecret (.sealed Player.host DoorTy) :=
   .there (.there (.there (.there (.there (.there .here)))))
 
 def hOpenedCandidateGuard :
@@ -770,13 +770,13 @@ noncomputable def node5 : Fin compiled.graph.nodeCount := node 5 (by decide)
 noncomputable def node6 : Fin compiled.graph.nodeCount := node 6 (by decide)
 noncomputable def node7 : Fin compiled.graph.nodeCount := node 7 (by decide)
 
-/-- The guest's first hidden commitment does not depend on the host's hidden
+/-- The guest's first sealed commitment does not depend on the host's sealed
 car commitment. -/
 example :
     compiled.graph.prereqs node1 = ∅ := by
   decide
 
-/-- The host's door-opening commitment can use the hidden car and the public
+/-- The host's door-opening commitment can use the sealed car and the public
 first choice, but it does not directly depend on unrelated reveal order. -/
 example :
     compiled.graph.prereqs node3 = {node0, node2} := by

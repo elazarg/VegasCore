@@ -29,24 +29,24 @@ def footballFanPublic : VarId := 3
 
 abbrev Γ0 : VCtx Player L := []
 abbrev Γ2 : VCtx Player L :=
-  [(footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+  [(footballFanSecret, .sealed Player.footballFan .bool),
+   (operaFanSecret, .sealed Player.operaFan .bool)]
 abbrev Γ3 : VCtx Player L :=
   [(operaFanPublic, .pub .bool),
-   (footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+   (footballFanSecret, .sealed Player.footballFan .bool),
+   (operaFanSecret, .sealed Player.operaFan .bool)]
 abbrev Γ4 : VCtx Player L :=
   [(footballFanPublic, .pub .bool),
    (operaFanPublic, .pub .bool),
-   (footballFanSecret, .hidden Player.footballFan .bool),
-   (operaFanSecret, .hidden Player.operaFan .bool)]
+   (footballFanSecret, .sealed Player.footballFan .bool),
+   (operaFanSecret, .sealed Player.operaFan .bool)]
 
 def hOperaFanSecretΓ2 :
-    VHasVar Γ2 operaFanSecret (.hidden Player.operaFan .bool) :=
+    VHasVar Γ2 operaFanSecret (.sealed Player.operaFan .bool) :=
   .there .here
 
 def hFootballFanSecretΓ3 :
-    VHasVar Γ3 footballFanSecret (.hidden Player.footballFan .bool) :=
+    VHasVar Γ3 footballFanSecret (.sealed Player.footballFan .bool) :=
   .there .here
 
 def hFootballFanPublicPayoff :

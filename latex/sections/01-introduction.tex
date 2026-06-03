@@ -70,7 +70,7 @@ interfaces are designed to reach.}
 \subsection{Protocols vs. game trees}
 
 Many finite games are naturally written as protocols.  Each player
-commits to a private value, a public sample is drawn, hidden values are
+commits to a private value, a public sample is drawn, sealed values are
 revealed, and the terminal public state determines the payoffs.  Writing
 the same object directly as an
 extensive-form tree forces an arbitrary linearization of events that are
@@ -102,7 +102,7 @@ through an event graph rather than generating an EFG directly.
 \label{sec:intro:matching-pennies}
 
 Consider a Matching-Pennies protocol.  The matcher and mismatcher each
-commit a hidden boolean, then both booleans are revealed.  The matcher
+commit a sealed boolean, then both booleans are revealed.  The matcher
 gets \(+1\) on equality and \(-1\) otherwise; the mismatcher gets the
 opposite payoff.  A source program necessarily lists the constructors in
 some order, for example:
@@ -118,7 +118,7 @@ some order, for example:
 \end{quote}
 The intended game is not sequential at the commitment phase.  The two
 commits are independent choices because neither player can observe the
-other player's hidden field before committing.
+other player's sealed field before committing.
 
 \begin{figure}[t]
 \centering
@@ -146,18 +146,18 @@ commit to its own reveal and from reveals to \(\Ret\) are data
 dependencies.  Cross-edges from one player's commit to the other
 player's reveal are barrier dependencies: they enforce that all earlier
 commitments are fixed before any reveal phase begins, but they carry no
-hidden payload.}
+sealed payload.}
 \label{fig:matching-pennies-eg}
 \end{figure}
 
 In \Cref{fig:matching-pennies-eg}, the two commit nodes share the
 initial frontier, the graph boundary of currently ready events.  Each
-reveal depends on its own hidden source field, and the reveal phase also
+reveal depends on its own sealed source field, and the reveal phase also
 waits for prior commits.  This second dependency is the commit/reveal
 barrier: a reveal must not become available while an earlier commitment
 is still mutable.  The barrier is graph structure, not a strategy-side
 convention.  Thus the source text may list one commitment before the
-other, but the compiled game still presents them as simultaneous hidden
+other, but the compiled game still presents them as simultaneous sealed
 choices.
 
 \subsection{The semantic spine}
@@ -180,7 +180,7 @@ The construction has the following shape:
 \(\mathsf{VegasLang}\) is a surface layer over the concrete expression
 language.  It contains administrative \(\Let\)-bindings and nullable
 yield sugar.  Lowering erases administrative lets by substitution and
-turns yields into a hidden optional commit followed by a reveal.  The
+turns yields into a sealed optional commit followed by a reveal.  The
 maintained core, \(\mathsf{VegasCore}\), contains only protocol
 constructors: \(\Sample\), \(\Commit\), \(\Reveal\), and \(\Ret\).
 
@@ -256,7 +256,7 @@ theorem surface is organized around the following claims.
 \item \textbf{Visibility.}  Commit reads are exactly the committing
   player's visible dependency footprint; public samples and payoff
   projections read declared public dependencies; reveals are the only
-  hidden-to-public flow.
+  sealed-to-public flow.
 \item \textbf{Frontier semantics.}  Pure, behavioral, and product
   mixed-pure frontier games are defined from the canonical frontier
   round view.  Their outcome kernels are source-payoff projections of

@@ -37,14 +37,14 @@ def victim : Player := 1
 abbrev Γ0 : VCtx Player simpleExpr := []
 
 abbrev Γ1 : VCtx Player simpleExpr :=
-  [(secret, .hidden actor (BaseTy.option .bool))]
+  [(secret, .sealed actor (BaseTy.option .bool))]
 
 abbrev Γ2 : VCtx Player simpleExpr :=
   [(publicVar, .pub (BaseTy.option .bool)),
-   (secret, .hidden actor (BaseTy.option .bool))]
+   (secret, .sealed actor (BaseTy.option .bool))]
 
 def hSecretΓ1 :
-    VHasVar Γ1 secret (.hidden actor (BaseTy.option .bool)) :=
+    VHasVar Γ1 secret (.sealed actor (BaseTy.option .bool)) :=
   .here
 
 def hPublicΓ2 :

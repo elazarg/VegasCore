@@ -29,7 +29,7 @@ graph itself does not privilege a source linearization.
 
 \paragraph{Visibility is bound, not used.}
 Every binding has a visibility tag; expression typing then
-projects the context down to public or hidden as required.  The
+projects the context down to public or sealed as required.  The
 discipline is owner-or-all: there is no group-visibility
 constructor, and reveal-like operations introduce a fresh public
 alias rather than mutating visibility.  Both decisions keep the

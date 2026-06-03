@@ -1,6 +1,15 @@
 \section{The source language and visibility discipline}
 \label{sec:source-language}
 
+A VegasCore program reads like a probabilistic program in which some of
+the sampling is delegated to strategic actors that see only part of the
+state: where an ordinary probabilistic program draws a value from a
+distribution, a VegasCore program may instead ask a player to choose it.
+Read operationally, it is simply a multiparty protocol with executable
+parts --- parties seal commitments and later reveal them, nature draws
+public randomness, and guards and payoffs are computed --- ending in a
+per-player payoff.
+
 \subsection{Expression languages}
 
 The core protocol syntax is parameterized by an expression language
@@ -26,64 +35,87 @@ maintained core remains generic in \(L\).
 
 \subsection{Visibility-aware contexts}
 
-A visibility-aware binding has the form \((x,\pub\,\tau)\) or
-\((x,\hid\,p\,\tau)\).  A public binding is visible to every player; a
-hidden binding is visible only to its owner.  From a context \(\Gamma\)
-we use three projections:
+A visibility context is the finite metadata used by checking and by
+configurations: a typed context (\Cref{sec:prelim:contexts}) in which
+each name additionally carries a visibility.  A name is either
+\emph{public}, visible to every player, or \emph{sealed} to an owner
+\(p\), readable only by \(p\); in the map these are written \(\pub\) and
+\(\sealed(p)\).  \(\Commit\) introduces a sealed name, \(\Reveal\)
+reclassifies a sealed name as public, and \(\Sample\) introduces a public
+one.  The surface syntax leaves visibility implicit
+--- it is fixed by the effect --- writing a public variable \(x\) and a
+sealed one \(x_p\); the absence of an owner subscript marks a public
+variable.  The language is simply typed --- types come from the
+expression language \(L\), with boolean guards and integer payoffs ---
+but types are orthogonal to the protocol and visibility structure studied
+here, so we suppress them throughout.  From a context \(\Gamma\) we use
+three projections:
 \[
   \erasepub{\Gamma}, \qquad
   \erasectx{\Gamma}, \qquad
   \view{p}.
 \]
-The first keeps only public bindings and erases visibility.  The second
-keeps all bindings and erases visibility.  The third keeps public
-bindings plus bindings hidden to player \(p\).
-
-Core syntax is indexed by the visibility context, so ordinary variable
-lookup is proof-bearing.  Freshness and well-formed contexts make
-lookup proof-irrelevant: two proofs naming the same variable in the
-same checked context identify the same typed field during compilation.
+The first keeps only the public names; the second keeps all of them but
+forgets visibility, yielding a plain typed context; and the third keeps
+what player \(p\) may see --- the public names together with the names
+sealed to \(p\).
 
 \subsection{Core protocol syntax}
 
-The maintained core has four constructors:
-\[
-\arraycolsep=1pt
-\begin{array}{r@{\;}c@{\;}l}
-\Ret\,\overline{p}
-  & : & \mathsf{VegasCore}\,\Gamma, \\
-\Sample\,x \sim D;\,k
-  & : & \mathsf{Dist}_{b}(\erasepub{\Gamma}) \times
-       \mathsf{VegasCore}((x,\pub\,b)::\Gamma)
-       \to \mathsf{VegasCore}\,\Gamma, \\
-\Commit_p\,x \mid R;\,k
-  & : & \Expr((x,b)::\erasectx{\view{p}}, \bool) \times
-       \mathsf{VegasCore}((x,\hid\,p\,b)::\Gamma)
-       \to \mathsf{VegasCore}\,\Gamma, \\
-\Reveal\,y := x;\,k
-  & : & \mathsf{Var}_{\hid\,p\,b}(\Gamma) \times
-       \mathsf{VegasCore}((y,\pub\,b)::\Gamma)
-       \to \mathsf{VegasCore}\,\Gamma.
-\end{array}
-\]
-\(\mathsf{Dist}_{b}(\erasepub{\Gamma})\) denotes a distribution
-expression of type \(b\) in the public erasure of \(\Gamma\), and
-\(\mathsf{Var}_{\hid\,p\,b}(\Gamma)\) denotes a hidden \(b\)-typed
-variable owned by \(p\) in \(\Gamma\).
-\(\Sample\) draws a public value.  \(\Commit\) asks player \(p\) to
-choose a hidden value satisfying a guard over the proposed action and
-the player's visible context.  \(\Reveal\) exposes a hidden value as a
-fresh public alias.  \(\Ret\) terminates with payoff expressions over
-the public context.
+A program is a sequence of protocol effects terminated by a payoff
+return.  \Cref{fig:vegas-syntax} gives the grammar.  Well-scopedness is
+checked against a visibility context: \(\Commit\) and
+\(\Sample\) each introduce a fresh name, while \(\Reveal\) discloses an
+existing committed one.
 
-Read \(\Commit_p\) as follows: introduce a fresh hidden binding \(x:b\)
-owned by \(p\), under a guard \(R\) that may inspect both the proposed
-value \(x\) and the visibility-erased \(p\)-view of \(\Gamma\).
+\begin{figure}[t]
+\centering
+\begin{bnf}
+$s$ : \textsf{effect} ::=
+  | $\Commit~x_p~\Where~\varphi_p$ : sealed commitment, owned by \(p\)
+  | $\Reveal~x_p$ : disclose a secret (\(x\) becomes public)
+  | $\Sample~x \sim D$ : draw public randomness
+;;
+$t$ : \textsf{program} ::=
+  | $s;~t$ : sequence an effect
+  | $\Ret~\overline{e}$ : terminate with payoffs \(\overline{e}\)
+\end{bnf}
+\caption{Core protocol syntax. A program \(t\) is a sequence of effects
+ending in \(\Ret\). The payoff expressions \(\overline{e}\) (one per
+player), the distribution \(D\), and the boolean guard \(\varphi_p\) come
+from the parameter expression language \(L\); \(x\) is a variable and
+\(p\) a player. Types are supplied by \(L\) and suppressed throughout.}
+\label{fig:vegas-syntax}
+\end{figure}
+
+\(\Commit\) binds a variable \(x_p\) sealed to \(p\) --- player \(p\)'s
+sealed choice --- under the guard \(\varphi_p\), evaluated in \(p\)'s
+view. \(\Reveal\) reclassifies the sealed \(x_p\) as public, disclosing
+that same variable. \(\Sample\) binds a public variable \(x\) and draws
+\(D\) over the public part of the context (nature has no private
+knowledge). \(\Ret\) terminates with payoff expressions over the public
+context.
+
+The corresponding context action is partial.  Writing
+\(\mathrm{dom}(\Gamma)\) for the names already bound, \(\Commit~x_p\) and
+\(\Sample~x\) require \(x \notin \mathrm{dom}(\Gamma)\), and extend
+\(\Gamma\) with \(x\) sealed to \(p\) or public, respectively.
+\(\Reveal~x_p\) requires \(x\) already sealed to \(p\), and updates that
+same map entry to public.
+
+The guard \(\varphi_p\) is typed over exactly the variables \(p\) can see
+at that point: the proposed value together with the entire \(p\)-view of
+\(\Gamma\), and nothing outside it.  It is evaluated in an environment
+providing exactly those variables --- the player view
+\(\rho\!\downarrow_p\) extended with the proposed value \(x \mapsto v\);
+which of them the guard actually inspects is up to the expression.  How a
+player's view is realised in a concrete execution is a question we do not
+settle here.
 
 A guard is the protocol's local admissibility test for a commitment.  It
 can depend on the proposed value and on what the committing player is
 allowed to see at that point.  It cannot depend on another player's
-hidden commitment unless that value has already been revealed.  This is
+sealed commitment unless that value has already been revealed.  This is
 the source-language counterpart of information sets in classical game
 trees, but it is enforced at the binding level instead of by drawing
 equivalence classes on tree nodes.
@@ -92,9 +124,226 @@ There is no core \(\Let\).  Deterministic administrative bindings live
 in the surface layer and are erased by substitution before graph
 compilation.  This keeps event graphs about protocol activity rather
 than source convenience.  If a deterministic value must be materialized
-as public protocol state, it should be expressed through a public sample
-or an explicit future protocol constructor, not through administrative
-\(\Let\).
+as public protocol state, it should be expressed through a point-mass
+public sample or an explicit future protocol constructor, not through
+administrative \(\Let\).
+
+\subsection{Operational semantics}
+\label{sec:source:sos}
+
+A program's source-level operational reading is a small-step relation on
+\emph{configurations}.  A configuration \(\sconf{\Gamma}{\rho}{t}\) pairs
+a visibility map \(\Gamma\), an environment \(\rho\) assigning a value to
+every name in \(\mathrm{dom}(\Gamma)\), and the program \(t\) that
+remains to run.  The initial configuration of a closed program \(t_0\) is
+\(\sconf{\emptyset}{\emptyset}{t_0}\).  Each step runs the program's head
+effect; \Cref{fig:vegas-sos} gives the rules.
+
+\begin{figure}[t]
+\centering
+\begin{mathpar}
+\inferrule[Commit]
+  {x \notin \mathrm{dom}(\Gamma) \\
+   \sem{\varphi_p}_{\rho\downarrow_p,\ x \mapsto v} = \mathsf{true}}
+  {\sconf{\Gamma}{\rho}{\Commit\,x_p~\Where~\varphi_p;\ t}
+     \;\sstep\;
+   \sconf{\Gamma[x \mapsto \sealed(p)]}{\rho[x \mapsto v]}{t}}
+\and
+\inferrule[Reveal]
+  {\Gamma(x) = \sealed(p)}
+  {\sconf{\Gamma}{\rho}{\Reveal\,x_p;\ t}
+     \;\sstep\;
+   \sconf{\Gamma[x \mapsto \pub]}{\rho}{t}}
+\and
+\inferrule[Sample]
+  {x \notin \mathrm{dom}(\Gamma) \\
+   v \in \supp\,\sem{D}_{\rho^{\pub}}}
+  {\sconf{\Gamma}{\rho}{\Sample\,x \sim D;\ t}
+     \;\sstep\;
+   \sconf{\Gamma[x \mapsto \pub]}{\rho[x \mapsto v]}{t}}
+\end{mathpar}
+\caption{Small-step operational semantics.  Here \(\rho^{\pub}\) is the
+public part of the environment, \(\rho\!\downarrow_p\) is the environment
+restricted to \(p\)'s visible context (the public bindings together with
+\(p\)'s own), and \(\sem{\cdot}\) is evaluation in the parameter language
+\(L\).  \textsc{Commit} admits any value for which the player's guard
+holds in the player's own view; \textsc{Reveal} reclassifies \(x\) from
+sealed-to-\(p\) to public, leaving the value in \(\rho\) unchanged;
+\textsc{Sample} steps to any value in the support of the distribution.
+There is no rule for \(\Ret\): it is terminal.}
+\label{fig:vegas-sos}
+\end{figure}
+
+Two features set these rules apart from ordinary
+environment-threading reduction.  \textsc{Commit} and \textsc{Reveal}
+carry the visibility discipline: a commit guard is evaluated in the
+committing player's view \(\rho\!\downarrow_p\), and a sealed value
+becomes observable only when \textsc{Reveal} reclassifies its map entry
+from sealed to public.  \textsc{Sample} is probabilistic: the step
+ranges over the support of \(\sem{D}\), recording which draws are
+possible, while the quantitative weights are supplied by the denotation
+of \(D\).
+
+A terminal configuration \(\sconf{\Gamma}{\rho}{\Ret\,\overline{e}}\)
+reports the outcome
+\[
+  \outcomeof\sconf{\Gamma}{\rho}{\Ret\,\overline{e}}
+    \;=\; \sem{\overline{e}}_{\rho^{\pub}},
+\]
+the payoff vector obtained by evaluating each payoff expression in the
+public environment.  Writing \(\sstep^{\!*}\) for the reflexive--%
+transitive closure, a complete run of \(t_0\) is a sequence
+\(\sconf{\emptyset}{\emptyset}{t_0} \;\sstep^{\!*}\;
+  \sconf{\Gamma}{\rho}{\Ret\,\overline{e}}\),
+and its result is that terminal outcome.
+
+\begin{remark}[Visibility is static]
+\label{rem:visibility-static}
+Although the rules thread \(\Gamma\) through the configuration and update
+it at each step, visibility is not runtime information.  The core is
+straight-line --- a fixed sequence of effects with no value-dependent
+control flow --- so the remaining program \(t\) is simply a program
+counter into \(t_0\), and the context is a function of that counter
+alone.  Writing \(\mathrm{vis}(t)\) for the context determined by the
+effects of \(t_0\) preceding \(t\), every reachable configuration
+satisfies
+\[
+  \sconf{\emptyset}{\emptyset}{t_0} \sstep^{\!*}
+  \sconf{\Gamma}{\rho}{t}
+  \quad\Longrightarrow\quad
+  \Gamma = \mathrm{vis}(t),
+\]
+by induction on \(\sstep^{\!*}\): each effect's action on \(\Gamma\)
+depends only on the effect, never on the sampled or committed value in
+\(\rho\).  The freshness premise \(x \notin \mathrm{dom}(\Gamma)\) and the
+reveal premise \(\Gamma(x) = \sealed(p)\) are then well-scopedness facts
+about \(t_0\), not runtime guards: a well-scoped program satisfies them at
+every step and never gets stuck on them.  The configuration carries
+\(\Gamma\) only to keep each rule self-contained; the mechanization
+instead makes the context a static index of the term, so this invariant
+holds by construction and the reveal premise is discharged by an
+ownership witness rather than rechecked.  This is the source-level
+counterpart of the event graph deriving prerequisites and visibility
+\emph{canonically} rather than storing them (\Cref{sec:eg:prereqs}).
+\end{remark}
+
+\begin{remark}[Labelled transitions]
+Annotating each step with the data it introduces or discloses ---
+\(\mathsf{commit}\,x_p\,v\), \(\mathsf{reveal}\,x_p\,v\), or
+\(\mathsf{sample}\,x\,v\) --- yields a labelled transition system
+\(\sconf{\Gamma}{\rho}{t} \lstep{\ell} \sconf{\Gamma'}{\rho'}{t'}\) whose
+label-erasure is the relation of \Cref{fig:vegas-sos}.  A label names the
+source action, including a committed value; later epistemic or player
+views can be defined as projections of such labels.
+\end{remark}
+
+\begin{figure}[t]
+\centering
+\begin{bnf}
+$v$ : \textsf{variable} ::=
+  | $x$ : public name
+  | $x_p$ : name sealed to \(p\)
+;;
+$s$ : \textsf{effect} ::=
+  | $\Commit~x_p~\Where~\varphi_p$ : seal \(p\)'s choice in \(x_p\)
+  | $\Reveal~x_p$ : copy \(x_p\) into its public alias \(x\)
+  | $\Sample~x \sim D$ : draw public randomness into \(x\)
+;;
+$t$ : \textsf{program} ::=
+  | $s;~t$ : sequence an effect
+  | $\Ret~\overline{e}$ : terminate with payoffs \(\overline{e}\)
+\end{bnf}
+\caption{Alternative core syntax. Visibility is structural in the name:
+a public name \(x\) carries no owner, a name \(x_p\) is sealed to \(p\).
+There is no separate visibility context. \(\Reveal\,x_p\) does not
+reclassify \(x_p\); it copies its value into the public alias \(x\). The
+payoff list \(\overline{e}\), distribution \(D\), and guard \(\varphi_p\)
+come from the parameter expression language \(L\); \(p\) is a player.}
+\label{fig:vegas-syntax-alt}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{mathpar}
+\inferrule[WF-Commit]
+  {x_p \notin \Delta \\
+   \mathrm{deps}(\varphi_p) \subseteq \Delta\!\downarrow_p \cup \{x_p\} \\
+   \Delta \cup \{x_p\} \vdash t}
+  {\Delta \vdash \Commit\,x_p~\Where~\varphi_p;\ t}
+\and
+\inferrule[WF-Reveal]
+  {x_p \in \Delta \\ x \notin \Delta \\ \Delta \cup \{x\} \vdash t}
+  {\Delta \vdash \Reveal\,x_p;\ t}
+\and
+\inferrule[WF-Sample]
+  {x \notin \Delta \\
+   \mathrm{deps}(D) \subseteq \Delta^{\pub} \\
+   \Delta \cup \{x\} \vdash t}
+  {\Delta \vdash \Sample\,x \sim D;\ t}
+\and
+\inferrule[WF-Ret]
+  {\mathrm{deps}(\overline{e}) \subseteq \Delta^{\pub}}
+  {\Delta \vdash \Ret\,\overline{e}}
+\end{mathpar}
+\caption{Static well-formedness \(\Delta \vdash t\), over the set
+\(\Delta\) of already-declared names. \(\Delta\!\downarrow_p\) is the
+public names together with those sealed to \(p\); \(\Delta^{\pub}\) the
+public names; \(\mathrm{deps}(\cdot)\) the declared dependency footprint
+(\Cref{sec:prelim:contexts}). A closed program \(t_0\) is well-formed
+when \(\emptyset \vdash t_0\). These are exactly the static side
+conditions --- name freshness, that a revealed name was committed and its
+public alias is fresh, and that guards, distributions, and payoffs read
+only visible names --- that the operational rules
+(\Cref{fig:vegas-sos-alt}) then omit.}
+\label{fig:vegas-wf-alt}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{mathpar}
+\inferrule[Commit]
+  {\sem{\varphi_p}_{\rho\downarrow_p,\ x_p \mapsto v} = \mathsf{true}}
+  {\langle \rho \mathrel{;} \Commit\,x_p~\Where~\varphi_p;\ t\rangle
+     \;\sstep\;
+   \langle \rho[x_p \mapsto v] \mathrel{;} t\rangle}
+\and
+\inferrule[Reveal]
+  { }
+  {\langle \rho \mathrel{;} \Reveal\,x_p;\ t\rangle
+     \;\sstep\;
+   \langle \rho[x \mapsto \rho(x_p)] \mathrel{;} t\rangle}
+\and
+\inferrule[Sample]
+  {v \in \supp\,\sem{D}_{\rho^{\pub}}}
+  {\langle \rho \mathrel{;} \Sample\,x \sim D;\ t\rangle
+     \;\sstep\;
+   \langle \rho[x \mapsto v] \mathrel{;} t\rangle}
+\end{mathpar}
+\caption{Alternative small-step semantics, with no visibility context:
+a configuration is \(\langle \rho \mathrel{;} t\rangle\). The rules assume
+a well-formed program (\Cref{fig:vegas-wf-alt}), so the domain side
+conditions are discharged statically and only the dynamic premises
+remain. Visibility is read off names: \(\rho\!\downarrow_p\) restricts
+\(\rho\) to public names and names sealed to \(p\); \(\rho^{\pub}\)
+restricts to public names. \textsc{Commit} writes the sealed slot
+\(x_p\); \textsc{Reveal} copies it into the public alias \(x\), leaving
+\(x_p\) in \(\rho\); \textsc{Sample} writes the public name \(x\).
+\(\Ret\) is terminal, and \(\langle \rho \mathrel{;}
+\Ret\,\overline{e}\rangle\) reports \(\sem{\overline{e}}_{\rho^{\pub}}\).}
+\label{fig:vegas-sos-alt}
+\end{figure}
+
+\leancorr{Configurations, the small-step relation, its reflexive--transitive
+closure, the terminal outcome reader, and the labelled refinement are
+\TT{Vegas.Core.SmallStep}.  The paper presents contexts extensionally as finite
+maps in configurations.  Lean uses list-indexed terms and environments as an
+intrinsic well-scoped representation: \TT{VegasCore P L \(\Gamma\)} stores the
+current context in the type of each continuation.  Under freshness, the list
+context represents a finite map up to representation order.  Lean also represents
+\(\Reveal\) as a fresh public alias while retaining the sealed source binding;
+the paper's in-place reclassification is the source-facing projection of that
+representation, and the event-graph context is a separate compiler construction
+state related by compilation invariants.}
 
 \subsection{Surface syntax}
 \label{sec:source:surface}
@@ -104,14 +353,14 @@ expression language.  It mirrors the protocol core and adds:
 \begin{itemize}\itemsep1pt
 \item administrative \(\Let\)-bindings, erased by the lowering
   environment;
-\item nullable \(\mathsf{yield}\), lowered to a hidden optional commit
+\item nullable \(\mathsf{yield}\), lowered to a sealed optional commit
   followed immediately by a public reveal of the optional value.
 \end{itemize}
 
 The lowering environment maps public surface variables to public core
-expressions and hidden variables to hidden core variables.  This is why
+expressions and sealed variables to sealed core variables.  This is why
 surface lets do not allocate graph fields: later public references are
-rewritten to the defining expression, while hidden commitments remain
+rewritten to the defining expression, while sealed commitments remain
 stored values that can later be revealed.
 
 \subsection{Static obligations}
@@ -128,11 +377,13 @@ from the obligations needed for checked game semantics.
   \(\mathsf{compile}\).
 \item[\(\mathsf{WFProgram}\).]
   Wraps a \(\mathsf{GraphProgram}\) and adds reveal completeness plus
-  commit-guard legality.  Reveal completeness states that committed
-  source values are eventually opened by the source program.  Legality
-  states that each commit guard admits at least one action in every
-  source-visible context.  These obligations are consumed by the
-  game-facing progress layer, not by raw graph allocation.
+  commit-guard legality.  Reveal completeness is a syntactic
+  acquire--release discipline for sealed commitments: each \(\Commit\)
+  acquires a pending secret name, each \(\Reveal\) releases a currently
+  pending secret, and \(\Ret\) is allowed only once no pending secrets
+  remain.  Legality states that each commit guard admits at least one
+  action in every source-visible context.  These obligations are consumed
+  by the game-facing progress layer, not by raw graph allocation.
 \item[\(\mathsf{FiniteDomains}\).]
   Evidence that all operational value domains introduced by the program
   are finite.  This is needed to enumerate finite strategy carriers and
@@ -142,7 +393,7 @@ from the obligations needed for checked game semantics.
 
 This split is important.  A graph can be allocated from syntax plus
 basic static hygiene, even before we know it is a good game.  A checked
-game needs more: it must not leave hidden commitments forever sealed
+game needs more: it must not leave commitments forever sealed
 when payoffs expect public data, and it must not present a player with a
 commitment point where every possible action is illegal.  Those are
 semantic obligations about play, so they live in \(\mathsf{WFProgram}\)
@@ -155,7 +406,9 @@ Compilation turns a \(\mathsf{GraphProgram}\) into a
 additional checked-program obligations are then used by progress,
 frontier-game, and refinement theorems.
 
-\leancorr{Core syntax is \TT{Vegas.Core.Basic}.  Checked-program bundles are in
-\TT{Vegas.WellFormed.Program}.  Surface syntax and let-erasing lowering are
-in \TT{Vegas.Language.Basic}.  The concrete well-formedness predicates are
-collected by \TT{Vegas.Core.Obligations}.}
+\leancorr{Core syntax is \TT{Vegas.Core.Basic}; it is continuation-passing
+--- each effect bundles its continuation, typed in the extended context, which
+is what makes every term well-scoped by construction, and is what the grammar's
+\(s;~t\) denotes.  Checked-program bundles are in \TT{Vegas.WellFormed.Program}.
+Surface syntax and let-erasing lowering are in \TT{Vegas.Language.Basic}.  The
+concrete well-formedness predicates are collected by \TT{Vegas.Core.Obligations}.}

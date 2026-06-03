@@ -9,6 +9,8 @@
 \usepackage{cleveref}
 \usepackage{booktabs}
 \usepackage{enumitem}
+\usepackage{mathpartir}      % pretty inference rules (operational semantics)
+\usepackage{simplebnf}       % pretty BNF grammars
 
 % ── Theorem environments ──────────────────────────────────────────────
 \newtheorem{theorem}{Theorem}[section]
@@ -32,8 +34,8 @@
 \newcommand{\bool}{\mathsf{bool}}
 
 % ── Visibility annotations ────────────────────────────────────────────
-\newcommand{\pub}{\ensuremath{\mathsf{pub}}}
-\newcommand{\hid}{\ensuremath{\mathsf{hid}}}
+\newcommand{\pub}{\ensuremath{\mathsf{public}}}
+\newcommand{\sealed}{\ensuremath{\mathsf{sealed}}}
 
 % ── Contexts ──────────────────────────────────────────────────────────
 \newcommand{\view}[1]{\Gamma\!\!\downarrow_{#1}}       % viewVCtx
@@ -46,6 +48,19 @@
 \newcommand{\Sample}{\ensuremath{\mathbf{sample}}}
 \newcommand{\Commit}{\ensuremath{\mathbf{commit}}}
 \newcommand{\Reveal}{\ensuremath{\mathbf{reveal}}}
+\newcommand{\Where}{\ensuremath{\mathbf{where}}}
+
+% Context cons. Wrapped in a macro so packages that split on ':' (e.g.
+% simplebnf alternatives) never see the literal '::'.
+\newcommand{\cons}{\mathbin{::}}
+
+% ── Small-step operational semantics ──────────────────────────────────
+\newcommand{\sconf}[3]{\langle #1 \mathrel{;} #2 \mathrel{;} #3 \rangle} % configuration
+\newcommand{\sstep}{\longrightarrow}                  % step relation
+\newcommand{\lstep}[1]{\xrightarrow{\,#1\,}}          % labelled step
+\newcommand{\sem}[1]{\llbracket #1 \rrbracket}        % evaluation in L
+\newcommand{\supp}{\mathop{\mathrm{supp}}}            % support of a weighting
+\newcommand{\outcomeof}{\mathsf{outcome}}             % terminal outcome reader
 
 % ── Distributions ─────────────────────────────────────────────────────
 \newcommand{\FWeight}[1]{\mathcal{W}(#1)}

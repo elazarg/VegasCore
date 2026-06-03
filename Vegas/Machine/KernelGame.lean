@@ -15,7 +15,7 @@ This module is the game-theoretic bridge for `Machine.RoundView`.
 The bridge is explicitly bounded: a horizon defines the finite strategic
 history space, and `steps` says how many bounded rounds are executed. Outcomes
 are partial at the machine layer, so the caller must provide an explicit
-cutoff utility for `none` instead of inheriting a hidden zero-payoff policy.
+cutoff utility for `none` instead of inheriting a sealed zero-payoff policy.
 -/
 
 namespace Vegas

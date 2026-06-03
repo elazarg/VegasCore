@@ -40,7 +40,7 @@ generic over it. (`Vegas.Foundation.Basic`)
 
 /-! ## 2. Visibility and typed contexts
 
-A bound variable carries a *visibility* (public, or hidden to one player) and a
+A bound variable carries a *visibility* (public, or sealed to one player) and a
 base type. Visibility contexts (`VCtx`) are lists of such bindings; `VHasVar`
 is the intrinsically-typed membership witness that keeps every term
 well-scoped by construction. (`Vegas.Foundation.Basic`)

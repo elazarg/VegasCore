@@ -1372,7 +1372,7 @@ noncomputable def publicObserve (G : Graph Player L) (cfg : Config G) :
 
 `ready` is the player's current commit frontier. `value?` exposes only fields
 in the choice footprint of a ready commit node owned by the player. Values
-outside that local commit view are hidden, even if an external schedule happened
+outside that local commit view are sealed, even if an external schedule happened
 to execute unrelated events earlier. -/
 structure Observation (G : Graph Player L) (_who : Player) where
   ready : Finset (Fin G.nodeCount)

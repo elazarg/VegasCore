@@ -20,7 +20,7 @@ namespace Vegas
 /-! ## Views and public projection -/
 
 /-- Can player `p` observe a binding of type `τ`? True for public bindings
-and for hidden bindings owned by `p`. -/
+and for sealed bindings owned by `p`. -/
 abbrev canSee {Player : Type} [DecidableEq Player] {L : IExpr}
     (p : Player) (τ : BindTy Player L) : Bool :=
   τ.visibility.canSee p
@@ -78,7 +78,7 @@ theorem viewVCtx_owner {Player : Type} [DecidableEq Player] {L : IExpr}
             | mk base vis =>
                 cases vis with
                 | pub => simp [BindTy.owner]
-                | hidden owner =>
+                | sealed owner =>
                     simp [canSee, Visibility.canSee] at hsee
                     right
                     simp [BindTy.owner, hsee]
@@ -112,7 +112,7 @@ end VHasVar
 def pubVCtx {Player : Type} {L : IExpr} : VCtx Player L → VCtx Player L
   | [] => []
   | (x, ⟨τ, .pub⟩) :: Γ => (x, ⟨τ, .pub⟩) :: pubVCtx Γ
-  | (_, ⟨_, .hidden _⟩) :: Γ => pubVCtx Γ
+  | (_, ⟨_, .sealed _⟩) :: Γ => pubVCtx Γ
 
 /-- Every binding in the public projection is public. -/
 theorem pubVCtx_owner {Player : Type} {L : IExpr}
@@ -130,7 +130,7 @@ theorem pubVCtx_owner {Player : Type} {L : IExpr}
               cases h with
               | here => rfl
               | there htail => exact ih htail
-          | hidden owner =>
+          | sealed owner =>
               simp only [pubVCtx] at h
               exact ih h
 
@@ -150,7 +150,7 @@ def ofPubVCtx {Player : Type} {L : IExpr}
       match h with
       | .here => exact .here
       | .there h' => exact .there (ih h')
-    | ⟨υ, .hidden q⟩ =>
+    | ⟨υ, .sealed q⟩ =>
       simp only [pubVCtx]
       intro h
       exact .there (ih h)
@@ -167,7 +167,7 @@ expressions. Two erasures coexist:
 * `eraseVCtx` (full): used by operational kernels and by commit guards after
   projecting to the actor's `viewVCtx`.
 * `erasePubVCtx` (public-only): used by samples, payoff expressions, and
-  surface deterministic bindings — these may not depend on hidden state.
+  surface deterministic bindings — these may not depend on sealed state.
 
 The composition `eraseVCtx ∘ pubVCtx = erasePubVCtx` is the key
 commutation lemma (`eraseVCtx_pubVCtx`) that lets `erasePubVCtx`-shaped
@@ -200,7 +200,7 @@ def erasePubVCtx {Player : Type} {L : IExpr} :
     VCtx Player L → Ctx L.Ty
   | [] => []
   | (x, ⟨τ, .pub⟩) :: Γ => (x, τ) :: erasePubVCtx Γ
-  | (_, ⟨_, .hidden _⟩) :: Γ => erasePubVCtx Γ
+  | (_, ⟨_, .sealed _⟩) :: Γ => erasePubVCtx Γ
 
 @[simp] theorem erasePubVCtx_nil {Player : Type} {L : IExpr} :
     @erasePubVCtx Player L [] = [] := rfl
@@ -209,9 +209,9 @@ def erasePubVCtx {Player : Type} {L : IExpr} :
     {x : VarId} {τ : L.Ty} {Γ : VCtx Player L} :
     erasePubVCtx ((x, .pub τ) :: Γ) = (x, τ) :: erasePubVCtx Γ := rfl
 
-@[simp] theorem erasePubVCtx_cons_hidden {Player : Type} {L : IExpr}
+@[simp] theorem erasePubVCtx_cons_sealed {Player : Type} {L : IExpr}
     {x : VarId} {p : Player} {τ : L.Ty} {Γ : VCtx Player L} :
-    erasePubVCtx ((x, .hidden p τ) :: Γ) = erasePubVCtx Γ := rfl
+    erasePubVCtx ((x, .sealed p τ) :: Γ) = erasePubVCtx Γ := rfl
 
 /-- Every name in `erasePubVCtx Γ` also appears in any player's view of `Γ`,
 since public bindings are visible to everyone. -/
@@ -229,9 +229,9 @@ theorem erasePubVCtx_map_fst_sub_viewVCtx
       simp only [erasePubVCtx_cons_pub, viewVCtx, canSee,
         Visibility.canSee_pub, if_true, List.map_cons, List.mem_cons] at hx ⊢
       exact hx.elim Or.inl (fun h => Or.inr (ih x h))
-    | (y, ⟨b, .hidden p⟩) =>
-      simp only [erasePubVCtx_cons_hidden, viewVCtx] at hx ⊢
-      by_cases h : canSee who (.hidden p b)
+    | (y, ⟨b, .sealed p⟩) =>
+      simp only [erasePubVCtx_cons_sealed, viewVCtx] at hx ⊢
+      by_cases h : canSee who (.sealed p b)
       · simp only [h, ite_true, List.map_cons, List.mem_cons]
         right; exact ih x hx
       · simp only [h]
@@ -247,7 +247,7 @@ theorem eraseVCtx_pubVCtx {Player : Type} {L : IExpr}
     obtain ⟨x, τ⟩ := hd
     match τ with
     | ⟨b, .pub⟩ => simp [pubVCtx, erasePubVCtx, ih]
-    | ⟨b, .hidden p⟩ => simp [pubVCtx, erasePubVCtx, ih]
+    | ⟨b, .sealed p⟩ => simp [pubVCtx, erasePubVCtx, ih]
 
 namespace HasVar
 
@@ -272,9 +272,9 @@ def pubToView {Player : Type} [DecidableEq Player] {L : IExpr}
               cases h with
               | here => exact .here
               | there htail => exact .there (ih htail)
-          | hidden owner =>
-              simp only [erasePubVCtx_cons_hidden, viewVCtx]
-              by_cases hsee : canSee p (.hidden owner base)
+          | sealed owner =>
+              simp only [erasePubVCtx_cons_sealed, viewVCtx]
+              by_cases hsee : canSee p (.sealed owner base)
               · simp only [hsee, if_true, eraseVCtx_cons]
                 intro h
                 exact .there (ih h)
@@ -316,7 +316,7 @@ def HasVar.toVHasVarPub {Player : Type} {L : IExpr}
       cases h with
       | here => exact .here
       | there h' => exact .there (ih h')
-    | ⟨υ, .hidden p⟩ =>
+    | ⟨υ, .sealed p⟩ =>
       simp only [erasePubVCtx, pubVCtx]; intro h; exact ih h
 
 /-- A VHasVar in pubVCtx induces a HasVar in erasePubVCtx. -/
@@ -353,7 +353,7 @@ def erasePubEnv {Player : Type} {L : IExpr} :
   | ((_, ⟨_, .pub⟩) :: Γ'), env =>
     Env.cons (env.get .here)
       (erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h)))
-  | ((_, ⟨_, .hidden _⟩) :: Γ'), env =>
+  | ((_, ⟨_, .sealed _⟩) :: Γ'), env =>
     erasePubEnv (Γ := Γ') (fun a b h => env a b (VHasVar.there h))
 
 /-- Pointwise formula for `erasePubEnv`: looking up at an erased-pub position
@@ -376,7 +376,7 @@ equals looking up the original VEnv at the corresponding `pub` binding. -/
       | there hx' =>
         simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
           (ih (env := fun a b h => env a b (VHasVar.there h)) hx')
-    | ⟨υ, .hidden p⟩ =>
+    | ⟨υ, .sealed p⟩ =>
       simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
         (ih (env := fun a b h => env a b (VHasVar.there h)) hx)
 

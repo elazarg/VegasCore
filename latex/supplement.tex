@@ -127,7 +127,7 @@ visibility contexts & \TT{Vegas.VCtx}, \TT{Vegas.VHasVar} &
 \(\mathsf{VegasCore}\) & \TT{Vegas.VegasCore} &
   Is the commit guard typed over the committer's view only?  Does
   \(\Reveal\) require an ownership witness?  Is there no \(\Let\)/leak of
-  hidden state? \\
+  sealed state? \\
 \(\mathsf{VegasLang}\) & \TT{Vegas.VegasLang} &
   Does lowering erase administrative lets and preserve visibility? \\
 \(\mathsf{WFProgram}\) & \TT{Vegas.WFProgram} &
@@ -190,7 +190,7 @@ primitive machine.  Each labelled arrow is backed by a paper-facing claim in
 \end{figure}
 
 The first arrow is surface lowering.  It erases administrative
-\(\Let\)-bindings and lowers nullable yields to hidden optional
+\(\Let\)-bindings and lowers nullable yields to sealed optional
 commitments followed by reveals.  The second arrow is graph
 compilation.  The third is the primitive operational adapter.  The
 fourth is the frontier round-view construction that gives native
@@ -241,18 +241,18 @@ inductive VegasCore (Player : Type) [DecidableEq Player] (L : IExpr) :
 | commit : VarId -> Player ->
     L.Expr ((x, b) :: eraseVCtx (viewVCtx who Gamma)) L.bool -> ...
 | reveal : VarId -> Player -> VarId ->
-    VHasVar Gamma x (.hidden who b) -> ...
+    VHasVar Gamma x (.sealed who b) -> ...
 \end{leanbox}
 
 \TT{VegasCore} is the maintained protocol core.  It has no
 administrative let constructor.  Samples are public.  Commits bind
-hidden values owned by the committing player.  Reveals introduce fresh
-public aliases for hidden values.  Terminal payoff expressions read the
+sealed values owned by the committing player.  Reveals introduce fresh
+public aliases for sealed values.  Terminal payoff expressions read the
 public context.
 
 \emph{Audit.}  The partial-information discipline lives in the constructor
 types: the commit guard is typed over \(\erasectx{\view{who}}\) (the committer's
-view only), and \(\Reveal\) takes a \TT{VHasVar} ownership witness, so a hidden
+view only), and \(\Reveal\) takes a \TT{VHasVar} ownership witness, so a sealed
 value can be disclosed only by its owner and only if it really exists.  Because
 the inductive is indexed by the visibility context, well-scopedness is by
 construction --- there is no separate checker to trust.
@@ -274,7 +274,7 @@ def VegasLang.lower : VegasLang P Gamma -> VegasCore P simpleExpr Gamma
 
 \TT{VegasLang} is a concrete surface layer.  Its \TT{letExpr}
 constructor is erased by the lowering environment.  Its \TT{yield}
-constructor lowers to a nullable hidden commitment plus public reveal.
+constructor lowers to a nullable sealed commitment plus public reveal.
 This is why deterministic administrative bindings do not allocate graph
 events.
 
@@ -365,7 +365,7 @@ def Graph.prereqs (G : Graph Player L)
 
 \TT{Graph.WF} enforces id validity, type compatibility, read
 availability, public reads for internal events with public output, actor
-visibility for commit choice footprints, and hidden-to-public discipline for
+visibility for commit choice footprints, and sealed-to-public discipline for
 reveals.  \TT{Graph.prereqs} is canonical: a prior node is a
 prerequisite exactly when it writes a field read by the active node,
 or when the active node is a reveal and the prior node is a commit.
@@ -373,7 +373,7 @@ or when the active node is a reveal and the prior node is a commit.
 \emph{Audit.}  ``Well-formed'' means exactly the clauses of \TT{Graph.nodeWFAt}
 --- the predicate is where the invariant is \emph{defined}, not merely where it
 is proved.  The visibility-carrying clauses (public reads for public outputs,
-actor visibility for commit footprints, hidden-to-public reveal discipline) are
+actor visibility for commit footprints, sealed-to-public reveal discipline) are
 what carry the source visibility discipline across compilation, so they are the
 clauses to read most carefully.
 
@@ -420,7 +420,7 @@ The compiler is indexed by typed source contexts.  Variable lookup is
 proof-bearing; missing variables do not default to a field id.  Public
 surface lets have already been substituted away.  Commit reads are
 computed from the committing player's visible active fields; sample and
-payoff reads use declared public dependencies; reveals read the hidden
+payoff reads use declared public dependencies; reveals read the sealed
 source field.
 
 Important theorem families:

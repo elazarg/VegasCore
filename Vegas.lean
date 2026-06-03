@@ -9,6 +9,7 @@ import Vegas.Core.Simple
 import Vegas.Core.Obligations
 import Vegas.Core.Scope
 import Vegas.Core.Finite
+import Vegas.Core.SmallStep
 
 -- WellFormed: the checked-program boundary.
 import Vegas.WellFormed.Program

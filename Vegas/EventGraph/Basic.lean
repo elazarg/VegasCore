@@ -593,7 +593,7 @@ def fieldRefVisibleTo (G : Graph Player L) (who : Player)
 
 /-- Proof-level node well-formedness. A node may read only fields that are
 available before it runs. Public internal computations read only public fields;
-commit choice footprints are visible to the actor; reveal opens a hidden source
+commit choice footprints are visible to the actor; reveal opens a sealed source
 into a public event field of the same type. -/
 def nodeWFAt (G : Graph Player L) (node : Nat)
     (event : EventNode Player L) : Prop :=
@@ -612,9 +612,9 @@ def nodeWFAt (G : Graph Player L) (node : Nat)
 
 /-- Well-formed raw graph: every stored numeric id resolves, every node target
 has the right type, owner, and field origin, commit choice footprints are
-visible to the actor, and reveals open hidden fields into public fields. Reads
+visible to the actor, and reveals open sealed fields into public fields. Reads
 must be available before the node runs: either initial, or written by an earlier
-node. Public internal computations may read only public fields; hidden-to-public
+node. Public internal computations may read only public fields; sealed-to-public
 flow is represented only by reveal nodes. Event output fields are owned by their
 node by construction. Prerequisites are not stored; they are derived
 canonically from node payloads.

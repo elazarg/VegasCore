@@ -14,10 +14,10 @@ commitments. User-written commit payloads are restricted by `CommitPayloadTy`,
 so a surface program cannot explicitly commit an optional value.
 
 This is an elaborated typed layer: yield nodes already name the internal
-hidden commitment and the public reveal. A thinner parser-level language can
-instead generate the hidden commitment name during elaboration/lowering,
+sealed commitment and the public reveal. A thinner parser-level language can
+instead generate the sealed commitment name during elaboration/lowering,
 translate ordinary reads to the public reveal, translate owner-private reads to
-the hidden commitment, and emit `VegasCore` directly.
+the sealed commitment, and emit `VegasCore` directly.
 
 Quit handlers are deliberately not part of this syntax yet.
 -/
@@ -45,37 +45,37 @@ inductive VegasLang (P : Type) [DecidableEq P] :
       (D : DistExpr (erasePubVCtx Γ) b)
       (k : VegasLang P ((x, .pub b) :: Γ)) :
       VegasLang P Γ
-  /-- Strategic hidden commitment whose guard is accepted as-is. Surface
+  /-- Strategic sealed commitment whose guard is accepted as-is. Surface
   payloads cannot be explicitly nullable. -/
   | commit {Γ : VCtx P simpleExpr} (x : VarId) (who : P) {b : BaseTy}
       [CommitPayloadTy b]
       (R : Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) .bool)
-      (k : VegasLang P ((x, .hidden who b) :: Γ)) :
+      (k : VegasLang P ((x, .sealed who b) :: Γ)) :
       VegasLang P Γ
-  /-- Public strategic move, lowered as a nullable hidden commitment followed
+  /-- Public strategic move, lowered as a nullable sealed commitment followed
   by a public reveal of the optional value. The two names are separate because
   `VegasCore` contexts are SSA-style: the revealed public alias must be fresh
-  rather than reusing the hidden commitment name. A source elaborator may
-  generate the hidden name and keep it invisible to ordinary source reads. -/
+  rather than reusing the sealed commitment name. A source elaborator may
+  generate the sealed name and keep it invisible to ordinary source reads. -/
   | yield {Γ : VCtx P simpleExpr} (secret pubVar : VarId) (who : P)
       {b : BaseTy} [CommitPayloadTy b] [DefaultVal b]
       (R : Expr ((secret, b) :: eraseVCtx (viewVCtx who Γ)) .bool)
       (k : VegasLang P
         ((pubVar, .pub (BaseTy.option b)) ::
-          (secret, .hidden who (BaseTy.option b)) :: Γ)) :
+          (secret, .sealed who (BaseTy.option b)) :: Γ)) :
       VegasLang P Γ
-  /-- Reveal a hidden commitment as a fresh public alias. -/
+  /-- Reveal a sealed commitment as a fresh public alias. -/
   | reveal {Γ : VCtx P simpleExpr} (y : VarId) (who : P) (x : VarId)
       {b : BaseTy}
-      (hx : VHasVar Γ x (.hidden who b))
+      (hx : VHasVar Γ x (.sealed who b))
       (k : VegasLang P ((y, .pub b) :: Γ)) :
       VegasLang P Γ
 namespace VegasLang
 
 /-- Typed substitution environment used while lowering surface syntax. The
 source context may contain administrative lets that do not exist in the target
-core context. Public variables therefore translate to expressions; hidden
-variables must still translate to hidden core variables because reveals open
+core context. Public variables therefore translate to expressions; sealed
+variables must still translate to sealed core variables because reveals open
 stored commitments. -/
 structure LowerEnv (P : Type) [DecidableEq P]
     (Γ Δ : VCtx P simpleExpr) where
@@ -86,16 +86,16 @@ structure LowerEnv (P : Type) [DecidableEq P]
     (who : P) → {x : VarId} → {b : BaseTy} →
       HasVar (eraseVCtx (viewVCtx who Γ)) x b →
         Expr (eraseVCtx (viewVCtx who Δ)) b
-  hidden :
+  sealed :
     {x : VarId} → {who : P} → {b : BaseTy} →
-      VHasVar Γ x (.hidden who b) → VHasVar Δ x (.hidden who b)
+      VHasVar Γ x (.sealed who b) → VHasVar Δ x (.sealed who b)
 
 namespace LowerEnv
 
 def id (Γ : VCtx P simpleExpr) : LowerEnv P Γ Γ where
   pub := fun {x} {_} h => .var x h
   view := fun _ {x} {_} h => .var x h
-  hidden := fun h => h
+  sealed := fun h => h
 
 def expr {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     {b : BaseTy} (e : Expr (erasePubVCtx Γ) b) :
@@ -132,30 +132,30 @@ def consPublic {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     cases h with
     | here => exact .var x .here
     | there htail => exact (env.view who htail).weaken
-  hidden := by
+  sealed := by
     intro y who ty h
     cases h with
-    | there htail => exact .there (env.hidden htail)
+    | there htail => exact .there (env.sealed htail)
 
 def consHidden {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     (x : VarId) (owner : P) {b : BaseTy} :
-    LowerEnv P ((x, .hidden owner b) :: Γ) ((x, .hidden owner b) :: Δ) where
+    LowerEnv P ((x, .sealed owner b) :: Γ) ((x, .sealed owner b) :: Δ) where
   pub := fun h => env.pub h
   view := by
     intro who y ty h
     by_cases hsee :
-        canSee who (BindTy.hidden (L := simpleExpr) owner b)
+        canSee who (BindTy.sealed (L := simpleExpr) owner b)
     · simp only [viewVCtx, hsee, if_true, eraseVCtx_cons] at h ⊢
       cases h with
       | here => exact .var x .here
       | there htail => exact (env.view who htail).weaken
     · simp only [viewVCtx, hsee] at h ⊢
       exact env.view who h
-  hidden := by
+  sealed := by
     intro y who ty h
     cases h with
     | here => exact .here
-    | there htail => exact .there (env.hidden htail)
+    | there htail => exact .there (env.sealed htail)
 
 def aliasPublic {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     (x : VarId) {b : BaseTy} (e : Expr (erasePubVCtx Δ) b) :
@@ -172,10 +172,10 @@ def aliasPublic {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     cases h with
     | here => exact e.publicToView who
     | there htail => exact env.view who htail
-  hidden := by
+  sealed := by
     intro y who ty h
     cases h with
-    | there htail => exact env.hidden htail
+    | there htail => exact env.sealed htail
 
 end LowerEnv
 
@@ -199,7 +199,7 @@ def lowerWith :
         (.reveal pubVar who secret .here
           (lowerWith ((env.consHidden secret who).consPublic pubVar) k))
   | _, _, env, .reveal y who x hx k =>
-      .reveal y who x (env.hidden hx)
+      .reveal y who x (env.sealed hx)
         (lowerWith (env.consPublic y) k)
 
 /-- Lower surface Vegas to the maintained core syntax. -/

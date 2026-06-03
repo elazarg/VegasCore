@@ -1344,7 +1344,7 @@ noncomputable def compileCore :
       let event : EventNode P L :=
         { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.hidden who graphGuard.ty) sem fresh.1 (by
+        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
           dsimp [Graph.nodeWFAt, graphGuard, sem, event]
           exact
             ⟨by
@@ -1423,7 +1423,7 @@ noncomputable def compileCore :
       let event : EventNode P L :=
         { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.hidden who graphGuard.ty) sem fresh.1 (by
+        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
           dsimp [Graph.nodeWFAt, graphGuard, sem, event]
           exact
             ⟨by
@@ -1519,7 +1519,7 @@ noncomputable def compileCore_nodesFinite :
       let event : EventNode P L :=
         { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.hidden who graphGuard.ty) sem fresh.1 (by
+        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
           dsimp [Graph.nodeWFAt, graphGuard, sem, event]
           exact
             ⟨by
@@ -1630,7 +1630,7 @@ theorem compileCore_guardLive :
       let event : EventNode P L :=
         { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.hidden who graphGuard.ty) sem fresh.1 (by
+        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
           dsimp [Graph.nodeWFAt, graphGuard, sem, event]
           exact
             ⟨by
