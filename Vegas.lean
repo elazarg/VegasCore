@@ -13,6 +13,7 @@ import Vegas.Core.SmallStep
 import Vegas.Core.Epistemic
 import Vegas.Core.Schedule
 import Vegas.Core.Noninterference
+import Vegas.Core.Trace
 
 -- WellFormed: the checked-program boundary.
 import Vegas.WellFormed.Program
