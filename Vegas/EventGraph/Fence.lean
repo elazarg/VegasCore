@@ -102,6 +102,17 @@ def IsTopo (G : Graph Player L) (order : List (Fin G.nodeCount)) : Prop :=
   order.Nodup ∧ (∀ node : Fin G.nodeCount, node ∈ order) ∧
     order.Pairwise fun a b => ¬ G.Depends b a
 
+/-- The canonical node order is always a linearization: dependencies point to
+strictly earlier node ids (`prereq_lt`/`Depends.val_lt`), so the id order
+respects them. -/
+theorem nodeOrder_isTopo (G : Graph Player L) : G.IsTopo G.nodeOrder := by
+  refine ⟨List.nodup_finRange _, mem_nodeOrder G, ?_⟩
+  have hlt : G.nodeOrder.Pairwise (· < ·) := by
+    unfold Graph.nodeOrder
+    exact List.pairwise_lt_finRange _
+  exact hlt.imp fun {a b} hab hdep =>
+    absurd (Fin.lt_def.mpr hdep.val_lt) (lt_asymm hab)
+
 /-- Under a fence, a player's readable-output projection of any linearization is
 sorted by node id: the dependency relation orders all readable nodes, and a
 dependency increases the id. -/

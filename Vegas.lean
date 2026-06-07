@@ -48,6 +48,7 @@ import Vegas.Machine.MessageSecurity
 
 -- Compile + Frontier: graph compiler and canonical strategic semantics.
 import Vegas.Frontier
+import Vegas.Compile.SourceBridge
 
 -- Presentation + Export: game-theory presentations and export tables.
 import Vegas.Presentation
