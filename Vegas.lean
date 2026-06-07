@@ -11,6 +11,7 @@ import Vegas.Core.Scope
 import Vegas.Core.Finite
 import Vegas.Core.SmallStep
 import Vegas.Core.Epistemic
+import Vegas.Core.Schedule
 
 -- WellFormed: the checked-program boundary.
 import Vegas.WellFormed.Program
@@ -23,6 +24,7 @@ import Vegas.Language.ToCore
 import Vegas.EventGraph.Basic
 import Vegas.EventGraph.Build
 import Vegas.EventGraph.Execution
+import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.FiniteState
 import Vegas.EventGraph.Frontier
 import Vegas.EventGraph.Batch
