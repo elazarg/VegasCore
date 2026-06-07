@@ -36,6 +36,16 @@ def VegasCore.instrCount {Γ : VCtx P L} : VegasCore P L Γ → Nat
   | .commit _ _ _ k => k.instrCount + 1
   | .reveal _ _ _ _ k => k.instrCount + 1
 
+/-- The owner of each instruction's node: `none` for the public events
+(`sample`, `reveal`), and `some who` for a commit by `who`. This is the
+owner the corresponding graph node carries, fixed by the instruction alone. -/
+def VegasCore.instrOwners {Γ : VCtx P L} :
+    VegasCore P L Γ → List (Option P)
+  | .ret _ => []
+  | .sample _ _ k => none :: k.instrOwners
+  | .commit _ who _ k => some who :: k.instrOwners
+  | .reveal _ _ _ _ k => none :: k.instrOwners
+
 namespace ToEventGraph
 
 /-- Compiling a program suffix only appends nodes: the nodes already built remain
@@ -91,6 +101,32 @@ theorem compileCore_nodes_length :
       simp only [BuildState.addEvent_nodes, List.length_append, List.length_cons,
         List.length_nil]
       omega
+
+/-- The owners of the compiled nodes are exactly the owners of the source
+instructions: compilation maps each instruction to a node carrying that
+instruction's owner. This is the owner sequence the readable-output bridge needs
+— `NodeOutputReadableBy`/`readableOrder` depend on the graph only through node
+owners. -/
+theorem compileCore_nodes_owners :
+    {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
+      (fresh : FreshBindings prog) → (normalized : NormalizedDists prog) →
+      (state : BuildState P L Γ) →
+      (compileCore prog fresh normalized state).nodes.map EventGraph.EventNode.owner =
+        state.nodes.map EventGraph.EventNode.owner ++ prog.instrOwners
+  | _, .ret _payoffs, _fresh, _normalized, _state => by
+      simp [compileCore, VegasCore.instrOwners]
+  | _, .sample name dist tail, fresh, normalized, state => by
+      simp only [compileCore, VegasCore.instrOwners]
+      rw [compileCore_nodes_owners tail _ _ _]
+      simp [BuildState.addEvent_nodes, BindTy.owner_public, List.append_assoc]
+  | _, .commit name who guard tail, fresh, normalized, state => by
+      simp only [compileCore, VegasCore.instrOwners]
+      rw [compileCore_nodes_owners tail _ _ _]
+      simp [BuildState.addEvent_nodes, BindTy.owner_sealed, List.append_assoc]
+  | _, .reveal name who source sourceProof tail, fresh, normalized, state => by
+      simp only [compileCore, VegasCore.instrOwners]
+      rw [compileCore_nodes_owners tail _ _ _]
+      simp [BuildState.addEvent_nodes, BindTy.owner_public, List.append_assoc]
 
 end ToEventGraph
 
