@@ -139,6 +139,13 @@ theorem compile_graph_nodes_owners (g : GraphProgram P L) :
   rw [compileCore_nodes_owners]
   simp [BuildState.fromInitial_nodes]
 
+/-- The compiled graph has one node per source instruction. -/
+theorem compile_graph_nodeCount (g : GraphProgram P L) :
+    (compile g).graph.nodeCount = g.prog.instrCount := by
+  unfold compile EventGraph.Graph.nodeCount
+  rw [compileCore_nodes_length]
+  simp [BuildState.fromInitial_nodes]
+
 /-- Reading node owners along the compiled graph's canonical order recovers the
 source program's instruction owners, in order. -/
 theorem compile_graph_nodeOrder_owners (g : GraphProgram P L) :
