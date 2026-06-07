@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.Compiler
+import Vegas.EventGraph.VisibleOrder
 
 /-!
 # Source-to-graph bridge: node correspondence
@@ -137,6 +138,25 @@ theorem compile_graph_nodes_owners (g : GraphProgram P L) :
   unfold compile
   rw [compileCore_nodes_owners]
   simp [BuildState.fromInitial_nodes]
+
+/-- Reading node owners along the compiled graph's canonical order recovers the
+source program's instruction owners, in order. -/
+theorem compile_graph_nodeOrder_owners (g : GraphProgram P L) :
+    ((compile g).graph.nodeOrder.map fun n => ((compile g).graph.nodeRow n).owner) =
+      g.prog.instrOwners := by
+  rw [EventGraph.Graph.nodeOrder_map_owner, compile_graph_nodes_owners]
+
+/-- **Trace-match bridge (owner level).** The owners read along player `who`'s
+readable-output order of the compiled graph are exactly the readable owners of
+the source program, in order. This is the source↔graph correspondence the
+readable-output schedule quotient compares: the graph's per-player readable order
+is determined by the source. -/
+theorem compile_graph_readableOrder_owners (g : GraphProgram P L) (who : P) :
+    (((compile g).graph.readableOrder who (compile g).graph.nodeOrder).map
+        fun n => ((compile g).graph.nodeRow n).owner) =
+      g.prog.instrOwners.filter fun o => decide (o = none ∨ o = some who) := by
+  rw [EventGraph.Graph.readableOrder_map_owner,
+    EventGraph.Graph.nodeOrder_map_owner, compile_graph_nodes_owners]
 
 end ToEventGraph
 

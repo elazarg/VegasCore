@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.EventGraph.Basic
+import Mathlib.Data.List.OfFn
 
 /-!
 # Readable-output order and reordering
@@ -73,6 +74,35 @@ theorem readableOrder_swap_of_not_both
     · exact absurd ⟨hm, hn⟩ h
     · simp [hm, hn]
   · simp [List.filter_cons, hm]
+
+/-! ## Reading owners along an order -/
+
+private theorem map_filter_comp {α β : Type*} (l : List α) (f : α → β)
+    (q : β → Bool) :
+    (l.filter fun x => q (f x)).map f = (l.map f).filter q := by
+  induction l with
+  | nil => rfl
+  | cons a t ih => cases h : q (f a) <;> simp [List.filter_cons, h, ih]
+
+/-- Reading node owners along the canonical order recovers the node owners in
+order: `nodeOrder` indexes `nodes`. -/
+theorem nodeOrder_map_owner (G : Graph Player L) :
+    (G.nodeOrder.map fun n => (G.nodeRow n).owner) =
+      G.nodes.map EventNode.owner := by
+  have h := List.ofFn_getElem_eq_map G.nodes EventNode.owner
+  rw [List.ofFn_eq_map] at h
+  exact h
+
+/-- Reading owners along `who`'s readable-output order is the readable
+sub-sequence of the owners read along the whole order. -/
+theorem readableOrder_map_owner (G : Graph Player L) (who : Player)
+    (order : List (Fin G.nodeCount)) :
+    ((G.readableOrder who order).map fun n => (G.nodeRow n).owner) =
+      (order.map fun n => (G.nodeRow n).owner).filter
+        fun o => decide (o = none ∨ o = some who) := by
+  unfold readableOrder NodeOutputReadableBy
+  exact map_filter_comp order (fun n => (G.nodeRow n).owner)
+    (fun o => decide (o = none ∨ o = some who))
 
 end Graph
 
