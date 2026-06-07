@@ -128,6 +128,16 @@ theorem compileCore_nodes_owners :
       rw [compileCore_nodes_owners tail _ _ _]
       simp [BuildState.addEvent_nodes, BindTy.owner_public, List.append_assoc]
 
+/-- **Top-level owner correspondence.** The owners of the compiled graph's nodes
+are exactly the owners of the source program's instructions, in order. Since
+`NodeOutputReadableBy who node` is `(G.nodeRow node).owner = none ∨ = some who`,
+this pins the graph's entire readability structure to the source. -/
+theorem compile_graph_nodes_owners (g : GraphProgram P L) :
+    (compile g).graph.nodes.map EventGraph.EventNode.owner = g.prog.instrOwners := by
+  unfold compile
+  rw [compileCore_nodes_owners]
+  simp [BuildState.fromInitial_nodes]
+
 end ToEventGraph
 
 end Vegas
