@@ -29,6 +29,7 @@ import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Linearization
 import Vegas.EventGraph.VisibleOrder
+import Vegas.EventGraph.Fence
 import Vegas.EventGraph.Noninterference
 import Vegas.EventGraph.FiniteState
 import Vegas.EventGraph.Frontier
