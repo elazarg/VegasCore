@@ -132,7 +132,12 @@ theorem completeNodes_perm (cfg : Config G)
 
 /-! ## A fixed value assignment scheduled in any order -/
 
-/-- Complete the nodes listed in `order`, writing each its assigned value `w`. -/
+/-- Complete the nodes listed in `order`, writing each its assigned value `w`.
+
+`w` is a store-level assignment of an arbitrary `TypedValue` to each node; the
+order-independence results below hold for any such `w`, with no typing
+requirement. Type coherence (a node's written value matching its declared type)
+is a separate concern handled by `StoreCoherent.completeNodeTyped`. -/
 def scheduleComplete (cfg : Config G) (w : Fin G.nodeCount → TypedValue L)
     (order : List (Fin G.nodeCount)) : Config G :=
   cfg.completeNodes (order.map (fun node => (node, w node)))

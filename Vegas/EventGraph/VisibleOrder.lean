@@ -7,29 +7,26 @@ Authors: VegasCore contributors
 import Vegas.EventGraph.Basic
 
 /-!
-# Player-visible order and the schedule quotient
+# Readable-output order and reordering
 
 A linearization orders all graph nodes; different linearizations differ by
 reordering nodes the dependency relation leaves free. This module is the
-order/occurrence side of interim-view invariance: it asks when such reorderings
-are invisible to a player.
+order/occurrence side of interim-view invariance, restricted to one specific
+projection: the order in which a player's *readable values* appear.
 
-`Graph.visibleOrder who` projects a node order to the subsequence of nodes whose
-event is visible to `who` (public, or owned by `who`). The key fact
-`visibleOrder_swap_of_not_both` is the local invariance: transposing two adjacent
-nodes, at least one of which `who` cannot see, leaves `who`'s visible order
-unchanged. This is the order-side reading of the `Unit`-not-`Option-Unit`
-picture — a reorder that moves an invisible event past its neighbour cannot be
-observed.
+`Graph.NodeOutputReadableBy who` holds when a node's output field is public or
+owned by `who` — i.e. `who` may read its value. `Graph.readableOrder who`
+projects a node order to the subsequence of such nodes. This is *not* the
+player's full observation surface: event occurrences are public (the source view
+exposes another player's commit as `otherCommit`, and the graph exposes completed
+nodes via `done`), so the order of *all* nodes is observable and is genuinely
+schedule-dependent. What this module tracks is narrower — the relative order of
+the values `who` can actually read.
 
-A *visibility fence* for `who` is the condition that any two `who`-visible nodes
-are ordered by the dependency relation (never independent). Under the fence, two
-nodes left free to reorder are never both visible, so every independent
-transposition is `who`-invisible — and since any two dependency-respecting
-linearizations are connected by independent transpositions, `who`'s visible
-order is a schedule invariant. The per-transposition step is proved here; the
-global connectivity that assembles it into full schedule-quotient
-indistinguishability is left to a later development.
+The key fact `readableOrder_swap_of_not_both` is the local invariance: transposing
+two adjacent nodes, at least one of whose output `who` cannot read, leaves `who`'s
+readable-output order unchanged. `Vegas.EventGraph.Fence` upgrades this to a
+global statement under a readability fence.
 -/
 
 namespace Vegas
@@ -40,38 +37,39 @@ namespace Graph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-/-- A node's event is visible to `who` when its output field is public or owned
-by `who`. -/
-def NodeVisibleTo (G : Graph Player L) (who : Player)
+/-- `who` can read a node's output value: its output field is public or owned by
+`who`. Note this is about reading the value, not observing the occurrence — every
+node's occurrence is public. -/
+def NodeOutputReadableBy (G : Graph Player L) (who : Player)
     (node : Fin G.nodeCount) : Prop :=
   (G.nodeRow node).owner = none ∨ (G.nodeRow node).owner = some who
 
 instance (G : Graph Player L) (who : Player) (node : Fin G.nodeCount) :
-    Decidable (G.NodeVisibleTo who node) := by
-  unfold NodeVisibleTo
+    Decidable (G.NodeOutputReadableBy who node) := by
+  unfold NodeOutputReadableBy
   infer_instance
 
-/-- Player `who`'s view of a node order: the subsequence of nodes whose event
-`who` can see. -/
-def visibleOrder (G : Graph Player L) (who : Player)
+/-- Player `who`'s readable-output order for a node order: the subsequence of
+nodes whose output value `who` can read. -/
+def readableOrder (G : Graph Player L) (who : Player)
     (order : List (Fin G.nodeCount)) : List (Fin G.nodeCount) :=
-  order.filter fun node => decide (G.NodeVisibleTo who node)
+  order.filter fun node => decide (G.NodeOutputReadableBy who node)
 
-@[simp] theorem visibleOrder_nil (G : Graph Player L) (who : Player) :
-    G.visibleOrder who [] = [] := rfl
+@[simp] theorem readableOrder_nil (G : Graph Player L) (who : Player) :
+    G.readableOrder who [] = [] := rfl
 
-/-- **Local schedule-quotient invariance.** Transposing two adjacent nodes, at
-least one invisible to `who`, does not change `who`'s visible order. An
-independent reorder that moves an unobservable event past its neighbour is
-invisible to the player. -/
-theorem visibleOrder_swap_of_not_both
+/-- **Local invariance of the readable-output order.** Transposing two adjacent
+nodes, at least one whose output `who` cannot read, does not change `who`'s
+readable-output order. -/
+theorem readableOrder_swap_of_not_both
     (G : Graph Player L) (who : Player)
     {m n : Fin G.nodeCount} (rest : List (Fin G.nodeCount))
-    (h : ¬ (G.NodeVisibleTo who m ∧ G.NodeVisibleTo who n)) :
-    G.visibleOrder who (m :: n :: rest) = G.visibleOrder who (n :: m :: rest) := by
-  unfold visibleOrder
-  by_cases hm : G.NodeVisibleTo who m
-  · by_cases hn : G.NodeVisibleTo who n
+    (h : ¬ (G.NodeOutputReadableBy who m ∧ G.NodeOutputReadableBy who n)) :
+    G.readableOrder who (m :: n :: rest) =
+      G.readableOrder who (n :: m :: rest) := by
+  unfold readableOrder
+  by_cases hm : G.NodeOutputReadableBy who m
+  · by_cases hn : G.NodeOutputReadableBy who n
     · exact absurd ⟨hm, hn⟩ h
     · simp [hm, hn]
   · simp [List.filter_cons, hm]
