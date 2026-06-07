@@ -27,6 +27,7 @@ import Vegas.EventGraph.Basic
 import Vegas.EventGraph.Build
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Confluence
+import Vegas.EventGraph.Noninterference
 import Vegas.EventGraph.FiniteState
 import Vegas.EventGraph.Frontier
 import Vegas.EventGraph.Batch
