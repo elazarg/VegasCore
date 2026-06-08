@@ -11,6 +11,7 @@ import Vegas.Frontier.FiniteMachine
 import Vegas.Frontier.Kuhn
 import Vegas.Frontier.Games
 import Vegas.Frontier.SourceStrategicAdequacy
+import Vegas.Frontier.SourceFrontier
 import Vegas.Frontier.SolutionConcepts
 import Vegas.Frontier.Transport
 
@@ -19,8 +20,9 @@ import Vegas.Frontier.Transport
 
 This layer consumes `Vegas.Compile` output and packages compiled event graphs
 into strategic games: the canonical frontier round semantics, the pure and
-behavioral kernel games, source adequacy, finite-machine presentations, and the
-solution-concept and game-morphism transports.
+behavioral kernel games, source adequacy, the raw source/frontier proof spine,
+finite-machine presentations, and the solution-concept and game-morphism
+transports.
 
 Dependency direction is one-way: `Frontier` imports `Compile`; `Compile` never
 imports `Frontier`.
