@@ -1,4 +1,5 @@
 import Vegas.Frontier.RoundView
+import Vegas.Compile.ValueBridge
 
 /-!
 # Source payoff adequacy
@@ -168,6 +169,55 @@ theorem compile_evalPayoffs?_eq_sourceAtTerminal
   simpa [compile, buildResult, BuildResult.graph,
     sourceOutcomeAtTerminal, sourceEnvAtTerminal] using
     (buildResult g).evalPayoffs?_eq_sourceAtTerminal state hterminal
+
+/-- Run-level payoff corollary for the compiler certificate: the terminal graph
+state generated from a terminal source run evaluates to the same source payoff
+list under the run's terminal environment. -/
+theorem buildResult_evalPayoffs?_eq_sourceRun
+    (g : GraphProgram P L)
+    {labels : List (Label P L)} {final : SourceConfig P L}
+    (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
+    (hterminal : final.IsTerminal) :
+    let result := buildResult g
+    ∃ hctx : final.ctx = result.terminalCtx,
+      ∃ state : ReachableConfig result.graph,
+        Terminal result.graph state.1 ∧
+        evalPayoffs? result.payoffs state.1.store =
+          some
+            (evalPayoffs result.sourcePayoffs
+              (cast (congrArg (VEnv L) hctx) final.env)) := by
+  rcases sourceRun_reachableConfig g hrun hterminal with
+    ⟨hctx, state, hterminalGraph, available, henv⟩
+  refine ⟨hctx, state, hterminalGraph, ?_⟩
+  have hadeq :=
+    (buildResult g).evalPayoffs?_eq_sourceAtTerminal state hterminalGraph
+  rw [hadeq]
+  have henv' :
+      sourceEnvOfStore
+          (buildResult g).terminalState state.1.store
+          ((buildResult g).sourceStoreAvailable state hterminalGraph) =
+        cast (congrArg (VEnv L) hctx) final.env :=
+    (sourceEnvOfStore_irrel
+      (buildResult g).terminalState state.1.store
+      ((buildResult g).sourceStoreAvailable state hterminalGraph)
+      available).trans henv
+  rw [henv']
+
+/-- Run-level payoff corollary for the public compiled graph. -/
+theorem compile_evalPayoffs?_eq_sourceRun
+    (g : GraphProgram P L)
+    {labels : List (Label P L)} {final : SourceConfig P L}
+    (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
+    (hterminal : final.IsTerminal) :
+    ∃ hctx : final.ctx = (buildResult g).terminalCtx,
+      ∃ state : ReachableConfig (compile g).graph,
+        Terminal (compile g).graph state.1 ∧
+        evalPayoffs? (compile g).payoffs state.1.store =
+          some
+            (evalPayoffs (buildResult g).sourcePayoffs
+              (cast (congrArg (VEnv L) hctx) final.env)) := by
+  simpa [compile, buildResult, BuildResult.graph] using
+    buildResult_evalPayoffs?_eq_sourceRun g hrun hterminal
 
 /-- Source adequacy at the primitive machine outcome surface. -/
 theorem compile_primitiveMachine_outcome_eq_sourceAtTerminal
