@@ -1,0 +1,83 @@
+\section{Related work}
+\label{sec:related}
+
+VegasCore sits at the meeting point of three literatures --- representations
+of imperfect-information games, mechanized game theory, and the semantics and
+verification of contract runtimes.  We position it against each in turn,
+emphasizing what is shared and where the constructions genuinely diverge.
+
+\paragraph{Imperfect-information game representations.}
+The closest comparison objects are state-based and tree-based models of finite
+games with hidden information.  Factored-observation stochastic games
+(FOSGs)~\citep{Kovarik2022} present such games through per-player observation
+functions over a shared world state; extensive-form games
+\citep{vonNeumannMorgenstern1944,OsborneRubinstein1994} present them as trees
+with information sets; and \TT{OpenSpiel}~\citep{LanctotEtAl2019OpenSpiel}
+packages many such games behind a common solver-facing API.  VegasCore does not
+compete with these as a game format: it \emph{denotes} a game from a program
+and \emph{exports} both an FOSG and an EFG presentation, with payoff-faithful
+adequacy theorems relating them to the native frontier game
+(\Cref{thm:fosg,thm:efg}).  The divergence is on two axes.  On the information
+axis VegasCore is strictly less general: FOSGs admit arbitrary per-player
+observation factorings, whereas VegasCore fixes an owner-or-public visibility
+discipline in which \(\Reveal\) is the only sealed-to-public channel, so a
+private observation that is neither public nor owned by a single player is not
+expressible (\Cref{sec:disc:limits}).  In exchange it adds what those
+state-based and tree-based models leave out: an operational semantics, a
+sealed-then-revealed temporal discipline enforced by the commit/reveal barrier
+(\Cref{thm:barrier}), and a refinement order carrying the game down to a
+concrete runtime.  Relative to \TT{OpenSpiel}, VegasCore is a
+semantics-and-proof layer rather than a solver environment; its finite pure
+kernel-game export (\Cref{sec:applications}) is a bridge \emph{toward} such
+tools, not a replacement for them.  The graphical-model reading --- multi-agent
+influence diagrams~\citep{koller2003multi} --- is incomparable for the reasons
+set out in the probabilistic-programming remark of \Cref{sec:discussion}.
+
+\paragraph{Mechanized game theory.}
+Prior mechanizations have largely formalized the game model itself: existence of
+Nash equilibrium in Coq and Isabelle~\citep{LeRoux2017NashCoqIsabelle} and, most
+closely related, games of incomplete information built on belief functions in
+the Coq proof assistant~\citep{PomeretCoquot2023BelGames}.  These efforts prove
+theorems
+\emph{about} games --- equilibrium existence, solution-concept properties ---
+taking the game as the primitive object.  VegasCore's emphasis is orthogonal
+and complementary: rather than a new existence theorem it provides a checked
+\emph{path} from a program through compilation, scheduling, presentation, and
+runtime descent, reusing standard finite-game existence results at the leaves
+(\Cref{sec:applications}).  The contribution is the family of faithfulness
+relations that carry a game-theoretic fact across those boundaries, not the
+game theory proved at any one of them.
+
+\paragraph{Event structures, refinement, and compositional structure.}
+The event graph is a typed, finite, asymmetric variant of an event
+structure~\citep{NielsenPlotkinWinskel1981,Winskel1986EventStructures}, and the
+schedule-confluence results are the protocol-setting analogue of the classical
+independence-permutation property.  The runtime layer is an instance of
+forward-simulation refinement~\citep{LynchVaandrager1995,AbadiLamport1991},
+specialized to stochastic transition kernels and extended with the
+strategy-space side conditions needed to transport equilibria
+(\Cref{sec:ref:cheap-talk}).  Compositional and categorical game
+theory~\citep{GhaniHedgesWinschel2018CGT,Hedges2016CGT} approaches the same
+preservation question from the opposite direction, building games by
+composition; VegasCore's EU-preserving kernel-game morphisms suggest such
+structure (\Cref{sec:disc:ext}), but here composition is a prospective
+extension rather than the organizing principle.
+
+\paragraph{Contract runtimes and EVM semantics.}
+Contract-oriented domain-specific languages such as
+Scilla~\citep{Sergey2019Scilla} and Marlowe~\citep{Lamela2020Marlowe} give
+executable semantics to a restricted programming model, and KEVM provides a
+complete executable semantics of the Ethereum Virtual Machine
+itself~\citep{Hildenbrandt2018KEVM}.  VegasCore deliberately does not model any
+of these: it talks about machines, observations, and stochastic transition
+kernels above a generic refinement boundary, and such semantics are exactly the
+concrete backends that would sit \emph{below} it
+(\Cref{sec:refinement,sec:disc:related-artifacts}).  A backend package supplies
+the state, observation, and transition model --- whether an EVM semantics, an
+executable chain such as ConCertLean, or a payment-channel machine --- and
+proves it projects onto the event-graph machine; VegasCore contributes the
+game-preservation obligations that such a projection must discharge, not the
+runtime model.  The frontrunning and miner-extractable-value
+literature~\citep{Daian2020Flash} motivates the message-in-flight backend, whose
+public pending-message buffers make exactly that pending-transaction visibility
+strategically explicit (\Cref{sec:ref:runtime-examples}).
