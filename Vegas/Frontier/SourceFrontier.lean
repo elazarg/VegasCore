@@ -15,6 +15,7 @@ import Vegas.Frontier.SourceFrontier.Bisimulation
 import Vegas.Frontier.SourceFrontier.Query
 import Vegas.Frontier.SourceFrontier.SourceCompletion
 import Vegas.Frontier.SourceFrontier.Action
+import Vegas.Frontier.SourceFrontier.Projected
 
 /-!
 # Raw source/frontier proof spine
@@ -35,6 +36,8 @@ game to compiled frontier behavioral game bridge.
   support at the source instruction-count horizon.
 * `Action` extends a source-legal current value to a full available frontier
   local action.
+* `Projected` proves that an active frontier legal-action law always assigns a
+  concrete value to the replayed source current node.
 * `Strategic` names the source-local and frontier observed strategic surfaces.
 * `Replay` connects source histories and frontier checkpoint histories to the
   same compiled graph states.
