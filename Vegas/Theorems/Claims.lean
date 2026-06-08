@@ -64,6 +64,32 @@ theorem claim_schedule_confluence_frontier_round_wellDefined
   program.compiledGraph_scheduleConfluence_frontierRound_wellDefined
 
 omit [Fintype P] in
+/-- Source order is faithfully compiled at the graph-owner level: canonical
+graph node owners are the source order trace projected to graph node owners. -/
+theorem claim_compiled_graph_node_order_reflects_source_order
+    (program : WFProgram P L) (who : P) :
+    (((ToEventGraph.compile program.core).graph.nodeOrder.map
+        fun node => ((ToEventGraph.compile program.core).graph.nodeRow node).owner)) =
+      (program.core.prog.orderTrace who).map
+        SourcePlayerEvent.Kind.graphOwner :=
+  program.compiledGraph_nodeOrder_owners_eq_sourceOrderTrace_graphOwners who
+
+omit [Fintype P] in
+/-- Source order is faithfully compiled at the per-player readable-output
+level: the compiled graph's readable-owner order is the source order trace's
+graph-owner projection restricted to values readable by the player. -/
+theorem claim_compiled_graph_readable_order_reflects_source_order
+    (program : WFProgram P L) (who : P) :
+    ((((ToEventGraph.compile program.core).graph.readableOrder who
+        (ToEventGraph.compile program.core).graph.nodeOrder).map
+        fun node => ((ToEventGraph.compile program.core).graph.nodeRow node).owner)) =
+      ((program.core.prog.orderTrace who).map
+        SourcePlayerEvent.Kind.graphOwner).filter
+          fun owner => decide (owner = none ∨ owner = some who) :=
+  program.compiledGraph_readableOrder_owners_eq_sourceOrderTrace_readableGraphOwners
+    who
+
+omit [Fintype P] in
 /-- The flat primitive-linearization readable-order theorem remains explicitly
 fenced: under a readability fence, any two dependency-respecting full orders
 present the same readable-output order to the player. -/

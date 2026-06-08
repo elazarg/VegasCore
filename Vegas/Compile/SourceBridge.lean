@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.Compiler
+import Vegas.Core.Trace
 import Vegas.EventGraph.VisibleOrder
 
 /-!
@@ -46,6 +47,48 @@ def VegasCore.instrOwners {Γ : VCtx P L} :
   | .sample _ _ k => none :: k.instrOwners
   | .commit _ who _ k => some who :: k.instrOwners
   | .reveal _ _ _ _ k => none :: k.instrOwners
+
+namespace SourcePlayerEvent.Kind
+
+/-- The graph node owner corresponding to a source order-trace event kind.
+Samples and reveals compile to public nodes; commits compile to nodes owned by
+the committing player. -/
+def graphOwner : SourcePlayerEvent.Kind P → Option P
+  | .sample => none
+  | .ownCommit owner => some owner
+  | .otherCommit owner => some owner
+  | .reveal _ => none
+
+end SourcePlayerEvent.Kind
+
+namespace VegasCore
+
+/-- Projecting a player's source order-trace skeleton to graph node owners
+recovers the source instruction-owner sequence. This forgets the own/other
+distinction and the sample/reveal distinction, exactly matching the graph's
+owner-based readability structure. -/
+theorem orderTrace_graphOwners_eq_instrOwners {Γ : VCtx P L}
+    (prog : VegasCore P L Γ) (who : P) :
+    (prog.orderTrace who).map SourcePlayerEvent.Kind.graphOwner =
+      prog.instrOwners := by
+  induction prog with
+  | ret _ =>
+      rfl
+  | sample _ _ tail ih =>
+      simp [VegasCore.orderTrace, VegasCore.instrOwners,
+        SourcePlayerEvent.Kind.graphOwner, ih]
+  | commit _ owner _ tail ih =>
+      by_cases hwho : who = owner
+      · subst who
+        simp [VegasCore.orderTrace, VegasCore.instrOwners,
+          SourcePlayerEvent.Kind.graphOwner, ih]
+      · simp [VegasCore.orderTrace, VegasCore.instrOwners,
+          SourcePlayerEvent.Kind.graphOwner, ih, hwho]
+  | reveal _ _ _ _ tail ih =>
+      simp [VegasCore.orderTrace, VegasCore.instrOwners,
+        SourcePlayerEvent.Kind.graphOwner, ih]
+
+end VegasCore
 
 /-- The output type of each instruction's node: the type of the bound variable.
 This is the type the corresponding graph node declares. -/
@@ -194,6 +237,17 @@ theorem compile_graph_nodeOrder_owners (g : GraphProgram P L) :
       g.prog.instrOwners := by
   rw [EventGraph.Graph.nodeOrder_map_owner, compile_graph_nodes_owners]
 
+/-- Reading node owners along the compiled graph's canonical order recovers the
+source order-trace skeleton after projecting source event kinds to graph node
+owners. -/
+theorem compile_graph_nodeOrder_owners_eq_orderTrace_graphOwners
+    (g : GraphProgram P L) (who : P) :
+    ((compile g).graph.nodeOrder.map
+        fun n => ((compile g).graph.nodeRow n).owner) =
+      (g.prog.orderTrace who).map SourcePlayerEvent.Kind.graphOwner :=
+  (compile_graph_nodeOrder_owners g).trans
+    (g.prog.orderTrace_graphOwners_eq_instrOwners who).symm
+
 /-- **Trace-match bridge (owner level).** The owners read along player `who`'s
 readable-output order of the compiled graph are exactly the readable owners of
 the source program, in order. This is the source↔graph correspondence the
@@ -205,6 +259,19 @@ theorem compile_graph_readableOrder_owners (g : GraphProgram P L) (who : P) :
       g.prog.instrOwners.filter fun o => decide (o = none ∨ o = some who) := by
   rw [EventGraph.Graph.readableOrder_map_owner,
     EventGraph.Graph.nodeOrder_map_owner, compile_graph_nodes_owners]
+
+/-- The compiled graph's readable-output owner sequence for `who` is the
+source order-trace skeleton projected to graph node owners and then restricted
+to owners whose output value `who` can read. -/
+theorem compile_graph_readableOrder_owners_eq_orderTrace_readableGraphOwners
+    (g : GraphProgram P L) (who : P) :
+    (((compile g).graph.readableOrder who (compile g).graph.nodeOrder).map
+        fun n => ((compile g).graph.nodeRow n).owner) =
+      ((g.prog.orderTrace who).map
+        SourcePlayerEvent.Kind.graphOwner).filter
+          fun o => decide (o = none ∨ o = some who) := by
+  rw [compile_graph_readableOrder_owners,
+    g.prog.orderTrace_graphOwners_eq_instrOwners who]
 
 end ToEventGraph
 

@@ -1,4 +1,4 @@
-import Vegas.Compile.Compiler
+import Vegas.Compile.SourceBridge
 
 /-!
 # Compiled graph facts
@@ -61,6 +61,33 @@ theorem compiledPayoffs_wf
 theorem compiledGraph_guardLive (program : WFProgram P L) :
     EventGraph.GuardLive (ToEventGraph.compile program.core).graph :=
   ToEventGraph.compile_graph_guard_live program
+
+/-- The checked program's compiled graph preserves the source order skeleton at
+the owner/readability level: reading node owners along canonical graph order is
+the source order trace projected to graph node owners. -/
+theorem compiledGraph_nodeOrder_owners_eq_sourceOrderTrace_graphOwners
+    (program : WFProgram P L) (who : P) :
+    (((ToEventGraph.compile program.core).graph.nodeOrder.map
+        fun node => ((ToEventGraph.compile program.core).graph.nodeRow node).owner)) =
+      (program.core.prog.orderTrace who).map
+        SourcePlayerEvent.Kind.graphOwner :=
+  ToEventGraph.compile_graph_nodeOrder_owners_eq_orderTrace_graphOwners
+    program.core who
+
+/-- The checked program's compiled graph preserves the source order skeleton at
+the per-player readable-output level: the canonical graph readable-owner order
+is the source order trace projected to graph node owners, then restricted to
+values readable by `who`. -/
+theorem compiledGraph_readableOrder_owners_eq_sourceOrderTrace_readableGraphOwners
+    (program : WFProgram P L) (who : P) :
+    ((((ToEventGraph.compile program.core).graph.readableOrder who
+        (ToEventGraph.compile program.core).graph.nodeOrder).map
+        fun node => ((ToEventGraph.compile program.core).graph.nodeRow node).owner)) =
+      ((program.core.prog.orderTrace who).map
+        SourcePlayerEvent.Kind.graphOwner).filter
+          fun owner => decide (owner = none ∨ owner = some who) :=
+  ToEventGraph.compile_graph_readableOrder_owners_eq_orderTrace_readableGraphOwners
+    program.core who
 
 end WFProgram
 
