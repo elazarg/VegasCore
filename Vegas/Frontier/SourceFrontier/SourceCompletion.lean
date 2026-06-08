@@ -301,6 +301,55 @@ theorem sourceStrategicHistory_current_legal
   exact
     SourceConfig.legal_of_labeledStar state.history.run hstartLegal
 
+/-- At a legal source choice point, the acting player's source menu is
+nonempty. -/
+theorem sourceChoice_nonempty_of_legal
+    {history : SourceHistoryPoint P L} {who : P}
+    (hlegal : Legal history.current.cont)
+    (hchoice : history.IsChoiceFor who) :
+    Nonempty (SourceChoice (L := L) history who hchoice) := by
+  rcases history with ⟨start, labels, current, run⟩
+  rcases current with ⟨Γ, env, cont⟩
+  cases cont with
+  | ret payoffs =>
+      simp [SourceHistoryPoint.IsChoiceFor, SourceConfig.IsChoiceFor,
+        SourceConfig.activePlayer?, SourceConfig.programPoint,
+        SourceProgramPoint.activePlayer?, SourceProgramPoint.kind] at hchoice
+  | sample x dist tail =>
+      simp [SourceHistoryPoint.IsChoiceFor, SourceConfig.IsChoiceFor,
+        SourceConfig.activePlayer?, SourceConfig.programPoint,
+        SourceProgramPoint.activePlayer?, SourceProgramPoint.kind] at hchoice
+  | commit x owner guard tail =>
+      have howner : owner = who := by
+        simpa [SourceHistoryPoint.IsChoiceFor, SourceConfig.IsChoiceFor,
+          SourceConfig.activePlayer?, SourceConfig.programPoint,
+          SourceProgramPoint.activePlayer?, SourceProgramPoint.kind] using
+          hchoice
+      subst owner
+      rcases hlegal.1 ((env.toView who).eraseEnv) with
+        ⟨value, hguard⟩
+      refine ⟨⟨value, ?_⟩⟩
+      simpa [SourceChoice, SourceViewChoice,
+        SourceHistoryPoint.localHistoryView, SourceConfig.localView,
+        SourceConfig.visibleEnv, SourceConfig.programPoint] using hguard
+  | reveal y owner x hx tail =>
+      simp [SourceHistoryPoint.IsChoiceFor, SourceConfig.IsChoiceFor,
+        SourceConfig.activePlayer?, SourceConfig.programPoint,
+        SourceProgramPoint.activePlayer?, SourceProgramPoint.kind] at hchoice
+
+/-- Source choice menus are nonempty at every checked-program strategic
+history choice point. -/
+theorem sourceStrategicHistory_choice_nonempty
+    (program : WFProgram P L)
+    (state :
+      SourceStrategicHistory (L := L)
+        (ToEventGraph.sourceStart program.core))
+    {who : P}
+    (hchoice : state.history.IsChoiceFor who) :
+    Nonempty (SourceChoice (L := L) state.history who hchoice) :=
+  sourceChoice_nonempty_of_legal
+    (program.sourceStrategicHistory_current_legal state) hchoice
+
 /-- At the source instruction-count horizon, the optional source outcome law
 only supports concrete outcomes. -/
 theorem sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
