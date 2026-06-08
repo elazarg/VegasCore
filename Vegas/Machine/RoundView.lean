@@ -1565,6 +1565,39 @@ theorem legalActionLaw_disintegrate
     Math.ProbabilityMassFunction.bind_pushforward_condOn_pure
       (view.legalActionLaw horizon σ h hterm) project
 
+/-- A legal round-action law can be consumed by two successive finite
+projections.
+
+This is the two-query version of `legalActionLaw_disintegrate`: after sampling
+the first projection, the second projection is sampled from the conditioned
+remainder, and the final remainder is supported on legal actions matching both
+sampled values. -/
+theorem legalActionLaw_disintegrate_two
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    {β γ : Type} [Finite β] [Finite γ]
+    (first : view.BoundedLegalAction horizon h.lastState → β)
+    (second : view.BoundedLegalAction horizon h.lastState → γ) :
+    view.legalActionLaw horizon σ h hterm =
+      (Math.ProbabilityMassFunction.pushforward
+          (view.legalActionLaw horizon σ h hterm) first).bind
+        (fun firstValue =>
+          (Math.ProbabilityMassFunction.pushforward
+              (Math.ProbabilityMassFunction.condOn
+                (view.legalActionLaw horizon σ h hterm) first firstValue)
+              second).bind
+            (fun secondValue =>
+              Math.ProbabilityMassFunction.condOn
+                (Math.ProbabilityMassFunction.condOn
+                  (view.legalActionLaw horizon σ h hterm) first firstValue)
+                second secondValue)) := by
+  exact
+    Math.ProbabilityMassFunction.bind_pushforward_condOn_pure_two
+      (view.legalActionLaw horizon σ h hterm) first second
+
 /-- The conditioned remainder in `legalActionLaw_disintegrate` is supported on
 legal actions whose projection is the sampled value. -/
 theorem legalActionLaw_condOn_support_project

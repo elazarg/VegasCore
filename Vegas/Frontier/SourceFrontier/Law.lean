@@ -41,6 +41,33 @@ theorem legalActionLaw_disintegrate
   Machine.RoundView.legalActionLaw_disintegrate
     view horizon σ h hterm project
 
+/-- Frontier legal-action laws disintegrate by two successive finite
+projections. -/
+theorem legalActionLaw_disintegrate_two
+    {M : Machine Player} (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    {β γ : Type} [Finite β] [Finite γ]
+    (first : view.BoundedLegalAction horizon h.lastState → β)
+    (second : view.BoundedLegalAction horizon h.lastState → γ) :
+    view.legalActionLaw horizon σ h hterm =
+      (Math.ProbabilityMassFunction.pushforward
+          (view.legalActionLaw horizon σ h hterm) first).bind
+        (fun firstValue =>
+          (Math.ProbabilityMassFunction.pushforward
+              (Math.ProbabilityMassFunction.condOn
+                (view.legalActionLaw horizon σ h hterm) first firstValue)
+              second).bind
+            (fun secondValue =>
+              Math.ProbabilityMassFunction.condOn
+                (Math.ProbabilityMassFunction.condOn
+                  (view.legalActionLaw horizon σ h hterm) first firstValue)
+                second secondValue)) :=
+  Machine.RoundView.legalActionLaw_disintegrate_two
+    view horizon σ h hterm first second
+
 variable [DecidableEq Player]
 
 /-- A conditioned frontier node-value law only supports legal actions that
