@@ -31,6 +31,7 @@ namespace Vegas
 namespace WFProgram
 
 open GameTheory
+open ToEventGraph
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
@@ -599,72 +600,9 @@ theorem claim_source_legal_value_extends_to_available_frontier_action_after_inte
                 (claim_source_prefix_commit_current_node_type
                   program replay hnode).symm)
               value) := by
-  let compiled := ToEventGraph.compile program.core
-  let G := compiled.graph
-  let hty :=
-    claim_source_prefix_commit_current_node_type program replay hnode
-  let nodeValue : L.Val (G.nodeRow node).ty :=
-    cast (congrArg L.Val hty.symm) value
-  let base : EventGraph.FrontierAction G who :=
-    EventGraph.liveFrontierAction G dst.1 compiled.graphWF
-      (EventGraph.reachable_storeCoherent compiled.graphWF dst.2)
-      (ToEventGraph.compile_guardLive program) who
-  let frontierAction : EventGraph.FrontierAction G who :=
-    { value? := fun query =>
-        if hquery : query = node then
-          some
-            (cast
-              (congrArg L.Val
-                (by
-                  rw [hquery]
-                  exact hty.symm))
-              value)
-        else
-          base.value? query }
-  have hbaseAvailable :
-      EventGraph.FrontierAction.Available G dst.1 who base :=
-    EventGraph.liveFrontierAction_available compiled.graphWF
-      (EventGraph.reachable_storeCoherent compiled.graphWF dst.2)
-      (ToEventGraph.compile_guardLive program) who
-  have hcommit :
-      EventGraph.CommitAvailable G dst.1 who
-        { node := node, value := { ty := b, value := value } } :=
-    claim_source_prefix_commit_source_legal_value_available_after_internal_closure
+  exact
+    SourceFrontier.Action.sourceLegal_extends_to_available_frontierAction_after_internalClosure
       program replay hnode value hguard fuel hsupport
-  have hfrontierAvailable :
-      EventGraph.FrontierAction.Available G dst.1 who frontierAction := by
-    intro query
-    by_cases hready :
-        EventGraph.ReadyCommitNode G dst.1 who query
-    · rw [dif_pos hready]
-      by_cases hquery : query = node
-      · subst query
-        refine ⟨nodeValue, ?_, ?_⟩
-        · simp [frontierAction, nodeValue]
-        · have htyped :
-              ({ ty := b, value := value } :
-                EventGraph.TypedValue L) =
-              G.nodeTypedValue node nodeValue := by
-            cases hty
-            rfl
-          simpa [htyped] using hcommit
-      · have hbase := hbaseAvailable query
-        rw [dif_pos hready] at hbase
-        rcases hbase with ⟨baseValue, hbaseValue, hbaseCommit⟩
-        refine ⟨baseValue, ?_, hbaseCommit⟩
-        simp [frontierAction, hquery, hbaseValue]
-    · rw [dif_neg hready]
-      by_cases hquery : query = node
-      · subst query
-        rcases hcommit with ⟨step⟩
-        exact False.elim
-          (hready ⟨step.row, step.guard, step.row_get,
-            step.sem_eq, step.ready⟩)
-      · have hbase := hbaseAvailable query
-        rw [dif_neg hready] at hbase
-        simp [frontierAction, hquery, hbase]
-  refine ⟨frontierAction, hfrontierAvailable, ?_⟩
-  simp [frontierAction]
 
 omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a

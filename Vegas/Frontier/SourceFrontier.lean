@@ -12,6 +12,9 @@ import Vegas.Frontier.SourceFrontier.Strategic
 import Vegas.Frontier.SourceFrontier.Replay
 import Vegas.Frontier.SourceFrontier.Checkpoint
 import Vegas.Frontier.SourceFrontier.Bisimulation
+import Vegas.Frontier.SourceFrontier.Query
+import Vegas.Frontier.SourceFrontier.SourceCompletion
+import Vegas.Frontier.SourceFrontier.Action
 
 /-!
 # Raw source/frontier proof spine
@@ -26,6 +29,12 @@ game to compiled frontier behavioral game bridge.
   sequential source choices.
 * `Conditioned` composes law and commit facts to reflect a conditioned frontier
   node value back to source guard legality.
+* `Query` turns support of projected frontier node-value laws into source query
+  guard legality.
+* `SourceCompletion` proves that the source strategic kernel reaches terminal
+  support at the source instruction-count horizon.
+* `Action` extends a source-legal current value to a full available frontier
+  local action.
 * `Strategic` names the source-local and frontier observed strategic surfaces.
 * `Replay` connects source histories and frontier checkpoint histories to the
   same compiled graph states.
