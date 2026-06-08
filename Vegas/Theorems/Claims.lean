@@ -8,6 +8,7 @@ import Vegas.Theorems.Kuhn
 import Vegas.Theorems.FOSG
 import Vegas.Theorems.EFG
 import Vegas.Theorems.Refinement
+import Vegas.Frontier.SourceStrategicAdequacy
 
 /-!
 # Paper-facing theorem index
@@ -160,7 +161,52 @@ theorem claim_behavioral_frontier_outcome_kernel_is_source_projection
             (ToEventGraph.compile program.core))
           (ToEventGraph.completionBound
             (ToEventGraph.compile program.core)) profile) :=
-  program.behavioralFrontierOutcomeKernel_sourceMap profile
+    program.behavioralFrontierOutcomeKernel_sourceMap profile
+
+omit [Fintype P] in
+/-- Terminal outcomes of the source-native strategic game replay into a
+reachable terminal compiled graph state whose store reconstructs the source
+environment. -/
+theorem claim_source_strategic_terminal_history_replays_to_compiled_graph
+    (program : WFProgram P L)
+    (horizon : Nat) (cutoff : Payoff P)
+    (profile : (program.sourceStrategicGame horizon cutoff).Profile)
+    {state :
+      SourceStrategicHistory (L := L)
+        (ToEventGraph.sourceStart program.core)}
+    (hsupport :
+      state ∈
+        ((program.sourceStrategicGame horizon cutoff).outcomeKernel
+          profile).support)
+    (hterminal : state.history.current.IsTerminal) :
+    let result := ToEventGraph.buildResult program.core
+    ∃ cfg : EventGraph.ReachableConfig result.graph,
+      EventGraph.Terminal result.graph cfg.1 ∧
+      ToEventGraph.StoreReconstructs program.core cfg.1.store
+        state.history.current :=
+  program.sourceStrategicGame_support_reachableConfig
+    horizon cutoff profile hsupport hterminal
+
+/-- Supported behavioral frontier histories replay back to terminal source
+runs in source order, reconstructing the source environment from the same
+compiled store. -/
+theorem claim_behavioral_frontier_history_replays_to_source_run
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile)
+    {history : program.BehavioralFrontierHistory}
+    (hsupport :
+      history ∈
+        (program.frontierSemantics.behavioralHistoryKernel
+          profile).support) :
+    ∃ labels : List (Label P L),
+      ∃ final : SourceConfig P L,
+        SourceConfig.LabeledStar
+          (ToEventGraph.sourceStart program.core) labels final ∧
+        final.IsTerminal ∧
+        ToEventGraph.StoreReconstructs program.core
+          history.lastState.state.1.store final :=
+  program.frontierSemantics.behavioralHistory_support_sourceRun
+    profile hsupport
 
 /-- The payoff-facing FOSG denotation and the native behavioral frontier game
 have the same joint utility distribution. -/

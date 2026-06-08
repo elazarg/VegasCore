@@ -10,6 +10,7 @@ import Vegas.Frontier.SourceAdequacy
 import Vegas.Frontier.FiniteMachine
 import Vegas.Frontier.Kuhn
 import Vegas.Frontier.Games
+import Vegas.Frontier.SourceStrategicAdequacy
 import Vegas.Frontier.SolutionConcepts
 import Vegas.Frontier.Transport
 
