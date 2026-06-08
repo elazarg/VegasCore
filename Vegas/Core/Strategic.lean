@@ -24,27 +24,54 @@ open Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- The source action space available to `who` at a realized history.
+/-- The source action space available in a player-local history view.
 
 At a commit point this is the subtype of guard-satisfying committed values for
 the active owner.  At non-choice points it is empty; strategies are only queried
 with a proof that the history is a choice point. -/
-def SourceChoice (history : SourceHistoryPoint P L) (who : P) : Type :=
-  match history.current with
-  | ⟨_, env, .commit _ owner guard _⟩ =>
-      { value // evalGuard (Player := P) (L := L) guard value
-          ((env.toView owner).eraseEnv) = true ∧ owner = who }
+def SourceViewChoice {who : P}
+    (view : SourceHistoryLocalView P L who)
+    (hchoice : view.currentView.point.IsChoiceFor who) : Type :=
+  match hview : view.currentView with
+  | ⟨⟨Γ, .commit (b := b) x owner guard tail⟩, visibleEnv⟩ =>
+      { value : L.Val b //
+        evalGuard (Player := P) (L := L) guard value
+          ((cast
+            (congrArg (fun player => VEnv L (viewVCtx player Γ))
+              (by
+                have howner : owner = who := by
+                  have hchoice' :
+                      SourceProgramPoint.IsChoiceFor
+                        ({ ctx := Γ,
+                           cont := VegasCore.commit (Player := P) x owner guard
+                             tail } :
+                          SourceProgramPoint P L) who := by
+                    simpa [hview] using hchoice
+                  simpa [SourceProgramPoint.IsChoiceFor,
+                    SourceProgramPoint.activePlayer?,
+                    SourceProgramPoint.kind] using hchoice'
+                exact howner.symm))
+            visibleEnv).eraseEnv) = true }
   | _ => Empty
+
+/-- The source action space at a realized history, read through the acting
+player's local view. -/
+abbrev SourceChoice (history : SourceHistoryPoint P L) (who : P)
+    (hchoice : history.IsChoiceFor who) : Type :=
+  SourceViewChoice (L := L) (history.localHistoryView who) (by
+    simpa [SourceHistoryPoint.localHistoryView, SourceConfig.localView] using
+      hchoice)
 
 /-- A behavioral source strategy for one player.
 
-The strategy is only queried at histories whose current source configuration is
-a choice point for that player. -/
+The strategy is a function of the player's source-local history view, not of
+the full instrumented history.  It is only queried at local views whose current
+source program point is a choice point for that player. -/
 abbrev SourceStrategy (start : SourceConfig P L) (who : P) : Type :=
-  (history : SourceHistoryPoint P L) →
-    history.start = start →
-      history.IsChoiceFor who →
-        PMF (SourceChoice history who)
+  (view : SourceHistoryLocalView P L who) →
+    view.startPoint = start.programPoint →
+      (hchoice : view.currentView.point.IsChoiceFor who) →
+        PMF (SourceViewChoice (L := L) view hchoice)
 
 /-- A source behavioral profile. -/
 abbrev SourceProfile (start : SourceConfig P L) : Type :=
@@ -150,23 +177,36 @@ noncomputable def stepKernel {start : SourceConfig P L}
               normalized := hnorm })
         pmf
   | commit x who guard tail =>
+      let history :
+          SourceHistoryPoint P L :=
+        ⟨startCfg, labels,
+          ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩
+      let view := history.localHistoryView who
+      have hstartView : view.startPoint = start.programPoint := by
+        simpa [view, history, SourceHistoryPoint.localHistoryView] using
+          congrArg SourceConfig.programPoint hstart
       have hchoice :
-          SourceHistoryPoint.IsChoiceFor
-            ⟨startCfg, labels,
-              ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩ who := rfl
+          view.currentView.point.IsChoiceFor who := by
+        simp [view, history, SourceHistoryPoint.localHistoryView,
+          SourceConfig.localView, SourceConfig.programPoint,
+          SourceProgramPoint.IsChoiceFor]
       exact PMF.map
-        (fun choice =>
+        (fun choice => by
+          have hguard :
+              evalGuard (Player := P) (L := L) guard choice.1
+                ((env.toView who).eraseEnv) = true := by
+            simpa [SourceViewChoice, view, history,
+              SourceHistoryPoint.localHistoryView, SourceConfig.localView,
+              SourceConfig.visibleEnv, SourceConfig.programPoint] using
+              choice.2
+          exact
           { history :=
               (SourceHistoryPoint.snoc
-                ⟨startCfg, labels,
-                  ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩
-                (LStep.commit guard tail choice.1 choice.2.1))
+                history
+                (LStep.commit guard tail choice.1 hguard))
             start_eq := hstart
             normalized := hnorm })
-        (profile who
-          ⟨startCfg, labels,
-            ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩
-          hstart hchoice)
+        (profile who view hstartView hchoice)
   | reveal y who x hx tail =>
       exact PMF.pure
         { history :=
