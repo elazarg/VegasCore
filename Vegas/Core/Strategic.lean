@@ -318,6 +318,20 @@ noncomputable def traceDistFrom {start : SourceConfig P L}
   | n + 1, state =>
       (stepKernel profile state).bind (traceDistFrom profile n)
 
+/-- Source trace distributions compose by splitting the fuel. -/
+theorem traceDistFrom_bind_traceDistFrom {start : SourceConfig P L}
+    (profile : SourceProfile (L := L) start)
+    (m n : Nat)
+    (state : SourceStrategicHistory (L := L) start) :
+    (traceDistFrom profile m state).bind (traceDistFrom profile n) =
+      traceDistFrom profile (m + n) state := by
+  induction m generalizing state with
+  | zero =>
+      simp [traceDistFrom]
+  | succ m ih =>
+      rw [traceDistFrom, PMF.bind_bind]
+      simp [ih, Nat.succ_add, traceDistFrom]
+
 /-- Source trace distribution from a normalized initial configuration. -/
 noncomputable def traceDist
     (start : SourceConfig P L)
