@@ -201,6 +201,26 @@ theorem claim_source_prefix_commit_is_ready_compiled_commit
   ToEventGraph.SourcePrefixReplay.readyCommitNode program.core replay
 
 omit [Fintype P] in
+/-- At a replayed source `commit` prefix, the current source-order compiled
+node's frontier value type is exactly the source commit value type. -/
+theorem claim_source_prefix_commit_current_node_type
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length) :
+    (((ToEventGraph.compile program.core).graph.nodeRow node).ty) = b :=
+  ToEventGraph.SourcePrefixReplay.currentCommitNode_ty_eq
+    program.core replay hnode
+
+omit [Fintype P] in
 /-- At a replayed source `commit` prefix, every source-legal commit value is
 available as the corresponding compiled graph commit action. -/
 theorem claim_source_prefix_commit_source_legal_value_available
@@ -466,6 +486,185 @@ theorem claim_source_prefix_commit_menu_iff_available_after_internal_closure
     exact
       claim_source_prefix_commit_available_after_internal_closure_value_source_legal
         program replay hnode value fuel hsupport havailable
+
+omit [Fintype P] in
+/-- If an available frontier local action after internal closure assigns a
+value to the current replayed source-order commit node, that node value
+satisfies the source guard after casting along the compiler's current-node type
+equality. -/
+theorem claim_frontier_action_current_value_source_legal_after_internal_closure
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (fuel : Nat)
+    {dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel replay.state).support)
+    (frontierAction :
+      EventGraph.FrontierAction
+        (ToEventGraph.compile program.core).graph who)
+    (hfrontierAvailable :
+      EventGraph.FrontierAction.Available
+        (ToEventGraph.compile program.core).graph dst.1 who
+        frontierAction)
+    (value :
+      L.Val (((ToEventGraph.compile program.core).graph.nodeRow node).ty))
+    (hvalue : frontierAction.value? node = some value) :
+    let sourceValue : L.Val b :=
+      cast
+        (congrArg L.Val
+          (claim_source_prefix_commit_current_node_type
+            program replay hnode))
+        value
+    evalGuard (Player := P) (L := L) guard sourceValue
+      ((env.toView who).eraseEnv) = true := by
+  let hty :=
+    claim_source_prefix_commit_current_node_type program replay hnode
+  let sourceValue : L.Val b := cast (congrArg L.Val hty) value
+  have hcommitNode :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph dst.1 who
+        { node := node,
+          value :=
+            (ToEventGraph.compile program.core).graph.nodeTypedValue
+              node value } :=
+    hfrontierAvailable.commitAvailable_of_value hvalue
+  have htyped :
+      (ToEventGraph.compile program.core).graph.nodeTypedValue node value =
+        ({ ty := b, value := sourceValue } :
+          EventGraph.TypedValue L) := by
+    cases hty
+    rfl
+  have hcommit :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph dst.1 who
+        { node := node, value := { ty := b, value := sourceValue } } := by
+    simpa [htyped] using hcommitNode
+  exact
+    claim_source_prefix_commit_available_after_internal_closure_value_source_legal
+      program replay hnode sourceValue fuel hsupport hcommit
+
+omit [Fintype P] in
+/-- A source-legal current commit value can be extended to a full available
+frontier local action after internal closure.  Other ready commit nodes are
+filled by the canonical live frontier action. -/
+theorem claim_source_legal_value_extends_to_available_frontier_action_after_internal_closure
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true)
+    (fuel : Nat)
+    {dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel replay.state).support) :
+    ∃ frontierAction :
+        EventGraph.FrontierAction
+          (ToEventGraph.compile program.core).graph who,
+      EventGraph.FrontierAction.Available
+          (ToEventGraph.compile program.core).graph dst.1 who
+          frontierAction ∧
+        frontierAction.value? node =
+          some
+            (cast
+              (congrArg L.Val
+                (claim_source_prefix_commit_current_node_type
+                  program replay hnode).symm)
+              value) := by
+  let compiled := ToEventGraph.compile program.core
+  let G := compiled.graph
+  let hty :=
+    claim_source_prefix_commit_current_node_type program replay hnode
+  let nodeValue : L.Val (G.nodeRow node).ty :=
+    cast (congrArg L.Val hty.symm) value
+  let base : EventGraph.FrontierAction G who :=
+    EventGraph.liveFrontierAction G dst.1 compiled.graphWF
+      (EventGraph.reachable_storeCoherent compiled.graphWF dst.2)
+      (ToEventGraph.compile_guardLive program) who
+  let frontierAction : EventGraph.FrontierAction G who :=
+    { value? := fun query =>
+        if hquery : query = node then
+          some
+            (cast
+              (congrArg L.Val
+                (by
+                  rw [hquery]
+                  exact hty.symm))
+              value)
+        else
+          base.value? query }
+  have hbaseAvailable :
+      EventGraph.FrontierAction.Available G dst.1 who base :=
+    EventGraph.liveFrontierAction_available compiled.graphWF
+      (EventGraph.reachable_storeCoherent compiled.graphWF dst.2)
+      (ToEventGraph.compile_guardLive program) who
+  have hcommit :
+      EventGraph.CommitAvailable G dst.1 who
+        { node := node, value := { ty := b, value := value } } :=
+    claim_source_prefix_commit_source_legal_value_available_after_internal_closure
+      program replay hnode value hguard fuel hsupport
+  have hfrontierAvailable :
+      EventGraph.FrontierAction.Available G dst.1 who frontierAction := by
+    intro query
+    by_cases hready :
+        EventGraph.ReadyCommitNode G dst.1 who query
+    · rw [dif_pos hready]
+      by_cases hquery : query = node
+      · subst query
+        refine ⟨nodeValue, ?_, ?_⟩
+        · simp [frontierAction, nodeValue]
+        · have htyped :
+              ({ ty := b, value := value } :
+                EventGraph.TypedValue L) =
+              G.nodeTypedValue node nodeValue := by
+            cases hty
+            rfl
+          simpa [htyped] using hcommit
+      · have hbase := hbaseAvailable query
+        rw [dif_pos hready] at hbase
+        rcases hbase with ⟨baseValue, hbaseValue, hbaseCommit⟩
+        refine ⟨baseValue, ?_, hbaseCommit⟩
+        simp [frontierAction, hquery, hbaseValue]
+    · rw [dif_neg hready]
+      by_cases hquery : query = node
+      · subst query
+        rcases hcommit with ⟨step⟩
+        exact False.elim
+          (hready ⟨step.row, step.guard, step.row_get,
+            step.sem_eq, step.ready⟩)
+      · have hbase := hbaseAvailable query
+        rw [dif_neg hready] at hbase
+        simp [frontierAction, hquery, hbase]
+  refine ⟨frontierAction, hfrontierAvailable, ?_⟩
+  simp [frontierAction]
 
 omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a

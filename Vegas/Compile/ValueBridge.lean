@@ -2862,6 +2862,36 @@ theorem readyCommitNode
            (eventGuardOf replay.compilerState who guard) },
        eventGuardOf replay.compilerState who guard, hrow, rfl, hready⟩⟩
 
+/-- At a replayed source `commit` prefix, the current source-order compiled
+node has exactly the source commit's value type. -/
+theorem currentCommitNode_ty_eq
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (buildResult g).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length) :
+    ((buildResult g).graph.nodeRow node).ty = b := by
+  rcases commitNodeData g replay with
+    ⟨currentNode, hcurrentNode, hrow, _hready⟩
+  have hnodeEq : node = currentNode := by
+    exact Fin.ext (hnode.trans hcurrentNode.symm)
+  subst node
+  have hrowEq :
+      (buildResult g).graph.nodeRow currentNode =
+        { ty := (eventGuardOf replay.compilerState who guard).ty
+          owner := some who
+          sem := .commit who
+            (eventGuardOf replay.compilerState who guard) } := by
+    exact Option.some.inj
+      (((buildResult g).graph.nodes_get?_nodeRow currentNode).symm.trans hrow)
+  simpa [eventGuardOf] using congrArg EventNode.ty hrowEq
+
 /-- Source-legal commit values are available as compiled commit actions at the
 replayed source prefix.  This is the value-compatibility half of the raw
 source/frontier menu bridge. -/
