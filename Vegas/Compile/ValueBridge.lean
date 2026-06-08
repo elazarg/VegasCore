@@ -367,6 +367,78 @@ theorem StoreAgree_run_exists_compileCore
                 { ty := b, value := revealed })
               hagree' hterminal
 
+/-- Interpret a full source label trace as the per-node value assignment for a
+graph with the same node count. -/
+noncomputable def labelValueAssignment (G : Graph P L)
+    (labels : List (Label P L)) (hlen : labels.length = G.nodeCount) :
+    Fin G.nodeCount → TypedValue L := by
+  intro node
+  exact
+    if hidx : (node : Nat) < labels.length then
+      (labels.get ⟨(node : Nat), hidx⟩).toTypedValue
+    else
+      False.elim (by
+        have hnode : (node : Nat) < labels.length := by
+          simp [hlen, node.isLt]
+        exact hidx hnode)
+
+theorem labelValueAssignment_eq_of_get?
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen : labels.length = G.nodeCount)
+    (node : Fin G.nodeCount) {label : Label P L}
+    (hget : labels[(node : Nat)]? = some label) :
+    labelValueAssignment G labels hlen node = label.toTypedValue := by
+  unfold labelValueAssignment
+  have hidx : (node : Nat) < labels.length :=
+    (List.getElem?_eq_some_iff.mp hget).1
+  rw [dif_pos hidx]
+  rw [List.getElem?_eq_getElem hidx] at hget
+  exact congrArg Label.toTypedValue (Option.some.inj hget)
+
+theorem canonicalCompletion_getAs_of_label_get?
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen : labels.length = G.nodeCount)
+    (node : Fin G.nodeCount) {label : Label P L}
+    (hget : labels[(node : Nat)]? = some label) (ty : L.Ty) :
+    Store.getAs
+        (Config.canonicalCompletion G
+          (labelValueAssignment G labels hlen)).store
+        (G.nodeTarget node) ty =
+      label.toTypedValue.as? ty := by
+  have hmem :
+      (node, label.toTypedValue) ∈
+        G.nodeOrder.map
+          (fun node => (node, labelValueAssignment G labels hlen node)) :=
+    List.mem_map.mpr
+      ⟨node, G.mem_nodeOrder node, by
+        exact Prod.ext rfl
+          (labelValueAssignment_eq_of_get? G labels hlen node hget)⟩
+  have hread :=
+    Config.completeNodes_getAs_of_mem
+      (cfg := Config.initial G)
+      (steps := G.nodeOrder.map
+        (fun node => (node, labelValueAssignment G labels hlen node)))
+      (hnodup := by
+        rw [Config.map_fst_pair]
+        exact G.nodeOrder_nodup)
+      (node := node)
+      (value := label.toTypedValue)
+      hmem ty
+  simpa [Config.canonicalCompletion, Config.scheduleComplete] using hread
+
+theorem canonicalCompletion_getAs_of_label_get?_base
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen : labels.length = G.nodeCount)
+    (node : Fin G.nodeCount) {label : Label P L}
+    (hget : labels[(node : Nat)]? = some label) :
+    Store.getAs
+        (Config.canonicalCompletion G
+          (labelValueAssignment G labels hlen)).store
+        (G.nodeTarget node) label.ty =
+      some (cast (by rw [Label.toTypedValue_ty]) label.toTypedValue.value) := by
+  rw [canonicalCompletion_getAs_of_label_get? G labels hlen node hget]
+  simp [TypedValue.as?]
+
 end ToEventGraph
 
 end Vegas
