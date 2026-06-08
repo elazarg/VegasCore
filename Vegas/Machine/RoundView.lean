@@ -990,6 +990,27 @@ theorem mem_boundedAvailableMoves_iff
       view.boundedLocallyLegalAtState horizon h.lastState player move := by
   rfl
 
+/-- The local marginal of any law on legal bounded joint actions is supported
+on locally legal moves at the same bounded history. -/
+theorem boundedLegalActionLaw_localSupport
+    {view : M.RoundView} {horizon : Nat}
+    (h : view.BoundedHistory horizon) (player : Player)
+    (law : PMF (view.BoundedLegalAction horizon h.lastState))
+    {move : Option (view.Act player)}
+    (hmove :
+      move ∈ (PMF.map (fun action => action.1 player) law).support) :
+    move ∈ view.boundedAvailableMoves horizon h player := by
+  rcases
+      (PMF.mem_support_map_iff
+        (fun action : view.BoundedLegalAction horizon h.lastState =>
+          action.1 player)
+        law move).mp hmove with
+    ⟨action, _haction, haction⟩
+  rw [← haction]
+  rw [mem_boundedAvailableMoves_iff]
+  cases hlocal : action.1 player <;>
+    simpa [boundedLocallyLegalAtState, hlocal] using action.2.2 player
+
 /-- At every bounded history, each player has at least one legal optional
 move.  At terminal/cutoff states this move is `none`; otherwise it is the
 player's component of any legal joint action. -/
@@ -1053,6 +1074,28 @@ def MenusObservable (view : M.RoundView) (horizon : Nat) : Prop :=
     h.playerView player = h'.playerView player →
       view.boundedAvailableMoves horizon h player =
         view.boundedAvailableMoves horizon h' player
+
+/-- If menus are observable, a local marginal from one representative history
+is legal at every history with the same player information state. -/
+theorem boundedLegalActionLaw_localSupport_of_sameInfo
+    {view : M.RoundView} {horizon : Nat}
+    (hMenus : view.MenusObservable horizon)
+    (representative h : view.BoundedHistory horizon) (player : Player)
+    (hinfo : representative.playerView player = h.playerView player)
+    (law : PMF (view.BoundedLegalAction horizon representative.lastState))
+    {move : Option (view.Act player)}
+    (hmove :
+      move ∈
+        (PMF.map (fun action => action.1 player) law).support) :
+    move ∈ view.boundedAvailableMoves horizon h player := by
+  have hrep :
+      move ∈ view.boundedAvailableMoves horizon representative player :=
+    boundedLegalActionLaw_localSupport representative player law hmove
+  have hmenus :
+      view.boundedAvailableMoves horizon representative player =
+        view.boundedAvailableMoves horizon h player :=
+    hMenus player representative h hinfo
+  simpa [hmenus] using hrep
 
 /-- The legal optional moves associated with an information state. -/
 def boundedAvailableMovesAtInfoState
