@@ -1518,6 +1518,530 @@ theorem StoreAgree_run_reachable_compileCore
           simpa [G, compileCore, sourceField, sem, event, hnode, added] using
             hreachTerminal
 
+/-- Reverse replay spine: a reachable terminal graph store determines a
+source-order labelled run whose terminal source environment agrees with the
+same store through the compiler dictionary. -/
+theorem sourceReplay_compileCore :
+    {Γ : VCtx P L} → (env : VEnv L Γ) →
+      (prog : VegasCore P L Γ) →
+      (fresh : FreshBindings prog) →
+      (normalized : NormalizedDists prog) →
+      (state : BuildState P L Γ) →
+      (cfg :
+        ReachableConfig
+          (BuildResult.graph
+            (compileCore prog fresh normalized state))) →
+      Terminal
+        (BuildResult.graph
+          (compileCore prog fresh normalized state))
+        cfg.1 →
+      StoreAgree state env cfg.1.store →
+      let result := compileCore prog fresh normalized state
+      ∃ labels : List (Label P L),
+        ∃ final : SourceConfig P L,
+          SourceConfig.LabeledStar
+            ({ ctx := Γ, env := env, cont := prog } : SourceConfig P L)
+            labels final ∧
+          final.IsTerminal ∧
+          ∃ hctx : final.ctx = result.terminalCtx,
+            StoreAgree result.terminalState
+              (cast (congrArg (VEnv L) hctx) final.env)
+              cfg.1.store
+  | Γ, env, .ret payoffs, fresh, normalized, state, cfg, hterminal,
+      hagree => by
+      refine ⟨[], ⟨Γ, env, .ret payoffs⟩, ?_, ?_, ?_⟩
+      · exact SourceConfig.LabeledStar.refl _
+      · exact ⟨payoffs, rfl⟩
+      · refine ⟨rfl, ?_⟩
+        intro name bindTy h
+        simpa [compileCore] using hagree h
+  | Γ, env, .sample (b := b) x D' k, fresh, normalized, state, cfg, hterminal,
+      hagree => by
+      let graphDist := eventDistOf state D' normalized.1
+      let sem := NodeSem.sample (Player := P) graphDist
+      let event : EventNode P L :=
+        { ty := graphDist.ty, owner := none, sem := sem }
+      let hnode :
+          ({ initialFields := state.initialFields,
+             nodes := state.nodes ++ [event] } :
+            Graph P L).nodeWFAt state.nextNode event := by
+        dsimp [Graph.nodeWFAt, graphDist, sem, event]
+        exact
+          ⟨by
+              intro field hfield
+              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+              exact Graph.fieldAvailableBefore_append_node_of_true
+                state.initialFields state.nodes event
+                (distReadRefs_available state D' ref href),
+            rfl, rfl,
+            by
+              intro ref href
+              exact Graph.fieldRefPublic_append_node
+                state.initialFields state.nodes event
+                (distReadRefs_public state D' ref href)⟩
+      let added := state.addEvent x (.pub graphDist.ty) sem fresh.1 hnode
+      let result :=
+        compileCore (VegasCore.sample x D' k) fresh normalized state
+      let G : Graph P L := BuildResult.graph result
+      have hidx : state.nodes.length < G.nodeCount := by
+        have hlenNodes :=
+          compileCore_nodes_length
+            (VegasCore.sample x D' k) fresh normalized state
+        change state.nodes.length <
+          (compileCore (VegasCore.sample x D' k) fresh normalized
+            state).nodes.length
+        rw [hlenNodes]
+        simp [VegasCore.instrCount]
+      let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+      have htarget : G.nodeTarget node = state.nextField := by
+        simp [G, result, node, BuildResult.graph, Graph.nodeTarget,
+          BuildState.nextField, BuildState.nextNode,
+          compileCore_initialFields]
+      have hrow :
+          G.nodes[(node : Nat)]? = some event := by
+        change
+          (compileCore (VegasCore.sample x D' k) fresh normalized
+            state).nodes[state.nodes.length]? = some event
+        simpa [compileCore, graphDist, sem, event, hnode, added] using
+          compileCore_added_head_get?
+            (state := state) (name := x) (bindTy := .pub graphDist.ty)
+            (sem := sem) (hfresh := fresh.1) (hnode := hnode)
+            k fresh.2 normalized.2
+      have hvalidDone : ValidDoneValues G cfg.1 := by
+        simpa [G, result] using
+          reachable_validDoneValues
+            (compileCore (VegasCore.sample x D' k) fresh normalized
+              state).graphWF
+            cfg.2
+      rcases hvalidDone node (hterminal node) with
+        ⟨row, hrowValid, hvalid⟩
+      have hrowEq : row = event :=
+        Option.some.inj (hrowValid.symm.trans hrow)
+      subst row
+      change
+        (match event.sem with
+        | .sample dist =>
+            ∃ value : L.Val dist.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) dist.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L dist.reads,
+                ReadEnv.ofStore? cfg.1.store dist.reads = some readEnv ∧
+                value ∈ (dist.eval readEnv).support
+        | .commit _ guard =>
+            ∃ value : L.Val guard.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) guard.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L guard.choiceReads,
+                ReadEnv.ofStore? cfg.1.store guard.choiceReads =
+                  some readEnv ∧
+                guard.eval value readEnv = true
+        | .reveal source =>
+            ∃ value : L.Val event.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) event.ty =
+                some value ∧
+              Store.getAs cfg.1.store source event.ty = some value) at hvalid
+      dsimp [event, sem, graphDist, eventDistOf] at hvalid
+      rcases hvalid with ⟨value, htargetValue, readEnv, hreadEnv, hsupport⟩
+      let available :
+          ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+            ∃ value, Store.getAs cfg.1.store (state.fieldOf h)
+              bindTy.base = some value := by
+        intro name bindTy h
+        exact ⟨_, hagree h⟩
+      have hsourceEnv :
+          sourceEnvOfStore state cfg.1.store available = env :=
+        sourceEnvOfStore_eq_of_storeAgree hagree available
+      have hagrees :
+          ∀ {name depTy}
+            (hvar : HasVar (erasePubVCtx Γ) name depTy)
+            (hmem : name ∈ L.distDeps D'),
+            sourceValuePub state readEnv hvar
+              (distReadRefs_mem state D' hvar hmem) =
+              VEnv.erasePubEnv
+                (sourceEnvOfStore state cfg.1.store available)
+                name depTy hvar :=
+        eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
+          state D' normalized.1 cfg.1.store available readEnv hreadEnv
+      rcases
+          eventDistOf_eval_eq_eval
+            state D' normalized.1 (VEnv.erasePubEnv env) readEnv
+            (by
+              intro name depTy hvar hmem
+              simpa [hsourceEnv] using hagrees hvar hmem) with
+        ⟨hnormalized, hdistEval⟩
+      have hsupportSource :
+          value ∈ (L.evalDist D' (VEnv.erasePubEnv env)).support := by
+        have hsupportPMF :
+            value ∈
+              ((L.evalDist D' (VEnv.erasePubEnv env)).toPMF
+                hnormalized).support := by
+          simpa [graphDist] using hdistEval ▸ hsupport
+        exact
+          (FWeight.mem_support_toPMF
+            (L.evalDist D' (VEnv.erasePubEnv env)) hnormalized value).mp
+            hsupportPMF
+      have hstep :
+          LStep
+            ({ ctx := Γ, env := env,
+               cont := VegasCore.sample x D' k } : SourceConfig P L)
+            (.sample x value)
+            { ctx := (x, .pub b) :: Γ,
+              env := VEnv.cons (x := x) (τ := .pub b) value env,
+              cont := k } := by
+        simpa [graphDist, VEnv.eraseSampleEnv] using
+          LStep.sample D' k value hsupportSource
+      have hreadNext :
+          Store.getAs cfg.1.store state.nextField graphDist.ty =
+            some value := by
+        simpa [htarget] using htargetValue
+      have hagreeAdded :
+          StoreAgree added.1
+            (VEnv.cons (x := x) (τ := .pub graphDist.ty) value env)
+            cfg.1.store :=
+        hagree.addEvent_of_getAs x (.pub graphDist.ty) sem fresh.1 hnode
+          value hreadNext
+      let tailState : BuildState P L ((x, .pub b) :: Γ) := by
+        simpa [graphDist, eventDistOf] using added.1
+      let cfgTail :
+          ReachableConfig
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized.2 tailState)) := by
+        simpa [tailState, G, result, compileCore, graphDist, eventDistOf,
+          sem, event, hnode,
+          added] using cfg
+      have hterminalTail :
+          Terminal
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized.2 tailState))
+            cfgTail.1 := by
+        simpa [cfgTail, tailState, G, result, compileCore, graphDist,
+          eventDistOf, sem, event, hnode, added] using hterminal
+      have hagreeTail :
+          StoreAgree tailState
+            (VEnv.cons (x := x) (τ := .pub b) value env)
+            cfgTail.1.store := by
+        intro name bindTy h
+        simpa [tailState, cfgTail, graphDist, eventDistOf] using
+          hagreeAdded h
+      rcases
+          sourceReplay_compileCore
+            (VEnv.cons (x := x) (τ := .pub b) value env) k
+            fresh.2 normalized.2 tailState cfgTail hterminalTail
+            hagreeTail with
+        ⟨labels, final, htail, hfinalTerminal, hctx, hagreeFinal⟩
+      refine ⟨.sample x value :: labels, final, ?_, hfinalTerminal, ?_⟩
+      · exact SourceConfig.LabeledStar.cons hstep htail
+      · refine ⟨hctx, ?_⟩
+        intro name bindTy h
+        simpa [cfgTail, tailState, G, result, compileCore, graphDist,
+          eventDistOf, sem, event, hnode, added] using
+          hagreeFinal h
+  | Γ, env, .commit (b := b) x who R k, fresh, normalized, state, cfg, hterminal,
+      hagree => by
+      let graphGuard := eventGuardOf state who R
+      let sem := NodeSem.commit (Player := P) who graphGuard
+      let event : EventNode P L :=
+        { ty := graphGuard.ty, owner := some who, sem := sem }
+      let hnode :
+          ({ initialFields := state.initialFields,
+             nodes := state.nodes ++ [event] } :
+            Graph P L).nodeWFAt state.nextNode event := by
+        dsimp [Graph.nodeWFAt, graphGuard, sem, event]
+        exact
+          ⟨by
+              intro field hfield
+              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+              exact Graph.fieldAvailableBefore_append_node_of_true
+                state.initialFields state.nodes event
+                (visibleFieldRefs_available state who ref href),
+            rfl, rfl,
+            by
+              intro ref href
+              exact Graph.fieldRefVisibleTo_append_node
+                state.initialFields state.nodes event who
+                (visibleFieldRefs_visible state who ref href)⟩
+      let added :=
+        state.addEvent x (.sealed who graphGuard.ty) sem fresh.1 hnode
+      let result :=
+        compileCore (VegasCore.commit x who R k) fresh normalized state
+      let G : Graph P L := BuildResult.graph result
+      have hidx : state.nodes.length < G.nodeCount := by
+        have hlenNodes :=
+          compileCore_nodes_length
+            (VegasCore.commit x who R k) fresh normalized state
+        change state.nodes.length <
+          (compileCore (VegasCore.commit x who R k) fresh normalized
+            state).nodes.length
+        rw [hlenNodes]
+        simp [VegasCore.instrCount]
+      let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+      have htarget : G.nodeTarget node = state.nextField := by
+        simp [G, result, node, BuildResult.graph, Graph.nodeTarget,
+          BuildState.nextField, BuildState.nextNode,
+          compileCore_initialFields]
+      have hrow :
+          G.nodes[(node : Nat)]? = some event := by
+        change
+          (compileCore (VegasCore.commit x who R k) fresh normalized
+            state).nodes[state.nodes.length]? = some event
+        simpa [compileCore, graphGuard, sem, event, hnode, added] using
+          compileCore_added_head_get?
+            (state := state) (name := x)
+            (bindTy := .sealed who graphGuard.ty) (sem := sem)
+            (hfresh := fresh.1) (hnode := hnode)
+            k fresh.2 normalized
+      have hvalidDone : ValidDoneValues G cfg.1 := by
+        simpa [G, result] using
+          reachable_validDoneValues
+            (compileCore (VegasCore.commit x who R k) fresh normalized
+              state).graphWF
+            cfg.2
+      rcases hvalidDone node (hterminal node) with
+        ⟨row, hrowValid, hvalid⟩
+      have hrowEq : row = event :=
+        Option.some.inj (hrowValid.symm.trans hrow)
+      subst row
+      change
+        (match event.sem with
+        | .sample dist =>
+            ∃ value : L.Val dist.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) dist.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L dist.reads,
+                ReadEnv.ofStore? cfg.1.store dist.reads = some readEnv ∧
+                value ∈ (dist.eval readEnv).support
+        | .commit _ guard =>
+            ∃ value : L.Val guard.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) guard.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L guard.choiceReads,
+                ReadEnv.ofStore? cfg.1.store guard.choiceReads =
+                  some readEnv ∧
+                guard.eval value readEnv = true
+        | .reveal source =>
+            ∃ value : L.Val event.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) event.ty =
+                some value ∧
+              Store.getAs cfg.1.store source event.ty = some value) at hvalid
+      dsimp [event, sem, graphGuard, eventGuardOf] at hvalid
+      rcases hvalid with ⟨value, htargetValue, readEnv, hreadEnv, hguardGraph⟩
+      let available :
+          ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+            ∃ value, Store.getAs cfg.1.store (state.fieldOf h)
+              bindTy.base = some value := by
+        intro name bindTy h
+        exact ⟨_, hagree h⟩
+      have hsourceEnv :
+          sourceEnvOfStore state cfg.1.store available = env :=
+        sourceEnvOfStore_eq_of_storeAgree hagree available
+      have hviewEq :=
+        viewEnvOfReadEnv_eq_eraseEnv_sourceEnvOfStore
+          state who cfg.1.store available readEnv hreadEnv
+      have hguardSource :
+          evalGuard (Player := P) (L := L) R value
+            (VEnv.eraseEnv (VEnv.toView who env)) = true := by
+        change (eventGuardOf state who R).eval value readEnv = true
+          at hguardGraph
+        rw [eventGuardOf_eval_eq_eval, hviewEq, hsourceEnv] at hguardGraph
+        exact hguardGraph
+      have hstep :
+          LStep
+            ({ ctx := Γ, env := env,
+               cont := VegasCore.commit x who R k } : SourceConfig P L)
+            (.commit x who value)
+            { ctx := (x, .sealed who b) :: Γ,
+              env := VEnv.cons (x := x) (τ := .sealed who b) value env,
+              cont := k } := by
+        simpa [graphGuard] using
+          LStep.commit R k value hguardSource
+      have hreadNext :
+          Store.getAs cfg.1.store state.nextField graphGuard.ty =
+            some value := by
+        simpa [htarget] using htargetValue
+      have hagreeAdded :
+          StoreAgree added.1
+            (VEnv.cons (x := x) (τ := .sealed who graphGuard.ty) value env)
+            cfg.1.store :=
+        hagree.addEvent_of_getAs x (.sealed who graphGuard.ty) sem fresh.1
+          hnode value hreadNext
+      let tailState : BuildState P L ((x, .sealed who b) :: Γ) := by
+        simpa [graphGuard, eventGuardOf] using added.1
+      let cfgTail :
+          ReachableConfig
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized tailState)) := by
+        simpa [tailState, G, result, compileCore, graphGuard, eventGuardOf,
+          sem, event, hnode, added] using cfg
+      have hterminalTail :
+          Terminal
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized tailState))
+            cfgTail.1 := by
+        simpa [cfgTail, tailState, G, result, compileCore, graphGuard,
+          eventGuardOf, sem, event, hnode, added] using hterminal
+      have hagreeTail :
+          StoreAgree tailState
+            (VEnv.cons (x := x) (τ := .sealed who b) value env)
+            cfgTail.1.store := by
+        intro name bindTy h
+        simpa [tailState, cfgTail, graphGuard, eventGuardOf] using
+          hagreeAdded h
+      rcases
+          sourceReplay_compileCore
+            (VEnv.cons (x := x) (τ := .sealed who b) value env) k
+            fresh.2 normalized tailState cfgTail hterminalTail
+            hagreeTail with
+        ⟨labels, final, htail, hfinalTerminal, hctx, hagreeFinal⟩
+      refine ⟨.commit x who value :: labels, final, ?_, hfinalTerminal, ?_⟩
+      · exact SourceConfig.LabeledStar.cons hstep htail
+      · refine ⟨hctx, ?_⟩
+        intro name bindTy h
+        simpa [cfgTail, tailState, G, result, compileCore, graphGuard,
+          eventGuardOf, sem, event, hnode, added] using
+          hagreeFinal h
+  | Γ, env, .reveal (b := b) y who x hx k, fresh, normalized, state, cfg, hterminal,
+      hagree => by
+      let sourceField := state.fieldOf hx
+      let sem := NodeSem.reveal (Player := P) (L := L) sourceField
+      let event : EventNode P L := { ty := b, owner := none, sem := sem }
+      let hnode :
+          ({ initialFields := state.initialFields,
+             nodes := state.nodes ++ [event] } :
+            Graph P L).nodeWFAt state.nextNode event := by
+        rcases state.fieldOf_spec hx with
+          ⟨sourceSpec, hsource, hty, howner⟩
+        dsimp [Graph.nodeWFAt, sem, event]
+        rw [Graph.field?_append_node_of_some
+          state.initialFields state.nodes event hsource]
+        refine
+          ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
+        · intro field hfield
+          have hfieldEq : field = sourceField :=
+            Finset.mem_singleton.mp hfield
+          subst hfieldEq
+          exact Graph.fieldAvailableBefore_append_node_of_true
+            state.initialFields state.nodes event
+            (state.fieldOf_available hx)
+        · simp [howner]
+      let added := state.addEvent y (.pub b) sem fresh.1 hnode
+      let result :=
+        compileCore (VegasCore.reveal y who x hx k) fresh normalized state
+      let G : Graph P L := BuildResult.graph result
+      have hidx : state.nodes.length < G.nodeCount := by
+        have hlenNodes :=
+          compileCore_nodes_length
+            (VegasCore.reveal y who x hx k) fresh normalized state
+        change state.nodes.length <
+          (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+            state).nodes.length
+        rw [hlenNodes]
+        simp [VegasCore.instrCount]
+      let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+      have htarget : G.nodeTarget node = state.nextField := by
+        simp [G, result, node, BuildResult.graph, Graph.nodeTarget,
+          BuildState.nextField, BuildState.nextNode,
+          compileCore_initialFields]
+      have hrow :
+          G.nodes[(node : Nat)]? = some event := by
+        change
+          (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+            state).nodes[state.nodes.length]? = some event
+        simpa [compileCore, sourceField, sem, event, hnode, added] using
+          compileCore_added_head_get?
+            (state := state) (name := y) (bindTy := .pub b)
+            (sem := sem) (hfresh := fresh.1) (hnode := hnode)
+            k fresh.2 normalized
+      have hvalidDone : ValidDoneValues G cfg.1 := by
+        simpa [G, result] using
+          reachable_validDoneValues
+            (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+              state).graphWF
+            cfg.2
+      rcases hvalidDone node (hterminal node) with
+        ⟨row, hrowValid, hvalid⟩
+      have hrowEq : row = event :=
+        Option.some.inj (hrowValid.symm.trans hrow)
+      subst row
+      change
+        (match event.sem with
+        | .sample dist =>
+            ∃ value : L.Val dist.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) dist.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L dist.reads,
+                ReadEnv.ofStore? cfg.1.store dist.reads = some readEnv ∧
+                value ∈ (dist.eval readEnv).support
+        | .commit _ guard =>
+            ∃ value : L.Val guard.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) guard.ty =
+                some value ∧
+              ∃ readEnv : ReadEnv L guard.choiceReads,
+                ReadEnv.ofStore? cfg.1.store guard.choiceReads =
+                  some readEnv ∧
+                guard.eval value readEnv = true
+        | .reveal source =>
+            ∃ value : L.Val event.ty,
+              Store.getAs cfg.1.store (G.nodeTarget node) event.ty =
+                some value ∧
+              Store.getAs cfg.1.store source event.ty = some value) at hvalid
+      dsimp [event, sem] at hvalid
+      rcases hvalid with ⟨value, htargetValue, hsourceValue⟩
+      have henvValue :
+          value = VEnv.get (τ := .sealed who b) env hx := by
+        have hsourceAgree := hagree hx
+        exact Option.some.inj (hsourceValue.symm.trans hsourceAgree)
+      subst value
+      have hstep :
+          LStep
+            ({ ctx := Γ, env := env,
+               cont := VegasCore.reveal y who x hx k } : SourceConfig P L)
+            (.reveal y who x (VEnv.get (τ := .sealed who b) env hx))
+            { ctx := (y, .pub b) :: Γ,
+              env := VEnv.cons (x := y) (τ := .pub b)
+                (VEnv.get (τ := .sealed who b) env hx) env,
+              cont := k } := by
+        exact LStep.reveal hx k
+      have hreadNext :
+          Store.getAs cfg.1.store state.nextField b =
+            some (VEnv.get (τ := .sealed who b) env hx) := by
+        simpa [htarget] using htargetValue
+      have hagreeAdded :
+          StoreAgree added.1
+            (VEnv.cons (x := y) (τ := .pub b)
+              (VEnv.get (τ := .sealed who b) env hx) env)
+            cfg.1.store :=
+        hagree.addEvent_of_getAs y (.pub b) sem fresh.1 hnode
+          (VEnv.get (τ := .sealed who b) env hx) hreadNext
+      let cfgTail :
+          ReachableConfig
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized added.1)) := by
+        simpa [G, result, compileCore, sourceField, sem, event, hnode,
+          added] using cfg
+      have hterminalTail :
+          Terminal
+            (BuildResult.graph
+              (compileCore k fresh.2 normalized added.1))
+            cfgTail.1 := by
+        simpa [cfgTail, G, result, compileCore, sourceField, sem, event,
+          hnode, added] using hterminal
+      rcases
+          sourceReplay_compileCore
+            (VEnv.cons (x := y) (τ := .pub b)
+              (VEnv.get (τ := .sealed who b) env hx) env) k
+            fresh.2 normalized added.1 cfgTail hterminalTail
+            hagreeAdded with
+        ⟨labels, final, htail, hfinalTerminal, hctx, hagreeFinal⟩
+      refine
+        ⟨.reveal y who x (VEnv.get (τ := .sealed who b) env hx) ::
+          labels, final, ?_,
+          hfinalTerminal, ?_⟩
+      · exact SourceConfig.LabeledStar.cons hstep htail
+      · refine ⟨hctx, ?_⟩
+        intro name bindTy h
+        simpa [cfgTail, G, result, compileCore, sourceField, sem, event,
+          hnode, added] using hagreeFinal h
+
 /-- Initial source values are still readable after completing all event nodes:
 canonical completion writes only node-target fields, never initial fields. -/
 theorem StoreAgree_fromInitial_canonicalCompletion
