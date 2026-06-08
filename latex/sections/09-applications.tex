@@ -66,9 +66,13 @@ erased administrative steps.  Encoded runtime examples replace
 source-level booleans with a lower-level storage encoding.
 Message-in-flight runtimes expose pending and delivered messages to
 players and then prove either inertness, explicit cheap-talk/protocol
-preservation, or a protocol-specific opacity invariant.  EVM and
-ConCertLean backends would discharge the same kind of refinement
-obligations at their own runtime boundary.
+preservation, or a protocol-specific opacity invariant.  This last
+backend is already a significant step toward the EVM target: a public
+mempool with front-running is exactly pending-message visibility, which
+the message-in-flight machine models and proves controllable.  A full EVM
+backend --- gas, storage encoding, and contract dispatch --- and a
+ConCertLean adapter would discharge the same kind of refinement
+obligations at their own runtime boundary, building on this foundation.
 
 If the backend also admits additional communication, the refinement proof
 must be paired with one of the cheap-talk positions from

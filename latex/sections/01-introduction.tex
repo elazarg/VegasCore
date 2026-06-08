@@ -389,8 +389,11 @@ calls or operational steps, and its observations say what each player can
 infer from that runtime.  To connect such a machine to VegasCore, the
 backend proves a stochastic refinement to the primitive event-graph
 machine and supplies a trace law showing that the implementation realizes
-the selected frontier game surface.  Ethereum/EVM is one motivating
-instance of this backend pattern.
+the selected frontier game surface.  Ethereum/EVM is the motivating
+instance of this pattern, and the construction is built as a foundation to
+reach it; the message-in-flight backend below already realizes its
+strategically distinctive feature --- a public mempool whose pending
+transactions are visible before they are applied.
 
 This is intentionally stronger than saying that a contract ``looks like''
 the protocol on examples: the refinement proof identifies which
