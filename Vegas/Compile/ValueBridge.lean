@@ -439,6 +439,67 @@ theorem canonicalCompletion_getAs_of_label_get?_base
   rw [canonicalCompletion_getAs_of_label_get? G labels hlen node hget]
   simp [TypedValue.as?]
 
+/-- Open source start configuration for a graph-compilable program. -/
+def sourceStart (g : GraphProgram P L) : SourceConfig P L where
+  ctx := g.Γ
+  env := g.env
+  cont := g.prog
+
+/-- Run-level representation up to the concrete terminal store produced by the
+lockstep induction. The remaining strengthening is to identify this store with
+`canonicalCompletion` for `labelValueAssignment`. -/
+theorem sourceEnv_runStore_exists
+    (g : GraphProgram P L)
+    {labels : List (Label P L)} {final : SourceConfig P L}
+    (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
+    (hterminal : final.IsTerminal) :
+    let result := buildResult g
+    ∃ hctx : final.ctx = result.terminalCtx,
+      ∃ terminalStore : Store L,
+        ∃ available :
+          ∀ {name bindTy}
+            (h : VHasVar result.terminalCtx name bindTy),
+            ∃ value, Store.getAs terminalStore
+              (result.terminalState.fieldOf h) bindTy.base = some value,
+          sourceEnvOfStore result.terminalState terminalStore available =
+            cast (congrArg (VEnv L) hctx) final.env := by
+  let init := initialState g.Γ g.env g.wctx
+  let state := BuildState.fromInitial init
+  let result := compileCore g.prog g.fresh g.normalized state
+  let initialStore : Store L :=
+    (({ initialFields := init.initialFields, nodes := result.nodes } :
+      Graph P L).initialStore)
+  have hagree₀ : StoreAgree state g.env initialStore := by
+    intro name bindTy h
+    simpa [state, init, initialStore, BuildState.fromInitial] using
+      initialState_initialStore_get
+        (env := g.env) (wctx := g.wctx) result.nodes h
+  have hrun' :
+      SourceConfig.LabeledStar
+        ({ ctx := g.Γ, env := g.env, cont := g.prog } :
+          SourceConfig P L)
+        labels final := by
+    simpa [sourceStart] using hrun
+  rcases
+      StoreAgree_run_exists_compileCore
+        hrun' g.fresh g.normalized state hagree₀ hterminal with
+    ⟨hctx, terminalStore, hagree⟩
+  let available :
+      ∀ {name bindTy}
+        (h : VHasVar result.terminalCtx name bindTy),
+        ∃ value, Store.getAs terminalStore
+          (result.terminalState.fieldOf h) bindTy.base = some value := by
+    intro name bindTy h
+    exact ⟨_, hagree h⟩
+  refine ⟨hctx, terminalStore, available, ?_⟩
+  simpa [result] using
+    sourceEnvOfStore_eq_of_storeAgree
+      (state := result.terminalState)
+      (env := cast (congrArg (VEnv L) hctx) final.env)
+      (store := terminalStore)
+      hagree
+      available
+
 end ToEventGraph
 
 end Vegas
