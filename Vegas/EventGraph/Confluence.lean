@@ -74,6 +74,63 @@ theorem completeNodes_done (cfg : Config G)
       simp [Config.completeNode, List.toFinset_cons, Finset.insert_union,
         Finset.union_insert]
 
+/-- If a field is not the target of any scheduled node, completing the schedule
+does not change the typed read at that field. -/
+theorem completeNodes_getAs_of_not_targets (cfg : Config G)
+    (steps : List (Fin G.nodeCount × TypedValue L))
+    {field : Nat} {ty : L.Ty}
+    (hnot :
+      ∀ step, step ∈ steps → field ≠ G.nodeTarget step.1) :
+    Store.getAs (cfg.completeNodes steps).store field ty =
+      Store.getAs cfg.store field ty := by
+  induction steps generalizing cfg with
+  | nil =>
+      rfl
+  | cons step rest ih =>
+      rw [completeNodes_cons, ih]
+      · exact Store.getAs_set_ne cfg.store (hnot step (by simp)) step.2 ty
+      · intro tailStep htailStep
+        exact hnot tailStep (by simp [htailStep])
+
+/-- Reading the target of a scheduled node after a duplicate-free schedule
+returns the value assigned to that node. -/
+theorem completeNodes_getAs_of_mem (cfg : Config G)
+    (steps : List (Fin G.nodeCount × TypedValue L))
+    (hnodup : (steps.map Prod.fst).Nodup)
+    {node : Fin G.nodeCount} {value : TypedValue L}
+    (hmem : (node, value) ∈ steps) (ty : L.Ty) :
+    Store.getAs (cfg.completeNodes steps).store (G.nodeTarget node) ty =
+      value.as? ty := by
+  induction steps generalizing cfg with
+  | nil =>
+      simp at hmem
+  | cons step rest ih =>
+      rcases step with ⟨headNode, headValue⟩
+      simp only [List.map_cons, List.nodup_cons] at hnodup
+      simp only [List.mem_cons] at hmem
+      cases hmem with
+      | inl hhead =>
+          have hnotTail :
+              ∀ tailStep, tailStep ∈ rest →
+                G.nodeTarget node ≠ G.nodeTarget tailStep.1 := by
+            intro tailStep htailStep
+            have hnodeNe : node ≠ tailStep.1 := by
+              intro hnode
+              have hnodeHead : node = headNode :=
+                congrArg Prod.fst hhead
+              exact hnodup.1 (by
+                have hheadTail : headNode = tailStep.1 := by
+                  rw [← hnodeHead, hnode]
+                rw [hheadTail]
+                exact List.mem_map_of_mem (f := Prod.fst) htailStep)
+            exact Config.nodeTarget_ne_of_ne (G := G) hnodeNe
+          rw [completeNodes_cons,
+            completeNodes_getAs_of_not_targets _ rest hnotTail]
+          cases hhead
+          simp [Config.completeNode, Store.getAs]
+      | inr htail =>
+          exact ih (cfg.completeNode headNode headValue) hnodup.2 htail
+
 /-! ## Termination measure -/
 
 /-- Completing a fresh node grows the done-set by exactly one. -/
