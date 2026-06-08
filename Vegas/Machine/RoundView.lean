@@ -1539,6 +1539,55 @@ noncomputable def legalActionLaw
       view.jointActionDist horizon σ h a.1 := by
   rw [legalActionLaw, PMF.ofFintype_apply]
 
+/-- A legal round-action law can be consumed sequentially by first sampling any
+finite projection of the legal action, then sampling the original legal action
+conditioned on that projected value.
+
+This is the frontier-side law used when a simultaneous round action is replayed
+as source-order choices: the first source query samples a projection of the
+frontier action, while the conditioned remainder keeps the joint frontier law
+unchanged. -/
+theorem legalActionLaw_disintegrate
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    {β : Type} [Finite β]
+    (project : view.BoundedLegalAction horizon h.lastState → β) :
+    view.legalActionLaw horizon σ h hterm =
+      (Math.ProbabilityMassFunction.pushforward
+          (view.legalActionLaw horizon σ h hterm) project).bind
+        (fun value =>
+          Math.ProbabilityMassFunction.condOn
+            (view.legalActionLaw horizon σ h hterm) project value) := by
+  exact
+    Math.ProbabilityMassFunction.bind_pushforward_condOn_pure
+      (view.legalActionLaw horizon σ h hterm) project
+
+/-- The conditioned remainder in `legalActionLaw_disintegrate` is supported on
+legal actions whose projection is the sampled value. -/
+theorem legalActionLaw_condOn_support_project
+    (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    {β : Type}
+    (project : view.BoundedLegalAction horizon h.lastState → β)
+    (value : β)
+    (hvalue :
+      Math.ProbabilityMassFunction.pushforward
+        (view.legalActionLaw horizon σ h hterm) project value ≠ 0)
+    {action : view.BoundedLegalAction horizon h.lastState}
+    (haction :
+      action ∈
+        (Math.ProbabilityMassFunction.condOn
+          (view.legalActionLaw horizon σ h hterm) project value).support) :
+    project action = value :=
+  Math.ProbabilityMassFunction.condOn_support_project
+    (view.legalActionLaw horizon σ h hterm) project value hvalue haction
+
 theorem legalActionLaw_legalPureToBehavioral_eq_pure
     (view : M.RoundView) (horizon : Nat)
     [∀ player, Fintype (Option (view.Act player))]
