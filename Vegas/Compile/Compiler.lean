@@ -1043,6 +1043,64 @@ theorem eventDistOf_eval_eq_eval
   intro value
   rw [FWeight.toPMF_apply, FWeight.toPMF_apply, hdist]
 
+theorem eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (store : Store L)
+    (available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value)
+    (readEnv : ReadEnv L (eventDistOf state dist normalized).reads)
+    (hreadEnv :
+      ReadEnv.ofStore? store (eventDistOf state dist normalized).reads =
+        some readEnv) :
+    ∀ {name depTy} (hvar : HasVar (erasePubVCtx Γ) name depTy)
+      (hmem : name ∈ L.distDeps dist),
+      sourceValuePub state readEnv hvar
+        (distReadRefs_mem state dist hvar hmem) =
+        VEnv.erasePubEnv (sourceEnvOfStore state store available)
+          name depTy hvar := by
+  intro name depTy hvar hmem
+  have hreadStore :
+      Store.getAs store (state.fieldRefOfPub hvar).field
+          (state.fieldRefOfPub hvar).ty =
+        some (readEnv.read (state.fieldRefOfPub hvar)
+          (distReadRefs_mem state dist hvar hmem)) :=
+    ReadEnv.ofStore?_read hreadEnv
+      (distReadRefs_mem state dist hvar hmem)
+  have hsourceStore :
+      Store.getAs store
+          (state.fieldOf
+            (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)))
+          depTy =
+        some ((sourceEnvOfStore state store available).get
+          (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar))) := by
+    simpa [BuildState.fieldRefOfPub, BuildState.fieldOfPub] using
+      sourceEnvOfStore_get state store available
+        (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar))
+  have hvalue :
+      sourceValuePub state readEnv hvar
+          (distReadRefs_mem state dist hvar hmem) =
+        (sourceEnvOfStore state store available).get
+          (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)) := by
+    have hreadStore' :
+        Store.getAs store
+            (state.fieldOf
+              (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)))
+            depTy =
+          some (sourceValuePub state readEnv hvar
+            (distReadRefs_mem state dist hvar hmem)) := by
+      simpa [sourceValuePub, BuildState.fieldRefOfPub,
+        BuildState.fieldOfPub] using hreadStore
+    exact Option.some.inj (hreadStore'.symm.trans hsourceStore)
+  simpa [sourceValuePub, VEnv.erasePubEnv_get] using hvalue
+
 theorem eventDistOf_readEnv_agrees_sourceEnvOfStore
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
@@ -1078,40 +1136,9 @@ theorem eventDistOf_readEnv_agrees_sourceEnvOfStore
     unfold ReadEnv.ofStore?
     rw [dif_pos readAvailable]
   refine ⟨readEnv, hreadEnv, ?_⟩
-  intro name depTy hvar hmem
-  have hreadStore :
-      Store.getAs store (state.fieldRefOfPub hvar).field
-          (state.fieldRefOfPub hvar).ty =
-        some (readEnv.read (state.fieldRefOfPub hvar)
-          (distReadRefs_mem state dist hvar hmem)) :=
-    ReadEnv.ofStore?_read hreadEnv
-      (distReadRefs_mem state dist hvar hmem)
-  have hsourceStore :
-      Store.getAs store
-          (state.fieldOf
-            (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)))
-          depTy =
-        some ((sourceEnvOfStore state store available).get
-          (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar))) := by
-    simpa [BuildState.fieldRefOfPub, BuildState.fieldOfPub] using
-      sourceEnvOfStore_get state store available
-        (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar))
-  have hvalue :
-      sourceValuePub state readEnv hvar
-          (distReadRefs_mem state dist hvar hmem) =
-        (sourceEnvOfStore state store available).get
-          (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)) := by
-    have hreadStore' :
-        Store.getAs store
-            (state.fieldOf
-              (VHasVar.ofPubVCtx (HasVar.toVHasVarPub hvar)))
-            depTy =
-          some (sourceValuePub state readEnv hvar
-            (distReadRefs_mem state dist hvar hmem)) := by
-      simpa [sourceValuePub, BuildState.fieldRefOfPub,
-        BuildState.fieldOfPub] using hreadStore
-    exact Option.some.inj (hreadStore'.symm.trans hsourceStore)
-  simpa [sourceValuePub, VEnv.erasePubEnv_get] using hvalue
+  exact
+    eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
+      state dist normalized store available readEnv hreadEnv
 
 /-- Compile a source commit guard. `choiceReads` is the actor's whole visible
 source context: the information footprint for choosing this commit, not an
