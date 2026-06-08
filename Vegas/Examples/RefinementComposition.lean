@@ -1,4 +1,5 @@
 import Vegas.Examples.Refinement
+import Vegas.Machine.MessageSecurity
 
 /-!
 # Composed refinement smoke examples
@@ -163,6 +164,54 @@ example (profile : ∀ _player : PUnit, Bool)
         auditedEncodedLawLift (fun _ => 0) 3
         (CImpl := fun _ => 1) (CSpec := fun _ => 1)
         auditedEncodedTraceUtility_bound boolSpecTraceUtility_bound hNash
+
+/-! ## Codec plus message-in-flight composition -/
+
+def matchingPenniesUnitMessagePlaintextPolicy :
+    Machine.PlaintextPolicy Player (fun _ : Player => PUnit) PUnit where
+  plaintext? := fun _ _ => none
+
+theorem matchingPenniesUnitMessage_noPlaintext
+    (messages : List (Sigma (fun _ : Player => PUnit))) :
+    matchingPenniesUnitMessagePlaintextPolicy.noPlaintext messages := by
+  induction messages with
+  | nil => rfl
+  | cons entry rest ih =>
+      rcases entry with ⟨player, message⟩
+      cases message
+      simpa [matchingPenniesUnitMessagePlaintextPolicy,
+        Machine.PlaintextPolicy.noPlaintext,
+        Machine.PlaintextPolicy.plaintexts] using ih
+
+noncomputable def matchingPenniesCodecMessageInFlightAdequacy
+    (valueCodec : Runtime.ValueCodec simpleExpr)
+    (law :
+      WFProgram.TraceSpecEventBatchLaw matchingPenniesChecked
+        (WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked)) :
+    WFProgram.RuntimeTraceAdequacy matchingPenniesChecked
+      (WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked)
+      ((Runtime.ValueCodec.refinement valueCodec
+        (ToEventGraph.primitiveMachineSpec matchingPenniesCompiled)).compose
+        (Machine.messageInFlight.refinement
+          (valueCodec.codecMachine
+            (ToEventGraph.primitiveMachineSpec matchingPenniesCompiled))
+          (fun _ : Player => PUnit))) :=
+  WFProgram.RuntimeTraceAdequacy.codecMessageInFlight valueCodec
+    (fun _ : Player => PUnit) law
+
+noncomputable example
+    (valueCodec : Runtime.ValueCodec simpleExpr)
+    (law :
+      WFProgram.TraceSpecEventBatchLaw matchingPenniesChecked
+        (WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked))
+    (profile : matchingPenniesChecked.BehavioralFrontierProfile) :
+    (WFProgram.RuntimeTraceAdequacy.implTraceGame
+      (matchingPenniesCodecMessageInFlightAdequacy valueCodec law)).udist
+        profile =
+      matchingPenniesChecked.behavioralFrontierGame.udist profile := by
+  simpa [WFProgram.behavioralFrontierTraceSurface] using
+    WFProgram.RuntimeTraceAdequacy.implTraceGame_udist_surface
+      (matchingPenniesCodecMessageInFlightAdequacy valueCodec law) profile
 
 end Refinement
 end Examples
