@@ -413,6 +413,24 @@ noncomputable def labelValueAssignment (G : Graph P L)
           simp [hlen, node.isLt]
         exact hidx hnode)
 
+/-- The canonical terminal store obtained by writing a complete source label
+trace into the graph's canonical node order. -/
+noncomputable def canonicalLabelStore (G : Graph P L)
+    (labels : List (Label P L)) (hlen : labels.length = G.nodeCount) :
+    Store L :=
+  (Config.canonicalCompletion G
+    (labelValueAssignment G labels hlen)).store
+
+omit [DecidableEq P] in
+theorem label_get?_append_cons_length
+    (pre rest : List (Label P L)) (label : Label P L) :
+    (pre ++ label :: rest)[pre.length]? = some label := by
+  induction pre with
+  | nil =>
+      simp
+  | cons _ tail _ih =>
+      simp
+
 theorem labelValueAssignment_eq_of_get?
     (G : Graph P L) (labels : List (Label P L))
     (hlen : labels.length = G.nodeCount)
@@ -438,6 +456,14 @@ theorem labelValueAssignment_irrel
   · have hidx' : (node : Nat) < labels.length := by
       simpa [hlen₁] using node.isLt
     exact False.elim (hidx hidx')
+
+theorem canonicalLabelStore_irrel
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen₁ hlen₂ : labels.length = G.nodeCount) :
+    canonicalLabelStore G labels hlen₁ =
+      canonicalLabelStore G labels hlen₂ := by
+  unfold canonicalLabelStore
+  rw [labelValueAssignment_irrel G labels hlen₁ hlen₂]
 
 theorem canonicalCompletion_getAs_of_initial_field
     (G : Graph P L) (labels : List (Label P L))
@@ -509,6 +535,24 @@ theorem canonicalCompletion_getAs_of_label_get?_base
       some (cast (by rw [Label.toTypedValue_ty]) label.toTypedValue.value) := by
   rw [canonicalCompletion_getAs_of_label_get? G labels hlen node hget]
   simp [TypedValue.as?]
+
+theorem canonicalLabelStore_getAs_of_prefix_head
+    (G : Graph P L) (fullLabels : List (Label P L))
+    (hlen : fullLabels.length = G.nodeCount)
+    (pre rest : List (Label P L)) (label : Label P L)
+    (hfull : fullLabels = pre ++ label :: rest)
+    (node : Fin G.nodeCount)
+    (hnode : (node : Nat) = pre.length) :
+    Store.getAs
+        (canonicalLabelStore G fullLabels hlen)
+        (G.nodeTarget node) label.ty =
+      some (cast (by rw [Label.toTypedValue_ty]) label.toTypedValue.value) := by
+  have hget : fullLabels[(node : Nat)]? = some label := by
+    rw [hfull, hnode]
+    exact label_get?_append_cons_length pre rest label
+  simpa [canonicalLabelStore] using
+    canonicalCompletion_getAs_of_label_get?_base
+      G fullLabels hlen node hget
 
 /-- Initial source values are still readable after completing all event nodes:
 canonical completion writes only node-target fields, never initial fields. -/
