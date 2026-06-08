@@ -140,6 +140,37 @@ theorem sourceEnvOfStore_eq_of_storeAgree
     sourceEnvOfStore_get state store available h
   exact Option.some.inj (hread.symm.trans (hagree h))
 
+/-- R1 readback ingredient for reverse replay: every completed node in a
+reachable terminal graph has a typed value at its canonical target field. -/
+theorem reachableTerminal_nodeTarget_getAs
+    {G : Graph P L} (hwf : G.WF)
+    (state : ReachableConfig G)
+    (hterminal : Terminal G state.1)
+    (node : Fin G.nodeCount) :
+    ∃ value : L.Val (G.nodeRow node).ty,
+      Store.getAs state.1.store (G.nodeTarget node)
+        (G.nodeRow node).ty = some value := by
+  have hcoherent : StoreCoherent G state.1 :=
+    reachable_storeCoherent hwf state.2
+  have hfield :
+      G.field? (G.nodeTarget node) =
+        some
+          { ty := (G.nodeRow node).ty
+            owner := (G.nodeRow node).owner
+            source := .event (node : Nat) } := by
+    exact G.field?_nodeTarget (G.nodes_get?_nodeRow node)
+  have hdone : state.1.nodeDone (node : Nat) := by
+    change (node : Nat) ∈ state.1.doneIds
+    exact Finset.mem_image.mpr ⟨node, hterminal node, rfl⟩
+  rcases
+      hcoherent (G.nodeTarget node)
+        { ty := (G.nodeRow node).ty
+          owner := (G.nodeRow node).owner
+          source := .event (node : Nat) }
+        hfield hdone with
+    ⟨value, hvalue⟩
+  exact ⟨value, hvalue⟩
+
 /-- The initial compiler state stores exactly the source environment in its
 initial fields. The extra `nodes` parameter lets the lemma apply to any later
 graph extension, since initial fields are not shifted by appended event nodes. -/
