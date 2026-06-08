@@ -416,6 +416,131 @@ noncomputable def sourceCheckpointBehavioralFrontierNashDeviationBisimulation
   program.frontierSemantics
     |>.sourceCheckpointBehavioralNashDeviationBisimulation
 
+/-- Observe a raw source strategic history by the payoff outcome currently
+reported by its source configuration.  Nonterminal finite-horizon truncations
+are observed as `none`. -/
+def sourceStrategicOptionOutcomeView
+    (program : WFProgram P L) (horizon : Nat) (cutoff : Payoff P) :
+    KernelGame.OutcomeView
+      (program.sourceStrategicGame horizon cutoff) (Option (Outcome P)) where
+  observe := fun state => state.history.current.outcome?
+
+/-- Observe a completed behavioral frontier outcome through `some`, matching
+the optional source observation surface. -/
+def behavioralFrontierOptionOutcomeView
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.OutcomeView
+      program.behavioralFrontierGame (Option (Outcome P)) where
+  observe := some
+
+/-- Raw source/frontier strategy-translation bridge.
+
+This is the exact data needed to compare the source-local strategic game with
+the canonical behavioral frontier game without replacing the source strategy
+surface by checkpoint-local strategies.  The bridge is intentionally phrased as
+profile translations plus two unilateral-deviation lifting laws: those are the
+strategic facts needed for a standard Nash-deviation bisimulation. -/
+structure RawSourceFrontierNashDeviationBridge
+    (program : WFProgram P L) [FiniteDomains program]
+    (horizon : Nat) (cutoff : Payoff P) where
+  sourceToFrontier :
+    (program.sourceStrategicGame horizon cutoff).Profile →
+      program.behavioralFrontierGame.Profile
+  frontierToSource :
+    program.behavioralFrontierGame.Profile →
+      (program.sourceStrategicGame horizon cutoff).Profile
+  sourceToFrontier_frontierToSource :
+    ∀ frontierProfile,
+      sourceToFrontier (frontierToSource frontierProfile) = frontierProfile
+  sourceToFrontier_law :
+    ∀ sourceProfile,
+      (program.sourceStrategicOptionOutcomeView horizon cutoff).law
+          sourceProfile =
+        (program.behavioralFrontierOptionOutcomeView).law
+          (sourceToFrontier sourceProfile)
+  liftFrontierDeviation :
+    ∀ sourceProfile who
+      (frontierDeviation : program.behavioralFrontierGame.Strategy who),
+      ∃ sourceDeviation :
+          (program.sourceStrategicGame horizon cutoff).Strategy who,
+        (program.sourceStrategicOptionOutcomeView horizon cutoff).law
+            (Function.update sourceProfile who sourceDeviation) =
+          (program.behavioralFrontierOptionOutcomeView).law
+            (Function.update (sourceToFrontier sourceProfile)
+              who frontierDeviation)
+  liftSourceDeviation :
+    ∀ sourceProfile who
+      (sourceDeviation :
+        (program.sourceStrategicGame horizon cutoff).Strategy who),
+      ∃ frontierDeviation : program.behavioralFrontierGame.Strategy who,
+        (program.sourceStrategicOptionOutcomeView horizon cutoff).law
+            (Function.update sourceProfile who sourceDeviation) =
+          (program.behavioralFrontierOptionOutcomeView).law
+            (Function.update (sourceToFrontier sourceProfile)
+              who frontierDeviation)
+
+namespace RawSourceFrontierNashDeviationBridge
+
+variable {program : WFProgram P L} [FiniteDomains program]
+variable {horizon : Nat} {cutoff : Payoff P}
+
+/-- Every frontier profile has a source representative with the same observed
+optional payoff law. -/
+theorem frontierToSource_law
+    (bridge :
+      RawSourceFrontierNashDeviationBridge program horizon cutoff)
+    (frontierProfile : program.behavioralFrontierGame.Profile) :
+    (program.sourceStrategicOptionOutcomeView horizon cutoff).law
+        (bridge.frontierToSource frontierProfile) =
+      (program.behavioralFrontierOptionOutcomeView).law frontierProfile := by
+  simpa [bridge.sourceToFrontier_frontierToSource frontierProfile] using
+    bridge.sourceToFrontier_law (bridge.frontierToSource frontierProfile)
+
+/-- The raw source/frontier bridge induces the standard two-way
+Nash-deviation bisimulation over optional source payoff outcomes. -/
+noncomputable def toNashDeviationBisimulation
+    (bridge :
+      RawSourceFrontierNashDeviationBridge program horizon cutoff) :
+    KernelGame.NashDeviationBisimulation
+      (program.sourceStrategicGame horizon cutoff) program.behavioralFrontierGame
+      (Option (Outcome P)) where
+  viewG := program.sourceStrategicOptionOutcomeView horizon cutoff
+  viewH := program.behavioralFrontierOptionOutcomeView
+  rel := fun sourceProfile frontierProfile =>
+    frontierProfile = bridge.sourceToFrontier sourceProfile
+  law_eq := by
+    intro sourceProfile frontierProfile hrel
+    subst frontierProfile
+    exact bridge.sourceToFrontier_law sourceProfile
+  simulate_target_deviation := by
+    intro sourceProfile frontierProfile hrel who frontierDeviation
+    subst frontierProfile
+    exact bridge.liftFrontierDeviation sourceProfile who frontierDeviation
+  simulate_source_deviation := by
+    intro sourceProfile frontierProfile hrel who sourceDeviation
+    subst frontierProfile
+    exact bridge.liftSourceDeviation sourceProfile who sourceDeviation
+
+/-- A source profile is related to its translated frontier profile. -/
+theorem sourceToFrontier_related
+    (bridge :
+      RawSourceFrontierNashDeviationBridge program horizon cutoff)
+    (sourceProfile :
+      (program.sourceStrategicGame horizon cutoff).Profile) :
+    bridge.toNashDeviationBisimulation.rel
+      sourceProfile (bridge.sourceToFrontier sourceProfile) := rfl
+
+/-- A frontier profile is related to its chosen source representative. -/
+theorem frontierToSource_related
+    (bridge :
+      RawSourceFrontierNashDeviationBridge program horizon cutoff)
+    (frontierProfile : program.behavioralFrontierGame.Profile) :
+    bridge.toNashDeviationBisimulation.rel
+      (bridge.frontierToSource frontierProfile) frontierProfile :=
+  (bridge.sourceToFrontier_frontierToSource frontierProfile).symm
+
+end RawSourceFrontierNashDeviationBridge
+
 end WFProgram
 
 end Vegas
