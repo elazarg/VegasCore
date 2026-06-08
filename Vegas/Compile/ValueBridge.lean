@@ -318,6 +318,37 @@ theorem DonePrefix.completeNode
       have hdoneQuery : query ∈ cfg.done := (hdone query).mpr hlt
       simpa [Config.completeNode, hq] using hdoneQuery
 
+theorem compileCore_added_head_get?
+    {Γ : VCtx P L} {name : VarId} {bindTy : BindTy P L}
+    {sem : NodeSem P L}
+    (state : BuildState P L Γ)
+    (hfresh : Fresh name Γ)
+    (hnode :
+      ({ initialFields := state.initialFields,
+         nodes := state.nodes ++
+          [{ ty := bindTy.base, owner := bindTy.owner, sem := sem }] } :
+        Graph P L).nodeWFAt
+        state.nextNode
+        { ty := bindTy.base, owner := bindTy.owner, sem := sem })
+    (tail : VegasCore P L ((name, bindTy) :: Γ))
+    (fresh : FreshBindings tail)
+    (normalized : NormalizedDists tail) :
+    let added := state.addEvent name bindTy sem hfresh hnode
+    (compileCore tail fresh normalized added.1).nodes[state.nodes.length]? =
+      some { ty := bindTy.base, owner := bindTy.owner, sem := sem } := by
+  intro added
+  have hpref := compileCore_nodes_prefix tail fresh normalized added.1
+  have hprefEq := List.prefix_iff_eq_append.mp hpref
+  have hidxAdded : state.nodes.length < added.1.nodes.length := by
+    simp [added, BuildState.addEvent_nodes]
+  have hgetAdded :
+      added.1.nodes[state.nodes.length]? =
+        some { ty := bindTy.base, owner := bindTy.owner, sem := sem } := by
+    simp [added, BuildState.addEvent_nodes]
+  rw [← hprefEq]
+  rw [List.getElem?_append_left hidxAdded]
+  exact hgetAdded
+
 /-- A terminal labelled source run can be mirrored by threading graph-store
 writes through the compiler state, yielding a terminal store that agrees with
 the run's final source environment. This is the lockstep induction spine used by
