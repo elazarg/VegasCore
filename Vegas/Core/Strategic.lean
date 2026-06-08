@@ -77,6 +77,59 @@ abbrev SourceStrategy (start : SourceConfig P L) (who : P) : Type :=
 abbrev SourceProfile (start : SourceConfig P L) : Type :=
   ∀ who : P, SourceStrategy (L := L) start who
 
+namespace SourceStrategy
+
+/-- A source strategy depends on a realized source history only through the
+acting player's history-local view.
+
+The result is stated as heterogeneous equality because both the legal action
+type and the proof arguments are indexed by the view. This is the strategic
+form of source-history locality: indistinguishable histories cannot induce
+different source action laws for the player whose strategy is queried. -/
+theorem query_heq_of_view_eq
+    {start : SourceConfig P L} {who : P}
+    (strategy : SourceStrategy (L := L) start who)
+    {leftView rightView : SourceHistoryLocalView P L who}
+    (hview : leftView = rightView)
+    (hstartLeft :
+      leftView.startPoint = start.programPoint)
+    (hstartRight :
+      rightView.startPoint = start.programPoint)
+    (hchoiceLeft :
+      leftView.currentView.point.IsChoiceFor who)
+    (hchoiceRight :
+      rightView.currentView.point.IsChoiceFor who) :
+    HEq (strategy leftView hstartLeft hchoiceLeft)
+      (strategy rightView hstartRight hchoiceRight) := by
+  cases hview
+  have hstart : hstartLeft = hstartRight := Subsingleton.elim _ _
+  have hchoice : hchoiceLeft = hchoiceRight := Subsingleton.elim _ _
+  cases hstart
+  cases hchoice
+  exact HEq.rfl
+
+/-- History-form corollary of `query_heq_of_view_eq`: source strategies are
+local over source-history knowledge cells. -/
+theorem query_heq_of_sameHistoryKnowledge
+    {start : SourceConfig P L} {who : P}
+    (strategy : SourceStrategy (L := L) start who)
+    {left right : SourceHistoryPoint P L}
+    (hsame : SourceHistoryPoint.SameHistoryKnowledge (L := L) who left right)
+    (hstartLeft :
+      (left.localHistoryView who).startPoint = start.programPoint)
+    (hstartRight :
+      (right.localHistoryView who).startPoint = start.programPoint)
+    (hchoiceLeft :
+      (left.localHistoryView who).currentView.point.IsChoiceFor who)
+    (hchoiceRight :
+      (right.localHistoryView who).currentView.point.IsChoiceFor who) :
+    HEq (strategy (left.localHistoryView who) hstartLeft hchoiceLeft)
+      (strategy (right.localHistoryView who) hstartRight hchoiceRight) :=
+  query_heq_of_view_eq (L := L) strategy hsame
+    hstartLeft hstartRight hchoiceLeft hchoiceRight
+
+end SourceStrategy
+
 /-- A source history together with the normalization proof needed to continue
 sampling from its current continuation. -/
 structure SourceStrategicHistory (start : SourceConfig P L) where

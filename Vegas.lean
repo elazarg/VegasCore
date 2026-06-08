@@ -14,6 +14,7 @@ import Vegas.Core.Epistemic
 import Vegas.Core.Strategic
 import Vegas.Core.Schedule
 import Vegas.Core.Noninterference
+import Vegas.Core.StrategicNoninterference
 import Vegas.Core.Trace
 
 -- WellFormed: the checked-program boundary.
