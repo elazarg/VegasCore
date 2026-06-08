@@ -1093,7 +1093,7 @@ theorem boundedLegalActionLaw_localSupport_of_sameInfo
     boundedLegalActionLaw_localSupport representative player law hmove
   have hmenus :
       view.boundedAvailableMoves horizon representative player =
-        view.boundedAvailableMoves horizon h player :=
+      view.boundedAvailableMoves horizon h player :=
     hMenus player representative h hinfo
   simpa [hmenus] using hrep
 
@@ -1310,6 +1310,39 @@ abbrev BoundedBehavioralProfile.toProfile
     (σ : view.BoundedBehavioralProfile horizon) :
     view.ReachableBehavioralProfile horizon :=
   fun player => (σ player).1
+
+/-- Build a legal bounded behavioral strategy by assigning each reachable
+information state a representative history and a law over legal joint actions
+at that representative, then taking the player's local marginal.
+
+This is the legality shell needed by strategy translations that first assemble
+a full round-action law and only then expose the player's local move law. -/
+noncomputable def boundedBehavioralStrategyOfActionLaw
+    {view : M.RoundView} {horizon : Nat}
+    (hMenus : view.MenusObservable horizon)
+    (player : Player)
+    (representative :
+      view.ReachableInfoState horizon player → view.BoundedHistory horizon)
+    (rep_info :
+      ∀ info, (representative info).playerView player = info.1)
+    (law :
+      ∀ info,
+        PMF
+          (view.BoundedLegalAction horizon
+            (representative info).lastState)) :
+    view.BoundedBehavioralStrategy horizon player where
+  val := fun info =>
+    PMF.map (fun action => action.1 player) (law info)
+  property := by
+    intro h move hmove
+    let info := view.reachableInfoStateOfHistory horizon player h
+    have hinfo :
+        (representative info).playerView player =
+          h.playerView player := by
+      simpa [info] using rep_info info
+    exact
+      boundedLegalActionLaw_localSupport_of_sameInfo
+        hMenus (representative info) h player hinfo (law info) hmove
 
 section FiniteStrategy
 
