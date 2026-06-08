@@ -327,6 +327,163 @@ noncomputable def sourceCommitValueLawOfActionDist
             (by simpa [optionLaw] using hsomeSupport)
       PMF.pure ⟨sourceValue, hguard⟩
 
+/-- Source commit-value law induced by conditioning the current legal frontier
+action law on an arbitrary finite observation of the legal action.
+
+This is the reusable source-order serialization step for the interior of a
+simultaneous frontier round: earlier source queries condition the frontier
+legal-action law to a fiber, and the next source query is read from that fiber. -/
+noncomputable def conditionedSourceCommitValueLaw
+    (program : WFProgram P L)
+    (presentation :
+      EventGraph.CheckpointPresentation (compile program.core).graph)
+    (semantics :
+      EventGraph.FrontierRoundSemantics
+        (primitiveMachineSpec (compile program.core)) presentation)
+    {horizon : Nat}
+    [∀ player,
+      Fintype
+        (Option
+          ((EventGraph.frontierRoundView
+              (primitiveMachineSpec (compile program.core))
+              presentation semantics).Act player))]
+    (σ :
+      Machine.RoundView.BoundedBehavioralProfile
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics) horizon)
+    (h :
+      Machine.RoundView.BoundedHistory
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics) horizon)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (EventGraph.frontierRoundView
+            (primitiveMachineSpec (compile program.core))
+            presentation semantics)
+          horizon h.lastState)
+    {β : Type} [Finite β]
+    (conditionProject :
+      Machine.RoundView.BoundedLegalAction
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics)
+        horizon h.lastState → β)
+    (conditionValue : β)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (fuel : Nat)
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (EventGraph.frontierRoundView
+            (primitiveMachineSpec (compile program.core))
+            presentation semantics)
+          horizon h.lastState) :
+    PMF
+      { value : L.Val b //
+        evalGuard (Player := P) (L := L) guard value
+          ((env.toView who).eraseEnv) = true } :=
+  sourceCommitValueLawOfActionDist
+    program presentation semantics h hterm
+    (Math.ProbabilityMassFunction.condOn
+      (Machine.RoundView.legalActionLaw
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics)
+        horizon σ h hterm)
+      conditionProject conditionValue)
+    replay hnode fuel hsupport hactive
+
+/-- Conditioned source commit-value law for the common case where the
+conditioning fiber is a previously serialized source-order commit node. -/
+noncomputable def conditionedNodeSourceCommitValueLaw
+    (program : WFProgram P L)
+    (presentation :
+      EventGraph.CheckpointPresentation (compile program.core).graph)
+    (semantics :
+      EventGraph.FrontierRoundSemantics
+        (primitiveMachineSpec (compile program.core)) presentation)
+    {horizon : Nat}
+    [∀ player,
+      Fintype
+        (Option
+          ((EventGraph.frontierRoundView
+              (primitiveMachineSpec (compile program.core))
+              presentation semantics).Act player))]
+    (σ :
+      Machine.RoundView.BoundedBehavioralProfile
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics) horizon)
+    (h :
+      Machine.RoundView.BoundedHistory
+        (EventGraph.frontierRoundView
+          (primitiveMachineSpec (compile program.core))
+          presentation semantics) horizon)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (EventGraph.frontierRoundView
+            (primitiveMachineSpec (compile program.core))
+            presentation semantics)
+          horizon h.lastState)
+    {prevWho : P}
+    (prevNode : Fin (compile program.core).graph.nodeCount)
+    [Finite
+      (Option
+        (L.Val (((compile program.core).graph.nodeRow prevNode).ty)))]
+    (prevValue :
+      Option
+        (L.Val (((compile program.core).graph.nodeRow prevNode).ty)))
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (fuel : Nat)
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (EventGraph.frontierRoundView
+            (primitiveMachineSpec (compile program.core))
+            presentation semantics)
+          horizon h.lastState) :
+    PMF
+      { value : L.Val b //
+        evalGuard (Player := P) (L := L) guard value
+          ((env.toView who).eraseEnv) = true } :=
+  conditionedSourceCommitValueLaw
+    program presentation semantics σ h hterm
+    (Projected.nodeValueProjection
+      (primitiveMachineSpec (compile program.core))
+      presentation semantics (who := prevWho) prevNode)
+    prevValue
+    replay hnode fuel hsupport hactive
+
 /-- The option-valued frontier law obtained by observing one source-order commit
 node in the current legal frontier action law. -/
 noncomputable def currentNodeOptionLaw
