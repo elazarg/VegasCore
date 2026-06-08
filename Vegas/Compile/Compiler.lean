@@ -1149,6 +1149,97 @@ theorem eventGuardOf_readEnv_of_sourceStoreAvailable
   unfold ReadEnv.ofStore?
   rw [dif_pos readAvailable]
 
+theorem viewEnvOfReadEnv_eq_eraseEnv_sourceEnvOfStore
+    {Γ : VCtx P L}
+    (state : BuildState P L Γ) (who : P)
+    (store : Store L)
+    (available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value)
+    (readEnv : ReadEnv L (visibleFieldRefs state who))
+    (hreadEnv :
+      ReadEnv.ofStore? store (visibleFieldRefs state who) =
+        some readEnv) :
+    viewEnvOfReadEnv state who readEnv =
+      VEnv.eraseEnv (VEnv.toView who
+        (sourceEnvOfStore state store available)) := by
+  funext name ty hvar
+  unfold viewEnvOfReadEnv sourceValueView
+  let lifted := HasVar.toVHasVar (Player := P) (L := L) hvar
+  let ref := state.fieldRefOfView who lifted.2.1
+  have href : ref ∈ visibleFieldRefs state who := by
+    exact fieldRefOfView_mem_visibleFieldRefs state who lifted.2.1
+  have hreadStore :
+      Store.getAs store ref.field ref.ty =
+        some (readEnv.read ref href) :=
+    ReadEnv.ofStore?_read hreadEnv href
+  have hsourceStore :
+      Store.getAs store
+          (state.fieldOf (VHasVar.ofViewVCtx lifted.2.1))
+          lifted.1.base =
+        some ((sourceEnvOfStore state store available).get
+          (VHasVar.ofViewVCtx lifted.2.1)) := by
+    simpa using
+      sourceEnvOfStore_get state store available
+        (VHasVar.ofViewVCtx lifted.2.1)
+  have hreadStore' :
+      Store.getAs store
+          (state.fieldOf (VHasVar.ofViewVCtx lifted.2.1))
+          lifted.1.base =
+        some (readEnv.read ref href) := by
+    simpa [ref, BuildState.fieldRefOfView] using hreadStore
+  have hvalueBase :
+      readEnv.read ref href =
+        (sourceEnvOfStore state store available).get
+          (VHasVar.ofViewVCtx lifted.2.1) :=
+    Option.some.inj (hreadStore'.symm.trans hsourceStore)
+  have hviewErased :
+      VEnv.eraseEnv
+          (VEnv.toView who (sourceEnvOfStore state store available))
+          name lifted.1.base lifted.2.1.toErased =
+        (sourceEnvOfStore state store available).get
+          (VHasVar.ofViewVCtx lifted.2.1) := by
+    have h :=
+      VEnv.eraseEnv_get_of_erased
+        (VEnv.toView who (sourceEnvOfStore state store available))
+        lifted.2.1
+    exact h
+  have herasedHEq :
+      HEq
+        (VEnv.eraseEnv
+          (VEnv.toView who (sourceEnvOfStore state store available))
+          name lifted.1.base lifted.2.1.toErased)
+        (VEnv.eraseEnv
+          (VEnv.toView who (sourceEnvOfStore state store available))
+          name ty hvar) :=
+    VEnv.eraseEnv_toErased_eq
+      (VEnv.toView who (sourceEnvOfStore state store available)) hvar
+  have htarget :
+      HEq
+        (readEnv.read ref href)
+        (VEnv.eraseEnv
+          (VEnv.toView who (sourceEnvOfStore state store available))
+          name ty hvar) := by
+    have hreadLifted :
+        HEq
+          (readEnv.read ref href)
+          (VEnv.eraseEnv
+            (VEnv.toView who (sourceEnvOfStore state store available))
+            name lifted.1.base lifted.2.1.toErased) := by
+      rw [hvalueBase, hviewErased]
+      exact HEq.rfl
+    exact HEq.trans hreadLifted herasedHEq
+  have hcast :
+      HEq
+        (cast (congrArg L.Val (by
+          unfold ref BuildState.fieldRefOfView
+          exact lifted.2.2.down))
+            (readEnv.read ref href))
+        (readEnv.read ref href) :=
+    cast_heq _ _
+  exact eq_of_heq (HEq.trans hcast htarget)
+
 theorem eventGuardOf_live_of_legal
     {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
     (state : BuildState P L Γ) (who : P)
