@@ -37,11 +37,29 @@ def Label.toTypedValue : Label P L → EventGraph.TypedValue L
   | .commit _ _ v => ⟨_, v⟩
   | .reveal _ _ _ v => ⟨_, v⟩
 
+/-- The source type of the value produced by a labelled step. -/
+def Label.ty : Label P L → L.Ty
+  | .sample _ (b := b) _ => b
+  | .commit _ _ (b := b) _ => b
+  | .reveal _ _ _ (b := b) _ => b
+
+omit [DecidableEq P] in
+@[simp] theorem Label.toTypedValue_ty (label : Label P L) :
+    label.toTypedValue.ty = label.ty := by
+  cases label <;> rfl
+
 /-- A labelled step consumes exactly one instruction: the continuation has one
 fewer. -/
 theorem LStep.instrCount_cont {cfg b : SourceConfig P L} {ℓ : Label P L}
     (h : LStep cfg ℓ b) :
     cfg.cont.instrCount = b.cont.instrCount + 1 := by
+  cases h <;> rfl
+
+/-- A labelled step's label type is exactly the type of the instruction it
+consumes. -/
+theorem LStep.instrTypes_cont {cfg b : SourceConfig P L} {ℓ : Label P L}
+    (h : LStep cfg ℓ b) :
+    cfg.cont.instrTypes = ℓ.ty :: b.cont.instrTypes := by
   cases h <;> rfl
 
 namespace SourceConfig
@@ -60,6 +78,21 @@ theorem LabeledStar.length_eq_instrCount_of_terminal
   | cons step _rest ih =>
       intro hterm
       rw [List.length_cons, ih hterm, ← step.instrCount_cont]
+
+/-- A terminal source run records exactly the source instruction output types,
+in source execution order. -/
+theorem LabeledStar.label_types_eq_instrTypes_of_terminal
+    {cfg final : SourceConfig P L} {labels : List (Label P L)}
+    (h : SourceConfig.LabeledStar cfg labels final) :
+    final.IsTerminal → labels.map Label.ty = cfg.cont.instrTypes := by
+  induction h with
+  | refl c =>
+      intro hterm
+      obtain ⟨p, hp⟩ := hterm
+      simp [hp, VegasCore.instrTypes]
+  | cons step _rest ih =>
+      intro hterm
+      rw [List.map_cons, ih hterm, step.instrTypes_cont]
 
 /-- A terminal run from the initial configuration produces exactly one label —
 hence one value — per source instruction (and per compiled graph node). -/
