@@ -412,6 +412,17 @@ theorem NNRat.toNNReal_zero : NNRat.toNNReal 0 = 0 := by
   change (((0 : ℚ≥0) : ℚ) : ℝ) = 0
   norm_num
 
+theorem NNRat.toNNReal_eq_zero {q : ℚ≥0} :
+    NNRat.toNNReal q = 0 ↔ q = 0 := by
+  constructor
+  · intro h
+    have hcoe := congrArg (fun value : NNReal => (value : ℝ)) h
+    change ((q : ℚ) : ℝ) = 0 at hcoe
+    exact_mod_cast hcoe
+  · intro h
+    subst h
+    exact NNRat.toNNReal_zero
+
 theorem NNRat.toNNReal_add (a b : ℚ≥0) :
     NNRat.toNNReal (a + b) = NNRat.toNNReal a + NNRat.toNNReal b := by
   refine NNReal.coe_injective ?_
@@ -474,6 +485,17 @@ theorem toPMF_apply {γ : Type} [DecidableEq γ]
     (d : FWeight γ) (h : d.totalWeight = 1) (a : γ) :
     (d.toPMF h) a = (NNRat.toNNReal (d a) : ENNReal) := by
   simp [FWeight.toPMF, PMF.ofFinset_apply]
+
+/-- `FWeight.toPMF` preserves and reflects finite support. -/
+theorem mem_support_toPMF {γ : Type} [DecidableEq γ]
+    (d : FWeight γ) (h : d.totalWeight = 1) (a : γ) :
+    a ∈ (d.toPMF h).support ↔ a ∈ d.support := by
+  rw [PMF.mem_support_iff, Finsupp.mem_support_iff, toPMF_apply]
+  constructor
+  · intro hpmf hzero
+    exact hpmf (by simp [hzero, NNRat.toNNReal_zero])
+  · intro hweight
+    simpa [NNRat.toNNReal_eq_zero] using hweight
 
 /-- `toPMF` converts `FWeight.pure` to `PMF.pure`. -/
 theorem toPMF_pure [DecidableEq α] (a : α) :
