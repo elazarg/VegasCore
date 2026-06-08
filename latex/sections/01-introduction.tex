@@ -76,7 +76,9 @@ equivalences, an adequacy, and a refinement order---set out in
 dependency view against ordinary game trees, works a small Matching-Pennies
 example, sketches the pipeline from program to games and runtimes, lays out
 these relations, places the runtime backends, and summarizes the theorem
-surface; \Cref{fig:overview} gives the roadmap.
+surface; \Cref{fig:overview} gives the roadmap.  Unfamiliar terms ---
+FOSG, EFG, frontier, kernel game, adequacy --- are collected in the
+glossary (\Cref{sec:glossary}).
 
 \begin{figure}[t]
 \centering
@@ -289,9 +291,10 @@ end-to-end guarantee into a short composite instead of a monolith.
   particular not a symmetric equivalence between arbitrary programs and
   graphs.  \emph{Forget:} the source syntax.
 \item[Presentation equivalence \quad{\small(equivalence, across a presentation)}.]
-  The FOSG and EFG presentations carry the same utility distribution as
-  the native frontier game (\Cref{thm:fosg,thm:efg}).  \emph{Forget:}
-  which game-form a result was stated in.
+  The FOSG (factored-observation stochastic game) and EFG (extensive-form
+  game) presentations carry the same utility distribution as the native
+  frontier game (\Cref{thm:fosg,thm:efg}).  \emph{Forget:} which game-form
+  a result was stated in.
 \item[Strategic (Kuhn) equivalence \quad{\small(equivalence, inside the strategic layer)}.]
   Behavioral and product mixed-pure frontier play agree on outcome laws
   \emph{and} match one-player deviations, so they transport solution

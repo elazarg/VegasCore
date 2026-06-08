@@ -1,10 +1,10 @@
 \section{Notation and glossary}
 \label{sec:glossary}
 
-This report explains a mechanized semantics for a finite probabilistic
-game-description language.  It is meant to be readable by someone who
-can read ordinary mathematical notation and programs, but who may not
-already know Lean~\citep{deMouraUllrich2021}, extensive-form game
+This appendix collects the notation and terminology used throughout.
+The development targets a reader who can read ordinary mathematical
+notation and programs, but who may not already know
+Lean~\citep{deMouraUllrich2021}, extensive-form game
 theory~\citep{vonNeumannMorgenstern1944,OsborneRubinstein1994,
 ShohamLeytonBrown2009}, refinement proofs, or programming-language
 semantics.  The recurring question is practical: given a protocol
@@ -25,9 +25,13 @@ Several words are used with their technical meanings.  A
 \emph{strategy} is a player's rule for what to do when that player
 reaches an observation.  A \emph{profile} is one strategy for every
 player.  A \emph{payoff law} is the probability distribution over final
-payoff vectors induced by a profile.  An \emph{adequacy theorem} says
-that two presentations produce the same payoff law, so analysis can move
-between them without changing the game.
+payoff vectors induced by a profile.  An \emph{adequacy theorem}
+establishes, in one direction, that one object \emph{is} the meaning of
+another --- here, that the source-free event graph denotes the source
+program, with terminal outcomes equal to the source payoffs.  It is
+distinct from a symmetric \emph{equivalence} between two presentations
+(such as the FOSG and EFG game-forms below), which lets analysis move
+freely in either direction.
 
 \paragraph{Glossary.}
 The following terms are used pervasively.  Readers from one
