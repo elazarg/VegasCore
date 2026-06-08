@@ -179,6 +179,54 @@ theorem claim_source_strategic_prefix_replays_to_compiled_graph
   program.sourceStrategicHistory_prefixReplay state
 
 omit [Fintype P] in
+/-- At a replayed source `commit` prefix, the next source-order compiled graph
+node is ready as a commit node for the same player.  This is the concrete
+menu-domain fact used by raw source/frontier strategy translation. -/
+theorem claim_source_prefix_commit_is_ready_compiled_commit
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L)) :
+    ∃ node : Fin (ToEventGraph.buildResult program.core).graph.nodeCount,
+      (node : Nat) = replay.compilerState.nodes.length ∧
+      EventGraph.ReadyCommitNode
+        (ToEventGraph.buildResult program.core).graph
+        replay.state.1 who node :=
+  ToEventGraph.SourcePrefixReplay.readyCommitNode program.core replay
+
+omit [Fintype P] in
+/-- At a replayed source `commit` prefix, every source-legal commit value is
+available as the corresponding compiled graph commit action. -/
+theorem claim_source_prefix_commit_source_legal_value_available
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true) :
+    ∃ node : Fin (ToEventGraph.buildResult program.core).graph.nodeCount,
+      (node : Nat) = replay.compilerState.nodes.length ∧
+      EventGraph.CommitAvailable
+        (ToEventGraph.buildResult program.core).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } :=
+  ToEventGraph.SourcePrefixReplay.commitAvailable_of_source_guard
+    program.core replay value hguard
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/

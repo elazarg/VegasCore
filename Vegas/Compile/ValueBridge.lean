@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.SourceBridge
 import Vegas.Core.Trace
+import Vegas.EventGraph.Frontier
 import Vegas.EventGraph.Linearization
 
 /-!
@@ -1548,12 +1549,15 @@ theorem StoreAgree_prefixRun_reachable_compileCore
       ∃ _tailFresh : FreshBindings final.cont,
         ∃ _tailNormalized : NormalizedDists final.cont,
           ∃ finalCfg : Config result.graph,
+            BuildResult.graph
+                (compileCore final.cont _tailFresh _tailNormalized
+                  tailState) = result.graph ∧
             Reachable result.graph finalCfg ∧
             DonePrefix finalCfg tailState.nodes.length ∧
             StoreAgree tailState final.env finalCfg.store := by
   induction hrun with
   | refl cfgSrc =>
-      exact ⟨state, fresh, normalized, cfg, hreach, hdone, hagree⟩
+      exact ⟨state, fresh, normalized, cfg, rfl, hreach, hdone, hagree⟩
   | cons step rest ih =>
       cases step with
       | @sample Γ env x b D' k v hv =>
@@ -1698,12 +1702,14 @@ theorem StoreAgree_prefixRun_reachable_compileCore
               ih fresh.2 normalized.2 added.1 hcfgCast
                 hdoneCast hreachCast hagreeCast with
             ⟨tailState, tailFresh, tailNormalized, finalCfg,
-              hreachFinal, hdoneFinal, hagreeFinal⟩
+              hgraphFinal, hreachFinal, hdoneFinal, hagreeFinal⟩
           refine
-            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_,
+            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_, ?_,
               hdoneFinal, hagreeFinal⟩
-          simpa [G, compileCore, graphDist, sem, event, hnode, added] using
-            hreachFinal
+          · simpa [G, compileCore, graphDist, sem, event, hnode, added] using
+              hgraphFinal
+          · simpa [G, compileCore, graphDist, sem, event, hnode, added] using
+              hreachFinal
       | @commit Γ env x who b R k v hguard =>
           let graphGuard := eventGuardOf state who R
           let sem := NodeSem.commit (Player := P) who graphGuard
@@ -1847,12 +1853,14 @@ theorem StoreAgree_prefixRun_reachable_compileCore
               ih fresh.2 normalized added.1 hcfgCast
                 hdoneCast hreachCast hagreeCast with
             ⟨tailState, tailFresh, tailNormalized, finalCfg,
-              hreachFinal, hdoneFinal, hagreeFinal⟩
+              hgraphFinal, hreachFinal, hdoneFinal, hagreeFinal⟩
           refine
-            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_,
+            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_, ?_,
               hdoneFinal, hagreeFinal⟩
-          simpa [G, compileCore, graphGuard, sem, event, hnode, added] using
-            hreachFinal
+          · simpa [G, compileCore, graphGuard, sem, event, hnode, added] using
+              hgraphFinal
+          · simpa [G, compileCore, graphGuard, sem, event, hnode, added] using
+              hreachFinal
       | @reveal Γ env y who x b hx k =>
           let sourceField := state.fieldOf hx
           let sem := NodeSem.reveal (Player := P) (L := L) sourceField
@@ -1966,12 +1974,14 @@ theorem StoreAgree_prefixRun_reachable_compileCore
               ih fresh.2 normalized added.1 hcfgCast
                 hdoneCast hreachCast hagreeCast with
             ⟨tailState, tailFresh, tailNormalized, finalCfg,
-              hreachFinal, hdoneFinal, hagreeFinal⟩
+              hgraphFinal, hreachFinal, hdoneFinal, hagreeFinal⟩
           refine
-            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_,
+            ⟨tailState, tailFresh, tailNormalized, finalCfg, ?_, ?_,
               hdoneFinal, hagreeFinal⟩
-          simpa [G, compileCore, sourceField, sem, event, hnode, added] using
-            hreachFinal
+          · simpa [G, compileCore, sourceField, sem, event, hnode, added] using
+              hgraphFinal
+          · simpa [G, compileCore, sourceField, sem, event, hnode, added] using
+              hreachFinal
 
 /-- Reverse replay spine: a reachable terminal graph store determines a
 source-order labelled run whose terminal source environment agrees with the
@@ -2576,6 +2586,11 @@ structure SourcePrefixReplay
   compilerState : BuildState P L current.ctx
   remainingFresh : FreshBindings current.cont
   remainingNormalized : NormalizedDists current.cont
+  compiledGraph_eq :
+    BuildResult.graph
+        (compileCore current.cont remainingFresh remainingNormalized
+          compilerState) =
+      (buildResult g).graph
   state : ReachableConfig (buildResult g).graph
   donePrefix : DonePrefix state.1 compilerState.nodes.length
   storeAgree : StoreAgree compilerState current.env state.1.store
@@ -2701,7 +2716,7 @@ theorem sourcePrefixReplay_exists
         hrun' g.fresh g.normalized compilerState cfg₀ hdone₀
         Reachable.initial hagree₀ with
     ⟨tailState, tailFresh, tailNormalized, finalCfg,
-      hreachFinal, hdoneFinal, hagreeFinal⟩
+      hgraphFinal, hreachFinal, hdoneFinal, hagreeFinal⟩
   let reachableState : ReachableConfig (buildResult g).graph := by
     simpa [result, compilerState, init, buildResult] using
       ({ val := finalCfg, property := hreachFinal } :
@@ -2710,6 +2725,8 @@ theorem sourcePrefixReplay_exists
     ⟨{ compilerState := tailState
        remainingFresh := tailFresh
        remainingNormalized := tailNormalized
+       compiledGraph_eq := by
+         simpa [result, compilerState, init, buildResult] using hgraphFinal
        state := reachableState
        donePrefix := ?_
        storeAgree := ?_ }⟩
@@ -2719,6 +2736,202 @@ theorem sourcePrefixReplay_exists
     have hagree := hagreeFinal h
     simpa [reachableState, result, compilerState, init, buildResult] using
       hagree
+
+namespace SourcePrefixReplay
+
+/-- At a replayed source `commit` prefix, the next source-order compiled node
+is the corresponding compiled commit row and is ready.  This is the concrete
+node-data fact behind source/frontier menu translation. -/
+theorem commitNodeData
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L)) :
+    ∃ node : Fin (buildResult g).graph.nodeCount,
+      (node : Nat) = replay.compilerState.nodes.length ∧
+      (buildResult g).graph.nodes[(node : Nat)]? =
+        some
+          { ty := (eventGuardOf replay.compilerState who guard).ty
+            owner := some who
+            sem := .commit who
+              (eventGuardOf replay.compilerState who guard) } ∧
+      Ready (buildResult g).graph replay.state.1 node := by
+  let graphGuard := eventGuardOf replay.compilerState who guard
+  let sem := NodeSem.commit (Player := P) who graphGuard
+  let event : EventNode P L :=
+    { ty := graphGuard.ty, owner := some who, sem := sem }
+  let hnode :
+      ({ initialFields := replay.compilerState.initialFields,
+         nodes := replay.compilerState.nodes ++ [event] } :
+        Graph P L).nodeWFAt replay.compilerState.nextNode event := by
+    dsimp [Graph.nodeWFAt, graphGuard, sem, event]
+    exact
+      ⟨by
+          intro field hfield
+          rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+          exact Graph.fieldAvailableBefore_append_node_of_true
+            replay.compilerState.initialFields replay.compilerState.nodes event
+            (visibleFieldRefs_available replay.compilerState who ref href),
+        rfl, rfl,
+        by
+          intro ref href
+          exact Graph.fieldRefVisibleTo_append_node
+            replay.compilerState.initialFields replay.compilerState.nodes event
+            who
+            (visibleFieldRefs_visible replay.compilerState who ref href)⟩
+  let added :=
+    replay.compilerState.addEvent x (.sealed who graphGuard.ty) sem
+      replay.remainingFresh.1 hnode
+  let tailResult :=
+    compileCore (VegasCore.commit x who guard tail)
+      replay.remainingFresh replay.remainingNormalized replay.compilerState
+  let tailGraph : Graph P L := BuildResult.graph tailResult
+  have hidx : replay.compilerState.nodes.length < tailGraph.nodeCount := by
+    have hlenNodes :=
+      compileCore_nodes_length
+        (VegasCore.commit x who guard tail)
+        replay.remainingFresh replay.remainingNormalized replay.compilerState
+    change replay.compilerState.nodes.length < tailResult.nodes.length
+    rw [hlenNodes]
+    simp [VegasCore.instrCount]
+  let tailNode : Fin tailGraph.nodeCount :=
+    ⟨replay.compilerState.nodes.length, hidx⟩
+  have hrow :
+      tailGraph.nodes[(tailNode : Nat)]? = some event := by
+    change
+      (compileCore (VegasCore.commit x who guard tail)
+        replay.remainingFresh replay.remainingNormalized
+        replay.compilerState).nodes[replay.compilerState.nodes.length]? =
+        some event
+    simpa [tailResult, tailGraph, compileCore, graphGuard, sem, event,
+      hnode, added] using
+      compileCore_added_head_get?
+        (state := replay.compilerState) (name := x)
+        (bindTy := .sealed who graphGuard.ty) (sem := sem)
+        (hfresh := replay.remainingFresh.1) (hnode := hnode)
+        tail replay.remainingFresh.2 replay.remainingNormalized
+  have hgraph : tailGraph = (buildResult g).graph := by
+    simpa [tailGraph, tailResult] using replay.compiledGraph_eq
+  have hcount : tailGraph.nodeCount = (buildResult g).graph.nodeCount := by
+    exact congrArg Graph.nodeCount hgraph
+  let node : Fin (buildResult g).graph.nodeCount :=
+    Fin.cast hcount tailNode
+  have hnodeVal : (node : Nat) = replay.compilerState.nodes.length := by
+    simp [node, tailNode]
+  have hrowBuild :
+      (buildResult g).graph.nodes[(node : Nat)]? = some event := by
+    have hnodes : tailGraph.nodes = (buildResult g).graph.nodes :=
+      congrArg Graph.nodes hgraph
+    rw [← hnodes, hnodeVal]
+    simpa [tailNode] using hrow
+  have hready : Ready (buildResult g).graph replay.state.1 node :=
+    replay.donePrefix.ready hnodeVal
+  refine ⟨node, ?_, ?_, hready⟩
+  · exact hnodeVal
+  · simpa [event, graphGuard, sem] using hrowBuild
+
+/-- At a replayed source `commit` prefix, the next source-order compiled node is
+a ready commit node for the same player.  This is the menu-domain half of the
+raw source/frontier action bridge. -/
+theorem readyCommitNode
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L)) :
+    ∃ node : Fin (buildResult g).graph.nodeCount,
+      (node : Nat) = replay.compilerState.nodes.length ∧
+      EventGraph.ReadyCommitNode
+        (buildResult g).graph replay.state.1 who node := by
+  rcases commitNodeData g replay with
+    ⟨node, hnodeVal, hrow, hready⟩
+  exact
+    ⟨node, hnodeVal,
+      ⟨{ ty := (eventGuardOf replay.compilerState who guard).ty
+         owner := some who
+         sem := .commit who
+           (eventGuardOf replay.compilerState who guard) },
+       eventGuardOf replay.compilerState who guard, hrow, rfl, hready⟩⟩
+
+/-- Source-legal commit values are available as compiled commit actions at the
+replayed source prefix.  This is the value-compatibility half of the raw
+source/frontier menu bridge. -/
+theorem commitAvailable_of_source_guard
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true) :
+    ∃ node : Fin (buildResult g).graph.nodeCount,
+      (node : Nat) = replay.compilerState.nodes.length ∧
+      CommitAvailable (buildResult g).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } := by
+  rcases commitNodeData g replay with
+    ⟨node, hnodeVal, hrow, hready⟩
+  let graphGuard := eventGuardOf replay.compilerState who guard
+  let event : EventNode P L :=
+    { ty := graphGuard.ty, owner := some who,
+      sem := NodeSem.commit who graphGuard }
+  let available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ stored, Store.getAs replay.state.1.store
+          (replay.compilerState.fieldOf h) bindTy.base = some stored := by
+    intro name bindTy h
+    exact ⟨_, replay.storeAgree h⟩
+  rcases
+      eventGuardOf_readEnv_of_sourceStoreAvailable
+        replay.compilerState who guard replay.state.1.store available with
+    ⟨readEnv, hreadEnv⟩
+  have hsourceEnv :
+      sourceEnvOfStore replay.compilerState replay.state.1.store available =
+        env :=
+    sourceEnvOfStore_eq_of_storeAgree replay.storeAgree available
+  have hviewEq :=
+    viewEnvOfReadEnv_eq_eraseEnv_sourceEnvOfStore
+      replay.compilerState who replay.state.1.store available readEnv hreadEnv
+  have hguardGraph : graphGuard.eval value readEnv = true := by
+    change
+      (eventGuardOf replay.compilerState who guard).eval value readEnv = true
+    rw [eventGuardOf_eval_eq_eval, hviewEq, hsourceEnv]
+    exact hguard
+  let action : CommitAction (buildResult g).graph who :=
+    { node := node, value := { ty := b, value := value } }
+  have hvalueOk : action.value.as? graphGuard.ty = some value := by
+    simp [action, graphGuard, eventGuardOf, TypedValue.as?]
+  have hrowEvent :
+      (buildResult g).graph.nodes[(node : Nat)]? = some event := by
+    simpa [event, graphGuard] using hrow
+  refine ⟨node, hnodeVal, ?_⟩
+  exact
+    ⟨{ row := event
+       guard := graphGuard
+       row_get := hrowEvent
+       sem_eq := rfl
+       ready := hready
+       value := value
+       value_ok := hvalueOk
+       env := readEnv
+       env_ok := hreadEnv
+       guard_ok := hguardGraph }⟩
+
+end SourcePrefixReplay
 
 /-- **Forward generation.** A terminal source run can be replayed in graph
 source order, yielding a reachable terminal graph configuration whose store
