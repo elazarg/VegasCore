@@ -264,6 +264,60 @@ theorem StoreAgree.addEvent_of_getAs
       rw [BuildState.addEvent_fieldOf_there]
       exact hagree htail
 
+/-- `cfg` has completed exactly the graph nodes whose numeric ids are below
+`next`. This is the prefix invariant for source-order graph execution. -/
+def DonePrefix {G : Graph P L} (cfg : Config G) (next : Nat) : Prop :=
+  ∀ node : Fin G.nodeCount, node ∈ cfg.done ↔ (node : Nat) < next
+
+theorem DonePrefix.initial (G : Graph P L) :
+    DonePrefix (Config.initial G) 0 := by
+  intro node
+  simp [Config.initial]
+
+theorem DonePrefix.ready
+    {G : Graph P L} {cfg : Config G} {next : Nat}
+    (hdone : DonePrefix cfg next)
+    {node : Fin G.nodeCount} (hnode : (node : Nat) = next) :
+    Ready G cfg node := by
+  constructor
+  · intro hmem
+    have hlt := (hdone node).mp hmem
+    omega
+  · intro prior hprior
+    exact (hdone prior).mpr (by
+      have hlt := G.prereq_lt hprior
+      omega)
+
+theorem DonePrefix.completeNode
+    {G : Graph P L} {cfg : Config G} {next : Nat}
+    (hdone : DonePrefix cfg next)
+    {node : Fin G.nodeCount} (hnode : (node : Nat) = next)
+    (value : TypedValue L) :
+    DonePrefix (cfg.completeNode node value) (next + 1) := by
+  intro query
+  constructor
+  · intro hmem
+    have hcases : query = node ∨ query ∈ cfg.done := by
+      simpa [Config.completeNode] using hmem
+    cases hcases with
+    | inl heq =>
+        rw [heq, hnode]
+        omega
+    | inr hold =>
+        have hlt := (hdone query).mp hold
+        omega
+  · intro hltSucc
+    by_cases hq : query = node
+    · simp [Config.completeNode, hq]
+    · have hlt : (query : Nat) < next := by
+        by_contra hnot
+        have hge : next ≤ (query : Nat) := Nat.le_of_not_gt hnot
+        have hle : (query : Nat) ≤ next := by omega
+        have hval : (query : Nat) = (node : Nat) := by omega
+        exact hq (Fin.ext hval)
+      have hdoneQuery : query ∈ cfg.done := (hdone query).mpr hlt
+      simpa [Config.completeNode, hq] using hdoneQuery
+
 /-- A terminal labelled source run can be mirrored by threading graph-store
 writes through the compiler state, yielding a terminal store that agrees with
 the run's final source environment. This is the lockstep induction spine used by
