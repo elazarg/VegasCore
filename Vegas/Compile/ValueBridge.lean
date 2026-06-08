@@ -120,6 +120,22 @@ def StoreAgree {Γ : VCtx P L} (state : BuildState P L Γ)
   ∀ {name bindTy} (h : VHasVar Γ name bindTy),
     Store.getAs store (state.fieldOf h) bindTy.base = some (env.get h)
 
+/-- Store agreement is exactly the condition needed for `sourceEnvOfStore` to
+read back the source environment. -/
+theorem sourceEnvOfStore_eq_of_storeAgree
+    {Γ : VCtx P L} {state : BuildState P L Γ}
+    {env : VEnv L Γ} {store : Store L}
+    (hagree : StoreAgree state env store)
+    (available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value) :
+    sourceEnvOfStore state store available = env := by
+  funext name bindTy h
+  have hread :=
+    sourceEnvOfStore_get state store available h
+  exact Option.some.inj (hread.symm.trans (hagree h))
+
 /-- The initial compiler state stores exactly the source environment in its
 initial fields. The extra `nodes` parameter lets the lemma apply to any later
 graph extension, since initial fields are not shifted by appended event nodes. -/
