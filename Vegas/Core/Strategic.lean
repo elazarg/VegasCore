@@ -116,6 +116,22 @@ theorem representativeHistory_localHistoryView
     (info.representativeHistory (L := L)).localHistoryView who = info.1 :=
   (Classical.choose_spec info.2).2
 
+/-- If a reachable information state is a choice point, its chosen
+representative history is a concrete choice history for the same player. -/
+theorem representativeHistory_isChoiceFor
+    {start : SourceConfig P L} {who : P}
+    (info : SourceReachableInfoState (L := L) start who)
+    (hchoice : info.1.currentView.point.IsChoiceFor who) :
+    (info.representativeHistory (L := L)).IsChoiceFor who := by
+  have hchoiceRep :
+      ((info.representativeHistory (L := L)).localHistoryView who).currentView
+          |>.point |>.IsChoiceFor who := by
+    rw [info.representativeHistory_localHistoryView (L := L)]
+    exact hchoice
+  simpa [SourceHistoryPoint.IsChoiceFor,
+    SourceHistoryPoint.localHistoryView, SourceConfig.localView,
+    SourceConfig.programPoint] using hchoiceRep
+
 end SourceReachableInfoState
 
 /-- A behavioral source strategy for one player.
