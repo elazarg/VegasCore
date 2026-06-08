@@ -253,6 +253,31 @@ theorem claim_source_prefix_commit_available_value_source_legal
     program.core replay hnode value havailable
 
 omit [Fintype P] in
+/-- At a replayed source `commit` prefix, source commit-menu membership is
+equivalent to availability of the corresponding current source-order compiled
+commit action. -/
+theorem claim_source_prefix_commit_menu_iff_compiled_available
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.buildResult program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b) :
+    value ∈ SourceCommitMenu (L := L) who guard env ↔
+      EventGraph.CommitAvailable
+        (ToEventGraph.buildResult program.core).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } :=
+  ToEventGraph.SourcePrefixReplay.sourceCommitMenu_iff_commitAvailable
+    program.core replay hnode value
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/

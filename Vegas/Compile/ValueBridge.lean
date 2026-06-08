@@ -2997,6 +2997,35 @@ theorem source_guard_of_commitAvailable
     rw [eventGuardOf_eval_eq_eval, hviewEq, hsourceEnv]
   exact hguardSource ▸ hguardGraphStep
 
+/-- At a replayed source `commit` prefix, the source value menu is exactly the
+compiled availability predicate for the current source-order graph node. -/
+theorem sourceCommitMenu_iff_commitAvailable
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (buildResult g).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b) :
+    value ∈ SourceCommitMenu (L := L) who guard env ↔
+      CommitAvailable (buildResult g).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } := by
+  constructor
+  · intro hmenu
+    rcases commitAvailable_of_source_guard g replay value hmenu with
+      ⟨currentNode, hcurrentNode, havailable⟩
+    have hnodeEq : currentNode = node := by
+      exact Fin.ext (hcurrentNode.trans hnode.symm)
+    subst currentNode
+    exact havailable
+  · intro havailable
+    exact source_guard_of_commitAvailable g replay hnode value havailable
+
 end SourcePrefixReplay
 
 /-- **Forward generation.** A terminal source run can be replayed in graph
