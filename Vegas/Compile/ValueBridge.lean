@@ -395,6 +395,46 @@ theorem labelValueAssignment_eq_of_get?
   rw [List.getElem?_eq_getElem hidx] at hget
   exact congrArg Label.toTypedValue (Option.some.inj hget)
 
+theorem labelValueAssignment_irrel
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen₁ hlen₂ : labels.length = G.nodeCount) :
+    labelValueAssignment G labels hlen₁ =
+      labelValueAssignment G labels hlen₂ := by
+  funext node
+  unfold labelValueAssignment
+  by_cases hidx : (node : Nat) < labels.length
+  · simp [hidx]
+  · have hidx' : (node : Nat) < labels.length := by
+      simpa [hlen₁] using node.isLt
+    exact False.elim (hidx hidx')
+
+theorem canonicalCompletion_getAs_of_initial_field
+    (G : Graph P L) (labels : List (Label P L))
+    (hlen : labels.length = G.nodeCount)
+    {field : Nat} {ty : L.Ty}
+    (hfield : field < G.initialFields.length) :
+    Store.getAs
+        (Config.canonicalCompletion G
+          (labelValueAssignment G labels hlen)).store
+        field ty =
+      Store.getAs G.initialStore field ty := by
+  have hnot :
+      ∀ step,
+        step ∈ G.nodeOrder.map
+          (fun node => (node, labelValueAssignment G labels hlen node)) →
+          field ≠ G.nodeTarget step.1 := by
+    intro step _hstep heq
+    unfold Graph.nodeTarget at heq
+    omega
+  have hread :=
+    Config.completeNodes_getAs_of_not_targets
+      (cfg := Config.initial G)
+      (steps := G.nodeOrder.map
+        (fun node => (node, labelValueAssignment G labels hlen node)))
+      (field := field) (ty := ty) hnot
+  simpa [Config.canonicalCompletion, Config.scheduleComplete,
+    Config.initial] using hread
+
 theorem canonicalCompletion_getAs_of_label_get?
     (G : Graph P L) (labels : List (Label P L))
     (hlen : labels.length = G.nodeCount)
@@ -438,6 +478,51 @@ theorem canonicalCompletion_getAs_of_label_get?_base
       some (cast (by rw [Label.toTypedValue_ty]) label.toTypedValue.value) := by
   rw [canonicalCompletion_getAs_of_label_get? G labels hlen node hget]
   simp [TypedValue.as?]
+
+/-- Initial source values are still readable after completing all event nodes:
+canonical completion writes only node-target fields, never initial fields. -/
+theorem StoreAgree_fromInitial_canonicalCompletion
+    {Γ : VCtx P L} (env : VEnv L Γ) (wctx : WFCtx Γ)
+    (nodes : List (EventNode P L)) (labels : List (Label P L))
+    (hlen :
+      labels.length =
+        ({ initialFields := (initialState Γ env wctx).initialFields,
+           nodes := nodes } : Graph P L).nodeCount) :
+    StoreAgree
+      (BuildState.fromInitial (initialState Γ env wctx))
+      env
+      (Config.canonicalCompletion
+        ({ initialFields := (initialState Γ env wctx).initialFields,
+           nodes := nodes } : Graph P L)
+        (labelValueAssignment
+          ({ initialFields := (initialState Γ env wctx).initialFields,
+             nodes := nodes } : Graph P L)
+          labels hlen)).store := by
+  intro name bindTy h
+  let G : Graph P L :=
+    { initialFields := (initialState Γ env wctx).initialFields,
+      nodes := nodes }
+  have hlt :
+      (initialState Γ env wctx).fieldOf h < G.initialFields.length := by
+    simpa [G] using (initialState Γ env wctx).fieldOf_lt h
+  have hframe :
+      Store.getAs
+          (Config.canonicalCompletion G
+            (labelValueAssignment G labels hlen)).store
+          ((initialState Γ env wctx).fieldOf h) bindTy.base =
+        Store.getAs G.initialStore
+          ((initialState Γ env wctx).fieldOf h) bindTy.base := by
+    exact canonicalCompletion_getAs_of_initial_field G labels hlen hlt
+  change
+    Store.getAs
+        (Config.canonicalCompletion G
+          (labelValueAssignment G labels hlen)).store
+        ((initialState Γ env wctx).fieldOf h) bindTy.base =
+      some (env.get h)
+  rw [hframe]
+  simpa [StoreAgree, BuildState.fromInitial, G] using
+    initialState_initialStore_get
+      (env := env) (wctx := wctx) nodes h
 
 /-- Open source start configuration for a graph-compilable program. -/
 def sourceStart (g : GraphProgram P L) : SourceConfig P L where
