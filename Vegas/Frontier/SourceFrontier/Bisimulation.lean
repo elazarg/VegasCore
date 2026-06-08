@@ -23,6 +23,66 @@ namespace WFProgram
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
+/-- Non-vacuous source/frontier Nash-deviation bisimulation package.
+
+`KernelGame.NashDeviationBisimulation` alone permits an empty realization
+relation.  The source/frontier theorem needs more: every source profile must
+have a related frontier realization, and every frontier profile must have a
+related source realization. -/
+structure SourceFrontierNashDeviationBisimulation
+    (program : WFProgram P L) [FiniteDomains program]
+    (horizon : Nat) (cutoff : Payoff P) where
+  bisimulation :
+    KernelGame.NashDeviationBisimulation
+      (program.sourceStrategicGame horizon cutoff) program.behavioralFrontierGame
+      (Option (Outcome P))
+  source_view_eq :
+    bisimulation.viewG =
+      program.sourceStrategicOptionOutcomeView horizon cutoff
+  frontier_view_eq :
+    bisimulation.viewH =
+      program.behavioralFrontierOptionOutcomeView
+  source_total :
+    ∀ sourceProfile :
+      (program.sourceStrategicGame horizon cutoff).Profile,
+      ∃ frontierProfile : program.behavioralFrontierGame.Profile,
+        bisimulation.rel sourceProfile frontierProfile
+  frontier_total :
+    ∀ frontierProfile : program.behavioralFrontierGame.Profile,
+      ∃ sourceProfile :
+        (program.sourceStrategicGame horizon cutoff).Profile,
+        bisimulation.rel sourceProfile frontierProfile
+
+namespace SourceFrontierNashDeviationBisimulation
+
+variable {program : WFProgram P L} [FiniteDomains program]
+variable {horizon : Nat} {cutoff : Payoff P}
+
+/-- Source-to-frontier Nash equivalence for any related profile pair in the
+non-vacuous final package. -/
+theorem nash_iff
+    (bridge :
+      SourceFrontierNashDeviationBisimulation program horizon cutoff)
+    {sourceProfile :
+      (program.sourceStrategicGame horizon cutoff).Profile}
+    {frontierProfile : program.behavioralFrontierGame.Profile}
+    (hrel : bridge.bisimulation.rel sourceProfile frontierProfile)
+    {pref :
+      P → PMF (Option (Outcome P)) → PMF (Option (Outcome P)) → Prop} :
+    (program.sourceStrategicGame horizon cutoff).IsNashFor
+        (GameForm.observedPref
+          (program.sourceStrategicOptionOutcomeView horizon cutoff) pref)
+        sourceProfile ↔
+      program.behavioralFrontierGame.IsNashFor
+        (GameForm.observedPref
+          program.behavioralFrontierOptionOutcomeView pref)
+        frontierProfile :=
+  by
+    have h := bridge.bisimulation.nash_iff hrel (prefΩ := pref)
+    simpa [bridge.source_view_eq, bridge.frontier_view_eq] using h
+
+end SourceFrontierNashDeviationBisimulation
+
 /-- Raw source/frontier strategy-translation bridge.
 
 This is the exact data needed to compare the source-local strategic game with
@@ -186,6 +246,25 @@ theorem frontierToSource_nash_iff
           program.behavioralFrontierOptionOutcomeView pref)
         frontierProfile :=
   bridge.nash_iff (bridge.frontierToSource_related frontierProfile)
+
+/-- A raw source/frontier bridge induces the non-vacuous final package: the
+underlying bisimulation is paired with explicit source-total and frontier-total
+realization witnesses. -/
+noncomputable def toSourceFrontierNashDeviationBisimulation
+    (bridge :
+      RawSourceFrontierNashDeviationBridge program horizon cutoff) :
+    SourceFrontierNashDeviationBisimulation program horizon cutoff where
+  bisimulation := bridge.toNashDeviationBisimulation
+  source_view_eq := rfl
+  frontier_view_eq := rfl
+  source_total := by
+    intro sourceProfile
+    exact ⟨bridge.sourceToFrontier sourceProfile, rfl⟩
+  frontier_total := by
+    intro frontierProfile
+    exact
+      ⟨bridge.frontierToSource frontierProfile,
+        bridge.frontierToSource_related frontierProfile⟩
 
 end RawSourceFrontierNashDeviationBridge
 
