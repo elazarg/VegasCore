@@ -57,6 +57,7 @@ import Vegas.Export
 
 -- Runtime: backend-facing proof interfaces.
 import Vegas.Runtime.Codec
+import Vegas.Runtime.CodecMachine
 
 -- Audit surface: curated definition and theorem indexes.
 import Vegas.Spec
