@@ -8,6 +8,10 @@ import Vegas.Frontier.SourceFrontier.Commit
 import Vegas.Frontier.SourceFrontier.Information
 import Vegas.Frontier.SourceFrontier.Law
 import Vegas.Frontier.SourceFrontier.Conditioned
+import Vegas.Frontier.SourceFrontier.Strategic
+import Vegas.Frontier.SourceFrontier.Replay
+import Vegas.Frontier.SourceFrontier.Checkpoint
+import Vegas.Frontier.SourceFrontier.Bisimulation
 
 /-!
 # Raw source/frontier proof spine
@@ -22,6 +26,13 @@ game to compiled frontier behavioral game bridge.
   sequential source choices.
 * `Conditioned` composes law and commit facts to reflect a conditioned frontier
   node value back to source guard legality.
+* `Strategic` names the source-local and frontier observed strategic surfaces.
+* `Replay` connects source histories and frontier checkpoint histories to the
+  same compiled graph states.
+* `Checkpoint` proves the checkpoint-aligned source/frontier behavioral
+  bisimulation.
+* `Bisimulation` packages the raw source/frontier strategy and unilateral
+  deviation translations into a Nash-deviation bisimulation.
 -/
 
 namespace Vegas
