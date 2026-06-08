@@ -244,20 +244,13 @@ turns yields into a sealed optional commit followed by a reveal.  The
 maintained core, \(\mathsf{VegasCore}\), contains only protocol
 constructors: \(\Sample\), \(\Commit\), \(\Reveal\), and \(\Ret\).
 
-Compilation from a \(\mathsf{GraphProgram}\) produces a
-\(\mathsf{CompiledProgram}\): a graph, a proof that the graph is
-well-formed, and terminal payoff projections.  Compilation does not
-need the stronger checked-game obligations.  A \(\mathsf{WFProgram}\)
-adds reveal completeness and legal commit guards; those obligations are
-used later to prove guard liveness, checkpoint progress, and the
-game-facing theorem surface.
-
-The event graph is source-independent.  It is list-backed in the Lean
-implementation, but source syntax is not graph identity: graph fields
-are the initial fields followed by one output field per event row, and
-node ids are canonical numeric positions in the node list.  Two
-alpha-renamed surface programs can compile to equal graph data when
-their protocol structure is equal.
+Compilation produces a well-formed event graph together with terminal
+payoff projections.  It needs only basic static hygiene, not the stronger
+checked-game obligations --- reveal completeness and legal commit guards
+--- that the later progress and game-facing theorems consume.  The event
+graph is source-independent: it records protocol structure rather than
+syntax, so two alpha-renamed programs with the same protocol structure
+compile to equal graphs.
 
 The final arrow to \(\mathsf{KernelGame}\) --- the frontier game named in
 the figures and in \Cref{sec:intro:relations} --- is where strategic
@@ -327,8 +320,7 @@ composite: runtime refinement lands on the frontier game; strategic and
 presentation equivalence say that game is carrier- and
 presentation-independent; schedule confluence says the graph underneath is
 schedule-independent; and source-payoff adequacy says the graph is the
-program.  Each edge is a separate theorem with its own proof technique,
-which is why naming them apart is worth the trouble.
+program.
 
 \begin{figure}[t]
 \centering
@@ -379,9 +371,7 @@ which is why naming them apart is worth the trouble.
 one-directional bridge from source syntax into the source-free graph; the
 refinement order ($\ordrel$) carries directional guarantees up from a
 concrete backend.  The end-to-end claim ``a backend preserves my
-program's game'' is their composite, read bottom-up: runtime refinement,
-then strategic and presentation equivalence, then schedule confluence,
-then source-payoff adequacy.}
+program's game'' is their composite, read bottom-up.}
 \label{fig:relations}
 \end{figure}
 
