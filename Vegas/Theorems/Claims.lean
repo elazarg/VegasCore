@@ -304,6 +304,34 @@ theorem claim_compiled_commit_available_persists_through_internal_closure
     (ToEventGraph.compile program.core) fuel havailable hsupport
 
 omit [Fintype P] in
+/-- Compiled commit availability after frontier internal closure reflects back
+to the pre-closure state when the commit node was already ready there. -/
+theorem claim_compiled_commit_available_reflects_before_internal_closure
+    (program : WFProgram P L)
+    (fuel : Nat)
+    {state dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    {who : P}
+    {action :
+      EventGraph.CommitAction
+        (ToEventGraph.compile program.core).graph who}
+    (hready :
+      EventGraph.Ready
+        (ToEventGraph.compile program.core).graph state.1 action.node)
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel state).support)
+    (havailable :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph dst.1 who action) :
+    EventGraph.CommitAvailable
+      (ToEventGraph.compile program.core).graph state.1 who action :=
+  ToEventGraph.commitAvailable_reflect_before_internalClosureTransition_support
+    (ToEventGraph.compile program.core) fuel hready hsupport havailable
+
+omit [Fintype P] in
 /-- A source-legal value for the current replayed source `commit` remains a
 compiled-available commit action after any supported frontier internal closure
 from that replay state. -/
@@ -345,6 +373,99 @@ theorem claim_source_prefix_commit_source_legal_value_available_after_internal_c
   exact
     ToEventGraph.commitAvailable_persist_after_internalClosureTransition_support
       (ToEventGraph.compile program.core) fuel havailable₀ hsupport
+
+omit [Fintype P] in
+/-- Availability of the current replayed source-order commit action after
+frontier internal closure reflects back to source guard legality before that
+closure. -/
+theorem claim_source_prefix_commit_available_after_internal_closure_value_source_legal
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (fuel : Nat)
+    {dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel replay.state).support)
+    (havailable :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph dst.1 who
+        { node := node, value := { ty := b, value := value } }) :
+    evalGuard (Player := P) (L := L) guard value
+      ((env.toView who).eraseEnv) = true := by
+  rcases
+      ToEventGraph.SourcePrefixReplay.readyCommitNode
+        program.core replay with
+    ⟨currentNode, hcurrentNode, hreadyCommit⟩
+  have hnodeEq : currentNode = node := by
+    exact Fin.ext (hcurrentNode.trans hnode.symm)
+  subst currentNode
+  have hready :
+      EventGraph.Ready
+        (ToEventGraph.compile program.core).graph replay.state.1 node :=
+    hreadyCommit.ready
+  have hbefore :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } :=
+    ToEventGraph.commitAvailable_reflect_before_internalClosureTransition_support
+      (ToEventGraph.compile program.core) fuel hready hsupport havailable
+  exact
+    ToEventGraph.SourcePrefixReplay.source_guard_of_commitAvailable
+      program.core replay hnode value hbefore
+
+omit [Fintype P] in
+/-- At a replayed source `commit` prefix, source commit-menu membership is
+equivalent to availability of the corresponding current source-order compiled
+commit action after any supported frontier internal closure from that prefix. -/
+theorem claim_source_prefix_commit_menu_iff_available_after_internal_closure
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (fuel : Nat)
+    {dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel replay.state).support) :
+    value ∈ SourceCommitMenu (L := L) who guard env ↔
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph dst.1 who
+        { node := node, value := { ty := b, value := value } } := by
+  constructor
+  · intro hmenu
+    exact
+      claim_source_prefix_commit_source_legal_value_available_after_internal_closure
+        program replay hnode value hmenu fuel hsupport
+  · intro havailable
+    exact
+      claim_source_prefix_commit_available_after_internal_closure_value_source_legal
+        program replay hnode value fuel hsupport havailable
 
 omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a

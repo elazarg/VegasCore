@@ -457,6 +457,54 @@ theorem CommitAvailable.persist_after_other_ready_write
           (value := written) step₁.env_ok hnotRead
        guard_ok := step₁.guard_ok }⟩
 
+/-- Commit availability after another ready node writes reflects back to the
+pre-write state, provided the commit node was already ready before that write.
+The write cannot affect the commit guard's read footprint because both nodes
+were ready at the pre-write state. -/
+theorem CommitAvailable.reflect_before_other_ready_write
+    {G : Graph Player L} (hwf : G.WF)
+    {cfg : Config G}
+    {who : Player}
+    {action : CommitAction G who}
+    (hactionReady : Ready G cfg action.node)
+    {other : Fin G.nodeCount} {otherRow : EventNode Player L}
+    (hotherRow : G.nodes[other]? = some otherRow)
+    (hotherReady : Ready G cfg other)
+    (written : TypedValue L)
+    (hafter :
+      CommitAvailable G (cfg.completeNode other written) who action) :
+    CommitAvailable G cfg who action := by
+  rcases hafter with ⟨step⟩
+  have htargetNot :
+      G.nodeTarget other ∉ step.row.sem.reads :=
+    Ready.nodeTarget_not_mem_reads_of_ready
+      hwf step.row_get hotherRow hactionReady hotherReady
+  have hnotRead :
+      ∀ ref, ref ∈ step.guard.choiceReads →
+        ref.field ≠ G.nodeTarget other := by
+    intro ref href heq
+    apply htargetNot
+    rw [step.sem_eq]
+    exact Finset.mem_image.mpr ⟨ref, href, heq⟩
+  have henvBefore :
+      ReadEnv.ofStore? cfg.store step.guard.choiceReads =
+        some step.env :=
+    ReadEnv.ofStore?_eq_of_getAs_eq step.env_ok (by
+      intro ref href
+      simpa [Config.completeNode] using
+        Store.getAs_set_ne cfg.store (hnotRead ref href) written ref.ty)
+  exact
+    ⟨{ row := step.row
+       guard := step.guard
+       row_get := step.row_get
+       sem_eq := step.sem_eq
+       ready := hactionReady
+       value := step.value
+       value_ok := step.value_ok
+       env := step.env
+       env_ok := henvBefore
+       guard_ok := step.guard_ok }⟩
+
 theorem CommitAvailable.persist_after_other_commit_write
     {G : Graph Player L} (hwf : G.WF)
     {cfg : Config G}

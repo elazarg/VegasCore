@@ -543,6 +543,87 @@ theorem commitAvailable_persist_after_internalOnly_availableRunFrom
       exact ih hcommitMid htailInternal
 
 omit [Fintype P] in
+/-- Commit availability after an internal-only primitive run reflects back to
+the pre-run state when the commit node was already ready before the run. -/
+theorem commitAvailable_reflect_before_internalOnly_availableRunFrom
+    (compiled : CompiledProgram P L)
+    {source dst : (PrimitiveMachine compiled).State}
+    {batch : List (PrimitiveMachine compiled).Event}
+    {who : P} {action : EventGraph.CommitAction compiled.graph who}
+    (hready : EventGraph.Ready compiled.graph source.1 action.node)
+    (hinternal : InternalOnlyBatch compiled batch)
+    (hrun :
+      (PrimitiveMachine compiled).AvailableRunFrom source batch dst)
+    (hcommit :
+      EventGraph.CommitAvailable compiled.graph dst.1 who action) :
+    EventGraph.CommitAvailable compiled.graph source.1 who action := by
+  induction hrun generalizing who action with
+  | nil state =>
+      exact hcommit
+  | @cons source mid dst event events havailable hstep tail ih =>
+      rcases hinternal event (by simp) with ⟨internalEvent, hevent⟩
+      rw [hevent] at havailable hstep
+      change EventGraph.InternalAvailable compiled.graph _ internalEvent at havailable
+      rcases hcommit with ⟨commitStep⟩
+      have hcommitDst :
+          EventGraph.CommitAvailable compiled.graph dst.1 who action :=
+        ⟨commitStep⟩
+      have hnodeNe : action.node ≠ internalEvent.node := by
+        intro hsame
+        rcases havailable with ⟨internalStep⟩
+        cases internalStep with
+        | sample row _ row_get sem_eq _ _ _ =>
+            have hcommitRow :
+                compiled.graph.nodes[(internalEvent.node : Nat)]? =
+                  some commitStep.row := by
+              simpa [hsame] using commitStep.row_get
+            have hrowEq : commitStep.row = row :=
+              Option.some.inj (hcommitRow.symm.trans row_get)
+            have hsemCommit : row.sem = .commit who commitStep.guard := by
+              rw [← hrowEq]
+              exact commitStep.sem_eq
+            rw [sem_eq] at hsemCommit
+            cases hsemCommit
+        | reveal row _ row_get sem_eq _ _ _ =>
+            have hcommitRow :
+                compiled.graph.nodes[(internalEvent.node : Nat)]? =
+                  some commitStep.row := by
+              simpa [hsame] using commitStep.row_get
+            have hrowEq : commitStep.row = row :=
+              Option.some.inj (hcommitRow.symm.trans row_get)
+            have hsemCommit : row.sem = .commit who commitStep.guard := by
+              rw [← hrowEq]
+              exact commitStep.sem_eq
+            rw [sem_eq] at hsemCommit
+            cases hsemCommit
+      rcases
+          readyInternalAtNode_step_support_completeNode
+            compiled (node := internalEvent.node)
+            (event :=
+              Machine.Event.internal (M := PrimitiveMachine compiled)
+                internalEvent)
+            rfl havailable hstep with
+        ⟨written, hmid⟩
+      have hreadyMid :
+          EventGraph.Ready compiled.graph mid.1 action.node := by
+        rw [hmid]
+        exact hready.completeNode_of_ne hnodeNe
+      have htailInternal : InternalOnlyBatch compiled events := by
+        intro tailEvent hmem
+        exact hinternal tailEvent (by simp [hmem])
+      have hcommitMid :
+          EventGraph.CommitAvailable compiled.graph mid.1 who action :=
+        ih hreadyMid htailInternal hcommitDst
+      have hcommitAfter :
+          EventGraph.CommitAvailable compiled.graph
+            (source.1.completeNode internalEvent.node written) who action := by
+        simpa [hmid] using hcommitMid
+      rcases havailable.ready with ⟨row, hrow, hreadyInternal⟩
+      exact
+        EventGraph.CommitAvailable.reflect_before_other_ready_write
+          compiled.graphWF hready hrow hreadyInternal written hcommitAfter
+
+omit [Fintype P] in
 /-- Fixed-fuel closure of ready internal graph work.
 
 Each pass executes every internal node ready at the current checkpoint in graph
@@ -627,6 +708,25 @@ theorem commitAvailable_persist_after_internalClosureTransition_support
   exact
     commitAvailable_persist_after_internalOnly_availableRunFrom
       compiled hcommit hinternal hrun
+
+omit [Fintype P] in
+theorem commitAvailable_reflect_before_internalClosureTransition_support
+    (compiled : CompiledProgram P L)
+    (fuel : Nat)
+    {state dst : (PrimitiveMachine compiled).State}
+    {who : P} {action : EventGraph.CommitAction compiled.graph who}
+    (hready : EventGraph.Ready compiled.graph state.1 action.node)
+    (hsupport :
+      dst ∈ (internalClosureTransition compiled fuel state).support)
+    (hcommit :
+      EventGraph.CommitAvailable compiled.graph dst.1 who action) :
+    EventGraph.CommitAvailable compiled.graph state.1 who action := by
+  rcases internalClosureTransition_support_cert
+      compiled fuel hsupport with
+    ⟨batch, hinternal, hrun⟩
+  exact
+    commitAvailable_reflect_before_internalOnly_availableRunFrom
+      compiled hready hinternal hrun hcommit
 
 omit [Fintype P] in
 theorem readyInternalNodes_empty_of_not_nonempty
@@ -810,6 +910,26 @@ theorem commitAvailable_persist_after_internalClosureAfterReady_support
   exact
     commitAvailable_persist_after_internalOnly_availableRunFrom
       compiled hcommit hinternalOnly hrun
+
+omit [Fintype P] in
+theorem commitAvailable_reflect_before_internalClosureAfterReady_support
+    (compiled : CompiledProgram P L)
+    {state dst : (PrimitiveMachine compiled).State}
+    (hinternal :
+      (EventGraph.readyInternalNodes compiled.graph state.1).Nonempty)
+    {who : P} {action : EventGraph.CommitAction compiled.graph who}
+    (hready : EventGraph.Ready compiled.graph state.1 action.node)
+    (hsupport :
+      dst ∈ (internalClosureAfterReady compiled state).support)
+    (hcommit :
+      EventGraph.CommitAvailable compiled.graph dst.1 who action) :
+    EventGraph.CommitAvailable compiled.graph state.1 who action := by
+  rcases internalClosureAfterReady_support_cert
+      compiled hinternal hsupport with
+    ⟨batch, hinternalOnly, hrun, _hne⟩
+  exact
+    commitAvailable_reflect_before_internalOnly_availableRunFrom
+      compiled hready hinternalOnly hrun hcommit
 
 omit [Fintype P] in
 theorem internalClosureAfterReady_support_closed
