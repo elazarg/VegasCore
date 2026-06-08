@@ -98,6 +98,98 @@ theorem currentNode_readyCommitNode_after_internalClosure
   exact EventGraph.CommitAvailable.readyCommitNode hcommitAtDst
 
 /-- If the player is active and `node` is ready for that player, the legal
+frontier action distribution cannot project to `none` at `node`. -/
+theorem projected_nodeValue_none_not_support_of_ready_active
+    {G : EventGraph.Graph P L}
+    (spec : EventGraph.ToMachine.GraphMachineSpec G)
+    (presentation : EventGraph.CheckpointPresentation G)
+    (semantics :
+      EventGraph.FrontierRoundSemantics spec presentation)
+    {horizon : Nat}
+    (h :
+      Machine.RoundView.BoundedHistory
+        (EventGraph.frontierRoundView
+          spec presentation semantics) horizon)
+    (dist :
+      PMF
+        (Machine.RoundView.BoundedLegalAction
+          (EventGraph.frontierRoundView
+            spec presentation semantics)
+          horizon h.lastState))
+    {who : P} {node : Fin G.nodeCount}
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (EventGraph.frontierRoundView spec presentation semantics)
+          horizon h.lastState)
+    (hready :
+      EventGraph.ReadyCommitNode G h.lastState.state.1 who node)
+    (hnoneSupport :
+      none ∈
+        (Math.ProbabilityMassFunction.pushforward
+          dist
+          (nodeValueProjection spec presentation semantics
+            (who := who) node)).support) :
+    False := by
+  let view :=
+    EventGraph.frontierRoundView spec presentation semantics
+  let project :
+      Machine.RoundView.BoundedLegalAction view horizon h.lastState →
+        Option (L.Val (G.nodeRow node).ty) :=
+    nodeValueProjection spec presentation semantics (who := who) node
+  have hnoneSupport' :
+      none ∈
+        (Math.ProbabilityMassFunction.pushforward
+          dist
+          project).support := by
+    simpa [view, project] using hnoneSupport
+  rw [Math.ProbabilityMassFunction.pushforward] at hnoneSupport'
+  rcases (PMF.mem_support_map_iff project
+      dist none).mp hnoneSupport' with
+    ⟨action, _hactionSupport, hproject⟩
+  dsimp [project, nodeValueProjection] at hproject
+  cases hmove : action.1 who with
+  | none =>
+      have hnotActive :
+          who ∉
+            Machine.RoundView.boundedActive view horizon h.lastState := by
+        simpa [view] using
+          GameTheory.JointActionLegal.none action.2 hmove
+      exact hnotActive (by simpa [view] using hactive)
+  | some frontierAction =>
+      have hlocal :
+          who ∈
+              Machine.RoundView.boundedActive view horizon h.lastState ∧
+            frontierAction ∈
+              Machine.RoundView.boundedAvailableActions
+                view horizon h.lastState who := by
+        simpa [view] using
+          GameTheory.JointActionLegal.some action.2 hmove
+      have hnotCutoff : ¬ horizon ≤ h.lastState.depth := by
+        intro hcutoff
+        have hempty : who ∈ (∅ : Finset P) := by
+          simpa [view, Machine.RoundView.boundedActive, hcutoff]
+            using hlocal.1
+        simp at hempty
+      have havailable :
+          EventGraph.FrontierAction.Available G h.lastState.state.1
+            who frontierAction := by
+        have hbounded := hlocal.2
+        rw [Machine.RoundView.boundedAvailableActions] at hbounded
+        rw [if_neg hnotCutoff] at hbounded
+        have hfrontier :
+            frontierAction ∈
+              EventGraph.frontierAvailableActions
+                G h.lastState.state who := by
+          simpa [view, EventGraph.frontierRoundView] using hbounded
+        simpa [EventGraph.frontierAvailableActions] using hfrontier
+      rcases
+          (EventGraph.FrontierAction.Available.value?_isSome_iff_readyCommitNode
+            havailable).2 hready with
+        ⟨value, hvalue⟩
+      simp [hmove, hvalue] at hproject
+
+/-- If the player is active and `node` is ready for that player, the legal
 frontier action law cannot project to `none` at `node`. -/
 theorem projected_nodeValueLaw_none_not_support_of_ready_active
     {G : EventGraph.Graph P L}
@@ -141,65 +233,13 @@ theorem projected_nodeValueLaw_none_not_support_of_ready_active
             horizon σ h hterm)
           (nodeValueProjection spec presentation semantics
             (who := who) node)).support) :
-    False := by
-  let view :=
-    EventGraph.frontierRoundView spec presentation semantics
-  let project :
-      Machine.RoundView.BoundedLegalAction view horizon h.lastState →
-        Option (L.Val (G.nodeRow node).ty) :=
-    nodeValueProjection spec presentation semantics (who := who) node
-  have hnoneSupport' :
-      none ∈
-        (Math.ProbabilityMassFunction.pushforward
-          (Machine.RoundView.legalActionLaw view horizon σ h hterm)
-          project).support := by
-    simpa [view, project] using hnoneSupport
-  rw [Math.ProbabilityMassFunction.pushforward] at hnoneSupport'
-  rcases (PMF.mem_support_map_iff project
-      (Machine.RoundView.legalActionLaw view horizon σ h hterm)
-      none).mp hnoneSupport' with
-    ⟨action, _hactionSupport, hproject⟩
-  dsimp [project, nodeValueProjection] at hproject
-  cases hmove : action.1 who with
-  | none =>
-      have hnotActive :
-          who ∉
-            Machine.RoundView.boundedActive view horizon h.lastState := by
-        simpa [view] using
-          GameTheory.JointActionLegal.none action.2 hmove
-      exact hnotActive (by simpa [view] using hactive)
-  | some frontierAction =>
-      have hlocal :
-          who ∈
-              Machine.RoundView.boundedActive view horizon h.lastState ∧
-            frontierAction ∈
-              Machine.RoundView.boundedAvailableActions
-                view horizon h.lastState who := by
-        simpa [view] using
-          GameTheory.JointActionLegal.some action.2 hmove
-      have hnotCutoff : ¬ horizon ≤ h.lastState.depth := by
-        intro hcutoff
-        have hempty : who ∈ (∅ : Finset P) := by
-          simpa [view, Machine.RoundView.boundedActive, hcutoff]
-            using hlocal.1
-        simp at hempty
-      have havailable :
-          EventGraph.FrontierAction.Available G h.lastState.state.1
-            who frontierAction := by
-        have hbounded := hlocal.2
-        rw [Machine.RoundView.boundedAvailableActions] at hbounded
-        rw [if_neg hnotCutoff] at hbounded
-        have hfrontier :
-            frontierAction ∈
-              EventGraph.frontierAvailableActions
-                G h.lastState.state who := by
-          simpa [view, EventGraph.frontierRoundView] using hbounded
-        simpa [EventGraph.frontierAvailableActions] using hfrontier
-      rcases
-          (EventGraph.FrontierAction.Available.value?_isSome_iff_readyCommitNode
-            havailable).2 hready with
-        ⟨value, hvalue⟩
-      simp [hmove, hvalue] at hproject
+    False :=
+  projected_nodeValue_none_not_support_of_ready_active
+    spec presentation semantics h
+    (Machine.RoundView.legalActionLaw
+      (EventGraph.frontierRoundView spec presentation semantics)
+      horizon σ h hterm)
+    hactive hready hnoneSupport
 
 /-- At an active frontier checkpoint for a replayed source commit, every
 supported projection of the legal action law at the current node is a concrete
