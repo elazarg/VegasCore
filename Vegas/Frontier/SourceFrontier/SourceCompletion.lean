@@ -350,6 +350,52 @@ theorem sourceStrategicHistory_choice_nonempty
   sourceChoice_nonempty_of_legal
     (program.sourceStrategicHistory_current_legal state) hchoice
 
+/-- Every reachable source information state of a checked program has a
+nonempty menu when it is a choice point for the player. -/
+theorem sourceReachableInfoState_choice_nonempty
+    (program : WFProgram P L)
+    {who : P}
+    (info :
+      SourceReachableInfoState (L := L)
+        (ToEventGraph.sourceStart program.core) who)
+    (hchoice : info.1.currentView.point.IsChoiceFor who) :
+    Nonempty (SourceViewChoice (L := L) info.1 hchoice) := by
+  rcases info with ⟨view, hreach⟩
+  rcases hreach with ⟨history, hstart, hview⟩
+  subst view
+  have hstartLegal : Legal history.start.cont := by
+    rw [hstart]
+    simpa [ToEventGraph.sourceStart, SourceConfig.initial] using
+      program.legal
+  have hlegal : Legal history.current.cont :=
+    SourceConfig.legal_of_labeledStar history.run hstartLegal
+  have hchoiceHistory : history.IsChoiceFor who := by
+    simpa [SourceHistoryPoint.IsChoiceFor,
+      SourceHistoryPoint.localHistoryView, SourceConfig.localView,
+      SourceConfig.programPoint] using hchoice
+  simpa [SourceChoice] using
+    sourceChoice_nonempty_of_legal
+      (L := L) hlegal hchoiceHistory
+
+/-- Canonical fallback source strategy for checked programs.
+
+This is used only to make total strategy translations well-defined on
+branches whose law is supplied elsewhere. -/
+noncomputable def defaultSourceStrategy
+    (program : WFProgram P L)
+    (who : P) :
+    SourceStrategy (L := L) (ToEventGraph.sourceStart program.core) who :=
+  fun info hchoice =>
+    PMF.pure
+      (Classical.choice
+        (program.sourceReachableInfoState_choice_nonempty info hchoice))
+
+/-- Pointwise fallback source profile for checked programs. -/
+noncomputable def defaultSourceProfile
+    (program : WFProgram P L) :
+    SourceProfile (L := L) (ToEventGraph.sourceStart program.core) :=
+  fun who => program.defaultSourceStrategy who
+
 /-- At the source instruction-count horizon, the optional source outcome law
 only supports concrete outcomes. -/
 theorem sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
