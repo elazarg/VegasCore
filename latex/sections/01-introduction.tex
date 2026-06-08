@@ -1,19 +1,42 @@
 \section{Introduction}
 \label{sec:intro}
 
-Players in a game of incomplete information move under a discipline of what
-each may know and when.  A VegasCore program is a straight-line description
-of exactly such a discipline: it draws public randomness, asks players to
-commit sealed values under a visibility constraint, reveals committed values
-to everyone, and reads payoffs off the public state.  Each value is either
-public or sealed to a single player; \(\Reveal\) discloses a sealed value to
-all.  The control flow is value-independent, so only the drawn data varies
-from run to run, never the shape of what happens.  These few
-declarations---who draws, who commits under whose view, what is revealed, and
-how payoffs read the public state---fix an information structure and a
-strategic structure at once.  The program is thus two things in one artifact:
-a description of a game of incomplete information, and the object one carries
-forward to execution.
+Mechanisms with real stakes increasingly run on public, shared runtimes.
+Auctions, prediction markets, votes, and escrows are deployed as smart
+contracts, where the code is open, every execution step is visible, and the
+other participants are strategic and often adversarial.  A mechanism deployed
+this way is two things at once.  It is a \emph{program}, whose correctness one
+would like to establish with the tools of programming-language semantics; and
+it is a \emph{game}, whose outcome turns on what rational, partially-informed
+players will do, which is the province of game theory.  Today the two readings
+live apart: a contract is written and verified as code, a game model is
+analysed separately for its incentives, and the correspondence between them is
+taken on trust.  Nothing guarantees that an equilibrium proved of the model is
+an equilibrium of the thing that runs---or that the runtime's own character,
+such as the order in which transactions are applied and the visibility of
+pending moves, has been folded into the analysis rather than ignored by it.
+
+This paper asks whether a single artifact can carry both readings, and at what
+cost.  We study a small language whose programs \emph{are} games of incomplete
+information, with one organising aim: a game-theoretic fact proved of a program
+should survive, by theorem, down to the runtime that executes it, while that
+runtime's scheduling and information structure are treated as part of the game
+rather than swept beneath it.  What we report is less a finished platform than
+a map---of what such a correspondence demands, which parts of it can be
+mechanically checked today, and where the remaining obligations on a concrete
+runtime lie.
+
+A VegasCore program is a straight-line description of such a game.  It draws
+public randomness, asks players to commit sealed values under a visibility
+constraint, reveals committed values to everyone, and reads payoffs off the
+public state.  Each value is either public or sealed to a single player;
+\(\Reveal\) discloses a sealed value to all.  The control flow is
+value-independent, so only the drawn data varies from run to run, never the
+shape of what happens.  These few declarations---who draws, who commits under
+whose view, what is revealed, and how payoffs read the public state---fix an
+information structure and a strategic structure at once.  The program is
+therefore both the description of a game of incomplete information and the
+artifact one carries forward to execution.
 
 The difficulty is that a program is written and run in sequence, yet its
 strategic and informational content must not depend on the incidental order
