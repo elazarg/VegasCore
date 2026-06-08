@@ -236,6 +236,57 @@ theorem claim_behavioral_strategies_are_roundView_local
             program.frontierSemantics.horizon player right) :=
   program.behavioralFrontierStrategy_eq_of_playerView_eq strategy hview
 
+omit [Fintype P] in
+/-- A `ValueCodec` gives the first non-wrapper runtime rung below the
+primitive compiled machine: codec states carry wire-encoded graph stores and
+refine the primitive machine by erasing the wire layer. -/
+noncomputable def claim_value_codec_refines_primitive_machine
+    (program : WFProgram P L)
+    (valueCodec : Runtime.ValueCodec L) :
+    Machine.StochasticRefinement
+      (valueCodec.codecMachine
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core)))
+      (EventGraph.ToMachine.primitiveMachine
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))) :=
+  Runtime.ValueCodec.refinement valueCodec
+    (ToEventGraph.primitiveMachineSpec
+      (ToEventGraph.compile program.core))
+
+omit [Fintype P] in
+/-- Primitive event-batch law families lift through the codec refinement, so
+strategy-indexed primitive schedulers can be run by the codec machine without
+changing their projected trace law. -/
+noncomputable def claim_value_codec_lifts_event_batch_law_family
+    (program : WFProgram P L)
+    (valueCodec : Runtime.ValueCodec L)
+    {Strategy : P → Type}
+    (family :
+      (EventGraph.ToMachine.primitiveMachine
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))).EventBatchLawFamily Strategy) :
+    (Runtime.ValueCodec.refinement valueCodec
+      (ToEventGraph.primitiveMachineSpec
+        (ToEventGraph.compile program.core))).EventBatchLawFamilyLift
+        Strategy family :=
+  Runtime.ValueCodec.liftEventBatchLawFamily valueCodec
+    (ToEventGraph.primitiveMachineSpec
+      (ToEventGraph.compile program.core)) family
+
+/-- A trace-adequate primitive law becomes a trace-adequate codec runtime law
+for any frontier trace-game surface. -/
+noncomputable def claim_value_codec_runtime_trace_adequacy
+    (program : WFProgram P L) [FiniteDomains program]
+    {surface : TraceGameSurface program}
+    (valueCodec : Runtime.ValueCodec L)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      (Runtime.ValueCodec.refinement valueCodec
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))) :=
+  RuntimeTraceAdequacy.codec valueCodec law
+
 /-- Runtime refinements preserve the checked behavioral frontier utility
 distribution once the runtime supplies an adequate strategy-indexed event-batch
 law family. -/

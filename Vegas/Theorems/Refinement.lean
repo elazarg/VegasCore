@@ -1,6 +1,7 @@
 import Vegas.Machine.Refinement
 import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
+import Vegas.Runtime.CodecMachine
 import Vegas.Frontier.SourceAdequacy
 import Vegas.Presentation.FOSG.FromCore
 import GameTheory.Concepts.Foundations.DeviationSimulation
@@ -757,6 +758,29 @@ noncomputable def audited
     exact
       (Machine.audited.liftEventBatchLawFamily
         (PrimitiveSpecMachine program) law.toFamily).compatible profile
+
+/-- Codec runtime adequacy for any trace-adequate primitive specification law.
+The implementation runtime stores the primitive graph store through a
+`ValueCodec` wire store and erases that wire layer by refinement. -/
+noncomputable def codec
+    (valueCodec : Runtime.ValueCodec L)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      (Runtime.ValueCodec.refinement valueCodec
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))) where
+  spec := law
+  impl :=
+    (Runtime.ValueCodec.liftEventBatchLawFamily valueCodec
+      (ToEventGraph.primitiveMachineSpec
+        (ToEventGraph.compile program.core)) law.toFamily).impl
+  compatible := by
+    intro profile
+    exact
+      (Runtime.ValueCodec.liftEventBatchLawFamily valueCodec
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core)) law.toFamily).compatible
+        profile
 
 /-- Generic refinement lift induced by the bridge's explicit spec and
 implementation law families. -/
