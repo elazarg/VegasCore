@@ -3,6 +3,7 @@ import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
 import Vegas.Frontier.SourceAdequacy
 import Vegas.Presentation.FOSG.FromCore
+import GameTheory.Concepts.Foundations.DeviationSimulation
 import GameTheory.Concepts.Correlation.CorrelatedNashMixed
 import Math.ProbabilityMassFunction
 
@@ -840,6 +841,57 @@ theorem implTraceGame_udist_surface
   exact
     hproject.symm.trans
       (bridge.spec.traceGame_udist_surface profile)
+
+/-- Runtime trace adequacy induces a standard one-way strategic refinement:
+surface-game profiles realize implementation trace-game profiles with the same
+payoff-vector law, and every implementation unilateral deviation is matched by
+the identical surface unilateral deviation. -/
+noncomputable def implTraceGame_nashDeviationSimulation
+    (bridge : RuntimeTraceAdequacy program surface R) :
+    GameTheory.KernelGame.NashDeviationSimulation
+      surface.game bridge.implTraceGame (GameTheory.Payoff Player) where
+  viewG := { observe := surface.game.utility }
+  viewH := { observe := bridge.implTraceGame.utility }
+  rel := fun surfaceProfile implProfile =>
+    surfaceProfile = implProfile
+  law_eq := by
+    intro surfaceProfile implProfile hrel
+    subst implProfile
+    change surface.game.udist surfaceProfile =
+      bridge.implTraceGame.udist surfaceProfile
+    exact (bridge.implTraceGame_udist_surface surfaceProfile).symm
+  simulate_target_deviation := by
+    intro surfaceProfile implProfile hrel player implAlternative
+    subst implProfile
+    refine ⟨implAlternative, ?_⟩
+    change surface.game.udist
+        (Function.update surfaceProfile player implAlternative) =
+      bridge.implTraceGame.udist
+        (Function.update surfaceProfile player implAlternative)
+    exact
+      (bridge.implTraceGame_udist_surface
+        (Function.update surfaceProfile player implAlternative)).symm
+
+/-- Preference-parametric Nash transport induced by runtime trace adequacy.
+This is the strategic-refinement form of runtime preservation; expected-utility
+Nash corollaries add boundedness assumptions separately. -/
+theorem implTraceGame_nashFor_of_surface_nashFor
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {prefΩ :
+      Player → PMF (GameTheory.Payoff Player) →
+        PMF (GameTheory.Payoff Player) → Prop}
+    {profile : ∀ player, surface.game.Strategy player}
+    (hNash :
+      surface.game.IsNashFor
+        (GameTheory.GameForm.observedPref
+          bridge.implTraceGame_nashDeviationSimulation.viewG prefΩ)
+        profile) :
+    bridge.implTraceGame.IsNashFor
+        (GameTheory.GameForm.observedPref
+          bridge.implTraceGame_nashDeviationSimulation.viewH prefΩ)
+        profile :=
+  bridge.implTraceGame_nashDeviationSimulation
+    |>.target_nashFor_of_source_nashFor rfl hNash
 
 /-- Trace adequacy preserves the payoff-vector law induced by any correlated
 distribution over the shared strategy-profile space. -/

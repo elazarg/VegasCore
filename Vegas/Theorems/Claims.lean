@@ -201,6 +201,16 @@ theorem claim_kuhn_behavioral_to_mixedPure_udist
       program.behavioralFrontierGame.udist profile :=
   program.mixedPureFrontier_udist_of_behavioral profile
 
+/-- The canonical mixed-pure/behavioral Kuhn bridge is a standard two-way Nash
+deviation bisimulation, so its strategic transport content uses the generic
+GameTheory relation. -/
+noncomputable def claim_kuhn_mixed_pure_behavioral_deviation_bisimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationBisimulation
+      program.mixedPureFrontierGame program.behavioralFrontierGame
+      program.mixedPureFrontierGame.Outcome :=
+  program.mixedPureBehavioralFrontier_deviationBisimulation
+
 /-- The Kuhn bridge is stated over the canonical frontier `RoundView`
 information model.  Its information states are player event histories, and
 the checked program supplies observable menus for that model. -/
@@ -342,6 +352,65 @@ theorem claim_runtime_refinement_preserves_mixed_pure_correlated_utility_law
   by
     simpa [mixedPureFrontierTraceSurface] using
       bridge.implTraceGame_correlatedUtilityLaw_surface profileLaw
+
+/-- A behavioral runtime adequacy bridge induces a standard one-way Nash
+deviation simulation from the behavioral frontier game to the implementation
+trace game. -/
+noncomputable def claim_runtime_refinement_behavioral_deviation_simulation
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R) :
+    KernelGame.NashDeviationSimulation
+      program.behavioralFrontierGame bridge.implTraceGame
+      (GameTheory.Payoff P) :=
+  by
+    simpa [behavioralFrontierTraceSurface] using
+      bridge.implTraceGame_nashDeviationSimulation
+
+/-- A pure runtime adequacy bridge induces a standard one-way Nash deviation
+simulation from the pure frontier game to the implementation trace game. -/
+noncomputable def claim_runtime_refinement_pure_deviation_simulation
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (pureFrontierTraceSurface program) R) :
+    KernelGame.NashDeviationSimulation
+      program.pureFrontierGame bridge.implTraceGame
+      (GameTheory.Payoff P) :=
+  by
+    simpa [pureFrontierTraceSurface] using
+      bridge.implTraceGame_nashDeviationSimulation
+
+/-- A mixed-pure runtime adequacy bridge induces a standard one-way Nash
+deviation simulation from the mixed-pure frontier game to the implementation
+trace game. -/
+noncomputable def claim_runtime_refinement_mixed_pure_deviation_simulation
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (mixedPureFrontierTraceSurface program) R) :
+    KernelGame.NashDeviationSimulation
+      program.mixedPureFrontierGame bridge.implTraceGame
+      (GameTheory.Payoff P) :=
+  by
+    simpa [mixedPureFrontierTraceSurface] using
+      bridge.implTraceGame_nashDeviationSimulation
 
 /-- Under trace adequacy and bounded utilities, behavioral correlated
 equilibrium is invariant between the frontend surface and the implementation

@@ -643,6 +643,26 @@ noncomputable def behavioralToMixedPureFrontierNashDeviationSimulation
       program.mixedPureFrontierGame.Outcome :=
   program.frontierSemantics.behavioralToMixedPureNashDeviationSimulation
 
+/-- Program-facing canonical mixed-pure-to-behavioral Nash deviation
+simulation, obtained from the canonical mixed-pure behavioral realization. -/
+noncomputable def mixedPureToBehavioralFrontierNashDeviationSimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationSimulation
+      program.mixedPureFrontierGame program.behavioralFrontierGame
+      program.mixedPureFrontierGame.Outcome :=
+  program.canonicalMixedPureToBehavioralFrontierDeviationSimulation
+    |>.toNashDeviationSimulation
+
+/-- Program-facing canonical Kuhn strategic equivalence as a standard
+`NashDeviationBisimulation` between the mixed-pure and behavioral completed
+frontier games. -/
+noncomputable def mixedPureBehavioralFrontierNashDeviationBisimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationBisimulation
+      program.mixedPureFrontierGame program.behavioralFrontierGame
+      program.mixedPureFrontierGame.Outcome :=
+  program.frontierSemantics.mixedPureToBehavioralNashDeviationBisimulation
+
 /-- Program-facing two-direction Kuhn outcome-equality schema for completed
 frontier games. This packages the behavioral-to-product-mixed direction and
 the mixed-pure-to-behavioral realizability direction at outcome-kernel level. -/

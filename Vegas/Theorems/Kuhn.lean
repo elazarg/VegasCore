@@ -133,6 +133,24 @@ noncomputable def behavioralToMixedPureFrontier_deviationSimulation
       program.mixedPureFrontierGame.Outcome :=
   program.behavioralToMixedPureFrontierNashDeviationSimulation
 
+/-- The canonical mixed-pure-to-behavioral Kuhn realization as a one-way Nash
+deviation simulation. -/
+noncomputable def mixedPureToBehavioralFrontier_deviationSimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationSimulation
+      program.mixedPureFrontierGame program.behavioralFrontierGame
+      program.mixedPureFrontierGame.Outcome :=
+  program.mixedPureToBehavioralFrontierNashDeviationSimulation
+
+/-- The canonical mixed-pure/behavioral Kuhn equivalence as a standard
+two-way Nash deviation bisimulation. -/
+noncomputable def mixedPureBehavioralFrontier_deviationBisimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationBisimulation
+      program.mixedPureFrontierGame program.behavioralFrontierGame
+      program.mixedPureFrontierGame.Outcome :=
+  program.mixedPureBehavioralFrontierNashDeviationBisimulation
+
 /-- If the product mixed pure frontier profile induced by a behavioral profile
 is Nash, then the original behavioral frontier profile is Nash. -/
 theorem behavioralFrontier_nash_of_inducedMixedPure_nash

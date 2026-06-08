@@ -1178,6 +1178,46 @@ noncomputable def behavioralToMixedPureNashDeviationSimulation
       congrArg (PMF.map id)
         (semantics.behavioralToMixedPureOutcomeKernel deviated).symm
 
+/-- Canonical mixed-pure/behavioral Kuhn equivalence as a standard two-way
+Nash deviation bisimulation. The relation pairs each mixed-pure profile with
+its canonical behavioral realization. -/
+noncomputable def mixedPureToBehavioralNashDeviationBisimulation
+    (semantics : FrontierGameSemantics program) :
+    KernelGame.NashDeviationBisimulation
+      semantics.mixedPureGame semantics.behavioralGame
+      semantics.mixedPureGame.Outcome where
+  viewG := { observe := id }
+  viewH := { observe := id }
+  rel := fun mixed behavioralProfile =>
+    behavioralProfile = semantics.mixedToBehavioralProfile mixed
+  law_eq := by
+    intro mixed behavioralProfile hrel
+    subst behavioralProfile
+    dsimp [GameForm.OutcomeView.law]
+    exact
+      congrArg (PMF.map id)
+        (semantics.mixedToBehavioralProfileOutcomeKernel mixed).symm
+  simulate_target_deviation := by
+    intro mixed behavioralProfile hrel who behavioralDeviation
+    subst behavioralProfile
+    let mixedDeviation : semantics.mixedPureGame.Strategy who :=
+      semantics.behavioralStrategyToMixedPure who behavioralDeviation
+    refine ⟨mixedDeviation, ?_⟩
+    have hdeviation :=
+      semantics.mixedToBehavioralUnilateralDeviationOutcomeKernel
+        mixed who behavioralDeviation
+    dsimp [GameForm.OutcomeView.law]
+    exact congrArg (PMF.map id) hdeviation.symm
+  simulate_source_deviation := by
+    intro mixed behavioralProfile hrel who mixedDeviation
+    subst behavioralProfile
+    rcases semantics.mixedToBehavioralMixedDeviationOutcomeKernel
+        mixed who mixedDeviation with
+      ⟨behavioralDeviation, hdeviation⟩
+    refine ⟨behavioralDeviation, ?_⟩
+    dsimp [GameForm.OutcomeView.law]
+    exact congrArg (PMF.map id) hdeviation
+
 /-- A Nash equilibrium of the induced product mixed pure-strategy game is a
 behavioral Nash equilibrium. This is the Nash-safe Kuhn direction currently
 proved at the program-facing layer: every behavioral unilateral deviation maps
