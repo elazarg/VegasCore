@@ -826,6 +826,20 @@ theorem sourceEnvOfStore_get
       some ((sourceEnvOfStore state store available).get h) :=
   Classical.choose_spec (available h)
 
+theorem sourceEnvOfStore_irrel
+    {Γ : VCtx P L}
+    (state : BuildState P L Γ) (store : Store L)
+    (available available' :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value) :
+    sourceEnvOfStore state store available =
+      sourceEnvOfStore state store available' := by
+  funext name bindTy h
+  have hleft := sourceEnvOfStore_get state store available h
+  have hright := sourceEnvOfStore_get state store available' h
+  exact Option.some.inj (hleft.symm.trans hright)
+
 /-- Read a visible source variable through its proof-indexed graph field. -/
 noncomputable def sourceValueView
     {Γ : VCtx P L}
