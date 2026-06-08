@@ -68,6 +68,26 @@ theorem legalActionLaw_disintegrate_two
   Machine.RoundView.legalActionLaw_disintegrate_two
     view horizon σ h hterm first second
 
+/-- Frontier legal-action laws disintegrate by any finite list of projections.
+
+This is the same-round serialization law used to consume one simultaneous
+frontier action through a source-order block of commit queries. -/
+theorem legalActionLaw_disintegrate_list
+    {M : Machine Player} (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    (projections :
+      List
+        (Math.ProbabilityMassFunction.FiniteProjection
+          (view.BoundedLegalAction horizon h.lastState))) :
+    view.legalActionLaw horizon σ h hterm =
+      Math.ProbabilityMassFunction.iterCondOn
+        (view.legalActionLaw horizon σ h hterm) projections :=
+  Math.ProbabilityMassFunction.bind_pushforward_condOn_pure_list
+    (view.legalActionLaw horizon σ h hterm) projections
+
 variable [DecidableEq Player]
 
 /-- A conditioned frontier node-value law only supports legal actions that
