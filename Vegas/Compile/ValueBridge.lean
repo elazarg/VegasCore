@@ -1733,6 +1733,59 @@ theorem sourceRun_reachableConfig
       hagree
       available
 
+/-- A certificate that an arbitrary reachable terminal graph state can be
+replayed in canonical source order. Constructing this from a `Reachable` proof
+is the reverse-direction replay obligation: each node's graph validity
+certificate must be transported to source order while preserving the terminal
+store reads used by the compiler dictionary. -/
+structure SourceReplay
+    (g : GraphProgram P L)
+    (state : ReachableConfig (buildResult g).graph)
+    (hterminal : Terminal (buildResult g).graph state.1) where
+  labels : List (Label P L)
+  final : SourceConfig P L
+  run : SourceConfig.LabeledStar (sourceStart g) labels final
+  sourceTerminal : final.IsTerminal
+  envEq :
+    ∃ hctx : final.ctx = (buildResult g).terminalCtx,
+      ∃ available :
+        ∀ {name bindTy}
+          (h : VHasVar (buildResult g).terminalCtx name bindTy),
+          ∃ value,
+            Store.getAs state.1.store
+              ((buildResult g).terminalState.fieldOf h) bindTy.base =
+                some value,
+        sourceEnvOfStore (buildResult g).terminalState state.1.store
+            available =
+          cast (congrArg (VEnv L) hctx) final.env
+
+/-- **Reverse generation, gated by replay.** Once a reachable terminal graph
+state has been replayed in source order, it yields a terminal source run whose
+environment is the one reconstructed from the graph store. -/
+theorem sourceRun_of_replay
+    (g : GraphProgram P L)
+    (state : ReachableConfig (buildResult g).graph)
+    (hterminal : Terminal (buildResult g).graph state.1)
+    (replay : SourceReplay g state hterminal) :
+    ∃ labels : List (Label P L),
+      ∃ final : SourceConfig P L,
+        SourceConfig.LabeledStar (sourceStart g) labels final ∧
+        final.IsTerminal ∧
+        ∃ hctx : final.ctx = (buildResult g).terminalCtx,
+          ∃ available :
+            ∀ {name bindTy}
+              (h : VHasVar (buildResult g).terminalCtx name bindTy),
+              ∃ value,
+                Store.getAs state.1.store
+                  ((buildResult g).terminalState.fieldOf h) bindTy.base =
+                    some value,
+            sourceEnvOfStore (buildResult g).terminalState state.1.store
+                available =
+              cast (congrArg (VEnv L) hctx) final.env := by
+  exact
+    ⟨replay.labels, replay.final, replay.run, replay.sourceTerminal,
+      replay.envEq⟩
+
 /-- Run-level representation for the concrete terminal store produced by the
 lockstep induction. This existential form is useful when a caller does not need
 to expose the canonical graph completion. -/
