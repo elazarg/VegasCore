@@ -21,59 +21,32 @@
 \maketitle
 
 \begin{abstract}
-VegasCore formalizes a semantic core for specifying finite protocols as
-mathematical games, proving game-theoretic and programming-language facts
-about those games, and transporting selected facts to lower-level runtime
-models.  A protocol may draw public randomness, ask players to make
-sealed commitments, reveal those commitments later, and compute terminal
-payoffs from public data.  The core question is simple to state: what
-game does the program describe, and which runtime executions preserve
-that game?
+A VegasCore program denotes a finite game of incomplete information.  The
+surface is a straight-line calculus whose control flow is value-independent:
+four constructs draw public randomness from nature, let a player commit a
+sealed value constrained by a guard, reveal a sealed value to everyone, and
+return per-player payoffs over the public state.  Every bound value is public
+or sealed to exactly one player, and reveal is the sole sealed-to-public
+channel, so a single program declares an information structure, a strategic
+structure, and payoffs at once; read as a probabilistic program, its latent
+draws may be made by strategic players rather than only by chance.
 
-The answer in this codebase is a finite, visibility-aware
-\emph{event graph}.  Nodes are protocol events, fields are typed stored
-values, and dependencies say which information must already be available
-before an event can run or before a player can choose a commitment.  This
-graph is the semantic center of VegasCore.  Source syntax is compiled
-away, administrative \(\Let\)-bindings are erased before graph
-construction, and extensive-form trees are treated as later
-presentations rather than as the program's primary meaning.
-
-The construction separates three concerns.  A \emph{graph program}
-contains exactly the static evidence needed to compile a source program
-to an event graph: unique initial names, fresh binders, and normalized
-sample distributions.  A \emph{checked program} adds the game-facing
-obligations: committed source values are eventually revealed, and commit
-guards always leave at least one legal action.  A canonical frontier
-round view then turns the compiled graph into the strategy surfaces a
-game theorist or solver expects: pure, behavioral, and product
-mixed-pure kernel games.  FOSG and EFG objects are derived, payoff-faithful
-presentations of the same frontier semantics.
-
-The mechanized theorem surface is best read not as a list of theorems
-but as a small family of \emph{faithfulness relations} of three
-algebraic shapes: schedule confluence and Kuhn strategic equivalence
-(between behavioral and mixed-pure strategy carriers) are
-\emph{equivalences}; compilation is an \emph{adequacy} (the graph is the
-program's denotation, recovered by theorem, not a symmetric equivalence);
-and runtime refinement is an \emph{order} (a backend refines the
-primitive machine, with guarantees that are directional).  Concretely it
-proves compilation to well-formed graphs, checkpoint progress, visibility
-properties, and source-payoff adequacy; frontier/FOSG/EFG utility-law
-adequacy; finite Kuhn strategic equivalence for frontier strategies and
-one-player deviations; and runtime trace adequacy for composable
-stochastic refinements.  The end-to-end guarantee is the composite of
-these relations.  The refinement layer is deliberately runtime-general.  Smart-contract
-runtimes, payment-channel state machines, and local simulators can all be
-related to the primitive event-graph machine by supplying state, event,
-observation, and outcome projections plus compatible event-batch laws.
-Abstract backend layers instantiate this interface with audited and
-encoded runtimes, public message-in-flight buffers, inert and cheap-talk
-strategy bridges, and protocol examples whose utility and Nash facts are
-pulled through compiled runtime layers.  Ethereum/EVM is one motivating
-target; the language-,
-event-graph-, machine-, and strategic-level interfaces state obligations
-such a backend must discharge without baking in a particular runtime.
+Our contribution is a family of \emph{faithfulness relations}, mechanized in
+Lean, that together carry a game-theoretic fact about the denoted game through
+compilation, scheduling, presentation, and descent toward a concrete runtime.
+Two equivalences establish that the order of independent events is
+unobservable, and that behavioral and mixed-pure strategy carriers match
+deviations---transporting solution concepts, not payoffs alone.  An adequacy
+recovers the source-free event graph as the program's denotation: terminal
+outcomes are exactly the source payoffs.  A refinement order shows that an
+executable backend preserves the utility distribution and pulls equilibria
+back; a presentation equivalence relates the native game to its FOSG and EFG
+game-forms.  The visibility-aware event graph beneath these results is the
+load-bearing mechanism, not the contribution itself.  The trusted base is the
+three standard Lean axioms, with no \TT{sorry}; the surface is a kernel
+calculus, strategies are carried by the compiled game rather than the source
+syntax, and the runtime descent is proved sound and exercised on abstract
+backends, with Ethereum/EVM the motivating target.
 \end{abstract}
 
 \tableofcontents

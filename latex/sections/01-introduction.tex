@@ -1,22 +1,59 @@
 \section{Introduction}
 \label{sec:intro}
 
-VegasCore's contribution is a machine-checked path from a protocol
-program to the strategic games, programming-language guarantees, and
-backend proof obligations it denotes.
-This section motivates event graphs against ordinary game trees, works
-through a small Matching-Pennies example, sketches the semantic pipeline,
-explains where runtime backends fit relative to the graph machine, and
-then summarizes the main theorem surface.  The notation and glossary
-immediately after the introduction define recurring terms such as
-frontier, checkpoint, and kernel game.
+Players in a game of incomplete information move under a discipline of what
+each may know and when.  A VegasCore program is a straight-line description
+of exactly such a discipline: it draws public randomness, asks players to
+commit sealed values under a visibility constraint, reveals committed values
+to everyone, and reads payoffs off the public state.  Each value is either
+public or sealed to a single player; \(\Reveal\) discloses a sealed value to
+all.  The control flow is value-independent, so only the drawn data varies
+from run to run, never the shape of what happens.  These few
+declarations---who draws, who commits under whose view, what is revealed, and
+how payoffs read the public state---fix an information structure and a
+strategic structure at once.  The program is thus two things in one artifact:
+a description of a game of incomplete information, and the object one carries
+forward to execution.
 
-\Cref{fig:overview} is a roadmap of the whole development: a protocol
-program is compiled to a visibility-aware event graph, which executes on a
-schedule-agnostic operational machine and presents as the strategic games on
-which equilibrium and information properties are proved; concrete runtimes
-enter from below as a composable tower of refinements that preserve the game's
-utilities, bottoming out at the on-chain execution that is the end goal.
+The difficulty is that a program is written and run in sequence, yet its
+strategic and informational content must not depend on the incidental order
+in which independent events happen to be written down.  If the text lists one
+player's sealed commitment before another's, that order must \emph{not} make
+the second player able to observe the first: the two commitments are meant to
+be simultaneous, independent choices.  Our resolution is to let meaning
+factor through the program's \emph{dependency} order rather than its textual
+order.  The linear order remains a sound way to reason about what is
+computed---data flows forward, as one expects---but it is provably inert for
+who-knows-what and who-chooses, except through the dependencies the program
+explicitly declares.  Independent events may be reordered with no strategic
+effect; dependent ones may not.  The order is not meaningless; it is
+meaningful precisely up to the dependency partial order.
+
+It is worth stating what this does \emph{not} license.  The semantics does
+not validate the naive sequential reading ``\(B\) is written after \(A\), so
+\(B\) sees \(A\).''  At a simultaneous-move phase that reading is simply
+false.  The value to the writer is exactly the converse: textual order cannot
+create an unintended information edge.  Order is safe for computation because
+it has been made inert for information.
+
+Three pieces of machinery deliver this guarantee.  A visibility-aware event
+graph records the program's dependency structure.  A commit/reveal barrier
+enforces simultaneity: no reveal becomes available until every preceding
+commitment is sealed.  And schedule confluence ensures that reordering
+independent events yields the same outcome and the same per-player
+observation.  This is why meaning is factored through a dependency graph
+rather than emitted directly as an extensive-form game tree: the graph is
+load-bearing but instrumental, the mechanism rather than the headline.
+
+The contribution of this paper is the machine-checked surface that connects a
+program to the strategic games and runtime models it determines.  We organize
+it as a small family of \emph{faithfulness relations} of three shapes---%
+equivalences, an adequacy, and a refinement order---set out in
+\Cref{sec:intro:relations}.  The remainder of this section argues the
+dependency view against ordinary game trees, works a small Matching-Pennies
+example, sketches the pipeline from program to games and runtimes, lays out
+these relations, places the runtime backends, and summarizes the theorem
+surface; \Cref{fig:overview} gives the roadmap.
 
 \begin{figure}[t]
 \centering
@@ -33,7 +70,7 @@ utilities, bottoming out at the on-chain execution that is the end goal.
 ]
 % ── forward semantic spine (top-down) ────────────────────────────────
 \node[box]  (prog)  at (0,0)    {Protocol program\\{\footnotesize public samples \(\cdot\) sealed commits \(\cdot\) reveals \(\cdot\) payoffs}};
-\node[core] (graph) at (0,-2.1) {Visibility-aware \textbf{event graph}\\{\footnotesize the semantic center}};
+\node[core] (graph) at (0,-2.1) {Visibility-aware \textbf{event graph}\\{\footnotesize the program's dependency structure}};
 \node[box]  (mach)  at (0,-4.2) {Operational machine\\{\footnotesize schedule-agnostic execution}};
 \draw[flow] (prog)  -- node[lab]{compile\\{\scriptsize source syntax erased}} (graph);
 \draw[flow] (graph) -- node[lab]{execute} (mach);

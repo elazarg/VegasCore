@@ -52,6 +52,22 @@ is a separate (and currently unproved) statement.  Reading the surface as
 it as one equivalence, one adequacy, and one order makes the end-to-end
 guarantee a short composite.
 
+\begin{remark}[A probabilistic-programming reading]
+Structurally a VegasCore program is a probabilistic program whose latent
+draws may be delegated to strategic players under the visibility discipline:
+fixing strategies yields a distribution over outcomes, and ranging over them
+yields a game.  This is the influence-diagram intuition---graphical models
+of interacting decisions, of which multi-agent influence diagrams
+\citep{koller2003multi} are the canonical game-theoretic form---but it is
+only an intuition.  VegasCore and influence diagrams are \emph{incomparable}:
+VegasCore adds an operational and refinement layer and a
+sealed-then-revealed temporal discipline that influence diagrams do not
+model, while the arbitrary information edges of an influence diagram are not
+expressible under the owner-or-public visibility used here, where a
+\(\Reveal\) discloses to everyone.  The reading is a lens on the denotation,
+not a claim of containment.
+\end{remark}
+
 \subsection{Related and parallel artifacts}
 \label{sec:disc:related-artifacts}
 
@@ -251,11 +267,12 @@ intersects logical accounts of partial information
 
 The construction addresses a small but central question: when the
 strategic content of a finite multi-party protocol is mechanically
-extracted from the program and carried toward a runtime, what is the
-right primary semantic object?  The answer it offers is the event graph,
-with extensional configurations and a checked frontier.  The
-strategic-form, FOSG, EFG, and runtime views are then
-\emph{presentations} of this object that come with their own
+extracted from the straight-line program it is written as, and carried
+toward a runtime, what holds the path together?  The answer it offers is
+not a single object but a small family of preservation relations, pivoting
+on a visibility-aware event graph with extensional configurations and a
+checked frontier.  The strategic-form, FOSG, EFG, and runtime views are
+then \emph{presentations} of this object that come with their own
 adequacy and transport theorems
 (\Cref{thm:fosg,thm:efg,thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence,thm:runtime-trace}).
 
