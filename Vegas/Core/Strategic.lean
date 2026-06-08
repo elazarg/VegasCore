@@ -62,16 +62,51 @@ abbrev SourceChoice (history : SourceHistoryPoint P L) (who : P)
     simpa [SourceHistoryPoint.localHistoryView, SourceConfig.localView] using
       hchoice)
 
+/-- Reachable source-local information states for a player.
+
+The carrier is a source-local view together with proof that some source history
+from `start` realizes it. Strategies are still functions of the local view, not
+the hidden witness; the witness only rules out arbitrary unreachable views with
+empty or nonsensical menus. -/
+abbrev SourceReachableInfoState
+    (start : SourceConfig P L) (who : P) : Type :=
+  { view : SourceHistoryLocalView P L who //
+    ∃ history : SourceHistoryPoint P L,
+      history.start = start ∧ history.localHistoryView who = view }
+
+namespace SourceReachableInfoState
+
+/-- The information state realized by a concrete source history. -/
+def ofHistory
+    {start : SourceConfig P L}
+    (history : SourceHistoryPoint P L)
+    (hstart : history.start = start)
+    (who : P) :
+    SourceReachableInfoState (L := L) start who :=
+  ⟨history.localHistoryView who, ⟨history, hstart, rfl⟩⟩
+
+@[simp] theorem ofHistory_val
+    {start : SourceConfig P L}
+    (history : SourceHistoryPoint P L)
+    (hstart : history.start = start)
+    (who : P) :
+    (ofHistory (L := L) history hstart who).1 =
+      history.localHistoryView who := rfl
+
+end SourceReachableInfoState
+
 /-- A behavioral source strategy for one player.
 
 The strategy is a function of the player's source-local history view, not of
-the full instrumented history.  It is only queried at local views whose current
-source program point is a choice point for that player. -/
+the full instrumented history.  Its domain is restricted to reachable
+information states so a strategy never has to assign probability to an
+unreachable arbitrary view whose guard menu may be empty.  It is only queried
+at local views whose current source program point is a choice point for that
+player. -/
 abbrev SourceStrategy (start : SourceConfig P L) (who : P) : Type :=
-  (view : SourceHistoryLocalView P L who) →
-    view.startPoint = start.programPoint →
-      (hchoice : view.currentView.point.IsChoiceFor who) →
-        PMF (SourceViewChoice (L := L) view hchoice)
+  (info : SourceReachableInfoState (L := L) start who) →
+    (hchoice : info.1.currentView.point.IsChoiceFor who) →
+      PMF (SourceViewChoice (L := L) info.1 hchoice)
 
 /-- A source behavioral profile. -/
 abbrev SourceProfile (start : SourceConfig P L) : Type :=
@@ -89,22 +124,17 @@ different source action laws for the player whose strategy is queried. -/
 theorem query_heq_of_view_eq
     {start : SourceConfig P L} {who : P}
     (strategy : SourceStrategy (L := L) start who)
-    {leftView rightView : SourceHistoryLocalView P L who}
-    (hview : leftView = rightView)
-    (hstartLeft :
-      leftView.startPoint = start.programPoint)
-    (hstartRight :
-      rightView.startPoint = start.programPoint)
+    {leftInfo rightInfo : SourceReachableInfoState (L := L) start who}
+    (hview : leftInfo.1 = rightInfo.1)
     (hchoiceLeft :
-      leftView.currentView.point.IsChoiceFor who)
+      leftInfo.1.currentView.point.IsChoiceFor who)
     (hchoiceRight :
-      rightView.currentView.point.IsChoiceFor who) :
-    HEq (strategy leftView hstartLeft hchoiceLeft)
-      (strategy rightView hstartRight hchoiceRight) := by
-  cases hview
-  have hstart : hstartLeft = hstartRight := Subsingleton.elim _ _
+      rightInfo.1.currentView.point.IsChoiceFor who) :
+    HEq (strategy leftInfo hchoiceLeft)
+      (strategy rightInfo hchoiceRight) := by
+  have hinfo : leftInfo = rightInfo := Subtype.ext hview
+  cases hinfo
   have hchoice : hchoiceLeft = hchoiceRight := Subsingleton.elim _ _
-  cases hstart
   cases hchoice
   exact HEq.rfl
 
@@ -115,18 +145,25 @@ theorem query_heq_of_sameHistoryKnowledge
     (strategy : SourceStrategy (L := L) start who)
     {left right : SourceHistoryPoint P L}
     (hsame : SourceHistoryPoint.SameHistoryKnowledge (L := L) who left right)
-    (hstartLeft :
-      (left.localHistoryView who).startPoint = start.programPoint)
-    (hstartRight :
-      (right.localHistoryView who).startPoint = start.programPoint)
+    (hstartLeft : left.start = start)
+    (hstartRight : right.start = start)
     (hchoiceLeft :
       (left.localHistoryView who).currentView.point.IsChoiceFor who)
     (hchoiceRight :
       (right.localHistoryView who).currentView.point.IsChoiceFor who) :
-    HEq (strategy (left.localHistoryView who) hstartLeft hchoiceLeft)
-      (strategy (right.localHistoryView who) hstartRight hchoiceRight) :=
-  query_heq_of_view_eq (L := L) strategy hsame
-    hstartLeft hstartRight hchoiceLeft hchoiceRight
+    HEq
+      (strategy
+        (SourceReachableInfoState.ofHistory (L := L)
+          left hstartLeft who)
+        hchoiceLeft)
+      (strategy
+        (SourceReachableInfoState.ofHistory (L := L)
+          right hstartRight who)
+        hchoiceRight) :=
+  query_heq_of_view_eq (L := L) strategy
+    (by
+      simpa [SourceReachableInfoState.ofHistory] using hsame)
+    hchoiceLeft hchoiceRight
 
 end SourceStrategy
 
@@ -235,20 +272,22 @@ noncomputable def stepKernel {start : SourceConfig P L}
         ⟨startCfg, labels,
           ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩
       let view := history.localHistoryView who
-      have hstartView : view.startPoint = start.programPoint := by
-        simpa [view, history, SourceHistoryPoint.localHistoryView] using
-          congrArg SourceConfig.programPoint hstart
+      let info : SourceReachableInfoState (L := L) start who :=
+        SourceReachableInfoState.ofHistory history (by
+          simpa [history] using hstart) who
       have hchoice :
-          view.currentView.point.IsChoiceFor who := by
-        simp [view, history, SourceHistoryPoint.localHistoryView,
+          info.1.currentView.point.IsChoiceFor who := by
+        simp [history, SourceHistoryPoint.localHistoryView,
           SourceConfig.localView, SourceConfig.programPoint,
-          SourceProgramPoint.IsChoiceFor]
+          SourceProgramPoint.IsChoiceFor, info,
+          SourceReachableInfoState.ofHistory]
       exact PMF.map
         (fun choice => by
           have hguard :
               evalGuard (Player := P) (L := L) guard choice.1
                 ((env.toView who).eraseEnv) = true := by
-            simpa [SourceViewChoice, view, history,
+            simpa [SourceViewChoice, view, history, info,
+              SourceReachableInfoState.ofHistory,
               SourceHistoryPoint.localHistoryView, SourceConfig.localView,
               SourceConfig.visibleEnv, SourceConfig.programPoint] using
               choice.2
@@ -259,7 +298,7 @@ noncomputable def stepKernel {start : SourceConfig P L}
                 (LStep.commit guard tail choice.1 hguard))
             start_eq := hstart
             normalized := hnorm })
-        (profile who view hstartView hchoice)
+        (profile who info hchoice)
   | reveal y who x hx tail =>
       exact PMF.pure
         { history :=

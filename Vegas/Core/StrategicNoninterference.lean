@@ -34,13 +34,13 @@ type cast. -/
 theorem commitSecret_query_heq
     {strategyStart : SourceConfig P L} {who owner : P} (hne : who ≠ owner)
     (strategy : SourceStrategy (L := L) strategyStart who)
-    {sourceStart : SourceConfig P L} {labels : List (Label P L)}
+    {labels : List (Label P L)}
     {Γ : VCtx P L} {env : VEnv L Γ}
     {x : VarId} {b : L.Ty}
     {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx owner Γ)) L.bool}
     {tail : VegasCore P L ((x, .sealed owner b) :: Γ)}
     (prefixRun :
-      SourceConfig.LabeledStar sourceStart labels
+      SourceConfig.LabeledStar strategyStart labels
         { ctx := Γ, env := env, cont := VegasCore.commit x owner guard tail })
     (left right : L.Val b)
     (hleft : evalGuard (Player := P) (L := L) guard left
@@ -48,7 +48,7 @@ theorem commitSecret_query_heq
     (hright : evalGuard (Player := P) (L := L) guard right
       ((env.toView owner).eraseEnv) = true) :
     let leftHistory : SourceHistoryPoint P L :=
-      { start := sourceStart
+      { start := strategyStart
         labels := labels ++ [Label.commit x owner left]
         current :=
           { ctx := (x, .sealed owner b) :: Γ
@@ -59,7 +59,7 @@ theorem commitSecret_query_heq
             (SourceConfig.LabeledStar.single
               (LStep.commit guard tail left hleft)) }
     let rightHistory : SourceHistoryPoint P L :=
-      { start := sourceStart
+      { start := strategyStart
         labels := labels ++ [Label.commit x owner right]
         current :=
           { ctx := (x, .sealed owner b) :: Γ
@@ -69,28 +69,26 @@ theorem commitSecret_query_heq
           SourceConfig.LabeledStar.trans prefixRun
             (SourceConfig.LabeledStar.single
               (LStep.commit guard tail right hright)) }
-    ∀ (hstartLeft :
-        (leftHistory.localHistoryView who).startPoint =
-          strategyStart.programPoint)
-      (hstartRight :
-        (rightHistory.localHistoryView who).startPoint =
-          strategyStart.programPoint)
-      (hchoiceLeft :
+    ∀ (hchoiceLeft :
         (leftHistory.localHistoryView who).currentView.point.IsChoiceFor who)
       (hchoiceRight :
         (rightHistory.localHistoryView who).currentView.point.IsChoiceFor who),
       HEq
-        (strategy (leftHistory.localHistoryView who)
-          hstartLeft hchoiceLeft)
-        (strategy (rightHistory.localHistoryView who)
-          hstartRight hchoiceRight) := by
+        (strategy
+          (SourceReachableInfoState.ofHistory (L := L)
+            leftHistory rfl who)
+          hchoiceLeft)
+        (strategy
+          (SourceReachableInfoState.ofHistory (L := L)
+            rightHistory rfl who)
+          hchoiceRight) := by
   dsimp
-  intro hstartLeft hstartRight hchoiceLeft hchoiceRight
+  intro hchoiceLeft hchoiceRight
   exact
     query_heq_of_sameHistoryKnowledge (L := L) strategy
       (SourceHistoryPoint.commitSecret_noninterference (L := L)
         hne prefixRun left right hleft hright)
-      hstartLeft hstartRight hchoiceLeft hchoiceRight
+      rfl rfl hchoiceLeft hchoiceRight
 
 end SourceStrategy
 

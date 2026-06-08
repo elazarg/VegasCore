@@ -107,14 +107,15 @@ theorem instrCount_stepKernel_support_of_not_terminal
         ⟨startCfg, labels,
           ⟨Γ, env, VegasCore.commit x who guard tail⟩, run⟩
       let view := sourceHistory.localHistoryView who
-      have hstartView : view.startPoint = start.programPoint := by
-        simpa [view, sourceHistory, SourceHistoryPoint.localHistoryView] using
-          congrArg SourceConfig.programPoint hstart
+      let info : SourceReachableInfoState (L := L) start who :=
+        SourceReachableInfoState.ofHistory sourceHistory (by
+          simpa [sourceHistory] using hstart) who
       have hchoice :
-          view.currentView.point.IsChoiceFor who := by
-        simp [view, sourceHistory, SourceHistoryPoint.localHistoryView,
+          info.1.currentView.point.IsChoiceFor who := by
+        simp [sourceHistory, SourceHistoryPoint.localHistoryView,
           SourceConfig.localView, SourceConfig.programPoint,
-          SourceProgramPoint.IsChoiceFor]
+          SourceProgramPoint.IsChoiceFor, info,
+          SourceReachableInfoState.ofHistory]
       rw [stepKernel] at hsupport
       change
         next ∈
@@ -123,7 +124,8 @@ theorem instrCount_stepKernel_support_of_not_terminal
               have hguard :
                   evalGuard (Player := P) (L := L) guard choice.1
                     ((env.toView who).eraseEnv) = true := by
-                simpa [SourceViewChoice, view, sourceHistory,
+                simpa [SourceViewChoice, view, sourceHistory, info,
+                  SourceReachableInfoState.ofHistory,
                   SourceHistoryPoint.localHistoryView, SourceConfig.localView,
                   SourceConfig.visibleEnv, SourceConfig.programPoint] using
                   choice.2
@@ -134,7 +136,7 @@ theorem instrCount_stepKernel_support_of_not_terminal
                     (LStep.commit guard tail choice.1 hguard)
                 start_eq := hstart
                 normalized := hnorm })
-            (profile who view hstartView hchoice)).support at hsupport
+            (profile who info hchoice)).support at hsupport
       rcases (PMF.mem_support_map_iff _ _ _).mp hsupport with
         ⟨choice, _hchoiceSupport, hnext⟩
       rw [← hnext]
