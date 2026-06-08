@@ -1,4 +1,6 @@
 import Vegas.Frontier.SolutionConcepts
+import GameTheory.Concepts.Equilibrium.NashCorrelatedEq
+import GameTheory.Concepts.Correlation.CorrelatedNashMixed
 
 /-!
 # Solution-concept vocabulary
@@ -108,6 +110,44 @@ theorem pure_frontier_coarse_correlated_eq_iff_coarse_correlated_eq_for_eu_pref
   simpa [Vegas.WFProgram.PureFrontierCoarseCorrelatedEq] using
     GameTheory.KernelGame.IsCoarseCorrelatedEq_iff_IsCoarseCorrelatedEqFor_eu
       program.pureFrontierGame profile
+
+/-- A pure frontier Nash equilibrium, read as a point-mass distribution over
+pure frontier profiles, is a correlated equilibrium. -/
+theorem pure_frontier_nash_is_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.PureFrontierProfile}
+    (hNash : program.PureFrontierNash profile) :
+    program.PureFrontierCorrelatedEq (PMF.pure profile) := by
+  have hNash' : program.pureFrontierGame.IsNash profile := by
+    simpa [Vegas.WFProgram.PureFrontierNash] using hNash
+  simpa [Vegas.WFProgram.PureFrontierCorrelatedEq] using
+    GameTheory.KernelGame.nash_pure_isCorrelatedEq
+      (G := program.pureFrontierGame) hNash'
+
+/-- A pure frontier Nash equilibrium, read as a point-mass distribution over
+pure frontier profiles, is a coarse correlated equilibrium. -/
+theorem pure_frontier_nash_is_coarse_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.PureFrontierProfile}
+    (hNash : program.PureFrontierNash profile) :
+    program.PureFrontierCoarseCorrelatedEq (PMF.pure profile) := by
+  have hNash' : program.pureFrontierGame.IsNash profile := by
+    simpa [Vegas.WFProgram.PureFrontierNash] using hNash
+  simpa [Vegas.WFProgram.PureFrontierCoarseCorrelatedEq] using
+    GameTheory.KernelGame.nash_pure_isCoarseCorrelatedEq
+      (G := program.pureFrontierGame) hNash'
+
+/-- Every pure frontier correlated equilibrium is a pure frontier coarse
+correlated equilibrium. -/
+theorem pure_frontier_correlated_eq_is_coarse_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.PureFrontierCorrelatedProfile}
+    (hCE : program.PureFrontierCorrelatedEq profile) :
+    program.PureFrontierCoarseCorrelatedEq profile := by
+  have hCE' : program.pureFrontierGame.IsCorrelatedEq profile := by
+    simpa [Vegas.WFProgram.PureFrontierCorrelatedEq] using hCE
+  simpa [Vegas.WFProgram.PureFrontierCoarseCorrelatedEq] using
+    GameTheory.KernelGame.IsCorrelatedEq.toCoarseCorrelatedEq hCE'
 
 /-- A pure profile whose components are dominant frontier strategies is a
 frontier Nash equilibrium. -/
@@ -419,6 +459,45 @@ theorem mixed_pure_frontier_nash_exists_of_bounded
       program.MixedPureFrontierNash mixed :=
   program.mixedPureFrontier_nash_exists_of_bounded hbd
 
+/-- A bounded mixed-pure frontier Nash equilibrium induces a correlated
+equilibrium on pure frontier profiles via the independent product law. -/
+theorem mixed_pure_frontier_nash_is_pure_frontier_correlated_eq_of_bounded
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {C : P → ℝ}
+    (hbd :
+      ∀ player outcome,
+        |program.pureFrontierGame.utility outcome player| ≤ C player)
+    {profile : program.MixedPureFrontierProfile}
+    (hNash : program.MixedPureFrontierNash profile) :
+    program.PureFrontierCorrelatedEq
+      (Math.PMFProduct.pmfPi profile) := by
+  have hNash' :
+      program.pureFrontierGame.mixedExtension.IsNash profile := by
+    simpa [Vegas.WFProgram.MixedPureFrontierNash,
+      Vegas.WFProgram.MixedPureFrontierProfile,
+      Vegas.WFProgram.mixedPureFrontierGame,
+      Vegas.WFProgram.pureFrontierGame,
+      Vegas.ToEventGraph.FrontierGameSemantics.mixedPureGame] using hNash
+  simpa [Vegas.WFProgram.PureFrontierCorrelatedEq] using
+    GameTheory.KernelGame.mixed_nash_isCorrelatedEq_of_bounded
+      (G := program.pureFrontierGame) profile hNash' hbd
+
+/-- A bounded mixed-pure frontier Nash equilibrium induces a coarse correlated
+equilibrium on pure frontier profiles via the independent product law. -/
+theorem mixed_pure_frontier_nash_is_pure_frontier_coarse_correlated_eq_of_bounded
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {C : P → ℝ}
+    (hbd :
+      ∀ player outcome,
+        |program.pureFrontierGame.utility outcome player| ≤ C player)
+    {profile : program.MixedPureFrontierProfile}
+    (hNash : program.MixedPureFrontierNash profile) :
+    program.PureFrontierCoarseCorrelatedEq
+      (Math.PMFProduct.pmfPi profile) :=
+  pure_frontier_correlated_eq_is_coarse_correlated_eq program
+    (mixed_pure_frontier_nash_is_pure_frontier_correlated_eq_of_bounded
+      program hbd hNash)
+
 /-- Bounded correlated-equilibrium existence for the completed pure frontier
 payoff game. -/
 theorem pure_frontier_correlated_eq_exists_of_bounded
@@ -554,6 +633,44 @@ theorem behavioral_frontier_coarse_correlated_eq_iff_coarse_correlated_eq_for_eu
   simpa [Vegas.WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
     GameTheory.KernelGame.IsCoarseCorrelatedEq_iff_IsCoarseCorrelatedEqFor_eu
       program.behavioralFrontierGame profile
+
+/-- A behavioral frontier Nash equilibrium, read as a point-mass distribution
+over behavioral frontier profiles, is a correlated equilibrium. -/
+theorem behavioral_frontier_nash_is_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.BehavioralFrontierProfile}
+    (hNash : program.BehavioralFrontierNash profile) :
+    program.BehavioralFrontierCorrelatedEq (PMF.pure profile) := by
+  have hNash' : program.behavioralFrontierGame.IsNash profile := by
+    simpa [Vegas.WFProgram.BehavioralFrontierNash] using hNash
+  simpa [Vegas.WFProgram.BehavioralFrontierCorrelatedEq] using
+    GameTheory.KernelGame.nash_pure_isCorrelatedEq
+      (G := program.behavioralFrontierGame) hNash'
+
+/-- A behavioral frontier Nash equilibrium, read as a point-mass distribution
+over behavioral frontier profiles, is a coarse correlated equilibrium. -/
+theorem behavioral_frontier_nash_is_coarse_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.BehavioralFrontierProfile}
+    (hNash : program.BehavioralFrontierNash profile) :
+    program.BehavioralFrontierCoarseCorrelatedEq (PMF.pure profile) := by
+  have hNash' : program.behavioralFrontierGame.IsNash profile := by
+    simpa [Vegas.WFProgram.BehavioralFrontierNash] using hNash
+  simpa [Vegas.WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
+    GameTheory.KernelGame.nash_pure_isCoarseCorrelatedEq
+      (G := program.behavioralFrontierGame) hNash'
+
+/-- Every behavioral frontier correlated equilibrium is a behavioral frontier
+coarse correlated equilibrium. -/
+theorem behavioral_frontier_correlated_eq_is_coarse_correlated_eq
+    (program : Vegas.WFProgram P L) [FiniteDomains program]
+    {profile : program.BehavioralFrontierCorrelatedProfile}
+    (hCE : program.BehavioralFrontierCorrelatedEq profile) :
+    program.BehavioralFrontierCoarseCorrelatedEq profile := by
+  have hCE' : program.behavioralFrontierGame.IsCorrelatedEq profile := by
+    simpa [Vegas.WFProgram.BehavioralFrontierCorrelatedEq] using hCE
+  simpa [Vegas.WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
+    GameTheory.KernelGame.IsCorrelatedEq.toCoarseCorrelatedEq hCE'
 
 /-- A behavioral profile whose components are dominant frontier strategies is a
 frontier Nash equilibrium. -/

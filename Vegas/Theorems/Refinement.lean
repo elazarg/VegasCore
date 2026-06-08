@@ -854,9 +854,9 @@ theorem implTraceGame_correlatedUtilityLaw_surface
       profileLaw bridge.implTraceGame.udist surface.game.udist
       (fun profile _ => bridge.implTraceGame_udist_surface profile)
 
-/- Expected utilities agree between a trace-adequate implementation law and
+/-- Expected utilities agree between a trace-adequate implementation law and
 the frontier surface under bounded-utility hypotheses. -/
-private theorem implTraceGame_eu_surface_of_bounded
+theorem implTraceGame_eu_surface_of_bounded
     (bridge : RuntimeTraceAdequacy program surface R)
     {CImpl CFrontier : Player → ℝ}
     (hbdImpl :
@@ -885,9 +885,9 @@ private theorem implTraceGame_eu_surface_of_bounded
             surface.game.expect_udist_eq_eu_of_bounded
               profile player (hbdFrontier player)
 
-/- Correlated expected utilities agree between a trace-adequate implementation
+/-- Correlated expected utilities agree between a trace-adequate implementation
 law and the frontier surface under bounded-utility hypotheses. -/
-private theorem implTraceGame_correlatedEu_surface_of_bounded
+theorem implTraceGame_correlatedEu_surface_of_bounded
     (bridge : RuntimeTraceAdequacy program surface R)
     {CImpl CFrontier : Player → ℝ}
     (hbdImpl :
@@ -1028,6 +1028,55 @@ theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bound
                 hbdImpl hbdFrontier
                 (bridge.implTraceGame.constantDeviationDistribution
                   profileLaw player alternative) player).symm
+
+/-- Nash status is invariant between a trace-adequate implementation trace game
+and the frontier surface when utilities are bounded and the strategy profile is
+shared. -/
+theorem implTraceGame_nash_iff_surface_nash_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player)
+    (profile : ∀ player, surface.game.Strategy player) :
+    bridge.implTraceGame.IsNash profile ↔ surface.game.IsNash profile := by
+  constructor
+  · intro hNash player alternative
+    calc
+      surface.game.eu profile player =
+          bridge.implTraceGame.eu profile player := by
+            exact
+              (bridge.implTraceGame_eu_surface_of_bounded
+                hbdImpl hbdFrontier profile player).symm
+      _ ≥ bridge.implTraceGame.eu
+            (Function.update profile player alternative) player :=
+          hNash player alternative
+      _ = surface.game.eu
+            (Function.update profile player alternative) player := by
+            exact
+              bridge.implTraceGame_eu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (Function.update profile player alternative) player
+  · intro hNash player alternative
+    calc
+      bridge.implTraceGame.eu profile player =
+          surface.game.eu profile player := by
+            exact
+              bridge.implTraceGame_eu_surface_of_bounded
+                hbdImpl hbdFrontier profile player
+      _ ≥ surface.game.eu
+            (Function.update profile player alternative) player :=
+          hNash player alternative
+      _ = bridge.implTraceGame.eu
+            (Function.update profile player alternative) player := by
+            exact
+              (bridge.implTraceGame_eu_surface_of_bounded
+                hbdImpl hbdFrontier
+                (Function.update profile player alternative) player).symm
 
 /-- Expected utilities agree between a trace-adequate specification law and
 the frontier surface under bounded-utility hypotheses. -/
