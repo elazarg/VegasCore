@@ -1,6 +1,7 @@
 import Vegas.Machine.Refinement
 import Vegas.Machine.RefinementKernelGame
 import Vegas.Machine.Audited
+import Vegas.Machine.MessageInFlight
 import Vegas.Runtime.CodecMachine
 import Vegas.Frontier.SourceAdequacy
 import Vegas.Presentation.FOSG.FromCore
@@ -782,6 +783,27 @@ noncomputable def codec
           (ToEventGraph.compile program.core)) law.toFamily).compatible
         profile
 
+/-- Message-in-flight runtime adequacy for any trace-adequate primitive
+specification law. The implementation drains pending messages before each
+projected primitive event batch, so sends/deliveries are erased by refinement
+without changing the source trace law. -/
+noncomputable def messageInFlight
+    (Message : Player → Type)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      (Machine.messageInFlight.refinement (PrimitiveSpecMachine program)
+        Message) where
+  spec := law
+  impl :=
+    (Machine.messageInFlight.liftEventBatchLawFamily
+      (PrimitiveSpecMachine program) Message law.toFamily).impl
+  compatible := by
+    intro profile
+    exact
+      (Machine.messageInFlight.liftEventBatchLawFamily
+        (PrimitiveSpecMachine program) Message law.toFamily).compatible
+        profile
+
 /-- Generic refinement lift induced by the bridge's explicit spec and
 implementation law families. -/
 noncomputable def lift
@@ -835,6 +857,28 @@ noncomputable def lowerImpl
       Rlow.EventBatchLawFamilyLift surface.game.Strategy bridge.impl) :
     (lowerImpl bridge lower).impl = lower.impl :=
   rfl
+
+/-- Compose the codec runtime rung with a message-in-flight layer below it.
+This is the reusable two-rung backend shape: typed primitive machine, wire-store
+codec machine, then a pending-message runtime wrapper. -/
+noncomputable def codecMessageInFlight
+    (valueCodec : Runtime.ValueCodec L)
+    (Message : Player → Type)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      ((Runtime.ValueCodec.refinement valueCodec
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))).compose
+        (Machine.messageInFlight.refinement
+          (valueCodec.codecMachine
+            (ToEventGraph.primitiveMachineSpec
+              (ToEventGraph.compile program.core))) Message)) :=
+  (RuntimeTraceAdequacy.codec valueCodec law).lowerImpl
+    (Machine.messageInFlight.liftEventBatchLawFamily
+      (valueCodec.codecMachine
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))) Message
+      (RuntimeTraceAdequacy.codec valueCodec law).impl)
 
 /-- Specification primitive trace game realized by the strategy law family. -/
 noncomputable def specTraceGame

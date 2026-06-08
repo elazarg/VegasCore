@@ -287,6 +287,58 @@ noncomputable def claim_value_codec_runtime_trace_adequacy
           (ToEventGraph.compile program.core))) :=
   RuntimeTraceAdequacy.codec valueCodec law
 
+omit [Fintype P] in
+/-- The message-in-flight wrapper refines the primitive compiled machine by
+forgetting pending/delivered message buffers and erasing send/deliver events. -/
+noncomputable def claim_message_in_flight_refines_primitive_machine
+    (program : WFProgram P L)
+    (Message : P → Type) :
+    Machine.StochasticRefinement
+      (Machine.messageInFlight
+        (EventGraph.ToMachine.primitiveMachine
+          (ToEventGraph.primitiveMachineSpec
+            (ToEventGraph.compile program.core))) Message)
+      (EventGraph.ToMachine.primitiveMachine
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))) :=
+  Machine.messageInFlight.refinement
+    (EventGraph.ToMachine.primitiveMachine
+      (ToEventGraph.primitiveMachineSpec
+        (ToEventGraph.compile program.core))) Message
+
+/-- A trace-adequate primitive law becomes a trace-adequate
+message-in-flight runtime law by draining pending messages before each lifted
+primitive event batch. -/
+noncomputable def claim_message_in_flight_runtime_trace_adequacy
+    (program : WFProgram P L) [FiniteDomains program]
+    {surface : TraceGameSurface program}
+    (Message : P → Type)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      (Machine.messageInFlight.refinement
+        (EventGraph.ToMachine.primitiveMachine
+          (ToEventGraph.primitiveMachineSpec
+            (ToEventGraph.compile program.core))) Message) :=
+  RuntimeTraceAdequacy.messageInFlight Message law
+
+/-- The first composed backend rung: codec wire storage plus a
+message-in-flight layer still realizes any trace-adequate frontier surface. -/
+noncomputable def claim_value_codec_message_in_flight_runtime_trace_adequacy
+    (program : WFProgram P L) [FiniteDomains program]
+    {surface : TraceGameSurface program}
+    (valueCodec : Runtime.ValueCodec L)
+    (Message : P → Type)
+    (law : TraceSpecEventBatchLaw program surface) :
+    RuntimeTraceAdequacy program surface
+      ((Runtime.ValueCodec.refinement valueCodec
+        (ToEventGraph.primitiveMachineSpec
+          (ToEventGraph.compile program.core))).compose
+        (Machine.messageInFlight.refinement
+          (valueCodec.codecMachine
+            (ToEventGraph.primitiveMachineSpec
+              (ToEventGraph.compile program.core))) Message)) :=
+  RuntimeTraceAdequacy.codecMessageInFlight valueCodec Message law
+
 /-- Runtime refinements preserve the checked behavioral frontier utility
 distribution once the runtime supplies an adequate strategy-indexed event-batch
 law family. -/

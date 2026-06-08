@@ -1,4 +1,5 @@
 import Vegas.Machine.Refinement
+import Vegas.Machine.RefinementKernelGame
 
 /-!
 # Message-in-flight machine wrapper
@@ -1538,6 +1539,85 @@ noncomputable def refinement :
   utility_project := by
     intro outcome player
     rfl
+
+/-- Lift a source-machine event-batch law through the message-in-flight
+refinement by draining all pending messages and then running the lifted source
+batch. -/
+noncomputable def liftEventBatchLaw
+    (law : M.EventBatchLaw) :
+    (messageInFlight M Message).EventBatchLaw :=
+  fun trace =>
+    PMF.map
+      (fun batch =>
+        deliverAllThenEvents M Message trace.2.pending
+          (batch.map (liftEvent M Message)))
+      (law ((refinement M Message).projectEventBatchTrace trace))
+
+/-- Lifted message-in-flight laws preserve support-wide batch legality. -/
+theorem liftEventBatchLaw_legal
+    {law : M.EventBatchLaw}
+    (hlegal : M.IsLegalEventBatchLaw law) :
+    (messageInFlight M Message).IsLegalEventBatchLaw
+      (liftEventBatchLaw M Message law) := by
+  intro trace hnonterminal batch hbatch
+  unfold liftEventBatchLaw at hbatch
+  rcases (PMF.mem_support_map_iff _ _ _).mp hbatch with
+    ⟨specBatch, hspecBatch, hbatchEq⟩
+  subst batch
+  rcases trace with ⟨batches, state⟩
+  rcases state with ⟨source, pending, delivered⟩
+  have hsourceNonterminal : ¬ M.terminal source := by
+    intro hterminal
+    exact hnonterminal hterminal
+  exact
+    deliverAllThenLiftAvailableBatchFrom M Message pending delivered
+      hsourceNonterminal
+      (hlegal
+        ((refinement M Message).projectEventBatchTrace
+          (batches,
+            ({ source := source,
+               pending := pending,
+               delivered := delivered } :
+              (messageInFlight M Message).State)))
+        hsourceNonterminal hspecBatch)
+
+/-- The lifted message-in-flight law is compatible with the source law under
+the message-erasing refinement. -/
+theorem liftEventBatchLaw_compatible
+    (law : M.EventBatchLaw) :
+    (refinement M Message).EventBatchLawCompatible
+      (liftEventBatchLaw M Message law) law := by
+  intro trace
+  unfold liftEventBatchLaw
+  rw [PMF.map_comp]
+  change
+    PMF.map
+        (fun batch =>
+          projectEventBatch M Message
+            (deliverAllThenEvents M Message trace.2.pending
+              (batch.map (liftEvent M Message))))
+        (law ((refinement M Message).projectEventBatchTrace trace)) =
+      law ((refinement M Message).projectEventBatchTrace trace)
+  simp only [projectEventBatch_deliverAllThenEvents,
+    projectEventBatch_map_liftEvent]
+  change
+    PMF.map id (law ((refinement M Message).projectEventBatchTrace trace)) =
+      law ((refinement M Message).projectEventBatchTrace trace)
+  rw [PMF.map_id]
+
+/-- Lift a strategy-indexed source event-batch law family through the
+message-in-flight refinement. -/
+noncomputable def liftEventBatchLawFamily
+    {Strategy : Player → Type}
+    (family : M.EventBatchLawFamily Strategy) :
+    (refinement M Message).EventBatchLawFamilyLift Strategy family where
+  impl :=
+    { law := fun profile =>
+        liftEventBatchLaw M Message (family.law profile)
+      legal := fun profile =>
+        liftEventBatchLaw_legal M Message (family.legal profile) }
+  compatible := fun profile =>
+    liftEventBatchLaw_compatible M Message (family.law profile)
 
 end messageInFlight
 
