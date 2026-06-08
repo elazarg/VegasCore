@@ -221,6 +221,32 @@ namespace SourceConfig
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- Source guard legality is preserved by one labeled source step. -/
+theorem legal_of_lstep
+    {current next : SourceConfig P L} {label : Label P L}
+    (hstep : LStep current label next)
+    (hlegal : Legal current.cont) :
+    Legal next.cont := by
+  cases hstep with
+  | sample D tail value hvalue =>
+      simpa [Legal] using hlegal
+  | commit guard tail value hguard =>
+      simpa [Legal] using hlegal.2
+  | reveal hx tail =>
+      simpa [Legal] using hlegal
+
+/-- Source guard legality is preserved along labeled source runs. -/
+theorem legal_of_labeledStar
+    {start current : SourceConfig P L} {labels : List (Label P L)}
+    (hrun : LabeledStar start labels current)
+    (hlegal : Legal start.cont) :
+    Legal current.cont := by
+  induction hrun with
+  | refl cfg =>
+      exact hlegal
+  | cons hstep htail ih =>
+      exact ih (legal_of_lstep hstep hlegal)
+
 /-- Terminal source configurations report a concrete optional outcome. -/
 theorem outcome?_support_some_of_terminal
     {cfg : SourceConfig P L}
@@ -259,6 +285,21 @@ theorem sourceStrategicGame_support_terminal_at_instrCount
       (SourceStrategicHistory.initial
         (ToEventGraph.sourceStart program.core) program.core.normalized)
       state hsupport (by rfl)
+
+/-- Every source strategic history of a checked program carries a source suffix
+whose guard menus remain legal. -/
+theorem sourceStrategicHistory_current_legal
+    (program : WFProgram P L)
+    (state :
+      SourceStrategicHistory (L := L)
+        (ToEventGraph.sourceStart program.core)) :
+    Legal state.history.current.cont := by
+  have hstartLegal : Legal state.history.start.cont := by
+    rw [state.start_eq]
+    simpa [ToEventGraph.sourceStart, SourceConfig.initial] using
+      program.legal
+  exact
+    SourceConfig.legal_of_labeledStar state.history.run hstartLegal
 
 /-- At the source instruction-count horizon, the optional source outcome law
 only supports concrete outcomes. -/
