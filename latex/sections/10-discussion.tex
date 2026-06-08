@@ -6,10 +6,10 @@
 Three architectural commitments shape the construction.
 
 \paragraph{Dependency, not syntax, is the carrier of meaning.}
-The semantic carrier is the event graph, not the source program.  A
-consequence is that two source programs that elaborate to the same
-event graph are strategically indistinguishable by construction, not by
-an after-the-fact equivalence proof.  This frees the surface language to
+Meaning is factored through the event graph's dependency structure, not
+the source syntax.  A consequence is that two source programs that
+elaborate to the same event graph are strategically indistinguishable by
+construction, not by an after-the-fact equivalence proof.  This frees the surface language to
 add ergonomic constructors (simultaneous yields, nullable yields, future
 handlers) without changing the strategic semantics; lowering is the only
 translation that can change the event-graph shape.

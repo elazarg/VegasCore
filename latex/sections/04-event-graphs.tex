@@ -1,8 +1,9 @@
 \section{Event graphs}
 \label{sec:eventgraphs}
 
-The event graph is the semantic IR produced by core compilation.  It is
-small on purpose.  It does not store source names, source occurrences,
+The event graph is the dependency-structure IR produced by core
+compilation---the mechanism through which meaning is factored, not a
+semantic object competing with the program.  It is small on purpose.  It does not store source names, source occurrences,
 rank metadata, custom patch legality predicates, or action kernels
 parallel to node semantics.  Those are either source-layer data or
 derived from the node row.  The graph is therefore a typed dependency
