@@ -93,6 +93,29 @@ def ofHistory
     (ofHistory (L := L) history hstart who).1 =
       history.localHistoryView who := rfl
 
+/-- A concrete source history representing a reachable source information
+state. -/
+noncomputable def representativeHistory
+    {start : SourceConfig P L} {who : P}
+    (info : SourceReachableInfoState (L := L) start who) :
+    SourceHistoryPoint P L :=
+  Classical.choose info.2
+
+/-- The chosen representative starts from the information state's source
+start. -/
+theorem representativeHistory_start_eq
+    {start : SourceConfig P L} {who : P}
+    (info : SourceReachableInfoState (L := L) start who) :
+    (info.representativeHistory (L := L)).start = start :=
+  (Classical.choose_spec info.2).1
+
+/-- The chosen representative realizes the information state's local view. -/
+theorem representativeHistory_localHistoryView
+    {start : SourceConfig P L} {who : P}
+    (info : SourceReachableInfoState (L := L) start who) :
+    (info.representativeHistory (L := L)).localHistoryView who = info.1 :=
+  (Classical.choose_spec info.2).2
+
 end SourceReachableInfoState
 
 /-- A behavioral source strategy for one player.
