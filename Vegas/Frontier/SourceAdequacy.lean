@@ -187,7 +187,7 @@ theorem buildResult_evalPayoffs?_eq_sourceRun
             (evalPayoffs result.sourcePayoffs
               (cast (congrArg (VEnv L) hctx) final.env)) := by
   rcases sourceRun_reachableConfig g hrun hterminal with
-    ⟨hctx, state, hterminalGraph, available, henv⟩
+    ⟨state, hterminalGraph, hctx, available, henv⟩
   refine ⟨hctx, state, hterminalGraph, ?_⟩
   have hadeq :=
     (buildResult g).evalPayoffs?_eq_sourceAtTerminal state hterminalGraph

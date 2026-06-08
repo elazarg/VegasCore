@@ -2093,6 +2093,23 @@ def sourceStart (g : GraphProgram P L) : SourceConfig P L where
   env := g.env
   cont := g.prog
 
+/-- `store` reconstructs a terminal source run's environment through the compiler
+dictionary: at the terminal context, reading `store` back with `sourceEnvOfStore`
+returns the run's final environment. This packages the recurring
+`∃ hctx, ∃ available, sourceEnvOfStore … = cast … final.env` payload shared by the
+forward and reverse correspondence theorems. -/
+def StoreReconstructs (g : GraphProgram P L) (store : Store L)
+    (final : SourceConfig P L) : Prop :=
+  ∃ hctx : final.ctx = (buildResult g).terminalCtx,
+    ∃ available :
+      ∀ {name bindTy}
+        (h : VHasVar (buildResult g).terminalCtx name bindTy),
+        ∃ value,
+          Store.getAs store ((buildResult g).terminalState.fieldOf h)
+            bindTy.base = some value,
+      sourceEnvOfStore (buildResult g).terminalState store available =
+        cast (congrArg (VEnv L) hctx) final.env
+
 /-- **Representation.** A terminal source run's own labelled values, injected
 into the compiled graph in canonical source/node order, reconstruct the source
 run's terminal environment through the compiler dictionary. -/
@@ -2103,19 +2120,8 @@ theorem sourceEnv_runConfig
     (hterminal : final.IsTerminal) :
     let result := buildResult g
     ∃ hlen : labels.length = result.graph.nodeCount,
-      ∃ hctx : final.ctx = result.terminalCtx,
-        ∃ available :
-          ∀ {name bindTy}
-            (h : VHasVar result.terminalCtx name bindTy),
-            ∃ value,
-              Store.getAs
-                (canonicalLabelStore result.graph labels hlen)
-                (result.terminalState.fieldOf h) bindTy.base =
-                  some value,
-          sourceEnvOfStore result.terminalState
-              (canonicalLabelStore result.graph labels hlen)
-              available =
-            cast (congrArg (VEnv L) hctx) final.env := by
+      StoreReconstructs g
+        (canonicalLabelStore result.graph labels hlen) final := by
   let init := initialState g.Γ g.env g.wctx
   let state := BuildState.fromInitial init
   let result := compileCore g.prog g.fresh g.normalized state
@@ -2201,18 +2207,9 @@ theorem sourceRun_reachableConfig
     (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
     (hterminal : final.IsTerminal) :
     let result := buildResult g
-    ∃ hctx : final.ctx = result.terminalCtx,
-      ∃ state : ReachableConfig result.graph,
-        Terminal result.graph state.1 ∧
-        ∃ available :
-          ∀ {name bindTy}
-            (h : VHasVar result.terminalCtx name bindTy),
-            ∃ value,
-              Store.getAs state.1.store
-                (result.terminalState.fieldOf h) bindTy.base =
-                  some value,
-          sourceEnvOfStore result.terminalState state.1.store available =
-            cast (congrArg (VEnv L) hctx) final.env := by
+    ∃ state : ReachableConfig result.graph,
+      Terminal result.graph state.1 ∧
+        StoreReconstructs g state.1.store final := by
   let init := initialState g.Γ g.env g.wctx
   let state := BuildState.fromInitial init
   let result := compileCore g.prog g.fresh g.normalized state
@@ -2248,7 +2245,7 @@ theorem sourceRun_reachableConfig
             (result.terminalState.fieldOf h) bindTy.base = some value := by
     intro name bindTy h
     exact ⟨_, hagree h⟩
-  refine ⟨hctx, reachableState, hterminalGraph, available, ?_⟩
+  refine ⟨reachableState, hterminalGraph, hctx, available, ?_⟩
   simpa [reachableState] using
     sourceEnvOfStore_eq_of_storeAgree
       (state := result.terminalState)
@@ -2269,18 +2266,7 @@ structure SourceReplay
   final : SourceConfig P L
   run : SourceConfig.LabeledStar (sourceStart g) labels final
   sourceTerminal : final.IsTerminal
-  envEq :
-    ∃ hctx : final.ctx = (buildResult g).terminalCtx,
-      ∃ available :
-        ∀ {name bindTy}
-          (h : VHasVar (buildResult g).terminalCtx name bindTy),
-          ∃ value,
-            Store.getAs state.1.store
-              ((buildResult g).terminalState.fieldOf h) bindTy.base =
-                some value,
-        sourceEnvOfStore (buildResult g).terminalState state.1.store
-            available =
-          cast (congrArg (VEnv L) hctx) final.env
+  envEq : StoreReconstructs g state.1.store final
 
 /-- Any reachable terminal compiled graph state can be replayed in canonical
 source order. -/
@@ -2406,17 +2392,7 @@ theorem sourceRun_of_replay
       ∃ final : SourceConfig P L,
         SourceConfig.LabeledStar (sourceStart g) labels final ∧
         final.IsTerminal ∧
-        ∃ hctx : final.ctx = (buildResult g).terminalCtx,
-          ∃ available :
-            ∀ {name bindTy}
-              (h : VHasVar (buildResult g).terminalCtx name bindTy),
-              ∃ value,
-                Store.getAs state.1.store
-                  ((buildResult g).terminalState.fieldOf h) bindTy.base =
-                    some value,
-            sourceEnvOfStore (buildResult g).terminalState state.1.store
-                available =
-              cast (congrArg (VEnv L) hctx) final.env := by
+        StoreReconstructs g state.1.store final := by
   exact
     ⟨replay.labels, replay.final, replay.run, replay.sourceTerminal,
       replay.envEq⟩
@@ -2456,16 +2432,8 @@ theorem sourceEnv_runStore_exists
     {labels : List (Label P L)} {final : SourceConfig P L}
     (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
     (hterminal : final.IsTerminal) :
-    let result := buildResult g
-    ∃ hctx : final.ctx = result.terminalCtx,
-      ∃ terminalStore : Store L,
-        ∃ available :
-          ∀ {name bindTy}
-            (h : VHasVar result.terminalCtx name bindTy),
-            ∃ value, Store.getAs terminalStore
-              (result.terminalState.fieldOf h) bindTy.base = some value,
-          sourceEnvOfStore result.terminalState terminalStore available =
-            cast (congrArg (VEnv L) hctx) final.env := by
+    ∃ terminalStore : Store L,
+      StoreReconstructs g terminalStore final := by
   let init := initialState g.Γ g.env g.wctx
   let state := BuildState.fromInitial init
   let result := compileCore g.prog g.fresh g.normalized state
@@ -2494,7 +2462,7 @@ theorem sourceEnv_runStore_exists
           (result.terminalState.fieldOf h) bindTy.base = some value := by
     intro name bindTy h
     exact ⟨_, hagree h⟩
-  refine ⟨hctx, terminalStore, available, ?_⟩
+  refine ⟨terminalStore, hctx, available, ?_⟩
   simpa [result] using
     sourceEnvOfStore_eq_of_storeAgree
       (state := result.terminalState)
