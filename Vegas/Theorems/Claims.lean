@@ -278,6 +278,32 @@ theorem claim_source_prefix_commit_menu_iff_compiled_available
     program.core replay hnode value
 
 omit [Fintype P] in
+/-- Compiled commit availability survives frontier internal closure.  This is
+the scheduling bridge needed because canonical frontier checkpoints close ready
+internal graph work before querying strategic commit actions. -/
+theorem claim_compiled_commit_available_persists_through_internal_closure
+    (program : WFProgram P L)
+    (fuel : Nat)
+    {state dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    {who : P}
+    {action :
+      EventGraph.CommitAction
+        (ToEventGraph.compile program.core).graph who}
+    (havailable :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph state.1 who action)
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel state).support) :
+    EventGraph.CommitAvailable
+      (ToEventGraph.compile program.core).graph dst.1 who action :=
+  ToEventGraph.commitAvailable_persist_after_internalClosureTransition_support
+    (ToEventGraph.compile program.core) fuel havailable hsupport
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/
