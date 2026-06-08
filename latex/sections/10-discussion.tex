@@ -37,6 +37,21 @@ view algebra small (two erasures and a per-player view) and let
 guard-uses-only-style predicates be about \emph{dependency
 sets}, not about typing rules.
 
+\paragraph{Faithfulness comes in three shapes.}
+A single development can be held together by relations of genuinely
+different algebraic character, and the guarantees map
+(\Cref{fig:relations}) keeps them apart on purpose.  Schedule confluence
+and Kuhn equivalence are \emph{equivalences} and move results freely in
+either direction.  Compilation is an \emph{adequacy}: the graph is the
+program's meaning, recovered by theorem, and there is no symmetric
+``equal program'' relation hiding behind it.  Runtime refinement is an
+\emph{order}, and its asymmetry is load-bearing rather than incidental ---
+specification equilibria pull back to an implementation, but the converse
+is a separate (and currently unproved) statement.  Reading the surface as
+``a bunch of equivalence theorems'' loses exactly this structure; reading
+it as one equivalence, one adequacy, and one order makes the end-to-end
+guarantee a short composite.
+
 \subsection{Related and parallel artifacts}
 \label{sec:disc:related-artifacts}
 
@@ -91,6 +106,20 @@ and sequential equilibria~\citep{KrepsWilson1982}) are not yet exposed
 because the event-graph view does not maintain a sub-game decomposition;
 this requires an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
+
+\paragraph{No source-native strategic semantics.}  Strategies, profiles,
+and equilibria live on the compiled frontier games, not on
+\(\mathsf{VegasCore}\) source.  The source layer supplies the
+\emph{ingredients} of a strategy --- commit menus (the legal action set
+at a choice point), per-player views, and choice-point classification ---
+but no strategy object, source game, or source equilibrium is assembled
+from them.  A consequence is that source-payoff adequacy (R2) is stated
+for outcomes only; ``my program's equilibria are the frontier game's
+equilibria'' holds by the \emph{definition} of strategic meaning (the
+frontier construction), not as a theorem against an independent
+source-native semantics.  Building source strategies and a source game,
+then proving frontier adequacy for them, would be the strategic analogue
+of R2 and is the most fundamental open item.
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
 PMF-behavioral strategy carriers are native round-view carriers over the

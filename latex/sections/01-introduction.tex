@@ -206,6 +206,118 @@ the utility function.  The source-payoff adequacy theorems prove that
 the outcomes used there are exactly the source payoffs evaluated at
 terminal graph states.
 
+\subsection{A map of the guarantees: five relations, three shapes}
+\label{sec:intro:relations}
+
+The semantic spine of \Cref{sec:intro:spine} lists the \emph{objects}.
+The development is easier to hold in one's head, however, through the
+\emph{relations} that connect them.  There are five, and the recurring
+source of confusion is that they look alike (``two things that mean the
+same'') while being structurally different.  Separating them by
+\emph{algebraic shape} --- an equivalence, an adequacy, or an order ---
+makes each one answer a single question: \emph{what may I forget?}
+
+\begin{description}[itemsep=2pt,leftmargin=1.3em,style=nextline]
+\item[\textnormal{R1.} Schedule confluence \quad{\small(equivalence,
+  inside one graph)}.]
+  Two completions of the same graph in different orders reach the same
+  terminal state, and batch-independent events commute
+  (\Cref{thm:diamond,thm:barrier}).  \emph{Forget:} the order in which
+  independent events were scheduled.
+\item[\textnormal{R2.} Source\,$\to$\,graph adequacy \quad{\small(adequacy,
+  across \texttt{compile})}.]
+  The compiled graph \emph{is} the program's denotation: terminal
+  outcomes are the source payoffs reconstructed from the terminal store
+  (\Cref{sec:eg:adequacy}).  This is one-directional --- a faithfulness
+  theorem, not a symmetric equivalence between arbitrary programs and
+  graphs.  \emph{Forget:} the source syntax.
+\item[\textnormal{R3.} Presentation equivalence \quad{\small(equivalence,
+  across a presentation)}.]
+  The FOSG and EFG presentations carry the same utility distribution as
+  the native frontier game (\Cref{thm:fosg,thm:efg}).  \emph{Forget:}
+  which game-form a result was stated in.
+\item[\textnormal{R4.} Strategic (Kuhn) equivalence \quad{\small(equivalence,
+  inside the strategic layer)}.]
+  Behavioral and product mixed-pure frontier play agree on outcome laws
+  \emph{and} match one-player deviations, so they transport solution
+  concepts, not merely payoffs
+  (\Cref{thm:kuhn-beh-to-mixed,thm:kuhn-mixed-to-beh,thm:kuhn-strategic-equivalence}).%
+  \statusnote{The behavioral\,$\leftrightarrow$\,mixed-pure pair is a full
+  two-way equivalence with deviation matching; the correlated-pure
+  direction is mechanized only as a one-way outcome-law realization.}
+  \emph{Forget:} which strategy carrier a player reasons with.
+\item[\textnormal{R5.} Runtime refinement \quad{\small(order,
+  across an implementation)}.]
+  An implementation machine refines the primitive machine by projection,
+  and --- given an adequate trace law --- preserves the frontier game's
+  utilities (\Cref{thm:runtime-trace}).  Unlike R1--R4 this is an
+  \emph{order}: its facts are directional (specification Nash pulls back
+  to the implementation, not conversely).%
+  \statusnote{Refinement currently pulls back individual Nash profiles
+  one-way; a two-sided ``the backend introduces no spurious equilibria''
+  (equilibrium-set) result is future work.}
+  \emph{Forget:} which administrative runtime details were erased.
+\end{description}
+
+\Cref{fig:relations} draws these as labelled edges on the object spine.
+Reading the runtime question end-to-end --- ``why does a theorem about a
+backend say anything about my program?'' --- is exactly a walk through the
+composite: R5 lands on the frontier game, R4/R3 say that game is carrier-
+and presentation-independent, R1 says the graph underneath is
+schedule-independent, and R2 says the graph is the program.  Each edge is
+a separate theorem with its own proof technique, which is why naming them
+apart is worth the trouble.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=2.2mm]},
+  font=\small,
+  obj/.style={draw, rounded corners, align=center, inner sep=3pt,
+              minimum height=8mm, text width=30mm, fill=blue!8},
+  side/.style={obj, fill=green!8, text width=30mm},
+  impl/.style={obj, fill=black!4},
+  rel/.style={->, thick},
+  rlab/.style={font=\scriptsize, align=center},
+]
+% spine
+\node[obj]  (prog)  at (0,0)    {Protocol program};
+\node[obj]  (graph) at (0,-1.9)  {Event graph};
+\node[obj]  (mach)  at (0,-3.8)  {Primitive machine};
+\node[side] (game)  at (5.6,-1.9){Frontier game\\{\footnotesize beh.\,$\cong$\,mixed-pure}};
+\node[side] (pres)  at (5.6,-3.8){FOSG / EFG};
+\node[impl] (impl)  at (0,-5.7)  {Impl.\ machine};
+% R2 adequacy
+\draw[rel] (prog) -- node[rlab,right=1mm]{R2~$\adeq$\\{\scriptsize adequacy}} (graph);
+% R1 confluence: self relation on graph
+\draw[rel,<->] (graph.west) .. controls +(-1.7,0.5) and +(-1.7,-0.5) .. (graph.west)
+  node[rlab,left=10mm,pos=0.5]{R1~$\eqrel$\\{\scriptsize confluence}};
+% execute
+\draw[rel] (graph) -- node[rlab,right=1mm]{execute} (mach);
+% R4 frontier view + equivalence inside game noted in node
+\draw[rel] (mach.east) .. controls +(2.4,0) and +(-1.6,0) .. (game.west)
+  node[rlab,pos=0.5,above]{frontier\\view};
+\node[rlab] at (5.6,-0.85) {R4~$\eqrel$ \scriptsize(Kuhn)};
+% R3 presentation
+\draw[rel] (game) -- node[rlab,right=1mm]{R3~$\eqrel$\\{\scriptsize presentation}} (pres);
+% R5 refinement (order, upward)
+\draw[rel] (impl) -- node[rlab,right=1mm]{R5~$\ordrel$\\{\scriptsize refinement}} (mach);
+% legend
+\node[draw, rounded corners, align=left, font=\scriptsize, fill=white,
+      inner sep=4pt, anchor=north west] at (3.0,-5.2)
+  {$\eqrel$~equivalence \;(symmetric)\\
+   $\adeq$~adequacy \;(one object \emph{is} the other's meaning)\\
+   $\ordrel$~refinement \;(an order; directional facts)};
+\end{tikzpicture}
+\caption{The five faithfulness relations, by shape.  Equivalences
+($\eqrel$) let a result move freely; adequacy ($\adeq$) is the
+one-directional bridge from source syntax into the source-free graph; the
+refinement order ($\ordrel$) carries directional guarantees up from a
+concrete backend.  The end-to-end claim ``a backend preserves my
+program's game'' is the composite R5\,;\,R4/R3\,;\,R1\,;\,R2.}
+\label{fig:relations}
+\end{figure}
+
 \subsection{Where runtime backends fit}
 \label{sec:intro:runtime-backends}
 
@@ -260,7 +372,13 @@ theorem surface is organized around the following claims.
 \item \textbf{Frontier semantics.}  Pure, behavioral, and product
   mixed-pure frontier games are defined from the canonical frontier
   round view.  Their outcome kernels are source-payoff projections of
-  the same canonical run distribution.
+  the same canonical run distribution.%
+  \statusnote{Strategies are carried by the compiled frontier round view,
+  not by the source syntax: the source language exposes the ingredients
+  of a strategy (commit menus, per-player views, choice points) but no
+  strategy object over \(\mathsf{VegasCore}\) itself.  A source-native
+  strategic semantics, and its adequacy to the frontier game (the
+  strategic analogue of source-payoff adequacy R2), is future work.}
 \item \textbf{FOSG and EFG presentations.}  The FOSG and EFG layers are
   payoff-faithful presentations of the frontier semantics.
 \item \textbf{Kuhn.}  Behavioral and product mixed-pure frontier profiles

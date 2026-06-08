@@ -104,6 +104,18 @@
 % ── Refinement ────────────────────────────────────────────────────────
 \newcommand{\refines}{\sqsubseteq}
 
+% ── Faithfulness-relation shapes (the "forest" vocabulary) ────────────
+% Symbols used in the guarantees map: an equivalence, a (one-directional)
+% adequacy, and a refinement order.
+\newcommand{\eqrel}{\cong}            % equivalence (symmetric)
+\newcommand{\adeq}{\vDash}            % adequacy: right object IS the denotation
+\newcommand{\ordrel}{\sqsubseteq}     % refinement order
+
+% ── Non-intrusive "status / not-yet-mechanized" note ──────────────────
+% A footnote that flags an aspirational or partial item without breaking
+% the surrounding narrative.  Used sparingly.
+\newcommand{\statusnote}[1]{\footnote{\textit{Status.}~#1}}
+
 % ── Boxes for design notes / Lean correspondence ──────────────────────
 \newcommand{\leancorr}[1]{%
   \par\smallskip

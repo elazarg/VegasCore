@@ -198,6 +198,47 @@ strategic games.  The vertical refinement edge relates a lower-level
 implementation machine to the primitive machine, and is the subject of the
 runtime-refinement transport theorems.
 
+\subsection{The five faithfulness relations, by Lean home}
+
+The forward arrows above are objects and constructions; the proof content
+lives in the relations \emph{between} those objects.  The main report's
+guarantees map groups them by algebraic shape; the table below records
+where each one is mechanized, which is the useful index when reading the
+code rather than the narrative.
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.05\textwidth}p{0.30\textwidth}p{0.55\textwidth}@{}}
+\toprule
+ & Relation (shape) & Lean home \\
+\midrule
+R1 & schedule confluence (equiv.) &
+  \TT{EventGraph.Confluence}, \TT{EventGraph.Fence}, \TT{EventGraph.Batch}
+  (\TT{scheduleComplete\_eq\_of\_full}, \TT{two\_event\_swap}). \\
+R2 & source\,$\to$\,graph adequacy &
+  \TT{Compile.SourceBridge}, \TT{Compile.ValueBridge},
+  \TT{Frontier.SourceAdequacy}, \TT{Theorems.Outcome}. \\
+R3 & presentation equivalence (equiv.) &
+  \TT{Presentation.FOSG}, \TT{Presentation.EFG}, \TT{Export}. \\
+R4 & Kuhn strategic equivalence (equiv.) &
+  \TT{Frontier.Kuhn}, \TT{Machine.Kuhn},
+  \TT{frontierKuhnStrategicEquivalence}. \\
+R5 & runtime refinement (order) &
+  \TT{Machine.Refinement}, \TT{Theorems.Refinement}
+  (\TT{StochasticRefinement}, \TT{RuntimeTraceAdequacy}). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+The generic strategic-transport vocabulary these instantiate is supplied
+by the \TT{GameTheory} dependency, not by VegasCore: \TT{KernelGame.Morphism}
+and \TT{EUMorphism}, the one- and two-way deviation simulations
+\TT{NashDeviationSimulation} / \TT{NashDeviationBisimulation} (with
+\TT{refl}/\TT{comp}/\TT{symm}, so strategic refinements compose and
+strategic equivalences form a groupoid), and the
+Nash\,$\subseteq$\,correlated\,$\subseteq$\,coarse-correlated lattice.
+VegasCore's strategic theorems are instances of this vocabulary.
+
 \begin{center}\small
 \begin{tabular}{@{}p{0.30\textwidth}p{0.60\textwidth}@{}}
 \toprule
@@ -599,9 +640,10 @@ source-free event graphs, checkpoint progress, terminal source-payoff
 adequacy, native frontier payoff adequacy, FOSG and EFG presentation
 adequacy, native frontier Kuhn realization, round-view locality of
 behavioral strategies, and runtime-refinement transport for utility
-distributions and Nash profiles.  The implementation-facing theorem map
-is maintained in \TT{docs/semantics-spine.md}; this supplement records
-the semantic categories rather than a second exhaustive theorem list.
+distributions and Nash profiles.  The build-checked theorem index is
+\TT{Vegas.Theorems.Claims} and the build-checked definition index is
+\TT{Vegas.Spec}; this supplement records the semantic categories rather
+than a second exhaustive theorem list.
 
 \section{Examples and Tests}
 

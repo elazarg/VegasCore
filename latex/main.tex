@@ -50,12 +50,19 @@ game theorist or solver expects: pure, behavioral, and product
 mixed-pure kernel games.  FOSG and EFG objects are derived, payoff-faithful
 presentations of the same frontier semantics.
 
-The mechanized theorem surface proves compilation to well-formed graphs,
-checkpoint progress, visibility properties, and source-payoff adequacy.
-It also proves frontier/FOSG/EFG utility-law adequacy, finite Kuhn
-strategic equivalence for frontier strategies and one-player deviations,
-and runtime trace adequacy for composable stochastic refinements.  The
-refinement layer is deliberately runtime-general.  Smart-contract
+The mechanized theorem surface is best read not as a list of theorems
+but as a small family of \emph{faithfulness relations} of three
+algebraic shapes: schedule confluence and Kuhn strategic equivalence are
+\emph{equivalences}; compilation is an \emph{adequacy} (the graph is the
+program's denotation, recovered by theorem, not a symmetric equivalence);
+and runtime refinement is an \emph{order} (a backend refines the
+primitive machine, with guarantees that are directional).  Concretely it
+proves compilation to well-formed graphs, checkpoint progress, visibility
+properties, and source-payoff adequacy; frontier/FOSG/EFG utility-law
+adequacy; finite Kuhn strategic equivalence for frontier strategies and
+one-player deviations; and runtime trace adequacy for composable
+stochastic refinements.  The end-to-end guarantee is the composite of
+these relations.  The refinement layer is deliberately runtime-general.  Smart-contract
 runtimes, payment-channel state machines, and local simulators can all be
 related to the primitive event-graph machine by supplying state, event,
 observation, and outcome projections plus compatible event-batch laws.
