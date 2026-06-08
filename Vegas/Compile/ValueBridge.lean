@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.SourceBridge
 import Vegas.Core.Trace
+import Vegas.EventGraph.Linearization
 
 /-!
 # Source-to-graph bridge: the value dimension
@@ -172,6 +173,45 @@ theorem StoreAgree_fromInitial_initialStore
   simpa [StoreAgree, BuildState.fromInitial] using
     initialState_initialStore_get
       (env := env) (wctx := wctx) nodes h
+
+/-- Writing the field allocated by `addEvent` extends store agreement from the
+old source environment to the environment with the new head binding. -/
+theorem StoreAgree.addEvent
+    {Γ : VCtx P L} {state : BuildState P L Γ}
+    {env : VEnv L Γ} {store : Store L}
+    (hagree : StoreAgree state env store)
+    (name : VarId) (bindTy : BindTy P L) (sem : NodeSem P L)
+    (hfresh : Fresh name Γ)
+    (hnode :
+      ({ initialFields := state.initialFields,
+         nodes := state.nodes ++
+          [{ ty := bindTy.base, owner := bindTy.owner, sem := sem }] } :
+        Graph P L).nodeWFAt
+        state.nextNode
+        { ty := bindTy.base, owner := bindTy.owner, sem := sem })
+    (value : L.Val bindTy.base) :
+    StoreAgree
+      (state.addEvent name bindTy sem hfresh hnode).1
+      (VEnv.cons (x := name) (τ := bindTy) value env)
+      (Store.set store state.nextField
+        { ty := bindTy.base, value := value }) := by
+  intro query queryTy h
+  cases h with
+  | here =>
+      simp [BuildState.addEvent_fieldOf_here, Store.getAs,
+        TypedValue.as?]
+  | there htail =>
+      have hne :
+          state.fieldOf htail ≠ state.nextField := by
+        have hlt := state.fieldOf_lt htail
+        intro heq
+        unfold BuildState.nextField BuildState.nextNode at heq
+        omega
+      rw [BuildState.addEvent_fieldOf_there]
+      exact
+        (Store.getAs_set_ne store hne
+          { ty := bindTy.base, value := value } queryTy.base).trans
+          (hagree htail)
 
 end ToEventGraph
 
