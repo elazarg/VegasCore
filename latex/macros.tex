@@ -30,8 +30,6 @@
 % ── Types and values ──────────────────────────────────────────────────
 \newcommand{\Ty}{\mathsf{Ty}}
 \newcommand{\Val}{\mathsf{Val}}
-\newcommand{\Expr}{\mathsf{Expr}}
-\newcommand{\bool}{\mathsf{bool}}
 
 % ── Visibility annotations ────────────────────────────────────────────
 \newcommand{\pub}{\ensuremath{\mathsf{public}}}
@@ -49,10 +47,6 @@
 \newcommand{\Commit}{\ensuremath{\mathbf{commit}}}
 \newcommand{\Reveal}{\ensuremath{\mathbf{reveal}}}
 \newcommand{\Where}{\ensuremath{\mathbf{where}}}
-
-% Context cons. Wrapped in a macro so packages that split on ':' (e.g.
-% simplebnf alternatives) never see the literal '::'.
-\newcommand{\cons}{\mathbin{::}}
 
 % ── Small-step operational semantics ──────────────────────────────────
 \newcommand{\sconf}[3]{\langle #1 \mathrel{;} #2 \mathrel{;} #3 \rangle} % configuration
@@ -100,9 +94,6 @@
 \newcommand{\Kbeh}{K^{\mathrm{beh}}}
 \newcommand{\Kpure}{K^{\mathrm{pure}}}
 \newcommand{\Kmix}{K^{\mathrm{mix}}}
-
-% ── Refinement ────────────────────────────────────────────────────────
-\newcommand{\refines}{\sqsubseteq}
 
 % ── Faithfulness-relation shapes (the "forest" vocabulary) ────────────
 % Symbols used in the guarantees map: an equivalence, a (one-directional)

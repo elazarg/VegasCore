@@ -79,32 +79,36 @@ The main transport statement is:
 \begin{theorem}[Runtime trace adequacy]
 \label{thm:runtime-trace}
 Let \(S\) be a frontier trace game surface of a checked finite-domain
-program, and let an implementation machine refine the corresponding
-primitive compiled machine.  If the implementation supplies a
-strategy-indexed event-batch law compatible with a trace-adequate
-specification law, then the implementation trace game has the same joint
-utility distribution as \(S.\mathsf{game}\).
+program, and suppose the data of a \(\mathsf{RuntimeTraceAdequacy}\) for
+\(S\) is supplied: a stochastic refinement of the primitive compiled machine
+by an implementation machine, a trace-adequate specification event-batch law
+(\(\mathsf{TraceSpecEventBatchLaw}\)) whose finite trace distribution is the
+trace kernel of \(S\), and an implementation event-batch law family
+compatible with that refinement.  Then the implementation trace game has the
+same joint utility distribution as \(S.\mathsf{game}\).
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
 See \TT{Vegas.Theorems.Refinement.implTraceGame\_udist\_surface}.
 \end{proof}
 
-Under bounded-utility hypotheses, the implementation trace game indexed
-by that same frontier strategy type has \emph{exactly} the Nash
-equilibria of the selected frontier surface --- the two equilibrium sets
-coincide, so a compatible backend introduces no spurious equilibria (this
-holds for the behavioral, pure, and mixed-pure surfaces alike).  This is a
-restricted implementation game: it describes the concrete trace law
-induced by frontier strategies.  The boundedness assumptions convert the
-proved equality of utility distributions into expected-utility equality.
+A bounded-utility hypothesis upgrades this equality of utility distributions
+to expected-utility equality.  Here ``bounded'' constrains the compared
+\emph{trace} utilities, which at the runtime level may fold in economic costs;
+the frontier payoffs themselves are bounded by construction
+(\Cref{sec:prelim:notation}).  Under that hypothesis the implementation trace
+game indexed by the same frontier strategy type has \emph{exactly} the Nash
+equilibria of the selected frontier surface --- for the behavioral, pure, and
+mixed-pure surfaces alike --- so the two equilibrium sets coincide and a
+compatible backend introduces no spurious equilibria.
+
 The order's asymmetry is therefore not between specification and
 implementation at a fixed strategy space, but across strategy-space
-\emph{enlargement}: if implementation-level strategies have additional
-coordinates, such as an extra message channel, they must be ruled out by
-the observation model, proved inert, or modeled on the specification
-side, and for them only the one-way babbling/inert transport holds.  We
-expand this in \Cref{sec:ref:cheap-talk}.
+\emph{enlargement}: implementation strategies with additional coordinates,
+such as an extra message channel, must be ruled out by the observation model,
+proved inert, or modeled on the specification side, and for them only the
+one-way babbling/inert transport holds.  \Cref{sec:ref:cheap-talk} gives the
+three sound positions.
 
 \subsection{Extra messages and cheap talk}
 \label{sec:ref:cheap-talk}

@@ -78,6 +78,14 @@ every node finished, so every outcome is terminal --- presented as a single
 game; the history variants additionally retain the run history.  These are
 proof surfaces rather than separate user-facing denotations.
 
+To present completion as a \emph{total} game the construction runs to a fixed
+horizon equal to the instruction count and supplies a default outcome at that
+horizon.  This does not reintroduce the silent-zero payoff that
+\Cref{sec:machines} rules out: the run provably terminates before the horizon
+is reached, so the default outcome lies outside the support of every reachable
+play.  The default is a totalization device, exactly like the machine's stutter
+branch, never an assigned payoff.
+
 The distinction matters for reading the code.  The public user-facing
 objects are the payoff-vector frontier games.  The completed and history
 games retain more execution structure so the proofs can show exactly how
@@ -108,5 +116,7 @@ manually written normal-form payoff table.
 are \TT{pureFrontierGame}, \TT{behavioralFrontierGame}, and
 \TT{mixedPureFrontierGame}.  Program-facing solution-concept wrappers
 are in \TT{Vegas.Frontier.SolutionConcepts} and
-\TT{Vegas.Theorems.SolutionConcepts}.  Examples are in
-\TT{Vegas.Examples}.}
+\TT{Vegas.Theorems.SolutionConcepts}.  The completed-game horizon and its
+source-side termination-at-horizon lemmas (under which the default outcome is
+unreachable) are in the source-frontier development under
+\TT{Vegas.Frontier}.  Examples are in \TT{Vegas.Examples}.}

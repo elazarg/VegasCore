@@ -37,22 +37,17 @@ view algebra small (two erasures and a per-player view) and let
 guard-uses-only-style predicates be about \emph{dependency
 sets}, not about typing rules.
 
-\paragraph{Faithfulness comes in three shapes.}
-A single development can be held together by relations of genuinely
-different algebraic character, and the guarantees map
-(\Cref{fig:relations}) keeps them apart on purpose.  Schedule confluence
-and Kuhn equivalence are \emph{equivalences} and move results freely in
-either direction.  Compilation is an \emph{adequacy}: the graph is the
-program's meaning, recovered by theorem, and there is no symmetric
-``equal program'' relation hiding behind it.  Runtime refinement is an
-\emph{order}, and its asymmetry is load-bearing rather than incidental ---
-at a fixed (frontier) strategy space the implementation trace game has
-exactly the specification's equilibria, but a richer concrete strategy
-space can carry equilibria the specification does not, and that
-enlargement direction is genuinely one-way.  Reading the surface as
-``a bunch of equivalence theorems'' loses exactly this structure; reading
-it as one equivalence, one adequacy, and one order makes the end-to-end
-guarantee a short composite.
+\paragraph{Faithfulness comes in shapes, and the shapes matter.}
+The guarantees map (\Cref{fig:relations,sec:intro:relations}) keeps the five
+relations apart by algebraic character --- adequacy, equivalence, order ---
+because the distinctions are load-bearing, not cosmetic.  The clearest case is
+the refinement order: at a fixed (frontier) strategy space the implementation
+trace game has exactly the specification's equilibria, but a richer concrete
+strategy space can carry equilibria the specification does not, and that
+enlargement direction is genuinely one-way.  Reading the development as ``a
+bunch of equivalence theorems'' loses exactly this asymmetry; reading it as one
+adequacy, three equivalences, and one order makes the end-to-end guarantee a
+short composite.
 
 \begin{remark}[A probabilistic-programming reading]
 Structurally a VegasCore program is a probabilistic program whose latent
@@ -85,16 +80,22 @@ completeness, distribution normalization, guard liveness, payoff
 conservation, and backend refinement.
 
 \paragraph{ConCertLean as a contract-runtime target.}
-ConCertLean formalizes executable smart-contract chains in Lean:
-account balances, serialized contract state, typed contracts, contract
-calls, blocks, action queues, and induction principles for reachable
-traces.  This makes it a plausible lower-level target for the
-runtime-refinement API.  A backend package realizes a VegasCore event
-graph as one or more ConCertLean contracts and proves projection
-lemmas from ConCertLean chain states and calls to graph states and
-events.  The same structure gives a useful proof template: entry-point
-correctness, queue and block-step accounting, serialization soundness,
-and trace induction.
+ConCert~\citep{Annenkov2020ConCert} is a smart-contract certification
+framework in Rocq with an executable model of contract chains --- account
+balances, serialized contract state, typed contracts, contract calls, blocks,
+action queues, and induction principles for reachable traces.  We have ported
+its \emph{executable} fragment (leaving aside the deep-embedding and extraction
+subsystems) to Lean~4 as \emph{ConCertLean}~\citep{GershuniConCertLean},
+strengthening it in passing by discharging several upstream admits and
+correcting source-level bugs.  Being Lean-native, it is a plausible lower-level
+target for the runtime-refinement interface with no cross-prover boundary in
+the way.  At present it is only a target to plan toward: we have not built the
+backend package or proved any VegasCore-to-ConCertLean relationship.  Such a
+package would realize a VegasCore event graph as one or more ConCertLean
+contracts and prove projection lemmas from chain states and calls to graph
+states and events --- entry-point correctness, queue and block-step accounting,
+serialization soundness, and trace induction --- and establishing that
+relationship formally is left to future work.
 
 \subsection{Limitations}
 \label{sec:disc:limits}
@@ -126,25 +127,29 @@ this requires an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
 \paragraph{Source-native strategic semantics.}  Strategies, profiles, and
-equilibria live primarily on the compiled frontier games, but a
-source-native layer is also mechanized.  A source behavioral strategy is
-defined as a function of the player's source-local history view, inducing
-a source checkpoint game.  That game is proved --- unconditionally for
-finite-domain programs --- to share the frontier game's outcome law and to
-stand in a two-way Nash-deviation bisimulation with it, so Nash equilibria
-transport in both directions
-(\TT{claim\_source\_checkpoint\_behavioral\_frontier\_deviation\_bisimulation}).
-This is the strategic analogue of source-payoff adequacy, established on
-the checkpoint information surface, where a source-checkpoint strategy and
-a frontier behavioral strategy are the same object viewed through
-different outcome read-outs; so ``my program's equilibria are the frontier
-game's equilibria'' is here a theorem, not merely the definition of
-strategic meaning.  What remains open is the \emph{raw} source-local
-surface, whose strategies are functions of the unprocessed source history:
-the replay, reachable-configuration, and commit-menu equivalences it needs
-are mechanized, but the final Nash-deviation bridge between the raw source
-game and the frontier game (\TT{RawSourceFrontierNashDeviationBridge}) is
-currently stated as a hypothesis rather than constructed.
+equilibria live primarily on the compiled frontier games, but a source-native
+layer is also mechanized.  A source behavioral strategy is a function of the
+player's source-local history view, and it induces a source checkpoint game.
+That game is proved --- unconditionally for finite-domain programs --- to share
+the frontier game's outcome law and to stand in a two-way Nash-deviation
+bisimulation with it, so Nash equilibria transport in both directions.  This is
+the strategic analogue of source-payoff adequacy.  It is established on the
+checkpoint information surface, where a source-checkpoint strategy and a
+frontier behavioral strategy are the same object viewed through different
+outcome read-outs; on that surface ``my program's equilibria are the frontier
+game's equilibria'' is a theorem, not merely the definition of strategic
+meaning.  What remains open is the \emph{raw} source-local surface, whose
+strategies are functions of the unprocessed source history.  The replay,
+reachable-configuration, and commit-menu equivalences it needs are mechanized,
+but the final Nash-deviation bridge between the raw source game and the frontier
+game is currently stated as a hypothesis rather than constructed.
+
+\leancorr{The checkpoint-surface bisimulation is
+\TT{claim\_source\_checkpoint\_behavioral\_frontier\_deviation\_bisimulation};
+the open raw source-local obligation is the assumed hypothesis
+\TT{RawSourceFrontierNashDeviationBridge}.  Both are in
+\TT{Vegas.Theorems.Claims} over
+\TT{Vegas.Frontier.SourceStrategicAdequacy}.}
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
 PMF-behavioral strategy carriers are native round-view carriers over the
@@ -213,7 +218,7 @@ external typed-input interface.
 
 \paragraph{Concurrent and partial-information protocols at scale.}
 The event graph is naturally an event structure in the sense of
-\citet{Winskel1986EventStructures,NielsenPlotkinWinskel1981}.
+\citet{Winskel1987EventStructures,NielsenPlotkinWinskel1981}.
 Concurrent-game-semantic and process-calculus
 techniques~\citep{RideauWinskel2011Concurrent,
 CastellanYoshidaSessionGame,

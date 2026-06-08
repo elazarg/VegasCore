@@ -22,11 +22,14 @@ IR.
 
 \begin{theorem}[FOSG payoff adequacy]
 \label{thm:fosg}
-Let \(R\) be the canonical frontier round view of a checked program.
-Translating any native behavioral frontier profile for \(R\) to the
-exported FOSG preserves the joint utility distribution.  Conversely,
-every exported FOSG profile restricts to a native behavioral frontier
-profile with the same joint utility distribution.
+Let \(R\) be the canonical frontier round view of a checked program.  Two maps
+connect native behavioral frontier profiles for \(R\) with profiles of the
+exported FOSG --- a \emph{translation} from native to FOSG and a
+\emph{restriction} from FOSG back to native --- and each preserves the joint
+utility distribution.  Consequently the two games realize exactly the same set
+of joint utility distributions: every native profile's distribution is attained
+by its FOSG translation, and every FOSG profile's distribution is attained by
+its restriction to a native profile.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
@@ -70,6 +73,15 @@ at each reached decision point.  In VegasCore this is stated for the
 canonical frontier information model: players reason about reachable
 checkpoint observations and available menus induced by the checked
 program.  The main theorem has two directions.
+
+Kuhn's equivalence requires \emph{perfect recall} --- a player never forgets
+what they previously observed or chose.  The canonical frontier information
+model has this by construction: a player's reachable information state is their
+full checkpoint-observation history, and behavioral strategies are functions of
+exactly that history, so the round view discards no information across rounds.
+The round-view locality and canonical-information facts that record this are
+mechanized (see the Lean-correspondence note below); the directions below and
+the equilibrium transport they support both rest on it.
 
 Informally, the theorem says that the two common ways to randomize a
 strategy agree for these finite frontier games.  A player may either
@@ -130,4 +142,8 @@ facts are in \TT{Vegas.Frontier.Kuhn} and
 \TT{frontierKuhnStrategicEquivalence\_schema}, with individual
 deviation facts such as
 \TT{mixedPureFrontier\_mixedDeviation\_to\_behavioral\_kernel} and
-\TT{behavioralFrontier\_deviation\_to\_mixedPure\_kernel}.}
+\TT{behavioralFrontier\_deviation\_to\_mixedPure\_kernel}.  Perfect recall of
+the canonical information model is recorded by
+\TT{claim\_behavioral\_strategies\_are\_roundView\_local} and
+\TT{claim\_kuhn\_uses\_canonical\_roundView\_information} in
+\TT{Vegas.Theorems.Claims}.}

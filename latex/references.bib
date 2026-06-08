@@ -253,7 +253,7 @@
 % Concurrent and event-structure-based game/process semantics
 % ---------------------------------------------------------------------
 
-@incollection{Winskel1986EventStructures,
+@incollection{Winskel1987EventStructures,
   author    = {Glynn Winskel},
   title     = {Event Structures},
   booktitle = {Petri Nets: Applications and Relationships to Other Models of
@@ -490,6 +490,17 @@
   doi       = {10.1016/0304-3975(91)90224-P}
 }
 
+@article{Leroy2009CompCert,
+  author    = {Xavier Leroy},
+  title     = {Formal Verification of a Realistic Compiler},
+  journal   = {Communications of the {ACM}},
+  volume    = {52},
+  number    = {7},
+  pages     = {107--115},
+  year      = {2009},
+  doi       = {10.1145/1538788.1538814}
+}
+
 @incollection{Park1981Bisimulation,
   author    = {David Park},
   title     = {Concurrency and Automata on Infinite Sequences},
@@ -677,6 +688,30 @@
   doi       = {10.1145/3360611}
 }
 
+@inproceedings{Annenkov2020ConCert,
+  author    = {Danil Annenkov and Jakob Botsch Nielsen and Bas Spitters},
+  title     = {{ConCert}: A Smart Contract Certification Framework in {Coq}},
+  booktitle = {Proceedings of the 9th {ACM} {SIGPLAN} International Conference
+               on Certified Programs and Proofs ({CPP})},
+  pages     = {215--228},
+  publisher = {ACM},
+  year      = {2020},
+  doi       = {10.1145/3372885.3373829}
+}
+
+@misc{GershuniConCertLean,
+  author       = {Elazar Gershuni},
+  title        = {{ConCertLean}: A {Lean}~4 Port of {ConCert}'s Executable
+                  Smart-Contract Framework},
+  year         = {2025},
+  howpublished = {\url{https://github.com/elazarg/ConCertLean}},
+  note         = {Lean~4 port of the executable framework, examples, and
+                  application-level proofs (the non-meta, non-extraction
+                  fragment) of ConCert; builds with no
+                  \texttt{sorry}/\texttt{admit}, discharging several upstream
+                  admits and bugs along the way}
+}
+
 % ---------------------------------------------------------------------
 % Complexity
 % ---------------------------------------------------------------------
@@ -721,12 +756,17 @@
   doi       = {10.1109/CSF.2018.00022}
 }
 
-@misc{LeRoux2017NashCoqIsabelle,
+@inproceedings{LeRoux2017NashCoqIsabelle,
   author    = {St\'ephane Le Roux and \'Erik Martin-Dorel and Jan-Georg Smaus},
   title     = {An Existence Theorem of {Nash} Equilibrium in {Coq} and
                {Isabelle}},
+  booktitle = {Proceedings of the Eighth International Symposium on Games,
+               Automata, Logics and Formal Verification ({GandALF})},
+  series    = {Electronic Proceedings in Theoretical Computer Science},
+  volume    = {256},
+  pages     = {46--60},
   year      = {2017},
-  howpublished = {arXiv:1709.02096; Proc.\ GandALF 2017, EPTCS 256}
+  doi       = {10.4204/EPTCS.256.4}
 }
 
 @inproceedings{PomeretCoquot2023BelGames,

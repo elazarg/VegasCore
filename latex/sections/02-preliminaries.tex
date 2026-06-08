@@ -17,7 +17,11 @@ measure-theoretic kernels are out of scope (\Cref{sec:discussion}).
 For a type $\alpha$ with decidable equality, a \emph{probability mass
 function} is a finite-support function
 $\mu : \alpha \to [0,1]$ with $\sum_{x \in \mathrm{supp}(\mu)} \mu(x)
-= 1$.  We write $\PMF{\alpha}$ for the set of such functions.
+= 1$.  We write $\PMF{\alpha}$ for the set of such functions.  Because the
+masses sum to one, the support is nonempty: every PMF offers at least one
+value.  This is why a $\Sample$ step (\Cref{sec:source:sos}), which ranges
+over the support of a PMF, is always enabled --- there is no stuck
+nonterminal configuration arising from an empty draw.
 \end{definition}
 
 The PMF construction is a \emph{commutative monad}~\citep{Giry1982,Moggi1991}:
@@ -54,7 +58,8 @@ $\delta_x \in \PMF{\alpha}$ denotes the point mass at $x$, equal to
 $\mathsf{pure}(x)$.  For a finite player set $\Players$ and a family
 $\{\mu_p : \PMF{S_p}\}_{p \in \Players}$, the \emph{independent
 product} $\bigotimes_{p}\mu_p \in \PMF{\prod_p S_p}$ is the joint PMF
-$(\bigotimes_p \mu_p)(\sigma) = \prod_p \mu_p(\sigma_p)$.  We use the
+$(\bigotimes_p \mu_p)(s) = \prod_p \mu_p(s_p)$ on tuples $s = (s_p)_p$.
+We use the
 shorthand $\Kbeh, \Kpure, \Kmix$ for the behavioral, pure, and
 mixed-extension frontier kernel games introduced in
 \Cref{sec:fosg-kernel-games}.
@@ -99,11 +104,13 @@ Throughout the report, $\Players$ denotes a finite set of players with
 decidable equality, with generic player names $p, q$.  We also use:
 \begin{itemize}\itemsep1pt
 \item $\Outcome = \Players \to_0 \mathbb{Z}$, the type of public
-  finitely-supported integer payoff vectors, using zero as the default
-  payoff for unmentioned players (the notation
+  finitely-supported integer payoff vectors (the notation
   $\alpha \to_0 \beta$ denotes functions $\alpha \to \beta$ with
   finite support, i.e.\ taking the zero of $\beta$ outside a
-  finite set);
+  finite set).  A $\Ret$ supplies one payoff expression per player
+  (\Cref{fig:vegas-syntax}), so over a finite player set every player is
+  assigned a value and the zero default is only a representational
+  convenience, not a way to leave a player unscored;
 \item $u : \Outcome \to (\Players \to \mathbb{R})$ for the canonical
   utility (obtained by coercing each integer payoff to a real);
 \item $\Profile$ for a strategy profile and $\Profile_{-p}$ for the
@@ -115,6 +122,13 @@ decidable equality, with generic player names $p, q$.  We also use:
   utility (\Cref{sec:frontier-strategies});
 \item $\bigotimes_p \mu_p$ for an independent product distribution.
 \end{itemize}
+A checked finite-domain program has finitely many reachable outcomes, and
+each carries integer payoffs, so $\EU(\Profile,p)$ is a finite sum of finite
+terms: it is always well defined and bounded, with no separate boundedness
+hypothesis needed at the frontier level.  Boundedness re-enters only at the
+runtime layer (\Cref{sec:refinement}), where implementation \emph{trace}
+utilities may fold in unbounded economic costs such as gas or fees; we flag it
+explicitly there.
 We use sans-serif math symbols for type-level constants
 ($\Cfg$, $\State$, $\Action$), italic letters for nodes and mathematical
 objects, and roman identifiers for predicates and projections.

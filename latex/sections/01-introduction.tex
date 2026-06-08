@@ -111,7 +111,7 @@ glossary (\Cref{sec:glossary}).
    Nash / equilibria};
 % ── runtime tower (bottom-up refinement) ─────────────────────────────
 \node[box]  (back) at (0,-6.4) {Abstract backend layers\\{\footnotesize audited steps \(\cdot\) encoded storage \(\cdot\) message buffers}};
-\node[goal] (evm)  at (0,-8.6) {\textbf{EVM / smart-contract runtime}\\{\footnotesize end goal: on-chain execution}};
+\node[goal] (evm)  at (0,-8.6) {\textbf{EVM / smart-contract runtime}\\{\footnotesize the setting that grounds the design}};
 \draw[flow] (back) -- node[lab]{refines\\{\scriptsize utility-preserving}} (mach);
 \draw[flow] (evm)  -- node[lab]{refines\\{\scriptsize layers compose into a tower}} (back);
 % ── legend ───────────────────────────────────────────────────────────
@@ -125,8 +125,8 @@ development.  The downward arrows are the forward semantics that turn a
 protocol into a game; the strategic surface on the right is where
 game-theoretic properties are proved.  Concrete runtimes enter from below as a
 \emph{tower} of utility-preserving refinements that compose down to the
-primitive machine; the EVM runtime (dashed) is the motivating endpoint the
-interfaces are designed to reach.}
+primitive machine; the EVM runtime (dashed) is the concrete setting whose
+characteristics shaped the design, not a backend mechanized here.}
 \label{fig:overview}
 \end{figure}
 
@@ -251,8 +251,12 @@ payoff projections.  It needs only basic static hygiene, not the stronger
 checked-game obligations --- reveal completeness and legal commit guards
 --- that the later progress and game-facing theorems consume.  The event
 graph is source-independent: it records protocol structure rather than
-syntax, so two alpha-renamed programs with the same protocol structure
-compile to equal graphs.
+syntax, so two programs differing only by \(\alpha\)-renaming compile to
+equal graphs (names are erased to positional field ids).  Programs that
+differ by reordering \emph{independent} effects compile to graphs that are
+not equal but equivalent up to schedule confluence
+(\Cref{sec:eg:diamond}); the graph data is order-sensitive, while the
+denotation it carries is not.
 
 The final arrow to \(\mathsf{KernelGame}\) --- the frontier game named in
 the figures and in \Cref{sec:intro:relations} --- is where strategic
@@ -265,16 +269,14 @@ terminal graph states.
 \subsection{A map of the guarantees: five relations, three shapes}
 \label{sec:intro:relations}
 
-The semantic spine of \Cref{sec:intro:spine} lists the \emph{objects}.
-The development is easier to hold in one's head, however, through the
-\emph{relations} that connect them.  There are five, and the recurring
-source of confusion is that they look alike (``two things that mean the
-same'') while being structurally different.  Separating them by
-\emph{algebraic shape} --- an equivalence, an adequacy, or an order ---
-makes each one answer a single question: \emph{what may I forget?}  Each
-is a separate theorem with its own proof technique, so naming them apart,
-rather than lumping them as ``equivalence results,'' is what turns the
-end-to-end guarantee into a short composite instead of a monolith.
+The semantic spine of \Cref{sec:intro:spine} lists the \emph{objects}; the
+development is easier to hold in one's head through the \emph{relations} that
+connect them.  There are five.  Separating them by \emph{algebraic shape}
+--- an equivalence, an adequacy, or an order --- makes each one answer a
+single question: \emph{what may I forget?}  Each is a separate theorem with
+its own proof technique, so naming them apart, rather than lumping them as
+``equivalence results,'' turns the end-to-end guarantee into a short
+composite instead of a monolith.
 
 \begin{description}[itemsep=2pt,leftmargin=1.3em,style=nextline]
 \item[Schedule confluence \quad{\small(equivalence, inside one graph)}.]
@@ -362,7 +364,7 @@ program.
 % R4 Kuhn: self relation on the frontier game (an internal equivalence,
 % drawn like R1 so its shape on the page matches its structure)
 \draw[rel,<->] (game.north west) .. controls +(-0.3,1.0) and +(0.3,1.0) .. (game.north east)
-  node[rlab,above,pos=0.5]{$\eqrel$ Kuhn equivalence\\{\scriptsize beh.\,$\cong$\,mixed-pure}};
+  node[rlab,above,pos=0.5]{$\eqrel$ Kuhn equivalence\\{\scriptsize beh.\,$\eqrel$\,mixed-pure}};
 % R3 presentation
 \draw[rel] (game) -- node[rlab,right=1mm]{$\eqrel$\\{\scriptsize presentation}} (pres);
 % R5 refinement (order, upward)
@@ -394,11 +396,14 @@ calls or operational steps, and its observations say what each player can
 infer from that runtime.  To connect such a machine to VegasCore, the
 backend proves a stochastic refinement to the primitive event-graph
 machine and supplies a trace law showing that the implementation realizes
-the selected frontier game surface.  Ethereum/EVM is the motivating
-instance of this pattern, and the construction is built as a foundation to
-reach it; the message-in-flight backend below already realizes its
-strategically distinctive feature --- a public mempool whose pending
-transactions are visible before they are applied.
+the selected frontier game surface.  Ethereum/EVM is the concrete setting
+this pattern is designed around: its public mempool, transaction ordering,
+and execution costs are what motivate the visibility discipline, the
+schedule-agnostic graph, and the refinement interface in the first place.  A
+verified EVM backend is not among the results here, but the abstract
+message-in-flight backend below already realizes the EVM's strategically
+distinctive feature --- a public mempool whose pending transactions are
+visible before they are applied.
 
 This is intentionally stronger than saying that a contract ``looks like''
 the protocol on examples: the refinement proof identifies which
@@ -473,9 +478,14 @@ theorem surface is organized around the following claims.
   are ruled out, proved inert, or modeled explicitly.
 \end{enumerate}
 
-\leancorr{Every paper-facing claim is collected, with its fully qualified
-name, in the build-checked index \TT{Vegas.Theorems.Claims}; the per-theorem
-mechanized-proof notes throughout point to the modules where each is proved.
+\leancorr{The end-to-end, program-facing claims of this list are collected,
+with their fully qualified names, in the build-checked index
+\TT{Vegas.Theorems.Claims}.  A few load-bearing supporting results --- the
+visibility facts of item~4 and the schedule diamond and barrier
+(\Cref{thm:diamond,thm:barrier}) --- are proved in their own theorem modules
+(\TT{Vegas.Theorems.Visibility}, \TT{Vegas.Theorems.Execution}) rather than
+re-exported through the index; the per-section \emph{Lean correspondence} notes
+point to the module where each result is established.
 The construction modules are \TT{Vegas.Language}, \TT{Vegas.Core},
 \TT{Vegas.EventGraph}, \TT{Vegas.Frontier},
 \TT{Vegas.Presentation}, \TT{Vegas.Export}, and \TT{Vegas.Machine}.}

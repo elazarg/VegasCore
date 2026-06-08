@@ -61,6 +61,17 @@ some of that environment; scheduling and player observation still use the
 larger choice footprint, because strategies may condition on the whole
 visible commit-site view.
 
+A sample is the dual case.  Its scheduling and independence footprint is the
+declared dependency set of its distribution, $\mathrm{deps}(D)\cap\pub$, which
+is typically a \emph{small} subset of the public store.  The small-step
+\textsc{Sample} rule (\Cref{fig:vegas-sos}) writes $\sem{D}$ over the whole
+public environment $\rho^{\pub}$ only for notational economy: by the
+dependency-soundness law (\Cref{sec:prelim:contexts}) the result depends only
+on $\mathrm{deps}(D)$, so the two readings agree on values while the graph uses
+the narrower footprint for scheduling.  This is what lets two samples with
+disjoint declared footprints commute, even though both nominally ``read public
+state.''
+
 Graph well-formedness is the conjunction of the following facts: for
 each node, every read field must already be available; each read field
 is either initial or written by an earlier node; internal events with
@@ -171,6 +182,15 @@ See \TT{Vegas.Theorems.Execution}; the named result is the
 compiled-graph adjacent-schedule diamond.
 \end{proof}
 
+\Cref{thm:diamond} is local: it commutes two adjacent events.  Because a
+configuration is the completed-node set together with the canonically-written
+store (\Cref{sec:eg:configurations}), and that data is extensional --- no
+ordering witness is recorded --- adjacent commutation lifts to a global
+statement: any two complete schedules of the same graph reach the same terminal
+configuration, so the terminal state is a function of the graph alone.  This
+full-schedule confluence, not merely the pairwise diamond, is what the frontier
+round model relies on.
+
 \begin{theorem}[Commit/reveal barrier]
 \label{thm:barrier}
 If a reveal node is ready, every earlier commit node is already complete.
@@ -201,7 +221,10 @@ the terminal compiled store.
 \leancorr{Graph data and canonical prerequisites are in
 \TT{Vegas.EventGraph.Basic}.  Primitive execution, readiness,
 observations, and schedule-diamond lemmas are in
-\TT{Vegas.EventGraph.Execution} and \TT{Vegas.EventGraph.Batch}.  The
+\TT{Vegas.EventGraph.Execution} and \TT{Vegas.EventGraph.Batch}; the global
+full-schedule confluence the frontier relies on is
+\TT{claim\_schedule\_confluence\_frontier\_round\_wellDefined} in
+\TT{Vegas.Theorems.Claims}.  The
 compiler is \TT{Vegas.Compile.Compiler}; source payoff
 adequacy is \TT{Vegas.Frontier.SourceAdequacy} and
 \TT{Vegas.Theorems.Outcome}.}

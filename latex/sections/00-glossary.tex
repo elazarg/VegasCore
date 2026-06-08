@@ -40,7 +40,8 @@ discipline can usually skip the entries that match their background.
 \begin{description}[itemsep=0pt,leftmargin=1.2em,style=nextline]
 \item[Finite-support distribution / probability mass function (PMF).]
   A function $\mu : \alpha \to [0,1]$ with finite support and
-  $\sum_x \mu(x) = 1$.  We write $\PMF{\alpha}$ for the set of such
+  $\sum_{x \in \mathrm{supp}(\mu)} \mu(x) = 1$ (\Cref{def:pmf}); the support
+  is necessarily nonempty.  We write $\PMF{\alpha}$ for the set of such
   functions.  $\PMF{\cdot}$ is a monad: the bind operator
   $\mu \bind f = \sum_x \mu(x)\,f(x)$ chains a stochastic step with a
   continuation indexed by its result, and the unit $\delta_x$ is the
@@ -80,7 +81,7 @@ discipline can usually skip the entries that match their background.
   The smallest game object VegasCore needs for strategic analysis: for
   each player a strategy type, an outcome type, a probability law from
   strategy profiles to outcomes, and a utility function
-  $u : \Outcome \to \Players \to \mathbb{R}$.  The strategies may be
+  $u : \Outcome \to (\Players \to \mathbb{R})$.  The strategies may be
   contingent rules over the frontier observations described in
   \Cref{sec:frontier-strategies}, not just one-shot actions.  The word
   \emph{kernel} here means a stochastic map from strategy profiles to
@@ -107,7 +108,7 @@ discipline can usually skip the entries that match their background.
   program in SSA form has a unique definition site for each name; we
   exploit this to make every event node carry a unique write target.
 \item[Event structure / event graph.]
-  In concurrency theory~\citep{NielsenPlotkinWinskel1981,Winskel1986EventStructures}
+  In concurrency theory~\citep{NielsenPlotkinWinskel1981,Winskel1987EventStructures}
   an event structure abstracts a process by its events and a causal
   dependency relation; independent events are unordered and may be
   permuted without affecting the resulting state.  Our event graphs

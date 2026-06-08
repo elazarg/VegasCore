@@ -218,7 +218,14 @@ depends only on the effect, never on the sampled or committed value in
 \(\rho\).  The freshness premise \(x \notin \mathrm{dom}(\Gamma)\) and the
 reveal premise \(\Gamma(x) = \sealed(p)\) are then well-scopedness facts
 about \(t_0\), not runtime guards: a well-scoped program satisfies them at
-every step and never gets stuck on them.  The configuration carries
+every step, so execution never gets stuck on \emph{scoping}.  This is
+separate from the commit guard \(\varphi_p\), whose satisfaction is
+genuinely value-dependent --- that a proposed value passes the guard is an
+admissibility condition, not a scoping fact.  What rules out a stuck commit
+is the orthogonal guarantee that \emph{some} admissible value always exists;
+that is the legality obligation discharged by \(\mathsf{WFProgram}\)
+(\Cref{sec:source:wf}) and carried to the graph as \(\mathsf{GuardLive}\),
+not part of this static-visibility invariant.  The configuration carries
 \(\Gamma\) only to keep each rule self-contained; the mechanization
 instead makes the context a static index of the term, so this invariant
 holds by construction and the reveal premise is discharged by an
