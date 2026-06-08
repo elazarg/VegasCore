@@ -43,7 +43,8 @@ utilities, bottoming out at the on-chain execution that is the end goal.
 \draw[flow] (mach.east) .. controls +(2.2,0) and +(-1.6,0) .. (games.west)
   node[pos=0.55,above,font=\footnotesize,align=center]{frontier\\view};
 \draw[flow] (games) -- (pres);
-\node[align=left, text width=46mm, font=\footnotesize] at (7.2,0.4)
+\node[draw, rounded corners, fill=green!4, inner sep=4pt,
+      align=left, text width=44mm, font=\footnotesize] at (7.2,0.5)
   {\textbf{Prove \& analyze:} payoff adequacy, visibility, Kuhn equivalence,
    Nash / equilibria};
 % ── runtime tower (bottom-up refinement) ─────────────────────────────
@@ -127,6 +128,7 @@ other player's sealed field before committing.
   ev/.style={draw, rounded corners, inner sep=2pt, minimum width=1.8cm,
              minimum height=4mm, fill=blue!6},
   arr/.style={-{Stealth[length=2mm]}, thick},
+  barr/.style={-{Stealth[length=2mm]}, thick, densely dashed, gray},
 ]
 \node[ev] (cm) at (-2,1) {\(\Commit_{\mathsf{m}}\)};
 \node[ev] (cmp) at (2,1) {\(\Commit_{\mathsf{m'}}\)};
@@ -135,30 +137,32 @@ other player's sealed field before committing.
 \node[ev] (ret) at (0,-2.5) {\(\Ret\)};
 \draw[arr] (cm) -- (rm);
 \draw[arr] (cmp) -- (rmp);
-\draw[arr] (cm) -- (rmp);
-\draw[arr] (cmp) -- (rm);
+\draw[barr] (cm) -- (rmp);
+\draw[barr] (cmp) -- (rm);
 \draw[arr] (rm) -- (ret);
 \draw[arr] (rmp) -- (ret);
 \end{tikzpicture}
 
-\caption{Matching Pennies as an event graph.  Straight edges from a
-commit to its own reveal and from reveals to \(\Ret\) are data
-dependencies.  Cross-edges from one player's commit to the other
-player's reveal are barrier dependencies: they enforce that all earlier
-commitments are fixed before any reveal phase begins, but they carry no
-sealed payload.}
+\caption{Matching Pennies as an event graph.  Solid edges --- from a
+commit to its own reveal, and from reveals to \(\Ret\) --- are data
+dependencies that carry a sealed or public value.  Dashed cross-edges
+from one player's commit to the other player's reveal are barrier
+dependencies: no reveal fires until \emph{both} commitments are sealed,
+and they carry no payload.  The two commits themselves are unordered ---
+that simultaneity is the point.}
 \label{fig:matching-pennies-eg}
 \end{figure}
 
 In \Cref{fig:matching-pennies-eg}, the two commit nodes share the
 initial frontier, the graph boundary of currently ready events.  Each
 reveal depends on its own sealed source field, and the reveal phase also
-waits for prior commits.  This second dependency is the commit/reveal
-barrier: a reveal must not become available while an earlier commitment
-is still mutable.  The barrier is graph structure, not a strategy-side
-convention.  Thus the source text may list one commitment before the
-other, but the compiled game still presents them as simultaneous sealed
-choices.
+waits on the \emph{other} commit.  This second dependency is the
+commit/reveal barrier: no reveal becomes available until both
+commitments are sealed, so that no player can condition a commitment on
+another's revealed value.  The barrier is graph structure, not a
+strategy-side convention.  Thus the source text may list one commitment
+before the other, but the compiled game still presents them as
+simultaneous sealed choices.
 
 \subsection{The semantic spine}
 \label{sec:intro:spine}
@@ -199,8 +203,9 @@ node ids are canonical numeric positions in the node list.  Two
 alpha-renamed surface programs can compile to equal graph data when
 their protocol structure is equal.
 
-The final arrow to \(\mathsf{KernelGame}\) is where strategic analysis
-starts.  A kernel game does not remember the syntax of the protocol; it
+The final arrow to \(\mathsf{KernelGame}\) --- the frontier game named in
+the figures and in \Cref{sec:intro:relations} --- is where strategic
+analysis starts.  A kernel game does not remember the syntax of the protocol; it
 remembers the strategy spaces, the probability law over outcomes, and
 the utility function.  The source-payoff adequacy theorems prove that
 the outcomes used there are exactly the source payoffs evaluated at
@@ -215,7 +220,10 @@ The development is easier to hold in one's head, however, through the
 source of confusion is that they look alike (``two things that mean the
 same'') while being structurally different.  Separating them by
 \emph{algebraic shape} --- an equivalence, an adequacy, or an order ---
-makes each one answer a single question: \emph{what may I forget?}
+makes each one answer a single question: \emph{what may I forget?}  Each
+is a separate theorem with its own proof technique, so naming them apart,
+rather than lumping them as ``equivalence results,'' is what turns the
+end-to-end guarantee into a short composite instead of a monolith.
 
 \begin{description}[itemsep=2pt,leftmargin=1.3em,style=nextline]
 \item[\textnormal{R1.} Schedule confluence \quad{\small(equivalence,
@@ -228,8 +236,10 @@ makes each one answer a single question: \emph{what may I forget?}
   across \texttt{compile})}.]
   The compiled graph \emph{is} the program's denotation: terminal
   outcomes are the source payoffs reconstructed from the terminal store
-  (\Cref{sec:eg:adequacy}).  This is one-directional --- a faithfulness
-  theorem, not a symmetric equivalence between arbitrary programs and
+  (\Cref{sec:eg:adequacy}).  Adequacy here is the one-directional sense
+  ``the graph means the program, by theorem'' --- not the
+  operational/denotational coincidence of the same name --- and in
+  particular not a symmetric equivalence between arbitrary programs and
   graphs.  \emph{Forget:} the source syntax.
 \item[\textnormal{R3.} Presentation equivalence \quad{\small(equivalence,
   across a presentation)}.]
@@ -256,7 +266,7 @@ makes each one answer a single question: \emph{what may I forget?}
   \statusnote{Refinement currently pulls back individual Nash profiles
   one-way; a two-sided ``the backend introduces no spurious equilibria''
   (equilibrium-set) result is future work.}
-  \emph{Forget:} which administrative runtime details were erased.
+  \emph{Forget:} the runtime's administrative bookkeeping.
 \end{description}
 
 \Cref{fig:relations} draws these as labelled edges on the object spine.
@@ -284,20 +294,23 @@ apart is worth the trouble.
 \node[obj]  (prog)  at (0,0)    {Protocol program};
 \node[obj]  (graph) at (0,-1.9)  {Event graph};
 \node[obj]  (mach)  at (0,-3.8)  {Primitive machine};
-\node[side] (game)  at (5.6,-1.9){Frontier game\\{\footnotesize beh.\,$\cong$\,mixed-pure}};
+\node[side] (game)  at (5.6,-1.9){Frontier game};
 \node[side] (pres)  at (5.6,-3.8){FOSG / EFG};
 \node[impl] (impl)  at (0,-5.7)  {Impl.\ machine};
 % R2 adequacy
 \draw[rel] (prog) -- node[rlab,right=1mm]{R2~$\adeq$\\{\scriptsize adequacy}} (graph);
-% R1 confluence: self relation on graph
-\draw[rel,<->] (graph.west) .. controls +(-1.7,0.5) and +(-1.7,-0.5) .. (graph.west)
-  node[rlab,left=10mm,pos=0.5]{R1~$\eqrel$\\{\scriptsize confluence}};
+% R1 confluence: self relation on the graph (an internal equivalence)
+\draw[rel,<->] (graph.west) .. controls +(-2.1,0.8) and +(-2.1,-0.8) .. (graph.west)
+  node[rlab,left=1mm,pos=0.5]{R1~$\eqrel$\\{\scriptsize confluence}};
 % execute
 \draw[rel] (graph) -- node[rlab,right=1mm]{execute} (mach);
-% R4 frontier view + equivalence inside game noted in node
+% frontier view
 \draw[rel] (mach.east) .. controls +(2.4,0) and +(-1.6,0) .. (game.west)
   node[rlab,pos=0.5,above]{frontier\\view};
-\node[rlab] at (5.6,-0.85) {R4~$\eqrel$ \scriptsize(Kuhn)};
+% R4 Kuhn: self relation on the frontier game (an internal equivalence,
+% drawn like R1 so its shape on the page matches its structure)
+\draw[rel,<->] (game.north west) .. controls +(-0.3,1.0) and +(0.3,1.0) .. (game.north east)
+  node[rlab,above,pos=0.5]{R4~$\eqrel$ Kuhn\\{\scriptsize beh.\,$\cong$\,mixed-pure}};
 % R3 presentation
 \draw[rel] (game) -- node[rlab,right=1mm]{R3~$\eqrel$\\{\scriptsize presentation}} (pres);
 % R5 refinement (order, upward)
