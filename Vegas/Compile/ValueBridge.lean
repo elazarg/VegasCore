@@ -1636,6 +1636,72 @@ theorem sourceEnv_runConfig
       hagree
       available
 
+/-- **Forward generation.** A terminal source run can be replayed in graph
+source order, yielding a reachable terminal graph configuration whose store
+reconstructs the run's terminal source environment through the compiler
+dictionary. -/
+theorem sourceRun_reachableConfig
+    (g : GraphProgram P L)
+    {labels : List (Label P L)} {final : SourceConfig P L}
+    (hrun : SourceConfig.LabeledStar (sourceStart g) labels final)
+    (hterminal : final.IsTerminal) :
+    let result := buildResult g
+    ∃ hctx : final.ctx = result.terminalCtx,
+      ∃ state : ReachableConfig result.graph,
+        Terminal result.graph state.1 ∧
+        ∃ available :
+          ∀ {name bindTy}
+            (h : VHasVar result.terminalCtx name bindTy),
+            ∃ value,
+              Store.getAs state.1.store
+                (result.terminalState.fieldOf h) bindTy.base =
+                  some value,
+          sourceEnvOfStore result.terminalState state.1.store available =
+            cast (congrArg (VEnv L) hctx) final.env := by
+  let init := initialState g.Γ g.env g.wctx
+  let state := BuildState.fromInitial init
+  let result := compileCore g.prog g.fresh g.normalized state
+  let G := BuildResult.graph result
+  let cfg₀ : Config G := Config.initial G
+  have hrun' :
+      SourceConfig.LabeledStar
+        ({ ctx := g.Γ, env := g.env, cont := g.prog } :
+          SourceConfig P L)
+        labels final := by
+    simpa [sourceStart] using hrun
+  have hdone₀ : DonePrefix cfg₀ state.nodes.length := by
+    simpa [cfg₀, G, result, state, init, BuildState.fromInitial_nodes] using
+      DonePrefix.initial G
+  have hagree₀ : StoreAgree state g.env cfg₀.store := by
+    intro name bindTy h
+    simpa [cfg₀, G, result, state, init, Config.initial,
+      BuildResult.graph, BuildState.fromInitial,
+      compileCore_initialFields] using
+      initialState_initialStore_get
+        (env := g.env) (wctx := g.wctx) result.nodes h
+  rcases
+      StoreAgree_run_reachable_compileCore
+        hrun' g.fresh g.normalized state cfg₀ hdone₀
+        Reachable.initial hagree₀ hterminal with
+    ⟨hctx, terminalCfg, hreach, hterminalGraph, hagree⟩
+  let reachableState : ReachableConfig result.graph := ⟨terminalCfg, hreach⟩
+  let available :
+      ∀ {name bindTy}
+        (h : VHasVar result.terminalCtx name bindTy),
+        ∃ value,
+          Store.getAs reachableState.1.store
+            (result.terminalState.fieldOf h) bindTy.base = some value := by
+    intro name bindTy h
+    exact ⟨_, hagree h⟩
+  refine ⟨hctx, reachableState, hterminalGraph, available, ?_⟩
+  simpa [reachableState] using
+    sourceEnvOfStore_eq_of_storeAgree
+      (state := result.terminalState)
+      (env := cast (congrArg (VEnv L) hctx) final.env)
+      (store := reachableState.1.store)
+      hagree
+      available
+
 /-- Run-level representation for the concrete terminal store produced by the
 lockstep induction. This existential form is useful when a caller does not need
 to expose the canonical graph completion. -/
