@@ -8,6 +8,7 @@ import Vegas.Frontier.SourceFrontier.Strategic
 import Vegas.Frontier.SourceFrontier.Replay
 import Vegas.Frontier.SourceFrontier.Checkpoint
 import Vegas.Frontier.SourceFrontier.Bisimulation
+import Vegas.Frontier.SourceFrontier.Query
 
 /-!
 # Source strategic adequacy
