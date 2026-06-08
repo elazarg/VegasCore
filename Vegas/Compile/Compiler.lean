@@ -456,6 +456,46 @@ theorem fieldRefsOfCtx_available
               exact havailable (VHasVar.there h))
             ref htail
 
+omit [DecidableEq P] in
+theorem fieldRefsOfCtx_store_available
+    {Γ : VCtx P L}
+    (fieldOf :
+      {name : VarId} → {bindTy : BindTy P L} →
+        VHasVar Γ name bindTy → Nat)
+    (store : Store L)
+    (available :
+      ∀ {name : VarId} {bindTy : BindTy P L}
+        (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (fieldOf h) bindTy.base = some value)
+    :
+    ∀ ref, ref ∈ fieldRefsOfCtx fieldOf →
+      ∃ value, Store.getAs store ref.field ref.ty = some value := by
+  induction Γ with
+  | nil =>
+      intro ref href
+      simp [fieldRefsOfCtx] at href
+  | cons head tail ih =>
+      obtain ⟨_headName, _headTy⟩ := head
+      intro ref href
+      have hmem :
+          ref = { field := fieldOf VHasVar.here, ty := _headTy.base } ∨
+            ref ∈
+              fieldRefsOfCtx
+                (fun {_name} {_bindTy} h =>
+                  fieldOf (VHasVar.there h)) := by
+        simpa [fieldRefsOfCtx] using href
+      rcases hmem with hhead | htail
+      · subst ref
+        exact available VHasVar.here
+      · exact
+          ih
+            (fieldOf := fun {_name} {_bindTy} h =>
+              fieldOf (VHasVar.there h))
+            (by
+              intro name bindTy h
+              exact available (VHasVar.there h))
+            ref htail
+
 theorem fieldRefsOfCtx_visible
     {Γ : VCtx P L}
     (fieldOf :
@@ -712,6 +752,24 @@ theorem visibleFieldRefs_available
       (by
         intro name bindTy h
         exact state.fieldOf_available (VHasVar.ofViewVCtx h))
+
+theorem visibleFieldRefs_store_available
+    {Γ : VCtx P L}
+    (state : BuildState P L Γ) (who : P) (store : Store L)
+    (available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value) :
+    ∀ ref, ref ∈ visibleFieldRefs state who →
+      ∃ value, Store.getAs store ref.field ref.ty = some value := by
+  simpa [visibleFieldRefs] using
+    fieldRefsOfCtx_store_available
+      (fieldOf := fun {_name} {_bindTy} h =>
+        state.fieldOf (VHasVar.ofViewVCtx h))
+      store
+      (by
+        intro name bindTy h
+        exact available (VHasVar.ofViewVCtx h))
 
 theorem visibleFieldRefs_visible
     {Γ : VCtx P L}
@@ -1055,6 +1113,41 @@ noncomputable def eventGuardOf
     eval := fun action env =>
       evalGuard (Player := P) (L := L) guard action
         (viewEnvOfReadEnv state who env) }
+
+theorem eventGuardOf_eval_eq_eval
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (action : L.Val actionTy)
+    (readEnv : ReadEnv L (eventGuardOf state who guard).choiceReads) :
+    (eventGuardOf state who guard).eval action readEnv =
+      evalGuard (Player := P) (L := L) guard action
+        (viewEnvOfReadEnv state who readEnv) := rfl
+
+theorem eventGuardOf_readEnv_of_sourceStoreAvailable
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (store : Store L)
+    (available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
+          some value) :
+    ∃ readEnv,
+      ReadEnv.ofStore? store (eventGuardOf state who guard).choiceReads =
+        some readEnv := by
+  let readAvailable :
+      ∀ ref, ref ∈ (eventGuardOf state who guard).choiceReads →
+        ∃ value, Store.getAs store ref.field ref.ty = some value := by
+    simpa [eventGuardOf] using
+      visibleFieldRefs_store_available state who store available
+  let readEnv := ReadEnv.ofStore store
+    (eventGuardOf state who guard).choiceReads readAvailable
+  refine ⟨readEnv, ?_⟩
+  unfold ReadEnv.ofStore?
+  rw [dif_pos readAvailable]
 
 theorem eventGuardOf_live_of_legal
     {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
