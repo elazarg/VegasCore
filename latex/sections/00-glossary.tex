@@ -12,11 +12,11 @@ program, what strategic game does it define, and what must an
 implementation prove in order to preserve that game?
 
 \paragraph{Math first, Lean on the side.}
-The body of the report uses ordinary mathematical notation.  Lean
+The body of the paper uses ordinary mathematical notation.  Lean
 identifiers appear only when their type or naming choice is itself the
 subject of a design discussion.  Each section ends with a brief
 \emph{Lean correspondence} note pointing to the relevant module paths and
-public theorem names.  A reader who wants the story can read the report
+public theorem names.  A reader who wants the story can read the paper
 straight through; a reader auditing the code can follow those notes back
 into the Lean sources.
 
@@ -90,12 +90,13 @@ discipline can usually skip the entries that match their background.
   A profile where no single player can improve their expected utility by
   changing only their own strategy while the others stay
   fixed~\citep{Nash1951,OsborneRubinstein1994}.  The refinement results
-  in this report preserve selected Nash equilibria only for
+  in this paper preserve selected Nash equilibria only for
   implementation strategy spaces that match, project to, or are
   explicitly related to the frontier strategy space.
 \item[Cheap talk / babbling.]
   \emph{Cheap talk} is a payoff-free communication channel that players
-  may use before or during strategic play.  It is payoff-free, but not
+  may use before or during strategic play~\citep{CrawfordSobel1982}.  It is
+  payoff-free, but not
   automatically strategically irrelevant: players may coordinate through
   the messages.  A \emph{babbling} profile is the special case where
   players send fixed default messages and ignore all received messages.

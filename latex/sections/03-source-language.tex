@@ -218,7 +218,9 @@ depends only on the effect, never on the sampled or committed value in
 \(\rho\).  The freshness premise \(x \notin \mathrm{dom}(\Gamma)\) and the
 reveal premise \(\Gamma(x) = \sealed(p)\) are then well-scopedness facts
 about \(t_0\), not runtime guards: a well-scoped program satisfies them at
-every step, so execution never gets stuck on \emph{scoping}.  This is
+every step, so execution never gets stuck on \emph{scoping}.
+
+This is
 separate from the commit guard \(\varphi_p\), whose satisfaction is
 genuinely value-dependent --- that a proposed value passes the guard is an
 admissibility condition, not a scoping fact.  What rules out a stuck commit

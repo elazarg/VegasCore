@@ -33,8 +33,13 @@ its restriction to a native profile.
 \end{theorem}
 
 \begin{proof}[Mechanized proof]
-See \TT{Vegas.Theorems.FOSG}, especially the behavioral and
-restricted-behavioral FOSG utility-distribution theorems.
+See \TT{Vegas.Theorems.FOSG}: the forward translation
+(\TT{frontierFOSG\_sourcePayoff\_udist\_behavioral}) and the backward
+restriction (\TT{frontierFOSG\_sourcePayoff\_udist\_restrictedBehavioral}) each
+preserve the joint utility distribution.  The curated index
+\TT{Vegas.Theorems.Claims} re-exports the forward direction
+(\TT{claim\_fosg\_utility\_distribution\_adequacy}); both directions are proved
+in \TT{Vegas.Theorems.FOSG}.
 \end{proof}
 
 \subsection{EFG presentation}
@@ -69,9 +74,13 @@ frontier plain-EFG payoff-distribution theorem for behavioral profiles.
 
 We use \emph{Kuhn realization} to mean the finite equivalence between
 randomizing once over a complete contingent plan and randomizing locally
-at each reached decision point.  In VegasCore this is stated for the
-canonical frontier information model: players reason about reachable
-checkpoint observations and available menus induced by the checked
+at each reached decision point.  The classical statement is for finite
+trees~\citep{Kuhn1953}, and \citet{Heymann2022KuhnProduct} give a
+measure-theoretic product-form generalization; ours is the finite frontier
+setting, where we additionally mechanize the deviation-matching that
+equilibrium transport needs.  In VegasCore this is
+stated for the canonical frontier information model: players reason about
+reachable checkpoint observations and available menus induced by the checked
 program.  The main theorem has two directions.
 
 Kuhn's equivalence requires \emph{perfect recall} --- a player never forgets
@@ -108,12 +117,15 @@ the same outcome law on the deviating profile.
 \begin{theorem}[Frontier Kuhn strategic equivalence]
 \label{thm:kuhn-strategic-equivalence}
 The canonical completed-frontier mixed-pure and behavioral games form a
-strategy/deviation-level Kuhn equivalence: the two canonical profile
-translations preserve completed outcome kernels, behavioral deviations
-from arbitrary behavioral profiles have matching mixed-pure deviations,
-and mixed-pure or behavioral deviations from a canonical
-mixed-to-behavioral realization have matching deviations on the other
-side.
+strategy/deviation-level Kuhn equivalence:
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt,topsep=2pt]
+\item the two canonical profile translations preserve completed outcome
+  kernels;
+\item behavioral deviations from arbitrary behavioral profiles have matching
+  mixed-pure deviations; and
+\item mixed-pure or behavioral deviations from a canonical
+  mixed-to-behavioral realization have matching deviations on the other side.
+\end{enumerate}
 \end{theorem}
 
 \begin{proof}[Mechanized proofs]

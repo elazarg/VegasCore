@@ -50,8 +50,14 @@ closely related, games of incomplete information built on belief functions in
 the Coq proof assistant~\citep{PomeretCoquot2023BelGames}.  These efforts prove
 theorems
 \emph{about} games --- equilibrium existence, solution-concept properties ---
-taking the game as the primitive object.  VegasCore's emphasis is orthogonal
-and complementary: rather than a new existence theorem it provides a checked
+taking the game as the primitive object.  Closest in spirit to the end-to-end
+ambition here, \citet{Caminati2015Auction} specify a combinatorial Vickrey
+auction in Isabelle, verify its intended properties, and generate verified
+executable code from the specification; that line shares the
+``specification-to-running-artifact with checked properties'' goal, but for a
+single fixed mechanism.  VegasCore's emphasis is orthogonal
+and complementary: rather than a new existence theorem, or one verified
+mechanism, it provides a checked
 \emph{path} from a program through compilation, scheduling, presentation, and
 runtime descent, reusing standard finite-game existence results at the leaves
 (\Cref{sec:applications}).  In method this places it nearer the

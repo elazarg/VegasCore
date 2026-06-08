@@ -34,22 +34,27 @@ draws may be made by strategic players rather than only by chance.
 Our contribution is a family of \emph{faithfulness relations}, mechanized in
 Lean, that together carry a game-theoretic fact about the denoted game through
 compilation, scheduling, presentation, and descent toward a concrete runtime.
-Each relation has a distinct algebraic shape.  An \emph{adequacy} recovers the
-source-free event graph as the program's denotation: at terminal reachable
-states, outcomes are exactly the source payoffs.  Two \emph{equivalences}
-establish that reordering independent events leaves the outcome unchanged, and
-that behavioral and mixed-pure strategy carriers match one-player
-deviations---transporting solution concepts, not payoffs alone; a presentation
-equivalence further relates the native game to its FOSG and EFG game-forms.  A
-\emph{refinement order} shows that an executable backend preserves the utility
-distribution and pulls equilibria back.  The visibility-aware event graph
-beneath these results is the load-bearing mechanism, not the contribution
-itself.
+Each relation has a distinct algebraic shape, and the shape fixes what a result
+may forget as it crosses that boundary.
 
-The development is fully mechanized in Lean with no \TT{sorry}: the surface is
+An \emph{adequacy} recovers the source-free event graph as the program's
+denotation: at terminal reachable states, outcomes are exactly the source
+payoffs.  Three \emph{equivalences} let a result move without loss: reordering
+independent events leaves the outcome unchanged; behavioral and mixed-pure
+strategy carriers match one-player deviations, so solution concepts transport
+and not payoffs alone; and a presentation equivalence relates the native game to
+standard imperfect-information game-forms (factored-observation stochastic games
+and extensive-form games).  A \emph{refinement order} shows that an executable
+backend preserves the utility distribution and---under bounded trace
+utilities---pulls equilibria back, so a compatible backend adds no spurious
+equilibria.  The visibility-aware event graph beneath these results is the
+load-bearing mechanism, not the contribution itself.
+
+The development is fully mechanized in Lean: the surface is
 a kernel calculus, strategies are carried by the compiled frontier game, and
 the runtime descent is proved sound and exercised on abstract backends.  The
-construction is shaped by a concrete setting---Ethereum/EVM and similar public,
+construction is shaped by a concrete
+setting---Ethereum/EVM and similar public,
 adversarial runtimes, whose visible mempool, transaction ordering, and
 execution costs are what motivate its design choices; a verified EVM backend is
 future work, not a result reported here.
