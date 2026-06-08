@@ -221,6 +221,21 @@ namespace SourceConfig
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- Any source run prefix accounts for the initial instruction count: consumed
+labels plus the current continuation's remaining instructions equal the
+starting continuation's instruction count. -/
+theorem LabeledStar.length_add_instrCount
+    {cfg current : SourceConfig P L} {labels : List (Label P L)}
+    (h : LabeledStar cfg labels current) :
+    labels.length + current.cont.instrCount = cfg.cont.instrCount := by
+  induction h with
+  | refl cfg =>
+      simp
+  | cons step _tail ih =>
+      rw [List.length_cons]
+      have hstep := step.instrCount_cont
+      omega
+
 /-- Source guard legality is preserved by one labeled source step. -/
 theorem legal_of_lstep
     {current next : SourceConfig P L} {label : Label P L}
