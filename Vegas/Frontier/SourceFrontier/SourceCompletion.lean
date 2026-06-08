@@ -217,6 +217,23 @@ theorem traceDistFrom_support_terminal_of_instrCount_le
 
 end SourceStrategicHistory
 
+namespace SourceConfig
+
+variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- Terminal source configurations report a concrete optional outcome. -/
+theorem outcome?_support_some_of_terminal
+    {cfg : SourceConfig P L}
+    (hterminal : cfg.IsTerminal) :
+    ∃ outcome, cfg.outcome? = some outcome := by
+  rcases cfg with ⟨Γ, env, cont⟩
+  rcases hterminal with ⟨payoffs, hcont⟩
+  change cont = VegasCore.ret payoffs at hcont
+  exact ⟨evalPayoffs payoffs env, by
+    simp [SourceConfig.outcome?, hcont]⟩
+
+end SourceConfig
+
 namespace WFProgram
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
@@ -242,6 +259,53 @@ theorem sourceStrategicGame_support_terminal_at_instrCount
       (SourceStrategicHistory.initial
         (ToEventGraph.sourceStart program.core) program.core.normalized)
       state hsupport (by rfl)
+
+/-- At the source instruction-count horizon, the optional source outcome law
+only supports concrete outcomes. -/
+theorem sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
+    (program : WFProgram P L) (cutoff : Payoff P)
+    (profile :
+      (program.sourceStrategicGame program.core.prog.instrCount cutoff).Profile)
+    {result : Option (Outcome P)}
+    (hresult :
+      result ∈
+        ((program.sourceStrategicOptionOutcomeView
+            program.core.prog.instrCount cutoff).law profile).support) :
+    ∃ outcome, result = some outcome := by
+  rw [GameForm.OutcomeView.law] at hresult
+  rcases (PMF.mem_support_map_iff
+      (program.sourceStrategicOptionOutcomeView
+        program.core.prog.instrCount cutoff).observe
+      ((program.sourceStrategicGame
+        program.core.prog.instrCount cutoff).outcomeKernel profile)
+      result).mp hresult with
+    ⟨state, hstateSupport, hobserve⟩
+  have hterminal :
+      state.history.current.IsTerminal :=
+    program.sourceStrategicGame_support_terminal_at_instrCount
+      cutoff profile hstateSupport
+  rw [← hobserve]
+  rcases
+      SourceConfig.outcome?_support_some_of_terminal hterminal with
+    ⟨outcome, houtcome⟩
+  exact ⟨outcome, by
+    simpa [sourceStrategicOptionOutcomeView] using houtcome⟩
+
+/-- The source optional outcome law has no `none` support at the source
+instruction-count horizon. -/
+theorem sourceStrategicOptionOutcomeView_law_none_not_support_at_instrCount
+    (program : WFProgram P L) (cutoff : Payoff P)
+    (profile :
+      (program.sourceStrategicGame program.core.prog.instrCount cutoff).Profile) :
+    none ∉
+      ((program.sourceStrategicOptionOutcomeView
+          program.core.prog.instrCount cutoff).law profile).support := by
+  intro hnone
+  rcases
+      program.sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
+        cutoff profile hnone with
+    ⟨outcome, hsome⟩
+  cases hsome
 
 end WFProgram
 
