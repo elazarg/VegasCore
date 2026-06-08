@@ -90,19 +90,21 @@ utility distribution as \(S.\mathsf{game}\).
 See \TT{Vegas.Theorems.Refinement.implTraceGame\_udist\_surface}.
 \end{proof}
 
-Under bounded-utility hypotheses, Nash equilibria of the selected
-frontier surface pull back to the implementation trace game indexed by
-that same frontier strategy type.  This is a restricted implementation
-game: it describes the concrete trace law induced by frontier strategies.
-If implementation-level strategies have additional coordinates, such as
-an extra message channel, they must be ruled out by the observation
-model, proved inert, or modeled on the specification side.  The
-boundedness assumptions are used to convert the proved equality of
-utility distributions into expected-utility equality.  The theorem is
-one-way: verified specification equilibria remain valid under compatible
-implementation laws, but not every implementation equilibrium is a
-specification equilibrium.  We expand this caveat in
-\Cref{sec:ref:cheap-talk}.
+Under bounded-utility hypotheses, the implementation trace game indexed
+by that same frontier strategy type has \emph{exactly} the Nash
+equilibria of the selected frontier surface --- the two equilibrium sets
+coincide, so a compatible backend introduces no spurious equilibria (this
+holds for the behavioral, pure, and mixed-pure surfaces alike).  This is a
+restricted implementation game: it describes the concrete trace law
+induced by frontier strategies.  The boundedness assumptions convert the
+proved equality of utility distributions into expected-utility equality.
+The order's asymmetry is therefore not between specification and
+implementation at a fixed strategy space, but across strategy-space
+\emph{enlargement}: if implementation-level strategies have additional
+coordinates, such as an extra message channel, they must be ruled out by
+the observation model, proved inert, or modeled on the specification
+side, and for them only the one-way babbling/inert transport holds.  We
+expand this in \Cref{sec:ref:cheap-talk}.
 
 \subsection{Extra messages and cheap talk}
 \label{sec:ref:cheap-talk}
@@ -195,7 +197,10 @@ program-facing trace-adequacy surface is in
 \TT{behavioralFrontierTraceSurface}, \TT{pureFrontierTraceSurface},
 \TT{mixedPureFrontierTraceSurface}, and the
 \TT{implTraceGame\_udist\_surface} /
-\TT{implTraceGame\_nash\_of\_surface\_nash} theorems.  The generic
+\TT{implTraceGame\_nash\_of\_surface\_nash} theorems.  The equilibrium-set
+equalities are the \TT{claim\_runtime\_refinement\_*\_nash\_set\_eq} family
+(behavioral, pure, and mixed-pure) and the matching \TT{\_nash\_iff} claims
+in \TT{Vegas.Theorems.Claims}.  The generic
 GameTheory support for this strategy-space issue is in
 \TT{GameTheory.Core.InertExtension},
 \TT{GameTheory.Concepts.Foundations.InertExtension},

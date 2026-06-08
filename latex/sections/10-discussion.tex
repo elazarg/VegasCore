@@ -46,8 +46,10 @@ either direction.  Compilation is an \emph{adequacy}: the graph is the
 program's meaning, recovered by theorem, and there is no symmetric
 ``equal program'' relation hiding behind it.  Runtime refinement is an
 \emph{order}, and its asymmetry is load-bearing rather than incidental ---
-specification equilibria pull back to an implementation, but the converse
-is a separate (and currently unproved) statement.  Reading the surface as
+at a fixed (frontier) strategy space the implementation trace game has
+exactly the specification's equilibria, but a richer concrete strategy
+space can carry equilibria the specification does not, and that
+enlargement direction is genuinely one-way.  Reading the surface as
 ``a bunch of equivalence theorems'' loses exactly this structure; reading
 it as one equivalence, one adequacy, and one order makes the end-to-end
 guarantee a short composite.
@@ -123,19 +125,26 @@ because the event-graph view does not maintain a sub-game decomposition;
 this requires an additional presentation or subgame API rather than
 only another predicate on the existing kernel games.
 
-\paragraph{No source-native strategic semantics.}  Strategies, profiles,
-and equilibria live on the compiled frontier games, not on
-\(\mathsf{VegasCore}\) source.  The source layer supplies the
-\emph{ingredients} of a strategy --- commit menus (the legal action set
-at a choice point), per-player views, and choice-point classification ---
-but no strategy object, source game, or source equilibrium is assembled
-from them.  A consequence is that source-payoff adequacy is stated
-for outcomes only; ``my program's equilibria are the frontier game's
-equilibria'' holds by the \emph{definition} of strategic meaning (the
-frontier construction), not as a theorem against an independent
-source-native semantics.  Building source strategies and a source game,
-then proving frontier adequacy for them, would be the strategic analogue
-of source-payoff adequacy and is the most fundamental open item.
+\paragraph{Source-native strategic semantics.}  Strategies, profiles, and
+equilibria live primarily on the compiled frontier games, but a
+source-native layer is also mechanized.  A source behavioral strategy is
+defined as a function of the player's source-local history view, inducing
+a source checkpoint game.  That game is proved --- unconditionally for
+finite-domain programs --- to share the frontier game's outcome law and to
+stand in a two-way Nash-deviation bisimulation with it, so Nash equilibria
+transport in both directions
+(\TT{claim\_source\_checkpoint\_behavioral\_frontier\_deviation\_bisimulation}).
+This is the strategic analogue of source-payoff adequacy, established on
+the checkpoint information surface, where a source-checkpoint strategy and
+a frontier behavioral strategy are the same object viewed through
+different outcome read-outs; so ``my program's equilibria are the frontier
+game's equilibria'' is here a theorem, not merely the definition of
+strategic meaning.  What remains open is the \emph{raw} source-local
+surface, whose strategies are functions of the unprocessed source history:
+the replay, reachable-configuration, and commit-menu equivalences it needs
+are mechanized, but the final Nash-deviation bridge between the raw source
+game and the frontier game (\TT{RawSourceFrontierNashDeviationBridge}) is
+currently stated as a hypothesis rather than constructed.
 
 \paragraph{Presentation boundaries.}  The Vegas-facing pure and
 PMF-behavioral strategy carriers are native round-view carriers over the

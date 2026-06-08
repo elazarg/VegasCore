@@ -308,11 +308,16 @@ end-to-end guarantee into a short composite instead of a monolith.
   An implementation machine refines the primitive machine by projection,
   and --- given an adequate trace law --- preserves the frontier game's
   utilities (\Cref{thm:runtime-trace}).  Unlike the others this one is an
-  \emph{order}: its facts are directional (specification Nash pulls back
-  to the implementation, not conversely).%
-  \statusnote{Refinement currently pulls back individual Nash profiles
-  one-way; a two-sided ``the backend introduces no spurious equilibria''
-  (equilibrium-set) result is future work.}
+  \emph{order}: a richer concrete strategy space can carry equilibria the
+  specification does not, so the guarantee is directional in general.%
+  \statusnote{At a fixed (frontier) strategy space the pull-back is in
+  fact two-way under bounded utility: the implementation trace game
+  indexed by the frontier strategy type has \emph{exactly} the frontier
+  Nash set, so the backend introduces no spurious equilibria.  The order's
+  asymmetry is genuine only across strategy-space \emph{enlargement} --- a
+  backend whose concrete strategies have extra coordinates (e.g.\ an
+  out-of-band channel) can add equilibria; that is the cheap-talk case of
+  \Cref{sec:ref:cheap-talk}.}
   \emph{Forget:} the runtime's administrative bookkeeping.
 \end{description}
 
@@ -435,13 +440,18 @@ theorem surface is organized around the following claims.
 \item \textbf{Frontier semantics.}  Pure, behavioral, and product
   mixed-pure frontier games are defined from the canonical frontier
   round view.  Their outcome kernels are source-payoff projections of
-  the same canonical run distribution.%
-  \statusnote{Strategies are carried by the compiled frontier round view,
-  not by the source syntax: the source language exposes the ingredients
-  of a strategy (commit menus, per-player views, choice points) but no
-  strategy object over \(\mathsf{VegasCore}\) itself.  A source-native
-  strategic semantics, and its adequacy to the frontier game (the
-  strategic analogue of source-payoff adequacy), is future work.}
+  the same canonical run distribution.  A source-native behavioral
+  strategy --- a function of the player's source-local history view ---
+  and the source checkpoint game it induces are also mechanized: that
+  game shares the frontier outcome law and is two-way Nash-deviation
+  bisimilar to the frontier game on the checkpoint information surface,
+  where source and frontier strategies coincide.  Carrying this to the
+  raw source-local strategy surface is reduced to one bridge lemma,
+  stated but not yet discharged.%
+  \statusnote{So ``my program's equilibria are the frontier game's
+  equilibria'' is, on the checkpoint surface, a theorem --- a two-way
+  bisimulation --- not merely the definition of strategic meaning; only
+  the raw source-local bridge remains assumed.}
 \item \textbf{FOSG and EFG presentations.}  The FOSG and EFG layers are
   payoff-faithful presentations of the frontier semantics.
 \item \textbf{Kuhn.}  Behavioral and product mixed-pure frontier profiles
@@ -454,10 +464,13 @@ theorem surface is organized around the following claims.
   lifts compose, so a tower of abstract backend layers can be collapsed
   to one proof obligation against the primitive machine.  With the
   strategy-space conditions of \Cref{sec:ref:cheap-talk} and bounded
-  utility for the compared trace utilities, Nash equilibria on that
-  surface pull back to the implementation trace game.  The direction is
-  one-way: implementation equilibria do not automatically project back to
-  specification equilibria.
+  utility for the compared trace utilities, the implementation trace game
+  indexed by the frontier strategy space has \emph{exactly} the frontier
+  Nash set --- the backend adds no spurious equilibria.  The remaining
+  asymmetry is across strategy-space enlargement: a concrete machine with
+  additional strategic coordinates, such as an out-of-band channel, can
+  carry equilibria the specification does not, unless those coordinates
+  are ruled out, proved inert, or modeled explicitly.
 \end{enumerate}
 
 \leancorr{Every paper-facing claim is collected, with its fully qualified
