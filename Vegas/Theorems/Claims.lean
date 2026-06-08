@@ -208,6 +208,27 @@ theorem claim_behavioral_frontier_history_replays_to_source_run
   program.frontierSemantics.behavioralHistory_support_sourceRun
     profile hsupport
 
+/-- The checkpoint-aligned source behavioral game has the same observed
+outcome law as the completed behavioral frontier game, when frontier outcomes
+are observed through `some`. -/
+theorem claim_source_checkpoint_behavioral_kernel_matches_frontier
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.sourceCheckpointBehavioralGame.Profile) :
+    program.sourceCheckpointBehavioralGame.outcomeKernel profile =
+      PMF.map some
+        (program.behavioralFrontierGame.outcomeKernel profile) :=
+  program.sourceCheckpointBehavioralGame_outcomeKernel_eq_map_some profile
+
+/-- The checkpoint-aligned source behavioral game and the completed behavioral
+frontier game are related by a two-way Nash-deviation bisimulation. -/
+noncomputable def
+    claim_source_checkpoint_behavioral_frontier_deviation_bisimulation
+    (program : WFProgram P L) [FiniteDomains program] :
+    KernelGame.NashDeviationBisimulation
+      program.sourceCheckpointBehavioralGame program.behavioralFrontierGame
+      (Option (Outcome P)) :=
+  program.sourceCheckpointBehavioralFrontierNashDeviationBisimulation
+
 /-- The payoff-facing FOSG denotation and the native behavioral frontier game
 have the same joint utility distribution. -/
 theorem claim_fosg_utility_distribution_adequacy
