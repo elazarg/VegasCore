@@ -85,48 +85,64 @@ glossary (\Cref{sec:glossary}).
 \begin{tikzpicture}[
   >={Stealth[length=2.4mm]},
   font=\small,
-  box/.style={draw, rounded corners, align=center, inner sep=4pt,
-              minimum height=9mm, text width=46mm},
-  core/.style={box, fill=blue!8, very thick},
-  side/.style={box, fill=green!8, text width=42mm},
-  goal/.style={box, dashed, fill=black!4, text width=46mm},
+  spine/.style={draw, rounded corners=3pt, align=center, inner sep=4pt,
+                minimum height=9mm, text width=47mm, fill=blue!5},
+  core/.style={spine, fill=blue!13, very thick},
+  side/.style={draw, rounded corners=3pt, align=center, inner sep=4pt,
+               minimum height=9mm, text width=43mm, fill=green!8},
+  goal/.style={draw, dashed, rounded corners=3pt, align=center, inner sep=4pt,
+               minimum height=9mm, text width=47mm, fill=black!4},
+  note/.style={draw, rounded corners=3pt, align=center, inner sep=4pt,
+               text width=50mm, fill=green!4, font=\footnotesize},
   flow/.style={->, thick},
   lab/.style={font=\footnotesize, midway, right=1mm, align=left},
 ]
+% Suppress automatic and explicit-hyphen line breaks inside the fixed-width
+% nodes; line breaks are placed by hand at word boundaries below.
+\hyphenpenalty=10000\exhyphenpenalty=10000\relax
 % ── forward semantic spine (top-down) ────────────────────────────────
-\node[box]  (prog)  at (0,0)    {Protocol program\\{\footnotesize public samples \(\cdot\) sealed commits \(\cdot\) reveals \(\cdot\) payoffs}};
-\node[core] (graph) at (0,-2.1) {Visibility-aware \textbf{event graph}\\{\footnotesize the program's dependency structure}};
-\node[box]  (mach)  at (0,-4.2) {Operational machine\\{\footnotesize schedule-agnostic execution}};
+\node[spine] (prog)  at (0,0)
+  {Protocol program\\{\footnotesize public samples \(\cdot\) sealed commits \(\cdot\) reveals \(\cdot\) payoffs}};
+\node[core]  (graph) at (0,-2.1)
+  {Visibility-aware \textbf{event graph}\\{\footnotesize the program's\\dependency structure}};
+\node[spine] (mach)  at (0,-4.2)
+  {Operational machine\\{\footnotesize schedule-agnostic execution}};
 \draw[flow] (prog)  -- node[lab]{compile\\{\scriptsize source syntax erased}} (graph);
 \draw[flow] (graph) -- node[lab]{execute} (mach);
 % ── strategic analysis surface (to the right) ────────────────────────
-\node[side] (games) at (7.2,-1.6) {Strategic games\\{\footnotesize pure \(\cdot\) behavioral \(\cdot\) mixed-pure}};
-\node[side] (pres)  at (7.2,-3.6) {FOSG / EFG presentations};
-\draw[flow] (mach.east) .. controls +(2.2,0) and +(-1.6,0) .. (games.west)
-  node[pos=0.55,above,font=\footnotesize,align=center]{frontier\\view};
+\node[note] (prove) at (7.3,0.5)
+  {\textbf{Prove \& analyze}\\
+   payoff adequacy \(\cdot\) visibility\\
+   Kuhn equivalence \(\cdot\) Nash};
+\node[side] (games) at (7.3,-1.7)
+  {Strategic games\\{\footnotesize pure \(\cdot\) behavioral\\\(\cdot\) mixed-pure}};
+\node[side] (pres)  at (7.3,-3.7)
+  {FOSG / EFG\\{\footnotesize presentations}};
+\draw[flow] (mach.east) .. controls +(2.3,0) and +(-1.7,0) .. (games.west)
+  node[pos=0.5, above=0.4mm, fill=white, inner sep=1.2pt, font=\footnotesize]
+  {frontier view};
 \draw[flow] (games) -- (pres);
-\node[draw, rounded corners, fill=green!4, inner sep=4pt,
-      align=left, text width=44mm, font=\footnotesize] at (7.2,0.5)
-  {\textbf{Prove \& analyze:} payoff adequacy, visibility, Kuhn equivalence,
-   Nash / equilibria};
 % ── runtime tower (bottom-up refinement) ─────────────────────────────
-\node[box]  (back) at (0,-6.4) {Abstract backend layers\\{\footnotesize audited steps \(\cdot\) encoded storage \(\cdot\) message buffers}};
-\node[goal] (evm)  at (0,-8.6) {\textbf{EVM / smart-contract runtime}\\{\footnotesize the setting that grounds the design}};
+\node[spine] (back) at (0,-6.4)
+  {Abstract backend layers\\{\footnotesize audited steps \(\cdot\) encoded storage \(\cdot\) message buffers}};
+\node[goal]  (evm)  at (0,-8.7)
+  {\textbf{EVM / smart-contract}\\\textbf{runtime}\\{\footnotesize the setting that grounds the design}};
 \draw[flow] (back) -- node[lab]{refines\\{\scriptsize utility-preserving}} (mach);
-\draw[flow] (evm)  -- node[lab]{refines\\{\scriptsize layers compose into a tower}} (back);
+\draw[flow] (evm)  -- node[font=\footnotesize, pos=0.62, right=1mm, align=left]
+  {refines\\{\scriptsize layers compose into a tower}} (back);
 % ── legend ───────────────────────────────────────────────────────────
-\node[draw, rounded corners, align=left, font=\scriptsize, fill=white,
-      inner sep=3pt, anchor=north west] at (4.6,-6.0)
-  {\tikz\node[draw,rounded corners,minimum width=4mm,minimum height=3mm,fill=blue!8]{};\ mechanized in this work\\
-   \tikz\node[draw,rounded corners,dashed,minimum width=4mm,minimum height=3mm,fill=black!4]{};\ motivating target};
+\node[draw, rounded corners=3pt, align=left, font=\scriptsize, fill=white,
+      inner sep=4pt, anchor=north west] at (4.7,-6.1)
+  {\tikz\node[draw,rounded corners=2pt,minimum width=5mm,minimum height=3mm,fill=blue!13]{};~~mechanized in this work\\[2pt]
+   \tikz\node[draw,rounded corners=2pt,dashed,minimum width=5mm,minimum height=3mm,fill=black!4]{};~~motivating target};
 \end{tikzpicture}
 \caption{VegasCore at a glance.  Solid boxes are mechanized in this
-development.  The downward arrows are the forward semantics that turn a
-protocol into a game; the strategic surface on the right is where
-game-theoretic properties are proved.  Concrete runtimes enter from below as a
-\emph{tower} of utility-preserving refinements that compose down to the
-primitive machine; the EVM runtime (dashed) is the concrete setting whose
-characteristics shaped the design, not a backend mechanized here.}
+development: the blue spine is the forward semantics that turns a protocol into
+a game, and the green surface on the right is where game-theoretic properties
+are proved.  Concrete runtimes enter from below as a \emph{tower} of
+utility-preserving refinements down to the primitive machine; the EVM runtime
+(dashed) is the motivating setting that shaped the design, not a backend
+mechanized here.}
 \label{fig:overview}
 \end{figure}
 
