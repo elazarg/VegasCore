@@ -1040,6 +1040,453 @@ theorem StoreAgree_run_canonical_compileCore
               (canonicalLabelStore G fullLabels hlen)
           exact hfinalAgreeCurrent
 
+/-- Forward generation spine: executing the source run in source order yields a
+reachable graph configuration over the same compiled graph, with the terminal
+compiler dictionary agreeing with the terminal source environment. -/
+theorem StoreAgree_run_reachable_compileCore
+    {start final : SourceConfig P L} {labels : List (Label P L)}
+    (hrun : SourceConfig.LabeledStar start labels final)
+    (fresh : FreshBindings start.cont)
+    (normalized : NormalizedDists start.cont)
+    (state : BuildState P L start.ctx)
+    (cfg :
+      Config (BuildResult.graph
+        (compileCore start.cont fresh normalized state)))
+    (hdone : DonePrefix cfg state.nodes.length)
+    (hreach :
+      Reachable
+        (BuildResult.graph
+          (compileCore start.cont fresh normalized state))
+        cfg)
+    (hagree : StoreAgree state start.env cfg.store)
+    (hterminal : final.IsTerminal) :
+    let result := compileCore start.cont fresh normalized state
+    ∃ hctx : final.ctx = result.terminalCtx,
+      ∃ terminalCfg : Config result.graph,
+        Reachable result.graph terminalCfg ∧
+        Terminal result.graph terminalCfg ∧
+        StoreAgree result.terminalState
+          (cast (congrArg (VEnv L) hctx) final.env)
+          terminalCfg.store := by
+  induction hrun with
+  | refl cfgSrc =>
+      rcases cfgSrc with ⟨Γ, env, cont⟩
+      dsimp [SourceConfig.IsTerminal] at hterminal
+      obtain ⟨payoffs, hpayoffs⟩ := hterminal
+      subst cont
+      refine ⟨rfl, cfg, ?_, ?_, ?_⟩
+      · simpa [compileCore] using hreach
+      · intro node
+        exact (hdone node).mpr (by
+          simp [compileCore, BuildResult.graph, Graph.nodeCount])
+      · intro name bindTy h
+        simpa [compileCore] using hagree h
+  | cons step rest ih =>
+      rename_i a b c stepLabel tailLabels
+      cases step with
+      | @sample Γ env x b D' k v hv =>
+          let graphDist := eventDistOf state D' normalized.1
+          let sem := NodeSem.sample (Player := P) graphDist
+          let event : EventNode P L :=
+            { ty := graphDist.ty, owner := none, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            dsimp [Graph.nodeWFAt, graphDist, sem, event]
+            exact
+              ⟨by
+                  intro field hfield
+                  rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+                  exact Graph.fieldAvailableBefore_append_node_of_true
+                    state.initialFields state.nodes event
+                    (distReadRefs_available state D' ref href),
+                rfl, rfl,
+                by
+                  intro ref href
+                  exact Graph.fieldRefPublic_append_node
+                    state.initialFields state.nodes event
+                    (distReadRefs_public state D' ref href)⟩
+          let added :=
+            state.addEvent x (.pub graphDist.ty) sem fresh.1 hnode
+          let G : Graph P L :=
+            BuildResult.graph
+              (compileCore (VegasCore.sample x D' k) fresh normalized state)
+          have hidx : state.nodes.length < G.nodeCount := by
+            have hlenNodes :=
+              compileCore_nodes_length
+                (VegasCore.sample x D' k) fresh normalized state
+            change state.nodes.length <
+              (compileCore (VegasCore.sample x D' k) fresh normalized state).nodes.length
+            rw [hlenNodes]
+            simp [VegasCore.instrCount]
+          let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+          have hnodeVal : (node : Nat) = state.nodes.length := rfl
+          have htarget : G.nodeTarget node = state.nextField := by
+            simp [G, node, BuildResult.graph, Graph.nodeTarget,
+              BuildState.nextField, BuildState.nextNode,
+              compileCore_initialFields]
+          have hrow :
+              G.nodes[(node : Nat)]? = some event := by
+            change
+              (compileCore (VegasCore.sample x D' k) fresh normalized
+                state).nodes[state.nodes.length]? = some event
+            simpa [compileCore, graphDist, sem, event, hnode, added] using
+              compileCore_added_head_get?
+                (state := state) (name := x) (bindTy := .pub graphDist.ty)
+                (sem := sem) (hfresh := fresh.1) (hnode := hnode)
+                k fresh.2 normalized.2
+          have hready : Ready G cfg node :=
+            hdone.ready hnodeVal
+          let available :
+              ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+                ∃ value, Store.getAs cfg.store (state.fieldOf h)
+                  bindTy.base = some value := by
+            intro name bindTy h
+            exact ⟨_, hagree h⟩
+          rcases
+              eventDistOf_readEnv_agrees_sourceEnvOfStore
+                state D' normalized.1 cfg.store available with
+            ⟨readEnv, hreadEnv, hreadAgrees⟩
+          have hsourceEnv :
+              sourceEnvOfStore state cfg.store available = env :=
+            sourceEnvOfStore_eq_of_storeAgree hagree available
+          have hdistEval :=
+            eventDistOf_eval_eq_eval
+              state D' normalized.1 (VEnv.erasePubEnv env) readEnv
+              (by
+                intro name depTy hvar hmem
+                simpa [hsourceEnv] using hreadAgrees hvar hmem)
+          rcases hdistEval with ⟨hnormalized, hdistEval⟩
+          have hsupport :
+              v ∈ (graphDist.eval readEnv).support := by
+            have hsupport' :
+                v ∈
+                  ((eventDistOf state D' normalized.1).eval readEnv).support := by
+              rw [hdistEval]
+              exact
+                (FWeight.mem_support_toPMF
+                  (L.evalDist D' (VEnv.erasePubEnv env)) hnormalized v).mpr (by
+                simpa [VEnv.eraseSampleEnv] using hv)
+            simpa [graphDist] using hsupport'
+          let internal : InternalEvent G := { node := node }
+          let internalStep : InternalStep G cfg internal :=
+            .sample event graphDist hrow rfl hready readEnv hreadEnv
+          let availableEvent : AvailableEvent G cfg :=
+            .internal internal internalStep
+          let written : TypedValue L := { ty := graphDist.ty, value := v }
+          let nextCfg : Config G := cfg.completeNode node written
+          have hnext :
+              nextCfg ∈ (stepAvailableEvent G cfg availableEvent).support := by
+            dsimp [availableEvent, internalStep, nextCfg, stepAvailableEvent,
+              stepInternal, written]
+            exact (PMF.mem_support_map_iff _ _ _).mpr
+              ⟨v, hsupport, rfl⟩
+          have hreachNext : Reachable G nextCfg :=
+            Reachable.step hreach availableEvent hnext
+          have hdoneNext : DonePrefix nextCfg added.1.nodes.length := by
+            have hdoneStep :=
+              hdone.completeNode (node := node) hnodeVal written
+            simpa [nextCfg, added, BuildState.addEvent_nodes] using hdoneStep
+          have hagreeNext : StoreAgree added.1 (VEnv.cons v env) nextCfg.store := by
+            have hraw :
+                StoreAgree added.1 (VEnv.cons v env)
+                  (Store.set cfg.store state.nextField written) := by
+              intro name bindTy h
+              simpa [written, added] using
+                (hagree.addEvent x (.pub graphDist.ty) sem fresh.1 hnode v) h
+            change
+              StoreAgree added.1 (VEnv.cons v env)
+                (Store.set cfg.store (G.nodeTarget node) written)
+            rw [htarget]
+            exact hraw
+          let hcfgCast :
+              Config (BuildResult.graph
+                (compileCore k fresh.2 normalized.2 added.1)) := by
+            simpa [G, compileCore, graphDist, sem, event, hnode, added] using
+              nextCfg
+          have hdoneCast :
+              DonePrefix hcfgCast added.1.nodes.length := by
+            change DonePrefix nextCfg added.1.nodes.length
+            exact hdoneNext
+          have hreachCast :
+              Reachable
+                (BuildResult.graph
+                  (compileCore k fresh.2 normalized.2 added.1))
+                hcfgCast := by
+            change Reachable G nextCfg
+            exact hreachNext
+          have hagreeCast : StoreAgree added.1 (VEnv.cons v env) hcfgCast.store := by
+            change StoreAgree added.1 (VEnv.cons v env) nextCfg.store
+            exact hagreeNext
+          rcases
+              ih fresh.2 normalized.2 added.1 hcfgCast
+                hdoneCast hreachCast hagreeCast hterminal with
+            ⟨hctx, terminalCfg, hreachTerminal, hterminalGraph, hagreeTerminal⟩
+          refine ⟨hctx, terminalCfg, ?_, hterminalGraph, hagreeTerminal⟩
+          simpa [G, compileCore, graphDist, sem, event, hnode, added] using
+            hreachTerminal
+      | @commit Γ env x who b R k v hguard =>
+          let graphGuard := eventGuardOf state who R
+          let sem := NodeSem.commit (Player := P) who graphGuard
+          let event : EventNode P L :=
+            { ty := graphGuard.ty, owner := some who, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            dsimp [Graph.nodeWFAt, graphGuard, sem, event]
+            exact
+              ⟨by
+                  intro field hfield
+                  rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+                  exact Graph.fieldAvailableBefore_append_node_of_true
+                    state.initialFields state.nodes event
+                    (visibleFieldRefs_available state who ref href),
+                rfl, rfl,
+                by
+                  intro ref href
+                  exact Graph.fieldRefVisibleTo_append_node
+                    state.initialFields state.nodes event who
+                    (visibleFieldRefs_visible state who ref href)⟩
+          let added :=
+            state.addEvent x (.sealed who graphGuard.ty) sem fresh.1 hnode
+          let G : Graph P L :=
+            BuildResult.graph
+              (compileCore (VegasCore.commit x who R k) fresh normalized state)
+          have hidx : state.nodes.length < G.nodeCount := by
+            have hlenNodes :=
+              compileCore_nodes_length
+                (VegasCore.commit x who R k) fresh normalized state
+            change state.nodes.length <
+              (compileCore (VegasCore.commit x who R k) fresh normalized state).nodes.length
+            rw [hlenNodes]
+            simp [VegasCore.instrCount]
+          let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+          have hnodeVal : (node : Nat) = state.nodes.length := rfl
+          have htarget : G.nodeTarget node = state.nextField := by
+            simp [G, node, BuildResult.graph, Graph.nodeTarget,
+              BuildState.nextField, BuildState.nextNode,
+              compileCore_initialFields]
+          have hrow : G.nodes[(node : Nat)]? = some event := by
+            change
+              (compileCore (VegasCore.commit x who R k) fresh normalized
+                state).nodes[state.nodes.length]? = some event
+            simpa [compileCore, graphGuard, sem, event, hnode, added] using
+              compileCore_added_head_get?
+                (state := state) (name := x)
+                (bindTy := .sealed who graphGuard.ty) (sem := sem)
+                (hfresh := fresh.1) (hnode := hnode)
+                k fresh.2 normalized
+          have hready : Ready G cfg node :=
+            hdone.ready hnodeVal
+          let available :
+              ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+                ∃ value, Store.getAs cfg.store (state.fieldOf h)
+                  bindTy.base = some value := by
+            intro name bindTy h
+            exact ⟨_, hagree h⟩
+          rcases
+              eventGuardOf_readEnv_of_sourceStoreAvailable
+                state who R cfg.store available with
+            ⟨readEnv, hreadEnv⟩
+          have hsourceEnv :
+              sourceEnvOfStore state cfg.store available = env :=
+            sourceEnvOfStore_eq_of_storeAgree hagree available
+          have hviewEq :=
+            viewEnvOfReadEnv_eq_eraseEnv_sourceEnvOfStore
+              state who cfg.store available readEnv hreadEnv
+          have hguardGraph : graphGuard.eval v readEnv = true := by
+            change (eventGuardOf state who R).eval v readEnv = true
+            rw [eventGuardOf_eval_eq_eval, hviewEq, hsourceEnv]
+            exact hguard
+          let written : TypedValue L := { ty := graphGuard.ty, value := v }
+          let action : CommitAction G who := { node := node, value := written }
+          have hvalueOk : action.value.as? graphGuard.ty = some v := by
+            simp [action, written, TypedValue.as?]
+            rfl
+          let commitStep : CommitStep G cfg who action :=
+            { row := event
+              guard := graphGuard
+              row_get := hrow
+              sem_eq := rfl
+              ready := hready
+              value := v
+              value_ok := hvalueOk
+              env := readEnv
+              env_ok := hreadEnv
+              guard_ok := hguardGraph }
+          let availableEvent : AvailableEvent G cfg :=
+            .commit who action commitStep
+          let nextCfg : Config G := cfg.completeNode node written
+          have hnext :
+              nextCfg ∈ (stepAvailableEvent G cfg availableEvent).support := by
+            dsimp [availableEvent, commitStep, nextCfg, stepAvailableEvent,
+              stepCommit, written]
+            rw [PMF.support_pure, Set.mem_singleton_iff]
+          have hreachNext : Reachable G nextCfg :=
+            Reachable.step hreach availableEvent hnext
+          have hdoneNext : DonePrefix nextCfg added.1.nodes.length := by
+            have hdoneStep :=
+              hdone.completeNode (node := node) hnodeVal written
+            simpa [nextCfg, added, BuildState.addEvent_nodes] using hdoneStep
+          have hagreeNext : StoreAgree added.1 (VEnv.cons v env) nextCfg.store := by
+            have hraw :
+                StoreAgree added.1 (VEnv.cons v env)
+                  (Store.set cfg.store state.nextField written) := by
+              intro name bindTy h
+              simpa [written, added] using
+                (hagree.addEvent x (.sealed who graphGuard.ty) sem fresh.1
+                  hnode v) h
+            change
+              StoreAgree added.1 (VEnv.cons v env)
+                (Store.set cfg.store (G.nodeTarget node) written)
+            rw [htarget]
+            exact hraw
+          let hcfgCast :
+              Config (BuildResult.graph
+                (compileCore k fresh.2 normalized added.1)) := by
+            simpa [G, compileCore, graphGuard, sem, event, hnode, added] using
+              nextCfg
+          have hdoneCast :
+              DonePrefix hcfgCast added.1.nodes.length := by
+            change DonePrefix nextCfg added.1.nodes.length
+            exact hdoneNext
+          have hreachCast :
+              Reachable
+                (BuildResult.graph
+                  (compileCore k fresh.2 normalized added.1))
+                hcfgCast := by
+            change Reachable G nextCfg
+            exact hreachNext
+          have hagreeCast :
+              StoreAgree added.1 (VEnv.cons v env) hcfgCast.store := by
+            change StoreAgree added.1 (VEnv.cons v env) nextCfg.store
+            exact hagreeNext
+          rcases
+              ih fresh.2 normalized added.1 hcfgCast
+                hdoneCast hreachCast hagreeCast hterminal with
+            ⟨hctx, terminalCfg, hreachTerminal, hterminalGraph, hagreeTerminal⟩
+          refine ⟨hctx, terminalCfg, ?_, hterminalGraph, hagreeTerminal⟩
+          simpa [G, compileCore, graphGuard, sem, event, hnode, added] using
+            hreachTerminal
+      | @reveal Γ env y who x b hx k =>
+          let sourceField := state.fieldOf hx
+          let sem := NodeSem.reveal (Player := P) (L := L) sourceField
+          let revealed : L.Val b := VEnv.get env hx
+          let event : EventNode P L := { ty := b, owner := none, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            rcases state.fieldOf_spec hx with
+              ⟨sourceSpec, hsource, hty, howner⟩
+            dsimp [Graph.nodeWFAt, sem, event]
+            rw [Graph.field?_append_node_of_some
+              state.initialFields state.nodes event hsource]
+            refine
+              ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
+            · intro field hfield
+              have hfieldEq : field = sourceField :=
+                Finset.mem_singleton.mp hfield
+              subst hfieldEq
+              exact Graph.fieldAvailableBefore_append_node_of_true
+                state.initialFields state.nodes event
+                (state.fieldOf_available hx)
+            · simp [howner]
+          let added := state.addEvent y (.pub b) sem fresh.1 hnode
+          let G : Graph P L :=
+            BuildResult.graph
+              (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+                state)
+          have hidx : state.nodes.length < G.nodeCount := by
+            have hlenNodes :=
+              compileCore_nodes_length
+                (VegasCore.reveal y who x hx k) fresh normalized state
+            change state.nodes.length <
+              (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+                state).nodes.length
+            rw [hlenNodes]
+            simp [VegasCore.instrCount]
+          let node : Fin G.nodeCount := ⟨state.nodes.length, hidx⟩
+          have hnodeVal : (node : Nat) = state.nodes.length := rfl
+          have htarget : G.nodeTarget node = state.nextField := by
+            simp [G, node, BuildResult.graph, Graph.nodeTarget,
+              BuildState.nextField, BuildState.nextNode,
+              compileCore_initialFields]
+          have hrow : G.nodes[(node : Nat)]? = some event := by
+            change
+              (compileCore (VegasCore.reveal y who x hx k) fresh normalized
+                state).nodes[state.nodes.length]? = some event
+            simpa [compileCore, sourceField, sem, event, hnode, added] using
+              compileCore_added_head_get?
+                (state := state) (name := y) (bindTy := .pub b)
+                (sem := sem) (hfresh := fresh.1) (hnode := hnode)
+                k fresh.2 normalized
+          have hready : Ready G cfg node :=
+            hdone.ready hnodeVal
+          have hsourceValue :
+              Store.getAs cfg.store sourceField b = some revealed := by
+            simpa [sourceField, revealed] using hagree hx
+          let internal : InternalEvent G := { node := node }
+          let internalStep : InternalStep G cfg internal :=
+            .reveal event sourceField hrow rfl hready revealed hsourceValue
+          let availableEvent : AvailableEvent G cfg :=
+            .internal internal internalStep
+          let written : TypedValue L := { ty := b, value := revealed }
+          let nextCfg : Config G := cfg.completeNode node written
+          have hnext :
+              nextCfg ∈ (stepAvailableEvent G cfg availableEvent).support := by
+            dsimp [availableEvent, internalStep, nextCfg, stepAvailableEvent,
+              stepInternal, written]
+            rw [PMF.support_pure, Set.mem_singleton_iff]
+          have hreachNext : Reachable G nextCfg :=
+            Reachable.step hreach availableEvent hnext
+          have hdoneNext : DonePrefix nextCfg added.1.nodes.length := by
+            have hdoneStep :=
+              hdone.completeNode (node := node) hnodeVal written
+            simpa [nextCfg, added, BuildState.addEvent_nodes] using hdoneStep
+          have hagreeNext :
+              StoreAgree added.1 (VEnv.cons revealed env) nextCfg.store := by
+            have hraw :
+                StoreAgree added.1 (VEnv.cons revealed env)
+                  (Store.set cfg.store state.nextField written) := by
+              intro name bindTy h
+              simpa [written, added] using
+                (hagree.addEvent y (.pub b) sem fresh.1 hnode revealed) h
+            change
+              StoreAgree added.1 (VEnv.cons revealed env)
+                (Store.set cfg.store (G.nodeTarget node) written)
+            rw [htarget]
+            exact hraw
+          let hcfgCast :
+              Config (BuildResult.graph
+                (compileCore k fresh.2 normalized added.1)) := by
+            simpa [G, compileCore, sourceField, sem, event, hnode, added] using
+              nextCfg
+          have hdoneCast :
+              DonePrefix hcfgCast added.1.nodes.length := by
+            change DonePrefix nextCfg added.1.nodes.length
+            exact hdoneNext
+          have hreachCast :
+              Reachable
+                (BuildResult.graph
+                  (compileCore k fresh.2 normalized added.1))
+                hcfgCast := by
+            change Reachable G nextCfg
+            exact hreachNext
+          have hagreeCast :
+              StoreAgree added.1 (VEnv.cons revealed env) hcfgCast.store := by
+            change StoreAgree added.1 (VEnv.cons revealed env) nextCfg.store
+            exact hagreeNext
+          rcases
+              ih fresh.2 normalized added.1 hcfgCast
+                hdoneCast hreachCast hagreeCast hterminal with
+            ⟨hctx, terminalCfg, hreachTerminal, hterminalGraph, hagreeTerminal⟩
+          refine ⟨hctx, terminalCfg, ?_, hterminalGraph, hagreeTerminal⟩
+          simpa [G, compileCore, sourceField, sem, event, hnode, added] using
+            hreachTerminal
+
 /-- Initial source values are still readable after completing all event nodes:
 canonical completion writes only node-target fields, never initial fields. -/
 theorem StoreAgree_fromInitial_canonicalCompletion
