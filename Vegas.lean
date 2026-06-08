@@ -11,6 +11,7 @@ import Vegas.Core.Scope
 import Vegas.Core.Finite
 import Vegas.Core.SmallStep
 import Vegas.Core.Epistemic
+import Vegas.Core.Strategic
 import Vegas.Core.Schedule
 import Vegas.Core.Noninterference
 import Vegas.Core.Trace
