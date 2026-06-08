@@ -2257,11 +2257,10 @@ theorem sourceRun_reachableConfig
       hagree
       available
 
-/-- A certificate that an arbitrary reachable terminal graph state can be
-replayed in canonical source order. Constructing this from a `Reachable` proof
-is the reverse-direction replay obligation: each node's graph validity
-certificate must be transported to source order while preserving the terminal
-store reads used by the compiler dictionary. -/
+/-- A certificate packaging the canonical source-order replay of a reachable
+terminal graph state. `sourceReplay_exists_of_reachableConfig` constructs this
+certificate from reachability; `sourceRun_of_reachableConfig` exposes the
+Prop-level reverse theorem directly. -/
 structure SourceReplay
     (g : GraphProgram P L)
     (state : ReachableConfig (buildResult g).graph)
@@ -2397,9 +2396,7 @@ theorem sourceReplay_exists_of_reachableConfig
        sourceTerminal := hsourceTerminal
        envEq := ⟨hctx, available, henv⟩ }⟩
 
-/-- **Reverse generation, gated by replay.** Once a reachable terminal graph
-state has been replayed in source order, it yields a terminal source run whose
-environment is the one reconstructed from the graph store. -/
+/-- Reverse generation from an already-packaged replay certificate. -/
 theorem sourceRun_of_replay
     (g : GraphProgram P L)
     (state : ReachableConfig (buildResult g).graph)
