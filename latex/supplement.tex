@@ -79,9 +79,12 @@ utility preservation --- depends only on the three standard Lean axioms, with no
 
 \noindent
 This footprint is not just observed once; \TT{Vegas.Spec} pins it with
-\texttt{\#guard\_msgs} assertions, so the build fails the moment it changes ---
-for instance, a stray \TT{sorry} would introduce \TT{sorryAx} and break the pin.
-The trusted base is thus a checked invariant, not a claim in prose.
+\texttt{\#guard\_msgs} assertions on one flagship claim per layer ---
+compilation, terminal-payoff adequacy, and runtime utility preservation ---
+so the build fails the moment their footprint changes; for instance, a stray
+\TT{sorry} would introduce \TT{sorryAx} and break the pin.  The remaining
+flagship claims share this trusted base.  The trusted base is thus a checked
+invariant, not a claim in prose.
 
 \subsection{A four-pass reading order}
 
@@ -112,7 +115,7 @@ The trusted base is thus a checked invariant, not a claim in prose.
 question an auditor should ask of it.  Every Lean name here is \texttt{\#check}ed
 in \TT{Spec}, so the table cannot silently drift out of sync with the code.
 
-\begin{table}[h]
+\begin{table}[ht]
 \small
 \begin{tabular}{@{}p{0.16\textwidth}p{0.20\textwidth}p{0.55\textwidth}@{}}
 \toprule
@@ -151,7 +154,7 @@ visibility contexts & \TT{Vegas.VCtx}, \TT{Vegas.VHasVar} &
 The maintained semantic spine, with the theorem certifying each step, is shown
 in \Cref{fig:pipeline}.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 \begin{tikzpicture}[
   >={Stealth[round]},
