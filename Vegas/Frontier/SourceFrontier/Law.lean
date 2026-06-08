@@ -88,6 +88,24 @@ theorem legalActionLaw_disintegrate_list
   Math.ProbabilityMassFunction.bind_pushforward_condOn_pure_list
     (view.legalActionLaw horizon σ h hterm) projections
 
+/-- Iterated source-order conditioning of one frontier legal-action law never
+creates an action outside the original frontier legal-action support. -/
+theorem legalActionLaw_iterCondOn_support_subset
+    {M : Machine Player} (view : M.RoundView) (horizon : Nat)
+    [∀ player, Fintype (Option (view.Act player))]
+    (σ : view.BoundedBehavioralProfile horizon)
+    (h : view.BoundedHistory horizon)
+    (hterm : ¬ view.boundedTerminal horizon h.lastState)
+    (projections :
+      List
+        (Math.ProbabilityMassFunction.FiniteProjection
+          (view.BoundedLegalAction horizon h.lastState))) :
+    (Math.ProbabilityMassFunction.iterCondOn
+        (view.legalActionLaw horizon σ h hterm) projections).support ⊆
+      (view.legalActionLaw horizon σ h hterm).support :=
+  Math.ProbabilityMassFunction.iterCondOn_support_subset
+    (view.legalActionLaw horizon σ h hterm) projections
+
 variable [DecidableEq Player]
 
 /-- A conditioned frontier node-value law only supports legal actions that
