@@ -161,6 +161,19 @@ theorem Ready.nodeTarget_not_mem_reads_of_ready
       hnode hother havailable hread
   exact hotherReady.1 (hready.2 hprereq)
 
+theorem Graph.nodeTarget_not_mem_own_reads
+    {G : Graph Player L} (hwf : G.WF)
+    {node : Fin G.nodeCount} {event : EventNode Player L}
+    (hnode : G.nodes[node]? = some event) :
+    G.nodeTarget node ∉ event.sem.reads := by
+  intro hread
+  have havailable :
+      G.fieldAvailableBefore (node : Nat) (G.nodeTarget node) = true :=
+    (hwf node event hnode).1 (G.nodeTarget node) hread
+  unfold Graph.fieldAvailableBefore at havailable
+  rw [G.field?_nodeTarget hnode] at havailable
+  simp at havailable
+
 theorem ReadEnv.ofStore?_completeNode_of_not_read
     {G : Graph Player L} {cfg : Config G}
     {node : Fin G.nodeCount} {value : TypedValue L}
@@ -605,6 +618,151 @@ noncomputable def stepAvailableEvent (G : Graph Player L) (cfg : Config G)
   | .commit _ _ step => stepCommit G cfg step
   | .internal _ step => stepInternal G cfg step
 
+/-- Completed nodes are closed under graph prerequisites. -/
+def DonePrereqs (G : Graph Player L) (cfg : Config G) : Prop :=
+  ∀ {node prior : Fin G.nodeCount},
+    node ∈ cfg.done → prior ∈ G.prereqs node → prior ∈ cfg.done
+
+theorem DonePrereqs.initial (G : Graph Player L) :
+    DonePrereqs G (Config.initial G) := by
+  intro node prior hdone _hprior
+  simp [Config.initial] at hdone
+
+theorem DonePrereqs.completeNode
+    {G : Graph Player L} {cfg : Config G}
+    (hclosed : DonePrereqs G cfg)
+    {node : Fin G.nodeCount} (hready : Ready G cfg node)
+    (value : TypedValue L) :
+    DonePrereqs G (cfg.completeNode node value) := by
+  intro query prior hdone hprior
+  have hcases : query = node ∨ query ∈ cfg.done := by
+    simpa [Config.completeNode] using hdone
+  cases hcases with
+  | inl hquery =>
+      subst query
+      exact Finset.mem_insert_of_mem (hready.2 hprior)
+  | inr hquery =>
+      exact Finset.mem_insert_of_mem (hclosed hquery hprior)
+
+theorem DonePrereqs.nodeTarget_not_mem_reads_of_not_done
+    {G : Graph Player L} (hwf : G.WF)
+    {cfg : Config G} (hclosed : DonePrereqs G cfg)
+    {node other : Fin G.nodeCount}
+    {event otherEvent : EventNode Player L}
+    (hnode : G.nodes[node]? = some event)
+    (hother : G.nodes[other]? = some otherEvent)
+    (hdone : node ∈ cfg.done)
+    (hotherNotDone : other ∉ cfg.done) :
+    G.nodeTarget other ∉ event.sem.reads := by
+  intro hread
+  have havailable :
+      G.fieldAvailableBefore (node : Nat) (G.nodeTarget other) = true :=
+    (hwf node event hnode).1 (G.nodeTarget other) hread
+  unfold Graph.fieldAvailableBefore at havailable
+  rw [G.field?_nodeTarget hother] at havailable
+  simp only [decide_eq_true_eq] at havailable
+  have hprereq : other ∈ G.prereqs node :=
+    G.nodeTarget_mem_prereqs_of_read
+      hnode hother havailable hread
+  exact hotherNotDone (hclosed hdone hprereq)
+
+/-- The semantic evidence carried by the value written for a completed node,
+read back from the current store. -/
+def NodeValueValid (G : Graph Player L) (cfg : Config G)
+    (node : Fin G.nodeCount) : Prop :=
+  ∃ row : EventNode Player L, G.nodes[node]? = some row ∧
+    match row.sem with
+    | .sample dist =>
+        ∃ value : L.Val dist.ty,
+          Store.getAs cfg.store (G.nodeTarget node) dist.ty = some value ∧
+          ∃ env : ReadEnv L dist.reads,
+            ReadEnv.ofStore? cfg.store dist.reads = some env ∧
+            value ∈ (dist.eval env).support
+    | .commit _ guard =>
+        ∃ value : L.Val guard.ty,
+          Store.getAs cfg.store (G.nodeTarget node) guard.ty = some value ∧
+          ∃ env : ReadEnv L guard.choiceReads,
+            ReadEnv.ofStore? cfg.store guard.choiceReads = some env ∧
+            guard.eval value env = true
+    | .reveal source =>
+        ∃ value : L.Val row.ty,
+          Store.getAs cfg.store (G.nodeTarget node) row.ty = some value ∧
+          Store.getAs cfg.store source row.ty = some value
+
+/-- Every completed node has semantic evidence for the value currently stored
+at its target field. -/
+def ValidDoneValues (G : Graph Player L) (cfg : Config G) : Prop :=
+  ∀ node : Fin G.nodeCount, node ∈ cfg.done → NodeValueValid G cfg node
+
+theorem NodeValueValid.completeNode_of_not_done
+    {G : Graph Player L} (hwf : G.WF)
+    {cfg : Config G} (hclosed : DonePrereqs G cfg)
+    {node other : Fin G.nodeCount}
+    (hvalid : NodeValueValid G cfg node)
+    (hdone : node ∈ cfg.done)
+    (hotherNotDone : other ∉ cfg.done)
+    {otherEvent : EventNode Player L}
+    (hother : G.nodes[other]? = some otherEvent)
+    (written : TypedValue L) :
+    NodeValueValid G (cfg.completeNode other written) node := by
+  rcases hvalid with ⟨row, hrow, hvalid⟩
+  have hnodeNe : node ≠ other := by
+    intro hnodeEq
+    subst hnodeEq
+    exact hotherNotDone hdone
+  have htargetNe : G.nodeTarget node ≠ G.nodeTarget other :=
+    Config.nodeTarget_ne_of_ne (G := G) hnodeNe
+  have hnotRead : G.nodeTarget other ∉ row.sem.reads :=
+    hclosed.nodeTarget_not_mem_reads_of_not_done
+      hwf hrow hother hdone hotherNotDone
+  refine ⟨row, hrow, ?_⟩
+  cases hsem : row.sem with
+  | sample dist =>
+      rw [hsem] at hvalid
+      rcases hvalid with ⟨value, htarget, env, henv, hsupport⟩
+      refine ⟨value, ?_, env, ?_, hsupport⟩
+      · simpa [Config.completeNode] using
+          (Store.getAs_set_ne cfg.store htargetNe written dist.ty).trans
+            htarget
+      · exact
+          ReadEnv.ofStore?_completeNode_of_not_read
+            (node := other) (value := written) henv
+            (by
+              intro ref href heq
+              apply hnotRead
+              rw [hsem]
+              exact Finset.mem_image.mpr ⟨ref, href, heq⟩)
+  | commit who guard =>
+      rw [hsem] at hvalid
+      rcases hvalid with ⟨value, htarget, env, henv, hguard⟩
+      refine ⟨value, ?_, env, ?_, hguard⟩
+      · simpa [Config.completeNode] using
+          (Store.getAs_set_ne cfg.store htargetNe written guard.ty).trans
+            htarget
+      · exact
+          ReadEnv.ofStore?_completeNode_of_not_read
+            (node := other) (value := written) henv
+            (by
+              intro ref href heq
+              apply hnotRead
+              rw [hsem]
+              exact Finset.mem_image.mpr ⟨ref, href, heq⟩)
+  | reveal source =>
+      rw [hsem] at hvalid
+      rcases hvalid with ⟨value, htarget, hsource⟩
+      have hsourceNe : source ≠ G.nodeTarget other := by
+        intro heq
+        apply hnotRead
+        rw [hsem]
+        simp [NodeSem.reads, heq]
+      refine ⟨value, ?_, ?_⟩
+      · simpa [Config.completeNode] using
+          (Store.getAs_set_ne cfg.store htargetNe written row.ty).trans
+            htarget
+      · simpa [Config.completeNode] using
+          (Store.getAs_set_ne cfg.store hsourceNe written row.ty).trans
+            hsource
+
 /-- Completing two distinct ready events with fixed output values is
 schedule-independent at the raw graph configuration level.  Later execution
 theorems refine concrete commit/sample/reveal steps to this common shape. -/
@@ -1039,6 +1197,19 @@ inductive Reachable (G : Graph Player L) : Config G → Prop where
       next ∈ (stepAvailableEvent G cfg event).support →
       Reachable G next
 
+theorem reachable_donePrereqs
+    {G : Graph Player L} :
+    ∀ {cfg : Config G}, Reachable G cfg → DonePrereqs G cfg := by
+  intro cfg hreach
+  induction hreach with
+  | initial =>
+      exact DonePrereqs.initial G
+  | step hprev event hnext ih =>
+      rcases stepAvailableEvent_support_completeNode event hnext with
+        ⟨written, hnextEq⟩
+      subst hnextEq
+      exact ih.completeNode event.ready written
+
 theorem reachable_storeCoherent
     {G : Graph Player L} (hwf : G.WF) :
     ∀ {cfg : Config G}, Reachable G cfg → StoreCoherent G cfg := by
@@ -1104,6 +1275,146 @@ theorem reachable_storeCoherent
               rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
               subst target
               exact ih.completeNode row_get value
+
+theorem reachable_validDoneValues
+    {G : Graph Player L} (hwf : G.WF) :
+    ∀ {cfg : Config G}, Reachable G cfg → ValidDoneValues G cfg := by
+  intro cfg hreach
+  induction hreach with
+  | initial =>
+      intro node hdone
+      simp [Config.initial] at hdone
+  | step hprev event hnext ih =>
+      rename_i source target
+      have hclosed : DonePrereqs G source :=
+        reachable_donePrereqs hprev
+      cases event with
+      | commit who action step =>
+          have hpmf :
+              stepAvailableEvent G source (.commit who action step) =
+                PMF.pure
+                  (source.completeNode action.node
+                    { ty := step.guard.ty, value := step.value }) := by
+            rfl
+          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          subst target
+          intro node hdone
+          have hcases : node = action.node ∨ node ∈ source.done := by
+            simpa [Config.completeNode] using hdone
+          cases hcases with
+          | inl hnode =>
+              subst node
+              refine ⟨step.row, step.row_get, ?_⟩
+              rw [step.sem_eq]
+              have htargetNot :
+                  G.nodeTarget action.node ∉ step.row.sem.reads :=
+                G.nodeTarget_not_mem_own_reads hwf step.row_get
+              refine ⟨step.value, ?_, step.env, ?_, step.guard_ok⟩
+              · simp [Config.completeNode, Store.getAs, Store.set,
+                  TypedValue.as?]
+              · exact
+                  ReadEnv.ofStore?_completeNode_of_not_read
+                    (node := action.node)
+                    (value := { ty := step.guard.ty, value := step.value })
+                    step.env_ok
+                    (by
+                      intro ref href heq
+                      apply htargetNot
+                      rw [step.sem_eq]
+                      exact Finset.mem_image.mpr ⟨ref, href, heq⟩)
+          | inr hold =>
+              exact
+                NodeValueValid.completeNode_of_not_done
+                  hwf hclosed (ih node hold) hold step.ready.1
+                  step.row_get
+                  { ty := step.guard.ty, value := step.value }
+      | internal internal step =>
+          cases step with
+          | sample row dist row_get sem_eq ready env env_ok =>
+              have hpmf :
+                  stepAvailableEvent G source
+                      (.internal internal
+                        (.sample row dist row_get sem_eq ready env env_ok)) =
+                    PMF.map
+                      (fun value =>
+                        source.completeNode internal.node
+                          { ty := dist.ty, value := value })
+                      (dist.eval env) := by
+                rfl
+              rw [hpmf] at hnext
+              rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+                ⟨value, hsupport, htargetEq⟩
+              subst target
+              intro node hdone
+              have hcases : node = internal.node ∨ node ∈ source.done := by
+                simpa [Config.completeNode] using hdone
+              cases hcases with
+              | inl hnode =>
+                  subst node
+                  refine ⟨row, row_get, ?_⟩
+                  rw [sem_eq]
+                  have htargetNot :
+                      G.nodeTarget internal.node ∉ row.sem.reads :=
+                    G.nodeTarget_not_mem_own_reads hwf row_get
+                  refine ⟨value, ?_, env, ?_, hsupport⟩
+                  · simp [Config.completeNode, Store.getAs, Store.set,
+                      TypedValue.as?]
+                  · exact
+                      ReadEnv.ofStore?_completeNode_of_not_read
+                        (node := internal.node)
+                        (value := { ty := dist.ty, value := value })
+                        env_ok
+                        (by
+                          intro ref href heq
+                          apply htargetNot
+                          rw [sem_eq]
+                          exact Finset.mem_image.mpr ⟨ref, href, heq⟩)
+              | inr hold =>
+                  exact
+                    NodeValueValid.completeNode_of_not_done
+                      hwf hclosed (ih node hold) hold ready.1 row_get
+                      { ty := dist.ty, value := value }
+          | reveal row sourceField row_get sem_eq ready value value_ok =>
+              have hpmf :
+                  stepAvailableEvent G source
+                      (.internal internal
+                        (.reveal row sourceField row_get sem_eq ready value
+                          value_ok)) =
+                    PMF.pure
+                      (source.completeNode internal.node
+                        { ty := row.ty, value := value }) := by
+                rfl
+              rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+              subst target
+              intro node hdone
+              have hcases : node = internal.node ∨ node ∈ source.done := by
+                simpa [Config.completeNode] using hdone
+              cases hcases with
+              | inl hnode =>
+                  subst node
+                  refine ⟨row, row_get, ?_⟩
+                  rw [sem_eq]
+                  have htargetNot :
+                      G.nodeTarget internal.node ∉ row.sem.reads :=
+                    G.nodeTarget_not_mem_own_reads hwf row_get
+                  have hsourceNe :
+                      sourceField ≠ G.nodeTarget internal.node := by
+                    intro heq
+                    apply htargetNot
+                    rw [sem_eq]
+                    simp [NodeSem.reads, heq]
+                  refine ⟨value, ?_, ?_⟩
+                  · simp [Config.completeNode, Store.getAs, Store.set,
+                      TypedValue.as?]
+                  · simpa [Config.completeNode] using
+                      (Store.getAs_set_ne source.store hsourceNe
+                        { ty := row.ty, value := value } row.ty).trans
+                        value_ok
+              | inr hold =>
+                  exact
+                    NodeValueValid.completeNode_of_not_done
+                      hwf hclosed (ih node hold) hold ready.1 row_get
+                      { ty := row.ty, value := value }
 
 theorem StoreCoherent.hasRefOfReadyRead
     {G : Graph Player L} {cfg : Config G}
