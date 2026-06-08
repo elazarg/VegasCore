@@ -2283,6 +2283,120 @@ structure SourceReplay
             available =
           cast (congrArg (VEnv L) hctx) final.env
 
+/-- Any reachable terminal compiled graph state can be replayed in canonical
+source order. -/
+theorem sourceReplay_exists_of_reachableConfig
+    (g : GraphProgram P L)
+    (state : ReachableConfig (buildResult g).graph)
+    (hterminal : Terminal (buildResult g).graph state.1) :
+    Nonempty (SourceReplay g state hterminal) := by
+  let init := initialState g.Γ g.env g.wctx
+  let compilerState := BuildState.fromInitial init
+  let result := compileCore g.prog g.fresh g.normalized compilerState
+  let replayState : ReachableConfig (BuildResult.graph result) := by
+    simpa [result, compilerState, init, buildResult] using state
+  have hterminalReplay :
+      Terminal (BuildResult.graph result) replayState.1 := by
+    simpa [replayState, result, compilerState, init, buildResult] using
+      hterminal
+  have hagree₀ : StoreAgree compilerState g.env replayState.1.store := by
+    intro name bindTy h
+    have hfield :
+        compilerState.fieldOf h <
+          (BuildResult.graph result).initialFields.length := by
+      simpa [compilerState, init, result, BuildResult.graph,
+        compileCore_initialFields] using init.fieldOf_lt h
+    have hframe :
+        Store.getAs replayState.1.store (compilerState.fieldOf h)
+            bindTy.base =
+          Store.getAs (BuildResult.graph result).initialStore
+            (compilerState.fieldOf h) bindTy.base :=
+      reachable_getAs_of_initial_field replayState.2 hfield
+    have hinit :
+        Store.getAs (BuildResult.graph result).initialStore
+            (compilerState.fieldOf h) bindTy.base =
+          some (g.env.get h) := by
+      simpa [compilerState, init, result, BuildResult.graph,
+        compileCore_initialFields] using
+        initialState_initialStore_get
+          (env := g.env) (wctx := g.wctx) result.nodes h
+    exact hframe.trans hinit
+  rcases
+      sourceReplay_compileCore g.env g.prog g.fresh g.normalized
+        compilerState replayState hterminalReplay hagree₀ with
+    ⟨labels, final, hrun, hsourceTerminal, hctx, hagree⟩
+  let available :
+      ∀ {name bindTy}
+        (h : VHasVar (buildResult g).terminalCtx name bindTy),
+        ∃ value,
+          Store.getAs state.1.store
+            ((buildResult g).terminalState.fieldOf h) bindTy.base =
+              some value := by
+    intro name bindTy h
+    let hResult :
+        VHasVar result.terminalCtx name bindTy := by
+      simpa [result, compilerState, init, buildResult] using h
+    have hfield :
+        result.terminalState.fieldOf hResult =
+          (buildResult g).terminalState.fieldOf h := by
+      simp [hResult, result, compilerState, init, buildResult]
+    refine ⟨(cast (congrArg (VEnv L) hctx) final.env).get hResult, ?_⟩
+    rw [← hfield]
+    simpa [replayState, result, compilerState, init, buildResult] using
+      hagree hResult
+  have henv :
+      sourceEnvOfStore (buildResult g).terminalState state.1.store
+          available =
+        cast (congrArg (VEnv L) hctx) final.env := by
+    have hagreeBuild :
+        StoreAgree (buildResult g).terminalState
+          (cast (congrArg (VEnv L) hctx) final.env)
+          state.1.store := by
+      intro name bindTy h
+      let hResult :
+          VHasVar result.terminalCtx name bindTy := by
+        simpa [result, compilerState, init, buildResult] using h
+      have hfield :
+          result.terminalState.fieldOf hResult =
+            (buildResult g).terminalState.fieldOf h := by
+        simp [hResult, result, compilerState, init, buildResult]
+      have hget :
+          (cast (congrArg (VEnv L) hctx) final.env).get hResult =
+            (cast (congrArg (VEnv L) hctx) final.env).get
+              (by
+                simpa [result, compilerState, init, buildResult] using h) :=
+        VEnv.get_eq_of_nodup result.terminalState.wctx
+          (cast (congrArg (VEnv L) hctx) final.env)
+          hResult
+          (by
+            simpa [result, compilerState, init, buildResult] using h)
+      have hgetBuild :
+          (cast (congrArg (VEnv L) hctx) final.env).get hResult =
+            (cast (congrArg (VEnv L) hctx) final.env).get h := by
+        simpa [result, compilerState, init, buildResult] using hget
+      rw [← hfield]
+      have hread :
+          Store.getAs state.1.store (result.terminalState.fieldOf hResult)
+              bindTy.base =
+            some ((cast (congrArg (VEnv L) hctx) final.env).get hResult) := by
+        simpa [replayState, result, compilerState, init, buildResult] using
+          hagree hResult
+      exact hread.trans (congrArg some hgetBuild)
+    exact
+      sourceEnvOfStore_eq_of_storeAgree
+        (state := (buildResult g).terminalState)
+        (env := cast (congrArg (VEnv L) hctx) final.env)
+        (store := state.1.store)
+        hagreeBuild
+        available
+  exact
+    ⟨{ labels := labels
+       final := final
+       run := by
+         simpa [sourceStart] using hrun
+       sourceTerminal := hsourceTerminal
+       envEq := ⟨hctx, available, henv⟩ }⟩
+
 /-- **Reverse generation, gated by replay.** Once a reachable terminal graph
 state has been replayed in source order, it yields a terminal source run whose
 environment is the one reconstructed from the graph store. -/
@@ -2309,6 +2423,33 @@ theorem sourceRun_of_replay
   exact
     ⟨replay.labels, replay.final, replay.run, replay.sourceTerminal,
       replay.envEq⟩
+
+/-- **Reverse generation.** Every reachable terminal compiled graph state
+comes from a terminal source run in canonical source order, with the same
+environment after graph-store readback. -/
+theorem sourceRun_of_reachableConfig
+    (g : GraphProgram P L)
+    (state : ReachableConfig (buildResult g).graph)
+    (hterminal : Terminal (buildResult g).graph state.1) :
+    ∃ labels : List (Label P L),
+      ∃ final : SourceConfig P L,
+        SourceConfig.LabeledStar (sourceStart g) labels final ∧
+        final.IsTerminal ∧
+        ∃ hctx : final.ctx = (buildResult g).terminalCtx,
+          ∃ available :
+            ∀ {name bindTy}
+              (h : VHasVar (buildResult g).terminalCtx name bindTy),
+              ∃ value,
+                Store.getAs state.1.store
+                  ((buildResult g).terminalState.fieldOf h) bindTy.base =
+                    some value,
+            sourceEnvOfStore (buildResult g).terminalState state.1.store
+                available =
+              cast (congrArg (VEnv L) hctx) final.env :=
+by
+  rcases sourceReplay_exists_of_reachableConfig g state hterminal with
+    ⟨replay⟩
+  exact sourceRun_of_replay g state hterminal replay
 
 /-- Run-level representation for the concrete terminal store produced by the
 lockstep induction. This existential form is useful when a caller does not need
