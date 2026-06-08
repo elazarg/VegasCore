@@ -71,9 +71,12 @@ Name & Strategies & Outcomes \\
 \end{tabular}
 \end{center}
 
-There are also completed/history variants used to prove source adequacy,
-trace adequacy, and bridge theorems.  These are proof surfaces rather than
-separate user-facing denotations.
+There are also \emph{completed}-frontier and \emph{history} variants used to
+prove source adequacy, trace adequacy, and the bridge theorems.  A
+completed-frontier game is the frontier process run to graph completion ---
+every node finished, so every outcome is terminal --- presented as a single
+game; the history variants additionally retain the run history.  These are
+proof surfaces rather than separate user-facing denotations.
 
 The distinction matters for reading the code.  The public user-facing
 objects are the payoff-vector frontier games.  The completed and history

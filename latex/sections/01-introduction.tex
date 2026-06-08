@@ -116,8 +116,7 @@ intended to be simultaneous or independent.  The tree can repair that
 choice with information sets, but the independence structure is then
 spread across syntax and equivalence classes.
 
-VegasCore takes the dependency structure as primary.  A program is
-checked and compiled to a finite event graph.  The graph records which
+A program is checked and compiled to a finite event graph.  The graph records which
 fields each event reads, which field each event writes, and which earlier
 events are prerequisites because they provide information needed at the
 event.  The graph state records only completed nodes and the typed store.
@@ -132,9 +131,6 @@ observations and choose for ready commit nodes; internal graph work is
 closed by the checkpoint policy.  This separates the schedule-agnostic
 game events of the language from implementation-level linearization
 detail.
-
-That separation is why the formal development factors protocol meaning
-through an event graph rather than generating an EFG directly.
 
 \subsection{A running example}
 \label{sec:intro:matching-pennies}
@@ -263,14 +259,12 @@ rather than lumping them as ``equivalence results,'' is what turns the
 end-to-end guarantee into a short composite instead of a monolith.
 
 \begin{description}[itemsep=2pt,leftmargin=1.3em,style=nextline]
-\item[\textnormal{R1.} Schedule confluence \quad{\small(equivalence,
-  inside one graph)}.]
+\item[Schedule confluence \quad{\small(equivalence, inside one graph)}.]
   Two completions of the same graph in different orders reach the same
   terminal state, and batch-independent events commute
   (\Cref{thm:diamond,thm:barrier}).  \emph{Forget:} the order in which
   independent events were scheduled.
-\item[\textnormal{R2.} Source\,$\to$\,graph adequacy \quad{\small(adequacy,
-  across \texttt{compile})}.]
+\item[Source-payoff adequacy \quad{\small(adequacy, across \texttt{compile})}.]
   The compiled graph \emph{is} the program's denotation: terminal
   outcomes are the source payoffs reconstructed from the terminal store
   (\Cref{sec:eg:adequacy}).  Adequacy here is the one-directional sense
@@ -278,13 +272,11 @@ end-to-end guarantee into a short composite instead of a monolith.
   operational/denotational coincidence of the same name --- and in
   particular not a symmetric equivalence between arbitrary programs and
   graphs.  \emph{Forget:} the source syntax.
-\item[\textnormal{R3.} Presentation equivalence \quad{\small(equivalence,
-  across a presentation)}.]
+\item[Presentation equivalence \quad{\small(equivalence, across a presentation)}.]
   The FOSG and EFG presentations carry the same utility distribution as
   the native frontier game (\Cref{thm:fosg,thm:efg}).  \emph{Forget:}
   which game-form a result was stated in.
-\item[\textnormal{R4.} Strategic (Kuhn) equivalence \quad{\small(equivalence,
-  inside the strategic layer)}.]
+\item[Strategic (Kuhn) equivalence \quad{\small(equivalence, inside the strategic layer)}.]
   Behavioral and product mixed-pure frontier play agree on outcome laws
   \emph{and} match one-player deviations, so they transport solution
   concepts, not merely payoffs
@@ -293,11 +285,10 @@ end-to-end guarantee into a short composite instead of a monolith.
   two-way equivalence with deviation matching; the correlated-pure
   direction is mechanized only as a one-way outcome-law realization.}
   \emph{Forget:} which strategy carrier a player reasons with.
-\item[\textnormal{R5.} Runtime refinement \quad{\small(order,
-  across an implementation)}.]
+\item[Runtime refinement \quad{\small(order, across an implementation)}.]
   An implementation machine refines the primitive machine by projection,
   and --- given an adequate trace law --- preserves the frontier game's
-  utilities (\Cref{thm:runtime-trace}).  Unlike R1--R4 this is an
+  utilities (\Cref{thm:runtime-trace}).  Unlike the others this one is an
   \emph{order}: its facts are directional (specification Nash pulls back
   to the implementation, not conversely).%
   \statusnote{Refinement currently pulls back individual Nash profiles
@@ -309,11 +300,12 @@ end-to-end guarantee into a short composite instead of a monolith.
 \Cref{fig:relations} draws these as labelled edges on the object spine.
 Reading the runtime question end-to-end --- ``why does a theorem about a
 backend say anything about my program?'' --- is exactly a walk through the
-composite: R5 lands on the frontier game, R4/R3 say that game is carrier-
-and presentation-independent, R1 says the graph underneath is
-schedule-independent, and R2 says the graph is the program.  Each edge is
-a separate theorem with its own proof technique, which is why naming them
-apart is worth the trouble.
+composite: runtime refinement lands on the frontier game; strategic and
+presentation equivalence say that game is carrier- and
+presentation-independent; schedule confluence says the graph underneath is
+schedule-independent; and source-payoff adequacy says the graph is the
+program.  Each edge is a separate theorem with its own proof technique,
+which is why naming them apart is worth the trouble.
 
 \begin{figure}[t]
 \centering
@@ -335,10 +327,10 @@ apart is worth the trouble.
 \node[side] (pres)  at (5.6,-3.8){FOSG / EFG};
 \node[impl] (impl)  at (0,-5.7)  {Impl.\ machine};
 % R2 adequacy
-\draw[rel] (prog) -- node[rlab,right=1mm]{R2~$\adeq$\\{\scriptsize adequacy}} (graph);
+\draw[rel] (prog) -- node[rlab,right=1mm]{$\adeq$\\{\scriptsize adequacy}} (graph);
 % R1 confluence: self relation on the graph (an internal equivalence)
 \draw[rel,<->] (graph.west) .. controls +(-2.1,0.8) and +(-2.1,-0.8) .. (graph.west)
-  node[rlab,left=1mm,pos=0.5]{R1~$\eqrel$\\{\scriptsize confluence}};
+  node[rlab,left=1mm,pos=0.5]{$\eqrel$\\{\scriptsize confluence}};
 % execute
 \draw[rel] (graph) -- node[rlab,right=1mm]{execute} (mach);
 % frontier view
@@ -347,11 +339,11 @@ apart is worth the trouble.
 % R4 Kuhn: self relation on the frontier game (an internal equivalence,
 % drawn like R1 so its shape on the page matches its structure)
 \draw[rel,<->] (game.north west) .. controls +(-0.3,1.0) and +(0.3,1.0) .. (game.north east)
-  node[rlab,above,pos=0.5]{R4~$\eqrel$ Kuhn\\{\scriptsize beh.\,$\cong$\,mixed-pure}};
+  node[rlab,above,pos=0.5]{$\eqrel$ Kuhn equivalence\\{\scriptsize beh.\,$\cong$\,mixed-pure}};
 % R3 presentation
-\draw[rel] (game) -- node[rlab,right=1mm]{R3~$\eqrel$\\{\scriptsize presentation}} (pres);
+\draw[rel] (game) -- node[rlab,right=1mm]{$\eqrel$\\{\scriptsize presentation}} (pres);
 % R5 refinement (order, upward)
-\draw[rel] (impl) -- node[rlab,right=1mm]{R5~$\ordrel$\\{\scriptsize refinement}} (mach);
+\draw[rel] (impl) -- node[rlab,right=1mm]{$\ordrel$\\{\scriptsize refinement}} (mach);
 % legend
 \node[draw, rounded corners, align=left, font=\scriptsize, fill=white,
       inner sep=4pt, anchor=north west] at (3.0,-5.2)
@@ -364,7 +356,9 @@ apart is worth the trouble.
 one-directional bridge from source syntax into the source-free graph; the
 refinement order ($\ordrel$) carries directional guarantees up from a
 concrete backend.  The end-to-end claim ``a backend preserves my
-program's game'' is the composite R5\,;\,R4/R3\,;\,R1\,;\,R2.}
+program's game'' is their composite, read bottom-up: runtime refinement,
+then strategic and presentation equivalence, then schedule confluence,
+then source-payoff adequacy.}
 \label{fig:relations}
 \end{figure}
 
@@ -428,7 +422,7 @@ theorem surface is organized around the following claims.
   of a strategy (commit menus, per-player views, choice points) but no
   strategy object over \(\mathsf{VegasCore}\) itself.  A source-native
   strategic semantics, and its adequacy to the frontier game (the
-  strategic analogue of source-payoff adequacy R2), is future work.}
+  strategic analogue of source-payoff adequacy), is future work.}
 \item \textbf{FOSG and EFG presentations.}  The FOSG and EFG layers are
   payoff-faithful presentations of the frontier semantics.
 \item \textbf{Kuhn.}  Behavioral and product mixed-pure frontier profiles
@@ -447,8 +441,9 @@ theorem surface is organized around the following claims.
   specification equilibria.
 \end{enumerate}
 
-\leancorr{The paper-facing theorem index is
-\TT{Vegas.Theorems.Claims}.
+\leancorr{Every paper-facing claim is collected, with its fully qualified
+name, in the build-checked index \TT{Vegas.Theorems.Claims}; the per-theorem
+mechanized-proof notes throughout point to the modules where each is proved.
 The construction modules are \TT{Vegas.Language}, \TT{Vegas.Core},
 \TT{Vegas.EventGraph}, \TT{Vegas.Frontier},
 \TT{Vegas.Presentation}, \TT{Vegas.Export}, and \TT{Vegas.Machine}.}
