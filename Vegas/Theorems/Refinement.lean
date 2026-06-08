@@ -1130,6 +1130,26 @@ theorem implTraceGame_nash_iff_surface_nash_of_bounded
                 hbdImpl hbdFrontier
                 (Function.update profile player alternative) player).symm
 
+/-- The whole Nash equilibrium set is invariant between a trace-adequate
+implementation trace game and the frontier surface under bounded utilities. -/
+theorem implTraceGame_nashSet_eq_surface_nashSet_of_bounded
+    (bridge : RuntimeTraceAdequacy program surface R)
+    {CImpl CFrontier : Player → ℝ}
+    (hbdImpl :
+      ∀ player trace,
+        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
+          CImpl player)
+    (hbdFrontier :
+      ∀ player outcome,
+        |surface.game.utility outcome player| ≤ CFrontier player) :
+    {profile : surface.game.Profile |
+      bridge.implTraceGame.IsNash profile} =
+    {profile : surface.game.Profile |
+      surface.game.IsNash profile} := by
+  ext profile
+  exact bridge.implTraceGame_nash_iff_surface_nash_of_bounded
+    hbdImpl hbdFrontier profile
+
 /-- Expected utilities agree between a trace-adequate specification law and
 the frontier surface under bounded-utility hypotheses. -/
 theorem specTraceGame_eu_surface_of_bounded
