@@ -215,6 +215,46 @@ theorem traceDistFrom_support_terminal_of_instrCount_le
           traceDistFrom_support_terminal_of_instrCount_le
             profile n mid dst hdst hmidBound
 
+/-- Source strategic kernels absorb at terminal source histories. -/
+theorem stepKernel_terminal
+    {start : SourceConfig P L}
+    (profile : SourceProfile (L := L) start)
+    (state : SourceStrategicHistory (L := L) start)
+    (hterminal : state.history.current.IsTerminal) :
+    stepKernel profile state = PMF.pure state := by
+  rcases state with ⟨history, hstart, hnorm⟩
+  rcases history with ⟨startCfg, labels, current, run⟩
+  rcases current with ⟨Γ, env, cont⟩
+  cases cont with
+  | ret payoffs =>
+      rfl
+  | sample x D tail =>
+      rcases hterminal with ⟨payoffs, hcont⟩
+      cases hcont
+  | commit x who guard tail =>
+      rcases hterminal with ⟨payoffs, hcont⟩
+      cases hcont
+  | reveal y who x hx tail =>
+      rcases hterminal with ⟨payoffs, hcont⟩
+      cases hcont
+
+/-- Source strategic traces absorb at terminal source histories. -/
+theorem traceDistFrom_terminal
+    {start : SourceConfig P L}
+    (profile : SourceProfile (L := L) start)
+    (n : Nat)
+    (state : SourceStrategicHistory (L := L) start)
+    (hterminal : state.history.current.IsTerminal) :
+    traceDistFrom profile n state = PMF.pure state := by
+  induction n with
+  | zero =>
+      rfl
+  | succ n ih =>
+      rw [traceDistFrom]
+      rw [stepKernel_terminal profile state hterminal]
+      rw [PMF.pure_bind]
+      exact ih
+
 end SourceStrategicHistory
 
 namespace SourceConfig
