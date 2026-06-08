@@ -104,7 +104,9 @@ open GameTheory
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-private noncomputable def canonicalCheckpointView
+/-- Canonical checkpoint round view used by source/checkpoint local action
+bridges. -/
+noncomputable def canonicalCheckpointView
     (program : WFProgram P L) [Fintype P] :
     (PrimitiveMachine (compile program.core)).RoundView :=
   frontierRoundView
@@ -327,6 +329,218 @@ theorem sourceLegal_extends_to_boundedLegalAction_after_internalClosure
   refine ⟨⟨joint, hlegal⟩, frontierAction, ?_, ?_⟩
   · exact hjointWho
   · simpa [compiled] using hfrontierValue
+
+/-- Canonical legal frontier action assembled from one source-legal commit
+value. -/
+noncomputable def sourceValueBoundedLegalAction_after_internalClosure
+    (program : WFProgram P L) [Fintype P]
+    {horizon : Nat}
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true)
+    (fuel : Nat)
+    {h :
+      Machine.RoundView.BoundedHistory
+        (canonicalCheckpointView program) horizon}
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (canonicalCheckpointView program)
+          horizon h.lastState) :
+    Machine.RoundView.BoundedLegalAction
+      (canonicalCheckpointView program) horizon h.lastState :=
+  Classical.choose
+    (sourceLegal_extends_to_boundedLegalAction_after_internalClosure
+      program replay hnode value hguard fuel hsupport hterm hactive)
+
+/-- The assembled legal frontier action selects the source value at the current
+compiled commit node. -/
+theorem sourceValueBoundedLegalAction_currentNodeProjection
+    (program : WFProgram P L) [Fintype P]
+    {horizon : Nat}
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true)
+    (fuel : Nat)
+    {h :
+      Machine.RoundView.BoundedHistory
+        (canonicalCheckpointView program) horizon}
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (canonicalCheckpointView program)
+          horizon h.lastState) :
+    (match
+        (sourceValueBoundedLegalAction_after_internalClosure
+          program replay hnode value hguard fuel hsupport hterm hactive).1 who
+      with
+      | some frontierAction => frontierAction.value? node
+      | none => none) =
+      some
+        (cast
+          (congrArg L.Val
+            (CommitBlock.currentNodeType program replay hnode).symm)
+          value) := by
+  unfold sourceValueBoundedLegalAction_after_internalClosure
+  rcases
+      Classical.choose_spec
+        (sourceLegal_extends_to_boundedLegalAction_after_internalClosure
+          program replay hnode value hguard fuel hsupport hterm hactive) with
+    ⟨frontierAction, hmove, hvalue⟩
+  rw [hmove]
+  simp [hvalue]
+
+/-- One-round action law induced by a source-side commit-value law.
+
+This is the single-round source→checkpoint deviation instance: a source law
+over legal current commit values is realized as a checkpoint legal-action law
+whose current-node projection is the original source value law. -/
+noncomputable def sourceChoiceActionLaw_after_internalClosure
+    (program : WFProgram P L) [Fintype P]
+    {horizon : Nat}
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (fuel : Nat)
+    {h :
+      Machine.RoundView.BoundedHistory
+        (canonicalCheckpointView program) horizon}
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (choiceLaw :
+      PMF
+        { value : L.Val b //
+          evalGuard (Player := P) (L := L) guard value
+            ((env.toView who).eraseEnv) = true }) :
+    PMF
+      (Machine.RoundView.BoundedLegalAction
+        (canonicalCheckpointView program) horizon h.lastState) :=
+  PMF.map
+    (fun choice =>
+      sourceValueBoundedLegalAction_after_internalClosure
+        program replay hnode choice.1 choice.2 fuel hsupport hterm hactive)
+    choiceLaw
+
+/-- The current-node projection of the one-round assembled action law is the
+original source commit-value law, with the compiler's node-type cast. -/
+theorem sourceChoiceActionLaw_currentNodeProjection
+    (program : WFProgram P L) [Fintype P]
+    {horizon : Nat}
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (fuel : Nat)
+    {h :
+      Machine.RoundView.BoundedHistory
+        (canonicalCheckpointView program) horizon}
+    (hsupport :
+      h.lastState.state ∈
+        (internalClosureTransition
+          (compile program.core) fuel replay.state).support)
+    (hterm :
+      ¬ Machine.RoundView.boundedTerminal
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (hactive :
+      who ∈
+        Machine.RoundView.boundedActive
+          (canonicalCheckpointView program)
+          horizon h.lastState)
+    (choiceLaw :
+      PMF
+        { value : L.Val b //
+          evalGuard (Player := P) (L := L) guard value
+            ((env.toView who).eraseEnv) = true }) :
+    PMF.map
+        (fun action :
+            Machine.RoundView.BoundedLegalAction
+              (canonicalCheckpointView program) horizon h.lastState =>
+          match action.1 who with
+          | some frontierAction => frontierAction.value? node
+          | none => none)
+        (sourceChoiceActionLaw_after_internalClosure
+          program replay hnode fuel hsupport hterm hactive choiceLaw) =
+      PMF.map
+        (fun choice =>
+          some
+            (cast
+              (congrArg L.Val
+                (CommitBlock.currentNodeType program replay hnode).symm)
+              choice.1))
+        choiceLaw := by
+  rw [sourceChoiceActionLaw_after_internalClosure, PMF.map_comp]
+  congr 1
+  funext choice
+  exact
+    sourceValueBoundedLegalAction_currentNodeProjection
+      program replay hnode choice.1 choice.2 fuel hsupport hterm hactive
 
 end Action
 end SourceFrontier
