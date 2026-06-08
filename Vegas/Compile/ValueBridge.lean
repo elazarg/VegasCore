@@ -213,6 +213,144 @@ theorem StoreAgree.addEvent
           { ty := bindTy.base, value := value } queryTy.base).trans
           (hagree htail)
 
+/-- A terminal labelled source run can be mirrored by threading graph-store
+writes through the compiler state, yielding a terminal store that agrees with
+the run's final source environment. This is the lockstep induction spine used by
+the canonical-completion representation theorem. -/
+theorem StoreAgree_run_exists_compileCore
+    {start final : SourceConfig P L} {labels : List (Label P L)}
+    (hrun : SourceConfig.LabeledStar start labels final)
+    (fresh : FreshBindings start.cont)
+    (normalized : NormalizedDists start.cont)
+    (state : BuildState P L start.ctx)
+    {store : Store L}
+    (hagree : StoreAgree state start.env store)
+    (hterminal : final.IsTerminal) :
+    let result := compileCore start.cont fresh normalized state
+    ∃ hctx : final.ctx = result.terminalCtx,
+      ∃ terminalStore : Store L,
+        StoreAgree result.terminalState
+          (cast (congrArg (VEnv L) hctx) final.env)
+          terminalStore := by
+  induction hrun generalizing store with
+  | refl cfg =>
+      rcases cfg with ⟨Γ, env, cont⟩
+      dsimp [SourceConfig.IsTerminal] at hterminal ⊢
+      obtain ⟨payoffs, hpayoffs⟩ := hterminal
+      subst cont
+      exact ⟨rfl, store, hagree⟩
+  | cons step rest ih =>
+      cases step with
+      | @sample Γ env x b D' k v hv =>
+          let graphDist := eventDistOf state D' normalized.1
+          let sem := NodeSem.sample (Player := P) graphDist
+          let event : EventNode P L :=
+            { ty := graphDist.ty, owner := none, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            dsimp [Graph.nodeWFAt, graphDist, sem, event]
+            exact
+              ⟨by
+                  intro field hfield
+                  rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+                  exact Graph.fieldAvailableBefore_append_node_of_true
+                    state.initialFields state.nodes event
+                    (distReadRefs_available state D' ref href),
+                rfl, rfl,
+                by
+                  intro ref href
+                  exact Graph.fieldRefPublic_append_node
+                    state.initialFields state.nodes event
+                    (distReadRefs_public state D' ref href)⟩
+          let added :=
+            state.addEvent x (.pub graphDist.ty) sem fresh.1 hnode
+          have hagree' :
+              StoreAgree added.1 (VEnv.cons v env)
+                (Store.set store state.nextField
+                  { ty := graphDist.ty, value := v }) := by
+            exact hagree.addEvent x (.pub graphDist.ty) sem fresh.1 hnode v
+          simpa [compileCore, graphDist, sem, event, hnode, added] using
+            ih fresh.2 normalized.2 added.1
+              (store := Store.set store state.nextField
+                { ty := graphDist.ty, value := v })
+              hagree' hterminal
+      | @commit Γ env x who b R k v hguard =>
+          let graphGuard := eventGuardOf state who R
+          let sem := NodeSem.commit (Player := P) who graphGuard
+          let event : EventNode P L :=
+            { ty := graphGuard.ty, owner := some who, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            dsimp [Graph.nodeWFAt, graphGuard, sem, event]
+            exact
+              ⟨by
+                  intro field hfield
+                  rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+                  exact Graph.fieldAvailableBefore_append_node_of_true
+                    state.initialFields state.nodes event
+                    (visibleFieldRefs_available state who ref href),
+                rfl, rfl,
+                by
+                  intro ref href
+                  exact Graph.fieldRefVisibleTo_append_node
+                    state.initialFields state.nodes event who
+                    (visibleFieldRefs_visible state who ref href)⟩
+          let added :=
+            state.addEvent x (.sealed who graphGuard.ty) sem fresh.1 hnode
+          have hagree' :
+              StoreAgree added.1 (VEnv.cons v env)
+                (Store.set store state.nextField
+                  { ty := graphGuard.ty, value := v }) := by
+            exact
+              hagree.addEvent x (.sealed who graphGuard.ty) sem fresh.1
+                hnode v
+          simpa [compileCore, graphGuard, sem, event, hnode, added] using
+            ih fresh.2 normalized added.1
+              (store := Store.set store state.nextField
+                { ty := graphGuard.ty, value := v })
+              hagree' hterminal
+      | @reveal Γ env y who x b hx k =>
+          let sourceField := state.fieldOf hx
+          let sem := NodeSem.reveal (Player := P) (L := L) sourceField
+          let revealed : L.Val b := VEnv.get env hx
+          let event : EventNode P L :=
+            { ty := b, owner := none, sem := sem }
+          let hnode :
+              ({ initialFields := state.initialFields,
+                 nodes := state.nodes ++ [event] } :
+                Graph P L).nodeWFAt state.nextNode event := by
+            rcases state.fieldOf_spec hx with
+              ⟨sourceSpec, hsource, hty, howner⟩
+            dsimp [Graph.nodeWFAt, sem, event]
+            rw [Graph.field?_append_node_of_some
+              state.initialFields state.nodes event hsource]
+            refine
+              ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
+            · intro field hfield
+              have hfieldEq : field = sourceField :=
+                Finset.mem_singleton.mp hfield
+              subst hfieldEq
+              exact Graph.fieldAvailableBefore_append_node_of_true
+                state.initialFields state.nodes event
+                (state.fieldOf_available hx)
+            · simp [howner]
+          let added :=
+            state.addEvent y (.pub b) sem fresh.1 hnode
+          have hagree' :
+              StoreAgree added.1 (VEnv.cons revealed env)
+                (Store.set store state.nextField
+                  { ty := b, value := revealed }) := by
+            exact hagree.addEvent y (.pub b) sem fresh.1 hnode revealed
+          simpa [compileCore, sourceField, sem, event, hnode, added] using
+            ih fresh.2 normalized added.1
+              (store := Store.set store state.nextField
+                { ty := b, value := revealed })
+              hagree' hterminal
+
 end ToEventGraph
 
 end Vegas
