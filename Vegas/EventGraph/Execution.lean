@@ -1210,6 +1210,26 @@ theorem reachable_donePrereqs
       subst hnextEq
       exact ih.completeNode event.ready written
 
+theorem reachable_getAs_of_initial_field
+    {G : Graph Player L} {cfg : Config G}
+    (hreach : Reachable G cfg)
+    {field : Nat} {ty : L.Ty}
+    (hfield : field < G.initialFields.length) :
+    Store.getAs cfg.store field ty =
+      Store.getAs G.initialStore field ty := by
+  induction hreach with
+  | initial =>
+      rfl
+  | step hprev event hnext ih =>
+      rcases stepAvailableEvent_support_completeNode event hnext with
+        ⟨written, hnextEq⟩
+      subst hnextEq
+      have hne : field ≠ G.nodeTarget event.node := by
+        unfold Graph.nodeTarget
+        omega
+      simpa [Config.completeNode] using
+        (Store.getAs_set_ne _ hne written ty).trans ih
+
 theorem reachable_storeCoherent
     {G : Graph Player L} (hwf : G.WF) :
     ∀ {cfg : Config G}, Reachable G cfg → StoreCoherent G cfg := by
