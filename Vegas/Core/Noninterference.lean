@@ -87,4 +87,78 @@ theorem Knows.secret_invariant
 
 end SourceConfig
 
+namespace SourceHistoryPoint
+
+variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- **History-level value non-interference for another player's commit.**
+
+If a shared source prefix reaches a commit point for `owner`, then replacing the
+committed secret by another legal value yields indistinguishable source histories
+for every other player `who`. The visible trace records the same
+`otherCommit`, and the endpoint configurations are equal in `who`'s source-local
+view by `SourceConfig.commitSecret_noninterference`.
+
+This is the source-side block lemma needed when one frontier round is replayed
+sequentially: hidden choices made earlier in the block cannot change later
+source-local strategy queries for other players. -/
+theorem commitSecret_noninterference
+    {who owner : P} (hne : who ≠ owner)
+    {start : SourceConfig P L} {labels : List (Label P L)}
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx owner Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed owner b) :: Γ)}
+    (prefixRun :
+      SourceConfig.LabeledStar start labels
+        { ctx := Γ, env := env, cont := VegasCore.commit x owner guard tail })
+    (left right : L.Val b)
+    (hleft : evalGuard (Player := P) (L := L) guard left
+      ((env.toView owner).eraseEnv) = true)
+    (hright : evalGuard (Player := P) (L := L) guard right
+      ((env.toView owner).eraseEnv) = true) :
+    SameHistoryKnowledge (L := L) who
+      { start := start
+        labels := labels ++ [Label.commit x owner left]
+        current :=
+          { ctx := (x, .sealed owner b) :: Γ
+            env := VEnv.cons left env
+            cont := tail }
+        run :=
+          SourceConfig.LabeledStar.trans prefixRun
+            (SourceConfig.LabeledStar.single
+              (LStep.commit guard tail left hleft)) }
+      { start := start
+        labels := labels ++ [Label.commit x owner right]
+        current :=
+          { ctx := (x, .sealed owner b) :: Γ
+            env := VEnv.cons right env
+            cont := tail }
+        run :=
+          SourceConfig.LabeledStar.trans prefixRun
+            (SourceConfig.LabeledStar.single
+              (LStep.commit guard tail right hright)) } := by
+  have hcurrent :
+      SourceConfig.localView
+          { ctx := (x, .sealed owner b) :: Γ
+            env := VEnv.cons left env
+            cont := tail } who =
+        SourceConfig.localView
+          { ctx := (x, .sealed owner b) :: Γ
+            env := VEnv.cons right env
+            cont := tail } who := by
+    simpa [SourceConfig.SameKnowledge, Math.ViewKnowledge.Same] using
+      SourceConfig.commitSecret_noninterference (L := L) hne left right
+  have htrace :
+      SourceConfig.playerTraceView (L := L) who
+          (labels ++ [Label.commit x owner left]) =
+        SourceConfig.playerTraceView (L := L) who
+          (labels ++ [Label.commit x owner right]) := by
+    simp [SourceConfig.playerTraceView,
+      Label.playerEvent_commit_other_value_irrel (L := L) hne x left right]
+  unfold SameHistoryKnowledge Math.ViewKnowledge.Same
+  simp [SourceHistoryPoint.localHistoryView, htrace, hcurrent]
+
+end SourceHistoryPoint
+
 end Vegas
