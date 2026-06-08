@@ -106,4 +106,73 @@ theorem labeledStar_initial_length {prog : VegasCore P L []}
 
 end SourceConfig
 
+namespace ToEventGraph
+
+open EventGraph
+
+/-- Store/environment agreement for the source variables tracked by a compiler
+state. The predicate is indexed by the source context through `state`; the store
+itself is graph-agnostic, so it can be threaded while compilation grows the
+graph prefix. -/
+def StoreAgree {Γ : VCtx P L} (state : BuildState P L Γ)
+    (env : VEnv L Γ) (store : Store L) : Prop :=
+  ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+    Store.getAs store (state.fieldOf h) bindTy.base = some (env.get h)
+
+/-- The initial compiler state stores exactly the source environment in its
+initial fields. The extra `nodes` parameter lets the lemma apply to any later
+graph extension, since initial fields are not shifted by appended event nodes. -/
+theorem initialState_initialStore_get :
+    {Γ : VCtx P L} → (env : VEnv L Γ) → (wctx : WFCtx Γ) →
+      (nodes : List (EventNode P L)) →
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        Store.getAs
+            (({ initialFields := (initialState Γ env wctx).initialFields,
+                nodes := nodes } : Graph P L).initialStore)
+            ((initialState Γ env wctx).fieldOf h) bindTy.base =
+          some (env.get h)
+  | [], _env, _wctx, _nodes, _name, _bindTy, h => by
+      cases h
+  | (headName, headTy) :: Γ, env, wctx, nodes, _name, _bindTy, h => by
+      let tail := initialState Γ (VEnv.tail env) (WFCtx.tail wctx)
+      let value : L.Val headTy.base :=
+        VEnv.get env (VHasVar.here (x := headName) (τ := headTy))
+      let field : InitialField P L :=
+        { ty := headTy.base, owner := headTy.owner, value := value }
+      cases h with
+      | here =>
+          simp [initialState, InitialState.addField, InitialState.consFieldOf,
+            InitialState.nextField, Graph.initialStore, Graph.field?,
+            Store.getAs, FieldSpec.initialValue?, TypedValue.as?]
+      | there htail =>
+          have hlt : tail.fieldOf htail < tail.initialFields.length :=
+            tail.fieldOf_lt htail
+          have hle : tail.fieldOf htail ≤ tail.initialFields.length :=
+            Nat.le_of_lt hlt
+          have ih :=
+            initialState_initialStore_get
+              (env := VEnv.tail env) (wctx := WFCtx.tail wctx)
+              ([] : List (EventNode P L)) htail
+          simpa [initialState, InitialState.addField,
+            InitialState.consFieldOf, InitialState.nextField, tail,
+            Graph.initialStore, Graph.field?, Store.getAs,
+            FieldSpec.initialValue?, TypedValue.as?, hlt, hle,
+            VEnv.tail, VEnv.get] using ih
+
+/-- Initial source values agree with the graph initial store. -/
+theorem StoreAgree_fromInitial_initialStore
+    {Γ : VCtx P L} (env : VEnv L Γ) (wctx : WFCtx Γ)
+    (nodes : List (EventNode P L)) :
+    StoreAgree
+      (BuildState.fromInitial (initialState Γ env wctx))
+      env
+      (({ initialFields := (initialState Γ env wctx).initialFields,
+          nodes := nodes } : Graph P L).initialStore) := by
+  intro name bindTy h
+  simpa [StoreAgree, BuildState.fromInitial] using
+    initialState_initialStore_get
+      (env := env) (wctx := wctx) nodes h
+
+end ToEventGraph
+
 end Vegas
