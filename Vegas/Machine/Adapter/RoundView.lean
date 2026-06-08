@@ -454,6 +454,138 @@ noncomputable def frontierRoundView
         frontierAvailableActions, PrimitiveMachineOf,
         ToMachine.primitiveMachine] using hlegal
 
+/-- A bounded legal frontier-round action that assigns a value at a commit node
+provides the corresponding graph `CommitAvailable` fact.
+
+This is the bounded-round version of `frontierCommitAvailable_of_legal_value`.
+It is the adapter step needed after disintegrating a bounded frontier action law
+and before reflecting the selected node value back to a source guard. -/
+theorem frontierRoundView_commitAvailable_of_boundedLegal_value
+    {G : Graph Player L} (spec : ToMachine.GraphMachineSpec G)
+    (presentation : CheckpointPresentation G)
+    (semantics : FrontierRoundSemantics spec presentation)
+    {horizon : Nat}
+    {state : (PrimitiveMachineOf spec).BoundedState horizon}
+    (hterm :
+      ¬ (frontierRoundView spec presentation semantics).boundedTerminal
+        horizon state)
+    {action :
+      (frontierRoundView spec presentation semantics).BoundedLegalAction
+        horizon state}
+    {who : Player} {frontierAction : FrontierAct G who}
+    {node : Fin G.nodeCount} {value : L.Val (G.nodeRow node).ty}
+    (haction : action.1 who = some frontierAction)
+    (hvalue : frontierAction.value? node = some value) :
+    CommitAvailable G state.state.1 who
+      { node := node, value := G.nodeTypedValue node value } := by
+  let view := frontierRoundView spec presentation semantics
+  have hlocal :
+      view.boundedLocallyLegalAtState horizon state who
+        (action.1 who) :=
+    ((view.boundedLegal_iff_forall horizon).mp action.2).2 who
+  rw [haction] at hlocal
+  have hnotCut : ¬ horizon ≤ state.depth := by
+    intro hcut
+    exact hterm (Or.inr hcut)
+  have havailable :
+      frontierAction ∈ frontierAvailableActions G state.state who := by
+    simpa [view, frontierRoundView, Machine.RoundView.boundedAvailableActions,
+      hnotCut] using hlocal.2
+  exact
+    FrontierAction.Available.commitAvailable_of_value havailable hvalue
+
+/-- After disintegrating a bounded frontier action law by the value assigned to
+one commit node, every supported conditioned legal action commits that value.
+
+This is the frontier-side sequential-replay fact: the first projected source
+choice fixes the node value, and the conditioned remainder of the simultaneous
+frontier action law stays inside that fiber. -/
+theorem frontierRoundView_condOn_nodeValue_commitAvailable
+    {G : Graph Player L} (spec : ToMachine.GraphMachineSpec G)
+    (presentation : CheckpointPresentation G)
+    (semantics : FrontierRoundSemantics spec presentation)
+    {horizon : Nat}
+    [∀ player,
+      Fintype
+        (Option ((frontierRoundView spec presentation semantics).Act player))]
+    (σ :
+      Machine.RoundView.BoundedBehavioralProfile
+        (frontierRoundView spec presentation semantics) horizon)
+    (h :
+      Machine.RoundView.BoundedHistory
+        (frontierRoundView spec presentation semantics) horizon)
+    (hterm :
+      ¬ (frontierRoundView spec presentation semantics).boundedTerminal
+        horizon h.lastState)
+    {who : Player} {node : Fin G.nodeCount}
+    (value : L.Val (G.nodeRow node).ty)
+    {action :
+      Machine.RoundView.BoundedLegalAction
+        (frontierRoundView spec presentation semantics)
+        horizon h.lastState}
+    (hvalueMass :
+      Math.ProbabilityMassFunction.pushforward
+          (Machine.RoundView.legalActionLaw
+            (frontierRoundView spec presentation semantics)
+            horizon σ h hterm)
+          (fun action :
+              Machine.RoundView.BoundedLegalAction
+                (frontierRoundView spec presentation semantics)
+                horizon h.lastState =>
+            match action.1 who with
+            | some frontierAction => frontierAction.value? node
+            | none => none)
+          (some value) ≠ 0)
+    (hactionSupport :
+      action ∈
+        (Math.ProbabilityMassFunction.condOn
+          (Machine.RoundView.legalActionLaw
+            (frontierRoundView spec presentation semantics)
+            horizon σ h hterm)
+          (fun action :
+              Machine.RoundView.BoundedLegalAction
+                (frontierRoundView spec presentation semantics)
+                horizon h.lastState =>
+            match action.1 who with
+            | some frontierAction => frontierAction.value? node
+            | none => none)
+          (some value)).support) :
+    CommitAvailable G h.lastState.state.1 who
+      { node := node, value := G.nodeTypedValue node value } := by
+  let view := frontierRoundView spec presentation semantics
+  let project :
+      view.BoundedLegalAction horizon h.lastState →
+        Option (L.Val (G.nodeRow node).ty) :=
+    fun action =>
+      match action.1 who with
+      | some frontierAction => frontierAction.value? node
+      | none => none
+  have hvalueMass' :
+      Math.ProbabilityMassFunction.pushforward
+          (view.legalActionLaw horizon σ h hterm) project
+          (some value) ≠ 0 := by
+    simpa [view, project] using hvalueMass
+  have hactionSupport' :
+      action ∈
+        (Math.ProbabilityMassFunction.condOn
+          (view.legalActionLaw horizon σ h hterm)
+          project (some value)).support := by
+    simpa [view, project] using hactionSupport
+  have hproject : project action = some value :=
+    Machine.RoundView.legalActionLaw_condOn_support_project
+      view horizon σ h hterm project (some value)
+      hvalueMass' hactionSupport'
+  dsimp [project] at hproject
+  cases hmove : action.1 who with
+  | none =>
+      simp [hmove] at hproject
+  | some frontierAction =>
+      have hnodeValue : frontierAction.value? node = some value := by
+        simpa [hmove] using hproject
+      exact
+        frontierRoundView_commitAvailable_of_boundedLegal_value
+          spec presentation semantics hterm hmove hnodeValue
+
 /-- For the frontier round view, local optional-move legality at a bounded
 state is determined by the presentation depth plus the public and player
 observations. -/
