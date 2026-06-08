@@ -229,6 +229,37 @@ theorem StoreAgree.addEvent
           { ty := bindTy.base, value := value } queryTy.base).trans
           (hagree htail)
 
+/-- If a store already contains the field allocated by `addEvent`, agreement
+extends without changing the store. This is the preservation principle used
+with `canonicalCompletion`, whose store writes all node fields up front. -/
+theorem StoreAgree.addEvent_of_getAs
+    {Γ : VCtx P L} {state : BuildState P L Γ}
+    {env : VEnv L Γ} {store : Store L}
+    (hagree : StoreAgree state env store)
+    (name : VarId) (bindTy : BindTy P L) (sem : NodeSem P L)
+    (hfresh : Fresh name Γ)
+    (hnode :
+      ({ initialFields := state.initialFields,
+         nodes := state.nodes ++
+          [{ ty := bindTy.base, owner := bindTy.owner, sem := sem }] } :
+        Graph P L).nodeWFAt
+        state.nextNode
+        { ty := bindTy.base, owner := bindTy.owner, sem := sem })
+    (value : L.Val bindTy.base)
+    (hread :
+      Store.getAs store state.nextField bindTy.base = some value) :
+    StoreAgree
+      (state.addEvent name bindTy sem hfresh hnode).1
+      (VEnv.cons (x := name) (τ := bindTy) value env)
+      store := by
+  intro query queryTy h
+  cases h with
+  | here =>
+      simpa [BuildState.addEvent_fieldOf_here] using hread
+  | there htail =>
+      rw [BuildState.addEvent_fieldOf_there]
+      exact hagree htail
+
 /-- A terminal labelled source run can be mirrored by threading graph-store
 writes through the compiler state, yielding a terminal store that agrees with
 the run's final source environment. This is the lockstep induction spine used by
