@@ -304,6 +304,49 @@ theorem claim_compiled_commit_available_persists_through_internal_closure
     (ToEventGraph.compile program.core) fuel havailable hsupport
 
 omit [Fintype P] in
+/-- A source-legal value for the current replayed source `commit` remains a
+compiled-available commit action after any supported frontier internal closure
+from that replay state. -/
+theorem claim_source_prefix_commit_source_legal_value_available_after_internal_closure
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.compile program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (hguard :
+      evalGuard (Player := P) (L := L) guard value
+        ((env.toView who).eraseEnv) = true)
+    (fuel : Nat)
+    {dst :
+      (ToEventGraph.PrimitiveMachine
+        (ToEventGraph.compile program.core)).State}
+    (hsupport :
+      dst ∈
+        (ToEventGraph.internalClosureTransition
+          (ToEventGraph.compile program.core) fuel replay.state).support) :
+    EventGraph.CommitAvailable
+      (ToEventGraph.compile program.core).graph dst.1 who
+      { node := node, value := { ty := b, value := value } } := by
+  have havailable₀ :
+      EventGraph.CommitAvailable
+        (ToEventGraph.compile program.core).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } } := by
+    exact
+      (ToEventGraph.SourcePrefixReplay.sourceCommitMenu_iff_commitAvailable
+        program.core replay hnode value).mp hguard
+  exact
+    ToEventGraph.commitAvailable_persist_after_internalClosureTransition_support
+      (ToEventGraph.compile program.core) fuel havailable₀ hsupport
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/
