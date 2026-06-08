@@ -99,6 +99,30 @@ namespace FrontierGameSemantics
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 variable {program : WFProgram P L} [FiniteDomains program]
 
+/-- Source-facing checkpoint histories for behavioral play.  These are the
+canonical frontier checkpoint histories, not raw primitive-event
+linearizations. -/
+abbrev SourceCheckpointBehavioralHistory
+    (semantics : FrontierGameSemantics program) : Type :=
+  semantics.BehavioralHistory
+
+/-- Source-facing checkpoint information states.  This is the strategic
+decision surface used by the checkpoint-aligned source game. -/
+abbrev SourceCheckpointInfoState
+    (semantics : FrontierGameSemantics program) (player : P) : Type :=
+  (semantics.behavioral.view).ReachableInfoState semantics.horizon player
+
+/-- Source-facing checkpoint behavioral strategies. -/
+abbrev SourceCheckpointBehavioralStrategy
+    (semantics : FrontierGameSemantics program) (player : P) : Type :=
+  (semantics.behavioral.view).BoundedBehavioralStrategy
+    semantics.horizon player
+
+/-- Source-facing checkpoint behavioral profiles. -/
+abbrev SourceCheckpointBehavioralProfile
+    (semantics : FrontierGameSemantics program) : Type :=
+  ∀ player, semantics.SourceCheckpointBehavioralStrategy player
+
 /-- Source-payoff projection of a completed behavioral checkpoint history.
 
 This is the checkpoint-aligned source outcome surface: histories are the
@@ -106,7 +130,7 @@ canonical frontier checkpoint histories, while outcomes are read back through
 the compiler's source payoff projection. -/
 noncomputable def sourceCheckpointBehavioralOutcome
     (semantics : FrontierGameSemantics program)
-    (history : semantics.BehavioralHistory) :
+    (history : semantics.SourceCheckpointBehavioralHistory) :
     Option (Outcome P) :=
   ToEventGraph.sourceOutcomeOptionAtHistory program.core history
 
@@ -117,7 +141,7 @@ canonical frontier information surface rather than raw source `LStep`
 linearizations. -/
 noncomputable def sourceCheckpointBehavioralKernel
     (semantics : FrontierGameSemantics program)
-    (profile : semantics.behavioralGame.Profile) :
+    (profile : semantics.SourceCheckpointBehavioralProfile) :
     PMF (Option (Outcome P)) :=
   PMF.map (semantics.sourceCheckpointBehavioralOutcome)
     (semantics.behavioralHistoryKernel profile)
@@ -139,7 +163,7 @@ checkpoint histories. -/
 noncomputable def sourceCheckpointBehavioralGame
     (semantics : FrontierGameSemantics program) :
     KernelGame P where
-  Strategy := semantics.behavioralGame.Strategy
+  Strategy := semantics.SourceCheckpointBehavioralStrategy
   Outcome := Option (Outcome P)
   utility := semantics.sourceCheckpointOptionUtility
   outcomeKernel := semantics.sourceCheckpointBehavioralKernel
@@ -335,6 +359,26 @@ end ToEventGraph
 namespace WFProgram
 
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+
+/-- Program-facing checkpoint source histories for behavioral play. -/
+abbrev SourceCheckpointBehavioralHistory
+    (program : WFProgram P L) [FiniteDomains program] : Type :=
+  program.frontierSemantics.SourceCheckpointBehavioralHistory
+
+/-- Program-facing checkpoint source information states. -/
+abbrev SourceCheckpointInfoState
+    (program : WFProgram P L) [FiniteDomains program] (player : P) : Type :=
+  program.frontierSemantics.SourceCheckpointInfoState player
+
+/-- Program-facing checkpoint source behavioral strategies. -/
+abbrev SourceCheckpointBehavioralStrategy
+    (program : WFProgram P L) [FiniteDomains program] (player : P) : Type :=
+  program.frontierSemantics.SourceCheckpointBehavioralStrategy player
+
+/-- Program-facing checkpoint source behavioral profiles. -/
+abbrev SourceCheckpointBehavioralProfile
+    (program : WFProgram P L) [FiniteDomains program] : Type :=
+  program.frontierSemantics.SourceCheckpointBehavioralProfile
 
 /-- Program-facing checkpoint-aligned source behavioral game.  It uses the
 canonical frontier checkpoint information surface and reads completed histories
