@@ -227,6 +227,32 @@ theorem claim_source_prefix_commit_source_legal_value_available
     program.core replay value hguard
 
 omit [Fintype P] in
+/-- At a replayed source `commit` prefix, availability of the current
+source-order compiled commit action reflects back to source guard legality. -/
+theorem claim_source_prefix_commit_available_value_source_legal
+    (program : WFProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((x, .sealed who b) :: Γ)}
+    (replay :
+      ToEventGraph.SourcePrefixReplay program.core
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (ToEventGraph.buildResult program.core).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (havailable :
+      EventGraph.CommitAvailable
+        (ToEventGraph.buildResult program.core).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } }) :
+    evalGuard (Player := P) (L := L) guard value
+      ((env.toView who).eraseEnv) = true :=
+  ToEventGraph.SourcePrefixReplay.source_guard_of_commitAvailable
+    program.core replay hnode value havailable
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/

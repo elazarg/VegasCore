@@ -2931,6 +2931,72 @@ theorem commitAvailable_of_source_guard
        env_ok := hreadEnv
        guard_ok := hguardGraph }⟩
 
+/-- Compiled availability at the current source-order commit node reflects
+back to source guard legality.  Together with
+`commitAvailable_of_source_guard`, this gives the value-level menu equivalence
+for the current source commit node. -/
+theorem source_guard_of_commitAvailable
+    (g : GraphProgram P L)
+    {Γ : VCtx P L} {env : VEnv L Γ}
+    {x : VarId} {who : P} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Γ)) L.bool} {tail}
+    (replay :
+      SourcePrefixReplay g
+        ({ ctx := Γ, env := env,
+           cont := VegasCore.commit x who guard tail } :
+          SourceConfig P L))
+    {node : Fin (buildResult g).graph.nodeCount}
+    (hnode : (node : Nat) = replay.compilerState.nodes.length)
+    (value : L.Val b)
+    (havailable :
+      CommitAvailable (buildResult g).graph replay.state.1 who
+        { node := node, value := { ty := b, value := value } }) :
+    evalGuard (Player := P) (L := L) guard value
+      ((env.toView who).eraseEnv) = true := by
+  rcases commitNodeData g replay with
+    ⟨currentNode, hcurrentNode, hrowCurrent, _hreadyCurrent⟩
+  have hnodeEq : node = currentNode := by
+    exact Fin.ext (hnode.trans hcurrentNode.symm)
+  subst node
+  let graphGuard := eventGuardOf replay.compilerState who guard
+  let event : EventNode P L :=
+    { ty := graphGuard.ty, owner := some who,
+      sem := NodeSem.commit who graphGuard }
+  rcases havailable with
+    ⟨⟨row, compiledGuard, hrowStep, hsemStep, _hreadyStep,
+      stepValue, hvalueOk, readEnv, hreadEnv, hguardGraphStep⟩⟩
+  have hrowEq : row = event := by
+    exact Option.some.inj (hrowStep.symm.trans (by
+      simpa [event, graphGuard] using hrowCurrent))
+  subst row
+  have hguardEq : graphGuard = compiledGuard := by
+    simpa [event, graphGuard] using hsemStep
+  subst compiledGuard
+  have hvalueEq : stepValue = value := by
+    have hvalueEq' : value = stepValue := by
+      simpa [graphGuard, eventGuardOf, TypedValue.as?] using hvalueOk
+    exact hvalueEq'.symm
+  subst stepValue
+  let available :
+      ∀ {name bindTy} (h : VHasVar Γ name bindTy),
+        ∃ stored, Store.getAs replay.state.1.store
+          (replay.compilerState.fieldOf h) bindTy.base = some stored := by
+    intro name bindTy h
+    exact ⟨_, replay.storeAgree h⟩
+  have hsourceEnv :
+      sourceEnvOfStore replay.compilerState replay.state.1.store available =
+        env :=
+    sourceEnvOfStore_eq_of_storeAgree replay.storeAgree available
+  have hviewEq :=
+    viewEnvOfReadEnv_eq_eraseEnv_sourceEnvOfStore
+      replay.compilerState who replay.state.1.store available readEnv hreadEnv
+  have hguardSource :
+      graphGuard.eval value readEnv =
+        evalGuard (Player := P) (L := L) guard value
+          ((env.toView who).eraseEnv) := by
+    rw [eventGuardOf_eval_eq_eval, hviewEq, hsourceEnv]
+  exact hguardSource ▸ hguardGraphStep
+
 end SourcePrefixReplay
 
 /-- **Forward generation.** A terminal source run can be replayed in graph
