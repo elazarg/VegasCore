@@ -1,4 +1,5 @@
 import Vegas.Theorems.Graph
+import Vegas.Theorems.Execution
 import Vegas.Theorems.Progress
 import Vegas.Theorems.Visibility
 import Vegas.Theorems.Outcome
@@ -52,6 +53,34 @@ theorem claim_checked_program_has_checkpoint_progress
       (ToEventGraph.primitiveDownsetCheckpointModel program).allowed
         state dst :=
   program.primitiveDownsetCheckpoint_progress hterminal
+
+/-- Scoped schedule-confluence package for the checked program's compiled
+graph and canonical frontier round model. It includes full-schedule confluence
+to canonical completion and the checkpoint-history well-definedness facts the
+frontier uses. -/
+theorem claim_schedule_confluence_frontier_round_wellDefined
+    (program : WFProgram P L) [FiniteDomains program] :
+    program.ScheduleConfluenceFrontierRoundWellDefined :=
+  program.compiledGraph_scheduleConfluence_frontierRound_wellDefined
+
+omit [Fintype P] in
+/-- The flat primitive-linearization readable-order theorem remains explicitly
+fenced: under a readability fence, any two dependency-respecting full orders
+present the same readable-output order to the player. -/
+theorem claim_compiled_graph_readable_order_eq_of_fence
+    (program : WFProgram P L)
+    {who : P}
+    {left right :
+      List (Fin (ToEventGraph.compile program.core).graph.nodeCount)}
+    (hleft :
+      (ToEventGraph.compile program.core).graph.IsTopo left)
+    (hright :
+      (ToEventGraph.compile program.core).graph.IsTopo right)
+    (hfence :
+      (ToEventGraph.compile program.core).graph.Fence who) :
+    (ToEventGraph.compile program.core).graph.readableOrder who left =
+      (ToEventGraph.compile program.core).graph.readableOrder who right :=
+  program.compiledGraph_readableOrder_eq_of_fence hleft hright hfence
 
 omit [Fintype P] in
 /-- Primitive-machine terminal outcomes agree with the source payoff
