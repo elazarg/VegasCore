@@ -61,8 +61,10 @@ theorem commitSecret_noninterference
   cases W with
   | here =>
       -- the head is `owner`'s secret, which `who` cannot own
-      simp at howner
-      exact absurd howner (Ne.symm hne)
+      rw [BindTy.owner_sealed] at howner
+      rcases howner with h | h
+      · exact absurd h (Option.some_ne_none owner)
+      · exact absurd (Option.some.inj h).symm hne
   | there W' => rfl
 
 /-- Anything `who` knows is invariant under replacing another player's secret:

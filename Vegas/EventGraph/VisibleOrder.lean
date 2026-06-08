@@ -82,7 +82,7 @@ private theorem map_filter_comp {α β : Type*} (l : List α) (f : α → β)
     (l.filter fun x => q (f x)).map f = (l.map f).filter q := by
   induction l with
   | nil => rfl
-  | cons a t ih => cases h : q (f a) <;> simp [List.filter_cons, h, ih]
+  | cons a t ih => cases h : q (f a) <;> simp [h, ih]
 
 /-- Reading node owners along the canonical order recovers the node owners in
 order: `nodeOrder` indexes `nodes`. -/
