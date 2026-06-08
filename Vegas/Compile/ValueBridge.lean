@@ -2408,17 +2408,7 @@ theorem sourceRun_of_reachableConfig
       ∃ final : SourceConfig P L,
         SourceConfig.LabeledStar (sourceStart g) labels final ∧
         final.IsTerminal ∧
-        ∃ hctx : final.ctx = (buildResult g).terminalCtx,
-          ∃ available :
-            ∀ {name bindTy}
-              (h : VHasVar (buildResult g).terminalCtx name bindTy),
-              ∃ value,
-                Store.getAs state.1.store
-                  ((buildResult g).terminalState.fieldOf h) bindTy.base =
-                    some value,
-            sourceEnvOfStore (buildResult g).terminalState state.1.store
-                available =
-              cast (congrArg (VEnv L) hctx) final.env :=
+        StoreReconstructs g state.1.store final :=
 by
   rcases sourceReplay_exists_of_reachableConfig g state hterminal with
     ⟨replay⟩
