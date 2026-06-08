@@ -164,6 +164,21 @@ theorem claim_behavioral_frontier_outcome_kernel_is_source_projection
     program.behavioralFrontierOutcomeKernel_sourceMap profile
 
 omit [Fintype P] in
+/-- Every source-native strategic history prefix replays into a reachable
+compiled graph prefix in canonical source order.  The replay certificate keeps
+the compiler dictionary for the current source continuation, so the graph store
+agrees with the current source environment before terminal payoff projection. -/
+theorem claim_source_strategic_prefix_replays_to_compiled_graph
+    (program : WFProgram P L)
+    (state :
+      SourceStrategicHistory (L := L)
+        (ToEventGraph.sourceStart program.core)) :
+    Nonempty
+      (ToEventGraph.SourcePrefixReplay program.core
+        state.history.current) :=
+  program.sourceStrategicHistory_prefixReplay state
+
+omit [Fintype P] in
 /-- Terminal outcomes of the source-native strategic game replay into a
 reachable terminal compiled graph state whose store reconstructs the source
 environment. -/

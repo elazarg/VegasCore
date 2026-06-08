@@ -47,6 +47,24 @@ noncomputable def sourceStrategicGame
         (ToEventGraph.sourceStart program.core)
         program.core.normalized profile horizon := rfl
 
+/-- Every source strategic history prefix has a reachable compiled graph prefix
+in canonical source order, with the current source environment reconstructed by
+the compiler dictionary for the remaining source continuation. -/
+theorem sourceStrategicHistory_prefixReplay
+    (program : WFProgram P L)
+    (state :
+      SourceStrategicHistory (L := L)
+        (ToEventGraph.sourceStart program.core)) :
+    Nonempty
+      (ToEventGraph.SourcePrefixReplay program.core
+        state.history.current) := by
+  have hrun :
+      SourceConfig.LabeledStar
+        (ToEventGraph.sourceStart program.core)
+        state.history.labels state.history.current := by
+    simpa [state.start_eq] using state.history.run
+  exact ToEventGraph.sourcePrefixReplay_exists program.core hrun
+
 /-- A terminal source strategic history replays into a reachable terminal
 compiled graph state whose store reconstructs the terminal source
 environment. -/
