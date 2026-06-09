@@ -788,20 +788,29 @@ theorem readyCommitNode_persist_after_internalClosureTransition_support
       ready_commitNode_persist_after_internalOnly_availableRunFrom
         compiled ⟨row, guard, hget, hsem⟩ hreadyNode hinternal hrun⟩
 
-/-- Graph-level reconstruction core — the genuinely hard part of the keystone.
+/-- Graph-level reconstruction core — the intended hard part of the keystone.
 
 Every reachable compiled config whose `who`-commit `node` is ready is internally
 closed by some checkpoint `BoundedHistory` boundary state that has no ready
 internal nodes and whose presentation depth is below the horizon.
 
-The intended proof inducts on the compiled downset round/layer structure (NOT on
-primitive reachability, which is round-misaligned — one checkpoint round fires
-every active player's commit at once, so a single primitive commit step does not
-correspond to a round, and a node ready at a successor need not be ready at its
-predecessor).  Each downset layer extends the `BoundedHistory` by one legal
-round; the depth bound holds because every round strictly grows the done-set
-(`primitiveDownsetCheckpointPolicy`) while the ready `node` keeps the done-set a
-proper subset of all nodes. -/
+WARNING — FALSE AS STATED for multi-commit rounds; do not attempt to prove it.
+`JointActionLegal` forces every active player to commit, so a checkpoint round
+fires every co-ready commit atomically.  Two source-independent commits `A`, `B`
+(no data dependency between their nodes) are co-ready, so no checkpoint
+`BoundedHistory` boundary ever has `A` committed and the co-ready `B` pending.
+But `sourceChoiceCursor_exists` instantiates this at `state := B`'s source-order
+`replay.state`, which has the earlier-in-source-order `A` already committed —
+exactly such an unreachable mid-round state, so the `internalClosure(state)`
+membership cannot hold.
+
+The correct route is NOT reconstruction but hidden-commit view-invariance: `A`'s
+commit is sealed from `B`, so `B`'s view (hence strategy query) is identical
+whether or not `A` has committed, and `B`'s mid-round source choice must be
+related to the checkpoint query at the *pre-round atomic boundary* (the whole
+co-ready group still pending, `B` active there).  This theorem must be
+reformulated to target that boundary and carry the view-invariance witness; the
+persistence lemmas above remain valid regardless. -/
 private theorem checkpointBoundary_covers_reachable
     (program : WFProgram P L) [FiniteDomains program]
     {who : P}
