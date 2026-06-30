@@ -670,45 +670,6 @@ noncomputable def
       (Option (Outcome P)) :=
   program.sourceCheckpointBehavioralFrontierNashDeviationBisimulation
 
-/-- Any raw source/frontier strategy-translation bridge induces the standard
-two-way Nash-deviation bisimulation between the source-local strategic game and
-the completed behavioral frontier game. -/
-noncomputable def claim_raw_source_frontier_deviation_bisimulation
-    (program : WFProgram P L) [FiniteDomains program]
-    (horizon : Nat) (cutoff : Payoff P)
-    (bridge :
-      program.RawSourceFrontierNashDeviationBridge horizon cutoff) :
-    KernelGame.NashDeviationBisimulation
-      (program.sourceStrategicGame horizon cutoff)
-      program.behavioralFrontierGame
-      (Option (Outcome P)) :=
-  bridge.toNashDeviationBisimulation
-
-/-- A raw source/frontier strategy-translation bridge induces the non-vacuous
-source/frontier Nash-deviation package: the NDB is paired with source-total and
-frontier-total realization witnesses. -/
-noncomputable def claim_raw_source_frontier_complete_deviation_bisimulation
-    (program : WFProgram P L) [FiniteDomains program]
-    (horizon : Nat) (cutoff : Payoff P)
-    (bridge :
-      program.RawSourceFrontierNashDeviationBridge horizon cutoff) :
-    WFProgram.SourceFrontierNashDeviationBisimulation
-      program horizon cutoff :=
-  bridge.toSourceFrontierNashDeviationBisimulation
-
-/-- Every behavioral frontier profile represented by a raw source/frontier
-bridge has a source-local profile with the same observed optional payoff law. -/
-theorem claim_raw_source_frontier_bridge_represents_frontier_profile
-    (program : WFProgram P L) [FiniteDomains program]
-    (horizon : Nat) (cutoff : Payoff P)
-    (bridge :
-      program.RawSourceFrontierNashDeviationBridge horizon cutoff)
-    (frontierProfile : program.BehavioralFrontierProfile) :
-    (program.sourceStrategicOptionOutcomeView horizon cutoff).law
-        (bridge.frontierToSource frontierProfile) =
-      (program.behavioralFrontierOptionOutcomeView).law frontierProfile :=
-  bridge.frontierToSource_law frontierProfile
-
 /-- The payoff-facing FOSG denotation and the native behavioral frontier game
 have the same joint utility distribution. -/
 theorem claim_fosg_utility_distribution_adequacy

@@ -11,7 +11,6 @@ import Vegas.Frontier.SourceFrontier.Conditioned
 import Vegas.Frontier.SourceFrontier.Strategic
 import Vegas.Frontier.SourceFrontier.Replay
 import Vegas.Frontier.SourceFrontier.Checkpoint
-import Vegas.Frontier.SourceFrontier.Bisimulation
 import Vegas.Frontier.SourceFrontier.Query
 import Vegas.Frontier.SourceFrontier.SourceCompletion
 import Vegas.Frontier.SourceFrontier.Action
@@ -46,8 +45,6 @@ game to compiled frontier behavioral game bridge.
   same compiled graph states.
 * `Checkpoint` proves the checkpoint-aligned source/frontier behavioral
   bisimulation.
-* `Bisimulation` packages the raw source/frontier strategy and unilateral
-  deviation translations into a Nash-deviation bisimulation.
 -/
 
 namespace Vegas
