@@ -37,7 +37,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 reads the field that `node` writes, then completing `node` leaves `who`'s graph
 observation independent of the value written. The hypothesis is the visibility
 premise: `node`'s output field is outside `who`'s choice footprints — which holds
-in particular when `node` is another player's sealed commit. -/
+in particular when `node` is another player's sealed commit.
+
+This is the *private leg* of schedule-conditioning inertness
+(**noninterference / observational determinism**): the schedule cannot leak
+another player's sealed value, so no schedule a player observes can correlate
+with a hidden choice. Confluence (payoff) and a public token (signal) are the
+other two legs. -/
 theorem observe_completeNode_value_irrel
     (G : Graph Player L) (cfg : Config G) (who : Player)
     {node : Fin G.nodeCount} (v v' : TypedValue L)

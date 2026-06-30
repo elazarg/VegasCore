@@ -1098,7 +1098,11 @@ theorem AvailableEvent.support_after_other_ready_write
 
 /-- Two distinct available primitive graph events form a diamond: choosing
 one supported result for each event at the source gives supported executions in
-both orders, and the resulting graph configurations are equal. -/
+both orders, and the resulting graph configurations are equal.
+
+This is the **local-confluence diamond**: independent available events commute
+(**Mazurkiewicz independence**), the step-level engine behind outcome confluence
+and schedule-independence. -/
 theorem supported_available_events_diamond
     {G : Graph Player L} (hwf : G.WF)
     {cfg leftNext rightNext : Config G}

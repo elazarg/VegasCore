@@ -239,7 +239,13 @@ theorem scheduleComplete_terminal (w : Fin G.nodeCount → TypedValue L)
 /-- **Outcome confluence.** Any two schedules that complete *all* nodes, writing
 each node the same value, yield the *same* terminal configuration. The terminal
 configuration is a function of the value assignment alone; the schedule is a
-vacuous argument. -/
+vacuous argument.
+
+Standard names: this is **Mazurkiewicz trace equivalence / partial-order
+confluence** at the configuration level (the schedule is a linearization
+artifact). Its probabilistic lift — that the outcome *law* is schedule-invariant
+under an adversarial scheduler — is the **strong-linearizability** property of the
+compilation (Golab–Higham–Woelfel). -/
 theorem scheduleComplete_eq_of_full (cfg : Config G)
     (w : Fin G.nodeCount → TypedValue L)
     {o₁ o₂ : List (Fin G.nodeCount)}

@@ -68,7 +68,13 @@ def Independent (G : Graph Player L) (a b : Fin G.nodeCount) : Prop :=
   ¬ G.Comparable a b
 
 /-- A *readability fence* for `who`: every two distinct nodes both readable by
-`who` are ordered by the dependency relation. -/
+`who` are ordered by the dependency relation.
+
+Operationally, a fence is the developer's **ordering knob** (a `barrier` in
+true-concurrency terms): it promotes incidental program order into
+strategically-real *partial-order* dependency for `who`. The presence or absence
+of a fence is the seam between **plain and strong linearizability** of `who`'s
+readable information — see `readableOrder_eq_of_fence`. -/
 def Fence (G : Graph Player L) (who : Player) : Prop :=
   ∀ ⦃m n : Fin G.nodeCount⦄,
     G.NodeOutputReadableBy who m → G.NodeOutputReadableBy who n → m ≠ n →
@@ -141,7 +147,13 @@ order in which `who`'s readable values appear does not depend on the schedule.
 
 This is *not* full schedule indistinguishability — occurrences are public, so the
 order of all events is observable and schedule-dependent. It is exactly the
-invariance of the values `who` can read. -/
+invariance of the values `who` can read.
+
+It is the **strong-linearizability** content for `who`: under a fence, the
+schedule (chosen adversarially) cannot reorder the readable values `who`
+observes. It also discharges the schedule-invariance of the `Core_i` component in
+the `Info ≅ Core × SchedulePrefix` factoring (the developer-facing reasoning
+principle). -/
 theorem readableOrder_eq_of_fence {G : Graph Player L} {who : Player}
     {o₁ o₂ : List (Fin G.nodeCount)}
     (h₁ : G.IsTopo o₁) (h₂ : G.IsTopo o₂) (hfence : G.Fence who) :
