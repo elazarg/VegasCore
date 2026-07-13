@@ -59,8 +59,7 @@ player's local view. -/
 abbrev SourceChoice (history : SourceHistoryPoint P L) (who : P)
     (hchoice : history.IsChoiceFor who) : Type :=
   SourceViewChoice (L := L) (history.localHistoryView who) (by
-    simpa [SourceHistoryPoint.localHistoryView, SourceConfig.localView] using
-      hchoice)
+    exact hchoice)
 
 /-- Reachable source-local information states for a player.
 
@@ -128,9 +127,7 @@ theorem representativeHistory_isChoiceFor
           |>.point |>.IsChoiceFor who := by
     rw [info.representativeHistory_localHistoryView (L := L)]
     exact hchoice
-  simpa [SourceHistoryPoint.IsChoiceFor,
-    SourceHistoryPoint.localHistoryView, SourceConfig.localView,
-    SourceConfig.programPoint] using hchoiceRep
+  exact hchoiceRep
 
 end SourceReachableInfoState
 
@@ -201,7 +198,7 @@ theorem query_heq_of_sameHistoryKnowledge
         hchoiceRight) :=
   query_heq_of_view_eq (L := L) strategy
     (by
-      simpa [SourceReachableInfoState.ofHistory] using hsame)
+      exact hsame)
     hchoiceLeft hchoiceRight
 
 end SourceStrategy

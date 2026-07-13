@@ -33,7 +33,7 @@ theorem pure_frontier_nash_iff_nash_for_eu_pref
     program.PureFrontierNash profile ↔
       program.PureFrontierNashFor
         program.PureFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.PureFrontierNash] using
+  exact
     GameTheory.KernelGame.IsNash_iff_IsNashFor_eu
       program.pureFrontierGame profile
 
@@ -46,7 +46,7 @@ theorem pure_frontier_best_response_iff_best_response_for_eu_pref
     program.PureFrontierBestResponse player profile strategy ↔
       program.PureFrontierBestResponseFor
         program.PureFrontierEuPref player profile strategy := by
-  simpa [Vegas.WFProgram.PureFrontierBestResponse] using
+  exact
     GameTheory.KernelGame.IsBestResponse_iff_IsBestResponseFor_eu
       program.pureFrontierGame player profile strategy
 
@@ -58,7 +58,7 @@ theorem pure_frontier_dominant_iff_dominant_for_eu_pref
     program.PureFrontierDominant player strategy ↔
       program.PureFrontierDominantFor
         program.PureFrontierEuPref player strategy := by
-  simpa [Vegas.WFProgram.PureFrontierDominant] using
+  exact
     GameTheory.KernelGame.IsDominant_iff_IsDominantFor_eu
       program.pureFrontierGame player strategy
 
@@ -70,7 +70,7 @@ theorem pure_frontier_strict_nash_iff_strict_nash_for_eu_pref
     program.PureFrontierStrictNash profile ↔
       program.PureFrontierStrictNashFor
         program.PureFrontierEuStrictPref profile := by
-  simpa [Vegas.WFProgram.PureFrontierStrictNash] using
+  exact
     GameTheory.KernelGame.IsStrictNash_iff_IsStrictNashFor_eu
       program.pureFrontierGame profile
 
@@ -82,7 +82,7 @@ theorem pure_frontier_strict_dominant_iff_strict_dominant_for_eu_pref
     program.PureFrontierStrictDominant player strategy ↔
       program.PureFrontierStrictDominantFor
         program.PureFrontierEuStrictPref player strategy := by
-  simpa [Vegas.WFProgram.PureFrontierStrictDominant] using
+  exact
     GameTheory.KernelGame.IsStrictDominant_iff_IsStrictDominantFor_eu
       program.pureFrontierGame player strategy
 
@@ -94,7 +94,7 @@ theorem pure_frontier_correlated_eq_iff_correlated_eq_for_eu_pref
     program.PureFrontierCorrelatedEq profile ↔
       program.PureFrontierCorrelatedEqFor
         program.PureFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.PureFrontierCorrelatedEq] using
+  exact
     GameTheory.KernelGame.IsCorrelatedEq_iff_IsCorrelatedEqFor_eu
       program.pureFrontierGame profile
 
@@ -107,7 +107,7 @@ theorem pure_frontier_coarse_correlated_eq_iff_coarse_correlated_eq_for_eu_pref
     program.PureFrontierCoarseCorrelatedEq profile ↔
       program.PureFrontierCoarseCorrelatedEqFor
         program.PureFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.PureFrontierCoarseCorrelatedEq] using
+  exact
     GameTheory.KernelGame.IsCoarseCorrelatedEq_iff_IsCoarseCorrelatedEqFor_eu
       program.pureFrontierGame profile
 
@@ -555,7 +555,7 @@ theorem behavioral_frontier_nash_iff_nash_for_eu_pref
     program.BehavioralFrontierNash profile ↔
       program.BehavioralFrontierNashFor
         program.BehavioralFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.BehavioralFrontierNash] using
+  exact
     GameTheory.KernelGame.IsNash_iff_IsNashFor_eu
       program.behavioralFrontierGame profile
 
@@ -568,7 +568,7 @@ theorem behavioral_frontier_best_response_iff_best_response_for_eu_pref
     program.BehavioralFrontierBestResponse player profile strategy ↔
       program.BehavioralFrontierBestResponseFor
         program.BehavioralFrontierEuPref player profile strategy := by
-  simpa [Vegas.WFProgram.BehavioralFrontierBestResponse] using
+  exact
     GameTheory.KernelGame.IsBestResponse_iff_IsBestResponseFor_eu
       program.behavioralFrontierGame player profile strategy
 
@@ -580,7 +580,7 @@ theorem behavioral_frontier_dominant_iff_dominant_for_eu_pref
     program.BehavioralFrontierDominant player strategy ↔
       program.BehavioralFrontierDominantFor
         program.BehavioralFrontierEuPref player strategy := by
-  simpa [Vegas.WFProgram.BehavioralFrontierDominant] using
+  exact
     GameTheory.KernelGame.IsDominant_iff_IsDominantFor_eu
       program.behavioralFrontierGame player strategy
 
@@ -592,7 +592,7 @@ theorem behavioral_frontier_strict_nash_iff_strict_nash_for_eu_pref
     program.BehavioralFrontierStrictNash profile ↔
       program.BehavioralFrontierStrictNashFor
         program.BehavioralFrontierEuStrictPref profile := by
-  simpa [Vegas.WFProgram.BehavioralFrontierStrictNash] using
+  exact
     GameTheory.KernelGame.IsStrictNash_iff_IsStrictNashFor_eu
       program.behavioralFrontierGame profile
 
@@ -604,7 +604,7 @@ theorem behavioral_frontier_strict_dominant_iff_strict_dominant_for_eu_pref
     program.BehavioralFrontierStrictDominant player strategy ↔
       program.BehavioralFrontierStrictDominantFor
         program.BehavioralFrontierEuStrictPref player strategy := by
-  simpa [Vegas.WFProgram.BehavioralFrontierStrictDominant] using
+  exact
     GameTheory.KernelGame.IsStrictDominant_iff_IsStrictDominantFor_eu
       program.behavioralFrontierGame player strategy
 
@@ -617,7 +617,7 @@ theorem behavioral_frontier_correlated_eq_iff_correlated_eq_for_eu_pref
     program.BehavioralFrontierCorrelatedEq profile ↔
       program.BehavioralFrontierCorrelatedEqFor
         program.BehavioralFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.BehavioralFrontierCorrelatedEq] using
+  exact
     GameTheory.KernelGame.IsCorrelatedEq_iff_IsCorrelatedEqFor_eu
       program.behavioralFrontierGame profile
 
@@ -630,7 +630,7 @@ theorem behavioral_frontier_coarse_correlated_eq_iff_coarse_correlated_eq_for_eu
     program.BehavioralFrontierCoarseCorrelatedEq profile ↔
       program.BehavioralFrontierCoarseCorrelatedEqFor
         program.BehavioralFrontierEuPref profile := by
-  simpa [Vegas.WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
+  exact
     GameTheory.KernelGame.IsCoarseCorrelatedEq_iff_IsCoarseCorrelatedEqFor_eu
       program.behavioralFrontierGame profile
 
@@ -743,15 +743,6 @@ theorem behavioral_frontier_nash_is_epsilon_nash
     {ε : ℝ} (hε : ε ≥ 0) :
     program.BehavioralFrontierεNash ε profile :=
   program.behavioralFrontier_nash_is_epsilonNash hNash hε
-
-/-- Behavioral frontier Nash strategies are rationalizable. -/
-theorem behavioral_frontier_nash_strategy_rationalizable
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {profile : program.BehavioralFrontierProfile}
-    (hNash : program.BehavioralFrontierNash profile)
-    (player : P) :
-    program.BehavioralFrontierRationalizable player (profile player) :=
-  program.behavioralFrontier_nash_rationalizable hNash player
 
 /-- A global maximizer of an exact behavioral-frontier potential is a
 behavioral frontier Nash equilibrium. -/

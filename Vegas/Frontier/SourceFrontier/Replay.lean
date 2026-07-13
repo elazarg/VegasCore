@@ -133,13 +133,7 @@ theorem behavioralHistory_support_sourceRun
     exact
       FrontierRoundSemantics.runDist_support_terminal_of_completionBound
         semantics.behavioral.semantics profile
-        (by
-          simpa [FrontierGameSemantics.behavioralHistoryKernel,
-            FrontierGameSemantics.behavioral,
-            FrontierGameSemantics.horizon,
-            CompletedFrontierBehavioralKernelGame.view,
-            CompletedFrontierKuhnGames.behavioral,
-            CompletedFrontierKuhnGames.view] using hsupport)
+        (by exact hsupport)
   simpa [ToEventGraph.compile, ToEventGraph.buildResult] using
     ToEventGraph.sourceRun_of_reachableConfig program.core
       history.lastState.state hterminal
@@ -187,13 +181,7 @@ theorem pureHistory_support_sourceRun
         semantics.pure.semantics
         ((semantics.pure.view).legalPureToBehavioral
           semantics.horizon profile)
-        (by
-          simpa [FrontierGameSemantics.pureHistoryKernel,
-            FrontierGameSemantics.pure,
-            FrontierGameSemantics.horizon,
-            CompletedFrontierPureKernelGame.view,
-            CompletedFrontierKuhnGames.pure,
-            CompletedFrontierKuhnGames.view] using hsupport)
+        (by exact hsupport)
   simpa [ToEventGraph.compile, ToEventGraph.buildResult] using
     ToEventGraph.sourceRun_of_reachableConfig program.core
       history.lastState.state hterminal

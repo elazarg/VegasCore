@@ -489,8 +489,10 @@ theorem frontierRoundView_commitAvailable_of_boundedLegal_value
     exact hterm (Or.inr hcut)
   have havailable :
       frontierAction ∈ frontierAvailableActions G state.state who := by
-    simpa [view, frontierRoundView, Machine.RoundView.boundedAvailableActions,
-      hnotCut] using hlocal.2
+    have hmem := hlocal.2
+    simp only [view, frontierRoundView, Machine.RoundView.boundedAvailableActions,
+      hnotCut] at hmem
+    exact hmem
   exact
     FrontierAction.Available.commitAvailable_of_value havailable hvalue
 
@@ -564,13 +566,13 @@ theorem frontierRoundView_condOn_nodeValue_commitAvailable
       Math.ProbabilityMassFunction.pushforward
           (view.legalActionLaw horizon σ h hterm) project
           (some value) ≠ 0 := by
-    simpa [view, project] using hvalueMass
+    exact hvalueMass
   have hactionSupport' :
       action ∈
         (Math.ProbabilityMassFunction.condOn
           (view.legalActionLaw horizon σ h hterm)
           project (some value)).support := by
-    simpa [view, project] using hactionSupport
+    exact hactionSupport
   have hproject : project action = some value :=
     Machine.RoundView.legalActionLaw_condOn_support_project
       view horizon σ h hterm project (some value)
@@ -693,7 +695,7 @@ theorem frontierRoundView_menusObservable
         apply Machine.RoundView.BoundedHistory.ext
         simpa using hrightNil
       rw [hleftEq, hrightEq]
-      simp [view, ToMachine.primitiveMachine]
+      simp [view]
     · have hrightNe : right.steps ≠ [] := by
         intro hrightNil
         apply hleftNil

@@ -196,8 +196,7 @@ theorem matchingPennies_mixedPureToBehavioral_realizable :
 theorem matchingPenniesKuhnMenus :
     matchingPenniesKuhnGames.view.MenusObservable
       (completionBound matchingPenniesCompiled) := by
-  simpa [matchingPenniesKuhnGames, matchingPenniesCompiled] using
-    canonicalFrontierKuhnGames_menusObservable matchingPenniesChecked
+  exact canonicalFrontierKuhnGames_menusObservable matchingPenniesChecked
 
 example : MixedPureToBehavioralOutcomeKernelRealizable matchingPenniesChecked :=
   matchingPennies_mixedPureToBehavioral_realizable
@@ -210,7 +209,7 @@ example
     ∃ correlated : PMF matchingPenniesKuhnGames.pure.game.Profile,
       matchingPenniesKuhnGames.behavioral.game.outcomeKernel
           (by
-            simpa [matchingPenniesKuhnGames, matchingPenniesCompiled] using
+            exact
               matchingPenniesKuhnGames.view.behavioralProfileOfKuhn
                 (completionBound matchingPenniesCompiled)
                 matchingPenniesKuhnMenus adapterBehavioral) =
@@ -330,8 +329,7 @@ noncomputable def matchingPenniesPlainEFGMachinePayoffKernelGame :
 
 theorem matchingPenniesFOSG_boundedHorizon :
     matchingPenniesFOSG.BoundedHorizon matchingPenniesSemantics.horizon := by
-  simpa [matchingPenniesFOSG, matchingPenniesSemantics] using
-    matchingPenniesChecked.frontierFOSG_boundedHorizon
+  exact matchingPenniesChecked.frontierFOSG_boundedHorizon
 
 theorem matchingPenniesFOSG_runDist_behavioral
     (profile : matchingPenniesChecked.BehavioralFrontierProfile)
@@ -965,7 +963,7 @@ example
       matchingPenniesFrontierGame.semantics.transition
         (PrimitiveMachine matchingPenniesCompiled).init action dst ≠ 0) :
     EventGraph.readyInternalNodes matchingPenniesCompiled.graph dst.1 = ∅ := by
-  simpa [matchingPenniesFrontierGame, matchingPenniesCompiled] using
+  exact
     canonicalFrontierPureKernelGame_transition_support_closed
       matchingPenniesChecked action hsupport
 

@@ -226,10 +226,10 @@ theorem compile_primitiveMachine_outcome_eq_sourceAtTerminal
     (hterminal : (PrimitiveMachine (compile g)).terminal state) :
     (PrimitiveMachine (compile g)).outcome state =
       some (sourceOutcomeAtTerminal g state
-        (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)) := by
+        (by exact hterminal)) := by
   have hterminalGraph :
       Terminal (compile g).graph state.1 := by
-    simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal
+    exact hterminal
   have hprojection :=
     EventGraph.ToMachine.primitiveMachine_outcome_terminal
       (primitiveMachineSpec (compile g)) hterminal
@@ -250,7 +250,7 @@ theorem compile_primitiveMachine_outcome_eq_sourceTrace
     exact
       compile_primitiveMachine_outcome_eq_sourceAtTerminal
         g trace.2
-        (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)
+        (by exact hterminal)
   · rw [dif_neg hterminal]
     change
       (EventGraph.ToMachine.primitiveMachine
@@ -305,7 +305,7 @@ theorem CompletedFrontierPureKernelGame.outcomeKernel_support_sourceOutcome
     exact
       compile_primitiveMachine_outcome_eq_sourceAtTerminal
         program.core history.lastState.state
-        (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)
+        (by exact hterminal)
   have houtcome :
       outcome =
         sourceOutcomeAtTerminal program.core
@@ -375,7 +375,7 @@ theorem CompletedFrontierPureKernelGame.optionOutcomeKernel_eq_sourceMap
             history.lastState.state hterminal) :=
     compile_primitiveMachine_outcome_eq_sourceAtTerminal
       program.core history.lastState.state
-      (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)
+      (by exact hterminal)
   change
     (PrimitiveMachine (compile program.core)).outcome
         history.lastState.state =
@@ -422,7 +422,7 @@ theorem
     exact
       compile_primitiveMachine_outcome_eq_sourceAtTerminal
         program.core history.lastState.state
-        (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)
+        (by exact hterminal)
   have houtcome :
       outcome =
         sourceOutcomeAtTerminal program.core
@@ -486,7 +486,7 @@ theorem
             history.lastState.state hterminal) :=
     compile_primitiveMachine_outcome_eq_sourceAtTerminal
       program.core history.lastState.state
-      (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)
+      (by exact hterminal)
   change
     (PrimitiveMachine (compile program.core)).outcome
         history.lastState.state =

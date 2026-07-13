@@ -270,7 +270,7 @@ theorem outcomeKernel_support_history
   have hsome :
       some outcome ∈ (completed.optionOutcomeKernel σ).support :=
     (completed.outcomeKernel_support_iff σ outcome).1 hsupport
-  simpa [optionOutcomeKernel, view] using
+  exact
     FrontierRoundSemantics.boundedOutcomeFromPure_support_history_completionBound
       completed.semantics σ hsome
 
@@ -586,7 +586,7 @@ theorem outcomeKernel_support_history
   have hsome :
       some outcome ∈ (completed.optionOutcomeKernel σ).support :=
     (completed.outcomeKernel_support_iff σ outcome).1 hsupport
-  simpa [optionOutcomeKernel, view] using
+  exact
     FrontierRoundSemantics.boundedOutcomeFromBehavioral_support_history_completionBound
       completed.semantics σ hsome
 

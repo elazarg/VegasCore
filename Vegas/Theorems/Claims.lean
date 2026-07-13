@@ -125,8 +125,7 @@ theorem claim_terminal_outcome_is_source_payoff
         (ToEventGraph.compile program.core)).outcome state =
       some (ToEventGraph.sourceOutcomeAtTerminal program.core state
         (by
-          simpa [ToEventGraph.PrimitiveMachine,
-            ToEventGraph.primitiveMachineSpec] using hterminal)) :=
+          exact hterminal)) :=
   ToEventGraph.primitiveOutcome_eq_sourceAtTerminal
     program.core state hterminal
 

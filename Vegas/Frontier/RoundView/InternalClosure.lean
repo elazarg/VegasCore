@@ -81,7 +81,7 @@ theorem readyInternalAtNode_step_support
       EventGraph.ToMachine.primitiveMachine_step_internal_available_support
         (primitiveMachineSpec compiled) havailable with
     ⟨written, next, hnext, hcfg⟩
-  exact ⟨written, next, by simpa [hevent] using hnext, hcfg⟩
+  exact ⟨written, next, by rw [hevent]; exact hnext, hcfg⟩
 
 omit [Fintype P] in
 theorem readyInternalAtNode_step_support_completeNode

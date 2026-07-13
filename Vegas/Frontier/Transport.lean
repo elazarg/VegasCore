@@ -260,7 +260,7 @@ theorem nash_iff
     (profile : left.PureFrontierProfile) :
     left.PureFrontierNash profile ↔
       right.PureFrontierNash (F.mapProfile profile) := by
-  simpa [PureFrontierNash, mapProfile] using
+  exact
     GameTheory.KernelGame.EUGameIsomorphism.nash_iff F profile
 
 end PureFrontierIsomorphism
@@ -296,7 +296,7 @@ theorem nash_iff
     (profile : left.BehavioralFrontierProfile) :
     left.BehavioralFrontierNash profile ↔
       right.BehavioralFrontierNash (F.mapProfile profile) := by
-  simpa [BehavioralFrontierNash, mapProfile] using
+  exact
     GameTheory.KernelGame.EUGameIsomorphism.nash_iff F profile
 
 end BehavioralFrontierIsomorphism

@@ -190,7 +190,7 @@ def KuhnInfoFinite
 
 /-- Completed frontier Kuhn games have finite Kuhn information states whenever
 the graph field and node value domains are finite. -/
-noncomputable def kuhnInfoFinite
+theorem kuhnInfoFinite
     (games : CompletedFrontierKuhnGames compiled presentation)
     (horizon : Nat)
     (hMenus : games.view.MenusObservable horizon) :
@@ -249,17 +249,14 @@ noncomputable def mixedPureToBehavioralProfile_of_menus
   let horizon := completionBound compiled
   let view := games.view
   let mixedView : ∀ player, PMF (view.BoundedPureStrategy horizon player) := by
-    simpa [pure, CompletedFrontierPureKernelGame.game,
-      CompletedFrontierPureKernelGame.view, view, horizon] using mixed
+    exact mixed
   letI : ∀ player, Fintype (Option (view.Act player)) :=
     games.kuhnOptionalMoveFintype
   letI :
       ∀ player,
         Finite ((view.kuhnModel horizon hMenus).InfoState player) :=
     games.kuhnInfoFinite horizon hMenus
-  simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-    CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-    view.mixedPureToBehavioralProfile horizon hMenus mixedView
+  exact view.mixedPureToBehavioralProfile horizon hMenus mixedView
 
 /-- Mixed-to-behavioral outcome-kernel realization for completed frontier
 games whose strategic views are the same frontier round view, using the
@@ -276,8 +273,7 @@ theorem mixedPureToBehavioralOutcomeKernel_eq_of_menus
   let horizon := completionBound compiled
   let view := games.view
   let mixedView : ∀ player, PMF (view.BoundedPureStrategy horizon player) := by
-    simpa [pure, CompletedFrontierPureKernelGame.game,
-      CompletedFrontierPureKernelGame.view, view, horizon] using mixed
+    exact mixed
   letI : ∀ player, Fintype (Option (view.Act player)) :=
     games.kuhnOptionalMoveFintype
   letI :
@@ -307,22 +303,16 @@ theorem mixedPureToBehavioralOutcomeKernel_eq_of_menus
       have hpointView :=
         congrArg (fun dist : PMF (Option (PrimitiveMachine compiled).Outcome) =>
           dist (some outcome)) hbehavioral
-      simpa [mixedView, pure, CompletedFrontierPureKernelGame.game,
-        CompletedFrontierPureKernelGame.view, view, horizon] using hpointView
+      exact hpointView
   calc
     games.behavioral.game.outcomeKernel
         (games.mixedPureToBehavioralProfile_of_menus hMenus mixed) outcome
         =
       (view.boundedOutcomeFromBehavioral horizon behavioralProfile horizon)
         (some outcome) := by
-          simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-            CompletedFrontierBehavioralKernelGame.optionOutcomeKernel,
-            CompletedFrontierBehavioralKernelGame.view,
-            mixedPureToBehavioralProfile_of_menus, behavioralProfile,
-            mixedView, view, horizon] using
-            games.behavioral.outcomeKernel_apply
-              (games.mixedPureToBehavioralProfile_of_menus hMenus mixed)
-              outcome
+          exact games.behavioral.outcomeKernel_apply
+            (games.mixedPureToBehavioralProfile_of_menus hMenus mixed)
+            outcome
     _ =
       ((Math.PMFProduct.pmfPi mixed).bind
         (fun pureProfile =>
@@ -336,9 +326,7 @@ theorem mixedPureToBehavioralOutcomeKernel_eq_of_menus
           apply tsum_congr
           intro pureProfile
           congr 1
-          simpa [pure, CompletedFrontierPureKernelGame.optionOutcomeKernel,
-            CompletedFrontierPureKernelGame.view, view, horizon] using
-            (games.pure.outcomeKernel_apply pureProfile outcome).symm
+          exact (games.pure.outcomeKernel_apply pureProfile outcome).symm
 
 open Classical in
 /-- Product mixed pure-strategy deviation induced by one completed behavioral
@@ -359,12 +347,8 @@ noncomputable def behavioralStrategyToMixedPure
         Finite ((view.kuhnModel horizon hMenus).InfoState player) :=
     games.kuhnInfoFinite horizon hMenus
   let deviationView : view.BoundedBehavioralStrategy horizon who := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      deviation
-  simpa [pure, CompletedFrontierPureKernelGame.game,
-    CompletedFrontierPureKernelGame.view, view, horizon] using
-    view.behavioralStrategyToMixedPure horizon hMenus who deviationView
+    exact deviation
+  exact view.behavioralStrategyToMixedPure horizon hMenus who deviationView
 
 open Classical in
 /-- Canonical mixed-to-behavioral unilateral-deviation law for completed
@@ -394,12 +378,9 @@ theorem mixedPureToBehavioralUnilateralDeviationOutcomeKernel_eq_of_menus
         Finite ((view.kuhnModel horizon hMenus).InfoState player) :=
     games.kuhnInfoFinite horizon hMenus
   let mixedView : ∀ player, PMF (view.BoundedPureStrategy horizon player) := by
-    simpa [pure, CompletedFrontierPureKernelGame.game,
-      CompletedFrontierPureKernelGame.view, view, horizon] using mixed
+    exact mixed
   let deviationView : view.BoundedBehavioralStrategy horizon who := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      deviation
+    exact deviation
   let mixedDeviationView :=
     view.behavioralStrategyToMixedPure horizon hMenus who deviationView
   let mixedDeviation :=
@@ -445,15 +426,10 @@ theorem mixedPureToBehavioralUnilateralDeviationOutcomeKernel_eq_of_menus
         (Function.update
           (view.mixedPureToBehavioralProfile horizon hMenus mixedView)
           who deviationView) horizon) (some outcome) := by
-          simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-            CompletedFrontierBehavioralKernelGame.optionOutcomeKernel,
-            CompletedFrontierBehavioralKernelGame.view,
-            mixedPureToBehavioralProfile_of_menus, mixedView,
-            deviationView, view, horizon] using
-            games.behavioral.outcomeKernel_apply
-              (Function.update
-                (games.mixedPureToBehavioralProfile_of_menus hMenus mixed)
-                who deviation) outcome
+          exact games.behavioral.outcomeKernel_apply
+            (Function.update
+              (games.mixedPureToBehavioralProfile_of_menus hMenus mixed)
+              who deviation) outcome
     _ =
       ((Math.PMFProduct.pmfPi
         (Function.update mixedView who mixedDeviationView)).bind
@@ -469,10 +445,7 @@ theorem mixedPureToBehavioralUnilateralDeviationOutcomeKernel_eq_of_menus
           apply tsum_congr
           intro pureProfile
           congr 1
-          simpa [mixedView, mixedDeviation, hmixedDeviation,
-            pure, CompletedFrontierPureKernelGame.optionOutcomeKernel,
-            CompletedFrontierPureKernelGame.view, view, horizon] using
-            (games.pure.outcomeKernel_apply pureProfile outcome).symm
+          exact (games.pure.outcomeKernel_apply pureProfile outcome).symm
 
 /-- Mixed-to-behavioral outcome-kernel realizability for completed frontier
 games. -/
@@ -527,16 +500,12 @@ theorem adapterBehavioralToCorrelatedPureOutcomeKernel
         horizon horizon hMenus adapterBehavioral
   rcases hOption with ⟨correlatedView, hcorrelated⟩
   let correlatedGame : PMF games.pure.game.Profile := by
-    simpa [pure, CompletedFrontierPureKernelGame.game,
-      CompletedFrontierPureKernelGame.view, view, horizon] using
-      correlatedView
+    exact correlatedView
   refine ⟨correlatedGame, ?_⟩
   apply PMF.ext
   intro outcome
   let behavioralProfile : games.behavioral.game.Profile := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      view.behavioralProfileOfKuhn horizon hMenus adapterBehavioral
+    exact view.behavioralProfileOfKuhn horizon hMenus adapterBehavioral
   have hpoint :
       (view.boundedOutcomeFromBehavioral horizon
           (view.behavioralProfileOfKuhn horizon hMenus adapterBehavioral)
@@ -552,11 +521,7 @@ theorem adapterBehavioralToCorrelatedPureOutcomeKernel
       (view.boundedOutcomeFromBehavioral horizon
           (view.behavioralProfileOfKuhn horizon hMenus adapterBehavioral)
           horizon) (some outcome) := by
-          simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-            CompletedFrontierBehavioralKernelGame.optionOutcomeKernel,
-            CompletedFrontierBehavioralKernelGame.view, behavioralProfile,
-            view, horizon] using
-            games.behavioral.outcomeKernel_apply behavioralProfile outcome
+          exact games.behavioral.outcomeKernel_apply behavioralProfile outcome
     _ =
       (correlatedView.bind fun pureProfile =>
         view.boundedOutcomeFromPure horizon pureProfile horizon)
@@ -568,10 +533,7 @@ theorem adapterBehavioralToCorrelatedPureOutcomeKernel
           apply tsum_congr
           intro pureProfile
           congr 1
-          simpa [correlatedGame, pure,
-            CompletedFrontierPureKernelGame.optionOutcomeKernel,
-            CompletedFrontierPureKernelGame.view, view, horizon] using
-            (games.pure.outcomeKernel_apply pureProfile outcome).symm
+          exact (games.pure.outcomeKernel_apply pureProfile outcome).symm
 
 /-- Behavioral-to-correlated-pure outcome-kernel realization for completed
 frontier game pairs, stated for native behavioral profiles of the completed
@@ -594,9 +556,7 @@ theorem behavioralToCorrelatedPureOutcomeKernel
         Finite ((view.kuhnModel horizon hMenus).InfoState player) :=
     games.kuhnInfoFinite horizon hMenus
   let behavioralView : view.BoundedBehavioralProfile horizon := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      behavioralProfile
+    exact behavioralProfile
   have hOption :
       ∃ correlatedView : PMF (view.BoundedPureProfile horizon),
         view.boundedOutcomeFromBehavioral horizon behavioralView horizon =
@@ -607,9 +567,7 @@ theorem behavioralToCorrelatedPureOutcomeKernel
         horizon horizon hMenus behavioralView
   rcases hOption with ⟨correlatedView, hcorrelated⟩
   let correlatedGame : PMF games.pure.game.Profile := by
-    simpa [pure, CompletedFrontierPureKernelGame.game,
-      CompletedFrontierPureKernelGame.view, view, horizon] using
-      correlatedView
+    exact correlatedView
   refine ⟨correlatedGame, ?_⟩
   apply PMF.ext
   intro outcome
@@ -626,11 +584,7 @@ theorem behavioralToCorrelatedPureOutcomeKernel
         =
       (view.boundedOutcomeFromBehavioral horizon behavioralView horizon)
         (some outcome) := by
-          simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-            CompletedFrontierBehavioralKernelGame.optionOutcomeKernel,
-            CompletedFrontierBehavioralKernelGame.view, behavioralView,
-            view, horizon] using
-            games.behavioral.outcomeKernel_apply behavioralProfile outcome
+          exact games.behavioral.outcomeKernel_apply behavioralProfile outcome
     _ =
       (correlatedView.bind fun pureProfile =>
         view.boundedOutcomeFromPure horizon pureProfile horizon)
@@ -642,10 +596,7 @@ theorem behavioralToCorrelatedPureOutcomeKernel
           apply tsum_congr
           intro pureProfile
           congr 1
-          simpa [correlatedGame, pure,
-            CompletedFrontierPureKernelGame.optionOutcomeKernel,
-            CompletedFrontierPureKernelGame.view, view, horizon] using
-            (games.pure.outcomeKernel_apply pureProfile outcome).symm
+          exact (games.pure.outcomeKernel_apply pureProfile outcome).symm
 
 open Classical in
 /-- Product mixed pure-strategy profile induced by a completed behavioral
@@ -671,12 +622,8 @@ noncomputable def behavioralToMixedPure
         Fintype ((view.kuhnModel horizon hMenus).InfoState player) :=
     fun player => Fintype.ofFinite _
   let behavioralView : view.BoundedBehavioralProfile horizon := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      behavioralProfile
-  simpa [pure, CompletedFrontierPureKernelGame.game,
-    CompletedFrontierPureKernelGame.view, view, horizon] using
-    view.behavioralToMixedPure horizon hMenus behavioralView
+    exact behavioralProfile
+  exact view.behavioralToMixedPure horizon hMenus behavioralView
 
 /-- Behavioral strategies can be realized by the induced product mixed pure
 strategy profile with the same completed-game outcome kernel. This is the
@@ -705,9 +652,7 @@ theorem behavioralToProductMixedOutcomeKernel
         Fintype ((view.kuhnModel horizon hMenus).InfoState player) :=
     fun player => Fintype.ofFinite _
   let behavioralView : view.BoundedBehavioralProfile horizon := by
-    simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-      CompletedFrontierBehavioralKernelGame.view, view, horizon] using
-      behavioralProfile
+    exact behavioralProfile
   let mixedView :
       ∀ player, PMF (view.BoundedPureStrategy horizon player) :=
     view.behavioralToMixedPure horizon hMenus behavioralView
@@ -715,9 +660,8 @@ theorem behavioralToProductMixedOutcomeKernel
       view.boundedOutcomeFromBehavioral horizon behavioralView horizon =
         (Math.PMFProduct.pmfPi mixedView).bind fun pureProfile =>
           view.boundedOutcomeFromPure horizon pureProfile horizon := by
-    simpa [view, horizon, mixedView] using
-      view.kuhn_behavioral_to_mixedPure_optionOutcome
-        horizon horizon hMenus behavioralView
+    exact view.kuhn_behavioral_to_mixedPure_optionOutcome
+      horizon horizon hMenus behavioralView
   apply PMF.ext
   intro outcome
   have hpoint :
@@ -733,11 +677,7 @@ theorem behavioralToProductMixedOutcomeKernel
         =
       (view.boundedOutcomeFromBehavioral horizon behavioralView horizon)
         (some outcome) := by
-          simpa [behavioral, CompletedFrontierBehavioralKernelGame.game,
-            CompletedFrontierBehavioralKernelGame.optionOutcomeKernel,
-            CompletedFrontierBehavioralKernelGame.view, behavioralView,
-            view, horizon] using
-            games.behavioral.outcomeKernel_apply behavioralProfile outcome
+          exact games.behavioral.outcomeKernel_apply behavioralProfile outcome
     _ =
       ((Math.PMFProduct.pmfPi mixedView).bind fun pureProfile =>
         view.boundedOutcomeFromPure horizon pureProfile horizon)
@@ -751,10 +691,7 @@ theorem behavioralToProductMixedOutcomeKernel
           apply tsum_congr
           intro pureProfile
           congr 1
-          simpa [behavioralToMixedPure, mixedView, pure,
-            CompletedFrontierPureKernelGame.optionOutcomeKernel,
-            CompletedFrontierPureKernelGame.view, view, horizon] using
-            (games.pure.outcomeKernel_apply pureProfile outcome).symm
+          exact (games.pure.outcomeKernel_apply pureProfile outcome).symm
 
 /-- Completed frontier games satisfy the generic two-direction Kuhn
 outcome-equality schema: behavioral profiles induce product mixed pure

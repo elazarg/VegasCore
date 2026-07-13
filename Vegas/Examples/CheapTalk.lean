@@ -118,10 +118,9 @@ theorem coordinationCheapTalk_eu
       if coordinationCheapTalkAction profile row =
           coordinationCheapTalkAction profile col then 1 else 0 := by
   cases player <;>
-    simp [coordinationCheapTalk,
+    simp [KernelGame.eu, coordinationCheapTalkGame, coordinationCheapTalk,
       KernelGame.CheapTalkExtension.game, GameForm.CheapTalkExtension.form,
-      KernelGame.eu, expect_pure, coordinationGame,
-      coordinationCheapTalkAction]
+      coordinationGame, coordinationCheapTalkAction]
 
 /-- A non-babbling cheap-talk equilibrium: row's message is used as the
 coordination recommendation. This is a game-specific proof, not an automatic

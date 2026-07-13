@@ -75,8 +75,7 @@ private theorem boundedStep_eventBatch_eq_semantics
         (frontierActive compiled)
         (PrimitiveMachine compiled).terminal
         (frontierAvailableActions compiled) step.src.state step.act.1 := by
-    simpa [action, View, frontierRoundView]
-      using action.2
+    exact action.2
   rw [dif_pos hlegal]
   have haction :
       (⟨step.act.1, hlegal⟩ :
@@ -121,7 +120,7 @@ theorem view_operationallyCertified
         (frontierActive compiled)
         (PrimitiveMachine compiled).terminal
         (frontierAvailableActions compiled) state action.1 := by
-    simpa [View, frontierRoundView] using action.2
+    exact action.2
   let action' :
       {a : JointAction (FrontierAct compiled) //
         JointActionLegal (FrontierAct compiled)
@@ -144,7 +143,7 @@ theorem view_operationallyCertified
     rw [dif_pos hlegal]
     rfl
   have hsupport' : semantics.transition state action' dst ≠ 0 := by
-    simpa [View, frontierRoundView, action'] using hsupport
+    exact hsupport
   rw [hbatch]
   exact (semantics.certifies action' hsupport').availableRun
 
@@ -242,7 +241,8 @@ theorem boundedHistory_terminal_of_length_completionBound
     have hinit :
         ((Machine.BoundedState.init
           (PrimitiveMachine compiled) horizon).state.1.done.card) = 0 := by
-      simp [Machine.BoundedState.init,
+      simp [Machine.BoundedState.init, PrimitiveMachine,
+        EventGraph.PrimitiveMachineOf,
         EventGraph.ToMachine.primitiveMachine, EventGraph.Config.initial]
     rw [← Machine.RoundView.BoundedHistory.lastState] at hchain
     rw [hinit, hlen] at hchain
@@ -459,13 +459,13 @@ private theorem stepChain_checkpointHistory_publicView
       rcases hchain with ⟨hsrc, htail⟩
       subst hsrc
       have ih := stepChain_checkpointHistory_publicView semantics htail
-      simpa [stepChain_checkpointHistory,
+      simp only [stepChain_checkpointHistory,
         EventGraph.CheckpointPresentation.History.publicView_append,
         EventGraph.CheckpointPresentation.History.publicView,
         Machine.RoundView.BoundedHistory.publicViewFrom,
         Machine.RoundView.BoundedStep.publicObs,
-        frontierRoundView, EventGraph.frontierRoundView,
-        EventGraph.ToMachine.primitiveMachine, primitiveMachineSpec] using ih
+        List.nil_append, List.singleton_append]
+      congr 1
 
 private theorem stepChain_checkpointHistory_playerView
     (semantics : FrontierRoundSemantics compiled presentation)
@@ -486,12 +486,12 @@ private theorem stepChain_checkpointHistory_playerView
       subst hsrc
       have ih := stepChain_checkpointHistory_playerView
         semantics player htail
-      simpa [stepChain_checkpointHistory,
+      simp only [stepChain_checkpointHistory,
         EventGraph.CheckpointPresentation.History.playerView_append,
         EventGraph.CheckpointPresentation.History.playerView,
         Machine.RoundView.BoundedStep.privateObs,
-        frontierRoundView, EventGraph.frontierRoundView,
-        EventGraph.ToMachine.primitiveMachine, primitiveMachineSpec] using ih
+        List.nil_append, List.singleton_append, List.map_cons]
+      congr 1
 
 /-- Event batches extracted from a bounded frontier history form an available
 primitive batched machine run from the initial checkpoint to the history's
@@ -615,8 +615,7 @@ theorem boundedHistory_checkpointHistory_publicView
     (history : (View semantics).BoundedHistory horizon) :
     (boundedHistory_checkpointHistory semantics history).publicView =
       history.publicView := by
-  simpa [boundedHistory_checkpointHistory,
-    Machine.RoundView.BoundedHistory.publicView] using
+  exact
     stepChain_checkpointHistory_publicView semantics history.chain
 
 /-- The checkpoint history induced by a bounded frontier history has exactly
@@ -669,8 +668,7 @@ theorem frontierPureKernelGame_outcomeKernel_support_some_completionBound
   exact
     FrontierRoundSemantics.boundedOutcomeFromPure_support_some_completionBound
       semantics σ (by
-        simpa [frontierPureKernelGame,
-          Machine.RoundView.boundedPureKernelGame, view] using hsupport)
+        exact hsupport)
 
 /-- The default-length behavioral frontier kernel constructed from certified
 frontier semantics never supports the cutoff outcome. -/
@@ -701,8 +699,7 @@ theorem frontierBehavioralKernelGame_outcomeKernel_support_some_completionBound
   exact
     FrontierRoundSemantics.boundedOutcomeFromBehavioral_support_some_completionBound
       semantics σ (by
-        simpa [frontierBehavioralKernelGame,
-          Machine.RoundView.boundedBehavioralKernelGame, view] using hsupport)
+        exact hsupport)
 
 omit [Fintype P] in
 /-- Erase an option-valued outcome distribution when `none` has no support. -/

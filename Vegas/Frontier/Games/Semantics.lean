@@ -109,8 +109,7 @@ noncomputable def pureStrategyFintype
 /-- The canonical pure-strategy carrier is nonempty for every player: menu
 observability supplies a legal default move at each reachable information
 state. -/
-@[reducible]
-noncomputable def pureStrategyNonempty
+theorem pureStrategyNonempty
     (semantics : FrontierGameSemantics program)
     (player : P) :
     Nonempty (semantics.pureGame.Strategy player) := by
@@ -152,8 +151,7 @@ theorem mixedPureNash_exists_of_bounded
       ∀ player,
         Nonempty (semantics.pureGame.Strategy player) :=
     semantics.pureStrategyNonempty
-  simpa [mixedPureGame] using
-    semantics.pureGame.mixed_nash_exists_of_bounded hbd
+  exact semantics.pureGame.mixed_nash_exists_of_bounded hbd
 
 /-- Pure-strategy completed frontier histories. These are checkpoint histories
 at the strategic frontier level, not primitive event schedules. -/
@@ -395,8 +393,7 @@ theorem terminalPublicMixedNash_exists
       change Finite
         (EventGraph.PublicObservation (compile program.core).graph)
       exact Finite.of_fintype _
-  simpa [mixedPureTerminalPublicGame] using
-    semantics.pureTerminalPublicKernelGame.mixed_nash_exists
+  exact semantics.pureTerminalPublicKernelGame.mixed_nash_exists
 
 @[simp] theorem pureHistoryGameForm_outcomeKernel
     (semantics : FrontierGameSemantics program)
@@ -509,11 +506,7 @@ theorem pureHistoryKernelGame_udist
             (PrimitiveMachine (compile program.core)).outcome
               history.lastState.state)
           (semantics.pureHistoryKernel σ) := by
-    simpa [pureHistoryKernel, pure, CompletedFrontierPureKernelGame.view,
-      CompletedFrontierKuhnGames.pure, CompletedFrontierKuhnGames.view,
-      CompletedFrontierPureKernelGame.optionOutcomeKernel, horizon, view] using
-      (view.boundedOutcomeFromPure_eq_map_history
-        horizon horizon σ)
+    exact view.boundedOutcomeFromPure_eq_map_history horizon horizon σ
   change
     (semantics.pureHistoryKernel σ).bind
         (fun history =>
@@ -571,12 +564,7 @@ theorem behavioralHistoryKernelGame_udist
             (PrimitiveMachine (compile program.core)).outcome
               history.lastState.state)
           (semantics.behavioralHistoryKernel σ) := by
-    simpa [behavioralHistoryKernel, behavioral,
-      CompletedFrontierBehavioralKernelGame.view,
-      CompletedFrontierKuhnGames.behavioral, CompletedFrontierKuhnGames.view,
-      CompletedFrontierBehavioralKernelGame.optionOutcomeKernel, horizon, view] using
-      (view.boundedOutcomeFromBehavioral_eq_map_history
-        horizon horizon σ)
+    exact view.boundedOutcomeFromBehavioral_eq_map_history horizon horizon σ
   change
     (semantics.behavioralHistoryKernel σ).bind
         (fun history =>
@@ -669,7 +657,7 @@ noncomputable def pureHistoryUtilityDistributionEquivalence
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro σ
-    simpa using semantics.pureHistoryKernelGame_udist σ
+    exact semantics.pureHistoryKernelGame_udist σ
 
 /-- Completed behavioral frontier histories and payoff outcomes induce the
 same joint utility distribution.  This is a payoff-level equivalence, not a
@@ -681,7 +669,7 @@ noncomputable def behavioralHistoryUtilityDistributionEquivalence
   stratEquiv := fun _ => Equiv.refl _
   udist_preserved := by
     intro σ
-    simpa using semantics.behavioralHistoryKernelGame_udist σ
+    exact semantics.behavioralHistoryKernelGame_udist σ
 
 /-- A legal pure strategy chooses an available optional move at every
 reachable completed-frontier history realizing its information state. -/
@@ -830,10 +818,8 @@ theorem mixedToBehavioralProfile_update_ne
       ∀ player,
         Finite ((view.kuhnModel horizon semantics.menus).InfoState player) :=
     semantics.games.kuhnInfoFinite horizon semantics.menus
-  simpa [mixedToBehavioralProfile, mixedPureGame, pureGame,
-    behavioralGame, pure, behavioral, horizon, view] using
-    view.mixedPureToBehavioralProfile_update_ne
-      horizon semantics.menus mixed hne mixedDeviation
+  exact view.mixedPureToBehavioralProfile_update_ne
+    horizon semantics.menus mixed hne mixedDeviation
 
 open Classical in
 /-- Every unilateral mixed-pure deviation from a mixed profile has a matching
@@ -1042,9 +1028,8 @@ theorem behavioralToMixedPure_update
       ∀ player,
         Fintype ((view.kuhnModel horizon semantics.menus).InfoState player) :=
     fun player => Fintype.ofFinite _
-  simpa [behavioralToMixedPure, horizon, view] using
-    view.behavioralToMixedPure_update
-      horizon semantics.menus behavioralProfile who deviation
+  exact view.behavioralToMixedPure_update
+    horizon semantics.menus behavioralProfile who deviation
 
 /-- Native completed-frontier Kuhn strategic equivalence.
 

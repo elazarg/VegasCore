@@ -55,7 +55,7 @@ noncomputable scoped instance actDecidableEq (player : P) :
     DecidableEq (semantics.behavioral.view.Act player) :=
   Classical.decEq _
 
-noncomputable scoped instance obsFintype (player : P) :
+@[reducible] noncomputable def obsFintype (player : P) :
     Fintype ((PrimitiveMachine (compile program.core)).Obs player) := by
   classical
   letI :
@@ -70,7 +70,7 @@ noncomputable scoped instance obsDecidableEq (player : P) :
     DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
   Classical.decEq _
 
-noncomputable scoped instance publicFintype :
+@[reducible] noncomputable def publicFintype :
     Fintype (PrimitiveMachine (compile program.core)).Public := by
   classical
   letI :
@@ -199,9 +199,7 @@ theorem plainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg
   letI := EFGInstances.publicFintype semantics
   letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
     Classical.decEq _
-  simpa [plainEFGMachinePayoffKernelGame, plainEFGTranslateProfile,
-    boundedFOSGPresentation,
-    FrontierGameSemantics.fosgMachinePayoffHistoryKernelGame] using
+  exact
     semantics.behavioral.view.toPlainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg
       semantics.horizon (fun _ => 0) profile
 

@@ -122,7 +122,7 @@ theorem sourceLegal_of_projected_nodeValue_support
         (Math.ProbabilityMassFunction.pushforward
           (Machine.RoundView.legalActionLaw view horizon σ h hterm)
           project).support := by
-    simpa [view, project] using hvalueSupport
+    exact hvalueSupport
   rw [Math.ProbabilityMassFunction.pushforward] at hvalueSupport'
   rcases (PMF.mem_support_map_iff project
       (Machine.RoundView.legalActionLaw view horizon σ h hterm)

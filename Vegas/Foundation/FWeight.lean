@@ -470,7 +470,7 @@ noncomputable def toPMF {γ : Type} [DecidableEq γ]
       calc
         d.support.sum (fun a => ((NNRat.toNNReal (d a) : NNReal) : ENNReal))
             = ((d.support.sum fun a => NNRat.toNNReal (d a) : NNReal) : ENNReal) := by
-                rw [← ENNReal.coe_finsetSum]
+                rw [← ENNReal.ofNNReal_finsetSum]
         _ = (NNRat.toNNReal (d.support.sum fun a => d a) : ENNReal) := by
               rw [NNRat.toNNReal_finset_sum]
         _ = 1 := by simp [hsum, NNRat.toNNReal_one])
@@ -522,7 +522,7 @@ theorem toPMF_map [DecidableEq α] [DecidableEq β]
   have hlhs :
       ((NNRat.toNNReal (∑ a ∈ d.support, if g a = b then d a else 0) : NNReal) : ENNReal) =
         ∑ a ∈ d.support, ((NNRat.toNNReal (if g a = b then d a else 0) : NNReal) : ENNReal) := by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finsetSum]
+    rw [NNRat.toNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]
   rw [hlhs]
   apply Finset.sum_congr rfl
   intro a _
@@ -540,7 +540,7 @@ theorem toPMF_bind_apply [DecidableEq α] [DecidableEq β]
   rw [toPMF_apply, bind_apply]
   rw [show ((NNRat.toNNReal (d.support.sum fun a => d a * (f a) b) : NNReal) : ENNReal) =
       d.support.sum (fun a => ((NNRat.toNNReal (d a * (f a) b) : NNReal) : ENNReal)) from by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.coe_finsetSum]]
+    rw [NNRat.toNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]]
   apply Finset.sum_congr rfl
   intro a _
   rw [NNRat.toNNReal_mul, ENNReal.coe_mul]

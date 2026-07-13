@@ -295,16 +295,15 @@ theorem sourceLegal_extends_to_boundedLegalAction_after_internalClosure
         (EventGraph.reachable_storeCoherent
           compiled.graphWF h.lastState.state.2)
         (compile_guardLive program) player
-    simpa [view, EventGraph.frontierRoundView,
-      Machine.RoundView.boundedAvailableActions, hnotCut,
-      EventGraph.frontierAvailableActions, fallbackAction] using hlocal
+    simp only [view, Machine.RoundView.boundedAvailableActions, hnotCut,
+      fallbackAction]
+    exact hlocal
   have hselectedAvailable :
       frontierAction ∈
         view.boundedAvailableActions horizon h.lastState who := by
-    simpa [view, EventGraph.frontierRoundView,
-      Machine.RoundView.boundedAvailableActions, hnotCut,
-      EventGraph.frontierAvailableActions, compiled] using
-      hfrontierAvailable
+    simp only [view, Machine.RoundView.boundedAvailableActions, hnotCut,
+      compiled]
+    exact hfrontierAvailable
   have hlegal :
       JointActionLegal view.Act (view.boundedActive horizon)
         (view.boundedTerminal horizon)

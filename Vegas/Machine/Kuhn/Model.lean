@@ -88,8 +88,7 @@ noncomputable def defaultKuhnActionAtInfo
   simpa [hmenus] using hmove
 
 /-- Menu observability makes every adapter action type nonempty. -/
-@[reducible]
-noncomputable def instNonemptyKuhnActionAtInfo
+theorem instNonemptyKuhnActionAtInfo
     (view : M.RoundView) (horizon : Nat)
     (hMenus : view.MenusObservable horizon) :
     ∀ player info,
@@ -116,8 +115,7 @@ noncomputable def defaultBoundedPureStrategy
 
 /-- Menu observability makes every native bounded pure strategy space
 nonempty. -/
-@[reducible]
-noncomputable def instNonemptyBoundedPureStrategyOfMenus
+theorem instNonemptyBoundedPureStrategyOfMenus
     (view : M.RoundView) (horizon : Nat)
     (hMenus : view.MenusObservable horizon) :
     ∀ player, Nonempty (view.BoundedPureStrategy horizon player) :=

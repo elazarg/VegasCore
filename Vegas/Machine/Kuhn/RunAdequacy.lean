@@ -217,7 +217,7 @@ theorem pureProfileToKuhn_pmfPi
       PMF.map
         (view.pureProfileToKuhn horizon hMenus)
         (Math.PMFProduct.pmfPi mixed) := by
-  simpa [pureProfileToKuhn] using
+  exact
     (Math.PMFProduct.pmfPi_push_coordwise
       (A := fun player => view.BoundedPureStrategy horizon player)
       (B := fun player =>
@@ -337,7 +337,7 @@ theorem mixedPureToBehavioralProfile_optionOutcome
               PMF.map
                 (view.pureProfileToKuhn horizon hMenus)
                 (Math.PMFProduct.pmfPi mixed) from by
-                  simpa [mixedPureProfileToKuhn] using
+                  exact
                     view.pureProfileToKuhn_pmfPi horizon hMenus mixed]
     _ =
       (Math.PMFProduct.pmfPi mixed).bind
@@ -584,8 +584,7 @@ theorem behavioralToMixedPure_pmfPi
           PMF.map
             (view.pureStrategyOfKuhn horizon hMenus player)
             (O.behavioralToMixed adapterBehavioral player))
-  simpa [O, adapterBehavioral, ObsModelCore.behavioralToMixedJoint,
-    behavioralToMixedPure, pureProfileOfKuhn] using
+  exact
     Math.PMFProduct.pmfPi_push_coordwise
       (A := fun player => O.LocalStrategy player)
       (B := fun player => view.BoundedPureStrategy horizon player)
@@ -691,7 +690,7 @@ theorem kuhn_adapterBehavioral_to_erased_correlated_pure_optionOutcome
     _ =
       PMF.map traceOutcome
         (correlatedPureAdapter.bind (O.runDistPure steps)) := by
-          simpa [O, correlatedPureAdapter] using
+          exact
             congrArg (PMF.map traceOutcome) hrun
     _ =
       correlatedPureAdapter.bind

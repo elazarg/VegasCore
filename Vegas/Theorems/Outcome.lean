@@ -23,7 +23,7 @@ theorem primitiveOutcome_eq_sourceAtTerminal
     (hterminal : (PrimitiveMachine (compile program)).terminal state) :
     (PrimitiveMachine (compile program)).outcome state =
       some (sourceOutcomeAtTerminal program state
-        (by simpa [PrimitiveMachine, primitiveMachineSpec] using hterminal)) :=
+        (by exact hterminal)) :=
   compile_primitiveMachine_outcome_eq_sourceAtTerminal
     program state hterminal
 

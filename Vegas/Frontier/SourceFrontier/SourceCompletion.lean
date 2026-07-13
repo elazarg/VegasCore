@@ -425,9 +425,7 @@ theorem sourceReachableInfoState_choice_nonempty
   have hlegal : Legal history.current.cont :=
     SourceConfig.legal_of_labeledStar history.run hstartLegal
   have hchoiceHistory : history.IsChoiceFor who := by
-    simpa [SourceHistoryPoint.IsChoiceFor,
-      SourceHistoryPoint.localHistoryView, SourceConfig.localView,
-      SourceConfig.programPoint] using hchoice
+    exact hchoice
   simpa [SourceChoice] using
     sourceChoice_nonempty_of_legal
       (L := L) hlegal hchoiceHistory

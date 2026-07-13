@@ -178,13 +178,13 @@ theorem conditioned_nodeValue_commitAvailable
       Math.ProbabilityMassFunction.pushforward
           (Machine.RoundView.legalActionLaw view horizon σ h hterm)
           project (some value) ≠ 0 := by
-    simpa [view, project] using hvalueMass
+    exact hvalueMass
   have hactionSupport' :
       action ∈
         (Math.ProbabilityMassFunction.condOn
           (Machine.RoundView.legalActionLaw view horizon σ h hterm)
           project (some value)).support := by
-    simpa [view, project] using hactionSupport
+    exact hactionSupport
   have hproject : project action = some value :=
     Machine.RoundView.legalActionLaw_condOn_support_project
       view horizon σ h hterm project (some value)

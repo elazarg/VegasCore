@@ -79,7 +79,7 @@ theorem currentNode_readyCommitNode_after_internalClosure
   subst currentNode
   have hreadyAtReplay :
       EventGraph.ReadyCommitNode G replay.state.1 who node := by
-    simpa [compiled, G] using hreadyCurrent
+    exact hreadyCurrent
   have hcoherent :
       EventGraph.StoreCoherent G replay.state.1 :=
     EventGraph.reachable_storeCoherent compiled.graphWF replay.state.2
@@ -181,8 +181,8 @@ theorem projected_nodeValue_none_not_support_of_ready_active
             frontierAction ∈
               EventGraph.frontierAvailableActions
                 G h.lastState.state who := by
-          simpa [view, EventGraph.frontierRoundView] using hbounded
-        simpa [EventGraph.frontierAvailableActions] using hfrontier
+          exact hbounded
+        exact hfrontier
       rcases
           (EventGraph.FrontierAction.Available.value?_isSome_iff_readyCommitNode
             havailable).2 hready with

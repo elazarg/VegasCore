@@ -158,9 +158,7 @@ example :
   · change twoHiddenCommitNode0 ∉
       (∅ : Finset (Fin twoHiddenCommitGraph.nodeCount))
     simp
-  · change twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 ⊆
-      twoHiddenCommitInit.done
-    have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 = ∅ := by
+  · have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 = ∅ := by
       decide
     rw [hpr]
     simp
@@ -173,9 +171,7 @@ example :
   · change twoHiddenCommitNode1 ∉
       (∅ : Finset (Fin twoHiddenCommitGraph.nodeCount))
     simp
-  · change twoHiddenCommitGraph.prereqs twoHiddenCommitNode1 ⊆
-      twoHiddenCommitInit.done
-    have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode1 = ∅ := by
+  · have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode1 = ∅ := by
       decide
     rw [hpr]
     simp
@@ -267,9 +263,7 @@ example :
     · change twoHiddenCommitNode0 ∉
         (∅ : Finset (Fin twoHiddenCommitGraph.nodeCount))
       simp
-    · change twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 ⊆
-        twoHiddenCommitInit.done
-      have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 = ∅ := by
+    · have hpr : twoHiddenCommitGraph.prereqs twoHiddenCommitNode0 = ∅ := by
         decide
       rw [hpr]
       simp

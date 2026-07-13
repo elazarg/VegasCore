@@ -339,7 +339,7 @@ def core : VegasCore Player L Γ0 :=
                   (.ret [(Player.guest, guestPayoff),
                     (Player.host, hostPayoff)]))))))))
 
-def legal : Legal core := by
+theorem legal : Legal core := by
   dsimp [core, Legal]
   constructor
   · intro _env
@@ -429,8 +429,7 @@ theorem mixedPureToBehavioral_realizable :
 theorem kuhnMenus :
     kuhnGames.view.MenusObservable
       (completionBound compiled) := by
-  simpa [kuhnGames, compiled] using
-    canonicalFrontierKuhnGames_menusObservable checkedProgram
+  exact canonicalFrontierKuhnGames_menusObservable checkedProgram
 
 /-- Monty Hall reaches the native behavioral frontier kernel game surface. -/
 noncomputable example : KernelGame Player :=

@@ -881,15 +881,15 @@ noncomputable def encodedCoordinationMessageRefinement :
         | spec action =>
             cases hproject
             cases player <;> cases rowAction <;> cases colAction <;>
-              simpa [encodedCoordinationMessageMachine,
-                coordinationMessageMachine, Machine.messageInFlight,
-                encodedCoordinationMachine, coordinationMachine,
-                encodedCoordinationMessageProjectState,
-                EncodedCoordinationState.project,
-                EncodedCoordinationState.action?,
-                EncodedCoordinationState.setAction,
-                CoordinationState.action?,
-                CoordinationState.setAction] using havailable
+              · obtain ⟨ha, hb⟩ := havailable
+                refine ⟨ha, hb.imp_right fun hf t ht => ?_⟩
+                simp only [coordinationMachine, encodedCoordinationMachine,
+                  EncodedCoordinationState.setAction,
+                  CoordinationState.setAction, PMF.support_pure] at hf ht ⊢
+                have ht' : t = _ := ht
+                subst ht'
+                intro hterm
+                exact hf _ rfl hterm
     | internal event =>
         cases event with
         | deliver =>

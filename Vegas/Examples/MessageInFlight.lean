@@ -60,7 +60,8 @@ noncomputable def boolMessageInFlightLawFamily :
             [.play PUnit.unit (.send message),
               .internal .deliver,
               .play PUnit.unit (.spec action)] := by
-      simpa using hbatch
+      simp only [PMF.support_pure] at hbatch
+      exact hbatch
     subst batch
     cases sourceState with
     | none =>
@@ -331,7 +332,8 @@ noncomputable def boolMessageInFlightDelayedLawFamily :
               Machine.messageInFlight.deliverAllThenEvents boolSpecMachine
                 (fun _ : PUnit => Bool) pending
                 [.play PUnit.unit (.spec action)] := by
-          simpa using hbatch
+          simp only [PMF.support_pure] at hbatch
+          exact hbatch
         subst batch
         cases sourceState with
         | none =>
@@ -440,12 +442,12 @@ example (message action : Bool) :
             pending := [⟨PUnit.unit, message⟩],
             delivered := [] }) := by
   simp [Machine.eventBatchTraceKernelGame, Machine.eventBatchTraceDist,
-    Machine.eventBatchTraceDistFrom, boolMessageInFlightDelayedLawLift,
-    boolMessageInFlightDelayedLawFamily, boolMessageInFlightMachine,
-    Machine.messageInFlight,
-    boolSpecMachine,
-    Machine.runEventBatchesFrom, Machine.runEventsFrom, Machine.step,
-    boolMessageInFlightRefinement]
+    Machine.eventBatchTraceDistFrom_succ_nonterminal,
+    Machine.runEventBatchesFrom_singleton, Machine.runEventsFrom_cons_bind,
+    Machine.messageInFlight_stepPlay_send,
+    boolMessageInFlightDelayedLawLift, boolMessageInFlightDelayedLawFamily,
+    boolMessageInFlightMachine, boolSpecMachine,
+    boolMessageInFlightRefinement, PMF.pure_bind]
 
 example (message action : Bool) :
     ((Machine.eventBatchTraceKernelGame
@@ -460,12 +462,14 @@ example (message action : Bool) :
             pending := [],
             delivered := [⟨PUnit.unit, message⟩] }) := by
   simp [Machine.eventBatchTraceKernelGame, Machine.eventBatchTraceDist,
-    Machine.eventBatchTraceDistFrom, boolMessageInFlightDelayedLawLift,
-    boolMessageInFlightDelayedLawFamily, boolMessageInFlightMachine,
-    Machine.messageInFlight,
-    boolSpecMachine,
-    Machine.runEventBatchesFrom, Machine.runEventsFrom, Machine.step,
-    boolMessageInFlightRefinement]
+    Machine.eventBatchTraceDistFrom_succ_nonterminal,
+    Machine.runEventBatchesFrom_singleton, Machine.runEventsFrom_cons_bind,
+    Machine.messageInFlight_stepPlay_send,
+    Machine.messageInFlight_stepPlay_spec,
+    Machine.messageInFlight_stepInternal_deliver,
+    boolMessageInFlightDelayedLawLift, boolMessageInFlightDelayedLawFamily,
+    boolMessageInFlightMachine, boolSpecMachine,
+    boolMessageInFlightRefinement, PMF.pure_bind]
 
 example (profile : ∀ _player : PUnit, Bool × Bool) :
     PMF.map boolMessageInFlightRefinement.projectEventBatchTrace
@@ -607,7 +611,8 @@ noncomputable def encodedMessageInFlightLawFamily :
               .internal .deliver,
               .internal (.spec PUnit.unit),
               .play PUnit.unit (.spec action)] := by
-      simpa using hbatch
+      simp only [PMF.support_pure] at hbatch
+      exact hbatch
     subst batch
     cases payload with
     | none =>

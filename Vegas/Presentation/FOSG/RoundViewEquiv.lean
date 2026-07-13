@@ -86,7 +86,7 @@ theorem boundedStepChainOfStepChain :
   | _start, _step :: _steps, hchain => by
       rcases hchain with ⟨hsrc, htail⟩
       exact
-        ⟨by simpa using hsrc,
+        ⟨hsrc,
           boundedStepChainOfStepChain htail⟩
 
 theorem lastStateFrom_map_stepOfBoundedStep :
@@ -721,10 +721,8 @@ theorem transition_historyOfBoundedHistory
         (historyOfBoundedHistory view horizon cutoff h).lastState
         (legalActionOfBoundedLegalAction view horizon cutoff h action) =
       view.boundedTransition horizon h.lastState action := by
-  convert
-    (rfl :
-      view.boundedTransition horizon h.lastState action =
-        view.boundedTransition horizon h.lastState action) using 2
+  rw [toFOSG_transition]
+  congr 1
   · exact historyOfBoundedHistory_lastState
       (view := view) (horizon := horizon) (cutoff := cutoff) h
   · apply (Subtype.heq_iff_coe_eq ?_).2
@@ -903,7 +901,7 @@ theorem historyOfBoundedHistory_utility_of_terminal
       induction steps using List.reverseRecOn with
       | nil =>
           exfalso
-          exact hinit (by simpa [BoundedHistory.lastState] using hterm)
+          exact hinit hterm
       | append_singleton steps step _ih =>
           let hprefix : view.BoundedHistory horizon :=
             { steps := steps

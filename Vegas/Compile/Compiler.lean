@@ -971,7 +971,7 @@ theorem eventPayoffOf_readEnv_agrees_sourceEnvOfStore
       simpa [sourceValuePub, BuildState.fieldRefOfPub,
         BuildState.fieldOfPub] using hreadStore
     exact Option.some.inj (hreadStore'.symm.trans hsourceStore)
-  simpa [sourceValuePub, VEnv.erasePubEnv_get] using hvalue
+  simpa [sourceValuePub, VEnv.erasePubEnv_get, VEnv.get] using hvalue
 
 /-- Compile a source distribution into an executable graph-local PMF. -/
 noncomputable def eventDistOf
@@ -1099,7 +1099,7 @@ theorem eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
       simpa [sourceValuePub, BuildState.fieldRefOfPub,
         BuildState.fieldOfPub] using hreadStore
     exact Option.some.inj (hreadStore'.symm.trans hsourceStore)
-  simpa [sourceValuePub, VEnv.erasePubEnv_get] using hvalue
+  simpa [sourceValuePub, VEnv.erasePubEnv_get, VEnv.get] using hvalue
 
 theorem eventDistOf_readEnv_agrees_sourceEnvOfStore
     {Γ : VCtx P L} {ty : L.Ty}
@@ -1517,10 +1517,8 @@ namespace GraphFieldFintype
           Graph P L).fieldRow field).ty) := by
   classical
   intro field
-  let graph : Graph P L := { initialFields := initialFields, nodes := nodes }
   by_cases hinit : (field : Nat) < initialFields.length
-  · dsimp [graph]
-    simpa only [Graph.fieldRow, hinit, ↓reduceDIte] using
+  · simpa only [Graph.fieldRow, hinit, ↓reduceDIte] using
       finiteInitial initialFields[(field : Nat)] (List.getElem_mem _)
   · let node : Nat := (field : Nat) - initialFields.length
     have hnode : node < nodes.length := by
@@ -1530,8 +1528,8 @@ namespace GraphFieldFintype
         exact hlt'
       dsimp [node]
       omega
-    simpa only [Graph.fieldRow, hinit, ↓reduceDIte] using
-      finiteNodes nodes[node] (List.getElem_mem _)
+    simp only [Graph.fieldRow, hinit, ↓reduceDIte]
+    exact finiteNodes nodes[node] (List.getElem_mem _)
 
 end GraphFieldFintype
 

@@ -764,8 +764,9 @@ theorem StoreAgree_run_canonical_compileCore
                 node (by
                   simp only [node]
                   exact hpre.symm)
-            simpa [Label.ty, Label.toTypedValue, graphDist, htarget] using
-              hreadNode
+            simp only [Label.ty, Label.toTypedValue, htarget]
+              at hreadNode
+            exact hreadNode
           have hagreeAdded :
               StoreAgree added.1 (VEnv.cons v env)
                 (canonicalLabelStore G fullLabels hlen) := by
@@ -881,8 +882,9 @@ theorem StoreAgree_run_canonical_compileCore
                 hfull node (by
                   simp only [node]
                   exact hpre.symm)
-            simpa [Label.ty, Label.toTypedValue, graphGuard, htarget] using
-              hreadNode
+            simp only [Label.ty, Label.toTypedValue, htarget]
+              at hreadNode
+            exact hreadNode
           have hagreeAdded :
               StoreAgree added.1 (VEnv.cons v env)
                 (canonicalLabelStore G fullLabels hlen) := by
@@ -1163,7 +1165,7 @@ theorem StoreAgree_run_reachable_compileCore
             change
               (compileCore (VegasCore.sample x D' k) fresh normalized
                 state).nodes[state.nodes.length]? = some event
-            simpa [compileCore, graphDist, sem, event, hnode, added] using
+            exact
               compileCore_added_head_get?
                 (state := state) (name := x) (bindTy := .pub graphDist.ty)
                 (sem := sem) (hfresh := fresh.1) (hnode := hnode)
@@ -1304,7 +1306,7 @@ theorem StoreAgree_run_reachable_compileCore
             change
               (compileCore (VegasCore.commit x who R k) fresh normalized
                 state).nodes[state.nodes.length]? = some event
-            simpa [compileCore, graphGuard, sem, event, hnode, added] using
+            exact
               compileCore_added_head_get?
                 (state := state) (name := x)
                 (bindTy := .sealed who graphGuard.ty) (sem := sem)
@@ -1608,7 +1610,7 @@ theorem StoreAgree_prefixRun_reachable_compileCore
             change
               (compileCore (VegasCore.sample x D' k) fresh normalized
                 state).nodes[state.nodes.length]? = some event
-            simpa [compileCore, graphDist, sem, event, hnode, added] using
+            exact
               compileCore_added_head_get?
                 (state := state) (name := x) (bindTy := .pub graphDist.ty)
                 (sem := sem) (hfresh := fresh.1) (hnode := hnode)
@@ -1757,7 +1759,7 @@ theorem StoreAgree_prefixRun_reachable_compileCore
             change
               (compileCore (VegasCore.commit x who R k) fresh normalized
                 state).nodes[state.nodes.length]? = some event
-            simpa [compileCore, graphGuard, sem, event, hnode, added] using
+            exact
               compileCore_added_head_get?
                 (state := state) (name := x)
                 (bindTy := .sealed who graphGuard.ty) (sem := sem)
@@ -2067,13 +2069,13 @@ theorem sourceReplay_compileCore :
         change
           (compileCore (VegasCore.sample x D' k) fresh normalized
             state).nodes[state.nodes.length]? = some event
-        simpa [compileCore, graphDist, sem, event, hnode, added] using
+        exact
           compileCore_added_head_get?
             (state := state) (name := x) (bindTy := .pub graphDist.ty)
             (sem := sem) (hfresh := fresh.1) (hnode := hnode)
             k fresh.2 normalized.2
       have hvalidDone : ValidDoneValues G cfg.1 := by
-        simpa [G, result] using
+        exact
           reachable_validDoneValues
             (compileCore (VegasCore.sample x D' k) fresh normalized
               state).graphWF
@@ -2132,7 +2134,9 @@ theorem sourceReplay_compileCore :
             state D' normalized.1 (VEnv.erasePubEnv env) readEnv
             (by
               intro name depTy hvar hmem
-              simpa [hsourceEnv] using hagrees hvar hmem) with
+              have h := hagrees hvar hmem
+              simp only [hsourceEnv] at h
+              exact h) with
         ⟨hnormalized, hdistEval⟩
       have hsupportSource :
           value ∈ (L.evalDist D' (VEnv.erasePubEnv env)).support := by
@@ -2158,7 +2162,8 @@ theorem sourceReplay_compileCore :
       have hreadNext :
           Store.getAs cfg.1.store state.nextField graphDist.ty =
             some value := by
-        simpa [htarget] using htargetValue
+        simp only [htarget] at htargetValue
+        exact htargetValue
       have hagreeAdded :
           StoreAgree added.1
             (VEnv.cons (x := x) (τ := .pub graphDist.ty) value env)
@@ -2186,7 +2191,8 @@ theorem sourceReplay_compileCore :
             (VEnv.cons (x := x) (τ := .pub b) value env)
             cfgTail.1.store := by
         intro name bindTy h
-        simpa [tailState, cfgTail, graphDist, eventDistOf] using
+        simpa [tailState, cfgTail, G, result, compileCore, graphDist,
+          eventDistOf, sem, event, hnode, added] using
           hagreeAdded h
       rcases
           sourceReplay_compileCore
@@ -2249,14 +2255,14 @@ theorem sourceReplay_compileCore :
         change
           (compileCore (VegasCore.commit x who R k) fresh normalized
             state).nodes[state.nodes.length]? = some event
-        simpa [compileCore, graphGuard, sem, event, hnode, added] using
+        exact
           compileCore_added_head_get?
             (state := state) (name := x)
             (bindTy := .sealed who graphGuard.ty) (sem := sem)
             (hfresh := fresh.1) (hnode := hnode)
             k fresh.2 normalized
       have hvalidDone : ValidDoneValues G cfg.1 := by
-        simpa [G, result] using
+        exact
           reachable_validDoneValues
             (compileCore (VegasCore.commit x who R k) fresh normalized
               state).graphWF
@@ -2322,7 +2328,8 @@ theorem sourceReplay_compileCore :
       have hreadNext :
           Store.getAs cfg.1.store state.nextField graphGuard.ty =
             some value := by
-        simpa [htarget] using htargetValue
+        simp only [htarget] at htargetValue
+        exact htargetValue
       have hagreeAdded :
           StoreAgree added.1
             (VEnv.cons (x := x) (τ := .sealed who graphGuard.ty) value env)
@@ -2349,7 +2356,8 @@ theorem sourceReplay_compileCore :
             (VEnv.cons (x := x) (τ := .sealed who b) value env)
             cfgTail.1.store := by
         intro name bindTy h
-        simpa [tailState, cfgTail, graphGuard, eventGuardOf] using
+        simpa [tailState, cfgTail, G, result, compileCore, graphGuard,
+          eventGuardOf, sem, event, hnode, added] using
           hagreeAdded h
       rcases
           sourceReplay_compileCore
@@ -2417,7 +2425,7 @@ theorem sourceReplay_compileCore :
             (sem := sem) (hfresh := fresh.1) (hnode := hnode)
             k fresh.2 normalized
       have hvalidDone : ValidDoneValues G cfg.1 := by
-        simpa [G, result] using
+        exact
           reachable_validDoneValues
             (compileCore (VegasCore.reveal y who x hx k) fresh normalized
               state).graphWF
@@ -2637,8 +2645,10 @@ theorem sourceEnv_runConfig
     intro name bindTy h
     have hlt :
         state.fieldOf h < (BuildResult.graph result).initialFields.length := by
-      simpa [state, init, result, BuildResult.graph,
-        compileCore_initialFields] using init.fieldOf_lt h
+      have hlt' := init.fieldOf_lt h
+      simp only [state, init, result, BuildResult.graph,
+        compileCore_initialFields] at hlt' ⊢
+      exact hlt'
     have hframe :=
       canonicalCompletion_getAs_of_initial_field
         (BuildResult.graph result) labels hlen
@@ -2646,10 +2656,12 @@ theorem sourceEnv_runConfig
     have hinitRead :
         Store.getAs (BuildResult.graph result).initialStore
           (state.fieldOf h) bindTy.base = some (g.env.get h) := by
-      simpa [state, init, result, BuildResult.graph,
-        compileCore_initialFields] using
+      have hget :=
         initialState_initialStore_get
           (env := g.env) (wctx := g.wctx) result.nodes h
+      simp only [state, init, result, BuildResult.graph,
+        compileCore_initialFields] at hget ⊢
+      exact hget
     change
       Store.getAs
           (Config.canonicalCompletion (BuildResult.graph result)
@@ -2674,7 +2686,7 @@ theorem sourceEnv_runConfig
     intro name bindTy h
     exact ⟨_, hagree h⟩
   refine ⟨hlen, hctx, available, ?_⟩
-  simpa [result] using
+  exact
     sourceEnvOfStore_eq_of_storeAgree
       (state := result.terminalState)
       (env := cast (congrArg (VEnv L) hctx) final.env)
@@ -2808,8 +2820,7 @@ theorem commitNodeData
         replay.remainingFresh replay.remainingNormalized
         replay.compilerState).nodes[replay.compilerState.nodes.length]? =
         some event
-    simpa [tailResult, tailGraph, compileCore, graphGuard, sem, event,
-      hnode, added] using
+    exact
       compileCore_added_head_get?
         (state := replay.compilerState) (name := x)
         (bindTy := .sealed who graphGuard.ty) (sem := sem)
@@ -3107,7 +3118,7 @@ theorem sourceRun_reachableConfig
     intro name bindTy h
     exact ⟨_, hagree h⟩
   refine ⟨reachableState, hterminalGraph, hctx, available, ?_⟩
-  simpa [reachableState] using
+  exact
     sourceEnvOfStore_eq_of_storeAgree
       (state := result.terminalState)
       (env := cast (congrArg (VEnv L) hctx) final.env)
@@ -3150,8 +3161,10 @@ theorem sourceReplay_exists_of_reachableConfig
     have hfield :
         compilerState.fieldOf h <
           (BuildResult.graph result).initialFields.length := by
-      simpa [compilerState, init, result, BuildResult.graph,
-        compileCore_initialFields] using init.fieldOf_lt h
+      have hlt' := init.fieldOf_lt h
+      simp only [compilerState, init, result, BuildResult.graph,
+        compileCore_initialFields] at hlt' ⊢
+      exact hlt'
     have hframe :
         Store.getAs replayState.1.store (compilerState.fieldOf h)
             bindTy.base =
@@ -3162,10 +3175,12 @@ theorem sourceReplay_exists_of_reachableConfig
         Store.getAs (BuildResult.graph result).initialStore
             (compilerState.fieldOf h) bindTy.base =
           some (g.env.get h) := by
-      simpa [compilerState, init, result, BuildResult.graph,
-        compileCore_initialFields] using
+      have hget :=
         initialState_initialStore_get
           (env := g.env) (wctx := g.wctx) result.nodes h
+      simp only [compilerState, init, result, BuildResult.graph,
+        compileCore_initialFields] at hget ⊢
+      exact hget
     exact hframe.trans hinit
   rcases
       sourceReplay_compileCore g.env g.prog g.fresh g.normalized
@@ -3314,7 +3329,7 @@ theorem sourceEnv_runStore_exists
     intro name bindTy h
     exact ⟨_, hagree h⟩
   refine ⟨terminalStore, hctx, available, ?_⟩
-  simpa [result] using
+  exact
     sourceEnvOfStore_eq_of_storeAgree
       (state := result.terminalState)
       (env := cast (congrArg (VEnv L) hctx) final.env)

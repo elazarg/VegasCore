@@ -136,7 +136,7 @@ theorem runtime_refinement_projected_terminal_outcome_eq_source
                 (PrimitiveMachine (compile program)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [PrimitiveMachine, primitiveMachineSpec] using hspec)) := by
+            exact hspec)) := by
   exact
     compile_primitiveMachine_outcome_eq_sourceAtTerminal
       program (R.projectState state)
@@ -160,7 +160,7 @@ theorem runtime_refinement_terminal_outcome_project_eq_source
                 (PrimitiveMachine (compile program)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [PrimitiveMachine, primitiveMachineSpec] using hspec)) := by
+            exact hspec)) := by
   rw [R.outcome_project state]
   exact runtime_refinement_projected_terminal_outcome_eq_source
     program R hterminal
@@ -185,7 +185,7 @@ theorem runtime_refinement_terminal_utility_eq_source
               (PrimitiveMachine (compile program)).terminal
                 (R.projectState state) :=
             R.terminal_project hterminal
-          simpa [PrimitiveMachine, primitiveMachineSpec] using hspec)
+          exact hspec)
         player : ℝ) := by
   have hproject :=
     runtime_refinement_terminal_outcome_project_eq_source
@@ -199,7 +199,7 @@ theorem runtime_refinement_terminal_utility_eq_source
                 (PrimitiveMachine (compile program)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [PrimitiveMachine, primitiveMachineSpec] using hspec)) at hproject
+            exact hspec)) at hproject
   have hout :
       R.projectOutcome implOutcome =
         sourceOutcomeAtTerminal program (R.projectState state)
@@ -208,7 +208,7 @@ theorem runtime_refinement_terminal_utility_eq_source
                 (PrimitiveMachine (compile program)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [PrimitiveMachine, primitiveMachineSpec] using hspec) :=
+            exact hspec) :=
     Option.some.inj hproject
   calc
     Impl.utility implOutcome player =
@@ -223,7 +223,7 @@ theorem runtime_refinement_terminal_utility_eq_source
                   (PrimitiveMachine (compile program)).terminal
                     (R.projectState state) :=
                 R.terminal_project hterminal
-              simpa [PrimitiveMachine, primitiveMachineSpec] using hspec))
+              exact hspec))
           player := by
           rw [hout]
     _ =
@@ -233,7 +233,7 @@ theorem runtime_refinement_terminal_utility_eq_source
                 (PrimitiveMachine (compile program)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [PrimitiveMachine, primitiveMachineSpec] using hspec)
+            exact hspec)
           player : ℝ) := by
           rfl
 
@@ -330,8 +330,7 @@ theorem runtimeRefinement_terminalOutcome_project_eq_source
                     (ToEventGraph.compile program.core)).terminal
                   (R.projectState state) :=
               R.terminal_project hterminal
-            simpa [ToEventGraph.PrimitiveMachine,
-              ToEventGraph.primitiveMachineSpec] using hspec)) :=
+            exact hspec)) :=
   ToEventGraph.runtime_refinement_terminal_outcome_project_eq_source
     program.core R hterminal
 
@@ -357,8 +356,7 @@ theorem runtimeRefinement_terminalUtility_eq_source
                   (ToEventGraph.compile program.core)).terminal
                 (R.projectState state) :=
             R.terminal_project hterminal
-          simpa [ToEventGraph.PrimitiveMachine,
-            ToEventGraph.primitiveMachineSpec] using hspec)
+          exact hspec)
         player : ℝ) :=
   ToEventGraph.runtime_refinement_terminal_utility_eq_source
     program.core R hterminal houtcome player
@@ -1063,9 +1061,7 @@ theorem implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
       _ = surface.game.correlatedEu
             (surface.game.unilateralDeviationDistribution
               profileLaw player dev) player := by
-            simpa [GameTheory.KernelGame.unilateralDeviationDistribution,
-              GameTheory.KernelGame.deviationDistribution,
-              GameTheory.KernelGame.unilateralDeviation] using
+            exact
               bridge.implTraceGame_correlatedEu_surface_of_bounded
                 hbdImpl hbdFrontier
                 (bridge.implTraceGame.unilateralDeviationDistribution
@@ -1083,9 +1079,7 @@ theorem implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
       _ = bridge.implTraceGame.correlatedEu
             (bridge.implTraceGame.unilateralDeviationDistribution
               profileLaw player dev) player := by
-            simpa [GameTheory.KernelGame.unilateralDeviationDistribution,
-              GameTheory.KernelGame.deviationDistribution,
-              GameTheory.KernelGame.unilateralDeviation] using
+            exact
               (bridge.implTraceGame_correlatedEu_surface_of_bounded
                 hbdImpl hbdFrontier
                 (bridge.implTraceGame.unilateralDeviationDistribution
@@ -1121,9 +1115,7 @@ theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bound
       _ = surface.game.correlatedEu
             (surface.game.constantDeviationDistribution
               profileLaw player alternative) player := by
-            simpa [GameTheory.KernelGame.constantDeviationDistribution,
-              GameTheory.KernelGame.deviationDistribution,
-              GameTheory.KernelGame.constantDeviation] using
+            exact
               bridge.implTraceGame_correlatedEu_surface_of_bounded
                 hbdImpl hbdFrontier
                 (bridge.implTraceGame.constantDeviationDistribution
@@ -1141,9 +1133,7 @@ theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bound
       _ = bridge.implTraceGame.correlatedEu
             (bridge.implTraceGame.constantDeviationDistribution
               profileLaw player alternative) player := by
-            simpa [GameTheory.KernelGame.constantDeviationDistribution,
-              GameTheory.KernelGame.deviationDistribution,
-              GameTheory.KernelGame.constantDeviation] using
+            exact
               (bridge.implTraceGame_correlatedEu_surface_of_bounded
                 hbdImpl hbdFrontier
                 (bridge.implTraceGame.constantDeviationDistribution

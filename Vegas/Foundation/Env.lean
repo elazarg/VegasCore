@@ -374,11 +374,9 @@ equals looking up the original VEnv at the corresponding `pub` binding. -/
       cases hx with
       | here => rfl
       | there hx' =>
-        simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
-          (ih (env := fun a b h => env a b (VHasVar.there h)) hx')
+        exact ih (env := fun a b h => env a b (VHasVar.there h)) hx'
     | ⟨υ, .sealed p⟩ =>
-      simpa [VEnv.erasePubEnv, HasVar.toVHasVarPub] using
-        (ih (env := fun a b h => env a b (VHasVar.there h)) hx)
+      exact ih (env := fun a b h => env a b (VHasVar.there h)) hx
 
 /-- Pointwise formula for `eraseEnv`: looking up at the erased position
 produced by `VHasVar.toErased` equals the original lookup. -/
@@ -391,7 +389,7 @@ produced by `VHasVar.toErased` equals the original lookup. -/
   induction hx with
   | here => rfl
   | there hx ih =>
-    simpa [VEnv.eraseEnv] using (ih (env := fun a b h => env a b (VHasVar.there h)))
+    exact ih (env := fun a b h => env a b (VHasVar.there h))
 
 /-- HEq variant of `eraseEnv_get_of_erased`, going through `HasVar.toVHasVar`:
 the erased-env lookup at `hx` is HEq to the lookup along the lifted-and-then-

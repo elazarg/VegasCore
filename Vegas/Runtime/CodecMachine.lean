@@ -211,7 +211,8 @@ theorem step_liftEvent_project_support
         ⟨target, htarget, rfl⟩
   rw [ValueCodec.step_project codec spec
     (liftEvent codec spec event) state] at hmap
-  simpa using hmap
+  simp only [projectEvent_liftEvent] at hmap
+  exact hmap
 
 /-- A primitive available batch lifts to a support-wide available codec batch. -/
 theorem liftEventBatch_availableBatchFrom
@@ -333,7 +334,7 @@ noncomputable def refinement
         exact havailable
   step_project := by
     intro event source
-    simpa using ValueCodec.step_project codec spec event source
+    exact ValueCodec.step_project codec spec event source
   eventBatch_project := by
     intro events source
     exact runEventsFrom_project codec spec events source

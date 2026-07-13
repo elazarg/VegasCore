@@ -380,7 +380,10 @@ theorem kuhnModel_noNontrivialInfoStateRepeat
   have hinfoEq :
       view.reachableInfoStateOfHistory horizon player h₁ =
         view.reachableInfoStateOfHistory horizon player h₂ := by
-    simpa [O, h₁, h₂] using hEq
+    exact (view.kuhnModel_projectStates horizon hMenus player
+          (List.take (j₁ + 1) states)).symm.trans
+        (hEq.trans (view.kuhnModel_projectStates horizon hMenus player
+          (List.take (j₂ + 1) states)))
   have hviewEq : h₁.playerView player = h₂.playerView player :=
     congrArg Subtype.val hinfoEq
   have hdepthEq : h₁.lastState.depth = h₂.lastState.depth :=
@@ -391,7 +394,8 @@ theorem kuhnModel_noNontrivialInfoStateRepeat
         Subsingleton (view.KuhnActionAtInfo horizon player
           (view.reachableInfoStateOfHistory horizon player h₂)) :=
       view.kuhnActionAtInfo_subsingleton_of_terminal horizon h₂ rfl hterm
-    simpa [O, h₂, ObsModelCore.currentObs] using hsub
+    simpa only [ObsModelCore.currentObs_projectStates, kuhnModel_observe]
+      using hsub
   · have hlt :
         h₁.lastState.depth < h₂.lastState.depth := by
       have hraw :=
@@ -808,7 +812,7 @@ private theorem kuhnPureRun_update_support_iff_req
               (BoundedHistory.nil view horizon) := by
         have hproject :=
           view.kuhnModel_projectStates horizon hMenus player [O.init]
-        simpa [O, kuhnModel] using hproject
+        exact hproject
       rw [hinfo]
       constructor
       · intro _

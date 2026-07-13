@@ -232,7 +232,7 @@ theorem pendingFrontrunTraceGame_eu_four
             [⟨TalkPlayer.row, pendingFrontrunRowMessage profile⟩]
       then 1 else 0 := by
   cases player <;>
-    simp [Machine.eventBatchTraceKernelGame,
+    simp [pendingFrontrunTraceGame, Machine.eventBatchTraceKernelGame,
       Machine.eventBatchTraceDist, Machine.eventBatchTraceDistFrom,
       pendingFrontrunLawFamily, pendingFrontrunLaw,
       coordinationMessageMachine, Machine.messageInFlight,
@@ -252,7 +252,7 @@ theorem pendingFrontrunTraceGame_projectedOutcome_four
           (pendingFrontrunRowMessage profile,
             pendingFrontrunColAction profile
               [⟨TalkPlayer.row, pendingFrontrunRowMessage profile⟩])) := by
-  simp [Machine.eventBatchTraceKernelGame,
+  simp [pendingFrontrunTraceGame, Machine.eventBatchTraceKernelGame,
     Machine.eventBatchTraceDist, Machine.eventBatchTraceDistFrom,
     pendingFrontrunLawFamily, pendingFrontrunLaw,
     coordinationMessageMachine, Machine.messageInFlight, coordinationMachine,

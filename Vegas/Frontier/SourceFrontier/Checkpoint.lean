@@ -107,8 +107,7 @@ theorem sourceCheckpointBehavioralKernel_eq_optionOutcomeKernel
     (profile : semantics.behavioralGame.Profile) :
     semantics.sourceCheckpointBehavioralKernel profile =
       semantics.behavioral.optionOutcomeKernel profile := by
-  simpa [sourceCheckpointBehavioralKernel,
-    sourceCheckpointBehavioralOutcome] using
+  exact
     (semantics.behavioralOptionOutcomeKernel_eq_sourceMap profile).symm
 
 /-- The checkpoint-aligned source behavioral kernel is the completed behavioral

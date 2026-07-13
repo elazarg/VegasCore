@@ -161,7 +161,7 @@ theorem selectedCommitAtNode_step_support
       EventGraph.ToMachine.primitiveMachine_step_play_available_support
         (primitiveMachineSpec compiled) havailable with
     ⟨written, next, hnext, hcfg⟩
-  exact ⟨written, next, by simpa [hevent] using hnext, hcfg⟩
+  exact ⟨written, next, by rw [hevent]; exact hnext, hcfg⟩
 
 omit [Fintype P] in
 theorem selectedCommitAtNode_available_persist_after_other_write

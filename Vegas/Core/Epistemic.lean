@@ -1021,9 +1021,9 @@ theorem SameHistoryKnowledge.orderTrace_eq
     (h : SameHistoryKnowledge (L := L) who left right) :
     SourceConfig.playerOrderTraceView (L := L) who left.labels =
       SourceConfig.playerOrderTraceView (L := L) who right.labels := by
-  simpa [SourceConfig.playerOrderTraceView, SourceConfig.playerTraceView,
-    Label.playerEventKind, List.map_map] using
-    congrArg (List.map SourcePlayerEvent.kind) h.traceView_eq
+  have hk := congrArg (List.map SourcePlayerEvent.kind) h.traceView_eq
+  simp only [SourceConfig.playerTraceView, List.map_map] at hk
+  exact hk
 
 /-- Order-history indistinguishability for a player. This is weaker than full
 history knowledge: it preserves source-visible order facts and current program

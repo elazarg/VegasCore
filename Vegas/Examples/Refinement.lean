@@ -50,11 +50,9 @@ example (state : matchingPenniesMachine.State)
                   (ToEventGraph.compile
                     Vegas.Examples.matchingPenniesChecked.core)).terminal
                   (matchingPenniesIdentity.projectState state) := by
-              simpa [matchingPenniesMachine, matchingPenniesCompiled]
-                using matchingPenniesIdentity.terminal_project hterminal
-            simpa [ToEventGraph.PrimitiveMachine,
-              ToEventGraph.primitiveMachineSpec] using hspec)) := by
-  simpa [matchingPenniesMachine, matchingPenniesCompiled] using
+              exact matchingPenniesIdentity.terminal_project hterminal
+            exact hspec)) := by
+  exact
     Vegas.Examples.matchingPenniesChecked
       |>.runtimeRefinement_terminalOutcome_project_eq_source
         matchingPenniesIdentity hterminal

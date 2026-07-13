@@ -239,8 +239,7 @@ noncomputable def pureFrontierStrategyFintype
   program.frontierSemantics.pureStrategyFintype player
 
 /-- Pure frontier strategy spaces are nonempty for all players. -/
-@[reducible]
-noncomputable def pureFrontierStrategyNonempty
+theorem pureFrontierStrategyNonempty
     (program : WFProgram P L) [FiniteDomains program] (player : P) :
     Nonempty (program.PureFrontierStrategy player) :=
   program.frontierSemantics.pureStrategyNonempty player
@@ -444,10 +443,7 @@ theorem mixedPureToBehavioralFrontierProfile_outcomeKernel
     program.behavioralFrontierGame.outcomeKernel
         (program.mixedPureToBehavioralFrontierProfile mixed) =
       program.mixedPureFrontierGame.outcomeKernel mixed := by
-  simpa [mixedPureToBehavioralFrontierProfile, frontierSemantics,
-    behavioralFrontierGame, mixedPureFrontierGame,
-    BehavioralFrontierProfile, MixedPureFrontierProfile] using
-    program.frontierSemantics.mixedToBehavioralProfileOutcomeKernel mixed
+  exact program.frontierSemantics.mixedToBehavioralProfileOutcomeKernel mixed
 
 /-- Program-facing canonical mixed-pure-to-behavioral deviation simulation. -/
 noncomputable def canonicalMixedPureToBehavioralFrontierDeviationSimulation
@@ -556,11 +552,8 @@ theorem mixedPureToBehavioralFrontierProfileRealizes_exists
     ∃ behavioral : program.BehavioralFrontierProfile,
       program.MixedPureToBehavioralFrontierProfileRealizes
         mixed behavioral := by
-  simpa [MixedPureToBehavioralFrontierProfileRealizes,
-    MixedPureFrontierProfile, BehavioralFrontierProfile,
-    frontierSemantics] using
-    program.frontierSemantics
-      |>.mixedPureToBehavioralProfileRealizes_exists mixed
+  exact program.frontierSemantics
+    |>.mixedPureToBehavioralProfileRealizes_exists mixed
 
 /-- Behavioral frontier strategies induce product mixed pure strategies with
 the same completed-frontier outcome kernel. -/
@@ -592,13 +585,8 @@ theorem behavioralFrontier_deviation_to_mixedPure
             who mixedDeviation) := by
   classical
   let equivalence := program.frontierKuhnStrategicEquivalence
-  simpa [equivalence, frontierKuhnStrategicEquivalence,
-    behavioralFrontierToMixedPure, frontierSemantics,
-    behavioralFrontierGame, mixedPureFrontierGame,
-    BehavioralFrontierProfile, MixedPureFrontierProfile,
-    BehavioralFrontierStrategy, MixedPureFrontierStrategy] using
-    equivalence.arbitrary_behavioral_deviation_to_mixed_deviation
-      behavioral who behavioralDeviation
+  exact equivalence.arbitrary_behavioral_deviation_to_mixed_deviation
+    behavioral who behavioralDeviation
 
 /-- Behavioral frontier strategies induce product mixed pure strategies with
 the same joint utility distribution. -/
@@ -679,13 +667,8 @@ theorem frontierCompleteOutcomeKuhn
       Math.PMFProduct.pmfPi
       program.behavioralFrontierGame.outcomeKernel
       program.pureFrontierGame.outcomeKernel := by
-  simpa [BehavioralFrontierProfile, PureFrontierStrategy,
-    PureFrontierProfile, pureFrontierGame, behavioralFrontierGame,
-    behavioralFrontierToMixedPure, frontierSemantics,
-    ToEventGraph.FrontierGameSemantics.pureGame,
-    ToEventGraph.FrontierGameSemantics.behavioralGame] using
-    program.frontierSemantics.games.completeOutcomeKuhn
-      program.frontierSemantics.menus
+  exact program.frontierSemantics.games.completeOutcomeKuhn
+    program.frontierSemantics.menus
 
 /-- Behavioral frontier strategies realize as correlated distributions over
 pure frontier profiles with the same completed-frontier outcome kernel. -/

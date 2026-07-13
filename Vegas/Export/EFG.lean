@@ -65,7 +65,7 @@ noncomputable def frontierPlainEFG
     exact FOSG.AugmentedEFGBridge.playerEquiv (ι := P)
   sourceFOSG := frontierFOSG program
   efgTranslateProfile := by
-    simpa [frontierFOSG] using program.frontierPlainEFGTranslateProfile
+    exact program.frontierPlainEFGTranslateProfile
   efgOutcomeMap := by
     intro history
     exact history
@@ -78,9 +78,7 @@ noncomputable def frontierPlainEFG
           (program.frontierPlainEFGTranslateProfile profile)) =
         (frontierFOSG program).historyGame.outcomeKernel profile
     rw [PMF.map_id]
-    simpa [frontierFOSG, WFProgram.frontierPlainEFG,
-      WFProgram.frontierPlainEFGTranslateProfile,
-      WFProgram.frontierFOSGMachinePayoffHistoryKernelGame] using
+    exact
       program.frontierSemantics
         |>.plainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg profile
   efgUdist_sourceFOSG := by
@@ -99,9 +97,7 @@ noncomputable def frontierPlainEFG
           (program.frontierPlainEFGTranslateProfile profile) =
         program.frontierFOSGMachinePayoffHistoryKernelGame.outcomeKernel
           profile by
-          simpa [WFProgram.frontierPlainEFG,
-            WFProgram.frontierPlainEFGTranslateProfile,
-            WFProgram.frontierFOSGMachinePayoffHistoryKernelGame] using
+          exact
             program.frontierSemantics
               |>.plainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg
                 profile]
@@ -118,10 +114,10 @@ noncomputable def frontierPlainEFG
     rfl
   payoffGame := program.frontierPlainEFGMachinePayoffKernelGame
   translateProfile := by
-    simpa [frontierFOSG] using program.frontierPlainEFGTranslateProfile
+    exact program.frontierPlainEFGTranslateProfile
   payoffGame_udist_sourceFOSG := by
     intro profile
-    simpa [frontierFOSG] using
+    exact
       program.frontierPlainEFGMachinePayoffKernelGame_udist_eq_fosg profile
 
 /-- The export handle's certified profile translation preserves the joint

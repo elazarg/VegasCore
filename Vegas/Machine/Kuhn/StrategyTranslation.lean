@@ -35,7 +35,8 @@ noncomputable def pureStrategyToKuhn
     ⟨strategy.1 info,
       fun h hinfo => by
         have hlegal := strategy.2 h
-        simpa [hinfo] using hlegal⟩
+        rw [hinfo] at hlegal
+        exact hlegal⟩
 
 /-- Embed a native legal pure profile into the Kuhn adapter. -/
 noncomputable def pureProfileToKuhn
@@ -211,10 +212,9 @@ theorem behavioralStrategy_kuhnActionMass_eq_one
                 ∀ h : view.BoundedHistory horizon,
                   view.reachableInfoStateOfHistory horizon player h = info →
                     move ∈ view.boundedAvailableMoves horizon h player
-            simpa [KuhnActionAtInfo, p] using
-              (sum_subtype_eq_sum_dite
-                (p := p)
-                (fun move _ => strategy.1 info move))
+            refine Eq.trans ?_
+              (sum_subtype_eq_sum_dite (p := p) (fun move _ => strategy.1 info move))
+            exact Fintype.sum_equiv (Equiv.cast rfl) _ _ (fun _ => rfl)
     _ = ∑ move : Option (view.Act player),
         strategy.1 info move := by
           refine Finset.sum_congr rfl ?_
@@ -302,11 +302,6 @@ theorem behavioralStrategyToMixedPure_toKuhn
         (view.behavioralStrategyToMixedPure horizon hMenus player strategy) =
       view.behavioralStrategyToKuhnMixed horizon hMenus player strategy := by
   rw [behavioralStrategyToMixedPure, PMF.map_comp]
-  change PMF.map
-      ((view.pureStrategyToKuhn horizon hMenus player) ∘
-        (view.pureStrategyOfKuhn horizon hMenus player))
-      (view.behavioralStrategyToKuhnMixed horizon hMenus player strategy) =
-    view.behavioralStrategyToKuhnMixed horizon hMenus player strategy
   have hfun :
       ((view.pureStrategyToKuhn horizon hMenus player) ∘
         (view.pureStrategyOfKuhn horizon hMenus player)) = id := by
@@ -352,11 +347,11 @@ theorem behavioralStrategyToKuhn_map_val
         if h : legal candidate then
           if move = candidate then strategy.1 info candidate else 0
         else 0 := by
-          simpa [behavioralStrategyToKuhn, KuhnActionAtInfo, legal] using
-            (sum_subtype_eq_sum_dite
-              (p := legal)
+          refine Eq.trans ?_
+            (sum_subtype_eq_sum_dite (p := legal)
               (fun candidate h =>
                 if move = candidate then strategy.1 info candidate else 0))
+          exact Fintype.sum_equiv (Equiv.cast rfl) _ _ (fun _ => rfl)
     _ = strategy.1 info move := by
       by_cases hlegal : legal move
       · calc
@@ -481,8 +476,8 @@ private theorem kuhnModel_current_coord_ignores_of_reachable
               horizon hMenus
           have hrun :
               O.runDistPure steps profile trace ≠ 0 := by
-            simpa [O.runDistPure_eq_pureRun] using hreach
-          simpa [O, ObsModelCore.currentObs] using
+            exact hreach
+          exact
             hnr player profile steps trace hrun index steps
               hindex (by omega) hrepeat
         have hsubEarlier :
@@ -498,8 +493,7 @@ private theorem kuhnModel_current_coord_ignores_of_reachable
     ObsModelCore.runDistPure_congr_on_trace
       (O := O) (π₁ := profile₁) (π₂ := profile₂)
       (n := steps) (ss := trace) hlen hagree
-  simpa [profile₁, profile₂, strategy', info,
-    ObsModelCore.runDistPure_eq_pureRun] using hrun
+  exact hrun
 
 open Classical in
 theorem behavioralStrategyToKuhnMixed_factorAt_of_ignores
@@ -557,7 +551,7 @@ theorem behavioralStrategyToKuhnMixed_factorAt_of_ignores
         Math.ParameterizedChain.pureRun O.pureStep O.init steps
           (Function.update profile player localStrategy) trace)
       (fun _ => PMF.coe_le_one _ trace)
-  simpa [behavioralStrategyToKuhnMixed, O] using
+  exact
     Math.PMFProduct.reweightPMF_pmfPi_push_coord_of_ignores'
       (A := fun info =>
         view.KuhnActionAtInfo horizon player info)

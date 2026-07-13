@@ -77,8 +77,7 @@ noncomputable def frontierFOSG
   bounded := program.frontierFOSG_boundedHorizon
   actionFintype := by
     intro player
-    simpa [ToEventGraph.FrontierGameSemantics.behavioral]
-      using program.frontierSemantics.games.kuhnOptionalMoveFintype player
+    exact program.frontierSemantics.games.kuhnOptionalMoveFintype player
   terminalDecidable := Classical.decPred _
   historyUtility := fun history =>
     fun player =>
@@ -116,7 +115,7 @@ noncomputable def frontierFOSGProfile
     (profile : program.BehavioralFrontierProfile) :
     (frontierFOSG program).historyGame.Profile := by
   classical
-  simpa [frontierFOSG] using
+  exact
     (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
       program.frontierSemantics.behavioral.view
       program.frontierSemantics.horizon (fun _ => 0)
@@ -128,8 +127,7 @@ noncomputable def frontierFOSGRestrictedProfile
     (program : WFProgram P L) [FiniteDomains program]
     (profile : (frontierFOSG program).historyGame.Profile) :
     program.BehavioralFrontierProfile := by
-  simpa [frontierFOSG] using
-    program.behavioralFrontierProfileOfFOSGProfile profile
+  exact program.behavioralFrontierProfileOfFOSGProfile profile
 
 /-- The FOSG export has the same joint utility distribution as
 the native behavioral frontier game. -/
@@ -139,7 +137,7 @@ theorem frontierFOSG_historyGame_udist_behavioralGame
     (frontierFOSG program).historyGame.udist
         (frontierFOSGProfile program profile) =
       program.behavioralFrontierGame.udist profile := by
-  simpa [frontierFOSG, frontierFOSGProfile] using
+  exact
     program.frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralGame
       profile
 
@@ -161,7 +159,7 @@ theorem frontierFOSG_historyGame_udist_restrictedBehavioralGame
     (frontierFOSG program).historyGame.udist profile =
       program.behavioralFrontierGame.udist
         (frontierFOSGRestrictedProfile program profile) := by
-  simpa [frontierFOSG, frontierFOSGRestrictedProfile] using
+  exact
     program
       |>.frontierFOSGMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
         profile
@@ -212,7 +210,7 @@ theorem frontierFOSG_historyGame_udist_behavioralHistoryGame
     (frontierFOSG program).historyGame.udist
         (frontierFOSGProfile program profile) =
       program.behavioralFrontierHistoryKernelGame.udist profile := by
-  simpa [frontierFOSG, frontierFOSGProfile] using
+  exact
     program
       |>.frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralHistoryKernelGame
         profile

@@ -110,6 +110,56 @@ noncomputable def messageInFlight
   outcome := fun state => M.outcome state.source
   utility := M.utility
 
+/-- One send step enqueues the message and leaves the source state unchanged.
+Stated as an explicit normal form so callers can step trace executions without
+unfolding the whole wrapper machine record. -/
+theorem messageInFlight_stepPlay_send
+    (M : Machine Player) (Message : Player → Type)
+    (player : Player) (message : Message player)
+    (state : (messageInFlight M Message).State) :
+    (messageInFlight M Message).stepPlay player (.send message) state =
+      PMF.pure
+        { source := state.source,
+          pending := state.pending ++ [⟨player, message⟩],
+          delivered := state.delivered } := rfl
+
+/-- One wrapped source play step maps the source transition into the buffers. -/
+theorem messageInFlight_stepPlay_spec
+    (M : Machine Player) (Message : Player → Type)
+    (player : Player) (sourceAction : M.Action player)
+    (state : (messageInFlight M Message).State) :
+    (messageInFlight M Message).stepPlay player (.spec sourceAction) state =
+      PMF.map
+        (fun dst =>
+          { source := dst,
+            pending := state.pending,
+            delivered := state.delivered })
+        (M.stepPlay player sourceAction state.source) := rfl
+
+/-- One delivery step moves the head pending message to the delivered log. -/
+theorem messageInFlight_stepInternal_deliver
+    (M : Machine Player) (Message : Player → Type)
+    (state : (messageInFlight M Message).State) :
+    (messageInFlight M Message).stepInternal .deliver state =
+      match state.pending with
+      | [] => PMF.pure state
+      | message :: rest =>
+          PMF.pure
+            { source := state.source,
+              pending := rest,
+              delivered := state.delivered ++ [message] } := rfl
+
+/-- The wrapper outcome is the underlying source outcome, ignoring buffers. -/
+theorem messageInFlight_outcome
+    (M : Machine Player) (Message : Player → Type)
+    (state : (messageInFlight M Message).State) :
+    (messageInFlight M Message).outcome state = M.outcome state.source := rfl
+
+/-- The wrapper utility is the underlying source utility. -/
+theorem messageInFlight_utility
+    (M : Machine Player) (Message : Player → Type) :
+    (messageInFlight M Message).utility = M.utility := rfl
+
 namespace messageInFlight
 
 variable (M : Machine Player) (Message : Player → Type)
@@ -827,8 +877,9 @@ theorem availableStep_pending_nil_or_nonterminal
                   { source := state.source,
                     pending := rest,
                     delivered := state.delivered ++ [message] } := by
-              simpa [Machine.step_internal, messageInFlight, hpending] using
-                hsupport
+              simp only [Machine.step_internal, messageInFlight, hpending] at hsupport
+              rw [PMF.support_pure] at hsupport
+              exact hsupport
             subst target
             exact havailable.2
       | spec event =>

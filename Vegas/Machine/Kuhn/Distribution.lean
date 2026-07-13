@@ -145,8 +145,7 @@ theorem kuhnStepDist_eq_runDistFrom_one
           (⟨joint, hlegal⟩ :
             view.BoundedLegalAction horizon h.lastState) := by
       apply Subtype.ext
-      simpa [joint] using
-        view.kuhnJointAction_castJointAction horizon hMenus trace action
+      exact view.kuhnJointAction_castJointAction horizon hMenus trace action
     rw [dif_pos hlegal]
     rw [view.kuhnStep_nonterminal horizon h (O.castJointAction trace action)
       hterm, hlegalAction]
@@ -538,9 +537,8 @@ theorem kuhn_mixed_to_behavioral_core
       adapterBehavioral, by
         simp [mixedPureToBehavioralProfile, adapterBehavioral],
       by
-        simpa [mixedPureProfileToKuhn, O, adapterBehavioral] using
-          view.mixedPureToBehavioralProfile_runDist
-            horizon steps hMenus mixed⟩
+        exact view.mixedPureToBehavioralProfile_runDist
+          horizon steps hMenus mixed⟩
 
 /-- Core behavioral-to-correlated-pure Kuhn theorem for the native round-view
 adapter. This is useful when analyzing behavioral strategies directly at the

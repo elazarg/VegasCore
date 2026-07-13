@@ -180,22 +180,22 @@ def PureFrontierOrdinalPotential
   program.pureFrontierGame.IsOrdinalPotential potential
 
 noncomputable def pureFrontierSocialWelfare
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (profile : program.PureFrontierProfile) : ℝ :=
   program.pureFrontierGame.socialWelfare profile
 
 def PureFrontierConstantSum
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (total : ℝ) : Prop :=
   program.pureFrontierGame.IsConstantSum total
 
 def PureFrontierZeroSum
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P] :
+    (program : WFProgram P L) [FiniteDomains program] :
     Prop :=
   program.pureFrontierGame.IsZeroSum
 
 def PureFrontierTeamGame
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P] :
+    (program : WFProgram P L) [FiniteDomains program] :
     Prop :=
   program.pureFrontierGame.IsTeamGame
 
@@ -240,8 +240,11 @@ theorem pureFrontier_nash_rationalizable
     {profile : program.PureFrontierProfile}
     (hNash : program.PureFrontierNash profile)
     (player : P) :
-    program.PureFrontierRationalizable player (profile player) :=
-  hNash.isRationalizable player
+    program.PureFrontierRationalizable player (profile player) := by
+  classical
+  letI : ∀ player, Fintype (program.PureFrontierStrategy player) :=
+    fun player => program.pureFrontierStrategyFintype player
+  exact hNash.isRationalizable player
 
 theorem pureFrontier_exactPotential_nash_of_maximizer
     (program : WFProgram P L) [FiniteDomains program]
@@ -256,7 +259,7 @@ theorem pureFrontier_exactPotential_nash_of_maximizer
 
 def PureFrontierDominanceSolvable
     (program : WFProgram P L) [FiniteDomains program] : Prop :=
-  program.pureFrontierGame.IsDominanceSolvable
+  program.pureFrontierGame.IsDominantStrategySolvable
 
 noncomputable def pureFrontierDominantProfile
     (program : WFProgram P L) [FiniteDomains program]
@@ -369,12 +372,12 @@ theorem pureFrontier_exists_securityStrategy
     program.pureFrontierGame.exists_securityStrategy player
 
 noncomputable def pureFrontierOptimalWelfare
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P] :
+    (program : WFProgram P L) [FiniteDomains program] :
     ℝ :=
   program.pureFrontierGame.optimalWelfare
 
 noncomputable def pureFrontierBestNashWelfare
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (hNash : ∃ profile : program.PureFrontierProfile,
       program.PureFrontierNash profile) :
     ℝ := by
@@ -384,7 +387,7 @@ noncomputable def pureFrontierBestNashWelfare
   exact program.pureFrontierGame.bestNashWelfare hNash
 
 noncomputable def pureFrontierWorstNashWelfare
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (hNash : ∃ profile : program.PureFrontierProfile,
       program.PureFrontierNash profile) :
     ℝ := by
@@ -394,7 +397,7 @@ noncomputable def pureFrontierWorstNashWelfare
   exact program.pureFrontierGame.worstNashWelfare hNash
 
 noncomputable def pureFrontierPriceOfAnarchy
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (hNash : ∃ profile : program.PureFrontierProfile,
       program.PureFrontierNash profile) :
     ℝ := by
@@ -404,7 +407,7 @@ noncomputable def pureFrontierPriceOfAnarchy
   exact program.pureFrontierGame.priceOfAnarchy hNash
 
 noncomputable def pureFrontierPriceOfStability
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (hNash : ∃ profile : program.PureFrontierProfile,
       program.PureFrontierNash profile) :
     ℝ := by
@@ -566,22 +569,22 @@ def BehavioralFrontierOrdinalPotential
   program.behavioralFrontierGame.IsOrdinalPotential potential
 
 noncomputable def behavioralFrontierSocialWelfare
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (profile : program.BehavioralFrontierProfile) : ℝ :=
   program.behavioralFrontierGame.socialWelfare profile
 
 def BehavioralFrontierConstantSum
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P]
+    (program : WFProgram P L) [FiniteDomains program]
     (total : ℝ) : Prop :=
   program.behavioralFrontierGame.IsConstantSum total
 
 def BehavioralFrontierZeroSum
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P] :
+    (program : WFProgram P L) [FiniteDomains program] :
     Prop :=
   program.behavioralFrontierGame.IsZeroSum
 
 def BehavioralFrontierTeamGame
-    (program : WFProgram P L) [FiniteDomains program] [Fintype P] :
+    (program : WFProgram P L) [FiniteDomains program] :
     Prop :=
   program.behavioralFrontierGame.IsTeamGame
 
@@ -589,7 +592,7 @@ def BehavioralFrontierTeamGame
 
 def BehavioralFrontierDominanceSolvable
     (program : WFProgram P L) [FiniteDomains program] : Prop :=
-  program.behavioralFrontierGame.IsDominanceSolvable
+  program.behavioralFrontierGame.IsDominantStrategySolvable
 
 noncomputable def behavioralFrontierDominantProfile
     (program : WFProgram P L) [FiniteDomains program]
@@ -699,14 +702,6 @@ theorem behavioralFrontier_nash_is_epsilonNash
     {ε : ℝ} (hε : ε ≥ 0) :
     program.BehavioralFrontierεNash ε profile :=
   KernelGame.IsεNash.of_isNash program.behavioralFrontierGame hNash hε
-
-theorem behavioralFrontier_nash_rationalizable
-    (program : WFProgram P L) [FiniteDomains program]
-    {profile : program.BehavioralFrontierProfile}
-    (hNash : program.BehavioralFrontierNash profile)
-    (player : P) :
-    program.BehavioralFrontierRationalizable player (profile player) :=
-  hNash.isRationalizable player
 
 theorem behavioralFrontier_exactPotential_nash_of_maximizer
     (program : WFProgram P L) [FiniteDomains program]

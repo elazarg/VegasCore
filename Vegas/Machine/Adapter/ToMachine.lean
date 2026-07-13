@@ -198,12 +198,6 @@ theorem primitiveMachine_step_internal_available_support
       rcases (dist.eval env).support_nonempty with ⟨value, hvalue⟩
       let written : TypedValue L := { ty := dist.ty, value := value }
       refine ⟨written, ?_⟩
-      change
-          state.1.completeNode event.node written ∈
-            (stepAvailableEvent G state.1
-              (.internal event
-                (InternalStep.sample row dist row_get sem_eq ready env
-                  env_ok))).support
       dsimp [stepAvailableEvent, stepInternal, written]
       exact
         (PMF.mem_support_map_iff _ _ _).mpr
@@ -211,12 +205,6 @@ theorem primitiveMachine_step_internal_available_support
     | reveal row source row_get sem_eq ready value value_ok =>
       let written : TypedValue L := { ty := row.ty, value := value }
       refine ⟨written, ?_⟩
-      change
-          state.1.completeNode event.node written ∈
-            (stepAvailableEvent G state.1
-              (.internal event
-                (InternalStep.reveal row source row_get sem_eq ready value
-                  value_ok))).support
       dsimp [stepAvailableEvent, EventGraph.stepInternal]
       rw [PMF.support_pure]
       simp [written]
@@ -578,7 +566,7 @@ private theorem primitiveMachine_step_support_batchStep
       subst hmid
       exact ⟨BatchStep.singleton source graphEvent hnext⟩
 
-@[reducible] private noncomputable def checkpointStepOfAvailableRunFrom
+private theorem checkpointStepOfAvailableRunFrom
     {G : Graph P L} (spec : GraphMachineSpec G)
     {source dst : ReachableConfig G} :
     {events : List (primitiveMachine spec).Event} →

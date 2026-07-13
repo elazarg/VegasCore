@@ -59,8 +59,7 @@ theorem fosg_runDist_eq_map_behavioralHistory
             semantics.behavioral.view semantics.horizon (fun _ => 0)
             profile).extend := by
   classical
-  simpa [fosg] using
-    Machine.RoundView.ToFOSG.runDist_historyOfBoundedHistory
+  exact Machine.RoundView.ToFOSG.runDist_historyOfBoundedHistory
       (view := semantics.behavioral.view)
       (horizon := semantics.horizon)
       (cutoff := fun _ => 0)
@@ -167,9 +166,7 @@ theorem fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_restrictedBehavi
         ((semantics.behavioral.view).runDist
           semantics.horizon semantics.horizon
           (semantics.behavioralProfileOfFOSGProfile profile)) := by
-  simpa [fosgMachinePayoffHistoryKernelGame,
-    behavioralProfileOfFOSGProfile] using
-    Machine.RoundView.ToFOSG.runDist_eq_map_boundedBehavioralProfileOfLegalBehavioralProfile
+  exact Machine.RoundView.ToFOSG.runDist_eq_map_boundedBehavioralProfileOfLegalBehavioralProfile
       (view := semantics.behavioral.view)
       (horizon := semantics.horizon)
       (cutoff := fun _ => 0)
@@ -330,9 +327,7 @@ theorem fosgMachinePayoffHistoryKernelGame_support_nativeHistory
                 (compile_guardLive program))
               semantics.behavioral.semantics).Act player)) := by
     intro player
-    simpa [FrontierGameSemantics.behavioral,
-      CompletedFrontierBehavioralKernelGame.view] using
-      semantics.games.kuhnOptionalMoveFintype player
+    exact semantics.games.kuhnOptionalMoveFintype player
   have hmap := hsupport
   rw [semantics.fosgMachinePayoffHistoryKernelGame_outcomeKernel_eq_map_behavioralHistory
     profile] at hmap
@@ -341,10 +336,8 @@ theorem fosgMachinePayoffHistoryKernelGame_support_nativeHistory
   have hterminal :
       EventGraph.Terminal (compile program.core).graph
         nativeHistory.lastState.state.1 := by
-    simpa [FrontierGameSemantics.behavioral,
-      FrontierGameSemantics.horizon] using
-      ToEventGraph.FrontierRoundSemantics.runDist_support_terminal_of_completionBound
-        semantics.behavioral.semantics profile hnative
+    exact ToEventGraph.FrontierRoundSemantics.runDist_support_terminal_of_completionBound
+      semantics.behavioral.semantics profile hnative
   have hrun :
       (PrimitiveMachine (compile program.core)).AvailableRunBatchesFrom
         ((Machine.BoundedState.init
@@ -353,10 +346,8 @@ theorem fosgMachinePayoffHistoryKernelGame_support_nativeHistory
         ((semantics.behavioral.view).boundedHistoryEventBatches
           semantics.horizon nativeHistory)
         nativeHistory.lastState.state := by
-    simpa [FrontierGameSemantics.behavioral,
-      FrontierGameSemantics.horizon] using
-      ToEventGraph.FrontierRoundSemantics.boundedHistory_eventBatches_availableRun
-        semantics.behavioral.semantics nativeHistory
+    exact ToEventGraph.FrontierRoundSemantics.boundedHistory_eventBatches_availableRun
+      semantics.behavioral.semantics nativeHistory
   exact ⟨nativeHistory, hnative, hhistory, hterminal, hrun⟩
 
 end FrontierGameSemantics
@@ -399,11 +390,8 @@ theorem frontierFOSG_runDist_eq_map_behavioralHistory
             program.frontierSemantics.behavioral.view
             program.frontierSemantics.horizon (fun _ => 0)
             profile).extend := by
-  simpa [frontierFOSG, ToEventGraph.FrontierGameSemantics.fosg,
-    ToEventGraph.FrontierGameSemantics.horizon,
-    BehavioralFrontierProfile] using
-    program.frontierSemantics
-      |>.fosg_runDist_eq_map_behavioralHistory profile steps
+  exact program.frontierSemantics
+    |>.fosg_runDist_eq_map_behavioralHistory profile steps
 
 /-- Program-facing pure-profile execution law for the FOSG presentation of the
 canonical frontier game. -/
@@ -425,11 +413,8 @@ theorem frontierFOSG_runDist_eq_map_pureHistory
             program.frontierSemantics.horizon (fun _ => 0)
             ((program.frontierSemantics.behavioral.view).legalPureToBehavioral
               program.frontierSemantics.horizon profile)).extend := by
-  simpa [frontierFOSG, ToEventGraph.FrontierGameSemantics.fosg,
-    ToEventGraph.FrontierGameSemantics.horizon,
-    PureFrontierProfile] using
-    program.frontierSemantics
-      |>.fosg_runDist_eq_map_pureHistory profile steps
+  exact program.frontierSemantics
+    |>.fosg_runDist_eq_map_pureHistory profile steps
 
 /-- Program-facing transition-reward FOSG history kernel of the canonical
 frontier game. -/

@@ -727,13 +727,19 @@ theorem commitRevealMessageLaw_buffers_opaque_before_both_locked
               | succ h4 =>
                   cases h4 <;>
                     simp [Machine.eventBatchTraceDist,
-                      Machine.eventBatchTraceDistFrom, commitRevealMessageLaw,
-                      commitRevealMessageBatch, commitRevealMessageMachine,
-                      Machine.messageInFlight, lockedMPMachine,
-                      Machine.runEventBatchesFrom, Machine.runEventsFrom,
-                      Machine.step, LockedMPState.init, LockedMPState.setMove,
+                      Machine.eventBatchTraceDistFrom_succ_nonterminal,
+                      Machine.eventBatchTraceDistFrom_succ_terminal,
+                      Machine.runEventBatchesFrom_singleton,
+                      Machine.runEventsFrom_cons_bind,
+                      Machine.messageInFlight_stepPlay_send,
+                      Machine.messageInFlight_stepPlay_spec,
+                      Machine.messageInFlight_stepInternal_deliver,
+                      commitRevealMessageLaw, commitRevealMessageBatch,
+                      commitRevealMessageMachine, lockedMPMachine,
+                      LockedMPState.init, LockedMPState.setMove,
                       LockedMPState.markRevealed, LockedMPState.outcome?,
-                      commitRevealActionProfile] at htrace
+                      commitRevealActionProfile, PMF.pure_bind, PMF.pure_map]
+                      at htrace
                   all_goals
                     subst trace
                     simp [commitRevealBuffersOpaqueBeforeBothLocked]
@@ -814,16 +820,19 @@ theorem commitRevealSourceTraceGame_eu_eq_matchingPennies
       matchingPenniesBoolGame.eu (commitRevealActionProfile profile)
         player := by
   cases player <;>
-    simp [Machine.eventBatchTraceKernelGame,
-      Machine.eventBatchTraceDist, Machine.eventBatchTraceDistFrom,
+    simp [commitRevealSourceTraceGame,
+      Machine.eventBatchTraceKernelGame,
+      Machine.eventBatchTraceDist,
+      Machine.eventBatchTraceDistFrom_succ_nonterminal,
+      Machine.runEventBatchesFrom_singleton, Machine.runEventsFrom_cons_bind,
       commitRevealSourceLawFamily, commitRevealSourceLaw,
       commitRevealSourceBatch,
-      lockedMPMachine, Machine.runEventBatchesFrom, Machine.runEventsFrom,
-      Machine.step, KernelGame.eu, Machine.eventBatchTraceUtility,
+      lockedMPMachine, KernelGame.eu, Machine.eventBatchTraceUtility,
       Machine.RoundView.optionOutcomeUtility, LockedMPState.init,
       LockedMPState.setMove, LockedMPState.markRevealed,
       LockedMPState.outcome?, matchingPenniesBoolGame,
-      matchingPenniesRuntimeUtility, commitRevealActionProfile]
+      matchingPenniesRuntimeUtility, commitRevealActionProfile,
+      PMF.pure_bind, expect_pure]
 
 theorem commitRevealMessageTraceGame_eu_eq_matchingPennies
     (profile : ∀ player : Player, CommitRevealStrategy player)
@@ -832,18 +841,25 @@ theorem commitRevealMessageTraceGame_eu_eq_matchingPennies
       matchingPenniesBoolGame.eu (commitRevealActionProfile profile)
         player := by
   cases player <;>
-    simp [Machine.eventBatchTraceKernelGame,
-      Machine.eventBatchTraceDist, Machine.eventBatchTraceDistFrom,
+    simp [commitRevealMessageTraceGame,
+      Machine.eventBatchTraceKernelGame,
+      Machine.eventBatchTraceDist,
+      Machine.eventBatchTraceDistFrom_succ_nonterminal,
+      Machine.runEventBatchesFrom_singleton, Machine.runEventsFrom_cons_bind,
+      Machine.messageInFlight_stepPlay_send,
+      Machine.messageInFlight_stepPlay_spec,
+      Machine.messageInFlight_stepInternal_deliver,
+      Machine.messageInFlight_outcome, Machine.messageInFlight_utility,
       commitRevealMessageLawFamily, commitRevealMessageLaw,
       commitRevealMessageBatch,
-      commitRevealMessageMachine, Machine.messageInFlight,
-      lockedMPMachine, Machine.runEventBatchesFrom, Machine.runEventsFrom,
-      Machine.step, KernelGame.eu, Machine.eventBatchTraceUtility,
+      commitRevealMessageMachine, lockedMPMachine,
+      KernelGame.eu, Machine.eventBatchTraceUtility,
       Machine.RoundView.optionOutcomeUtility, LockedMPState.init,
       LockedMPState.setMove, LockedMPState.markRevealed,
       LockedMPState.outcome?, matchingPenniesBoolGame,
       matchingPenniesRuntimeUtility, commitRevealActionProfile,
-      commitMessage, aliceCommitView, expect_pure]
+      commitMessage, aliceCommitView, PMF.pure_bind, PMF.pure_map,
+      expect_pure]
 
 theorem commitRevealActionProfile_update_const
     (profile : ∀ player : Player, CommitRevealStrategy player)

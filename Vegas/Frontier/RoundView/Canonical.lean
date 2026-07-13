@@ -308,8 +308,7 @@ noncomputable def frontierPresentation
                 (frontierAvailableActions compiled) state a} :=
           ⟨rawAction, by
             constructor
-            · simpa [PrimitiveMachine,
-                EventGraph.ToMachine.primitiveMachine] using hlegalRaw.1
+            · exact hlegalRaw.1
             · intro who
               have hwho := hlegalRaw.2 who
               cases haction : rawAction who with
@@ -321,7 +320,8 @@ noncomputable def frontierPresentation
               | some localAction =>
                   simpa [haction, frontierActive,
                     EventGraph.frontierActive, hinternal,
-                    frontierAvailableActions, PrimitiveMachine,
+                    frontierAvailableActions, EventGraph.frontierAvailableActions,
+                    PrimitiveMachine,
                     EventGraph.ToMachine.primitiveMachine] using hwho⟩
         rcases
             (selectedCommitClosureTransition compiled action hactive).support_nonempty with
