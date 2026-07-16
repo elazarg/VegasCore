@@ -908,6 +908,27 @@ theorem implTraceGame_udist_surface
     hproject.symm.trans
       (bridge.spec.traceGame_udist_surface profile)
 
+/-- The implementation trace game and the frontier surface share the same
+profile type by construction (both are indexed by `surface.game.Strategy`), so
+`implTraceGame_udist_surface` is exactly the identity-`stratMap` case of a
+`KernelGame.Morphism`. This is the reusable handle for the generic
+`GameTheory.KernelGame` morphism corollaries (expected-utility and Nash
+transport) instead of re-deriving them by hand. -/
+noncomputable def implTraceGame_morphism_surface
+    (bridge : RuntimeTraceAdequacy program surface R) :
+    GameTheory.KernelGame.Morphism surface.game bridge.implTraceGame where
+  stratMap := fun _ => id
+  udist_preserved := bridge.implTraceGame_udist_surface
+
+/-- The reverse-direction identity morphism, used for the direction of Nash
+invariance that pulls a surface Nash profile back from the implementation
+trace game. -/
+noncomputable def surface_morphism_implTraceGame
+    (bridge : RuntimeTraceAdequacy program surface R) :
+    GameTheory.KernelGame.Morphism bridge.implTraceGame surface.game where
+  stratMap := fun _ => id
+  udist_preserved := fun profile => (bridge.implTraceGame_udist_surface profile).symm
+
 /-- Runtime trace adequacy induces a standard one-way strategic refinement:
 surface-game profiles realize implementation trace-game profiles with the same
 payoff-vector law, and every implementation unilateral deviation is matched by
@@ -986,22 +1007,9 @@ theorem implTraceGame_eu_surface_of_bounded
         |surface.game.utility outcome player| ≤ CFrontier player)
     (profile : ∀ player, surface.game.Strategy player) (player : Player) :
     bridge.implTraceGame.eu profile player =
-      surface.game.eu profile player := by
-  calc
-    bridge.implTraceGame.eu profile player =
-        Math.Probability.expect
-          (bridge.implTraceGame.udist profile) (fun payoff => payoff player) := by
-          exact
-            (bridge.implTraceGame.expect_udist_eq_eu_of_bounded
-              profile player (hbdImpl player)).symm
-    _ =
-        Math.Probability.expect
-          (surface.game.udist profile) (fun payoff => payoff player) := by
-          rw [bridge.implTraceGame_udist_surface profile]
-    _ = surface.game.eu profile player := by
-          exact
-            surface.game.expect_udist_eq_eu_of_bounded
-              profile player (hbdFrontier player)
+      surface.game.eu profile player :=
+  bridge.implTraceGame_morphism_surface.eu_preserved_of_bounded
+    (fun who ω => hbdFrontier who ω) (fun who ω => hbdImpl who ω) profile player
 
 /-- Correlated expected utilities agree between a trace-adequate implementation
 law and the frontier surface under bounded-utility hypotheses. -/
@@ -1155,38 +1163,14 @@ theorem implTraceGame_nash_iff_surface_nash_of_bounded
     (profile : ∀ player, surface.game.Strategy player) :
     bridge.implTraceGame.IsNash profile ↔ surface.game.IsNash profile := by
   constructor
-  · intro hNash player alternative
-    calc
-      surface.game.eu profile player =
-          bridge.implTraceGame.eu profile player := by
-            exact
-              (bridge.implTraceGame_eu_surface_of_bounded
-                hbdImpl hbdFrontier profile player).symm
-      _ ≥ bridge.implTraceGame.eu
-            (Function.update profile player alternative) player :=
-          hNash player alternative
-      _ = surface.game.eu
-            (Function.update profile player alternative) player := by
-            exact
-              bridge.implTraceGame_eu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (Function.update profile player alternative) player
-  · intro hNash player alternative
-    calc
-      bridge.implTraceGame.eu profile player =
-          surface.game.eu profile player := by
-            exact
-              bridge.implTraceGame_eu_surface_of_bounded
-                hbdImpl hbdFrontier profile player
-      _ ≥ surface.game.eu
-            (Function.update profile player alternative) player :=
-          hNash player alternative
-      _ = bridge.implTraceGame.eu
-            (Function.update profile player alternative) player := by
-            exact
-              (bridge.implTraceGame_eu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (Function.update profile player alternative) player).symm
+  · intro hNash
+    exact
+      (bridge.implTraceGame_morphism_surface.toEUMorphismOfBounded
+        (fun who ω => hbdFrontier who ω) (fun who ω => hbdImpl who ω)).nash_of_nash hNash
+  · intro hNash
+    exact
+      (bridge.surface_morphism_implTraceGame.toEUMorphismOfBounded
+        (fun who ω => hbdImpl who ω) (fun who ω => hbdFrontier who ω)).nash_of_nash hNash
 
 /-- The whole Nash equilibrium set is invariant between a trace-adequate
 implementation trace game and the frontier surface under bounded utilities. -/
