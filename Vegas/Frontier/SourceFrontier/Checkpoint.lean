@@ -135,14 +135,14 @@ noncomputable def sourceCheckpointBehavioralNashDeviationBisimulation
     KernelGame.NashDeviationBisimulation
       semantics.sourceCheckpointBehavioralGame semantics.behavioralGame
       (Option (Outcome P)) where
-  viewG := { observe := id }
-  viewH := { observe := some }
+  viewG := { observe := fun _ => id }
+  viewH := { observe := fun _ => some }
   rel := fun sourceProfile frontierProfile =>
     sourceProfile = frontierProfile
   law_eq := by
-    intro sourceProfile frontierProfile hrel
+    intro sourceProfile frontierProfile hrel _
     subst frontierProfile
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact
       (PMF.map_id
         (semantics.sourceCheckpointBehavioralKernel sourceProfile)).trans
@@ -152,7 +152,7 @@ noncomputable def sourceCheckpointBehavioralNashDeviationBisimulation
     intro sourceProfile frontierProfile hrel who frontierDeviation
     subst frontierProfile
     refine ⟨frontierDeviation, ?_⟩
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact
       (PMF.map_id
         (semantics.sourceCheckpointBehavioralKernel
@@ -163,7 +163,7 @@ noncomputable def sourceCheckpointBehavioralNashDeviationBisimulation
     intro sourceProfile frontierProfile hrel who sourceDeviation
     subst frontierProfile
     refine ⟨sourceDeviation, ?_⟩
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact
       (PMF.map_id
         (semantics.sourceCheckpointBehavioralKernel

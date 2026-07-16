@@ -342,16 +342,23 @@ theorem pureFrontier_worstCaseEU_guarantees
     (player : P) (strategy : program.PureFrontierStrategy player) :
     program.PureFrontierGuarantees player strategy
       (program.pureFrontierWorstCaseEU player strategy) := by
+  let decEqP : DecidableEq P := inferInstance
   classical
   letI : ∀ player, Fintype (program.PureFrontierStrategy player) :=
     fun player => program.pureFrontierStrategyFintype player
   letI : ∀ player, Nonempty (program.PureFrontierStrategy player) :=
     fun player => program.pureFrontierStrategyNonempty player
-  change
-    program.pureFrontierGame.Guarantees player strategy
-      (program.pureFrontierGame.worstCaseEU player strategy)
-  exact
-    program.pureFrontierGame.worstCaseEU_guarantees player strategy
+  unfold PureFrontierGuarantees pureFrontierWorstCaseEU KernelGame.Guarantees
+  intro profile
+  have hdec : decEqP = Classical.decEq P := Subsingleton.elim _ _
+  have h :
+      program.pureFrontierGame.eu
+          (@Function.update P program.pureFrontierGame.Strategy
+            (Classical.decEq P) profile player strategy) player ≥
+        program.pureFrontierGame.worstCaseEU player strategy :=
+    program.pureFrontierGame.worstCaseEU_guarantees player strategy profile
+  rw [← hdec] at h
+  exact h
 
 theorem pureFrontier_exists_securityStrategy
     (program : WFProgram P L) [FiniteDomains program]

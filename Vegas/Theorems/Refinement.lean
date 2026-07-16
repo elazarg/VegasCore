@@ -5,7 +5,7 @@ import Vegas.Machine.MessageInFlight
 import Vegas.Runtime.CodecMachine
 import Vegas.Frontier.SourceAdequacy
 import Vegas.Presentation.FOSG.FromCore
-import GameTheory.Concepts.Foundations.DeviationSimulation
+import GameTheory.Concepts.Transport.Corners
 import GameTheory.Concepts.Correlation.CorrelatedNashMixed
 import Math.ProbabilityMassFunction
 
@@ -916,12 +916,12 @@ noncomputable def implTraceGame_nashDeviationSimulation
     (bridge : RuntimeTraceAdequacy program surface R) :
     GameTheory.KernelGame.NashDeviationSimulation
       surface.game bridge.implTraceGame (GameTheory.Payoff Player) where
-  viewG := { observe := surface.game.utility }
-  viewH := { observe := bridge.implTraceGame.utility }
+  viewG := { observe := fun _ => surface.game.utility }
+  viewH := { observe := fun _ => bridge.implTraceGame.utility }
   rel := fun surfaceProfile implProfile =>
     surfaceProfile = implProfile
   law_eq := by
-    intro surfaceProfile implProfile hrel
+    intro surfaceProfile implProfile hrel _
     subst implProfile
     change surface.game.udist surfaceProfile =
       bridge.implTraceGame.udist surfaceProfile
@@ -957,7 +957,7 @@ theorem implTraceGame_nashFor_of_surface_nashFor
           bridge.implTraceGame_nashDeviationSimulation.viewH prefΩ)
         profile :=
   bridge.implTraceGame_nashDeviationSimulation
-    |>.target_nashFor_of_source_nashFor rfl hNash
+    |>.target_nash_of_source_nash rfl hNash
 
 /-- Trace adequacy preserves the payoff-vector law induced by any correlated
 distribution over the shared strategy-profile space. -/

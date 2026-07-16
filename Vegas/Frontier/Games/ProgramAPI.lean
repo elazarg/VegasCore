@@ -535,14 +535,18 @@ def MixedPureToBehavioralFrontierProfileRealizes
   program.frontierSemantics.MixedPureToBehavioralProfileRealizes
     mixed behavioral
 
-/-- Program-facing profile-level mixed-pure-to-behavioral realization. This
-does not include the deviation-preservation theorem needed for Nash transport. -/
-noncomputable def mixedPureToBehavioralFrontierProfileRealization
+/-- Program-facing mixed-pure-to-behavioral realization relating profile laws
+with the same correlated outcome law. This does not include the
+deviation-preservation theorem needed for Nash transport. -/
+noncomputable def mixedPureToBehavioralFrontierRealization
     (program : WFProgram P L) [FiniteDomains program] :
-    KernelGame.ProfileRealization
+    KernelGame.Realization
       program.mixedPureFrontierGame program.behavioralFrontierGame
-      program.mixedPureFrontierGame.Outcome :=
-  program.frontierSemantics.mixedPureToBehavioralProfileRealization
+      (GameForm.ViewFamily.const
+        (F := program.mixedPureFrontierGame.toGameForm) (U := P) id)
+      (GameForm.ViewFamily.const
+        (F := program.behavioralFrontierGame.toGameForm) (U := P) id) :=
+  program.frontierSemantics.mixedPureToBehavioralRealization
 
 /-- Every mixed-pure frontier profile has a behavioral profile with the same
 completed-game outcome kernel. -/

@@ -49,9 +49,10 @@ reported by its source configuration.  Nonterminal finite-horizon truncations
 are observed as `none`. -/
 def sourceStrategicOptionOutcomeView
     (program : WFProgram P L) (horizon : Nat) (cutoff : Payoff P) :
-    KernelGame.OutcomeView
-      (program.sourceStrategicGame horizon cutoff) (Option (Outcome P)) where
-  observe := fun state => state.history.current.outcome?
+    KernelGame.ViewFamily
+      (program.sourceStrategicGame horizon cutoff) P
+      (fun _ => Option (Outcome P)) where
+  observe := fun _ state => state.history.current.outcome?
 
 variable [Fintype P]
 
@@ -59,9 +60,9 @@ variable [Fintype P]
 the optional source observation surface. -/
 def behavioralFrontierOptionOutcomeView
     (program : WFProgram P L) [FiniteDomains program] :
-    KernelGame.OutcomeView
-      program.behavioralFrontierGame (Option (Outcome P)) where
-  observe := some
+    KernelGame.ViewFamily
+      program.behavioralFrontierGame P (fun _ => Option (Outcome P)) where
+  observe := fun _ => some
 
 end WFProgram
 

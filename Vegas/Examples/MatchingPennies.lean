@@ -877,11 +877,16 @@ example
     |>.mixedPureToBehavioralFrontierProfileRealizes_exists mixed
 
 noncomputable example :
-    KernelGame.ProfileRealization
+    KernelGame.Realization
       matchingPenniesChecked.mixedPureFrontierGame
       matchingPenniesChecked.behavioralFrontierGame
-      matchingPenniesChecked.mixedPureFrontierGame.Outcome :=
-  matchingPenniesChecked.mixedPureToBehavioralFrontierProfileRealization
+      (GameForm.ViewFamily.const
+        (F := matchingPenniesChecked.mixedPureFrontierGame.toGameForm)
+        (U := Player) id)
+      (GameForm.ViewFamily.const
+        (F := matchingPenniesChecked.behavioralFrontierGame.toGameForm)
+        (U := Player) id) :=
+  matchingPenniesChecked.mixedPureToBehavioralFrontierRealization
 
 noncomputable example :
     KernelGame.NashDeviationSimulation

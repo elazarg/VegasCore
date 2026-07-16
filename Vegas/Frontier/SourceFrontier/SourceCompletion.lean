@@ -453,18 +453,19 @@ noncomputable def defaultSourceProfile
 only supports concrete outcomes. -/
 theorem sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
     (program : WFProgram P L) (cutoff : Payoff P)
+    (observer : P)
     (profile :
       (program.sourceStrategicGame program.core.prog.instrCount cutoff).Profile)
     {result : Option (Outcome P)}
     (hresult :
       result ∈
         ((program.sourceStrategicOptionOutcomeView
-            program.core.prog.instrCount cutoff).law profile).support) :
+            program.core.prog.instrCount cutoff).plaw observer profile).support) :
     ∃ outcome, result = some outcome := by
-  rw [GameForm.OutcomeView.law] at hresult
+  rw [GameForm.ViewFamily.plaw] at hresult
   rcases (PMF.mem_support_map_iff
-      (program.sourceStrategicOptionOutcomeView
-        program.core.prog.instrCount cutoff).observe
+      ((program.sourceStrategicOptionOutcomeView
+        program.core.prog.instrCount cutoff).observe observer)
       ((program.sourceStrategicGame
         program.core.prog.instrCount cutoff).outcomeKernel profile)
       result).mp hresult with
@@ -484,15 +485,16 @@ theorem sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
 instruction-count horizon. -/
 theorem sourceStrategicOptionOutcomeView_law_none_not_support_at_instrCount
     (program : WFProgram P L) (cutoff : Payoff P)
+    (observer : P)
     (profile :
       (program.sourceStrategicGame program.core.prog.instrCount cutoff).Profile) :
     none ∉
       ((program.sourceStrategicOptionOutcomeView
-          program.core.prog.instrCount cutoff).law profile).support := by
+          program.core.prog.instrCount cutoff).plaw observer profile).support := by
   intro hnone
   rcases
       program.sourceStrategicOptionOutcomeView_law_support_some_at_instrCount
-        cutoff profile hnone with
+        cutoff observer profile hnone with
     ⟨outcome, hsome⟩
   cases hsome
 
