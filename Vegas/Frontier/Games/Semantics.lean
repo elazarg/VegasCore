@@ -2,7 +2,7 @@ import Vegas.Frontier.Kuhn
 import Vegas.Frontier.SourceAdequacy
 import GameTheory.Core.GameForm
 import GameTheory.Core.GameSimulation
-import GameTheory.Concepts.Foundations.DeviationSimulation
+import GameTheory.Concepts.Transport.Corners
 import GameTheory.Concepts.Equilibrium.SolutionConcepts
 import GameTheory.Theorems.CorrelatedEqExistence
 import GameTheory.Concepts.Existence.NashExistenceMixed
@@ -793,7 +793,7 @@ theorem mixedToBehavioralUnilateralDeviationOutcomeKernel
     semantics.behavioralStrategyToMixedPure who deviation
   simpa [pureGame, behavioralGame, mixedPureGame, pure, behavioral,
     mixedToBehavioralProfile, behavioralStrategyToMixedPure,
-    KernelGame.mixedExtension, mixedDeviation] using
+    KernelGame.mixedExtension, GameForm.mixedExtension_outcomeKernel, mixedDeviation] using
     semantics.games
       |>.mixedPureToBehavioralUnilateralDeviationOutcomeKernel_eq_of_menus
         semantics.menus mixed who deviation
@@ -880,7 +880,8 @@ theorem mixedToBehavioralOutcomeKernel
       semantics.behavioralGame.outcomeKernel behavioralProfile =
         semantics.mixedPureGame.outcomeKernel mixed := by
   refine ⟨semantics.mixedToBehavioralProfile mixed, ?_⟩
-  simpa [mixedPureGame, pureGame, KernelGame.mixedExtension] using
+  simpa [mixedPureGame, pureGame, KernelGame.mixedExtension,
+    GameForm.mixedExtension_outcomeKernel] using
     semantics.mixedToBehavioralProfileOutcomeKernel mixed
 
 /-- Mixed pure strategies can be realized by behavioral strategies with the
@@ -925,21 +926,22 @@ def MixedPureToBehavioralProfileRealizes
   semantics.behavioralGame.outcomeKernel behavioralProfile =
     semantics.mixedPureGame.outcomeKernel mixed
 
-/-- The profile-level mixed-pure-to-behavioral realization as a standard
-`GameTheory` profile realization. This is enough to compare outcome laws, but
-not enough to transport Nash equilibria. -/
-noncomputable def mixedPureToBehavioralProfileRealization
+/-- The mixed-pure-to-behavioral realization relating profile laws with the same
+correlated outcome law. This does not by itself transport Nash equilibria. -/
+noncomputable def mixedPureToBehavioralRealization
     (semantics : FrontierGameSemantics program) :
-    KernelGame.ProfileRealization
+    KernelGame.Realization
       semantics.mixedPureGame semantics.behavioralGame
-      semantics.mixedPureGame.Outcome where
-  viewG := { observe := id }
-  viewH := { observe := id }
-  rel := semantics.MixedPureToBehavioralProfileRealizes
+      (GameForm.ViewFamily.const (F := semantics.mixedPureGame.toGameForm)
+        (U := P) id)
+      (GameForm.ViewFamily.const (F := semantics.behavioralGame.toGameForm)
+        (U := P) id) where
+  rel := fun mixedLaw behavioralLaw =>
+    semantics.behavioralGame.toGameForm.correlatedOutcome behavioralLaw =
+      semantics.mixedPureGame.toGameForm.correlatedOutcome mixedLaw
   law_eq := by
-    intro mixed behavioralProfile hrel
-    dsimp [GameForm.OutcomeView.law,
-      MixedPureToBehavioralProfileRealizes] at hrel ⊢
+    intro mixedLaw behavioralLaw hrel player
+    dsimp [GameForm.ViewFamily.claw, GameForm.ViewFamily.const]
     exact congrArg (PMF.map id) hrel.symm
 
 /-- Every mixed-pure profile has at least one behavioral profile related by
@@ -969,7 +971,8 @@ theorem behavioralToMixedPureOutcomeKernel
       semantics.mixedPureGame.outcomeKernel
         (semantics.behavioralToMixedPure behavioralProfile) := by
   simpa [pureGame, behavioralGame, mixedPureGame, pure, behavioral,
-    behavioralToMixedPure, KernelGame.mixedExtension] using
+    behavioralToMixedPure, KernelGame.mixedExtension,
+    GameForm.mixedExtension_outcomeKernel] using
     semantics.games.behavioralToProductMixedOutcomeKernel
       semantics.menus behavioralProfile
 
@@ -1088,7 +1091,8 @@ noncomputable def kuhnStrategicEquivalence
   behavioralToMixed := semantics.behavioralToMixedPure
   mixed_to_behavioral_outcome := by
     intro mixed
-    simpa [mixedPureGame, pureGame, KernelGame.mixedExtension] using
+    simpa [mixedPureGame, pureGame, KernelGame.mixedExtension,
+      GameForm.mixedExtension_outcomeKernel] using
       semantics.mixedToBehavioralProfileOutcomeKernel mixed
   behavioral_to_mixed_outcome := by
     intro behavioral
@@ -1129,14 +1133,14 @@ noncomputable def behavioralToMixedPureNashDeviationSimulation
     KernelGame.NashDeviationSimulation
       semantics.mixedPureGame semantics.behavioralGame
       semantics.mixedPureGame.Outcome where
-  viewG := { observe := id }
-  viewH := { observe := id }
+  viewG := { observe := fun _ => id }
+  viewH := { observe := fun _ => id }
   rel := fun mixed behavioralProfile =>
     mixed = semantics.behavioralToMixedPure behavioralProfile
   law_eq := by
-    intro mixed behavioralProfile hrel
+    intro mixed behavioralProfile hrel _
     subst mixed
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact
       congrArg (PMF.map id)
         (semantics.behavioralToMixedPureOutcomeKernel
@@ -1157,7 +1161,7 @@ noncomputable def behavioralToMixedPureNashDeviationSimulation
       exact
         (semantics.behavioralToMixedPure_update
           behavioralProfile who behavioralDeviation).symm
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     rw [hupdate]
     exact
       congrArg (PMF.map id)
@@ -1171,14 +1175,14 @@ noncomputable def mixedPureToBehavioralNashDeviationBisimulation
     KernelGame.NashDeviationBisimulation
       semantics.mixedPureGame semantics.behavioralGame
       semantics.mixedPureGame.Outcome where
-  viewG := { observe := id }
-  viewH := { observe := id }
+  viewG := { observe := fun _ => id }
+  viewH := { observe := fun _ => id }
   rel := fun mixed behavioralProfile =>
     behavioralProfile = semantics.mixedToBehavioralProfile mixed
   law_eq := by
-    intro mixed behavioralProfile hrel
+    intro mixed behavioralProfile hrel _
     subst behavioralProfile
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact
       congrArg (PMF.map id)
         (semantics.mixedToBehavioralProfileOutcomeKernel mixed).symm
@@ -1191,7 +1195,7 @@ noncomputable def mixedPureToBehavioralNashDeviationBisimulation
     have hdeviation :=
       semantics.mixedToBehavioralUnilateralDeviationOutcomeKernel
         mixed who behavioralDeviation
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact congrArg (PMF.map id) hdeviation.symm
   simulate_source_deviation := by
     intro mixed behavioralProfile hrel who mixedDeviation
@@ -1200,7 +1204,7 @@ noncomputable def mixedPureToBehavioralNashDeviationBisimulation
         mixed who mixedDeviation with
       ⟨behavioralDeviation, hdeviation⟩
     refine ⟨behavioralDeviation, ?_⟩
-    dsimp [GameForm.OutcomeView.law]
+    dsimp [GameForm.ViewFamily.plaw]
     exact congrArg (PMF.map id) hdeviation
 
 /-- A Nash equilibrium of the induced product mixed pure-strategy game is a
@@ -1272,7 +1276,8 @@ noncomputable def canonicalMixedPureToBehavioralDeviationSimulation
   realize := semantics.mixedToBehavioralProfile
   outcome_eq := by
     intro mixed
-    simpa [mixedPureGame, pureGame, KernelGame.mixedExtension] using
+    simpa [mixedPureGame, pureGame, KernelGame.mixedExtension,
+      GameForm.mixedExtension_outcomeKernel] using
       semantics.mixedToBehavioralProfileOutcomeKernel mixed
   simulate_deviation := by
     intro mixed who behavioralDeviation
@@ -1295,20 +1300,20 @@ noncomputable def toNashDeviationSimulation
     KernelGame.NashDeviationSimulation
       semantics.mixedPureGame semantics.behavioralGame
       semantics.mixedPureGame.Outcome :=
-  KernelGame.NashDeviationSimulation.ofFunctionalRealization
-    ({ observe := id } : KernelGame.OutcomeView
-      semantics.mixedPureGame semantics.mixedPureGame.Outcome)
-    ({ observe := id } : KernelGame.OutcomeView
-      semantics.behavioralGame semantics.mixedPureGame.Outcome)
+  GameForm.NashDeviationSimulation.ofFunctionalRealization
+    ({ observe := fun _ => id } : KernelGame.ViewFamily
+      semantics.mixedPureGame P (fun _ => semantics.mixedPureGame.Outcome))
+    ({ observe := fun _ => id } : KernelGame.ViewFamily
+      semantics.behavioralGame P (fun _ => semantics.mixedPureGame.Outcome))
     simulation.realize
-    (fun mixed => by
-      dsimp [GameForm.OutcomeView.law]
+    (fun _ mixed => by
+      dsimp [GameForm.ViewFamily.plaw]
       exact congrArg (PMF.map id) (simulation.outcome_eq mixed).symm)
     (fun mixed who behavioralDeviation => by
       rcases simulation.simulate_deviation mixed who behavioralDeviation with
         ⟨mixedDeviation, hdeviation⟩
       exact ⟨mixedDeviation, by
-        dsimp [GameForm.OutcomeView.law]
+        dsimp [GameForm.ViewFamily.plaw]
         exact congrArg (PMF.map id) hdeviation.symm⟩)
 
 /-- A deviation-preserving mixed-to-behavioral realization transports mixed
