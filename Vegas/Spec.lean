@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Foundation.Basic
 import Vegas.Core.Basic
 import Vegas.Language.Basic
-import Vegas.WellFormed.Program
+import Vegas.Core.WellFormed
 import Vegas.EventGraph.Basic
 import Vegas.Compile.Compiler
 import Vegas.Frontier.Games
@@ -86,7 +86,7 @@ deterministic bindings) that lowers to `VegasCore` before compilation.
 compiler needs (context uniqueness, fresh binders, normalized samples).
 `WFProgram` adds the game-boundary obligations (reveal-completeness and guard
 legality). These structures define what "a program we are willing to reason
-about" means. (`Vegas.WellFormed.Program`)
+about" means. (`Vegas.Core.WellFormed`)
 -/
 
 #guard_msgs (drop info) in

@@ -7,7 +7,8 @@ Authors: VegasCore contributors
 -- Foundation: expression interface, values, visibility contexts.
 import Vegas.Foundation.Basic
 
--- Core: the VegasCore source language (incl. the simple expression instance).
+-- Core: the VegasCore source language (incl. the simple expression instance
+-- and the checked-program boundary).
 import Vegas.Core.Basic
 import Vegas.Core.FiniteDomain
 import Vegas.Core.ExprSimple
@@ -21,9 +22,7 @@ import Vegas.Core.Schedule
 import Vegas.Core.Noninterference
 import Vegas.Core.StrategicNoninterference
 import Vegas.Core.Trace
-
--- WellFormed: the checked-program boundary.
-import Vegas.WellFormed.Program
+import Vegas.Core.WellFormed
 
 -- Language: surface syntax and lowering to Core.
 import Vegas.Language.Nullable

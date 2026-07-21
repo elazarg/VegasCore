@@ -309,8 +309,7 @@ reverse; nothing under `EventGraph` imports `Machine`).
 ```text
 Vegas/
   Foundation/              -- expression interface, values, visibility contexts
-  Core/                    -- the VegasCore source language
-  WellFormed/              -- WFProgram checked-game boundary + static obligations
+  Core/                    -- the VegasCore source language and checked-program boundary
   Language/                -- surface language and lowering to Core
   EventGraph/              -- source-free graph IR: execution, frontiers, batching
   Machine/                 -- operational machine, round views, kernel-game bridge
@@ -320,8 +319,7 @@ Vegas/
   Frontier/                -- canonical strategic semantics over compiled graphs
   Presentation/            -- FOSG/EFG presentations of native round views
   Export/                  -- finite kernel-game export tables
-  Runtime/                 -- runtime-general value codec proof interfaces
-  Runtime/TraceAdequacy.lean -- compiled-game/runtime trace proof framework
+  Runtime/                 -- runtime-general codec and trace-adequacy proof interfaces
   Theorems/                -- theorem index over the checked-program semantics
   Spec.lean                -- research-spine definition and theorem index
   Examples/                -- build-tested example modules
