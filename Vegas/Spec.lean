@@ -15,12 +15,12 @@ import Vegas.Runtime.TraceAdequacy
 import Vegas.Theorems.Claims
 
 /-!
-# Trusted definition surface (audit index)
+# Trusted definition surface
 
 This module **defines no logic.** It is the definition-side analogue of
 `Vegas.Theorems.Claims`: where that file curates the main *theorems*,
-this file curates the main *definitions* — the load-bearing declarations an
-auditor must read and trust to believe a Vegas model means what it claims.
+this file curates the main *definitions* — the load-bearing declarations a
+reader should inspect to understand why a Vegas model means what it claims.
 Helper definitions, instances, and lemmas are deliberately omitted; they are
 machinery, and their correctness is discharged by the proofs, not by reading.
 
@@ -61,7 +61,7 @@ well-scoped by construction. (`Vegas.Foundation.Basic`)
 
 `VegasCore` is *the* load-bearing definition: the four protocol events
 (`ret`, `sample`, `commit`, `reveal`) that define what a Vegas game is. If you
-audit one declaration, audit this one. Indexed by the visibility context, so
+inspect one declaration, inspect this one. Indexed by the visibility context, so
 every well-formed term is well-scoped. Strategies do not appear here. Finite
 operational-domain evidence is kept out, in `Vegas.Core.FiniteDomain`.
 (`Vegas.Core.Basic`)
