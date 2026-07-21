@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 VegasCore contributors. All rights reserved.
+# Released under MIT license as described in the file LICENSE.
+
 """Extract Lean 4 definitions, stripping proofs and imports.
 
-Outputs the "API surface" of .lean files: type signatures, structure/inductive
+Outputs the declaration surface of .lean files: type signatures, structure/inductive
 definitions, computational defs, and context (variable/namespace/open), while
 dropping proof bodies and imports.
 """
