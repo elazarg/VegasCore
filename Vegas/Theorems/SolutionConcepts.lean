@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
 import Vegas.Frontier.SolutionConcepts
 import GameTheory.Concepts.Equilibrium.NashCorrelatedEq
 import GameTheory.Concepts.Correlation.CorrelatedNashMixed
