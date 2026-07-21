@@ -97,8 +97,6 @@ end FrontierAction
 end EventGraph
 
 namespace ToEventGraph
-namespace SourceFrontier
-namespace Action
 
 open GameTheory
 
@@ -152,12 +150,12 @@ theorem sourceLegal_extends_to_available_frontierAction_after_internalClosure
           some
             (cast
               (congrArg L.Val
-                (CommitBlock.currentNodeType
+                (currentNodeType
                   program replay hnode).symm)
               value) := by
   let compiled := compile program.core
   let G := compiled.graph
-  let hty := CommitBlock.currentNodeType program replay hnode
+  let hty := currentNodeType program replay hnode
   let nodeValue : L.Val (G.nodeRow node).ty :=
     cast (congrArg L.Val hty.symm) value
   let base : EventGraph.FrontierAction G who :=
@@ -173,7 +171,7 @@ theorem sourceLegal_extends_to_available_frontierAction_after_internalClosure
       EventGraph.CommitAvailable G dst.1 who
         { node := node, value := { ty := b, value := value } } := by
     simpa [compiled, G] using
-      CommitBlock.available_after_internalClosure_of_sourceLegal
+      available_after_internalClosure_of_sourceLegal
         program replay hnode value hguard fuel hsupport
   have htyped :
       ({ ty := b, value := value } : EventGraph.TypedValue L) =
@@ -243,7 +241,7 @@ theorem sourceLegal_extends_to_boundedLegalAction_after_internalClosure
             some
               (cast
                 (congrArg L.Val
-                  (CommitBlock.currentNodeType
+                  (currentNodeType
                     program replay hnode).symm)
                 value) := by
   classical
@@ -418,7 +416,7 @@ theorem sourceValueBoundedLegalAction_currentNodeProjection
       some
         (cast
           (congrArg L.Val
-            (CommitBlock.currentNodeType program replay hnode).symm)
+            (currentNodeType program replay hnode).symm)
           value) := by
   unfold sourceValueBoundedLegalAction_after_internalClosure
   rcases
@@ -531,7 +529,7 @@ theorem sourceChoiceActionLaw_currentNodeProjection
           some
             (cast
               (congrArg L.Val
-                (CommitBlock.currentNodeType program replay hnode).symm)
+                (currentNodeType program replay hnode).symm)
               choice.1))
         choiceLaw := by
   rw [sourceChoiceActionLaw_after_internalClosure, PMF.map_comp]
@@ -541,8 +539,6 @@ theorem sourceChoiceActionLaw_currentNodeProjection
     sourceValueBoundedLegalAction_currentNodeProjection
       program replay hnode choice.1 choice.2 fuel hsupport hterm hactive
 
-end Action
-end SourceFrontier
 end ToEventGraph
 
 end Vegas

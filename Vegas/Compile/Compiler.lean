@@ -1296,6 +1296,299 @@ theorem eventGuardOf_live_of_legal
   intro env
   exact legal (viewEnvOfReadEnv state who env)
 
+namespace BuildState
+
+/-- The graph event produced by a source `sample`. -/
+@[reducible] noncomputable def sampleEvent
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1) :
+    EventNode P L :=
+  let graphDist := eventDistOf state dist normalized
+  { ty := graphDist.ty, owner := none, sem := .sample graphDist }
+
+/-- The graph event produced by a source `commit`. -/
+@[reducible] noncomputable def commitEvent
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool) : EventNode P L :=
+  let graphGuard := eventGuardOf state who guard
+  { ty := graphGuard.ty, owner := some who,
+    sem := .commit who graphGuard }
+
+/-- The graph event produced by a source `reveal`. -/
+@[reducible] def revealEvent
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty)) :
+    EventNode P L :=
+  { ty := ty, owner := none, sem := .reveal (state.fieldOf sourceProof) }
+
+theorem sampleEvent_nodeWFAt
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1) :
+    ({ initialFields := state.initialFields,
+       nodes := state.nodes ++ [sampleEvent state dist normalized] } :
+      Graph P L).nodeWFAt state.nextNode
+        (sampleEvent state dist normalized) := by
+  let graphDist := eventDistOf state dist normalized
+  let event := sampleEvent state dist normalized
+  dsimp [Graph.nodeWFAt, sampleEvent, event, graphDist]
+  exact
+    ⟨by
+        intro field hfield
+        rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+        exact Graph.fieldAvailableBefore_append_node_of_true
+          state.initialFields state.nodes event
+          (distReadRefs_available state dist ref href),
+      rfl, rfl,
+      by
+        intro ref href
+        exact Graph.fieldRefPublic_append_node
+          state.initialFields state.nodes event
+          (distReadRefs_public state dist ref href)⟩
+
+theorem commitEvent_nodeWFAt
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool) :
+    ({ initialFields := state.initialFields,
+       nodes := state.nodes ++ [commitEvent state who guard] } :
+      Graph P L).nodeWFAt state.nextNode
+        (commitEvent state who guard) := by
+  let graphGuard := eventGuardOf state who guard
+  let event := commitEvent state who guard
+  dsimp [Graph.nodeWFAt, commitEvent, event, graphGuard]
+  exact
+    ⟨by
+        intro field hfield
+        rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
+        exact Graph.fieldAvailableBefore_append_node_of_true
+          state.initialFields state.nodes event
+          (visibleFieldRefs_available state who ref href),
+      rfl, rfl,
+      by
+        intro ref href
+        exact Graph.fieldRefVisibleTo_append_node
+          state.initialFields state.nodes event who
+          (visibleFieldRefs_visible state who ref href)⟩
+
+theorem revealEvent_nodeWFAt
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty)) :
+    ({ initialFields := state.initialFields,
+       nodes := state.nodes ++ [revealEvent state who sourceProof] } :
+      Graph P L).nodeWFAt state.nextNode
+        (revealEvent state who sourceProof) := by
+  let event := revealEvent state who sourceProof
+  rcases state.fieldOf_spec sourceProof with
+    ⟨sourceSpec, hsource, hty, howner⟩
+  dsimp [Graph.nodeWFAt, revealEvent, event]
+  rw [Graph.field?_append_node_of_some
+    state.initialFields state.nodes
+    { ty := ty, owner := none,
+      sem := NodeSem.reveal (state.fieldOf sourceProof) }
+    hsource]
+  refine ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
+  · intro field hfield
+    have hfieldEq : field = state.fieldOf sourceProof :=
+      Finset.mem_singleton.mp hfield
+    subst hfieldEq
+    exact Graph.fieldAvailableBefore_append_node_of_true
+      state.initialFields state.nodes event
+      (state.fieldOf_available sourceProof)
+  · simp [howner]
+
+/-- Compile and append a source `sample` event. -/
+@[reducible] noncomputable def addSampleEvent
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (fresh : Fresh name Γ) :
+    BuildState P L ((name, .pub ty) :: Γ) × Nat :=
+  let graphDist := eventDistOf state dist normalized
+  state.addEvent name (.pub graphDist.ty) (.sample graphDist) fresh
+    (sampleEvent_nodeWFAt state dist normalized)
+
+/-- Compile and append a source `commit` event. -/
+@[reducible] noncomputable def addCommitEvent
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (fresh : Fresh name Γ) :
+    BuildState P L ((name, .sealed who actionTy) :: Γ) × Nat :=
+  let graphGuard := eventGuardOf state who guard
+  state.addEvent name (.sealed who graphGuard.ty)
+      (.commit who graphGuard) fresh
+      (commitEvent_nodeWFAt state who guard)
+
+/-- Compile and append a source `reveal` event. -/
+@[reducible] def addRevealEvent
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty))
+    (fresh : Fresh name Γ) :
+    BuildState P L ((name, .pub ty) :: Γ) × Nat :=
+  state.addEvent name (.pub ty)
+    (.reveal (state.fieldOf sourceProof)) fresh
+    (revealEvent_nodeWFAt state who sourceProof)
+
+@[simp] theorem addSampleEvent_nodes
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (fresh : Fresh name Γ) :
+    (state.addSampleEvent name dist normalized fresh).1.nodes =
+      state.nodes ++ [sampleEvent state dist normalized] :=
+  rfl
+
+@[simp] theorem addCommitEvent_nodes
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (fresh : Fresh name Γ) :
+    (state.addCommitEvent name who guard fresh).1.nodes =
+      state.nodes ++ [commitEvent state who guard] :=
+  rfl
+
+@[simp] theorem addRevealEvent_nodes
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty))
+    (fresh : Fresh name Γ) :
+    (state.addRevealEvent name who sourceProof fresh).1.nodes =
+      state.nodes ++ [revealEvent state who sourceProof] :=
+  rfl
+
+@[simp] theorem addSampleEvent_initialFields
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (fresh : Fresh name Γ) :
+    (state.addSampleEvent name dist normalized fresh).1.initialFields =
+      state.initialFields :=
+  rfl
+
+@[simp] theorem addCommitEvent_initialFields
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (fresh : Fresh name Γ) :
+    (state.addCommitEvent name who guard fresh).1.initialFields =
+      state.initialFields :=
+  rfl
+
+@[simp] theorem addRevealEvent_initialFields
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty))
+    (fresh : Fresh name Γ) :
+    (state.addRevealEvent name who sourceProof fresh).1.initialFields =
+      state.initialFields :=
+  rfl
+
+@[simp] theorem addSampleEvent_fieldOf_here
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (fresh : Fresh name Γ) :
+    (state.addSampleEvent name dist normalized fresh).1.fieldOf
+        (VHasVar.here (x := name) (τ := .pub ty)) =
+      state.nextField :=
+  rfl
+
+@[simp] theorem addSampleEvent_fieldOf_there
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (normalized :
+      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
+          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
+        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
+    (fresh : Fresh name Γ)
+    {query : VarId} {bindTy : BindTy P L}
+    (h : VHasVar Γ query bindTy) :
+    (state.addSampleEvent name dist normalized fresh).1.fieldOf
+        (VHasVar.there h) = state.fieldOf h :=
+  rfl
+
+@[simp] theorem addCommitEvent_fieldOf_here
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (fresh : Fresh name Γ) :
+    (state.addCommitEvent name who guard fresh).1.fieldOf
+        (VHasVar.here (x := name) (τ := .sealed who actionTy)) =
+      state.nextField :=
+  rfl
+
+@[simp] theorem addCommitEvent_fieldOf_there
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (fresh : Fresh name Γ)
+    {query : VarId} {bindTy : BindTy P L}
+    (h : VHasVar Γ query bindTy) :
+    (state.addCommitEvent name who guard fresh).1.fieldOf
+        (VHasVar.there h) = state.fieldOf h :=
+  rfl
+
+@[simp] theorem addRevealEvent_fieldOf_here
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty))
+    (fresh : Fresh name Γ) :
+    (state.addRevealEvent name who sourceProof fresh).1.fieldOf
+        (VHasVar.here (x := name) (τ := .pub ty)) =
+      state.nextField :=
+  rfl
+
+@[simp] theorem addRevealEvent_fieldOf_there
+    {Γ : VCtx P L} {sourceName : VarId} {ty : L.Ty}
+    (state : BuildState P L Γ) (name : VarId) (who : P)
+    (sourceProof : VHasVar Γ sourceName (.sealed who ty))
+    (fresh : Fresh name Γ)
+    {query : VarId} {bindTy : BindTy P L}
+    (h : VHasVar Γ query bindTy) :
+    (state.addRevealEvent name who sourceProof fresh).1.fieldOf
+        (VHasVar.there h) = state.fieldOf h :=
+  rfl
+
+end BuildState
+
 theorem guardLive_empty (initialFields : List (InitialField P L)) :
     GuardLive ({ initialFields := initialFields, nodes := [] } : Graph P L) := by
   intro node _row _who _guard _hrow _hsem _env
@@ -1503,9 +1796,7 @@ noncomputable def append
 
 end NodesFinite
 
-namespace GraphFieldFintype
-
-@[reducible] noncomputable def ofInitialAndNodes
+@[reducible] noncomputable def fieldFintypeOfInitialAndNodes
     {initialFields : List (InitialField P L)}
     {nodes : List (EventNode P L)}
     (finiteInitial : InitialFieldsFinite initialFields)
@@ -1530,8 +1821,6 @@ namespace GraphFieldFintype
       omega
     simp only [Graph.fieldRow, hinit, ↓reduceDIte]
     exact finiteNodes nodes[node] (List.getElem_mem _)
-
-end GraphFieldFintype
 
 @[simp] theorem compilePayoffs_length
     {Γ : VCtx P L}
@@ -1678,71 +1967,18 @@ noncomputable def compileCore :
         terminalNodes := rfl
         payoffs_eq := rfl }
   | _, .sample name dist tail, fresh, normalized, state =>
-      let graphDist := eventDistOf state dist normalized.1
-      let sem := NodeSem.sample (Player := P) graphDist
-      let event : EventNode P L :=
-        { ty := graphDist.ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub graphDist.ty) sem fresh.1 (by
-        dsimp [Graph.nodeWFAt, graphDist, sem, event]
-        exact
-          ⟨by
-              intro field hfield
-              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-              exact Graph.fieldAvailableBefore_append_node_of_true
-                state.initialFields state.nodes event
-                (distReadRefs_available state dist ref href),
-            rfl, rfl,
-            by
-              intro ref href
-              exact Graph.fieldRefPublic_append_node
-                state.initialFields state.nodes event
-                (distReadRefs_public state dist ref href)⟩)
+      let added :=
+        state.addSampleEvent name dist normalized.1 fresh.1
       let state := added.1
       compileCore tail fresh.2 normalized.2 state
   | _, .commit name who guard tail, fresh, normalized, state =>
-      let graphGuard := eventGuardOf state who guard
-      let sem := NodeSem.commit (Player := P) who graphGuard
-      let event : EventNode P L :=
-        { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
-          dsimp [Graph.nodeWFAt, graphGuard, sem, event]
-          exact
-            ⟨by
-                intro field hfield
-                rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-                exact Graph.fieldAvailableBefore_append_node_of_true
-                  state.initialFields state.nodes event
-                  (visibleFieldRefs_available state who ref href),
-              rfl, rfl,
-              by
-                intro ref href
-                exact Graph.fieldRefVisibleTo_append_node
-                  state.initialFields state.nodes event who
-                  (visibleFieldRefs_visible state who ref href)⟩)
+        state.addCommitEvent name who guard fresh.1
       let state := added.1
       compileCore tail fresh.2 normalized state
   | _, .reveal (b := ty) name _who _source sourceProof tail, fresh, normalized, state =>
-      let sourceField := state.fieldOf sourceProof
-      let sem := NodeSem.reveal (Player := P) (L := L) sourceField
-      let event : EventNode P L :=
-        { ty := ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub ty) sem fresh.1 (by
-        rcases state.fieldOf_spec sourceProof with
-          ⟨sourceSpec, hsource, hty, howner⟩
-        dsimp [Graph.nodeWFAt, sem, event]
-        rw [Graph.field?_append_node_of_some
-          state.initialFields state.nodes event hsource]
-        refine
-          ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
-        · intro field hfield
-          have hfieldEq : field = sourceField :=
-            Finset.mem_singleton.mp hfield
-          subst hfieldEq
-          exact Graph.fieldAvailableBefore_append_node_of_true
-            state.initialFields state.nodes event
-            (state.fieldOf_available sourceProof)
-        · simp [howner])
+      let added :=
+        state.addRevealEvent name _who sourceProof fresh.1
       let state := added.1
       compileCore tail fresh.2 normalized state
 
@@ -1754,83 +1990,33 @@ noncomputable def compileCore :
         state.initialFields
   | _, .ret _payoffs, _fresh, _normalized, _state => rfl
   | _, .sample name dist tail, fresh, normalized, state => by
-      let graphDist := eventDistOf state dist normalized.1
-      let sem := NodeSem.sample (Player := P) graphDist
-      let event : EventNode P L :=
-        { ty := graphDist.ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub graphDist.ty) sem fresh.1 (by
-        dsimp [Graph.nodeWFAt, graphDist, sem, event]
-        exact
-          ⟨by
-              intro field hfield
-              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-              exact Graph.fieldAvailableBefore_append_node_of_true
-                state.initialFields state.nodes event
-                (distReadRefs_available state dist ref href),
-            rfl, rfl,
-            by
-              intro ref href
-              exact Graph.fieldRefPublic_append_node
-                state.initialFields state.nodes event
-                (distReadRefs_public state dist ref href)⟩)
+      let added :=
+        state.addSampleEvent name dist normalized.1 fresh.1
       change
         (compileCore tail fresh.2 normalized.2 added.1).initialFields =
           state.initialFields
       rw [compileCore_initialFields tail fresh.2 normalized.2 added.1]
-      rfl
+      exact BuildState.addSampleEvent_initialFields
+        state name dist normalized.1 fresh.1
   | _, .commit name who guard tail, fresh, normalized, state => by
-      let graphGuard := eventGuardOf state who guard
-      let sem := NodeSem.commit (Player := P) who graphGuard
-      let event : EventNode P L :=
-        { ty := graphGuard.ty, owner := some who, sem := sem }
       let added :=
-        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
-          dsimp [Graph.nodeWFAt, graphGuard, sem, event]
-          exact
-            ⟨by
-                intro field hfield
-                rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-                exact Graph.fieldAvailableBefore_append_node_of_true
-                  state.initialFields state.nodes event
-                  (visibleFieldRefs_available state who ref href),
-              rfl, rfl,
-              by
-                intro ref href
-                exact Graph.fieldRefVisibleTo_append_node
-                  state.initialFields state.nodes event who
-                  (visibleFieldRefs_visible state who ref href)⟩)
+        state.addCommitEvent name who guard fresh.1
       change
         (compileCore tail fresh.2 normalized added.1).initialFields =
           state.initialFields
       rw [compileCore_initialFields tail fresh.2 normalized added.1]
-      rfl
+      exact BuildState.addCommitEvent_initialFields
+        state name who guard fresh.1
   | _, .reveal (b := ty) name _who _source sourceProof tail,
       fresh, normalized, state => by
-      let sourceField := state.fieldOf sourceProof
-      let sem := NodeSem.reveal (Player := P) (L := L) sourceField
-      let event : EventNode P L :=
-        { ty := ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub ty) sem fresh.1 (by
-        rcases state.fieldOf_spec sourceProof with
-          ⟨sourceSpec, hsource, hty, howner⟩
-        dsimp [Graph.nodeWFAt, sem, event]
-        rw [Graph.field?_append_node_of_some
-          state.initialFields state.nodes event hsource]
-        refine
-          ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
-        · intro field hfield
-          have hfieldEq : field = sourceField :=
-            Finset.mem_singleton.mp hfield
-          subst hfieldEq
-          exact Graph.fieldAvailableBefore_append_node_of_true
-            state.initialFields state.nodes event
-            (state.fieldOf_available sourceProof)
-        · simp [howner])
+      let added :=
+        state.addRevealEvent name _who sourceProof fresh.1
       change
         (compileCore tail fresh.2 normalized added.1).initialFields =
           state.initialFields
       rw [compileCore_initialFields tail fresh.2 normalized added.1]
-      rfl
+      exact BuildState.addRevealEvent_initialFields
+        state name _who sourceProof fresh.1
 
 /-- Finite source operational domains induce finite value domains for every
 compiled graph node. -/
@@ -1845,92 +2031,48 @@ noncomputable def compileCore_nodesFinite :
       stateFinite
   | _, .sample name dist tail, .sample head tailFinite,
       fresh, normalized, state, stateFinite =>
-      let graphDist := eventDistOf state dist normalized.1
-      let sem := NodeSem.sample graphDist
       let event : EventNode P L :=
-        { ty := graphDist.ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub graphDist.ty) sem fresh.1 (by
-        dsimp [Graph.nodeWFAt, graphDist, sem, event]
-        exact
-          ⟨by
-              intro field hfield
-              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-              exact Graph.fieldAvailableBefore_append_node_of_true
-                state.initialFields state.nodes event
-                (distReadRefs_available state dist ref href),
-            rfl, rfl,
-            by
-              intro ref href
-              exact Graph.fieldRefPublic_append_node
-                state.initialFields state.nodes event
-                (distReadRefs_public state dist ref href)⟩)
+        state.sampleEvent dist normalized.1
+      let added :=
+        state.addSampleEvent name dist normalized.1 fresh.1
       let eventFinite : Fintype (L.Val event.ty) := by
-        dsimp [event, graphDist, eventDistOf]
+        dsimp [event, BuildState.sampleEvent, eventDistOf]
         exact head.fintype
       let addedFinite : NodesFinite added.1.nodes := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addSampleEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
       compileCore_nodesFinite tail tailFinite fresh.2 normalized.2
         added.1 addedFinite
   | _, .commit name who guard tail, .commit head tailFinite,
       fresh, normalized, state, stateFinite =>
-      let graphGuard := eventGuardOf state who guard
-      let sem := NodeSem.commit who graphGuard
       let event : EventNode P L :=
-        { ty := graphGuard.ty, owner := some who, sem := sem }
+        state.commitEvent who guard
       let added :=
-        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
-          dsimp [Graph.nodeWFAt, graphGuard, sem, event]
-          exact
-            ⟨by
-                intro field hfield
-                rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-                exact Graph.fieldAvailableBefore_append_node_of_true
-                  state.initialFields state.nodes event
-                  (visibleFieldRefs_available state who ref href),
-              rfl, rfl,
-              by
-                intro ref href
-                exact Graph.fieldRefVisibleTo_append_node
-                  state.initialFields state.nodes event who
-                  (visibleFieldRefs_visible state who ref href)⟩)
+        state.addCommitEvent name who guard fresh.1
       let eventFinite : Fintype (L.Val event.ty) := by
-        dsimp [event, graphGuard, eventGuardOf]
+        dsimp [event, BuildState.commitEvent, eventGuardOf]
         exact head.fintype
       let addedFinite : NodesFinite added.1.nodes := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addCommitEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
       compileCore_nodesFinite tail tailFinite fresh.2 normalized
         added.1 addedFinite
   | _, .reveal (b := ty) name _who _source sourceProof tail,
       .reveal head tailFinite, fresh, normalized, state, stateFinite =>
-      let sourceField := state.fieldOf sourceProof
-      let sem := NodeSem.reveal sourceField
       let event : EventNode P L :=
-        { ty := ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub ty) sem fresh.1 (by
-        rcases state.fieldOf_spec sourceProof with
-          ⟨sourceSpec, hsource, hty, howner⟩
-        dsimp [Graph.nodeWFAt, sem, event]
-        rw [Graph.field?_append_node_of_some
-          state.initialFields state.nodes event hsource]
-        refine
-          ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
-        · intro field hfield
-          have hfieldEq : field = sourceField :=
-            Finset.mem_singleton.mp hfield
-          subst hfieldEq
-          exact Graph.fieldAvailableBefore_append_node_of_true
-            state.initialFields state.nodes event
-            (state.fieldOf_available sourceProof)
-        · simp [howner])
+        state.revealEvent _who sourceProof
+      let added :=
+        state.addRevealEvent name _who sourceProof fresh.1
       let eventFinite : Fintype (L.Val event.ty) := by
-        dsimp [event]
+        dsimp [event, BuildState.revealEvent]
         exact head.fintype
       let addedFinite : NodesFinite added.1.nodes := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addRevealEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
       compileCore_nodesFinite tail tailFinite fresh.2 normalized
@@ -1954,30 +2096,17 @@ theorem compileCore_guardLive :
   | _, .ret _payoffs, _fresh, _normalized, _state, stateLive, _legal =>
       stateLive
   | _, .sample name dist tail, fresh, normalized, state, stateLive, legal =>
-      let graphDist := eventDistOf state dist normalized.1
-      let sem := NodeSem.sample graphDist
       let event : EventNode P L :=
-        { ty := graphDist.ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub graphDist.ty) sem fresh.1 (by
-        dsimp [Graph.nodeWFAt, graphDist, sem, event]
-        exact
-          ⟨by
-              intro field hfield
-              rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-              exact Graph.fieldAvailableBefore_append_node_of_true
-                state.initialFields state.nodes event
-                (distReadRefs_available state dist ref href),
-            rfl, rfl,
-            by
-              intro ref href
-              exact Graph.fieldRefPublic_append_node
-                state.initialFields state.nodes event
-                (distReadRefs_public state dist ref href)⟩)
+        state.sampleEvent dist normalized.1
+      let added :=
+        state.addSampleEvent name dist normalized.1 fresh.1
       let addedLive :
           GuardLive
             ({ initialFields := added.1.initialFields,
                nodes := added.1.nodes } : Graph P L) := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addSampleEvent_initialFields,
+          BuildState.addSampleEvent_nodes]
         exact guardLive_append_event
           state.initialFields state.nodes event stateLive
           (by
@@ -1986,31 +2115,17 @@ theorem compileCore_guardLive :
       compileCore_guardLive tail fresh.2 normalized.2 added.1
         addedLive legal
   | _, .commit name who guard tail, fresh, normalized, state, stateLive, legal =>
-      let graphGuard := eventGuardOf state who guard
-      let sem := NodeSem.commit who graphGuard
       let event : EventNode P L :=
-        { ty := graphGuard.ty, owner := some who, sem := sem }
+        state.commitEvent who guard
       let added :=
-        state.addEvent name (.sealed who graphGuard.ty) sem fresh.1 (by
-          dsimp [Graph.nodeWFAt, graphGuard, sem, event]
-          exact
-            ⟨by
-                intro field hfield
-                rcases Finset.mem_image.mp hfield with ⟨ref, href, rfl⟩
-                exact Graph.fieldAvailableBefore_append_node_of_true
-                  state.initialFields state.nodes event
-                  (visibleFieldRefs_available state who ref href),
-              rfl, rfl,
-              by
-                intro ref href
-                exact Graph.fieldRefVisibleTo_append_node
-                  state.initialFields state.nodes event who
-                  (visibleFieldRefs_visible state who ref href)⟩)
+        state.addCommitEvent name who guard fresh.1
       let addedLive :
           GuardLive
             ({ initialFields := added.1.initialFields,
                nodes := added.1.nodes } : Graph P L) := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addCommitEvent_initialFields,
+          BuildState.addCommitEvent_nodes]
         exact guardLive_append_event
           state.initialFields state.nodes event stateLive
           (by
@@ -2021,31 +2136,17 @@ theorem compileCore_guardLive :
         addedLive legal.2
   | _, .reveal (b := ty) name _who _source sourceProof tail,
       fresh, normalized, state, stateLive, legal =>
-      let sourceField := state.fieldOf sourceProof
-      let sem := NodeSem.reveal sourceField
       let event : EventNode P L :=
-        { ty := ty, owner := none, sem := sem }
-      let added := state.addEvent name (.pub ty) sem fresh.1 (by
-        rcases state.fieldOf_spec sourceProof with
-          ⟨sourceSpec, hsource, hty, howner⟩
-        dsimp [Graph.nodeWFAt, sem, event]
-        rw [Graph.field?_append_node_of_some
-          state.initialFields state.nodes event hsource]
-        refine
-          ⟨?_, sourceSpec, rfl, hty, ?_, rfl⟩
-        · intro field hfield
-          have hfieldEq : field = sourceField :=
-            Finset.mem_singleton.mp hfield
-          subst hfieldEq
-          exact Graph.fieldAvailableBefore_append_node_of_true
-            state.initialFields state.nodes event
-            (state.fieldOf_available sourceProof)
-        · simp [howner])
+        state.revealEvent _who sourceProof
+      let added :=
+        state.addRevealEvent name _who sourceProof fresh.1
       let addedLive :
           GuardLive
             ({ initialFields := added.1.initialFields,
                nodes := added.1.nodes } : Graph P L) := by
-        dsimp [added]
+        dsimp only [added]
+        rw [BuildState.addRevealEvent_initialFields,
+          BuildState.addRevealEvent_nodes]
         exact guardLive_append_event
           state.initialFields state.nodes event stateLive
           (by
@@ -2142,7 +2243,7 @@ output fields. -/
       program.core.normalized
       state
       NodesFinite.nil
-  exact GraphFieldFintype.ofInitialAndNodes finiteInitial finiteNodes
+  exact fieldFintypeOfInitialAndNodes finiteInitial finiteNodes
 
 /-- Checked source guard legality compiles to graph-level guard liveness. -/
 theorem compile_guardLive (program : WFProgram P L) :

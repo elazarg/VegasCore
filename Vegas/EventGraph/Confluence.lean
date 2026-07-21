@@ -23,13 +23,6 @@ specialises to a fixed per-node value assignment. The headline results are:
   resulting configuration. This is the diamond `completeNode_comm` closed under
   arbitrary reordering, i.e. the order-independence at the heart of the
   confluent-coarsening picture.
-* `scheduleComplete_eq_of_full` — any two schedules that complete *all* nodes
-  yield the *same* terminal configuration: the outcome is a function of the
-  values alone, with the schedule a vacuous argument.
-* `card_completeNode_of_not_mem` / `card_done_le` — the termination measure
-  (completed-node count strictly increases, bounded by `nodeCount`) that makes
-  the rewrite system strongly normalising, so local confluence suffices.
-
 This is the unconditional, outcome-level half of the justification. Lifting it
 to *per-player views* at intermediate cuts is a separate, finer obligation.
 -/
@@ -131,29 +124,6 @@ theorem completeNodes_getAs_of_mem (cfg : Config G)
       | inr htail =>
           exact ih (cfg.completeNode headNode headValue) hnodup.2 htail
 
-/-! ## Termination measure -/
-
-/-- Completing a fresh node grows the done-set by exactly one. -/
-theorem card_completeNode_of_not_mem (cfg : Config G)
-    {node : Fin G.nodeCount} (value : TypedValue L)
-    (h : node ∉ cfg.done) :
-    (cfg.completeNode node value).done.card = cfg.done.card + 1 := by
-  simp [Config.completeNode, Finset.card_insert_of_notMem h]
-
-/-- Completing a node only ever adds to the done-set. -/
-theorem done_subset_completeNode (cfg : Config G)
-    (node : Fin G.nodeCount) (value : TypedValue L) :
-    cfg.done ⊆ (cfg.completeNode node value).done := by
-  simp [Config.completeNode, Finset.subset_insert]
-
-/-- The done-set never has more than `nodeCount` elements: the rewrite system is
-strongly normalising. -/
-theorem card_done_le (cfg : Config G) : cfg.done.card ≤ G.nodeCount :=
-  calc cfg.done.card
-      ≤ (Finset.univ : Finset (Fin G.nodeCount)).card :=
-        Finset.card_le_card (Finset.subset_univ _)
-    _ = G.nodeCount := Finset.card_fin _
-
 /-! ## Conservativity: schedules commute -/
 
 /-- **Conservativity of the coarsening.** Permuting the schedule, with the
@@ -235,26 +205,6 @@ theorem scheduleComplete_terminal (w : Fin G.nodeCount → TypedValue L)
   rw [scheduleComplete_done]
   simp only [Config.initial, Finset.empty_union, List.mem_toFinset]
   exact hcover node
-
-/-- **Outcome confluence.** Any two schedules that complete *all* nodes, writing
-each node the same value, yield the *same* terminal configuration. The terminal
-configuration is a function of the value assignment alone; the schedule is a
-vacuous argument.
-
-Standard names: this is **Mazurkiewicz trace equivalence / partial-order
-confluence** at the configuration level (the schedule is a linearization
-artifact). Its probabilistic lift — that the outcome *law* is schedule-invariant
-under an adversarial scheduler — is the **strong-linearizability** property of the
-compilation (Golab–Higham–Woelfel). -/
-theorem scheduleComplete_eq_of_full (cfg : Config G)
-    (w : Fin G.nodeCount → TypedValue L)
-    {o₁ o₂ : List (Fin G.nodeCount)}
-    (h₁ : o₁.Nodup) (h₂ : o₂.Nodup)
-    (c₁ : ∀ node, node ∈ o₁) (c₂ : ∀ node, node ∈ o₂) :
-    cfg.scheduleComplete w o₁ = cfg.scheduleComplete w o₂ :=
-  scheduleComplete_perm cfg w
-    ((List.perm_ext_iff_of_nodup h₁ h₂).mpr
-      (fun a => ⟨fun _ => c₂ a, fun _ => c₁ a⟩)) h₁
 
 end Config
 

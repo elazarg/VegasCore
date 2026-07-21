@@ -523,20 +523,6 @@ theorem CommitAvailable.persist_after_other_commit_write
     h₁.persist_after_other_ready_write
       hwf step₂.row_get step₂.ready written hne
 
-theorem CommitAvailable.persist_after_other_commit
-    {G : Graph Player L} (hwf : G.WF)
-    {cfg : Config G}
-    {who₁ who₂ : Player}
-    {action₁ : CommitAction G who₁}
-    {action₂ : CommitAction G who₂}
-    (h₁ : CommitAvailable G cfg who₁ action₁)
-    (h₂ : CommitAvailable G cfg who₂ action₂)
-    (hne : action₁.node ≠ action₂.node) :
-    CommitAvailable G
-      (cfg.completeNode action₂.node action₂.value)
-      who₁ action₁ :=
-  h₁.persist_after_other_commit_write hwf h₂ action₂.value hne
-
 /-- Internal event availability persists after another ready node writes its
 canonical output field. -/
 theorem InternalAvailable.persist_after_other_ready_write
@@ -810,18 +796,6 @@ theorem NodeValueValid.completeNode_of_not_done
       · simpa [Config.completeNode] using
           (Store.getAs_set_ne cfg.store hsourceNe written row.ty).trans
             hsource
-
-/-- Completing two distinct ready events with fixed output values is
-schedule-independent at the raw graph configuration level.  Later execution
-theorems refine concrete commit/sample/reveal steps to this common shape. -/
-theorem complete_two_distinct_nodes_comm
-    {G : Graph Player L} {cfg : Config G}
-    {left right : Fin G.nodeCount}
-    (valueLeft valueRight : TypedValue L)
-    (hne : left ≠ right) :
-    (cfg.completeNode left valueLeft).completeNode right valueRight =
-      (cfg.completeNode right valueRight).completeNode left valueLeft :=
-  Config.completeNode_comm cfg valueLeft valueRight hne
 
 /-- Every supported available primitive event completes its own graph node
 with a concrete typed value. -/
@@ -1148,30 +1122,6 @@ theorem supported_available_events_diamond
   · exact
       (Config.completeNode_comm cfg
         leftWritten rightWritten hne).symm
-
-/-- Supported completions of two distinct available primitive events commute
-at the raw configuration level. -/
-theorem supported_available_events_complete_comm
-    {G : Graph Player L} {cfg leftNext rightNext : Config G}
-    (left right : AvailableEvent G cfg)
-    (hne : left.node ≠ right.node)
-    (hleft :
-      leftNext ∈ (stepAvailableEvent G cfg left).support)
-    (hright :
-      rightNext ∈ (stepAvailableEvent G cfg right).support) :
-    ∃ leftWritten rightWritten : TypedValue L,
-      leftNext = cfg.completeNode left.node leftWritten ∧
-      rightNext = cfg.completeNode right.node rightWritten ∧
-      leftNext.completeNode right.node rightWritten =
-        rightNext.completeNode left.node leftWritten := by
-  rcases stepAvailableEvent_support_completeNode left hleft with
-    ⟨leftWritten, hleftEq⟩
-  rcases stepAvailableEvent_support_completeNode right hright with
-    ⟨rightWritten, hrightEq⟩
-  refine ⟨leftWritten, rightWritten, hleftEq, hrightEq, ?_⟩
-  subst leftNext
-  subst rightNext
-  exact Config.completeNode_comm cfg leftWritten rightWritten hne
 
 theorem Config.done_ssubset_completeNode
     {G : Graph Player L} {cfg : Config G}
@@ -1709,23 +1659,6 @@ noncomputable instance instFintype
         rfl }
   exact Fintype.ofEquiv snapshot e
 
-/-- Lookup a public observation by an external typed field reference. Invalid
-or type-mismatched references are absent. -/
-noncomputable def value? (obs : PublicObservation G)
-    (ref : FieldRef L) : Option (L.Val ref.ty) := by
-  classical
-  exact
-    if hfield : ref.field < G.fieldCount then
-      let field : Fin G.fieldCount := ⟨ref.field, hfield⟩
-      if hty : (G.fieldRow field).ty = ref.ty then
-        match obs.fieldValue? field with
-        | none => none
-        | some value => some (cast (congrArg L.Val hty) value)
-      else
-        none
-    else
-      none
-
 end PublicObservation
 
 /-- Public observation induced by a graph configuration. -/
@@ -1854,30 +1787,6 @@ noncomputable def observe (G : Graph Player L) (cfg : Config G)
             else
               none
         | _ => none }
-
-theorem publicObserve_completeNode_comm
-    (G : Graph Player L) (cfg : Config G)
-    {left right : Fin G.nodeCount}
-    (valueLeft valueRight : TypedValue L)
-    (hne : left ≠ right) :
-    publicObserve G
-        ((cfg.completeNode left valueLeft).completeNode right valueRight) =
-      publicObserve G
-        ((cfg.completeNode right valueRight).completeNode left valueLeft) := by
-  rw [Config.completeNode_comm cfg valueLeft valueRight hne]
-
-theorem observe_completeNode_comm
-    (G : Graph Player L) (cfg : Config G)
-    {left right : Fin G.nodeCount}
-    (valueLeft valueRight : TypedValue L)
-    (hne : left ≠ right) (who : Player) :
-    observe G
-        ((cfg.completeNode left valueLeft).completeNode right valueRight)
-        who =
-      observe G
-        ((cfg.completeNode right valueRight).completeNode left valueLeft)
-        who := by
-  rw [Config.completeNode_comm cfg valueLeft valueRight hne]
 
 end EventGraph
 

@@ -238,10 +238,10 @@ main semantic paths:
 | `Vegas.Examples.DependencySemantics` | compiler dependency footprints, commit choice footprints, raw graph validation |
 | `Vegas.Examples.MatchingPennies` | simultaneous hidden commits, finite frontier games, zero-sum payoff table |
 | `Vegas.Examples.MontyHall` | staged information flow, relevant reveal timing, FOSG/EFG payoff adequacy |
-| `Vegas.Examples.SolutionConcepts` | Nash, mixed Nash, dominance, welfare, security, saddle-point, Vickrey truthfulness |
+| `Vegas.Examples.SolutionConcepts` | Nash, mixed Nash, dominance, security, potential-game bridges, Vickrey truthfulness |
 | `Vegas.Examples.EFGTranslation` | FOSG-to-EFG serialized decision-spine shape |
 | `Vegas.Examples.Claims` | paper-facing checked-program claim theorems on concrete games |
-| `Vegas.Examples.Refinement` | identity and encoded non-identity runtime refinement smoke tests |
+| `Vegas.Examples.Refinement` | a compiled constant-payoff trace law, audited runtime adequacy, and encoded non-identity refinement checks |
 
 ## EventGraph Model
 
@@ -271,24 +271,20 @@ administrative aliases.
 
 ## Runtime Refinement Boundary
 
-Lower runtimes should refine primitive EventGraph/Machine execution, not the
-frontier game presentation. The generic hook for this is
-`Machine.AvailableStep`: an implementation step is relevant to the abstract
-protocol only when it projects to a semantically available primitive graph step
-or to an explicit stutter/administrative step.
+Lower runtimes refine primitive EventGraph/Machine execution rather than the
+frontier game presentation. `Machine.StochasticRefinement` records the
+probability-preserving machine-to-machine projection, including state, event
+batches, observations, terminal outcomes, and payoffs. `Machine.AvailableStep`
+is the support-level vocabulary used by runtime constructions that expose
+administrative or message-in-flight transitions.
 
 Target runtimes must supply their own value codecs, message formats, concrete
 commitment representation, and realization policy for abstract samples. Those
 are backend proof obligations; they are not part of the language or EventGraph
-IR. `Runtime.ValueCodec` records the value/wire round-trip and soundness
-obligations without choosing a wire format. `Machine.StepRealizer` records the
-deterministic transcript replay theorem needed when a concrete runtime realizes
-an abstract PMF-valued step. `Machine.StochasticRefinement` records the
-probability-preserving machine-to-machine projection, including state, batch,
-observation, terminal outcome, and payoff preservation. Its support-level view
-is `Machine.AvailableStepSimulation`, where administrative implementation
-events may project to stutter. `Machine.RefinementKernelGame` lifts such a
-machine refinement to bounded event-batch trace kernel games: profile-indexed
+IR. `Runtime.ValueCodec` records the encoding required to place typed values on
+a backend wire without choosing a wire format. `Machine.RefinementKernelGame`
+lifts a stochastic machine refinement to bounded event-batch trace kernel
+games: profile-indexed
 specification laws and compatible implementation laws induce a game morphism,
 and bounded payoff hypotheses give the EU-preserving morphism needed for Nash
 pullback.
@@ -299,8 +295,10 @@ runtime bridge exposes audited adequacy constructors for behavioral, pure, and
 product mixed-pure frontier strategy surfaces.
 The checked-program runtime bridge deliberately requires a trace-adequate
 specification event-batch law. Machine traces do not by themselves reconstruct
-the full frontier round-view strategy history, so that law is a backend or
-analysis obligation unless a later adapter supplies a canonical policy.
+the full frontier round-view strategy history, so a general law remains a
+backend or analysis obligation. `Vegas.Examples.Refinement` constructs the law
+for a concrete compiled terminal game and carries it through the audited
+runtime, establishing the base case without an assumed law.
 
 ## Repository Map
 
@@ -323,8 +321,9 @@ Vegas/
   Presentation/            -- FOSG/EFG presentations of native round views
   Export/                  -- finite kernel-game export tables
   Runtime/                 -- runtime-general value codec proof interfaces
+  Runtime/TraceAdequacy.lean -- compiled-game/runtime trace proof framework
   Theorems/                -- theorem index over the checked-program semantics
-  Spec.lean                -- trusted definition index (audit surface)
+  Spec.lean                -- research-spine definition and theorem index
   Examples/                -- build-tested example modules
 docs/semantics-spine.md    -- theorem-name map for paper-facing claims
 

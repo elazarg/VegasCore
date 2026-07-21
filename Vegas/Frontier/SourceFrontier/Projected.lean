@@ -18,8 +18,6 @@ turns a frontier behavioral law into a genuine source query PMF.
 namespace Vegas
 
 namespace ToEventGraph
-namespace SourceFrontier
-namespace Projected
 
 open GameTheory
 
@@ -342,8 +340,6 @@ theorem currentNodeValueLaw_support_some
   | some value =>
       exact ⟨value, rfl⟩
 
-end Projected
-end SourceFrontier
 end ToEventGraph
 
 end Vegas

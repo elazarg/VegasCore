@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Frontier.SourceFrontier.Conditioned
+import Vegas.Frontier.SourceFrontier.Commit
 
 /-!
 # Frontier query laws at source commits
@@ -18,8 +18,6 @@ the source commit guard.
 namespace Vegas
 
 namespace ToEventGraph
-namespace SourceFrontier
-namespace Query
 
 open GameTheory
 
@@ -100,7 +98,7 @@ theorem sourceLegal_of_projected_nodeValue_support
     let sourceValue : L.Val b :=
       cast
         (congrArg L.Val
-          (CommitBlock.currentNodeType program replay hnode))
+          (currentNodeType program replay hnode))
         value
     evalGuard (Player := P) (L := L) guard sourceValue
       ((env.toView who).eraseEnv) = true := by
@@ -108,7 +106,7 @@ theorem sourceLegal_of_projected_nodeValue_support
   let view :=
     EventGraph.frontierRoundView
       (primitiveMachineSpec compiled) presentation semantics
-  let hty := CommitBlock.currentNodeType program replay hnode
+  let hty := currentNodeType program replay hnode
   let sourceValue : L.Val b := cast (congrArg L.Val hty) value
   let project :
       Machine.RoundView.BoundedLegalAction view horizon h.lastState →
@@ -159,11 +157,9 @@ theorem sourceLegal_of_projected_nodeValue_support
         { node := node, value := { ty := b, value := sourceValue } } := by
     simpa [htyped] using hcommitNode
   exact
-    CommitBlock.sourceLegal_of_available_after_internalClosure
+    sourceLegal_of_available_after_internalClosure
       program replay hnode sourceValue fuel hsupport hcommit
 
-end Query
-end SourceFrontier
 end ToEventGraph
 
 end Vegas

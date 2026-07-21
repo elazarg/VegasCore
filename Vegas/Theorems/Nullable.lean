@@ -6,56 +6,12 @@ import GameTheory.Concepts.Dominance.DominanceNash
 # Nullable lowering facts
 
 Nullable surface commitments are represented by the ordinary core guard
-interface.  The facts in `Vegas.Language.Nullable` are re-exported here as part of
-the checked-source theorem surface.  The game-theoretic repair facts are
-parametric: a particular nullable game supplies the proof that its abort moves
-are strictly dominated, and then the generic Nash-avoidance theorem applies.
+interface. The game-theoretic repair facts are parametric: a particular nullable
+game supplies the proof that its abort moves are strictly dominated, and then
+the generic Nash-avoidance theorem applies.
 -/
 
 namespace Vegas
-
-namespace VegasLang
-
-/-- The nullable action synthesized by lowering is always guard-legal:
-choosing `none` satisfies the compiled guard independently of the source guard.
--/
-theorem nullableGuard_accepts_none
-    {P : Type} [DecidableEq P]
-    {Γ : VCtx P simpleExpr} {secret : VarId} {b : BaseTy}
-    [DefaultVal b]
-    (R : Expr ((secret, b) :: eraseVCtx Γ) .bool)
-    (env : Env Val (eraseVCtx Γ)) :
-    evalGuard (Player := P) (L := simpleExpr)
-      (Expr.nullableCommitGuard R) Option.none env = true :=
-  nullableGuard_none_legal R env
-
-/-- On ordinary source values, a lowered nullable guard agrees with the
-original guard.
--/
-theorem nullableGuard_some_agrees
-    {P : Type} [DecidableEq P]
-    {Γ : VCtx P simpleExpr} {secret : VarId} {b : BaseTy}
-    [DefaultVal b]
-    (R : Expr ((secret, b) :: eraseVCtx Γ) .bool)
-    (value : Val b) (env : Env Val (eraseVCtx Γ)) :
-    evalGuard (Player := P) (L := simpleExpr)
-        (Expr.nullableCommitGuard R) (some value) env =
-      evalGuard (Player := P) (L := simpleExpr) R value env :=
-  nullableGuard_some_eq R value env
-
-/-- Every lowered nullable guard admits at least one legal action. -/
-theorem nullableGuard_has_legal_action
-    {P : Type} [DecidableEq P]
-    {Γ : VCtx P simpleExpr} {secret : VarId} {b : BaseTy}
-    [DefaultVal b]
-    (R : Expr ((secret, b) :: eraseVCtx Γ) .bool) :
-    ∀ env : Env Val (eraseVCtx Γ),
-      ∃ action : Val (.option b),
-        evalGuard (Player := P) (L := simpleExpr)
-          (Expr.nullableCommitGuard R) action env = true :=
-  nullableGuard_satisfiable R
-
-end VegasLang
 
 namespace WFProgram
 

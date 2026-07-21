@@ -73,75 +73,6 @@ def StepRel (M : Machine Player)
     (event : M.Event) (source target : M.State) : Prop :=
   M.step event source target ≠ 0
 
-/-- Event/state prefix for the asynchronous machine.
-
-The invariant records the execution-shape fact: a prefix with `n` primitive
-events has `n + 1` states. Derived views can use this as their world type so
-observations and strategy recall are attached to the same execution object as
-the machine run. -/
-structure RunPrefix (M : Machine Player) where
-  events : List M.Event
-  states : List M.State
-  length_eq : states.length = events.length + 1
-
-namespace RunPrefix
-
-variable {M : Machine Player}
-
-@[ext] theorem ext
-    {left right : M.RunPrefix}
-    (hevents : left.events = right.events)
-    (hstates : left.states = right.states) :
-    left = right := by
-  cases left
-  cases right
-  cases hevents
-  cases hstates
-  rfl
-
-/-- Initial asynchronous machine prefix. -/
-def init (M : Machine Player) : M.RunPrefix where
-  events := []
-  states := [M.init]
-  length_eq := by simp
-
-/-- Endpoint state of an asynchronous machine prefix. -/
-def lastState (pref : M.RunPrefix) : M.State :=
-  pref.states.getLast?.getD M.init
-
-/-- Extend a prefix by one primitive event and one successor state. -/
-def snoc (pref : M.RunPrefix) (event : M.Event)
-    (next : M.State) : M.RunPrefix where
-  events := pref.events ++ [event]
-  states := pref.states ++ [next]
-  length_eq := by
-    simp [pref.length_eq]
-
-@[simp] theorem init_events (M : Machine Player) :
-    (RunPrefix.init M).events = [] := rfl
-
-@[simp] theorem init_states (M : Machine Player) :
-    (RunPrefix.init M).states = [M.init] := rfl
-
-@[simp] theorem init_lastState (M : Machine Player) :
-    (RunPrefix.init M).lastState = M.init := rfl
-
-@[simp] theorem snoc_events
-    (pref : M.RunPrefix) (event : M.Event) (next : M.State) :
-    (pref.snoc event next).events = pref.events ++ [event] := rfl
-
-@[simp] theorem snoc_states
-    (pref : M.RunPrefix) (event : M.Event) (next : M.State) :
-    (pref.snoc event next).states = pref.states ++ [next] := rfl
-
-@[simp] theorem snoc_lastState
-    (pref : M.RunPrefix) (event : M.Event) (next : M.State) :
-    (pref.snoc event next).lastState = next := by
-  unfold lastState snoc
-  simp
-
-end RunPrefix
-
 @[simp] theorem step_play
     (M : Machine Player) (player : Player)
     (action : M.Action player) (state : M.State) :
@@ -163,42 +94,6 @@ end RunPrefix
     (M : Machine Player) (state : M.State) (event : M.Internal) :
     M.EventAvailable state (.internal event) ↔
       event ∈ M.availableInternal state := Iff.rfl
-
-/-- A law for selecting the next primitive event at a state.
-
-This is presentation data, not part of the machine. Different traces,
-checkpoint views, runtime schedulers, or tests can supply different laws and
-then prove the preservation theorem they need. -/
-abbrev EventLaw (M : Machine Player) : Type :=
-  M.State → PMF M.Event
-
-/-- An event law is legal when, before terminal states, it puts mass only on
-currently available primitive events. Terminal states have no semantic next
-event; trace users should either stop there or rely on total machine steps for
-post-terminal stutter behavior. -/
-def IsLegalEventLaw (M : Machine Player) (law : M.EventLaw) : Prop :=
-  ∀ (state : M.State), ¬ M.terminal state → ∀ {event : M.Event},
-    event ∈ (law state).support → M.EventAvailable state event
-
-/-- Legal event laws for the asynchronous machine. -/
-abbrev LegalEventLaw (M : Machine Player) : Type :=
-  { law : M.EventLaw // M.IsLegalEventLaw law }
-
-namespace LegalEventLaw
-
-/-- Forget the legality proof of an event law. -/
-def toEventLaw (M : Machine Player) (law : M.LegalEventLaw) : M.EventLaw :=
-  law.val
-
-theorem eventAvailable_of_mem_support
-    (M : Machine Player) (law : M.LegalEventLaw)
-    (state : M.State) {event : M.Event}
-    (hterminal : ¬ M.terminal state)
-    (hmem : event ∈ (law.toEventLaw M state).support) :
-    M.EventAvailable state event :=
-  law.2 state hterminal hmem
-
-end LegalEventLaw
 
 end Machine
 

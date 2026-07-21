@@ -600,7 +600,7 @@ theorem claim_source_legal_value_extends_to_available_frontier_action_after_inte
                   program replay hnode).symm)
               value) := by
   exact
-    SourceFrontier.Action.sourceLegal_extends_to_available_frontierAction_after_internalClosure
+    sourceLegal_extends_to_available_frontierAction_after_internalClosure
       program replay hnode value hguard fuel hsupport
 
 omit [Fintype P] in

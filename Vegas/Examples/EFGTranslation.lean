@@ -17,6 +17,7 @@ namespace Vegas
 namespace Examples
 
 open GameTheory
+open scoped ToEventGraph.FrontierGameSemantics.EFGInstances
 
 namespace PrisonersDilemma
 
@@ -32,34 +33,6 @@ opportunities and then the bridge chance node for the first frontier round. -/
 theorem plainEFG_first_round_shape :
     DecisionSpineThenChance (Fintype.card Player) plainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change DecisionSpineThenChance (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG
@@ -79,34 +52,6 @@ theorem plainEFG_first_round_shape :
 theorem plainEFG_full_tree_shape :
     FullTreeShape (Fintype.card Player) plainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change FullTreeShape (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG
@@ -134,36 +79,6 @@ theorem plainEFG_first_round_shape :
     DecisionSpineThenChance
       (Fintype.card Player) matchingPenniesPlainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (matchingPenniesChecked.frontierSemantics.behavioral.view.Act
-            player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile matchingPenniesChecked.core)).Obs
-              player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile matchingPenniesChecked.core)).Public :=
-    Classical.decEq _
   change DecisionSpineThenChance (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := matchingPenniesChecked.frontierSemantics.behavioral.view.toFOSG
@@ -184,36 +99,6 @@ theorem plainEFG_full_tree_shape :
     FullTreeShape
       (Fintype.card Player) matchingPenniesPlainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (matchingPenniesChecked.frontierSemantics.behavioral.view.Act
-            player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile matchingPenniesChecked.core)).Obs
-              player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      matchingPenniesChecked.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile matchingPenniesChecked.core)).Public :=
-    Classical.decEq _
   change FullTreeShape (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := matchingPenniesChecked.frontierSemantics.behavioral.view.toFOSG
@@ -241,34 +126,6 @@ theorem plainEFG_first_round_shape :
     DecisionSpineThenChance
       (Fintype.card Player) checkedProgram.frontierPlainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change DecisionSpineThenChance (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG
@@ -289,34 +146,6 @@ theorem plainEFG_full_tree_shape :
     FullTreeShape
       (Fintype.card Player) checkedProgram.frontierPlainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change FullTreeShape (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG
@@ -344,34 +173,6 @@ active move support is determined by the frontier legality relation. -/
 theorem plainEFG_first_round_shape :
     DecisionSpineThenChance (Fintype.card Player) plainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change DecisionSpineThenChance (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG
@@ -391,34 +192,6 @@ theorem plainEFG_first_round_shape :
 theorem plainEFG_full_tree_shape :
     FullTreeShape (Fintype.card Player) plainEFG.tree := by
   classical
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.primitiveStateFintype
-      checkedProgram.frontierSemantics
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.actFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          (checkedProgram.frontierSemantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.obsFintype
-      checkedProgram.frontierSemantics
-  letI :
-      ∀ player,
-        DecidableEq
-          ((ToEventGraph.PrimitiveMachine
-            (ToEventGraph.compile checkedProgram.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI :=
-    ToEventGraph.FrontierGameSemantics.EFGInstances.publicFintype
-      checkedProgram.frontierSemantics
-  letI :
-      DecidableEq
-        (ToEventGraph.PrimitiveMachine
-          (ToEventGraph.compile checkedProgram.core)).Public :=
-    Classical.decEq _
   change FullTreeShape (Fintype.card Player)
     (GameTheory.FOSG.AugmentedEFGBridge.Tree.fromHistory
         (G := checkedProgram.frontierSemantics.behavioral.view.toFOSG

@@ -22,8 +22,6 @@ equality.
 namespace Vegas
 
 namespace ToEventGraph
-namespace SourceFrontier
-namespace CommitBlock
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
@@ -217,8 +215,6 @@ theorem sourceLegal_of_frontierActionValue_after_internalClosure
     sourceLegal_of_available_after_internalClosure
       program replay hnode sourceValue fuel hsupport hcommit
 
-end CommitBlock
-end SourceFrontier
 end ToEventGraph
 
 end Vegas

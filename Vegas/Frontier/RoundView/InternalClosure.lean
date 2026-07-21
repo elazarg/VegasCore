@@ -893,45 +893,6 @@ theorem internalClosureAfterReady_support_cert
   exact readyInternalEvents_ne_nil_of_nonempty compiled hinternal hheadNil
 
 omit [Fintype P] in
-theorem commitAvailable_persist_after_internalClosureAfterReady_support
-    (compiled : CompiledProgram P L)
-    {state dst : (PrimitiveMachine compiled).State}
-    (hinternal :
-      (EventGraph.readyInternalNodes compiled.graph state.1).Nonempty)
-    {who : P} {action : EventGraph.CommitAction compiled.graph who}
-    (hcommit :
-      EventGraph.CommitAvailable compiled.graph state.1 who action)
-    (hsupport :
-      dst ∈ (internalClosureAfterReady compiled state).support) :
-    EventGraph.CommitAvailable compiled.graph dst.1 who action := by
-  rcases internalClosureAfterReady_support_cert
-      compiled hinternal hsupport with
-    ⟨batch, hinternalOnly, hrun, _hne⟩
-  exact
-    commitAvailable_persist_after_internalOnly_availableRunFrom
-      compiled hcommit hinternalOnly hrun
-
-omit [Fintype P] in
-theorem commitAvailable_reflect_before_internalClosureAfterReady_support
-    (compiled : CompiledProgram P L)
-    {state dst : (PrimitiveMachine compiled).State}
-    (hinternal :
-      (EventGraph.readyInternalNodes compiled.graph state.1).Nonempty)
-    {who : P} {action : EventGraph.CommitAction compiled.graph who}
-    (hready : EventGraph.Ready compiled.graph state.1 action.node)
-    (hsupport :
-      dst ∈ (internalClosureAfterReady compiled state).support)
-    (hcommit :
-      EventGraph.CommitAvailable compiled.graph dst.1 who action) :
-    EventGraph.CommitAvailable compiled.graph state.1 who action := by
-  rcases internalClosureAfterReady_support_cert
-      compiled hinternal hsupport with
-    ⟨batch, hinternalOnly, hrun, _hne⟩
-  exact
-    commitAvailable_reflect_before_internalOnly_availableRunFrom
-      compiled hready hinternalOnly hrun hcommit
-
-omit [Fintype P] in
 theorem internalClosureAfterReady_support_closed
     (compiled : CompiledProgram P L)
     {state dst : (PrimitiveMachine compiled).State}

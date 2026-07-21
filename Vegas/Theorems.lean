@@ -10,6 +10,7 @@ import Vegas.Theorems.Progress
 import Vegas.Theorems.Visibility
 import Vegas.Theorems.Outcome
 import Vegas.Theorems.Strategy
+import Vegas.Theorems.Transport
 import Vegas.Theorems.Nullable
 import Vegas.Theorems.Kuhn
 import Vegas.Theorems.FOSG

@@ -5,7 +5,6 @@ import Vegas.Foundation.Basic
 import Vegas.Core.Basic
 import Vegas.Core.FiniteDomain
 import Vegas.Core.ExprSimple
-import Vegas.Core.Simple
 import Vegas.Core.Obligations
 import Vegas.Core.Scope
 import Vegas.Core.Finite
@@ -32,7 +31,6 @@ import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Linearization
 import Vegas.EventGraph.VisibleOrder
 import Vegas.EventGraph.Fence
-import Vegas.EventGraph.Noninterference
 import Vegas.EventGraph.FiniteState
 import Vegas.EventGraph.Frontier
 import Vegas.EventGraph.Batch
@@ -60,10 +58,14 @@ import Vegas.Export
 -- Runtime: backend-facing proof interfaces.
 import Vegas.Runtime.Codec
 import Vegas.Runtime.CodecMachine
+import Vegas.Runtime.TraceAdequacy
 
 -- Audit surface: curated definition and theorem indexes.
 import Vegas.Spec
 import Vegas.Theorems
+
+-- Build-tested end-to-end examples.
+import Vegas.Examples
 
 -- Upstream game-theory analysis vocabulary this project reasons with.
 import GameTheory.Concepts.Equilibrium.SolutionConcepts

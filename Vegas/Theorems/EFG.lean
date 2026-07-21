@@ -201,7 +201,7 @@ theorem exported_frontier_plain_efg_sourcePayoff_udist_behavioral
     (Export.frontierPlainEFG program).payoffGame.udist
         (Export.frontierPlainEFGProfile program profile) =
       program.behavioralFrontierGame.udist profile :=
-  Export.frontierPlainEFG_sourcePayoffGame_udist_behavioralGame
+  Export.frontierPlainEFG_payoffGame_udist_behavioralGame
     program profile
 
 end WFProgram

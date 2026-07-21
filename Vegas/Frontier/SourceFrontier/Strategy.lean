@@ -23,8 +23,6 @@ bridge used by the full source/frontier profile translation:
 namespace Vegas
 
 namespace ToEventGraph
-namespace SourceFrontier
-namespace Strategy
 
 open GameTheory
 
@@ -56,7 +54,7 @@ noncomputable def nodeOptionLawOfActionDist
     (node : Fin (compile program.core).graph.nodeCount) :
     PMF (Option (L.Val (((compile program.core).graph.nodeRow node).ty))) :=
   Math.ProbabilityMassFunction.pushforward actionLaw
-    (Projected.nodeValueProjection
+    (nodeValueProjection
       (primitiveMachineSpec (compile program.core))
       presentation semantics (who := who) node)
 
@@ -115,15 +113,15 @@ theorem nodeOptionLawOfActionDist_support_some
   cases result with
   | none =>
       exact False.elim
-        (Projected.projected_nodeValue_none_not_support_of_ready_active
+        (projected_nodeValue_none_not_support_of_ready_active
           (G := (compile program.core).graph)
           (primitiveMachineSpec (compile program.core))
           presentation semantics h actionLaw hactive
-          (Projected.currentNode_readyCommitNode_after_internalClosure
+          (currentNode_readyCommitNode_after_internalClosure
             program replay hnode fuel hsupport)
           (by
             simpa [nodeOptionLawOfActionDist,
-              Projected.nodeValueProjection] using hresultSupport))
+              nodeValueProjection] using hresultSupport))
   | some value =>
       exact ⟨value, rfl⟩
 
@@ -179,7 +177,7 @@ theorem sourceLegal_of_nodeOptionLawOfActionDist_support
     let sourceValue : L.Val b :=
       cast
         (congrArg L.Val
-          (CommitBlock.currentNodeType program replay hnode))
+          (currentNodeType program replay hnode))
         value
     evalGuard (Player := P) (L := L) guard sourceValue
       ((env.toView who).eraseEnv) = true := by
@@ -187,12 +185,12 @@ theorem sourceLegal_of_nodeOptionLawOfActionDist_support
   let view :=
     EventGraph.frontierRoundView
       (primitiveMachineSpec compiled) presentation semantics
-  let hty := CommitBlock.currentNodeType program replay hnode
+  let hty := currentNodeType program replay hnode
   let sourceValue : L.Val b := cast (congrArg L.Val hty) value
   let project :
       Machine.RoundView.BoundedLegalAction view horizon h.lastState →
         Option (L.Val ((compile program.core).graph.nodeRow node).ty) :=
-    Projected.nodeValueProjection
+    nodeValueProjection
       (primitiveMachineSpec (compile program.core))
       presentation semantics (who := who) node
   have hvalueSupport' :
@@ -205,7 +203,7 @@ theorem sourceLegal_of_nodeOptionLawOfActionDist_support
   rcases (PMF.mem_support_map_iff project actionLaw
       (some value)).mp hvalueSupport' with
     ⟨action, _hactionSupport, hproject⟩
-  dsimp [project, Projected.nodeValueProjection] at hproject
+  dsimp [project, nodeValueProjection] at hproject
   have hcommitNodeRaw :
       EventGraph.CommitAvailable (compile program.core).graph
         h.lastState.state.1 who
@@ -236,7 +234,7 @@ theorem sourceLegal_of_nodeOptionLawOfActionDist_support
         { node := node, value := { ty := b, value := sourceValue } } := by
     simpa [htyped] using hcommitNode
   exact
-    CommitBlock.sourceLegal_of_available_after_internalClosure
+    sourceLegal_of_available_after_internalClosure
       program replay hnode sourceValue fuel hsupport hcommit
 
 /-- Source commit-value law induced by an arbitrary distribution over legal
@@ -310,7 +308,7 @@ noncomputable def sourceCommitValueLawOfActionDist
       let sourceValue : L.Val b :=
         cast
           (congrArg L.Val
-            (CommitBlock.currentNodeType program replay hnode))
+            (currentNodeType program replay hnode))
           value
       have hsomeSupport :
           some value ∈ optionLaw.support := by
@@ -478,7 +476,7 @@ noncomputable def conditionedNodeSourceCommitValueLaw
           ((env.toView who).eraseEnv) = true } :=
   conditionedSourceCommitValueLaw
     program presentation semantics σ h hterm
-    (Projected.nodeValueProjection
+    (nodeValueProjection
       (primitiveMachineSpec (compile program.core))
       presentation semantics (who := prevWho) prevNode)
     prevValue
@@ -657,7 +655,7 @@ theorem sourceLegal_of_currentNodeOptionLaw_support
     let sourceValue : L.Val b :=
       cast
         (congrArg L.Val
-          (CommitBlock.currentNodeType program replay hnode))
+          (currentNodeType program replay hnode))
         value
     evalGuard (Player := P) (L := L) guard sourceValue
       ((env.toView who).eraseEnv) = true := by
@@ -744,8 +742,6 @@ noncomputable def currentSourceCommitValueLaw
         horizon σ h hterm)
       replay hnode fuel hsupport hactive
 
-end Strategy
-end SourceFrontier
 end ToEventGraph
 
 end Vegas

@@ -141,16 +141,6 @@ theorem frontierFOSG_historyGame_udist_behavioralGame
     program.frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralGame
       profile
 
-/-- The exported FOSG history game has the source payoff utility law of the
-native behavioral frontier game. -/
-theorem frontierFOSG_sourcePayoffGame_udist_behavioralGame
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    (frontierFOSG program).historyGame.udist
-        (frontierFOSGProfile program profile) =
-      program.behavioralFrontierGame.udist profile :=
-  frontierFOSG_historyGame_udist_behavioralGame program profile
-
 /-- Every exported FOSG profile has the same joint utility
 distribution as its native reachable frontier restriction. -/
 theorem frontierFOSG_historyGame_udist_restrictedBehavioralGame
@@ -163,16 +153,6 @@ theorem frontierFOSG_historyGame_udist_restrictedBehavioralGame
     program
       |>.frontierFOSGMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
         profile
-
-/-- Every exported FOSG profile has the source payoff utility law of its
-native reachable frontier restriction. -/
-theorem frontierFOSG_sourcePayoffGame_udist_restrictedBehavioralGame
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : (frontierFOSG program).historyGame.Profile) :
-    (frontierFOSG program).historyGame.udist profile =
-      program.behavioralFrontierGame.udist
-        (frontierFOSGRestrictedProfile program profile) :=
-  frontierFOSG_historyGame_udist_restrictedBehavioralGame program profile
 
 /-- The FOSG export has the same joint utility distribution as
 the product mixed pure frontier profile induced by Kuhn realization. -/

@@ -606,25 +606,6 @@ noncomputable def legalActionOfBoundedLegalAction
   rw [historyOfBoundedHistory_lastState]
   exact action.2
 
-/-- Repackage a legal FOSG action at a translated history as a native bounded
-legal action. -/
-noncomputable def boundedLegalActionOfLegalAction
-    (h : (view.toFOSG horizon cutoff).History)
-    (action : (view.toFOSG horizon cutoff).LegalAction h.lastState) :
-    view.BoundedLegalAction horizon
-      (boundedHistoryOfHistory view horizon cutoff h).lastState := by
-  refine ⟨action.1, ?_⟩
-  have hlegal :
-      JointActionLegal view.Act (view.boundedActive horizon)
-        (view.boundedTerminal horizon) (view.boundedAvailableActions horizon)
-        h.lastState action.1 := by
-    simpa [toFOSG] using action.2
-  change JointActionLegal view.Act (view.boundedActive horizon)
-    (view.boundedTerminal horizon) (view.boundedAvailableActions horizon)
-    (boundedHistoryOfHistory view horizon cutoff h).lastState action.1
-  rw [boundedHistoryOfHistory_lastState]
-  exact hlegal
-
 /-- Repackage a legal FOSG action over a native translated history back to the
 native action surface. -/
 noncomputable def boundedLegalActionOfLegalActionAtBoundedHistory

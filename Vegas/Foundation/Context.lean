@@ -89,20 +89,6 @@ theorem Env.get_eq_of_nodup {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
     env x τ h₁ = env x τ h₂ := by
   rw [HasVar.eq_of_nodup hnodup h₁ h₂]
 
-/-- Construct a `HasVar` from list membership. Recurses on the context and
-case-splits on entry equality at each step, so `[DecidableEq Ty]` is needed
-to extract computational data from the `Prop`-valued membership proof. The
-sole in-tree call site has `Ty = L.Ty` for `L : IExpr`, where `decEqTy` is
-already an instance. -/
-def HasVar.ofMem {Ty : Type} [DecidableEq Ty] {Γ : Ctx Ty}
-    {x : VarId} {τ : Ty} (h : (x, τ) ∈ Γ) : HasVar Γ x τ := by
-  induction Γ with
-  | nil => exact absurd h (by simp)
-  | cons a Γ' ih =>
-    by_cases heq : a = (x, τ)
-    · subst heq; exact .here
-    · exact .there (ih (List.mem_of_ne_of_mem (Ne.symm heq) h))
-
 namespace Env
 
 def empty {Ty : Type} (Val : Ty → Type) : Env Val ([] : Ctx Ty) :=
@@ -141,9 +127,7 @@ end Env
 
 /-- Two environments agree on a set of variable identifiers. The vocabulary
 in which `IExpr`'s dependency-soundness laws are phrased: if two environments
-agree on `exprDeps e`, then `e` evaluates the same way in both. The
-visibility-aware specialization `ObsEq` (defined in `Scope.lean`) restricts
-the agreement set to the variables visible to a given player. -/
+agree on `exprDeps e`, then `e` evaluates the same way in both. -/
 def AgreesOn {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
     (ρ₁ ρ₂ : Env Val Γ) (xs : Finset VarId) : Prop :=
   ∀ x τ (h : HasVar Γ x τ), x ∈ xs → ρ₁ x τ h = ρ₂ x τ h

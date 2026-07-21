@@ -90,14 +90,6 @@ theorem orderTrace_graphOwners_eq_instrOwners {Γ : VCtx P L}
 
 end VegasCore
 
-/-- The output type of each instruction's node: the type of the bound variable.
-This is the type the corresponding graph node declares. -/
-def VegasCore.instrTypes {Γ : VCtx P L} : VegasCore P L Γ → List L.Ty
-  | .ret _ => []
-  | .sample (b := b) _ _ k => b :: k.instrTypes
-  | .commit (b := b) _ _ _ k => b :: k.instrTypes
-  | .reveal (b := b) _ _ _ _ k => b :: k.instrTypes
-
 namespace ToEventGraph
 
 /-- Compiling a program suffix only appends nodes: the nodes already built remain
@@ -188,46 +180,6 @@ theorem compile_graph_nodes_owners (g : GraphProgram P L) :
     (compile g).graph.nodes.map EventGraph.EventNode.owner = g.prog.instrOwners := by
   unfold compile
   rw [compileCore_nodes_owners]
-  simp [BuildState.fromInitial_nodes]
-
-/-- The declared output types of the compiled nodes are exactly the source
-instructions' bound types. With this, a value the source run produces (typed by
-the instruction) has the type its node declares — the typing side of the
-`StoreCoherent` obligation. -/
-theorem compileCore_nodes_types :
-    {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
-      (fresh : FreshBindings prog) → (normalized : NormalizedDists prog) →
-      (state : BuildState P L Γ) →
-      (compileCore prog fresh normalized state).nodes.map EventGraph.EventNode.ty =
-        state.nodes.map EventGraph.EventNode.ty ++ prog.instrTypes
-  | _, .ret _payoffs, _fresh, _normalized, _state => by
-      simp [compileCore, VegasCore.instrTypes]
-  | _, .sample name dist tail, fresh, normalized, state => by
-      simp only [compileCore, VegasCore.instrTypes]
-      rw [compileCore_nodes_types tail _ _ _]
-      simp [BuildState.addEvent_nodes, eventDistOf, List.append_assoc]
-  | _, .commit name who guard tail, fresh, normalized, state => by
-      simp only [compileCore, VegasCore.instrTypes]
-      rw [compileCore_nodes_types tail _ _ _]
-      simp [BuildState.addEvent_nodes, eventGuardOf, List.append_assoc]
-  | _, .reveal name who source sourceProof tail, fresh, normalized, state => by
-      simp only [compileCore, VegasCore.instrTypes]
-      rw [compileCore_nodes_types tail _ _ _]
-      simp [BuildState.addEvent_nodes, List.append_assoc]
-
-/-- The compiled graph's node types are exactly the source program's instruction
-types. -/
-theorem compile_graph_nodes_types (g : GraphProgram P L) :
-    (compile g).graph.nodes.map EventGraph.EventNode.ty = g.prog.instrTypes := by
-  unfold compile
-  rw [compileCore_nodes_types]
-  simp [BuildState.fromInitial_nodes]
-
-/-- The compiled graph has one node per source instruction. -/
-theorem compile_graph_nodeCount (g : GraphProgram P L) :
-    (compile g).graph.nodeCount = g.prog.instrCount := by
-  unfold compile EventGraph.Graph.nodeCount
-  rw [compileCore_nodes_length]
   simp [BuildState.fromInitial_nodes]
 
 /-- Reading node owners along the compiled graph's canonical order recovers the

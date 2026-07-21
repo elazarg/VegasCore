@@ -25,12 +25,7 @@ Packages the concrete expression layer: types, values, expression syntax,
 distribution syntax, evaluation functions, dependency tracking, and
 dependency-soundness laws. Expressions and distributions are typed over plain
 `Ctx Ty` (no visibility annotations) — visibility is layered separately by the
-`VCtx` family below.
-
-The interface is dimensioned to the metatheory it supports: every field is
-exercised by a downstream theorem, and the two structural laws
-(`extendAfterHead`, `dropAfterHead`) exist for exactly one family of results
-(commit-commit commutativity in `TraceSemantics.lean`). -/
+`VCtx` family below. -/
 structure IExpr where
   /-- The universe of types in the embedded language. -/
   Ty : Type
@@ -63,27 +58,6 @@ structure IExpr where
   expr_deps_context :
     ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ),
       ∀ x, x ∈ exprDeps e → x ∈ Γ.map Prod.fst
-  /-- Weakening: an expression over `(x, τ) :: Γ` can be retyped over
-  `(x, τ) :: (y, σ) :: Γ` without changing its meaning. The first of two
-  structural laws supporting commit-commit commutativity. -/
-  extendAfterHead :
-    ∀ {Γ : Ctx Ty} {x y : VarId} {τ σ b : Ty}
-      (e : Expr ((x, τ) :: Γ) b),
-      ∃ e' : Expr ((x, τ) :: (y, σ) :: Γ) b,
-        ∀ (vx : Val τ) (vy : Val σ) (env : Env Val Γ),
-          eval e' (Env.cons (x := x) vx (Env.cons (x := y) vy env)) =
-            eval e (Env.cons (x := x) vx env)
-  /-- Strengthening: an expression that does not depend on `y` can be
-  re-expressed without `y` in its context. The companion to
-  `extendAfterHead`. -/
-  dropAfterHead :
-    ∀ {Γ : Ctx Ty} {x y : VarId} {τ σ b : Ty}
-      (e : Expr ((x, τ) :: (y, σ) :: Γ) b),
-      y ∉ exprDeps e →
-      ∃ e' : Expr ((x, τ) :: Γ) b,
-        ∀ (vx : Val τ) (vy : Val σ) (env : Env Val Γ),
-          eval e' (Env.cons (x := x) vx env) =
-            eval e (Env.cons (x := x) vx (Env.cons (x := y) vy env))
   /-- Typed distribution syntax. -/
   DistExpr : Ctx Ty → Ty → Type
   /-- Denotational evaluation of a distribution into `FWeight (Val τ)`. -/

@@ -399,21 +399,21 @@ direct ring map `ℚ≥0 → ENNReal`, so we go via `NNReal`. The lemmas below
 are the targeted rewrite rules used inside the bridge — none are `@[simp]`. -/
 
 /-- Canonical embedding `ℚ≥0 → ℝ≥0`. -/
-noncomputable def NNRat.toNNReal (q : ℚ≥0) : NNReal :=
+noncomputable def nnratToNNReal (q : ℚ≥0) : NNReal :=
   ⟨((q : ℚ) : ℝ), by exact_mod_cast q.coe_nonneg⟩
 
-theorem NNRat.toNNReal_one : NNRat.toNNReal 1 = 1 := by
+theorem nnratToNNReal_one : nnratToNNReal 1 = 1 := by
   refine NNReal.coe_injective ?_
   change (((1 : ℚ≥0) : ℚ) : ℝ) = 1
   norm_num
 
-theorem NNRat.toNNReal_zero : NNRat.toNNReal 0 = 0 := by
+theorem nnratToNNReal_zero : nnratToNNReal 0 = 0 := by
   refine NNReal.coe_injective ?_
   change (((0 : ℚ≥0) : ℚ) : ℝ) = 0
   norm_num
 
-theorem NNRat.toNNReal_eq_zero {q : ℚ≥0} :
-    NNRat.toNNReal q = 0 ↔ q = 0 := by
+theorem nnratToNNReal_eq_zero {q : ℚ≥0} :
+    nnratToNNReal q = 0 ↔ q = 0 := by
   constructor
   · intro h
     have hcoe := congrArg (fun value : NNReal => (value : ℝ)) h
@@ -421,31 +421,31 @@ theorem NNRat.toNNReal_eq_zero {q : ℚ≥0} :
     exact_mod_cast hcoe
   · intro h
     subst h
-    exact NNRat.toNNReal_zero
+    exact nnratToNNReal_zero
 
-theorem NNRat.toNNReal_add (a b : ℚ≥0) :
-    NNRat.toNNReal (a + b) = NNRat.toNNReal a + NNRat.toNNReal b := by
+theorem nnratToNNReal_add (a b : ℚ≥0) :
+    nnratToNNReal (a + b) = nnratToNNReal a + nnratToNNReal b := by
   refine NNReal.coe_injective ?_
   change ((((a + b : ℚ≥0) : ℚ) : ℝ) = (((a : ℚ≥0) : ℚ) : ℝ) + (((b : ℚ≥0) : ℚ) : ℝ))
   rw [NNRat.coe_add, Rat.cast_add]
 
-theorem NNRat.toNNReal_mul (a b : ℚ≥0) :
-    NNRat.toNNReal (a * b) = NNRat.toNNReal a * NNRat.toNNReal b := by
+theorem nnratToNNReal_mul (a b : ℚ≥0) :
+    nnratToNNReal (a * b) = nnratToNNReal a * nnratToNNReal b := by
   refine NNReal.coe_injective ?_
   change ((((a * b : ℚ≥0) : ℚ) : ℝ) = (((a : ℚ≥0) : ℚ) : ℝ) * (((b : ℚ≥0) : ℚ) : ℝ))
   rw [NNRat.coe_mul, Rat.cast_mul]
 
-theorem NNRat.toNNReal_coe_real (q : ℚ≥0) :
-    ((NNRat.toNNReal q : NNReal) : ℝ) = (q : ℝ) := by
+theorem nnratToNNReal_coe_real (q : ℚ≥0) :
+    ((nnratToNNReal q : NNReal) : ℝ) = (q : ℝ) := by
   rfl
 
-theorem NNRat.toNNReal_finset_sum {γ : Type} (s : Finset γ) (f : γ → ℚ≥0) :
-    NNRat.toNNReal (s.sum f) = s.sum (fun a => NNRat.toNNReal (f a)) := by
+theorem nnratToNNReal_finset_sum {γ : Type} (s : Finset γ) (f : γ → ℚ≥0) :
+    nnratToNNReal (s.sum f) = s.sum (fun a => nnratToNNReal (f a)) := by
   classical
   refine Finset.induction_on s ?_ ?_
-  · simp [NNRat.toNNReal_zero]
+  · simp [nnratToNNReal_zero]
   · intro a s ha hs
-    simp [Finset.sum_insert, ha, NNRat.toNNReal_add, hs]
+    simp [Finset.sum_insert, ha, nnratToNNReal_add, hs]
 
 namespace FWeight
 
@@ -462,28 +462,28 @@ may carry irrational or infinite-support weights). -/
 noncomputable def toPMF {γ : Type} [DecidableEq γ]
     (d : FWeight γ) (h : d.totalWeight = 1) : PMF γ :=
   PMF.ofFinset
-    (fun a => (NNRat.toNNReal (d a) : ENNReal))
+    (fun a => (nnratToNNReal (d a) : ENNReal))
     d.support
     (by
       have hsum : d.support.sum (fun a => d a) = 1 := by
         simpa [FWeight.totalWeight, Finsupp.sum] using h
       calc
-        d.support.sum (fun a => ((NNRat.toNNReal (d a) : NNReal) : ENNReal))
-            = ((d.support.sum fun a => NNRat.toNNReal (d a) : NNReal) : ENNReal) := by
+        d.support.sum (fun a => ((nnratToNNReal (d a) : NNReal) : ENNReal))
+            = ((d.support.sum fun a => nnratToNNReal (d a) : NNReal) : ENNReal) := by
                 rw [← ENNReal.ofNNReal_finsetSum]
-        _ = (NNRat.toNNReal (d.support.sum fun a => d a) : ENNReal) := by
-              rw [NNRat.toNNReal_finset_sum]
-        _ = 1 := by simp [hsum, NNRat.toNNReal_one])
+        _ = (nnratToNNReal (d.support.sum fun a => d a) : ENNReal) := by
+              rw [nnratToNNReal_finset_sum]
+        _ = 1 := by simp [hsum, nnratToNNReal_one])
     (by
       intro a ha
       have hz : d a = 0 := by
         simpa [Finsupp.mem_support_iff] using ha
-      simp [hz, NNRat.toNNReal_zero])
+      simp [hz, nnratToNNReal_zero])
 
 /-- `toPMF` applied at a point equals the cast of the original weight. -/
 theorem toPMF_apply {γ : Type} [DecidableEq γ]
     (d : FWeight γ) (h : d.totalWeight = 1) (a : γ) :
-    (d.toPMF h) a = (NNRat.toNNReal (d a) : ENNReal) := by
+    (d.toPMF h) a = (nnratToNNReal (d a) : ENNReal) := by
   simp [FWeight.toPMF, PMF.ofFinset_apply]
 
 /-- `FWeight.toPMF` preserves and reflects finite support. -/
@@ -493,9 +493,9 @@ theorem mem_support_toPMF {γ : Type} [DecidableEq γ]
   rw [PMF.mem_support_iff, Finsupp.mem_support_iff, toPMF_apply]
   constructor
   · intro hpmf hzero
-    exact hpmf (by simp [hzero, NNRat.toNNReal_zero])
+    exact hpmf (by simp [hzero, nnratToNNReal_zero])
   · intro hweight
-    simpa [NNRat.toNNReal_eq_zero] using hweight
+    simpa [nnratToNNReal_eq_zero] using hweight
 
 /-- `toPMF` converts `FWeight.pure` to `PMF.pure`. -/
 theorem toPMF_pure [DecidableEq α] (a : α) :
@@ -504,8 +504,8 @@ theorem toPMF_pure [DecidableEq α] (a : α) :
   rw [toPMF_apply]
   simp only [PMF.pure_apply, pure_apply]
   by_cases h : a = b
-  · subst h; simp [NNRat.toNNReal_one]
-  · simp [h, NNRat.toNNReal_zero, Ne.symm h]
+  · subst h; simp [nnratToNNReal_one]
+  · simp [h, nnratToNNReal_zero, Ne.symm h]
 
 /-- `toPMF` converts `FWeight.map` to `PMF.map`. -/
 theorem toPMF_map [DecidableEq α] [DecidableEq β]
@@ -518,17 +518,17 @@ theorem toPMF_map [DecidableEq α] [DecidableEq β]
   rw [FWeight.map_apply]
   rw [tsum_eq_sum (s := d.support) (fun a ha => by
     have hz : d a = 0 := by simpa [Finsupp.mem_support_iff] using ha
-    simp [hz, NNRat.toNNReal_zero])]
+    simp [hz, nnratToNNReal_zero])]
   have hlhs :
-      ((NNRat.toNNReal (∑ a ∈ d.support, if g a = b then d a else 0) : NNReal) : ENNReal) =
-        ∑ a ∈ d.support, ((NNRat.toNNReal (if g a = b then d a else 0) : NNReal) : ENNReal) := by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]
+      ((nnratToNNReal (∑ a ∈ d.support, if g a = b then d a else 0) : NNReal) : ENNReal) =
+        ∑ a ∈ d.support, ((nnratToNNReal (if g a = b then d a else 0) : NNReal) : ENNReal) := by
+    rw [nnratToNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]
   rw [hlhs]
   apply Finset.sum_congr rfl
   intro a _
   by_cases hgab : g a = b
   · simp [hgab]
-  · simp [hgab, Ne.symm hgab, NNRat.toNNReal_zero]
+  · simp [hgab, Ne.symm hgab, nnratToNNReal_zero]
 
 /-- Pointwise `toPMF` of `FWeight.bind`. -/
 theorem toPMF_bind_apply [DecidableEq α] [DecidableEq β]
@@ -536,14 +536,14 @@ theorem toPMF_bind_apply [DecidableEq α] [DecidableEq β]
     (hbind : (d.bind f).totalWeight = 1) (b : β) :
     ((d.bind f).toPMF hbind) b =
       d.support.sum (fun a =>
-        (NNRat.toNNReal (d a) : ENNReal) * (NNRat.toNNReal ((f a) b) : ENNReal)) := by
+        (nnratToNNReal (d a) : ENNReal) * (nnratToNNReal ((f a) b) : ENNReal)) := by
   rw [toPMF_apply, bind_apply]
-  rw [show ((NNRat.toNNReal (d.support.sum fun a => d a * (f a) b) : NNReal) : ENNReal) =
-      d.support.sum (fun a => ((NNRat.toNNReal (d a * (f a) b) : NNReal) : ENNReal)) from by
-    rw [NNRat.toNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]]
+  rw [show ((nnratToNNReal (d.support.sum fun a => d a * (f a) b) : NNReal) : ENNReal) =
+      d.support.sum (fun a => ((nnratToNNReal (d a * (f a) b) : NNReal) : ENNReal)) from by
+    rw [nnratToNNReal_finset_sum, ENNReal.ofNNReal_finsetSum]]
   apply Finset.sum_congr rfl
   intro a _
-  rw [NNRat.toNNReal_mul, ENNReal.coe_mul]
+  rw [nnratToNNReal_mul, ENNReal.coe_mul]
 
 /-- `toPMF` commutes with `bind` when the branches are normalized. -/
 theorem toPMF_bind [DecidableEq α] [DecidableEq β]
@@ -558,13 +558,13 @@ theorem toPMF_bind [DecidableEq α] [DecidableEq β]
   simp only [PMF.bind_apply, toPMF_apply]
   rw [tsum_eq_sum (s := d.support) (fun a ha => by
     have hz : d a = 0 := by simpa [Finsupp.mem_support_iff] using ha
-    simp [hz, NNRat.toNNReal_zero])]
+    simp [hz, nnratToNNReal_zero])]
 
 /-- Expectation under `FWeight.toPMF` reduces to a finite sum over support. -/
 theorem expect_toPMF_eq_sum {γ : Type} [DecidableEq γ]
     (d : FWeight γ) (h : d.totalWeight = 1) (f : γ → ℝ) :
     Math.Probability.expect (d.toPMF h) f =
-      d.support.sum (fun a => ((NNRat.toNNReal (d a) : NNReal) : ℝ) * f a) := by
+      d.support.sum (fun a => ((nnratToNNReal (d a) : NNReal) : ℝ) * f a) := by
   unfold Math.Probability.expect
   rw [tsum_eq_sum (s := d.support)]
   · refine Finset.sum_congr rfl ?_
@@ -573,7 +573,7 @@ theorem expect_toPMF_eq_sum {γ : Type} [DecidableEq γ]
   · intro a ha
     have hz : d a = 0 := by
       simpa [Finsupp.mem_support_iff] using ha
-    simp [FWeight.toPMF, hz, NNRat.toNNReal_zero]
+    simp [FWeight.toPMF, hz, nnratToNNReal_zero]
 
 end FWeight
 

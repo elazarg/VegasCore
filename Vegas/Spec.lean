@@ -10,6 +10,8 @@ import Vegas.Language.Basic
 import Vegas.WellFormed.Program
 import Vegas.EventGraph.Basic
 import Vegas.Compile.Compiler
+import Vegas.Frontier.Games
+import Vegas.Runtime.TraceAdequacy
 import Vegas.Theorems.Claims
 
 /-!
@@ -107,6 +109,49 @@ semantics to the runtime surface. (`Vegas.EventGraph.Basic`,
 #check @Vegas.EventGraph.Graph.WF
 #guard_msgs (drop info) in
 #check @Vegas.ToEventGraph.compile
+
+/-! ## 7. Primitive machine execution
+
+`Machine` is the runtime-general operational carrier. `PrimitiveMachine` is the
+compiled EventGraph instance, and `EventBatchLaw` is the history-dependent
+scheduling surface used by strategic presentations and runtime refinement.
+(`Vegas.Machine.Basic`, `Vegas.Frontier.RoundView.Commits`,
+`Vegas.Machine.Trace`)
+-/
+
+#guard_msgs (drop info) in
+#check @Vegas.Machine
+#guard_msgs (drop info) in
+#check @Vegas.ToEventGraph.PrimitiveMachine
+#guard_msgs (drop info) in
+#check @Vegas.Machine.EventBatchLaw
+
+/-! ## 8. Completed frontier games
+
+The behavioral frontier game is the checked program's native strategic surface:
+bounded frontier execution with the impossible cutoff branch erased.
+(`Vegas.Frontier.Games`)
+-/
+
+#guard_msgs (drop info) in
+#check @Vegas.WFProgram.behavioralFrontierGame
+
+/-! ## 9. Runtime trace adequacy
+
+`StochasticRefinement` relates implementation and specification machines.
+`TraceGameSurface`, `TraceSpecEventBatchLaw`, and `RuntimeTraceAdequacy` connect
+that primitive refinement to a profile-indexed checked-program game surface.
+(`Vegas.Machine.Refinement`, `Vegas.Runtime.TraceAdequacy`)
+-/
+
+#guard_msgs (drop info) in
+#check @Vegas.Machine.StochasticRefinement
+#guard_msgs (drop info) in
+#check @Vegas.WFProgram.TraceGameSurface
+#guard_msgs (drop info) in
+#check @Vegas.WFProgram.TraceSpecEventBatchLaw
+#guard_msgs (drop info) in
+#check @Vegas.WFProgram.RuntimeTraceAdequacy
 
 /-!
 The end-to-end *guarantees* about these definitions — that checked programs

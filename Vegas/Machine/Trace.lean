@@ -1,20 +1,12 @@
 import Vegas.Machine.Basic
 
 /-!
-# Machine trace semantics
+# Machine event-batch trace semantics
 
-Bounded event/state traces produced by running a `Machine` under a scheduling
-`EventLaw`.
-
-`traceDist M law n` is the distribution over `(events, states)` lists obtained
-by stepping the machine `n` primitive events from the initial state, where each
-step samples an event from `law` and then samples a successor from
-`Machine.step`. `traceDistFrom` is the same starting from a given state.
-
-`outcomeKernelFrom` is the same outcome marginal, written as a state-recursive
-kernel from an arbitrary starting state. The result is partial because a
-bounded run can stop before a terminal outcome exists. `outcomeKernel`
-specializes it to `M.init`.
+Fixed primitive-event execution, semantic availability along those executions,
+and bounded traces produced by history-dependent event-batch laws. Event batches
+are the scheduling boundary used by checkpoint presentations and runtime
+refinement.
 -/
 
 namespace Vegas
@@ -232,10 +224,6 @@ def AvailableStep (M : Machine Player)
   M.EventAvailable source event ∧
     target ∈ (M.step event source).support
 
-/-- Reachability by semantically available primitive steps. -/
-def Reaches (M : Machine Player) (source target : M.State) : Prop :=
-  ∃ events, M.AvailableRunFrom source events target
-
 namespace AvailableStep
 
 theorem available {M : Machine Player} {source target : M.State}
@@ -257,34 +245,6 @@ theorem availableRunFrom_singleton
   .cons hstep.available hstep.support (.nil target)
 
 end AvailableStep
-
-namespace Reaches
-
-theorem refl (M : Machine Player) (state : M.State) :
-    M.Reaches state state :=
-  ⟨[], .nil state⟩
-
-theorem step {M : Machine Player} {source target : M.State}
-    {event : M.Event}
-    (hstep : M.AvailableStep source event target) :
-    M.Reaches source target :=
-  ⟨[event], hstep.availableRunFrom_singleton⟩
-
-theorem trans {M : Machine Player} {source mid target : M.State}
-    (hleft : M.Reaches source mid) (hright : M.Reaches mid target) :
-    M.Reaches source target := by
-  rcases hleft with ⟨eventsLeft, runLeft⟩
-  rcases hright with ⟨eventsRight, runRight⟩
-  exact ⟨eventsLeft ++ eventsRight, runLeft.append runRight⟩
-
-theorem mem_runEventsFrom_support
-    {M : Machine Player} {source target : M.State}
-    (hreaches : M.Reaches source target) :
-    ∃ events, target ∈ (M.runEventsFrom events source).support := by
-  rcases hreaches with ⟨events, hrun⟩
-  exact ⟨events, hrun.mem_runEventsFrom_support⟩
-
-end Reaches
 
 /-- Execute a sequence of macro steps, where each macro step is represented by
 a list of primitive machine events.  This is the trace shape induced by a
@@ -470,82 +430,6 @@ noncomputable def eventBatchTraceDist
 @[simp] theorem eventBatchTraceDist_zero
     (M : Machine Player) (law : M.EventBatchLaw) :
     M.eventBatchTraceDist law 0 = PMF.pure ([], M.init) := rfl
-
-/-- One scheduled machine step. -/
-noncomputable def stepDist
-    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
-    PMF M.State :=
-  (law state).bind fun event => M.step event state
-
-/-- Bounded event/state trace distribution from a given state. The state list
-starts with the input state and has one more entry than the event list. -/
-noncomputable def traceDistFrom
-    (M : Machine Player) (law : M.EventLaw) :
-    Nat → M.State → PMF (List M.Event × List M.State)
-  | 0, state => PMF.pure ([], [state])
-  | horizon + 1, state =>
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          (M.traceDistFrom law horizon next).map fun trace =>
-            (event :: trace.1, state :: trace.2)
-
-@[simp] theorem traceDistFrom_zero
-    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
-    M.traceDistFrom law 0 state = PMF.pure ([], [state]) := rfl
-
-theorem traceDistFrom_succ
-    (M : Machine Player) (law : M.EventLaw)
-    (horizon : Nat) (state : M.State) :
-    M.traceDistFrom law (horizon + 1) state =
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          (M.traceDistFrom law horizon next).map fun trace =>
-            (event :: trace.1, state :: trace.2) := rfl
-
-/-- Bounded event/state trace distribution from the machine initial state. -/
-noncomputable def traceDist
-    (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF (List M.Event × List M.State) :=
-  M.traceDistFrom law horizon M.init
-
-@[simp] theorem traceDist_zero
-    (M : Machine Player) (law : M.EventLaw) :
-    M.traceDist law 0 = PMF.pure ([], [M.init]) := rfl
-
-/-- Partial outcome kernel induced by a scheduled event law, starting from an
-arbitrary machine state. A bounded horizon may stop before a terminal outcome
-exists, so the marginal is over `Option M.Outcome`. -/
-noncomputable def outcomeKernelFrom
-    (M : Machine Player) (law : M.EventLaw) :
-    Nat → M.State → PMF (Option M.Outcome)
-  | 0, state => PMF.pure (M.outcome state)
-  | horizon + 1, state =>
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          M.outcomeKernelFrom law horizon next
-
-@[simp] theorem outcomeKernelFrom_zero
-    (M : Machine Player) (law : M.EventLaw) (state : M.State) :
-    M.outcomeKernelFrom law 0 state = PMF.pure (M.outcome state) := rfl
-
-theorem outcomeKernelFrom_succ
-    (M : Machine Player) (law : M.EventLaw)
-    (horizon : Nat) (state : M.State) :
-    M.outcomeKernelFrom law (horizon + 1) state =
-      (law state).bind fun event =>
-        (M.step event state).bind fun next =>
-          M.outcomeKernelFrom law horizon next := rfl
-
-/-- Partial outcome kernel induced by a scheduled event law from the machine
-initial state. -/
-noncomputable def outcomeKernel
-    (M : Machine Player) (law : M.EventLaw) (horizon : Nat) :
-    PMF (Option M.Outcome) :=
-  M.outcomeKernelFrom law horizon M.init
-
-@[simp] theorem outcomeKernel_zero
-    (M : Machine Player) (law : M.EventLaw) :
-    M.outcomeKernel law 0 = PMF.pure (M.outcome M.init) := rfl
 
 end Machine
 

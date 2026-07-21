@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Core.Simple
+import Vegas.Core.ExprSimple
 
 /-!
 # Vegas well-formedness and side conditions
@@ -151,76 +151,6 @@ instance {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
     {pending : List VarId} {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
     Decidable (RevealComplete pending p) := decidableRevealComplete pending p
-
-/-! ## Reveal as an in-place update (paper convenience)
-
-The mechanized `reveal y who x` discloses the sealed source `x` under a *fresh*
-public alias `y`, keeping the sealed binding in scope --- the core is in SSA
-form, every binding introduced once. The paper instead presents `reveal` as
-flipping the disclosed variable's polarity *in place*, reusing its name. The two
-readings coincide when the sealed source is never read again after its
-disclosure: then the retained sealed binding is dead, so identifying it with the
-public alias (the "in-place" reading) loses nothing.
-
-`RevealLastUse` is exactly that condition. It exists **only** to license the
-paper's notation; it is not required for any core correctness property, and no
-theorem in the development depends on it. -/
-
-/-- Variables a program reads: the payoff, sample, and guard dependency
-footprints, together with each reveal's disclosed source. -/
-def Uses {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → VarId → Prop
-  | _, .ret payoffs, x => ∃ pe ∈ payoffs, x ∈ L.exprDeps pe.2
-  | _, .sample _ D' k, x => x ∈ L.distDeps D' ∨ Uses k x
-  | _, .commit _ _ R k, x => x ∈ L.exprDeps R ∨ Uses k x
-  | _, .reveal _ _ src _ k, x => x = src ∨ Uses k x
-
-def decidableUses {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) → (x : VarId) →
-    Decidable (Uses p x)
-  | _, .ret payoffs, x =>
-    inferInstanceAs (Decidable (∃ pe ∈ payoffs, x ∈ L.exprDeps pe.2))
-  | _, .sample _ _ k, x => @instDecidableOr _ _ inferInstance (decidableUses k x)
-  | _, .commit _ _ _ k, x => @instDecidableOr _ _ inferInstance (decidableUses k x)
-  | _, .reveal _ _ _ _ k, x => @instDecidableOr _ _ inferInstance (decidableUses k x)
-
-instance {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-    {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} {x : VarId} :
-    Decidable (Uses p x) := decidableUses p x
-
-/-- Each reveal is the last read of the source it discloses: after `reveal`s
-disclose a sealed `x`, that sealed `x` is never read again. Under this condition
-the retained sealed binding is dead, which is what makes presenting `reveal` as
-an in-place polarity flip (rather than a fresh public alias) faithful. -/
-def RevealLastUse {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | _, .sample _ _ k => RevealLastUse k
-  | _, .commit _ _ _ k => RevealLastUse k
-  | _, .reveal _ _ src _ k => ¬ Uses k src ∧ RevealLastUse k
-
-def decidableRevealLastUse {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → (p : Vegas.VegasCore P L Γ) →
-    Decidable (RevealLastUse p)
-  | _, .ret _ => .isTrue trivial
-  | _, .sample _ _ k => decidableRevealLastUse k
-  | _, .commit _ _ _ k => decidableRevealLastUse k
-  | _, .reveal _ _ _ _ k =>
-    @instDecidableAnd _ _ inferInstance (decidableRevealLastUse k)
-
-instance {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-    {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
-    Decidable (RevealLastUse p) := decidableRevealLastUse p
 
 @[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
     WFCtx (L := L) (P := P) [] := List.nodup_nil

@@ -638,7 +638,7 @@ example :
       VHasVar
         [(0, BindTy.sealed (L := L) Player.alice BaseTy.bool)]
         0 (BindTy.sealed (L := L) Player.alice BaseTy.bool))]
-  rw [BuildState.addEvent_fieldOf_here]
+  rw [BuildState.addCommitEvent_fieldOf_here]
   rfl
 
 def revealBarrierCore : VegasCore Player L [] :=
@@ -718,7 +718,7 @@ example :
     Bool.false_eq_true, eraseVCtx_cons, erasePubVCtx_cons_sealed,
     erasePubVCtx_cons_pub, erasePubVCtx_nil, initialState, compileCore,
     eventGuardOf, visibleFieldRefs, fieldRefsOfCtx_nil,
-    BuildState.addEvent_fieldOf_here, fieldRefsOfCtx_cons,
+    fieldRefsOfCtx_cons,
     Finset.insert_empty, BuildState.addEvent_initialFields,
     BuildState.fromInitial_initialFields, BuildState.addEvent_nodes,
     BuildState.fromInitial_nodes, BindTy.owner_sealed, List.nil_append,
@@ -733,7 +733,7 @@ example :
         [(1, BindTy.pub (Player := Player) (L := L) BaseTy.bool),
           (0, BindTy.sealed (L := L) Player.alice BaseTy.bool)]
         1 (BindTy.pub (Player := Player) (L := L) BaseTy.bool))]
-  rw [BuildState.addEvent_fieldOf_here]
+  rw [BuildState.addRevealEvent_fieldOf_here]
   simp only [BuildState.nextField, BuildState.nextNode,
     BuildState.addEvent_nodes, BuildState.fromInitial_nodes,
     BuildState.addEvent_initialFields, BuildState.fromInitial_initialFields,

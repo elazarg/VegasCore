@@ -7,9 +7,9 @@ import Vegas.Machine.Trace
 
 The graph execution layer steps witness-carrying available events.  The generic
 `Machine` interface has total step functions over raw action names, so this
-adapter totalizes unavailable raw machine events by stuttering.  Legal machine
-event laws quantify over `available`, so the stutter branch is outside the
-semantic execution surface.
+adapter totalizes unavailable raw machine events by stuttering. Legal
+event-batch laws quantify over semantic availability, so the stutter branch is
+outside the execution surface.
 
 This adapter is a primitive protocol machine, not the compiled-game surface.
 Game-facing code should use a checkpoint presentation instead.
@@ -94,7 +94,7 @@ private noncomputable def stepInternal
 
 The resulting machine's available events are exactly the graph events whose
 prerequisites are satisfied and whose local computation is defined.  Schedule
-choice remains external through legal `Machine.EventLaw`s.
+choice remains external through legal `Machine.EventBatchLaw`s.
 
 Terminality is graph terminality: all graph events are complete. Outcomes are
 partial only for nonterminal states; reachable terminal compiled states use the

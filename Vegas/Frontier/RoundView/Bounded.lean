@@ -639,68 +639,6 @@ theorem boundedHistory_checkpointHistory_playerView
 
 end FrontierRoundSemantics
 
-/-- The default-length pure frontier kernel constructed from certified
-frontier semantics never supports the cutoff outcome. -/
-theorem frontierPureKernelGame_outcomeKernel_support_some_completionBound
-    (compiled : CompiledProgram P L)
-    (presentation : EventGraph.CheckpointPresentation compiled.graph)
-    (semantics : FrontierRoundSemantics compiled presentation)
-    [∀ node : Fin compiled.graph.nodeCount,
-      Fintype (L.Val (compiled.graph.nodeRow node).ty)]
-    (cutoff : Payoff P)
-    (σ :
-      (frontierPureKernelGame compiled presentation semantics
-        (completionBound compiled) (completionBound compiled)
-        cutoff).game.Profile)
-    {result : Option (PrimitiveMachine compiled).Outcome}
-    (hsupport :
-      result ∈
-        ((frontierPureKernelGame compiled presentation semantics
-          (completionBound compiled) (completionBound compiled)
-          cutoff).game.outcomeKernel σ).support) :
-    ∃ outcome, result = some outcome := by
-  classical
-  let view := frontierRoundView compiled presentation semantics
-  letI : ∀ player, Fintype (Option (view.Act player)) := by
-    intro player
-    dsimp [view, frontierRoundView, EventGraph.frontierRoundView]
-    infer_instance
-  exact
-    FrontierRoundSemantics.boundedOutcomeFromPure_support_some_completionBound
-      semantics σ (by
-        exact hsupport)
-
-/-- The default-length behavioral frontier kernel constructed from certified
-frontier semantics never supports the cutoff outcome. -/
-theorem frontierBehavioralKernelGame_outcomeKernel_support_some_completionBound
-    (compiled : CompiledProgram P L)
-    (presentation : EventGraph.CheckpointPresentation compiled.graph)
-    (semantics : FrontierRoundSemantics compiled presentation)
-    [∀ node : Fin compiled.graph.nodeCount,
-      Fintype (L.Val (compiled.graph.nodeRow node).ty)]
-    (cutoff : Payoff P)
-    (σ :
-      (frontierBehavioralKernelGame compiled presentation semantics
-        (completionBound compiled) (completionBound compiled)
-        cutoff).game.Profile)
-    {result : Option (PrimitiveMachine compiled).Outcome}
-    (hsupport :
-      result ∈
-        ((frontierBehavioralKernelGame compiled presentation semantics
-          (completionBound compiled) (completionBound compiled)
-          cutoff).game.outcomeKernel σ).support) :
-    ∃ outcome, result = some outcome := by
-  classical
-  let view := frontierRoundView compiled presentation semantics
-  letI : ∀ player, Fintype (Option (view.Act player)) := by
-    intro player
-    dsimp [view, frontierRoundView, EventGraph.frontierRoundView]
-    infer_instance
-  exact
-    FrontierRoundSemantics.boundedOutcomeFromBehavioral_support_some_completionBound
-      semantics σ (by
-        exact hsupport)
-
 omit [Fintype P] in
 /-- Erase an option-valued outcome distribution when `none` has no support. -/
 noncomputable def eraseNonePMF {α : Type}

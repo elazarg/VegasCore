@@ -10,13 +10,9 @@ import Vegas.Machine.Trace
 /-!
 # Machine refinement hooks
 
-The base `Machine` semantics is PMF-valued. A deterministic runtime can be
-related to it by making the external realization data explicit: a transcript
-is sampled by a kernel and deterministically replayed into the next abstract
-machine state.
-
-This module only defines the runtime-general proof surface. It does not choose
-or implement any concrete runtime.
+Probability-preserving refinement between protocol machines, including event
+batch projection, observations, terminal outcomes, and utilities. This module
+defines the runtime-general proof surface without choosing a concrete runtime.
 -/
 
 namespace Vegas
@@ -24,142 +20,6 @@ namespace Vegas
 namespace Machine
 
 variable {Player ImplPlayer SpecPlayer : Type}
-
-/-- A deterministic replay interface whose transcript law induces a machine's
-PMF step kernel.
-
-For a concrete runtime, simulator, or test harness, `Transcript` is whatever
-external evidence realizes stochastic choices. `replay_kernel` is the
-statement that replaying transcripts has exactly the same one-step
-distribution as the abstract machine. -/
-structure StepRealizer (M : Machine Player) where
-  Transcript : Type
-  transcriptKernel : M.Event → M.State → PMF Transcript
-  replay : M.Event → M.State → Transcript → M.State
-  replay_kernel :
-    ∀ event state,
-      PMF.map (replay event state) (transcriptKernel event state) =
-        M.step event state
-
-namespace StepRealizer
-
-variable {M : Machine Player} (realizer : M.StepRealizer)
-
-/-- A transcript-supported replay of an available primitive event. -/
-def AvailableReplayStep
-    (source : M.State) (event : M.Event)
-    (transcript : realizer.Transcript) (target : M.State) : Prop :=
-  M.EventAvailable source event ∧
-    transcript ∈ (realizer.transcriptKernel event source).support ∧
-    realizer.replay event source transcript = target
-
-theorem replay_mem_step_support
-    {source : M.State} {event : M.Event}
-    {transcript : realizer.Transcript}
-    (htranscript :
-      transcript ∈ (realizer.transcriptKernel event source).support) :
-    realizer.replay event source transcript ∈
-      (M.step event source).support := by
-  have hmap :
-      realizer.replay event source transcript ∈
-        (PMF.map (realizer.replay event source)
-          (realizer.transcriptKernel event source)).support := by
-    exact
-      (PMF.mem_support_map_iff _ _ _).mpr
-        ⟨transcript, htranscript, rfl⟩
-  simpa [realizer.replay_kernel event source] using hmap
-
-theorem availableStep_of_availableReplayStep
-    {source target : M.State} {event : M.Event}
-    {transcript : realizer.Transcript}
-    (hstep :
-      realizer.AvailableReplayStep source event transcript target) :
-    M.AvailableStep source event target := by
-  rcases hstep with ⟨havailable, htranscript, htarget⟩
-  constructor
-  · exact havailable
-  · subst htarget
-    exact realizer.replay_mem_step_support htranscript
-
-end StepRealizer
-
-/-- A step-level simulation from an implementation machine to a specification
-machine, restricted to semantically available implementation steps.
-
-An implementation event may project to `none`; that means it is administrative
-at the specification level and must leave the projected state unchanged. If it
-projects to a specification event, the projected transition must be a
-semantically available specification step. -/
-structure AvailableStepSimulation
-    (Impl : Machine ImplPlayer) (Spec : Machine SpecPlayer) where
-  projectState : Impl.State → Spec.State
-  projectEvent? : Impl.Event → Option Spec.Event
-  step :
-    ∀ {source : Impl.State} {event : Impl.Event} {target : Impl.State},
-      Impl.AvailableStep source event target →
-        match projectEvent? event with
-        | none => projectState target = projectState source
-        | some specEvent =>
-            Spec.AvailableStep
-              (projectState source) specEvent (projectState target)
-
-namespace AvailableStepSimulation
-
-variable {Impl : Machine ImplPlayer} {Spec : Machine SpecPlayer}
-
-/-- Project an implementation event list, dropping administrative events. -/
-def projectEvents (sim : AvailableStepSimulation Impl Spec)
-    (events : List Impl.Event) : List Spec.Event :=
-  events.filterMap sim.projectEvent?
-
-theorem availableRunFrom
-    (sim : AvailableStepSimulation Impl Spec)
-    {source target : Impl.State} {events : List Impl.Event}
-    (hrun : Impl.AvailableRunFrom source events target) :
-    Spec.AvailableRunFrom
-      (sim.projectState source) (sim.projectEvents events)
-      (sim.projectState target) := by
-  induction hrun with
-  | nil state =>
-      change
-        Spec.AvailableRunFrom
-          (sim.projectState state) [] (sim.projectState state)
-      exact .nil _
-  | cons havailable hstep _tail ih =>
-      rename_i source mid _dst event events
-      have hsim :
-          match sim.projectEvent? event with
-          | none => sim.projectState mid = sim.projectState source
-          | some specEvent =>
-              Spec.AvailableStep
-                (sim.projectState source) specEvent
-                (sim.projectState mid) :=
-        sim.step ⟨havailable, hstep⟩
-      cases hproject : sim.projectEvent? event with
-      | none =>
-          rw [hproject] at hsim
-          simpa [projectEvents, hproject, hsim] using ih
-      | some specEvent =>
-          rw [hproject] at hsim
-          have hrun' :
-              Spec.AvailableRunFrom
-                (sim.projectState source)
-                (specEvent :: sim.projectEvents events)
-                (sim.projectState _dst) :=
-            AvailableRunFrom.cons hsim.available hsim.support ih
-          simpa [projectEvents, hproject] using hrun'
-
-theorem reaches
-    (sim : AvailableStepSimulation Impl Spec)
-    {source target : Impl.State}
-    (hreaches : Impl.Reaches source target) :
-    Spec.Reaches (sim.projectState source) (sim.projectState target) := by
-  rcases hreaches with ⟨events, hrun⟩
-  exact ⟨sim.projectEvents events, sim.availableRunFrom hrun⟩
-
-end AvailableStepSimulation
-
-variable {Player : Type}
 
 /-- Probability-preserving refinement between two machines with the same
 player set.
@@ -349,30 +209,6 @@ def compose
   utility_project := by
     intro outcome player
     rw [R₂.utility_project, R₁.utility_project]
-
-/-- The probability-preserving refinement induces the support-level available
-step simulation used by reachability proofs. -/
-def toAvailableStepSimulation
-    (R : StochasticRefinement Impl Spec) :
-    AvailableStepSimulation Impl Spec where
-  projectState := R.projectState
-  projectEvent? := R.projectEvent?
-  step := by
-    intro source event target hstep
-    have hmemImpl : target ∈ (Impl.step event source).support :=
-      hstep.support
-    have hmemMap :
-        R.projectState target ∈
-          (PMF.map R.projectState (Impl.step event source)).support :=
-      (PMF.mem_support_map_iff _ _ _).mpr
-        ⟨target, hmemImpl, rfl⟩
-    cases hproject : R.projectEvent? event with
-    | none =>
-        rw [R.step_project event source, hproject] at hmemMap
-        simpa using hmemMap
-    | some specEvent =>
-        rw [R.step_project event source, hproject] at hmemMap
-        exact ⟨R.available_project hstep.available hproject, hmemMap⟩
 
 theorem projected_step_eq_spec_step
     (R : StochasticRefinement Impl Spec)

@@ -26,13 +26,12 @@ namespace EFGInstances
 
 variable (semantics : FrontierGameSemantics program)
 
-@[reducible] noncomputable def primitiveStateFintype
-    (_semantics : FrontierGameSemantics program) :
+@[reducible] noncomputable scoped instance primitiveStateFintype :
     Fintype (PrimitiveMachine (compile program.core)).State := by
   letI :
       ∀ field : Fin (compile program.core).graph.fieldCount,
         Fintype (L.Val ((compile program.core).graph.fieldRow field).ty) :=
-    _semantics.games.fieldFintype
+    compile_fieldFintype program
   exact
     EventGraph.StateSnapshot.reachableConfigFintype
       (compile program.core).graph (compile program.core).graphWF
@@ -55,13 +54,13 @@ noncomputable scoped instance actDecidableEq (player : P) :
     DecidableEq (semantics.behavioral.view.Act player) :=
   Classical.decEq _
 
-@[reducible] noncomputable def obsFintype (player : P) :
+@[reducible] noncomputable scoped instance obsFintype (player : P) :
     Fintype ((PrimitiveMachine (compile program.core)).Obs player) := by
   classical
   letI :
       ∀ field : Fin (compile program.core).graph.fieldCount,
         Fintype (L.Val ((compile program.core).graph.fieldRow field).ty) :=
-    semantics.games.fieldFintype
+    compile_fieldFintype program
   dsimp [PrimitiveMachine, primitiveMachineSpec,
     EventGraph.PrimitiveMachineOf, EventGraph.ToMachine.primitiveMachine]
   infer_instance
@@ -70,13 +69,13 @@ noncomputable scoped instance obsDecidableEq (player : P) :
     DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
   Classical.decEq _
 
-@[reducible] noncomputable def publicFintype :
+@[reducible] noncomputable scoped instance publicFintype :
     Fintype (PrimitiveMachine (compile program.core)).Public := by
   classical
   letI :
       ∀ field : Fin (compile program.core).graph.fieldCount,
         Fintype (L.Val ((compile program.core).graph.fieldRow field).ty) :=
-    semantics.games.fieldFintype
+    compile_fieldFintype program
   dsimp [PrimitiveMachine, primitiveMachineSpec,
     EventGraph.PrimitiveMachineOf, EventGraph.ToMachine.primitiveMachine]
   infer_instance
@@ -94,19 +93,6 @@ noncomputable def boundedFOSGPresentation
     (semantics : FrontierGameSemantics program) :
     Languages.Expressiveness.BoundedFOSGPresentation P := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   exact
     semantics.behavioral.view.boundedFOSGPresentation
       semantics.horizon (fun _ => 0)
@@ -116,19 +102,6 @@ noncomputable def plainEFG
     (semantics : FrontierGameSemantics program) :
     EFG.EFGGame := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   exact
     semantics.behavioral.view.toPlainEFGMachinePayoff
       semantics.horizon (fun _ => 0)
@@ -138,19 +111,6 @@ noncomputable def plainEFGMachinePayoffKernelGame
     (semantics : FrontierGameSemantics program) :
     KernelGame P := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   exact
     semantics.behavioral.view.toPlainEFGMachinePayoffKernelGame
       semantics.horizon (fun _ => 0)
@@ -162,19 +122,6 @@ noncomputable def plainEFGTranslateProfile
     semantics.fosgMachinePayoffHistoryKernelGame.Profile →
       semantics.plainEFGMachinePayoffKernelGame.Profile := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   exact (semantics.boundedFOSGPresentation).translateProfile
 
 /-- The final-payoff EFG outcome law is the final-payoff FOSG history outcome
@@ -186,19 +133,6 @@ theorem plainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg
         (semantics.plainEFGTranslateProfile profile) =
       semantics.fosgMachinePayoffHistoryKernelGame.outcomeKernel profile := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   exact
     semantics.behavioral.view.toPlainEFGMachinePayoffKernelGame_outcomeKernel_eq_fosg
       semantics.horizon (fun _ => 0) profile
@@ -212,19 +146,6 @@ theorem plainEFGMachinePayoffKernelGame_udist_eq_fosg
         (semantics.plainEFGTranslateProfile profile) =
       semantics.fosgMachinePayoffHistoryKernelGame.udist profile := by
   classical
-  letI := EFGInstances.primitiveStateFintype semantics
-  letI := EFGInstances.actFintype semantics
-  letI :
-      ∀ player, DecidableEq (semantics.behavioral.view.Act player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.obsFintype semantics
-  letI :
-      ∀ player,
-        DecidableEq ((PrimitiveMachine (compile program.core)).Obs player) :=
-    fun _ => Classical.decEq _
-  letI := EFGInstances.publicFintype semantics
-  letI : DecidableEq (PrimitiveMachine (compile program.core)).Public :=
-    Classical.decEq _
   change
     (semantics.plainEFGMachinePayoffKernelGame.outcomeKernel
           (semantics.plainEFGTranslateProfile profile)).bind

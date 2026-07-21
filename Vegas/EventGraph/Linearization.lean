@@ -12,7 +12,7 @@ import Vegas.EventGraph.Confluence
 The source semantics fixes a single schedule; the event graph admits many. A
 *full order* is any `Nodup` listing of all nodes — a schedule completing the
 whole graph. `Vegas.EventGraph.Confluence` already proved completion is
-order-independent (`scheduleComplete_eq_of_full`); this module packages the
+order-independent (`scheduleComplete_perm`); this module packages the
 canonical representative and its consequences.
 
 `canonicalCompletion G w` completes the graph from the initial configuration

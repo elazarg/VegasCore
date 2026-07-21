@@ -832,28 +832,6 @@ theorem behavioralToProductMixedOutcomeKernel
         (canonicalFrontierKuhnGames_menusObservable program)
         behavioralProfile
 
-/-- Canonical completed frontier games satisfy the generic two-direction Kuhn
-outcome-equality schema. -/
-theorem completeOutcomeKuhn
-    (program : WFProgram P L) [FiniteDomains program] :
-    GameTheory.Theorems.KuhnCompleteViaOutcome
-      ((canonicalFrontierKuhnGames program).behavioral.game).Profile
-      (∀ player,
-        PMF (((canonicalFrontierKuhnGames program).pure.game).Strategy player))
-      ((canonicalFrontierKuhnGames program).pure.game).Profile
-      ((canonicalFrontierKuhnGames program).pure.game).Outcome
-      (fun behavioralProfile =>
-        Math.PMFProduct.pmfPi
-          ((canonicalFrontierKuhnGames program).behavioralToMixedPure
-            (canonicalFrontierKuhnGames_menusObservable program)
-            behavioralProfile))
-      Math.PMFProduct.pmfPi
-      ((canonicalFrontierKuhnGames program).behavioral.game).outcomeKernel
-      ((canonicalFrontierKuhnGames program).pure.game).outcomeKernel :=
-  (canonicalFrontierKuhnGames program)
-    |>.completeOutcomeKuhn
-      (canonicalFrontierKuhnGames_menusObservable program)
-
 end ToEventGraph
 
 end Vegas

@@ -15,6 +15,82 @@ open GameTheory
 namespace Examples
 namespace Refinement
 
+open ToEventGraph
+
+/-! ## Concrete compiled-program trace adequacy -/
+
+/-- A terminal source game with constant payoffs. Its compiled graph has no
+nodes, making it the base case of the source-to-runtime trace argument. -/
+def constantPayoffCore : VegasCore Player L [] :=
+  .ret [(.alice, .constInt 1), (.bob, .constInt (-1))]
+
+noncomputable def constantPayoffProgram : GraphProgram Player L where
+  Γ := []
+  prog := constantPayoffCore
+  env := VEnv.empty L
+  wctx := WFCtx_nil
+  fresh := by simp [constantPayoffCore, FreshBindings]
+  normalized := by simp [constantPayoffCore, NormalizedDists]
+
+noncomputable def constantPayoffChecked : WFProgram Player L where
+  core := constantPayoffProgram
+  reveals := by
+    simp [constantPayoffProgram, constantPayoffCore, RevealComplete]
+  legal := by
+    simp [constantPayoffProgram, constantPayoffCore, Legal]
+
+noncomputable instance constantPayoffFiniteDomains :
+    FiniteDomains constantPayoffChecked where
+  context := inferInstanceAs (FiniteVCtx ([] : VCtx Player L))
+  program := { proof := .ret }
+
+theorem constantPayoff_horizon :
+    constantPayoffChecked.frontierSemantics.horizon = 0 := by
+  simp [FrontierGameSemantics.horizon, constantPayoffChecked,
+    constantPayoffProgram, constantPayoffCore, completionBound,
+    compile, compileCore, EventGraph.Graph.nodeCount]
+
+/-- The compiled specification law for the terminal source game. Since the
+compiled graph has no events, the empty batch law is legal on every trace. -/
+noncomputable def constantPayoffSpecLaw :
+    WFProgram.TraceSpecEventBatchLaw constantPayoffChecked
+      (WFProgram.behavioralFrontierTraceSurface constantPayoffChecked) where
+  specLaw := fun _profile _trace => PMF.pure []
+  legal := by
+    intro _profile trace hnonterminal
+    exfalso
+    apply hnonterminal
+    intro node
+    exact Fin.elim0 node
+  trace_eq := by
+    intro profile
+    simp only [WFProgram.behavioralFrontierTraceSurface,
+      WFProgram.behavioralFrontierEventBatchTraceKernel,
+      FrontierGameSemantics.behavioralHistoryKernel,
+      constantPayoff_horizon, Machine.eventBatchTraceDist_zero,
+      Machine.RoundView.runDist,
+      Machine.RoundView.BoundedHistory.runDistFrom_zero]
+    rw [PMF.pure_map]
+    rfl
+
+noncomputable def constantPayoffAuditedAdequacy :
+    WFProgram.RuntimeTraceAdequacy constantPayoffChecked
+      (WFProgram.behavioralFrontierTraceSurface constantPayoffChecked)
+      (Machine.audited.refinement
+        (WFProgram.PrimitiveSpecMachine constantPayoffChecked)) :=
+  WFProgram.RuntimeTraceAdequacy.audited constantPayoffSpecLaw
+
+/-- The audited runtime preserves the behavioral utility distribution of this
+concrete compiled source game without an assumed trace law. -/
+theorem constantPayoff_audited_preserves_behavioral_udist
+    (profile : constantPayoffChecked.BehavioralFrontierProfile) :
+    (WFProgram.RuntimeTraceAdequacy.implTraceGame
+      constantPayoffAuditedAdequacy).udist profile =
+      constantPayoffChecked.behavioralFrontierGame.udist profile := by
+  simpa [WFProgram.behavioralFrontierTraceSurface] using
+    WFProgram.RuntimeTraceAdequacy.implTraceGame_udist_surface
+      constantPayoffAuditedAdequacy profile
+
 noncomputable def matchingPenniesMachine :
     Machine Vegas.Examples.Player :=
   ToEventGraph.PrimitiveMachine Vegas.Examples.matchingPenniesCompiled

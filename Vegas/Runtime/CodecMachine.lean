@@ -11,9 +11,9 @@ The first concrete rung below `PrimitiveMachine`.
 A bare wire store cannot project to `PrimitiveMachine.State`, because primitive
 states are reachable graph configurations, not just stores.  This machine uses
 the config-shaped design: its state carries the primitive reachable config and a
-wire-encoded copy of the config store.  The refinement projection erases the
-wire layer; the codec round-trip laws prove the wire store is the encoded form
-of the graph store.
+wire-encoded copy of the config store. The refinement projection erases the
+wire layer, while the state invariant records that the wire store encodes the
+graph store.
 -/
 
 namespace Vegas
@@ -48,13 +48,6 @@ def encode (config : ReachableConfig G) : CodecState codec G where
 
 @[simp] theorem encode_config (config : ReachableConfig G) :
     (encode codec config).config = config := rfl
-
-/-- Decoding the wire store stored in a codec state recovers the projected
-primitive graph store. -/
-theorem decode_wireStore (state : CodecState codec G) :
-    codec.decodeStore state.wireStore = state.config.1.store := by
-  rw [state.wireStore_eq]
-  exact codec.decodeStore_encodeStore state.config.1.store
 
 end CodecState
 

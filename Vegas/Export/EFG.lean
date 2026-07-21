@@ -246,16 +246,6 @@ theorem frontierPlainEFG_payoffGame_udist_behavioralGame
     program.frontierPlainEFGMachinePayoffKernelGame_udist_behavioralGame
       profile
 
-/-- The exported payoff-facing EFG has the source payoff utility law of the
-native behavioral frontier game. -/
-theorem frontierPlainEFG_sourcePayoffGame_udist_behavioralGame
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    (frontierPlainEFG program).payoffGame.udist
-        (frontierPlainEFGProfile program profile) =
-      program.behavioralFrontierGame.udist profile :=
-  frontierPlainEFG_payoffGame_udist_behavioralGame program profile
-
 /-- The payoff-facing EFG export has the same joint utility distribution as
 the native pure frontier game under degenerate behavioral play. -/
 theorem frontierPlainEFG_payoffGame_udist_pureGame
@@ -266,16 +256,6 @@ theorem frontierPlainEFG_payoffGame_udist_pureGame
       program.pureFrontierGame.udist profile := by
   simpa [frontierPlainEFG, frontierPlainEFGPureProfile] using
     program.frontierPlainEFGMachinePayoffKernelGame_udist_pureGame profile
-
-/-- The exported payoff-facing EFG has the source payoff utility law of the
-native pure frontier game under degenerate behavioral play. -/
-theorem frontierPlainEFG_sourcePayoffGame_udist_pureGame
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.PureFrontierProfile) :
-    (frontierPlainEFG program).payoffGame.udist
-        (frontierPlainEFGPureProfile program profile) =
-      program.pureFrontierGame.udist profile :=
-  frontierPlainEFG_payoffGame_udist_pureGame program profile
 
 /-- The payoff-facing EFG export has the same joint utility distribution as
 the product mixed-pure frontier game under the canonical Kuhn
@@ -291,17 +271,6 @@ theorem frontierPlainEFG_payoffGame_udist_mixedPureGame
   unfold KernelGame.udist
   rw [program.mixedPureToBehavioralFrontierProfile_outcomeKernel profile]
   rfl
-
-/-- The exported payoff-facing EFG has the source payoff utility law of the
-product mixed-pure frontier game under the canonical Kuhn
-mixed-pure-to-behavioral realization. -/
-theorem frontierPlainEFG_sourcePayoffGame_udist_mixedPureGame
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.MixedPureFrontierProfile) :
-    (frontierPlainEFG program).payoffGame.udist
-        (frontierPlainEFGMixedPureProfile program profile) =
-      program.mixedPureFrontierGame.udist profile :=
-  frontierPlainEFG_payoffGame_udist_mixedPureGame program profile
 
 end Export
 
