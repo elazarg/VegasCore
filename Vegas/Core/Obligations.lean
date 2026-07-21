@@ -290,24 +290,4 @@ def NormalizedDists {P : Type} [DecidableEq P]
   | _, .commit _ _ _ k => NormalizedDists k
   | _, .reveal _ _ _ _ k => NormalizedDists k
 
-theorem DistExpr.Normalized_ite {Γ : CtxSimple} {b : BaseTy}
-    {c : Expr Γ .bool} {t f : DistExpr Γ b}
-    (ht : ∀ depEnv : (x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
-        x ∈ distExprDeps t → Val τ,
-      FWeight.totalWeight (evalDistExprDeps t depEnv) = 1)
-    (hf : ∀ depEnv : (x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
-        x ∈ distExprDeps f → Val τ,
-      FWeight.totalWeight (evalDistExprDeps f depEnv) = 1) :
-    ∀ depEnv : (x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
-        x ∈ distExprDeps (.ite c t f) → Val τ,
-      FWeight.totalWeight (evalDistExprDeps (.ite c t f) depEnv) = 1 := by
-  intro depEnv
-  by_cases hc :
-      evalExprDeps c
-        (fun x τ h hx => depEnv x τ h (by simp [distExprDeps, hx]))
-  · simp only [evalDistExprDeps, hc]
-    exact ht (fun x τ h hx => depEnv x τ h (by simp [distExprDeps, hx]))
-  · simp only [evalDistExprDeps, hc]
-    exact hf (fun x τ h hx => depEnv x τ h (by simp [distExprDeps, hx]))
-
 end Vegas

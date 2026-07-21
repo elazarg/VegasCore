@@ -71,11 +71,6 @@ noncomputable instance (lo hi : Int) [h : Nonempty (Val (.range lo hi))] :
     DefaultVal (.range lo hi) where
   defaultVal := Classical.choice h
 
-theorem not_commitPayloadTy_option (b : BaseTy) :
-    ¬ CommitPayloadTy (.option b) := by
-  intro h
-  exact h.nonNullable
-
 /-- Plain (non-visibility) context over `BaseTy`. -/
 abbrev CtxSimple : Type := Vegas.Ctx BaseTy
 
@@ -716,28 +711,6 @@ theorem nullableCommitGuard_satisfiable
       (Env.cons (x := x) Option.none env) = true
   simp
 
-/-- Extract variable IDs referenced by an expression (as a list). -/
-def exprVars : Expr Γ b → List VarId
-  | .var x _ => [x]
-  | .constInt _ => []
-  | .constBool _ => []
-  | .constRange _ => []
-  | .none => []
-  | .some e => exprVars e
-  | .isSome e => exprVars e
-  | .isNone e => exprVars e
-  | .getD e fallback => exprVars e ++ exprVars fallback
-  | .addInt l r => exprVars l ++ exprVars r
-  | .eq l r => exprVars l ++ exprVars r
-  | .andBool l r => exprVars l ++ exprVars r
-  | .notBool e => exprVars e
-  | .ite c t f => exprVars c ++ exprVars t ++ exprVars f
-
-/-- Extract variable IDs referenced by a distribution expression (as a list). -/
-def distExprVars : DistExpr Γ b → List VarId
-  | .weighted _ => []
-  | .ite c t f => exprVars c ++ distExprVars t ++ distExprVars f
-
 @[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (entries : List (Val b × ℚ≥0)) (env : PlainEnv Γ) :
     evalDistExpr (.weighted entries) env = FWeight.ofList entries := rfl
@@ -755,9 +728,5 @@ theorem evalDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
   simp [evalDistExpr, hc]
 
 def DistExpr.point (v : Val b) : DistExpr Γ b := .weighted [(v, 1)]
-
-def DistExpr.uniform (vs : List (Val b)) : DistExpr Γ b :=
-  let w : ℚ≥0 := 1 / (vs.length : ℚ≥0)
-  .weighted (vs.map fun v => (v, w))
 
 end Vegas

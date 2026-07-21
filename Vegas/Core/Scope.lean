@@ -29,6 +29,32 @@ def publicVars : VCtx P L → Finset VarId
   | (x, ⟨_, .pub⟩) :: Γ => insert x (publicVars Γ)
   | (_, ⟨_, .sealed _⟩) :: Γ => publicVars Γ
 
+omit [DecidableEq P] in
+/-- Every variable retained by public erasure is publicly observable in the
+source visibility context. -/
+theorem erasePubVCtx_names_subset_publicVars
+    {Γ : VCtx P L} :
+    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst →
+      x ∈ publicVars (L := L) Γ := by
+  induction Γ with
+  | nil =>
+      intro x hx
+      simp [erasePubVCtx] at hx
+  | cons head tail ih =>
+      intro x hx
+      obtain ⟨name, binding⟩ := head
+      rcases binding with ⟨ty, visibility⟩
+      cases visibility with
+      | pub =>
+          simp only [erasePubVCtx_cons_pub, List.map_cons, List.mem_cons]
+            at hx
+          rcases hx with rfl | htail
+          · simp [publicVars]
+          · exact Finset.mem_insert_of_mem (ih x htail)
+      | sealed owner =>
+          simp only [erasePubVCtx_cons_sealed] at hx
+          exact ih x hx
+
 /-- Variable identifiers observable to player `who` in a visibility context. -/
 def visibleVars (who : P) : VCtx P L → Finset VarId
   | [] => ∅

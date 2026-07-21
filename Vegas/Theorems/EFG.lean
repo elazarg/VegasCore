@@ -45,21 +45,6 @@ theorem frontier_plain_efg_payoff_udist_behavioral
   program.frontierPlainEFGMachinePayoffKernelGame_udist_behavioralGame
     profile
 
-/-- Source-payoff adequacy for the payoff-facing EFG serialization: translating
-a native behavioral frontier profile to EFG preserves the joint utility law
-defined by the checked program's source payoff projection. -/
-theorem frontier_plain_efg_sourcePayoff_udist_behavioral
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    program.frontierPlainEFGMachinePayoffKernelGame.udist
-        (program.frontierPlainEFGTranslateProfile
-          (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
-            program.frontierSemantics.behavioral.view
-            program.frontierSemantics.horizon (fun _ => 0)
-            profile).extend) =
-      program.behavioralFrontierGame.udist profile :=
-  frontier_plain_efg_payoff_udist_behavioral program profile
-
 /-- Pure frontier profiles run through the payoff-facing EFG by first using
 the degenerate behavioral embedding, preserving the joint utility law. -/
 theorem frontier_plain_efg_payoff_udist_pure
@@ -74,21 +59,6 @@ theorem frontier_plain_efg_payoff_udist_pure
               program.frontierSemantics.horizon profile)).extend) =
       program.pureFrontierGame.udist profile :=
   program.frontierPlainEFGMachinePayoffKernelGame_udist_pureGame profile
-
-/-- Source-payoff adequacy for pure frontier profiles, using the degenerate
-behavioral embedding into the payoff-facing EFG serialization. -/
-theorem frontier_plain_efg_sourcePayoff_udist_pure
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    (profile : program.PureFrontierProfile) :
-    program.frontierPlainEFGMachinePayoffKernelGame.udist
-        (program.frontierPlainEFGTranslateProfile
-          (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
-            program.frontierSemantics.behavioral.view
-            program.frontierSemantics.horizon (fun _ => 0)
-            ((program.frontierSemantics.behavioral.view).legalPureToBehavioral
-              program.frontierSemantics.horizon profile)).extend) =
-      program.pureFrontierGame.udist profile :=
-  frontier_plain_efg_payoff_udist_pure program profile
 
 /-- Every supported payoff-facing EFG history is backed by a native completed
 frontier history and an executable primitive-event replay. -/
@@ -193,16 +163,6 @@ theorem exported_frontier_plain_efg_udist_payoffGame
       (Export.frontierPlainEFG program).payoffGame.udist
         ((Export.frontierPlainEFG program).translateProfile profile) :=
   Export.frontierPlainEFG_efgUdist_payoffGame program profile
-
-/-- Exported EFG source-payoff adequacy for behavioral frontier profiles. -/
-theorem exported_frontier_plain_efg_sourcePayoff_udist_behavioral
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    (Export.frontierPlainEFG program).payoffGame.udist
-        (Export.frontierPlainEFGProfile program profile) =
-      program.behavioralFrontierGame.udist profile :=
-  Export.frontierPlainEFG_payoffGame_udist_behavioralGame
-    program profile
 
 end WFProgram
 

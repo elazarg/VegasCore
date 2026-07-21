@@ -183,9 +183,6 @@ def Supported (d : FWeight α) (P : α → Prop) : Prop := ∀ a ∈ d.support, 
     (FWeight.pure x).Supported P ↔ P x := by
   simp [Supported]
 
-theorem Supported_zero (P : α → Prop) : (FWeight.zero : FWeight α).Supported P := by
-  simp [Supported, FWeight.zero]
-
 theorem pure_bind (x : α) (f : α → FWeight β) : (FWeight.pure x).bind f = f x := by
   ext b
   rw [bind_apply]
@@ -334,26 +331,6 @@ theorem bind_map (d : FWeight α) (f : α → FWeight β) {γ : Type} [Decidable
     (f := g) (v := f a) (g := fun x : ℚ≥0 => d a * x)
     (h0 := mul_zero (d a)) (hadd := by intro x y; exact mul_add (d a) x y)
 
-theorem bind_assoc {γ : Type} [DecidableEq γ]
-    (d : FWeight α) (f : α → FWeight β) (g : β → FWeight γ) :
-    (d.bind f).bind g = d.bind (fun a => (f a).bind g) := by
-  simp only [bind]
-  rw [Finsupp.sum_sum_index
-    (fun b => by ext x; simp [Finsupp.mapRange_apply, zero_mul])
-    (fun b m₁ m₂ => by ext x; simp [Finsupp.mapRange_apply, add_mul])]
-  congr 1
-  funext a
-  funext w
-  rw [Finsupp.sum_mapRange_index
-    (fun b => by ext x; simp [Finsupp.mapRange_apply, zero_mul])]
-  ext c
-  simp only [Finsupp.sum, Finsupp.mapRange_apply, Finsupp.finsetSum_apply]
-  rw [Finset.mul_sum]
-  congr 1
-  apply Finset.sum_congr rfl
-  intro b _
-  exact mul_assoc w ((f a) b) ((g b) c)
-
 /-- Independent `bind`s commute: the order in which two independent random
 choices are made does not affect the joint distribution. The algebraic
 substrate for program-level commutation results — for example, two adjacent
@@ -373,12 +350,6 @@ theorem bind_comm {γ : Type} [DecidableEq γ]
   intro a _
   exact mul_left_comm (d₁ a) (d₂ b) ((f a b) c)
 
-theorem bind_pure_comp (d : FWeight α) (g : α → β) :
-    FWeight.bind d (fun a => FWeight.pure (g a)) = FWeight.map g d := by
-  ext b
-  rw [bind_apply, map_apply]
-  simp_rw [pure_apply, mul_ite, mul_one, mul_zero]
-
 theorem totalWeight_map (d : FWeight α) (g : α → β) :
     FWeight.totalWeight (FWeight.map g d) = FWeight.totalWeight d := by
   simp only [FWeight.map, FWeight.totalWeight]
@@ -387,10 +358,6 @@ theorem totalWeight_map (d : FWeight α) (g : α → β) :
     (Finsupp.sum_mapDomain_index_addMonoidHom (f := g) (s := d) (h := h))
 
 end FWeight
-
-/-- Normalized finite weights. This is the finite probability fragment of
-`FWeight`; use `FWeight.toPMF` to enter Mathlib's `PMF` API. -/
-abbrev FProb (α : Type) [DecidableEq α] := {d : FWeight α // d.Normalized}
 
 /-! ## Cast `ℚ≥0 → ℝ≥0`
 

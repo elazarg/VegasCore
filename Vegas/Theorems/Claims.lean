@@ -680,7 +680,7 @@ theorem claim_fosg_utility_distribution_adequacy
           program.frontierSemantics.horizon (fun _ => 0)
           profile).extend =
       program.behavioralFrontierGame.udist profile :=
-  program.frontierFOSG_sourcePayoff_udist_behavioral profile
+  program.frontierFOSG_payoff_udist_behavioral profile
 
 /-- The payoff-facing serialized EFG denotation has the checked program's
 source payoff utility law after translating native behavioral frontier
@@ -695,7 +695,7 @@ theorem claim_efg_utility_distribution_adequacy
             program.frontierSemantics.horizon (fun _ => 0)
             profile).extend) =
       program.behavioralFrontierGame.udist profile :=
-  Theorems.EFG.WFProgram.frontier_plain_efg_sourcePayoff_udist_behavioral
+  Theorems.EFG.WFProgram.frontier_plain_efg_payoff_udist_behavioral
     program profile
 
 /-- Behavioral frontier profiles induce product mixed pure frontier profiles

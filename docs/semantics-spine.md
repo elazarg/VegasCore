@@ -38,11 +38,11 @@ semantics.
 
 - `program.frontierFOSG`
 - `program.frontierFOSGMachinePayoffHistoryKernelGame`
-- `program.frontierFOSG_sourcePayoff_udist_behavioral`
+- `program.frontierFOSG_payoff_udist_behavioral`
 - `Vegas.Export.frontierFOSG_historyGame_udist_behavioralGame`
 - `program.frontierPlainEFG`
 - `program.frontierPlainEFGMachinePayoffKernelGame`
-- `program.frontier_plain_efg_sourcePayoff_udist_behavioral`
+- `Vegas.Theorems.EFG.WFProgram.frontier_plain_efg_payoff_udist_behavioral`
 - `Vegas.Export.frontierPlainEFG_payoffGame_udist_behavioralGame`
 
 ## Strategy transport
@@ -70,7 +70,8 @@ A general runtime theorem requires a strategy-indexed specification event-batch
 law because primitive traces need not reconstruct the complete frontier
 information history. `Vegas.Examples.Refinement.constantPayoffSpecLaw` is a
 concrete compiled-program witness, and
-`constantPayoff_audited_preserves_behavioral_udist` carries it through the
+`Vegas.Examples.Refinement.constantPayoff_audited_preserves_behavioral_udist`
+carries it through the
 audited runtime without assuming such a law.
 
 ## Build-tested examples

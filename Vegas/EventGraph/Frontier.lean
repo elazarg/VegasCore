@@ -121,10 +121,6 @@ noncomputable def activePlayers [Fintype Player]
   (Finset.univ : Finset Player).filter fun who =>
     (readyCommitNodes G cfg who).Nonempty
 
-/-- Frontier terminality is graph terminality: every graph node is complete. -/
-abbrev terminal (G : Graph Player L) (cfg : Config G) : Prop :=
-  Terminal G cfg
-
 namespace ReadyCommitNode
 
 theorem ready {G : Graph Player L} {cfg : Config G} {who : Player}

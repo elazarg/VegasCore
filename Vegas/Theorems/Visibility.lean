@@ -79,29 +79,6 @@ theorem commitGuard_eval_eq_of_visible_values_eq
   funext name bindTy hvar
   exact hvisible hvar
 
-private theorem erasePubVCtx_map_fst_subset_publicVars
-    {Γ : VCtx P L} :
-    ∀ x, x ∈ (erasePubVCtx Γ).map Prod.fst →
-      x ∈ publicVars (L := L) Γ := by
-  induction Γ with
-  | nil =>
-      intro x hx
-      simp [erasePubVCtx] at hx
-  | cons head tail ih =>
-      intro x hx
-      obtain ⟨name, binding⟩ := head
-      rcases binding with ⟨ty, visibility⟩
-      cases visibility with
-      | pub =>
-          simp only [erasePubVCtx_cons_pub, List.map_cons, List.mem_cons]
-            at hx
-          rcases hx with rfl | htail
-          · simp [publicVars]
-          · exact Finset.mem_insert_of_mem (ih x htail)
-      | sealed owner =>
-          simp only [erasePubVCtx_cons_sealed] at hx
-          exact ih x hx
-
 /-- Payoff expressions mention only public source variables. This is the
 source-level noninterference boundary for terminal utility: sealed values can
 contribute to payoffs only by first being revealed into the public context. -/
@@ -111,7 +88,7 @@ theorem payoff_expr_no_sealed_dependency
     ∀ entry ∈ payoffs,
       L.exprDeps entry.2 ⊆ publicVars (L := L) Γ := by
   intro entry _hentry name hdep
-  exact erasePubVCtx_map_fst_subset_publicVars (L := L)
+  exact erasePubVCtx_names_subset_publicVars (L := L)
     name (L.expr_deps_context entry.2 name hdep)
 
 namespace EventGraph

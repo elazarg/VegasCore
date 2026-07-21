@@ -186,20 +186,6 @@ theorem frontierFOSG_payoff_udist_behavioral
   program.frontierFOSGMachinePayoffHistoryKernelGame_udist_behavioralGame
     profile
 
-/-- Source-payoff adequacy for the payoff-facing FOSG denotation: translating
-a native behavioral frontier profile to FOSG preserves the joint utility law
-defined by the checked program's source payoff projection. -/
-theorem frontierFOSG_sourcePayoff_udist_behavioral
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    program.frontierFOSGMachinePayoffHistoryKernelGame.udist
-        (Machine.RoundView.ToFOSG.behavioralProfileOfBoundedBehavioralProfile
-          program.frontierSemantics.behavioral.view
-          program.frontierSemantics.horizon (fun _ => 0)
-          profile).extend =
-      program.behavioralFrontierGame.udist profile :=
-  program.frontierFOSG_payoff_udist_behavioral profile
-
 /-- Arbitrary payoff-facing FOSG profiles are payoff-equivalent to their
 restricted native reachable frontier profile. -/
 theorem frontierFOSG_payoff_udist_restrictedBehavioral
@@ -211,16 +197,6 @@ theorem frontierFOSG_payoff_udist_restrictedBehavioral
   program
     |>.frontierFOSGMachinePayoffHistoryKernelGame_udist_restrictedBehavioralGame
       profile
-
-/-- Source-payoff adequacy for arbitrary payoff-facing FOSG profiles, after
-restricting them to the native reachable frontier profile they induce. -/
-theorem frontierFOSG_sourcePayoff_udist_restrictedBehavioral
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.frontierFOSGMachinePayoffHistoryKernelGame.Profile) :
-    program.frontierFOSGMachinePayoffHistoryKernelGame.udist profile =
-      program.behavioralFrontierGame.udist
-        (program.behavioralFrontierProfileOfFOSGProfile profile) :=
-  program.frontierFOSG_payoff_udist_restrictedBehavioral profile
 
 /-- The payoff-facing FOSG denotation is Kuhn-compatible with the induced
 product mixed pure frontier profile at the utility-distribution level. -/
@@ -300,17 +276,6 @@ theorem frontierFOSGExport_historyGame_udist_behavioral
         (frontierFOSGProfile program profile) =
       program.behavioralFrontierGame.udist profile :=
   frontierFOSG_historyGame_udist_behavioralGame program profile
-
-/-- Exported FOSG source-payoff adequacy: the exported payoff-facing history
-game preserves the checked program's source payoff utility law. -/
-theorem frontierFOSGExport_sourcePayoff_udist_behavioral
-    {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
-    (program : WFProgram P L) [FiniteDomains program]
-    (profile : program.BehavioralFrontierProfile) :
-    (frontierFOSG program).historyGame.udist
-        (frontierFOSGProfile program profile) =
-      program.behavioralFrontierGame.udist profile :=
-  frontierFOSGExport_historyGame_udist_behavioral program profile
 
 /-- Exported FOSG history games are Kuhn-compatible with the induced
 product mixed pure frontier profile at the utility-distribution level. -/
