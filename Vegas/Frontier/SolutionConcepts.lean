@@ -15,6 +15,7 @@ import GameTheory.Concepts.Dominance.Rationalizability
 import GameTheory.Concepts.ZeroSum.SecurityStrategy
 import GameTheory.Concepts.Dominance.StrictDominance
 import GameTheory.Concepts.Welfare.WelfareTheorems
+import GameTheory.Concepts.Transport.SolutionConcepts
 
 /-!
 # Frontier solution concepts
@@ -170,6 +171,70 @@ def PureFrontierSurvives
     (strategy : program.PureFrontierStrategy player) : Prop :=
   program.pureFrontierGame.Survives round player strategy
 
+def PureFrontierSurvivesStrictDominance
+    (program : WFProgram P L) [FiniteDomains program]
+    (round : Nat) (player : P)
+    (strategy : program.PureFrontierStrategy player) : Prop :=
+  program.pureFrontierGame.SurvivesStrictDominance round player strategy
+
+def PureFrontierIESDSSolvable
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.PureFrontierProfile) : Prop :=
+  program.pureFrontierGame.IsIESDSSolvable profile
+
+def PureFrontierSurvivesPure
+    (program : WFProgram P L) [FiniteDomains program]
+    (round : Nat) (player : P)
+    (strategy : program.PureFrontierStrategy player) : Prop :=
+  program.pureFrontierGame.SurvivesPure round player strategy
+
+def PureFrontierPureRationalizable
+    (program : WFProgram P L) [FiniteDomains program]
+    (player : P) (strategy : program.PureFrontierStrategy player) : Prop :=
+  program.pureFrontierGame.IsPureRationalizable player strategy
+
+/-- IESDS solvability pins every correlated equilibrium of the pure frontier
+game to the surviving profile. The uniqueness theorem is applied to the
+finite completed-history presentation, whose strategy space and utility laws
+are isomorphic to the payoff-outcome presentation exposed by the program API. -/
+theorem pureFrontier_correlatedEq_eq_pure_of_iesds
+    (program : WFProgram P L) [FiniteDomains program]
+    {profile : program.PureFrontierProfile}
+    (hsolvable : program.PureFrontierIESDSSolvable profile)
+    {distribution : program.PureFrontierCorrelatedProfile}
+    (hcorrelated : program.PureFrontierCorrelatedEq distribution) :
+    distribution = PMF.pure profile := by
+  classical
+  let semantics := program.frontierSemantics
+  let equivalence :=
+    semantics.pureHistoryUtilityDistributionEquivalence.toEUGameIsomorphism
+  have hprofile : equivalence.profileEquiv profile = profile := by
+    funext player
+    rfl
+  have hdistribution : equivalence.realize distribution = distribution := by
+    unfold KernelGame.EUGameIsomorphism.realize
+    change PMF.map (fun strategyProfile => strategyProfile) distribution =
+      distribution
+    exact PMF.map_id distribution
+  letI : ∀ player, Fintype (program.PureFrontierStrategy player) :=
+    fun player => program.pureFrontierStrategyFintype player
+  letI : Fintype program.PureFrontierProfile := by infer_instance
+  letI : Finite semantics.pureHistoryKernelGame.Profile := by
+    change Finite program.PureFrontierProfile
+    infer_instance
+  letI : Fintype semantics.PureHistory := semantics.pureHistoryFintype
+  letI : Finite semantics.pureHistoryKernelGame.Outcome :=
+    Finite.of_fintype semantics.PureHistory
+  have hsolvableHistory :
+      semantics.pureHistoryKernelGame.IsIESDSSolvable profile := by
+    simpa only [hprofile] using
+      (equivalence.isIESDSSolvable_iff profile).mp hsolvable
+  have hcorrelatedHistory :
+      semantics.pureHistoryKernelGame.IsCorrelatedEq distribution := by
+    simpa only [hdistribution] using
+      (equivalence.correlatedEq_iff distribution).mp hcorrelated
+  exact hsolvableHistory.correlatedEq_eq_pure hcorrelatedHistory
+
 def PureFrontierRationalizable
     (program : WFProgram P L) [FiniteDomains program]
     (player : P) (strategy : program.PureFrontierStrategy player) : Prop :=
@@ -179,6 +244,11 @@ def PureFrontierExactPotential
     (program : WFProgram P L) [FiniteDomains program]
     (potential : program.PureFrontierProfile → ℝ) : Prop :=
   program.pureFrontierGame.IsExactPotential potential
+
+def PureFrontierWeightedExactPotential
+    (program : WFProgram P L) [FiniteDomains program]
+    (potential : program.PureFrontierProfile → ℝ) (weight : P → ℝ) : Prop :=
+  program.pureFrontierGame.IsWeightedExactPotential potential weight
 
 def PureFrontierOrdinalPotential
     (program : WFProgram P L) [FiniteDomains program]
@@ -321,6 +391,16 @@ noncomputable def pureFrontierSecurityLevelSup
     (program : WFProgram P L) [FiniteDomains program]
     (player : P) : ℝ :=
   program.pureFrontierGame.securityLevelSup player
+
+def PureFrontierSecurityStrategySup
+    (program : WFProgram P L) [FiniteDomains program]
+    (player : P) (strategy : program.PureFrontierStrategy player) : Prop :=
+  program.pureFrontierGame.IsSecurityStrategySup player strategy
+
+def PureFrontierSecurityProfileSup
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.PureFrontierProfile) : Prop :=
+  program.pureFrontierGame.IsSecurityProfileSup profile
 
 noncomputable def pureFrontierWorstCaseEU
     (program : WFProgram P L) [FiniteDomains program]
@@ -565,6 +645,30 @@ def BehavioralFrontierSurvives
     (strategy : program.BehavioralFrontierStrategy player) : Prop :=
   program.behavioralFrontierGame.Survives round player strategy
 
+def BehavioralFrontierSurvivesStrictDominance
+    (program : WFProgram P L) [FiniteDomains program]
+    (round : Nat) (player : P)
+    (strategy : program.BehavioralFrontierStrategy player) : Prop :=
+  program.behavioralFrontierGame.SurvivesStrictDominance
+    round player strategy
+
+def BehavioralFrontierIESDSSolvable
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) : Prop :=
+  program.behavioralFrontierGame.IsIESDSSolvable profile
+
+def BehavioralFrontierSurvivesPure
+    (program : WFProgram P L) [FiniteDomains program]
+    (round : Nat) (player : P)
+    (strategy : program.BehavioralFrontierStrategy player) : Prop :=
+  program.behavioralFrontierGame.SurvivesPure round player strategy
+
+def BehavioralFrontierPureRationalizable
+    (program : WFProgram P L) [FiniteDomains program]
+    (player : P)
+    (strategy : program.BehavioralFrontierStrategy player) : Prop :=
+  program.behavioralFrontierGame.IsPureRationalizable player strategy
+
 def BehavioralFrontierRationalizable
     (program : WFProgram P L) [FiniteDomains program]
     (player : P)
@@ -575,6 +679,12 @@ def BehavioralFrontierExactPotential
     (program : WFProgram P L) [FiniteDomains program]
     (potential : program.BehavioralFrontierProfile → ℝ) : Prop :=
   program.behavioralFrontierGame.IsExactPotential potential
+
+def BehavioralFrontierWeightedExactPotential
+    (program : WFProgram P L) [FiniteDomains program]
+    (potential : program.BehavioralFrontierProfile → ℝ)
+    (weight : P → ℝ) : Prop :=
+  program.behavioralFrontierGame.IsWeightedExactPotential potential weight
 
 def BehavioralFrontierOrdinalPotential
     (program : WFProgram P L) [FiniteDomains program]
@@ -664,6 +774,17 @@ noncomputable def behavioralFrontierSecurityLevelSup
     (program : WFProgram P L) [FiniteDomains program]
     (player : P) : ℝ :=
   program.behavioralFrontierGame.securityLevelSup player
+
+def BehavioralFrontierSecurityStrategySup
+    (program : WFProgram P L) [FiniteDomains program]
+    (player : P)
+    (strategy : program.BehavioralFrontierStrategy player) : Prop :=
+  program.behavioralFrontierGame.IsSecurityStrategySup player strategy
+
+def BehavioralFrontierSecurityProfileSup
+    (program : WFProgram P L) [FiniteDomains program]
+    (profile : program.BehavioralFrontierProfile) : Prop :=
+  program.behavioralFrontierGame.IsSecurityProfileSup profile
 
 /-! ## Two-player behavioral frontier minimax vocabulary -/
 

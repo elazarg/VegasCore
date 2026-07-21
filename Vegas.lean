@@ -64,6 +64,7 @@ import Vegas.Export
 import Vegas.Runtime.Codec
 import Vegas.Runtime.CodecMachine
 import Vegas.Runtime.TraceAdequacy
+import Vegas.Runtime.SolutionConcepts
 
 -- Audit surface: curated definition and theorem indexes.
 import Vegas.Spec

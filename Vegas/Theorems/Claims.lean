@@ -14,6 +14,7 @@ import Vegas.Theorems.Kuhn
 import Vegas.Theorems.FOSG
 import Vegas.Theorems.EFG
 import Vegas.Theorems.Refinement
+import Vegas.Theorems.RuntimeSolutionConcepts
 import Vegas.Frontier.SourceStrategicAdequacy
 
 /-!
