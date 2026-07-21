@@ -6,10 +6,15 @@ Authors: VegasCore contributors
 
 import Vegas.Frontier.Kuhn
 import Vegas.Frontier.SourceAdequacy
+import Vegas.EventGraph.FiniteState
 import GameTheory.Core.GameForm
 import GameTheory.Core.GameSimulation
 import GameTheory.Concepts.Transport.Corners
 import GameTheory.Concepts.Equilibrium.SolutionConcepts
+import GameTheory.Concepts.Equilibrium.NashCorrelatedEq
+import GameTheory.Concepts.Foundations.GameMorphism
+import GameTheory.Concepts.Correlation.GameMorphism
+import GameTheory.Concepts.Mixed.GameMorphism
 import GameTheory.Theorems.CorrelatedEqExistence
 import GameTheory.Concepts.Existence.NashExistenceMixed
 
@@ -135,30 +140,6 @@ noncomputable def mixedPureGame
     KernelGame P :=
   semantics.pureGame.mixedExtension
 
-/-- Mixed Nash existence for the compiled pure-strategy game, stated with an
-explicit payoff bound because compiled payoff outcomes are integer-valued and
-therefore not a finite carrier by type alone. -/
-theorem mixedPureNash_exists_of_bounded
-    (semantics : FrontierGameSemantics program)
-    {C : P → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |semantics.pureGame.utility outcome who| ≤ C who) :
-    ∃ mixed : semantics.mixedPureGame.Profile,
-      semantics.mixedPureGame.IsNash mixed := by
-  classical
-  letI :
-      ∀ player,
-        Finite (semantics.pureGame.Strategy player) :=
-    fun player => by
-      letI := semantics.pureStrategyFintype player
-      infer_instance
-  letI :
-      ∀ player,
-        Nonempty (semantics.pureGame.Strategy player) :=
-    semantics.pureStrategyNonempty
-  exact semantics.pureGame.mixed_nash_exists_of_bounded hbd
-
 /-- Pure-strategy completed frontier histories. These are checkpoint histories
 at the strategic frontier level, not primitive event schedules. -/
 abbrev PureHistory (semantics : FrontierGameSemantics program) : Type :=
@@ -167,6 +148,31 @@ abbrev PureHistory (semantics : FrontierGameSemantics program) : Type :=
 /-- Behavioral-strategy completed frontier histories. -/
 abbrev BehavioralHistory (semantics : FrontierGameSemantics program) : Type :=
   (semantics.behavioral.view).BoundedHistory semantics.horizon
+
+/-- Finite carrier for completed pure-strategy frontier histories. -/
+@[reducible]
+noncomputable def pureHistoryFintype
+    (semantics : FrontierGameSemantics program) :
+    Fintype semantics.PureHistory := by
+  classical
+  letI :
+      ∀ field : Fin (compile program.core).graph.fieldCount,
+        Fintype
+          (L.Val ((compile program.core).graph.fieldRow field).ty) :=
+    semantics.games.fieldFintype
+  letI : Fintype (PrimitiveMachine (compile program.core)).State := by
+    change Fintype (EventGraph.ReachableConfig (compile program.core).graph)
+    exact
+      EventGraph.StateSnapshot.reachableConfigFintype
+        (compile program.core).graph
+        (compile program.core).graphWF
+  letI :
+      ∀ player,
+        Fintype (Option ((semantics.pure.view).Act player)) := by
+    change ∀ player, Fintype (Option (semantics.games.view.Act player))
+    exact semantics.games.kuhnOptionalMoveFintype
+  exact
+    (semantics.pure.view).instFintypeBoundedHistory semantics.horizon
 
 /-- Public checkpoint-observation history exposed by the frontier strategic
 presentation. -/
@@ -676,6 +682,89 @@ noncomputable def behavioralHistoryUtilityDistributionEquivalence
   udist_preserved := by
     intro σ
     exact semantics.behavioralHistoryKernelGame_udist σ
+
+/-- Mixed Nash existence obtained on the finite completed-history game. -/
+theorem pureHistoryMixedNash_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ mixed : semantics.pureHistoryKernelGame.mixedExtension.Profile,
+      semantics.pureHistoryKernelGame.mixedExtension.IsNash mixed := by
+  classical
+  letI :
+      ∀ player,
+        Finite (semantics.pureHistoryKernelGame.Strategy player) :=
+    fun player => by
+      letI : Fintype (semantics.pureGame.Strategy player) :=
+        semantics.pureStrategyFintype player
+      simpa [pureHistoryKernelGame, pureHistoryGameForm] using
+        (Finite.of_fintype (semantics.pureGame.Strategy player))
+  letI :
+      ∀ player,
+        Nonempty (semantics.pureHistoryKernelGame.Strategy player) :=
+    fun player => by
+      simpa [pureHistoryKernelGame, pureHistoryGameForm] using
+        semantics.pureStrategyNonempty player
+  letI : Fintype semantics.PureHistory := semantics.pureHistoryFintype
+  letI : Finite semantics.pureHistoryKernelGame.Outcome :=
+    Finite.of_fintype semantics.PureHistory
+  exact semantics.pureHistoryKernelGame.mixed_nash_exists
+
+/-- Every finite-domain checked program has a mixed Nash equilibrium in its
+canonical completed pure-strategy frontier game. -/
+theorem mixedPureNash_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ mixed : semantics.mixedPureGame.Profile,
+      semantics.mixedPureGame.IsNash mixed := by
+  rcases semantics.pureHistoryMixedNash_exists with ⟨mixed, hNash⟩
+  let equivalence :=
+    semantics.pureHistoryUtilityDistributionEquivalence.symm
+      |>.mixedExtension
+      |>.toEUGameIsomorphism
+  refine ⟨equivalence.profileEquiv mixed, ?_⟩
+  simpa [mixedPureGame] using
+    (equivalence.nash_iff mixed).mp hNash
+
+/-- Every finite-domain checked program has a correlated equilibrium in its
+canonical completed pure-strategy frontier game. -/
+theorem pureCorrelatedEq_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ correlated : PMF semantics.pureGame.Profile,
+      semantics.pureGame.IsCorrelatedEq correlated := by
+  classical
+  letI : Finite P := Finite.of_fintype P
+  letI :
+      ∀ player,
+        Finite (semantics.pureHistoryKernelGame.Strategy player) :=
+    fun player => by
+      letI : Fintype (semantics.pureGame.Strategy player) :=
+        semantics.pureStrategyFintype player
+      simpa [pureHistoryKernelGame, pureHistoryGameForm] using
+        (Finite.of_fintype (semantics.pureGame.Strategy player))
+  letI :
+      ∀ player,
+        Nonempty (semantics.pureHistoryKernelGame.Strategy player) :=
+    fun player => by
+      simpa [pureHistoryKernelGame, pureHistoryGameForm] using
+        semantics.pureStrategyNonempty player
+  letI : Fintype semantics.PureHistory := semantics.pureHistoryFintype
+  letI : Finite semantics.pureHistoryKernelGame.Outcome :=
+    Finite.of_fintype semantics.PureHistory
+  rcases semantics.pureHistoryKernelGame.correlatedEq_exists with
+    ⟨correlated, hCorrelated⟩
+  let equivalence :=
+    semantics.pureHistoryUtilityDistributionEquivalence.symm
+      |>.toEUGameIsomorphism
+  exact
+    ⟨equivalence.realize correlated,
+      (equivalence.correlatedEq_iff correlated).mp hCorrelated⟩
+
+/-- Every finite-domain checked program has a coarse correlated equilibrium
+in its canonical completed pure-strategy frontier game. -/
+theorem pureCoarseCorrelatedEq_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ correlated : PMF semantics.pureGame.Profile,
+      semantics.pureGame.IsCoarseCorrelatedEq correlated := by
+  rcases semantics.pureCorrelatedEq_exists with ⟨correlated, hCorrelated⟩
+  exact ⟨correlated, hCorrelated.toCoarseCorrelatedEq⟩
 
 /-- A legal pure strategy chooses an available optional move at every
 reachable completed-frontier history realizing its information state. -/
@@ -1414,21 +1503,45 @@ theorem behavioralNash_exists_of_mixedPureNash_exists
     ⟨simulation.realize mixed,
       simulation.behavioralNash_of_mixedPureNash hNash⟩
 
-/-- With bounded compiled payoff utilities, a deviation-preserving
-mixed-to-behavioral realization yields behavioral Nash existence. -/
-theorem behavioralNash_exists_of_bounded
+/-- A deviation-preserving mixed-to-behavioral realization yields behavioral
+Nash existence for every finite-domain checked program. -/
+theorem behavioralNash_exists
     (simulation :
-      MixedPureToBehavioralDeviationSimulation semantics)
-    {C : P → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |semantics.pureGame.utility outcome who| ≤ C who) :
+      MixedPureToBehavioralDeviationSimulation semantics) :
     ∃ behavioral : semantics.behavioralGame.Profile,
       semantics.behavioralGame.IsNash behavioral :=
   simulation.behavioralNash_exists_of_mixedPureNash_exists
-    (semantics.mixedPureNash_exists_of_bounded hbd)
+    semantics.mixedPureNash_exists
 
 end MixedPureToBehavioralDeviationSimulation
+
+/-- Every finite-domain checked program has a behavioral Nash equilibrium. -/
+theorem behavioralNash_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ behavioral : semantics.behavioralGame.Profile,
+      semantics.behavioralGame.IsNash behavioral :=
+  semantics.canonicalMixedPureToBehavioralDeviationSimulation
+    |>.behavioralNash_exists
+
+/-- Every finite-domain checked program has a correlated equilibrium on its
+behavioral frontier strategy profiles. -/
+theorem behavioralCorrelatedEq_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ correlated : PMF semantics.behavioralGame.Profile,
+      semantics.behavioralGame.IsCorrelatedEq correlated := by
+  rcases semantics.behavioralNash_exists with ⟨behavioral, hNash⟩
+  exact ⟨PMF.pure behavioral, KernelGame.nash_pure_isCorrelatedEq hNash⟩
+
+/-- Every finite-domain checked program has a coarse correlated equilibrium on
+its behavioral frontier strategy profiles. -/
+theorem behavioralCoarseCorrelatedEq_exists
+    (semantics : FrontierGameSemantics program) :
+    ∃ correlated : PMF semantics.behavioralGame.Profile,
+      semantics.behavioralGame.IsCoarseCorrelatedEq correlated := by
+  rcases semantics.behavioralNash_exists with ⟨behavioral, hNash⟩
+  exact
+    ⟨PMF.pure behavioral,
+      KernelGame.nash_pure_isCoarseCorrelatedEq hNash⟩
 
 /-- Behavioral strategies can be realized by a correlated distribution over
 pure-strategy profiles with the same completed-game outcome kernel. This is a

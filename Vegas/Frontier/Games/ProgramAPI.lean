@@ -850,87 +850,64 @@ theorem behavioralFrontier_nash_of_mixedPure_nash
     MixedPureFrontierProfile, BehavioralFrontierProfile] using
     simulation.behavioralNash_of_mixedPureNash hNash
 
-/-- Bounded mixed Nash existence for the completed pure frontier payoff game. -/
-theorem mixedPureFrontier_nash_exists_of_bounded
-    (program : WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Mixed Nash existence for the completed pure frontier game of every
+finite-domain checked program. -/
+theorem mixedPureFrontier_nash_exists
+    (program : WFProgram P L) [FiniteDomains program] :
     ∃ mixed : program.MixedPureFrontierProfile,
       program.mixedPureFrontierGame.IsNash mixed := by
   simpa [frontierSemantics, pureFrontierGame, mixedPureFrontierGame,
     MixedPureFrontierProfile] using
-    program.frontierSemantics.mixedPureNash_exists_of_bounded hbd
+    program.frontierSemantics.mixedPureNash_exists
 
-/-- Bounded correlated-equilibrium existence for the completed pure frontier
-payoff game. -/
-theorem pureFrontier_correlatedEq_exists_of_bounded
-    (program : WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Correlated-equilibrium existence for the completed pure frontier game of
+every finite-domain checked program. -/
+theorem pureFrontier_correlatedEq_exists
+    (program : WFProgram P L) [FiniteDomains program] :
     ∃ correlated : PMF program.PureFrontierProfile,
       program.pureFrontierGame.IsCorrelatedEq correlated := by
-  classical
-  letI : Finite P := Finite.of_fintype P
-  letI :
-      ∀ player,
-        Finite (program.pureFrontierGame.Strategy player) :=
-    fun player => by
-      letI : Fintype (program.pureFrontierGame.Strategy player) :=
-        program.pureFrontierStrategyFintype player
-      exact Finite.of_fintype _
-  letI :
-      ∀ player,
-        Nonempty (program.pureFrontierGame.Strategy player) :=
-    program.pureFrontierStrategyNonempty
-  simpa [PureFrontierProfile] using
-    program.pureFrontierGame.correlatedEq_exists_of_bounded hbd
+  simpa [frontierSemantics, pureFrontierGame, PureFrontierProfile] using
+    program.frontierSemantics.pureCorrelatedEq_exists
 
-/-- Bounded coarse-correlated-equilibrium existence for the completed pure
-frontier payoff game. -/
-theorem pureFrontier_coarseCorrelatedEq_exists_of_bounded
-    (program : WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Coarse-correlated-equilibrium existence for the completed pure frontier
+game of every finite-domain checked program. -/
+theorem pureFrontier_coarseCorrelatedEq_exists
+    (program : WFProgram P L) [FiniteDomains program] :
     ∃ correlated : PMF program.PureFrontierProfile,
       program.pureFrontierGame.IsCoarseCorrelatedEq correlated := by
-  classical
-  letI : Finite P := Finite.of_fintype P
-  letI :
-      ∀ player,
-        Finite (program.pureFrontierGame.Strategy player) :=
-    fun player => by
-      letI : Fintype (program.pureFrontierGame.Strategy player) :=
-        program.pureFrontierStrategyFintype player
-      exact Finite.of_fintype _
-  letI :
-      ∀ player,
-        Nonempty (program.pureFrontierGame.Strategy player) :=
-    program.pureFrontierStrategyNonempty
-  simpa [PureFrontierProfile] using
-    program.pureFrontierGame.coarseCorrelatedEq_exists_of_bounded hbd
+  simpa [frontierSemantics, pureFrontierGame, PureFrontierProfile] using
+    program.frontierSemantics.pureCoarseCorrelatedEq_exists
 
-/-- With bounded compiled payoff utilities, a deviation-preserving
-mixed-to-behavioral frontier realization yields behavioral Nash existence. -/
-theorem behavioralFrontier_nash_exists_of_bounded
-    (program : WFProgram P L) [FiniteDomains program]
-    (simulation :
-      program.MixedPureToBehavioralFrontierDeviationSimulation)
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Behavioral Nash existence for every finite-domain checked program. -/
+theorem behavioralFrontier_nash_exists
+    (program : WFProgram P L) [FiniteDomains program] :
     ∃ behavioral : program.BehavioralFrontierProfile,
       program.BehavioralFrontierNash behavioral := by
-  simpa [MixedPureToBehavioralFrontierDeviationSimulation,
-    BehavioralFrontierNash, frontierSemantics, pureFrontierGame,
+  simpa [BehavioralFrontierNash, frontierSemantics,
     behavioralFrontierGame, BehavioralFrontierProfile] using
-    simulation.behavioralNash_exists_of_bounded hbd
+    program.frontierSemantics.behavioralNash_exists
+
+/-- Behavioral correlated-equilibrium existence for every finite-domain
+checked program. -/
+theorem behavioralFrontier_correlatedEq_exists
+    (program : WFProgram P L) [FiniteDomains program] :
+    ∃ correlated : program.BehavioralFrontierCorrelatedProfile,
+      program.BehavioralFrontierCorrelatedEq correlated := by
+  simpa [BehavioralFrontierCorrelatedProfile,
+    BehavioralFrontierCorrelatedEq, frontierSemantics,
+    behavioralFrontierGame, BehavioralFrontierProfile] using
+    program.frontierSemantics.behavioralCorrelatedEq_exists
+
+/-- Behavioral coarse-correlated-equilibrium existence for every finite-domain
+checked program. -/
+theorem behavioralFrontier_coarseCorrelatedEq_exists
+    (program : WFProgram P L) [FiniteDomains program] :
+    ∃ correlated : program.BehavioralFrontierCorrelatedProfile,
+      program.BehavioralFrontierCoarseCorrelatedEq correlated := by
+  simpa [BehavioralFrontierCorrelatedProfile,
+    BehavioralFrontierCoarseCorrelatedEq, frontierSemantics,
+    behavioralFrontierGame, BehavioralFrontierProfile] using
+    program.frontierSemantics.behavioralCoarseCorrelatedEq_exists
 
 /-- Correlated-equilibrium existence for the finite terminal-public frontier
 game. -/

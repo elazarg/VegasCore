@@ -452,81 +452,31 @@ theorem pure_frontier_saddle_point_iff_nash
       program.PureFrontierNash profile :=
   program.pureFrontier_saddlePoint_iff_nash profile
 
-/-! ## Finite pure and terminal-public existence claims -/
+/-! ## Frontier equilibrium existence -/
 
-/-- Bounded mixed Nash existence for the completed pure frontier payoff game. -/
-theorem mixed_pure_frontier_nash_exists_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Every finite-domain checked program has a mixed-pure frontier Nash
+equilibrium. -/
+theorem mixed_pure_frontier_nash_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
     ∃ mixed : program.MixedPureFrontierProfile,
       program.MixedPureFrontierNash mixed :=
-  program.mixedPureFrontier_nash_exists_of_bounded hbd
+  program.mixedPureFrontier_nash_exists
 
-/-- A bounded mixed-pure frontier Nash equilibrium induces a correlated
-equilibrium on pure frontier profiles via the independent product law. -/
-theorem mixed_pure_frontier_nash_is_pure_frontier_correlated_eq_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player)
-    {profile : program.MixedPureFrontierProfile}
-    (hNash : program.MixedPureFrontierNash profile) :
-    program.PureFrontierCorrelatedEq
-      (Math.PMFProduct.pmfPi profile) := by
-  have hNash' :
-      program.pureFrontierGame.mixedExtension.IsNash profile := by
-    simpa [Vegas.WFProgram.MixedPureFrontierNash,
-      Vegas.WFProgram.MixedPureFrontierProfile,
-      Vegas.WFProgram.mixedPureFrontierGame,
-      Vegas.WFProgram.pureFrontierGame,
-      Vegas.ToEventGraph.FrontierGameSemantics.mixedPureGame] using hNash
-  simpa [Vegas.WFProgram.PureFrontierCorrelatedEq] using
-    GameTheory.KernelGame.mixed_nash_isCorrelatedEq_of_bounded
-      (G := program.pureFrontierGame) profile hNash' hbd
-
-/-- A bounded mixed-pure frontier Nash equilibrium induces a coarse correlated
-equilibrium on pure frontier profiles via the independent product law. -/
-theorem mixed_pure_frontier_nash_is_pure_frontier_coarse_correlated_eq_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player)
-    {profile : program.MixedPureFrontierProfile}
-    (hNash : program.MixedPureFrontierNash profile) :
-    program.PureFrontierCoarseCorrelatedEq
-      (Math.PMFProduct.pmfPi profile) :=
-  pure_frontier_correlated_eq_is_coarse_correlated_eq program
-    (mixed_pure_frontier_nash_is_pure_frontier_correlated_eq_of_bounded
-      program hbd hNash)
-
-/-- Bounded correlated-equilibrium existence for the completed pure frontier
-payoff game. -/
-theorem pure_frontier_correlated_eq_exists_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Every finite-domain checked program has a correlated equilibrium on pure
+frontier profiles. -/
+theorem pure_frontier_correlated_eq_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
     ∃ correlated : program.PureFrontierCorrelatedProfile,
       program.PureFrontierCorrelatedEq correlated :=
-  program.pureFrontier_correlatedEq_exists_of_bounded hbd
+  program.pureFrontier_correlatedEq_exists
 
-/-- Bounded coarse-correlated-equilibrium existence for the completed pure
-frontier payoff game. -/
-theorem pure_frontier_coarse_correlated_eq_exists_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Every finite-domain checked program has a coarse correlated equilibrium on
+pure frontier profiles. -/
+theorem pure_frontier_coarse_correlated_eq_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
     ∃ correlated : program.PureFrontierCorrelatedProfile,
       program.PureFrontierCoarseCorrelatedEq correlated :=
-  program.pureFrontier_coarseCorrelatedEq_exists_of_bounded hbd
+  program.pureFrontier_coarseCorrelatedEq_exists
 
 /-- Mixed Nash existence for the finite terminal-public frontier game. -/
 theorem mixed_pure_terminal_public_frontier_nash_exists
@@ -823,18 +773,29 @@ theorem behavioral_frontier_saddle_point_iff_nash
       program.BehavioralFrontierNash profile :=
   program.behavioralFrontier_saddlePoint_iff_nash profile
 
-/-- With bounded compiled payoff utilities, the canonical mixed-pure to
-behavioral Kuhn simulation yields behavioral Nash existence. -/
-theorem behavioral_frontier_nash_exists_of_bounded
-    (program : Vegas.WFProgram P L) [FiniteDomains program]
-    {C : P → ℝ}
-    (hbd :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤ C player) :
+/-- Every finite-domain checked program has a behavioral frontier Nash
+equilibrium. -/
+theorem behavioral_frontier_nash_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
     ∃ behavioral : program.BehavioralFrontierProfile,
       program.BehavioralFrontierNash behavioral :=
-  program.behavioralFrontier_nash_exists_of_bounded
-    program.canonicalMixedPureToBehavioralFrontierDeviationSimulation hbd
+  program.behavioralFrontier_nash_exists
+
+/-- Every finite-domain checked program has a correlated equilibrium on
+behavioral frontier profiles. -/
+theorem behavioral_frontier_correlated_eq_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
+    ∃ correlated : program.BehavioralFrontierCorrelatedProfile,
+      program.BehavioralFrontierCorrelatedEq correlated :=
+  program.behavioralFrontier_correlatedEq_exists
+
+/-- Every finite-domain checked program has a coarse correlated equilibrium on
+behavioral frontier profiles. -/
+theorem behavioral_frontier_coarse_correlated_eq_exists
+    (program : Vegas.WFProgram P L) [FiniteDomains program] :
+    ∃ correlated : program.BehavioralFrontierCorrelatedProfile,
+      program.BehavioralFrontierCoarseCorrelatedEq correlated :=
+  program.behavioralFrontier_coarseCorrelatedEq_exists
 
 end WFProgram
 

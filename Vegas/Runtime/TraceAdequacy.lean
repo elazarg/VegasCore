@@ -534,6 +534,26 @@ noncomputable def surface_morphism_implTraceGame
   stratMap := fun _ => id
   udist_preserved := fun profile => (bridge.implTraceGame_udist_surface profile).symm
 
+/-- Runtime trace adequacy identifies the implementation trace game and its
+frontier surface up to utility-distribution game isomorphism. -/
+noncomputable def implTraceGame_bisimulation_surface
+    (bridge : RuntimeTraceAdequacy program surface R) :
+    GameTheory.KernelGame.Bisimulation bridge.implTraceGame surface.game where
+  stratEquiv := fun _ => Equiv.refl _
+  udist_preserved := fun profile =>
+    (bridge.implTraceGame_udist_surface profile).symm
+
+/-- Expected-utility game isomorphism induced by runtime trace adequacy. -/
+noncomputable def implTraceGame_equivalence_surface
+    (bridge : RuntimeTraceAdequacy program surface R) :
+    GameTheory.KernelGame.EUGameIsomorphism
+      bridge.implTraceGame surface.game where
+  stratEquiv := fun _ => Equiv.refl _
+  udist_preserved := fun profile =>
+    (bridge.implTraceGame_udist_surface profile).symm
+  eu_preserved :=
+    bridge.surface_morphism_implTraceGame.toEUMorphism.eu_preserved
+
 /-- Runtime trace adequacy induces a standard one-way strategic refinement:
 surface-game profiles realize implementation trace-game profiles with the same
 payoff-vector law, and every implementation unilateral deviation is matched by
@@ -645,157 +665,55 @@ theorem implTraceGame_correlatedEu_surface_of_bounded
           hbdImpl hbdFrontier profile player)
 
 /-- Correlated-equilibrium status is invariant between a trace-adequate
-implementation trace game and the frontier surface when utilities are bounded
-and the strategy-profile law is shared. -/
-theorem implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
+implementation trace game and its frontier surface. -/
+theorem implTraceGame_correlatedEq_iff_surface_correlatedEq
     (bridge : RuntimeTraceAdequacy program surface R)
-    {CImpl CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |surface.game.utility outcome player| ≤ CFrontier player)
     (profileLaw : PMF surface.game.Profile) :
     bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
       surface.game.IsCorrelatedEq profileLaw := by
-  constructor
-  · intro hCE player dev
-    calc
-      surface.game.correlatedEu profileLaw player =
-          bridge.implTraceGame.correlatedEu profileLaw player := by
-            exact
-              (bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier profileLaw player).symm
-      _ ≥ bridge.implTraceGame.correlatedEu
-            (bridge.implTraceGame.unilateralDeviationDistribution
-              profileLaw player dev) player := hCE player dev
-      _ = surface.game.correlatedEu
-            (surface.game.unilateralDeviationDistribution
-              profileLaw player dev) player := by
-            exact
-              bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (bridge.implTraceGame.unilateralDeviationDistribution
-                  profileLaw player dev) player
-  · intro hCE player dev
-    calc
-      bridge.implTraceGame.correlatedEu profileLaw player =
-          surface.game.correlatedEu profileLaw player := by
-            exact
-              bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier profileLaw player
-      _ ≥ surface.game.correlatedEu
-            (surface.game.unilateralDeviationDistribution
-              profileLaw player dev) player := hCE player dev
-      _ = bridge.implTraceGame.correlatedEu
-            (bridge.implTraceGame.unilateralDeviationDistribution
-              profileLaw player dev) player := by
-            exact
-              (bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (bridge.implTraceGame.unilateralDeviationDistribution
-                  profileLaw player dev) player).symm
+  let equivalence := bridge.implTraceGame_equivalence_surface
+  have hrealize : equivalence.realize profileLaw = profileLaw := by
+    unfold GameTheory.KernelGame.EUGameIsomorphism.realize
+    change PMF.map (fun profile => profile) profileLaw = profileLaw
+    exact PMF.map_id profileLaw
+  simpa only [hrealize] using equivalence.correlatedEq_iff profileLaw
 
 /-- Coarse-correlated-equilibrium status is invariant between a trace-adequate
-implementation trace game and the frontier surface when utilities are bounded
-and the strategy-profile law is shared. -/
-theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
+implementation trace game and its frontier surface. -/
+theorem implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq
     (bridge : RuntimeTraceAdequacy program surface R)
-    {CImpl CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |surface.game.utility outcome player| ≤ CFrontier player)
     (profileLaw : PMF surface.game.Profile) :
     bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
       surface.game.IsCoarseCorrelatedEq profileLaw := by
-  constructor
-  · intro hCCE player alternative
-    calc
-      surface.game.correlatedEu profileLaw player =
-          bridge.implTraceGame.correlatedEu profileLaw player := by
-            exact
-              (bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier profileLaw player).symm
-      _ ≥ bridge.implTraceGame.correlatedEu
-            (bridge.implTraceGame.constantDeviationDistribution
-              profileLaw player alternative) player := hCCE player alternative
-      _ = surface.game.correlatedEu
-            (surface.game.constantDeviationDistribution
-              profileLaw player alternative) player := by
-            exact
-              bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (bridge.implTraceGame.constantDeviationDistribution
-                  profileLaw player alternative) player
-  · intro hCCE player alternative
-    calc
-      bridge.implTraceGame.correlatedEu profileLaw player =
-          surface.game.correlatedEu profileLaw player := by
-            exact
-              bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier profileLaw player
-      _ ≥ surface.game.correlatedEu
-            (surface.game.constantDeviationDistribution
-              profileLaw player alternative) player := hCCE player alternative
-      _ = bridge.implTraceGame.correlatedEu
-            (bridge.implTraceGame.constantDeviationDistribution
-              profileLaw player alternative) player := by
-            exact
-              (bridge.implTraceGame_correlatedEu_surface_of_bounded
-                hbdImpl hbdFrontier
-                (bridge.implTraceGame.constantDeviationDistribution
-                  profileLaw player alternative) player).symm
+  let equivalence := bridge.implTraceGame_equivalence_surface
+  have hrealize : equivalence.realize profileLaw = profileLaw := by
+    unfold GameTheory.KernelGame.EUGameIsomorphism.realize
+    change PMF.map (fun profile => profile) profileLaw = profileLaw
+    exact PMF.map_id profileLaw
+  simpa only [hrealize] using equivalence.coarseCorrelatedEq_iff profileLaw
 
 /-- Nash status is invariant between a trace-adequate implementation trace game
-and the frontier surface when utilities are bounded and the strategy profile is
-shared. -/
-theorem implTraceGame_nash_iff_surface_nash_of_bounded
+and its frontier surface. -/
+theorem implTraceGame_nash_iff_surface_nash
     (bridge : RuntimeTraceAdequacy program surface R)
-    {CImpl CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |surface.game.utility outcome player| ≤ CFrontier player)
     (profile : ∀ player, surface.game.Strategy player) :
     bridge.implTraceGame.IsNash profile ↔ surface.game.IsNash profile := by
-  constructor
-  · intro hNash
-    exact
-      (bridge.implTraceGame_morphism_surface.toEUMorphismOfBounded
-        (fun who ω => hbdFrontier who ω) (fun who ω => hbdImpl who ω)).nash_of_nash hNash
-  · intro hNash
-    exact
-      (bridge.surface_morphism_implTraceGame.toEUMorphismOfBounded
-        (fun who ω => hbdImpl who ω) (fun who ω => hbdFrontier who ω)).nash_of_nash hNash
+  let equivalence := bridge.implTraceGame_equivalence_surface
+  have hprofile : equivalence.profileEquiv profile = profile := by
+    funext player
+    rfl
+  simpa only [hprofile] using equivalence.nash_iff profile
 
 /-- The whole Nash equilibrium set is invariant between a trace-adequate
-implementation trace game and the frontier surface under bounded utilities. -/
-theorem implTraceGame_nashSet_eq_surface_nashSet_of_bounded
-    (bridge : RuntimeTraceAdequacy program surface R)
-    {CImpl CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |surface.game.utility outcome player| ≤ CFrontier player) :
+implementation trace game and its frontier surface. -/
+theorem implTraceGame_nashSet_eq_surface_nashSet
+    (bridge : RuntimeTraceAdequacy program surface R) :
     {profile : surface.game.Profile |
       bridge.implTraceGame.IsNash profile} =
     {profile : surface.game.Profile |
       surface.game.IsNash profile} := by
   ext profile
-  exact bridge.implTraceGame_nash_iff_surface_nash_of_bounded
-    hbdImpl hbdFrontier profile
+  exact bridge.implTraceGame_nash_iff_surface_nash profile
 
 /-- Expected utilities agree between a trace-adequate specification law and
 the frontier surface under bounded-utility hypotheses. -/
@@ -872,32 +790,53 @@ theorem specTraceGame_nash_of_surface_nash
         (Function.update profile player alternative) player).symm
 
 /-- A runtime refinement whose strategy-indexed laws adequately realize a trace
-game surface pulls surface Nash profiles back to the implementation trace game. -/
+game surface gives every surface Nash profile to the implementation trace
+game. -/
 theorem implTraceGame_nash_of_surface_nash
     (bridge : RuntimeTraceAdequacy program surface R)
-    {CImpl CSpec CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdSpec :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility
-            (ToEventGraph.PrimitiveMachine
-              (ToEventGraph.compile program.core))
-            (fun _ => 0) trace player| ≤ CSpec player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |surface.game.utility outcome player| ≤ CFrontier player)
     {profile : ∀ player, surface.game.Strategy player}
     (hNash : surface.game.IsNash profile) :
-    bridge.implTraceGame.IsNash profile := by
-  simpa [implTraceGame, specTraceGame] using
-    R.eventBatchTraceKernelGame_nash_pullback_of_bounded
-      bridge.lift (fun _ => 0) program.frontierSemantics.horizon
-      hbdImpl hbdSpec
-      (bridge.specTraceGame_nash_of_surface_nash
-        hbdSpec hbdFrontier hNash)
+    bridge.implTraceGame.IsNash profile :=
+  (bridge.implTraceGame_nash_iff_surface_nash profile).mpr hNash
+
+/-- A surface Nash-existence witness yields an implementation trace-game Nash
+existence witness. -/
+theorem implTraceGame_nash_exists
+    (bridge : RuntimeTraceAdequacy program surface R)
+    (hexists : ∃ profile, surface.game.IsNash profile) :
+    ∃ profile, bridge.implTraceGame.IsNash profile := by
+  rcases hexists with ⟨profile, hNash⟩
+  exact ⟨profile, bridge.implTraceGame_nash_of_surface_nash hNash⟩
+
+/-- A surface correlated-equilibrium witness yields an implementation
+trace-game correlated-equilibrium witness. -/
+theorem implTraceGame_correlatedEq_exists
+    (bridge : RuntimeTraceAdequacy program surface R)
+    (hexists :
+      ∃ profileLaw : PMF surface.game.Profile,
+        surface.game.IsCorrelatedEq profileLaw) :
+    ∃ profileLaw : PMF surface.game.Profile,
+      bridge.implTraceGame.IsCorrelatedEq profileLaw := by
+  rcases hexists with ⟨profileLaw, hCorrelated⟩
+  exact
+    ⟨profileLaw,
+      (bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq
+        profileLaw).mpr hCorrelated⟩
+
+/-- A surface coarse-correlated-equilibrium witness yields an implementation
+trace-game coarse-correlated-equilibrium witness. -/
+theorem implTraceGame_coarseCorrelatedEq_exists
+    (bridge : RuntimeTraceAdequacy program surface R)
+    (hexists :
+      ∃ profileLaw : PMF surface.game.Profile,
+        surface.game.IsCoarseCorrelatedEq profileLaw) :
+    ∃ profileLaw : PMF surface.game.Profile,
+      bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw := by
+  rcases hexists with ⟨profileLaw, hCorrelated⟩
+  exact
+    ⟨profileLaw,
+      (bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq
+        profileLaw).mpr hCorrelated⟩
 
 end RuntimeTraceAdequacy
 

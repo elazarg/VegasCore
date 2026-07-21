@@ -657,36 +657,22 @@ example
     Prop :=
   matchingPenniesChecked.BehavioralFrontierExactPotential potential
 
-example
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesSemantics.pureGame.utility outcome who| ≤ C who) :
+example :
     ∃ mixed : matchingPenniesSemantics.mixedPureGame.Profile,
       matchingPenniesSemantics.mixedPureGame.IsNash mixed :=
-  matchingPenniesSemantics.mixedPureNash_exists_of_bounded hbd
+  matchingPenniesSemantics.mixedPureNash_exists
 
-example
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesChecked.pureFrontierGame.utility outcome who| ≤
-          C who) :
+example :
     ∃ mixed : matchingPenniesChecked.MixedPureFrontierProfile,
       matchingPenniesChecked.MixedPureFrontierNash mixed :=
-  matchingPenniesChecked.mixedPureFrontier_nash_exists_of_bounded hbd
+  matchingPenniesChecked.mixedPureFrontier_nash_exists
 
 /-- The compiled Matching Pennies frontier game has a mixed pure Nash
-equilibrium whenever the compiled payoff utility is bounded. -/
-theorem matchingPennies_mixedPureFrontierNash_exists_of_bounded
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesChecked.pureFrontierGame.utility outcome who| ≤
-          C who) :
+equilibrium. -/
+theorem matchingPennies_mixedPureFrontierNash_exists :
     ∃ mixed : matchingPenniesChecked.MixedPureFrontierProfile,
       matchingPenniesChecked.MixedPureFrontierNash mixed :=
-  matchingPenniesChecked.mixedPureFrontier_nash_exists_of_bounded hbd
+  matchingPenniesChecked.mixedPureFrontier_nash_exists
 
 example :
     ∃ mixed : matchingPenniesSemantics.mixedPureTerminalPublicGame.Profile,
@@ -810,43 +796,23 @@ example
 
 example
     (simulation :
-      matchingPenniesSemantics.MixedPureToBehavioralDeviationSimulation)
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesSemantics.pureGame.utility outcome who| ≤ C who) :
+      matchingPenniesSemantics.MixedPureToBehavioralDeviationSimulation) :
     ∃ behavioral : matchingPenniesSemantics.behavioralGame.Profile,
       matchingPenniesSemantics.behavioralGame.IsNash behavioral :=
-  simulation.behavioralNash_exists_of_bounded hbd
+  simulation.behavioralNash_exists
 
-example
-    (simulation :
-      WFProgram.MixedPureToBehavioralFrontierDeviationSimulation
-        matchingPenniesChecked)
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesChecked.pureFrontierGame.utility outcome who| ≤
-          C who) :
+example :
     ∃ behavioral : matchingPenniesChecked.BehavioralFrontierProfile,
       matchingPenniesChecked.BehavioralFrontierNash behavioral :=
-  matchingPenniesChecked
-    |>.behavioralFrontier_nash_exists_of_bounded simulation hbd
+  matchingPenniesChecked.behavioralFrontier_nash_exists
 
 /-- The compiled Matching Pennies frontier game has a behavioral Nash
 equilibrium by finite mixed Nash existence plus the canonical Kuhn
 deviation-simulation bridge. -/
-theorem matchingPennies_behavioralFrontierNash_exists_of_bounded
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |matchingPenniesChecked.pureFrontierGame.utility outcome who| ≤
-          C who) :
+theorem matchingPennies_behavioralFrontierNash_exists :
   ∃ behavioral : matchingPenniesChecked.BehavioralFrontierProfile,
       matchingPenniesChecked.BehavioralFrontierNash behavioral :=
-  matchingPenniesChecked.behavioralFrontier_nash_exists_of_bounded
-    matchingPenniesChecked.canonicalMixedPureToBehavioralFrontierDeviationSimulation
-    hbd
+  matchingPenniesChecked.behavioralFrontier_nash_exists
 
 example
     (mixed : matchingPenniesSemantics.mixedPureGame.Profile) :

@@ -76,19 +76,6 @@ noncomputable example
     (law :
       WFProgram.TraceSpecEventBatchLaw matchingPenniesChecked
         (WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked))
-    {CImpl CSpec CFrontier : Player → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility matchingPenniesDoubleAuditedMachine
-            (fun _ => 0) trace player| ≤ CImpl player)
-    (hbdSpec :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility matchingPenniesMachine
-            (fun _ => 0) trace player| ≤ CSpec player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |(WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked)
-          |>.game.utility outcome player| ≤ CFrontier player)
     {profile : matchingPenniesChecked.BehavioralFrontierProfile}
     (hNash :
       (WFProgram.behavioralFrontierTraceSurface matchingPenniesChecked)
@@ -97,8 +84,7 @@ noncomputable example
       |>.implTraceGame.IsNash profile := by
   exact
     (matchingPenniesDoubleAuditedBehavioralAdequacy law)
-      |>.implTraceGame_nash_of_surface_nash
-        hbdImpl hbdSpec hbdFrontier hNash
+      |>.implTraceGame_nash_of_surface_nash hNash
 
 /-! ## Audited encoded-runtime composition -/
 

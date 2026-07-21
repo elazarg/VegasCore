@@ -268,29 +268,19 @@ abbrev MixedNashProfiles : Type :=
     semantics.mixedPureGame.IsNash σ }
 
 /-- The compiled Prisoner's Dilemma frontier game has a mixed pure Nash
-equilibrium whenever the compiled payoff utility is bounded. -/
-theorem mixedPureFrontierNash_exists_of_bounded
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |checkedProgram.pureFrontierGame.utility outcome who| ≤ C who) :
+equilibrium. -/
+theorem mixedPureFrontierNash_exists :
     ∃ mixed : checkedProgram.MixedPureFrontierProfile,
       checkedProgram.MixedPureFrontierNash mixed :=
-  checkedProgram.mixedPureFrontier_nash_exists_of_bounded hbd
+  checkedProgram.mixedPureFrontier_nash_exists
 
 /-- The compiled Prisoner's Dilemma frontier game has a behavioral Nash
 equilibrium by finite mixed Nash existence plus the canonical Kuhn
 deviation-simulation bridge. -/
-theorem behavioralFrontierNash_exists_of_bounded
-    {C : Player → ℝ}
-    (hbd :
-      ∀ who outcome,
-        |checkedProgram.pureFrontierGame.utility outcome who| ≤ C who) :
+theorem behavioralFrontierNash_exists :
     ∃ behavioral : checkedProgram.BehavioralFrontierProfile,
       checkedProgram.BehavioralFrontierNash behavioral :=
-  checkedProgram.behavioralFrontier_nash_exists_of_bounded
-    checkedProgram.canonicalMixedPureToBehavioralFrontierDeviationSimulation
-    hbd
+  checkedProgram.behavioralFrontier_nash_exists
 
 /-- The compiled Prisoner's Dilemma frontier games satisfy the two-direction
 outcome-kernel Kuhn schema. -/

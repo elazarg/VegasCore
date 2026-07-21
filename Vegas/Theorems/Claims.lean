@@ -1028,9 +1028,8 @@ noncomputable def claim_runtime_refinement_mixed_pure_deviation_simulation
     simpa [mixedPureFrontierTraceSurface] using
       bridge.implTraceGame_nashDeviationSimulation
 
-/-- Under trace adequacy and bounded utilities, behavioral correlated
-equilibrium is invariant between the frontend surface and the implementation
-trace game. -/
+/-- Under trace adequacy, behavioral correlated equilibrium is invariant
+between the frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_behavioral_correlated_eq_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1041,27 +1040,16 @@ theorem claim_runtime_refinement_behavioral_correlated_eq_iff
     (bridge :
       RuntimeTraceAdequacy program
         (behavioralFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.behavioralFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profileLaw : program.BehavioralFrontierCorrelatedProfile) :
     bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
       program.BehavioralFrontierCorrelatedEq profileLaw :=
   by
     simpa [behavioralFrontierTraceSurface,
       WFProgram.BehavioralFrontierCorrelatedEq] using
-      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
-        hbdImpl hbdFrontier profileLaw
+      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq profileLaw
 
-/-- Under trace adequacy and bounded utilities, behavioral coarse-correlated
-equilibrium is invariant between the frontend surface and the implementation
-trace game. -/
+/-- Under trace adequacy, behavioral coarse-correlated equilibrium is invariant
+between the frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_behavioral_coarse_correlated_eq_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1072,26 +1060,17 @@ theorem claim_runtime_refinement_behavioral_coarse_correlated_eq_iff
     (bridge :
       RuntimeTraceAdequacy program
         (behavioralFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.behavioralFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profileLaw : program.BehavioralFrontierCorrelatedProfile) :
     bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
       program.BehavioralFrontierCoarseCorrelatedEq profileLaw :=
   by
     simpa [behavioralFrontierTraceSurface,
       WFProgram.BehavioralFrontierCoarseCorrelatedEq] using
-      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
-        hbdImpl hbdFrontier profileLaw
+      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq
+        profileLaw
 
-/-- Under trace adequacy and bounded utilities, pure correlated equilibrium is
-invariant between the frontend surface and the implementation trace game. -/
+/-- Under trace adequacy, pure correlated equilibrium is invariant between the
+frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_pure_correlated_eq_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1102,27 +1081,16 @@ theorem claim_runtime_refinement_pure_correlated_eq_iff
     (bridge :
       RuntimeTraceAdequacy program
         (pureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profileLaw : program.PureFrontierCorrelatedProfile) :
     bridge.implTraceGame.IsCorrelatedEq profileLaw ↔
       program.PureFrontierCorrelatedEq profileLaw :=
   by
     simpa [pureFrontierTraceSurface,
       WFProgram.PureFrontierCorrelatedEq] using
-      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq_of_bounded
-        hbdImpl hbdFrontier profileLaw
+      bridge.implTraceGame_correlatedEq_iff_surface_correlatedEq profileLaw
 
-/-- Under trace adequacy and bounded utilities, pure coarse-correlated
-equilibrium is invariant between the frontend surface and the implementation
-trace game. -/
+/-- Under trace adequacy, pure coarse-correlated equilibrium is invariant
+between the frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_pure_coarse_correlated_eq_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1133,26 +1101,17 @@ theorem claim_runtime_refinement_pure_coarse_correlated_eq_iff
     (bridge :
       RuntimeTraceAdequacy program
         (pureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profileLaw : program.PureFrontierCorrelatedProfile) :
     bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw ↔
       program.PureFrontierCoarseCorrelatedEq profileLaw :=
   by
     simpa [pureFrontierTraceSurface,
       WFProgram.PureFrontierCoarseCorrelatedEq] using
-      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq_of_bounded
-        hbdImpl hbdFrontier profileLaw
+      bridge.implTraceGame_coarseCorrelatedEq_iff_surface_coarseCorrelatedEq
+        profileLaw
 
-/-- Under trace adequacy and bounded utilities, behavioral Nash equilibrium is
-invariant between the frontend surface and the implementation trace game. -/
+/-- Under trace adequacy, behavioral Nash equilibrium is invariant between the
+frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_behavioral_nash_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1163,26 +1122,16 @@ theorem claim_runtime_refinement_behavioral_nash_iff
     (bridge :
       RuntimeTraceAdequacy program
         (behavioralFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.behavioralFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profile : program.BehavioralFrontierProfile) :
     bridge.implTraceGame.IsNash profile ↔
       program.BehavioralFrontierNash profile :=
   by
     simpa [behavioralFrontierTraceSurface,
       WFProgram.BehavioralFrontierNash] using
-      bridge.implTraceGame_nash_iff_surface_nash_of_bounded
-        hbdImpl hbdFrontier profile
+      bridge.implTraceGame_nash_iff_surface_nash profile
 
-/-- Under trace adequacy and bounded utilities, pure Nash equilibrium is
-invariant between the frontend surface and the implementation trace game. -/
+/-- Under trace adequacy, pure Nash equilibrium is invariant between the
+frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_pure_nash_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1193,27 +1142,16 @@ theorem claim_runtime_refinement_pure_nash_iff
     (bridge :
       RuntimeTraceAdequacy program
         (pureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profile : program.PureFrontierProfile) :
     bridge.implTraceGame.IsNash profile ↔
       program.PureFrontierNash profile :=
   by
     simpa [pureFrontierTraceSurface,
       WFProgram.PureFrontierNash] using
-      bridge.implTraceGame_nash_iff_surface_nash_of_bounded
-        hbdImpl hbdFrontier profile
+      bridge.implTraceGame_nash_iff_surface_nash profile
 
-/-- Under trace adequacy and bounded utilities, product mixed-pure Nash
-equilibrium is invariant between the frontend surface and the implementation
-trace game. -/
+/-- Under trace adequacy, product mixed-pure Nash equilibrium is invariant
+between the frontend surface and the implementation trace game. -/
 theorem claim_runtime_refinement_mixed_pure_nash_iff
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1224,26 +1162,16 @@ theorem claim_runtime_refinement_mixed_pure_nash_iff
     (bridge :
       RuntimeTraceAdequacy program
         (mixedPureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.mixedPureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     (profile : program.MixedPureFrontierProfile) :
     bridge.implTraceGame.IsNash profile ↔
       program.MixedPureFrontierNash profile :=
   by
     simpa [mixedPureFrontierTraceSurface,
       WFProgram.MixedPureFrontierNash] using
-      bridge.implTraceGame_nash_iff_surface_nash_of_bounded
-        hbdImpl hbdFrontier profile
+      bridge.implTraceGame_nash_iff_surface_nash profile
 
-/-- Under trace adequacy and bounded utilities, the implementation trace game
-has exactly the behavioral frontier Nash equilibrium set. -/
+/-- Under trace adequacy, the implementation trace game has exactly the
+behavioral frontier Nash equilibrium set. -/
 theorem claim_runtime_refinement_behavioral_nash_set_eq
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1253,16 +1181,7 @@ theorem claim_runtime_refinement_behavioral_nash_set_eq
           (ToEventGraph.compile program.core))}
     (bridge :
       RuntimeTraceAdequacy program
-        (behavioralFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.behavioralFrontierGame.utility outcome player| ≤
-          CFrontier player) :
+        (behavioralFrontierTraceSurface program) R) :
     {profile : program.BehavioralFrontierProfile |
       bridge.implTraceGame.IsNash profile} =
     {profile : program.BehavioralFrontierProfile |
@@ -1270,11 +1189,10 @@ theorem claim_runtime_refinement_behavioral_nash_set_eq
   by
     simpa [behavioralFrontierTraceSurface,
       WFProgram.BehavioralFrontierNash] using
-      bridge.implTraceGame_nashSet_eq_surface_nashSet_of_bounded
-        hbdImpl hbdFrontier
+      bridge.implTraceGame_nashSet_eq_surface_nashSet
 
-/-- Under trace adequacy and bounded utilities, the implementation trace game
-has exactly the pure frontier Nash equilibrium set. -/
+/-- Under trace adequacy, the implementation trace game has exactly the pure
+frontier Nash equilibrium set. -/
 theorem claim_runtime_refinement_pure_nash_set_eq
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1284,16 +1202,7 @@ theorem claim_runtime_refinement_pure_nash_set_eq
           (ToEventGraph.compile program.core))}
     (bridge :
       RuntimeTraceAdequacy program
-        (pureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤
-          CFrontier player) :
+        (pureFrontierTraceSurface program) R) :
     {profile : program.PureFrontierProfile |
       bridge.implTraceGame.IsNash profile} =
     {profile : program.PureFrontierProfile |
@@ -1301,11 +1210,10 @@ theorem claim_runtime_refinement_pure_nash_set_eq
   by
     simpa [pureFrontierTraceSurface,
       WFProgram.PureFrontierNash] using
-      bridge.implTraceGame_nashSet_eq_surface_nashSet_of_bounded
-        hbdImpl hbdFrontier
+      bridge.implTraceGame_nashSet_eq_surface_nashSet
 
-/-- Under trace adequacy and bounded utilities, the implementation trace game
-has exactly the mixed-pure frontier Nash equilibrium set. -/
+/-- Under trace adequacy, the implementation trace game has exactly the
+mixed-pure frontier Nash equilibrium set. -/
 theorem claim_runtime_refinement_mixed_pure_nash_set_eq
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1315,16 +1223,7 @@ theorem claim_runtime_refinement_mixed_pure_nash_set_eq
           (ToEventGraph.compile program.core))}
     (bridge :
       RuntimeTraceAdequacy program
-        (mixedPureFrontierTraceSurface program) R)
-    {CImpl CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.mixedPureFrontierGame.utility outcome player| ≤
-          CFrontier player) :
+        (mixedPureFrontierTraceSurface program) R) :
     {profile : program.MixedPureFrontierProfile |
       bridge.implTraceGame.IsNash profile} =
     {profile : program.MixedPureFrontierProfile |
@@ -1332,11 +1231,66 @@ theorem claim_runtime_refinement_mixed_pure_nash_set_eq
   by
     simpa [mixedPureFrontierTraceSurface,
       WFProgram.MixedPureFrontierNash] using
-      bridge.implTraceGame_nashSet_eq_surface_nashSet_of_bounded
-        hbdImpl hbdFrontier
+      bridge.implTraceGame_nashSet_eq_surface_nashSet
 
-/-- Under the same adequacy and bounded-utility hypotheses, behavioral
-frontier Nash profiles pull back to the implementation trace game. -/
+/-- Every trace-adequate behavioral implementation game of a finite-domain
+checked program has a Nash equilibrium. -/
+theorem claim_runtime_refinement_behavioral_nash_exists
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R) :
+    ∃ profile : program.BehavioralFrontierProfile,
+      bridge.implTraceGame.IsNash profile := by
+  apply bridge.implTraceGame_nash_exists
+  simpa [behavioralFrontierTraceSurface, BehavioralFrontierNash] using
+    program.behavioralFrontier_nash_exists
+
+/-- Every trace-adequate behavioral implementation game of a finite-domain
+checked program has a correlated equilibrium. -/
+theorem claim_runtime_refinement_behavioral_correlated_eq_exists
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R) :
+    ∃ profileLaw : program.BehavioralFrontierCorrelatedProfile,
+      bridge.implTraceGame.IsCorrelatedEq profileLaw := by
+  apply bridge.implTraceGame_correlatedEq_exists
+  simpa [behavioralFrontierTraceSurface,
+    BehavioralFrontierCorrelatedEq] using
+    program.behavioralFrontier_correlatedEq_exists
+
+/-- Every trace-adequate behavioral implementation game of a finite-domain
+checked program has a coarse correlated equilibrium. -/
+theorem claim_runtime_refinement_behavioral_coarse_correlated_eq_exists
+    (program : WFProgram P L) [FiniteDomains program]
+    {Impl : Machine P}
+    {R :
+      Machine.StochasticRefinement Impl
+        (ToEventGraph.PrimitiveMachine
+          (ToEventGraph.compile program.core))}
+    (bridge :
+      RuntimeTraceAdequacy program
+        (behavioralFrontierTraceSurface program) R) :
+    ∃ profileLaw : program.BehavioralFrontierCorrelatedProfile,
+      bridge.implTraceGame.IsCoarseCorrelatedEq profileLaw := by
+  apply bridge.implTraceGame_coarseCorrelatedEq_exists
+  simpa [behavioralFrontierTraceSurface,
+    BehavioralFrontierCoarseCorrelatedEq] using
+    program.behavioralFrontier_coarseCorrelatedEq_exists
+
+/-- Behavioral frontier Nash profiles pull back to every trace-adequate
+implementation game. -/
 theorem claim_runtime_refinement_pulls_back_behavioral_nash
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1347,31 +1301,15 @@ theorem claim_runtime_refinement_pulls_back_behavioral_nash
     (bridge :
       RuntimeTraceAdequacy program
         (behavioralFrontierTraceSurface program) R)
-    {CImpl CSpec CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdSpec :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility
-            (ToEventGraph.PrimitiveMachine
-              (ToEventGraph.compile program.core))
-            (fun _ => 0) trace player| ≤ CSpec player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.behavioralFrontierGame.utility outcome player| ≤
-          CFrontier player)
     {profile : program.BehavioralFrontierProfile}
     (hNash : program.BehavioralFrontierNash profile) :
     bridge.implTraceGame.IsNash profile :=
   by
     simpa [behavioralFrontierTraceSurface] using
-      bridge.implTraceGame_nash_of_surface_nash
-        hbdImpl hbdSpec hbdFrontier hNash
+      bridge.implTraceGame_nash_of_surface_nash hNash
 
-/-- Under the same adequacy and bounded-utility hypotheses, pure frontier
-Nash profiles pull back to the implementation trace game. -/
+/-- Pure frontier Nash profiles pull back to every trace-adequate
+implementation game. -/
 theorem claim_runtime_refinement_pulls_back_pure_nash
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1382,31 +1320,15 @@ theorem claim_runtime_refinement_pulls_back_pure_nash
     (bridge :
       RuntimeTraceAdequacy program
         (pureFrontierTraceSurface program) R)
-    {CImpl CSpec CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdSpec :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility
-            (ToEventGraph.PrimitiveMachine
-              (ToEventGraph.compile program.core))
-            (fun _ => 0) trace player| ≤ CSpec player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.pureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     {profile : program.PureFrontierProfile}
     (hNash : program.PureFrontierNash profile) :
     bridge.implTraceGame.IsNash profile :=
   by
     simpa [pureFrontierTraceSurface] using
-      bridge.implTraceGame_nash_of_surface_nash
-        hbdImpl hbdSpec hbdFrontier hNash
+      bridge.implTraceGame_nash_of_surface_nash hNash
 
-/-- Under the same adequacy and bounded-utility hypotheses, product
-mixed-pure frontier Nash profiles pull back to the implementation trace game. -/
+/-- Product mixed-pure frontier Nash profiles pull back to every trace-adequate
+implementation game. -/
 theorem claim_runtime_refinement_pulls_back_mixed_pure_nash
     (program : WFProgram P L) [FiniteDomains program]
     {Impl : Machine P}
@@ -1417,28 +1339,12 @@ theorem claim_runtime_refinement_pulls_back_mixed_pure_nash
     (bridge :
       RuntimeTraceAdequacy program
         (mixedPureFrontierTraceSurface program) R)
-    {CImpl CSpec CFrontier : P → ℝ}
-    (hbdImpl :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility Impl (fun _ => 0) trace player| ≤
-          CImpl player)
-    (hbdSpec :
-      ∀ player trace,
-        |Machine.eventBatchTraceUtility
-            (ToEventGraph.PrimitiveMachine
-              (ToEventGraph.compile program.core))
-            (fun _ => 0) trace player| ≤ CSpec player)
-    (hbdFrontier :
-      ∀ player outcome,
-        |program.mixedPureFrontierGame.utility outcome player| ≤
-          CFrontier player)
     {profile : program.MixedPureFrontierProfile}
     (hNash : program.MixedPureFrontierNash profile) :
     bridge.implTraceGame.IsNash profile :=
   by
     simpa [mixedPureFrontierTraceSurface] using
-      bridge.implTraceGame_nash_of_surface_nash
-        hbdImpl hbdSpec hbdFrontier hNash
+      bridge.implTraceGame_nash_of_surface_nash hNash
 
 end WFProgram
 
