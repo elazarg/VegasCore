@@ -26,6 +26,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Logical execution | `Machine.Contract.Request.executeConfig?` | exact reachability-erased machine step law |
 | Stored execution | `Machine.Contract.Request.executeStore?` | exact machine law transported through raw storage |
 | Player authentication | `Machine.Contract.PlayerCall` | injective caller roles plus exact semantic validity |
+| Word calldata | `Machine.Contract.PlayerCalldata` | typed commit-word decoding and valid-command round trip |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -182,6 +183,13 @@ semantic players. `PlayerCall.acceptsStore` is true exactly when the physical
 caller owns the claimed role and the logical commit request denotes a valid
 machine command. It covers player commits only; selecting who may trigger
 internal chance and reveal work remains a separate runtime-policy pass.
+
+`Machine.Contract.PlayerCalldata` lowers a player commit to caller identity,
+claimed player, node id, and one target word. The graph row supplies the
+expected language type; decoding rejects non-commit nodes, wrong owners, and
+ill-typed words. Encoding any valid semantic commit decodes to the same logical
+request and is accepted over the encoded state. Byte-level ABI selectors and
+gas are still target concerns.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

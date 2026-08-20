@@ -15,6 +15,7 @@ import Vegas.Machine.Contract.StoredABI
 import Vegas.Machine.Contract.Executor
 import Vegas.Machine.Contract.StoredExecutor
 import Vegas.Machine.Contract.Authentication
+import Vegas.Machine.Contract.Calldata
 
 namespace VegasTests
 
@@ -182,6 +183,21 @@ example (state : matchingPenniesMachine.State)
   exact
     Machine.Contract.PlayerCall.acceptsStore_encodeState_eq_true_iff
       matchingPenniesRegistry matchingPenniesStorageCodec state call
+
+example {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action) :
+    Machine.Contract.PlayerCalldata.acceptsStore
+        (program := matchingPenniesMachine) matchingPenniesRegistry
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState matchingPenniesStorageCodec state)
+        (Machine.Contract.PlayerCalldata.encodeCommit
+          matchingPenniesRegistry matchingPenniesStorageCodec action step) =
+      true := by
+  exact
+    Machine.Contract.PlayerCalldata.acceptsStore_encodeState_encodeCommit
+      matchingPenniesRegistry matchingPenniesStorageCodec action step
 
 example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
     Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec

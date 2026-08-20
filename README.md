@@ -140,6 +140,13 @@ role and its logical commit request is semantically valid. Internal sample and
 reveal triggering is intentionally not assigned to arbitrary callers here;
 that requires an explicit oracle/keeper/protocol policy.
 
+`Machine.Contract.PlayerCalldata` is the word-level player ABI: caller,
+claimed player, node id, and one target word. Decoding requires the node to be
+a commit owned by that player and decodes the word at the guard's language
+type. Every valid semantic commit round-trips to the same logical request and
+is accepted against its encoded state. Byte serialization, selectors, and gas
+remain target-specific.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

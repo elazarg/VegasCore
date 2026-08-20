@@ -40,6 +40,22 @@ def as? (value : TypedValue L) (ty : L.Ty) :
   else
     none
 
+/-- Successful dynamic decoding determines the original package exactly. -/
+theorem eq_mk_of_as?_eq_some (value : TypedValue L) (ty : L.Ty)
+    (decoded : L.Val ty) (hdecode : value.as? ty = some decoded) :
+    value = { ty := ty, value := decoded } := by
+  cases value with
+  | mk valueTy value =>
+      unfold as? at hdecode
+      split at hdecode
+      · rename_i hty
+        change valueTy = ty at hty
+        cases hty
+        simp only [cast_eq] at hdecode
+        cases Option.some.inj hdecode
+        rfl
+      · simp at hdecode
+
 end TypedValue
 
 /-- Runtime field store used to evaluate node-local expressions. -/
