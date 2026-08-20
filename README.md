@@ -248,8 +248,13 @@ the index law is proved to induce exactly the original `Machine.step` law,
 both on graph configurations and encoded storage. The contract cannot verify
 a frequency claim from a single response; exact sampling, non-withholding, and
 unpredictability are assumptions of this trusted role. An asynchronous
-request/pending/callback protocol and its scheduling signals are the next
-lowering layer.
+`OracleProtocol` then splits sampling into a deterministic request and
+callback: the request changes only pending metadata and emits one ordered
+oracle action, while the matching callback clears the lock and performs the
+sample update. Under the fixed oracle policy the callback law is exactly the
+encoded `Machine.step` law. Calls are locked during the pending phase; fairness,
+response timing, and visibility of the pending signal remain explicit
+classical-runtime assumptions rather than secure-compilation conclusions.
 
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
 changing the event bodies. Graph requirements are lowered to physical Boolean

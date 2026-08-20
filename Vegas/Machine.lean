@@ -32,6 +32,7 @@ import Vegas.Machine.Contract.Entropy
 import Vegas.Machine.Contract.UniformEntropy
 import Vegas.Machine.Contract.OraclePolicy
 import Vegas.Machine.Contract.OracleCalldata
+import Vegas.Machine.Contract.OracleProtocol
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction

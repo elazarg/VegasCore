@@ -250,6 +250,17 @@ exact encoded successor law. A concrete ABI must still choose selector bytes,
 address representation, word representation, and malformed-input behavior;
 the reference identity codec makes none of those choices.
 
+`Machine.Contract.OraclePolicy` gives every evaluated exact rational table a
+canonical law on its retained entry indices. `OracleCalldata` deterministically
+executes an authenticated index callback, and the fixed index policy is proved
+to recover the original machine sample law on both graph state and canonical
+storage. `OracleProtocol` separates that callback from a preceding request:
+request emission is a storage-level stutter plus pending metadata, the pending
+phase locks further sample requests, and the callback returns to idle. This is
+a classical trusted-role theorem. It assumes the oracle policy and eventual
+response; it does not establish unpredictability, non-withholding, or strategic
+adequacy for observable request timing.
+
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
 
