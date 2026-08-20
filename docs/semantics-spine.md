@@ -18,6 +18,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Lowering stage | `Machine.System` | one concrete operational command/state surface |
 | Step projection | `Machine.Refinement` | visible abstract steps and administrative stuttering |
 | Contract manifest | `Machine.Contract.Manifest` | finite lossless storage/action inventory for emitters |
+| Storage layout | `Machine.Contract.Layout` | bounded collision-free physical keys for logical slots |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -117,6 +118,11 @@ dependencies, authority, player input types, and node code. It intentionally
 stops before choosing physical storage, ABI scheduling, participant addresses,
 entropy, cryptography, timeout behavior, settlement, or bounded target
 arithmetic.
+
+`Machine.Contract.Layout` isolates the physical-key decision. Its canonical
+instance is dense and injective, placing typed value slots before action
+completion slots. A target value codec and its arithmetic semantics are still
+required before these keys describe executable EVM storage.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

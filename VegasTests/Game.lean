@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Game.Kuhn
 import Vegas.Machine.Contract
+import Vegas.Machine.Contract.Layout
 
 namespace VegasTests
 
@@ -124,6 +125,21 @@ example (node : Fin matchingPenniesMachine.graph.nodeCount) :
     (⟨node⟩ : Machine.Contract.Action matchingPenniesMachine) ∈
       matchingPenniesManifest.actions := by
   exact Machine.Contract.Manifest.action_mem matchingPenniesMachine node
+
+noncomputable def matchingPenniesLayout :
+    Machine.Contract.Layout matchingPenniesMachine :=
+  Machine.Contract.Layout.canonical matchingPenniesMachine
+
+example : Function.Injective matchingPenniesLayout.address :=
+  matchingPenniesLayout.injective
+
+example
+    (field : Fin matchingPenniesMachine.graph.fieldCount)
+    (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    matchingPenniesLayout.address (.value field) ≠
+      matchingPenniesLayout.address (.completed node) := by
+  exact Machine.Contract.Layout.value_ne_completed
+    matchingPenniesMachine field node
 
 example (state : matchingPenniesMachine.State)
     (hterminal : matchingPenniesMachine.terminal state) :

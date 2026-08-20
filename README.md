@@ -78,6 +78,12 @@ storage, ABI triggering of internal actions, role addresses, entropy,
 commitment cryptography, timeouts, settlement, and target arithmetic are later
 passes with separate obligations.
 
+`Machine.Contract.Layout` makes the next decision independently: it maps the
+logical slots to bounded natural-number keys and requires injectivity. The
+canonical layout is proved collision-free and dense, with value slots followed
+by completion slots. It does not yet encode a typed language value into a
+target storage word.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
