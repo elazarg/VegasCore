@@ -354,9 +354,15 @@ that emission has the computed byte length. Four independently compiled
 classical handler fragments are linked behind a 64-byte selector dispatcher;
 unknown selectors revert, handler entry offsets are computed from emitted
 prefix sizes, and the complete image must fit the dispatcher's 32-bit jump
-addresses. This is genuine EVM runtime byte emission, but the handlers are not
-yet generated from Vegas expressions and storage transitions, and no EVM
-execution semantics currently connects the bytes back to `receive`.
+addresses. Assembly and bytecode are derived from the certified handlers, so
+the size certificate cannot describe different caller-supplied bytes. No EVM
+execution semantics currently connects the emitted bytes back to `receive`.
+
+`Machine.Contract.EVM.DeploymentImage` adds actual creation bytecode. Its
+constructor emits `SSTORE` only for nonzero cells in the finite initial layout,
+copies the appended runtime into memory, and returns it. The runtime offset is
+computed from the emitted initialization prefix, while both that offset and
+the runtime length carry the bounds needed by their `PUSH4` operands.
 
 `Machine.Contract.EVM.ClassicalStorageLayout` supplies the corresponding
 account-state representation. EVM's total zero-default storage cannot directly
@@ -386,17 +392,27 @@ bound is applied. The structural handler code generator already emits full
 ordered value/presence/completion `SSTORE`s. Expression realization must leave
 one encoded result word on the documented stack interface.
 
-`ClassicalCompiler.EVMByteBackend.compileBooleanNoSampleRuntime?` is the first
-checked-source-to-runtime-bytecode backend. It supports Boolean graph storage,
-programs without sample nodes, permissionless reveals, and the concrete
-Boolean `simpleExpr` fragment (variables, constants, equality, conjunction,
-negation, and conditionals). It emits exact calldata-size and node routing,
-claimed-player and `CALLER` authentication, canonical Boolean validation,
-guard evaluation, reveals, storage effects, local jumps, the four-way selector
-dispatcher, and final opcode bytes. Unsupported expressions, missing labels,
-or an oversized image return `none`; the test suite takes an empty checked
-source program through the entire path to a 190-byte runtime image. This is a
-real code generator, but VM-level semantic correctness is not yet proved.
+`ClassicalCompiler.EVMByteBackend.compileBooleanDeployment?` is the complete
+trusted-oracle Boolean source-to-creation-bytecode endpoint. It supports the
+concrete Boolean `simpleExpr` fragment (variables, constants, equality,
+conjunction, negation, and conditionals), exact retained Boolean probability
+tables, and conditional distributions. Player and reveal handlers authenticate
+and update storage; sample requests lock the contract and emit the node as an
+anonymous 32-byte log; callbacks authenticate the configured oracle, validate
+the unique pending node and table index, realize the selected value, clear the
+lock, and complete the graph action. Its representation certificate requires
+the configured storage and wire codecs to encode and decode Booleans exactly
+as EVM zero and one. Unsupported expressions, noncanonical representations,
+tables larger than the callback word, missing labels, or oversized images do
+not compile. The no-sample runtime and deployment endpoints remain as smaller
+specializations; the test suite takes an empty checked source program to a
+190-byte runtime and a 211-byte creation image. VM-level semantic correctness
+is not yet proved.
+
+The generic classical deterministic artifact also exposes caller-free
+messages. As at the byte ABI, the authenticated identity is attached solely
+from the blockchain call context's `sender`; a message cannot assert its own
+player or oracle caller address.
 
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
@@ -437,8 +453,9 @@ An EVM-class compiler can grow as a sequence like this:
 5. implement chance with an oracle, VRF, multi-party protocol, or another
    mechanism whose actual law and adversarial assumptions are stated;
 6. add time, nonparticipation, abort/timeout, and settlement behavior;
-7. lower the concrete contract IR to EVM bytecode and relate transaction traces
-   back through the preceding layers.
+7. lower the concrete contract IR to deployable EVM creation/runtime bytecode;
+8. prove the emitted instruction and transaction traces refine the classical
+   receive relation through the preceding layers.
 
 The repository provides the first machine IR, composable operational
 projection, an exact terminal source-payoff certificate, certified logical
@@ -447,17 +464,18 @@ Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
 an ideal observation/atomic-frontier boundary, a lossless total EVM storage
-layout, an EVM opcode emitter and four-entry runtime linker, and unilateral strategic
-certificates for same-player and fixed-trusted-role targets, plus a complete
-deterministic four-entry EVM byte-calldata artifact and a partial Boolean
-source-to-EVM runtime backend. It does not yet have a full expression or sample
-handler compiler, a codec for programs that store other source types,
-a concrete transaction scheduler, cryptographic commitment refinement, exact
-untrusted on-chain chance implementation, timeout/abort game semantics, or an
-EVM execution model or end-to-end secure compilation theorem. The source-star theorem is about possible terminal
-runs and payoff equality; it does not equate probability laws, intermediate
-information histories, schedules, or target strategy spaces. Those are
-VegasCore gaps, not features supplied by GameTheory.
+layout, an EVM opcode emitter, four-entry runtime linker, deployable constructor,
+and unilateral strategic certificates for same-player and fixed-trusted-role
+targets, plus a complete deterministic four-entry EVM byte-calldata artifact
+and a trusted-oracle Boolean source-to-EVM backend. It does not yet have a codec
+and expression compiler for other source types, reified restricted trigger
+policies, a concrete transaction scheduler, cryptographic commitment
+refinement, exact untrusted on-chain chance implementation, timeout/abort game
+semantics, or an EVM execution model and end-to-end bytecode refinement theorem.
+The source-star theorem is about possible terminal runs and payoff equality; it
+does not equate probability laws, intermediate information histories,
+schedules, or target strategy spaces. Those are VegasCore gaps, not features
+supplied by GameTheory.
 
 ## Game semantics
 

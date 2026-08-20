@@ -58,7 +58,9 @@ def compile : ClassicalContract (Machine.compile source) Address where
   oracle := backend.oracle
 
 /-- The compiler's executable endpoint in generic deterministic-contract
-form.  Entropy is `Unit` because source chance has become oracle calldata. -/
+form. Messages contain no caller identity; authentication uses the blockchain
+context's sender. Entropy is `Unit` because source chance has become oracle
+calldata. -/
 def artifact := backend.compile.toDeterministicContract
 
 @[simp] theorem compile_codec : backend.compile.codec = backend.codec := rfl

@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Core.ExprSimple
 import Vegas.Machine.Contract.Storage
+import Vegas.Machine.Contract.Wire
 
 /-!
 # EVM-sized storage words
@@ -87,5 +88,27 @@ def boolStorageCodec (program : Program Player simpleExpr)
   encodeCompleted := encodeBool
   decodeCompleted := decodeBool
   decode_encode_completed := decodeBool_encodeBool
+
+/-- The representation law required by Boolean instruction generation. It
+ties the backend's storage word and outer EVM wire codecs to literal EVM zero
+and one, for both emitted values and arbitrary incoming words. -/
+structure CanonicalBoolRepresentation (program : Program Player simpleExpr)
+    (codec : StorageCodec program)
+    (words : WireCodec codec.Word Word) : Prop where
+  encode_bool :
+    ∀ value : Bool,
+      words.encode (codec.encodeValue .bool value) = encodeBool value
+  decode_bool :
+    ∀ word : Word,
+      (words.decode word).bind (codec.decodeValue .bool) = decodeBool word
+
+/-- The native Boolean storage codec with the identity outer wire encoding
+has the exact representation expected by generated instructions. -/
+theorem boolIdentityRepresentation (program : Program Player simpleExpr)
+    (usesBool : UsesOnlyBoolStorage program) :
+    CanonicalBoolRepresentation program (boolStorageCodec program usesBool)
+      (WireCodec.identity Word) where
+  encode_bool _value := rfl
+  decode_bool _word := rfl
 
 end Vegas.Machine.Contract.EVM

@@ -81,6 +81,11 @@ example : fairCoin.denote.prob true = 1 / 2 := by
   norm_num
 
 example :
+    (Machine.Contract.EVM.compileBoolTable? fairCoin.entries 0 1).isSome =
+      true := by
+  rfl
+
+example :
     simpleExpr.evalLaw
         (DistExpr.weighted (Γ := []) (b := .bool) fairCoin)
         (Env.empty Val) = fairCoin := rfl
@@ -591,17 +596,53 @@ noncomputable def emptyEVMByteBackend :
   addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
     norm_num [Machine.Contract.EVM.IndexFitsAddress])
 
+theorem emptyCanonicalBoolRepresentation :
+    Machine.Contract.EVM.CanonicalBoolRepresentation emptyMachine
+      emptyEVMByteBackend.classical.codec emptyEVMByteBackend.values :=
+  Machine.Contract.EVM.boolIdentityRepresentation emptyMachine
+    emptyUsesOnlyBoolStorage
+
 example :
     (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
-      emptyUsesOnlyBoolStorage emptyHasNoSampleNodes rfl).isSome = true := by
+      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+      emptyHasNoSampleNodes rfl).isSome = true := by
   rfl
 
 noncomputable def emptyEVMRuntimeImage :
     Machine.Contract.EVM.RuntimeImage matchingPenniesClassicalSelectors :=
   (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
-    emptyUsesOnlyBoolStorage emptyHasNoSampleNodes rfl).get (by rfl)
+    emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+    emptyHasNoSampleNodes rfl).get (by rfl)
 
 example : emptyEVMRuntimeImage.bytecode.length = 190 := by
+  rfl
+
+example :
+    (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
+      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+      emptyHasNoSampleNodes rfl).isSome = true := by
+  rfl
+
+noncomputable def emptyEVMDeploymentImage :
+    Machine.Contract.EVM.DeploymentImage matchingPenniesClassicalSelectors :=
+  (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
+    emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+    emptyHasNoSampleNodes rfl).get (by rfl)
+
+example : emptyEVMDeploymentImage.runtimeOffset = 21 := by
+  rfl
+
+example : emptyEVMDeploymentImage.bytecode.length = 211 := by
+  rfl
+
+example :
+    (emptyEVMByteBackend.compileBooleanRuntime?
+      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
+  rfl
+
+example :
+    (emptyEVMByteBackend.compileBooleanDeployment?
+      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
   rfl
 
 example :

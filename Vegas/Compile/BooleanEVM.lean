@@ -6,19 +6,23 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.ClassicalEVM
 import Vegas.Machine.Contract.BooleanEVMRuntime
+import Vegas.Machine.Contract.EVMDeployment
 
 /-!
 # Checked-source Boolean EVM runtime compiler
 
-This is the first source-to-runtime-bytecode backend. It is intentionally
-partial: the source must have Boolean graph storage, no sample nodes, a
-permissionless reveal policy, and guards accepted by the concrete Boolean
-expression compiler. Handler generation, image-size checking, local-label
-resolution, selector linking, and opcode emission are otherwise automatic.
+This is the checked Boolean source-to-EVM backend. The complete endpoint
+supports trusted-oracle sample request/callback pairs; a specialized no-sample
+endpoint remains useful for deterministic games. Both require Boolean graph
+storage, permissionless internal triggers, and expressions accepted by the
+concrete Boolean compiler. Handler generation, image-size checking, local-label
+resolution, selector linking, constructor storage initialization, and opcode
+emission are otherwise automatic.
 
-The returned runtime image is actual EVM bytecode. A VM-semantics correctness
-theorem remains separate; this module does not call successful emission a
-semantic or game-preservation result.
+The deployment endpoints return actual EVM creation bytecode whose constructor
+initializes the compiled source snapshot and returns the linked runtime. A
+VM-semantics correctness theorem remains separate; successful emission alone is
+not a semantic or game-preservation result.
 -/
 
 namespace Vegas.ClassicalCompiler
@@ -34,12 +38,52 @@ variable {source : WFProgram Player simpleExpr}
 
 namespace EVMByteBackend
 
+/-- Compile the complete trusted-oracle Boolean classical surface to linked
+EVM runtime bytes. Both internal trigger policies are permissionless in this
+backend; restricted policies require a reified authorization compiler. -/
+def compileBooleanRuntime?
+    (backend : EVMByteBackend source Address)
+    (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
+    (_canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+      backend.classical.codec backend.values)
+    (_permissionlessReveals :
+      backend.classical.reveals = TriggerPolicy.permissionless)
+    (_permissionlessSampleRequests :
+      backend.classical.sampleRequests = TriggerPolicy.permissionless) :
+    Option (EVM.RuntimeImage backend.selectors) :=
+  match EVM.compileBooleanClassicalHandlers? usesBool
+      backend.classical.players backend.players backend.classical.oracle
+      backend.addresses with
+  | none => none
+  | some handlers => EVM.RuntimeImage.linkLocalChecked?
+      backend.selectors handlers
+
+/-- Compile the complete trusted-oracle Boolean surface to deployable EVM
+creation bytecode, including constructor initialization of the source state. -/
+def compileBooleanDeployment?
+    (backend : EVMByteBackend source Address)
+    (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
+    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+      backend.classical.codec backend.values)
+    (permissionlessReveals :
+      backend.classical.reveals = TriggerPolicy.permissionless)
+    (permissionlessSampleRequests :
+      backend.classical.sampleRequests = TriggerPolicy.permissionless) :
+    Option (EVM.DeploymentImage backend.selectors) := do
+  let runtime ← backend.compileBooleanRuntime? usesBool canonical
+    permissionlessReveals permissionlessSampleRequests
+  EVM.DeploymentImage.build? runtime
+    (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
+    backend.compile.initialStorage
+
 /-- Compile the supported Boolean/no-sample fragment all the way to linked EVM
 runtime bytes. Unsupported guards, unresolved labels, or an oversized image
 return `none`. -/
 def compileBooleanNoSampleRuntime?
     (backend : EVMByteBackend source Address)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
+    (_canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+      backend.classical.codec backend.values)
     (noSamples : EVM.HasNoSampleNodes (Machine.compile source))
     (_permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless) :
@@ -49,6 +93,23 @@ def compileBooleanNoSampleRuntime?
   | none => none
   | some handlers => EVM.RuntimeImage.linkLocalChecked?
       backend.selectors handlers
+
+/-- Compile the deterministic Boolean/no-sample specialization to deployable
+creation bytecode. -/
+def compileBooleanNoSampleDeployment?
+    (backend : EVMByteBackend source Address)
+    (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
+    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+      backend.classical.codec backend.values)
+    (noSamples : EVM.HasNoSampleNodes (Machine.compile source))
+    (permissionlessReveals :
+      backend.classical.reveals = TriggerPolicy.permissionless) :
+    Option (EVM.DeploymentImage backend.selectors) := do
+  let runtime ← backend.compileBooleanNoSampleRuntime? usesBool canonical noSamples
+    permissionlessReveals
+  EVM.DeploymentImage.build? runtime
+    (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
+    backend.compile.initialStorage
 
 end EVMByteBackend
 

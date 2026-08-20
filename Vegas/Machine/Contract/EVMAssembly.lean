@@ -421,10 +421,30 @@ end LinkableHandlers
 statically computed handler destination is represented exactly by `PUSH4`. -/
 structure RuntimeImage (selectors : ClassicalSelectors) where
   handlers : LinkableHandlers
-  assembly : Assembly := classicalRuntimeAssembly selectors handlers.handlers
-  bytecode : List Byte := assembly.emit
 
 namespace RuntimeImage
+
+variable {selectors : ClassicalSelectors}
+
+/-- The assembly determined by a linked image's selectors and handlers. -/
+def assembly (image : RuntimeImage selectors) : Assembly :=
+  classicalRuntimeAssembly selectors image.handlers.handlers
+
+/-- The exact bytes emitted by a linked image. -/
+def bytecode (image : RuntimeImage selectors) : List Byte :=
+  image.assembly.emit
+
+/-- Emission has the exact size certified by the handler linker. -/
+@[simp] theorem bytecode_length (image : RuntimeImage selectors) :
+    image.bytecode.length =
+      classicalRuntimeSize image.handlers.handlers := by
+  simp [RuntimeImage.bytecode, RuntimeImage.assembly]
+
+/-- The deployed runtime length is represented exactly by `PUSH4`. -/
+theorem bytecode_length_fits (image : RuntimeImage selectors) :
+    image.bytecode.length < 2 ^ 32 := by
+  rw [bytecode_length]
+  exact image.handlers.size_fits
 
 /-- Link independently compiled handlers behind one classical ABI. -/
 def link (selectors : ClassicalSelectors) (handlers : LinkableHandlers) :

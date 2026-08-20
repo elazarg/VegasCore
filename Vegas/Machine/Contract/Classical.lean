@@ -53,6 +53,45 @@ inductive ClassicalCalldata
   | sampleRequest (call : OracleProtocol.RequestCalldata Address)
   | oracleCallback (call : OracleCalldata Address)
 
+/-- Caller-free trusted-oracle callback arguments at the generic blockchain
+boundary. -/
+structure ClassicalOracleMessage
+    (program : Program Player L) where
+  node : Fin program.graph.nodeCount
+  choice : Nat
+
+/-- Complete caller-free typed surface of the classical contract. Physical
+identity is attached exclusively from the blockchain call context. -/
+inductive ClassicalMessage
+    (program : Program Player L) (Word : Type) where
+  | player (message : Blockchain.PlayerMessage program Word)
+  | reveal (message : Blockchain.InternalMessage program)
+  | sampleRequest (message : Blockchain.InternalMessage program)
+  | oracleCallback (message : ClassicalOracleMessage program)
+
+namespace ClassicalMessage
+
+/-- Attach the authenticated blockchain sender to typed message arguments. -/
+def contextualize {Word : Type} (context : CallContext Address) :
+    ClassicalMessage program Word → ClassicalCalldata Player Address Word
+  | .player message =>
+      .player
+        { caller := context.sender
+          player := message.player
+          node := message.node
+          value := message.value }
+  | .reveal message =>
+      .reveal { caller := context.sender, node := message.node }
+  | .sampleRequest message =>
+      .sampleRequest { caller := context.sender, node := message.node }
+  | .oracleCallback message =>
+      .oracleCallback
+        { caller := context.sender
+          node := message.node
+          choice := message.choice }
+
+end ClassicalMessage
+
 namespace ClassicalContract
 
 variable (contract : ClassicalContract program Address)
@@ -60,6 +99,7 @@ variable (contract : ClassicalContract program Address)
 abbrev State := OracleProtocol.State contract.codec
 abbrev Calldata :=
   ClassicalCalldata Player Address contract.codec.Word
+abbrev Message := ClassicalMessage program contract.codec.Word
 abbrev Action := OracleProtocol.Request
 
 /-- Canonical deployment state with no pending oracle interaction. -/
@@ -110,13 +150,24 @@ def receive (state : contract.State) :
       | none => .revert .rejected
       | some next => .success (CallSuccess.silent next)
 
-/-- Package the classical compiler endpoint as a deterministic contract. -/
+/-- Package the classical compiler endpoint as a deterministic blockchain
+contract. The physical caller is taken only from `context.sender`; it cannot
+be forged in the message body. -/
 def toDeterministicContract :
-    DeterministicContract Unit contract.Calldata contract.State
+    DeterministicContract Address contract.Message contract.State
       OracleProtocol.Request Unit where
   initial := contract.initial
-  receive := fun _chain _context state message _unit =>
-    contract.receive state message
+  receive := fun _chain context state message _unit =>
+    contract.receive state (message.contextualize context)
+
+/-- Generic artifact execution obtains every authenticated identity from the
+blockchain context. -/
+@[simp] theorem toDeterministicContract_receive
+    (chain : ChainView) (context : CallContext Address)
+    (state : contract.State) (message : contract.Message) :
+    contract.toDeterministicContract.receive chain context state message () =
+      contract.receive state (message.contextualize context) :=
+  rfl
 
 /-- A valid semantic commitment executes to its unique canonical stored
 successor with no outbound action. -/

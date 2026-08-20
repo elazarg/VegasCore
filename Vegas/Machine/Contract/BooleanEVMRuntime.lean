@@ -4,20 +4,21 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Machine.Contract.SimpleEVMAction
+import Vegas.Machine.Contract.SimpleEVMSample
 
 /-!
-# Complete Boolean no-sample EVM handlers
+# Boolean classical EVM handlers
 
-This backend closes handler generation for Boolean-storage programs without
-sample nodes. It validates exact calldata lengths, routes canonical node words,
-compiles every player commit and permissionless reveal body, and rejects the
-two unreachable oracle entry points. The result is symbolic local assembly
-ready for the proved resolver and bytecode linker.
+This backend generates all four handlers for Boolean-storage programs. It
+validates exact calldata lengths, routes canonical node words, compiles player
+commits and permissionless reveals, and implements the trusted-oracle sample
+request/callback protocol. The result is symbolic local assembly ready for the
+proved resolver and bytecode linker.
 
-The no-sample restriction is semantic, not an implementation shortcut:
-sample request/callback effects require a concrete outbound-oracle action
-mechanism and retained-table realization, supplied by a later backend.
+The no-sample specialization rejects both oracle entry points. The complete
+surface instead logs the requested node, locks other graph actions until an
+authenticated callback, and realizes the retained exact Boolean table from a
+256-bit callback index.
 -/
 
 namespace Vegas.Machine.Contract.EVM
@@ -105,6 +106,23 @@ def compileCompletingHandler?
           compileNodeRoutes nodeOffset actions ++ [.jump reject] ++
           blocks ++ classicalRejectBlock reject
 
+/-- Completing handler with source-independent checks performed once after
+calldata-size validation and before node routing. -/
+def compileCompletingHandlerWithPrefix?
+    (calldataSize nodeOffset : Nat) (prelude : LocalAssembly)
+    (actions : List (ClassicalActionIR program))
+    (realize : ClassicalActionIR program → Nat → Option BoolExprCode) :
+    Option LocalAssembly :=
+  let reject := 0
+  let firstBodyLabel := program.graph.nodeCount + 1
+  match compileCompletingBlocks? reject realize actions firstBodyLabel with
+  | none => none
+  | some (blocks, _next) =>
+      some <|
+        compileCalldataSizeEq calldataSize reject ++ prelude ++
+          compileNodeRoutes nodeOffset actions ++ [.jump reject] ++
+          blocks ++ classicalRejectBlock reject
+
 /-- Complete player handler for the supported Boolean fragment. -/
 def compileBooleanPlayerHandler?
     (usesBool : UsesOnlyBoolStorage program)
@@ -127,6 +145,94 @@ def unavailableHandler : LocalAssembly :=
   [ .op (.push (.one (byte 0))),
     .op (.push (.one (byte 0))),
     .op .revert ]
+
+/-- Compile request blocks. The handler-level prefix has already established
+that no request is pending. -/
+def compileSampleRequestBlocks (reject : LocalLabel) :
+    List (ClassicalActionIR program) → LocalAssembly
+  | [] => []
+  | action :: rest =>
+      [.label (action.node + 1)] ++
+        compileClassicalStorageChecks reject action.checks ++
+        compileSimpleSampleRequestEffect action ++
+        compileSampleRequestBlocks reject rest
+
+/-- Complete permissionless sample-request handler. -/
+def compileBooleanSampleRequestHandler : LocalAssembly :=
+  let reject := 0
+  let actions := actionsForRoute program .sampleRequest
+  compileCalldataSizeEq 36 reject ++
+    compilePendingFlagEq (program := program) false reject ++
+    compileNodeRoutes 4 actions ++ [.jump reject] ++
+    compileSampleRequestBlocks reject actions ++ classicalRejectBlock reject
+
+/-- Compile callback blocks while threading distribution-expression labels. -/
+def compileSampleCallbackBlocks?
+    (usesBool : UsesOnlyBoolStorage program)
+    (oracle : OracleRegistry Address) (addresses : AddressCodec Address)
+    (reject : LocalLabel) :
+    List (ClassicalActionIR program) → Nat → Option (LocalAssembly × Nat)
+  | [], next => some ([], next)
+  | action :: rest, next =>
+      match compileSimpleSampleCallback? usesBool oracle addresses action
+          reject next with
+      | none => none
+      | some realized =>
+          match compileSampleCallbackBlocks? usesBool oracle addresses reject
+              rest realized.nextLabel with
+          | none => none
+          | some (suffix, finalLabel) =>
+              some
+                ([.label (action.node + 1)] ++
+                    compileClassicalStorageChecks reject action.checks ++
+                    realized.code ++ compileClearPending program ++
+                    compileClassicalActionWrites action ++ [.op .stop] ++
+                    suffix,
+                  finalLabel)
+
+/-- Complete authenticated oracle-callback handler. -/
+def compileBooleanSampleCallbackHandler?
+    (usesBool : UsesOnlyBoolStorage program)
+    (oracle : OracleRegistry Address) (addresses : AddressCodec Address) :
+    Option LocalAssembly :=
+  let reject := 0
+  let actions := actionsForRoute program .oracleCallback
+  let firstBodyLabel := program.graph.nodeCount + 1
+  match compileSampleCallbackBlocks? usesBool oracle addresses reject actions
+      firstBodyLabel with
+  | none => none
+  | some (blocks, _next) =>
+      some <|
+        compileCalldataSizeEq 68 reject ++ compileNodeRoutes 4 actions ++
+          [.jump reject] ++ blocks ++ classicalRejectBlock reject
+
+/-- Compile the complete permissionless-trigger Boolean classical surface,
+including trusted-oracle request logs and authenticated callbacks. -/
+def compileBooleanClassicalHandlers?
+    (usesBool : UsesOnlyBoolStorage program)
+    (registry : PlayerRegistry Player Address)
+    (players : WireCodec Player Word)
+    (oracle : OracleRegistry Address)
+    (addresses : AddressCodec Address) : Option LocalClassicalHandlers :=
+  match
+      compileCompletingHandlerWithPrefix? 100 36
+        (compilePendingFlagEq (program := program) false 0)
+        (actionsForRoute program .player)
+        (fun action next =>
+          compileSimplePlayerCommit? usesBool registry players addresses action
+            0 next),
+      compileCompletingHandlerWithPrefix? 36 4
+        (compilePendingFlagEq (program := program) false 0)
+        (actionsForRoute program .reveal) compileSimpleReveal?,
+      compileBooleanSampleCallbackHandler? usesBool oracle addresses with
+  | some player, some reveal, some oracleCallback =>
+      some
+        { player := player
+          reveal := reveal
+          sampleRequest := compileBooleanSampleRequestHandler
+            (program := program)
+          oracleCallback := oracleCallback }
+  | _, _, _ => none
 
 /-- Compile every handler for a Boolean program with no sample nodes. Reveal
 authorization is permissionless at this concrete backend; a restricted trigger

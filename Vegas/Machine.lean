@@ -44,10 +44,13 @@ import Vegas.Machine.Contract.ClassicalEVMStorage
 import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Machine.Contract.EVMLocalAssembly
+import Vegas.Machine.Contract.EVMDeployment
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.ClassicalEVMCodegen
 import Vegas.Machine.Contract.SimpleEVMExpr
 import Vegas.Machine.Contract.SimpleEVMAction
+import Vegas.Machine.Contract.SimpleEVMDist
+import Vegas.Machine.Contract.SimpleEVMSample
 import Vegas.Machine.Contract.BooleanEVMRuntime
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction
