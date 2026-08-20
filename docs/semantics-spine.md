@@ -9,6 +9,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Source | `VegasCore P L Γ` | typed protocol syntax and visibility |
 | Checked source | `WFProgram P L` | freshness, reveals, live guards |
 | Machine IR | `Machine.Program P L` | typed graph, reified node/payoff code, first operational semantics |
+| Payoff compilation | `Machine.compile_sourcePayoffOfTerminal` | exact terminal source/machine payoff equality |
 | Strategic execution | `ExecutionProtocol P` | active players, legal joint actions, chance, terminality |
 | Strategic information | `InformationModel execution` | signals, local information, local menus |
 | Vegas game | `Vegas.Game P` | FOSG arena, history utility, bounded horizon, pure/behavioral/mixed-pure forms |
@@ -28,10 +29,23 @@ Every sample, commit guard, and payoff retains the typed embedded-language term
 and a proof-indexed mapping from its variables to graph storage fields. The same
 node also exposes a dependency-local denotation used by graph proofs.
 
+The event-graph compilation result retains the terminal source context and
+payoff expressions rather than discarding them after code generation. At every
+terminal reachable machine store, store coherence and the compiler field map
+reconstruct a complete typed source environment, including sealed bindings.
+Compiled payoff evaluation is proved equal to source `evalPayoffs` in that
+environment.
+
 This separation permits a backend to translate syntax while correctness proofs
 relate the translated code to the existing denotation. The abstract `IExpr`
 interface does not promise that every embedded language has every backend; a
 backend provides a lowering for the concrete expression language it supports.
+
+This terminal equality is not yet a source-run linearization theorem. The
+support-level `SmallStep` semantics executes written order, while the event
+graph admits dependency-respecting orders and simultaneous frontiers. Proving
+that a terminal graph execution corresponds to a `SmallStep.Star` with the same
+bindings remains a separate compiler theorem.
 
 ## Probability
 

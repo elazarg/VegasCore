@@ -110,6 +110,18 @@ noncomputable def matchingPenniesMachine :
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
 
+example (state : matchingPenniesMachine.State)
+    (hterminal : matchingPenniesMachine.terminal state) :
+    ∃ sourceEnv :
+        VEnv simpleExpr
+          (ToEventGraph.compile matchingPenniesProgram.core).terminalCtx,
+      EventGraph.evalPayoffs? matchingPenniesMachine.payoffs state.1.store =
+        some (evalPayoffs
+          (ToEventGraph.compile matchingPenniesProgram.core).sourcePayoffs
+          sourceEnv) := by
+  exact Machine.compile_sourcePayoffOfTerminal
+    matchingPenniesProgram state hterminal
+
 noncomputable instance matchingPenniesFiniteDomains :
     FiniteDomains matchingPenniesProgram where
   context := inferInstanceAs (FiniteVCtx ([] : VCtx TestPlayer simpleExpr))
@@ -132,21 +144,22 @@ theorem matchingPenniesMachine_graph_nodeCount :
     matchingPenniesMachine.graph.nodeCount = 4 := by
   simp [matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
     matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
-    ToEventGraph.compileCore, EventGraph.Graph.nodeCount]
+    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
+    EventGraph.Graph.nodeCount]
 
 noncomputable def matchingPenniesNode0 :
     Fin matchingPenniesMachine.graph.nodeCount :=
   ⟨0, by simp [matchingPenniesMachine, Machine.compile,
     Machine.ofCompiled, matchingPenniesProgram, matchingPenniesCore,
     ToEventGraph.compile, ToEventGraph.compileCore,
-    EventGraph.Graph.nodeCount]⟩
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]⟩
 
 noncomputable def matchingPenniesNode1 :
     Fin matchingPenniesMachine.graph.nodeCount :=
   ⟨1, by simp [matchingPenniesMachine, Machine.compile,
     Machine.ofCompiled, matchingPenniesProgram, matchingPenniesCore,
     ToEventGraph.compile, ToEventGraph.compileCore,
-    EventGraph.Graph.nodeCount]⟩
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]⟩
 
 example :
     matchingPenniesMachine.graph.prereqs matchingPenniesNode0 = ∅ := by

@@ -322,16 +322,20 @@ theorem StoreCoherent.completeNode
       (cfg.completeNode node { ty := event.ty, value := value }) := by
   exact hcoherent.completeNodeTyped hnode { ty := event.ty, value := value } rfl
 
-theorem StoreCoherent.hasRefOfAvailable
+/-- A coherent terminal store contains every graph field that is available by
+the end of the graph.  Unlike `hasRefOfAvailable`, this theorem does not impose
+public visibility and is therefore suitable for reconstructing the complete
+source environment, including sealed bindings. -/
+theorem StoreCoherent.hasFieldOfAvailable
     {G : Graph Player L} {cfg : Config G}
     (hcoherent : StoreCoherent G cfg)
     (hterminal : Terminal G cfg)
-    {ref : FieldRef L}
-    (href : G.fieldRefPublic ref)
-    (havailable : G.fieldAvailableBefore G.nodeCount ref.field = true) :
-    ∃ value : L.Val ref.ty,
-      Store.getAs cfg.store ref.field ref.ty = some value := by
-  rcases href with ⟨spec, hget, hty, _howner⟩
+    {field : Nat} {spec : FieldSpec Player L}
+    (hget : G.field? field = some spec)
+    (havailable :
+      G.fieldAvailableBefore G.nodeCount field = true) :
+    ∃ value : L.Val spec.ty,
+      Store.getAs cfg.store field spec.ty = some value := by
   have hready :
       match spec.source with
       | .initial _ => True
@@ -347,7 +351,20 @@ theorem StoreCoherent.hasRefOfAvailable
         exact
           Finset.mem_image.mpr
             ⟨⟨node, hlt⟩, hterminal ⟨node, hlt⟩, rfl⟩
-  rcases hcoherent ref.field spec hget hready with ⟨value, hvalue⟩
+  exact hcoherent field spec hget hready
+
+theorem StoreCoherent.hasRefOfAvailable
+    {G : Graph Player L} {cfg : Config G}
+    (hcoherent : StoreCoherent G cfg)
+    (hterminal : Terminal G cfg)
+    {ref : FieldRef L}
+    (href : G.fieldRefPublic ref)
+    (havailable : G.fieldAvailableBefore G.nodeCount ref.field = true) :
+    ∃ value : L.Val ref.ty,
+      Store.getAs cfg.store ref.field ref.ty = some value := by
+  rcases href with ⟨spec, hget, hty, _howner⟩
+  rcases hcoherent.hasFieldOfAvailable hterminal hget havailable with
+    ⟨value, hvalue⟩
   rw [← hty]
   exact ⟨value, hvalue⟩
 

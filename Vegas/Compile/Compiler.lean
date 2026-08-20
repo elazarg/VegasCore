@@ -2160,17 +2160,12 @@ theorem compileCore_guardLive :
       compileCore_guardLive tail fresh.2 added.1
         addedLive legal
 
-/-- A compiled checked program: graph plus terminal payoff projection. -/
-structure CompiledProgram (P : Type) [DecidableEq P] (L : IExpr) where
-  private mk ::
-  graph : EventGraph.Graph P L
-  graphWF : graph.WF
-  payoffs : List (P × EventPayoff L)
-  payoffsWF :
-    ∀ payoff, payoff ∈ payoffs →
-      ∀ ref, ref ∈ payoff.2.reads →
-        graph.fieldRefPublic ref ∧
-        graph.fieldAvailableBefore graph.nodeCount ref.field = true
+/-- A compiled checked program retains both the event graph and the terminal
+source context from which its payoff projection was compiled.  Keeping this
+certificate at the compilation boundary lets later stages state source-to-
+machine payoff correctness without reconstructing compiler internals. -/
+abbrev CompiledProgram (P : Type) [DecidableEq P] (L : IExpr) :=
+  BuildResult P L
 
 /-- Compile a graph-program to graph data plus the terminal source context
 certificate used by source-level adequacy theorems. -/
@@ -2181,16 +2176,30 @@ noncomputable def buildResult (g : GraphProgram P L) : BuildResult P L :=
 /-- Compile a graph-program to the canonical event graph representation. -/
 noncomputable def compile (g : GraphProgram P L) : CompiledProgram P L :=
   let init := initialState g.Γ g.env g.wctx
-  let result := compileCore g.prog g.fresh (BuildState.fromInitial init)
-  let graph : EventGraph.Graph P L :=
-    { initialFields := result.initialFields, nodes := result.nodes }
-  {
-    graph := graph
-    graphWF := result.graphWF
-    payoffs := result.payoffs
-    payoffsWF := by
-      intro payoff hpayoff ref href
-      exact result.payoffsWF payoff hpayoff ref href }
+  compileCore g.prog g.fresh (BuildState.fromInitial init)
+
+namespace CompiledProgram
+
+/-- At any store containing every terminal source binding, compiled payoff
+evaluation is exactly source payoff evaluation in the environment reconstructed
+through the compiler's proof-indexed field map. -/
+theorem evalPayoffs_eq_sourceEnvOfStore
+    (compiled : CompiledProgram P L)
+    (store : Store L)
+    (available :
+      ∀ {name bindTy}
+        (h : VHasVar compiled.terminalCtx name bindTy),
+        ∃ value,
+          Store.getAs store (compiled.terminalState.fieldOf h) bindTy.base =
+            some value) :
+    evalPayoffs? compiled.payoffs store =
+      some (evalPayoffs compiled.sourcePayoffs
+        (sourceEnvOfStore compiled.terminalState store available)) := by
+  rw [compiled.payoffs_eq]
+  exact evalPayoffs?_compilePayoffs_eq_sourceEnvOfStore
+    compiled.terminalState compiled.sourcePayoffs store available
+
+end CompiledProgram
 
 /-- Finite checked programs compile to graphs whose node action/value domains
 are finite. This is the exact evidence needed to instantiate finite frontier

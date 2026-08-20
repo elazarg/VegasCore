@@ -26,6 +26,12 @@ VegasCore source              │        └─→ FOSG / strategic forms / anal
 - terminal payoff code;
 - graph well-formedness and guard-liveness proofs.
 
+The event-graph compilation result also retains its terminal source context,
+proof-indexed source-to-field map, and original source payoff expressions.
+`Machine.compile_sourcePayoffOfTerminal` proves that every terminal reachable
+machine store reconstructs a typed source environment in which source and
+machine payoff evaluation agree exactly, including sealed source bindings.
+
 Retaining code is essential. Evaluator closures alone can define semantics but
 cannot be traversed by a Solidity, EVM, native, SMT, or circuit backend.
 
@@ -82,11 +88,12 @@ An EVM-class compiler can grow as a sequence like this:
    back through the preceding layers.
 
 The repository provides the first machine IR, composable operational projection,
-and a narrow unilateral strategic certificate. It does not yet have an EVM IR,
-emitter, cryptographic commitment refinement, exact on-chain chance
-implementation, timeout/abort game semantics, or an end-to-end secure
-compilation theorem. Those are VegasCore gaps, not features supplied by
-GameTheory.
+an exact terminal source-payoff certificate, and a narrow unilateral strategic
+certificate. It does not yet have an EVM IR, emitter, cryptographic commitment
+refinement, exact on-chain chance implementation, timeout/abort game semantics,
+or an end-to-end secure compilation theorem. It also does not yet prove that
+every event-graph run linearizes to the support-level source `SmallStep.Star`.
+Those are VegasCore gaps, not features supplied by GameTheory.
 
 ## Game semantics
 
