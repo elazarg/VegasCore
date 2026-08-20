@@ -144,8 +144,12 @@ that requires an explicit oracle/keeper/protocol policy.
 claimed player, node id, and one target word. Decoding requires the node to be
 a commit owned by that player and decodes the word at the guard's language
 type. Every valid semantic commit round-trips to the same logical request and
-is accepted against its encoded state. Byte serialization, selectors, and gas
-remain target-specific.
+is accepted against its encoded state. Its executor then composes decoding,
+caller authentication, stored validation, and stored execution; for every
+valid semantic commit, the resulting raw-store law is exactly `Machine.step`
+mapped through the canonical state encoding. The law remains semantic and
+noncomputable until a finite sampler is selected. Byte serialization,
+selectors, and gas remain target-specific.
 
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior

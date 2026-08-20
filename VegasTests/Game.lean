@@ -199,6 +199,24 @@ example {state : matchingPenniesMachine.State} {who : TestPlayer}
     Machine.Contract.PlayerCalldata.acceptsStore_encodeState_encodeCommit
       matchingPenniesRegistry matchingPenniesStorageCodec action step
 
+example {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action) :
+    Machine.Contract.PlayerCalldata.executeStore?
+        (program := matchingPenniesMachine) matchingPenniesRegistry
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesStorageCodec state)
+        (Machine.Contract.PlayerCalldata.encodeCommit
+          matchingPenniesRegistry matchingPenniesStorageCodec action step) =
+      some ((matchingPenniesMachine.step state (.commit who action step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesStorageCodec)) := by
+  exact
+    Machine.Contract.PlayerCalldata.executeStore?_encodeState_encodeCommit
+      matchingPenniesRegistry matchingPenniesStorageCodec action step
+
 example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
     Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec
         (Machine.Contract.RawStore.encodeSnapshot

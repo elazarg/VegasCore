@@ -26,7 +26,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Logical execution | `Machine.Contract.Request.executeConfig?` | exact reachability-erased machine step law |
 | Stored execution | `Machine.Contract.Request.executeStore?` | exact machine law transported through raw storage |
 | Player authentication | `Machine.Contract.PlayerCall` | injective caller roles plus exact semantic validity |
-| Word calldata | `Machine.Contract.PlayerCalldata` | typed commit-word decoding and valid-command round trip |
+| Player transaction | `Machine.Contract.PlayerCalldata` | word decoding, caller authentication, and exact stored execution |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -188,8 +188,13 @@ internal chance and reveal work remains a separate runtime-policy pass.
 claimed player, node id, and one target word. The graph row supplies the
 expected language type; decoding rejects non-commit nodes, wrong owners, and
 ill-typed words. Encoding any valid semantic commit decodes to the same logical
-request and is accepted over the encoded state. Byte-level ABI selectors and
-gas are still target concerns.
+request and is accepted over the encoded state. The adjacent word-call
+executor composes this decoder with caller authentication and stored execution.
+For every valid semantic commit, its successor law is exactly `Machine.step`
+transported through `RawStore.encodeState`. This is not yet an extractable
+transaction processor because the resulting `FinDist` is semantic and
+noncomputable; byte-level ABI selectors, a finite sampler, and gas are still
+target concerns.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Machine.Contract.Authentication
+import Vegas.Machine.Contract.StoredExecutor
 
 /-!
 # Player commit calldata
@@ -152,6 +153,70 @@ theorem acceptsStore_encodeState_encodeCommit
   simpa [PlayerCall.authenticated, PlayerCall.request, Request.encode,
     ← hvalue]
     using hvalid
+
+/-- Decode, authenticate, and semantically execute word-level player calldata
+against canonical raw storage. -/
+noncomputable def executeStore?
+    (registry : PlayerRegistry Player Address)
+    (codec : StorageCodec L) (store : RawStore codec)
+    (calldata : PlayerCalldata Player Address codec.Word) :
+    Option (GameTheory.Math.Probability.FinDist (RawStore codec)) :=
+  match decode program codec calldata with
+  | none => none
+  | some call =>
+      if PlayerCall.authenticated registry call then
+        Request.executeStore? (program := program) codec store call.request
+      else
+        none
+
+/-- Word-level execution succeeds exactly when word-level validation accepts.
+-/
+theorem executeStore?_isSome
+    (registry : PlayerRegistry Player Address)
+    (codec : StorageCodec L) (store : RawStore codec)
+    (calldata : PlayerCalldata Player Address codec.Word) :
+    (executeStore? (program := program) registry codec store calldata).isSome =
+      acceptsStore (program := program) registry codec store calldata := by
+  unfold executeStore? acceptsStore
+  cases hdecode : decode program codec calldata with
+  | none => rfl
+  | some call =>
+      by_cases hauth : PlayerCall.authenticated registry call
+      · simp [hauth, PlayerCall.acceptsStore, Request.executeStore?_isSome]
+      · simp [hauth, PlayerCall.acceptsStore]
+
+/-- End-to-end word-call law for a valid semantic commit: calldata decoding,
+authentication, stored execution, and successor encoding produce exactly the
+machine step law transported through canonical raw storage. -/
+theorem executeStore?_encodeState_encodeCommit
+    (registry : PlayerRegistry Player Address)
+    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (action : CommitAction program.graph who)
+    (step : CommitStep program.graph state.1 who action) :
+    executeStore? (program := program) registry codec
+        (RawStore.encodeState codec state)
+        (encodeCommit registry codec action step) =
+      some ((program.step state (.commit who action step)).map
+        (RawStore.encodeState codec)) := by
+  have hvalue :=
+    TypedValue.eq_mk_of_as?_eq_some
+      action.value step.guard.ty step.value step.value_ok
+  let call : PlayerCall Player Address L :=
+    { caller := registry.address who
+      player := who
+      node := action.node
+      value := { ty := step.guard.ty, value := step.value } }
+  have hrequest :
+      call.request = Request.encode (.commit who action step) := by
+    simp [call, PlayerCall.request, Request.encode, ← hvalue]
+  unfold executeStore?
+  rw [show decode program codec (encodeCommit registry codec action step) =
+      some call from decode_encodeCommit registry codec action step]
+  dsimp only
+  rw [if_pos (by simp [call, PlayerCall.authenticated])]
+  rw [hrequest]
+  exact Request.executeStore?_encodeState_encode
+    codec state (.commit who action step)
 
 end PlayerCalldata
 
