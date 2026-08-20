@@ -21,6 +21,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Storage layout | `Machine.Contract.Layout` | bounded collision-free physical keys for logical slots |
 | Logical ABI | `Machine.Contract.Request` | executable raw-envelope and valid-command acceptance |
 | Storage words | `Machine.Contract.StorageCodec` | typed target-word round trips and slot noninterference |
+| Stored state | `Machine.Contract.RawStore` | executable snapshot round trip and reachable-state injectivity |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -143,6 +144,13 @@ provide an exact 256-bit EVM codec without adding bounded integers, proving a
 range restriction, or selecting modular/checked-overflow behavior. That is a
 source/compiler design obligation, not functionality inherited from
 GameTheory.
+
+`Machine.Contract.RawStore.encodeSnapshot` stores the finite graph snapshot in
+the canonical layout, leaving absent graph values uninitialized and writing
+every completion bit explicitly. `decodeSnapshot` is executable and a proved
+left inverse; `encodeState` is injective on reachable machine states. Decoding
+arbitrary storage establishes structural well-typedness, not semantic
+reachability, which remains a transition invariant for a concrete runtime.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

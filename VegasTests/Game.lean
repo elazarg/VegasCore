@@ -10,6 +10,7 @@ import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
 import Vegas.Machine.Contract.Storage
 import Vegas.Machine.Contract.Validator
+import Vegas.Machine.Contract.State
 
 namespace VegasTests
 
@@ -159,6 +160,20 @@ example (state : matchingPenniesMachine.State)
 noncomputable def matchingPenniesStorageCodec :
     Machine.Contract.StorageCodec simpleExpr :=
   Machine.Contract.StorageCodec.reference simpleExpr
+
+example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
+    Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeSnapshot
+          matchingPenniesStorageCodec snapshot) =
+      some snapshot := by
+  exact Machine.Contract.RawStore.decodeSnapshot_encodeSnapshot
+    matchingPenniesStorageCodec snapshot
+
+example : Function.Injective
+    (Machine.Contract.RawStore.encodeState
+      (program := matchingPenniesMachine) matchingPenniesStorageCodec) := by
+  exact Machine.Contract.RawStore.encodeState_injective
+    matchingPenniesStorageCodec
 
 example
     (store : Machine.Contract.RawStore matchingPenniesStorageCodec)

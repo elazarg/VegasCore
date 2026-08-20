@@ -111,7 +111,7 @@ noncomputable def toConfig (snapshot : StateSnapshot G) : Config G where
   store := snapshot.store
 
 /-- Project an operational configuration to its finite graph-local snapshot. -/
-noncomputable def ofConfig (cfg : Config G) : StateSnapshot G where
+def ofConfig (cfg : Config G) : StateSnapshot G where
   done := cfg.done
   fieldValue? := fun field =>
     Store.getAs cfg.store field (G.fieldRow field).ty

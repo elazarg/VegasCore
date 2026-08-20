@@ -14,3 +14,4 @@ import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
 import Vegas.Machine.Contract.Storage
 import Vegas.Machine.Contract.Validator
+import Vegas.Machine.Contract.State

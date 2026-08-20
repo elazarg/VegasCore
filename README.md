@@ -103,6 +103,13 @@ bounded source integer type, a proved range invariant, or chosen
 modular/checked-overflow semantics. GameTheory does not decide that compiler
 policy.
 
+`Machine.Contract.RawStore.encodeSnapshot` bridges finite semantic graph state
+to canonical contract storage: optional typed field words followed by explicit
+completion bits. Its executable decoder is a proved left inverse, and the
+resulting raw-store encoding is injective on reachable machine states. An
+arbitrary decoded snapshot is not automatically reachable; preserving that
+invariant is an obligation of each lowered runtime transition.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -136,7 +143,7 @@ An EVM-class compiler can grow as a sequence like this:
 
 The repository provides the first machine IR, composable operational projection,
 an exact terminal source-payoff certificate, certified logical contract
-inventory/layout/storage boundaries, and a narrow unilateral strategic
+inventory/layout/storage/state boundaries, and a narrow unilateral strategic
 certificate. It does not yet have an EVM IR, emitter, finite EVM value codec,
 cryptographic commitment refinement, exact on-chain chance implementation,
 timeout/abort game semantics, or an end-to-end secure compilation theorem. The
