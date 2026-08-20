@@ -25,6 +25,7 @@ import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
 import Vegas.Machine.Contract.Entropy
 import Vegas.Machine.Contract.Imperative
+import Vegas.Machine.Contract.Gas
 
 namespace VegasTests
 
@@ -206,6 +207,28 @@ example (state : matchingPenniesMachine.State)
         (Machine.Contract.Imperative.compileAction
           matchingPenniesLayout node).checks).succeeded =
       decide (EventGraph.Ready matchingPenniesMachine.graph state.1 node) := by
+  exact Machine.Contract.Imperative.compileAction_checks_correct
+    matchingPenniesLayout state.1 _
+      (Machine.Contract.Imperative.completionReader_encodeState_agrees
+        (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+        state) node
+
+example (state : matchingPenniesMachine.State)
+    (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    (Machine.Contract.Gas.runChecks
+        (Machine.Contract.Gas.CheckCostModel.uniform
+          Machine.Contract.Imperative.StorageCheck)
+        (Machine.Contract.Imperative.StorageCheck.evaluate
+          (Machine.Contract.Imperative.completionReader
+            (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+            (Machine.Contract.RawStore.encodeState
+              (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+              state)))
+        (Machine.Contract.Imperative.compileAction
+          matchingPenniesLayout node).checks).succeeded =
+      decide (EventGraph.Ready matchingPenniesMachine.graph state.1 node) := by
+  rw [Machine.Contract.Gas.MeteredCheckResult.succeeded,
+    Machine.Contract.Gas.erase_runChecks]
   exact Machine.Contract.Imperative.compileAction_checks_correct
     matchingPenniesLayout state.1 _
       (Machine.Contract.Imperative.completionReader_encodeState_agrees

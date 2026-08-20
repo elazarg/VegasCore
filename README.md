@@ -241,8 +241,17 @@ state, acceptance is proved exactly equivalent to `EventGraph.Ready`. A later
 gas or revert pass must state whether it preserves, coarsens, or exposes that
 observation. Successful bodies are also ordered explicitly: realize the
 retained typed event computation, write its physical output slot, then mark the
-distinct completion slot. Expression lowering, gas, and rollback remain later
-passes.
+distinct completion slot. Expression lowering, a concrete gas schedule, and
+rollback remain later passes; the following instrumentation accounts only for
+check costs.
+
+`Machine.Contract.Gas` decorates the ordered check result with an abstract
+per-check cost. Rejected calls pay for the successful prefix and first failed
+check; successful calls pay for every check. Erasing gas recovers the exact
+unmetered first-failure result, and unit costs are proved equal to the runner's
+checked-count observation. This is an instrumentation boundary, not an EVM gas
+schedule; body costs, refunds, memory expansion, and out-of-gas behavior remain
+unmodeled.
 
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as
