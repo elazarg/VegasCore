@@ -17,6 +17,8 @@ dependence. Everything else in Vegas is generic over this interface.
 
 namespace Vegas
 
+open GameTheory.Math.Probability
+
 /-! ## The expression-language interface `IExpr` -/
 
 /-- Core PL interface for the Vegas layer.
@@ -60,9 +62,9 @@ structure IExpr where
       ∀ x, x ∈ exprDeps e → x ∈ Γ.map Prod.fst
   /-- Typed distribution syntax. -/
   DistExpr : Ctx Ty → Ty → Type
-  /-- Denotational evaluation of a distribution into `FWeight (Val τ)`. -/
+  /-- Denotational evaluation into the canonical finite probability law. -/
   evalDist : {Γ : Ctx Ty} → {τ : Ty} →
-    DistExpr Γ τ → Env Val Γ → @FWeight (Val τ) decEqVal
+    DistExpr Γ τ → Env Val Γ → FinDist (Val τ)
   /-- Static over-approximation of variables a distribution reads. -/
   distDeps : {Γ : Ctx Ty} → {τ : Ty} → DistExpr Γ τ → Finset VarId
   /-- Distribution dependency sets mention only variables available in the
@@ -74,7 +76,7 @@ structure IExpr where
   evalDistDeps :
     {Γ : Ctx Ty} → {τ : Ty} → (d : DistExpr Γ τ) →
       ((x : VarId) → (σ : Ty) → HasVar Γ x σ → x ∈ distDeps d → Val σ) →
-        @FWeight (Val τ) decEqVal
+        FinDist (Val τ)
   /-- Dependency-local expression evaluation agrees with full-environment
   evaluation when supplied by that environment. -/
   evalDeps_eq_eval :
@@ -98,8 +100,7 @@ structure IExpr where
 
 -- Promote the `decEqTy` and `decEqVal` interface fields to instances. After
 -- this, `DecidableEq (L.Val τ)` is automatically available for any `L : IExpr`,
--- which is what lets `FWeight (L.Val τ)` and similar `Finsupp`-backed
--- constructions type-check downstream.
+-- which makes typed values usable in executable finite tables downstream.
 attribute [instance] IExpr.decEqTy IExpr.decEqVal
 
 

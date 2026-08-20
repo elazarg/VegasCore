@@ -20,10 +20,9 @@ namespace Vegas
 /-- Canonical outcome type: finitely-supported integer payoffs per player.
 
 The `Finsupp` representation is load-bearing: it aggregates per-player
-contributions by summing on matching keys, and its decidable equality is
-required for `FWeight (Outcome Player)` to type-check. Players absent from
-a `.support` default to payoff `0`, which matches the "only named players
-are paid" semantics. -/
+contributions by summing on matching keys. Players absent from a `.support`
+default to payoff `0`, which matches the "only named players are paid"
+semantics. -/
 abbrev Outcome (Player : Type) [DecidableEq Player] := Player →₀ Int
 
 /-- Sum of payoff contributions for player `p` across a payoff list.

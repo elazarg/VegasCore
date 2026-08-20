@@ -22,6 +22,8 @@ namespace Vegas
 
 namespace EventGraph
 
+open GameTheory.Math.Probability
+
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
 /-- Finite graph-local state: completed nodes plus typed values at graph
@@ -289,11 +291,11 @@ theorem stepAvailableEvent_support_completeNodeTyped
   | commit who action step =>
       have hpmf :
           stepAvailableEvent G cfg (.commit who action step) =
-            PMF.pure
+            FinDist.pure
               (cfg.completeNode action.node
                 { ty := step.guard.ty, value := step.value }) := by
         rfl
-      rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+      rw [hpmf, FinDist.mem_support_pure] at hnext
       subst next
       have hrowEq : step.row = G.nodeRow action.node := by
         have hrowGet :
@@ -316,15 +318,15 @@ theorem stepAvailableEvent_support_completeNodeTyped
               stepAvailableEvent G cfg
                   (.internal internalEvent
                     (.sample row dist row_get sem_eq ready env env_ok)) =
-                PMF.map
+                FinDist.map
                   (fun value =>
                     cfg.completeNode internalEvent.node
                       { ty := dist.ty, value := value })
                   (dist.eval env) := by
             rfl
           rw [hpmf] at hnext
-          rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
-            ⟨value, _hvalue, hnextEq⟩
+          rw [FinDist.support_map] at hnext
+          rcases hnext with ⟨value, _hvalue, hnextEq⟩
           subst next
           have hrowEq : row = G.nodeRow internalEvent.node := by
             have hrowGet :
@@ -346,11 +348,11 @@ theorem stepAvailableEvent_support_completeNodeTyped
                   (.internal internalEvent
                     (.reveal row source row_get sem_eq ready value
                       value_ok)) =
-                PMF.pure
+                FinDist.pure
                   (cfg.completeNode internalEvent.node
                     { ty := row.ty, value := value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst next
           have hrowEq : row = G.nodeRow internalEvent.node := by
             have hrowGet :

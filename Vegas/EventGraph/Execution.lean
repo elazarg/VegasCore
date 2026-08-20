@@ -18,6 +18,8 @@ namespace Vegas
 
 namespace EventGraph
 
+open GameTheory.Math.Probability
+
 namespace Store
 
 variable {L : IExpr}
@@ -628,26 +630,26 @@ end AvailableEvent
 /-- Execute a commit action from its concrete availability evidence. -/
 noncomputable def stepCommit (G : Graph Player L) (cfg : Config G)
     {who : Player} {action : CommitAction G who}
-    (step : CommitStep G cfg who action) : PMF (Config G) :=
-  PMF.pure
+    (step : CommitStep G cfg who action) : FinDist (Config G) :=
+  FinDist.pure
     (cfg.completeNode action.node
       { ty := step.guard.ty, value := step.value })
 
 /-- Execute an internal graph event from its concrete availability evidence. -/
 noncomputable def stepInternal (G : Graph Player L) (cfg : Config G)
     {event : InternalEvent G}
-    (step : InternalStep G cfg event) : PMF (Config G) :=
+    (step : InternalStep G cfg event) : FinDist (Config G) :=
   match step with
   | .sample _ dist _ _ _ env _ =>
       (dist.eval env).map fun value =>
         cfg.completeNode event.node { ty := dist.ty, value := value }
   | .reveal row _ _ _ _ value _ =>
-      PMF.pure
+      FinDist.pure
         (cfg.completeNode event.node { ty := row.ty, value := value })
 
 /-- Execute an available primitive graph event. -/
 noncomputable def stepAvailableEvent (G : Graph Player L) (cfg : Config G)
-    (event : AvailableEvent G cfg) : PMF (Config G) :=
+    (event : AvailableEvent G cfg) : FinDist (Config G) :=
   match event with
   | .commit _ _ step => stepCommit G cfg step
   | .internal _ step => stepInternal G cfg step
@@ -809,11 +811,11 @@ theorem stepAvailableEvent_support_completeNode
   | commit who action step =>
       have hpmf :
           stepAvailableEvent G cfg (.commit who action step) =
-            PMF.pure
+            FinDist.pure
               (cfg.completeNode action.node
                 { ty := step.guard.ty, value := step.value }) := by
         rfl
-      rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+      rw [hpmf, FinDist.mem_support_pure] at hnext
       subst next
       exact ⟨{ ty := step.guard.ty, value := step.value }, rfl⟩
   | internal event step =>
@@ -823,14 +825,15 @@ theorem stepAvailableEvent_support_completeNode
               stepAvailableEvent G cfg
                   (.internal event
                     (.sample row dist row_get sem_eq ready env env_ok)) =
-                PMF.map
+                FinDist.map
                   (fun value =>
                     cfg.completeNode event.node
                       { ty := dist.ty, value := value })
                   (dist.eval env) := by
             rfl
           rw [hpmf] at hnext
-          rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+          rw [FinDist.support_map] at hnext
+          rcases hnext with
             ⟨value, _hvalue, hnextEq⟩
           subst next
           exact ⟨{ ty := dist.ty, value := value }, rfl⟩
@@ -840,11 +843,11 @@ theorem stepAvailableEvent_support_completeNode
                   (.internal event
                     (.reveal row source row_get sem_eq ready value
                       value_ok)) =
-                PMF.pure
+                FinDist.pure
                   (cfg.completeNode event.node
                     { ty := row.ty, value := value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst next
           exact ⟨{ ty := row.ty, value := value }, rfl⟩
 
@@ -959,11 +962,11 @@ theorem AvailableEvent.support_after_other_ready_write
       refine ⟨.commit who action step', rfl, ?_⟩
       have hpmf :
           stepAvailableEvent G cfg (.commit who action step) =
-            PMF.pure
+            FinDist.pure
               (cfg.completeNode action.node
                 { ty := step.guard.ty, value := step.value }) := by
         rfl
-      rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+      rw [hpmf, FinDist.mem_support_pure] at hnext
       subst next
       change
         (cfg.completeNode action.node
@@ -973,7 +976,7 @@ theorem AvailableEvent.support_after_other_ready_write
             (cfg.completeNode other otherWritten)
             (.commit who action step')).support
       dsimp [stepAvailableEvent, stepCommit]
-      rw [PMF.support_pure, Set.mem_singleton_iff]
+      rw [FinDist.mem_support_pure]
       exact Config.completeNode_comm cfg
         { ty := step.guard.ty, value := step.value } otherWritten hne
   | internal internalEvent step =>
@@ -1001,14 +1004,15 @@ theorem AvailableEvent.support_after_other_ready_write
               stepAvailableEvent G cfg
                   (.internal internalEvent
                     (.sample row dist row_get sem_eq ready env env_ok)) =
-                PMF.map
+                FinDist.map
                   (fun value =>
                     cfg.completeNode internalEvent.node
                       { ty := dist.ty, value := value })
                   (dist.eval env) := by
             rfl
           rw [hpmf] at hnext
-          rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+          rw [FinDist.support_map] at hnext
+          rcases hnext with
             ⟨value, hvalue, hnextEq⟩
           subst next
           change
@@ -1020,11 +1024,13 @@ theorem AvailableEvent.support_after_other_ready_write
                 (.internal internalEvent step')).support
           dsimp [stepAvailableEvent, stepInternal]
           exact
-            (PMF.mem_support_map_iff _ _ _).mpr
+            (by
+              rw [FinDist.support_map]
+              exact
               ⟨value, hvalue,
                 (Config.completeNode_comm cfg
                   { ty := dist.ty, value := value }
-                  otherWritten hne).symm⟩
+                  otherWritten hne).symm⟩)
       | reveal row source row_get sem_eq ready value value_ok =>
           have htargetNot :
               G.nodeTarget other ∉ row.sem.reads :=
@@ -1052,11 +1058,11 @@ theorem AvailableEvent.support_after_other_ready_write
                   (.internal internalEvent
                     (.reveal row source row_get sem_eq ready value
                       value_ok)) =
-                PMF.pure
+                FinDist.pure
                   (cfg.completeNode internalEvent.node
                     { ty := row.ty, value := value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst next
           change
             (cfg.completeNode internalEvent.node
@@ -1066,7 +1072,7 @@ theorem AvailableEvent.support_after_other_ready_write
                 (cfg.completeNode other otherWritten)
                 (.internal internalEvent step')).support
           dsimp [stepAvailableEvent, stepInternal]
-          rw [PMF.support_pure, Set.mem_singleton_iff]
+          rw [FinDist.mem_support_pure]
           exact Config.completeNode_comm cfg
             { ty := row.ty, value := value } otherWritten hne
 
@@ -1147,11 +1153,11 @@ theorem done_ssubset_of_stepAvailableEvent_support
   | commit who action step =>
       have hpmf :
           stepAvailableEvent G cfg (.commit who action step) =
-            PMF.pure
+            FinDist.pure
               (cfg.completeNode action.node
                 { ty := step.guard.ty, value := step.value }) := by
         rfl
-      rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+      rw [hpmf, FinDist.mem_support_pure] at hnext
       subst next
       exact Config.done_ssubset_completeNode step.ready.1 _
   | internal event step =>
@@ -1161,14 +1167,15 @@ theorem done_ssubset_of_stepAvailableEvent_support
               stepAvailableEvent G cfg
                   (.internal event
                     (.sample row dist row_get sem_eq ready env env_ok)) =
-                PMF.map
+                FinDist.map
                   (fun value =>
                     cfg.completeNode event.node
                       { ty := dist.ty, value := value })
                   (dist.eval env) := by
             rfl
           rw [hpmf] at hnext
-          rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+          rw [FinDist.support_map] at hnext
+          rcases hnext with
             ⟨value, _hvalue, hnextEq⟩
           subst next
           exact Config.done_ssubset_completeNode ready.1 _
@@ -1178,11 +1185,11 @@ theorem done_ssubset_of_stepAvailableEvent_support
                   (.internal event
                     (.reveal row source row_get sem_eq ready value
                       value_ok)) =
-                PMF.pure
+                FinDist.pure
                   (cfg.completeNode event.node
                     { ty := row.ty, value := value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst next
           exact Config.done_ssubset_completeNode ready.1 _
 
@@ -1245,11 +1252,11 @@ theorem reachable_storeCoherent
       | commit who action step =>
           have hpmf :
               stepAvailableEvent G source (.commit who action step) =
-                PMF.pure
+                FinDist.pure
                   (source.completeNode action.node
                     { ty := step.guard.ty, value := step.value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst target
           have hnodeWF := hwf action.node step.row step.row_get
           have hty : step.row.ty = step.guard.ty := by
@@ -1271,14 +1278,15 @@ theorem reachable_storeCoherent
                   stepAvailableEvent G source
                       (.internal event
                         (.sample row dist row_get sem_eq ready env env_ok)) =
-                    PMF.map
+                    FinDist.map
                       (fun value =>
                         source.completeNode event.node
                           { ty := dist.ty, value := value })
                       (dist.eval env) := by
                 rfl
               rw [hpmf] at hnext
-              rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+              rw [FinDist.support_map] at hnext
+              rcases hnext with
                 ⟨value, _hvalue, hnextEq⟩
               subst target
               exact
@@ -1290,11 +1298,11 @@ theorem reachable_storeCoherent
                       (.internal event
                         (.reveal row sourceField row_get sem_eq ready value
                           value_ok)) =
-                    PMF.pure
+                    FinDist.pure
                       (source.completeNode event.node
                         { ty := row.ty, value := value }) := by
                 rfl
-              rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+              rw [hpmf, FinDist.mem_support_pure] at hnext
               subst target
               exact ih.completeNode row_get value
 
@@ -1314,11 +1322,11 @@ theorem reachable_validDoneValues
       | commit who action step =>
           have hpmf :
               stepAvailableEvent G source (.commit who action step) =
-                PMF.pure
+                FinDist.pure
                   (source.completeNode action.node
                     { ty := step.guard.ty, value := step.value }) := by
             rfl
-          rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+          rw [hpmf, FinDist.mem_support_pure] at hnext
           subst target
           intro node hdone
           have hcases : node = action.node ∨ node ∈ source.done := by
@@ -1357,14 +1365,15 @@ theorem reachable_validDoneValues
                   stepAvailableEvent G source
                       (.internal internal
                         (.sample row dist row_get sem_eq ready env env_ok)) =
-                    PMF.map
+                    FinDist.map
                       (fun value =>
                         source.completeNode internal.node
                           { ty := dist.ty, value := value })
                       (dist.eval env) := by
                 rfl
               rw [hpmf] at hnext
-              rcases (PMF.mem_support_map_iff _ _ _).mp hnext with
+              rw [FinDist.support_map] at hnext
+              rcases hnext with
                 ⟨value, hsupport, htargetEq⟩
               subst target
               intro node hdone
@@ -1402,11 +1411,11 @@ theorem reachable_validDoneValues
                       (.internal internal
                         (.reveal row sourceField row_get sem_eq ready value
                           value_ok)) =
-                    PMF.pure
+                    FinDist.pure
                       (source.completeNode internal.node
                         { ty := row.ty, value := value }) := by
                 rfl
-              rw [hpmf, PMF.support_pure, Set.mem_singleton_iff] at hnext
+              rw [hpmf, FinDist.mem_support_pure] at hnext
               subst target
               intro node hdone
               have hcases : node = internal.node ∨ node ∈ source.done := by
@@ -1603,9 +1612,24 @@ theorem exists_availableEvent_of_not_terminal
 the corresponding reachability proof. -/
 noncomputable def stepAvailable (G : Graph Player L) (state : ReachableConfig G)
     (event : AvailableEvent G state.1) :
-    PMF (ReachableConfig G) :=
+    FinDist (ReachableConfig G) :=
   (stepAvailableEvent G state.1 event).bindOnSupport fun next hnext =>
-    PMF.pure ⟨next, Reachable.step state.2 event hnext⟩
+    FinDist.pure ⟨next, Reachable.step state.2 event hnext⟩
+
+/-- Every supported reachable-state step strictly grows the completed-node
+downset. -/
+theorem done_ssubset_of_stepAvailable_support
+    (G : Graph Player L) (state : ReachableConfig G)
+    (event : AvailableEvent G state.1) {next : ReachableConfig G}
+    (hnext : next ∈ (stepAvailable G state event).support) :
+    state.1.done ⊂ next.1.done := by
+  unfold stepAvailable at hnext
+  rw [FinDist.support_bindOnSupport] at hnext
+  simp only [Set.mem_iUnion] at hnext
+  rcases hnext with ⟨nextCfg, hraw, hnext⟩
+  rw [FinDist.mem_support_pure] at hnext
+  subst next
+  exact done_ssubset_of_stepAvailableEvent_support G event hraw
 
 /-- Common public information at a graph state.
 

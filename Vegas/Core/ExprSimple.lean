@@ -15,6 +15,8 @@ and defines the concrete expression and distribution syntax over plain
 (non-visibility) contexts.
 -/
 
+noncomputable section
+
 namespace Vegas
 
 abbrev Player : Type := Nat
@@ -317,11 +319,12 @@ theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
       simp [evalExprDeps, evalExpr, ihc, iht, ihf]
 
 inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
-  | weighted (entries : List (Val b × ℚ≥0)) : DistExpr Γ b
+  | weighted (law : RationalLaw (Val b)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
 
-def evalDistExpr : DistExpr Γ b → PlainEnv Γ → FWeight (Val b)
-  | .weighted entries, _ => FWeight.ofList entries
+def evalDistExpr : DistExpr Γ b → PlainEnv Γ →
+    GameTheory.Math.Probability.FinDist (Val b)
+  | .weighted law, _ => law.denote
   | .ite c t f, env =>
       if evalExpr c env then evalDistExpr t env else evalDistExpr f env
 
@@ -364,8 +367,9 @@ theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
 
 def evalDistExprDeps : (d : DistExpr Γ b) →
     ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
-      x ∈ distExprDeps d → Val τ) → FWeight (Val b)
-  | .weighted entries, _ => FWeight.ofList entries
+      x ∈ distExprDeps d → Val τ) →
+        GameTheory.Math.Probability.FinDist (Val b)
+  | .weighted law, _ => law.denote
   | .ite c t f, ρ =>
       if evalExprDeps c
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx])) then
@@ -545,7 +549,7 @@ environment. -/
 def DistExpr.substVars {Γ Δ : CtxSimple}
     (σ : {x : VarId} → {b : BaseTy} → HasVar Γ x b → Expr Δ b) :
     {b : BaseTy} → DistExpr Γ b → DistExpr Δ b
-  | _, .weighted entries => .weighted entries
+  | _, .weighted law => .weighted law
   | _, .ite c t f =>
       .ite (c.substVars σ) (t.substVars σ) (f.substVars σ)
 
@@ -712,8 +716,8 @@ theorem nullableCommitGuard_satisfiable
   simp
 
 @[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
-    (entries : List (Val b × ℚ≥0)) (env : PlainEnv Γ) :
-    evalDistExpr (.weighted entries) env = FWeight.ofList entries := rfl
+    (law : RationalLaw (Val b)) (env : PlainEnv Γ) :
+    evalDistExpr (.weighted law) env = law.denote := rfl
 
 theorem evalDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
@@ -727,6 +731,6 @@ theorem evalDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
     evalDistExpr (.ite c t f) env = evalDistExpr f env := by
   simp [evalDistExpr, hc]
 
-def DistExpr.point (v : Val b) : DistExpr Γ b := .weighted [(v, 1)]
+def DistExpr.point (v : Val b) : DistExpr Γ b := .weighted (.pure v)
 
 end Vegas

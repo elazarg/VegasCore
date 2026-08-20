@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import GameTheory.Core.JointAction
+import GameTheory.Protocol.Execution
 import Vegas.EventGraph.Execution
 
 /-!
@@ -557,14 +557,12 @@ theorem liveFrontierAction_available
 theorem exists_legal_frontier_action [Fintype Player]
     {G : Graph Player L} {cfg : Config G}
     (hwf : G.WF) (hcoherent : StoreCoherent G cfg)
-    (hguards : GuardLive G)
-    (hterminal : ¬ Terminal G cfg) :
-    ∃ action : JointAction (fun who => FrontierAction G who),
-      JointActionLegal (fun who => FrontierAction G who)
-        (activePlayers G) (Terminal G)
-        (fun cfg who =>
-          { action | FrontierAction.Available G cfg who action })
-        cfg action := by
+    (hguards : GuardLive G) :
+    ∃ action : ∀ who, Option (FrontierAction G who),
+      GameTheory.Protocol.IsLegalJoint
+        (fun who => who ∈ activePlayers G cfg)
+        (fun who => { action | FrontierAction.Available G cfg who action })
+        action := by
   classical
   refine
     ⟨fun who =>
@@ -572,7 +570,6 @@ theorem exists_legal_frontier_action [Fintype Player]
         some (liveFrontierAction G cfg hwf hcoherent hguards who)
       else
         none,
-      hterminal,
       ?_⟩
   intro who
   by_cases hactive : who ∈ activePlayers G cfg
@@ -582,21 +579,19 @@ theorem exists_legal_frontier_action [Fintype Player]
 theorem exists_legal_frontier_action_of_reachable [Fintype Player]
     {G : Graph Player L}
     (hwf : G.WF) (hguards : GuardLive G)
-    {state : ReachableConfig G}
-    (hterminal : ¬ Terminal G state.1) :
-    ∃ action : JointAction (fun who => FrontierAction G who),
-      JointActionLegal (fun who => FrontierAction G who)
-        (fun state : ReachableConfig G => activePlayers G state.1)
-        (fun state : ReachableConfig G => Terminal G state.1)
-        (fun state who =>
+    {state : ReachableConfig G} :
+    ∃ action : ∀ who, Option (FrontierAction G who),
+      GameTheory.Protocol.IsLegalJoint
+        (fun who => who ∈ activePlayers G state.1)
+        (fun who =>
           { action | FrontierAction.Available G state.1 who action })
-        state action := by
+        action := by
   classical
   have hcoherent : StoreCoherent G state.1 :=
     reachable_storeCoherent hwf state.2
   rcases exists_legal_frontier_action
       (G := G) (cfg := state.1)
-      hwf hcoherent hguards hterminal with
+      hwf hcoherent hguards with
     ⟨action, hlegal⟩
   exact ⟨action, hlegal⟩
 

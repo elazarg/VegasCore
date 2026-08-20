@@ -6,6 +6,8 @@ Authors: VegasCore contributors
 
 import Vegas.Core.Obligations
 
+noncomputable section
+
 /-!
 # Surface Vegas language
 

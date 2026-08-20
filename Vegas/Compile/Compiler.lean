@@ -879,11 +879,14 @@ noncomputable def eventPayoffOf
     (state : BuildState P L Γ)
     (expr : L.Expr (erasePubVCtx Γ) L.int) : EventPayoff L :=
   {
+    code :=
+      { Context := erasePubVCtx Γ
+        expr := expr
+        fieldOf := fun {_name} {_ty} hvar => state.fieldOfPub hvar }
     reads := exprReadRefs state expr
-    eval := fun env =>
-      L.toInt (L.evalDeps expr fun _name _depTy hvar hmem =>
-        sourceValuePub state env hvar
-          (exprReadRefs_mem state expr hvar hmem)) }
+    read_mem := fun hvar hmem => by
+      simpa [EventGraph.ExprCode.ref, BuildState.fieldRefOfPub] using
+        exprReadRefs_mem state expr hvar hmem }
 
 /-- A compiled payoff projection agrees with its source payoff expression
 whenever the graph read environment agrees with the source public environment
@@ -979,28 +982,22 @@ theorem eventPayoffOf_readEnv_agrees_sourceEnvOfStore
     exact Option.some.inj (hreadStore'.symm.trans hsourceStore)
   simpa [sourceValuePub, VEnv.erasePubEnv_get, VEnv.get] using hvalue
 
-/-- Compile a source distribution into an executable graph-local PMF. -/
+/-- Compile a source distribution into an executable graph-local finite law. -/
 noncomputable def eventDistOf
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
-    (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1) :
+    (dist : L.DistExpr (erasePubVCtx Γ) ty) :
     EventDist L :=
   {
     ty := ty
+    code :=
+      { Context := erasePubVCtx Γ
+        dist := dist
+        fieldOf := fun {_name} {_ty} hvar => state.fieldOfPub hvar }
     reads := distReadRefs state dist
-    eval := fun env =>
-      let depEnv :
-          (name : VarId) → (depTy : L.Ty) →
-            HasVar (erasePubVCtx Γ) name depTy →
-              name ∈ L.distDeps dist → L.Val depTy :=
-        fun _name _depTy hvar hmem =>
-          sourceValuePub state env hvar
-            (distReadRefs_mem state dist hvar hmem)
-      (L.evalDistDeps dist depEnv).toPMF (normalized depEnv) }
+    read_mem := fun hvar hmem => by
+      simpa [EventGraph.DistCode.ref, BuildState.fieldRefOfPub] using
+        distReadRefs_mem state dist hvar hmem }
 
 /-- A compiled distribution evaluates to the same normalized finite
 distribution as the source distribution when its graph read environment agrees
@@ -1009,21 +1006,16 @@ theorem eventDistOf_eval_eq_eval
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (sourceEnv : Env L.Val (erasePubVCtx Γ))
-    (readEnv : EventGraph.ReadEnv L (eventDistOf state dist normalized).reads)
+    (readEnv : EventGraph.ReadEnv L (eventDistOf state dist).reads)
     (hagrees :
       ∀ {name depTy} (hvar : HasVar (erasePubVCtx Γ) name depTy)
         (hmem : name ∈ L.distDeps dist),
         sourceValuePub state readEnv hvar
           (distReadRefs_mem state dist hvar hmem) =
           sourceEnv name depTy hvar) :
-    ∃ hnormalized : FWeight.totalWeight (L.evalDist dist sourceEnv) = 1,
-      (eventDistOf state dist normalized).eval readEnv =
-        (L.evalDist dist sourceEnv).toPMF hnormalized := by
+    (eventDistOf state dist).eval readEnv =
+      L.evalDist dist sourceEnv := by
   let depEnv :
       (name : VarId) → (depTy : L.Ty) →
         HasVar (erasePubVCtx Γ) name depTy →
@@ -1037,34 +1029,20 @@ theorem eventDistOf_eval_eq_eval
     congr
     funext name depTy hvar hmem
     exact hagrees hvar hmem
-  let hnormalized :
-      FWeight.totalWeight (L.evalDist dist sourceEnv) = 1 := by
-    rw [← hdist]
-    exact normalized depEnv
-  refine ⟨hnormalized, ?_⟩
-  change
-    (L.evalDistDeps dist depEnv).toPMF (normalized depEnv) =
-      (L.evalDist dist sourceEnv).toPMF hnormalized
-  apply PMF.ext
-  intro value
-  rw [FWeight.toPMF_apply, FWeight.toPMF_apply, hdist]
+  exact hdist
 
 theorem eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (store : Store L)
     (available :
       ∀ {name bindTy} (h : VHasVar Γ name bindTy),
         ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
           some value)
-    (readEnv : ReadEnv L (eventDistOf state dist normalized).reads)
+    (readEnv : ReadEnv L (eventDistOf state dist).reads)
     (hreadEnv :
-      ReadEnv.ofStore? store (eventDistOf state dist normalized).reads =
+      ReadEnv.ofStore? store (eventDistOf state dist).reads =
         some readEnv) :
     ∀ {name depTy} (hvar : HasVar (erasePubVCtx Γ) name depTy)
       (hmem : name ∈ L.distDeps dist),
@@ -1111,17 +1089,13 @@ theorem eventDistOf_readEnv_agrees_sourceEnvOfStore
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (store : Store L)
     (available :
       ∀ {name bindTy} (h : VHasVar Γ name bindTy),
         ∃ value, Store.getAs store (state.fieldOf h) bindTy.base =
           some value) :
     ∃ readEnv,
-      ReadEnv.ofStore? store (eventDistOf state dist normalized).reads =
+      ReadEnv.ofStore? store (eventDistOf state dist).reads =
         some readEnv ∧
       ∀ {name depTy} (hvar : HasVar (erasePubVCtx Γ) name depTy)
         (hmem : name ∈ L.distDeps dist),
@@ -1130,21 +1104,21 @@ theorem eventDistOf_readEnv_agrees_sourceEnvOfStore
           VEnv.erasePubEnv (sourceEnvOfStore state store available)
             name depTy hvar := by
   let readAvailable :
-      ∀ ref, ref ∈ (eventDistOf state dist normalized).reads →
+      ∀ ref, ref ∈ (eventDistOf state dist).reads →
         ∃ value, Store.getAs store ref.field ref.ty = some value := by
     simpa [eventDistOf] using
       distReadRefs_store_available state store available dist
   let readEnv := ReadEnv.ofStore store
-    (eventDistOf state dist normalized).reads readAvailable
+    (eventDistOf state dist).reads readAvailable
   have hreadEnv :
-      ReadEnv.ofStore? store (eventDistOf state dist normalized).reads =
+      ReadEnv.ofStore? store (eventDistOf state dist).reads =
         some readEnv := by
     unfold ReadEnv.ofStore?
     rw [dif_pos readAvailable]
   refine ⟨readEnv, hreadEnv, ?_⟩
   exact
     eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
-      state dist normalized store available readEnv hreadEnv
+      state dist store available readEnv hreadEnv
 
 /-- Compile a source commit guard. `choiceReads` is the actor's whole visible
 source context: the information footprint for choosing this commit, not an
@@ -1156,10 +1130,54 @@ noncomputable def eventGuardOf
       eraseVCtx (viewVCtx who Γ)) L.bool) : EventGuard L :=
   {
     ty := actionTy
+    code :=
+      { actionName := actionName
+        Context := eraseVCtx (viewVCtx who Γ)
+        expr := guard
+        fieldOf := fun {_name} {_ty} hvar =>
+          state.fieldOf
+            (VHasVar.ofViewVCtx
+              (HasVar.toVHasVar (Player := P) (L := L) hvar).2.1) }
     choiceReads := visibleFieldRefs state who
-    eval := fun action env =>
-      evalGuard (Player := P) (L := L) guard action
-        (viewEnvOfReadEnv state who env) }
+    read_mem := by
+      intro _name depTy hvar
+      let lifted := HasVar.toVHasVar (Player := P) (L := L) hvar
+      have hty : lifted.1.base = depTy := lifted.2.2.down
+      have href :
+          ({ field := state.fieldOf (VHasVar.ofViewVCtx lifted.2.1),
+             ty := depTy } : FieldRef L) =
+            state.fieldRefOfView who lifted.2.1 := by
+        apply FieldRef.ext
+        · rfl
+        · exact hty.symm
+      change
+        ({ field := state.fieldOf (VHasVar.ofViewVCtx lifted.2.1),
+           ty := depTy } : FieldRef L) ∈ visibleFieldRefs state who
+      rw [href]
+      exact fieldRefOfView_mem_visibleFieldRefs state who lifted.2.1 }
+
+private theorem eventGuardOf_code_read_eq_sourceValueView
+    {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
+    (state : BuildState P L Γ) (who : P)
+    (guard : L.Expr ((actionName, actionTy) ::
+      eraseVCtx (viewVCtx who Γ)) L.bool)
+    (env : ReadEnv L (eventGuardOf state who guard).choiceReads)
+    {name depTy}
+    (hvar : HasVar (eraseVCtx (viewVCtx who Γ)) name depTy) :
+    env.read ((eventGuardOf state who guard).code.ref hvar)
+        ((eventGuardOf state who guard).read_mem hvar) =
+      sourceValueView state who env hvar := by
+  let lifted := HasVar.toVHasVar (Player := P) (L := L) hvar
+  let ref := state.fieldRefOfView who lifted.2.1
+  let exactRef : FieldRef L :=
+    { field := state.fieldOf (VHasVar.ofViewVCtx lifted.2.1), ty := depTy }
+  have href : exactRef = ref := by
+    apply FieldRef.ext
+    · rfl
+    · exact lifted.2.2.down.symm
+  change env.read exactRef _ =
+    cast (congrArg L.Val lifted.2.2.down) (env.read ref _)
+  exact ReadEnv.read_eq_cast_of_ref_eq env href _ _
 
 theorem eventGuardOf_eval_eq_eval
     {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
@@ -1170,7 +1188,14 @@ theorem eventGuardOf_eval_eq_eval
     (readEnv : ReadEnv L (eventGuardOf state who guard).choiceReads) :
     (eventGuardOf state who guard).eval action readEnv =
       evalGuard (Player := P) (L := L) guard action
-        (viewEnvOfReadEnv state who readEnv) := rfl
+        (viewEnvOfReadEnv state who readEnv) := by
+  unfold EventGraph.EventGuard.eval evalGuard
+  apply congrArg L.toBool
+  apply congrArg (L.eval guard)
+  apply Env.cons_ext rfl
+  funext name depTy hvar
+  exact eventGuardOf_code_read_eq_sourceValueView
+    state who guard readEnv hvar
 
 theorem eventGuardOf_readEnv_of_sourceStoreAvailable
     {Γ : VCtx P L} {actionName : VarId} {actionTy : L.Ty}
@@ -1300,7 +1325,9 @@ theorem eventGuardOf_live_of_legal
       ∃ value : L.Val (eventGuardOf state who guard).ty,
         (eventGuardOf state who guard).eval value env = true := by
   intro env
-  exact legal (viewEnvOfReadEnv state who env)
+  rcases legal (viewEnvOfReadEnv state who env) with ⟨value, hvalue⟩
+  exact ⟨value,
+    (eventGuardOf_eval_eq_eval state who guard value env).trans hvalue⟩
 
 namespace BuildState
 
@@ -1308,13 +1335,9 @@ namespace BuildState
 @[reducible] noncomputable def sampleEvent
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
-    (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1) :
+    (dist : L.DistExpr (erasePubVCtx Γ) ty) :
     EventNode P L :=
-  let graphDist := eventDistOf state dist normalized
+  let graphDist := eventDistOf state dist
   { ty := graphDist.ty, owner := none, sem := .sample graphDist }
 
 /-- The graph event produced by a source `commit`. -/
@@ -1338,17 +1361,13 @@ namespace BuildState
 theorem sampleEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
-    (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1) :
+    (dist : L.DistExpr (erasePubVCtx Γ) ty) :
     ({ initialFields := state.initialFields,
-       nodes := state.nodes ++ [sampleEvent state dist normalized] } :
+       nodes := state.nodes ++ [sampleEvent state dist] } :
       Graph P L).nodeWFAt state.nextNode
-        (sampleEvent state dist normalized) := by
-  let graphDist := eventDistOf state dist normalized
-  let event := sampleEvent state dist normalized
+        (sampleEvent state dist) := by
+  let graphDist := eventDistOf state dist
+  let event := sampleEvent state dist
   dsimp [Graph.nodeWFAt, sampleEvent, event, graphDist]
   exact
     ⟨by
@@ -1422,15 +1441,11 @@ theorem revealEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ) (name : VarId)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (fresh : Fresh name Γ) :
     BuildState P L ((name, .pub ty) :: Γ) × Nat :=
-  let graphDist := eventDistOf state dist normalized
+  let graphDist := eventDistOf state dist
   state.addEvent name (.pub graphDist.ty) (.sample graphDist) fresh
-    (sampleEvent_nodeWFAt state dist normalized)
+    (sampleEvent_nodeWFAt state dist)
 
 /-- Compile and append a source `commit` event. -/
 @[reducible] noncomputable def addCommitEvent
@@ -1460,13 +1475,9 @@ theorem revealEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ) (name : VarId)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (fresh : Fresh name Γ) :
-    (state.addSampleEvent name dist normalized fresh).1.nodes =
-      state.nodes ++ [sampleEvent state dist normalized] :=
+    (state.addSampleEvent name dist fresh).1.nodes =
+      state.nodes ++ [sampleEvent state dist] :=
   rfl
 
 @[simp] theorem addCommitEvent_nodes
@@ -1492,12 +1503,8 @@ theorem revealEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ) (name : VarId)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (fresh : Fresh name Γ) :
-    (state.addSampleEvent name dist normalized fresh).1.initialFields =
+    (state.addSampleEvent name dist fresh).1.initialFields =
       state.initialFields :=
   rfl
 
@@ -1524,12 +1531,8 @@ theorem revealEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ) (name : VarId)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (fresh : Fresh name Γ) :
-    (state.addSampleEvent name dist normalized fresh).1.fieldOf
+    (state.addSampleEvent name dist fresh).1.fieldOf
         (VHasVar.here (x := name) (τ := .pub ty)) =
       state.nextField :=
   rfl
@@ -1538,14 +1541,10 @@ theorem revealEvent_nodeWFAt
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ) (name : VarId)
     (dist : L.DistExpr (erasePubVCtx Γ) ty)
-    (normalized :
-      ∀ depEnv : (x : VarId) → (τ : L.Ty) →
-          HasVar (erasePubVCtx Γ) x τ → x ∈ L.distDeps dist → L.Val τ,
-        FWeight.totalWeight (L.evalDistDeps dist depEnv) = 1)
     (fresh : Fresh name Γ)
     {query : VarId} {bindTy : BindTy P L}
     (h : VHasVar Γ query bindTy) :
-    (state.addSampleEvent name dist normalized fresh).1.fieldOf
+    (state.addSampleEvent name dist fresh).1.fieldOf
         (VHasVar.there h) = state.fieldOf h :=
   rfl
 
@@ -1957,9 +1956,9 @@ theorem compilePayoffs_wf
 /-- Compile a checked core program suffix into fields and nodes. -/
 noncomputable def compileCore :
     {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
-      FreshBindings prog → NormalizedDists prog → BuildState P L Γ →
+      FreshBindings prog → BuildState P L Γ →
       BuildResult P L
-  | _, .ret payoffs, _fresh, _normalized, state =>
+  | _, .ret payoffs, _fresh, state =>
       let compiledPayoffs := compilePayoffs state payoffs
       { initialFields := state.initialFields, nodes := state.nodes,
         graphWF := state.graphWF, payoffs := compiledPayoffs,
@@ -1972,55 +1971,55 @@ noncomputable def compileCore :
         terminalInitialFields := rfl
         terminalNodes := rfl
         payoffs_eq := rfl }
-  | _, .sample name dist tail, fresh, normalized, state =>
+  | _, .sample name dist tail, fresh, state =>
       let added :=
-        state.addSampleEvent name dist normalized.1 fresh.1
+        state.addSampleEvent name dist fresh.1
       let state := added.1
-      compileCore tail fresh.2 normalized.2 state
-  | _, .commit name who guard tail, fresh, normalized, state =>
+      compileCore tail fresh.2 state
+  | _, .commit name who guard tail, fresh, state =>
       let added :=
         state.addCommitEvent name who guard fresh.1
       let state := added.1
-      compileCore tail fresh.2 normalized state
-  | _, .reveal (b := ty) name _who _source sourceProof tail, fresh, normalized, state =>
+      compileCore tail fresh.2 state
+  | _, .reveal (b := ty) name _who _source sourceProof tail, fresh, state =>
       let added :=
         state.addRevealEvent name _who sourceProof fresh.1
       let state := added.1
-      compileCore tail fresh.2 normalized state
+      compileCore tail fresh.2 state
 
 @[simp] theorem compileCore_initialFields :
     {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
-      (fresh : FreshBindings prog) → (normalized : NormalizedDists prog) →
+      (fresh : FreshBindings prog) →
       (state : BuildState P L Γ) →
-      (compileCore prog fresh normalized state).initialFields =
+      (compileCore prog fresh state).initialFields =
         state.initialFields
-  | _, .ret _payoffs, _fresh, _normalized, _state => rfl
-  | _, .sample name dist tail, fresh, normalized, state => by
+  | _, .ret _payoffs, _fresh, _state => rfl
+  | _, .sample name dist tail, fresh, state => by
       let added :=
-        state.addSampleEvent name dist normalized.1 fresh.1
+        state.addSampleEvent name dist fresh.1
       change
-        (compileCore tail fresh.2 normalized.2 added.1).initialFields =
+        (compileCore tail fresh.2 added.1).initialFields =
           state.initialFields
-      rw [compileCore_initialFields tail fresh.2 normalized.2 added.1]
+      rw [compileCore_initialFields tail fresh.2 added.1]
       exact BuildState.addSampleEvent_initialFields
-        state name dist normalized.1 fresh.1
-  | _, .commit name who guard tail, fresh, normalized, state => by
+        state name dist fresh.1
+  | _, .commit name who guard tail, fresh, state => by
       let added :=
         state.addCommitEvent name who guard fresh.1
       change
-        (compileCore tail fresh.2 normalized added.1).initialFields =
+        (compileCore tail fresh.2 added.1).initialFields =
           state.initialFields
-      rw [compileCore_initialFields tail fresh.2 normalized added.1]
+      rw [compileCore_initialFields tail fresh.2 added.1]
       exact BuildState.addCommitEvent_initialFields
         state name who guard fresh.1
   | _, .reveal (b := ty) name _who _source sourceProof tail,
-      fresh, normalized, state => by
+      fresh, state => by
       let added :=
         state.addRevealEvent name _who sourceProof fresh.1
       change
-        (compileCore tail fresh.2 normalized added.1).initialFields =
+        (compileCore tail fresh.2 added.1).initialFields =
           state.initialFields
-      rw [compileCore_initialFields tail fresh.2 normalized added.1]
+      rw [compileCore_initialFields tail fresh.2 added.1]
       exact BuildState.addRevealEvent_initialFields
         state name _who sourceProof fresh.1
 
@@ -2029,18 +2028,18 @@ compiled graph node. -/
 noncomputable def compileCore_nodesFinite :
     {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
       FiniteProgramProof prog →
-      (fresh : FreshBindings prog) → (normalized : NormalizedDists prog) →
+      (fresh : FreshBindings prog) →
       (state : BuildState P L Γ) → NodesFinite state.nodes →
-      let result := compileCore prog fresh normalized state
+      let result := compileCore prog fresh state
       NodesFinite result.nodes
-  | _, .ret _payoffs, _finite, _fresh, _normalized, _state, stateFinite =>
+  | _, .ret _payoffs, _finite, _fresh, _state, stateFinite =>
       stateFinite
   | _, .sample name dist tail, .sample head tailFinite,
-      fresh, normalized, state, stateFinite =>
+      fresh, state, stateFinite =>
       let event : EventNode P L :=
-        state.sampleEvent dist normalized.1
+        state.sampleEvent dist
       let added :=
-        state.addSampleEvent name dist normalized.1 fresh.1
+        state.addSampleEvent name dist fresh.1
       let eventFinite : Fintype (L.Val event.ty) := by
         dsimp [event, BuildState.sampleEvent, eventDistOf]
         exact head.fintype
@@ -2049,10 +2048,10 @@ noncomputable def compileCore_nodesFinite :
         rw [BuildState.addSampleEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
-      compileCore_nodesFinite tail tailFinite fresh.2 normalized.2
+      compileCore_nodesFinite tail tailFinite fresh.2
         added.1 addedFinite
   | _, .commit name who guard tail, .commit head tailFinite,
-      fresh, normalized, state, stateFinite =>
+      fresh, state, stateFinite =>
       let event : EventNode P L :=
         state.commitEvent who guard
       let added :=
@@ -2065,10 +2064,10 @@ noncomputable def compileCore_nodesFinite :
         rw [BuildState.addCommitEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
-      compileCore_nodesFinite tail tailFinite fresh.2 normalized
+      compileCore_nodesFinite tail tailFinite fresh.2
         added.1 addedFinite
   | _, .reveal (b := ty) name _who _source sourceProof tail,
-      .reveal head tailFinite, fresh, normalized, state, stateFinite =>
+      .reveal head tailFinite, fresh, state, stateFinite =>
       let event : EventNode P L :=
         state.revealEvent _who sourceProof
       let added :=
@@ -2081,7 +2080,7 @@ noncomputable def compileCore_nodesFinite :
         rw [BuildState.addRevealEvent_nodes]
         letI : Fintype (L.Val event.ty) := eventFinite
         exact NodesFinite.append stateFinite event
-      compileCore_nodesFinite tail tailFinite fresh.2 normalized
+      compileCore_nodesFinite tail tailFinite fresh.2
         added.1 addedFinite
 
 /-- Source guard legality compiles to graph guard liveness for every commit
@@ -2089,23 +2088,23 @@ node produced by a program suffix, assuming the nodes already present in the
 compiler state are live. -/
 theorem compileCore_guardLive :
     {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
-      (fresh : FreshBindings prog) → (normalized : NormalizedDists prog) →
+      (fresh : FreshBindings prog) →
       (state : BuildState P L Γ) →
       GuardLive
         ({ initialFields := state.initialFields, nodes := state.nodes } :
           Graph P L) →
       Legal prog →
-      let result := compileCore prog fresh normalized state
+      let result := compileCore prog fresh state
       GuardLive
         ({ initialFields := result.initialFields, nodes := result.nodes } :
           Graph P L)
-  | _, .ret _payoffs, _fresh, _normalized, _state, stateLive, _legal =>
+  | _, .ret _payoffs, _fresh, _state, stateLive, _legal =>
       stateLive
-  | _, .sample name dist tail, fresh, normalized, state, stateLive, legal =>
+  | _, .sample name dist tail, fresh, state, stateLive, legal =>
       let event : EventNode P L :=
-        state.sampleEvent dist normalized.1
+        state.sampleEvent dist
       let added :=
-        state.addSampleEvent name dist normalized.1 fresh.1
+        state.addSampleEvent name dist fresh.1
       let addedLive :
           GuardLive
             ({ initialFields := added.1.initialFields,
@@ -2118,9 +2117,9 @@ theorem compileCore_guardLive :
           (by
             intro who guard hsem _env
             cases hsem)
-      compileCore_guardLive tail fresh.2 normalized.2 added.1
+      compileCore_guardLive tail fresh.2 added.1
         addedLive legal
-  | _, .commit name who guard tail, fresh, normalized, state, stateLive, legal =>
+  | _, .commit name who guard tail, fresh, state, stateLive, legal =>
       let event : EventNode P L :=
         state.commitEvent who guard
       let added :=
@@ -2138,10 +2137,10 @@ theorem compileCore_guardLive :
             intro actor graphGuard' hsem env
             cases hsem
             exact eventGuardOf_live_of_legal state who guard legal.1 env)
-      compileCore_guardLive tail fresh.2 normalized added.1
+      compileCore_guardLive tail fresh.2 added.1
         addedLive legal.2
   | _, .reveal (b := ty) name _who _source sourceProof tail,
-      fresh, normalized, state, stateLive, legal =>
+      fresh, state, stateLive, legal =>
       let event : EventNode P L :=
         state.revealEvent _who sourceProof
       let added :=
@@ -2158,7 +2157,7 @@ theorem compileCore_guardLive :
           (by
             intro who guard hsem _env
             cases hsem)
-      compileCore_guardLive tail fresh.2 normalized added.1
+      compileCore_guardLive tail fresh.2 added.1
         addedLive legal
 
 /-- A compiled checked program: graph plus terminal payoff projection. -/
@@ -2177,12 +2176,12 @@ structure CompiledProgram (P : Type) [DecidableEq P] (L : IExpr) where
 certificate used by source-level adequacy theorems. -/
 noncomputable def buildResult (g : GraphProgram P L) : BuildResult P L :=
   let init := initialState g.Γ g.env g.wctx
-  compileCore g.prog g.fresh g.normalized (BuildState.fromInitial init)
+  compileCore g.prog g.fresh (BuildState.fromInitial init)
 
 /-- Compile a graph-program to the canonical event graph representation. -/
 noncomputable def compile (g : GraphProgram P L) : CompiledProgram P L :=
   let init := initialState g.Γ g.env g.wctx
-  let result := compileCore g.prog g.fresh g.normalized (BuildState.fromInitial init)
+  let result := compileCore g.prog g.fresh (BuildState.fromInitial init)
   let graph : EventGraph.Graph P L :=
     { initialFields := result.initialFields, nodes := result.nodes }
   {
@@ -2204,14 +2203,12 @@ round action alphabets. -/
   let init := initialState program.core.Γ program.core.env program.core.wctx
   let state := BuildState.fromInitial init
   let result :=
-    compileCore program.core.prog program.core.fresh
-      program.core.normalized state
+    compileCore program.core.prog program.core.fresh state
   have finiteNodes : NodesFinite result.nodes :=
     compileCore_nodesFinite
       program.core.prog
       domains.program.proof
       program.core.fresh
-      program.core.normalized
       state
       NodesFinite.nil
   exact NodesFinite.nodeFintype finiteNodes
@@ -2227,8 +2224,7 @@ output fields. -/
   let init := initialState program.core.Γ program.core.env program.core.wctx
   let state := BuildState.fromInitial init
   let result :=
-    compileCore program.core.prog program.core.fresh
-      program.core.normalized state
+    compileCore program.core.prog program.core.fresh state
   have finiteInitial : InitialFieldsFinite result.initialFields := by
     have hinit :
         InitialFieldsFinite state.initialFields := by
@@ -2238,7 +2234,7 @@ output fields. -/
     have hresult :
         result.initialFields = state.initialFields :=
       compileCore_initialFields
-        program.core.prog program.core.fresh program.core.normalized state
+        program.core.prog program.core.fresh state
     rw [hresult]
     exact hinit
   have finiteNodes : NodesFinite result.nodes :=
@@ -2246,7 +2242,6 @@ output fields. -/
       program.core.prog
       domains.program.proof
       program.core.fresh
-      program.core.normalized
       state
       NodesFinite.nil
   exact fieldFintypeOfInitialAndNodes finiteInitial finiteNodes
@@ -2259,7 +2254,6 @@ theorem compile_guardLive (program : WFProgram P L) :
     compileCore_guardLive
       program.core.prog
       program.core.fresh
-      program.core.normalized
       (BuildState.fromInitial
         (initialState program.core.Γ program.core.env program.core.wctx))
       (guardLive_empty

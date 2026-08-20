@@ -266,28 +266,4 @@ def Legal {P : Type} [DecidableEq P]
     Legal k
   | _, .reveal _ _ _ _ k => Legal k
 
-namespace DistExpr
-
-abbrev Normalized {Γ : VCtxSimple} {b : BaseTy}
-    (D : DistExpr (erasePubVCtx Γ) b) : Prop :=
-  ∀ depEnv : (x : VarId) → (τ : BaseTy) →
-      HasVar (erasePubVCtx Γ) x τ → x ∈ distExprDeps D → Val τ,
-    FWeight.totalWeight (evalDistExprDeps D depEnv) = 1
-
-end DistExpr
-
-def NormalizedDists {P : Type} [DecidableEq P]
-    {L : Vegas.IExpr}
-:
-    {Γ : Vegas.VCtx P L} → Vegas.VegasCore P L Γ → Prop
-  | _, .ret _ => True
-  | Γ, .sample _ D' k =>
-    (∀ depEnv : (x : VarId) → (τ : L.Ty) →
-        HasVar (Vegas.erasePubVCtx Γ) x τ →
-          x ∈ L.distDeps D' → L.Val τ,
-      FWeight.totalWeight (L.evalDistDeps D' depEnv) = 1) ∧
-    NormalizedDists k
-  | _, .commit _ _ _ k => NormalizedDists k
-  | _, .reveal _ _ _ _ k => NormalizedDists k
-
 end Vegas

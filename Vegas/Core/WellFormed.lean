@@ -12,8 +12,9 @@ import Vegas.Core.Scope
 This file separates the obligations needed for event-graph compilation from
 the stronger obligations expected at the checked-game boundary.
 
-`GraphProgram` is the direct graph-construction input: context uniqueness,
-fresh bindings, and normalized samples. `WFProgram` adds reveal-completeness
+`GraphProgram` is the direct graph-construction input: context uniqueness and
+fresh bindings. Distribution expressions already denote normalized `FinDist`
+laws. `WFProgram` adds reveal-completeness
 and guard legality. Guard legality is used by checked game construction to
 derive graph guard liveness and checkpoint progress. Reveal-completeness is a
 checked source invariant: every sealed source value is eventually opened by
@@ -38,7 +39,6 @@ compile it into an event graph.
 
 * `wctx`       — the initial context has distinct variable names.
 * `fresh`      — syntactic binders are SSA-fresh.
-* `normalized` — every sample site's distribution sums to `1`.
 The compiler does not require reveal-completeness or guard legality. -/
 structure GraphProgram (P : Type) [DecidableEq P] (L : IExpr) where
   Γ : VCtx P L
@@ -46,7 +46,6 @@ structure GraphProgram (P : Type) [DecidableEq P] (L : IExpr) where
   env : VEnv L Γ
   wctx : WFCtx Γ
   fresh : FreshBindings prog
-  normalized : NormalizedDists prog
 
 /-- A checked Vegas program at the game boundary.
 

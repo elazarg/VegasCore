@@ -4,4 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import VegasTests.Game
+import Vegas.Language.ToCore
+
+/-! Surface language and typed lowering to `VegasCore`. -/
+

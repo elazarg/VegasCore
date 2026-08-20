@@ -1,84 +1,131 @@
-# Semantics Spine
+# Semantics spine
 
-This is a research map from the checked source language to compiled games and
-runtime theorems. `Vegas.Spec` pins the corresponding definitions and flagship
-claims in Lean.
+This document states the semantic ownership and proof boundaries of VegasCore.
 
-## Compilation and execution
+## Objects and ownership
 
-- `Vegas.WFProgram.claim_compiles_to_wellFormed_eventGraph`
-- `Vegas.WFProgram.claim_checked_program_has_checkpoint_progress`
-- `Vegas.WFProgram.claim_terminal_outcome_is_source_payoff`
-- `Vegas.ToEventGraph.compile`
-- `Vegas.ToEventGraph.PrimitiveMachine`
-- `Vegas.Machine.EventBatchLaw`
+| Layer | Canonical object | Owns |
+|---|---|---|
+| Source | `VegasCore P L Γ` | typed protocol syntax and visibility |
+| Checked source | `WFProgram P L` | freshness, reveals, live guards |
+| Machine IR | `Machine.Program P L` | typed graph, reified node/payoff code, first operational semantics |
+| Strategic execution | `ExecutionProtocol P` | active players, legal joint actions, chance, terminality |
+| Strategic information | `InformationModel execution` | signals, local information, local menus |
+| Vegas game | `Vegas.Game P` | FOSG arena, history utility, bounded horizon, pure/behavioral/mixed-pure forms |
+| Kuhn bridge | `Vegas.Game.Kuhn` | opponent-preserving behavioral/mixed deviation certificates |
+| Lowering stage | `Machine.System` | one concrete operational command/state surface |
+| Step projection | `Machine.Refinement` | visible abstract steps and administrative stuttering |
+| Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
+| Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
-The compiler produces a source-free dependency graph. Primitive execution is
-schedule-agnostic; event-batch laws supply the scheduling policy.
+The machine IR is shared input, not a second strategic semantics. GameTheory
+analysis interprets it as an informed protocol. Runtime compilation lowers its
+reified code through explicit operational stages.
 
-## Native compiled game
+## Reified code and denotation
 
-- `program.frontierSemantics`
-- `program.pureFrontierGame`
-- `program.behavioralFrontierGame`
-- `program.mixedPureFrontierGame`
-- `program.pureFrontierOutcomeKernel_sourceMap`
-- `program.behavioralFrontierOutcomeKernel_sourceMap`
-- `program.claim_pure_frontier_outcome_kernel_is_source_projection`
-- `program.claim_behavioral_frontier_outcome_kernel_is_source_projection`
+Every sample, commit guard, and payoff retains the typed embedded-language term
+and a proof-indexed mapping from its variables to graph storage fields. The same
+node also exposes a dependency-local denotation used by graph proofs.
 
-The completed frontier game is the native strategic denotation. Its source
-adequacy theorems identify terminal machine outcomes with the source payoff
-projection.
+This separation permits a backend to translate syntax while correctness proofs
+relate the translated code to the existing denotation. The abstract `IExpr`
+interface does not promise that every embedded language has every backend; a
+backend provides a lowering for the concrete expression language it supports.
 
-## Presentations
+## Probability
 
-FOSG and EFG are presentations of the native round view, not independent game
-semantics.
+`FinDist` is the probability monad throughout graph execution, protocol
+transitions, strategic play, machine refinement laws, and runtime adequacy.
+`RationalLaw` is an intrinsically normalized rational source table whose
+denotation uses `FinDist.ofWeights`.
 
-- `program.frontierFOSG`
-- `program.frontierFOSGMachinePayoffHistoryKernelGame`
-- `program.frontierFOSG_payoff_udist_behavioral`
-- `Vegas.Export.frontierFOSG_historyGame_udist_behavioralGame`
-- `program.frontierPlainEFG`
-- `program.frontierPlainEFGMachinePayoffKernelGame`
-- `Vegas.Theorems.EFG.WFProgram.frontier_plain_efg_payoff_udist_behavioral`
-- `Vegas.Export.frontierPlainEFG_payoffGame_udist_behavioralGame`
+There is no subprobability in the semantic spine. Checked programs terminate
+within a proved bound. A concrete chance mechanism must nevertheless prove its
+law; on-chain entropy is not exact merely because the source law is exact.
 
-## Strategy transport
+## Graph-to-protocol interpretation
 
-- `program.frontierKuhnStrategicEquivalence`
-- `program.mixedPureFrontier_behavioralDeviation_to_mixedPure`
-- `program.behavioralFrontier_deviation_to_mixedPure`
-- `program.pureToBehavioralFrontierMorphism`
-- `program.pureToBehavioralFrontierMorphism_eu`
+The execution state is a reachable graph configuration. Internal sample and
+reveal nodes execute as idle protocol rounds. At a strategic checkpoint, each
+active player supplies a `FrontierAction` containing values for its ready commit
+nodes. The joint frontier is simultaneous in the strategic semantics; its
+independent writes commute.
 
-These statements preserve outcome kernels or unilateral deviations between
-strategy presentations; equilibrium results are consequences of those stronger
-relations.
+Availability is state- and guard-dependent. Illegal values are absent from the
+menu and therefore absent from the strategy and deviation space. Guard
+liveness proves progress. Every realized round strictly grows the completed
+downset, so `graph.nodeCount` is a uniform `BoundedHorizon`.
 
-## Runtime trace adequacy
+Public/private snapshots prove menu adequacy: indistinguishable states have the
+same activity and legal options. The information state currently retains the
+latest snapshot. No perfect-recall theorem has yet been established for this
+compiled model.
 
-- `Vegas.Machine.StochasticRefinement`
-- `Vegas.WFProgram.TraceGameSurface`
-- `Vegas.WFProgram.TraceSpecEventBatchLaw`
-- `Vegas.WFProgram.RuntimeTraceAdequacy`
-- `program.claim_runtime_refinement_preserves_behavioral_udist`
-- `program.claim_runtime_refinement_pulls_back_behavioral_nash`
+## Why MAID is not the denotation
 
-A general runtime theorem requires a strategy-indexed specification event-batch
-law because primitive traces need not reconstruct the complete frontier
-information history. `Vegas.Examples.Refinement.constantPayoffSpecLaw` is a
-concrete compiled-program witness, and
-`Vegas.Examples.Refinement.constantPayoff_audited_preserves_behavioral_udist`
-carries it through the
-audited runtime without assuming such a law.
+Vegas decision sites have state-dependent guarded menus and may combine several
+ready commitments in one simultaneous joint decision. A fixed-domain MAID node
+does not natively express that surface. Totalizing invalid choices would change
+the strategy and deviation spaces.
 
-## Build-tested examples
+A MAID can be an export for a fragment with a proved strategic correspondence;
+it is not the canonical denotation. The FOSG is exact because it packages the
+accepted execution and information objects directly.
 
-- `Vegas.Examples.MatchingPennies`: hidden simultaneous commitments and source
-  payoff adequacy.
-- `Vegas.Examples.MontyHall`: staged information and FOSG/EFG adequacy.
-- `Vegas.Examples.Refinement`: compiled trace law plus concrete and generic
-  runtime refinements.
-- `Vegas.Examples.Claims`: research claims instantiated on checked games.
+## Gradual runtime interpretation
+
+A lowering pass should introduce one implementation concern at a time.
+`Machine.Refinement` proves only the functional stochastic projection:
+concrete commands decode to an abstract command or to an abstract stutter, and
+the projected laws agree exactly. These certificates compose.
+
+That law alone is insufficient when a pass changes what a player or scheduler
+can do or observe. Required companion results depend on the pass:
+
+- added deterministic bookkeeping: stuttering projection may suffice;
+- added randomness/noise: independence and observation laws are required;
+- chosen ordering or concurrency: linearizability and schedule-information
+  results are required;
+- added target actions: a strategy/context back-translation is required;
+- cryptographic hiding: a computational or idealized noninterference theorem is
+  required;
+- timeouts and nonparticipation: liveness and utility semantics are required.
+
+`Runtime.DeviationAdequacy` is one exact, deliberately limited game-level
+certificate. Honest compiled profiles preserve decoded laws, and every
+unilateral target replacement has a law-equivalent source replacement. This
+proves Nash equivalence at compiled profiles. It says nothing about
+coalitions, arbitrary linked contexts, or scheduler hyperproperties.
+
+`Runtime.Implementation` applies only when no new strategy carrier remains. Its
+profile-uniform decoded-law equality is then a special case of deviation
+adequacy, not a substitute for earlier pass proofs.
+
+## Blockchain obligations
+
+A concrete chain path still needs certified layers for expression lowering,
+scheduling/ABI, storage encoding, authentication, commitment/reveal,
+randomness, time and failure, settlement, and bytecode. The core source
+language currently lacks participation failure, timeout, and monetary-transfer
+semantics, so those behaviors cannot yet be introduced with an exact source
+game theorem.
+
+The existing readability-fence theorem constrains the order of readable output
+values. It explicitly does not prove indistinguishability of complete observed
+traces, whose event occurrences remain public. It is useful groundwork for a
+strong-linearizability proof, not that final proof.
+
+## Upstream boundary
+
+GameTheory supplies the strategic objects and exact transformations used by
+Vegas. In particular, its `InformationModel` has opponent-preserving
+unilateral Kuhn laws. `Vegas.Game.Kuhn` packages those laws as deviation
+adequacy in both directions; applying them to compiled programs still awaits a
+Vegas proof of perfect recall.
+
+GameTheory does not supply a general secure-compilation or runtime
+hyperproperty framework; that boundary is domain-specific and remains in
+VegasCore. Its MAID surface also uses fixed decision domains, so exporting a
+guarded Vegas game to MAID requires a fragment restriction or a proved
+strategic encoding.

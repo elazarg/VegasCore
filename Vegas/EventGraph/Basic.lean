@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Mathlib.Data.Finset.Basic
+import GameTheory.Math.Probability.FinDist
 import Vegas.Foundation.Basic
 
 /-!
@@ -76,6 +77,13 @@ namespace FieldRef
 
 variable {L : IExpr}
 
+@[ext] theorem ext {left right : FieldRef L}
+    (hfield : left.field = right.field) (hty : left.ty = right.ty) :
+    left = right := by
+  cases left
+  cases right
+  simp_all
+
 /-- Project typed field references to the numeric dependency footprint used for
 scheduling. -/
 def fields (refs : Finset (FieldRef L)) : Finset Nat :=
@@ -91,6 +99,77 @@ def fields (refs : Finset (FieldRef L)) : Finset Nat :=
 
 end FieldRef
 
+/-! ## Reified graph code
+
+The event graph is both a semantic dependency graph and the input to concrete
+runtime backends.  Consequently node-local computations retain their typed
+expression syntax and the graph field assigned to every source binding.  The
+semantic evaluator projections below remain convenient for proofs, while a
+backend can traverse `expr` or `dist` and lower every variable occurrence via
+`fieldOf`.
+-/
+
+/-- A typed expression together with the graph storage location of every
+binding in its context. -/
+structure ExprCode (L : IExpr) (resultTy : L.Ty) where
+  Context : Ctx L.Ty
+  expr : L.Expr Context resultTy
+  fieldOf : {name : VarId} → {ty : L.Ty} →
+    HasVar Context name ty → Nat
+
+namespace ExprCode
+
+variable {L : IExpr} {resultTy : L.Ty}
+
+/-- The typed graph reference assigned to one expression binding. -/
+def ref (code : ExprCode L resultTy)
+    {name : VarId} {ty : L.Ty} (binding : HasVar code.Context name ty) :
+    FieldRef L :=
+  { field := code.fieldOf binding, ty := ty }
+
+end ExprCode
+
+/-- A typed distribution expression together with its graph storage map. -/
+structure DistCode (L : IExpr) (resultTy : L.Ty) where
+  Context : Ctx L.Ty
+  dist : L.DistExpr Context resultTy
+  fieldOf : {name : VarId} → {ty : L.Ty} →
+    HasVar Context name ty → Nat
+
+namespace DistCode
+
+variable {L : IExpr} {resultTy : L.Ty}
+
+/-- The typed graph reference assigned to one distribution binding. -/
+def ref (code : DistCode L resultTy)
+    {name : VarId} {ty : L.Ty} (binding : HasVar code.Context name ty) :
+    FieldRef L :=
+  { field := code.fieldOf binding, ty := ty }
+
+end DistCode
+
+/-- A commit guard as code over one proposed action and the actor's stored
+information.  The action is an ABI input rather than a graph field; `fieldOf`
+addresses the remaining context. -/
+structure GuardCode (L : IExpr) (actionTy : L.Ty) where
+  actionName : VarId
+  Context : Ctx L.Ty
+  expr : L.Expr ((actionName, actionTy) :: Context) L.bool
+  fieldOf : {name : VarId} → {ty : L.Ty} →
+    HasVar Context name ty → Nat
+
+namespace GuardCode
+
+variable {L : IExpr} {actionTy : L.Ty}
+
+/-- The typed graph reference assigned to one stored guard binding. -/
+def ref (code : GuardCode L actionTy)
+    {name : VarId} {ty : L.Ty} (binding : HasVar code.Context name ty) :
+    FieldRef L :=
+  { field := code.fieldOf binding, ty := ty }
+
+end GuardCode
+
 /-- Restricted read environment supplied to graph-local computations.
 
 The environment exposes typed values only for the node's declared read
@@ -102,6 +181,18 @@ structure ReadEnv (L : IExpr) (reads : Finset (FieldRef L)) where
 namespace ReadEnv
 
 variable {L : IExpr} {refs : Finset (FieldRef L)}
+
+/-- Reading is invariant under equality of typed field references.  The cast is
+the one induced by the reference equality, so this lemma also isolates the
+dependent transport needed by compiler correctness proofs. -/
+theorem read_eq_cast_of_ref_eq (env : ReadEnv L refs)
+    {left right : FieldRef L} (href : left = right)
+    (hleft : left ∈ refs) (hright : right ∈ refs) :
+    env.read left hleft =
+      cast (congrArg L.Val (congrArg FieldRef.ty href).symm)
+        (env.read right hright) := by
+  subst right
+  rfl
 
 @[ext] theorem ext
     {left right : ReadEnv L refs}
@@ -218,13 +309,26 @@ theorem ofStore?_eq_of_getAs_eq
 
 end ReadEnv
 
-/-- A graph-local finite probability distribution with an explicit dependency
-footprint. Source distributions cross the `FWeight → PMF` normalization bridge
-during compilation; executable graphs do not carry raw weights. -/
+/-- A graph-local finite probability law with an explicit dependency
+footprint. Executable graphs use GameTheory's canonical probability type;
+source-level rational weights do not escape compilation. -/
 structure EventDist (L : IExpr) where
   ty : L.Ty
+  code : DistCode L ty
   reads : Finset (FieldRef L)
-  eval : ReadEnv L reads → PMF (L.Val ty)
+  read_mem :
+    ∀ {name depTy} (binding : HasVar code.Context name depTy),
+      name ∈ L.distDeps code.dist → code.ref binding ∈ reads
+
+namespace EventDist
+
+/-- Execute retained distribution code from its proved graph-local reads. -/
+def eval (dist : EventDist L) (env : ReadEnv L dist.reads) :
+    GameTheory.Math.Probability.FinDist (L.Val dist.ty) :=
+  L.evalDistDeps dist.code.dist fun _name _depTy binding dependency =>
+    env.read (dist.code.ref binding) (dist.read_mem binding dependency)
+
+end EventDist
 
 /-- A commit guard. `choiceReads` is the player-visible information footprint
 available to the actor when choosing this commit. It may strictly contain the
@@ -233,15 +337,42 @@ choice view and may ignore unused fields. Scheduling and observation use this
 choice footprint, not a minimal guard-expression footprint. -/
 structure EventGuard (L : IExpr) where
   ty : L.Ty
+  code : GuardCode L ty
   choiceReads : Finset (FieldRef L)
-  eval : L.Val ty → ReadEnv L choiceReads → Bool
+  read_mem :
+    ∀ {name depTy} (binding : HasVar code.Context name depTy),
+      code.ref binding ∈ choiceReads
+
+namespace EventGuard
+
+/-- Execute retained guard code against one proposed action and the actor's
+proved graph-local view. -/
+def eval (guard : EventGuard L) (action : L.Val guard.ty)
+    (env : ReadEnv L guard.choiceReads) : Bool :=
+  L.toBool <| L.eval guard.code.expr <|
+    Env.cons action fun _name _depTy binding =>
+      env.read (guard.code.ref binding) (guard.read_mem binding)
+
+end EventGuard
 
 /-- A graph-local payoff projection. Payoff expressions are compiled to
 integers immediately so executable machines do not need to recover erased
 source types from an untyped list of graph expressions. -/
 structure EventPayoff (L : IExpr) where
+  code : ExprCode L L.int
   reads : Finset (FieldRef L)
-  eval : ReadEnv L reads → Int
+  read_mem :
+    ∀ {name depTy} (binding : HasVar code.Context name depTy),
+      name ∈ L.exprDeps code.expr → code.ref binding ∈ reads
+
+namespace EventPayoff
+
+/-- Execute retained payoff code from its proved graph-local reads. -/
+def eval (payoff : EventPayoff L) (env : ReadEnv L payoff.reads) : Int :=
+  L.toInt <| L.evalDeps payoff.code.expr fun _name _depTy binding dependency =>
+    env.read (payoff.code.ref binding) (payoff.read_mem binding dependency)
+
+end EventPayoff
 
 /-- Semantic payload of one graph node. The output field is supplied by the
 graph row that contains the node, so the payload cannot disagree with field
