@@ -18,4 +18,3 @@ import Vegas.EventGraph.Validate
 import Vegas.EventGraph.VisibleOrder
 
 /-! Typed dependency graphs, schedule-free execution, and protocol denotation. -/
-

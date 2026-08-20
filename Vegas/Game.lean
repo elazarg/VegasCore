@@ -159,21 +159,6 @@ noncomputable def actionFintype
     ToEventGraph.compile_nodeFintype program
   exact EventGraph.FrontierAction.instFintype compiled.graph who
 
-/-- Public and private graph snapshots make every local information carrier
-finite whenever the compiled field domains are finite. -/
-@[reducible]
-noncomputable def infoStateFintype
-    (program : WFProgram Player L) [FiniteDomains program] (who : Player) :
-    Fintype (program.game.arena.information.InfoState who) := by
-  let compiled := ToEventGraph.compile program.core
-  letI : ∀ field : Fin compiled.graph.fieldCount,
-      Fintype (L.Val (compiled.graph.fieldRow field).ty) :=
-    ToEventGraph.compile_fieldFintype program
-  change Fintype
-    (EventGraph.PublicObservation compiled.graph ×
-      EventGraph.Observation compiled.graph who)
-  infer_instance
-
 end WFProgram
 
 end Vegas

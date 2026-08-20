@@ -95,12 +95,16 @@ define competing strategy, deviation, equilibrium, or history types.
 
 GameTheory's opponent-preserving Kuhn laws are packaged in
 `Vegas.Game.Kuhn` as deviation-adequacy certificates in both directions between
-behavioral policies and mixed pure policies. They require perfect recall.
+behavioral policies and mixed pure policies. The compiled information model
+proves perfect recall. With finite source domains, a locally full-support policy
+enumerates a finite counterfactual site cover, yielding Nash preservation and
+reflection at the translated profiles without requiring the entire information
+carrier to be finite.
 
-The current information state is the latest public/private graph snapshot.
-Menu adequacy is proved. Perfect recall of the compiled model is not yet
-proved, so Kuhn results may be used only when their stated recall hypotheses
-have separately been established.
+The information state retains the latest public/private graph snapshot plus the
+player's own earlier decision snapshots and actions. It deliberately does not
+retain unrelated transition ordering. Menu adequacy, policy inhabitation, and
+perfect recall are proved.
 
 ## Source language
 

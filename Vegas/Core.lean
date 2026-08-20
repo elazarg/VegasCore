@@ -14,4 +14,3 @@ import Vegas.Core.SmallStep
 import Vegas.Core.WellFormed
 
 /-! Checked source syntax, concrete expressions, obligations, and source SOS. -/
-

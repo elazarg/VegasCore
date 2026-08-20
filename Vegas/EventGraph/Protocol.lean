@@ -393,9 +393,61 @@ the private signal alphabet. -/
 abbrev LocalSnapshot (G : Graph Player L) (who : Player) :=
   PublicObservation G × Observation G who
 
+/-- A player's information consists of the current graph-local snapshot and
+exactly its own earlier decision record. Unrelated transition ordering is not
+retained. -/
+structure PlayerInformation (G : Graph Player L) (who : Player) where
+  current : LocalSnapshot G who
+  own : List (LocalSnapshot G who × FrontierAction G who)
+
+namespace PlayerInformation
+
+variable {G : Graph Player L} {who : Player}
+
+/-- Extend local information after one transition. Only the player's own
+action is remembered; inactive transitions merely replace the current
+snapshot. -/
+def push (prior : PlayerInformation G who)
+    (choice : Option (FrontierAction G who))
+    (current : LocalSnapshot G who) : PlayerInformation G who where
+  current := current
+  own := match choice with
+    | none => prior.own
+    | some action => (prior.current, action) :: prior.own
+
+/-- Reconstruct GameTheory's `ownPlay` representation from the compact local
+decision record. -/
+def recalledOwnPlayFrom :
+    List (LocalSnapshot G who × FrontierAction G who) →
+      List (PlayerInformation G who × FrontierAction G who)
+  | [] => []
+  | (snapshot, action) :: prior =>
+      ({ current := snapshot, own := prior }, action) ::
+        recalledOwnPlayFrom prior
+
+def recalledOwnPlay (info : PlayerInformation G who) :
+    List (PlayerInformation G who × FrontierAction G who) :=
+  recalledOwnPlayFrom info.own
+
+omit [Fintype Player] in
+@[simp] theorem recalledOwnPlay_push_none
+    (prior : PlayerInformation G who) (current : LocalSnapshot G who) :
+    recalledOwnPlay (prior.push none current) = recalledOwnPlay prior :=
+  rfl
+
+omit [Fintype Player] in
+@[simp] theorem recalledOwnPlay_push_some
+    (prior : PlayerInformation G who) (action : FrontierAction G who)
+    (current : LocalSnapshot G who) :
+    recalledOwnPlay (prior.push (some action) current) =
+      (prior, action) :: recalledOwnPlay prior := by
+  cases prior
+  rfl
+
+end PlayerInformation
+
 /-- Event-graph observations as GameTheory protocol signals. The information
-state is the latest snapshot; graph observations retain the completed public
-history and every field that remains visible to the player. -/
+state retains the latest snapshot and the player's own earlier decisions. -/
 noncomputable def toInfoSignals
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G) :
     InfoSignals (toExecutionProtocol G hwf hguards) where
@@ -405,19 +457,60 @@ noncomputable def toInfoSignals
   initialPrivate := fun who => observe G (Config.initial G) who
   publicSignal := fun event => publicObserve G event.target.1
   privateSignal := fun who event => observe G event.target.1 who
-  InfoState := LocalSnapshot G
-  initInfo := fun _ privateView publicView => (publicView, privateView)
-  pushInfo := fun _ _ _ privateView publicView => (publicView, privateView)
+  InfoState := PlayerInformation G
+  initInfo := fun _ privateView publicView =>
+    { current := (publicView, privateView), own := [] }
+  pushInfo := fun _ prior choice privateView publicView =>
+    prior.push choice (publicView, privateView)
 
-theorem infoOf_toInfoSignals
+/-- The current component of accumulated information is the graph snapshot at
+the trace endpoint. -/
+theorem infoOf_toInfoSignals_current
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
     (who : Player) {state : (toExecutionProtocol G hwf hguards).State}
     (trace : (toExecutionProtocol G hwf hguards).Trace state) :
-    (toInfoSignals G hwf hguards).infoOf who trace =
+    ((toInfoSignals G hwf hguards).infoOf who trace).current =
       (publicObserve G state.1, observe G state.1 who) := by
   induction trace with
   | start => rfl
   | extend prior joint isLegal realized ih => rfl
+
+/-- The compact decision record agrees exactly with GameTheory's canonical
+record of the player's information states and actions. -/
+theorem ownPlay_toInfoSignals_eq_recalled
+    (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
+    (who : Player) {state : (toExecutionProtocol G hwf hguards).State}
+    (trace : (toExecutionProtocol G hwf hguards).Trace state) :
+    (toInfoSignals G hwf hguards).ownPlay who trace =
+      PlayerInformation.recalledOwnPlay
+        ((toInfoSignals G hwf hguards).infoOf who trace) := by
+  induction trace with
+  | start => rfl
+  | @extend source target prior joint isLegal realized ih =>
+      rw [InfoSignals.ownPlay_extend, InfoSignals.infoOf_extend]
+      cases hchoice : joint who with
+      | none =>
+          rw [ih]
+          exact
+            (PlayerInformation.recalledOwnPlay_push_none
+              ((toInfoSignals G hwf hguards).infoOf who prior)
+              (publicObserve G target.1, observe G target.1 who)).symm
+      | some action =>
+          rw [ih]
+          exact
+            (PlayerInformation.recalledOwnPlay_push_some
+              ((toInfoSignals G hwf hguards).infoOf who prior) action
+              (publicObserve G target.1, observe G target.1 who)).symm
+
+/-- The event-graph information model has perfect recall: equality of current
+information includes equality of the player's complete own-decision record. -/
+theorem toInfoSignals_perfectRecall
+    (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G) :
+    (toInfoSignals G hwf hguards).PerfectRecall := by
+  intro who first second traceFirst traceSecond hinfo
+  rw [ownPlay_toInfoSignals_eq_recalled G hwf hguards who traceFirst,
+    ownPlay_toInfoSignals_eq_recalled G hwf hguards who traceSecond,
+    hinfo]
 
 private theorem active_iff_of_observations
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
@@ -465,12 +558,47 @@ private theorem legalOption_iff_of_observations
 
 private noncomputable def localMenu
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
-    (who : Player) (info : LocalSnapshot G who) :
-    Set (Option (FrontierAction G who)) :=
-  { choice | ∃ state : ReachableConfig G,
-      publicObserve G state.1 = info.1 ∧
-      observe G state.1 who = info.2 ∧
-      LegalOption (toExecutionProtocol G hwf hguards) state who choice }
+    (who : Player) (info : PlayerInformation G who) :
+    Set (Option (FrontierAction G who)) := by
+  classical
+  if _hrealizable : ∃ state : ReachableConfig G,
+      publicObserve G state.1 = info.current.1 ∧
+      observe G state.1 who = info.current.2 then
+    exact
+      { choice | ∃ state : ReachableConfig G,
+          publicObserve G state.1 = info.current.1 ∧
+          observe G state.1 who = info.current.2 ∧
+          LegalOption (toExecutionProtocol G hwf hguards) state who choice }
+  else
+    exact {none}
+
+/-- Every information-local menu is inhabited. Unrealizable information states
+receive the unique idle option; realizable states inherit a legal coordinate
+from protocol progress (or idle at termination). -/
+theorem localMenu_nonempty
+    (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
+    (who : Player) (info : PlayerInformation G who) :
+    (localMenu G hwf hguards who info).Nonempty := by
+  classical
+  unfold localMenu
+  split
+  next hrealizable =>
+    rcases hrealizable with ⟨state, hpublic, hprivate⟩
+    by_cases hterminal : Terminal G state.1
+    · refine ⟨none, ⟨state, hpublic, hprivate, ?_⟩⟩
+      change ¬ (toExecutionProtocol G hwf hguards).active state who
+      intro hactive
+      exact hactive.1 hterminal
+    · rcases
+        (toExecutionProtocol G hwf hguards).progress state hterminal with
+        ⟨joint, hjoint⟩
+      let hlegal : (toExecutionProtocol G hwf hguards).Legal state joint :=
+        ⟨hterminal, hjoint⟩
+      refine ⟨joint who, ⟨state, hpublic, hprivate, ?_⟩⟩
+      exact
+        (toExecutionProtocol G hwf hguards).legalOption_of_legal hlegal who
+  next _ =>
+    exact ⟨none, by simp⟩
 
 /-- The canonical information model of a live event graph. Policies receive
 only factored graph observations. Menu adequacy follows from the compiler's
@@ -483,13 +611,35 @@ noncomputable def toInformationModel
   menu := localMenu G hwf hguards
   menu_adequate := by
     intro who state trace choice
-    rw [infoOf_toInfoSignals]
+    have hcurrent :=
+      infoOf_toInfoSignals_current G hwf hguards who trace
+    have hrealizable : ∃ witness : ReachableConfig G,
+        publicObserve G witness.1 =
+            ((toInfoSignals G hwf hguards).infoOf who trace).current.1 ∧
+          observe G witness.1 who =
+            ((toInfoSignals G hwf hguards).infoOf who trace).current.2 := by
+      exact ⟨state, by rw [hcurrent], by rw [hcurrent]⟩
+    unfold localMenu
+    rw [dif_pos hrealizable]
     constructor
     · rintro ⟨witness, hpublic, hprivate, hlegal⟩
+      rw [hcurrent] at hpublic hprivate
       exact
         (legalOption_iff_of_observations G hwf hguards
           hpublic hprivate choice).mp hlegal
     · intro hlegal
-      exact ⟨state, rfl, rfl, hlegal⟩
+      refine ⟨state, ?_, ?_, hlegal⟩
+      · rw [hcurrent]
+      · rw [hcurrent]
+
+/-- Every GameTheory choice carrier of the compiled information model is
+inhabited, including at unreachable information values. -/
+theorem choice_nonempty
+    (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
+    (who : Player) (info : PlayerInformation G who) :
+    Nonempty ((toInformationModel G hwf hguards).Choice who info) := by
+  let choice := Classical.choose (localMenu_nonempty G hwf hguards who info)
+  exact ⟨⟨choice,
+    Classical.choose_spec (localMenu_nonempty G hwf hguards who info)⟩⟩
 
 end Vegas.EventGraph

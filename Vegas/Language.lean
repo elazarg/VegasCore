@@ -7,4 +7,3 @@ Authors: VegasCore contributors
 import Vegas.Language.ToCore
 
 /-! Surface language and typed lowering to `VegasCore`. -/
-

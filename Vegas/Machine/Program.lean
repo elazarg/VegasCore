@@ -104,6 +104,23 @@ def execution (program : Program Player L) [Fintype Player] :=
 def information (program : Program Player L) [Fintype Player] :=
   toInformationModel program.graph program.graphWF program.guardLive
 
+/-- Compiled information remembers every player's own earlier information and
+actions while abstracting from unrelated event ordering. -/
+theorem perfectRecall (program : Program Player L) [Fintype Player] :
+    program.information.PerfectRecall := by
+  exact toInfoSignals_perfectRecall
+    program.graph program.graphWF program.guardLive
+
+/-- A canonical inhabitant of the pure-policy profile carrier. It is used only
+as a fallback outside finite counterfactual site covers; reachable choices are
+still supplied by the actual strategy. -/
+noncomputable def defaultPureProfile
+    (program : Program Player L) [Fintype Player] :
+    (who : Player) → program.information.Policy who :=
+  fun who info =>
+    Classical.choice
+      (choice_nonempty program.graph program.graphWF program.guardLive who info)
+
 /-- The graph node count is a uniform strategic horizon. -/
 theorem boundedHorizon (program : Program Player L) [Fintype Player] :
     program.execution.BoundedHorizon program.graph.nodeCount := by

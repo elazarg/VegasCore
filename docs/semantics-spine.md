@@ -58,9 +58,11 @@ liveness proves progress. Every realized round strictly grows the completed
 downset, so `graph.nodeCount` is a uniform `BoundedHorizon`.
 
 Public/private snapshots prove menu adequacy: indistinguishable states have the
-same activity and legal options. The information state currently retains the
-latest snapshot. No perfect-recall theorem has yet been established for this
-compiled model.
+same activity and legal options. The information state retains the latest
+snapshot and exactly the player's own earlier decision record, not unrelated
+transition ordering. This representation has proved perfect recall. Menus at
+unreachable information values use an idle fallback so total policy carriers
+remain inhabited.
 
 ## Why MAID is not the denotation
 
@@ -121,8 +123,10 @@ strong-linearizability proof, not that final proof.
 GameTheory supplies the strategic objects and exact transformations used by
 Vegas. In particular, its `InformationModel` has opponent-preserving
 unilateral Kuhn laws. `Vegas.Game.Kuhn` packages those laws as deviation
-adequacy in both directions; applying them to compiled programs still awaits a
-Vegas proof of perfect recall.
+adequacy in both directions. Compiled programs discharge perfect recall.
+Finite source domains also construct a full-support finite counterfactual site
+cover, so the unilateral certificates apply without assuming a globally finite
+information-history carrier.
 
 GameTheory does not supply a general secure-compilation or runtime
 hyperproperty framework; that boundary is domain-specific and remains in

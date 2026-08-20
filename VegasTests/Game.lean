@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Game
+import Vegas.Game.Kuhn
 
 namespace VegasTests
 
@@ -109,6 +109,24 @@ noncomputable def matchingPenniesMachine :
 
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
+
+noncomputable instance matchingPenniesFiniteDomains :
+    FiniteDomains matchingPenniesProgram where
+  context := inferInstanceAs (FiniteVCtx ([] : VCtx TestPlayer simpleExpr))
+  program :=
+    { proof :=
+        .commit inferInstance
+          (.commit inferInstance
+            (.reveal inferInstance
+              (.reveal inferInstance .ret))) }
+
+example : matchingPenniesMachine.information.PerfectRecall :=
+  matchingPenniesMachine.perfectRecall
+
+noncomputable example :
+    Runtime.DeviationAdequacy matchingPenniesGame.behavioral
+      matchingPenniesGame.mixedPure :=
+  matchingPenniesProgram.behavioralToMixedPureAdequacy
 
 theorem matchingPenniesMachine_graph_nodeCount :
     matchingPenniesMachine.graph.nodeCount = 4 := by
