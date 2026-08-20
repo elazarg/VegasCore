@@ -227,6 +227,13 @@ seed distribution remain assumptions to discharge. In particular, one uniform
 256-bit seed cannot exactly realize every rational table unless its masses have
 compatible denominators; rejection or a richer protocol may be necessary.
 
+`Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
+changing the event bodies. Each stable action receives an ordered requirement
+list: replay prevention first, then one completion check per graph prerequisite.
+Evaluating the emitted list is proved exactly equivalent to `EventGraph.Ready`.
+The order is semantically inert while checks are pure; gas and distinguishable
+revert behavior can make it observable only in later passes.
+
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as
 `[player, node, value]` and internal calls as `[node]`; unknown selectors,

@@ -24,6 +24,7 @@ import Vegas.Machine.Contract.EVMWord
 import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
 import Vegas.Machine.Contract.Entropy
+import Vegas.Machine.Contract.Imperative
 
 namespace VegasTests
 
@@ -158,6 +159,27 @@ example (node : Fin matchingPenniesMachine.graph.nodeCount) :
 noncomputable def matchingPenniesLayout :
     Machine.Contract.Layout matchingPenniesMachine :=
   Machine.Contract.Layout.canonical matchingPenniesMachine
+
+noncomputable def matchingPenniesImperativeIR :
+    Machine.Contract.Imperative.ContractIR matchingPenniesMachine :=
+  Machine.Contract.Imperative.compile matchingPenniesMachine
+    matchingPenniesLayout
+
+example : matchingPenniesImperativeIR.actions.length = 4 := by
+  rw [show matchingPenniesImperativeIR.actions.length =
+      matchingPenniesMachine.graph.nodeCount by
+    exact Machine.Contract.Imperative.compile_actions_length
+      matchingPenniesLayout]
+  exact matchingPenniesMachine_graph_nodeCount
+
+example (cfg : EventGraph.Config matchingPenniesMachine.graph)
+    (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    Machine.Contract.Imperative.evaluateAll cfg
+        (Machine.Contract.Imperative.compileAction
+          matchingPenniesLayout node).requirements =
+      decide (EventGraph.Ready matchingPenniesMachine.graph cfg node) :=
+  Machine.Contract.Imperative.compileAction_requirements_correct
+    matchingPenniesLayout cfg node
 
 example : Function.Injective matchingPenniesLayout.address :=
   matchingPenniesLayout.injective
