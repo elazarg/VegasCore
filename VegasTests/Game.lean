@@ -22,6 +22,7 @@ import Vegas.Machine.Contract.Configured
 import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
 import Vegas.Machine.Contract.Blockchain
+import Vegas.Machine.Contract.EVMCalldata
 
 namespace VegasTests
 
@@ -128,6 +129,13 @@ noncomputable def matchingPenniesProgram :
 noncomputable def matchingPenniesMachine :
     Machine.Program TestPlayer simpleExpr :=
   Machine.compile matchingPenniesProgram
+
+theorem matchingPenniesMachine_graph_nodeCount :
+    matchingPenniesMachine.graph.nodeCount = 4 := by
+  simp [matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
+    matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
+    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
+    EventGraph.Graph.nodeCount]
 
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
@@ -263,6 +271,33 @@ noncomputable def matchingPenniesContract :
   players := matchingPenniesRegistry
   triggers := permissionlessTriggers
 
+def matchingPenniesSelectors : Machine.Contract.EVM.Selectors where
+  player := 0
+  internal := 1
+  player_ne_internal := by decide
+
+noncomputable def matchingPenniesMessageABI :
+    Machine.Contract.EVM.MessageABI matchingPenniesMachine
+      matchingPenniesContract.codec.Word where
+  selectors := matchingPenniesSelectors
+  players := Machine.Contract.EVM.indexWordCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsWord])
+  nodes := Machine.Contract.EVM.nodeWordCodec matchingPenniesMachine (by
+    change matchingPenniesMachine.graph.nodeCount ≤ 2 ^ 256
+    rw [matchingPenniesMachine_graph_nodeCount]
+    norm_num)
+
+example :
+    matchingPenniesMessageABI.decode
+        { selector := 2, arguments := [] } = none := by
+  rfl
+
+example :
+    matchingPenniesMessageABI.decode
+        { selector := matchingPenniesSelectors.player
+          arguments := [] } = none := by
+  rfl
+
 noncomputable def matchingPenniesWireCodec :
     matchingPenniesContract.TransactionWireCodec
       matchingPenniesContract.Calldata :=
@@ -301,6 +336,29 @@ example
       some ((matchingPenniesMachine.step state (.commit who action step)).map
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.receive?_encodeState_playerCommit
+    chain context action step hsender
+
+example
+    (chain : Machine.Contract.Blockchain.ChainView)
+    (context : Machine.Contract.Blockchain.CallContext TestPlayer)
+    {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action)
+    (hsender : context.sender = matchingPenniesContract.players.address who) :
+    matchingPenniesContract.receiveEVMCalldata? chain
+        matchingPenniesMessageABI context
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (matchingPenniesMessageABI.encode
+          (.player
+            (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
+              matchingPenniesContract.codec action step))) =
+      some ((matchingPenniesMachine.step state (.commit who action step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec)) := by
+  rw [matchingPenniesContract.receiveEVMCalldata?_encode]
   exact matchingPenniesContract.receive?_encodeState_playerCommit
     chain context action step hsender
 
@@ -528,13 +586,6 @@ noncomputable example :
     Runtime.DeviationAdequacy matchingPenniesGame.behavioral
       matchingPenniesGame.mixedPure :=
   matchingPenniesProgram.behavioralToMixedPureAdequacy
-
-theorem matchingPenniesMachine_graph_nodeCount :
-    matchingPenniesMachine.graph.nodeCount = 4 := by
-  simp [matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
-    matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
-    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
-    EventGraph.Graph.nodeCount]
 
 noncomputable def matchingPenniesNode0 :
     Fin matchingPenniesMachine.graph.nodeCount :=

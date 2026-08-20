@@ -212,6 +212,14 @@ chance is refined to an oracle or chain entropy protocol. ConCertLean's current
 Lean/toolchain revision also differs from this project's, so it is a grounding
 interface rather than a direct package dependency today.
 
+`Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
+ordering without yet adding byte serialization. Player calls are framed as
+`[player, node, value]` and internal calls as `[node]`; unknown selectors,
+wrong arities, unknown players, and out-of-range nodes reject. The matching-
+pennies configuration uses 256-bit role and node codecs and proves its node
+count fits in one word. Accepted arbitrary framed input still reconstructs an
+exact semantic machine transition.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

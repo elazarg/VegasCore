@@ -31,7 +31,7 @@ namespace Vegas.Machine.Contract.Blockchain
 
 open EventGraph
 
-variable {Player Address Word : Type}
+variable {Player Address : Type}
 variable [DecidableEq Player] [DecidableEq Address]
 variable {L : IExpr} {program : Program Player L}
 
@@ -50,20 +50,25 @@ structure CallContext (Address : Type) where
   contractBalance : Int
   transferredAmount : Int
 
-/-- Player entry-point arguments, excluding the physical caller. -/
-structure PlayerMessage (Player Word : Type) where
+/-- Player entry-point arguments after bounded-node decoding and excluding the
+physical caller. -/
+structure PlayerMessage {Player : Type} [DecidableEq Player] {L : IExpr}
+    (program : Program Player L) (Word : Type) where
   player : Player
-  node : Nat
+  node : Fin program.graph.nodeCount
   value : Word
 
-/-- Internal entry-point arguments, excluding the physical caller. -/
-structure InternalMessage where
-  node : Nat
+/-- Internal entry-point arguments after bounded-node decoding and excluding
+the physical caller. -/
+structure InternalMessage {Player : Type} [DecidableEq Player] {L : IExpr}
+    (program : Program Player L) where
+  node : Fin program.graph.nodeCount
 
 /-- Caller-free configured-contract messages. -/
-inductive Message (Player Word : Type) where
-  | player (message : PlayerMessage Player Word)
-  | internal (message : InternalMessage)
+inductive Message {Player : Type} [DecidableEq Player] {L : IExpr}
+    (program : Program Player L) (Word : Type) where
+  | player (message : PlayerMessage program Word)
+  | internal (message : InternalMessage program)
 
 /-- A contract interface whose receive function may have a finite stochastic
 successor law. No outbound calls or asset transfers are modeled yet. -/
@@ -81,7 +86,7 @@ def encodeCommit (codec : StorageCodec program)
     {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
-    PlayerMessage Player codec.Word where
+    PlayerMessage program codec.Word where
   player := who
   node := action.node
   value := codec.encodeValue step.guard.ty step.value
@@ -91,7 +96,7 @@ end PlayerMessage
 namespace InternalMessage
 
 /-- Encode a valid graph-directed internal event. -/
-def encode (event : InternalEvent program.graph) : InternalMessage where
+def encode (event : InternalEvent program.graph) : InternalMessage program where
   node := event.node
 
 end InternalMessage
@@ -99,8 +104,8 @@ end InternalMessage
 namespace Message
 
 /-- Attach the authenticated blockchain sender to caller-free message data. -/
-def contextualize (context : CallContext Address) :
-    Message Player Word → ContractCalldata Player Address Word
+def contextualize {Word : Type} (context : CallContext Address) :
+    Message program Word → ContractCalldata Player Address Word
   | .player message =>
       .player
         { caller := context.sender
@@ -127,7 +132,7 @@ variable {L : IExpr} {program : Program Player L}
 variable (contract : ConfiguredContract program Address)
 
 /-- Caller-free message type for this configured contract. -/
-abbrev Message := Blockchain.Message Player contract.codec.Word
+abbrev Message := Blockchain.Message program contract.codec.Word
 
 /-- Contextual validation. Only `context.sender` is operational at this pass. -/
 def acceptsMessage (context : CallContext Address) (store : contract.Store)
