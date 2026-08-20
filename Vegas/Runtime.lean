@@ -6,5 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Runtime.Implementation
 import Vegas.Runtime.DeviationAdequacy
+import Vegas.Runtime.TrustedRoles
+import Vegas.Runtime.KnownMediator
 
 /-! Gradual runtime refinement, encoding, and strategic adequacy interfaces. -/

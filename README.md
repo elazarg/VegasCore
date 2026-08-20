@@ -339,6 +339,17 @@ back-translated one unilateral deviation at a time, which is sufficient to
 preserve and reflect Nash at compiled profiles. It is not a general
 secure-compilation theorem.
 
+`Runtime.TrustedRoleAdequacy` permits the target game to add an injectively
+separate oracle, batcher, or scheduler role. Its compiled strategy is fixed
+across source profiles, utilities and laws are decoded exactly for real
+players, and Nash is preserved and reflected when deviations quantify only
+over those real players. `Runtime.KnownMediator` supplies a canonical proved
+witness: the added mediator's complete contingent strategy is exactly
+`source.form.play`, so externalizing stochastic play to a player with a known
+strategy is classically exact. A concrete callback/batching trace must still
+be proved to implement that mediator strategy; malicious mediator behavior is
+outside this classical theorem.
+
 `Runtime.Implementation` is only the terminal special case where the runtime
 has exactly the source strategy carrier and decoded outcome-law equality holds
 for every profile. It derives deviation adequacy automatically. It must not be
@@ -368,8 +379,9 @@ contract inventory/layout/storage/state/call boundaries, a finite 256-bit
 Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
-an ideal observation/atomic-frontier boundary, and a narrow unilateral
-strategic certificate. It does not yet have an EVM
+an ideal observation/atomic-frontier boundary, and unilateral strategic
+certificates for same-player and fixed-trusted-role targets. It does not yet
+have an EVM
 instruction IR or emitter, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
 untrusted on-chain chance implementation, timeout/abort game semantics, or an

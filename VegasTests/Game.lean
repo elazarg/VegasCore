@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Game.Kuhn
 import Vegas.Compile.Classical
 import Vegas.Machine.Contract.ClassicalBatch
+import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
@@ -167,6 +168,15 @@ theorem matchingPenniesMachine_graph_nodeCount :
 
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
+
+example
+    (profile : GameTheory.Profile matchingPenniesGame.pure.form.sig) :
+    (Runtime.KnownMediator.adequacy matchingPenniesGame.pure).IsNashForReal
+        (Runtime.KnownMediator.compileProfile matchingPenniesGame.pure
+          profile) ↔
+      GameTheory.IsNash matchingPenniesGame.pure.form
+        (GameTheory.euPreference matchingPenniesGame.pure.utility) profile :=
+  Runtime.KnownMediator.isNashForReal_iff matchingPenniesGame.pure profile
 
 noncomputable def matchingPenniesManifest :
     Machine.Contract.Manifest matchingPenniesMachine :=

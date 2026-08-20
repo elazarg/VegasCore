@@ -38,6 +38,8 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Atomic frontier | `Machine.Contract.FrontierBatch` | simultaneous source round serialized without intermediate observations |
 | Classical compiler | `ClassicalCompiler.Backend.compile` | checked-source assembly with source terminal certificate |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
+| Trusted roles | `Runtime.TrustedRoleAdequacy` | Nash adequacy for real players with fixed runtime-only roles |
+| Known mediator | `Runtime.KnownMediator` | exact externalization of stochastic play to one fixed contingent strategy |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
 The machine IR is shared input, not a second strategic semantics. GameTheory
