@@ -157,11 +157,12 @@ target-specific.
 
 `Machine.Contract.InternalCalldata` is the separate internal-action entry
 point. A call carries only caller and node, decoding excludes player rows, and
-an explicit `TriggerPolicy` controls authorization. Authorized valid sample or
-reveal triggers have the same exact raw-store step law. This introduces no
-automatic scheduler or entropy implementation: a concrete caller can choose
-among concurrently enabled nodes, and exposing or controlling that ordering
-requires its own information/strategy preservation result.
+an explicit `TriggerPolicy` controls authorization per caller and node. This
+permits, for example, oracle-only sample nodes and permissionless reveal
+nodes. Authorized valid triggers have the same exact raw-store step law. This
+introduces no automatic scheduler or entropy implementation: a concrete caller
+can choose among concurrently enabled nodes, and exposing or controlling that
+ordering requires its own information/strategy preservation result.
 
 `Machine.Contract.initialStore` and `terminalOutcome?` close the state-only
 contract lifecycle. Deployment is exactly the canonical raw encoding of

@@ -119,7 +119,7 @@ theorem execute?_encodeState_internal
     (caller : Address) {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
-    (hauthorized : contract.triggers.allows caller = true) :
+    (hauthorized : contract.triggers.allows caller event.node = true) :
     contract.execute? (RawStore.encodeState contract.codec state)
         (.internal (InternalCalldata.encode caller event)) =
       some ((program.step state (.internal event step)).map

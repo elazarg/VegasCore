@@ -209,7 +209,8 @@ internal path realizes a retained probability table.
 
 `Machine.Contract.InternalCalldata` gives samples and reveals a distinct
 caller-bearing entry point. Its decoder excludes player commits, while an
-explicit `TriggerPolicy` decides which callers are authorized. Encoding an
+explicit `TriggerPolicy` decides which `(caller, node)` pairs are authorized,
+allowing sample and reveal nodes to use different authorities. Encoding an
 available internal event for an authorized caller produces exactly the same
 stored successor law as the corresponding `Machine.step`. This is a local
 one-step theorem, not scheduler preservation: caller choice among concurrent

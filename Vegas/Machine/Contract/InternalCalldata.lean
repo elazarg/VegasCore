@@ -31,16 +31,17 @@ variable [DecidableEq Player]
 variable {L : IExpr} {program : Program Player L}
 
 /-- Target-level authorization for submitting internal-action triggers.
-Permissionless and designated-keeper policies are both instances of this
-interface; the policy does not choose or execute an event. -/
+Authorization may vary by graph node, so sample nodes can use a designated
+oracle while reveal nodes remain permissionless. The policy does not choose or
+execute an event. -/
 structure TriggerPolicy (Address : Type) where
-  allows : Address → Bool
+  allows : Address → Nat → Bool
 
 namespace TriggerPolicy
 
 /-- Every caller may submit an internal trigger. -/
 def permissionless : TriggerPolicy Address where
-  allows _ := true
+  allows _ _ := true
 
 end TriggerPolicy
 
@@ -110,7 +111,7 @@ storage. -/
 def acceptsStore (policy : TriggerPolicy Address)
     (codec : StorageCodec L) (store : RawStore codec)
     (calldata : InternalCalldata Address) : Bool :=
-  policy.allows calldata.caller &&
+  policy.allows calldata.caller calldata.node &&
     match decode (Player := Player) program calldata with
     | none => false
     | some request =>
@@ -123,11 +124,11 @@ theorem acceptsStore_encodeState_encode
     (caller : Address) {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
-    (hauthorized : policy.allows caller = true) :
+    (hauthorized : policy.allows caller event.node = true) :
     acceptsStore (program := program) policy codec
         (RawStore.encodeState codec state) (encode caller event) = true := by
   unfold acceptsStore
-  change (policy.allows caller &&
+  change (policy.allows caller event.node &&
       (match decode (Player := Player) program (encode caller event) with
        | none => false
        | some request =>
@@ -146,7 +147,7 @@ def executeStore? (policy : TriggerPolicy Address)
     (codec : StorageCodec L) (store : RawStore codec)
     (calldata : InternalCalldata Address) :
     Option (GameTheory.Math.Probability.FinDist (RawStore codec)) :=
-  if policy.allows calldata.caller then
+  if policy.allows calldata.caller calldata.node then
     match decode (Player := Player) program calldata with
     | none => none
     | some request =>
@@ -161,7 +162,7 @@ theorem executeStore?_isSome
     (executeStore? (program := program) policy codec store calldata).isSome =
       acceptsStore (program := program) policy codec store calldata := by
   unfold executeStore? acceptsStore
-  by_cases hauthorized : policy.allows calldata.caller
+  by_cases hauthorized : policy.allows calldata.caller calldata.node
   · simp only [hauthorized, ↓reduceIte, Bool.true_and]
     cases decode (Player := Player) program calldata with
     | none => rfl
@@ -177,14 +178,14 @@ theorem executeStore?_encodeState_encode
     (caller : Address) {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
-    (hauthorized : policy.allows caller = true) :
+    (hauthorized : policy.allows caller event.node = true) :
     executeStore? (program := program) policy codec
         (RawStore.encodeState codec state) (encode caller event) =
       some ((program.step state (.internal event step)).map
         (RawStore.encodeState codec)) := by
   unfold executeStore?
   change
-    (if policy.allows caller then
+    (if policy.allows caller event.node then
       match decode (Player := Player) program (encode caller event) with
       | none => none
       | some request =>
