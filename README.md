@@ -159,6 +159,14 @@ automatic scheduler or entropy implementation: a concrete caller can choose
 among concurrently enabled nodes, and exposing or controlling that ordering
 requires its own information/strategy preservation result.
 
+`Machine.Contract.initialStore` and `terminalOutcome?` close the state-only
+contract lifecycle. Deployment is exactly the canonical raw encoding of
+`Machine.init`, with every action incomplete. Terminal readout rejects
+malformed or unfinished storage; on encoded reachable storage it evaluates
+exactly the retained machine payoff, and for compiled source it equals the
+payoff of an actual source terminal environment. This yields settlement data,
+not asset custody, transfers, or withdrawal semantics.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

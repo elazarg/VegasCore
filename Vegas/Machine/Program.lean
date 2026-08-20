@@ -71,6 +71,19 @@ def step (program : Program Player L) (state : program.State)
 def terminal (program : Program Player L) (state : program.State) : Prop :=
   Terminal program.graph state.1
 
+/-- Terminal reachable states contain every field needed by the retained
+machine payoff projection. -/
+theorem existsPayoffOfTerminal (program : Program Player L)
+    (state : program.State) (hterminal : program.terminal state) :
+    ∃ outcome,
+      evalPayoffs? program.payoffs state.1.store = some outcome := by
+  apply evalPayoffs?_isSome_of_available
+  intro payoff hpayoff ref href
+  have hwellFormed := program.payoffsWF payoff hpayoff ref href
+  exact
+    (reachable_storeCoherent program.graphWF state.2).hasRefOfAvailable
+      hterminal hwellFormed.1 hwellFormed.2
+
 /-- Public machine storage visible at a checkpoint. -/
 def publicView (program : Program Player L) (state : program.State) :
     PublicObservation program.graph :=

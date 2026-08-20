@@ -100,22 +100,6 @@ def utility (program : Machine.Program Player L) :
     | some outcome => (outcome who : ℝ)
     | none => 0
 
-omit [Fintype Player] in
-/-- Terminal reachable states always contain every field needed by the
-compiled payoff projection. -/
-theorem exists_payoff_of_terminal
-    (program : Machine.Program Player L)
-    (state : EventGraph.ReachableConfig program.graph)
-    (hterminal : EventGraph.Terminal program.graph state.1) :
-    ∃ outcome,
-      EventGraph.evalPayoffs? program.payoffs state.1.store = some outcome := by
-  apply EventGraph.evalPayoffs?_isSome_of_available
-  intro payoff hpayoff ref href
-  have hwellFormed := program.payoffsWF payoff hpayoff ref href
-  exact
-    (EventGraph.reachable_storeCoherent program.graphWF state.2).hasRefOfAvailable
-      hterminal hwellFormed.1 hwellFormed.2
-
 /-- A live compiled event graph, its observation model, payoff projection, and
 uniform termination proof form one Vegas game. -/
 def game (program : Machine.Program Player L) : Game Player where

@@ -21,3 +21,4 @@ import Vegas.Machine.Contract.StoredExecutor
 import Vegas.Machine.Contract.Authentication
 import Vegas.Machine.Contract.Calldata
 import Vegas.Machine.Contract.InternalCalldata
+import Vegas.Machine.Contract.Lifecycle

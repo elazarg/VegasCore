@@ -28,6 +28,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Player authentication | `Machine.Contract.PlayerCall` | injective caller roles plus exact semantic validity |
 | Player transaction | `Machine.Contract.PlayerCalldata` | word decoding, caller authentication, and exact stored execution |
 | Internal transaction | `Machine.Contract.InternalCalldata` | explicit trigger authorization and exact stored execution |
+| Contract lifecycle | `Machine.Contract.initialStore`, `terminalOutcome?` | exact deployment state and terminal source-payoff readout |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -207,6 +208,16 @@ one-step theorem, not scheduler preservation: caller choice among concurrent
 nodes, transaction ordering, observable failed calls, and sample realization
 remain explicit target behaviors requiring additional operational and
 strategic results.
+
+`Machine.Contract.initialStore` is the canonical constructor state: the raw
+encoding of `Machine.init`, with every action completion bit false.
+`terminalOutcome?` decodes raw storage, performs a finite all-nodes-complete
+check, and only then evaluates retained payoff code. On reachable encoded
+states it is exactly the machine payoff evaluator. For a compiled source
+program, a terminal result is additionally proved equal to source payoff
+evaluation in an actual reconstructed terminal environment. The outcome is
+data for a later settlement pass; VegasCore still has no asset, transfer,
+withdrawal, or failure semantics to justify such effects.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

@@ -17,6 +17,7 @@ import Vegas.Machine.Contract.StoredExecutor
 import Vegas.Machine.Contract.Authentication
 import Vegas.Machine.Contract.Calldata
 import Vegas.Machine.Contract.InternalCalldata
+import Vegas.Machine.Contract.Lifecycle
 
 namespace VegasTests
 
@@ -166,6 +167,15 @@ example (state : matchingPenniesMachine.State)
 noncomputable def matchingPenniesStorageCodec :
     Machine.Contract.StorageCodec simpleExpr :=
   Machine.Contract.StorageCodec.reference simpleExpr
+
+example (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    Machine.Contract.RawStore.readCompleted
+        (Machine.Contract.Layout.canonical matchingPenniesMachine)
+        matchingPenniesStorageCodec
+        (Machine.Contract.initialStore matchingPenniesMachine
+          matchingPenniesStorageCodec) node = some false := by
+  exact Machine.Contract.readCompleted_initialStore
+    matchingPenniesMachine matchingPenniesStorageCodec node
 
 def matchingPenniesRegistry :
     Machine.Contract.PlayerRegistry TestPlayer TestPlayer where
@@ -324,6 +334,21 @@ example (state : matchingPenniesMachine.State)
           sourceEnv) := by
   exact Machine.compile_sourcePayoffOfTerminal
     matchingPenniesProgram state hterminal
+
+example (state : matchingPenniesMachine.State)
+    (hterminal : matchingPenniesMachine.terminal state) :
+    ∃ sourceEnv :
+        VEnv simpleExpr
+          (ToEventGraph.compile matchingPenniesProgram.core).terminalCtx,
+      Machine.Contract.terminalOutcome? matchingPenniesMachine
+          matchingPenniesStorageCodec
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesStorageCodec state) =
+        some (evalPayoffs
+          (ToEventGraph.compile matchingPenniesProgram.core).sourcePayoffs
+          sourceEnv) := by
+  exact Machine.Contract.terminalOutcome?_compile_encodeState
+    matchingPenniesProgram matchingPenniesStorageCodec state hterminal
 
 example (state : matchingPenniesMachine.State)
     (hterminal : matchingPenniesMachine.terminal state) :
