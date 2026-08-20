@@ -253,6 +253,12 @@ checked-count observation. This is an instrumentation boundary, not an EVM gas
 schedule; body costs, refunds, memory expansion, and out-of-gas behavior remain
 unmodeled.
 
+`Machine.Contract.Transaction` adds atomic settlement. A success commits its
+state and ordered outbound actions; a revert restores the pre-call state and
+emits no actions. Settlement is proved to commute with entropy realization, so
+determinization cannot silently change rollback behavior. Receipts, nested-call
+semantics, and transaction scheduling are still absent.
+
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as
 `[player, node, value]` and internal calls as `[node]`; unknown selectors,

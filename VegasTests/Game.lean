@@ -26,6 +26,7 @@ import Vegas.Machine.Contract.EVMCalldata
 import Vegas.Machine.Contract.Entropy
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
+import Vegas.Machine.Contract.Transaction
 
 namespace VegasTests
 
@@ -381,6 +382,22 @@ example
           chain context store message) =
       (matchingPenniesContract.receive chain context store message).outcomeLaw :=
   matchingPenniesEntropyRealization.law chain context store message
+
+example
+    (chain : Machine.Contract.Blockchain.ChainView)
+    (context : Machine.Contract.Blockchain.CallContext TestPlayer)
+    (store : matchingPenniesContract.Store)
+    (message : matchingPenniesContract.Message) :
+    (matchingPenniesEntropyRealization.entropyLaw
+        chain context store message).map
+        (fun entropy =>
+          Machine.Contract.Blockchain.DeterministicResult.settle store
+            (matchingPenniesEntropyRealization.receive
+              chain context store message entropy)) =
+      (matchingPenniesContract.receive chain context store message).settledLaw
+        store := by
+  exact matchingPenniesEntropyRealization.settled_law
+    chain context store message
 
 example :
     matchingPenniesMessageABI.decode
