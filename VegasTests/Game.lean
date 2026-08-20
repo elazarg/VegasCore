@@ -12,6 +12,8 @@ import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Machine.Contract.ClassicalEVMStorage
 import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAssembly
+import Vegas.Machine.Contract.EVMLocalAssembly
+import Vegas.Machine.Contract.ClassicalEVMCodegen
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
@@ -171,6 +173,15 @@ theorem matchingPenniesMachine_graph_nodeCount :
     matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
     ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
     EventGraph.Graph.nodeCount]
+
+theorem matchingPenniesMachine_graph_fieldCount :
+    matchingPenniesMachine.graph.fieldCount = 4 := by
+  simp [matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
+    matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
+    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
+    EventGraph.Graph.fieldCount, EventGraph.Graph.nodeCount,
+    ToEventGraph.initialState,
+    ToEventGraph.InitialState.empty]
 
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
@@ -501,6 +512,13 @@ noncomputable def matchingPenniesEVMByteBackend :
     change matchingPenniesMachine.graph.nodeCount ≤ 2 ^ 256
     rw [matchingPenniesMachine_graph_nodeCount]
     norm_num
+  storageFits := by
+    change
+      2 * matchingPenniesMachine.graph.fieldCount +
+          matchingPenniesMachine.graph.nodeCount + 2 ≤ 2 ^ 256
+    rw [matchingPenniesMachine_graph_fieldCount,
+      matchingPenniesMachine_graph_nodeCount]
+    norm_num
   values :=
     Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
   addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
@@ -584,6 +602,29 @@ example : matchingPenniesRuntimeImage.bytecode.take 6 =
       Machine.Contract.EVM.byte 0x35, Machine.Contract.EVM.byte 0x60,
       Machine.Contract.EVM.byte 0xe0, Machine.Contract.EVM.byte 0x1c] := by
   rfl
+
+def localConditionalExample : Machine.Contract.EVM.LocalAssembly :=
+  [ .op (.push (.one (Machine.Contract.EVM.byte 1))),
+    .jumpi 0,
+    .op .stop,
+    .label 0,
+    .op .stop ]
+
+example :
+    Machine.Contract.EVM.LocalAssembly.resolveAt 100 localConditionalExample =
+      some
+        [ .push (.one (Machine.Contract.EVM.byte 1)),
+          .push (.nat32 109),
+          .jumpi,
+          .stop,
+          .jumpdest,
+          .stop ] := by
+  rfl
+
+example (check : Machine.Contract.EVM.ClassicalStorageCheck) :
+    (Machine.Contract.EVM.compileClassicalStorageCheck 0 check).byteLength =
+      44 := by
+  exact Machine.Contract.EVM.compileClassicalStorageCheck_byteLength 0 check
 
 example (message : matchingPenniesContract.Message) :
     matchingPenniesMessageABI.decodeBytes matchingPenniesArgumentWords

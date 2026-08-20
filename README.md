@@ -377,6 +377,15 @@ exactly when the source graph node is ready. Each successful action's value,
 presence, and completion cells are also proved pairwise distinct. Typed event
 code is retained for the remaining expression-specific lowering.
 
+`Machine.Contract.EVM.LocalAssembly` adds handler-local labels without making
+jump addresses an unchecked renderer concern. `JUMP`/`JUMPI` targets resolve
+only after handler base offsets are known, missing labels reject, and
+resolution is proved to preserve byte length before the whole image's 32-bit
+bound is applied. The structural handler code generator already emits full
+256-bit storage keys, `SLOAD` readiness checks with conditional rejection, and
+ordered value/presence/completion `SSTORE`s. Expression realization must leave
+one encoded result word on the documented stack interface.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

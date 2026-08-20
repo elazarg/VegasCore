@@ -132,6 +132,18 @@ def canonical (program : Program Player L) :
 
 end ClassicalStorageLayout
 
+/-- The complete classical layout fits the EVM's 256-bit storage-key space. -/
+def ClassicalStorageFitsWord (program : Program Player L) : Prop :=
+  (ClassicalStorageLayout.canonical program).slotCount ≤ 2 ^ 256
+
+/-- Every certified classical storage address is represented exactly by a
+256-bit storage key. -/
+theorem classicalStorageAddress_lt_word
+    (fits : ClassicalStorageFitsWord program)
+    (slot : ClassicalStorageSlot program) :
+    (ClassicalStorageLayout.canonical program).address slot < 2 ^ 256 :=
+  ((ClassicalStorageLayout.canonical program).address_lt slot).trans_le fits
+
 /-- Semantic snapshot represented by the total classical EVM layout. The
 pending node is bounded at this layer because only graph sample nodes can be
 pending in reachable protocol states. -/

@@ -126,6 +126,7 @@ structure EVMByteBackend (source : WFProgram Player L) (Address : Type)
   selectors : EVM.ClassicalSelectors
   players : WireCodec Player EVM.Word
   nodesFit : EVM.NodesFitWord (Machine.compile source)
+  storageFits : EVM.ClassicalStorageFitsWord (Machine.compile source)
   values : WireCodec classical.codec.Word EVM.Word
   addresses : EVM.AddressCodec Address
 

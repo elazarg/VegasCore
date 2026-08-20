@@ -71,6 +71,18 @@ do so. -/
 def nat32 (value : Nat) : PushData :=
   selector (BitVec.ofNat 32 value)
 
+/-- Big-endian bytes of one full EVM word. -/
+def word (value : Word) : PushData where
+  bytes := List.ofFn fun index : Fin 32 =>
+    value.extractLsb' (8 * (31 - (index : Nat))) 8
+  nonempty := by simp
+  length_le := by simp
+
+/-- Natural number encoded as a full 256-bit immediate. Values at or above
+`2^256` wrap; storage-layout backends carry the bound that excludes this. -/
+def nat256 (value : Nat) : PushData :=
+  word (BitVec.ofNat 256 value)
+
 @[simp] theorem one_length (value : Byte) :
     (one value).bytes.length = 1 := by
   rfl
@@ -82,6 +94,14 @@ def nat32 (value : Nat) : PushData :=
 @[simp] theorem nat32_length (value : Nat) :
     (nat32 value).bytes.length = 4 := by
   rfl
+
+@[simp] theorem word_length (value : Word) :
+    (word value).bytes.length = 32 := by
+  simp [word]
+
+@[simp] theorem nat256_length (value : Nat) :
+    (nat256 value).bytes.length = 32 := by
+  simp [nat256]
 
 end PushData
 
@@ -194,6 +214,10 @@ def byteLength : Instruction → Nat
 @[simp] theorem opcode_push_selector (value : Selector) :
     opcode (.push (.selector value)) = byte 0x63 := by
   rfl
+
+@[simp] theorem opcode_push_word (value : Word) :
+    opcode (.push (.word value)) = byte 0x7f := by
+  simp [opcode]
 
 end Instruction
 

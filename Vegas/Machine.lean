@@ -43,6 +43,8 @@ import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Machine.Contract.ClassicalEVMStorage
 import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAssembly
+import Vegas.Machine.Contract.EVMLocalAssembly
 import Vegas.Machine.Contract.Imperative
+import Vegas.Machine.Contract.ClassicalEVMCodegen
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction
