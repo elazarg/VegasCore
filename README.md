@@ -372,6 +372,19 @@ the actual deployment bytes. Kernel-checked tests execute selector rejection
 and constructor runtime return. The remaining validation task is a decoder or
 external-EVM correspondence theorem for opcode bytes, followed by generated
 handler refinement; gas and transaction scheduling are deliberately separate.
+`PushData` stores a width-bounded semantic word and derives its big-endian
+payload bytes, preventing instruction semantics and emitted immediates from
+being configured independently.
+
+`ClassicalCompiler.EVMRefinement.BooleanCompilationCorrect` states the exact
+ordinary correctness theorem: canonical total storage must represent typed
+protocol state, anonymous logs must represent the ordered oracle requests,
+reverts must roll back, creation must install and return the selected image,
+and every runtime call must match the deterministic byte-calldata artifact.
+Successful deployment compilation is already proved to retain precisely the
+selected runtime, canonical slot count, and compiled initial storage. The
+remaining instruction simulation is explicit in this proposition rather than
+being assumed by the compiler.
 
 `Machine.Contract.EVM.ClassicalStorageLayout` supplies the corresponding
 account-state representation. EVM's total zero-default storage cannot directly

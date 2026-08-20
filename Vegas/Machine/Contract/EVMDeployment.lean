@@ -99,6 +99,37 @@ def build? (runtime : RuntimeImage selectors) (slotCount : Nat)
   else
     none
 
+theorem build?_runtime {runtime : RuntimeImage selectors} {slotCount : Nat}
+    {storage : TotalStorage} {image : DeploymentImage selectors}
+    (hbuild : build? runtime slotCount storage = some image) :
+    image.runtime = runtime := by
+  simp only [build?] at hbuild
+  split at hbuild
+  · cases hbuild
+    rfl
+  · contradiction
+
+theorem build?_slotCount {runtime : RuntimeImage selectors} {slotCount : Nat}
+    {storage : TotalStorage} {image : DeploymentImage selectors}
+    (hbuild : build? runtime slotCount storage = some image) :
+    image.slotCount = slotCount := by
+  simp only [build?] at hbuild
+  split at hbuild
+  · cases hbuild
+    rfl
+  · contradiction
+
+theorem build?_initialStorage {runtime : RuntimeImage selectors}
+    {slotCount : Nat} {storage : TotalStorage}
+    {image : DeploymentImage selectors}
+    (hbuild : build? runtime slotCount storage = some image) :
+    image.initialStorage = storage := by
+  simp only [build?] at hbuild
+  split at hbuild
+  · cases hbuild
+    rfl
+  · contradiction
+
 /-- The runtime begins at exactly the byte offset returned by the constructor
 layout calculation. -/
 @[simp] theorem creationAssembly_byteLength

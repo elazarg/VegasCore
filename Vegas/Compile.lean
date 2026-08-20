@@ -9,6 +9,7 @@ import Vegas.Compile.SourceAdequacy
 import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
 import Vegas.Compile.BooleanEVM
+import Vegas.Compile.EVMRefinement
 
 /-!
 # Compilation: checked Vegas programs to event graphs

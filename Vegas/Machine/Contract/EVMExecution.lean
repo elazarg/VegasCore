@@ -29,9 +29,6 @@ def bytesToWord (bytes : List Byte) : Word :=
   BitVec.ofNat 256 <|
     bytes.foldl (fun value next => value * 256 + next.toNat) 0
 
-/-- The unsigned word denoted by a `PUSH` payload. -/
-def PushData.value (data : PushData) : Word := bytesToWord data.bytes
-
 /-- Read a fixed number of bytes, padding beyond the input with zero. -/
 def readBytes (bytes : List Byte) (offset count : Nat) : List Byte :=
   List.ofFn fun index : Fin count => bytes[offset + index]?.getD 0
@@ -323,6 +320,31 @@ def run : Nat → Assembly → ExecutionEnv → ExecutionState → ExecutionStat
 def execute (fuel : Nat) (program : Assembly) (env : ExecutionEnv)
     (storage : TotalStorage) : ExecutionState :=
   run fuel program env (ExecutionState.initial storage)
+
+/-- Transaction-level projection. Revert and fault carry no successor storage,
+so rollback is structural rather than an additional theorem premise. -/
+inductive TransactionResult where
+  | success (storage : TotalStorage) (logs : List (List Byte))
+      (returnData : List Byte)
+  | revert (data : List Byte)
+  | fault
+  | outOfFuel
+
+/-- Commit state only after normal `STOP`/`RETURN`; every revert discards all
+intermediate writes. -/
+def ExecutionState.transactionResult
+    (state : ExecutionState) : TransactionResult :=
+  match state.exit with
+  | some .stopped => .success state.storage state.logs []
+  | some (.returned data) => .success state.storage state.logs data
+  | some (.reverted data) => .revert data
+  | some .fault => .fault
+  | none => .outOfFuel
+
+/-- Run one transaction and apply the rollback-aware result projection. -/
+def executeTransaction (fuel : Nat) (program : Assembly)
+    (env : ExecutionEnv) (storage : TotalStorage) : TransactionResult :=
+  (execute fuel program env storage).transactionResult
 
 /-- Fresh EVM account storage before constructor execution. -/
 def freshStorage : TotalStorage := fun _ => 0

@@ -37,47 +37,96 @@ abbrev Byte := BitVec 8
 /-- Construct an EVM byte from its numeric opcode. -/
 def byte (value : Nat) : Byte := BitVec.ofNat 8 value
 
-/-- A valid immediate payload for `PUSH1` through `PUSH32`. Bytes are stored in
-EVM order, most significant first. -/
+/-- A valid immediate payload for `PUSH1` through `PUSH32`. The semantic value
+must fit the selected payload width; emitted bytes are derived in EVM
+big-endian order, so callers cannot supply bytes inconsistent with the value.
+-/
 structure PushData where
-  bytes : List Byte
-  nonempty : bytes ≠ []
-  length_le : bytes.length ≤ 32
+  value : Word
+  byteLength : Nat
+  positive : 0 < byteLength
+  length_le : byteLength ≤ 32
+  value_fits : value.toNat < 2 ^ (8 * byteLength)
 
 namespace PushData
 
+/-- Canonical big-endian payload bytes of a bounded push value. -/
+def bytes (data : PushData) : List Byte :=
+  List.ofFn fun index : Fin data.byteLength =>
+    data.value.extractLsb'
+      (8 * (data.byteLength - 1 - (index : Nat))) 8
+
+@[simp] theorem bytes_length (data : PushData) :
+    data.bytes.length = data.byteLength := by
+  simp [bytes]
+
 /-- One-byte immediate. -/
 def one (value : Byte) : PushData where
-  bytes := [value]
-  nonempty := by simp
+  value := BitVec.ofNat 256 value.toNat
+  byteLength := 1
+  positive := by simp
   length_le := by simp
+  value_fits := by
+    have hsmall : value.toNat < 2 ^ 8 := value.isLt
+    rw [BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (hsmall.trans (by norm_num))]
+    simpa using hsmall
 
 /-- Four-byte immediate. -/
 def four (a b c d : Byte) : PushData where
-  bytes := [a, b, c, d]
-  nonempty := by simp
+  value := BitVec.ofNat 256
+    (((a.toNat * 256 + b.toNat) * 256 + c.toNat) * 256 + d.toNat)
+  byteLength := 4
+  positive := by simp
   length_le := by simp
+  value_fits := by
+    have ha : a.toNat < 256 := by simpa using a.isLt
+    have hb : b.toNat < 256 := by simpa using b.isLt
+    have hc : c.toNat < 256 := by simpa using c.isLt
+    have hd : d.toNat < 256 := by simpa using d.isLt
+    have hvalue :
+        ((a.toNat * 256 + b.toNat) * 256 + c.toNat) * 256 + d.toNat <
+          2 ^ 32 := by
+      norm_num
+      omega
+    rw [BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (hvalue.trans (by norm_num))]
+    simpa using hvalue
 
 /-- Big-endian bytes of a 32-bit EVM selector. -/
 def selector (value : Selector) : PushData :=
-  four
-    (value.extractLsb' 24 8)
-    (value.extractLsb' 16 8)
-    (value.extractLsb' 8 8)
-    (value.extractLsb' 0 8)
+  { value := BitVec.ofNat 256 value.toNat
+    byteLength := 4
+    positive := by simp
+    length_le := by simp
+    value_fits := by
+      have hsmall : value.toNat < 2 ^ 32 := value.isLt
+      rw [BitVec.toNat_ofNat,
+        Nat.mod_eq_of_lt (hsmall.trans (by norm_num))]
+      simpa using hsmall }
 
 /-- A natural number encoded as one 32-bit big-endian immediate. Values at or
 above `2^32` wrap; linkable runtime images prove that jump destinations never
 do so. -/
 def nat32 (value : Nat) : PushData :=
-  selector (BitVec.ofNat 32 value)
+  { value := BitVec.ofNat 256 (value % 2 ^ 32)
+    byteLength := 4
+    positive := by simp
+    length_le := by simp
+    value_fits := by
+      have hsmall : value % 2 ^ 32 < 2 ^ 32 :=
+        Nat.mod_lt _ (by norm_num)
+      rw [BitVec.toNat_ofNat,
+        Nat.mod_eq_of_lt (hsmall.trans (by norm_num))]
+      simpa using hsmall }
 
 /-- Big-endian bytes of one full EVM word. -/
 def word (value : Word) : PushData where
-  bytes := List.ofFn fun index : Fin 32 =>
-    value.extractLsb' (8 * (31 - (index : Nat))) 8
-  nonempty := by simp
+  value := value
+  byteLength := 32
+  positive := by simp
   length_le := by simp
+  value_fits := by simpa using value.isLt
 
 /-- Natural number encoded as a full 256-bit immediate. Values at or above
 `2^256` wrap; storage-layout backends carry the bound that excludes this. -/
@@ -86,22 +135,27 @@ def nat256 (value : Nat) : PushData :=
 
 /-- Big-endian bytes of one native 160-bit EVM account address. -/
 def address (value : AddressWord) : PushData where
-  bytes := List.ofFn fun index : Fin 20 =>
-    value.extractLsb' (8 * (19 - (index : Nat))) 8
-  nonempty := by simp
+  value := BitVec.ofNat 256 value.toNat
+  byteLength := 20
+  positive := by simp
   length_le := by simp
+  value_fits := by
+    have hsmall : value.toNat < 2 ^ 160 := value.isLt
+    rw [BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (hsmall.trans (by norm_num))]
+    simpa using hsmall
 
 @[simp] theorem one_length (value : Byte) :
     (one value).bytes.length = 1 := by
-  rfl
+  simp [one]
 
 @[simp] theorem selector_length (value : Selector) :
     (selector value).bytes.length = 4 := by
-  rfl
+  simp [selector]
 
 @[simp] theorem nat32_length (value : Nat) :
     (nat32 value).bytes.length = 4 := by
-  rfl
+  simp [nat32]
 
 @[simp] theorem word_length (value : Word) :
     (word value).bytes.length = 32 := by
@@ -109,11 +163,53 @@ def address (value : AddressWord) : PushData where
 
 @[simp] theorem nat256_length (value : Nat) :
     (nat256 value).bytes.length = 32 := by
-  simp [nat256]
+  simp [nat256, word]
 
 @[simp] theorem address_length (value : AddressWord) :
     (address value).bytes.length = 20 := by
   simp [address]
+
+@[simp] theorem one_byteLength (value : Byte) :
+    (one value).byteLength = 1 := by rfl
+
+@[simp] theorem selector_byteLength (value : Selector) :
+    (selector value).byteLength = 4 := by rfl
+
+@[simp] theorem nat32_byteLength (value : Nat) :
+    (nat32 value).byteLength = 4 := by rfl
+
+@[simp] theorem word_byteLength (value : Word) :
+    (word value).byteLength = 32 := by rfl
+
+@[simp] theorem nat256_byteLength (value : Nat) :
+    (nat256 value).byteLength = 32 := by rfl
+
+@[simp] theorem address_byteLength (value : AddressWord) :
+    (address value).byteLength = 20 := by rfl
+
+@[simp] theorem one_value (value : Byte) :
+    (one value).value = BitVec.ofNat 256 value.toNat := by rfl
+
+@[simp] theorem selector_value (value : Selector) :
+    (selector value).value = BitVec.ofNat 256 value.toNat := by rfl
+
+@[simp] theorem nat32_value (value : Nat) :
+    (nat32 value).value = BitVec.ofNat 256 (value % 2 ^ 32) := by rfl
+
+theorem nat32_value_of_lt {value : Nat} (hvalue : value < 2 ^ 32) :
+    (nat32 value).value = BitVec.ofNat 256 value := by
+  have hmod : value % 2 ^ 32 = value := Nat.mod_eq_of_lt hvalue
+  change BitVec.ofNat 256 (value % 2 ^ 32) = _
+  rw [hmod]
+
+@[simp] theorem word_value (value : Word) :
+    (word value).value = value := by rfl
+
+@[simp] theorem nat256_value (value : Nat) :
+    (nat256 value).value = BitVec.ofNat 256 value := by rfl
+
+@[simp] theorem address_value (value : AddressWord) :
+    (address value).value = BitVec.ofNat 256 value.toNat := by rfl
 
 end PushData
 
@@ -197,7 +293,7 @@ def opcode : Instruction → Byte
   | .jumpi => byte 0x57
   | .pc => byte 0x58
   | .jumpdest => byte 0x5b
-  | .push data => byte (0x5f + data.bytes.length)
+  | .push data => byte (0x5f + data.byteLength)
   | .dup index => byte (0x80 + index)
   | .swap index => byte (0x90 + index)
   | .log0 => byte 0xa0
@@ -212,7 +308,7 @@ def encode : Instruction → List Byte
 
 /-- Encoded byte length of one instruction. -/
 def byteLength : Instruction → Nat
-  | .push data => 1 + data.bytes.length
+  | .push data => 1 + data.byteLength
   | _ => 1
 
 @[simp] theorem encode_length (instruction : Instruction) :
