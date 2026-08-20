@@ -218,6 +218,15 @@ calls that fail authentication or game validation are `rejected`. This is not
 yet a gas or rollback semantics, but failure is no longer represented as an
 unclassified missing value.
 
+`Machine.Contract.Blockchain.EntropyRealization` states the next required
+certificate without selecting an entropy mechanism: deterministic receive plus
+an assumed finite entropy law must push forward to exactly the stochastic
+contract result law. The included semantic realization is proof-facing only.
+For a real chain, unpredictability, bias resistance, liveness, and the claimed
+seed distribution remain assumptions to discharge. In particular, one uniform
+256-bit seed cannot exactly realize every rational table unless its masses have
+compatible denominators; rejection or a richer protocol may be necessary.
+
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as
 `[player, node, value]` and internal calls as `[node]`; unknown selectors,

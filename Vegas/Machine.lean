@@ -27,3 +27,4 @@ import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
 import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
+import Vegas.Machine.Contract.Entropy

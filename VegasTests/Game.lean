@@ -23,6 +23,7 @@ import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
 import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
+import Vegas.Machine.Contract.Entropy
 
 namespace VegasTests
 
@@ -286,6 +287,24 @@ noncomputable def matchingPenniesMessageABI :
     change matchingPenniesMachine.graph.nodeCount ≤ 2 ^ 256
     rw [matchingPenniesMachine_graph_nodeCount]
     norm_num)
+
+noncomputable def matchingPenniesEntropyRealization :
+    Machine.Contract.Blockchain.EntropyRealization
+      matchingPenniesContract.toStochasticContract :=
+  Machine.Contract.Blockchain.EntropyRealization.semantic
+    matchingPenniesContract.toStochasticContract
+
+example
+    (chain : Machine.Contract.Blockchain.ChainView)
+    (context : Machine.Contract.Blockchain.CallContext TestPlayer)
+    (store : matchingPenniesContract.Store)
+    (message : matchingPenniesContract.Message) :
+    (matchingPenniesEntropyRealization.entropyLaw
+        chain context store message).map
+        (matchingPenniesEntropyRealization.receive
+          chain context store message) =
+      (matchingPenniesContract.receive chain context store message).outcomeLaw :=
+  matchingPenniesEntropyRealization.law chain context store message
 
 example :
     matchingPenniesMessageABI.decode
