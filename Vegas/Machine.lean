@@ -6,4 +6,5 @@ Authors: VegasCore contributors
 
 import Vegas.Machine.System
 import Vegas.Machine.Refinement
+import Vegas.Machine.Administrative
 import Vegas.Machine.Program

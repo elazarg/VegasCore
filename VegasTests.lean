@@ -5,3 +5,4 @@ Authors: VegasCore contributors
 -/
 
 import VegasTests.Game
+import VegasTests.Machine

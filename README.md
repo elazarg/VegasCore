@@ -46,6 +46,13 @@ Refinements compose. This supports small passes such as adding bookkeeping,
 choosing an order, introducing an encoding, or splitting one logical operation
 across transactions.
 
+`Machine.AdministrativeLayer` is the first such pass. It attaches arbitrary
+machine metadata and permits exact stochastic metadata-only commands. Its
+generated refinement proves that semantic steps retain their abstract law,
+administrative steps stutter after projection, and terminality is unchanged.
+It can also lift an abstract observation by hiding the metadata; using that
+lift is a modeling choice, not a proof that a real runtime keeps it secret.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

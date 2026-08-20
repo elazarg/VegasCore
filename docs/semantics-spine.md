@@ -82,6 +82,12 @@ A lowering pass should introduce one implementation concern at a time.
 concrete commands decode to an abstract command or to an abstract stutter, and
 the projected laws agree exactly. These certificates compose.
 
+`Machine.AdministrativeLayer` realizes the first reusable pass in this chain.
+It adds a metadata component and metadata-only stochastic commands, while
+deriving exact step projection and terminality preservation. An optional lifted
+observation hides the metadata by construction. That lifted model applies only
+when the intended runtime exposure really omits the metadata.
+
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
 
