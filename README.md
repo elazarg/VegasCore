@@ -63,6 +63,13 @@ administrative steps stutter after projection, and terminality is unchanged.
 It can also lift an abstract observation by hiding the metadata; using that
 lift is a modeling choice, not a proof that a real runtime keeps it secret.
 
+`Machine.Instrumentation` is the adjacent non-stuttering pass: metadata is
+updated atomically with every realized semantic successor. It covers target-
+neutral completion counters, receipts, and explicit execution-order records.
+The supplied `executionLog` is a proof-facing reference instance; a contract
+backend can lower its records to stable action ids and completion storage one
+representation decision at a time.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

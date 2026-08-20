@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Machine.Administrative
+import Vegas.Machine.Instrumentation
 
 namespace VegasTests.Machine
 
@@ -49,5 +50,22 @@ example :
       FinDist.pure (0 : Nat) := by
   exact padding.refinement.step_eq_pure_of_administrative
     ((0 : Nat), false) (.administrative Padding.flip) rfl
+
+noncomputable def counterLog : Instrumentation counter :=
+  Instrumentation.executionLog counter
+
+noncomputable example : Refinement counter counterLog.lower :=
+  counterLog.refinement
+
+example : counterLog.refinement.PreservesTerminal :=
+  counterLog.preservesTerminal
+
+example :
+    counterLog.lower.step ((0 : Nat), []) Advance.next =
+      (counter.step (0 : Nat) Advance.next).map fun next =>
+        (next,
+          [({ prior := (0 : Nat), command := Advance.next, next := next } :
+            Instrumentation.StepRecord counter)]) := by
+  exact Instrumentation.executionLog_step counter (0 : Nat) [] Advance.next
 
 end VegasTests.Machine

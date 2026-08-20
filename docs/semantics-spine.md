@@ -104,6 +104,12 @@ deriving exact step projection and terminality preservation. An optional lifted
 observation hides the metadata by construction. That lifted model applies only
 when the intended runtime exposure really omits the metadata.
 
+`Machine.Instrumentation` handles metadata changed atomically by semantic
+steps, rather than by target-only commands. Its exact projection covers such
+concerns as completion flags, sequence counters, and receipts. The reference
+`executionLog` records realized step order; exposing that log would change the
+observation model and therefore requires an explicit companion theorem.
+
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
 
