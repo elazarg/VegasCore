@@ -12,6 +12,7 @@ import Vegas.Machine.Contract.Storage
 import Vegas.Machine.Contract.Validator
 import Vegas.Machine.Contract.State
 import Vegas.Machine.Contract.StoredABI
+import Vegas.Machine.Contract.Executor
 
 namespace VegasTests
 
@@ -186,6 +187,15 @@ example (state : matchingPenniesMachine.State)
         (Machine.Contract.Request.encode command) = true := by
   rw [Machine.Contract.Request.acceptsStore_encodeState]
   exact Machine.Contract.Request.accepts_encode command
+
+example (state : matchingPenniesMachine.State)
+    (command : matchingPenniesMachine.Command state) :
+    Machine.Contract.Request.executeConfig? state.1
+        (Machine.Contract.Request.encode command) =
+      some (GameTheory.Math.Probability.FinDist.map Subtype.val
+        (matchingPenniesMachine.step state command)) := by
+  exact Machine.Contract.Request.executeConfig?_encode_eq_map_step
+    state command
 
 example
     (store : Machine.Contract.RawStore matchingPenniesStorageCodec)

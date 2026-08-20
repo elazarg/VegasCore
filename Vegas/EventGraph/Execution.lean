@@ -1632,6 +1632,20 @@ noncomputable def stepAvailable (G : Graph Player L) (state : ReachableConfig G)
   (stepAvailableEvent G state.1 event).bindOnSupport fun next hnext =>
     FinDist.pure ⟨next, Reachable.step state.2 event hnext⟩
 
+/-- Erasing successor reachability evidence from a reachable-state step
+recovers exactly the underlying raw-configuration law. -/
+theorem map_val_stepAvailable (G : Graph Player L)
+    (state : ReachableConfig G) (event : AvailableEvent G state.1) :
+    FinDist.map Subtype.val (stepAvailable G state event) =
+      stepAvailableEvent G state.1 event := by
+  unfold stepAvailable
+  rw [FinDist.map_bindOnSupport]
+  rw [FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    (g := fun next => FinDist.pure next)]
+  · exact FinDist.bind_pure _
+  · intro next hnext
+    simp
+
 /-- Every supported reachable-state step strictly grows the completed-node
 downset. -/
 theorem done_ssubset_of_stepAvailable_support

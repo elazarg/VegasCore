@@ -23,6 +23,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Storage words | `Machine.Contract.StorageCodec` | typed target-word round trips and slot noninterference |
 | Stored state | `Machine.Contract.RawStore` | executable snapshot round trip and reachable-state injectivity |
 | Stored ABI | `Machine.Contract.Request.acceptsStore` | raw-storage validation equal to semantic availability |
+| Logical execution | `Machine.Contract.Request.executeConfig?` | exact reachability-erased machine step law |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -158,6 +159,15 @@ with the executable logical validator. For any encoded reachable state, it is
 proved to return exactly semantic command availability. The boundary still
 receives a typed logical request; concrete word/calldata decoding and address
 authentication have not been silently folded into it.
+
+`Machine.Contract.Request.executeConfig?` adds the exact next-state law after
+the same finite checks. It succeeds exactly when `acceptsConfig` does, and an
+encoded valid command produces precisely the raw-configuration projection of
+`Machine.step`. Its `FinDist` result is a semantic analysis object, not an
+extractable sampler: GameTheory's current canonical finite distribution is a
+noncomputable PMF. Retained `EventDist` syntax remains available for backend
+lowering, but an executable interpreter needs a separate finite-law or sampler
+interface not currently supplied by GameTheory.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

@@ -16,3 +16,4 @@ import Vegas.Machine.Contract.Storage
 import Vegas.Machine.Contract.Validator
 import Vegas.Machine.Contract.State
 import Vegas.Machine.Contract.StoredABI
+import Vegas.Machine.Contract.Executor

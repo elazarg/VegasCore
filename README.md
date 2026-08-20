@@ -117,6 +117,16 @@ answer is proved identical to semantic command availability. This is still a
 logical ABI over typed payloads; concrete calldata decoding and caller
 authentication remain later passes.
 
+`Machine.Contract.Request.executeConfig?` is the adjacent logical executor. It
+rejects exactly the requests rejected by `acceptsConfig`; on an encoded valid
+command, its next-configuration law is exactly `Machine.step` with reachability
+proofs erased. This executor is a semantic reference, not an extracted random
+sampler: GameTheory's canonical `FinDist` is PMF-based and noncomputable. A
+backend can still lower the retained `EventDist` code to an oracle, VRF, or
+other entropy mechanism, but an executable Vegas interpreter would need an
+additional finite-law/sampler interface that GameTheory does not currently
+provide.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
