@@ -93,6 +93,24 @@ def compileClassicalActionWrites
     .op (.push (.nat256 action.completionSlot)),
     .op .sstore ]
 
+/-- Resolved instruction sequence of the ordered action writes. -/
+def classicalActionWritesAssembly
+    (action : ClassicalActionIR program) : Assembly :=
+  [ .push (.nat256 action.valueSlot),
+    .sstore,
+    .push (.one (byte 1)),
+    .push (.nat256 action.presenceSlot),
+    .sstore,
+    .push (.one (byte 1)),
+    .push (.nat256 action.completionSlot),
+    .sstore ]
+
+@[simp] theorem resolveAt_compileClassicalActionWrites
+    (base : Nat) (action : ClassicalActionIR program) :
+    (compileClassicalActionWrites action).resolveAt base =
+      some (classicalActionWritesAssembly action) := by
+  rfl
+
 @[simp] theorem compileClassicalActionWrites_byteLength
     (action : ClassicalActionIR program) :
     (compileClassicalActionWrites action).byteLength = 106 := by

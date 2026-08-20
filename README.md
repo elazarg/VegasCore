@@ -412,7 +412,11 @@ resolution is proved to preserve byte length before the whole image's 32-bit
 bound is applied. The structural handler code generator already emits full
 256-bit storage keys, `SLOAD` readiness checks with conditional rejection, and
 ordered value/presence/completion `SSTORE`s. Expression realization must leave
-one encoded result word on the documented stack interface.
+one encoded result word on the documented stack interface. The byte-offset
+execution layer proves prefix fetching and code-fragment composition, and the
+resolved action-write sequence is proved to consume that result and perform
+the three exact, ordered, non-wrapping storage updates under the certified
+layout bound.
 
 `ClassicalCompiler.EVMByteBackend.compileBooleanDeployment?` is the complete
 trusted-oracle Boolean source-to-creation-bytecode endpoint. It supports the

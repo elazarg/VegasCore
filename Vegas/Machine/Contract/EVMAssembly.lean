@@ -190,6 +190,12 @@ def address (value : AddressWord) : PushData where
 @[simp] theorem one_value (value : Byte) :
     (one value).value = BitVec.ofNat 256 value.toNat := by rfl
 
+@[simp] theorem one_byte_one_value :
+    (one (byte 1)).value = (1 : Word) := by rfl
+
+@[simp] theorem byte_one_setWidth :
+    BitVec.setWidth 256 (byte 1) = (1 : Word) := by rfl
+
 @[simp] theorem selector_value (value : Selector) :
     (selector value).value = BitVec.ofNat 256 value.toNat := by rfl
 
@@ -207,6 +213,14 @@ theorem nat32_value_of_lt {value : Nat} (hvalue : value < 2 ^ 32) :
 
 @[simp] theorem nat256_value (value : Nat) :
     (nat256 value).value = BitVec.ofNat 256 value := by rfl
+
+theorem nat256_value_toNat_of_lt {value : Nat} (hvalue : value < 2 ^ 256) :
+    (nat256 value).value.toNat = value := by
+  change (BitVec.ofNat 256 value).toNat = value
+  rw [BitVec.toNat_ofNat]
+  apply Nat.mod_eq_of_lt
+  norm_num at hvalue ⊢
+  exact hvalue
 
 @[simp] theorem address_value (value : AddressWord) :
     (address value).value = BitVec.ofNat 256 value.toNat := by rfl

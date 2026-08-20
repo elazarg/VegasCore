@@ -161,6 +161,34 @@ structure ClassicalActionIR (program : Program Player L) where
   completionSlot_eq : completionSlot =
     (ClassicalStorageLayout.canonical program).address (.completed node)
 
+namespace ClassicalActionIR
+
+/-- Every generated value slot is exactly representable by an EVM storage
+key under the backend layout bound. -/
+theorem valueSlot_lt_word (fits : ClassicalStorageFitsWord program)
+    (action : ClassicalActionIR program) :
+    action.valueSlot < 2 ^ 256 := by
+  rw [action.valueSlot_eq]
+  exact classicalStorageAddress_lt_word fits _
+
+/-- Every generated presence slot is exactly representable by an EVM storage
+key under the backend layout bound. -/
+theorem presenceSlot_lt_word (fits : ClassicalStorageFitsWord program)
+    (action : ClassicalActionIR program) :
+    action.presenceSlot < 2 ^ 256 := by
+  rw [action.presenceSlot_eq]
+  exact classicalStorageAddress_lt_word fits _
+
+/-- Every generated completion slot is exactly representable by an EVM
+storage key under the backend layout bound. -/
+theorem completionSlot_lt_word (fits : ClassicalStorageFitsWord program)
+    (action : ClassicalActionIR program) :
+    action.completionSlot < 2 ^ 256 := by
+  rw [action.completionSlot_eq]
+  exact classicalStorageAddress_lt_word fits _
+
+end ClassicalActionIR
+
 /-- Compile one graph node into all deterministic routes that implement it. -/
 def compileClassicalActions (program : Program Player L)
     (node : Fin program.graph.nodeCount) : List (ClassicalActionIR program) :=
