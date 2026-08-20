@@ -422,9 +422,9 @@ theorem ofStore?_eq_of_getAs_eq
 
 end ReadEnv
 
-/-- A graph-local finite probability law with an explicit dependency
-footprint. Executable graphs use GameTheory's canonical probability type;
-source-level rational weights do not escape compilation. -/
+/-- Graph-local distribution code with an explicit dependency footprint.
+Evaluation retains an exact normalized rational table for runtime lowering and
+denotes that table as GameTheory's canonical probability type for semantics. -/
 structure EventDist (L : IExpr) where
   ty : L.Ty
   code : DistCode L ty
@@ -435,11 +435,17 @@ structure EventDist (L : IExpr) where
 
 namespace EventDist
 
-/-- Execute retained distribution code from its proved graph-local reads. -/
-def eval (dist : EventDist L) (env : ReadEnv L dist.reads) :
-    GameTheory.Math.Probability.FinDist (L.Val dist.ty) :=
-  L.evalDistDeps dist.code.dist fun _name _depTy binding dependency =>
+/-- Execute retained distribution code to its exact rational probability
+table from proved graph-local reads. -/
+def evalLaw (dist : EventDist L) (env : ReadEnv L dist.reads) :
+    RationalLaw (L.Val dist.ty) :=
+  L.evalLawDeps dist.code.dist fun _name _depTy binding dependency =>
     env.read (dist.code.ref binding) (dist.read_mem binding dependency)
+
+/-- Denote the retained exact table as the canonical semantic finite law. -/
+noncomputable def eval (dist : EventDist L) (env : ReadEnv L dist.reads) :
+    GameTheory.Math.Probability.FinDist (L.Val dist.ty) :=
+  (dist.evalLaw env).denote
 
 end EventDist
 

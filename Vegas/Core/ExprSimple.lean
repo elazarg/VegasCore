@@ -322,11 +322,10 @@ inductive DistExpr (Γ : CtxSimple) (b : BaseTy) : Type where
   | weighted (law : RationalLaw (Val b)) : DistExpr Γ b
   | ite (c : Expr Γ .bool) (t f : DistExpr Γ b) : DistExpr Γ b
 
-def evalDistExpr : DistExpr Γ b → PlainEnv Γ →
-    GameTheory.Math.Probability.FinDist (Val b)
-  | .weighted law, _ => law.denote
+def evalLawDistExpr : DistExpr Γ b → PlainEnv Γ → RationalLaw (Val b)
+  | .weighted law, _ => law
   | .ite c t f, env =>
-      if evalExpr c env then evalDistExpr t env else evalDistExpr f env
+      if evalExpr c env then evalLawDistExpr t env else evalLawDistExpr f env
 
 /-- Distribution expression dependency set. -/
 def distExprDeps : DistExpr Γ b → Finset VarId
@@ -351,41 +350,43 @@ theorem dist_deps_context {Γ : CtxSimple} {b : BaseTy}
         · exact iht x hxt
         · exact ihf x hxf
 
-theorem dist_deps_sound {Γ : CtxSimple} {b : BaseTy}
+theorem law_deps_sound {Γ : CtxSimple} {b : BaseTy}
     (d : DistExpr Γ b) (ρ₁ ρ₂ : PlainEnv Γ)
     (ha : AgreesOn ρ₁ ρ₂ (distExprDeps d)) :
-    evalDistExpr d ρ₁ = evalDistExpr d ρ₂ := by
+    evalLawDistExpr d ρ₁ = evalLawDistExpr d ρ₂ := by
   induction d with
   | weighted _ => rfl
   | ite c t f iht ihf =>
-    simp only [evalDistExpr]
+    simp only [evalLawDistExpr]
     rw [expr_deps_sound c ρ₁ ρ₂
       (ha.mono (Finset.subset_union_left.trans Finset.subset_union_left))]
     split
     · exact iht (ha.mono (Finset.subset_union_right.trans Finset.subset_union_left))
     · exact ihf (ha.mono Finset.subset_union_right)
 
-def evalDistExprDeps : (d : DistExpr Γ b) →
+def evalLawDistExprDeps : (d : DistExpr Γ b) →
     ((x : VarId) → (τ : BaseTy) → HasVar Γ x τ →
       x ∈ distExprDeps d → Val τ) →
-        GameTheory.Math.Probability.FinDist (Val b)
-  | .weighted law, _ => law.denote
+        RationalLaw (Val b)
+  | .weighted law, _ => law
   | .ite c t f, ρ =>
       if evalExprDeps c
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx])) then
-        evalDistExprDeps t
+        evalLawDistExprDeps t
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
       else
-        evalDistExprDeps f
+        evalLawDistExprDeps f
           (fun x τ h hx => ρ x τ h (by simp [distExprDeps, hx]))
 
-theorem evalDistExprDeps_eq_evalDist {Γ : CtxSimple} {b : BaseTy}
+theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
     (d : DistExpr Γ b) (ρ : PlainEnv Γ) :
-    evalDistExprDeps d (fun x τ h _ => ρ x τ h) = evalDistExpr d ρ := by
+    evalLawDistExprDeps d (fun x τ h _ => ρ x τ h) =
+      evalLawDistExpr d ρ := by
   induction d with
   | weighted _ => rfl
   | ite c t f iht ihf =>
-      simp [evalDistExprDeps, evalDistExpr, evalExprDeps_eq_eval, iht, ihf]
+      simp [evalLawDistExprDeps, evalLawDistExpr,
+        evalExprDeps_eq_eval, iht, ihf]
 
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
 def simpleExpr : Vegas.IExpr where
@@ -403,14 +404,14 @@ def simpleExpr : Vegas.IExpr where
   evalDeps := @evalExprDeps
   expr_deps_context := @expr_deps_context
   DistExpr := DistExpr
-  evalDist := @evalDistExpr
+  evalLaw := @evalLawDistExpr
   distDeps := @distExprDeps
   dist_deps_context := @dist_deps_context
-  evalDistDeps := @evalDistExprDeps
+  evalLawDeps := @evalLawDistExprDeps
   evalDeps_eq_eval := @evalExprDeps_eq_eval
-  evalDistDeps_eq_evalDist := @evalDistExprDeps_eq_evalDist
+  evalLawDeps_eq_evalLaw := @evalLawDistExprDeps_eq_evalLaw
   expr_deps_sound := @expr_deps_sound
-  dist_deps_sound := @dist_deps_sound
+  law_deps_sound := @law_deps_sound
 
 noncomputable instance finiteType_bool : FiniteType simpleExpr .bool where
   fintype := by
@@ -715,21 +716,21 @@ theorem nullableCommitGuard_satisfiable
       (Env.cons (x := x) Option.none env) = true
   simp
 
-@[simp] theorem evalDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
+@[simp] theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (law : RationalLaw (Val b)) (env : PlainEnv Γ) :
-    evalDistExpr (.weighted law) env = law.denote := rfl
+    evalLawDistExpr (.weighted law) env = law := rfl
 
-theorem evalDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
+theorem evalLawDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
     (hc : evalExpr c env = true) :
-    evalDistExpr (.ite c t f) env = evalDistExpr t env := by
-  simp [evalDistExpr, hc]
+    evalLawDistExpr (.ite c t f) env = evalLawDistExpr t env := by
+  simp [evalLawDistExpr, hc]
 
-theorem evalDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
+theorem evalLawDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
     (hc : evalExpr c env = false) :
-    evalDistExpr (.ite c t f) env = evalDistExpr f env := by
-  simp [evalDistExpr, hc]
+    evalLawDistExpr (.ite c t f) env = evalLawDistExpr f env := by
+  simp [evalLawDistExpr, hc]
 
 def DistExpr.point (v : Val b) : DistExpr Γ b := .weighted (.pure v)
 

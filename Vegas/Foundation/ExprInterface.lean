@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Foundation.Context
+import Vegas.Foundation.Probability
 
 /-!
 # The embedded expression-language interface `IExpr`
@@ -62,9 +63,11 @@ structure IExpr where
       ∀ x, x ∈ exprDeps e → x ∈ Γ.map Prod.fst
   /-- Typed distribution syntax. -/
   DistExpr : Ctx Ty → Ty → Type
-  /-- Denotational evaluation into the canonical finite probability law. -/
-  evalDist : {Γ : Ctx Ty} → {τ : Ty} →
-    DistExpr Γ τ → Env Val Γ → FinDist (Val τ)
+  /-- Evaluate distribution syntax to an exact, normalized rational table.
+  This table is retained for execution lowering; semantic game laws are
+  derived from it with `RationalLaw.denote`. -/
+  evalLaw : {Γ : Ctx Ty} → {τ : Ty} →
+    DistExpr Γ τ → Env Val Γ → RationalLaw (Val τ)
   /-- Static over-approximation of variables a distribution reads. -/
   distDeps : {Γ : Ctx Ty} → {τ : Ty} → DistExpr Γ τ → Finset VarId
   /-- Distribution dependency sets mention only variables available in the
@@ -72,31 +75,70 @@ structure IExpr where
   dist_deps_context :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ),
       ∀ x, x ∈ distDeps d → x ∈ Γ.map Prod.fst
-  /-- Evaluate a distribution from values for only its declared dependencies. -/
-  evalDistDeps :
+  /-- Evaluate an exact law from values for only its declared dependencies. -/
+  evalLawDeps :
     {Γ : Ctx Ty} → {τ : Ty} → (d : DistExpr Γ τ) →
       ((x : VarId) → (σ : Ty) → HasVar Γ x σ → x ∈ distDeps d → Val σ) →
-        FinDist (Val τ)
+        RationalLaw (Val τ)
   /-- Dependency-local expression evaluation agrees with full-environment
   evaluation when supplied by that environment. -/
   evalDeps_eq_eval :
     ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ) (ρ : Env Val Γ),
       evalDeps e (fun x σ h _ => ρ x σ h) = eval e ρ
-  /-- Dependency-local distribution evaluation agrees with full-environment
+  /-- Dependency-local exact-law evaluation agrees with full-environment
   evaluation when supplied by that environment. -/
-  evalDistDeps_eq_evalDist :
+  evalLawDeps_eq_evalLaw :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ : Env Val Γ),
-      evalDistDeps d (fun x σ h _ => ρ x σ h) = evalDist d ρ
+      evalLawDeps d (fun x σ h _ => ρ x σ h) = evalLaw d ρ
   /-- Soundness of `exprDeps`: if two environments agree on the declared
   dependency set, `eval` produces equal results. The semantic justification
   for treating `exprDeps` as a usable dependency tracker. -/
   expr_deps_sound :
     ∀ {Γ : Ctx Ty} {τ : Ty} (e : Expr Γ τ) (ρ₁ ρ₂ : Env Val Γ),
       AgreesOn ρ₁ ρ₂ (exprDeps e) → eval e ρ₁ = eval e ρ₂
-  /-- Soundness of `distDeps`. -/
-  dist_deps_sound :
+  /-- Soundness of `distDeps` for retained exact probability tables. -/
+  law_deps_sound :
     ∀ {Γ : Ctx Ty} {τ : Ty} (d : DistExpr Γ τ) (ρ₁ ρ₂ : Env Val Γ),
-      AgreesOn ρ₁ ρ₂ (distDeps d) → evalDist d ρ₁ = evalDist d ρ₂
+      AgreesOn ρ₁ ρ₂ (distDeps d) → evalLaw d ρ₁ = evalLaw d ρ₂
+
+namespace IExpr
+
+/-- Denote a retained exact rational table as GameTheory's canonical semantic
+finite probability law. -/
+noncomputable def evalDist (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+    (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : FinDist (L.Val τ) :=
+  (L.evalLaw dist env).denote
+
+/-- Dependency-local semantic distribution evaluation, derived from the
+retained exact rational table. -/
+noncomputable def evalDistDeps (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+    (dist : L.DistExpr Γ τ)
+    (env :
+      (x : VarId) → (σ : L.Ty) → HasVar Γ x σ →
+        x ∈ L.distDeps dist → L.Val σ) : FinDist (L.Val τ) :=
+  (L.evalLawDeps dist env).denote
+
+/-- Dependency-local and full-environment semantic laws agree because their
+retained exact tables agree. -/
+theorem evalDistDeps_eq_evalDist (L : IExpr)
+    {Γ : Ctx L.Ty} {τ : L.Ty} (dist : L.DistExpr Γ τ)
+    (env : Env L.Val Γ) :
+    L.evalDistDeps dist (fun x σ h _ => env x σ h) =
+      L.evalDist dist env := by
+  unfold evalDistDeps evalDist
+  rw [L.evalLawDeps_eq_evalLaw]
+
+/-- Semantic distribution evaluation depends only on the declared
+distribution dependencies. -/
+theorem dist_deps_sound (L : IExpr)
+    {Γ : Ctx L.Ty} {τ : L.Ty} (dist : L.DistExpr Γ τ)
+    (left right : Env L.Val Γ)
+    (hagrees : AgreesOn left right (L.distDeps dist)) :
+    L.evalDist dist left = L.evalDist dist right := by
+  unfold evalDist
+  rw [L.law_deps_sound dist left right hagrees]
+
+end IExpr
 
 -- Promote the `decEqTy` and `decEqVal` interface fields to instances. After
 -- this, `DecidableEq (L.Val τ)` is automatically available for any `L : IExpr`,

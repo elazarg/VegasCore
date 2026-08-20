@@ -36,6 +36,11 @@ example : fairCoin.denote.prob true = 1 / 2 := by
   rw [Fin.sum_univ_two]
   norm_num
 
+example :
+    simpleExpr.evalLaw
+        (DistExpr.weighted (Γ := []) (b := .bool) fairCoin)
+        (Env.empty Val) = fairCoin := rfl
+
 noncomputable def coinCore : VegasCore TestPlayer simpleExpr [] :=
   .sample 0 (DistExpr.weighted (b := .bool) fairCoin)
     (.ret

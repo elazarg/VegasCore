@@ -22,7 +22,8 @@ VegasCore source              │        └─→ FOSG / strategic forms / anal
 - dependency-derived sample, guarded commit, and reveal nodes;
 - reified typed expression/distribution code with every variable mapped to a
   graph field;
-- exact `FinDist` denotations for execution and analysis;
+- normalized rational probability tables retained for runtime lowering, with
+  exact `FinDist` denotations for execution and analysis;
 - terminal payoff code;
 - graph well-formedness and guard-liveness proofs.
 
@@ -120,12 +121,14 @@ authentication remain later passes.
 `Machine.Contract.Request.executeConfig?` is the adjacent logical executor. It
 rejects exactly the requests rejected by `acceptsConfig`; on an encoded valid
 command, its next-configuration law is exactly `Machine.step` with reachability
-proofs erased. This executor is a semantic reference, not an extracted random
-sampler: GameTheory's canonical `FinDist` is PMF-based and noncomputable. A
-backend can still lower the retained `EventDist` code to an oracle, VRF, or
-other entropy mechanism, but an executable Vegas interpreter would need an
-additional finite-law/sampler interface that GameTheory does not currently
-provide.
+proofs erased. `IExpr.evalLaw` and `EventDist.evalLaw` retain an exact
+normalized `RationalLaw` table through compilation; the compiler proves table
+equality before deriving semantic law equality. `FinDist` remains the
+noncomputable PMF-based analysis object. A backend must still realize the
+retained rational table using an oracle, VRF, rejection sampler, or other
+entropy mechanism and prove that its actual distribution matches the table.
+GameTheory supplies the semantic probability object, not that physical
+realization policy.
 
 `Machine.Contract.Request.executeStore?` carries the same reference law across
 canonical storage: decode the snapshot, execute, and re-encode every successor.
@@ -148,8 +151,9 @@ is accepted against its encoded state. Its executor then composes decoding,
 caller authentication, stored validation, and stored execution; for every
 valid semantic commit, the resulting raw-store law is exactly `Machine.step`
 mapped through the canonical state encoding. The law remains semantic and
-noncomputable until a finite sampler is selected. Byte serialization,
-selectors, and gas remain target-specific.
+PMF-based, but the player-commit transition itself is deterministic and needs
+no entropy realization. Byte serialization, selectors, and gas remain
+target-specific.
 
 `Machine.Contract.InternalCalldata` is the separate internal-action entry
 point. A call carries only caller and node, decoding excludes player rows, and
@@ -257,8 +261,11 @@ invent those behaviors and still claim exact game preservation.
 
 There is one semantic probability type: GameTheory's `FinDist`.
 `RationalLaw` is exact source syntax for a normalized finite table of
-nonnegative rational masses. Its denotation combines repeated entries and
-works over arbitrary value carriers.
+nonnegative rational masses. `IExpr.evalLaw` makes that table the executable
+distribution interface, and `EventDist.evalLaw` carries it into graph-local
+code. The compiler proves exact table equality before denoting it as
+`FinDist`; repeated entries combine in the denotation, which works over
+arbitrary value carriers.
 
 Subprobability is unnecessary for the checked language because every compiled
 game has a uniform finite horizon. Divergence would require a separate language

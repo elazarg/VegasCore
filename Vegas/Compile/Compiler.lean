@@ -999,9 +999,40 @@ noncomputable def eventDistOf
       simpa [EventGraph.DistCode.ref, BuildState.fieldRefOfPub] using
         distReadRefs_mem state dist hvar hmem }
 
-/-- A compiled distribution evaluates to the same normalized finite
-distribution as the source distribution when its graph read environment agrees
-with the source public environment on the distribution dependencies. -/
+/-- A compiled distribution retains exactly the source rational table when
+its graph read environment agrees with the source public environment on the
+distribution dependencies. -/
+theorem eventDistOf_evalLaw_eq_evalLaw
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ)
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (sourceEnv : Env L.Val (erasePubVCtx Γ))
+    (readEnv : EventGraph.ReadEnv L (eventDistOf state dist).reads)
+    (hagrees :
+      ∀ {name depTy} (hvar : HasVar (erasePubVCtx Γ) name depTy)
+        (hmem : name ∈ L.distDeps dist),
+        sourceValuePub state readEnv hvar
+          (distReadRefs_mem state dist hvar hmem) =
+          sourceEnv name depTy hvar) :
+    (eventDistOf state dist).evalLaw readEnv =
+      L.evalLaw dist sourceEnv := by
+  let depEnv :
+      (name : VarId) → (depTy : L.Ty) →
+        HasVar (erasePubVCtx Γ) name depTy →
+          name ∈ L.distDeps dist → L.Val depTy :=
+    fun _name _depTy hvar hmem =>
+      sourceValuePub state readEnv hvar
+        (distReadRefs_mem state dist hvar hmem)
+  have hdist :
+      L.evalLawDeps dist depEnv = L.evalLaw dist sourceEnv := by
+    rw [← L.evalLawDeps_eq_evalLaw dist sourceEnv]
+    congr
+    funext name depTy hvar hmem
+    exact hagrees hvar hmem
+  exact hdist
+
+/-- Consequently, compiled and source distribution code also have exactly the
+same canonical semantic probability law. -/
 theorem eventDistOf_eval_eq_eval
     {Γ : VCtx P L} {ty : L.Ty}
     (state : BuildState P L Γ)
@@ -1016,20 +1047,9 @@ theorem eventDistOf_eval_eq_eval
           sourceEnv name depTy hvar) :
     (eventDistOf state dist).eval readEnv =
       L.evalDist dist sourceEnv := by
-  let depEnv :
-      (name : VarId) → (depTy : L.Ty) →
-        HasVar (erasePubVCtx Γ) name depTy →
-          name ∈ L.distDeps dist → L.Val depTy :=
-    fun _name _depTy hvar hmem =>
-      sourceValuePub state readEnv hvar
-        (distReadRefs_mem state dist hvar hmem)
-  have hdist :
-      L.evalDistDeps dist depEnv = L.evalDist dist sourceEnv := by
-    rw [← L.evalDistDeps_eq_evalDist dist sourceEnv]
-    congr
-    funext name depTy hvar hmem
-    exact hagrees hvar hmem
-  exact hdist
+  unfold EventGraph.EventDist.eval IExpr.evalDist
+  rw [eventDistOf_evalLaw_eq_evalLaw state dist sourceEnv readEnv hagrees]
+  rfl
 
 theorem eventDistOf_readEnv_agrees_sourceEnvOfStore_of_readEnv
     {Γ : VCtx P L} {ty : L.Ty}

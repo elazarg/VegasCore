@@ -9,6 +9,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Source | `VegasCore P L Γ` | typed protocol syntax and visibility |
 | Checked source | `WFProgram P L` | freshness, reveals, live guards |
 | Machine IR | `Machine.Program P L` | typed graph, reified node/payoff code, first operational semantics |
+| Exact probability | `IExpr.evalLaw`, `EventDist.evalLaw` | normalized rational tables retained through compilation |
 | Payoff compilation | `Machine.compile_sourcePayoffOfTerminal` | exact terminal source/machine payoff equality |
 | Source support | `Machine.compile_sourceStar` | terminal graph runs reconstruct written-order source runs |
 | Strategic execution | `ExecutionProtocol P` | active players, legal joint actions, chance, terminality |
@@ -65,8 +66,10 @@ of quantitative run laws, intermediate observations, or strategic behavior.
 
 `FinDist` is the probability monad throughout graph execution, protocol
 transitions, strategic play, machine refinement laws, and runtime adequacy.
-`RationalLaw` is an intrinsically normalized rational source table whose
-denotation uses `FinDist.ofWeights`.
+`RationalLaw` is an intrinsically normalized rational table retained by
+`IExpr.evalLaw` and graph-local `EventDist.evalLaw`; its semantic denotation
+uses `FinDist.ofWeights`. Source-to-graph compilation proves equality of the
+tables themselves, not only equality after denotation.
 
 There is no subprobability in the semantic spine. Checked programs terminate
 within a proved bound. A concrete chance mechanism must nevertheless prove its
@@ -169,11 +172,14 @@ authentication have not been silently folded into it.
 `Machine.Contract.Request.executeConfig?` adds the exact next-state law after
 the same finite checks. It succeeds exactly when `acceptsConfig` does, and an
 encoded valid command produces precisely the raw-configuration projection of
-`Machine.step`. Its `FinDist` result is a semantic analysis object, not an
-extractable sampler: GameTheory's current canonical finite distribution is a
-noncomputable PMF. Retained `EventDist` syntax remains available for backend
-lowering, but an executable interpreter needs a separate finite-law or sampler
-interface not currently supplied by GameTheory.
+`Machine.step`. Distribution compilation retains more than that semantic
+result: `IExpr.evalLaw` produces an exact normalized `RationalLaw`,
+`EventDist.evalLaw` exposes the graph-local table, and the compiler proves
+table equality with source evaluation. The denoted `FinDist` is still a
+noncomputable PMF used for analysis. A backend therefore has exact finite
+probability data, but still needs an entropy/sampling implementation and a
+proof that its physical output law realizes that table; GameTheory does not
+choose that target policy.
 
 `Machine.Contract.Request.executeStore?` composes that law with storage
 decoding and successor re-encoding. On an encoded reachable state and valid
@@ -195,9 +201,10 @@ request and is accepted over the encoded state. The adjacent word-call
 executor composes this decoder with caller authentication and stored execution.
 For every valid semantic commit, its successor law is exactly `Machine.step`
 transported through `RawStore.encodeState`. This is not yet an extractable
-transaction processor because the resulting `FinDist` is semantic and
-noncomputable; byte-level ABI selectors, a finite sampler, and gas are still
-target concerns.
+transaction processor because the result is expressed as a semantic
+`FinDist`, though player commits are deterministic. Byte-level ABI selectors
+and gas are still target concerns; finite sampling is needed only when the
+internal path realizes a retained probability table.
 
 `Machine.Contract.InternalCalldata` gives samples and reveals a distinct
 caller-bearing entry point. Its decoder excludes player commits, while an
