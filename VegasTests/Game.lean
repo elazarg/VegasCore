@@ -18,6 +18,7 @@ import Vegas.Machine.Contract.Authentication
 import Vegas.Machine.Contract.Calldata
 import Vegas.Machine.Contract.InternalCalldata
 import Vegas.Machine.Contract.Lifecycle
+import Vegas.Machine.Contract.Configured
 
 namespace VegasTests
 
@@ -237,6 +238,28 @@ def permissionlessTriggers :
     Machine.Contract.TriggerPolicy TestPlayer :=
   Machine.Contract.TriggerPolicy.permissionless
 
+noncomputable def matchingPenniesContract :
+    Machine.Contract.ConfiguredContract matchingPenniesMachine TestPlayer where
+  codec := matchingPenniesStorageCodec
+  players := matchingPenniesRegistry
+  triggers := permissionlessTriggers
+
+example {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action) :
+    matchingPenniesContract.execute?
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (.player
+          (Machine.Contract.PlayerCalldata.encodeCommit
+            matchingPenniesContract.players matchingPenniesContract.codec
+            action step)) =
+      some ((matchingPenniesMachine.step state (.commit who action step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.execute?_encodeState_playerCommit action step
+
 example {state : matchingPenniesMachine.State} (caller : TestPlayer)
     (event : EventGraph.InternalEvent matchingPenniesMachine.graph)
     (step : EventGraph.InternalStep matchingPenniesMachine.graph state.1
@@ -253,6 +276,21 @@ example {state : matchingPenniesMachine.State} (caller : TestPlayer)
   exact
     Machine.Contract.InternalCalldata.executeStore?_encodeState_encode
       permissionlessTriggers matchingPenniesStorageCodec caller event step rfl
+
+example {state : matchingPenniesMachine.State} (caller : TestPlayer)
+    (event : EventGraph.InternalEvent matchingPenniesMachine.graph)
+    (step : EventGraph.InternalStep matchingPenniesMachine.graph state.1
+      event) :
+    matchingPenniesContract.execute?
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (.internal
+          (Machine.Contract.InternalCalldata.encode caller event)) =
+      some ((matchingPenniesMachine.step state (.internal event step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.execute?_encodeState_internal
+    caller event step rfl
 
 example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
     Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec

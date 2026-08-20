@@ -171,6 +171,14 @@ exactly the retained machine payoff, and for compiled source it equals the
 payoff of an actual source terminal environment. This yields settlement data,
 not asset custody, transfers, or withdrawal semantics.
 
+`Machine.Contract.ConfiguredContract` is the first whole-contract target. It
+packages the manifest, canonical layout, word codec, player registry, internal
+trigger policy, constructor storage, terminal readout, and a typed sum of both
+transaction entry points. Dispatch preserves the exact one-step laws for
+player commits and internal events. It is deliberately not called an EVM
+artifact: byte selectors, serialization, expression lowering, arithmetic,
+gas/reverts, and entropy realization remain explicit subsequent passes.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
