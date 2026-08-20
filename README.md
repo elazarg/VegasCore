@@ -368,6 +368,15 @@ decodes to exactly the compiled source initial snapshot. `EVMByteBackend` also
 requires a lossless 160-bit address codec, making `CALLER` authentication a
 concrete code-generation input instead of an abstract-address assumption.
 
+`Machine.Contract.EVM.ClassicalContractIR` then routes every graph node to its
+deterministic handler inventory: commits to the player entry point, reveals to
+the reveal entry point, and samples to both request and callback entry points.
+Replay prevention and prerequisites are concrete reads of the new completion
+cells, in stable order, and are proved to accept an encoded account state
+exactly when the source graph node is ready. Each successful action's value,
+presence, and completion cells are also proved pairwise distinct. Typed event
+code is retained for the remaining expression-specific lowering.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

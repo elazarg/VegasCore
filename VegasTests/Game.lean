@@ -10,6 +10,7 @@ import Vegas.Compile.ClassicalEVM
 import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Machine.Contract.ClassicalEVMStorage
+import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
@@ -517,6 +518,20 @@ example :
         matchingPenniesEVMByteBackend.compile.initialStorage =
       some matchingPenniesEVMByteBackend.compile.initialSnapshot := by
   exact matchingPenniesEVMByteBackend.compile.decode_initialStorage
+
+example (state : matchingPenniesMachine.State)
+    (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    Machine.Contract.Imperative.evaluateAll
+        (Machine.Contract.EVM.ClassicalStorageCheck.evaluate
+          (Machine.Contract.EVM.encodeClassicalSnapshot
+            matchingPenniesStorageCodec matchingPenniesArgumentWords
+            matchingPenniesClassicalABI.nodes
+            (Machine.Contract.EVM.ClassicalSnapshot.idle state.1)))
+        (Machine.Contract.EVM.classicalChecks matchingPenniesMachine node) =
+      decide (EventGraph.Ready matchingPenniesMachine.graph state.1 node) := by
+  exact Machine.Contract.EVM.classicalChecks_accept_iff_ready
+    matchingPenniesStorageCodec matchingPenniesArgumentWords
+    matchingPenniesClassicalABI.nodes state.1 none node
 
 example
     (message : Machine.Contract.EVM.ClassicalMessage

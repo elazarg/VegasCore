@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.Classical
 import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Machine.Contract.ClassicalEVMStorage
+import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAddress
 
 /-!
@@ -62,6 +63,10 @@ fields. -/
 def initialStorage : EVM.TotalStorage :=
   EVM.encodeClassicalSnapshot artifact.contract.codec artifact.abi.values
     artifact.abi.nodes artifact.initialSnapshot
+
+/-- Finite routed handler inventory over the concrete EVM storage layout. -/
+def handlerIR : EVM.ClassicalContractIR (Machine.compile source) :=
+  EVM.compileClassicalIR (Machine.compile source)
 
 /-- The concrete deployment storage decodes to exactly the compiled source
 initial snapshot. -/
