@@ -95,10 +95,22 @@ that every history produced by either strategic form is terminal by the game
 horizon. -/
 def utility (program : Machine.Program Player L) :
     program.arena.History → Player → ℝ :=
-  fun history who =>
-    match EventGraph.evalPayoffs? program.payoffs history.state.1.store with
-    | some outcome => (outcome who : ℝ)
-    | none => 0
+  fun history who => by
+    classical
+    exact
+      if program.terminal history.state then
+        match EventGraph.evalPayoffs? program.payoffs history.state.1.store with
+        | some outcome => (outcome who : ℝ)
+        | none => 0
+      else
+        0
+
+@[simp] theorem utility_of_not_terminal (program : Machine.Program Player L)
+    (history : program.arena.History) (who : Player)
+    (hterminal : ¬ program.terminal history.state) :
+    program.utility history who = 0 := by
+  classical
+  simp [utility, hterminal]
 
 /-- A live compiled event graph, its observation model, payoff projection, and
 uniform termination proof form one Vegas game. -/

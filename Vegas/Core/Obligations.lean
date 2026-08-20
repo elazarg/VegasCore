@@ -50,8 +50,18 @@ instance {P : Type} [DecidableEq P]
     {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ} :
     Decidable (FreshBindings p) := decidableFreshBindings p
 
-/-- Every committed secret is revealed exactly once. `pending` tracks
-    commit variables awaiting revelation. -/
+/-- Names of sealed bindings already present when a program starts.  These
+bindings obey the same eventual-opening discipline as values introduced by a
+`commit` site. -/
+def SealedVars {P : Type} {L : Vegas.IExpr} :
+    Vegas.VCtx P L → List VarId
+  | [] => []
+  | (_name, ⟨_, .pub⟩) :: tail => SealedVars tail
+  | (name, ⟨_, .sealed _⟩) :: tail => name :: SealedVars tail
+
+/-- Every pending secret and every newly committed secret is revealed exactly
+once. `pending` includes sealed inputs already present in the initial context
+and is extended by commit variables awaiting revelation. -/
 def RevealComplete {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
 :
@@ -121,17 +131,31 @@ theorem RevealComplete.pending_or_committed_revealed
             tail htail x
         simpa [CommittedVars, List.mem_append, hxs] using hx
 
-/-- Top-level reveal completeness: every committed source variable is opened
-by a reveal site somewhere later in the source program. -/
+/-- Reveal completeness opens every source variable committed by the program,
+independently of which sealed inputs were already pending. -/
 theorem RevealComplete.committed_revealed
     {P : Type} [DecidableEq P] {L : Vegas.IExpr}
-    {Γ : Vegas.VCtx P L} {p : Vegas.VegasCore P L Γ}
-    (hcomplete : RevealComplete [] p) :
+    {Γ : Vegas.VCtx P L} {pending : List VarId}
+    {p : Vegas.VegasCore P L Γ}
+    (hcomplete : RevealComplete pending p) :
     ∀ x, x ∈ CommittedVars p → x ∈ RevealedSources p := by
   intro x hx
   exact
     RevealComplete.pending_or_committed_revealed
-      p hcomplete x (by simpa using hx)
+      p hcomplete x (by simp [hx])
+
+/-- Reveal completeness also opens every secret that was pending when program
+execution began. -/
+theorem RevealComplete.pending_revealed
+    {P : Type} [DecidableEq P] {L : Vegas.IExpr}
+    {Γ : Vegas.VCtx P L} {pending : List VarId}
+    {p : Vegas.VegasCore P L Γ}
+    (hcomplete : RevealComplete pending p) :
+    ∀ x, x ∈ pending → x ∈ RevealedSources p := by
+  intro x hx
+  exact
+    RevealComplete.pending_or_committed_revealed
+      p hcomplete x (by simp [hx])
 
 instance : DecidableEq VarId := inferInstanceAs (DecidableEq Nat)
 

@@ -36,6 +36,27 @@ open Vegas
 
 abbrev TestPlayer := Fin 2
 
+abbrev InitialSecretContext : VCtx TestPlayer simpleExpr :=
+  [(7, .sealed 0 .bool)]
+
+noncomputable def unopenedInitialSecret :
+    VegasCore TestPlayer simpleExpr InitialSecretContext :=
+  .ret []
+
+example :
+    ¬ RevealComplete (SealedVars InitialSecretContext)
+        unopenedInitialSecret := by
+  decide
+
+noncomputable def openedInitialSecret :
+    VegasCore TestPlayer simpleExpr InitialSecretContext :=
+  .reveal 8 0 7 .here (.ret [])
+
+example :
+    RevealComplete (SealedVars InitialSecretContext)
+      openedInitialSecret := by
+  decide
+
 def fairCoin : RationalLaw Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
@@ -67,7 +88,7 @@ noncomputable def coinProgram : WFProgram TestPlayer simpleExpr where
       env := VEnv.empty simpleExpr
       wctx := by simp
       fresh := by simp [coinCore, FreshBindings, Fresh] }
-  reveals := by simp [coinCore, RevealComplete]
+  reveals := by simp [coinCore, RevealComplete, SealedVars]
   legal := by
     unfold coinCore
     change True

@@ -51,10 +51,11 @@ structure GraphProgram (P : Type) [DecidableEq P] (L : IExpr) where
 
 `core` is the graph-compilable program. `legal` feeds the graph guard-liveness
 and progress theorem layer. `reveals` records the source-level commitment
-discipline that no committed source value is left unopened by the program. -/
+discipline that neither an initially sealed value nor a value introduced by a
+commit is left unopened by the program. -/
 structure WFProgram (P : Type) [DecidableEq P] (L : IExpr) where
   core : GraphProgram P L
-  reveals : RevealComplete [] core.prog
+  reveals : RevealComplete (SealedVars core.Γ) core.prog
   legal : Legal core.prog
 
 namespace WFProgram
@@ -67,6 +68,13 @@ theorem committed_source_revealed (program : WFProgram P L) :
     ∀ x, x ∈ CommittedVars program.core.prog →
       x ∈ RevealedSources program.core.prog :=
   RevealComplete.committed_revealed program.reveals
+
+/-- Every sealed binding supplied in the initial context of a checked program
+is opened by a reveal site in that program. -/
+theorem initial_sealed_source_revealed (program : WFProgram P L) :
+    ∀ x, x ∈ SealedVars program.core.Γ →
+      x ∈ RevealedSources program.core.prog :=
+  RevealComplete.pending_revealed program.reveals
 
 end WFProgram
 

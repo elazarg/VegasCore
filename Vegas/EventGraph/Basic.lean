@@ -527,6 +527,13 @@ def isReveal : NodeSem Player L → Bool
   | .reveal _ => true
   | _ => false
 
+/-- Internal-node test used by dependency construction. Samples and reveals
+are protocol-controlled and may publish information; commits are strategic. -/
+def isInternal : NodeSem Player L → Bool
+  | .commit _ _ => false
+  | .sample _ => true
+  | .reveal _ => true
+
 end NodeSem
 
 /-- Origin of a field in the computed field view. This is not stored in graph
@@ -958,21 +965,20 @@ theorem evalPayoffs?_isSome_of_available
     ⟨entries, hentries⟩
   exact ⟨mkOutcome entries, by simp [evalPayoffs?, hentries]⟩
 
-/-- Source-order reveal barrier.
+/-- Source-order publication barrier.
 
-A reveal is source-causally after every earlier commit. This is an information
-semantics rule, not an execution convenience: a source-level reveal publishes
-information only after all earlier source-level commitments have become fixed.
-Otherwise a program fragment `commit; ...; reveal` could be implemented by a
-schedule in which the commitment observes information that the source program
-reveals only later. Reveals are not ordered after earlier reveals by this rule.
--/
-def sourceOrderRevealBarrier? {Player : Type} {L : IExpr}
+Every internal event is source-causally after every earlier commit. This is an
+information-semantics rule, not an execution convenience: samples and reveals
+may publish information, so neither may run before a source-earlier commitment
+has become fixed. Otherwise `commit; sample; ...` would allow the committing
+player to condition on a draw that occurs later in the source. Internal events
+are not mutually ordered by this rule. -/
+def sourceOrderPublicationBarrier? {Player : Type} {L : IExpr}
     (nodes : List (EventNode Player L)) (node prior : Nat) : Bool :=
   if prior < node then
     match nodes[node]?, nodes[prior]? with
     | some current, some prev =>
-        NodeSem.isReveal current.sem && NodeSem.isCommit prev.sem
+        NodeSem.isInternal current.sem && NodeSem.isCommit prev.sem
     | _, _ => false
   else
     false
@@ -980,10 +986,10 @@ def sourceOrderRevealBarrier? {Player : Type} {L : IExpr}
 /-- Numeric dependency predicate used internally to compute graph prerequisites.
 
 A prior node is a prerequisite exactly when it writes a field read by the
-current node, or when `sourceOrderRevealBarrier?` says a prior source commit
-must be fixed before a later reveal. Thus unrelated commit/commit and
-reveal/reveal pairs stay unordered, while source-earlier commits are fixed
-before any later reveal publishes information. -/
+current node, or when `sourceOrderPublicationBarrier?` says a prior source
+commit must be fixed before a later internal event. Thus unrelated
+commit/commit and internal/internal pairs stay unordered, while source-earlier
+commits are fixed before any later event can publish information. -/
 private def canonicalPrereq? {Player : Type} {L : IExpr}
     (initialFieldCount : Nat) (nodes : List (EventNode Player L))
     (node prior : Nat) : Bool :=
@@ -995,7 +1001,7 @@ private def canonicalPrereq? {Player : Type} {L : IExpr}
         | none => false
         | some _prev =>
             initialFieldCount + prior ∈ NodeSem.reads current.sem ||
-              sourceOrderRevealBarrier? nodes node prior
+              sourceOrderPublicationBarrier? nodes node prior
       else
         false
 
@@ -1045,13 +1051,13 @@ theorem nodeTarget_mem_prereqs_of_read (G : Graph Player L)
   simp only [hlt, ↓reduceIte, Bool.or_eq_true, decide_eq_true_eq]
   exact Or.inl hread
 
-theorem prior_commit_mem_prereqs_of_reveal (G : Graph Player L)
+theorem prior_commit_mem_prereqs_of_internal (G : Graph Player L)
     {node prior : Fin G.nodeCount}
     {event priorEvent : EventNode Player L}
     (hnode : G.nodes[node]? = some event)
     (hprior : G.nodes[prior]? = some priorEvent)
     (hlt : (prior : Nat) < (node : Nat))
-    (hreveal : NodeSem.isReveal event.sem = true)
+    (hinternal : NodeSem.isInternal event.sem = true)
     (hcommit : NodeSem.isCommit priorEvent.sem = true) :
     prior ∈ G.prereqs node := by
   unfold prereqs
@@ -1062,7 +1068,38 @@ theorem prior_commit_mem_prereqs_of_reveal (G : Graph Player L)
   rw [hnode, hprior]
   simp only [hlt, ↓reduceIte, Bool.or_eq_true, decide_eq_true_eq]
   right
-  simp [sourceOrderRevealBarrier?, hlt, hnode, hprior, hreveal, hcommit]
+  simp [sourceOrderPublicationBarrier?, hlt, hnode, hprior, hinternal, hcommit]
+
+/-- In particular, a source-later public sample cannot run before an earlier
+commit has fixed its value. -/
+theorem prior_commit_mem_prereqs_of_sample (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L} {dist : EventDist L}
+    {who : Player} {guard : EventGuard L}
+    (hnode : G.nodes[node]? = some event)
+    (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat))
+    (hsample : event.sem = .sample dist)
+    (hcommit : priorEvent.sem = .commit who guard) :
+    prior ∈ G.prereqs node := by
+  apply G.prior_commit_mem_prereqs_of_internal hnode hprior hlt
+  · simp [hsample, NodeSem.isInternal]
+  · simp [hcommit, NodeSem.isCommit]
+
+/-- A source-later reveal is subject to the same publication barrier. -/
+theorem prior_commit_mem_prereqs_of_reveal (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L} {source : Nat}
+    {who : Player} {guard : EventGuard L}
+    (hnode : G.nodes[node]? = some event)
+    (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat))
+    (hreveal : event.sem = .reveal source)
+    (hcommit : priorEvent.sem = .commit who guard) :
+    prior ∈ G.prereqs node := by
+  apply G.prior_commit_mem_prereqs_of_internal hnode hprior hlt
+  · simp [hreveal, NodeSem.isInternal]
+  · simp [hcommit, NodeSem.isCommit]
 
 end Graph
 
