@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Game.Kuhn
 import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
+import Vegas.Compile.BooleanEVM
 import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Machine.Contract.ClassicalEVMStorage
@@ -14,6 +15,7 @@ import Vegas.Machine.Contract.ClassicalEVMIR
 import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Machine.Contract.EVMLocalAssembly
 import Vegas.Machine.Contract.ClassicalEVMCodegen
+import Vegas.Machine.Contract.BooleanEVMRuntime
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
@@ -118,6 +120,43 @@ noncomputable example : GameTheory.UtilityGame TestPlayer :=
 
 noncomputable example : GameTheory.UtilityGame TestPlayer :=
   coinGame.mixedPure
+
+noncomputable def emptyCore : VegasCore TestPlayer simpleExpr [] :=
+  .ret []
+
+noncomputable def emptyProgram : WFProgram TestPlayer simpleExpr where
+  core :=
+    { Γ := []
+      prog := emptyCore
+      env := VEnv.empty simpleExpr
+      wctx := by simp
+      fresh := by simp [emptyCore, FreshBindings] }
+  reveals := by simp [emptyCore, RevealComplete, SealedVars]
+  legal := by trivial
+
+noncomputable def emptyMachine : Machine.Program TestPlayer simpleExpr :=
+  Machine.compile emptyProgram
+
+theorem emptyMachine_graph_nodeCount : emptyMachine.graph.nodeCount = 0 := by
+  simp [emptyMachine, Machine.compile, Machine.ofCompiled, emptyProgram,
+    emptyCore, ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]
+
+theorem emptyMachine_graph_fieldCount : emptyMachine.graph.fieldCount = 0 := by
+  simp [emptyMachine, Machine.compile, Machine.ofCompiled, emptyProgram,
+    emptyCore, ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount,
+    EventGraph.Graph.fieldCount, ToEventGraph.initialState,
+    ToEventGraph.InitialState.empty]
+
+theorem emptyUsesOnlyBoolStorage :
+    Machine.Contract.EVM.UsesOnlyBoolStorage emptyMachine := by
+  constructor <;> intro index <;> exact Fin.elim0 index
+
+theorem emptyHasNoSampleNodes :
+    Machine.Contract.EVM.HasNoSampleNodes emptyMachine := by
+  intro node
+  exact Fin.elim0 node
 
 /-! ## Hidden simultaneous commitments -/
 
@@ -524,6 +563,47 @@ noncomputable def matchingPenniesEVMByteBackend :
   addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
     norm_num [Machine.Contract.EVM.IndexFitsAddress])
 
+noncomputable def emptyClassicalBackend :
+    ClassicalCompiler.Backend emptyProgram TestPlayer where
+  codec := Machine.Contract.EVM.boolStorageCodec emptyMachine
+    emptyUsesOnlyBoolStorage
+  players := matchingPenniesRegistry
+  reveals := permissionlessTriggers
+  sampleRequests := permissionlessTriggers
+  oracle := { address := 0 }
+
+noncomputable def emptyEVMByteBackend :
+    ClassicalCompiler.EVMByteBackend emptyProgram TestPlayer where
+  classical := emptyClassicalBackend
+  selectors := matchingPenniesClassicalSelectors
+  players := Machine.Contract.EVM.indexWordCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsWord])
+  nodesFit := by
+    change emptyMachine.graph.nodeCount ≤ 2 ^ 256
+    rw [emptyMachine_graph_nodeCount]
+    norm_num
+  storageFits := by
+    change 2 * emptyMachine.graph.fieldCount +
+      emptyMachine.graph.nodeCount + 2 ≤ 2 ^ 256
+    rw [emptyMachine_graph_fieldCount, emptyMachine_graph_nodeCount]
+    norm_num
+  values := Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
+  addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsAddress])
+
+example :
+    (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
+      emptyUsesOnlyBoolStorage emptyHasNoSampleNodes rfl).isSome = true := by
+  rfl
+
+noncomputable def emptyEVMRuntimeImage :
+    Machine.Contract.EVM.RuntimeImage matchingPenniesClassicalSelectors :=
+  (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
+    emptyUsesOnlyBoolStorage emptyHasNoSampleNodes rfl).get (by rfl)
+
+example : emptyEVMRuntimeImage.bytecode.length = 190 := by
+  rfl
+
 example :
     matchingPenniesEVMByteBackend.compile.initial =
       matchingPenniesClassicalBackend.compile.initial :=
@@ -625,6 +705,25 @@ example (check : Machine.Contract.EVM.ClassicalStorageCheck) :
     (Machine.Contract.EVM.compileClassicalStorageCheck 0 check).byteLength =
       44 := by
   exact Machine.Contract.EVM.compileClassicalStorageCheck_byteLength 0 check
+
+theorem matchingPenniesHasNoSampleNodes :
+    Machine.Contract.EVM.HasNoSampleNodes matchingPenniesMachine := by
+  intro node
+  fin_cases node <;> trivial
+
+def trueBooleanGuardCode : EventGraph.GuardCode simpleExpr .bool where
+  actionName := 0
+  Context := []
+  expr := .constBool true
+  fieldOf := fun binding => nomatch binding
+
+example : Machine.Contract.EVM.compileSimpleGuardCode?
+    trueBooleanGuardCode 5 =
+      some
+        { code :=
+            [.op (.push (.one (Machine.Contract.EVM.byte 1)))]
+          nextLabel := 5 } := by
+  simp [Machine.Contract.EVM.compileSimpleGuardCode?, trueBooleanGuardCode]
 
 example (message : matchingPenniesContract.Message) :
     matchingPenniesMessageABI.decodeBytes matchingPenniesArgumentWords

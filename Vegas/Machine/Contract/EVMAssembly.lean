@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Machine.Contract.ClassicalEVMCalldata
+import Vegas.Machine.Contract.EVMAddress
 
 /-!
 # EVM instruction encoding and four-way runtime linking
@@ -83,6 +84,13 @@ def word (value : Word) : PushData where
 def nat256 (value : Nat) : PushData :=
   word (BitVec.ofNat 256 value)
 
+/-- Big-endian bytes of one native 160-bit EVM account address. -/
+def address (value : AddressWord) : PushData where
+  bytes := List.ofFn fun index : Fin 20 =>
+    value.extractLsb' (8 * (19 - (index : Nat))) 8
+  nonempty := by simp
+  length_le := by simp
+
 @[simp] theorem one_length (value : Byte) :
     (one value).bytes.length = 1 := by
   rfl
@@ -102,6 +110,10 @@ def nat256 (value : Nat) : PushData :=
 @[simp] theorem nat256_length (value : Nat) :
     (nat256 value).bytes.length = 32 := by
   simp [nat256]
+
+@[simp] theorem address_length (value : AddressWord) :
+    (address value).bytes.length = 20 := by
+  simp [address]
 
 end PushData
 
@@ -217,6 +229,10 @@ def byteLength : Instruction → Nat
 
 @[simp] theorem opcode_push_word (value : Word) :
     opcode (.push (.word value)) = byte 0x7f := by
+  simp [opcode]
+
+@[simp] theorem opcode_push_address (value : AddressWord) :
+    opcode (.push (.address value)) = byte 0x73 := by
   simp [opcode]
 
 end Instruction

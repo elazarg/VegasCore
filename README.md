@@ -386,6 +386,18 @@ bound is applied. The structural handler code generator already emits full
 ordered value/presence/completion `SSTORE`s. Expression realization must leave
 one encoded result word on the documented stack interface.
 
+`ClassicalCompiler.EVMByteBackend.compileBooleanNoSampleRuntime?` is the first
+checked-source-to-runtime-bytecode backend. It supports Boolean graph storage,
+programs without sample nodes, permissionless reveals, and the concrete
+Boolean `simpleExpr` fragment (variables, constants, equality, conjunction,
+negation, and conditionals). It emits exact calldata-size and node routing,
+claimed-player and `CALLER` authentication, canonical Boolean validation,
+guard evaluation, reveals, storage effects, local jumps, the four-way selector
+dispatcher, and final opcode bytes. Unsupported expressions, missing labels,
+or an oversized image return `none`; the test suite takes an empty checked
+source program through the entire path to a 190-byte runtime image. This is a
+real code generator, but VM-level semantic correctness is not yet proved.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -437,8 +449,9 @@ complete deterministic typed contract under trusted oracle/scheduler roles,
 an ideal observation/atomic-frontier boundary, a lossless total EVM storage
 layout, an EVM opcode emitter and four-entry runtime linker, and unilateral strategic
 certificates for same-player and fixed-trusted-role targets, plus a complete
-deterministic four-entry EVM byte-calldata artifact. It does not yet have an EVM
-expression-to-EVM handler compiler, a codec for programs that store other source types,
+deterministic four-entry EVM byte-calldata artifact and a partial Boolean
+source-to-EVM runtime backend. It does not yet have a full expression or sample
+handler compiler, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
 untrusted on-chain chance implementation, timeout/abort game semantics, or an
 EVM execution model or end-to-end secure compilation theorem. The source-star theorem is about possible terminal

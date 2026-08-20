@@ -260,6 +260,15 @@ def linkLocal? (selectors : ClassicalSelectors)
             rw [LocalClassicalHandlers.resolve?_runtimeSize hresolve]
             exact linked.size_fits }
 
+/-- Check the whole-image bound and then resolve/link symbolic handlers. This
+is the executable entry point used by partial concrete backends. -/
+def linkLocalChecked? (selectors : ClassicalSelectors)
+    (handlers : LocalClassicalHandlers) : Option (RuntimeImage selectors) :=
+  if hfits : handlers.runtimeSize < 2 ^ 32 then
+    linkLocal? selectors { handlers := handlers, size_fits := hfits }
+  else
+    none
+
 end RuntimeImage
 
 end Vegas.Machine.Contract.EVM
