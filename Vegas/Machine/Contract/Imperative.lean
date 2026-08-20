@@ -49,6 +49,100 @@ def evaluateAll (cfg : Config program.graph)
     (requirements : List (Requirement program)) : Bool :=
   requirements.all (Requirement.evaluate cfg)
 
+/-- Observable result of short-circuit requirement evaluation. On success,
+`passed` is the complete requirement list. On rejection, `passed` is exactly
+the successful prefix and `failed` is the first failed requirement. Keeping
+this information explicit lets a later pass state whether it exposes or hides
+check order through gas use or revert data. -/
+inductive CheckResult (program : Program Player L) where
+  | accepted (passed : List (Requirement program))
+  | rejected (passed : List (Requirement program))
+      (failed : Requirement program)
+
+namespace CheckResult
+
+/-- Whether short-circuit evaluation accepted the requirement list. -/
+def succeeded : CheckResult program → Bool
+  | .accepted _ => true
+  | .rejected _ _ => false
+
+/-- Number of requirements actually evaluated. The failed requirement counts
+as one evaluated check. -/
+def checkedCount : CheckResult program → Nat
+  | .accepted passed => passed.length
+  | .rejected passed _ => passed.length + 1
+
+end CheckResult
+
+/-- Evaluate requirements from left to right and retain the first-failure
+observation produced by an imperative backend. -/
+def runChecks (cfg : Config program.graph) :
+    List (Requirement program) → CheckResult program
+  | [] => .accepted []
+  | requirement :: rest =>
+      if Requirement.evaluate cfg requirement then
+        match runChecks cfg rest with
+        | .accepted passed => .accepted (requirement :: passed)
+        | .rejected passed failed =>
+            .rejected (requirement :: passed) failed
+      else
+        .rejected [] requirement
+
+/-- Retaining first-failure detail does not change whether the ordered checks
+accept. -/
+theorem runChecks_succeeded (cfg : Config program.graph)
+    (checks : List (Requirement program)) :
+    (runChecks cfg checks).succeeded = evaluateAll cfg checks := by
+  induction checks with
+  | nil => rfl
+  | cons requirement rest ih =>
+      by_cases heval : Requirement.evaluate cfg requirement = true
+      · cases hrest : runChecks cfg rest with
+        | accepted passed =>
+            simpa [runChecks, heval, hrest, CheckResult.succeeded,
+              evaluateAll] using ih
+        | rejected passed failed =>
+            simpa [runChecks, heval, hrest, CheckResult.succeeded,
+              evaluateAll] using ih
+      · have hevalFalse : Requirement.evaluate cfg requirement = false :=
+          Bool.eq_false_of_not_eq_true heval
+        simp [runChecks, hevalFalse, evaluateAll, CheckResult.succeeded]
+
+/-- A rejection identifies a genuine prefix of successful checks followed by
+the first failed check. -/
+theorem runChecks_rejected_prefix (cfg : Config program.graph)
+    {checks passed : List (Requirement program)}
+    {failed : Requirement program}
+    (hreject : runChecks cfg checks = .rejected passed failed) :
+    ∃ remaining,
+      checks = passed ++ failed :: remaining ∧
+      (∀ requirement ∈ passed,
+        Requirement.evaluate cfg requirement = true) ∧
+      Requirement.evaluate cfg failed = false := by
+  induction checks generalizing passed failed with
+  | nil => simp [runChecks] at hreject
+  | cons requirement rest ih =>
+      by_cases heval : Requirement.evaluate cfg requirement = true
+      · simp only [runChecks, heval, ↓reduceIte] at hreject
+        cases hrest : runChecks cfg rest with
+        | accepted restPassed => simp [hrest] at hreject
+        | rejected restPassed restFailed =>
+            simp only [hrest] at hreject
+            cases hreject
+            obtain ⟨remaining, hdecomp, hpassed, hfailed⟩ := ih hrest
+            refine ⟨remaining, ?_, ?_, hfailed⟩
+            · simp [hdecomp]
+            · intro checked hmem
+              simp only [List.mem_cons] at hmem
+              rcases hmem with rfl | hmem
+              · exact heval
+              · exact hpassed checked hmem
+      · have hevalFalse : Requirement.evaluate cfg requirement = false :=
+          Bool.eq_false_of_not_eq_true heval
+        simp only [runChecks, hevalFalse, Bool.false_eq_true, ↓reduceIte] at hreject
+        cases hreject
+        exact ⟨rest, by simp, by simp, hevalFalse⟩
+
 /-- Canonical ordered requirements for one graph action. -/
 def requirements (program : Program Player L)
     (node : Fin program.graph.nodeCount) : List (Requirement program) :=
@@ -80,6 +174,14 @@ theorem evaluateAll_requirements
   apply Bool.eq_iff_iff.mpr
   rw [evaluateAll_requirements_eq_true_iff]
   simp
+
+/-- The observable short-circuit runner accepts exactly ready graph nodes. -/
+theorem runChecks_requirements_succeeded
+    (cfg : Config program.graph)
+    (node : Fin program.graph.nodeCount) :
+    (runChecks cfg (requirements program node)).succeeded =
+      decide (Ready program.graph cfg node) := by
+  rw [runChecks_succeeded, evaluateAll_requirements]
 
 /-- One action in the first imperative contract IR. Expression and event code
 remain in the source-independent machine row while layout and control checks

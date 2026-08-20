@@ -181,6 +181,14 @@ example (cfg : EventGraph.Config matchingPenniesMachine.graph)
   Machine.Contract.Imperative.compileAction_requirements_correct
     matchingPenniesLayout cfg node
 
+example (cfg : EventGraph.Config matchingPenniesMachine.graph)
+    (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    (Machine.Contract.Imperative.runChecks cfg
+        (Machine.Contract.Imperative.compileAction
+          matchingPenniesLayout node).requirements).succeeded =
+      decide (EventGraph.Ready matchingPenniesMachine.graph cfg node) := by
+  exact Machine.Contract.Imperative.runChecks_requirements_succeeded cfg node
+
 example : Function.Injective matchingPenniesLayout.address :=
   matchingPenniesLayout.injective
 
