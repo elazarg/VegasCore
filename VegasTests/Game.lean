@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Game.Kuhn
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
+import Vegas.Machine.Contract.ABI
 
 namespace VegasTests
 
@@ -140,6 +141,12 @@ example
       matchingPenniesLayout.address (.completed node) := by
   exact Machine.Contract.Layout.value_ne_completed
     matchingPenniesMachine field node
+
+example (state : matchingPenniesMachine.State)
+    (command : matchingPenniesMachine.Command state) :
+    (Machine.Contract.Request.decode state
+      (Machine.Contract.Request.encode command)).isSome := by
+  exact Machine.Contract.Request.decode_encode_isSome command
 
 example (state : matchingPenniesMachine.State)
     (hterminal : matchingPenniesMachine.terminal state) :

@@ -11,3 +11,4 @@ import Vegas.Machine.Instrumentation
 import Vegas.Machine.Program
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
+import Vegas.Machine.Contract.ABI

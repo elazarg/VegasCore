@@ -19,6 +19,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Step projection | `Machine.Refinement` | visible abstract steps and administrative stuttering |
 | Contract manifest | `Machine.Contract.Manifest` | finite lossless storage/action inventory for emitters |
 | Storage layout | `Machine.Contract.Layout` | bounded collision-free physical keys for logical slots |
+| Logical ABI | `Machine.Contract.Request` | raw envelopes and exact valid-command acceptance |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -123,6 +124,12 @@ arithmetic.
 instance is dense and injective, placing typed value slots before action
 completion slots. A target value codec and its arithmetic semantics are still
 required before these keys describe executable EVM storage.
+
+`Machine.Contract.Request` erases a valid dependent command to a stable node
+id, logical authority, and optional typed value. Its reference decoder accepts
+exactly the envelopes represented by currently valid machine commands. It is a
+semantic validator specification; address authentication, executable target
+checks, revert traces, gas, and internal-action triggering remain unmodeled.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
