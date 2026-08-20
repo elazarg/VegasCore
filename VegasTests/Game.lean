@@ -16,6 +16,7 @@ import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Machine.Contract.EVMLocalAssembly
 import Vegas.Machine.Contract.ClassicalEVMCodegen
 import Vegas.Machine.Contract.BooleanEVMRuntime
+import Vegas.Machine.Contract.EVMExecution
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
@@ -113,6 +114,31 @@ noncomputable def coinProgram : WFProgram TestPlayer simpleExpr where
 
 noncomputable def coinGame : Vegas.Game TestPlayer :=
   coinProgram.game
+
+noncomputable def coinMachine : Machine.Program TestPlayer simpleExpr :=
+  Machine.compile coinProgram
+
+theorem coinMachine_graph_nodeCount : coinMachine.graph.nodeCount = 1 := by
+  simp [coinMachine, Machine.compile, Machine.ofCompiled, coinProgram,
+    coinCore, ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]
+
+theorem coinMachine_graph_fieldCount : coinMachine.graph.fieldCount = 1 := by
+  simp [coinMachine, Machine.compile, Machine.ofCompiled, coinProgram,
+    coinCore, ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.fieldCount,
+    EventGraph.Graph.nodeCount,
+    ToEventGraph.initialState, ToEventGraph.InitialState.empty]
+
+theorem coinUsesOnlyBoolStorage :
+    Machine.Contract.EVM.UsesOnlyBoolStorage coinMachine := by
+  constructor
+  · intro field
+    fin_cases field
+    rfl
+  · intro node
+    fin_cases node
+    rfl
 
 example : coinGame.arena.execution.BoundedHorizon coinGame.horizon :=
   coinGame.bounded
@@ -634,6 +660,46 @@ example : emptyEVMDeploymentImage.runtimeOffset = 21 := by
 
 example : emptyEVMDeploymentImage.bytecode.length = 211 := by
   rfl
+
+def copyReturnExecution : Machine.Contract.EVM.ExecutionState :=
+  let constructor := Machine.Contract.EVM.deploymentCopyReturn 21 2
+  Machine.Contract.EVM.execute 20 constructor
+    { codeBytes := constructor.emit ++
+        [Machine.Contract.EVM.byte 0xaa, Machine.Contract.EVM.byte 0xbb]
+      calldata := []
+      caller := 0
+      contractAddress := 0
+      callValue := 0 }
+    Machine.Contract.EVM.freshStorage
+
+example :
+    copyReturnExecution.exit =
+      some (.returned
+        [Machine.Contract.EVM.byte 0xaa,
+          Machine.Contract.EVM.byte 0xbb]) := by
+  decide
+
+def emptyHandlerInventory : Machine.Contract.EVM.ClassicalHandlers where
+  player := []
+  reveal := []
+  sampleRequest := []
+  oracleCallback := []
+
+def unknownSelectorExecution :
+    Machine.Contract.EVM.ExecutionState :=
+  let program := Machine.Contract.EVM.classicalRuntimeAssembly
+    matchingPenniesClassicalSelectors emptyHandlerInventory
+  Machine.Contract.EVM.execute 100 program
+    { codeBytes := program.emit
+      calldata := [0, 0, 0, 4]
+      caller := 0
+      contractAddress := 0
+      callValue := 0 }
+    Machine.Contract.EVM.freshStorage
+
+example :
+    unknownSelectorExecution.exit = some (.reverted []) := by
+  decide
 
 example :
     (emptyEVMByteBackend.compileBooleanRuntime?

@@ -53,14 +53,28 @@ def deploymentCopyReturn (runtimeOffset runtimeSize : Nat) : Assembly :=
 /-- Actual EVM creation bytecode paired with the runtime image it deploys. -/
 structure DeploymentImage (selectors : ClassicalSelectors) where
   runtime : RuntimeImage selectors
-  initialization : Assembly
-  runtimeOffset : Nat
-  runtimeOffset_eq : runtimeOffset = initialization.byteLength + 21
-  runtimeOffset_fits : runtimeOffset < 2 ^ 32
+  slotCount : Nat
+  initialStorage : TotalStorage
+  offset_fits :
+    (compileStorageInitialization slotCount initialStorage).byteLength + 21 <
+      2 ^ 32
 
 namespace DeploymentImage
 
 variable {selectors : ClassicalSelectors}
+
+/-- Constructor writes determined by the intended initial account state. -/
+def initialization (image : DeploymentImage selectors) : Assembly :=
+  compileStorageInitialization image.slotCount image.initialStorage
+
+/-- Byte offset at which the appended runtime begins. -/
+def runtimeOffset (image : DeploymentImage selectors) : Nat :=
+  image.initialization.byteLength + 21
+
+/-- The derived runtime offset is represented exactly by `PUSH4`. -/
+theorem runtimeOffset_fits (image : DeploymentImage selectors) :
+    image.runtimeOffset < 2 ^ 32 :=
+  image.offset_fits
 
 /-- The constructor assembly determined by the certified layout. -/
 def creationAssembly (image : DeploymentImage selectors) : Assembly :=
@@ -79,10 +93,9 @@ def build? (runtime : RuntimeImage selectors) (slotCount : Nat)
   if hfits : runtimeOffset < 2 ^ 32 then
     some
       { runtime := runtime
-        initialization := initialization
-        runtimeOffset := runtimeOffset
-        runtimeOffset_eq := rfl
-        runtimeOffset_fits := hfits }
+        slotCount := slotCount
+        initialStorage := storage
+        offset_fits := hfits }
   else
     none
 
@@ -91,13 +104,29 @@ layout calculation. -/
 @[simp] theorem creationAssembly_byteLength
     (image : DeploymentImage selectors) :
     image.creationAssembly.byteLength = image.runtimeOffset := by
-  simp [DeploymentImage.creationAssembly, image.runtimeOffset_eq]
+  simp [DeploymentImage.creationAssembly, DeploymentImage.runtimeOffset]
 
 /-- Creation bytecode is the constructor prefix followed by the exact runtime
 bytes. -/
 @[simp] theorem bytecode_length (image : DeploymentImage selectors) :
     image.bytecode.length =
       image.runtimeOffset + image.runtime.bytecode.length := by
+  simp [DeploymentImage.bytecode]
+
+/-- The prefix before the derived runtime offset is exactly the emitted
+constructor. -/
+@[simp] theorem bytecode_take_runtimeOffset
+    (image : DeploymentImage selectors) :
+    image.bytecode.take image.runtimeOffset = image.creationAssembly.emit := by
+  rw [← image.creationAssembly_byteLength]
+  simp [DeploymentImage.bytecode]
+
+/-- The suffix at the derived runtime offset is exactly the linked runtime;
+no offset calculation can select different bytes. -/
+@[simp] theorem bytecode_drop_runtimeOffset
+    (image : DeploymentImage selectors) :
+    image.bytecode.drop image.runtimeOffset = image.runtime.bytecode := by
+  rw [← image.creationAssembly_byteLength]
   simp [DeploymentImage.bytecode]
 
 end DeploymentImage

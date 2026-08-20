@@ -355,14 +355,23 @@ classical handler fragments are linked behind a 64-byte selector dispatcher;
 unknown selectors revert, handler entry offsets are computed from emitted
 prefix sizes, and the complete image must fit the dispatcher's 32-bit jump
 addresses. Assembly and bytecode are derived from the certified handlers, so
-the size certificate cannot describe different caller-supplied bytes. No EVM
-execution semantics currently connects the emitted bytes back to `receive`.
+the size certificate cannot describe different caller-supplied bytes. No
+generated-handler refinement theorem currently connects their execution back
+to `receive`.
 
 `Machine.Contract.EVM.DeploymentImage` adds actual creation bytecode. Its
 constructor emits `SSTORE` only for nonzero cells in the finite initial layout,
 copies the appended runtime into memory, and returns it. The runtime offset is
 computed from the emitted initialization prefix, while both that offset and
 the runtime length carry the bounds needed by their `PUSH4` operands.
+`Machine.Contract.EVM.ExecutionState` gives the emitted instruction subset an
+executable gas-free EVM semantics with byte program counters, `JUMPDEST`
+validation, zero-padded calldata, caller/address/value context, total storage,
+byte memory, logs, return data, revert data, and constructor `CODECOPY` over
+the actual deployment bytes. Kernel-checked tests execute selector rejection
+and constructor runtime return. The remaining validation task is a decoder or
+external-EVM correspondence theorem for opcode bytes, followed by generated
+handler refinement; gas and transaction scheduling are deliberately separate.
 
 `Machine.Contract.EVM.ClassicalStorageLayout` supplies the corresponding
 account-state representation. EVM's total zero-default storage cannot directly
@@ -471,7 +480,8 @@ and a trusted-oracle Boolean source-to-EVM backend. It does not yet have a codec
 and expression compiler for other source types, reified restricted trigger
 policies, a concrete transaction scheduler, cryptographic commitment
 refinement, exact untrusted on-chain chance implementation, timeout/abort game
-semantics, or an EVM execution model and end-to-end bytecode refinement theorem.
+semantics, an external-EVM correspondence theorem, or an end-to-end bytecode
+refinement theorem.
 The source-star theorem is about possible terminal runs and payoff equality; it
 does not equate probability laws, intermediate information histories,
 schedules, or target strategy spaces. Those are VegasCore gaps, not features
