@@ -18,6 +18,8 @@ instantiate the same result.
 
 namespace Vegas.Machine.Contract.EVM
 
+open EventGraph
+
 noncomputable section
 
 @[simp] theorem boolWord_encodeBool_eq (left right : Bool) :
@@ -32,6 +34,26 @@ noncomputable section
 @[simp] theorem boolWord_encodeBool_iszero (value : Bool) :
     boolWord (encodeBool value = 0) = encodeBool (!value) := by
   cases value <;> rfl
+
+/-- Stable facts about the dynamic EVM environment and storage on which an
+expression's variable loads may rely. -/
+abbrev BoolExprPrecondition := ExecutionEnv → TotalStorage → Prop
+
+/-- Semantic contract of compiled Boolean expression code: under a stable read
+precondition and over an arbitrary stack suffix, it pushes exactly one
+canonical result and otherwise changes only the byte program counter. -/
+def BoolExprCorrect (pre : BoolExprPrecondition)
+    (value : Bool) (code : Assembly) : Prop :=
+  ∀ (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+      (rest : List Word),
+    pre env state.storage →
+    state.exit = none →
+    state.stack = rest →
+    Assembly.CodeAt whole code state.pc →
+    run code.length whole env state =
+      { state with
+        pc := state.pc + code.byteLength
+        stack := encodeBool value :: rest }
 
 /-- A compiled Boolean literal pushes its canonical word. -/
 theorem run_pushBool (whole : Assembly) (env : ExecutionEnv)
@@ -114,34 +136,59 @@ theorem run_boolSelect (whole : Assembly) (env : ExecutionEnv)
     simp [StraightRun, boolSelectAssembly, stepInstruction, advance, hstack,
       hrunning, Assembly.byteLength, Instruction.byteLength, encodeBool]
 
-/-- Semantic contract of compiled Boolean expression code: starting over an
-arbitrary stack suffix, it pushes exactly one canonical result and otherwise
-changes only the byte program counter. -/
-def BoolExprCorrect (value : Bool) (code : Assembly) : Prop :=
-  ∀ (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
-      (rest : List Word),
-    state.exit = none →
-    state.stack = rest →
-    Assembly.CodeAt whole code state.pc →
-    run code.length whole env state =
-      { state with
-        pc := state.pc + code.byteLength
-        stack := encodeBool value :: rest }
+/-- A fixed calldata load implements one Boolean variable when the read
+precondition supplies exact key representation and the expected canonical
+word. -/
+theorem loadCalldataWord_correct (pre : BoolExprPrecondition)
+    (offset : Nat) (value : Bool)
+    (hread : ∀ env storage, pre env storage →
+      offset < 2 ^ 256 ∧
+      calldataLoad env.calldata offset = encodeBool value) :
+    BoolExprCorrect pre value (loadCalldataWord offset) := by
+  intro whole env state rest hpre hrunning hstack hcode
+  rcases hread env state.storage hpre with ⟨hoffset, hload⟩
+  have hkey : (PushData.nat256 offset).value.toNat = offset :=
+    PushData.nat256_value_toNat_of_lt hoffset
+  apply StraightRun.run_eq ?_ hcode
+  simp only [loadCalldataWord, StraightRun]
+  rw [hrunning]
+  simp only [stepInstruction, advance]
+  rw [hstack, hkey, hload]
+  simp [Assembly.byteLength, Instruction.byteLength, hrunning]
 
-theorem BoolExprCorrect.literal (value : Bool) :
-    BoolExprCorrect value
+/-- A fixed total-storage load implements one Boolean variable under the
+corresponding canonical-cell precondition. -/
+theorem loadStorageWord_correct (pre : BoolExprPrecondition)
+    (slot : Nat) (value : Bool)
+    (hread : ∀ env storage, pre env storage →
+      slot < 2 ^ 256 ∧ storage slot = encodeBool value) :
+    BoolExprCorrect pre value (loadStorageWord slot) := by
+  intro whole env state rest hpre hrunning hstack hcode
+  rcases hread env state.storage hpre with ⟨hslot, hload⟩
+  have hkey : (PushData.nat256 slot).value.toNat = slot :=
+    PushData.nat256_value_toNat_of_lt hslot
+  apply StraightRun.run_eq ?_ hcode
+  simp only [loadStorageWord, StraightRun]
+  rw [hrunning]
+  simp only [stepInstruction, advance]
+  rw [hstack, hkey, hload]
+  simp [Assembly.byteLength, Instruction.byteLength, hrunning]
+
+theorem BoolExprCorrect.literal (pre : BoolExprPrecondition) (value : Bool) :
+    BoolExprCorrect pre value
       [.push (.one (byte (if value then 1 else 0)))] := by
-  intro whole env state rest hrunning hstack hcode
+  intro whole env state rest _hpre hrunning hstack hcode
   exact run_pushBool whole env state value rest hrunning hstack hcode
 
 /-- Sequential composition with EVM equality preserves expression
 correctness. -/
-theorem BoolExprCorrect.eq {left right : Bool} {leftCode rightCode : Assembly}
-    (hleft : BoolExprCorrect left leftCode)
-    (hright : BoolExprCorrect right rightCode) :
-    BoolExprCorrect (decide (left = right))
+theorem BoolExprCorrect.eq {pre : BoolExprPrecondition}
+    {left right : Bool} {leftCode rightCode : Assembly}
+    (hleft : BoolExprCorrect pre left leftCode)
+    (hright : BoolExprCorrect pre right rightCode) :
+    BoolExprCorrect pre (decide (left = right))
       (leftCode ++ rightCode ++ [.eq]) := by
-  intro whole env state rest hrunning hstack hcode
+  intro whole env state rest hpre hrunning hstack hcode
   have hcode' : Assembly.CodeAt whole
       (leftCode ++ (rightCode ++ [.eq])) state.pc := by
     simpa [List.append_assoc] using hcode
@@ -152,9 +199,12 @@ theorem BoolExprCorrect.eq {left right : Bool} {leftCode rightCode : Assembly}
       pc := state.pc + leftCode.byteLength
       stack := encodeBool left :: rest }
   have hrunLeft : run leftCode.length whole env state = afterLeft := by
-    simpa [afterLeft] using hleft whole env state rest hrunning hstack hleftCode
+    simpa [afterLeft] using
+      hleft whole env state rest hpre hrunning hstack hleftCode
   have hafterLeftRunning : afterLeft.exit = none := by
     simp [afterLeft, hrunning]
+  have hafterLeftPre : pre env afterLeft.storage := by
+    simpa [afterLeft] using hpre
   have hrightCode : Assembly.CodeAt whole rightCode afterLeft.pc := by
     have := htailCode.left
     simpa [afterLeft] using this
@@ -164,7 +214,7 @@ theorem BoolExprCorrect.eq {left right : Bool} {leftCode rightCode : Assembly}
       stack := encodeBool right :: encodeBool left :: rest }
   have hrunRight :
       run rightCode.length whole env afterLeft = afterRight := by
-    apply hright whole env afterLeft (encodeBool left :: rest)
+    apply hright whole env afterLeft (encodeBool left :: rest) hafterLeftPre
     · exact hafterLeftRunning
     · simp [afterLeft]
     · exact hrightCode
@@ -191,13 +241,13 @@ theorem BoolExprCorrect.eq {left right : Bool} {leftCode rightCode : Assembly}
 
 /-- Sequential composition with bitwise `AND` preserves expression
 correctness for canonical Boolean words. -/
-theorem BoolExprCorrect.and {left right : Bool}
+theorem BoolExprCorrect.and {pre : BoolExprPrecondition} {left right : Bool}
     {leftCode rightCode : Assembly}
-    (hleft : BoolExprCorrect left leftCode)
-    (hright : BoolExprCorrect right rightCode) :
-    BoolExprCorrect (left && right)
+    (hleft : BoolExprCorrect pre left leftCode)
+    (hright : BoolExprCorrect pre right rightCode) :
+    BoolExprCorrect pre (left && right)
       (leftCode ++ rightCode ++ [.and]) := by
-  intro whole env state rest hrunning hstack hcode
+  intro whole env state rest hpre hrunning hstack hcode
   have hcode' : Assembly.CodeAt whole
       (leftCode ++ (rightCode ++ [.and])) state.pc := by
     simpa [List.append_assoc] using hcode
@@ -208,9 +258,12 @@ theorem BoolExprCorrect.and {left right : Bool}
       pc := state.pc + leftCode.byteLength
       stack := encodeBool left :: rest }
   have hrunLeft : run leftCode.length whole env state = afterLeft := by
-    simpa [afterLeft] using hleft whole env state rest hrunning hstack hleftCode
+    simpa [afterLeft] using
+      hleft whole env state rest hpre hrunning hstack hleftCode
   have hafterLeftRunning : afterLeft.exit = none := by
     simp [afterLeft, hrunning]
+  have hafterLeftPre : pre env afterLeft.storage := by
+    simpa [afterLeft] using hpre
   have hrightCode : Assembly.CodeAt whole rightCode afterLeft.pc := by
     have := htailCode.left
     simpa [afterLeft] using this
@@ -220,7 +273,7 @@ theorem BoolExprCorrect.and {left right : Bool}
       stack := encodeBool right :: encodeBool left :: rest }
   have hrunRight :
       run rightCode.length whole env afterLeft = afterRight := by
-    apply hright whole env afterLeft (encodeBool left :: rest)
+    apply hright whole env afterLeft (encodeBool left :: rest) hafterLeftPre
     · exact hafterLeftRunning
     · simp [afterLeft]
     · exact hrightCode
@@ -246,10 +299,11 @@ theorem BoolExprCorrect.and {left right : Bool}
   omega
 
 /-- Sequential composition with `ISZERO` preserves expression correctness. -/
-theorem BoolExprCorrect.not {value : Bool} {code : Assembly}
-    (hcodeCorrect : BoolExprCorrect value code) :
-    BoolExprCorrect (!value) (code ++ [.iszero]) := by
-  intro whole env state rest hrunning hstack hcode
+theorem BoolExprCorrect.not {pre : BoolExprPrecondition}
+    {value : Bool} {code : Assembly}
+    (hcodeCorrect : BoolExprCorrect pre value code) :
+    BoolExprCorrect pre (!value) (code ++ [.iszero]) := by
+  intro whole env state rest hpre hrunning hstack hcode
   have hexprCode := hcode.left
   have hnotCode := hcode.right
   let after : ExecutionState :=
@@ -258,7 +312,7 @@ theorem BoolExprCorrect.not {value : Bool} {code : Assembly}
       stack := encodeBool value :: rest }
   have hrunExpr : run code.length whole env state = after := by
     simpa [after] using
-      hcodeCorrect whole env state rest hrunning hstack hexprCode
+      hcodeCorrect whole env state rest hpre hrunning hstack hexprCode
   have hafterRunning : after.exit = none := by
     simp [after, hrunning]
   have hnotCode' : Assembly.CodeAt whole [.iszero] after.pc := by
@@ -273,14 +327,15 @@ theorem BoolExprCorrect.not {value : Bool} {code : Assembly}
 
 /-- Sequential composition with the branchless selection circuit preserves
 expression correctness. -/
-theorem BoolExprCorrect.select {condition yes no : Bool}
+theorem BoolExprCorrect.select {pre : BoolExprPrecondition}
+    {condition yes no : Bool}
     {conditionCode noCode yesCode : Assembly}
-    (hcondition : BoolExprCorrect condition conditionCode)
-    (hno : BoolExprCorrect no noCode)
-    (hyes : BoolExprCorrect yes yesCode) :
-    BoolExprCorrect (if condition then yes else no)
+    (hcondition : BoolExprCorrect pre condition conditionCode)
+    (hno : BoolExprCorrect pre no noCode)
+    (hyes : BoolExprCorrect pre yes yesCode) :
+    BoolExprCorrect pre (if condition then yes else no)
       (conditionCode ++ noCode ++ yesCode ++ boolSelectAssembly) := by
-  intro whole env state rest hrunning hstack hcode
+  intro whole env state rest hpre hrunning hstack hcode
   have hcode' : Assembly.CodeAt whole
       (conditionCode ++ (noCode ++ (yesCode ++ boolSelectAssembly)))
       state.pc := by
@@ -294,9 +349,11 @@ theorem BoolExprCorrect.select {condition yes no : Bool}
   have hrunCondition :
       run conditionCode.length whole env state = afterCondition := by
     simpa [afterCondition] using
-      hcondition whole env state rest hrunning hstack hconditionCode
+      hcondition whole env state rest hpre hrunning hstack hconditionCode
   have hconditionRunning : afterCondition.exit = none := by
     simp [afterCondition, hrunning]
+  have hconditionPre : pre env afterCondition.storage := by
+    simpa [afterCondition] using hpre
   have hnoCode : Assembly.CodeAt whole noCode afterCondition.pc := by
     have := htail1.left
     simpa [afterCondition] using this
@@ -306,11 +363,14 @@ theorem BoolExprCorrect.select {condition yes no : Bool}
       stack := encodeBool no :: encodeBool condition :: rest }
   have hrunNo : run noCode.length whole env afterCondition = afterNo := by
     apply hno whole env afterCondition (encodeBool condition :: rest)
+      hconditionPre
     · exact hconditionRunning
     · simp [afterCondition]
     · exact hnoCode
   have hnoRunning : afterNo.exit = none := by
     simp [afterNo, afterCondition, hrunning]
+  have hnoPre : pre env afterNo.storage := by
+    simpa [afterNo, afterCondition] using hpre
   have htail2 := htail1.right
   have hyesCode : Assembly.CodeAt whole yesCode afterNo.pc := by
     have := htail2.left
@@ -322,6 +382,7 @@ theorem BoolExprCorrect.select {condition yes no : Bool}
   have hrunYes : run yesCode.length whole env afterNo = afterYes := by
     apply hyes whole env afterNo
       (encodeBool no :: encodeBool condition :: rest)
+      hnoPre
     · exact hnoRunning
     · simp [afterNo]
     · exact hyesCode
@@ -347,16 +408,17 @@ theorem BoolExprCorrect.select {condition yes no : Bool}
 meaning. -/
 theorem BoolExprIR.compile_correct
     {Γ : CtxSimple}
+    (pre : BoolExprPrecondition)
     (variableCode :
       {name : VarId} → HasVar Γ name .bool → Assembly)
     (ρ : PlainEnv Γ)
     (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .bool),
-      BoolExprCorrect (ρ.get binding) (variableCode binding))
+      BoolExprCorrect pre (ρ.get binding) (variableCode binding))
     (expr : BoolExprIR Γ) :
-    BoolExprCorrect (expr.eval ρ) (expr.compile variableCode) := by
+    BoolExprCorrect pre (expr.eval ρ) (expr.compile variableCode) := by
   induction expr with
   | «variable» name binding => exact hvariable binding
-  | literal value => exact BoolExprCorrect.literal value
+  | literal value => exact BoolExprCorrect.literal pre value
   | equal left right ihLeft ihRight =>
       exact BoolExprCorrect.eq ihLeft ihRight
   | conjunction left right ihLeft ihRight =>
@@ -371,14 +433,15 @@ typed environment. Unsupported source constructors cannot satisfy the compile
 hypothesis. -/
 theorem compileBoolExpr?_correct
     {Γ : CtxSimple}
+    (pre : BoolExprPrecondition)
     (variableCode :
       {name : VarId} → HasVar Γ name .bool → Assembly)
     (ρ : PlainEnv Γ)
     (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .bool),
-      BoolExprCorrect (ρ.get binding) (variableCode binding))
+      BoolExprCorrect pre (ρ.get binding) (variableCode binding))
     (expr : Expr Γ .bool) (code : Assembly)
     (hcompile : compileBoolExpr? variableCode expr = some code) :
-    BoolExprCorrect (evalExpr expr ρ) code := by
+    BoolExprCorrect pre (evalExpr expr ρ) code := by
   cases hlower : lowerBoolExpr? expr with
   | none => simp [compileBoolExpr?, hlower] at hcompile
   | some lowered =>
@@ -386,7 +449,53 @@ theorem compileBoolExpr?_correct
         Option.some.injEq] at hcompile
       subst code
       rw [← lowered.eval_eq ρ]
-      exact BoolExprIR.compile_correct variableCode ρ hvariable lowered.ir
+      exact BoolExprIR.compile_correct pre variableCode ρ hvariable lowered.ir
+
+/-- Concrete dynamic read invariant for one retained commit guard. The head
+environment binding is the proposed action calldata word; every tail binding
+is its assigned graph storage cell. -/
+def simpleGuardReadPrecondition (code : GuardCode simpleExpr .bool)
+    (ρ : PlainEnv ((code.actionName, .bool) :: code.Context)) :
+    BoolExprPrecondition :=
+  fun env storage =>
+    calldataLoad env.calldata 68 = encodeBool (ρ.get .here) ∧
+    ∀ {name : VarId} (binding : HasVar code.Context name .bool),
+      code.fieldOf binding < 2 ^ 256 ∧
+      storage (code.fieldOf binding) = encodeBool (ρ.get (.there binding))
+
+/-- The concrete guard-variable adapter implements its corresponding typed
+environment lookup under the guard read invariant. -/
+theorem simpleGuardVariableCode_correct
+    (code : GuardCode simpleExpr .bool)
+    (ρ : PlainEnv ((code.actionName, .bool) :: code.Context))
+    {name : VarId}
+    (binding : HasVar ((code.actionName, .bool) :: code.Context) name .bool) :
+    BoolExprCorrect (simpleGuardReadPrecondition code ρ) (ρ.get binding)
+      (simpleGuardVariableCode code binding) := by
+  cases binding with
+  | here =>
+      apply loadCalldataWord_correct _ 68 (ρ.get .here)
+      intro env storage hpre
+      exact ⟨by norm_num, hpre.1⟩
+  | there stored =>
+      apply loadStorageWord_correct _ (code.fieldOf stored)
+        (ρ.get (.there stored))
+      intro env storage hpre
+      exact hpre.2 stored
+
+/-- Successful retained-guard compilation pushes exactly the guard's source
+Boolean value for every execution satisfying its calldata/storage read
+invariant. -/
+theorem compileSimpleGuardCode?_correct
+    (code : GuardCode simpleExpr .bool)
+    (ρ : PlainEnv ((code.actionName, .bool) :: code.Context))
+    (assembly : Assembly)
+    (hcompile : compileSimpleGuardCode? code = some assembly) :
+    BoolExprCorrect (simpleGuardReadPrecondition code ρ)
+      (evalExpr code.expr ρ) assembly := by
+  exact compileBoolExpr?_correct (simpleGuardReadPrecondition code ρ)
+    (simpleGuardVariableCode code) ρ
+    (simpleGuardVariableCode_correct code ρ) code.expr assembly hcompile
 
 end
 
