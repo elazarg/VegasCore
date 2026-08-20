@@ -346,9 +346,17 @@ table index to a word exposes the necessary `< 2^256` proof obligation.
 that concrete boundary. Given the classical deployment choices, selectors,
 player/value codecs, and the node-count capacity proof, it produces one
 `EVMByteArtifact` packaged as a deterministic contract over raw byte calldata
-and blockchain caller context. This closes the source-to-executable-byte-ABI
-chain, but it is not EVM bytecode: expression/control-flow instruction
-lowering, VM execution, and an emitter correctness theorem are still required.
+and blockchain caller context.
+
+`Machine.Contract.EVM.RuntimeImage` is the first actual runtime-code layer.
+It gives the required EVM operations their concrete opcode bytes and proves
+that emission has the computed byte length. Four independently compiled
+classical handler fragments are linked behind a 64-byte selector dispatcher;
+unknown selectors revert, handler entry offsets are computed from emitted
+prefix sizes, and the complete image must fit the dispatcher's 32-bit jump
+addresses. This is genuine EVM runtime byte emission, but the handlers are not
+yet generated from Vegas expressions and storage transitions, and no EVM
+execution semantics currently connects the bytes back to `receive`.
 
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
@@ -398,13 +406,14 @@ contract inventory/layout/storage/state/call boundaries, a finite 256-bit
 Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
-an ideal observation/atomic-frontier boundary, and unilateral strategic
+an ideal observation/atomic-frontier boundary, an EVM opcode emitter and
+four-entry runtime linker, and unilateral strategic
 certificates for same-player and fixed-trusted-role targets, plus a complete
 deterministic four-entry EVM byte-calldata artifact. It does not yet have an EVM
-instruction IR or emitter, a codec for programs that store other source types,
+expression-to-EVM handler compiler, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
 untrusted on-chain chance implementation, timeout/abort game semantics, or an
-end-to-end secure compilation theorem. The source-star theorem is about possible terminal
+EVM execution model or end-to-end secure compilation theorem. The source-star theorem is about possible terminal
 runs and payoff equality; it does not equate probability laws, intermediate
 information histories, schedules, or target strategy spaces. Those are
 VegasCore gaps, not features supplied by GameTheory.

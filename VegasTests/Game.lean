@@ -9,6 +9,7 @@ import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
 import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract.ClassicalEVMBytes
+import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
@@ -515,6 +516,46 @@ example
 example (node : Fin matchingPenniesMachine.graph.nodeCount) :
     (matchingPenniesClassicalABI.encodeBytes
       (.oracleCallback { node := node, choice := 0 })).byteLength = 68 :=
+  rfl
+
+def matchingPenniesStopHandlers :
+    Machine.Contract.EVM.LinkableHandlers where
+  handlers :=
+    { player := [.stop]
+      reveal := [.stop]
+      sampleRequest := [.stop]
+      oracleCallback := [.stop] }
+  size_fits := by
+    norm_num [Machine.Contract.EVM.classicalRuntimeSize,
+      Machine.Contract.EVM.classicalDispatcherSize,
+      Machine.Contract.EVM.ClassicalHandlers.blockSize,
+      Machine.Contract.EVM.ClassicalHandlers.get,
+      Machine.Contract.EVM.Assembly.byteLength,
+      Machine.Contract.EVM.Instruction.byteLength]
+
+def matchingPenniesRuntimeImage :
+    Machine.Contract.EVM.RuntimeImage matchingPenniesClassicalSelectors :=
+  Machine.Contract.EVM.RuntimeImage.link matchingPenniesClassicalSelectors
+    matchingPenniesStopHandlers
+
+example : matchingPenniesRuntimeImage.bytecode.length = 76 := by
+  change
+    (Machine.Contract.EVM.RuntimeImage.link
+      matchingPenniesClassicalSelectors
+      matchingPenniesStopHandlers).bytecode.length = 76
+  rw [Machine.Contract.EVM.RuntimeImage.link_bytecode_length]
+  norm_num [matchingPenniesStopHandlers,
+    Machine.Contract.EVM.classicalRuntimeSize,
+    Machine.Contract.EVM.classicalDispatcherSize,
+    Machine.Contract.EVM.ClassicalHandlers.blockSize,
+    Machine.Contract.EVM.ClassicalHandlers.get,
+    Machine.Contract.EVM.Assembly.byteLength,
+    Machine.Contract.EVM.Instruction.byteLength]
+
+example : matchingPenniesRuntimeImage.bytecode.take 6 =
+    [Machine.Contract.EVM.byte 0x60, Machine.Contract.EVM.byte 0x00,
+      Machine.Contract.EVM.byte 0x35, Machine.Contract.EVM.byte 0x60,
+      Machine.Contract.EVM.byte 0xe0, Machine.Contract.EVM.byte 0x1c] := by
   rfl
 
 example (message : matchingPenniesContract.Message) :
