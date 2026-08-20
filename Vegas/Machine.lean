@@ -25,3 +25,4 @@ import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
 import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
+import Vegas.Machine.Contract.Blockchain

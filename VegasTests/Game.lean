@@ -21,6 +21,7 @@ import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
 import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
+import Vegas.Machine.Contract.Blockchain
 
 namespace VegasTests
 
@@ -282,6 +283,26 @@ example {state : matchingPenniesMachine.State} {who : TestPlayer}
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec)) := by
   exact matchingPenniesContract.execute?_encodeState_playerCommit action step
+
+example
+    (chain : Machine.Contract.Blockchain.ChainView)
+    (context : Machine.Contract.Blockchain.CallContext TestPlayer)
+    {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action)
+    (hsender : context.sender = matchingPenniesContract.players.address who) :
+    matchingPenniesContract.receive? chain context
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (.player
+          (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
+            matchingPenniesContract.codec action step)) =
+      some ((matchingPenniesMachine.step state (.commit who action step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.receive?_encodeState_playerCommit
+    chain context action step hsender
 
 example {state : matchingPenniesMachine.State} {who : TestPlayer}
     (action : EventGraph.CommitAction matchingPenniesMachine.graph who)

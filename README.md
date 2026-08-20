@@ -202,6 +202,16 @@ the canonical reachable-state image. The included identity codec is
 proof-facing only; an EVM backend must supply concrete selector, address, and
 word encodings.
 
+`Machine.Contract.Blockchain.StochasticContract` then separates caller-free
+message data from blockchain-supplied call context. The configured adapter uses
+only `sender`; height, slot, origin, contract address, balances, and transferred
+amount are semantically inert until dedicated timing, payment, or entropy
+passes consume them. This boundary intentionally remains stochastic. A
+ConCert-style deterministic `receive` function can only be produced after
+chance is refined to an oracle or chain entropy protocol. ConCertLean's current
+Lean/toolchain revision also differs from this project's, so it is a grounding
+interface rather than a direct package dependency today.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
