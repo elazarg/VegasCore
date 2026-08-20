@@ -70,13 +70,34 @@ inductive Message {Player : Type} [DecidableEq Player] {L : IExpr}
   | player (message : PlayerMessage program Word)
   | internal (message : InternalMessage program)
 
-/-- A contract interface whose receive function may have a finite stochastic
-successor law. No outbound calls or asset transfers are modeled yet. -/
+/-- Why a blockchain-facing invocation reverted at the current boundary. -/
+inductive RevertReason where
+  | malformed
+  | rejected
+deriving DecidableEq
+
+/-- Explicit blockchain-facing result with a stochastic success payload. -/
+inductive ReceiveResult (State : Type) where
+  | success (law : GameTheory.Math.Probability.FinDist State)
+  | revert (reason : RevertReason)
+
+namespace ReceiveResult
+
+/-- Executable success projection used to relate results to validators. -/
+def succeeded {State : Type} : ReceiveResult State → Bool
+  | .success _ => true
+  | .revert _ => false
+
+end ReceiveResult
+
+/-- A contract interface whose successful receive function may have a finite
+stochastic successor law. No outbound calls or asset transfers are modeled
+yet. -/
 structure StochasticContract (Address Message State : Type) where
   initial : State
-  receive? :
+  receive :
     ChainView → CallContext Address → State → Message →
-      Option (GameTheory.Math.Probability.FinDist State)
+      ReceiveResult State
 
 namespace PlayerMessage
 
@@ -139,74 +160,92 @@ def acceptsMessage (context : CallContext Address) (store : contract.Store)
     (message : contract.Message) : Bool :=
   contract.accepts store (message.contextualize context)
 
-/-- Contextual execution. Chain metadata is deliberately inert at this pass. -/
-def receive? (_chain : ChainView) (context : CallContext Address)
+/-- Contextual execution with explicit semantic rejection. Chain metadata is
+deliberately inert at this pass. -/
+def receive (_chain : ChainView) (context : CallContext Address)
     (store : contract.Store) (message : contract.Message) :
-    Option (GameTheory.Math.Probability.FinDist contract.Store) :=
-  contract.execute? store (message.contextualize context)
+    ReceiveResult contract.Store :=
+  match contract.execute? store (message.contextualize context) with
+  | none => .revert .rejected
+  | some law => .success law
 
 /-- Package the configured contract at the stochastic blockchain boundary. -/
 def toStochasticContract :
-    StochasticContract Address contract.Message contract.Store where
+  StochasticContract Address contract.Message contract.Store where
   initial := contract.initialStore
-  receive? := contract.receive?
+  receive := contract.receive
 
 /-- Contextual receive succeeds exactly when contextual validation accepts. -/
-theorem receive?_isSome (chain : ChainView) (context : CallContext Address)
+theorem receive_succeeded (chain : ChainView) (context : CallContext Address)
     (store : contract.Store) (message : contract.Message) :
-    (contract.receive? chain context store message).isSome =
+    (contract.receive chain context store message).succeeded =
       contract.acceptsMessage context store message := by
-  exact contract.execute?_isSome store (message.contextualize context)
+  unfold receive
+  cases h : contract.execute? store (message.contextualize context) with
+  | none =>
+      simpa [ReceiveResult.succeeded, acceptsMessage, h] using
+        contract.execute?_isSome store (message.contextualize context)
+  | some law =>
+      simpa [ReceiveResult.succeeded, acceptsMessage, h] using
+        contract.execute?_isSome store (message.contextualize context)
 
 /-- A semantic player commit submitted by its registered sender retains the
 exact stored machine-step law in every otherwise arbitrary chain context. -/
-theorem receive?_encodeState_playerCommit
+theorem receive_encodeState_playerCommit
     (chain : ChainView) (context : CallContext Address)
     {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action)
     (hsender : context.sender = contract.players.address who) :
-    contract.receive? chain context
+    contract.receive chain context
         (RawStore.encodeState contract.codec state)
         (.player (PlayerMessage.encodeCommit contract.codec action step)) =
-      some ((program.step state (.commit who action step)).map
+      .success ((program.step state (.commit who action step)).map
         (RawStore.encodeState contract.codec)) := by
-  unfold receive? Message.contextualize PlayerMessage.encodeCommit
+  unfold receive Message.contextualize PlayerMessage.encodeCommit
   rw [hsender]
-  exact contract.execute?_encodeState_playerCommit action step
+  have hexecute := contract.execute?_encodeState_playerCommit action step
+  simp only [PlayerCalldata.encodeCommit] at hexecute
+  rw [hexecute]
 
 /-- An authorized internal event retains its exact stored machine-step law in
 every otherwise arbitrary chain context. -/
-theorem receive?_encodeState_internal
+theorem receive_encodeState_internal
     (chain : ChainView) (context : CallContext Address)
     {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
     (hauthorized :
       contract.triggers.allows context.sender event.node = true) :
-    contract.receive? chain context
+    contract.receive chain context
         (RawStore.encodeState contract.codec state)
         (.internal (InternalMessage.encode event)) =
-      some ((program.step state (.internal event step)).map
+      .success ((program.step state (.internal event step)).map
         (RawStore.encodeState contract.codec)) := by
-  exact contract.execute?_encodeState_internal
+  unfold receive Message.contextualize InternalMessage.encode
+  have hexecute := contract.execute?_encodeState_internal
     context.sender event step hauthorized
+  simp only [InternalCalldata.encode] at hexecute
+  rw [hexecute]
 
 /-- Every context/message pair accepted over encoded reachable storage
 executes as a valid semantic command. Chain metadata and non-sender context
 fields cannot create extra transitions at this pass. -/
-theorem receive?_encodeState_of_accepts
+theorem receive_encodeState_of_accepts
     (chain : ChainView) (context : CallContext Address)
     (state : program.State) (message : contract.Message)
     (haccept :
       contract.acceptsMessage context
         (RawStore.encodeState contract.codec state) message = true) :
     ∃ command : program.Command state,
-      contract.receive? chain context
+      contract.receive chain context
           (RawStore.encodeState contract.codec state) message =
-        some ((program.step state command).map
+        .success ((program.step state command).map
           (RawStore.encodeState contract.codec)) := by
-  exact contract.execute?_encodeState_of_accepts
-    state (message.contextualize context) haccept
+  rcases contract.execute?_encodeState_of_accepts
+      state (message.contextualize context) haccept with
+    ⟨command, hexecute⟩
+  refine ⟨command, ?_⟩
+  simp [receive, hexecute]
 
 end Vegas.Machine.Contract.ConfiguredContract

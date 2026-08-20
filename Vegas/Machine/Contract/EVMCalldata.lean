@@ -173,44 +173,57 @@ def acceptsEVMCalldata
   | none => false
   | some message => contract.acceptsMessage context store message
 
-/-- Decode and execute selector-framed, caller-free calldata. -/
-def receiveEVMCalldata? (chain : ChainView)
+/-- Decode and execute selector-framed, caller-free calldata. Malformed framing
+and semantic rejection remain distinct. -/
+def receiveEVMCalldata (chain : ChainView)
     (abi : EVM.MessageABI program contract.codec.Word)
     (context : CallContext Address) (store : contract.Store)
     (calldata : EVM.Calldata contract.codec.Word) :
-    Option (GameTheory.Math.Probability.FinDist contract.Store) :=
+    ReceiveResult contract.Store :=
   match abi.decode calldata with
-  | none => none
-  | some message => contract.receive? chain context store message
+  | none => .revert .malformed
+  | some message => contract.receive chain context store message
+
+/-- A framing failure is reported as a malformed-call revert before semantic
+validation runs. -/
+theorem receiveEVMCalldata_revert_malformed
+    (chain : ChainView)
+    (abi : EVM.MessageABI program contract.codec.Word)
+    (context : CallContext Address) (store : contract.Store)
+    (calldata : EVM.Calldata contract.codec.Word)
+    (hdecode : abi.decode calldata = none) :
+    contract.receiveEVMCalldata chain abi context store calldata =
+      .revert .malformed := by
+  simp [receiveEVMCalldata, hdecode]
 
 /-- Framed execution succeeds exactly when framed validation accepts. -/
-theorem receiveEVMCalldata?_isSome
+theorem receiveEVMCalldata_succeeded
     (chain : ChainView)
     (abi : EVM.MessageABI program contract.codec.Word)
     (context : CallContext Address) (store : contract.Store)
     (calldata : EVM.Calldata contract.codec.Word) :
-    (contract.receiveEVMCalldata? chain abi context store calldata).isSome =
+    (contract.receiveEVMCalldata chain abi context store calldata).succeeded =
       contract.acceptsEVMCalldata abi context store calldata := by
-  unfold receiveEVMCalldata? acceptsEVMCalldata
+  unfold receiveEVMCalldata acceptsEVMCalldata
   cases abi.decode calldata with
   | none => rfl
-  | some message => exact contract.receive?_isSome chain context store message
+  | some message => exact contract.receive_succeeded chain context store message
 
 /-- Encoding a contextual message is behaviorally transparent at the framed
 calldata boundary. -/
-@[simp] theorem receiveEVMCalldata?_encode
+@[simp] theorem receiveEVMCalldata_encode
     (chain : ChainView)
     (abi : EVM.MessageABI program contract.codec.Word)
     (context : CallContext Address) (store : contract.Store)
     (message : contract.Message) :
-    contract.receiveEVMCalldata? chain abi context store
+    contract.receiveEVMCalldata chain abi context store
         (abi.encode message) =
-      contract.receive? chain context store message := by
-  simp [receiveEVMCalldata?, abi.decode_encode]
+      contract.receive chain context store message := by
+  simp [receiveEVMCalldata, abi.decode_encode]
 
 /-- Every accepted selector-framed input over reachable encoded storage still
 executes as a valid semantic command. -/
-theorem receiveEVMCalldata?_encodeState_of_accepts
+theorem receiveEVMCalldata_encodeState_of_accepts
     (chain : ChainView)
     (abi : EVM.MessageABI program contract.codec.Word)
     (context : CallContext Address) (state : program.State)
@@ -219,19 +232,19 @@ theorem receiveEVMCalldata?_encodeState_of_accepts
       contract.acceptsEVMCalldata abi context
         (RawStore.encodeState contract.codec state) calldata = true) :
     ∃ command : program.Command state,
-      contract.receiveEVMCalldata? chain abi context
+      contract.receiveEVMCalldata chain abi context
           (RawStore.encodeState contract.codec state) calldata =
-        some ((program.step state command).map
+        .success ((program.step state command).map
           (RawStore.encodeState contract.codec)) := by
   unfold acceptsEVMCalldata at haccept
   cases hdecode : abi.decode calldata with
   | none => simp [hdecode] at haccept
   | some message =>
       simp only [hdecode] at haccept
-      rcases contract.receive?_encodeState_of_accepts
+      rcases contract.receive_encodeState_of_accepts
           chain context state message haccept with
         ⟨command, hexecute⟩
       refine ⟨command, ?_⟩
-      simp [receiveEVMCalldata?, hdecode, hexecute]
+      simp [receiveEVMCalldata, hdecode, hexecute]
 
 end Vegas.Machine.Contract.ConfiguredContract

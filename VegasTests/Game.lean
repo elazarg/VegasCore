@@ -327,16 +327,16 @@ example
     (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
       who action)
     (hsender : context.sender = matchingPenniesContract.players.address who) :
-    matchingPenniesContract.receive? chain context
+    matchingPenniesContract.receive chain context
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec state)
         (.player
           (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
             matchingPenniesContract.codec action step)) =
-      some ((matchingPenniesMachine.step state (.commit who action step)).map
+      .success ((matchingPenniesMachine.step state (.commit who action step)).map
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec)) := by
-  exact matchingPenniesContract.receive?_encodeState_playerCommit
+  exact matchingPenniesContract.receive_encodeState_playerCommit
     chain context action step hsender
 
 example
@@ -347,7 +347,7 @@ example
     (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
       who action)
     (hsender : context.sender = matchingPenniesContract.players.address who) :
-    matchingPenniesContract.receiveEVMCalldata? chain
+    matchingPenniesContract.receiveEVMCalldata chain
         matchingPenniesMessageABI context
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec state)
@@ -355,11 +355,11 @@ example
           (.player
             (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
               matchingPenniesContract.codec action step))) =
-      some ((matchingPenniesMachine.step state (.commit who action step)).map
+      .success ((matchingPenniesMachine.step state (.commit who action step)).map
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec)) := by
-  rw [matchingPenniesContract.receiveEVMCalldata?_encode]
-  exact matchingPenniesContract.receive?_encodeState_playerCommit
+  rw [matchingPenniesContract.receiveEVMCalldata_encode]
+  exact matchingPenniesContract.receive_encodeState_playerCommit
     chain context action step hsender
 
 example {state : matchingPenniesMachine.State} {who : TestPlayer}

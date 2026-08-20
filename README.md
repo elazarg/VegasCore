@@ -212,6 +212,12 @@ chance is refined to an oracle or chain entropy protocol. ConCertLean's current
 Lean/toolchain revision also differs from this project's, so it is a grounding
 interface rather than a direct package dependency today.
 
+Blockchain-facing receive results distinguish successful stochastic execution
+from reversion. Selector/arity/word decoding failures are `malformed`; decoded
+calls that fail authentication or game validation are `rejected`. This is not
+yet a gas or rollback semantics, but failure is no longer represented as an
+unclassified missing value.
+
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as
 `[player, node, value]` and internal calls as `[node]`; unknown selectors,
