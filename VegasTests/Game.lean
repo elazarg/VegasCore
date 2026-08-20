@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Game.Kuhn
+import Vegas.Compile.Classical
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
@@ -349,6 +350,42 @@ noncomputable def matchingPenniesContract :
   codec := matchingPenniesStorageCodec
   players := matchingPenniesRegistry
   triggers := permissionlessTriggers
+
+noncomputable def matchingPenniesClassicalBackend :
+    ClassicalCompiler.Backend matchingPenniesProgram TestPlayer where
+  codec := matchingPenniesStorageCodec
+  players := matchingPenniesRegistry
+  reveals := permissionlessTriggers
+  sampleRequests := permissionlessTriggers
+  oracle := { address := 0 }
+
+noncomputable def matchingPenniesClassicalContract :=
+  matchingPenniesClassicalBackend.compile
+
+example :
+    matchingPenniesClassicalContract.initial =
+      Machine.Contract.OracleProtocol.idleState matchingPenniesStorageCodec
+        matchingPenniesMachine.init :=
+  rfl
+
+example {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action) :
+    matchingPenniesClassicalContract.receive
+        (matchingPenniesClassicalContract.encodeState state)
+        (.player
+          (Machine.Contract.PlayerCalldata.encodeCommit
+            matchingPenniesRegistry matchingPenniesStorageCodec action step)) =
+      .success (Machine.Contract.Blockchain.CallSuccess.silent
+        { store := Machine.Contract.RawStore.encodeSnapshot
+            matchingPenniesStorageCodec
+            (EventGraph.StateSnapshot.ofConfig
+              (state.1.completeNode action.node
+                { ty := step.guard.ty, value := step.value }))
+          pending := none }) := by
+  exact matchingPenniesClassicalContract.receive_encodeState_playerCommit
+    state who action step
 
 def matchingPenniesSelectors : Machine.Contract.EVM.Selectors where
   player := 0

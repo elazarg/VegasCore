@@ -32,6 +32,9 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Contract lifecycle | `Machine.Contract.initialStore`, `terminalOutcome?` | exact deployment state and terminal source-payoff readout |
 | Configured contract | `Machine.Contract.ConfiguredContract` | whole typed word-call target with exact dispatch laws |
 | Wire transactions | `Machine.Contract.WireCodec` | lossless serialization and exact call-law transport |
+| Trusted oracle | `Machine.Contract.OracleProtocol` | deterministic request/callback sampling with exact fixed-policy law |
+| Classical contract | `Machine.Contract.ClassicalContract` | complete deterministic typed transaction endpoint |
+| Classical compiler | `ClassicalCompiler.Backend.compile` | checked-source assembly with source terminal certificate |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -260,6 +263,17 @@ phase locks further sample requests, and the callback returns to idle. This is
 a classical trusted-role theorem. It assumes the oracle policy and eventual
 response; it does not establish unpredictability, non-withholding, or strategic
 adequacy for observable request timing.
+
+`Machine.Contract.DeterministicExecutor` removes the remaining semantic point
+laws from commits and reveals. `ClassicalContract` composes those direct paths
+with the oracle protocol, pending-phase lock, outbound requests, rollback-ready
+results, constructor state, and terminal outcome. `ClassicalCompiler.Backend`
+then assembles that contract directly from `Machine.compile source` plus
+deployment choices and retains the source terminal-run/payoff theorem. This is
+the complete ordinary typed compiler endpoint. Public commitment transport,
+trusted-role removal, target signal adequacy, bounded expression lowering, and
+EVM emission are subsequent refinements rather than hidden assumptions of this
+endpoint.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

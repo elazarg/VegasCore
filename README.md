@@ -256,6 +256,16 @@ encoded `Machine.step` law. Calls are locked during the pending phase; fairness,
 response timing, and visibility of the pending signal remain explicit
 classical-runtime assumptions rather than secure-compilation conclusions.
 
+`Machine.Contract.ClassicalContract` completes the deterministic typed
+contract surface. Player commitments and reveals use direct deterministic
+executors, samples use the locked request/callback protocol, reverts retain the
+existing atomic rollback semantics, and terminal readout still reconstructs an
+actual source payoff. `ClassicalCompiler.Backend` is the checked-source assembly
+point: given storage, identities, trigger policies, and a trusted oracle, it
+produces this deterministic contract and its source terminal-execution
+certificate. This is the ordinary compiler endpoint, not a claim that public
+calldata hides commitments or that runtime-only signals preserve strategies.
+
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
 changing the event bodies. Graph requirements are lowered to physical Boolean
 storage checks using the certified layout: replay prevention first, then one
@@ -338,12 +348,13 @@ The repository provides the first machine IR, composable operational
 projection, an exact terminal source-payoff certificate, certified logical
 contract inventory/layout/storage/state/call boundaries, a finite 256-bit
 Boolean storage codec, physical ordered-check/action-body IR, abstract check
-gas and rollback projections, certified fixed-shape EVM byte calldata, and a
-narrow unilateral strategic certificate. It does not yet have an EVM
+gas and rollback projections, certified fixed-shape EVM byte calldata, a
+complete deterministic typed contract under trusted oracle/scheduler roles,
+and a narrow unilateral strategic certificate. It does not yet have an EVM
 instruction IR or emitter, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
-on-chain chance implementation, timeout/abort game semantics, or an end-to-end
-secure compilation theorem. The source-star theorem is about possible terminal
+untrusted on-chain chance implementation, timeout/abort game semantics, or an
+end-to-end secure compilation theorem. The source-star theorem is about possible terminal
 runs and payoff equality; it does not equate probability laws, intermediate
 information histories, schedules, or target strategy spaces. Those are
 VegasCore gaps, not features supplied by GameTheory.
