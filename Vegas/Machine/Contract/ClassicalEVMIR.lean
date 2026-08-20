@@ -102,6 +102,43 @@ theorem lowerClassicalRequirement_correct
       rw [encodeClassicalSnapshot_completed, decodeBool_encodeBool]
       simp [Imperative.Requirement.evaluate]
 
+/-- A true logical requirement is stored as exactly its expected canonical
+Boolean word after lowering. -/
+theorem lowerClassicalRequirement_storage_eq_of_true
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph)
+    (pending : Option (Fin program.graph.nodeCount))
+    (requirement : Imperative.Requirement program)
+    (htrue : Imperative.Requirement.evaluate cfg requirement = true) :
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig cfg, pending := pending }
+        (lowerClassicalRequirement requirement).slot =
+      encodeBool (lowerClassicalRequirement requirement).expected := by
+  cases requirement with
+  | notCompleted node =>
+      have hnotDone : node ∉ cfg.done := by
+        simpa [Imperative.Requirement.evaluate] using htrue
+      change
+        encodeClassicalSnapshot codec words nodes
+            { graph := StateSnapshot.ofConfig cfg, pending := pending }
+            ((ClassicalStorageLayout.canonical program).address
+              (.completed node)) =
+          encodeBool false
+      rw [encodeClassicalSnapshot_completed]
+      simp [hnotDone]
+  | completed node =>
+      have hdone : node ∈ cfg.done := by
+        simpa [Imperative.Requirement.evaluate] using htrue
+      change
+        encodeClassicalSnapshot codec words nodes
+            { graph := StateSnapshot.ofConfig cfg, pending := pending }
+            ((ClassicalStorageLayout.canonical program).address
+              (.completed node)) =
+          encodeBool true
+      rw [encodeClassicalSnapshot_completed]
+      simp [hdone]
+
 /-- Ordered concrete EVM completion checks accept exactly ready source nodes.
 -/
 theorem classicalChecks_accept_iff_ready
@@ -137,6 +174,53 @@ theorem classicalChecks_accept_iff_ready
           (lowerClassicalRequirement requirement)) = _
   rw [hevaluate]
   exact Imperative.evaluateAll_requirements cfg node
+
+/-- Source readiness supplies the exact canonical word expected by every
+generated EVM storage check. -/
+theorem classicalChecks_storage_eq_of_ready
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph)
+    (pending : Option (Fin program.graph.nodeCount))
+    (node : Fin program.graph.nodeCount)
+    (ready : Ready program.graph cfg node)
+    (check : ClassicalStorageCheck)
+    (hcheck : check ∈ classicalChecks program node) :
+    encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig cfg, pending := pending }
+        check.slot = encodeBool check.expected := by
+  unfold classicalChecks at hcheck
+  rcases List.mem_map.mp hcheck with ⟨requirement, hrequirement, rfl⟩
+  apply lowerClassicalRequirement_storage_eq_of_true
+  cases requirement with
+  | notCompleted checked =>
+      simp only [Imperative.requirements, List.mem_cons,
+        Imperative.Requirement.notCompleted.injEq, List.mem_map,
+        Finset.mem_toList, reduceCtorEq, and_false, exists_false, or_false]
+        at hrequirement
+      subst checked
+      simp [Imperative.Requirement.evaluate, ready.1]
+  | completed checked =>
+      simp only [Imperative.requirements, List.mem_cons, reduceCtorEq,
+        List.mem_map, Finset.mem_toList,
+        Imperative.Requirement.completed.injEq, exists_eq_right, false_or]
+        at hrequirement
+      exact by
+        simp [Imperative.Requirement.evaluate, ready.2 hrequirement]
+
+/-- Every storage key read by generated readiness checks is represented
+exactly under the backend layout-capacity certificate. -/
+theorem classicalChecks_slot_lt_word
+    (fits : ClassicalStorageFitsWord program)
+    (node : Fin program.graph.nodeCount)
+    (check : ClassicalStorageCheck)
+    (hcheck : check ∈ classicalChecks program node) :
+    check.slot < 2 ^ 256 := by
+  unfold classicalChecks at hcheck
+  rcases List.mem_map.mp hcheck with ⟨requirement, _hrequirement, rfl⟩
+  cases requirement with
+  | notCompleted checked | completed checked =>
+      exact classicalStorageAddress_lt_word fits (.completed checked)
 
 /-- One routed node plan for handler-specific lowering. -/
 structure ClassicalActionIR (program : Program Player L) where

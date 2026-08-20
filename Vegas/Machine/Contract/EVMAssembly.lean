@@ -196,6 +196,13 @@ def address (value : AddressWord) : PushData where
 @[simp] theorem byte_one_setWidth :
     BitVec.setWidth 256 (byte 1) = (1 : Word) := by rfl
 
+@[simp] theorem byte_zero_setWidth :
+    BitVec.setWidth 256 (byte 0) = (0 : Word) := by rfl
+
+@[simp] theorem one_bool_value (value : Bool) :
+    (one (byte (if value then 1 else 0))).value = encodeBool value := by
+  cases value <;> rfl
+
 @[simp] theorem selector_value (value : Selector) :
     (selector value).value = BitVec.ofNat 256 value.toNat := by rfl
 

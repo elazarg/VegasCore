@@ -414,6 +414,16 @@ theorem run_add (first second : Nat) (program : Assembly)
           exact ih (step program env state)
       | some exit => simp [run, hexit, run_of_exit]
 
+/-- Peel one certified instruction from a fuel-bounded execution. -/
+theorem run_succ_of_codeAt {program rest : Assembly} {env : ExecutionEnv}
+    {state : ExecutionState} {instruction : Instruction} (fuel : Nat)
+    (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt program (instruction :: rest) state.pc) :
+    run (fuel + 1) program env state =
+      run fuel program env
+        (stepInstruction program env instruction state) := by
+  simp [run, hrunning, step_of_codeAt hrunning hcode]
+
 /-- The two-instruction pattern used for an event's result write stores the
 existing stack top at the pushed key and otherwise falls through. -/
 theorem run_push_sstore (program : Assembly) (env : ExecutionEnv)

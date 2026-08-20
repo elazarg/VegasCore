@@ -356,8 +356,9 @@ unknown selectors revert, handler entry offsets are computed from emitted
 prefix sizes, and the complete image must fit the dispatcher's 32-bit jump
 addresses. Assembly and bytecode are derived from the certified handlers, so
 the size certificate cannot describe different caller-supplied bytes. No
-generated-handler refinement theorem currently connects their execution back
-to `receive`.
+complete generated-handler refinement theorem currently connects their
+execution back to `receive`; the structural readiness and state-write
+fragments have executable instruction-level proofs.
 
 `Machine.Contract.EVM.DeploymentImage` adds actual creation bytecode. Its
 constructor emits `SSTORE` only for nonzero cells in the finite initial layout,
@@ -414,8 +415,11 @@ bound is applied. The structural handler code generator already emits full
 ordered value/presence/completion `SSTORE`s. Expression realization must leave
 one encoded result word on the documented stack interface. The byte-offset
 execution layer proves prefix fetching and code-fragment composition, and the
-resolved action-write sequence is proved to consume that result and perform
-the three exact, ordered, non-wrapping storage updates under the certified
+resolved readiness sequence is proved to fall through without side effects
+when its canonical storage facts hold. Source graph readiness supplies those
+facts and the required non-wrapping key bounds for every generated check. The
+resolved action-write sequence is proved to consume its result and perform the
+three exact, ordered, non-wrapping storage updates under the same certified
 layout bound.
 
 `ClassicalCompiler.EVMByteBackend.compileBooleanDeployment?` is the complete

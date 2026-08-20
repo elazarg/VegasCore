@@ -42,6 +42,44 @@ def compileClassicalStorageCheck (reject : LocalLabel)
     .op .iszero,
     .jumpi reject ]
 
+/-- Resolved form of one storage check for a supplied absolute rejection
+destination. -/
+def classicalStorageCheckAssembly (rejectDestination : Nat)
+    (check : ClassicalStorageCheck) : Assembly :=
+  [ .push (.nat256 check.slot),
+    .sload,
+    .push (.one (byte (if check.expected then 1 else 0))),
+    .eq,
+    .iszero,
+    .push (.nat32 rejectDestination),
+    .jumpi ]
+
+/-- Resolved form of an ordered list of storage checks. -/
+def classicalStorageChecksAssembly (rejectDestination : Nat)
+    (checks : List ClassicalStorageCheck) : Assembly :=
+  checks.flatMap (classicalStorageCheckAssembly rejectDestination)
+
+@[simp] theorem classicalStorageCheckAssembly_byteLength
+    (rejectDestination : Nat) (check : ClassicalStorageCheck) :
+    (classicalStorageCheckAssembly rejectDestination check).byteLength = 44 := by
+  simp [classicalStorageCheckAssembly, Assembly.byteLength,
+    Instruction.byteLength]
+
+@[simp] theorem classicalStorageChecksAssembly_byteLength
+    (rejectDestination : Nat) (checks : List ClassicalStorageCheck) :
+    (classicalStorageChecksAssembly rejectDestination checks).byteLength =
+      44 * checks.length := by
+  induction checks with
+  | nil => rfl
+  | cons check rest ih =>
+      change
+        (classicalStorageCheckAssembly rejectDestination check ++
+          classicalStorageChecksAssembly rejectDestination rest).byteLength = _
+      rw [Assembly.byteLength_append,
+        classicalStorageCheckAssembly_byteLength, ih]
+      simp
+      omega
+
 @[simp] theorem compileClassicalStorageCheck_byteLength
     (reject : LocalLabel) (check : ClassicalStorageCheck) :
     (compileClassicalStorageCheck reject check).byteLength = 44 := by
