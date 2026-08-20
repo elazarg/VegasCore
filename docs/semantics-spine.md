@@ -27,6 +27,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Stored execution | `Machine.Contract.Request.executeStore?` | exact machine law transported through raw storage |
 | Player authentication | `Machine.Contract.PlayerCall` | injective caller roles plus exact semantic validity |
 | Player transaction | `Machine.Contract.PlayerCalldata` | word decoding, caller authentication, and exact stored execution |
+| Internal transaction | `Machine.Contract.InternalCalldata` | explicit trigger authorization and exact stored execution |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -138,7 +139,8 @@ node bounds, authority/payload shape, readiness, typed-read availability, and
 commit guards. Its adequacy theorem says that it accepts exactly the envelopes
 represented by currently valid machine commands, matching the classical
 reference decoder. Address authentication, concrete calldata/storage decoding,
-revert traces, gas, and internal-action triggering remain unmodeled.
+revert traces, gas, and a concrete internal-action trigger policy remain
+separate lowering decisions.
 
 `Machine.Contract.StorageCodec` isolates target-word encoding. Typed reads and
 writes over any certified layout have same-slot round trips; writes to distinct
@@ -195,6 +197,16 @@ transported through `RawStore.encodeState`. This is not yet an extractable
 transaction processor because the resulting `FinDist` is semantic and
 noncomputable; byte-level ABI selectors, a finite sampler, and gas are still
 target concerns.
+
+`Machine.Contract.InternalCalldata` gives samples and reveals a distinct
+caller-bearing entry point. Its decoder excludes player commits, while an
+explicit `TriggerPolicy` decides which callers are authorized. Encoding an
+available internal event for an authorized caller produces exactly the same
+stored successor law as the corresponding `Machine.step`. This is a local
+one-step theorem, not scheduler preservation: caller choice among concurrent
+nodes, transaction ordering, observable failed calls, and sample realization
+remain explicit target behaviors requiring additional operational and
+strategic results.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

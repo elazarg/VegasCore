@@ -151,6 +151,14 @@ mapped through the canonical state encoding. The law remains semantic and
 noncomputable until a finite sampler is selected. Byte serialization,
 selectors, and gas remain target-specific.
 
+`Machine.Contract.InternalCalldata` is the separate internal-action entry
+point. A call carries only caller and node, decoding excludes player rows, and
+an explicit `TriggerPolicy` controls authorization. Authorized valid sample or
+reveal triggers have the same exact raw-store step law. This introduces no
+automatic scheduler or entropy implementation: a concrete caller can choose
+among concurrently enabled nodes, and exposing or controlling that ordering
+requires its own information/strategy preservation result.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -182,16 +190,17 @@ An EVM-class compiler can grow as a sequence like this:
 7. lower the concrete contract IR to EVM bytecode and relate transaction traces
    back through the preceding layers.
 
-The repository provides the first machine IR, composable operational projection,
-an exact terminal source-payoff certificate, certified logical contract
-inventory/layout/storage/state boundaries, and a narrow unilateral strategic
-certificate. It does not yet have an EVM IR, emitter, finite EVM value codec,
-cryptographic commitment refinement, exact on-chain chance implementation,
-timeout/abort game semantics, or an end-to-end secure compilation theorem. The
-source-star theorem is about possible terminal runs and payoff equality; it
-does not equate probability laws, intermediate information histories,
-schedules, or target strategy spaces. Those are VegasCore gaps, not features
-supplied by GameTheory.
+The repository provides the first machine IR, composable operational
+projection, an exact terminal source-payoff certificate, certified logical
+contract inventory/layout/storage/state/call boundaries, and a narrow
+unilateral strategic certificate. It does not yet have an EVM IR, emitter,
+finite EVM value codec, concrete transaction scheduler, cryptographic
+commitment refinement, exact on-chain chance implementation, timeout/abort
+game semantics, or an end-to-end secure compilation theorem. The source-star
+theorem is about possible terminal runs and payoff equality; it does not
+equate probability laws, intermediate information histories, schedules, or
+target strategy spaces. Those are VegasCore gaps, not features supplied by
+GameTheory.
 
 ## Game semantics
 

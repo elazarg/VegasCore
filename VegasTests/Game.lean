@@ -16,6 +16,7 @@ import Vegas.Machine.Contract.Executor
 import Vegas.Machine.Contract.StoredExecutor
 import Vegas.Machine.Contract.Authentication
 import Vegas.Machine.Contract.Calldata
+import Vegas.Machine.Contract.InternalCalldata
 
 namespace VegasTests
 
@@ -216,6 +217,27 @@ example {state : matchingPenniesMachine.State} {who : TestPlayer}
   exact
     Machine.Contract.PlayerCalldata.executeStore?_encodeState_encodeCommit
       matchingPenniesRegistry matchingPenniesStorageCodec action step
+
+def permissionlessTriggers :
+    Machine.Contract.TriggerPolicy TestPlayer :=
+  Machine.Contract.TriggerPolicy.permissionless
+
+example {state : matchingPenniesMachine.State} (caller : TestPlayer)
+    (event : EventGraph.InternalEvent matchingPenniesMachine.graph)
+    (step : EventGraph.InternalStep matchingPenniesMachine.graph state.1
+      event) :
+    Machine.Contract.InternalCalldata.executeStore?
+        (program := matchingPenniesMachine) permissionlessTriggers
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesStorageCodec state)
+        (Machine.Contract.InternalCalldata.encode caller event) =
+      some ((matchingPenniesMachine.step state (.internal event step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesStorageCodec)) := by
+  exact
+    Machine.Contract.InternalCalldata.executeStore?_encodeState_encode
+      permissionlessTriggers matchingPenniesStorageCodec caller event step rfl
 
 example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
     Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec

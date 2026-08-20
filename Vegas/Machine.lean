@@ -20,3 +20,4 @@ import Vegas.Machine.Contract.Executor
 import Vegas.Machine.Contract.StoredExecutor
 import Vegas.Machine.Contract.Authentication
 import Vegas.Machine.Contract.Calldata
+import Vegas.Machine.Contract.InternalCalldata
