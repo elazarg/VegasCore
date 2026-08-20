@@ -825,11 +825,8 @@ def trueBooleanGuardCode : EventGraph.GuardCode simpleExpr .bool where
   fieldOf := fun binding => nomatch binding
 
 example : Machine.Contract.EVM.compileSimpleGuardCode?
-    trueBooleanGuardCode 5 =
-      some
-        { code :=
-            [.op (.push (.one (Machine.Contract.EVM.byte 1)))]
-          nextLabel := 5 } := by
+    trueBooleanGuardCode =
+      some [.push (.one (Machine.Contract.EVM.byte 1))] := by
   simp [Machine.Contract.EVM.compileSimpleGuardCode?, trueBooleanGuardCode]
 
 example (message : matchingPenniesContract.Message) :

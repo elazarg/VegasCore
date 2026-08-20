@@ -412,15 +412,19 @@ only after handler base offsets are known, missing labels reject, and
 resolution is proved to preserve byte length before the whole image's 32-bit
 bound is applied. The structural handler code generator already emits full
 256-bit storage keys, `SLOAD` readiness checks with conditional rejection, and
-ordered value/presence/completion `SSTORE`s. Expression realization must leave
-one encoded result word on the documented stack interface. The byte-offset
-execution layer proves prefix fetching and code-fragment composition, and the
+ordered value/presence/completion `SSTORE`s. The supported Boolean expression
+fragment first lowers to a proof-carrying Boolean-only IR, then emits
+straight-line stack code. Its branchless conditional circuit evaluates pure
+branches and selects canonically without exposing the choice through control
+flow. The byte-offset execution layer proves prefix fetching and code-fragment
+composition, and the
 resolved readiness sequence is proved to fall through without side effects
 when its canonical storage facts hold. Source graph readiness supplies those
 facts and the required non-wrapping key bounds for every generated check. The
-resolved action-write sequence is proved to consume its result and perform the
-three exact, ordered, non-wrapping storage updates under the same certified
-layout bound.
+expression compiler is proved to push exactly the encoded source value under a
+compositional variable-load contract. The resolved action-write sequence is
+proved to consume that result and perform the three exact, ordered,
+non-wrapping storage updates under the same certified layout bound.
 
 `ClassicalCompiler.EVMByteBackend.compileBooleanDeployment?` is the complete
 trusted-oracle Boolean source-to-creation-bytecode endpoint. It supports the

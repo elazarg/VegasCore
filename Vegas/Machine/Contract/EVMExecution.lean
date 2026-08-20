@@ -424,6 +424,38 @@ theorem run_succ_of_codeAt {program rest : Assembly} {env : ExecutionEnv}
         (stepInstruction program env instruction state) := by
   simp [run, hrunning, step_of_codeAt hrunning hcode]
 
+/-- A reified fragment executes sequentially without exiting or changing its
+next byte address unexpectedly. This deliberately excludes taken jumps. -/
+def StraightRun (program : Assembly) (env : ExecutionEnv) :
+    Assembly → ExecutionState → ExecutionState → Prop
+  | [], state, result => result = state
+  | instruction :: rest, state, result =>
+      state.exit = none ∧
+      (stepInstruction program env instruction state).pc =
+        state.pc + instruction.byteLength ∧
+      StraightRun program env rest
+        (stepInstruction program env instruction state) result
+
+/-- A certified sequential fragment agrees with fuel-bounded execution for
+exactly one step per instruction. -/
+theorem StraightRun.run_eq {program fragment : Assembly} {env : ExecutionEnv}
+    {state result : ExecutionState}
+    (hstraight : StraightRun program env fragment state result)
+    (hcode : Assembly.CodeAt program fragment state.pc) :
+    run fragment.length program env state = result := by
+  induction fragment generalizing state result with
+  | nil =>
+      change result = state at hstraight
+      change state = result
+      exact hstraight.symm
+  | cons instruction rest ih =>
+      rcases hstraight with ⟨hrunning, hpc, hrest⟩
+      rw [List.length_cons, run_succ_of_codeAt rest.length hrunning hcode]
+      apply ih hrest
+      have htail := hcode.tail
+      rw [← hpc] at htail
+      exact htail
+
 /-- The two-instruction pattern used for an event's result write stores the
 existing stack top at the pushed key and otherwise falls through. -/
 theorem run_push_sstore (program : Assembly) (env : ExecutionEnv)

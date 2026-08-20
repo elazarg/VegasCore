@@ -50,6 +50,19 @@ namespace LocalAssembly
 def byteLength (program : LocalAssembly) : Nat :=
   (program.map LocalItem.byteLength).sum
 
+/-- Embed straight-line resolved assembly in a symbolic handler. -/
+def ofAssembly (program : Assembly) : LocalAssembly :=
+  program.map LocalItem.op
+
+@[simp] theorem ofAssembly_byteLength (program : Assembly) :
+    (ofAssembly program).byteLength = program.byteLength := by
+  induction program with
+  | nil => rfl
+  | cons instruction rest ih =>
+      change instruction.byteLength + (ofAssembly rest).byteLength =
+        instruction.byteLength + Assembly.byteLength rest
+      rw [ih]
+
 @[simp] theorem byteLength_append (left right : LocalAssembly) :
     (left ++ right).byteLength = left.byteLength + right.byteLength := by
   simp [byteLength]
@@ -87,6 +100,19 @@ def resolveFrom? (whole : LocalAssembly) (base : Nat) :
       match resolveItem? whole base item, resolveFrom? whole base rest with
       | some head, some tail => some (head ++ tail)
       | _, _ => none
+
+@[simp] theorem resolveFrom?_ofAssembly (whole : LocalAssembly) (base : Nat)
+    (program : Assembly) :
+    resolveFrom? whole base (ofAssembly program) = some program := by
+  induction program with
+  | nil => rfl
+  | cons instruction rest ih =>
+      change
+        (match some [instruction], resolveFrom? whole base (ofAssembly rest) with
+        | some head, some tail => some (head ++ tail)
+        | _, _ => none) = some (instruction :: rest)
+      rw [ih]
+      rfl
 
 /-- Resolve all labels to absolute byte destinations. Missing labels reject
 the fragment. -/

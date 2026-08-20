@@ -47,7 +47,7 @@ theorem commitGuard_type_bool
 /-- Reject unless one calldata word equals the supplied 256-bit constant. -/
 def compileCalldataWordEq (offset : Nat) (expected : Word)
     (reject : LocalLabel) : LocalAssembly :=
-  loadCalldataWord offset ++
+  LocalAssembly.ofAssembly (loadCalldataWord offset) ++
     [ .op (.push (.word expected)),
       .op .eq,
       .op .iszero,
@@ -65,7 +65,7 @@ def compileCallerEq (expected : AddressWord)
 /-- Load the player action word, prove at runtime that it is canonical zero or
 one, and retain the original word on the stack. -/
 def compileCanonicalBoolAction (reject : LocalLabel) : LocalAssembly :=
-  playerActionWord ++
+  LocalAssembly.ofAssembly playerActionWord ++
     [ .op (.dup ⟨0, by decide⟩),
       .op (.push (.one (byte 0))),
       .op .eq,
@@ -84,12 +84,12 @@ def compileSimplePlayerCommit?
     (players : WireCodec Player Word)
     (addresses : AddressCodec Address)
     (action : ClassicalActionIR program)
-    (reject : LocalLabel) (next : Nat) : Option BoolExprCode :=
+    (reject : LocalLabel) (next : Nat) : Option GeneratedLocalCode :=
   match hsem : (program.graph.nodeRow action.node).sem with
   | .commit who guard =>
       let guardType := commitGuard_type_bool usesBool action.node who guard hsem
       let boolGuard : GuardCode simpleExpr .bool := guardType ▸ guard.code
-      match compileSimpleGuardCode? boolGuard next with
+      match compileSimpleGuardCode? boolGuard with
       | none => none
       | some guardCode =>
           some
@@ -98,17 +98,20 @@ def compileSimplePlayerCommit?
                 compileCallerEq
                   (addresses.encode (registry.address who)) reject ++
                 compileCanonicalBoolAction reject ++
-                guardCode.code ++ [.op .iszero, .jumpi reject]
-              nextLabel := guardCode.nextLabel }
+                LocalAssembly.ofAssembly guardCode ++
+                  [.op .iszero, .jumpi reject]
+              nextLabel := next }
   | .sample _ | .reveal _ => none
 
 /-- Compile one Boolean reveal realization by loading its sealed source field.
 -/
 def compileSimpleReveal? (action : ClassicalActionIR program)
-    (next : Nat) : Option BoolExprCode :=
+    (next : Nat) : Option GeneratedLocalCode :=
   match (program.graph.nodeRow action.node).sem with
   | .reveal source =>
-      some { code := loadStorageWord source, nextLabel := next }
+      some
+        { code := LocalAssembly.ofAssembly (loadStorageWord source)
+          nextLabel := next }
   | .commit _ _ | .sample _ => none
 
 end

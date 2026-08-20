@@ -46,7 +46,7 @@ def compilePendingFlagEq (expected : Bool) (reject : LocalLabel) :
 /-- Reject unless the stored pending node equals this action node. -/
 def compilePendingNodeEq (node : Nat) (reject : LocalLabel) :
     LocalAssembly :=
-  loadStorageWord (pendingNodeSlot program) ++
+  LocalAssembly.ofAssembly (loadStorageWord (pendingNodeSlot program)) ++
     [ .op (.push (.nat256 node)),
       .op .eq,
       .op .iszero,
@@ -107,7 +107,7 @@ def compileSimpleSampleCallback?
     (oracle : OracleRegistry Address)
     (addresses : AddressCodec Address)
     (action : ClassicalActionIR program)
-    (reject : LocalLabel) (next : Nat) : Option BoolExprCode :=
+    (reject : LocalLabel) (next : Nat) : Option GeneratedLocalCode :=
   match hsem : (program.graph.nodeRow action.node).sem with
   | .sample dist =>
       let distType := sampleDist_type_bool usesBool action.node dist hsem

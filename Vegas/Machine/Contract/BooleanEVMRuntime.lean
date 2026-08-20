@@ -56,7 +56,7 @@ def compileCalldataSizeEq (expected : Nat) (reject : LocalLabel) :
 /-- Route one canonical node word to its action label. -/
 def compileNodeRoute (nodeOffset : Nat) (node : Nat)
     (target : LocalLabel) : LocalAssembly :=
-  loadCalldataWord nodeOffset ++
+  LocalAssembly.ofAssembly (loadCalldataWord nodeOffset) ++
     [ .op (.push (.nat256 node)),
       .op .eq,
       .jumpi target ]
@@ -71,7 +71,7 @@ def compileNodeRoutes (nodeOffset : Nat)
 -/
 def compileCompletingBlocks?
     (reject : LocalLabel)
-    (realize : ClassicalActionIR program → Nat → Option BoolExprCode) :
+    (realize : ClassicalActionIR program → Nat → Option GeneratedLocalCode) :
     List (ClassicalActionIR program) → Nat →
       Option (LocalAssembly × Nat)
   | [], next => some ([], next)
@@ -94,7 +94,7 @@ def compileCompletingBlocks?
 def compileCompletingHandler?
     (calldataSize nodeOffset : Nat)
     (actions : List (ClassicalActionIR program))
-    (realize : ClassicalActionIR program → Nat → Option BoolExprCode) :
+    (realize : ClassicalActionIR program → Nat → Option GeneratedLocalCode) :
     Option LocalAssembly :=
   let reject := 0
   let firstBodyLabel := program.graph.nodeCount + 1
@@ -111,7 +111,7 @@ calldata-size validation and before node routing. -/
 def compileCompletingHandlerWithPrefix?
     (calldataSize nodeOffset : Nat) (prelude : LocalAssembly)
     (actions : List (ClassicalActionIR program))
-    (realize : ClassicalActionIR program → Nat → Option BoolExprCode) :
+    (realize : ClassicalActionIR program → Nat → Option GeneratedLocalCode) :
     Option LocalAssembly :=
   let reject := 0
   let firstBodyLabel := program.graph.nodeCount + 1

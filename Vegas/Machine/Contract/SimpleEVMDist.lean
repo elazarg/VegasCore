@@ -26,12 +26,12 @@ open EventGraph
 noncomputable section
 
 /-- The oracle callback's table-index argument starts at byte 36. -/
-def oracleChoiceWord : LocalAssembly := loadCalldataWord 36
+def oracleChoiceWord : Assembly := loadCalldataWord 36
 
 /-- Compare the callback index with one retained table index and branch to its
 value block. -/
 def compileChoiceRoute (index : Nat) (target : LocalLabel) : LocalAssembly :=
-  oracleChoiceWord ++
+  LocalAssembly.ofAssembly oracleChoiceWord ++
     [ .op (.push (.nat256 index)),
       .op .eq,
       .jumpi target ]
@@ -46,7 +46,7 @@ def compileBoolTableValue (label done : LocalLabel) (value : Bool) :
 /-- Compile one exact retained Boolean table. Unknown or truncated indices
 reach `reject`; a successful path leaves the selected Boolean word on stack. -/
 def compileBoolTable? (entries : List (Bool × ℚ≥0))
-    (reject : LocalLabel) (next : Nat) : Option BoolExprCode :=
+    (reject : LocalLabel) (next : Nat) : Option GeneratedLocalCode :=
   if _fits : entries.length ≤ 2 ^ 256 then
     let done := next + entries.length
     let routes := (List.range entries.length).flatMap fun index =>
@@ -62,25 +62,25 @@ def compileBoolTable? (entries : List (Bool × ℚ≥0))
 /-- Resolve a Boolean distribution variable from its graph field. -/
 def simpleDistVariableCode (code : DistCode simpleExpr .bool)
     {name : VarId} (binding : HasVar code.Context name .bool) :
-    LocalAssembly :=
+    Assembly :=
   loadStorageWord (code.fieldOf binding)
 
 /-- Compile Boolean distribution syntax to deterministic callback-index
 realization. -/
 def compileBoolDistExpr? {Γ : CtxSimple}
     (variableCode :
-      {name : VarId} → HasVar Γ name .bool → LocalAssembly) :
-    DistExpr Γ .bool → LocalLabel → Nat → Option BoolExprCode
+      {name : VarId} → HasVar Γ name .bool → Assembly) :
+    DistExpr Γ .bool → LocalLabel → Nat → Option GeneratedLocalCode
   | .weighted law, reject, next =>
       compileBoolTable? law.entries reject next
   | .ite condition yes no, reject, next =>
       let yesLabel := next
       let doneLabel := next + 1
-      match compileBoolExpr? variableCode condition (next + 2) with
+      match compileBoolExpr? variableCode condition with
       | none => none
       | some conditionCode =>
           match compileBoolDistExpr? variableCode no reject
-              conditionCode.nextLabel with
+              (next + 2) with
           | none => none
           | some noCode =>
               match compileBoolDistExpr? variableCode yes reject
@@ -88,14 +88,15 @@ def compileBoolDistExpr? {Γ : CtxSimple}
               | none => none
               | some yesCode =>
                   some
-                    { code := conditionCode.code ++ [.jumpi yesLabel] ++
+                    { code := LocalAssembly.ofAssembly conditionCode ++
+                        [.jumpi yesLabel] ++
                         noCode.code ++ [.jump doneLabel, .label yesLabel] ++
                         yesCode.code ++ [.label doneLabel]
                       nextLabel := yesCode.nextLabel }
 
 /-- Compile retained Boolean graph distribution code. -/
 def compileSimpleDistCode? (code : DistCode simpleExpr .bool)
-    (reject : LocalLabel) (next : Nat) : Option BoolExprCode :=
+    (reject : LocalLabel) (next : Nat) : Option GeneratedLocalCode :=
   compileBoolDistExpr? (simpleDistVariableCode code) code.dist reject next
 
 end
