@@ -172,8 +172,8 @@ example (state : matchingPenniesMachine.State)
   exact Machine.Contract.Request.accepts_encode command
 
 noncomputable def matchingPenniesStorageCodec :
-    Machine.Contract.StorageCodec simpleExpr :=
-  Machine.Contract.StorageCodec.reference simpleExpr
+    Machine.Contract.StorageCodec matchingPenniesMachine :=
+  Machine.Contract.StorageCodec.reference matchingPenniesMachine
 
 example (node : Fin matchingPenniesMachine.graph.nodeCount) :
     Machine.Contract.RawStore.readCompleted

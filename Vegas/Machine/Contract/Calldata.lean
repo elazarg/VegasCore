@@ -28,6 +28,45 @@ variable {Player Address : Type}
 variable [DecidableEq Player] [DecidableEq Address]
 variable {L : IExpr} {program : Program Player L}
 
+namespace StorageCodec
+
+/-- Every commit guard type used by the program is supported because the
+corresponding node output type is supported and graph well-formedness equates
+the two types. -/
+theorem commitSupported (codec : StorageCodec program)
+    (node : Fin program.graph.nodeCount) {who : Player}
+    {guard : EventGuard L}
+    (hsem : (program.graph.nodeRow node).sem = .commit who guard) :
+    codec.Supported guard.ty := by
+  have hwf :=
+    program.graphWF (node : Nat) (program.graph.nodeRow node)
+      (program.graph.nodes_get?_nodeRow node)
+  unfold Graph.nodeWFAt at hwf
+  rw [hsem] at hwf
+  exact hwf.2.1 ▸ codec.node_supported node
+
+/-- The guard type of a proof-carrying commit step is supported by the
+program-indexed codec. -/
+theorem commitStepSupported (codec : StorageCodec program)
+    {state : program.State} {who : Player}
+    (action : CommitAction program.graph who)
+    (step : CommitStep program.graph state.1 who action) :
+    codec.Supported step.guard.ty := by
+  have hrow : program.graph.nodeRow action.node = step.row := by
+    have hget :
+        program.graph.nodes[(action.node : Nat)]? = some step.row :=
+      step.row_get
+    rw [program.graph.nodes_get?_nodeRow action.node] at hget
+    exact Option.some.inj hget
+  have hsem :
+      (program.graph.nodeRow action.node).sem =
+        .commit who step.guard := by
+    rw [hrow]
+    exact step.sem_eq
+  exact codec.commitSupported action.node hsem
+
+end StorageCodec
+
 /-- Word-level player commit calldata. -/
 structure PlayerCalldata (Player Address Word : Type) where
   caller : Address
@@ -38,7 +77,7 @@ structure PlayerCalldata (Player Address Word : Type) where
 namespace PlayerCalldata
 
 /-- Decode word-level calldata to the typed authenticated-call boundary. -/
-def decode (program : Program Player L) (codec : StorageCodec L)
+def decode (program : Program Player L) (codec : StorageCodec program)
     (calldata : PlayerCalldata Player Address codec.Word) :
     Option (PlayerCall Player Address L) :=
   if hnode : calldata.node < program.graph.nodeCount then
@@ -62,7 +101,7 @@ def decode (program : Program Player L) (codec : StorageCodec L)
 
 /-- Encode one valid semantic commit as caller-bearing target words. -/
 def encodeCommit (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (codec : StorageCodec program) {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
     PlayerCalldata Player Address codec.Word where
@@ -75,7 +114,7 @@ omit [DecidableEq Address] in
 /-- Valid semantic commits round-trip through word-level calldata decoding. -/
 @[simp] theorem decode_encodeCommit
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (codec : StorageCodec program) {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
     decode program codec (encodeCommit registry codec action step) =
@@ -94,15 +133,28 @@ omit [DecidableEq Address] in
       (program.graph.nodeRow action.node).sem = .commit who step.guard := by
     rw [hrow]
     exact step.sem_eq
-  simp [decode, encodeCommit, action.node.isLt, hsem,
-    codec.decode_encode_value]
+  cases hcase : (program.graph.nodeRow action.node).sem with
+  | sample dist =>
+      rw [hcase] at hsem
+      cases hsem
+  | reveal source =>
+      rw [hcase] at hsem
+      cases hsem
+  | commit actor guard =>
+      have heq :
+          NodeSem.commit actor guard = NodeSem.commit who step.guard :=
+        hcase.symm.trans hsem
+      cases heq
+      unfold decode encodeCommit
+      simp [action.node.isLt, hcase,
+        codec.decode_encode_value _ (codec.commitStepSupported action step)]
 
 omit [DecidableEq Address] in
 /-- The decoded call of a valid commit erases to exactly the original logical
 request. -/
 theorem request_of_decode_encodeCommit
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (codec : StorageCodec program) {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
     ∃ call : PlayerCall Player Address L,
@@ -123,7 +175,7 @@ theorem request_of_decode_encodeCommit
 /-- Decode, authenticate, and validate word-level calldata against canonical
 raw storage. -/
 def acceptsStore (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (calldata : PlayerCalldata Player Address codec.Word) : Bool :=
   match decode program codec calldata with
   | none => false
@@ -134,7 +186,7 @@ def acceptsStore (registry : PlayerRegistry Player Address)
 the encoded reachable state. -/
 theorem acceptsStore_encodeState_encodeCommit
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (codec : StorageCodec program) {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
     acceptsStore (program := program) registry codec
@@ -158,7 +210,7 @@ theorem acceptsStore_encodeState_encodeCommit
 against canonical raw storage. -/
 noncomputable def executeStore?
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (calldata : PlayerCalldata Player Address codec.Word) :
     Option (GameTheory.Math.Probability.FinDist (RawStore codec)) :=
   match decode program codec calldata with
@@ -173,7 +225,7 @@ noncomputable def executeStore?
 -/
 theorem executeStore?_isSome
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (calldata : PlayerCalldata Player Address codec.Word) :
     (executeStore? (program := program) registry codec store calldata).isSome =
       acceptsStore (program := program) registry codec store calldata := by
@@ -190,7 +242,7 @@ authentication, stored execution, and successor encoding produce exactly the
 machine step law transported through canonical raw storage. -/
 theorem executeStore?_encodeState_encodeCommit
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) {state : program.State} {who : Player}
+    (codec : StorageCodec program) {state : program.State} {who : Player}
     (action : CommitAction program.graph who)
     (step : CommitStep program.graph state.1 who action) :
     executeStore? (program := program) registry codec
@@ -223,7 +275,7 @@ as some valid semantic machine command. Thus accepted hostile player input
 cannot leave the canonical image of reachable states. -/
 theorem executeStore?_encodeState_of_accepts
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (calldata : PlayerCalldata Player Address codec.Word)
     (haccept :
       acceptsStore (program := program) registry codec

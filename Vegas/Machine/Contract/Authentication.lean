@@ -88,7 +88,7 @@ theorem acceptsState_eq_true_iff
 
 /-- Authenticate and validate against canonical raw contract storage. -/
 def acceptsStore (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (call : PlayerCall Player Address L) : Bool :=
   authenticated registry call &&
     Request.acceptsStore (program := program) codec store call.request
@@ -97,7 +97,7 @@ def acceptsStore (registry : PlayerRegistry Player Address)
 exactly caller ownership together with semantic command validity. -/
 theorem acceptsStore_encodeState_eq_true_iff
     (registry : PlayerRegistry Player Address)
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (call : PlayerCall Player Address L) :
     acceptsStore (program := program) registry codec
         (RawStore.encodeState codec state) call = true ↔

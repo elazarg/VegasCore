@@ -109,7 +109,7 @@ calldata decoding to exactly its logical request. -/
 /-- Authenticate and validate one internal trigger against canonical raw
 storage. -/
 def acceptsStore (policy : TriggerPolicy Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (calldata : InternalCalldata Address) : Bool :=
   policy.allows calldata.caller calldata.node &&
     match decode (Player := Player) program calldata with
@@ -120,7 +120,7 @@ def acceptsStore (policy : TriggerPolicy Address)
 /-- An authorized encoding of a valid semantic internal event is accepted on
 the encoded reachable state. -/
 theorem acceptsStore_encodeState_encode
-    (policy : TriggerPolicy Address) (codec : StorageCodec L)
+    (policy : TriggerPolicy Address) (codec : StorageCodec program)
     (caller : Address) {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
@@ -144,7 +144,7 @@ theorem acceptsStore_encodeState_encode
 /-- Decode, authorize, and semantically execute one internal trigger against
 canonical raw storage. -/
 def executeStore? (policy : TriggerPolicy Address)
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (calldata : InternalCalldata Address) :
     Option (GameTheory.Math.Probability.FinDist (RawStore codec)) :=
   if policy.allows calldata.caller calldata.node then
@@ -157,7 +157,7 @@ def executeStore? (policy : TriggerPolicy Address)
 
 /-- Internal-trigger execution succeeds exactly when validation accepts. -/
 theorem executeStore?_isSome
-    (policy : TriggerPolicy Address) (codec : StorageCodec L)
+    (policy : TriggerPolicy Address) (codec : StorageCodec program)
     (store : RawStore codec) (calldata : InternalCalldata Address) :
     (executeStore? (program := program) policy codec store calldata).isSome =
       acceptsStore (program := program) policy codec store calldata := by
@@ -174,7 +174,7 @@ semantic internal event, decoding, authorization, stored execution, and
 successor encoding produce exactly the machine step law transported through
 canonical raw storage. -/
 theorem executeStore?_encodeState_encode
-    (policy : TriggerPolicy Address) (codec : StorageCodec L)
+    (policy : TriggerPolicy Address) (codec : StorageCodec program)
     (caller : Address) {state : program.State}
     (event : InternalEvent program.graph)
     (step : InternalStep program.graph state.1 event)
@@ -202,7 +202,7 @@ as some valid semantic machine command. Per-node authorization and graph
 decoding therefore cannot produce a transition outside the canonical reachable
 state image. -/
 theorem executeStore?_encodeState_of_accepts
-    (policy : TriggerPolicy Address) (codec : StorageCodec L)
+    (policy : TriggerPolicy Address) (codec : StorageCodec program)
     (state : program.State) (calldata : InternalCalldata Address)
     (haccept :
       acceptsStore (program := program) policy codec

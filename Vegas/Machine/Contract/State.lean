@@ -32,7 +32,7 @@ namespace RawStore
 /-- Encode every logical component of a graph snapshot into the canonical
 dense layout. Optional graph values remain uninitialized when absent;
 completion bits are always written explicitly. -/
-def encodeSnapshot (codec : StorageCodec L)
+def encodeSnapshot (codec : StorageCodec program)
     (snapshot : StateSnapshot program.graph) : RawStore codec :=
   fun key =>
     if hfield : key < program.graph.fieldCount then
@@ -50,7 +50,7 @@ def encodeSnapshot (codec : StorageCodec L)
         none
 
 @[simp] theorem readValue_encodeSnapshot
-    (codec : StorageCodec L) (snapshot : StateSnapshot program.graph)
+    (codec : StorageCodec program) (snapshot : StateSnapshot program.graph)
     (field : Fin program.graph.fieldCount) :
     readValue (Layout.canonical program) codec
         (encodeSnapshot codec snapshot) field =
@@ -62,10 +62,10 @@ def encodeSnapshot (codec : StorageCodec L)
   | some value =>
       simp [readValue, encodeSnapshot, Layout.canonical,
         Layout.canonicalAddress, field.isLt, hvalue,
-        codec.decode_encode_value]
+        codec.decode_encode_value _ (codec.field_supported field)]
 
 @[simp] theorem readCompleted_encodeSnapshot
-    (codec : StorageCodec L) (snapshot : StateSnapshot program.graph)
+    (codec : StorageCodec program) (snapshot : StateSnapshot program.graph)
     (node : Fin program.graph.nodeCount) :
     readCompleted (Layout.canonical program) codec
         (encodeSnapshot codec snapshot) node =
@@ -81,7 +81,7 @@ def encodeSnapshot (codec : StorageCodec L)
 /-- Decode the typed values and explicit completion bits in canonical storage.
 Malformed or absent completion words reject the whole snapshot; absent value
 words remain absent graph fields. -/
-def decodeSnapshot (codec : StorageCodec L) (store : RawStore codec) :
+def decodeSnapshot (codec : StorageCodec program) (store : RawStore codec) :
     Option (StateSnapshot program.graph) :=
   let layout := Layout.canonical program
   if available :
@@ -97,7 +97,7 @@ def decodeSnapshot (codec : StorageCodec L) (store : RawStore codec) :
 
 /-- Canonical storage decoding is a left inverse of snapshot encoding. -/
 @[simp] theorem decodeSnapshot_encodeSnapshot
-    (codec : StorageCodec L) (snapshot : StateSnapshot program.graph) :
+    (codec : StorageCodec program) (snapshot : StateSnapshot program.graph) :
     decodeSnapshot codec (encodeSnapshot codec snapshot) = some snapshot := by
   have available :
       ∀ node : Fin program.graph.nodeCount,
@@ -117,19 +117,19 @@ def decodeSnapshot (codec : StorageCodec L) (store : RawStore codec) :
 
 /-- Encode a reachable semantic machine state through its finite graph
 snapshot. -/
-def encodeState (codec : StorageCodec L) (state : program.State) :
+def encodeState (codec : StorageCodec program) (state : program.State) :
     RawStore codec :=
   encodeSnapshot codec (StateSnapshot.ofConfig state.1)
 
 @[simp] theorem decodeSnapshot_encodeState
-    (codec : StorageCodec L) (state : program.State) :
+    (codec : StorageCodec program) (state : program.State) :
     decodeSnapshot codec (encodeState codec state) =
       some (StateSnapshot.ofConfig state.1) := by
   exact decodeSnapshot_encodeSnapshot codec (StateSnapshot.ofConfig state.1)
 
 /-- Canonical raw storage is a lossless representation of reachable machine
 states. -/
-theorem encodeState_injective (codec : StorageCodec L) :
+theorem encodeState_injective (codec : StorageCodec program) :
     Function.Injective (encodeState (program := program) codec) := by
   intro left right hstore
   apply StateSnapshot.ofConfig_injective_on_reachable program.graphWF

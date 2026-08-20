@@ -98,11 +98,13 @@ trigger internal actions remain explicit backend obligations.
 certified layout, it gives typed sparse-storage reads and writes with proved
 round trips, distinct-slot noninterference, and separation between graph
 values and completion bits. The included reference codec is semantic and
-lossless, not a finite serialization. In particular, the current `simpleExpr`
-integers denote unbounded Lean `Int`; an exact EVM-word codec therefore needs a
-bounded source integer type, a proved range invariant, or chosen
-modular/checked-overflow semantics. GameTheory does not decide that compiler
-policy.
+lossless, not a finite serialization. Codecs are indexed by the compiled
+program and need only support the types that its fields and nodes actually use;
+an unused unbounded type in the source language no longer blocks a finite
+target codec. A program that does use the current `simpleExpr` integer type
+still contains unbounded Lean `Int`, so exact EVM-word lowering needs a bounded
+source integer type, a proved range invariant, or chosen modular/checked-
+overflow semantics. GameTheory does not decide that compiler policy.
 
 `Machine.Contract.RawStore.encodeSnapshot` bridges finite semantic graph state
 to canonical contract storage: optional typed field words followed by explicit

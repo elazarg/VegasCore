@@ -34,7 +34,7 @@ variable {L : IExpr} {program : Program Player L}
 /-- Deployment choices that configure the target-neutral contract boundary. -/
 structure ConfiguredContract (program : Program Player L) (Address : Type)
     [DecidableEq Address] where
-  codec : StorageCodec L
+  codec : StorageCodec program
   players : PlayerRegistry Player Address
   triggers : TriggerPolicy Address
 

@@ -41,7 +41,7 @@ def executeSnapshot? (snapshot : StateSnapshot program.graph)
 
 /-- Execute over canonical raw storage, returning canonically encoded raw
 successor stores. -/
-def executeStore? (codec : StorageCodec L) (store : RawStore codec)
+def executeStore? (codec : StorageCodec program) (store : RawStore codec)
     (request : Request Player L) : Option (FinDist (RawStore codec)) :=
   match RawStore.decodeSnapshot (program := program) codec store with
   | none => none
@@ -58,7 +58,7 @@ theorem executeSnapshot?_isSome
 
 /-- Stored execution succeeds exactly when stored validation accepts. -/
 theorem executeStore?_isSome
-    (codec : StorageCodec L) (store : RawStore codec)
+    (codec : StorageCodec program) (store : RawStore codec)
     (request : Request Player L) :
     (executeStore? (program := program) codec store request).isSome =
       acceptsStore (program := program) codec store request := by
@@ -85,7 +85,7 @@ theorem executeSnapshot?_ofConfig_encode
 execute, and re-encode is exactly the machine law mapped through
 `encodeState`. -/
 theorem executeStore?_encodeState_encode
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (command : program.Command state) :
     executeStore? (program := program) codec
         (RawStore.encodeState codec state) (encode command) =
@@ -112,7 +112,7 @@ canonical raw-store image of that machine step. This is the transition
 invariant needed for hostile external requests, not only compiler-emitted
 ones. -/
 theorem executeStore?_encodeState_of_accepts
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (request : Request Player L)
     (haccept :
       acceptsStore (program := program) codec

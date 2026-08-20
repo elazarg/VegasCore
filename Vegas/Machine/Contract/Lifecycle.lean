@@ -28,13 +28,14 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} {program : Program Player L}
 
 /-- Canonical raw storage installed when the contract is deployed. -/
-def initialStore (program : Program Player L) (codec : StorageCodec L) :
+def initialStore (program : Program Player L)
+    (codec : StorageCodec program) :
     RawStore codec :=
   RawStore.encodeState codec program.init
 
 /-- Deployment storage decodes to exactly the initial finite graph state. -/
 @[simp] theorem decodeSnapshot_initialStore
-    (program : Program Player L) (codec : StorageCodec L) :
+    (program : Program Player L) (codec : StorageCodec program) :
     RawStore.decodeSnapshot (program := program) codec
         (initialStore program codec) =
       some (StateSnapshot.ofConfig program.init.1) := by
@@ -42,7 +43,7 @@ def initialStore (program : Program Player L) (codec : StorageCodec L) :
 
 /-- Every action is incomplete in canonical deployment storage. -/
 @[simp] theorem readCompleted_initialStore
-    (program : Program Player L) (codec : StorageCodec L)
+    (program : Program Player L) (codec : StorageCodec program)
     (node : Fin program.graph.nodeCount) :
     RawStore.readCompleted (Layout.canonical program) codec
         (initialStore program codec) node = some false := by
@@ -63,7 +64,8 @@ theorem allCompleted_eq_true_iff (program : Program Player L)
 
 /-- Decode terminal settlement data from canonical raw storage. Nonterminal or
 malformed storage has no outcome. -/
-def terminalOutcome? (program : Program Player L) (codec : StorageCodec L)
+def terminalOutcome? (program : Program Player L)
+    (codec : StorageCodec program)
     (store : RawStore codec) : Option (Outcome Player) :=
   match RawStore.decodeSnapshot (program := program) codec store with
   | none => none
@@ -76,7 +78,7 @@ def terminalOutcome? (program : Program Player L) (codec : StorageCodec L)
 /-- On an encoded reachable state, terminal outcome decoding is exactly the
 retained machine payoff evaluator, guarded only by machine terminality. -/
 theorem terminalOutcome?_encodeState
-    (program : Program Player L) (codec : StorageCodec L)
+    (program : Program Player L) (codec : StorageCodec program)
     (state : program.State) :
     terminalOutcome? program codec (RawStore.encodeState codec state) =
       if allCompleted program (StateSnapshot.ofConfig state.1) then
@@ -90,7 +92,7 @@ theorem terminalOutcome?_encodeState
 
 /-- Terminal encoded reachable storage exposes exactly the machine payoff. -/
 theorem terminalOutcome?_encodeState_of_terminal
-    (program : Program Player L) (codec : StorageCodec L)
+    (program : Program Player L) (codec : StorageCodec program)
     (state : program.State) (hterminal : program.terminal state) :
     terminalOutcome? program codec (RawStore.encodeState codec state) =
       evalPayoffs? program.payoffs state.1.store := by
@@ -102,7 +104,7 @@ theorem terminalOutcome?_encodeState_of_terminal
 
 /-- Terminal encoded reachable storage always has a settlement outcome. -/
 theorem terminalOutcome?_encodeState_isSome
-    (program : Program Player L) (codec : StorageCodec L)
+    (program : Program Player L) (codec : StorageCodec program)
     (state : program.State) (hterminal : program.terminal state) :
     (terminalOutcome? program codec
       (RawStore.encodeState codec state)).isSome := by
@@ -115,7 +117,8 @@ theorem terminalOutcome?_encodeState_isSome
 /-- For a compiled source program, terminal contract storage exposes a payoff
 of an actual source terminal environment. -/
 theorem terminalOutcome?_compile_encodeState
-    (source : WFProgram Player L) (codec : StorageCodec L)
+    (source : WFProgram Player L)
+    (codec : StorageCodec (Machine.compile source))
     (state : (Machine.compile source).State)
     (hterminal : (Machine.compile source).terminal state) :
     ∃ sourceEnv :

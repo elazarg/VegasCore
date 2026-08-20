@@ -33,7 +33,7 @@ def acceptsSnapshot (snapshot : StateSnapshot program.graph)
 
 /-- Decode canonical raw storage and validate a logical request. Missing or
 malformed completion words reject before request validation. -/
-def acceptsStore (codec : StorageCodec L) (store : RawStore codec)
+def acceptsStore (codec : StorageCodec program) (store : RawStore codec)
     (request : Request Player L) : Bool :=
   match RawStore.decodeSnapshot (program := program) codec store with
   | none => false
@@ -53,7 +53,7 @@ theorem acceptsSnapshot_ofConfig
 /-- Validation over the raw encoding of a reachable state agrees exactly with
 semantic request validation. -/
 @[simp] theorem acceptsStore_encodeState
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (request : Request Player L) :
     acceptsStore (program := program) codec
         (RawStore.encodeState (program := program) codec state) request =
@@ -65,7 +65,7 @@ semantic request validation. -/
 /-- The stored-state validator accepts exactly valid semantic commands when
 the storage was produced from a reachable machine state. -/
 theorem acceptsStore_encodeState_eq_true_iff
-    (codec : StorageCodec L) (state : program.State)
+    (codec : StorageCodec program) (state : program.State)
     (request : Request Player L) :
     acceptsStore (program := program) codec
         (RawStore.encodeState (program := program) codec state) request = true ↔
