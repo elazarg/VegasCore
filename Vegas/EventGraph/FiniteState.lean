@@ -92,8 +92,7 @@ noncomputable instance instDecidableEq : DecidableEq (StateSnapshot G) :=
 
 /-- Convert a finite graph snapshot to the operational total store.  Raw field
 ids outside the graph are absent. -/
-noncomputable def store (snapshot : StateSnapshot G) : Store L := by
-  classical
+def store (snapshot : StateSnapshot G) : Store L := by
   intro field
   exact
     if hfield : field < G.fieldCount then
@@ -106,7 +105,7 @@ noncomputable def store (snapshot : StateSnapshot G) : Store L := by
       none
 
 /-- View a finite graph snapshot as an operational configuration. -/
-noncomputable def toConfig (snapshot : StateSnapshot G) : Config G where
+def toConfig (snapshot : StateSnapshot G) : Config G where
   done := snapshot.done
   store := snapshot.store
 

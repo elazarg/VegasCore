@@ -30,9 +30,9 @@ namespace Request
 
 variable {program : Program Player L}
 
-/-- Executably decide whether a logical request denotes a currently available
-primitive machine command. -/
-def accepts (state : program.State) : Request Player L → Bool
+/-- Execute the finite logical request checks against a raw graph
+configuration. Reachability is not needed to run the checks. -/
+def acceptsConfig (cfg : Config program.graph) : Request Player L → Bool
   | { node := rawNode, authority := authority, payload := payload } =>
       if hnode : rawNode < program.graph.nodeCount then
         let node : Fin program.graph.nodeCount := ⟨rawNode, hnode⟩
@@ -45,11 +45,11 @@ def accepts (state : program.State) : Request Player L → Bool
                   match supplied.as? guard.ty with
                   | none => false
                   | some value =>
-                      match ReadEnv.ofStoreExec? state.1.store
+                      match ReadEnv.ofStoreExec? cfg.store
                           guard.choiceReads with
                       | none => false
                       | some env =>
-                          if Ready program.graph state.1 node then
+                          if Ready program.graph cfg node then
                             guard.eval value env
                           else
                             false
@@ -59,19 +59,24 @@ def accepts (state : program.State) : Request Player L → Bool
         | .sample dist =>
             match authority, payload with
             | .internal, .none =>
-                match ReadEnv.ofStoreExec? state.1.store dist.reads with
+                match ReadEnv.ofStoreExec? cfg.store dist.reads with
                 | none => false
-                | some _env => decide (Ready program.graph state.1 node)
+                | some _env => decide (Ready program.graph cfg node)
             | _, _ => false
         | .reveal source =>
             match authority, payload with
             | .internal, .none =>
-                match Store.getAs state.1.store source row.ty with
+                match Store.getAs cfg.store source row.ty with
                 | none => false
-                | some _value => decide (Ready program.graph state.1 node)
+                | some _value => decide (Ready program.graph cfg node)
             | _, _ => false
       else
         false
+
+/-- Executably decide whether a logical request denotes a currently available
+primitive command in a reachable machine state. -/
+def accepts (state : program.State) (request : Request Player L) : Bool :=
+  acceptsConfig state.1 request
 
 /-- Erasing a proof-carrying valid command always passes executable
 validation. -/
@@ -106,7 +111,7 @@ theorem accepts_encode
       have hguard : step.guard.eval step.value execEnv = true := by
         rw [henv]
         exact step.guard_ok
-      simp [accepts, action.node.isLt, hsem, step.value_ok, hexec,
+      simp [accepts, acceptsConfig, action.node.isLt, hsem, step.value_ok, hexec,
         step.ready, hguard]
   | internal event step =>
       cases step with
@@ -128,7 +133,7 @@ theorem accepts_encode
             ReadEnv.ofStoreExec?_isSome_of_ofStore?_eq_some env_ok
           rcases Option.isSome_iff_exists.mp hexecSome with
             ⟨execEnv, hexec⟩
-          simp [accepts, event.node.isLt, hsem, hexec, ready]
+          simp [accepts, acceptsConfig, event.node.isLt, hsem, hexec, ready]
       | reveal row source row_get sem_eq ready value value_ok =>
           change accepts state
             { node := event.node
@@ -146,7 +151,8 @@ theorem accepts_encode
           have hvalueCanonical :=
             Store.getAs_cast state.1.store source
               (congrArg EventNode.ty hrow.symm) value_ok
-          simp [accepts, event.node.isLt, hsem, hvalueCanonical, ready]
+          simp [accepts, acceptsConfig, event.node.isLt, hsem,
+            hvalueCanonical, ready]
 
 /-- Every request accepted by executable validation reconstructs a valid
 proof-carrying semantic command. -/
@@ -164,29 +170,31 @@ theorem represents_of_accepts_eq_true
     | commit who guard =>
         cases authority with
         | internal =>
-            simp [accepts, hnode, node, row, hsem] at haccepts
+            simp [accepts, acceptsConfig, hnode, node, row, hsem] at haccepts
         | player actor =>
             cases payload with
             | none =>
-                simp [accepts, hnode, node, row, hsem] at haccepts
+                simp [accepts, acceptsConfig, hnode, node, row, hsem]
+                  at haccepts
             | value supplied =>
                 by_cases hactor : actor = who
                 · subst actor
                   cases hvalue : supplied.as? guard.ty with
                   | none =>
-                      simp [accepts, hnode, node, row, hsem, hvalue]
+                      simp [accepts, acceptsConfig, hnode, node, row, hsem,
+                        hvalue]
                         at haccepts
                   | some value =>
                       cases henv :
                           ReadEnv.ofStoreExec? state.1.store
                             guard.choiceReads with
                       | none =>
-                          simp [accepts, hnode, node, row, hsem, hvalue,
-                            henv] at haccepts
+                          simp [accepts, acceptsConfig, hnode, node, row, hsem,
+                            hvalue, henv] at haccepts
                       | some env =>
                           by_cases hready : Ready program.graph state.1 node
                           · have hguard : guard.eval value env = true := by
-                              simpa [accepts, hnode, node, row, hsem,
+                              simpa [accepts, acceptsConfig, hnode, node, row, hsem,
                                 hvalue, henv, hready] using haccepts
                             have envOk :=
                               ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some
@@ -205,28 +213,30 @@ theorem represents_of_accepts_eq_true
                                   env_ok := envOk
                                   guard_ok := hguard }, ?_⟩
                             rfl
-                          · simp [accepts, hnode, node, row, hsem, hvalue,
-                              henv, hready] at haccepts
-                · simp [accepts, hnode, node, row, hsem, hactor]
+                          · simp [accepts, acceptsConfig, hnode, node, row, hsem,
+                              hvalue, henv, hready] at haccepts
+                · simp [accepts, acceptsConfig, hnode, node, row, hsem, hactor]
                     at haccepts
     | sample dist =>
         cases authority with
         | player actor =>
             cases payload <;>
-              simp [accepts, hnode, node, row, hsem] at haccepts
+              simp [accepts, acceptsConfig, hnode, node, row, hsem] at haccepts
         | internal =>
             cases payload with
             | value supplied =>
-                simp [accepts, hnode, node, row, hsem] at haccepts
+                simp [accepts, acceptsConfig, hnode, node, row, hsem]
+                  at haccepts
             | none =>
                 cases henv :
                     ReadEnv.ofStoreExec? state.1.store dist.reads with
                 | none =>
-                    simp [accepts, hnode, node, row, hsem, henv]
+                    simp [accepts, acceptsConfig, hnode, node, row, hsem, henv]
                       at haccepts
                 | some env =>
                     have hready : Ready program.graph state.1 node := by
-                      simpa [accepts, hnode, node, row, hsem, henv]
+                      simpa [accepts, acceptsConfig, hnode, node, row, hsem,
+                        henv]
                         using haccepts
                     have envOk :=
                       ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some henv
@@ -239,26 +249,29 @@ theorem represents_of_accepts_eq_true
         cases authority with
         | player actor =>
             cases payload <;>
-              simp [accepts, hnode, node, row, hsem] at haccepts
+              simp [accepts, acceptsConfig, hnode, node, row, hsem] at haccepts
         | internal =>
             cases payload with
             | value supplied =>
-                simp [accepts, hnode, node, row, hsem] at haccepts
+                simp [accepts, acceptsConfig, hnode, node, row, hsem]
+                  at haccepts
             | none =>
                 cases hvalue : Store.getAs state.1.store source row.ty with
                 | none =>
-                    simp [accepts, hnode, node, row, hsem, hvalue]
+                    simp [accepts, acceptsConfig, hnode, node, row, hsem,
+                      hvalue]
                       at haccepts
                 | some value =>
                     have hready : Ready program.graph state.1 node := by
-                      simpa [accepts, hnode, node, row, hsem, hvalue]
+                      simpa [accepts, acceptsConfig, hnode, node, row, hsem,
+                        hvalue]
                         using haccepts
                     exact
                       ⟨.internal
                         { node := node }
                         (.reveal row source hrowGet hsem hready value hvalue),
                         rfl⟩
-  · simp [accepts, hnode] at haccepts
+  · simp [accepts, acceptsConfig, hnode] at haccepts
 
 /-- Executable validation accepts exactly the logical requests represented by
 currently valid machine commands. -/

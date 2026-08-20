@@ -11,6 +11,7 @@ import Vegas.Machine.Contract.ABI
 import Vegas.Machine.Contract.Storage
 import Vegas.Machine.Contract.Validator
 import Vegas.Machine.Contract.State
+import Vegas.Machine.Contract.StoredABI
 
 namespace VegasTests
 
@@ -174,6 +175,17 @@ example : Function.Injective
       (program := matchingPenniesMachine) matchingPenniesStorageCodec) := by
   exact Machine.Contract.RawStore.encodeState_injective
     matchingPenniesStorageCodec
+
+example (state : matchingPenniesMachine.State)
+    (command : matchingPenniesMachine.Command state) :
+    Machine.Contract.Request.acceptsStore
+        (program := matchingPenniesMachine) matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState
+          (program := matchingPenniesMachine)
+          matchingPenniesStorageCodec state)
+        (Machine.Contract.Request.encode command) = true := by
+  rw [Machine.Contract.Request.acceptsStore_encodeState]
+  exact Machine.Contract.Request.accepts_encode command
 
 example
     (store : Machine.Contract.RawStore matchingPenniesStorageCodec)

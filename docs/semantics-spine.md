@@ -22,6 +22,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Logical ABI | `Machine.Contract.Request` | executable raw-envelope and valid-command acceptance |
 | Storage words | `Machine.Contract.StorageCodec` | typed target-word round trips and slot noninterference |
 | Stored state | `Machine.Contract.RawStore` | executable snapshot round trip and reachable-state injectivity |
+| Stored ABI | `Machine.Contract.Request.acceptsStore` | raw-storage validation equal to semantic availability |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -151,6 +152,12 @@ every completion bit explicitly. `decodeSnapshot` is executable and a proved
 left inverse; `encodeState` is injective on reachable machine states. Decoding
 arbitrary storage establishes structural well-typedness, not semantic
 reachability, which remains a transition invariant for a concrete runtime.
+
+`Machine.Contract.Request.acceptsStore` composes canonical storage decoding
+with the executable logical validator. For any encoded reachable state, it is
+proved to return exactly semantic command availability. The boundary still
+receives a typed logical request; concrete word/calldata decoding and address
+authentication have not been silently folded into it.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

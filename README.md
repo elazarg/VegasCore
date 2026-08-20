@@ -110,6 +110,13 @@ resulting raw-store encoding is injective on reachable machine states. An
 arbitrary decoded snapshot is not automatically reachable; preserving that
 invariant is an obligation of each lowered runtime transition.
 
+`Machine.Contract.Request.acceptsStore` connects those boundaries: it decodes
+canonical raw storage and runs the executable logical request checks over the
+resulting snapshot. On storage encoded from a reachable machine state, its
+answer is proved identical to semantic command availability. This is still a
+logical ABI over typed payloads; concrete calldata decoding and caller
+authentication remain later passes.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
