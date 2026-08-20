@@ -180,6 +180,14 @@ player commits and internal events. It is deliberately not called an EVM
 artifact: byte selectors, serialization, expression lowering, arithmetic,
 gas/reverts, and entropy realization remain explicit subsequent passes.
 
+`Machine.Contract.WireCodec` adds serialization as its own certified pass. It
+maps the configured typed transaction sum to an arbitrary wire carrier, may
+reject malformed inputs, and must round-trip every encoded call. Wire
+validation and execution have the same success boundary, while encoded player
+and internal calls retain their exact machine-step laws. The included identity
+codec is proof-facing only; an EVM backend must supply concrete selector,
+address, and word encodings.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

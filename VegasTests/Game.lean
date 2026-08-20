@@ -19,6 +19,7 @@ import Vegas.Machine.Contract.Calldata
 import Vegas.Machine.Contract.InternalCalldata
 import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
+import Vegas.Machine.Contract.Wire
 
 namespace VegasTests
 
@@ -244,6 +245,11 @@ noncomputable def matchingPenniesContract :
   players := matchingPenniesRegistry
   triggers := permissionlessTriggers
 
+noncomputable def matchingPenniesWireCodec :
+    matchingPenniesContract.TransactionWireCodec
+      matchingPenniesContract.Calldata :=
+  Machine.Contract.WireCodec.identity matchingPenniesContract.Calldata
+
 example {state : matchingPenniesMachine.State} {who : TestPlayer}
     (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
     (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
@@ -259,6 +265,24 @@ example {state : matchingPenniesMachine.State} {who : TestPlayer}
         (Machine.Contract.RawStore.encodeState
           matchingPenniesContract.codec)) := by
   exact matchingPenniesContract.execute?_encodeState_playerCommit action step
+
+example {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action) :
+    matchingPenniesContract.executeWire? matchingPenniesWireCodec
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (matchingPenniesWireCodec.encode
+          (.player
+            (Machine.Contract.PlayerCalldata.encodeCommit
+              matchingPenniesContract.players matchingPenniesContract.codec
+              action step))) =
+      some ((matchingPenniesMachine.step state (.commit who action step)).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.executeWire?_encodeState_playerCommit
+    matchingPenniesWireCodec action step
 
 example {state : matchingPenniesMachine.State} (caller : TestPlayer)
     (event : EventGraph.InternalEvent matchingPenniesMachine.graph)

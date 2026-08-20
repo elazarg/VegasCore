@@ -23,3 +23,4 @@ import Vegas.Machine.Contract.Calldata
 import Vegas.Machine.Contract.InternalCalldata
 import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
+import Vegas.Machine.Contract.Wire

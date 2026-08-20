@@ -31,6 +31,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Internal transaction | `Machine.Contract.InternalCalldata` | explicit trigger authorization and exact stored execution |
 | Contract lifecycle | `Machine.Contract.initialStore`, `terminalOutcome?` | exact deployment state and terminal source-payoff readout |
 | Configured contract | `Machine.Contract.ConfiguredContract` | whole typed word-call target with exact dispatch laws |
+| Wire transactions | `Machine.Contract.WireCodec` | lossless serialization and exact call-law transport |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -235,6 +236,14 @@ typed sum of player/internal calldata. Its dispatcher succeeds exactly when
 the selected entry-point validator accepts, and both valid transaction forms
 retain their exact raw-store `Machine.step` laws. This is the object a concrete
 backend lowers further; it is not byte ABI, EVM code, or a scheduler.
+
+`Machine.Contract.WireCodec` then isolates transaction serialization. A codec
+encodes the full typed call sum into a target wire carrier, decodes arbitrary
+inputs with failure, and proves a left inverse on emitted calls. Validation
+and execution agree after decoding, and both player/internal one-step laws
+transport through encoding. A concrete ABI must still choose selector bytes,
+address representation, word representation, and malformed-input behavior;
+the reference identity codec makes none of those choices.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
