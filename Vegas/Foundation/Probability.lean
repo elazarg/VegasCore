@@ -40,7 +40,7 @@ private theorem cast_sum (weights : List ℚ≥0) :
   | cons head tail ih =>
       simp only [List.sum_cons, List.map_cons, NNRat.cast_add, ih]
 
-private theorem indexed_mass_sum (law : RationalLaw α) :
+theorem indexed_mass_sum (law : RationalLaw α) :
     ∑ index : Fin law.entries.length,
         ((law.entries.get index).2 : ℝ) = 1 := by
   rw [← List.sum_ofFn]
@@ -57,15 +57,27 @@ private theorem indexed_mass_sum (law : RationalLaw α) :
       rw [← List.map_ofFn, List.ofFn_get]]
   simpa [List.map_map, Function.comp_def] using hcast
 
+/-- The exact law on table-entry indices.  This is the canonical policy for a
+trusted oracle: the runtime receives an index and deterministically reads the
+corresponding value from the retained table. -/
+def indexLaw (law : RationalLaw α) : FinDist (Fin law.entries.length) :=
+  FinDist.ofWeights
+    (fun index : Fin law.entries.length =>
+      ((law.entries.get index).2 : ℝ))
+    (fun _ => by positivity)
+    law.indexed_mass_sum
+
+/-- Read the value named by one retained table entry. -/
+def entryValue (law : RationalLaw α) (index : Fin law.entries.length) : α :=
+  (law.entries.get index).1
+
 /-- Interpret an exact rational table as GameTheory's canonical finite law.
 The finite index carrier makes this work even when `α` is infinite. -/
 def denote (law : RationalLaw α) : FinDist α :=
-  FinDist.map (fun index => (law.entries.get index).1) <|
-    FinDist.ofWeights
-      (fun index : Fin law.entries.length =>
-        ((law.entries.get index).2 : ℝ))
-      (fun _ => by positivity)
-      law.indexed_mass_sum
+  law.indexLaw.map law.entryValue
+
+@[simp] theorem map_entryValue_indexLaw (law : RationalLaw α) :
+    law.indexLaw.map law.entryValue = law.denote := rfl
 
 /-- The probability of a value is the sum of the exact table entries that
 name it. Repeated entries therefore combine rather than overwrite. -/
@@ -79,6 +91,7 @@ theorem prob_denote [DecidableEq α] (law : RationalLaw α) (value : α) :
   rw [FinDist.prob_map, FinDist.expect_eq_sum]
   apply Finset.sum_congr rfl
   intro index _
+  unfold indexLaw entryValue
   rw [FinDist.prob_ofWeights]
   by_cases heq : value = (law.entries.get index).1
   · simp [heq]

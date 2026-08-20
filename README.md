@@ -239,6 +239,18 @@ pushforward algebra, but not a constructive denominator-clearing partition for
 arbitrary exact rational tables. That sampler, plus unpredictability and
 bias-resistance assumptions, is still required.
 
+`Machine.Contract.OraclePolicy` and `OracleCalldata` provide the classical
+trusted-oracle alternative. Every evaluated `RationalLaw` exposes its exact
+law on retained table indices. An authenticated oracle callback carries one
+such index, and contract execution deterministically reads the corresponding
+value and updates canonical storage. Fixing the oracle's behavioral policy to
+the index law is proved to induce exactly the original `Machine.step` law,
+both on graph configurations and encoded storage. The contract cannot verify
+a frequency claim from a single response; exact sampling, non-withholding, and
+unpredictability are assumptions of this trusted role. An asynchronous
+request/pending/callback protocol and its scheduling signals are the next
+lowering layer.
+
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
 changing the event bodies. Graph requirements are lowered to physical Boolean
 storage checks using the certified layout: replay prevention first, then one
