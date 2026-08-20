@@ -23,6 +23,7 @@ import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
 import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
+import Vegas.Machine.Contract.EVMBytes
 import Vegas.Machine.Contract.Entropy
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
@@ -365,6 +366,19 @@ noncomputable def matchingPenniesMessageABI :
     rw [matchingPenniesMachine_graph_nodeCount]
     norm_num)
 
+noncomputable def matchingPenniesArgumentWords :
+    Machine.Contract.WireCodec matchingPenniesContract.codec.Word
+      Machine.Contract.EVM.Word :=
+  Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
+
+example (message : matchingPenniesContract.Message) :
+    matchingPenniesMessageABI.decodeBytes matchingPenniesArgumentWords
+        (matchingPenniesMessageABI.encodeBytes
+          matchingPenniesArgumentWords message) =
+      some message := by
+  exact matchingPenniesMessageABI.decodeBytes_encodeBytes
+    matchingPenniesArgumentWords message
+
 noncomputable def matchingPenniesEntropyRealization :
     Machine.Contract.Blockchain.EntropyRealization
       matchingPenniesContract.toStochasticContract :=
@@ -449,6 +463,30 @@ example
         ((matchingPenniesMachine.step state (.commit who action step)).map
           (Machine.Contract.RawStore.encodeState
             matchingPenniesContract.codec))) := by
+  exact matchingPenniesContract.receive_encodeState_playerCommit
+    chain context action step hsender
+
+example
+    (chain : Machine.Contract.Blockchain.ChainView)
+    (context : Machine.Contract.Blockchain.CallContext TestPlayer)
+    {state : matchingPenniesMachine.State} {who : TestPlayer}
+    (action : EventGraph.CommitAction matchingPenniesMachine.graph who)
+    (step : EventGraph.CommitStep matchingPenniesMachine.graph state.1
+      who action)
+    (hsender : context.sender = matchingPenniesContract.players.address who) :
+    matchingPenniesContract.receiveEVMBytes chain
+        matchingPenniesMessageABI matchingPenniesArgumentWords context
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state)
+        (matchingPenniesMessageABI.encodeBytes matchingPenniesArgumentWords
+          (.player
+            (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
+              matchingPenniesContract.codec action step))) =
+      .success (Machine.Contract.Blockchain.CallSuccess.silentLaw Empty
+        ((matchingPenniesMachine.step state (.commit who action step)).map
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesContract.codec))) := by
+  rw [matchingPenniesContract.receiveEVMBytes_encode]
   exact matchingPenniesContract.receive_encodeState_playerCommit
     chain context action step hsender
 

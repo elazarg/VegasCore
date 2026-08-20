@@ -267,6 +267,16 @@ pennies configuration uses 256-bit role and node codecs and proves its node
 count fits in one word. Accepted arbitrary framed input still reconstructs an
 exact semantic machine transition.
 
+`Machine.Contract.EVM.ByteCalldata` supplies the next framing pass as a
+dependently byte-aligned bitstring. It emits and parses the two fixed ABI
+shapes—36 bytes for internal calls and 100 bytes for player calls—using
+big-endian selector/word concatenation and exact Ethereum offsets. A separate
+lossless argument-word codec connects arbitrary configured storage words to
+256-bit EVM words. All other byte lengths reject, serialization round-trips,
+and every accepted hostile byte string over reachable storage remains a valid
+semantic command. Function selectors are still configured values rather than
+Keccak-derived signatures.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -301,13 +311,14 @@ An EVM-class compiler can grow as a sequence like this:
 The repository provides the first machine IR, composable operational
 projection, an exact terminal source-payoff certificate, certified logical
 contract inventory/layout/storage/state/call boundaries, a finite 256-bit
-Boolean storage codec, and a narrow
-unilateral strategic certificate. It does not yet have an EVM IR, emitter,
-a codec for programs that store other source types, a concrete transaction
-scheduler, cryptographic commitment refinement, exact on-chain chance
-implementation, timeout/abort game semantics, or an end-to-end secure
-compilation theorem. The source-star theorem is about possible terminal runs
-and payoff equality; it does not equate probability laws, intermediate
+Boolean storage codec, physical ordered-check/action-body IR, abstract check
+gas and rollback projections, certified fixed-shape EVM byte calldata, and a
+narrow unilateral strategic certificate. It does not yet have an EVM
+instruction IR or emitter, a codec for programs that store other source types,
+a concrete transaction scheduler, cryptographic commitment refinement, exact
+on-chain chance implementation, timeout/abort game semantics, or an end-to-end
+secure compilation theorem. The source-star theorem is about possible terminal
+runs and payoff equality; it does not equate probability laws, intermediate
 information histories, schedules, or target strategy spaces. Those are
 VegasCore gaps, not features supplied by GameTheory.
 
