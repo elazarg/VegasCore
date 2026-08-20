@@ -191,9 +191,8 @@ theorem ReadEnv.ofStore?_completeNode_of_not_read
         exact
           (Store.getAs_set_ne cfg.store (hnotRead ref href) value ref.ty).symm)
 
-noncomputable instance instDecidableReady (G : Graph Player L) (cfg : Config G)
+instance instDecidableReady (G : Graph Player L) (cfg : Config G)
     (node : Fin G.nodeCount) : Decidable (Ready G cfg node) := by
-  classical
   unfold Ready
   infer_instance
 

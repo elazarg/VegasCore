@@ -19,7 +19,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Step projection | `Machine.Refinement` | visible abstract steps and administrative stuttering |
 | Contract manifest | `Machine.Contract.Manifest` | finite lossless storage/action inventory for emitters |
 | Storage layout | `Machine.Contract.Layout` | bounded collision-free physical keys for logical slots |
-| Logical ABI | `Machine.Contract.Request` | raw envelopes and exact valid-command acceptance |
+| Logical ABI | `Machine.Contract.Request` | executable raw-envelope and valid-command acceptance |
 | Storage words | `Machine.Contract.StorageCodec` | typed target-word round trips and slot noninterference |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
@@ -127,10 +127,12 @@ completion slots. A target value codec and its arithmetic semantics are still
 required before these keys describe executable EVM storage.
 
 `Machine.Contract.Request` erases a valid dependent command to a stable node
-id, logical authority, and optional typed value. Its reference decoder accepts
-exactly the envelopes represented by currently valid machine commands. It is a
-semantic validator specification; address authentication, executable target
-checks, revert traces, gas, and internal-action triggering remain unmodeled.
+id, logical authority, and optional typed value. `Request.accepts` computes
+node bounds, authority/payload shape, readiness, typed-read availability, and
+commit guards. Its adequacy theorem says that it accepts exactly the envelopes
+represented by currently valid machine commands, matching the classical
+reference decoder. Address authentication, concrete calldata/storage decoding,
+revert traces, gas, and internal-action triggering remain unmodeled.
 
 `Machine.Contract.StorageCodec` isolates target-word encoding. Typed reads and
 writes over any certified layout have same-slot round trips; writes to distinct
@@ -167,7 +169,7 @@ adequacy, not a substitute for earlier pass proofs.
 ## Blockchain obligations
 
 A concrete chain path still needs certified layers for expression lowering,
-executable scheduling/ABI validation, a finite target codec, authentication,
+target-level scheduling/ABI lowering, a finite target codec, authentication,
 commitment/reveal, randomness, time and failure, settlement, and bytecode. The
 core source language currently lacks participation failure, timeout, and
 monetary-transfer semantics, so those behaviors cannot yet be introduced with

@@ -33,7 +33,7 @@ namespace TypedValue
 variable {L : IExpr}
 
 /-- Try to read a typed value at a requested language type. -/
-noncomputable def as? (value : TypedValue L) (ty : L.Ty) :
+def as? (value : TypedValue L) (ty : L.Ty) :
     Option (L.Val ty) :=
   if h : value.ty = ty then
     some (cast (by rw [h]) value.value)
@@ -50,7 +50,7 @@ namespace Store
 variable {L : IExpr}
 
 /-- Read a field at an expected type. -/
-noncomputable def getAs (store : Store L) (field : Nat) (ty : L.Ty) :
+def getAs (store : Store L) (field : Nat) (ty : L.Ty) :
     Option (L.Val ty) :=
   match store field with
   | none => none
@@ -226,6 +226,36 @@ noncomputable def ofStore? (store : Store L) (refs : Finset (FieldRef L)) :
     else
       none
 
+/-- Construct a restricted read environment from already checked option
+lookups. Unlike `ofStore`, this selects each value by executable option
+elimination rather than classical choice. -/
+def ofStoreChecked (store : Store L) (refs : Finset (FieldRef L))
+    (available :
+      ∀ ref, ref ∈ refs → (Store.getAs store ref.field ref.ty).isSome) :
+    ReadEnv L refs where
+  read := fun ref href =>
+    (Store.getAs store ref.field ref.ty).get (available ref href)
+
+theorem getAs_ofStoreChecked
+    (store : Store L) (refs : Finset (FieldRef L))
+    (available :
+      ∀ ref, ref ∈ refs → (Store.getAs store ref.field ref.ty).isSome)
+    {ref : FieldRef L} (href : ref ∈ refs) :
+    Store.getAs store ref.field ref.ty =
+      some ((ofStoreChecked store refs available).read ref href) := by
+  exact Option.eq_some_of_isSome (available ref href)
+
+/-- Executably check all finite typed reads and construct their restricted
+environment. -/
+def ofStoreExec? (store : Store L) (refs : Finset (FieldRef L)) :
+    Option (ReadEnv L refs) :=
+  if available :
+      ∀ ref, ref ∈ refs →
+        (Store.getAs store ref.field ref.ty).isSome then
+    some (ofStoreChecked store refs available)
+  else
+    none
+
 @[simp] theorem ofStore_read (store : Store L) (refs : Finset (FieldRef L))
     (available :
       ∀ ref, ref ∈ refs → ∃ value, Store.getAs store ref.field ref.ty = some value)
@@ -234,6 +264,42 @@ noncomputable def ofStore? (store : Store L) (refs : Finset (FieldRef L)) :
       some ((ofStore store refs available).read ref href) := by
   unfold ofStore
   exact Classical.choose_spec (available ref href)
+
+theorem ofStore_eq_ofStoreChecked
+    (store : Store L) (refs : Finset (FieldRef L))
+    (available :
+      ∀ ref, ref ∈ refs → (Store.getAs store ref.field ref.ty).isSome) :
+    ofStore store refs (fun ref href =>
+      Option.isSome_iff_exists.mp (available ref href)) =
+      ofStoreChecked store refs available := by
+  apply ReadEnv.ext
+  intro ref href
+  have hclassical :=
+    ofStore_read store refs
+      (fun ref href => Option.isSome_iff_exists.mp (available ref href)) href
+  have hexecutable := getAs_ofStoreChecked store refs available href
+  rw [hclassical] at hexecutable
+  exact Option.some.inj hexecutable
+
+/-- The executable constructor returns the same uniquely determined read
+environment as the proof-facing constructor used by graph execution. -/
+theorem ofStore?_eq_some_of_ofStoreExec?_eq_some
+    {store : Store L} {refs : Finset (FieldRef L)}
+    {env : ReadEnv L refs}
+    (henv : ofStoreExec? store refs = some env) :
+    ofStore? store refs = some env := by
+  unfold ofStoreExec? at henv
+  split at henv
+  · rename_i available
+    have henvEq : ofStoreChecked store refs available = env :=
+      Option.some.inj henv
+    unfold ofStore?
+    let existsAvailable := fun ref href =>
+      Option.isSome_iff_exists.mp (available ref href)
+    rw [dif_pos existsAvailable]
+    rw [ofStore_eq_ofStoreChecked store refs available]
+    exact congrArg some henvEq
+  · simp at henv
 
 theorem ofStore?_read {store : Store L} {refs : Finset (FieldRef L)}
     {env : ReadEnv L refs}
@@ -249,6 +315,37 @@ theorem ofStore?_read {store : Store L} {refs : Finset (FieldRef L)}
     exact ofStore_read store refs h href
   · rw [dif_neg h] at henv
     cases henv
+
+/-- Every proof-facing successful restriction is also accepted by the
+executable finite check. -/
+theorem ofStoreExec?_isSome_of_ofStore?_eq_some
+    {store : Store L} {refs : Finset (FieldRef L)}
+    {env : ReadEnv L refs}
+    (henv : ofStore? store refs = some env) :
+    (ofStoreExec? store refs).isSome := by
+  have available :
+      ∀ ref, ref ∈ refs →
+        (Store.getAs store ref.field ref.ty).isSome := by
+    intro ref href
+    rw [ofStore?_read henv href]
+    rfl
+  unfold ofStoreExec?
+  rw [dif_pos available]
+  rfl
+
+/-- The proof-facing and executable store restrictions accept exactly the
+same finite read footprints. -/
+theorem ofStoreExec?_isSome_iff_ofStore?_isSome
+    (store : Store L) (refs : Finset (FieldRef L)) :
+    (ofStoreExec? store refs).isSome ↔ (ofStore? store refs).isSome := by
+  constructor
+  · intro hexec
+    rcases Option.isSome_iff_exists.mp hexec with ⟨env, henv⟩
+    rw [ofStore?_eq_some_of_ofStoreExec?_eq_some henv]
+    rfl
+  · intro hproof
+    rcases Option.isSome_iff_exists.mp hproof with ⟨env, henv⟩
+    exact ofStoreExec?_isSome_of_ofStore?_eq_some henv
 
 theorem ofStore_eq_of_getAs_eq
     {left right : Store L} {refs : Finset (FieldRef L)}

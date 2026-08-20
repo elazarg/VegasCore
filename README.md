@@ -85,11 +85,13 @@ by completion slots. It does not yet encode a typed language value into a
 target storage word.
 
 `Machine.Contract.Request` is the logical ABI envelope: stable node id,
-logical authority, and optional typed payload. Its reference decoder accepts
-exactly envelopes represented by currently valid proof-carrying machine
-commands. Concrete authentication, executable validation, revert behavior,
-gas, transaction ordering, and permission to trigger internal actions remain
-explicit backend obligations.
+logical authority, and optional typed payload. `Request.accepts` executably
+checks bounds, authority/payload shape, readiness, typed reads, and commit
+guards, and is proved to accept exactly envelopes represented by currently
+valid proof-carrying machine commands. The classical reference decoder has the
+same acceptance boundary. Concrete address authentication, calldata/storage
+decoding, revert behavior, gas, transaction ordering, and permission to
+trigger internal actions remain explicit backend obligations.
 
 `Machine.Contract.StorageCodec` is the target-word boundary. Combined with a
 certified layout, it gives typed sparse-storage reads and writes with proved
@@ -120,8 +122,9 @@ An EVM-class compiler can grow as a sequence like this:
 
 1. lower the `Machine.Contract.Manifest` code and logical slots to a backend
    expression and physical storage IR;
-2. refine the logical request decoder to an executable
-   dependency-respecting scheduler or callable-node ABI;
+2. lower the executable logical request validator to a
+   dependency-respecting scheduler or callable-node ABI over decoded target
+   state;
 3. choose storage layout, role authentication, calldata, receipts, and revert
    behavior;
 4. refine semantic sealed values to commitments and reveal verification;

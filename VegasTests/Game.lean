@@ -9,6 +9,7 @@ import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
 import Vegas.Machine.Contract.Storage
+import Vegas.Machine.Contract.Validator
 
 namespace VegasTests
 
@@ -148,6 +149,12 @@ example (state : matchingPenniesMachine.State)
     (Machine.Contract.Request.decode state
       (Machine.Contract.Request.encode command)).isSome := by
   exact Machine.Contract.Request.decode_encode_isSome command
+
+example (state : matchingPenniesMachine.State)
+    (command : matchingPenniesMachine.Command state) :
+    Machine.Contract.Request.accepts state
+      (Machine.Contract.Request.encode command) = true := by
+  exact Machine.Contract.Request.accepts_encode command
 
 noncomputable def matchingPenniesStorageCodec :
     Machine.Contract.StorageCodec simpleExpr :=
