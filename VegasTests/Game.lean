@@ -14,6 +14,7 @@ import Vegas.Machine.Contract.State
 import Vegas.Machine.Contract.StoredABI
 import Vegas.Machine.Contract.Executor
 import Vegas.Machine.Contract.StoredExecutor
+import Vegas.Machine.Contract.Authentication
 
 namespace VegasTests
 
@@ -163,6 +164,24 @@ example (state : matchingPenniesMachine.State)
 noncomputable def matchingPenniesStorageCodec :
     Machine.Contract.StorageCodec simpleExpr :=
   Machine.Contract.StorageCodec.reference simpleExpr
+
+def matchingPenniesRegistry :
+    Machine.Contract.PlayerRegistry TestPlayer TestPlayer where
+  address := id
+  injective := Function.injective_id
+
+example (state : matchingPenniesMachine.State)
+    (call : Machine.Contract.PlayerCall TestPlayer TestPlayer simpleExpr) :
+    Machine.Contract.PlayerCall.acceptsStore
+        (program := matchingPenniesMachine) matchingPenniesRegistry
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState matchingPenniesStorageCodec state)
+        call = true ↔
+      call.caller = matchingPenniesRegistry.address call.player ∧
+        Machine.Contract.Request.Represents state call.request := by
+  exact
+    Machine.Contract.PlayerCall.acceptsStore_encodeState_eq_true_iff
+      matchingPenniesRegistry matchingPenniesStorageCodec state call
 
 example (snapshot : EventGraph.StateSnapshot matchingPenniesMachine.graph) :
     Machine.Contract.RawStore.decodeSnapshot matchingPenniesStorageCodec

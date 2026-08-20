@@ -133,6 +133,13 @@ For an encoded reachable state and valid command envelope, the resulting raw-
 store law is proved exactly equal to `Machine.step` mapped through
 `RawStore.encodeState`.
 
+`Machine.Contract.PlayerRegistry` and `PlayerCall` add caller authentication
+as a separate deterministic gate. Registry addresses are injective, and a
+stored player call is accepted exactly when its caller owns the claimed player
+role and its logical commit request is semantically valid. Internal sample and
+reveal triggering is intentionally not assigned to arbitrary callers here;
+that requires an explicit oracle/keeper/protocol policy.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.

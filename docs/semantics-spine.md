@@ -25,6 +25,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Stored ABI | `Machine.Contract.Request.acceptsStore` | raw-storage validation equal to semantic availability |
 | Logical execution | `Machine.Contract.Request.executeConfig?` | exact reachability-erased machine step law |
 | Stored execution | `Machine.Contract.Request.executeStore?` | exact machine law transported through raw storage |
+| Player authentication | `Machine.Contract.PlayerCall` | injective caller roles plus exact semantic validity |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -175,6 +176,12 @@ decoding and successor re-encoding. On an encoded reachable state and valid
 command envelope, it is exactly `Machine.step` pushed through the injective
 raw-state encoding. This closes the logical state representation path, not the
 backend entropy implementation.
+
+`Machine.Contract.PlayerRegistry` assigns distinct target caller identities to
+semantic players. `PlayerCall.acceptsStore` is true exactly when the physical
+caller owns the claimed role and the logical commit request denotes a valid
+machine command. It covers player commits only; selecting who may trigger
+internal chance and reveal work remains a separate runtime-policy pass.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
