@@ -271,6 +271,46 @@ theorem completionReader_encodeState_agrees
   exact RawStore.readCompleted_encodeSnapshot codec
     (StateSnapshot.ofConfig state.1) node
 
+/-- One successful action-body operation. `realize` retains the typed semantic
+event computation for a later expression/entropy lowering pass. The two write
+operations expose the physical effect order without yet assigning gas or
+rollback behavior. -/
+inductive Operation (Player : Type) (L : IExpr) where
+  | realize (row : EventNode Player L)
+  | writeOutput (slot : Nat) (ty : L.Ty)
+  | markCompleted (slot : Nat)
+
+/-- The physical value slot written by a graph node. -/
+def outputSlot (layout : Layout program)
+    (node : Fin program.graph.nodeCount) : Nat :=
+  layout.address
+    (.value
+      ⟨program.graph.nodeTarget node,
+        StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩)
+
+/-- The physical completion slot written after the node output. -/
+def completionSlot (layout : Layout program)
+    (node : Fin program.graph.nodeCount) : Nat :=
+  layout.address (.completed node)
+
+/-- A node's value write and completion write cannot alias under a certified
+layout. -/
+theorem outputSlot_ne_completionSlot (layout : Layout program)
+    (node : Fin program.graph.nodeCount) :
+    outputSlot layout node ≠ completionSlot layout node := by
+  intro heq
+  have hslots := layout.injective heq
+  cases hslots
+
+/-- Lower one successful action body. Event realization finishes before either
+storage effect; completion is recorded only after the output write. -/
+def compileBody (layout : Layout program)
+    (node : Fin program.graph.nodeCount) : List (Operation Player L) :=
+  let row := program.graph.nodeRow node
+  [ .realize row,
+    .writeOutput (outputSlot layout node) row.ty,
+    .markCompleted (completionSlot layout node) ]
+
 /-- One action in the first imperative contract IR. Expression and event code
 remain in the source-independent machine row while layout and control checks
 are made explicit. -/
@@ -278,9 +318,8 @@ structure ActionIR (program : Program Player L) where
   node : Fin program.graph.nodeCount
   authority : Authority Player
   inputType : Option L.Ty
-  outputSlot : Nat
   checks : List StorageCheck
-  row : EventNode Player L
+  body : List (Operation Player L)
 
 /-- Lower one stable graph action using the chosen certified storage layout. -/
 def compileAction (layout : Layout program)
@@ -288,13 +327,8 @@ def compileAction (layout : Layout program)
   node := node
   authority := Action.authority program ⟨node⟩
   inputType := Action.inputType program ⟨node⟩
-  outputSlot := layout.address
-    (.value
-      ⟨program.graph.nodeTarget node,
-        Vegas.EventGraph.StateSnapshot.nodeTarget_lt_fieldCount
-          program.graph node⟩)
   checks := lowerRequirements layout (requirements program node)
-  row := program.graph.nodeRow node
+  body := compileBody layout node
 
 /-- Whole imperative contract inventory. Action order is the graph's stable
 canonical node order; each action carries its ordered physical checks. -/
@@ -324,6 +358,16 @@ theorem compileAction_mem (layout : Layout program)
     (compileAction layout node).checks =
       lowerRequirements layout (requirements program node) :=
   rfl
+
+@[simp] theorem compileAction_body (layout : Layout program)
+    (node : Fin program.graph.nodeCount) :
+    (compileAction layout node).body = compileBody layout node :=
+  rfl
+
+@[simp] theorem compileAction_body_length (layout : Layout program)
+    (node : Fin program.graph.nodeCount) :
+    (compileAction layout node).body.length = 3 := by
+  simp [compileAction, compileBody]
 
 /-- Compiled physical checks retain exactly the graph readiness check whenever
 their completion-bit reader agrees with the semantic configuration. -/

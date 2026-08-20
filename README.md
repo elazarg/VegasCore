@@ -239,7 +239,10 @@ explicit operational observation rather than an implicit implementation
 accident. When the physical completion reader agrees with encoded semantic
 state, acceptance is proved exactly equivalent to `EventGraph.Ready`. A later
 gas or revert pass must state whether it preserves, coarsens, or exposes that
-observation.
+observation. Successful bodies are also ordered explicitly: realize the
+retained typed event computation, write its physical output slot, then mark the
+distinct completion slot. Expression lowering, gas, and rollback remain later
+passes.
 
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as

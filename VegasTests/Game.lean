@@ -172,6 +172,19 @@ example : matchingPenniesImperativeIR.actions.length = 4 := by
       matchingPenniesLayout]
   exact matchingPenniesMachine_graph_nodeCount
 
+example (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    (Machine.Contract.Imperative.compileAction
+      matchingPenniesLayout node).body.length = 3 := by
+  exact Machine.Contract.Imperative.compileAction_body_length
+    matchingPenniesLayout node
+
+example (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    Machine.Contract.Imperative.outputSlot matchingPenniesLayout node ≠
+      Machine.Contract.Imperative.completionSlot
+        matchingPenniesLayout node := by
+  exact Machine.Contract.Imperative.outputSlot_ne_completionSlot
+    matchingPenniesLayout node
+
 example (cfg : EventGraph.Config matchingPenniesMachine.graph)
     (node : Fin matchingPenniesMachine.graph.nodeCount) :
     Machine.Contract.Imperative.evaluateAll
