@@ -186,8 +186,11 @@ choose that target policy.
 `Machine.Contract.Request.executeStore?` composes that law with storage
 decoding and successor re-encoding. On an encoded reachable state and valid
 command envelope, it is exactly `Machine.step` pushed through the injective
-raw-state encoding. This closes the logical state representation path, not the
-backend entropy implementation.
+raw-state encoding. The converse theorem starts from an arbitrary accepted
+request: it reconstructs a valid semantic command and identifies the full
+successor law with that command's encoded machine step. Accepted hostile input
+therefore preserves encoded reachability. This closes the logical state
+representation path, not the backend entropy implementation.
 
 `Machine.Contract.PlayerRegistry` assigns distinct target caller identities to
 semantic players. `PlayerCall.acceptsStore` is true exactly when the physical
@@ -241,7 +244,9 @@ backend lowers further; it is not byte ABI, EVM code, or a scheduler.
 encodes the full typed call sum into a target wire carrier, decodes arbitrary
 inputs with failure, and proves a left inverse on emitted calls. Validation
 and execution agree after decoding, and both player/internal one-step laws
-transport through encoding. A concrete ABI must still choose selector bytes,
+transport through encoding. Starting instead from any accepted arbitrary wire
+value, the converse theorem reconstructs some valid semantic command and its
+exact encoded successor law. A concrete ABI must still choose selector bytes,
 address representation, word representation, and malformed-input behavior;
 the reference identity codec makes none of those choices.
 

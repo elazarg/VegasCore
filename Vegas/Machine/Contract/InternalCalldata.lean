@@ -197,6 +197,44 @@ theorem executeStore?_encodeState_encode
   exact Request.executeStore?_encodeState_encode
     codec state (.internal event step)
 
+/-- Every internal trigger accepted against encoded reachable storage executes
+as some valid semantic machine command. Per-node authorization and graph
+decoding therefore cannot produce a transition outside the canonical reachable
+state image. -/
+theorem executeStore?_encodeState_of_accepts
+    (policy : TriggerPolicy Address) (codec : StorageCodec L)
+    (state : program.State) (calldata : InternalCalldata Address)
+    (haccept :
+      acceptsStore (program := program) policy codec
+        (RawStore.encodeState codec state) calldata = true) :
+    ∃ command : program.Command state,
+      executeStore? (program := program) policy codec
+          (RawStore.encodeState codec state) calldata =
+        some ((program.step state command).map
+          (RawStore.encodeState codec)) := by
+  unfold acceptsStore at haccept
+  have hparts :
+      policy.allows calldata.caller calldata.node = true ∧
+        (match decode (Player := Player) program calldata with
+         | none => false
+         | some request =>
+            Request.acceptsStore (program := program) codec
+              (RawStore.encodeState codec state) request) = true := by
+    simpa only [Bool.and_eq_true] using haccept
+  have hauthorized := hparts.1
+  have hdecoded := hparts.2
+  cases hdecode : decode (Player := Player) program calldata with
+  | none => simp [hdecode] at hdecoded
+  | some request =>
+      simp only [hdecode] at hdecoded
+      rcases Request.executeStore?_encodeState_of_accepts
+          codec state request hdecoded with
+        ⟨command, _hencode, hexecute⟩
+      refine ⟨command, ?_⟩
+      unfold executeStore?
+      rw [if_pos hauthorized, hdecode]
+      exact hexecute
+
 end InternalCalldata
 
 end Vegas.Machine.Contract

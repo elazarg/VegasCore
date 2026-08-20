@@ -284,6 +284,22 @@ example {state : matchingPenniesMachine.State} {who : TestPlayer}
   exact matchingPenniesContract.executeWire?_encodeState_playerCommit
     matchingPenniesWireCodec action step
 
+example (state : matchingPenniesMachine.State)
+    (wire : matchingPenniesContract.Calldata)
+    (haccept :
+      matchingPenniesContract.acceptsWire matchingPenniesWireCodec
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesContract.codec state) wire = true) :
+    ∃ command : matchingPenniesMachine.Command state,
+      matchingPenniesContract.executeWire? matchingPenniesWireCodec
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesContract.codec state) wire =
+        some ((matchingPenniesMachine.step state command).map
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesContract.codec)) := by
+  exact matchingPenniesContract.executeWire?_encodeState_of_accepts
+    matchingPenniesWireCodec state wire haccept
+
 example {state : matchingPenniesMachine.State} (caller : TestPlayer)
     (event : EventGraph.InternalEvent matchingPenniesMachine.graph)
     (step : EventGraph.InternalStep matchingPenniesMachine.graph state.1
@@ -361,6 +377,25 @@ example (state : matchingPenniesMachine.State)
           matchingPenniesStorageCodec)) := by
   exact Machine.Contract.Request.executeStore?_encodeState_encode
     matchingPenniesStorageCodec state command
+
+example (state : matchingPenniesMachine.State)
+    (request : Machine.Contract.Request TestPlayer simpleExpr)
+    (haccept :
+      Machine.Contract.Request.acceptsStore
+          (program := matchingPenniesMachine) matchingPenniesStorageCodec
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesStorageCodec state) request = true) :
+    ∃ command : matchingPenniesMachine.Command state,
+      Machine.Contract.Request.encode command = request ∧
+        Machine.Contract.Request.executeStore?
+            (program := matchingPenniesMachine) matchingPenniesStorageCodec
+            (Machine.Contract.RawStore.encodeState
+              matchingPenniesStorageCodec state) request =
+          some ((matchingPenniesMachine.step state command).map
+            (Machine.Contract.RawStore.encodeState
+              matchingPenniesStorageCodec)) := by
+  exact Machine.Contract.Request.executeStore?_encodeState_of_accepts
+    matchingPenniesStorageCodec state request haccept
 
 example
     (store : Machine.Contract.RawStore matchingPenniesStorageCodec)

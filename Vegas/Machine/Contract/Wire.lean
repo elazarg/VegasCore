@@ -132,6 +132,33 @@ theorem executeWire?_encodeState_internal
   exact contract.execute?_encodeState_internal
     caller event step hauthorized
 
+/-- Every accepted external wire value over encoded reachable storage executes
+as some valid semantic command and preserves the canonical reachable-state
+image. -/
+theorem executeWire?_encodeState_of_accepts
+    (wireCodec : contract.TransactionWireCodec Wire)
+    (state : program.State) (wire : Wire)
+    (haccept :
+      contract.acceptsWire wireCodec
+        (RawStore.encodeState contract.codec state) wire = true) :
+    ∃ command : program.Command state,
+      contract.executeWire? wireCodec
+          (RawStore.encodeState contract.codec state) wire =
+        some ((program.step state command).map
+          (RawStore.encodeState contract.codec)) := by
+  unfold acceptsWire at haccept
+  cases hdecode : wireCodec.decode wire with
+  | none => simp [hdecode] at haccept
+  | some calldata =>
+      simp only [hdecode] at haccept
+      rcases contract.execute?_encodeState_of_accepts
+          state calldata haccept with
+        ⟨command, hexecute⟩
+      refine ⟨command, ?_⟩
+      unfold executeWire?
+      rw [hdecode]
+      exact hexecute
+
 end ConfiguredContract
 
 end Vegas.Machine.Contract

@@ -127,6 +127,25 @@ theorem execute?_encodeState_internal
   exact InternalCalldata.executeStore?_encodeState_encode
     contract.triggers contract.codec caller event step hauthorized
 
+/-- Every configured transaction accepted against encoded reachable storage
+executes as some valid semantic machine command. -/
+theorem execute?_encodeState_of_accepts
+    (state : program.State) (calldata : contract.Calldata)
+    (haccept :
+      contract.accepts (RawStore.encodeState contract.codec state)
+        calldata = true) :
+    ∃ command : program.Command state,
+      contract.execute? (RawStore.encodeState contract.codec state) calldata =
+        some ((program.step state command).map
+          (RawStore.encodeState contract.codec)) := by
+  cases calldata with
+  | player call =>
+      exact PlayerCalldata.executeStore?_encodeState_of_accepts
+        contract.players contract.codec state call haccept
+  | internal call =>
+      exact InternalCalldata.executeStore?_encodeState_of_accepts
+        contract.triggers contract.codec state call haccept
+
 /-- Read terminal settlement data through the configured contract. -/
 def terminalOutcome? (store : contract.Store) : Option (Outcome Player) :=
   Contract.terminalOutcome? program contract.codec store

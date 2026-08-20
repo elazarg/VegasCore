@@ -106,6 +106,30 @@ theorem executeStore?_encodeState_encode
   rw [FinDist.map_comp]
   rfl
 
+/-- Every request accepted against encoded reachable storage is the envelope
+of some valid semantic command, and its entire successor law is therefore the
+canonical raw-store image of that machine step. This is the transition
+invariant needed for hostile external requests, not only compiler-emitted
+ones. -/
+theorem executeStore?_encodeState_of_accepts
+    (codec : StorageCodec L) (state : program.State)
+    (request : Request Player L)
+    (haccept :
+      acceptsStore (program := program) codec
+        (RawStore.encodeState codec state) request = true) :
+    ∃ command : program.Command state,
+      encode command = request ∧
+        executeStore? (program := program) codec
+            (RawStore.encodeState codec state) request =
+          some ((program.step state command).map
+            (RawStore.encodeState codec)) := by
+  have hrepresents :=
+    (acceptsStore_encodeState_eq_true_iff codec state request).1 haccept
+  rcases hrepresents with ⟨command, hencode⟩
+  refine ⟨command, hencode, ?_⟩
+  rw [← hencode]
+  exact executeStore?_encodeState_encode codec state command
+
 end Request
 
 end Vegas.Machine.Contract

@@ -218,6 +218,44 @@ theorem executeStore?_encodeState_encodeCommit
   exact Request.executeStore?_encodeState_encode
     codec state (.commit who action step)
 
+/-- Every player wire call accepted against encoded reachable storage executes
+as some valid semantic machine command. Thus accepted hostile player input
+cannot leave the canonical image of reachable states. -/
+theorem executeStore?_encodeState_of_accepts
+    (registry : PlayerRegistry Player Address)
+    (codec : StorageCodec L) (state : program.State)
+    (calldata : PlayerCalldata Player Address codec.Word)
+    (haccept :
+      acceptsStore (program := program) registry codec
+        (RawStore.encodeState codec state) calldata = true) :
+    ∃ command : program.Command state,
+      executeStore? (program := program) registry codec
+          (RawStore.encodeState codec state) calldata =
+        some ((program.step state command).map
+          (RawStore.encodeState codec)) := by
+  unfold acceptsStore at haccept
+  cases hdecode : decode program codec calldata with
+  | none => simp [hdecode] at haccept
+  | some call =>
+      simp only [hdecode] at haccept
+      unfold PlayerCall.acceptsStore at haccept
+      have hparts :
+          PlayerCall.authenticated registry call = true ∧
+            Request.acceptsStore (program := program) codec
+              (RawStore.encodeState codec state) call.request = true := by
+        simpa only [Bool.and_eq_true] using haccept
+      have hauth := hparts.1
+      have hrequest := hparts.2
+      rcases Request.executeStore?_encodeState_of_accepts
+          codec state call.request hrequest with
+        ⟨command, _hencode, hexecute⟩
+      refine ⟨command, ?_⟩
+      unfold executeStore?
+      rw [hdecode]
+      simp only
+      rw [if_pos hauth]
+      exact hexecute
+
 end PlayerCalldata
 
 end Vegas.Machine.Contract

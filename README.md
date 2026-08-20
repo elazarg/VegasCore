@@ -134,7 +134,9 @@ realization policy.
 canonical storage: decode the snapshot, execute, and re-encode every successor.
 For an encoded reachable state and valid command envelope, the resulting raw-
 store law is proved exactly equal to `Machine.step` mapped through
-`RawStore.encodeState`.
+`RawStore.encodeState`. Conversely, every request accepted against such a
+store is proved to represent some valid semantic command with that same exact
+law, so hostile accepted requests preserve the encoded-reachability invariant.
 
 `Machine.Contract.PlayerRegistry` and `PlayerCall` add caller authentication
 as a separate deterministic gate. Registry addresses are injective, and a
@@ -184,9 +186,12 @@ gas/reverts, and entropy realization remain explicit subsequent passes.
 maps the configured typed transaction sum to an arbitrary wire carrier, may
 reject malformed inputs, and must round-trip every encoded call. Wire
 validation and execution have the same success boundary, while encoded player
-and internal calls retain their exact machine-step laws. The included identity
-codec is proof-facing only; an EVM backend must supply concrete selector,
-address, and word encodings.
+and internal calls retain their exact machine-step laws. More strongly, every
+arbitrary wire input accepted over reachable encoded storage is reconstructed
+as some valid semantic command, so its complete successor law remains inside
+the canonical reachable-state image. The included identity codec is
+proof-facing only; an EVM backend must supply concrete selector, address, and
+word encodings.
 
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
