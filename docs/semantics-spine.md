@@ -20,6 +20,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Contract manifest | `Machine.Contract.Manifest` | finite lossless storage/action inventory for emitters |
 | Storage layout | `Machine.Contract.Layout` | bounded collision-free physical keys for logical slots |
 | Logical ABI | `Machine.Contract.Request` | raw envelopes and exact valid-command acceptance |
+| Storage words | `Machine.Contract.StorageCodec` | typed target-word round trips and slot noninterference |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -131,6 +132,16 @@ exactly the envelopes represented by currently valid machine commands. It is a
 semantic validator specification; address authentication, executable target
 checks, revert traces, gas, and internal-action triggering remain unmodeled.
 
+`Machine.Contract.StorageCodec` isolates target-word encoding. Typed reads and
+writes over any certified layout have same-slot round trips; writes to distinct
+value or completion slots are proved noninterfering. Its reference codec is a
+lossless semantic model rather than a serializable backend format. Since
+`simpleExpr` interprets integers as unbounded Lean `Int`, VegasCore cannot
+provide an exact 256-bit EVM codec without adding bounded integers, proving a
+range restriction, or selecting modular/checked-overflow behavior. That is a
+source/compiler design obligation, not functionality inherited from
+GameTheory.
+
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:
 
@@ -156,11 +167,11 @@ adequacy, not a substitute for earlier pass proofs.
 ## Blockchain obligations
 
 A concrete chain path still needs certified layers for expression lowering,
-scheduling/ABI, storage encoding, authentication, commitment/reveal,
-randomness, time and failure, settlement, and bytecode. The core source
-language currently lacks participation failure, timeout, and monetary-transfer
-semantics, so those behaviors cannot yet be introduced with an exact source
-game theorem.
+executable scheduling/ABI validation, a finite target codec, authentication,
+commitment/reveal, randomness, time and failure, settlement, and bytecode. The
+core source language currently lacks participation failure, timeout, and
+monetary-transfer semantics, so those behaviors cannot yet be introduced with
+an exact source game theorem.
 
 The existing readability-fence theorem constrains the order of readable output
 values. It explicitly does not prove indistinguishability of complete observed

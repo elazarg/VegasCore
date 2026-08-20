@@ -12,3 +12,4 @@ import Vegas.Machine.Program
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
+import Vegas.Machine.Contract.Storage

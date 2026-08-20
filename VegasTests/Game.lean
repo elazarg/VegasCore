@@ -8,6 +8,7 @@ import Vegas.Game.Kuhn
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
+import Vegas.Machine.Contract.Storage
 
 namespace VegasTests
 
@@ -147,6 +148,38 @@ example (state : matchingPenniesMachine.State)
     (Machine.Contract.Request.decode state
       (Machine.Contract.Request.encode command)).isSome := by
   exact Machine.Contract.Request.decode_encode_isSome command
+
+noncomputable def matchingPenniesStorageCodec :
+    Machine.Contract.StorageCodec simpleExpr :=
+  Machine.Contract.StorageCodec.reference simpleExpr
+
+example
+    (store : Machine.Contract.RawStore matchingPenniesStorageCodec)
+    (field : Fin matchingPenniesMachine.graph.fieldCount)
+    (value : simpleExpr.Val
+      (matchingPenniesMachine.graph.fieldRow field).ty) :
+    Machine.Contract.RawStore.readValue matchingPenniesLayout
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.writeValue matchingPenniesLayout
+          matchingPenniesStorageCodec store field value) field =
+      some value := by
+  exact Machine.Contract.RawStore.readValue_writeValue
+    matchingPenniesLayout matchingPenniesStorageCodec store field value
+
+example
+    (store : Machine.Contract.RawStore matchingPenniesStorageCodec)
+    (field : Fin matchingPenniesMachine.graph.fieldCount)
+    (node : Fin matchingPenniesMachine.graph.nodeCount)
+    (completed : Bool) :
+    Machine.Contract.RawStore.readValue matchingPenniesLayout
+        matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.writeCompleted matchingPenniesLayout
+          matchingPenniesStorageCodec store node completed) field =
+      Machine.Contract.RawStore.readValue matchingPenniesLayout
+        matchingPenniesStorageCodec store field := by
+  exact Machine.Contract.RawStore.readValue_writeCompleted
+    matchingPenniesLayout matchingPenniesStorageCodec
+    store field node completed
 
 example (state : matchingPenniesMachine.State)
     (hterminal : matchingPenniesMachine.terminal state) :
