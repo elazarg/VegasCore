@@ -76,28 +76,51 @@ inductive RevertReason where
   | rejected
 deriving DecidableEq
 
-/-- Explicit blockchain-facing result with a stochastic success payload. -/
-inductive ReceiveResult (State : Type) where
-  | success (law : GameTheory.Math.Probability.FinDist State)
+/-- State and ordered outbound actions produced by one successful call. This
+matches the shape used by contract frameworks while leaving the action type
+runtime-specific. -/
+structure CallSuccess (State Action : Type) where
+  state : State
+  actions : List Action
+
+namespace CallSuccess
+
+/-- A successful state transition that emits no outbound actions. -/
+def silent {State Action : Type} (state : State) : CallSuccess State Action where
+  state := state
+  actions := []
+
+/-- Lift a state law to a call-success law with an empty action trace. -/
+def silentLaw {State : Type} (Action : Type)
+    (law : GameTheory.Math.Probability.FinDist State) :
+    GameTheory.Math.Probability.FinDist (CallSuccess State Action) :=
+  law.map silent
+
+end CallSuccess
+
+/-- Explicit blockchain-facing result with a stochastic law over state and
+outbound actions. -/
+inductive ReceiveResult (State Action : Type) where
+  | success (law :
+      GameTheory.Math.Probability.FinDist (CallSuccess State Action))
   | revert (reason : RevertReason)
 
 namespace ReceiveResult
 
 /-- Executable success projection used to relate results to validators. -/
-def succeeded {State : Type} : ReceiveResult State → Bool
+def succeeded {State Action : Type} : ReceiveResult State Action → Bool
   | .success _ => true
   | .revert _ => false
 
 end ReceiveResult
 
 /-- A contract interface whose successful receive function may have a finite
-stochastic successor law. No outbound calls or asset transfers are modeled
-yet. -/
-structure StochasticContract (Address Message State : Type) where
+stochastic law over successor state and outbound actions. -/
+structure StochasticContract (Address Message State Action : Type) where
   initial : State
   receive :
     ChainView → CallContext Address → State → Message →
-      ReceiveResult State
+      ReceiveResult State Action
 
 namespace PlayerMessage
 
@@ -164,14 +187,14 @@ def acceptsMessage (context : CallContext Address) (store : contract.Store)
 deliberately inert at this pass. -/
 def receive (_chain : ChainView) (context : CallContext Address)
     (store : contract.Store) (message : contract.Message) :
-    ReceiveResult contract.Store :=
+    ReceiveResult contract.Store Empty :=
   match contract.execute? store (message.contextualize context) with
   | none => .revert .rejected
-  | some law => .success law
+  | some law => .success (CallSuccess.silentLaw Empty law)
 
 /-- Package the configured contract at the stochastic blockchain boundary. -/
 def toStochasticContract :
-  StochasticContract Address contract.Message contract.Store where
+  StochasticContract Address contract.Message contract.Store Empty where
   initial := contract.initialStore
   receive := contract.receive
 
@@ -200,8 +223,9 @@ theorem receive_encodeState_playerCommit
     contract.receive chain context
         (RawStore.encodeState contract.codec state)
         (.player (PlayerMessage.encodeCommit contract.codec action step)) =
-      .success ((program.step state (.commit who action step)).map
-        (RawStore.encodeState contract.codec)) := by
+      .success (CallSuccess.silentLaw Empty
+        ((program.step state (.commit who action step)).map
+          (RawStore.encodeState contract.codec))) := by
   unfold receive Message.contextualize PlayerMessage.encodeCommit
   rw [hsender]
   have hexecute := contract.execute?_encodeState_playerCommit action step
@@ -220,8 +244,9 @@ theorem receive_encodeState_internal
     contract.receive chain context
         (RawStore.encodeState contract.codec state)
         (.internal (InternalMessage.encode event)) =
-      .success ((program.step state (.internal event step)).map
-        (RawStore.encodeState contract.codec)) := by
+      .success (CallSuccess.silentLaw Empty
+        ((program.step state (.internal event step)).map
+          (RawStore.encodeState contract.codec))) := by
   unfold receive Message.contextualize InternalMessage.encode
   have hexecute := contract.execute?_encodeState_internal
     context.sender event step hauthorized
@@ -240,8 +265,9 @@ theorem receive_encodeState_of_accepts
     ∃ command : program.Command state,
       contract.receive chain context
           (RawStore.encodeState contract.codec state) message =
-        .success ((program.step state command).map
-          (RawStore.encodeState contract.codec)) := by
+        .success (CallSuccess.silentLaw Empty
+          ((program.step state command).map
+            (RawStore.encodeState contract.codec))) := by
   rcases contract.execute?_encodeState_of_accepts
       state (message.contextualize context) haccept with
     ⟨command, hexecute⟩

@@ -382,9 +382,10 @@ example
         (.player
           (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
             matchingPenniesContract.codec action step)) =
-      .success ((matchingPenniesMachine.step state (.commit who action step)).map
-        (Machine.Contract.RawStore.encodeState
-          matchingPenniesContract.codec)) := by
+      .success (Machine.Contract.Blockchain.CallSuccess.silentLaw Empty
+        ((matchingPenniesMachine.step state (.commit who action step)).map
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesContract.codec))) := by
   exact matchingPenniesContract.receive_encodeState_playerCommit
     chain context action step hsender
 
@@ -404,9 +405,10 @@ example
           (.player
             (Machine.Contract.Blockchain.PlayerMessage.encodeCommit
               matchingPenniesContract.codec action step))) =
-      .success ((matchingPenniesMachine.step state (.commit who action step)).map
-        (Machine.Contract.RawStore.encodeState
-          matchingPenniesContract.codec)) := by
+      .success (Machine.Contract.Blockchain.CallSuccess.silentLaw Empty
+        ((matchingPenniesMachine.step state (.commit who action step)).map
+          (Machine.Contract.RawStore.encodeState
+            matchingPenniesContract.codec))) := by
   rw [matchingPenniesContract.receiveEVMCalldata_encode]
   exact matchingPenniesContract.receive_encodeState_playerCommit
     chain context action step hsender

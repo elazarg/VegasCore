@@ -179,7 +179,7 @@ def receiveEVMCalldata (chain : ChainView)
     (abi : EVM.MessageABI program contract.codec.Word)
     (context : CallContext Address) (store : contract.Store)
     (calldata : EVM.Calldata contract.codec.Word) :
-    ReceiveResult contract.Store :=
+    ReceiveResult contract.Store Empty :=
   match abi.decode calldata with
   | none => .revert .malformed
   | some message => contract.receive chain context store message
@@ -234,8 +234,9 @@ theorem receiveEVMCalldata_encodeState_of_accepts
     ∃ command : program.Command state,
       contract.receiveEVMCalldata chain abi context
           (RawStore.encodeState contract.codec state) calldata =
-        .success ((program.step state command).map
-          (RawStore.encodeState contract.codec)) := by
+        .success (CallSuccess.silentLaw Empty
+          ((program.step state command).map
+            (RawStore.encodeState contract.codec))) := by
   unfold acceptsEVMCalldata at haccept
   cases hdecode : abi.decode calldata with
   | none => simp [hdecode] at haccept

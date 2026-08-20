@@ -206,11 +206,14 @@ word encodings.
 message data from blockchain-supplied call context. The configured adapter uses
 only `sender`; height, slot, origin, contract address, balances, and transferred
 amount are semantically inert until dedicated timing, payment, or entropy
-passes consume them. This boundary intentionally remains stochastic. A
-ConCert-style deterministic `receive` function can only be produced after
-chance is refined to an oracle or chain entropy protocol. ConCertLean's current
-Lean/toolchain revision also differs from this project's, so it is a grounding
-interface rather than a direct package dependency today.
+passes consume them. Successful calls carry an exact law over successor state
+and an ordered outbound-action trace, matching the essential shape of
+ConCert-style receive semantics; the current Vegas adapter proves that trace is
+empty. This boundary intentionally remains stochastic. A deterministic
+`receive` function can only be produced after chance is refined to an oracle or
+chain entropy protocol. ConCertLean's current Lean/toolchain revision also
+differs from this project's, so it is a grounding interface rather than a
+direct package dependency today.
 
 Blockchain-facing receive results distinguish successful stochastic execution
 from reversion. Selector/arity/word decoding failures are `malformed`; decoded
