@@ -231,13 +231,15 @@ seed distribution remain assumptions to discharge. In particular, one uniform
 compatible denominators; rejection or a richer protocol may be necessary.
 
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
-changing the event bodies. Each stable action receives an ordered requirement
-list: replay prevention first, then one completion check per graph prerequisite.
-Its short-circuit runner retains the successful prefix and first failed check,
-so ordering is already an explicit operational observation rather than an
-implicit implementation accident. Acceptance is proved exactly equivalent to
-`EventGraph.Ready`. A later gas or revert pass must state whether it preserves,
-coarsens, or exposes that observation.
+changing the event bodies. Graph requirements are lowered to physical Boolean
+storage checks using the certified layout: replay prevention first, then one
+completion-slot check per prerequisite. Its generic short-circuit runner
+retains the successful prefix and first failed check, so ordering is already an
+explicit operational observation rather than an implicit implementation
+accident. When the physical completion reader agrees with encoded semantic
+state, acceptance is proved exactly equivalent to `EventGraph.Ready`. A later
+gas or revert pass must state whether it preserves, coarsens, or exposes that
+observation.
 
 `Machine.Contract.EVM.MessageABI` adds a 32-bit selector and fixed argument
 ordering without yet adding byte serialization. Player calls are framed as

@@ -174,20 +174,30 @@ example : matchingPenniesImperativeIR.actions.length = 4 := by
 
 example (cfg : EventGraph.Config matchingPenniesMachine.graph)
     (node : Fin matchingPenniesMachine.graph.nodeCount) :
-    Machine.Contract.Imperative.evaluateAll cfg
-        (Machine.Contract.Imperative.compileAction
-          matchingPenniesLayout node).requirements =
+    Machine.Contract.Imperative.evaluateAll
+        (Machine.Contract.Imperative.Requirement.evaluate cfg)
+        (Machine.Contract.Imperative.requirements
+          matchingPenniesMachine node) =
       decide (EventGraph.Ready matchingPenniesMachine.graph cfg node) :=
-  Machine.Contract.Imperative.compileAction_requirements_correct
-    matchingPenniesLayout cfg node
+  Machine.Contract.Imperative.evaluateAll_requirements cfg node
 
-example (cfg : EventGraph.Config matchingPenniesMachine.graph)
+example (state : matchingPenniesMachine.State)
     (node : Fin matchingPenniesMachine.graph.nodeCount) :
-    (Machine.Contract.Imperative.runChecks cfg
+    (Machine.Contract.Imperative.runChecks
+        (Machine.Contract.Imperative.StorageCheck.evaluate
+          (Machine.Contract.Imperative.completionReader
+            (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+            (Machine.Contract.RawStore.encodeState
+              (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+              state)))
         (Machine.Contract.Imperative.compileAction
-          matchingPenniesLayout node).requirements).succeeded =
-      decide (EventGraph.Ready matchingPenniesMachine.graph cfg node) := by
-  exact Machine.Contract.Imperative.runChecks_requirements_succeeded cfg node
+          matchingPenniesLayout node).checks).succeeded =
+      decide (EventGraph.Ready matchingPenniesMachine.graph state.1 node) := by
+  exact Machine.Contract.Imperative.compileAction_checks_correct
+    matchingPenniesLayout state.1 _
+      (Machine.Contract.Imperative.completionReader_encodeState_agrees
+        (Machine.Contract.StorageCodec.reference matchingPenniesMachine)
+        state) node
 
 example : Function.Injective matchingPenniesLayout.address :=
   matchingPenniesLayout.injective

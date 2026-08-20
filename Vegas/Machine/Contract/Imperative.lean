@@ -4,20 +4,20 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Machine.Contract.Validator
-import Vegas.EventGraph.FiniteState
+import Vegas.Machine.Contract.State
 
 /-!
 # Ordered imperative contract requirements
 
-This lowering introduces one operational detail: graph readiness becomes an
-ordered list of runtime requirements. Each action first checks that it has not
+This lowering introduces two operational details: graph readiness becomes an
+ordered list of runtime requirements, then each requirement becomes a Boolean
+read at a physical completion slot. Each action first checks that it has not
 already completed and then checks its prerequisites in the canonical order of
 the prerequisite `Finset`.
 
-The order has no semantic effect at this pass because requirements are pure
-Boolean reads. Later backends may expose order through gas use or revert data;
-that observation change must be analyzed where it is introduced.
+The generic short-circuit runner makes the successful prefix and first failure
+observable. Physical evaluation is proved equivalent to graph readiness under
+an explicit completion-reader agreement hypothesis.
 -/
 
 namespace Vegas.Machine.Contract.Imperative
@@ -43,32 +43,30 @@ def evaluate (cfg : Config program.graph) : Requirement program → Bool
 
 end Requirement
 
-/-- Sequentially evaluate all requirements, stopping at the first failure in
-an imperative backend even though this functional definition is pure. -/
-def evaluateAll (cfg : Config program.graph)
-    (requirements : List (Requirement program)) : Bool :=
-  requirements.all (Requirement.evaluate cfg)
+/-- Evaluate a list of checks without retaining the failure observation. -/
+def evaluateAll {Check : Type} (evaluate : Check → Bool)
+    (checks : List Check) : Bool :=
+  checks.all evaluate
 
-/-- Observable result of short-circuit requirement evaluation. On success,
-`passed` is the complete requirement list. On rejection, `passed` is exactly
-the successful prefix and `failed` is the first failed requirement. Keeping
+/-- Observable result of short-circuit check evaluation. On success, `passed`
+is the complete check list. On rejection, `passed` is exactly the successful
+prefix and `failed` is the first failed check. Keeping
 this information explicit lets a later pass state whether it exposes or hides
 check order through gas use or revert data. -/
-inductive CheckResult (program : Program Player L) where
-  | accepted (passed : List (Requirement program))
-  | rejected (passed : List (Requirement program))
-      (failed : Requirement program)
+inductive CheckResult (Check : Type) where
+  | accepted (passed : List Check)
+  | rejected (passed : List Check) (failed : Check)
 
 namespace CheckResult
 
 /-- Whether short-circuit evaluation accepted the requirement list. -/
-def succeeded : CheckResult program → Bool
+def succeeded {Check : Type} : CheckResult Check → Bool
   | .accepted _ => true
   | .rejected _ _ => false
 
 /-- Number of requirements actually evaluated. The failed requirement counts
 as one evaluated check. -/
-def checkedCount : CheckResult program → Nat
+def checkedCount {Check : Type} : CheckResult Check → Nat
   | .accepted passed => passed.length
   | .rejected passed _ => passed.length + 1
 
@@ -76,12 +74,12 @@ end CheckResult
 
 /-- Evaluate requirements from left to right and retain the first-failure
 observation produced by an imperative backend. -/
-def runChecks (cfg : Config program.graph) :
-    List (Requirement program) → CheckResult program
+def runChecks {Check : Type} (evaluate : Check → Bool) :
+    List Check → CheckResult Check
   | [] => .accepted []
   | requirement :: rest =>
-      if Requirement.evaluate cfg requirement then
-        match runChecks cfg rest with
+      if evaluate requirement then
+        match runChecks evaluate rest with
         | .accepted passed => .accepted (requirement :: passed)
         | .rejected passed failed =>
             .rejected (requirement :: passed) failed
@@ -90,41 +88,39 @@ def runChecks (cfg : Config program.graph) :
 
 /-- Retaining first-failure detail does not change whether the ordered checks
 accept. -/
-theorem runChecks_succeeded (cfg : Config program.graph)
-    (checks : List (Requirement program)) :
-    (runChecks cfg checks).succeeded = evaluateAll cfg checks := by
+theorem runChecks_succeeded {Check : Type} (evaluate : Check → Bool)
+    (checks : List Check) :
+    (runChecks evaluate checks).succeeded = evaluateAll evaluate checks := by
   induction checks with
   | nil => rfl
   | cons requirement rest ih =>
-      by_cases heval : Requirement.evaluate cfg requirement = true
-      · cases hrest : runChecks cfg rest with
+      by_cases heval : evaluate requirement = true
+      · cases hrest : runChecks evaluate rest with
         | accepted passed =>
             simpa [runChecks, heval, hrest, CheckResult.succeeded,
               evaluateAll] using ih
         | rejected passed failed =>
             simpa [runChecks, heval, hrest, CheckResult.succeeded,
               evaluateAll] using ih
-      · have hevalFalse : Requirement.evaluate cfg requirement = false :=
+      · have hevalFalse : evaluate requirement = false :=
           Bool.eq_false_of_not_eq_true heval
         simp [runChecks, hevalFalse, evaluateAll, CheckResult.succeeded]
 
 /-- A rejection identifies a genuine prefix of successful checks followed by
 the first failed check. -/
-theorem runChecks_rejected_prefix (cfg : Config program.graph)
-    {checks passed : List (Requirement program)}
-    {failed : Requirement program}
-    (hreject : runChecks cfg checks = .rejected passed failed) :
+theorem runChecks_rejected_prefix {Check : Type} (evaluate : Check → Bool)
+    {checks passed : List Check} {failed : Check}
+    (hreject : runChecks evaluate checks = .rejected passed failed) :
     ∃ remaining,
       checks = passed ++ failed :: remaining ∧
-      (∀ requirement ∈ passed,
-        Requirement.evaluate cfg requirement = true) ∧
-      Requirement.evaluate cfg failed = false := by
+      (∀ requirement ∈ passed, evaluate requirement = true) ∧
+      evaluate failed = false := by
   induction checks generalizing passed failed with
   | nil => simp [runChecks] at hreject
   | cons requirement rest ih =>
-      by_cases heval : Requirement.evaluate cfg requirement = true
+      by_cases heval : evaluate requirement = true
       · simp only [runChecks, heval, ↓reduceIte] at hreject
-        cases hrest : runChecks cfg rest with
+        cases hrest : runChecks evaluate rest with
         | accepted restPassed => simp [hrest] at hreject
         | rejected restPassed restFailed =>
             simp only [hrest] at hreject
@@ -137,7 +133,7 @@ theorem runChecks_rejected_prefix (cfg : Config program.graph)
               rcases hmem with rfl | hmem
               · exact heval
               · exact hpassed checked hmem
-      · have hevalFalse : Requirement.evaluate cfg requirement = false :=
+      · have hevalFalse : evaluate requirement = false :=
           Bool.eq_false_of_not_eq_true heval
         simp only [runChecks, hevalFalse, Bool.false_eq_true, ↓reduceIte] at hreject
         cases hreject
@@ -153,7 +149,7 @@ def requirements (program : Program Player L)
 theorem evaluateAll_requirements_eq_true_iff
     (cfg : Config program.graph)
     (node : Fin program.graph.nodeCount) :
-    evaluateAll cfg (requirements program node) = true ↔
+    evaluateAll (Requirement.evaluate cfg) (requirements program node) = true ↔
       Ready program.graph cfg node := by
   have hsubset :
       (∀ prior, prior ∈ program.graph.prereqs node → prior ∈ cfg.done) ↔
@@ -169,7 +165,7 @@ theorem evaluateAll_requirements_eq_true_iff
 theorem evaluateAll_requirements
     (cfg : Config program.graph)
     (node : Fin program.graph.nodeCount) :
-    evaluateAll cfg (requirements program node) =
+    evaluateAll (Requirement.evaluate cfg) (requirements program node) =
       decide (Ready program.graph cfg node) := by
   apply Bool.eq_iff_iff.mpr
   rw [evaluateAll_requirements_eq_true_iff]
@@ -179,9 +175,101 @@ theorem evaluateAll_requirements
 theorem runChecks_requirements_succeeded
     (cfg : Config program.graph)
     (node : Fin program.graph.nodeCount) :
-    (runChecks cfg (requirements program node)).succeeded =
+    (runChecks (Requirement.evaluate cfg)
+        (requirements program node)).succeeded =
       decide (Ready program.graph cfg node) := by
   rw [runChecks_succeeded, evaluateAll_requirements]
+
+/-- One physical Boolean storage assertion. Missing or non-Boolean storage
+fails the check. -/
+structure StorageCheck where
+  slot : Nat
+  expected : Bool
+deriving DecidableEq
+
+namespace StorageCheck
+
+/-- Evaluate one physical storage check through a completion-bit reader. -/
+def evaluate (readCompleted : Nat → Option Bool)
+    (check : StorageCheck) : Bool :=
+  match readCompleted check.slot with
+  | none => false
+  | some actual => decide (actual = check.expected)
+
+end StorageCheck
+
+/-- Decode a completion bit at an already lowered physical slot. -/
+def completionReader (codec : StorageCodec program) (store : RawStore codec)
+    (slot : Nat) : Option Bool :=
+  match store slot with
+  | none => none
+  | some word => codec.decodeCompleted word
+
+/-- Lower a graph requirement to its physical completion slot. -/
+def lowerRequirement (layout : Layout program) :
+    Requirement program → StorageCheck
+  | .notCompleted node =>
+      { slot := layout.address (.completed node), expected := false }
+  | .completed node =>
+      { slot := layout.address (.completed node), expected := true }
+
+/-- Lower an ordered logical requirement list without changing its order. -/
+def lowerRequirements (layout : Layout program)
+    (checks : List (Requirement program)) : List StorageCheck :=
+  checks.map (lowerRequirement layout)
+
+/-- A physical completion-bit reader agrees with one semantic graph
+configuration at every completion slot. -/
+def CompletionReaderAgrees (layout : Layout program)
+    (cfg : Config program.graph) (readCompleted : Nat → Option Bool) : Prop :=
+  ∀ node,
+    readCompleted (layout.address (.completed node)) =
+      some (decide (node ∈ cfg.done))
+
+/-- Physical lowering preserves each individual readiness check. -/
+theorem lowerRequirement_correct (layout : Layout program)
+    (cfg : Config program.graph) (readCompleted : Nat → Option Bool)
+    (hagrees : CompletionReaderAgrees layout cfg readCompleted)
+    (requirement : Requirement program) :
+    StorageCheck.evaluate readCompleted (lowerRequirement layout requirement) =
+      Requirement.evaluate cfg requirement := by
+  cases requirement with
+  | notCompleted node =>
+      simp [StorageCheck.evaluate, lowerRequirement, hagrees node,
+        Requirement.evaluate]
+  | completed node =>
+      simp [StorageCheck.evaluate, lowerRequirement, hagrees node,
+        Requirement.evaluate]
+
+/-- Physical lowering preserves the acceptance result of the whole ordered
+check list. -/
+theorem evaluateAll_lowerRequirements (layout : Layout program)
+    (cfg : Config program.graph) (readCompleted : Nat → Option Bool)
+    (hagrees : CompletionReaderAgrees layout cfg readCompleted)
+    (checks : List (Requirement program)) :
+    evaluateAll (StorageCheck.evaluate readCompleted)
+        (lowerRequirements layout checks) =
+      evaluateAll (Requirement.evaluate cfg) checks := by
+  induction checks with
+  | nil => rfl
+  | cons requirement rest ih =>
+      have ih' :
+          (rest.map (lowerRequirement layout)).all
+              (StorageCheck.evaluate readCompleted) =
+            rest.all (Requirement.evaluate cfg) := by
+        simpa only [evaluateAll, lowerRequirements] using ih
+      simp only [lowerRequirements, List.map_cons, evaluateAll, List.all_cons]
+      rw [lowerRequirement_correct layout cfg readCompleted hagrees, ih']
+
+/-- Canonically encoded semantic state supplies exactly the completion-bit
+reader assumed by physical check lowering. -/
+theorem completionReader_encodeState_agrees
+    (codec : StorageCodec program) (state : program.State) :
+    CompletionReaderAgrees (Layout.canonical program) state.1
+      (completionReader codec (RawStore.encodeState codec state)) := by
+  intro node
+  exact RawStore.readCompleted_encodeSnapshot codec
+    (StateSnapshot.ofConfig state.1) node
 
 /-- One action in the first imperative contract IR. Expression and event code
 remain in the source-independent machine row while layout and control checks
@@ -191,7 +279,7 @@ structure ActionIR (program : Program Player L) where
   authority : Authority Player
   inputType : Option L.Ty
   outputSlot : Nat
-  requirements : List (Requirement program)
+  checks : List StorageCheck
   row : EventNode Player L
 
 /-- Lower one stable graph action using the chosen certified storage layout. -/
@@ -205,11 +293,11 @@ def compileAction (layout : Layout program)
       ⟨program.graph.nodeTarget node,
         Vegas.EventGraph.StateSnapshot.nodeTarget_lt_fieldCount
           program.graph node⟩)
-  requirements := Imperative.requirements program node
+  checks := lowerRequirements layout (requirements program node)
   row := program.graph.nodeRow node
 
 /-- Whole imperative contract inventory. Action order is the graph's stable
-canonical node order; each action carries its ordered requirements. -/
+canonical node order; each action carries its ordered physical checks. -/
 structure ContractIR (program : Program Player L) where
   storageSize : Nat
   actions : List (ActionIR program)
@@ -231,18 +319,25 @@ theorem compileAction_mem (layout : Layout program)
     compileAction layout node ∈ (compile program layout).actions := by
   simp [compile, Graph.mem_nodeOrder]
 
-@[simp] theorem compileAction_requirements (layout : Layout program)
+@[simp] theorem compileAction_checks (layout : Layout program)
     (node : Fin program.graph.nodeCount) :
-    (compileAction layout node).requirements = requirements program node :=
+    (compileAction layout node).checks =
+      lowerRequirements layout (requirements program node) :=
   rfl
 
-/-- Compiled control requirements retain exactly the graph readiness check. -/
-theorem compileAction_requirements_correct (layout : Layout program)
+/-- Compiled physical checks retain exactly the graph readiness check whenever
+their completion-bit reader agrees with the semantic configuration. -/
+theorem compileAction_checks_correct (layout : Layout program)
     (cfg : Config program.graph)
+    (readCompleted : Nat → Option Bool)
+    (hagrees : CompletionReaderAgrees layout cfg readCompleted)
     (node : Fin program.graph.nodeCount) :
-    evaluateAll cfg (compileAction layout node).requirements =
-      decide (Ready program.graph cfg node) :=
-  evaluateAll_requirements cfg node
+    (runChecks (StorageCheck.evaluate readCompleted)
+        (compileAction layout node).checks).succeeded =
+      decide (Ready program.graph cfg node) := by
+  rw [runChecks_succeeded, compileAction_checks,
+    evaluateAll_lowerRequirements layout cfg readCompleted hagrees,
+    evaluateAll_requirements]
 
 end
 
