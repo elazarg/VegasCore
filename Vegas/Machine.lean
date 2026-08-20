@@ -29,6 +29,7 @@ import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
 import Vegas.Machine.Contract.EVMBytes
 import Vegas.Machine.Contract.Entropy
+import Vegas.Machine.Contract.UniformEntropy
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction

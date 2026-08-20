@@ -230,6 +230,15 @@ seed distribution remain assumptions to discharge. In particular, one uniform
 256-bit seed cannot exactly realize every rational table unless its masses have
 compatible denominators; rejection or a richer protocol may be necessary.
 
+`Machine.Contract.Blockchain.UniformEntropyRealization` specializes that
+obligation to one fixed positive finite seed cardinality with a uniform law.
+It records exact pushforward equality and separately exposes whether the seed
+cardinality divides the 256-bit word space. There is intentionally no generic
+constructor from `RationalLaw`: GameTheory provides uniform finite laws and
+pushforward algebra, but not a constructive denominator-clearing partition for
+arbitrary exact rational tables. That sampler, plus unpredictability and
+bias-resistance assumptions, is still required.
+
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
 changing the event bodies. Graph requirements are lowered to physical Boolean
 storage checks using the certified layout: replay prevention first, then one
@@ -397,7 +406,9 @@ Secure compilation, scheduler hyperproperties, strong linearizability, and
 adversarial runtime refinement are runtime-specific and have no general
 GameTheory abstraction. Also, GameTheory's fixed-domain MAID surface cannot
 directly represent Vegas's guarded state-dependent menus without a strategic
-encoding theorem.
+encoding theorem. Its probability library has uniform finite laws but no
+constructive exact-uniform-seed realization theorem for rational finite laws;
+Vegas currently exposes that missing compiler certificate explicitly.
 
 VegasCore owns the latter boundary and must add only the certificate justified
 by each lowering pass.
