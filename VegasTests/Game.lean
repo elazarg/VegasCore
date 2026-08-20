@@ -13,6 +13,7 @@ import Vegas.Machine.Contract.Validator
 import Vegas.Machine.Contract.State
 import Vegas.Machine.Contract.StoredABI
 import Vegas.Machine.Contract.Executor
+import Vegas.Machine.Contract.StoredExecutor
 
 namespace VegasTests
 
@@ -196,6 +197,18 @@ example (state : matchingPenniesMachine.State)
         (matchingPenniesMachine.step state command)) := by
   exact Machine.Contract.Request.executeConfig?_encode_eq_map_step
     state command
+
+example (state : matchingPenniesMachine.State)
+    (command : matchingPenniesMachine.Command state) :
+    Machine.Contract.Request.executeStore?
+        (program := matchingPenniesMachine) matchingPenniesStorageCodec
+        (Machine.Contract.RawStore.encodeState matchingPenniesStorageCodec state)
+        (Machine.Contract.Request.encode command) =
+      some ((matchingPenniesMachine.step state command).map
+        (Machine.Contract.RawStore.encodeState
+          matchingPenniesStorageCodec)) := by
+  exact Machine.Contract.Request.executeStore?_encodeState_encode
+    matchingPenniesStorageCodec state command
 
 example
     (store : Machine.Contract.RawStore matchingPenniesStorageCodec)

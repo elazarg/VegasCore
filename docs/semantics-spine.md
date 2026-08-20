@@ -24,6 +24,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Stored state | `Machine.Contract.RawStore` | executable snapshot round trip and reachable-state injectivity |
 | Stored ABI | `Machine.Contract.Request.acceptsStore` | raw-storage validation equal to semantic availability |
 | Logical execution | `Machine.Contract.Request.executeConfig?` | exact reachability-erased machine step law |
+| Stored execution | `Machine.Contract.Request.executeStore?` | exact machine law transported through raw storage |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -168,6 +169,12 @@ extractable sampler: GameTheory's current canonical finite distribution is a
 noncomputable PMF. Retained `EventDist` syntax remains available for backend
 lowering, but an executable interpreter needs a separate finite-law or sampler
 interface not currently supplied by GameTheory.
+
+`Machine.Contract.Request.executeStore?` composes that law with storage
+decoding and successor re-encoding. On an encoded reachable state and valid
+command envelope, it is exactly `Machine.step` pushed through the injective
+raw-state encoding. This closes the logical state representation path, not the
+backend entropy implementation.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

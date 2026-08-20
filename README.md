@@ -127,6 +127,12 @@ other entropy mechanism, but an executable Vegas interpreter would need an
 additional finite-law/sampler interface that GameTheory does not currently
 provide.
 
+`Machine.Contract.Request.executeStore?` carries the same reference law across
+canonical storage: decode the snapshot, execute, and re-encode every successor.
+For an encoded reachable state and valid command envelope, the resulting raw-
+store law is proved exactly equal to `Machine.step` mapped through
+`RawStore.encodeState`.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
