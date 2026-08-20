@@ -287,6 +287,23 @@ noncomputable def toExecutionProtocol
       intro who hactive
       exact hinternal hactive.2.1
 
+/-- At a strategic checkpoint with no ready internal work, protocol execution
+is exactly the deterministic canonical serialization of the simultaneous
+frontier packet. -/
+theorem toExecutionProtocol_step_eq_pure_applyFrontier
+    (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
+    (state : ReachableConfig G)
+    (legal : { joint : ∀ who, Option (FrontierAction G who) //
+      (toExecutionProtocol G hwf hguards).Legal state joint })
+    (noInternal : readyInternalNodes G state.1 = ∅) :
+    (toExecutionProtocol G hwf hguards).step state legal =
+      GameTheory.Math.Probability.FinDist.pure
+        (applyFrontier G state legal.1) := by
+  unfold toExecutionProtocol
+  change
+    (if _hinternal : (readyInternalNodes G state.1).Nonempty then _ else _) = _
+  simp [noInternal]
+
 /-- Every realized protocol round completes at least one graph node. This is
 the progress measure that turns the finite graph into a certified finite game,
 including strategic rounds that atomically apply an entire frontier packet. -/

@@ -266,6 +266,24 @@ produces this deterministic contract and its source terminal-execution
 certificate. This is the ordinary compiler endpoint, not a claim that public
 calldata hides commitments or that runtime-only signals preserve strategies.
 
+`Machine.Contract.IdealVisibility` makes that qualification formal. It decodes
+contract storage but exposes only the event graph's source public view and each
+player's source private view; raw sealed words and the oracle pending marker are
+excluded. Idle encoding and the request/waiting phase are proved to have
+exactly the same source observation. The pending marker remains available as a
+separately named administrative signal for scheduler proofs. This is an ideal
+functionality that a secure backend must implement or refine, not a secrecy
+property of ordinary public storage.
+
+`Machine.Contract.FrontierBatch` is the corresponding ideal functionality for
+simultaneous strategic rounds. A trusted mediator accepts one legal joint
+frontier packet and applies its independent commitments in canonical graph-node
+order without exposing intermediate writes. The resulting encoded point-mass
+law is proved exactly equal to the source `ExecutionProtocol.step`, and its
+ideal public/private observations are exactly the source successor views.
+Making this atomic and confidential with public transactions remains a secure-
+compilation obligation.
+
 `Machine.Contract.Imperative.ContractIR` begins control-flow lowering without
 changing the event bodies. Graph requirements are lowered to physical Boolean
 storage checks using the certified layout: replay prevention first, then one
@@ -350,7 +368,8 @@ contract inventory/layout/storage/state/call boundaries, a finite 256-bit
 Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
-and a narrow unilateral strategic certificate. It does not yet have an EVM
+an ideal observation/atomic-frontier boundary, and a narrow unilateral
+strategic certificate. It does not yet have an EVM
 instruction IR or emitter, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
 untrusted on-chain chance implementation, timeout/abort game semantics, or an

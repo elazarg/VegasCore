@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Game.Kuhn
 import Vegas.Compile.Classical
+import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
 import Vegas.Machine.Contract.ABI
@@ -388,6 +389,28 @@ example :
       Machine.Contract.OracleProtocol.idleState matchingPenniesStorageCodec
         matchingPenniesMachine.init :=
   rfl
+
+example (state : matchingPenniesMachine.State) :
+    Machine.Contract.IdealVisibility.publicView?
+        matchingPenniesStorageCodec
+        (matchingPenniesClassicalContract.encodeState state) =
+      some (matchingPenniesMachine.publicView state) := by
+  change
+    Machine.Contract.IdealVisibility.publicView?
+        matchingPenniesStorageCodec
+        (Machine.Contract.OracleProtocol.idleState
+          matchingPenniesStorageCodec state) =
+      some (matchingPenniesMachine.publicView state)
+  exact Machine.Contract.IdealVisibility.publicView?_idleState
+    matchingPenniesStorageCodec state
+
+example {state : matchingPenniesMachine.State}
+    (batch : Machine.Contract.FrontierBatch matchingPenniesMachine state) :
+    (matchingPenniesMachine.execution.step state batch.command).map
+        matchingPenniesClassicalContract.encodeState =
+      GameTheory.Math.Probability.FinDist.pure
+        (matchingPenniesClassicalContract.executeBatch batch) := by
+  exact matchingPenniesClassicalContract.map_source_step_encodeState batch
 
 example {state : matchingPenniesMachine.State} {who : TestPlayer}
     (action : EventGraph.CommitAction matchingPenniesMachine.graph who)

@@ -35,6 +35,8 @@ import Vegas.Machine.Contract.OracleCalldata
 import Vegas.Machine.Contract.OracleProtocol
 import Vegas.Machine.Contract.DeterministicExecutor
 import Vegas.Machine.Contract.Classical
+import Vegas.Machine.Contract.IdealVisibility
+import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction

@@ -34,6 +34,8 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Wire transactions | `Machine.Contract.WireCodec` | lossless serialization and exact call-law transport |
 | Trusted oracle | `Machine.Contract.OracleProtocol` | deterministic request/callback sampling with exact fixed-policy law |
 | Classical contract | `Machine.Contract.ClassicalContract` | complete deterministic typed transaction endpoint |
+| Ideal visibility | `Machine.Contract.IdealVisibility` | exact source observations with raw sealed and administrative state hidden |
+| Atomic frontier | `Machine.Contract.FrontierBatch` | simultaneous source round serialized without intermediate observations |
 | Classical compiler | `ClassicalCompiler.Backend.compile` | checked-source assembly with source terminal certificate |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
