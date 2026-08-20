@@ -31,6 +31,10 @@ proof-indexed source-to-field map, and original source payoff expressions.
 `Machine.compile_sourcePayoffOfTerminal` proves that every terminal reachable
 machine store reconstructs a typed source environment in which source and
 machine payoff evaluation agree exactly, including sealed source bindings.
+`Machine.compile_sourceStar` strengthens this at support level: the
+reconstructed draws, commitments, and reveals form an actual written-order
+`SmallStep.Star` from the program's initial source environment to that terminal
+environment.
 
 Retaining code is essential. Evaluator closures alone can define semantics but
 cannot be traversed by a Solidity, EVM, native, SMT, or circuit backend.
@@ -91,9 +95,10 @@ The repository provides the first machine IR, composable operational projection,
 an exact terminal source-payoff certificate, and a narrow unilateral strategic
 certificate. It does not yet have an EVM IR, emitter, cryptographic commitment
 refinement, exact on-chain chance implementation, timeout/abort game semantics,
-or an end-to-end secure compilation theorem. It also does not yet prove that
-every event-graph run linearizes to the support-level source `SmallStep.Star`.
-Those are VegasCore gaps, not features supplied by GameTheory.
+or an end-to-end secure compilation theorem. The source-star theorem is about
+possible terminal runs and payoff equality; it does not equate probability
+laws, intermediate information histories, schedules, or target strategy
+spaces. Those are VegasCore gaps, not features supplied by GameTheory.
 
 ## Game semantics
 

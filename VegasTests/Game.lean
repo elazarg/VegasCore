@@ -122,6 +122,27 @@ example (state : matchingPenniesMachine.State)
   exact Machine.compile_sourcePayoffOfTerminal
     matchingPenniesProgram state hterminal
 
+example (state : matchingPenniesMachine.State)
+    (hterminal : matchingPenniesMachine.terminal state) :
+    ∃ terminalEnv :
+        VEnv simpleExpr
+          (ToEventGraph.compile matchingPenniesProgram.core).terminalCtx,
+      SmallStep.Star
+        { ctx := matchingPenniesProgram.core.Γ,
+          env := matchingPenniesProgram.core.env,
+          cont := matchingPenniesProgram.core.prog }
+        { ctx :=
+            (ToEventGraph.compile matchingPenniesProgram.core).terminalCtx,
+          env := terminalEnv,
+          cont := .ret
+            (ToEventGraph.compile matchingPenniesProgram.core).sourcePayoffs } ∧
+      EventGraph.evalPayoffs? matchingPenniesMachine.payoffs state.1.store =
+        some (evalPayoffs
+          (ToEventGraph.compile matchingPenniesProgram.core).sourcePayoffs
+          terminalEnv) := by
+  exact Machine.compile_sourceStar
+    matchingPenniesProgram state hterminal
+
 noncomputable instance matchingPenniesFiniteDomains :
     FiniteDomains matchingPenniesProgram where
   context := inferInstanceAs (FiniteVCtx ([] : VCtx TestPlayer simpleExpr))

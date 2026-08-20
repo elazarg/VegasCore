@@ -10,6 +10,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Checked source | `WFProgram P L` | freshness, reveals, live guards |
 | Machine IR | `Machine.Program P L` | typed graph, reified node/payoff code, first operational semantics |
 | Payoff compilation | `Machine.compile_sourcePayoffOfTerminal` | exact terminal source/machine payoff equality |
+| Source support | `Machine.compile_sourceStar` | terminal graph runs reconstruct written-order source runs |
 | Strategic execution | `ExecutionProtocol P` | active players, legal joint actions, chance, terminality |
 | Strategic information | `InformationModel execution` | signals, local information, local menus |
 | Vegas game | `Vegas.Game P` | FOSG arena, history utility, bounded horizon, pure/behavioral/mixed-pure forms |
@@ -41,11 +42,12 @@ relate the translated code to the existing denotation. The abstract `IExpr`
 interface does not promise that every embedded language has every backend; a
 backend provides a lowering for the concrete expression language it supports.
 
-This terminal equality is not yet a source-run linearization theorem. The
-support-level `SmallStep` semantics executes written order, while the event
-graph admits dependency-respecting orders and simultaneous frontiers. Proving
-that a terminal graph execution corresponds to a `SmallStep.Star` with the same
-bindings remains a separate compiler theorem.
+`Machine.compile_sourceStar` additionally proves support-level adequacy. From
+the semantic validity invariant of every completed graph node, it reconstructs
+a written-order `SmallStep.Star`: samples remain in source support, commitments
+satisfy their source guards, reveals copy the same sealed values, and the final
+payoff agrees. This coarsens away the graph schedule. It does not prove equality
+of quantitative run laws, intermediate observations, or strategic behavior.
 
 ## Probability
 

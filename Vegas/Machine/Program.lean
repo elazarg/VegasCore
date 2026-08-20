@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.Compiler
+import Vegas.Compile.SourceAdequacy
 import Vegas.EventGraph.Protocol
 import Vegas.Machine.System
 
@@ -232,6 +232,27 @@ theorem compile_sourcePayoffOfTerminal
           (ToEventGraph.compile source.core).sourcePayoffs sourceEnv) := by
   exact sourcePayoffOfTerminal
     (ToEventGraph.compile source.core) state hterminal
+
+/-- Every terminal machine execution reconstructs a possible support-level
+written-order source run with the same terminal payoff. -/
+theorem compile_sourceStar
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (source : WFProgram Player L)
+    (state : (compile source).State)
+    (hterminal : (compile source).terminal state) :
+    ∃ terminalEnv :
+        VEnv L (ToEventGraph.compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env,
+          cont := source.core.prog }
+        { ctx := (ToEventGraph.compile source.core).terminalCtx,
+          env := terminalEnv,
+          cont := .ret
+            (ToEventGraph.compile source.core).sourcePayoffs } ∧
+      evalPayoffs? (compile source).payoffs state.1.store =
+        some (evalPayoffs
+          (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) := by
+  exact ToEventGraph.compile_sourceStar source.core state.1 state.2 hterminal
 
 end Machine
 
