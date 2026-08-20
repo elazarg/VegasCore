@@ -70,6 +70,14 @@ The supplied `executionLog` is a proof-facing reference instance; a contract
 backend can lower its records to stable action ids and completion storage one
 representation decision at a time.
 
+`Machine.Contract.Manifest` is the first emitter-facing inventory. It finitely
+enumerates typed value slots, per-action completion slots, stable logical
+actions, direct dependencies, logical authority, player input types, and the
+original reified node code. It is lossless and adds no behavior. Physical
+storage, ABI triggering of internal actions, role addresses, entropy,
+commitment cryptography, timeouts, settlement, and target arithmetic are later
+passes with separate obligations.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -87,7 +95,8 @@ used to skip intermediate scheduler or information proofs.
 
 An EVM-class compiler can grow as a sequence like this:
 
-1. lower `Machine.Program` node code to a backend expression and storage IR;
+1. lower the `Machine.Contract.Manifest` code and logical slots to a backend
+   expression and physical storage IR;
 2. add an explicit dependency-respecting scheduler or callable-node ABI;
 3. choose storage layout, role authentication, calldata, receipts, and revert
    behavior;

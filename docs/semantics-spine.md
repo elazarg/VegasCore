@@ -17,6 +17,7 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Kuhn bridge | `Vegas.Game.Kuhn` | opponent-preserving behavioral/mixed deviation certificates |
 | Lowering stage | `Machine.System` | one concrete operational command/state surface |
 | Step projection | `Machine.Refinement` | visible abstract steps and administrative stuttering |
+| Contract manifest | `Machine.Contract.Manifest` | finite lossless storage/action inventory for emitters |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Same-strategy endpoint | `Runtime.Implementation` | decoded trace-law equality |
 
@@ -109,6 +110,13 @@ steps, rather than by target-only commands. Its exact projection covers such
 concerns as completion flags, sequence counters, and receipts. The reference
 `executionLog` records realized step order; exposing that log would change the
 observation model and therefore requires an explicit companion theorem.
+
+`Machine.Contract.Manifest` then exposes the lossless logical inventory an
+emitter needs: typed value slots, completion slots, stable actions, direct
+dependencies, authority, player input types, and node code. It intentionally
+stops before choosing physical storage, ABI scheduling, participant addresses,
+entropy, cryptography, timeout behavior, settlement, or bounded target
+arithmetic.
 
 That law alone is insufficient when a pass changes what a player or scheduler
 can do or observe. Required companion results depend on the pass:

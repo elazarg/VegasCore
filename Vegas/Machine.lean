@@ -9,3 +9,4 @@ import Vegas.Machine.Refinement
 import Vegas.Machine.Administrative
 import Vegas.Machine.Instrumentation
 import Vegas.Machine.Program
+import Vegas.Machine.Contract

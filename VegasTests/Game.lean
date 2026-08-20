@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Game.Kuhn
+import Vegas.Machine.Contract
 
 namespace VegasTests
 
@@ -109,6 +110,20 @@ noncomputable def matchingPenniesMachine :
 
 noncomputable def matchingPenniesGame : Vegas.Game TestPlayer :=
   matchingPenniesMachine.game
+
+noncomputable def matchingPenniesManifest :
+    Machine.Contract.Manifest matchingPenniesMachine :=
+  Machine.Contract.compile matchingPenniesMachine
+
+example : matchingPenniesManifest.actions.length =
+    matchingPenniesMachine.graph.nodeCount := by
+  exact Machine.Contract.Manifest.compile_actions_length
+    matchingPenniesMachine
+
+example (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    (⟨node⟩ : Machine.Contract.Action matchingPenniesMachine) ∈
+      matchingPenniesManifest.actions := by
+  exact Machine.Contract.Manifest.action_mem matchingPenniesMachine node
 
 example (state : matchingPenniesMachine.State)
     (hterminal : matchingPenniesMachine.terminal state) :
