@@ -6,7 +6,9 @@ Authors: VegasCore contributors
 
 import Vegas.Game.Kuhn
 import Vegas.Compile.Classical
+import Vegas.Compile.ClassicalEVM
 import Vegas.Machine.Contract.ClassicalBatch
+import Vegas.Machine.Contract.ClassicalEVMBytes
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
 import Vegas.Machine.Contract.Layout
@@ -461,6 +463,59 @@ noncomputable def matchingPenniesArgumentWords :
     Machine.Contract.WireCodec matchingPenniesContract.codec.Word
       Machine.Contract.EVM.Word :=
   Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
+
+def matchingPenniesClassicalSelectors :
+    Machine.Contract.EVM.ClassicalSelectors where
+  player := 0
+  reveal := 1
+  sampleRequest := 2
+  oracleCallback := 3
+  player_ne_reveal := by decide
+  player_ne_sampleRequest := by decide
+  player_ne_oracleCallback := by decide
+  reveal_ne_sampleRequest := by decide
+  reveal_ne_oracleCallback := by decide
+  sampleRequest_ne_oracleCallback := by decide
+
+noncomputable def matchingPenniesClassicalABI :
+    Machine.Contract.EVM.ClassicalABI
+      (Machine.compile matchingPenniesProgram)
+      matchingPenniesClassicalContract.codec.Word where
+  selectors := matchingPenniesClassicalSelectors
+  players := matchingPenniesMessageABI.players
+  nodes := matchingPenniesMessageABI.nodes
+  values := matchingPenniesArgumentWords
+
+noncomputable def matchingPenniesEVMByteBackend :
+    ClassicalCompiler.EVMByteBackend matchingPenniesProgram TestPlayer where
+  classical := matchingPenniesClassicalBackend
+  selectors := matchingPenniesClassicalSelectors
+  players := Machine.Contract.EVM.indexWordCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsWord])
+  nodesFit := by
+    change (Machine.compile matchingPenniesProgram).graph.nodeCount ≤ 2 ^ 256
+    change matchingPenniesMachine.graph.nodeCount ≤ 2 ^ 256
+    rw [matchingPenniesMachine_graph_nodeCount]
+    norm_num
+  values :=
+    Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
+
+example :
+    matchingPenniesEVMByteBackend.compile.initial =
+      matchingPenniesClassicalBackend.compile.initial :=
+  rfl
+
+example
+    (message : Machine.Contract.EVM.ClassicalMessage
+      matchingPenniesMachine matchingPenniesStorageCodec.Word) :
+    matchingPenniesClassicalABI.decodeBytes
+        (matchingPenniesClassicalABI.encodeBytes message) = some message := by
+  exact matchingPenniesClassicalABI.decodeBytes_encodeBytes message
+
+example (node : Fin matchingPenniesMachine.graph.nodeCount) :
+    (matchingPenniesClassicalABI.encodeBytes
+      (.oracleCallback { node := node, choice := 0 })).byteLength = 68 :=
+  rfl
 
 example (message : matchingPenniesContract.Message) :
     matchingPenniesMessageABI.decodeBytes matchingPenniesArgumentWords

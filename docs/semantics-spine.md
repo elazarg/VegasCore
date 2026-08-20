@@ -37,6 +37,8 @@ This document states the semantic ownership and proof boundaries of VegasCore.
 | Ideal visibility | `Machine.Contract.IdealVisibility` | exact source observations with raw sealed and administrative state hidden |
 | Atomic frontier | `Machine.Contract.FrontierBatch` | simultaneous source round serialized without intermediate observations |
 | Classical compiler | `ClassicalCompiler.Backend.compile` | checked-source assembly with source terminal certificate |
+| Classical EVM ABI | `Machine.Contract.EVM.ClassicalABI` | four-selector 36/68/100-byte deterministic calldata framing |
+| EVM-byte artifact | `ClassicalCompiler.EVMByteBackend.compile` | checked source to executable deterministic byte-calldata contract |
 | Strategic certificate | `Runtime.DeviationAdequacy` | unilateral target-strategy back-translation |
 | Trusted roles | `Runtime.TrustedRoleAdequacy` | Nash adequacy for real players with fixed runtime-only roles |
 | Known mediator | `Runtime.KnownMediator` | exact externalization of stochastic play to one fixed contingent strategy |

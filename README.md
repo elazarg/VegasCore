@@ -331,6 +331,25 @@ and every accepted hostile byte string over reachable storage remains a valid
 semantic command. Function selectors are still configured values rather than
 Keccak-derived signatures.
 
+The deterministic classical endpoint has its own complete EVM framing rather
+than reusing that earlier two-entry stochastic ABI.
+`Machine.Contract.EVM.ClassicalABI` assigns four pairwise-distinct selectors to
+player commit, reveal, sample request, and oracle callback, with argument shapes
+`[player,node,value]`, `[node]`, `[node]`, and `[node,choice]`.
+`ClassicalABI.encodeBytes/decodeBytes` realizes the corresponding 100-, 36-,
+36-, and 68-byte Ethereum layouts, proves lossless round trips, and rejects all
+other byte lengths, selectors, arities, or undecodable words before typed
+validation. Callback indices are unsigned 256-bit words; compiling a retained
+table index to a word exposes the necessary `< 2^256` proof obligation.
+
+`ClassicalCompiler.EVMByteBackend` is the checked-source assembly point for
+that concrete boundary. Given the classical deployment choices, selectors,
+player/value codecs, and the node-count capacity proof, it produces one
+`EVMByteArtifact` packaged as a deterministic contract over raw byte calldata
+and blockchain caller context. This closes the source-to-executable-byte-ABI
+chain, but it is not EVM bytecode: expression/control-flow instruction
+lowering, VM execution, and an emitter correctness theorem are still required.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -380,8 +399,8 @@ Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
 an ideal observation/atomic-frontier boundary, and unilateral strategic
-certificates for same-player and fixed-trusted-role targets. It does not yet
-have an EVM
+certificates for same-player and fixed-trusted-role targets, plus a complete
+deterministic four-entry EVM byte-calldata artifact. It does not yet have an EVM
 instruction IR or emitter, a codec for programs that store other source types,
 a concrete transaction scheduler, cryptographic commitment refinement, exact
 untrusted on-chain chance implementation, timeout/abort game semantics, or an

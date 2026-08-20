@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.Compiler
 import Vegas.Compile.SourceAdequacy
 import Vegas.Compile.Classical
+import Vegas.Compile.ClassicalEVM
 
 /-!
 # Compilation: checked Vegas programs to event graphs
