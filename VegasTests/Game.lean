@@ -20,6 +20,7 @@ import Vegas.Machine.Contract.InternalCalldata
 import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
 import Vegas.Machine.Contract.Wire
+import Vegas.Machine.Contract.EVMWord
 
 namespace VegasTests
 
@@ -171,9 +172,25 @@ example (state : matchingPenniesMachine.State)
       (Machine.Contract.Request.encode command) = true := by
   exact Machine.Contract.Request.accepts_encode command
 
+theorem matchingPenniesUsesOnlyBoolStorage :
+    Machine.Contract.EVM.UsesOnlyBoolStorage matchingPenniesMachine := by
+  constructor
+  · intro field
+    fin_cases field <;> rfl
+  · intro node
+    fin_cases node <;> rfl
+
 noncomputable def matchingPenniesStorageCodec :
     Machine.Contract.StorageCodec matchingPenniesMachine :=
-  Machine.Contract.StorageCodec.reference matchingPenniesMachine
+  Machine.Contract.EVM.boolStorageCodec matchingPenniesMachine
+    matchingPenniesUsesOnlyBoolStorage
+
+example : matchingPenniesStorageCodec.Word = BitVec 256 := rfl
+
+example :
+    Machine.Contract.EVM.decodeBool
+        (matchingPenniesStorageCodec.encodeValue .bool true) = some true := by
+  rfl
 
 example (node : Fin matchingPenniesMachine.graph.nodeCount) :
     Machine.Contract.RawStore.readCompleted

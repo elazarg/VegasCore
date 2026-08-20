@@ -106,6 +106,13 @@ still contains unbounded Lean `Int`, so exact EVM-word lowering needs a bounded
 source integer type, a proved range invariant, or chosen modular/checked-
 overflow semantics. GameTheory does not decide that compiler policy.
 
+`Machine.Contract.EVM.boolStorageCodec` is a deliberately narrow first finite
+refinement: for a compiled `simpleExpr` program whose graph fields and nodes
+are all Boolean, it uses canonical zero/one values in `BitVec 256` words. The
+matching-pennies example is configured with this codec even though
+`simpleExpr` itself also contains unbounded integers. This is only a storage-
+word representation, not an EVM instruction or transaction semantics.
+
 `Machine.Contract.RawStore.encodeSnapshot` bridges finite semantic graph state
 to canonical contract storage: optional typed field words followed by explicit
 completion bits. Its executable decoder is a proved left inverse, and the
@@ -228,15 +235,16 @@ An EVM-class compiler can grow as a sequence like this:
 
 The repository provides the first machine IR, composable operational
 projection, an exact terminal source-payoff certificate, certified logical
-contract inventory/layout/storage/state/call boundaries, and a narrow
+contract inventory/layout/storage/state/call boundaries, a finite 256-bit
+Boolean storage codec, and a narrow
 unilateral strategic certificate. It does not yet have an EVM IR, emitter,
-finite EVM value codec, concrete transaction scheduler, cryptographic
-commitment refinement, exact on-chain chance implementation, timeout/abort
-game semantics, or an end-to-end secure compilation theorem. The source-star
-theorem is about possible terminal runs and payoff equality; it does not
-equate probability laws, intermediate information histories, schedules, or
-target strategy spaces. Those are VegasCore gaps, not features supplied by
-GameTheory.
+a codec for programs that store other source types, a concrete transaction
+scheduler, cryptographic commitment refinement, exact on-chain chance
+implementation, timeout/abort game semantics, or an end-to-end secure
+compilation theorem. The source-star theorem is about possible terminal runs
+and payoff equality; it does not equate probability laws, intermediate
+information histories, schedules, or target strategy spaces. Those are
+VegasCore gaps, not features supplied by GameTheory.
 
 ## Game semantics
 
