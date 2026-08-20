@@ -9,6 +9,7 @@ import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
 import Vegas.Machine.Contract.ClassicalBatch
 import Vegas.Machine.Contract.ClassicalEVMBytes
+import Vegas.Machine.Contract.ClassicalEVMStorage
 import Vegas.Machine.Contract.EVMAssembly
 import Vegas.Runtime.KnownMediator
 import Vegas.Machine.Contract
@@ -27,6 +28,7 @@ import Vegas.Machine.Contract.Lifecycle
 import Vegas.Machine.Contract.Configured
 import Vegas.Machine.Contract.Wire
 import Vegas.Machine.Contract.EVMWord
+import Vegas.Machine.Contract.EVMAddress
 import Vegas.Machine.Contract.Blockchain
 import Vegas.Machine.Contract.EVMCalldata
 import Vegas.Machine.Contract.EVMBytes
@@ -500,11 +502,21 @@ noncomputable def matchingPenniesEVMByteBackend :
     norm_num
   values :=
     Machine.Contract.WireCodec.identity Machine.Contract.EVM.Word
+  addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsAddress])
 
 example :
     matchingPenniesEVMByteBackend.compile.initial =
       matchingPenniesClassicalBackend.compile.initial :=
   rfl
+
+example :
+    Machine.Contract.EVM.decodeClassicalSnapshot
+        matchingPenniesStorageCodec matchingPenniesArgumentWords
+        matchingPenniesClassicalABI.nodes
+        matchingPenniesEVMByteBackend.compile.initialStorage =
+      some matchingPenniesEVMByteBackend.compile.initialSnapshot := by
+  exact matchingPenniesEVMByteBackend.compile.decode_initialStorage
 
 example
     (message : Machine.Contract.EVM.ClassicalMessage

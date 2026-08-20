@@ -358,6 +358,16 @@ addresses. This is genuine EVM runtime byte emission, but the handlers are not
 yet generated from Vegas expressions and storage transitions, and no EVM
 execution semantics currently connects the bytes back to `receive`.
 
+`Machine.Contract.EVM.ClassicalStorageLayout` supplies the corresponding
+account-state representation. EVM's total zero-default storage cannot directly
+represent the earlier sparse field map, so each graph field has a distinct
+value cell and presence bit; completion bits and the oracle pending flag/node
+occupy separate certified cells. The layout is collision-free, total-storage
+encoding round-trips for every classical snapshot, and the deployed storage
+decodes to exactly the compiled source initial snapshot. `EVMByteBackend` also
+requires a lossless 160-bit address codec, making `CALLER` authentication a
+concrete code-generation input instead of an abstract-address assumption.
+
 This step projection is intentionally not called game preservation. A pass
 that adds observations, scheduling choices, timing, or adversarial behavior
 must also prove the relevant information or strategic theorem.
@@ -406,8 +416,8 @@ contract inventory/layout/storage/state/call boundaries, a finite 256-bit
 Boolean storage codec, physical ordered-check/action-body IR, abstract check
 gas and rollback projections, certified fixed-shape EVM byte calldata, a
 complete deterministic typed contract under trusted oracle/scheduler roles,
-an ideal observation/atomic-frontier boundary, an EVM opcode emitter and
-four-entry runtime linker, and unilateral strategic
+an ideal observation/atomic-frontier boundary, a lossless total EVM storage
+layout, an EVM opcode emitter and four-entry runtime linker, and unilateral strategic
 certificates for same-player and fixed-trusted-role targets, plus a complete
 deterministic four-entry EVM byte-calldata artifact. It does not yet have an EVM
 expression-to-EVM handler compiler, a codec for programs that store other source types,

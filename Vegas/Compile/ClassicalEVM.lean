@@ -6,6 +6,8 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.Classical
 import Vegas.Machine.Contract.ClassicalEVMBytes
+import Vegas.Machine.Contract.ClassicalEVMStorage
+import Vegas.Machine.Contract.EVMAddress
 
 /-!
 # Checked source to deterministic EVM-byte contract artifact
@@ -15,9 +17,9 @@ four-entry-point EVM calldata codec.  The result has EVM-sized selector/word
 bytes, blockchain-supplied caller context, deterministic receive/revert
 behavior, canonical storage, and ordered oracle request actions.
 
-It is deliberately named a byte-calldata artifact, not EVM bytecode. Retained
-expression code, checks, state updates, and dispatch still need lowering to an
-instruction IR and an emitter with a VM-level correctness theorem.
+It is deliberately named a byte-calldata artifact, not a linked EVM runtime.
+Retained expression code, checks, state updates, and authentication still need
+lowering to handler instructions and a VM-level correctness theorem.
 -/
 
 noncomputable section
@@ -37,6 +39,7 @@ structure EVMByteArtifact (source : WFProgram Player L) (Address : Type)
     [DecidableEq Address] where
   contract : ClassicalContract (Machine.compile source) Address
   abi : EVM.ClassicalABI (Machine.compile source) contract.codec.Word
+  addresses : EVM.AddressCodec Address
 
 namespace EVMByteArtifact
 
@@ -47,6 +50,35 @@ abbrev State := artifact.contract.State
 
 /-- Canonical constructor state of the byte-calldata artifact. -/
 def initial : artifact.State := artifact.contract.initial
+
+/-- Semantic snapshot represented by the deployed EVM account storage. -/
+def initialSnapshot : EVM.ClassicalSnapshot (Machine.compile source) :=
+  let _contract := artifact.contract
+  EVM.ClassicalSnapshot.idle (Machine.compile source).init.1
+
+/-- Concrete total 256-bit storage installed at deployment. Absent source
+fields are represented by false presence bits, not conflated with zero-valued
+fields. -/
+def initialStorage : EVM.TotalStorage :=
+  EVM.encodeClassicalSnapshot artifact.contract.codec artifact.abi.values
+    artifact.abi.nodes artifact.initialSnapshot
+
+/-- The concrete deployment storage decodes to exactly the compiled source
+initial snapshot. -/
+@[simp] theorem decode_initialStorage :
+    EVM.decodeClassicalSnapshot artifact.contract.codec artifact.abi.values
+        artifact.abi.nodes artifact.initialStorage =
+      some artifact.initialSnapshot := by
+  exact EVM.decodeClassicalSnapshot_encodeClassicalSnapshot _ _ _ _
+
+/-- The earlier sparse constructor state and the new total EVM deployment
+storage denote the same bounded classical snapshot. -/
+@[simp] theorem sparse_initial_snapshot :
+    EVM.ClassicalSnapshot.ofProtocolState? artifact.contract.codec
+        artifact.initial =
+      some artifact.initialSnapshot := by
+  exact EVM.ClassicalSnapshot.ofProtocolState?_idleState
+    artifact.contract.codec (Machine.compile source).init
 
 /-- Deterministic byte-calldata receive function with the physical caller
 supplied by blockchain context. -/
@@ -80,8 +112,9 @@ function after caller contextualization. -/
 end EVMByteArtifact
 
 /-- Backend choices needed to compile checked source to the executable
-EVM-byte-calldata artifact. Node capacity is the concrete 256-bit bound; value
-and player codecs provide lossless word representations for this program. -/
+EVM-byte-calldata artifact. Node capacity is the concrete 256-bit bound;
+address, value, and player codecs provide lossless EVM representations for
+this deployment. -/
 structure EVMByteBackend (source : WFProgram Player L) (Address : Type)
     [DecidableEq Address] where
   classical : Backend source Address
@@ -89,6 +122,7 @@ structure EVMByteBackend (source : WFProgram Player L) (Address : Type)
   players : WireCodec Player EVM.Word
   nodesFit : EVM.NodesFitWord (Machine.compile source)
   values : WireCodec classical.codec.Word EVM.Word
+  addresses : EVM.AddressCodec Address
 
 namespace EVMByteBackend
 
@@ -104,6 +138,7 @@ def compile : EVMByteArtifact source Address where
       players := backend.players
       nodes := EVM.nodeWordCodec (Machine.compile source) backend.nodesFit
       values := backend.values }
+  addresses := backend.addresses
 
 @[simp] theorem compile_contract :
     backend.compile.contract = backend.classical.compile :=
