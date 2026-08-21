@@ -595,6 +595,153 @@ theorem encodeClassicalSnapshot_completeBool_completed
   rw [encodeClassicalSnapshot_completed]
   simp [StateSnapshot.ofConfig, Config.completeNode, encodeBool]
 
+/-- The three concrete writes emitted for a Boolean action are exactly the
+canonical encoding of the graph successor produced by completing that node.
+All other storage cells, including the pending-oracle phase, are unchanged. -/
+theorem encodeClassicalSnapshot_completeBool
+    {program : Program Player simpleExpr}
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
+    (node : Fin program.graph.nodeCount) (value : Bool) :
+    let target : Fin program.graph.fieldCount :=
+      ⟨program.graph.nodeTarget node,
+        StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩
+    let layout := ClassicalStorageLayout.canonical program
+    Function.update
+        (Function.update
+          (Function.update
+            (encodeClassicalSnapshot codec words nodes
+              { graph := StateSnapshot.ofConfig cfg, pending := pending })
+            (layout.address (.fieldValue target)) (encodeBool value))
+          (layout.address (.fieldPresent target)) 1)
+        (layout.address (.completed node)) 1 =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending } := by
+  dsimp only
+  funext key
+  let target : Fin program.graph.fieldCount :=
+    ⟨program.graph.nodeTarget node,
+      StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩
+  let layout := ClassicalStorageLayout.canonical program
+  let valueSlot := layout.address
+    (ClassicalStorageSlot.fieldValue target)
+  let presenceSlot := layout.address
+    (ClassicalStorageSlot.fieldPresent target)
+  let completionSlot := layout.address
+    (ClassicalStorageSlot.completed node)
+  change
+    Function.update
+        (Function.update
+          (Function.update
+            (encodeClassicalSnapshot codec words nodes
+              { graph := StateSnapshot.ofConfig cfg, pending := pending })
+            valueSlot (encodeBool value))
+          presenceSlot 1)
+        completionSlot 1 key =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending } key
+  by_cases hcompletion : key = completionSlot
+  · subst key
+    simp only [Function.update_self]
+    change (1 : Word) =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address (.completed node))
+    exact (encodeClassicalSnapshot_completeBool_completed codec words nodes
+      cfg pending node value).symm
+  by_cases hpresence : key = presenceSlot
+  · subst key
+    have hne : presenceSlot ≠ completionSlot := by
+      intro heq
+      have := (ClassicalStorageLayout.canonical program).injective heq
+      cases this
+    simp only [Function.update_of_ne hne, Function.update_self]
+    change (1 : Word) =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address
+          (.fieldPresent target))
+    exact (encodeClassicalSnapshot_completeBool_fieldPresent usesBool codec
+      words nodes cfg pending node value).symm
+  by_cases hvalue : key = valueSlot
+  · subst key
+    have hneCompletion : valueSlot ≠ completionSlot := by
+      intro heq
+      have := (ClassicalStorageLayout.canonical program).injective heq
+      cases this
+    have hnePresence : valueSlot ≠ presenceSlot := by
+      intro heq
+      have := (ClassicalStorageLayout.canonical program).injective heq
+      cases this
+    simp only [Function.update_of_ne hneCompletion,
+      Function.update_of_ne hnePresence, Function.update_self]
+    change encodeBool value =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address
+          (.fieldValue target))
+    exact (encodeClassicalSnapshot_completeBool_fieldValue usesBool codec
+      words canonical nodes cfg pending node value).symm
+  simp only [Function.update_of_ne hcompletion,
+    Function.update_of_ne hpresence, Function.update_of_ne hvalue]
+  unfold encodeClassicalSnapshot
+  by_cases hfieldValue : key < program.graph.fieldCount
+  · rw [dif_pos hfieldValue, dif_pos hfieldValue]
+    simp only [StateSnapshot.ofConfig, Config.completeNode]
+    have hqueryNe : key ≠ program.graph.nodeTarget node := by
+      intro heq
+      apply hvalue
+      simpa [valueSlot, layout, target] using heq
+    rw [Store.getAs_set_ne cfg.store hqueryNe
+      { ty := .bool, value := value }
+      (program.graph.fieldRow ⟨key, hfieldValue⟩).ty]
+  · rw [dif_neg hfieldValue, dif_neg hfieldValue]
+    by_cases hfieldPresent :
+        key - program.graph.fieldCount < program.graph.fieldCount
+    · rw [dif_pos hfieldPresent, dif_pos hfieldPresent]
+      simp only [StateSnapshot.ofConfig, Config.completeNode]
+      have hqueryNe : key - program.graph.fieldCount ≠
+          program.graph.nodeTarget node := by
+        intro heq
+        apply hpresence
+        simp [presenceSlot, layout, target]
+        omega
+      rw [Store.getAs_set_ne cfg.store hqueryNe
+        { ty := .bool, value := value }
+        (program.graph.fieldRow
+          ⟨key - program.graph.fieldCount, hfieldPresent⟩).ty]
+    · rw [dif_neg hfieldPresent, dif_neg hfieldPresent]
+      by_cases hcompleted :
+          key - 2 * program.graph.fieldCount < program.graph.nodeCount
+      · rw [dif_pos hcompleted, dif_pos hcompleted]
+        have hnodeNe :
+            (⟨key - 2 * program.graph.fieldCount, hcompleted⟩ :
+              Fin program.graph.nodeCount) ≠ node := by
+          intro heq
+          apply hcompletion
+          have hge : 2 * program.graph.fieldCount ≤ key := by omega
+          have heqValue := Fin.ext_iff.mp heq
+          change key - 2 * program.graph.fieldCount = (node : Nat) at heqValue
+          change key = 2 * program.graph.fieldCount + (node : Nat)
+          omega
+        simp only [StateSnapshot.ofConfig, Config.completeNode]
+        simp [hnodeNe]
+        rfl
+      · rw [dif_neg hcompleted, dif_neg hcompleted]
+
 @[simp] theorem decodeClassicalField_encodeClassicalSnapshot
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)

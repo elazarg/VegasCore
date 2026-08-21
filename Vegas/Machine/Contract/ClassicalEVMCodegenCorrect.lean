@@ -358,6 +358,43 @@ theorem run_classicalActionWrites_exact
     PushData.nat256_value_toNat_of_lt
       (action.completionSlot_lt_word fits)]
 
+/-- On canonical Boolean storage, the three exact action writes implement the
+semantic `Config.completeNode` successor rather than merely three unrelated
+cell updates. -/
+theorem run_classicalActionWrites_completeBool
+    {program : Program Player simpleExpr}
+    (fits : ClassicalStorageFitsWord program)
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph)
+    (pending : Option (Fin program.graph.nodeCount))
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (action : ClassicalActionIR program) (value : Bool) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig cfg, pending := pending })
+    (hstack : state.stack = encodeBool value :: rest)
+    (hcode : Assembly.CodeAt whole
+      (classicalActionWritesAssembly action) state.pc) :
+    run 8 whole env state =
+      { state with
+        pc := state.pc +
+          (classicalActionWritesAssembly action).byteLength
+        stack := rest
+        storage := encodeClassicalSnapshot codec words nodes
+          { graph := StateSnapshot.ofConfig
+              (cfg.completeNode action.node { ty := .bool, value := value })
+            pending := pending } } := by
+  rw [run_classicalActionWrites_exact fits whole env state action
+    (encodeBool value) rest hrunning hstack hcode]
+  rw [hstorage, action.valueSlot_eq, action.presenceSlot_eq,
+    action.completionSlot_eq]
+  rw [encodeClassicalSnapshot_completeBool usesBool codec words canonical
+    nodes cfg pending action.node value]
+
 end
 
 end Vegas.Machine.Contract.EVM
