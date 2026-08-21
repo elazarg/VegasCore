@@ -863,6 +863,17 @@ example :
           .stop ] := by
   rfl
 
+def duplicateLocalLabelHandlers :
+    Machine.Contract.EVM.LocalClassicalHandlers where
+  player := [.label 0, .label 0]
+  reveal := []
+  sampleRequest := []
+  oracleCallback := []
+
+example : Machine.Contract.EVM.RuntimeImage.linkLocalChecked?
+    matchingPenniesClassicalSelectors duplicateLocalLabelHandlers = none := by
+  rfl
+
 example (check : Machine.Contract.EVM.ClassicalStorageCheck) :
     (Machine.Contract.EVM.compileClassicalStorageCheck 0 check).byteLength =
       44 := by

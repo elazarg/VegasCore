@@ -54,6 +54,20 @@ def byteLength (program : LocalAssembly) : Nat :=
 def ofAssembly (program : Assembly) : LocalAssembly :=
   program.map LocalItem.op
 
+/-- Labels defined by a symbolic fragment, in source order. -/
+def definedLabels : LocalAssembly → List LocalLabel
+  | [] => []
+  | .label label :: rest => label :: definedLabels rest
+  | _ :: rest => definedLabels rest
+
+/-- Every local label has at most one definition. -/
+def LabelsUnique (program : LocalAssembly) : Prop :=
+  program.definedLabels.Nodup
+
+instance (program : LocalAssembly) : Decidable program.LabelsUnique := by
+  unfold LabelsUnique
+  infer_instance
+
 @[simp] theorem ofAssembly_byteLength (program : Assembly) :
     (ofAssembly program).byteLength = program.byteLength := by
   induction program with
@@ -358,6 +372,18 @@ def get (handlers : LocalClassicalHandlers) : ClassicalEntry → LocalAssembly
   | .sampleRequest => handlers.sampleRequest
   | .oracleCallback => handlers.oracleCallback
 
+/-- Local label definitions are unique independently in each handler
+namespace. -/
+def LabelsUnique (handlers : LocalClassicalHandlers) : Prop :=
+  handlers.player.LabelsUnique ∧ handlers.reveal.LabelsUnique ∧
+    handlers.sampleRequest.LabelsUnique ∧
+    handlers.oracleCallback.LabelsUnique
+
+instance (handlers : LocalClassicalHandlers) :
+    Decidable handlers.LabelsUnique := by
+  unfold LabelsUnique
+  infer_instance
+
 def blockSize (handlers : LocalClassicalHandlers)
     (entry : ClassicalEntry) : Nat :=
   2 + (handlers.get entry).byteLength
@@ -503,6 +529,7 @@ destinations. -/
 structure LinkableLocalHandlers where
   handlers : LocalClassicalHandlers
   size_fits : handlers.runtimeSize < 2 ^ 32
+  labels_unique : handlers.LabelsUnique
 
 namespace RuntimeImage
 
@@ -522,8 +549,14 @@ def linkLocal? (selectors : ClassicalSelectors)
 is the executable entry point used by partial concrete backends. -/
 def linkLocalChecked? (selectors : ClassicalSelectors)
     (handlers : LocalClassicalHandlers) : Option (RuntimeImage selectors) :=
-  if hfits : handlers.runtimeSize < 2 ^ 32 then
-    linkLocal? selectors { handlers := handlers, size_fits := hfits }
+  if hunique : handlers.LabelsUnique then
+    if hfits : handlers.runtimeSize < 2 ^ 32 then
+      linkLocal? selectors
+        { handlers := handlers
+          size_fits := hfits
+          labels_unique := hunique }
+    else
+      none
   else
     none
 
@@ -536,12 +569,14 @@ theorem linkLocalChecked?_handlers_resolve
     handlers.resolve? = some image.handlers.handlers := by
   unfold linkLocalChecked? at hlink
   split at hlink
-  · unfold linkLocal? at hlink
-    split at hlink
+  · split at hlink
+    · unfold linkLocal? at hlink
+      split at hlink
+      · simp at hlink
+      · rename_i resolved hresolve
+        cases hlink
+        exact hresolve
     · simp at hlink
-    · rename_i resolved hresolve
-      cases hlink
-      exact hresolve
   · simp at hlink
 
 /-- Successful checked linking retains its source-level whole-image bound. -/
@@ -550,6 +585,20 @@ theorem linkLocalChecked?_source_size_fits
     {image : RuntimeImage selectors}
     (hlink : linkLocalChecked? selectors handlers = some image) :
     handlers.runtimeSize < 2 ^ 32 := by
+  unfold linkLocalChecked? at hlink
+  split at hlink
+  · split at hlink
+    · assumption
+    · simp at hlink
+  · simp at hlink
+
+/-- Successful checked linking proves that no handler contains duplicate
+label definitions. -/
+theorem linkLocalChecked?_labels_unique
+    {selectors : ClassicalSelectors} {handlers : LocalClassicalHandlers}
+    {image : RuntimeImage selectors}
+    (hlink : linkLocalChecked? selectors handlers = some image) :
+    handlers.LabelsUnique := by
   unfold linkLocalChecked? at hlink
   split at hlink
   · assumption
