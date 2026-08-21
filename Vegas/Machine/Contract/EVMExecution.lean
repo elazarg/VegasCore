@@ -152,6 +152,18 @@ def Assembly.CodeAt (whole fragment : Assembly) (offset : Nat) : Prop :=
   ∃ pre suffix,
     whole = pre ++ fragment ++ suffix ∧ pre.byteLength = offset
 
+/-- Successful symbolic resolution places an embedded straight-line fragment
+at the byte offset of its symbolic prefix. -/
+theorem LocalAssembly.resolveAt_codeAt
+    {base : Nat} {program pre suffix : LocalAssembly}
+    {fragment resolved : Assembly}
+    (hprogram : program = pre ++ LocalAssembly.ofAssembly fragment ++ suffix)
+    (hresolve : program.resolveAt base = some resolved) :
+    Assembly.CodeAt resolved fragment pre.byteLength := by
+  rcases LocalAssembly.resolveAt_decomposition hprogram hresolve with
+    ⟨preCode, suffixCode, hresolved, hlength⟩
+  exact ⟨preCode, suffixCode, hresolved, hlength⟩
+
 /-- `CodeAt` makes fetching the fragment's first instruction exact. -/
 theorem Assembly.fetch?_of_codeAt {whole rest : Assembly} {offset : Nat}
     {instruction : Instruction}

@@ -410,7 +410,9 @@ code is retained for the remaining expression-specific lowering.
 jump addresses an unchecked renderer concern. `JUMP`/`JUMPI` targets resolve
 only after handler base offsets are known, missing labels reject, and
 resolution is proved to preserve byte length before the whole image's 32-bit
-bound is applied. The structural handler code generator already emits full
+bound is applied. Resolution distributes over fragment concatenation, and an
+embedded straight-line assembly fragment is proved to remain exact at the byte
+offset of its symbolic prefix. The structural handler code generator emits full
 256-bit storage keys, `SLOAD` readiness checks with conditional rejection, and
 ordered value/presence/completion `SSTORE`s. The supported Boolean expression
 fragment first lowers to a proof-carrying Boolean-only IR, then emits

@@ -114,6 +114,25 @@ def resolveFrom? (whole : LocalAssembly) (base : Nat) :
       rw [ih]
       rfl
 
+/-- Resolution distributes over symbolic-fragment concatenation. -/
+theorem resolveFrom?_append (whole : LocalAssembly) (base : Nat)
+    (left right : LocalAssembly) :
+    resolveFrom? whole base (left ++ right) =
+      match resolveFrom? whole base left, resolveFrom? whole base right with
+      | some leftCode, some rightCode => some (leftCode ++ rightCode)
+      | _, _ => none := by
+  induction left with
+  | nil =>
+      cases hright : resolveFrom? whole base right <;>
+        simp [resolveFrom?, hright]
+  | cons item rest ih =>
+      simp only [List.cons_append, resolveFrom?]
+      rw [ih]
+      cases resolveItem? whole base item <;>
+        cases resolveFrom? whole base rest <;>
+        cases resolveFrom? whole base right <;>
+        simp [List.append_assoc]
+
 /-- Resolve all labels to absolute byte destinations. Missing labels reject
 the fragment. -/
 def resolveAt (base : Nat) (whole : LocalAssembly) : Option Assembly :=
@@ -153,37 +172,63 @@ theorem resolveItem?_byteLength {whole : LocalAssembly} {base : Nat}
           simp [LocalItem.byteLength, Assembly.byteLength,
             Instruction.byteLength]
 
+/-- Resolving any symbolic suffix preserves its encoded byte length. -/
+theorem resolveFrom?_byteLength {whole rest : LocalAssembly} {base : Nat}
+    {resolved : Assembly}
+    (hresolve : resolveFrom? whole base rest = some resolved) :
+    resolved.byteLength = rest.byteLength := by
+  induction rest generalizing resolved with
+  | nil =>
+      simp [resolveFrom?] at hresolve
+      subst resolved
+      rfl
+  | cons item tail ih =>
+      cases hitem : resolveItem? whole base item with
+      | none => simp [resolveFrom?, hitem] at hresolve
+      | some head =>
+          cases htail : resolveFrom? whole base tail with
+          | none => simp [resolveFrom?, hitem, htail] at hresolve
+          | some suffix =>
+              simp only [resolveFrom?, hitem, htail,
+                Option.some.injEq] at hresolve
+              subst resolved
+              rw [Assembly.byteLength_append,
+                resolveItem?_byteLength hitem, ih htail]
+              simp [LocalAssembly.byteLength]
 /-- Successful whole-fragment resolution preserves byte length. -/
 theorem resolveAt_byteLength {base : Nat} {program : LocalAssembly}
     {resolved : Assembly} (hresolve : resolveAt base program = some resolved) :
     resolved.byteLength = program.byteLength := by
+  exact resolveFrom?_byteLength hresolve
+
+/-- A straight-line assembly fragment embedded in a symbolic handler remains
+the exact fragment after successful resolution. The resolved prefix has the
+same byte length as its symbolic source. -/
+theorem resolveAt_decomposition
+    {base : Nat} {program pre suffix : LocalAssembly}
+    {fragment resolved : Assembly}
+    (hprogram : program = pre ++ ofAssembly fragment ++ suffix)
+    (hresolve : resolveAt base program = some resolved) :
+    ∃ preCode suffixCode,
+      resolved = preCode ++ fragment ++ suffixCode ∧
+      preCode.byteLength = pre.byteLength := by
+  subst program
+  rw [List.append_assoc] at hresolve
   unfold resolveAt at hresolve
-  have resolveFrom_correct :
-      ∀ (rest : LocalAssembly) (code : Assembly),
-        resolveFrom? program base rest = some code →
-          code.byteLength = rest.byteLength := by
-    intro rest
-    induction rest with
-    | nil =>
-        intro code hcode
-        simp [resolveFrom?] at hcode
-        subst code
-        rfl
-    | cons item tail ih =>
-        intro code hcode
-        cases hitem : resolveItem? program base item with
-        | none => simp [resolveFrom?, hitem] at hcode
-        | some head =>
-            cases htail : resolveFrom? program base tail with
-            | none => simp [resolveFrom?, hitem, htail] at hcode
-            | some suffix =>
-                simp only [resolveFrom?, hitem, htail,
-                  Option.some.injEq] at hcode
-                subst code
-                rw [Assembly.byteLength_append,
-                  resolveItem?_byteLength hitem, ih suffix htail]
-                simp [LocalAssembly.byteLength]
-  exact resolveFrom_correct program resolved hresolve
+  rw [resolveFrom?_append, resolveFrom?_append,
+    resolveFrom?_ofAssembly] at hresolve
+  cases hpre : resolveFrom? (pre ++ (ofAssembly fragment ++ suffix)) base pre with
+  | none => simp [hpre] at hresolve
+  | some preCode =>
+      cases hsuffix : resolveFrom? (pre ++ (ofAssembly fragment ++ suffix)) base
+          suffix with
+      | none => simp [hpre, hsuffix] at hresolve
+      | some suffixCode =>
+          simp only [hpre, hsuffix, Option.some.injEq] at hresolve
+          subst resolved
+          refine ⟨preCode, suffixCode, ?_, ?_⟩
+          · simp [List.append_assoc]
+          · exact resolveFrom?_byteLength hpre
 
 end LocalAssembly
 
