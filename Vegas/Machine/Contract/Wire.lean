@@ -50,6 +50,33 @@ theorem encode_injective (codec : WireCodec α Wire) :
   have hdecode := congrArg codec.decode heq
   simpa [codec.decode_encode] using hdecode
 
+/-- A decoder is canonical when every accepted wire value is exactly the
+encoder output of the value it decodes to. This excludes accepted aliases. -/
+structure Canonical (codec : WireCodec α Wire) : Prop where
+  encode_decode : ∀ wire value,
+    codec.decode wire = some value → codec.encode value = wire
+
+namespace Canonical
+
+variable {codec : WireCodec α Wire}
+
+theorem decode_eq_some_iff (canonical : Canonical codec)
+    (wire : Wire) (value : α) :
+    codec.decode wire = some value ↔ wire = codec.encode value := by
+  constructor
+  · intro hdecode
+    exact (canonical.encode_decode wire value hdecode).symm
+  · intro hencode
+    subst wire
+    exact codec.decode_encode value
+
+end Canonical
+
+/-- Identity representation accepts only its unique canonical value. -/
+theorem identity_canonical (α : Type) : Canonical (identity α) where
+  encode_decode wire value hdecode := by
+    simpa [identity] using (Option.some.inj hdecode).symm
+
 end WireCodec
 
 namespace ConfiguredContract

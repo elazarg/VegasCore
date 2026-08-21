@@ -577,6 +577,8 @@ noncomputable def matchingPenniesEVMByteBackend :
   selectors := matchingPenniesClassicalSelectors
   players := Machine.Contract.EVM.indexWordCodec 2 (by
     norm_num [Machine.Contract.EVM.IndexFitsWord])
+  playersCanonical := Machine.Contract.EVM.indexWordCodec_canonical 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsWord])
   nodesFit := by
     change (Machine.compile matchingPenniesProgram).graph.nodeCount ≤ 2 ^ 256
     change matchingPenniesMachine.graph.nodeCount ≤ 2 ^ 256
@@ -608,6 +610,8 @@ noncomputable def emptyEVMByteBackend :
   classical := emptyClassicalBackend
   selectors := matchingPenniesClassicalSelectors
   players := Machine.Contract.EVM.indexWordCodec 2 (by
+    norm_num [Machine.Contract.EVM.IndexFitsWord])
+  playersCanonical := Machine.Contract.EVM.indexWordCodec_canonical 2 (by
     norm_num [Machine.Contract.EVM.IndexFitsWord])
   nodesFit := by
     change emptyMachine.graph.nodeCount ≤ 2 ^ 256

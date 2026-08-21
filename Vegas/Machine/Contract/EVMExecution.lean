@@ -26,8 +26,7 @@ namespace Vegas.Machine.Contract.EVM
 
 /-- Interpret a big-endian byte string as one 256-bit EVM word. -/
 def bytesToWord (bytes : List Byte) : Word :=
-  BitVec.ofNat 256 <|
-    bytes.foldl (fun value next => value * 256 + next.toNat) 0
+  BitVec.setWidth 256 (BitVec.flattenList bytes)
 
 /-- Read a fixed number of bytes, padding beyond the input with zero. -/
 def readBytes (bytes : List Byte) (offset count : Nat) : List Byte :=
@@ -61,6 +60,206 @@ def ByteCalldata.bytes (calldata : ByteCalldata) : List Byte :=
 @[simp] theorem ByteCalldata.bytes_length (calldata : ByteCalldata) :
     calldata.bytes.length = calldata.byteLength := by
   simp [ByteCalldata.bytes]
+
+/-- Byte serialization followed by bitvector concatenation recovers the
+dependent calldata bitstring exactly. -/
+theorem ByteCalldata.flatten_bytes (calldata : ByteCalldata) :
+    BitVec.cast (by simp) (BitVec.flattenList calldata.bytes) =
+      calldata.bits := by
+  apply BitVec.eq_of_getMsbD_eq
+  intro index hindex
+  have hbyte : index / 8 < calldata.byteLength := by omega
+  have hmod : index % 8 < 8 := Nat.mod_lt _ (by omega)
+  have hdecomp : 8 * (index / 8) + index % 8 = index :=
+    Nat.div_add_mod index 8
+  have hwithin :
+      8 * (calldata.byteLength - 1 - index / 8) + 8 - index % 8 ≤
+        8 * calldata.byteLength := by omega
+  simp only [BitVec.getMsbD_cast, BitVec.getMsbD_flattenList,
+    ByteCalldata.bytes, List.getElem?_ofFn, hbyte]
+  rw [dif_pos (by trivial)]
+  simp only [Option.getD_some,
+    BitVec.getMsbD_extractLsb', hmod, hwithin, decide_true, Bool.true_and]
+  apply congrArg calldata.bits.getMsbD
+  omega
+
+/-- An in-bounds EVM word load from serialized calldata is the corresponding
+256-bit slice of its dependent bitstring. -/
+theorem ByteCalldata.calldataLoad_eq_extract (calldata : ByteCalldata)
+    (offset : Nat) (hbound : offset + 32 ≤ calldata.byteLength) :
+    calldataLoad calldata.bytes offset =
+      calldata.bits.extractLsb'
+        (8 * (calldata.byteLength - (offset + 32))) 256 := by
+  apply BitVec.eq_of_getMsbD_eq
+  intro index hindex
+  have hwordByte : index / 8 < 32 := by omega
+  have hsourceByte : offset + index / 8 < calldata.byteLength := by omega
+  have hmod : index % 8 < 8 := Nat.mod_lt _ (by omega)
+  have hdecomp : 8 * (index / 8) + index % 8 = index :=
+    Nat.div_add_mod index 8
+  have hleftWithin :
+      8 * (calldata.byteLength - 1 - (offset + index / 8)) + 8 -
+          index % 8 ≤
+        8 * calldata.byteLength := by omega
+  have hrightWithin :
+      8 * (calldata.byteLength - (offset + 32)) + 256 - index ≤
+        8 * calldata.byteLength := by omega
+  simp only [calldataLoad, bytesToWord, BitVec.getMsbD_setWidth,
+    readBytes_length, Nat.reduceMul, Nat.sub_self, Nat.zero_le,
+    decide_true, Bool.true_and, Nat.add_sub_cancel,
+    BitVec.getMsbD_flattenList]
+  simp only [readBytes, List.getElem?_ofFn, hwordByte,
+    ByteCalldata.bytes, hsourceByte]
+  rw [dif_pos (by trivial), dif_pos (by trivial)]
+  simp only [Option.getD_some, BitVec.getMsbD_extractLsb', hmod,
+    hleftWithin, hindex, hrightWithin, decide_true, Bool.true_and]
+  apply congrArg calldata.bits.getMsbD
+  omega
+
+namespace ClassicalABI
+
+open EventGraph
+
+variable {Player ValueWord : Type}
+variable [DecidableEq Player]
+variable {L : IExpr} {program : Program Player L}
+
+/-- Linked dispatch compares selectors as zero-extended EVM words. -/
+def selectorWord (selector : Selector) : Word :=
+  BitVec.ofNat 256 selector.toNat
+
+/-- Taking the leading 32 bytes and applying the dispatcher shift recovers
+the zero-extended selector independently of following calldata. -/
+theorem selectorWord_extract_append (selector : Selector)
+    {tailWidth : Nat} (tail : BitVec tailWidth)
+    (htail : 224 ≤ tailWidth) :
+    (selector ++ tail).extractLsb' (tailWidth - 224) 256 >>> 224 =
+      selectorWord selector := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro index hindex
+  have hposition : tailWidth - 224 + (224 + index) =
+      tailWidth + index := by omega
+  by_cases hbit : selector.getLsbD index = true
+  · have hselector := BitVec.lt_of_getLsbD hbit
+    simp [BitVec.getLsbD_extractLsb', selectorWord,
+      BitVec.getLsbD_append, hindex, hposition, hbit]
+    omega
+  · simp [BitVec.getLsbD_extractLsb', selectorWord,
+      BitVec.getLsbD_append, hindex, hposition, hbit]
+
+set_option exponentiation.threshold 1024 in
+@[simp] theorem calldataSelector_encodeBytes_player
+    (abi : ClassicalABI program ValueWord)
+    (message : Blockchain.PlayerMessage program ValueWord) :
+    calldataLoad (abi.encodeBytes (.player message)).bytes 0 >>> 224 =
+      selectorWord abi.selectors.player := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 0 (by simp [encodeBytes])]
+  change
+    (BitVec.extractLsb' 544 256
+      (((abi.selectors.player ++ abi.players.encode message.player) ++
+        abi.nodes.encode message.node) ++ abi.values.encode message.value) >>>
+          224) = _
+  rw [BitVec.append_assoc, BitVec.append_assoc]
+  exact selectorWord_extract_append abi.selectors.player
+    (abi.players.encode message.player ++
+      (abi.nodes.encode message.node ++ abi.values.encode message.value))
+    (by norm_num)
+
+@[simp] theorem calldataSelector_encodeBytes_reveal
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalNodeMessage program) :
+    calldataLoad (abi.encodeBytes (.reveal message)).bytes 0 >>> 224 =
+      selectorWord abi.selectors.reveal := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 0 (by simp [encodeBytes])]
+  change (BitVec.extractLsb' 32 256
+    (abi.selectors.reveal ++ abi.nodes.encode message.node) >>> 224) = _
+  exact selectorWord_extract_append abi.selectors.reveal
+    (abi.nodes.encode message.node) (by norm_num)
+
+@[simp] theorem calldataSelector_encodeBytes_sampleRequest
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalNodeMessage program) :
+    calldataLoad (abi.encodeBytes (.sampleRequest message)).bytes 0 >>> 224 =
+      selectorWord abi.selectors.sampleRequest := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 0 (by simp [encodeBytes])]
+  change (BitVec.extractLsb' 32 256
+    (abi.selectors.sampleRequest ++ abi.nodes.encode message.node) >>> 224) = _
+  exact selectorWord_extract_append abi.selectors.sampleRequest
+    (abi.nodes.encode message.node) (by norm_num)
+
+set_option exponentiation.threshold 1024 in
+@[simp] theorem calldataSelector_encodeBytes_oracleCallback
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalOracleMessage program) :
+    calldataLoad (abi.encodeBytes (.oracleCallback message)).bytes 0 >>> 224 =
+      selectorWord abi.selectors.oracleCallback := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 0 (by simp [encodeBytes])]
+  change (((abi.selectors.oracleCallback ++ abi.nodes.encode message.node) ++
+    message.choice).extractLsb' 288 256 >>> 224) = _
+  rw [BitVec.append_assoc]
+  exact selectorWord_extract_append abi.selectors.oracleCallback
+    (abi.nodes.encode message.node ++ message.choice) (by norm_num)
+
+/-- The three player-call arguments occupy their standard EVM word offsets. -/
+@[simp] theorem calldataLoad_encodeBytes_player_player
+    (abi : ClassicalABI program ValueWord)
+    (message : Blockchain.PlayerMessage program ValueWord) :
+    calldataLoad (abi.encodeBytes (.player message)).bytes 4 =
+      abi.players.encode message.player := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 4 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+@[simp] theorem calldataLoad_encodeBytes_player_node
+    (abi : ClassicalABI program ValueWord)
+    (message : Blockchain.PlayerMessage program ValueWord) :
+    calldataLoad (abi.encodeBytes (.player message)).bytes 36 =
+      abi.nodes.encode message.node := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 36 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+@[simp] theorem calldataLoad_encodeBytes_player_value
+    (abi : ClassicalABI program ValueWord)
+    (message : Blockchain.PlayerMessage program ValueWord) :
+    calldataLoad (abi.encodeBytes (.player message)).bytes 68 =
+      abi.values.encode message.value := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 68 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+/-- The one-word internal entry points place their node at byte offset four. -/
+@[simp] theorem calldataLoad_encodeBytes_reveal_node
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalNodeMessage program) :
+    calldataLoad (abi.encodeBytes (.reveal message)).bytes 4 =
+      abi.nodes.encode message.node := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 4 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+@[simp] theorem calldataLoad_encodeBytes_sampleRequest_node
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalNodeMessage program) :
+    calldataLoad (abi.encodeBytes (.sampleRequest message)).bytes 4 =
+      abi.nodes.encode message.node := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 4 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+/-- Callback node and table index occupy the two standard argument words. -/
+@[simp] theorem calldataLoad_encodeBytes_oracleCallback_node
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalOracleMessage program) :
+    calldataLoad (abi.encodeBytes (.oracleCallback message)).bytes 4 =
+      abi.nodes.encode message.node := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 4 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+@[simp] theorem calldataLoad_encodeBytes_oracleCallback_choice
+    (abi : ClassicalABI program ValueWord)
+    (message : ClassicalOracleMessage program) :
+    calldataLoad (abi.encodeBytes (.oracleCallback message)).bytes 36 =
+      message.choice := by
+  rw [ByteCalldata.calldataLoad_eq_extract _ 36 (by simp [encodeBytes])]
+  simp [encodeBytes]
+
+end ClassicalABI
 
 /-- Byte-addressed volatile EVM memory. -/
 abbrev Memory := Nat → Byte
@@ -206,6 +405,11 @@ def Assembly.CodeAt (whole fragment : Assembly) (offset : Nat) : Prop :=
   ∃ pre suffix,
     whole = pre ++ fragment ++ suffix ∧ pre.byteLength = offset
 
+/-- Every complete assembly is its own fragment at byte offset zero. -/
+theorem Assembly.codeAt_self (program : Assembly) :
+    program.CodeAt program 0 := by
+  exact ⟨[], [], by simp, rfl⟩
+
 /-- Successful symbolic resolution places an embedded straight-line fragment
 at the byte offset of its symbolic prefix. -/
 theorem LocalAssembly.resolveAt_codeAt
@@ -258,6 +462,100 @@ theorem Assembly.CodeAt.right {whole left right : Assembly} {offset : Nat}
   refine ⟨pre ++ left, suffix, ?_, ?_⟩
   · simpa [List.append_assoc] using hwhole
   · rw [Assembly.byteLength_append, hoffset]
+
+/-- The complete selector dispatcher is the leading fragment of a linked
+classical runtime. -/
+theorem classicalRuntime_dispatcher_codeAt (selectors : ClassicalSelectors)
+    (handlers : ClassicalHandlers) :
+    Assembly.CodeAt (classicalRuntimeAssembly selectors handlers)
+      (classicalDispatcher selectors handlers) 0 := by
+  refine ⟨[], handlers.block .player ++ handlers.block .reveal ++
+    handlers.block .sampleRequest ++ handlers.block .oracleCallback, ?_, rfl⟩
+  simp [classicalRuntimeAssembly, List.append_assoc]
+
+/-- Each linked handler block begins at its statically computed public jump
+destination. -/
+theorem classicalRuntime_block_codeAt (selectors : ClassicalSelectors)
+    (handlers : ClassicalHandlers) (entry : ClassicalEntry) :
+    Assembly.CodeAt (classicalRuntimeAssembly selectors handlers)
+      (handlers.block entry) (classicalEntryOffset handlers entry) := by
+  cases entry with
+  | player =>
+      refine ⟨classicalDispatcher selectors handlers,
+        handlers.block .reveal ++ handlers.block .sampleRequest ++
+          handlers.block .oracleCallback, ?_, ?_⟩
+      · simp [classicalRuntimeAssembly, List.append_assoc]
+      · simp [classicalEntryOffset]
+  | reveal =>
+      refine ⟨classicalDispatcher selectors handlers ++ handlers.block .player,
+        handlers.block .sampleRequest ++ handlers.block .oracleCallback,
+        ?_, ?_⟩
+      · simp [classicalRuntimeAssembly, List.append_assoc]
+      · simp [Assembly.byteLength_append, classicalEntryOffset]
+  | sampleRequest =>
+      refine ⟨classicalDispatcher selectors handlers ++ handlers.block .player ++
+          handlers.block .reveal,
+        handlers.block .oracleCallback, ?_, ?_⟩
+      · simp [classicalRuntimeAssembly, List.append_assoc]
+      · simp [Assembly.byteLength_append, classicalEntryOffset]
+        omega
+  | oracleCallback =>
+      refine ⟨classicalDispatcher selectors handlers ++ handlers.block .player ++
+          handlers.block .reveal ++ handlers.block .sampleRequest,
+        [], ?_, ?_⟩
+      · simp [classicalRuntimeAssembly, List.append_assoc]
+      · simp [Assembly.byteLength_append, classicalEntryOffset]
+        omega
+
+/-- The fixed dispatcher fragments occur at offsets 0, 6, 19, 32, and 45 in
+every linked classical runtime. -/
+theorem classicalRuntime_dispatchPrelude_codeAt
+    (selectors : ClassicalSelectors) (handlers : ClassicalHandlers) :
+    Assembly.CodeAt (classicalRuntimeAssembly selectors handlers)
+      classicalDispatchPrelude 0 := by
+  have h := classicalRuntime_dispatcher_codeAt selectors handlers
+  have hdecomp : classicalDispatcher selectors handlers =
+      classicalDispatchPrelude ++
+        (classicalDispatchBranch selectors.player
+          (classicalEntryOffset handlers .player) ++
+        (classicalDispatchBranch selectors.reveal
+          (classicalEntryOffset handlers .reveal) ++
+        (classicalDispatchBranch selectors.sampleRequest
+          (classicalEntryOffset handlers .sampleRequest) ++
+        (classicalDispatchBranch selectors.oracleCallback
+          (classicalEntryOffset handlers .oracleCallback) ++
+          classicalDispatchFallback)))) := by
+    simp [classicalDispatcher, List.append_assoc]
+  rw [hdecomp] at h
+  exact h.left
+
+theorem classicalRuntime_dispatchBranch_codeAt
+    (selectors : ClassicalSelectors) (handlers : ClassicalHandlers)
+    (entry : ClassicalEntry) :
+    Assembly.CodeAt (classicalRuntimeAssembly selectors handlers)
+      (classicalDispatchBranch
+        (selectors.get entry)
+        (classicalEntryOffset handlers entry))
+      (6 + 13 * entry.dispatchIndex) := by
+  have h := classicalRuntime_dispatcher_codeAt selectors handlers
+  have hdecomp : classicalDispatcher selectors handlers =
+      classicalDispatchPrelude ++
+        (classicalDispatchBranch selectors.player
+          (classicalEntryOffset handlers .player) ++
+        (classicalDispatchBranch selectors.reveal
+          (classicalEntryOffset handlers .reveal) ++
+        (classicalDispatchBranch selectors.sampleRequest
+          (classicalEntryOffset handlers .sampleRequest) ++
+        (classicalDispatchBranch selectors.oracleCallback
+          (classicalEntryOffset handlers .oracleCallback) ++
+          classicalDispatchFallback)))) := by
+    simp [classicalDispatcher, List.append_assoc]
+  rw [hdecomp] at h
+  cases entry with
+  | player => simpa using h.right.left
+  | reveal => simpa using h.right.right.left
+  | sampleRequest => simpa using h.right.right.right.left
+  | oracleCallback => simpa using h.right.right.right.right.left
 
 /-- Whether a byte destination is a valid `JUMPDEST`. -/
 def Assembly.validJumpDest (program : Assembly) (destination : Nat) : Bool :=
@@ -521,6 +819,460 @@ theorem StraightRun.run_eq {program fragment : Assembly} {env : ExecutionEnv}
       have htail := hcode.tail
       rw [← hpc] at htail
       exact htail
+
+/-- The fixed dispatcher prefix extracts the high four calldata bytes and
+retains their zero-extended selector word on the stack. -/
+theorem run_classicalDispatchPrelude (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (selector : Selector)
+    (hrunning : state.exit = none)
+    (hload : calldataLoad env.calldata 0 >>> 224 =
+      ClassicalABI.selectorWord selector)
+    (hcode : Assembly.CodeAt whole classicalDispatchPrelude state.pc) :
+    run 4 whole env state =
+      { state with
+        pc := state.pc + 6
+        stack := ClassicalABI.selectorWord selector :: state.stack } := by
+  have hload' : calldataLoad env.calldata 0 >>> 224 =
+      BitVec.setWidth 256 selector := by
+    simpa [ClassicalABI.selectorWord] using hload
+  have hbyte224 : (byte 224).toNat = 224 := by
+    norm_num [byte]
+  apply StraightRun.run_eq ?_ hcode
+  simp [classicalDispatchPrelude, StraightRun, stepInstruction, advance,
+    hrunning, hload', hbyte224, ClassicalABI.selectorWord,
+    Instruction.byteLength]
+
+/-- A nonmatching selector branch falls through while retaining the original
+selector word for subsequent comparisons. -/
+theorem run_classicalDispatchBranch_miss (whole : Assembly)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (actual expected : Selector) (destination : Nat)
+    (hrunning : state.exit = none) (hstack : state.stack =
+      ClassicalABI.selectorWord actual :: [])
+    (hne : actual ≠ expected)
+    (hcode : Assembly.CodeAt whole
+      (classicalDispatchBranch expected destination) state.pc) :
+    run 5 whole env state =
+      { state with pc := state.pc + 13 } := by
+  have hword : ClassicalABI.selectorWord actual ≠
+      ClassicalABI.selectorWord expected := by
+    intro heq
+    apply hne
+    have heq' := congrArg (BitVec.setWidth 32) heq
+    simpa [ClassicalABI.selectorWord] using heq'
+  have hsetWidth : BitVec.setWidth 256 actual ≠
+      BitVec.setWidth 256 expected := by
+    simpa [ClassicalABI.selectorWord] using hword
+  apply StraightRun.run_eq ?_ hcode
+  simp [StraightRun, classicalDispatchBranch, stepInstruction, advance,
+    hrunning, hstack, hsetWidth, boolWord, ClassicalABI.selectorWord,
+    Instruction.byteLength]
+
+/-- A matching selector branch jumps to its certified handler destination and
+retains the selector word for the handler block prefix. -/
+theorem run_classicalDispatchBranch_hit (whole : Assembly)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (selector : Selector) (destination : Nat)
+    (hrunning : state.exit = none) (hstack : state.stack =
+      ClassicalABI.selectorWord selector :: [])
+    (hdestination : destination < 2 ^ 32)
+    (hcode : Assembly.CodeAt whole
+      (classicalDispatchBranch selector destination) state.pc)
+    (htarget : Assembly.CodeAt whole [.jumpdest] destination) :
+    run 5 whole env state =
+      { state with pc := destination } := by
+  let setup : Assembly :=
+    [ .dup ⟨0, by decide⟩,
+      .push (.selector selector),
+      .eq,
+      .push (.nat32 destination) ]
+  let beforeJump : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := (PushData.nat32 destination).value :: 1 ::
+        ClassicalABI.selectorWord selector :: [] }
+  have hdecomp : classicalDispatchBranch selector destination =
+      setup ++ [.jumpi] := by rfl
+  rw [hdecomp] at hcode
+  have hsetup : Assembly.CodeAt whole setup state.pc := hcode.left
+  have hjump : Assembly.CodeAt whole [.jumpi]
+      (state.pc + setup.byteLength) := hcode.right
+  have hstraight : StraightRun whole env setup state beforeJump := by
+    simp [StraightRun, setup, beforeJump, stepInstruction, advance,
+      hrunning, hstack, boolWord, ClassicalABI.selectorWord,
+      Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length whole env state = beforeJump :=
+    hstraight.run_eq hsetup
+  have hbeforeRunning : beforeJump.exit = none := by
+    simp [beforeJump, hrunning]
+  have hjump' : Assembly.CodeAt whole [.jumpi] beforeJump.pc := by
+    simpa [beforeJump] using hjump
+  have hvalid : whole.validJumpDest destination = true := by
+    simp [Assembly.validJumpDest, Assembly.fetch?_of_codeAt htarget]
+  have hdestinationValue :
+      (PushData.nat32 destination).value.toNat = destination :=
+    PushData.nat32_value_toNat_of_lt hdestination
+  have hrunJump : run 1 whole env beforeJump =
+      { state with pc := destination } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hjump']
+    simp only [run]
+    change
+      (if whole.validJumpDest
+          (PushData.nat32 destination).value.toNat then
+        { beforeJump with
+          pc := (PushData.nat32 destination).value.toNat
+          stack := ClassicalABI.selectorWord selector :: [] }
+       else fault beforeJump) = { state with pc := destination }
+    rw [hdestinationValue, hvalid]
+    simp [beforeJump, hstack]
+  rw [show 5 = setup.length + 1 by simp [setup]]
+  rw [run_add, hrunSetup, hrunJump]
+
+/-- The linked `JUMPDEST; POP` block prefix restores the empty handler stack
+and enters the handler body two bytes after its public destination. -/
+theorem run_classicalHandlerPrefix (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (selector : Selector)
+    (handler : Assembly) (hrunning : state.exit = none)
+    (hstack : state.stack = ClassicalABI.selectorWord selector :: [])
+    (hcode : Assembly.CodeAt whole
+      ([.jumpdest, .pop] ++ handler) state.pc) :
+    run 2 whole env state =
+      { state with pc := state.pc + 2, stack := [] } := by
+  apply StraightRun.run_eq ?_ hcode.left
+  simp [StraightRun, stepInstruction, advance, hrunning, hstack,
+    Instruction.byteLength]
+
+namespace RuntimeImage
+
+variable {selectors : ClassicalSelectors}
+
+/-- From the selected comparison branch, a matching selector enters that
+handler body after the taken jump and `JUMPDEST; POP` prefix. -/
+theorem run_enter_from_branch (image : RuntimeImage selectors)
+    (entry : ClassicalEntry) (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none)
+    (hpc : state.pc = 6 + 13 * entry.dispatchIndex)
+    (hstack : state.stack =
+      ClassicalABI.selectorWord (selectors.get entry) :: []) :
+    run 7 image.assembly env state =
+      { state with
+        pc := classicalEntryOffset image.handlers.handlers entry + 2
+        stack := [] } := by
+  let handlers := image.handlers.handlers
+  let destination := classicalEntryOffset handlers entry
+  let afterBranch : ExecutionState :=
+    { state with
+      pc := destination
+      stack := ClassicalABI.selectorWord (selectors.get entry) :: [] }
+  have hbranchCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch (selectors.get entry) destination) state.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers entry
+    simpa [RuntimeImage.assembly, hpc, destination] using hcode
+  have hblock : Assembly.CodeAt image.assembly
+      (handlers.block entry) destination := by
+    simpa [RuntimeImage.assembly, destination] using
+      classicalRuntime_block_codeAt selectors handlers entry
+  have hblock' : Assembly.CodeAt image.assembly
+      ([.jumpdest] ++ ([.pop] ++ handlers.get entry)) destination := by
+    simpa [ClassicalHandlers.block, List.append_assoc] using hblock
+  have htarget : Assembly.CodeAt image.assembly [.jumpdest] destination :=
+    hblock'.left
+  have hrunBranch : run 5 image.assembly env state = afterBranch := by
+    have hrun := run_classicalDispatchBranch_hit image.assembly env state
+      (selectors.get entry) destination hrunning hstack
+      (image.handlers.entryOffset_fits entry) hbranchCode htarget
+    simpa [afterBranch, hstack] using hrun
+  have hprefixCode : Assembly.CodeAt image.assembly
+      ([.jumpdest, .pop] ++ handlers.get entry) afterBranch.pc := by
+    simpa [afterBranch, List.append_assoc] using hblock'
+  have hrunPrefix : run 2 image.assembly env afterBranch =
+      { afterBranch with pc := afterBranch.pc + 2, stack := [] } := by
+    apply run_classicalHandlerPrefix image.assembly env afterBranch
+      (selectors.get entry) (handlers.get entry)
+    · simp [afterBranch, hrunning]
+    · simp [afterBranch]
+    · exact hprefixCode
+  rw [show 7 = 5 + 2 by omega, run_add, hrunBranch, hrunPrefix]
+
+/-- A player selector enters the linked player-handler body with an empty
+stack after exactly the dispatcher path and block prefix. -/
+theorem run_enter_player (image : RuntimeImage selectors)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none) (hpc : state.pc = 0)
+    (hstack : state.stack = [])
+    (hselector : calldataLoad env.calldata 0 >>> 224 =
+      ClassicalABI.selectorWord selectors.player) :
+    run 11 image.assembly env state =
+      { state with
+        pc := classicalEntryOffset image.handlers.handlers .player + 2
+        stack := [] } := by
+  let handlers := image.handlers.handlers
+  let destination := classicalEntryOffset handlers .player
+  let afterPrelude : ExecutionState :=
+    { state with
+      pc := 6
+      stack := ClassicalABI.selectorWord selectors.player :: [] }
+  let afterBranch : ExecutionState :=
+    { state with
+      pc := destination
+      stack := ClassicalABI.selectorWord selectors.player :: [] }
+  have hpreludeCode : Assembly.CodeAt image.assembly
+      classicalDispatchPrelude state.pc := by
+    simpa [RuntimeImage.assembly, hpc] using
+      classicalRuntime_dispatchPrelude_codeAt selectors handlers
+  have hrunPrelude : run 4 image.assembly env state = afterPrelude := by
+    have hrun := run_classicalDispatchPrelude image.assembly env state
+      selectors.player hrunning hselector hpreludeCode
+    simpa [afterPrelude, hpc, hstack] using hrun
+  have hbranchCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.player destination)
+      afterPrelude.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .player
+    simpa [RuntimeImage.assembly, afterPrelude, destination] using hcode
+  have hblock : Assembly.CodeAt image.assembly
+      (handlers.block .player) destination := by
+    simpa [RuntimeImage.assembly, destination] using
+      classicalRuntime_block_codeAt selectors handlers .player
+  have htarget : Assembly.CodeAt image.assembly [.jumpdest] destination := by
+    have hblock' : Assembly.CodeAt image.assembly
+        ([.jumpdest] ++ ([.pop] ++ handlers.player)) destination := by
+      simpa [ClassicalHandlers.block, ClassicalHandlers.get,
+        List.append_assoc] using hblock
+    exact hblock'.left
+  have hrunBranch : run 5 image.assembly env afterPrelude = afterBranch := by
+    have hrun := run_classicalDispatchBranch_hit image.assembly env
+      afterPrelude selectors.player destination (by
+        simp [afterPrelude, hrunning]) (by simp [afterPrelude])
+      (image.handlers.entryOffset_fits .player) hbranchCode htarget
+    simpa [afterBranch] using hrun
+  have hprefixCode : Assembly.CodeAt image.assembly
+      ([.jumpdest, .pop] ++ handlers.player) afterBranch.pc := by
+    simpa [ClassicalHandlers.block, ClassicalHandlers.get, afterBranch] using
+      hblock
+  have hrunPrefix : run 2 image.assembly env afterBranch =
+      { afterBranch with pc := afterBranch.pc + 2, stack := [] } := by
+    apply run_classicalHandlerPrefix image.assembly env afterBranch
+      selectors.player handlers.player
+    · simp [afterBranch, hrunning]
+    · simp [afterBranch]
+    · exact hprefixCode
+  rw [show 11 = 4 + (5 + 2) by omega, run_add, hrunPrelude,
+    run_add, hrunBranch, hrunPrefix]
+
+/-- A reveal selector passes the player comparison and enters the linked
+reveal-handler body with an empty stack. -/
+theorem run_enter_reveal (image : RuntimeImage selectors)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none) (hpc : state.pc = 0)
+    (hstack : state.stack = [])
+    (hselector : calldataLoad env.calldata 0 >>> 224 =
+      ClassicalABI.selectorWord selectors.reveal) :
+    run 16 image.assembly env state =
+      { state with
+        pc := classicalEntryOffset image.handlers.handlers .reveal + 2
+        stack := [] } := by
+  let handlers := image.handlers.handlers
+  let afterPrelude : ExecutionState :=
+    { state with
+      pc := 6
+      stack := ClassicalABI.selectorWord selectors.reveal :: [] }
+  let afterPlayer : ExecutionState :=
+    { state with
+      pc := 19
+      stack := ClassicalABI.selectorWord selectors.reveal :: [] }
+  have hpreludeCode : Assembly.CodeAt image.assembly
+      classicalDispatchPrelude state.pc := by
+    simpa [RuntimeImage.assembly, hpc] using
+      classicalRuntime_dispatchPrelude_codeAt selectors handlers
+  have hrunPrelude : run 4 image.assembly env state = afterPrelude := by
+    have hrun := run_classicalDispatchPrelude image.assembly env state
+      selectors.reveal hrunning hselector hpreludeCode
+    simpa [afterPrelude, hpc, hstack] using hrun
+  have hplayerCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.player
+        (classicalEntryOffset handlers .player)) afterPrelude.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .player
+    simpa [RuntimeImage.assembly, afterPrelude] using hcode
+  have hrunPlayer : run 5 image.assembly env afterPrelude = afterPlayer := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterPrelude selectors.reveal selectors.player
+      (classicalEntryOffset handlers .player)
+      (by simp [afterPrelude, hrunning]) (by simp [afterPrelude])
+      (Ne.symm selectors.player_ne_reveal) hplayerCode
+    simpa [afterPlayer] using hrun
+  have hrunSelected : run 7 image.assembly env afterPlayer =
+      { afterPlayer with
+        pc := classicalEntryOffset handlers .reveal + 2
+        stack := [] } := by
+    apply run_enter_from_branch image .reveal env afterPlayer
+    · simp [afterPlayer, hrunning]
+    · simp [afterPlayer]
+    · simp [afterPlayer]
+  rw [show 16 = 4 + (5 + 7) by omega, run_add, hrunPrelude,
+    run_add, hrunPlayer, hrunSelected]
+
+/-- A sample-request selector passes both preceding comparisons and enters
+the linked request-handler body with an empty stack. -/
+theorem run_enter_sampleRequest (image : RuntimeImage selectors)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none) (hpc : state.pc = 0)
+    (hstack : state.stack = [])
+    (hselector : calldataLoad env.calldata 0 >>> 224 =
+      ClassicalABI.selectorWord selectors.sampleRequest) :
+    run 21 image.assembly env state =
+      { state with
+        pc := classicalEntryOffset image.handlers.handlers .sampleRequest + 2
+        stack := [] } := by
+  let handlers := image.handlers.handlers
+  let afterPrelude : ExecutionState :=
+    { state with
+      pc := 6
+      stack := ClassicalABI.selectorWord selectors.sampleRequest :: [] }
+  let afterPlayer : ExecutionState :=
+    { state with
+      pc := 19
+      stack := ClassicalABI.selectorWord selectors.sampleRequest :: [] }
+  let afterReveal : ExecutionState :=
+    { state with
+      pc := 32
+      stack := ClassicalABI.selectorWord selectors.sampleRequest :: [] }
+  have hpreludeCode : Assembly.CodeAt image.assembly
+      classicalDispatchPrelude state.pc := by
+    simpa [RuntimeImage.assembly, hpc] using
+      classicalRuntime_dispatchPrelude_codeAt selectors handlers
+  have hrunPrelude : run 4 image.assembly env state = afterPrelude := by
+    have hrun := run_classicalDispatchPrelude image.assembly env state
+      selectors.sampleRequest hrunning hselector hpreludeCode
+    simpa [afterPrelude, hpc, hstack] using hrun
+  have hplayerCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.player
+        (classicalEntryOffset handlers .player)) afterPrelude.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .player
+    simpa [RuntimeImage.assembly, afterPrelude] using hcode
+  have hrunPlayer : run 5 image.assembly env afterPrelude = afterPlayer := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterPrelude selectors.sampleRequest selectors.player
+      (classicalEntryOffset handlers .player)
+      (by simp [afterPrelude, hrunning]) (by simp [afterPrelude])
+      (Ne.symm selectors.player_ne_sampleRequest) hplayerCode
+    simpa [afterPlayer] using hrun
+  have hrevealCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.reveal
+        (classicalEntryOffset handlers .reveal)) afterPlayer.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .reveal
+    simpa [RuntimeImage.assembly, afterPlayer] using hcode
+  have hrunReveal : run 5 image.assembly env afterPlayer = afterReveal := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterPlayer selectors.sampleRequest selectors.reveal
+      (classicalEntryOffset handlers .reveal)
+      (by simp [afterPlayer, hrunning]) (by simp [afterPlayer])
+      (Ne.symm selectors.reveal_ne_sampleRequest) hrevealCode
+    simpa [afterReveal] using hrun
+  have hrunSelected : run 7 image.assembly env afterReveal =
+      { afterReveal with
+        pc := classicalEntryOffset handlers .sampleRequest + 2
+        stack := [] } := by
+    apply run_enter_from_branch image .sampleRequest env afterReveal
+    · simp [afterReveal, hrunning]
+    · simp [afterReveal]
+    · simp [afterReveal]
+  rw [show 21 = 4 + (5 + (5 + 7)) by omega, run_add, hrunPrelude,
+    run_add, hrunPlayer, run_add, hrunReveal, hrunSelected]
+
+/-- An oracle-callback selector passes all preceding comparisons and enters
+the linked callback-handler body with an empty stack. -/
+theorem run_enter_oracleCallback (image : RuntimeImage selectors)
+    (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none) (hpc : state.pc = 0)
+    (hstack : state.stack = [])
+    (hselector : calldataLoad env.calldata 0 >>> 224 =
+      ClassicalABI.selectorWord selectors.oracleCallback) :
+    run 26 image.assembly env state =
+      { state with
+        pc := classicalEntryOffset image.handlers.handlers .oracleCallback + 2
+        stack := [] } := by
+  let handlers := image.handlers.handlers
+  let afterPrelude : ExecutionState :=
+    { state with
+      pc := 6
+      stack := ClassicalABI.selectorWord selectors.oracleCallback :: [] }
+  let afterPlayer : ExecutionState :=
+    { state with
+      pc := 19
+      stack := ClassicalABI.selectorWord selectors.oracleCallback :: [] }
+  let afterReveal : ExecutionState :=
+    { state with
+      pc := 32
+      stack := ClassicalABI.selectorWord selectors.oracleCallback :: [] }
+  let afterSampleRequest : ExecutionState :=
+    { state with
+      pc := 45
+      stack := ClassicalABI.selectorWord selectors.oracleCallback :: [] }
+  have hpreludeCode : Assembly.CodeAt image.assembly
+      classicalDispatchPrelude state.pc := by
+    simpa [RuntimeImage.assembly, hpc] using
+      classicalRuntime_dispatchPrelude_codeAt selectors handlers
+  have hrunPrelude : run 4 image.assembly env state = afterPrelude := by
+    have hrun := run_classicalDispatchPrelude image.assembly env state
+      selectors.oracleCallback hrunning hselector hpreludeCode
+    simpa [afterPrelude, hpc, hstack] using hrun
+  have hplayerCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.player
+        (classicalEntryOffset handlers .player)) afterPrelude.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .player
+    simpa [RuntimeImage.assembly, afterPrelude] using hcode
+  have hrunPlayer : run 5 image.assembly env afterPrelude = afterPlayer := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterPrelude selectors.oracleCallback selectors.player
+      (classicalEntryOffset handlers .player)
+      (by simp [afterPrelude, hrunning]) (by simp [afterPrelude])
+      (Ne.symm selectors.player_ne_oracleCallback) hplayerCode
+    simpa [afterPlayer] using hrun
+  have hrevealCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.reveal
+        (classicalEntryOffset handlers .reveal)) afterPlayer.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .reveal
+    simpa [RuntimeImage.assembly, afterPlayer] using hcode
+  have hrunReveal : run 5 image.assembly env afterPlayer = afterReveal := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterPlayer selectors.oracleCallback selectors.reveal
+      (classicalEntryOffset handlers .reveal)
+      (by simp [afterPlayer, hrunning]) (by simp [afterPlayer])
+      (Ne.symm selectors.reveal_ne_oracleCallback) hrevealCode
+    simpa [afterReveal] using hrun
+  have hsampleCode : Assembly.CodeAt image.assembly
+      (classicalDispatchBranch selectors.sampleRequest
+        (classicalEntryOffset handlers .sampleRequest)) afterReveal.pc := by
+    have hcode := classicalRuntime_dispatchBranch_codeAt selectors handlers
+      .sampleRequest
+    simpa [RuntimeImage.assembly, afterReveal] using hcode
+  have hrunSample : run 5 image.assembly env afterReveal =
+      afterSampleRequest := by
+    have hrun := run_classicalDispatchBranch_miss image.assembly env
+      afterReveal selectors.oracleCallback selectors.sampleRequest
+      (classicalEntryOffset handlers .sampleRequest)
+      (by simp [afterReveal, hrunning]) (by simp [afterReveal])
+      (Ne.symm selectors.sampleRequest_ne_oracleCallback) hsampleCode
+    simpa [afterSampleRequest] using hrun
+  have hrunSelected : run 7 image.assembly env afterSampleRequest =
+      { afterSampleRequest with
+        pc := classicalEntryOffset handlers .oracleCallback + 2
+        stack := [] } := by
+    apply run_enter_from_branch image .oracleCallback env afterSampleRequest
+    · simp [afterSampleRequest, hrunning]
+    · simp [afterSampleRequest]
+    · simp [afterSampleRequest]
+  rw [show 26 = 4 + (5 + (5 + (5 + 7))) by omega,
+    run_add, hrunPrelude, run_add, hrunPlayer, run_add, hrunReveal,
+    run_add, hrunSample, hrunSelected]
+
+end RuntimeImage
 
 /-- The two-instruction pattern used for an event's result write stores the
 existing stack top at the pushed key and otherwise falls through. -/

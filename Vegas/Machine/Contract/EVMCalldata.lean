@@ -140,6 +140,19 @@ def indexWordCodec (count : Nat) (fits : IndexFitsWord count) :
   decode := decodeIndex count
   decode_encode := decodeIndex_encodeIndex fits
 
+/-- The bounded-index decoder accepts no noncanonical word aliases. -/
+theorem indexWordCodec_canonical (count : Nat) (fits : IndexFitsWord count) :
+    WireCodec.Canonical (indexWordCodec count fits) where
+  encode_decode word index hdecode := by
+    change decodeIndex count word = some index at hdecode
+    change encodeIndex index = word
+    unfold decodeIndex at hdecode
+    split at hdecode
+    · cases hdecode
+      apply BitVec.eq_of_toNat_eq
+      simp [encodeIndex]
+    · contradiction
+
 /-- The program has few enough nodes for every valid node index to fit in one
 256-bit unsigned word. -/
 abbrev NodesFitWord (program : Program Player L) : Prop :=
@@ -150,6 +163,11 @@ the explicit 256-bit capacity bound. -/
 def nodeWordCodec (program : Program Player L) (fits : NodesFitWord program) :
     WireCodec (Fin program.graph.nodeCount) Word :=
   indexWordCodec program.graph.nodeCount fits
+
+theorem nodeWordCodec_canonical
+    (program : Program Player L) (fits : NodesFitWord program) :
+    WireCodec.Canonical (nodeWordCodec program fits) :=
+  indexWordCodec_canonical program.graph.nodeCount fits
 
 end Vegas.Machine.Contract.EVM
 

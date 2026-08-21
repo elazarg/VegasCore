@@ -145,6 +145,36 @@ theorem compiledDeployment_structure
       · exact EVM.DeploymentImage.build?_slotCount hcompile
       · exact EVM.DeploymentImage.build?_initialStorage hcompile
 
+/-- For a successfully compiled deployment, finite layout and constructor
+execution are already discharged; ordinary compiler correctness is precisely
+the linked runtime simulation obligation. -/
+theorem compiledDeployment_refines_iff_runtime
+    (backend : EVMByteBackend source Address)
+    (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
+    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+      backend.classical.codec backend.values)
+    (permissionlessReveals :
+      backend.classical.reveals = TriggerPolicy.permissionless)
+    (permissionlessSampleRequests :
+      backend.classical.sampleRequests = TriggerPolicy.permissionless)
+    (deployment : EVM.DeploymentImage backend.selectors)
+    (hcompile :
+      backend.compileBooleanDeployment? usesBool canonical
+          permissionlessReveals permissionlessSampleRequests =
+        some deployment) :
+    DeploymentRefines backend.compile deployment ↔
+      RuntimeRefines backend.compile deployment.runtime := by
+  rcases compiledDeployment_structure backend usesBool canonical
+      permissionlessReveals permissionlessSampleRequests deployment hcompile with
+    ⟨_runtime, _hruntime, _hselected, hslots, hstorage⟩
+  constructor
+  · intro hrefines
+    exact hrefines.2.2.2
+  · intro hruntimeRefines
+    exact ⟨hslots, hstorage,
+      EVM.DeploymentImage.execute_transactionResult deployment,
+      hruntimeRefines⟩
+
 /-- Exact proof obligation for the trusted-oracle Boolean compiler. This is
 ordinary compiler correctness; it does not assert cryptographic secrecy,
 oracle honesty, scheduling fairness, gas availability, or game preservation

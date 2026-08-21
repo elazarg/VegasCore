@@ -399,6 +399,28 @@ inductive ClassicalEntry where
   | oracleCallback
 deriving DecidableEq
 
+namespace ClassicalEntry
+
+/-- Stable zero-based position of an entry in the public dispatcher. -/
+@[simp] def dispatchIndex : ClassicalEntry → Nat
+  | .player => 0
+  | .reveal => 1
+  | .sampleRequest => 2
+  | .oracleCallback => 3
+
+end ClassicalEntry
+
+namespace ClassicalSelectors
+
+/-- Selector assigned to one classical entry point. -/
+@[simp] def get (selectors : ClassicalSelectors) : ClassicalEntry → Selector
+  | .player => selectors.player
+  | .reveal => selectors.reveal
+  | .sampleRequest => selectors.sampleRequest
+  | .oracleCallback => selectors.oracleCallback
+
+end ClassicalSelectors
+
 /-- Independently compiled runtime fragments for the classical ABI. A handler
 is entered with an otherwise empty stack after selector dispatch. -/
 structure ClassicalHandlers where
@@ -466,11 +488,29 @@ def classicalDispatchBranch (selector : Selector) (destination : Nat) :
   simp [classicalDispatchBranch, Assembly.byteLength,
     Instruction.byteLength]
 
+/-- Load and isolate the high four calldata bytes used as the selector. -/
+def classicalDispatchPrelude : Assembly :=
+  [ .push (.one (byte 0)), .calldataload,
+    .push (.one (byte 224)), .shr ]
+
+@[simp] theorem classicalDispatchPrelude_byteLength :
+    classicalDispatchPrelude.byteLength = 6 := by
+  simp [classicalDispatchPrelude, Assembly.byteLength,
+    Instruction.byteLength]
+
+/-- Unknown-selector fallback with empty revert data. -/
+def classicalDispatchFallback : Assembly :=
+  [ .pop, .push (.one (byte 0)), .push (.one (byte 0)), .revert ]
+
+@[simp] theorem classicalDispatchFallback_byteLength :
+    classicalDispatchFallback.byteLength = 6 := by
+  simp [classicalDispatchFallback, Assembly.byteLength,
+    Instruction.byteLength]
+
 /-- The fixed four-way selector dispatcher. -/
 def classicalDispatcher (selectors : ClassicalSelectors)
     (handlers : ClassicalHandlers) : Assembly :=
-  [ .push (.one (byte 0)), .calldataload,
-    .push (.one (byte 224)), .shr ] ++
+  classicalDispatchPrelude ++
   classicalDispatchBranch selectors.player
     (classicalEntryOffset handlers .player) ++
   classicalDispatchBranch selectors.reveal
@@ -479,14 +519,15 @@ def classicalDispatcher (selectors : ClassicalSelectors)
     (classicalEntryOffset handlers .sampleRequest) ++
   classicalDispatchBranch selectors.oracleCallback
     (classicalEntryOffset handlers .oracleCallback) ++
-  [ .pop, .push (.one (byte 0)), .push (.one (byte 0)), .revert ]
+  classicalDispatchFallback
 
 @[simp] theorem classicalDispatcher_byteLength
     (selectors : ClassicalSelectors) (handlers : ClassicalHandlers) :
     (classicalDispatcher selectors handlers).byteLength =
       classicalDispatcherSize := by
   simp only [classicalDispatcher, Assembly.byteLength_append,
-    classicalDispatchBranch_byteLength]
+    classicalDispatchPrelude_byteLength, classicalDispatchBranch_byteLength,
+    classicalDispatchFallback_byteLength]
   norm_num [Assembly.byteLength, Instruction.byteLength,
     classicalDispatcherSize]
 
