@@ -614,22 +614,22 @@ def stepInstruction (program : Assembly) (env : ExecutionEnv)
   | .add | .mul | .sub | .div | .mod | .lt | .gt | .eq | .and | .or |
       .xor | .shl | .shr =>
       match state.stack with
-      | right :: left :: rest =>
+      | top :: next :: rest =>
           let result :=
             match instruction with
-            | .add => left + right
-            | .mul => left * right
-            | .sub => left - right
-            | .div => if right = 0 then 0 else left / right
-            | .mod => if right = 0 then 0 else left % right
-            | .lt => boolWord (left.toNat < right.toNat)
-            | .gt => boolWord (left.toNat > right.toNat)
-            | .eq => boolWord (left = right)
-            | .and => left &&& right
-            | .or => left ||| right
-            | .xor => left ^^^ right
-            | .shl => left <<< right.toNat
-            | .shr => left >>> right.toNat
+            | .add => next + top
+            | .mul => next * top
+            | .sub => top - next
+            | .div => if next = 0 then 0 else top / next
+            | .mod => if next = 0 then 0 else top % next
+            | .lt => boolWord (top.toNat < next.toNat)
+            | .gt => boolWord (top.toNat > next.toNat)
+            | .eq => boolWord (next = top)
+            | .and => next &&& top
+            | .or => next ||| top
+            | .xor => next ^^^ top
+            | .shl => next <<< top.toNat
+            | .shr => next >>> top.toNat
             | _ => 0
           advance state instruction (result :: rest)
       | _ => fault state

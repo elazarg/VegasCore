@@ -696,6 +696,42 @@ def copyReturnExecution : Machine.Contract.EVM.ExecutionState :=
       callValue := 0 }
     Machine.Contract.EVM.freshStorage
 
+def arithmeticExecutionEnv : Machine.Contract.EVM.ExecutionEnv where
+  codeBytes := []
+  calldata := []
+  caller := 0
+  contractAddress := 0
+  callValue := 0
+
+def arithmeticExecutionState (stack : List Machine.Contract.EVM.Word) :
+    Machine.Contract.EVM.ExecutionState :=
+  { Machine.Contract.EVM.ExecutionState.initial
+      Machine.Contract.EVM.freshStorage with stack := stack }
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .sub
+    (arithmeticExecutionState [10, 3])).stack = [7] := by
+  decide
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .div
+    (arithmeticExecutionState [10, 3])).stack = [3] := by
+  decide
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .mod
+    (arithmeticExecutionState [10, 3])).stack = [1] := by
+  decide
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .lt
+    (arithmeticExecutionState [3, 10])).stack = [1] := by
+  decide
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .gt
+    (arithmeticExecutionState [10, 3])).stack = [1] := by
+  decide
+
+example : (Machine.Contract.EVM.stepInstruction [] arithmeticExecutionEnv .shl
+    (arithmeticExecutionState [1, 3])).stack = [6] := by
+  decide
+
 example :
     copyReturnExecution.exit =
       some (.returned
