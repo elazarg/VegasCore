@@ -76,7 +76,7 @@ def compileBoolDistExpr? {Γ : CtxSimple}
   | .ite condition yes no, reject, next =>
       let yesLabel := next
       let doneLabel := next + 1
-      match compileBoolExpr? variableCode condition with
+      match compileBoolExpr? stackLimit variableCode condition with
       | none => none
       | some conditionCode =>
           match compileBoolDistExpr? variableCode no reject

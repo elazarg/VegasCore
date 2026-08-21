@@ -78,6 +78,19 @@ def eval (ρ : PlainEnv Γ) : BoolExprIR Γ → Bool
   | .select condition yes no =>
       if condition.eval ρ then yes.eval ρ else no.eval ρ
 
+/-- Maximum number of additional EVM stack items used while evaluating an
+expression. Variable fragments are required to push exactly one word without
+using more than that one additional item; the concrete calldata and storage
+loaders below satisfy this contract. -/
+def stackHeight : BoolExprIR Γ → Nat
+  | .variable _ _ | .literal _ => 1
+  | .equal left right | .conjunction left right =>
+      max left.stackHeight (1 + right.stackHeight)
+  | .negation expression => expression.stackHeight
+  | .select condition yes no =>
+      max condition.stackHeight
+        (max (1 + no.stackHeight) (2 + yes.stackHeight))
+
 /-- Total straight-line code generation for the accepted Boolean IR. -/
 def compile
     (variableCode :
@@ -164,13 +177,43 @@ def lowerBoolExpr? {Γ : CtxSimple} :
   | _ => none
 
 /-- Compile the supported Boolean `simpleExpr` fragment to straight-line EVM
-assembly. -/
+assembly only when its additional stack high-water mark fits `maxStack`.
+Variable fragments must obey the one-word contract of `BoolExprIR.stackHeight`.
+-/
 def compileBoolExpr?
     {Γ : CtxSimple}
+    (maxStack : Nat)
     (variableCode :
       {name : VarId} → HasVar Γ name .bool → Assembly)
     (source : Expr Γ .bool) : Option Assembly :=
-  (lowerBoolExpr? source).map fun lowered => lowered.ir.compile variableCode
+  match lowerBoolExpr? source with
+  | none => none
+  | some lowered =>
+      if lowered.ir.stackHeight ≤ maxStack then
+        some (lowered.ir.compile variableCode)
+      else
+        none
+
+/-- Successful Boolean lowering is statically bounded by the requested EVM
+stack allowance. -/
+theorem compileBoolExpr?_stackHeight_le
+    {Γ : CtxSimple}
+    {maxStack : Nat}
+    {variableCode :
+      {name : VarId} → HasVar Γ name .bool → Assembly}
+    {source : Expr Γ .bool} {assembly : Assembly}
+    (hcompile :
+      compileBoolExpr? maxStack variableCode source = some assembly) :
+    ∃ lowered, lowerBoolExpr? source = some lowered ∧
+      lowered.ir.stackHeight ≤ maxStack := by
+  unfold compileBoolExpr? at hcompile
+  split at hcompile
+  · contradiction
+  · rename_i lowered hlowered
+    split at hcompile
+    · rename_i hfits
+      exact ⟨lowered, hlowered, hfits⟩
+    · contradiction
 
 /-- The action word is the third player-call argument, starting at byte 68. -/
 def playerActionWord : Assembly := loadCalldataWord 68
@@ -192,15 +235,26 @@ graph field-value cell. -/
 def compileSimpleGuardCode? (code : GuardCode simpleExpr .bool) :
     Option Assembly :=
   compileBoolExpr?
+    (stackLimit - 1)
     (simpleGuardVariableCode code)
     code.expr
 
+/-- Player realization retains the proposed action below guard evaluation, so
+successful guard compilation uses at most the remaining 1023 stack items. -/
+theorem compileSimpleGuardCode?_stackHeight_le
+    {code : GuardCode simpleExpr .bool} {assembly : Assembly}
+    (hcompile : compileSimpleGuardCode? code = some assembly) :
+    ∃ lowered, lowerBoolExpr? code.expr = some lowered ∧
+      lowered.ir.stackHeight ≤ stackLimit - 1 := by
+  exact compileBoolExpr?_stackHeight_le hcompile
+
 @[simp] theorem compileBoolExpr?_constBool
     {Γ : CtxSimple}
+    (maxStack : Nat) (hstack : 1 ≤ maxStack)
     (variableCode :
       {name : VarId} → HasVar Γ name .bool → Assembly)
     (value : Bool) :
-    compileBoolExpr? variableCode (.constBool value) =
+    compileBoolExpr? maxStack variableCode (.constBool value) =
       some [.push (.one (byte (if value then 1 else 0)))] := by
   let lowered : LoweredBoolExpr (.constBool value) :=
     { ir := @BoolExprIR.literal Γ value
@@ -210,7 +264,8 @@ def compileSimpleGuardCode? (code : GuardCode simpleExpr .bool) :
     apply congrArg some
     apply LoweredBoolExpr.ext
     rfl
-  simp [compileBoolExpr?, hlower, lowered, BoolExprIR.compile]
+  simp [compileBoolExpr?, hlower, lowered, BoolExprIR.compile,
+    BoolExprIR.stackHeight, hstack]
 
 end
 

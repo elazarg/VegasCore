@@ -34,6 +34,9 @@ namespace Vegas.Machine.Contract.EVM
 /-- One byte of EVM code. -/
 abbrev Byte := BitVec 8
 
+/-- Maximum stack height admitted by the EVM. -/
+def stackLimit : Nat := 1024
+
 /-- Construct an EVM byte from its numeric opcode. -/
 def byte (value : Nat) : Byte := BitVec.ofNat 8 value
 

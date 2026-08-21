@@ -440,16 +440,19 @@ theorem compileBoolExpr?_correct
     (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .bool),
       BoolExprCorrect pre (ρ.get binding) (variableCode binding))
     (expr : Expr Γ .bool) (code : Assembly)
-    (hcompile : compileBoolExpr? variableCode expr = some code) :
+    (maxStack : Nat)
+    (hcompile : compileBoolExpr? maxStack variableCode expr = some code) :
     BoolExprCorrect pre (evalExpr expr ρ) code := by
   cases hlower : lowerBoolExpr? expr with
   | none => simp [compileBoolExpr?, hlower] at hcompile
   | some lowered =>
-      simp only [compileBoolExpr?, hlower, Option.map_some,
-        Option.some.injEq] at hcompile
-      subst code
-      rw [← lowered.eval_eq ρ]
-      exact BoolExprIR.compile_correct pre variableCode ρ hvariable lowered.ir
+      simp only [compileBoolExpr?, hlower] at hcompile
+      split at hcompile
+      · simp only [Option.some.injEq] at hcompile
+        subst code
+        rw [← lowered.eval_eq ρ]
+        exact BoolExprIR.compile_correct pre variableCode ρ hvariable lowered.ir
+      · contradiction
 
 /-- Concrete dynamic read invariant for one retained commit guard. The head
 environment binding is the proposed action calldata word; every tail binding
@@ -495,7 +498,8 @@ theorem compileSimpleGuardCode?_correct
       (evalExpr code.expr ρ) assembly := by
   exact compileBoolExpr?_correct (simpleGuardReadPrecondition code ρ)
     (simpleGuardVariableCode code) ρ
-    (simpleGuardVariableCode_correct code ρ) code.expr assembly hcompile
+    (simpleGuardVariableCode_correct code ρ) code.expr assembly
+    (stackLimit - 1) hcompile
 
 end
 

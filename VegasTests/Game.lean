@@ -43,8 +43,6 @@ import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction
 
-set_option maxRecDepth 2000
-
 namespace VegasTests
 
 open Vegas
@@ -646,28 +644,46 @@ noncomputable def emptyEVMRuntimeImage :
     emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
     emptyHasNoSampleNodes rfl).get (by rfl)
 
-example : emptyEVMRuntimeImage.bytecode.length = 190 := by
+theorem emptyEVMRuntimeImage_bytecode_length :
+    emptyEVMRuntimeImage.bytecode.length = 190 := by
   rfl
 
-example :
-    (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
-      Machine.Contract.EVM.DeploymentLimits.ethereum
-      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
-      emptyHasNoSampleNodes rfl).isSome = true := by
+theorem emptyEVMInitialization_byteLength :
+    (Machine.Contract.EVM.compileStorageInitialization
+      (Machine.Contract.EVM.ClassicalStorageLayout.canonicalSlotCount
+        emptyMachine)
+      emptyEVMByteBackend.compile.initialStorage).byteLength = 0 := by
   rfl
 
 noncomputable def emptyEVMDeploymentImage :
-    Machine.Contract.EVM.DeploymentImage matchingPenniesClassicalSelectors :=
-  (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
-    Machine.Contract.EVM.DeploymentLimits.ethereum
-    emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
-    emptyHasNoSampleNodes rfl).get (by rfl)
+    Machine.Contract.EVM.DeploymentImage matchingPenniesClassicalSelectors where
+  limits := Machine.Contract.EVM.DeploymentLimits.ethereum
+  runtime := emptyEVMRuntimeImage
+  slotCount := Machine.Contract.EVM.ClassicalStorageLayout.canonicalSlotCount
+    emptyMachine
+  slotCount_fits := emptyEVMByteBackend.storageFits
+  initialStorage := emptyEVMByteBackend.compile.initialStorage
+  storage_zero_outside :=
+    emptyEVMByteBackend.compile.initialStorage_zero_outside
+  offset_fits := by
+    change 21 < 2 ^ 32
+    norm_num
+  runtime_size_fits := by
+    rw [emptyEVMRuntimeImage_bytecode_length]
+    norm_num [Machine.Contract.EVM.DeploymentLimits.ethereum]
+  initcode_size_fits := by
+    rw [emptyEVMInitialization_byteLength,
+      emptyEVMRuntimeImage_bytecode_length]
+    norm_num [Machine.Contract.EVM.DeploymentLimits.ethereum]
 
 example : emptyEVMDeploymentImage.runtimeOffset = 21 := by
   rfl
 
 example : emptyEVMDeploymentImage.bytecode.length = 211 := by
-  rfl
+  rw [Machine.Contract.EVM.DeploymentImage.bytecode_length]
+  rw [show emptyEVMDeploymentImage.runtimeOffset = 21 by rfl]
+  rw [show emptyEVMDeploymentImage.runtime = emptyEVMRuntimeImage by rfl]
+  rw [emptyEVMRuntimeImage_bytecode_length]
 
 def copyReturnExecution : Machine.Contract.EVM.ExecutionState :=
   let constructor := Machine.Contract.EVM.deploymentCopyReturn 21 2
@@ -711,12 +727,6 @@ example :
 
 example :
     (emptyEVMByteBackend.compileBooleanRuntime?
-      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
-  rfl
-
-example :
-    (emptyEVMByteBackend.compileBooleanDeployment?
-      Machine.Contract.EVM.DeploymentLimits.ethereum
       emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
   rfl
 
@@ -836,7 +846,18 @@ def trueBooleanGuardCode : EventGraph.GuardCode simpleExpr .bool where
 example : Machine.Contract.EVM.compileSimpleGuardCode?
     trueBooleanGuardCode =
       some [.push (.one (Machine.Contract.EVM.byte 1))] := by
-  simp [Machine.Contract.EVM.compileSimpleGuardCode?, trueBooleanGuardCode]
+  simp [Machine.Contract.EVM.compileSimpleGuardCode?, trueBooleanGuardCode,
+    Machine.Contract.EVM.stackLimit]
+
+def rightNestedBooleanExpr : Expr [] .bool :=
+  .andBool (.constBool true)
+    (.andBool (.constBool true) (.constBool true))
+
+example : Machine.Contract.EVM.compileBoolExpr? (Γ := []) 2
+    (fun binding => nomatch binding) rightNestedBooleanExpr = none := by
+  simp [Machine.Contract.EVM.compileBoolExpr?, rightNestedBooleanExpr,
+    Machine.Contract.EVM.lowerBoolExpr?,
+    Machine.Contract.EVM.BoolExprIR.stackHeight]
 
 example (message : matchingPenniesContract.Message) :
     matchingPenniesMessageABI.decodeBytes matchingPenniesArgumentWords
