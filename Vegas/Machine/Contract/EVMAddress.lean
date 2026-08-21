@@ -25,6 +25,24 @@ abbrev AddressWord := BitVec 160
 account address. -/
 abbrev AddressCodec (Address : Type) := WireCodec Address AddressWord
 
+/-- Evidence that an abstract address type represents every raw EVM caller.
+Losslessness alone only covers callers in the encoder's image; whole-runtime
+refinement requires this additional total representation. -/
+structure TotalAddressRepresentation {Address : Type}
+    (codec : AddressCodec Address) where
+  abstract : AddressWord → Address
+  encode_abstract : ∀ caller, codec.encode (abstract caller) = caller
+
+namespace TotalAddressRepresentation
+
+/-- Native EVM addresses represent themselves totally. -/
+def identity :
+    TotalAddressRepresentation (WireCodec.identity AddressWord) where
+  abstract := id
+  encode_abstract := by intro; rfl
+
+end TotalAddressRepresentation
+
 /-- A finite address family fits in the EVM's 160-bit address space. -/
 def IndexFitsAddress (count : Nat) : Prop := count ≤ 2 ^ 160
 

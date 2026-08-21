@@ -71,32 +71,44 @@ def ResultRefines (artifact : EVMByteArtifact source Address)
   | .revert _, .revert data => data = []
   | _, _ => False
 
-/-- Concrete execution environment for one runtime call. The current backend
-does not inspect `CALLVALUE`, so its word remains an explicit target input. -/
+/-- Concrete execution environment for one runtime call. `caller` is the raw
+160-bit value controlled by the invoking account, rather than an encoding
+constructed from an abstract source context. The current backend does not
+inspect `CALLVALUE`, so its word remains an explicit target input. -/
 def runtimeEnv (artifact : EVMByteArtifact source Address)
     (runtime : EVM.RuntimeImage artifact.abi.selectors)
-    (context : CallContext Address) (calldata : EVM.ByteCalldata)
+    (contractAddress : Address) (caller : EVM.AddressWord)
+    (calldata : EVM.ByteCalldata)
     (callValue : EVM.Word) : EVM.ExecutionEnv where
   codeBytes := runtime.bytecode
   calldata := calldata.bytes
-  caller := artifact.addresses.encode context.sender
-  contractAddress := artifact.addresses.encode context.contractAddress
+  caller := caller
+  contractAddress := artifact.addresses.encode contractAddress
   callValue := callValue
 
 /-- A linked runtime refines the complete deterministic classical byte
-endpoint on every represented state, context, calldata value, and call value.
-The generated control flow is acyclic, so the assembly instruction count plus
-one is the canonical fuel bound. -/
+endpoint on every represented state, raw 160-bit caller, remaining context,
+calldata value, and call value. Claiming whole-runtime refinement therefore
+requires a total abstract representation of all EVM callers; a merely
+lossless finite address codec is insufficient. The generated control flow is
+acyclic, so the assembly instruction count plus one is the canonical fuel
+bound. -/
 def RuntimeRefines (artifact : EVMByteArtifact source Address)
     (runtime : EVM.RuntimeImage artifact.abi.selectors) : Prop :=
-  ∀ (context : CallContext Address) (state : artifact.State)
-      (storage : EVM.TotalStorage) (calldata : EVM.ByteCalldata)
-      (callValue : EVM.Word),
-    calldata.FitsWord → StateRepresents artifact state storage →
-      ResultRefines artifact (artifact.receive context state calldata)
-        (EVM.executeTransaction (runtime.assembly.length + 1)
-          runtime.assembly
-          (runtimeEnv artifact runtime context calldata callValue) storage)
+  ∃ representation : EVM.TotalAddressRepresentation artifact.addresses,
+    ∀ (context : CallContext Address) (caller : EVM.AddressWord)
+        (state : artifact.State) (storage : EVM.TotalStorage)
+        (calldata : EVM.ByteCalldata) (callValue : EVM.Word),
+      calldata.FitsWord → StateRepresents artifact state storage →
+        ResultRefines artifact
+          (artifact.receive
+            { context with sender := representation.abstract caller }
+            state calldata)
+          (EVM.executeTransaction (runtime.assembly.length + 1)
+            runtime.assembly
+            (runtimeEnv artifact runtime context.contractAddress caller
+              calldata callValue)
+            storage)
 
 /-- Complete ordinary deployment correctness: exact initial layout, exact
 constructor behavior, and per-call runtime refinement. -/
