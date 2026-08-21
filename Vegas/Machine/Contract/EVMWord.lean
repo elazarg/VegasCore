@@ -102,6 +102,19 @@ structure CanonicalBoolRepresentation (program : Program Player simpleExpr)
     ∀ word : Word,
       (words.decode word).bind (codec.decodeValue .bool) = decodeBool word
 
+/-- Transporting a Boolean through a proof that a storage type is Boolean
+does not change its canonical zero/one wire representation. -/
+theorem CanonicalBoolRepresentation.encode_type_eq_bool
+    {program : Program Player simpleExpr} {codec : StorageCodec program}
+    {words : WireCodec codec.Word Word}
+    (canonical : CanonicalBoolRepresentation program codec words)
+    {ty : simpleExpr.Ty} (hty : ty = .bool) (value : Bool) :
+    words.encode
+        (codec.encodeValue ty (hty.symm ▸ value)) =
+      encodeBool value := by
+  subst ty
+  exact canonical.encode_bool value
+
 /-- The native Boolean storage codec with the identity outer wire encoding
 has the exact representation expected by generated instructions. -/
 theorem boolIdentityRepresentation (program : Program Player simpleExpr)

@@ -527,6 +527,74 @@ theorem encodeClassicalSnapshot_clearPending
       exact False.elim (hkeyNode (by simpa [pendingNode] using heq))
     · rfl
 
+/-- The canonical value cell of a completed Boolean node contains its literal
+zero/one result word. -/
+theorem encodeClassicalSnapshot_completeBool_fieldValue
+    {program : Program Player simpleExpr}
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
+    (node : Fin program.graph.nodeCount) (value : Bool) :
+    encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address
+          (.fieldValue
+            ⟨program.graph.nodeTarget node,
+              StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩)) =
+      encodeBool value := by
+  rw [encodeClassicalSnapshot_fieldValue]
+  simp only [StateSnapshot.ofConfig, Config.completeNode, Store.getAs, Store.set,
+    TypedValue.as?, usesBool.field_type, ↓reduceIte, ↓reduceDIte]
+  convert canonical.encode_type_eq_bool
+    (usesBool.field_type
+      (⟨program.graph.nodeTarget node,
+        StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩ :
+        Fin program.graph.fieldCount)) value using 1
+  congr 2
+  apply eq_of_heq
+  rw [cast_heq_iff_heq, eqRec_eq_cast, heq_cast_iff_heq]
+
+/-- Completing a Boolean node makes its target-field presence cell true. -/
+theorem encodeClassicalSnapshot_completeBool_fieldPresent
+    {program : Program Player simpleExpr}
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
+    (node : Fin program.graph.nodeCount) (value : Bool) :
+    encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address
+          (.fieldPresent
+            ⟨program.graph.nodeTarget node,
+              StateSnapshot.nodeTarget_lt_fieldCount program.graph node⟩)) =
+      1 := by
+  rw [encodeClassicalSnapshot_fieldPresent]
+  simp [StateSnapshot.ofConfig, Config.completeNode, Store.getAs, Store.set,
+    usesBool.field_type, TypedValue.as?, encodeBool]
+
+/-- Completing a node makes its canonical completion cell true. -/
+theorem encodeClassicalSnapshot_completeBool_completed
+    {program : Program Player simpleExpr}
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
+    (node : Fin program.graph.nodeCount) (value : Bool) :
+    encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode node { ty := .bool, value := value })
+          pending := pending }
+        ((ClassicalStorageLayout.canonical program).address
+          (.completed node)) = 1 := by
+  rw [encodeClassicalSnapshot_completed]
+  simp [StateSnapshot.ofConfig, Config.completeNode, encodeBool]
+
 @[simp] theorem decodeClassicalField_encodeClassicalSnapshot
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)
