@@ -74,7 +74,9 @@ def compileBooleanDeployment?
     permissionlessReveals permissionlessSampleRequests
   EVM.DeploymentImage.build? runtime
     (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
+    backend.storageFits
     backend.compile.initialStorage
+    backend.compile.initialStorage_zero_outside
 
 /-- Compile the supported Boolean/no-sample fragment all the way to linked EVM
 runtime bytes. Unsupported guards, unresolved labels, or an oversized image
@@ -109,7 +111,9 @@ def compileBooleanNoSampleDeployment?
     permissionlessReveals
   EVM.DeploymentImage.build? runtime
     (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
+    backend.storageFits
     backend.compile.initialStorage
+    backend.compile.initialStorage_zero_outside
 
 end EVMByteBackend
 

@@ -37,6 +37,17 @@ def readBytes (bytes : List Byte) (offset count : Nat) : List Byte :=
     (readBytes bytes offset count).length = count := by
   simp [readBytes]
 
+/-- Reading exactly the available suffix does not introduce zero padding. -/
+theorem readBytes_drop_length (bytes : List Byte) (offset : Nat) :
+    readBytes bytes offset (bytes.drop offset).length = bytes.drop offset := by
+  apply List.ext_getElem
+  · simp
+  · intro index hleft hright
+    have hinBounds : offset + index < bytes.length := by
+      simp at hright
+      omega
+    simp [readBytes, List.getElem_drop, hinBounds]
+
 /-- One EVM `CALLDATALOAD`. -/
 def calldataLoad (calldata : List Byte) (offset : Nat) : Word :=
   bytesToWord (readBytes calldata offset 32)
@@ -70,6 +81,49 @@ def readMemory (memory : Memory) (offset count : Nat) : List Byte :=
 @[simp] theorem readMemory_length (memory : Memory) (offset count : Nat) :
     (readMemory memory offset count).length = count := by
   simp [readMemory]
+
+/-- Writes beginning strictly after an address leave that address unchanged. -/
+theorem writeBytes_eq_of_lt (memory : Memory) (offset : Nat)
+    (bytes : List Byte) (address : Nat) (haddress : address < offset) :
+    writeBytes memory offset bytes address = memory address := by
+  induction bytes generalizing offset memory with
+  | nil => rfl
+  | cons value rest ih =>
+      rw [writeBytes]
+      rw [ih (offset := offset + 1) (memory := Function.update memory offset value)
+        (by omega)]
+      simp [Function.update, Nat.ne_of_lt haddress]
+
+/-- A byte written at an in-range displacement can be read back exactly. -/
+theorem writeBytes_getElem (memory : Memory) (offset : Nat)
+    (bytes : List Byte) (index : Nat) (hindex : index < bytes.length) :
+    writeBytes memory offset bytes (offset + index) = bytes[index] := by
+  induction bytes generalizing offset memory index with
+  | nil => simp at hindex
+  | cons value rest ih =>
+      cases index with
+      | zero =>
+          rw [writeBytes]
+          rw [writeBytes_eq_of_lt]
+          · simp [Function.update]
+          · omega
+      | succ index =>
+          rw [writeBytes]
+          have hrest : index < rest.length := by simpa using hindex
+          have hread := ih (offset := offset + 1)
+            (memory := Function.update memory offset value) index hrest
+          simpa only [List.getElem_cons_succ, Nat.add_assoc,
+            Nat.add_comm 1 index] using hread
+
+/-- Reading the interval just written returns the complete byte string. -/
+theorem readMemory_writeBytes (memory : Memory) (offset : Nat)
+    (bytes : List Byte) :
+    readMemory (writeBytes memory offset bytes) offset bytes.length = bytes := by
+  apply List.ext_getElem
+  · simp
+  · intro index hleft hright
+    simpa [readMemory] using
+      writeBytes_getElem memory offset bytes index hright
 
 /-- Environment fixed for one EVM call or creation execution. -/
 structure ExecutionEnv where
@@ -540,6 +594,212 @@ theorem run_push_push_sstore (program : Assembly) (env : ExecutionEnv)
   rw [show 3 = 1 + 2 by omega, run_add, hrunPush, hrunStore]
   simp [pushed, advance, Instruction.byteLength]
 
+/-- Constructor storage-write generation executes its ordered finite storage
+transformer exactly. -/
+theorem run_compileStorageWrites (slots : List Nat) (target : TotalStorage)
+    (program : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none)
+    (hslots : ∀ slot ∈ slots, slot < 2 ^ 256)
+    (hcode : Assembly.CodeAt program
+      (compileStorageWrites slots target) state.pc) :
+    run (compileStorageWrites slots target).length program env state =
+      { state with
+        pc := state.pc + (compileStorageWrites slots target).byteLength
+        storage := applyStorageWrites slots target state.storage } := by
+  induction slots generalizing state with
+  | nil =>
+      cases state
+      simp [compileStorageWrites, applyStorageWrites, run,
+        Assembly.byteLength]
+  | cons slot rest ih =>
+      by_cases hzero : target slot = 0
+      · have hcompileZero :
+            compileStorageWrites (slot :: rest) target =
+              compileStorageWrites rest target := by
+          simp only [compileStorageWrites, List.flatMap_cons]
+          rw [if_pos hzero]
+          rfl
+        have happlyZero :
+            applyStorageWrites (slot :: rest) target state.storage =
+              applyStorageWrites rest target state.storage := by
+          simp only [applyStorageWrites]
+          rw [if_pos hzero]
+        rw [hcompileZero, happlyZero]
+        apply ih state hrunning
+        · intro key hkey
+          exact hslots key (by simp [hkey])
+        · simpa [hcompileZero] using hcode
+      · let head : Assembly :=
+          [ .push (.word (target slot)), .push (.nat256 slot), .sstore ]
+        let tail := compileStorageWrites rest target
+        have hdecomp : compileStorageWrites (slot :: rest) target =
+            head ++ tail := by
+          simp only [compileStorageWrites, List.flatMap_cons]
+          rw [if_neg hzero]
+          rfl
+        have happly :
+            applyStorageWrites (slot :: rest) target state.storage =
+              applyStorageWrites rest target
+                (Function.update state.storage slot (target slot)) := by
+          simp only [applyStorageWrites]
+          rw [if_neg hzero]
+        rw [hdecomp] at hcode ⊢
+        have hhead : Assembly.CodeAt program head state.pc := hcode.left
+        have htail : Assembly.CodeAt program tail
+            (state.pc + head.byteLength) := hcode.right
+        let after : ExecutionState :=
+          { state with
+            pc := state.pc + head.byteLength
+            storage := Function.update state.storage slot (target slot) }
+        have hslot : slot < 2 ^ 256 := hslots slot (by simp)
+        have hrunHead : run 3 program env state = after := by
+          have hrun := run_push_push_sstore program env state
+            (.word (target slot)) (.nat256 slot) hrunning
+          rw [show head =
+            [.push (.word (target slot)), .push (.nat256 slot), .sstore]
+              by rfl] at hhead
+          specialize hrun hhead
+          rw [PushData.nat256_value_toNat_of_lt hslot] at hrun
+          simpa [after, head, Assembly.byteLength,
+            Instruction.byteLength] using hrun
+        have hafterRunning : after.exit = none := by
+          simp [after, hrunning]
+        have htail' : Assembly.CodeAt program tail after.pc := by
+          simpa [after] using htail
+        have hrunTail : run tail.length program env after =
+            { after with
+              pc := after.pc + tail.byteLength
+              storage := applyStorageWrites rest target after.storage } := by
+          apply ih after hafterRunning
+          · intro key hkey
+            exact hslots key (by simp [hkey])
+          · simpa [tail] using htail'
+        have hlength : (head ++ tail).length = 3 + tail.length := by
+          simp [head]
+          omega
+        rw [hlength, run_add, hrunHead, hrunTail]
+        rw [happly]
+        simp [after, Assembly.byteLength_append]
+        omega
+
+/-- From zero account storage, the certified constructor initialization prefix
+installs its finitely supported target exactly. -/
+theorem run_compileStorageInitialization (slotCount : Nat)
+    (target : TotalStorage) (program : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState)
+    (hslotCount : slotCount ≤ 2 ^ 256)
+    (hzeroOutside : ∀ key, slotCount ≤ key → target key = 0)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage = fun _ => 0)
+    (hcode : Assembly.CodeAt program
+      (compileStorageInitialization slotCount target) state.pc) :
+    run (compileStorageInitialization slotCount target).length program env
+        state =
+      { state with
+        pc := state.pc +
+          (compileStorageInitialization slotCount target).byteLength
+        storage := target } := by
+  have hrun := run_compileStorageWrites (List.range slotCount) target program
+    env state hrunning (by
+      intro slot hslot
+      have hlt : slot < slotCount := List.mem_range.mp hslot
+      exact hlt.trans_le hslotCount) (by
+        simpa [compileStorageInitialization] using hcode)
+  have happly :
+      applyStorageWrites (List.range slotCount) target state.storage = target := by
+    rw [hstorage]
+    exact applyStorageWrites_range_eq_target slotCount target hzeroOutside
+  simp only [compileStorageInitialization]
+  rw [hrun]
+  rw [happly]
+
+/-- The fixed constructor suffix copies the selected code interval into memory
+and returns those exact bytes. -/
+theorem run_deploymentCopyReturn (runtimeOffset runtimeSize : Nat)
+    (program : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (hoffset : runtimeOffset < 2 ^ 32)
+    (hsize : runtimeSize < 2 ^ 32)
+    (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt program
+      (deploymentCopyReturn runtimeOffset runtimeSize) state.pc) :
+    run (deploymentCopyReturn runtimeOffset runtimeSize).length program env
+        state =
+      { state with
+        pc := state.pc + 20
+        stack := state.stack
+        memory := writeBytes state.memory 0
+          (readBytes env.codeBytes runtimeOffset runtimeSize)
+        exit := some (.returned
+          (readBytes env.codeBytes runtimeOffset runtimeSize)) } := by
+  let encodedOffset := (PushData.nat32 runtimeOffset).value.toNat
+  let encodedSize := (PushData.nat32 runtimeSize).value.toNat
+  let copied := readBytes env.codeBytes encodedOffset encodedSize
+  let setup : Assembly :=
+    [ .push (.nat32 runtimeSize),
+      .push (.nat32 runtimeOffset),
+      .push (.one (byte 0)),
+      .codecopy,
+      .push (.nat32 runtimeSize),
+      .push (.one (byte 0)) ]
+  let beforeReturn : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := 0 :: (PushData.nat32 runtimeSize).value :: state.stack
+      memory := writeBytes state.memory 0 copied }
+  have hdecomp : deploymentCopyReturn runtimeOffset runtimeSize =
+      setup ++ [.return] := by
+    rfl
+  rw [hdecomp] at hcode ⊢
+  have hsetup : Assembly.CodeAt program setup state.pc := hcode.left
+  have hreturn : Assembly.CodeAt program [.return]
+      (state.pc + setup.byteLength) := hcode.right
+  have hstraight : StraightRun program env setup state beforeReturn := by
+    simp [StraightRun, setup, beforeReturn, stepInstruction, advance,
+      hrunning, copied, encodedOffset, encodedSize,
+      Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length program env state = beforeReturn :=
+    hstraight.run_eq hsetup
+  have hreturn' : Assembly.CodeAt program [.return] beforeReturn.pc := by
+    simpa [beforeReturn] using hreturn
+  have hbeforeRunning : beforeReturn.exit = none := by
+    simp [beforeReturn, hrunning]
+  have hcopiedLength : copied.length = encodedSize := by
+    simp [copied]
+  have hreadCopied :
+      readMemory (writeBytes state.memory 0 copied) 0 encodedSize = copied := by
+    rw [← hcopiedLength]
+    exact readMemory_writeBytes state.memory 0 copied
+  have hrunReturn : run 1 program env beforeReturn =
+      { state with
+        pc := state.pc + 20
+        stack := state.stack
+        memory := writeBytes state.memory 0 copied
+        exit := some (.returned copied) } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hreturn']
+    simp only [run]
+    change
+      ExecutionState.mk (state.pc + setup.byteLength) state.stack
+        (writeBytes state.memory 0 copied) state.storage state.logs
+        (some (.returned
+          (readMemory (writeBytes state.memory 0 copied) 0 encodedSize))) =
+      ExecutionState.mk (state.pc + 20) state.stack
+        (writeBytes state.memory 0 copied) state.storage state.logs
+        (some (.returned copied))
+    rw [hreadCopied]
+    simp [setup, Assembly.byteLength, Instruction.byteLength]
+  have hencodedOffset : encodedOffset = runtimeOffset :=
+    PushData.nat32_value_toNat_of_lt hoffset
+  have hencodedSize : encodedSize = runtimeSize :=
+    PushData.nat32_value_toNat_of_lt hsize
+  have hcopied : copied =
+      readBytes env.codeBytes runtimeOffset runtimeSize := by
+    unfold copied
+    rw [hencodedOffset, hencodedSize]
+  rw [List.length_append]
+  simp only [List.length_singleton]
+  rw [run_add, hrunSetup, hrunReturn]
+  rw [hcopied]
+
 /-- Execute from the standard empty-stack/memory state. -/
 def execute (fuel : Nat) (program : Assembly) (env : ExecutionEnv)
     (storage : TotalStorage) : ExecutionState :=
@@ -587,6 +847,80 @@ def execute (image : DeploymentImage selectors) : ExecutionState :=
       contractAddress := 0
       callValue := 0 }
     freshStorage
+
+/-- Every certified deployment image installs its exact finite storage and
+returns its exact linked runtime bytecode. -/
+theorem execute_transactionResult (image : DeploymentImage selectors) :
+    image.execute.transactionResult =
+      .success image.initialStorage [] image.runtime.bytecode := by
+  let env : ExecutionEnv :=
+    { codeBytes := image.bytecode
+      calldata := []
+      caller := 0
+      contractAddress := 0
+      callValue := 0 }
+  let initial := ExecutionState.initial freshStorage
+  let afterInitialization : ExecutionState :=
+    { initial with
+      pc := image.initialization.byteLength
+      storage := image.initialStorage }
+  let suffix := deploymentCopyReturn image.runtimeOffset
+    image.runtime.bytecode.length
+  have hcode : Assembly.CodeAt image.creationAssembly
+      (image.initialization ++ suffix) 0 := by
+    refine ⟨[], [], ?_, rfl⟩
+    simp [DeploymentImage.creationAssembly, suffix]
+  have hinitialization : Assembly.CodeAt image.creationAssembly
+      image.initialization initial.pc := by
+    change Assembly.CodeAt image.creationAssembly image.initialization 0
+    exact hcode.left
+  have hsuffix : Assembly.CodeAt image.creationAssembly suffix
+      afterInitialization.pc := by
+    have hright := hcode.right
+    simpa [initial, afterInitialization] using hright
+  have hrunInitialization :
+      run image.initialization.length image.creationAssembly env initial =
+        afterInitialization := by
+    have hrun := run_compileStorageInitialization image.slotCount
+      image.initialStorage image.creationAssembly env initial
+      image.slotCount_fits image.storage_zero_outside
+      (by simp [initial, ExecutionState.initial])
+      (by rfl) (by
+        simpa [DeploymentImage.initialization] using hinitialization)
+    simpa [DeploymentImage.initialization, afterInitialization, initial,
+      ExecutionState.initial] using hrun
+  have hrunSuffix :
+      run suffix.length image.creationAssembly env afterInitialization =
+        { afterInitialization with
+          pc := afterInitialization.pc + 20
+          stack := afterInitialization.stack
+          memory := writeBytes afterInitialization.memory 0
+            (readBytes image.bytecode image.runtimeOffset
+              image.runtime.bytecode.length)
+          exit := some (.returned
+            (readBytes image.bytecode image.runtimeOffset
+              image.runtime.bytecode.length)) } := by
+    apply run_deploymentCopyReturn image.runtimeOffset
+      image.runtime.bytecode.length image.creationAssembly env
+      afterInitialization image.runtimeOffset_fits
+      image.runtime.bytecode_length_fits
+    · simp [afterInitialization, initial, ExecutionState.initial]
+    · simpa [suffix] using hsuffix
+  have hcopy :
+      readBytes image.bytecode image.runtimeOffset
+          image.runtime.bytecode.length = image.runtime.bytecode := by
+    simpa using readBytes_drop_length image.bytecode image.runtimeOffset
+  have hfuel : image.creationAssembly.length + 1 =
+      image.initialization.length + (suffix.length + 1) := by
+    simp [DeploymentImage.creationAssembly, suffix, Nat.add_assoc]
+  rw [hcopy] at hrunSuffix
+  unfold DeploymentImage.execute EVM.execute
+  change
+    (run (image.creationAssembly.length + 1) image.creationAssembly env
+      initial).transactionResult = _
+  rw [hfuel, run_add, hrunInitialization, run_add, hrunSuffix]
+  simp [afterInitialization, initial, ExecutionState.initial,
+    ExecutionState.transactionResult]
 
 end DeploymentImage
 

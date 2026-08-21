@@ -272,6 +272,23 @@ def encodeClassicalSnapshot (codec : StorageCodec program)
     else
       0
 
+/-- Canonical snapshot storage has finite support inside the declared dense
+layout. This is the exact support fact required by constructor generation. -/
+theorem encodeClassicalSnapshot_eq_zero_of_ge_slotCount
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (snapshot : ClassicalSnapshot program) (key : Nat)
+    (hkey : ClassicalStorageLayout.canonicalSlotCount program ≤ key) :
+    encodeClassicalSnapshot codec words nodes snapshot key = 0 := by
+  unfold ClassicalStorageLayout.canonicalSlotCount at hkey
+  unfold encodeClassicalSnapshot
+  split <;> try omega
+  split <;> try omega
+  split <;> try omega
+  split <;> try omega
+  split <;> try omega
+  rfl
+
 @[simp] theorem encodeClassicalSnapshot_fieldValue
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)

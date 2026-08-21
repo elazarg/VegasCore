@@ -64,6 +64,16 @@ def initialStorage : EVM.TotalStorage :=
   EVM.encodeClassicalSnapshot artifact.contract.codec artifact.abi.values
     artifact.abi.nodes artifact.initialSnapshot
 
+/-- The compiled constructor store has no nonzero cells outside the certified
+dense layout. -/
+theorem initialStorage_zero_outside (key : Nat)
+    (hkey : EVM.ClassicalStorageLayout.canonicalSlotCount
+      (Machine.compile source) ≤ key) :
+    artifact.initialStorage key = 0 := by
+  exact EVM.encodeClassicalSnapshot_eq_zero_of_ge_slotCount
+    artifact.contract.codec artifact.abi.values artifact.abi.nodes
+      artifact.initialSnapshot key hkey
+
 /-- Finite routed handler inventory over the concrete EVM storage layout. -/
 def handlerIR : EVM.ClassicalContractIR (Machine.compile source) :=
   EVM.compileClassicalIR (Machine.compile source)

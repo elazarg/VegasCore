@@ -215,6 +215,12 @@ theorem nat32_value_of_lt {value : Nat} (hvalue : value < 2 ^ 32) :
   change BitVec.ofNat 256 (value % 2 ^ 32) = _
   rw [hmod]
 
+theorem nat32_value_toNat_of_lt {value : Nat} (hvalue : value < 2 ^ 32) :
+    (nat32 value).value.toNat = value := by
+  rw [nat32_value_of_lt hvalue, BitVec.toNat_ofNat]
+  apply Nat.mod_eq_of_lt
+  exact hvalue.trans (by norm_num)
+
 @[simp] theorem word_value (value : Word) :
     (word value).value = value := by rfl
 

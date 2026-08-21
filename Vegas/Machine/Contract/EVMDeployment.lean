@@ -22,17 +22,83 @@ the runtime length use `PUSH4`, so construction checks the corresponding
 
 namespace Vegas.Machine.Contract.EVM
 
-/-- Constructor `SSTORE`s for every nonzero cell in the finite certified
-layout. -/
-def compileStorageInitialization (slotCount : Nat)
+/-- Constructor `SSTORE`s for every nonzero cell in an ordered key list. -/
+def compileStorageWrites (slots : List Nat)
     (storage : TotalStorage) : Assembly :=
-  (List.range slotCount).flatMap fun slot =>
+  slots.flatMap fun slot =>
     let value := storage slot
     if value = 0 then []
     else
       [ .push (.word value),
         .push (.nat256 slot),
         .sstore ]
+
+/-- Constructor `SSTORE`s for every nonzero cell in the finite certified
+layout. -/
+def compileStorageInitialization (slotCount : Nat)
+    (storage : TotalStorage) : Assembly :=
+  compileStorageWrites (List.range slotCount) storage
+
+/-- Storage transformer denoted by an ordered constructor write list. -/
+def applyStorageWrites (slots : List Nat) (target current : TotalStorage) :
+    TotalStorage :=
+  match slots with
+  | [] => current
+  | slot :: rest =>
+      let next :=
+        if target slot = 0 then current
+        else Function.update current slot (target slot)
+      applyStorageWrites rest target next
+
+theorem applyStorageWrites_append (left right : List Nat)
+    (target current : TotalStorage) :
+    applyStorageWrites (left ++ right) target current =
+      applyStorageWrites right target
+        (applyStorageWrites left target current) := by
+  induction left generalizing current with
+  | nil => rfl
+  | cons slot rest ih =>
+      by_cases hzero : target slot = 0
+      · simp [applyStorageWrites, hzero, ih]
+      · simp [applyStorageWrites, ih]
+
+/-- Starting from zero storage, ordered writes over `range slotCount` install
+the target inside the range and leave every other key zero. -/
+theorem applyStorageWrites_range_apply (slotCount : Nat)
+    (target : TotalStorage) (key : Nat) :
+    applyStorageWrites (List.range slotCount) target (fun _ => 0) key =
+      if key < slotCount then target key else 0 := by
+  induction slotCount with
+  | zero => simp [applyStorageWrites]
+  | succ slotCount ih =>
+      rw [List.range_succ, applyStorageWrites_append]
+      simp only [applyStorageWrites]
+      by_cases hzero : target slotCount = 0
+      · rw [if_pos hzero, ih]
+        by_cases hkey : key = slotCount
+        · subst key
+          simp [hzero]
+        · by_cases hlt : key < slotCount <;> simp [hlt] <;> omega
+      · rw [if_neg hzero]
+        by_cases hkey : key = slotCount
+        · subst key
+          simp [Function.update]
+        · simp only [Function.update, hkey]
+          rw [ih]
+          by_cases hlt : key < slotCount <;> simp [hlt] <;> omega
+
+/-- A finitely supported target is installed exactly by its constructor write
+range. -/
+theorem applyStorageWrites_range_eq_target (slotCount : Nat)
+    (target : TotalStorage)
+    (hzeroOutside : ∀ key, slotCount ≤ key → target key = 0) :
+    applyStorageWrites (List.range slotCount) target (fun _ => 0) = target := by
+  funext key
+  rw [applyStorageWrites_range_apply]
+  split
+  · rfl
+  · symm
+    exact hzeroOutside key (Nat.le_of_not_gt ‹_›)
 
 /-- Fixed 21-byte suffix of the constructor. It copies the appended runtime
 from `runtimeOffset` and returns it as deployed code. -/
@@ -54,7 +120,10 @@ def deploymentCopyReturn (runtimeOffset runtimeSize : Nat) : Assembly :=
 structure DeploymentImage (selectors : ClassicalSelectors) where
   runtime : RuntimeImage selectors
   slotCount : Nat
+  slotCount_fits : slotCount ≤ 2 ^ 256
   initialStorage : TotalStorage
+  storage_zero_outside :
+    ∀ slot, slotCount ≤ slot → initialStorage slot = 0
   offset_fits :
     (compileStorageInitialization slotCount initialStorage).byteLength + 21 <
       2 ^ 32
@@ -87,21 +156,30 @@ def bytecode (image : DeploymentImage selectors) : List Byte :=
 
 /-- Build creation bytecode after checking its computed runtime offset. -/
 def build? (runtime : RuntimeImage selectors) (slotCount : Nat)
-    (storage : TotalStorage) : Option (DeploymentImage selectors) :=
+    (slotCountFits : slotCount ≤ 2 ^ 256)
+    (storage : TotalStorage)
+    (storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0) :
+    Option (DeploymentImage selectors) :=
   let initialization := compileStorageInitialization slotCount storage
   let runtimeOffset := initialization.byteLength + 21
   if hfits : runtimeOffset < 2 ^ 32 then
     some
       { runtime := runtime
         slotCount := slotCount
+        slotCount_fits := slotCountFits
         initialStorage := storage
+        storage_zero_outside := storageZeroOutside
         offset_fits := hfits }
   else
     none
 
 theorem build?_runtime {runtime : RuntimeImage selectors} {slotCount : Nat}
-    {storage : TotalStorage} {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount storage = some image) :
+    {slotCountFits : slotCount ≤ 2 ^ 256}
+    {storage : TotalStorage}
+    {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
+    {image : DeploymentImage selectors}
+    (hbuild : build? runtime slotCount slotCountFits storage
+      storageZeroOutside = some image) :
     image.runtime = runtime := by
   simp only [build?] at hbuild
   split at hbuild
@@ -110,8 +188,12 @@ theorem build?_runtime {runtime : RuntimeImage selectors} {slotCount : Nat}
   · contradiction
 
 theorem build?_slotCount {runtime : RuntimeImage selectors} {slotCount : Nat}
-    {storage : TotalStorage} {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount storage = some image) :
+    {slotCountFits : slotCount ≤ 2 ^ 256}
+    {storage : TotalStorage}
+    {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
+    {image : DeploymentImage selectors}
+    (hbuild : build? runtime slotCount slotCountFits storage
+      storageZeroOutside = some image) :
     image.slotCount = slotCount := by
   simp only [build?] at hbuild
   split at hbuild
@@ -121,8 +203,11 @@ theorem build?_slotCount {runtime : RuntimeImage selectors} {slotCount : Nat}
 
 theorem build?_initialStorage {runtime : RuntimeImage selectors}
     {slotCount : Nat} {storage : TotalStorage}
+    {slotCountFits : slotCount ≤ 2 ^ 256}
+    {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
     {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount storage = some image) :
+    (hbuild : build? runtime slotCount slotCountFits storage
+      storageZeroOutside = some image) :
     image.initialStorage = storage := by
   simp only [build?] at hbuild
   split at hbuild
