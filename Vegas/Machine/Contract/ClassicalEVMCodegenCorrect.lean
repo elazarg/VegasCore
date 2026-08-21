@@ -395,6 +395,132 @@ theorem run_classicalActionWrites_completeBool
   rw [encodeClassicalSnapshot_completeBool usesBool codec words canonical
     nodes cfg pending action.node value]
 
+/-- Resolved success path of one completing Boolean action block. Rejection
+labels live elsewhere in the handler and are deliberately not part of this
+straight-line fragment. -/
+def classicalCompletingBlockAssembly
+    {program : Program Player simpleExpr} (rejectDestination : Nat)
+    (action : ClassicalActionIR program) (realize : Assembly) : Assembly :=
+  classicalStorageChecksAssembly rejectDestination action.checks ++ realize ++
+    classicalActionWritesAssembly action ++ [.stop]
+
+/-- Compositional correctness of a complete successful action block. Once a
+realization fragment is proved to push the selected canonical Boolean without
+changing the represented state, readiness checks, successor writes, and
+successful termination are discharged here. -/
+theorem run_classicalCompletingBlock_completeBool
+    {program : Program Player simpleExpr}
+    (fits : ClassicalStorageFitsWord program)
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : Config program.graph)
+    (pending : Option (Fin program.graph.nodeCount))
+    (action : ClassicalActionIR program)
+    (ready : Ready program.graph cfg action.node)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (rejectDestination : Nat)
+    (realize : Assembly) (realizeFuel : Nat) (value : Bool)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage =
+      encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig cfg, pending := pending })
+    (hrealize :
+      run realizeFuel whole env
+          { state with
+            pc := state.pc +
+              (classicalStorageChecksAssembly rejectDestination
+                action.checks).byteLength } =
+        { state with
+          pc := state.pc +
+              (classicalStorageChecksAssembly rejectDestination
+                action.checks).byteLength + realize.byteLength
+          stack := encodeBool value :: state.stack })
+    (hcode : Assembly.CodeAt whole
+      (classicalCompletingBlockAssembly rejectDestination action realize)
+      state.pc) :
+    run (7 * action.checks.length + realizeFuel + 9) whole env state =
+      { state with
+        pc := state.pc +
+            (classicalStorageChecksAssembly rejectDestination
+              action.checks).byteLength + realize.byteLength +
+            (classicalActionWritesAssembly action).byteLength
+        storage := encodeClassicalSnapshot codec words nodes
+          { graph := StateSnapshot.ofConfig
+              (cfg.completeNode action.node { ty := .bool, value := value })
+            pending := pending }
+        exit := some .stopped } := by
+  let checksCode :=
+    classicalStorageChecksAssembly rejectDestination action.checks
+  let writeCode := classicalActionWritesAssembly action
+  have hdecomp :
+      classicalCompletingBlockAssembly rejectDestination action realize =
+        checksCode ++ (realize ++ (writeCode ++ [.stop])) := by
+    simp [classicalCompletingBlockAssembly, checksCode, writeCode,
+      List.append_assoc]
+  rw [hdecomp] at hcode
+  have hchecksCode : Assembly.CodeAt whole checksCode state.pc :=
+    hcode.left
+  have hafterChecksCode :
+      Assembly.CodeAt whole (realize ++ (writeCode ++ [.stop]))
+        (state.pc + checksCode.byteLength) := hcode.right
+  let afterChecks : ExecutionState :=
+    { state with pc := state.pc + checksCode.byteLength }
+  have hrunChecks : run (7 * action.checks.length) whole env state =
+      afterChecks := by
+    simp only [afterChecks, checksCode]
+    change Assembly.CodeAt whole
+      (classicalStorageChecksAssembly rejectDestination action.checks)
+      state.pc at hchecksCode
+    rw [action.checks_eq] at hchecksCode
+    rw [action.checks_eq]
+    exact run_classicalStorageChecks_of_ready fits codec words nodes cfg pending
+      action.node ready whole env state rejectDestination hrunning hstorage
+      hchecksCode
+  have hrealize' : run realizeFuel whole env afterChecks =
+      { state with
+        pc := state.pc + checksCode.byteLength + realize.byteLength
+        stack := encodeBool value :: state.stack } := by
+    simpa [afterChecks, checksCode] using hrealize
+  let afterRealize : ExecutionState :=
+    { state with
+      pc := state.pc + checksCode.byteLength + realize.byteLength
+      stack := encodeBool value :: state.stack }
+  have hrunRealize : run realizeFuel whole env afterChecks = afterRealize := by
+    exact hrealize'
+  have hafterRealizeRunning : afterRealize.exit = none := by
+    simp [afterRealize, hrunning]
+  have hwriteCode : Assembly.CodeAt whole writeCode afterRealize.pc := by
+    have := hafterChecksCode.right.left
+    simpa [afterRealize, checksCode] using this
+  let afterWrite : ExecutionState :=
+    { afterRealize with
+      pc := afterRealize.pc + writeCode.byteLength
+      stack := state.stack
+      storage := encodeClassicalSnapshot codec words nodes
+        { graph := StateSnapshot.ofConfig
+            (cfg.completeNode action.node { ty := .bool, value := value })
+          pending := pending } }
+  have hrunWrite : run 8 whole env afterRealize = afterWrite := by
+    have hrun := run_classicalActionWrites_completeBool fits usesBool codec
+      words canonical nodes cfg pending whole env afterRealize action value
+      state.stack hafterRealizeRunning
+      (by simpa [afterRealize] using hstorage) rfl hwriteCode
+    simpa [afterWrite, writeCode] using hrun
+  have hafterWriteRunning : afterWrite.exit = none := by
+    simp [afterWrite, afterRealize, hrunning]
+  have hstopCode : Assembly.CodeAt whole [.stop] afterWrite.pc := by
+    have := hafterChecksCode.right.right
+    simpa [afterWrite, afterRealize, checksCode, writeCode] using this
+  have hrunStop : run 1 whole env afterWrite =
+      { afterWrite with exit := some .stopped } := by
+    rw [run_succ_of_codeAt 0 hafterWriteRunning hstopCode]
+    simp [run, stepInstruction]
+  rw [show 7 * action.checks.length + realizeFuel + 9 =
+      7 * action.checks.length + (realizeFuel + (8 + 1)) by omega,
+    run_add, hrunChecks, run_add, hrunRealize, run_add, hrunWrite, hrunStop]
+
 end
 
 end Vegas.Machine.Contract.EVM
