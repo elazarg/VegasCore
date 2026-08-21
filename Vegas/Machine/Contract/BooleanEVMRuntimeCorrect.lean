@@ -930,6 +930,156 @@ theorem run_sampleRequestEffect
     run_add, hrunLog, hrunStop]
   simp [afterLog, afterSet, setCode]
 
+/-- Starting from canonical idle storage, a successful request effect reaches
+the canonical waiting snapshot for exactly the requested finite node. -/
+theorem run_sampleRequestEffect_waiting
+    (fits : ClassicalStorageFitsWord program)
+    (nodesFit : NodesFitWord program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (cfg : EventGraph.Config program.graph)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (node : Fin program.graph.nodeCount)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage =
+      encodeClassicalSnapshot codec words (nodeWordCodec program nodesFit)
+        { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := none })
+    (hcode : Assembly.CodeAt whole
+      (sampleRequestEffectAssembly program node) state.pc) :
+    run 13 whole env state =
+      { state with
+        pc := state.pc + 144
+        memory := writeBytes state.memory 0
+          (PushData.word (BitVec.ofNat 256 (node : Nat))).bytes
+        storage := encodeClassicalSnapshot codec words
+          (nodeWordCodec program nodesFit)
+          { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := some node }
+        logs := state.logs ++
+          [(PushData.word (BitVec.ofNat 256 (node : Nat))).bytes]
+        exit := some .stopped } := by
+  rw [run_sampleRequestEffect fits whole env state node hrunning hcode]
+  rw [hstorage]
+  congr 1
+  change
+    Function.update
+        (Function.update
+          (encodeClassicalSnapshot codec words (nodeWordCodec program nodesFit)
+            { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := none })
+          (pendingFlagSlot program) 1)
+        (pendingNodeSlot program)
+          ((nodeWordCodec program nodesFit).encode node) =
+      encodeClassicalSnapshot codec words (nodeWordCodec program nodesFit)
+        { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := some node }
+  exact encodeClassicalSnapshot_setPending codec words
+    (nodeWordCodec program nodesFit)
+    { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := none } node
+
+/-- Resolved post-realization callback suffix: release the asynchronous lock,
+commit the selected node value, and terminate successfully. -/
+def sampleCallbackEffectAssembly (program : Program Player simpleExpr)
+    (action : ClassicalActionIR program) : Assembly :=
+  clearPendingAssembly program ++ classicalActionWritesAssembly action ++
+    [.stop]
+
+@[simp] theorem sampleCallbackEffectAssembly_byteLength
+    (program : Program Player simpleExpr)
+    (action : ClassicalActionIR program) :
+    (sampleCallbackEffectAssembly program action).byteLength = 179 := by
+  simp [sampleCallbackEffectAssembly, clearPendingAssembly,
+    storagePairAssembly, classicalActionWritesAssembly,
+    Assembly.byteLength, Instruction.byteLength]
+
+/-- Given an already authenticated and realized Boolean callback result, the
+emitted callback suffix reaches the exact canonical idle graph successor. -/
+theorem run_sampleCallbackEffect_completeBool
+    (fits : ClassicalStorageFitsWord program)
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : EventGraph.Config program.graph)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (action : ClassicalActionIR program) (value : Bool) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage =
+      encodeClassicalSnapshot codec words nodes
+        { graph := EventGraph.StateSnapshot.ofConfig cfg,
+          pending := some action.node })
+    (hstack : state.stack = encodeBool value :: rest)
+    (hcode : Assembly.CodeAt whole
+      (sampleCallbackEffectAssembly program action) state.pc) :
+    run 15 whole env state =
+      { state with
+        pc := state.pc + 178
+        stack := rest
+        storage := encodeClassicalSnapshot codec words nodes
+          { graph := EventGraph.StateSnapshot.ofConfig
+              (cfg.completeNode action.node { ty := .bool, value := value })
+            pending := none }
+        exit := some .stopped } := by
+  let clearCode := clearPendingAssembly program
+  let writeCode := classicalActionWritesAssembly action
+  have hdecomp : sampleCallbackEffectAssembly program action =
+      clearCode ++ (writeCode ++ [.stop]) := by
+    simp [sampleCallbackEffectAssembly, clearCode, writeCode,
+      List.append_assoc]
+  rw [hdecomp] at hcode
+  have hclearCode : Assembly.CodeAt whole clearCode state.pc :=
+    hcode.left
+  have htailCode : Assembly.CodeAt whole (writeCode ++ [.stop])
+      (state.pc + clearCode.byteLength) := hcode.right
+  let afterClear : ExecutionState :=
+    { state with
+      pc := state.pc + clearCode.byteLength
+      storage := encodeClassicalSnapshot codec words nodes
+        { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := none } }
+  have hrunClear : run 6 whole env state = afterClear := by
+    rw [run_clearPending fits whole env state hrunning hclearCode]
+    rw [hstorage]
+    have hclear := encodeClassicalSnapshot_clearPending codec words nodes
+      { graph := EventGraph.StateSnapshot.ofConfig cfg,
+        pending := some action.node }
+    simp only at hclear
+    have hflag : pendingFlagSlot program =
+      (ClassicalStorageLayout.canonical program).address
+        (ClassicalStorageSlot.pendingFlag : ClassicalStorageSlot program) := rfl
+    have hnode : pendingNodeSlot program =
+      (ClassicalStorageLayout.canonical program).address
+        (ClassicalStorageSlot.pendingNode : ClassicalStorageSlot program) := rfl
+    rw [hflag, hnode, hclear]
+  have hafterClearRunning : afterClear.exit = none := by
+    simp [afterClear, hrunning]
+  have hwriteCode : Assembly.CodeAt whole writeCode afterClear.pc := by
+    have := htailCode.left
+    simpa [afterClear] using this
+  let afterWrite : ExecutionState :=
+    { afterClear with
+      pc := afterClear.pc + writeCode.byteLength
+      stack := rest
+      storage := encodeClassicalSnapshot codec words nodes
+        { graph := EventGraph.StateSnapshot.ofConfig
+            (cfg.completeNode action.node { ty := .bool, value := value })
+          pending := none } }
+  have hrunWrite : run 8 whole env afterClear = afterWrite := by
+    have hrun := run_classicalActionWrites_completeBool fits usesBool codec
+      words canonical nodes cfg none whole env afterClear action value rest
+      hafterClearRunning rfl (by simpa [afterClear] using hstack) hwriteCode
+    simpa [afterWrite, writeCode] using hrun
+  have hafterWriteRunning : afterWrite.exit = none := by
+    simp [afterWrite, afterClear, hrunning]
+  have hstopCode : Assembly.CodeAt whole [.stop] afterWrite.pc := by
+    have := htailCode.right
+    simpa [afterWrite, afterClear, writeCode] using this
+  have hrunStop : run 1 whole env afterWrite =
+      { afterWrite with exit := some .stopped } := by
+    rw [run_succ_of_codeAt 0 hafterWriteRunning hstopCode]
+    simp [run, stepInstruction]
+  rw [show 15 = 6 + (8 + 1) by omega, run_add, hrunClear,
+    run_add, hrunWrite, hrunStop]
+  simp [afterWrite, afterClear, clearCode, writeCode,
+    clearPendingAssembly, storagePairAssembly,
+    classicalActionWritesAssembly, Assembly.byteLength,
+    Instruction.byteLength]
+
 end
 
 end Vegas.Machine.Contract.EVM
