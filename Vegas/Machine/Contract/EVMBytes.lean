@@ -35,6 +35,17 @@ structure ByteCalldata where
   byteLength : Nat
   bits : BitVec (8 * byteLength)
 
+namespace ByteCalldata
+
+/-- Calldata whose byte length is represented exactly by the EVM's 256-bit
+`CALLDATASIZE` result. Every concrete blockchain transaction satisfies this;
+the predicate excludes only mathematical lists too large to exist on-chain.
+-/
+def FitsWord (calldata : ByteCalldata) : Prop :=
+  calldata.byteLength < 2 ^ 256
+
+end ByteCalldata
+
 @[simp] theorem extractInternalSelector (selector : Selector) (node : Word) :
     (selector ++ node).extractLsb' 256 32 = selector :=
   BitVec.extractLsb'_append_eq_left

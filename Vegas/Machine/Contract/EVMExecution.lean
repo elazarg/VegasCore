@@ -463,6 +463,18 @@ theorem Assembly.CodeAt.right {whole left right : Assembly} {offset : Nat}
   · simpa [List.append_assoc] using hwhole
   · rw [Assembly.byteLength_append, hoffset]
 
+/-- Select a certified middle fragment and advance by the exact byte length
+of its prefix. -/
+theorem Assembly.CodeAt.middle {whole pre fragment suffix : Assembly}
+    {offset : Nat}
+    (hcode : Assembly.CodeAt whole (pre ++ fragment ++ suffix) offset) :
+    Assembly.CodeAt whole fragment (offset + pre.byteLength) := by
+  have htail : Assembly.CodeAt whole (fragment ++ suffix)
+      (offset + pre.byteLength) := by
+    apply Assembly.CodeAt.right
+    simpa [List.append_assoc] using hcode
+  exact htail.left
+
 /-- The complete selector dispatcher is the leading fragment of a linked
 classical runtime. -/
 theorem classicalRuntime_dispatcher_codeAt (selectors : ClassicalSelectors)
@@ -945,6 +957,101 @@ theorem run_classicalHandlerPrefix (whole : Assembly) (env : ExecutionEnv)
 namespace RuntimeImage
 
 variable {selectors : ClassicalSelectors}
+
+/-- Any straight-line fragment embedded in a local handler remains at the
+statically computed byte offset in the final checked-and-linked runtime. -/
+theorem linkLocalChecked?_fragment_codeAt
+    (sourceHandlers : LocalClassicalHandlers) (image : RuntimeImage selectors)
+    (hlink : linkLocalChecked? selectors sourceHandlers = some image)
+    (entry : ClassicalEntry) (pre suffix : LocalAssembly)
+    (fragment : Assembly)
+    (hsource : sourceHandlers.get entry =
+      pre ++ LocalAssembly.ofAssembly fragment ++ suffix) :
+    Assembly.CodeAt image.assembly fragment
+      (sourceHandlers.entryOffset entry + 2 + pre.byteLength) := by
+  let resolved := image.handlers.handlers
+  have hresolve : sourceHandlers.resolve? = some resolved :=
+    linkLocalChecked?_handlers_resolve hlink
+  have hget : (sourceHandlers.get entry).resolveAt
+      (sourceHandlers.entryOffset entry + 2) = some (resolved.get entry) :=
+    LocalClassicalHandlers.resolve?_get hresolve entry
+  rcases LocalAssembly.resolveAt_decomposition hsource hget with
+    ⟨preCode, suffixCode, hresolved, hlength⟩
+  have hblock : Assembly.CodeAt image.assembly (resolved.block entry)
+      (classicalEntryOffset resolved entry) := by
+    simpa [RuntimeImage.assembly, resolved] using
+      classicalRuntime_block_codeAt selectors resolved entry
+  have hblock' : Assembly.CodeAt image.assembly
+      ([.jumpdest, .pop] ++ resolved.get entry)
+      (classicalEntryOffset resolved entry) := by
+    simpa [ClassicalHandlers.block] using hblock
+  have hhandler : Assembly.CodeAt image.assembly (resolved.get entry)
+      (classicalEntryOffset resolved entry + 2) := by
+    have := hblock'.right
+    simpa [Assembly.byteLength, Instruction.byteLength] using this
+  rw [hresolved] at hhandler
+  have hfragment := hhandler.middle
+  have hentry := LocalClassicalHandlers.resolve?_entryOffset hresolve entry
+  simpa [hentry, hlength, Nat.add_assoc] using hfragment
+
+/-- The same linked-code bridge for a symbolic fragment containing local
+labels or jumps, given its independently resolved instruction sequence. -/
+theorem linkLocalChecked?_resolvedFragment_codeAt
+    (sourceHandlers : LocalClassicalHandlers) (image : RuntimeImage selectors)
+    (hlink : linkLocalChecked? selectors sourceHandlers = some image)
+    (entry : ClassicalEntry) (pre fragment suffix : LocalAssembly)
+    (fragmentCode : Assembly)
+    (hsource : sourceHandlers.get entry = pre ++ fragment ++ suffix)
+    (hfragment : LocalAssembly.resolveFrom?
+      (sourceHandlers.get entry) (sourceHandlers.entryOffset entry + 2)
+      fragment = some fragmentCode) :
+    Assembly.CodeAt image.assembly fragmentCode
+      (sourceHandlers.entryOffset entry + 2 + pre.byteLength) := by
+  let resolved := image.handlers.handlers
+  have hresolve : sourceHandlers.resolve? = some resolved :=
+    linkLocalChecked?_handlers_resolve hlink
+  have hget : (sourceHandlers.get entry).resolveAt
+      (sourceHandlers.entryOffset entry + 2) = some (resolved.get entry) :=
+    LocalClassicalHandlers.resolve?_get hresolve entry
+  rcases LocalAssembly.resolveAt_resolved_decomposition hsource hfragment
+      hget with ⟨preCode, suffixCode, hresolved, hlength⟩
+  have hblock : Assembly.CodeAt image.assembly (resolved.block entry)
+      (classicalEntryOffset resolved entry) := by
+    simpa [RuntimeImage.assembly, resolved] using
+      classicalRuntime_block_codeAt selectors resolved entry
+  have hblock' : Assembly.CodeAt image.assembly
+      ([.jumpdest, .pop] ++ resolved.get entry)
+      (classicalEntryOffset resolved entry) := by
+    simpa [ClassicalHandlers.block] using hblock
+  have hhandler : Assembly.CodeAt image.assembly (resolved.get entry)
+      (classicalEntryOffset resolved entry + 2) := by
+    have := hblock'.right
+    simpa [Assembly.byteLength, Instruction.byteLength] using this
+  rw [hresolved] at hhandler
+  have hselected := hhandler.middle
+  have hentry := LocalClassicalHandlers.resolve?_entryOffset hresolve entry
+  simpa [hentry, hlength, Nat.add_assoc] using hselected
+
+/-- Every resolved local label is an actual `JUMPDEST` at the absolute address
+used by jumps targeting that label. -/
+theorem linkLocalChecked?_label_codeAt
+    (sourceHandlers : LocalClassicalHandlers) (image : RuntimeImage selectors)
+    (hlink : linkLocalChecked? selectors sourceHandlers = some image)
+    (entry : ClassicalEntry) (target offset : Nat)
+    (hlabel : (sourceHandlers.get entry).labelOffset? target = some offset) :
+    Assembly.CodeAt image.assembly [.jumpdest]
+      (sourceHandlers.entryOffset entry + 2 + offset) := by
+  rcases LocalAssembly.labelOffset?_eq_some
+      (sourceHandlers.get entry) target offset hlabel with
+    ⟨pre, suffix, hsource, hlength⟩
+  have hfragment : LocalAssembly.resolveFrom?
+      (sourceHandlers.get entry) (sourceHandlers.entryOffset entry + 2)
+      [LocalItem.label target] = some [.jumpdest] := by
+    rfl
+  have hcode := linkLocalChecked?_resolvedFragment_codeAt sourceHandlers image
+    hlink entry pre [LocalItem.label target] suffix [.jumpdest]
+    hsource hfragment
+  simpa [hlength] using hcode
 
 /-- From the selected comparison branch, a matching selector enters that
 handler body after the taken jump and `JUMPDEST; POP` prefix. -/

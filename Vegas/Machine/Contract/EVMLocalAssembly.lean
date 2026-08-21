@@ -80,6 +80,89 @@ def labelOffsetFrom : LocalAssembly → LocalLabel → Nat → Option Nat
 def labelOffset? (program : LocalAssembly) (target : LocalLabel) : Option Nat :=
   labelOffsetFrom program target 0
 
+/-- Finding a label exposes the source prefix whose encoded length determines
+the returned accumulated offset. -/
+theorem labelOffsetFrom_eq_some
+    (program : LocalAssembly) (target start offset : Nat)
+    (hfind : labelOffsetFrom program target start = some offset) :
+    ∃ pre suffix,
+      program = pre ++ [LocalItem.label target] ++ suffix ∧
+      start + LocalAssembly.byteLength pre = offset := by
+  induction program generalizing start with
+  | nil => simp [labelOffsetFrom] at hfind
+  | cons item rest ih =>
+      cases item with
+      | label found =>
+          by_cases heq : found = target
+          · subst found
+            have hoffset : start = offset := by
+              simpa [labelOffsetFrom] using hfind
+            subst offset
+            exact ⟨[], rest, by simp, by simp [LocalAssembly.byteLength]⟩
+          · have hrestFind :
+                labelOffsetFrom rest target (start + 1) = some offset := by
+              simpa [labelOffsetFrom, heq] using hfind
+            rcases ih (start + 1) hrestFind with
+              ⟨pre, suffix, hrest, hlength⟩
+            refine ⟨LocalItem.label found :: pre, suffix, ?_, ?_⟩
+            · simp [hrest]
+            · change start + (1 + LocalAssembly.byteLength pre) = offset
+              omega
+      | op instruction =>
+          simp only [labelOffsetFrom] at hfind
+          rcases ih (start + LocalItem.byteLength
+              (LocalItem.op instruction)) hfind with
+            ⟨pre, suffix, hrest, hlength⟩
+          refine ⟨LocalItem.op instruction :: pre, suffix, ?_, ?_⟩
+          · simp [hrest]
+          · change start + (instruction.byteLength +
+                LocalAssembly.byteLength pre) = offset
+            simp only [LocalItem.byteLength] at hlength
+            omega
+      | jump destination =>
+          simp only [labelOffsetFrom] at hfind
+          rcases ih (start + LocalItem.byteLength
+              (LocalItem.jump destination)) hfind with
+            ⟨pre, suffix, hrest, hlength⟩
+          refine ⟨LocalItem.jump destination :: pre, suffix, ?_, ?_⟩
+          · simp [hrest]
+          · change start + (6 + LocalAssembly.byteLength pre) = offset
+            simp only [LocalItem.byteLength] at hlength
+            omega
+      | jumpi destination =>
+          simp only [labelOffsetFrom] at hfind
+          rcases ih (start + LocalItem.byteLength
+              (LocalItem.jumpi destination)) hfind with
+            ⟨pre, suffix, hrest, hlength⟩
+          refine ⟨LocalItem.jumpi destination :: pre, suffix, ?_, ?_⟩
+          · simp [hrest]
+          · change start + (6 + LocalAssembly.byteLength pre) = offset
+            simp only [LocalItem.byteLength] at hlength
+            omega
+
+/-- A local label offset is exactly the encoded byte length of a prefix ending
+immediately before the selected label. -/
+theorem labelOffset?_eq_some
+    (program : LocalAssembly) (target offset : Nat)
+    (hfind : program.labelOffset? target = some offset) :
+    ∃ pre suffix,
+      program = pre ++ [LocalItem.label target] ++ suffix ∧
+      LocalAssembly.byteLength pre = offset := by
+  rcases labelOffsetFrom_eq_some program target 0 offset hfind with
+    ⟨pre, suffix, hprogram, hlength⟩
+  exact ⟨pre, suffix, hprogram, by simpa using hlength⟩
+
+/-- A found label begins strictly inside its handler's encoded extent. -/
+theorem labelOffset?_lt_byteLength
+    (program : LocalAssembly) (target offset : Nat)
+    (hfind : program.labelOffset? target = some offset) :
+    offset < program.byteLength := by
+  rcases labelOffset?_eq_some program target offset hfind with
+    ⟨pre, suffix, hprogram, hlength⟩
+  rw [hprogram, byteLength_append, byteLength_append, hlength]
+  simp [LocalAssembly.byteLength, LocalItem.byteLength]
+  omega
+
 /-- Resolve one symbolic item against the complete local program. -/
 def resolveItem? (whole : LocalAssembly) (base : Nat) :
     LocalItem → Option Assembly
@@ -230,6 +313,34 @@ theorem resolveAt_decomposition
           · simp [List.append_assoc]
           · exact resolveFrom?_byteLength hpre
 
+/-- Resolving a complete local handler preserves any selected symbolic
+subfragment together with the subfragment's own resolved instruction code. -/
+theorem resolveAt_resolved_decomposition
+    {base : Nat} {program pre fragment suffix : LocalAssembly}
+    {fragmentCode resolved : Assembly}
+    (hprogram : program = pre ++ fragment ++ suffix)
+    (hfragment : resolveFrom? program base fragment = some fragmentCode)
+    (hresolve : resolveAt base program = some resolved) :
+    ∃ preCode suffixCode,
+      resolved = preCode ++ fragmentCode ++ suffixCode ∧
+      preCode.byteLength = pre.byteLength := by
+  subst program
+  rw [List.append_assoc] at hresolve
+  rw [List.append_assoc] at hfragment
+  unfold resolveAt at hresolve
+  rw [resolveFrom?_append, resolveFrom?_append, hfragment] at hresolve
+  cases hpre : resolveFrom? (pre ++ (fragment ++ suffix)) base pre with
+  | none => simp [hpre] at hresolve
+  | some preCode =>
+      cases hsuffix : resolveFrom? (pre ++ (fragment ++ suffix)) base suffix with
+      | none => simp [hpre, hsuffix] at hresolve
+      | some suffixCode =>
+          simp only [hpre, hsuffix, Option.some.injEq] at hresolve
+          subst resolved
+          refine ⟨preCode, suffixCode, ?_, ?_⟩
+          · simp [List.append_assoc]
+          · exact resolveFrom?_byteLength hpre
+
 end LocalAssembly
 
 /-- Four symbolic classical handlers. -/
@@ -265,6 +376,16 @@ def entryOffset (handlers : LocalClassicalHandlers) : ClassicalEntry → Nat
   | .oracleCallback =>
       classicalDispatcherSize + handlers.blockSize .player +
         handlers.blockSize .reveal + handlers.blockSize .sampleRequest
+
+/-- Every byte inside a selected handler lies inside the complete linked
+runtime extent. -/
+theorem internalOffset_lt_runtimeSize (handlers : LocalClassicalHandlers)
+    (entry : ClassicalEntry) (offset : Nat)
+    (hoffset : offset < (handlers.get entry).byteLength) :
+    handlers.entryOffset entry + 2 + offset < handlers.runtimeSize := by
+  cases entry <;>
+    simp only [entryOffset, runtimeSize, blockSize, get] at hoffset ⊢ <;>
+    omega
 
 /-- Resolve every handler at the byte offset immediately after its linked
 `JUMPDEST; POP` prefix. -/
@@ -309,6 +430,72 @@ theorem resolve?_runtimeSize {handlers : LocalClassicalHandlers}
                     LocalAssembly.resolveAt_byteLength hs,
                     LocalAssembly.resolveAt_byteLength ho]
 
+/-- Successful four-handler resolution exposes the exact resolution result of
+each source handler. -/
+theorem resolve?_components {handlers : LocalClassicalHandlers}
+    {resolved : ClassicalHandlers}
+    (hresolve : handlers.resolve? = some resolved) :
+    handlers.player.resolveAt (handlers.entryOffset .player + 2) =
+        some resolved.player ∧
+      handlers.reveal.resolveAt (handlers.entryOffset .reveal + 2) =
+        some resolved.reveal ∧
+      handlers.sampleRequest.resolveAt
+          (handlers.entryOffset .sampleRequest + 2) =
+        some resolved.sampleRequest ∧
+      handlers.oracleCallback.resolveAt
+          (handlers.entryOffset .oracleCallback + 2) =
+        some resolved.oracleCallback := by
+  cases hp : handlers.player.resolveAt (handlers.entryOffset .player + 2) with
+  | none => simp [resolve?, hp] at hresolve
+  | some player =>
+      cases hr : handlers.reveal.resolveAt
+          (handlers.entryOffset .reveal + 2) with
+      | none => simp [resolve?, hp, hr] at hresolve
+      | some reveal =>
+          cases hs : handlers.sampleRequest.resolveAt
+              (handlers.entryOffset .sampleRequest + 2) with
+          | none => simp [resolve?, hp, hr, hs] at hresolve
+          | some sampleRequest =>
+              cases ho : handlers.oracleCallback.resolveAt
+                  (handlers.entryOffset .oracleCallback + 2) with
+              | none => simp [resolve?, hp, hr, hs, ho] at hresolve
+              | some oracleCallback =>
+                  simp only [resolve?, hp, hr, hs, ho,
+                    Option.some.injEq] at hresolve
+                  subst resolved
+                  constructor
+                  · rfl
+                  constructor
+                  · rfl
+                  constructor
+                  · rfl
+                  · rfl
+
+/-- Every public entry retains the same byte offset when its local handlers
+are resolved. -/
+theorem resolve?_entryOffset {handlers : LocalClassicalHandlers}
+    {resolved : ClassicalHandlers}
+    (hresolve : handlers.resolve? = some resolved)
+    (entry : ClassicalEntry) :
+    classicalEntryOffset resolved entry = handlers.entryOffset entry := by
+  rcases resolve?_components hresolve with ⟨hp, hr, hs, ho⟩
+  cases entry <;>
+    simp only [classicalEntryOffset, entryOffset, blockSize,
+      ClassicalHandlers.blockSize, ClassicalHandlers.get, get] <;>
+    rw [LocalAssembly.resolveAt_byteLength hp] <;>
+    try rw [LocalAssembly.resolveAt_byteLength hr] <;>
+    try rw [LocalAssembly.resolveAt_byteLength hs]
+
+/-- Resolve any selected handler through the uniform entry-indexed API. -/
+theorem resolve?_get {handlers : LocalClassicalHandlers}
+    {resolved : ClassicalHandlers}
+    (hresolve : handlers.resolve? = some resolved)
+    (entry : ClassicalEntry) :
+    (handlers.get entry).resolveAt (handlers.entryOffset entry + 2) =
+      some (resolved.get entry) := by
+  rcases resolve?_components hresolve with ⟨hp, hr, hs, ho⟩
+  cases entry <;> assumption
+
 end LocalClassicalHandlers
 
 /-- Symbolic handlers whose complete resolved runtime fits `PUSH4` jump
@@ -339,6 +526,59 @@ def linkLocalChecked? (selectors : ClassicalSelectors)
     linkLocal? selectors { handlers := handlers, size_fits := hfits }
   else
     none
+
+/-- A successfully linked checked image stores precisely the resolution of
+the supplied local handlers. -/
+theorem linkLocalChecked?_handlers_resolve
+    {selectors : ClassicalSelectors} {handlers : LocalClassicalHandlers}
+    {image : RuntimeImage selectors}
+    (hlink : linkLocalChecked? selectors handlers = some image) :
+    handlers.resolve? = some image.handlers.handlers := by
+  unfold linkLocalChecked? at hlink
+  split at hlink
+  · unfold linkLocal? at hlink
+    split at hlink
+    · simp at hlink
+    · rename_i resolved hresolve
+      cases hlink
+      exact hresolve
+  · simp at hlink
+
+/-- Successful checked linking retains its source-level whole-image bound. -/
+theorem linkLocalChecked?_source_size_fits
+    {selectors : ClassicalSelectors} {handlers : LocalClassicalHandlers}
+    {image : RuntimeImage selectors}
+    (hlink : linkLocalChecked? selectors handlers = some image) :
+    handlers.runtimeSize < 2 ^ 32 := by
+  unfold linkLocalChecked? at hlink
+  split at hlink
+  · assumption
+  · simp at hlink
+
+/-- Every local label destination in a checked linked image fits the `PUSH4`
+address used by the resolver. -/
+theorem linkLocalChecked?_labelDestination_fits
+    {selectors : ClassicalSelectors} {handlers : LocalClassicalHandlers}
+    {image : RuntimeImage selectors}
+    (hlink : linkLocalChecked? selectors handlers = some image)
+    (entry : ClassicalEntry) (target offset : Nat)
+    (hlabel : (handlers.get entry).labelOffset? target = some offset) :
+    handlers.entryOffset entry + 2 + offset < 2 ^ 32 := by
+  exact (LocalClassicalHandlers.internalOffset_lt_runtimeSize handlers entry
+    offset (LocalAssembly.labelOffset?_lt_byteLength _ _ _ hlabel)).trans
+      (linkLocalChecked?_source_size_fits hlink)
+
+/-- Checked linking preserves the locally computed offset of every public
+entry point. -/
+theorem linkLocalChecked?_entryOffset
+    {selectors : ClassicalSelectors} {handlers : LocalClassicalHandlers}
+    {image : RuntimeImage selectors}
+    (hlink : linkLocalChecked? selectors handlers = some image)
+    (entry : ClassicalEntry) :
+    classicalEntryOffset image.handlers.handlers entry =
+      handlers.entryOffset entry := by
+  exact LocalClassicalHandlers.resolve?_entryOffset
+    (linkLocalChecked?_handlers_resolve hlink) entry
 
 end RuntimeImage
 

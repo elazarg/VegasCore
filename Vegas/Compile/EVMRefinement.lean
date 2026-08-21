@@ -92,7 +92,7 @@ def RuntimeRefines (artifact : EVMByteArtifact source Address)
   ∀ (context : CallContext Address) (state : artifact.State)
       (storage : EVM.TotalStorage) (calldata : EVM.ByteCalldata)
       (callValue : EVM.Word),
-    StateRepresents artifact state storage →
+    calldata.FitsWord → StateRepresents artifact state storage →
       ResultRefines artifact (artifact.receive context state calldata)
         (EVM.executeTransaction (runtime.assembly.length + 1)
           runtime.assembly

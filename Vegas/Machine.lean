@@ -55,5 +55,6 @@ import Vegas.Machine.Contract.SimpleEVMAction
 import Vegas.Machine.Contract.SimpleEVMDist
 import Vegas.Machine.Contract.SimpleEVMSample
 import Vegas.Machine.Contract.BooleanEVMRuntime
+import Vegas.Machine.Contract.BooleanEVMRuntimeCorrect
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction
