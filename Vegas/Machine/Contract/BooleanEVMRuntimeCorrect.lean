@@ -244,6 +244,692 @@ theorem run_nodeRoute_hit
   rw [show 6 = setup.length + 1 by simp [setup, loadCalldataWord],
     run_add, hrunSetup, hrunJump]
 
+/-- Resolved caller-authentication check. -/
+def callerEqAssembly (expected : AddressWord) (rejectDestination : Nat) :
+    Assembly :=
+  [ .caller,
+    .push (.address expected),
+    .eq,
+    .iszero,
+    .push (.nat32 rejectDestination),
+    .jumpi ]
+
+@[simp] theorem callerEqAssembly_byteLength
+    (expected : AddressWord) (rejectDestination : Nat) :
+    (callerEqAssembly expected rejectDestination).byteLength = 30 := by
+  simp [callerEqAssembly, Assembly.byteLength, Instruction.byteLength]
+
+theorem resolveFrom?_compileCallerEq
+    (whole : LocalAssembly) (base : Nat) (expected : AddressWord)
+    (reject offset : Nat)
+    (hlabel : whole.labelOffset? reject = some offset) :
+    whole.resolveFrom? base (compileCallerEq expected reject) =
+      some (callerEqAssembly expected (base + offset)) := by
+  simp [compileCallerEq, LocalAssembly.resolveFrom?,
+    LocalAssembly.resolveItem?, hlabel, callerEqAssembly]
+
+/-- The expected native sender falls through authentication without changing
+the stack or effects. -/
+theorem run_callerEq_accept
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (expected : AddressWord) (destination : Nat)
+    (hrunning : state.exit = none) (hcaller : env.caller = expected)
+    (hcode : Assembly.CodeAt whole
+      (callerEqAssembly expected destination) state.pc) :
+    run 6 whole env state =
+      { state with pc := state.pc + 30 } := by
+  apply StraightRun.run_eq ?_ hcode
+  simp [StraightRun, callerEqAssembly, stepInstruction, advance,
+    hrunning, hcaller, boolWord]
+  norm_num [Instruction.byteLength]
+
+/-- Every other native sender takes the certified authentication rejection
+jump. -/
+theorem run_callerEq_reject
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (expected : AddressWord) (destination : Nat)
+    (hrunning : state.exit = none) (hcaller : env.caller ≠ expected)
+    (hdestination : destination < 2 ^ 32)
+    (hcode : Assembly.CodeAt whole
+      (callerEqAssembly expected destination) state.pc)
+    (htarget : Assembly.CodeAt whole [.jumpdest] destination) :
+    run 6 whole env state =
+      { state with pc := destination } := by
+  let setup : Assembly :=
+    [ .caller,
+      .push (.address expected),
+      .eq,
+      .iszero,
+      .push (.nat32 destination) ]
+  let beforeJump : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := (PushData.nat32 destination).value :: 1 :: state.stack }
+  have hwordNe : BitVec.setWidth 256 env.caller ≠
+      BitVec.setWidth 256 expected := by
+    intro heq
+    apply hcaller
+    have hnarrow := congrArg (BitVec.setWidth 160) heq
+    simpa using hnarrow
+  have hdecomp : callerEqAssembly expected destination =
+      setup ++ [.jumpi] := by
+    rfl
+  rw [hdecomp] at hcode
+  have hsetup := hcode.left
+  have hjump := hcode.right
+  have hstraight : StraightRun whole env setup state beforeJump := by
+    simp [StraightRun, setup, beforeJump, stepInstruction, advance,
+      hrunning, hwordNe, boolWord]
+    norm_num [Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length whole env state = beforeJump :=
+    hstraight.run_eq hsetup
+  have hbeforeRunning : beforeJump.exit = none := by
+    simp [beforeJump, hrunning]
+  have hjump' : Assembly.CodeAt whole [.jumpi] beforeJump.pc := by
+    simpa [beforeJump] using hjump
+  have hvalid : whole.validJumpDest destination = true := by
+    simp [Assembly.validJumpDest, Assembly.fetch?_of_codeAt htarget]
+  have hdestinationValue :
+      (PushData.nat32 destination).value.toNat = destination :=
+    PushData.nat32_value_toNat_of_lt hdestination
+  have hrunJump : run 1 whole env beforeJump =
+      { state with pc := destination } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hjump']
+    simp only [run]
+    change
+      (if whole.validJumpDest
+          (PushData.nat32 destination).value.toNat then
+        { beforeJump with
+          pc := (PushData.nat32 destination).value.toNat
+          stack := state.stack }
+       else fault beforeJump) = { state with pc := destination }
+    rw [hdestinationValue, hvalid]
+    simp [beforeJump]
+  rw [show 6 = setup.length + 1 by simp [setup], run_add,
+    hrunSetup, hrunJump]
+
+/-- Resolved equality assertion for an arbitrary calldata word. -/
+def calldataWordEqAssembly (offset : Nat) (expected : Word)
+    (rejectDestination : Nat) : Assembly :=
+  loadCalldataWord offset ++
+    [ .push (.word expected),
+      .eq,
+      .iszero,
+      .push (.nat32 rejectDestination),
+      .jumpi ]
+
+@[simp] theorem calldataWordEqAssembly_byteLength
+    (offset : Nat) (expected : Word) (rejectDestination : Nat) :
+    (calldataWordEqAssembly offset expected rejectDestination).byteLength =
+      75 := by
+  simp [calldataWordEqAssembly, loadCalldataWord, Assembly.byteLength,
+    Instruction.byteLength]
+
+theorem resolveFrom?_compileCalldataWordEq
+    (whole : LocalAssembly) (base offset : Nat) (expected : Word)
+    (reject labelOffset : Nat)
+    (hlabel : whole.labelOffset? reject = some labelOffset) :
+    whole.resolveFrom? base (compileCalldataWordEq offset expected reject) =
+      some (calldataWordEqAssembly offset expected
+        (base + labelOffset)) := by
+  simp [compileCalldataWordEq, LocalAssembly.resolveFrom?_append,
+    LocalAssembly.resolveFrom?, LocalAssembly.resolveItem?, hlabel,
+    calldataWordEqAssembly]
+
+/-- An equal calldata word falls through the assertion. -/
+theorem run_calldataWordEq_accept
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (offset : Nat) (expected : Word) (destination : Nat)
+    (hrunning : state.exit = none) (hoffset : offset < 2 ^ 256)
+    (hload : calldataLoad env.calldata offset = expected)
+    (hcode : Assembly.CodeAt whole
+      (calldataWordEqAssembly offset expected destination) state.pc) :
+    run 7 whole env state =
+      { state with pc := state.pc + 75 } := by
+  have hoffsetMod : offset % 2 ^ 256 = offset :=
+    Nat.mod_eq_of_lt hoffset
+  norm_num at hoffsetMod
+  apply StraightRun.run_eq ?_ hcode
+  simp [StraightRun, calldataWordEqAssembly, loadCalldataWord,
+    stepInstruction, advance, hrunning,
+    Nat.mod_eq_of_lt hoffsetMod, hload, boolWord]
+  norm_num [Instruction.byteLength]
+
+/-- A different calldata word takes the certified assertion-rejection jump.
+-/
+theorem run_calldataWordEq_reject
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (offset : Nat) (expected : Word) (destination : Nat)
+    (hrunning : state.exit = none) (hoffset : offset < 2 ^ 256)
+    (hload : calldataLoad env.calldata offset ≠ expected)
+    (hdestination : destination < 2 ^ 32)
+    (hcode : Assembly.CodeAt whole
+      (calldataWordEqAssembly offset expected destination) state.pc)
+    (htarget : Assembly.CodeAt whole [.jumpdest] destination) :
+    run 7 whole env state =
+      { state with pc := destination } := by
+  have hoffsetMod : offset % 2 ^ 256 = offset :=
+    Nat.mod_eq_of_lt hoffset
+  norm_num at hoffsetMod
+  let setup : Assembly :=
+    loadCalldataWord offset ++
+      [ .push (.word expected),
+        .eq,
+        .iszero,
+        .push (.nat32 destination) ]
+  let beforeJump : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := (PushData.nat32 destination).value :: 1 :: state.stack }
+  have hdecomp : calldataWordEqAssembly offset expected destination =
+      setup ++ [.jumpi] := by
+    simp [calldataWordEqAssembly, setup, List.append_assoc]
+  rw [hdecomp] at hcode
+  have hsetup := hcode.left
+  have hjump := hcode.right
+  have hstraight : StraightRun whole env setup state beforeJump := by
+    simp [StraightRun, setup, beforeJump, loadCalldataWord,
+      stepInstruction, advance, hrunning,
+      Nat.mod_eq_of_lt hoffsetMod, hload, boolWord]
+    norm_num [Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length whole env state = beforeJump :=
+    hstraight.run_eq hsetup
+  have hbeforeRunning : beforeJump.exit = none := by
+    simp [beforeJump, hrunning]
+  have hjump' : Assembly.CodeAt whole [.jumpi] beforeJump.pc := by
+    simpa [beforeJump] using hjump
+  have hvalid : whole.validJumpDest destination = true := by
+    simp [Assembly.validJumpDest, Assembly.fetch?_of_codeAt htarget]
+  have hdestinationValue :
+      (PushData.nat32 destination).value.toNat = destination :=
+    PushData.nat32_value_toNat_of_lt hdestination
+  have hrunJump : run 1 whole env beforeJump =
+      { state with pc := destination } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hjump']
+    simp only [run]
+    change
+      (if whole.validJumpDest
+          (PushData.nat32 destination).value.toNat then
+        { beforeJump with
+          pc := (PushData.nat32 destination).value.toNat
+          stack := state.stack }
+       else fault beforeJump) = { state with pc := destination }
+    rw [hdestinationValue, hvalid]
+    simp [beforeJump]
+  rw [show 7 = setup.length + 1 by simp [setup, loadCalldataWord],
+    run_add, hrunSetup, hrunJump]
+
+/-- Resolved canonical-Boolean action validation. -/
+def canonicalBoolActionAssembly (rejectDestination : Nat) : Assembly :=
+  playerActionWord ++
+    [ .dup ⟨0, by decide⟩,
+      .push (.one (byte 0)),
+      .eq,
+      .dup ⟨1, by decide⟩,
+      .push (.one (byte 1)),
+      .eq,
+      .or,
+      .iszero,
+      .push (.nat32 rejectDestination),
+      .jumpi ]
+
+@[simp] theorem canonicalBoolActionAssembly_byteLength
+    (rejectDestination : Nat) :
+    (canonicalBoolActionAssembly rejectDestination).byteLength = 50 := by
+  simp [canonicalBoolActionAssembly, playerActionWord, loadCalldataWord,
+    Assembly.byteLength, Instruction.byteLength]
+
+theorem resolveFrom?_compileCanonicalBoolAction
+    (whole : LocalAssembly) (base reject offset : Nat)
+    (hlabel : whole.labelOffset? reject = some offset) :
+    whole.resolveFrom? base (compileCanonicalBoolAction reject) =
+      some (canonicalBoolActionAssembly (base + offset)) := by
+  simp [compileCanonicalBoolAction, LocalAssembly.resolveFrom?_append,
+    LocalAssembly.resolveFrom?, LocalAssembly.resolveItem?, hlabel,
+    canonicalBoolActionAssembly]
+
+/-- A canonical Boolean calldata word falls through validation and remains on
+the stack as the action value consumed by later guard/write code. -/
+theorem run_canonicalBoolAction_accept
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (value : Bool) (destination : Nat)
+    (hrunning : state.exit = none)
+    (hload : calldataLoad env.calldata 68 = encodeBool value)
+    (hcode : Assembly.CodeAt whole
+      (canonicalBoolActionAssembly destination) state.pc) :
+    run 12 whole env state =
+      { state with
+        pc := state.pc + 50
+        stack := encodeBool value :: state.stack } := by
+  apply StraightRun.run_eq ?_ hcode
+  cases value <;>
+    simp [StraightRun, canonicalBoolActionAssembly, playerActionWord,
+      loadCalldataWord, stepInstruction, advance, hrunning, hload,
+      encodeBool, boolWord] <;>
+    norm_num [Instruction.byteLength]
+
+/-- A noncanonical action word takes the certified rejection jump while
+retaining the rejected word beneath the consumed jump condition. -/
+theorem run_canonicalBoolAction_reject
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (value : Word) (destination : Nat)
+    (hrunning : state.exit = none)
+    (hload : calldataLoad env.calldata 68 = value)
+    (hzero : value ≠ 0) (hone : value ≠ 1)
+    (hdestination : destination < 2 ^ 32)
+    (hcode : Assembly.CodeAt whole
+      (canonicalBoolActionAssembly destination) state.pc)
+    (htarget : Assembly.CodeAt whole [.jumpdest] destination) :
+    run 12 whole env state =
+      { state with pc := destination, stack := value :: state.stack } := by
+  let setup : Assembly :=
+    playerActionWord ++
+      [ .dup ⟨0, by decide⟩,
+        .push (.one (byte 0)),
+        .eq,
+        .dup ⟨1, by decide⟩,
+        .push (.one (byte 1)),
+        .eq,
+        .or,
+        .iszero,
+        .push (.nat32 destination) ]
+  let beforeJump : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := (PushData.nat32 destination).value :: 1 ::
+        value :: state.stack }
+  have hzeroWord : value ≠ (0#256) := hzero
+  have honeWord : value ≠ (1#256) := hone
+  have hdecomp : canonicalBoolActionAssembly destination =
+      setup ++ [.jumpi] := by
+    simp [canonicalBoolActionAssembly, setup, List.append_assoc]
+  rw [hdecomp] at hcode
+  have hsetup := hcode.left
+  have hjump := hcode.right
+  have hstraight : StraightRun whole env setup state beforeJump := by
+    simp [StraightRun, setup, beforeJump, playerActionWord,
+      loadCalldataWord, stepInstruction, advance, hrunning, hload,
+      hzeroWord, honeWord, boolWord]
+    norm_num [Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length whole env state = beforeJump :=
+    hstraight.run_eq hsetup
+  have hbeforeRunning : beforeJump.exit = none := by
+    simp [beforeJump, hrunning]
+  have hjump' : Assembly.CodeAt whole [.jumpi] beforeJump.pc := by
+    simpa [beforeJump] using hjump
+  have hvalid : whole.validJumpDest destination = true := by
+    simp [Assembly.validJumpDest, Assembly.fetch?_of_codeAt htarget]
+  have hdestinationValue :
+      (PushData.nat32 destination).value.toNat = destination :=
+    PushData.nat32_value_toNat_of_lt hdestination
+  have hrunJump : run 1 whole env beforeJump =
+      { state with pc := destination, stack := value :: state.stack } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hjump']
+    simp only [run]
+    change
+      (if whole.validJumpDest
+          (PushData.nat32 destination).value.toNat then
+        { beforeJump with
+          pc := (PushData.nat32 destination).value.toNat
+          stack := value :: state.stack }
+       else fault beforeJump) =
+        { state with pc := destination, stack := value :: state.stack }
+    rw [hdestinationValue, hvalid]
+    simp [beforeJump]
+  rw [show 12 = setup.length + 1 by
+      simp [setup, playerActionWord, loadCalldataWord],
+    run_add, hrunSetup, hrunJump]
+
+/-- Resolved standard empty-data rejection block. -/
+def rejectBlockAssembly : Assembly :=
+  [ .jumpdest,
+    .push (.one (byte 0)),
+    .push (.one (byte 0)),
+    .revert ]
+
+@[simp] theorem rejectBlockAssembly_byteLength :
+    rejectBlockAssembly.byteLength = 6 := by
+  simp [rejectBlockAssembly, Assembly.byteLength, Instruction.byteLength]
+
+@[simp] theorem resolveFrom?_classicalRejectBlock
+    (whole : LocalAssembly) (base reject : Nat) :
+    whole.resolveFrom? base (classicalRejectBlock reject) =
+      some rejectBlockAssembly := by
+  rfl
+
+/-- Entering the standard rejection label produces an empty-data revert and
+does not mutate memory, storage, or logs. -/
+theorem run_rejectBlock
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole rejectBlockAssembly state.pc) :
+    run 4 whole env state =
+      { state with
+        pc := state.pc + 5
+        exit := some (.reverted []) } := by
+  let setup : Assembly :=
+    [ .jumpdest,
+      .push (.one (byte 0)),
+      .push (.one (byte 0)) ]
+  let beforeRevert : ExecutionState :=
+    { state with
+      pc := state.pc + setup.byteLength
+      stack := 0 :: 0 :: state.stack }
+  have hdecomp : rejectBlockAssembly = setup ++ [.revert] := by
+    rfl
+  rw [hdecomp] at hcode
+  have hsetup := hcode.left
+  have hrevert := hcode.right
+  have hstraight : StraightRun whole env setup state beforeRevert := by
+    simp [StraightRun, setup, beforeRevert, stepInstruction, advance,
+      hrunning]
+    norm_num [Assembly.byteLength, Instruction.byteLength]
+  have hrunSetup : run setup.length whole env state = beforeRevert :=
+    hstraight.run_eq hsetup
+  have hbeforeRunning : beforeRevert.exit = none := by
+    simp [beforeRevert, hrunning]
+  have hrevert' : Assembly.CodeAt whole [.revert] beforeRevert.pc := by
+    simpa [beforeRevert] using hrevert
+  have hrunRevert : run 1 whole env beforeRevert =
+      { state with
+        pc := state.pc + 5
+        exit := some (.reverted []) } := by
+    rw [run_succ_of_codeAt 0 hbeforeRunning hrevert']
+    simp [run, stepInstruction, beforeRevert, setup, readMemory]
+    norm_num [Assembly.byteLength, Instruction.byteLength]
+  rw [show 4 = setup.length + 1 by simp [setup], run_add,
+    hrunSetup, hrunRevert]
+
+/-- Two consecutive canonical `PUSH value; PUSH key; SSTORE` operations. -/
+def storagePairAssembly (firstValue firstKey secondValue secondKey : PushData) :
+    Assembly :=
+  [ .push firstValue, .push firstKey, .sstore,
+    .push secondValue, .push secondKey, .sstore ]
+
+/-- Execute a pair of structural storage writes in source order. -/
+theorem run_storagePair
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (firstValue firstKey secondValue secondKey : PushData)
+    (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole
+      (storagePairAssembly firstValue firstKey secondValue secondKey)
+      state.pc) :
+    run 6 whole env state =
+      { state with
+        pc := state.pc +
+          (storagePairAssembly firstValue firstKey secondValue secondKey).byteLength
+        storage := Function.update
+          (Function.update state.storage firstKey.value.toNat firstValue.value)
+          secondKey.value.toNat secondValue.value } := by
+  let first : Assembly :=
+    [.push firstValue, .push firstKey, .sstore]
+  let second : Assembly :=
+    [.push secondValue, .push secondKey, .sstore]
+  have hdecomp :
+      storagePairAssembly firstValue firstKey secondValue secondKey =
+        first ++ second := by
+    rfl
+  rw [hdecomp] at hcode
+  have hfirst := hcode.left
+  have hsecond := hcode.right
+  let afterFirst : ExecutionState :=
+    { state with
+      pc := state.pc + first.byteLength
+      storage := Function.update state.storage firstKey.value.toNat
+        firstValue.value }
+  have hrunFirst : run 3 whole env state = afterFirst := by
+    have hrun := run_push_push_sstore whole env state firstValue firstKey
+      hrunning hfirst
+    rw [hrun]
+    simp [afterFirst, first, Assembly.byteLength, Instruction.byteLength]
+    omega
+  have hafterRunning : afterFirst.exit = none := by
+    simp [afterFirst, hrunning]
+  have hsecond' : Assembly.CodeAt whole second afterFirst.pc := by
+    simpa [afterFirst] using hsecond
+  let afterSecond : ExecutionState :=
+    { afterFirst with
+      pc := afterFirst.pc + second.byteLength
+      storage := Function.update afterFirst.storage secondKey.value.toNat
+        secondValue.value }
+  have hrunSecond : run 3 whole env afterFirst = afterSecond := by
+    have hrun := run_push_push_sstore whole env afterFirst secondValue
+      secondKey hafterRunning hsecond'
+    rw [hrun]
+    simp [afterSecond, second, Assembly.byteLength, Instruction.byteLength]
+    omega
+  rw [show 6 = 3 + 3 by omega, run_add, hrunFirst, hrunSecond]
+  simp [afterSecond, afterFirst, hdecomp, first, second]
+  simp [Assembly.byteLength]
+  omega
+
+variable {Player : Type} [DecidableEq Player]
+variable {program : Program Player simpleExpr}
+
+/-- Resolved pending-request storage writes. -/
+def setPendingAssembly (program : Program Player simpleExpr) (node : Nat) :
+    Assembly :=
+  storagePairAssembly (.one (byte 1)) (.nat256 (pendingFlagSlot program))
+    (.nat256 node) (.nat256 (pendingNodeSlot program))
+
+@[simp] theorem setPendingAssembly_byteLength
+    (program : Program Player simpleExpr) (node : Nat) :
+    (setPendingAssembly program node).byteLength = 103 := by
+  simp [setPendingAssembly, storagePairAssembly, Assembly.byteLength,
+    Instruction.byteLength]
+
+@[simp] theorem resolveFrom?_compileSetPending
+    (whole : LocalAssembly) (base node : Nat) :
+    whole.resolveFrom? base (compileSetPending (program := program) node) =
+      some (setPendingAssembly program node) := by
+  rfl
+
+/-- The request prologue stores the pending flag and node at their exact
+certified layout addresses. -/
+theorem run_setPending
+    (fits : ClassicalStorageFitsWord program)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (node : Nat) (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole (setPendingAssembly program node)
+      state.pc) :
+    run 6 whole env state =
+      { state with
+        pc := state.pc + (setPendingAssembly program node).byteLength
+        storage := Function.update
+          (Function.update state.storage (pendingFlagSlot program) 1)
+          (pendingNodeSlot program) (BitVec.ofNat 256 node) } := by
+  have hrun := run_storagePair whole env state
+    (.one (byte 1)) (.nat256 (pendingFlagSlot program))
+    (.nat256 node) (.nat256 (pendingNodeSlot program)) hrunning hcode
+  have hflag : pendingFlagSlot program < 2 ^ 256 := by
+    simpa [pendingFlagSlot] using
+      (classicalStorageAddress_lt_word fits
+        (ClassicalStorageSlot.pendingFlag : ClassicalStorageSlot program))
+  have hnode : pendingNodeSlot program < 2 ^ 256 := by
+    simpa [pendingNodeSlot] using
+      (classicalStorageAddress_lt_word fits
+        (ClassicalStorageSlot.pendingNode : ClassicalStorageSlot program))
+  norm_num at hflag hnode
+  rw [hrun]
+  simp [setPendingAssembly,
+    Nat.mod_eq_of_lt hflag, Nat.mod_eq_of_lt hnode]
+
+/-- Resolved pending-marker clearing writes. -/
+def clearPendingAssembly (program : Program Player simpleExpr) : Assembly :=
+  storagePairAssembly (.one (byte 0)) (.nat256 (pendingFlagSlot program))
+    (.one (byte 0)) (.nat256 (pendingNodeSlot program))
+
+@[simp] theorem clearPendingAssembly_byteLength
+    (program : Program Player simpleExpr) :
+    (clearPendingAssembly program).byteLength = 72 := by
+  simp [clearPendingAssembly, storagePairAssembly, Assembly.byteLength,
+    Instruction.byteLength]
+
+@[simp] theorem resolveFrom?_compileClearPending
+    (whole : LocalAssembly) (base : Nat) :
+    whole.resolveFrom? base (compileClearPending program) =
+      some (clearPendingAssembly program) := by
+  rfl
+
+/-- A successful callback clears both pending cells at their exact certified
+layout addresses. -/
+theorem run_clearPending
+    (fits : ClassicalStorageFitsWord program)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole (clearPendingAssembly program) state.pc) :
+    run 6 whole env state =
+      { state with
+        pc := state.pc + (clearPendingAssembly program).byteLength
+        storage := Function.update
+          (Function.update state.storage (pendingFlagSlot program) 0)
+          (pendingNodeSlot program) 0 } := by
+  have hrun := run_storagePair whole env state
+    (.one (byte 0)) (.nat256 (pendingFlagSlot program))
+    (.one (byte 0)) (.nat256 (pendingNodeSlot program)) hrunning hcode
+  have hflag : pendingFlagSlot program < 2 ^ 256 := by
+    simpa [pendingFlagSlot] using
+      (classicalStorageAddress_lt_word fits
+        (ClassicalStorageSlot.pendingFlag : ClassicalStorageSlot program))
+  have hnode : pendingNodeSlot program < 2 ^ 256 := by
+    simpa [pendingNodeSlot] using
+      (classicalStorageAddress_lt_word fits
+        (ClassicalStorageSlot.pendingNode : ClassicalStorageSlot program))
+  norm_num at hflag hnode
+  rw [hrun]
+  simp [clearPendingAssembly,
+    Nat.mod_eq_of_lt hflag, Nat.mod_eq_of_lt hnode]
+
+/-- Resolved anonymous log emission for one oracle request. -/
+def oracleRequestLogAssembly (node : Nat) : Assembly :=
+  [ .push (.nat256 node),
+    .push (.one (byte 0)),
+    .mstore,
+    .push (.one (byte 32)),
+    .push (.one (byte 0)),
+    .log0 ]
+
+@[simp] theorem oracleRequestLogAssembly_byteLength (node : Nat) :
+    (oracleRequestLogAssembly node).byteLength = 41 := by
+  simp [oracleRequestLogAssembly, Assembly.byteLength,
+    Instruction.byteLength]
+
+@[simp] theorem resolveFrom?_compileOracleRequestLog
+    (whole : LocalAssembly) (base node : Nat) :
+    whole.resolveFrom? base (compileOracleRequestLog node) =
+      some (oracleRequestLogAssembly node) := by
+  rfl
+
+/-- The request log stores the full node word in scratch memory and appends
+exactly those 32 bytes as one anonymous log. -/
+theorem run_oracleRequestLog
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (node : Nat) (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole (oracleRequestLogAssembly node) state.pc) :
+    run 6 whole env state =
+      { state with
+        pc := state.pc + 41
+        memory := writeBytes state.memory 0
+          (PushData.word (BitVec.ofNat 256 node)).bytes
+        logs := state.logs ++
+          [(PushData.word (BitVec.ofNat 256 node)).bytes] } := by
+  have hread :
+      readMemory
+          (writeBytes state.memory 0
+            (PushData.word (BitVec.ofNat 256 node)).bytes)
+          0 32 =
+        (PushData.word (BitVec.ofNat 256 node)).bytes := by
+    simpa using readMemory_writeBytes state.memory 0
+      (PushData.word (BitVec.ofNat 256 node)).bytes
+  have hbyte32 : (byte 32).toNat = 32 := by decide
+  apply StraightRun.run_eq ?_ hcode
+  simp [StraightRun, oracleRequestLogAssembly, stepInstruction, advance,
+    hrunning, hbyte32, hread]
+  norm_num [Instruction.byteLength]
+
+/-- Resolved request effect: persist the pending node, emit its anonymous log,
+then stop successfully. -/
+def sampleRequestEffectAssembly
+    (program : Program Player simpleExpr) (node : Nat) : Assembly :=
+  setPendingAssembly program node ++ oracleRequestLogAssembly node ++ [.stop]
+
+@[simp] theorem resolveFrom?_compileSimpleSampleRequestEffect
+    (whole : LocalAssembly) (base : Nat)
+    (action : ClassicalActionIR program) :
+    whole.resolveFrom? base (compileSimpleSampleRequestEffect action) =
+      some (sampleRequestEffectAssembly program action.node) := by
+  simp [compileSimpleSampleRequestEffect, sampleRequestEffectAssembly,
+    LocalAssembly.resolveFrom?_append, LocalAssembly.resolveFrom?,
+    LocalAssembly.resolveItem?]
+
+/-- A ready request effect implements the waiting-state writes and exact
+request log, then terminates successfully. -/
+theorem run_sampleRequestEffect
+    (fits : ClassicalStorageFitsWord program)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (node : Nat) (hrunning : state.exit = none)
+    (hcode : Assembly.CodeAt whole
+      (sampleRequestEffectAssembly program node) state.pc) :
+    run 13 whole env state =
+      { state with
+        pc := state.pc + 144
+        memory := writeBytes state.memory 0
+          (PushData.word (BitVec.ofNat 256 node)).bytes
+        storage := Function.update
+          (Function.update state.storage (pendingFlagSlot program) 1)
+          (pendingNodeSlot program) (BitVec.ofNat 256 node)
+        logs := state.logs ++
+          [(PushData.word (BitVec.ofNat 256 node)).bytes]
+        exit := some .stopped } := by
+  let setCode := setPendingAssembly program node
+  let logCode := oracleRequestLogAssembly node
+  have hdecomp : sampleRequestEffectAssembly program node =
+      setCode ++ (logCode ++ [.stop]) := by
+    simp [sampleRequestEffectAssembly, setCode, logCode,
+      List.append_assoc]
+  rw [hdecomp] at hcode
+  have hsetCode : Assembly.CodeAt whole setCode state.pc :=
+    hcode.left
+  have htailCode : Assembly.CodeAt whole (logCode ++ [.stop])
+      (state.pc + setCode.byteLength) := hcode.right
+  let afterSet : ExecutionState :=
+    { state with
+      pc := state.pc + setCode.byteLength
+      storage := Function.update
+        (Function.update state.storage (pendingFlagSlot program) 1)
+        (pendingNodeSlot program) (BitVec.ofNat 256 node) }
+  have hrunSet : run 6 whole env state = afterSet := by
+    have hrun := run_setPending fits whole env state node hrunning hsetCode
+    simpa [afterSet, setCode] using hrun
+  have hafterSetRunning : afterSet.exit = none := by
+    simp [afterSet, hrunning]
+  have hlogCode : Assembly.CodeAt whole logCode afterSet.pc := by
+    have := htailCode.left
+    simpa [afterSet] using this
+  let afterLog : ExecutionState :=
+    { afterSet with
+      pc := afterSet.pc + 41
+      memory := writeBytes afterSet.memory 0
+        (PushData.word (BitVec.ofNat 256 node)).bytes
+      logs := afterSet.logs ++
+        [(PushData.word (BitVec.ofNat 256 node)).bytes] }
+  have hrunLog : run 6 whole env afterSet = afterLog := by
+    have hrun := run_oracleRequestLog whole env afterSet node
+      hafterSetRunning hlogCode
+    simpa [afterLog] using hrun
+  have hafterLogRunning : afterLog.exit = none := by
+    simp [afterLog, afterSet, hrunning]
+  have hstopCode : Assembly.CodeAt whole [.stop] afterLog.pc := by
+    have := htailCode.right
+    simpa [afterLog, afterSet, logCode] using this
+  have hrunStop : run 1 whole env afterLog =
+      { afterLog with exit := some .stopped } := by
+    rw [run_succ_of_codeAt 0 hafterLogRunning hstopCode]
+    simp [run, stepInstruction]
+  rw [show 13 = 6 + (6 + 1) by omega, run_add, hrunSet,
+    run_add, hrunLog, hrunStop]
+  simp [afterLog, afterSet, setCode]
+
 end
 
 end Vegas.Machine.Contract.EVM

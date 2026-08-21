@@ -410,6 +410,123 @@ theorem encodeClassicalSnapshot_eq_zero_of_ge_slotCount
   rw [dif_neg hnotValue, dif_neg hnotPresent, dif_neg hnotCompleted,
     if_neg hnotFlag, if_pos rfl]
 
+/-- Setting the two pending cells is exactly the canonical encoding of the
+same graph snapshot waiting for the supplied node. -/
+theorem encodeClassicalSnapshot_setPending
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (snapshot : ClassicalSnapshot program)
+    (node : Fin program.graph.nodeCount) :
+    Function.update
+        (Function.update (encodeClassicalSnapshot codec words nodes snapshot)
+          ((ClassicalStorageLayout.canonical program).address .pendingFlag) 1)
+        ((ClassicalStorageLayout.canonical program).address .pendingNode)
+        (nodes.encode node) =
+      encodeClassicalSnapshot codec words nodes
+        { snapshot with pending := some node } := by
+  funext key
+  let flag :=
+    (ClassicalStorageLayout.canonical program).address
+      (ClassicalStorageSlot.pendingFlag : ClassicalStorageSlot program)
+  let pendingNode :=
+    (ClassicalStorageLayout.canonical program).address
+      (ClassicalStorageSlot.pendingNode : ClassicalStorageSlot program)
+  change
+    Function.update
+        (Function.update (encodeClassicalSnapshot codec words nodes snapshot)
+          flag 1) pendingNode (nodes.encode node) key =
+      encodeClassicalSnapshot codec words nodes
+        { snapshot with pending := some node } key
+  by_cases hkeyNode : key = pendingNode
+  · subst key
+    simp only [Function.update_self]
+    change nodes.encode node =
+      encodeClassicalSnapshot codec words nodes
+        { graph := snapshot.graph, pending := some node }
+        ((ClassicalStorageLayout.canonical program).address .pendingNode)
+    rw [encodeClassicalSnapshot_pendingNode]
+  by_cases hkeyFlag : key = flag
+  · subst key
+    have hne : flag ≠ pendingNode := by
+      simp [flag, pendingNode]
+    simp only [Function.update_of_ne hne, Function.update_self]
+    change (1 : Word) =
+      encodeClassicalSnapshot codec words nodes
+        { graph := snapshot.graph, pending := some node }
+        ((ClassicalStorageLayout.canonical program).address .pendingFlag)
+    rw [encodeClassicalSnapshot_pendingFlag]
+    rfl
+  simp only [Function.update_of_ne hkeyNode,
+    Function.update_of_ne hkeyFlag]
+  unfold encodeClassicalSnapshot
+  split <;> try rfl
+  split <;> try rfl
+  split <;> try rfl
+  split
+  · rename_i heq
+    exact False.elim (hkeyFlag (by simpa [flag] using heq))
+  · split
+    · rename_i heq
+      exact False.elim (hkeyNode (by simpa [pendingNode] using heq))
+    · rfl
+
+/-- Clearing both pending cells is exactly the canonical idle encoding. -/
+theorem encodeClassicalSnapshot_clearPending
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (snapshot : ClassicalSnapshot program) :
+    Function.update
+        (Function.update (encodeClassicalSnapshot codec words nodes snapshot)
+          ((ClassicalStorageLayout.canonical program).address .pendingFlag) 0)
+        ((ClassicalStorageLayout.canonical program).address .pendingNode) 0 =
+      encodeClassicalSnapshot codec words nodes
+        { snapshot with pending := none } := by
+  funext key
+  let flag :=
+    (ClassicalStorageLayout.canonical program).address
+      (ClassicalStorageSlot.pendingFlag : ClassicalStorageSlot program)
+  let pendingNode :=
+    (ClassicalStorageLayout.canonical program).address
+      (ClassicalStorageSlot.pendingNode : ClassicalStorageSlot program)
+  change
+    Function.update
+        (Function.update (encodeClassicalSnapshot codec words nodes snapshot)
+          flag 0) pendingNode 0 key =
+      encodeClassicalSnapshot codec words nodes
+        { snapshot with pending := none } key
+  by_cases hkeyNode : key = pendingNode
+  · subst key
+    simp only [Function.update_self]
+    change (0 : Word) =
+      encodeClassicalSnapshot codec words nodes
+        { graph := snapshot.graph, pending := none }
+        ((ClassicalStorageLayout.canonical program).address .pendingNode)
+    rw [encodeClassicalSnapshot_pendingNode]
+  by_cases hkeyFlag : key = flag
+  · subst key
+    have hne : flag ≠ pendingNode := by
+      simp [flag, pendingNode]
+    simp only [Function.update_of_ne hne, Function.update_self]
+    change (0 : Word) =
+      encodeClassicalSnapshot codec words nodes
+        { graph := snapshot.graph, pending := none }
+        ((ClassicalStorageLayout.canonical program).address .pendingFlag)
+    rw [encodeClassicalSnapshot_pendingFlag]
+    rfl
+  simp only [Function.update_of_ne hkeyNode,
+    Function.update_of_ne hkeyFlag]
+  unfold encodeClassicalSnapshot
+  split <;> try rfl
+  split <;> try rfl
+  split <;> try rfl
+  split
+  · rename_i heq
+    exact False.elim (hkeyFlag (by simpa [flag] using heq))
+  · split
+    · rename_i heq
+      exact False.elim (hkeyNode (by simpa [pendingNode] using heq))
+    · rfl
+
 @[simp] theorem decodeClassicalField_encodeClassicalSnapshot
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)
