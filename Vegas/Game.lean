@@ -31,14 +31,13 @@ open GameTheory
 open GameTheory.Languages
 open GameTheory.Protocol
 
-universe uPlayer uState uAction uPublic uPrivate uInfo
+universe uPlayer uGame
 
-set_option linter.checkUnivs false in
 /-- The semantic result of compiling a finite Vegas description. `horizon` is
 proof data for the strategic view, not a stopping rule: stopping remains the
 execution protocol's `terminal` predicate. -/
 structure Game (Player : Type uPlayer) where
-  arena : FOSG.Game.{uPlayer, uState, uAction, uPublic, uPrivate, uInfo} Player
+  arena : FOSG.Game.{uPlayer, uGame, uGame, uGame, uGame, uGame} Player
   utility : arena.History → Player → ℝ
   horizon : ℕ
   bounded : arena.execution.BoundedHorizon horizon

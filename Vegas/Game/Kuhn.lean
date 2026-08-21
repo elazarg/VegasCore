@@ -28,11 +28,10 @@ namespace Vegas.Game
 open GameTheory
 open GameTheory.Protocol
 
-universe uPlayer uState uAction uPublic uPrivate uInfo
+universe uPlayer uGame
 
 variable {Player : Type uPlayer} [Fintype Player] [DecidableEq Player]
-variable
-  (G : Game.{uPlayer, uState, uAction, uPublic, uPrivate, uInfo} Player)
+variable (G : Game.{uPlayer, uGame} Player)
 
 /-- Compile behavioral policies to independently predrawn pure policies.
 Under perfect recall, every unilateral mixed deviation is realized by its

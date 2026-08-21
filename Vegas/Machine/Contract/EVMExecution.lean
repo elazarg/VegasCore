@@ -147,7 +147,6 @@ theorem selectorWord_extract_append (selector : Selector)
   · simp [BitVec.getLsbD_extractLsb', selectorWord,
       BitVec.getLsbD_append, hindex, hposition, hbit]
 
-set_option exponentiation.threshold 1024 in
 @[simp] theorem calldataSelector_encodeBytes_player
     (abi : ClassicalABI program ValueWord)
     (message : Blockchain.PlayerMessage program ValueWord) :
@@ -187,7 +186,6 @@ set_option exponentiation.threshold 1024 in
   exact selectorWord_extract_append abi.selectors.sampleRequest
     (abi.nodes.encode message.node) (by norm_num)
 
-set_option exponentiation.threshold 1024 in
 @[simp] theorem calldataSelector_encodeBytes_oracleCallback
     (abi : ClassicalABI program ValueWord)
     (message : ClassicalOracleMessage program) :
