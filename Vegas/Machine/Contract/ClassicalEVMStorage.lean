@@ -595,6 +595,25 @@ theorem encodeClassicalSnapshot_completeBool_completed
   rw [encodeClassicalSnapshot_completed]
   simp [StateSnapshot.ofConfig, Config.completeNode, encodeBool]
 
+/-- A present Boolean graph field has its literal zero/one word at the
+canonical value slot, independently of proof transports to the field type. -/
+theorem encodeClassicalSnapshot_bool_fieldValue
+    {program : Program Player simpleExpr}
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (snapshot : ClassicalSnapshot program)
+    (field : Fin program.graph.fieldCount) (value : Bool)
+    (hvalue : snapshot.graph.fieldValue? field =
+      some ((usesBool.field_type field).symm ▸ value)) :
+    encodeClassicalSnapshot codec words nodes snapshot
+        ((ClassicalStorageLayout.canonical program).address
+          (.fieldValue field)) =
+      encodeBool value := by
+  rw [encodeClassicalSnapshot_fieldValue, hvalue]
+  exact canonical.encode_type_eq_bool (usesBool.field_type field) value
+
 /-- The three concrete writes emitted for a Boolean action are exactly the
 canonical encoding of the graph successor produced by completing that node.
 All other storage cells, including the pending-oracle phase, are unchanged. -/

@@ -6,7 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Machine.Contract.BooleanEVMRuntime
 import Vegas.Machine.Contract.ClassicalEVMCodegenCorrect
-import Vegas.Machine.Contract.SimpleEVMExprCorrect
+import Vegas.Machine.Contract.SimpleEVMActionCorrect
 
 /-!
 # Execution correctness of Boolean classical EVM handlers
@@ -579,6 +579,212 @@ theorem run_canonicalBoolAction_reject
   rw [show 12 = setup.length + 1 by
       simp [setup, playerActionWord, loadCalldataWord],
     run_add, hrunSetup, hrunJump]
+
+/-- Concrete accepted-path assembly produced for a Boolean player commit once
+the retained guard has been lowered. -/
+def playerCommitRealizationAssembly (expectedPlayer : Word)
+    (expectedCaller : AddressWord) (rejectDestination : Nat)
+    (guardCode : Assembly) : Assembly :=
+  calldataWordEqAssembly 4 expectedPlayer rejectDestination ++
+    callerEqAssembly expectedCaller rejectDestination ++
+    canonicalBoolActionAssembly rejectDestination ++ guardCode ++
+    [.iszero, .push (.nat32 rejectDestination), .jumpi]
+
+@[simp] theorem playerCommitRealizationAssembly_byteLength
+    (expectedPlayer : Word) (expectedCaller : AddressWord)
+    (rejectDestination : Nat) (guardCode : Assembly) :
+    (playerCommitRealizationAssembly expectedPlayer expectedCaller
+      rejectDestination guardCode).byteLength =
+      162 + guardCode.byteLength := by
+  simp only [playerCommitRealizationAssembly, Assembly.byteLength_append,
+    calldataWordEqAssembly_byteLength, callerEqAssembly_byteLength,
+    canonicalBoolActionAssembly_byteLength]
+  norm_num [Assembly.byteLength, Instruction.byteLength]
+  omega
+
+/-- A correctly framed and authenticated canonical action whose compiled
+guard evaluates to true falls through realization with exactly that action
+word on the stack. -/
+theorem run_playerCommitRealization_accept
+    (pre : BoolExprPrecondition)
+    (expectedPlayer : Word) (expectedCaller : AddressWord)
+    (rejectDestination : Nat) (guardCode : Assembly)
+    (guardCorrect : BoolExprCorrect pre true guardCode)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (value : Bool) (rest : List Word)
+    (hpre : pre env state.storage)
+    (hrunning : state.exit = none)
+    (hstack : state.stack = rest)
+    (hplayer : calldataLoad env.calldata 4 = expectedPlayer)
+    (hcaller : env.caller = expectedCaller)
+    (haction : calldataLoad env.calldata 68 = encodeBool value)
+    (hcode : Assembly.CodeAt whole
+      (playerCommitRealizationAssembly expectedPlayer expectedCaller
+        rejectDestination guardCode) state.pc) :
+    run (28 + guardCode.length) whole env state =
+      { state with
+        pc := state.pc + 162 + guardCode.byteLength
+        stack := encodeBool value :: rest } := by
+  let playerCode := calldataWordEqAssembly 4 expectedPlayer rejectDestination
+  let callerCode := callerEqAssembly expectedCaller rejectDestination
+  let actionCode := canonicalBoolActionAssembly rejectDestination
+  let guardTail : Assembly :=
+    [.iszero, .push (.nat32 rejectDestination), .jumpi]
+  have hdecomp :
+      playerCommitRealizationAssembly expectedPlayer expectedCaller
+          rejectDestination guardCode =
+        playerCode ++ (callerCode ++
+          (actionCode ++ (guardCode ++ guardTail))) := by
+    simp [playerCommitRealizationAssembly, playerCode, callerCode, actionCode,
+      guardTail, List.append_assoc]
+  rw [hdecomp] at hcode
+  have hplayerCode : Assembly.CodeAt whole playerCode state.pc :=
+    hcode.left
+  let afterPlayer : ExecutionState :=
+    { state with pc := state.pc + 75 }
+  have hrunPlayer : run 7 whole env state = afterPlayer := by
+    have hrun := run_calldataWordEq_accept whole env state 4 expectedPlayer
+      rejectDestination hrunning (by norm_num) hplayer hplayerCode
+    exact hrun
+  have hafterPlayerRunning : afterPlayer.exit = none := by
+    simp [afterPlayer, hrunning]
+  have hcallerCode : Assembly.CodeAt whole callerCode afterPlayer.pc := by
+    have := hcode.right.left
+    simpa [afterPlayer, playerCode] using this
+  let afterCaller : ExecutionState :=
+    { state with pc := state.pc + 105 }
+  have hrunCaller : run 6 whole env afterPlayer = afterCaller := by
+    have hrun := run_callerEq_accept whole env afterPlayer expectedCaller
+      rejectDestination hafterPlayerRunning hcaller hcallerCode
+    simpa [afterCaller, afterPlayer] using hrun
+  have hafterCallerRunning : afterCaller.exit = none := by
+    simp [afterCaller, hrunning]
+  have hactionCode : Assembly.CodeAt whole actionCode afterCaller.pc := by
+    have := hcode.right.right.left
+    simpa [afterCaller, playerCode, callerCode] using this
+  let afterAction : ExecutionState :=
+    { state with
+      pc := state.pc + 155
+      stack := encodeBool value :: rest }
+  have hrunAction : run 12 whole env afterCaller = afterAction := by
+    have hrun := run_canonicalBoolAction_accept whole env afterCaller value
+      rejectDestination hafterCallerRunning haction hactionCode
+    simpa [afterAction, afterCaller, hstack] using hrun
+  have hafterActionRunning : afterAction.exit = none := by
+    simp [afterAction, hrunning]
+  have hguardCode : Assembly.CodeAt whole guardCode afterAction.pc := by
+    have := hcode.right.right.right.left
+    simpa [afterAction, playerCode, callerCode, actionCode] using this
+  let afterGuard : ExecutionState :=
+    { state with
+      pc := state.pc + 155 + guardCode.byteLength
+      stack := encodeBool true :: encodeBool value :: rest }
+  have hrunGuard : run guardCode.length whole env afterAction = afterGuard := by
+    have hrun := guardCorrect whole env afterAction
+      (encodeBool value :: rest) (by simpa [afterAction] using hpre)
+      hafterActionRunning rfl hguardCode
+    simpa [afterGuard, afterAction] using hrun
+  have hafterGuardRunning : afterGuard.exit = none := by
+    simp [afterGuard, hrunning]
+  have htailCode : Assembly.CodeAt whole guardTail afterGuard.pc := by
+    have := hcode.right.right.right.right
+    simpa [afterGuard, playerCode, callerCode, actionCode] using this
+  let afterTail : ExecutionState :=
+    { state with
+      pc := state.pc + 162 + guardCode.byteLength
+      stack := encodeBool value :: rest }
+  have hrunTail : run 3 whole env afterGuard = afterTail := by
+    apply StraightRun.run_eq ?_ htailCode
+    simp [StraightRun, guardTail, afterTail, afterGuard, stepInstruction,
+      advance, hrunning, boolWord, encodeBool]
+    norm_num [Instruction.byteLength]
+    omega
+  rw [show 28 + guardCode.length =
+      7 + (6 + (12 + (guardCode.length + 3))) by omega,
+    run_add, hrunPlayer, run_add, hrunCaller, run_add, hrunAction,
+    run_add, hrunGuard, hrunTail]
+
+/-- The accepted player realization contract composes with structural
+readiness checks and canonical action writes into a complete successful graph
+transition. -/
+theorem run_playerCompletingBlock_accept
+    {Player : Type} [DecidableEq Player]
+    {program : Program Player simpleExpr}
+    (fits : ClassicalStorageFitsWord program)
+    (usesBool : UsesOnlyBoolStorage program)
+    (codec : StorageCodec program) (words : WireCodec codec.Word Word)
+    (canonical : CanonicalBoolRepresentation program codec words)
+    (nodes : WireCodec (Fin program.graph.nodeCount) Word)
+    (cfg : EventGraph.Config program.graph)
+    (pending : Option (Fin program.graph.nodeCount))
+    (action : ClassicalActionIR program)
+    (ready : EventGraph.Ready program.graph cfg action.node)
+    (pre : BoolExprPrecondition)
+    (expectedPlayer : Word) (expectedCaller : AddressWord)
+    (rejectDestination : Nat) (guardCode : Assembly)
+    (guardCorrect : BoolExprCorrect pre true guardCode)
+    (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+    (value : Bool)
+    (hpre : pre env state.storage)
+    (hrunning : state.exit = none)
+    (hstorage : state.storage =
+      encodeClassicalSnapshot codec words nodes
+        { graph := EventGraph.StateSnapshot.ofConfig cfg, pending := pending })
+    (hplayer : calldataLoad env.calldata 4 = expectedPlayer)
+    (hcaller : env.caller = expectedCaller)
+    (haction : calldataLoad env.calldata 68 = encodeBool value)
+    (hcode : Assembly.CodeAt whole
+      (classicalCompletingBlockAssembly rejectDestination action
+        (playerCommitRealizationAssembly expectedPlayer expectedCaller
+          rejectDestination guardCode)) state.pc) :
+    run (7 * action.checks.length + (28 + guardCode.length) + 9)
+        whole env state =
+      { state with
+        pc := state.pc +
+            (classicalStorageChecksAssembly rejectDestination
+              action.checks).byteLength +
+            (playerCommitRealizationAssembly expectedPlayer expectedCaller
+              rejectDestination guardCode).byteLength +
+            (classicalActionWritesAssembly action).byteLength
+        storage := encodeClassicalSnapshot codec words nodes
+          { graph := EventGraph.StateSnapshot.ofConfig
+              (cfg.completeNode action.node { ty := .bool, value := value })
+            pending := pending }
+        exit := some .stopped } := by
+  let checksCode :=
+    classicalStorageChecksAssembly rejectDestination action.checks
+  have hcode' : Assembly.CodeAt whole
+      (checksCode ++
+        (playerCommitRealizationAssembly expectedPlayer expectedCaller
+          rejectDestination guardCode ++
+          (classicalActionWritesAssembly action ++ [.stop])))
+      state.pc := by
+    simpa [classicalCompletingBlockAssembly, checksCode,
+      List.append_assoc] using hcode
+  have hrealizeCode : Assembly.CodeAt whole
+      (playerCommitRealizationAssembly expectedPlayer expectedCaller
+        rejectDestination guardCode)
+      (state.pc + checksCode.byteLength) := hcode'.right.left
+  have hrealize :
+      run (28 + guardCode.length) whole env
+          { state with pc := state.pc + checksCode.byteLength } =
+        { state with
+          pc := state.pc + checksCode.byteLength +
+            (playerCommitRealizationAssembly expectedPlayer expectedCaller
+              rejectDestination guardCode).byteLength
+          stack := encodeBool value :: state.stack } := by
+    have hrun := run_playerCommitRealization_accept pre expectedPlayer
+      expectedCaller rejectDestination guardCode guardCorrect whole env
+      { state with pc := state.pc + checksCode.byteLength } value state.stack
+      hpre hrunning rfl hplayer hcaller haction
+      hrealizeCode
+    simpa only [playerCommitRealizationAssembly_byteLength,
+      Nat.add_assoc] using hrun
+  exact run_classicalCompletingBlock_completeBool fits usesBool codec words
+    canonical nodes cfg pending action ready whole env state rejectDestination
+    (playerCommitRealizationAssembly expectedPlayer expectedCaller
+      rejectDestination guardCode)
+    (28 + guardCode.length) value hrunning hstorage hrealize hcode
 
 /-- Resolved standard empty-data rejection block. -/
 def rejectBlockAssembly : Assembly :=

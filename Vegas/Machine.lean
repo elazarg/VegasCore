@@ -51,6 +51,7 @@ import Vegas.Machine.Contract.ClassicalEVMCodegen
 import Vegas.Machine.Contract.ClassicalEVMCodegenCorrect
 import Vegas.Machine.Contract.SimpleEVMExpr
 import Vegas.Machine.Contract.SimpleEVMExprCorrect
+import Vegas.Machine.Contract.SimpleEVMActionCorrect
 import Vegas.Machine.Contract.SimpleEVMAction
 import Vegas.Machine.Contract.SimpleEVMDist
 import Vegas.Machine.Contract.SimpleEVMSample
