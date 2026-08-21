@@ -62,6 +62,7 @@ def compileBooleanRuntime?
 creation bytecode, including constructor initialization of the source state. -/
 def compileBooleanDeployment?
     (backend : EVMByteBackend source Address)
+    (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
     (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
@@ -72,7 +73,7 @@ def compileBooleanDeployment?
     Option (EVM.DeploymentImage backend.selectors) := do
   let runtime ← backend.compileBooleanRuntime? usesBool canonical
     permissionlessReveals permissionlessSampleRequests
-  EVM.DeploymentImage.build? runtime
+  EVM.DeploymentImage.build? limits runtime
     (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
     backend.storageFits
     backend.compile.initialStorage
@@ -100,6 +101,7 @@ def compileBooleanNoSampleRuntime?
 creation bytecode. -/
 def compileBooleanNoSampleDeployment?
     (backend : EVMByteBackend source Address)
+    (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
     (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
@@ -109,7 +111,7 @@ def compileBooleanNoSampleDeployment?
     Option (EVM.DeploymentImage backend.selectors) := do
   let runtime ← backend.compileBooleanNoSampleRuntime? usesBool canonical noSamples
     permissionlessReveals
-  EVM.DeploymentImage.build? runtime
+  EVM.DeploymentImage.build? limits runtime
     (EVM.ClassicalStorageLayout.canonicalSlotCount (Machine.compile source))
     backend.storageFits
     backend.compile.initialStorage

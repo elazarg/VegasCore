@@ -113,6 +113,7 @@ def DeploymentRefines (artifact : EVMByteArtifact source Address)
 runtime and fixes both constructor inputs to the canonical source layout. -/
 theorem compiledDeployment_structure
     (backend : EVMByteBackend source Address)
+    (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
     (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
@@ -122,7 +123,7 @@ theorem compiledDeployment_structure
       backend.classical.sampleRequests = TriggerPolicy.permissionless)
     (deployment : EVM.DeploymentImage backend.selectors)
     (hcompile :
-      backend.compileBooleanDeployment? usesBool canonical
+      backend.compileBooleanDeployment? limits usesBool canonical
           permissionlessReveals permissionlessSampleRequests =
         some deployment) :
     ∃ runtime,
@@ -150,6 +151,7 @@ execution are already discharged; ordinary compiler correctness is precisely
 the linked runtime simulation obligation. -/
 theorem compiledDeployment_refines_iff_runtime
     (backend : EVMByteBackend source Address)
+    (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
     (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
@@ -159,12 +161,12 @@ theorem compiledDeployment_refines_iff_runtime
       backend.classical.sampleRequests = TriggerPolicy.permissionless)
     (deployment : EVM.DeploymentImage backend.selectors)
     (hcompile :
-      backend.compileBooleanDeployment? usesBool canonical
+      backend.compileBooleanDeployment? limits usesBool canonical
           permissionlessReveals permissionlessSampleRequests =
         some deployment) :
     DeploymentRefines backend.compile deployment ↔
       RuntimeRefines backend.compile deployment.runtime := by
-  rcases compiledDeployment_structure backend usesBool canonical
+  rcases compiledDeployment_structure backend limits usesBool canonical
       permissionlessReveals permissionlessSampleRequests deployment hcompile with
     ⟨_runtime, _hruntime, _hselected, hslots, hstorage⟩
   constructor
@@ -181,6 +183,7 @@ oracle honesty, scheduling fairness, gas availability, or game preservation
 under target-only observations. -/
 def BooleanCompilationCorrect
     (backend : EVMByteBackend source Address)
+    (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
     (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
@@ -189,7 +192,7 @@ def BooleanCompilationCorrect
     (permissionlessSampleRequests :
       backend.classical.sampleRequests = TriggerPolicy.permissionless) : Prop :=
   ∀ deployment,
-    backend.compileBooleanDeployment? usesBool canonical
+    backend.compileBooleanDeployment? limits usesBool canonical
         permissionlessReveals permissionlessSampleRequests = some deployment →
       DeploymentRefines backend.compile deployment
 

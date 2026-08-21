@@ -17,10 +17,30 @@ it. This module emits exactly that creation program.
 Zero storage cells are omitted because fresh EVM account storage is zero. The
 runtime offset is computed from the emitted initialization prefix; both it and
 the runtime length use `PUSH4`, so construction checks the corresponding
-32-bit offset bound.
+32-bit offset bound. Deployment validity is parameterized by target limits;
+the canonical Ethereum profile enforces the established runtime-code and
+initcode byte caps.
 -/
 
 namespace Vegas.Machine.Contract.EVM
+
+/-- Target/fork limits that determine whether creation bytecode is admissible.
+Both bounds are inclusive: an image is rejected only when it exceeds the
+selected maximum. -/
+structure DeploymentLimits where
+  maxRuntimeBytes : Nat
+  maxInitcodeBytes : Nat
+
+namespace DeploymentLimits
+
+/-- Ethereum deployment limits introduced by EIP-170 and EIP-3860. Keeping
+them as an explicit profile prevents the compiler from baking one chain or
+fork into its generic deployment representation. -/
+def ethereum : DeploymentLimits where
+  maxRuntimeBytes := 24_576
+  maxInitcodeBytes := 49_152
+
+end DeploymentLimits
 
 /-- Constructor `SSTORE`s for every nonzero cell in an ordered key list. -/
 def compileStorageWrites (slots : List Nat)
@@ -118,6 +138,7 @@ def deploymentCopyReturn (runtimeOffset runtimeSize : Nat) : Assembly :=
 
 /-- Actual EVM creation bytecode paired with the runtime image it deploys. -/
 structure DeploymentImage (selectors : ClassicalSelectors) where
+  limits : DeploymentLimits
   runtime : RuntimeImage selectors
   slotCount : Nat
   slotCount_fits : slotCount ≤ 2 ^ 256
@@ -127,6 +148,11 @@ structure DeploymentImage (selectors : ClassicalSelectors) where
   offset_fits :
     (compileStorageInitialization slotCount initialStorage).byteLength + 21 <
       2 ^ 32
+  runtime_size_fits : runtime.bytecode.length ≤ limits.maxRuntimeBytes
+  initcode_size_fits :
+    (compileStorageInitialization slotCount initialStorage).byteLength + 21 +
+        runtime.bytecode.length ≤
+      limits.maxInitcodeBytes
 
 namespace DeploymentImage
 
@@ -154,31 +180,40 @@ def creationAssembly (image : DeploymentImage selectors) : Assembly :=
 def bytecode (image : DeploymentImage selectors) : List Byte :=
   image.creationAssembly.emit ++ image.runtime.bytecode
 
-/-- Build creation bytecode after checking its computed runtime offset. -/
-def build? (runtime : RuntimeImage selectors) (slotCount : Nat)
+/-- Build creation bytecode after checking its computed runtime offset and the
+selected target's deployed-runtime and total-initcode limits. -/
+def build? (limits : DeploymentLimits) (runtime : RuntimeImage selectors)
+    (slotCount : Nat)
     (slotCountFits : slotCount ≤ 2 ^ 256)
     (storage : TotalStorage)
     (storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0) :
     Option (DeploymentImage selectors) :=
   let initialization := compileStorageInitialization slotCount storage
   let runtimeOffset := initialization.byteLength + 21
-  if hfits : runtimeOffset < 2 ^ 32 then
+  if hvalid :
+      runtimeOffset < 2 ^ 32 ∧
+        runtime.bytecode.length ≤ limits.maxRuntimeBytes ∧
+        runtimeOffset + runtime.bytecode.length ≤ limits.maxInitcodeBytes then
     some
-      { runtime := runtime
+      { limits := limits
+        runtime := runtime
         slotCount := slotCount
         slotCount_fits := slotCountFits
         initialStorage := storage
         storage_zero_outside := storageZeroOutside
-        offset_fits := hfits }
+        offset_fits := hvalid.1
+        runtime_size_fits := hvalid.2.1
+        initcode_size_fits := hvalid.2.2 }
   else
     none
 
-theorem build?_runtime {runtime : RuntimeImage selectors} {slotCount : Nat}
+theorem build?_runtime {limits : DeploymentLimits}
+    {runtime : RuntimeImage selectors} {slotCount : Nat}
     {slotCountFits : slotCount ≤ 2 ^ 256}
     {storage : TotalStorage}
     {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
     {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount slotCountFits storage
+    (hbuild : build? limits runtime slotCount slotCountFits storage
       storageZeroOutside = some image) :
     image.runtime = runtime := by
   simp only [build?] at hbuild
@@ -187,12 +222,13 @@ theorem build?_runtime {runtime : RuntimeImage selectors} {slotCount : Nat}
     rfl
   · contradiction
 
-theorem build?_slotCount {runtime : RuntimeImage selectors} {slotCount : Nat}
+theorem build?_slotCount {limits : DeploymentLimits}
+    {runtime : RuntimeImage selectors} {slotCount : Nat}
     {slotCountFits : slotCount ≤ 2 ^ 256}
     {storage : TotalStorage}
     {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
     {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount slotCountFits storage
+    (hbuild : build? limits runtime slotCount slotCountFits storage
       storageZeroOutside = some image) :
     image.slotCount = slotCount := by
   simp only [build?] at hbuild
@@ -201,12 +237,13 @@ theorem build?_slotCount {runtime : RuntimeImage selectors} {slotCount : Nat}
     rfl
   · contradiction
 
-theorem build?_initialStorage {runtime : RuntimeImage selectors}
+theorem build?_initialStorage {limits : DeploymentLimits}
+    {runtime : RuntimeImage selectors}
     {slotCount : Nat} {storage : TotalStorage}
     {slotCountFits : slotCount ≤ 2 ^ 256}
     {storageZeroOutside : ∀ slot, slotCount ≤ slot → storage slot = 0}
     {image : DeploymentImage selectors}
-    (hbuild : build? runtime slotCount slotCountFits storage
+    (hbuild : build? limits runtime slotCount slotCountFits storage
       storageZeroOutside = some image) :
     image.initialStorage = storage := by
   simp only [build?] at hbuild
@@ -228,6 +265,17 @@ bytes. -/
     image.bytecode.length =
       image.runtimeOffset + image.runtime.bytecode.length := by
   simp [DeploymentImage.bytecode]
+
+/-- Every deployment image satisfies its selected runtime-code bound. -/
+theorem runtime_bytecode_length_fits (image : DeploymentImage selectors) :
+    image.runtime.bytecode.length ≤ image.limits.maxRuntimeBytes :=
+  image.runtime_size_fits
+
+/-- Every deployment image satisfies its selected total-initcode bound. -/
+theorem bytecode_length_fits (image : DeploymentImage selectors) :
+    image.bytecode.length ≤ image.limits.maxInitcodeBytes := by
+  rw [bytecode_length]
+  exact image.initcode_size_fits
 
 /-- The prefix before the derived runtime offset is exactly the emitted
 constructor. -/

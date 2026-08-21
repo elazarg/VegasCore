@@ -43,6 +43,8 @@ import Vegas.Machine.Contract.Imperative
 import Vegas.Machine.Contract.Gas
 import Vegas.Machine.Contract.Transaction
 
+set_option maxRecDepth 2000
+
 namespace VegasTests
 
 open Vegas
@@ -649,6 +651,7 @@ example : emptyEVMRuntimeImage.bytecode.length = 190 := by
 
 example :
     (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
+      Machine.Contract.EVM.DeploymentLimits.ethereum
       emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
       emptyHasNoSampleNodes rfl).isSome = true := by
   rfl
@@ -656,6 +659,7 @@ example :
 noncomputable def emptyEVMDeploymentImage :
     Machine.Contract.EVM.DeploymentImage matchingPenniesClassicalSelectors :=
   (emptyEVMByteBackend.compileBooleanNoSampleDeployment?
+    Machine.Contract.EVM.DeploymentLimits.ethereum
     emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
     emptyHasNoSampleNodes rfl).get (by rfl)
 
@@ -712,6 +716,7 @@ example :
 
 example :
     (emptyEVMByteBackend.compileBooleanDeployment?
+      Machine.Contract.EVM.DeploymentLimits.ethereum
       emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
   rfl
 
