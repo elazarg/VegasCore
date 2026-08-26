@@ -389,7 +389,7 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
         evalExprDeps_eq_eval, iht, ihf]
 
 /-- The current concrete language, viewed as an instance of `IExpr`. -/
-def simpleExpr : Vegas.IExpr where
+@[reducible] def simpleExpr : Vegas.IExpr where
   Ty := BaseTy
   decEqTy := inferInstance
   Val := Val
@@ -714,7 +714,7 @@ theorem nullableCommitGuard_satisfiable
   refine ⟨Option.none, ?_⟩
   change evalExpr (Expr.nullableCommitGuard R)
       (Env.cons (x := x) Option.none env) = true
-  simp
+  exact evalExpr_nullableCommitGuard_none R env
 
 @[simp] theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (law : RationalLaw (Val b)) (env : PlainEnv Γ) :

@@ -75,8 +75,9 @@ theorem ByteCalldata.flatten_bytes (calldata : ByteCalldata) :
   have hwithin :
       8 * (calldata.byteLength - 1 - index / 8) + 8 - index % 8 ≤
         8 * calldata.byteLength := by omega
-  simp only [BitVec.getMsbD_cast, BitVec.getMsbD_flattenList,
-    ByteCalldata.bytes, List.getElem?_ofFn, hbyte]
+  simp only [BitVec.getMsbD_cast]
+  simp only [BitVec.getMsbD_flattenList, ByteCalldata.bytes,
+    List.getElem?_ofFn, hbyte]
   rw [dif_pos (by trivial)]
   simp only [Option.getD_some,
     BitVec.getMsbD_extractLsb', hmod, hwithin, decide_true, Bool.true_and]
@@ -159,6 +160,7 @@ theorem selectorWord_extract_append (selector : Selector)
         abi.nodes.encode message.node) ++ abi.values.encode message.value) >>>
           224) = _
   rw [BitVec.append_assoc, BitVec.append_assoc]
+  simp only [BitVec.extractLsb'_cast]
   exact selectorWord_extract_append abi.selectors.player
     (abi.players.encode message.player ++
       (abi.nodes.encode message.node ++ abi.values.encode message.value))
@@ -195,6 +197,7 @@ theorem selectorWord_extract_append (selector : Selector)
   change (((abi.selectors.oracleCallback ++ abi.nodes.encode message.node) ++
     message.choice).extractLsb' 288 256 >>> 224) = _
   rw [BitVec.append_assoc]
+  simp only [BitVec.extractLsb'_cast]
   exact selectorWord_extract_append abi.selectors.oracleCallback
     (abi.nodes.encode message.node ++ message.choice) (by norm_num)
 

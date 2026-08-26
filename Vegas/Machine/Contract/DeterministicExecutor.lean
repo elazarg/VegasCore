@@ -290,12 +290,17 @@ theorem executeDeterministicStore?_encodeReveal
             { ty := row.ty, value := value }))) := by
   let step : InternalStep program.graph state.1 event :=
     .reveal row source rowGet semEq ready value valueOk
-  have hdecode := decode_encode caller event step
-  simp only [encode] at hdecode
   unfold executeDeterministicStore?
-  simp only [encode]
+  change
+    (if policy.allows caller event.node then
+      match decode (Player := Player) program (encode caller event) with
+      | none => none
+      | some request =>
+          Request.executeDeterministicStore? codec
+            (RawStore.encodeState codec state) request
+    else none) = _
   rw [if_pos authorized]
-  rw [hdecode]
+  rw [decode_encode caller event step]
   exact Request.executeDeterministicStore?_encodeState_reveal codec state event
     row source rowGet semEq ready value valueOk
 

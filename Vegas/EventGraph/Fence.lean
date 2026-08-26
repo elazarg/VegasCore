@@ -158,7 +158,7 @@ theorem readableOrder_eq_of_fence {G : Graph Player L} {who : Player}
     {o₁ o₂ : List (Fin G.nodeCount)}
     (h₁ : G.IsTopo o₁) (h₂ : G.IsTopo o₂) (hfence : G.Fence who) :
     G.readableOrder who o₁ = G.readableOrder who o₂ := by
-  haveI : Std.Irrefl (α := Fin G.nodeCount) (· < ·) := ⟨fun a => lt_irrefl a⟩
+  have : Std.Irrefl (α := Fin G.nodeCount) (· < ·) := ⟨fun a => lt_irrefl a⟩
   refine List.Pairwise.eq_of_mem_iff
     (readableOrder_sorted_of_fence h₁ hfence)
     (readableOrder_sorted_of_fence h₂ hfence) fun a => ?_

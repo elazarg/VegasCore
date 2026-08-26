@@ -321,9 +321,9 @@ theorem mem_support_fullSupportBehavioral
     (who : Player) (info : program.game.arena.information.InfoState who)
     (choice : program.game.arena.information.Choice who info) :
     choice ∈ (program.fullSupportBehavioral who info).support := by
-  letI : Fintype (program.game.arena.information.Choice who info) :=
+  let : Fintype (program.game.arena.information.Choice who info) :=
     program.choiceFintype who info
-  letI : Nonempty (program.game.arena.information.Choice who info) :=
+  let : Nonempty (program.game.arena.information.Choice who info) :=
     program.choice_nonempty who info
   exact FinDist.mem_support_uniformOfFintype choice
 

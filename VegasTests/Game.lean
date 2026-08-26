@@ -118,17 +118,9 @@ noncomputable def coinGame : Vegas.Game TestPlayer :=
 noncomputable def coinMachine : Machine.Program TestPlayer simpleExpr :=
   Machine.compile coinProgram
 
-theorem coinMachine_graph_nodeCount : coinMachine.graph.nodeCount = 1 := by
-  simp [coinMachine, Machine.compile, Machine.ofCompiled, coinProgram,
-    coinCore, ToEventGraph.compile, ToEventGraph.compileCore,
-    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]
+theorem coinMachine_graph_nodeCount : coinMachine.graph.nodeCount = 1 := rfl
 
-theorem coinMachine_graph_fieldCount : coinMachine.graph.fieldCount = 1 := by
-  simp [coinMachine, Machine.compile, Machine.ofCompiled, coinProgram,
-    coinCore, ToEventGraph.compile, ToEventGraph.compileCore,
-    ToEventGraph.BuildResult.graph, EventGraph.Graph.fieldCount,
-    EventGraph.Graph.nodeCount,
-    ToEventGraph.initialState, ToEventGraph.InitialState.empty]
+theorem coinMachine_graph_fieldCount : coinMachine.graph.fieldCount = 1 := rfl
 
 theorem coinUsesOnlyBoolStorage :
     Machine.Contract.EVM.UsesOnlyBoolStorage coinMachine := by

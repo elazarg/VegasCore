@@ -70,7 +70,7 @@ def utility (outcome : source.form.sig.Outcome) : Role Player → ℝ
   | .mediator => 0
 
 /-- Utility game of the externalized known-mediator presentation. -/
-def game : UtilityGame (Role Player) where
+@[reducible] def game : UtilityGame (Role Player) where
   form := form source
   utility := utility source
 

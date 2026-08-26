@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import GameTheory.Math.Probability.FinDist
-import Mathlib.Data.NNRat.Order
+import Mathlib.Algebra.Order.Ring.Rat
 
 /-!
 # Exact finite probability syntax

@@ -95,12 +95,15 @@ theorem lowerClassicalRequirement_correct
       unfold ClassicalStorageCheck.evaluate lowerClassicalRequirement
       dsimp only
       rw [encodeClassicalSnapshot_completed, decodeBool_encodeBool]
-      simp [Imperative.Requirement.evaluate]
+      simp only [StateSnapshot.ofConfig_done, Imperative.Requirement.evaluate,
+        decide_not]
+      exact Bool.decide_eq_false
   | completed node =>
       unfold ClassicalStorageCheck.evaluate lowerClassicalRequirement
       dsimp only
       rw [encodeClassicalSnapshot_completed, decodeBool_encodeBool]
-      simp [Imperative.Requirement.evaluate]
+      simp only [StateSnapshot.ofConfig_done, Imperative.Requirement.evaluate]
+      exact Bool.decide_eq_true
 
 /-- A true logical requirement is stored as exactly its expected canonical
 Boolean word after lowering. -/

@@ -112,8 +112,8 @@ theorem readyInternalNodes_eq_of_publicObserve_eq
   have hdone : left.done = right.done :=
     congrArg PublicObservation.done hobs
   ext node
-  unfold readyInternalNodes ReadyInternalNode Ready
-  simp [hdone]
+  simp only [readyInternalNodes, Finset.mem_filter, Finset.mem_univ, true_and,
+    ReadyInternalNode, Ready, hdone]
 
 /-- Players with at least one ready strategic commit node. -/
 noncomputable def activePlayers [Fintype Player]
@@ -504,7 +504,12 @@ theorem exists_commitValue_of_readyCommitNode
     cast (congrArg L.Val hnodeTy.symm) choice
   have hvalueOk :
       (G.nodeTypedValue node value).as? guard.ty = some choice := by
-    simp [value, Graph.nodeTypedValue, TypedValue.as?, hnodeTy]
+    have hgen : ∀ (t : L.Ty) (h : t = guard.ty),
+        (⟨t, cast (congrArg L.Val h.symm) choice⟩ : TypedValue L).as?
+            guard.ty = some choice := by
+      rintro t rfl
+      simp [TypedValue.as?]
+    exact hgen _ hnodeTy
   refine ⟨value, ?_⟩
   exact
     ⟨{ row := row

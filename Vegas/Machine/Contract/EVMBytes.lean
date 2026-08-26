@@ -137,12 +137,29 @@ def decodeBytes (abi : MessageABI program Argument)
     abi.decodeBytes words (abi.encodeBytes words message) = some message := by
   cases message with
   | player message =>
-      simp [decodeBytes, encodeBytes, decode, words.decode_encode,
+      have hlen :
+          (abi.encodeBytes words (Blockchain.Message.player message)).byteLength
+            = 100 := rfl
+      have hne36 :
+          ¬ (abi.encodeBytes words
+              (Blockchain.Message.player message)).byteLength = 36 := by
+        rw [hlen]
+        decide
+      unfold decodeBytes
+      rw [dif_neg hne36, dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, decode, words.decode_encode,
         abi.players.decode_encode, abi.nodes.decode_encode]
   | internal message =>
       have hne : abi.selectors.internal ≠ abi.selectors.player :=
         Ne.symm abi.selectors.player_ne_internal
-      simp [decodeBytes, encodeBytes, decode, hne, words.decode_encode,
+      have hlen :
+          (abi.encodeBytes words
+            (Blockchain.Message.internal message)).byteLength = 36 := rfl
+      unfold decodeBytes
+      rw [dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, decode, hne, words.decode_encode,
         abi.nodes.decode_encode]
 
 /-- Byte-aligned message framing as a standard lossless wire codec. -/

@@ -104,20 +104,47 @@ def decodeBytes (abi : ClassicalABI program ValueWord)
     abi.decodeBytes (abi.encodeBytes message) = some message := by
   cases message with
   | player message =>
-      simp [decodeBytes, encodeBytes, ClassicalABI.decode,
+      have hlen :
+          (abi.encodeBytes (ClassicalMessage.player message)).byteLength
+            = 100 := rfl
+      have h36 :
+          ¬ (abi.encodeBytes
+              (ClassicalMessage.player message)).byteLength = 36 := by
+        rw [hlen]
+        decide
+      have h68 :
+          ¬ (abi.encodeBytes
+              (ClassicalMessage.player message)).byteLength = 68 := by
+        rw [hlen]
+        decide
+      unfold decodeBytes
+      rw [dif_neg h36, dif_neg h68, dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, ClassicalABI.decode,
         abi.players.decode_encode, abi.nodes.decode_encode,
         abi.values.decode_encode]
   | reveal message =>
       have hne : abi.selectors.reveal ≠ abi.selectors.player :=
         Ne.symm abi.selectors.player_ne_reveal
-      simp [decodeBytes, encodeBytes, ClassicalABI.decode, hne,
-        abi.nodes.decode_encode]
+      have hlen :
+          (abi.encodeBytes (ClassicalMessage.reveal message)).byteLength
+            = 36 := rfl
+      unfold decodeBytes
+      rw [dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, ClassicalABI.decode, hne, abi.nodes.decode_encode]
   | sampleRequest message =>
       have hp : abi.selectors.sampleRequest ≠ abi.selectors.player :=
         Ne.symm abi.selectors.player_ne_sampleRequest
       have hr : abi.selectors.sampleRequest ≠ abi.selectors.reveal :=
         Ne.symm abi.selectors.reveal_ne_sampleRequest
-      simp [decodeBytes, encodeBytes, ClassicalABI.decode, hp, hr,
+      have hlen :
+          (abi.encodeBytes
+            (ClassicalMessage.sampleRequest message)).byteLength = 36 := rfl
+      unfold decodeBytes
+      rw [dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, ClassicalABI.decode, hp, hr,
         abi.nodes.decode_encode]
   | oracleCallback message =>
       have hp : abi.selectors.oracleCallback ≠ abi.selectors.player :=
@@ -127,7 +154,18 @@ def decodeBytes (abi : ClassicalABI program ValueWord)
       have hs :
           abi.selectors.oracleCallback ≠ abi.selectors.sampleRequest :=
         Ne.symm abi.selectors.sampleRequest_ne_oracleCallback
-      simp [decodeBytes, encodeBytes, ClassicalABI.decode, hp, hr, hs,
+      have hlen :
+          (abi.encodeBytes
+            (ClassicalMessage.oracleCallback message)).byteLength = 68 := rfl
+      have h36 :
+          ¬ (abi.encodeBytes
+              (ClassicalMessage.oracleCallback message)).byteLength = 36 := by
+        rw [hlen]
+        decide
+      unfold decodeBytes
+      rw [dif_neg h36, dif_pos hlen]
+      simp only [BitVec.extractLsb'_cast]
+      simp [encodeBytes, ClassicalABI.decode, hp, hr, hs,
         abi.nodes.decode_encode]
 
 /-- Byte framing of the complete classical message surface as a standard
