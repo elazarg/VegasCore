@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import GameTheory.Protocol.Execution
+import GameTheory.Protocol.Information
 
 /-!
 # Adversarially scheduled protocols
@@ -36,6 +37,34 @@ The scheduler is given the joint submission, not merely the state.  That is the
 adversarial reading — a sequencer sees the pending transactions — and it is a
 modelling choice with game content, so it is made explicitly here rather than
 left implicit in a step function.
+
+## What is observable, and what is assumed
+
+Two different things are visible on a public runtime, and only one of them is
+modelled here.  The distinction is not a matter of precision; they are different
+epistemic objects.
+
+*Settled order.*  Once a round has been applied, the order it was applied in is
+on the chain.  Everyone can read it, everyone can read that everyone can read
+it, and so on: it is **common knowledge**, which is exactly what a public signal
+means in this vocabulary.  `log` records this, and `revealingSignals` publishes
+it.
+
+*In-flight submissions.*  Before a round is applied, pending submissions may be
+visible to some observers.  This is **not** common knowledge.  A player who sees
+a pending submission does not know who else saw it, nor that others know they
+saw it, and a player who did not see it may not know it existed.  Publishing it
+as a public signal would therefore be *wrong* rather than merely coarse, because
+a public signal in an information model is common knowledge by construction.
+
+**This module assumes no player observes a submission before it is applied.**
+Front-running, and every strategy that depends on reacting to a pending
+submission, is outside the model.  Relaxing the assumption is not a matter of
+publishing more signals: it needs an information structure able to express
+mutual-but-not-common knowledge, which `InfoSignals` does not directly provide.
+The assumption is stated here because a reader who takes `revealingSignals` for
+"everything a chain reveals" would credit the model with more faithfulness than
+it has.
 -/
 
 noncomputable section
@@ -67,6 +96,10 @@ structure ScheduledSystem (ι : Type uι) where
   terminal : Base → Prop
   /-- Apply one player's submission. -/
   applyOne : (state : Base) → (i : ι) → Action i → FinDist Base
+  /-- What everyone publicly sees of the underlying state. -/
+  View : Type uv
+  /-- The public view of a state. -/
+  view : Base → View
   /-- Every non-terminal state admits a legal joint submission. -/
   progress : ∀ state, ¬ terminal state →
     ∃ joint, IsLegalJoint (active state) (available state) joint
@@ -176,6 +209,98 @@ theorem step_ne_of_order_ne
 
 end ScheduledSystem
 
+/-! ## Two information models over one protocol
+
+The honest and robust readings are not a predicate on strategies; they are a
+choice of *information model* over the same protocol.  `GameTheory` makes policy
+locality structural — a policy is a function of an information state, so a
+policy that reads something absent from that state cannot be written at all.
+So the question "may a player condition on the schedule?" is settled entirely by
+whether the realized order reaches the information state.
+
+Both models below are legitimate `InfoSignals` over the same execution
+protocol.  They differ in one component. -/
+
+namespace ScheduledSystem
+
+variable (sys : ScheduledSystem.{uι, uv} ι)
+
+/-- Signals that publish the realized order alongside the public view.
+
+This is the faithful model of a public runtime: a player sees the state *and*
+the order transactions landed in. -/
+def revealingSignals (scheduler : sys.Scheduler) :
+    InfoSignals (sys.toExecutionProtocol scheduler) where
+  PublicSignal := sys.View × sys.Order
+  PrivateSignal _ := PUnit
+  initialPublic := (sys.view sys.init, [])
+  initialPrivate _ := PUnit.unit
+  publicSignal event := (sys.view event.target.base, event.target.log.headD [])
+  privateSignal _ _ := PUnit.unit
+  InfoState _ := List (sys.View × sys.Order)
+  initInfo _ _ signal := [signal]
+  pushInfo _ info _ _ signal := signal :: info
+
+/-- Signals that publish only the public view, discarding the realized order.
+
+This is the idealization: it describes a runtime that resolves a round
+atomically.  It is a perfectly good information model — it just is not a model
+of a public chain. -/
+def blindSignals (scheduler : sys.Scheduler) :
+    InfoSignals (sys.toExecutionProtocol scheduler) where
+  PublicSignal := sys.View
+  PrivateSignal _ := PUnit
+  initialPublic := sys.view sys.init
+  initialPrivate _ := PUnit.unit
+  publicSignal event := sys.view event.target.base
+  privateSignal _ _ := PUnit.unit
+  InfoState _ := List sys.View
+  initInfo _ _ signal := [signal]
+  pushInfo _ info _ _ signal := signal :: info
+
+/-- **Blindness is exactly discarding the schedule.**
+
+The order-blind information state is the schedule-forgetting projection of the
+order-revealing one, after every history.  So the two models are related by a
+forgetful map and differ in nothing else: whatever an order-blind player knows,
+an order-revealing player also knows, and the gap between them is precisely the
+realized orders. -/
+theorem blind_infoOf_eq_map_revealing (scheduler : sys.Scheduler) (i : ι)
+    {state : (sys.toExecutionProtocol scheduler).State}
+    (trace : ExecutionProtocol.Trace (sys.toExecutionProtocol scheduler) state) :
+    (sys.blindSignals scheduler).infoOf i trace =
+      ((sys.revealingSignals scheduler).infoOf i trace).map Prod.fst := by
+  induction trace with
+  | start => rfl
+  | extend prior joint isLegal realized ih =>
+      -- rewrite with `ih` before unfolding the signal records: unfolding them
+      -- first replaces the head symbol `ih` matches on.
+      rw [InfoSignals.infoOf_extend, InfoSignals.infoOf_extend, ih]
+      rfl
+
+/-- **The two models separate exactly on the schedule.**
+
+Two realized steps that reach the same public view but were scheduled
+differently are *indistinguishable* to an order-blind observer and
+*distinguishable* to an order-revealing one.
+
+With `blind_infoOf_eq_map_revealing`, which says blindness is precisely
+discarding the order, this pins down the entire difference between the two
+models: not the state, not the effects, only the schedule. -/
+theorem signals_separate_of_log_ne (scheduler : sys.Scheduler)
+    {left right : ExecutionProtocol.StepEvent (sys.toExecutionProtocol scheduler)}
+    (hview : sys.view left.target.base = sys.view right.target.base)
+    (hlog : left.target.log.headD [] ≠ right.target.log.headD []) :
+    (sys.blindSignals scheduler).publicSignal left =
+        (sys.blindSignals scheduler).publicSignal right ∧
+      (sys.revealingSignals scheduler).publicSignal left ≠
+        (sys.revealingSignals scheduler).publicSignal right := by
+  refine ⟨hview, ?_⟩
+  intro heq
+  exact hlog (congrArg Prod.snd heq)
+
+end ScheduledSystem
+
 /-! ## A witness that the separation is not vacuous
 
 `step_ne_of_order_ne` would be worthless if its hypotheses could not be met, so
@@ -196,6 +321,8 @@ def idleSystem : ScheduledSystem.{0, 0} (Fin 2) where
   available _ _ := Set.univ
   terminal _ := False
   applyOne state _ _ := FinDist.pure state
+  View := Unit
+  view _ := ()
   progress _ _ := ⟨fun _ => some (), fun _ => ⟨trivial, Set.mem_univ _⟩⟩
 
 /-- Both players submit. -/

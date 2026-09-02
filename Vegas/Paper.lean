@@ -260,7 +260,14 @@ state rather than quotiented out of it.
 
 `Vegas.idle_step_ne` witnesses that this is not vacuous, in the most extreme
 case available: a system in which every action is the identity, so effects
-commute maximally, and two schedulers are still distinguishable. -/
+commute maximally, and two schedulers are still distinguishable.
+
+Scope. The order published here is the *settled* one, which is common knowledge
+once a round is on chain — the reading a public signal carries in an information
+model. In-flight submissions are visible to some observers but are **not**
+common knowledge, so they cannot be modelled as a public signal at all, and this
+development assumes no player observes a submission before it is applied.
+Front-running is therefore outside the model. -/
 theorem schedule_is_observable
     {ι : Type} (sys : ScheduledSystem ι)
     {left right : sys.Scheduler}
