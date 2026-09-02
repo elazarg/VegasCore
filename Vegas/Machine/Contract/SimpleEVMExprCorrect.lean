@@ -671,6 +671,29 @@ theorem BoolExprCorrect.select {pre : BoolExprPrecondition}
   simp [afterYes, afterNo, afterCondition, Assembly.byteLength]
   omega
 
+/-- **End-to-end word expression compilation is correct.**
+
+Whenever `compileWordExpr?` accepts a source expression, the assembly it emits
+pushes exactly that expression's value under `evalExpr`.  This is the statement
+that connects source syntax to executable EVM code: the IR is an internal step,
+and nothing about it appears here. -/
+theorem compileWordExpr?_correct
+    {Γ : CtxSimple}
+    (pre : BoolExprPrecondition)
+    (maxStack : Nat)
+    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (ρ : PlainEnv Γ)
+    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
+      WordExprCorrect pre (ρ.get binding) (variableCode binding))
+    (source : Expr Γ .word) (code : Assembly)
+    (hcompile : compileWordExpr? maxStack variableCode source = some code) :
+    WordExprCorrect pre (evalExpr source ρ) code := by
+  obtain ⟨lowered, _hfits, hcode⟩ :=
+    compileWordExpr?_stackHeight_le maxStack variableCode source code hcompile
+  subst hcode
+  rw [← lowered.eval_eq ρ]
+  exact WordExprIR.compile_correct pre variableCode ρ hvariable lowered.ir
+
 /-- Total code generation for the accepted Boolean IR preserves its pure
 meaning. -/
 theorem BoolExprIR.compile_correct

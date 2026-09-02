@@ -173,17 +173,20 @@ opposite order from `ADD`, and the composition lemmas fix that per operation. -/
 theorem word_codegen_correct
     {Γ : CtxSimple}
     (pre : Machine.Contract.EVM.BoolExprPrecondition)
+    (maxStack : Nat)
     (variableCode :
       {name : VarId} → HasVar Γ name .word → Machine.Contract.EVM.Assembly)
     (env : PlainEnv Γ)
     (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
       Machine.Contract.EVM.WordExprCorrect pre (env.get binding)
         (variableCode binding))
-    (ir : Machine.Contract.EVM.WordExprIR Γ) :
-    Machine.Contract.EVM.WordExprCorrect pre (ir.eval env)
-      (ir.compile variableCode) :=
-  Machine.Contract.EVM.WordExprIR.compile_correct pre variableCode env
-    hvariable ir
+    (source : Expr Γ .word) (code : Machine.Contract.EVM.Assembly)
+    (hcompile :
+      Machine.Contract.EVM.compileWordExpr? maxStack variableCode source
+        = some code) :
+    Machine.Contract.EVM.WordExprCorrect pre (evalExpr source env) code :=
+  Machine.Contract.EVM.compileWordExpr?_correct pre maxStack variableCode env
+    hvariable source code hcompile
 
 /-! ## Strategy presentations -/
 

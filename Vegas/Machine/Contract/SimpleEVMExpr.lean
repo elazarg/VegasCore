@@ -109,6 +109,101 @@ def compile
 
 end WordExprIR
 
+/-- A successfully accepted source word expression carries the exact semantic
+connection to its word backend IR. -/
+structure LoweredWordExpr {Γ : CtxSimple} (source : Expr Γ .word) where
+  ir : WordExprIR Γ
+  eval_eq : ∀ ρ, ir.eval ρ = evalExpr source ρ
+
+@[ext] theorem LoweredWordExpr.ext {Γ : CtxSimple} {source : Expr Γ .word}
+    {left right : LoweredWordExpr source} (hir : left.ir = right.ir) :
+    left = right := by
+  cases left
+  cases right
+  cases hir
+  rfl
+
+/-- Validate and lower exactly the supported word source fragment.
+
+Rejected on purpose: a word-typed `ite` would need a masking selection circuit,
+and `getD` would need a one-word encoding of `option`.  Neither is invented
+here, so both are refused rather than mis-compiled. -/
+def lowerWordExpr? {Γ : CtxSimple} :
+    (source : Expr Γ .word) → Option (LoweredWordExpr source)
+  | .var name binding =>
+      some { ir := .variable name binding, eval_eq := by intro; rfl }
+  | .constWord value =>
+      some { ir := .literal value, eval_eq := by intro; rfl }
+  | .addWord left right =>
+      match lowerWordExpr? left, lowerWordExpr? right with
+      | some loweredLeft, some loweredRight =>
+          some
+            { ir := .add loweredLeft.ir loweredRight.ir
+              eval_eq := by
+                intro ρ
+                simp only [WordExprIR.eval, evalExpr,
+                  loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ] }
+      | _, _ => none
+  | .subWord left right =>
+      match lowerWordExpr? left, lowerWordExpr? right with
+      | some loweredLeft, some loweredRight =>
+          some
+            { ir := .sub loweredLeft.ir loweredRight.ir
+              eval_eq := by
+                intro ρ
+                simp only [WordExprIR.eval, evalExpr,
+                  loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ] }
+      | _, _ => none
+  | .mulWord left right =>
+      match lowerWordExpr? left, lowerWordExpr? right with
+      | some loweredLeft, some loweredRight =>
+          some
+            { ir := .mul loweredLeft.ir loweredRight.ir
+              eval_eq := by
+                intro ρ
+                simp only [WordExprIR.eval, evalExpr,
+                  loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ] }
+      | _, _ => none
+  | _ => none
+
+/-- Compile the supported word `simpleExpr` fragment to straight-line EVM
+assembly only when its additional stack high-water mark fits `maxStack`. -/
+def compileWordExpr?
+    {Γ : CtxSimple}
+    (maxStack : Nat)
+    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (source : Expr Γ .word) : Option Assembly :=
+  match lowerWordExpr? source with
+  | none => none
+  | some lowered =>
+      if lowered.ir.stackHeight ≤ maxStack then
+        some (lowered.ir.compile variableCode)
+      else
+        none
+
+/-- Successful word lowering is statically bounded by the requested EVM stack
+allowance. -/
+theorem compileWordExpr?_stackHeight_le
+    {Γ : CtxSimple}
+    (maxStack : Nat)
+    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (source : Expr Γ .word) (code : Assembly)
+    (hcompile : compileWordExpr? maxStack variableCode source = some code) :
+    ∃ lowered : LoweredWordExpr source,
+      lowered.ir.stackHeight ≤ maxStack ∧
+        code = lowered.ir.compile variableCode := by
+  unfold compileWordExpr? at hcompile
+  cases hlower : lowerWordExpr? source with
+  | none => rw [hlower] at hcompile; exact absurd hcompile (by simp)
+  | some lowered =>
+      rw [hlower] at hcompile
+      by_cases hfits : lowered.ir.stackHeight ≤ maxStack
+      · simp only [hfits, ↓reduceIte, Option.some.injEq] at hcompile
+        exact ⟨lowered, hfits, hcompile.symm⟩
+      · simp only [hfits, ↓reduceIte] at hcompile
+        exact absurd hcompile (by simp)
+
+
 /-- Closed Boolean-only expression IR accepted by the EVM backend. Unsupported
 source constructors are eliminated before code generation. -/
 inductive BoolExprIR (Γ : CtxSimple) where
