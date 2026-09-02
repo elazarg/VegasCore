@@ -233,6 +233,57 @@ theorem nash_equivalence
       IsNash source.form (euPreference source.utility) profile :=
   adequacy.isNash_compileProfile_iff profile
 
+
+/-! ## Trusted base
+
+Every claim above must rest on Lean's three standard axioms and nothing else.
+These pins are the guard: `#print axioms` emits an info message, and
+`#guard_msgs` turns a *different* message into a build error.  If a claim ever
+acquires `sorryAx`, a `native_decide` kernel extension, or a bespoke axiom, the
+build fails here rather than silently widening what the paper is trusting.
+
+`whitespace := lax` because `#print axioms` wraps its list across lines. -/
+
+/-- info: 'Vegas.Paper.source_payoff_adequacy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_payoff_adequacy
+
+/-- info: 'Vegas.Paper.schedule_confluence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.schedule_confluence
+
+/-- info: 'Vegas.Paper.commit_reveal_barrier' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.commit_reveal_barrier
+
+/-- info: 'Vegas.Paper.sequential_schedule_determined' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sequential_schedule_determined
+
+/-- info: 'Vegas.Paper.permissive_schedule_not_determined' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.permissive_schedule_not_determined
+
+/-- info: 'Vegas.Paper.kuhn_behavioral_to_mixedPure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.kuhn_behavioral_to_mixedPure
+
+/-- info: 'Vegas.Paper.kuhn_mixedPure_to_behavioral' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.kuhn_mixedPure_to_behavioral
+
+/-- info: 'Vegas.Paper.utility_preservation_honest' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.utility_preservation_honest
+
+/-- info: 'Vegas.Paper.utility_preservation_deviation' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.utility_preservation_deviation
+
+/-- info: 'Vegas.Paper.nash_equivalence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.nash_equivalence
+
 end Paper
 
 end Vegas
