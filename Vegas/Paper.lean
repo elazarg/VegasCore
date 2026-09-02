@@ -174,12 +174,10 @@ theorem word_codegen_correct
     {Γ : CtxSimple}
     (pre : Machine.Contract.EVM.BoolExprPrecondition)
     (maxStack : Nat)
-    (variableCode :
-      {name : VarId} → HasVar Γ name .word → Machine.Contract.EVM.Assembly)
+    (variableCode : Machine.Contract.EVM.VariableCode Γ)
     (env : PlainEnv Γ)
-    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
-      Machine.Contract.EVM.WordExprCorrect pre (env.get binding)
-        (variableCode binding))
+    (hvariable :
+      Machine.Contract.EVM.VariableCodeCorrect pre env variableCode)
     (source : Expr Γ .word) (code : Machine.Contract.EVM.Assembly)
     (hcompile :
       Machine.Contract.EVM.compileWordExpr? maxStack variableCode source
@@ -187,6 +185,35 @@ theorem word_codegen_correct
     Machine.Contract.EVM.WordExprCorrect pre (evalExpr source env) code :=
   Machine.Contract.EVM.compileWordExpr?_correct pre maxStack variableCode env
     hvariable source code hcompile
+
+/-- **Boolean guard code generation is correct.**
+
+Whenever `compileBoolExpr?` accepts a source Boolean expression, the assembly it
+emits pushes exactly that expression's canonical Boolean word.
+
+This is the statement that matters for commit guards, since a guard is what a
+player's proposed action is checked against.  It now covers guards that compare
+*word arithmetic* — `x + y < z`, `x * y = z` — not only Boolean connectives,
+because `BoolExprIR` carries `wordEqual` and `wordLess` over `WordExprIR`.
+
+`VariableCodeCorrect` is one hypothesis for both types: a loading fragment must
+push `encodeSimpleValue τ` of the variable's value, which is `encodeBool` at
+`.bool` and the identity at `.word`. -/
+theorem guard_codegen_correct
+    {Γ : CtxSimple}
+    (pre : Machine.Contract.EVM.BoolExprPrecondition)
+    (maxStack : Nat)
+    (variableCode : Machine.Contract.EVM.VariableCode Γ)
+    (env : PlainEnv Γ)
+    (hvariable :
+      Machine.Contract.EVM.VariableCodeCorrect pre env variableCode)
+    (source : Expr Γ .bool) (code : Machine.Contract.EVM.Assembly)
+    (hcompile :
+      Machine.Contract.EVM.compileBoolExpr? maxStack variableCode source
+        = some code) :
+    Machine.Contract.EVM.BoolExprCorrect pre (evalExpr source env) code :=
+  Machine.Contract.EVM.compileBoolExpr?_correct pre variableCode env
+    hvariable source code maxStack hcompile
 
 /-! ## Strategy presentations -/
 
@@ -344,6 +371,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.word_codegen_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.word_codegen_correct
+
+/-- info: 'Vegas.Paper.guard_codegen_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.guard_codegen_correct
 
 end Paper
 

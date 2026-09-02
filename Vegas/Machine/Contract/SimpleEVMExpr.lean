@@ -56,6 +56,15 @@ def boolSelectAssembly : Assembly :=
     .and,
     .xor ]
 
+/-- Code that loads one bound variable onto the stack as a single word.
+
+Uniform in the variable's type on purpose: on the EVM a calldata word and a
+storage slot are one 32-byte load either way, and what differs between types is
+only how the loaded word is *interpreted* — which is exactly what
+`encodeSimpleValue` records. -/
+abbrev VariableCode (Γ : CtxSimple) : Type :=
+  {name : VarId} → {τ : BaseTy} → HasVar Γ name τ → Assembly
+
 /-- Closed word-valued expression IR accepted by the EVM backend.
 
 Word expressions feed Boolean predicates and never the reverse — there is no
@@ -95,8 +104,7 @@ def stackHeight : WordExprIR Γ → Nat
 left-then-right.  `sub` must emit **right-then-left**: `stepInstruction`
 computes `top - next`, so the left operand has to end up on top.  See
 `run_subWord`, whose stack shape is deliberately the mirror of `run_addWord`. -/
-def compile
-    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly) :
+def compile (variableCode : VariableCode Γ) :
     WordExprIR Γ → Assembly
   | .variable _ binding => variableCode binding
   | .literal value => [.push (.word value)]
@@ -171,7 +179,7 @@ assembly only when its additional stack high-water mark fits `maxStack`. -/
 def compileWordExpr?
     {Γ : CtxSimple}
     (maxStack : Nat)
-    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (variableCode : VariableCode Γ)
     (source : Expr Γ .word) : Option Assembly :=
   match lowerWordExpr? source with
   | none => none
@@ -186,7 +194,7 @@ allowance. -/
 theorem compileWordExpr?_stackHeight_le
     {Γ : CtxSimple}
     (maxStack : Nat)
-    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (variableCode : VariableCode Γ)
     (source : Expr Γ .word) (code : Assembly)
     (hcompile : compileWordExpr? maxStack variableCode source = some code) :
     ∃ lowered : LoweredWordExpr source,
@@ -213,6 +221,10 @@ inductive BoolExprIR (Γ : CtxSimple) where
   | conjunction (left right : BoolExprIR Γ)
   | negation (expression : BoolExprIR Γ)
   | select (condition yes no : BoolExprIR Γ)
+  /-- Equality of two word terms, via EVM `EQ`. -/
+  | wordEqual (left right : WordExprIR Γ)
+  /-- Unsigned comparison of two word terms, via EVM `LT`. -/
+  | wordLess (left right : WordExprIR Γ)
 
 namespace BoolExprIR
 
@@ -225,6 +237,8 @@ def eval (ρ : PlainEnv Γ) : BoolExprIR Γ → Bool
   | .negation expression => !(expression.eval ρ)
   | .select condition yes no =>
       if condition.eval ρ then yes.eval ρ else no.eval ρ
+  | .wordEqual left right => decide (left.eval ρ = right.eval ρ)
+  | .wordLess left right => (left.eval ρ).ult (right.eval ρ)
 
 /-- Maximum number of additional EVM stack items used while evaluating an
 expression. Variable fragments are required to push exactly one word without
@@ -238,11 +252,15 @@ def stackHeight : BoolExprIR Γ → Nat
   | .select condition yes no =>
       max condition.stackHeight
         (max (1 + no.stackHeight) (2 + yes.stackHeight))
+  | .wordEqual left right =>
+      max left.stackHeight (1 + right.stackHeight)
+  -- `LT` reads its operands in the opposite order, so the right operand is
+  -- emitted first and is the one held while the left is evaluated.
+  | .wordLess left right =>
+      max right.stackHeight (1 + left.stackHeight)
 
 /-- Total straight-line code generation for the accepted Boolean IR. -/
-def compile
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly) :
+def compile (variableCode : VariableCode Γ) :
     BoolExprIR Γ → Assembly
   | .variable _ binding => variableCode binding
   | .literal value => [.push (.one (byte (if value then 1 else 0)))]
@@ -254,6 +272,11 @@ def compile
   | .select condition yes no =>
       condition.compile variableCode ++ no.compile variableCode ++
         yes.compile variableCode ++ boolSelectAssembly
+  | .wordEqual left right =>
+      left.compile variableCode ++ right.compile variableCode ++ [.eq]
+  -- Reversed, as for `SUB`: `LT` reads its first operand from the top.
+  | .wordLess left right =>
+      right.compile variableCode ++ left.compile variableCode ++ [.lt]
 
 end BoolExprIR
 
@@ -288,6 +311,27 @@ def lowerBoolExpr? {Γ : CtxSimple} :
                 simp only [BoolExprIR.eval, evalExpr,
                   loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ]
                 rfl }
+      | _, _ => none
+  | .eq (b := .word) left right =>
+      match lowerWordExpr? left, lowerWordExpr? right with
+      | some loweredLeft, some loweredRight =>
+          some
+            { ir := .wordEqual loweredLeft.ir loweredRight.ir
+              eval_eq := by
+                intro ρ
+                simp only [BoolExprIR.eval, evalExpr,
+                  loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ]
+                rfl }
+      | _, _ => none
+  | .ltWord left right =>
+      match lowerWordExpr? left, lowerWordExpr? right with
+      | some loweredLeft, some loweredRight =>
+          some
+            { ir := .wordLess loweredLeft.ir loweredRight.ir
+              eval_eq := by
+                intro ρ
+                simp only [BoolExprIR.eval, evalExpr,
+                  loweredLeft.eval_eq ρ, loweredRight.eval_eq ρ] }
       | _, _ => none
   | .eq (b := .int) _ _ => none
   | .eq (b := .range _ _) _ _ => none
@@ -331,8 +375,7 @@ Variable fragments must obey the one-word contract of `BoolExprIR.stackHeight`.
 def compileBoolExpr?
     {Γ : CtxSimple}
     (maxStack : Nat)
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly)
+    (variableCode : VariableCode Γ)
     (source : Expr Γ .bool) : Option Assembly :=
   match lowerBoolExpr? source with
   | none => none
@@ -347,8 +390,7 @@ stack allowance. -/
 theorem compileBoolExpr?_stackHeight_le
     {Γ : CtxSimple}
     {maxStack : Nat}
-    {variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly}
+    {variableCode : VariableCode Γ}
     {source : Expr Γ .bool} {assembly : Assembly}
     (hcompile :
       compileBoolExpr? maxStack variableCode source = some assembly) :
@@ -369,9 +411,9 @@ def playerActionWord : Assembly := loadCalldataWord 68
 /-- Resolve one Boolean guard variable to either the proposed action calldata
 word or its retained graph field. -/
 def simpleGuardVariableCode (code : GuardCode simpleExpr .bool)
-    {name : VarId}
+    {name : VarId} {τ : BaseTy}
     (binding :
-      HasVar ((code.actionName, .bool) :: code.Context) name .bool) :
+      HasVar ((code.actionName, .bool) :: code.Context) name τ) :
     Assembly :=
   match binding with
   | .here => playerActionWord
@@ -399,8 +441,7 @@ theorem compileSimpleGuardCode?_stackHeight_le
 @[simp] theorem compileBoolExpr?_constBool
     {Γ : CtxSimple}
     (maxStack : Nat) (hstack : 1 ≤ maxStack)
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly)
+    (variableCode : VariableCode Γ)
     (value : Bool) :
     compileBoolExpr? maxStack variableCode (.constBool value) =
       some [.push (.one (byte (if value then 1 else 0)))] := by

@@ -127,6 +127,52 @@ theorem run_ltWord (whole : Assembly) (env : ExecutionEnv)
   simp [run, stepInstruction, advance, hstack, Instruction.byteLength,
     BitVec.ult]
 
+/-! ### Word expression fragments -/
+
+/-- Semantic contract of compiled word expression code.
+
+Machine words need no encoding — `encodeSimpleValue .word` is the identity — so
+the fragment pushes its value directly.  This is *literally* `BoolExprCorrect`
+composed with `encodeBool`, which `boolExprCorrect_iff_wordExprCorrect`
+records. -/
+def WordExprCorrect (pre : BoolExprPrecondition)
+    (value : Word) (code : Assembly) : Prop :=
+  ∀ (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+      (rest : List Word),
+    pre env state.storage →
+    state.exit = none →
+    state.stack = rest →
+    Assembly.CodeAt whole code state.pc →
+    run code.length whole env state =
+      { state with
+        pc := state.pc + code.byteLength
+        stack := value :: rest }
+
+/-- A Boolean fragment is exactly a word fragment carrying the canonical
+encoding.  This is what lets word-consuming, Boolean-producing operations such
+as `LT` reuse the word composition argument. -/
+theorem boolExprCorrect_iff_wordExprCorrect {pre : BoolExprPrecondition}
+    {value : Bool} {code : Assembly} :
+    BoolExprCorrect pre value code ↔
+      WordExprCorrect pre (encodeBool value) code := Iff.rfl
+
+/-- `boolWord` and `encodeBool` are the same canonical zero/one encoding. -/
+@[simp] theorem boolWord_eq_encodeBool (value : Bool) :
+    boolWord value = encodeBool value := by
+  cases value <;> rfl
+
+/-- A variable-loading fragment is correct when it pushes the canonical storage
+encoding of the variable's value.
+
+One statement covers both types because `encodeSimpleValue` is `encodeBool` at
+`.bool` and the identity at `.word` — the same unification that lets a Boolean
+code fragment be a word fragment carrying an encoding. -/
+def VariableCodeCorrect (pre : BoolExprPrecondition) {Γ : CtxSimple}
+    (ρ : PlainEnv Γ) (variableCode : VariableCode Γ) : Prop :=
+  ∀ {name : VarId} {τ : BaseTy} (binding : HasVar Γ name τ),
+    WordExprCorrect pre (encodeSimpleValue τ (ρ.get binding))
+      (variableCode binding)
+
 /-- A compiled Boolean literal pushes its canonical word. -/
 theorem run_pushBool (whole : Assembly) (env : ExecutionEnv)
     (state : ExecutionState) (value : Bool) (rest : List Word)
@@ -212,11 +258,11 @@ theorem run_boolSelect (whole : Assembly) (env : ExecutionEnv)
 precondition supplies exact key representation and the expected canonical
 word. -/
 theorem loadCalldataWord_correct (pre : BoolExprPrecondition)
-    (offset : Nat) (value : Bool)
+    (offset : Nat) (value : Word)
     (hread : ∀ env storage, pre env storage →
       offset < 2 ^ 256 ∧
-      calldataLoad env.calldata offset = encodeBool value) :
-    BoolExprCorrect pre value (loadCalldataWord offset) := by
+      calldataLoad env.calldata offset = value) :
+    WordExprCorrect pre value (loadCalldataWord offset) := by
   intro whole env state rest hpre hrunning hstack hcode
   rcases hread env state.storage hpre with ⟨hoffset, hload⟩
   have hkey : (PushData.nat256 offset).value.toNat = offset :=
@@ -231,10 +277,10 @@ theorem loadCalldataWord_correct (pre : BoolExprPrecondition)
 /-- A fixed total-storage load implements one Boolean variable under the
 corresponding canonical-cell precondition. -/
 theorem loadStorageWord_correct (pre : BoolExprPrecondition)
-    (slot : Nat) (value : Bool)
+    (slot : Nat) (value : Word)
     (hread : ∀ env storage, pre env storage →
-      slot < 2 ^ 256 ∧ storage slot = encodeBool value) :
-    BoolExprCorrect pre value (loadStorageWord slot) := by
+      slot < 2 ^ 256 ∧ storage slot = value) :
+    WordExprCorrect pre value (loadStorageWord slot) := by
   intro whole env state rest hpre hrunning hstack hcode
   rcases hread env state.storage hpre with ⟨hslot, hload⟩
   have hkey : (PushData.nat256 slot).value.toNat = slot :=
@@ -251,40 +297,6 @@ theorem BoolExprCorrect.literal (pre : BoolExprPrecondition) (value : Bool) :
       [.push (.one (byte (if value then 1 else 0)))] := by
   intro whole env state rest _hpre hrunning hstack hcode
   exact run_pushBool whole env state value rest hrunning hstack hcode
-
-/-! ### Word expression fragments -/
-
-/-- Semantic contract of compiled word expression code.
-
-Machine words need no encoding — `encodeSimpleValue .word` is the identity — so
-the fragment pushes its value directly.  This is *literally* `BoolExprCorrect`
-composed with `encodeBool`, which `boolExprCorrect_iff_wordExprCorrect`
-records. -/
-def WordExprCorrect (pre : BoolExprPrecondition)
-    (value : Word) (code : Assembly) : Prop :=
-  ∀ (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
-      (rest : List Word),
-    pre env state.storage →
-    state.exit = none →
-    state.stack = rest →
-    Assembly.CodeAt whole code state.pc →
-    run code.length whole env state =
-      { state with
-        pc := state.pc + code.byteLength
-        stack := value :: rest }
-
-/-- A Boolean fragment is exactly a word fragment carrying the canonical
-encoding.  This is what lets word-consuming, Boolean-producing operations such
-as `LT` reuse the word composition argument. -/
-theorem boolExprCorrect_iff_wordExprCorrect {pre : BoolExprPrecondition}
-    {value : Bool} {code : Assembly} :
-    BoolExprCorrect pre value code ↔
-      WordExprCorrect pre (encodeBool value) code := Iff.rfl
-
-/-- `boolWord` and `encodeBool` are the same canonical zero/one encoding. -/
-@[simp] theorem boolWord_eq_encodeBool (value : Bool) :
-    boolWord value = encodeBool value := by
-  cases value <;> rfl
 
 /-- **The one sequential-composition argument** shared by every binary word
 operation: run the first fragment, run the second on top of its result, then
@@ -434,10 +446,9 @@ interpreter. -/
 theorem WordExprIR.compile_correct
     {Γ : CtxSimple}
     (pre : BoolExprPrecondition)
-    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (variableCode : VariableCode Γ)
     (ρ : PlainEnv Γ)
-    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
-      WordExprCorrect pre (ρ.get binding) (variableCode binding))
+    (hvariable : VariableCodeCorrect pre ρ variableCode)
     (expr : WordExprIR Γ) :
     WordExprCorrect pre (expr.eval ρ) (expr.compile variableCode) := by
   induction expr with
@@ -681,10 +692,9 @@ theorem compileWordExpr?_correct
     {Γ : CtxSimple}
     (pre : BoolExprPrecondition)
     (maxStack : Nat)
-    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (variableCode : VariableCode Γ)
     (ρ : PlainEnv Γ)
-    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
-      WordExprCorrect pre (ρ.get binding) (variableCode binding))
+    (hvariable : VariableCodeCorrect pre ρ variableCode)
     (source : Expr Γ .word) (code : Assembly)
     (hcompile : compileWordExpr? maxStack variableCode source = some code) :
     WordExprCorrect pre (evalExpr source ρ) code := by
@@ -699,11 +709,9 @@ meaning. -/
 theorem BoolExprIR.compile_correct
     {Γ : CtxSimple}
     (pre : BoolExprPrecondition)
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly)
+    (variableCode : VariableCode Γ)
     (ρ : PlainEnv Γ)
-    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .bool),
-      BoolExprCorrect pre (ρ.get binding) (variableCode binding))
+    (hvariable : VariableCodeCorrect pre ρ variableCode)
     (expr : BoolExprIR Γ) :
     BoolExprCorrect pre (expr.eval ρ) (expr.compile variableCode) := by
   induction expr with
@@ -716,6 +724,14 @@ theorem BoolExprIR.compile_correct
   | negation expression ih => exact BoolExprCorrect.not ih
   | select condition yes no ihCondition ihYes ihNo =>
       exact BoolExprCorrect.select ihCondition ihNo ihYes
+  | wordEqual left right =>
+      exact BoolExprCorrect.wordEqual
+        (WordExprIR.compile_correct pre variableCode ρ hvariable left)
+        (WordExprIR.compile_correct pre variableCode ρ hvariable right)
+  | wordLess left right =>
+      exact BoolExprCorrect.lessWord
+        (WordExprIR.compile_correct pre variableCode ρ hvariable left)
+        (WordExprIR.compile_correct pre variableCode ρ hvariable right)
 
 /-- Every successfully compiled Boolean expression executes to the exact source
 value, assuming the caller-supplied variable fragments implement the supplied
@@ -724,11 +740,9 @@ hypothesis. -/
 theorem compileBoolExpr?_correct
     {Γ : CtxSimple}
     (pre : BoolExprPrecondition)
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly)
+    (variableCode : VariableCode Γ)
     (ρ : PlainEnv Γ)
-    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .bool),
-      BoolExprCorrect pre (ρ.get binding) (variableCode binding))
+    (hvariable : VariableCodeCorrect pre ρ variableCode)
     (expr : Expr Γ .bool) (code : Assembly)
     (maxStack : Nat)
     (hcompile : compileBoolExpr? maxStack variableCode expr = some code) :
@@ -752,27 +766,26 @@ def simpleGuardReadPrecondition (code : GuardCode simpleExpr .bool)
     BoolExprPrecondition :=
   fun env storage =>
     calldataLoad env.calldata 68 = encodeBool (ρ.get .here) ∧
-    ∀ {name : VarId} (binding : HasVar code.Context name .bool),
+    ∀ {name : VarId} {τ : BaseTy} (binding : HasVar code.Context name τ),
       code.fieldOf binding < 2 ^ 256 ∧
-      storage (code.fieldOf binding) = encodeBool (ρ.get (.there binding))
+      storage (code.fieldOf binding) =
+        encodeSimpleValue τ (ρ.get (.there binding))
 
 /-- The concrete guard-variable adapter implements its corresponding typed
 environment lookup under the guard read invariant. -/
 theorem simpleGuardVariableCode_correct
     (code : GuardCode simpleExpr .bool)
-    (ρ : PlainEnv ((code.actionName, .bool) :: code.Context))
-    {name : VarId}
-    (binding : HasVar ((code.actionName, .bool) :: code.Context) name .bool) :
-    BoolExprCorrect (simpleGuardReadPrecondition code ρ) (ρ.get binding)
-      (simpleGuardVariableCode code binding) := by
+    (ρ : PlainEnv ((code.actionName, .bool) :: code.Context)) :
+    VariableCodeCorrect (simpleGuardReadPrecondition code ρ) ρ
+      (simpleGuardVariableCode code) := by
+  intro name τ binding
   cases binding with
   | here =>
-      apply loadCalldataWord_correct _ 68 (ρ.get .here)
+      apply loadCalldataWord_correct _ 68
       intro env storage hpre
       exact ⟨by norm_num, hpre.1⟩
   | there stored =>
       apply loadStorageWord_correct _ (code.fieldOf stored)
-        (ρ.get (.there stored))
       intro env storage hpre
       exact hpre.2 stored
 

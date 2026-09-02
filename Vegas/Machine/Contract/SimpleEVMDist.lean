@@ -61,15 +61,14 @@ def compileBoolTable? (entries : List (Bool × ℚ≥0))
 
 /-- Resolve a Boolean distribution variable from its graph field. -/
 def simpleDistVariableCode (code : DistCode simpleExpr .bool)
-    {name : VarId} (binding : HasVar code.Context name .bool) :
+    {name : VarId} {τ : BaseTy} (binding : HasVar code.Context name τ) :
     Assembly :=
   loadStorageWord (code.fieldOf binding)
 
 /-- Compile Boolean distribution syntax to deterministic callback-index
 realization. -/
 def compileBoolDistExpr? {Γ : CtxSimple}
-    (variableCode :
-      {name : VarId} → HasVar Γ name .bool → Assembly) :
+    (variableCode : VariableCode Γ) :
     DistExpr Γ .bool → LocalLabel → Nat → Option GeneratedLocalCode
   | .weighted law, reject, next =>
       compileBoolTable? law.entries reject next

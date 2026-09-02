@@ -52,7 +52,7 @@ theorem run_loadStorageWord_from_snapshot
   let pre : BoolExprPrecondition := fun _ storage =>
     storage = encodeClassicalSnapshot codec words nodes snapshot
   have hcorrect : BoolExprCorrect pre value (loadStorageWord field) := by
-    apply loadStorageWord_correct pre field value
+    apply loadStorageWord_correct pre field (encodeBool value)
     intro _env storage hpre
     constructor
     · have hslot := classicalStorageAddress_lt_word fits
