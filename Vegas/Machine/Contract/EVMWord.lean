@@ -159,39 +159,67 @@ def boolStorageCodec (program : Program Player simpleExpr)
   decodeCompleted := decodeBool
   decode_encode_completed := decodeBool_encodeBool
 
-/-- The representation law required by Boolean instruction generation. It
-ties the backend's storage word and outer EVM wire codecs to literal EVM zero
-and one, for both emitted values and arbitrary incoming words. -/
-structure CanonicalBoolRepresentation (program : Program Player simpleExpr)
+/-- The representation law required by instruction generation: the backend's
+storage word and outer EVM wire codecs agree with the canonical single-word
+encoding at every word-encodable type.
+
+Generalizes the Boolean-only form this replaced. At `.bool` it is exactly the
+literal zero/one law that branchless selection circuits depend on; at `.word` it
+says the outer wire codec is transparent, since `encodeSimpleValue .word` is the
+identity. -/
+structure CanonicalRepresentation (program : Program Player simpleExpr)
     (codec : StorageCodec program)
     (words : WireCodec codec.Word Word) : Prop where
-  encode_bool :
-    ∀ value : Bool,
-      words.encode (codec.encodeValue .bool value) = encodeBool value
-  decode_bool :
-    ∀ word : Word,
-      (words.decode word).bind (codec.decodeValue .bool) = decodeBool word
+  encode_value :
+    ∀ (ty : BaseTy), WordEncodable ty → ∀ value : Val ty,
+      words.encode (codec.encodeValue ty value) = encodeSimpleValue ty value
+  decode_value :
+    ∀ (ty : BaseTy), WordEncodable ty → ∀ word : Word,
+      (words.decode word).bind (codec.decodeValue ty) =
+        decodeSimpleValue ty word
 
-/-- Transporting a Boolean through a proof that a storage type is Boolean
-does not change its canonical zero/one wire representation. -/
-theorem CanonicalBoolRepresentation.encode_type_eq_bool
+/-- Transporting a value through a proof about its storage type does not change
+its canonical single-word representation. -/
+theorem CanonicalRepresentation.encode_type_eq
     {program : Program Player simpleExpr} {codec : StorageCodec program}
     {words : WireCodec codec.Word Word}
-    (canonical : CanonicalBoolRepresentation program codec words)
+    (canonical : CanonicalRepresentation program codec words)
+    {ty ty' : simpleExpr.Ty} (hty : ty = ty')
+    (hword : WordEncodable ty') (value : Val ty') :
+    words.encode (codec.encodeValue ty (hty.symm ▸ value)) =
+      encodeSimpleValue ty' value := by
+  subst ty
+  exact canonical.encode_value ty' hword value
+
+/-- The Boolean instance of `encode_type_eq`, which is what the zero/one
+selection circuits consume. -/
+theorem CanonicalRepresentation.encode_type_eq_bool
+    {program : Program Player simpleExpr} {codec : StorageCodec program}
+    {words : WireCodec codec.Word Word}
+    (canonical : CanonicalRepresentation program codec words)
     {ty : simpleExpr.Ty} (hty : ty = .bool) (value : Bool) :
     words.encode
         (codec.encodeValue ty (hty.symm ▸ value)) =
-      encodeBool value := by
-  subst ty
-  exact canonical.encode_bool value
+      encodeBool value :=
+  canonical.encode_type_eq hty trivial value
+
+/-- The word storage codec with the identity outer wire encoding satisfies the
+representation law at every supported type: both codecs are `encodeSimpleValue`
+by construction. -/
+theorem identityRepresentation (program : Program Player simpleExpr)
+    (usesWord : UsesWordStorage program) :
+    CanonicalRepresentation program (wordStorageCodec program usesWord)
+      (WireCodec.identity Word) where
+  encode_value _ty _hword _value := rfl
+  decode_value _ty _hword _word := rfl
 
 /-- The native Boolean storage codec with the identity outer wire encoding
 has the exact representation expected by generated instructions. -/
 theorem boolIdentityRepresentation (program : Program Player simpleExpr)
     (usesBool : UsesOnlyBoolStorage program) :
-    CanonicalBoolRepresentation program (boolStorageCodec program usesBool)
+    CanonicalRepresentation program (boolStorageCodec program usesBool)
       (WireCodec.identity Word) where
-  encode_bool _value := rfl
-  decode_bool _word := rfl
+  encode_value _ty _hword _value := rfl
+  decode_value _ty _hword _word := rfl
 
 end Vegas.Machine.Contract.EVM

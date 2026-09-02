@@ -44,7 +44,7 @@ backend; restricted policies require a reified authorization compiler. -/
 def compileBooleanRuntime?
     (backend : EVMByteBackend source Address)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (_canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (_canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (_permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless)
@@ -64,7 +64,7 @@ def compileBooleanDeployment?
     (backend : EVMByteBackend source Address)
     (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless)
@@ -85,7 +85,7 @@ return `none`. -/
 def compileBooleanNoSampleRuntime?
     (backend : EVMByteBackend source Address)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (_canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (_canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (noSamples : EVM.HasNoSampleNodes (Machine.compile source))
     (_permissionlessReveals :
@@ -103,7 +103,7 @@ def compileBooleanNoSampleDeployment?
     (backend : EVMByteBackend source Address)
     (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (noSamples : EVM.HasNoSampleNodes (Machine.compile source))
     (permissionlessReveals :

@@ -127,7 +127,7 @@ theorem compiledDeployment_structure
     (backend : EVMByteBackend source Address)
     (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless)
@@ -165,7 +165,7 @@ theorem compiledDeployment_refines_iff_runtime
     (backend : EVMByteBackend source Address)
     (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless)
@@ -197,7 +197,7 @@ def BooleanCompilationCorrect
     (backend : EVMByteBackend source Address)
     (limits : EVM.DeploymentLimits)
     (usesBool : EVM.UsesOnlyBoolStorage (Machine.compile source))
-    (canonical : EVM.CanonicalBoolRepresentation (Machine.compile source)
+    (canonical : EVM.CanonicalRepresentation (Machine.compile source)
       backend.classical.codec backend.values)
     (permissionlessReveals :
       backend.classical.reveals = TriggerPolicy.permissionless)

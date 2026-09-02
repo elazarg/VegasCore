@@ -629,22 +629,22 @@ noncomputable def emptyEVMByteBackend :
   addresses := Machine.Contract.EVM.indexAddressCodec 2 (by
     norm_num [Machine.Contract.EVM.IndexFitsAddress])
 
-theorem emptyCanonicalBoolRepresentation :
-    Machine.Contract.EVM.CanonicalBoolRepresentation emptyMachine
+theorem emptyCanonicalRepresentation :
+    Machine.Contract.EVM.CanonicalRepresentation emptyMachine
       emptyEVMByteBackend.classical.codec emptyEVMByteBackend.values :=
   Machine.Contract.EVM.boolIdentityRepresentation emptyMachine
     emptyUsesOnlyBoolStorage
 
 example :
     (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
-      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+      emptyUsesOnlyBoolStorage emptyCanonicalRepresentation
       emptyHasNoSampleNodes rfl).isSome = true := by
   rfl
 
 noncomputable def emptyEVMRuntimeImage :
     Machine.Contract.EVM.RuntimeImage matchingPenniesClassicalSelectors :=
   (emptyEVMByteBackend.compileBooleanNoSampleRuntime?
-    emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation
+    emptyUsesOnlyBoolStorage emptyCanonicalRepresentation
     emptyHasNoSampleNodes rfl).get (by rfl)
 
 theorem emptyEVMRuntimeImage_bytecode_length :
@@ -766,7 +766,7 @@ example :
 
 example :
     (emptyEVMByteBackend.compileBooleanRuntime?
-      emptyUsesOnlyBoolStorage emptyCanonicalBoolRepresentation rfl rfl).isSome = true := by
+      emptyUsesOnlyBoolStorage emptyCanonicalRepresentation rfl rfl).isSome = true := by
   rfl
 
 example :

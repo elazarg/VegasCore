@@ -533,7 +533,7 @@ theorem encodeClassicalSnapshot_completeBool_fieldValue
     {program : Program Player simpleExpr}
     (usesBool : UsesOnlyBoolStorage program)
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
-    (canonical : CanonicalBoolRepresentation program codec words)
+    (canonical : CanonicalRepresentation program codec words)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)
     (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
     (node : Fin program.graph.nodeCount) (value : Bool) :
@@ -601,7 +601,7 @@ theorem encodeClassicalSnapshot_bool_fieldValue
     {program : Program Player simpleExpr}
     (usesBool : UsesOnlyBoolStorage program)
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
-    (canonical : CanonicalBoolRepresentation program codec words)
+    (canonical : CanonicalRepresentation program codec words)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)
     (snapshot : ClassicalSnapshot program)
     (field : Fin program.graph.fieldCount) (value : Bool)
@@ -621,7 +621,7 @@ theorem encodeClassicalSnapshot_completeBool
     {program : Program Player simpleExpr}
     (usesBool : UsesOnlyBoolStorage program)
     (codec : StorageCodec program) (words : WireCodec codec.Word Word)
-    (canonical : CanonicalBoolRepresentation program codec words)
+    (canonical : CanonicalRepresentation program codec words)
     (nodes : WireCodec (Fin program.graph.nodeCount) Word)
     (cfg : Config program.graph) (pending : Option (Fin program.graph.nodeCount))
     (node : Fin program.graph.nodeCount) (value : Bool) :
