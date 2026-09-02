@@ -295,6 +295,41 @@ theorem order_aware_deviations_exist (i : Fin 2) :
     ¬ Vegas.coinSystem.OrderOblivious (Vegas.coinOrderAware i) :=
   Vegas.coinOrderAware_not_orderOblivious i
 
+/-- **An order-enforcing runtime makes the scheduler strategically inert.**
+
+Two legal joint submissions agreeing on every player's submission induce the
+same successor law, whatever the scheduler submitted. So under a runtime that
+accepts one order per view, the scheduler cannot influence the outcome at all.
+
+This matters because compiling to a scheduled runtime adds a participant the
+source program does not have, whose payoff is nowhere in that program and cannot
+be inferred from it. There is no honest way to assume a miner's incentives.
+Enforcement makes them *irrelevant* instead — a property of the emitted
+artifact, which a compiler can establish rather than assume.
+
+Restricting attention to order-oblivious play would not do this. Equilibrium
+quantifies over the deviations a participant has *available*, so a class of
+well-behaved policies cannot be imposed by fiat: such a restriction describes a
+profile, not an equilibrium. Enforcement removes the availability.
+
+Enforcement is a dial, not a default. `schedules` is a field of the system, so
+an artifact is permissive or enforcing by construction and `EnforcesOrder` is a
+hypothesis here rather than a standing assumption. A developer wanting no
+order-sensitive guarantee keeps the permissive runtime's parallelism and this
+result simply does not apply; one who wants the guarantee pays for exactly it.
+
+Scope: enforcement removes *order* as a channel, not every channel. Timing —
+block height, elapsed time, who was slow — remains public and is not modelled
+here at all, and in-flight visibility is excluded by a separate assumption. -/
+theorem enforced_schedule_makes_scheduler_inert
+    {ι : Type} (sys : ScheduledSystem ι) (henforce : sys.EnforcesOrder)
+    {state : sys.State}
+    {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
+    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    sys.toExecutionProtocol.step state left =
+      sys.toExecutionProtocol.step state right :=
+  sys.step_eq_of_enforcesOrder henforce hplayers
+
 /-! ## Deviation adequacy -/
 
 /-- **Utility preservation at compiled profiles** (paper: `lem:expected-utility`,
@@ -436,6 +471,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.order_aware_deviations_exist' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.order_aware_deviations_exist
+
+/-- info: 'Vegas.Paper.enforced_schedule_makes_scheduler_inert' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.enforced_schedule_makes_scheduler_inert
 
 end Paper
 

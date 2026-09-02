@@ -126,6 +126,16 @@ structure ScheduledSystem (ι : Type u) where
   /-- Abstaining is visibly allowed exactly when the player is not active. -/
   menuAt_none : ∀ (state : Base) (i : ι),
     (none : Option (Action i)) ∈ menuAt (view state) i ↔ ¬ active state i
+  /-- Which orders the runtime will accept at a view.
+
+  A permissive runtime accepts every order and leaves the scheduler a real
+  choice.  An order-enforcing one accepts exactly one, and then the scheduler
+  has no choice to make — see `EnforcesOrder`.  Indexed by the view rather than
+  the state, because what the runtime accepts must be publicly determined for
+  the scheduler's menu to be information-local. -/
+  schedules : View → Set (List ι)
+  /-- Some order is always acceptable, so a round can always be resolved. -/
+  schedules_nonempty : ∀ v, (schedules v).Nonempty
   /-- Every non-terminal state admits a legal joint submission. -/
   progress : ∀ state, ¬ terminal state →
     ∃ joint, IsLegalJoint (active state) (available state) joint
@@ -178,25 +188,25 @@ def agentActive (state : sys.State) : sys.Agent → Prop
 
 /-- What each participant may submit at a state. -/
 def agentAvailable (state : sys.State) : (a : sys.Agent) → Set (sys.AgentAction a)
-  | none => Set.univ
+  | none => sys.schedules (sys.view state.base)
   | some i => sys.available state.base i
 
 /-- The publicly visible menu for each participant.  The scheduler must order
 the round, so abstaining is not on its menu. -/
 def agentMenuAt (v : sys.View) : (a : sys.Agent) → Set (Option (sys.AgentAction a))
-  | none => {choice | choice ≠ none}
+  | none => {choice | ∃ order ∈ sys.schedules v, choice = some order}
   | some i => sys.menuAt v i
 
 /-- Extend a players-only joint submission with an order for the scheduler.
 A named definition rather than an inline match, so it reduces on `some i`. -/
-def withSchedule (joint : ∀ i, Option (sys.Action i)) :
+def withSchedule (order : sys.Order) (joint : ∀ i, Option (sys.Action i)) :
     ∀ a : sys.Agent, Option (sys.AgentAction a)
-  | none => some ([] : sys.Order)
+  | none => some order
   | some i => joint i
 
 /-- The execution protocol.  There is exactly one: the scheduler is a coordinate
 of the joint action, not a parameter of the protocol. -/
-noncomputable def toExecutionProtocol : ExecutionProtocol sys.Agent where
+@[reducible] noncomputable def toExecutionProtocol : ExecutionProtocol sys.Agent where
   State := sys.State
   Action := sys.AgentAction
   init := { base := sys.init, log := [] }
@@ -209,10 +219,11 @@ noncomputable def toExecutionProtocol : ExecutionProtocol sys.Agent where
         { base := next, log := sys.scheduledOrder legal.1 :: state.log }
   progress state hterminal := by
     obtain ⟨joint, hjoint⟩ := sys.progress state.base hterminal
-    refine ⟨sys.withSchedule joint, ?_⟩
+    obtain ⟨order, horder⟩ := sys.schedules_nonempty (sys.view state.base)
+    refine ⟨sys.withSchedule order joint, ?_⟩
     intro a
     cases a with
-    | none => exact ⟨trivial, Set.mem_univ _⟩
+    | none => exact ⟨trivial, horder⟩
     | some i =>
         -- Case on the submission so both matchers reduce: the two sides are
         -- defeq but their matcher instances are generated at different types.
@@ -260,6 +271,101 @@ theorem step_ne_of_order_ne
   have hright : next.log = sys.scheduledOrder right.1 :: state.log :=
     sys.log_of_mem_support_step hnextRight
   exact horder (List.cons.inj (hleft.symm.trans hright)).1
+
+/-! ## Enforcing the schedule
+
+Restricting attention to order-oblivious *play* is not enough to make the
+scheduler harmless.  Equilibrium quantifies over the deviations a participant
+*has available*, so a class of well-behaved policies cannot be imposed by fiat:
+if an order-aware deviation exists, an equilibrium claim has to face it.  Such a
+restriction describes a profile, not an equilibrium.
+
+What does work is removing the freedom.  A runtime that accepts exactly one
+order at each view leaves the scheduler nothing to choose, so the schedule is a
+function of the history, carries no information, and the scheduler's payoff —
+which is nowhere in the source program, and which nothing about the source lets
+us infer — cannot matter.  That is a property of the emitted artifact, so a
+compiler can establish it rather than assume it.
+
+Enforcement is a dial, not a default.  `schedules` is a field of the system, so
+a compiled artifact is permissive or enforcing by construction, and
+`EnforcesOrder` appears only as a *hypothesis* on the results that need it.  A
+developer who wants no order-sensitive guarantee pays nothing: the permissive
+runtime keeps its parallelism, and the theorems below simply do not apply to it.
+A developer who does want one pays for exactly that.  The obligation on this
+development is therefore to identify, for each property worth preserving, the
+weakest discipline that supports it — not to enforce everywhere.
+
+The price is real and is not modelled here: serializing a round costs
+throughput, and enforcing an order means a stalled participant blocks the
+protocol, which is why an enforcing runtime needs timeouts.
+
+`EnforcesOrder` does not make the protocol schedule-free.  Timing remains
+public — block height, elapsed time, who was slow — and that is a separate
+signal this development does not model at all.  Enforcement removes *order* as a
+channel, not every channel. -/
+
+/-- The runtime accepts at most one order at each view, so the scheduler has no
+choice to make. -/
+def EnforcesOrder (sys : ScheduledSystem.{u} ι) : Prop :=
+  ∀ v : sys.View, (sys.schedules v).Subsingleton
+
+/-- Applying a round reads the joint submission only through the players'
+components, never the scheduler's. -/
+theorem applyOrder_congr {left right : ∀ a, Option (sys.AgentAction a)}
+    (hplayers : ∀ i, left (some i) = right (some i)) :
+    ∀ (order : sys.Order) (state : sys.Base),
+      sys.applyOrder left order state = sys.applyOrder right order state
+  | [], _ => rfl
+  | i :: rest, state => by
+      simp only [applyOrder, hplayers i]
+      cases hr : right (some i) with
+      | none =>
+          simp only
+          exact applyOrder_congr hplayers rest state
+      | some action =>
+          simp only
+          exact congrArg _ (funext fun next => applyOrder_congr hplayers rest next)
+
+/-- Under an enforcing runtime every legal joint at a state schedules the same
+order: the scheduler's component is determined. -/
+theorem scheduledOrder_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
+    {state : sys.State}
+    (left right : { joint // sys.toExecutionProtocol.Legal state joint }) :
+    sys.scheduledOrder left.1 = sys.scheduledOrder right.1 := by
+  have hleft := left.2.2 none
+  have hright := right.2.2 none
+  unfold scheduledOrder
+  cases hl : left.1 none with
+  | none => rw [hl] at hleft; exact absurd trivial hleft
+  | some orderLeft =>
+      cases hr : right.1 none with
+      | none => rw [hr] at hright; exact absurd trivial hright
+      | some orderRight =>
+          rw [hl] at hleft
+          rw [hr] at hright
+          simp only [Option.getD_some]
+          exact henforce (sys.view state.base) hleft.2 hright.2
+
+/-- **An enforcing runtime makes the scheduler strategically inert.**
+
+Two legal joints agreeing on every player's submission induce the same successor
+law, whatever the scheduler submitted.  So the scheduler cannot influence the
+outcome at all, and its incentives — absent from the source program and not
+inferable from it — are irrelevant rather than merely assumed away.
+
+This is what restricting to order-oblivious play could not deliver.  That
+restriction constrains behaviour and equilibrium quantifies over availability;
+this removes the availability. -/
+theorem step_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
+    {state : sys.State}
+    {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
+    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    sys.toExecutionProtocol.step state left =
+      sys.toExecutionProtocol.step state right := by
+  have horder := sys.scheduledOrder_eq_of_enforcesOrder henforce left right
+  simp only [toExecutionProtocol, horder]
+  rw [sys.applyOrder_congr hplayers]
 
 /-! ## Two information models over one protocol -/
 
@@ -354,12 +460,15 @@ private theorem agentMenuAt_adequate (state : sys.State) (a : sys.Agent)
       cases choice with
       | none =>
           constructor
-          · intro hmem; exact absurd rfl hmem
+          · rintro ⟨order, _, hcontra⟩; exact absurd hcontra.symm (Option.some_ne_none order)
           · intro hlegal; exact absurd trivial hlegal
       | some order =>
           constructor
-          · intro _; exact ⟨trivial, Set.mem_univ _⟩
-          · intro _; exact Option.some_ne_none order
+          · rintro ⟨other, hother, hchoice⟩
+            have hsame : order = other := Option.some.inj hchoice
+            subst hsame
+            exact ⟨trivial, hother⟩
+          · rintro ⟨_, hmem⟩; exact ⟨order, hmem, rfl⟩
   | some i =>
       cases choice with
       | none => exact sys.menuAt_none state.base i
@@ -447,6 +556,8 @@ def coinSystem : ScheduledSystem.{0} (Fin 2) where
   menuAt _ _ := {some true, some false}
   menuAt_some _ _ action := by cases action <;> simp
   menuAt_none _ _ := by simp
+  schedules _ := Set.univ
+  schedules_nonempty _ := ⟨[], Set.mem_univ _⟩
   progress _ _ := ⟨fun _ => some true, fun _ => ⟨trivial, Set.mem_univ _⟩⟩
 
 /-- A round in which both players submit and the scheduler picks `order`. -/
