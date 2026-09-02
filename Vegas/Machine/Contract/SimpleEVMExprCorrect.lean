@@ -55,6 +55,78 @@ def BoolExprCorrect (pre : BoolExprPrecondition)
         pc := state.pc + code.byteLength
         stack := encodeBool value :: rest }
 
+/-! ### Word arithmetic instructions
+
+Machine words need no encoding: `encodeSimpleValue .word` is the identity, so a
+word operand sits on the EVM stack as itself.
+
+**Operand order is not uniform**, and getting it wrong is silent.
+`stepInstruction` reads the top of stack as the *first* operand, so it computes
+`next + top` and `next * top` — commutative, order-immaterial — but `top - next`
+and `top.toNat < next.toNat`.  Emitting `sub` or `lt` in the same left-then-right
+order as `add` computes the operands backwards.  The two families are therefore
+stated with deliberately different stack shapes, and code generation must
+respect that. -/
+
+/-- EVM `ADD` on machine words.  Left operand pushed first. -/
+theorem run_addWord (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (left right : Word) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstack : state.stack = right :: left :: rest)
+    (hcode : Assembly.CodeAt whole [.add] state.pc) :
+    run 1 whole env state =
+      { state with
+        pc := state.pc + 1
+        stack := (left + right) :: rest } := by
+  rw [show 1 = 0 + 1 by omega,
+    run_succ_of_codeAt 0 hrunning hcode]
+  simp [run, stepInstruction, advance, hstack, Instruction.byteLength]
+
+/-- EVM `MUL` on machine words.  Left operand pushed first. -/
+theorem run_mulWord (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (left right : Word) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstack : state.stack = right :: left :: rest)
+    (hcode : Assembly.CodeAt whole [.mul] state.pc) :
+    run 1 whole env state =
+      { state with
+        pc := state.pc + 1
+        stack := (left * right) :: rest } := by
+  rw [show 1 = 0 + 1 by omega,
+    run_succ_of_codeAt 0 hrunning hcode]
+  simp [run, stepInstruction, advance, hstack, Instruction.byteLength]
+
+/-- EVM `SUB` on machine words.  Note the **reversed** stack shape: the left
+operand is on top, so code generation must emit the right operand first. -/
+theorem run_subWord (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (left right : Word) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstack : state.stack = left :: right :: rest)
+    (hcode : Assembly.CodeAt whole [.sub] state.pc) :
+    run 1 whole env state =
+      { state with
+        pc := state.pc + 1
+        stack := (left - right) :: rest } := by
+  rw [show 1 = 0 + 1 by omega,
+    run_succ_of_codeAt 0 hrunning hcode]
+  simp [run, stepInstruction, advance, hstack, Instruction.byteLength]
+
+/-- EVM `LT` on machine words: unsigned comparison, with the same reversed
+stack shape as `SUB`. -/
+theorem run_ltWord (whole : Assembly) (env : ExecutionEnv)
+    (state : ExecutionState) (left right : Word) (rest : List Word)
+    (hrunning : state.exit = none)
+    (hstack : state.stack = left :: right :: rest)
+    (hcode : Assembly.CodeAt whole [.lt] state.pc) :
+    run 1 whole env state =
+      { state with
+        pc := state.pc + 1
+        stack := boolWord (left.ult right) :: rest } := by
+  rw [show 1 = 0 + 1 by omega,
+    run_succ_of_codeAt 0 hrunning hcode]
+  simp [run, stepInstruction, advance, hstack, Instruction.byteLength,
+    BitVec.ult]
+
 /-- A compiled Boolean literal pushes its canonical word. -/
 theorem run_pushBool (whole : Assembly) (env : ExecutionEnv)
     (state : ExecutionState) (value : Bool) (rest : List Word)
@@ -179,6 +251,201 @@ theorem BoolExprCorrect.literal (pre : BoolExprPrecondition) (value : Bool) :
       [.push (.one (byte (if value then 1 else 0)))] := by
   intro whole env state rest _hpre hrunning hstack hcode
   exact run_pushBool whole env state value rest hrunning hstack hcode
+
+/-! ### Word expression fragments -/
+
+/-- Semantic contract of compiled word expression code.
+
+Machine words need no encoding — `encodeSimpleValue .word` is the identity — so
+the fragment pushes its value directly.  This is *literally* `BoolExprCorrect`
+composed with `encodeBool`, which `boolExprCorrect_iff_wordExprCorrect`
+records. -/
+def WordExprCorrect (pre : BoolExprPrecondition)
+    (value : Word) (code : Assembly) : Prop :=
+  ∀ (whole : Assembly) (env : ExecutionEnv) (state : ExecutionState)
+      (rest : List Word),
+    pre env state.storage →
+    state.exit = none →
+    state.stack = rest →
+    Assembly.CodeAt whole code state.pc →
+    run code.length whole env state =
+      { state with
+        pc := state.pc + code.byteLength
+        stack := value :: rest }
+
+/-- A Boolean fragment is exactly a word fragment carrying the canonical
+encoding.  This is what lets word-consuming, Boolean-producing operations such
+as `LT` reuse the word composition argument. -/
+theorem boolExprCorrect_iff_wordExprCorrect {pre : BoolExprPrecondition}
+    {value : Bool} {code : Assembly} :
+    BoolExprCorrect pre value code ↔
+      WordExprCorrect pre (encodeBool value) code := Iff.rfl
+
+/-- `boolWord` and `encodeBool` are the same canonical zero/one encoding. -/
+@[simp] theorem boolWord_eq_encodeBool (value : Bool) :
+    boolWord value = encodeBool value := by
+  cases value <;> rfl
+
+/-- **The one sequential-composition argument** shared by every binary word
+operation: run the first fragment, run the second on top of its result, then
+one instruction consuming both.
+
+Factoring this out is what keeps the operand-order discipline honest.  Each
+operation instantiates `first` and `second` in the order its opcode actually
+reads them — left-then-right for `ADD` and `MUL`, right-then-left for `SUB` and
+`LT` — and this shared proof does not care which, so the ordering is stated once
+per operation instead of being retyped inside five near-identical proofs. -/
+theorem WordExprCorrect.seqBinary {pre : BoolExprPrecondition}
+    {first second result : Word} {firstCode secondCode : Assembly}
+    {instr : Instruction}
+    (hbyte : instr.byteLength = 1)
+    (hfirst : WordExprCorrect pre first firstCode)
+    (hsecond : WordExprCorrect pre second secondCode)
+    (hinstr : ∀ (whole : Assembly) (env : ExecutionEnv)
+        (state : ExecutionState) (rest : List Word),
+        state.exit = none →
+        state.stack = second :: first :: rest →
+        Assembly.CodeAt whole [instr] state.pc →
+        run 1 whole env state =
+          { state with pc := state.pc + 1, stack := result :: rest }) :
+    WordExprCorrect pre result (firstCode ++ secondCode ++ [instr]) := by
+  intro whole env state rest hpre hrunning hstack hcode
+  have hcode' : Assembly.CodeAt whole
+      (firstCode ++ (secondCode ++ [instr])) state.pc := by
+    simpa [List.append_assoc] using hcode
+  have hfirstCode := hcode'.left
+  have htailCode := hcode'.right
+  let afterFirst : ExecutionState :=
+    { state with
+      pc := state.pc + firstCode.byteLength
+      stack := first :: rest }
+  have hrunFirst : run firstCode.length whole env state = afterFirst := by
+    simpa [afterFirst] using
+      hfirst whole env state rest hpre hrunning hstack hfirstCode
+  have hafterFirstRunning : afterFirst.exit = none := by
+    simp [afterFirst, hrunning]
+  have hafterFirstPre : pre env afterFirst.storage := by
+    simpa [afterFirst] using hpre
+  have hsecondCode : Assembly.CodeAt whole secondCode afterFirst.pc := by
+    have := htailCode.left
+    simpa [afterFirst] using this
+  let afterSecond : ExecutionState :=
+    { afterFirst with
+      pc := afterFirst.pc + secondCode.byteLength
+      stack := second :: first :: rest }
+  have hrunSecond :
+      run secondCode.length whole env afterFirst = afterSecond := by
+    apply hsecond whole env afterFirst (first :: rest) hafterFirstPre
+    · exact hafterFirstRunning
+    · simp [afterFirst]
+    · exact hsecondCode
+  have hafterSecondRunning : afterSecond.exit = none := by
+    simp [afterSecond, afterFirst, hrunning]
+  have hinstrCode : Assembly.CodeAt whole [instr] afterSecond.pc := by
+    have := htailCode.right
+    simpa [afterSecond, afterFirst] using this
+  have hrunInstr : run 1 whole env afterSecond =
+      { afterSecond with
+        pc := afterSecond.pc + 1
+        stack := result :: rest } := by
+    apply hinstr whole env afterSecond rest hafterSecondRunning
+    · simp [afterSecond]
+    · exact hinstrCode
+  have hlength :
+      (firstCode ++ secondCode ++ [instr]).length =
+      firstCode.length + (secondCode.length + 1) := by simp
+  rw [hlength, run_add, hrunFirst, run_add, hrunSecond, hrunInstr]
+  -- `hbyte` must fire before `Instruction.byteLength` is unfolded into a
+  -- match, which would destroy the shape it matches.
+  simp [afterSecond, afterFirst, Assembly.byteLength, hbyte]
+  omega
+
+/-- EVM `ADD`; operands emitted left-then-right. -/
+theorem WordExprCorrect.add {pre : BoolExprPrecondition}
+    {left right : Word} {leftCode rightCode : Assembly}
+    (hleft : WordExprCorrect pre left leftCode)
+    (hright : WordExprCorrect pre right rightCode) :
+    WordExprCorrect pre (left + right) (leftCode ++ rightCode ++ [.add]) :=
+  seqBinary rfl hleft hright fun whole env state rest hrun hstack hcode =>
+    run_addWord whole env state left right rest hrun hstack hcode
+
+/-- EVM `MUL`; operands emitted left-then-right. -/
+theorem WordExprCorrect.mul {pre : BoolExprPrecondition}
+    {left right : Word} {leftCode rightCode : Assembly}
+    (hleft : WordExprCorrect pre left leftCode)
+    (hright : WordExprCorrect pre right rightCode) :
+    WordExprCorrect pre (left * right) (leftCode ++ rightCode ++ [.mul]) :=
+  seqBinary rfl hleft hright fun whole env state rest hrun hstack hcode =>
+    run_mulWord whole env state left right rest hrun hstack hcode
+
+/-- EVM `SUB`; operands emitted **right-then-left**, because `SUB` reads its
+minuend from the top of the stack. -/
+theorem WordExprCorrect.sub {pre : BoolExprPrecondition}
+    {left right : Word} {leftCode rightCode : Assembly}
+    (hleft : WordExprCorrect pre left leftCode)
+    (hright : WordExprCorrect pre right rightCode) :
+    WordExprCorrect pre (left - right) (rightCode ++ leftCode ++ [.sub]) :=
+  seqBinary rfl hright hleft fun whole env state rest hrun hstack hcode =>
+    run_subWord whole env state left right rest hrun hstack hcode
+
+/-- EVM `LT`, unsigned, producing a canonical Boolean word.  Operands emitted
+**right-then-left**, as for `SUB`. -/
+theorem BoolExprCorrect.lessWord {pre : BoolExprPrecondition}
+    {left right : Word} {leftCode rightCode : Assembly}
+    (hleft : WordExprCorrect pre left leftCode)
+    (hright : WordExprCorrect pre right rightCode) :
+    BoolExprCorrect pre (left.ult right) (rightCode ++ leftCode ++ [.lt]) := by
+  rw [boolExprCorrect_iff_wordExprCorrect]
+  refine WordExprCorrect.seqBinary rfl hright hleft ?_
+  intro whole env state rest hrun hstack hcode
+  simpa using run_ltWord whole env state left right rest hrun hstack hcode
+
+/-- EVM `EQ` on machine words, producing a canonical Boolean word. -/
+theorem BoolExprCorrect.wordEqual {pre : BoolExprPrecondition}
+    {left right : Word} {leftCode rightCode : Assembly}
+    (hleft : WordExprCorrect pre left leftCode)
+    (hright : WordExprCorrect pre right rightCode) :
+    BoolExprCorrect pre (decide (left = right))
+      (leftCode ++ rightCode ++ [.eq]) := by
+  rw [boolExprCorrect_iff_wordExprCorrect]
+  refine WordExprCorrect.seqBinary rfl hleft hright ?_
+  intro whole env state rest hrun hstack hcode
+  rw [show 1 = 0 + 1 by omega, run_succ_of_codeAt 0 hrun hcode]
+  simp [run, stepInstruction, advance, hstack, Instruction.byteLength]
+
+/-- A compiled word literal pushes its full 32-byte value. -/
+theorem WordExprCorrect.literal (pre : BoolExprPrecondition) (value : Word) :
+    WordExprCorrect pre value [.push (.word value)] := by
+  intro whole env state rest _hpre hrunning hstack hcode
+  rw [show ([Instruction.push (PushData.word value)] : Assembly).length
+        = 0 + 1 by simp,
+    run_succ_of_codeAt 0 hrunning hcode]
+  simp [run, stepInstruction, advance, hstack, Assembly.byteLength,
+    Instruction.byteLength, PushData.word]
+
+/-- **Word code generation is correct.**
+
+Compiled word expression code pushes exactly the value the IR denotes, leaving
+the rest of the stack untouched.  Compositional in the variable-loading code,
+so calldata-backed and storage-backed word reads instantiate the same result —
+and the operand-order discipline of `compile` is discharged here, once, by the
+`add`/`mul`/`sub` composition lemmas whose stack shapes were proved against the
+interpreter. -/
+theorem WordExprIR.compile_correct
+    {Γ : CtxSimple}
+    (pre : BoolExprPrecondition)
+    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly)
+    (ρ : PlainEnv Γ)
+    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
+      WordExprCorrect pre (ρ.get binding) (variableCode binding))
+    (expr : WordExprIR Γ) :
+    WordExprCorrect pre (expr.eval ρ) (expr.compile variableCode) := by
+  induction expr with
+  | «variable» name binding => exact hvariable binding
+  | literal value => exact WordExprCorrect.literal pre value
+  | add left right ihleft ihright => exact ihleft.add ihright
+  | mul left right ihleft ihright => exact ihleft.mul ihright
+  | sub left right ihleft ihright => exact ihleft.sub ihright
 
 /-- Sequential composition with EVM equality preserves expression
 correctness. -/

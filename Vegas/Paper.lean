@@ -8,6 +8,7 @@ import Vegas.Compile
 import Vegas.EventGraph
 import Vegas.Game.Kuhn
 import Vegas.Machine
+import Vegas.Machine.Contract.SimpleEVMExprCorrect
 import Vegas.Runtime
 
 /-!
@@ -154,6 +155,35 @@ theorem permissive_schedule_not_determined
           dstLeft.1.done ≠ dstRight.1.done :=
   primitiveDownsetCheckpointPolicy_done_not_determined hwf hguards hne
     hleft hright
+
+/-! ## Code generation -/
+
+/-- **Word code generation is correct.**
+
+Compiled word-expression code pushes exactly the value its IR denotes and
+leaves the rest of the stack untouched, for any variable-loading fragment that
+is itself correct.
+
+The arithmetic here is the machine's, not an idealization: `Val .word` is
+`BitVec 256`, its `+`, `-` and `*` wrap modulo `2 ^ 256`, and the proof runs
+against the executable interpreter `stepInstruction`.  In particular the
+operand-order discipline is discharged rather than assumed — `SUB` reads its
+minuend from the top of the stack, so `compile` emits its operands in the
+opposite order from `ADD`, and the composition lemmas fix that per operation. -/
+theorem word_codegen_correct
+    {Γ : CtxSimple}
+    (pre : Machine.Contract.EVM.BoolExprPrecondition)
+    (variableCode :
+      {name : VarId} → HasVar Γ name .word → Machine.Contract.EVM.Assembly)
+    (env : PlainEnv Γ)
+    (hvariable : ∀ {name : VarId} (binding : HasVar Γ name .word),
+      Machine.Contract.EVM.WordExprCorrect pre (env.get binding)
+        (variableCode binding))
+    (ir : Machine.Contract.EVM.WordExprIR Γ) :
+    Machine.Contract.EVM.WordExprCorrect pre (ir.eval env)
+      (ir.compile variableCode) :=
+  Machine.Contract.EVM.WordExprIR.compile_correct pre variableCode env
+    hvariable ir
 
 /-! ## Strategy presentations -/
 
@@ -307,6 +337,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.nash_equivalence_against' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.nash_equivalence_against
+
+/-- info: 'Vegas.Paper.word_codegen_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.word_codegen_correct
 
 end Paper
 

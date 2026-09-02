@@ -21,8 +21,10 @@ namespace Vegas
 
 abbrev Player : Type := Nat
 
-/-- The width of an EVM machine word, in bits. -/
-def wordBits : Nat := 256
+/-- The width of an EVM machine word, in bits.  Reducible so that
+`Val .word` unifies with the backend's `Word = BitVec 256` at instance
+transparency rather than only at default. -/
+abbrev wordBits : Nat := 256
 
 /-- `BitVec` is a `Fin`-backed structure, so it is finite; neither core nor
 Mathlib supplies the instance. It is what makes `word` an enumerable action

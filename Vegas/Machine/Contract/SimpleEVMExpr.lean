@@ -56,6 +56,59 @@ def boolSelectAssembly : Assembly :=
     .and,
     .xor ]
 
+/-- Closed word-valued expression IR accepted by the EVM backend.
+
+Word expressions feed Boolean predicates and never the reverse — there is no
+word-valued conditional here — so this needs no mutual recursion with
+`BoolExprIR`.  A word-typed `ite` in the source is rejected by lowering rather
+than compiled through a masking circuit. -/
+inductive WordExprIR (Γ : CtxSimple) where
+  | variable (name : VarId) (binding : HasVar Γ name .word)
+  | literal (value : Val .word)
+  | add (left right : WordExprIR Γ)
+  | sub (left right : WordExprIR Γ)
+  | mul (left right : WordExprIR Γ)
+
+namespace WordExprIR
+
+/-- Pure meaning of the word backend IR: EVM arithmetic is arithmetic modulo
+`2 ^ wordBits`, which is exactly `BitVec` arithmetic. -/
+def eval (ρ : PlainEnv Γ) : WordExprIR Γ → Val .word
+  | .variable _ binding => ρ.get binding
+  | .literal value => value
+  | .add left right => left.eval ρ + right.eval ρ
+  | .sub left right => left.eval ρ - right.eval ρ
+  | .mul left right => left.eval ρ * right.eval ρ
+
+/-- Maximum additional EVM stack items used while evaluating.  A binary node
+holds its first-emitted operand while evaluating the second, which is why `sub`
+counts its operands in the opposite order from `add` and `mul`. -/
+def stackHeight : WordExprIR Γ → Nat
+  | .variable _ _ | .literal _ => 1
+  | .add left right | .mul left right =>
+      max left.stackHeight (1 + right.stackHeight)
+  | .sub left right => max right.stackHeight (1 + left.stackHeight)
+
+/-- Total straight-line code generation.
+
+`add` and `mul` are commutative, so operand order is immaterial and they emit
+left-then-right.  `sub` must emit **right-then-left**: `stepInstruction`
+computes `top - next`, so the left operand has to end up on top.  See
+`run_subWord`, whose stack shape is deliberately the mirror of `run_addWord`. -/
+def compile
+    (variableCode : {name : VarId} → HasVar Γ name .word → Assembly) :
+    WordExprIR Γ → Assembly
+  | .variable _ binding => variableCode binding
+  | .literal value => [.push (.word value)]
+  | .add left right =>
+      left.compile variableCode ++ right.compile variableCode ++ [.add]
+  | .mul left right =>
+      left.compile variableCode ++ right.compile variableCode ++ [.mul]
+  | .sub left right =>
+      right.compile variableCode ++ left.compile variableCode ++ [.sub]
+
+end WordExprIR
+
 /-- Closed Boolean-only expression IR accepted by the EVM backend. Unsupported
 source constructors are eliminated before code generation. -/
 inductive BoolExprIR (Γ : CtxSimple) where
