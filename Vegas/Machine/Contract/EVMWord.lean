@@ -47,20 +47,54 @@ def decodeBool (word : Word) : Option Bool :=
     decodeBool (encodeBool value) = some value := by
   cases value <;> simp [decodeBool, encodeBool]
 
-/-- Total implementation used beneath the supported-type boundary. Values of
-unsupported types receive a dummy word that carries no round-trip promise. -/
+/-- Total implementation used beneath the supported-type boundary. A `word`
+is already a machine word, so it encodes by the identity; the unbounded `int`
+and the remaining types receive a dummy word that carries no round-trip
+promise. -/
 def encodeSimpleValue : (ty : BaseTy) → Val ty → Word
   | .int, _ => 0
   | .bool, value => encodeBool value
+  | .word, value => value
   | .range _ _, _ => 0
   | .option _, _ => 0
 
-/-- Only Boolean values have a concrete decoder in this pass. -/
+/-- Booleans and machine words have concrete decoders. Every 256-bit word is a
+valid `word` value, so that decoder is total. -/
 def decodeSimpleValue : (ty : BaseTy) → Word → Option (Val ty)
   | .int, _ => none
   | .bool, word => decodeBool word
+  | .word, word => some word
   | .range _ _, _ => none
   | .option _, _ => none
+
+/-- Machine words round-trip through storage exactly, with no side condition:
+this is the representation law the unbounded `int` cannot satisfy. -/
+@[simp] theorem decodeSimpleValue_encodeSimpleValue_word (value : Val .word) :
+    decodeSimpleValue .word (encodeSimpleValue .word value) = some value := rfl
+
+/-- Storage types carried losslessly by a single 256-bit word. -/
+def WordEncodable : BaseTy → Prop
+  | .bool => True
+  | .word => True
+  | _ => False
+
+instance : DecidablePred WordEncodable
+  | .int => inferInstanceAs (Decidable False)
+  | .bool => inferInstanceAs (Decidable True)
+  | .word => inferInstanceAs (Decidable True)
+  | .range _ _ => inferInstanceAs (Decidable False)
+  | .option _ => inferInstanceAs (Decidable False)
+
+/-- Every word-encodable storage type round-trips. -/
+theorem decodeSimpleValue_encodeSimpleValue
+    (ty : BaseTy) (supported : WordEncodable ty) (value : Val ty) :
+    decodeSimpleValue ty (encodeSimpleValue ty value) = some value := by
+  cases ty with
+  | bool => exact decodeBool_encodeBool value
+  | word => rfl
+  | int => exact absurd supported not_false
+  | range _ _ => exact absurd supported not_false
+  | option _ => exact absurd supported not_false
 
 /-- Evidence that the storage-bearing portion of a compiled program uses only
 Boolean values. Payoff expressions are deliberately irrelevant here because
@@ -73,7 +107,43 @@ structure UsesOnlyBoolStorage (program : Program Player simpleExpr) : Prop where
     ∀ node : Fin program.graph.nodeCount,
       (program.graph.nodeRow node).ty = .bool
 
-/-- A finite 256-bit storage codec for a Boolean-storage program. -/
+/-- Evidence that the storage-bearing portion of a compiled program uses only
+values with a lossless single-word representation. This is the general
+condition `boolStorageCodec` was a special case of: it admits `word`-typed
+fields and nodes, which carry real EVM data rather than a single bit. -/
+structure UsesWordStorage (program : Program Player simpleExpr) : Prop where
+  field_type :
+    ∀ field : Fin program.graph.fieldCount,
+      WordEncodable (program.graph.fieldRow field).ty
+  node_type :
+    ∀ node : Fin program.graph.nodeCount,
+      WordEncodable (program.graph.nodeRow node).ty
+
+/-- Boolean storage is word storage. -/
+theorem UsesOnlyBoolStorage.usesWordStorage
+    {program : Program Player simpleExpr}
+    (usesBool : UsesOnlyBoolStorage program) : UsesWordStorage program where
+  field_type field := by rw [usesBool.field_type field]; trivial
+  node_type node := by rw [usesBool.node_type node]; trivial
+
+/-- A finite 256-bit storage codec for any word-encodable program. -/
+def wordStorageCodec (program : Program Player simpleExpr)
+    (usesWord : UsesWordStorage program) : StorageCodec program where
+  Word := Word
+  Supported := WordEncodable
+  encodeValue := encodeSimpleValue
+  decodeValue := decodeSimpleValue
+  decode_encode_value := decodeSimpleValue_encodeSimpleValue
+  field_supported := usesWord.field_type
+  node_supported := usesWord.node_type
+  encodeCompleted := encodeBool
+  decodeCompleted := decodeBool
+  decode_encode_completed := decodeBool_encodeBool
+
+/-- A finite 256-bit storage codec for a Boolean-storage program. Retained
+alongside `wordStorageCodec` because the Boolean instruction generator needs
+`Supported` to pin the type to `.bool`, so that it may emit canonical zero/one
+selection circuits. -/
 def boolStorageCodec (program : Program Player simpleExpr)
     (usesBool : UsesOnlyBoolStorage program) : StorageCodec program where
   Word := Word

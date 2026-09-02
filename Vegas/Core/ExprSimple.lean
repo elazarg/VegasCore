@@ -21,9 +21,23 @@ namespace Vegas
 
 abbrev Player : Type := Nat
 
+/-- The width of an EVM machine word, in bits. -/
+def wordBits : Nat := 256
+
+/-- `BitVec` is a `Fin`-backed structure, so it is finite; neither core nor
+Mathlib supplies the instance. It is what makes `word` an enumerable action
+domain, unlike the unbounded `int`. -/
+instance instFintypeBitVec (n : Nat) : Fintype (BitVec n) :=
+  Fintype.ofEquiv (Fin (2 ^ n))
+    ⟨BitVec.ofFin, BitVec.toFin, fun _ => rfl, fun _ => rfl⟩
+
 inductive BaseTy where
   | int : BaseTy
   | bool : BaseTy
+  /-- An EVM machine word: `wordBits`-wide, with modular arithmetic. Unlike
+  `int` this is a finite type, so it may be sampled, committed, and revealed,
+  and it encodes into storage without loss. -/
+  | word : BaseTy
   | range (lo hi : Int) : BaseTy
   | option (b : BaseTy) : BaseTy
 deriving Repr, DecidableEq
@@ -31,12 +45,14 @@ deriving Repr, DecidableEq
 abbrev Val : BaseTy → Type
   | .int => Int
   | .bool => Bool
+  | .word => BitVec wordBits
   | .range lo hi => Set.Icc lo hi
   | .option b => Option (Val b)
 
 def instDecidableEqVal : (b : BaseTy) → DecidableEq (Val b)
   | .int => inferInstance
   | .bool => inferInstance
+  | .word => inferInstance
   | .range _ _ => inferInstance
   | .option b =>
       letI : DecidableEq (Val b) := instDecidableEqVal b
@@ -63,6 +79,12 @@ instance : DefaultVal .int where
 instance : CommitPayloadTy .bool where
   nonNullable := trivial
 
+instance : CommitPayloadTy .word where
+  nonNullable := trivial
+
+instance : DefaultVal .word where
+  defaultVal := 0
+
 instance : DefaultVal .bool where
   defaultVal := false
 
@@ -83,6 +105,7 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | var (x : VarId) (h : HasVar Γ x b) : Expr Γ b
   | constInt (i : Int) : Expr Γ .int
   | constBool (b : Bool) : Expr Γ .bool
+  | constWord (w : Val .word) : Expr Γ .word
   | constRange {lo hi : Int} (v : Val (.range lo hi)) :
       Expr Γ (.range lo hi)
   | none {b : BaseTy} : Expr Γ (.option b)
@@ -92,6 +115,14 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | getD {b : BaseTy} (e : Expr Γ (.option b)) (fallback : Expr Γ b) :
       Expr Γ b
   | addInt (l r : Expr Γ .int) : Expr Γ .int
+  /-- EVM `ADD`: addition modulo `2 ^ wordBits`. -/
+  | addWord (l r : Expr Γ .word) : Expr Γ .word
+  /-- EVM `SUB`: subtraction modulo `2 ^ wordBits`. -/
+  | subWord (l r : Expr Γ .word) : Expr Γ .word
+  /-- EVM `MUL`: multiplication modulo `2 ^ wordBits`. -/
+  | mulWord (l r : Expr Γ .word) : Expr Γ .word
+  /-- EVM `LT`: unsigned comparison. -/
+  | ltWord (l r : Expr Γ .word) : Expr Γ .bool
   | eq (l r : Expr Γ b) : Expr Γ .bool
   | andBool (l r : Expr Γ .bool) : Expr Γ .bool
   | notBool (e : Expr Γ .bool) : Expr Γ .bool
@@ -101,6 +132,7 @@ def evalExpr : Expr Γ b → PlainEnv Γ → Val b
   | .var _ h, env => env.get h
   | .constInt i, _ => i
   | .constBool b, _ => b
+  | .constWord w, _ => w
   | .constRange v, _ => v
   | .none, _ => none
   | .some e, env => some (evalExpr e env)
@@ -108,6 +140,10 @@ def evalExpr : Expr Γ b → PlainEnv Γ → Val b
   | .isNone e, env => (evalExpr e env).isNone
   | .getD e fallback, env => (evalExpr e env).getD (evalExpr fallback env)
   | .addInt l r, env => evalExpr l env + evalExpr r env
+  | .addWord l r, env => evalExpr l env + evalExpr r env
+  | .subWord l r, env => evalExpr l env - evalExpr r env
+  | .mulWord l r, env => evalExpr l env * evalExpr r env
+  | .ltWord l r, env => (evalExpr l env).ult (evalExpr r env)
   | .eq l r, env => decide (evalExpr l env = evalExpr r env)
   | .andBool l r, env => evalExpr l env && evalExpr r env
   | .notBool e, env => !(evalExpr e env)
@@ -118,6 +154,7 @@ def exprDeps : Expr Γ b → Finset VarId
   | .var x _ => {x}
   | .constInt _ => ∅
   | .constBool _ => ∅
+  | .constWord _ => ∅
   | .constRange _ => ∅
   | .none => ∅
   | .some e => exprDeps e
@@ -125,6 +162,10 @@ def exprDeps : Expr Γ b → Finset VarId
   | .isNone e => exprDeps e
   | .getD e fallback => exprDeps e ∪ exprDeps fallback
   | .addInt l r => exprDeps l ∪ exprDeps r
+  | .addWord l r => exprDeps l ∪ exprDeps r
+  | .subWord l r => exprDeps l ∪ exprDeps r
+  | .mulWord l r => exprDeps l ∪ exprDeps r
+  | .ltWord l r => exprDeps l ∪ exprDeps r
   | .eq l r => exprDeps l ∪ exprDeps r
   | .andBool l r => exprDeps l ∪ exprDeps r
   | .notBool e => exprDeps e
@@ -143,6 +184,9 @@ theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
       intro y hy
       simp [exprDeps] at hy
   | constBool _ =>
+      intro y hy
+      simp [exprDeps] at hy
+  | constWord _ =>
       intro y hy
       simp [exprDeps] at hy
   | constRange _ =>
@@ -166,6 +210,26 @@ theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
       · exact ihe y hy
       · exact ihf y hy
   | addInt l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | addWord l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | subWord l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | mulWord l r ihl ihr =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihl y hy
+      · exact ihr y hy
+  | ltWord l r ihl ihr =>
       intro y hy
       rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
       · exact ihl y hy
@@ -203,6 +267,7 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     exact ha x _ h (Finset.mem_singleton.mpr rfl)
   | constInt _ => rfl
   | constBool _ => rfl
+  | constWord _ => rfl
   | constRange _ => rfl
   | none => rfl
   | some e ih =>
@@ -219,6 +284,22 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     rw [ihe (ha.mono Finset.subset_union_left),
         ihf (ha.mono Finset.subset_union_right)]
   | addInt l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | addWord l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | subWord l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | mulWord l r ihl ihr =>
+    simp only [evalExpr]
+    rw [ihl (ha.mono Finset.subset_union_left),
+        ihr (ha.mono Finset.subset_union_right)]
+  | ltWord l r ihl ihr =>
     simp only [evalExpr]
     rw [ihl (ha.mono Finset.subset_union_left),
         ihr (ha.mono Finset.subset_union_right)]
@@ -246,6 +327,7 @@ def evalExprDeps : (e : Expr Γ b) →
   | .var x h, ρ => ρ x _ h (by simp [exprDeps])
   | .constInt i, _ => i
   | .constBool b, _ => b
+  | .constWord w, _ => w
   | .constRange v, _ => v
   | .none, _ => none
   | .some e, ρ =>
@@ -267,6 +349,26 @@ def evalExprDeps : (e : Expr Γ b) →
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) +
       evalExprDeps r
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .addWord l r, ρ =>
+      evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) +
+      evalExprDeps r
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .subWord l r, ρ =>
+      evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) -
+      evalExprDeps r
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .mulWord l r, ρ =>
+      evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])) *
+      evalExprDeps r
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))
+  | .ltWord l r, ρ =>
+      (evalExprDeps l
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))).ult
+        (evalExprDeps r
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
   | .eq l r, ρ =>
       decide
         (evalExprDeps l
@@ -297,6 +399,7 @@ theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
   | var x h => rfl
   | constInt _ => rfl
   | constBool _ => rfl
+  | constWord _ => rfl
   | constRange _ => rfl
   | none => rfl
   | some e ih =>
@@ -308,6 +411,14 @@ theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
   | getD e fallback ihe ihf =>
       simp [evalExprDeps, evalExpr, ihe, ihf]
   | addInt l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | addWord l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | subWord l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | mulWord l r ihl ihr =>
+      simp [evalExprDeps, evalExpr, ihl, ihr]
+  | ltWord l r ihl ihr =>
       simp [evalExprDeps, evalExpr, ihl, ihr]
   | eq l r ihl ihr =>
       simp [evalExprDeps, evalExpr, ihl, ihr]
@@ -418,6 +529,14 @@ noncomputable instance finiteType_bool : FiniteType simpleExpr .bool where
     change Fintype Bool
     infer_instance
 
+/-- Machine words are an enumerable action domain. This is what lets a program
+sample, commit, and reveal words, which the unbounded `int` can never support:
+there is deliberately no `FiniteType simpleExpr .int`. -/
+noncomputable instance finiteType_word : FiniteType simpleExpr .word where
+  fintype := by
+    change Fintype (BitVec wordBits)
+    infer_instance
+
 noncomputable instance finiteType_range (lo hi : Int) :
     FiniteType simpleExpr (.range lo hi) where
   fintype := by
@@ -512,6 +631,7 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .var y h => .var y (.there h)
   | .constInt i => .constInt i
   | .constBool v => .constBool v
+  | .constWord w => .constWord w
   | .constRange v => .constRange v
   | .none => .none
   | .some e => .some e.weaken
@@ -519,6 +639,10 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .isNone e => .isNone e.weaken
   | .getD e fallback => .getD e.weaken fallback.weaken
   | .addInt l r => .addInt l.weaken r.weaken
+  | .addWord l r => .addWord l.weaken r.weaken
+  | .subWord l r => .subWord l.weaken r.weaken
+  | .mulWord l r => .mulWord l.weaken r.weaken
+  | .ltWord l r => .ltWord l.weaken r.weaken
   | .eq l r => .eq l.weaken r.weaken
   | .andBool l r => .andBool l.weaken r.weaken
   | .notBool e => .notBool e.weaken
@@ -532,6 +656,7 @@ def Expr.substVars {Γ Δ : CtxSimple}
   | _, .var _ h => σ h
   | _, .constInt i => .constInt i
   | _, .constBool v => .constBool v
+  | _, .constWord w => .constWord w
   | _, .constRange v => .constRange v
   | _, .none => .none
   | _, .some e => .some (e.substVars σ)
@@ -539,6 +664,10 @@ def Expr.substVars {Γ Δ : CtxSimple}
   | _, .isNone e => .isNone (e.substVars σ)
   | _, .getD e fallback => .getD (e.substVars σ) (fallback.substVars σ)
   | _, .addInt l r => .addInt (l.substVars σ) (r.substVars σ)
+  | _, .addWord l r => .addWord (l.substVars σ) (r.substVars σ)
+  | _, .subWord l r => .subWord (l.substVars σ) (r.substVars σ)
+  | _, .mulWord l r => .mulWord (l.substVars σ) (r.substVars σ)
+  | _, .ltWord l r => .ltWord (l.substVars σ) (r.substVars σ)
   | _, .eq l r => .eq (l.substVars σ) (r.substVars σ)
   | _, .andBool l r => .andBool (l.substVars σ) (r.substVars σ)
   | _, .notBool e => .notBool (e.substVars σ)
@@ -568,6 +697,7 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | var _ _ => rfl
   | constInt _ => rfl
   | constBool _ => rfl
+  | constWord _ => rfl
   | constRange _ => rfl
   | none => rfl
   | some e ih => simp [Expr.weaken, evalExpr, ih]
@@ -575,6 +705,10 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | isNone e ih => simp [Expr.weaken, evalExpr, ih]
   | getD e fallback ihe ihf => simp [Expr.weaken, evalExpr, ihe, ihf]
   | addInt l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
+  | addWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
+  | subWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
+  | mulWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
+  | ltWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | eq l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | andBool l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | notBool e ih => simp [Expr.weaken, evalExpr, ih]
@@ -583,6 +717,7 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
 def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
   | .int, i => .constInt i
   | .bool, b => .constBool b
+  | .word, w => .constWord w
   | .range _ _, v => .constRange v
   | .option _, Option.none => .none
   | .option _, Option.some v => .some (Expr.constVal v)
@@ -597,6 +732,7 @@ def Expr.replaceHeadWithGetD
       .var z (.there h')
   | .constInt i => .constInt i
   | .constBool v => .constBool v
+  | .constWord w => .constWord w
   | .constRange v => .constRange v
   | .none => .none
   | .some e => .some (e.replaceHeadWithGetD fallback)
@@ -607,6 +743,18 @@ def Expr.replaceHeadWithGetD
         (fb.replaceHeadWithGetD fallback)
   | .addInt l r =>
       .addInt (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .addWord l r =>
+      .addWord (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .subWord l r =>
+      .subWord (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .mulWord l r =>
+      .mulWord (l.replaceHeadWithGetD fallback)
+        (r.replaceHeadWithGetD fallback)
+  | .ltWord l r =>
+      .ltWord (l.replaceHeadWithGetD fallback)
         (r.replaceHeadWithGetD fallback)
   | .eq l r =>
       .eq (l.replaceHeadWithGetD fallback)
@@ -627,6 +775,7 @@ theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
   induction b with
   | int => simp [Expr.constVal, evalExpr]
   | bool => simp [Expr.constVal, evalExpr]
+  | word => simp [Expr.constVal, evalExpr]
   | range lo hi => simp [Expr.constVal, evalExpr]
   | option b ih =>
       cases v with
@@ -648,6 +797,8 @@ theorem evalExpr_replaceHeadWithGetD_some
       simp [Expr.replaceHeadWithGetD, evalExpr]
   | constBool v =>
       simp [Expr.replaceHeadWithGetD, evalExpr]
+  | constWord w =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
   | constRange v =>
       simp [Expr.replaceHeadWithGetD, evalExpr]
   | none =>
@@ -661,6 +812,14 @@ theorem evalExpr_replaceHeadWithGetD_some
   | getD e fb ihe ihf =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihe, ihf]
   | addInt l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | addWord l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | subWord l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | mulWord l r ihl ihr =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
+  | ltWord l r ihl ihr =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]
   | eq l r ihl ihr =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]

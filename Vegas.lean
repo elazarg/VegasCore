@@ -17,6 +17,7 @@ import Vegas.Machine
 import Vegas.Game
 import Vegas.Runtime
 import Vegas.Game.Kuhn
+import Vegas.Paper
 
 /-!
 # Vegas

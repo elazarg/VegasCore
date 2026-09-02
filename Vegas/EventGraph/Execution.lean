@@ -1542,15 +1542,17 @@ theorem StoreCoherent.readEnvOfReady
 /-- Reachable graph configurations packaged as a state type. -/
 abbrev ReachableConfig (G : Graph Player L) := { cfg : Config G // Reachable G cfg }
 
-theorem exists_availableEvent_of_not_terminal
+/-- Every ready node can actually fire: readiness plus guard liveness yields
+an available event **at that node**, not merely somewhere.  A sequential
+schedule needs this stronger form, because it must fire one canonical node
+rather than whichever node happens to be convenient. -/
+theorem exists_availableEvent_of_ready
     {G : Graph Player L}
     (hwf : G.WF) (hguards : GuardLive G)
-    {state : ReachableConfig G}
-    (hterminal : ¬ Terminal G state.1) :
-    Nonempty (AvailableEvent G state.1) := by
+    {state : ReachableConfig G} {node : Fin G.nodeCount}
+    (hready : Ready G state.1 node) :
+    ∃ event : AvailableEvent G state.1, event.node = node := by
   classical
-  rcases exists_ready_of_not_terminal G state.1 hterminal with
-    ⟨node, hready⟩
   rcases G.nodes_get_of_fin node with ⟨row, hrow⟩
   have hcoherent : StoreCoherent G state.1 :=
     reachable_storeCoherent hwf state.2
@@ -1574,7 +1576,7 @@ theorem exists_availableEvent_of_not_terminal
       exact
         ⟨AvailableEvent.internal
           { node := node }
-          (InternalStep.sample row dist hrow hsem hready env henv)⟩
+          (InternalStep.sample row dist hrow hsem hready env henv), rfl⟩
   | commit who guard =>
       have hnodeWF := hwf node row hrow
       unfold Graph.nodeWFAt at hnodeWF
@@ -1607,7 +1609,7 @@ theorem exists_availableEvent_of_not_terminal
             value_ok := hvalueOk
             env := env
             env_ok := henv
-            guard_ok := hvalue }⟩
+            guard_ok := hvalue }, rfl⟩
   | reveal source =>
       have hnodeWF := hwf node row hrow
       unfold Graph.nodeWFAt at hnodeWF
@@ -1622,7 +1624,19 @@ theorem exists_availableEvent_of_not_terminal
       exact
         ⟨AvailableEvent.internal
           { node := node }
-          (InternalStep.reveal row source hrow hsem hready value hvalue)⟩
+          (InternalStep.reveal row source hrow hsem hready value hvalue), rfl⟩
+
+/-- Some available event exists at every reachable nonterminal configuration.
+The scheduler-agnostic corollary of `exists_availableEvent_of_ready`. -/
+theorem exists_availableEvent_of_not_terminal
+    {G : Graph Player L}
+    (hwf : G.WF) (hguards : GuardLive G)
+    {state : ReachableConfig G}
+    (hterminal : ¬ Terminal G state.1) :
+    Nonempty (AvailableEvent G state.1) := by
+  rcases exists_ready_of_not_terminal G state.1 hterminal with ⟨node, hready⟩
+  rcases exists_availableEvent_of_ready hwf hguards hready with ⟨event, _⟩
+  exact ⟨event⟩
 
 /-- Step by an available primitive event. Each supported raw successor carries
 the corresponding reachability proof. -/
