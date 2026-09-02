@@ -47,6 +47,15 @@ side condition on strategies.
 schedule, and `signals_separate_of_log_ne` shows that is the only place they
 differ.
 
+The *theorems*, though, are stated over the faithful model alone.  Comparing two
+games is the wrong shape: an order-blind game is not a subgame of the revealing
+one, and relating them needs transport across information-state types that agree
+only propositionally.  Restricting *deviations* within the one faithful game
+says the same thing with none of that friction, and it is what
+`DeviationAdequacyOn` consumes: `OrderOblivious` is the honest class,
+`fun _ _ => True` the robust one.  The blind model stays as the documented
+idealization, and the projection theorem is what says precisely what it drops.
+
 ## What is observable, and what is assumed
 
 Two different things are visible on a public runtime, and only one is modelled
@@ -355,11 +364,23 @@ theorem signals_separate_of_log_ne (scheduler : sys.Scheduler)
   intro heq
   exact hlog (congrArg Prod.snd heq)
 
-/-! ## Strategy carriers
+/-! ## Order-oblivious deviations
 
-An order-blind policy is also an order-revealing one: read the revealing
-information state, discard the schedule, decide.  The converse fails, and that
-asymmetry is the whole strategic content of scheduling. -/
+The honest and robust readings are two classes of policy inside the one faithful
+game, not two games.  A policy is *order-oblivious* when the schedule cannot
+change what it does; that is a restriction on what a player reads, never on what
+it can express, so the class still contains every policy a schedule-free source
+could offer. -/
+
+/-- A policy is order-oblivious when it acts the same at any two information
+states differing only in schedule.
+
+Phrased on the action rather than the menu-certified choice, whose type depends
+on the information state; the action's does not. -/
+def OrderOblivious (scheduler : sys.Scheduler) {i : ι}
+    (policy : (sys.revealingInformation scheduler).Policy i) : Prop :=
+  ∀ left right : sys.RevealingInfo,
+    sys.forgetOrders left = sys.forgetOrders right → (policy left).1 = (policy right).1
 
 /-- Read an order-blind policy as an order-revealing one by discarding the
 schedule first.
@@ -372,19 +393,13 @@ def liftPolicy (scheduler : sys.Scheduler) {i : ι}
     (sys.revealingInformation scheduler).Policy i :=
   fun info => policy (sys.forgetOrders info)
 
-/-- A lifted policy cannot separate histories that differ only in schedule: it
-takes the same action at any two information states with the same
-order-forgetting projection.
-
-Stated on the action rather than the menu-certified choice, whose type depends
-on the information state; the action's does not, which is what makes this a
-plain equality instead of a transport. -/
-theorem liftPolicy_action_congr (scheduler : sys.Scheduler) {i : ι}
-    (policy : (sys.blindInformation scheduler).Policy i)
-    {left right : sys.RevealingInfo}
-    (hforget : sys.forgetOrders left = sys.forgetOrders right) :
-    (sys.liftPolicy scheduler policy left).1 =
-      (sys.liftPolicy scheduler policy right).1 := by
+/-- Everything an order-blind player could have played is order-oblivious.  So
+the honest class is not an artificial restriction: it contains the image of
+every schedule-free policy. -/
+theorem liftPolicy_orderOblivious (scheduler : sys.Scheduler) {i : ι}
+    (policy : (sys.blindInformation scheduler).Policy i) :
+    sys.OrderOblivious scheduler (sys.liftPolicy scheduler policy) := by
+  intro left right hforget
   change (policy (sys.forgetOrders left)).1 = (policy (sys.forgetOrders right)).1
   rw [hforget]
 
@@ -443,23 +458,21 @@ def coinOrderAware (i : Fin 2) :
     else
       ⟨some false, Set.mem_insert_of_mem _ rfl⟩
 
-/-- **The order-revealing strategy carrier is strictly larger.**
+/-- **The order-oblivious class is proper.**
 
-No order-blind policy induces `coinOrderAware`, because a lifted policy takes
-the same action at histories with the same order-forgetting projection and this
-one does not.  So an order-aware deviation has in general no back-translation,
-which is why adequacy against the unrestricted class of target strategies does
-not follow from adequacy against order-oblivious ones. -/
-theorem revealing_policy_not_lifted (i : Fin 2) :
-    ¬ ∃ policy : (coinSystem.blindInformation coinScheduler).Policy i,
-        coinSystem.liftPolicy coinScheduler policy = coinOrderAware i := by
-  rintro ⟨policy, hpolicy⟩
-  have hcongr :
-      (coinSystem.liftPolicy coinScheduler policy coinFirstZero).1 =
-        (coinSystem.liftPolicy coinScheduler policy coinFirstOne).1 :=
-    coinSystem.liftPolicy_action_congr coinScheduler policy
-      coinFirst_forgetOrders_eq
-  rw [hpolicy] at hcongr
+`coinOrderAware` acts differently at two histories that agree on every public
+view and differ only in how a round was ordered, so it is not order-oblivious —
+and by `liftPolicy_orderOblivious` no schedule-free policy induces it.
+
+This is the obstruction to back-translation: an order-aware deviation has in
+general no source counterpart, so adequacy against the unrestricted class does
+not follow from adequacy against the order-oblivious one.  The robust tier has
+to be established on its own. -/
+theorem coinOrderAware_not_orderOblivious (i : Fin 2) :
+    ¬ coinSystem.OrderOblivious coinScheduler (coinOrderAware i) := by
+  intro hoblivious
+  have hcongr :=
+    hoblivious coinFirstZero coinFirstOne coinFirst_forgetOrders_eq
   simp only [coinFirstZero, Fin.isValue, coinOrderAware,
     List.headD_eq_head?_getD, List.head?_cons, Option.getD_some, ↓reduceIte,
     coinFirstOne, List.cons.injEq, one_ne_zero, zero_ne_one, and_true,

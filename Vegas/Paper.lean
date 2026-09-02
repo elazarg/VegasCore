@@ -280,28 +280,25 @@ theorem schedule_is_observable
       (sys.toExecutionProtocol right).step state legalRight :=
   sys.step_ne_of_order_ne hjoint horder
 
-/-- **The order-revealing strategy carrier is strictly larger.**
+/-- **The order-oblivious deviation class is proper.**
 
-An order-blind policy is also an order-revealing one — read the state, discard
-the schedule, decide — and `liftPolicy_action_congr` says such a lifted policy
-must take the same action at any two histories that differ only in schedule.
+A policy is *order-oblivious* when the schedule cannot change what it does. That
+restricts what a player reads, never what it can express, so the class contains
+every policy a schedule-free source could offer
+(`liftPolicy_orderOblivious`).
 
-`Vegas.coinOrderAware` does not: it is an order-revealing policy over a system
-whose actions are all the identity, so the two histories it separates agree on
-every public view and differ only in how a round was ordered. No order-blind
-policy induces it.
+It is nonetheless a proper subclass. `Vegas.coinOrderAware` acts differently at
+two histories that agree on every public view and differ only in how a round was
+ordered, over a system whose actions are all the identity.
 
-That is the obstruction to back-translation. Adequacy against order-oblivious
-target deviations does not extend to adequacy against arbitrary ones, because
-the arbitrary ones have no source counterpart to translate back to — so the
-robust tier cannot be inferred from the honest tier, it has to be proved or
-refuted separately. -/
-theorem order_aware_strategies_are_new (i : Fin 2) :
-    ¬ ∃ policy :
-        (Vegas.coinSystem.blindInformation Vegas.coinScheduler).Policy i,
-      Vegas.coinSystem.liftPolicy Vegas.coinScheduler policy =
-        Vegas.coinOrderAware i :=
-  Vegas.revealing_policy_not_lifted i
+This is the obstruction to back-translation, and it says what shape the
+remaining work has: adequacy against order-oblivious deviations does not extend
+to adequacy against arbitrary ones, because the arbitrary ones have no source
+counterpart to translate back to. The robust tier cannot be inferred from the
+honest tier; it must be established or refuted on its own. -/
+theorem order_aware_deviations_exist (i : Fin 2) :
+    ¬ Vegas.coinSystem.OrderOblivious Vegas.coinScheduler (Vegas.coinOrderAware i) :=
+  Vegas.coinOrderAware_not_orderOblivious i
 
 /-! ## Deviation adequacy -/
 
@@ -441,9 +438,9 @@ build fails here rather than silently widening what the paper is trusting.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.schedule_is_observable
 
-/-- info: 'Vegas.Paper.order_aware_strategies_are_new' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.order_aware_deviations_exist' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.order_aware_strategies_are_new
+#print axioms Vegas.Paper.order_aware_deviations_exist
 
 end Paper
 
