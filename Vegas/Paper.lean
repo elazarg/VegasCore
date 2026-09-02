@@ -280,6 +280,29 @@ theorem schedule_is_observable
       (sys.toExecutionProtocol right).step state legalRight :=
   sys.step_ne_of_order_ne hjoint horder
 
+/-- **The order-revealing strategy carrier is strictly larger.**
+
+An order-blind policy is also an order-revealing one — read the state, discard
+the schedule, decide — and `liftPolicy_action_congr` says such a lifted policy
+must take the same action at any two histories that differ only in schedule.
+
+`Vegas.coinOrderAware` does not: it is an order-revealing policy over a system
+whose actions are all the identity, so the two histories it separates agree on
+every public view and differ only in how a round was ordered. No order-blind
+policy induces it.
+
+That is the obstruction to back-translation. Adequacy against order-oblivious
+target deviations does not extend to adequacy against arbitrary ones, because
+the arbitrary ones have no source counterpart to translate back to — so the
+robust tier cannot be inferred from the honest tier, it has to be proved or
+refuted separately. -/
+theorem order_aware_strategies_are_new (i : Fin 2) :
+    ¬ ∃ policy :
+        (Vegas.coinSystem.blindInformation Vegas.coinScheduler).Policy i,
+      Vegas.coinSystem.liftPolicy Vegas.coinScheduler policy =
+        Vegas.coinOrderAware i :=
+  Vegas.revealing_policy_not_lifted i
+
 /-! ## Deviation adequacy -/
 
 /-- **Utility preservation at compiled profiles** (paper: `lem:expected-utility`,
@@ -417,6 +440,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.schedule_is_observable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.schedule_is_observable
+
+/-- info: 'Vegas.Paper.order_aware_strategies_are_new' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.order_aware_strategies_are_new
 
 end Paper
 

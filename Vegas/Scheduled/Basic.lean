@@ -355,7 +355,116 @@ theorem signals_separate_of_log_ne (scheduler : sys.Scheduler)
   intro heq
   exact hlog (congrArg Prod.snd heq)
 
+/-! ## Strategy carriers
+
+An order-blind policy is also an order-revealing one: read the revealing
+information state, discard the schedule, decide.  The converse fails, and that
+asymmetry is the whole strategic content of scheduling. -/
+
+/-- Read an order-blind policy as an order-revealing one by discarding the
+schedule first.
+
+This typechecks without transport because `forgetOrders` preserves the current
+view and both menus are `menuAt` of that view, so the two `Choice` types are
+definitionally equal. -/
+def liftPolicy (scheduler : sys.Scheduler) {i : ι}
+    (policy : (sys.blindInformation scheduler).Policy i) :
+    (sys.revealingInformation scheduler).Policy i :=
+  fun info => policy (sys.forgetOrders info)
+
+/-- A lifted policy cannot separate histories that differ only in schedule: it
+takes the same action at any two information states with the same
+order-forgetting projection.
+
+Stated on the action rather than the menu-certified choice, whose type depends
+on the information state; the action's does not, which is what makes this a
+plain equality instead of a transport. -/
+theorem liftPolicy_action_congr (scheduler : sys.Scheduler) {i : ι}
+    (policy : (sys.blindInformation scheduler).Policy i)
+    {left right : sys.RevealingInfo}
+    (hforget : sys.forgetOrders left = sys.forgetOrders right) :
+    (sys.liftPolicy scheduler policy left).1 =
+      (sys.liftPolicy scheduler policy right).1 := by
+  change (policy (sys.forgetOrders left)).1 = (policy (sys.forgetOrders right)).1
+  rw [hforget]
+
 end ScheduledSystem
+
+/-! ## A witness that the carrier is strictly larger
+
+`liftPolicy_action_congr` is only interesting if some order-revealing policy
+really does separate two schedule-distinct histories.  The system below is again
+maximally confluent — every action is the identity — but gives each player two
+options, which is the least a policy needs in order to say anything at all. -/
+
+/-- Two players, a binary submission each, and a state nothing changes. -/
+def coinSystem : ScheduledSystem.{0, 0} (Fin 2) where
+  Base := Unit
+  Action _ := Bool
+  init := ()
+  active _ _ := True
+  available _ _ := Set.univ
+  terminal _ := False
+  applyOne state _ _ := FinDist.pure state
+  View := Unit
+  view _ := ()
+  menuAt _ _ := {some true, some false}
+  menuAt_some _ _ action := by cases action <;> simp
+  menuAt_none _ _ := by simp
+  progress _ _ := ⟨fun _ => some true, fun _ => ⟨trivial, Set.mem_univ _⟩⟩
+
+/-- Any scheduler; the carrier question does not depend on which. -/
+def coinScheduler : coinSystem.Scheduler := fun _ _ => [0, 1]
+
+@[simp] theorem coin_menu (i : Fin 2)
+    (info : (coinSystem.revealingInformation coinScheduler).InfoState i) :
+    (coinSystem.revealingInformation coinScheduler).menu i info =
+      {some true, some false} := rfl
+
+/-- A history in which player `0` was ordered first. -/
+def coinFirstZero : coinSystem.RevealingInfo := ((), [([0, 1], ())])
+
+/-- The same history except that player `1` was ordered first.  The two have the
+same public views throughout and differ only in schedule. -/
+def coinFirstOne : coinSystem.RevealingInfo := ((), [([1, 0], ())])
+
+theorem coinFirst_forgetOrders_eq :
+    coinSystem.forgetOrders coinFirstZero =
+      coinSystem.forgetOrders coinFirstOne := rfl
+
+/-- An order-aware policy: submit `true` exactly when player `0` was ordered
+first.  Nothing about the state differs between those histories — only the
+schedule does. -/
+def coinOrderAware (i : Fin 2) :
+    (coinSystem.revealingInformation coinScheduler).Policy i :=
+  fun info =>
+    if (info.2.headD ([], ())).1 = [0, 1] then
+      ⟨some true, Set.mem_insert _ _⟩
+    else
+      ⟨some false, Set.mem_insert_of_mem _ rfl⟩
+
+/-- **The order-revealing strategy carrier is strictly larger.**
+
+No order-blind policy induces `coinOrderAware`, because a lifted policy takes
+the same action at histories with the same order-forgetting projection and this
+one does not.  So an order-aware deviation has in general no back-translation,
+which is why adequacy against the unrestricted class of target strategies does
+not follow from adequacy against order-oblivious ones. -/
+theorem revealing_policy_not_lifted (i : Fin 2) :
+    ¬ ∃ policy : (coinSystem.blindInformation coinScheduler).Policy i,
+        coinSystem.liftPolicy coinScheduler policy = coinOrderAware i := by
+  rintro ⟨policy, hpolicy⟩
+  have hcongr :
+      (coinSystem.liftPolicy coinScheduler policy coinFirstZero).1 =
+        (coinSystem.liftPolicy coinScheduler policy coinFirstOne).1 :=
+    coinSystem.liftPolicy_action_congr coinScheduler policy
+      coinFirst_forgetOrders_eq
+  rw [hpolicy] at hcongr
+  simp only [coinFirstZero, Fin.isValue, coinOrderAware,
+    List.headD_eq_head?_getD, List.head?_cons, Option.getD_some, ↓reduceIte,
+    coinFirstOne, List.cons.injEq, one_ne_zero, zero_ne_one, and_true,
+    and_self] at hcongr
+  exact Bool.noConfusion (Option.some.inj hcongr)
 
 /-! ## A witness that the separation is not vacuous
 
