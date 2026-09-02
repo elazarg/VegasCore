@@ -31,7 +31,7 @@ theorem nullableGuard_none_legal
       (Expr.nullableCommitGuard R) Option.none env = true := by
   change evalExpr (Expr.nullableCommitGuard R)
       (Env.cons (x := secret) Option.none env) = true
-  exact evalExpr_nullableCommitGuard_none R env
+  exact evalExpr_nullableCommitGuard_declineValue R env
 
 /-- On ordinary source values, the compiled nullable guard agrees with the
 original guard. -/

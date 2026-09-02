@@ -326,7 +326,7 @@ theorem enforced_schedule_makes_scheduler_inert
     {ι : Type} (sys : ScheduledSystem ι) (henforce : sys.EnforcesOrder)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
-    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (hplayers : ∀ i, left.1 (.player i) = right.1 (.player i)) :
     sys.toExecutionProtocol.step state left =
       sys.toExecutionProtocol.step state right :=
   sys.step_eq_of_enforcesOrder henforce hplayers
@@ -360,7 +360,7 @@ theorem commuting_effects_make_scheduler_payoff_inert
     {ι : Type} (sys : ScheduledSystem ι) (hcommute : sys.EffectsCommute)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
-    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (hplayers : ∀ i, left.1 (.player i) = right.1 (.player i)) :
     (sys.toExecutionProtocol.step state left).map ScheduledSystem.State.base =
       (sys.toExecutionProtocol.step state right).map ScheduledSystem.State.base :=
   sys.step_base_eq_of_effectsCommute hcommute hplayers
@@ -423,9 +423,9 @@ theorem active_participation_is_forced
     {ι : Type} (sys : ScheduledSystem ι) {state : sys.State}
     (joint : { joint // sys.toExecutionProtocol.Legal state joint })
     (i : ι) (hactive : sys.active state.base i) :
-    ∃ action, joint.1 (some i) = some action := by
-  have hlegal := joint.2.2 (some i)
-  cases hjoint : joint.1 (some i) with
+    ∃ action, joint.1 (.player i) = some action := by
+  have hlegal := joint.2.2 (.player i)
+  cases hjoint : joint.1 (.player i) with
   | none => rw [hjoint] at hlegal; exact absurd hactive hlegal
   | some action => exact ⟨action, rfl⟩
 
@@ -456,6 +456,51 @@ theorem silence_is_inert_available_and_not_universal :
     Nonempty counterSystem.AllowsSilence ∧ IsEmpty raceSystem.AllowsSilence :=
   ⟨fun _ hsilent order proposed state => hsilent.applyOrder_silent order proposed state,
     ⟨counter_allowsSilence⟩, race_no_silence⟩
+
+/-- **Declining and silence are different, and ordered.**
+
+Every runtime affording silence affords declining, by forgetting that the
+submission was inert. The converse fails: the doubling-and-adding runtime lets a
+player submit — every action is accepted — while no action there is inert, so
+nobody can vanish without trace.
+
+The two were conflated in this development because both wanted the spelling
+`none`, and the error was not caught by types. They now have names.
+*Declining* is `declineValue`, the null value a player submits to a nullable
+commitment: `Expr.nullableCommitGuard` accepts it whatever the environment, the
+continuation is typed at `option b` and must handle it, and the program may
+charge for it on the spot. *Silence* is sending nothing, which
+`active_participation_is_forced` shows the protocol layer forbids and no public
+runtime can.
+
+The gap between them is the room a protocol has to charge for declining, and it
+is why a deposit is slashable against a decline directly but against silence
+only through a timeout. -/
+theorem declining_is_weaker_than_silence :
+    (∀ (ι : Type) (sys : ScheduledSystem ι),
+        sys.AllowsSilence → Nonempty sys.AllowsDeclining) ∧
+      Nonempty raceSystem.AllowsDeclining ∧ IsEmpty raceSystem.AllowsSilence :=
+  ⟨fun _ _ hsilent => ⟨hsilent.toAllowsDeclining⟩,
+    ⟨race_allowsDeclining⟩, race_no_silence⟩
+
+/-- **A nullable commitment can never be declined illegally.**
+
+Whatever the environment, some submission satisfies the guard — namely
+`declineValue`. So a surface `yield` is a form a player can never be stuck on,
+and declining is a *source* strategy needing no back-translation.
+
+The contrast is `commit`, whose payload `CommitPayloadTy` restricts to
+non-nullable types: that form obliges a player to act, and its satisfiability is
+an obligation discharged elsewhere rather than a theorem about the form. -/
+theorem declining_is_always_live
+    {P : Type} [DecidableEq P] {Γ : VCtx P simpleExpr}
+    {x : VarId} {b : BaseTy} [DefaultVal b]
+    (R : Expr ((x, b) :: eraseVCtx Γ) .bool) :
+    ∀ env : Env Val (eraseVCtx Γ),
+      ∃ a : Val (.option b),
+        Vegas.evalGuard (Player := P) (L := simpleExpr)
+          (Expr.nullableCommitGuard R) a env = true :=
+  nullableCommitGuard_satisfiable R
 
 /-! ## Deviation adequacy -/
 
@@ -622,6 +667,14 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.silence_is_inert_available_and_not_universal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.silence_is_inert_available_and_not_universal
+
+/-- info: 'Vegas.Paper.declining_is_weaker_than_silence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.declining_is_weaker_than_silence
+
+/-- info: 'Vegas.Paper.declining_is_always_live' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.declining_is_always_live
 
 end Paper
 

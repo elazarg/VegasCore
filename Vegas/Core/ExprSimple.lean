@@ -832,6 +832,20 @@ theorem evalExpr_replaceHeadWithGetD_some
   | ite c t f ihc iht ihf =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihc, iht, ihf]
 
+/-- The value a player submits to decline a nullable commitment.
+
+Named rather than written `Option.none`, because several different things around
+this development want that spelling and only this one is a *submitted value*: a
+participant who sent no submission at all is `Option.none` at the protocol's
+`joint`, and the scheduler used to be `Option.none` too before `Participant`
+gave it a constructor.  Conflating the first two has caused real errors, so the
+concept gets a name and the theorems below are stated with it.
+
+A decline is a transaction like any other.  The program sees it, continues, and
+may charge for it — which is exactly what distinguishes it from silence, where
+nothing is sent and the state does not move. -/
+def declineValue (b : BaseTy) : Val (.option b) := Option.none
+
 def Expr.nullableCommitGuardWithFallback
     {Γ : CtxSimple} {x : VarId} {b : BaseTy}
     (fallback : Val b) (R : Expr ((x, b) :: Γ) .bool) :
@@ -845,13 +859,17 @@ def Expr.nullableCommitGuard
     Expr ((x, .option b) :: Γ) .bool :=
   Expr.nullableCommitGuardWithFallback DefaultVal.defaultVal R
 
-@[simp] theorem evalExpr_nullableCommitGuard_none
+/-- **A nullable commitment always accepts a decline.**  The guard is bypassed
+outright when the payload is absent, so no program condition can make declining
+illegal. -/
+@[simp] theorem evalExpr_nullableCommitGuard_declineValue
     {Γ : CtxSimple} {x : VarId} {b : BaseTy} [DefaultVal b]
     (R : Expr ((x, b) :: Γ) .bool)
     (env : PlainEnv Γ) :
     evalExpr (Expr.nullableCommitGuard R)
-        (Env.cons (x := x) Option.none env) = true := by
-  simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr]
+        (Env.cons (x := x) (declineValue b) env) = true := by
+  simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr,
+    declineValue]
 
 theorem evalExpr_nullableCommitGuard_some
     {Γ : CtxSimple} {x : VarId} {b : BaseTy} [DefaultVal b]
@@ -863,6 +881,10 @@ theorem evalExpr_nullableCommitGuard_some
   simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr,
     evalExpr_replaceHeadWithGetD_some DefaultVal.defaultVal R v env]
 
+/-- **Declining is always live.**  Whatever the environment, some submission is
+accepted — namely `declineValue`.  This is what makes a nullable `yield` a form
+a player can never be stuck on, in contrast to `commit`, whose non-nullable
+payload leaves satisfiability to be discharged elsewhere. -/
 theorem nullableCommitGuard_satisfiable
     {P : Type} [DecidableEq P] {Γ : VCtx P simpleExpr}
     {x : VarId} {b : BaseTy} [DefaultVal b]
@@ -872,10 +894,10 @@ theorem nullableCommitGuard_satisfiable
         Vegas.evalGuard (Player := P) (L := simpleExpr)
           (Expr.nullableCommitGuard R) a env = true := by
   intro env
-  refine ⟨Option.none, ?_⟩
+  refine ⟨declineValue b, ?_⟩
   change evalExpr (Expr.nullableCommitGuard R)
-      (Env.cons (x := x) Option.none env) = true
-  exact evalExpr_nullableCommitGuard_none R env
+      (Env.cons (x := x) (declineValue b) env) = true
+  exact evalExpr_nullableCommitGuard_declineValue R env
 
 @[simp] theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (law : RationalLaw (Val b)) (env : PlainEnv Γ) :

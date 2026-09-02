@@ -90,6 +90,35 @@ enforcement.  Two pending operations whose order changes the result is the shape
 a public runtime actually has, which is why enforcement stays available rather
 than being argued away.
 
+## Vocabulary: absence, declining, and the scheduler
+
+Three different things wanted the spelling `none`, and conflating them has
+caused real errors here.  Each now has a name.
+
+*The scheduler* is `Participant.scheduler`.  This was the cheapest of the three
+to fix and the most misleading to leave: `joint none` read as "nobody" when it
+meant "the participant that orders the round".
+
+*Declining* is `declineValue`, the null **value** a player submits to a nullable
+commitment — so a decline is `some (declineValue b)`, a submission like any
+other.  `Expr.nullableCommitGuard` accepts it unconditionally
+(`evalExpr_nullableCommitGuard_declineValue`), the continuation is typed at
+`option b` and must handle it, and the program may charge for it on the spot.
+`AllowsDeclining` is its protocol-layer image.
+
+*Absence* is `IsLegalJoint`'s `none`: no submission at all.  It is legal only
+for an inactive participant, so the model forbids what no public runtime can
+(`active_participation_is_forced`).  `AllowsSilence` names that gap, and
+`silence_inert` is what makes it a gap rather than a decline — nothing moves, so
+within the round nothing separates a silent player from one never asked.
+
+The two that survive are ordered, not alternative:
+`AllowsSilence.toAllowsDeclining` says silence is a decline that is also
+invisible, while `race_allowsDeclining` with `race_no_silence` shows the
+converse fails.  The gap between them is the room a protocol has to charge for
+declining, and it is why a deposit is slashable against a decline directly but
+against silence only through a timeout.
+
 ## What is observable, and what is assumed
 
 Two different things are visible on a public runtime, and only one is modelled
@@ -133,6 +162,20 @@ open GameTheory.Math.Probability
 universe u
 
 variable {ι : Type u}
+
+/-- Who submits in a round: the players, and the scheduler.
+
+Deliberately an inductive rather than `Option ι`.  Three different things around
+this model want to be called `none` — a participant who submitted nothing, the
+null *value* a player submits to decline, and the scheduler — and conflating the
+first two has caused real errors.  Naming the scheduler removes one of the three
+outright, and makes the other two visibly different at every use site: a player
+declining is `some (declineValue ..)`, a player submitting nothing is `none`. -/
+inductive Participant (ι : Type u) where
+  /-- The participant that orders the round. -/
+  | scheduler
+  /-- A submitting player. -/
+  | player (i : ι)
 
 /-- A state machine whose round is resolved by applying each submitted action in
 turn.  Ordering is a real degree of freedom exactly when `applyOne` calls fail
@@ -191,8 +234,11 @@ variable (sys : ScheduledSystem.{u} ι)
 /-- The order a round's submissions were applied in. -/
 abbrev Order (_sys : ScheduledSystem.{u} ι) : Type u := List ι
 
-/-- Participants: the submitting players, and the scheduler as `none`. -/
-abbrev Agent (_sys : ScheduledSystem.{u} ι) : Type u := Option ι
+/-- What each participant may submit: an order for the scheduler, an action for
+a player. -/
+abbrev Submission (sys : ScheduledSystem.{u} ι) : Participant ι → Type u
+  | .scheduler => sys.Order
+  | .player i => sys.Action i
 
 /-- A protocol state: the underlying state together with the public record of
 the orders actually realized, most recent first. -/
@@ -202,60 +248,54 @@ structure State (sys : ScheduledSystem.{u} ι) where
   /-- Realized orders, most recent first.  Publicly observable. -/
   log : List sys.Order
 
-/-- What each participant may submit: an order for the scheduler, an action for
-a player. -/
-abbrev AgentAction (sys : ScheduledSystem.{u} ι) : sys.Agent → Type u
-  | none => sys.Order
-  | some i => sys.Action i
-
 /-- Apply the submitted actions along a given order, skipping players who did
 not submit. -/
 noncomputable def applyOrder (sys : ScheduledSystem.{u} ι)
-    (joint : ∀ a, Option (sys.AgentAction a)) :
+    (joint : ∀ a, Option (sys.Submission a)) :
     sys.Order → sys.Base → FinDist sys.Base
   | [], state => FinDist.pure state
   | i :: rest, state =>
-      match joint (some i) with
+      match joint (.player i) with
       | none => applyOrder sys joint rest state
       | some action =>
           (sys.applyOne state i action).bind (applyOrder sys joint rest)
 
 /-- The order a joint submission schedules. -/
-def scheduledOrder (joint : ∀ a, Option (sys.AgentAction a)) : sys.Order :=
-  (joint none).getD []
+def scheduledOrder (joint : ∀ a, Option (sys.Submission a)) : sys.Order :=
+  (joint .scheduler).getD []
 
 /-- Who is active: every player the state says must submit, and the scheduler,
 always — a round is always ordered by someone. -/
-def agentActive (state : sys.State) : sys.Agent → Prop
-  | none => True
-  | some i => sys.active state.base i
+def participantActive (state : sys.State) : Participant ι → Prop
+  | .scheduler => True
+  | .player i => sys.active state.base i
 
 /-- What each participant may submit at a state. -/
-def agentAvailable (state : sys.State) : (a : sys.Agent) → Set (sys.AgentAction a)
-  | none => sys.schedules (sys.view state.base)
-  | some i => sys.available state.base i
+def participantAvailable (state : sys.State) : (a : Participant ι) → Set (sys.Submission a)
+  | .scheduler => sys.schedules (sys.view state.base)
+  | .player i => sys.available state.base i
 
 /-- The publicly visible menu for each participant.  The scheduler must order
 the round, so abstaining is not on its menu. -/
-def agentMenuAt (v : sys.View) : (a : sys.Agent) → Set (Option (sys.AgentAction a))
-  | none => {choice | ∃ order ∈ sys.schedules v, choice = some order}
-  | some i => sys.menuAt v i
+def participantMenuAt (v : sys.View) : (a : Participant ι) → Set (Option (sys.Submission a))
+  | .scheduler => {choice | ∃ order ∈ sys.schedules v, choice = some order}
+  | .player i => sys.menuAt v i
 
 /-- Extend a players-only joint submission with an order for the scheduler.
-A named definition rather than an inline match, so it reduces on `some i`. -/
+A named definition rather than an inline match, so it reduces on `.player i`. -/
 def withSchedule (order : sys.Order) (joint : ∀ i, Option (sys.Action i)) :
-    ∀ a : sys.Agent, Option (sys.AgentAction a)
-  | none => some order
-  | some i => joint i
+    ∀ a : Participant ι, Option (sys.Submission a)
+  | .scheduler => some order
+  | .player i => joint i
 
 /-- The execution protocol.  There is exactly one: the scheduler is a coordinate
 of the joint action, not a parameter of the protocol. -/
-@[reducible] noncomputable def toExecutionProtocol : ExecutionProtocol sys.Agent where
+@[reducible] noncomputable def toExecutionProtocol : ExecutionProtocol (Participant ι) where
   State := sys.State
-  Action := sys.AgentAction
+  Action := sys.Submission
   init := { base := sys.init, log := [] }
-  active := sys.agentActive
-  available := sys.agentAvailable
+  active := sys.participantActive
+  available := sys.participantAvailable
   terminal state := sys.terminal state.base
   step state legal :=
     (sys.applyOrder legal.1 (sys.scheduledOrder legal.1) state.base).map
@@ -267,12 +307,12 @@ of the joint action, not a parameter of the protocol. -/
     refine ⟨sys.withSchedule order joint, ?_⟩
     intro a
     cases a with
-    | none => exact ⟨trivial, horder⟩
-    | some i =>
+    | scheduler => exact ⟨trivial, horder⟩
+    | player i =>
         -- Case on the submission so both matchers reduce: the two sides are
         -- defeq but their matcher instances are generated at different types.
         have h := hjoint i
-        simp only [withSchedule, agentActive, agentAvailable]
+        simp only [withSchedule, participantActive, participantAvailable]
         cases hj : joint i with
         | none => rw [hj] at h; exact h
         | some action => rw [hj] at h; exact h
@@ -356,14 +396,14 @@ def EnforcesOrder (sys : ScheduledSystem.{u} ι) : Prop :=
 
 /-- Applying a round reads the joint submission only through the players'
 components, never the scheduler's. -/
-theorem applyOrder_congr {left right : ∀ a, Option (sys.AgentAction a)}
-    (hplayers : ∀ i, left (some i) = right (some i)) :
+theorem applyOrder_congr {left right : ∀ a, Option (sys.Submission a)}
+    (hplayers : ∀ i, left (.player i) = right (.player i)) :
     ∀ (order : sys.Order) (state : sys.Base),
       sys.applyOrder left order state = sys.applyOrder right order state
   | [], _ => rfl
   | i :: rest, state => by
       simp only [applyOrder, hplayers i]
-      cases hr : right (some i) with
+      cases hr : right (.player i) with
       | none =>
           simp only
           exact applyOrder_congr hplayers rest state
@@ -377,13 +417,13 @@ theorem scheduledOrder_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
     {state : sys.State}
     (left right : { joint // sys.toExecutionProtocol.Legal state joint }) :
     sys.scheduledOrder left.1 = sys.scheduledOrder right.1 := by
-  have hleft := left.2.2 none
-  have hright := right.2.2 none
+  have hleft := left.2.2 .scheduler
+  have hright := right.2.2 .scheduler
   unfold scheduledOrder
-  cases hl : left.1 none with
+  cases hl : left.1 .scheduler with
   | none => rw [hl] at hleft; exact absurd trivial hleft
   | some orderLeft =>
-      cases hr : right.1 none with
+      cases hr : right.1 .scheduler with
       | none => rw [hr] at hright; exact absurd trivial hright
       | some orderRight =>
           rw [hl] at hleft
@@ -404,7 +444,7 @@ this removes the availability. -/
 theorem step_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
-    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (hplayers : ∀ i, left.1 (.player i) = right.1 (.player i)) :
     sys.toExecutionProtocol.step state left =
       sys.toExecutionProtocol.step state right := by
   have horder := sys.scheduledOrder_eq_of_enforcesOrder henforce left right
@@ -445,7 +485,7 @@ Strictly weaker than `EnforcesOrder`, which collapses the accepted orders to one
 here the scheduler still chooses, its choice still enters the log, and the choice
 is still observable.  What it cannot do is move the underlying state. -/
 def EffectsCommute (sys : ScheduledSystem.{u} ι) : Prop :=
-  ∀ (joint : ∀ a, Option (sys.AgentAction a)) (state : sys.Base)
+  ∀ (joint : ∀ a, Option (sys.Submission a)) (state : sys.Base)
       {left right : sys.Order},
     left ∈ sys.schedules (sys.view state) →
       right ∈ sys.schedules (sys.view state) →
@@ -464,9 +504,9 @@ theorem step_map_base {state : sys.State}
 theorem scheduledOrder_mem_schedules {state : sys.State}
     (joint : { joint // sys.toExecutionProtocol.Legal state joint }) :
     sys.scheduledOrder joint.1 ∈ sys.schedules (sys.view state.base) := by
-  have hlegal := joint.2.2 none
+  have hlegal := joint.2.2 .scheduler
   unfold scheduledOrder
-  cases hjoint : joint.1 none with
+  cases hjoint : joint.1 .scheduler with
   | none => rw [hjoint] at hlegal; exact absurd trivial hlegal
   | some order => rw [hjoint] at hlegal; exact hlegal.2
 
@@ -487,7 +527,7 @@ included — at the cost of serializing the round. -/
 theorem step_base_eq_of_effectsCommute (hcommute : sys.EffectsCommute)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
-    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (hplayers : ∀ i, left.1 (.player i) = right.1 (.player i)) :
     (sys.toExecutionProtocol.step state left).map State.base =
       (sys.toExecutionProtocol.step state right).map State.base := by
   rw [sys.step_map_base left, sys.step_map_base right, sys.applyOrder_congr hplayers]
@@ -551,7 +591,7 @@ def blindSignals : InfoSignals sys.toExecutionProtocol where
 After every history the order-blind information state is the order-forgetting
 projection of the order-revealing one.  The two models are related by a
 forgetful map and differ in nothing else. -/
-theorem blind_infoOf_eq_forgetOrders (a : sys.Agent)
+theorem blind_infoOf_eq_forgetOrders (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
     sys.blindSignals.infoOf a trace =
@@ -566,7 +606,7 @@ theorem blind_infoOf_eq_forgetOrders (a : sys.Agent)
 
 /-- The current view a participant holds is the view of the state the history
 reached.  This is what makes the public menu information-local. -/
-theorem revealing_infoOf_fst (a : sys.Agent)
+theorem revealing_infoOf_fst (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
     (sys.revealingSignals.infoOf a trace).1 = sys.view state.base := by
@@ -577,7 +617,7 @@ theorem revealing_infoOf_fst (a : sys.Agent)
       rfl
 
 /-- The same, order-blind. -/
-theorem blind_infoOf_fst (a : sys.Agent)
+theorem blind_infoOf_fst (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
     (sys.blindSignals.infoOf a trace).1 = sys.view state.base := by
@@ -587,12 +627,12 @@ theorem blind_infoOf_fst (a : sys.Agent)
       rw [InfoSignals.infoOf_extend]
       rfl
 
-private theorem agentMenuAt_adequate (state : sys.State) (a : sys.Agent)
-    (choice : Option (sys.AgentAction a)) :
-    choice ∈ sys.agentMenuAt (sys.view state.base) a ↔
+private theorem participantMenuAt_adequate (state : sys.State) (a : Participant ι)
+    (choice : Option (sys.Submission a)) :
+    choice ∈ sys.participantMenuAt (sys.view state.base) a ↔
       LegalOption sys.toExecutionProtocol state a choice := by
   cases a with
-  | none =>
+  | scheduler =>
       cases choice with
       | none =>
           constructor
@@ -605,7 +645,7 @@ private theorem agentMenuAt_adequate (state : sys.State) (a : sys.Agent)
             subst hsame
             exact ⟨trivial, hother⟩
           · rintro ⟨_, hmem⟩; exact ⟨order, hmem, rfl⟩
-  | some i =>
+  | player i =>
       cases choice with
       | none => exact sys.menuAt_none state.base i
       | some action => exact sys.menuAt_some state.base i action
@@ -613,21 +653,21 @@ private theorem agentMenuAt_adequate (state : sys.State) (a : sys.Agent)
 /-- The order-revealing information model: the faithful one. -/
 def revealingInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.revealingSignals
-  menu a info := sys.agentMenuAt info.1 a
+  menu a info := sys.participantMenuAt info.1 a
   menu_adequate := by
     intro a state trace choice
     rw [sys.revealing_infoOf_fst a trace]
-    exact sys.agentMenuAt_adequate state a choice
+    exact sys.participantMenuAt_adequate state a choice
 
 /-- The order-blind information model: the idealization.  Same menus — the
 schedule never changes what is legal, only what is known. -/
 def blindInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.blindSignals
-  menu a info := sys.agentMenuAt info.1 a
+  menu a info := sys.participantMenuAt info.1 a
   menu_adequate := by
     intro a state trace choice
     rw [sys.blind_infoOf_fst a trace]
-    exact sys.agentMenuAt_adequate state a choice
+    exact sys.participantMenuAt_adequate state a choice
 
 /-! ## Order-oblivious deviations
 
@@ -640,7 +680,7 @@ states differing only in schedule.
 
 Phrased on the action rather than the menu-certified choice, whose type depends
 on the information state; the action's does not. -/
-def OrderOblivious {a : sys.Agent}
+def OrderOblivious {a : Participant ι}
     (policy : sys.revealingInformation.Policy a) : Prop :=
   ∀ left right : sys.RevealingInfo,
     sys.forgetOrders left = sys.forgetOrders right →
@@ -650,16 +690,16 @@ def OrderOblivious {a : sys.Agent}
 schedule first.
 
 This typechecks without transport because `forgetOrders` preserves the current
-view and both menus are `agentMenuAt` of that view, so the two `Choice` types
+view and both menus are `participantMenuAt` of that view, so the two `Choice` types
 are definitionally equal. -/
-def liftPolicy {a : sys.Agent} (policy : sys.blindInformation.Policy a) :
+def liftPolicy {a : Participant ι} (policy : sys.blindInformation.Policy a) :
     sys.revealingInformation.Policy a :=
   fun info => policy (sys.forgetOrders info)
 
 /-- Everything an order-blind participant could have played is order-oblivious,
 so the honest class is not an artificial restriction: it contains the image of
 every schedule-free policy. -/
-theorem liftPolicy_orderOblivious {a : sys.Agent}
+theorem liftPolicy_orderOblivious {a : Participant ι}
     (policy : sys.blindInformation.Policy a) :
     sys.OrderOblivious (sys.liftPolicy policy) := by
   intro left right hforget
@@ -670,9 +710,10 @@ theorem liftPolicy_orderOblivious {a : sys.Agent}
 
 Vegas already has a way to decline, and it is not this one.  A surface `yield`
 lowers to a *nullable* sealed commitment; `Expr.nullableCommitGuard` accepts
-`none` unconditionally (`evalExpr_nullableCommitGuard_none`), and
+`declineValue` unconditionally (`evalExpr_nullableCommitGuard_declineValue`),
+and
 `nullableCommitGuard_satisfiable` turns that into liveness — whatever the
-environment, `none` is an accepted submission.  The continuation is typed at
+environment, `declineValue` is an accepted submission.  The continuation is typed at
 `option b` and eliminates it with `isNone`/`getD`, so a program *must* say what
 happens when a player declines, and may charge for it on the spot.  Declining is
 therefore a source strategy needing no back-translation, and the plain `commit`
@@ -681,10 +722,10 @@ deliberate opposite: the form that obliges a player to act.
 
 What that leaves uncovered is a player who sends nothing at all.  The two are
 easy to conflate because both are called `none`, and they are not the same
-`none`.  Submitting the null *value* is `some Option.none`: a real submission,
-legal, and exactly the source-level decline.  `IsLegalJoint`'s `none` is the
-absence of any submission, which it permits only to an inactive participant and
-which no public runtime can actually prevent.
+`none`.  Submitting the null *value* is `some (declineValue b)`: a real submission,
+legal, and exactly the source-level decline — `AllowsDeclining` at this layer.
+`IsLegalJoint`'s `none` is the absence of any submission, which it permits only
+to an inactive participant and which no public runtime can actually prevent.
 
 The distinction decides where a penalty can come from.  A null submission is a
 transaction — the program sees it, continues, and can slash a deposit
@@ -699,6 +740,21 @@ silence fails to pay — a statement about payoffs, a layer up — and the
 correspondence sketched above between a Vegas commitment and a `ScheduledSystem`
 action is not yet mechanized, since the bridge to `Machine.Program` is not
 built. -/
+
+/-- A runtime in which every player always has an accepted submission.
+
+The protocol-layer image of a nullable commitment: `declineValue` is accepted by
+`Expr.nullableCommitGuard` whatever the environment, so a compiled `yield`
+affords exactly this.  Note what it does *not* say — nothing about the effect.
+A decline is a submission the program sees, so it may move the state and may be
+charged for.  That is the whole difference from `AllowsSilence`. -/
+structure AllowsDeclining (sys : ScheduledSystem.{u} ι) where
+  /-- The declining submission. -/
+  decline : (i : ι) → sys.Action i
+  /-- It is always accepted, so no program condition can make declining
+  illegal. -/
+  decline_available : ∀ (state : sys.Base) (i : ι),
+    decline i ∈ sys.available state i
 
 /-- A runtime affording a participant to send nothing, modelled as an inert
 action rather than as `IsLegalJoint`'s `none`.
@@ -716,11 +772,22 @@ structure AllowsSilence (sys : ScheduledSystem.{u} ι) where
   silence_inert : ∀ (state : sys.Base) (i : ι),
     sys.applyOne state i (silence i) = FinDist.pure state
 
+/-- **Silence is a decline that also happens to be invisible.**
+
+One direction only.  Every silent runtime affords declining, by forgetting that
+the submission was inert; the converse fails, and `race_allowsDeclining` with
+`race_no_silence` is the witness.  The gap between them is exactly the room a
+protocol has to charge for declining. -/
+def AllowsSilence.toAllowsDeclining {sys : ScheduledSystem.{u} ι}
+    (hsilent : sys.AllowsSilence) : sys.AllowsDeclining where
+  decline := hsilent.silence
+  decline_available := hsilent.silence_available
+
 /-- Everyone silent, with the scheduler proposing `order`. -/
 def AllowsSilence.allSilent {sys : ScheduledSystem.{u} ι} (hsilent : sys.AllowsSilence)
-    (order : sys.Order) : (a : sys.Agent) → Option (sys.AgentAction a)
-  | none => some order
-  | some i => some (hsilent.silence i)
+    (order : sys.Order) : (a : Participant ι) → Option (sys.Submission a)
+  | .scheduler => some order
+  | .player i => some (hsilent.silence i)
 
 /-- **The all-silent baseline is well defined and schedule-independent.**
 
@@ -773,13 +840,13 @@ def coinRound (order : coinSystem.Order) (state : coinSystem.State) :
     { joint // coinSystem.toExecutionProtocol.Legal state joint } :=
   ⟨fun a =>
       match a with
-      | none => some order
-      | some _ => some true,
+      | .scheduler => some order
+      | .player _ => some true,
     not_false, by
       intro a
       cases a with
-      | none => exact ⟨trivial, Set.mem_univ _⟩
-      | some i => exact ⟨trivial, Set.mem_univ _⟩⟩
+      | scheduler => exact ⟨trivial, Set.mem_univ _⟩
+      | player i => exact ⟨trivial, Set.mem_univ _⟩⟩
 
 @[simp] theorem coinRound_scheduledOrder (order : coinSystem.Order)
     (state : coinSystem.State) :
@@ -798,8 +865,8 @@ theorem coin_step_ne (state : coinSystem.State) :
   exact absurd (List.cons.inj horder).1 (by decide)
 
 @[simp] theorem coin_menu (i : Fin 2)
-    (info : coinSystem.revealingInformation.InfoState (some i)) :
-    coinSystem.revealingInformation.menu (some i) info =
+    (info : coinSystem.revealingInformation.InfoState (.player i)) :
+    coinSystem.revealingInformation.menu (.player i) info =
       {some true, some false} := rfl
 
 /-- A history in which player `0` was ordered first. -/
@@ -816,7 +883,7 @@ theorem coinFirst_forgetOrders_eq :
 /-- An order-aware policy: submit `true` exactly when player `0` was ordered
 first.  Nothing about the state differs between those histories. -/
 def coinOrderAware (i : Fin 2) :
-    coinSystem.revealingInformation.Policy (some i) :=
+    coinSystem.revealingInformation.Policy (.player i) :=
   fun info =>
     if (info.2.headD ([], ())).1 = [0, 1] then
       ⟨some true, Set.mem_insert _ _⟩
@@ -898,10 +965,10 @@ explicit.  Stated separately because `applyOne` returning a point mass is what
 collapses the bind. -/
 private theorem counter_applyOrder_cons (joint) (i : Fin 2) (rest total) :
     counterSystem.applyOrder joint (i :: rest) total =
-      match joint (some i) with
+      match joint (.player i) with
       | none => counterSystem.applyOrder joint rest total
       | some amount => counterSystem.applyOrder joint rest (total + amount) := by
-  cases hjoint : joint (some i) with
+  cases hjoint : joint (.player i) with
   | none => simp only [ScheduledSystem.applyOrder, hjoint]
   | some amount =>
       simp only [ScheduledSystem.applyOrder, hjoint]
@@ -914,7 +981,7 @@ theorem counter_effectsCommute : counterSystem.EffectsCommute := by
   simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hleft hright
   rcases hleft with rfl | rfl <;> rcases hright with rfl | rfl <;>
     simp only [counter_applyOrder_cons] <;>
-    cases joint (some 0) <;> cases joint (some 1) <;>
+    cases joint (.player 0) <;> cases joint (.player 1) <;>
     simp only [ScheduledSystem.applyOrder] <;>
     first
       | rfl
@@ -926,13 +993,13 @@ def counterRound (state : counterSystem.State) (order : counterSystem.Order)
     { joint // counterSystem.toExecutionProtocol.Legal state joint } :=
   ⟨fun a =>
       match a with
-      | none => some order
-      | some _ => some 1,
+      | .scheduler => some order
+      | .player _ => some 1,
     not_false, by
       intro a
       cases a with
-      | none => exact ⟨trivial, horder⟩
-      | some i => exact ⟨trivial, Set.mem_univ _⟩⟩
+      | scheduler => exact ⟨trivial, horder⟩
+      | player i => exact ⟨trivial, Set.mem_univ _⟩⟩
 
 @[simp] theorem counterRound_scheduledOrder (state order horder) :
     counterSystem.scheduledOrder (counterRound state order horder).1 = order := rfl
@@ -1020,9 +1087,9 @@ private theorem finDist_pure_ne {α : Type} {a b : α} (hne : a ≠ b) :
 
 /-- Both players act, and the scheduler proposes `order`. -/
 private def raceJoint (order : raceSystem.Order) :
-    (a : raceSystem.Agent) → Option (raceSystem.AgentAction a)
-  | none => some order
-  | some _ => some ()
+    (a : Participant (Fin 2)) → Option (raceSystem.Submission a)
+  | .scheduler => some order
+  | .player _ => some ()
 
 /-- **`EffectsCommute` is a real restriction.**  Doubling then adding reaches
 `11` from `5`; adding then doubling reaches `12`.  So the permissive tier does
@@ -1040,6 +1107,13 @@ theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
     norm_num
   rw [hleft, hright] at hcontra
   exact absurd hcontra (finDist_pure_ne (by decide))
+
+/-- **Declining is available even here.**  Every action is accepted, so a player
+can always submit something — and in `raceSystem` that submission necessarily
+moves the total, which is the point. -/
+def race_allowsDeclining : raceSystem.AllowsDeclining where
+  decline _ := ()
+  decline_available _ _ := Set.mem_univ _
 
 /-- **And silence is a real restriction too.**  Every `raceSystem` action moves
 the total, so none is inert and no player can vanish without trace.  A system can
