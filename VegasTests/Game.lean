@@ -4,6 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
+import Vegas.EventGraph.Fence
 import Vegas.Game.Kuhn
 import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
@@ -121,6 +122,16 @@ noncomputable def coinMachine : Machine.Program TestPlayer simpleExpr :=
 theorem coinMachine_graph_nodeCount : coinMachine.graph.nodeCount = 1 := rfl
 
 theorem coinMachine_graph_fieldCount : coinMachine.graph.fieldCount = 1 := rfl
+
+/-- The compiled coin graph carries a readability fence for every player, and
+`decide` discharges it.
+
+This is the regression test for `Graph.instDecidableFence`: a `Decidable`
+instance can typecheck while failing to reduce, so the claim that a fence is a
+*checkable* precondition rather than an assumed one is only worth as much as an
+actual kernel evaluation on a real compiled graph. -/
+theorem coinMachine_fence : ∀ who : TestPlayer, coinMachine.graph.Fence who := by
+  decide
 
 theorem coinUsesOnlyBoolStorage :
     Machine.Contract.EVM.UsesOnlyBoolStorage coinMachine := by

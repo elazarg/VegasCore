@@ -64,7 +64,8 @@ def deviationAdequacy [DecidableEq Player] :
   decodeOutcome := runtime.outcome
   utility_eq := rfl
   honest_law := runtime.law_eq
-  deviation_law := fun profile who replacement =>
+  compiled_considered := fun _ _ => trivial
+  deviation_law := fun profile who replacement _ =>
     runtime.law_eq (Profile.update profile who replacement)
 
 /-- Exact decoded trace laws preserve expected utility for every profile. -/

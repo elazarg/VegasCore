@@ -215,7 +215,27 @@ theorem utility_preservation_deviation
         (source.form.play
           (Profile.update profile who
             (adequacy.backtranslateStrategy who replacement))) :=
-  adequacy.expectedUtility_deviation profile who replacement
+  adequacy.expectedUtility_deviation profile who replacement trivial
+
+/-- **Nash equivalence relative to a deviation class.**
+
+A compiled profile withstands every *considered* target deviation exactly when
+the source profile withstands every source deviation.  The class is a parameter,
+so the same theorem covers both tiers the development cares about: the honest
+tier, where a player reads only what the source made visible, and the robust
+tier below, where a player may read anything the target exposes.
+
+Because `Considered` appears in the statement, a result about the honest tier
+cannot be misread as a result about all strategies. -/
+theorem nash_equivalence_against
+    {Player : Type} [DecidableEq Player]
+    {source target : UtilityGame Player}
+    {Considered : (who : Player) → target.form.sig.Strategy who → Prop}
+    (adequacy : Runtime.DeviationAdequacyOn source target Considered)
+    (profile : Profile source.form.sig) :
+    Runtime.IsNashAgainst target Considered (adequacy.compileProfile profile) ↔
+      IsNash source.form (euPreference source.utility) profile :=
+  adequacy.isNashAgainst_compileProfile_iff profile
 
 /-- **Nash equivalence** (paper: `thm:nash-equivalence`).
 
@@ -283,6 +303,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.nash_equivalence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.nash_equivalence
+
+/-- info: 'Vegas.Paper.nash_equivalence_against' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.nash_equivalence_against
 
 end Paper
 

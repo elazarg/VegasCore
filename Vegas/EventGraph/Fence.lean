@@ -62,6 +62,81 @@ def Comparable (G : Graph Player L) (a b : Fin G.nodeCount) : Prop :=
 theorem Comparable.symm {G : Graph Player L} {a b : Fin G.nodeCount}
     (h : G.Comparable a b) : G.Comparable b a := Or.symm h
 
+/-! ### Deciding the dependency relation
+
+`Depends` is a transitive closure, which Mathlib gives no decidability instance
+for.  It is nevertheless decidable here, because prerequisites point strictly
+backwards (`prereq_lt`): a dependency chain ending at `b` has fewer than
+`b + 1` edges, so bounded search at that depth is complete.  Making this
+decidable is what lets `Fence` be *checked* for a given graph rather than
+merely assumed. -/
+
+/-- `a` reaches `b` through at most `fuel` prerequisite edges. -/
+def DependsWithin (G : Graph Player L) :
+    Nat → Fin G.nodeCount → Fin G.nodeCount → Prop
+  | 0, _, _ => False
+  | fuel + 1, a, b =>
+      a ∈ G.prereqs b ∨ ∃ c ∈ G.prereqs b, G.DependsWithin fuel a c
+
+instance instDecidableDependsWithin (G : Graph Player L) :
+    ∀ (fuel : Nat) (a b : Fin G.nodeCount), Decidable (G.DependsWithin fuel a b)
+  | 0, _, _ => isFalse (by simp [DependsWithin])
+  | fuel + 1, a, b => by
+      letI : ∀ c : Fin G.nodeCount, Decidable (G.DependsWithin fuel a c) :=
+        fun c => instDecidableDependsWithin G fuel a c
+      unfold DependsWithin
+      infer_instance
+
+/-- Bounded reachability only improves with more fuel. -/
+theorem DependsWithin.mono {G : Graph Player L} {a b : Fin G.nodeCount}
+    {fuel : Nat} :
+    ∀ {bound : Nat}, fuel ≤ bound → G.DependsWithin fuel a b →
+      G.DependsWithin bound a b := by
+  induction fuel generalizing b with
+  | zero => intro _ _ h; exact absurd h (by simp [DependsWithin])
+  | succ fuel ih =>
+      intro bound hle h
+      obtain ⟨bound, rfl⟩ : ∃ k, bound = k + 1 :=
+        ⟨bound - 1, by omega⟩
+      rcases h with hdirect | ⟨c, hc, hrest⟩
+      · exact Or.inl hdirect
+      · exact Or.inr ⟨c, hc, ih (by omega) hrest⟩
+
+/-- Bounded reachability is a dependency. -/
+theorem Depends.of_dependsWithin {G : Graph Player L} {a b : Fin G.nodeCount} :
+    ∀ {fuel : Nat}, G.DependsWithin fuel a b → G.Depends a b := by
+  intro fuel
+  induction fuel generalizing b with
+  | zero => intro h; exact absurd h (by simp [DependsWithin])
+  | succ fuel ih =>
+      intro h
+      rcases h with hdirect | ⟨c, hc, hrest⟩
+      · exact Relation.TransGen.single hdirect
+      · exact Relation.TransGen.tail (ih hrest) hc
+
+/-- A dependency is found by bounded search at depth `b + 1`: prerequisites
+point strictly backwards, so no chain ending at `b` is longer than that. -/
+theorem Depends.dependsWithin {G : Graph Player L} {a b : Fin G.nodeCount}
+    (h : G.Depends a b) : G.DependsWithin ((b : Nat) + 1) a b := by
+  induction h with
+  | single hab => exact Or.inl hab
+  | @tail b c _hab hbc ih =>
+      refine Or.inr ⟨b, hbc, ?_⟩
+      exact DependsWithin.mono (by have := G.prereq_lt hbc; omega) ih
+
+/-- `Depends` is decided by bounded search at the graph's node count. -/
+theorem depends_iff_dependsWithin (G : Graph Player L)
+    (a b : Fin G.nodeCount) :
+    G.Depends a b ↔ G.DependsWithin G.nodeCount a b := by
+  constructor
+  · intro h
+    exact DependsWithin.mono (by omega) h.dependsWithin
+  · exact Depends.of_dependsWithin
+
+instance instDecidableDepends (G : Graph Player L) (a b : Fin G.nodeCount) :
+    Decidable (G.Depends a b) :=
+  decidable_of_iff _ (G.depends_iff_dependsWithin a b).symm
+
 /-- Two nodes are independent when the dependency relation leaves them unordered
 — exactly the pairs a linearization may reorder. -/
 def Independent (G : Graph Player L) (a b : Fin G.nodeCount) : Prop :=
@@ -79,6 +154,20 @@ def Fence (G : Graph Player L) (who : Player) : Prop :=
   ∀ ⦃m n : Fin G.nodeCount⦄,
     G.NodeOutputReadableBy who m → G.NodeOutputReadableBy who n → m ≠ n →
       G.Comparable m n
+
+instance instDecidableComparable (G : Graph Player L) (a b : Fin G.nodeCount) :
+    Decidable (G.Comparable a b) := by
+  unfold Comparable
+  infer_instance
+
+/-- A fence is a *checkable* property of a graph, not a universal one: a player
+who can read two dependency-independent nodes does not have one.  It therefore
+belongs with the other per-program preconditions, and this instance is what
+lets a compiler or a test decide it for a concrete graph. -/
+instance instDecidableFence (G : Graph Player L) (who : Player) :
+    Decidable (G.Fence who) := by
+  unfold Fence
+  infer_instance
 
 /-- Under a fence, two independent nodes are never both readable by `who`. -/
 theorem not_both_readable_of_independent {G : Graph Player L} {who : Player}

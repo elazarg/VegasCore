@@ -60,8 +60,9 @@ def behavioralToMixedPureAdequacy
       G.arena.information.runMixed_toMixed
         (G.arena.information.actsOnceWhereItMatters_of_perfectRecall recall)
         profile G.horizon
+  compiled_considered := fun _ _ => trivial
   deviation_law := by
-    intro profile who replacement
+    intro profile who replacement _
     change
       GameTheory.Math.Probability.FinDist.map
           (id : G.arena.History → G.arena.History)
@@ -105,8 +106,9 @@ def mixedPureToBehavioralAdequacy
       (G.arena.information.runMixed_toBehavioral
         (InformationModel.constrainsAlike_of_perfectRecall recall)
         G.horizon profile).symm
+  compiled_considered := fun _ _ => trivial
   deviation_law := by
-    intro profile who replacement
+    intro profile who replacement _
     change
       GameTheory.Math.Probability.FinDist.map
           (id : G.arena.History → G.arena.History)
@@ -154,8 +156,9 @@ def behavioralToMixedPureWithinAdequacy
           G.arena.information.runMixed_toMixedWithin
             (G.arena.information.actsOnceWhereItMatters_of_perfectRecall recall)
             sites profile fallback G.horizon cover
+      compiled_considered := fun _ _ => trivial
       deviation_law := by
-        intro profile who replacement
+        intro profile who replacement _
         change
           GameTheory.Math.Probability.FinDist.map
               (id : G.arena.History → G.arena.History)
@@ -205,8 +208,9 @@ def mixedPureToBehavioralWithinAdequacy
           (G.arena.information.runMixed_toBehavioral
             (InformationModel.constrainsAlike_of_perfectRecall recall)
             G.horizon profile).symm
+      compiled_considered := fun _ _ => trivial
       deviation_law := by
-        intro profile who replacement
+        intro profile who replacement _
         change
           GameTheory.Math.Probability.FinDist.map
               (id : G.arena.History → G.arena.History)

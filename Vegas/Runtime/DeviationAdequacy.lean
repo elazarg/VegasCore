@@ -30,12 +30,32 @@ open GameTheory.Math.Probability
 
 universe uPlayer uSourceStrategy uSourceOutcome uTargetStrategy uTargetOutcome
 
-/-- A target game is adequate for source unilateral deviations at compiled
-profiles. -/
-structure DeviationAdequacy
+/-- A target game is adequate for the unilateral deviations in `Considered`,
+at compiled profiles.
+
+`Considered` is the class of target strategies a player is taken to be able to
+play.  It is a genuine parameter, and the development uses both extremes:
+
+* `fun _ _ => True` — every technically available target strategy, including
+  ones that read target-only information the source never exposed.  This is the
+  secure-compilation obligation, and it is what `DeviationAdequacy` abbreviates.
+* An *honest* class — strategies that read only what the source made visible,
+  so a player who ignores runtime implementation detail stays inside it.  A
+  weaker obligation, but one a realistic runtime can actually discharge.
+
+Both tiers are the same theorem at two instantiations, so a result proved for
+the honest tier cannot be mistaken for the robust one: the class it quantifies
+over is written into its statement.
+
+`compiled_considered` is what keeps the weaker tier from going vacuous.  It
+forces `Considered` to contain at least every compiled source strategy, so the
+class can restrict what a player *sees*, never what the source itself can
+express. -/
+structure DeviationAdequacyOn
     {Player : Type uPlayer} [DecidableEq Player]
     (source : UtilityGame.{uPlayer, uSourceStrategy, uSourceOutcome} Player)
-    (target : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player) where
+    (target : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player)
+    (Considered : (who : Player) → target.form.sig.Strategy who → Prop) where
   compileStrategy :
     (who : Player) → source.form.sig.Strategy who →
       target.form.sig.Strategy who
@@ -51,8 +71,12 @@ structure DeviationAdequacy
       (target.form.play
         (fun who => compileStrategy who (profile who))).map decodeOutcome =
           source.form.play profile
+  /-- Every compiled source strategy is itself considered.  Without this the
+  restricted tier could be satisfied by an empty class. -/
+  compiled_considered :
+    ∀ who strategy, Considered who (compileStrategy who strategy)
   deviation_law :
-    ∀ profile who replacement,
+    ∀ profile who replacement, Considered who replacement →
       (target.form.play
         (Profile.update
           (fun player => compileStrategy player (profile player))
@@ -61,13 +85,53 @@ structure DeviationAdequacy
           (Profile.update profile who
             (backtranslateStrategy who replacement))
 
-namespace DeviationAdequacy
+/-- Adequacy against *every* technically available target strategy: the
+secure-compilation obligation, with no restriction on what a deviating player
+may read. -/
+abbrev DeviationAdequacy
+    {Player : Type uPlayer} [DecidableEq Player]
+    (source : UtilityGame.{uPlayer, uSourceStrategy, uSourceOutcome} Player)
+    (target : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player) :=
+  DeviationAdequacyOn source target (fun _ _ => True)
+
+/-- `profile` is a Nash equilibrium *against the deviations in `Considered`*:
+no considered unilateral replacement improves a player's expected utility.
+
+The class is part of the statement, so a result about a restricted class can
+never be read as a result about all strategies. -/
+def IsNashAgainst {Player : Type uPlayer} [DecidableEq Player]
+    (game : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player)
+    (Considered : (who : Player) → game.form.sig.Strategy who → Prop)
+    (profile : Profile game.form.sig) : Prop :=
+  ∀ who replacement, Considered who replacement →
+    expectedUtility game.utility who
+        (game.form.play (Profile.update profile who replacement)) ≤
+      expectedUtility game.utility who (game.form.play profile)
+
+/-- Against the unrestricted class, `IsNashAgainst` is ordinary Nash. -/
+theorem isNashAgainst_true_iff {Player : Type uPlayer} [DecidableEq Player]
+    (game : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player)
+    (profile : Profile game.form.sig) :
+    IsNashAgainst game (fun _ _ => True) profile ↔
+      IsNash game.form (euPreference game.utility) profile := by
+  rw [GameTheory.isNash_iff]
+  constructor
+  · intro h who replacement
+    rw [euPreference_apply]
+    exact h who replacement trivial
+  · intro h who replacement _
+    have := h who replacement
+    rw [euPreference_apply] at this
+    exact this
+
+namespace DeviationAdequacyOn
 
 variable {Player : Type uPlayer}
 variable [DecidableEq Player]
 variable {source : UtilityGame.{uPlayer, uSourceStrategy, uSourceOutcome} Player}
 variable {target : UtilityGame.{uPlayer, uTargetStrategy, uTargetOutcome} Player}
-variable (adequacy : DeviationAdequacy source target)
+variable {Considered : (who : Player) → target.form.sig.Strategy who → Prop}
+variable (adequacy : DeviationAdequacyOn source target Considered)
 
 /-- Compile every coordinate of a source profile. -/
 def compileProfile (profile : Profile source.form.sig) :
@@ -122,7 +186,8 @@ theorem expectedUtility_compileProfile
 utility of its source back-translation. -/
 theorem expectedUtility_deviation
     (profile : Profile source.form.sig) (who : Player)
-    (replacement : target.form.sig.Strategy who) :
+    (replacement : target.form.sig.Strategy who)
+    (hconsidered : Considered who replacement) :
     expectedUtility target.utility who
         (target.form.play
           (Profile.update (adequacy.compileProfile profile) who replacement)) =
@@ -159,31 +224,49 @@ theorem expectedUtility_deviation
                   (source.form.play
                     (Profile.update profile who
                       (adequacy.backtranslateStrategy who replacement)))
-            rw [adequacy.deviation_law]
+            rw [adequacy.deviation_law _ _ _ hconsidered]
 
-/-- The certificate is exactly strong enough to preserve and reflect Nash
-at compiled profiles. -/
-theorem isNash_compileProfile_iff
+/-- **Nash equivalence, relative to a deviation class.**
+
+A compiled profile withstands every *considered* target deviation exactly when
+the source profile withstands every source deviation.
+
+Reflection (left to right) is where `compiled_considered` earns its place: it
+supplies a considered target witness for an arbitrary source deviation. -/
+theorem isNashAgainst_compileProfile_iff
     (profile : Profile source.form.sig) :
-    IsNash target.form (euPreference target.utility)
-        (adequacy.compileProfile profile) ↔
+    IsNashAgainst target Considered (adequacy.compileProfile profile) ↔
       IsNash source.form (euPreference source.utility) profile := by
-  rw [GameTheory.isNash_iff, GameTheory.isNash_iff]
+  rw [GameTheory.isNash_iff]
   constructor
   · intro h who replacement
-    have htarget := h who (adequacy.compileStrategy who replacement)
-    rw [euPreference_apply] at htarget ⊢
+    have htarget :=
+      h who (adequacy.compileStrategy who replacement)
+        (adequacy.compiled_considered who replacement)
+    rw [euPreference_apply]
     rw [adequacy.compileProfile_update] at htarget
     rw [adequacy.expectedUtility_compileProfile,
       adequacy.expectedUtility_compileProfile] at htarget
     exact htarget
-  · intro h who replacement
+  · intro h who replacement hconsidered
     have hsource := h who (adequacy.backtranslateStrategy who replacement)
-    rw [euPreference_apply] at hsource ⊢
-    rw [adequacy.expectedUtility_deviation,
+    rw [euPreference_apply] at hsource
+    rw [adequacy.expectedUtility_deviation profile who replacement hconsidered,
       adequacy.expectedUtility_compileProfile]
     exact hsource
 
-end DeviationAdequacy
+/-- The certificate is exactly strong enough to preserve and reflect Nash at
+compiled profiles.  The unrestricted instance of
+`isNashAgainst_compileProfile_iff`. -/
+theorem isNash_compileProfile_iff
+    (adequacy : DeviationAdequacy source target)
+    (profile : Profile source.form.sig) :
+    IsNash target.form (euPreference target.utility)
+        (adequacy.compileProfile profile) ↔
+      IsNash source.form (euPreference source.utility) profile := by
+  rw [← isNashAgainst_true_iff]
+  exact adequacy.isNashAgainst_compileProfile_iff profile
+
+end DeviationAdequacyOn
 
 end Vegas.Runtime
