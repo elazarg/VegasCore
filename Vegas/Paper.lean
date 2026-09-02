@@ -402,18 +402,23 @@ for `EnforcesOrder` instead of arguing that order does not matter. -/
 theorem commutation_is_a_real_restriction : ¬ raceSystem.EffectsCommute :=
   race_not_effectsCommute
 
-/-- **Participation is forced unless declining is given an action.**
+/-- **The protocol layer forbids sending nothing at all.**
 
-At a legal joint submission, every *active* player has submitted something.
+At a legal joint submission every *active* player has submitted something:
 `IsLegalJoint` reads `none` as "not active", so abstention is legal exactly when
-a participant has nothing to do — an active one is obliged to act.
+a participant has nothing to do.
 
-No public runtime has that property: a player can always simply not send the
-transaction. On a commit–reveal contract that is the interesting deviation —
-commit, watch the others reveal, then decline, having learned the outcome and
-paid nothing for the option. The claim is recorded here because it is the exact
-point where the model is stronger than the runtime it describes, and a reader
-should be able to find it rather than infer it. -/
+This is not a prohibition on declining. Declining, in Vegas, is a null *value*
+rather than an absent submission: a surface `yield` lowers to a nullable sealed
+commitment whose guard accepts `none` unconditionally, so `some Option.none` is
+a legal submission, and the continuation — typed at `option b` and eliminated by
+`isNone`/`getD` — must say what happens when a player takes it. The two are easy
+to conflate because both are spelled `none`, and they are different: the second
+is a transaction the program sees.
+
+What the condition rules out is sending nothing whatsoever, which no public
+runtime can prevent. The claim is recorded because it marks exactly where the
+model is stronger than the runtime it describes. -/
 theorem active_participation_is_forced
     {ι : Type} (sys : ScheduledSystem ι) {state : sys.State}
     (joint : { joint // sys.toExecutionProtocol.Legal state joint })
@@ -424,31 +429,33 @@ theorem active_participation_is_forced
   | none => rw [hjoint] at hlegal; exact absurd hactive hlegal
   | some action => exact ⟨action, rfl⟩
 
-/-- **Declining, given an action, is available and schedule-independent — and
-not every system affords it.**
+/-- **Silence is inert, sometimes available, and not universally so.**
 
-Three things at once. A round in which every player declines leaves the state
-where it was, in *every* order, so the payoff to walking away depends on the
-state alone: that is the baseline a dominance argument compares against, and it
-needs no `EffectsCommute`, since inert actions commute with everything. The
-running-total runtime affords declining. The doubling-and-adding one does not,
-every action there moving the total, so `HasQuit` is a real hypothesis rather
-than something every system satisfies.
+Three things at once. A round in which every player sends nothing leaves the
+state where it was in *every* order, so the payoff to vanishing depends on the
+state alone — the baseline a dominance argument compares against, needing no
+`EffectsCommute` since inert actions commute with everything. The running-total
+runtime affords silence. The doubling-and-adding one does not, every action
+there moving the total, so `AllowsSilence` is a real hypothesis rather than
+something every system satisfies.
 
-What this does *not* do is show that declining fails to pay. That is a statement
-about payoffs, which live a layer above this one, and it is the developer's
-obligation rather than the runtime's. The encoding does fix the shape of any
-discharge: `quit_inert` says a quit moves nothing, so a penalty for quitting
-cannot be imposed by the quitter's own action and must come from a timeout or
-another participant — which is why a deposit needs a mechanism to slash it, and
-why a rule saying players must reveal is not one. -/
-theorem declining_is_inert_available_and_not_universal :
-    (∀ {ι : Type} (sys : ScheduledSystem ι) (hquit : sys.HasQuit)
+Silence is the residual gap left by the source language's own way of declining.
+A `yield`'s null submission is a transaction: the program sees it, continues,
+and can slash a deposit on the spot. Silence is not, and `silence_inert` is why
+— within the round nothing separates a silent player from one never asked, so a
+protocol wanting to charge for it must measure elapsed time. That is what a
+timeout is for, and why the deposit story needs a mechanism rather than a rule
+saying players must reveal.
+
+Not shown here: that silence fails to pay. That is a statement about payoffs,
+which live a layer above this one. -/
+theorem silence_is_inert_available_and_not_universal :
+    (∀ {ι : Type} (sys : ScheduledSystem ι) (hsilent : sys.AllowsSilence)
         (order proposed : sys.Order) (state : sys.Base),
-      sys.applyOrder (hquit.allQuit proposed) order state = FinDist.pure state) ∧
-    Nonempty counterSystem.HasQuit ∧ IsEmpty raceSystem.HasQuit :=
-  ⟨fun _ hquit order proposed state => hquit.applyOrder_quit order proposed state,
-    ⟨counter_hasQuit⟩, race_no_quit⟩
+      sys.applyOrder (hsilent.allSilent proposed) order state = FinDist.pure state) ∧
+    Nonempty counterSystem.AllowsSilence ∧ IsEmpty raceSystem.AllowsSilence :=
+  ⟨fun _ hsilent order proposed state => hsilent.applyOrder_silent order proposed state,
+    ⟨counter_allowsSilence⟩, race_no_silence⟩
 
 /-! ## Deviation adequacy -/
 
@@ -612,9 +619,9 @@ build fails here rather than silently widening what the paper is trusting.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.active_participation_is_forced
 
-/-- info: 'Vegas.Paper.declining_is_inert_available_and_not_universal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.silence_is_inert_available_and_not_universal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.declining_is_inert_available_and_not_universal
+#print axioms Vegas.Paper.silence_is_inert_available_and_not_universal
 
 end Paper
 

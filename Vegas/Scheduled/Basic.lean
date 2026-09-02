@@ -666,65 +666,77 @@ theorem liftPolicy_orderOblivious {a : sys.Agent}
   change (policy (sys.forgetOrders left)).1 = (policy (sys.forgetOrders right)).1
   rw [hforget]
 
-/-! ## Declining to act
+/-! ## Silence, and how it differs from declining
 
-`IsLegalJoint` reads `none` as "not active": abstention is legal exactly when a
-participant has nothing to do, so an *active* participant is obliged to submit.
-No public runtime has that property.  A player can always simply not send the
-transaction, and on a commit–reveal contract that is precisely the interesting
-deviation — commit, watch the others reveal, then decline, having learned the
-outcome and paid nothing for the option.
+Vegas already has a way to decline, and it is not this one.  A surface `yield`
+lowers to a *nullable* sealed commitment; `Expr.nullableCommitGuard` accepts
+`none` unconditionally (`evalExpr_nullableCommitGuard_none`), and
+`nullableCommitGuard_satisfiable` turns that into liveness — whatever the
+environment, `none` is an accepted submission.  The continuation is typed at
+`option b` and eliminates it with `isNone`/`getD`, so a program *must* say what
+happens when a player declines, and may charge for it on the spot.  Declining is
+therefore a source strategy needing no back-translation, and the plain `commit`
+form — payload restricted by `CommitPayloadTy`, hence non-nullable — is the
+deliberate opposite: the form that obliges a player to act.
 
-So declining cannot be modelled as `none`; it has to be an action, which is what
-`quit` is.  Then it is a strategy like any other, the equilibrium quantifier
-reaches it, and the claim that it does not pay becomes something to prove rather
-than something the legality condition silently assumed.
+What that leaves uncovered is a player who sends nothing at all.  The two are
+easy to conflate because both are called `none`, and they are not the same
+`none`.  Submitting the null *value* is `some Option.none`: a real submission,
+legal, and exactly the source-level decline.  `IsLegalJoint`'s `none` is the
+absence of any submission, which it permits only to an inactive participant and
+which no public runtime can actually prevent.
 
-`quit_inert` is the definition doing the work: a quit is *not sending*, so it
-moves nothing.  It follows that a penalty for quitting can never be imposed by
-the quitter's own action — it has to come from a timeout or another participant.
-That is not an artifact of the encoding, it is the real constraint, and it is
-why making a quit unprofitable needs a deposit plus a mechanism to slash it,
-rather than a rule saying players must reveal.
+The distinction decides where a penalty can come from.  A null submission is a
+transaction — the program sees it, continues, and can slash a deposit
+immediately.  Silence is not: `silence_inert` leaves the state where it was, so
+within the round nothing separates a silent player from one who was never asked,
+and a protocol wanting to charge for it must measure elapsed time.  That is what
+a timeout is for, and why the deposit story needs a mechanism rather than a rule
+saying players must reveal.
 
-This module does not discharge the obligation.  It makes the strategy
-expressible and gives the all-quit baseline a schedule-independent meaning
-(`HasQuit.applyOrder_quit`); showing that quitting is dominated is a statement
-about payoffs, and payoffs are a layer up. -/
+`AllowsSilence` names the residual gap and nothing more.  It does not show that
+silence fails to pay — a statement about payoffs, a layer up — and the
+correspondence sketched above between a Vegas commitment and a `ScheduledSystem`
+action is not yet mechanized, since the bridge to `Machine.Program` is not
+built. -/
 
-/-- Declining to act, as an action rather than as `none`.
+/-- A runtime affording a participant to send nothing, modelled as an inert
+action rather than as `IsLegalJoint`'s `none`.
 
-Carried separately rather than as a field, because a system either affords the
-option or does not — `race_no_quit` shows the difference is real. -/
-structure HasQuit (sys : ScheduledSystem.{u} ι) where
-  /-- The declining action. -/
-  quit : (i : ι) → sys.Action i
-  /-- Declining is always permitted.  A runtime cannot prevent it. -/
-  quit_available : ∀ (state : sys.Base) (i : ι), quit i ∈ sys.available state i
-  /-- Declining moves nothing: it is the absence of a submission, so any penalty
-  must be imposed by the protocol rather than by this action. -/
-  quit_inert : ∀ (state : sys.Base) (i : ι),
-    sys.applyOne state i (quit i) = FinDist.pure state
+Carried separately rather than as a field, because a system either affords it or
+does not — `race_no_silence` shows the difference is real. -/
+structure AllowsSilence (sys : ScheduledSystem.{u} ι) where
+  /-- Sending nothing, as an action. -/
+  silence : (i : ι) → sys.Action i
+  /-- A runtime cannot prevent it. -/
+  silence_available : ∀ (state : sys.Base) (i : ι), silence i ∈ sys.available state i
+  /-- It moves nothing, so no penalty for it can be imposed by the silent
+  participant's own submission.  Contrast a null submission, which is a
+  transaction the program sees and can charge for. -/
+  silence_inert : ∀ (state : sys.Base) (i : ι),
+    sys.applyOne state i (silence i) = FinDist.pure state
 
-/-- Everyone declining, with the scheduler proposing `order`. -/
-def HasQuit.allQuit {sys : ScheduledSystem.{u} ι} (hquit : sys.HasQuit)
+/-- Everyone silent, with the scheduler proposing `order`. -/
+def AllowsSilence.allSilent {sys : ScheduledSystem.{u} ι} (hsilent : sys.AllowsSilence)
     (order : sys.Order) : (a : sys.Agent) → Option (sys.AgentAction a)
   | none => some order
-  | some i => some (hquit.quit i)
+  | some i => some (hsilent.silence i)
 
-/-- **The all-quit baseline is well defined and schedule-independent.**
+/-- **The all-silent baseline is well defined and schedule-independent.**
 
-A round in which every player declines leaves the state where it was, in every
-order — so the payoff to walking away depends on the state alone.  That is what
-a dominance argument one layer up compares against, and it needs no
+A round in which every player sends nothing leaves the state where it was, in
+every order — so the payoff to vanishing depends on the state alone.  That is
+what a dominance argument one layer up compares against, and it needs no
 `EffectsCommute`: inert actions commute with everything. -/
-theorem HasQuit.applyOrder_quit {sys : ScheduledSystem.{u} ι} (hquit : sys.HasQuit) :
+theorem AllowsSilence.applyOrder_silent {sys : ScheduledSystem.{u} ι}
+    (hsilent : sys.AllowsSilence) :
     ∀ (order proposed : sys.Order) (state : sys.Base),
-      sys.applyOrder (hquit.allQuit proposed) order state = FinDist.pure state
+      sys.applyOrder (hsilent.allSilent proposed) order state = FinDist.pure state
   | [], _, _ => rfl
   | i :: rest, proposed, state => by
-      simp only [applyOrder, HasQuit.allQuit, hquit.quit_inert, FinDist.pure_bind]
-      exact hquit.applyOrder_quit rest proposed state
+      simp only [applyOrder, AllowsSilence.allSilent, hsilent.silence_inert,
+        FinDist.pure_bind]
+      exact hsilent.applyOrder_silent rest proposed state
 
 end ScheduledSystem
 
@@ -955,12 +967,12 @@ theorem counter_step_base_eq (state : counterSystem.State) :
         (counterOneFirst state)).map ScheduledSystem.State.base :=
   counterSystem.step_base_eq_of_effectsCommute counter_effectsCommute fun _ => rfl
 
-/-- **Declining is available here.**  Adding zero is permitted and moves
-nothing, so every player can walk away from a round. -/
-def counter_hasQuit : counterSystem.HasQuit where
-  quit _ := 0
-  quit_available _ _ := Set.mem_univ _
-  quit_inert state _ := congrArg FinDist.pure (Nat.add_zero state)
+/-- **Silence is available here.**  Adding zero is permitted and moves nothing,
+so a player can vanish from a round undetectably. -/
+def counter_allowsSilence : counterSystem.AllowsSilence where
+  silence _ := 0
+  silence_available _ _ := Set.mem_univ _
+  silence_inert state _ := congrArg FinDist.pure (Nat.add_zero state)
 
 /-! ## Where the permissive tier runs out
 
@@ -1029,15 +1041,15 @@ theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
   rw [hleft, hright] at hcontra
   exact absurd hcontra (finDist_pure_ne (by decide))
 
-/-- **And declining is a real restriction too.**  Every `raceSystem` action moves
-the total, so none is inert and no player can walk away.  A system can fail to
-afford quitting, which is why `HasQuit` is a hypothesis rather than a field of
-`ScheduledSystem`. -/
-theorem race_no_quit : IsEmpty raceSystem.HasQuit := by
+/-- **And silence is a real restriction too.**  Every `raceSystem` action moves
+the total, so none is inert and no player can vanish without trace.  A system can
+fail to afford silence, which is why `AllowsSilence` is a hypothesis rather than
+a field of `ScheduledSystem`. -/
+theorem race_no_silence : IsEmpty raceSystem.AllowsSilence := by
   constructor
-  intro hquit
-  have hinert := hquit.quit_inert 1 0
-  rw [show raceSystem.applyOne 1 0 (hquit.quit 0) = FinDist.pure 2 from rfl] at hinert
+  intro hsilent
+  have hinert := hsilent.silence_inert 1 0
+  rw [show raceSystem.applyOne 1 0 (hsilent.silence 0) = FinDist.pure 2 from rfl] at hinert
   exact absurd hinert (finDist_pure_ne (by decide))
 
 end Vegas
