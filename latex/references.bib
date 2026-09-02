@@ -814,3 +814,54 @@
   year      = {1982},
   doi       = {10.2307/1913390}
 }
+
+@misc{NethermindEVMYulLean,
+  author       = {{Nethermind}},
+  title        = {{EVMYulLean}: An Executable Formal Model of the {EVM}
+                  and {Yul} in {Lean}~4},
+  year         = {2025},
+  howpublished = {\url{https://github.com/NethermindEth/EVMYulLean}},
+  note         = {Cancun-aligned executable semantics, reported to pass
+                  99.99\% of the official Ethereum conformance tests;
+                  supported by an Ethereum Foundation grant. Gas is not
+                  modelled by the Yul layer, and \texttt{CREATE}/%
+                  \texttt{CREATE2} are out of scope}
+}
+
+@misc{VerifereumVyperHOL,
+  author       = {{Verifereum}},
+  title        = {\texttt{vyper-hol}: Formal Specification and Verification of
+                  {Vyper} and {Venom} in {HOL4}},
+  year         = {2026},
+  howpublished = {\url{https://github.com/verifereum/vyper-hol}},
+  note         = {Source semantics, IR, lowering, optimization and codegen
+                  proofs for a production smart-contract language; the
+                  accompanying HOL4 EVM model is validated against the
+                  Ethereum Execution Spec Tests}
+}
+
+@misc{PlankSIRLean,
+  author       = {{Plank}},
+  title        = {\texttt{sir-lean}: {EVM} Semantics Study Notes and a
+                  Bytecode-First Plan for the {Plank} {SIR}},
+  year         = {2026},
+  howpublished = {\url{https://github.com/plankevm/sir-lean}},
+  note         = {Comparative notebook on Lean and HOL {EVM} formalizations;
+                  recommends modelling the compiler IR directly and proving a
+                  bridge from IR execution to emitted bytecode against
+                  {EVMYulLean} as the low-level target semantics}
+}
+
+@misc{ArgotEquiVM,
+  author       = {{Argot}},
+  title        = {{EquiVM}: Refinement Proofs in {Lean} for {EVM} Bytecode},
+  year         = {2026},
+  howpublished = {\url{https://github.com/argotorg/EquiVM}}
+}
+
+@misc{AltEthereumFVOverview,
+  author       = {Leonardo Alt},
+  title        = {An Overview of Formal Verification for {Ethereum}},
+  year         = {2026},
+  howpublished = {\url{https://github.com/leonardoalt/ethereum_formal_verification_overview}}
+}

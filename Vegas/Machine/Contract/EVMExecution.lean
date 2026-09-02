@@ -20,6 +20,19 @@ not emit (`KECCAK256` is the only such nontrivial operation). Gas accounting,
 call frames, and chain transaction scheduling are later refinements. This is a
 classical target semantics, not yet the theorem that generated handlers refine
 the typed classical contract.
+
+**This semantics is not validated against the Ethereum conformance suite.**
+Every theorem proved against it — the code-generation results included — holds
+relative to *this* model of the EVM rather than to the EVM. That is a trust
+assumption of a different kind from a missing theorem, and it is the largest one
+in the backend: a discrepancy here would not show up as an unproved goal.
+
+Two mature alternatives are conformance-tested and would discharge it rather
+than restate it: `EVMYulLean`, a Cancun-aligned executable EVM/Yul model in
+Lean 4 reported to pass 99.99% of the official Ethereum tests, and the HOL4 EVM
+model underlying `vyper-hol`, validated against the Ethereum Execution Spec
+Tests. Retargeting code generation at the former is the natural move, and is
+the architecture `sir-lean` independently recommends for the same problem.
 -/
 
 namespace Vegas.Machine.Contract.EVM
