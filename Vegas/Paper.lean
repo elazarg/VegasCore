@@ -330,6 +330,77 @@ theorem enforced_schedule_makes_scheduler_inert
       sys.toExecutionProtocol.step state right :=
   sys.step_eq_of_enforcesOrder henforce hplayers
 
+/-- **Commuting effects make the scheduler payoff-inert without enforcing an
+order.**
+
+Two legal joint submissions agreeing on every player's submission reach the same
+law over *underlying states*, whatever the scheduler submitted — provided every
+order the runtime accepts has the same effect.
+
+This is the cheaper of the two answers to an order-aware deviation. Enforcement
+makes such a deviation unavailable; commutation lets it stay available and shows
+it gains nothing. The second suffices because equilibrium asks of each available
+deviation only that it not improve on the equilibrium payoff, so a deviation
+that exists and never pays is no threat — and there is then nothing to
+back-translate.
+
+What it buys is strictly less than enforcement, and the gap is the point.
+Enforcement determines the whole successor law, log included, so no observation
+separates two schedules. Commutation determines only the base state: the log
+still differs, so a payoff that reads the log still sees a difference.
+Payoff-irrelevance is therefore commutation *plus* a schedule-blind game, and
+that second half is a condition on the game, not on the runtime.
+
+Neither discipline covers a scheduler that reacts to what it is ordering. Both
+quantify over a fixed joint submission, which is this model's standing
+assumption that the scheduler commits without seeing the round's submissions.
+Front-running is a different system, not a corner of this one. -/
+theorem commuting_effects_make_scheduler_payoff_inert
+    {ι : Type} (sys : ScheduledSystem ι) (hcommute : sys.EffectsCommute)
+    {state : sys.State}
+    {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
+    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (sys.toExecutionProtocol.step state left).map ScheduledSystem.State.base =
+      (sys.toExecutionProtocol.step state right).map ScheduledSystem.State.base :=
+  sys.step_base_eq_of_effectsCommute hcommute hplayers
+
+/-- **The permissive tier is inhabited: order can be available, observable, and
+still useless.**
+
+For a runtime where two players each add to a running total and either order is
+accepted: the runtime does *not* enforce an order; the two schedules are
+genuinely distinguishable, inducing different successor laws because the log
+records which happened; and the laws over totals nevertheless coincide.
+
+All three at once is the claim. A developer who does not care about order keeps
+the parallelism, an order-aware deviation remains expressible against them, and
+a payoff reading the total is untouched by it. The witness is not degenerate:
+the total genuinely moves, so commutation here is a fact about addition rather
+than about nothing happening. -/
+theorem order_available_observable_and_useless :
+    ¬ counterSystem.EnforcesOrder ∧
+      ∀ state : counterSystem.State,
+        counterSystem.toExecutionProtocol.step state (counterZeroFirst state) ≠
+            counterSystem.toExecutionProtocol.step state (counterOneFirst state) ∧
+          (counterSystem.toExecutionProtocol.step state
+              (counterZeroFirst state)).map ScheduledSystem.State.base =
+            (counterSystem.toExecutionProtocol.step state
+              (counterOneFirst state)).map ScheduledSystem.State.base :=
+  ⟨counter_not_enforcesOrder,
+    fun state => ⟨counter_step_ne state, counter_step_base_eq state⟩⟩
+
+/-- **And the permissive tier has a boundary.**
+
+For a runtime where one player doubles a total and another adds to it, the two
+accepted orders reach different totals, so `EffectsCommute` fails. The
+hypothesis of `commuting_effects_make_scheduler_payoff_inert` is therefore a
+real restriction rather than something every system satisfies, and a system in
+this shape — two pending operations whose order changes the result, which is the
+shape a public runtime actually has — is one where a preservation claim must pay
+for `EnforcesOrder` instead of arguing that order does not matter. -/
+theorem commutation_is_a_real_restriction : ¬ raceSystem.EffectsCommute :=
+  race_not_effectsCommute
+
 /-! ## Deviation adequacy -/
 
 /-- **Utility preservation at compiled profiles** (paper: `lem:expected-utility`,
@@ -475,6 +546,18 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.enforced_schedule_makes_scheduler_inert' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.enforced_schedule_makes_scheduler_inert
+
+/-- info: 'Vegas.Paper.commuting_effects_make_scheduler_payoff_inert' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.commuting_effects_make_scheduler_payoff_inert
+
+/-- info: 'Vegas.Paper.order_available_observable_and_useless' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.order_available_observable_and_useless
+
+/-- info: 'Vegas.Paper.commutation_is_a_real_restriction' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.commutation_is_a_real_restriction
 
 end Paper
 

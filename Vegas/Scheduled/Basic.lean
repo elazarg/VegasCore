@@ -54,6 +54,42 @@ shape `DeviationAdequacyOn` consumes.  `blindSignals` is kept as the documented
 idealization that resolves a round atomically, and
 `blind_infoOf_eq_forgetOrders` measures exactly what it drops.
 
+## Two disciplines, and when each is needed
+
+An order-aware deviation can be answered in two ways, because equilibrium asks
+of an available deviation only that it not improve on the equilibrium payoff.
+Make it unavailable, or let it be available and show it gains nothing.
+
+`EnforcesOrder` takes the first route: the runtime accepts one order per view,
+so the scheduler has nothing to choose and `step_eq_of_enforcesOrder` makes it
+strategically inert.  It costs the round's parallelism, and an enforced order
+means a stalled participant blocks the protocol.
+
+`EffectsCommute` takes the second: every accepted order has the same effect, so
+`step_base_eq_of_effectsCommute` makes the scheduler irrelevant to the
+underlying state while leaving it its choice.  This is the cheaper answer and
+the common case, and `counterSystem` shows it is not degenerate — the state
+genuinely moves, and commutation is a fact about addition.
+
+The two are ordered, not alternative: `effectsCommute_of_enforcesOrder`.  But
+they leave different things observable, and the gap is the point.  Enforcement
+determines the *log*, so nothing separates two schedules.  Commutation
+determines only the *base* state; the log still differs, so a payoff reading the
+log still sees a difference.  Payoff-irrelevance is commutation *plus* a
+schedule-blind game — a condition on the game, not on the runtime.
+
+Neither is a default, and the choice is not this module's to make.  `schedules`
+is a field, so an artifact is permissive or enforcing by construction and both
+properties appear only as hypotheses.  A developer wanting no order-sensitive
+guarantee keeps the parallelism; one who wants it pays for exactly it.  The
+obligation is to find, per property, the weakest discipline that supports it.
+
+`raceSystem` marks where the permissive tier ends: doubling and adding do not
+commute, so `EffectsCommute` fails and a preservation claim there has to buy
+enforcement.  Two pending operations whose order changes the result is the shape
+a public runtime actually has, which is why enforcement stays available rather
+than being argued away.
+
 ## What is observable, and what is assumed
 
 Two different things are visible on a public runtime, and only one is modelled
@@ -367,6 +403,98 @@ theorem step_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
   simp only [toExecutionProtocol, horder]
   rw [sys.applyOrder_congr hplayers]
 
+/-! ## Order that is available but useless
+
+Enforcement is the heavy instrument, and it is not the only one.  A deviation
+that exists but never pays is no threat to an equilibrium claim: the quantifier
+ranges over available deviations, but what it *asks* of each is only that it not
+improve on the equilibrium payoff.  So there are two ways to answer an
+order-aware deviation — make it unavailable, or let it be available and show it
+gains nothing.
+
+The second is cheaper and covers the common case.  Leave the scheduler its
+choice, and arrange that the choice cannot move anything a payoff can see.
+Order-aware deviations remain expressible — `coinOrderAware` is one — and the
+runtime keeps its parallelism.
+
+`EnforcesOrder` removes the scheduler's choice; `EffectsCommute` leaves the
+choice and removes its consequences.  They differ in what stays observable, and
+the difference is not cosmetic.  Enforcement determines the *log*, so no
+observation whatsoever separates two schedules.  Commutation determines only the
+*base* state: the log still differs, so a payoff that reads the log still sees a
+difference.  Payoff-irrelevance is commutation *plus* a utility blind to the
+schedule, and that second half is a condition on the game, not on the runtime.
+
+Neither discipline handles a scheduler that reacts to what it is ordering.  Both
+quantify over a fixed joint submission, which is exactly the model's claim that
+the scheduler commits to an order without seeing the round's submissions.  A
+runtime where the order may depend on the submissions is a different system, and
+front-running is what that difference is called. -/
+
+/-- Every order the runtime accepts has the same effect on the underlying state.
+
+Strictly weaker than `EnforcesOrder`, which collapses the accepted orders to one:
+here the scheduler still chooses, its choice still enters the log, and the choice
+is still observable.  What it cannot do is move the underlying state. -/
+def EffectsCommute (sys : ScheduledSystem.{u} ι) : Prop :=
+  ∀ (joint : ∀ a, Option (sys.AgentAction a)) (state : sys.Base)
+      {left right : sys.Order},
+    left ∈ sys.schedules (sys.view state) →
+      right ∈ sys.schedules (sys.view state) →
+        sys.applyOrder joint left state = sys.applyOrder joint right state
+
+/-- Forgetting the log of a round's successor leaves exactly the effect of
+applying the scheduled order. -/
+theorem step_map_base {state : sys.State}
+    (joint : { joint // sys.toExecutionProtocol.Legal state joint }) :
+    (sys.toExecutionProtocol.step state joint).map State.base =
+      sys.applyOrder joint.1 (sys.scheduledOrder joint.1) state.base := by
+  simp only [toExecutionProtocol, FinDist.map_comp, Function.comp_def]
+  exact FinDist.map_id _
+
+/-- A legal joint's scheduled order is one the runtime accepts. -/
+theorem scheduledOrder_mem_schedules {state : sys.State}
+    (joint : { joint // sys.toExecutionProtocol.Legal state joint }) :
+    sys.scheduledOrder joint.1 ∈ sys.schedules (sys.view state.base) := by
+  have hlegal := joint.2.2 none
+  unfold scheduledOrder
+  cases hjoint : joint.1 none with
+  | none => rw [hjoint] at hlegal; exact absurd trivial hlegal
+  | some order => rw [hjoint] at hlegal; exact hlegal.2
+
+/-- **Commuting effects make the scheduler irrelevant to the underlying state.**
+
+Two legal joint submissions agreeing on every player's submission reach the same
+law over underlying states, whatever the scheduler submitted.  The scheduler
+keeps its choice and that choice stays visible in the log; what it has lost is
+any influence on the state.
+
+This is the permissive runtime's counterpart to `step_eq_of_enforcesOrder`, and
+it is what lets such a runtime keep its parallelism and still support a
+preservation claim.  Order-aware deviations remain expressible, but a payoff
+reading only the underlying state cannot tell them apart from order-oblivious
+ones, so the extra strategies buy nothing and there is nothing to back-translate.
+Enforcement buys strictly more — equality of the whole successor law, log
+included — at the cost of serializing the round. -/
+theorem step_base_eq_of_effectsCommute (hcommute : sys.EffectsCommute)
+    {state : sys.State}
+    {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
+    (hplayers : ∀ i, left.1 (some i) = right.1 (some i)) :
+    (sys.toExecutionProtocol.step state left).map State.base =
+      (sys.toExecutionProtocol.step state right).map State.base := by
+  rw [sys.step_map_base left, sys.step_map_base right, sys.applyOrder_congr hplayers]
+  exact hcommute right.1 state.base
+    (sys.scheduledOrder_mem_schedules left) (sys.scheduledOrder_mem_schedules right)
+
+/-- Enforcement implies commutation: with one acceptable order there is nothing
+for two orders to disagree about.  So the results below `EffectsCommute` are
+available to an enforcing runtime too, and the two disciplines are ordered
+rather than alternative. -/
+theorem effectsCommute_of_enforcesOrder (henforce : sys.EnforcesOrder) :
+    sys.EffectsCommute := by
+  intro joint state left right hleft hright
+  rw [henforce (sys.view state) hleft hright]
+
 /-! ## Two information models over one protocol -/
 
 /-- What an order-revealing participant knows: the current public view, and the
@@ -633,5 +761,197 @@ theorem coinOrderAware_not_orderOblivious (i : Fin 2) :
     coinFirstOne, List.cons.injEq, one_ne_zero, zero_ne_one, and_true,
     and_self] at hcongr
   exact Bool.noConfusion (Option.some.inj hcongr)
+
+/-! ## A runtime that is permissive and still safe
+
+`coinSystem` shows the separation exists but is a weak witness for commutation:
+every action is the identity, so of course order does not matter.  The system
+below is the honest case.  Two players each add to a running total, the runtime
+accepts either order, and the total genuinely changes — yet addition commutes,
+so the reachable state does not depend on who went first.
+
+This is the configuration the permissive tier is for.  Order-aware deviations
+exist and are expressible; the scheduler really does choose; and none of it can
+move the total.  `counter_step_ne` and `counter_step_base_eq` are the two halves
+of the point, and they are deliberately stated about the very same pair of
+rounds: the successor laws differ, because the log records the order, while the
+laws over *totals* coincide.  A payoff reading the total is untouched; a payoff
+reading the log is not.  That is why payoff-irrelevance needs the game to be
+schedule-blind and cannot be read off the runtime alone. -/
+
+/-- Two players who each add a number to a running total, with the runtime free
+to order them either way.  Reducible so that `Base`, `View` and `Action` line up
+with `Nat` at instance transparency, which numerals need. -/
+@[reducible] def counterSystem : ScheduledSystem.{0} (Fin 2) where
+  Base := Nat
+  Action _ := Nat
+  init := 0
+  active _ _ := True
+  available _ _ := Set.univ
+  terminal _ := False
+  applyOne state _ amount := FinDist.pure (state + amount)
+  View := Nat
+  view state := state
+  menuAt _ _ := {choice | choice ≠ none}
+  menuAt_some _ _ action := by
+    constructor
+    · intro _; exact ⟨trivial, Set.mem_univ _⟩
+    · intro _; exact Option.some_ne_none action
+  menuAt_none _ _ := by
+    constructor
+    · intro hmem; exact absurd rfl hmem
+    · intro hcontra; exact absurd trivial hcontra
+  schedules _ := {[0, 1], [1, 0]}
+  schedules_nonempty _ := ⟨[0, 1], Set.mem_insert _ _⟩
+  progress _ _ := ⟨fun _ => some 0, fun _ => ⟨trivial, Set.mem_univ _⟩⟩
+
+/-- **The permissive runtime is genuinely permissive.**  Both orders are
+accepted, so the scheduler has a real choice to make and `EnforcesOrder` fails.
+Every result below therefore holds without enforcement. -/
+theorem counter_not_enforcesOrder : ¬ counterSystem.EnforcesOrder := by
+  intro henforce
+  have hcontra := henforce 0 (Set.mem_insert _ _) (Set.mem_insert_of_mem _ rfl)
+  exact absurd (List.cons.inj hcontra).1 (by decide)
+
+/-- Resolving a round one player at a time, with the effect on the total made
+explicit.  Stated separately because `applyOne` returning a point mass is what
+collapses the bind. -/
+private theorem counter_applyOrder_cons (joint) (i : Fin 2) (rest total) :
+    counterSystem.applyOrder joint (i :: rest) total =
+      match joint (some i) with
+      | none => counterSystem.applyOrder joint rest total
+      | some amount => counterSystem.applyOrder joint rest (total + amount) := by
+  cases hjoint : joint (some i) with
+  | none => simp only [ScheduledSystem.applyOrder, hjoint]
+  | some amount =>
+      simp only [ScheduledSystem.applyOrder, hjoint]
+      exact FinDist.pure_bind _ _
+
+/-- **And it is nevertheless safe.**  Addition commutes, so both accepted orders
+carry a state to the same law even though each player's action moves it. -/
+theorem counter_effectsCommute : counterSystem.EffectsCommute := by
+  intro joint state left right hleft hright
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hleft hright
+  rcases hleft with rfl | rfl <;> rcases hright with rfl | rfl <;>
+    simp only [counter_applyOrder_cons] <;>
+    cases joint (some 0) <;> cases joint (some 1) <;>
+    simp only [ScheduledSystem.applyOrder] <;>
+    first
+      | rfl
+      | exact congrArg FinDist.pure (by omega)
+
+/-- A round in which both players add `1` and the scheduler picks `order`. -/
+def counterRound (state : counterSystem.State) (order : counterSystem.Order)
+    (horder : order ∈ counterSystem.schedules (counterSystem.view state.base)) :
+    { joint // counterSystem.toExecutionProtocol.Legal state joint } :=
+  ⟨fun a =>
+      match a with
+      | none => some order
+      | some _ => some 1,
+    not_false, by
+      intro a
+      cases a with
+      | none => exact ⟨trivial, horder⟩
+      | some i => exact ⟨trivial, Set.mem_univ _⟩⟩
+
+@[simp] theorem counterRound_scheduledOrder (state order horder) :
+    counterSystem.scheduledOrder (counterRound state order horder).1 = order := rfl
+
+/-- The first-player-first round at `state`. -/
+def counterZeroFirst (state : counterSystem.State) :
+    { joint // counterSystem.toExecutionProtocol.Legal state joint } :=
+  counterRound state [0, 1] (Set.mem_insert _ _)
+
+/-- The same round, ordered the other way. -/
+def counterOneFirst (state : counterSystem.State) :
+    { joint // counterSystem.toExecutionProtocol.Legal state joint } :=
+  counterRound state [1, 0] (Set.mem_insert_of_mem _ rfl)
+
+/-- **The schedule remains observable.**  The two accepted orders induce
+different successor laws, because the realized order is recorded. -/
+theorem counter_step_ne (state : counterSystem.State) :
+    counterSystem.toExecutionProtocol.step state (counterZeroFirst state) ≠
+      counterSystem.toExecutionProtocol.step state (counterOneFirst state) := by
+  refine counterSystem.step_ne_of_order_ne ?_
+  simp only [counterZeroFirst, counterOneFirst, counterRound_scheduledOrder]
+  intro horder
+  exact absurd (List.cons.inj horder).1 (by decide)
+
+/-- **And is nevertheless payoff-inert for a schedule-blind game.**  The very
+same two rounds carry the running total to the same law.  A utility reading the
+total cannot separate them; only one reading the log can. -/
+theorem counter_step_base_eq (state : counterSystem.State) :
+    (counterSystem.toExecutionProtocol.step state
+        (counterZeroFirst state)).map ScheduledSystem.State.base =
+      (counterSystem.toExecutionProtocol.step state
+        (counterOneFirst state)).map ScheduledSystem.State.base :=
+  counterSystem.step_base_eq_of_effectsCommute counter_effectsCommute fun _ => rfl
+
+/-! ## Where the permissive tier runs out
+
+`EffectsCommute` would be worthless as a hypothesis if it held of every system,
+so here is one it fails for.  Two players act on a total, one doubling it and one
+adding to it.  Doubling and adding do not commute, the two accepted orders reach
+different totals, and no amount of care about what the *game* reads can repair
+that — the disagreement is in the runtime.
+
+This is the smallest form of the problem a public runtime actually has: two
+pending operations whose order changes the result.  A system in this shape is
+where `EnforcesOrder` has to be paid for, and it is the reason enforcement stays
+available rather than being argued away. -/
+
+private theorem finDist_pure_ne {α : Type} {a b : α} (hne : a ≠ b) :
+    FinDist.pure a ≠ FinDist.pure b := by
+  intro heq
+  have hprob : (FinDist.pure a).prob a = (FinDist.pure b).prob a := by rw [heq]
+  rw [FinDist.prob_pure_self, FinDist.prob_pure_of_ne hne] at hprob
+  exact absurd hprob one_ne_zero
+
+/-- Two players acting on a total: player `0` doubles it, player `1` adds one. -/
+@[reducible] def raceSystem : ScheduledSystem.{0} (Fin 2) where
+  Base := Nat
+  Action _ := Unit
+  init := 1
+  active _ _ := True
+  available _ _ := Set.univ
+  terminal _ := False
+  applyOne state i _ := FinDist.pure (if i = 0 then state * 2 else state + 1)
+  View := Nat
+  view state := state
+  menuAt _ _ := {choice | choice ≠ none}
+  menuAt_some _ _ action := by
+    constructor
+    · intro _; exact ⟨trivial, Set.mem_univ _⟩
+    · intro _; exact Option.some_ne_none action
+  menuAt_none _ _ := by
+    constructor
+    · intro hmem; exact absurd rfl hmem
+    · intro hcontra; exact absurd trivial hcontra
+  schedules _ := {[0, 1], [1, 0]}
+  schedules_nonempty _ := ⟨[0, 1], Set.mem_insert _ _⟩
+  progress _ _ := ⟨fun _ => some (), fun _ => ⟨trivial, Set.mem_univ _⟩⟩
+
+/-- Both players act, and the scheduler proposes `order`. -/
+private def raceJoint (order : raceSystem.Order) :
+    (a : raceSystem.Agent) → Option (raceSystem.AgentAction a)
+  | none => some order
+  | some _ => some ()
+
+/-- **`EffectsCommute` is a real restriction.**  Doubling then adding reaches
+`11` from `5`; adding then doubling reaches `12`.  So the permissive tier does
+not cover every runtime, and for a system in this shape a preservation claim
+needs `EnforcesOrder` rather than an argument that order does not matter. -/
+theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
+  intro hcommute
+  have hcontra := hcommute (raceJoint [0, 1]) 5
+    (Set.mem_insert _ _) (Set.mem_insert_of_mem _ rfl)
+  have hleft : raceSystem.applyOrder (raceJoint [0, 1]) [0, 1] 5 = FinDist.pure 11 := by
+    simp only [ScheduledSystem.applyOrder, raceJoint, FinDist.pure_bind]
+    norm_num
+  have hright : raceSystem.applyOrder (raceJoint [0, 1]) [1, 0] 5 = FinDist.pure 12 := by
+    simp only [ScheduledSystem.applyOrder, raceJoint, FinDist.pure_bind]
+    norm_num
+  rw [hleft, hright] at hcontra
+  exact absurd hcontra (finDist_pure_ne (by decide))
 
 end Vegas
