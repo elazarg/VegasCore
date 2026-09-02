@@ -120,8 +120,11 @@ different runs and whatever values the players and nature wrote.  So the
 completed-node trajectory is a function of the graph alone, and a target
 strategy has no scheduler choice to condition on.
 
-This is the theorem that licenses an order-free `PublicObservation`: it says
-nothing visible is omitted by recording `done` as a set. -/
+Scope, stated precisely because it is easy to overstate: this is a theorem
+about `CheckpointPolicy`, and the compiled game is currently built by
+`toExecutionProtocol`, which does **not** consume a checkpoint policy.  So this
+does not yet license the order-free `PublicObservation` used by
+`Machine.Program.observation`; connecting the two is open work. -/
 theorem sequential_schedule_determined
     {Player : Type} [DecidableEq Player] {L : IExpr}
     {G : Graph Player L}

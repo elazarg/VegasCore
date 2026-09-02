@@ -25,6 +25,10 @@ players and nature wrote on the way.  The scheduler has no choice left to
 expose and a strategy has nothing to condition on beyond the history it already
 observes.
 
+Not yet connected to the compiled game: `toExecutionProtocol` builds the
+strategic presentation directly and consumes no `CheckpointPolicy`, so these
+results constrain the checkpoint layer alone.
+
 The distinction being drawn is between *quotienting* order away in the model
 and *enforcing* an order in the compiled artifact.  A runtime realizes this
 policy by rejecting every call other than the canonical next one; the ordering
