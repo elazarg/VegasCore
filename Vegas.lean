@@ -16,6 +16,7 @@ import Vegas.Compile
 import Vegas.Machine
 import Vegas.Game
 import Vegas.Runtime
+import Vegas.Scheduled
 import Vegas.Game.Kuhn
 import Vegas.Paper
 

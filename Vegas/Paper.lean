@@ -10,6 +10,7 @@ import Vegas.Game.Kuhn
 import Vegas.Machine
 import Vegas.Machine.Contract.SimpleEVMExprCorrect
 import Vegas.Runtime
+import Vegas.Scheduled
 
 /-!
 # Paper-facing claim surface
@@ -242,6 +243,36 @@ theorem kuhn_mixedPure_to_behavioral
         program.game.behavioral) :=
   ⟨program.mixedPureToBehavioralAdequacy⟩
 
+/-! ## Scheduling -/
+
+/-- **Confluence of effects is not invisibility of order.**
+
+Two schedulers that choose different orders for the same submissions induce
+different successor laws, *whatever the underlying state machine does* — in
+particular even when the two orders have identical effects, so that the
+underlying state law is schedule-invariant.
+
+The distinction this draws is the one the development turns on. A
+schedule-invariance result about a state machine constrains what the machine
+computes; it says nothing about what a player observes. Only a statement about
+the protocol state does, and that requires the realized order to be part of that
+state rather than quotiented out of it.
+
+`Vegas.idle_step_ne` witnesses that this is not vacuous, in the most extreme
+case available: a system in which every action is the identity, so effects
+commute maximally, and two schedulers are still distinguishable. -/
+theorem schedule_is_observable
+    {ι : Type} (sys : ScheduledSystem ι)
+    {left right : sys.Scheduler}
+    {state : sys.State}
+    {legalLeft : { joint // (sys.toExecutionProtocol left).Legal state joint }}
+    {legalRight : { joint // (sys.toExecutionProtocol right).Legal state joint }}
+    (hjoint : legalLeft.1 = legalRight.1)
+    (horder : left state legalLeft.1 ≠ right state legalLeft.1) :
+    (sys.toExecutionProtocol left).step state legalLeft ≠
+      (sys.toExecutionProtocol right).step state legalRight :=
+  sys.step_ne_of_order_ne hjoint horder
+
 /-! ## Deviation adequacy -/
 
 /-- **Utility preservation at compiled profiles** (paper: `lem:expected-utility`,
@@ -375,6 +406,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.guard_codegen_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.guard_codegen_correct
+
+/-- info: 'Vegas.Paper.schedule_is_observable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.schedule_is_observable
 
 end Paper
 
