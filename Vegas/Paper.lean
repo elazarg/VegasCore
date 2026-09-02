@@ -247,44 +247,40 @@ theorem kuhn_mixedPure_to_behavioral
 
 /-- **Confluence of effects is not invisibility of order.**
 
-Two schedulers that choose different orders for the same submissions induce
-different successor laws, *whatever the underlying state machine does* — in
-particular even when the two orders have identical effects, so that the
-underlying state law is schedule-invariant.
+Two joint submissions scheduling different orders induce different successor
+laws, *whatever the underlying state machine does* — in particular even when the
+two orders have identical effects, so the underlying state law is
+schedule-invariant.
 
-The distinction this draws is the one the development turns on. A
-schedule-invariance result about a state machine constrains what the machine
-computes; it says nothing about what a player observes. Only a statement about
-the protocol state does, and that requires the realized order to be part of that
-state rather than quotiented out of it.
+A schedule-invariance result about a state machine constrains what the machine
+computes; it says nothing about what a participant observes. Only a statement
+about the protocol state does, and that requires the realized order to be part
+of that state rather than quotiented out of it.
 
-`Vegas.idle_step_ne` witnesses that this is not vacuous, in the most extreme
+`Vegas.coin_step_ne` witnesses that this is not vacuous, in the most extreme
 case available: a system in which every action is the identity, so effects
-commute maximally, and two schedulers are still distinguishable.
+commute maximally, and two schedules remain distinguishable.
 
-Scope. The order published here is the *settled* one, which is common knowledge
-once a round is on chain — the reading a public signal carries in an information
-model. In-flight submissions are visible to some observers but are **not**
-common knowledge, so they cannot be modelled as a public signal at all, and this
-development assumes no player observes a submission before it is applied.
-Front-running is therefore outside the model. -/
+Scope. The order published here is the *settled* one, common knowledge once a
+round is on chain — the reading a public signal carries in an information model.
+In-flight submissions are visible to some observers but are **not** common
+knowledge, so they cannot be modelled as a public signal at all, and this
+development assumes no participant observes a submission before it is applied.
+Front-running is outside the model. -/
 theorem schedule_is_observable
     {ι : Type} (sys : ScheduledSystem ι)
-    {left right : sys.Scheduler}
     {state : sys.State}
-    {legalLeft : { joint // (sys.toExecutionProtocol left).Legal state joint }}
-    {legalRight : { joint // (sys.toExecutionProtocol right).Legal state joint }}
-    (hjoint : legalLeft.1 = legalRight.1)
-    (horder : left state legalLeft.1 ≠ right state legalLeft.1) :
-    (sys.toExecutionProtocol left).step state legalLeft ≠
-      (sys.toExecutionProtocol right).step state legalRight :=
-  sys.step_ne_of_order_ne hjoint horder
+    {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
+    (horder : sys.scheduledOrder left.1 ≠ sys.scheduledOrder right.1) :
+    sys.toExecutionProtocol.step state left ≠
+      sys.toExecutionProtocol.step state right :=
+  sys.step_ne_of_order_ne horder
 
 /-- **The order-oblivious deviation class is proper.**
 
 A policy is *order-oblivious* when the schedule cannot change what it does. That
-restricts what a player reads, never what it can express, so the class contains
-every policy a schedule-free source could offer
+restricts what a participant reads, never what it can express, so the class
+contains every policy a schedule-free source could offer
 (`liftPolicy_orderOblivious`).
 
 It is nonetheless a proper subclass. `Vegas.coinOrderAware` acts differently at
@@ -294,10 +290,9 @@ ordered, over a system whose actions are all the identity.
 This is the obstruction to back-translation, and it says what shape the
 remaining work has: adequacy against order-oblivious deviations does not extend
 to adequacy against arbitrary ones, because the arbitrary ones have no source
-counterpart to translate back to. The robust tier cannot be inferred from the
-honest tier; it must be established or refuted on its own. -/
+counterpart to translate back to. -/
 theorem order_aware_deviations_exist (i : Fin 2) :
-    ¬ Vegas.coinSystem.OrderOblivious Vegas.coinScheduler (Vegas.coinOrderAware i) :=
+    ¬ Vegas.coinSystem.OrderOblivious (Vegas.coinOrderAware i) :=
   Vegas.coinOrderAware_not_orderOblivious i
 
 /-! ## Deviation adequacy -/
