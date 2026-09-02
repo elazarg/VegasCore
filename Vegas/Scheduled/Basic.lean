@@ -666,6 +666,66 @@ theorem liftPolicy_orderOblivious {a : sys.Agent}
   change (policy (sys.forgetOrders left)).1 = (policy (sys.forgetOrders right)).1
   rw [hforget]
 
+/-! ## Declining to act
+
+`IsLegalJoint` reads `none` as "not active": abstention is legal exactly when a
+participant has nothing to do, so an *active* participant is obliged to submit.
+No public runtime has that property.  A player can always simply not send the
+transaction, and on a commit–reveal contract that is precisely the interesting
+deviation — commit, watch the others reveal, then decline, having learned the
+outcome and paid nothing for the option.
+
+So declining cannot be modelled as `none`; it has to be an action, which is what
+`quit` is.  Then it is a strategy like any other, the equilibrium quantifier
+reaches it, and the claim that it does not pay becomes something to prove rather
+than something the legality condition silently assumed.
+
+`quit_inert` is the definition doing the work: a quit is *not sending*, so it
+moves nothing.  It follows that a penalty for quitting can never be imposed by
+the quitter's own action — it has to come from a timeout or another participant.
+That is not an artifact of the encoding, it is the real constraint, and it is
+why making a quit unprofitable needs a deposit plus a mechanism to slash it,
+rather than a rule saying players must reveal.
+
+This module does not discharge the obligation.  It makes the strategy
+expressible and gives the all-quit baseline a schedule-independent meaning
+(`HasQuit.applyOrder_quit`); showing that quitting is dominated is a statement
+about payoffs, and payoffs are a layer up. -/
+
+/-- Declining to act, as an action rather than as `none`.
+
+Carried separately rather than as a field, because a system either affords the
+option or does not — `race_no_quit` shows the difference is real. -/
+structure HasQuit (sys : ScheduledSystem.{u} ι) where
+  /-- The declining action. -/
+  quit : (i : ι) → sys.Action i
+  /-- Declining is always permitted.  A runtime cannot prevent it. -/
+  quit_available : ∀ (state : sys.Base) (i : ι), quit i ∈ sys.available state i
+  /-- Declining moves nothing: it is the absence of a submission, so any penalty
+  must be imposed by the protocol rather than by this action. -/
+  quit_inert : ∀ (state : sys.Base) (i : ι),
+    sys.applyOne state i (quit i) = FinDist.pure state
+
+/-- Everyone declining, with the scheduler proposing `order`. -/
+def HasQuit.allQuit {sys : ScheduledSystem.{u} ι} (hquit : sys.HasQuit)
+    (order : sys.Order) : (a : sys.Agent) → Option (sys.AgentAction a)
+  | none => some order
+  | some i => some (hquit.quit i)
+
+/-- **The all-quit baseline is well defined and schedule-independent.**
+
+A round in which every player declines leaves the state where it was, in every
+order — so the payoff to walking away depends on the state alone.  That is what
+a dominance argument one layer up compares against, and it needs no
+`EffectsCommute`: inert actions commute with everything. -/
+theorem HasQuit.applyOrder_quit {sys : ScheduledSystem.{u} ι} (hquit : sys.HasQuit) :
+    ∀ (order proposed : sys.Order) (state : sys.Base),
+      sys.applyOrder (hquit.allQuit proposed) order state = FinDist.pure state
+  | [], _, _ => rfl
+  | i :: rest, proposed, state => by
+      simp only [applyOrder, HasQuit.allQuit, hquit.quit_inert, FinDist.pure_bind]
+      exact hquit.applyOrder_quit rest proposed state
+
 end ScheduledSystem
 
 /-! ## Witnesses
@@ -895,6 +955,13 @@ theorem counter_step_base_eq (state : counterSystem.State) :
         (counterOneFirst state)).map ScheduledSystem.State.base :=
   counterSystem.step_base_eq_of_effectsCommute counter_effectsCommute fun _ => rfl
 
+/-- **Declining is available here.**  Adding zero is permitted and moves
+nothing, so every player can walk away from a round. -/
+def counter_hasQuit : counterSystem.HasQuit where
+  quit _ := 0
+  quit_available _ _ := Set.mem_univ _
+  quit_inert state _ := congrArg FinDist.pure (Nat.add_zero state)
+
 /-! ## Where the permissive tier runs out
 
 `EffectsCommute` would be worthless as a hypothesis if it held of every system,
@@ -961,5 +1028,16 @@ theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
     norm_num
   rw [hleft, hright] at hcontra
   exact absurd hcontra (finDist_pure_ne (by decide))
+
+/-- **And declining is a real restriction too.**  Every `raceSystem` action moves
+the total, so none is inert and no player can walk away.  A system can fail to
+afford quitting, which is why `HasQuit` is a hypothesis rather than a field of
+`ScheduledSystem`. -/
+theorem race_no_quit : IsEmpty raceSystem.HasQuit := by
+  constructor
+  intro hquit
+  have hinert := hquit.quit_inert 1 0
+  rw [show raceSystem.applyOne 1 0 (hquit.quit 0) = FinDist.pure 2 from rfl] at hinert
+  exact absurd hinert (finDist_pure_ne (by decide))
 
 end Vegas

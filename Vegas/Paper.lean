@@ -38,6 +38,7 @@ namespace Vegas
 namespace Paper
 
 open GameTheory
+open GameTheory.Math.Probability
 open EventGraph
 
 /-! ## Source adequacy -/
@@ -401,6 +402,54 @@ for `EnforcesOrder` instead of arguing that order does not matter. -/
 theorem commutation_is_a_real_restriction : ¬ raceSystem.EffectsCommute :=
   race_not_effectsCommute
 
+/-- **Participation is forced unless declining is given an action.**
+
+At a legal joint submission, every *active* player has submitted something.
+`IsLegalJoint` reads `none` as "not active", so abstention is legal exactly when
+a participant has nothing to do — an active one is obliged to act.
+
+No public runtime has that property: a player can always simply not send the
+transaction. On a commit–reveal contract that is the interesting deviation —
+commit, watch the others reveal, then decline, having learned the outcome and
+paid nothing for the option. The claim is recorded here because it is the exact
+point where the model is stronger than the runtime it describes, and a reader
+should be able to find it rather than infer it. -/
+theorem active_participation_is_forced
+    {ι : Type} (sys : ScheduledSystem ι) {state : sys.State}
+    (joint : { joint // sys.toExecutionProtocol.Legal state joint })
+    (i : ι) (hactive : sys.active state.base i) :
+    ∃ action, joint.1 (some i) = some action := by
+  have hlegal := joint.2.2 (some i)
+  cases hjoint : joint.1 (some i) with
+  | none => rw [hjoint] at hlegal; exact absurd hactive hlegal
+  | some action => exact ⟨action, rfl⟩
+
+/-- **Declining, given an action, is available and schedule-independent — and
+not every system affords it.**
+
+Three things at once. A round in which every player declines leaves the state
+where it was, in *every* order, so the payoff to walking away depends on the
+state alone: that is the baseline a dominance argument compares against, and it
+needs no `EffectsCommute`, since inert actions commute with everything. The
+running-total runtime affords declining. The doubling-and-adding one does not,
+every action there moving the total, so `HasQuit` is a real hypothesis rather
+than something every system satisfies.
+
+What this does *not* do is show that declining fails to pay. That is a statement
+about payoffs, which live a layer above this one, and it is the developer's
+obligation rather than the runtime's. The encoding does fix the shape of any
+discharge: `quit_inert` says a quit moves nothing, so a penalty for quitting
+cannot be imposed by the quitter's own action and must come from a timeout or
+another participant — which is why a deposit needs a mechanism to slash it, and
+why a rule saying players must reveal is not one. -/
+theorem declining_is_inert_available_and_not_universal :
+    (∀ {ι : Type} (sys : ScheduledSystem ι) (hquit : sys.HasQuit)
+        (order proposed : sys.Order) (state : sys.Base),
+      sys.applyOrder (hquit.allQuit proposed) order state = FinDist.pure state) ∧
+    Nonempty counterSystem.HasQuit ∧ IsEmpty raceSystem.HasQuit :=
+  ⟨fun _ hquit order proposed state => hquit.applyOrder_quit order proposed state,
+    ⟨counter_hasQuit⟩, race_no_quit⟩
+
 /-! ## Deviation adequacy -/
 
 /-- **Utility preservation at compiled profiles** (paper: `lem:expected-utility`,
@@ -558,6 +607,14 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.commutation_is_a_real_restriction' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.commutation_is_a_real_restriction
+
+/-- info: 'Vegas.Paper.active_participation_is_forced' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.active_participation_is_forced
+
+/-- info: 'Vegas.Paper.declining_is_inert_available_and_not_universal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.declining_is_inert_available_and_not_universal
 
 end Paper
 
