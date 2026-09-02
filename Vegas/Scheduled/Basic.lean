@@ -105,6 +105,14 @@ visible to some observers.  This is **not** common knowledge.  A player seeing a
 pending submission does not know who else saw it, nor that others know they saw
 it.  Publishing it as a public signal would be *wrong* rather than coarse.
 
+*Ordering power is not information power.*  The scheduler modelled here picks an
+order over a joint submission it cannot see.  That is already enough to matter —
+`raceSystem` has two accepted orders reaching different totals — but it is
+strictly weaker than choosing one's own action in response to someone else's.
+The disciplines above constrain ordering power only.  Keeping the two apart is
+what makes the assumption below legible: it is the one that excludes information
+power, and it is assumed rather than established.
+
 **This module assumes no participant observes a submission before it is
 applied** — the scheduler included, which is conservative for the players and
 restrictive for the adversary.  Front-running is outside the model.  Relaxing
