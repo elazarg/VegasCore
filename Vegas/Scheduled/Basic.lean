@@ -90,6 +90,30 @@ enforcement.  Two pending operations whose order changes the result is the shape
 a public runtime actually has, which is why enforcement stays available rather
 than being argued away.
 
+## Menus are observation-local, not public
+
+An earlier version made a participant's menu a function of one public `View`,
+and gave players no private signal at all.  That is a fine model of a runtime
+whose entire state is public, and it cannot express Vegas.
+
+The obstruction is concrete.  A player's legal frontier action is determined by
+`EventGraph.observe`, which includes the values sealed *to that player*
+(`FrontierAction.available_iff_of_observe_eq`); `publicObserve` sees only fields
+with no owner.  So no function of the public view decides what a Vegas player
+may submit, and the public-menu obligation is not merely unproved for compiled
+programs — it is false for them.  A model with that obligation could describe
+only the fragment of the language with nothing sealed, which is the fragment
+the language exists to avoid.
+
+Hence `Obs` and `obs`: menus are local to a participant's *own* observation,
+which is what `GameTheory`'s `PrivateSignal` channel was always for.  `View`
+survives as what is genuinely public and is what the scheduler sees — the model's
+way of saying a scheduler orders a round without reading its contents.
+
+This was found by trying to instantiate the interface from a compiled program
+and failing.  The instantiation itself is still not built; what is fixed is that
+the interface no longer rules it out.
+
 ## Vocabulary: absence, declining, and the scheduler
 
 Three different things wanted the spelling `none`, and conflating them has
@@ -199,20 +223,30 @@ structure ScheduledSystem (ι : Type u) where
   View : Type u
   /-- The public view of a state. -/
   view : Base → View
-  /-- The options publicly visible at a view. -/
-  menuAt : View → (i : ι) → Set (Option (Action i))
-  /-- Legality is publicly determined: the visible menu is the real one.  On a
-  contract this is automatic, since which entry points are enabled is a function
-  of public storage.
+  /-- What player `i` privately observes of the underlying state.
+
+  Separate from `View` because a language with sealed commitments needs it.  A
+  Vegas player's legal frontier is determined by its *own* observation, which
+  includes values sealed to it, and no public view determines that menu.  A
+  model whose menus were functions of a public view could not express such a
+  program at all. -/
+  Obs : ι → Type u
+  /-- Player `i`'s private observation of a state. -/
+  obs : Base → (i : ι) → Obs i
+  /-- The options visible to a player at its own observation. -/
+  menuAt : (i : ι) → Obs i → Set (Option (Action i))
+  /-- Legality is observation-determined: what a player sees fixes what it may
+  do.  Weaker than public determination, and what a sealed-commitment language
+  actually satisfies.
 
   Split into the two cases rather than stated with a `match`, so the interface
   carries no matcher for a client's unifier to get stuck on. -/
   menuAt_some : ∀ (state : Base) (i : ι) (action : Action i),
-    some action ∈ menuAt (view state) i ↔
+    some action ∈ menuAt i (obs state i) ↔
       (active state i ∧ action ∈ available state i)
   /-- Abstaining is visibly allowed exactly when the player is not active. -/
   menuAt_none : ∀ (state : Base) (i : ι),
-    (none : Option (Action i)) ∈ menuAt (view state) i ↔ ¬ active state i
+    (none : Option (Action i)) ∈ menuAt i (obs state i) ↔ ¬ active state i
   /-- Which orders the runtime will accept at a view.
 
   A permissive runtime accepts every order and leaves the scheduler a real
@@ -275,11 +309,26 @@ def participantAvailable (state : sys.State) : (a : Participant ι) → Set (sys
   | .scheduler => sys.schedules (sys.view state.base)
   | .player i => sys.available state.base i
 
-/-- The publicly visible menu for each participant.  The scheduler must order
-the round, so abstaining is not on its menu. -/
-def participantMenuAt (v : sys.View) : (a : Participant ι) → Set (Option (sys.Submission a))
-  | .scheduler => {choice | ∃ order ∈ sys.schedules v, choice = some order}
-  | .player i => sys.menuAt v i
+/-- What each participant observes: the public view for the scheduler, its own
+observation for a player.
+
+The scheduler sees only what is public, which is this model's statement that it
+orders a round without reading its contents. -/
+abbrev ParticipantObs (sys : ScheduledSystem.{u} ι) : Participant ι → Type u
+  | .scheduler => sys.View
+  | .player i => sys.Obs i
+
+/-- Each participant's observation of a protocol state. -/
+def participantObs (state : sys.State) : (a : Participant ι) → sys.ParticipantObs a
+  | .scheduler => sys.view state.base
+  | .player i => sys.obs state.base i
+
+/-- The menu each participant sees at its own observation.  The scheduler must
+order the round, so abstaining is not on its menu. -/
+def participantMenuAt : (a : Participant ι) → sys.ParticipantObs a →
+    Set (Option (sys.Submission a))
+  | .scheduler, v => {choice | ∃ order ∈ sys.schedules v, choice = some order}
+  | .player i, o => sys.menuAt i o
 
 /-- Extend a players-only joint submission with an order for the scheduler.
 A named definition rather than an inline match, so it reduces on `.player i`. -/
@@ -545,46 +594,50 @@ theorem effectsCommute_of_enforcesOrder (henforce : sys.EnforcesOrder) :
 
 /-! ## Two information models over one protocol -/
 
-/-- What an order-revealing participant knows: the current public view, and the
-history of realized orders paired with the view each followed. -/
-abbrev RevealingInfo (sys : ScheduledSystem.{u} ι) : Type u :=
-  sys.View × List (sys.Order × sys.View)
+/-- What an order-revealing participant knows: its current observation, and the
+history of realized orders paired with the observation each followed.
 
-/-- What an order-blind participant knows: the current and earlier public views,
-with no record of how rounds were ordered. -/
-abbrev BlindInfo (sys : ScheduledSystem.{u} ι) : Type u :=
-  sys.View × List sys.View
+Indexed by the participant, because observations are.  Nothing here forces the
+public view into a player's information state; an instantiation wanting it there
+puts it in that player's `Obs`. -/
+abbrev RevealingInfo (sys : ScheduledSystem.{u} ι) (a : Participant ι) : Type u :=
+  sys.ParticipantObs a × List (sys.Order × sys.ParticipantObs a)
+
+/-- What an order-blind participant knows: its current and earlier
+observations, with no record of how rounds were ordered. -/
+abbrev BlindInfo (sys : ScheduledSystem.{u} ι) (a : Participant ι) : Type u :=
+  sys.ParticipantObs a × List (sys.ParticipantObs a)
 
 /-- Discard the schedule from an order-revealing information state. -/
-def forgetOrders (info : sys.RevealingInfo) : sys.BlindInfo :=
+def forgetOrders {a : Participant ι} (info : sys.RevealingInfo a) : sys.BlindInfo a :=
   (info.1, info.2.map Prod.snd)
 
 /-- Signals that publish the realized order alongside the public view: the
 faithful model of a public runtime. -/
-def revealingSignals : InfoSignals sys.toExecutionProtocol where
+@[reducible] def revealingSignals : InfoSignals sys.toExecutionProtocol where
   PublicSignal := sys.View × sys.Order
-  PrivateSignal _ := PUnit
+  PrivateSignal a := sys.ParticipantObs a
   initialPublic := (sys.view sys.init, [])
-  initialPrivate _ := PUnit.unit
+  initialPrivate a := sys.participantObs sys.toExecutionProtocol.init a
   publicSignal event := (sys.view event.target.base, event.target.log.headD [])
-  privateSignal _ _ := PUnit.unit
-  InfoState _ := sys.RevealingInfo
-  initInfo _ _ signal := (signal.1, [])
-  pushInfo _ info _ _ signal := (signal.1, (signal.2, info.1) :: info.2)
+  privateSignal a event := sys.participantObs event.target a
+  InfoState a := sys.RevealingInfo a
+  initInfo _ own _ := (own, [])
+  pushInfo _ info _ own pub := (own, (pub.2, info.1) :: info.2)
 
 /-- Signals that publish only the public view: the idealization in which a round
 resolves atomically.  A perfectly good information model — just not one of a
 public chain. -/
-def blindSignals : InfoSignals sys.toExecutionProtocol where
+@[reducible] def blindSignals : InfoSignals sys.toExecutionProtocol where
   PublicSignal := sys.View
-  PrivateSignal _ := PUnit
+  PrivateSignal a := sys.ParticipantObs a
   initialPublic := sys.view sys.init
-  initialPrivate _ := PUnit.unit
+  initialPrivate a := sys.participantObs sys.toExecutionProtocol.init a
   publicSignal event := sys.view event.target.base
-  privateSignal _ _ := PUnit.unit
-  InfoState _ := sys.BlindInfo
-  initInfo _ _ signal := (signal, [])
-  pushInfo _ info _ _ signal := (signal, info.1 :: info.2)
+  privateSignal a event := sys.participantObs event.target a
+  InfoState a := sys.BlindInfo a
+  initInfo _ own _ := (own, [])
+  pushInfo _ info _ own _ := (own, info.1 :: info.2)
 
 /-- **Blindness is exactly discarding the schedule.**
 
@@ -604,32 +657,28 @@ theorem blind_infoOf_eq_forgetOrders (a : Participant ι)
       rw [InfoSignals.infoOf_extend, InfoSignals.infoOf_extend, ih]
       rfl
 
-/-- The current view a participant holds is the view of the state the history
-reached.  This is what makes the public menu information-local. -/
+/-- The observation a participant holds is its observation of the state the
+history reached.  This is what makes the menu information-local. -/
 theorem revealing_infoOf_fst (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
-    (sys.revealingSignals.infoOf a trace).1 = sys.view state.base := by
+    (sys.revealingSignals.infoOf a trace).1 = sys.participantObs state a := by
   induction trace with
   | start => rfl
-  | extend prior joint isLegal realized _ih =>
-      rw [InfoSignals.infoOf_extend]
-      rfl
+  | extend prior joint isLegal realized _ih => rfl
 
 /-- The same, order-blind. -/
 theorem blind_infoOf_fst (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
-    (sys.blindSignals.infoOf a trace).1 = sys.view state.base := by
+    (sys.blindSignals.infoOf a trace).1 = sys.participantObs state a := by
   induction trace with
   | start => rfl
-  | extend prior joint isLegal realized _ih =>
-      rw [InfoSignals.infoOf_extend]
-      rfl
+  | extend prior joint isLegal realized _ih => rfl
 
 private theorem participantMenuAt_adequate (state : sys.State) (a : Participant ι)
     (choice : Option (sys.Submission a)) :
-    choice ∈ sys.participantMenuAt (sys.view state.base) a ↔
+    choice ∈ sys.participantMenuAt a (sys.participantObs state a) ↔
       LegalOption sys.toExecutionProtocol state a choice := by
   cases a with
   | scheduler =>
@@ -651,9 +700,9 @@ private theorem participantMenuAt_adequate (state : sys.State) (a : Participant 
       | some action => exact sys.menuAt_some state.base i action
 
 /-- The order-revealing information model: the faithful one. -/
-def revealingInformation : InformationModel sys.toExecutionProtocol where
+@[reducible] def revealingInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.revealingSignals
-  menu a info := sys.participantMenuAt info.1 a
+  menu a info := sys.participantMenuAt a info.1
   menu_adequate := by
     intro a state trace choice
     rw [sys.revealing_infoOf_fst a trace]
@@ -661,9 +710,9 @@ def revealingInformation : InformationModel sys.toExecutionProtocol where
 
 /-- The order-blind information model: the idealization.  Same menus — the
 schedule never changes what is legal, only what is known. -/
-def blindInformation : InformationModel sys.toExecutionProtocol where
+@[reducible] def blindInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.blindSignals
-  menu a info := sys.participantMenuAt info.1 a
+  menu a info := sys.participantMenuAt a info.1
   menu_adequate := by
     intro a state trace choice
     rw [sys.blind_infoOf_fst a trace]
@@ -682,7 +731,7 @@ Phrased on the action rather than the menu-certified choice, whose type depends
 on the information state; the action's does not. -/
 def OrderOblivious {a : Participant ι}
     (policy : sys.revealingInformation.Policy a) : Prop :=
-  ∀ left right : sys.RevealingInfo,
+  ∀ left right : sys.RevealingInfo a,
     sys.forgetOrders left = sys.forgetOrders right →
       (policy left).1 = (policy right).1
 
@@ -690,8 +739,8 @@ def OrderOblivious {a : Participant ι}
 schedule first.
 
 This typechecks without transport because `forgetOrders` preserves the current
-view and both menus are `participantMenuAt` of that view, so the two `Choice` types
-are definitionally equal. -/
+observation and both menus are `participantMenuAt` of it, so the two `Choice`
+types are definitionally equal. -/
 def liftPolicy {a : Participant ι} (policy : sys.blindInformation.Policy a) :
     sys.revealingInformation.Policy a :=
   fun info => policy (sys.forgetOrders info)
@@ -828,6 +877,8 @@ def coinSystem : ScheduledSystem.{0} (Fin 2) where
   applyOne state _ _ := FinDist.pure state
   View := Unit
   view _ := ()
+  Obs _ := Unit
+  obs _ _ := ()
   menuAt _ _ := {some true, some false}
   menuAt_some _ _ action := by cases action <;> simp
   menuAt_none _ _ := by simp
@@ -870,15 +921,17 @@ theorem coin_step_ne (state : coinSystem.State) :
       {some true, some false} := rfl
 
 /-- A history in which player `0` was ordered first. -/
-def coinFirstZero : coinSystem.RevealingInfo := ((), [([0, 1], ())])
+def coinFirstZero (i : Fin 2) : coinSystem.RevealingInfo (.player i) :=
+  ((), [([0, 1], ())])
 
 /-- The same history except that player `1` was ordered first.  The two agree on
-every public view and differ only in schedule. -/
-def coinFirstOne : coinSystem.RevealingInfo := ((), [([1, 0], ())])
+every observation and differ only in schedule. -/
+def coinFirstOne (i : Fin 2) : coinSystem.RevealingInfo (.player i) :=
+  ((), [([1, 0], ())])
 
-theorem coinFirst_forgetOrders_eq :
-    coinSystem.forgetOrders coinFirstZero =
-      coinSystem.forgetOrders coinFirstOne := rfl
+theorem coinFirst_forgetOrders_eq (i : Fin 2) :
+    coinSystem.forgetOrders (coinFirstZero i) =
+      coinSystem.forgetOrders (coinFirstOne i) := rfl
 
 /-- An order-aware policy: submit `true` exactly when player `0` was ordered
 first.  Nothing about the state differs between those histories. -/
@@ -892,8 +945,9 @@ def coinOrderAware (i : Fin 2) :
 
 /-- **The order-oblivious class is proper.**
 
-`coinOrderAware` acts differently at two histories that agree on every public
-view and differ only in how a round was ordered, so it is not order-oblivious —
+`coinOrderAware` acts differently at two histories that agree on every
+observation and differ only in how a round was ordered, so it is not
+order-oblivious —
 and by `liftPolicy_orderOblivious` no schedule-free policy induces it.
 
 This is the obstruction to back-translation: an order-aware deviation has in
@@ -902,7 +956,8 @@ not follow from adequacy against the order-oblivious one. -/
 theorem coinOrderAware_not_orderOblivious (i : Fin 2) :
     ¬ coinSystem.OrderOblivious (coinOrderAware i) := by
   intro hoblivious
-  have hcongr := hoblivious coinFirstZero coinFirstOne coinFirst_forgetOrders_eq
+  have hcongr := hoblivious (coinFirstZero i) (coinFirstOne i)
+    (coinFirst_forgetOrders_eq i)
   simp only [coinFirstZero, Fin.isValue, coinOrderAware,
     List.headD_eq_head?_getD, List.head?_cons, Option.getD_some, ↓reduceIte,
     coinFirstOne, List.cons.injEq, one_ne_zero, zero_ne_one, and_true,
@@ -939,6 +994,8 @@ with `Nat` at instance transparency, which numerals need. -/
   applyOne state _ amount := FinDist.pure (state + amount)
   View := Nat
   view state := state
+  Obs _ := Nat
+  obs state _ := state
   menuAt _ _ := {choice | choice ≠ none}
   menuAt_some _ _ action := by
     constructor
@@ -1072,6 +1129,8 @@ private theorem finDist_pure_ne {α : Type} {a b : α} (hne : a ≠ b) :
   applyOne state i _ := FinDist.pure (if i = 0 then state * 2 else state + 1)
   View := Nat
   view state := state
+  Obs _ := Nat
+  obs state _ := state
   menuAt _ _ := {choice | choice ≠ none}
   menuAt_some _ _ action := by
     constructor
