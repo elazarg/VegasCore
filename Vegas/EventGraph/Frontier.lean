@@ -464,6 +464,60 @@ theorem FrontierAction.Available.readyCommitNode_of_value
     rw [hvalue] at hnode
     cases hnode
 
+/-- **A commit node has exactly one owner.**
+
+Readiness names the owner through the node's row, so two players cannot both
+find the same node on their ready commit frontier. -/
+theorem ReadyCommitNode.owner_unique
+    {G : Graph Player L} {cfg : Config G} {node : Fin G.nodeCount}
+    {whoLeft whoRight : Player}
+    (hleft : ReadyCommitNode G cfg whoLeft node)
+    (hright : ReadyCommitNode G cfg whoRight node) :
+    whoLeft = whoRight := by
+  obtain ⟨rowLeft, _, rowGetLeft, semLeft, _⟩ := hleft
+  obtain ⟨rowRight, _, rowGetRight, semRight, _⟩ := hright
+  have hrow : rowLeft = rowRight :=
+    Option.some.inj (rowGetLeft.symm.trans rowGetRight)
+  subst hrow
+  exact (NodeSem.commit.inj (semLeft.symm.trans semRight)).1
+
+/-- **A legal packet determines what each node receives.**
+
+Two coordinates of a legal packet cannot disagree at a node, because they cannot
+both write one: a commit node names its owner, and `Available` forces a player
+to leave `none` at every node outside its own ready frontier.
+
+This is the packet-level half of write determinacy.  `CommitStep.written_eq`
+says a node's write does not depend on the *configuration*; this says it does
+not depend on which coordinate of the packet is consulted.  Together they make
+the write at a node a function of the packet alone -- which is what a reordering
+argument needs, and what the noncomputable choice inside the protocol's frontier
+application would otherwise leave in doubt. -/
+theorem FrontierAction.legal_write_unique
+    {G : Graph Player L} {cfg : Config G}
+    {joint : ∀ who, Option (FrontierAction G who)}
+    (hlegal : ∀ who action, joint who = some action →
+      FrontierAction.Available G cfg who action)
+    {node : Fin G.nodeCount}
+    {whoLeft whoRight : Player}
+    {actionLeft : FrontierAction G whoLeft} {actionRight : FrontierAction G whoRight}
+    {valueLeft valueRight : L.Val (G.nodeRow node).ty}
+    (hactionLeft : joint whoLeft = some actionLeft)
+    (hactionRight : joint whoRight = some actionRight)
+    (hvalueLeft : actionLeft.value? node = some valueLeft)
+    (hvalueRight : actionRight.value? node = some valueRight) :
+    valueLeft = valueRight := by
+  have hreadyLeft : ReadyCommitNode G cfg whoLeft node :=
+    (hlegal whoLeft actionLeft hactionLeft).readyCommitNode_of_value hvalueLeft
+  have hreadyRight : ReadyCommitNode G cfg whoRight node :=
+    (hlegal whoRight actionRight hactionRight).readyCommitNode_of_value hvalueRight
+  have howner : whoLeft = whoRight := hreadyLeft.owner_unique hreadyRight
+  subst howner
+  have haction : actionLeft = actionRight :=
+    Option.some.inj (hactionLeft.symm.trans hactionRight)
+  subst haction
+  exact Option.some.inj (hvalueLeft.symm.trans hvalueRight)
+
 theorem exists_commitValue_of_readyCommitNode
     {G : Graph Player L} {cfg : Config G}
     (hwf : G.WF) (hcoherent : StoreCoherent G cfg)

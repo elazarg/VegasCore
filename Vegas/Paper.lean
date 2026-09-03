@@ -125,6 +125,38 @@ theorem commit_writes_are_configuration_independent
       ⟨stepRight.guard.ty, stepRight.value⟩ :=
   EventGraph.CommitStep.written_eq stepLeft stepRight
 
+/-- **A legal packet determines what each node receives**
+(paper: `thm:packet-determinacy`).
+
+Two coordinates of a legal frontier packet cannot disagree at a node, because
+they cannot both write one: a commit node names its owner, and
+`FrontierAction.Available` forces a player to leave `none` at every node outside
+its own ready frontier.
+
+This is the packet-level half of write determinacy, and
+`commit_writes_are_configuration_independent` is the configuration-level half.
+Together they say the write at a node is a function of the packet alone: not of
+which coordinate is consulted, and not of which peers have already run. That is
+what upgrades `schedule_confluence` from a statement about a fixed assignment
+into a statement about a round. -/
+theorem legal_packet_determines_each_write
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : EventGraph.Graph Player L} {cfg : EventGraph.Config G}
+    {joint : ∀ who, Option (EventGraph.FrontierAction G who)}
+    (hlegal : ∀ who action, joint who = some action →
+      EventGraph.FrontierAction.Available G cfg who action)
+    {node : Fin G.nodeCount} {whoLeft whoRight : Player}
+    {actionLeft : EventGraph.FrontierAction G whoLeft}
+    {actionRight : EventGraph.FrontierAction G whoRight}
+    {valueLeft valueRight : L.Val (G.nodeRow node).ty}
+    (hactionLeft : joint whoLeft = some actionLeft)
+    (hactionRight : joint whoRight = some actionRight)
+    (hvalueLeft : actionLeft.value? node = some valueLeft)
+    (hvalueRight : actionRight.value? node = some valueRight) :
+    valueLeft = valueRight :=
+  EventGraph.FrontierAction.legal_write_unique hlegal
+    hactionLeft hactionRight hvalueLeft hvalueRight
+
 /-- **Commit–reveal barrier** (paper: `thm:fence`).
 
 A reveal node is ordered behind every source-earlier commit: such a commit is
@@ -720,6 +752,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.schedule_confluence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.schedule_confluence
+
+/-- info: 'Vegas.Paper.legal_packet_determines_each_write' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.legal_packet_determines_each_write
 
 /-- info: 'Vegas.Paper.commit_writes_are_configuration_independent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
