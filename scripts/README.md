@@ -10,3 +10,10 @@ Run these tools from the repository root.
   supplied files or directories while omitting imports and proof bodies. With
   no arguments it scans the current directory recursively. It is a reading and
   review aid; it does not participate in the build.
+- `python scripts/check-doc-references.py` fails if a Lean docstring cites a
+  name that does not exist. Docstrings here carry real load -- which theorem
+  does the work, which hypothesis a result needs, which witness refutes a
+  converse -- and a citation that stops resolving after a rename turns that
+  guidance into misdirection with nothing in the build noticing. It checks
+  backticked tokens shaped like our own names (lower-case, underscored), so
+  type names, tactics, and prose are untouched.

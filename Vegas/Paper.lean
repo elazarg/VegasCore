@@ -305,6 +305,42 @@ theorem kuhn_mixedPure_to_behavioral
         program.game.behavioral) :=
   ⟨program.mixedPureToBehavioralAdequacy⟩
 
+/-- **A compiled strategic round is atomic** (paper: `thm:atomic`).
+
+At a strategic checkpoint with no ready internal work, the round's successor is
+a point mass determined by the joint packet alone. The whole frontier is applied
+as one action.
+
+This is what the compiler does *instead of* serializing, and it is the reason
+the scheduling results below apply to it only vacuously. There is no scheduler
+coordinate in this protocol to enforce, restrict, or reason about: a schedule is
+not chosen, so it cannot be observed, and no strategy can condition on one. That
+is strictly stronger than `enforced_schedule_makes_scheduler_inert`, which
+neutralizes a scheduler that exists.
+
+The canonical node order inside `applyFrontier` is therefore an implementation
+detail rather than a semantic commitment — it is invisible at this interface,
+which exposes only the packet and the resulting configuration.
+
+What this does **not** say is that a serialized runtime would be equivalent. It
+would not: `order_aware_deviations_exist` shows a runtime publishing the
+realized order admits a policy conditioning on it, one that no schedule-free
+policy induces. That result is stated over an abstract
+`ScheduledSystem`, and connecting them to a *compiled* Vegas program — showing
+this specific atomicity is what averts that specific failure — is not yet
+mechanized. The two halves are proved; the bridge between them is prose. -/
+theorem compiled_round_is_atomic
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF) (hguards : EventGraph.GuardLive G)
+    (state : EventGraph.ReachableConfig G)
+    (legal : { joint : ∀ who, Option (EventGraph.FrontierAction G who) //
+      (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint })
+    (noInternal : EventGraph.readyInternalNodes G state.1 = ∅) :
+    (EventGraph.toExecutionProtocol G hwf hguards).step state legal =
+      FinDist.pure (EventGraph.applyFrontier G state legal.1) :=
+  EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
+    G hwf hguards state legal noInternal
+
 /-! ## Scheduling -/
 
 /-- **Confluence of effects is not invisibility of order.**
@@ -684,6 +720,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.kuhn_mixedPure_to_behavioral' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.kuhn_mixedPure_to_behavioral
+
+/-- info: 'Vegas.Paper.compiled_round_is_atomic' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_round_is_atomic
 
 /-- info: 'Vegas.Paper.utility_preservation_honest' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

@@ -19,5 +19,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+      - name: Check documentation references resolve
+        run: python scripts/check-doc-references.py
       - uses: leanprover/lean-action@v1
       - uses: leanprover-community/docgen-action@v1
