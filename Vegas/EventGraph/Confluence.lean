@@ -33,6 +33,85 @@ namespace EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
+/-! ## What a commit writes is determined by the commit
+
+`completeNodes_perm` reorders a list of `(node, value)` writes with the values
+held fixed.  Using it operationally needs the values to *be* fixed: a round
+resolved in two orders must not merely touch the same nodes, it must write the
+same things at them.
+
+That is not automatic from the definitions.  `CommitAvailable` is
+`Nonempty (CommitStep ..)`, availability witnesses are chosen with
+`Classical.choice`, and the proposition chosen from mentions the configuration —
+so a priori the value written at a node could depend on which peers ran first,
+and reordering would not be a permutation of one fixed assignment at all.
+
+It cannot.  A `CommitStep`'s `row` is pinned by `row_get`, its `guard` by
+`sem_eq` given the row, and its `value` by `value_ok` given the guard: reading
+the committed value at the guard's type is a function, not a choice.  The
+configuration appears in `ready`, `env` and `guard_ok` — in *whether* the step
+exists, never in what it writes.
+
+So the noncomputable selection in the protocol layer is a selection among
+witnesses that all agree on the only thing it uses them for. -/
+
+namespace CommitStep
+
+variable {G : Graph Player L}
+
+/-- Two availability witnesses for the same commit action agree on the row they
+found, hence on the guard. -/
+theorem guard_eq {left right : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft : CommitStep G left who action)
+    (stepRight : CommitStep G right who action) :
+    stepLeft.guard = stepRight.guard := by
+  obtain ⟨rowLeft, guardLeft, rowGetLeft, semLeft, _, _, _, _, _, _⟩ := stepLeft
+  obtain ⟨rowRight, guardRight, rowGetRight, semRight, _, _, _, _, _, _⟩ := stepRight
+  have hrow : rowLeft = rowRight :=
+    Option.some.inj (rowGetLeft.symm.trans rowGetRight)
+  subst hrow
+  exact (NodeSem.commit.inj (semLeft.symm.trans semRight)).2
+
+/-- **What a commit writes does not depend on the configuration.**
+
+Two availability witnesses for the same action, at two arbitrary
+configurations, write the same typed value.  This is what lets a reordering
+argument treat a round as one fixed assignment, and it is why the protocol layer
+may pick an availability witness noncomputably without the choice being
+observable. -/
+theorem written_eq {left right : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft : CommitStep G left who action)
+    (stepRight : CommitStep G right who action) :
+    (⟨stepLeft.guard.ty, stepLeft.value⟩ : TypedValue L) =
+      ⟨stepRight.guard.ty, stepRight.value⟩ := by
+  obtain ⟨rowLeft, guardLeft, rowGetLeft, semLeft, _, valueLeft, valueOkLeft,
+    _, _, _⟩ := stepLeft
+  obtain ⟨rowRight, guardRight, rowGetRight, semRight, _, valueRight,
+    valueOkRight, _, _, _⟩ := stepRight
+  have hrow : rowLeft = rowRight :=
+    Option.some.inj (rowGetLeft.symm.trans rowGetRight)
+  subst hrow
+  have hguard : guardLeft = guardRight :=
+    (NodeSem.commit.inj (semLeft.symm.trans semRight)).2
+  subst hguard
+  have hvalue : valueLeft = valueRight :=
+    Option.some.inj (valueOkLeft.symm.trans valueOkRight)
+  subst hvalue
+  rfl
+
+/-- The same for two witnesses at one configuration: availability evidence is
+unique in everything the semantics reads off it. -/
+theorem written_eq_self {cfg : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft stepRight : CommitStep G cfg who action) :
+    (⟨stepLeft.guard.ty, stepLeft.value⟩ : TypedValue L) =
+      ⟨stepRight.guard.ty, stepRight.value⟩ :=
+  written_eq stepLeft stepRight
+
+end CommitStep
+
 namespace Config
 
 variable {G : Graph Player L}

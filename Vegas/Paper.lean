@@ -93,6 +93,38 @@ theorem schedule_confluence
     cfg.scheduleComplete value left = cfg.scheduleComplete value right :=
   Config.scheduleComplete_perm cfg value hperm hnodup
 
+/-- **What a commit writes does not depend on the configuration**
+(paper: `thm:write-determinacy`).
+
+Two availability witnesses for the same commit action, at two arbitrary
+configurations, write the same typed value.
+
+This is the operational content behind `schedule_confluence`, and it is what
+that theorem needs in order to say anything about execution. Permutation
+invariance holds of a *fixed* assignment of node values; using it on a real
+round requires that the round have a fixed assignment, which is not automatic.
+`CommitAvailable` is `Nonempty (CommitStep ..)`, the protocol layer picks a
+witness with `Classical.choice`, and the proposition it picks from mentions the
+configuration — so a priori the value written at a node could depend on which
+peers ran first, and reordering would not be a permutation of one assignment at
+all.
+
+It cannot. A step's row is pinned by `row_get`, its guard by `sem_eq` given the
+row, and its value by `value_ok` given the guard: reading the committed value at
+the guard's type is a function, not a choice. The configuration appears only in
+`ready`, `env` and `guard_ok` — in *whether* the step exists, never in what it
+writes. So the noncomputable selection is a selection among witnesses that all
+agree on the one thing the semantics reads off them. -/
+theorem commit_writes_are_configuration_independent
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : EventGraph.Graph Player L} {left right : EventGraph.Config G}
+    {who : Player} {action : EventGraph.CommitAction G who}
+    (stepLeft : EventGraph.CommitStep G left who action)
+    (stepRight : EventGraph.CommitStep G right who action) :
+    (⟨stepLeft.guard.ty, stepLeft.value⟩ : EventGraph.TypedValue L) =
+      ⟨stepRight.guard.ty, stepRight.value⟩ :=
+  EventGraph.CommitStep.written_eq stepLeft stepRight
+
 /-- **Commit–reveal barrier** (paper: `thm:fence`).
 
 A reveal node is ordered behind every source-earlier commit: such a commit is
@@ -688,6 +720,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.schedule_confluence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.schedule_confluence
+
+/-- info: 'Vegas.Paper.commit_writes_are_configuration_independent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.commit_writes_are_configuration_independent
 
 /-- info: 'Vegas.Paper.commit_reveal_barrier' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
