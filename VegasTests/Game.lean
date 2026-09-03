@@ -6,6 +6,8 @@ Authors: VegasCore contributors
 
 import Vegas.EventGraph.Fence
 import Vegas.Game.Kuhn
+import Vegas.Scheduled
+import Vegas.Paper
 import Vegas.Compile.Classical
 import Vegas.Compile.ClassicalEVM
 import Vegas.Compile.BooleanEVM
@@ -1303,5 +1305,48 @@ example : matchingPenniesGame.arena.execution.BoundedHorizon 4 := by
   rw [← show matchingPenniesMachine.graph.nodeCount = 4 by
     exact matchingPenniesMachine_graph_nodeCount]
   exact matchingPenniesGame.bounded
+
+/-! ## The serialized counterfactual, on a real compiled program
+
+`Vegas.Paper.compiled_and_serialized_runtimes_differ` is stated for an arbitrary
+well-formed live graph.  A statement about arbitrary graphs is worth nothing if
+no graph a compiler actually emits satisfies it, so the checks below run it on
+one: matching pennies, whose two players are ready at the same frontier and are
+therefore exactly the case a serializing runtime would have to order. -/
+
+/-- The runtime matching pennies would get if its frontier were serialized
+rather than applied whole. -/
+noncomputable def matchingPenniesSerialized : ScheduledSystem TestPlayer :=
+  Vegas.Compiled.serializedSystem matchingPenniesMachine.graph
+    matchingPenniesMachine.graphWF matchingPenniesMachine.guardLive
+
+/-- **The bridge theorem is not vacuous.**
+
+A real compiled Vegas program, serialized, has a scheduler with a genuine choice
+to make -- while the same program's compiled protocol resolves its frontier as
+one joint action with no scheduler coordinate at all
+(`matchingPenniesMachine`'s `toExecutionProtocol`).  The gap the paper describes
+is a gap between two runtimes for *this* program, not only between two abstract
+possibilities. -/
+theorem matchingPenniesSerialized_not_enforcesOrder :
+    ¬ matchingPenniesSerialized.EnforcesOrder :=
+  Vegas.Compiled.serializedSystem_not_enforcesOrder
+    matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+    matchingPenniesMachine.guardLive 0 1 (by decide)
+
+/-- Both halves of the paper claim, on this program. -/
+example :
+    (∀ (state : EventGraph.ReachableConfig matchingPenniesMachine.graph)
+        (legal : { joint : ∀ who,
+            Option (EventGraph.FrontierAction matchingPenniesMachine.graph who) //
+          matchingPenniesMachine.execution.Legal state joint }),
+        EventGraph.readyInternalNodes matchingPenniesMachine.graph state.1 = ∅ →
+          matchingPenniesMachine.execution.step state legal =
+            GameTheory.Math.Probability.FinDist.pure
+              (EventGraph.applyFrontier matchingPenniesMachine.graph state legal.1)) ∧
+      ¬ matchingPenniesSerialized.EnforcesOrder :=
+  Vegas.Paper.compiled_and_serialized_runtimes_differ
+    matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+    matchingPenniesMachine.guardLive (whoLeft := 0) (whoRight := 1) (by decide)
 
 end VegasTests
