@@ -780,6 +780,69 @@ theorem nash_equivalence
   adequacy.isNash_compileProfile_iff profile
 
 
+/-! ## The compilation result, in one statement -/
+
+/-- **What compiling a checked finite-domain Vegas program buys**
+(paper: `thm:main`).
+
+One statement, with every hypothesis visible, for the results the paper's main
+claim is assembled from:
+
+1. *Source-payoff adequacy.* Every terminal reachable machine state
+   reconstructs a terminal source environment the program can actually reach, in
+   which the compiled payoff code and the source payoff expressions agree.
+2. *Perfect recall.* A player's compiled information remembers its own earlier
+   information and actions.
+3. *Bounded horizon.* The graph's node count bounds every strategy's play
+   length, so the extracted game is finite by construction.
+4. *Kuhn correspondence, both directions.* The behavioral and mixed-pure
+   presentations of the frontier game are mutually deviation-adequate, so their
+   outcome laws and Nash equilibria correspond.
+
+Read what the hypotheses are, and are not. `source` is a `WFProgram`: a
+proof-carrying program, not the output of a checker run on surface syntax --
+there is no raw-syntax-to-`WFProgram` proof-producing pass, so "checked" here
+means "accompanied by a proof", and calling the Lean side an executable checker
+would be wrong. `FiniteDomains` is what makes the Kuhn conjuncts available.
+
+Read the conclusions the same way. (1) is *support-level and one-way*: every
+terminal target execution has a source counterpart with the same payoff. It is
+not equality of probabilistic laws, and there is no converse here. (4) relates
+two presentations of the *same* compiled game to each other; it is not a
+statement relating source strategies to target strategies. The development has
+no end-to-end deviation-adequacy certificate from a source strategic semantics
+to a generated contract game, and no source-level strategy game corresponding to
+the raw program semantics for such a certificate to start from. -/
+theorem compilation_summary
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (source : WFProgram Player L) [FiniteDomains source] :
+    (∀ (state : (Machine.compile source).State),
+        (Machine.compile source).terminal state →
+          ∃ terminalEnv :
+              VEnv L (ToEventGraph.compile source.core).terminalCtx,
+            SmallStep.Star
+              { ctx := source.core.Γ, env := source.core.env,
+                cont := source.core.prog }
+              { ctx := (ToEventGraph.compile source.core).terminalCtx,
+                env := terminalEnv,
+                cont := .ret
+                  (ToEventGraph.compile source.core).sourcePayoffs } ∧
+            evalPayoffs? (Machine.compile source).payoffs state.1.store =
+              some (evalPayoffs
+                (ToEventGraph.compile source.core).sourcePayoffs terminalEnv)) ∧
+      (Machine.compile source).information.PerfectRecall ∧
+      (Machine.compile source).execution.BoundedHorizon
+        (Machine.compile source).graph.nodeCount ∧
+      Nonempty (Runtime.DeviationAdequacy source.game.behavioral
+        source.game.mixedPure) ∧
+      Nonempty (Runtime.DeviationAdequacy source.game.mixedPure
+        source.game.behavioral) :=
+  ⟨fun state hterminal => Machine.compile_sourceStar source state hterminal,
+    (Machine.compile source).perfectRecall,
+    (Machine.compile source).boundedHorizon,
+    ⟨source.behavioralToMixedPureAdequacy⟩,
+    ⟨source.mixedPureToBehavioralAdequacy⟩⟩
+
 /-! ## Trusted base
 
 Every claim above must rest on Lean's three standard axioms and nothing else.
@@ -857,6 +920,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.nash_equivalence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.nash_equivalence
+
+/-- info: 'Vegas.Paper.compilation_summary' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compilation_summary
 
 /-- info: 'Vegas.Paper.nash_equivalence_against' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
