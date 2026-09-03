@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Scheduled.Basic
+import Vegas.Scheduled.Compiled
 
 /-! Protocols whose rounds are ordered by a scheduler, with the realized order
 publicly observable. -/

@@ -405,6 +405,51 @@ theorem compiled_round_is_atomic
   EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
     G hwf hguards state legal noInternal
 
+/-- **One compiled program, two runtimes, and only one of them has a scheduler**
+(paper: `thm:two-runtimes`).
+
+For the same well-formed live graph: the compiled protocol resolves a strategic
+round as a point mass determined by the joint packet, while the serialized
+runtime built from that graph accepts every order, so its scheduler has a real
+choice to make.
+
+This is the connection the scheduling results were missing. Until now they were
+stated over an abstract `ScheduledSystem` and the compiled protocol was a
+separate object, so "serializing a frontier introduces a strategy that was not
+there" was a claim about two unrelated things. Both are now instances derived
+from one graph, and the difference between them is a theorem rather than a
+description of intent.
+
+Building the serialized instance is where the model's own shape was tested, and
+it failed the first time. A `ScheduledSystem` whose menus were functions of a
+public view cannot express a Vegas program at all: a player's legal frontier is
+fixed by its *own* observation, which includes values sealed to it, and
+`publicObserve` sees only unowned fields. Hence `Obs`, and hence the menu here
+being a function of the pair.
+
+What this does not do is exhibit a changed equilibrium. It shows the serialized
+runtime has a scheduler and the compiled one does not, and
+`order_aware_deviations_exist` shows a scheduler's realized order is something a
+policy can condition on with no schedule-free counterpart. Joining those into
+"this specific compiled program has a different equilibrium set under
+serialization" needs a concrete graph carried through both runtimes, and is not
+done. -/
+theorem compiled_and_serialized_runtimes_differ
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF) (hguards : EventGraph.GuardLive G)
+    {whoLeft whoRight : Player} (hne : whoLeft ≠ whoRight) :
+    (∀ (state : EventGraph.ReachableConfig G)
+        (legal : { joint : ∀ who, Option (EventGraph.FrontierAction G who) //
+          (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint }),
+        EventGraph.readyInternalNodes G state.1 = ∅ →
+          (EventGraph.toExecutionProtocol G hwf hguards).step state legal =
+            FinDist.pure (EventGraph.applyFrontier G state legal.1)) ∧
+      ¬ (Compiled.serializedSystem G hwf hguards).EnforcesOrder :=
+  ⟨fun state legal noInternal =>
+      EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
+        G hwf hguards state legal noInternal,
+    Compiled.serializedSystem_not_enforcesOrder G hwf hguards whoLeft whoRight hne⟩
+
 /-! ## Scheduling -/
 
 /-- **Confluence of effects is not invisibility of order.**
@@ -796,6 +841,10 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.compiled_round_is_atomic' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compiled_round_is_atomic
+
+/-- info: 'Vegas.Paper.compiled_and_serialized_runtimes_differ' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_and_serialized_runtimes_differ
 
 /-- info: 'Vegas.Paper.utility_preservation_honest' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
