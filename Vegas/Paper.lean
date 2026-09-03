@@ -20,9 +20,17 @@ statement can be read and audited without chasing definitions through the
 development.  Each proof is an immediate delegation to the theorem that does
 the work; nothing is proved in this file.
 
-The point of the file is that it fails to compile if a paper claim stops being
-true, stops being provable in the stated form, or is renamed out from under the
-prose.  A claim with no entry here is a claim the mechanization does not back.
+The point of the file is that it fails to compile if a claim stops being true,
+stops being provable in the stated form, or is renamed out from under the prose.
+
+Two directions, and only one of them is machine-checked.  *Everything here is
+proved and axiom-pinned* — that the build enforces, and it is what licenses
+citing an entry.  *Everything the paper claims appears here* is a manual
+obligation this repository cannot verify, since the prose is not tracked in it.
+Reviewers have found gaps in that direction before: perfect recall, bounded
+horizon, and the arena's status as a defined rather than translated FOSG were all
+asserted in prose while missing here.  They are listed now.  Treat an absent
+claim as unbacked until checked against this file, not as evidence of anything.
 
 Two conventions, both load-bearing:
 
@@ -216,6 +224,59 @@ theorem guard_codegen_correct
     Machine.Contract.EVM.BoolExprCorrect pre (evalExpr source env) code :=
   Machine.Contract.EVM.compileBoolExpr?_correct pre variableCode env
     hvariable source code maxStack hcompile
+
+/-! ## Game extraction
+
+The strategic object a checked program denotes, and the two structural facts
+every downstream equilibrium result depends on.  Both were claimed in prose
+before being listed here, which is exactly the failure this file exists to
+prevent. -/
+
+/-- **Compiled information has perfect recall** (paper: `thm:perfect-recall`).
+
+A player's information state remembers its own earlier information and actions,
+while abstracting from event ordering that does not concern it.
+
+This is the hypothesis the Kuhn correspondence below runs on: without it
+behavioral and mixed presentations are not interchangeable, and the Nash
+transport in `kuhn_behavioral_to_mixedPure` does not hold. -/
+theorem compiled_perfect_recall
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (program : WFProgram Player L) :
+    (Machine.compile program).information.PerfectRecall :=
+  (Machine.compile program).perfectRecall
+
+/-- **Compiled execution has a bounded horizon** (paper: `thm:bounded`).
+
+The graph's node count bounds every strategy's play length uniformly. Finiteness
+here is structural rather than assumed: a Vegas program is a finite graph, and
+each step strictly grows the completed set.
+
+Boundedness is what makes the extracted game a *finite* object, so the
+equilibrium notions below are the finite ones. -/
+theorem compiled_bounded_horizon
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (program : WFProgram Player L) :
+    (Machine.compile program).execution.BoundedHorizon
+      (Machine.compile program).graph.nodeCount :=
+  (Machine.compile program).boundedHorizon
+
+/-- **The extracted arena is a bounded stochastic game** (paper: `thm:arena`).
+
+The `Game` a checked program denotes carries its own horizon proof, so the
+strategic view is bounded by construction rather than by a side condition a
+consumer must re-establish.
+
+Note what this is not. The arena is *defined* as a first-order stochastic game
+in `Vegas.Game`; there is no separate proved translation from a native frontier
+game into the FOSG interface, and prose describing one would be wrong. The
+FOSG-to-extensive-form results the paper leans on are `GameTheory`'s, not this
+development's, and belong to that library in any attribution. -/
+theorem extracted_arena_is_bounded
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (program : WFProgram Player L) [FiniteDomains program] :
+    program.game.arena.execution.BoundedHorizon program.game.horizon :=
+  program.game.bounded
 
 /-! ## Strategy presentations -/
 
@@ -607,6 +668,18 @@ build fails here rather than silently widening what the paper is trusting.
 /-- info: 'Vegas.Paper.kuhn_behavioral_to_mixedPure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.kuhn_behavioral_to_mixedPure
+
+/-- info: 'Vegas.Paper.compiled_perfect_recall' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_perfect_recall
+
+/-- info: 'Vegas.Paper.compiled_bounded_horizon' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_bounded_horizon
+
+/-- info: 'Vegas.Paper.extracted_arena_is_bounded' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.extracted_arena_is_bounded
 
 /-- info: 'Vegas.Paper.kuhn_mixedPure_to_behavioral' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
