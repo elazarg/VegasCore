@@ -865,3 +865,68 @@
   year         = {2026},
   howpublished = {\url{https://github.com/leonardoalt/ethereum_formal_verification_overview}}
 }
+
+@inproceedings{HalpernPassCostlyComputation,
+  author       = {Joseph Y. Halpern and Rafael Pass},
+  title        = {Game Theory with Costly Computation: Formulation and
+                  Application to Protocol Security},
+  booktitle    = {Innovations in Computer Science (ICS)},
+  year         = {2010},
+  eprint       = {0809.0024},
+  archivePrefix = {arXiv},
+  note         = {Relates mediator implementation, deviating machines,
+                  distribution preservation, and equilibrium preservation in one
+                  framework; the nearest conceptual predecessor to deviation
+                  adequacy, which should therefore be claimed as an exact,
+                  finite, machine-checked compiler interface rather than as a
+                  first connection between deviation simulation and equilibrium
+                  preservation. A journal version appears as \emph{Algorithmic
+                  rationality: game theory with costly computation}, Journal of
+                  Economic Theory, 2015}
+}
+
+@inproceedings{BartolettiZuninoBitML,
+  author       = {Massimo Bartoletti and Roberto Zunino},
+  title        = {{BitML}: A Calculus for {Bitcoin} Smart Contracts},
+  booktitle    = {ACM SIGSAC Conference on Computer and Communications Security
+                  (CCS)},
+  year         = {2018},
+  note         = {A contract calculus with a symbolic strategic model and a
+                  computational-soundness result for compilation to Bitcoin
+                  transactions -- closer to this development than a
+                  process-calculus comparison suggests, since the object
+                  preserved is strategic rather than operational}
+}
+
+@phdthesis{MelkonianBitMLAgda,
+  author       = {Orestis Melkonian},
+  title        = {Verified Compilation from {BitML} to {Bitcoin}: An {Agda}
+                  Odyssey},
+  school       = {University of Edinburgh},
+  year         = {2024},
+  url          = {https://era.ed.ac.uk/handle/1842/41694},
+  note         = {Machine-checked compilation for a contract language whose
+                  model is game-theoretic: an intrinsically-typed BitML
+                  semantics, a symbolic model supporting reasoning over
+                  participant strategies, and transfer of properties proved at
+                  the contract level down to Bitcoin transactions. The closest
+                  existing artifact to what this development is attempting, and
+                  the natural benchmark for its scope claims}
+}
+
+@misc{PseudoEquilibria,
+  title        = {Pseudo-Equilibria, or: How to Stop Worrying About Crypto and
+                  Just Analyze the Game},
+  year         = {2025},
+  eprint       = {2506.22089},
+  archivePrefix = {arXiv},
+  url          = {https://arxiv.org/abs/2506.22089},
+  note         = {Transfers equilibria from a game with ideal cryptography to
+                  one where it is instantiated by real protocols. Its
+                  pseudo-Nash equilibrium -- a deviation is tolerated when its
+                  utility is indistinguishable from the equilibrium's -- has the
+                  same shape as the permissive scheduling tier here, where an
+                  order-aware deviation is available but cannot pay. Also
+                  published as a Springer chapter,
+                  \url{https://doi.org/10.1007/978-3-032-35367-2_1}}
+}
