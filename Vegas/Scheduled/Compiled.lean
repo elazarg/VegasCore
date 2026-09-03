@@ -139,9 +139,16 @@ theorem menuAllows_iff_of_obs_eq {G : Graph Player L} (hwf : G.WF)
 /-- **The serialized runtime for a compiled program.**
 
 The same graph as `EventGraph.toExecutionProtocol`, run one submission at a time
-in an order the scheduler picks from `Set.univ` and the state records.  This is
-the counterfactual the negative scheduling results are about; the compiled
-protocol is the atomic one and has no scheduler coordinate at all. -/
+in an order the scheduler picks and the state records.  This is the
+counterfactual the negative scheduling results are about; the compiled protocol
+is the atomic one and has no scheduler coordinate at all.
+
+The accepted orders are the *enumerations* of the players, not every list.  A
+runtime that could accept `[]`, or a list omitting a submitter, would not be a
+serialization of the round -- it would be a runtime that drops submissions, and
+comparing it to the atomic protocol would prove nothing about ordering.
+Requiring every player costs nothing, since `applyOrder` skips a coordinate that
+did not submit. -/
 def serializedSystem (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G) :
     ScheduledSystem Player where
   Base := ReachableConfig G
@@ -172,22 +179,30 @@ def serializedSystem (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G) :
       exact (menuAllows_iff_of_obs_eq hwf hpublic hown none).mp hallows
     · intro hinactive
       exact ⟨state.1, rfl, rfl, hinactive⟩
-  schedules _ := Set.univ
-  schedules_nonempty _ := ⟨[], Set.mem_univ _⟩
+  schedules _ := { order | order.Nodup ∧ ∀ who : Player, who ∈ order }
+  schedules_nonempty _ :=
+    ⟨Finset.univ.toList, Finset.univ.nodup_toList,
+      fun who => Finset.mem_toList.mpr (Finset.mem_univ who)⟩
   progress state hterminal := (toExecutionProtocol G hwf hguards).progress state hterminal
 
-/-- **The serialized runtime is genuinely permissive.**  Every order is
-accepted, so its scheduler has a real choice — which is the whole difference
-from the compiled protocol, where there is no scheduler coordinate to choose
-with. -/
+/-- **The serialized runtime is genuinely permissive.**
+
+Two distinct enumerations of the players are both accepted, so its scheduler has
+a real choice to make -- which is the whole difference from the compiled
+protocol, where there is no scheduler coordinate to choose with.
+
+Stated from a supplied pair rather than derived from `1 < card Player`, so a
+caller exhibits the two orders its own program actually admits. -/
 theorem serializedSystem_not_enforcesOrder
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
-    (whoLeft whoRight : Player) (hne : whoLeft ≠ whoRight) :
+    {left right : List Player}
+    (hleftNodup : left.Nodup) (hleftAll : ∀ who : Player, who ∈ left)
+    (hrightNodup : right.Nodup) (hrightAll : ∀ who : Player, who ∈ right)
+    (hne : left ≠ right) :
     ¬ (serializedSystem G hwf hguards).EnforcesOrder := by
   intro henforce
-  have hcontra := henforce (publicObserve G (Config.initial G))
-    (Set.mem_univ [whoLeft]) (Set.mem_univ [whoRight])
-  exact hne (List.head_eq_of_cons_eq hcontra)
+  exact hne (henforce (publicObserve G (Config.initial G))
+    ⟨hleftNodup, hleftAll⟩ ⟨hrightNodup, hrightAll⟩)
 
 end Compiled
 

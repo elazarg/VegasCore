@@ -1332,7 +1332,9 @@ theorem matchingPenniesSerialized_not_enforcesOrder :
     ¬ matchingPenniesSerialized.EnforcesOrder :=
   Vegas.Compiled.serializedSystem_not_enforcesOrder
     matchingPenniesMachine.graph matchingPenniesMachine.graphWF
-    matchingPenniesMachine.guardLive 0 1 (by decide)
+    matchingPenniesMachine.guardLive
+    (left := [0, 1]) (right := [1, 0])
+    (by decide) (by decide) (by decide) (by decide) (by decide)
 
 /-- Both halves of the paper claim, on this program. -/
 example :
@@ -1347,6 +1349,8 @@ example :
       ¬ matchingPenniesSerialized.EnforcesOrder :=
   Vegas.Paper.compiled_and_serialized_runtimes_differ
     matchingPenniesMachine.graph matchingPenniesMachine.graphWF
-    matchingPenniesMachine.guardLive (whoLeft := 0) (whoRight := 1) (by decide)
+    matchingPenniesMachine.guardLive
+    (left := [0, 1]) (right := [1, 0])
+    (by decide) (by decide) (by decide) (by decide) (by decide)
 
 end VegasTests

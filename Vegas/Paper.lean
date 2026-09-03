@@ -437,7 +437,10 @@ done. -/
 theorem compiled_and_serialized_runtimes_differ
     {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
     (G : EventGraph.Graph Player L) (hwf : G.WF) (hguards : EventGraph.GuardLive G)
-    {whoLeft whoRight : Player} (hne : whoLeft ≠ whoRight) :
+    {left right : List Player}
+    (hleftNodup : left.Nodup) (hleftAll : ∀ who : Player, who ∈ left)
+    (hrightNodup : right.Nodup) (hrightAll : ∀ who : Player, who ∈ right)
+    (hne : left ≠ right) :
     (∀ (state : EventGraph.ReachableConfig G)
         (legal : { joint : ∀ who, Option (EventGraph.FrontierAction G who) //
           (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint }),
@@ -448,7 +451,8 @@ theorem compiled_and_serialized_runtimes_differ
   ⟨fun state legal noInternal =>
       EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
         G hwf hguards state legal noInternal,
-    Compiled.serializedSystem_not_enforcesOrder G hwf hguards whoLeft whoRight hne⟩
+    Compiled.serializedSystem_not_enforcesOrder G hwf hguards
+      hleftNodup hleftAll hrightNodup hrightAll hne⟩
 
 /-! ## Scheduling -/
 
