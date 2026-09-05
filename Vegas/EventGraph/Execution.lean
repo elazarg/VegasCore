@@ -92,6 +92,44 @@ def completeNode (cfg : Config G) (node : Fin G.nodeCount)
   { done := insert node cfg.done
     store := Store.set cfg.store (G.nodeTarget node) value }
 
+/-- Complete a list of `(node, value)` writes from left to right. -/
+def completeNodes (cfg : Config G)
+    (steps : List (Fin G.nodeCount × TypedValue L)) : Config G :=
+  steps.foldl (fun current step =>
+    current.completeNode step.1 step.2) cfg
+
+@[simp] theorem completeNodes_nil (cfg : Config G) :
+    cfg.completeNodes [] = cfg := rfl
+
+@[simp] theorem completeNodes_cons (cfg : Config G)
+    (step : Fin G.nodeCount × TypedValue L)
+    (rest : List (Fin G.nodeCount × TypedValue L)) :
+    cfg.completeNodes (step :: rest) =
+      (cfg.completeNode step.1 step.2).completeNodes rest := rfl
+
+@[simp] theorem completeNodes_append (cfg : Config G)
+    (before after : List (Fin G.nodeCount × TypedValue L)) :
+    cfg.completeNodes (before ++ after) =
+      (cfg.completeNodes before).completeNodes after := by
+  induction before generalizing cfg with
+  | nil => rfl
+  | cons step rest ih =>
+      simp only [List.cons_append, completeNodes_cons]
+      exact ih (cfg.completeNode step.1 step.2)
+
+/-- The completed-node set after a list of writes is the original set together
+with every node touched by the list. -/
+theorem completeNodes_done (cfg : Config G)
+    (steps : List (Fin G.nodeCount × TypedValue L)) :
+    (cfg.completeNodes steps).done =
+      cfg.done ∪ (steps.map Prod.fst).toFinset := by
+  induction steps generalizing cfg with
+  | nil => simp
+  | cons step rest ih =>
+      rw [completeNodes_cons, ih]
+      simp [Config.completeNode, List.toFinset_cons, Finset.insert_union,
+        Finset.union_insert]
+
 theorem nodeTarget_ne_of_ne {G : Graph Player L}
     {left right : Fin G.nodeCount} (hne : left ≠ right) :
     G.nodeTarget left ≠ G.nodeTarget right := by
@@ -389,6 +427,63 @@ structure CommitStep (G : Graph Player L) (cfg : Config G)
   env : ReadEnv L guard.choiceReads
   env_ok : ReadEnv.ofStore? cfg.store guard.choiceReads = some env
   guard_ok : guard.eval value env = true
+
+namespace CommitStep
+
+/-- Availability witnesses for the same commit action select the same guard. -/
+theorem guard_eq {G : Graph Player L} {left right : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft : CommitStep G left who action)
+    (stepRight : CommitStep G right who action) :
+    stepLeft.guard = stepRight.guard := by
+  obtain ⟨rowLeft, guardLeft, rowGetLeft, semLeft, _, _, _, _, _, _⟩ := stepLeft
+  obtain ⟨rowRight, guardRight, rowGetRight, semRight, _, _, _, _, _, _⟩ := stepRight
+  have hrow : rowLeft = rowRight :=
+    Option.some.inj (rowGetLeft.symm.trans rowGetRight)
+  subst hrow
+  exact (NodeSem.commit.inj (semLeft.symm.trans semRight)).2
+
+/-- What a commit action writes is independent of the configuration and of
+the particular availability witness. -/
+theorem written_eq {G : Graph Player L} {left right : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft : CommitStep G left who action)
+    (stepRight : CommitStep G right who action) :
+    (⟨stepLeft.guard.ty, stepLeft.value⟩ : TypedValue L) =
+      ⟨stepRight.guard.ty, stepRight.value⟩ := by
+  obtain ⟨rowLeft, guardLeft, rowGetLeft, semLeft, _, valueLeft, valueOkLeft,
+    _, _, _⟩ := stepLeft
+  obtain ⟨rowRight, guardRight, rowGetRight, semRight, _, valueRight,
+    valueOkRight, _, _, _⟩ := stepRight
+  have hrow : rowLeft = rowRight :=
+    Option.some.inj (rowGetLeft.symm.trans rowGetRight)
+  subst hrow
+  have hguard : guardLeft = guardRight :=
+    (NodeSem.commit.inj (semLeft.symm.trans semRight)).2
+  subst hguard
+  have hvalue : valueLeft = valueRight :=
+    Option.some.inj (valueOkLeft.symm.trans valueOkRight)
+  subst hvalue
+  rfl
+
+/-- Availability witnesses at one configuration agree on their write. -/
+theorem written_eq_self {G : Graph Player L} {cfg : Config G} {who : Player}
+    {action : CommitAction G who}
+    (stepLeft stepRight : CommitStep G cfg who action) :
+    (⟨stepLeft.guard.ty, stepLeft.value⟩ : TypedValue L) =
+      ⟨stepRight.guard.ty, stepRight.value⟩ :=
+  written_eq stepLeft stepRight
+
+/-- The typed value selected by a commit witness is the value carried by its
+action. -/
+theorem written_eq_action {G : Graph Player L} {cfg : Config G} {who : Player}
+    {action : CommitAction G who}
+    (step : CommitStep G cfg who action) :
+    (⟨step.guard.ty, step.value⟩ : TypedValue L) = action.value := by
+  exact (TypedValue.eq_mk_of_as?_eq_some
+    action.value step.guard.ty step.value step.value_ok).symm
+
+end CommitStep
 
 /-- Evidence that an internal graph event is currently available. -/
 inductive InternalStep (G : Graph Player L) (cfg : Config G)

@@ -379,20 +379,18 @@ This is what the compiler does *instead of* serializing, and it is the reason
 the scheduling results below apply to it only vacuously. There is no scheduler
 coordinate in this protocol to enforce, restrict, or reason about: a schedule is
 not chosen, so it cannot be observed, and no strategy can condition on one. That
-is strictly stronger than `enforced_schedule_makes_scheduler_inert`, which
-neutralizes a scheduler that exists.
+is strictly stronger observationally than
+`enforced_schedule_removes_order_choice`, which neutralizes an existing
+scheduling coordinate.
 
 The canonical node order inside `applyFrontier` is therefore an implementation
 detail rather than a semantic commitment — it is invisible at this interface,
 which exposes only the packet and the resulting configuration.
 
-What this does **not** say is that a serialized runtime would be equivalent. It
-would not: `order_aware_deviations_exist` shows a runtime publishing the
-realized order admits a policy conditioning on it, one that no schedule-free
-policy induces. That result is stated over an abstract
-`ScheduledSystem`, and connecting them to a *compiled* Vegas program — showing
-this specific atomicity is what averts that specific failure — is not yet
-mechanized. The two halves are proved; the bridge between them is prose. -/
+What this does **not** say is that a serialized runtime is equivalent.  The
+graph-derived serializers below make that comparison precise: a permissive one
+publishes a genuine scheduler choice, while a fixed-order one removes that choice.
+Neither fact alone is an equilibrium-equivalence theorem. -/
 theorem compiled_round_is_atomic
     {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
     (G : EventGraph.Graph Player L) (hwf : G.WF) (hguards : EventGraph.GuardLive G)
@@ -401,58 +399,380 @@ theorem compiled_round_is_atomic
       (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint })
     (noInternal : EventGraph.readyInternalNodes G state.1 = ∅) :
     (EventGraph.toExecutionProtocol G hwf hguards).step state legal =
-      FinDist.pure (EventGraph.applyFrontier G state legal.1) :=
+      FinDist.pure (EventGraph.applyFrontier G hwf state legal.1) :=
   EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
     G hwf hguards state legal noInternal
 
-/-- **One compiled program, two runtimes, and only one of them has a scheduler**
+/-- **One compiled graph, with atomic and serialized runtime disciplines**
 (paper: `thm:two-runtimes`).
 
-For the same well-formed live graph: the compiled protocol resolves a strategic
-round as a point mass determined by the joint packet, while the serialized
-runtime built from that graph accepts every order, so its scheduler has a real
-choice to make.
+For the same well-formed live graph, the compiled protocol resolves a strategic
+round as a point mass determined by the joint packet.  The permissive serializer
+accepts every duplicate-free ordering of the players active at that public
+view, executes automatic internal events to a stable checkpoint, and has a real
+scheduler choice whenever two such orders are exhibited.  Its player effects
+are proved to commute.  The fixed-order serializer filters the public activity
+test and sorts by a backend-supplied `LinearOrder`; that policy is executable
+and the resulting scheduler is proved enforcing.
 
-This is the connection the scheduling results were missing. Until now they were
-stated over an abstract `ScheduledSystem` and the compiled protocol was a
-separate object, so "serializing a frontier introduces a strategy that was not
-there" was a claim about two unrelated things. Both are now instances derived
-from one graph, and the difference between them is a theorem rather than a
-description of intent.
+The menu cannot be a function of the public view alone: a player's legal
+frontier is fixed by its own observation, which includes values sealed to it,
+while `publicObserve` sees only unowned fields. The scheduled model therefore
+uses the player's private observation for its action menu, while the scheduler
+may inspect the complete public observation but no sealed value or same-round
+submission.
 
-Building the serialized instance is where the model's own shape was tested, and
-it failed the first time. A `ScheduledSystem` whose menus were functions of a
-public view cannot express a Vegas program at all: a player's legal frontier is
-fixed by its *own* observation, which includes values sealed to it, and
-`publicObserve` sees only unowned fields. Hence `Obs`, and hence the menu here
-being a function of the pair.
-
-What this does not do is exhibit a changed equilibrium. It shows the serialized
-runtime has a scheduler and the compiled one does not, and
-`order_aware_deviations_exist` shows a scheduler's realized order is something a
-policy can condition on with no schedule-free counterpart. Joining those into
-"this specific compiled program has a different equilibrium set under
-serialization" needs a concrete graph carried through both runtimes, and is not
-done. -/
-theorem compiled_and_serialized_runtimes_differ
-    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+The scheduler coordinate is operational machinery, not an additional member of
+the source game's equilibrium population.  Its observation is recoverable from
+every player's observation (`compiled_scheduler_has_no_extra_information`).
+The separate signal theorems quantify over every deviation of the original
+players, including arbitrary deviations conditioned on an independent signal.
+They do not by themselves interpret an executing public-history scheduler. -/
+theorem compiled_runtime_scheduling_boundary
+    {Player : Type} [Fintype Player] [LinearOrder Player] {L : IExpr}
     (G : EventGraph.Graph Player L) (hwf : G.WF) (hguards : EventGraph.GuardLive G)
-    {left right : List Player}
-    (hleftNodup : left.Nodup) (hleftAll : ∀ who : Player, who ∈ left)
-    (hrightNodup : right.Nodup) (hrightAll : ∀ who : Player, who ∈ right)
+    {seen : EventGraph.PublicObservation G} {left right : List Player}
+    (hleft : left ∈ (Compiled.serializedSystem G hwf hguards).schedules seen)
+    (hright : right ∈ (Compiled.serializedSystem G hwf hguards).schedules seen)
     (hne : left ≠ right) :
     (∀ (state : EventGraph.ReachableConfig G)
         (legal : { joint : ∀ who, Option (EventGraph.FrontierAction G who) //
           (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint }),
         EventGraph.readyInternalNodes G state.1 = ∅ →
           (EventGraph.toExecutionProtocol G hwf hguards).step state legal =
-            FinDist.pure (EventGraph.applyFrontier G state legal.1)) ∧
-      ¬ (Compiled.serializedSystem G hwf hguards).EnforcesOrder :=
+            FinDist.pure (EventGraph.applyFrontier G hwf state legal.1)) ∧
+      (∀ (state : (Compiled.serializedSystem G hwf hguards).State)
+          (legal : { joint //
+            (Compiled.serializedSystem G hwf hguards).toExecutionProtocol.Legal
+              state joint })
+          (next : (Compiled.serializedSystem G hwf hguards).State),
+        next ∈ ((Compiled.serializedSystem G hwf hguards).toExecutionProtocol.step
+            state legal).support →
+          EventGraph.readyInternalNodes G next.base.1 = ∅) ∧
+      ¬ (Compiled.serializedSystem G hwf hguards).EnforcesOrder ∧
+      (Compiled.fixedSerializedSystem G hwf hguards).EnforcesOrder :=
   ⟨fun state legal noInternal =>
       EventGraph.toExecutionProtocol_step_eq_pure_applyFrontier
         G hwf hguards state legal noInternal,
+    fun state legal _next hnext =>
+      Compiled.serializedSystem_step_support_no_internal
+        G hwf hguards state legal hnext,
     Compiled.serializedSystem_not_enforcesOrder G hwf hguards
-      hleftNodup hleftAll hrightNodup hrightAll hne⟩
+      hleft hright hne,
+    Compiled.fixedSerializedSystem_enforcesOrder G hwf hguards⟩
+
+/-- **The compiled scheduler has no information unavailable to a player.**
+
+The scheduler sees exactly `publicObserve`.  Every original player's local
+observation contains that same value as its first component, so scheduling may
+use all observable game data without becoming a channel for sealed data.  This
+is a pre-round statement: simultaneous player submissions are not an input to
+the scheduler observation. -/
+theorem compiled_scheduler_has_no_extra_information
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF)
+    (hguards : EventGraph.GuardLive G) :
+    (Compiled.serializedSystem G hwf hguards).SchedulerHasNoExtraInformation :=
+  Compiled.serializedSystem_schedulerHasNoExtraInformation G hwf hguards
+
+/-- **The scheduler's complete information is player-computable.**
+
+The state-level projection above extends through every runtime trace.  An
+original player's perfect-recall information determines the scheduler's
+current public observation, every earlier public observation and order, and
+the scheduler's own remembered choices.  Thus its order cannot transmit a
+private state fact: there is none in its information state. -/
+theorem compiled_scheduler_information_is_player_computable
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF)
+    (hguards : EventGraph.GuardLive G) (who : Player)
+    {state : (Compiled.serializedSystem G hwf hguards).toExecutionProtocol.State}
+    (trace : GameTheory.Protocol.ExecutionProtocol.Trace
+      (Compiled.serializedSystem G hwf hguards).toExecutionProtocol state) :
+    (Compiled.serializedSystem G hwf hguards).schedulerInfoFromPlayer
+        (fun seen : EventGraph.PublicObservation G ×
+          EventGraph.Observation G who => seen.1)
+        ((Compiled.serializedSystem G hwf hguards).revealingSignals.infoOf
+          (.player who) trace) =
+      (Compiled.serializedSystem G hwf hguards).revealingSignals.infoOf
+        (.scheduler : Participant Player) trace :=
+  Compiled.serializedSystem_schedulerInfo_eq_fromPlayer
+    G hwf hguards who trace
+
+/-- **Permissive serialization preserves the compiled graph's base effect.**
+
+All accepted orders of a legal player frontier reach the same law over settled
+reachable graph configurations.  The theorem deliberately forgets the public
+schedule log, which still distinguishes different orders. -/
+theorem compiled_permissive_effects_commute
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF)
+    (hguards : EventGraph.GuardLive G) :
+    (Compiled.serializedSystem G hwf hguards).EffectsCommute :=
+  Compiled.serializedSystem_effectsCommute G hwf hguards
+
+/-- **Every accepted serialized round implements the atomic source round.**
+
+This is stronger than pairwise scheduler confluence. For a source-legal joint
+frontier, the runtime's chosen player order reaches exactly `applyFrontier`, not
+merely an order-independent target state. Resolving the runtime round then
+applies the same automatic closure to that exact source successor. Each step of
+that closure is itself an ordinary source-protocol internal transition
+(`Compiled.settleInternal_succ_eq_source_step`). -/
+theorem compiled_serialized_round_implements_atomic
+    {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF)
+    (hguards : EventGraph.GuardLive G)
+    (state : EventGraph.ReachableConfig G)
+    (joint : ∀ who, Option (EventGraph.FrontierAction G who))
+    (hlegal : (EventGraph.toExecutionProtocol G hwf hguards).Legal state joint)
+    {order : List Player}
+    (horder : order ∈
+      (Compiled.serializedSystem G hwf hguards).schedules
+        (EventGraph.publicObserve G state.1)) :
+    Compiled.applySerializedOrder joint order state =
+        EventGraph.applyFrontier G hwf state joint ∧
+      (Compiled.serializedSystem G hwf hguards).resolveOrder
+          ((Compiled.serializedSystem G hwf hguards).withSchedule order joint)
+          order state =
+        (Compiled.serializedSystem G hwf hguards).settle
+          (EventGraph.applyFrontier G hwf state joint) :=
+  ⟨Compiled.applySerializedOrder_eq_applyFrontier
+      G hwf hguards state joint hlegal horder,
+    Compiled.serializedSystem_resolveOrder_eq_settle_atomicFrontier
+      G hwf hguards state joint hlegal horder⟩
+
+/-- **With fixed-order serialization, player submissions determine the step.**
+
+For the fixed-order serializer of a compiled graph, two legal joint submissions
+that agree on every original player's action induce exactly the same successor
+law.  This is stronger than base-state commutation: the public schedule log is
+equal as well, because the scheduler has only one accepted order. -/
+theorem compiled_fixed_order_step_determined_by_players
+    {Player : Type} [Fintype Player] [LinearOrder Player] {L : IExpr}
+    (G : EventGraph.Graph Player L) (hwf : G.WF)
+    (hguards : EventGraph.GuardLive G)
+    {state : (Compiled.fixedSerializedSystem G hwf hguards).State}
+    {left right : { joint //
+      (Compiled.fixedSerializedSystem G hwf hguards).toExecutionProtocol.Legal
+        state joint }}
+    (hplayers : ∀ who,
+      left.1 (.player who) = right.1 (.player who)) :
+    (Compiled.fixedSerializedSystem G hwf hguards).toExecutionProtocol.step
+        state left =
+      (Compiled.fixedSerializedSystem G hwf hguards).toExecutionProtocol.step
+        state right :=
+  Compiled.fixedSerializedSystem_step_determined_by_players
+    G hwf hguards hplayers
+
+/-- **Player deviation adequacy preserves and reflects Nash under every fixed
+adversarial scheduler.**
+
+The target protocol may contain a scheduler coordinate with arbitrary strategy
+and utility types.  Adequacy constrains neither: it fixes that coordinate and
+requires exact outcome-law back-translation only for deviations by original
+players.  The equivalence therefore covers every technically available player
+deviation without treating implementation machinery as part of the equilibrium
+population. -/
+theorem player_deviation_adequacy_nash_equivalence
+    {Player : Type} [DecidableEq Player]
+    {source : UtilityGame Player}
+    {target : UtilityGame (Participant Player)}
+    {Considered : (who : Player) →
+      target.form.sig.Strategy (.player who) → Prop}
+    (adequacy : Scheduled.PlayerDeviationAdequacyOn
+      source target Considered)
+    (scheduler : target.form.sig.Strategy
+      (.scheduler : Participant Player))
+    (profile : Profile source.form.sig) :
+    Scheduled.IsPlayerNashAgainst target Considered
+        (adequacy.compileProfile scheduler profile) ↔
+      IsNash source.form (euPreference source.utility) profile :=
+  adequacy.isPlayerNashAgainst_compileProfile_iff scheduler profile
+
+/-- **An independent schedule signal preserves Nash equilibrium among the
+original players, even against arbitrary signal-aware deviations.**
+
+The scheduler signal and scheduler utility are arbitrary.  Target players have
+the strictly richer strategy type `Signal → source strategy`, so a dishonest
+player may condition on the schedule.  For each fixed adversarial signal that
+plan back-translates to its value at the signal.  Because player utility ignores
+the signal, player-only Nash in the implementation is equivalent to source
+Nash.  No equilibrium or incentive claim is made about the scheduler. -/
+theorem independent_schedule_signal_preserves_player_nash
+    {Player : Type} [DecidableEq Player]
+    (source : UtilityGame Player) (Signal : Type)
+    (schedulerUtility : Signal × source.form.sig.Outcome → ℝ)
+    (signal : Signal) (profile : Profile source.form.sig) :
+    Scheduled.IsPlayerNash
+        (Scheduled.IndependentSignal.game source Signal schedulerUtility)
+        ((Scheduled.IndependentSignal.playerDeviationAdequacy
+          source Signal schedulerUtility).compileProfile signal profile) ↔
+      IsNash source.form (euPreference source.utility) profile :=
+  Scheduled.IndependentSignal.isPlayerNash_iff
+    source Signal schedulerUtility signal profile
+
+/-- **Random independent schedule signals also preserve and reflect player
+Nash.** A target deviation may choose a different complete source strategy for
+every signal. Its expected payoff is an average of ordinary source-deviation
+payoffs, so no exact single-strategy law back-translation is needed. -/
+theorem random_independent_schedule_signal_preserves_player_nash
+    {Player : Type} [DecidableEq Player]
+    (source : UtilityGame Player) (Signal : Type)
+    (schedulerUtility : Signal × source.form.sig.Outcome → ℝ)
+    (signalLaw : FinDist Signal) (profile : Profile source.form.sig) :
+    Scheduled.IsPlayerNash
+        (Scheduled.RandomIndependentSignal.game
+          source Signal schedulerUtility)
+        (Scheduled.RandomIndependentSignal.compiledProfile
+          source Signal signalLaw profile) ↔
+      IsNash source.form (euPreference source.utility) profile :=
+  Scheduled.RandomIndependentSignal.isPlayerNash_iff
+    source Signal schedulerUtility signalLaw profile
+
+/-- **A fixed public-information scheduler adds no distinctions between
+order-blind histories.** Replay executes the scheduler on the player's
+order-free observation history, reconstructing its previous choices. Both
+traces may contain arbitrary player deviations and chance outcomes. -/
+theorem public_scheduler_adds_no_history_information
+    {Player : Type} (sys : ScheduledSystem Player) (who : Player)
+    (scheduler : sys.revealingInformation.Policy .scheduler)
+    (project : sys.Obs who → sys.SchedulerView)
+    (hproject : ∀ state, project (sys.obs state who) = sys.schedulerView state)
+    {first second : sys.toExecutionProtocol.State}
+    (left : sys.toExecutionProtocol.Trace first)
+    (right : sys.toExecutionProtocol.Trace second)
+    (hleft : sys.SchedulerFollows scheduler left)
+    (hright : sys.SchedulerFollows scheduler right) :
+    sys.revealingSignals.infoOf (.player who) left =
+        sys.revealingSignals.infoOf (.player who) right ↔
+      sys.blindSignals.infoOf (.player who) left =
+        sys.blindSignals.infoOf (.player who) right :=
+  sys.revealing_info_eq_iff_blind_info_eq scheduler project hproject left right hleft hright
+
+/-- **Order-blind replay preserves the full execution law under a fixed
+public-information scheduler.** Every original player may use an arbitrary
+behavioral policy. The translated policy simulates the scheduler locally,
+independently of opponents' policies. The order-blind model retains the full
+observation history; no identification with compact source information is
+asserted. -/
+theorem public_scheduler_replay_preserves_behavioral_law
+    {Player : Type} [Fintype Player] (sys : ScheduledSystem Player)
+    (scheduler : sys.revealingInformation.Policy .scheduler)
+    (project : (who : Player) → sys.Obs who → sys.SchedulerView)
+    (hproject : ∀ state who, project who (sys.obs state who) = sys.schedulerView state)
+    (profile : (who : Participant Player) → sys.revealingInformation.BehavioralPolicy who)
+    (hscheduler : profile .scheduler = scheduler.toBehavioral)
+    (fuel : Nat) :
+    sys.revealingInformation.runBehavioral profile fuel =
+      sys.revealingInformation.runBehavioral
+        (sys.replayBehavioralProfile scheduler project profile) fuel :=
+  sys.runBehavioral_replay scheduler project hproject profile hscheduler fuel
+
+/-- **Randomly selected, actually executing public-history scheduler
+policies also permit exact replay.** The policy-selection randomness is
+independent of subsequent player/chance draws, not the realized orders.
+Translated players may use the selected policy as an independent seed. -/
+theorem random_public_scheduler_replay_preserves_law
+    {Player : Type} [Fintype Player] (sys : ScheduledSystem Player)
+    (schedulers : FinDist (sys.revealingInformation.Policy .scheduler))
+    (project : (who : Player) → sys.Obs who → sys.SchedulerView)
+    (hproject : ∀ state who, project who (sys.obs state who) = sys.schedulerView state)
+    (profile : (who : Participant Player) → sys.revealingInformation.BehavioralPolicy who)
+    (fuel : Nat) :
+    (schedulers.bind fun scheduler => sys.revealingInformation.runBehavioral
+      (sys.fixScheduler scheduler profile) fuel) =
+        schedulers.bind fun scheduler => sys.revealingInformation.runBehavioral
+          (sys.replayBehavioralProfile scheduler project profile) fuel :=
+  sys.runMixedScheduler_replay schedulers project hproject profile fuel
+
+/-- **The compiler-derived serializer is an actual finite informed game.**
+
+Its scheduler sees the public graph observation but no sealed values or
+same-round submissions; the published order remains in the history;
+original-player utility reads only the settled graph state; every participant
+has perfect recall; and every strategy profile terminates within the graph-node
+horizon. The final two conjuncts are the compiler-specific confluence theorem
+for every accepted order and the proof that the scheduler sees no state
+information unavailable to an original player. -/
+theorem compiled_serialized_game_wellFormed
+    {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+    (program : Machine.Program Player L)
+    (schedulerUtility : program.serializedArena.History → ℝ) :
+    program.serializedArena.information.PerfectRecall ∧
+      (program.serializedGame schedulerUtility).arena.execution.BoundedHorizon
+        program.graph.nodeCount ∧
+      program.serializedSystem.EffectsCommute ∧
+      program.serializedSystem.SchedulerHasNoExtraInformation :=
+  ⟨program.serializedPerfectRecall,
+    program.serializedBoundedHorizon schedulerUtility,
+    Compiled.serializedSystem_effectsCommute
+      program.graph program.graphWF program.guardLive,
+    Compiled.serializedSystem_schedulerHasNoExtraInformation
+      program.graph program.graphWF program.guardLive⟩
+
+/-- **Every serialized history has a source history with the same state,
+erased player information, and original-player payoff.** This quantifies over
+all legal traces, not only honest or equilibrium play. It is a trace theorem,
+not a profile-consistent back-translation of arbitrary runtime strategies. -/
+theorem compiled_serialized_history_has_source
+    {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+    (program : Machine.Program Player L)
+    (target : program.serializedArena.History)
+    (schedulerUtility : program.serializedArena.History → ℝ) :
+    ∃ source : program.execution.History,
+      source.state = target.state.base ∧
+      (∀ who, program.information.infoOf who source.trace =
+        program.eraseSerializedPlayerInformation who
+          (program.serializedArena.information.infoOf (.player who) target.trace)) ∧
+      ∀ who, program.utility source who =
+        program.serializedUtility schedulerUtility target (.player who) :=
+  program.serializedHistory_has_source target schedulerUtility
+
+/-- **Exact one-round law on state and all players' source information.**
+Automatic runtime settlement expands into actual atomic source histories,
+with the same probability law after erasing runtime ordering. This applies
+to every legal joint submission, including every accepted scheduler order. -/
+theorem compiled_serialized_round_information_law
+    {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+    (program : Machine.Program Player L)
+    (source : program.execution.History) (log : List (List Player))
+    (trace : program.serializedArena.execution.Trace ⟨source.state, log⟩)
+    (hinfo : ∀ who, program.information.infoOf who source.trace =
+      program.eraseSerializedPlayerInformation who
+        (program.serializedArena.information.infoOf (.player who) trace))
+    (command : {joint // program.serializedArena.execution.Legal
+      ⟨source.state, log⟩ joint}) :
+    (program.expandRound source (fun who => command.1 (.player who))
+        (program.serializedPlayers_legal command)).map program.historySummary =
+      ((program.serializedArena.execution.step ⟨source.state, log⟩ command).bindOnSupport
+        fun _ realized => FinDist.pure
+          ((⟨⟨source.state, log⟩, trace⟩ : program.serializedArena.History).extend
+            command.2 realized)).map program.serializedHistorySummary :=
+  program.expandRound_map_summary source log trace hinfo command
+
+/-- **The history expansion also matches a round of actual behavioral play.**
+Both players and scheduler may use arbitrary runtime-information-local
+randomized policies. The expanded source law still uses the runtime's joint
+submission law; no source-profile back-translation is asserted here. -/
+theorem compiled_serialized_behavioral_round_expands
+    {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+    (program : Machine.Program Player L)
+    (source : program.execution.History) (log : List (List Player))
+    (trace : program.serializedArena.execution.Trace ⟨source.state, log⟩)
+    (hinfo : ∀ who, program.information.infoOf who source.trace =
+      program.eraseSerializedPlayerInformation who
+        (program.serializedArena.information.infoOf (.player who) trace))
+    (policies : (who : Participant Player) →
+      program.serializedArena.information.BehavioralPolicy who)
+    (hterm : ¬ program.serializedArena.execution.terminal ⟨source.state, log⟩) :
+    (program.serializedArena.information.runBehavioralFrom policies 1
+        ⟨⟨source.state, log⟩, trace⟩).map program.serializedHistorySummary =
+      ((program.serializedArena.information.behavioralJoint policies trace hterm).bind
+        fun command => program.expandRound source
+          (fun who => command.1 (.player who))
+          (program.serializedPlayers_legal command)).map program.historySummary :=
+  program.serializedBehavioralRound_expands source log trace hinfo policies hterm
 
 /-! ## Scheduling -/
 
@@ -498,30 +818,21 @@ It is nonetheless a proper subclass. `Vegas.coinOrderAware` acts differently at
 two histories that agree on every public view and differ only in how a round was
 ordered, over a system whose actions are all the identity.
 
-This is the obstruction to back-translation, and it says what shape the
-remaining work has: adequacy against order-oblivious deviations does not extend
-to adequacy against arbitrary ones, because the arbitrary ones have no source
-counterpart to translate back to. -/
+This proves observability, not strategic failure. The compiled scheduler is
+allowed to observe public game data. Independent-signal Nash preservation is
+proved separately; using it for this runtime still requires a causal
+back-translation of order-history-aware player policies. -/
 theorem order_aware_deviations_exist (i : Fin 2) :
     ¬ Vegas.coinSystem.OrderOblivious (Vegas.coinOrderAware i) :=
   Vegas.coinOrderAware_not_orderOblivious i
 
-/-- **An order-enforcing runtime makes the scheduler strategically inert.**
+/-- **An order-enforcing runtime removes operational scheduling choice.**
 
 Two legal joint submissions agreeing on every player's submission induce the
-same successor law, whatever the scheduler submitted. So under a runtime that
-accepts one order per view, the scheduler cannot influence the outcome at all.
-
-This matters because compiling to a scheduled runtime adds a participant the
-source program does not have, whose payoff is nowhere in that program and cannot
-be inferred from it. There is no honest way to assume a miner's incentives.
-Enforcement makes them *irrelevant* instead — a property of the emitted
-artifact, which a compiler can establish rather than assume.
-
-Restricting attention to order-oblivious play would not do this. Equilibrium
-quantifies over the deviations a participant has *available*, so a class of
-well-behaved policies cannot be imposed by fiat: such a restriction describes a
-profile, not an equilibrium. Enforcement removes the availability.
+same successor law, whatever the scheduling coordinate contains. Thus a runtime
+accepting one order per view exposes no operational ordering choice. This is
+stronger than player-equilibrium preservation needs, but useful when developers
+also want identical public traces.
 
 Enforcement is a dial, not a default. `schedules` is a field of the system, so
 an artifact is permissive or enforcing by construction and `EnforcesOrder` is a
@@ -532,7 +843,7 @@ result simply does not apply; one who wants the guarantee pays for exactly it.
 Scope: enforcement removes *order* as a channel, not every channel. Timing —
 block height, elapsed time, who was slow — remains public and is not modelled
 here at all, and in-flight visibility is excluded by a separate assumption. -/
-theorem enforced_schedule_makes_scheduler_inert
+theorem enforced_schedule_removes_order_choice
     {ι : Type} (sys : ScheduledSystem ι) (henforce : sys.EnforcesOrder)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
@@ -541,19 +852,21 @@ theorem enforced_schedule_makes_scheduler_inert
       sys.toExecutionProtocol.step state right :=
   sys.step_eq_of_enforcesOrder henforce hplayers
 
-/-- **Commuting effects make the scheduler payoff-inert without enforcing an
-order.**
+/-- **Commuting effects make the schedule irrelevant to underlying state.**
 
 Two legal joint submissions agreeing on every player's submission reach the same
 law over *underlying states*, whatever the scheduler submitted — provided every
 order the runtime accepts has the same effect.
 
-This is the cheaper of the two answers to an order-aware deviation. Enforcement
-makes such a deviation unavailable; commutation lets it stay available and shows
-it gains nothing. The second suffices because equilibrium asks of each available
-deviation only that it not improve on the equilibrium payoff, so a deviation
-that exists and never pays is no threat — and there is then nothing to
-back-translate.
+This is the cheaper of two operational disciplines. Enforcement removes the
+order choice; commutation leaves it visible but proves that it cannot alter the
+underlying state. Strategic preservation additionally needs player utility to
+factor through that state and signal-conditioned player deviations to erase to
+source deviations. The fixed and random signal theorems supply the elementary
+averaging argument. For an executing public-history scheduler, one must also
+construct a source policy for each fixed scheduler random seed, consistently
+across source information sets. Public data is allowed; current simultaneous
+submissions remain outside the scheduler's observation.
 
 What it buys is strictly less than enforcement, and the gap is the point.
 Enforcement determines the whole successor law, log included, so no observation
@@ -566,7 +879,7 @@ Neither discipline covers a scheduler that reacts to what it is ordering. Both
 quantify over a fixed joint submission, which is this model's standing
 assumption that the scheduler commits without seeing the round's submissions.
 Front-running is a different system, not a corner of this one. -/
-theorem commuting_effects_make_scheduler_payoff_inert
+theorem commuting_effects_make_order_state_irrelevant
     {ι : Type} (sys : ScheduledSystem ι) (hcommute : sys.EffectsCommute)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
@@ -604,7 +917,7 @@ theorem order_available_observable_and_useless :
 
 For a runtime where one player doubles a total and another adds to it, the two
 accepted orders reach different totals, so `EffectsCommute` fails. The
-hypothesis of `commuting_effects_make_scheduler_payoff_inert` is therefore a
+hypothesis of `commuting_effects_make_order_state_irrelevant` is therefore a
 real restriction rather than something every system satisfies, and a system in
 this shape — two pending operations whose order changes the result, which is the
 shape a public runtime actually has — is one where a preservation claim must pay
@@ -641,19 +954,19 @@ theorem active_participation_is_forced
 
 /-- **Silence is inert, sometimes available, and not universally so.**
 
-Three things at once. A round in which every player sends nothing leaves the
-state where it was in *every* order, so the payoff to vanishing depends on the
-state alone — the baseline a dominance argument compares against, needing no
-`EffectsCommute` since inert actions commute with everything. The running-total
+Three things at once.  If every player is silent, the player-controlled phase
+leaves the state where it was in every order; a system's separate automatic
+settlement phase may still run.  This schedule-independence needs no
+`EffectsCommute`, since inert actions commute with everything. The running-total
 runtime affords silence. The doubling-and-adding one does not, every action
 there moving the total, so `AllowsSilence` is a real hypothesis rather than
 something every system satisfies.
 
 Silence is the residual gap left by the source language's own way of declining.
 A `yield`'s null submission is a transaction: the program sees it, continues,
-and can slash a deposit on the spot. Silence is not, and `silence_inert` is why
-— within the round nothing separates a silent player from one never asked, so a
-protocol wanting to charge for it must measure elapsed time. That is what a
+and can slash a deposit on the spot. Silence is not, and `silence_inert` is why:
+the player-controlled phase cannot attribute a state change to a silent player,
+so a protocol wanting to charge for it must measure elapsed time. That is what a
 timeout is for, and why the deposit story needs a mechanism rather than a rule
 saying players must reveal.
 
@@ -814,9 +1127,21 @@ terminal target execution has a source counterpart with the same payoff. It is
 not equality of probabilistic laws, and there is no converse here. (4) relates
 two presentations of the *same* compiled game to each other; it is not a
 statement relating source strategies to target strategies. The development has
-no end-to-end deviation-adequacy certificate from a source strategic semantics
-to a generated contract game, and no source-level strategy game corresponding to
-the raw program semantics for such a certificate to start from. -/
+no end-to-end deviation-adequacy certificate from the canonical atomic game to
+the actual serialized game or from either to a generated contract game. It also
+has no separate source-level strategy game for the pre-compilation raw program.
+`compiled_scheduler_has_no_extra_information` proves the compiled view is
+public. Atomic/serialized history simulation preserves state, erased player
+information, and one-round probability laws. What remains is a causal
+back-translation of arbitrary runtime policies, consistent across source
+information sets, and the resulting full behavioral-law comparison.
+Scheduler replay already provides exact full-history laws for order-blind
+runtime players, including mixtures of executing scheduler policies. That
+order-blind model retains every observation, while the canonical source model
+is compact; the needed information-sufficiency bridge is not yet proved.
+An EVM theorem must additionally define the target game and
+show that ordering, inclusion, timing, and visibility satisfy the required
+utility factorization and player-deviation back-translation. -/
 theorem compilation_summary
     {Player : Type} [Fintype Player] [DecidableEq Player] {L : IExpr}
     (source : WFProgram Player L) [FiniteDomains source] :
@@ -909,9 +1234,69 @@ build fails here rather than silently widening what the paper is trusting.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compiled_round_is_atomic
 
-/-- info: 'Vegas.Paper.compiled_and_serialized_runtimes_differ' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.compiled_runtime_scheduling_boundary' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.compiled_and_serialized_runtimes_differ
+#print axioms Vegas.Paper.compiled_runtime_scheduling_boundary
+
+/-- info: 'Vegas.Paper.compiled_scheduler_has_no_extra_information' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_scheduler_has_no_extra_information
+
+/-- info: 'Vegas.Paper.compiled_scheduler_information_is_player_computable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_scheduler_information_is_player_computable
+
+/-- info: 'Vegas.Paper.compiled_permissive_effects_commute' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_permissive_effects_commute
+
+/-- info: 'Vegas.Paper.compiled_serialized_round_implements_atomic' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_serialized_round_implements_atomic
+
+/-- info: 'Vegas.Paper.compiled_fixed_order_step_determined_by_players' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_fixed_order_step_determined_by_players
+
+/-- info: 'Vegas.Paper.player_deviation_adequacy_nash_equivalence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.player_deviation_adequacy_nash_equivalence
+
+/-- info: 'Vegas.Paper.independent_schedule_signal_preserves_player_nash' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.independent_schedule_signal_preserves_player_nash
+
+/-- info: 'Vegas.Paper.random_independent_schedule_signal_preserves_player_nash' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.random_independent_schedule_signal_preserves_player_nash
+
+/-- info: 'Vegas.Paper.public_scheduler_adds_no_history_information' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.public_scheduler_adds_no_history_information
+
+/-- info: 'Vegas.Paper.public_scheduler_replay_preserves_behavioral_law' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.public_scheduler_replay_preserves_behavioral_law
+
+/-- info: 'Vegas.Paper.random_public_scheduler_replay_preserves_law' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.random_public_scheduler_replay_preserves_law
+
+/-- info: 'Vegas.Paper.compiled_serialized_game_wellFormed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_serialized_game_wellFormed
+
+/-- info: 'Vegas.Paper.compiled_serialized_history_has_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_serialized_history_has_source
+
+/-- info: 'Vegas.Paper.compiled_serialized_round_information_law' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_serialized_round_information_law
+
+/-- info: 'Vegas.Paper.compiled_serialized_behavioral_round_expands' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_serialized_behavioral_round_expands
 
 /-- info: 'Vegas.Paper.utility_preservation_honest' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -949,13 +1334,13 @@ build fails here rather than silently widening what the paper is trusting.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.order_aware_deviations_exist
 
-/-- info: 'Vegas.Paper.enforced_schedule_makes_scheduler_inert' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.enforced_schedule_removes_order_choice' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.enforced_schedule_makes_scheduler_inert
+#print axioms Vegas.Paper.enforced_schedule_removes_order_choice
 
-/-- info: 'Vegas.Paper.commuting_effects_make_scheduler_payoff_inert' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.commuting_effects_make_order_state_irrelevant' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.commuting_effects_make_scheduler_payoff_inert
+#print axioms Vegas.Paper.commuting_effects_make_order_state_irrelevant
 
 /-- info: 'Vegas.Paper.order_available_observable_and_useless' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

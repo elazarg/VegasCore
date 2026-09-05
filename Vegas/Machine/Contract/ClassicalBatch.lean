@@ -53,7 +53,7 @@ def command :
 
 /-- Deterministic canonical serialization of the simultaneous packet. -/
 def result : program.State :=
-  applyFrontier program.graph state batch.joint
+  applyFrontier program.graph program.graphWF state batch.joint
 
 /-- The source execution law for a strategic packet is exactly the point mass
 at its canonical serialization. -/

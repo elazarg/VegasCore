@@ -32,117 +32,284 @@ open GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
 variable {L : IExpr}
 
-/-- A node/value selected by one coordinate of a frontier packet. -/
-private structure PacketChoice
-    (G : Graph Player L)
-    (joint : ∀ who, Option (FrontierAction G who))
-    (node : Fin G.nodeCount) where
-  owner : Player
-  action : FrontierAction G owner
-  value : L.Val (G.nodeRow node).ty
-  action_eq : joint owner = some action
-  value_eq : action.value? node = some value
+/-! ## Explicit frontier writes -/
 
-/-- Execute one selected commit node. The availability check totalizes the
-function outside the legal surface. On a legal frontier packet the first
-selected node is available, and availability of every other selected node
-persists while its peers are written. -/
-private noncomputable def applyCommitNode
-    (G : Graph Player L)
+/-- The writes selected by one player's frontier, in canonical graph-node
+order. This is shared by the atomic game semantics and serialized runtimes. -/
+def actionWrites {G : Graph Player L} {who : Player}
+    (action : FrontierAction G who) :
+    List (Fin G.nodeCount × TypedValue L) :=
+  G.nodeOrder.filterMap fun node =>
+    (action.value? node).map fun value =>
+      (node, G.nodeTypedValue node value)
+
+omit [Fintype Player] in
+@[simp] theorem mem_actionWrites_iff {G : Graph Player L} {who : Player}
+    (action : FrontierAction G who)
+    (step : Fin G.nodeCount × TypedValue L) :
+    step ∈ actionWrites action ↔
+      ∃ value, action.value? step.1 = some value ∧
+        step.2 = G.nodeTypedValue step.1 value := by
+  rcases step with ⟨node, written⟩
+  rw [actionWrites, List.mem_filterMap]
+  constructor
+  · rintro ⟨selected, _hselected, hmap⟩
+    cases hvalue : action.value? selected with
+    | none => simp [hvalue] at hmap
+    | some value =>
+        simp only [hvalue, Option.map_some, Option.some.injEq] at hmap
+        have hnode : selected = node := congrArg Prod.fst hmap
+        subst node
+        exact ⟨value, hvalue, (congrArg Prod.snd hmap).symm⟩
+  · rintro ⟨value, hvalue, hwritten⟩
+    refine ⟨node, G.mem_nodeOrder node, ?_⟩
+    simpa [hvalue] using
+      congrArg (fun value => some (node, value)) hwritten.symm
+
+omit [Fintype Player] in
+theorem actionWrites_nodes_nodup {G : Graph Player L} {who : Player}
+    (action : FrontierAction G who) :
+    ((actionWrites action).map Prod.fst).Nodup := by
+  have helper : ∀ nodes : List (Fin G.nodeCount), nodes.Nodup →
+      ((nodes.filterMap fun node =>
+        (action.value? node).map fun value =>
+          (node, G.nodeTypedValue node value)).map Prod.fst).Nodup := by
+    intro nodes hnodes
+    induction nodes with
+    | nil => simp
+    | cons node rest ih =>
+        rw [List.nodup_cons] at hnodes
+        cases hvalue : action.value? node with
+        | none => simpa [hvalue] using ih hnodes.2
+        | some value =>
+            simp only [List.filterMap_cons, hvalue, Option.map_some,
+              List.map_cons, List.nodup_cons]
+            constructor
+            · intro hmem
+              have hmem' : node ∈ rest ∧
+                  ∃ value, action.value? node = some value := by
+                simpa [List.mem_map] using hmem
+              exact hnodes.1 hmem'.1
+            · exact ih hnodes.2
+  exact helper G.nodeOrder G.nodeOrder_nodup
+
+omit [Fintype Player] in
+theorem commitAvailable_of_mem_actionWrites
+    {G : Graph Player L} {cfg : Config G} {who : Player}
+    {action : FrontierAction G who}
+    (havailable : FrontierAction.Available G cfg who action)
+    {step : Fin G.nodeCount × TypedValue L}
+    (hstep : step ∈ actionWrites action) :
+    CommitAvailable G cfg who { node := step.1, value := step.2 } := by
+  obtain ⟨value, hvalue, hwritten⟩ :=
+    (mem_actionWrites_iff action step).mp hstep
+  rw [hwritten]
+  exact havailable.commitAvailable_of_value hvalue
+
+omit [Fintype Player] in
+theorem readyCommitNode_of_mem_actionWrites
+    {G : Graph Player L} {cfg : Config G} {who : Player}
+    {action : FrontierAction G who}
+    (havailable : FrontierAction.Available G cfg who action)
+    {step : Fin G.nodeCount × TypedValue L}
+    (hstep : step ∈ actionWrites action) :
+    ReadyCommitNode G cfg who step.1 := by
+  obtain ⟨value, hvalue, _hwritten⟩ :=
+    (mem_actionWrites_iff action step).mp hstep
+  exact havailable.readyCommitNode_of_value hvalue
+
+/-- The writes contributed by one player coordinate. -/
+def playerWrites {G : Graph Player L}
+    (joint : ∀ who, Option (FrontierAction G who)) (who : Player) :
+    List (Fin G.nodeCount × TypedValue L) :=
+  match joint who with
+  | none => []
+  | some action => actionWrites action
+
+omit [Fintype Player] in
+@[simp] theorem mem_playerWrites_iff {G : Graph Player L}
+    (joint : ∀ who, Option (FrontierAction G who)) (who : Player)
+    (step : Fin G.nodeCount × TypedValue L) :
+    step ∈ playerWrites joint who ↔
+      ∃ action, joint who = some action ∧ step ∈ actionWrites action := by
+  cases haction : joint who with
+  | none => simp [playerWrites, haction]
+  | some action => simp [playerWrites, haction]
+
+/-- All frontier writes in a proposed player order. -/
+def roundWrites {G : Graph Player L}
     (joint : ∀ who, Option (FrontierAction G who))
+    (order : List Player) : List (Fin G.nodeCount × TypedValue L) :=
+  order.flatMap (playerWrites joint)
+
+omit [Fintype Player] in
+@[simp] theorem roundWrites_append {G : Graph Player L}
+    (joint : ∀ who, Option (FrontierAction G who))
+    (left right : List Player) :
+    roundWrites joint (left ++ right) =
+      roundWrites joint left ++ roundWrites joint right := by
+  simp [roundWrites]
+
+omit [Fintype Player] in
+@[simp] theorem mem_roundWrites_iff {G : Graph Player L}
+    (joint : ∀ who, Option (FrontierAction G who))
+    (order : List Player) (step : Fin G.nodeCount × TypedValue L) :
+    step ∈ roundWrites joint order ↔
+      ∃ who ∈ order, step ∈ playerWrites joint who := by
+  simp [roundWrites]
+
+omit [Fintype Player] in
+/-- Locally legal player submissions contribute pairwise distinct graph nodes,
+including across player coordinates. -/
+theorem roundWrites_nodes_nodup {G : Graph Player L} {cfg : Config G}
+    {joint : ∀ who, Option (FrontierAction G who)}
+    (hlegal : ∀ who action, joint who = some action →
+      FrontierAction.Available G cfg who action)
+    {order : List Player} (horder : order.Nodup) :
+    ((roundWrites joint order).map Prod.fst).Nodup := by
+  induction order with
+  | nil => simp [roundWrites]
+  | cons who rest ih =>
+      rw [List.nodup_cons] at horder
+      cases haction : joint who with
+      | none =>
+          simpa [roundWrites, playerWrites, haction] using ih horder.2
+      | some action =>
+          rw [roundWrites, List.flatMap_cons, playerWrites, haction,
+            List.map_append, List.nodup_append]
+          refine ⟨actionWrites_nodes_nodup action, ih horder.2, ?_⟩
+          intro first hfirst second hsecond heq
+          obtain ⟨firstWrite, hfirstWrite, hfirstEq⟩ :=
+            List.mem_map.mp hfirst
+          obtain ⟨secondWrite, hsecondWrite, hsecondEq⟩ :=
+            List.mem_map.mp hsecond
+          obtain ⟨other, hother, hsecondPlayer⟩ :=
+            (mem_roundWrites_iff joint rest secondWrite).mp hsecondWrite
+          obtain ⟨otherAction, hotherAction, hsecondAction⟩ :=
+            (mem_playerWrites_iff joint other secondWrite).mp hsecondPlayer
+          have hfirstReady : ReadyCommitNode G cfg who firstWrite.1 :=
+            readyCommitNode_of_mem_actionWrites
+              (hlegal who action haction) hfirstWrite
+          have hsecondReady : ReadyCommitNode G cfg other secondWrite.1 :=
+            readyCommitNode_of_mem_actionWrites
+              (hlegal other otherAction hotherAction) hsecondAction
+          have hnodes : firstWrite.1 = secondWrite.1 :=
+            hfirstEq.trans (heq.trans hsecondEq.symm)
+          rw [← hnodes] at hsecondReady
+          have howners : who = other :=
+            hfirstReady.owner_unique hsecondReady
+          exact horder.1 (howners.symm ▸ hother)
+
+omit [Fintype Player] in
+theorem commitAvailable_of_mem_roundWrites
+    {G : Graph Player L} {cfg : Config G}
+    {joint : ∀ who, Option (FrontierAction G who)}
+    (hlegal : ∀ who action, joint who = some action →
+      FrontierAction.Available G cfg who action)
+    {order : List Player} {step : Fin G.nodeCount × TypedValue L}
+    (hstep : step ∈ roundWrites joint order) :
+    ∃ who, CommitAvailable G cfg who
+      { node := step.1, value := step.2 } := by
+  obtain ⟨who, _hwho, hplayer⟩ :=
+    (mem_roundWrites_iff joint order step).mp hstep
+  obtain ⟨action, haction, hactionWrite⟩ :=
+    (mem_playerWrites_iff joint who step).mp hplayer
+  exact ⟨who, commitAvailable_of_mem_actionWrites
+    (hlegal who action haction) hactionWrite⟩
+
+omit [Fintype Player] in
+theorem roundWrites_perm {G : Graph Player L}
+    (joint : ∀ who, Option (FrontierAction G who))
+    {left right : List Player} (hperm : left.Perm right) :
+    (roundWrites joint left).Perm (roundWrites joint right) := by
+  exact hperm.flatMap fun _ _ => List.Perm.refl _
+
+omit [Fintype Player] in
+/-- A duplicate-free list of commits available at one checkpoint can be
+executed in the listed order. Availability persists because distinct ready
+nodes cannot read one another's output fields. -/
+theorem reachable_completeNodes_of_commitAvailable
+    {G : Graph Player L} (hwf : G.WF) {cfg : Config G}
+    (hreachable : Reachable G cfg)
+    {steps : List (Fin G.nodeCount × TypedValue L)}
+    (hnodup : (steps.map Prod.fst).Nodup)
+    (havailable : ∀ step ∈ steps,
+      ∃ who, CommitAvailable G cfg who
+        { node := step.1, value := step.2 }) :
+    Reachable G (cfg.completeNodes steps) := by
+  induction steps generalizing cfg with
+  | nil => simpa using hreachable
+  | cons head rest ih =>
+      simp only [List.map_cons, List.nodup_cons] at hnodup
+      obtain ⟨headWho, headAvailable⟩ :=
+        havailable head (by simp)
+      let headStep := Classical.choice headAvailable
+      let event : AvailableEvent G cfg :=
+        .commit headWho { node := head.1, value := head.2 } headStep
+      have hnext : cfg.completeNode head.1 head.2 ∈
+          (stepAvailableEvent G cfg event).support := by
+        change cfg.completeNode head.1 head.2 ∈
+          (FinDist.pure
+            (cfg.completeNode head.1
+              { ty := headStep.guard.ty, value := headStep.value })).support
+        rw [headStep.written_eq_action]
+        exact FinDist.mem_support_pure.mpr rfl
+      have hreachableHead : Reachable G (cfg.completeNode head.1 head.2) :=
+        Reachable.step hreachable event hnext
+      rw [Config.completeNodes_cons]
+      apply ih hreachableHead hnodup.2
+      intro tail htail
+      obtain ⟨tailWho, tailAvailable⟩ :=
+        havailable tail (by simp [htail])
+      refine ⟨tailWho,
+        tailAvailable.persist_after_other_commit_write
+          hwf headAvailable head.2 ?_⟩
+      intro heq
+      change tail.1 = head.1 at heq
+      apply hnodup.1
+      have htailNode : tail.1 ∈ rest.map Prod.fst :=
+        List.mem_map_of_mem (f := Prod.fst) htail
+      exact heq ▸ htailNode
+
+/-- Apply a simultaneous frontier packet using one shared explicit write list.
+
+The canonical player order is operational only: the protocol exposes the whole
+packet as one joint action, and distinct locally legal writes commute. The
+fallback makes the function total on malformed direct calls; protocol steps
+always establish `havailable`. -/
+noncomputable def applyFrontier
+    (G : Graph Player L) (hwf : G.WF)
     (state : ReachableConfig G)
-    (node : Fin G.nodeCount) : ReachableConfig G := by
+    (joint : ∀ who, Option (FrontierAction G who)) : ReachableConfig G := by
   classical
-  if henabled : ∃ choice : PacketChoice G joint node,
-      CommitAvailable G state.1 choice.owner
-        { node := node, value := G.nodeTypedValue node choice.value } then
-    let choice := Classical.choose henabled
-    let step := Classical.choice (Classical.choose_spec henabled)
-    let event : AvailableEvent G state.1 :=
-      .commit choice.owner
-        { node := node, value := G.nodeTypedValue node choice.value }
-        step
-    let next := state.1.completeNode node
-      { ty := step.guard.ty, value := step.value }
+  if havailable : ∀ who action, joint who = some action →
+      FrontierAction.Available G state.1 who action then
+    let steps := roundWrites joint (Finset.univ.toList : List Player)
     exact
-      ⟨next, Reachable.step state.2 event (by
-        simp [event, next, stepAvailableEvent, stepCommit])⟩
+      ⟨state.1.completeNodes steps,
+        reachable_completeNodes_of_commitAvailable hwf state.2
+          (roundWrites_nodes_nodup havailable Finset.univ.nodup_toList)
+          (fun _step hstep =>
+            commitAvailable_of_mem_roundWrites havailable hstep)⟩
   else
     exact state
 
-/-- The nodes mentioned by a frontier packet, in canonical graph order. -/
-private noncomputable def selectedNodes
-    (G : Graph Player L)
-    (joint : ∀ who, Option (FrontierAction G who)) :
-    List (Fin G.nodeCount) := by
-  classical
-  exact G.nodeOrder.filter fun node =>
-    decide (Nonempty (PacketChoice G joint node))
-
-/-- Apply a simultaneous frontier packet in canonical graph-node order.
-Independent ready commits commute, so the chosen serialization is operational
-only; the protocol exposes the whole packet as one joint action. -/
-noncomputable def applyFrontier
-    (G : Graph Player L)
+/-- On its legal surface, the atomic frontier operation is exactly the shared
+canonical list of submitted writes. -/
+theorem applyFrontier_val_of_available
+    (G : Graph Player L) (hwf : G.WF)
     (state : ReachableConfig G)
-    (joint : ∀ who, Option (FrontierAction G who)) : ReachableConfig G :=
-  (selectedNodes G joint).foldl (applyCommitNode G joint) state
-
-omit [Fintype Player] in
-private theorem applyCommitNode_done_subset
-    (G : Graph Player L)
     (joint : ∀ who, Option (FrontierAction G who))
-    (state : ReachableConfig G)
-    (node : Fin G.nodeCount) :
-    state.1.done ⊆ (applyCommitNode G joint state node).1.done := by
-  classical
-  unfold applyCommitNode
-  split
-  · exact Finset.subset_insert _ _
-  · exact Finset.Subset.rfl
+    (havailable : ∀ who action, joint who = some action →
+      FrontierAction.Available G state.1 who action) :
+    (applyFrontier G hwf state joint).1 =
+      state.1.completeNodes
+        (roundWrites joint (Finset.univ.toList : List Player)) := by
+  unfold applyFrontier
+  rw [dif_pos havailable]
 
-omit [Fintype Player] in
-private theorem fold_applyCommitNode_done_subset
-    (G : Graph Player L)
-    (joint : ∀ who, Option (FrontierAction G who))
-    (nodes : List (Fin G.nodeCount))
-    (state : ReachableConfig G) :
-    state.1.done ⊆
-      (nodes.foldl (applyCommitNode G joint) state).1.done := by
-  induction nodes generalizing state with
-  | nil => exact Finset.Subset.rfl
-  | cons node rest ih =>
-      exact Finset.Subset.trans
-        (applyCommitNode_done_subset G joint state node)
-        (ih (applyCommitNode G joint state node))
-
-omit [Fintype Player] in
-private theorem applyCommitNode_done_ssubset
-    (G : Graph Player L)
-    (joint : ∀ who, Option (FrontierAction G who))
-    (state : ReachableConfig G)
-    (node : Fin G.nodeCount)
-    (henabled : ∃ choice : PacketChoice G joint node,
-      CommitAvailable G state.1 choice.owner
-        { node := node, value := G.nodeTypedValue node choice.value }) :
-    state.1.done ⊂ (applyCommitNode G joint state node).1.done := by
-  classical
-  unfold applyCommitNode
-  rw [dif_pos henabled]
-  exact Config.done_ssubset_completeNode
-    (Classical.choice (Classical.choose_spec henabled)).ready.1 _
-
-omit [Fintype Player] in
-private theorem mem_selectedNodes_iff
-    (G : Graph Player L)
-    (joint : ∀ who, Option (FrontierAction G who))
-    (node : Fin G.nodeCount) :
-    node ∈ selectedNodes G joint ↔ Nonempty (PacketChoice G joint node) := by
-  classical
-  simp [selectedNodes]
-
-private theorem selectedNodes_nonempty_of_legal
-    (G : Graph Player L)
+private theorem applyFrontier_done_ssubset_of_legal
+    (G : Graph Player L) (hwf : G.WF)
     (state : ReachableConfig G)
     (joint : ∀ who, Option (FrontierAction G who))
     (hactive : (activePlayers G state.1).Nonempty)
@@ -150,70 +317,55 @@ private theorem selectedNodes_nonempty_of_legal
       (fun who => who ∈ activePlayers G state.1)
       (fun who => { action | FrontierAction.Available G state.1 who action })
       joint) :
-    ∃ node, node ∈ selectedNodes G joint := by
+    state.1.done ⊂ (applyFrontier G hwf state joint).1.done := by
   classical
+  have havailable : ∀ who action, joint who = some action →
+      FrontierAction.Available G state.1 who action := by
+    intro who action haction
+    have hlocal := hlegal who
+    rw [haction] at hlocal
+    exact hlocal.2
+  rw [applyFrontier_val_of_available G hwf state joint havailable,
+    Config.completeNodes_done]
+  refine Finset.ssubset_iff_subset_ne.mpr
+    ⟨Finset.subset_union_left, ?_⟩
+  intro heq
   rcases hactive with ⟨who, hwho⟩
   cases haction : joint who with
   | none =>
       have hlocal := hlegal who
       rw [haction] at hlocal
-      exact False.elim (hlocal hwho)
+      exact hlocal hwho
   | some action =>
       have hlocal := hlegal who
       rw [haction] at hlocal
-      have hreadySet : (readyCommitNodes G state.1 who).Nonempty :=
-        (Finset.mem_filter.mp hwho).2
-      rcases hreadySet with ⟨node, hnode⟩
+      rcases (Finset.mem_filter.mp hwho).2 with ⟨node, hnodeMem⟩
       have hready : ReadyCommitNode G state.1 who node :=
-        (Finset.mem_filter.mp hnode).2
-      rcases
-          (hlocal.2.value?_isSome_iff_readyCommitNode.mpr hready) with
+        (Finset.mem_filter.mp hnodeMem).2
+      rcases (hlocal.2.value?_isSome_iff_readyCommitNode.mpr hready) with
         ⟨value, hvalue⟩
-      exact
-        ⟨node, (mem_selectedNodes_iff G joint node).2
-          ⟨{ owner := who
-             action := action
-             value := value
-             action_eq := haction
-             value_eq := hvalue }⟩⟩
-
-private theorem applyFrontier_done_ssubset_of_legal
-    (G : Graph Player L)
-    (state : ReachableConfig G)
-    (joint : ∀ who, Option (FrontierAction G who))
-    (hactive : (activePlayers G state.1).Nonempty)
-    (hlegal : GameTheory.Protocol.IsLegalJoint
-      (fun who => who ∈ activePlayers G state.1)
-      (fun who => { action | FrontierAction.Available G state.1 who action })
-      joint) :
-    state.1.done ⊂ (applyFrontier G state joint).1.done := by
-  classical
-  have hselected := selectedNodes_nonempty_of_legal G state joint hactive hlegal
-  cases hnodes : selectedNodes G joint with
-  | nil =>
-      rcases hselected with ⟨node, hmem⟩
-      rw [hnodes] at hmem
-      cases hmem
-  | cons node rest =>
-      have hchoice : Nonempty (PacketChoice G joint node) :=
-        (mem_selectedNodes_iff G joint node).1 (by simp [hnodes])
-      let choice := Classical.choice hchoice
-      have hlocal := hlegal choice.owner
-      rw [choice.action_eq] at hlocal
-      have henabled : ∃ selected : PacketChoice G joint node,
-          CommitAvailable G state.1 selected.owner
-            { node := node,
-              value := G.nodeTypedValue node selected.value } :=
-        ⟨choice,
-          hlocal.2.commitAvailable_of_value choice.value_eq⟩
-      have hfirst :=
-        applyCommitNode_done_ssubset G joint state node henabled
-      have hrest :=
-        fold_applyCommitNode_done_subset G joint rest
-          (applyCommitNode G joint state node)
-      unfold applyFrontier
-      rw [hnodes]
-      exact Finset.ssubset_of_ssubset_of_subset hfirst hrest
+      let written : Fin G.nodeCount × TypedValue L :=
+        (node, G.nodeTypedValue node value)
+      have hactionWrite : written ∈ actionWrites action :=
+        (mem_actionWrites_iff action written).mpr ⟨value, hvalue, rfl⟩
+      have hplayerWrite : written ∈ playerWrites joint who :=
+        (mem_playerWrites_iff joint who written).mpr
+          ⟨action, haction, hactionWrite⟩
+      have hroundWrite : written ∈
+          roundWrites joint (Finset.univ.toList : List Player) :=
+        (mem_roundWrites_iff joint _ written).mpr
+          ⟨who, by simp, hplayerWrite⟩
+      have hnodeWritten : node ∈
+          (roundWrites joint (Finset.univ.toList : List Player)).map Prod.fst :=
+        List.mem_map.mpr ⟨written, hroundWrite, rfl⟩
+      have hnodeUnion : node ∈ state.1.done ∪
+          ((roundWrites joint
+            (Finset.univ.toList : List Player)).map Prod.fst).toFinset := by
+        exact Finset.mem_union_right _ (List.mem_toFinset.mpr hnodeWritten)
+      have hnodeDone : node ∈ state.1.done := by
+        rw [heq]
+        exact hnodeUnion
+      exact hready.ready.1 hnodeDone
 
 private theorem activePlayers_nonempty_of_no_internal
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
@@ -263,7 +415,7 @@ noncomputable def toExecutionProtocol
       exact stepAvailable G state
         (.internal { node := node } (Classical.choice havailable))
     else
-      exact FinDist.pure (applyFrontier G state legal.1)
+      exact FinDist.pure (applyFrontier G hwf state legal.1)
   progress := fun state hterminal => by
     classical
     by_cases hinternal : readyInternalNodes G state.1 = ∅
@@ -298,7 +450,7 @@ theorem toExecutionProtocol_step_eq_pure_applyFrontier
     (noInternal : readyInternalNodes G state.1 = ∅) :
     (toExecutionProtocol G hwf hguards).step state legal =
       GameTheory.Math.Probability.FinDist.pure
-        (applyFrontier G state legal.1) := by
+        (applyFrontier G hwf state legal.1) := by
   unfold toExecutionProtocol
   change
     (if _hinternal : (readyInternalNodes G state.1).Nonempty then _ else _) = _
@@ -328,7 +480,7 @@ theorem toExecutionProtocol_step_done_ssubset
       stepAvailable G state
         (.internal { node := node } (Classical.choice havailable))
     else
-      FinDist.pure (applyFrontier G state legal.1)).support at htarget
+      FinDist.pure (applyFrontier G hwf state legal.1)).support at htarget
   by_cases hinternal : (readyInternalNodes G state.1).Nonempty
   · rw [dif_pos hinternal] at htarget
     exact done_ssubset_of_stepAvailable_support G state _ htarget
@@ -358,7 +510,7 @@ theorem toExecutionProtocol_step_done_ssubset
             FrontierAction.Available G state.1 who action
           exact ⟨hcoord.1.2.2, hcoord.2⟩
     exact applyFrontier_done_ssubset_of_legal
-      G state legal.1 hactive hfrontier
+      G hwf state legal.1 hactive hfrontier
 
 /-- A protocol trace cannot be longer than the number of graph nodes already
 completed at its endpoint. -/
@@ -412,7 +564,8 @@ abbrev LocalSnapshot (G : Graph Player L) (who : Player) :=
 
 /-- A player's information consists of the current graph-local snapshot and
 exactly its own earlier decision record. Unrelated transition ordering is not
-retained. -/
+retained. Graph storage is immutable and completion is monotone, so the current
+snapshot retains all game data disclosed by inactive transitions. -/
 structure PlayerInformation (G : Graph Player L) (who : Player) where
   current : LocalSnapshot G who
   own : List (LocalSnapshot G who × FrontierAction G who)
@@ -420,6 +573,16 @@ structure PlayerInformation (G : Graph Player L) (who : Player) where
 namespace PlayerInformation
 
 variable {G : Graph Player L} {who : Player}
+
+omit [Fintype Player] in
+@[ext] theorem ext {left right : PlayerInformation G who}
+    (hcurrent : left.current = right.current) (hown : left.own = right.own) :
+    left = right := by
+  cases left
+  cases right
+  cases hcurrent
+  cases hown
+  rfl
 
 /-- Extend local information after one transition. Only the player's own
 action is remembered; inactive transitions merely replace the current
@@ -573,7 +736,7 @@ private theorem legalOption_iff_of_observations
         (active_iff_of_observations G hwf hguards hpublic hprivate)
         (FrontierAction.available_iff_of_observe_eq hwf hprivate)
 
-private noncomputable def localMenu
+noncomputable def localMenu
     (G : Graph Player L) (hwf : G.WF) (hguards : GuardLive G)
     (who : Player) (info : PlayerInformation G who) :
     Set (Option (FrontierAction G who)) := by

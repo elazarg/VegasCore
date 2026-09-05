@@ -19,18 +19,20 @@ asynchronous public protocols generally.
 The module depends only on `GameTheory`, so it can be lifted into that library
 once the interface has been exercised by a real client.
 
-## The scheduler is a player
+## The scheduler is a protocol coordinate, not a game player
 
-Not a parameter.  A scheduler passed as a parameter sits in the protocol's
-*type*, so two schedulers give two protocols, their histories and information
-states live in different families, and every comparison between them drags a
-transport across an equality that holds only propositionally.  As a coordinate
-of the profile — agent `none` — two schedules are two profiles in one game, and
-comparing them is ordinary game theory.
+A scheduler passed as a parameter sits in the protocol's *type*, so two
+schedulers give two protocols, their histories and information states live in
+different families, and comparison requires transports.  The named
+`Participant.scheduler` coordinate instead puts every accepted schedule inside
+one execution protocol and lets operational theorems quantify over all of them.
 
-It is also the more honest reading.  A sequencer is a strategic participant with
-its own options, not a fixed function; treating it as a player is what lets a
-result quantify over adversarial scheduling rather than assume one schedule.
+`Participant` is therefore a submission-indexing type.  It does **not** assert
+that every coordinate belongs to the population whose Nash equilibrium is under
+analysis.  `Vegas.Scheduled.Strategic` fixes an arbitrary, possibly adversarial
+scheduler strategy and quantifies equilibrium deviations only over
+`Participant.player i`.  Scheduler preferences are neither inferred nor
+preserved.
 
 ## The one design decision that matters
 
@@ -50,8 +52,9 @@ produce distinguishable protocol states.
 information state, so a policy reading something absent from that state cannot
 be written.  The honest and robust readings are therefore two classes of policy
 inside the one faithful game — `OrderOblivious` and everything — which is the
-shape `DeviationAdequacyOn` consumes.  `blindSignals` is kept as the documented
-idealization that resolves a round atomically, and
+shape `DeviationAdequacyOn` consumes.  `blindSignals` is the documented
+idealization that erases the order from participants' information while keeping
+the same scheduled transition, and
 `blind_infoOf_eq_forgetOrders` measures exactly what it drops.
 
 ## Two disciplines, and when each is needed
@@ -61,9 +64,9 @@ of an available deviation only that it not improve on the equilibrium payoff.
 Make it unavailable, or let it be available and show it gains nothing.
 
 `EnforcesOrder` takes the first route: the runtime accepts one order per view,
-so the scheduler has nothing to choose and `step_eq_of_enforcesOrder` makes it
-strategically inert.  It costs the round's parallelism, and an enforced order
-means a stalled participant blocks the protocol.
+so the scheduler has nothing to choose and `step_eq_of_enforcesOrder` makes the
+coordinate operationally inert.  It costs the round's parallelism, and an
+enforced order means a stalled participant blocks the protocol.
 
 `EffectsCommute` takes the second: every accepted order has the same effect, so
 `step_base_eq_of_effectsCommute` makes the scheduler irrelevant to the
@@ -92,9 +95,8 @@ than being argued away.
 
 ## Menus are observation-local, not public
 
-An earlier version made a participant's menu a function of one public `View`,
-and gave players no private signal at all.  That is a fine model of a runtime
-whose entire state is public, and it cannot express Vegas.
+A participant menu that is only a function of one public `View` is adequate for
+a runtime whose entire state is public, but it cannot express Vegas.
 
 The obstruction is concrete.  A player's legal frontier action is determined by
 `EventGraph.observe`, which includes the values sealed *to that player*
@@ -106,22 +108,18 @@ only the fragment of the language with nothing sealed, which is the fragment
 the language exists to avoid.
 
 Hence `Obs` and `obs`: menus are local to a participant's *own* observation,
-which is what `GameTheory`'s `PrivateSignal` channel was always for.  `View`
-survives as what is genuinely public and is what the scheduler sees — the model's
-way of saying a scheduler orders a round without reading its contents.
-
-This was found by trying to instantiate the interface from a compiled program
-and failing.  The instantiation itself is still not built; what is fixed is that
-the interface no longer rules it out.
+which is what `GameTheory`'s `PrivateSignal` channel was always for. `View`
+remains the genuinely public player signal. The separate `SchedulerView`
+contains exactly what may influence ordering. The compiled instance supplies
+the full public graph observation: a scheduler may react to data everyone can
+already see, but not to sealed values or same-round submissions.
 
 ## Vocabulary: absence, declining, and the scheduler
 
-Three different things wanted the spelling `none`, and conflating them has
-caused real errors here.  Each now has a name.
+Three different notions must remain distinct.
 
-*The scheduler* is `Participant.scheduler`.  This was the cheapest of the three
-to fix and the most misleading to leave: `joint none` read as "nobody" when it
-meant "the participant that orders the round".
+*The scheduler* is `Participant.scheduler`, the participant that orders the
+round.
 
 *Declining* is `declineValue`, the null **value** a player submits to a nullable
 commitment — so a decline is `some (declineValue b)`, a submission like any
@@ -133,8 +131,9 @@ other.  `Expr.nullableCommitGuard` accepts it unconditionally
 *Absence* is `IsLegalJoint`'s `none`: no submission at all.  It is legal only
 for an inactive participant, so the model forbids what no public runtime can
 (`active_participation_is_forced`).  `AllowsSilence` names that gap, and
-`silence_inert` is what makes it a gap rather than a decline — nothing moves, so
-within the round nothing separates a silent player from one never asked.
+`silence_inert` is what makes it a gap rather than a decline — the silent
+player's action moves nothing, so the player-controlled phase cannot distinguish
+it from one never asked.  Independent automatic settlement may still run.
 
 The two that survive are ordered, not alternative:
 `AllowsSilence.toAllowsDeclining` says silence is a decline that is also
@@ -201,6 +200,9 @@ inductive Participant (ι : Type u) where
   /-- A submitting player. -/
   | player (i : ι)
 
+deriving instance DecidableEq for Participant
+deriving instance Fintype for Participant
+
 /-- A state machine whose round is resolved by applying each submitted action in
 turn.  Ordering is a real degree of freedom exactly when `applyOne` calls fail
 to commute. -/
@@ -219,10 +221,26 @@ structure ScheduledSystem (ι : Type u) where
   terminal : Base → Prop
   /-- Apply one player's submission. -/
   applyOne : (state : Base) → (i : ι) → Action i → FinDist Base
+  /-- Finish automatic work enabled by the ordered submissions.
+
+  `applyOne` models the participant-controlled part of a round.  A compiled
+  event graph may then have samples or reveals to execute before the next
+  strategic frontier.  Keeping that closure explicit prevents an all-inactive
+  state from satisfying `progress` by stuttering forever.  Systems with no
+  automatic work use `FinDist.pure`. -/
+  settle : Base → FinDist Base
   /-- What everyone publicly sees of the underlying state. -/
   View : Type u
   /-- The public view of a state. -/
   view : Base → View
+  /-- Exactly the state summary on which scheduling choices may depend.
+
+  This is separate from `View` because the two interfaces have different
+  consumers.  It does not require the scheduler to be blind to public game
+  data: a compiled Vegas scheduler receives the complete public observation. -/
+  SchedulerView : Type u
+  /-- The scheduler-visible summary of a state. -/
+  schedulerView : Base → SchedulerView
   /-- What player `i` privately observes of the underlying state.
 
   Separate from `View` because a language with sealed commitments needs it.  A
@@ -254,7 +272,7 @@ structure ScheduledSystem (ι : Type u) where
   has no choice to make — see `EnforcesOrder`.  Indexed by the view rather than
   the state, because what the runtime accepts must be publicly determined for
   the scheduler's menu to be information-local. -/
-  schedules : View → Set (List ι)
+  schedules : SchedulerView → Set (List ι)
   /-- Some order is always acceptable, so a round can always be resolved. -/
   schedules_nonempty : ∀ v, (schedules v).Nonempty
   /-- Every non-terminal state admits a legal joint submission. -/
@@ -294,6 +312,13 @@ noncomputable def applyOrder (sys : ScheduledSystem.{u} ι)
       | some action =>
           (sys.applyOne state i action).bind (applyOrder sys joint rest)
 
+/-- Resolve a round completely: apply the submitted player actions in the
+scheduler's order, then perform the system's automatic closure. -/
+noncomputable def resolveOrder (sys : ScheduledSystem.{u} ι)
+    (joint : ∀ a, Option (sys.Submission a))
+    (order : sys.Order) (state : sys.Base) : FinDist sys.Base :=
+  (sys.applyOrder joint order state).bind sys.settle
+
 /-- The order a joint submission schedules. -/
 def scheduledOrder (joint : ∀ a, Option (sys.Submission a)) : sys.Order :=
   (joint .scheduler).getD []
@@ -306,22 +331,30 @@ def participantActive (state : sys.State) : Participant ι → Prop
 
 /-- What each participant may submit at a state. -/
 def participantAvailable (state : sys.State) : (a : Participant ι) → Set (sys.Submission a)
-  | .scheduler => sys.schedules (sys.view state.base)
+  | .scheduler => sys.schedules (sys.schedulerView state.base)
   | .player i => sys.available state.base i
 
-/-- What each participant observes: the public view for the scheduler, its own
-observation for a player.
-
-The scheduler sees only what is public, which is this model's statement that it
-orders a round without reading its contents. -/
+/-- What each participant observes: the explicitly delimited scheduler view for
+the scheduler, and the player's own observation for a player. -/
 abbrev ParticipantObs (sys : ScheduledSystem.{u} ι) : Participant ι → Type u
-  | .scheduler => sys.View
+  | .scheduler => sys.SchedulerView
   | .player i => sys.Obs i
 
 /-- Each participant's observation of a protocol state. -/
 def participantObs (state : sys.State) : (a : Participant ι) → sys.ParticipantObs a
-  | .scheduler => sys.view state.base
+  | .scheduler => sys.schedulerView state.base
   | .player i => sys.obs state.base i
+
+/-- The scheduler has no state information unavailable to an original player.
+
+This is an epistemic, not probabilistic, condition.  The projection may expose
+the complete public game state, and the scheduler may choose an arbitrary
+state-dependent or randomized policy from it.  The condition says only that
+every original player can recover the scheduler's pre-round view from that
+player's own pre-round observation. -/
+def SchedulerHasNoExtraInformation : Prop :=
+  ∃ project : (i : ι) → sys.Obs i → sys.SchedulerView,
+    ∀ state i, project i (sys.obs state i) = sys.schedulerView state
 
 /-- The menu each participant sees at its own observation.  The scheduler must
 order the round, so abstaining is not on its menu. -/
@@ -347,12 +380,13 @@ of the joint action, not a parameter of the protocol. -/
   available := sys.participantAvailable
   terminal state := sys.terminal state.base
   step state legal :=
-    (sys.applyOrder legal.1 (sys.scheduledOrder legal.1) state.base).map
+    (sys.resolveOrder legal.1 (sys.scheduledOrder legal.1) state.base).map
       fun next =>
         { base := next, log := sys.scheduledOrder legal.1 :: state.log }
   progress state hterminal := by
     obtain ⟨joint, hjoint⟩ := sys.progress state.base hterminal
-    obtain ⟨order, horder⟩ := sys.schedules_nonempty (sys.view state.base)
+    obtain ⟨order, horder⟩ :=
+      sys.schedules_nonempty (sys.schedulerView state.base)
     refine ⟨sys.withSchedule order joint, ?_⟩
     intro a
     cases a with
@@ -379,6 +413,24 @@ theorem log_of_mem_support_step
   simp only [toExecutionProtocol, FinDist.support_map] at hnext
   obtain ⟨_base, _hbase, hnext⟩ := hnext
   rw [← hnext]
+
+/-- Any invariant established by the settlement phase holds after every
+realized protocol round. -/
+theorem base_property_of_mem_support_step
+    (property : sys.Base → Prop)
+    (hsettle : ∀ state {next}, next ∈ (sys.settle state).support → property next)
+    {state : sys.State}
+    {legal : { joint // sys.toExecutionProtocol.Legal state joint }}
+    {next : sys.State}
+    (hnext : next ∈ (sys.toExecutionProtocol.step state legal).support) :
+    property next.base := by
+  simp only [toExecutionProtocol, FinDist.support_map, Set.mem_image] at hnext
+  rcases hnext with ⟨nextBase, hresolved, rfl⟩
+  unfold resolveOrder at hresolved
+  rw [FinDist.support_bind] at hresolved
+  simp only [Set.mem_iUnion] at hresolved
+  rcases hresolved with ⟨postOrder, _hpostOrder, hsettled⟩
+  exact hsettle postOrder hsettled
 
 /-- **Confluence of effects is not invisibility of order.**
 
@@ -407,18 +459,19 @@ theorem step_ne_of_order_ne
 
 /-! ## Enforcing the schedule
 
-Restricting attention to order-oblivious *play* is not enough to make the
-scheduler harmless.  Equilibrium quantifies over the deviations a participant
-*has available*, so a class of well-behaved policies cannot be imposed by fiat:
-if an order-aware deviation exists, an equilibrium claim has to face it.  Such a
-restriction describes a profile, not an equilibrium.
+An order-aware player deviation must be included in a robust equilibrium
+claim.  The elementary fixed-signal case is harmless: fix the adversarial
+signal and back-translate the contingent player policy at that signal, as
+`Scheduled.PlayerDeviationAdequacyOn` requires. Random independent signals
+are handled by `Scheduled.RandomIndependentSignal.isPlayerNash_iff`.
+A scheduler reacting to public history requires an additional causal
+back-translation: fixing its randomness does not fix its realized orders.
 
-What does work is removing the freedom.  A runtime that accepts exactly one
-order at each view leaves the scheduler nothing to choose, so the schedule is a
-function of the history, carries no information, and the scheduler's payoff —
-which is nowhere in the source program, and which nothing about the source lets
-us infer — cannot matter.  That is a property of the emitted artifact, so a
-compiler can establish it rather than assume it.
+Enforcement serves a stronger operational purpose. A runtime accepting exactly
+one order at each view removes ordering choice and makes the entire successor
+law equal, including the public log. This is useful when a developer wants
+trace equality, or when commutation of underlying effects cannot be proved; it
+is not required merely to ignore the scheduler's incentives.
 
 Enforcement is a dial, not a default.  `schedules` is a field of the system, so
 a compiled artifact is permissive or enforcing by construction, and
@@ -441,7 +494,7 @@ channel, not every channel. -/
 /-- The runtime accepts at most one order at each view, so the scheduler has no
 choice to make. -/
 def EnforcesOrder (sys : ScheduledSystem.{u} ι) : Prop :=
-  ∀ v : sys.View, (sys.schedules v).Subsingleton
+  ∀ v : sys.SchedulerView, (sys.schedules v).Subsingleton
 
 /-- Applying a round reads the joint submission only through the players'
 components, never the scheduler's. -/
@@ -459,6 +512,15 @@ theorem applyOrder_congr {left right : ∀ a, Option (sys.Submission a)}
       | some action =>
           simp only
           exact congrArg _ (funext fun next => applyOrder_congr hplayers rest next)
+
+/-- Resolving a round also ignores the scheduler coordinate once the player
+submissions and order are fixed. -/
+theorem resolveOrder_congr {left right : ∀ a, Option (sys.Submission a)}
+    (hplayers : ∀ i, left (.player i) = right (.player i))
+    (order : sys.Order) (state : sys.Base) :
+    sys.resolveOrder left order state = sys.resolveOrder right order state := by
+  unfold resolveOrder
+  rw [sys.applyOrder_congr hplayers]
 
 /-- Under an enforcing runtime every legal joint at a state schedules the same
 order: the scheduler's component is determined. -/
@@ -478,14 +540,15 @@ theorem scheduledOrder_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
           rw [hl] at hleft
           rw [hr] at hright
           simp only [Option.getD_some]
-          exact henforce (sys.view state.base) hleft.2 hright.2
+          exact henforce (sys.schedulerView state.base) hleft.2 hright.2
 
-/-- **An enforcing runtime makes the scheduler strategically inert.**
+/-- **An enforcing runtime makes the scheduler operationally inert.**
 
 Two legal joints agreeing on every player's submission induce the same successor
-law, whatever the scheduler submitted.  So the scheduler cannot influence the
-outcome at all, and its incentives — absent from the source program and not
-inferable from it — are irrelevant rather than merely assumed away.
+law, whatever the scheduler submitted.  Thus the scheduling coordinate cannot
+influence the outcome at all.  This is an operational statement; it makes no
+claim about a scheduler's preferences, which are outside player-equilibrium
+preservation.
 
 This is what restricting to order-oblivious play could not deliver.  That
 restriction constrains behaviour and equilibrium quantifies over availability;
@@ -498,21 +561,18 @@ theorem step_eq_of_enforcesOrder (henforce : sys.EnforcesOrder)
       sys.toExecutionProtocol.step state right := by
   have horder := sys.scheduledOrder_eq_of_enforcesOrder henforce left right
   simp only [toExecutionProtocol, horder]
-  rw [sys.applyOrder_congr hplayers]
+  rw [sys.resolveOrder_congr hplayers]
 
-/-! ## Order that is available but useless
+/-! ## Visible order with no state effect
 
-Enforcement is the heavy instrument, and it is not the only one.  A deviation
-that exists but never pays is no threat to an equilibrium claim: the quantifier
-ranges over available deviations, but what it *asks* of each is only that it not
-improve on the equilibrium payoff.  So there are two ways to answer an
-order-aware deviation — make it unavailable, or let it be available and show it
-gains nothing.
-
-The second is cheaper and covers the common case.  Leave the scheduler its
-choice, and arrange that the choice cannot move anything a payoff can see.
-Order-aware deviations remain expressible — `coinOrderAware` is one — and the
-runtime keeps its parallelism.
+Enforcement is the strongest operational instrument, but it is not always
+needed. The cheaper common case leaves every accepted order available and proves
+that the choice cannot move anything a player's payoff can see. Player policies
+may still condition on the public order — `coinOrderAware` is one — and robust
+strategic analysis must quantify over them. `IndependentSignal.isPlayerNash_iff`
+proves the base case of one extra public signal. A compiled scheduler may also
+condition on the public state that players already observe; it still cannot
+inspect sealed state or the current simultaneous submissions.
 
 `EnforcesOrder` removes the scheduler's choice; `EffectsCommute` leaves the
 choice and removes its consequences.  They differ in what stays observable, and
@@ -528,31 +588,35 @@ the scheduler commits to an order without seeing the round's submissions.  A
 runtime where the order may depend on the submissions is a different system, and
 front-running is what that difference is called. -/
 
-/-- Every order the runtime accepts has the same effect on the underlying state.
+/-- Every order the runtime accepts has the same effect on the underlying state
+for every legal player submission.
 
 Strictly weaker than `EnforcesOrder`, which collapses the accepted orders to one:
 here the scheduler still chooses, its choice still enters the log, and the choice
 is still observable.  What it cannot do is move the underlying state. -/
 def EffectsCommute (sys : ScheduledSystem.{u} ι) : Prop :=
-  ∀ (joint : ∀ a, Option (sys.Submission a)) (state : sys.Base)
-      {left right : sys.Order},
-    left ∈ sys.schedules (sys.view state) →
-      right ∈ sys.schedules (sys.view state) →
-        sys.applyOrder joint left state = sys.applyOrder joint right state
+  ∀ (joint : ∀ a, Option (sys.Submission a)) (state : sys.Base),
+    IsLegalJoint (sys.active state) (sys.available state)
+        (fun i => joint (.player i)) →
+      ∀ {left right : sys.Order},
+        left ∈ sys.schedules (sys.schedulerView state) →
+          right ∈ sys.schedules (sys.schedulerView state) →
+            sys.resolveOrder joint left state = sys.resolveOrder joint right state
 
-/-- Forgetting the log of a round's successor leaves exactly the effect of
-applying the scheduled order. -/
+/-- Forgetting the log of a round's successor leaves exactly the fully resolved
+effect of the scheduled order, including automatic settlement. -/
 theorem step_map_base {state : sys.State}
     (joint : { joint // sys.toExecutionProtocol.Legal state joint }) :
     (sys.toExecutionProtocol.step state joint).map State.base =
-      sys.applyOrder joint.1 (sys.scheduledOrder joint.1) state.base := by
+      sys.resolveOrder joint.1 (sys.scheduledOrder joint.1) state.base := by
   simp only [toExecutionProtocol, FinDist.map_comp, Function.comp_def]
   exact FinDist.map_id _
 
 /-- A legal joint's scheduled order is one the runtime accepts. -/
 theorem scheduledOrder_mem_schedules {state : sys.State}
     (joint : { joint // sys.toExecutionProtocol.Legal state joint }) :
-    sys.scheduledOrder joint.1 ∈ sys.schedules (sys.view state.base) := by
+    sys.scheduledOrder joint.1 ∈
+      sys.schedules (sys.schedulerView state.base) := by
   have hlegal := joint.2.2 .scheduler
   unfold scheduledOrder
   cases hjoint : joint.1 .scheduler with
@@ -568,19 +632,31 @@ any influence on the state.
 
 This is the permissive runtime's counterpart to `step_eq_of_enforcesOrder`, and
 it is what lets such a runtime keep its parallelism and still support a
-preservation claim.  Order-aware deviations remain expressible, but a payoff
-reading only the underlying state cannot tell them apart from order-oblivious
-ones, so the extra strategies buy nothing and there is nothing to back-translate.
-Enforcement buys strictly more — equality of the whole successor law, log
-included — at the cost of serializing the round. -/
+preservation claim.  Real-player deviations may read the order signal.  Such a
+contingent deviation must be back-translated to an ordinary source deviation;
+`Scheduled.PlayerDeviationAdequacyOn` states that obligation.  The generic
+signal theorems prove averaging over independent signals. Applying that
+argument to an executing public-history scheduler also requires a source
+strategy construction for each fixed scheduler random seed. Enforcement buys
+strictly more — equality of the whole successor law, log included — at the cost
+of serializing the round. -/
 theorem step_base_eq_of_effectsCommute (hcommute : sys.EffectsCommute)
     {state : sys.State}
     {left right : { joint // sys.toExecutionProtocol.Legal state joint }}
     (hplayers : ∀ i, left.1 (.player i) = right.1 (.player i)) :
     (sys.toExecutionProtocol.step state left).map State.base =
       (sys.toExecutionProtocol.step state right).map State.base := by
-  rw [sys.step_map_base left, sys.step_map_base right, sys.applyOrder_congr hplayers]
-  exact hcommute right.1 state.base
+  rw [sys.step_map_base left, sys.step_map_base right]
+  rw [sys.resolveOrder_congr hplayers]
+  have hlegal : IsLegalJoint (sys.active state.base) (sys.available state.base)
+      (fun i => right.1 (.player i)) := by
+    intro i
+    have h := right.2.2 (.player i)
+    simp only [participantActive, participantAvailable] at h
+    cases hjoint : right.1 (.player i) with
+    | none => rw [hjoint] at h; simpa only [hjoint] using h
+    | some action => rw [hjoint] at h; simpa only [hjoint] using h
+  exact hcommute right.1 state.base hlegal
     (sys.scheduledOrder_mem_schedules left) (sys.scheduledOrder_mem_schedules right)
 
 /-- Enforcement implies commutation: with one acceptable order there is nothing
@@ -589,28 +665,116 @@ available to an enforcing runtime too, and the two disciplines are ordered
 rather than alternative. -/
 theorem effectsCommute_of_enforcesOrder (henforce : sys.EnforcesOrder) :
     sys.EffectsCommute := by
-  intro joint state left right hleft hright
-  rw [henforce (sys.view state) hleft hright]
+  intro joint state _hlegal left right hleft hright
+  rw [henforce (sys.schedulerView state) hleft hright]
 
 /-! ## Two information models over one protocol -/
 
-/-- What an order-revealing participant knows: its current observation, and the
-history of realized orders paired with the observation each followed.
-
-Indexed by the participant, because observations are.  Nothing here forces the
-public view into a player's information state; an instantiation wanting it there
-puts it in that player's `Obs`. -/
-abbrev RevealingInfo (sys : ScheduledSystem.{u} ι) (a : Participant ι) : Type u :=
+/-- The order-revealing observation history visible at one decision point. -/
+abbrev RevealingSnapshot (sys : ScheduledSystem.{u} ι)
+    (a : Participant ι) : Type u :=
   sys.ParticipantObs a × List (sys.Order × sys.ParticipantObs a)
 
-/-- What an order-blind participant knows: its current and earlier
-observations, with no record of how rounds were ordered. -/
-abbrev BlindInfo (sys : ScheduledSystem.{u} ι) (a : Participant ι) : Type u :=
+/-- What an order-revealing participant knows.
+
+`current` and `past` expose the runtime observations. `own` also records the
+complete information snapshot at every earlier decision by this participant,
+together with the submitted action. The latter is not extra runtime data: it
+is the participant's own memory, and retaining it makes perfect recall true
+rather than merely asserted. -/
+structure RevealingInfo (sys : ScheduledSystem.{u} ι)
+    (a : Participant ι) where
+  current : sys.ParticipantObs a
+  past : List (sys.Order × sys.ParticipantObs a)
+  own : List (sys.RevealingSnapshot a × sys.Submission a)
+
+/-- The order-blind observation history visible at one decision point. -/
+abbrev BlindSnapshot (sys : ScheduledSystem.{u} ι)
+    (a : Participant ι) : Type u :=
   sys.ParticipantObs a × List (sys.ParticipantObs a)
 
-/-- Discard the schedule from an order-revealing information state. -/
-def forgetOrders {a : Participant ι} (info : sys.RevealingInfo a) : sys.BlindInfo a :=
-  (info.1, info.2.map Prod.snd)
+/-- What an order-blind participant knows. It retains its own decisions while
+discarding the schedule from every remembered observation. -/
+structure BlindInfo (sys : ScheduledSystem.{u} ι)
+    (a : Participant ι) where
+  current : sys.ParticipantObs a
+  past : List (sys.ParticipantObs a)
+  own : List (sys.BlindSnapshot a × sys.Submission a)
+
+/-- Discard the schedule from an order-revealing information state, including
+from the snapshots at which the participant previously acted. -/
+def forgetOrders {a : Participant ι}
+    (info : sys.RevealingInfo a) : sys.BlindInfo a where
+  current := info.current
+  past := info.past.map Prod.snd
+  own := info.own.map fun remembered =>
+    ((remembered.1.1, remembered.1.2.map Prod.snd), remembered.2)
+
+/-- Extend order-revealing information by one realized transition. -/
+def RevealingInfo.push {a : Participant ι}
+    (prior : sys.RevealingInfo a) (choice : Option (sys.Submission a))
+    (current : sys.ParticipantObs a) (order : sys.Order) :
+    sys.RevealingInfo a where
+  current := current
+  past := (order, prior.current) :: prior.past
+  own := match choice with
+    | none => prior.own
+    | some action => ((prior.current, prior.past), action) :: prior.own
+
+/-- Reconstruct the scheduler's perfect-recall own-play record from its public
+order/view history.  The scheduler acts in every nonterminal round, so its
+earlier information snapshots and choices contain no data beyond this list. -/
+def schedulerOwnOfPast (sys : ScheduledSystem.{u} ι) :
+    List (sys.Order × sys.SchedulerView) →
+      List (sys.RevealingSnapshot (.scheduler : Participant ι) × sys.Order)
+  | [] => []
+  | (order, view) :: past =>
+      ((view, past), order) :: schedulerOwnOfPast sys past
+
+/-- Reconstruct the scheduler's complete revealing information from one
+player's information, given a projection from that player's observation to the
+scheduler view.  The player's private component and own actions are discarded;
+the shared public order history determines the scheduler's own-play memory. -/
+def schedulerInfoFromPlayer {i : ι}
+    (project : sys.Obs i → sys.SchedulerView)
+    (info : sys.RevealingInfo (.player i)) :
+    sys.RevealingInfo (.scheduler : Participant ι) := by
+  let past := info.past.map fun entry => (entry.1, project entry.2)
+  exact
+    { current := project info.current
+      past := past
+      own := schedulerOwnOfPast sys past }
+
+@[simp] theorem schedulerInfoFromPlayer_push {i : ι}
+    (project : sys.Obs i → sys.SchedulerView)
+    (prior : sys.RevealingInfo (.player i))
+    (choice : Option (sys.Action i)) (current : sys.Obs i)
+    (order : sys.Order) :
+    sys.schedulerInfoFromPlayer project
+        (RevealingInfo.push sys prior choice current order) =
+      RevealingInfo.push sys (sys.schedulerInfoFromPlayer project prior)
+        (some order) (project current) order := by
+  cases prior
+  cases choice <;>
+    simp [schedulerInfoFromPlayer, RevealingInfo.push, schedulerOwnOfPast]
+
+/-- Extend order-blind information by one realized transition. -/
+def BlindInfo.push {a : Participant ι}
+    (prior : sys.BlindInfo a) (choice : Option (sys.Submission a))
+    (current : sys.ParticipantObs a) : sys.BlindInfo a where
+  current := current
+  past := prior.current :: prior.past
+  own := match choice with
+    | none => prior.own
+    | some action => ((prior.current, prior.past), action) :: prior.own
+
+@[simp] theorem forgetOrders_push {a : Participant ι}
+    (prior : sys.RevealingInfo a) (choice : Option (sys.Submission a))
+    (current : sys.ParticipantObs a) (order : sys.Order) :
+    sys.forgetOrders (RevealingInfo.push sys prior choice current order) =
+      BlindInfo.push sys (sys.forgetOrders prior) choice current := by
+  cases prior
+  cases choice <;> rfl
 
 /-- Signals that publish the realized order alongside the public view: the
 faithful model of a public runtime. -/
@@ -622,8 +786,10 @@ faithful model of a public runtime. -/
   publicSignal event := (sys.view event.target.base, event.target.log.headD [])
   privateSignal a event := sys.participantObs event.target a
   InfoState a := sys.RevealingInfo a
-  initInfo _ own _ := (own, [])
-  pushInfo _ info _ own pub := (own, (pub.2, info.1) :: info.2)
+  initInfo _ observation _ :=
+    { current := observation, past := [], own := [] }
+  pushInfo _ info choice observation pub :=
+    RevealingInfo.push sys info choice observation pub.2
 
 /-- Signals that publish only the public view: the idealization in which a round
 resolves atomically.  A perfectly good information model — just not one of a
@@ -636,8 +802,10 @@ public chain. -/
   publicSignal event := sys.view event.target.base
   privateSignal a event := sys.participantObs event.target a
   InfoState a := sys.BlindInfo a
-  initInfo _ own _ := (own, [])
-  pushInfo _ info _ own _ := (own, info.1 :: info.2)
+  initInfo _ observation _ :=
+    { current := observation, past := [], own := [] }
+  pushInfo _ info choice observation _ :=
+    BlindInfo.push sys info choice observation
 
 /-- **Blindness is exactly discarding the schedule.**
 
@@ -655,26 +823,150 @@ theorem blind_infoOf_eq_forgetOrders (a : Participant ι)
       -- rewrite with `ih` before unfolding the signal records: unfolding first
       -- replaces the head symbol `ih` matches on.
       rw [InfoSignals.infoOf_extend, InfoSignals.infoOf_extend, ih]
-      rfl
+      exact (sys.forgetOrders_push _ _ _ _).symm
 
 /-- The observation a participant holds is its observation of the state the
 history reached.  This is what makes the menu information-local. -/
-theorem revealing_infoOf_fst (a : Participant ι)
+theorem revealing_infoOf_current (a : Participant ι)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
-    (sys.revealingSignals.infoOf a trace).1 = sys.participantObs state a := by
+    (sys.revealingSignals.infoOf a trace).current =
+      sys.participantObs state a := by
   induction trace with
   | start => rfl
   | extend prior joint isLegal realized _ih => rfl
 
-/-- The same, order-blind. -/
-theorem blind_infoOf_fst (a : Participant ι)
+/-- **A player can reconstruct the scheduler's complete information history.**
+
+If the scheduler's current view is a projection of player `i`'s observation,
+then after every protocol trace its entire perfect-recall information state is
+a function of `i`'s information state.  This includes every prior scheduler
+choice: realized orders are public and the scheduler is active in every round.
+
+Thus a scheduler satisfying `SchedulerHasNoExtraInformation` has no private
+fact or private memory that it can leak to a player through its next order. -/
+theorem revealing_schedulerInfo_eq_fromPlayer {i : ι}
+    (project : sys.Obs i → sys.SchedulerView)
+    (hproject : ∀ state, project (sys.obs state i) = sys.schedulerView state)
     {state : sys.toExecutionProtocol.State}
     (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
-    (sys.blindSignals.infoOf a trace).1 = sys.participantObs state a := by
+    sys.schedulerInfoFromPlayer project
+        (sys.revealingSignals.infoOf (.player i) trace) =
+      sys.revealingSignals.infoOf (.scheduler : Participant ι) trace := by
+  induction trace with
+  | start =>
+      simp only [InfoSignals.infoOf_start]
+      unfold schedulerInfoFromPlayer
+      simp only [participantObs, List.map_nil,
+        schedulerOwnOfPast]
+      rw [hproject]
+  | @extend source target prior joint isLegal realized ih =>
+      rw [InfoSignals.infoOf_extend, InfoSignals.infoOf_extend,
+        sys.schedulerInfoFromPlayer_push, ih]
+      change RevealingInfo.push sys
+          (sys.revealingSignals.infoOf (.scheduler : Participant ι) prior)
+          (some (target.log.headD [])) (project (sys.obs target.base i))
+          (target.log.headD []) =
+        RevealingInfo.push sys
+          (sys.revealingSignals.infoOf (.scheduler : Participant ι) prior)
+          (joint (.scheduler : Participant ι))
+          (sys.schedulerView target.base) (target.log.headD [])
+      have hlog : target.log = sys.scheduledOrder joint :: source.log :=
+        sys.log_of_mem_support_step realized
+      have horder : target.log.headD [] = sys.scheduledOrder joint := by
+        rw [hlog]
+        rfl
+      have hscheduler := isLegal.2 (.scheduler : Participant ι)
+      cases hchoice : joint (.scheduler : Participant ι) with
+      | none =>
+          rw [hchoice] at hscheduler
+          exact False.elim (hscheduler trivial)
+      | some order =>
+          have hschedule : sys.scheduledOrder joint = order := by
+            simp [ScheduledSystem.scheduledOrder, hchoice]
+          rw [horder, hschedule, hproject]
+
+/-- The same, order-blind. -/
+theorem blind_infoOf_current (a : Participant ι)
+    {state : sys.toExecutionProtocol.State}
+    (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
+    (sys.blindSignals.infoOf a trace).current =
+      sys.participantObs state a := by
   induction trace with
   | start => rfl
   | extend prior joint isLegal realized _ih => rfl
+
+namespace RevealingInfo
+
+/-- Reconstruct GameTheory's canonical own-play record from the compact
+decision memory carried by a revealing information state. -/
+def recalledOwnPlayFrom (sys : ScheduledSystem.{u} ι) (a : Participant ι) :
+    List (sys.RevealingSnapshot a × sys.Submission a) →
+      List (sys.RevealingInfo a × sys.Submission a)
+  | [] => []
+  | (snapshot, action) :: prior =>
+      ({ current := snapshot.1, past := snapshot.2, own := prior }, action) ::
+        recalledOwnPlayFrom sys a prior
+
+def recalledOwnPlay {a : Participant ι} (info : sys.RevealingInfo a) :
+    List (sys.RevealingInfo a × sys.Submission a) :=
+  recalledOwnPlayFrom sys a info.own
+
+@[simp] theorem recalledOwnPlay_push_none {a : Participant ι}
+    (prior : sys.RevealingInfo a) (current : sys.ParticipantObs a)
+    (order : sys.Order) :
+    recalledOwnPlay sys
+        (RevealingInfo.push sys prior none current order) =
+      recalledOwnPlay sys prior :=
+  rfl
+
+@[simp] theorem recalledOwnPlay_push_some {a : Participant ι}
+    (prior : sys.RevealingInfo a) (action : sys.Submission a)
+    (current : sys.ParticipantObs a) (order : sys.Order) :
+    recalledOwnPlay sys
+        (RevealingInfo.push sys prior (some action) current order) =
+      (prior, action) :: recalledOwnPlay sys prior := by
+  cases prior
+  rfl
+
+end RevealingInfo
+
+/-- The order-revealing signals remember exactly the information state and
+action at every earlier decision by the participant. -/
+theorem revealing_ownPlay_eq_recalled (a : Participant ι)
+    {state : sys.toExecutionProtocol.State}
+    (trace : ExecutionProtocol.Trace sys.toExecutionProtocol state) :
+    sys.revealingSignals.ownPlay a trace =
+      RevealingInfo.recalledOwnPlay sys
+        (sys.revealingSignals.infoOf a trace) := by
+  induction trace with
+  | start => rfl
+  | @extend source target prior joint isLegal realized ih =>
+      rw [InfoSignals.ownPlay_extend, InfoSignals.infoOf_extend]
+      cases hchoice : joint a with
+      | none =>
+          rw [ih]
+          exact
+            (RevealingInfo.recalledOwnPlay_push_none sys
+              (sys.revealingSignals.infoOf a prior)
+              (sys.participantObs target a)
+              (sys.view target.base, target.log.headD []).2).symm
+      | some action =>
+          rw [ih]
+          exact
+            (RevealingInfo.recalledOwnPlay_push_some sys
+              (sys.revealingSignals.infoOf a prior) action
+              (sys.participantObs target a)
+              (sys.view target.base, target.log.headD []).2).symm
+
+/-- The faithful scheduled information model has perfect recall. Revealing a
+schedule does not replace the participant's memory of its own earlier
+decisions. -/
+theorem revealingSignals_perfectRecall :
+    sys.revealingSignals.PerfectRecall := by
+  intro a first second traceFirst traceSecond hinfo
+  rw [sys.revealing_ownPlay_eq_recalled a traceFirst,
+    sys.revealing_ownPlay_eq_recalled a traceSecond, hinfo]
 
 private theorem participantMenuAt_adequate (state : sys.State) (a : Participant ι)
     (choice : Option (sys.Submission a)) :
@@ -702,20 +994,26 @@ private theorem participantMenuAt_adequate (state : sys.State) (a : Participant 
 /-- The order-revealing information model: the faithful one. -/
 @[reducible] def revealingInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.revealingSignals
-  menu a info := sys.participantMenuAt a info.1
+  menu a info := sys.participantMenuAt a info.current
   menu_adequate := by
     intro a state trace choice
-    rw [sys.revealing_infoOf_fst a trace]
+    rw [sys.revealing_infoOf_current a trace]
     exact sys.participantMenuAt_adequate state a choice
+
+/-- The faithful scheduled information model remembers every participant's own
+earlier decisions. -/
+theorem revealingInformation_perfectRecall :
+    sys.revealingInformation.PerfectRecall :=
+  sys.revealingSignals_perfectRecall
 
 /-- The order-blind information model: the idealization.  Same menus — the
 schedule never changes what is legal, only what is known. -/
 @[reducible] def blindInformation : InformationModel sys.toExecutionProtocol where
   toInfoSignals := sys.blindSignals
-  menu a info := sys.participantMenuAt a info.1
+  menu a info := sys.participantMenuAt a info.current
   menu_adequate := by
     intro a state trace choice
-    rw [sys.blind_infoOf_fst a trace]
+    rw [sys.blind_infoOf_current a trace]
     exact sys.participantMenuAt_adequate state a choice
 
 /-! ## Order-oblivious deviations
@@ -778,17 +1076,17 @@ to an inactive participant and which no public runtime can actually prevent.
 
 The distinction decides where a penalty can come from.  A null submission is a
 transaction — the program sees it, continues, and can slash a deposit
-immediately.  Silence is not: `silence_inert` leaves the state where it was, so
-within the round nothing separates a silent player from one who was never asked,
-and a protocol wanting to charge for it must measure elapsed time.  That is what
-a timeout is for, and why the deposit story needs a mechanism rather than a rule
-saying players must reveal.
+immediately.  Silence is not: `silence_inert` leaves the player-controlled phase
+where it was.  The system's automatic `settle` phase may still run, but it cannot
+attribute a submitted action to the silent player.  A protocol wanting to charge
+that player must measure elapsed time or another external signal.  That is what
+a timeout is for.
 
 `AllowsSilence` names the residual gap and nothing more.  It does not show that
-silence fails to pay — a statement about payoffs, a layer up — and the
-correspondence sketched above between a Vegas commitment and a `ScheduledSystem`
-action is not yet mechanized, since the bridge to `Machine.Program` is not
-built. -/
+silence fails to pay — a statement about payoffs, a layer up. The general
+commitment/action bridge is the compiler-derived `Machine.Program.serializedSystem`;
+what is not established here is the stronger nullable-fragment theorem that
+every compiled source `yield` furnishes an `AllowsDeclining` witness. -/
 
 /-- A runtime in which every player always has an accepted submission.
 
@@ -838,12 +1136,13 @@ def AllowsSilence.allSilent {sys : ScheduledSystem.{u} ι} (hsilent : sys.Allows
   | .scheduler => some order
   | .player i => some (hsilent.silence i)
 
-/-- **The all-silent baseline is well defined and schedule-independent.**
+/-- **The all-silent player phase is well defined and schedule-independent.**
 
-A round in which every player sends nothing leaves the state where it was, in
-every order — so the payoff to vanishing depends on the state alone.  That is
-what a dominance argument one layer up compares against, and it needs no
-`EffectsCommute`: inert actions commute with everything. -/
+When every player is silent, applying the player actions leaves the state where
+it was in every order.  A following automatic `settle` phase is intentionally
+outside this lemma and may move the system independently of those submissions.
+No `EffectsCommute` hypothesis is needed: inert player actions commute with
+everything. -/
 theorem AllowsSilence.applyOrder_silent {sys : ScheduledSystem.{u} ι}
     (hsilent : sys.AllowsSilence) :
     ∀ (order proposed : sys.Order) (state : sys.Base),
@@ -875,8 +1174,11 @@ def coinSystem : ScheduledSystem.{0} (Fin 2) where
   available _ _ := Set.univ
   terminal _ := False
   applyOne state _ _ := FinDist.pure state
+  settle state := FinDist.pure state
   View := Unit
   view _ := ()
+  SchedulerView := Unit
+  schedulerView _ := ()
   Obs _ := Unit
   obs _ _ := ()
   menuAt _ _ := {some true, some false}
@@ -922,12 +1224,12 @@ theorem coin_step_ne (state : coinSystem.State) :
 
 /-- A history in which player `0` was ordered first. -/
 def coinFirstZero (i : Fin 2) : coinSystem.RevealingInfo (.player i) :=
-  ((), [([0, 1], ())])
+  { current := (), past := [([0, 1], ())], own := [] }
 
 /-- The same history except that player `1` was ordered first.  The two agree on
 every observation and differ only in schedule. -/
 def coinFirstOne (i : Fin 2) : coinSystem.RevealingInfo (.player i) :=
-  ((), [([1, 0], ())])
+  { current := (), past := [([1, 0], ())], own := [] }
 
 theorem coinFirst_forgetOrders_eq (i : Fin 2) :
     coinSystem.forgetOrders (coinFirstZero i) =
@@ -938,7 +1240,7 @@ first.  Nothing about the state differs between those histories. -/
 def coinOrderAware (i : Fin 2) :
     coinSystem.revealingInformation.Policy (.player i) :=
   fun info =>
-    if (info.2.headD ([], ())).1 = [0, 1] then
+    if (info.past.headD ([], ())).1 = [0, 1] then
       ⟨some true, Set.mem_insert _ _⟩
     else
       ⟨some false, Set.mem_insert_of_mem _ rfl⟩
@@ -950,9 +1252,12 @@ observation and differ only in how a round was ordered, so it is not
 order-oblivious —
 and by `liftPolicy_orderOblivious` no schedule-free policy induces it.
 
-This is the obstruction to back-translation: an order-aware deviation has in
-general no source counterpart, so adequacy against the unrestricted class does
-not follow from adequacy against the order-oblivious one. -/
+This is not a counterexample to player-equilibrium preservation: distinct
+policies can have the same payoff. Independent-signal Nash preservation is
+proved in `Scheduled.RandomIndependentSignal.isPlayerNash_iff`; applying it
+to an executing scheduler requires a separate source-policy construction.
+This example only proves that a single order-oblivious policy cannot
+reproduce both action branches. -/
 theorem coinOrderAware_not_orderOblivious (i : Fin 2) :
     ¬ coinSystem.OrderOblivious (coinOrderAware i) := by
   intro hoblivious
@@ -992,8 +1297,11 @@ with `Nat` at instance transparency, which numerals need. -/
   available _ _ := Set.univ
   terminal _ := False
   applyOne state _ amount := FinDist.pure (state + amount)
+  settle state := FinDist.pure state
   View := Nat
   view state := state
+  SchedulerView := Unit
+  schedulerView _ := ()
   Obs _ := Nat
   obs state _ := state
   menuAt _ _ := {choice | choice ≠ none}
@@ -1014,7 +1322,7 @@ accepted, so the scheduler has a real choice to make and `EnforcesOrder` fails.
 Every result below therefore holds without enforcement. -/
 theorem counter_not_enforcesOrder : ¬ counterSystem.EnforcesOrder := by
   intro henforce
-  have hcontra := henforce 0 (Set.mem_insert _ _) (Set.mem_insert_of_mem _ rfl)
+  have hcontra := henforce () (Set.mem_insert _ _) (Set.mem_insert_of_mem _ rfl)
   exact absurd (List.cons.inj hcontra).1 (by decide)
 
 /-- Resolving a round one player at a time, with the effect on the total made
@@ -1034,7 +1342,9 @@ private theorem counter_applyOrder_cons (joint) (i : Fin 2) (rest total) :
 /-- **And it is nevertheless safe.**  Addition commutes, so both accepted orders
 carry a state to the same law even though each player's action moves it. -/
 theorem counter_effectsCommute : counterSystem.EffectsCommute := by
-  intro joint state left right hleft hright
+  intro joint state _hlegal left right hleft hright
+  simp only [ScheduledSystem.resolveOrder, counterSystem,
+    FinDist.bind_pure]
   simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hleft hright
   rcases hleft with rfl | rfl <;> rcases hright with rfl | rfl <;>
     simp only [counter_applyOrder_cons] <;>
@@ -1046,7 +1356,8 @@ theorem counter_effectsCommute : counterSystem.EffectsCommute := by
 
 /-- A round in which both players add `1` and the scheduler picks `order`. -/
 def counterRound (state : counterSystem.State) (order : counterSystem.Order)
-    (horder : order ∈ counterSystem.schedules (counterSystem.view state.base)) :
+    (horder : order ∈
+      counterSystem.schedules (counterSystem.schedulerView state.base)) :
     { joint // counterSystem.toExecutionProtocol.Legal state joint } :=
   ⟨fun a =>
       match a with
@@ -1127,8 +1438,11 @@ private theorem finDist_pure_ne {α : Type} {a b : α} (hne : a ≠ b) :
   available _ _ := Set.univ
   terminal _ := False
   applyOne state i _ := FinDist.pure (if i = 0 then state * 2 else state + 1)
+  settle state := FinDist.pure state
   View := Nat
   view state := state
+  SchedulerView := Unit
+  schedulerView _ := ()
   Obs _ := Nat
   obs state _ := state
   menuAt _ _ := {choice | choice ≠ none}
@@ -1157,6 +1471,10 @@ needs `EnforcesOrder` rather than an argument that order does not matter. -/
 theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
   intro hcommute
   have hcontra := hcommute (raceJoint [0, 1]) 5
+    (by
+      intro i
+      simp only [raceJoint]
+      exact ⟨trivial, Set.mem_univ _⟩)
     (Set.mem_insert _ _) (Set.mem_insert_of_mem _ rfl)
   have hleft : raceSystem.applyOrder (raceJoint [0, 1]) [0, 1] 5 = FinDist.pure 11 := by
     simp only [ScheduledSystem.applyOrder, raceJoint, FinDist.pure_bind]
@@ -1164,6 +1482,8 @@ theorem race_not_effectsCommute : ¬ raceSystem.EffectsCommute := by
   have hright : raceSystem.applyOrder (raceJoint [0, 1]) [1, 0] 5 = FinDist.pure 12 := by
     simp only [ScheduledSystem.applyOrder, raceJoint, FinDist.pure_bind]
     norm_num
+  simp only [ScheduledSystem.resolveOrder, raceSystem,
+    FinDist.bind_pure] at hcontra
   rw [hleft, hright] at hcontra
   exact absurd hcontra (finDist_pure_ne (by decide))
 

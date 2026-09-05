@@ -1293,13 +1293,77 @@ noncomputable def matchingPenniesNode1 :
     ToEventGraph.compile, ToEventGraph.compileCore,
     ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]⟩
 
-example :
+noncomputable def matchingPenniesNode2 :
+    Fin matchingPenniesMachine.graph.nodeCount :=
+  ⟨2, by simp [matchingPenniesMachine, Machine.compile,
+    Machine.ofCompiled, matchingPenniesProgram, matchingPenniesCore,
+    ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]⟩
+
+noncomputable def matchingPenniesNode3 :
+    Fin matchingPenniesMachine.graph.nodeCount :=
+  ⟨3, by simp [matchingPenniesMachine, Machine.compile,
+    Machine.ofCompiled, matchingPenniesProgram, matchingPenniesCore,
+    ToEventGraph.compile, ToEventGraph.compileCore,
+    ToEventGraph.BuildResult.graph, EventGraph.Graph.nodeCount]⟩
+
+theorem matchingPenniesNode0_prereqs :
     matchingPenniesMachine.graph.prereqs matchingPenniesNode0 = ∅ := by
   decide
 
-example :
+theorem matchingPenniesNode1_prereqs :
     matchingPenniesMachine.graph.prereqs matchingPenniesNode1 = ∅ := by
   decide
+
+theorem matchingPenniesNode2_prereqs_ne_empty :
+    matchingPenniesMachine.graph.prereqs matchingPenniesNode2 ≠ ∅ := by
+  decide
+
+theorem matchingPenniesNode3_prereqs_ne_empty :
+    matchingPenniesMachine.graph.prereqs matchingPenniesNode3 ≠ ∅ := by
+  decide
+
+theorem matchingPenniesNode0_commit :
+    ∃ guard, (matchingPenniesMachine.graph.nodeRow matchingPenniesNode0).sem =
+      .commit 0 guard := by
+  simp [EventGraph.Graph.nodeRow, matchingPenniesNode0,
+    matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
+    matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
+    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
+    EventGraph.Graph.nodeCount]
+
+theorem matchingPenniesNode1_commit :
+    ∃ guard, (matchingPenniesMachine.graph.nodeRow matchingPenniesNode1).sem =
+      .commit 1 guard := by
+  simp [EventGraph.Graph.nodeRow, matchingPenniesNode1,
+    matchingPenniesMachine, Machine.compile, Machine.ofCompiled,
+    matchingPenniesProgram, matchingPenniesCore, ToEventGraph.compile,
+    ToEventGraph.compileCore, ToEventGraph.BuildResult.graph,
+    EventGraph.Graph.nodeCount]
+
+private theorem not_readyInternalNode_of_commit
+    {G : EventGraph.Graph TestPlayer simpleExpr}
+    {cfg : EventGraph.Config G} {node : Fin G.nodeCount} {who : TestPlayer}
+    (hcommit : ∃ guard, (G.nodeRow node).sem = .commit who guard) :
+    ¬ EventGraph.ReadyInternalNode G cfg node := by
+  rintro ⟨row, hrow, hinternal, _hready⟩
+  have hcanonical := G.nodes_get?_nodeRow node
+  have hrowEq : row = G.nodeRow node := by
+    exact Option.some.inj (hrow.symm.trans hcanonical)
+  subst row
+  rcases hcommit with ⟨guard, hcommit⟩
+  rw [hcommit] at hinternal
+  exact hinternal
+
+private theorem not_ready_initial_of_prereqs_ne_empty
+    {node : Fin matchingPenniesMachine.graph.nodeCount}
+    (hne : matchingPenniesMachine.graph.prereqs node ≠ ∅) :
+    ¬ EventGraph.Ready matchingPenniesMachine.graph
+      (EventGraph.Config.initial matchingPenniesMachine.graph) node := by
+  intro hready
+  apply hne
+  apply Finset.Subset.antisymm hready.2
+  exact Finset.empty_subset _
 
 example : matchingPenniesGame.arena.execution.BoundedHorizon 4 := by
   rw [← show matchingPenniesMachine.graph.nodeCount = 4 by
@@ -1308,7 +1372,7 @@ example : matchingPenniesGame.arena.execution.BoundedHorizon 4 := by
 
 /-! ## The serialized counterfactual, on a real compiled program
 
-`Vegas.Paper.compiled_and_serialized_runtimes_differ` is stated for an arbitrary
+`Vegas.Paper.compiled_runtime_scheduling_boundary` is stated for an arbitrary
 well-formed live graph.  A statement about arbitrary graphs is worth nothing if
 no graph a compiler actually emits satisfies it, so the checks below run it on
 one: matching pennies, whose two players are ready at the same frontier and are
@@ -1316,9 +1380,176 @@ therefore exactly the case a serializing runtime would have to order. -/
 
 /-- The runtime matching pennies would get if its frontier were serialized
 rather than applied whole. -/
-noncomputable def matchingPenniesSerialized : ScheduledSystem TestPlayer :=
+@[reducible] noncomputable def matchingPenniesSerialized : ScheduledSystem TestPlayer :=
   Vegas.Compiled.serializedSystem matchingPenniesMachine.graph
     matchingPenniesMachine.graphWF matchingPenniesMachine.guardLive
+
+/-- The fixed-order serialized implementation of the same graph. -/
+@[reducible] noncomputable def matchingPenniesFixedSerialized :
+    ScheduledSystem TestPlayer :=
+  Vegas.Compiled.fixedSerializedSystem matchingPenniesMachine.graph
+    matchingPenniesMachine.graphWF matchingPenniesMachine.guardLive
+
+/-- The actual serialized execution protocol, information model, history
+utility, and bounded horizon packaged as a game. -/
+noncomputable def matchingPenniesSerializedGame :
+    Vegas.Game (Participant TestPlayer) :=
+  matchingPenniesMachine.serializedGame (fun _ => 0)
+
+example :
+    matchingPenniesSerializedGame.arena.information.PerfectRecall :=
+  matchingPenniesMachine.serializedPerfectRecall
+
+example :
+    matchingPenniesSerializedGame.arena.execution.BoundedHorizon
+      matchingPenniesMachine.graph.nodeCount :=
+  matchingPenniesMachine.serializedBoundedHorizon (fun _ => 0)
+
+/-- Actual serialized histories, not an auxiliary signal game, preserve
+source information and payoffs after erasure. -/
+theorem matchingPennies_serializedHistory_has_source
+    (target : matchingPenniesMachine.serializedArena.History) :
+    ∃ source : matchingPenniesMachine.execution.History,
+      source.state = target.state.base ∧
+      (∀ who, matchingPenniesMachine.information.infoOf who source.trace =
+        matchingPenniesMachine.eraseSerializedPlayerInformation who
+          (matchingPenniesMachine.serializedArena.information.infoOf
+            (.player who) target.trace)) ∧
+      ∀ who, matchingPenniesMachine.utility source who =
+        matchingPenniesMachine.serializedUtility (fun _ => 0) target (.player who) :=
+  Vegas.Paper.compiled_serialized_history_has_source matchingPenniesMachine target (fun _ => 0)
+
+/-- The real randomized runtime round expands into atomic source histories
+with its exact joint law of state and erased player information. -/
+theorem matchingPennies_serializedBehavioralRound_expands
+    (policies : (who : Participant TestPlayer) →
+      matchingPenniesMachine.serializedArena.information.BehavioralPolicy who)
+    (hterm : ¬ matchingPenniesMachine.serializedArena.execution.terminal
+      matchingPenniesMachine.serializedArena.execution.init) :
+    (matchingPenniesMachine.serializedArena.information.runBehavioralFrom policies 1
+        matchingPenniesMachine.serializedArena.execution.initHistory).map
+          matchingPenniesMachine.serializedHistorySummary =
+      ((matchingPenniesMachine.serializedArena.information.behavioralJoint policies
+          matchingPenniesMachine.serializedArena.execution.initHistory.trace hterm).bind
+        fun command => matchingPenniesMachine.expandRound
+          matchingPenniesMachine.execution.initHistory
+          (fun who => command.1 (.player who))
+          (matchingPenniesMachine.serializedPlayers_legal command)).map
+            matchingPenniesMachine.historySummary :=
+  Vegas.Paper.compiled_serialized_behavioral_round_expands matchingPenniesMachine
+    matchingPenniesMachine.execution.initHistory []
+    matchingPenniesMachine.serializedArena.execution.initHistory.trace
+    (fun _ => rfl) policies hterm
+
+/-- The compiled scheduler may use the complete public matching-pennies state,
+but every actual player sees that same state.  It has no private fact to reveal
+through the order. -/
+example : matchingPenniesSerialized.SchedulerHasNoExtraInformation :=
+  Vegas.Compiled.serializedSystem_schedulerHasNoExtraInformation
+    matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+    matchingPenniesMachine.guardLive
+
+/-- Replay uses actual matching-pennies runtime policies, not the auxiliary
+independent-signal game. Each player's observation projects to the complete
+public graph state, so even data-dependent scheduler policies are covered. -/
+theorem matchingPennies_randomScheduler_replay
+    (schedulers : GameTheory.Math.Probability.FinDist
+      (matchingPenniesSerialized.revealingInformation.Policy .scheduler))
+    (profile : (who : Participant TestPlayer) →
+      matchingPenniesSerialized.revealingInformation.BehavioralPolicy who)
+    (fuel : Nat) :
+    (schedulers.bind fun scheduler =>
+      matchingPenniesSerialized.revealingInformation.runBehavioral
+        (matchingPenniesSerialized.fixScheduler scheduler profile) fuel) =
+      schedulers.bind fun scheduler =>
+        matchingPenniesSerialized.revealingInformation.runBehavioral
+          (matchingPenniesSerialized.replayBehavioralProfile scheduler
+            (fun _ => Prod.fst) profile) fuel :=
+  Vegas.Paper.random_public_scheduler_replay_preserves_law matchingPenniesSerialized
+    schedulers (fun _ => Prod.fst) (fun _ _ => rfl) profile fuel
+
+/-- Both participants really are required to submit at the initial compiled
+frontier. -/
+theorem matchingPenniesInitial_active (who : TestPlayer) :
+    Vegas.Compiled.ActiveAt matchingPenniesMachine.graph
+      (EventGraph.Config.initial matchingPenniesMachine.graph) who := by
+  classical
+  constructor
+  · intro hterminal
+    exact (by simpa [EventGraph.Config.initial] using
+      hterminal matchingPenniesNode0)
+  constructor
+  · apply Finset.eq_empty_iff_forall_notMem.mpr
+    intro node hnode
+    have hinternal := (Finset.mem_filter.mp hnode).2
+    fin_cases node
+    · apply not_readyInternalNode_of_commit matchingPenniesNode0_commit
+      simpa only [matchingPenniesNode0] using hinternal
+    · apply not_readyInternalNode_of_commit matchingPenniesNode1_commit
+      simpa only [matchingPenniesNode1] using hinternal
+    · apply not_ready_initial_of_prereqs_ne_empty
+        matchingPenniesNode2_prereqs_ne_empty
+      rcases hinternal with ⟨_row, _hrow, _hkind, hready⟩
+      simpa only [matchingPenniesNode2] using hready
+    · apply not_ready_initial_of_prereqs_ne_empty
+        matchingPenniesNode3_prereqs_ne_empty
+      rcases hinternal with ⟨_row, _hrow, _hkind, hready⟩
+      simpa only [matchingPenniesNode3] using hready
+  · unfold EventGraph.activePlayers
+    rw [Finset.mem_filter]
+    refine ⟨Finset.mem_univ who, ?_⟩
+    fin_cases who
+    · refine ⟨matchingPenniesNode0, ?_⟩
+      apply Finset.mem_filter.mpr
+      refine ⟨Finset.mem_univ _, ?_⟩
+      rcases matchingPenniesNode0_commit with ⟨guard, hsem⟩
+      exact ⟨matchingPenniesMachine.graph.nodeRow matchingPenniesNode0,
+        guard, matchingPenniesMachine.graph.nodes_get?_nodeRow matchingPenniesNode0,
+        hsem, by simp [EventGraph.Ready, EventGraph.Config.initial,
+          matchingPenniesNode0_prereqs]⟩
+    · refine ⟨matchingPenniesNode1, ?_⟩
+      apply Finset.mem_filter.mpr
+      refine ⟨Finset.mem_univ _, ?_⟩
+      rcases matchingPenniesNode1_commit with ⟨guard, hsem⟩
+      exact ⟨matchingPenniesMachine.graph.nodeRow matchingPenniesNode1,
+        guard, matchingPenniesMachine.graph.nodes_get?_nodeRow matchingPenniesNode1,
+        hsem, by simp [EventGraph.Ready, EventGraph.Config.initial,
+          matchingPenniesNode1_prereqs]⟩
+
+noncomputable def matchingPenniesInitialSchedulingView :
+    EventGraph.PublicObservation matchingPenniesMachine.graph :=
+  EventGraph.publicObserve matchingPenniesMachine.graph
+    (EventGraph.Config.initial matchingPenniesMachine.graph)
+
+theorem matchingPennies_zeroFirst_mem_schedules :
+    [0, 1] ∈ matchingPenniesSerialized.schedules
+      matchingPenniesInitialSchedulingView := by
+  change [0, 1].Nodup ∧ ∀ who : TestPlayer,
+    who ∈ [0, 1] ↔ Vegas.Compiled.ActiveAtView
+      matchingPenniesMachine.graph matchingPenniesInitialSchedulingView who
+  refine ⟨by decide, ?_⟩
+  intro who
+  constructor
+  · intro _
+    exact (Vegas.Compiled.activeAtView_iff _ _).mpr
+      (matchingPenniesInitial_active who)
+  · intro _
+    fin_cases who <;> simp
+
+theorem matchingPennies_oneFirst_mem_schedules :
+    [1, 0] ∈ matchingPenniesSerialized.schedules
+      matchingPenniesInitialSchedulingView := by
+  change [1, 0].Nodup ∧ ∀ who : TestPlayer,
+    who ∈ [1, 0] ↔ Vegas.Compiled.ActiveAtView
+      matchingPenniesMachine.graph matchingPenniesInitialSchedulingView who
+  refine ⟨by decide, ?_⟩
+  intro who
+  constructor
+  · intro _
+    exact (Vegas.Compiled.activeAtView_iff _ _).mpr
+      (matchingPenniesInitial_active who)
+  · intro _
+    fin_cases who <;> simp
 
 /-- **The bridge theorem is not vacuous.**
 
@@ -1333,10 +1564,119 @@ theorem matchingPenniesSerialized_not_enforcesOrder :
   Vegas.Compiled.serializedSystem_not_enforcesOrder
     matchingPenniesMachine.graph matchingPenniesMachine.graphWF
     matchingPenniesMachine.guardLive
-    (left := [0, 1]) (right := [1, 0])
-    (by decide) (by decide) (by decide) (by decide) (by decide)
+    matchingPennies_zeroFirst_mem_schedules
+    matchingPennies_oneFirst_mem_schedules (by decide)
 
-/-- Both halves of the paper claim, on this program. -/
+/-- Both accepted matching-pennies orders have the same settled graph effect,
+even though the public schedule log distinguishes them. -/
+theorem matchingPenniesSerialized_effectsCommute :
+    matchingPenniesSerialized.EffectsCommute :=
+  Vegas.Compiled.serializedSystem_effectsCommute
+    matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+    matchingPenniesMachine.guardLive
+
+/-- The compiled matching-pennies runtime genuinely accepts both orders, and
+those adversarial choices have the same settled graph effect. -/
+theorem matchingPenniesSerialized_adversarial_orders_commute :
+    [0, 1] ∈ matchingPenniesSerialized.schedules
+        matchingPenniesInitialSchedulingView ∧
+      [1, 0] ∈ matchingPenniesSerialized.schedules
+        matchingPenniesInitialSchedulingView ∧
+      matchingPenniesSerialized.EffectsCommute :=
+  ⟨matchingPennies_zeroFirst_mem_schedules,
+    matchingPennies_oneFirst_mem_schedules,
+    matchingPenniesSerialized_effectsCommute⟩
+
+/-- On the actual compiled matching-pennies frontier, both adversarially
+accepted player orders implement the atomic source successor exactly. -/
+theorem matchingPennies_both_orders_implement_atomic
+    (joint : ∀ who, Option
+      (EventGraph.FrontierAction matchingPenniesMachine.graph who))
+    (hlegal : matchingPenniesMachine.execution.Legal
+      matchingPenniesMachine.execution.init joint) :
+    Vegas.Compiled.applySerializedOrder joint [0, 1]
+        matchingPenniesMachine.execution.init =
+          EventGraph.applyFrontier matchingPenniesMachine.graph
+            matchingPenniesMachine.graphWF
+            matchingPenniesMachine.execution.init joint ∧
+      Vegas.Compiled.applySerializedOrder joint [1, 0]
+        matchingPenniesMachine.execution.init =
+          EventGraph.applyFrontier matchingPenniesMachine.graph
+            matchingPenniesMachine.graphWF
+            matchingPenniesMachine.execution.init joint := by
+  constructor
+  · exact Vegas.Compiled.applySerializedOrder_eq_applyFrontier
+      matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+      matchingPenniesMachine.guardLive matchingPenniesMachine.execution.init
+      joint hlegal matchingPennies_zeroFirst_mem_schedules
+  · exact Vegas.Compiled.applySerializedOrder_eq_applyFrontier
+      matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+      matchingPenniesMachine.guardLive matchingPenniesMachine.execution.init
+      joint hlegal matchingPennies_oneFirst_mem_schedules
+
+/-- Treating an accepted order as an independent public signal does not alter
+Nash equilibrium among the matching-pennies players.  Target deviations are
+unrestricted functions of that order; the scheduler's utility is arbitrary and
+outside the equilibrium assertion. -/
+theorem matchingPennies_scheduleSignal_playerNash_iff
+    (schedulerUtility :
+      List TestPlayer × matchingPenniesGame.behavioral.form.sig.Outcome → ℝ)
+    (order : List TestPlayer)
+    (_horder : order ∈ matchingPenniesSerialized.schedules
+      matchingPenniesInitialSchedulingView)
+    (profile : GameTheory.Profile matchingPenniesGame.behavioral.form.sig) :
+    Vegas.Scheduled.IsPlayerNash
+        (Vegas.Scheduled.IndependentSignal.game
+          matchingPenniesGame.behavioral (List TestPlayer) schedulerUtility)
+        (Vegas.Scheduled.PlayerDeviationAdequacyOn.compileProfile
+          (Vegas.Scheduled.IndependentSignal.playerDeviationAdequacy
+            matchingPenniesGame.behavioral (List TestPlayer) schedulerUtility)
+          order profile) ↔
+      GameTheory.IsNash matchingPenniesGame.behavioral.form
+        (GameTheory.euPreference matchingPenniesGame.behavioral.utility)
+        profile :=
+  Vegas.Scheduled.IndependentSignal.isPlayerNash_iff
+    matchingPenniesGame.behavioral (List TestPlayer) schedulerUtility
+      order profile
+
+/-- Every signal value in the randomized theorem is an order the actual
+matching-pennies serializer accepts at its sole strategic frontier. -/
+abbrev MatchingPenniesAcceptedOrder :=
+  { order : List TestPlayer //
+    order ∈ matchingPenniesSerialized.schedules
+      matchingPenniesInitialSchedulingView }
+
+/-- In the auxiliary independent-signal game, randomized orders are harmless.
+This is distinct from the actual runtime replay theorem. Target deviations may
+choose a distinct complete source strategy for every sampled accepted order;
+their payoff is an average of ordinary source-deviation payoffs. -/
+theorem matchingPennies_randomScheduleSignal_playerNash_iff
+    (schedulerUtility : MatchingPenniesAcceptedOrder ×
+      matchingPenniesGame.behavioral.form.sig.Outcome → ℝ)
+    (orderLaw : GameTheory.Math.Probability.FinDist
+      MatchingPenniesAcceptedOrder)
+    (profile : GameTheory.Profile matchingPenniesGame.behavioral.form.sig) :
+    Vegas.Scheduled.IsPlayerNash
+        (Vegas.Scheduled.RandomIndependentSignal.game
+          matchingPenniesGame.behavioral MatchingPenniesAcceptedOrder
+          schedulerUtility)
+        (Vegas.Scheduled.RandomIndependentSignal.compiledProfile
+          matchingPenniesGame.behavioral MatchingPenniesAcceptedOrder
+          orderLaw profile) ↔
+      GameTheory.IsNash matchingPenniesGame.behavioral.form
+        (GameTheory.euPreference matchingPenniesGame.behavioral.utility)
+        profile :=
+  Vegas.Scheduled.RandomIndependentSignal.isPlayerNash_iff
+    matchingPenniesGame.behavioral MatchingPenniesAcceptedOrder
+      schedulerUtility orderLaw profile
+
+theorem matchingPenniesFixedSerialized_enforcesOrder :
+    matchingPenniesFixedSerialized.EnforcesOrder :=
+  Vegas.Compiled.fixedSerializedSystem_enforcesOrder
+    matchingPenniesMachine.graph matchingPenniesMachine.graphWF
+    matchingPenniesMachine.guardLive
+
+/-- The paper-facing scheduling boundary instantiated on this compiled program. -/
 example :
     (∀ (state : EventGraph.ReachableConfig matchingPenniesMachine.graph)
         (legal : { joint : ∀ who,
@@ -1345,12 +1685,22 @@ example :
         EventGraph.readyInternalNodes matchingPenniesMachine.graph state.1 = ∅ →
           matchingPenniesMachine.execution.step state legal =
             GameTheory.Math.Probability.FinDist.pure
-              (EventGraph.applyFrontier matchingPenniesMachine.graph state legal.1)) ∧
-      ¬ matchingPenniesSerialized.EnforcesOrder :=
-  Vegas.Paper.compiled_and_serialized_runtimes_differ
+              (EventGraph.applyFrontier matchingPenniesMachine.graph
+                matchingPenniesMachine.graphWF state legal.1)) ∧
+      (∀ (state : matchingPenniesSerialized.State)
+          (legal : { joint //
+            matchingPenniesSerialized.toExecutionProtocol.Legal state joint })
+          (next : matchingPenniesSerialized.State),
+        next ∈ (matchingPenniesSerialized.toExecutionProtocol.step
+            state legal).support →
+          EventGraph.readyInternalNodes matchingPenniesMachine.graph
+            next.base.1 = ∅) ∧
+      ¬ matchingPenniesSerialized.EnforcesOrder ∧
+      matchingPenniesFixedSerialized.EnforcesOrder :=
+  Vegas.Paper.compiled_runtime_scheduling_boundary
     matchingPenniesMachine.graph matchingPenniesMachine.graphWF
     matchingPenniesMachine.guardLive
-    (left := [0, 1]) (right := [1, 0])
-    (by decide) (by decide) (by decide) (by decide) (by decide)
+    matchingPennies_zeroFirst_mem_schedules
+    matchingPennies_oneFirst_mem_schedules (by decide)
 
 end VegasTests
