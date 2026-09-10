@@ -150,6 +150,15 @@ def State.initial (memory : Memory P L) : State P L where
   prepared := IdealCommitments.empty
   frozen _ := none
 
+/-- Analysis readout of a binding's public disposition and private frozen
+verifier. The disposition retains the actual value of a public default, while
+an opaque commitment may have an absent or ill-typed verifier. This readout
+does not alter the runtime's observation projections. -/
+def State.bindingSnapshot (state : State P L) (field : Nat) :
+    Option (BindingDisposition (CommitmentHandle P Nat) (TypedValue L)) ×
+      Option (TypedValue L) :=
+  (state.memory.accepted field, state.frozen field)
+
 /-- Initialize only publicly declared graph fields. A source's sealed initial
 values are not copied into this publicly observed runtime memory. -/
 def Memory.initial (graph : Graph P L) : Memory P L where

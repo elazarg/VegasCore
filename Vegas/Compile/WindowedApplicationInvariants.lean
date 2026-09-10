@@ -193,23 +193,24 @@ theorem runPolicies_resolvedBindings (runtime : WindowedApplication P L)
       runtime.environmentStep_resolvedBindings hnodup state next command h hnext)
     players environment schedule execution next hresolved hnext
 
-/-- An accepted opaque binding retains its exact frozen snapshot through
+/-- An accepted binding retains its public disposition and frozen snapshot through
 arbitrary public-message policies and activation-relative timeout execution.
-The snapshot may be absent or ill-typed; no allocation premise is needed. -/
+Opaque snapshots may be absent or ill-typed; public-default values are held
+in their dispositions. No allocation premise is needed. -/
 theorem runPolicies_acceptedSnapshot (runtime : WindowedApplication P L)
-    (field : Nat) (handle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L))
     (players : P → runtime.application.PlayerPolicy)
     (environment : runtime.application.EnvironmentPolicy)
     (schedule : List (@Invocation P))
     (execution next : runtime.application.PolicyExecution)
-    (hinitial : ApplicationImage.AcceptedSnapshot field handle snapshot
+    (hinitial : ApplicationImage.AcceptedSnapshot field disposition snapshot
       execution.native.application.base)
     (hnext : next ∈ (runtime.application.runPolicies players environment schedule
       execution).support) :
-    ApplicationImage.AcceptedSnapshot field handle snapshot next.native.application.base := by
+    ApplicationImage.AcceptedSnapshot field disposition snapshot next.native.application.base := by
   apply runtime.application.runPolicies_application_invariant
-    (fun state => ApplicationImage.AcceptedSnapshot field handle snapshot state.base)
+    (fun state => ApplicationImage.AcceptedSnapshot field disposition snapshot state.base)
     _ _ _ players environment schedule execution next hinitial hnext
   · intro state who command hstate
     cases command
@@ -221,7 +222,7 @@ theorem runPolicies_acceptedSnapshot (runtime : WindowedApplication P L)
       (runtime.atOrigin activation.since).admitsMessage
       (runtime.atOrigin activation.since).admitsEnvironment state.base base message hbase
     exact (runtime.atOrigin activation.since).handle_acceptedSnapshot
-      field handle snapshot state.base message base hstate hraw
+      field disposition snapshot state.base message base hstate hraw
   · intro state command next hstate hnext
     cases command with
     | advance clock =>
@@ -237,7 +238,7 @@ theorem runPolicies_acceptedSnapshot (runtime : WindowedApplication P L)
             runtime.image.admitsMessage runtime.image.admitsEnvironment
             state.base base (.sample address) hbase with rfl | horiginal
         · exact hstate
-        · exact runtime.image.environmentStep_acceptedSnapshot field handle snapshot
+        · exact runtime.image.environmentStep_acceptedSnapshot field disposition snapshot
             state.base (.sample address) base hstate horiginal
 
 end Vegas.WindowedApplication

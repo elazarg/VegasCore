@@ -679,16 +679,17 @@ Chance integrity is an invariant of actual message execution.
 sample's marginal law under arbitrary policies from compiler allocation and
 resolution of that sample on the whole support. The continuation-law proof
 also retains unresolved runs. Combining it with frozen-snapshot stability,
-`ApplicationPlan.windowed_runPolicies_snapshots_sample_law` proves that the
-sample is jointly independent of any list of opaque bindings already accepted
-at an initial random prefix. It preserves correlations among those snapshots
-and reads both coordinates from the final execution.
+`ApplicationPlan.windowed_runPolicies_bindings_sample_law` proves that the
+sample is jointly independent of any list of bindings already resolved at an
+initial random prefix. The readout retains public dispositions and frozen
+verifiers, including actual public-default values. It preserves correlations
+among those entries and reads both coordinates from the final execution.
 
 These laws use the runtime's ideal sample kernel. General strategic
 correspondence still needs prefix decomposition under deviations, resolution,
-public-default binding values, state-dependent chance, and backtranslation of
-later unchanged-player decisions. Those decisions may legitimately depend on
-the sample; their required law is conditional, not independent.
+state-dependent chance, and backtranslation of later unchanged-player decisions.
+Those decisions may legitimately depend on the sample; their required law is
+conditional, not independent.
 
 `Interaction.ChoiceController` supplies the companion sample-once controller.
 Its first encoded command records the draw in the principal's actual

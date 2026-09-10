@@ -68,7 +68,7 @@ theorem includePending_binding_cachedSnapshot
       image.RegistrationConsistent includedExecution ∧
       image.registrationCache code.sourceSlot
           (includedExecution.principalHistory code.owner) = some value ∧
-      AcceptedSnapshot code.sourceField (code.owner, code.sourceSlot)
+      AcceptedSnapshot code.sourceField (.opaque (code.owner, code.sourceSlot))
         (some value) included.application := by
   dsimp only
   have hhandler := canonical_binding_handler image execution.native.application
@@ -119,7 +119,7 @@ theorem environmentPolicyStep_include_binding_cachedSnapshot
       image.RegistrationConsistent included ∧
       image.registrationCache code.sourceSlot
           (included.principalHistory code.owner) = some value ∧
-      AcceptedSnapshot code.sourceField (code.owner, code.sourceSlot)
+      AcceptedSnapshot code.sourceField (.opaque (code.owner, code.sourceSlot))
           (some value) included.native.application ∧
       included.environmentHistory = execution.environmentHistory ++
         [⟨State.environmentView image.application execution.native, .include id⟩] ∧
@@ -166,7 +166,7 @@ theorem runPolicies_binding_cachedSnapshot
     image.RegistrationConsistent next ∧
       image.registrationCache code.sourceSlot
           (next.principalHistory code.owner) = some value ∧
-      AcceptedSnapshot code.sourceField (code.owner, code.sourceSlot)
+      AcceptedSnapshot code.sourceField (.opaque (code.owner, code.sourceSlot))
         (some value) next.native.application := by
   have hbinding := image.environmentPolicyStep_include_binding_cachedSnapshot
     execution address code hcode id value hconsistent hcache hlookup hsender
@@ -183,7 +183,7 @@ theorem runPolicies_binding_cachedSnapshot
       code.owner players environment schedule included next value
       hincludedCache hnext
   · exact image.runPolicies_acceptedSnapshot code.sourceField
-      (code.owner, code.sourceSlot) (some value) players environment schedule
+      (.opaque (code.owner, code.sourceSlot)) (some value) players environment schedule
       included next hincludedSnapshot hnext
 
 end Vegas.ApplicationImage

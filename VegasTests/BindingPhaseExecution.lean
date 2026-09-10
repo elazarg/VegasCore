@@ -48,7 +48,7 @@ theorem generated_binding_phase (law : FinDist Bool) :
               (actionTy := BaseTy.bool) 0 0 (.constBool true) source.fresh.1).1,
           next.current.source = source.env.cons secret ∧
           (included secret).native.application.Refines next.current.graph.1 ∧
-          ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0)
+          ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0))
             (some ⟨.bool, secret⟩) (included secret).native.application := by
   obtain ⟨reads, hreadout, hview⟩ := initial_readout
   have hrefines : initial.native.application.Refines checkpoint.current.graph.1 := by
@@ -115,7 +115,7 @@ theorem generated_binding_phase (law : FinDist Bool) :
     · have hcheckpointSource : checkpoint.current.source = source.env := rfl
       rw [← hcheckpointSource]
       exact hsource
-    · change ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0)
+    · change ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0))
         (some ⟨.bool, secret⟩) (included secret).native.application at hsnapshot
       exact hsnapshot
 

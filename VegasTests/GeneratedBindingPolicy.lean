@@ -155,7 +155,7 @@ private theorem submitted_consistent (secret : Bool) :
 /-- Inclusion freezes the actual cached draw, not an independently supplied
 source witness. The command and environment histories belong to that run. -/
 theorem included_snapshot (secret : Bool) :
-    ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0) (some ⟨.bool, secret⟩)
+    ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0)) (some ⟨.bool, secret⟩)
       (included secret).native.application := by
   have hcache : image.registrationCache 0
       ((submitted secret).principalHistory 0) = some ⟨.bool, secret⟩ := by

@@ -57,7 +57,7 @@ theorem bound_source_successor (secret : Bool) :
     ∃ next : CoupledAt ConditionalApplicationImage.compiled.graph boundBuild,
       next.current.source = source.env.cons secret ∧
       (bound secret).application.Refines next.current.graph.1 ∧
-      ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0)
+      ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0))
         (some ⟨.bool, secret⟩) (bound secret).application := by
   exact SourceDecisionSite.include_binding_source_coupling
     (P := Fin 2) (L := simpleExpr) (Γ := []) (name := 0) (who := 0) (ty := .bool)

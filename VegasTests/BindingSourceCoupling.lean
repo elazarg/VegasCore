@@ -44,7 +44,7 @@ theorem included_source_successor (secret : Bool) :
     ∃ next : CoupledAt GeneratedPersistentDisclosure.compiled.graph nextBuild,
       next.current.source = source.env.cons secret ∧
       (included secret).native.application.Refines next.current.graph.1 ∧
-      ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0)
+      ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0))
         (some ⟨.bool, secret⟩) (included secret).native.application := by
   have hrefines : (submitted secret).native.application.Refines
       checkpoint.current.graph.1 := by
@@ -66,7 +66,7 @@ theorem included_source_successor (secret : Bool) :
   · rw [hincludedNative]
     exact hrefinesNext
   · rw [hincludedNative]
-    change ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (0, 0)
+    change ApplicationImage.AcceptedSnapshot (L := simpleExpr) 0 (.opaque (0, 0))
       (some ⟨.bool, secret⟩)
       (image.application.includePending (submitted secret).native (0, 0)).application
       at hsnapshot

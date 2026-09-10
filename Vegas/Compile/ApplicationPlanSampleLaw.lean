@@ -13,9 +13,10 @@ Compiler allocation discharges all frame conditions. Both optional timeout
 families and activation-relative scheduling retain the selected sample and its
 law. Resolution remains an operational premise on the unconditioned run; the
 theorem does not give an environment the power to supply or choose entropy.
-Accepted opaque snapshots also retain their full joint law and are jointly
-independent of a later fixed sample, including when the snapshots are missing
-or ill-typed. Their interpretation as source choices is a separate obligation.
+Accepted dispositions and frozen snapshots retain their full joint law and
+are jointly independent of a later fixed sample. This includes public-default
+values and absent or ill-typed opaque snapshots. Their interpretation as source
+choices is a separate obligation.
 -/
 
 noncomputable section
@@ -71,17 +72,18 @@ theorem windowed_runPolicies_sample_law (plan : ApplicationPlan accounted fresh 
   exact runtime.runPolicies_sample_law code hmem hnodes hfields law hfixed
     players environment schedule execution hnotDone hresolved
 
-/-- A fixed sample is jointly independent of earlier accepted opaque snapshots.
+/-- A fixed sample is jointly independent of earlier resolved bindings.
 The prefix law may contain arbitrary correlations, private state, malformed
 bindings, and policy histories. All of that state is retained by the suffix
 runner. Both coordinates are read from the final execution, using snapshot
-stability. The snapshot coordinate is an analysis readout, not a public
-observation. Public-default values are not covered by the opaque premise.
+stability. The binding coordinate records both public dispositions and private
+frozen verifiers; it is an analysis readout, not a public observation. It retains
+public-default values and distinguishes them from opaque commitments.
 
 The sample must be unresolved throughout the prefix and resolved throughout
 the unconditioned final law. No independence premise is imposed on the prefix
 or on the history-dependent suffix policies. -/
-theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accounted fresh build)
+theorem windowed_runPolicies_bindings_sample_law (plan : ApplicationPlan accounted fresh build)
     (deadlineOf : Nat → Nat)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
@@ -94,8 +96,8 @@ theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accoun
     (players : P → (plan.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
     (environment : (plan.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation P))
-    (hbound : ∀ execution ∈ initialLaw.support, ∀ field ∈ fields, ∃ handle,
-      execution.native.application.base.memory.accepted field = some (.opaque handle))
+    (hbound : ∀ execution ∈ initialLaw.support, ∀ field ∈ fields, ∃ disposition,
+      execution.native.application.base.memory.accepted field = some disposition)
     (hnotDone : ∀ execution ∈ initialLaw.support,
       execution.native.application.base.memory.done code.node = false)
     (hresolved : ∀ next ∈ (initialLaw.bind
@@ -104,10 +106,11 @@ theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accoun
       next.native.application.base.memory.done code.node = true) :
     (initialLaw.bind ((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
       players environment schedule)).map (fun next =>
-        (fields.map next.native.application.base.frozen,
+        (fields.map next.native.application.base.bindingSnapshot,
           code.read? next.native.application.base.memory)) =
       FinDist.product
-        (initialLaw.map (fun execution => fields.map execution.native.application.base.frozen))
+        (initialLaw.map
+          (fun execution => fields.map execution.native.application.base.bindingSnapshot))
         (law.map some) := by
   let runtime := plan.windowed deadlineOf binding choice windowOf
   rw [FinDist.map_bind, FinDist.product, FinDist.bind_map]
@@ -115,15 +118,16 @@ theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accoun
   intro execution hexecution
   have hstable : ∀ next ∈ (runtime.application.runPolicies
       players environment schedule execution).support,
-      fields.map next.native.application.base.frozen =
-        fields.map execution.native.application.base.frozen := by
+      fields.map next.native.application.base.bindingSnapshot =
+        fields.map execution.native.application.base.bindingSnapshot := by
     intro next hnext
     apply List.map_congr_left
     intro field hfield
-    obtain ⟨handle, haccepted⟩ := hbound execution hexecution field hfield
-    exact (runtime.runPolicies_acceptedSnapshot field handle
+    obtain ⟨disposition, haccepted⟩ := hbound execution hexecution field hfield
+    have hpreserved := runtime.runPolicies_acceptedSnapshot field disposition
       (execution.native.application.base.frozen field) players environment schedule
-      execution next ⟨haccepted, rfl⟩ hnext).2
+      execution next ⟨haccepted, rfl⟩ hnext
+    exact Prod.ext (hpreserved.1.trans haccepted.symm) hpreserved.2
   have hsample := plan.windowed_runPolicies_sample_law deadlineOf binding choice windowOf
     code hcode law hfixed players environment schedule execution (hnotDone execution hexecution)
     (fun next hnext => hresolved next (by
@@ -131,7 +135,7 @@ theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accoun
       exact Set.mem_iUnion.mpr ⟨execution, Set.mem_iUnion.mpr ⟨hexecution, hnext⟩⟩))
   calc
     _ = (runtime.application.runPolicies players environment schedule execution).map
-        (fun next => (fields.map execution.native.application.base.frozen,
+        (fun next => (fields.map execution.native.application.base.bindingSnapshot,
           code.read? next.native.application.base.memory)) := by
       apply FinDist.bind_congr
       intro next hnext
@@ -139,18 +143,18 @@ theorem windowed_runPolicies_snapshots_sample_law (plan : ApplicationPlan accoun
         (snapshot, code.read? next.native.application.base.memory)) (hstable next hnext)
     _ = ((runtime.application.runPolicies players environment schedule execution).map
         (fun next => code.read? next.native.application.base.memory)).map
-          (fun value => (fields.map execution.native.application.base.frozen, value)) := by
+          (fun value => (fields.map execution.native.application.base.bindingSnapshot, value)) := by
       rw [FinDist.map_comp]
       rfl
     _ = _ := congrArg (FinDist.map
-      (fun value => (fields.map execution.native.application.base.frozen, value))) hsample
+      (fun value => (fields.map execution.native.application.base.bindingSnapshot, value))) hsample
 
 end Vegas.ApplicationPlan
 
-/-- info: 'Vegas.ApplicationPlan.windowed_runPolicies_snapshots_sample_law' depends on axioms:
+/-- info: 'Vegas.ApplicationPlan.windowed_runPolicies_bindings_sample_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.windowed_runPolicies_snapshots_sample_law
+#print axioms Vegas.ApplicationPlan.windowed_runPolicies_bindings_sample_law
 
 /-- info: 'Vegas.ApplicationPlan.windowed_runPolicies_sample_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

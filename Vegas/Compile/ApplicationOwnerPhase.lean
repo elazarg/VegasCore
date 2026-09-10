@@ -331,7 +331,7 @@ theorem binding_phase_of_unchanged_owner
           (state.addCommitEvent name who guard fresh.1).1,
         next.current.source = current.current.source.cons chosen.1 ∧
           included.native.application.Refines next.current.graph.1 ∧
-          ApplicationImage.AcceptedSnapshot field (who, field) (some ⟨ty, chosen.1⟩)
+          ApplicationImage.AcceptedSnapshot field (.opaque (who, field)) (some ⟨ty, chosen.1⟩)
             included.native.application) ∧
     (image.activeAddress? execution.native.application.memory = some code.node →
       image.orderedApplication.runPolicies players environment

@@ -309,7 +309,7 @@ theorem runPolicies_cachedSnapshot_after_bind
         native := { execution.native with
           application := execution.native.application.bind code (who, slot) } }).support) :
     image.registrationCache slot (next.principalHistory who) = some value ∧
-      AcceptedSnapshot slot (who, slot) (some value)
+      AcceptedSnapshot slot (.opaque (who, slot)) (some value)
         next.native.application := by
   let bound : image.application.PolicyExecution :=
     { execution with
@@ -317,7 +317,7 @@ theorem runPolicies_cachedSnapshot_after_bind
         application := execution.native.application.bind code (who, slot) } }
   have hprepared : execution.native.application.prepared.lookup (who, slot) =
       some value := (hconsistent who slot).symm.trans hcache
-  have hboundSnapshot : AcceptedSnapshot slot (who, slot) (some value)
+  have hboundSnapshot : AcceptedSnapshot slot (.opaque (who, slot)) (some value)
       bound.native.application := by
     constructor
     · simp [bound, State.bind, hfield]
@@ -334,7 +334,7 @@ theorem runPolicies_cachedSnapshot_after_bind
       image.application ((registrationEncoding slot).privateCommand image.application)
       who players environment schedule bound next value
       hboundCache hnext'
-  · exact image.runPolicies_acceptedSnapshot slot (who, slot) (some value)
+  · exact image.runPolicies_acceptedSnapshot slot (.opaque (who, slot)) (some value)
       players environment schedule bound next hboundSnapshot hnext'
 
 end Vegas.ApplicationImage

@@ -10,9 +10,10 @@ import Interaction.MessageApplicationPolicyLaws
 
 /-! # Application-image snapshot invariants
 
-An accepted binding fixes both its public handle and its private frozen
-snapshot. This is field-local and requires no well-formedness relation between
-the instructions in an image.
+An accepted binding fixes its public disposition and private frozen snapshot,
+including when a public timeout value supplies the disposition. This is
+field-local and requires no well-formedness relation between the instructions
+in an image.
 -/
 
 noncomputable section
@@ -23,29 +24,31 @@ open EventGraph Interaction GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- The accepted handle and frozen verifier captured at one source field. The
-snapshot may be absent or dynamically ill-typed. -/
-def AcceptedSnapshot (field : Nat) (handle : CommitmentHandle P Nat)
+/-- The accepted disposition and frozen verifier captured at one source field.
+An opaque snapshot may be absent or dynamically ill-typed. A public default
+retains its value in the disposition and does not require a frozen verifier. -/
+def AcceptedSnapshot (field : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L)) (state : State P L) : Prop :=
-  state.memory.accepted field = some (.opaque handle) ∧ state.frozen field = snapshot
+  state.memory.accepted field = some disposition ∧ state.frozen field = snapshot
 
 theorem privateStep_acceptedSnapshot (image : ApplicationImage P L)
-    (field : Nat) (handle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L)) (state : State P L) (who : P)
     (command : image.application.PrivateCommand)
-    (hstate : AcceptedSnapshot field handle snapshot state) :
-    AcceptedSnapshot field handle snapshot
+    (hstate : AcceptedSnapshot field disposition snapshot state) :
+    AcceptedSnapshot field disposition snapshot
       (image.application.privateStep state who command) := by
   cases command
   exact hstate
 
 theorem environmentStep_acceptedSnapshot (image : ApplicationImage P L)
-    (field : Nat) (handle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L)) (state : State P L)
     (command : image.application.EnvironmentCommand) (next : State P L)
-    (hstate : AcceptedSnapshot field handle snapshot state)
+    (hstate : AcceptedSnapshot field disposition snapshot state)
     (hnext : next ∈ (image.application.environmentStep state command).support) :
-    AcceptedSnapshot field handle snapshot next := by
+    AcceptedSnapshot field disposition snapshot next := by
   cases command with
   | advance clock =>
       simp only [application, FinDist.mem_support_pure] at hnext
@@ -59,12 +62,12 @@ theorem environmentStep_acceptedSnapshot (image : ApplicationImage P L)
       · exact hstate
 
 theorem handle_acceptedSnapshot (image : ApplicationImage P L)
-    (field : Nat) (acceptedHandle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L)) (state : State P L)
     (message : Message P (Payload P L)) (next : State P L)
-    (hstate : AcceptedSnapshot field acceptedHandle snapshot state)
+    (hstate : AcceptedSnapshot field disposition snapshot state)
     (hnext : image.application.handle state message = some next) :
-    AcceptedSnapshot field acceptedHandle snapshot next := by
+    AcceptedSnapshot field disposition snapshot next := by
   change image.handle state message = some next at hnext
   rcases hstate with ⟨haccepted, hfrozen⟩
   cases message with
@@ -178,37 +181,37 @@ theorem handle_acceptedSnapshot (image : ApplicationImage P L)
 
 /-- Accepted snapshots persist through every supported native action list. -/
 theorem run_acceptedSnapshot (image : ApplicationImage P L)
-    (field : Nat) (handle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L))
     (state next : image.application.State) (actions : List image.application.Action)
-    (hstate : AcceptedSnapshot field handle snapshot state.application)
+    (hstate : AcceptedSnapshot field disposition snapshot state.application)
     (hnext : next ∈ (image.application.run actions state).support) :
-    AcceptedSnapshot field handle snapshot next.application := by
+    AcceptedSnapshot field disposition snapshot next.application := by
   exact image.application.run_application_invariant
-    (AcceptedSnapshot field handle snapshot)
-    (privateStep_acceptedSnapshot image field handle snapshot)
-    (handle_acceptedSnapshot image field handle snapshot)
-    (environmentStep_acceptedSnapshot image field handle snapshot)
+    (AcceptedSnapshot field disposition snapshot)
+    (privateStep_acceptedSnapshot image field disposition snapshot)
+    (handle_acceptedSnapshot image field disposition snapshot)
+    (environmentStep_acceptedSnapshot image field disposition snapshot)
     state next actions hstate hnext
 
 /-- Accepted snapshots persist under arbitrary players, environments, and
 policy schedules over the same application image. -/
 theorem runPolicies_acceptedSnapshot (image : ApplicationImage P L)
-    (field : Nat) (handle : CommitmentHandle P Nat)
+    (field : Nat) (disposition : BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
     (snapshot : Option (TypedValue L))
     (players : P → image.application.PlayerPolicy)
     (environment : image.application.EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation P))
     (execution next : image.application.PolicyExecution)
-    (hstate : AcceptedSnapshot field handle snapshot execution.native.application)
+    (hstate : AcceptedSnapshot field disposition snapshot execution.native.application)
     (hnext : next ∈ (image.application.runPolicies players environment schedule
       execution).support) :
-    AcceptedSnapshot field handle snapshot next.native.application := by
+    AcceptedSnapshot field disposition snapshot next.native.application := by
   exact image.application.runPolicies_application_invariant
-    (AcceptedSnapshot field handle snapshot)
-    (privateStep_acceptedSnapshot image field handle snapshot)
-    (handle_acceptedSnapshot image field handle snapshot)
-    (environmentStep_acceptedSnapshot image field handle snapshot)
+    (AcceptedSnapshot field disposition snapshot)
+    (privateStep_acceptedSnapshot image field disposition snapshot)
+    (handle_acceptedSnapshot image field disposition snapshot)
+    (environmentStep_acceptedSnapshot image field disposition snapshot)
     players environment schedule execution next hstate hnext
 
 end Vegas.ApplicationImage

@@ -165,8 +165,8 @@ theorem include_binding_source_coupling
       ApplicationImage.AcceptedSnapshot
         ((.here guard tail : SourceDecisionSite who
           (.commit name who guard tail) Γ name ty guard).compiledField fresh build)
-        (who, (.here guard tail : SourceDecisionSite who
-          (.commit name who guard tail) Γ name ty guard).compiledField fresh build)
+        (.opaque (who, (.here guard tail : SourceDecisionSite who
+          (.commit name who guard tail) Γ name ty guard).compiledField fresh build))
         (some ⟨ty, value⟩)
         (image.application.includePending execution (who, serial)).application := by
   let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=

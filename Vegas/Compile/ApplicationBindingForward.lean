@@ -173,7 +173,7 @@ theorem binding_bind
     apply ApplicationImage.AcceptedBindingPrefix.extend root deadlineOf state.nodes.length
       included.native.application code hprefixPreserved hcodeMem rfl
       (some ⟨ty, chosen.1⟩)
-    change ApplicationImage.AcceptedSnapshot code.sourceField (who, field)
+    change ApplicationImage.AcceptedSnapshot code.sourceField (.opaque (who, field))
       (some ⟨ty, chosen.1⟩) included.native.application
     rw [site.bindingCode_sourceField fresh state field]
     exact hsnapshot

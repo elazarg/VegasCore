@@ -102,11 +102,11 @@ theorem runPolicies
   intro code hcode hnode
   have haccepted := hprefix code hcode hnode
   have hsnapshot : AcceptedSnapshot code.sourceField
-      (code.owner, code.sourceSlot)
+      (.opaque (code.owner, code.sourceSlot))
       (execution.native.application.frozen code.sourceField)
       execution.native.application := ⟨haccepted, rfl⟩
   exact (image.runPolicies_acceptedSnapshot code.sourceField
-    (code.owner, code.sourceSlot)
+    (.opaque (code.owner, code.sourceSlot))
     (execution.native.application.frozen code.sourceField)
     players environment schedule execution next hsnapshot hnext).1
 
@@ -124,7 +124,7 @@ theorem extend
     (hnode : code.node = bound)
     (snapshot : Option (TypedValue L))
     (haccepted : AcceptedSnapshot code.sourceField
-      (code.owner, code.sourceSlot) snapshot state) :
+      (.opaque (code.owner, code.sourceSlot)) snapshot state) :
     (plan.image deadlineOf).AcceptedBindingPrefix (bound + 1) state := by
   intro other hother hotherNode
   by_cases hbefore : other.node < bound
