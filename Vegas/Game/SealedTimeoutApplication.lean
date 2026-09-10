@@ -4,8 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.MessageApplicationPolicyLaws
-import Interaction.SealedTimeoutApplication
+import Interaction.SealedTimeoutPolicyLaws
 import Vegas.Compile.SealedTimeoutRefinement
 
 /-! # Checked source support in the shared message-application game
@@ -55,11 +54,9 @@ theorem sealed_timeout_message_policy_source (source : WFProgram Player L) (ty :
             Store.getAs cfg.store
               ((ToEventGraph.compile source.core).terminalState.fieldOf h) bindTy.base =
                 some (terminalEnv.get h)) := by
-  have htrace := (timed.messageApplication (Value := L.Val ty)).runPolicies_initial_native_support
+  have hnative := timed.runPolicies_native_eq_run_trace
     players environment schedule
-    (timed.toSharedState (SealedTimeout.State.empty Player (L.Val ty))) execution hmem
-  rw [SealedTimeout.run_shared_actions] at htrace
-  have hnative := FinDist.mem_support_pure.mp htrace
+    (SealedTimeout.State.empty Player (L.Val ty)) execution hmem
   rw [hnative]
   have htimed : timed = ⟨supported.compile, timed.openingNode, timed.deadline⟩ := by
     cases timed

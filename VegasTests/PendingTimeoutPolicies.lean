@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.SealedTimeoutPolicies
+import Interaction.SealedTimeoutPolicyLaws
 import VegasTests.PendingTimeout
 
 /-! # Policy-level timeout ordering regression
@@ -18,32 +18,33 @@ inclusion-order outcome, not an encoding of that player's decision to quit.
 namespace VegasTests.PendingTimeoutPolicies
 
 open GameTheory GameTheory.Math.Probability
-open Interaction Interaction.SealedProgram Interaction.SealedTimeout
+open Interaction Interaction.MessageApplication
 open VegasTests.PendingSource
 
 noncomputable section
 
-private def players : Player → PlayerPolicy Player VegasTests.PendingExecution.Value
+private abbrev application := VegasTests.PendingTimeout.timed.messageApplication
+  (Value := VegasTests.PendingExecution.Value)
+
+private def players : Player → application.PlayerPolicy
   | 0 => fun _ _ => FinDist.pure (.submit .expire)
   | 1 => fun _ _ => FinDist.pure (.submit (.protocol (.opening 3 (1, 1) (some true))))
 
-private def openingFirst :
-    EnvironmentPolicy Player VegasTests.PendingExecution.Value := fun history _ =>
+private def openingFirst : application.EnvironmentPolicy := fun history _ =>
   FinDist.pure <| match history.length with
-    | 0 => .advance 11
+    | 0 => .application (ULift.up 11)
     | 1 => .deliver 0 (1, 1)
     | 2 => .include (1, 1)
     | _ => .include (0, 1)
 
-private def expiryFirst :
-    EnvironmentPolicy Player VegasTests.PendingExecution.Value := fun history _ =>
+private def expiryFirst : application.EnvironmentPolicy := fun history _ =>
   FinDist.pure <| match history.length with
-    | 0 => .advance 11
+    | 0 => .application (ULift.up 11)
     | 1 => .deliver 0 (1, 1)
     | 2 => .include (0, 1)
     | _ => .include (1, 1)
 
-private def schedule : List (Invocation Player) :=
+private def schedule : List (@Invocation Player) :=
   [.environment, .player 1, .player 0, .environment, .environment, .environment]
 
 private def initial :=
@@ -60,49 +61,47 @@ private def expiryFirstResult :=
      .submit 0 .expire, .deliver 0 (1, 1), .include (0, 1), .include (1, 1)]
 
 def openingFirstLaw :=
-  (policyGame VegasTests.PendingTimeout.timed openingFirst schedule initial).play players
+  (application.policyGame openingFirst schedule
+    (VegasTests.PendingTimeout.timed.toSharedState initial)).play players
 
 def expiryFirstLaw :=
-  (policyGame VegasTests.PendingTimeout.timed expiryFirst schedule initial).play players
+  (application.policyGame expiryFirst schedule
+    (VegasTests.PendingTimeout.timed.toSharedState initial)).play players
 
 private theorem openingFirst_native :
     openingFirstLaw.map (fun outcome => outcome.native) =
-      FinDist.pure openingFirstResult := by
+      FinDist.pure (VegasTests.PendingTimeout.timed.toSharedState openingFirstResult) := by
   simp only [openingFirstLaw, policyGame, policySignature, schedule, runPolicies, invoke, players,
     openingFirst, FinDist.map_pure, FinDist.pure_bind, PolicyExecution.initial,
-    environmentStep, playerStep, applyNative, EnvironmentCommand.toAction,
+    environmentPolicyStep, playerStep, advance, EnvironmentPolicyCommand.toAction,
     PlayerCommand.toAction, List.nil_append, List.length_cons, List.length_nil,
-    List.length_append]
+    List.length_append, SealedTimeout.step_shared, SealedTimeout.fromSharedAction]
   rfl
 
 private theorem expiryFirst_native :
     expiryFirstLaw.map (fun outcome => outcome.native) =
-      FinDist.pure expiryFirstResult := by
+      FinDist.pure (VegasTests.PendingTimeout.timed.toSharedState expiryFirstResult) := by
   simp only [expiryFirstLaw, policyGame, policySignature, schedule, runPolicies, invoke, players,
     expiryFirst, FinDist.map_pure, FinDist.pure_bind, PolicyExecution.initial,
-    environmentStep, playerStep, applyNative, EnvironmentCommand.toAction,
+    environmentPolicyStep, playerStep, advance, EnvironmentPolicyCommand.toAction,
     PlayerCommand.toAction, List.nil_append, List.length_cons, List.length_nil,
-    List.length_append]
+    List.length_append, SealedTimeout.step_shared, SealedTimeout.fromSharedAction]
   rfl
 
 theorem openingFirst_resolution :
-    openingFirstLaw.map (fun outcome => outcome.native.application.resolution) =
+    openingFirstLaw.map (fun outcome => outcome.native.application.application.resolution) =
       FinDist.pure .completed := by
-  have h := congrArg (FinDist.map fun state => state.application.resolution)
+  have h := congrArg (FinDist.map fun state => state.application.application.resolution)
     openingFirst_native
-  rw [FinDist.map_comp] at h
-  have hr : openingFirstResult.application.resolution = .completed := rfl
-  rw [FinDist.map_pure, hr] at h
+  rw [FinDist.map_comp, FinDist.map_pure] at h
   exact h
 
 theorem expiryFirst_resolution :
-    expiryFirstLaw.map (fun outcome => outcome.native.application.resolution) =
+    expiryFirstLaw.map (fun outcome => outcome.native.application.application.resolution) =
       FinDist.pure .expired := by
-  have h := congrArg (FinDist.map fun state => state.application.resolution)
+  have h := congrArg (FinDist.map fun state => state.application.application.resolution)
     expiryFirst_native
-  rw [FinDist.map_comp] at h
-  have hr : expiryFirstResult.application.resolution = .expired := rfl
-  rw [FinDist.map_pure, hr] at h
+  rw [FinDist.map_comp, FinDist.map_pure] at h
   exact h
 
 theorem same_players_deliver_opening :
@@ -116,16 +115,10 @@ theorem same_players_deliver_opening :
   · have h := congrArg (FinDist.map fun state =>
         (state.pool.inbox 0).getLast?.map Message.id) openingFirst_native
     rw [FinDist.map_comp, FinDist.map_pure] at h
-    have hr : (openingFirstResult.pool.inbox 0).getLast?.map Message.id =
-        some (1, 1) := rfl
-    rw [hr] at h
     exact h
   · have h := congrArg (FinDist.map fun state =>
         (state.pool.inbox 0).getLast?.map Message.id) expiryFirst_native
     rw [FinDist.map_comp, FinDist.map_pure] at h
-    have hr : (expiryFirstResult.pool.inbox 0).getLast?.map Message.id =
-        some (1, 1) := rfl
-    rw [hr] at h
     exact h
 
 end

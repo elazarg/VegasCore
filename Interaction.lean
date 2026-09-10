@@ -53,6 +53,5 @@ import Interaction.SealedPolicyBinding
 import Interaction.SealedTimeout
 import Interaction.SealedTimeoutLaws
 import Interaction.SealedTimeoutHiding
-import Interaction.SealedTimeoutPolicies
 import Interaction.SealedTimeoutPolicyLaws
 import Interaction.SealedTimeoutApplication

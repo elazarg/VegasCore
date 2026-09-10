@@ -387,7 +387,7 @@ the adjacent emitter's principal-exclusion dependency gate.
 
 The environment advances an explicitly public monotone natural-number clock.
 Neither advancement nor exhausting a finite analysis horizon resolves the
-checkpoint. The native policy game in `Interaction/SealedTimeoutPolicies.lean`
+checkpoint. The `SealedTimeout.messageApplication` instance of the shared policy game
 allows local-history-dependent register, submit, replay, and wait choices;
 the environment adaptively advances the clock, delivers, includes, or waits.
 It sees wire state and public application data, but not the hidden commitment
@@ -404,7 +404,7 @@ actual compiled prefix; it does not identify expiration with that source's
 terminal nullable value.
 
 `WFProgram.sealed_timeout_run_source` proves that every finite raw timed run
-decodes to a reachable compiled graph prefix. `sealed_timeout_policy_source`
+decodes to a reachable compiled graph prefix. `sealed_timeout_message_policy_source`
 lifts this result to every supported outcome of the native policy game.
 When the decoded graph prefix is terminal, both reconstruct a written-order
 source execution with matching terminal bindings and payout evaluation.

@@ -399,7 +399,7 @@ opening. `PendingTimeoutPolicies` proves exact completion/expiration laws for
 the same players and polling schedule under opposite environment inclusion
 orders, with the valid opening delivered in both executions.
 
-`WFProgram.sealed_timeout_run_source` and `sealed_timeout_policy_source`
+`WFProgram.sealed_timeout_run_source` and `sealed_timeout_message_policy_source`
 connect every finite raw run and every supported policy-game outcome to a
 reachable compiled graph prefix. If that decoded prefix is terminal, they
 reconstruct a written-order source execution, its terminal bindings, and its
@@ -1141,7 +1141,11 @@ uses that correspondence for arbitrary shared player/environment policies:
 their outcomes decode to reachable graph prefixes, and terminal decoded
 prefixes reconstruct written-source executions, bindings, and payout
 evaluation. This remains a support theorem, not source-policy backtranslation
-or an outcome-law comparison. The final-expiration policy is unchanged.
+or an outcome-law comparison. The final-expiration policy disables later
+protocol-event acceptance without assigning a source value. Timed policies
+use only the shared message runner; `SealedTimeoutPolicyLaws` supplies its
+native trace witness and occupied-binding persistence. The raw timed step/run
+remains a reference for model-specific proofs, not a second policy evaluator.
 
 `InteractionTests/MessageApplication.lean` exercises a separate lottery
 application with no Vegas imports. It checks acceptance, rejection, retained

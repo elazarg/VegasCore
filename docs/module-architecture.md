@@ -49,9 +49,12 @@ by expiry policy; `DependencyGateLaws` proves a shared-timer obstruction and
 immutable-deadline progress. These are runtime-general components, without
 Vegas or VM imports. `SealedTimeout` uses atomic inclusion with the separate
 one-obligation `Deadline` race, the original sealed-message validator, a public
-clock, and receipts. `SealedTimeoutPolicies` gives that runner its bounded
-local-policy game, and its law modules establish native witnesses and binding
-persistence. `SealedTimeoutHiding` preserves declared views, including receipts
+clock, and receipts. Its bounded local-policy game uses
+`MessageApplicationPolicies` through `SealedTimeout.messageApplication`;
+`SealedTimeoutPolicyLaws` establishes native witnesses and binding persistence
+on that shared runner. The raw timed step/run semantics remain a reference for
+model-specific proofs, with exact state, action, observation, and run
+correspondence. `SealedTimeoutHiding` preserves declared views, including receipts
 and clock/status observations, across paired pre-disclosure raw traces; an
 adaptive-policy hiding lift is a separate obligation. This final-expiration instance is distinct from the dependency
 gate's principal-wide exclusion policy; neither is proved to implement source

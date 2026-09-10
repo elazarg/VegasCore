@@ -377,7 +377,7 @@ a source value nor implements the richer source's persistent role-specific
 abandonment and handler semantics. This real runtime instance still needs
 the source-resolution and whole-interaction strategic comparisons.
 
-`WFProgram.sealed_timeout_run_source` and `sealed_timeout_policy_source`
+`WFProgram.sealed_timeout_run_source` and `sealed_timeout_message_policy_source`
 extend the reachable-prefix/source-support result over timed native execution
 and its policy game. Terminal decoded graph prefixes reconstruct source
 bindings and payout evaluation; checkpoint completion or expiration alone
@@ -579,13 +579,20 @@ specified lottery exercises the same machinery without Vegas imports. These
 clients establish runtime reuse, not the full non-Vegas strategic comparison
 required by R3.
 
-Policy execution must have one implementation per operational carrier.
-`SealedPolicies` and `SealedTimeoutPolicies` still implement their own policy
-runners alongside `MessageApplicationPolicies`. The timed native bridge is
-exact but does not yet transport policy histories and games. Consolidate that
-layer through checked policy transport before extending it; for the untimed
-model, account explicitly for its weaker receipt observations. A native-run
-correspondence alone does not justify equating these policy games.
+The timed sealed model uses `MessageApplicationPolicies` directly, including
+the source-prefix theorem, binding persistence, and the policy-level
+opening/expiry race regressions. Its raw timed step/run remains a reference
+semantics used in model-specific proofs; its correspondence to the shared
+native runner is exact.
+
+`SealedPolicies` still has an independent untimed policy runner, with weaker
+receipt observations and a replay-admissibility parameter. To remove it, make
+those observation and action restrictions explicit on the common policy
+boundary and carry over the hiding and binding results. Merely exposing the
+shared runner's receipts would change the policy interface. A native-run
+correspondence alone does not justify equating these games. This consolidation
+does not discharge general public-message deviation simulation or migration
+of the retained EVM backend.
 
 Integrate conditional publication and source continuation through this shared
 application boundary. Do not add a separate optional-disclosure runner or

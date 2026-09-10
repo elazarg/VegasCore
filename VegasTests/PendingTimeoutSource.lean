@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Game.SealedTimeout
+import Vegas.Game.SealedTimeoutApplication
 import VegasTests.PendingOutcome
 
 /-! # A complete timed run reaches the nullable source
@@ -101,6 +101,6 @@ end VegasTests.PendingTimeoutSource
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WFProgram.sealed_timeout_run_source
 
-/-- info: 'Vegas.WFProgram.sealed_timeout_policy_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.WFProgram.sealed_timeout_message_policy_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.WFProgram.sealed_timeout_policy_source
+#print axioms Vegas.WFProgram.sealed_timeout_message_policy_source

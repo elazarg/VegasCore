@@ -135,17 +135,17 @@ theorem timedEnvironmentView_observe [DecidableEq Principal] [DecidableEq Value]
 
 theorem step_shared [DecidableEq Principal] [DecidableEq Value]
     (timed : SealedTimeout Principal) (state : State Principal Value)
-    (action : Action Principal Value) :
+    (action : (messageApplication (Value := Value) timed).Action) :
     (messageApplication (Value := Value) timed).step (toSharedState timed state)
-        (toSharedAction timed action) =
-      FinDist.pure (toSharedState timed (timed.step state action)) := by
+        action =
+      FinDist.pure (toSharedState timed (timed.step state (fromSharedAction timed action))) := by
   cases action with
-  | register => rfl
+  | privateCommand => rfl
   | submit => rfl
   | replay => rfl
   | deliver => rfl
   | «include» id =>
-      simp only [MessageApplication.step, toSharedAction, toSharedState,
+      simp only [MessageApplication.step, fromSharedAction, toSharedState,
         messageApplication, SealedTimeout.step, SealedTimeout.includePending,
         MessageApplication.includePending]
       unfold MessagePool.includeApplication
@@ -157,8 +157,8 @@ theorem step_shared [DecidableEq Principal] [DecidableEq Value]
           | some message =>
               cases hhandle : timed.handle state.clock state.application message <;>
                 simp [hhandle]
-  | advance clock =>
-      simp only [MessageApplication.step, toSharedAction, toSharedState,
+  | environment command =>
+      simp only [MessageApplication.step, fromSharedAction, toSharedState,
         messageApplication, SealedTimeout.step, FinDist.map_pure]
       split <;> rfl
 
@@ -172,7 +172,7 @@ theorem run_shared [DecidableEq Principal] [DecidableEq Value]
   | nil => rfl
   | cons action rest ih =>
       simp only [List.map_cons, MessageApplication.run_cons, SealedTimeout.run_cons,
-        step_shared, FinDist.pure_bind]
+        step_shared, fromSharedAction_toSharedAction, FinDist.pure_bind]
       exact ih (timed.step state action)
 
 theorem run_shared_actions [DecidableEq Principal] [DecidableEq Value]
