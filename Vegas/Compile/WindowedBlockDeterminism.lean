@@ -91,6 +91,32 @@ private theorem serviceCommand_not_sample (runtime : WindowedApplication P L)
       · simp [liftEnvironmentCommand]
       · split <;> simp [liftEnvironmentCommand]
 
+/-- The service of a player-owned instruction never requests source chance,
+including in its ordinary, clock, and relay slots. -/
+theorem blockEnvironment_noSample (runtime : WindowedApplication P L)
+    (roster : List P) (history : List runtime.application.EnvironmentEntry)
+    (view : runtime.application.EnvironmentObservation)
+    (instruction : ApplicationInstruction P L) (owner : P)
+    (hindex : runtime.image.instructions[history.length / (roster.length + 2)]? =
+      some instruction)
+    (howner : instruction.submitter = some owner)
+    (command : runtime.application.EnvironmentPolicyCommand)
+    (hcommand : command ∈ (runtime.blockEnvironment roster history view).support) :
+    ∀ address, command ≠ .application (.sample address) := by
+  simp only [blockEnvironment, hindex, FinDist.mem_support_pure] at hcommand
+  subst command
+  intro address
+  split
+  · split
+    · exact runtime.serviceCommand_not_sample instruction owner howner _ address
+    · split
+      · simp
+      · split <;> simp
+    · split
+      · simp
+      · exact runtime.latestSubmissionCommand_not_sample _ _ address
+  · simp
+
 /-- Every environment invocation in an owned block has a point-mass law.
 The environment may include malformed traffic or advance the clock; it cannot
 replace or pre-draw a source chance instruction through these slots. -/
@@ -103,19 +129,15 @@ theorem blockEnvironment_invoke_eq_pure (runtime : WindowedApplication P L)
     (howner : instruction.submitter = some owner) :
     ∃ next, runtime.application.invoke players (runtime.blockEnvironment roster)
       execution .environment = FinDist.pure next := by
-  simp only [MessageApplication.invoke, blockEnvironment, hindex, FinDist.pure_bind]
+  obtain ⟨command, hcommand⟩ : ∃ command,
+      runtime.blockEnvironment roster execution.environmentHistory
+        (State.environmentView runtime.application execution.native) =
+          FinDist.pure command := ⟨_, rfl⟩
+  simp only [MessageApplication.invoke, hcommand, FinDist.pure_bind]
   apply runtime.environmentPolicyStep_eq_pure
-  intro address
-  split
-  · split
-    · exact runtime.serviceCommand_not_sample instruction owner howner _ address
-    · split
-      · simp
-      · split <;> simp
-    · split
-      · simp
-      · exact runtime.latestSubmissionCommand_not_sample _ _ address
-  · simp
+  exact runtime.blockEnvironment_noSample roster execution.environmentHistory
+    (State.environmentView runtime.application execution.native) instruction owner hindex howner
+    command (by rw [hcommand]; exact FinDist.mem_support_pure.mpr rfl)
 
 /-- A block owned by a fixed pure raw policy has a point-mass law on complete
 native executions. Only other players' reference policies are gated. Static

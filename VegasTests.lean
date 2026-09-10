@@ -160,3 +160,5 @@ import VegasTests.ConditionalExpirationSourceCoupling
 import VegasTests.WindowedBindingLocality
 import VegasTests.WindowedBindingReadiness
 import VegasTests.WindowedBindingExtraction
+import VegasTests.WindowedOwnedCheckpoint
+import VegasTests.WindowedOwnedPrivacy

@@ -432,6 +432,23 @@ outcome or a later chance result. Coverage of all actual supported prefixes,
 the paired information proof, and their connection to source-policy extension
 remain to be implemented.
 
+The focal-owned block case is checked by
+`WindowedCheckpoint.owned_block_agreement`. Given two actual checkpoints and
+their preceding `PolicyAgreement`, it proves agreement after every pair of
+supported complete blocks owned by the focal player. The raw focal policy is
+fixed and pure; all of its commands remain available. Other players use the
+original root-profile lifts. Their block gates select only waits or public
+expiry submissions, and the environment never requests chance during an owned
+block. Initial reachability supplies every history length and the compiler
+supplies instruction lookup, including timeout decoration. No settlement,
+accepted-packet shape, or final-inactivity premise is needed. The underlying
+inclusion theorem permits arbitrary packets: an opening from a different
+author cannot inspect that author's private snapshot at a focal-owned active
+instruction. Regressions exercise the source-checkpoint endpoint and actual
+rejection of such a foreign opening with distinct hidden snapshots.
+The other constructor cases, where an unchanged player or source chance
+supplies the block's value, still need their full-block paired comparisons.
+
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual
 acceptance-time prepared snapshot, using the source-certified public fallback

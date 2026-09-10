@@ -128,6 +128,10 @@ import Vegas.Compile.WindowedExpiryService
 import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.WindowedBlockAlignment
 import Vegas.Compile.WindowedBlockDeterminism
+import Vegas.Compile.WindowedOwnedBlock
+import Vegas.Compile.WindowedOwnedPlayers
+import Vegas.Compile.WindowedOwnedPrivacy
+import Vegas.Compile.WindowedOwnedCheckpoint
 import Vegas.Compile.WindowedBlockPredraw
 import Vegas.Compile.WindowedBlockIsolation
 import Vegas.Compile.WindowedActivationFreshness
