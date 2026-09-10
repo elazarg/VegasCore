@@ -137,19 +137,21 @@ theorem public_application_reference_law (source : WFProgram Player L)
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
   plan.timeout_service_source_public_law source deadlineOf binding choice profile hinitial horigins
 
-/-- Source-ordered admission retains the generated reference service's exact
-joint completion and public-output law. The statement uses the undecorated
-generated image; it asserts neither progress under other services nor deviation
-simulation. -/
+/-- Source-ordered admission with optional binding and public-choice fallbacks
+retains the generated reference service's exact joint completion and public-output
+law. It asserts neither progress under other services nor deviation simulation. -/
 theorem public_application_ordered_reference_law (source : WFProgram Player L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (ToEventGraph.BuildState.fromInitial
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode Player L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode Player L) → Option (PublicFallbackCode L code.guard.ty))
     (profile : SourceBehavioralProfile source.core.prog)
     (hinitial : plan.InitialControllerReadsPublic)
     (horigins : (plan.image deadlineOf).HasBindingOrigins) :
-    (((plan.image deadlineOf).orderedApplication.runPolicies
+    (((((plan.image deadlineOf).withBindingTimeouts binding).withChoiceTimeouts
+      choice).orderedApplication.runPolicies
       (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
       (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
         (fun out =>
@@ -164,7 +166,8 @@ theorem public_application_ordered_reference_law (source : WFProgram Player L)
             (ToEventGraph.BuildState.fromInitial
               (ToEventGraph.initialState source.core.Γ source.core.env
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
-  plan.ordered_service_source_public_law source deadlineOf profile hinitial horigins
+  plan.ordered_timeout_service_source_public_law source deadlineOf binding choice
+    profile hinitial horigins
 
 /-- A missing authenticated submission cannot be supplied by scheduling.
 The generated code's submission requirement is an inspectable static premise. -/

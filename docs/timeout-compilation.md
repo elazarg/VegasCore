@@ -88,6 +88,14 @@ artifact retains the source reference-profile outcome law because lifted
 source policies submit neither kind of expiry packet. This no-expiry reference
 law does not establish a resolving service or arbitrary-deviation simulation.
 
+Both timeout families also compose with source-ordered admission. For the
+original lifted source profile and generated reference service,
+`ApplicationPlan.ordered_timeout_service_source_public_law` proves the exact
+joint completion/public-output law. At the native policy level, the full
+execution law is unchanged by decoration whenever the initial pool and the
+policies contain no newly enabled expiry traffic. Expiry remains available to
+other policies; its strategic effect is a separate obligation.
+
 `BindingDisposition` is runtime-general: it records either an opaque handle or
 a public default value. The application stores this sum in its public memory.
 The private preparation table and acceptance-time snapshots remain separate.
@@ -130,8 +138,17 @@ provides a source successor for every supported included result. Its service
 premise names the actual inclusion of the submitted envelope; it neither
 creates expiry traffic nor establishes a whole-program resolving service.
 
-Whole-program continuation after expiry still needs cache and binding-prefix
-invariants for that service, followed by a deviation-law comparison. A
+`ApplicationImage.ResolvedBindings` is a policy-independent invariant: every
+completed generated binding has an accepted disposition, canonical in the
+opaque case. It survives arbitrary policy runs, both with concurrent admission
+and with source-ordered admission. For generated ordered images with optional
+timeouts, `ApplicationPlan.ordered_timeout_runPolicies_invariants` also proves
+that completed graph nodes form an initial segment. Neither invariant supplies
+an actual source environment or imposes cache freshness on a deviator.
+
+Whole-program continuation after expiry still needs source-state coupling and
+unchanged-player cache/readout invariants for the resolving service, followed
+by a deviation-law comparison. A
 public-computable fallback value does not make the occurrence or timing of
 fallback independent of private player behavior. The reference player policies
 read only their declared source information; stronger adversary statements

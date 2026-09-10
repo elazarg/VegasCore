@@ -105,6 +105,11 @@ completion together with the executable public-terminal readout; it equates
 that distribution with successful completion and the source terminal public
 projection. It does not reconstruct sealed terminal values from public storage.
 
+`ApplicationPlan.ordered_timeout_service_source_public_law` gives the same
+source law with source-ordered admission and both optional timeout families.
+The original lifted policies and reference service are retained. The policies
+submit no expiry requests; the statement does not compare deviations that do.
+
 The structural backend plan, initial controller-read publicity, and earlier
 binding origins are explicit premises. They do not weaken source
 well-formedness or assert that every checked source admits this backend plan.

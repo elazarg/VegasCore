@@ -270,6 +270,12 @@ emitted serial service, `ordered_service_source_public_law` does establish the
 same joint completion/public-terminal distribution as the source law. Its
 induction uses full ordered/unordered equality for each current-head phase; it
 does not assert equality of arbitrary complete `PolicyExecution` laws.
+The reference law also holds with both optional timeout families enabled.
+For arbitrary policies, `ordered_timeout_runPolicies_invariants` proves a
+prefix of completed graph nodes and accepted opaque/default dispositions at
+completed bindings. These are native invariants; reconstructing the source
+environment at each resolution and preserving the unchanged players' choice
+kernels remain separate tasks.
 
 Advance the proof-side source cursor at actual successful resolution. An
 environment-history length is not a progress cursor once retries, clock ticks,
@@ -285,6 +291,15 @@ the window. Earlier delays must not consume a future player's entire response
 opportunity. Arbitrary compile-time absolute deadlines do not provide this
 property. A bounded absolute-deadline service could also work, but would need
 to prove the relevant activation and reaction bounds.
+
+A minimal candidate for ordered execution stores the current instruction's
+address and activation clock. Successful resolution records a new origin only
+when the active address changes; administrative steps retain it. Relative
+window metadata should be distinct from the existing absolute deadlines.
+A two-phase test should delay the first phase past the second phase's absolute
+deadline, then verify that an activation-relative second window still permits
+its owner's response. This is a design and test target, not a checked theorem
+about an implemented relative-clock runtime.
 
 Safety, opportunity, and settlement have separate obligations:
 

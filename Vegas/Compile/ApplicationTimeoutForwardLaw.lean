@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationPolicyTimeouts
+import Vegas.Compile.ApplicationOrderTimeouts
 import Interaction.MessageApplicationHandlerExtension
 
 /-! # Reference execution with optional public fallbacks
@@ -113,6 +114,45 @@ theorem timeout_service_source_public_law (source : WFProgram P L)
     MessagePool.Satisfies.empty]
   exact plan.service_source_public_law source deadlineOf profile hinitial horigins
 
+/-- The ordered public-message interpreter with both optional fallback families
+has the independent source completion and public-outcome law for the lifted
+profile under its generated reference service. Deviating players may submit
+expiry traffic; their execution laws are outside this statement. -/
+theorem ordered_timeout_service_source_public_law (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins) :
+    ((((plan.image deadlineOf).withBindingTimeouts binding).withChoiceTimeouts
+      choice).orderedApplication.runPolicies
+      (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
+      (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
+        (fun out => (out.native.application.memory.finished (compile source.core).graph.nodeCount,
+          (compile source.core).readPublicTerminal? out.native.application.memory)) =
+      (denoteSource source.core.prog profile source.core.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv L)
+          (compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog source.core.fresh
+            (BuildState.fromInitial
+              (initialState source.core.Γ source.core.env source.core.wctx))).symm)
+            terminal).erasePubEnv) := by
+  rw [(plan.image deadlineOf).ordered_runPolicies_withTimeouts binding choice
+    (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
+    (fun execution who address => plan.liftProfileIn_expiry_not_supported
+      (plan.image deadlineOf) deadlineOf profile who (execution.principalHistory who)
+      (State.observe (plan.image deadlineOf).application execution.native who)
+      (.expireBinding address) trivial)
+    (fun execution who address => plan.liftProfileIn_expiry_not_supported
+      (plan.image deadlineOf) deadlineOf profile who (execution.principalHistory who)
+      (State.observe (plan.image deadlineOf).application execution.native who)
+      (.expireChoice address) trivial)
+    (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)
+    MessagePool.Satisfies.empty MessagePool.Satisfies.empty]
+  exact plan.ordered_service_source_public_law source deadlineOf profile hinitial horigins
+
 end ApplicationPlan
 
 end Vegas
@@ -121,3 +161,8 @@ end Vegas
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.timeout_service_source_public_law
+
+/-- info: 'Vegas.ApplicationPlan.ordered_timeout_service_source_public_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.ordered_timeout_service_source_public_law

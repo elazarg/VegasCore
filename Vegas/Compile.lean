@@ -104,6 +104,10 @@ import Vegas.Compile.SourceExecution
 import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionLaw
 import Vegas.Compile.ApplicationOrder
+import Vegas.Compile.ApplicationOrderTimeouts
+import Vegas.Compile.ApplicationOrderPrefix
+import Vegas.Compile.ApplicationCompletion
+import Vegas.Compile.ApplicationResolvedBindings
 import Vegas.Compile.ApplicationOrderPhase
 import Vegas.Compile.ApplicationOrderCheckpoint
 import Vegas.Compile.ApplicationOrderRefinement

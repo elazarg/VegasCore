@@ -888,13 +888,29 @@ source execution. These support results alone do not prove progress, a
 source-prefix invariant for every run, activation-relative deadlines, an
 expiry-producing service, or deviation simulation.
 
+`ApplicationPlan.ordered_timeout_runPolicies_invariants` gives a separate
+arbitrary-policy invariant for generated ordered images, with either or both
+timeout families enabled. Completed flags are exactly the nodes below some
+bound no larger than the graph's node count. Every completed binding retains
+an accepted disposition; an opaque disposition has its generated owner/slot,
+while a public default remains a distinct alternative. Generated coverage and
+allocation discharge the required non-aliasing premises. The theorem admits
+arbitrary submissions, delivery, inclusion, replay, and clock commands. A prefix
+of completion flags is not yet an exact source-environment checkpoint or a
+source-policy simulation, and it does not establish progress.
+
 For the original generated plan, unchanged lifted source profile, and emitted
-serial service, `ApplicationPlan.ordered_service_source_public_law` now proves
+serial service, `ApplicationPlan.ordered_service_source_public_law` proves
 the same joint completion/public-terminal distribution as the source law. The
 proof uses exact ordered/unordered equality for each current-head phase. It is
 not an equality of complete `PolicyExecution` distributions for arbitrary
-schedules or policies, and it does not compose ordered admission with the
-optional timeout decorations.
+schedules or policies. `ordered_timeout_service_source_public_law` composes
+ordered admission with both optional timeout decorations. Its reference
+policies submit neither expiry request. More generally, fixed ordered policies
+and initial pools free of the newly enabled expiry traffic have the same full
+execution law before and after timeout decoration; other traffic and environment
+behavior are unrestricted. This conservativity statement does not remove the
+additional deviations available through expiry.
 
 `ApplicationPlan.service_source_public_law` runs the complete generated
 invocation list with `ApplicationPlan.liftProfile` and `serialService`. For every
