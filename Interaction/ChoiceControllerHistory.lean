@@ -94,6 +94,17 @@ end ChoiceController
 
 namespace ChoiceEncoding
 
+/-- The first encoded command records its value in the actual principal
+history, independently of the command's native application effect. -/
+theorem playerStep_cachedValue_of_none [DecidableEq Principal]
+    (encoding : ChoiceEncoding Value app.PlayerCommand) (who : Principal)
+    (execution next : app.PolicyExecution) (value : Value)
+    (hcache : encoding.cachedValue app (execution.principalHistory who) = none)
+    (hnext : next ∈ (app.playerStep who execution (encoding.encode value)).support) :
+    encoding.cachedValue app (next.principalHistory who) = some value := by
+  rw [app.playerStep_history_self who execution (encoding.encode value) next hnext]
+  exact encoding.cachedValue_append_encoded_of_none app _ _ value hcache
+
 /-- Appending one command outside an encoding's domain preserves an empty
 earliest-command cache. -/
 theorem cachedValue_append_unrecognized
@@ -177,6 +188,41 @@ theorem runPolicies_cachedValue_of_some [DecidableEq Principal]
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms runPolicies_cachedValue_of_some
+
+/-- Carry a first sample jointly with the complete subsequent native
+execution. Later policies and delivery may depend on the sampled command;
+the law retains that dependence rather than multiplying separate marginals.
+No completion, inclusion, or restriction on later commands is assumed. -/
+theorem runPolicies_sample_joint [DecidableEq Principal]
+    (encoding : ChoiceEncoding Value app.PlayerCommand) (who : Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (choices : FinDist Value)
+    (hchoice : players who (execution.principalHistory who)
+        (State.observe app execution.native who) = choices.map encoding.encode)
+    (hcache : encoding.cachedValue app (execution.principalHistory who) = none) :
+    (app.runPolicies players environment (.player who :: schedule) execution).map
+        (fun next => (encoding.cachedValue app (next.principalHistory who), next)) =
+      choices.bind fun value =>
+        ((app.playerStep who execution (encoding.encode value)).bind
+          (app.runPolicies players environment schedule)).map (fun next => (some value, next)) := by
+  rw [runPolicies, invoke, hchoice, FinDist.bind_map, FinDist.bind_bind, FinDist.map_bind]
+  apply FinDist.bind_congr
+  intro value _
+  apply FinDist.map_congr_of_eq_on_support
+  intro next hnext
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
+  obtain ⟨middle, hmiddle, hnext⟩ := hnext
+  have hrecorded := encoding.playerStep_cachedValue_of_none app who execution middle
+    value hcache hmiddle
+  exact congrArg (fun cached => (cached, next))
+    (encoding.runPolicies_cachedValue_of_some app who players environment schedule
+      middle next value hrecorded hnext)
+
+/-- info: 'Interaction.MessageApplication.ChoiceEncoding.runPolicies_sample_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms runPolicies_sample_joint
 
 end ChoiceEncoding
 

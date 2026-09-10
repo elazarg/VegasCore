@@ -149,8 +149,11 @@ The remaining implementation order is:
    invariants across arbitrary successful resolutions. Public-choice and opaque
    binding phases already preserve the unchanged owner's source kernel after an
    arbitrary initialized prefix, given a coupled source checkpoint, fresh own
-   caches, and immediate inclusion. Repeated polling needs a pending-sample
-   invariant, not a fresh draw at every invocation. Completed-node prefixes
+   caches, and immediate inclusion. The public-choice sampling law retains the
+   original draw jointly with arbitrary finite native continuations, including
+   payload-dependent delivery and retries, without requiring inclusion. Compose
+   this retained sample with resolution and the next source checkpoint; repeated
+   polling must not draw afresh. Completed-node prefixes
    and accepted dispositions are already policy-independent invariants; they
    do not identify an unchanged player's source choice kernel.
 2. Supply a resolving service with observation-local request production and

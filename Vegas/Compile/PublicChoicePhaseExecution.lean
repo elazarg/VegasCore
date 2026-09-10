@@ -52,14 +52,12 @@ theorem publicChoice_head_phase_source_law
     (hcode : image.lookup
         ((atHead name publicName who guard tail).runtimeSite fresh build).publicationNode =
       some (.publicChoice ((atHead name publicName who guard tail).code fresh build)))
-    (reads : ReadEnv L (eventGuardOf build who guard).choiceReads)
-    (hpolicy : ∀ history,
-      players who history
+    (hchoice : players who (execution.principalHistory who)
           (MessageApplication.State.observe image.application execution.native who) =
-        ((atHead name publicName who guard tail).imageController fresh build image
-          (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
-          sourcePolicy (fun _ _ => false)).policy image.application history
-            (MessageApplication.State.observe image.application execution.native who))
+        (sourcePolicy ((current.current.source.toView who).eraseEnv)).map fun chosen =>
+          .submit ((ApplicationImage.choiceEncoding
+            ((atHead name publicName who guard tail).runtimeSite fresh build).publicationNode
+            ty).encode chosen.1))
     (henvironment : ∀ chosen ∈
         (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
       ∀ submitted ∈ (image.application.playerStep who execution
@@ -70,17 +68,7 @@ theorem publicChoice_head_phase_source_law
           (MessageApplication.State.environmentView image.application submitted.native) =
         FinDist.pure (.include (who, execution.native.pool.nextSerial who)))
     (hlookupFresh : execution.native.pool.lookup
-      (who, execution.native.pool.nextSerial who) = none)
-    (hcache : ChoiceEncoding.cachedValue image.application
-      ((ApplicationImage.choiceEncoding
-        ((atHead name publicName who guard tail).runtimeSite fresh build).publicationNode
-        ty).submission image.application)
-      (execution.principalHistory who) = none)
-    (hreadout : image.ownerReadout? who (eventGuardOf build who guard).choiceReads
-      (execution.principalHistory who)
-      (MessageApplication.State.observe image.application execution.native who) = some reads)
-    (hreads : ReadEnv.ofStore? current.current.graph.1.store
-      (eventGuardOf build who guard).choiceReads = some reads) :
+      (who, execution.native.pool.nextSerial who) = none) :
     let site := atHead name publicName who guard tail
     let code := site.code fresh build
     let encoding := ApplicationImage.choiceEncoding (P := P)
@@ -115,15 +103,15 @@ theorem publicChoice_head_phase_source_law
   let encoding := ApplicationImage.choiceEncoding (P := P)
     code.endpoint.publicationNode ty
   let id := (who, execution.native.pool.nextSerial who)
-  have hready := ready_at_source_prefix guard tail fresh build current
-    execution.native.application.memory.done hrefines.memory.completed
-  have hphase := site.publicChoice_phase_source_law fresh build image
-    (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
-    sourcePolicy (fun _ _ => false) players environment execution
-    current.current.graph.1.store current.current.source reads (hpolicy _)
-    henvironment hlookupFresh heligible current.current.agrees
-    hrefines.memory.publicFields hcode hready hcache hreadout hreads
-  refine ⟨hphase.1, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
+  · simp only [MessageApplication.runPolicies, MessageApplication.invoke]
+    rw [hchoice, FinDist.bind_map, FinDist.bind_bind]
+    apply FinDist.bind_congr
+    intro chosen hchosen
+    apply FinDist.bind_congr
+    intro submitted hsubmitted
+    rw [henvironment chosen hchosen submitted hsubmitted]
+    simp only [FinDist.pure_bind, FinDist.bind_pure]
   · intro chosen hchosen submitted hsubmitted included hincluded
     have hnative : submitted.native ∈
         ((image.application.playerStep who execution
@@ -161,28 +149,10 @@ theorem publicChoice_head_phase_source_law
         [.player who, .environment] execution =
       image.application.runPolicies players environment
         [.player who, .environment] execution
-    have hresolved : execution.native.application.memory.done
-        code.endpoint.publicationNode = false := by
-      have hparts := hready
-      simp only [PublicChoice.ready, Bool.and_eq_true, Bool.not_eq_true'] at hparts
-      exact hparts.1.2
-    have hsourcePolicy :
-        players who (execution.principalHistory who)
-            (MessageApplication.State.observe image.application execution.native who) =
-          (sourcePolicy ((current.current.source.toView who).eraseEnv)).map fun chosen =>
-            .submit (encoding.encode chosen.1) := by
-      rw [hpolicy]
-      exact site.controller_first_submission_source_law fresh build image.application
-        encoding (fun view => view.application.done)
-        (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
-        sourcePolicy (fun _ _ => false) (execution.principalHistory who)
-        (MessageApplication.State.observe image.application execution.native who)
-        current.current.graph.1.store current.current.source reads hresolved hcache hready
-        hreadout (BuildState.Agrees.view current.current.agrees who) hreads
     exact image.ordered_submit_environment_phase_eq players environment who execution
       (sourcePolicy ((current.current.source.toView who).eraseEnv))
       (fun chosen => encoding.encode chosen.1) code.endpoint.publicationNode
-      hsourcePolicy henvironment hlookupFresh (by intro _ _; rfl) hactive
+      hchoice henvironment hlookupFresh (by intro _ _; rfl) hactive
 
 end Vegas.PublicChoiceSite
 

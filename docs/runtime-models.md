@@ -869,8 +869,15 @@ Its premises still include an exact source checkpoint, fresh current-choice
 caches, and local inclusion of the newly submitted envelope. It does not
 construct the deviator's source strategy or establish whole-run resolution.
 Freshness cannot simply be dropped: a repeated poll reuses the previously
-sampled choice. A general deviation proof must retain that pending sample or
-establish phase boundaries at which it has not yet been drawn.
+sampled choice. `publicChoice_sample_of_unchanged_owner` identifies the fresh
+command law and retains its sampled value jointly with every finite native
+continuation. It uses the shared runner's `ChoiceEncoding.runPolicies_sample_joint`;
+later policies may react to the payload, and neither inclusion nor completion
+is required. `InteractionTests/ChoiceController.lean` checks a fair sample with
+payload-dependent delivery. This joint law preserves correlations with execution;
+it does not identify the eventual accepted value or construct a source checkpoint
+after resolution. A general deviation proof still needs that composition and
+the deviator's observation-local source strategy.
 
 This exact-prefix invariant is specific to the source-ordered reference run.
 `VegasTests/ApplicationEarlyBinding.lean` generates a checked six-node program

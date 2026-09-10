@@ -149,10 +149,11 @@ theorem first_publicChoice_phase_source_law
 player has submitted a future-endpoint packet and delivered it to the owner's
 inbox.  The prefix uses the real runner, a non-reference opponent policy, and
 ordinary message delivery; its raw packet remains present when the phase
-starts. -/
+starts. The sampled choice is also retained jointly with arbitrary native
+continuations, without an inclusion premise. -/
 theorem first_publicChoice_after_opponent_traffic
     (profile : SourceBehavioralProfile source.prog) :
-    image.application.runPolicies (opponentTrafficPlayers profile)
+    (image.application.runPolicies (opponentTrafficPlayers profile)
         includeFirst [.player 0, .environment] (afterOpponentTraffic profile) =
       (profile 0 firstSite.decision ((source.env.toView 0).eraseEnv)).bind fun chosen =>
         (image.application.playerStep 0 (afterOpponentTraffic profile)
@@ -160,7 +161,18 @@ theorem first_publicChoice_after_opponent_traffic
             (P := VegasTests.ApplicationImage.Player) (L := simpleExpr)
             firstAddress BaseTy.bool).encode chosen.1))).bind
               fun submitted => image.application.environmentPolicyStep submitted
-                (.include (0, 0)) := by
+                (.include (0, 0))) ∧
+    ∀ environment schedule,
+      (image.application.runPolicies (opponentTrafficPlayers profile) environment
+        (.player 0 :: schedule) (afterOpponentTraffic profile)).map (fun next =>
+          (((ApplicationImage.choiceEncoding (P := Fin 2) firstAddress BaseTy.bool).submission
+            image.application).cachedValue image.application (next.principalHistory 0), next)) =
+        (profile 0 firstSite.decision ((source.env.toView 0).eraseEnv)).bind fun chosen =>
+          ((image.application.playerStep 0 (afterOpponentTraffic profile)
+            (.submit ((ApplicationImage.choiceEncoding firstAddress BaseTy.bool).encode
+              chosen.1))).bind
+                (image.application.runPolicies (opponentTrafficPlayers profile)
+                  environment schedule)).map (fun next => (some chosen.1, next)) := by
   have hproperties := afterOpponentTraffic_properties profile
   have howner : opponentTrafficPlayers profile 0 =
       applicationPlan.liftProfile (fun _ => 0) profile 0 := by
@@ -194,7 +206,13 @@ theorem first_publicChoice_after_opponent_traffic
   have hphase := hlaw.1
   dsimp only at hphase
   rw [hproperties.2.2.2] at hphase
-  exact hphase
+  refine ⟨hphase, ?_⟩
+  have hsample := ApplicationPlan.ProfileContinuation.publicChoice_sample_of_unchanged_owner
+    (root := applicationPlan) (rootProfile := profile) (.refl) (fun _ => 0)
+    (opponentTrafficPlayers profile) howner deliverOpponentTraffic
+    [.player 1, .environment] (afterOpponentTraffic profile)
+    (afterOpponentTraffic_mem profile) (compiledInitialCoupled source) hrefines hinitial hcache
+  exact hsample.2
 
 end VegasTests.PublicChoiceImageExecution
 

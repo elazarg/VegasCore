@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.ChoiceController
+import Interaction.ChoiceControllerHistory
 
 /-! # Sample-once choice-controller regressions
 
@@ -173,6 +173,39 @@ theorem two_polls_sample_once :
   apply congrArg (FinDist.bind fair)
   funext value
   rfl
+
+/-- The environment can inspect a pending cleartext payload and choose whether
+to deliver it. This reaction is part of the joint execution law. -/
+def reactiveEnvironment : application.EnvironmentPolicy := fun _ view =>
+  FinDist.pure <| match view.pool.lookup (0, 0) with
+    | some ⟨_, .choice true⟩ => .deliver 0 (0, 0)
+    | _ => .wait
+
+/-- A fair sample and its payload-dependent delivery are correlated. The cache
+retains the original sample even on the branch where no delivery occurs. -/
+theorem sample_delivery_joint :
+    (application.runPolicies players reactiveEnvironment [.player 0, .environment] e0).map
+        (fun next => ((codec.submission application).cachedValue application
+          (next.principalHistory 0), next.native.pool.inbox 0)) =
+      fair.map (fun value => (some value,
+        if value then [⟨(0, 0), Payload.choice true⟩] else [])) := by
+  have hjoint := (codec.submission application).runPolicies_sample_joint application
+    0 players reactiveEnvironment [.environment] e0 fair first_policy rfl
+  have hprojected := congrArg
+    (FinDist.map (fun pair : Option Bool × application.PolicyExecution =>
+      (pair.1, pair.2.native.pool.inbox 0))) hjoint
+  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_bind] at hprojected
+  rw [hprojected, FinDist.map_eq_bind]
+  apply FinDist.bind_congr
+  intro value _
+  change (application.playerStep 0 e0 (.submit (.choice value))).bind _ = _
+  rw [first_step, FinDist.pure_bind]
+  cases value <;>
+    simp [MessageApplication.runPolicies, MessageApplication.invoke, reactiveEnvironment,
+      MessageApplication.environmentPolicyStep, MessageApplication.advance,
+      MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
+      MessageApplication.State.environmentView, MessagePool.lookup, MessagePool.deliver,
+      e1, initial, MessageApplication.State.initial, MessagePool.empty, MessagePool.submit]
 
 theorem codec_rejects_other_endpoint (value : Bool) :
     codec.decode (.other value) = none := rfl
