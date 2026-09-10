@@ -852,11 +852,30 @@ the model, not a proof about blockchain randomness. The generated regression
 and repeated-disclosure program and discharges resolution for its actual
 lifted reference execution.
 
-A sample marginal is insufficient for deviation simulation: the joint law
-must also respect earlier frozen choices and unchanged opponents' decisions.
-State-dependent sample distributions additionally require conditional laws
-at source prefixes; the fixed-distribution theorem does not cover them.
-Resolution under deviations remains a separate service obligation.
+`ApplicationPlan.windowed_runPolicies_snapshots_sample_law` gives a joint law
+for any finite list of earlier accepted opaque bindings. Start with any finite
+distribution of prefix executions in which those bindings are accepted and
+the selected sample is unresolved. If an arbitrary policy suffix resolves the
+sample on every run, the final snapshots and sample have the product of the
+prefix snapshot law and the emitted chance law. The snapshots may be mutually
+correlated, absent, or ill-typed. The theorem proves independence of the whole
+snapshot list, not merely pairwise independence. Both coordinates come from
+the final execution; native snapshot stability carries the prefix values
+through clock advancement, registration attempts, and public-message handling.
+The private snapshot readout is for analysis and is not a player observation.
+The joint-law regression uses an arbitrary mixture of actual raw-policy runs
+through binding, marker publication, and chance on the same generated runtime.
+It derives the accepted snapshots and chance resolution from those executions,
+retaining all command histories. Its first coordinate is the chosen secret
+distribution, and its second is the independently triggered source coin.
+
+This addresses the chance law relative to previously accepted opaque bindings.
+It does not cover public-default binding values or backtranslate later
+unchanged-player decisions, which may depend on the sample. State-dependent
+sample distributions require conditional laws at source prefixes. General
+deviation simulation also needs to establish suitable prefix decompositions
+and resolution under deviations. The joint-law theorem starts from a supplied
+prefix distribution and assumes resolution; it does not construct either.
 
 `ApplicationService` supplies a concrete observation-local environment policy
 and image-derived invocation list. `serialService` indexes emitted instructions

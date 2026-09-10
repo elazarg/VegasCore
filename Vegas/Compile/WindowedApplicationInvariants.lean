@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationDeadlineInvariants
+import Vegas.Compile.ApplicationImageInvariants
 import Vegas.Compile.WindowedApplication
 
 /-! # Native invariants of activation-relative applications
@@ -192,7 +193,59 @@ theorem runPolicies_resolvedBindings (runtime : WindowedApplication P L)
       runtime.environmentStep_resolvedBindings hnodup state next command h hnext)
     players environment schedule execution next hresolved hnext
 
+/-- An accepted opaque binding retains its exact frozen snapshot through
+arbitrary public-message policies and activation-relative timeout execution.
+The snapshot may be absent or ill-typed; no allocation premise is needed. -/
+theorem runPolicies_acceptedSnapshot (runtime : WindowedApplication P L)
+    (field : Nat) (handle : CommitmentHandle P Nat)
+    (snapshot : Option (TypedValue L))
+    (players : P → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (schedule : List (@Invocation P))
+    (execution next : runtime.application.PolicyExecution)
+    (hinitial : ApplicationImage.AcceptedSnapshot field handle snapshot
+      execution.native.application.base)
+    (hnext : next ∈ (runtime.application.runPolicies players environment schedule
+      execution).support) :
+    ApplicationImage.AcceptedSnapshot field handle snapshot next.native.application.base := by
+  apply runtime.application.runPolicies_application_invariant
+    (fun state => ApplicationImage.AcceptedSnapshot field handle snapshot state.base)
+    _ _ _ players environment schedule execution next hinitial hnext
+  · intro state who command hstate
+    cases command
+    exact hstate
+  · intro state message next hstate hnext
+    obtain ⟨activation, base, _, _, hbase, rfl⟩ :=
+      runtime.handle_some state next message hnext
+    have hraw := (runtime.atOrigin activation.since).application.withAdmission_handle_some
+      (runtime.atOrigin activation.since).admitsMessage
+      (runtime.atOrigin activation.since).admitsEnvironment state.base base message hbase
+    exact (runtime.atOrigin activation.since).handle_acceptedSnapshot
+      field handle snapshot state.base message base hstate hraw
+  · intro state command next hstate hnext
+    cases command with
+    | advance clock =>
+        rw [application_advance, FinDist.mem_support_pure] at hnext
+        subst next
+        exact hstate
+    | sample address =>
+        change next ∈ ((runtime.image.orderedApplication.environmentStep state.base
+          (.sample address)).map (runtime.advanceTo state)).support at hnext
+        rw [FinDist.support_map] at hnext
+        obtain ⟨base, hbase, rfl⟩ := hnext
+        rcases runtime.image.application.withAdmission_environment_support
+            runtime.image.admitsMessage runtime.image.admitsEnvironment
+            state.base base (.sample address) hbase with rfl | horiginal
+        · exact hstate
+        · exact runtime.image.environmentStep_acceptedSnapshot field handle snapshot
+            state.base (.sample address) base hstate horiginal
+
 end Vegas.WindowedApplication
+
+/-- info: 'Vegas.WindowedApplication.runPolicies_acceptedSnapshot' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.runPolicies_acceptedSnapshot
 
 /-- info: 'Vegas.WindowedApplication.runPolicies_completedPrefix' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

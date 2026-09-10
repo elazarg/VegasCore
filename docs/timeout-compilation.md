@@ -239,10 +239,12 @@ bounds. Its chance-free, single-decision-maker source permits deterministic
 realization of each public outcome. For arbitrary generated plans,
 `ApplicationPlan.windowed_runPolicies_sample_law` preserves each fixed sample
 distribution when that sample resolves on every run, even under arbitrary
-clock-aware policies and optional timeout handlers. This marginal law does
-not establish its joint distribution with earlier bindings or unchanged-player
-decisions. General deviation simulation still needs those joint laws and a
-resolving service; appending default-only rounds does not supply them. See
+clock-aware policies and optional timeout handlers. Its joint counterpart,
+`ApplicationPlan.windowed_runPolicies_snapshots_sample_law`, proves independence
+from any list of opaque binding snapshots accepted before the draw, preserving
+their correlations and reading them from the final runtime state. Public-default
+values, state-dependent chance, later unchanged-player decisions, and a
+resolving service remain obligations of general deviation simulation. See
 [runtime models](runtime-models.md) for the exact chance-law boundary.
 
 ### Runtime services

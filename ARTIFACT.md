@@ -74,8 +74,12 @@ preservation for arbitrary generated plans under raw public-message policies
 and relative timeouts. The selected sample must resolve on every run; its
 law is not conditioned on success. `VegasTests/GeneratedApplicationChance.lean`
 instantiates this theorem and proves resolution for the actual generated
-reference service. This is a marginal chance law, not joint-law preservation
-or general deviation simulation.
+reference service. The same production module proves a joint law: the draw is
+independent of any list of opaque snapshots already accepted at a random
+prefix. The snapshots retain their mutual correlations and are read from the
+final runtime state. This does not backtranslate later player decisions or
+establish progress under deviations; see the exact premises in
+[runtime models](docs/runtime-models.md).
 `lake --wfail build Paper` is the focused paper-proof build. Do not run `lake
 update` to reproduce a pinned revision: it may resolve different dependencies.
 The cache download is a build optimization, not evidence that our theorem
