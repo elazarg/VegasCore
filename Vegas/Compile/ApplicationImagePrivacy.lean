@@ -13,11 +13,12 @@ and accepted snapshots. Other principals' private values may differ. It is
 an invariant for comparing actual executions, not an observation projection:
 the native interface still exposes only public memory.
 
-Authenticated raw messages from the retained principal cannot distinguish
-the other private tables through acceptance receipts. This includes guessed
-openings, malformed messages, and permissionless expiry. The full-run source
-information theorem must additionally derive this relation at paired reachable
-checkpoints and account for unchanged opponents' generated messages.
+Authenticated opening messages from the retained principal cannot distinguish
+other private tables through acceptance receipts. Non-opening handlers also
+preserve agreement for other authors, including opaque binding admission and
+permissionless expiry. The full-run source information theorem must derive
+this relation at paired reachable checkpoints and account for opponents'
+generated opening messages.
 -/
 
 namespace Vegas.ApplicationImage
@@ -25,6 +26,14 @@ namespace Vegas.ApplicationImage
 open EventGraph Interaction
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- The raw packet forms whose acceptance can query a private commitment
+snapshot. All other handlers use public state, including binding admission,
+decline, and expiry. This predicate constrains a privacy comparison, not the
+commands available to any player. -/
+def Payload.OpensCommitment : Payload P L → Prop
+  | .conditional _ (.opening _ _) => True
+  | _ => False
 
 /-- Public state and the private information relevant to one authenticated
 principal agree. Unaccepted snapshots and other owners' snapshots are free. -/
@@ -134,11 +143,11 @@ theorem sample (h : left.AgreesFor who right) (code : SampleCode L)
     (left.sample code value).AgreesFor who (right.sample code value) :=
   ⟨by simp only [State.sample, h.memory], h.prepared, h.frozen⟩
 
-/-- A raw owner-authenticated conditional packet has the same resolution in
-agreeing states. Authentication prevents it from querying another verifier. -/
+/-- Conditional resolution agrees when any opening is authored by the retained
+principal. Other packet forms need no authorship restriction. -/
 theorem resolveDisposition (h : left.AgreesFor who right) (code : ConditionalCode P L)
-    (id : MessageId P) (hsender : id.1 = who)
-    (payload : ConditionalPublication.Payload P (L.Val code.secretTy)) :
+    (id : MessageId P) (payload : ConditionalPublication.Payload P (L.Val code.secretTy))
+    (hsender : ∀ handle value, payload = .opening handle value → id.1 = who) :
     code.endpoint.resolveDisposition? left.memory.clock (left.verify code)
         (code.binding? left.memory) left.memory.done (code.canOpen left.memory.store)
         ⟨id, payload⟩ =
@@ -165,15 +174,18 @@ theorem resolveDisposition (h : left.AgreesFor who right) (code : ConditionalCod
               rw [hverify]
             · simp [ConditionalPublication.resolveDisposition?, ConditionalPublication.resolve?,
                 ConditionalPublication.ready, hcanonical]
-          · cases payload <;>
-              simp [ConditionalPublication.resolveDisposition?, ConditionalPublication.resolve?,
-                Message.sender, hsender, Ne.symm howner]
+          · cases payload with
+            | opening handle value =>
+                simp [ConditionalPublication.resolveDisposition?, ConditionalPublication.resolve?,
+                  Message.sender, hsender handle value rfl, Ne.symm howner]
+            | decline | expire | cleartext _ | malformed => rfl
 
-/-- Every raw message authored by the retained principal has matching
-acceptance and related successor states. No source legality or well-typed
-payload premise restricts the message. -/
+/-- Matching raw messages have matching acceptance and related successors.
+Only opening packets require focal authorship; other senders may submit any
+non-opening packet. No source legality or typing premise is required. -/
 theorem handle (h : left.AgreesFor who right) (image : ApplicationImage P L)
-    (message : Message P (Payload P L)) (hsender : message.sender = who) :
+    (message : Message P (Payload P L))
+    (hsender : message.payload.OpensCommitment → message.sender = who) :
     Option.Rel (State.AgreesFor who) (image.handle left message) (image.handle right message) := by
   rcases message with ⟨id, payload⟩
   cases payload with
@@ -247,7 +259,16 @@ theorem handle (h : left.AgreesFor who right) (image : ApplicationImage P L)
               | none => simp only [Option.bind_none]; exact .none
               | some decoded =>
                   simp only [Option.bind_some]
-                  rw [h.resolveDisposition code id hsender decoded]
+                  have hauthor : ∀ handle value, decoded = .opening handle value → id.1 = who := by
+                    intro handle value hopen
+                    subst decoded
+                    cases payload with
+                    | opening _ _ => exact hsender trivial
+                    | cleartext typed =>
+                        cases ht : typed.as? code.secretTy <;>
+                          simp [ConditionalCode.decode, ht] at hdecode
+                    | decline | expire | malformed => cases hdecode
+                  rw [h.resolveDisposition code id decoded hauthor]
                   cases code.endpoint.resolveDisposition? right.memory.clock (right.verify code)
                       (code.binding? right.memory) right.memory.done
                       (code.canOpen right.memory.store) ⟨id, decoded⟩ with

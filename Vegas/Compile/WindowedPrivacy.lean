@@ -11,11 +11,11 @@ import Interaction.MessageApplicationLaws
 /-! # Owner-local privacy through windowed inclusion
 
 Ordered admission and relative deadlines preserve the ideal application's
-owner-local agreement. Including an arbitrary packet authenticated as that
-owner produces the same public receipt and observations in agreeing states.
-The premise concerns the envelope's original author; a rebroadcaster does not
-gain that identity. Replays of another author's packets require their own
-provenance or completed-address argument.
+owner-local agreement. Opening packets authenticated as that owner and all
+non-opening packets produce the same public receipts and observations in
+agreeing states. The premise concerns the original author; a rebroadcaster
+does not gain that identity. Other authors' opening packets require a separate
+source-value, provenance, or completed-address argument.
 -/
 
 noncomputable section
@@ -37,7 +37,7 @@ variable {who : P} {left right : State P L}
 
 private theorem ordered_handle (h : left.AgreesFor who right)
     (image : ApplicationImage P L) (message : Message P (ApplicationImage.Payload P L))
-    (hauthor : message.sender = who) :
+    (hauthor : message.payload.OpensCommitment → message.sender = who) :
     Option.Rel (ApplicationImage.State.AgreesFor who)
       (image.orderedApplication.handle left.base message)
       (image.orderedApplication.handle right.base message) := by
@@ -58,10 +58,11 @@ theorem advanceTo (h : left.AgreesFor who right) (runtime : WindowedApplication 
     (runtime.advanceTo left nextLeft).AgreesFor who (runtime.advanceTo right nextRight) :=
   ⟨hnext, by simp only [WindowedApplication.advanceTo, h.active, hnext.memory]⟩
 
-/-- The actual deadline-decorated ordered handlers match, including rejection
-and metadata consistency checks, on any packet authored by this principal. -/
+/-- The deadline-decorated ordered handlers match, including rejection and
+metadata consistency checks. Only opening packets require focal authorship. -/
 theorem handle (h : left.AgreesFor who right) (runtime : WindowedApplication P L)
-    (message : Message P (ApplicationImage.Payload P L)) (hauthor : message.sender = who) :
+    (message : Message P (ApplicationImage.Payload P L))
+    (hauthor : message.payload.OpensCommitment → message.sender = who) :
     Option.Rel (State.AgreesFor who) (runtime.handle left message)
       (runtime.handle right message) := by
   simp only [WindowedApplication.handle, h.active, h.base.memory]
@@ -92,7 +93,8 @@ theorem includePending_agrees (runtime : WindowedApplication P L)
     (hstate : left.application.AgreesFor who right.application)
     (hpool : left.pool = right.pool) (hreceipts : left.receipts = right.receipts)
     (id : MessageId P)
-    (hauthor : ∀ message, left.pool.lookup id = some message → message.sender = who) :
+    (hauthor : ∀ message, left.pool.lookup id = some message →
+      message.payload.OpensCommitment → message.sender = who) :
     let nextLeft := runtime.application.includePending left id
     let nextRight := runtime.application.includePending right id
     nextLeft.application.AgreesFor who nextRight.application ∧
@@ -127,14 +129,15 @@ theorem includePending_agrees (runtime : WindowedApplication P L)
                 MessageApplication.includePending_accept _ _ _ _ _ hright hrightHandle]
               exact ⟨hnext, by rw [hpool], by rw [hreceipts]⟩
 
-/-- Every observer receives the same public result of an owner-authenticated
-probe in owner-locally agreeing states. -/
+/-- Every observer receives the same public inclusion result when any opening
+packet is focal-authored; non-opening packets may come from other principals. -/
 theorem includePending_observe_eq (runtime : WindowedApplication P L)
     (who : P) (left right : runtime.application.State)
     (hstate : left.application.AgreesFor who right.application)
     (hpool : left.pool = right.pool) (hreceipts : left.receipts = right.receipts)
     (id : MessageId P)
-    (hauthor : ∀ message, left.pool.lookup id = some message → message.sender = who)
+    (hauthor : ∀ message, left.pool.lookup id = some message →
+      message.payload.OpensCommitment → message.sender = who)
     (observer : P) :
     MessageApplication.State.observe runtime.application
         (runtime.application.includePending left id) observer =

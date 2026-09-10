@@ -85,7 +85,7 @@ theorem opponent_probe_observation (first second guess : Bool) (observer : Playe
         (runtime.application.includePending (probe second guess) (1, 1)) observer := by
   apply runtime.includePending_observe_eq 1 (probe first guess) (probe second guess)
     (bound_agrees first second) rfl rfl (1, 1)
-  intro message hmessage
+  intro message hmessage _
   have heq : message = ⟨(1, 1), .conditional 3 (.opening (0, 0) ⟨.bool, guess⟩)⟩ :=
     Option.some.inj hmessage.symm
   rw [heq]

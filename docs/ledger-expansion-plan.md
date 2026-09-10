@@ -359,9 +359,16 @@ controller at the starting public observation. No command or execution-law
 equality is assumed. `WindowedApplication.PolicyAgreement.binding_twoPolls_of_ready`
 uses that law to prove focal policy-input agreement for every pair of supported
 outcomes, allowing different private source inputs and draws for the nonfocal
-owner. It assumes agreement before those polls and stops before environment
-inclusion. Deriving agreement from equal source views through complete blocks,
-including their admission outcomes and receipts, remains a separate obligation.
+owner. It also identifies the actual resulting pool.
+`WindowedApplication.PolicyAgreement.binding_inclusion_of_ready` extends that
+comparison through latest-submission service: it derives the selected envelope
+and preserves agreement through its inclusion and acceptance or rejection
+receipt. Freshness is local to the newly allocated sender serial; unrelated
+pending traffic is allowed. The compiled regression verifies successful
+acceptance and the exact source law of the private accepted snapshot, as well
+as observer agreement. These results assume agreement before the owner polls.
+Deriving it from equal source views through complete blocks remains a separate
+obligation.
 
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
@@ -398,12 +405,18 @@ must derive any invariant concerning residual honest messages as well.
 public memory, that owner's prepared slots, and its accepted frozen snapshots,
 while allowing other private values to differ. Private registration, binding,
 public writes, and raw owner-authenticated handlers preserve this relation.
+Non-opening packets also preserve it for any author: opaque binding admission,
+public choices, declines, and expiry do not query a private verifier.
 `WindowedPrivacy` carries it through ordered relative-deadline admission and
 actual inclusion, including observable acceptance/rejection receipts. These
-local results do not assume payload typing or legality. A replay retains its
-original author, so another owner's replayed packet needs a separate provenance
-or completed-address argument; the raw-author theorem must not be used to
-silently treat the rebroadcaster as the author.
+local results do not assume payload typing or legality. The author premise is
+required only for opening packets and constrains the comparison theorem, not
+the available commands. A replay retains its original author; another owner's
+opening packet needs a source-value, provenance, or completed-address argument.
+`WindowedApplication.PolicyAgreement.environmentPolicyStep_deliver` preserves
+agreement through recipient-local delivery from equal pools, exposing the
+actual packet without invoking its handler. It does not establish agreement
+for arbitrary delivery strategies or replace the full-prefix comparison.
 `WindowedForeignProvenance.runPolicies_repeatedBlocks_foreignAddressed` derives
 foreign-message provenance through the actual initialized repeated-block run:
 every retained nonfocal message targets an instruction before the completed-block
@@ -426,10 +439,10 @@ The absence of delivery is checked for `blockEnvironment`. The generic
 empty and any known foreign-authored packet is already in the public ledger,
 including foreign packets retained in a broadcaster's sent history by replay.
 The source-checkpoint provenance result connects those public packets to
-completed source addresses. Current-block canonical inclusion still needs a
-paired transcript argument: equal focal source successors must determine the
-ledger-visible message and receipt, even when the unchanged owner's private
-draws differ.
+completed source addresses. The binding-specific paired inclusion theorem
+allows different private draws and proves equal ledger-visible messages and
+receipts. The corresponding complete-block and source-prefix comparison must
+also account for all intervening focal commands and other instruction kinds.
 
 The required theorem is profile-relative, so the construction need only use
 supported **prefix** checkpoints. For a fixed focal pure policy and a source
