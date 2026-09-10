@@ -43,7 +43,8 @@ theorem owner_initial_pair (secret : Bool) (complete : Bool → Bool → Bool)
       openingSubmitted (next.principalHistory 0) = false := by
   simp only [MessageApplication.runPolicies, MessageApplication.invoke, howner] at hnext
   simp [ownerPolicy_pure_eq, initialCachedValue, initialCommandEncoding,
-    initialChoiceEncoding, bindingSubmitted,
+    initialChoiceEncoding, bindingSubmitted, MessageApplication.ChoiceEncoding.cachedValue,
+    MessageApplication.ChoiceEncoding.privateCommand,
     MessageApplication.PolicyExecution.initial, initial, MessageApplication.State.initial,
     empty, MessageApplication.State.observe, MessageApplication.playerStep,
     MessageApplication.advance, MessageApplication.PlayerCommand.toAction,
@@ -54,7 +55,8 @@ theorem owner_initial_pair (secret : Bool) (complete : Bool → Bool → Bool)
     IdealCommitments.lookup, IdealCommitments.empty, initialCachedValue,
     initialCommandEncoding, initialChoiceEncoding, openingCommandEncoding,
     openingPayloadEncoding, Vegas.ConditionalPublicationSite.choiceEncoding,
-    MessageApplication.ChoiceEncoding.trans, openingTransport, bindingSubmitted,
+    MessageApplication.ChoiceEncoding.trans, MessageApplication.ChoiceEncoding.cachedValue,
+    MessageApplication.ChoiceEncoding.privateCommand, openingTransport, bindingSubmitted,
     openingSubmitted, observe, empty]
 
 /-- The complete arrival phase retains the actual owner-authored binding and

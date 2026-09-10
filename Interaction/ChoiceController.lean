@@ -51,7 +51,7 @@ def submission (encoding : ChoiceEncoding Value app.Payload) :
   decode_sound command value hdecode := by
     cases command with
     | submit payload =>
-        exact congrArg PlayerCommand.submit
+        exact congrArg MessageInterface.PlayerCommand.submit
           (encoding.decode_sound payload value hdecode)
     | privateCommand command | replay id | wait => contradiction
 
@@ -67,7 +67,7 @@ def privateCommand (encoding : ChoiceEncoding Value app.PrivateCommand) :
   decode_sound command value hdecode := by
     cases command with
     | privateCommand command =>
-        exact congrArg PlayerCommand.privateCommand
+        exact congrArg MessageInterface.PlayerCommand.privateCommand
           (encoding.decode_sound command value hdecode)
     | submit payload | replay id | wait => contradiction
 

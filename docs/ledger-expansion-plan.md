@@ -110,28 +110,40 @@ they do not imply completion or equality with the terminating source law.
 
 `ApplicationPlan.withholding_no_source_public_law` establishes a code-level
 obstruction to upgrading the reference law by service assumptions alone.
-Generated binding and ordinary-public-choice nodes require an owner-authored
+Generated binding and fallback-free ordinary-public-choice nodes require an owner-authored
 message. Replacing that owner by permanent waiting leaves the program unfinished
 under every environment policy and finite invocation schedule. The theorem
 retains completion in the outcome; it does not rule out weaker observations or
 an extended implementation with genuine source-certified fallbacks.
 
-Conditional publication already supplies such an entry point.
+Conditional publication supplies a source-certified decline entry point.
 `ConditionalPublicationSite.expiry_include_source_coupling` relates an actual
 included, overdue expiry packet from any sender to the existing source decline
 and exact source continuation. The packet must actually be submitted: the
 environment's inclusion capability cannot author it.
 
+Ordinary public choices can be annotated with a `PublicResolutionChoice`:
+a typed public source expression whose value is universally guard-legal. Its
+compiled optional expiry code uses the same application interpreter, and an
+actual overdue inclusion has the annotated source continuation. This is a
+designated source-legal backend resolution, not inferred programmer intent or
+equality with the original owner's policy. The annotation and source accounting
+remain separate. See [timeout compilation](timeout-compilation.md).
+
 The implementation order is:
 
-1. Generate fallback metadata for a supported binding/public-choice slice from
-   an explicit source-resolution certificate. `Legal` provides some legal
-   action, not the programmer's specified nonresponse consequence. Keep this
-   certificate and backend eligibility separate from core syntax and WF.
+1. Extend source-authorized resolution to the opaque-binding instruction.
+   `Legal` provides some legal action, not the programmer's specified
+   nonresponse consequence. Keep the designated expression, its certificate,
+   and backend eligibility separate from core syntax and WF.
 2. Represent an accepted opaque commitment and a public fallback as distinct
    dispositions. A fallback neither forges an owner's message nor overwrites
-   its private preparation. Adapt opening verification and reference readout
-   to the accepted disposition, including recovery from an unsubmitted cache.
+   its private preparation. Retain the fallback value in the disposition and
+   require refinement to relate that value to the source binding. Adapt opening
+   verification and reference readout accordingly: opaque commitments use
+   accepted-snapshot provenance; public defaults supply their recorded value.
+   An unopenable handle cannot substitute for a public default: existing owner
+   readout would return a different cached registration, or no value at all.
 3. Prove handler/source continuation for those fallbacks. Couple this with
    observation-local request production, a public clock, and admitted inclusion
    capacity. Specify who supplies permissionless transactions and what happens
@@ -146,6 +158,11 @@ policies. Unopenable bindings, malformed requests, replay, and silence must be
 handled by the implementation and the comparison. The observation issue for
 an opening delivered before a losing inclusion is recorded in
 [timeout compilation](timeout-compilation.md#deviation-law-proof-targets).
+
+A public default's value can be determined from prior public fields and the
+compiled expression. The occurrence and timing of the default branch remain
+additional public observations: they may reveal withholding behavior. Value
+locality alone therefore does not establish the required deviation comparison.
 
 Prefer focused replacement and extraction to a rewrite without a demonstrated
 semantic need. There is no API compatibility requirement: update all consumers

@@ -200,7 +200,9 @@ theorem initial_registration_source_law (window : Nat) (decision : InitialDecisi
     initialRegistrationObservation, initialExecution, initialCachedValue,
     initialCommandEncoding, initialChoiceEncoding, application, initial, empty,
     privateStep, IdealCommitments.sealValue, IdealCommitments.lookup,
-    ChoiceEncoding.privateCommand, PolicyExecution.initial, State.initial,
+    ChoiceEncoding.privateCommand,
+    MessageApplication.ChoiceEncoding.cachedValue,
+    PolicyExecution.initial, State.initial,
     MessagePool.empty, IdealCommitments.empty]
 
 theorem pure_initial_registration_source_law (window : Nat) (secret : Bool) :

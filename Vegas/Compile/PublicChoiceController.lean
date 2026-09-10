@@ -97,7 +97,7 @@ theorem controller_first_submission_source_law
         site.owner site.guard sourcePolicy representedStore env hagrees reads hreads
       have hmapped := congrArg
         (FinDist.map (fun value : L.Val site.ty =>
-          PlayerCommand.submit (codec.encode value))) hlaw
+          MessageInterface.PlayerCommand.submit (codec.encode value))) hlaw
       simpa only [FinDist.map_comp, Function.comp_def] using hmapped
 
 /-- Every value supported by the adapter's compiled kernel carries the source

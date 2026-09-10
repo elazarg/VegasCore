@@ -79,7 +79,7 @@ theorem responder_invoke_first_source_law
       (responseController policy (fun _ _ => false)).policy
           (application window) (execution.principalHistory 1) view =
         (policy (((responseEnv secret signal publication).toView 1).eraseEnv)).map
-          (fun chosen => PlayerCommand.submit (Payload.respond chosen.1)) :=
+          (fun chosen => MessageInterface.PlayerCommand.submit (Payload.respond chosen.1)) :=
     responseController_first_submission policy (fun _ _ => false)
       (execution.principalHistory 1) view binding secret signal publication hcache
         hacceptedView hmarkerView hsignalView hpublicationView hresponseView

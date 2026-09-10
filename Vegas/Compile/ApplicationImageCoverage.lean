@@ -200,6 +200,24 @@ theorem handle_covers (image : ApplicationImage P L) (initialFields : Nat)
                       cases hnext
                       exact state.publish_covers code initialFields
                         (hallocated _ hmem) accepted hcovers
+  | expireChoice address =>
+      cases hlookup : image.lookup address with
+      | none => simp [ApplicationImage.handle, hlookup] at hnext
+      | some instruction =>
+          have hmem := List.mem_of_find?_eq_some hlookup
+          cases instruction with
+          | sample code => simp [ApplicationImage.handle, hlookup] at hnext
+          | bind code => simp [ApplicationImage.handle, hlookup] at hnext
+          | conditional code => simp [ApplicationImage.handle, hlookup] at hnext
+          | publicChoice code =>
+              rw [image.handle_expireChoice state address code hlookup id] at hnext
+              cases hresolved : code.resolveTimeout? state.memory with
+              | none => rw [hresolved] at hnext; cases hnext
+              | some value =>
+                  rw [hresolved] at hnext
+                  cases hnext
+                  exact state.publish_covers code initialFields
+                    (hallocated _ hmem) value hcovers
   | binding address handle =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext

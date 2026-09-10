@@ -4,15 +4,16 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.ApplicationPlanRefinement
+import Vegas.Compile.ApplicationTimeoutRefinement
 import Vegas.Compile.ApplicationSourceOutcome
 
 /-! # Written-order source outcomes of public-message executions
 
 These theorems start from a checked source, a structural backend derivation,
 and the actual empty-pool public runtime initialization. They quantify over
-arbitrary supported native and policy runs, including malformed messages and
-unopenable bindings. Runtime completion supplies a written-order source run
+arbitrary supported native and policy runs, including optional public-choice
+expiry, malformed messages, and unopenable bindings. Runtime completion supplies
+a written-order source run
 with the same public terminal outcome.
 
 This initialization provisions no sealed initial commitments. The statements
@@ -36,10 +37,13 @@ theorem run_source_public_outcome (source : WFProgram P L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (actions : List (plan.image deadlineOf).application.Action)
-    (next : (plan.image deadlineOf).application.State)
-    (hnext : next ∈ ((plan.image deadlineOf).application.run actions
-      (MessageApplication.State.initial (plan.image deadlineOf).application
+    (select : (code : PublicChoiceCode P L) →
+      Option (PublicChoiceTimeout L code.guard.ty))
+    (actions : List ((plan.image deadlineOf).withChoiceTimeouts select).application.Action)
+    (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.State)
+    (hnext : next ∈ (((plan.image deadlineOf).withChoiceTimeouts select).application.run actions
+      (MessageApplication.State.initial
+        ((plan.image deadlineOf).withChoiceTimeouts select).application
         (ApplicationImage.State.initial
           (ApplicationImage.Memory.initial (compile source.core).graph)))).support)
     (hfinished : next.application.memory.finished (compile source.core).graph.nodeCount = true) :
@@ -50,7 +54,8 @@ theorem run_source_public_outcome (source : WFProgram P L)
           cont := .ret (compile source.core).sourcePayoffs } ∧
       (compile source.core).readPublicTerminal? next.application.memory =
         some terminalEnv.erasePubEnv := by
-  obtain ⟨cfg, hrefines⟩ := plan.run_refines deadlineOf source.core.env source.legal
+  obtain ⟨cfg, hrefines⟩ := plan.withChoiceTimeouts_run_refines deadlineOf select
+    source.core.env source.legal
     _ next actions ⟨_, ApplicationImage.State.initial_refines (compile source.core).graph⟩ hnext
   exact source_public_outcome_of_refines source.core next.application cfg hrefines hfinished
 
@@ -61,14 +66,20 @@ theorem runPolicies_source_public_outcome (source : WFProgram P L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (players : P → (plan.image deadlineOf).application.PlayerPolicy)
-    (environment : (plan.image deadlineOf).application.EnvironmentPolicy)
+    (select : (code : PublicChoiceCode P L) →
+      Option (PublicChoiceTimeout L code.guard.ty))
+    (players : P →
+      ((plan.image deadlineOf).withChoiceTimeouts select).application.PlayerPolicy)
+    (environment :
+      ((plan.image deadlineOf).withChoiceTimeouts select).application.EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation P))
-    (next : (plan.image deadlineOf).application.PolicyExecution)
-    (hnext : next ∈ ((plan.image deadlineOf).application.runPolicies
+    (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.PolicyExecution)
+    (hnext : next ∈ (((plan.image deadlineOf).withChoiceTimeouts select).application.runPolicies
       players environment schedule
-      (MessageApplication.PolicyExecution.initial (plan.image deadlineOf).application
-        (MessageApplication.State.initial (plan.image deadlineOf).application
+      (MessageApplication.PolicyExecution.initial
+        ((plan.image deadlineOf).withChoiceTimeouts select).application
+        (MessageApplication.State.initial
+          ((plan.image deadlineOf).withChoiceTimeouts select).application
           (ApplicationImage.State.initial
             (ApplicationImage.Memory.initial (compile source.core).graph))))).support)
     (hfinished : next.native.application.memory.finished
@@ -80,8 +91,8 @@ theorem runPolicies_source_public_outcome (source : WFProgram P L)
           cont := .ret (compile source.core).sourcePayoffs } ∧
       (compile source.core).readPublicTerminal? next.native.application.memory =
         some terminalEnv.erasePubEnv := by
-  obtain ⟨cfg, hrefines⟩ := plan.runPolicies_refines deadlineOf source.core.env source.legal
-    players environment schedule _ next
+  obtain ⟨cfg, hrefines⟩ := plan.withChoiceTimeouts_runPolicies_refines deadlineOf select
+    source.core.env source.legal players environment schedule _ next
     ⟨_, ApplicationImage.State.initial_refines (compile source.core).graph⟩ hnext
   exact source_public_outcome_of_refines source.core next.native.application cfg hrefines hfinished
 

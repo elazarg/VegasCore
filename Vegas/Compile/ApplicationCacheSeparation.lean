@@ -40,7 +40,7 @@ private def commandCacheTag? (image : ApplicationImage P L) :
   | .submit (.choice address _) => some (.submission address)
   | .submit (.binding address _) => some (.submission address)
   | .submit (.conditional address _) => some (.submission address)
-  | .submit (.malformed _) | .replay _ | .wait => none
+  | .submit (.expireChoice _) | .submit (.malformed _) | .replay _ | .wait => none
 
 private theorem tag_of_decode_ne_none
     {Value : Type} (image : ApplicationImage P L)

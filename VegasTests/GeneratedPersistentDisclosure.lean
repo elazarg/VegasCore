@@ -394,7 +394,7 @@ theorem opening_source_public_outcome (secret : Bool)
       compiled.readPublicTerminal? next.application.memory =
         some terminalEnv.erasePubEnv := by
   exact applicationPlan.run_source_public_outcome DisclosureAccounting.persistentChecked
-    (fun _ => 10) (openingActions secret) next hnext
+    (fun _ => 10) (fun _ => none) (openingActions secret) next hnext
     (opening_run_finished_of_support secret next hnext)
 
 def firstRefusalSuffix : List image.application.Action :=

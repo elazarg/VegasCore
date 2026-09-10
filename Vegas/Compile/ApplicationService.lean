@@ -162,7 +162,7 @@ theorem serialService_after_submit (image : ApplicationImage P L)
     (.submit payload) submitted hsubmitted
   have hnative : submitted.native ∈
       ((image.application.playerStep who execution (.submit payload)).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨submitted, hsubmitted, rfl⟩
   rw [image.application.playerStep_native] at hnative
@@ -198,7 +198,7 @@ theorem serialService_after_private_submit (image : ApplicationImage P L)
     (.privateCommand command) prepared hprepared
   have hnative : prepared.native ∈
       ((image.application.playerStep who execution (.privateCommand command)).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨prepared, hprepared, rfl⟩
   rw [image.application.playerStep_native] at hnative

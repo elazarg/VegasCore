@@ -69,7 +69,7 @@ theorem other_sender_expiry_source_successor (secret : Bool)
       current.current.graph.1 := hrefines.advance 11
   have hsubmittedNative : submitted.native ∈
       (((image 10).application.playerStep 1 (expirationStart secret)
-        (.submit expiryPayload)).map PolicyExecution.native).support := by
+        (.submit expiryPayload)).map MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨submitted, hsubmitted, rfl⟩
   rw [(image 10).application.playerStep_native] at hsubmittedNative
@@ -77,7 +77,7 @@ theorem other_sender_expiry_source_successor (secret : Bool)
     FinDist.mem_support_pure] at hsubmittedNative
   have happlication : submitted.native.application =
       (expirationStart secret).native.application := by
-    simpa using congrArg MessageApplication.State.application hsubmittedNative
+    simpa using congrArg MessageInterface.State.application hsubmittedNative
   have hlookup : submitted.native.pool.lookup (1, 0) =
       some ⟨(1, 0), .conditional
         (conditionalCode 10).endpoint.publicationNode .expire⟩ := by

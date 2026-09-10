@@ -140,7 +140,7 @@ theorem controller_first_submission_source_law
         site.choice.guard sourcePolicy representedStore env hagrees reads hreads
       have hmapped := congrArg
         (FinDist.map (fun value : L.Val site.choice.ty =>
-          PlayerCommand.submit (transport.encode
+          MessageInterface.PlayerCommand.submit (transport.encode
             ((runtimeSite site fresh state sourceSlot deadline).publicationNode,
               (runtimeSite site fresh state sourceSlot deadline).requestPayload
                 (site.specification.encoding value))))) hlaw

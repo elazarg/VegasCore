@@ -29,6 +29,12 @@ open EventGraph Interaction GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- A deterministic public fallback evaluated from an explicit graph-local
+read footprint after a strict public deadline. -/
+structure PublicChoiceTimeout (L : IExpr) (ty : L.Ty) where
+  deadline : Nat
+  value : EventExpr L ty
+
 /-- Executable code for an ordinary public choice. The guard determines the
 payload type; the two field addresses are allocated by the source compiler. -/
 structure PublicChoiceCode (P : Type) (L : IExpr) where
@@ -36,6 +42,7 @@ structure PublicChoiceCode (P : Type) (L : IExpr) where
   guard : EventGuard L
   choiceField : Nat
   publicationField : Nat
+  timeout : Option (PublicChoiceTimeout L guard.ty) := none
 
 /-- An opaque binding instruction. Acceptance tests public readiness and
 authentication, not private registration, value type, or a source guard. -/
@@ -110,6 +117,7 @@ structure Memory (P : Type) (L : IExpr) where
 
 inductive Payload (P : Type) (L : IExpr) where
   | choice (address : Nat) (value : TypedValue L)
+  | expireChoice (address : Nat)
   | binding (address : Nat) (handle : CommitmentHandle P Nat)
   | conditional (address : Nat) (payload : ConditionalPublication.Payload P (TypedValue L))
   | malformed (data : List Nat)
@@ -209,6 +217,52 @@ def State.verify (state : State P L) (code : ConditionalCode P L)
     ((state.frozen code.sourceField).bind (fun typed => typed.as? code.secretTy)) ==
       some opening.claimed
 
+end ApplicationImage
+
+namespace PublicChoiceCode
+
+/-- Evaluate an ordinary public choice's optional timeout from public memory.
+Read availability and guard validation remain defensive runtime checks even
+when compiler certificates later prove them for a generated checkpoint. -/
+def resolveTimeout? (code : PublicChoiceCode P L)
+    (memory : ApplicationImage.Memory P L) : Option (L.Val code.guard.ty) := do
+  let timeout ← code.timeout
+  if code.endpoint.ready memory.done ∧ timeout.deadline < memory.clock then
+    let reads ← ReadEnv.ofStoreExec? memory.store timeout.value.reads
+    let value := timeout.value.eval reads
+    if code.guard.validate memory.store value then some value else none
+  else none
+
+omit [DecidableEq P] in
+/-- Successful timeout resolution exposes the public readiness and validator
+facts needed to compare the fallback with an ordinary legal publication. -/
+theorem resolveTimeout?_some (code : PublicChoiceCode P L)
+    (memory : ApplicationImage.Memory P L) (value : L.Val code.guard.ty)
+    (hresult : code.resolveTimeout? memory = some value) :
+    code.endpoint.ready memory.done = true ∧
+      code.guard.validate memory.store value = true := by
+  unfold resolveTimeout? at hresult
+  cases htimeout : code.timeout with
+  | none => simp [htimeout] at hresult
+  | some timeout =>
+      simp only [htimeout, Option.bind_eq_bind, Option.bind_some] at hresult
+      split at hresult
+      · rename_i hready
+        cases hreads : ReadEnv.ofStoreExec? memory.store timeout.value.reads with
+        | none => simp [hreads] at hresult
+        | some reads =>
+            simp only [hreads, Option.bind_some] at hresult
+            split at hresult
+            · rename_i hvalid
+              cases hresult
+              exact ⟨hready.1, hvalid⟩
+            · simp_all
+      · simp_all
+
+end PublicChoiceCode
+
+namespace ApplicationImage
+
 def lookup (image : ApplicationImage P L) (address : Nat) :
     Option (ApplicationInstruction P L) :=
   image.instructions.find? fun code => code.address == address
@@ -239,6 +293,9 @@ def handle (image : ApplicationImage P L) (state : State P L)
       let accepted ← code.endpoint.resolve? state.memory.done
         (code.guard.validate state.memory.store) ⟨message.id, value⟩
       pure (state.publish code accepted)
+  | .expireChoice address =>
+      let .publicChoice code ← image.lookup address | none
+      (code.resolveTimeout? state.memory).map (state.publish code)
   | .binding address handle =>
       let .bind code ← image.lookup address | none
       if message.sender = code.owner ∧ handle = (code.owner, code.sourceSlot) ∧
@@ -319,6 +376,40 @@ theorem handle_wrong_type (image : ApplicationImage P L) (state : State P L)
     image.handle state ⟨id, .choice address typed⟩ = none := by
   simp [handle, hcode, TypedValue.as?, htype]
 
+/-- Direct normalization of an ordinary public-choice timeout through dynamic
+instruction dispatch. -/
+theorem handle_expireChoice (image : ApplicationImage P L) (state : State P L)
+    (address : Nat) (code : PublicChoiceCode P L)
+    (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P) :
+    image.handle state ⟨id, .expireChoice address⟩ =
+      (code.resolveTimeout? state.memory).map (state.publish code) := by
+  simp [handle, hcode]
+
+/-- A ready, strictly overdue timeout with available public reads and a valid
+fallback value executes exactly the ordinary public publication update. -/
+theorem handle_expireChoice_accepts (image : ApplicationImage P L)
+    (state : State P L) (address : Nat) (code : PublicChoiceCode P L)
+    (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P)
+    (timeout : PublicChoiceTimeout L code.guard.ty) (htimeout : code.timeout = some timeout)
+    (hready : code.endpoint.ready state.memory.done = true)
+    (hoverdue : timeout.deadline < state.memory.clock)
+    (reads : ReadEnv L timeout.value.reads)
+    (hreads : ReadEnv.ofStoreExec? state.memory.store timeout.value.reads = some reads)
+    (hvalid : code.guard.validate state.memory.store (timeout.value.eval reads) = true) :
+    image.handle state ⟨id, .expireChoice address⟩ =
+      some (state.publish code (timeout.value.eval reads)) := by
+  rw [image.handle_expireChoice state address code hcode id]
+  simp [PublicChoiceCode.resolveTimeout?, htimeout, hready, hoverdue, hreads, hvalid]
+
+/-- Code without a public timeout rejects the fallback request. -/
+theorem handle_expireChoice_no_timeout (image : ApplicationImage P L)
+    (state : State P L) (address : Nat) (code : PublicChoiceCode P L)
+    (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P)
+    (htimeout : code.timeout = none) :
+    image.handle state ⟨id, .expireChoice address⟩ = none := by
+  rw [image.handle_expireChoice state address code hcode id]
+  simp [PublicChoiceCode.resolveTimeout?, htimeout]
+
 theorem handle_malformed (image : ApplicationImage P L) (state : State P L)
     (id : MessageId P) (data : List Nat) :
     image.handle state ⟨id, .malformed data⟩ = none := rfl
@@ -340,6 +431,19 @@ theorem handle_choice_after_publication (image : ApplicationImage P L)
       ⟨id, .choice address ⟨code.guard.ty, value⟩⟩ = none := by
   rw [image.handle_choice _ address code hcode id value]
   simp [PublicChoice.resolve?, PublicChoice.ready, State.publish, Memory.publish]
+
+/-- A timeout request cannot replay or overwrite a completed public pair. -/
+theorem handle_expireChoice_after_publication (image : ApplicationImage P L)
+    (state : State P L) (address : Nat) (code : PublicChoiceCode P L)
+    (hcode : image.lookup address = some (.publicChoice code))
+    (id : MessageId P) (prior : L.Val code.guard.ty) :
+    image.handle (state.publish code prior) ⟨id, .expireChoice address⟩ = none := by
+  rw [image.handle_expireChoice _ address code hcode id]
+  cases htimeout : code.timeout with
+  | none => simp [PublicChoiceCode.resolveTimeout?, htimeout]
+  | some timeout =>
+      simp [PublicChoiceCode.resolveTimeout?, htimeout, PublicChoice.ready,
+        State.publish, Memory.publish]
 
 /-- Actual native inclusion, including the public ledger, receipt, and
 unchanged local message knowledge. It requires a pending message, not a
@@ -384,6 +488,29 @@ theorem include_choice (image : ApplicationImage P L)
   exact image.include_accepted state id
     ⟨id, .choice address ⟨code.guard.ty, value⟩⟩
     (state.application.publish code value) hlookup hhandle
+
+/-- Native inclusion of an accepted public timeout has the same application,
+receipt, ledger, and local-knowledge effects as an owner-authored choice. -/
+theorem include_expireChoice (image : ApplicationImage P L)
+    (state : image.application.State) (address : Nat) (code : PublicChoiceCode P L)
+    (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P)
+    (timeout : PublicChoiceTimeout L code.guard.ty) (htimeout : code.timeout = some timeout)
+    (hready : code.endpoint.ready state.application.memory.done = true)
+    (hoverdue : timeout.deadline < state.application.memory.clock)
+    (reads : ReadEnv L timeout.value.reads)
+    (hreads : ReadEnv.ofStoreExec? state.application.memory.store timeout.value.reads = some reads)
+    (hvalid : code.guard.validate state.application.memory.store
+      (timeout.value.eval reads) = true)
+    (hlookup : state.pool.lookup id = some ⟨id, .expireChoice address⟩) :
+    let next := image.application.includePending state id
+    next.application = state.application.publish code (timeout.value.eval reads) ∧
+      next.receipts = state.receipts ++ [(id, true)] ∧
+      next.pool.ledger = state.pool.ledger ++ [⟨id, .expireChoice address⟩] ∧
+      next.pool.sent = state.pool.sent ∧ next.pool.inbox = state.pool.inbox := by
+  have hhandle := image.handle_expireChoice_accepts state.application address code hcode id
+    timeout htimeout hready hoverdue reads hreads hvalid
+  exact image.include_accepted state id ⟨id, .expireChoice address⟩
+    (state.application.publish code (timeout.value.eval reads)) hlookup hhandle
 
 end ApplicationImage
 

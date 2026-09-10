@@ -219,7 +219,7 @@ theorem completed_source_public_outcome_exists :
   obtain ⟨next, hnext⟩ := law.support_nonempty
   obtain ⟨terminalEnv, hstar, hreadout⟩ :=
     applicationPlan.run_source_public_outcome DisclosureAccounting.optionalChecked
-      (fun _ => 10) actions next hnext (run_finished_of_support next hnext)
+      (fun _ => 10) (fun _ => none) actions next hnext (run_finished_of_support next hnext)
   exact ⟨next, terminalEnv, hnext, hstar, hreadout⟩
 
 end VegasTests.GeneratedDisclosure

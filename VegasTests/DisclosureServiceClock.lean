@@ -82,7 +82,7 @@ private theorem playerStep_clock
     next.native.application.clock = execution.native.application.clock := by
   have hnative : next.native ∈
       (((application window).playerStep who execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.playerStep_native] at hnative
@@ -127,7 +127,7 @@ private theorem environmentStep_clock_of_command
     next.native.application.clock = execution.native.application.clock := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative
@@ -205,7 +205,8 @@ private theorem invoke_clock_before_advance
               rcases hindex with hindex | hindex | hindex | hindex | hindex | hindex |
                   hindex | hindex | hindex | hindex | hindex | hindex
               · have hpolicy : serviceEnvironment selector execution.environmentHistory
-                    execution.native.environmentView = FinDist.pure
+                    (MessageApplication.State.environmentView
+                      (application window) execution.native) = FinDist.pure
                       (match execution.native.pool.pending with
                       | [] => .wait
                       | message :: _ => .deliver 0 message.id) := by
@@ -216,7 +217,8 @@ private theorem invoke_clock_before_advance
                 cases hpending : execution.native.pool.pending <;>
                   simp [hpending] at hcommand
               · have hpolicy : serviceEnvironment selector execution.environmentHistory
-                    execution.native.environmentView = FinDist.pure
+                    (MessageApplication.State.environmentView
+                      (application window) execution.native) = FinDist.pure
                       (match execution.native.pool.pending with
                       | [] => .wait
                       | message :: _ => .deliver 1 message.id) := by
@@ -228,7 +230,9 @@ private theorem invoke_clock_before_advance
                   simp [hpending] at hcommand
               all_goals first
                 | have hallowed := serviceEnvironment_inclusions selector hselector
-                    execution.environmentHistory execution.native.environmentView _
+                    execution.environmentHistory
+                      (MessageApplication.State.environmentView
+                        (application window) execution.native) _
                     (show inclusionSlots execution.environmentHistory.length by
                       simp only [inclusionSlots]
                       omega) hcommand
@@ -241,7 +245,8 @@ private theorem invoke_clock_before_advance
                       obtain ⟨id, message, hlookup, hfalse⟩ := hallowed
                       cases hfalse
                 | have hpolicy : serviceEnvironment selector execution.environmentHistory
-                      execution.native.environmentView =
+                      (MessageApplication.State.environmentView
+                        (application window) execution.native) =
                       FinDist.pure (.application .marker) := by
                     unfold serviceEnvironment
                     rw [hindex]
@@ -249,7 +254,8 @@ private theorem invoke_clock_before_advance
                   rw [hpolicy] at hcommand
                   simp at hcommand
                 | have hpolicy : serviceEnvironment selector execution.environmentHistory
-                      execution.native.environmentView =
+                      (MessageApplication.State.environmentView
+                        (application window) execution.native) =
                       FinDist.pure (.application .sample) := by
                     unfold serviceEnvironment
                     rw [hindex]
@@ -276,7 +282,7 @@ private theorem environmentPolicyStep_advance_clock
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution
         (.application (.advance (execution.native.application.clock + 1)))).map
-          MessageApplication.PolicyExecution.native).support := by
+          MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative
@@ -297,8 +303,8 @@ private theorem invoke_advance_clock
   simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨command, hcommand, hstep⟩ := hnext
   have hpolicy : serviceEnvironment selector execution.environmentHistory
-      execution.native.environmentView = FinDist.pure
-        (.application (.advance (execution.native.application.clock + 1))) := by
+      (MessageApplication.State.environmentView (application window) execution.native) =
+        FinDist.pure (.application (.advance (execution.native.application.clock + 1))) := by
     unfold serviceEnvironment
     rw [hphase]
     rfl

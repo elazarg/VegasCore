@@ -818,20 +818,52 @@ noncomputable def viewEnvOfReadEnv
     Env L.Val (eraseVCtx (viewVCtx who Γ)) :=
   fun _name _ty hvar => sourceValueView state who env hvar
 
+/-- Compile a typed public source expression to executable graph-local code
+and its declared finite dependency footprint. -/
+noncomputable def eventExprOf
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ)
+    (expr : L.Expr (erasePubVCtx Γ) ty) : EventExpr L ty :=
+  {
+    code :=
+      { Context := erasePubVCtx Γ
+        expr := expr
+        fieldOf := fun {_name} {_depTy} binding => state.fieldOfPub binding }
+    reads := exprReadRefs state expr
+    read_mem := fun binding dependency => by
+      simpa [EventGraph.ExprCode.ref, BuildState.fieldRefOfPub] using
+        exprReadRefs_mem state expr binding dependency }
+
+/-- Generated typed expression evaluation agrees with source evaluation when
+the graph reads agree with the supplied public source environment. -/
+theorem eventExprOf_eval_eq_eval
+    {Γ : VCtx P L} {ty : L.Ty}
+    (state : BuildState P L Γ) (expr : L.Expr (erasePubVCtx Γ) ty)
+    (source : Env L.Val (erasePubVCtx Γ))
+    (reads : ReadEnv L (eventExprOf state expr).reads)
+    (hagrees : ∀ {name depTy}
+      (binding : HasVar (erasePubVCtx Γ) name depTy)
+      (dependency : name ∈ L.exprDeps expr),
+      sourceValuePub state reads binding
+          (exprReadRefs_mem state expr binding dependency) =
+        source name depTy binding) :
+    (eventExprOf state expr).eval reads = L.eval expr source := by
+  change
+    L.evalDeps expr (fun _name _depTy binding dependency =>
+      sourceValuePub state reads binding
+        (exprReadRefs_mem state expr binding dependency)) =
+      L.eval expr source
+  rw [← L.evalDeps_eq_eval expr source]
+  congr
+  funext name depTy binding dependency
+  exact hagrees binding dependency
+
 /-- Compile a terminal payoff expression into an integer graph projection. -/
 noncomputable def eventPayoffOf
     {Γ : VCtx P L}
     (state : BuildState P L Γ)
     (expr : L.Expr (erasePubVCtx Γ) L.int) : EventPayoff L :=
-  {
-    code :=
-      { Context := erasePubVCtx Γ
-        expr := expr
-        fieldOf := fun {_name} {_ty} hvar => state.fieldOfPub hvar }
-    reads := exprReadRefs state expr
-    read_mem := fun hvar hmem => by
-      simpa [EventGraph.ExprCode.ref, BuildState.fieldRefOfPub] using
-        exprReadRefs_mem state expr hvar hmem }
+  { toEventExpr := eventExprOf state expr }
 
 /-- A compiled payoff projection agrees with its source payoff expression
 whenever the graph read environment agrees with the source public environment
@@ -850,16 +882,10 @@ theorem eventPayoffOf_eval_eq_eval
           sourceEnv name ty hvar) :
     (eventPayoffOf state expr).eval readEnv =
       L.toInt (L.eval expr sourceEnv) := by
-  change
-    L.toInt
-      (L.evalDeps expr fun _name _depTy hvar hmem =>
-        sourceValuePub state readEnv hvar
-          (exprReadRefs_mem state expr hvar hmem)) =
-      L.toInt (L.eval expr sourceEnv)
-  rw [← L.evalDeps_eq_eval expr sourceEnv]
-  congr
-  funext name ty hvar hmem
-  exact hagrees hvar hmem
+  change L.toInt ((eventExprOf state expr).eval readEnv) =
+    L.toInt (L.eval expr sourceEnv)
+  exact congrArg L.toInt
+    (eventExprOf_eval_eq_eval state expr sourceEnv readEnv hagrees)
 
 theorem eventPayoffOf_readEnv_agrees_sourceEnvOfStore
     {Γ : VCtx P L}
@@ -882,7 +908,7 @@ theorem eventPayoffOf_readEnv_agrees_sourceEnvOfStore
   let readAvailable :
       ∀ ref, ref ∈ (eventPayoffOf state expr).reads →
         ∃ value, Store.getAs store ref.field ref.ty = some value := by
-    simpa [eventPayoffOf] using
+    simpa [eventPayoffOf, eventExprOf] using
       exprReadRefs_store_available state store available expr
   let readEnv := ReadEnv.ofStore store
     (eventPayoffOf state expr).reads readAvailable

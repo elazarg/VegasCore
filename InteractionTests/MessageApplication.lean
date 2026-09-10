@@ -212,7 +212,7 @@ theorem policy_draw_law (players : Principal → lottery.PlayerPolicy) :
   change (lottery.environmentPolicyStep
     (MessageApplication.PolicyExecution.initial lottery s4) (.application .draw)).map
       ((fun state : lottery.State => state.application.outcome) ∘
-        MessageApplication.PolicyExecution.native) = fair.map some
+        MessageInterface.PolicyExecution.native) = fair.map some
   rw [← FinDist.map_comp, MessageApplication.environmentStep_native]
   change (lottery.step s4 (.environment .draw)).map
     (fun state : lottery.State => state.application.outcome) = fair.map some

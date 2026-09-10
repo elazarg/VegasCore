@@ -301,7 +301,7 @@ theorem runPolicies_submitted_pendingOrResolved
             by_cases hmatch : command = .submit payload
             · have hready := hemit execution command hinvariant hcommand hmatch
               have hnative : middle.native ∈ ((app.playerStep who execution command).map
-                  PolicyExecution.native).support := by
+                  MessageInterface.PolicyExecution.native).support := by
                 rw [FinDist.support_map]
                 exact ⟨middle, hstep, rfl⟩
               rw [app.playerStep_native] at hnative

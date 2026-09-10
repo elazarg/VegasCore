@@ -43,7 +43,10 @@ private theorem private_preserves_refinement (image : ApplicationImage P L)
   cases command with
   | register slot value => exact ⟨cfg, hrefines.register who slot value⟩
 
-private theorem environment_preserves_refinement (plan : ApplicationPlan accounted fresh build)
+/-- A generated application's environment hooks preserve graph refinement.
+Clock updates are ghost-state stuttering; chance support follows the retained
+source distribution and its generated graph instruction. -/
+theorem environment_refines (plan : ApplicationPlan accounted fresh build)
     (deadlineOf : Nat → Nat) (native : ApplicationImage.State P L)
     (command : (plan.image deadlineOf).application.EnvironmentCommand)
     (next : ApplicationImage.State P L)
@@ -118,6 +121,20 @@ theorem handle_refines (plan : ApplicationPlan accounted fresh build)
                               cases hnext
                               exact ⟨_, site.resolution_refines fresh build native cfg
                                 hrefines publicGuard ⟨id, value⟩ accepted hresolved⟩
+      | expireChoice address =>
+          cases hlookup : image.lookup address with
+          | none => simp [ApplicationImage.handle, hlookup] at hnext
+          | some instruction =>
+              cases instruction with
+              | sample code => simp [ApplicationImage.handle, hlookup] at hnext
+              | bind code => simp [ApplicationImage.handle, hlookup] at hnext
+              | conditional code => simp [ApplicationImage.handle, hlookup] at hnext
+              | publicChoice code =>
+                  cases plan.origin_of_lookup deadlineOf address (.publicChoice code)
+                      hlookup with
+                  | publicChoice site publicGuard =>
+                      simp [ApplicationImage.handle, hlookup,
+                        PublicChoiceCode.resolveTimeout?, PublicChoiceSite.code] at hnext
       | binding address handle =>
           cases hlookup : image.lookup address with
           | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -193,7 +210,7 @@ theorem run_refines (plan : ApplicationPlan accounted fresh build)
     ∃ cfg : Config (compileCore prog fresh build).graph, next.application.Refines cfg := by
   apply (plan.image deadlineOf).application.run_application_invariant
     (fun native => ∃ cfg : Config (compileCore prog fresh build).graph, native.Refines cfg)
-    (private_preserves_refinement _ _) _ (environment_preserves_refinement plan deadlineOf)
+    (private_preserves_refinement _ _) _ (plan.environment_refines deadlineOf)
     state next actions hstate hnext
   rintro native message updated ⟨cfg, hrefines⟩ hupdated
   exact plan.handle_refines deadlineOf initial legal native cfg hrefines message updated hupdated
@@ -213,7 +230,7 @@ theorem runPolicies_refines (plan : ApplicationPlan accounted fresh build)
     ∃ cfg : Config (compileCore prog fresh build).graph, next.native.application.Refines cfg := by
   apply (plan.image deadlineOf).application.runPolicies_application_invariant
     (fun native => ∃ cfg : Config (compileCore prog fresh build).graph, native.Refines cfg)
-    (private_preserves_refinement _ _) _ (environment_preserves_refinement plan deadlineOf)
+    (private_preserves_refinement _ _) _ (plan.environment_refines deadlineOf)
     players environment schedule execution next hstate hnext
   rintro native message updated ⟨cfg, hrefines⟩ hupdated
   exact plan.handle_refines deadlineOf initial legal native cfg hrefines message updated hupdated

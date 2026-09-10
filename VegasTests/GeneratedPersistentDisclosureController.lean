@@ -240,7 +240,7 @@ theorem after_refusal_only_decline
     funext chosen
     have hnone : chosen.1 = none :=
       refusal_forces_later_refusal secret signal false chosen.1 chosen.2
-    apply congrArg PlayerCommand.submit
+    apply congrArg MessageInterface.PlayerCommand.submit
     rw [hnone]
     rfl
   · exact FinDist.map_const _ _

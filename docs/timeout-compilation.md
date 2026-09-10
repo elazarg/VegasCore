@@ -6,13 +6,59 @@ eligible; executing that action must implement those consequences. Passage of
 time alone does not execute a program.
 
 This document fixes the component boundaries and the next compiler obligations.
-The checked scope includes a dependency gate, atomic message inclusion, and
-a timed final-disclosure instance of the native sealed application. It is not
-a source-to-timed-runtime strategic compiler theorem. Ethereum grounds the
+The checked scope includes a dependency gate, atomic message inclusion,
+a timed final-disclosure instance of the native sealed application, and
+source-legal public-choice timeout code in generated application images. It is
+not a source-to-timed-runtime strategic compiler theorem. Ethereum grounds the
 design through the adjacent Kotlin compiler's generated contracts. Other
 runtimes can supply the same components where their semantics fit.
 
 ## Operational components
+
+### Public-choice resolution annotations
+
+`PublicResolutionChoice` supplies a typed expression over the public source
+context and proves that its value satisfies the original choice guard at every
+source environment. The compiler retains that expression and its field reads
+as `EventExpr` code. `PublicResolutionChoice.install` attaches the expression
+and deadline to the existing generated public-choice instruction. It changes
+neither the source language nor the source accounting plan.
+
+The annotation designates a **source-legal backend resolution**. Nonemptiness
+of a guard alone does not select a default, and the certificate does not assert
+that the owner's original policy chooses this value. Connecting a surface
+language's declared nonresponse handler to this annotation remains a frontend
+obligation. A constant quit value is a special case; a resolution can also
+depend on public source data.
+
+The raw application alphabet includes `expireChoice address`. Any principal
+can submit this message. Inclusion requires the endpoint to remain unresolved,
+its prerequisites to be complete, and its strict public deadline to have
+passed. The handler reads and evaluates the emitted expression, defensively
+checks the ordinary source guard, and writes the same two allocated fields and
+completion flags as a successful ordinary public choice. It does not forge an
+owner-authored message, add a command to the owner's history, or modify private
+commitment preparation. An already completed endpoint rejects expiry; a late
+ordinary choice remains admissible until a competing expiry is actually
+included.
+
+Read availability and legality at a represented source checkpoint follow from
+the public-expression compiler and the source certificate. Acceptance therefore
+has the original adjacent commit/reveal source continuation with the annotated
+value. This is a source-support claim, not equality with the original behavioral
+profile. It also does not produce an expiry transaction or guarantee inclusion.
+Opaque binding defaults need a separate public disposition; the public-choice
+mechanism does not create a commitment handle or an accepted opening witness.
+
+Optional timeout code retains the generated image's completed-run source
+support theorem under arbitrary native actions and randomized policies. It
+also retains the exact reference-profile outcome law: the lifted source
+policies never submit the new expiry request. The latter follows from a
+runtime-general handler-extension theorem comparing complete executions with
+the same state, observation, action, and history types. Neither result provides
+a source policy simulating an arbitrary runtime deviation.
+
+### Runtime services
 
 | Component | Meaning and present scope |
 | --- | --- |

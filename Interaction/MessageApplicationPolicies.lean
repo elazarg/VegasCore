@@ -18,42 +18,81 @@ transition and is not collapsed into policy randomization.
 
 noncomputable section
 
+namespace Interaction.MessageInterface
+
+open GameTheory GameTheory.Math.Probability
+
+universe uPrincipal
+
+variable {Principal : Type uPrincipal}
+
+inductive PlayerCommand (interface : MessageInterface Principal) where
+  | privateCommand (command : interface.PrivateCommand)
+  | submit (payload : interface.Payload)
+  | replay (id : MessageId Principal)
+  | wait
+
+structure PlayerEntry (interface : MessageInterface Principal) where
+  beforeView : View interface
+  command : PlayerCommand interface
+
+abbrev PlayerPolicy (interface : MessageInterface Principal) :=
+  List (PlayerEntry interface) → View interface → FinDist (PlayerCommand interface)
+
+/-- Environment-controlled wire and application triggers. The application
+command selects a fixed kernel, not one of its stochastic outcomes. -/
+inductive EnvironmentPolicyCommand (interface : MessageInterface Principal) where
+  | deliver (observer : Principal) (id : MessageId Principal)
+  | include (id : MessageId Principal)
+  | application (command : interface.EnvironmentCommand)
+  | wait
+
+structure EnvironmentEntry (interface : MessageInterface Principal) where
+  beforeView : EnvironmentObservation interface
+  command : EnvironmentPolicyCommand interface
+
+abbrev EnvironmentPolicy (interface : MessageInterface Principal) :=
+  List (EnvironmentEntry interface) → EnvironmentObservation interface →
+    FinDist (EnvironmentPolicyCommand interface)
+
+/-- Policy-facing bounded execution. The native action trace is proof-facing
+and is not included in either observation projection. -/
+structure PolicyExecution (interface : MessageInterface Principal) where
+  native : State interface
+  principalHistory : Principal → List (PlayerEntry interface)
+  environmentHistory : List (EnvironmentEntry interface)
+  nativeTrace : List (Action interface)
+
+end Interaction.MessageInterface
+
 namespace Interaction.MessageApplication
 
 open GameTheory GameTheory.Math.Probability
 
 universe uPrincipal
 
-variable {Principal : Type uPrincipal} (app : MessageApplication Principal)
+variable {Principal : Type uPrincipal}
 
-inductive PlayerCommand where
-  | privateCommand (command : app.PrivateCommand)
-  | submit (payload : app.Payload)
-  | replay (id : MessageId Principal)
-  | wait
+abbrev PlayerCommand (app : MessageApplication Principal) :=
+  MessageInterface.PlayerCommand app.toMessageInterface
 
-structure PlayerEntry where
-  beforeView : app.View
-  command : app.PlayerCommand
+abbrev PlayerEntry (app : MessageApplication Principal) :=
+  MessageInterface.PlayerEntry app.toMessageInterface
 
-abbrev PlayerPolicy :=
-  List app.PlayerEntry → app.View → FinDist app.PlayerCommand
+abbrev PlayerPolicy (app : MessageApplication Principal) :=
+  MessageInterface.PlayerPolicy app.toMessageInterface
 
-/-- Environment-controlled wire and application triggers. The application
-command selects a fixed kernel, not one of its stochastic outcomes. -/
-inductive EnvironmentPolicyCommand where
-  | deliver (observer : Principal) (id : MessageId Principal)
-  | include (id : MessageId Principal)
-  | application (command : app.EnvironmentCommand)
-  | wait
+abbrev EnvironmentPolicyCommand (app : MessageApplication Principal) :=
+  MessageInterface.EnvironmentPolicyCommand app.toMessageInterface
 
-structure EnvironmentEntry where
-  beforeView : app.EnvironmentObservation
-  command : app.EnvironmentPolicyCommand
+abbrev EnvironmentEntry (app : MessageApplication Principal) :=
+  MessageInterface.EnvironmentEntry app.toMessageInterface
 
-abbrev EnvironmentPolicy :=
-  List app.EnvironmentEntry → app.EnvironmentObservation →
-    FinDist app.EnvironmentPolicyCommand
+abbrev EnvironmentPolicy (app : MessageApplication Principal) :=
+  MessageInterface.EnvironmentPolicy app.toMessageInterface
+
+abbrev PolicyExecution (app : MessageApplication Principal) :=
+  MessageInterface.PolicyExecution app.toMessageInterface
 
 inductive Invocation where
   | player (who : Principal)
@@ -63,13 +102,7 @@ def Invocation.isEnvironment : @Invocation Principal → Bool
   | .player _ => false
   | .environment => true
 
-/-- Policy-facing bounded execution. The native action trace is proof-facing
-and is not included in either observation projection. -/
-structure PolicyExecution where
-  native : app.State
-  principalHistory : Principal → List app.PlayerEntry
-  environmentHistory : List app.EnvironmentEntry
-  nativeTrace : List app.Action
+variable (app : MessageApplication Principal)
 
 def PolicyExecution.initial (state : app.State) : app.PolicyExecution :=
   ⟨state, fun _ => [], [], []⟩
@@ -168,7 +201,7 @@ def policyGame [DecidableEq Principal]
 /-- Recording a player command preserves the native transition law. -/
 theorem playerStep_native [DecidableEq Principal] (who : Principal)
     (execution : app.PolicyExecution) (command : app.PlayerCommand) :
-    (app.playerStep who execution command).map PolicyExecution.native =
+    (app.playerStep who execution command).map MessageInterface.PolicyExecution.native =
       match command.toAction app who with
       | none => FinDist.pure execution.native
       | some action => app.step execution.native action := by
@@ -178,7 +211,8 @@ theorem playerStep_native [DecidableEq Principal] (who : Principal)
 /-- Recording an environment command preserves the native transition law. -/
 theorem environmentStep_native [DecidableEq Principal]
     (execution : app.PolicyExecution) (command : app.EnvironmentPolicyCommand) :
-    (app.environmentPolicyStep execution command).map PolicyExecution.native =
+    (app.environmentPolicyStep execution command).map
+      MessageInterface.PolicyExecution.native =
       match command.toAction with
       | none => FinDist.pure execution.native
       | some action => app.step execution.native action := by

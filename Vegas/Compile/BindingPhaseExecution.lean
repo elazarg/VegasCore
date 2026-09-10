@@ -207,7 +207,7 @@ theorem binding_phase_source_law
       have hnative : registered.native ∈
           ((image.application.playerStep who execution
             (.privateCommand (.register field ⟨ty, chosen.1⟩))).map
-              PolicyExecution.native).support := by
+              MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨registered, hregistered, rfl⟩
       rw [image.application.playerStep_native] at hnative
@@ -218,7 +218,8 @@ theorem binding_phase_source_law
         (registered.native.pool.submit who (.binding code.node (who, field))).2 := by
       have hnative : submitted.native ∈
           ((image.application.playerStep who registered
-            (.submit (.binding code.node (who, field)))).map PolicyExecution.native).support := by
+            (.submit (.binding code.node (who, field)))).map
+              MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨submitted, hsubmittedStep, rfl⟩
       rw [image.application.playerStep_native] at hnative
@@ -234,25 +235,25 @@ theorem binding_phase_source_law
       have hnative : registered.native ∈
           ((image.application.playerStep who execution
             (.privateCommand (.register field ⟨ty, chosen.1⟩))).map
-              PolicyExecution.native).support := by
+              MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨registered, hregistered, rfl⟩
       rw [image.application.playerStep_native] at hnative
       simp only [PlayerCommand.toAction, MessageApplication.step,
         ApplicationImage.application, FinDist.mem_support_pure] at hnative
-      simpa using congrArg MessageApplication.State.application hnative
+      simpa using congrArg MessageInterface.State.application hnative
     have hsubmitApplication : submitted.native.application =
         registered.native.application := by
       have hnative : submitted.native ∈
           ((image.application.playerStep who registered
             (.submit (.binding code.node (who, field)))).map
-              PolicyExecution.native).support := by
+              MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨submitted, hsubmittedStep, rfl⟩
       rw [image.application.playerStep_native] at hnative
       simp only [PlayerCommand.toAction, MessageApplication.step,
         FinDist.mem_support_pure] at hnative
-      simpa using congrArg MessageApplication.State.application hnative
+      simpa using congrArg MessageInterface.State.application hnative
     have hrefinesSubmitted : submitted.native.application.Refines
         current.current.graph.1 := by
       rw [hsubmitApplication, hregisterApplication]
@@ -267,7 +268,7 @@ theorem binding_phase_source_law
         EnvironmentPolicyCommand.toAction, MessageApplication.advance,
         MessageApplication.step, FinDist.pure_bind,
         FinDist.mem_support_pure] at hincluded
-      exact congrArg PolicyExecution.native hincluded
+      exact congrArg MessageInterface.PolicyExecution.native hincluded
     refine ⟨next, hsource, ?_, ?_⟩
     · rw [hincludedNative]
       exact hrefinesNext

@@ -71,7 +71,8 @@ theorem playerStep_pool_satisfies [DecidableEq Principal]
     (hnext : next ∈ (app.playerStep who execution command).support) :
     next.native.pool.Satisfies safe := by
   have hnative : next.native ∈
-      ((app.playerStep who execution command).map PolicyExecution.native).support := by
+      ((app.playerStep who execution command).map
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.playerStep_native] at hnative
@@ -100,7 +101,8 @@ theorem environmentPolicyStep_pool_satisfies [DecidableEq Principal]
     (hnext : next ∈ (app.environmentPolicyStep execution command).support) :
     next.native.pool.Satisfies safe := by
   have hnative : next.native ∈
-      ((app.environmentPolicyStep execution command).map PolicyExecution.native).support := by
+      ((app.environmentPolicyStep execution command).map
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.environmentStep_native] at hnative

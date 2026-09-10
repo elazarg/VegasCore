@@ -27,59 +27,87 @@ open GameTheory.Math.Probability
 
 universe uPrincipal u
 
-/-- Application code and the projections exposed by its message runtime.
-The private transition's principal is supplied by the runtime capability, not
-by the private command. Raw actions alone are not authenticated policies. -/
-structure MessageApplication (Principal : Type uPrincipal) where
+/-- The six carrier types shared by applications with different operational
+semantics. -/
+structure MessageInterface (Principal : Type uPrincipal) where
   Application : Type u
   Payload : Type u
   PrivateCommand : Type u
   EnvironmentCommand : Type u
   PlayerView : Type u
   EnvironmentView : Type u
+
+/-- Application code and the projections exposed by its message runtime.
+The private transition's principal is supplied by the runtime capability, not
+by the private command. Raw actions alone are not authenticated policies. -/
+structure MessageApplication (Principal : Type uPrincipal)
+    extends MessageInterface Principal where
   privateStep : Application → Principal → PrivateCommand → Application
   environmentStep : Application → EnvironmentCommand → FinDist Application
   handle : Application → Message Principal Payload → Option Application
   observePlayer : Application → Principal → PlayerView
   observeEnvironment : Application → EnvironmentView
 
-namespace MessageApplication
+namespace MessageInterface
 
-variable {Principal : Type uPrincipal} (app : MessageApplication Principal)
+variable {Principal : Type uPrincipal}
 
-structure State where
-  application : app.Application
-  pool : MessagePool Principal app.Payload
+structure State (interface : MessageInterface Principal) where
+  application : interface.Application
+  pool : MessagePool Principal interface.Payload
   receipts : List (MessageId Principal × Bool)
 
-def State.initial (application : app.Application) : app.State :=
-  ⟨application, MessagePool.empty Principal app.Payload, []⟩
-
-structure View where
-  messages : MessagePool.View Principal app.Payload
-  application : app.PlayerView
+structure View (interface : MessageInterface Principal) where
+  messages : MessagePool.View Principal interface.Payload
+  application : interface.PlayerView
   receipts : List (MessageId Principal × Bool)
 
-def State.observe (state : app.State) (who : Principal) : app.View :=
-  ⟨state.pool.observe who, app.observePlayer state.application who, state.receipts⟩
-
-structure EnvironmentObservation where
-  pool : MessagePool Principal app.Payload
-  application : app.EnvironmentView
+structure EnvironmentObservation (interface : MessageInterface Principal) where
+  pool : MessagePool Principal interface.Payload
+  application : interface.EnvironmentView
   receipts : List (MessageId Principal × Bool)
-
-def State.environmentView (state : app.State) : app.EnvironmentObservation :=
-  ⟨state.pool, app.observeEnvironment state.application, state.receipts⟩
 
 /-- Native actions. The policy interface determines which principal controls
 each action; inclusion never invokes the message author's controller. -/
-inductive Action where
-  | privateCommand (who : Principal) (command : app.PrivateCommand)
-  | submit (who : Principal) (payload : app.Payload)
+inductive Action (interface : MessageInterface Principal) where
+  | privateCommand (who : Principal) (command : interface.PrivateCommand)
+  | submit (who : Principal) (payload : interface.Payload)
   | replay (who : Principal) (id : MessageId Principal)
   | deliver (who : Principal) (id : MessageId Principal)
   | include (id : MessageId Principal)
-  | environment (command : app.EnvironmentCommand)
+  | environment (command : interface.EnvironmentCommand)
+
+end MessageInterface
+
+namespace MessageApplication
+
+variable {Principal : Type uPrincipal}
+
+abbrev State (app : MessageApplication Principal) :=
+  MessageInterface.State app.toMessageInterface
+
+abbrev View (app : MessageApplication Principal) :=
+  MessageInterface.View app.toMessageInterface
+
+abbrev EnvironmentObservation (app : MessageApplication Principal) :=
+  MessageInterface.EnvironmentObservation app.toMessageInterface
+
+abbrev Action (app : MessageApplication Principal) :=
+  MessageInterface.Action app.toMessageInterface
+
+def State.initial (app : MessageApplication Principal)
+    (application : app.Application) : app.State :=
+  ⟨application, MessagePool.empty Principal app.Payload, []⟩
+
+def State.observe (app : MessageApplication Principal) (state : app.State)
+    (who : Principal) : app.View :=
+  ⟨state.pool.observe who, app.observePlayer state.application who, state.receipts⟩
+
+def State.environmentView (app : MessageApplication Principal) (state : app.State) :
+    app.EnvironmentObservation :=
+  ⟨state.pool, app.observeEnvironment state.application, state.receipts⟩
+
+variable (app : MessageApplication Principal)
 
 /-- Publish an existing message and apply the application's transaction. A
 missing message produces neither a ledger entry nor an inclusion receipt. -/

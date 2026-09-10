@@ -68,8 +68,8 @@ theorem inclusion_step_length (players : Principal → app.PlayerPolicy)
   simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨command, hcommand, hnext⟩ := hnext
   refine ⟨?_, app.environmentStep_history_length execution command next hnext⟩
-  have hallowed := hservice execution.environmentHistory execution.native.environmentView
-    command hslot hcommand
+  have hallowed := hservice execution.environmentHistory
+    (State.environmentView app execution.native) command hslot hcommand
   cases hpending : execution.native.pool.pending with
   | nil =>
       simp only [State.environmentView, hpending] at hallowed
@@ -142,7 +142,7 @@ theorem player_step_pending_bound (who : Principal) (execution next : app.Policy
     (hnext : next ∈ (app.playerStep who execution command).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length + 1 := by
   have hmem : next.native ∈ ((app.playerStep who execution command).map
-      PolicyExecution.native).support := by
+      MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [playerStep_native] at hmem
@@ -171,7 +171,7 @@ theorem environment_step_pending_bound (execution next : app.PolicyExecution)
     (hnext : next ∈ (app.environmentPolicyStep execution command).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length := by
   have hmem : next.native ∈ ((app.environmentPolicyStep execution command).map
-      PolicyExecution.native).support := by
+      MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [environmentStep_native] at hmem

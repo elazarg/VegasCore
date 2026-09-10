@@ -148,7 +148,7 @@ theorem conditional_phase_source_law
             (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
               (code.endpoint.publicationNode,
                 code.endpoint.requestPayload (spec.encoding chosen.1))))).map
-              PolicyExecution.native).support := by
+              MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨submitted, hsubmitted, rfl⟩
     rw [image.application.playerStep_native] at hnative
@@ -168,14 +168,14 @@ theorem conditional_phase_source_law
       rw [hnative, ← hpayload]
       exact execution.native.pool.lookup_submit_fresh who _ hlookupFresh
     have happlication : submitted.native.application = execution.native.application := by
-      simpa using congrArg MessageApplication.State.application hnative
+      simpa using congrArg MessageInterface.State.application hnative
     have hincludedNative : included.native =
         image.application.includePending submitted.native id := by
       simp only [MessageApplication.environmentPolicyStep,
         EnvironmentPolicyCommand.toAction, MessageApplication.advance,
         MessageApplication.step, FinDist.pure_bind,
         FinDist.mem_support_pure] at hincluded
-      exact congrArg PolicyExecution.native hincluded
+      exact congrArg MessageInterface.PolicyExecution.native hincluded
     obtain ⟨next, hsource, hrefinesNext⟩ := include_source_coupling guard tail spec fresh
       build sourceSlot deadline current image submitted.native (happlication.symm ▸ hrefines)
       heligible (happlication.symm ▸ haccepted) code.endpoint.publicationNode

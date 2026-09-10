@@ -250,8 +250,9 @@ theorem zero_window_serviced_publication_race
   simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
   obtain ⟨command, hcommand, hmiddle⟩ := hmiddle
   have hservicePolicy : serviceEnvironment expirationFirst execution.environmentHistory
-      execution.native.environmentView = expirationFirst execution.environmentHistory
-        execution.native.environmentView := by
+      (MessageApplication.State.environmentView (application 0) execution.native) =
+        expirationFirst execution.environmentHistory
+          (MessageApplication.State.environmentView (application 0) execution.native) := by
     unfold serviceEnvironment
     rw [hphase]
     rfl
@@ -263,7 +264,7 @@ theorem zero_window_serviced_publication_race
     simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
       MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
       FinDist.pure_bind, FinDist.mem_support_pure] at hmiddle
-    exact congrArg MessageApplication.PolicyExecution.native hmiddle
+    exact congrArg MessageInterface.PolicyExecution.native hmiddle
   have hlookup : execution.native.pool.lookup (1, 0) =
       some ⟨(1, 0), Payload.publish 5 .expire⟩ := by
     simp [MessagePool.lookup, hpending]

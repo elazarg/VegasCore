@@ -41,7 +41,7 @@ theorem playerStep_memory
     next.native.application.memory = execution.native.application.memory := by
   have hnative : next.native ∈
       ((image.application.playerStep who execution command).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [image.application.playerStep_native] at hnative
@@ -70,7 +70,7 @@ theorem playerStep_refines
     next.native.application.Refines cfg := by
   have hnative : next.native ∈
       ((image.application.playerStep who execution command).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [image.application.playerStep_native] at hnative

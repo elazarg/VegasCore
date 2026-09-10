@@ -36,8 +36,8 @@ private theorem inclusion_step_invariant (invariant : app.State → Prop)
     invariant next.native := by
   simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨command, hcommand, hnext⟩ := hnext
-  have hallowed := hservice execution.environmentHistory execution.native.environmentView
-    command hslot hcommand
+  have hallowed := hservice execution.environmentHistory
+    (State.environmentView app execution.native) command hslot hcommand
   cases hpending : execution.native.pool.pending with
   | nil =>
       simp only [State.environmentView, hpending] at hallowed

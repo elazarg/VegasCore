@@ -57,7 +57,7 @@ private theorem playerStep_signal (who : TestPlayer)
     next.native.application.signal = execution.native.application.signal := by
   have hnative : next.native ∈
       (((application window).playerStep who execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.playerStep_native] at hnative
@@ -97,7 +97,7 @@ private theorem environmentPolicyStep_signal_none_before
     execution.native.application.signal = none := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative

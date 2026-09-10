@@ -9,6 +9,8 @@ import Vegas.Scheduled.SourceCorrespondence
 import Vegas.Core.AccountingIntegrity
 import Vegas.Compile.ApplicationPlanOutcome
 import Vegas.Compile.ApplicationForwardLaw
+import Vegas.Compile.ApplicationTimeoutForwardLaw
+import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.ApplicationWithholding
 import Vegas.Compile.ConditionalExpirationSourceCoupling
 
@@ -44,10 +46,13 @@ theorem public_application_outcome (source : WFProgram Player L)
       (ToEventGraph.BuildState.fromInitial
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (actions : List (plan.image deadlineOf).application.Action)
-    (next : (plan.image deadlineOf).application.State)
-    (hnext : next ∈ ((plan.image deadlineOf).application.run actions
-      (Interaction.MessageApplication.State.initial (plan.image deadlineOf).application
+    (select : (code : PublicChoiceCode Player L) →
+      Option (PublicChoiceTimeout L code.guard.ty))
+    (actions : List ((plan.image deadlineOf).withChoiceTimeouts select).application.Action)
+    (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.State)
+    (hnext : next ∈ (((plan.image deadlineOf).withChoiceTimeouts select).application.run actions
+      (Interaction.MessageApplication.State.initial
+        ((plan.image deadlineOf).withChoiceTimeouts select).application
         (ApplicationImage.State.initial
           (ApplicationImage.Memory.initial (ToEventGraph.compile source.core).graph)))).support)
     (hfinished : next.application.memory.finished
@@ -59,7 +64,8 @@ theorem public_application_outcome (source : WFProgram Player L)
           cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
       (ToEventGraph.compile source.core).readPublicTerminal? next.application.memory =
         some terminalEnv.erasePubEnv :=
-  ApplicationPlan.run_source_public_outcome source plan deadlineOf actions next hnext hfinished
+  ApplicationPlan.run_source_public_outcome source plan deadlineOf select actions next hnext
+    hfinished
 
 /-- The same public-outcome safety statement quantifies over arbitrary
 randomized policies, without asserting a source-policy correspondence. -/
@@ -68,14 +74,21 @@ theorem public_application_policy_outcome (source : WFProgram Player L)
       (ToEventGraph.BuildState.fromInitial
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (players : Player → (plan.image deadlineOf).application.PlayerPolicy)
-    (environment : (plan.image deadlineOf).application.EnvironmentPolicy)
+    (select : (code : PublicChoiceCode Player L) →
+      Option (PublicChoiceTimeout L code.guard.ty))
+    (players : Player →
+      ((plan.image deadlineOf).withChoiceTimeouts select).application.PlayerPolicy)
+    (environment :
+      ((plan.image deadlineOf).withChoiceTimeouts select).application.EnvironmentPolicy)
     (schedule : List (@Interaction.MessageApplication.Invocation Player))
-    (next : (plan.image deadlineOf).application.PolicyExecution)
-    (hnext : next ∈ ((plan.image deadlineOf).application.runPolicies
+    (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.PolicyExecution)
+    (hnext : next ∈
+      (((plan.image deadlineOf).withChoiceTimeouts select).application.runPolicies
       players environment schedule
-      (Interaction.MessageApplication.PolicyExecution.initial (plan.image deadlineOf).application
-        (Interaction.MessageApplication.State.initial (plan.image deadlineOf).application
+      (Interaction.MessageApplication.PolicyExecution.initial
+        ((plan.image deadlineOf).withChoiceTimeouts select).application
+        (Interaction.MessageApplication.State.initial
+          ((plan.image deadlineOf).withChoiceTimeouts select).application
           (ApplicationImage.State.initial
             (ApplicationImage.Memory.initial (ToEventGraph.compile source.core).graph))))).support)
     (hfinished : next.native.application.memory.finished
@@ -87,21 +100,22 @@ theorem public_application_policy_outcome (source : WFProgram Player L)
           cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
       (ToEventGraph.compile source.core).readPublicTerminal? next.native.application.memory =
         some terminalEnv.erasePubEnv :=
-  ApplicationPlan.runPolicies_source_public_outcome source plan deadlineOf players environment
-    schedule next hnext hfinished
+  ApplicationPlan.runPolicies_source_public_outcome source plan deadlineOf select players
+    environment schedule next hnext hfinished
 
 /-- For an eligible application plan, lifting one source profile and running
 the emitted serial reference service gives the source law of joint completion
-and public terminal output. -/
+and public terminal output, including with optional public-choice timeouts. -/
 theorem public_application_reference_law (source : WFProgram Player L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (ToEventGraph.BuildState.fromInitial
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
+    (select : (code : PublicChoiceCode Player L) → Option (PublicChoiceTimeout L code.guard.ty))
     (profile : SourceBehavioralProfile source.core.prog)
     (hinitial : plan.InitialControllerReadsPublic)
     (horigins : (plan.image deadlineOf).HasBindingOrigins) :
-    (((plan.image deadlineOf).application.runPolicies
+    ((((plan.image deadlineOf).withChoiceTimeouts select).application.runPolicies
       (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
       (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
         (fun out =>
@@ -116,7 +130,7 @@ theorem public_application_reference_law (source : WFProgram Player L)
             (ToEventGraph.BuildState.fromInitial
               (ToEventGraph.initialState source.core.Γ source.core.env
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
-  plan.service_source_public_law source deadlineOf profile hinitial horigins
+  plan.timeout_service_source_public_law source deadlineOf select profile hinitial horigins
 
 /-- A missing authenticated submission cannot be supplied by scheduling.
 The generated code's submission requirement is an inspectable static premise. -/
@@ -178,6 +192,43 @@ theorem public_application_conditional_expiry
   (ConditionalPublicationSite.expiry_include_source_coupling guard tail spec fresh build
     sourceSlot deadline current image execution included hrefines haccepted hoverdue
     address hcode id hlookup hincluded).2.2.2
+
+/-- An included public-choice expiry follows an explicitly annotated legal
+public source expression, without supplying a command by the endpoint owner. -/
+theorem public_application_choice_expiry
+    {Γ : VCtx Player L} {name publicName : VarId} {who : Player} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore Player L ((publicName, .pub ty) :: (name, .sealed who ty) :: Γ))
+    (resolution : PublicResolutionChoice
+      (PublicChoiceSite.atHead name publicName who guard tail))
+    (fresh : FreshBindings (.commit name who guard (.reveal publicName who name .here tail)))
+    (build : ToEventGraph.BuildState Player L Γ) (deadline : Nat)
+    (current : ToEventGraph.CoupledAt
+      (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
+        fresh build).graph build)
+    (image : ApplicationImage Player L)
+    (execution included : image.application.PolicyExecution)
+    (hrefines : execution.native.application.Refines current.current.graph.1)
+    (heligible : (PublicChoiceSite.atHead name publicName who guard tail).PubliclyValidatable
+      fresh build)
+    (hoverdue : deadline < execution.native.application.memory.clock)
+    (address : Nat)
+    (hcode : image.lookup address = some (.publicChoice
+      (resolution.timeoutCode fresh build deadline)))
+    (id : Interaction.MessageId Player)
+    (hlookup : execution.native.pool.lookup id = some ⟨id, .expireChoice address⟩)
+    (hincluded : included ∈
+      (image.application.environmentPolicyStep execution (.include id)).support) :
+    let chosen := L.eval resolution.expr current.current.source.erasePubEnv
+    ∃ next : ToEventGraph.CoupledAt
+        (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
+          fresh build).graph
+        (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
+          publicName who .here fresh.2.1).1,
+      next.current.source = (current.current.source.cons chosen).cons chosen ∧
+        included.native.application.Refines next.current.graph.1 :=
+  (resolution.expiry_include_source_coupling guard tail fresh build deadline current image
+    execution included hrefines heligible hoverdue address hcode id hlookup hincluded).2.2.2.2
 
 variable [Fintype Player]
 
@@ -452,5 +503,10 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_conditional_expiry
+
+/-- info: 'Vegas.Paper.Source.public_application_choice_expiry' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_choice_expiry
 
 end Vegas.Paper.Source

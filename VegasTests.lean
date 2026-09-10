@@ -11,6 +11,7 @@ import VegasTests.PublicGuard
 import VegasTests.ApplicationImage
 import VegasTests.ApplicationSampleExecution
 import VegasTests.PublicChoiceSourceCoupling
+import VegasTests.PublicChoiceResolution
 import VegasTests.BindingSourceCoupling
 import VegasTests.BindingPhaseExecution
 import VegasTests.ConditionalSourceCoupling

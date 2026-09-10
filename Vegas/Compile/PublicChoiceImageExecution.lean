@@ -149,7 +149,7 @@ theorem publicChoice_phase_source_law
         ((image.application.playerStep site.owner execution
           (.submit ((ApplicationImage.choiceEncoding
             (site.runtimeSite fresh build).publicationNode site.ty).encode chosen.1))).map
-              PolicyExecution.native).support := by
+              MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨submitted, hsubmitted, rfl⟩
     rw [image.application.playerStep_native] at hnative

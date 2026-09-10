@@ -491,15 +491,36 @@ def eval (guard : EventGuard L) (action : L.Val guard.ty)
 
 end EventGuard
 
-/-- A graph-local payoff projection. Payoff expressions are compiled to
-integers immediately so executable machines do not need to recover erased
-source types from an untyped list of graph expressions. -/
-structure EventPayoff (L : IExpr) where
-  code : ExprCode L L.int
+/-- A typed graph-local expression with a declared finite read footprint. -/
+structure EventExpr (L : IExpr) (resultTy : L.Ty) where
+  code : ExprCode L resultTy
   reads : Finset (FieldRef L)
   read_mem :
     ∀ {name depTy} (binding : HasVar code.Context name depTy),
       name ∈ L.exprDeps code.expr → code.ref binding ∈ reads
+
+namespace EventExpr
+
+variable {L : IExpr} {resultTy : L.Ty}
+
+/-- Execute retained typed expression code from its proved graph-local reads. -/
+def eval (expression : EventExpr L resultTy)
+    (env : ReadEnv L expression.reads) : L.Val resultTy :=
+  L.evalDeps expression.code.expr fun _name _depTy binding dependency =>
+    env.read (expression.code.ref binding) (expression.read_mem binding dependency)
+
+/-- Execute a typed expression directly from runtime storage. Missing or
+ill-typed dependencies reject evaluation. -/
+def evalStore? (expression : EventExpr L resultTy) (store : Store L) :
+    Option (L.Val resultTy) :=
+  (ReadEnv.ofStoreExec? store expression.reads).map expression.eval
+
+end EventExpr
+
+/-- A graph-local payoff projection. Payoff expressions are compiled to
+integers immediately so executable machines do not need to recover erased
+source types from an untyped list of graph expressions. -/
+structure EventPayoff (L : IExpr) extends EventExpr L L.int
 
 namespace EventPayoff
 
@@ -507,8 +528,7 @@ variable {L : IExpr}
 
 /-- Execute retained payoff code from its proved graph-local reads. -/
 def eval (payoff : EventPayoff L) (env : ReadEnv L payoff.reads) : Int :=
-  L.toInt <| L.evalDeps payoff.code.expr fun _name _depTy binding dependency =>
-    env.read (payoff.code.ref binding) (payoff.read_mem binding dependency)
+  L.toInt <| payoff.toEventExpr.eval env
 
 end EventPayoff
 

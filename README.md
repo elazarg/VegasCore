@@ -74,12 +74,15 @@ and cannot reroll after completion. They assume ideal unbiased entropy; the
 environment selects the invocation time, not the sampled value. Sealed-input
 provisioning, completion under withholding or competing expiry, and strategic
 correspondence for arbitrary public-message deviations remain separate obligations.
-The missing fallback handlers matter independently of service: permanent
-waiting at a generated binding or ordinary-choice site prevents completion
-under every environment and finite schedule. Conditional expiry, when actually
-submitted and included after its deadline, has a checked source-decline
-continuation; the general binding and ordinary-choice handlers have no such
-fallback yet.
+Handler availability matters independently of service: permanent waiting at a
+generated binding or an ordinary-choice site without fallback code prevents
+completion under every environment and finite schedule. Conditional expiry
+implements source decline. An explicit `PublicResolutionChoice` annotation can
+also compile a legal public-source expression into an ordinary choice's
+permissionless timeout handler. Actual overdue inclusion has the annotated
+source continuation; this does not assert that the original owner policy would
+choose that value. Opaque-binding defaults and a whole-run resolution service
+remain separate obligations.
 Generated-controller readout uses public resolved values and the owner's private
 registration history. The forward proof derives available reads and
 cache/accepted-snapshot agreement throughout the generated run; registering

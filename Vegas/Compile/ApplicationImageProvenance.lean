@@ -202,7 +202,7 @@ private theorem provenance_environmentStep (image : ApplicationImage P L) (owner
     BindingProvenance image owner valid next.native := by
   have hnative : next.native ∈
       ((image.application.environmentPolicyStep execution command).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [image.application.environmentStep_native] at hnative

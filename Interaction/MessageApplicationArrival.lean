@@ -41,7 +41,7 @@ theorem playerStep_arrival (invariant : app.Application → Prop)
     invariant next.native.application ∧
       execution.native.pool.pending.Sublist next.native.pool.pending := by
   have hnative : next.native ∈ ((app.playerStep who execution command).map
-      PolicyExecution.native).support := by
+      MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [playerStep_native] at hnative
@@ -74,7 +74,7 @@ theorem environmentStep_deliveryOnly (execution next : app.PolicyExecution)
     next.native.application = execution.native.application ∧
       next.native.pool.pending = execution.native.pool.pending := by
   have hnative : next.native ∈ ((app.environmentPolicyStep execution command).map
-      PolicyExecution.native).support := by
+      MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [environmentStep_native] at hnative

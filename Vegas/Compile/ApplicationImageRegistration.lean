@@ -148,7 +148,7 @@ private theorem environmentStep_prepared
     next.native.application.prepared = execution.native.application.prepared := by
   have hnative : next.native ∈
       ((image.application.environmentPolicyStep execution command).map
-        PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [image.application.environmentStep_native] at hnative

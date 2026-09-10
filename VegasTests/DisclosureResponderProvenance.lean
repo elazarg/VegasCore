@@ -68,7 +68,7 @@ private theorem playerStep_signal_publication
       next.native.application.publication = execution.native.application.publication := by
   have hnative : next.native ∈
       (((application window).playerStep who execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.playerStep_native] at hnative
@@ -119,7 +119,7 @@ private theorem environmentPolicyStep_signal_publication
       next.native.application.publication = some publication := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative
@@ -162,7 +162,7 @@ private theorem environmentPolicyStep_publication_none_before
         | none =>
             have hnative : next.native ∈
                 (((application window).environmentPolicyStep execution command).map
-                  MessageApplication.PolicyExecution.native).support := by
+                  MessageInterface.PolicyExecution.native).support := by
               rw [FinDist.support_map]
               exact ⟨next, hnext, rfl⟩
             rw [MessageApplication.environmentStep_native] at hnative
@@ -337,7 +337,7 @@ private theorem playerStep_invariant
     Invariant next.native.application := by
   have hnative : next.native ∈
       (((application window).playerStep who execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.playerStep_native] at hnative
@@ -361,7 +361,7 @@ private theorem environmentPolicyStep_invariant
     Invariant next.native.application := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative

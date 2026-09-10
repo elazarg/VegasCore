@@ -84,7 +84,8 @@ theorem runPolicies_message_application_invariant [DecidableEq Principal]
         exact hsubmit current who payload hcommand
           (current.native.pool.nextSerial who)) hfinal
     have hnative : final.native ∈
-        ((app.playerStep who current command).map PolicyExecution.native).support := by
+        ((app.playerStep who current command).map
+          MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨final, hfinal, rfl⟩
     rw [app.playerStep_native] at hnative
@@ -102,7 +103,8 @@ theorem runPolicies_message_application_invariant [DecidableEq Principal]
     have hpool := app.environmentPolicyStep_pool_satisfies safe current final command
       hcurrent.1 hfinal
     have hnative : final.native ∈
-        ((app.environmentPolicyStep current command).map PolicyExecution.native).support := by
+        ((app.environmentPolicyStep current command).map
+          MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨final, hfinal, rfl⟩
     rw [app.environmentStep_native] at hnative

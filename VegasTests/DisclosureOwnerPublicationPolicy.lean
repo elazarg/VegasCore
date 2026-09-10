@@ -60,7 +60,7 @@ private theorem owner_emitted_publication_eq (secret signal : Bool)
               simpa [openingBound?, haccepted] using hcache
             simp only [pureOpeningCommand, hbound, hsignal] at hemit
             simpa [ConditionalPublication.requestPayload, Publication.publicationSite_eq] using
-              (Payload.publish.inj (MessageApplication.PlayerCommand.submit.inj hemit)).2
+              (Payload.publish.inj (MessageInterface.PlayerCommand.submit.inj hemit)).2
           · cases hemit
 
 private theorem playerStep_binding_signal
@@ -74,7 +74,7 @@ private theorem playerStep_binding_signal
       next.native.application.signal = some signal := by
   have hnative : next.native ∈
       (((application window).playerStep who execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.playerStep_native] at hnative
@@ -126,7 +126,7 @@ private theorem environmentPolicyStep_binding_signal
       next.native.application.signal = some signal := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution command).map
-        MessageApplication.PolicyExecution.native).support := by
+        MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative

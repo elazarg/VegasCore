@@ -121,7 +121,8 @@ theorem publicChoice_head_phase_source_law
   · intro chosen hchosen submitted hsubmitted included hincluded
     have hnative : submitted.native ∈
         ((image.application.playerStep who execution
-          (.submit (encoding.encode chosen.1))).map PolicyExecution.native).support := by
+          (.submit (encoding.encode chosen.1))).map
+            MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨submitted, hsubmitted, rfl⟩
     rw [image.application.playerStep_native] at hnative
@@ -135,14 +136,14 @@ theorem publicChoice_head_phase_source_law
         some ⟨id, .choice code.endpoint.publicationNode ⟨ty, chosen.1⟩⟩ := by
       simpa only [encoding, ApplicationImage.choiceEncoding] using hlookupEncoded
     have happlication : submitted.native.application = execution.native.application := by
-      simpa using congrArg MessageApplication.State.application hnative
+      simpa using congrArg MessageInterface.State.application hnative
     have hincludedNative : included.native =
         image.application.includePending submitted.native id := by
       simp only [MessageApplication.environmentPolicyStep,
         EnvironmentPolicyCommand.toAction, MessageApplication.advance,
         MessageApplication.step, FinDist.pure_bind,
         FinDist.mem_support_pure] at hincluded
-      exact congrArg PolicyExecution.native hincluded
+      exact congrArg MessageInterface.PolicyExecution.native hincluded
     obtain ⟨next, hsource, hrefinesNext⟩ := include_source_coupling guard tail fresh
       build current image submitted.native (happlication.symm ▸ hrefines) heligible
       code.endpoint.publicationNode (execution.native.pool.nextSerial who) hcode

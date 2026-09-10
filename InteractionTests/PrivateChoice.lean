@@ -99,6 +99,7 @@ theorem two_polls_private_sample_once :
     MessageApplication.PlayerCommand.toAction, MessageApplication.step,
     MessageApplication.ChoiceEncoding.privateCommand, privateEncoding,
     controller, observed, application, MessagePool.empty,
+    MessageApplication.ChoiceEncoding.cachedValue,
     IdealCommitments.sealValue, IdealCommitments.lookup, IdealCommitments.empty]
 
 end

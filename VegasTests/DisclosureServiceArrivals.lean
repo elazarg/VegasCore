@@ -97,7 +97,7 @@ theorem service_owner_arrival (payload : Payload)
       after.native.pool.pending := by
     have hnative : after.native ∈
         (((application window).playerStep 0 execution (.submit payload)).map
-          MessageApplication.PolicyExecution.native).support := by
+          MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨after, hafter, rfl⟩
     rw [MessageApplication.playerStep_native] at hnative
@@ -172,7 +172,7 @@ theorem service_responder_arrival (payload : Payload)
       submitted.native.pool.pending := by
     have hnative : submitted.native ∈ (((application window).playerStep 1 before
         (.submit payload)).map
-          MessageApplication.PolicyExecution.native).support := by
+          MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨submitted, hsubmitted, rfl⟩
     rw [MessageApplication.playerStep_native] at hnative

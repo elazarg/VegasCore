@@ -31,7 +31,7 @@ theorem environmentPolicyStep_application_support
       next.native.application = applicationNext := by
   have hnative : next.native ∈
       (((application window).environmentPolicyStep execution
-        (.application command)).map MessageApplication.PolicyExecution.native).support := by
+        (.application command)).map MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [MessageApplication.environmentStep_native] at hnative
@@ -39,7 +39,7 @@ theorem environmentPolicyStep_application_support
     FinDist.support_map, Set.mem_image] at hnative
   obtain ⟨applicationNext, happlication, hstate⟩ := hnative
   exact ⟨applicationNext, happlication,
-    (congrArg MessageApplication.State.application hstate).symm⟩
+    (congrArg MessageInterface.State.application hstate).symm⟩
 
 private theorem marker_milestones (state next : DisclosureState)
     (hnext : next ∈ (environmentStep state .marker).support) :
@@ -116,7 +116,8 @@ theorem service_tail_steps
   obtain ⟨marked, hmarked, sampled, hsampled, advanced, hadvanced, hfinal⟩ := hnext
   subst next
   have hmarkerPolicy : serviceEnvironment selector execution.environmentHistory
-      execution.native.environmentView = FinDist.pure (.application .marker) := by
+      (MessageApplication.State.environmentView (application window) execution.native) =
+        FinDist.pure (.application .marker) := by
     unfold serviceEnvironment
     rw [hphase]
     rfl
@@ -125,7 +126,8 @@ theorem service_tail_steps
     (.application .marker) marked hmarked
   have hsamplePhase : marked.environmentHistory.length % 13 = 11 := by omega
   have hsamplePolicy : serviceEnvironment selector marked.environmentHistory
-      marked.native.environmentView = FinDist.pure (.application .sample) := by
+      (MessageApplication.State.environmentView (application window) marked.native) =
+        FinDist.pure (.application .sample) := by
     unfold serviceEnvironment
     rw [hsamplePhase]
     rfl
@@ -134,7 +136,7 @@ theorem service_tail_steps
     (.application .sample) sampled hsampled
   have hadvancePhase : sampled.environmentHistory.length % 13 = 12 := by omega
   have hadvancePolicy : serviceEnvironment selector sampled.environmentHistory
-      sampled.native.environmentView = FinDist.pure
+      (MessageApplication.State.environmentView (application window) sampled.native) = FinDist.pure
         (.application (.advance (sampled.native.application.clock + 1))) := by
     unfold serviceEnvironment
     rw [hadvancePhase]

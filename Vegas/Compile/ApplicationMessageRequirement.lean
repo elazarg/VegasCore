@@ -4,18 +4,19 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.ApplicationPlanCoverage
+import Vegas.Compile.ApplicationPlanOrigin
 import Vegas.Compile.ApplicationImageSamples
 
 /-! # Completion that requires an owner-authored message
 
-Opaque bindings and ordinary public choices have authenticated entry points.
+Opaque bindings and public choices without timeout code have authenticated entry points.
 Their generated node blocks are disjoint from every other instruction's
 effects. Consequently neither clock advancement, chance invocation, nor a
 message authored by another principal can complete one of these nodes.
 
-Conditional publication is deliberately excluded: its permissionless expiry
-entry point can complete its node pair without an owner-authored request.
+Conditional publication and timeout-enabled public choices are deliberately
+excluded: their permissionless expiry entry points can complete node pairs
+without owner-authored requests.
 -/
 
 noncomputable section
@@ -33,7 +34,7 @@ def RequiresSubmission (image : ApplicationImage P L) (node : Nat) (who : P) : P
   ∀ instruction ∈ image.instructions, node ∈ instruction.coveredNodes →
     match instruction with
     | .bind code => code.owner = who
-    | .publicChoice code => code.endpoint.owner = who
+    | .publicChoice code => code.timeout = none ∧ code.endpoint.owner = who
     | .sample _ | .conditional _ => False
 
 theorem RequiresSubmission.privateStep
@@ -127,9 +128,31 @@ theorem RequiresSubmission.handle
                         have howner := required (.publicChoice code)
                           (List.mem_of_find?_eq_some hlookup) hnode
                         exact hsender (((code.endpoint.resolve_iff _ _ _ _).mp
-                          hresolved).2.1.trans howner)
+                          hresolved).2.1.trans howner.2)
                       simp [ApplicationInstruction.coveredNodes] at hne
                       simp [State.publish, Memory.publish, hne.1, hne.2, hnotDone]
+  | expireChoice address =>
+      cases hlookup : image.lookup address with
+      | none => simp [ApplicationImage.handle, hlookup] at hnext
+      | some instruction =>
+          cases instruction with
+          | sample code | bind code | conditional code =>
+              simp [ApplicationImage.handle, hlookup] at hnext
+          | publicChoice code =>
+              by_cases hcovered : node ∈
+                  (ApplicationInstruction.publicChoice code).coveredNodes
+              · have htimeout := (required (.publicChoice code)
+                    (List.mem_of_find?_eq_some hlookup) hcovered).1
+                rw [image.handle_expireChoice state address code hlookup id] at hnext
+                simp [PublicChoiceCode.resolveTimeout?, htimeout] at hnext
+              · rw [image.handle_expireChoice state address code hlookup id] at hnext
+                cases hresolved : code.resolveTimeout? state.memory with
+                | none => rw [hresolved] at hnext; cases hnext
+                | some value =>
+                    rw [hresolved] at hnext
+                    cases hnext
+                    simp [ApplicationInstruction.coveredNodes] at hcovered
+                    simp [State.publish, Memory.publish, hcovered.1, hcovered.2, hnotDone]
   | conditional address payload =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -182,7 +205,14 @@ theorem requiresSubmission
   intro other hother hcovered
   by_cases heq : instruction = other
   · subst other
-    cases instruction <;> exact hauthor
+    cases instruction with
+    | sample code => exact hauthor
+    | bind code => exact hauthor
+    | conditional code => exact hauthor
+    | publicChoice code =>
+        refine ⟨?_, hauthor⟩
+        cases plan.instructions_origin deadlineOf (.publicChoice code) hinstruction with
+        | publicChoice site publicGuard => rfl
   · have hpairwise := (List.nodup_flatMap.mp (plan.coveredNodes_nodup deadlineOf)).2
     let : Std.Symm (fun a b : ApplicationInstruction P L =>
         List.Disjoint a.coveredNodes b.coveredNodes) :=
