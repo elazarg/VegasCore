@@ -89,7 +89,11 @@ theorem runPolicies_ownerReadout?_of_ready_source_view
     rw [← continuation.compile_eq]
     exact hcoversCompiledRoot
   have hbindingsRoot := root.runPolicies_lifted_registeredBindings deadlineOf
-    rootProfile who players hwho environment
+    rootProfile who players (by
+      intro history view command hcommand
+      left
+      rw [hwho] at hcommand
+      exact hcommand) environment
     (ApplicationImage.Memory.initial (compileCore rootProg rootFresh rootState).graph)
     (by intro field; rfl) schedule next hnext
   have hbindings : (root.image deadlineOf).RegisteredBindings who

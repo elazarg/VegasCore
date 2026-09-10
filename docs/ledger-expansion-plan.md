@@ -155,9 +155,10 @@ fallback. Public defaults have exact typed refinement and direct local readout;
 opaque bindings retain their separate frozen-snapshot provenance. The generic
 conditional-publication classifier and generated conditional instructions handle
 both dispositions. The selected cleartext/opening policy law and actual included
-source continuation are checked at ready conditional checkpoints. No
-whole-program timeout-driving reference service is supplied. Binding and public-choice timeout
-decoration commute; the combined artifact preserves the no-expiry reference
+source continuation are checked at ready conditional checkpoints. Whole-program
+settlement under the block service below remains a proof obligation. Binding
+and public-choice timeout decoration commute; the combined artifact preserves
+the no-expiry reference
 profile law, while each pass retains arbitrary-traffic graph refinement.
 
 The remaining implementation order is:
@@ -168,11 +169,24 @@ The remaining implementation order is:
    arbitrary initialized prefix, given a coupled source checkpoint, fresh own
    caches, and immediate inclusion. The public-choice sampling law retains the
    original draw jointly with arbitrary finite native continuations, including
-   payload-dependent delivery and retries, without requiring inclusion. Compose
+   payload-dependent delivery and retries, without requiring inclusion.
+   `ApplicationConditionalOwner` provides the corresponding first-emission and
+   joint-retention laws for conditional and repeated conditional disclosure,
+   with explicit accepted disposition and canonical-handle requirements. Compose
    this retained sample with resolution and the next source checkpoint; repeated
    polling must not draw afresh. Completed-node prefixes
    and accepted dispositions are already policy-independent invariants; they
    do not identify an unchanged player's source choice kernel.
+   `WindowedContinuationReadout` proves actual owner readout after a supported
+   windowed prefix, including expiry traffic. Only that owner must retain the
+   block-gated reference policy; opponents and the environment remain arbitrary.
+   Its memory-coverage and typed-registration invariants are derived from the
+   actual run. The coupled source checkpoint is still an explicit premise,
+   to be maintained by the blockwise source-law induction.
+   `WindowedConditionalOwner` supplies the conditional and copied-conditional
+   owner kernels in this same runtime, preserving the sampled choice jointly
+   with the full subsequent execution. Accepted disposition, canonical handles,
+   fresh cache, and source readiness are explicit local requirements.
 2. Supply a resolving service with observation-local request production and
    admitted inclusion capacity. `ApplicationPlan.windowed` provides stable
    public activation origins, strict expiry, and arbitrary-run source-outcome
@@ -185,10 +199,133 @@ The remaining implementation order is:
    local reserved service, not a whole-program settlement theorem. Prove timely
    ordinary opportunities when valid requests compete with expiry and ensure
    an available relay under each admitted unilateral deviation.
+   The service design in `WindowedApplication.blockSchedule`, `blockPlayer`,
+   and `blockEnvironment` assigns each emitted instruction a fixed block:
+   two ordinary polls per roster member, ordinary inclusion or chance, a
+   clock-advance slot, and one relay/inclusion pair per roster member. All
+   environment commands are gated by that block's instruction address.
+   Reference player policies use their actual local history length to separate
+   ordinary polls from relay-only polls. Once an instruction resolves, its
+   remaining slots cannot operate on the successor. The arbitrary deviating
+   policy is substituted **after** this reference-policy construction; its
+   native commands and observations are unrestricted.
+   Required assumptions are a duplicate-free roster covering the owners,
+   an unchanged relay member for each admitted focal deviation, canonical
+   history alignment, and source-certified default handlers. Inclusion capacity
+   and clock progress are supplied by the stated service, not by player code.
+   The whole-block obligations are slot alignment, preservation of source
+   kernels under inert polling, resolution, and absence of successor effects.
+   History-count alignment and resolved-block public-state isolation are checked.
+   Other-player polls preserve an owner's entire policy input, so their raw
+   traffic cannot bias that owner's next command kernel before delivery or
+   inclusion. The local relay law retains the actual packet, ledger and receipt.
+   `WindowedBlockSettlement` proves the clock slot and support-total relay-segment
+   settlement from per-state eligibility; its binding specialization derives
+   the concrete accepting expiry and matching source successor from a ready
+   source checkpoint and the designated public fallback. The expiry author is
+   independent of the source owner.
+   Whole-block progress and source-kernel composition are separate obligations.
+   The generated two-owner regression in `VegasTests.WindowedBlockService`
+   executes the entire first block: a silent owner is resolved by the other
+   player's genuine expiry submission, and the remaining slots preserve the
+   successor's activation time. It checks the policy runner, not a fabricated
+   checkpoint. `WindowedBlockSample` retains each source chance draw jointly
+   with arbitrary preceding raw player polls and the full subsequent block
+   execution; its public checkpoint is unchanged by the aligned suffix.
 3. Compare arbitrary player replacements on that same execution. Start with a
    final conditional disclosure under an actual resolving phase, then compose
    across prior bindings, chance, and later decisions. A support witness for
    each terminal result does not provide one legal source-policy law.
+   Backtranslation must construct decisions causally from source information.
+   Choosing a source policy after observing a final runtime outcome can couple
+   that policy to future chance or unchanged opponents' random choices; such a
+   terminal-witness construction is insufficient. The required law retains
+   unchanged-owner and chance kernels jointly with the previously extracted
+   focal decisions.
+
+For the fixed block service, the causal proof separates three obligations:
+
+- Present the focal principal's calls as decisions and all unchanged calls as
+  their existing stochastic kernels. The native theorem
+  `MessageApplication.exists_native_policy_mixture_runPolicies` supplies a
+  finite mixture of pure native replacements with exactly the original full
+  execution law, keeping opponents and the environment fixed in every branch.
+  It applies to an arbitrary finite invocation schedule and starting execution.
+  The internal presentation uses
+  the actual focal history and current view, and reuses the shared runner's
+  transitions; it is an analysis adapter, not another runtime.
+- At a focal-owned block, unchanged players only wait or relay. After fixing
+  the focal pure policy, the resolution is deterministic from the starting
+  checkpoint. `WindowedBlockDeterminism.runPolicies_block_eq_pure` proves
+  point-mass execution of the complete fixed block from its actual aligned
+  checkpoint, for any pure raw focal policy and arbitrary base policies of
+  the gated opponents. This determinism theorem does not itself prove that
+  the block resolves. An unopenable binding uses a legal source witness selected at
+  that binding, not after future chance; `State.BindingsRepresent` deliberately
+  constrains recovered typed snapshots but permits absent or ill-typed ones.
+  At an unchanged-owned block, its source kernel must remain exact even though
+  the focal principal can still submit arbitrary traffic during its own polls.
+- Prove that the focal history needed by a pure policy is determined by that
+  policy and the prior source-visible footprint. Source contexts retain prior
+  public fields and the player's own fields. The proof must account for
+  rejected traffic, public activation, serial numbers, and private registration
+  without assuming equality of hidden opponent state. This locality statement
+  is essential to turn a runtime resolution into a legal source policy.
+
+The locality comparison is between two supported executions of the **same**
+canonical initialized program, source profile, pure raw focal replacement,
+block schedule prefix, and block environment. Compare complete-block source
+boundaries, not arbitrary native states satisfying refinement. The candidate
+invariant equates public memory (including dispositions and clock), activation,
+pool, receipts, and focal history, together with focal-owned private preparation
+and relevant frozen bindings. Opponents' hidden registered values may differ.
+This equality must be derived from the common run and equal focal source views;
+it must not be assumed as an extra restriction on the deviation theorem.
+
+For unchanged private bindings, the emitted handle and admission result are
+independent of the hidden draw. For unchanged public choices, conditional
+results, and public chance, equality of the source prefix fixes the published
+value. Pure focal commands then agree because their actual inputs agree.
+Clock/relay commands follow from the common block coordinate and public state.
+Pending focal traffic and rejected attempts remain part of this induction;
+they cannot be discarded or required to be canonical. The whole-run theorem
+must derive any invariant concerning residual honest messages as well.
+
+`ApplicationImagePrivacy` supplies an owner-local state relation retaining
+public memory, that owner's prepared slots, and its accepted frozen snapshots,
+while allowing other private values to differ. Private registration, binding,
+public writes, and raw owner-authenticated handlers preserve this relation.
+`WindowedPrivacy` carries it through ordered relative-deadline admission and
+actual inclusion, including observable acceptance/rejection receipts. These
+local results do not assume payload typing or legality. A replay retains its
+original author, so another owner's replayed packet needs a separate provenance
+or completed-address argument; the raw-author theorem must not be used to
+silently treat the rebroadcaster as the author.
+
+These obligations concern the specified service. Adaptive delivery or an
+additional clock or inclusion policy needs its own information comparison;
+finite predrawing alone does not establish that comparison.
+The fixed block service contains no pending-message delivery calls. Its
+interpreter supports recipient-local delivery, but proving preservation for
+that wider service class remains a separate obligation, not an implicit
+consequence of the fixed-service theorem.
+The absence of delivery is checked for `blockEnvironment`. The generic
+`MessageApplication.runPolicies_noDeliveryProvenance` proves that inboxes stay
+empty and any known foreign-authored packet is already in the public ledger,
+including foreign packets retained in a broadcaster's sent history by replay.
+Connecting those public packets to completed source addresses is still part
+of the canonical-prefix argument.
+
+The required theorem is profile-relative, so the construction need only use
+supported **prefix** checkpoints. For a fixed focal pure policy and a source
+decision view, select a representative supported prefix with that view and
+extract its resolved action. A locality proof must make this independent of
+the representative's hidden opponent data. At views absent from that prefix
+support, the given reference source policy supplies a total legal kernel.
+An induction retaining the joint source/native prefix law then justifies the
+construction; it must not select representatives from final outcomes or
+condition an earlier action on later chance. This avoids requiring a
+canonical completion of every counterfactual hidden source environment.
 
 Keep the designated fallback expression, its legality certificate, and backend
 eligibility separate from core syntax and WF. `Legal` provides some legal action,

@@ -39,7 +39,7 @@ def RegistrationConsistent (image : ApplicationImage P L)
   ∀ who slot, image.registrationCache slot (execution.principalHistory who) =
     execution.native.application.prepared.lookup (who, slot)
 
-private theorem lookup_sealValue_other
+theorem lookup_sealValue_other
     (prepared : IdealCommitments P Nat (TypedValue L))
     (owner : P) (slot : Nat) (value : TypedValue L)
     (handle : CommitmentHandle P Nat) (hne : handle ≠ (owner, slot)) :
@@ -55,7 +55,7 @@ private theorem lookup_sealValue_other
   | some stored =>
       rw [IdealCommitments.seal_occupied prepared owner slot stored value hstored]
 
-private theorem registrationCache_append_undecoded
+theorem registrationCache_append_undecoded
     (image : ApplicationImage P L) (slot : Nat)
     (history : List image.application.PlayerEntry)
     (view : image.application.View) (command : image.application.PlayerCommand)
@@ -72,7 +72,7 @@ private theorem registrationCache_append_undecoded
   | some value =>
       exact ChoiceEncoding.cachedValue_append_of_some _ _ _ _ value hcache
 
-private theorem registration_after_register
+theorem registration_after_register
     (image : ApplicationImage P L) (who : P)
     (history : List image.application.PlayerEntry)
     (view : image.application.View)

@@ -175,7 +175,9 @@ theorem registeredBindings
   obtain ⟨previous, hprevious⟩ := checkpoint.reached
   rw [← checkpoint.continuation.compile_eq]
   exact root.runPolicies_lifted_registeredBindings deadlineOf rootProfile who
-    (root.liftProfile deadlineOf rootProfile) rfl (root.image deadlineOf).serialService
+    (root.liftProfile deadlineOf rootProfile) (by
+      intro _ _ _ hcommand
+      exact Or.inl hcommand) (root.image deadlineOf).serialService
     (ApplicationImage.Memory.initial (compileCore rootProg rootFresh rootState).graph)
     (by intro field; rfl) previous execution hprevious
 

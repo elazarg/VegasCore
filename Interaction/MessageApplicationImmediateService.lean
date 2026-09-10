@@ -38,6 +38,17 @@ def latestSubmissionCommand (who : Principal) (view : app.EnvironmentObservation
 def includeLatestFrom (who : Principal) : app.EnvironmentPolicy :=
   fun _ view => FinDist.pure (app.latestSubmissionCommand who view)
 
+/-- Selection either waits or requests inclusion of an existing identifier. -/
+theorem latestSubmissionCommand_cases (who : Principal) (view : app.EnvironmentObservation) :
+    app.latestSubmissionCommand who view = .wait ∨
+      ∃ id, app.latestSubmissionCommand who view = .include id := by
+  unfold latestSubmissionCommand
+  split
+  · exact Or.inl rfl
+  · split
+    · exact Or.inr ⟨_, rfl⟩
+    · exact Or.inl rfl
+
 /-- A fresh native submission supplies the exact envelope selected next.
 The rest of the pending pool can contain arbitrary unrelated traffic. -/
 theorem latestSubmissionCommand_after_submit (state : app.State)

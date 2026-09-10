@@ -29,6 +29,47 @@ open EventGraph Interaction GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+omit [DecidableEq P] in
+/-- An active address is unfinished, even for images with aliased addresses. -/
+theorem activeAddress?_not_done (image : ApplicationImage P L) (memory : Memory P L)
+    (address : Nat) (hactive : image.activeAddress? memory = some address) :
+    memory.done address = false := by
+  unfold activeAddress? at hactive
+  cases hfound : image.instructions.find? (fun instruction => !memory.done instruction.address)
+      with
+  | none => simp [hfound] at hactive
+  | some instruction =>
+      have haddress : instruction.address = address := by simpa [hfound] using hactive
+      have hundone := List.find?_some hfound
+      simpa only [haddress, Bool.not_eq_true'] using hundone
+
+/-- An accepted ordered message finishes the formerly active address.
+Neither source refinement nor unique instruction addresses are needed. -/
+theorem ordered_handle_resolves (image : ApplicationImage P L)
+    (before after : State P L) (message : Message P (Payload P L))
+    (hafter : image.orderedApplication.handle before message = some after) :
+    ∃ address, image.activeAddress? before.memory = some address ∧
+      after.memory.done address = true ∧ image.activeAddress? after.memory ≠ some address := by
+  change (if image.admitsMessage before.memory message then image.handle before message
+    else none) = some after at hafter
+  split at hafter
+  · rename_i hadmitted
+    obtain ⟨instruction, _, haddress, hdone⟩ :=
+      image.handle_completion_effect before after message hafter
+    have hactive : image.activeAddress? before.memory = some instruction.address := by
+      change image.admitsMessage before.memory message = true at hadmitted
+      simp only [admitsMessage, haddress] at hadmitted
+      exact (admitsAddress_iff _ _ _).mp hadmitted
+    have hresolved : after.memory.done instruction.address = true := by
+      rw [hdone]
+      simp only [instruction.address_mem_coveredNodes, decide_true, Bool.true_or]
+    refine ⟨instruction.address, hactive, hresolved, ?_⟩
+    intro hstillActive
+    have := image.activeAddress?_not_done after.memory instruction.address hstillActive
+    rw [hresolved] at this
+    contradiction
+  · contradiction
+
 /-- Completed nodes are exactly the blocks of an initial instruction segment.
 This is a completion invariant, not a source-state or strategy correspondence. -/
 def CompletedPrefix (image : ApplicationImage P L) (memory : Memory P L) : Prop :=

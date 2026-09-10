@@ -8,6 +8,8 @@ import Interaction.TransactionalInclusion
 import Interaction.MessageApplication
 import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationHistoryCounts
+import Interaction.MessageApplicationLocality
 import Interaction.MessageApplicationHarmonic
 import Interaction.MessageApplicationEnvironmentPhases
 import Interaction.MessageApplicationProjection
@@ -16,6 +18,7 @@ import Interaction.MessageApplicationPolicyTrace
 import Interaction.MessageApplicationCounters
 import Interaction.MessageApplicationPolicyHistory
 import Interaction.MessageApplicationPolicyInvariant
+import Interaction.MessageApplicationNoDelivery
 import Interaction.MessageApplicationMessageInvariant
 import Interaction.MessageApplicationHandlerExtension
 import Interaction.MessageApplicationAdmission
@@ -38,6 +41,7 @@ import Interaction.PublicChoice
 import Interaction.ChoiceController
 import Interaction.ChoiceEncodingRouting
 import Interaction.ChoiceControllerHistory
+import Interaction.MessageApplicationPredraw
 import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution

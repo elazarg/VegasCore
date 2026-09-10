@@ -12,6 +12,8 @@ import VegasTests.ApplicationImage
 import VegasTests.ApplicationEarlyBinding
 import VegasTests.ApplicationOrder
 import VegasTests.WindowedApplication
+import VegasTests.WindowedBlockService
+import VegasTests.WindowedPrivacy
 import VegasTests.WindowedForwardLaw
 import VegasTests.WindowedRelay
 import VegasTests.ApplicationSampleExecution

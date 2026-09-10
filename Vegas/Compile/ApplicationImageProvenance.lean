@@ -66,25 +66,25 @@ theorem RegisteredBindings.ownerReadStore_accepted
   obtain ⟨value, hcache, hfrozen, _⟩ := hbindings field (owner, field) haccepted rfl
   simp only [ownerReadStore, hprivate, haccepted, if_true, hcache, hfrozen]
 
-private def PreparedMessage (owner : P) (valid : Nat → TypedValue L → Prop)
+def PreparedMessage (owner : P) (valid : Nat → TypedValue L → Prop)
     (prepared : IdealCommitments P Nat (TypedValue L))
     (message : Message P (Payload P L)) : Prop :=
   message.sender = owner → ∀ address handle, message.payload = .binding address handle →
     ∃ value, prepared.lookup handle = some value ∧ valid handle.2 value
 
-private def PreparedSnapshots (owner : P) (valid : Nat → TypedValue L → Prop)
+def PreparedSnapshots (owner : P) (valid : Nat → TypedValue L → Prop)
     (state : State P L) : Prop :=
   ∀ field handle, state.memory.accepted field = some (.opaque handle) → handle.1 = owner →
     ∃ value, state.prepared.lookup handle = some value ∧
       state.frozen field = some value ∧ valid handle.2 value
 
-private structure BindingProvenance (image : ApplicationImage P L) (owner : P)
+structure BindingProvenance (image : ApplicationImage P L) (owner : P)
     (valid : Nat → TypedValue L → Prop)
     (state : image.application.State) : Prop where
   messages : state.pool.Satisfies (PreparedMessage owner valid state.application.prepared)
   snapshots : PreparedSnapshots owner valid state.application
 
-private theorem provenance_register (image : ApplicationImage P L) (owner : P)
+theorem BindingProvenance.register (image : ApplicationImage P L) (owner : P)
     (valid : Nat → TypedValue L → Prop)
     (state : image.application.State) (who : P) (slot : Nat) (value : TypedValue L)
     (hstate : BindingProvenance image owner valid state) :
@@ -101,7 +101,7 @@ private theorem provenance_register (image : ApplicationImage P L) (owner : P)
     exact ⟨stored, IdealCommitments.lookup_sealValue_of_eq_some
       state.application.prepared who slot value handle stored hstored, hfrozen, hvalid⟩
 
-private theorem snapshots_handle (image : ApplicationImage P L) (owner : P)
+theorem PreparedSnapshots.handle (image : ApplicationImage P L) (owner : P)
     (valid : Nat → TypedValue L → Prop)
     (state next : State P L) (message : Message P (Payload P L))
     (hsnapshots : PreparedSnapshots owner valid state)
@@ -170,7 +170,7 @@ private theorem provenance_include (image : ApplicationImage P L) (owner : P)
             message hhandle).1
           constructor
           · simpa only [hprepared] using hstate.messages.includePending id
-          · exact snapshots_handle image owner valid state.application application message
+          · exact PreparedSnapshots.handle image owner valid state.application application message
               hstate.snapshots hmessage hhandle
 
 private theorem provenance_playerStep (image : ApplicationImage P L) (owner : P)
@@ -191,7 +191,7 @@ private theorem provenance_playerStep (image : ApplicationImage P L) (owner : P)
             MessageApplication.advance, MessageApplication.step, ApplicationImage.application,
             FinDist.pure_bind, FinDist.mem_support_pure] at hnext
           subst next
-          exact provenance_register image owner valid execution.native who slot value hstate
+          exact BindingProvenance.register image owner valid execution.native who slot value hstate
   | submit payload =>
       simp only [MessageApplication.playerStep, PlayerCommand.toAction,
         MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,

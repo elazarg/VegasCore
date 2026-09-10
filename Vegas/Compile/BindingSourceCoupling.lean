@@ -126,6 +126,88 @@ theorem binding_source_successor
     (by simp [committed])
   exact ⟨next, rfl, rfl⟩
 
+/-- A binding transition has an exact source successor whenever any typed
+snapshot agrees with the chosen legal value. Missing and ill-typed snapshots
+are permitted: the source value is supplied at this checkpoint, independently
+of any later choices or chance draws. -/
+theorem bind_source_coupling
+    {Γ : VCtx P L} {name : VarId} {who : P} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore P L ((name, .sealed who ty) :: Γ))
+    (fresh : FreshBindings (.commit name who guard tail))
+    (build : BuildState P L Γ)
+    (current : CoupledAt
+      (compileCore (.commit name who guard tail) fresh build).graph build)
+    (native : ApplicationImage.State P L)
+    (hrefines : native.Refines current.current.graph.1)
+    (value : L.Val ty)
+    (hlegal : evalGuard guard value
+      ((current.current.source.toView who).eraseEnv) = true)
+    (hsnapshot : ∀ recovered,
+      (native.prepared.lookup (who, build.nextField)).bind (fun typed => typed.as? ty) =
+        some recovered → recovered = value) :
+    let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
+      .here guard tail
+    ∃ next : CoupledAt
+        (compileCore (.commit name who guard tail) fresh build).graph
+        (build.addCommitEvent name who guard fresh.1).1,
+      next.current.source = current.current.source.cons value ∧
+        (native.bind (site.bindingCode fresh build (site.compiledField fresh build))
+          (who, site.compiledField fresh build)).Refines next.current.graph.1 := by
+  dsimp only
+  let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
+    .here guard tail
+  let G := (compileCore (.commit name who guard tail) fresh build).graph
+  let node := site.compiledNode fresh build
+  have hready := current.current.nextReady current.completedPrefix node rfl
+  have hrow : G.nodes[node]? = some (build.commitEvent who guard) := by
+    rcases decisionSite_compiledRow site fresh build with ⟨located, hlocated, hlocatedRow⟩
+    have heq : located = node := Fin.ext hlocated
+    subst located
+    exact hlocatedRow
+  let step := build.sourceCommitStep who guard current.current.graph.1
+    current.current.source current.current.agrees node hrow hready value hlegal
+  obtain ⟨next, hsource, hgraph⟩ :=
+    binding_source_successor guard tail fresh build current value hlegal
+  refine ⟨next, hsource, ?_⟩
+  rw [hgraph]
+  exact hrefines.bind (compileCore (.commit name who guard tail) fresh build).graphWF
+    (site.bindingCode fresh build (site.compiledField fresh build)) node rfl rfl
+    (who, site.compiledField fresh build) rfl ⟨ty, value⟩ step hsnapshot
+
+/-- At an unrestricted commitment, a current typed preparation determines the
+source value. An absent or ill-typed preparation uses the supplied fallback.
+For a fixed fallback this extraction reads only the pre-binding snapshot.
+It supplies local source-step evidence, not a source-policy backtranslation. -/
+theorem bind_recoveredOr_source_coupling
+    {Γ : VCtx P L} {name : VarId} {who : P} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore P L ((name, .sealed who ty) :: Γ))
+    (fresh : FreshBindings (.commit name who guard tail))
+    (build : BuildState P L Γ)
+    (current : CoupledAt
+      (compileCore (.commit name who guard tail) fresh build).graph build)
+    (native : ApplicationImage.State P L)
+    (hrefines : native.Refines current.current.graph.1)
+    (fallback : L.Val ty)
+    (hlegal : ∀ value, evalGuard guard value
+      ((current.current.source.toView who).eraseEnv) = true) :
+    let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
+      .here guard tail
+    let chosen := ((native.prepared.lookup (who, build.nextField)).bind
+      (fun typed => typed.as? ty)).getD fallback
+    ∃ next : CoupledAt
+        (compileCore (.commit name who guard tail) fresh build).graph
+        (build.addCommitEvent name who guard fresh.1).1,
+      next.current.source = current.current.source.cons chosen ∧
+        (native.bind (site.bindingCode fresh build (site.compiledField fresh build))
+          (who, site.compiledField fresh build)).Refines next.current.graph.1 := by
+  dsimp only
+  apply bind_source_coupling guard tail fresh build current native hrefines _ (hlegal _)
+  intro recovered hrecovered
+  rw [hrecovered]
+  rfl
+
 /-- Actual inclusion of a canonical, prepared binding advances to the exact
 legal source successor.  Handler readiness and absence of an earlier accepted
 handle follow from the source-prefix coupling and native refinement. -/
@@ -200,26 +282,18 @@ theorem include_binding_source_coupling
   have hincluded := image.include_accepted execution (who, serial)
     ⟨(who, serial), .binding address (who, field)⟩
     (execution.application.bind code (who, field)) hlookup hhandler
-  obtain ⟨next, hsource, hgraph⟩ :=
-    binding_source_successor guard tail fresh build current value hlegal
-  have hrow : G.nodes[node]? = some (build.commitEvent who guard) := by
-    rcases decisionSite_compiledRow site fresh build with ⟨located, hlocated, hlocatedRow⟩
-    have heq : located = node := by
-      apply Fin.ext
-      exact hlocated
-    subst located
-    exact hlocatedRow
-  let step := build.sourceCommitStep who guard current.current.graph.1
-    current.current.source current.current.agrees node hrow hready value hlegal
-  have hrefinesNext : (execution.application.bind code (who, field)).Refines
-      (current.current.graph.1.completeNode node ⟨ty, value⟩) := by
-    apply hrefines.bind (compileCore (.commit name who guard tail) fresh build).graphWF
-      code node rfl hfield (who, field) rfl ⟨ty, value⟩ step
-    intro recovered hrecovered
-    rw [hprepared] at hrecovered
-    simpa [TypedValue.as?] using hrecovered.symm
+  obtain ⟨next, hsource, hrefinesNext⟩ :=
+    bind_source_coupling guard tail fresh build current execution.application hrefines
+      value hlegal (by
+        intro recovered hrecovered
+        change (execution.application.prepared.lookup (who,
+          (.here guard tail : SourceDecisionSite who (.commit name who guard tail)
+            Γ name ty guard).compiledField fresh build)).bind
+              (fun typed => typed.as? ty) = some recovered at hrecovered
+        rw [hprepared] at hrecovered
+        simpa [TypedValue.as?] using hrecovered.symm)
   refine ⟨next, hsource, ?_, ?_⟩
-  · rw [hgraph, hincluded.1]
+  · rw [hincluded.1]
     exact hrefinesNext
   · rw [hincluded.1]
     constructor
@@ -241,6 +315,11 @@ end Vegas.SourceDecisionSite
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceDecisionSite.binding_source_successor
+
+/-- info: 'Vegas.SourceDecisionSite.bind_recoveredOr_source_coupling' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceDecisionSite.bind_recoveredOr_source_coupling
 
 /-- info: 'Vegas.SourceDecisionSite.include_binding_source_coupling' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

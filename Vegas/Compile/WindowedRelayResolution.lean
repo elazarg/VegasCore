@@ -63,7 +63,7 @@ private theorem relay_include_accepts (runtime : WindowedApplication P L)
   · exact hhandle
 
 omit [DecidableEq P] in
-private theorem due_of_binding (runtime : WindowedApplication P L)
+theorem dueExpiry?_of_binding (runtime : WindowedApplication P L)
     (state : WindowedApplication.State P L) (activation : Activation Nat)
     (hstate : runtime.Consistent state) (hactive : state.active = some activation)
     (code : BindingCode P L)
@@ -84,7 +84,7 @@ private theorem due_of_binding (runtime : WindowedApplication P L)
     haddress]
 
 omit [DecidableEq P] in
-private theorem due_of_publicChoice (runtime : WindowedApplication P L)
+theorem dueExpiry?_of_publicChoice (runtime : WindowedApplication P L)
     (state : WindowedApplication.State P L) (activation : Activation Nat)
     (hstate : runtime.Consistent state) (hactive : state.active = some activation)
     (code : PublicChoiceCode P L)
@@ -105,7 +105,7 @@ private theorem due_of_publicChoice (runtime : WindowedApplication P L)
     haddress]
 
 omit [DecidableEq P] in
-private theorem due_of_conditional (runtime : WindowedApplication P L)
+theorem dueExpiry?_of_conditional (runtime : WindowedApplication P L)
     (state : WindowedApplication.State P L) (activation : Activation Nat)
     (hstate : runtime.Consistent state) (hactive : state.active = some activation)
     (code : ConditionalCode P L)
@@ -157,7 +157,7 @@ theorem relay_expireBinding_accepts (runtime : WindowedApplication P L)
           [((who, execution.native.pool.nextSerial who), true)]) := by
   apply runtime.relay_include_accepts players who (.expireBinding activation.key) execution
   · exact hbase
-  · exact due_of_binding runtime execution.native.application activation hstate hactive
+  · exact dueExpiry?_of_binding runtime execution.native.application activation hstate hactive
       code hcode timeout htimeout hoverdue
   · exact hfresh
   · exact runtime.handle_expireBinding_after_window execution.native.application activation
@@ -197,7 +197,7 @@ theorem relay_expireChoice_accepts (runtime : WindowedApplication P L)
           [((who, execution.native.pool.nextSerial who), true)]) := by
   apply runtime.relay_include_accepts players who (.expireChoice activation.key) execution
   · exact hbase
-  · exact due_of_publicChoice runtime execution.native.application activation hstate hactive
+  · exact dueExpiry?_of_publicChoice runtime execution.native.application activation hstate hactive
       code hcode timeout htimeout hoverdue
   · exact hfresh
   · exact runtime.handle_expireChoice_after_window execution.native.application activation
@@ -234,7 +234,7 @@ theorem relay_conditionalExpire_accepts (runtime : WindowedApplication P L)
   apply runtime.relay_include_accepts players who
     (.conditional activation.key .expire) execution
   · exact hbase
-  · exact due_of_conditional runtime execution.native.application activation hstate hactive
+  · exact dueExpiry?_of_conditional runtime execution.native.application activation hstate hactive
       code hcode hoverdue
   · exact hfresh
   · exact runtime.handle_conditionalExpire_after_window execution.native.application activation

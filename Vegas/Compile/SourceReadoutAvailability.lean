@@ -182,7 +182,11 @@ theorem runPolicies_ownerReadout?_of_ready
     simpa only [BuildResult.graph, compileCore_initialFields] using
       plan.runPolicies_memory_covers deadlineOf players environment schedule next hnext
   have hbindings := plan.runPolicies_lifted_registeredBindings deadlineOf profile
-    who players hwho environment
+    who players (by
+      intro history view command hcommand
+      left
+      rw [hwho] at hcommand
+      exact hcommand) environment
     (ApplicationImage.Memory.initial (compileCore prog fresh state).graph)
     (by intro field; rfl) schedule next hnext
   exact site.ownerReadout?_of_ready fresh state (plan.image deadlineOf)

@@ -72,9 +72,33 @@ theorem included_source_successor (secret : Bool) :
       at hsnapshot
     exact hsnapshot
 
+/-- Raw private registration may contain a value of any runtime type. A
+well-typed bit supplies the source commitment; other types use a fixed source
+fallback at this binding, while the native snapshot remains unchanged. -/
+theorem raw_registration_source_successor (raw : TypedValue simpleExpr) :
+    let native := ApplicationImage.State.register (ApplicationImage.State.initial
+      (ApplicationImage.Memory.initial GeneratedPersistentDisclosure.compiled.graph)) 0 0 raw
+    ∃ next : CoupledAt GeneratedPersistentDisclosure.compiled.graph nextBuild,
+      next.current.source = source.env.cons ((raw.as? .bool).getD false) ∧
+        (native.bind code (0, 0)).Refines next.current.graph.1 := by
+  dsimp only
+  obtain ⟨next, hsource, hrefines⟩ := SourceDecisionSite.bind_recoveredOr_source_coupling
+    (P := TestPlayer) (L := simpleExpr) (.constBool true) _
+    source.fresh compilerInitial checkpoint
+    (ApplicationImage.State.register (ApplicationImage.State.initial
+      (ApplicationImage.Memory.initial GeneratedPersistentDisclosure.compiled.graph)) 0 0 raw)
+    ((ApplicationImage.State.initial_refines GeneratedPersistentDisclosure.compiled.graph).register
+      0 0 raw) false (fun _ => rfl)
+  exact ⟨next, hsource, hrefines⟩
+
 end VegasTests.BindingSourceCoupling
 
 /-- info: 'VegasTests.BindingSourceCoupling.included_source_successor' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.BindingSourceCoupling.included_source_successor
+
+/-- info: 'VegasTests.BindingSourceCoupling.raw_registration_source_successor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.BindingSourceCoupling.raw_registration_source_successor

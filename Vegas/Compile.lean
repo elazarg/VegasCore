@@ -19,6 +19,9 @@ import Vegas.Compile.ApplicationImage
 import Vegas.Compile.ApplicationImageSamples
 import Vegas.Compile.ApplicationSampleLaw
 import Vegas.Compile.ApplicationImageBindings
+import Vegas.Compile.ApplicationImagePrivacy
+import Vegas.Compile.WindowedPrivacy
+import Vegas.Compile.WindowedPolicyPrivacy
 import Vegas.Compile.ApplicationBindingOrigins
 import Vegas.Compile.ApplicationAcceptedPrefix
 import Vegas.Compile.ApplicationImageInvariants
@@ -65,6 +68,7 @@ import Vegas.Compile.ApplicationSampleForward
 import Vegas.Compile.ApplicationBindingForward
 import Vegas.Compile.ApplicationPublicChoiceForward
 import Vegas.Compile.ApplicationOwnerPhase
+import Vegas.Compile.ApplicationConditionalOwner
 import Vegas.Compile.ApplicationConditionalForward
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationChoiceTimeouts
@@ -118,6 +122,18 @@ import Vegas.Compile.WindowedExpiry
 import Vegas.Compile.WindowedExpiryResolution
 import Vegas.Compile.WindowedRelayResolution
 import Vegas.Compile.WindowedExpiryService
+import Vegas.Compile.WindowedBlockService
+import Vegas.Compile.WindowedBlockAlignment
+import Vegas.Compile.WindowedBlockDeterminism
+import Vegas.Compile.WindowedBlockPredraw
+import Vegas.Compile.WindowedBlockIsolation
+import Vegas.Compile.WindowedBlockSample
+import Vegas.Compile.WindowedBlockSettlement
+import Vegas.Compile.WindowedBindingProvenance
+import Vegas.Compile.WindowedBlockProvenance
+import Vegas.Compile.WindowedContinuationReadout
+import Vegas.Compile.WindowedConditionalOwner
+import Vegas.Compile.WindowedBlockResolution
 import Vegas.Compile.ApplicationRelayHistory
 import Vegas.Compile.WindowedProjection
 import Vegas.Compile.WindowedExecutionProjection
@@ -127,6 +143,7 @@ import Vegas.Compile.ApplicationDeadlinePolicies
 import Vegas.Compile.WindowedApplicationDeadline
 import Vegas.Compile.WindowedApplicationInvariants
 import Vegas.Compile.WindowedSourceSafety
+import Vegas.Compile.WindowedApplicationCoverage
 import Vegas.Compile.WindowedForwardLaw
 import Vegas.Compile.WindowedSampleLaw
 import Vegas.Compile.ApplicationPlanSampleLaw

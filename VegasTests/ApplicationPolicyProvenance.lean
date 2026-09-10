@@ -38,7 +38,8 @@ theorem through_chance_registrationMatches
     image.RegistrationMatches 0 (next.principalHistory 0) next.native.application := by
   apply ApplicationImage.RegisteredBindings.registrationMatches
   apply applicationPlan.runPolicies_lifted_registeredBindings (fun _ => 10) profile 0
-    (applicationPlan.liftProfile (fun _ => 10) profile) rfl service
+    (applicationPlan.liftProfile (fun _ => 10) profile)
+    (fun _ _ _ hcommand => Or.inl hcommand) service
     (ApplicationImage.Memory.initial GeneratedPersistentDisclosure.compiled.graph)
     (fun _ => rfl)
     [.player 0, .player 0, .environment, .player 0, .environment, .environment]

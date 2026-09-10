@@ -6,10 +6,12 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.ApplicationPolicyBindings
 import Vegas.Compile.ApplicationImageProvenance
+import Vegas.Compile.ApplicationRelayHistory
 
-/-! # Binding provenance under a lifted player strategy
+/-! # Binding provenance under a padded lifted player strategy
 
-One player's structurally lifted source policy suffices to maintain agreement
+One player's commands may be supported by its structurally lifted source policy
+or be inert waits and expiry submissions. This suffices to maintain agreement
 between its recorded private registrations and accepted native snapshots.
 All other players and the environment may use arbitrary runtime strategies.
 The retained registrations are also typed by their fields in the plan's final
@@ -27,8 +29,9 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- From empty preparation and message histories, a single lifted player
-maintains its accepted-binding provenance through every supported run.
+/-- From empty preparation and message histories, a player whose commands are
+supported by its lifted policy or are idle/expiry commands maintains its
+accepted-binding provenance through every supported run.
 This requires no fairness, deadline protection, restrictions on opponents,
 or source-matching readout supplied as a hypothesis. -/
 theorem runPolicies_lifted_registeredBindings
@@ -37,7 +40,10 @@ theorem runPolicies_lifted_registeredBindings
     {state : BuildState P L Γ} (plan : ApplicationPlan accounted fresh state)
     (deadlineOf : Nat → Nat) (profile : SourceBehavioralProfile prog)
     (owner : P) (players : P → (plan.image deadlineOf).application.PlayerPolicy)
-    (howner : players owner = plan.liftProfile deadlineOf profile owner)
+    (hcommands : ∀ history view command,
+      command ∈ (players owner history view).support →
+        command ∈ (plan.liftProfile deadlineOf profile owner history view).support ∨
+          (plan.image deadlineOf).IdleOrExpiryCommand command)
     (environment : (plan.image deadlineOf).application.EnvironmentPolicy)
     (memory : ApplicationImage.Memory P L)
     (hempty : ∀ field, memory.accepted field = none)
@@ -59,9 +65,11 @@ theorem runPolicies_lifted_registeredBindings
         typed.ty = spec.ty)
     players environment ?_ schedule next hnext
   intro history view address handle hcommand
-  rw [howner] at hcommand
-  exact plan.liftProfileIn_binding_submission (plan.image deadlineOf) deadlineOf
-    profile owner history view address handle hcommand
+  rcases hcommands history view (.submit (.binding address handle)) hcommand with
+    hsource | hidle
+  · exact plan.liftProfileIn_binding_submission (plan.image deadlineOf) deadlineOf
+      profile owner history view address handle hsource
+  · exact False.elim (hidle trivial)
 
 end Vegas.ApplicationPlan
 
