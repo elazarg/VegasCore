@@ -69,7 +69,7 @@ every pair of supported outcomes still agrees at the focal player. The laws
 are exactly the conclusions of `bindingPolicy_two_invocations_source_law`
 (or its windowed dispatcher specialization); no pure source policy or command
 equality is assumed. -/
-private theorem binding_twoRunLaw_other
+theorem binding_twoRunLaw_other
     (agreement : PolicyAgreement runtime focal left right)
     (howner : owner ≠ focal) (code : BindingCode P L)
     (leftChoices rightChoices : FinDist (L.Val code.ty))
@@ -253,6 +253,11 @@ end Vegas.WindowedApplication.PolicyAgreement
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WindowedApplication.PolicyAgreement.binding_twoPolls_of_ready
+
+/-- info: 'Vegas.WindowedApplication.PolicyAgreement.binding_twoRunLaw_other' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.PolicyAgreement.binding_twoRunLaw_other
 
 /-- info: 'Vegas.WindowedApplication.PolicyAgreement.binding_inclusion_of_ready' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

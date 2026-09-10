@@ -130,6 +130,7 @@ import Vegas.Compile.WindowedBlockAlignment
 import Vegas.Compile.WindowedBlockDeterminism
 import Vegas.Compile.WindowedOwnedBlock
 import Vegas.Compile.WindowedOwnedPlayers
+import Vegas.Compile.WindowedGatedExecution
 import Vegas.Compile.WindowedOwnedPrivacy
 import Vegas.Compile.WindowedOwnedCheckpoint
 import Vegas.Compile.WindowedBlockPredraw
@@ -145,6 +146,11 @@ import Vegas.Compile.WindowedConditionalBlock
 import Vegas.Compile.WindowedConditionalCheckpoint
 import Vegas.Compile.WindowedPublicChoiceBlock
 import Vegas.Compile.WindowedCheckpoint
+import Vegas.Compile.ApplicationBlockFallbacks
+import Vegas.Compile.WindowedSourcePrefix
+import Vegas.Compile.WindowedSourceCoverage
+import Vegas.Compile.WindowedBindingAction
+import Vegas.Compile.WindowedBindingPairing
 import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedPublicChoiceCheckpoint
 import Vegas.Compile.WindowedBindingExecution
@@ -153,6 +159,7 @@ import Vegas.Compile.WindowedBindingReadiness
 import Vegas.Compile.WindowedSampleCaches
 import Vegas.Compile.WindowedBlockCaches
 import Vegas.Compile.WindowedSampleCheckpoint
+import Vegas.Compile.WindowedSamplePrivacy
 import Vegas.Compile.WindowedForeignProvenance
 import Vegas.Compile.WindowedBindingProvenance
 import Vegas.Compile.WindowedBlockProvenance

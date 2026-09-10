@@ -106,7 +106,9 @@ theorem sample_block
     execution hlookup hindex (by rw [hlength]; exact Nat.mul_mod_left _ _)
     hactive checkpoint.refines checkpoint.consistent
 
-private theorem sample_successor
+/-- Construct the initialized next checkpoint from the actual chance block's
+source coupling, retaining all native histories and future cache invariants. -/
+theorem sample_successor
     (nextPlan : ApplicationPlan accounted fresh.2 (state.addSampleEvent name dist fresh.1).1)
     (profile : SourceBehavioralProfile (.sample name dist tail))
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
@@ -162,6 +164,44 @@ private theorem sample_successor
         rfl)
       blockIndex code execution final hlookup hindex
       (fun actor hactor => (checkpoint.historyAlignment hroster actor hactor).1) hfresh hfinal
+
+/-- Every supported complete chance block admits its actual source draw and
+an initialized successor checkpoint. The draw is recovered from the exact
+joint block law; it is not chosen from an arbitrary refinement witness. -/
+theorem sample_block_successor
+    (nextPlan : ApplicationPlan accounted fresh.2 (state.addSampleEvent name dist fresh.1).1)
+    (profile : SourceBehavioralProfile (.sample name dist tail))
+    (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
+    (execution final :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
+    (hroster : roster.Nodup)
+    (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      (WindowedApplication.blockInvocations roster) execution).support) :
+    ∃ (value : L.Val ty)
+      (next : CoupledAt (compileCore (.sample name dist tail) fresh state).graph
+        (state.addSampleEvent name dist fresh.1).1),
+      value ∈ (L.evalDist dist current.current.source.eraseSampleEnv).support ∧
+      next.current.source = current.current.source.cons value ∧
+      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who replacement
+        (blockIndex + 1) nextPlan profile.afterSample next final ∧
+      SmallStep ⟨Γ, current.current.source, .sample name dist tail⟩
+        ⟨(name, .pub ty) :: Γ, next.current.source, tail⟩ := by
+  obtain ⟨hlaw, hcoupling⟩ := sample_block nextPlan profile current execution checkpoint
+  have hdecomposed := hfinal
+  rw [hlaw] at hdecomposed
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hdecomposed
+  obtain ⟨middle, hmiddle, value, hvalue, hsuffix⟩ := hdecomposed
+  obtain ⟨next, hsource, hnext⟩ := hcoupling middle hmiddle value hvalue
+  obtain ⟨hrefines, hfresh⟩ := hnext final hsuffix
+  refine ⟨value, next, hvalue, hsource,
+    sample_successor nextPlan profile current execution checkpoint hroster next final hfinal
+      hrefines hfresh, ?_⟩
+  rw [hsource]
+  exact .sample dist tail value hvalue
 
 /-- The actual chance block composes with any continuation that agrees at
 genuine successor source checkpoints. Player traffic is unrestricted for the
@@ -232,6 +272,11 @@ end Vegas.ApplicationPlan.WindowedCheckpoint
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.sample_block
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_successor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_successor
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_bind' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

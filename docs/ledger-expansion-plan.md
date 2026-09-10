@@ -399,6 +399,19 @@ generated regression uses the original whole source profile and canonical
 initial checkpoint, and checks successful acceptance with the exact source
 distribution of the frozen snapshot.
 
+Extending the unchanged-owner comparison through a complete binding block
+still requires owner-specific preservation through the remaining ordinary
+player polls: the prepared `(owner, slot)` snapshot, the owner's serial
+counter, and lookup of its submitted envelope. Other players may add arbitrary
+traffic, so the pool need not remain equal to its value before those polls.
+The paired binding-prefix lemma retains the actual intermediate pool for this
+reason. Equality of the owner's policy input is insufficient on its own:
+the application's current observation exposes public memory and activation,
+not the prepared table, and sent lists also contain rebroadcasts. These native
+invariants must be proved from the actual player transitions or established
+history/counter consistency, before deriving normal inclusion and composing
+the inactive suffix.
+
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
 block schedule prefix, and block environment. Compare complete-block source
@@ -417,20 +430,35 @@ comparison is not required for the completed-boundary argument. Focal input
 agreement must be derived from initialized execution and equal focal source
 views, not assumed as a restriction on the deviation theorem.
 
-The planned prefix carrier is a single-run inductive derivation indexed by
-the source suffix, source environment, native execution, and block count.
-Each edge retains its predecessor, actual full-block support, exact source
-extension, and constructor-specific resolution evidence. Comparing two such
-derivations needs no stored information-equivalence premise. Backward
-source-view recall gives agreement at the preceding source boundary: public
-values and focal-owned sealed values must agree, whereas another owner's
-sealed values may differ. The constructor's paired block proof must recover
-runtime policy-input agreement from that induction hypothesis. A separate
-decision representative pairs a supported pre-decision prefix with its
-resolution edge, so extraction never selects an earlier action from a final
-outcome or a later chance result. Coverage of all actual supported prefixes,
-the paired information proof, and their connection to source-policy extension
-remain to be implemented.
+`WindowedSourcePrefix` is a single-run inductive derivation indexed by the
+source suffix, source environment, native execution, and block count. Each
+edge retains its predecessor, actual full-block support, a `BlockSourceStep`
+with the exact source extension, and a genuine successor checkpoint. The
+binding constructor retains the canonical acceptance-snapshot or fallback
+extraction equation. No information-equivalence premise is stored in the
+derivation.
+
+`WindowedSourcePrefix.covers` constructs this evidence for **every** supported
+initialized complete-block prefix up to the emitted instruction count. The
+replacement is an arbitrary randomized raw player policy. Its static and
+service premises are source-certified binding/public-choice timeout selectors
+(`BlockFallbacks`), binding origins, a duplicate-free roster, and an unchanged
+relay in that roster. The theorem imposes no settlement, packet-shape, or
+selected-source-action premise on the execution. `terminates` proves that the
+full block count finishes the native graph and yields a terminal sequential
+source execution. A generated persistent-disclosure regression discharges the
+timeout certificates and covers all emitted instruction kinds. These are
+support-level results, not equality of outcome distributions.
+
+Comparing two such derivations remains the whole-prefix information
+obligation. Backward source-view recall gives agreement at the preceding
+source boundary: public values and focal-owned sealed values must agree,
+whereas another owner's sealed values may differ. The constructor's paired
+block proof must recover runtime policy-input agreement from that induction
+hypothesis. A separate decision representative must pair a supported
+pre-decision prefix with its resolution edge, so extraction never selects an
+earlier action from a final outcome or a later chance result. That decision
+carrier and its connection to source-policy extension remain unimplemented.
 
 The focal-owned block case is checked by
 `WindowedCheckpoint.owned_block_agreement`. Given two actual checkpoints and
@@ -446,8 +474,15 @@ inclusion theorem permits arbitrary packets: an opening from a different
 author cannot inspect that author's private snapshot at a focal-owned active
 instruction. Regressions exercise the source-checkpoint endpoint and actual
 rejection of such a foreign opening with distinct hidden snapshots.
-The other constructor cases, where an unchanged player or source chance
-supplies the block's value, still need their full-block paired comparisons.
+`WindowedCheckpoint.sample_block_agreement_of_same_draw` compares complete
+chance blocks through the same actual supported public draw. It derives the
+ordinary player-prefix comparison and the inactive clock/relay suffix from
+the original root-profile lifts and fixed pure raw replacement. The endpoint
+returns both final information agreement and actual full-block support on
+each side; the source chance law supplies that support. It does not assert
+agreement between different public draws. `WindowedGatedExecution` supplies
+the shared player-only and inactive-suffix inductions. The unchanged-player
+instruction cases still need their full-block paired comparisons.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual
@@ -460,10 +495,15 @@ registration. The shared block-resolution proof transports the certificate
 on native application states. `Refines` alone deliberately permits other
 source witnesses for unopenable bindings; the extraction equation fixes the
 witness used for backtranslation without restricting raw player commands.
-To instantiate `SourcePolicyCheckpoints.action_congr`, the paired information
-proof must still show that equal pre-decision source views determine this
-extracted action. An equation at each individual execution does not establish
-that cross-execution property.
+`WindowedCheckpoint.binding_block_action_eq` proves the cross-execution
+equality of these extracted focal binding actions from preceding information
+agreement and equal focal source views. It derives completed-binding provenance
+and native completion from an actual successor checkpoint, and projects the
+source views to the public environments used by fallback evaluation. No final
+action equality, accepted-message condition, or snapshot typing is assumed.
+Instantiating `SourcePolicyCheckpoints.action_congr` still requires the
+whole-prefix theorem to derive the preceding information agreement, and the
+corresponding action-extraction results for public/conditional decisions.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional

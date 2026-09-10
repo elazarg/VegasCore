@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedBlockDeterminism
-import Vegas.Compile.WindowedOwnedPlayers
+import Vegas.Compile.WindowedGatedExecution
 import Vegas.Compile.WindowedOwnedPrivacy
 
 /-! # Paired execution of a focal player's service block
@@ -24,18 +24,6 @@ open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 variable {P : Type} [DecidableEq P] {L : IExpr}
 variable {runtime : WindowedApplication P L} {focal : P}
 variable {left right : runtime.application.PolicyExecution}
-
-/-- Equal public runtime state and block coordinates determine the same
-environment command law; environment histories themselves need not agree. -/
-theorem blockEnvironment_eq (agreement : PolicyAgreement runtime focal left right)
-    (roster : List P) (hlength : left.environmentHistory.length = right.environmentHistory.length) :
-    runtime.blockEnvironment roster left.environmentHistory
-        (State.environmentView runtime.application left.native) =
-      runtime.blockEnvironment roster right.environmentHistory
-        (State.environmentView runtime.application right.native) := by
-  simp only [WindowedApplication.blockEnvironment, hlength, State.environmentView,
-    WindowedApplication.application, agreement.state.base.memory, agreement.state.active,
-    agreement.pool, agreement.receipts]
 
 /-- The actual service invocation preserves focal information in a focal-owned
 block. An inactive block waits; an active one may include any selected packet
@@ -141,9 +129,10 @@ theorem runPolicies_owned (agreement : PolicyAgreement runtime focal left right)
       have hfirst : PolicyAgreement runtime focal middleLeft middleRight := by
         cases invocation with
         | player actor =>
-            exact agreement.invoke_player_owned actor replacement base players hfocal hothers
+            exact agreement.invoke_player_gated actor replacement base players hfocal hothers
               (runtime.blockEnvironment roster) (runtime.blockEnvironment roster) instruction
-              howner (hplayerLengths actor)
+              (fun hactor hsubmitter =>
+                hactor (Option.some.inj (hsubmitter.symm.trans howner))) (hplayerLengths actor)
               (hplayerIndex actor _ (Nat.le_refl _) (by simp))
               middleLeft middleRight hfirstLeft hfirstRight
         | environment =>

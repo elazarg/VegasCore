@@ -162,3 +162,6 @@ import VegasTests.WindowedBindingReadiness
 import VegasTests.WindowedBindingExtraction
 import VegasTests.WindowedOwnedCheckpoint
 import VegasTests.WindowedOwnedPrivacy
+import VegasTests.WindowedSamplePrivacy
+import VegasTests.WindowedSourceCoverage
+import VegasTests.WindowedBindingAction

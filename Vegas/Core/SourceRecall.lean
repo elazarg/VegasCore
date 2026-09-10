@@ -149,6 +149,46 @@ theorem eraseView_cons_other_recall {Γ : VCtx P L} {x : VarId} {b : L.Ty}
   rw [hproof] at hvalue
   exact hvalue
 
+/-- Equality of a player's complete source view determines the public source
+environment used by timeout fallback expressions. -/
+theorem erasePubEnv_eq_of_eraseView_eq {Γ : VCtx P L} (who : P)
+    (hctx : WFCtx Γ) {left right : VEnv L Γ}
+    (hview : (left.toView who).eraseEnv = (right.toView who).eraseEnv) :
+    left.erasePubEnv = right.erasePubEnv := by
+  induction Γ with
+  | nil => rfl
+  | cons entry Γ ih =>
+      obtain ⟨x, τ⟩ := entry
+      let leftTail : VEnv L Γ := fun y σ hy => left y σ (.there hy)
+      let rightTail : VEnv L Γ := fun y σ hy => right y σ (.there hy)
+      let leftHead : L.Val τ.base := left x τ .here
+      let rightHead : L.Val τ.base := right x τ .here
+      have hleft : VEnv.cons leftHead leftTail = left := by
+        funext y σ hy
+        cases hy <;> rfl
+      have hright : VEnv.cons rightHead rightTail = right := by
+        funext y σ hy
+        cases hy <;> rfl
+      rw [← hleft, ← hright] at hview ⊢
+      cases τ with
+      | mk b visibility =>
+          cases visibility with
+          | pub =>
+              obtain ⟨hhead, htail⟩ :=
+                eraseView_cons_public_recall who hctx hview
+              change Env.cons leftHead leftTail.erasePubEnv =
+                Env.cons rightHead rightTail.erasePubEnv
+              rw [hhead, ih hctx.tail htail]
+          | sealed owner =>
+              have htail :
+                  (leftTail.toView who).eraseEnv = (rightTail.toView who).eraseEnv := by
+                by_cases howner : who = owner
+                · subst owner
+                  exact (eraseView_cons_owned_recall who hctx hview).2
+                · exact eraseView_cons_other_recall howner hctx hview
+              change leftTail.erasePubEnv = rightTail.erasePubEnv
+              exact ih hctx.tail htail
+
 end VEnv
 
 end Vegas
@@ -157,3 +197,8 @@ end Vegas
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.VEnv.eraseView_cons_other_recall
+
+/-- info: 'Vegas.VEnv.erasePubEnv_eq_of_eraseView_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.VEnv.erasePubEnv_eq_of_eraseView_eq
