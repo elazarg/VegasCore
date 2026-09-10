@@ -178,7 +178,7 @@ theorem real_conditional_phase (secret openValue : Bool) :
           (fun typed => typed.as? (L := simpleExpr) .bool) = some secret
         rw [hsnapshot.2]
         rfl)
-  exact ⟨current, hsource, hphase⟩
+  exact ⟨current, hsource, hphase.1, hphase.2.1⟩
 
 end VegasTests.ConditionalPhaseExecution
 

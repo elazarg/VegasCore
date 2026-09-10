@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.BindingImageExecution
 import Vegas.Compile.BindingSourceCoupling
 import Interaction.MessagePoolFreshness
+import Vegas.Compile.ApplicationOrderPhase
 
 /-! # Exact execution of a generated opaque-binding phase
 
@@ -117,7 +118,7 @@ theorem binding_phase_source_law
           (image.application.playerStep who registered
             (.submit (.binding code.node (who, field)))).bind fun submitted =>
             image.application.environmentPolicyStep submitted (.include id)) ∧
-    ∀ chosen ∈ (sourcePolicy
+    (∀ chosen ∈ (sourcePolicy
         ((current.current.source.toView who).eraseEnv)).support,
       ∀ registered ∈ (image.application.playerStep who execution
         (.privateCommand (.register field ⟨ty, chosen.1⟩))).support,
@@ -131,7 +132,12 @@ theorem binding_phase_source_law
         next.current.source = current.current.source.cons chosen.1 ∧
         included.native.application.Refines next.current.graph.1 ∧
         ApplicationImage.AcceptedSnapshot field (who, field)
-          (some ⟨ty, chosen.1⟩) included.native.application := by
+          (some ⟨ty, chosen.1⟩) included.native.application) ∧
+    (image.activeAddress? execution.native.application.memory = some code.node →
+      image.orderedApplication.runPolicies players environment
+          [.player who, .player who, .environment] execution =
+        image.application.runPolicies players environment
+          [.player who, .player who, .environment] execution) := by
   dsimp only
   let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
     .here guard tail
@@ -165,7 +171,7 @@ theorem binding_phase_source_law
   have htwo := site.bindingPolicy_two_invocations_source_law fresh build image
     sourcePolicy players environment execution hpolicy current.current.source reads
     hresolved hrequires hcache hsubmitted hreadout hview
-  constructor
+  refine ⟨?_, ?_, ?_⟩
   · rw [show ([.player who, .player who, .environment] : List (@Invocation P)) =
         [.player who, .player who] ++ [.environment] from rfl,
       MessageApplication.runPolicies_append, htwo, FinDist.bind_bind]
@@ -275,6 +281,12 @@ theorem binding_phase_source_law
       exact hrefinesNext
     · rw [hincludedNative]
       exact hsnapshot
+  · intro hactive
+    exact image.ordered_private_submit_environment_phase_eq players environment who execution
+      (sourcePolicy ((current.current.source.toView who).eraseEnv))
+      (fun chosen => .register field ⟨ty, chosen.1⟩)
+      (fun _ => .binding code.node (who, field)) code.node htwo henvironment hlookupFresh
+      (by intro _ _; rfl) hactive
 
 end Vegas.SourceDecisionSite
 

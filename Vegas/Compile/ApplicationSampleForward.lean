@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationPhaseCaches
 import Vegas.Compile.ApplicationSampleExecution
+import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Composing a generated chance phase with its source continuation
 
@@ -45,8 +46,11 @@ theorem sample_bind
     (sourceAfter : VEnv L ((name, .pub ty) :: Γ) → FinDist Ω)
     (hafter : ∀ next native,
       ForwardCheckpoint root rootProfile deadlineOf nextPlan profile.afterSample next native →
-        after native = sourceAfter next.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after native = sourceAfter next.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+      [.environment] execution else (root.image deadlineOf).application.runPolicies
       (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
       [.environment] execution).bind after) =
       (L.evalDist dist current.current.source.eraseSampleEnv).bind
@@ -70,6 +74,31 @@ theorem sample_bind
       (checkpoint.head_lookup (.sample code) _ hhead)]
     simp only [ApplicationImage.serviceCommand, FinDist.pure_bind, FinDist.bind_pure]
     exact hphase.1
+  have hordered : image.orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService [.environment] execution =
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService [.environment] execution := by
+    simp only [MessageApplication.runPolicies, MessageApplication.invoke, FinDist.bind_pure]
+    change (image.serialService execution.environmentHistory
+        (State.environmentView image.application execution.native)).bind
+          (image.orderedApplication.environmentPolicyStep execution) =
+      (image.serialService execution.environmentHistory
+        (State.environmentView image.application execution.native)).bind
+          (image.application.environmentPolicyStep execution)
+    rw [image.serialService_at execution.environmentHistory _ (.sample code)
+      (checkpoint.head_lookup (.sample code) _ hhead)]
+    simp only [ApplicationImage.serviceCommand, FinDist.pure_bind]
+    exact checkpoint.ordered_sample_eq code _ hhead
+  have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService [.environment] execution else
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService [.environment] execution) =
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService [.environment] execution := by
+    split
+    · exact hordered
+    · rfl
+  rw [hselected]
   rw [hrun, FinDist.bind_map]
   apply FinDist.bind_congr
   intro value hvalue

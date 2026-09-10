@@ -8,6 +8,7 @@ import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationInitialReads
 import Vegas.Compile.ApplicationPhaseCaches
 import Vegas.Compile.BindingPhaseExecution
+import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Forward composition at an opaque-binding head
 
@@ -66,8 +67,12 @@ theorem binding_bind
         (nextExecution : (root.image deadlineOf).application.PolicyExecution),
       ForwardCheckpoint root rootProfile deadlineOf nextPlan profile.afterCommit
           nextCurrent nextExecution →
-        after nextExecution = sourceAfter nextCurrent.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after nextExecution = sourceAfter nextCurrent.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+        (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+        [.player who, .player who, .environment] execution else
+      (root.image deadlineOf).application.runPolicies
         (root.liftProfile deadlineOf rootProfile)
         (root.image deadlineOf).serialService
         [.player who, .player who, .environment] execution).bind after) =
@@ -155,6 +160,16 @@ theorem binding_bind
     (profile who site) (root.liftProfile deadlineOf rootProfile) image.serialService execution
     checkpoint.refines hconsistent hcode reads hpolicy henvironment
     (checkpoint.lookup_nextSerial_eq_none who) hcache hsubmitted hreadout hview
+  have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService phase execution else
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService phase execution) =
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService phase execution := by
+    split
+    · exact hphase.2.2 (checkpoint.activeAddress?_head (.bind code) _ hhead)
+    · rfl
+  rw [hselected]
   rw [hphase.1, FinDist.bind_bind]
   apply FinDist.bind_congr
   intro chosen hchosen
@@ -168,7 +183,7 @@ theorem binding_bind
   refine (FinDist.bind_congr (fun included hincluded => ?_)).trans
     (FinDist.bind_const _ target)
   obtain ⟨nextCurrent, hsource, hrefinesNext, hsnapshot⟩ :=
-    hphase.2 chosen hchosen registered hregistered submittedExecution
+    hphase.2.1 chosen hchosen registered hregistered submittedExecution
       hsubmittedExecution included hincluded
   have hincludedPhase : included ∈ (image.application.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService phase execution).support := by

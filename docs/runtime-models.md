@@ -869,6 +869,33 @@ preservation. The [road ahead](a-road-ahead.md#source-order-and-resolving-servic
 separates an optional source-ordered admission backend from a concurrent
 frontier-based proof.
 
+`Vegas.Compile.ApplicationOrder` implements that optional admission instance
+without changing the public-message interface. The original generated
+`.application` still admits graph-ready independent instructions concurrently.
+`orderedApplication` instead selects the first emitted instruction whose public
+completion address is unfinished and admits handler effects or a sample only at
+that address. Other private commands and message-pool actions remain available.
+A premature inclusion is observable as a ledger entry and false receipt, leaves
+application state unchanged, and consumes the pending envelope; later use
+requires an explicit replay or fresh submission.
+
+At an already established `ForwardCheckpoint`, the ordered selector is proved
+to equal the current generated head, and current-head inclusion and sampling
+have exactly the original policy-step law. Independently, arbitrary-policy
+supported runs preserve a reachable source-graph witness; if such a run is
+finished, its executable public terminal readout agrees with some written-order
+source execution. These support results alone do not prove progress, a
+source-prefix invariant for every run, activation-relative deadlines, an
+expiry-producing service, or deviation simulation.
+
+For the original generated plan, unchanged lifted source profile, and emitted
+serial service, `ApplicationPlan.ordered_service_source_public_law` now proves
+the same joint completion/public-terminal distribution as the source law. The
+proof uses exact ordered/unordered equality for each current-head phase. It is
+not an equality of complete `PolicyExecution` distributions for arbitrary
+schedules or policies, and it does not compose ordered admission with the
+optional timeout decorations.
+
 `ApplicationPlan.service_source_public_law` runs the complete generated
 invocation list with `ApplicationPlan.liftProfile` and `serialService`. For every
 source behavioral profile and plan satisfying `InitialControllerReadsPublic`

@@ -103,6 +103,10 @@ import Vegas.Compile.SourceLaw
 import Vegas.Compile.SourceExecution
 import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionLaw
+import Vegas.Compile.ApplicationOrder
+import Vegas.Compile.ApplicationOrderPhase
+import Vegas.Compile.ApplicationOrderCheckpoint
+import Vegas.Compile.ApplicationOrderRefinement
 import Vegas.Compile.SourceExecutionOutcome
 import Vegas.Compile.SourceOutcome
 import Vegas.Compile.SourceObservation

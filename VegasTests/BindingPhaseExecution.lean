@@ -109,7 +109,7 @@ theorem generated_binding_phase (law : FinDist Bool) :
         MessageApplication.step, FinDist.pure_bind, FinDist.mem_support_pure]
       rfl
     obtain ⟨next, hsource, hrefinesNext, hsnapshot⟩ :=
-      hphase.2 chosen hchosen (registered secret) hregistered
+      hphase.2.1 chosen hchosen (registered secret) hregistered
       (submitted secret) hsubmitted (included secret) hincluded
     refine ⟨next, ?_, hrefinesNext, ?_⟩
     · have hcheckpointSource : checkpoint.current.source = source.env := rfl

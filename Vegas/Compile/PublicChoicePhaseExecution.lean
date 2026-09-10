@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.PublicChoiceImageExecution
 import Vegas.Compile.PublicChoiceSourceCoupling
 import Vegas.Compile.ApplicationImageReadout
+import Vegas.Compile.ApplicationOrderPhase
 import Interaction.MessagePoolFreshness
 
 /-! # Exact execution of a generated public-choice phase
@@ -90,7 +91,7 @@ theorem publicChoice_head_phase_source_law
         (image.application.playerStep who execution
           (.submit (encoding.encode chosen.1))).bind fun submitted =>
             image.application.environmentPolicyStep submitted (.include id)) ∧
-    ∀ chosen ∈ (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
+    (∀ chosen ∈ (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
       ∀ submitted ∈ (image.application.playerStep who execution
         (.submit (encoding.encode chosen.1))).support,
       ∀ included ∈
@@ -101,7 +102,13 @@ theorem publicChoice_head_phase_source_law
           (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
             publicName who .here fresh.2.1).1,
         next.current.source = (current.current.source.cons chosen.1).cons chosen.1 ∧
-          included.native.application.Refines next.current.graph.1 := by
+          included.native.application.Refines next.current.graph.1) ∧
+    ∀ _hactive : image.activeAddress? execution.native.application.memory =
+        some code.endpoint.publicationNode,
+      image.orderedApplication.runPolicies players environment
+          [.player who, .environment] execution =
+        image.application.runPolicies players environment
+          [.player who, .environment] execution := by
   dsimp only
   let site := atHead name publicName who guard tail
   let code := site.code fresh build
@@ -116,8 +123,7 @@ theorem publicChoice_head_phase_source_law
     current.current.graph.1.store current.current.source reads (hpolicy _)
     henvironment hlookupFresh heligible current.current.agrees
     hrefines.memory.publicFields hcode hready hcache hreadout hreads
-  constructor
-  · exact hphase.1
+  refine ⟨hphase.1, ?_, ?_⟩
   · intro chosen hchosen submitted hsubmitted included hincluded
     have hnative : submitted.native ∈
         ((image.application.playerStep who execution
@@ -149,6 +155,34 @@ theorem publicChoice_head_phase_source_law
       code.endpoint.publicationNode (execution.native.pool.nextSerial who) hcode
       chosen.1 hlookup chosen.2
     exact ⟨next, hsource, hincludedNative.symm ▸ hrefinesNext⟩
+  · intro hactive
+    change (image.application.withAdmission image.admitsMessage
+      image.admitsEnvironment).runPolicies players environment
+        [.player who, .environment] execution =
+      image.application.runPolicies players environment
+        [.player who, .environment] execution
+    have hresolved : execution.native.application.memory.done
+        code.endpoint.publicationNode = false := by
+      have hparts := hready
+      simp only [PublicChoice.ready, Bool.and_eq_true, Bool.not_eq_true'] at hparts
+      exact hparts.1.2
+    have hsourcePolicy :
+        players who (execution.principalHistory who)
+            (MessageApplication.State.observe image.application execution.native who) =
+          (sourcePolicy ((current.current.source.toView who).eraseEnv)).map fun chosen =>
+            .submit (encoding.encode chosen.1) := by
+      rw [hpolicy]
+      exact site.controller_first_submission_source_law fresh build image.application
+        encoding (fun view => view.application.done)
+        (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
+        sourcePolicy (fun _ _ => false) (execution.principalHistory who)
+        (MessageApplication.State.observe image.application execution.native who)
+        current.current.graph.1.store current.current.source reads hresolved hcache hready
+        hreadout (BuildState.Agrees.view current.current.agrees who) hreads
+    exact image.ordered_submit_environment_phase_eq players environment who execution
+      (sourcePolicy ((current.current.source.toView who).eraseEnv))
+      (fun chosen => encoding.encode chosen.1) code.endpoint.publicationNode
+      hsourcePolicy henvironment hlookupFresh (by intro _ _; rfl) hactive
 
 end Vegas.PublicChoiceSite
 

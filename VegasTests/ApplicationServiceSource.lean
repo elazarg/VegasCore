@@ -193,7 +193,7 @@ private theorem conditional_public_law (profile : SourceBehavioralProfile source
         (true, some (Env.cons chosen.1 (Env.empty simpleExpr.Val)))))
     exact (FinDist.map_congr_of_eq_on_support (fun included hincluded => by
       obtain ⟨next, hnextSource, hnextRefines⟩ :=
-        hphase.2 chosen hchosen submitted hsubmitted included hincluded
+        hphase.2.1 chosen hchosen submitted hsubmitted included hincluded
       have hout := next.finished_public_readout compiled included.native.application hnextRefines
       rw [hnextSource] at hout
       exact Prod.ext hout.1 hout.2)).trans

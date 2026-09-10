@@ -8,6 +8,7 @@ import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationInitialReads
 import Vegas.Compile.ApplicationPhaseCaches
 import Vegas.Compile.PublicChoicePhaseExecution
+import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Composing a public-choice phase with its source continuation -/
 
@@ -57,8 +58,11 @@ theorem publicChoice_bind
     (hafter : ∀ next native,
       ForwardCheckpoint root rootProfile deadlineOf nextPlan
           profile.afterCommit.afterReveal next native →
-        after native = sourceAfter next.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after native = sourceAfter next.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+      [.player who, .environment] execution else (root.image deadlineOf).application.runPolicies
       (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
       [.player who, .environment] execution).bind after) =
       (profile who (.here guard (.reveal publicName who name .here tail))
@@ -122,6 +126,17 @@ theorem publicChoice_bind
         (checkpoint.head_lookup (.publicChoice code) _ hhead) rfl
         (checkpoint.lookup_nextSerial_eq_none who) hsubmitted)
       (checkpoint.lookup_nextSerial_eq_none who) hcache hreadout hreads
+  have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService
+        [.player who, .environment] execution else
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService [.player who, .environment] execution) =
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService [.player who, .environment] execution := by
+    split
+    · exact hphase.2.2 (checkpoint.activeAddress?_head (.publicChoice code) _ hhead)
+    · rfl
+  rw [hselected]
   rw [hphase.1, FinDist.bind_bind]
   apply FinDist.bind_congr
   intro chosen hchosen
@@ -131,7 +146,7 @@ theorem publicChoice_bind
     (FinDist.bind_const _ target)
   refine (FinDist.bind_congr (fun included hincluded => ?_)).trans
     (FinDist.bind_const _ target)
-  obtain ⟨next, hsource, hrefines⟩ := hphase.2 chosen hchosen submitted hsubmitted
+  obtain ⟨next, hsource, hrefines⟩ := hphase.2.1 chosen hchosen submitted hsubmitted
     included hincluded
   have hnative : included ∈ (image.application.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService

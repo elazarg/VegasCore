@@ -17,7 +17,9 @@ service finishes with exactly the independent written-order source law on
 public terminal bindings. The result includes completion, so an empty public
 readout cannot conceal unfinished work.
 
-The source and graph checkpoints in the proof are absent from runtime inputs.
+The same source law holds with admission enforcing emitted instruction order.
+Both application instances share the source induction and current-head phase
+proofs. The source and graph checkpoints in the proof are absent from runtime inputs.
 The theorem concerns this reference service and compiled profiles, not progress
 or deviation simulation for arbitrary runtime policies. Initial controller
 readability and actual binding origins are separate backend conditions.
@@ -32,9 +34,26 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+private theorem selected_run_append (image : ApplicationImage P L)
+    (players : P → image.application.PlayerPolicy)
+    (environment : image.application.EnvironmentPolicy) (sourceOrdered : Bool)
+    (first second : List (@Invocation P)) (execution : image.application.PolicyExecution) :
+    (if sourceOrdered then image.orderedApplication.runPolicies players environment
+        (first ++ second) execution else
+      image.application.runPolicies players environment (first ++ second) execution) =
+      (if sourceOrdered then
+        image.orderedApplication.runPolicies players environment first execution
+        else image.application.runPolicies players environment first execution).bind
+          (fun next => if sourceOrdered then
+            image.orderedApplication.runPolicies players environment second next else
+            image.application.runPolicies players environment second next) := by
+  cases sourceOrdered
+  · exact image.application.runPolicies_append players environment first second execution
+  · exact image.orderedApplication.runPolicies_append players environment first second execution
+
 /-- A genuine prefix of the fixed original execution extends to the source
-law of its remaining plan. The completion flag and executable public decoder
-are observed jointly. -/
+law of its remaining plan, with or without source-ordered admission. The
+completion flag and executable public decoder are observed jointly. -/
 theorem ForwardCheckpoint.service_public_law
     {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
     {rootProg : VegasCore P L rootContext} {prog : VegasCore P L Γ}
@@ -50,9 +69,13 @@ theorem ForwardCheckpoint.service_public_law
     (execution : (root.image deadlineOf).application.PolicyExecution)
     (checkpoint : ForwardCheckpoint root rootProfile deadlineOf plan profile current execution)
     (hinitial : plan.InitialControllerReadsPublic)
-    (horigins : (root.image deadlineOf).HasBindingOrigins) :
+    (horigins : (root.image deadlineOf).HasBindingOrigins)
+    (sourceOrdered : Bool := false) :
     let compiled := compileCore prog fresh state
-    (((root.image deadlineOf).application.runPolicies
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+      (plan.image deadlineOf).serviceInvocations execution else
+      (root.image deadlineOf).application.runPolicies
       (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
       (plan.image deadlineOf).serviceInvocations execution).map
         (fun out => (out.native.application.memory.finished compiled.graph.nodeCount,
@@ -66,7 +89,8 @@ theorem ForwardCheckpoint.service_public_law
   | ret empty fresh state =>
       intro profile current execution checkpoint _
       simp only [image, instructions, ApplicationImage.serviceInvocations,
-        List.flatMap_nil, MessageApplication.runPolicies, FinDist.map_pure, denoteSource]
+        List.flatMap_nil, MessageApplication.runPolicies, ite_self,
+        FinDist.map_pure, denoteSource]
       apply congrArg FinDist.pure
       exact Prod.ext
         (current.finished_public_readout _ execution.native.application checkpoint.refines).1
@@ -75,9 +99,10 @@ theorem ForwardCheckpoint.service_public_law
       intro profile current execution checkpoint hinitial
       simp only [image, instructions, ApplicationImage.serviceInvocations,
         List.flatMap_cons, ApplicationInstruction.serviceInvocations,
-        MessageApplication.runPolicies_append, FinDist.map_bind,
+        selected_run_append, FinDist.map_bind,
         denoteSource_sample]
-      refine ForwardCheckpoint.sample_bind nextPlan profile current execution checkpoint _
+      refine ForwardCheckpoint.sample_bind (sourceOrdered := sourceOrdered)
+        nextPlan profile current execution checkpoint _
         (fun env => (denoteSource _ profile.afterSample env).map _) ?_
       intro next native hnext
       exact ih profile.afterSample next native hnext hinitial
@@ -85,9 +110,10 @@ theorem ForwardCheckpoint.service_public_law
       intro profile current execution checkpoint hinitial
       simp only [image, instructions, ApplicationImage.serviceInvocations,
         List.flatMap_cons, ApplicationInstruction.serviceInvocations,
-        MessageApplication.runPolicies_append, FinDist.map_bind,
+        selected_run_append, FinDist.map_bind,
         denoteSource_commit]
-      refine ForwardCheckpoint.binding_bind unrestricted nextPlan profile current execution
+      refine ForwardCheckpoint.binding_bind (sourceOrdered := sourceOrdered)
+        unrestricted nextPlan profile current execution
         checkpoint hinitial.1 _ (fun env => (denoteSource _ profile.afterCommit env).map _) ?_
       intro next native hnext
       exact ih profile.afterCommit next native hnext hinitial.2
@@ -95,9 +121,10 @@ theorem ForwardCheckpoint.service_public_law
       intro profile current execution checkpoint hinitial
       simp only [image, instructions, ApplicationImage.serviceInvocations,
         List.flatMap_cons, ApplicationInstruction.serviceInvocations,
-        MessageApplication.runPolicies_append, FinDist.map_bind,
+        selected_run_append, FinDist.map_bind,
         denoteSource_commit, denoteSource_reveal, VEnv.cons_get_here]
-      refine ForwardCheckpoint.publicChoice_bind publicGuard nextPlan profile current execution
+      refine ForwardCheckpoint.publicChoice_bind (sourceOrdered := sourceOrdered)
+        publicGuard nextPlan profile current execution
         checkpoint hinitial.1 _
         (fun env => (denoteSource _ profile.afterCommit.afterReveal env).map _) ?_
       intro next native hnext
@@ -106,9 +133,10 @@ theorem ForwardCheckpoint.service_public_law
       intro profile current execution checkpoint hinitial
       simp only [image, instructions, ApplicationImage.serviceInvocations,
         List.flatMap_cons, ApplicationInstruction.serviceInvocations,
-        MessageApplication.runPolicies_append, FinDist.map_bind,
+        selected_run_append, FinDist.map_bind,
         denoteSource_commit, denoteSource_reveal, VEnv.cons_get_here]
-      refine ForwardCheckpoint.conditional_bind publicGuard nextPlan profile current execution
+      refine ForwardCheckpoint.conditional_bind (sourceOrdered := sourceOrdered)
+        publicGuard nextPlan profile current execution
         checkpoint hinitial.1 horigins _
         (fun env => (denoteSource _ profile.afterCommit.afterReveal env).map _) ?_
       intro next native hnext
@@ -117,9 +145,10 @@ theorem ForwardCheckpoint.service_public_law
       intro profile current execution checkpoint hinitial
       simp only [image, instructions, ApplicationImage.serviceInvocations,
         List.flatMap_cons, ApplicationInstruction.serviceInvocations,
-        MessageApplication.runPolicies_append, FinDist.map_bind,
+        selected_run_append, FinDist.map_bind,
         denoteSource_commit, denoteSource_reveal, VEnv.cons_get_here]
-      refine ForwardCheckpoint.conditionalCopy_bind specification publicGuard nextPlan
+      refine ForwardCheckpoint.conditionalCopy_bind (sourceOrdered := sourceOrdered)
+        specification publicGuard nextPlan
         profile current execution checkpoint hinitial.1 horigins _
         (fun env => (denoteSource _ profile.afterCommit.afterReveal env).map _) ?_
       intro next native hnext
@@ -151,6 +180,31 @@ theorem service_source_public_law (source : WFProgram P L)
     (plan.initialExecution deadlineOf) (ForwardCheckpoint.initial source plan profile deadlineOf)
     hinitial horigins
 
+/-- The same source law holds with admission enforcing emitted instruction order.
+The policy and environment strategies are unchanged. This is a constructive
+reference execution law, not a simulation of arbitrary runtime deviations. -/
+theorem ordered_service_source_public_law (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (deadlineOf : Nat → Nat)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins) :
+    (((plan.image deadlineOf).orderedApplication.runPolicies
+      (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
+      (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
+        (fun out => (out.native.application.memory.finished (compile source.core).graph.nodeCount,
+          (compile source.core).readPublicTerminal? out.native.application.memory))) =
+      (denoteSource source.core.prog profile source.core.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv L)
+          (compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog source.core.fresh
+            (BuildState.fromInitial
+              (initialState source.core.Γ source.core.env source.core.wctx))).symm)
+            terminal).erasePubEnv) := by
+  exact ForwardCheckpoint.service_public_law plan profile (compiledInitialCoupled source.core)
+    (plan.initialExecution deadlineOf) (ForwardCheckpoint.initial source plan profile deadlineOf)
+    hinitial horigins true
+
 end Vegas.ApplicationPlan
 
 /-- info: 'Vegas.ApplicationPlan.ForwardCheckpoint.service_public_law' depends on axioms:
@@ -162,3 +216,8 @@ end Vegas.ApplicationPlan
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.service_source_public_law
+
+/-- info: 'Vegas.ApplicationPlan.ordered_service_source_public_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.ordered_service_source_public_law

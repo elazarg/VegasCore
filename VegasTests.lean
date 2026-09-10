@@ -10,6 +10,7 @@ import VegasTests.CoreFinite
 import VegasTests.PublicGuard
 import VegasTests.ApplicationImage
 import VegasTests.ApplicationEarlyBinding
+import VegasTests.ApplicationOrder
 import VegasTests.ApplicationSampleExecution
 import VegasTests.PublicChoiceSourceCoupling
 import VegasTests.PublicChoiceResolution

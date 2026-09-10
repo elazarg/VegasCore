@@ -137,6 +137,35 @@ theorem public_application_reference_law (source : WFProgram Player L)
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
   plan.timeout_service_source_public_law source deadlineOf binding choice profile hinitial horigins
 
+/-- Source-ordered admission retains the generated reference service's exact
+joint completion and public-output law. The statement uses the undecorated
+generated image; it asserts neither progress under other services nor deviation
+simulation. -/
+theorem public_application_ordered_reference_law (source : WFProgram Player L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (ToEventGraph.BuildState.fromInitial
+        (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
+    (deadlineOf : Nat → Nat)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins) :
+    (((plan.image deadlineOf).orderedApplication.runPolicies
+      (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
+      (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
+        (fun out =>
+          (out.native.application.memory.finished
+              (ToEventGraph.compile source.core).graph.nodeCount,
+            (ToEventGraph.compile source.core).readPublicTerminal?
+              out.native.application.memory))) =
+      (denoteSource source.core.prog profile source.core.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv L)
+          (ToEventGraph.compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog
+            source.core.fresh
+            (ToEventGraph.BuildState.fromInitial
+              (ToEventGraph.initialState source.core.Γ source.core.env
+                source.core.wctx))).symm) terminal).erasePubEnv) :=
+  plan.ordered_service_source_public_law source deadlineOf profile hinitial horigins
+
 /-- A missing authenticated submission cannot be supplied by scheduling.
 The generated code's submission requirement is an inspectable static premise. -/
 theorem public_application_withholding (source : WFProgram Player L)
@@ -262,11 +291,12 @@ theorem public_application_conditional_phase
           (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
             publicName who .here fresh.2.1).1,
         next.current.source = (current.current.source.cons chosen.1).cons chosen.1 ∧
-          included.native.application.Refines next.current.graph.1 :=
-  ConditionalPublicationSite.conditional_phase_source_law guard tail spec fresh build
+          included.native.application.Refines next.current.graph.1 := by
+  have result := ConditionalPublicationSite.conditional_phase_source_law guard tail spec fresh build
     sourceSlot deadline current image sourcePolicy players environment execution hrefines
     heligible disposition hbinding hcanonical hcode reads hpolicy henvironment hlookupFresh
     hcache hreadout hreads hfrozen
+  exact ⟨result.1, result.2.1⟩
 
 /-- Inclusion of a legal generated conditional request advances the exact
 adjacent source choice/reveal pair. Opaque dispositions require the canonical
@@ -696,6 +726,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_reference_law
+
+/-- info: 'Vegas.Paper.Source.public_application_ordered_reference_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_ordered_reference_law
 
 /-- info: 'Vegas.Paper.Source.public_application_withholding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

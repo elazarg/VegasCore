@@ -246,24 +246,39 @@ preservation for concurrent applications. Source-support reconstruction and
 the serial reference-profile law do not establish a deviation law for such
 executions.
 
-The next bounded backend should make source-ordered admission an explicit
-protocol option, leaving the current graph-enabled application available.
-Gate both message handlers and chance requests by the first unfinished emitted
-instruction. Determine that instruction from public completion state and
-immutable code, not from a source environment or player-policy input. Arbitrary
-early submissions, replay, malformed traffic, and inclusion orders remain legal
-runtime actions; an inadmissible included message is rejected, retains its
-ledger entry and receipt, and leaves the application unchanged. This is an
-application validation rule, not a restriction to well-behaved deviations.
+`ApplicationImage.orderedApplication` supplies source-ordered admission as
+an optional protocol instance, while the original graph-enabled `.application`
+remains concurrent. It gates the public handler and application-owned sample
+command by the first unfinished emitted instruction. The selector uses public
+completion flags and immutable code, not a source environment or policy input.
+Both instances retain the same public-message carrier, observations, policy
+types, and raw commands. Early submission, delivery, replay, malformed traffic,
+and arbitrary inclusion attempts remain possible. An inadmissible inclusion
+leaves the application unchanged and records its ledger entry and false receipt;
+it removes that envelope from pending, so later execution requires an explicit
+resubmission or replay.
+
+At an existing `ForwardCheckpoint`, `activeAddress?_head` proves that the public
+selector is the current generated instruction. `ordered_include_eq` and
+`ordered_sample_eq` then recover the original current-head policy-step laws.
+For arbitrary policies and raw schedules, `ordered_runPolicies_refines` preserves
+a reachable source-graph witness, and a finished supported run has the public
+outcome of some written-order source execution. These are support-safety and
+conditional outcome results. They do not establish that every ordered run has
+an exact source prefix or terminates. For the unchanged lifted profile and
+emitted serial service, `ordered_service_source_public_law` does establish the
+same joint completion/public-terminal distribution as the source law. Its
+induction uses full ordered/unordered equality for each current-head phase; it
+does not assert equality of arbitrary complete `PolicyExecution` laws.
 
 Advance the proof-side source cursor at actual successful resolution. An
 environment-history length is not a progress cursor once retries, clock ticks,
 and timeout processing are possible. A service may perform several successful
 source steps in one batch. Freezing admission for an entire service cycle is a
-possible stronger instance, not part of the proposed base semantics. The
+possible stronger instance, not part of the base admission semantics. The
 policy lift must use the same public admission state as the generated protocol.
 
-Timed instances need a stable activation origin for each response window.
+Timed instances would need a stable activation origin for each response window.
 Record it when the instruction becomes active, preserve it through rejection,
 replay, and unrelated traffic, and test strict expiry against that origin plus
 the window. Earlier delays must not consume a future player's entire response
@@ -273,8 +288,6 @@ to prove the relevant activation and reaction bounds.
 
 Safety, opportunity, and settlement have separate obligations:
 
-- Prove that the gate permits only the current instruction's effects and is
-  conservative on the existing source-ordered reference execution.
 - Relate every successful ordinary or fallback resolution to its exact source
   successor; carry accepted opaque/default dispositions and the unchanged
   principals' cache/readout invariants. A deviator may already have submitted
@@ -297,8 +310,8 @@ a partial-order frontier with buffered accepted choices that are consumed in
 written source order. Its comparison must justify the unchanged players'
 choice kernels and the deviator's available information, not merely commute
 final stores. This remains a separate proof target for the same compilation
-architecture. Neither candidate resolving backend nor its deviation theorem
-is implemented by this roadmap.
+architecture. Activation-relative timing, an expiry-producing resolving
+service, and either backend's deviation theorem are not implemented.
 
 ### Existing execution boundary
 

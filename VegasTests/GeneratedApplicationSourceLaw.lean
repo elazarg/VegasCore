@@ -54,6 +54,26 @@ theorem generated_source_public_law
     DisclosureAccounting.persistentChecked deadlineOf profile initial_reads_public
     ApplicationBindingOrigins.persistent_image_has_binding_origins
 
+/-- Ordered admission preserves the exact randomized source law for the full
+persistent-disclosure reference execution. The application uses the same
+lifted profile and serial service as the unordered generated runtime. -/
+theorem generated_ordered_source_public_law
+    (profile : SourceBehavioralProfile source.prog) :
+    ((((applicationPlan.image deadlineOf).orderedApplication.runPolicies
+      (applicationPlan.liftProfile deadlineOf profile)
+      (applicationPlan.image deadlineOf).serialService
+      (applicationPlan.image deadlineOf).serviceInvocations
+      (applicationPlan.initialExecution deadlineOf)).map fun out =>
+        (out.native.application.memory.finished (compile source).graph.nodeCount,
+          (compile source).readPublicTerminal? out.native.application.memory))) =
+      (denoteSource source.prog profile source.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv simpleExpr)
+          (compileCore_terminalCtx_eq_sourceTerminalCtx source.prog source.fresh
+            compilerInitial).symm) terminal).erasePubEnv) := by
+  exact applicationPlan.ordered_service_source_public_law
+    DisclosureAccounting.persistentChecked deadlineOf profile initial_reads_public
+    ApplicationBindingOrigins.persistent_image_has_binding_origins
+
 end VegasTests.GeneratedApplicationSourceLaw
 
 /--
@@ -62,3 +82,10 @@ info: 'VegasTests.GeneratedApplicationSourceLaw.generated_source_public_law' dep
 -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.GeneratedApplicationSourceLaw.generated_source_public_law
+
+/-- info:
+'VegasTests.GeneratedApplicationSourceLaw.generated_ordered_source_public_law' depends on axioms:
+[propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GeneratedApplicationSourceLaw.generated_ordered_source_public_law

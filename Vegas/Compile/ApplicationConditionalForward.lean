@@ -9,6 +9,7 @@ import Vegas.Compile.ApplicationInitialReads
 import Vegas.Compile.ApplicationPhaseCaches
 import Vegas.Compile.ConditionalPhaseExecution
 import Vegas.Compile.ConditionalSnapshot
+import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Forward composition at conditional-publication heads
 
@@ -94,8 +95,11 @@ private theorem conditional_forward_common
     (ih : ∀ nextCurrent nextExecution,
       ForwardCheckpoint root rootProfile deadlineOf nextPlan
           profile.afterCommit.afterReveal nextCurrent nextExecution →
-        after nextExecution = sourceAfter nextCurrent.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after nextExecution = sourceAfter nextCurrent.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+        (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+        [.player who, .environment] execution else (root.image deadlineOf).application.runPolicies
         (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
         [.player who, .environment] execution).bind after) =
       (profile who
@@ -172,6 +176,16 @@ private theorem conditional_forward_common
     (by intro handle h; exact (BindingDisposition.opaque.inj h).symm) hcode reads hpolicy
     henvironment (checkpoint.lookup_nextSerial_eq_none who) hcache hreadout hreads
     (by intro chosen hchosen handle value _ hvalue; exact hfrozen chosen hchosen value hvalue)
+  have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService phase execution else
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService phase execution) =
+      image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
+        image.serialService phase execution := by
+    split
+    · exact hphase.2.2 (checkpoint.activeAddress?_head (.conditional code) _ hhead)
+    · rfl
+  rw [hselected]
   rw [hphase.1, FinDist.bind_bind]
   apply FinDist.bind_congr
   intro chosen hchosen
@@ -183,7 +197,7 @@ private theorem conditional_forward_common
     (FinDist.bind_const _
       (sourceAfter ((current.current.source.cons chosen.1).cons chosen.1)))
   obtain ⟨nextCurrent, hsource, hrefinesNext⟩ :=
-    hphase.2 chosen hchosen submitted hsubmitted included hincluded
+    hphase.2.1 chosen hchosen submitted hsubmitted included hincluded
   have hincludedPhase : included ∈ (image.application.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService phase execution).support := by
     simp only [phase, hphase.1, FinDist.support_bind, Set.mem_iUnion]
@@ -255,8 +269,11 @@ theorem conditional_bind
     (ih : ∀ nextCurrent nextExecution,
       ForwardCheckpoint root rootProfile deadlineOf nextPlan
           profile.afterCommit.afterReveal nextCurrent nextExecution →
-        after nextExecution = sourceAfter nextCurrent.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after nextExecution = sourceAfter nextCurrent.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+        (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+        [.player who, .environment] execution else (root.image deadlineOf).application.runPolicies
         (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
         [.player who, .environment] execution).bind after) =
       (profile who
@@ -282,11 +299,12 @@ theorem conditional_bind
     omega
   have hdoneView : (State.observe (root.image deadlineOf).application
       execution.native who).application.done (state.nodes.length + 1) = false := hunresolved
-  apply conditional_forward_common (root := root) (rootProfile := rootProfile) spec
+  refine conditional_forward_common (root := root) (rootProfile := rootProfile)
+    (sourceOrdered := sourceOrdered) spec
     plan nextPlan profile
     checkpoint.continuation (.conditional checkpoint.continuation) publicGuard deadlineOf
     current execution checkpoint hinitial
-    horigins (by rfl)
+    horigins (by rfl) ?_ ?_ after sourceAfter ih
   · intro history
     change root.liftProfileIn (root.image deadlineOf) deadlineOf rootProfile who history
       (State.observe (root.image deadlineOf).application execution.native who) = _
@@ -302,7 +320,6 @@ theorem conditional_bind
       publicGuard nextPlan profile deadlineOf (root.image deadlineOf).serialService
       current execution final
       checkpoint.refines hunresolved htail hfinal
-  · exact ih
 
 /-- The conditional-copy accounting constructor has the same generated phase
 law; only its proof-side accounting continuation differs. -/
@@ -346,8 +363,11 @@ theorem conditionalCopy_bind
     (ih : ∀ nextCurrent nextExecution,
       ForwardCheckpoint root rootProfile deadlineOf nextPlan
           profile.afterCommit.afterReveal nextCurrent nextExecution →
-        after nextExecution = sourceAfter nextCurrent.current.source) :
-    (((root.image deadlineOf).application.runPolicies
+        after nextExecution = sourceAfter nextCurrent.current.source)
+    (sourceOrdered : Bool := false) :
+    ((if sourceOrdered then (root.image deadlineOf).orderedApplication.runPolicies
+        (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
+        [.player who, .environment] execution else (root.image deadlineOf).application.runPolicies
         (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
         [.player who, .environment] execution).bind after) =
       (profile who
@@ -373,11 +393,12 @@ theorem conditionalCopy_bind
     omega
   have hdoneView : (State.observe (root.image deadlineOf).application
       execution.native who).application.done (state.nodes.length + 1) = false := hunresolved
-  apply conditional_forward_common (root := root) (rootProfile := rootProfile) spec
+  refine conditional_forward_common (root := root) (rootProfile := rootProfile)
+    (sourceOrdered := sourceOrdered) spec
     plan nextPlan profile
     checkpoint.continuation (.conditionalCopy checkpoint.continuation) publicGuard deadlineOf
     current execution checkpoint hinitial
-    horigins (by rfl)
+    horigins (by rfl) ?_ ?_ after sourceAfter ih
   · intro history
     change root.liftProfileIn (root.image deadlineOf) deadlineOf rootProfile who history
       (State.observe (root.image deadlineOf).application execution.native who) = _
@@ -393,7 +414,6 @@ theorem conditionalCopy_bind
       root rootProfile spec publicGuard
       nextPlan profile deadlineOf (root.image deadlineOf).serialService current execution final
       checkpoint.refines hunresolved htail hfinal
-  · exact ih
 
 end Vegas.ApplicationPlan.ForwardCheckpoint
 
