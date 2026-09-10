@@ -95,7 +95,9 @@ theorem other_sender_expiry_source_successor (secret : Bool)
     (P := Fin 2) (L := simpleExpr) (Γ := OpeningContext)
     (name := 1) (publicName := 2) (who := 0) (ty := .option .bool)
     openingGuard tail specification source.fresh.2 boundBuild 0 10 current
-    (image 10) submitted included (happlication.symm ▸ hrefinesStart) haccepted hoverdue
+    (image 10) submitted included (happlication.symm ▸ hrefinesStart) (.opaque (0, 0))
+    ((ConditionalCode.binding?_opaque_iff _ _ _).2 haccepted)
+    (by intro handle h; exact (BindingDisposition.opaque.inj h).symm) hoverdue
     (conditionalCode 10).endpoint.publicationNode (image_lookup_conditional 10)
     (1, 0) hlookup hincluded
   rcases hresult with ⟨_, _, _, next, hnextSource, hnextRefines⟩

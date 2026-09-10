@@ -187,9 +187,8 @@ theorem handle_refines (plan : ApplicationPlan accounted fresh build)
                       simp only [ApplicationImage.handle, hlookup, Option.bind_eq_bind,
                         Option.bind_some] at hnext
                       change ((code.decode payload).bind fun decoded =>
-                        (code.endpoint.resolve? native.memory.clock (native.verify code)
-                          ((native.memory.accepted code.sourceField).bind
-                            BindingDisposition.opaqueHandle?) native.memory.done
+                        (code.endpoint.resolveDisposition? native.memory.clock (native.verify code)
+                          (code.binding? native.memory) native.memory.done
                           (code.canOpen native.memory.store) ⟨id, decoded⟩).bind
                             fun result => some (native.publishConditional code result)) =
                         some next at hnext
@@ -197,10 +196,9 @@ theorem handle_refines (plan : ApplicationPlan accounted fresh build)
                       | none => simp only [hdecoded, Option.bind_none, reduceCtorEq] at hnext
                       | some decoded =>
                           simp only [hdecoded, Option.bind_some] at hnext
-                          cases hresolved : code.endpoint.resolve? native.memory.clock
+                          cases hresolved : code.endpoint.resolveDisposition? native.memory.clock
                               (native.verify code)
-                              ((native.memory.accepted code.sourceField).bind
-                                BindingDisposition.opaqueHandle?)
+                              (code.binding? native.memory)
                               native.memory.done (code.canOpen native.memory.store)
                               ⟨id, decoded⟩ with
                           | none => simp [hresolved] at hnext

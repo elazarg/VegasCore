@@ -6,8 +6,7 @@ Authors: VegasCore contributors
 
 import Interaction.MessageApplication
 import Interaction.PublicChoice
-import Interaction.ConditionalPublication
-import Interaction.BindingDisposition
+import Interaction.BindingPublication
 import Vegas.Compile.PublicGuard
 import Vegas.EventGraph.Execution
 
@@ -83,15 +82,16 @@ def ConditionalCode.canOpen (code : ConditionalCode P L) (publicStore : Store L)
   code.guard.validate (publicStore.set code.sourceField ⟨code.secretTy, claimed⟩)
     (code.encoding.symm (some claimed))
 
-/-- Dynamic decoding does not consult private state. Cleartext and malformed
-requests remain possible public traffic but are never valid openings. -/
+/-- Dynamic decoding preserves the requested publication form. The accepted
+binding disposition determines whether opening or cleartext is admissible. -/
 def ConditionalCode.decode (code : ConditionalCode P L) :
     ConditionalPublication.Payload P (TypedValue L) →
       Option (ConditionalPublication.Payload P (L.Val code.secretTy))
   | .opening handle typed => (typed.as? code.secretTy).map (.opening handle)
   | .decline => some .decline
   | .expire => some .expire
-  | .cleartext _ | .malformed => none
+  | .cleartext typed => (typed.as? code.secretTy).map .cleartext
+  | .malformed => none
 
 inductive ApplicationInstruction (P : Type) (L : IExpr) where
   | sample (code : SampleCode L)
@@ -236,6 +236,45 @@ def State.verify (state : State P L) (code : ConditionalCode P L)
 
 end ApplicationImage
 
+namespace ConditionalCode
+
+/-- Read the accepted binding at the endpoint's expected type. An ill-typed
+public default remains invalid state and cannot enable even decline or expiry.
+Opaque references are preserved without consulting private registration. -/
+def binding? (code : ConditionalCode P L) (memory : ApplicationImage.Memory P L) :
+    Option (BindingDisposition (CommitmentHandle P Nat) (L.Val code.secretTy)) := do
+  match ← memory.accepted code.sourceField with
+  | .opaque handle => some (.opaque handle)
+  | .publicDefault typed => (typed.as? code.secretTy).map .publicDefault
+
+omit [DecidableEq P] in
+theorem binding?_opaque_iff (code : ConditionalCode P L)
+    (memory : ApplicationImage.Memory P L) (handle : CommitmentHandle P Nat) :
+    code.binding? memory = some (.opaque handle) ↔
+      memory.accepted code.sourceField = some (.opaque handle) := by
+  cases haccepted : memory.accepted code.sourceField with
+  | none => simp [binding?, haccepted]
+  | some disposition =>
+      cases disposition with
+      | «opaque» prior => simp [binding?, haccepted]
+      | publicDefault typed =>
+          cases htyped : typed.as? code.secretTy <;> simp [binding?, haccepted, htyped]
+
+omit [DecidableEq P] in
+theorem binding?_publicDefault_iff (code : ConditionalCode P L)
+    (memory : ApplicationImage.Memory P L) (value : L.Val code.secretTy) :
+    code.binding? memory = some (.publicDefault value) ↔
+      ∃ typed, memory.accepted code.sourceField = some (.publicDefault typed) ∧
+        typed.as? code.secretTy = some value := by
+  cases haccepted : memory.accepted code.sourceField with
+  | none => simp [binding?, haccepted]
+  | some disposition =>
+      cases disposition with
+      | «opaque» prior => simp [binding?, haccepted]
+      | publicDefault typed => simp [binding?, haccepted]
+
+end ConditionalCode
+
 namespace PublicChoiceCode
 
 /-- Evaluate an ordinary public choice's optional timeout from public memory.
@@ -361,8 +400,8 @@ def handle (image : ApplicationImage P L) (state : State P L)
   | .conditional address payload =>
       let .conditional code ← image.lookup address | none
       let decoded ← code.decode payload
-      let result ← code.endpoint.resolve? state.memory.clock (state.verify code)
-        ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+      let result ← code.endpoint.resolveDisposition? state.memory.clock (state.verify code)
+        (code.binding? state.memory)
         state.memory.done
         (code.canOpen state.memory.store) ⟨message.id, decoded⟩
       pure (state.publishConditional code result)

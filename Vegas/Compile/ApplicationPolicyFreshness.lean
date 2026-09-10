@@ -29,6 +29,30 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+namespace ConditionalCode
+
+/-- The player-command codec selected by a conditional instruction's accepted
+binding disposition. Opaque and public-default submissions remain distinct
+cache domains even though they share one endpoint address. -/
+def commandEncoding (code : ConditionalCode P L) (image : ApplicationImage P L)
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val code.secretTy)) :
+    ChoiceEncoding (L.Val code.guard.ty) image.application.PlayerCommand :=
+  let requests : ChoiceEncoding (Option (L.Val code.secretTy))
+      (Nat × ConditionalPublication.Payload P (L.Val code.secretTy)) := match disposition with
+    | .opaque _ => code.endpoint.addressedChoiceEncoding
+    | .publicDefault _ => code.endpoint.addressedDefaultChoiceEncoding
+  ((requests.reindex code.encoding).trans
+    (ApplicationImage.conditionalTransport (P := P) code.secretTy)).submission
+      image.application
+
+@[simp] theorem commandEncoding_decode_wait (code : ConditionalCode P L)
+    (image : ApplicationImage P L)
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val code.secretTy)) :
+    (code.commandEncoding image disposition).decode .wait = none := by
+  cases disposition <;> rfl
+
+end ConditionalCode
+
 namespace ApplicationInstruction
 
 /-- A player command is outside every cache used by this instruction.  Only
@@ -47,10 +71,7 @@ def RejectsCommand (image : ApplicationImage P L) (who : P)
         code.endpoint.publicationNode code.guard.ty).submission
           image.application).decode command = none
   | .conditional code => who = code.endpoint.owner →
-      (((((code.endpoint.addressedChoiceEncoding
-          (Value := L.Val code.secretTy)).reindex code.encoding).trans
-        (ApplicationImage.conditionalTransport (P := P) code.secretTy)).submission
-          image.application).decode command = none)
+      ∀ disposition, (code.commandEncoding image disposition).decode command = none
 
 /-- No command already recorded in the relevant owner's history can supply
 the sample-once choice for this generated instruction.  A binding has two
@@ -71,13 +92,8 @@ def CacheEmpty (image : ApplicationImage P L)
           code.endpoint.publicationNode code.guard.ty).submission image.application
       encoding.cachedValue image.application
         (execution.principalHistory code.endpoint.owner) = none
-  | .conditional code =>
-      let encoding :=
-        (((code.endpoint.addressedChoiceEncoding
-            (Value := L.Val code.secretTy)).reindex code.encoding).trans
-          (ApplicationImage.conditionalTransport (P := P) code.secretTy)).submission
-            image.application
-      encoding.cachedValue image.application
+  | .conditional code => ∀ disposition,
+      (code.commandEncoding image disposition).cachedValue image.application
         (execution.principalHistory code.endpoint.owner) = none
 
 /-- Empty principal histories contain no cached choice for any instruction. -/
@@ -143,13 +159,11 @@ theorem cacheEmpty_playerStep
       · subst who
         have hhistory := image.application.playerStep_history_self
           code.endpoint.owner execution command next hnext
-        rw [CacheEmpty, hhistory]
-        exact
-          ((((code.endpoint.addressedChoiceEncoding
-            (Value := L.Val code.secretTy)).reindex code.encoding).trans
-              (ApplicationImage.conditionalTransport (P := P) code.secretTy)).submission
-                image.application).cachedValue_append_unrecognized
-                  image.application _ _ _ hfresh (hreject rfl)
+        rw [CacheEmpty]
+        intro disposition
+        rw [hhistory]
+        exact (code.commandEncoding image disposition).cachedValue_append_unrecognized
+          image.application _ _ _ (hfresh disposition) (hreject rfl disposition)
       · have hhistory := image.application.playerStep_other_history
           who code.endpoint.owner (Ne.symm howner) execution command next hnext
         simpa [CacheEmpty, hhistory] using hfresh

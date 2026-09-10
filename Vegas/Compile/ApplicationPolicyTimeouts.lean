@@ -73,9 +73,7 @@ theorem liftProfileIn_expiry_not_supported
           · cases payload <;>
               simp [ApplicationImage.Payload.IsExpiry] at hexpiry hbinding
         · simp at hcommand
-  | publicChoice publicGuard next ih
-  | conditional publicGuard next ih
-  | conditionalCopy specification publicGuard next ih =>
+  | publicChoice publicGuard next ih =>
       simp only [liftProfileIn] at hcommand
       split at hcommand
       · exact ih profile.afterCommit.afterReveal player hcommand
@@ -83,6 +81,19 @@ theorem liftProfileIn_expiry_not_supported
         · exact ChoiceController.not_supported_of_decode_none
             _ _ history view (.submit payload) (by simp)
             (by cases payload <;> first | exact False.elim hexpiry | rfl) hcommand
+        · simp at hcommand
+  | conditional publicGuard next ih
+  | conditionalCopy specification publicGuard next ih =>
+      simp only [liftProfileIn] at hcommand
+      split at hcommand
+      · exact ih profile.afterCommit.afterReveal player hcommand
+      · split at hcommand
+        · simp only [ConditionalPublicationSite.imagePolicy] at hcommand
+          split at hcommand
+          · simp at hcommand
+          · exact ChoiceController.not_supported_of_decode_none
+              _ _ history view (.submit payload) (by simp)
+              (by cases payload <;> first | exact False.elim hexpiry | rfl) hcommand
         · simp at hcommand
 
 end ApplicationPlan

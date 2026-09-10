@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.ApplicationImage
+import Vegas.Compile.ConditionalImage
 import Vegas.Compile.ConditionalOpeningController
 
 /-! # Source controllers for generated conditional-publication images
@@ -86,6 +86,8 @@ and completion projections used by the generated image handler. -/
 def imageController (site : ConditionalPublicationSite prog)
     (fresh : FreshBindings prog) (state : BuildState P L Γ)
     (sourceSlot deadline : Nat) (image : ApplicationImage P L)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
     (readout? : List image.application.PlayerEntry → image.application.View →
       Option (site.ChoiceReads fresh state))
     (sourcePolicy :
@@ -94,18 +96,39 @@ def imageController (site : ConditionalPublicationSite prog)
         FinDist { value : L.Val site.choice.ty //
           evalGuard site.choice.guard value visible = true })
     (retry : List image.application.PlayerEntry → image.application.View → Bool) :=
-  site.controller fresh state sourceSlot deadline image.application
+  site.controllerFor fresh state sourceSlot deadline disposition image.application
     (ApplicationImage.conditionalTransport site.specification.secretTy)
-    (fun view => (view.application.accepted (site.sourceField fresh state)).bind
-      BindingDisposition.opaqueHandle?)
     (fun view => view.application.done) readout? sourcePolicy retry
+
+/-- The executable policy selects one strict static controller from the typed
+accepted disposition visible in application memory. -/
+def imagePolicy (site : ConditionalPublicationSite prog)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ)
+    (sourceSlot deadline : Nat) (image : ApplicationImage P L)
+    (readout? : List image.application.PlayerEntry → image.application.View →
+      Option (site.ChoiceReads fresh state))
+    (sourcePolicy :
+      (visible : Env L.Val
+        (eraseVCtx (viewVCtx site.choice.owner site.choice.context))) →
+        FinDist { value : L.Val site.choice.ty //
+          evalGuard site.choice.guard value visible = true })
+    (retry : List image.application.PlayerEntry → image.application.View → Bool) :
+    image.application.PlayerPolicy := fun history view =>
+  let code := site.code fresh state sourceSlot deadline
+  match code.binding? view.application with
+  | none => FinDist.pure .wait
+  | some disposition =>
+      (site.imageController fresh state sourceSlot deadline image disposition
+        readout? sourcePolicy retry).policy image.application history view
 
 /-- A first uncached, ready image-controller invocation has exactly the source
 decision law and emits the canonical dynamically typed conditional payload. -/
-theorem imageController_first_submission_source_law
+theorem imagePolicy_first_submission_source_law
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (state : BuildState P L Γ) (sourceSlot deadline : Nat)
     (image : ApplicationImage P L)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
     (readout? : List image.application.PlayerEntry → image.application.View →
       Option (site.ChoiceReads fresh state))
     (sourcePolicy :
@@ -117,34 +140,51 @@ theorem imageController_first_submission_source_law
     (history : List image.application.PlayerEntry) (view : image.application.View)
     (representedStore : Store L) (env : VEnv L site.choice.context)
     (reads : site.ChoiceReads fresh state)
+    (hbinding : (site.code fresh state sourceSlot deadline).binding? view.application =
+      some disposition)
     (hresolved : view.application.done
       (site.runtimeSite fresh state sourceSlot deadline).publicationNode = false)
     (hcache :
-      ((site.choiceEncoding fresh state sourceSlot deadline
+      ((site.choiceEncodingFor fresh state sourceSlot deadline disposition
         (ApplicationImage.conditionalTransport site.specification.secretTy)).submission
           image.application).cachedValue image.application history = none)
-    (hready : (site.runtimeSite fresh state sourceSlot deadline).ready
-      ((view.application.accepted (site.sourceField fresh state)).bind
-        BindingDisposition.opaqueHandle?)
-      view.application.done = true)
+    (hready : (site.runtimeSite fresh state sourceSlot deadline).readyDisposition
+      (some disposition) view.application.done = true)
     (hreadout : readout? history view = some reads)
     (hagrees : (site.choice.siteState fresh state).ViewAgrees
       site.choice.owner representedStore env)
     (hreads : ReadEnv.ofStore? representedStore
       (site.choice.compiledGuard fresh state).choiceReads = some reads) :
-    (site.imageController fresh state sourceSlot deadline image readout?
-     sourcePolicy retry).policy image.application history view =
+    site.imagePolicy fresh state sourceSlot deadline image readout? sourcePolicy retry
+      history view =
       (sourcePolicy ((env.toView site.choice.owner).eraseEnv)).map fun choice =>
-        .submit ((ApplicationImage.conditionalTransport site.specification.secretTy).encode
-          ((site.runtimeSite fresh state sourceSlot deadline).publicationNode,
-            (site.runtimeSite fresh state sourceSlot deadline).requestPayload
-              (site.specification.encoding choice.1))) := by
-  exact site.controller_first_submission_source_law fresh state sourceSlot deadline
-    image.application (ApplicationImage.conditionalTransport site.specification.secretTy)
-    (fun current => (current.application.accepted (site.sourceField fresh state)).bind
-      BindingDisposition.opaqueHandle?)
-    (fun current => current.application.done) readout? sourcePolicy retry history view
-    representedStore env reads hresolved hcache hready hreadout hagrees hreads
+        .submit ((site.choiceEncodingFor fresh state sourceSlot deadline disposition
+          (ApplicationImage.conditionalTransport site.specification.secretTy)).encode
+            choice.1) := by
+  let controller := site.imageController fresh state sourceSlot deadline image disposition
+    readout? sourcePolicy retry
+  simp only [imagePolicy, hbinding]
+  calc
+    controller.policy image.application history view =
+        (controller.kernel reads).map controller.codec.encode :=
+      controller.policy_of_uncached_ready image.application history view reads
+        hresolved hcache hready hreadout
+    _ = (sourcePolicy ((env.toView site.choice.owner).eraseEnv)).map fun choice =>
+        .submit ((site.choiceEncodingFor fresh state sourceSlot deadline disposition
+          (ApplicationImage.conditionalTransport site.specification.secretTy)).encode
+            choice.1) := by
+      have hlaw := compileSourceDecision_law
+        (site.choice.siteState fresh state) site.choice.owner
+        site.choice.guard sourcePolicy representedStore env hagrees reads hreads
+      have hmapped := congrArg
+        (FinDist.map (fun value : L.Val site.choice.ty =>
+          (MessageInterface.PlayerCommand.submit
+            ((site.choiceEncodingFor fresh state sourceSlot deadline disposition
+              (ApplicationImage.conditionalTransport site.specification.secretTy)).encode value) :
+                image.application.PlayerCommand)))
+        hlaw
+      simpa only [controller, imageController, controllerFor,
+        ChoiceEncoding.submission, FinDist.map_comp, Function.comp_def] using hmapped
 
 end ConditionalPublicationSite
 

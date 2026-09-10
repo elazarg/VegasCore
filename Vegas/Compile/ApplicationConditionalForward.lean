@@ -78,12 +78,11 @@ private theorem conditional_forward_common
       (root.liftProfile deadlineOf rootProfile who) history
           (State.observe (root.image deadlineOf).application execution.native who) =
         let site := ConditionalPublicationSite.atHead name publicName who guard tail spec
-        (site.imageController fresh state (site.sourceField fresh state)
+        site.imagePolicy fresh state (site.sourceField fresh state)
           (deadlineOf (site.choice.publicationNode fresh state)) (root.image deadlineOf)
           ((root.image deadlineOf).ownerReadout? who
             (eventGuardOf state who guard).choiceReads)
-          (profile who site.choice.decision) (fun _ _ => false)).policy
-            (root.image deadlineOf).application history
+          (profile who site.choice.decision) (fun _ _ => false) history
             (State.observe (root.image deadlineOf).application execution.native who))
     (hcaches : ∀ final, final ∈ ((root.image deadlineOf).application.runPolicies
         (root.liftProfile deadlineOf rootProfile) (root.image deadlineOf).serialService
@@ -148,10 +147,10 @@ private theorem conditional_forward_common
     rw [hhead]
     exact List.mem_cons_self
   have hcache : ChoiceEncoding.cachedValue image.application
-      (site.choiceEncoding fresh state sourceSlot deadline
+      (site.choiceEncodingFor fresh state sourceSlot deadline (.opaque (who, sourceSlot))
         (ApplicationImage.conditionalTransport spec.secretTy) |>.submission image.application)
       (execution.principalHistory who) = none := by
-    exact hheadCache
+    exact hheadCache (.opaque (who, sourceSlot))
   have henvironment : ∀ chosen ∈
       (profile who site.choice.decision
         ((current.current.source.toView who).eraseEnv)).support,

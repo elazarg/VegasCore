@@ -36,14 +36,15 @@ abbrev SecondDecision :=
 def secondReadout? := image.ownerReadout? (0 : TestPlayer)
   (secondSite.choice.compiledGuard source.fresh.2.2.2.2.2.2.2.2 beforeSecond).choiceReads
 
-def secondController (policy : SecondDecision) :=
-  secondSite.imageController source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10 image
+def secondPolicy (policy : SecondDecision) :=
+  secondSite.imagePolicy source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10 image
     secondReadout? policy (fun _ _ => false)
 
 /-- The slot/endpoint distinction is operational: private preparation uses
 slot zero, whereas the later public choice is cached at endpoint nine. -/
 def secondEncoding :=
-  (secondSite.choiceEncoding source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10
+  (secondSite.choiceEncodingFor source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10
+    (.opaque ((0 : TestPlayer), 0))
     (ApplicationImage.conditionalTransport secondSite.specification.secretTy)).submission
       image.application
 
@@ -127,7 +128,7 @@ private theorem source_law
       ((native.application.memory.accepted 0).bind BindingDisposition.opaqueHandle?)
       native.application.memory.done = true)
     (hresolved : native.application.memory.done 9 = false) :
-    (secondController policy).policy image.application history
+    secondPolicy policy history
         (MessageApplication.State.observe image.application native 0) =
       (policy (((secondEnv secret signal first false).toView 0).eraseEnv)).map
         fun choice => .submit
@@ -150,10 +151,24 @@ private theorem source_law
   have hreadout : secondReadout? history
       (MessageApplication.State.observe image.application native 0) = some reads :=
     ReadEnv.ofStoreExec?_eq_some_of_ofStore?_eq_some hreads
-  exact secondSite.imageController_first_submission_source_law
-    source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10 image secondReadout?
-    policy (fun _ _ => false) history _ store (secondEnv secret signal first false) reads
-    hresolved hsecond hready hreadout hagrees hreads
+  have hbinding : secondCode.binding? native.application.memory =
+      some (.opaque ((0 : TestPlayer), 0)) :=
+    (secondCode.binding?_opaque_iff native.application.memory (0, 0)).2 haccepted
+  have hreadyDisposition : secondCode.endpoint.readyDisposition
+      (Value := Bool)
+      (some (.opaque ((0 : TestPlayer), 0))) native.application.memory.done = true := by
+    simpa only [ConditionalPublication.readyDisposition, haccepted, Option.bind_some,
+      BindingDisposition.opaqueHandle?_opaque] using hready
+  have hlaw := secondSite.imagePolicy_first_submission_source_law
+    source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10 image
+    (.opaque ((0 : TestPlayer), 0)) secondReadout? policy (fun _ _ => false) history
+    (MessageApplication.State.observe image.application native 0) store
+    (secondEnv secret signal first false) reads hbinding hresolved hsecond hreadyDisposition
+    hreadout hagrees hreads
+  change secondPolicy policy history
+    (MessageApplication.State.observe image.application native 0) = _ at hlaw
+  rw [hlaw]
+  rfl
 
 /-- At the generated execution's opened checkpoint, the next submission has
 exactly the arbitrary randomized source decision law. The only history
@@ -163,7 +178,7 @@ theorem after_opening_first_submission_source_law
     (history : List image.application.PlayerEntry)
     (hcache : image.registrationCache 0 history = some ⟨.bool, secret⟩)
     (hsecond : secondEncoding.cachedValue image.application history = none) :
-    (secondController policy).policy image.application history
+    secondPolicy policy history
         (MessageApplication.State.observe image.application
           (afterFirstOpening secret signal) 0) =
       (policy (((secondEnv secret signal (some secret) false).toView 0).eraseEnv)).map
@@ -190,7 +205,7 @@ theorem after_refusal_first_submission_source_law
     (history : List image.application.PlayerEntry)
     (hcache : image.registrationCache 0 history = some ⟨.bool, secret⟩)
     (hsecond : secondEncoding.cachedValue image.application history = none) :
-    (secondController policy).policy image.application history
+    secondPolicy policy history
         (MessageApplication.State.observe image.application
           (afterFirstRefusal secret signal) 0) =
       (policy (((secondEnv secret signal none false).toView 0).eraseEnv)).map
@@ -209,19 +224,28 @@ theorem after_refusal_first_submission_source_law
   · cases secret <;> cases signal <;> decide +kernel
   · cases secret <;> cases signal <;> decide +kernel
 
-/-- Once sampled at endpoint nine, the second decision is never sampled again,
-regardless of later polling, public state, or other traffic. -/
-theorem secondController_recorded
+/-- Once sampled at endpoint nine, the second decision is not sampled again
+while its accepted binding retains the opaque disposition. Other public
+state and prior traffic are unrestricted. -/
+theorem secondPolicy_recorded
     (policy : SecondDecision) (history : List image.application.PlayerEntry)
     (view : image.application.View) (value : Option Bool)
-    (hcache : secondEncoding.cachedValue image.application history = some value) :
-    (secondController policy).policy image.application history view = FinDist.pure .wait := by
-  cases hresolved : (secondController policy).resolved view with
-  | true => exact (secondController policy).policy_of_resolved _ _ _ hresolved
+    (hcache : secondEncoding.cachedValue image.application history = some value)
+    (hbinding : secondCode.binding? view.application =
+      some (.opaque ((0 : TestPlayer), 0))) :
+    secondPolicy policy history view = FinDist.pure .wait := by
+  let controller := secondSite.imageController source.fresh.2.2.2.2.2.2.2.2
+    beforeSecond 0 10 image (.opaque ((0 : TestPlayer), 0)) secondReadout? policy
+      (fun _ _ => false)
+  have hbinding' : (secondSite.code source.fresh.2.2.2.2.2.2.2.2 beforeSecond 0 10).binding?
+      view.application = some (.opaque ((0 : TestPlayer), 0)) := hbinding
+  simp only [secondPolicy, ConditionalPublicationSite.imagePolicy, hbinding']
+  cases hresolved : controller.resolved view with
+  | true => exact controller.policy_of_resolved _ _ _ hresolved
   | false =>
-      rw [(secondController policy).policy_of_cached _ _ _ value hresolved hcache]
-      simp [secondController, ConditionalPublicationSite.imageController,
-        ConditionalPublicationSite.controller]
+      rw [controller.policy_of_cached _ _ _ value hresolved hcache]
+      simp [controller, ConditionalPublicationSite.imageController,
+        ConditionalPublicationSite.controllerFor]
 
 /-- The source guard forces decline after the first site's decline. Every
 compiled source kernel therefore emits decline, independently of its other
@@ -231,7 +255,7 @@ theorem after_refusal_only_decline
     (history : List image.application.PlayerEntry)
     (hcache : image.registrationCache 0 history = some ⟨.bool, secret⟩)
     (hsecond : secondEncoding.cachedValue image.application history = none) :
-    (secondController policy).policy image.application history
+    secondPolicy policy history
         (MessageApplication.State.observe image.application
           (afterFirstRefusal secret signal) 0) =
       FinDist.pure (.submit (.conditional 9 .decline)) := by

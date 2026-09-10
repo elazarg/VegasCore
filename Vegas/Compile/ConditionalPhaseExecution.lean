@@ -59,10 +59,10 @@ theorem conditional_phase_source_law
     (hpolicy : ∀ history,
       players who history
           (MessageApplication.State.observe image.application execution.native who) =
-        ((atHead name publicName who guard tail spec).imageController fresh build
+        (atHead name publicName who guard tail spec).imagePolicy fresh build
           sourceSlot deadline image
           (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
-          sourcePolicy (fun _ _ => false)).policy image.application history
+          sourcePolicy (fun _ _ => false) history
             (MessageApplication.State.observe image.application execution.native who))
     (henvironment : ∀ chosen ∈
         (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
@@ -78,8 +78,9 @@ theorem conditional_phase_source_law
     (hlookupFresh : execution.native.pool.lookup
       (who, execution.native.pool.nextSerial who) = none)
     (hcache : ChoiceEncoding.cachedValue image.application
-      (((atHead name publicName who guard tail spec).choiceEncoding fresh build
-        sourceSlot deadline (ApplicationImage.conditionalTransport spec.secretTy)).submission
+      (((atHead name publicName who guard tail spec).choiceEncodingFor fresh build
+        sourceSlot deadline (.opaque (who, sourceSlot))
+        (ApplicationImage.conditionalTransport spec.secretTy)).submission
           image.application)
       (execution.principalHistory who) = none)
     (hreadout : image.ownerReadout? who (eventGuardOf build who guard).choiceReads
@@ -120,18 +121,34 @@ theorem conditional_phase_source_law
   let site := atHead name publicName who guard tail spec
   let code := site.code fresh build sourceSlot deadline
   let id := (who, execution.native.pool.nextSerial who)
-  have hready := ready_at_source_prefix guard tail spec fresh build sourceSlot deadline current
-    execution.native.application hrefines haccepted
+  have hbinding : code.binding? execution.native.application.memory =
+      some (.opaque (who, sourceSlot)) :=
+    (code.binding?_opaque_iff execution.native.application.memory (who, sourceSlot)).2 haccepted
+  have hreadyDisposition : code.endpoint.readyDisposition
+      (Value := L.Val spec.secretTy)
+      (some (.opaque (who, sourceSlot))) execution.native.application.memory.done = true := by
+    have hready := readyDisposition_at_source_prefix guard tail spec fresh build
+      sourceSlot deadline current execution.native.application hrefines
+      (.opaque (who, sourceSlot)) hbinding
+      (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
+    change code.endpoint.readyDisposition (code.binding? execution.native.application.memory)
+      execution.native.application.memory.done = true at hready
+    simpa only [hbinding] using hready
+  have hready : code.endpoint.ready (some (who, sourceSlot))
+      execution.native.application.memory.done = true := hreadyDisposition
   have hresolved : execution.native.application.memory.done code.endpoint.publicationNode =
       false := by
     simp only [ConditionalPublication.ready, Bool.and_eq_true, Bool.not_eq_true'] at hready
     exact hready.1.2
-  have hfirst := site.imageController_first_submission_source_law fresh build sourceSlot
-    deadline image (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
+  have hfirstRaw := site.imagePolicy_first_submission_source_law fresh build sourceSlot
+    deadline image (.opaque (who, sourceSlot))
+    (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
     sourcePolicy (fun _ _ => false) (execution.principalHistory who)
     (MessageApplication.State.observe image.application execution.native who)
-    current.current.graph.1.store current.current.source reads hresolved hcache hready hreadout
-    (BuildState.Agrees.view current.current.agrees who) hreads
+    current.current.graph.1.store current.current.source reads hbinding hresolved hcache
+    hreadyDisposition hreadout (BuildState.Agrees.view current.current.agrees who) hreads
+  have hfirst := hfirstRaw
+  simp only [choiceEncodingFor] at hfirst
   constructor
   · simp only [MessageApplication.runPolicies, MessageApplication.invoke]
     rw [hpolicy, hfirst, FinDist.bind_map, FinDist.bind_bind]
@@ -178,9 +195,11 @@ theorem conditional_phase_source_law
       exact congrArg MessageInterface.PolicyExecution.native hincluded
     obtain ⟨next, hsource, hrefinesNext⟩ := include_source_coupling guard tail spec fresh
       build sourceSlot deadline current image submitted.native (happlication.symm ▸ hrefines)
-      heligible (happlication.symm ▸ haccepted) code.endpoint.publicationNode
+      heligible (.opaque (who, sourceSlot)) (happlication.symm ▸ hbinding)
+      (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
+      code.endpoint.publicationNode
       (execution.native.pool.nextSerial who) hcode chosen.1 hlookup chosen.2 (by
-        intro value hvalue
+        intro handle value _ hvalue
         rw [happlication]
         exact hfrozen chosen hchosen value hvalue)
     exact ⟨next, hsource, hincludedNative.symm ▸ hrefinesNext⟩

@@ -91,10 +91,10 @@ def conditionalSourcePolicy (openValue : Bool)
 def conditionalPlayers (openValue : Bool) :
     Fin 2 → (image 10).application.PlayerPolicy :=
   fun who => if who = 0 then
-    (conditionalSite.imageController source.fresh compilerInitial 0 10 (image 10)
+    conditionalSite.imagePolicy source.fresh compilerInitial 0 10 (image 10)
       ((image 10).ownerReadout? 0
         (conditionalSite.choice.compiledGuard source.fresh compilerInitial).choiceReads)
-      (conditionalSourcePolicy openValue) (fun _ _ => false)).policy (image 10).application
+      (conditionalSourcePolicy openValue) (fun _ _ => false)
   else fun _ _ => FinDist.pure .wait
 
 def includeConditional : (image 10).application.EnvironmentPolicy :=

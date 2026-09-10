@@ -99,25 +99,20 @@ private theorem publicChoiceEncoding_tag (image : ApplicationImage P L)
             image.application).encode value) =
       some (.submission code.endpoint.publicationNode) := rfl
 
-private def conditionalCommandEncoding (image : ApplicationImage P L)
-    (code : ConditionalCode P L) :
-    ChoiceEncoding (L.Val code.guard.ty) image.application.PlayerCommand :=
-  ((code.endpoint.addressedChoiceEncoding
-      (Value := L.Val code.secretTy)).reindex code.encoding)
-    |> (·.trans (ApplicationImage.conditionalTransport (P := P) code.secretTy))
-    |> (·.submission image.application)
-
 private theorem conditionalEncoding_tag (image : ApplicationImage P L)
-    (code : ConditionalCode P L) (value : L.Val code.guard.ty) :
+    (code : ConditionalCode P L)
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val code.secretTy))
+    (value : L.Val code.guard.ty) :
     commandCacheTag? image
-        ((conditionalCommandEncoding image code).encode value) =
+        ((code.commandEncoding image disposition).encode value) =
       some (.submission code.endpoint.publicationNode) := by
-  change commandCacheTag? image
-      (.submit ((ApplicationImage.conditionalTransport (P := P) code.secretTy).encode
-        (code.endpoint.publicationNode,
-          code.endpoint.requestPayload (code.encoding value)))) =
-    some (.submission code.endpoint.publicationNode)
-  cases code.encoding value <;> rfl
+  cases disposition <;> cases hvalue : code.encoding value <;>
+    simp [ConditionalCode.commandEncoding, ChoiceEncoding.submission,
+      ChoiceEncoding.trans, ChoiceEncoding.reindex, ChoiceEncoding.atEndpoint,
+      ConditionalPublication.addressedChoiceEncoding, ConditionalPublication.choiceEncoding,
+      ConditionalPublication.addressedDefaultChoiceEncoding,
+      ConditionalPublication.defaultChoiceEncoding, ConditionalPublication.requestPayload,
+      ApplicationImage.conditionalTransport, hvalue, commandCacheTag?]
 
 /-- A command recognized by a generated binding instruction's cache is
 rejected by a distinct later instruction. Submission addresses separate every
@@ -216,8 +211,8 @@ theorem rejectsCommand_of_binding
               intro heq
               exact haddress (CacheTag.submission.inj heq))
     | conditional second =>
-        intro _
-        let laterEncoding := conditionalCommandEncoding image second
+        intro _ disposition
+        let laterEncoding := second.commandEncoding image disposition
         rcases hrecognizedCache with hregistration | hsubmission
         · have htag := tag_of_decode_ne_none image registration
               (.registration first.sourceSlot)
@@ -226,7 +221,7 @@ theorem rejectsCommand_of_binding
           exact decode_eq_none_of_tag_ne image laterEncoding
             (.submission second.endpoint.publicationNode)
             (.registration first.sourceSlot)
-            (by intro value; exact conditionalEncoding_tag image second value)
+            (by intro value; exact conditionalEncoding_tag image second disposition value)
             command htag (by simp)
         · have htag := tag_of_decode_ne_none image submission
               (.submission first.node)
@@ -234,7 +229,7 @@ theorem rejectsCommand_of_binding
               command hsubmission
           exact decode_eq_none_of_tag_ne image laterEncoding
             (.submission second.endpoint.publicationNode) (.submission first.node)
-            (by intro value; exact conditionalEncoding_tag image second value)
+            (by intro value; exact conditionalEncoding_tag image second disposition value)
             command htag (by
               intro heq
               exact haddress (CacheTag.submission.inj heq))
@@ -281,10 +276,10 @@ private theorem rejectsCommand_of_submissionTag
             intro heq
             exact haddress (CacheTag.submission.inj heq))
     | conditional second =>
-        intro _
-        exact decode_eq_none_of_tag_ne image (conditionalCommandEncoding image second)
+        intro _ disposition
+        exact decode_eq_none_of_tag_ne image (second.commandEncoding image disposition)
           (.submission second.endpoint.publicationNode) (.submission address)
-          (by intro value; exact conditionalEncoding_tag image second value)
+          (by intro value; exact conditionalEncoding_tag image second disposition value)
           command htag (by
             intro heq
             exact haddress (CacheTag.submission.inj heq))
@@ -331,14 +326,18 @@ theorem rejectsCommand_of_conditional
   rcases hhead with hwait | hrecognized
   · exact Or.inl hwait
   · right
-    let encoding := conditionalCommandEncoding image first
-    have hdecode : encoding.decode command ≠ none := by
-      intro hnone
+    have hfound : ∃ disposition,
+        (first.commandEncoding image disposition).decode command ≠ none := by
+      by_contra hnone
       apply hrecognized
-      intro _
-      exact hnone
+      intro _ disposition
+      by_contra hdecode
+      exact hnone ⟨disposition, hdecode⟩
+    obtain ⟨disposition, hdecode⟩ := hfound
+    let encoding := first.commandEncoding image disposition
     exact tag_of_decode_ne_none image encoding (.submission first.endpoint.publicationNode)
-      (by intro value; exact conditionalEncoding_tag image first value) command hdecode
+      (by intro value; exact conditionalEncoding_tag image first disposition value)
+      command hdecode
 
 end ApplicationInstruction
 

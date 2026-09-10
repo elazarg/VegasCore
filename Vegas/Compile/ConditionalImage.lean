@@ -15,7 +15,8 @@ application plans require unrestricted original guards until a binding
 validation mechanism is supplied; controller legality alone does not constrain
 arbitrary runtime deviations.
 Conditional validation checks the retained source guard using public fields
-and the acceptance-time verified claim. No source environment is runtime data.
+and either an acceptance-time verified opaque claim or the recorded typed
+public default. No source environment is runtime data.
 -/
 
 noncomputable section
@@ -78,8 +79,8 @@ def code (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (site.choice.publicationNode fresh state)
 
 /-- Any resolved native result is source-legal, including declines and expiry
-from an unopenable binding. The snapshot premise only constrains values that
-can actually be recovered; it does not assume that a valid opening exists. -/
+from an unopenable binding. Opaque claims use weak snapshot consistency;
+public-default claims use their explicit equality with the source value. -/
 theorem code_resolution_source_legal
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (state : BuildState P L Γ) (sourceSlot deadline : Nat)
@@ -91,17 +92,20 @@ theorem code_resolution_source_legal
     (hpublicStore : ∀ ref, (compileCore prog fresh state).graph.fieldRefPublic ref →
       Store.getAs native.memory.store ref.field ref.ty =
         Store.getAs representedStore ref.field ref.ty)
-    (hbinding : ∀ value,
+    (hfrozen : ∀ value,
       (native.frozen (site.sourceField fresh state)).bind
           (fun typed => typed.as? site.specification.secretTy) = some value →
+        value = env.get site.specification.binding)
+    (hdefault : ∀ value,
+      (site.code fresh state sourceSlot deadline).binding? native.memory =
+          some (.publicDefault value) →
         value = env.get site.specification.binding)
     (message : Message P
       (ConditionalPublication.Payload P (L.Val site.specification.secretTy)))
     (result : Option (L.Val site.specification.secretTy))
-    (hresolve : (site.code fresh state sourceSlot deadline).endpoint.resolve?
+    (hresolve : (site.code fresh state sourceSlot deadline).endpoint.resolveDisposition?
       native.memory.clock (native.verify (site.code fresh state sourceSlot deadline))
-      ((native.memory.accepted (site.sourceField fresh state)).bind
-        BindingDisposition.opaqueHandle?) native.memory.done
+      ((site.code fresh state sourceSlot deadline).binding? native.memory) native.memory.done
       ((site.code fresh state sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (result = none ∨ result = some (env.get site.specification.binding)) ∧
@@ -111,20 +115,19 @@ theorem code_resolution_source_legal
   cases result with
   | none => exact ⟨Or.inl rfl, site.specification.decline_legal env⟩
   | some value =>
-      have hverified := emitted.endpoint.resolve_some_verified native.memory.clock
-        (native.verify emitted)
-        ((native.memory.accepted (site.sourceField fresh state)).bind
-          BindingDisposition.opaqueHandle?)
+      have hevidence := emitted.endpoint.resolveDisposition_some_evidence
+        native.memory.clock (native.verify emitted) (emitted.binding? native.memory)
         native.memory.done (emitted.canOpen native.memory.store) message value hresolve
-      have hfrozen : (native.frozen (site.sourceField fresh state)).bind
-          (fun typed => typed.as? site.specification.secretTy) = some value := by
-        simpa [ApplicationImage.State.verify, emitted, code] using hverified
-      have hvalue := hbinding value hfrozen
+      have hvalue : value = env.get site.specification.binding := by
+        rcases hevidence.2 with hopaque | hpublic
+        · have hsnapshot : (native.frozen (site.sourceField fresh state)).bind
+              (fun typed => typed.as? site.specification.secretTy) = some value := by
+            simpa [ApplicationImage.State.verify, emitted, code] using hopaque.2
+          exact hfrozen value hsnapshot
+        · exact hdefault value hpublic
       refine ⟨Or.inr (congrArg some hvalue), ?_⟩
-      have hcanOpen := emitted.endpoint.resolve_some_canOpen native.memory.clock
-        (native.verify emitted)
-        ((native.memory.accepted (site.sourceField fresh state)).bind
-          BindingDisposition.opaqueHandle?)
+      have hcanOpen := emitted.endpoint.resolveDisposition_some_canOpen native.memory.clock
+        (native.verify emitted) (emitted.binding? native.memory)
         native.memory.done (emitted.canOpen native.memory.store) message value hresolve
       change site.canOpen fresh state native.memory.store value = true at hcanOpen
       rw [site.canOpen_source fresh state representedStore native.memory.store env

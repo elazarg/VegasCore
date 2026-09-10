@@ -42,8 +42,11 @@ theorem expiry_include_source_coupling
     (image : ApplicationImage P L)
     (execution included : image.application.PolicyExecution)
     (hrefines : execution.native.application.Refines current.current.graph.1)
-    (haccepted : execution.native.application.memory.accepted
-      (build.fieldOf spec.binding) = some (.opaque (who, sourceSlot)))
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
+    (hbinding : ((atHead name publicName who guard tail spec).code
+      fresh build sourceSlot deadline).binding? execution.native.application.memory =
+        some disposition)
+    (hcanonical : ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot))
     (hoverdue : deadline < execution.native.application.memory.clock)
     (address : Nat)
     (hcode : image.lookup address = some (.conditional
@@ -68,25 +71,24 @@ theorem expiry_include_source_coupling
   dsimp only
   let site := atHead name publicName who guard tail spec
   let code := site.code fresh build sourceSlot deadline
+  change code.binding? execution.native.application.memory = some disposition at hbinding
   let chosen := spec.encoding.symm none
-  have hready := ready_at_source_prefix guard tail spec fresh build sourceSlot deadline current
-    execution.native.application hrefines haccepted
-  have hresolve : code.endpoint.resolve?
+  have hready := readyDisposition_at_source_prefix guard tail spec fresh build sourceSlot deadline
+    current execution.native.application hrefines disposition hbinding hcanonical
+  have hresolve : code.endpoint.resolveDisposition?
       execution.native.application.memory.clock
       (execution.native.application.verify code)
-      ((execution.native.application.memory.accepted code.sourceField).bind
-        BindingDisposition.opaqueHandle?)
+      (code.binding? execution.native.application.memory)
       execution.native.application.memory.done
       (code.canOpen execution.native.application.memory.store)
       ⟨id, .expire⟩ = some none := by
-    apply (code.endpoint.resolve_expire
+    apply (code.endpoint.resolveDisposition_expire
       execution.native.application.memory.clock
       (execution.native.application.verify code)
-      ((execution.native.application.memory.accepted code.sourceField).bind
-        BindingDisposition.opaqueHandle?)
+      (code.binding? execution.native.application.memory)
       execution.native.application.memory.done
       (code.canOpen execution.native.application.memory.store)
-      ⟨id, .expire⟩ rfl).2
+      id).2
     exact ⟨hready, hoverdue⟩
   have hhandle : image.handle execution.native.application
       ⟨id, .conditional address .expire⟩ =

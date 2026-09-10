@@ -295,9 +295,9 @@ theorem publicChoice_head_preserves_nextCaches
       (.publicChoice (site.code fresh state)) player execution nextExecution command
       (by rfl) (Or.inl hwait) hstep hfresh
 
-/-- Supported commands of one generated conditional controller are either a
-wait or are recognized by that exact conditional instruction cache. -/
-private theorem conditionalController_headCommand
+/-- Supported commands of the disposition-selected conditional policy are
+either a wait or are recognized by that exact disposition's cache. -/
+private theorem conditionalPolicy_headCommand
     {Γ : VCtx P L} {prog : VegasCore P L Γ}
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (state : BuildState P L Γ) (sourceSlot deadline : Nat)
@@ -312,25 +312,34 @@ private theorem conditionalController_headCommand
     (history : List image.application.PlayerEntry) (view : image.application.View)
     (command : image.application.PlayerCommand)
     (hcommand : command ∈
-      ((site.imageController fresh state sourceSlot deadline image readout sourcePolicy
-        (fun _ _ => false)).policy image.application history view).support) :
+      (site.imagePolicy fresh state sourceSlot deadline image readout sourcePolicy
+        (fun _ _ => false) history view).support) :
     command = .wait ∨
       ¬ (ApplicationInstruction.conditional
         (site.code fresh state sourceSlot deadline)).RejectsCommand
           image site.choice.owner command := by
-  let controller := site.imageController fresh state sourceSlot deadline image readout sourcePolicy
-    (fun _ _ => false)
-  have hsupported := controller.supported_wait_or_encoded image.application history view command
-    (by simpa [controller] using hcommand)
-  rcases hsupported with hwait | ⟨value, hvalue⟩
-  · exact Or.inl hwait
-  · subst command
-    right
-    intro hreject
-    have hnone := hreject rfl
-    change controller.codec.decode (controller.codec.encode value) = none at hnone
-    rw [controller.codec.decode_encode] at hnone
-    contradiction
+  let code := site.code fresh state sourceSlot deadline
+  cases hbinding : code.binding? view.application with
+  | none =>
+      left
+      simpa [ConditionalPublicationSite.imagePolicy, code, hbinding] using hcommand
+  | some disposition =>
+      let controller := site.imageController fresh state sourceSlot deadline image disposition
+        readout sourcePolicy (fun _ _ => false)
+      have hsupported := controller.supported_wait_or_encoded image.application history view command
+        (by simpa [ConditionalPublicationSite.imagePolicy, code, hbinding, controller]
+          using hcommand)
+      rcases hsupported with hwait | ⟨value, hvalue⟩
+      · exact Or.inl hwait
+      · subst command
+        right
+        intro hreject
+        have hnone := hreject rfl disposition
+        have hcodec : controller.codec = code.commandEncoding image disposition := by
+          cases disposition <;> rfl
+        rw [hcodec] at hnone
+        rw [(code.commandEncoding image disposition).decode_encode] at hnone
+        contradiction
 
 /-- At an unresolved accounted conditional-publication head, an arbitrary
 player's actual lifted-policy step preserves every later cache. -/
@@ -375,12 +384,12 @@ theorem conditional_head_preserves_nextCaches
   by_cases hplayer : player = who
   · subst player
     have hcontroller : command ∈
-        ((site.imageController fresh state sourceSlot deadline image readout sourcePolicy
-          (fun _ _ => false)).policy image.application (execution.principalHistory who)
+        (site.imagePolicy fresh state sourceSlot deadline image readout sourcePolicy
+          (fun _ _ => false) (execution.principalHistory who)
             (State.observe image.application execution.native who)).support := by
       simpa [liftProfileIn, hunresolvedView who, site, sourceSlot, deadline, readout, sourcePolicy]
         using hcommand
-    have hhead := conditionalController_headCommand site fresh state sourceSlot deadline image
+    have hhead := conditionalPolicy_headCommand site fresh state sourceSlot deadline image
       readout sourcePolicy (execution.principalHistory who)
       (State.observe image.application execution.native who) command hcontroller
     apply head_command_preserves_nextCaches
@@ -439,12 +448,12 @@ theorem conditionalCopy_head_preserves_nextCaches
   by_cases hplayer : player = who
   · subst player
     have hcontroller : command ∈
-        ((site.imageController fresh state sourceSlot deadline image readout sourcePolicy
-          (fun _ _ => false)).policy image.application (execution.principalHistory who)
+        (site.imagePolicy fresh state sourceSlot deadline image readout sourcePolicy
+          (fun _ _ => false) (execution.principalHistory who)
             (State.observe image.application execution.native who)).support := by
       simpa [liftProfileIn, hunresolvedView who, site, sourceSlot, deadline, readout, sourcePolicy]
         using hcommand
-    have hhead := conditionalController_headCommand site fresh state sourceSlot deadline image
+    have hhead := conditionalPolicy_headCommand site fresh state sourceSlot deadline image
       readout sourcePolicy (execution.principalHistory who)
       (State.observe image.application execution.native who) command hcontroller
     apply head_command_preserves_nextCaches

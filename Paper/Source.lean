@@ -159,6 +159,54 @@ theorem public_application_withholding (source : WFProgram Player L)
   plan.withholding_finished_law source deadlineOf node who required hnode
     (plan.liftProfile deadlineOf profile) environment schedule
 
+/-- Inclusion of a legal generated conditional request advances the exact
+adjacent source choice/reveal pair. Opaque dispositions require the canonical
+handle and matching frozen opening; public defaults require neither premise. -/
+theorem public_application_conditional_continuation
+    {Γ : VCtx Player L} {name publicName : VarId} {who : Player} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore Player L ((publicName, .pub ty) :: (name, .sealed who ty) :: Γ))
+    (spec : ConditionalOpening guard)
+    (fresh : FreshBindings (.commit name who guard (.reveal publicName who name .here tail)))
+    (build : ToEventGraph.BuildState Player L Γ) (sourceSlot deadline : Nat)
+    (current : ToEventGraph.CoupledAt
+      (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
+        fresh build).graph build)
+    (image : ApplicationImage Player L) (execution : image.application.State)
+    (hrefines : execution.application.Refines current.current.graph.1)
+    (heligible :
+      (ConditionalPublicationSite.atHead name publicName who guard tail spec).PubliclyValidatable
+        fresh build)
+    (disposition : Interaction.BindingDisposition (Interaction.CommitmentHandle Player Nat)
+      (L.Val spec.secretTy))
+    (hbinding : ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+      fresh build sourceSlot deadline).binding? execution.application.memory = some disposition)
+    (hcanonical : ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot))
+    (address serial : Nat)
+    (hcode : image.lookup address = some (.conditional
+      ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+        fresh build sourceSlot deadline)))
+    (chosen : L.Val ty)
+    (hlookup : execution.pool.lookup (who, serial) = some ⟨(who, serial), .conditional address
+      ((ConditionalPublicationSite.atHead name publicName who guard tail spec).sourceRequestPayload
+        fresh build sourceSlot deadline disposition (spec.encoding chosen))⟩)
+    (hlegal : evalGuard guard chosen ((current.current.source.toView who).eraseEnv) = true)
+    (hfrozen : ∀ handle value, disposition = .opaque handle →
+      spec.encoding chosen = some value →
+      (execution.application.frozen (build.fieldOf spec.binding)).bind
+        (fun typed => typed.as? spec.secretTy) = some value) :
+    ∃ next : ToEventGraph.CoupledAt
+        (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
+          fresh build).graph
+        (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
+          publicName who .here fresh.2.1).1,
+      next.current.source = (current.current.source.cons chosen).cons chosen ∧
+        (image.application.includePending execution (who, serial)).application.Refines
+          next.current.graph.1 :=
+  ConditionalPublicationSite.include_source_coupling guard tail spec fresh build sourceSlot
+    deadline current image execution hrefines heligible disposition hbinding hcanonical address
+    serial hcode chosen hlookup hlegal hfrozen
+
 /-- An included overdue expiry at a generated conditional endpoint implements
 the existing source decline, with no requirement that its sender be the owner. -/
 theorem public_application_conditional_expiry
@@ -174,8 +222,12 @@ theorem public_application_conditional_expiry
     (image : ApplicationImage Player L)
     (execution included : image.application.PolicyExecution)
     (hrefines : execution.native.application.Refines current.current.graph.1)
-    (haccepted : execution.native.application.memory.accepted
-      (build.fieldOf spec.binding) = some (.opaque (who, sourceSlot)))
+    (disposition : Interaction.BindingDisposition (Interaction.CommitmentHandle Player Nat)
+      (L.Val spec.secretTy))
+    (hbinding : ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+      fresh build sourceSlot deadline).binding? execution.native.application.memory =
+        some disposition)
+    (hcanonical : ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot))
     (hoverdue : deadline < execution.native.application.memory.clock)
     (address : Nat)
     (hcode : image.lookup address = some (.conditional
@@ -194,7 +246,8 @@ theorem public_application_conditional_expiry
         (spec.encoding.symm none) ∧
         included.native.application.Refines next.current.graph.1 :=
   (ConditionalPublicationSite.expiry_include_source_coupling guard tail spec fresh build
-    sourceSlot deadline current image execution included hrefines haccepted hoverdue
+    sourceSlot deadline current image execution included hrefines disposition hbinding hcanonical
+    hoverdue
     address hcode id hlookup hincluded).2.2.2
 
 /-- An included public-choice expiry follows an explicitly annotated legal
@@ -539,6 +592,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_withholding
+
+/-- info: 'Vegas.Paper.Source.public_application_conditional_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_conditional_continuation
 
 /-- info: 'Vegas.Paper.Source.public_application_conditional_expiry' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

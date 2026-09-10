@@ -22,6 +22,8 @@ import VegasTests.ApplicationBindingOrigins
 import VegasTests.PublicConditionalOrigin
 import VegasTests.PublicChoiceImageExecution
 import VegasTests.ConditionalApplicationImage
+import VegasTests.ConditionalDefaultApplication
+import VegasTests.ConditionalDefaultPolicy
 import VegasTests.SourceStrategy
 import VegasTests.Machine
 import VegasTests.ScheduledReplay

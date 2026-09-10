@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.ConditionalPublicationRouting
+import Interaction.ConditionalPublicationController
 import Vegas.Compile.ConditionalPublicationSite
 import Vegas.Compile.ConditionalResolution
 import Vegas.Compile.PublicChoiceValidation
@@ -52,6 +52,55 @@ def choiceEncoding (site : ConditionalPublicationSite prog) (fresh : FreshBindin
   (((runtimeSite site fresh state sourceSlot deadline).addressedChoiceEncoding
       (Value := L.Val site.specification.secretTy)).reindex
         site.specification.encoding).trans transport
+
+/-- Canonical source-choice encoding selected by the accepted disposition.
+Opaque bindings emit openings; public defaults emit cleartext. -/
+def choiceEncodingFor (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
+    (state : BuildState P L Γ) (sourceSlot deadline : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
+    {Wire : Type*}
+    (transport : ChoiceEncoding
+      (Nat × ConditionalPublication.Payload P
+        (L.Val site.specification.secretTy)) Wire) :
+    ChoiceEncoding (L.Val site.choice.ty) Wire :=
+  let endpoint := runtimeSite site fresh state sourceSlot deadline
+  let requests := match disposition with
+    | .opaque _ => endpoint.addressedChoiceEncoding
+    | .publicDefault _ => endpoint.addressedDefaultChoiceEncoding
+  (requests.reindex site.specification.encoding).trans transport
+
+/-- A static controller for one observed accepted disposition. Application
+assembly chooses this controller from the current public view. -/
+def controllerFor (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
+    (state : BuildState P L Γ) (sourceSlot deadline : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
+    (app : MessageApplication P)
+    (transport : ChoiceEncoding
+      (Nat × ConditionalPublication.Payload P
+        (L.Val site.specification.secretTy)) app.Payload)
+    (done : app.View → Nat → Bool)
+    (readout? : List app.PlayerEntry → app.View → Option (ChoiceReads site fresh state))
+    (sourcePolicy :
+      (visible : Env L.Val
+        (eraseVCtx (viewVCtx site.choice.owner site.choice.context))) →
+        FinDist { value : L.Val site.choice.ty //
+          evalGuard site.choice.guard value visible = true })
+    (retry : List app.PlayerEntry → app.View → Bool) :
+    ChoiceController app (L.Val site.choice.ty) (ChoiceReads site fresh state) where
+  codec := (site.choiceEncodingFor fresh state sourceSlot deadline disposition
+    transport).submission app
+  ready := fun view =>
+    (runtimeSite site fresh state sourceSlot deadline).readyDisposition
+      (some disposition) (done view)
+  resolved := fun view =>
+    done view (runtimeSite site fresh state sourceSlot deadline).publicationNode
+  readout? := readout?
+  kernel := fun reads =>
+    (compileSourceDecision (site.choice.siteState fresh state)
+      site.choice.owner site.choice.guard sourcePolicy reads).map Subtype.val
+  retry := retry
 
 /-- Adapt the source opening decision to an observation-local, sample-once
 application controller. -/

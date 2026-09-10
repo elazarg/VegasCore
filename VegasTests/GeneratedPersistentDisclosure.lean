@@ -328,7 +328,16 @@ private theorem second_opening_suffix_result (secret signal : Bool) :
       second_opening_verified secret signal, second_opening_valid secret signal⟩
   have happ := (image.include_conditional (secondSubmitted secret signal) 9 secondCode
     image_lookup_second (0, 3) (.opening (0, 0) ⟨.bool, secret⟩)
-    (.opening (0, 0) secret) rfl (some secret) hlookup hresolve).1
+    (.opening (0, 0) secret) rfl (some secret) hlookup (by
+      have haccepted : (secondSubmitted secret signal).application.memory.accepted
+          secondCode.sourceField = some (.opaque (0, 0)) := by
+        apply (BindingDisposition.bind_opaqueHandle?_eq_some_iff _ _).1
+        have hready := second_opening_ready secret signal
+        simp only [ConditionalPublication.ready, Bool.and_eq_true, beq_iff_eq] at hready
+        exact hready.1.1.1
+      rw [(secondCode.binding?_opaque_iff _ _).2 haccepted]
+      simpa only [ConditionalPublication.resolveDisposition?, haccepted, Option.bind_some,
+        BindingDisposition.opaqueHandle?_opaque] using hresolve)).1
   simp only [secondOpeningSuffix, MessageApplication.run_cons, MessageApplication.run_nil,
     MessageApplication.step, FinDist.pure_bind, FinDist.map_pure]
   apply congrArg FinDist.pure
@@ -361,10 +370,12 @@ theorem opening_public_result_law (secret : Bool) :
         (some false, some signal, some (some secret), some false,
           some (some secret), true) := by
   rw [openingActions, MessageApplication.run_append, prefix_law, FinDist.pure_bind]
-  simp only [MessageApplication.run_cons, MessageApplication.step,
-    ApplicationImage.application, checkpoint_sample_law,
-    FinDist.bind_map, FinDist.map_bind]
-  rw [FinDist.map_eq_bind]
+  change (((image.sample (checkpoint secret).application 3).map
+    (fun native => { checkpoint secret with application := native })).bind
+      (image.application.run (openingSuffix secret))).map publicResult = _
+  rw [checkpoint_sample_law]
+  simp only [FinDist.bind_map, FinDist.map_bind]
+  conv_rhs => rw [FinDist.map_eq_bind]
   apply FinDist.bind_congr
   intro signal _
   exact opening_suffix_result secret signal

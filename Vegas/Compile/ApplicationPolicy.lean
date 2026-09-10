@@ -78,11 +78,10 @@ def liftProfileIn (image : ApplicationImage P L) (deadlineOf : Nat → Nat) :
         liftProfileIn image deadlineOf next profile.afterCommit.afterReveal player history view
       else if player = owner then
         let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
-        (site.imageController fresh state (site.sourceField fresh state)
+        site.imagePolicy fresh state (site.sourceField fresh state)
           (deadlineOf (site.choice.publicationNode fresh state)) image
           (image.ownerReadout? owner (site.choice.compiledGuard fresh state).choiceReads)
-          (profile owner site.choice.decision) (fun _ _ => false)).policy
-            image.application history view
+          (profile owner site.choice.decision) (fun _ _ => false) history view
       else FinDist.pure .wait
   | _, _, _, _, _, _,
       .conditionalCopy (name := name) (publicName := publicName) (who := owner)
@@ -92,11 +91,10 @@ def liftProfileIn (image : ApplicationImage P L) (deadlineOf : Nat → Nat) :
         liftProfileIn image deadlineOf next profile.afterCommit.afterReveal player history view
       else if player = owner then
         let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
-        (site.imageController fresh state (site.sourceField fresh state)
+        site.imagePolicy fresh state (site.sourceField fresh state)
           (deadlineOf (site.choice.publicationNode fresh state)) image
           (image.ownerReadout? owner (site.choice.compiledGuard fresh state).choiceReads)
-          (profile owner site.choice.decision) (fun _ _ => false)).policy
-            image.application history view
+          (profile owner site.choice.decision) (fun _ _ => false) history view
       else FinDist.pure .wait
 
 /-- Lift a source behavioral profile to source-ordered reference policies for

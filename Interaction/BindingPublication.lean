@@ -60,6 +60,17 @@ def resolveDisposition? [DecidableEq Principal] [DecidableEq Value]
   | some (.opaque handle) => site.resolve? now verify (some handle) done canOpen message
   | some (.publicDefault value) => site.resolveDefault? now value done canOpen message
 
+/-- Publication readiness retains the canonical-handle check for an opaque
+binding; a public default needs only the remaining public prerequisites. -/
+def readyDisposition [DecidableEq Principal]
+    (site : ConditionalPublication Principal)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) : Bool :=
+  match accepted with
+  | none => false
+  | some (.opaque handle) => site.ready (some handle) done
+  | some (.publicDefault _) => site.defaultReady done
+
 theorem resolveDefault_cleartext [DecidableEq Principal] [DecidableEq Value]
     (site : ConditionalPublication Principal) (now : Nat) (stored claimed : Value)
     (done : Nat → Bool) (canOpen : Value → Bool) (id : MessageId Principal) :
@@ -83,6 +94,34 @@ theorem resolveDefault_expire [DecidableEq Principal] [DecidableEq Value]
       site.defaultReady done = true ∧ site.deadline < now := by
   simp [resolveDefault?]
 
+/-- Permissionless expiry applies to either admitted binding disposition. -/
+theorem resolveDisposition_expire [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool) (id : MessageId Principal) :
+    site.resolveDisposition? now verify accepted done canOpen ⟨id, .expire⟩ = some none ↔
+      site.readyDisposition accepted done = true ∧ site.deadline < now := by
+  cases accepted with
+  | none => simp [resolveDisposition?, readyDisposition]
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          exact site.resolve_expire now verify (some handle) done canOpen ⟨id, .expire⟩ rfl
+      | publicDefault value => exact site.resolveDefault_expire now value done canOpen id
+
+/-- Every successful default publication occurs while its public node pair and
+all declared prerequisites are ready. -/
+theorem resolveDefault_success_inversion [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat) (stored : Value)
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value)) (result : Option Value)
+    (hresolve : site.resolveDefault? now stored done canOpen message = some result) :
+    site.defaultReady done = true := by
+  cases hready : site.defaultReady done <;>
+    simp [resolveDefault?, hready] at hresolve ⊢
+
 /-- Accepted value publication equals the recorded fallback and obeys the
 continuation guard. Declines, including timeouts, make no opening claim. -/
 theorem resolveDefault_some [DecidableEq Principal] [DecidableEq Value]
@@ -104,6 +143,110 @@ theorem resolveDefault_some [DecidableEq Principal] [DecidableEq Value]
   | expire => simp [resolveDefault?, hpayload] at hresult
   | malformed => simp [resolveDefault?, hpayload] at hresult
 
+/-- Every successful disposition-backed resolution occurs while the common
+public readiness condition holds, independently of how the binding was
+established. -/
+theorem resolveDisposition_success_inversion
+    [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value)) (result : Option Value)
+    (hresolve : site.resolveDisposition? now verify accepted done canOpen message =
+      some result) :
+    site.defaultReady done = true := by
+  cases accepted with
+  | none => simp [resolveDisposition?] at hresolve
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          have hready := site.resolve_success_inversion now verify (some handle) done
+            canOpen message result hresolve
+          simp only [ConditionalPublication.ready, defaultReady, Bool.and_eq_true] at hready ⊢
+          exact ⟨⟨hready.1.1.2, hready.1.2⟩, hready.2⟩
+      | publicDefault stored =>
+          exact site.resolveDefault_success_inversion now stored done canOpen message
+            result hresolve
+
+/-- A value published from either disposition satisfies the application-level
+continuation predicate. This deliberately says nothing about private
+verification in the public-default branch. -/
+theorem resolveDisposition_some_canOpen
+    [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value)) (value : Value)
+    (hresolve : site.resolveDisposition? now verify accepted done canOpen message =
+      some (some value)) :
+    canOpen value = true := by
+  cases accepted with
+  | none => simp [resolveDisposition?] at hresolve
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          exact site.resolve_some_canOpen now verify (some handle) done canOpen message
+            value hresolve
+      | publicDefault stored =>
+          exact (site.resolveDefault_some now stored value done canOpen message hresolve).2.1
+
+/-- A published value carries exactly the evidence appropriate to its recorded
+binding disposition. Opaque publication has canonical verifier evidence;
+public-default publication equals the recorded value and never fabricates a
+private handle. Both voluntary publication forms are owner-authored. -/
+theorem resolveDisposition_some_evidence
+    [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value)) (value : Value)
+    (hresolve : site.resolveDisposition? now verify accepted done canOpen message =
+      some (some value)) :
+    message.sender = site.owner ∧
+      ((accepted = some (.opaque (site.owner, site.sourceSlot)) ∧
+          verify ⟨(site.owner, site.sourceSlot), value⟩ = true) ∨
+        accepted = some (.publicDefault value)) := by
+  cases accepted with
+  | none => simp [resolveDisposition?] at hresolve
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          change site.resolve? now verify (some handle) done canOpen message =
+            some (some value) at hresolve
+          have hready := site.resolve_success_inversion now verify (some handle) done
+            canOpen message (some value) hresolve
+          have hhandle : handle = (site.owner, site.sourceSlot) := by
+            simp only [ConditionalPublication.ready, Bool.and_eq_true] at hready
+            simpa only [beq_iff_eq, Option.some.injEq] using hready.1.1.1
+          have hverified := site.resolve_some_verified now verify (some handle) done
+            canOpen message value hresolve
+          have howner : message.sender = site.owner := by
+            cases hpayload : message.payload with
+            | opening actual claimed =>
+                simp only [ConditionalPublication.resolve?, hpayload] at hresolve
+                split at hresolve <;> try contradiction
+                split at hresolve <;> try contradiction
+                rename_i hopen
+                cases hresolve
+                exact hopen.1
+            | decline => simp [ConditionalPublication.resolve?, hpayload] at hresolve
+            | expire => simp [ConditionalPublication.resolve?, hpayload] at hresolve
+            | cleartext clear => simp [ConditionalPublication.resolve?, hpayload] at hresolve
+            | malformed => simp [ConditionalPublication.resolve?, hpayload] at hresolve
+          subst handle
+          exact ⟨howner, Or.inl ⟨rfl, hverified⟩⟩
+      | publicDefault stored =>
+          obtain ⟨hvalue, _hcanOpen, howner⟩ :=
+            site.resolveDefault_some now stored value done canOpen message hresolve
+          subst stored
+          exact ⟨howner, Or.inr rfl⟩
+
 theorem resolveDefault_opening_rejects [DecidableEq Principal] [DecidableEq Value]
     (site : ConditionalPublication Principal) (now : Nat) (stored claimed : Value)
     (done : Nat → Bool) (canOpen : Value → Bool) (id : MessageId Principal)
@@ -121,6 +264,27 @@ theorem resolveDefault_after_completion [DecidableEq Principal] [DecidableEq Val
     site.resolveDefault? now stored done canOpen message = none := by
   rcases hcomplete with hcomplete | hcomplete <;>
     simp [resolveDefault?, defaultReady, hcomplete]
+
+/-- Either completed publication node prevents every further resolution,
+independently of the accepted binding disposition. -/
+theorem resolveDisposition_after_completion [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value))
+    (hcomplete : done site.choiceNode = true ∨ done site.publicationNode = true) :
+    site.resolveDisposition? now verify accepted done canOpen message = none := by
+  cases accepted with
+  | none => rfl
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          rcases hcomplete with hcomplete | hcomplete <;>
+            simp [resolveDisposition?, resolve?, ready, hcomplete]
+      | publicDefault value =>
+          exact site.resolveDefault_after_completion now value done canOpen message hcomplete
 
 /-- A default's resolution is independent of the private verifier on every
 payload, including malformed messages and attempted opaque openings. -/
@@ -140,3 +304,13 @@ end Interaction.ConditionalPublication
 [propext] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ConditionalPublication.resolveDefault_some
+
+/-- info: 'Interaction.ConditionalPublication.resolveDisposition_success_inversion' depends on axioms:
+[propext] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ConditionalPublication.resolveDisposition_success_inversion
+
+/-- info: 'Interaction.ConditionalPublication.resolveDisposition_some_evidence' depends on axioms:
+[propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ConditionalPublication.resolveDisposition_some_evidence

@@ -63,7 +63,7 @@ theorem first_choice_keeps_second_cache_fresh (chosen : Option Bool)
     (.conditional secondCode) 0 _ (by decide)
   right
   intro hreject
-  have hdecode := hreject rfl
+  have hdecode := hreject rfl (.opaque (0, 0))
   cases chosen with
   | none => change some none = none at hdecode; contradiction
   | some value =>

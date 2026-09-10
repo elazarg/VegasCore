@@ -30,9 +30,10 @@ variable {Γ : VCtx P L} {prog : VegasCore P L Γ}
 /-- An actually resolved generated conditional endpoint advances both the
 public application memory and a represented reachable graph checkpoint.  The
 source environment is needed only to inhabit hidden context for the certified
-decline branch.  A successful opening instead uses the frozen value's weak
-consistency with the represented graph store and the generated public
-validator; no full source-store agreement is assumed. -/
+decline branch. A successful publication uses either the opaque frozen value's
+weak consistency or the accepted public default's exact represented value,
+together with the generated validator; no full source-store agreement is
+assumed. -/
 theorem conditional_resolution_refines
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (build : BuildState P L Γ) (sourceSlot deadline : Nat)
@@ -42,18 +43,24 @@ theorem conditional_resolution_refines
     (hrep : native.memory.Represents cfg)
     (hreachable : Reachable (compileCore prog fresh build).graph cfg)
     (heligible : site.PubliclyValidatable fresh build)
-    (hbinding : ∀ value,
+    (hopaque : ∀ handle value,
+      (site.code fresh build sourceSlot deadline).binding? native.memory =
+          some (.opaque handle) →
       (native.frozen (site.sourceField fresh build)).bind
           (fun typed => typed.as? site.specification.secretTy) = some value →
+        Store.getAs cfg.store (site.sourceField fresh build)
+          site.specification.secretTy = some value)
+    (hdefault : ∀ value,
+      (site.code fresh build sourceSlot deadline).binding? native.memory =
+          some (.publicDefault value) →
         Store.getAs cfg.store (site.sourceField fresh build)
           site.specification.secretTy = some value)
     (message : Message P
       (ConditionalPublication.Payload P (L.Val site.specification.secretTy)))
     (result : Option (L.Val site.specification.secretTy))
-    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
+    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolveDisposition?
       native.memory.clock (native.verify (site.code fresh build sourceSlot deadline))
-      ((native.memory.accepted (site.sourceField fresh build)).bind
-        BindingDisposition.opaqueHandle?) native.memory.done
+      ((site.code fresh build sourceSlot deadline).binding? native.memory) native.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (native.publishConditional (site.code fresh build sourceSlot deadline) result).memory.Represents
@@ -65,13 +72,14 @@ theorem conditional_resolution_refines
   let publication := site.choice.publicationNode fresh build
   let guard := site.choice.compiledGuard fresh build
   let code := site.code fresh build sourceSlot deadline
-  have hruntimeReady := code.endpoint.resolve_success_inversion native.memory.clock
-    (native.verify code) ((native.memory.accepted code.sourceField).bind
-      BindingDisposition.opaqueHandle?) native.memory.done
+  have hruntimeReady := code.endpoint.resolveDisposition_success_inversion native.memory.clock
+    (native.verify code) (code.binding? native.memory) native.memory.done
     (code.canOpen native.memory.store) message result hresolve
-  have hreadiness := G.conditionalPublication_ready cfg site.choice.owner sourceSlot
-    choice publication deadline ((native.memory.accepted code.sourceField).bind
-      BindingDisposition.opaqueHandle?) native.memory.done hrep.completed hruntimeReady
+  have hreadyParts := hruntimeReady
+  simp only [ConditionalPublication.defaultReady, Bool.and_eq_true,
+    Bool.not_eq_true'] at hreadyParts
+  have hreadiness := G.publication_ready cfg choice publication native.memory.done
+    hrep.completed hreadyParts.1.1 hreadyParts.1.2 hreadyParts.2
   have hrow : G.nodes[choice]? = some
       ((decisionSiteState site.choice.decision fresh build).commitEvent
         site.choice.owner site.choice.guard) := site.choice.choiceNode_row fresh build
@@ -101,18 +109,20 @@ theorem conditional_resolution_refines
     cases result with
     | none => exact site.decline_guard_eval fresh build initial legal reads
     | some claimed =>
-        have hverified := code.endpoint.resolve_some_verified native.memory.clock
-          (native.verify code) ((native.memory.accepted code.sourceField).bind
-            BindingDisposition.opaqueHandle?) native.memory.done
-          (code.canOpen native.memory.store) message claimed hresolve
-        have hfrozen : (native.frozen (site.sourceField fresh build)).bind
-            (fun typed => typed.as? site.specification.secretTy) = some claimed := by
-          simpa [ApplicationImage.State.verify, code,
-            ConditionalPublicationSite.code] using hverified
-        have hclaimed := hbinding claimed hfrozen
-        have hcanOpen := code.endpoint.resolve_some_canOpen native.memory.clock
-          (native.verify code) ((native.memory.accepted code.sourceField).bind
-            BindingDisposition.opaqueHandle?) native.memory.done
+        have hevidence := code.endpoint.resolveDisposition_some_evidence
+          native.memory.clock (native.verify code) (code.binding? native.memory)
+          native.memory.done (code.canOpen native.memory.store) message claimed hresolve
+        have hclaimed : Store.getAs cfg.store (site.sourceField fresh build)
+            site.specification.secretTy = some claimed := by
+          rcases hevidence.2 with hopaqueEvidence | hpublic
+          · have hsnapshot : (native.frozen (site.sourceField fresh build)).bind
+                (fun typed => typed.as? site.specification.secretTy) = some claimed := by
+              simpa [ApplicationImage.State.verify, code,
+                ConditionalPublicationSite.code] using hopaqueEvidence.2
+            exact hopaque (site.choice.owner, sourceSlot) claimed hopaqueEvidence.1 hsnapshot
+          · exact hdefault claimed hpublic
+        have hcanOpen := code.endpoint.resolveDisposition_some_canOpen native.memory.clock
+          (native.verify code) (code.binding? native.memory) native.memory.done
           (code.canOpen native.memory.store) message claimed hresolve
         change site.canOpen fresh build native.memory.store claimed = true at hcanOpen
         rw [site.canOpen_eq_eval fresh build cfg.store native.memory.store reads hreads
@@ -181,17 +191,33 @@ theorem canonical_request_accepted
       some (native.publishConditional code
         (site.specification.encoding chosen)) := by
   let code := site.code fresh state sourceSlot deadline
-  have hresolve : code.endpoint.resolve? native.memory.clock (native.verify code)
+  have hreadyParts := hready
+  simp only [ConditionalPublication.ready, Bool.and_eq_true, beq_iff_eq,
+    Bool.not_eq_true'] at hreadyParts
+  have haccepted : native.memory.accepted code.sourceField =
+      some (.opaque (code.endpoint.owner, code.endpoint.sourceSlot)) := by
+    rw [← BindingDisposition.bind_opaqueHandle?_eq_some_iff]
+    exact hreadyParts.1.1.1
+  have hbinding : code.binding? native.memory =
+      some (.opaque (code.endpoint.owner, code.endpoint.sourceSlot)) :=
+    (code.binding?_opaque_iff native.memory _).2 haccepted
+  have hcanonicalReady : code.endpoint.ready
+      (some (code.endpoint.owner, code.endpoint.sourceSlot)) native.memory.done = true := by
+    change code.endpoint.ready
       ((native.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+      native.memory.done = true at hready
+    simpa only [haccepted, Option.bind_some, BindingDisposition.opaqueHandle?_opaque] using hready
+  have hresolve : code.endpoint.resolveDisposition? native.memory.clock (native.verify code)
+      (code.binding? native.memory)
       native.memory.done
       (code.canOpen native.memory.store)
       ⟨(code.endpoint.owner, serial),
         code.endpoint.requestPayload (site.specification.encoding chosen)⟩ =
         some (site.specification.encoding chosen) := by
+    simp only [ConditionalPublication.resolveDisposition?, hbinding]
     apply (code.endpoint.resolve_requestPayload native.memory.clock (native.verify code)
-      ((native.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
-      native.memory.done
-      (code.canOpen native.memory.store) hready serial
+      (some (code.endpoint.owner, code.endpoint.sourceSlot)) native.memory.done
+      (code.canOpen native.memory.store) hcanonicalReady serial
       (site.specification.encoding chosen)).2
     cases hresult : site.specification.encoding chosen with
     | none => trivial
@@ -219,9 +245,8 @@ theorem canonical_request_accepted
 
 /-- Inclusion of any dynamically decoded packet at a generated conditional
 instruction has both the exact native message-runtime effects and the source
-commit/reveal trace.  The weak snapshot premise also covers declines and
-expiry from a missing or ill-typed frozen value: it constrains only a value
-that the verifier can actually recover. -/
+commit/reveal trace. The branch-specific premises constrain only an opaque
+value recovered by the verifier or a decoded accepted public default. -/
 theorem include_conditional_source_steps
     (image : ApplicationImage P L)
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
@@ -236,9 +261,13 @@ theorem include_conditional_source_steps
     (hpublicStore : ∀ ref, (compileCore prog fresh build).graph.fieldRefPublic ref →
       Store.getAs state.application.memory.store ref.field ref.ty =
         Store.getAs representedStore ref.field ref.ty)
-    (hbinding : ∀ value,
+    (hfrozen : ∀ value,
       (state.application.frozen (site.sourceField fresh build)).bind
           (fun typed => typed.as? site.specification.secretTy) = some value →
+        value = env.get site.specification.binding)
+    (hdefault : ∀ value,
+      (site.code fresh build sourceSlot deadline).binding? state.application.memory =
+          some (.publicDefault value) →
         value = env.get site.specification.binding)
     (id : MessageId P)
     (payload : ConditionalPublication.Payload P (TypedValue L))
@@ -247,11 +276,10 @@ theorem include_conditional_source_steps
     (hdecode : (site.code fresh build sourceSlot deadline).decode payload = some decoded)
     (result : Option (L.Val site.specification.secretTy))
     (hlookup : state.pool.lookup id = some ⟨id, .conditional address payload⟩)
-    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
+    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolveDisposition?
       state.application.memory.clock
       (state.application.verify (site.code fresh build sourceSlot deadline))
-      ((state.application.memory.accepted (site.sourceField fresh build)).bind
-        BindingDisposition.opaqueHandle?)
+      ((site.code fresh build sourceSlot deadline).binding? state.application.memory)
       state.application.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen
         state.application.memory.store)
@@ -277,7 +305,7 @@ theorem include_conditional_source_steps
   have hincluded := image.include_conditional state address code hcode id payload decoded
     hdecode result hlookup hresolve
   have hsource := site.code_resolution_source_legal fresh build sourceSlot deadline
-    state.application representedStore env heligible hagrees hpublicStore hbinding
+    state.application representedStore env heligible hagrees hpublicStore hfrozen hdefault
     ⟨id, decoded⟩ result hresolve
   refine ⟨hincluded.1, hincluded.2.1, hincluded.2.2.1,
     hincluded.2.2.2.1, hincluded.2.2.2.2, ?_⟩

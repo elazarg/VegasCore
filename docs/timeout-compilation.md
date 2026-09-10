@@ -106,10 +106,29 @@ continuation guard. It rejects commitment-opening requests and does not
 consult the private verifier. Owner decline and permissionless overdue expiry
 remain available. Shared-runtime tests include actual submission, delivery,
 inclusion, retained rejected traffic, and rejection after completion.
-Integrating this classifier into generated conditional instructions and their
-reference policies remains a compiler obligation. The generated application's
-current conditional handler accepts only the opaque disposition; it does not
-manufacture handles for defaults.
+Generated conditional instructions use this classifier after checking the
+accepted disposition's dynamic type. Their lifted source policy selects a
+strict opening or cleartext codec from that same public disposition. The two
+codecs have distinct accepted packet forms; future-cache freshness quantifies
+over both alternatives. A public default overrides a conflicting private
+registration when reconstructing the source decision's observations.
+
+`ConditionalPublicationSite.include_source_coupling` proves that actual
+inclusion of either disposition's legal voluntary request continues the exact
+source commit/reveal pair. Default/source equality is derived from state
+refinement, not supplied as a separate value assumption. The corresponding
+expiry theorem implements the source decline for either disposition.
+`imagePolicy_first_submission_source_law` identifies the unchanged source
+decision's law under the selected codec. Generated three-node regressions
+exercise a private preparation of `true`, a public fallback of `false`, and
+the resulting policy submission of cleartext `false` through the shared runner.
+
+These local laws do not establish a whole-program law after expiry. The
+conditional phase used in the serial-reference induction still assumes an
+opaque binding. Extending phase composition to public defaults, preserving
+cache freshness across a resolving service, and comparing arbitrary deviations
+remain separate obligations. A public-computable fallback value does not make
+the occurrence or timing of fallback independent of private player behavior.
 
 The public-expression certificate has a genuine eligibility condition. If two
 source environments have identical public information but disjoint legal
@@ -586,8 +605,9 @@ replacements, but draft-level coverage requires randomized source profiles too.
 The generic `ApplicationImage` has conditional-publication expiration and
 optional source-certified binding and public-choice expiry. Its serial reference
 service does not produce expiry traffic, so these endpoints alone do not
-totalize refusal. Generated conditional instructions also need to continue from
-the public-default disposition. The concrete `DisclosureState` fixture has
+totalize refusal. Generated conditional instructions and their local policy laws
+support public defaults; whole-plan continuation under a resolving service is
+still required. The concrete `DisclosureState` fixture has
 separate initial-binding and response fallbacks; its resolution-service results
 must not be generalized to every emitted image without the corresponding
 continuation and service proofs.

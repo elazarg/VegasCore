@@ -138,15 +138,25 @@ theorem liftProfileIn_binding_submission
               _ _ _ _ _ _ _ _ _ hcommand
           exact ⟨congrArg Prod.fst hhandle, value, hcache, spec, hfield, htype⟩
         · simp at hcommand
-  | publicChoice publicGuard next ih
-  | conditional publicGuard next ih
-  | conditionalCopy specification publicGuard next ih =>
+  | publicChoice publicGuard next ih =>
       simp only [liftProfileIn] at hcommand
       split at hcommand
       · exact ih profile.afterCommit.afterReveal player hcommand
       · split at hcommand
         · exact False.elim (ChoiceController.not_supported_of_decode_none
             _ _ history view (.submit (.binding address handle)) (by simp) rfl hcommand)
+        · simp at hcommand
+  | conditional publicGuard next ih
+  | conditionalCopy specification publicGuard next ih =>
+      simp only [liftProfileIn] at hcommand
+      split at hcommand
+      · exact ih profile.afterCommit.afterReveal player hcommand
+      · split at hcommand
+        · simp only [ConditionalPublicationSite.imagePolicy] at hcommand
+          split at hcommand
+          · simp at hcommand
+          · exact False.elim (ChoiceController.not_supported_of_decode_none
+              _ _ history view (.submit (.binding address handle)) (by simp) rfl hcommand)
         · simp at hcommand
 
 end Vegas.ApplicationPlan

@@ -185,10 +185,9 @@ theorem handle_binding_effect (image : ApplicationImage P L)
               | none => simp [hdecoded] at hnext
               | some decoded =>
                   simp only [hdecoded, Option.bind_some] at hnext
-                  cases hresolved : code.endpoint.resolve? state.memory.clock
+                  cases hresolved : code.endpoint.resolveDisposition? state.memory.clock
                       (state.verify code)
-                      ((state.memory.accepted code.sourceField).bind
-                        BindingDisposition.opaqueHandle?)
+                      (code.binding? state.memory)
                       state.memory.done (code.canOpen state.memory.store)
                       ⟨id, decoded⟩ with
                   | none => simp [hresolved] at hnext
@@ -222,8 +221,8 @@ theorem handle_binding_after_acceptance (image : ApplicationImage P L)
   rw [image.handle_binding _ address code hcode id handle]
   simp [State.bind]
 
-/-- Successful dynamic decoding exposes exactly the existing conditional
-classifier, using the public clock and the frozen verifier. -/
+/-- Dynamic decoding exposes the disposition-aware conditional classifier.
+Public defaults use their recorded value; opaque bindings use the verifier. -/
 theorem handle_conditional (image : ApplicationImage P L) (state : State P L)
     (address : Nat) (code : ConditionalCode P L)
     (hcode : image.lookup address = some (.conditional code))
@@ -231,14 +230,14 @@ theorem handle_conditional (image : ApplicationImage P L) (state : State P L)
     (decoded : ConditionalPublication.Payload P (L.Val code.secretTy))
     (hdecode : code.decode payload = some decoded) :
     image.handle state ⟨id, .conditional address payload⟩ =
-      (code.endpoint.resolve? state.memory.clock (state.verify code)
-        ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+      (code.endpoint.resolveDisposition? state.memory.clock (state.verify code)
+        (code.binding? state.memory)
         state.memory.done
         (code.canOpen state.memory.store) ⟨id, decoded⟩).map
           (state.publishConditional code) := by
   simp only [handle, hcode, Option.bind_eq_bind, Option.bind_some, hdecode]
-  cases code.endpoint.resolve? state.memory.clock (state.verify code)
-    ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+  cases code.endpoint.resolveDisposition? state.memory.clock (state.verify code)
+    (code.binding? state.memory)
     state.memory.done
     (code.canOpen state.memory.store) ⟨id, decoded⟩ <;> rfl
 
@@ -250,9 +249,13 @@ theorem handle_opening_other_owner (image : ApplicationImage P L) (state : State
     (id : MessageId P) (howner : id.1 ≠ code.endpoint.owner)
     (reference : CommitmentHandle P Nat) (typed : TypedValue L) :
     image.handle state ⟨id, .conditional address (.opening reference typed)⟩ = none := by
-  cases htyped : typed.as? code.secretTy <;>
-    simp [handle, hcode, ConditionalCode.decode, htyped,
-      ConditionalPublication.resolve?, Message.sender, howner]
+  cases hbinding : code.binding? state.memory with
+  | none => simp [handle, hcode, hbinding, ConditionalPublication.resolveDisposition?]
+  | some disposition =>
+      cases disposition <;> cases htyped : typed.as? code.secretTy <;>
+        simp [handle, hcode, ConditionalCode.decode, htyped, hbinding,
+          ConditionalPublication.resolveDisposition?, ConditionalPublication.resolveDefault?,
+          ConditionalPublication.resolve?, Message.sender, howner]
 
 /-- Once a conditional pair is complete, no subsequent packet can resolve it
 again, regardless of author, proposed value, or elapsed public time. -/
@@ -263,9 +266,18 @@ theorem handle_conditional_after_publication (image : ApplicationImage P L)
     (prior : Option (L.Val code.secretTy)) :
     image.handle (state.publishConditional code prior)
       ⟨id, .conditional address payload⟩ = none := by
-  cases hdecode : code.decode payload <;>
-    simp [handle, hcode, hdecode, ConditionalPublication.resolve?,
-      ConditionalPublication.ready, State.publishConditional]
+  cases hdecode : code.decode payload with
+  | none => simp [handle, hcode, hdecode]
+  | some decoded =>
+      rw [image.handle_conditional _ address code hcode id payload decoded hdecode]
+      have hresolved := code.endpoint.resolveDisposition_after_completion
+        (state.publishConditional code prior).memory.clock
+        ((state.publishConditional code prior).verify code)
+        (code.binding? (state.publishConditional code prior).memory)
+        (state.publishConditional code prior).memory.done
+        (code.canOpen (state.publishConditional code prior).memory.store) ⟨id, decoded⟩
+        (Or.inl (by simp [State.publishConditional]))
+      rw [hresolved, Option.map_none]
 
 /-- The actual pending conditional packet is recorded, together with its
 acceptance receipt; resolution changes only the application portion of state. -/
@@ -277,10 +289,9 @@ theorem include_conditional (image : ApplicationImage P L)
     (hdecode : code.decode payload = some decoded)
     (result : Option (L.Val code.secretTy))
     (hlookup : state.pool.lookup id = some ⟨id, .conditional address payload⟩)
-    (hresolve : code.endpoint.resolve? state.application.memory.clock
+    (hresolve : code.endpoint.resolveDisposition? state.application.memory.clock
       (state.application.verify code)
-      ((state.application.memory.accepted code.sourceField).bind
-        BindingDisposition.opaqueHandle?)
+      (code.binding? state.application.memory)
       state.application.memory.done (code.canOpen state.application.memory.store)
       ⟨id, decoded⟩ = some result) :
     let next := image.application.includePending state id

@@ -96,14 +96,22 @@ theorem published_source_successor (secret : Bool) (chosen : Option Bool) (clock
     change ((bound secret).application.frozen 0).bind _ = some secret
     rw [hsnapshot.2]
     rfl
+  have hbinding : (conditionalCode 10).binding?
+      (conditionalSubmitted secret chosen clock).application.memory =
+        some (.opaque ((0 : Fin 2), 0)) :=
+    ((conditionalCode 10).binding?_opaque_iff
+      (conditionalSubmitted secret chosen clock).application.memory (0, 0)).2 hsnapshot.1
   obtain ⟨next, hnextSource, hnextRefines⟩ :=
     ConditionalPublicationSite.include_source_coupling
       (P := Fin 2) (L := simpleExpr) (Γ := OpeningContext)
       (name := 1) (publicName := 2) (who := 0) (ty := .option .bool)
       openingGuard tail specification source.fresh.2 boundBuild 0 10 current
       (image 10) (conditionalSubmitted secret chosen clock) (hrefines.advance clock)
-      opening_publicly_validatable hsnapshot.1 2 1 (image_lookup_conditional 10)
-      chosen (by rfl) hlegal hfrozen
+      opening_publicly_validatable (.opaque ((0 : Fin 2), 0)) hbinding
+      (by intro handle heq; cases heq; rfl) 2 1 (image_lookup_conditional 10)
+      chosen (by rfl) hlegal (by
+        intro handle value _ hvalue
+        exact hfrozen value hvalue)
   exact ⟨next, hnextSource.trans (by rw [hsource]), hnextRefines⟩
 
 def unpreparedBound : (image 10).application.State :=
@@ -146,8 +154,13 @@ theorem unopenable_decline_source_successor :
       (name := 1) (publicName := 2) (who := 0) (ty := .option .bool)
       openingGuard tail specification source.fresh.2 boundBuild 0 10 current
       (image 10) unopenableDeclineSubmitted hunprepared
-      opening_publicly_validatable (by rfl) 2 1 (image_lookup_conditional 10)
-      none (by rfl) (by rfl) (by intro value hvalue; cases hvalue)
+      opening_publicly_validatable (.opaque ((0 : Fin 2), 0))
+      (by
+        apply ((conditionalCode 10).binding?_opaque_iff
+          unopenableDeclineSubmitted.application.memory (0, 0)).2
+        rfl)
+      (by intro handle heq; cases heq; rfl) 2 1 (image_lookup_conditional 10)
+      none (by rfl) (by rfl) (by intro handle value _ hvalue; cases hvalue)
   exact ⟨next, hnextSource.trans (by rw [hsource]), hnextRefines⟩
 
 end VegasTests.ConditionalSourceCoupling
@@ -157,7 +170,8 @@ end VegasTests.ConditionalSourceCoupling
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.ConditionalSourceCoupling.published_source_successor
 
-/-- info: 'VegasTests.ConditionalSourceCoupling.unopenable_decline_source_successor' depends on axioms:
+/-- info: 'VegasTests.ConditionalSourceCoupling.unopenable_decline_source_successor'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.ConditionalSourceCoupling.unopenable_decline_source_successor

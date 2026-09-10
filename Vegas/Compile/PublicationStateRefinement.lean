@@ -93,9 +93,9 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 variable {Γ : VCtx P L} {prog : VegasCore P L Γ}
 
 /-- Resolution at a generated conditional endpoint preserves the full
-native-to-graph relation.  Snapshot consistency needed by the local graph law
-is derived from the accepted canonical handle and the existing binding
-provenance component, rather than exposed as an additional premise. -/
+native-to-graph relation. Opaque snapshot consistency and public-default value
+agreement are both derived from the existing binding-provenance component,
+rather than exposed as additional premises. -/
 theorem resolution_refines
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (build : BuildState P L Γ) (sourceSlot deadline : Nat)
@@ -107,10 +107,9 @@ theorem resolution_refines
     (message : Message P
       (ConditionalPublication.Payload P (L.Val site.specification.secretTy)))
     (result : Option (L.Val site.specification.secretTy))
-    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
+    (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolveDisposition?
       native.memory.clock (native.verify (site.code fresh build sourceSlot deadline))
-      ((native.memory.accepted (site.sourceField fresh build)).bind
-        BindingDisposition.opaqueHandle?) native.memory.done
+      ((site.code fresh build sourceSlot deadline).binding? native.memory) native.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (native.publishConditional (site.code fresh build sourceSlot deadline) result).Refines
@@ -121,44 +120,49 @@ theorem resolution_refines
   let code := site.code fresh build sourceSlot deadline
   let written : TypedValue L :=
     ⟨site.choice.ty, site.specification.encoding.symm result⟩
-  have hruntimeReady := code.endpoint.resolve_success_inversion native.memory.clock
-    (native.verify code) ((native.memory.accepted code.sourceField).bind
-      BindingDisposition.opaqueHandle?) native.memory.done
+  have hruntimeReady := code.endpoint.resolveDisposition_success_inversion native.memory.clock
+    (native.verify code) (code.binding? native.memory) native.memory.done
     (code.canOpen native.memory.store) message result hresolve
   have hreadyParts := hruntimeReady
-  simp only [ConditionalPublication.ready, Bool.and_eq_true, beq_iff_eq,
+  simp only [ConditionalPublication.defaultReady, Bool.and_eq_true,
     Bool.not_eq_true'] at hreadyParts
-  have haccepted : native.memory.accepted (site.sourceField fresh build) =
-      some (.opaque (site.choice.owner, sourceSlot)) := by
-    obtain ⟨disposition, haccepted, hopaque⟩ :=
-      Option.bind_eq_some_iff.mp hreadyParts.1.1.1
-    rw [BindingDisposition.opaqueHandle?_eq_some_iff] at hopaque
-    subst disposition
-    exact haccepted
-  obtain ⟨spec, bound, hfield, _howner, hstored, hfrozen⟩ :=
-    hrefines.bindings.opaqueBinding (site.sourceField fresh build)
-      (site.choice.owner, sourceSlot)
-      haccepted
   obtain ⟨sourceSpec, hsourceField, hsourceTy, _hsourceOwner⟩ :=
     site.compiledSourceField fresh build
-  have hspec : spec = sourceSpec :=
-    Option.some.inj (hfield.symm.trans hsourceField)
-  subst spec
-  have hbinding : ∀ value,
+  have hopaque : ∀ handle value,
+      code.binding? native.memory = some (.opaque handle) →
       (native.frozen (site.sourceField fresh build)).bind
           (fun typed => typed.as? site.specification.secretTy) = some value →
         Store.getAs cfg.store (site.sourceField fresh build)
           site.specification.secretTy = some value := by
+    intro handle value hbinding hsnapshot
+    have haccepted := (code.binding?_opaque_iff native.memory handle).1 hbinding
+    obtain ⟨spec, bound, hfield, _howner, hstored, hfrozen⟩ :=
+      hrefines.bindings.opaqueBinding (site.sourceField fresh build) handle haccepted
+    have hspec : spec = sourceSpec :=
+      Option.some.inj (hfield.symm.trans hsourceField)
+    subst spec
     exact frozen_consistent_at_equal_type
       (native.frozen (site.sourceField fresh build)) cfg.store
-      (site.sourceField fresh build) hsourceTy bound hstored hfrozen
+      (site.sourceField fresh build) hsourceTy bound hstored hfrozen value hsnapshot
+  have hdefault : ∀ value,
+      code.binding? native.memory = some (.publicDefault value) →
+        Store.getAs cfg.store (site.sourceField fresh build)
+          site.specification.secretTy = some value := by
+    intro value hbinding
+    obtain ⟨typed, haccepted, htyped⟩ :=
+      (code.binding?_publicDefault_iff native.memory value).1 hbinding
+    obtain ⟨spec, hfield, _howner, _hty, hstored⟩ :=
+      hrefines.bindings.publicDefault (site.sourceField fresh build) typed haccepted
+    have hspec : spec = sourceSpec :=
+      Option.some.inj (hfield.symm.trans hsourceField)
+    subst spec
+    rw [Store.getAs, hstored]
+    exact htyped
   have hlower := site.conditional_resolution_refines fresh build sourceSlot deadline
-    initial legal native cfg hrefines.memory hrefines.reachable heligible hbinding
+    initial legal native cfg hrefines.memory hrefines.reachable heligible hopaque hdefault
     message result hresolve
-  have hreadiness := G.conditionalPublication_ready cfg site.choice.owner sourceSlot
-    choice publication deadline ((native.memory.accepted code.sourceField).bind
-      BindingDisposition.opaqueHandle?) native.memory.done
-      hrefines.memory.completed hruntimeReady
+  have hreadiness := G.publication_ready cfg choice publication native.memory.done
+    hrefines.memory.completed hreadyParts.1.1 hreadyParts.1.2 hreadyParts.2
   refine ⟨hlower.1, hlower.2, ?_⟩
   have hbindings := hrefines.bindings.completePair hrefines.reachable
     choice publication written hreadiness.1.1 hreadiness.2.1

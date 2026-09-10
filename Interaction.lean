@@ -26,6 +26,7 @@ import Interaction.BindingDisposition
 import Interaction.ConditionalPublication
 import Interaction.BindingPublication
 import Interaction.ConditionalPublicationRouting
+import Interaction.ConditionalPublicationController
 import Interaction.PublicChoice
 import Interaction.ChoiceController
 import Interaction.ChoiceEncodingRouting

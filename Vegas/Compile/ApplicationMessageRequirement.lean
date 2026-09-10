@@ -189,10 +189,9 @@ theorem RequiresSubmission.handle
               | none => simp [hdecoded] at hnext
               | some decoded =>
                   simp only [hdecoded, Option.bind_some] at hnext
-                  cases hresolved : code.endpoint.resolve? state.memory.clock
+                  cases hresolved : code.endpoint.resolveDisposition? state.memory.clock
                       (state.verify code)
-                      ((state.memory.accepted code.sourceField).bind
-                        BindingDisposition.opaqueHandle?)
+                      (code.binding? state.memory)
                       state.memory.done (code.canOpen state.memory.store) ⟨id, decoded⟩ with
                   | none => simp [hresolved] at hnext
                   | some result =>
