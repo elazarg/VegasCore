@@ -329,11 +329,15 @@ Safety, opportunity, and settlement have separate obligations:
   payload-sensitive ordering wherever it cannot change the owner's chosen
   result. Fairness without a deadline-relative bound is insufficient.
 - Produce resolver packets through actual authorized submissions, then prove
-  clock progress and inclusion under deviations. The current environment
-  interface can include an expiry transaction but cannot originate it. A fixed
-  relayer, honest-opponent relay policy, or additional runtime capability must
-  be stated and modeled explicitly; an adversarially controlled relayer
-  supplies no unconditional settlement guarantee.
+  clock progress and inclusion under deviations. `relayWhenWaiting` evaluates
+  an existing principal's policy on its actual history and view, replacing
+  only a wait with an overdue expiry submission. Local laws cover actual
+  submission, inclusion, and handler acceptance for all three expiry kinds.
+  The environment still cannot originate a transaction. A whole-program
+  service must supply an available relay under each admitted deviation; an
+  adversarially controlled relayer supplies no unconditional settlement
+  guarantee. Idle and expiry history entries preserve the generated choice
+  caches and owner readout, but the complete unchanged-policy law is open.
 - Establish causal source-policy factorization of complete laws after these
   operational invariants. Per-outcome legal source witnesses do not suffice.
 
@@ -342,7 +346,7 @@ a partial-order frontier with buffered accepted choices that are consumed in
 written source order. Its comparison must justify the unchanged players'
 choice kernels and the deviator's available information, not merely commute
 final stores. This remains a separate proof target for the same compilation
-architecture. An expiry-producing resolving service, timely opportunities for
+architecture. A whole-program resolving service, timely opportunities for
 unchanged players, and either backend's deviation theorem remain open.
 
 ### Existing execution boundary

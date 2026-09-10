@@ -139,7 +139,7 @@ opaque bindings retain their separate frozen-snapshot provenance. The generic
 conditional-publication classifier and generated conditional instructions handle
 both dispositions. The selected cleartext/opening policy law and actual included
 source continuation are checked at ready conditional checkpoints. No
-timeout-driving reference service is supplied. Binding and public-choice timeout
+whole-program timeout-driving reference service is supplied. Binding and public-choice timeout
 decoration commute; the combined artifact preserves the no-expiry reference
 profile law, while each pass retains arbitrary-traffic graph refinement.
 
@@ -154,9 +154,13 @@ The remaining implementation order is:
    public activation origins, strict expiry, and arbitrary-run source-outcome
    safety. Observation erasure also gives the exact source law for the
    expiry-free reference profile and serial service on this instance.
-   Specify who originates permissionless transactions and prove timely ordinary
-   opportunities when valid requests compete with expiry; clock advancement
-   alone neither submits nor includes a transaction.
+   `WindowedApplication.relayWhenWaiting` lets an existing principal originate
+   an overdue expiry using its actual public view and history. The three
+   `relay_*_accepts` laws compose this submission with inclusion and the actual
+   handler, retaining sender identity, ledger entries, and receipts. This is a
+   local reserved service, not a whole-program settlement theorem. Prove timely
+   ordinary opportunities when valid requests compete with expiry and ensure
+   an available relay under each admitted unilateral deviation.
 3. Compare arbitrary player replacements on that same execution. Start with a
    final conditional disclosure under an actual resolving phase, then compose
    across prior bindings, chance, and later decisions. A support witness for

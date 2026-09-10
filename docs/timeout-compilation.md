@@ -202,9 +202,15 @@ with activation consistency, from canonical initialization under arbitrary
 policies. These native facts do not reconstruct an exact source environment
 or establish the unchanged players' cache/readout invariants.
 
-These timing and safety facts do not establish a resolving service. Clock
-progress, expiry origination and inclusion, and timely opportunities for
-unchanged players remain explicit obligations.
+`WindowedApplication.relayWhenWaiting` supplies observation-local expiry
+origination by an existing principal: it replaces only a wait sampled by the
+supplied policy, retaining the real history and preserving every non-wait
+command. The `relay_*_accepts` laws cover actual submission followed by
+inclusion for all three expiry kinds, with explicit readiness and freshness
+premises. Their conclusions retain the application update, authenticated
+sender, ledger entry, and receipt. A whole-program resolving service still
+requires clock progress, an available relay under each admitted deviation,
+inclusion capacity, and timely ordinary opportunities for unchanged players.
 
 `WindowedApplication.runPolicies_erase` handles the observation/history change:
 it embeds policies by erasing activation metadata from current and remembered
@@ -214,8 +220,8 @@ exclude all three expiry forms. No clock-rate condition is needed for this
 expiry-free comparison. Composing it with the original serial service gives
 `ApplicationPlan.windowed_service_source_public_law`, the exact joint source
 completion/public-terminal law on the generated windowed instance. Durations
-do not affect these expiry-free runs. Arbitrary activation-aware deviations and
-actual timeout resolution require further proofs.
+do not affect these expiry-free runs. Whole-program timeout resolution and
+arbitrary activation-aware deviation simulation require further proofs.
 
 ### Runtime services
 

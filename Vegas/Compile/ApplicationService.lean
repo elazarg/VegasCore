@@ -5,8 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationPlan
-import Interaction.MessageApplicationPolicies
-import Interaction.MessagePoolFreshness
+import Interaction.MessageApplicationImmediateService
 
 /-! # A source-ordered reference service
 
@@ -78,14 +77,6 @@ def serviceInvocations (image : ApplicationImage P L) : List (@Invocation P) :=
 
 variable [DecidableEq P]
 
-private def latestSubmission (image : ApplicationImage P L) (who : P)
-    (view : image.application.EnvironmentObservation) :
-    image.application.EnvironmentPolicyCommand :=
-  match view.pool.nextSerial who with
-  | 0 => .wait
-  | serial + 1 =>
-      if (view.pool.lookup (who, serial)).isSome then .include (who, serial) else .wait
-
 /-- One service command depends only on the current instruction and the
 environment observation. No payload inspection or validator oracle is used. -/
 def serviceCommand (image : ApplicationImage P L) (code : ApplicationInstruction P L)
@@ -93,9 +84,9 @@ def serviceCommand (image : ApplicationImage P L) (code : ApplicationInstruction
     image.application.EnvironmentPolicyCommand :=
   match code with
   | .sample code => .application (.sample code.node)
-  | .bind code => image.latestSubmission code.owner view
-  | .publicChoice code => image.latestSubmission code.endpoint.owner view
-  | .conditional code => image.latestSubmission code.endpoint.owner view
+  | .bind code => image.application.latestSubmissionCommand code.owner view
+  | .publicChoice code => image.application.latestSubmissionCommand code.endpoint.owner view
+  | .conditional code => image.application.latestSubmissionCommand code.endpoint.owner view
 
 /-- The environment advances once per invocation, using its own recorded
 history. The exact forward law must pair this policy with `serviceInvocations`
@@ -142,8 +133,8 @@ theorem serialService_include (image : ApplicationImage P L)
   | sample code => simp [ApplicationInstruction.submitter] at howner
   | bind code | publicChoice code | conditional code =>
       simp only [ApplicationInstruction.submitter, Option.some.injEq] at howner
-      simp only [serviceCommand, latestSubmission, howner, hserial, hpending,
-        Option.isSome_some, ↓reduceIte]
+      simp only [serviceCommand, MessageApplication.latestSubmissionCommand, howner, hserial,
+        hpending, Option.isSome_some, ↓reduceIte]
 
 /-- An actual fresh submission supplies the service premise used by the local
 source-phase laws. Its payload may be arbitrary: acceptance is a separate fact. -/

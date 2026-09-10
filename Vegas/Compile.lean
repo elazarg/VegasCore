@@ -112,6 +112,10 @@ import Vegas.Compile.ApplicationPlanDeadlines
 import Vegas.Compile.ApplicationDeadlineInvariants
 import Vegas.Compile.ApplicationImageClock
 import Vegas.Compile.WindowedApplication
+import Vegas.Compile.WindowedExpiry
+import Vegas.Compile.WindowedExpiryResolution
+import Vegas.Compile.WindowedRelayResolution
+import Vegas.Compile.ApplicationRelayHistory
 import Vegas.Compile.WindowedProjection
 import Vegas.Compile.WindowedExecutionProjection
 import Vegas.Compile.WindowedPolicyProjection

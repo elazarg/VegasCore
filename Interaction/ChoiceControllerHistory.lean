@@ -106,6 +106,21 @@ theorem cachedValue_append_unrecognized
   rw [encoding.cachedValue_append_of_none app history _ hcache]
   simp [cachedValue, hdecode]
 
+/-- Appending a command outside an encoding's domain leaves its earliest
+recognized-command cache exactly unchanged, whether empty or populated. -/
+theorem cachedValue_append_unrecognized_eq
+    (encoding : ChoiceEncoding Value app.PlayerCommand)
+    (history : List app.PlayerEntry) (view : app.View)
+    (command : app.PlayerCommand)
+    (hdecode : encoding.decode command = none) :
+    encoding.cachedValue app (history ++ [⟨view, command⟩]) =
+      encoding.cachedValue app history := by
+  cases hcache : encoding.cachedValue app history with
+  | none =>
+      exact encoding.cachedValue_append_unrecognized app history view command hcache hdecode
+  | some value =>
+      exact encoding.cachedValue_append_of_some app history _ value hcache
+
 /-- Once an endpoint value occurs in a principal's actual history, recording
 any further player command preserves that earliest value. -/
 theorem playerStep_cachedValue_of_some [DecidableEq Principal]

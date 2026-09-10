@@ -953,6 +953,21 @@ environment can advance the clock before invoking an unchanged player.
 Preserving that player's choice requires a deadline-relative service bound,
 not merely eventual delivery.
 
+`WindowedApplication.relayWhenWaiting` evaluates a supplied policy on the
+principal's actual history and view, preserving every non-wait command. When
+the policy waits and the active instruction is overdue, it submits the
+corresponding installed expiry request under that principal's own identity.
+`WindowedRelayResolution` proves actual submission and inclusion laws for
+binding defaults, ordinary-choice defaults, and conditional decline, under
+their handler-readiness premises and a fresh sender serial. The laws retain
+the accepted application state, authored ledger entry, and success receipt.
+The generic two-invocation service also retains player and environment
+polling histories. `ApplicationRelayHistory` proves that idle
+and expiry entries preserve generated choice caches and owner-local readout.
+These are local service and history laws. They do not supply a whole-program
+resolving schedule, protect ordinary requests from premature expiry, establish
+the complete unchanged-policy law, or backtranslate a deviator.
+
 `ApplicationPlan.service_source_public_law` runs the complete generated
 invocation list with `ApplicationPlan.liftProfile` and `serialService`. For every
 source behavioral profile and plan satisfying `InitialControllerReadsPublic`

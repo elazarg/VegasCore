@@ -17,6 +17,7 @@ import Interaction.MessageApplicationMessageInvariant
 import Interaction.MessageApplicationHandlerExtension
 import Interaction.MessageApplicationAdmission
 import Interaction.MessageApplicationService
+import Interaction.MessageApplicationImmediateService
 import Interaction.MessageApplicationProgress
 import Interaction.MessageApplicationArrival
 import Interaction.MessageApplicationSubmission
