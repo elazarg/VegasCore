@@ -934,10 +934,22 @@ the strict boundary, retained rejected/replayed traffic, and both resolution
 choices. This is a model with an unconstrained monotone public clock, not a
 claim about a particular ledger clock's permitted rate of advance.
 
-Public activation metadata enriches policy observations. No reference-law or
-deviation-law transport through that observation change is claimed. Relative
-windows alone neither supply an expiry transaction nor guarantee its inclusion,
-and an environment can advance the clock before invoking an unchanged player.
+Public activation metadata enriches policy observations.
+`WindowedApplication.runPolicies_erase` compares policies lifted by erasing
+that metadata from current and remembered observations. For consistent native
+states, expiry-free retained traffic, and policies with expiry-free supported
+submissions, the full projected execution law equals the ordered base law.
+The comparison permits arbitrary environment clock commands. It preserves wire
+data, receipts, commands, and polling histories after observation erasure.
+
+`ApplicationPlan.windowed_service_source_public_law` specializes this comparison
+to the original lifted source profile and emitted serial service, proving the
+exact source completion/public-terminal law for every duration policy. It
+retains the original backend eligibility premises. Since these policies submit
+none of the three expiry forms, the law does not establish timeout resolution
+or simulate arbitrary activation-aware deviations. Relative windows alone
+neither supply an expiry transaction nor guarantee its inclusion, and an
+environment can advance the clock before invoking an unchanged player.
 Preserving that player's choice requires a deadline-relative service bound,
 not merely eventual delivery.
 

@@ -11,6 +11,7 @@ import Vegas.Compile.ApplicationPlanOutcome
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationTimeoutForwardLaw
 import Vegas.Compile.WindowedSourceSafety
+import Vegas.Compile.WindowedForwardLaw
 import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
@@ -202,6 +203,40 @@ theorem public_application_ordered_reference_law (source : WFProgram Player L)
               (ToEventGraph.initialState source.core.Γ source.core.env
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
   plan.ordered_timeout_service_source_public_law source deadlineOf binding choice
+    profile hinitial horigins
+
+/-- Public activation clocks retain the source reference law through an
+explicit erasure of current and remembered observations. -/
+theorem public_application_windowed_reference_law (source : WFProgram Player L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (ToEventGraph.BuildState.fromInitial
+        (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
+    (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode Player L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode Player L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (profile : SourceBehavioralProfile source.core.prog)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins) :
+    let runtime := plan.windowed deadlineOf binding choice windowOf
+    let execution := Interaction.MessageApplication.PolicyExecution.initial runtime.application
+      (Interaction.MessageApplication.State.initial runtime.application
+        (runtime.initial (ApplicationImage.State.initial
+          (ApplicationImage.Memory.initial (ToEventGraph.compile source.core).graph))))
+    (runtime.application.runPolicies
+      (fun who => runtime.liftPlayerPolicy (plan.liftProfile deadlineOf profile who))
+      (runtime.liftEnvironmentPolicy (plan.image deadlineOf).serialService)
+      (plan.image deadlineOf).serviceInvocations execution).map (fun out =>
+        (out.native.application.base.memory.finished
+            (ToEventGraph.compile source.core).graph.nodeCount,
+          (ToEventGraph.compile source.core).readPublicTerminal?
+            out.native.application.base.memory)) =
+      (denoteSource source.core.prog profile source.core.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv L)
+          (ToEventGraph.compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog
+            source.core.fresh (ToEventGraph.BuildState.fromInitial
+              (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))).symm)
+            terminal).erasePubEnv) :=
+  plan.windowed_service_source_public_law source deadlineOf binding choice windowOf
     profile hinitial horigins
 
 /-- A missing authenticated submission cannot be supplied by scheduling.
@@ -774,6 +809,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_ordered_reference_law
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_reference_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_reference_law
 
 /-- info: 'Vegas.Paper.Source.public_application_withholding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

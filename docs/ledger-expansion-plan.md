@@ -152,7 +152,8 @@ The remaining implementation order is:
 2. Supply a resolving service with observation-local request production and
    admitted inclusion capacity. `ApplicationPlan.windowed` provides stable
    public activation origins, strict expiry, and arbitrary-run source-outcome
-   safety. Its richer observations still need a reference-policy comparison.
+   safety. Observation erasure also gives the exact source law for the
+   expiry-free reference profile and serial service on this instance.
    Specify who originates permissionless transactions and prove timely ordinary
    opportunities when valid requests compete with expiry; clock advancement
    alone neither submits nor includes a transaction.

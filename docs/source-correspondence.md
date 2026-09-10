@@ -117,8 +117,19 @@ written-order source execution and the same public terminal readout. Both
 optional fallback families are included. Each handler call is related to a
 generated image with deadlines derived from the active instruction's public
 origin. Retiming preserves the source graph and the original backend conditions.
-This does not transport a source policy into the enriched observation/history
-types, establish its reference outcome law, or prove progress under deviations.
+This support theorem does not itself compare policy laws or prove progress
+under deviations.
+
+`ApplicationPlan.windowed_service_source_public_law` supplies the reference law
+for that same activation-relative runtime. The policy embedding erases public
+activation metadata from both current views and remembered observations before
+invoking the original source-profile lift or serial service. A full execution
+projection theorem handles the resulting distinct history types. The original
+source policies submit no binding, public-choice, or conditional expiry packets;
+on these runs, retiming leaves handlers unchanged. Consequently the actual
+windowed execution has exactly the joint source completion/public-terminal law
+for every duration policy. This is not a resolving service or a comparison of
+arbitrary window-aware deviations.
 
 The structural backend plan, initial controller-read publicity, and earlier
 binding origins are explicit premises. They do not weaken source

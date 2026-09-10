@@ -112,9 +112,15 @@ import Vegas.Compile.ApplicationPlanDeadlines
 import Vegas.Compile.ApplicationDeadlineInvariants
 import Vegas.Compile.ApplicationImageClock
 import Vegas.Compile.WindowedApplication
+import Vegas.Compile.WindowedProjection
+import Vegas.Compile.WindowedExecutionProjection
+import Vegas.Compile.WindowedPolicyProjection
+import Vegas.Compile.ApplicationDeadlineIndependence
+import Vegas.Compile.ApplicationDeadlinePolicies
 import Vegas.Compile.WindowedApplicationDeadline
 import Vegas.Compile.WindowedApplicationInvariants
 import Vegas.Compile.WindowedSourceSafety
+import Vegas.Compile.WindowedForwardLaw
 import Vegas.Compile.ApplicationResolvedBindings
 import Vegas.Compile.ApplicationOrderPhase
 import Vegas.Compile.ApplicationOrderCheckpoint

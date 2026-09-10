@@ -297,23 +297,26 @@ could also work, but would need activation and reaction bounds.
 `ApplicationPlan.windowed_runPolicies_source_public_outcome` proves completed-run
 source safety for this actual runtime under arbitrary policies, including both
 optional fallback families. Its observations expose the activation address and
-origin to players and the environment. Transporting reference policies and
-their histories through these enriched views needs an explicit comparison;
-the existing absolute-image reference law is not a theorem about this instance.
+origin to players and the environment.
 
-The next bounded comparison is an expiry-free reference embedding. Erase the
-activation metadata from current observations and every recorded polling view,
-and lift the original player and environment policies through that erasure.
-Prove one-invocation projection, then lift it through the shared finite runner.
-The required traffic predicate excludes binding expiry, public-choice expiry,
-and conditional expiry, including retained packets that might be replayed.
-Existing handler-extension comparisons require identical view carriers and
-cannot express this projection. A small cross-application run-projection lemma
-belongs in `Interaction`; the image's deadline-independence proof and windowed
-policy erasures belong in Vegas. Composing with the existing serial reference
-law would give the source law for these lifted windowed policies, without a
-clock-rate restriction. It would not simulate arbitrary activation-aware
-deviations or provide a resolving service.
+`WindowedApplication.runPolicies_erase` proves an expiry-free policy embedding.
+It erases activation metadata from current observations and every recorded
+polling view, retaining messages, receipts, commands, and the native trace.
+The initial pool and all supported player submissions must exclude binding
+expiry, public-choice expiry, and conditional expiry; retained packets that
+might be replayed are included in this condition. Under activation consistency,
+the complete projected execution law equals the original ordered execution
+law. Arbitrary clock commands are allowed in this comparison. Its finite-run
+composition is runtime-general and lives in `Interaction`; deadline independence
+and the observation/policy maps are Vegas-specific.
+
+`ApplicationPlan.windowed_service_source_public_law` composes this embedding
+with the source reference law. For every duration policy, the original source
+profile lifted through observation erasure and the emitted serial service have
+exactly the source completion/public-terminal law on the generated windowed
+application. This service and these profiles use no expiry traffic, so the
+result establishes neither timeout-driven progress nor simulation of arbitrary
+activation-aware deviations.
 
 Safety, opportunity, and settlement have separate obligations:
 

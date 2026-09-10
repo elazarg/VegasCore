@@ -204,10 +204,18 @@ or establish the unchanged players' cache/readout invariants.
 
 These timing and safety facts do not establish a resolving service. Clock
 progress, expiry origination and inclusion, and timely opportunities for
-unchanged players remain explicit obligations. The added activation metadata
-is visible to players and the environment, so transporting a reference-policy
-law needs an observation/history comparison as well. No such law or unilateral
-deviation simulation for this windowed instance is claimed.
+unchanged players remain explicit obligations.
+
+`WindowedApplication.runPolicies_erase` handles the observation/history change:
+it embeds policies by erasing activation metadata from current and remembered
+views, and proves equality of complete projected execution laws. The state must
+be activation-consistent, and the initial pool and supported submissions must
+exclude all three expiry forms. No clock-rate condition is needed for this
+expiry-free comparison. Composing it with the original serial service gives
+`ApplicationPlan.windowed_service_source_public_law`, the exact joint source
+completion/public-terminal law on the generated windowed instance. Durations
+do not affect these expiry-free runs. Arbitrary activation-aware deviations and
+actual timeout resolution require further proofs.
 
 ### Runtime services
 

@@ -60,6 +60,30 @@ def resolveDisposition? [DecidableEq Principal] [DecidableEq Value]
   | some (.opaque handle) => site.resolve? now verify (some handle) done canOpen message
   | some (.publicDefault value) => site.resolveDefault? now value done canOpen message
 
+/-- Every voluntary disposition-backed request is independent of the absolute
+expiry deadline. This covers owner decline as well as successful publication;
+only the explicit expiry payload observes the deadline. -/
+theorem resolveDisposition_withDeadline_eq
+    [DecidableEq Principal] [DecidableEq Value]
+    (site : ConditionalPublication Principal) (deadline now : Nat)
+    (verify : IdealCommitments.Opening
+      (Principal := Principal) (Slot := Nat) (Value := Value) → Bool)
+    (accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value))
+    (done : Nat → Bool) (canOpen : Value → Bool)
+    (message : Message Principal (Payload Principal Value))
+    (hindependent : match message.payload with | .expire => False | _ => True) :
+    ({ site with deadline }).resolveDisposition? now verify accepted done canOpen message =
+      site.resolveDisposition? now verify accepted done canOpen message := by
+  obtain ⟨id, payload⟩ := message
+  cases accepted with
+  | none => rfl
+  | some disposition =>
+      cases disposition with
+      | «opaque» handle =>
+          cases payload <;> simp_all [resolveDisposition?, resolve?, ready]
+      | publicDefault value =>
+          cases payload <;> simp_all [resolveDisposition?, resolveDefault?, defaultReady]
+
 /-- Publication readiness retains the canonical-handle check for an opaque
 binding; a public default needs only the remaining public prerequisites. -/
 def readyDisposition [DecidableEq Principal]
@@ -304,6 +328,11 @@ end Interaction.ConditionalPublication
 [propext] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ConditionalPublication.resolveDefault_some
+
+/-- info: 'Interaction.ConditionalPublication.resolveDisposition_withDeadline_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ConditionalPublication.resolveDisposition_withDeadline_eq
 
 /-- info: 'Interaction.ConditionalPublication.resolveDisposition_success_inversion' depends on axioms:
 [propext] -/
