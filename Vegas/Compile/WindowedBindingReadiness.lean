@@ -178,6 +178,52 @@ theorem binding_polls_source_law
   simp only [windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
   rfl
 
+/-- The generated two-poll law is unchanged when the owner's actual policy
+input is unchanged. Hidden preparations of other principals need not agree. -/
+theorem binding_polls_source_law_of_input_eq
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
+      profile current execution)
+    (hinitial : root.InitialControllerReadsPublic)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (environment :
+      (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
+    (middle : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (hinput : (middle.principalHistory owner,
+      State.observe (root.windowed deadlineOf binding choice windowOf).application
+        middle.native owner) =
+        (execution.principalHistory owner,
+          State.observe (root.windowed deadlineOf binding choice windowOf).application
+            execution.native owner)) :
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf
+      focal replacement
+    let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+      .here guard tail
+    runtime.application.runPolicies players environment [.player owner, .player owner] middle =
+      (profile owner site ((current.current.source.toView owner).eraseEnv)).bind fun chosen =>
+        (runtime.application.playerStep owner middle
+          (.privateCommand (.register (site.compiledField fresh state) ⟨ty, chosen.1⟩))).bind
+            fun registered => runtime.application.playerStep owner registered
+              (.submit (.binding
+                (site.bindingCode fresh state (site.compiledField fresh state)).node
+                  (owner, site.compiledField fresh state))) := by
+  intro runtime players site
+  have ready := (checkpoint.binding_polls_ready hinitial hroster howner hother).of_input_eq hinput
+  apply site.windowedBinding_two_invocations_source_law fresh state (root.image deadlineOf)
+    runtime (profile owner site) (root.liftProfile deadlineOf rootProfile owner)
+    players environment _ _ middle current.current.source _ ready
+  · simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
+    rfl
+  · have hview : State.observe (root.image deadlineOf).application
+        (runtime.eraseExecution middle).native owner =
+        State.observe (root.image deadlineOf).application
+          (runtime.eraseExecution execution).native owner :=
+      congrArg runtime.eraseView (congrArg Prod.snd hinput)
+    intro history
+    rw [hview]
+    exact checkpoint.binding_dispatch history
+
 /-- Any preceding polls of other principals retain the exact source binding
 kernel at the owner's two ordinary polls. The earlier raw commands and native
 states remain in the joint law. Environment turns are excluded here because
@@ -214,20 +260,8 @@ theorem binding_polls_source_law_after_others
   have hinput := runtime.application.runPolicies_other_input owner
     (fun state actor command _ => by cases command; rfl)
     players environment before henvironment hbefore execution middle hmiddle
-  have ready := (checkpoint.binding_polls_ready hinitial hroster howner hother).of_input_eq hinput
-  apply site.windowedBinding_two_invocations_source_law fresh state (root.image deadlineOf)
-    runtime (profile owner site) (root.liftProfile deadlineOf rootProfile owner)
-    players environment _ _ middle current.current.source _ ready
-  · simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
-  · have hview : State.observe (root.image deadlineOf).application
-        (runtime.eraseExecution middle).native owner =
-        State.observe (root.image deadlineOf).application
-          (runtime.eraseExecution execution).native owner :=
-      congrArg runtime.eraseView (congrArg Prod.snd hinput)
-    intro history
-    rw [hview]
-    exact checkpoint.binding_dispatch history
+  exact checkpoint.binding_polls_source_law_of_input_eq hinitial hroster howner hother
+    environment middle hinput
 
 /-- Paired initialized source checkpoints instantiate the binding inclusion
 privacy theorem. Only the initial paired information invariant is supplied;

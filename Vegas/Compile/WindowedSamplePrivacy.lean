@@ -286,13 +286,9 @@ theorem sample_block_agreement_of_same_draw
     rw [hdone] at hnotDone
     contradiction
   refine ⟨?_, hwholeLeft, hwholeRight⟩
-  apply hsampledAgreement.runPolicies_inactive_gated roster command base players hfocal hothers
-    instruction _ suffix hsampledLengths hsampledEnvironment _ _ hinactive
+  apply hsampledAgreement.runPolicies_inactive roster command base players hfocal hothers
+    instruction suffix hsampledLengths hsampledEnvironment _ _ hinactive
     finalLeft finalRight hfinalLeft hfinalRight
-  · intro actor _
-    change (none : Option P) ≠ some actor
-    intro hsome
-    cases hsome
   · intro actor index hlo hhi
     have hhi' : index < (sampledLeft.principalHistory actor).length +
         suffix.countP (fun invocation => match invocation with

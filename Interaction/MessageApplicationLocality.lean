@@ -22,7 +22,7 @@ namespace Interaction.MessageApplication
 
 open GameTheory.Math.Probability
 
-universe uPrincipal
+universe uPrincipal uProjection
 
 variable {Principal : Type uPrincipal} [DecidableEq Principal]
 variable (app : MessageApplication Principal)
@@ -103,9 +103,109 @@ theorem runPolicies_other_input (observer : Principal)
                 (fun state command => hprivate state actor command hne)
                 execution middle command hstep)
 
+/-- Other-player commands preserve any application projection left unchanged
+by their private commands, the observer's allocation counter, and every
+already-pending lookup result. Submission and replay may add unrelated traffic;
+no equality of complete pools is asserted. The projection is proof-facing and
+need not be part of the player's observation. -/
+private theorem playerStep_other_frame {Projection : Type uProjection}
+    (observer actor : Principal) (hne : observer ≠ actor)
+    (project : app.Application → Projection)
+    (hprivate : ∀ state command,
+      project (app.privateStep state actor command) = project state)
+    (execution next : app.PolicyExecution) (command : app.PlayerCommand)
+    (hnext : next ∈ (app.playerStep actor execution command).support) :
+    project next.native.application = project execution.native.application ∧
+      next.native.pool.nextSerial observer = execution.native.pool.nextSerial observer ∧
+      ∀ id message, execution.native.pool.lookup id = some message →
+        next.native.pool.lookup id = some message := by
+  have hnative : next.native ∈
+      ((app.playerStep actor execution command).map
+        MessageInterface.PolicyExecution.native).support := by
+    rw [FinDist.support_map]
+    exact ⟨next, hnext, rfl⟩
+  rw [app.playerStep_native] at hnative
+  cases command with
+  | privateCommand command =>
+      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      rw [hnative]
+      exact ⟨hprivate _ _, rfl, fun _ _ hlookup => hlookup⟩
+  | submit payload =>
+      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      rw [hnative]
+      refine ⟨rfl, by simp only [MessagePool.submit, if_neg hne], ?_⟩
+      intro id message hlookup
+      change execution.native.pool.pending.find? _ = some message at hlookup
+      simp only [MessagePool.submit, MessagePool.lookup, List.find?_append,
+        hlookup, Option.or]
+  | replay id =>
+      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      rw [hnative]
+      refine ⟨rfl, ?_, ?_⟩
+      · unfold MessagePool.replay
+        split <;> rfl
+      · intro selected message hlookup
+        change execution.native.pool.pending.find? _ = some message at hlookup
+        unfold MessagePool.replay
+        split
+        · simp only [MessagePool.lookup, List.find?_append, hlookup, Option.or]
+        · exact hlookup
+  | wait =>
+      simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at hnative
+      rw [hnative]
+      exact ⟨rfl, rfl, fun _ _ hlookup => hlookup⟩
+
+/-- A player-only schedule excluding the observer preserves its private
+application projection and allocation counter. Existing pending envelopes
+remain selectable, including when another player rebroadcasts them. All
+policies may randomize and submit arbitrary payloads. -/
+theorem runPolicies_other_frame {Projection : Type uProjection}
+    (observer : Principal) (project : app.Application → Projection)
+    (hprivate : ∀ state actor command, observer ≠ actor →
+      project (app.privateStep state actor command) = project state)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (henvironment : Invocation.environment ∉ schedule)
+    (hobserver : Invocation.player observer ∉ schedule)
+    (execution next : app.PolicyExecution)
+    (hnext : next ∈ (app.runPolicies players environment schedule execution).support) :
+    project next.native.application = project execution.native.application ∧
+      next.native.pool.nextSerial observer = execution.native.pool.nextSerial observer ∧
+      ∀ id message, execution.native.pool.lookup id = some message →
+        next.native.pool.lookup id = some message := by
+  induction schedule generalizing execution with
+  | nil =>
+      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      subst next
+      exact ⟨rfl, rfl, fun _ _ hlookup => hlookup⟩
+  | cons invocation rest ih =>
+      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      cases invocation with
+      | environment => exact False.elim (henvironment (List.mem_cons_self ..))
+      | player actor =>
+          have hne : observer ≠ actor := by
+            intro heq
+            subst actor
+            exact hobserver (List.mem_cons_self ..)
+          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          obtain ⟨command, _, hstep⟩ := hmiddle
+          have first := app.playerStep_other_frame observer actor hne project
+            (fun state command => hprivate state actor command hne)
+            execution middle command hstep
+          have last := ih (fun hmem => henvironment (List.mem_cons_of_mem _ hmem))
+            (fun hmem => hobserver (List.mem_cons_of_mem _ hmem)) middle hnext
+          exact ⟨last.1.trans first.1, last.2.1.trans first.2.1,
+            fun id message hlookup => last.2.2 id message (first.2.2 id message hlookup)⟩
+
 end Interaction.MessageApplication
 
 /-- info: 'Interaction.MessageApplication.runPolicies_other_input' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.MessageApplication.runPolicies_other_input
+
+/-- info: 'Interaction.MessageApplication.runPolicies_other_frame' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.runPolicies_other_frame

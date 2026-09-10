@@ -399,18 +399,35 @@ generated regression uses the original whole source profile and canonical
 initial checkpoint, and checks successful acceptance with the exact source
 distribution of the frozen snapshot.
 
-Extending the unchanged-owner comparison through a complete binding block
-still requires owner-specific preservation through the remaining ordinary
-player polls: the prepared `(owner, slot)` snapshot, the owner's serial
-counter, and lookup of its submitted envelope. Other players may add arbitrary
-traffic, so the pool need not remain equal to its value before those polls.
-The paired binding-prefix lemma retains the actual intermediate pool for this
-reason. Equality of the owner's policy input is insufficient on its own:
-the application's current observation exposes public memory and activation,
-not the prepared table, and sent lists also contain rebroadcasts. These native
-invariants must be proved from the actual player transitions or established
-history/counter consistency, before deriving normal inclusion and composing
-the inactive suffix.
+`WindowedCheckpoint.binding_block_agreement` compares the complete binding
+block when its owner is unchanged. It derives the owner's exact two-poll
+source law at the actual position in the roster; the private draws in the two
+executions may differ. The root's public-initial-read eligibility and a
+duplicate-free roster containing the owner are explicit hypotheses. The focal
+replacement is a fixed pure raw policy, and preceding information agreement
+is still supplied, not derived from source views by this local theorem.
+
+The native invariant used in this proof is owner-specific.
+`WindowedApplication.runPolicies_other_frame` preserves public state, frozen
+snapshots, the owner's prepared slots and allocation counter, and every
+existing pending lookup through arbitrary other-player polls. The generic
+projection/counter/lookup theorem lives in `Interaction.MessageApplicationLocality`.
+Other players may add traffic or rebroadcast messages; the entire pool need
+not stay equal to its earlier value. These facts follow from the actual
+transitions, not from equality of the owner's observations, which expose
+neither preparations nor counters.
+
+`binding_ordinary_submission` derives the canonical packet's fresh identifier
+and pending lookup after all ordinary roster polls. `binding_ordinary_inclusion`
+then derives actual normal service and resolution from the checkpoint. Binding
+admission freezes an optional prepared value, so acceptance itself does not
+require a well-typed preparation. Neither theorem assumes successful admission,
+an expiry relay, or a fallback selector. The remaining inactive suffix is
+handled by `WindowedCheckpoint.after_normal_agreement`, whose schedule bounds
+come from the supported normal prefixes. Its player gate covers the resolved
+owner too. Regressions instantiate the complete paired theorem at the checked
+persistent-disclosure program and exercise raw foreign registration,
+submission, and successful replay while showing that the complete pool changes.
 
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
@@ -481,8 +498,9 @@ the original root-profile lifts and fixed pure raw replacement. The endpoint
 returns both final information agreement and actual full-block support on
 each side; the source chance law supplies that support. It does not assert
 agreement between different public draws. `WindowedGatedExecution` supplies
-the shared player-only and inactive-suffix inductions. The unchanged-player
-instruction cases still need their full-block paired comparisons.
+the shared player-only and inactive-suffix inductions. The unchanged-owner
+binding comparison is complete; public-choice, conditional-disclosure, and
+conditional-copy cases still need their full-block paired comparisons.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual

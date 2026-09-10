@@ -112,6 +112,49 @@ theorem runPolicies_players_gated
           rw [List.countP_append]
           simpa only [Nat.add_assoc] using hhi
 
+/-- Once the indexed instruction is inactive, every unchanged actor waits,
+including its owner. The focal policy remains an unrestricted pure policy. -/
+theorem invoke_player_inactive
+    (agreement : PolicyAgreement runtime focal left right)
+    (actor : P)
+    (replacement : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (base players : P → runtime.application.PlayerPolicy)
+    (hfocal : players focal = fun history view => FinDist.pure (replacement history view))
+    (hothers : ∀ candidate, candidate ≠ focal →
+      players candidate = runtime.blockPlayer candidate (base candidate))
+    (environment : runtime.application.EnvironmentPolicy)
+    (instruction : ApplicationInstruction P L)
+    (hlength : (left.principalHistory actor).length =
+      (right.principalHistory actor).length)
+    (hindex : runtime.image.instructions[(left.principalHistory actor).length / 3]? =
+      some instruction)
+    (hinactive : runtime.image.activeAddress? left.native.application.base.memory ≠
+      some instruction.address)
+    (nextLeft nextRight : runtime.application.PolicyExecution)
+    (hleft : nextLeft ∈ (runtime.application.invoke players environment left
+      (.player actor)).support)
+    (hright : nextRight ∈ (runtime.application.invoke players environment right
+      (.player actor)).support) :
+    PolicyAgreement runtime focal nextLeft nextRight := by
+  by_cases heq : actor = focal
+  · subst actor
+    exact agreement.invoke_player_pure replacement players players environment environment
+      hfocal hfocal nextLeft nextRight hleft hright
+  · have hrightIndex : runtime.image.instructions[(right.principalHistory actor).length / 3]? =
+        some instruction := by rwa [← hlength]
+    have hrightInactive : runtime.image.activeAddress? right.native.application.base.memory ≠
+        some instruction.address := by rwa [← agreement.state.base.memory]
+    have hleftWait := runtime.blockPlayer_inactive actor (base actor)
+      (left.principalHistory actor) (State.observe runtime.application left.native actor)
+      instruction hindex hinactive
+    have hrightWait := runtime.blockPlayer_inactive actor (base actor)
+      (right.principalHistory actor) (State.observe runtime.application right.native actor)
+      instruction hrightIndex hrightInactive
+    simp only [MessageApplication.invoke, hothers actor heq, hleftWait, hrightWait,
+      FinDist.pure_bind] at hleft hright
+    exact agreement.playerStep_wait_other actor heq nextLeft nextRight hleft hright
+
 /-- Once a block address is inactive, its synchronized environment invocation
 is a wait on both sides. Equality of public state and the environment-history
 coordinate determines the same gate without equating the histories. -/
@@ -139,8 +182,8 @@ theorem invoke_environment_inactive
 
 /-- Synchronized supported suffixes preserve focal agreement after a generated
 instruction has become inactive. The focal raw policy remains arbitrary and
-pure; every nonfocal policy is gated away from the instruction. -/
-theorem runPolicies_inactive_gated
+pure; every nonfocal policy waits, including the resolved instruction's owner. -/
+theorem runPolicies_inactive
     (agreement : PolicyAgreement runtime focal left right)
     (roster : List P)
     (replacement : List runtime.application.PlayerEntry → runtime.application.View →
@@ -150,7 +193,6 @@ theorem runPolicies_inactive_gated
     (hothers : ∀ actor, actor ≠ focal →
       players actor = runtime.blockPlayer actor (base actor))
     (instruction : ApplicationInstruction P L)
-    (hgate : ∀ actor, actor ≠ focal → instruction.submitter ≠ some actor)
     (schedule : List (@Invocation P))
     (hplayerLengths : ∀ actor, (left.principalHistory actor).length =
       (right.principalHistory actor).length)
@@ -186,10 +228,10 @@ theorem runPolicies_inactive_gated
       have hfirst : PolicyAgreement runtime focal middleLeft middleRight := by
         cases invocation with
         | player actor =>
-            exact agreement.invoke_player_gated actor replacement base players hfocal hothers
-              (runtime.blockEnvironment roster) (runtime.blockEnvironment roster) instruction
-              (hgate actor) (hplayerLengths actor)
+            exact agreement.invoke_player_inactive actor replacement base players hfocal hothers
+              (runtime.blockEnvironment roster) instruction (hplayerLengths actor)
               (hplayerIndex actor _ (Nat.le_refl _) (by simp))
+              hinactive
               middleLeft middleRight hfirstLeft hfirstRight
         | environment =>
             exact agreement.invoke_environment_inactive roster players instruction
@@ -263,7 +305,7 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WindowedApplication.PolicyAgreement.runPolicies_players_gated
 
-/-- info: 'Vegas.WindowedApplication.PolicyAgreement.runPolicies_inactive_gated'
+/-- info: 'Vegas.WindowedApplication.PolicyAgreement.runPolicies_inactive'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.WindowedApplication.PolicyAgreement.runPolicies_inactive_gated
+#print axioms Vegas.WindowedApplication.PolicyAgreement.runPolicies_inactive
