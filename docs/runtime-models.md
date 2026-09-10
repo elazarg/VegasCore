@@ -1006,21 +1006,28 @@ The theorem is a whole-program reference execution law, not fairness under a
 different environment, settlement against deviating players, or a unilateral
 strategy-correspondence result.
 
-`VegasTests/ConditionalDeviation.lean` gives a limited deviation law for the
-generated Boolean binding/final-disclosure program. The owner controls both
-source decisions; there is no chance or later opponent decision. Replacing
-only its lifted native policy, under any environment and finite schedule,
-has exactly the law of a finite mixture of source-owner replacements whenever
-every supported runtime result completes. The comparison retains the completion
-flag and full public terminal environment, and yields source-outcome lower
-bounds independently of adversary preferences. It uses the actual generated
-application and the independent source denotation. The same artifact's
-generated reference service satisfies the forward law for every source profile.
-Completion is an assumption on the entire law, not conditioning on success.
-Permanent waiting at its fallback-free initial binding has no matching source
-mixture under any environment or finite schedule. These results establish
-neither settlement nor other-player deviation simulation, and do not extend
-to hidden random prefixes or multistage games with other decision makers.
+`VegasTests/ConditionalResolutionDeviation.lean` gives an exact owner-deviation
+law for the generated Boolean binding/final-disclosure program. Compilation
+installs a source-certified `false` fallback for initial binding and uses the
+source's legal decline for conditional expiry. The activation-relative runtime
+uses the generated reference invocations followed by two reserved
+clock/relay/inclusion rounds. The other player originates actual expiry
+envelopes; histories, public traffic, and receipts remain in the shared runner.
+`ConditionalResolutionService` proves completion for every raw owner policy
+and the original source-profile law under this same service. Completion is a
+conclusion, not conditioning or a premise on the resulting distribution.
+
+Every owner replacement then has exactly a finite mixture of source-owner
+replacement laws, retaining both the completion flag and full public terminal
+environment. Arbitrary public-outcome lower bounds and the owner's
+epsilon-best-response guarantee follow with the same error. The unchanged
+other player is a permissionless relay with no source decision in this
+fragment; there is no chance. The source witnesses rely on those restrictions.
+This is neither a general `ApplicationPlan` deviation theorem nor a two-player
+Nash theorem, and it does not cover arbitrary services or hidden random
+prefixes. `VegasTests/ConditionalWithholding.lean` retains the complementary
+obstruction: without the initial binding fallback, permanent waiting has no
+matching completion-sensitive source mixture under any finite service.
 
 `ApplicationPlan.withholding_no_source_public_law` makes one failure of a
 stronger statement explicit. Undecorated binding and fallback-free ordinary-choice

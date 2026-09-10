@@ -220,8 +220,25 @@ exclude all three expiry forms. No clock-rate condition is needed for this
 expiry-free comparison. Composing it with the original serial service gives
 `ApplicationPlan.windowed_service_source_public_law`, the exact joint source
 completion/public-terminal law on the generated windowed instance. Durations
-do not affect these expiry-free runs. Whole-program timeout resolution and
-arbitrary activation-aware deviation simulation require further proofs.
+do not affect these expiry-free runs.
+
+For a generated Boolean binding followed by final conditional disclosure,
+`ConditionalResolutionService` supplies a complete service on this same runtime.
+It offers the original reference invocations, then two expiry rounds. Each
+round advances the public clock beyond the active window, invokes the other
+player's permissionless relay, and includes that relay's actual envelope.
+The initial binding has a source-certified constant fallback. Native graph
+refinement, the completed-prefix invariant, and resolved bindings prove that
+each active round resolves one remaining instruction. Thus every raw owner
+deviation completes; honest execution retains the original source law under
+the identical service. No execution history is reset between phases.
+
+`ConditionalResolutionDeviation` backtranslates these completed public laws
+and preserves the owner's epsilon-best response and arbitrary source lower
+bounds. Its chance-free, single-decision-maker source permits deterministic
+realization of each public outcome. A general generated-plan theorem still
+needs service and policy-law reasoning for chance and later unchanged-player
+decisions; appending default-only rounds does not supply those obligations.
 
 ### Runtime services
 
@@ -691,8 +708,10 @@ The generic `ApplicationImage` has conditional-publication expiration and
 optional source-certified binding and public-choice expiry. Its serial reference
 service does not produce expiry traffic, so these endpoints alone do not
 totalize refusal. Generated conditional instructions and their local policy laws
-support public defaults; whole-plan continuation under a resolving service is
-still required. The concrete `DisclosureState` fixture has
+support public defaults. The generated binding/final-disclosure fragment has
+the resolving service and owner-deviation law described above; general
+whole-plan continuation and deviation simulation remain open. The concrete
+`DisclosureState` fixture has
 separate initial-binding and response fallbacks; its resolution-service results
 must not be generalized to every emitted image without the corresponding
 continuation and service proofs.

@@ -27,7 +27,11 @@ import VegasTests.ApplicationBindingOrigins
 import VegasTests.PublicConditionalOrigin
 import VegasTests.PublicChoiceImageExecution
 import VegasTests.ConditionalApplicationImage
-import VegasTests.ConditionalDeviation
+import VegasTests.ConditionalResolutionState
+import VegasTests.ConditionalResolutionService
+import VegasTests.ConditionalResolutionDeviation
+import VegasTests.ConditionalSourcePolicies
+import VegasTests.ConditionalWithholding
 import VegasTests.ConditionalDefaultApplication
 import VegasTests.ConditionalDefaultPolicy
 import VegasTests.ConditionalDefaultPhase

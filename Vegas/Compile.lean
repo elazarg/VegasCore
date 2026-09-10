@@ -116,6 +116,7 @@ import Vegas.Compile.WindowedApplication
 import Vegas.Compile.WindowedExpiry
 import Vegas.Compile.WindowedExpiryResolution
 import Vegas.Compile.WindowedRelayResolution
+import Vegas.Compile.WindowedExpiryService
 import Vegas.Compile.ApplicationRelayHistory
 import Vegas.Compile.WindowedProjection
 import Vegas.Compile.WindowedExecutionProjection
@@ -126,6 +127,7 @@ import Vegas.Compile.WindowedApplicationDeadline
 import Vegas.Compile.WindowedApplicationInvariants
 import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.WindowedForwardLaw
+import Vegas.Compile.WindowedExpiryStability
 import Vegas.Compile.ApplicationResolvedBindings
 import Vegas.Compile.ApplicationOrderPhase
 import Vegas.Compile.ApplicationOrderCheckpoint

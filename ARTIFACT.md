@@ -62,6 +62,13 @@ source continuation. Its regression varies the public input and exercises an
 actual non-owner submission, strict deadline rejection, and replay rejection.
 These results distinguish handler availability from the service needed to
 supply and include a resolution request, and from strategic simulation.
+`VegasTests/ConditionalResolutionDeviation.lean` checks the generated
+binding/final-disclosure fragment with a source-certified binding fallback:
+an actual resolving service derives completion, preserves the source profile
+law, and simulates arbitrary owner deviations. It also preserves the owner's
+epsilon-best response. This chance-free, single-decision-maker regression is
+not the general public-message compiler theorem; its exact scope is recorded
+in [runtime models](docs/runtime-models.md).
 `lake --wfail build Paper` is the focused paper-proof build. Do not run `lake
 update` to reproduce a pinned revision: it may resolve different dependencies.
 The cache download is a build optimization, not evidence that our theorem

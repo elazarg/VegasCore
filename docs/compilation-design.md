@@ -461,12 +461,16 @@ decline, and overdue expiry store the source certificate's encoded result.
 Environment commands advance a monotone public clock. Expiry still requires a
 real included request; this mechanism provides neither service fairness nor
 protection against clock advancement preempting an honest request.
-Generated images currently take immutable absolute deadlines through
-`deadlineOf`. The disclosure benchmark instead arms its publication deadline
-when the public sample executes. Its relative-deadline settlement proofs do
-not transfer to generated images without another argument. A generated service
-theorem must either justify the supplied absolute deadlines or implement and
-verify an explicit deadline-arming policy; adding chance alone supplies neither.
+Generated images can use immutable absolute deadlines or
+`ApplicationPlan.windowed`, which starts each duration at its instruction's
+activation and preserves that origin through rejected traffic. These are
+explicit timing-policy choices. The generated binding/final-disclosure
+fragment has a resolving service and exact owner-deviation law on the latter
+runtime; the [timeout contract](timeout-compilation.md#activation-relative-generated-applications)
+states its source restrictions and service. The disclosure benchmark arms its
+publication deadline when the public sample executes. Neither fragment's
+service theorem transfers to arbitrary generated images without proving the
+corresponding unchanged-player opportunities and continuation laws.
 
 `ApplicationPlan` is a structural backend derivation indexed by the existing
 source, commitment-accounting proof, freshness proof, and compiler cursor.
