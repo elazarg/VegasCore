@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationInitialReads
 import Vegas.Compile.ApplicationPhaseCaches
-import Vegas.Compile.PublicChoicePhaseExecution
+import Vegas.Compile.ApplicationOwnerPhase
 import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Composing a public-choice phase with its source continuation -/
@@ -76,16 +76,7 @@ theorem publicChoice_bind
       .publicChoice code :: nextPlan.instructions deadlineOf := rfl
   have hmem := checkpoint.instruction_mem (.publicChoice code)
     (hhead ▸ List.mem_cons_self)
-  have hcode : image.lookup code.endpoint.publicationNode = some (.publicChoice code) :=
-    root.image_lookup_of_mem deadlineOf (.publicChoice code) hmem
-  have hready := current.current.nextReady current.completedPrefix
-    (site.choiceNode fresh state) rfl
   obtain ⟨previous, hprevious⟩ := checkpoint.reached
-  obtain ⟨reads, hreadout, hreads, hview⟩ :=
-    checkpoint.continuation.runPolicies_ownerReadout?_of_ready_source_view deadlineOf who
-      (root.liftProfile deadlineOf rootProfile) rfl image.serialService previous execution
-      hprevious site.decision current.current.graph.1 checkpoint.refines hready hinitial
-      current.current.source (BuildState.Agrees.view current.current.agrees who)
   have hunresolved : execution.native.application.memory.done (state.nodes.length + 1) =
       false := by
     apply Bool.eq_false_iff.mpr
@@ -95,37 +86,18 @@ theorem publicChoice_bind
     have hlt := (current.completedPrefix _).mp hdoneGraph
     change state.nodes.length + 1 < state.nodes.length at hlt
     omega
-  have hdoneView : (MessageApplication.State.observe image.application
-      execution.native who).application.done (state.nodes.length + 1) = false :=
-    hunresolved
-  have hpolicy : ∀ history,
-      root.liftProfile deadlineOf rootProfile who history
-          (MessageApplication.State.observe image.application execution.native who) =
-        (site.imageController fresh state image
-          (image.ownerReadout? who (eventGuardOf state who guard).choiceReads)
-          (profile who site.decision) (fun _ _ => false)).policy
-            image.application history
-              (MessageApplication.State.observe image.application execution.native who) := by
-    intro history
-    unfold ApplicationPlan.liftProfile
-    rw [checkpoint.continuation.liftProfileIn_eq_of_refines image deadlineOf current
-      execution.native checkpoint.refines who history]
-    simp only [ApplicationPlan.liftProfileIn, hdoneView, Bool.false_eq_true,
-      ↓reduceIte]
-    rfl
   have hfreshHead := (List.forall_cons _ _ _).mp checkpoint.caches |>.1
   have hcache : ChoiceEncoding.cachedValue image.application
       ((ApplicationImage.choiceEncoding code.endpoint.publicationNode ty).submission
         image.application) (execution.principalHistory who) = none := by
     exact hfreshHead
-  have hphase := PublicChoiceSite.publicChoice_head_phase_source_law guard tail fresh state
-    current image (profile who site.decision) (root.liftProfile deadlineOf rootProfile)
-    image.serialService execution checkpoint.refines publicGuard hcode reads hpolicy (by
+  have hphase := checkpoint.continuation.publicChoice_phase_of_unchanged_owner deadlineOf
+    (root.liftProfile deadlineOf rootProfile) rfl image.serialService previous execution
+    hprevious current checkpoint.refines hinitial hcache image.serialService (by
       intro chosen hchosen submitted hsubmitted
       exact image.serialService_after_submit execution submitted (.publicChoice code) who _
         (checkpoint.head_lookup (.publicChoice code) _ hhead) rfl
         (checkpoint.lookup_nextSerial_eq_none who) hsubmitted)
-      (checkpoint.lookup_nextSerial_eq_none who) hcache hreadout hreads
   have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService
         [.player who, .environment] execution else
@@ -151,7 +123,8 @@ theorem publicChoice_bind
   have hnative : included ∈ (image.application.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService
       [.player who, .environment] execution).support := by
-    simp only [hphase.1, FinDist.support_bind, Set.mem_iUnion]
+    rw [hphase.1]
+    simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨chosen, hchosen, submitted, hsubmitted, hincluded⟩
   have hnext : ForwardCheckpoint root rootProfile deadlineOf nextPlan
       profile.afterCommit.afterReveal next included := by

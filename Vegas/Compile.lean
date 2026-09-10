@@ -63,6 +63,7 @@ import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationSampleForward
 import Vegas.Compile.ApplicationBindingForward
 import Vegas.Compile.ApplicationPublicChoiceForward
+import Vegas.Compile.ApplicationOwnerPhase
 import Vegas.Compile.ApplicationConditionalForward
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationChoiceTimeouts

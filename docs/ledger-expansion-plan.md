@@ -146,7 +146,11 @@ profile law, while each pass retains arbitrary-traffic graph refinement.
 The remaining implementation order is:
 
 1. Compose exact source checkpoints and unchanged-player cache/readout
-   invariants across arbitrary successful resolutions. Completed-node prefixes
+   invariants across arbitrary successful resolutions. Public-choice and opaque
+   binding phases already preserve the unchanged owner's source kernel after an
+   arbitrary initialized prefix, given a coupled source checkpoint, fresh own
+   caches, and immediate inclusion. Repeated polling needs a pending-sample
+   invariant, not a fresh draw at every invocation. Completed-node prefixes
    and accepted dispositions are already policy-independent invariants; they
    do not identify an unchanged player's source choice kernel.
 2. Supply a resolving service with observation-local request production and

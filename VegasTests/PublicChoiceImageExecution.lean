@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationPolicy
+import Vegas.Compile.ApplicationOwnerPhase
 import Vegas.Compile.PublicChoiceImageExecution
 import Vegas.Compile.SourceExecutionOutcome
 import VegasTests.ApplicationImage
@@ -30,6 +31,54 @@ def initialPolicyExecution : image.application.PolicyExecution :=
 
 def includeFirst : image.application.EnvironmentPolicy := fun _ _ =>
   FinDist.pure (.include (0, 0))
+
+def earlySecondPayload : image.application.Payload :=
+  .choice secondAddress ⟨.option .bool, none⟩
+
+def opponentTrafficPlayers (profile : SourceBehavioralProfile source.prog) :
+    Fin 2 → image.application.PlayerPolicy := fun player =>
+  if player = 1 then fun _ _ => FinDist.pure (.submit earlySecondPayload)
+  else applicationPlan.liftProfile (fun _ => 0) profile player
+
+def deliverOpponentTraffic : image.application.EnvironmentPolicy := fun _ _ =>
+  FinDist.pure (.deliver 0 (1, 0))
+
+def opponentTrafficLaw (profile : SourceBehavioralProfile source.prog) :=
+  image.application.runPolicies (opponentTrafficPlayers profile) deliverOpponentTraffic
+    [.player 1, .environment] initialPolicyExecution
+
+def afterOpponentTraffic (profile : SourceBehavioralProfile source.prog) :
+    image.application.PolicyExecution :=
+  (opponentTrafficLaw profile).support_nonempty.choose
+
+private theorem afterOpponentTraffic_mem (profile : SourceBehavioralProfile source.prog) :
+    afterOpponentTraffic profile ∈ (opponentTrafficLaw profile).support :=
+  (opponentTrafficLaw profile).support_nonempty.choose_spec
+
+private theorem afterOpponentTraffic_properties
+    (profile : SourceBehavioralProfile source.prog) :
+    (afterOpponentTraffic profile).native.application = initialState ∧
+      (afterOpponentTraffic profile).principalHistory 0 = [] ∧
+      (afterOpponentTraffic profile).native.pool.inbox 0 =
+        [⟨(1, 0), earlySecondPayload⟩] ∧
+      (afterOpponentTraffic profile).native.pool.nextSerial 0 = 0 := by
+  have hreached := afterOpponentTraffic_mem profile
+  simp only [opponentTrafficLaw, MessageApplication.runPolicies,
+    MessageApplication.invoke, opponentTrafficPlayers, if_pos,
+    FinDist.pure_bind, deliverOpponentTraffic,
+    FinDist.support_bind, Set.mem_iUnion] at hreached
+  obtain ⟨submitted, hsubmitted, hdelivered⟩ := hreached
+  simp only [MessageApplication.playerStep, MessageApplication.advance,
+    MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind, FinDist.mem_support_pure] at hsubmitted
+  subst submitted
+  simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
+    MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind, FinDist.mem_support_pure] at hdelivered
+  obtain ⟨delivered, hdelivered, hfinal⟩ := hdelivered
+  subst delivered
+  rw [hfinal]
+  exact ⟨rfl, by simp [initialPolicyExecution, PolicyExecution.initial], rfl, rfl⟩
 
 private theorem initialReadout :
     ∃ reads : ReadEnv simpleExpr
@@ -96,6 +145,57 @@ theorem first_publicChoice_phase_source_law
     image_lookup_first (by rfl) (by rfl) hreadout hreads
   exact hlaw.1
 
+/-- The unchanged first owner retains the exact source kernel after the other
+player has submitted a future-endpoint packet and delivered it to the owner's
+inbox.  The prefix uses the real runner, a non-reference opponent policy, and
+ordinary message delivery; its raw packet remains present when the phase
+starts. -/
+theorem first_publicChoice_after_opponent_traffic
+    (profile : SourceBehavioralProfile source.prog) :
+    image.application.runPolicies (opponentTrafficPlayers profile)
+        includeFirst [.player 0, .environment] (afterOpponentTraffic profile) =
+      (profile 0 firstSite.decision ((source.env.toView 0).eraseEnv)).bind fun chosen =>
+        (image.application.playerStep 0 (afterOpponentTraffic profile)
+          (.submit ((ApplicationImage.choiceEncoding
+            (P := VegasTests.ApplicationImage.Player) (L := simpleExpr)
+            firstAddress BaseTy.bool).encode chosen.1))).bind
+              fun submitted => image.application.environmentPolicyStep submitted
+                (.include (0, 0)) := by
+  have hproperties := afterOpponentTraffic_properties profile
+  have howner : opponentTrafficPlayers profile 0 =
+      applicationPlan.liftProfile (fun _ => 0) profile 0 := by
+    simp [opponentTrafficPlayers]
+  have hinitial : compiled.InitialReadsPublic
+      (eventGuardOf compilerInitial (0 : Fin 2) firstGuard).choiceReads := by
+    apply (compiled.allInitialFieldsPublic_of_owners ?_).reads
+    intro initial hinitial
+    change initial ∈ [⟨BaseTy.bool, none, true⟩] at hinitial
+    rw [List.mem_singleton] at hinitial
+    subst initial
+    rfl
+  have hrefines : (afterOpponentTraffic profile).native.application.Refines
+      (compiledInitialCoupled source).current.graph.1 := by
+    rw [hproperties.1]
+    exact ApplicationImage.State.initial_refines compiled.graph
+  have hcache : ChoiceEncoding.cachedValue image.application
+      ((ApplicationImage.choiceEncoding (P := Fin 2) firstAddress BaseTy.bool).submission
+        image.application) ((afterOpponentTraffic profile).principalHistory 0) = none := by
+    rw [hproperties.2.1]
+    rfl
+  have hlaw := ApplicationPlan.ProfileContinuation.publicChoice_phase_of_unchanged_owner
+    (root := applicationPlan) (rootProfile := profile) (.refl) (fun _ => 0)
+    (opponentTrafficPlayers profile) howner deliverOpponentTraffic
+    [.player 1, .environment] (afterOpponentTraffic profile)
+    (afterOpponentTraffic_mem profile) (compiledInitialCoupled source) hrefines hinitial hcache
+    includeFirst (by
+      intro chosen hchosen submitted hsubmitted
+      rw [hproperties.2.2.2]
+      rfl)
+  have hphase := hlaw.1
+  dsimp only at hphase
+  rw [hproperties.2.2.2] at hphase
+  exact hphase
+
 end VegasTests.PublicChoiceImageExecution
 
 /-- info: 'VegasTests.PublicChoiceImageExecution.first_publicChoice_phase_source_law'
@@ -103,3 +203,9 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   VegasTests.PublicChoiceImageExecution.first_publicChoice_phase_source_law
+
+/-- info: 'VegasTests.PublicChoiceImageExecution.first_publicChoice_after_opponent_traffic'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  VegasTests.PublicChoiceImageExecution.first_publicChoice_after_opponent_traffic

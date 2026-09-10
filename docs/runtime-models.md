@@ -857,6 +857,21 @@ provenance, and envelope freshness are derived from run membership. Each checked
 head phase preserves the checkpoint and advances the independent source
 denotation; no source environment or compiler cursor is passed to a policy.
 
+The public-choice and opaque-binding steps use the unchanged-owner phase laws
+in `Vegas/Compile/ApplicationOwnerPhase.lean`. These laws allow an arbitrary
+initialized native prefix and require only the current owner's policy to equal
+its original source lift. Other principals and the preceding environment need
+not follow the reference execution. The compiler derives controller dispatch,
+owner-local source readout, fresh envelope identity, and registration consistency;
+the binding result also retains the exact accepted snapshot. Each law compares
+the full native phase distribution and supplies its coupled source successor.
+Its premises still include an exact source checkpoint, fresh current-choice
+caches, and local inclusion of the newly submitted envelope. It does not
+construct the deviator's source strategy or establish whole-run resolution.
+Freshness cannot simply be dropped: a repeated poll reuses the previously
+sampled choice. A general deviation proof must retain that pending sample or
+establish phase boundaries at which it has not yet been drawn.
+
 This exact-prefix invariant is specific to the source-ordered reference run.
 `VegasTests/ApplicationEarlyBinding.lean` generates a checked six-node program
 with two independent bindings and two conditional disposals. Its actual

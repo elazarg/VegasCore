@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationInitialReads
 import Vegas.Compile.ApplicationPhaseCaches
-import Vegas.Compile.BindingPhaseExecution
+import Vegas.Compile.ApplicationOwnerPhase
 import Vegas.Compile.ApplicationOrderCheckpoint
 
 /-! # Forward composition at an opaque-binding head
@@ -89,31 +89,15 @@ theorem binding_bind
   let phase : List (@Invocation P) := [.player who, .player who, .environment]
   have hreadyData := SourceDecisionSite.binding_ready_at_source_prefix guard tail fresh state
     current execution.native.application.memory.done checkpoint.refines.memory.completed
-  have hready : Ready (compileCore (.commit name who guard tail) fresh state).graph
-      current.current.graph.1 (site.compiledNode fresh state) := hreadyData.1
   have hunresolved : execution.native.application.memory.done state.nodes.length = false := by
     exact hreadyData.2.1
   obtain ⟨previous, hreached⟩ := checkpoint.reached
-  obtain ⟨reads, hreadout, _hreads, hview⟩ :=
-    checkpoint.continuation.runPolicies_ownerReadout?_of_ready_source_view deadlineOf who
-      (root.liftProfile deadlineOf rootProfile) rfl image.serialService previous execution
-      hreached site current.current.graph.1 checkpoint.refines hready hinitial
-      current.current.source (BuildState.Agrees.view current.current.agrees who)
-  have hconsistent : image.RegistrationConsistent execution := by
-    apply image.runPolicies_registrationConsistent
-      (root.liftProfile deadlineOf rootProfile) image.serialService previous
-      (root.initialExecution deadlineOf) execution
-    · intro owner slot
-      rfl
-    · exact hreached
   have hhead : plan.instructions deadlineOf =
       .bind code :: nextPlan.instructions deadlineOf := by
     rfl
   have hcodeMem : (ApplicationInstruction.bind code : ApplicationInstruction P L) ∈
       root.instructions deadlineOf := by
     exact checkpoint.instruction_mem (.bind code) (hhead ▸ List.mem_cons_self)
-  have hcode : image.lookup code.node = some (.bind code) := by
-    exact root.image_lookup_of_mem deadlineOf (.bind code) hcodeMem
   have hserviceCode : image.instructions[execution.environmentHistory.length]? =
       some (.bind code) := checkpoint.head_lookup (.bind code)
         (nextPlan.instructions deadlineOf) hhead
@@ -127,20 +111,6 @@ theorem binding_bind
       (execution.principalHistory who) = none := hheadCache.2
   have htailCaches : nextPlan.RemainingCachesEmpty image deadlineOf execution := by
     exact (List.forall_cons _ _ _).mp checkpoint.caches |>.2
-  have hpolicy (history : List image.application.PlayerEntry) :
-      (root.liftProfile deadlineOf rootProfile who) history
-          (MessageApplication.State.observe image.application execution.native who) =
-        site.bindingPolicy fresh state image (profile who site) history
-          (MessageApplication.State.observe image.application execution.native who) := by
-    change root.liftProfileIn image deadlineOf rootProfile who history
-      (MessageApplication.State.observe image.application execution.native who) = _
-    rw [checkpoint.continuation.liftProfileIn_eq_of_refines image deadlineOf current
-      execution.native checkpoint.refines who history]
-    have hdoneView :
-        (MessageApplication.State.observe image.application execution.native who).application.done
-          state.nodes.length = false := hunresolved
-    simp only [ApplicationPlan.liftProfileIn, hdoneView, Bool.false_eq_true,
-      ↓reduceIte, site]
   have henvironment : ∀ chosen ∈
       (profile who site ((current.current.source.toView who).eraseEnv)).support,
       ∀ registered ∈ (image.application.playerStep who execution
@@ -156,10 +126,10 @@ theorem binding_bind
       (.bind code) who (.register field ⟨ty, chosen.1⟩)
       (.binding code.node (who, field)) hserviceCode rfl
       (checkpoint.lookup_nextSerial_eq_none who) hregistered hsubmittedExecution
-  have hphase := SourceDecisionSite.binding_phase_source_law guard tail fresh state current image
-    (profile who site) (root.liftProfile deadlineOf rootProfile) image.serialService execution
-    checkpoint.refines hconsistent hcode reads hpolicy henvironment
-    (checkpoint.lookup_nextSerial_eq_none who) hcache hsubmitted hreadout hview
+  have hphase := checkpoint.continuation.binding_phase_of_unchanged_owner deadlineOf
+    (root.liftProfile deadlineOf rootProfile) rfl image.serialService previous execution
+    hreached current checkpoint.refines hinitial hcache hsubmitted image.serialService
+    henvironment
   have hselected : (if sourceOrdered then image.orderedApplication.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService phase execution else
       image.application.runPolicies (root.liftProfile deadlineOf rootProfile)
@@ -187,7 +157,11 @@ theorem binding_bind
       hsubmittedExecution included hincluded
   have hincludedPhase : included ∈ (image.application.runPolicies
       (root.liftProfile deadlineOf rootProfile) image.serialService phase execution).support := by
-    simp only [phase, hphase.1, FinDist.support_bind, Set.mem_iUnion]
+    change included ∈ (image.application.runPolicies
+      (root.liftProfile deadlineOf rootProfile) image.serialService
+      [.player who, .player who, .environment] execution).support
+    rw [hphase.1]
+    simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨chosen, hchosen, registered, hregistered, submittedExecution,
       hsubmittedExecution, hincluded⟩
   have hprefixPreserved := ApplicationImage.AcceptedBindingPrefix.runPolicies image
