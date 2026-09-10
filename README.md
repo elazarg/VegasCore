@@ -113,9 +113,12 @@ See the
 
 The source-to-runtime deviation theorems reach the private-window/public-
 serialization models. The public-message branch has a native policy game,
-ideal hiding, and operational source correspondence; source-deviation
-comparison and the contract/EVM connection remain open. FOSG is an analysis
-presentation, not the required semantics of the source or every target.
+ideal hiding, and operational source correspondence. The disclosure application
+also has exact responder-deviation simulation against a fixed pure owner under
+its resolving public service: completion follows from service, and the
+backtranslation preserves the full source terminal-environment law. General
+source-deviation comparison and the contract/EVM connection remain open. FOSG
+is an analysis presentation, not the required semantics of the source or every target.
 
 ```text
                               ┌─→ ExecutionProtocol + InformationModel

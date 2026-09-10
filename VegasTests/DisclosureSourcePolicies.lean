@@ -125,4 +125,57 @@ theorem pure_law (payouts : List (TestPlayer × Expr PayoffContext .int))
         (response signal (if complete secret signal then some secret else none)))) = _
   simp only [Bool.false_eq_true, ↓reduceIte, FinDist.map_eq_bind]
 
+/-- An arbitrary behavioral response uses only the public signal and optional
+publication at the responder's unique source decision. -/
+def responseStrategy (payouts : List (TestPlayer × Expr PayoffContext .int))
+    (response : Bool → Option Bool → FinDist Bool) :
+    SourceBehavioralPolicy (coreWithPayoffs payouts) (1 : TestPlayer) := by
+  intro context name ty guard site visible
+  cases site with
+  | commit site =>
+    cases site with
+    | commit site =>
+      cases site with
+      | reveal site =>
+        cases site with
+        | sample site =>
+          cases site with
+          | commit site =>
+            cases site with
+            | reveal site =>
+              cases site with
+              | here =>
+                exact (response (visible.get (.there .here)) (visible.get .here)).map
+                  (fun value => ⟨value, rfl⟩)
+              | commit site =>
+                cases site with
+                | reveal site => cases site
+
+/-- Replacing the responder leaves all of the owner's source decisions intact,
+including its signal-dependent choice of disclosure. -/
+theorem responseStrategy_law (payouts : List (TestPlayer × Expr PayoffContext .int))
+    (secret : Bool) (complete : Bool → Bool → Bool)
+    (original : Bool → Option Bool → Bool)
+    (response : Bool → Option Bool → FinDist Bool) :
+    denoteSource (coreWithPayoffs payouts)
+        (GameTheory.Profile.update (sig := sourceGameSignature (coreWithPayoffs payouts))
+          (pureProfile payouts secret complete original) 1 (responseStrategy payouts response))
+        (VEnv.empty simpleExpr) =
+      fairCoin.denote.bind fun signal =>
+        let opening := if complete secret signal then some secret else none
+        (response signal opening).map (terminalEnv secret signal opening) := by
+  simp only [coreWithPayoffs, denoteSource, GameTheory.Profile.update_same,
+    GameTheory.Profile.update_of_ne _ _ (by decide : (0 : TestPlayer) ≠ 1),
+    pureProfile, beforeCommit, beforeReveal, beforeSample,
+    SourceBehavioralProfile.afterCommit, SourceBehavioralProfile.afterReveal,
+    SourceBehavioralProfile.afterSample, FinDist.pure_bind, id_eq]
+  change (if false then fairCoin.denote else fairCoin.denote).bind
+    (fun signal => ((response signal
+      (if complete secret signal then some secret else none)).map
+        (fun value => (⟨value, rfl⟩ : {value : Bool // true = true}))).bind
+          (fun value => FinDist.pure (terminalEnv secret signal
+            (if complete secret signal then some secret else none) value.val))) = _
+  simp only [Bool.false_eq_true, ↓reduceIte, FinDist.map_eq_bind, FinDist.bind_bind,
+    FinDist.pure_bind]
+
 end VegasTests.OptionalDisclosure.SourcePolicies

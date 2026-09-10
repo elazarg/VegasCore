@@ -25,7 +25,7 @@ The acceptance inventory has two axes:
 | Independent source meaning | Source-to-graph connection, terminal native support, and an exact completion/public-outcome law for every eligible application plan under arbitrary source profiles and the generated reference service | The actual supported source's choices, information, nonresponse consequences, and outcomes are the comparison endpoint. |
 | Source coverage | Structural binding/chance/public-choice/conditional-publication compilation, arbitrary-traffic support refinement, whole-source strategy lifting and reference execution, with explicit initial-read and binding-origin eligibility | General supported finite typed programs with guards, chance, and multistage dependencies; implementation conditions are explicit and exercised. |
 | Hostile interaction | Raw traffic, local delivery, replay, addressed public inclusion, ideal binding/hiding; initialized disclosure settlement against arbitrary opposing policies under the stated slotted service | Whole interaction, failure, deadline and observation behavior under the theorem's complete player/environment policy classes. |
-| Strategic comparison | Release-time hiding/choice independence; a completed-owner finite-mixture law for the chance-free binding/final-disclosure fragment; selective-publication and withholding obstructions | Compiled-profile law plus arbitrary unilateral-deviation comparison, with the corresponding source-outcome bounds and equilibrium results. |
+| Strategic comparison | Release-time hiding/choice independence; completed-owner mixtures for the chance-free fragment; exact responder-deviation laws and source bounds for disclosure with a fixed pure owner under resolving service; selective-publication and withholding obstructions | Compiled-profile law plus arbitrary unilateral-deviation comparison, with the corresponding source-outcome bounds and equilibrium results. |
 | Substantive application | The private-window sealed offer and a public-message compiled-prefix fixture | The generated protocol application and handlers use the same public-message compiler path; reference strategies and their guarantees are related separately. |
 | Further lowering | Separate local backend proofs | A named generated-handler path instantiates that application semantics; subsequent realization obligations are explicit. |
 
@@ -107,6 +107,23 @@ Arbitrary environments retain the safety guarantees for runs that finish;
 they do not imply completion or equality with the terminating source law.
 
 ### Resolution and open deviations
+
+The disclosure application has a complete one-sided strategic instance in
+`VegasTests/DisclosureResponderDeviation.lean`. Under its actual resolving
+service, any raw responder deviation against a fixed pure owner is simulated
+by one written-source behavioral responder policy. The same service preserves
+compiled pure-profile laws; source worst-case outcome bounds transfer without
+a completion premise, and the responder's epsilon-best-response property
+transfers with the same error for source-outcome utilities. The response window
+is positive and the horizon is at least `window + 3` cycles. The public coin
+marginal is proved invariant under adaptive traffic, rather than inferred from
+terminal support.
+
+This instance does not discharge the general generated-application service
+gate below. Extending it to owner deviations or randomized private owner
+choices requires the joint binding/signal law and the corresponding source
+information restriction; matching each terminal witness alone is insufficient.
+Do not infer whole-game equilibrium preservation from responder-only adequacy.
 
 `ApplicationPlan.withholding_no_source_public_law` establishes a code-level
 obstruction to upgrading the reference law by service assumptions alone.

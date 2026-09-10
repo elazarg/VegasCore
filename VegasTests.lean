@@ -103,6 +103,8 @@ import VegasTests.DisclosureOwnerPublicationService
 import VegasTests.DisclosureOwnerResponseService
 import VegasTests.DisclosureResponseTimeOrigins
 import VegasTests.DisclosureOwnerSettlement
+import VegasTests.DisclosureSignalLaw
+import VegasTests.DisclosureResponderDeviation
 import VegasTests.DisclosureResponderProvenance
 import VegasTests.DisclosureResponderChoice
 import VegasTests.DisclosureFreshPublication

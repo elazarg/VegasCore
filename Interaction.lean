@@ -8,6 +8,7 @@ import Interaction.TransactionalInclusion
 import Interaction.MessageApplication
 import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationHarmonic
 import Interaction.MessageApplicationProjection
 import Interaction.MessageApplicationPolicyLaws
 import Interaction.MessageApplicationPolicyTrace

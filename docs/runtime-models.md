@@ -1362,6 +1362,36 @@ during inclusion, no responder response packet is present and the response
 deadline is newly armed. The next cycle supplies a timely response opportunity;
 after resolution, its value is immutable.
 
+`DisclosureResponderDeviation.resolving_responder_deviation_law` gives an exact
+strategic comparison for this application. Fix any pure owner binding and
+signal-dependent disclosure rule, a positive window, at least `window + 3`
+service cycles, and any admitted adaptive inclusion selector. Every unilateral
+raw responder policy has the same full terminal-environment law as one
+behavioral responder policy in the written source, with the owner's source
+policy unchanged. Silence, malformed traffic, recipient-local observations,
+and replay remain in the deviation space. Completion is derived, not assumed
+or obtained by conditioning away pending outcomes.
+
+The probabilistic step is independent of the service proof:
+`DisclosureSignalLaw.runPolicies_signal_law` proves that arbitrary finite
+policy execution cannot bias the public coin if the signal resolves on every
+supported execution. `MessageApplication.runPolicies_harmonic` lifts the
+application's one-step continuation-law invariant through the shared runner.
+The resolving service supplies signal resolution. Conditioning on this public
+signal then constructs the source responder policy. The fixed pure owner
+restriction is important: this proof does not establish secrecy or independence
+for a randomized private binding.
+
+`resolving_compiled_source_law` compares compiled pure profiles with the source
+under that same service and selector; `resolving_owner_guarantee` transports
+source lower bounds for arbitrary terminal-outcome valuations, independently
+of the responder's preferences. `resolving_responder_bestResponse` transports
+GameTheory's epsilon-best-response property with the same error for utilities
+factoring through this source-outcome projection. These results concern the
+disclosure application specialization. They do not simulate owner deviations, prove Nash
+preservation for the whole game, or supply the general `ApplicationPlan`
+resolving-service theorem.
+
 These theorems meet the disclosure operational integration gate for its
 deterministic source controllers. The generated-application path now supplies
 structural source-profile lifting and its randomized completion/public-outcome
@@ -1381,9 +1411,10 @@ pending or that they have already succeeded.
 value-dependent outgoing traffic while the ledger is still empty. The opaque
 packet control checks this particular receiver, not arbitrary-receiver hiding.
 
-This honest-law instance prescribes the invocation and inclusion sequence. It
-is not an admission theorem for a class of delayed-delivery services, does not
-cover arbitrary source randomization, and does not compare runtime deviations.
+The benchmark law in `DisclosureApplicationLaw` prescribes the invocation and
+inclusion sequence. The resolving-service laws above additionally admit
+adaptive inclusion and arbitrary responder deviations, but retain a fixed
+pure source owner.
 The remaining integration requires a general source-generated application,
 timely opportunity and settlement under the service discipline, and complete
 randomized source-policy and deviation laws. Queue clearance alone does not
