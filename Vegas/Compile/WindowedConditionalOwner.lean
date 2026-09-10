@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedContinuationReadout
 import Vegas.Compile.ApplicationConditionalOwner
+import Vegas.Compile.WindowedReadoutProjection
 
 /-! # An unchanged conditional owner in the windowed block runtime
 
@@ -22,69 +23,6 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
   GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
-
-private theorem cachedValue_erasePlayerEntry
-    (runtime : WindowedApplication P L) (original : ApplicationImage P L) {Value : Type}
-    (encoding : ChoiceEncoding Value (ApplicationImage.Payload P L))
-    (history : List runtime.application.PlayerEntry) :
-    (encoding.submission runtime.application).cachedValue runtime.application history =
-      (encoding.submission original.application).cachedValue original.application
-        (history.map fun entry =>
-          show original.application.PlayerEntry from runtime.erasePlayerEntry entry) := by
-  induction history with
-  | nil => rfl
-  | cons entry history ih =>
-      rcases entry with ⟨view, command⟩
-      cases command <;>
-        simp only [ChoiceEncoding.cachedValue, List.map_cons,
-          WindowedApplication.erasePlayerEntry, WindowedApplication.erasePlayerCommand,
-          ChoiceEncoding.submission_decode_private, ChoiceEncoding.submission_decode_submit,
-          ChoiceEncoding.submission_decode_replay, ChoiceEncoding.submission_decode_wait, ih]
-
-private theorem ownerReadout?_erasePlayerEntry
-    (runtime : WindowedApplication P L) (original : ApplicationImage P L) (who : P)
-    (refs : Finset (FieldRef L)) (history : List runtime.application.PlayerEntry)
-    (view : runtime.application.View) :
-    runtime.image.ownerReadout? who refs
-        (history.map fun entry =>
-          show runtime.image.application.PlayerEntry from runtime.erasePlayerEntry entry)
-        (runtime.eraseView view) =
-      original.ownerReadout? who refs
-        (history.map fun entry =>
-          show original.application.PlayerEntry from runtime.erasePlayerEntry entry)
-        (runtime.eraseView view) := by
-  unfold ApplicationImage.ownerReadout? ApplicationImage.ownerReadStore
-    ApplicationImage.registrationCache
-  congr 2
-  funext field
-  generalize (runtime.eraseView view).application.store field = stored
-  cases stored with
-  | some value => rfl
-  | none =>
-      generalize (runtime.eraseView view).application.accepted field = accepted
-      cases accepted with
-      | none => rfl
-      | some disposition =>
-          cases disposition with
-          | publicDefault value => rfl
-          | «opaque» handle =>
-              dsimp only
-              by_cases heq : handle = (who, field)
-              · simp only [heq, ↓reduceIte]
-                induction history with
-                | nil => rfl
-                | cons entry history ih =>
-                    rcases entry with ⟨entryView, command⟩
-                    simp only [WindowedApplication.erasePlayerEntry,
-                      WindowedApplication.erasePlayerCommand] at ih
-                    cases command <;>
-                      simp only [List.map_cons, WindowedApplication.erasePlayerEntry,
-                        WindowedApplication.erasePlayerCommand, ChoiceEncoding.cachedValue,
-                        ChoiceEncoding.privateCommand_decode_private,
-                        ChoiceEncoding.privateCommand_decode_submit,
-                        ChoiceEncoding.privateCommand_decode_replay,
-                        ChoiceEncoding.privateCommand_decode_wait, ih]
-              · simp only [heq, ↓reduceIte]
 
 /-- At an ordinary owner slot, a fresh conditional choice has exactly its
 source kernel and remains cached jointly with every subsequent actual windowed
@@ -253,7 +191,7 @@ private theorem windowedConditional_sample_common
         ((execution.principalHistory who).map runtime.erasePlayerEntry)
         (runtime.eraseView (State.observe runtime.application execution.native who)) =
           some reads := by
-      rw [← ownerReadout?_erasePlayerEntry runtime (root.image deadlineOf)]
+      rw [← runtime.ownerReadout?_erasePlayerEntry (root.image deadlineOf)]
       exact hreadout
     exact site.imagePolicy_first_submission_source_law fresh state sourceSlot deadline
       (root.image deadlineOf) disposition
@@ -272,7 +210,7 @@ private theorem windowedConditional_sample_common
           ((execution.principalHistory who).map fun entry =>
             show (root.image deadlineOf).application.PlayerEntry from
               runtime.erasePlayerEntry entry) = none
-        exact (cachedValue_erasePlayerEntry runtime (root.image deadlineOf) encoding
+        exact (runtime.cachedValue_erasePlayerEntry (root.image deadlineOf) encoding
           (execution.principalHistory who)).symm.trans hfresh)
       hreadyDisposition' hreadoutRoot
       (BuildState.Agrees.view current.current.agrees who) hreads

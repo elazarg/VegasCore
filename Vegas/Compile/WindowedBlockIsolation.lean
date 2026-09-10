@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.ApplicationOrderPrefix
+import Vegas.Compile.ApplicationImageStateRefinement
 import Interaction.MessageApplicationLocality
 
 /-! # Isolation of a resolved instruction's service block
@@ -129,6 +130,71 @@ theorem runPolicies_before_player (runtime : WindowedApplication P L) (who : P)
   simp only [MessageApplication.runPolicies, MessageApplication.invoke,
     FinDist.bind_pure, hhistory, hview]
 
+/-- An invariant preserved by private preparation remains true throughout an
+inactive block. Its environment slots execute waits; raw player policies still
+retain all private-command, submission, and replay choices. -/
+theorem runPolicies_block_inactive_invariant (runtime : WindowedApplication P L)
+    (roster : List P) (players : P → runtime.application.PlayerPolicy)
+    (schedule : List (@Invocation P))
+    (execution next : runtime.application.PolicyExecution)
+    (instruction : ApplicationInstruction P L)
+    (hindex : ∀ index, execution.environmentHistory.length ≤ index →
+      index < execution.environmentHistory.length + schedule.countP Invocation.isEnvironment →
+      runtime.image.instructions[index / (roster.length + 2)]? = some instruction)
+    (Invariant : WindowedApplication.State P L → Prop)
+    (hprivate : ∀ state actor command, Invariant state →
+      Invariant (runtime.application.privateStep state actor command))
+    (hinactive : ∀ state, Invariant state →
+      runtime.image.activeAddress? state.base.memory ≠ some instruction.address)
+    (hinvariant : Invariant execution.native.application)
+    (hnext : next ∈ (runtime.application.runPolicies players
+      (runtime.blockEnvironment roster) schedule execution).support) :
+    Invariant next.native.application := by
+  induction schedule generalizing execution with
+  | nil =>
+      simp only [MessageApplication.runPolicies, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hinvariant
+  | cons invocation rest ih =>
+      simp only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      have hmiddleInvariant : Invariant middle.native.application := by
+        cases invocation with
+        | player actor =>
+            simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+            obtain ⟨command, _, hstep⟩ := hmiddle
+            cases command with
+            | privateCommand command =>
+                simp only [MessageApplication.playerStep, PlayerCommand.toAction,
+                  MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
+                  FinDist.mem_support_pure] at hstep
+                subst middle
+                exact hprivate _ actor command hinvariant
+            | submit payload | replay id | wait =>
+                simp only [MessageApplication.playerStep, PlayerCommand.toAction,
+                  MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
+                  FinDist.mem_support_pure] at hstep
+                subst middle
+                exact hinvariant
+        | environment =>
+            have hpolicy := runtime.blockEnvironment_inactive roster execution.environmentHistory
+              (MessageApplication.State.environmentView runtime.application execution.native)
+              instruction (hindex _ (Nat.le_refl _) (by
+                simp [Invocation.isEnvironment])) (hinactive _ hinvariant)
+            simp only [MessageApplication.invoke, hpolicy, FinDist.pure_bind,
+              MessageApplication.environmentStep_wait, FinDist.mem_support_pure] at hmiddle
+            subst middle
+            exact hinvariant
+      have hlength := runtime.application.runPolicies_environmentHistory_length players
+        (runtime.blockEnvironment roster) [invocation] execution middle
+          (by simpa [MessageApplication.runPolicies] using hmiddle)
+      apply ih middle ?_ hmiddleInvariant hnext
+      intro index hlo hhi
+      apply hindex index <;>
+        cases invocation <;>
+        simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
+          Bool.false_eq_true, ↓reduceIte] at hlength ⊢ <;> omega
+
 /-- A suffix whose environment slots all belong to a resolved address has
 no public application effect, even with arbitrary policies for every player.
 The history-range premise is a finite schedule fact, not a progress premise. -/
@@ -145,43 +211,47 @@ theorem runPolicies_block_inactive (runtime : WindowedApplication P L) (roster :
       (runtime.blockEnvironment roster) schedule execution).support) :
     (next.native.application.base.memory, next.native.application.active) =
       (execution.native.application.base.memory, execution.native.application.active) := by
-  induction schedule generalizing execution with
-  | nil =>
-      simp only [MessageApplication.runPolicies, FinDist.mem_support_pure] at hnext
-      subst next
-      rfl
-  | cons invocation rest ih =>
-      simp only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
-      obtain ⟨middle, hmiddle, hnext⟩ := hnext
-      have hsame :
-          (middle.native.application.base.memory, middle.native.application.active) =
-            (execution.native.application.base.memory, execution.native.application.active) := by
-        cases invocation with
-        | player who =>
-            simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
-            obtain ⟨command, _, hstep⟩ := hmiddle
-            exact runtime.playerStep_publicState who execution middle command hstep
-        | environment =>
-            have hpolicy := runtime.blockEnvironment_inactive roster execution.environmentHistory
-              (MessageApplication.State.environmentView runtime.application execution.native)
-              instruction (hindex _ (Nat.le_refl _) (by
-                simp [Invocation.isEnvironment])) hinactive
-            simp only [MessageApplication.invoke, hpolicy, FinDist.pure_bind,
-              MessageApplication.environmentStep_wait, FinDist.mem_support_pure] at hmiddle
-            subst middle
-            rfl
-      have hlength := runtime.application.runPolicies_environmentHistory_length players
-        (runtime.blockEnvironment roster) [invocation] execution middle
-          (by simpa [MessageApplication.runPolicies] using hmiddle)
-      apply Eq.trans (ih middle ?_ ?_ hnext) hsame
-      · intro index hlo hhi
-        apply hindex index <;>
-          cases invocation <;>
-          simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-            Bool.false_eq_true, ↓reduceIte] at hlength ⊢ <;> omega
-      · have hmemory : middle.native.application.base.memory =
-            execution.native.application.base.memory := congrArg Prod.fst hsame
-        rwa [hmemory]
+  apply runtime.runPolicies_block_inactive_invariant roster players schedule execution next
+    instruction hindex
+    (fun state => (state.base.memory, state.active) =
+      (execution.native.application.base.memory, execution.native.application.active))
+  · intro state actor command hstate
+    cases command with
+    | register slot value => exact hstate
+  · intro state hstate
+    have hmemory : state.base.memory = execution.native.application.base.memory :=
+      congrArg Prod.fst hstate
+    rwa [hmemory]
+  · rfl
+  · exact hnext
+
+/-- An aligned inactive suffix preserves the same source refinement even when
+raw private preparation changes. The accepted frozen values remain intact. -/
+theorem runPolicies_block_inactive_refines (runtime : WindowedApplication P L)
+    {G : EventGraph.Graph P L} (cfg : EventGraph.Config G)
+    (roster : List P) (players : P → runtime.application.PlayerPolicy)
+    (schedule : List (@Invocation P))
+    (execution next : runtime.application.PolicyExecution)
+    (instruction : ApplicationInstruction P L)
+    (hindex : ∀ index, execution.environmentHistory.length ≤ index →
+      index < execution.environmentHistory.length + schedule.countP Invocation.isEnvironment →
+      runtime.image.instructions[index / (roster.length + 2)]? = some instruction)
+    (hinactive : runtime.image.activeAddress? execution.native.application.base.memory ≠
+      some instruction.address)
+    (hrefines : execution.native.application.base.Refines cfg)
+    (hnext : next ∈ (runtime.application.runPolicies players
+      (runtime.blockEnvironment roster) schedule execution).support) :
+    next.native.application.base.Refines cfg := by
+  have hresult := runtime.runPolicies_block_inactive_invariant roster players schedule
+    execution next instruction hindex
+    (fun state => state.base.Refines cfg ∧
+      runtime.image.activeAddress? state.base.memory ≠ some instruction.address)
+    (by
+      intro state actor command hstate
+      cases command with
+      | register slot value => exact ⟨hstate.1.register actor slot value, hstate.2⟩)
+    (fun _ hstate => hstate.2) ⟨hrefines, hinactive⟩ hnext
+  exact hresult.1
 
 end Vegas.WindowedApplication
 

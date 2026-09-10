@@ -92,6 +92,77 @@ private theorem instruction_address_bounds
     exact List.nodup_range
   exact (List.nodup_append.mp hnodup).2.2 _ hprefix _ hcovered rfl
 
+namespace ProfileContinuation
+
+variable {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
+variable {rootProg : VegasCore P L rootContext} {prog : VegasCore P L Γ}
+variable {rootAccounted : CommitmentAccounting rootPending rootProg}
+variable {accounted : CommitmentAccounting pending prog}
+variable {rootFresh : FreshBindings rootProg} {fresh : FreshBindings prog}
+variable {rootState : BuildState P L rootContext} {state : BuildState P L Γ}
+variable {root : ApplicationPlan rootAccounted rootFresh rootState}
+variable {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
+variable {plan : ApplicationPlan accounted fresh state}
+variable {profile : SourceBehavioralProfile prog}
+variable {current : CoupledAt (compileCore prog fresh state).graph state}
+
+/-- Exact source refinement identifies completed and pending application
+instructions, without any reference-policy or service assumption. -/
+theorem instruction_completion
+    (continuation : ProfileContinuation root rootProfile plan profile)
+    (native : ApplicationImage.State P L)
+    (hrefines : native.Refines current.current.graph.1) :
+    ∃ before,
+      root.instructions deadlineOf = before ++ plan.instructions deadlineOf ∧
+      (∀ prior ∈ before, native.memory.done prior.address = true) ∧
+      (∀ pending ∈ plan.instructions deadlineOf, native.memory.done pending.address = false) := by
+  obtain ⟨before, hroot, hcoverage⟩ := continuation.instructions_prefix_coverage deadlineOf
+  have hstateBound : state.nodes.length ≤
+      (compileCore prog fresh state).graph.nodeCount := by
+    change state.nodes.length ≤ (compileCore prog fresh state).nodes.length
+    exact (compileCore_nodes_prefix prog fresh state).length_le
+  refine ⟨before, hroot, ?_, ?_⟩
+  · intro prior hprior
+    have hcovered : prior.address ∈ before.flatMap ApplicationInstruction.coveredNodes :=
+      List.mem_flatMap.mpr ⟨prior, hprior, prior.address_mem_coveredNodes⟩
+    have hlt : prior.address < state.nodes.length := by
+      apply List.mem_range.mp
+      rw [← hcoverage]
+      exact List.mem_append_right _ hcovered
+    let node : Fin (compileCore prog fresh state).graph.nodeCount :=
+      ⟨prior.address, hlt.trans_le hstateBound⟩
+    exact (hrefines.memory.completed node).mpr ((current.completedPrefix node).mpr hlt)
+  · intro instruction hmem
+    obtain ⟨hge, hlt⟩ := instruction_address_bounds plan deadlineOf instruction hmem
+    let node : Fin (compileCore prog fresh state).graph.nodeCount :=
+      ⟨instruction.address, hlt⟩
+    apply Bool.eq_false_iff.mpr
+    intro hdone
+    have hprior := (current.completedPrefix node).mp ((hrefines.memory.completed node).mp hdone)
+    exact (Nat.not_lt_of_ge hge) hprior
+
+/-- Ordered admission follows the independent source cursor whenever the
+native state refines that cursor. Reachability and policy lifting are separate
+obligations of the calling checkpoint. -/
+theorem activeAddress?_head
+    (continuation : ProfileContinuation root rootProfile plan profile)
+    (native : ApplicationImage.State P L)
+    (hrefines : native.Refines current.current.graph.1)
+    (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hhead : plan.instructions deadlineOf = instruction :: rest) :
+    (root.image deadlineOf).activeAddress? native.memory = some instruction.address := by
+  obtain ⟨before, hroot, hbefore, hpending⟩ :=
+    continuation.instruction_completion native hrefines
+  have hnotDone := hpending instruction (by rw [hhead]; exact List.mem_cons_self)
+  rw [hhead] at hroot
+  change (ApplicationImage.mk (root.instructions deadlineOf)).activeAddress?
+    native.memory = some instruction.address
+  rw [hroot, ApplicationImage.activeAddress?_after_completed
+    before ⟨instruction :: rest⟩ native.memory hbefore]
+  exact ApplicationImage.activeAddress?_head instruction rest native.memory hnotDone
+
+end ProfileContinuation
+
 namespace ForwardCheckpoint
 
 variable {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
@@ -117,50 +188,9 @@ theorem activeAddress?_head
     (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest) :
     (root.image deadlineOf).activeAddress?
-        execution.native.application.memory = some instruction.address := by
-  obtain ⟨before, hroot, hcoverage⟩ :=
-    checkpoint.continuation.instructions_prefix_coverage deadlineOf
-  have hstateBound : state.nodes.length ≤
-      (compileCore prog fresh state).graph.nodeCount := by
-    change state.nodes.length ≤ (compileCore prog fresh state).nodes.length
-    exact (compileCore_nodes_prefix prog fresh state).length_le
-  have hbefore :
-      ∀ prior ∈ before,
-        execution.native.application.memory.done prior.address = true := by
-    intro prior hprior
-    have hcovered : prior.address ∈
-        before.flatMap ApplicationInstruction.coveredNodes :=
-      List.mem_flatMap.mpr
-        ⟨prior, hprior, prior.address_mem_coveredNodes⟩
-    have hlt : prior.address < state.nodes.length := by
-      apply List.mem_range.mp
-      rw [← hcoverage]
-      exact List.mem_append_right _ hcovered
-    let node : Fin (compileCore prog fresh state).graph.nodeCount :=
-      ⟨prior.address, hlt.trans_le hstateBound⟩
-    exact (checkpoint.refines.memory.completed node).mpr
-      ((current.completedPrefix node).mpr hlt)
-  have hmem : instruction ∈ plan.instructions deadlineOf := by
-    rw [hhead]
-    exact List.mem_cons_self
-  obtain ⟨hge, hlt⟩ := instruction_address_bounds plan deadlineOf instruction hmem
-  have hnotDone :
-      execution.native.application.memory.done instruction.address = false := by
-    let node : Fin (compileCore prog fresh state).graph.nodeCount :=
-      ⟨instruction.address, hlt⟩
-    apply Bool.eq_false_iff.mpr
-    intro hdone
-    have hgraph := (checkpoint.refines.memory.completed node).mp hdone
-    have hprior := (current.completedPrefix node).mp hgraph
-    exact (Nat.not_lt_of_ge hge) hprior
-  rw [hhead] at hroot
-  change (ApplicationImage.mk (root.instructions deadlineOf)).activeAddress?
-      execution.native.application.memory = some instruction.address
-  rw [hroot]
-  rw [ApplicationImage.activeAddress?_after_completed
-    before ⟨instruction :: rest⟩ execution.native.application.memory hbefore]
-  exact ApplicationImage.activeAddress?_head instruction rest
-    execution.native.application.memory hnotDone
+        execution.native.application.memory = some instruction.address :=
+  checkpoint.continuation.activeAddress?_head execution.native.application
+    checkpoint.refines instruction rest hhead
 
 /-- Including a real envelope for the current emitted instruction has exactly
 the original policy-step law, including observations, history, and receipts.

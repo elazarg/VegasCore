@@ -232,6 +232,13 @@ The remaining implementation order is:
    checkpoint. `WindowedBlockSample` retains each source chance draw jointly
    with arbitrary preceding raw player polls and the full subsequent block
    execution; its public checkpoint is unchanged by the aligned suffix.
+   `WindowedBindingOwner`, `WindowedPublicChoiceOwner`, and
+   `WindowedConditionalOwner` recover each unchanged owner's exact source draw
+   at its actual windowed checkpoint, including prefixes with expiry. Their
+   joint laws retain the draw with the real subsequent execution and cache.
+   They require source refinement, the relevant empty owner cache, and correct
+   block alignment; deriving those premises at successive blocks remains part
+   of the whole-program proof.
 3. Compare arbitrary player replacements on that same execution. Start with a
    final conditional disclosure under an actual resolving phase, then compose
    across prior bindings, chance, and later decisions. A support witness for
@@ -261,8 +268,14 @@ For the fixed block service, the causal proof separates three obligations:
   checkpoint, for any pure raw focal policy and arbitrary base policies of
   the gated opponents. This determinism theorem does not itself prove that
   the block resolves. An unopenable binding uses a legal source witness selected at
-  that binding, not after future chance; `State.BindingsRepresent` deliberately
-  constrains recovered typed snapshots but permits absent or ill-typed ones.
+   that binding, not after future chance; `State.BindingsRepresent` deliberately
+   constrains recovered typed snapshots but permits absent or ill-typed ones.
+   `WindowedBindingBlock` recovers the source value from the actual acceptance-time
+   snapshot, using a checkpoint-local legal value when recovery fails. Before
+   the activation-relative deadline, any accepted message at that binding must
+   be the authenticated canonical binding submission; premature expiry and
+   every other payload constructor are rejected. This classification concerns
+   the actual handler and does not assume a canonical deviating policy.
   At an unchanged-owned block, its source kernel must remain exact even though
   the focal principal can still submit arbitrary traffic during its own polls.
 - Prove that the focal history needed by a pure policy is determined by that
@@ -271,6 +284,34 @@ For the fixed block service, the causal proof separates three obligations:
   rejected traffic, public activation, serial numbers, and private registration
   without assuming equality of hidden opponent state. This locality statement
   is essential to turn a runtime resolution into a legal source policy.
+
+`WindowedCheckpoint` records a supported prefix of the actual repeated-block
+runner, source refinement and continuation, and empty remaining caches only
+for unchanged owners. Completed binding dispositions are derived from that
+initialized execution: opaque bindings have their canonical generated handles,
+and timeout resolution may supply a public default. Requiring an opaque handle
+at every completed binding would exclude source-certified timeout execution.
+The generated `WindowedBlockService` regression retains the public default
+jointly with the successor's activation and clock. The focal replacement is
+installed after the reference-policy gates and may prepare future messages.
+Serial freshness, no-delivery provenance, consistency, and history alignment
+follow from reachability. The canonical zero-block checkpoint is constructed
+from a checked program. The certificate contains no pairwise information
+agreement or extracted-action locality premise.
+
+The checkpoint's `completed_instructions` and `activeAddress?_head` derive
+instruction completion and active admission from the source cursor. The
+`sample_block` theorem in `WindowedSampleCheckpoint` derives handler lookup
+and slot alignment at that cursor and compares an entire emitted chance block
+with the source chance kernel, jointly retaining the native successor.
+Every supported final state of that block refines the corresponding source
+successor; histories, pending traffic, and private preparation remain in the
+native law. Its `sample_bind` continuation theorem constructs the successor
+checkpoint, including initialized reachability and unchanged-owner cache
+freshness, and composes the block with any continuation that agrees at those
+checkpoints. The focal policy remains unrestricted throughout the block;
+only unchanged reference policies are shown to wait during sample polls.
+Player-owned source-policy reconstruction is a separate obligation.
 
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
@@ -301,6 +342,13 @@ local results do not assume payload typing or legality. A replay retains its
 original author, so another owner's replayed packet needs a separate provenance
 or completed-address argument; the raw-author theorem must not be used to
 silently treat the rebroadcaster as the author.
+`WindowedForeignProvenance.runPolicies_full_block_foreignBlockAddressed` derives
+the static foreign-address invariant through an entire generated block from
+actual bounded history coordinates: newly emitted nonfocal messages target
+that block, while focal messages are unrestricted. Its initial pool invariant
+still needs to be established across the complete source-prefix induction.
+When the retained foreign addresses are completed, the module proves that
+their replayed packets cannot change the application.
 
 These obligations concern the specified service. Adaptive delivery or an
 additional clock or inclusion policy needs its own information comparison;
@@ -326,6 +374,10 @@ An induction retaining the joint source/native prefix law then justifies the
 construction; it must not select representatives from final outcomes or
 condition an earlier action on later chance. This avoids requiring a
 canonical completion of every counterfactual hidden source environment.
+`SourcePolicyCheckpoints.extend` checks the totalization step: legal extracted
+actions that agree at equal source views define a total source policy, with
+the reference policy used away from supported views. Instantiating its carrier
+and proving action agreement for actual runtime prefixes remain obligations.
 
 Keep the designated fallback expression, its legality certificate, and backend
 eligibility separate from core syntax and WF. `Legal` provides some legal action,

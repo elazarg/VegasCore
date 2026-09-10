@@ -85,27 +85,24 @@ theorem handle (h : left.AgreesFor who right) (runtime : WindowedApplication P L
 
 end State.AgreesFor
 
-/-- Inclusion retains the actual ledger and rejection receipt. Equal public
-message state and owner-local agreement suffice; the other private tables may
-differ arbitrarily. This is an equation of every native player's observation. -/
-theorem includePending_observe_eq (runtime : WindowedApplication P L)
+/-- Inclusion preserves owner-local private agreement, the actual ledger,
+and all acceptance or rejection receipts. -/
+theorem includePending_agrees (runtime : WindowedApplication P L)
     (who : P) (left right : runtime.application.State)
     (hstate : left.application.AgreesFor who right.application)
     (hpool : left.pool = right.pool) (hreceipts : left.receipts = right.receipts)
     (id : MessageId P)
-    (hauthor : ∀ message, left.pool.lookup id = some message → message.sender = who)
-    (observer : P) :
-    MessageApplication.State.observe runtime.application
-        (runtime.application.includePending left id) observer =
-      MessageApplication.State.observe runtime.application
-        (runtime.application.includePending right id) observer := by
+    (hauthor : ∀ message, left.pool.lookup id = some message → message.sender = who) :
+    let nextLeft := runtime.application.includePending left id
+    let nextRight := runtime.application.includePending right id
+    nextLeft.application.AgreesFor who nextRight.application ∧
+      nextLeft.pool = nextRight.pool ∧ nextLeft.receipts = nextRight.receipts := by
   cases hlookup : left.pool.lookup id with
   | none =>
       have hright : right.pool.lookup id = none := hpool ▸ hlookup
       rw [MessageApplication.includePending_missing _ _ _ hlookup,
         MessageApplication.includePending_missing _ _ _ hright]
-      simp only [MessageApplication.State.observe, application, hpool, hreceipts,
-        hstate.base.memory, hstate.active]
+      exact ⟨hstate, hpool, hreceipts⟩
   | some message =>
       have hright : right.pool.lookup id = some message := hpool ▸ hlookup
       have hrelated := hstate.handle runtime message (hauthor message hlookup)
@@ -118,8 +115,7 @@ theorem includePending_observe_eq (runtime : WindowedApplication P L)
             rfl
           rw [MessageApplication.includePending_reject _ _ _ _ hlookup hleftHandle,
             MessageApplication.includePending_reject _ _ _ _ hright hrightHandle]
-          simp only [MessageApplication.State.observe, application, hpool, hreceipts,
-            hstate.base.memory, hstate.active]
+          exact ⟨hstate, by rw [hpool], by rw [hreceipts]⟩
       | some nextLeft =>
           rw [hleftHandle] at hrelated
           cases hrightHandle : runtime.handle right.application message with
@@ -129,8 +125,27 @@ theorem includePending_observe_eq (runtime : WindowedApplication P L)
               have hnext : nextLeft.AgreesFor who nextRight := by cases hrelated; assumption
               rw [MessageApplication.includePending_accept _ _ _ _ _ hlookup hleftHandle,
                 MessageApplication.includePending_accept _ _ _ _ _ hright hrightHandle]
-              simp only [MessageApplication.State.observe, application, hpool, hreceipts,
-                hnext.base.memory, hnext.active]
+              exact ⟨hnext, by rw [hpool], by rw [hreceipts]⟩
+
+/-- Every observer receives the same public result of an owner-authenticated
+probe in owner-locally agreeing states. -/
+theorem includePending_observe_eq (runtime : WindowedApplication P L)
+    (who : P) (left right : runtime.application.State)
+    (hstate : left.application.AgreesFor who right.application)
+    (hpool : left.pool = right.pool) (hreceipts : left.receipts = right.receipts)
+    (id : MessageId P)
+    (hauthor : ∀ message, left.pool.lookup id = some message → message.sender = who)
+    (observer : P) :
+    MessageApplication.State.observe runtime.application
+        (runtime.application.includePending left id) observer =
+      MessageApplication.State.observe runtime.application
+        (runtime.application.includePending right id) observer := by
+  obtain ⟨hnext, hp, hr⟩ :=
+    runtime.includePending_agrees who left right hstate hpool hreceipts id hauthor
+  generalize runtime.application.includePending left id = nextLeft at hnext hp hr ⊢
+  generalize runtime.application.includePending right id = nextRight at hnext hp hr ⊢
+  simp only [MessageApplication.State.observe, application, hp, hr,
+    hnext.base.memory, hnext.active]
 
 end Vegas.WindowedApplication
 

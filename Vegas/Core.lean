@@ -17,6 +17,8 @@ import Vegas.Core.OpeningSite
 import Vegas.Core.Scope
 import Vegas.Core.SmallStep
 import Vegas.Core.Strategy
+import Vegas.Core.SourceRecall
+import Vegas.Core.SourcePolicyExtension
 import Vegas.Core.SourceContext
 import Vegas.Core.WellFormed
 

@@ -297,7 +297,7 @@ theorem publicChoice_head_preserves_nextCaches
 
 /-- Supported commands of the disposition-selected conditional policy are
 either a wait or are recognized by that exact disposition's cache. -/
-private theorem conditionalPolicy_headCommand
+theorem conditionalPolicy_headCommand
     {Γ : VCtx P L} {prog : VegasCore P L Γ}
     (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
     (state : BuildState P L Γ) (sourceSlot deadline : Nat)

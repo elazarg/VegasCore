@@ -319,6 +319,127 @@ theorem runPolicies_block_sample_suffix_source_coupling
       (.sample (ApplicationPlan.headSampleCode fresh state))
       (hsuffixIndex middle hmiddle value hvalue) hinactive hfinal
 
+/-- One entire fixed service block preserves a source chance draw jointly with
+the native execution and the exact successor source configuration. The slot
+range and inactive suffix are derived from the emitted block, not supplied as
+additional fairness or completion premises. Players remain arbitrary. -/
+theorem runPolicies_full_block_sample_source_coupling
+    (runtime : WindowedApplication P L) (roster : List P)
+    {Γ : VCtx P L} {name : VarId} {ty : L.Ty}
+    (dist : L.DistExpr (erasePubVCtx Γ) ty)
+    (tail : VegasCore P L ((name, .pub ty) :: Γ))
+    (fresh : FreshBindings (.sample name dist tail)) (state : BuildState P L Γ)
+    (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
+    (players : P → runtime.application.PlayerPolicy)
+    (execution : runtime.application.PolicyExecution)
+    (hcode : runtime.image.lookup state.nodes.length =
+      some (.sample (ApplicationPlan.headSampleCode fresh state)))
+    (hindex : runtime.image.instructions[execution.environmentHistory.length /
+      (roster.length + 2)]? = some (.sample (ApplicationPlan.headSampleCode fresh state)))
+    (hslot : execution.environmentHistory.length % (roster.length + 2) = 0)
+    (hactive : runtime.image.activeAddress? execution.native.application.base.memory =
+      some state.nodes.length)
+    (hrefines : execution.native.application.base.Refines current.current.graph.1) :
+    let before := roster.flatMap (fun actor => [Invocation.player actor, .player actor])
+    let suffix := Invocation.environment ::
+      roster.flatMap (fun actor => [Invocation.player actor, .environment])
+    (runtime.application.runPolicies players (runtime.blockEnvironment roster)
+        (blockInvocations roster) execution =
+      (runtime.application.runPolicies players (runtime.blockEnvironment roster)
+        before execution).bind fun middle =>
+          (L.evalDist dist current.current.source.eraseSampleEnv).bind fun value =>
+            runtime.application.runPolicies players (runtime.blockEnvironment roster) suffix
+              (runtime.sampleExecution middle (ApplicationPlan.headSampleCode fresh state) value)) ∧
+    ∀ middle ∈ (runtime.application.runPolicies players
+        (runtime.blockEnvironment roster) before execution).support,
+      ∀ value, value ∈ (L.evalDist dist current.current.source.eraseSampleEnv).support →
+        ∃ next : CoupledAt (compileCore (.sample name dist tail) fresh state).graph
+            (state.addSampleEvent name dist fresh.1).1,
+          next.current.source = current.current.source.cons value ∧
+          ∀ final, final ∈ (runtime.application.runPolicies players
+              (runtime.blockEnvironment roster) suffix
+              (runtime.sampleExecution middle
+                (ApplicationPlan.headSampleCode fresh state) value)).support →
+            final.native.application.base.Refines next.current.graph.1 := by
+  let before := roster.flatMap (fun actor => [Invocation.player actor, Invocation.player actor])
+  let suffix := Invocation.environment ::
+    roster.flatMap (fun actor => [Invocation.player actor, Invocation.environment])
+  have hbefore : Invocation.environment ∉ before := by simp [before]
+  have hbeforeCount : before.countP Invocation.isEnvironment = 0 := by
+    apply List.countP_eq_zero.mpr
+    intro call hmem
+    cases call with
+    | player actor => simp [Invocation.isEnvironment]
+    | environment => exact False.elim (hbefore hmem)
+  have hsuffixCount : suffix.countP Invocation.isEnvironment = roster.length + 1 := by
+    have relayCount : ∀ entries : List P, (entries.flatMap fun actor =>
+        [Invocation.player actor, Invocation.environment]).countP Invocation.isEnvironment =
+        entries.length := by
+      intro entries
+      induction entries with
+      | nil => rfl
+      | cons actor rest ih => simp [List.flatMap_cons, Invocation.isEnvironment, ih]
+    simp only [suffix, List.countP_cons, Invocation.isEnvironment, ↓reduceIte, relayCount]
+  have hmiddleLength : ∀ middle ∈ (runtime.application.runPolicies players
+      (runtime.blockEnvironment roster) before execution).support,
+      middle.environmentHistory.length = execution.environmentHistory.length := by
+    intro middle hmiddle
+    simpa only [hbeforeCount, Nat.add_zero] using
+      runtime.application.runPolicies_environmentHistory_length players
+        (runtime.blockEnvironment roster) before execution middle hmiddle
+  have hrange : ∀ middle ∈ (runtime.application.runPolicies players
+      (runtime.blockEnvironment roster) before execution).support,
+      ∀ value : L.Val ty, ∀ index,
+        (runtime.sampleExecution middle (ApplicationPlan.headSampleCode fresh state)
+          value).environmentHistory.length ≤ index →
+        index < (runtime.sampleExecution middle (ApplicationPlan.headSampleCode fresh state)
+          value).environmentHistory.length + suffix.countP Invocation.isEnvironment →
+        runtime.image.instructions[index / (roster.length + 2)]? =
+          some (.sample (ApplicationPlan.headSampleCode fresh state)) := by
+    intro middle hmiddle value index hlo hhi
+    have hlength : (runtime.sampleExecution middle (ApplicationPlan.headSampleCode fresh state)
+        value).environmentHistory.length = execution.environmentHistory.length + 1 := by
+      simp only [sampleExecution, List.length_append, List.length_singleton,
+        hmiddleLength middle hmiddle]
+    rw [hlength] at hlo hhi
+    rw [hsuffixCount] at hhi
+    have hquotient : index / (roster.length + 2) =
+        execution.environmentHistory.length / (roster.length + 2) := by
+      have hbase := Nat.div_mul_cancel (Nat.dvd_of_mod_eq_zero hslot)
+      apply Nat.div_eq_of_lt_le
+      · rw [hbase]
+        omega
+      · rw [Nat.add_mul, hbase]
+        omega
+    rw [hquotient]
+    exact hindex
+  have hphase := runtime.runPolicies_block_sample_suffix_source_coupling roster dist tail
+    fresh state current players before suffix hbefore execution hcode hindex hslot hactive
+    hrefines (fun middle hmiddle value _ => hrange middle hmiddle value)
+  refine ⟨?_, ?_⟩
+  · simpa only [blockInvocations, before, suffix, List.append_assoc,
+      List.cons_append, List.nil_append]
+      using hphase.1
+  · intro middle hmiddle value hvalue
+    obtain ⟨next, hsource, hnextRefines, _⟩ := hphase.2 middle hmiddle value hvalue
+    refine ⟨next, hsource, ?_⟩
+    intro final hfinal
+    let sampled := runtime.sampleExecution middle (ApplicationPlan.headSampleCode fresh state)
+      value
+    have hinactive : runtime.image.activeAddress? sampled.native.application.base.memory ≠
+        some (ApplicationPlan.headSampleCode fresh state).node := by
+      intro hstillActive
+      have hnotDone := runtime.image.activeAddress?_not_done sampled.native.application.base.memory
+        (ApplicationPlan.headSampleCode fresh state).node hstillActive
+      have hdone : sampled.native.application.base.memory.done
+          (ApplicationPlan.headSampleCode fresh state).node = true := by
+        simp [sampled, sampleExecution, advanceTo, ApplicationImage.State.sample]
+      rw [hdone] at hnotDone
+      contradiction
+    exact runtime.runPolicies_block_inactive_refines next.current.graph.1 roster players suffix
+      sampled final (.sample (ApplicationPlan.headSampleCode fresh state))
+      (hrange middle hmiddle value) hinactive hnextRefines hfinal
+
 end Vegas.WindowedApplication
 
 /-- info: 'Vegas.WindowedApplication.runPolicies_block_sample_suffix_source_coupling'
@@ -326,3 +447,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.WindowedApplication.runPolicies_block_sample_suffix_source_coupling
+
+/-- info: 'Vegas.WindowedApplication.runPolicies_full_block_sample_source_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.runPolicies_full_block_sample_source_coupling

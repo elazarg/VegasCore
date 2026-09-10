@@ -81,14 +81,17 @@ private theorem tick_law :
     WindowedApplication.application_advance, FinDist.map_pure, FinDist.pure_bind]
   rfl
 
-/-- The genuine expiry activates the second binding. The remainder of the
-first block leaves that binding unexpired and does not advance its clock. -/
+/-- The genuine expiry installs a public default and activates the second
+binding. The rest of the block leaves that binding unexpired and does not
+advance its clock. A source checkpoint must therefore admit public defaults,
+not require every completed binding to have an opaque handle. -/
 theorem silent_owner_preserves_successor_window :
     (runtime.application.runPolicies players (runtime.blockEnvironment roster)
       (WindowedApplication.blockInvocations roster) execution).map
         (fun out => (out.native.application.active,
-          out.native.application.base.memory.clock)) =
-      FinDist.pure (some ⟨1, 11⟩, 11) := by
+          out.native.application.base.memory.clock,
+          out.native.application.base.memory.accepted 0)) =
+      FinDist.pure (some ⟨1, 11⟩, 11, some (.publicDefault ⟨.bool, false⟩)) := by
   change (runtime.application.runPolicies players (runtime.blockEnvironment roster)
     ([.player 1, .player 1, .player 0, .player 0] ++
       ([.environment, .environment] ++ [.player 1, .environment, .player 0, .environment]))
