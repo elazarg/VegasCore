@@ -79,6 +79,23 @@ theorem playerStep_erase (runtime : WindowedApplication P L) (who : P)
       List.map_nil, erasePlayerEntry, erase_observe]
   · simp only [heq, ↓reduceIte]
 
+/-- Erasing a supported raw player step gives a supported step in any ambient
+application image. Images differ at admission, which player steps do not run. -/
+theorem playerStep_erased_support
+    (runtime : WindowedApplication P L) (image : ApplicationImage P L) (actor : P)
+    (execution next : runtime.application.PolicyExecution)
+    (command : runtime.application.PlayerCommand)
+    (hstep : next ∈ (runtime.application.playerStep actor execution command).support) :
+    runtime.eraseExecution next ∈ (image.application.playerStep actor
+      (runtime.eraseExecution execution) (runtime.erasePlayerCommand command)).support := by
+  have hstepEq : runtime.image.orderedApplication.playerStep actor
+      (runtime.eraseExecution execution) (runtime.erasePlayerCommand command) =
+      image.application.playerStep actor (runtime.eraseExecution execution)
+        (runtime.erasePlayerCommand command) := by
+    cases command <;> rfl
+  rw [← hstepEq, ← runtime.playerStep_erase actor execution command, FinDist.support_map]
+  exact Set.mem_image_of_mem _ hstep
+
 private theorem environmentStep_erase (runtime : WindowedApplication P L)
     (execution : runtime.application.PolicyExecution)
     (command : runtime.image.orderedApplication.EnvironmentPolicyCommand)

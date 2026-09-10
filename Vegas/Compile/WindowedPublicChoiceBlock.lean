@@ -241,7 +241,8 @@ theorem handle_publicChoice_or_expiry_source_coupling
           fresh build).graph
         (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
           publicName who .here fresh.2.1).1),
-      next.current.source = (current.current.source.cons value).cons value ∧
+      evalGuard guard value ((current.current.source.toView who).eraseEnv) = true ∧
+        next.current.source = (current.current.source.cons value).cons value ∧
         resolved.base.Refines next.current.graph.1 := by
   let site := PublicChoiceSite.atHead name publicName who guard tail
   let timed := site.timeoutCode fallback fresh build deadline
@@ -287,12 +288,12 @@ theorem handle_publicChoice_or_expiry_source_coupling
       rcases typed with ⟨actualTy, raw⟩
       by_cases hty : actualTy = ty
       · subst actualTy
-        obtain ⟨_, next, hsource, hnext⟩ :=
+        obtain ⟨hlegal, next, hsource, hnext⟩ :=
           runtime.handle_publicChoice_source_coupling guard tail fresh build current heligible
             state resolved activation id address raw (some
               ((PublicChoiceSite.atHead name publicName who guard tail).timeout
                 fallback fresh build deadline)) hactive hcode hrefines hhandle
-        exact ⟨raw, next, hsource, hnext⟩
+        exact ⟨raw, next, hlegal, hsource, hnext⟩
       · have hguardTy : retimed.guard.ty = ty := rfl
         have hne : actualTy ≠ retimed.guard.ty := fun heq => hty (heq.trans hguardTy)
         have has : (⟨actualTy, raw⟩ : TypedValue L).as? retimed.guard.ty = none := by
@@ -304,10 +305,10 @@ theorem handle_publicChoice_or_expiry_source_coupling
   | expireChoice submittedAddress =>
       have haddress := hadmitted submittedAddress rfl
       subst submittedAddress
-      obtain ⟨value, _, _, next, hsource, hnext⟩ :=
+      obtain ⟨value, _, hlegal, next, hsource, hnext⟩ :=
         runtime.handle_expireChoice_source_coupling guard tail fallback fresh build deadline
           current heligible state resolved activation id address hactive hcode hrefines hhandle
-      exact ⟨value, next, hsource, hnext⟩
+      exact ⟨value, next, hlegal, hsource, hnext⟩
   | malformed data =>
       simp [ApplicationImage.handle] at hunderlying
   | binding submittedAddress handle =>

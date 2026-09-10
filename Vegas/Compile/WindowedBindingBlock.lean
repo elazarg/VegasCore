@@ -8,6 +8,7 @@ import Vegas.Compile.WindowedBindingSettlement
 import Vegas.Compile.ApplicationGuardSoundness
 import Vegas.Compile.WindowedApplicationDeadline
 import Vegas.Compile.WindowedActivationFreshness
+import Vegas.Compile.WindowedBlockSourceCoupling
 
 /-! # Source coupling for actual windowed binding resolution -/
 
@@ -389,47 +390,24 @@ theorem environment_latest_binding_source_coupling
       next.native.application.base.Refines sourceNext.current.graph.1 ∧
       next.native.application.FreshActivation := by
   let timed := fallback.bindingTimeoutCode fresh build deadline
-  simp only [MessageApplication.invoke, hpolicy, FinDist.pure_bind] at hnext
-  rcases runtime.image.application.latestSubmissionCommand_cases actor
-    (runtime.eraseEnvironmentView
-      (MessageApplication.State.environmentView runtime.application execution.native)) with
-    hwait | ⟨id, hinclude⟩
-  · rw [hwait] at hnext
-    simp only [liftEnvironmentCommand] at hnext
-    simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
-      EnvironmentPolicyCommand.toAction, FinDist.pure_bind,
-      FinDist.mem_support_pure] at hnext
-    subst next
-    exact False.elim (hinactive hactive)
-  · rw [hinclude] at hnext
-    simp only [liftEnvironmentCommand] at hnext
-    simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
-      EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
-      FinDist.mem_support_pure] at hnext
-    subst next
-    cases hlookup : execution.native.pool.lookup id with
-    | none =>
-        rw [runtime.application.includePending_missing execution.native id hlookup]
-          at hinactive
-        exact False.elim (hinactive hactive)
-    | some message =>
-        cases hhandle : runtime.handle execution.native.application message with
-        | none =>
-            rw [runtime.application.includePending_reject execution.native id message
-              hlookup hhandle] at hinactive
-            exact False.elim (hinactive hactive)
-        | some resolved =>
-            have hincluded := runtime.application.includePending_accept execution.native id
-              message resolved hlookup hhandle
-            obtain ⟨chosen, sourceNext, hsource, hresolved, hfresh⟩ :=
-              runtime.handle_binding_or_expiry_source_coupling guard tail fallback fresh build
-                current unrestricted execution.native.application resolved activation timed.node
-                deadline message hactivation hkey hcode hrefines hhandle
-            refine ⟨chosen, sourceNext, hsource, ?_, ?_⟩
-            · rw [hincluded]
-              exact hresolved
-            · rw [hincluded]
-              exact hfresh
+  let Witness := { pair :
+    L.Val ty × CoupledAt
+      (compileCore (.commit name who guard tail) fresh build).graph
+      (build.addCommitEvent name who guard fresh.1).1 //
+    pair.2.current.source = current.current.source.cons pair.1 }
+  let target : Witness → Config
+      (compileCore (.commit name who guard tail) fresh build).graph :=
+    fun witness => witness.1.2.current.graph.1
+  obtain ⟨witness, hnextRefines, hnextFresh⟩ :=
+    runtime.environment_latest_source_witness players environment actor execution next timed.node
+      Witness target hpolicy hactive hinactive (by
+        intro message resolved hhandle
+        obtain ⟨chosen, sourceNext, hsource, hresolved, hfresh⟩ :=
+          runtime.handle_binding_or_expiry_source_coupling guard tail fallback fresh build
+            current unrestricted execution.native.application resolved activation timed.node
+            deadline message hactivation hkey hcode hrefines hhandle
+        exact ⟨⟨(chosen, sourceNext), hsource⟩, hresolved, hfresh⟩) hnext
+  exact ⟨witness.1.1, witness.1.2, witness.2, hnextRefines, hnextFresh⟩
 
 /-- If the ordinary environment slot of an active binding block resolves the
 instruction, the actual included pending message supplies a source successor.
@@ -633,20 +611,6 @@ theorem binding_relay_source_coupling_after_clock
   · rw [happlication]
     exact hlaw.2
 
-omit [DecidableEq P] in
-private theorem bindingRelayPairs_environment_count (relays : List P) :
-    (relays.flatMap fun relay =>
-      [Invocation.player relay, Invocation.environment]).countP
-        Invocation.isEnvironment = relays.length := by
-  induction relays with
-  | nil => rfl
-  | cons relay rest ih =>
-      simp only [List.flatMap_cons, List.countP_append, List.countP_cons,
-        List.countP_nil, Invocation.isEnvironment, Bool.false_eq_true,
-        ↓reduceIte, Nat.add_zero, Nat.zero_add, List.length_cons]
-      rw [ih]
-      omega
-
 /-- If a sequence of reserved relay pairs takes an active generated binding
 to an inactive state, the first resolving environment step supplies a legal
 source successor. Earlier pairs may use arbitrary player policies; while the
@@ -696,182 +660,29 @@ theorem runPolicies_binding_relay_pairs_source_coupling
       sourceNext.current.source = current.current.source.cons chosen ∧
       final.native.application.base.Refines sourceNext.current.graph.1 ∧
       final.native.application.FreshActivation := by
-  induction relays generalizing rosterOffset execution activation with
-  | nil =>
-      simp only [List.flatMap_nil, MessageApplication.runPolicies,
-        FinDist.mem_support_pure] at hfinal
-      subst final
-      exact False.elim (hinactive hactive)
-  | cons actor rest ih =>
-      have hactor : roster[rosterOffset]? = some actor := by
-        simpa using hrelays 0 actor rfl
-      have hoffset : rosterOffset < roster.length := by
-        exact List.getElem?_eq_some_iff.mp hactor |>.1
-      have hpairIndex : ∀ index, execution.environmentHistory.length ≤ index →
-          index < execution.environmentHistory.length +
-            [Invocation.player actor, Invocation.environment].countP
-              Invocation.isEnvironment →
-          runtime.image.instructions[index / (roster.length + 2)]? =
-            some (.bind (fallback.bindingTimeoutCode fresh build deadline)) := by
-        intro index hlo hhi
-        apply hindex index hlo
-        simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-          Bool.false_eq_true, ↓reduceIte] at hhi
-        simp only [List.length_cons]
-        omega
-      rw [List.flatMap_cons, show
-        [Invocation.player actor, Invocation.environment] ++
-          rest.flatMap (fun relay => [Invocation.player relay, Invocation.environment]) =
-        Invocation.player actor :: Invocation.environment ::
-          rest.flatMap (fun relay => [Invocation.player relay, Invocation.environment]) by rfl,
-        MessageApplication.runPolicies] at hfinal
-      simp only [FinDist.support_bind, Set.mem_iUnion] at hfinal
-      obtain ⟨afterPlayer, hplayer, hafterPlayer⟩ := hfinal
-      simp only [MessageApplication.runPolicies, FinDist.support_bind,
-        Set.mem_iUnion] at hafterPlayer
-      obtain ⟨afterRelay, henvironment, hrest⟩ := hafterPlayer
-      have hplayerRun : afterPlayer ∈ (runtime.application.runPolicies players
-          (runtime.blockEnvironment roster) [Invocation.player actor] execution).support := by
-        simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hplayer
-      have hpair : afterRelay ∈ (runtime.application.runPolicies players
-          (runtime.blockEnvironment roster)
-          [Invocation.player actor, Invocation.environment] execution).support := by
-        rw [show [Invocation.player actor, Invocation.environment] =
-          [Invocation.player actor] ++ [Invocation.environment] by rfl,
-          MessageApplication.runPolicies_append, FinDist.support_bind]
-        exact Set.mem_iUnion.mpr ⟨afterPlayer, Set.mem_iUnion.mpr ⟨hplayerRun,
-          by simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using henvironment⟩⟩
-      have hpublic := runtime.runPolicies_players_publicState players
-        (runtime.blockEnvironment roster) [Invocation.player actor] (by simp)
-        execution afterPlayer hplayerRun
-      have hplayerActive : runtime.image.activeAddress?
-          afterPlayer.native.application.base.memory =
-          some (fallback.bindingTimeoutCode fresh build deadline).node := by
-        have hmemory := congrArg Prod.fst hpublic
-        change afterPlayer.native.application.base.memory =
-          execution.native.application.base.memory at hmemory
-        rw [hmemory]
-        exact hactive
-      have hplayerActivation : afterPlayer.native.application.active = some activation := by
-        have hactiveEq := congrArg Prod.snd hpublic
-        change afterPlayer.native.application.active = execution.native.application.active
-          at hactiveEq
-        exact hactiveEq.trans hactivation
-      have hplayerRefines : afterPlayer.native.application.base.Refines
-          current.current.graph.1 := by
-        exact (runtime.runPolicies_refines_of_final_active roster players
-          [Invocation.player actor] execution afterPlayer
-          (.bind (fallback.bindingTimeoutCode fresh build deadline)) who
-          current.current.graph.1 (by rfl) (by
-            intro index hlo hhi
-            simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-              Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hhi
-            omega) hrefines hactive hplayerActive
-          hplayerRun).1
-      have hplayerLength := runtime.application.runPolicies_environmentHistory_length players
-        (runtime.blockEnvironment roster) [Invocation.player actor] execution afterPlayer
-        hplayerRun
-      have hrelayLength := runtime.application.runPolicies_environmentHistory_length players
-        (runtime.blockEnvironment roster) [Invocation.environment] afterPlayer afterRelay
-        (by simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using henvironment)
-      by_cases hafterActive : runtime.image.activeAddress?
-          afterRelay.native.application.base.memory =
-          some (fallback.bindingTimeoutCode fresh build deadline).node
-      · obtain ⟨hrelayRefines, hrelayActivation, _⟩ :=
-          runtime.runPolicies_refines_of_final_active roster players
-            [Invocation.player actor, Invocation.environment] execution afterRelay
-            (.bind (fallback.bindingTimeoutCode fresh build deadline)) who
-            current.current.graph.1 (by rfl) hpairIndex hrefines hactive hafterActive hpair
-        cases rest with
-        | nil =>
-            simp only [List.flatMap_nil, MessageApplication.runPolicies,
-              FinDist.mem_support_pure] at hrest
-            subst final
-            exact False.elim (hinactive hafterActive)
-        | cons nextRelay remaining =>
-            apply ih (rosterOffset := rosterOffset + 1) (execution := afterRelay)
-              (activation := activation)
-            · intro index candidate hcandidate
-              have hshift : (actor :: nextRelay :: remaining)[index + 1]? =
-                  some candidate := by
-                simpa [List.getElem?_cons] using hcandidate
-              simpa [Nat.add_assoc, Nat.add_comm 1 index, Nat.add_left_comm] using
-                hrelays (index + 1) candidate hshift
-            · simp only [List.length_cons] at hbound ⊢
-              omega
-            · intro index hlo hhi
-              apply hindex index
-              · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                  Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-                omega
-              · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                  Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-                simp only [List.length_cons] at hhi ⊢
-                omega
-            · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-              rw [hrelayLength, hplayerLength]
-              simp only [List.length_cons] at hbound
-              have hlt : rosterOffset + 2 + 1 < roster.length + 2 := by omega
-              have hone : 1 % (roster.length + 2) = 1 :=
-                Nat.mod_eq_of_lt (by omega)
-              rw [Nat.add_mod, hslot, hone, Nat.mod_eq_of_lt hlt]
-            · exact hafterActive
-            · exact hrelayActivation.trans hactivation
-            · exact hkey
-            · exact hrelayRefines
-            · exact hrest
-      · obtain ⟨chosen, sourceNext, hsource, hnextRefines, hnextFresh⟩ :=
-          runtime.blockEnvironment_relay_binding_source_coupling roster players actor
-            rosterOffset guard tail fallback fresh build current unrestricted deadline
-            afterPlayer afterRelay activation
-            (.bind (fallback.bindingTimeoutCode fresh build deadline))
-            (by
-              rw [hplayerLength]
-              apply hindex execution.environmentHistory.length
-              · exact Nat.le_refl _
-              · simp only [List.length_cons]
-                omega)
-            (by
-              simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength
-              rw [hplayerLength, hslot]) hactor rfl hplayerActive hplayerActivation hkey
-            hcode hplayerRefines hafterActive
-            (by simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using henvironment)
-        refine ⟨chosen, sourceNext, hsource, ?_, ?_⟩
-        · apply runtime.runPolicies_block_inactive_refines sourceNext.current.graph.1 roster
-            players (rest.flatMap fun relay =>
-              [Invocation.player relay, Invocation.environment]) afterRelay final
-            (.bind (fallback.bindingTimeoutCode fresh build deadline))
-          · intro index hlo hhi
-            apply hindex index
-            · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-              omega
-            · rw [bindingRelayPairs_environment_count] at hhi
-              simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                  Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-              simp only [List.length_cons]
-              omega
-          · exact hafterActive
-          · exact hnextRefines
-          · exact hrest
-        · apply runtime.runPolicies_block_inactive_freshActivation roster players
-            (rest.flatMap fun relay => [Invocation.player relay, Invocation.environment])
-            afterRelay final (.bind (fallback.bindingTimeoutCode fresh build deadline))
-          · intro index hlo hhi
-            apply hindex index
-            · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-              omega
-            · rw [bindingRelayPairs_environment_count] at hhi
-              simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-                  Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
-              simp only [List.length_cons]
-              omega
-          · exact hafterActive
-          · exact hnextFresh
-          · exact hrest
+  let Witness := { pair :
+    L.Val ty × CoupledAt
+      (compileCore (.commit name who guard tail) fresh build).graph
+      (build.addCommitEvent name who guard fresh.1).1 //
+    pair.2.current.source = current.current.source.cons pair.1 }
+  let target : Witness → Config
+      (compileCore (.commit name who guard tail) fresh build).graph :=
+    fun witness => witness.1.2.current.graph.1
+  obtain ⟨witness, hfinalRefines, hfinalFresh⟩ :=
+    runtime.runPolicies_relay_pairs_source_witness roster players relays rosterOffset
+      (.bind (fallback.bindingTimeoutCode fresh build deadline)) who
+      current.current.graph.1 execution final activation Witness target hrelays hbound hindex
+      hslot (by rfl) hactive hactivation hrefines hinactive (by
+        intro actor index afterPlayer afterRelay hactor hrelayIndex hrelaySlot
+          hplayerActive hplayerActivation hplayerRefines hafterInactive henvironment
+        obtain ⟨chosen, sourceNext, hsource, hnextRefines, hnextFresh⟩ :=
+          runtime.blockEnvironment_relay_binding_source_coupling roster players actor index
+            guard tail fallback fresh build current unrestricted deadline afterPlayer afterRelay
+            activation (.bind (fallback.bindingTimeoutCode fresh build deadline)) hrelayIndex
+            hrelaySlot hactor rfl hplayerActive hplayerActivation hkey hcode hplayerRefines
+            hafterInactive henvironment
+        exact ⟨⟨(chosen, sourceNext), hsource⟩, hnextRefines, hnextFresh⟩) hfinal
+  exact ⟨witness.1.1, witness.1.2, witness.2, hfinalRefines, hfinalFresh⟩
 
 end Vegas.WindowedApplication
 

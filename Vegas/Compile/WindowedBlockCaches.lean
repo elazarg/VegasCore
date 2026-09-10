@@ -28,21 +28,6 @@ variable {nextAccounted : CommitmentAccounting nextPending nextProg}
 variable {fresh : FreshBindings prog} {nextFresh : FreshBindings nextProg}
 variable {state : BuildState P L Γ} {nextState : BuildState P L Δ}
 
-private theorem playerStep_erased_support
-    (runtime : WindowedApplication P L) (image : ApplicationImage P L) (actor : P)
-    (execution next : runtime.application.PolicyExecution)
-    (command : runtime.application.PlayerCommand)
-    (hstep : next ∈ (runtime.application.playerStep actor execution command).support) :
-    runtime.eraseExecution next ∈ (image.application.playerStep actor
-      (runtime.eraseExecution execution) (runtime.erasePlayerCommand command)).support := by
-  have hstepEq : runtime.image.orderedApplication.playerStep actor
-      (runtime.eraseExecution execution) (runtime.erasePlayerCommand command) =
-      image.application.playerStep actor (runtime.eraseExecution execution)
-        (runtime.erasePlayerCommand command) := by
-    cases command <;> rfl
-  rw [← hstepEq, ← runtime.playerStep_erase actor execution command, FinDist.support_map]
-  exact Set.mem_image_of_mem _ hstep
-
 /-- A command recognized by the current generated instruction cannot populate
 an unchanged owner's cache in the generated tail. Instructions owned by the
 focal replacement are exempt from the invariant. -/
@@ -92,7 +77,7 @@ theorem RemainingUnchangedCachesEmpty.windowed_playerStep_headCommand
   apply hfresh.playerStep_headCommand plan nextPlan deadlineOf image head focal actor
     (runtime.eraseExecution execution) (runtime.eraseExecution next)
     (runtime.erasePlayerCommand command) hinstructions hhead
-  exact playerStep_erased_support runtime image actor execution next command hstep
+  exact runtime.playerStep_erased_support image actor execution next command hstep
 
 private theorem RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry
     (runtime : WindowedApplication P L) (image : ApplicationImage P L)
@@ -113,7 +98,7 @@ private theorem RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry
   · right
     exact instruction.cacheEmpty_playerStep image actor (runtime.eraseExecution execution)
       (runtime.erasePlayerCommand command) (runtime.eraseExecution next)
-      (playerStep_erased_support runtime image actor execution next command hstep) hempty
+      (runtime.playerStep_erased_support image actor execution next command hstep) hempty
       (instruction.idleOrExpiry_rejectsCommand image actor _ hcommand)
 
 private theorem blockPlayer_relay_idleOrExpiry
@@ -208,7 +193,7 @@ theorem runPolicies_relay_slots_preserves_unchangedCaches
       · exact hmiddleFresh
       · exact hnext
 
-section Binding
+section Source
 
 variable {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
 variable {rootProg : VegasCore P L rootContext}
@@ -216,24 +201,18 @@ variable {rootAccounted : CommitmentAccounting rootPending rootProg}
 variable {rootFresh : FreshBindings rootProg} {rootState : BuildState P L rootContext}
 variable {root : ApplicationPlan rootAccounted rootFresh rootState}
 variable {rootProfile : SourceBehavioralProfile rootProg}
-variable {name : VarId} {owner : P} {ty : L.Ty}
-variable {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx owner Γ)) L.bool}
-variable {tail : VegasCore P L ((name, .sealed owner ty) :: Γ)}
-variable {newName : name ∉ pending}
-variable {accounted : CommitmentAccounting (insert name pending) tail}
-variable {fresh : FreshBindings (.commit name owner guard tail)} {state : BuildState P L Γ}
 
-/-- Every actual player-only prefix at a binding source checkpoint preserves
+/-- Every actual player-only prefix at a source checkpoint preserves
 future unchanged-owner caches. The focal principal may use any raw command;
 other principals use the original lifted profile with its block gates. -/
-theorem runPolicies_binding_polls_preserves_unchangedCaches
-    (unrestricted : UnrestrictedBinding guard)
-    (nextPlan : ApplicationPlan accounted fresh.2
-      (state.addCommitEvent name owner guard fresh.1).1)
-    (profile : SourceBehavioralProfile (.commit name owner guard tail))
-    (continuation : ProfileContinuation root rootProfile
-      (.binding (newName := newName) (fresh := fresh) unrestricted nextPlan) profile)
+theorem runPolicies_polls_preserves_unchangedCaches
+    (plan : ApplicationPlan accounted fresh state)
+    (nextPlan : ApplicationPlan nextAccounted nextFresh nextState)
+    (profile : SourceBehavioralProfile prog)
+    (continuation : ProfileContinuation root rootProfile plan profile)
     (deadlineOf : Nat → Nat)
+    (head : ApplicationInstruction P L)
+    (hinstructions : plan.instructions deadlineOf = head :: nextPlan.instructions deadlineOf)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (windowOf : Nat → Nat) (focal : P)
@@ -241,7 +220,7 @@ theorem runPolicies_binding_polls_preserves_unchangedCaches
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (schedule : List (@Invocation P)) (henvironment : Invocation.environment ∉ schedule)
-    (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
+    (current : CoupledAt (compileCore prog fresh state).graph state)
     (execution next :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hrefines : execution.native.application.base.Refines current.current.graph.1)
@@ -256,10 +235,6 @@ theorem runPolicies_binding_polls_preserves_unchangedCaches
   let image := root.image deadlineOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
-  let plan := ApplicationPlan.binding (newName := newName) (fresh := fresh) unrestricted nextPlan
-  let head : ApplicationInstruction P L := .bind
-    ((.here guard tail : SourceDecisionSite owner (.commit name owner guard tail)
-      Γ name ty guard).bindingCode fresh state state.nextField)
   induction schedule generalizing execution with
   | nil =>
       simp only [MessageApplication.runPolicies, FinDist.mem_support_pure] at hnext
@@ -308,39 +283,39 @@ theorem runPolicies_binding_polls_preserves_unchangedCaches
                   (deadlineOf := deadlineOf) (current := current)
                   execution.native.application.base hrefines
                 have hunresolved : execution.native.application.base.memory.done
-                    state.nodes.length = false := hpending head List.mem_cons_self
-                have hhead := binding_headCommand unrestricted nextPlan deadlineOf image profile
+                    head.address = false := hpending head (by rw [hinstructions]; simp)
+                have hhead := liftProfileIn_headCommand plan deadlineOf image profile
                   actor ((runtime.eraseExecution execution).principalHistory actor)
                   (State.observe image.application (runtime.eraseExecution execution).native actor)
+                  head (nextPlan.instructions deadlineOf) hinstructions
                   (runtime.erasePlayerCommand command) hunresolved hsource
                 exact hfresh.windowed_playerStep_headCommand runtime plan nextPlan deadlineOf
-                  image head focal actor execution middle command rfl hhead hstep
+                  image head focal actor execution middle command hinstructions hhead hstep
               · exact RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry runtime
                   image deadlineOf nextPlan focal actor execution middle command
                   (by cases command <;> exact hidle) hstep hfresh
           exact ih hrest middle hmiddleRefines hmiddleFresh hnext
 
-/-- One entire generated binding block preserves the remaining unchanged-owner
+/-- One entire generated block preserves the remaining unchanged-owner
 caches. Initial freshness and alignment come from the actual source checkpoint;
 polling, environment steps, and reserved relay slots discharge their own cases. -/
-theorem WindowedCheckpoint.binding_block_caches
-    (unrestricted : UnrestrictedBinding guard)
-    (nextPlan : ApplicationPlan accounted fresh.2
-      (state.addCommitEvent name owner guard fresh.1).1)
-    (profile : SourceBehavioralProfile (.commit name owner guard tail))
+theorem WindowedCheckpoint.block_caches
+    (plan : ApplicationPlan accounted fresh state)
+    (nextPlan : ApplicationPlan nextAccounted nextFresh nextState)
+    (profile : SourceBehavioralProfile prog)
     (deadlineOf : Nat → Nat)
+    (head : ApplicationInstruction P L)
+    (hinstructions : plan.instructions deadlineOf = head :: nextPlan.instructions deadlineOf)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (windowOf : Nat → Nat) (roster : List P) (hroster : roster.Nodup) (focal : P)
     (replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
     (blockIndex : Nat)
-    (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
+    (current : CoupledAt (compileCore prog fresh state).graph state)
     (execution next :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex
-      (.binding (newName := newName) (fresh := fresh) unrestricted nextPlan)
-      profile current execution)
+      roster focal replacement blockIndex plan profile current execution)
     (hnext : next ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
       ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
@@ -357,10 +332,14 @@ theorem WindowedCheckpoint.binding_block_caches
   rw [List.append_assoc, MessageApplication.runPolicies_append, FinDist.support_bind] at hnext
   simp only [Set.mem_iUnion] at hnext
   obtain ⟨polled, hpolled, hnext⟩ := hnext
-  have hpolledFresh := runPolicies_binding_polls_preserves_unchangedCaches unrestricted nextPlan
-    profile checkpoint.continuation deadlineOf binding choice windowOf focal replacement
+  have hfresh := checkpoint.unchangedCaches
+  unfold RemainingUnchangedCachesEmpty at hfresh
+  rw [hinstructions] at hfresh
+  have hpolledFresh := runPolicies_polls_preserves_unchangedCaches plan nextPlan
+    profile checkpoint.continuation deadlineOf head hinstructions binding choice windowOf focal
+    replacement
     (runtime.blockEnvironment roster) polls (by simp [polls]) current execution polled
-    checkpoint.refines ((List.forall_cons _ _ _).mp checkpoint.unchangedCaches |>.2) hpolled
+    checkpoint.refines ((List.forall_cons _ _ _).mp hfresh |>.2) hpolled
   apply runPolicies_relay_slots_preserves_unchangedCaches runtime (root.image deadlineOf) deadlineOf
     nextPlan focal
     (fun actor => runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile actor))
@@ -396,7 +375,7 @@ theorem WindowedCheckpoint.binding_block_caches
   · exact hpolledFresh
   · exact hnext
 
-end Binding
+end Source
 
 end Vegas.ApplicationPlan
 
@@ -407,14 +386,14 @@ depends on axioms:
 #print axioms
   Vegas.ApplicationPlan.RemainingUnchangedCachesEmpty.playerStep_headCommand
 
-/-- info: 'Vegas.ApplicationPlan.runPolicies_binding_polls_preserves_unchangedCaches'
+/-- info: 'Vegas.ApplicationPlan.runPolicies_polls_preserves_unchangedCaches'
 depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.runPolicies_binding_polls_preserves_unchangedCaches
+#print axioms Vegas.ApplicationPlan.runPolicies_polls_preserves_unchangedCaches
 
-/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_block_caches'
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.block_caches'
 depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_block_caches
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.block_caches

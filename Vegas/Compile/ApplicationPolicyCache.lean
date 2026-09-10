@@ -524,7 +524,86 @@ theorem conditionalCopy_head_preserves_nextCaches
       (.conditional (site.code fresh state sourceSlot deadline)) player execution nextExecution
       command (by rfl) (Or.inl hwait) hstep hfresh
 
+/-- At any unresolved emitted head, a lifted source policy either waits or
+uses that head's own command encoding. This classification is independent of
+the head constructor and of the values held in other players' private state. -/
+theorem liftProfileIn_headCommand
+    {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
+    {accounted : CommitmentAccounting pending prog} {fresh : FreshBindings prog}
+    {state : BuildState P L Γ} (plan : ApplicationPlan accounted fresh state)
+    (deadlineOf : Nat → Nat) (image : ApplicationImage P L)
+    (profile : SourceBehavioralProfile prog) (actor : P)
+    (history : List image.application.PlayerEntry) (view : image.application.View)
+    (head : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hinstructions : plan.instructions deadlineOf = head :: rest)
+    (command : image.application.PlayerCommand)
+    (hunresolved : view.application.done head.address = false)
+    (hcommand : command ∈
+      (plan.liftProfileIn image deadlineOf profile actor history view).support) :
+    command = .wait ∨ ¬ head.RejectsCommand image actor command := by
+  cases plan with
+  | ret => simp [instructions] at hinstructions
+  | sample next =>
+      have heq := (List.cons.inj hinstructions).1
+      subst head
+      change view.application.done state.nodes.length = false at hunresolved
+      left
+      simpa [liftProfileIn, hunresolved] using hcommand
+  | binding unrestricted next =>
+      have heq := (List.cons.inj hinstructions).1
+      subst head
+      exact binding_headCommand unrestricted next deadlineOf image profile actor history view
+        command hunresolved hcommand
+  | publicChoice publicGuard next =>
+      have heq := (List.cons.inj hinstructions).1
+      subst head
+      change view.application.done (state.nodes.length + 1) = false at hunresolved
+      simp only [liftProfileIn, hunresolved, Bool.false_eq_true, ↓reduceIte] at hcommand
+      split at hcommand
+      · rename_i hactor
+        subst actor
+        obtain hwait | ⟨value, rfl⟩ :=
+          ChoiceController.supported_wait_or_encoded image.application _
+            history view command hcommand
+        · exact Or.inl hwait
+        · right
+          intro hreject
+          have hnone := hreject rfl
+          simp only [PublicChoiceSite.imageController, PublicChoiceSite.controller,
+            PublicChoiceSite.code] at hnone
+          erw [ChoiceEncoding.decode_encode] at hnone
+          contradiction
+      · left
+        simpa using hcommand
+  | conditional publicGuard next =>
+      have heq := (List.cons.inj hinstructions).1
+      subst head
+      change view.application.done (state.nodes.length + 1) = false at hunresolved
+      simp only [liftProfileIn, hunresolved, Bool.false_eq_true, ↓reduceIte] at hcommand
+      split at hcommand
+      · rename_i hactor
+        subst actor
+        exact conditionalPolicy_headCommand _ _ _ _ _ image _ _ history view command hcommand
+      · left
+        simpa using hcommand
+  | conditionalCopy spec publicGuard next =>
+      have heq := (List.cons.inj hinstructions).1
+      subst head
+      change view.application.done (state.nodes.length + 1) = false at hunresolved
+      simp only [liftProfileIn, hunresolved, Bool.false_eq_true, ↓reduceIte] at hcommand
+      split at hcommand
+      · rename_i hactor
+        subst actor
+        exact conditionalPolicy_headCommand _ _ _ _ _ image _ _ history view command hcommand
+      · left
+        simpa using hcommand
+
 end Vegas.ApplicationPlan
+
+/-- info: 'Vegas.ApplicationPlan.liftProfileIn_headCommand' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.liftProfileIn_headCommand
 
 /-- info: 'Vegas.ApplicationPlan.binding_headCommand' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

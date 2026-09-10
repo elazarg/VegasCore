@@ -498,9 +498,9 @@ theorem binding_block_resolution
     exact hsettled
 
 /-- Every supported execution of the complete binding block is a genuine
-initialized successor checkpoint for the source continuation. The same
-result records the chosen legal source value and that the predecessor binding
-address is no longer active. -/
+initialized successor checkpoint for the source continuation. The result
+retains the actual sequential source step and settlement of the predecessor
+binding address. -/
 theorem binding_block
     (unrestricted : UnrestrictedBinding guard)
     (nextPlan : ApplicationPlan accounted fresh.2
@@ -533,11 +533,17 @@ theorem binding_block
       WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
         replacement (blockIndex + 1) nextPlan profile.afterCommit sourceNext final ∧
       (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
-        final.native.application.base.memory ≠ some state.nodes.length := by
+        final.native.application.base.memory ≠ some state.nodes.length ∧
+      SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
+        ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
   obtain ⟨chosen, sourceNext, hsource, hrefines, hfresh, hinactive⟩ :=
     binding_block_resolution unrestricted nextPlan profile fallback deadline hselect current
       execution final checkpoint hroster relay hrelay hunchanged hfinal
-  refine ⟨chosen, sourceNext, hsource, ?_, hinactive⟩
+  have hstep : SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
+      ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
+    rw [hsource]
+    exact .commit guard tail chosen (unrestricted current.current.source chosen)
+  refine ⟨chosen, sourceNext, hsource, ?_, hinactive, hstep⟩
   refine ⟨.binding checkpoint.continuation, ?_, hrefines,
     checkpoint.reached_after_block final hfinal, ?_, hfresh⟩
   · have hcount := checkpoint.blockCount
@@ -550,9 +556,10 @@ theorem binding_block
             nextPlan.instructions deadlineOf := rfl
     rw [hhead, List.length_cons] at hcount
     omega
-  · exact binding_block_caches unrestricted nextPlan profile deadlineOf binding
-      choice windowOf roster hroster focal replacement blockIndex current execution final
-      checkpoint hfinal
+  · exact block_caches
+      (.binding (newName := newName) (fresh := fresh) unrestricted nextPlan) nextPlan profile
+      deadlineOf _ rfl binding choice windowOf roster hroster focal replacement blockIndex
+      current execution final checkpoint hfinal
 
 end Vegas.ApplicationPlan.WindowedCheckpoint
 

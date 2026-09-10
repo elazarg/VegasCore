@@ -326,20 +326,42 @@ traffic, including certified expiry, and retains the legal source successor
 and its fresh activation through actual relay resolution.
 `WindowedCheckpoint.binding_block` constructs the actual initialized successor
 checkpoint after the complete generated block, including refinement, source
-continuation, fresh activation, and future unchanged-owner caches. It requires
+continuation, an explicit sequential source step, fresh activation, and future
+unchanged-owner caches. It requires
 a source-certified fallback selected at that binding, a duplicate-free roster,
 and one roster relay distinct from the focal player. The focal replacement
 remains unrestricted. This is a supported-execution result for the fixed block
-service, not yet a source-policy or deviation-law theorem. The public-choice
-classification in `WindowedPublicChoiceBlock` covers ordinary typed submissions
-and certified expiry; its expiry theorem identifies the result with the
-programmer's exact source fallback expression.
-`WindowedCheckpoint.binding_block_caches` preserves future unchanged-owner
-caches through the entire actual binding block. The ordinary-poll proof uses
-the original profile's source continuation; the remaining player slots emit
-only waits or expiry requests. The focal replacement is exempt from those
-command restrictions throughout. These cache and resolution results do not
-yet construct a source policy for an arbitrary runtime deviation.
+service, not yet a source-policy or deviation-law theorem.
+`WindowedCheckpoint.publicChoice_block` constructs the corresponding
+commit/reveal successor for publicly validatable ordinary choices, retaining
+the guard proof and both sequential source steps. It uses the same service and
+relay requirements with the public-choice fallback selector. Its underlying
+expiry classification identifies the result with the programmer's exact
+source fallback expression. Whole-block successor construction for conditional
+and copied-conditional publication remains to be supplied.
+`WindowedCheckpoint.block_caches` preserves future unchanged-owner caches
+through any generated instruction block. The constructor-uniform
+`liftProfileIn_headCommand` classifies commands from an unresolved source
+head; the ordinary-poll induction uses the original profile's continuation.
+The remaining reference-player slots emit only waits or expiry requests.
+The focal replacement is exempt from those command restrictions throughout.
+`WindowedBlockSourceCoupling` shares the relay-segment induction over the
+constructor-specific source witness and successful-resolution proof. These
+cache and resolution results do not yet construct a source policy for an
+arbitrary runtime deviation.
+
+`SourceDecisionSite.windowedBinding_two_invocations_source_law`
+derives the exact source kernel for two actual block-gated binding-owner polls:
+private registration followed by the canonical opaque submission. The local
+requirements are successful source readout, an unresolved ready binding, empty
+owner caches, ordinary-slot alignment, and selection of the generated binding
+controller at the starting public observation. No command or execution-law
+equality is assumed. `WindowedApplication.PolicyAgreement.binding_twoPolls_of_ready`
+uses that law to prove focal policy-input agreement for every pair of supported
+outcomes, allowing different private source inputs and draws for the nonfocal
+owner. It assumes agreement before those polls and stops before environment
+inclusion. Deriving agreement from equal source views through complete blocks,
+including their admission outcomes and receipts, remains a separate obligation.
 
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
@@ -353,6 +375,15 @@ invocation induction must allow these differences before inclusion; equality
 of the entire pool is not the appropriate intermediate invariant. The focal
 input agreement must be derived from the common run and equal focal source views,
 not assumed as a restriction on the deviation theorem.
+
+A paired derivation of the same emitted source-prefix shape can carry the two
+actual block support witnesses and their source successors without assuming
+information equivalence. Backward source-view recall then gives agreement at
+the preceding source boundary: public values and focal-owned sealed values
+must agree, whereas another owner's sealed values may differ. The forward
+constructor proof must recover runtime policy-input agreement from that
+induction hypothesis. This paired-prefix proof and its connection to source
+policy extension are not yet implemented.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional

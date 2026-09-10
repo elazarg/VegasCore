@@ -157,3 +157,4 @@ import VegasTests.GeneratedApplicationSourceLaw
 import VegasTests.GeneratedApplicationChance
 import VegasTests.ApplicationWithholding
 import VegasTests.ConditionalExpirationSourceCoupling
+import VegasTests.WindowedBindingLocality
