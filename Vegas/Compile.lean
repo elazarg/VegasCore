@@ -17,6 +17,7 @@ import Vegas.Compile.PublicChoiceValidation
 import Vegas.Compile.PublicChoiceController
 import Vegas.Compile.ApplicationImage
 import Vegas.Compile.ApplicationImageSamples
+import Vegas.Compile.ApplicationSampleLaw
 import Vegas.Compile.ApplicationImageBindings
 import Vegas.Compile.ApplicationBindingOrigins
 import Vegas.Compile.ApplicationAcceptedPrefix
@@ -127,8 +128,11 @@ import Vegas.Compile.WindowedApplicationDeadline
 import Vegas.Compile.WindowedApplicationInvariants
 import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.WindowedForwardLaw
+import Vegas.Compile.WindowedSampleLaw
+import Vegas.Compile.ApplicationPlanSampleLaw
 import Vegas.Compile.WindowedExpiryStability
 import Vegas.Compile.ApplicationResolvedBindings
+import Vegas.Compile.ApplicationSampleFrames
 import Vegas.Compile.ApplicationOrderPhase
 import Vegas.Compile.ApplicationOrderCheckpoint
 import Vegas.Compile.ApplicationOrderRefinement

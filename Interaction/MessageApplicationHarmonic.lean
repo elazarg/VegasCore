@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationLaws
 
 /-! # Distribution-valued invariants of message-policy execution -/
 
@@ -87,5 +88,44 @@ theorem runPolicies_harmonic (app : MessageApplication Principal)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.MessageApplication.runPolicies_harmonic
+
+/-- Application-local distribution invariants lift through the public message
+pool and arbitrary policy histories. Deterministic handlers preserve the
+continuation law pointwise; probabilistic environment actions preserve it in
+expectation. Submission, delivery, replay, and rejected inclusion need no
+application-specific proof. -/
+theorem runPolicies_application_harmonic (app : MessageApplication Principal)
+    [DecidableEq Principal] (kernel : app.Application → FinDist Outcome)
+    (hprivate : ∀ state who command,
+      kernel (app.privateStep state who command) = kernel state)
+    (hhandler : ∀ state message next, app.handle state message = some next →
+      kernel next = kernel state)
+    (henvironment : ∀ state command,
+      (app.environmentStep state command).bind kernel = kernel state)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution) :
+    (app.runPolicies players environment schedule execution).bind
+        (fun next => kernel next.native.application) =
+      kernel execution.native.application := by
+  apply app.runPolicies_harmonic (fun state => kernel state.application)
+  intro state action
+  cases action with
+  | privateCommand who command =>
+      simpa only [step, FinDist.pure_bind] using hprivate state.application who command
+  | submit who payload | replay who id | deliver who id =>
+      simp only [step, FinDist.pure_bind]
+  | «include» id =>
+      simp only [step, FinDist.pure_bind]
+      exact app.includePending_application_invariant
+        (fun current => kernel current = kernel state.application)
+        (fun current message next hcurrent hnext =>
+          (hhandler current message next hnext).trans hcurrent) state id rfl
+  | environment command =>
+      simpa only [step, FinDist.bind_map] using henvironment state.application command
+
+/-- info: 'Interaction.MessageApplication.runPolicies_application_harmonic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.runPolicies_application_harmonic
 
 end Interaction.MessageApplication

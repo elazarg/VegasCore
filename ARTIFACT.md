@@ -69,6 +69,13 @@ law, and simulates arbitrary owner deviations. It also preserves the owner's
 epsilon-best response. This chance-free, single-decision-maker regression is
 not the general public-message compiler theorem; its exact scope is recorded
 in [runtime models](docs/runtime-models.md).
+`Vegas/Compile/ApplicationPlanSampleLaw.lean` proves fixed-distribution sample
+preservation for arbitrary generated plans under raw public-message policies
+and relative timeouts. The selected sample must resolve on every run; its
+law is not conditioned on success. `VegasTests/GeneratedApplicationChance.lean`
+instantiates this theorem and proves resolution for the actual generated
+reference service. This is a marginal chance law, not joint-law preservation
+or general deviation simulation.
 `lake --wfail build Paper` is the focused paper-proof build. Do not run `lake
 update` to reproduce a pinned revision: it may resolve different dependencies.
 The cache download is a build optimization, not evidence that our theorem

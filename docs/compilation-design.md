@@ -674,6 +674,15 @@ clock advancement, withholding, and permissionless expiry can therefore require
 a different service theorem and a deviation comparison. Event coverage and
 source-legal settlement alone do not exclude such preemption.
 
+Chance integrity is a separate invariant of actual message execution.
+`ApplicationPlan.windowed_runPolicies_sample_law` derives a fixed emitted
+sample's marginal law under arbitrary policies from compiler allocation and
+resolution of that sample on the whole support. The continuation-law proof
+also retains unresolved runs. It uses the runtime's ideal sample kernel and
+does not establish joint-law preservation with prior choices, state-dependent
+source chance, or progress under deviations. These remain obligations of the
+general strategic correspondence, not consequences of marginal preservation.
+
 `Interaction.ChoiceController` supplies the companion sample-once controller.
 Its first encoded command records the draw in the principal's actual
 chronological command history. The same mechanism supports private registration

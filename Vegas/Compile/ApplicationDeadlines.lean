@@ -46,6 +46,11 @@ def withDeadlines (deadlineOf : Nat → Nat) :
     (instruction.withDeadlines deadlineOf).coveredNodes = instruction.coveredNodes := by
   cases instruction <;> rfl
 
+@[simp] theorem withDeadlines_allocatedFields (deadlineOf : Nat → Nat)
+    (instruction : ApplicationInstruction P L) :
+    (instruction.withDeadlines deadlineOf).allocatedFields = instruction.allocatedFields := by
+  cases instruction <;> rfl
+
 theorem withDeadlines_allocatedAt (deadlineOf : Nat → Nat)
     (initialFields : Nat) (instruction : ApplicationInstruction P L) :
     (instruction.withDeadlines deadlineOf).AllocatedAt initialFields ↔

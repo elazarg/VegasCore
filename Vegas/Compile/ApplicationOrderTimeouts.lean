@@ -45,6 +45,18 @@ variable {P : Type} {L : IExpr}
       instruction.AllocatedAt initialFields := by
   cases instruction <;> rfl
 
+@[simp] theorem allocatedFields_withBindingTimeouts
+    (select : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (instruction : ApplicationInstruction P L) :
+    (instruction.withBindingTimeouts select).allocatedFields = instruction.allocatedFields := by
+  cases instruction <;> rfl
+
+@[simp] theorem allocatedFields_withChoiceTimeouts
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (instruction : ApplicationInstruction P L) :
+    (instruction.withChoiceTimeouts select).allocatedFields = instruction.allocatedFields := by
+  cases instruction <;> rfl
+
 @[simp] theorem allocatedAt_withChoiceTimeouts
     (select : (code : PublicChoiceCode P L) →
       Option (PublicFallbackCode L code.guard.ty))
@@ -77,6 +89,22 @@ theorem coveredNodes_withChoiceTimeouts (image : ApplicationImage P L)
     (image.withChoiceTimeouts select).instructions.flatMap
         ApplicationInstruction.coveredNodes =
       image.instructions.flatMap ApplicationInstruction.coveredNodes := by
+  simp [withChoiceTimeouts, List.flatMap_map]
+
+omit [DecidableEq P] in
+theorem allocatedFields_withBindingTimeouts (image : ApplicationImage P L)
+    (select : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)) :
+    (image.withBindingTimeouts select).instructions.flatMap
+        ApplicationInstruction.allocatedFields =
+      image.instructions.flatMap ApplicationInstruction.allocatedFields := by
+  simp [withBindingTimeouts, List.flatMap_map]
+
+omit [DecidableEq P] in
+theorem allocatedFields_withChoiceTimeouts (image : ApplicationImage P L)
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)) :
+    (image.withChoiceTimeouts select).instructions.flatMap
+        ApplicationInstruction.allocatedFields =
+      image.instructions.flatMap ApplicationInstruction.allocatedFields := by
   simp [withChoiceTimeouts, List.flatMap_map]
 
 omit [DecidableEq P] in

@@ -152,5 +152,6 @@ import VegasTests.PendingTimeoutPolicies
 import VegasTests.PendingTimeoutSource
 import VegasTests.PendingTimeoutHiding
 import VegasTests.GeneratedApplicationSourceLaw
+import VegasTests.GeneratedApplicationChance
 import VegasTests.ApplicationWithholding
 import VegasTests.ConditionalExpirationSourceCoupling

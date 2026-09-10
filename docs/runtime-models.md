@@ -832,6 +832,32 @@ connects this separation to actual lifted-policy dispatch for every nonterminal
 plan constructor. A supported player step at an unresolved head preserves all
 later caches, including across conditional copies sharing an original binding.
 
+`ApplicationPlan.windowed_runPolicies_sample_law` preserves the typed readout
+law of any fixed-distribution sample in a generated plan. The sample must be
+initially unresolved and resolved in every supported final state; other
+instructions need not finish. Player and environment policies are arbitrary,
+including public submissions, adaptive inclusion, retries, and clock
+advancement. Compiler allocation supplies the disjoint node and field
+footprints needed to show that other instructions cannot overwrite the draw
+or enable a reroll. Binding and choice timeout installation preserves these
+footprints, as does activation-relative deadline replacement.
+
+The underlying continuation law also covers unresolved runs: before the draw
+it is the emitted distribution, and after the draw it is the stored value.
+Its invariance is proved on the shared message-policy runner without
+conditioning on successful executions. The environment triggers an ideal
+sample kernel; it cannot choose the draw. This is an entropy capability of
+the model, not a proof about blockchain randomness. The generated regression
+`VegasTests/GeneratedApplicationChance.lean` uses the binding, choice, chance,
+and repeated-disclosure program and discharges resolution for its actual
+lifted reference execution.
+
+A sample marginal is insufficient for deviation simulation: the joint law
+must also respect earlier frozen choices and unchanged opponents' decisions.
+State-dependent sample distributions additionally require conditional laws
+at source prefixes; the fixed-distribution theorem does not cover them.
+Resolution under deviations remains a separate service obligation.
+
 `ApplicationService` supplies a concrete observation-local environment policy
 and image-derived invocation list. `serialService` indexes emitted instructions
 using its own environment-history length. It invokes a chance instruction or

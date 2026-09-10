@@ -236,9 +236,14 @@ the identical service. No execution history is reset between phases.
 `ConditionalResolutionDeviation` backtranslates these completed public laws
 and preserves the owner's epsilon-best response and arbitrary source lower
 bounds. Its chance-free, single-decision-maker source permits deterministic
-realization of each public outcome. A general generated-plan theorem still
-needs service and policy-law reasoning for chance and later unchanged-player
-decisions; appending default-only rounds does not supply those obligations.
+realization of each public outcome. For arbitrary generated plans,
+`ApplicationPlan.windowed_runPolicies_sample_law` preserves each fixed sample
+distribution when that sample resolves on every run, even under arbitrary
+clock-aware policies and optional timeout handlers. This marginal law does
+not establish its joint distribution with earlier bindings or unchanged-player
+decisions. General deviation simulation still needs those joint laws and a
+resolving service; appending default-only rounds does not supply them. See
+[runtime models](runtime-models.md) for the exact chance-law boundary.
 
 ### Runtime services
 

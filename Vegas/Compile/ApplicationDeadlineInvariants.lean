@@ -33,6 +33,14 @@ theorem coveredNodes_withDeadlines (image : ApplicationImage P L)
   simp [withDeadlines, List.flatMap_map]
 
 omit [DecidableEq P] in
+theorem allocatedFields_withDeadlines (image : ApplicationImage P L)
+    (deadlineOf : Nat → Nat) :
+    (image.withDeadlines deadlineOf).instructions.flatMap
+        ApplicationInstruction.allocatedFields =
+      image.instructions.flatMap ApplicationInstruction.allocatedFields := by
+  simp [withDeadlines, List.flatMap_map]
+
+omit [DecidableEq P] in
 theorem instructions_allocated_withDeadlines (image : ApplicationImage P L)
     (deadlineOf : Nat → Nat) (initialFields : Nat)
     (hallocated : ∀ instruction ∈ image.instructions,
