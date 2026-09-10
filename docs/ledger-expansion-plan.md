@@ -271,11 +271,13 @@ For the fixed block service, the causal proof separates three obligations:
    that binding, not after future chance; `State.BindingsRepresent` deliberately
    constrains recovered typed snapshots but permits absent or ill-typed ones.
    `WindowedBindingBlock` recovers the source value from the actual acceptance-time
-   snapshot, using a checkpoint-local legal value when recovery fails. Before
-   the activation-relative deadline, any accepted message at that binding must
-   be the authenticated canonical binding submission; premature expiry and
-   every other payload constructor are rejected. This classification concerns
-   the actual handler and does not assume a canonical deviating policy.
+   snapshot, using a checkpoint-local legal value when recovery fails. With
+   the emitted timeout selector tied to a source-certified public fallback,
+   every accepted message is classified as an authenticated binding submission
+   or an expiry installing that fallback. The expiry case uses the actual
+   activation-relative deadline. Premature expiry and other payload constructors
+   are rejected. This classification concerns the actual handler and does not
+   assume a canonical deviating policy.
   At an unchanged-owned block, its source kernel must remain exact even though
   the focal principal can still submit arbitrary traffic during its own polls.
 - Prove that the focal history needed by a pure policy is determined by that
@@ -286,8 +288,13 @@ For the fixed block service, the causal proof separates three obligations:
   is essential to turn a runtime resolution into a legal source policy.
 
 `WindowedCheckpoint` records a supported prefix of the actual repeated-block
-runner, source refinement and continuation, and empty remaining caches only
-for unchanged owners. Completed binding dispositions are derived from that
+runner, source refinement and continuation, empty remaining caches only
+for unchanged owners, and a fresh activation origin at the current public clock.
+Freshness is an inductive boundary invariant: it holds initially and after
+successful resolution, and inactive block padding preserves it. Clock
+advancement within an unresolved block preserves consistency but can consume
+the window; consistency alone does not give an ordinary-service opportunity.
+Completed binding dispositions are derived from that
 initialized execution: opaque bindings have their canonical generated handles,
 and timeout resolution may supply a public default. Requiring an opaque handle
 at every completed binding would exclude source-certified timeout execution.
@@ -307,21 +314,45 @@ with the source chance kernel, jointly retaining the native successor.
 Every supported final state of that block refines the corresponding source
 successor; histories, pending traffic, and private preparation remain in the
 native law. Its `sample_bind` continuation theorem constructs the successor
-checkpoint, including initialized reachability and unchanged-owner cache
-freshness, and composes the block with any continuation that agrees at those
-checkpoints. The focal policy remains unrestricted throughout the block;
-only unchanged reference policies are shown to wait during sample polls.
+checkpoint, including initialized reachability, unchanged-owner cache
+freshness, and a fresh activation origin, and composes the block with any
+continuation that agrees at those checkpoints. The focal policy remains
+unrestricted throughout the block; only unchanged reference policies are
+shown to wait during sample polls.
 Player-owned source-policy reconstruction is a separate obligation.
+
+At an opaque binding, `WindowedBindingBlock` classifies arbitrary accepted
+traffic, including certified expiry, and retains the legal source successor
+and its fresh activation through actual relay resolution.
+`WindowedCheckpoint.binding_block` constructs the actual initialized successor
+checkpoint after the complete generated block, including refinement, source
+continuation, fresh activation, and future unchanged-owner caches. It requires
+a source-certified fallback selected at that binding, a duplicate-free roster,
+and one roster relay distinct from the focal player. The focal replacement
+remains unrestricted. This is a supported-execution result for the fixed block
+service, not yet a source-policy or deviation-law theorem. The public-choice
+classification in `WindowedPublicChoiceBlock` covers ordinary typed submissions
+and certified expiry; its expiry theorem identifies the result with the
+programmer's exact source fallback expression.
+`WindowedCheckpoint.binding_block_caches` preserves future unchanged-owner
+caches through the entire actual binding block. The ordinary-poll proof uses
+the original profile's source continuation; the remaining player slots emit
+only waits or expiry requests. The focal replacement is exempt from those
+command restrictions throughout. These cache and resolution results do not
+yet construct a source policy for an arbitrary runtime deviation.
 
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
 block schedule prefix, and block environment. Compare complete-block source
 boundaries, not arbitrary native states satisfying refinement. The candidate
 invariant equates public memory (including dispositions and clock), activation,
-pool, receipts, and focal history, together with focal-owned private preparation
-and relevant frozen bindings. Opponents' hidden registered values may differ.
-This equality must be derived from the common run and equal focal source views;
-it must not be assumed as an extra restriction on the deviation theorem.
+receipts, and the focal history and observable message projection, together with
+focal-owned private preparation and relevant frozen bindings. Opponents' hidden
+registered values and undelivered pending messages may differ. The inner
+invocation induction must allow these differences before inclusion; equality
+of the entire pool is not the appropriate intermediate invariant. The focal
+input agreement must be derived from the common run and equal focal source views,
+not assumed as a restriction on the deviation theorem.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional
@@ -342,13 +373,15 @@ local results do not assume payload typing or legality. A replay retains its
 original author, so another owner's replayed packet needs a separate provenance
 or completed-address argument; the raw-author theorem must not be used to
 silently treat the rebroadcaster as the author.
-`WindowedForeignProvenance.runPolicies_full_block_foreignBlockAddressed` derives
-the static foreign-address invariant through an entire generated block from
-actual bounded history coordinates: newly emitted nonfocal messages target
-that block, while focal messages are unrestricted. Its initial pool invariant
-still needs to be established across the complete source-prefix induction.
-When the retained foreign addresses are completed, the module proves that
-their replayed packets cannot change the application.
+`WindowedForeignProvenance.runPolicies_repeatedBlocks_foreignAddressed` derives
+foreign-message provenance through the actual initialized repeated-block run:
+every retained nonfocal message targets an instruction before the completed-block
+count, while focal messages remain unrestricted. This result permits an
+arbitrary environment policy and does not assume an intermediate pool invariant.
+At a source checkpoint, `foreignLedgerCompleted` combines that provenance with
+the derived completed prefix. Replaying these foreign ledger packets cannot
+change the application. The within-block theorem accounts separately for
+messages targeting the current, not-yet-completed instruction.
 
 These obligations concern the specified service. Adaptive delivery or an
 additional clock or inclusion policy needs its own information comparison;
@@ -361,8 +394,11 @@ The absence of delivery is checked for `blockEnvironment`. The generic
 `MessageApplication.runPolicies_noDeliveryProvenance` proves that inboxes stay
 empty and any known foreign-authored packet is already in the public ledger,
 including foreign packets retained in a broadcaster's sent history by replay.
-Connecting those public packets to completed source addresses is still part
-of the canonical-prefix argument.
+The source-checkpoint provenance result connects those public packets to
+completed source addresses. Current-block canonical inclusion still needs a
+paired transcript argument: equal focal source successors must determine the
+ledger-visible message and receipt, even when the unchanged owner's private
+draws differ.
 
 The required theorem is profile-relative, so the construction need only use
 supported **prefix** checkpoints. For a fixed focal pure policy and a source

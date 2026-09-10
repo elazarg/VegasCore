@@ -11,7 +11,8 @@ import Vegas.Compile.WindowedExecutionProjection
 The comparison retains all command choices and random kernels. Activation
 metadata is erased from both current observations and every remembered view.
 It embeds selected policies; it does not back-translate arbitrary window-aware
-deviations.
+deviations. The player-step projection itself is unconditional; the
+deadline-independent traffic condition is needed at environment admission.
 -/
 
 noncomputable section
@@ -40,21 +41,33 @@ private theorem advance_erase (runtime : WindowedApplication P L)
       intro next _
       simp only [List.map_append, List.map_cons, List.map_nil]
 
-private theorem playerStep_erase (runtime : WindowedApplication P L) (who : P)
+/-- Raw player steps commute with activation erasure, including private
+preparation and arbitrary submissions. No deadline or pool restriction is
+needed: players do not directly execute the admission handler. -/
+theorem playerStep_erase (runtime : WindowedApplication P L) (who : P)
     (execution : runtime.application.PolicyExecution)
-    (command : runtime.image.orderedApplication.PlayerCommand)
-    (hstate : runtime.Consistent execution.native.application)
-    (hsafe : execution.native.pool.Satisfies (fun message => message.payload.DeadlineIndependent)) :
-    (runtime.application.playerStep who execution (runtime.liftPlayerCommand command)).map
+    (command : runtime.application.PlayerCommand) :
+    (runtime.application.playerStep who execution command).map
       runtime.eraseExecution =
-    runtime.image.orderedApplication.playerStep who (runtime.eraseExecution execution) command := by
+    runtime.image.orderedApplication.playerStep who (runtime.eraseExecution execution)
+      (runtime.erasePlayerCommand command) := by
   have haction :
-      (PlayerCommand.toAction runtime.application who
-        (runtime.liftPlayerCommand command)).map runtime.eraseAction =
-      PlayerCommand.toAction runtime.image.orderedApplication who command := by
+      (PlayerCommand.toAction runtime.application who command).map runtime.eraseAction =
+      PlayerCommand.toAction runtime.image.orderedApplication who
+        (runtime.erasePlayerCommand command) := by
     cases command <;> rfl
+  have hadvance :
+      (runtime.application.advance execution (PlayerCommand.toAction runtime.application who
+        command)).map (fun advanced =>
+          (runtime.eraseState advanced.1, advanced.2.map runtime.eraseAction)) =
+      runtime.image.orderedApplication.advance (runtime.eraseExecution execution)
+        ((PlayerCommand.toAction runtime.application who command).map runtime.eraseAction) := by
+    cases command <;>
+      simp only [PlayerCommand.toAction, MessageApplication.advance, MessageApplication.step,
+        Option.map_some, Option.map_none, eraseAction, FinDist.pure_bind, FinDist.map_pure,
+        eraseExecution, List.map_append, List.map_cons, List.map_nil] <;> rfl
   simp only [MessageApplication.playerStep, FinDist.map_bind, FinDist.map_pure]
-  rw [← haction, ← runtime.advance_erase execution _ hstate hsafe, FinDist.bind_map]
+  rw [← haction, ← hadvance, FinDist.bind_map]
   apply FinDist.bind_congr
   intro advanced _
   simp only [eraseExecution]
@@ -63,7 +76,7 @@ private theorem playerStep_erase (runtime : WindowedApplication P L) (who : P)
   by_cases heq : other = who
   · subst other
     simp only [↓reduceIte, List.map_append, List.map_cons,
-      List.map_nil, erasePlayerEntry, erase_observe, erase_lift_playerCommand]
+      List.map_nil, erasePlayerEntry, erase_observe]
   · simp only [heq, ↓reduceIte]
 
 private theorem environmentStep_erase (runtime : WindowedApplication P L)
@@ -106,7 +119,8 @@ theorem invoke_erase (runtime : WindowedApplication P L)
         FinDist.bind_map, erase_observe]
       apply FinDist.bind_congr
       intro command _
-      exact playerStep_erase runtime who execution command hstate hsafe
+      simpa only [erase_lift_playerCommand] using
+        playerStep_erase runtime who execution (runtime.liftPlayerCommand command)
   | environment =>
       simp only [MessageApplication.invoke, liftEnvironmentPolicy, FinDist.map_bind,
         FinDist.bind_map, erase_environmentView]

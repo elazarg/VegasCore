@@ -74,7 +74,8 @@ theorem sample_block
           ∀ final, final ∈ (runtime.application.runPolicies players
               (runtime.blockEnvironment roster) suffix
               (runtime.sampleExecution middle (headSampleCode fresh state) value)).support →
-            final.native.application.base.Refines next.current.graph.1 := by
+            final.native.application.base.Refines next.current.graph.1 ∧
+              final.native.application.FreshActivation := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let code := headSampleCode fresh state
   have hhead : (ApplicationPlan.sample (fresh := fresh) nextPlan).instructions deadlineOf =
@@ -103,7 +104,7 @@ theorem sample_block
   exact runtime.runPolicies_full_block_sample_source_coupling roster dist tail fresh state
     current (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
     execution hlookup hindex (by rw [hlength]; exact Nat.mul_mod_left _ _)
-    hactive checkpoint.refines
+    hactive checkpoint.refines checkpoint.consistent
 
 private theorem sample_successor
     (nextPlan : ApplicationPlan accounted fresh.2 (state.addSampleEvent name dist fresh.1).1)
@@ -120,7 +121,8 @@ private theorem sample_successor
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
       ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
       (WindowedApplication.blockInvocations roster) execution).support)
-    (hrefines : final.native.application.base.Refines next.current.graph.1) :
+    (hrefines : final.native.application.base.Refines next.current.graph.1)
+    (hactivation : final.native.application.FreshActivation) :
     WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who replacement
       (blockIndex + 1) nextPlan profile.afterSample next final := by
   let runtime := root.windowed deadlineOf binding choice windowOf
@@ -143,7 +145,7 @@ private theorem sample_successor
       hindexOriginal, Option.map_some, ApplicationInstruction.withBindingTimeouts,
       ApplicationInstruction.withChoiceTimeouts]
   refine ⟨.sample checkpoint.continuation, ?_, hrefines,
-    checkpoint.reached_after_block final hfinal, ?_⟩
+    checkpoint.reached_after_block final hfinal, ?_, hactivation⟩
   · have hcount := checkpoint.blockCount
     rw [hhead, List.length_cons] at hcount
     omega
@@ -219,7 +221,7 @@ theorem sample_bind
             simp only [FinDist.support_bind, Set.mem_iUnion]
             exact ⟨middle, hmiddle, value, hvalue, hfinal⟩
           have hnext := sample_successor nextPlan profile current execution checkpoint hroster
-            next final hwhole (hrefines final hfinal)
+            next final hwhole (hrefines final hfinal).1 (hrefines final hfinal).2
           rw [hafter next final hnext, hsource]
         _ = _ := FinDist.bind_const _ _
     _ = _ := FinDist.bind_const _ _

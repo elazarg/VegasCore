@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedBlockIsolation
+import Vegas.Compile.WindowedActivationFreshness
 import Vegas.Compile.ApplicationSampleExecution
 
 /-! # Exact chance kernels at windowed block checkpoints -/
@@ -31,6 +32,30 @@ def sampleExecution (runtime : WindowedApplication P L)
       [⟨MessageApplication.State.environmentView runtime.application execution.native,
         .application (.sample code.node)⟩]
     nativeTrace := execution.nativeTrace ++ [.environment (.sample code.node)] }
+
+/-- Sampling the active instruction finishes it and starts any successor
+window at the current clock, even if the old window had already aged. -/
+theorem sampleExecution_freshActivation (runtime : WindowedApplication P L)
+    (execution : runtime.application.PolicyExecution) (code : SampleCode L)
+    (value : L.Val code.dist.ty)
+    (hactive : execution.native.application.active.map Activation.key = some code.node) :
+    (runtime.sampleExecution execution code value).native.application.FreshActivation := by
+  let next := execution.native.application.base.sample code value
+  have hdone : next.memory.done code.node = true := by
+    simp [next, ApplicationImage.State.sample]
+  have hchanged : execution.native.application.active.map Activation.key ≠
+      runtime.image.activeAddress? next.memory := by
+    rw [hactive]
+    intro heq
+    have hnotDone := runtime.image.activeAddress?_not_done next.memory code.node heq.symm
+    rw [hdone] at hnotDone
+    contradiction
+  change (runtime.advanceTo execution.native.application next).FreshActivation
+  rw [advanceTo, Activation.refresh_changed _ _ _ hchanged]
+  intro activation hactivation
+  simp only [Option.mem_map] at hactivation
+  obtain ⟨key, _, rfl⟩ := hactivation
+  rfl
 
 private def baseExecution (runtime : WindowedApplication P L)
     (execution : runtime.application.PolicyExecution) :
@@ -339,7 +364,8 @@ theorem runPolicies_full_block_sample_source_coupling
     (hslot : execution.environmentHistory.length % (roster.length + 2) = 0)
     (hactive : runtime.image.activeAddress? execution.native.application.base.memory =
       some state.nodes.length)
-    (hrefines : execution.native.application.base.Refines current.current.graph.1) :
+    (hrefines : execution.native.application.base.Refines current.current.graph.1)
+    (hconsistent : runtime.Consistent execution.native.application) :
     let before := roster.flatMap (fun actor => [Invocation.player actor, .player actor])
     let suffix := Invocation.environment ::
       roster.flatMap (fun actor => [Invocation.player actor, .environment])
@@ -360,7 +386,8 @@ theorem runPolicies_full_block_sample_source_coupling
               (runtime.blockEnvironment roster) suffix
               (runtime.sampleExecution middle
                 (ApplicationPlan.headSampleCode fresh state) value)).support →
-            final.native.application.base.Refines next.current.graph.1 := by
+            final.native.application.base.Refines next.current.graph.1 ∧
+              final.native.application.FreshActivation := by
   let before := roster.flatMap (fun actor => [Invocation.player actor, Invocation.player actor])
   let suffix := Invocation.environment ::
     roster.flatMap (fun actor => [Invocation.player actor, Invocation.environment])
@@ -436,9 +463,21 @@ theorem runPolicies_full_block_sample_source_coupling
         simp [sampled, sampleExecution, advanceTo, ApplicationImage.State.sample]
       rw [hdone] at hnotDone
       contradiction
-    exact runtime.runPolicies_block_inactive_refines next.current.graph.1 roster players suffix
+    refine ⟨runtime.runPolicies_block_inactive_refines next.current.graph.1 roster players suffix
       sampled final (.sample (ApplicationPlan.headSampleCode fresh state))
-      (hrange middle hmiddle value) hinactive hnextRefines hfinal
+      (hrange middle hmiddle value) hinactive hnextRefines hfinal, ?_⟩
+    have hpublic := runtime.runPolicies_players_publicState players
+      (runtime.blockEnvironment roster) before hbefore execution middle hmiddle
+    have hactivation : middle.native.application.active.map Activation.key =
+        some (ApplicationPlan.headSampleCode fresh state).node := by
+      calc
+        _ = execution.native.application.active.map Activation.key :=
+          congrArg (fun pair : ApplicationImage.Memory P L × Option (Activation Nat) =>
+            pair.2.map Activation.key) hpublic
+        _ = _ := hconsistent.1.trans hactive
+    exact runtime.runPolicies_block_inactive_freshActivation roster players suffix sampled final
+      (.sample (ApplicationPlan.headSampleCode fresh state)) (hrange middle hmiddle value)
+      hinactive (runtime.sampleExecution_freshActivation middle _ value hactivation) hfinal
 
 end Vegas.WindowedApplication
 

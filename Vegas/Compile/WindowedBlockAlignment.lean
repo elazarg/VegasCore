@@ -22,6 +22,40 @@ open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+/-- The ordinary phase polls each roster member twice. -/
+theorem ordinaryPolls_player_count (roster : List P) (hroster : roster.Nodup)
+    (who : P) :
+    (roster.flatMap (fun actor =>
+      [Invocation.player actor, Invocation.player actor])).countP (fun call => match call with
+      | .player actor => decide (actor = who)
+      | .environment => false) = if who ∈ roster then 2 else 0 := by
+  induction roster with
+  | nil => rfl
+  | cons actor rest ih =>
+      rw [List.nodup_cons] at hroster
+      by_cases hactor : actor = who
+      · subst actor
+        simp [List.flatMap_cons, hroster.1, ih hroster.2]
+      · have hactor' : who ≠ actor := Ne.symm hactor
+        simp [List.flatMap_cons, hactor, hactor', ih hroster.2]
+
+/-- The relay phase polls each roster member once. -/
+theorem relayInvocations_player_count (roster : List P) (hroster : roster.Nodup)
+    (who : P) :
+    (roster.flatMap (fun actor =>
+      [Invocation.player actor, Invocation.environment])).countP (fun call => match call with
+      | .player actor => decide (actor = who)
+      | .environment => false) = if who ∈ roster then 1 else 0 := by
+  induction roster with
+  | nil => rfl
+  | cons actor rest ih =>
+      rw [List.nodup_cons] at hroster
+      by_cases hactor : actor = who
+      · subst actor
+        simp [List.flatMap_cons, hroster.1, ih hroster.2]
+      · have hactor' : who ≠ actor := Ne.symm hactor
+        simp [List.flatMap_cons, hactor, hactor', ih hroster.2]
+
 /-- One complete block invokes each member of a duplicate-free roster exactly
 three times and invokes principals outside the roster zero times. -/
 theorem blockInvocations_player_count (roster : List P) (hroster : roster.Nodup)
@@ -30,37 +64,8 @@ theorem blockInvocations_player_count (roster : List P) (hroster : roster.Nodup)
       match invocation with
       | .player actor => decide (actor = who)
       | .environment => false) = if who ∈ roster then 3 else 0 := by
-  have hnormal :
-      (roster.flatMap (fun actor =>
-        [Invocation.player actor, Invocation.player actor])).countP (fun invocation =>
-          match invocation with
-          | .player actor => decide (actor = who)
-          | .environment => false) = if who ∈ roster then 2 else 0 := by
-    induction roster with
-    | nil => rfl
-    | cons actor rest ih =>
-        rw [List.nodup_cons] at hroster
-        by_cases hactor : actor = who
-        · subst actor
-          simp [List.flatMap_cons, hroster.1, ih hroster.2]
-        · have hactor' : who ≠ actor := Ne.symm hactor
-          simp [List.flatMap_cons, hactor, hactor', ih hroster.2]
-  have hrelay :
-      (roster.flatMap (fun actor =>
-        [Invocation.player actor, Invocation.environment])).countP (fun invocation =>
-          match invocation with
-          | .player actor => decide (actor = who)
-          | .environment => false) = if who ∈ roster then 1 else 0 := by
-    clear hnormal
-    induction roster with
-    | nil => rfl
-    | cons actor rest ih =>
-        rw [List.nodup_cons] at hroster
-        by_cases hactor : actor = who
-        · subst actor
-          simp [List.flatMap_cons, hroster.1, ih hroster.2]
-        · have hactor' : who ≠ actor := Ne.symm hactor
-          simp [List.flatMap_cons, hactor, hactor', ih hroster.2]
+  have hnormal := ordinaryPolls_player_count roster hroster who
+  have hrelay := relayInvocations_player_count roster hroster who
   by_cases hwho : who ∈ roster
   · simp [blockInvocations, List.countP_append, hnormal, hrelay, hwho]
   · simp [blockInvocations, List.countP_append, hnormal, hrelay, hwho]

@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedBlockIsolation
 import Vegas.Compile.WindowedBlockResolution
+import Vegas.Compile.WindowedActivationFreshness
 import VegasTests.WindowedApplication
 
 /-! # Block service on a compiler-generated two-owner application
@@ -81,6 +82,20 @@ private theorem tick_law :
     WindowedApplication.application_advance, FinDist.map_pure, FinDist.pure_bind]
   rfl
 
+/-- A clock step can preserve consistency while consuming the active window.
+Freshness therefore belongs at source boundaries, not at arbitrary prefixes. -/
+theorem ticked_consistent_not_fresh :
+    runtime.Consistent ticked.native.application ∧
+      ¬ ticked.native.application.FreshActivation := by
+  constructor
+  · change some (0 : Nat) = some 0 ∧
+      ∀ activation ∈ some (⟨0, 0⟩ : Activation Nat), activation.since ≤ 11
+    simp
+  · intro hfresh
+    have hclock := hfresh ⟨0, 0⟩ rfl
+    change (0 : Nat) = 11 at hclock
+    omega
+
 /-- The genuine expiry installs a public default and activates the second
 binding. The rest of the block leaves that binding unexpired and does not
 advance its clock. A source checkpoint must therefore admit public defaults,
@@ -115,6 +130,30 @@ theorem silent_owner_preserves_successor_window :
     MessageApplication.step]
   repeat' first | erw [FinDist.pure_bind] | erw [FinDist.bind_pure] | erw [FinDist.map_pure]
   rfl
+
+/-- Every supported result of this real timeout block has a fresh successor
+window, even though its intermediate clocked state does not. -/
+theorem silent_owner_successor_fresh
+    (final : runtime.application.PolicyExecution)
+    (hfinal : final ∈ (runtime.application.runPolicies players
+      (runtime.blockEnvironment roster) (WindowedApplication.blockInvocations roster)
+      execution).support) : final.native.application.FreshActivation := by
+  have hresult : (final.native.application.active,
+      final.native.application.base.memory.clock,
+      final.native.application.base.memory.accepted 0) =
+        (some ⟨1, 11⟩, 11, some (.publicDefault ⟨.bool, false⟩)) := by
+    apply FinDist.mem_support_pure.mp
+    rw [← silent_owner_preserves_successor_window, FinDist.support_map]
+    exact Set.mem_image_of_mem _ hfinal
+  have hactive : final.native.application.active = some ⟨1, 11⟩ :=
+    congrArg Prod.fst hresult
+  have hclock : final.native.application.base.memory.clock = 11 :=
+    congrArg (fun result => result.2.1) hresult
+  intro activation hactivation
+  rw [hactive] at hactivation
+  have heq : (⟨1, 11⟩ : Activation Nat) = activation := Option.some.inj hactivation
+  subst activation
+  exact hclock.symm
 
 end VegasTests.WindowedBlockService
 

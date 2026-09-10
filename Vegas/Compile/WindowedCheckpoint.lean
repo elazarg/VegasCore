@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.ApplicationForwardCheckpoint
 import Vegas.Compile.ApplicationOrderCheckpoint
 import Vegas.Compile.WindowedBlockAlignment
+import Vegas.Compile.WindowedActivationFreshness
 import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.WindowedPolicyProjection
 import Vegas.Compile.WindowedSourceSafety
@@ -116,6 +117,7 @@ structure WindowedCheckpoint
       (root.windowedInitialExecution deadlineOf binding choice windowOf)).support
   unchangedCaches : RemainingUnchangedCachesEmpty (root.image deadlineOf) deadlineOf
     plan who ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)
+  activationFresh : execution.native.application.FreshActivation
 
 namespace WindowedCheckpoint
 
@@ -260,6 +262,25 @@ theorem consistent
   · exact runtime.initial_consistent _
   · exact checkpoint.reached
 
+/-- The next emitted obligation starts with its complete relative window.
+Freshness is an inductive checkpoint invariant; mere monotonicity of the
+public clock would not imply this ordinary-service opportunity. -/
+theorem active_origin_clock
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution)
+    (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hhead : plan.instructions deadlineOf = instruction :: rest) :
+    ∃ activation,
+      execution.native.application.active = some activation ∧
+      activation.key = instruction.address ∧
+      activation.since = execution.native.application.base.memory.clock := by
+  have hmap := checkpoint.consistent.1.trans (checkpoint.activeAddress?_head instruction rest hhead)
+  cases hactive : execution.native.application.active with
+  | none => simp [hactive] at hmap
+  | some activation =>
+      refine ⟨activation, rfl, ?_, checkpoint.activationFresh activation hactive⟩
+      exact Option.some.inj ((congrArg (Option.map Activation.key) hactive).symm.trans hmap)
+
 /-- Every completed binding has an actual disposition. Opaque dispositions
 have their generated owner and slot; timeout defaults remain public defaults.
 This follows from initialized execution and is not an extra checkpoint field. -/
@@ -315,7 +336,7 @@ theorem initial (source : WFProgram P L)
     WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who
       replacement 0 root rootProfile (compiledInitialCoupled source.core)
       (root.windowedInitialExecution deadlineOf binding choice windowOf) := by
-  refine ⟨.refl, Nat.zero_add _, ApplicationImage.State.initial_refines _, ?_, ?_⟩
+  refine ⟨.refl, Nat.zero_add _, ApplicationImage.State.initial_refines _, ?_, ?_, ?_⟩
   · exact FinDist.mem_support_pure.mpr rfl
   · apply List.forall_iff_forall_mem.mpr
     intro instruction _
@@ -323,6 +344,7 @@ theorem initial (source : WFProgram P L)
     exact instruction.cacheEmpty_of_empty_histories (root.image deadlineOf)
       ((root.windowed deadlineOf binding choice windowOf).eraseExecution
         (root.windowedInitialExecution deadlineOf binding choice windowOf)) (fun _ => rfl)
+  · exact WindowedApplication.State.freshActivation_initial _ _
 
 end WindowedCheckpoint
 

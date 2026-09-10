@@ -130,13 +130,17 @@ import Vegas.Compile.WindowedBlockAlignment
 import Vegas.Compile.WindowedBlockDeterminism
 import Vegas.Compile.WindowedBlockPredraw
 import Vegas.Compile.WindowedBlockIsolation
+import Vegas.Compile.WindowedActivationFreshness
 import Vegas.Compile.WindowedBlockSample
 import Vegas.Compile.WindowedBlockSettlement
 import Vegas.Compile.WindowedBlockProgress
 import Vegas.Compile.WindowedBindingSettlement
 import Vegas.Compile.WindowedBindingBlock
+import Vegas.Compile.WindowedPublicChoiceBlock
 import Vegas.Compile.WindowedCheckpoint
+import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedSampleCaches
+import Vegas.Compile.WindowedBlockCaches
 import Vegas.Compile.WindowedSampleCheckpoint
 import Vegas.Compile.WindowedForeignProvenance
 import Vegas.Compile.WindowedBindingProvenance

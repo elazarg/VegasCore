@@ -51,7 +51,7 @@ private theorem head_address_ne_next
 /-- A head command that is either a wait or recognized by the head cache is
 rejected by every later generated instruction. For two bindings, distinct
 registration slots are derived from the plan's actual field allocation. -/
-private theorem head_command_rejects_next
+theorem head_command_rejects_next
     {Γ Δ : VCtx P L} {pending nextPending : Finset VarId}
     {prog : VegasCore P L Γ} {nextProg : VegasCore P L Δ}
     {accounted : CommitmentAccounting pending prog}
@@ -169,6 +169,74 @@ theorem sample_head_preserves_nextCaches
     (.sample (headSampleCode fresh state)) player execution nextExecution command
     (by rfl) (Or.inl hwait) hstep hfresh
 
+/-- Every command supported by an unresolved lifted binding head is either a
+wait or is recognized by that exact head's registration/submission cache. -/
+theorem binding_headCommand
+    {Γ : VCtx P L} {pending : Finset VarId} {name : VarId} {who : P} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool}
+    {tail : VegasCore P L ((name, .sealed who ty) :: Γ)}
+    {newName : name ∉ pending}
+    {accounted : CommitmentAccounting (insert name pending) tail}
+    {fresh : FreshBindings (.commit name who guard tail)} {state : BuildState P L Γ}
+    (unrestricted : UnrestrictedBinding guard)
+    (next : ApplicationPlan accounted fresh.2
+      (state.addCommitEvent name who guard fresh.1).1)
+    (deadlineOf : Nat → Nat) (image : ApplicationImage P L)
+    (profile : SourceBehavioralProfile (.commit name who guard tail)) (player : P)
+    (history : List image.application.PlayerEntry) (view : image.application.View)
+    (command : image.application.PlayerCommand)
+    (hunresolved : view.application.done state.nodes.length = false)
+    (hcommand : command ∈
+      ((ApplicationPlan.binding (newName := newName) (fresh := fresh)
+        unrestricted next).liftProfileIn image deadlineOf profile player history view).support) :
+    command = .wait ∨
+      ¬ (ApplicationInstruction.bind
+        ((.here guard tail : SourceDecisionSite who
+          (.commit name who guard tail) Γ name ty guard).bindingCode fresh state
+            state.nextField)).RejectsCommand image player command := by
+  let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
+    .here guard tail
+  by_cases hplayer : player = who
+  · subst player
+    have hcontroller : command ∈
+        (site.bindingPolicy fresh state image (profile who site) history view).support := by
+      rw [liftProfileIn_binding_unresolved unrestricted next deadlineOf image profile history
+        view hunresolved] at hcommand
+      exact hcommand
+    rcases site.bindingPolicy_supported_command fresh state image (profile who site)
+      history view command hcontroller with hwait | hregister | hsubmit
+    · exact Or.inl hwait
+    · obtain ⟨value, rfl⟩ := hregister
+      right
+      intro hreject
+      have hnone := hreject rfl |>.1
+      have hsome := (ApplicationImage.registrationEncoding state.nextField
+        |>.privateCommand image.application).decode_encode
+          ({ ty := ty, value := value } : TypedValue L)
+      simp only [site, SourceDecisionSite.bindingCode,
+        SourceDecisionSite.compiledField, decisionSiteState] at hnone
+      change (ApplicationImage.registrationEncoding state.nextField
+        |>.privateCommand image.application).decode
+          ((ApplicationImage.registrationEncoding state.nextField
+            |>.privateCommand image.application).encode
+              ({ ty := ty, value := value } : TypedValue L)) = none at hnone
+      rw [hsome] at hnone
+      contradiction
+    · rw [hsubmit]
+      right
+      intro hreject
+      have hnone := hreject rfl |>.2
+      let code := site.bindingCode fresh state state.nextField
+      have hsome := (code.encoding.submission image.application).decode_encode ()
+      simp only [site, SourceDecisionSite.bindingCode,
+        SourceDecisionSite.compiledField, decisionSiteState] at hnone
+      change (code.encoding.submission image.application).decode
+        (code.encoding.submission image.application |>.encode ()) = none at hnone
+      rw [hsome] at hnone
+      contradiction
+  · left
+    simpa [liftProfileIn, hunresolved, hplayer] using hcommand
+
 /-- At an unresolved binding head, an arbitrary player's actual lifted-policy
 step preserves every later cache. The owner runs the generated two-phase
 binding controller; every other player waits. -/
@@ -197,31 +265,18 @@ theorem binding_head_preserves_nextCaches
       (image.application.playerStep player execution command).support)
     (hfresh : next.RemainingCachesEmpty image deadlineOf execution) :
     next.RemainingCachesEmpty image deadlineOf nextExecution := by
-  have hunresolvedView (actor : P) :
-      (State.observe image.application execution.native actor).application.done
+  have hunresolvedView :
+      (State.observe image.application execution.native player).application.done
           state.nodes.length = false := hunresolved
-  by_cases hplayer : player = who
-  · subst player
-    have hcontroller : command ∈
-        ((.here guard tail : SourceDecisionSite who
-          (.commit name who guard tail) Γ name ty guard).bindingPolicy fresh state image
-            (profile who (.here guard tail)) (execution.principalHistory who)
-              (State.observe image.application execution.native who)).support := by
-      rw [liftProfileIn_binding_unresolved unrestricted next deadlineOf image profile
-        (execution.principalHistory who) (State.observe image.application execution.native who)
-        (hunresolvedView who)] at hcommand
-      exact hcommand
-    exact bindingPolicy_preserves_nextCaches (newName := newName) unrestricted next deadlineOf
-      image (profile who (.here guard tail)) execution nextExecution command hcontroller hstep
-      hfresh
-  · have hwait : command = .wait := by
-      simpa [liftProfileIn, hunresolvedView player, hplayer] using hcommand
-    apply head_command_preserves_nextCaches
-      (ApplicationPlan.binding (newName := newName) (fresh := fresh) unrestricted next) next
-      deadlineOf image
-      (.bind ((.here guard tail : SourceDecisionSite who
-        (.commit name who guard tail) Γ name ty guard).bindingCode fresh state state.nextField))
-      player execution nextExecution command (by rfl) (Or.inl hwait) hstep hfresh
+  have hhead := binding_headCommand unrestricted next deadlineOf image profile player
+    (execution.principalHistory player)
+    (State.observe image.application execution.native player) command hunresolvedView hcommand
+  apply head_command_preserves_nextCaches
+    (ApplicationPlan.binding (newName := newName) (fresh := fresh) unrestricted next) next
+    deadlineOf image
+    (.bind ((.here guard tail : SourceDecisionSite who
+      (.commit name who guard tail) Γ name ty guard).bindingCode fresh state state.nextField))
+    player execution nextExecution command (by rfl) hhead hstep hfresh
 
 /-- At an unresolved ordinary public-choice head, an arbitrary player's actual
 lifted-policy step preserves every later cache. -/
@@ -470,6 +525,11 @@ theorem conditionalCopy_head_preserves_nextCaches
       command (by rfl) (Or.inl hwait) hstep hfresh
 
 end Vegas.ApplicationPlan
+
+/-- info: 'Vegas.ApplicationPlan.binding_headCommand' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.binding_headCommand
 
 /-- info: 'Vegas.ApplicationPlan.sample_head_preserves_nextCaches' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

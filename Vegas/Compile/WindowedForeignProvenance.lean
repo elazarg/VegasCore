@@ -16,6 +16,32 @@ import Interaction.MessageApplicationPolicyInvariant
 
 noncomputable section
 
+namespace Vegas.ApplicationImage
+
+variable {P : Type} {L : IExpr}
+
+/-- An address belonging to an emitted instruction strictly before the given
+block coordinate. Instruction coordinates and node addresses are distinct. -/
+def AddressBefore (image : ApplicationImage P L) (blocks address : Nat) : Prop :=
+  ∃ index < blocks, ∃ instruction,
+    image.instructions[index]? = some instruction ∧ instruction.address = address
+
+@[simp] theorem addressBefore_withBindingTimeouts (image : ApplicationImage P L)
+    (select : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (blocks address : Nat) :
+    (image.withBindingTimeouts select).AddressBefore blocks address ↔
+      image.AddressBefore blocks address := by
+  simp [AddressBefore, withBindingTimeouts, List.getElem?_map, Option.map_eq_some_iff]
+
+@[simp] theorem addressBefore_withChoiceTimeouts (image : ApplicationImage P L)
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (blocks address : Nat) :
+    (image.withChoiceTimeouts select).AddressBefore blocks address ↔
+      image.AddressBefore blocks address := by
+  simp [AddressBefore, withChoiceTimeouts, List.getElem?_map, Option.map_eq_some_iff]
+
+end Vegas.ApplicationImage
+
 namespace Vegas.WindowedApplication
 
 open Interaction Interaction.MessageApplication
@@ -31,31 +57,39 @@ def ForeignLedgerCompleted (runtime : WindowedApplication P L) (who : P)
     ∃ address, message.payload.address? = some address ∧
       state.application.base.memory.done address = true
 
-/-- Static message classification used while one emitted block is active.
-Foreign traffic must target either an address completed before the block or
-the block's own address. Focal traffic remains unrestricted. -/
-def ForeignBlockAddressed (who : P) (completed : Nat → Prop) (current : Nat)
+/-- Foreign traffic targets the designated set of instruction addresses.
+Focal traffic remains unrestricted, including anticipatory submissions. -/
+def ForeignAddressed (who : P) (allowed : Nat → Prop)
     (message : Message P (ApplicationImage.Payload P L)) : Prop :=
   message.sender = who ∨ ∃ address, message.payload.address? = some address ∧
-    (completed address ∨ address = current)
+    allowed address
 
-/-- Once the current block address is completed, the static within-block
-classification yields completed-address provenance for every foreign ledger
-entry. -/
-theorem ForeignBlockAddressed.completedLedger
+/-- When every designated address is completed, all retained foreign ledger
+entries have completed-address provenance. -/
+theorem ForeignAddressed.completedLedger
     (runtime : WindowedApplication P L) (who : P)
-    (completed : Nat → Prop) (current : Nat)
+    (allowed : Nat → Prop)
     (state : runtime.application.State)
-    (hsafe : state.pool.Satisfies (ForeignBlockAddressed who completed current))
-    (hcompleted : ∀ address, completed address →
-      state.application.base.memory.done address = true)
-    (hcurrent : state.application.base.memory.done current = true) :
+    (hsafe : state.pool.Satisfies (ForeignAddressed who allowed))
+    (hcompleted : ∀ address, allowed address →
+      state.application.base.memory.done address = true) :
     runtime.ForeignLedgerCompleted who state := by
   intro message hledger hforeign
-  rcases hsafe.2.1 message hledger with hfocal | ⟨address, haddress, hold | rfl⟩
+  rcases hsafe.2.1 message hledger with hfocal | ⟨address, haddress, hold⟩
   · exact False.elim (hforeign hfocal)
   · exact ⟨address, haddress, hcompleted address hold⟩
-  · exact ⟨address, haddress, hcurrent⟩
+
+/-- A submitted command from a gated reference policy necessarily has an
+instruction selected by its actual local history coordinate. -/
+theorem blockPlayer_submit_has_index (runtime : WindowedApplication P L) (who : P)
+    (base : runtime.application.PlayerPolicy)
+    (history : List runtime.application.PlayerEntry) (view : runtime.application.View)
+    (payload : ApplicationImage.Payload P L)
+    (hcommand : .submit payload ∈ (runtime.blockPlayer who base history view).support) :
+    ∃ instruction, runtime.image.instructions[history.length / 3]? = some instruction := by
+  cases hindex : runtime.image.instructions[history.length / 3]? with
+  | none => simp [blockPlayer, hindex] at hcommand
+  | some instruction => exact ⟨instruction, rfl⟩
 
 /-- Completed-address provenance makes every retained foreign envelope inert.
 This is the boundary form needed by replay privacy; no payload typing or
@@ -231,13 +265,12 @@ variable (windowOf : Nat → Nat) (profile : SourceBehavioralProfile prog) (who 
 variable (replacement : (plan.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
 
 /-- During a history-aligned segment, generated nonfocal submissions target
-the selected instruction. Replay preserves original authorship and the focal
+the designated instruction addresses. Replay preserves original authorship and the focal
 policy remains unrestricted. Alignment is required only for the finite ranges
 of history lengths actually traversed by the segment. -/
-theorem runPolicies_foreignBlockAddressed_of_history_bounds
+theorem runPolicies_foreignAddressed_of_history_bounds
     (environment : (plan.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
-    (schedule : List (@Invocation P)) (instruction : ApplicationInstruction P L)
-    (completed : Nat → Prop)
+    (schedule : List (@Invocation P)) (allowed : Nat → Prop)
     (execution next :
       (plan.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hindex : ∀ actor index, (execution.principalHistory actor).length ≤ index →
@@ -245,18 +278,19 @@ theorem runPolicies_foreignBlockAddressed_of_history_bounds
         schedule.countP (fun call => match call with
           | .player principal => decide (principal = actor)
           | .environment => false) →
-      (plan.windowed deadlineOf binding choice windowOf).image.instructions[index / 3]? =
-        some instruction)
+      ∀ instruction, getElem?
+        (plan.windowed deadlineOf binding choice windowOf).image.instructions (index / 3) =
+          some instruction → allowed instruction.address)
     (hsafe : execution.native.pool.Satisfies
-      (WindowedApplication.ForeignBlockAddressed who completed instruction.address))
+      (WindowedApplication.ForeignAddressed who allowed))
     (hnext : next ∈ ((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
       (plan.windowedPlayers profile deadlineOf binding choice windowOf who replacement)
       environment schedule execution).support) :
     next.native.pool.Satisfies
-      (WindowedApplication.ForeignBlockAddressed who completed instruction.address) := by
+      (WindowedApplication.ForeignAddressed who allowed) := by
   let runtime := plan.windowed deadlineOf binding choice windowOf
   let players := plan.windowedPlayers profile deadlineOf binding choice windowOf who replacement
-  let safe := WindowedApplication.ForeignBlockAddressed (L := L) who completed instruction.address
+  let safe := WindowedApplication.ForeignAddressed (L := L) who allowed
   induction schedule generalizing execution with
   | nil =>
       simp only [MessageApplication.runPolicies, FinDist.mem_support_pure] at hnext
@@ -276,25 +310,31 @@ theorem runPolicies_foreignBlockAddressed_of_history_bounds
             subst command
             by_cases hactor : actor = who
             · exact Or.inl hactor
-            · have hselected := hindex actor _ (Nat.le_refl _) (by simp)
+            · have hreference : .submit payload ∈ (runtime.blockPlayer actor
+                  (runtime.liftPlayerPolicy (plan.liftProfile deadlineOf profile actor))
+                  (execution.principalHistory actor)
+                  (State.observe runtime.application execution.native actor)).support := by
+                simpa only [windowedPlayers, Function.update_of_ne hactor,
+                  windowedReferencePlayers] using hcommand
+              obtain ⟨instruction, hselected⟩ := runtime.blockPlayer_submit_has_index actor _ _ _
+                payload hreference
               have haddress := plan.blockPlayer_submit_address_of_index deadlineOf binding choice
                 windowOf profile (execution.principalHistory actor)
                 (State.observe runtime.application execution.native actor) actor instruction
-                hselected payload (by
-                  simpa only [windowedPlayers, Function.update_of_ne hactor,
-                    windowedReferencePlayers] using hcommand)
-              exact Or.inr ⟨instruction.address, haddress, Or.inr rfl⟩
+                hselected payload hreference
+              exact Or.inr ⟨instruction.address, haddress,
+                hindex actor _ (Nat.le_refl _) (by simp) instruction hselected⟩
         | environment =>
             simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
             obtain ⟨command, _, hstep⟩ := hmiddle
             exact runtime.application.environmentPolicyStep_pool_satisfies safe execution middle
               command hsafe hstep
       apply ih middle ?_ hsafeMiddle hnext
-      intro actor index hlo hhi
+      intro actor index hlo hhi selected hselected
       have hlength := runtime.application.runPolicies_principalHistory_length actor players
         environment [invocation] execution middle (by
           simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hmiddle)
-      apply hindex actor index
+      apply hindex actor index ?_ ?_ selected hselected
       · omega
       · rw [hlength] at hhi
         convert hhi using 1
@@ -315,18 +355,21 @@ theorem runPolicies_full_block_foreignBlockAddressed
       some instruction)
     (hplayers : ∀ actor ∈ roster, (execution.principalHistory actor).length = 3 * block)
     (hsafe : execution.native.pool.Satisfies
-      (WindowedApplication.ForeignBlockAddressed who completed instruction.address))
+      (WindowedApplication.ForeignAddressed who
+        (fun address => completed address ∨ address = instruction.address)))
     (hnext : next ∈ ((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
       (plan.windowedPlayers profile deadlineOf binding choice windowOf who replacement)
       ((plan.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
       (WindowedApplication.blockInvocations roster) execution).support) :
     next.native.pool.Satisfies
-      (WindowedApplication.ForeignBlockAddressed who completed instruction.address) := by
-  apply plan.runPolicies_foreignBlockAddressed_of_history_bounds deadlineOf binding choice windowOf
+      (WindowedApplication.ForeignAddressed who
+        (fun address => completed address ∨ address = instruction.address)) := by
+  apply plan.runPolicies_foreignAddressed_of_history_bounds deadlineOf binding choice windowOf
     profile who replacement ((plan.windowed deadlineOf binding choice windowOf).blockEnvironment
-      roster) (WindowedApplication.blockInvocations roster) instruction completed execution next
+      roster) (WindowedApplication.blockInvocations roster)
+    (fun address => completed address ∨ address = instruction.address) execution next
     ?_ hsafe hnext
-  intro actor index hlo hhi
+  intro actor index hlo hhi selected hselected
   have hcount : (WindowedApplication.blockInvocations roster).countP (fun call => match call with
       | .player principal => decide (principal = actor)
       | .environment => false) = if actor ∈ roster then 3 else 0 :=
@@ -336,12 +379,103 @@ theorem runPolicies_full_block_foreignBlockAddressed
   · simp only [hmem, ↓reduceIte] at hhi
     have hlength := hplayers actor hmem
     have hquotient : index / 3 = block := by omega
-    rw [hquotient]
-    exact hindex
+    rw [hquotient, hindex] at hselected
+    cases Option.some.inj hselected
+    exact Or.inr rfl
   · simp only [hmem, ↓reduceIte, Nat.add_zero] at hhi
     omega
 
+/-- In a genuine initialized repeated-block run, every retained foreign
+message belongs to the emitted instruction prefix. This covers pending and
+delivered copies as well as the ledger and sent histories. No invariant on
+an intermediate pool is assumed. -/
+theorem runPolicies_repeatedBlocks_foreignAddressed
+    (environment : (plan.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
+    (roster : List P) (hroster : roster.Nodup) (blocks : Nat)
+    (execution : (plan.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (hreached : execution ∈
+      ((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (plan.windowedPlayers profile deadlineOf binding choice windowOf who replacement)
+        environment
+        (List.replicate blocks (WindowedApplication.blockInvocations roster)).flatten
+        (plan.windowedInitialExecution deadlineOf binding choice windowOf)).support) :
+    execution.native.pool.Satisfies (WindowedApplication.ForeignAddressed who
+      ((plan.windowed deadlineOf binding choice windowOf).image.AddressBefore blocks)) := by
+  let runtime := plan.windowed deadlineOf binding choice windowOf
+  apply plan.runPolicies_foreignAddressed_of_history_bounds deadlineOf binding choice windowOf
+    profile who replacement environment
+    (List.replicate blocks (WindowedApplication.blockInvocations roster)).flatten
+    (runtime.image.AddressBefore blocks)
+    (plan.windowedInitialExecution deadlineOf binding choice windowOf) execution ?_ ?_ hreached
+  · intro actor index _ hhi instruction hselected
+    have hcount : List.countP (fun call => match call with
+          | .player principal => decide (principal = actor)
+          | .environment => false)
+        (List.replicate blocks (WindowedApplication.blockInvocations roster)).flatten ≤
+          3 * blocks := by
+      clear hreached hhi
+      have hone : List.countP (fun call => match call with
+          | .player principal => decide (principal = actor)
+          | .environment => false) (WindowedApplication.blockInvocations roster) =
+            if actor ∈ roster then 3 else 0 :=
+        WindowedApplication.blockInvocations_player_count roster hroster actor
+      induction blocks with
+      | zero => simp
+      | succ blocks ih =>
+          rw [List.replicate_succ, List.flatten_cons, List.countP_append, hone]
+          split <;> omega
+    change index < 0 + _ at hhi
+    simp only [Nat.zero_add] at hhi
+    exact ⟨index / 3, by omega, instruction, hselected, rfl⟩
+  · exact MessagePool.Satisfies.empty
+
 end Block
+
+namespace WindowedCheckpoint
+
+/-- At every actual source checkpoint, retained foreign ledger messages target
+completed instructions. The prefix provenance is derived from the initialized
+runner, not added as an assumption on the deviator or checkpoint. -/
+theorem foreignLedgerCompleted
+    {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
+    {rootProg : VegasCore P L rootContext} {prog : VegasCore P L Γ}
+    {rootAccounted : CommitmentAccounting rootPending rootProg}
+    {accounted : CommitmentAccounting pending prog}
+    {rootFresh : FreshBindings rootProg} {fresh : FreshBindings prog}
+    {rootState : BuildState P L rootContext} {state : BuildState P L Γ}
+    {root : ApplicationPlan rootAccounted rootFresh rootState}
+    {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
+    {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
+    {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
+    {windowOf : Nat → Nat} {roster : List P} {who : P}
+    {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
+    {blockIndex : Nat} {plan : ApplicationPlan accounted fresh state}
+    {profile : SourceBehavioralProfile prog}
+    {current : CoupledAt (compileCore prog fresh state).graph state}
+    {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution)
+    (hroster : roster.Nodup) :
+    (root.windowed deadlineOf binding choice windowOf).ForeignLedgerCompleted who
+      execution.native := by
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  have hpool := root.runPolicies_repeatedBlocks_foreignAddressed deadlineOf binding choice windowOf
+    rootProfile who replacement (runtime.blockEnvironment roster) roster hroster blockIndex
+    execution checkpoint.reached
+  apply WindowedApplication.ForeignAddressed.completedLedger runtime who
+    (runtime.image.AddressBefore blockIndex) execution.native hpool
+  intro address haddress
+  have horiginal : (root.image deadlineOf).AddressBefore blockIndex address := by
+    simpa only [runtime, windowed, ApplicationImage.addressBefore_withChoiceTimeouts,
+      ApplicationImage.addressBefore_withBindingTimeouts] using haddress
+  obtain ⟨index, hindex, instruction, hlookup, hinstruction⟩ := horiginal
+  obtain ⟨before, hlength, hroot, hcompleted, _⟩ := checkpoint.completed_instructions
+  change (root.instructions deadlineOf)[index]? = some instruction at hlookup
+  rw [hroot, List.getElem?_append_left (by omega)] at hlookup
+  rw [← hinstruction]
+  exact hcompleted instruction (List.mem_of_getElem? hlookup)
+
+end WindowedCheckpoint
 
 end Vegas.ApplicationPlan
 
@@ -349,3 +483,13 @@ end Vegas.ApplicationPlan
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.runPolicies_full_block_foreignBlockAddressed
+
+/-- info: 'Vegas.ApplicationPlan.runPolicies_repeatedBlocks_foreignAddressed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.runPolicies_repeatedBlocks_foreignAddressed
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.foreignLedgerCompleted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.foreignLedgerCompleted
