@@ -147,18 +147,19 @@ private theorem conditional_public_law (profile : SourceBehavioralProfile source
     openingGuard tail specification source.fresh.2 boundBuild 0 10 current (image 10)
     (profile.afterCommit 0 conditionalHead.choice.decision)
     (applicationPlan.liftProfile (fun _ => 10) profile) (image 10).serialService
-    (boundExecution secret) hrefines opening_publicly_validatable hsnapshot.1
+    (boundExecution secret) hrefines opening_publicly_validatable (.opaque (0, 0))
+    ((ConditionalCode.binding?_opaque_iff _ _ _).2 hsnapshot.1)
+    (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
     (image_lookup_conditional 10) reads (by
       intro history
       rfl) (by
       intro chosen _ submitted hsubmitted
       exact (image 10).serialService_after_submit (boundExecution secret) submitted
         (.conditional (conditionalCode 10)) 0
-        ((ApplicationImage.conditionalTransport (P := Fin 2) (L := simpleExpr) .bool).encode
-          ((conditionalCode 10).endpoint.publicationNode,
-            (conditionalCode 10).endpoint.requestPayload chosen.1))
+        (.conditional (conditionalCode 10).endpoint.publicationNode
+          ((conditionalCode 10).requestPayload chosen.1))
         rfl rfl rfl hsubmitted) (by rfl) (by rfl) hreadout hreads (by
-      intro chosen _ value hvalue
+      intro chosen _ handle value _ hvalue
       have heq := specification.successful_value_eq_binding
         current.current.source chosen.1 value chosen.2 hvalue
       rw [hsource] at heq

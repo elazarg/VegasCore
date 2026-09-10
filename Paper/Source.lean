@@ -14,6 +14,7 @@ import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
 import Vegas.Compile.ConditionalExpirationSourceCoupling
+import Vegas.Compile.ConditionalPhaseExecution
 
 /-! # Paper-facing independent-source correspondence claims -/
 
@@ -158,6 +159,114 @@ theorem public_application_withholding (source : WFProgram Player L)
           (ToEventGraph.compile source.core).graph.nodeCount)) = FinDist.pure false :=
   plan.withholding_finished_law source deadlineOf node who required hnode
     (plan.liftProfile deadlineOf profile) environment schedule
+
+/-- At a ready generated conditional endpoint, one owner invocation followed
+by the assumed inclusion action has exactly the supplied randomized source
+law. Every supported inclusion advances the adjacent source pair and native
+refinement under either accepted binding disposition. -/
+theorem public_application_conditional_phase
+    {Γ : VCtx Player L} {name publicName : VarId} {who : Player} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore Player L ((publicName, .pub ty) :: (name, .sealed who ty) :: Γ))
+    (spec : ConditionalOpening guard)
+    (fresh : FreshBindings (.commit name who guard (.reveal publicName who name .here tail)))
+    (build : ToEventGraph.BuildState Player L Γ) (sourceSlot deadline : Nat)
+    (current : ToEventGraph.CoupledAt
+      (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
+        fresh build).graph build)
+    (image : ApplicationImage Player L)
+    (sourcePolicy :
+      (visible : Env L.Val (eraseVCtx (viewVCtx who Γ))) →
+        FinDist { value : L.Val ty // evalGuard guard value visible = true })
+    (players : Player → image.application.PlayerPolicy)
+    (environment : image.application.EnvironmentPolicy)
+    (execution : image.application.PolicyExecution)
+    (hrefines : execution.native.application.Refines current.current.graph.1)
+    (heligible :
+      (ConditionalPublicationSite.atHead name publicName who guard tail spec).PubliclyValidatable
+        fresh build)
+    (disposition : Interaction.BindingDisposition (Interaction.CommitmentHandle Player Nat)
+      (L.Val spec.secretTy))
+    (hbinding : ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+      fresh build sourceSlot deadline).binding? execution.native.application.memory =
+        some disposition)
+    (hcanonical : ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot))
+    (hcode : image.lookup
+        ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+          fresh build sourceSlot deadline).endpoint.publicationNode = some (.conditional
+      ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+        fresh build sourceSlot deadline)))
+    (reads : ReadEnv L (ToEventGraph.eventGuardOf build who guard).choiceReads)
+    (hpolicy : ∀ history,
+      players who history
+          (Interaction.MessageApplication.State.observe image.application execution.native who) =
+        (ConditionalPublicationSite.atHead name publicName who guard tail spec).imagePolicy
+          fresh build sourceSlot deadline image
+          (image.ownerReadout? who (ToEventGraph.eventGuardOf build who guard).choiceReads)
+          sourcePolicy (fun _ _ => false) history
+            (Interaction.MessageApplication.State.observe
+              image.application execution.native who))
+    (henvironment : ∀ chosen ∈
+        (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
+      ∀ submitted ∈ (image.application.playerStep who execution
+        (.submit (.conditional
+          ((ConditionalPublicationSite.atHead name publicName who guard tail spec).code
+            fresh build sourceSlot deadline).endpoint.publicationNode
+          (ConditionalPublicationSite.sourceRequestPayload
+            (ConditionalPublicationSite.atHead name publicName who guard tail spec)
+            fresh build sourceSlot deadline disposition (spec.encoding chosen.1))))).support,
+      environment submitted.environmentHistory
+          (Interaction.MessageApplication.State.environmentView
+            image.application submitted.native) =
+        FinDist.pure (.include (who, execution.native.pool.nextSerial who)))
+    (hlookupFresh : execution.native.pool.lookup
+      (who, execution.native.pool.nextSerial who) = none)
+    (hcache : Interaction.MessageApplication.ChoiceEncoding.cachedValue image.application
+      ((ConditionalPublicationSite.choiceEncodingFor
+        (ConditionalPublicationSite.atHead name publicName who guard tail spec)
+        fresh build sourceSlot deadline disposition
+        (ApplicationImage.conditionalTransport spec.secretTy)).submission image.application)
+      (execution.principalHistory who) = none)
+    (hreadout : image.ownerReadout? who
+        (ToEventGraph.eventGuardOf build who guard).choiceReads
+      (execution.principalHistory who)
+      (Interaction.MessageApplication.State.observe image.application execution.native who) =
+        some reads)
+    (hreads : ReadEnv.ofStore? current.current.graph.1.store
+      (ToEventGraph.eventGuardOf build who guard).choiceReads = some reads)
+    (hfrozen : ∀ chosen ∈
+        (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
+      ∀ handle value, disposition = .opaque handle → spec.encoding chosen.1 = some value →
+        (execution.native.application.frozen (build.fieldOf spec.binding)).bind
+          (fun typed => typed.as? spec.secretTy) = some value) :
+    let site := ConditionalPublicationSite.atHead name publicName who guard tail spec
+    let code := site.code fresh build sourceSlot deadline
+    let id := (who, execution.native.pool.nextSerial who)
+    (image.application.runPolicies players environment [.player who, .environment] execution =
+      (sourcePolicy ((current.current.source.toView who).eraseEnv)).bind fun chosen =>
+        (image.application.playerStep who execution
+          (.submit (.conditional code.endpoint.publicationNode
+            (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+              (spec.encoding chosen.1))))).bind
+            fun submitted => image.application.environmentPolicyStep submitted (.include id)) ∧
+    ∀ chosen ∈ (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
+      ∀ submitted ∈ (image.application.playerStep who execution
+        (.submit (.conditional code.endpoint.publicationNode
+          (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+            (spec.encoding chosen.1))))).support,
+      ∀ included ∈
+        (image.application.environmentPolicyStep submitted (.include id)).support,
+      ∃ next : ToEventGraph.CoupledAt
+          (ToEventGraph.compileCore
+            (.commit name who guard (.reveal publicName who name .here tail)) fresh build).graph
+          (((build.addCommitEvent name who guard fresh.1).1).addRevealEvent
+            publicName who .here fresh.2.1).1,
+        next.current.source = (current.current.source.cons chosen.1).cons chosen.1 ∧
+          included.native.application.Refines next.current.graph.1 :=
+  ConditionalPublicationSite.conditional_phase_source_law guard tail spec fresh build
+    sourceSlot deadline current image sourcePolicy players environment execution hrefines
+    heligible disposition hbinding hcanonical hcode reads hpolicy henvironment hlookupFresh
+    hcache hreadout hreads hfrozen
 
 /-- Inclusion of a legal generated conditional request advances the exact
 adjacent source choice/reveal pair. Opaque dispositions require the canonical
@@ -592,6 +701,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_withholding
+
+/-- info: 'Vegas.Paper.Source.public_application_conditional_phase' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_conditional_phase
 
 /-- info: 'Vegas.Paper.Source.public_application_conditional_continuation' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

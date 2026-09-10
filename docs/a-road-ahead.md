@@ -235,6 +235,73 @@ whether further action indexing or a small service wrapper is the better API.
 
 ## 4. The public-message stage
 
+### Source order and resolving services
+
+The generated graph permits independent bindings to complete out of written
+source order. The existing `CoupledAt` invariant instead describes an exact
+completed source prefix. A future binding accepted while an earlier binding
+remains unresolved cannot satisfy that invariant at any cursor. This is an
+obstruction to that proof decomposition, not an impossibility of strategic
+preservation for concurrent applications. Source-support reconstruction and
+the serial reference-profile law do not establish a deviation law for such
+executions.
+
+The next bounded backend should make source-ordered admission an explicit
+protocol option, leaving the current graph-enabled application available.
+Gate both message handlers and chance requests by the first unfinished emitted
+instruction. Determine that instruction from public completion state and
+immutable code, not from a source environment or player-policy input. Arbitrary
+early submissions, replay, malformed traffic, and inclusion orders remain legal
+runtime actions; an inadmissible included message is rejected, retains its
+ledger entry and receipt, and leaves the application unchanged. This is an
+application validation rule, not a restriction to well-behaved deviations.
+
+Advance the proof-side source cursor at actual successful resolution. An
+environment-history length is not a progress cursor once retries, clock ticks,
+and timeout processing are possible. A service may perform several successful
+source steps in one batch. Freezing admission for an entire service cycle is a
+possible stronger instance, not part of the proposed base semantics. The
+policy lift must use the same public admission state as the generated protocol.
+
+Timed instances need a stable activation origin for each response window.
+Record it when the instruction becomes active, preserve it through rejection,
+replay, and unrelated traffic, and test strict expiry against that origin plus
+the window. Earlier delays must not consume a future player's entire response
+opportunity. Arbitrary compile-time absolute deadlines do not provide this
+property. A bounded absolute-deadline service could also work, but would need
+to prove the relevant activation and reaction bounds.
+
+Safety, opportunity, and settlement have separate obligations:
+
+- Prove that the gate permits only the current instruction's effects and is
+  conservative on the existing source-ordered reference execution.
+- Relate every successful ordinary or fallback resolution to its exact source
+  successor; carry accepted opaque/default dispositions and the unchanged
+  principals' cache/readout invariants. A deviator may already have submitted
+  decodable future packets, so its cache freshness is not an invariant.
+- Give each unchanged active owner a submission and inclusion opportunity
+  before effective expiry. Within that opportunity, retain arbitrary
+  payload-sensitive ordering wherever it cannot change the owner's chosen
+  result. Fairness without a deadline-relative bound is insufficient.
+- Produce resolver packets through actual authorized submissions, then prove
+  clock progress and inclusion under deviations. The current environment
+  interface can include an expiry transaction but cannot originate it. A fixed
+  relayer, honest-opponent relay policy, or additional runtime capability must
+  be stated and modeled explicitly; an adversarially controlled relayer
+  supplies no unconditional settlement guarantee.
+- Establish causal source-policy factorization of complete laws after these
+  operational invariants. Per-outcome legal source witnesses do not suffice.
+
+Retaining concurrent admission requires a different intermediate invariant:
+a partial-order frontier with buffered accepted choices that are consumed in
+written source order. Its comparison must justify the unchanged players'
+choice kernels and the deviator's available information, not merely commute
+final stores. This remains a separate proof target for the same compilation
+architecture. Neither candidate resolving backend nor its deviation theorem
+is implemented by this roadmap.
+
+### Existing execution boundary
+
 The existing sealed-message fragment connects checked core programs through
 their actual event graphs to a native message runner. Its support theorem and
 concrete replay tests are a starting point, not a public-message strategic

@@ -9,6 +9,7 @@ import VegasTests.Language
 import VegasTests.CoreFinite
 import VegasTests.PublicGuard
 import VegasTests.ApplicationImage
+import VegasTests.ApplicationEarlyBinding
 import VegasTests.ApplicationSampleExecution
 import VegasTests.PublicChoiceSourceCoupling
 import VegasTests.PublicChoiceResolution
@@ -24,6 +25,7 @@ import VegasTests.PublicChoiceImageExecution
 import VegasTests.ConditionalApplicationImage
 import VegasTests.ConditionalDefaultApplication
 import VegasTests.ConditionalDefaultPolicy
+import VegasTests.ConditionalDefaultPhase
 import VegasTests.SourceStrategy
 import VegasTests.Machine
 import VegasTests.ScheduledReplay

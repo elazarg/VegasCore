@@ -13,9 +13,9 @@ import Interaction.MessagePoolFreshness
 
 One owner invocation submits the source-profile choice and one environment
 invocation includes that fresh envelope.  The theorem retains the complete
-shared policy execution.  Its snapshot premise is branch-local: decline needs
-no recoverable commitment value, while an opening needs its claimed value in
-the accepted frozen snapshot.
+shared policy execution for opaque bindings and public defaults. Its snapshot
+premise applies only to opaque openings. Default publication uses the accepted
+public value; decline needs no recoverable commitment value.
 -/
 
 noncomputable section
@@ -27,9 +27,9 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Exact two-invocation source law for one generated conditional opening or
-decline.  The environment premise is only the local inclusion action and makes
-no general scheduling or progress assertion. -/
+/-- Exact two-invocation source law for a generated conditional publication or
+decline under either binding disposition. The environment premise specifies
+only the local inclusion action, without a general progress guarantee. -/
 theorem conditional_phase_source_law
     {Γ : VCtx P L} {name publicName : VarId} {who : P} {ty : L.Ty}
     (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
@@ -49,8 +49,10 @@ theorem conditional_phase_source_law
     (execution : image.application.PolicyExecution)
     (hrefines : execution.native.application.Refines current.current.graph.1)
     (heligible : (atHead name publicName who guard tail spec).PubliclyValidatable fresh build)
-    (haccepted : execution.native.application.memory.accepted (build.fieldOf spec.binding) =
-      some (.opaque (who, sourceSlot)))
+    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
+    (hbinding : ((atHead name publicName who guard tail spec).code fresh build
+      sourceSlot deadline).binding? execution.native.application.memory = some disposition)
+    (hcanonical : ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot))
     (hcode : image.lookup
         ((atHead name publicName who guard tail spec).code fresh build
           sourceSlot deadline).endpoint.publicationNode = some (.conditional
@@ -67,11 +69,11 @@ theorem conditional_phase_source_law
     (henvironment : ∀ chosen ∈
         (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
       ∀ submitted ∈ (image.application.playerStep who execution
-        (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
-          (((atHead name publicName who guard tail spec).code fresh build sourceSlot
-            deadline).endpoint.publicationNode,
-            ((atHead name publicName who guard tail spec).runtimeSite fresh build
-              sourceSlot deadline).requestPayload (spec.encoding chosen.1))))).support,
+        (.submit (.conditional
+          ((atHead name publicName who guard tail spec).code fresh build sourceSlot
+            deadline).endpoint.publicationNode
+          ((atHead name publicName who guard tail spec).sourceRequestPayload fresh build
+            sourceSlot deadline disposition (spec.encoding chosen.1))))).support,
       environment submitted.environmentHistory
           (MessageApplication.State.environmentView image.application submitted.native) =
         FinDist.pure (.include (who, execution.native.pool.nextSerial who)))
@@ -79,7 +81,7 @@ theorem conditional_phase_source_law
       (who, execution.native.pool.nextSerial who) = none)
     (hcache : ChoiceEncoding.cachedValue image.application
       (((atHead name publicName who guard tail spec).choiceEncodingFor fresh build
-        sourceSlot deadline (.opaque (who, sourceSlot))
+        sourceSlot deadline disposition
         (ApplicationImage.conditionalTransport spec.secretTy)).submission
           image.application)
       (execution.principalHistory who) = none)
@@ -90,7 +92,7 @@ theorem conditional_phase_source_law
       (eventGuardOf build who guard).choiceReads = some reads)
     (hfrozen : ∀ chosen ∈
         (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
-      ∀ value, spec.encoding chosen.1 = some value →
+      ∀ handle value, disposition = .opaque handle → spec.encoding chosen.1 = some value →
         (execution.native.application.frozen (build.fieldOf spec.binding)).bind
           (fun typed => typed.as? spec.secretTy) = some value) :
     let site := atHead name publicName who guard tail spec
@@ -99,15 +101,15 @@ theorem conditional_phase_source_law
     (image.application.runPolicies players environment [.player who, .environment] execution =
       (sourcePolicy ((current.current.source.toView who).eraseEnv)).bind fun chosen =>
         (image.application.playerStep who execution
-          (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
-            (code.endpoint.publicationNode,
-              code.endpoint.requestPayload (spec.encoding chosen.1))))).bind
+          (.submit (.conditional code.endpoint.publicationNode
+            (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+              (spec.encoding chosen.1))))).bind
             fun submitted => image.application.environmentPolicyStep submitted (.include id)) ∧
     ∀ chosen ∈ (sourcePolicy ((current.current.source.toView who).eraseEnv)).support,
       ∀ submitted ∈ (image.application.playerStep who execution
-        (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
-          (code.endpoint.publicationNode,
-            code.endpoint.requestPayload (spec.encoding chosen.1))))).support,
+        (.submit (.conditional code.endpoint.publicationNode
+          (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+            (spec.encoding chosen.1))))).support,
       ∀ included ∈
         (image.application.environmentPolicyStep submitted (.include id)).support,
       ∃ next : CoupledAt
@@ -121,34 +123,30 @@ theorem conditional_phase_source_law
   let site := atHead name publicName who guard tail spec
   let code := site.code fresh build sourceSlot deadline
   let id := (who, execution.native.pool.nextSerial who)
-  have hbinding : code.binding? execution.native.application.memory =
-      some (.opaque (who, sourceSlot)) :=
-    (code.binding?_opaque_iff execution.native.application.memory (who, sourceSlot)).2 haccepted
+  change code.binding? execution.native.application.memory = some disposition at hbinding
   have hreadyDisposition : code.endpoint.readyDisposition
       (Value := L.Val spec.secretTy)
-      (some (.opaque (who, sourceSlot))) execution.native.application.memory.done = true := by
+      (some disposition) execution.native.application.memory.done = true := by
     have hready := readyDisposition_at_source_prefix guard tail spec fresh build
       sourceSlot deadline current execution.native.application hrefines
-      (.opaque (who, sourceSlot)) hbinding
-      (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
+      disposition hbinding hcanonical
     change code.endpoint.readyDisposition (code.binding? execution.native.application.memory)
       execution.native.application.memory.done = true at hready
     simpa only [hbinding] using hready
-  have hready : code.endpoint.ready (some (who, sourceSlot))
-      execution.native.application.memory.done = true := hreadyDisposition
   have hresolved : execution.native.application.memory.done code.endpoint.publicationNode =
       false := by
-    simp only [ConditionalPublication.ready, Bool.and_eq_true, Bool.not_eq_true'] at hready
+    have hready := PublicChoiceSite.ready_at_source_prefix guard tail fresh build current
+      execution.native.application.memory.done hrefines.memory.completed
+    simp only [PublicChoice.ready, Bool.and_eq_true, Bool.not_eq_true'] at hready
     exact hready.1.2
-  have hfirstRaw := site.imagePolicy_first_submission_source_law fresh build sourceSlot
-    deadline image (.opaque (who, sourceSlot))
+  have hfirst := site.imagePolicy_first_submission_source_law fresh build sourceSlot
+    deadline image disposition
     (image.ownerReadout? who (eventGuardOf build who guard).choiceReads)
     sourcePolicy (fun _ _ => false) (execution.principalHistory who)
     (MessageApplication.State.observe image.application execution.native who)
     current.current.graph.1.store current.current.source reads hbinding hresolved hcache
     hreadyDisposition hreadout (BuildState.Agrees.view current.current.agrees who) hreads
-  have hfirst := hfirstRaw
-  simp only [choiceEncodingFor] at hfirst
+  simp only [choiceEncodingFor_encode] at hfirst
   constructor
   · simp only [MessageApplication.runPolicies, MessageApplication.invoke]
     rw [hpolicy, hfirst, FinDist.bind_map, FinDist.bind_bind]
@@ -162,27 +160,20 @@ theorem conditional_phase_source_law
   · intro chosen hchosen submitted hsubmitted included hincluded
     have hnative : submitted.native ∈
           ((image.application.playerStep who execution
-            (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
-              (code.endpoint.publicationNode,
-                code.endpoint.requestPayload (spec.encoding chosen.1))))).map
+            (.submit (.conditional code.endpoint.publicationNode
+              (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+                (spec.encoding chosen.1))))).map
               MessageInterface.PolicyExecution.native).support := by
       rw [FinDist.support_map]
       exact ⟨submitted, hsubmitted, rfl⟩
     rw [image.application.playerStep_native] at hnative
     simp only [PlayerCommand.toAction, MessageApplication.step,
       FinDist.mem_support_pure] at hnative
-    have hpayload :
-        (ApplicationImage.conditionalTransport spec.secretTy).encode
-            (code.endpoint.publicationNode,
-              code.endpoint.requestPayload (Value := L.Val spec.secretTy)
-                (spec.encoding chosen.1)) =
-          .conditional code.endpoint.publicationNode
-            (code.requestPayload (spec.encoding chosen.1)) := by
-      cases hresult : spec.encoding chosen.1 <;> rfl
     have hlookup : submitted.native.pool.lookup id = some
         ⟨id, .conditional code.endpoint.publicationNode
-          (code.requestPayload (spec.encoding chosen.1))⟩ := by
-      rw [hnative, ← hpayload]
+          (site.sourceRequestPayload fresh build sourceSlot deadline disposition
+            (spec.encoding chosen.1))⟩ := by
+      rw [hnative]
       exact execution.native.pool.lookup_submit_fresh who _ hlookupFresh
     have happlication : submitted.native.application = execution.native.application := by
       simpa using congrArg MessageInterface.State.application hnative
@@ -195,13 +186,12 @@ theorem conditional_phase_source_law
       exact congrArg MessageInterface.PolicyExecution.native hincluded
     obtain ⟨next, hsource, hrefinesNext⟩ := include_source_coupling guard tail spec fresh
       build sourceSlot deadline current image submitted.native (happlication.symm ▸ hrefines)
-      heligible (.opaque (who, sourceSlot)) (happlication.symm ▸ hbinding)
-      (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
+      heligible disposition (happlication.symm ▸ hbinding) hcanonical
       code.endpoint.publicationNode
       (execution.native.pool.nextSerial who) hcode chosen.1 hlookup chosen.2 (by
-        intro handle value _ hvalue
+        intro handle value hopaque hvalue
         rw [happlication]
-        exact hfrozen chosen hchosen value hvalue)
+        exact hfrozen chosen hchosen handle value hopaque hvalue)
     exact ⟨next, hsource, hincludedNative.symm ▸ hrefinesNext⟩
 
 end Vegas.ConditionalPublicationSite

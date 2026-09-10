@@ -238,6 +238,14 @@ end ApplicationImage
 
 namespace ConditionalCode
 
+/-- A voluntary opaque-binding packet carries a typed opening or an explicit
+decline. Expiry and malformed traffic are not compiled voluntary choices. -/
+def requestPayload (code : ConditionalCode P L) :
+    Option (L.Val code.secretTy) → ConditionalPublication.Payload P (TypedValue L)
+  | none => .decline
+  | some value => .opening (code.endpoint.owner, code.endpoint.sourceSlot)
+      ⟨code.secretTy, value⟩
+
 /-- Read the accepted binding at the endpoint's expected type. An ill-typed
 public default remains invalid state and cannot enable even decline or expiry.
 Opaque references are preserved without consulting private registration. -/

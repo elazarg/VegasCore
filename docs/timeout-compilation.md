@@ -123,12 +123,19 @@ decision's law under the selected codec. Generated three-node regressions
 exercise a private preparation of `true`, a public fallback of `false`, and
 the resulting policy submission of cleartext `false` through the shared runner.
 
-These local laws do not establish a whole-program law after expiry. The
-conditional phase used in the serial-reference induction still assumes an
-opaque binding. Extending phase composition to public defaults, preserving
-cache freshness across a resolving service, and comparing arbitrary deviations
-remain separate obligations. A public-computable fallback value does not make
-the occurrence or timing of fallback independent of private player behavior.
+`conditional_phase_source_law` composes the selected source kernel, actual
+player submission, and environment inclusion into an exact two-invocation law
+over the complete shared execution. It handles both accepted dispositions and
+provides a source successor for every supported included result. Its service
+premise names the actual inclusion of the submitted envelope; it neither
+creates expiry traffic nor establishes a whole-program resolving service.
+
+Whole-program continuation after expiry still needs cache and binding-prefix
+invariants for that service, followed by a deviation-law comparison. A
+public-computable fallback value does not make the occurrence or timing of
+fallback independent of private player behavior. The reference player policies
+read only their declared source information; stronger adversary statements
+must account for the additional runtime observations explicitly.
 
 The public-expression certificate has a genuine eligibility condition. If two
 source environments have identical public information but disjoint legal

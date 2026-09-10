@@ -114,18 +114,14 @@ theorem real_conditional_phase (secret openValue : Bool) :
         (conditionalSourcePolicy openValue
           ((current.current.source.toView 0).eraseEnv)).bind fun chosen =>
           ((image 10).application.playerStep 0 execution
-            (.submit ((ApplicationImage.conditionalTransport
-              (P := Fin 2) (L := simpleExpr) .bool).encode
-              (code.endpoint.publicationNode,
-                code.endpoint.requestPayload chosen.1)))).bind fun submitted =>
+            (.submit (.conditional code.endpoint.publicationNode
+              (code.requestPayload chosen.1)))).bind fun submitted =>
             (image 10).application.environmentPolicyStep submitted (.include id)) ∧
       ∀ chosen ∈ (conditionalSourcePolicy openValue
           ((current.current.source.toView 0).eraseEnv)).support,
         ∀ submitted ∈ ((image 10).application.playerStep 0 execution
-          (.submit ((ApplicationImage.conditionalTransport
-            (P := Fin 2) (L := simpleExpr) .bool).encode
-            (code.endpoint.publicationNode,
-              code.endpoint.requestPayload chosen.1)))).support,
+          (.submit (.conditional code.endpoint.publicationNode
+            (code.requestPayload chosen.1)))).support,
         ∀ included ∈ ((image 10).application.environmentPolicyStep submitted
           (.include id)).support,
         ∃ next : CoupledAt ConditionalApplicationImage.compiled.graph finalBuild,
@@ -163,14 +159,16 @@ theorem real_conditional_phase (secret openValue : Bool) :
     (name := 1) (publicName := 2) (who := 0) (ty := .option .bool)
     openingGuard tail specification source.fresh.2 boundBuild 0 10 current (image 10)
     (conditionalSourcePolicy openValue) (conditionalPlayers openValue) includeConditional
-    (boundExecution secret) hrefines opening_publicly_validatable hsnapshot.1
+    (boundExecution secret) hrefines opening_publicly_validatable (.opaque (0, 0))
+    ((ConditionalCode.binding?_opaque_iff _ _ _).2 hsnapshot.1)
+    (by intro handle h; exact (BindingDisposition.opaque.inj h).symm)
     (image_lookup_conditional 10) reads (by
       intro history
       simp only [conditionalPlayers]
       rfl)
     (by intro chosen hchosen submitted hsubmitted; rfl) (by rfl) (by
       cases secret <;> rfl) hreadout hreads (by
-        intro chosen hchosen value hvalue
+        intro chosen hchosen handle value _ hvalue
         have heq := specification.successful_value_eq_binding
           current.current.source chosen.1 value chosen.2 hvalue
         rw [hsource] at heq

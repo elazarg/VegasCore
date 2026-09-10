@@ -155,9 +155,9 @@ private theorem conditional_forward_common
       (profile who site.choice.decision
         ((current.current.source.toView who).eraseEnv)).support,
       ∀ submitted ∈ (image.application.playerStep who execution
-        (.submit ((ApplicationImage.conditionalTransport spec.secretTy).encode
-          (code.endpoint.publicationNode,
-            code.endpoint.requestPayload (spec.encoding chosen.1))))).support,
+        (.submit (.conditional code.endpoint.publicationNode
+          (site.sourceRequestPayload fresh state sourceSlot deadline (.opaque (who, sourceSlot))
+            (spec.encoding chosen.1))))).support,
       image.serialService submitted.environmentHistory
           (State.environmentView image.application submitted.native) =
         FinDist.pure (.include (who, execution.native.pool.nextSerial who)) := by
@@ -167,8 +167,11 @@ private theorem conditional_forward_common
   have hphase := ConditionalPublicationSite.conditional_phase_source_law guard tail spec fresh
     state sourceSlot deadline current image
     (profile who site.choice.decision) (root.liftProfile deadlineOf rootProfile)
-    image.serialService execution checkpoint.refines publicGuard haccepted hcode reads hpolicy
-    henvironment (checkpoint.lookup_nextSerial_eq_none who) hcache hreadout hreads hfrozen
+    image.serialService execution checkpoint.refines publicGuard (.opaque (who, sourceSlot))
+    ((code.binding?_opaque_iff _ _).2 haccepted)
+    (by intro handle h; exact (BindingDisposition.opaque.inj h).symm) hcode reads hpolicy
+    henvironment (checkpoint.lookup_nextSerial_eq_none who) hcache hreadout hreads
+    (by intro chosen hchosen handle value _ hvalue; exact hfrozen chosen hchosen value hvalue)
   rw [hphase.1, FinDist.bind_bind]
   apply FinDist.bind_congr
   intro chosen hchosen

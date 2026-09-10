@@ -81,6 +81,27 @@ namespace ConditionalPublicationSite
 
 variable {Γ : VCtx P L} {prog : VegasCore P L Γ}
 
+/-- Encoding a source choice through the disposition-selected controller
+transport produces the proof-side request used by source coupling. -/
+theorem choiceEncodingFor_encode
+    (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
+    (state : BuildState P L Γ) (sourceSlot deadline : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
+    (chosen : L.Val site.choice.ty) :
+    (site.choiceEncodingFor fresh state sourceSlot deadline disposition
+      (ApplicationImage.conditionalTransport site.specification.secretTy)).encode chosen =
+      .conditional (site.runtimeSite fresh state sourceSlot deadline).publicationNode
+        (site.sourceRequestPayload fresh state sourceSlot deadline disposition
+          (site.specification.encoding chosen)) := by
+  cases disposition <;> cases hresult : site.specification.encoding chosen <;>
+    simp [choiceEncodingFor, ChoiceEncoding.trans, ChoiceEncoding.reindex,
+      ChoiceEncoding.atEndpoint, ConditionalPublication.addressedChoiceEncoding,
+      ConditionalPublication.choiceEncoding, ConditionalPublication.addressedDefaultChoiceEncoding,
+      ConditionalPublication.defaultChoiceEncoding, ConditionalPublication.requestPayload,
+      ApplicationImage.conditionalTransport, sourceRequestPayload, ConditionalCode.requestPayload,
+      code, hresult]
+
 /-- Install a conditional source decision with the payload, accepted-binding,
 and completion projections used by the generated image handler. -/
 def imageController (site : ConditionalPublicationSite prog)

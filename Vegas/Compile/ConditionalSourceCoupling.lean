@@ -63,22 +63,6 @@ theorem readyDisposition_at_source_prefix
         Graph.conditionalPublication, atHead, PublicChoiceSite.atHead,
         PublicChoiceSite.runtimeSite, Graph.publicChoice, PublicChoice.ready] using hpublic
 
-/-- The proof-side reference request uses an opaque opening only for an opaque
-disposition. A public default is sent as cleartext; decline is common. -/
-def sourceRequestPayload
-    {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    (site : ConditionalPublicationSite prog)
-    (fresh : FreshBindings prog) (build : BuildState P L Γ)
-    (sourceSlot deadline : Nat)
-    (disposition : BindingDisposition (CommitmentHandle P Nat)
-      (L.Val site.specification.secretTy))
-    (result : Option (L.Val site.specification.secretTy)) :
-    ConditionalPublication.Payload P (TypedValue L) :=
-  match disposition, result with
-  | .opaque _, result => (site.code fresh build sourceSlot deadline).requestPayload result
-  | .publicDefault _, none => .decline
-  | .publicDefault _, some value => .cleartext ⟨site.specification.secretTy, value⟩
-
 /-- Actual inclusion realizes the selected legal source opening or decline and
 preserves its exact continuation. Snapshot availability is needed only for the
 opening branch. No bound on the current clock is assumed: an unresolved endpoint

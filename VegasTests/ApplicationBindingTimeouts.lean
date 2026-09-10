@@ -13,8 +13,8 @@ import VegasTests.GeneratedBindingPolicy
 
 These checks use the actual application-image message handler and shared
 transactional inclusion.  The source-certified fallback is attached to the
-generated initial binding instruction.  They do not exercise the still
-opaque-only conditional-publication continuation.
+generated initial binding instruction. They cover binding admission, deadline
+checks, and replay; conditional-publication continuation is tested separately.
 -/
 
 noncomputable section

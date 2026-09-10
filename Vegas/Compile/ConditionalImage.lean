@@ -78,6 +78,21 @@ def code (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
   publicationField := (compileCore prog fresh state).graph.nodeTarget
     (site.choice.publicationNode fresh state)
 
+/-- The reference request uses an opaque opening only for an opaque
+disposition. A public default is sent as cleartext; decline is common. -/
+def sourceRequestPayload
+    (site : ConditionalPublicationSite prog)
+    (fresh : FreshBindings prog) (build : BuildState P L Γ)
+    (sourceSlot deadline : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy))
+    (result : Option (L.Val site.specification.secretTy)) :
+    ConditionalPublication.Payload P (TypedValue L) :=
+  match disposition, result with
+  | .opaque _, result => (site.code fresh build sourceSlot deadline).requestPayload result
+  | .publicDefault _, none => .decline
+  | .publicDefault _, some value => .cleartext ⟨site.specification.secretTy, value⟩
+
 /-- Any resolved native result is source-legal, including declines and expiry
 from an unopenable binding. Opaque claims use weak snapshot consistency;
 public-default claims use their explicit equality with the source value. -/

@@ -731,9 +731,11 @@ first coupled continuation into the second rather than reinitializing it.
 prefix. Actual inclusion of its prepared canonical handle preserves native
 refinement at the exact one-commit source successor and retains the chosen
 value in the accepted snapshot. `ConditionalSourceCoupling` derives conditional
-readiness from the prefix and an actual accepted handle. It proves that actual
-opening or decline inclusion preserves the exact two-step source continuation.
-Only opening requires recovery of a frozen value. There is no upper clock bound:
+readiness from the prefix and an actual accepted disposition. It proves that
+inclusion of a legal opening, public-default claim, or decline preserves the
+exact two-step source continuation. Only an opaque opening requires recovery
+of a frozen value; a public claim is checked against the accepted default,
+whose source value follows from refinement. There is no upper clock bound:
 the endpoint accepts its owner's request after the deadline when no competing
 expiration has resolved it. `VegasTests/ConditionalSourceCoupling.lean` composes
 both inclusions in one generated program and checks an unprepared, unopenable
@@ -752,13 +754,21 @@ persistent-disclosure regression exercises this law's continuation guarantee.
 `ConditionalPublicationSite.conditional_phase_source_law` similarly gives the
 exact two-invocation law for a source opening or decline followed by actual
 inclusion, retaining the complete policy execution and exact source successor.
-Its snapshot premise concerns only supported opening choices. Decline requires
-an accepted handle but no decodable frozen value.
+The generated policy selects its strict packet codec from the accepted opaque
+or public-default disposition. Its snapshot premise concerns only supported
+opaque opening choices. Decline requires an accepted disposition but no
+decodable frozen value.
 `PublicChoiceSite.publicChoice_head_phase_source_law` supplies the same exact
 source-checkpoint guarantee for an ordinary public choice/reveal pair.
 The conditional-phase regression instantiates both voluntary branches after a
 real binding prefix, deriving the owner-local readout, cache state, and snapshot
 facts from the shared execution and its recorded histories.
+`VegasTests/ConditionalDefaultPhase.lean` instead starts with an actual non-owner
+binding-expiry inclusion that overrides a private preparation of `true` with
+the source-authorized public default `false`. At that coupled source successor,
+the generated dynamic policy and the shared runner satisfy the exact phase law
+for every randomized legal source continuation policy. Inclusion of the new
+envelope is an explicit service premise, not a derived delivery guarantee.
 
 `ConditionalSnapshot` discharges the opening-value premise from existing
 invariants: typed `RegisteredBindings` provides a decodable snapshot,
@@ -846,6 +856,18 @@ canonical accepted bindings before the source cursor. Coverage, registration
 provenance, and envelope freshness are derived from run membership. Each checked
 head phase preserves the checkpoint and advances the independent source
 denotation; no source environment or compiler cursor is passed to a policy.
+
+This exact-prefix invariant is specific to the source-ordered reference run.
+`VegasTests/ApplicationEarlyBinding.lean` generates a checked six-node program
+with two independent bindings and two conditional disposals. Its actual
+register/submit/include run accepts binding node one while node zero remains
+unresolved. `early_binding_has_no_completed_prefix` proves that no natural-number
+cursor describes the resulting completion flags as an initial segment. This
+rules out applying the same invariant to all raw prefixes of the concurrent
+application; it is not an impossibility theorem for concurrent strategic
+preservation. The [road ahead](a-road-ahead.md#source-order-and-resolving-services)
+separates an optional source-ordered admission backend from a concurrent
+frontier-based proof.
 
 `ApplicationPlan.service_source_public_law` runs the complete generated
 invocation list with `ApplicationPlan.liftProfile` and `serialService`. For every

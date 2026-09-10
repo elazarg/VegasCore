@@ -22,14 +22,6 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 namespace ConditionalCode
 
-/-- The generated voluntary packet carries a typed opening or an explicit
-decline. Expiry and malformed traffic are not compiled voluntary choices. -/
-def requestPayload (code : ConditionalCode P L) :
-    Option (L.Val code.secretTy) → ConditionalPublication.Payload P (TypedValue L)
-  | none => .decline
-  | some value => .opening (code.endpoint.owner, code.endpoint.sourceSlot)
-      ⟨code.secretTy, value⟩
-
 omit [DecidableEq P] in
 theorem decode_requestPayload (code : ConditionalCode P L)
     (result : Option (L.Val code.secretTy)) :
