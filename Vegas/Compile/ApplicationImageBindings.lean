@@ -54,7 +54,7 @@ theorem State.advance_clock (state : State P L) (clock : Nat) :
 omit [DecidableEq P] in
 /-- An accepted handle captures exactly its registration at that instant,
 whether it is a well-typed value, nonsense, or absent altogether. -/
-theorem State.bind_frozen (state : State P L) (code : BindingCode P)
+theorem State.bind_frozen (state : State P L) (code : BindingCode P L)
     (handle : CommitmentHandle P Nat) :
     (state.bind code handle).frozen code.sourceField = state.prepared.lookup handle := by
   simp [State.bind]
@@ -68,7 +68,7 @@ theorem State.verify_register (state : State P L) (code : ConditionalCode P L)
     (state.register who slot value).verify code opening = state.verify code opening := rfl
 
 theorem handle_binding (image : ApplicationImage P L) (state : State P L)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P) (handle : CommitmentHandle P Nat) :
     image.handle state ⟨id, .binding address handle⟩ =
@@ -80,20 +80,23 @@ theorem handle_binding (image : ApplicationImage P L) (state : State P L)
   simp [ApplicationImage.handle, hcode, Message.sender]
 
 /-- Every successful message handler preserves private preparation. It either
-leaves both binding tables unchanged or is an authenticated canonical binding
-update. This classifies the actual dynamic handler without assuming that a
-binding instruction was selected. -/
+leaves both binding tables unchanged, is an authenticated canonical opaque
+binding update, or installs a typed public fallback. This classifies the actual
+dynamic handler without assuming that a binding instruction was selected. -/
 theorem handle_binding_effect (image : ApplicationImage P L)
     (state next : State P L) (message : Message P (Payload P L))
     (hnext : image.handle state message = some next) :
     next.prepared = state.prepared ∧
-      ((next.memory.accepted = state.memory.accepted ∧ next.frozen = state.frozen) ∨
-        ∃ (address : Nat) (code : BindingCode P)
+      (((next.memory.accepted = state.memory.accepted ∧ next.frozen = state.frozen) ∨
+        (∃ (address : Nat) (code : BindingCode P L)
           (handle : CommitmentHandle P Nat),
           message.payload = .binding address handle ∧
           message.sender = code.owner ∧
           handle = (code.owner, code.sourceSlot) ∧
-          next = state.bind code handle) := by
+          next = state.bind code handle)) ∨
+        (∃ (address : Nat) (code : BindingCode P L) (value : L.Val code.ty),
+          message.payload = .expireBinding address ∧
+          next = state.defaultBind code ⟨code.ty, value⟩)) := by
   rcases message with ⟨id, payload⟩
   cases payload with
   | malformed data => simp [ApplicationImage.handle] at hnext
@@ -118,7 +121,7 @@ theorem handle_binding_effect (image : ApplicationImage P L)
                   | some accepted =>
                       simp only [hresolved, Option.bind_some] at hnext
                       cases hnext
-                      exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+                      exact ⟨rfl, Or.inl (Or.inl ⟨rfl, rfl⟩)⟩
   | expireChoice address =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -134,7 +137,7 @@ theorem handle_binding_effect (image : ApplicationImage P L)
               | some value =>
                   rw [hresolved] at hnext
                   cases hnext
-                  exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+                  exact ⟨rfl, Or.inl (Or.inl ⟨rfl, rfl⟩)⟩
   | binding address handle =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -149,9 +152,24 @@ theorem handle_binding_effect (image : ApplicationImage P L)
               split at hnext
               · rename_i hadmitted
                 cases hnext
-                exact ⟨rfl, Or.inr ⟨address, code, handle, rfl,
-                  hadmitted.1, hadmitted.2.1, rfl⟩⟩
+                exact ⟨rfl, Or.inl (Or.inr ⟨address, code, handle, rfl,
+                  hadmitted.1, hadmitted.2.1, rfl⟩)⟩
               · contradiction
+  | expireBinding address =>
+      cases hlookup : image.lookup address with
+      | none => simp [ApplicationImage.handle, hlookup] at hnext
+      | some instruction =>
+          cases instruction with
+          | sample code | publicChoice code | conditional code =>
+              simp [ApplicationImage.handle, hlookup] at hnext
+          | bind code =>
+              rw [image.handle_expireBinding state address code hlookup id] at hnext
+              cases hresolved : code.resolveTimeout? state.memory with
+              | none => rw [hresolved] at hnext; cases hnext
+              | some value =>
+                  rw [hresolved] at hnext
+                  cases hnext
+                  exact ⟨rfl, Or.inr ⟨address, code, value, rfl, rfl⟩⟩
   | conditional address payload =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -177,14 +195,14 @@ theorem handle_binding_effect (image : ApplicationImage P L)
                   | some result =>
                       simp only [hresolved, Option.bind_some] at hnext
                       cases hnext
-                      exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+                      exact ⟨rfl, Or.inl (Or.inl ⟨rfl, rfl⟩)⟩
 
 /-- Public binding admission and the resulting public memory reveal nothing
 about preparation or frozen values. This local equation does not erase later
 owner-chosen opening traffic or claim full-run strategic correspondence. -/
 theorem binding_public_effect_eq (image : ApplicationImage P L)
     (first second : State P L) (hpublic : first.memory = second.memory)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P) (handle : CommitmentHandle P Nat) :
     (image.handle first ⟨id, .binding address handle⟩).map State.memory =
@@ -197,7 +215,7 @@ theorem binding_public_effect_eq (image : ApplicationImage P L)
 /-- Neither replay nor a newly authored binding packet can overwrite the
 accepted snapshot at the same source field. -/
 theorem handle_binding_after_acceptance (image : ApplicationImage P L)
-    (state : State P L) (address : Nat) (code : BindingCode P)
+    (state : State P L) (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (prior handle : CommitmentHandle P Nat) (id : MessageId P) :
     image.handle (state.bind code prior) ⟨id, .binding address handle⟩ = none := by

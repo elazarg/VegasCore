@@ -8,21 +8,22 @@ time alone does not execute a program.
 This document fixes the component boundaries and the next compiler obligations.
 The checked scope includes a dependency gate, atomic message inclusion,
 a timed final-disclosure instance of the native sealed application, and
-source-legal public-choice timeout code in generated application images. It is
+source-legal public-choice and binding timeout code in generated application images. It is
 not a source-to-timed-runtime strategic compiler theorem. Ethereum grounds the
 design through the adjacent Kotlin compiler's generated contracts. Other
 runtimes can supply the same components where their semantics fit.
 
 ## Operational components
 
-### Public-choice resolution annotations
+### Public fallback certificates
 
-`PublicResolutionChoice` supplies a typed expression over the public source
-context and proves that its value satisfies the original choice guard at every
-source environment. The compiler retains that expression and its field reads
-as `EventExpr` code. `PublicResolutionChoice.install` attaches the expression
-and deadline to the existing generated public-choice instruction. It changes
-neither the source language nor the source accounting plan.
+`SourceDecisionSite.PublicFallback` supplies a typed expression over the public
+source context and proves that its value satisfies the original decision guard
+at every source environment. The compiler retains that expression and its
+field reads as `EventExpr` code. For an adjacent public choice,
+`PublicChoiceSite.install` attaches the expression and deadline to the existing
+generated instruction. It changes neither the source language nor the source
+accounting plan.
 
 The annotation designates a **source-legal backend resolution**. Nonemptiness
 of a guard alone does not select a default, and the certificate does not assert
@@ -47,7 +48,7 @@ the public-expression compiler and the source certificate. Acceptance therefore
 has the original adjacent commit/reveal source continuation with the annotated
 value. This is a source-support claim, not equality with the original behavioral
 profile. It also does not produce an expiry transaction or guarantee inclusion.
-Opaque binding defaults have a separate source certificate and public
+Binding defaults use the same source-decision certificate and a distinct public
 disposition, described below; the public-choice mechanism does not create a
 commitment handle or an accepted opening witness.
 
@@ -59,16 +60,33 @@ runtime-general handler-extension theorem comparing complete executions with
 the same state, observation, action, and history types. Neither result provides
 a source policy simulating an arbitrary runtime deviation.
 
-### Opaque-binding default certificates and dispositions
+### Binding expiry and public dispositions
 
-`SourceDecisionSite.BindingDefault` retains a public source expression and a
+`SourceDecisionSite.PublicFallback` retains a public source expression and a
 proof that it is legal at the original commitment in every source environment.
 Its compiled expression reads only public fields. At an exact source-prefix
-checkpoint, `defaultBind_source_coupling` proves that evaluating that code and
-installing the resulting public default represents the original source commit
-with that exact value. It makes no assumption about the owner's private
-preparation or chosen policy. This is a state-update/source theorem; the
-generated interpreter does not yet admit binding-expiry transactions.
+checkpoint, `PublicFallback.expiry_include_source_coupling` proves that actual
+inclusion of a pending `expireBinding` packet performs the original source
+commit with the evaluated value. It derives unfinishedness, prerequisite
+completion, absence of an accepted disposition, and executable read availability
+from the checkpoint and native refinement. Its explicit service premises are a
+pending packet and a passed strict deadline. It retains that packet in the ledger
+with its receipt and does not change local sent or inbox histories. It assumes
+neither the owner's private preparation nor its chosen policy.
+
+`PublicFallback.installBindingTimeout` attaches this code at the existing
+generated binding address. The complete-image regression privately prepares
+true and proves that a non-owner's actual expiry packet instead advances the
+original source commitment to its designated false fallback. Additional tests
+cover the strict deadline boundary, missing prerequisites, both orders of the
+binding/expiry race, replay, and absence of timeout code. A deadline does not
+disable ordinary binding: the first successful inclusion wins.
+
+The binding and public-choice decoration passes commute. Each retains graph
+refinement under arbitrary native actions and randomized policies. The combined
+artifact retains the source reference-profile outcome law because lifted
+source policies submit neither kind of expiry packet. This no-expiry reference
+law does not establish a resolving service or arbitrary-deviation simulation.
 
 `BindingDisposition` is runtime-general: it records either an opaque handle or
 a public default value. The application stores this sum in its public memory.
@@ -96,7 +114,7 @@ manufacture handles for defaults.
 The public-expression certificate has a genuine eligibility condition. If two
 source environments have identical public information but disjoint legal
 choice sets, no deterministic public-expression default can be legal in both.
-`BindingDefault.not_nonempty_of_disjoint_legal` checks this statement, with a
+`PublicFallback.not_nonempty_of_disjoint_legal` checks this statement, with a
 private-Boolean equality regression. This concerns the universal certificate,
 not an impossibility for every runtime or every reachable-state restriction.
 It changes neither source syntax nor well-formedness.
@@ -565,12 +583,14 @@ uniform bound is `2*w + 4` cycles). Neither an arbitrary environment nor the
 inclusion predicate alone supplies the required opportunity guarantees.
 The first source endpoint may use pure compiled policies with behavioral source
 replacements, but draft-level coverage requires randomized source profiles too.
-The generic `ApplicationImage` has conditional-publication expiration, but it
-does not have fallback endpoints for opaque binding or ordinary public choice.
-Thus its source-ordered serial service cannot totalize refusal at those heads.
-The concrete `DisclosureState` fixture has separate initial-binding and response
-fallbacks; results for that fixture must not be generalized to every emitted
-application image without corresponding instructions and resolution proofs.
+The generic `ApplicationImage` has conditional-publication expiration and
+optional source-certified binding and public-choice expiry. Its serial reference
+service does not produce expiry traffic, so these endpoints alone do not
+totalize refusal. Generated conditional instructions also need to continue from
+the public-default disposition. The concrete `DisclosureState` fixture has
+separate initial-binding and response fallbacks; its resolution-service results
+must not be generalized to every emitted image without the corresponding
+continuation and service proofs.
 
 After settlement and exact unchanged-player choices, reconstruct laws rather
 than choosing an independent source witness for each supported outcome:

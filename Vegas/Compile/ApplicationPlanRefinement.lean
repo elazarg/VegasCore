@@ -159,6 +159,18 @@ theorem handle_refines (plan : ApplicationPlan accounted fresh build)
                           _ (site.compiledNode fresh build) rfl rfl handle
                           (congrArg Prod.fst hadmitted.2.1) _ step hsnapshot⟩
                       · contradiction
+      | expireBinding address =>
+          cases hlookup : image.lookup address with
+          | none => simp [ApplicationImage.handle, hlookup] at hnext
+          | some instruction =>
+              cases instruction with
+              | sample code | publicChoice code | conditional code =>
+                  simp [ApplicationImage.handle, hlookup] at hnext
+              | bind code =>
+                  cases plan.origin_of_lookup deadlineOf address (.bind code) hlookup with
+                  | binding site unrestricted =>
+                      simp [ApplicationImage.handle, hlookup, BindingCode.resolveTimeout?,
+                        SourceDecisionSite.bindingCode] at hnext
       | conditional address payload =>
           cases hlookup : image.lookup address with
           | none => simp [ApplicationImage.handle, hlookup] at hnext

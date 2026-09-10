@@ -26,7 +26,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 private theorem canonical_binding_handler
     (image : ApplicationImage P L) (state : State P L)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P) (hsender : id.1 = code.owner)
     (haccepted : state.memory.accepted code.sourceField = none)
@@ -45,7 +45,7 @@ installs the already cached value as the accepted frozen snapshot. -/
 theorem includePending_binding_cachedSnapshot
     (image : ApplicationImage P L)
     (execution : image.application.PolicyExecution)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P)
     (value : TypedValue L)
@@ -96,7 +96,7 @@ native action while installing the cached accepted snapshot. -/
 theorem environmentPolicyStep_include_binding_cachedSnapshot
     (image : ApplicationImage P L)
     (execution : image.application.PolicyExecution)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P)
     (value : TypedValue L)
@@ -140,7 +140,7 @@ value, and the exact accepted snapshot. No progress premise is used. -/
 theorem runPolicies_binding_cachedSnapshot
     (image : ApplicationImage P L)
     (execution included : image.application.PolicyExecution)
-    (address : Nat) (code : BindingCode P)
+    (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (id : MessageId P)
     (value : TypedValue L)

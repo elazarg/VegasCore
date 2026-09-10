@@ -9,12 +9,12 @@ import Vegas.Compile.ApplicationImageSamples
 
 /-! # Completion that requires an owner-authored message
 
-Opaque bindings and public choices without timeout code have authenticated entry points.
+Bindings and public choices without timeout code have authenticated entry points.
 Their generated node blocks are disjoint from every other instruction's
 effects. Consequently neither clock advancement, chance invocation, nor a
 message authored by another principal can complete one of these nodes.
 
-Conditional publication and timeout-enabled public choices are deliberately
+Conditional publication and timeout-enabled bindings or public choices are deliberately
 excluded: their permissionless expiry entry points can complete node pairs
 without owner-authored requests.
 -/
@@ -33,7 +33,7 @@ It is not a scheduling or player-policy assumption. -/
 def RequiresSubmission (image : ApplicationImage P L) (node : Nat) (who : P) : Prop :=
   ∀ instruction ∈ image.instructions, node ∈ instruction.coveredNodes →
     match instruction with
-    | .bind code => code.owner = who
+    | .bind code => code.timeout = none ∧ code.owner = who
     | .publicChoice code => code.timeout = none ∧ code.endpoint.owner = who
     | .sample _ | .conditional _ => False
 
@@ -99,9 +99,31 @@ theorem RequiresSubmission.handle
                   have howner := required (.bind code)
                     (List.mem_of_find?_eq_some hlookup)
                     (by simp [ApplicationInstruction.coveredNodes, heq])
-                  exact hsender (hadmitted.1.trans howner)
+                  exact hsender (hadmitted.1.trans howner.2)
                 simp [State.bind, hne, hnotDone]
               · contradiction
+  | expireBinding address =>
+      cases hlookup : image.lookup address with
+      | none => simp [ApplicationImage.handle, hlookup] at hnext
+      | some instruction =>
+          cases instruction with
+          | sample code | publicChoice code | conditional code =>
+              simp [ApplicationImage.handle, hlookup] at hnext
+          | bind code =>
+              by_cases hcovered : node ∈
+                  (ApplicationInstruction.bind code).coveredNodes
+              · have htimeout := (required (.bind code)
+                    (List.mem_of_find?_eq_some hlookup) hcovered).1
+                rw [image.handle_expireBinding state address code hlookup id] at hnext
+                simp [BindingCode.resolveTimeout?, htimeout] at hnext
+              · rw [image.handle_expireBinding state address code hlookup id] at hnext
+                cases hresolved : code.resolveTimeout? state.memory with
+                | none => rw [hresolved] at hnext; cases hnext
+                | some value =>
+                    rw [hresolved] at hnext
+                    cases hnext
+                    simp [ApplicationInstruction.coveredNodes] at hcovered
+                    simp [State.defaultBind, hcovered, hnotDone]
   | choice address typed =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext
@@ -209,7 +231,10 @@ theorem requiresSubmission
   · subst other
     cases instruction with
     | sample code => exact hauthor
-    | bind code => exact hauthor
+    | bind code =>
+        refine ⟨?_, hauthor⟩
+        cases plan.instructions_origin deadlineOf (.bind code) hinstruction with
+        | binding site unrestricted => rfl
     | conditional code => exact hauthor
     | publicChoice code =>
         refine ⟨?_, hauthor⟩

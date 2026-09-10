@@ -858,7 +858,7 @@ different environment, settlement against deviating players, or a unilateral
 strategy-correspondence result.
 
 `ApplicationPlan.withholding_no_source_public_law` makes one failure of a
-stronger statement explicit. Generated binding and fallback-free ordinary-choice
+stronger statement explicit. Undecorated binding and fallback-free ordinary-choice
 node blocks require an owner-authored message. Under a unilateral permanent-wait
 replacement, the completion marginal is `pure false` for every environment
 policy and every finite invocation schedule. This follows from generated
@@ -874,18 +874,30 @@ sender is accepted and continues through the source's certified decline.
 The shared policy interpreter records its actual inclusion. No opening
 snapshot or private readout is assumed.
 
-`PublicResolutionChoice` supplies a typed public source expression and proves
-that its value is legal at the annotated ordinary-choice occurrence. Its
-compiler emits typed field reads and installs optional timeout code in the same
-application image. `PublicResolutionChoice.expiry_include_source_coupling`
+`SourceDecisionSite.PublicFallback` supplies a typed public source expression
+and proves that its value is legal at the annotated decision occurrence. For
+an ordinary adjacent choice, the compiler emits typed field reads and installs
+optional timeout code in the same application image.
+`PublicChoiceSite.expiry_include_source_coupling`
 derives runtime read availability and readiness from the source checkpoint and
 native refinement, then relates actual inclusion of an overdue request from any
 sender to the original two source steps with the annotated value. The expiry inclusion
 step does not change principal command histories. Ordinary choice and expiry
 compete through actual inclusion; a completed pair rejects further writes. This is a source-legal
 backend resolution, not a claim about the unchanged owner's behavioral policy
-or a correspondence with surface-language handler elaboration. Opaque-binding
-defaults, request production, and a whole-run resolution service remain open.
+or a correspondence with surface-language handler elaboration. Actual
+request production and a whole-run resolution service remain separate obligations.
+
+For opaque-binding instructions, `PublicFallback.installBindingTimeout` emits
+the same public-expression certificate as typed optional code at the binding
+address. `PublicFallback.expiry_include_source_coupling` proves that actual
+overdue inclusion of a pending `expireBinding` packet advances the original
+source commitment to the designated value. It records a public-default
+disposition, leaving private preparation and frozen snapshots untouched.
+Ordinary binding and expiry compete by inclusion, and either accepted
+disposition prevents replacement. Generated conditional handlers still need
+the disposition-aware continuation; the native generic classifier for it is
+already separate from commitment verification.
 
 Enabling this timeout code preserves completed-run source support for arbitrary
 native actions and policies. For the lifted source profile, it also preserves
@@ -893,7 +905,11 @@ the full reference execution law: those policies never emit expiry requests.
 `ApplicationImage.runPolicies_withChoiceTimeouts` compares complete executions,
 including pools and histories, under this no-expiry-traffic premise. It uses
 the runtime-general handler-extension law and does not compare arbitrary
-strategies that exercise the additional request.
+strategies that exercise the additional request. Binding-timeout decoration has
+the analogous complete-execution comparison and arbitrary-traffic refinement.
+The two decoration passes commute, and both can be enabled in the checked
+source reference-law theorem. None of these results supplies an expiry-driving
+service or a source strategy for a replacement that uses the new requests.
 
 `ApplicationImageInvariants` proves that every accepted handle and its frozen
 snapshot persist through arbitrary supported native and policy executions.

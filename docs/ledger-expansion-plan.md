@@ -110,7 +110,7 @@ they do not imply completion or equality with the terminating source law.
 
 `ApplicationPlan.withholding_no_source_public_law` establishes a code-level
 obstruction to upgrading the reference law by service assumptions alone.
-Generated binding and fallback-free ordinary-public-choice nodes require an owner-authored
+Undecorated binding and fallback-free ordinary-public-choice nodes require an owner-authored
 message. Replacing that owner by permanent waiting leaves the program unfinished
 under every environment policy and finite invocation schedule. The theorem
 retains completion in the outcome; it does not rule out weaker observations or
@@ -122,7 +122,8 @@ included, overdue expiry packet from any sender to the existing source decline
 and exact source continuation. The packet must actually be submitted: the
 environment's inclusion capability cannot author it.
 
-Ordinary public choices can be annotated with a `PublicResolutionChoice`:
+Ordinary public choices can be annotated with a
+`SourceDecisionSite.PublicFallback`:
 a typed public source expression whose value is universally guard-legal. Its
 compiled optional expiry code uses the same application interpreter, and an
 actual overdue inclusion has the annotated source continuation. This is a
@@ -130,40 +131,37 @@ designated source-legal backend resolution, not inferred programmer intent or
 equality with the original owner's policy. The annotation and source accounting
 remain separate. See [timeout compilation](timeout-compilation.md).
 
-Source-certified binding-default values and the distinct public disposition
-are represented and checked. `BindingDefault.defaultBind_source_coupling`
-relates the emitted public expression and state update to the original source
-commit. Public defaults have exact typed refinement and direct local readout;
+Source-certified binding defaults are emitted as optional typed timeout code.
+`PublicFallback.expiry_include_source_coupling` relates an actual pending,
+overdue expiry inclusion to the original source commit with the evaluated
+fallback. Public defaults have exact typed refinement and direct local readout;
 opaque bindings retain their separate frozen-snapshot provenance. The generic
 conditional-publication classifier handles both dispositions, but the generated
-conditional instruction still handles only opaque references. No generated
-binding-expiry handler or timeout-driving reference service is supplied by
-these state and classifier results.
+conditional instruction still handles only opaque references. No
+timeout-driving reference service is supplied. Binding and public-choice timeout
+decoration commute; the combined artifact preserves the no-expiry reference
+profile law, while each pass retains arbitrary-traffic graph refinement.
 
 The remaining implementation order is:
 
-1. Factor the public-expression and legality certificate through one source
-   decision interface; keep adjacent reveal geometry on the public-choice
-   consumer. Emit optional binding-default deadline and expression code, admit actual
-   permissionless expiry packets, and use the checked state-update/source
-   theorem to prove their inclusion continuation. `Legal` provides some legal
-   action, not the programmer's specified nonresponse consequence. Keep the
-   designated expression, its certificate, and backend eligibility separate
-   from core syntax and WF.
-2. Integrate disposition-aware conditional publication and reference policies.
+1. Integrate disposition-aware conditional publication and reference policies.
    A public default supplies its recorded value and uses authenticated
    cleartext publication; it must never be treated as an opaque opening or
    recovered from an unrelated private cache. Prove both legal source
    continuation and the appropriate reference law, retaining the real public
    disposition and message histories.
-3. Couple these handlers with
+2. Couple these handlers with
    observation-local request production, a public clock, and admitted inclusion
    capacity. Specify who supplies permissionless transactions and what happens
    when a valid ordinary request competes with expiry.
-4. Compare arbitrary player replacements on that same execution. Start with a
+3. Compare arbitrary player replacements on that same execution. Start with a
    final conditional disclosure under an actual resolving phase, then compose
    across prior bindings, chance, and later decisions. A support witness for
    each terminal result does not provide one legal source-policy law.
+
+Keep the designated fallback expression, its legality certificate, and backend
+eligibility separate from core syntax and WF. `Legal` provides some legal action,
+not the programmer's specified nonresponse consequence.
 
 No point in this sequence restricts deviators to canonical payloads or lifted
 policies. Unopenable bindings, malformed requests, replay, and silence must be

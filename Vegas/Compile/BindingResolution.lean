@@ -27,10 +27,10 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 namespace SourceDecisionSite
 
-/-- A ready generated opaque binding has a legal graph commit step. Any value
-recoverable from the canonical private preparation is the value selected by
-that step; no recoverability premise is imposed. -/
-theorem binding_resolution_step
+/-- Every supplied value gives a legal source commit at a ready generated
+unrestricted binding.  This is the graph step used both by opaque admission
+and by a source-certified public fallback. -/
+theorem binding_value_step
     {Γ Δ : VCtx P L} {prog : VegasCore P L Γ} {who : P} {name : VarId}
     {ty : L.Ty}
     {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
@@ -42,20 +42,14 @@ theorem binding_resolution_step
     (cfg : Config (compileCore prog fresh build).graph)
     (hrep : native.memory.Represents cfg)
     (hreachable : Reachable (compileCore prog fresh build).graph cfg)
-    (sourceSlot : Nat) (handle : CommitmentHandle P Nat)
-    (hhandle : handle = (who, sourceSlot))
+    (sourceSlot : Nat)
     (hnotDone : native.memory.done
       (site.bindingCode fresh build sourceSlot).node = false)
     (hrequires : (site.bindingCode fresh build sourceSlot).requires.all
-      native.memory.done = true) :
-    ∃ value : L.Val ty,
-      Nonempty (CommitStep (compileCore prog fresh build).graph cfg who
-        ⟨site.compiledNode fresh build, ⟨ty, value⟩⟩) ∧
-      ∀ recovered,
-        (native.prepared.lookup handle).bind (fun typed => typed.as? ty) =
-          some recovered →
-        recovered = value := by
-  subst handle
+      native.memory.done = true)
+    (value : L.Val ty) :
+    Nonempty (CommitStep (compileCore prog fresh build).graph cfg who
+      ⟨site.compiledNode fresh build, ⟨ty, value⟩⟩) := by
   let graph := (compileCore prog fresh build).graph
   let node := site.compiledNode fresh build
   let siteState := decisionSiteState site fresh build
@@ -63,9 +57,7 @@ theorem binding_resolution_step
   have hrow : graph.nodes[node]? = some (siteState.commitEvent who guard) := by
     rcases decisionSite_compiledRow site fresh build with
       ⟨located, hlocated, hrow⟩
-    have heq : located = node := by
-      apply Fin.ext
-      exact hlocated
+    have heq : located = node := Fin.ext hlocated
     subst located
     exact hrow
   have hready : Ready graph cfg node := by
@@ -100,6 +92,51 @@ theorem binding_resolution_step
       rcases hnodeWF.2.2.2 ref href with ⟨spec, hfield, htype, _⟩
       exact ⟨spec, hfield, htype⟩)
   obtain ⟨reads, hreads⟩ := hexReads
+  have hguard : compiledGuard.eval value reads = true :=
+    site.unrestricted_guard_eval fresh build initial legal unrestricted reads value
+  exact ⟨{
+    row := siteState.commitEvent who guard
+    guard := compiledGuard
+    row_get := hrow
+    sem_eq := rfl
+    ready := hready
+    value := value
+    value_ok := by
+      have hguardType : compiledGuard.ty = ty := rfl
+      simp [TypedValue.as?, hguardType]
+    env := reads
+    env_ok := hreads
+    guard_ok := hguard }⟩
+
+/-- A ready generated opaque binding has a legal graph commit step. Any value
+recoverable from the canonical private preparation is the value selected by
+that step; no recoverability premise is imposed. -/
+theorem binding_resolution_step
+    {Γ Δ : VCtx P L} {prog : VegasCore P L Γ} {who : P} {name : VarId}
+    {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    (site : SourceDecisionSite who prog Δ name ty guard)
+    (fresh : FreshBindings prog) (build : BuildState P L Γ)
+    (initial : VEnv L Γ) (legal : Legal prog)
+    (unrestricted : UnrestrictedBinding guard)
+    (native : ApplicationImage.State P L)
+    (cfg : Config (compileCore prog fresh build).graph)
+    (hrep : native.memory.Represents cfg)
+    (hreachable : Reachable (compileCore prog fresh build).graph cfg)
+    (sourceSlot : Nat) (handle : CommitmentHandle P Nat)
+    (hhandle : handle = (who, sourceSlot))
+    (hnotDone : native.memory.done
+      (site.bindingCode fresh build sourceSlot).node = false)
+    (hrequires : (site.bindingCode fresh build sourceSlot).requires.all
+      native.memory.done = true) :
+    ∃ value : L.Val ty,
+      Nonempty (CommitStep (compileCore prog fresh build).graph cfg who
+        ⟨site.compiledNode fresh build, ⟨ty, value⟩⟩) ∧
+      ∀ recovered,
+        (native.prepared.lookup handle).bind (fun typed => typed.as? ty) =
+          some recovered →
+        recovered = value := by
+  subst handle
   obtain ⟨baseline⟩ := site.context_nonempty initial legal
   let fallback : L.Val ty :=
     Classical.choose
@@ -107,22 +144,8 @@ theorem binding_resolution_step
   let recovered := (native.prepared.lookup (who, sourceSlot)).bind
     (fun typed => typed.as? ty)
   let value : L.Val ty := recovered.getD fallback
-  have hguard : compiledGuard.eval value reads = true :=
-    site.unrestricted_guard_eval fresh build initial legal unrestricted reads value
-  refine ⟨value, ⟨?_⟩, ?_⟩
-  · exact
-      { row := siteState.commitEvent who guard
-        guard := compiledGuard
-        row_get := hrow
-        sem_eq := rfl
-        ready := hready
-        value := value
-        value_ok := by
-          have hguardType : compiledGuard.ty = ty := rfl
-          simp [TypedValue.as?, hguardType]
-        env := reads
-        env_ok := hreads
-        guard_ok := hguard }
+  refine ⟨value, site.binding_value_step fresh build initial legal unrestricted native cfg
+    hrep hreachable sourceSlot hnotDone hrequires value, ?_⟩
   · intro decoded hdecoded
     change recovered = some decoded at hdecoded
     simp [value, hdecoded]
@@ -135,3 +158,8 @@ end Vegas
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceDecisionSite.binding_resolution_step
+
+/-- info: 'Vegas.SourceDecisionSite.binding_value_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceDecisionSite.binding_value_step

@@ -38,7 +38,7 @@ theorem run_source_public_outcome (source : WFProgram P L)
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (actions : List ((plan.image deadlineOf).withChoiceTimeouts select).application.Action)
     (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.State)
     (hnext : next ∈ (((plan.image deadlineOf).withChoiceTimeouts select).application.run actions
@@ -67,7 +67,7 @@ theorem runPolicies_source_public_outcome (source : WFProgram P L)
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (players : P →
       ((plan.image deadlineOf).withChoiceTimeouts select).application.PlayerPolicy)
     (environment :

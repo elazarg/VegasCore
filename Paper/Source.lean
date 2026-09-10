@@ -11,6 +11,7 @@ import Vegas.Compile.ApplicationPlanOutcome
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationTimeoutForwardLaw
 import Vegas.Compile.PublicChoiceResolution
+import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
 import Vegas.Compile.ConditionalExpirationSourceCoupling
 
@@ -47,7 +48,7 @@ theorem public_application_outcome (source : WFProgram Player L)
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode Player L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (actions : List ((plan.image deadlineOf).withChoiceTimeouts select).application.Action)
     (next : ((plan.image deadlineOf).withChoiceTimeouts select).application.State)
     (hnext : next ∈ (((plan.image deadlineOf).withChoiceTimeouts select).application.run actions
@@ -75,7 +76,7 @@ theorem public_application_policy_outcome (source : WFProgram Player L)
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode Player L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (players : Player →
       ((plan.image deadlineOf).withChoiceTimeouts select).application.PlayerPolicy)
     (environment :
@@ -105,17 +106,20 @@ theorem public_application_policy_outcome (source : WFProgram Player L)
 
 /-- For an eligible application plan, lifting one source profile and running
 the emitted serial reference service gives the source law of joint completion
-and public terminal output, including with optional public-choice timeouts. -/
+and public terminal output, including with optional binding and public-choice
+fallbacks. -/
 theorem public_application_reference_law (source : WFProgram Player L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (ToEventGraph.BuildState.fromInitial
         (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (select : (code : PublicChoiceCode Player L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (binding : (code : BindingCode Player L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode Player L) → Option (PublicFallbackCode L code.guard.ty))
     (profile : SourceBehavioralProfile source.core.prog)
     (hinitial : plan.InitialControllerReadsPublic)
     (horigins : (plan.image deadlineOf).HasBindingOrigins) :
-    ((((plan.image deadlineOf).withChoiceTimeouts select).application.runPolicies
+    (((((plan.image deadlineOf).withBindingTimeouts binding).withChoiceTimeouts
+      choice).application.runPolicies
       (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
       (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
         (fun out =>
@@ -130,7 +134,7 @@ theorem public_application_reference_law (source : WFProgram Player L)
             (ToEventGraph.BuildState.fromInitial
               (ToEventGraph.initialState source.core.Γ source.core.env
                 source.core.wctx))).symm) terminal).erasePubEnv) :=
-  plan.timeout_service_source_public_law source deadlineOf select profile hinitial horigins
+  plan.timeout_service_source_public_law source deadlineOf binding choice profile hinitial horigins
 
 /-- A missing authenticated submission cannot be supplied by scheduling.
 The generated code's submission requirement is an inspectable static premise. -/
@@ -199,8 +203,8 @@ theorem public_application_choice_expiry
     {Γ : VCtx Player L} {name publicName : VarId} {who : Player} {ty : L.Ty}
     (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
     (tail : VegasCore Player L ((publicName, .pub ty) :: (name, .sealed who ty) :: Γ))
-    (resolution : PublicResolutionChoice
-      (PublicChoiceSite.atHead name publicName who guard tail))
+    (fallback : SourceDecisionSite.PublicFallback
+      (PublicChoiceSite.atHead name publicName who guard tail).decision)
     (fresh : FreshBindings (.commit name who guard (.reveal publicName who name .here tail)))
     (build : ToEventGraph.BuildState Player L Γ) (deadline : Nat)
     (current : ToEventGraph.CoupledAt
@@ -214,12 +218,13 @@ theorem public_application_choice_expiry
     (hoverdue : deadline < execution.native.application.memory.clock)
     (address : Nat)
     (hcode : image.lookup address = some (.publicChoice
-      (resolution.timeoutCode fresh build deadline)))
+      ((PublicChoiceSite.atHead name publicName who guard tail).timeoutCode
+        fallback fresh build deadline)))
     (id : Interaction.MessageId Player)
     (hlookup : execution.native.pool.lookup id = some ⟨id, .expireChoice address⟩)
     (hincluded : included ∈
       (image.application.environmentPolicyStep execution (.include id)).support) :
-    let chosen := L.eval resolution.expr current.current.source.erasePubEnv
+    let chosen := L.eval fallback.expr current.current.source.erasePubEnv
     ∃ next : ToEventGraph.CoupledAt
         (ToEventGraph.compileCore (.commit name who guard (.reveal publicName who name .here tail))
           fresh build).graph
@@ -227,8 +232,44 @@ theorem public_application_choice_expiry
           publicName who .here fresh.2.1).1,
       next.current.source = (current.current.source.cons chosen).cons chosen ∧
         included.native.application.Refines next.current.graph.1 :=
-  (resolution.expiry_include_source_coupling guard tail fresh build deadline current image
-    execution included hrefines heligible hoverdue address hcode id hlookup hincluded).2.2.2.2
+  (PublicChoiceSite.expiry_include_source_coupling guard tail fallback fresh build deadline
+    current image execution included hrefines heligible hoverdue address hcode id hlookup
+    hincluded).2.2.2.2
+
+/-- Actual inclusion of source-authorized binding expiry advances the original
+source decision to the public fallback without requiring private preparation. -/
+theorem public_application_binding_expiry
+    {Γ : VCtx Player L} {name : VarId} {who : Player} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore Player L ((name, .sealed who ty) :: Γ))
+    (fallback : SourceDecisionSite.PublicFallback (.here guard tail))
+    (fresh : FreshBindings (.commit name who guard tail))
+    (build : ToEventGraph.BuildState Player L Γ) (deadline : Nat)
+    (current : ToEventGraph.CoupledAt
+      (ToEventGraph.compileCore (.commit name who guard tail) fresh build).graph build)
+    (image : ApplicationImage Player L) (execution : image.application.State)
+    (hrefines : execution.application.Refines current.current.graph.1)
+    (hoverdue : deadline < execution.application.memory.clock)
+    (address : Nat)
+    (hcode : image.lookup address = some (.bind
+      (fallback.bindingTimeoutCode fresh build deadline)))
+    (id : Interaction.MessageId Player)
+    (hlookup : execution.pool.lookup id = some ⟨id, .expireBinding address⟩) :
+    let chosen := L.eval fallback.expr current.current.source.erasePubEnv
+    ∃ next : ToEventGraph.CoupledAt
+        (ToEventGraph.compileCore (.commit name who guard tail) fresh build).graph
+        (build.addCommitEvent name who guard fresh.1).1,
+      next.current.source = current.current.source.cons chosen ∧
+        (image.application.includePending execution id).application.Refines
+          next.current.graph.1 := by
+  obtain ⟨next, hsource, hnext, _⟩ := fallback.expiry_include_source_coupling guard tail
+    fresh build deadline current image execution hrefines hoverdue address hcode id hlookup
+  exact ⟨next, hsource, hnext⟩
+
+/-- info: 'Vegas.Paper.Source.public_application_binding_expiry' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_binding_expiry
 
 variable [Fintype Player]
 

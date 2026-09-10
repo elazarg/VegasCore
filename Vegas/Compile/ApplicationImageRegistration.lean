@@ -296,7 +296,7 @@ theorem runPolicies_cachedSnapshot_after_bind
     (image : ApplicationImage P L)
     (execution : image.application.PolicyExecution)
     (who : P) (slot : Nat) (value : TypedValue L)
-    (code : BindingCode P) (hfield : code.sourceField = slot)
+    (code : BindingCode P L) (hfield : code.sourceField = slot)
     (hconsistent : image.RegistrationConsistent execution)
     (hcache : image.registrationCache slot
       (execution.principalHistory who) = some value)

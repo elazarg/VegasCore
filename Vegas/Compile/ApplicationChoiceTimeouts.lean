@@ -30,7 +30,7 @@ namespace ApplicationInstruction
 /-- Replace optional timeout metadata without changing the instruction's
 ordinary execution path. -/
 def withChoiceTimeouts
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty)) :
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)) :
     ApplicationInstruction P L → ApplicationInstruction P L
   | .publicChoice code => .publicChoice { code with timeout := select code }
   | .sample code => .sample code
@@ -38,7 +38,7 @@ def withChoiceTimeouts
   | .conditional code => .conditional code
 
 @[simp] theorem withChoiceTimeouts_address
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (instruction : ApplicationInstruction P L) :
     (instruction.withChoiceTimeouts select).address = instruction.address := by
   cases instruction <;> rfl
@@ -49,12 +49,12 @@ namespace ApplicationImage
 
 /-- A finite compiler pass that attaches public-choice resolution code. -/
 def withChoiceTimeouts (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty)) :
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)) :
     ApplicationImage P L :=
   ⟨image.instructions.map (ApplicationInstruction.withChoiceTimeouts select)⟩
 
 @[simp] theorem lookup_withChoiceTimeouts (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (address : Nat) :
     (image.withChoiceTimeouts select).lookup address =
       (image.lookup address).map (ApplicationInstruction.withChoiceTimeouts select) := by
@@ -62,7 +62,7 @@ def withChoiceTimeouts (image : ApplicationImage P L)
 
 /-- Chance behavior is unchanged by public-choice timeout metadata. -/
 theorem sample_withChoiceTimeouts (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (state : State P L) (address : Nat) :
     (image.withChoiceTimeouts select).sample state address = image.sample state address := by
   simp only [sample, lookup_withChoiceTimeouts]
@@ -79,7 +79,7 @@ def Payload.NotChoiceExpiry : Payload P L → Prop
 /-- Ordinary submissions, including malformed traffic, execute identically.
 Expiry requests remain a genuine additional opportunity in the decorated image. -/
 theorem handle_withChoiceTimeouts [DecidableEq P] (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (state : State P L) (message : Message P (Payload P L))
     (hordinary : message.payload.NotChoiceExpiry) :
     (image.withChoiceTimeouts select).handle state message = image.handle state message := by
@@ -97,6 +97,11 @@ theorem handle_withChoiceTimeouts [DecidableEq P] (image : ApplicationImage P L)
       cases image.lookup address with
       | none => rfl
       | some instruction => cases instruction <;> rfl
+  | expireBinding address =>
+      simp only [handle, lookup_withChoiceTimeouts]
+      cases image.lookup address with
+      | none => rfl
+      | some instruction => cases instruction <;> rfl
   | conditional address payload =>
       simp only [handle, lookup_withChoiceTimeouts]
       cases image.lookup address with
@@ -108,7 +113,7 @@ ordinary packet at the original image. The witness is proof data; no message is
 forged, enqueued, or attributed to an owner in the actual execution. This local
 state comparison is not a strategy backtranslation. -/
 theorem handle_withChoiceTimeouts_source [DecidableEq P] (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (state : State P L) (message : Message P (Payload P L)) (next : State P L)
     (hnext : (image.withChoiceTimeouts select).handle state message = some next) :
     ∃ original : Message P (Payload P L), image.handle state original = some next := by
@@ -117,7 +122,8 @@ theorem handle_withChoiceTimeouts_source [DecidableEq P] (image : ApplicationIma
       hnext⟩
   obtain ⟨id, payload⟩ := message
   cases payload with
-  | choice address typed | binding address commitment | conditional address payload
+  | choice address typed | binding address commitment | expireBinding address
+  | conditional address payload
   | malformed data => exact False.elim (hordinary trivial)
   | expireChoice address =>
       cases hlookup : image.lookup address with

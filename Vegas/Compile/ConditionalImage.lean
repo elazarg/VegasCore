@@ -47,8 +47,9 @@ def bindingCode {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
     {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
     (site : SourceDecisionSite who prog Δ name ty guard)
     (fresh : FreshBindings prog) (state : BuildState P L Γ) (sourceSlot : Nat) :
-    BindingCode P where
+    BindingCode P L where
   owner := who
+  ty := ty
   node := (site.compiledNode fresh state).val
   sourceField := (compileCore prog fresh state).graph.nodeTarget
     (site.compiledNode fresh state)

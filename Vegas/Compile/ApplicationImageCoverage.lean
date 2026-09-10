@@ -148,7 +148,7 @@ theorem State.publishConditional_covers (state : State P L)
     · exact Or.inr (Or.inr hdefault)
 
 omit [DecidableEq P] in
-theorem State.bind_covers (state : State P L) (code : BindingCode P)
+theorem State.bind_covers (state : State P L) (code : BindingCode P L)
     (initialFields : Nat)
     (hallocated : (ApplicationInstruction.bind (L := L) code).AllocatedAt initialFields)
     (handle : CommitmentHandle P Nat) (hhandle : handle = (code.owner, code.sourceSlot))
@@ -181,6 +181,39 @@ theorem State.bind_covers (state : State P L) (code : BindingCode P)
         right
         rcases hdefault with ⟨value, haccepted⟩
         exact ⟨value, by simpa [State.bind, hfield] using haccepted⟩
+
+omit [DecidableEq P] in
+/-- A typed public fallback covers its completed binding node directly. -/
+theorem State.defaultBind_covers (state : State P L) (code : BindingCode P L)
+    (initialFields : Nat)
+    (hallocated : (ApplicationInstruction.bind code).AllocatedAt initialFields)
+    (value : TypedValue L) (hcovers : state.memory.Covers initialFields) :
+    (state.defaultBind code value).memory.Covers initialFields := by
+  intro node hdone
+  change code.sourceField = initialFields + code.node ∧
+    code.sourceSlot = code.sourceField at hallocated
+  simp only [State.defaultBind, Bool.or_eq_true, beq_iff_eq] at hdone
+  rcases hdone with hnode | hold
+  · right
+    right
+    subst node
+    exact ⟨value, by simp [State.defaultBind, hallocated]⟩
+  · rcases hcovers node hold with hstored | hopen | hdefault
+    · exact Or.inl hstored
+    · by_cases hfield : initialFields + node = code.sourceField
+      · right
+        right
+        exact ⟨value, by simp [State.defaultBind, hfield, hallocated]⟩
+      · right
+        left
+        rcases hopen with ⟨owner, haccepted⟩
+        exact ⟨owner, by simpa [State.defaultBind, hfield] using haccepted⟩
+    · right
+      right
+      by_cases hfield : initialFields + node = code.sourceField
+      · exact ⟨value, by simp [State.defaultBind, hfield, hallocated]⟩
+      · rcases hdefault with ⟨prior, haccepted⟩
+        exact ⟨prior, by simpa [State.defaultBind, hfield] using haccepted⟩
 
 theorem handle_covers (image : ApplicationImage P L) (initialFields : Nat)
     (hallocated : ∀ instruction ∈ image.instructions,
@@ -234,6 +267,23 @@ theorem handle_covers (image : ApplicationImage P L) (initialFields : Nat)
                   cases hnext
                   exact state.publish_covers code initialFields
                     (hallocated _ hmem) value hcovers
+  | expireBinding address =>
+      cases hlookup : image.lookup address with
+      | none => simp [ApplicationImage.handle, hlookup] at hnext
+      | some instruction =>
+          have hmem := List.mem_of_find?_eq_some hlookup
+          cases instruction with
+          | sample code | publicChoice code | conditional code =>
+              simp [ApplicationImage.handle, hlookup] at hnext
+          | bind code =>
+              rw [image.handle_expireBinding state address code hlookup id] at hnext
+              cases hresolved : code.resolveTimeout? state.memory with
+              | none => rw [hresolved] at hnext; cases hnext
+              | some value =>
+                  rw [hresolved] at hnext
+                  cases hnext
+                  exact state.defaultBind_covers code initialFields (hallocated _ hmem)
+                    ⟨code.ty, value⟩ hcovers
   | binding address handle =>
       cases hlookup : image.lookup address with
       | none => simp [ApplicationImage.handle, hlookup] at hnext

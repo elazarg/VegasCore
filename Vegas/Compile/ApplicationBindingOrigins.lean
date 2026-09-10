@@ -22,14 +22,14 @@ variable {P : Type} {L : IExpr}
 
 /-- A binding instruction allocates exactly the commitment reference expected
 by a later conditional instruction. -/
-def BindingCode.OriginFor (binding : BindingCode P)
+def BindingCode.OriginFor (binding : BindingCode P L)
     (conditional : ConditionalCode P L) : Prop :=
   binding.sourceField = conditional.sourceField ∧
     binding.owner = conditional.endpoint.owner ∧
     binding.sourceSlot = conditional.endpoint.sourceSlot ∧
     binding.node < conditional.endpoint.choiceNode
 
-instance [DecidableEq P] (binding : BindingCode P)
+instance [DecidableEq P] (binding : BindingCode P L)
     (conditional : ConditionalCode P L) : Decidable (binding.OriginFor conditional) := by
   unfold BindingCode.OriginFor
   infer_instance
@@ -38,7 +38,7 @@ namespace ApplicationImage
 
 /-- Scan emitted instructions while retaining exactly the earlier binding
 instructions. -/
-def HasBindingOriginsFrom (earlier : List (BindingCode P)) :
+def HasBindingOriginsFrom (earlier : List (BindingCode P L)) :
     List (ApplicationInstruction P L) → Prop
   | [] => True
   | .bind binding :: rest => HasBindingOriginsFrom (binding :: earlier) rest
@@ -47,7 +47,7 @@ def HasBindingOriginsFrom (earlier : List (BindingCode P)) :
         HasBindingOriginsFrom earlier rest
   | _ :: rest => HasBindingOriginsFrom earlier rest
 
-instance [DecidableEq P] (earlier : List (BindingCode P))
+instance [DecidableEq P] (earlier : List (BindingCode P L))
     (instructions : List (ApplicationInstruction P L)) :
     Decidable (HasBindingOriginsFrom earlier instructions) := by
   induction instructions generalizing earlier with
@@ -66,7 +66,7 @@ instance [DecidableEq P] (image : ApplicationImage P L) :
   infer_instance
 
 private theorem origin_of_split
-    (earlier : List (BindingCode P))
+    (earlier : List (BindingCode P L))
     (before after : List (ApplicationInstruction P L))
     (conditional : ConditionalCode P L)
     (horigins : HasBindingOriginsFrom earlier

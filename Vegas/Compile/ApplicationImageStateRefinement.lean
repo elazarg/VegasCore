@@ -153,7 +153,7 @@ commit. Unopenable snapshots impose no equation and remain permitted. -/
 theorem State.BindingsRepresent.bind
     {state : State P L} {cfg : Config G}
     (hbindings : state.BindingsRepresent cfg) (hreachable : Reachable G cfg)
-    (hwf : G.WF) (code : BindingCode P) (node : Fin G.nodeCount)
+    (hwf : G.WF) (code : BindingCode P L) (node : Fin G.nodeCount)
     (hfieldTarget : code.sourceField = G.nodeTarget node)
     (handle : CommitmentHandle P Nat) (howner : handle.1 = code.owner)
     (written : TypedValue L)
@@ -202,7 +202,7 @@ creating an opaque handle or a private frozen snapshot. -/
 theorem State.BindingsRepresent.defaultBind
     {state : State P L} {cfg : Config G}
     (hbindings : state.BindingsRepresent cfg) (hreachable : Reachable G cfg)
-    (hwf : G.WF) (code : BindingCode P) (node : Fin G.nodeCount)
+    (hwf : G.WF) (code : BindingCode P L) (node : Fin G.nodeCount)
     (hfieldTarget : code.sourceField = G.nodeTarget node)
     (written : TypedValue L) (hstep : CommitStep G cfg code.owner ⟨node, written⟩) :
     (state.defaultBind code written).BindingsRepresent
@@ -248,6 +248,22 @@ structure State.Refines (state : State P L) (cfg : Config G) : Prop where
   reachable : Reachable G cfg
   bindings : state.BindingsRepresent cfg
 
+/-- An unfinished graph output has no accepted native binding disposition. -/
+theorem State.Refines.accepted_eq_none_of_not_done {state : State P L} {cfg : Config G}
+    (hrefines : state.Refines cfg) (node : Fin G.nodeCount) (hnotDone : node ∉ cfg.done) :
+    state.memory.accepted (G.nodeTarget node) = none := by
+  apply hrefines.bindings.accepted_eq_none_of_store_eq_none (G.nodeTarget node)
+  cases hstored : cfg.store (G.nodeTarget node) with
+  | none => rfl
+  | some typed =>
+      have hpresent : Store.getAs cfg.store (G.nodeTarget node) typed.ty =
+          some typed.value := by
+        simp [Store.getAs, hstored, TypedValue.as?]
+      have habsent := reachable_getAs_nodeTarget_eq_none hrefines.reachable node
+        hnotDone typed.ty
+      rw [habsent] at hpresent
+      contradiction
+
 /-- Empty commitment-service initialization refines the original graph
 initialization. This is safety only: it does not provision sealed initial inputs
 or prove that their future publication instructions can become ready. -/
@@ -279,7 +295,7 @@ theorem State.Refines.advance {state : State P L} {cfg : Config G}
 snapshot's connection to the source field. -/
 theorem State.Refines.bind {state : State P L} {cfg : Config G}
     (hrefines : state.Refines cfg) (hwf : G.WF)
-    (code : BindingCode P) (node : Fin G.nodeCount)
+    (code : BindingCode P L) (node : Fin G.nodeCount)
     (hnode : code.node = node.val) (hfield : code.sourceField = G.nodeTarget node)
     (handle : CommitmentHandle P Nat) (howner : handle.1 = code.owner)
     (written : TypedValue L)
@@ -296,7 +312,7 @@ theorem State.Refines.bind {state : State P L} {cfg : Config G}
 /-- Installing a typed public default preserves the complete source relation. -/
 theorem State.Refines.defaultBind {state : State P L} {cfg : Config G}
     (hrefines : state.Refines cfg) (hwf : G.WF)
-    (code : BindingCode P) (node : Fin G.nodeCount)
+    (code : BindingCode P L) (node : Fin G.nodeCount)
     (hnode : code.node = node.val) (hfield : code.sourceField = G.nodeTarget node)
     (written : TypedValue L)
     (hstep : CommitStep G cfg code.owner ⟨node, written⟩) :

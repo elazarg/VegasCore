@@ -68,8 +68,10 @@ import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationChoiceTimeouts
 import Vegas.Compile.ApplicationTimeoutForwardLaw
 import Vegas.Compile.PublicResolution
-import Vegas.Compile.BindingDefault
 import Vegas.Compile.ApplicationBindingDefault
+import Vegas.Compile.ApplicationBindingTimeouts
+import Vegas.Compile.BindingTimeoutCompilation
+import Vegas.Compile.ApplicationBindingTimeoutRefinement
 import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.ApplicationMessageRequirement
 import Vegas.Compile.ApplicationWithholding

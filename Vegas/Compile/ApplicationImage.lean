@@ -32,7 +32,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- A deterministic public fallback evaluated from an explicit graph-local
 read footprint after a strict public deadline. -/
-structure PublicChoiceTimeout (L : IExpr) (ty : L.Ty) where
+structure PublicFallbackCode (L : IExpr) (ty : L.Ty) where
   deadline : Nat
   value : EventExpr L ty
 
@@ -43,16 +43,20 @@ structure PublicChoiceCode (P : Type) (L : IExpr) where
   guard : EventGuard L
   choiceField : Nat
   publicationField : Nat
-  timeout : Option (PublicChoiceTimeout L guard.ty) := none
+  timeout : Option (PublicFallbackCode L guard.ty) := none
 
-/-- An opaque binding instruction. Acceptance tests public readiness and
-authentication, not private registration, value type, or a source guard. -/
-structure BindingCode (P : Type) where
+/-- A binding instruction with an optional typed public fallback. Ordinary
+binding admission checks authentication and readiness without inspecting
+private registration. Generated bindings require an unrestricted source guard;
+the fallback expression is supplied by a separate source certificate. -/
+structure BindingCode (P : Type) (L : IExpr) where
   owner : P
+  ty : L.Ty
   node : Nat
   sourceField : Nat
   sourceSlot : Nat
   requires : List Nat
+  timeout : Option (PublicFallbackCode L ty) := none
 
 /-- A public chance instruction retaining the source compiler's distribution
 code. The environment can trigger this fixed kernel but cannot supply a draw. -/
@@ -92,7 +96,7 @@ def ConditionalCode.decode (code : ConditionalCode P L) :
 inductive ApplicationInstruction (P : Type) (L : IExpr) where
   | sample (code : SampleCode L)
   | publicChoice (code : PublicChoiceCode P L)
-  | bind (code : BindingCode P)
+  | bind (code : BindingCode P L)
   | conditional (code : ConditionalCode P L)
 
 def ApplicationInstruction.address : ApplicationInstruction P L → Nat
@@ -120,6 +124,7 @@ inductive Payload (P : Type) (L : IExpr) where
   | choice (address : Nat) (value : TypedValue L)
   | expireChoice (address : Nat)
   | binding (address : Nat) (handle : CommitmentHandle P Nat)
+  | expireBinding (address : Nat)
   | conditional (address : Nat) (payload : ConditionalPublication.Payload P (TypedValue L))
   | malformed (data : List Nat)
 
@@ -193,7 +198,7 @@ def State.sample (state : State P L) (code : SampleCode L)
       store := state.memory.store.set code.outputField ⟨code.dist.ty, value⟩
       done node := node == code.node || state.memory.done node } }
 
-def State.bind (state : State P L) (code : BindingCode P)
+def State.bind (state : State P L) (code : BindingCode P L)
     (handle : CommitmentHandle P Nat) : State P L :=
   { state with
     memory := { state.memory with
@@ -207,7 +212,7 @@ def State.bind (state : State P L) (code : BindingCode P)
 accepted snapshots, or the public field store. The disposition itself carries
 the selected value. Admission, typing, and source legality are obligations of
 the invoking handler; this state operation alone grants no timeout authority. -/
-def State.defaultBind (state : State P L) (code : BindingCode P)
+def State.defaultBind (state : State P L) (code : BindingCode P L)
     (value : TypedValue L) : State P L :=
   { state with memory := { state.memory with
       accepted field := if field = code.sourceField then some (.publicDefault value)
@@ -273,6 +278,40 @@ theorem resolveTimeout?_some (code : PublicChoiceCode P L)
 
 end PublicChoiceCode
 
+namespace BindingCode
+
+/-- Resolve a still-unbound source decision from public expression code after
+its strict deadline. The state and result type are independent of private
+preparation and frozen verifiers. This check does not create an expiry packet. -/
+def resolveTimeout? (code : BindingCode P L)
+    (memory : ApplicationImage.Memory P L) : Option (L.Val code.ty) := do
+  let timeout ← code.timeout
+  if memory.accepted code.sourceField = none ∧ memory.done code.node = false ∧
+      code.requires.all memory.done ∧ timeout.deadline < memory.clock then
+    timeout.value.evalStore? memory.store
+  else none
+
+omit [DecidableEq P] in
+theorem resolveTimeout?_some (code : BindingCode P L)
+    (memory : ApplicationImage.Memory P L) (value : L.Val code.ty)
+    (hresult : code.resolveTimeout? memory = some value) :
+    memory.accepted code.sourceField = none ∧ memory.done code.node = false ∧
+      code.requires.all memory.done = true ∧
+      ∃ timeout, code.timeout = some timeout ∧ timeout.deadline < memory.clock ∧
+        timeout.value.evalStore? memory.store = some value := by
+  unfold resolveTimeout? at hresult
+  cases htimeout : code.timeout with
+  | none => simp [htimeout] at hresult
+  | some timeout =>
+      simp only [htimeout, Option.bind_eq_bind, Option.bind_some] at hresult
+      split at hresult
+      · rename_i hready
+        exact ⟨hready.1, hready.2.1, hready.2.2.1,
+          timeout, rfl, hready.2.2.2, hresult⟩
+      · contradiction
+
+end BindingCode
+
 namespace ApplicationImage
 
 def lookup (image : ApplicationImage P L) (address : Nat) :
@@ -315,6 +354,10 @@ def handle (image : ApplicationImage P L) (state : State P L)
           state.memory.done code.node = false ∧ code.requires.all state.memory.done then
         pure (state.bind code handle)
       else none
+  | .expireBinding address =>
+      let .bind code ← image.lookup address | none
+      (code.resolveTimeout? state.memory).map fun value =>
+        state.defaultBind code ⟨code.ty, value⟩
   | .conditional address payload =>
       let .conditional code ← image.lookup address | none
       let decoded ← code.decode payload
@@ -376,6 +419,16 @@ theorem handle_choice (image : ApplicationImage P L) (state : State P L)
   cases code.endpoint.resolve? state.memory.done
     (code.guard.validate state.memory.store) ⟨id, value⟩ <;> rfl
 
+/-- Binding expiry installs the typed public disposition selected by its code.
+The caller's identity is recorded by the ledger, not used as timeout authority. -/
+theorem handle_expireBinding (image : ApplicationImage P L) (state : State P L)
+    (address : Nat) (code : BindingCode P L)
+    (hcode : image.lookup address = some (.bind code)) (id : MessageId P) :
+    image.handle state ⟨id, .expireBinding address⟩ =
+      (code.resolveTimeout? state.memory).map (fun value =>
+        state.defaultBind code ⟨code.ty, value⟩) := by
+  simp [handle, hcode]
+
 theorem handle_unknown (image : ApplicationImage P L) (state : State P L)
     (address : Nat) (typed : TypedValue L) (id : MessageId P)
     (hunknown : image.lookup address = none) :
@@ -403,7 +456,7 @@ fallback value executes exactly the ordinary public publication update. -/
 theorem handle_expireChoice_accepts (image : ApplicationImage P L)
     (state : State P L) (address : Nat) (code : PublicChoiceCode P L)
     (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P)
-    (timeout : PublicChoiceTimeout L code.guard.ty) (htimeout : code.timeout = some timeout)
+    (timeout : PublicFallbackCode L code.guard.ty) (htimeout : code.timeout = some timeout)
     (hready : code.endpoint.ready state.memory.done = true)
     (hoverdue : timeout.deadline < state.memory.clock)
     (reads : ReadEnv L timeout.value.reads)
@@ -507,7 +560,7 @@ receipt, ledger, and local-knowledge effects as an owner-authored choice. -/
 theorem include_expireChoice (image : ApplicationImage P L)
     (state : image.application.State) (address : Nat) (code : PublicChoiceCode P L)
     (hcode : image.lookup address = some (.publicChoice code)) (id : MessageId P)
-    (timeout : PublicChoiceTimeout L code.guard.ty) (htimeout : code.timeout = some timeout)
+    (timeout : PublicFallbackCode L code.guard.ty) (htimeout : code.timeout = some timeout)
     (hready : code.endpoint.ready state.application.memory.done = true)
     (hoverdue : timeout.deadline < state.application.memory.clock)
     (reads : ReadEnv L timeout.value.reads)

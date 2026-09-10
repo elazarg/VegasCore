@@ -5,19 +5,33 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationPolicyBindings
-import Vegas.Compile.ApplicationChoiceTimeouts
+import Vegas.Compile.ApplicationBindingTimeouts
 
 /-! # Timeout traffic and lifted source profiles
 
-Public-choice expiry is an open protocol action.  The reference lifting of a
-source behavioral profile never emits it: binding heads emit only registration
-or binding commands, and voluntary choice heads use codecs that reject the
-expiry payload.  This fact does not restrict arbitrary native policies.
+Binding and public-choice expiry are open protocol actions. The reference
+lifting of a source behavioral profile never emits either: binding heads emit
+only registration or opaque-binding commands, and voluntary choice heads use
+codecs that reject expiry payloads. This fact does not restrict arbitrary
+native policies.
 -/
 
 noncomputable section
 
-namespace Vegas.ApplicationPlan
+namespace Vegas
+
+variable {P : Type} {L : IExpr}
+
+namespace ApplicationImage.Payload
+
+/-- The two permissionless fallback requests added by timeout decoration. -/
+def IsExpiry : ApplicationImage.Payload P L → Prop
+  | .expireChoice _ | .expireBinding _ => True
+  | _ => False
+
+end ApplicationImage.Payload
+
+namespace ApplicationPlan
 
 open EventGraph ToEventGraph Interaction Interaction.MessageApplication
   GameTheory.Math.Probability
@@ -25,16 +39,16 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- No policy obtained by structurally lifting a source behavioral profile
-submits the public-choice expiry action. -/
-theorem liftProfileIn_not_expireChoice_supported
+submits either kind of permissionless fallback request. -/
+theorem liftProfileIn_expiry_not_supported
     (image : ApplicationImage P L) (deadlineOf : Nat → Nat)
     {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
     {accounted : CommitmentAccounting pending prog} {fresh : FreshBindings prog}
     {state : BuildState P L Γ} (plan : ApplicationPlan accounted fresh state)
     (profile : SourceBehavioralProfile prog) (player : P)
     (history : List image.application.PlayerEntry) (view : image.application.View)
-    (address : Nat) :
-    .submit (.expireChoice address) ∉
+    (payload : ApplicationImage.Payload P L) (hexpiry : payload.IsExpiry) :
+    .submit payload ∉
       (plan.liftProfileIn image deadlineOf profile player history view).support := by
   intro hcommand
   induction plan generalizing player with
@@ -56,7 +70,8 @@ theorem liftProfileIn_not_expireChoice_supported
           · cases hwait
           · obtain ⟨value, hvalue⟩ := hregister
             cases hvalue
-          · cases hbinding
+          · cases payload <;>
+              simp [ApplicationImage.Payload.IsExpiry] at hexpiry hbinding
         · simp at hcommand
   | publicChoice publicGuard next ih
   | conditional publicGuard next ih
@@ -66,12 +81,15 @@ theorem liftProfileIn_not_expireChoice_supported
       · exact ih profile.afterCommit.afterReveal player hcommand
       · split at hcommand
         · exact ChoiceController.not_supported_of_decode_none
-            _ _ history view (.submit (.expireChoice address)) (by simp) rfl hcommand
+            _ _ history view (.submit payload) (by simp)
+            (by cases payload <;> first | exact False.elim hexpiry | rfl) hcommand
         · simp at hcommand
 
-end Vegas.ApplicationPlan
+end ApplicationPlan
 
-/-- info: 'Vegas.ApplicationPlan.liftProfileIn_not_expireChoice_supported' depends on axioms:
+end Vegas
+
+/-- info: 'Vegas.ApplicationPlan.liftProfileIn_expiry_not_supported' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.liftProfileIn_not_expireChoice_supported
+#print axioms Vegas.ApplicationPlan.liftProfileIn_expiry_not_supported

@@ -25,7 +25,7 @@ open Vegas Interaction Interaction.MessageApplication GameTheory
 open VegasTests.GeneratedPersistentDisclosure
 
 private theorem binding_instruction :
-    ∃ code : BindingCode PersistentDisclosure.Player,
+    ∃ code : BindingCode PersistentDisclosure.Player simpleExpr,
       ApplicationInstruction.bind code ∈
           applicationPlan.instructions (fun _ => 10) ∧
         code.owner = 0 ∧

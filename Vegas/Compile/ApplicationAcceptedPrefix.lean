@@ -118,7 +118,7 @@ theorem extend
     {accounted : CommitmentAccounting pending prog} {fresh : FreshBindings prog}
     {build : BuildState P L Γ}
     (plan : ApplicationPlan accounted fresh build) (deadlineOf : Nat → Nat)
-    (bound : Nat) (state : State P L) (code : BindingCode P)
+    (bound : Nat) (state : State P L) (code : BindingCode P L)
     (hprefix : (plan.image deadlineOf).AcceptedBindingPrefix bound state)
     (hcode : .bind code ∈ plan.instructions deadlineOf)
     (hnode : code.node = bound)

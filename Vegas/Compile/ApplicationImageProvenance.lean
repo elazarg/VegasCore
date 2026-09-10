@@ -108,7 +108,7 @@ private theorem snapshots_handle (image : ApplicationImage P L) (owner : P)
     (hmessage : PreparedMessage owner valid state.prepared message)
     (hnext : image.handle state message = some next) :
     PreparedSnapshots owner valid next := by
-  obtain ⟨hprepared, hunchanged | hbinding⟩ :=
+  obtain ⟨hprepared, (hunchanged | hbinding) | hdefault⟩ :=
     image.handle_binding_effect state next message hnext
   · intro field handle haccepted howner
     rw [hunchanged.1] at haccepted
@@ -137,6 +137,17 @@ private theorem snapshots_handle (image : ApplicationImage P L) (owner : P)
         simpa only [State.bind, if_neg hfield] using haccepted
       obtain ⟨value, hvalue, hfrozen, hvalid⟩ := hsnapshots field handle hprior howner
       exact ⟨value, hvalue, by simpa only [State.bind, if_neg hfield] using hfrozen, hvalid⟩
+  · obtain ⟨address, code, value, hpayload, rfl⟩ := hdefault
+    intro field handle haccepted howner
+    by_cases hfield : field = code.sourceField
+    · subst field
+      simp only [State.defaultBind, if_pos] at haccepted
+      cases haccepted
+    · have hprior : state.memory.accepted field = some (.opaque handle) := by
+        simpa only [State.defaultBind, if_neg hfield] using haccepted
+      obtain ⟨stored, hstored, hfrozen, hvalid⟩ := hsnapshots field handle hprior howner
+      exact ⟨stored, hstored,
+        by simpa only [State.defaultBind, if_neg hfield] using hfrozen, hvalid⟩
 
 private theorem provenance_include (image : ApplicationImage P L) (owner : P)
     (valid : Nat → TypedValue L → Prop)

@@ -23,7 +23,7 @@ open Vegas Vegas.EventGraph Vegas.ToEventGraph Interaction
   Interaction.MessageApplication GameTheory.Math.Probability
 open VegasTests.ApplicationImage
 
-def resolution : PublicResolutionChoice firstSite where
+def fallback : SourceDecisionSite.PublicFallback firstSite.decision where
   expr := .var 0 .here
   legal := by
     intro env
@@ -31,13 +31,14 @@ def resolution : PublicResolutionChoice firstSite where
     rfl
 
 def timedImage : Vegas.ApplicationImage (Fin 2) simpleExpr :=
-  resolution.install source.fresh compilerInitial 10 image
+  firstSite.install fallback source.fresh compilerInitial 10 image
 
 def timeoutCode : PublicChoiceCode (Fin 2) simpleExpr :=
-  resolution.timeoutCode source.fresh compilerInitial 10
+  firstSite.timeoutCode fallback source.fresh compilerInitial 10
 
 theorem timeout_lookup : timedImage.lookup firstAddress = some (.publicChoice timeoutCode) :=
-  resolution.lookup_install source.fresh compilerInitial 10 image firstAddress image_lookup_first
+  firstSite.lookup_install fallback source.fresh compilerInitial 10 image firstAddress
+    image_lookup_first
 
 /-- Vary the actual public input while retaining the same emitted expression. -/
 def publicInputState (input : Bool) : Vegas.ApplicationImage.State (Fin 2) simpleExpr :=
@@ -112,10 +113,10 @@ theorem other_sender_source_successor
       PublicChoiceSourceCoupling.checkpoint.current.graph.1 := by
     rw [happlication]
     exact (Vegas.ApplicationImage.State.initial_refines ApplicationImage.compiled.graph).advance 11
-  have hresult := PublicResolutionChoice.expiry_include_source_coupling
+  have hresult := PublicChoiceSite.expiry_include_source_coupling
     (P := Fin 2) (L := simpleExpr) (Γ := InitialContext)
     (name := 1) (publicName := 2) (who := 0) (ty := .bool)
-    firstGuard firstTail resolution source.fresh compilerInitial 10
+    firstGuard firstTail fallback source.fresh compilerInitial 10
     PublicChoiceSourceCoupling.checkpoint timedImage submitted included
     hrefines first_publicly_validatable (by rw [happlication]; decide)
     firstAddress timeout_lookup (1, 0) hlookup hincluded

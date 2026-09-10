@@ -33,7 +33,7 @@ configuration of the original generated graph. -/
 theorem withChoiceTimeouts_handle_refines
     (plan : ApplicationPlan accounted fresh build) (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (initial : VEnv L Γ) (legal : Legal prog) (native next : ApplicationImage.State P L)
     (cfg : Config (compileCore prog fresh build).graph) (hrefines : native.Refines cfg)
     (message : Message P (ApplicationImage.Payload P L))
@@ -47,7 +47,7 @@ theorem withChoiceTimeouts_handle_refines
 private theorem timeout_private_preserves
     (image : ApplicationImage P L) (graph : Graph P L)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (native : ApplicationImage.State P L) (who : P)
     (command : (image.withChoiceTimeouts select).application.PrivateCommand)
     (hstate : ∃ cfg : Config graph, native.Refines cfg) :
@@ -61,7 +61,7 @@ private theorem timeout_private_preserves
 private theorem timeout_environment_preserves
     (plan : ApplicationPlan accounted fresh build) (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (native : ApplicationImage.State P L)
     (command : ((plan.image deadlineOf).withChoiceTimeouts select).application.EnvironmentCommand)
     (next : ApplicationImage.State P L)
@@ -84,7 +84,7 @@ public-choice timeout decoration. -/
 theorem withChoiceTimeouts_run_refines
     (plan : ApplicationPlan accounted fresh build) (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (initial : VEnv L Γ) (legal : Legal prog)
     (state next : ((plan.image deadlineOf).withChoiceTimeouts select).application.State)
     (actions : List
@@ -110,7 +110,7 @@ refinement after public-choice timeout decoration. -/
 theorem withChoiceTimeouts_runPolicies_refines
     (plan : ApplicationPlan accounted fresh build) (deadlineOf : Nat → Nat)
     (select : (code : PublicChoiceCode P L) →
-      Option (PublicChoiceTimeout L code.guard.ty))
+      Option (PublicFallbackCode L code.guard.ty))
     (initial : VEnv L Γ) (legal : Legal prog)
     (players : P →
       ((plan.image deadlineOf).withChoiceTimeouts select).application.PlayerPolicy)

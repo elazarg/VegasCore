@@ -34,7 +34,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 namespace BindingCode
 
 /-- The unique opaque binding packet for this instruction. -/
-def encoding (code : BindingCode P) : ChoiceEncoding Unit (ApplicationImage.Payload P L) where
+def encoding (code : BindingCode P L) : ChoiceEncoding Unit (ApplicationImage.Payload P L) where
   encode _ := .binding code.node (code.owner, code.sourceSlot)
   decode
     | .binding address handle =>
@@ -55,18 +55,19 @@ def encoding (code : BindingCode P) : ChoiceEncoding Unit (ApplicationImage.Payl
 
 /-- A binding is resolved when its field has an accepted handle or its node
 is already complete. Neither phase may act after resolution. -/
-def resolved (code : BindingCode P) (memory : ApplicationImage.Memory P L) : Bool :=
+def resolved (code : BindingCode P L) (memory : ApplicationImage.Memory P L) : Bool :=
   (memory.accepted code.sourceField).isSome || memory.done code.node
 
 /-- Submit the handle only after this owner's history records a correctly
 typed private registration. The value itself is absent from the packet. -/
-def submissionController (code : BindingCode P) (image : ApplicationImage P L) (ty : L.Ty) :
+def submissionController (code : BindingCode P L) (image : ApplicationImage P L) :
     ChoiceController image.application Unit Unit where
   codec := code.encoding.submission image.application
   ready view := code.requires.all view.application.done
   resolved view := code.resolved view.application
   readout? history _ :=
-    ((image.registrationCache code.sourceSlot history).bind (fun value => value.as? ty)).map
+    ((image.registrationCache code.sourceSlot history).bind
+      (fun value => value.as? code.ty)).map
       (fun _ => ())
   kernel _ := FinDist.pure ()
   retry _ _ := false
@@ -74,17 +75,17 @@ def submissionController (code : BindingCode P) (image : ApplicationImage P L) (
 /-- Once a registration is recorded, a ready unsubmitted binding emits its
 canonical handle. No source resampling or readout reconstruction occurs here. -/
 theorem submissionController_registered
-    (code : BindingCode P) (image : ApplicationImage P L) (ty : L.Ty)
+    (code : BindingCode P L) (image : ApplicationImage P L)
     (history : List image.application.PlayerEntry) (view : image.application.View)
-    (value : L.Val ty)
-    (hregistered : image.registrationCache code.sourceSlot history = some ⟨ty, value⟩)
+    (value : L.Val code.ty)
+    (hregistered : image.registrationCache code.sourceSlot history = some ⟨code.ty, value⟩)
     (hresolved : code.resolved view.application = false)
     (hready : code.requires.all view.application.done = true)
     (hsubmitted : (code.encoding.submission image.application).cachedValue
       image.application history = none) :
-    (code.submissionController image ty).policy image.application history view =
+    (code.submissionController image).policy image.application history view =
       FinDist.pure (.submit (.binding code.node (code.owner, code.sourceSlot))) := by
-  rw [(code.submissionController image ty).policy_of_uncached_ready
+  rw [(code.submissionController image).policy_of_uncached_ready
     image.application history view () hresolved hsubmitted hready]
   · change (FinDist.pure ()).map _ = _
     rw [FinDist.map_pure]
@@ -148,7 +149,7 @@ def bindingPolicy (site : SourceDecisionSite who prog Δ name ty guard)
   | none => (site.registrationController fresh build image sourcePolicy).policy
       image.application history view
   | some _ => ((site.bindingCode fresh build
-      (site.compiledField fresh build)).submissionController image ty).policy
+      (site.compiledField fresh build)).submissionController image).policy
         image.application history view
 
 /-- The first phase has exactly the source kernel's law and emits only an
@@ -207,7 +208,7 @@ theorem bindingPolicy_registered
         (who, site.compiledField fresh build))) := by
   simp only [bindingPolicy, hregistered]
   exact (site.bindingCode fresh build
-    (site.compiledField fresh build)).submissionController_registered image ty history view
+    (site.compiledField fresh build)).submissionController_registered image history view
       value hregistered hresolved hready hsubmitted
 
 /-- Every command emitted by the generated two-phase policy is either a wait,
@@ -251,7 +252,7 @@ theorem bindingPolicy_supported_command
       have hsafe := ChoiceController.supported_wait_or_safe
         image.application
         ((site.bindingCode fresh build
-          (site.compiledField fresh build)).submissionController image ty)
+          (site.compiledField fresh build)).submissionController image)
         (fun command => command = .submit (.binding
           (site.bindingCode fresh build (site.compiledField fresh build)).node
           (who, site.compiledField fresh build)))
@@ -285,7 +286,7 @@ theorem bindingPolicy_wrong_typed_registration_waits
       (site.compiledField fresh build)).sourceSlot =
         site.compiledField fresh build := rfl
   let controller := (site.bindingCode fresh build
-    (site.compiledField fresh build)).submissionController image ty
+    (site.compiledField fresh build)).submissionController image
   by_cases hresolved : controller.resolved view = true
   · exact controller.policy_of_resolved image.application history view hresolved
   · have hresolved' : controller.resolved view = false := Bool.eq_false_of_not_eq_true hresolved
@@ -296,7 +297,11 @@ theorem bindingPolicy_wrong_typed_registration_waits
         simp [controller, BindingCode.submissionController]
     | none =>
         have hreadout : controller.readout? history view = none := by
-          simp [controller, BindingCode.submissionController, hslot, hcache, hwrong]
+          simp only [controller, BindingCode.submissionController, hslot, hcache,
+            Option.bind_some]
+          change (typed.as? ty).map (fun _ => ()) = none
+          rw [hwrong]
+          rfl
         cases hready : controller.ready view with
         | false =>
             exact controller.policy_of_uncached_not_ready image.application history view

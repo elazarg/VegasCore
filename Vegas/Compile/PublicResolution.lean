@@ -4,15 +4,16 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.PublicChoiceImage
 import Vegas.Compile.SourceLaw
+import Vegas.Compile.DecisionSite
 
-/-! # Source-authorized public resolution choices
+/-! # Source-authorized public fallbacks
 
-A resolution annotation retains one typed public source expression and proves
-that its value is legal at the annotated source occurrence.  It authorizes a
-backend fallback; it does not say that the source owner's behavioral policy
-would have selected that value, and it contains no terminal-law premise.
+A public fallback is a typed public source expression whose value satisfies
+one source decision guard at every source environment. It authorizes an
+operational fallback value; it does not identify the owner's behavioral
+choice, assert frontend quitting intent, or contain a runtime or terminal-law
+premise.
 -/
 
 noncomputable section
@@ -24,7 +25,7 @@ open EventGraph ToEventGraph
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- Runtime evaluation against a public store recovers exactly the source
-value.  The represented store/source relation and the public-store projection
+value. The represented store/source relation and the public-store projection
 are separate premises, so no proof-only source environment enters execution. -/
 theorem eventExprOf_evalStore?_eq_source
     {Γ : VCtx P L} {ty : L.Ty}
@@ -65,81 +66,110 @@ theorem eventExprOf_evalStore?_eq_source
     simpa [BuildState.fieldRefOfPub, BuildState.fieldOfPub,
       VEnv.erasePubEnv_get, VEnv.get] using hrepresented))
 
-/-- An explicit backend resolution value for one adjacent public source
-choice.  Universally quantified source legality makes timeout resolution total
-at every environment in which this source occurrence is reached. -/
-structure PublicResolutionChoice {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    (site : PublicChoiceSite prog) where
-  expr : L.Expr (erasePubVCtx site.context) site.ty
-  legal : ∀ env : VEnv L site.context,
-    evalGuard site.guard (L.eval expr env.erasePubEnv)
-      ((env.toView site.owner).eraseEnv) = true
+namespace SourceDecisionSite
 
-namespace PublicResolutionChoice
+/-- A public expression that supplies a legal value of one source decision in
+every environment at that occurrence. -/
+structure PublicFallback
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    (site : SourceDecisionSite who prog Δ name ty guard) where
+  expr : L.Expr (erasePubVCtx Δ) ty
+  legal : ∀ env : VEnv L Δ,
+    evalGuard guard (L.eval expr env.erasePubEnv)
+      ((env.toView who).eraseEnv) = true
 
-/-- Executable typed expression code for this resolution annotation. -/
-def compiled {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    {site : PublicChoiceSite prog} (resolution : PublicResolutionChoice site)
-    (fresh : FreshBindings prog) (state : BuildState P L Γ) : EventExpr L site.ty :=
-  eventExprOf (site.siteState fresh state) resolution.expr
+namespace PublicFallback
 
-/-- Every retained resolution-expression dependency is a public field of the
-final compiled graph.  This is a consequence of the source expression's
-public context and decision-site prefix preservation, not a runtime premise. -/
+/-- Executable expression code at the compiler cursor immediately preceding
+the annotated source decision. -/
+def compiled
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    (fallback : PublicFallback site)
+    (fresh : FreshBindings prog) (build : BuildState P L Γ) : EventExpr L ty :=
+  eventExprOf (decisionSiteState site fresh build) fallback.expr
+
+/-- Every generated fallback dependency is a public field of the final
+compiled graph. -/
 theorem compiled_reads_public
-    {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    {site : PublicChoiceSite prog} (resolution : PublicResolutionChoice site)
-    (fresh : FreshBindings prog) (state : BuildState P L Γ) :
-    ∀ ref, ref ∈ (resolution.compiled fresh state).reads →
-      (compileCore prog fresh state).graph.fieldRefPublic ref := by
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    (fallback : PublicFallback site)
+    (fresh : FreshBindings prog) (build : BuildState P L Γ) :
+    ∀ ref, ref ∈ (fallback.compiled fresh build).reads →
+      (compileCore prog fresh build).graph.fieldRefPublic ref := by
   intro ref href
-  have hlocal := exprReadRefs_public (site.siteState fresh state)
-    resolution.expr ref href
-  rcases hlocal with ⟨spec, hfield, hty, howner⟩
-  refine ⟨spec, ?_, hty, howner⟩
-  rw [← decisionSiteState_field?_eq_compileCore site.decision fresh state
-    ref.field ?_]
+  let current := decisionSiteState site fresh build
+  have hlocal := exprReadRefs_public current fallback.expr ref href
+  rcases hlocal with ⟨spec, hfield, htype, howner⟩
+  refine ⟨spec, ?_, htype, howner⟩
+  rw [← decisionSiteState_field?_eq_compileCore site fresh build ref.field ?_]
   · exact hfield
   · have hlt :=
-      ({ initialFields := (site.siteState fresh state).initialFields,
-         nodes := (site.siteState fresh state).nodes } :
-        EventGraph.Graph P L).field_lt_fieldCount_of_field?_some hfield
-    simpa only [PublicChoiceSite.siteState, EventGraph.Graph.fieldCount,
-      EventGraph.Graph.nodeCount] using hlt
+      ({ initialFields := current.initialFields, nodes := current.nodes } :
+        Graph P L).field_lt_fieldCount_of_field?_some hfield
+    simpa only [Graph.fieldCount, Graph.nodeCount, current] using hlt
 
-/-- A resolution choice performs the original adjacent source commit and
-reveal; it is not a new source transition. -/
-theorem source_steps {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    {site : PublicChoiceSite prog} (resolution : PublicResolutionChoice site)
-    (env : VEnv L site.context) :
-    SmallStep.Star
-      ⟨site.context, env,
-        .commit site.choiceName site.owner site.guard site.decision.continuation⟩
-      ⟨(site.publicName, .pub site.ty) ::
-          (site.choiceName, .sealed site.owner site.ty) :: site.context,
-        (env.cons (L.eval resolution.expr env.erasePubEnv)).cons
-          (L.eval resolution.expr env.erasePubEnv), site.tail⟩ :=
-  site.completePublication_source_steps env
-    (L.eval resolution.expr env.erasePubEnv) (resolution.legal env)
-
-/-- The emitted public expression evaluates to the certified source value
-under represented/public store agreement. -/
+/-- Executing the generated fallback expression from matching public runtime
+reads yields its exact source value. -/
 theorem compiled_evalStore?_eq_source
-    {Γ : VCtx P L} {prog : VegasCore P L Γ}
-    {site : PublicChoiceSite prog} (resolution : PublicResolutionChoice site)
-    (fresh : FreshBindings prog) (state : BuildState P L Γ)
-    (representedStore publicStore : Store L) (env : VEnv L site.context)
-    (hrepresents : (site.siteState fresh state).Agrees representedStore env)
-    (hpublic : ∀ ref, ref ∈ (resolution.compiled fresh state).reads →
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    (fallback : PublicFallback site)
+    (fresh : FreshBindings prog) (build : BuildState P L Γ)
+    (representedStore publicStore : Store L) (env : VEnv L Δ)
+    (hrepresents : (decisionSiteState site fresh build).Agrees representedStore env)
+    (hpublic : ∀ ref, ref ∈ (fallback.compiled fresh build).reads →
       Store.getAs publicStore ref.field ref.ty =
         Store.getAs representedStore ref.field ref.ty) :
-    (resolution.compiled fresh state).evalStore? publicStore =
-      some (L.eval resolution.expr env.erasePubEnv) :=
-  eventExprOf_evalStore?_eq_source (site.siteState fresh state) resolution.expr
-    representedStore publicStore env hrepresents hpublic
+    (fallback.compiled fresh build).evalStore? publicStore =
+      some (L.eval fallback.expr env.erasePubEnv) :=
+  eventExprOf_evalStore?_eq_source (decisionSiteState site fresh build)
+    fallback.expr representedStore publicStore env hrepresents hpublic
 
-end PublicResolutionChoice
+/-- The authorized fallback is an actual step of the original source
+decision, not a decoder-invented value or a new source action. -/
+theorem source_step
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    (fallback : PublicFallback site) (env : VEnv L Δ) :
+    SmallStep
+      ⟨Δ, env, .commit name who guard site.continuation⟩
+      ⟨(name, .sealed who ty) :: Δ,
+        env.cons (L.eval fallback.expr env.erasePubEnv), site.continuation⟩ :=
+  .commit guard site.continuation _ (fallback.legal env)
 
+/-- If two environments with identical public information have no common
+legal decision value, no deterministic public-expression fallback covers
+both. -/
+theorem not_nonempty_of_disjoint_legal
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    (left right : VEnv L Δ)
+    (hpublic : left.erasePubEnv = right.erasePubEnv)
+    (hdisjoint : ∀ value : L.Val ty,
+      evalGuard guard value ((left.toView who).eraseEnv) = true →
+      evalGuard guard value ((right.toView who).eraseEnv) = true → False) :
+    ¬ Nonempty (PublicFallback site) := by
+  rintro ⟨fallback⟩
+  let value := L.eval fallback.expr left.erasePubEnv
+  apply hdisjoint value (fallback.legal left)
+  simpa only [value, ← hpublic] using fallback.legal right
+
+end PublicFallback
+end SourceDecisionSite
 end Vegas
 
 /-- info: 'Vegas.eventExprOf_evalStore?_eq_source' depends on axioms:
@@ -147,12 +177,12 @@ end Vegas
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.eventExprOf_evalStore?_eq_source
 
-/-- info: 'Vegas.PublicResolutionChoice.compiled_reads_public' depends on axioms:
+/-- info: 'Vegas.SourceDecisionSite.PublicFallback.compiled_reads_public' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.PublicResolutionChoice.compiled_reads_public
+#print axioms Vegas.SourceDecisionSite.PublicFallback.compiled_reads_public
 
-/-- info: 'Vegas.PublicResolutionChoice.source_steps' depends on axioms:
+/-- info: 'Vegas.SourceDecisionSite.PublicFallback.compiled_evalStore?_eq_source' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.PublicResolutionChoice.source_steps
+#print axioms Vegas.SourceDecisionSite.PublicFallback.compiled_evalStore?_eq_source

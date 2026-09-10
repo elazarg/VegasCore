@@ -8,10 +8,11 @@ import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationPolicyTimeouts
 import Interaction.MessageApplicationHandlerExtension
 
-/-! # Reference execution with optional public-choice timeouts
+/-! # Reference execution with optional public fallbacks
 
-Enabling extra handler code leaves the reference execution law unchanged when
-the reference players never submit its new request. This compares complete
+Enabling binding and public-choice fallback handlers leaves the reference
+execution law unchanged because lifted source profiles never submit their new
+requests. This compares complete
 executions of the same public-message interpreter, including message pools,
 receipts, command histories, and native traces. Arbitrary other strategies may
 use expiry, so it is not a deviation-preservation theorem.
@@ -32,7 +33,7 @@ namespace ApplicationImage
 new expiry request and start without retained expiry traffic. Delivery, replay,
 clock advancement, and other environment decisions are unrestricted. -/
 theorem runPolicies_withChoiceTimeouts (image : ApplicationImage P L)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (players : P → image.application.PlayerPolicy)
     (environment : image.application.EnvironmentPolicy)
     (hsubmit : ∀ (execution : image.application.PolicyExecution) (who : P)
@@ -69,18 +70,21 @@ end ApplicationImage
 namespace ApplicationPlan
 
 /-- The independently interpreted source public-outcome law holds with any
-optional public-choice timeout code enabled, for the original lifted profile
-under its generated serial reference service. No timeout request is generated
-in this reference run; arbitrary deviations remain outside this law. -/
+optional binding and public-choice fallback code enabled, for the original
+lifted profile under its generated serial reference service. No fallback
+request is generated in this reference run; arbitrary deviations remain
+outside this law. -/
 theorem timeout_service_source_public_law (source : WFProgram P L)
     (plan : ApplicationPlan source.accounted source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
     (deadlineOf : Nat → Nat)
-    (select : (code : PublicChoiceCode P L) → Option (PublicChoiceTimeout L code.guard.ty))
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
     (profile : SourceBehavioralProfile source.core.prog)
     (hinitial : plan.InitialControllerReadsPublic)
     (horigins : (plan.image deadlineOf).HasBindingOrigins) :
-    (((plan.image deadlineOf).withChoiceTimeouts select).application.runPolicies
+    ((((plan.image deadlineOf).withBindingTimeouts binding).withChoiceTimeouts
+      choice).application.runPolicies
       (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
       (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)).map
         (fun out => (out.native.application.memory.finished (compile source.core).graph.nodeCount,
@@ -91,11 +95,20 @@ theorem timeout_service_source_public_law (source : WFProgram P L)
             (BuildState.fromInitial
               (initialState source.core.Γ source.core.env source.core.wctx))).symm)
             terminal).erasePubEnv) := by
-  rw [(plan.image deadlineOf).runPolicies_withChoiceTimeouts select
+  rw [((plan.image deadlineOf).withBindingTimeouts binding).runPolicies_withChoiceTimeouts choice
     (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
-    (fun execution who address => plan.liftProfileIn_not_expireChoice_supported
+    (fun execution who address => plan.liftProfileIn_expiry_not_supported
       (plan.image deadlineOf) deadlineOf profile who (execution.principalHistory who)
-      (State.observe (plan.image deadlineOf).application execution.native who) address)
+      (State.observe (plan.image deadlineOf).application execution.native who)
+      (.expireChoice address) trivial)
+    (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)
+    MessagePool.Satisfies.empty]
+  rw [(plan.image deadlineOf).runPolicies_withBindingTimeouts binding
+    (plan.liftProfile deadlineOf profile) (plan.image deadlineOf).serialService
+    (fun execution who address => plan.liftProfileIn_expiry_not_supported
+      (plan.image deadlineOf) deadlineOf profile who (execution.principalHistory who)
+      (State.observe (plan.image deadlineOf).application execution.native who)
+      (.expireBinding address) trivial)
     (plan.image deadlineOf).serviceInvocations (plan.initialExecution deadlineOf)
     MessagePool.Satisfies.empty]
   exact plan.service_source_public_law source deadlineOf profile hinitial horigins

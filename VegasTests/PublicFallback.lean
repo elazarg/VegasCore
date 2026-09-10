@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.BindingDefault
+import Vegas.Compile.PublicResolution
 import Vegas.Compile.SourceExecutionOutcome
 import VegasTests.ApplicationImage
 
@@ -18,13 +18,13 @@ and disjoint legal choices, so that site admits no public-expression default.
 
 noncomputable section
 
-namespace VegasTests.BindingDefault
+namespace VegasTests.PublicFallback
 
 open Vegas Vegas.EventGraph Vegas.ToEventGraph
 open VegasTests.ApplicationImage
 
 /-- The first mixed-image choice defaults to its existing public input. -/
-def publicFallback : SourceDecisionSite.BindingDefault firstSite.decision where
+def publicFallback : SourceDecisionSite.PublicFallback firstSite.decision where
   expr := .var 0 .here
   legal := by
     intro env
@@ -113,22 +113,22 @@ environments are definitionally identical. Hence no deterministic public
 expression is universally legal at this checked source site's first
 commitment. -/
 theorem no_private_dependent_fallback :
-    ¬ Nonempty (SourceDecisionSite.BindingDefault privateSite) := by
-  apply SourceDecisionSite.BindingDefault.not_nonempty_of_disjoint_legal
+    ¬ Nonempty (SourceDecisionSite.PublicFallback privateSite) := by
+  apply SourceDecisionSite.PublicFallback.not_nonempty_of_disjoint_legal
     privateFalse privateTrue rfl
   intro value hfalse htrue
   change (value == false) = true at hfalse
   change (value == true) = true at htrue
   cases value <;> simp at hfalse htrue
 
-end VegasTests.BindingDefault
+end VegasTests.PublicFallback
 
-/-- info: 'VegasTests.BindingDefault.publicFallback_compiled_eval' depends on axioms:
+/-- info: 'VegasTests.PublicFallback.publicFallback_compiled_eval' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms VegasTests.BindingDefault.publicFallback_compiled_eval
+#print axioms VegasTests.PublicFallback.publicFallback_compiled_eval
 
-/-- info: 'VegasTests.BindingDefault.no_private_dependent_fallback' depends on axioms:
+/-- info: 'VegasTests.PublicFallback.no_private_dependent_fallback' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms VegasTests.BindingDefault.no_private_dependent_fallback
+#print axioms VegasTests.PublicFallback.no_private_dependent_fallback

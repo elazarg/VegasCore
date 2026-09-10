@@ -23,7 +23,7 @@ open Vegas Vegas.EventGraph Vegas.ToEventGraph Interaction
 open VegasTests.PersistentDisclosure VegasTests.GeneratedPersistentDisclosure
 open VegasTests.GeneratedBindingPolicy
 
-def fallback : SourceDecisionSite.BindingDefault site where
+def fallback : SourceDecisionSite.PublicFallback site where
   expr := .constBool false
   legal _ := rfl
 
@@ -59,7 +59,7 @@ theorem default_source_successor :
       BindingSourceCoupling.checkpoint.current.graph.1 :=
     (Vegas.ApplicationImage.State.initial_refines
       GeneratedPersistentDisclosure.compiled.graph).register 0 0 ⟨.bool, true⟩
-  have hresult := SourceDecisionSite.BindingDefault.defaultBind_source_coupling
+  have hresult := SourceDecisionSite.PublicFallback.defaultBind_source_coupling
     (P := TestPlayer) (L := simpleExpr) (Γ := []) (name := 0) (who := 0) (ty := .bool)
     (.constBool true) _ fallback source.fresh compilerInitial
     BindingSourceCoupling.checkpoint (registered true).native.application hrefines

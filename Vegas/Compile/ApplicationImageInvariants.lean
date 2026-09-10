@@ -133,6 +133,23 @@ theorem handle_acceptedSnapshot (image : ApplicationImage P L)
                     exact ⟨by simpa [State.bind, hne'] using haccepted,
                       by simpa [State.bind, hne'] using hfrozen⟩
                   · contradiction
+      | expireBinding address =>
+          cases hlookup : image.lookup address with
+          | none => simp [ApplicationImage.handle, hlookup] at hnext
+          | some instruction =>
+              cases instruction with
+              | sample code | publicChoice code | conditional code =>
+                  simp [ApplicationImage.handle, hlookup] at hnext
+              | bind code =>
+                  rw [image.handle_expireBinding state address code hlookup id] at hnext
+                  obtain ⟨value, hresolved, rfl⟩ := Option.map_eq_some_iff.mp hnext
+                  have hempty := (code.resolveTimeout?_some state.memory value hresolved).1
+                  have hne : field ≠ code.sourceField := by
+                    intro heq
+                    rw [← heq, haccepted] at hempty
+                    contradiction
+                  exact ⟨by simpa [State.defaultBind, hne] using haccepted,
+                    by simpa [State.defaultBind] using hfrozen⟩
       | conditional address payload =>
           cases hlookup : image.lookup address with
           | none => simp [ApplicationImage.handle, hlookup] at hnext

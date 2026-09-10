@@ -40,7 +40,8 @@ private def commandCacheTag? (image : ApplicationImage P L) :
   | .submit (.choice address _) => some (.submission address)
   | .submit (.binding address _) => some (.submission address)
   | .submit (.conditional address _) => some (.submission address)
-  | .submit (.expireChoice _) | .submit (.malformed _) | .replay _ | .wait => none
+  | .submit (.expireChoice _) | .submit (.expireBinding _)
+  | .submit (.malformed _) | .replay _ | .wait => none
 
 private theorem tag_of_decode_ne_none
     {Value : Type} (image : ApplicationImage P L)
@@ -83,7 +84,7 @@ private theorem registrationEncoding_tag (image : ApplicationImage P L)
       some (.registration slot) := rfl
 
 private theorem bindingEncoding_tag (image : ApplicationImage P L)
-    (code : BindingCode P) (value : Unit) :
+    (code : BindingCode P L) (value : Unit) :
     commandCacheTag? image
         ((code.encoding.submission image.application).encode value) =
       some (.submission code.node) := by
@@ -123,11 +124,11 @@ rejected by a distinct later instruction. Submission addresses separate every
 public cache. A slot inequality is needed only when the later instruction is
 also a binding, because only bindings recognize private registrations. -/
 theorem rejectsCommand_of_binding
-    (image : ApplicationImage P L) (first : BindingCode P)
+    (image : ApplicationImage P L) (first : BindingCode P L)
     (later : ApplicationInstruction P L)
     (who : P) (command : image.application.PlayerCommand)
     (haddress : first.node ≠ later.address)
-    (hslots : ∀ second : BindingCode P, later = .bind second →
+    (hslots : ∀ second : BindingCode P L, later = .bind second →
       first.sourceSlot ≠ second.sourceSlot)
     (hhead : command = .wait ∨
       ¬ (ApplicationInstruction.bind first).RejectsCommand image who command) :
@@ -392,7 +393,7 @@ theorem bindingPolicy_rejects_next
     intro heq
     apply hnotMem
     exact List.mem_map.mpr ⟨later, hlater, heq.symm⟩
-  have hslots : ∀ second : BindingCode P, later = .bind second →
+  have hslots : ∀ second : BindingCode P L, later = .bind second →
       code.sourceSlot ≠ second.sourceSlot := by
     intro second hlaterEq
     have hsecondMem : ApplicationInstruction.bind second ∈ plan.instructions deadlineOf := by

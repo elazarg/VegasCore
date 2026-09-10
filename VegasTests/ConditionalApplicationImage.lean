@@ -123,7 +123,7 @@ theorem guarded_original_not_unrestricted :
   change false = true at hrejected
   contradiction
 
-def bindingCode : BindingCode Player :=
+def bindingCode : BindingCode Player simpleExpr :=
   initialSite.bindingCode source.fresh compilerInitial 0
 
 def conditionalCode (deadline : Nat) : ConditionalCode Player simpleExpr :=

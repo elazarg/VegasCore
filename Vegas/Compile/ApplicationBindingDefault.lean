@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.BindingDefault
+import Vegas.Compile.PublicResolution
 import Vegas.Compile.BindingSourceCoupling
 import Vegas.Compile.ApplicationImageReadout
 
@@ -24,7 +24,7 @@ open EventGraph Interaction
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 omit [DecidableEq P] in
-theorem State.defaultBind_accepted (state : State P L) (code : BindingCode P)
+theorem State.defaultBind_accepted (state : State P L) (code : BindingCode P L)
     (value : TypedValue L) :
     (state.defaultBind code value).memory.accepted code.sourceField =
       some (.publicDefault value) := by
@@ -33,13 +33,13 @@ theorem State.defaultBind_accepted (state : State P L) (code : BindingCode P)
 omit [DecidableEq P] in
 /-- Installing a default neither repairs an unopenable commitment nor changes
 any private registration. Its value is held in the public disposition alone. -/
-theorem State.defaultBind_private_unchanged (state : State P L) (code : BindingCode P)
+theorem State.defaultBind_private_unchanged (state : State P L) (code : BindingCode P L)
     (value : TypedValue L) :
     (state.defaultBind code value).prepared = state.prepared ∧
       (state.defaultBind code value).frozen = state.frozen ∧
       (state.defaultBind code value).memory.store = state.memory.store := ⟨rfl, rfl, rfl⟩
 
-theorem State.defaultBind_register (state : State P L) (code : BindingCode P)
+theorem State.defaultBind_register (state : State P L) (code : BindingCode P L)
     (value : TypedValue L) (who : P) (slot : Nat) (prepared : TypedValue L) :
     (state.defaultBind code value).register who slot prepared =
       (state.register who slot prepared).defaultBind code value := rfl
@@ -48,14 +48,14 @@ omit [DecidableEq P] in
 /-- Private preparation cannot influence the public effect of a selected
 default. The default's selection and timing remain visible public events. -/
 theorem State.defaultBind_public_eq (first second : State P L)
-    (hpublic : first.memory = second.memory) (code : BindingCode P) (value : TypedValue L) :
+    (hpublic : first.memory = second.memory) (code : BindingCode P L) (value : TypedValue L) :
     (first.defaultBind code value).memory = (second.defaultBind code value).memory := by
   simp only [State.defaultBind, hpublic]
 
 /-- The actual opaque-binding handler cannot overwrite an installed default,
 even if the owner subsequently prepares a valid, differently valued opening. -/
 theorem handle_binding_after_default (image : ApplicationImage P L)
-    (state : State P L) (address : Nat) (code : BindingCode P)
+    (state : State P L) (address : Nat) (code : BindingCode P L)
     (hcode : image.lookup address = some (.bind code))
     (value : TypedValue L) (id : MessageId P) (handle : CommitmentHandle P Nat) :
     image.handle (state.defaultBind code value) ⟨id, .binding address handle⟩ = none := by
@@ -66,7 +66,7 @@ theorem handle_binding_after_default (image : ApplicationImage P L)
 cache entry. A previously published field, if any, retains public precedence. -/
 theorem ownerReadStore_defaultBind (image : ApplicationImage P L) (who : P)
     (history : List image.application.PlayerEntry) (state : State P L)
-    (code : BindingCode P) (value : TypedValue L)
+    (code : BindingCode P L) (value : TypedValue L)
     (hpublic : state.memory.store code.sourceField = none) :
     image.ownerReadStore who history (state.defaultBind code value).memory code.sourceField =
       some value := by
@@ -77,7 +77,7 @@ theorem ownerReadStore_defaultBind (image : ApplicationImage P L) (who : P)
 replacing its disposition by an opaque handle does not preserve local readout.
 This is an operational distinction, not a strategic impossibility theorem. -/
 theorem defaultBind_opaque_readout_ne (image : ApplicationImage P L) (who : P)
-    (state : State P L) (code : BindingCode P) (value : TypedValue L)
+    (state : State P L) (code : BindingCode P L) (value : TypedValue L)
     (handle : CommitmentHandle P Nat) (hpublic : state.memory.store code.sourceField = none) :
     image.ownerReadStore who [] (state.defaultBind code value).memory code.sourceField ≠
       image.ownerReadStore who [] (state.bind code handle).memory code.sourceField := by
@@ -89,7 +89,7 @@ end Vegas.ApplicationImage
 
 noncomputable section
 
-namespace Vegas.SourceDecisionSite.BindingDefault
+namespace Vegas.SourceDecisionSite.PublicFallback
 
 open EventGraph ToEventGraph
 
@@ -103,7 +103,7 @@ theorem defaultBind_source_coupling
     {Γ : VCtx P L} {name : VarId} {who : P} {ty : L.Ty}
     (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
     (tail : VegasCore P L ((name, .sealed who ty) :: Γ))
-    (fallback : BindingDefault (.here guard tail))
+    (fallback : PublicFallback (.here guard tail))
     (fresh : FreshBindings (.commit name who guard tail))
     (build : BuildState P L Γ)
     (current : CoupledAt
@@ -148,9 +148,9 @@ theorem defaultBind_source_coupling
   exact hrefines.defaultBind (compileCore (.commit name who guard tail) fresh build).graphWF
     code node rfl rfl ⟨ty, value⟩ step
 
-end Vegas.SourceDecisionSite.BindingDefault
+end Vegas.SourceDecisionSite.PublicFallback
 
-/-- info: 'Vegas.SourceDecisionSite.BindingDefault.defaultBind_source_coupling' depends on axioms:
+/-- info: 'Vegas.SourceDecisionSite.PublicFallback.defaultBind_source_coupling' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceDecisionSite.BindingDefault.defaultBind_source_coupling
+#print axioms Vegas.SourceDecisionSite.PublicFallback.defaultBind_source_coupling

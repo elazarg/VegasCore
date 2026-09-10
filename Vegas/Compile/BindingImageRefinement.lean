@@ -30,7 +30,7 @@ theorem State.bind_reachable_represents
     (state : State P L) (cfg : Config G)
     (hrep : state.memory.Represents cfg) (hwf : G.WF)
     (hreachable : Reachable G cfg)
-    (code : BindingCode P) (node : Fin G.nodeCount)
+    (code : BindingCode P L) (node : Fin G.nodeCount)
     (hnode : code.node = node.val) (handle : CommitmentHandle P Nat)
     (written : TypedValue L)
     (hstep : CommitStep G cfg code.owner ⟨node, written⟩) :
