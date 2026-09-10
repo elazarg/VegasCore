@@ -885,8 +885,8 @@ have exactly the original policy-step law. Independently, arbitrary-policy
 supported runs preserve a reachable source-graph witness; if such a run is
 finished, its executable public terminal readout agrees with some written-order
 source execution. These support results alone do not prove progress, a
-source-prefix invariant for every run, activation-relative deadlines, an
-expiry-producing service, or deviation simulation.
+source-environment checkpoint for every run, an expiry-producing service, or
+deviation simulation.
 
 `ApplicationPlan.ordered_timeout_runPolicies_invariants` gives a separate
 arbitrary-policy invariant for generated ordered images, with either or both
@@ -911,6 +911,35 @@ and initial pools free of the newly enabled expiry traffic have the same full
 execution law before and after timeout decoration; other traffic and environment
 behavior are unrestricted. This conservativity statement does not remove the
 additional deviations available through expiry.
+
+`ApplicationPlan.windowed` selects a separate activation-relative instance of
+the ordered application. `WindowedApplication` stores the active instruction's
+address and starting clock in both public views. Successful resolution records
+a fresh origin exactly when the active address changes; private preparation,
+rejected inclusions, replay, and clock advancement do not reset it. All expiry
+forms use the strict test `origin + window < clock`. Retiming retains guards,
+fallback expressions, and the absence of optional fallback handlers. The raw
+message alphabet, pool operations, and shared policy runner are unchanged.
+
+`windowed_runPolicies_source_public_outcome` establishes source-outcome safety
+for every finished supported run of a generated windowed application with
+arbitrary player and environment policies. The activation invariant also holds
+through arbitrary policy runs. `windowed_runPolicies_invariants` additionally
+retains the numerical completed-node prefix and accepted binding dispositions,
+with generated coverage and allocation discharging the static premises.
+Deadline checks reject each expiry form through
+the end of its active window; ordinary responses remain eligible after that
+boundary until resolution. Generated two-phase tests cover delayed activation,
+the strict boundary, retained rejected/replayed traffic, and both resolution
+choices. This is a model with an unconstrained monotone public clock, not a
+claim about a particular ledger clock's permitted rate of advance.
+
+Public activation metadata enriches policy observations. No reference-law or
+deviation-law transport through that observation change is claimed. Relative
+windows alone neither supply an expiry transaction nor guarantee its inclusion,
+and an environment can advance the clock before invoking an unchanged player.
+Preserving that player's choice requires a deadline-relative service bound,
+not merely eventual delivery.
 
 `ApplicationPlan.service_source_public_law` runs the complete generated
 invocation list with `ApplicationPlan.liftProfile` and `serialService`. For every

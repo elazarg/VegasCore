@@ -22,6 +22,7 @@ import Interaction.MessageApplicationSubmission
 import Interaction.DependencyGate
 import Interaction.DependencyGateLaws
 import Interaction.Deadline
+import Interaction.Activation
 import Interaction.IdealCommitments
 import Interaction.BindingDisposition
 import Interaction.ConditionalPublication

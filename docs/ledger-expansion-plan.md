@@ -136,24 +136,26 @@ Source-certified binding defaults are emitted as optional typed timeout code.
 overdue expiry inclusion to the original source commit with the evaluated
 fallback. Public defaults have exact typed refinement and direct local readout;
 opaque bindings retain their separate frozen-snapshot provenance. The generic
-conditional-publication classifier handles both dispositions, but the generated
-conditional instruction still handles only opaque references. No
+conditional-publication classifier and generated conditional instructions handle
+both dispositions. The selected cleartext/opening policy law and actual included
+source continuation are checked at ready conditional checkpoints. No
 timeout-driving reference service is supplied. Binding and public-choice timeout
 decoration commute; the combined artifact preserves the no-expiry reference
 profile law, while each pass retains arbitrary-traffic graph refinement.
 
 The remaining implementation order is:
 
-1. Integrate disposition-aware conditional publication and reference policies.
-   A public default supplies its recorded value and uses authenticated
-   cleartext publication; it must never be treated as an opaque opening or
-   recovered from an unrelated private cache. Prove both legal source
-   continuation and the appropriate reference law, retaining the real public
-   disposition and message histories.
-2. Couple these handlers with
-   observation-local request production, a public clock, and admitted inclusion
-   capacity. Specify who supplies permissionless transactions and what happens
-   when a valid ordinary request competes with expiry.
+1. Compose exact source checkpoints and unchanged-player cache/readout
+   invariants across arbitrary successful resolutions. Completed-node prefixes
+   and accepted dispositions are already policy-independent invariants; they
+   do not identify an unchanged player's source choice kernel.
+2. Supply a resolving service with observation-local request production and
+   admitted inclusion capacity. `ApplicationPlan.windowed` provides stable
+   public activation origins, strict expiry, and arbitrary-run source-outcome
+   safety. Its richer observations still need a reference-policy comparison.
+   Specify who originates permissionless transactions and prove timely ordinary
+   opportunities when valid requests compete with expiry; clock advancement
+   alone neither submits nor includes a transaction.
 3. Compare arbitrary player replacements on that same execution. Start with a
    final conditional disclosure under an actual resolving phase, then compose
    across prior bindings, chance, and later decisions. A support witness for

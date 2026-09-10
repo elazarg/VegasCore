@@ -206,7 +206,7 @@ private theorem State.defaultBind_resolvedBindings
       omega
     exact ⟨disposition, by simpa [State.defaultBind, hfield] using haccepted, hcanonical⟩
 
-private theorem handle_resolvedBindings
+theorem handle_resolvedBindings
     (image : ApplicationImage P L) (initialFields : Nat)
     (hnodup : (image.instructions.flatMap ApplicationInstruction.coveredNodes).Nodup)
     (hallocated : ∀ instruction ∈ image.instructions,
@@ -306,7 +306,7 @@ private theorem handle_resolvedBindings
                       exact state.publishConditional_resolvedBindings image hnodup code hmem
                         result hresolved
 
-private theorem environmentStep_resolvedBindings
+theorem environmentStep_resolvedBindings
     (image : ApplicationImage P L)
     (hnodup : (image.instructions.flatMap ApplicationInstruction.coveredNodes).Nodup)
     (state next : State P L) (command : EnvironmentCommand)

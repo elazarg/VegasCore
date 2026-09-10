@@ -11,6 +11,7 @@ import VegasTests.PublicGuard
 import VegasTests.ApplicationImage
 import VegasTests.ApplicationEarlyBinding
 import VegasTests.ApplicationOrder
+import VegasTests.WindowedApplication
 import VegasTests.ApplicationSampleExecution
 import VegasTests.PublicChoiceSourceCoupling
 import VegasTests.PublicChoiceResolution

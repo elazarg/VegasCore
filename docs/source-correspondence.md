@@ -110,6 +110,16 @@ source law with source-ordered admission and both optional timeout families.
 The original lifted policies and reference service are retained. The policies
 submit no expiry requests; the statement does not compare deviations that do.
 
+`ApplicationPlan.windowed_runPolicies_source_public_outcome` gives a distinct
+support theorem for the activation-relative instance. From its canonical
+initialization, every finished supported arbitrary-policy run has an actual
+written-order source execution and the same public terminal readout. Both
+optional fallback families are included. Each handler call is related to a
+generated image with deadlines derived from the active instruction's public
+origin. Retiming preserves the source graph and the original backend conditions.
+This does not transport a source policy into the enriched observation/history
+types, establish its reference outcome law, or prove progress under deviations.
+
 The structural backend plan, initial controller-read publicity, and earlier
 binding origins are explicit premises. They do not weaken source
 well-formedness or assert that every checked source admits this backend plan.

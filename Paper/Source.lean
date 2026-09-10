@@ -10,6 +10,7 @@ import Vegas.Core.AccountingIntegrity
 import Vegas.Compile.ApplicationPlanOutcome
 import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationTimeoutForwardLaw
+import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
@@ -104,6 +105,40 @@ theorem public_application_policy_outcome (source : WFProgram Player L)
         some terminalEnv.erasePubEnv :=
   ApplicationPlan.runPolicies_source_public_outcome source plan deadlineOf select players
     environment schedule next hnext hfinished
+
+/-- Activation-relative deadlines retain source-outcome safety for arbitrary
+public-message policies, including both optional fallback families. -/
+theorem public_application_windowed_outcome (source : WFProgram Player L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (ToEventGraph.BuildState.fromInitial
+        (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)))
+    (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode Player L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode Player L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat)
+    (players : Player → (plan.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
+    (environment : (plan.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
+    (schedule : List (@Interaction.MessageApplication.Invocation Player))
+    (next : (plan.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (hnext : next ∈ ((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
+      players environment schedule
+      (Interaction.MessageApplication.PolicyExecution.initial _
+        (Interaction.MessageApplication.State.initial _
+          ((plan.windowed deadlineOf binding choice windowOf).initial
+            (ApplicationImage.State.initial
+              (ApplicationImage.Memory.initial
+                (ToEventGraph.compile source.core).graph)))))).support)
+    (hfinished : next.native.application.base.memory.finished
+      (ToEventGraph.compile source.core).graph.nodeCount = true) :
+    ∃ terminalEnv : VEnv L (ToEventGraph.compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (ToEventGraph.compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
+      (ToEventGraph.compile source.core).readPublicTerminal? next.native.application.base.memory =
+        some terminalEnv.erasePubEnv :=
+  plan.windowed_runPolicies_source_public_outcome source deadlineOf binding choice windowOf
+    players environment schedule next hnext hfinished
 
 /-- For an eligible application plan, lifting one source profile and running
 the emitted serial reference service gives the source law of joint completion
@@ -724,6 +759,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_policy_outcome
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_outcome' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_outcome
 
 /-- info: 'Vegas.Paper.Source.public_application_reference_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

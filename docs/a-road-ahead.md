@@ -284,22 +284,36 @@ source steps in one batch. Freezing admission for an entire service cycle is a
 possible stronger instance, not part of the base admission semantics. The
 policy lift must use the same public admission state as the generated protocol.
 
-Timed instances would need a stable activation origin for each response window.
-Record it when the instruction becomes active, preserve it through rejection,
-replay, and unrelated traffic, and test strict expiry against that origin plus
-the window. Earlier delays must not consume a future player's entire response
-opportunity. Arbitrary compile-time absolute deadlines do not provide this
-property. A bounded absolute-deadline service could also work, but would need
-to prove the relevant activation and reaction bounds.
+`WindowedApplication` supplies a stable public activation origin for ordered
+execution. Successful resolution starts a new window when the active address
+changes; preparation, rejection, replay, and clock advancement retain the
+origin. Durations explicitly supersede the image's absolute deadlines, while
+retaining its guards, fallback expressions, and disabled fallback handlers.
+Generated two-phase tests distinguish absolute and relative deadlines after a
+long first-phase delay and exercise strict expiry, replay, and a late ordinary
+response winning the resolution race. A bounded absolute-deadline service
+could also work, but would need activation and reaction bounds.
 
-A minimal candidate for ordered execution stores the current instruction's
-address and activation clock. Successful resolution records a new origin only
-when the active address changes; administrative steps retain it. Relative
-window metadata should be distinct from the existing absolute deadlines.
-A two-phase test should delay the first phase past the second phase's absolute
-deadline, then verify that an activation-relative second window still permits
-its owner's response. This is a design and test target, not a checked theorem
-about an implemented relative-clock runtime.
+`ApplicationPlan.windowed_runPolicies_source_public_outcome` proves completed-run
+source safety for this actual runtime under arbitrary policies, including both
+optional fallback families. Its observations expose the activation address and
+origin to players and the environment. Transporting reference policies and
+their histories through these enriched views needs an explicit comparison;
+the existing absolute-image reference law is not a theorem about this instance.
+
+The next bounded comparison is an expiry-free reference embedding. Erase the
+activation metadata from current observations and every recorded polling view,
+and lift the original player and environment policies through that erasure.
+Prove one-invocation projection, then lift it through the shared finite runner.
+The required traffic predicate excludes binding expiry, public-choice expiry,
+and conditional expiry, including retained packets that might be replayed.
+Existing handler-extension comparisons require identical view carriers and
+cannot express this projection. A small cross-application run-projection lemma
+belongs in `Interaction`; the image's deadline-independence proof and windowed
+policy erasures belong in Vegas. Composing with the existing serial reference
+law would give the source law for these lifted windowed policies, without a
+clock-rate restriction. It would not simulate arbitrary activation-aware
+deviations or provide a resolving service.
 
 Safety, opportunity, and settlement have separate obligations:
 
@@ -325,8 +339,8 @@ a partial-order frontier with buffered accepted choices that are consumed in
 written source order. Its comparison must justify the unchanged players'
 choice kernels and the deviator's available information, not merely commute
 final stores. This remains a separate proof target for the same compilation
-architecture. Activation-relative timing, an expiry-producing resolving
-service, and either backend's deviation theorem are not implemented.
+architecture. An expiry-producing resolving service, timely opportunities for
+unchanged players, and either backend's deviation theorem remain open.
 
 ### Existing execution boundary
 

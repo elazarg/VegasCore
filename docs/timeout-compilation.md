@@ -162,12 +162,59 @@ private-Boolean equality regression. This concerns the universal certificate,
 not an impossibility for every runtime or every reachable-state restriction.
 It changes neither source syntax nor well-formedness.
 
+### Activation-relative generated applications
+
+`ApplicationPlan.windowed` compiles the optional fallback image with an
+explicit duration policy. `WindowedApplication` pairs the native application
+state with a public active address and activation clock. The reusable
+`Interaction.Activation` tracks this metadata; the Vegas application determines
+which instruction is active. Successful resolution starts the next address's
+window at the current clock. Registration, rejected or replayed traffic, and
+clock advancement retain the current origin.
+
+At inclusion, the runtime replaces all deadline metadata by `origin + window`
+and uses the ordered handler at the active address. This operation retains
+ordinary guards, fallback expressions, and disabled fallback handlers. It is
+an explicit timing-policy choice, not an interpretation of absolute deadlines
+as durations. A missing or inconsistent active address fails closed. Generated
+allocation provides unique addresses; the address tracker alone does not
+distinguish aliased instructions in an arbitrary hand-built image.
+
+Initialization records the actual starting clock, and native actions control
+all subsequent updates. `Consistent` checks the active key and that its origin
+is not in the future; it does not certify the activation history of an arbitrary
+constructed state. Timing guarantees must start from initialization or retain
+an explicit execution witness. Public visibility gives policies no operation
+to overwrite this metadata.
+
+The checked deadline lemmas cover binding, ordinary-choice, and conditional
+expiry. Each rejects while `clock <= origin + window`; ordinary resolution
+can still win after that boundary. Retimed generated images retain graph
+refinement, and every finished supported arbitrary-policy windowed run has a
+matching source small-step outcome. The two-binding regression uses the actual
+`ApplicationPlan.windowed` constructor: after delaying the first phase until
+clock 100, the second starts at 100, rejects expiry through 110, and admits it
+at 111. Replaying a rejected expiry does not restart that window.
+
+`ApplicationPlan.windowed_runPolicies_invariants` retains the ordered runtime's
+numerical completed-node prefix and accepted binding dispositions together
+with activation consistency, from canonical initialization under arbitrary
+policies. These native facts do not reconstruct an exact source environment
+or establish the unchanged players' cache/readout invariants.
+
+These timing and safety facts do not establish a resolving service. Clock
+progress, expiry origination and inclusion, and timely opportunities for
+unchanged players remain explicit obligations. The added activation metadata
+is visible to players and the environment, so transporting a reference-policy
+law needs an observation/history comparison as well. No such law or unilateral
+deviation simulation for this windowed instance is claimed.
+
 ### Runtime services
 
 | Component | Meaning and present scope |
 | --- | --- |
 | Clock | A reading supplied by the enclosing runtime. The gate uses natural-number units; it neither advances time nor publishes ticks. |
-| Deadline policy | A predicate deciding whether a missing obligation is overdue. The two implemented instances use a mutable activity origin or immutable deadlines. |
+| Deadline policy | A predicate deciding whether a missing obligation is overdue. Gate instances use mutable activity origins or immutable deadlines; generated ordered applications also support stable activation-relative windows. |
 | Dependency gate | Ordered checks stage completion and principal-exclusion effects. Exclusion discharges every dependency of that principal, not just the overdue obligation. |
 | Application transaction | A handler returns an accepted next state or rejection. Rejection retains the initial application state. |
 | Message inclusion | Publish a preexisting pending message and then run the application transaction. Rejection does not remove that publication or earlier observations. |

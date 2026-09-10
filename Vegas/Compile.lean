@@ -107,6 +107,14 @@ import Vegas.Compile.ApplicationOrder
 import Vegas.Compile.ApplicationOrderTimeouts
 import Vegas.Compile.ApplicationOrderPrefix
 import Vegas.Compile.ApplicationCompletion
+import Vegas.Compile.ApplicationDeadlines
+import Vegas.Compile.ApplicationPlanDeadlines
+import Vegas.Compile.ApplicationDeadlineInvariants
+import Vegas.Compile.ApplicationImageClock
+import Vegas.Compile.WindowedApplication
+import Vegas.Compile.WindowedApplicationDeadline
+import Vegas.Compile.WindowedApplicationInvariants
+import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.ApplicationResolvedBindings
 import Vegas.Compile.ApplicationOrderPhase
 import Vegas.Compile.ApplicationOrderCheckpoint
