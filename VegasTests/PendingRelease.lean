@@ -7,7 +7,8 @@ Authors: VegasCore contributors
 import Interaction.SealedRelease
 import Interaction.SealedControllerTrace
 import Vegas.Game.SealedRelease
-import VegasTests.PendingPolicies
+import Vegas.Compile.SealedSource
+import VegasTests.PendingExecution
 
 /-! # The compiled release controller in complete native policy executions
 
@@ -20,10 +21,24 @@ complete trace, not the observations after an opening is submitted.
 namespace VegasTests.PendingRelease
 
 open Interaction Interaction.SealedProgram GameTheory GameTheory.Math.Probability
-open VegasTests.PendingSource VegasTests.PendingExecution VegasTests.PendingPolicies
+open VegasTests.PendingSource VegasTests.PendingExecution
 
 def release (events : List (Event Player Value)) : Bool :=
   openingReady program events 0 2
+
+/-- Native state after the protected owner registers and submits the
+commitment used by the release-boundary tests. -/
+def releasePrepared (value : Value) : PolicyExecution Player Value :=
+  playerStep program 0
+    (playerStep program 0 (PolicyExecution.initial initial) (.register 0 value))
+    (.submit (.commitment 0 (0, 0)))
+
+theorem releasePrepared_related (left right : Value) :
+    PolicyExecution.HidingRelated (0 : Player)
+      (releasePrepared left) (releasePrepared right) := by
+  refine ⟨submitCommit_empty_related 0 0 left right, ?_, rfl⟩
+  intro who hne
+  simp [releasePrepared, playerStep, PolicyExecution.initial, hne]
 
 theorem release_requires_both (events : List (Event Player Value))
     (hrelease : release events = true) :
@@ -69,10 +84,10 @@ theorem openingTraceLaw_hiding (rebroadcast : Bool) (left right : Value)
     (players : Profile (policySignature Player Value rebroadcast))
     (environment : EnvironmentPolicy Player Value) (schedule : List (Invocation Player)) :
     ((tracePolicies rebroadcast program (openingProfile rebroadcast left players)
-      environment schedule (prepared left)).map (PolicyTrace.firstRelease release)).map
+      environment schedule (releasePrepared left)).map (PolicyTrace.firstRelease release)).map
         (PolicyExecution.observations 0) =
       ((tracePolicies rebroadcast program (openingProfile rebroadcast right players)
-        environment schedule (prepared right)).map (PolicyTrace.firstRelease release)).map
+        environment schedule (releasePrepared right)).map (PolicyTrace.firstRelease release)).map
           (PolicyExecution.observations 0) := by
   apply tracePolicies_hiding_beforeRelease
   · intro who hne
@@ -83,7 +98,7 @@ theorem openingTraceLaw_hiding (rebroadcast : Bool) (left right : Value)
   · simpa only [openingProfile, Profile.update_same, PlayerPolicy.WaitsBefore,
       release, openingReady] using
       openingPolicy_waitsBefore rebroadcast program 0 2 right
-  · exact prepared_related left right
+  · exact releasePrepared_related left right
 
 theorem controllerTraceLaw_firstRelease (rebroadcast : Bool) (value : Value)
     (players : Profile (policySignature Player Value rebroadcast))
@@ -91,7 +106,7 @@ theorem controllerTraceLaw_firstRelease (rebroadcast : Bool) (value : Value)
     (controllerTraceLaw rebroadcast value players environment schedule).map
         (PolicyTrace.firstRelease release) =
       (tracePolicies rebroadcast program (openingProfile rebroadcast value players)
-        environment schedule (prepared value)).map (PolicyTrace.firstRelease release) := by
+        environment schedule (releasePrepared value)).map (PolicyTrace.firstRelease release) := by
   simp only [controllerTraceLaw, controllerProfile, tracePolicies, invoke, Profile.update_same,
     commitOpenPolicy, PolicyExecution.initial, playerStep, List.length_nil, List.length_append,
     List.length_cons, ite_true, FinDist.map_pure, FinDist.pure_bind,
@@ -99,9 +114,10 @@ theorem controllerTraceLaw_firstRelease (rebroadcast : Bool) (value : Value)
   change (tracePolicies rebroadcast program
     (Profile.update (sig := policySignature Player Value rebroadcast) players 0
       (commitOpenPolicy rebroadcast program 0 0 2 value)) environment schedule
-        (prepared value)).map (PolicyTrace.firstRelease release) = _
+        (releasePrepared value)).map (PolicyTrace.firstRelease release) = _
   rw [tracePolicies_commitOpen_eq_opening_of_two_le rebroadcast program environment schedule
-    (prepared value) players 0 0 2 value (by simp [prepared, playerStep, PolicyExecution.initial])]
+    (releasePrepared value) players 0 0 2 value
+      (by simp [releasePrepared, playerStep, PolicyExecution.initial])]
   rfl
 
 /-- Empty-state controller runs have the same observations at the first
@@ -130,8 +146,12 @@ theorem controllerTraceLaw_cut_reachable (rebroadcast : Bool) (value : Value)
   obtain ⟨front, _suffix, _hsplit, hcut⟩ := tracePolicies_firstRelease_prefix
     rebroadcast program (controllerProfile rebroadcast value players) environment release
       (.player 0 :: .player 0 :: schedule) (PolicyExecution.initial initial) trace htrace
-  obtain ⟨cfg, hdecode, hreachable, _⟩ := source.sealed_policy_source
-    (.option .bool) sealedFragment rebroadcast _ environment front (trace.firstRelease release) hcut
+  have hnative := runPolicies_native_eq_run_trace rebroadcast program
+    (controllerProfile rebroadcast value players) environment front initial
+      (trace.firstRelease release) hcut
+  rw [hnative]
+  obtain ⟨cfg, hdecode, hreachable, _⟩ := source.sealed_run_source
+    (.option .bool) sealedFragment (trace.firstRelease release).nativeTrace
   exact ⟨cfg, hdecode, hreachable⟩
 
 end

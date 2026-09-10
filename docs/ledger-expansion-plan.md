@@ -328,20 +328,23 @@ prerequisites complete. Native run refinement covers these actions.
 At-most-once application execution holds independently of traffic duplication;
 it does not erase the extra public traffic or promise cross-instance isolation.
 
-The bounded policy interface supplies principal-scoped controls and polling
-memories over this runner. Its two explicit-rebroadcast capability selections
-have an exact-law embedding, and its ideal pre-disclosure hiding theorem
-permits adaptive opponent and wire-observing environment policies. The finite
+`SealedProgram.messageApplication` uses the shared bounded policy runner with
+principal-scoped controls, polling memories, arbitrary replay, and public
+receipts. Its ideal pre-disclosure hiding theorem permits adaptive opponent
+and wire-observing environment policies; safe validation gives the same
+acceptance and rejection receipts for paired secret values. The finite
 invocation list remains fixed. `PendingPolicies` handles continuations without
-owner invocations and retains a distinguishing cleartext response.
+owner invocations and retains a distinguishing cleartext response on this model.
 `PendingRelease` supplies the owner's register/submit/open reference policy from
-empty and permits further owner invocations. It compares the first public
+empty on the receipt-free sealed policy interface and permits further owner
+invocations. It compares the first public
 release-enabled snapshot of each full native trace; execution continues after
 that snapshot. The generic reference-policy theorem checks all graph
 prerequisites before submitting an opening. The release readout is not a
 different stopped runtime or conditioning on successful release.
 `WFProgram.sealed_policy_source` transports native source-support correctness
-to every supported policy-game execution.
+to every supported shared policy-game execution, retaining receipts in policy
+observations while erasing them for source decoding.
 
 `PendingChoiceLock` identifies the opponent's extracted release-time value
 with its compiled source field, proves its law independent of the honest
@@ -585,14 +588,22 @@ opening/expiry race regressions. Its raw timed step/run remains a reference
 semantics used in model-specific proofs; its correspondence to the shared
 native runner is exact.
 
-`SealedPolicies` still has an independent untimed policy runner, with weaker
-receipt observations and a replay-admissibility parameter. To remove it, make
-those observation and action restrictions explicit on the common policy
-boundary and carry over the hiding and binding results. Merely exposing the
-shared runner's receipts would change the policy interface. A native-run
-correspondence alone does not justify equating these games. This consolidation
-does not discharge general public-message deviation simulation or migration
-of the retained EVM backend.
+The untimed shared instance has source support and adaptive pre-disclosure
+hiding with receipts exposed and replay unrestricted. This establishes those
+properties on the richer interface, not unrestricted game equivalence after
+receipt erasure.
+
+Removing `SealedPolicies` still requires migrating owner polling and first-release
+instrumentation. `nativeTrace` records only native actions, omitting waits and
+intermediate policy histories; it cannot reconstruct the required invocation
+snapshots. Add one shared trace recorder over `MessageApplication.invoke`, prove
+its last-state projection equals `runPolicies`, and prove first-release prefix
+support on that same runner. Then port the commit/open reference policy,
+release-time hiding, and binding persistence, including `PendingRelease`,
+`PendingChoiceLock`, and their examples. The recorder must reuse native invocation
+semantics and preserve full execution after the selected release snapshot.
+This consolidation does not discharge general public-message deviation
+simulation or migration of the retained EVM backend.
 
 Integrate conditional publication and source continuation through this shared
 application boundary. Do not add a separate optional-disclosure runner or

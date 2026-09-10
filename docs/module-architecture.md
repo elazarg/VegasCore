@@ -91,14 +91,17 @@ action lists, independently of message duplication.
 `Vegas/Compile/SealedMessages.lean` emits rules from a certified graph fragment;
 the `SealedDecode`, `SealedRules`, `SealedExecution`, and `SealedRefinement`
 modules prove the actual graph-step correspondence. `SealedSource` composes it
-with source-support correctness. `Interaction/SealedPolicies.lean` supplies a
-bounded principal-scoped policy interpretation of this same runner, with
-sampled local memories and an explicit wire-observing environment.
-`SealedPolicyLaws` proves exact-law embedding of the no-rebroadcast instance
-and a native action-trace witness for every supported policy execution.
-`Vegas/Game/SealedMessages.lean` connects those executions to the checked source
-at support level. `SealedHiding` and `SealedPolicyHiding` prove ideal
-pre-disclosure observation-law equality. `SealedController` and
+with source-support correctness. `Interaction/SealedApplication.lean` supplies
+the shared message-application instance; `SealedApplicationHiding` proves
+pre-disclosure hiding for receipt-observing adaptive policies with unrestricted
+replay. `Vegas/Game/SealedMessages.lean` connects shared policy executions to the
+checked source at support level. Receipt erasure is a source decoder, not an
+observation restriction or a strategic-equivalence claim.
+
+The receipt-free `SealedPolicies` interface remains for owner-release analysis.
+`SealedPolicyLaws` supplies its replay-capability embedding and native witnesses;
+`SealedHiding` and `SealedPolicyRelation` supply its relational invariants.
+`SealedController` and
 `SealedControllerTrace` implement the commit/open phases over native policies;
 `SealedPolicyTrace` records full native executions, and `SealedRelease` proves
 hiding at their first public release-enabled snapshot, allowing owner polls.

@@ -18,7 +18,7 @@ namespace VegasTests.PendingReleaseExamples
 
 open Interaction Interaction.SealedProgram GameTheory GameTheory.Math.Probability
 open VegasTests.PendingSource VegasTests.PendingExecution
-open VegasTests.PendingPolicies VegasTests.PendingRelease
+open VegasTests.PendingRelease
 
 noncomputable section
 

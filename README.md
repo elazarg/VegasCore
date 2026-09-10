@@ -94,15 +94,15 @@ model. Every finite native run, including observed-message replay, decodes to a
 reachable graph prefix; terminal
 prefixes reconstruct written-order source executions with matching terminal
 bindings and decoded payout evaluation. This is support-level correctness.
-The bounded policy interpretation uses the same runner, with principal-scoped
-commands, polling histories, and adaptive delivery/inclusion policies under a
-fixed invocation schedule. It proves ideal hiding through the honest
-controller's public release boundary, including owner polling, and exact
-execution-law preservation when policies without explicit rebroadcast are
-embedded in the replay-enabled model. Whole-game source-to-runtime deviation adequacy,
-timeout settlement, and concrete cryptography remain unproved for this model.
-The hiding theorem reads a prefix of the full execution; later openings
-disclose their values normally. In the checked two-player instance, the
+The shared bounded policy runner gives this fragment principal-scoped commands,
+polling histories, public receipts, and adaptive delivery/inclusion under a
+fixed invocation schedule. Its ideal hiding theorem covers arbitrary replay
+and receipt-observing policies before further protected-owner invocations.
+The owner-polling release theorem still uses the receipt-free sealed policy
+interface and remains to be ported. It reads a prefix of a full execution;
+later openings disclose their values normally. Whole-game source-to-runtime
+deviation adequacy, timeout settlement, and concrete cryptography remain unproved
+for this model. In the checked two-player instance, the
 opponent's extracted source value is independent of the honest input and
 remains fixed after release, but selective withholding obstructs
 publication-preserving terminal-law correspondence.

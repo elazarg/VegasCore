@@ -7,13 +7,14 @@ Authors: VegasCore contributors
 import Interaction.SealedHiding
 import Interaction.SealedPolicies
 
-/-! # Adaptive pre-disclosure hiding in the bounded policy game
+/-! # Receipt-free policy relations for release-time analysis
 
-The same policies may adapt to their respective views and invocation histories.
-The finite invocation schedule is fixed and does not invoke the protected owner.
-The observation law, including the environment's complete wire-pool view, is
-independent of the protected registered values. The ideal service table is
-excluded from every policy input and from the compared observation record.
+The relation compares native wire observations, unprotected principals' local
+memories, and environment memory while allowing protected registered values
+and owner memory to differ. Its step lemmas cover unprotected-player commands
+and environment commands. The release analysis supplies the separate argument
+for protected-owner polls before release. The ideal service table is excluded
+from every policy input and from the compared observation record.
 
 This is a polling model: each principal remembers its own invocations, views,
 and commands, not a globally numbered execution history. The analyst-level
@@ -106,38 +107,5 @@ theorem PolicyExecution.HidingRelated.environmentStep
   · change left.environmentHistory ++ [⟨left.native.environmentView, command⟩] = _
     simp only [SealedProgram.environmentStep, related.environmentHistory,
       related.native.environmentView_eq]
-
-/-- Adaptive policy behavior has the same joint observation law throughout
-any fixed finite schedule that leaves the protected owner uninvoked. Both
-explicit-rebroadcast capability selections are covered. -/
-theorem runPolicies_hiding [DecidableEq Principal] [DecidableEq Value]
-    (rebroadcast : Bool) (program : SealedProgram Principal)
-    (players : Principal → PlayerPolicy Principal Value rebroadcast)
-    (environment : EnvironmentPolicy Principal Value)
-    (schedule : List (Invocation Principal))
-    {left right : PolicyExecution Principal Value}
-    (related : PolicyExecution.HidingRelated hiddenOwner left right)
-    (hschedule : ∀ who, Invocation.player who ∈ schedule → who ≠ hiddenOwner) :
-    (runPolicies rebroadcast program players environment schedule left).map
-        (PolicyExecution.observations hiddenOwner) =
-      (runPolicies rebroadcast program players environment schedule right).map
-        (PolicyExecution.observations hiddenOwner) := by
-  induction schedule generalizing left right with
-  | nil => simp only [runPolicies, FinDist.map_pure, related.observations_eq]
-  | cons invocation rest ih =>
-      have hrest : ∀ who, Invocation.player who ∈ rest → who ≠ hiddenOwner :=
-        fun who hmem => hschedule who (List.mem_cons_of_mem invocation hmem)
-      cases invocation with
-      | player who =>
-          have hwho := hschedule who (List.mem_cons_self ..)
-          simp only [runPolicies, invoke, FinDist.bind_map, FinDist.map_bind,
-            related.principalHistory who hwho, related.native.observe_eq who]
-          exact FinDist.bind_congr fun command _ =>
-            ih (related.playerStep program who hwho command.1) hrest
-      | environment =>
-          simp only [runPolicies, invoke, FinDist.bind_map, FinDist.map_bind,
-            related.environmentHistory, related.native.environmentView_eq]
-          exact FinDist.bind_congr fun command _ =>
-            ih (related.environmentStep program command) hrest
 
 end Interaction.SealedProgram

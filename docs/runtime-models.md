@@ -155,8 +155,9 @@ execute an asset transfer or a contract settlement routine.
 
 ### Bounded policy game
 
-`Interaction/SealedPolicies.lean` interprets the application as a GameTheory
-`GameForm` using the native `SealedProgram.step`. Player commands register
+`Interaction/SealedApplication.lean` instantiates `MessageApplication` with
+the sealed program's validator. Its policy game uses the shared native runner,
+including public acceptance/rejection receipts. Player commands register
 under the invoked player's identity, author arbitrary payloads under that
 identity, replay an observed original envelope, or wait. Payloads may name
 another owner's handle or contain malformed data; handler checks still apply.
@@ -181,27 +182,20 @@ native action trace. The environment is fixed as a policy in a player game;
 its inclusion and delivery choices can depend on this wire view and its own
 past invocations.
 
-The following comparisons use this policy interface:
-
-- `runPolicies_enableRebroadcast` and `policyGame_enableRebroadcast` preserve
-  the complete execution law when the same no-rebroadcast policies are
-  embedded into the replay-enabled instance, at the same environment policy
-  and invocation schedule. Disabling replay removes only the explicit
-  rebroadcast command, including self-rebroadcast. Fresh same-payload
-  submissions and duplicate deliveries remain. No conclusion about arbitrary
-  replay-enabled deviations or Nash preservation follows from this embedding.
-- `runPolicies_hiding` compares two states with equal wire/application data,
-  equal service occupancy, and equal service values outside a protected owner.
-  No opening originally authored by that owner may be retained anywhere in
-  the pool. Under the same adaptive policies and a fixed schedule that does
-  not invoke that owner, the joint law of the wire view, other principals'
-  polling memories, and environment memory is identical. The owner's private
-  memory may differ and is excluded from the comparison. Opponents can register
-  their own values, submit arbitrary guessed openings, and replay available
-  messages. Sender/handle checks keep
-  successful opening validation confined to sender-scoped service slots.
-  The theorem covers both replay selections. It is exact hiding for the ideal
-  service, not a cryptographic theorem or a post-disclosure guarantee.
+`runApplicationPolicies_hiding` compares states with equal wire/application
+data, receipts, service occupancy, and service values outside a protected
+owner. No opening originally authored by that owner may be retained anywhere
+in the pool. Under the same adaptive policies and a fixed schedule that does
+not invoke that owner, the joint law of the wire view, public receipts,
+other principals' polling memories, and environment memory is identical. The
+owner's private memory may differ and is excluded from the comparison.
+Opponents can register their own values, submit arbitrary guessed openings,
+and replay available messages. Sender/handle checks confine successful opening
+validation to sender-scoped service slots. Validation agrees including rejection,
+which proves receipt equality rather than hiding receipts by assumption.
+Replay is unrestricted in this theorem; no-replay policies are included as a
+special case. This is exact ideal-service hiding, not cryptographic security,
+a post-disclosure guarantee, or unrestricted equivalence with a receipt-free game.
 
 `VegasTests/PendingPolicies.lean` instantiates this comparison with the actual
 checked nullable-choice program and every pair of its nullable values. Its
@@ -216,8 +210,9 @@ inclusion. Thus the control distinguishes values even though the application
 rejects cleartext. The compiled setup submits an opaque handle instead.
 
 `WFProgram.sealed_policy_source` in `Vegas/Game/SealedMessages.lean` proves
-source-support correctness for every outcome of the native policy game from
-the empty state. Its terminal conclusion preserves all source bindings and
+source-support correctness for every outcome of this shared policy game from
+the empty state. Its decoder erases receipts; policies still observe them.
+Its terminal conclusion preserves all source bindings and
 payout evaluation. This does not construct a source deviation or equate
 source/runtime policy laws. The hiding comparison does not discharge the
 compiler's general release-controller, quitting, or settlement obligations.
@@ -225,6 +220,12 @@ There are no resource or timing observations of internal verification here;
 adding them needs a new information-flow argument.
 
 ### The opening controller and its release boundary
+
+The owner-polling results in this subsection use the receipt-free
+`SealedPolicies` interface. Its replay-capability embedding preserves the law
+of an embedded policy but does not compare arbitrary replay-enabled deviations.
+These release and binding results remain to be ported to the shared runner;
+the bounded shared hiding theorem above does not cover intervening owner polls.
 
 `Interaction/SealedController.lean` supplies the local commit/open controller:
 register the chosen value, submit its opaque handle, then poll the public-view

@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedController
-import Interaction.SealedPolicyHiding
+import Interaction.SealedPolicyRelation
 import Interaction.SealedPolicyTrace
 
 /-! # Hiding through a public release boundary

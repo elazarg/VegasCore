@@ -38,11 +38,13 @@ import Interaction.ChoiceControllerHistory
 import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution
+import Interaction.SealedApplication
+import Interaction.SealedApplicationHiding
 import Interaction.SealedExecutionLaws
 import Interaction.SealedPolicies
 import Interaction.SealedPolicyLaws
 import Interaction.SealedHiding
-import Interaction.SealedPolicyHiding
+import Interaction.SealedPolicyRelation
 import Interaction.SealedController
 import Interaction.SealedControllerTrace
 import Interaction.SealedPolicyTrace

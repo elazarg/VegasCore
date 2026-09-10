@@ -184,6 +184,26 @@ theorem runPolicies_append [DecidableEq Principal]
       funext next
       exact ih next
 
+/-- Only the player policies invoked by the finite schedule affect its law. -/
+theorem runPolicies_congr_on_schedule [DecidableEq Principal]
+    (first second : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (hplayers : ∀ who, Invocation.player who ∈ schedule → first who = second who) :
+    app.runPolicies first environment schedule execution =
+      app.runPolicies second environment schedule execution := by
+  induction schedule generalizing execution with
+  | nil => rfl
+  | cons invocation rest ih =>
+      have hrest : ∀ who, Invocation.player who ∈ rest → first who = second who :=
+        fun who hmem => hplayers who (List.mem_cons_of_mem invocation hmem)
+      have hinvoke : app.invoke first environment execution invocation =
+          app.invoke second environment execution invocation := by
+        cases invocation with
+        | environment => rfl
+        | player who => simp only [invoke, hplayers who (List.mem_cons_self ..)]
+      simp only [runPolicies, hinvoke]
+      exact FinDist.bind_congr fun next _ => ih next hrest
+
 def policySignature (Principal : Type uPrincipal)
     (app : MessageApplication Principal) : GameSignature Principal where
   Strategy := fun _ => app.PlayerPolicy

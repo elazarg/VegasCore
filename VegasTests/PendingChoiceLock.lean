@@ -20,7 +20,7 @@ noncomputable section
 namespace VegasTests.PendingChoiceLock
 
 open Interaction Interaction.SealedProgram GameTheory GameTheory.Math.Probability
-open VegasTests.PendingSource VegasTests.PendingExecution VegasTests.PendingPolicies
+open VegasTests.PendingSource VegasTests.PendingExecution
 open VegasTests.PendingRelease
 
 def choiceAtRelease (execution : PolicyExecution Player Value) : Option Value :=
@@ -73,7 +73,7 @@ theorem choiceLaw_independent (rebroadcast : Bool) (left right : Value)
   · simpa only [openingProfile, Profile.update_same, PlayerPolicy.WaitsBefore,
       release, openingReady] using openingPolicy_waitsBefore rebroadcast program 0 2 right
   · exact fun related => choiceAtRelease_congr related
-  · exact prepared_related left right
+  · exact releasePrepared_related left right
 
 /-- Randomizing the protected source input yields a product law with the
 opponent's extracted choice. This includes failure to reach release and does
