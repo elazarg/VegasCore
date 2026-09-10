@@ -36,7 +36,7 @@ No condition is imposed on unaccepted handles. -/
 def RegisteredBindings (image : ApplicationImage P L) (owner : P)
     (valid : Nat → TypedValue L → Prop)
     (history : List image.application.PlayerEntry) (native : State P L) : Prop :=
-  ∀ field handle, native.memory.accepted field = some handle → handle.1 = owner →
+  ∀ field handle, native.memory.accepted field = some (.opaque handle) → handle.1 = owner →
     ∃ value, image.registrationCache handle.2 history = some value ∧
       native.frozen field = some value ∧ valid handle.2 value
 
@@ -61,10 +61,10 @@ theorem RegisteredBindings.ownerReadStore_accepted
     {history : List image.application.PlayerEntry} {native : State P L}
     (hbindings : image.RegisteredBindings owner valid history native)
     (field : Nat) (hprivate : native.memory.store field = none)
-    (haccepted : native.memory.accepted field = some (owner, field)) :
+    (haccepted : native.memory.accepted field = some (.opaque (owner, field))) :
     image.ownerReadStore owner history native.memory field = native.frozen field := by
   obtain ⟨value, hcache, hfrozen, _⟩ := hbindings field (owner, field) haccepted rfl
-  simp only [ownerReadStore, hprivate, if_pos haccepted, hcache, hfrozen]
+  simp only [ownerReadStore, hprivate, haccepted, if_true, hcache, hfrozen]
 
 private def PreparedMessage (owner : P) (valid : Nat → TypedValue L → Prop)
     (prepared : IdealCommitments P Nat (TypedValue L))
@@ -74,7 +74,7 @@ private def PreparedMessage (owner : P) (valid : Nat → TypedValue L → Prop)
 
 private def PreparedSnapshots (owner : P) (valid : Nat → TypedValue L → Prop)
     (state : State P L) : Prop :=
-  ∀ field handle, state.memory.accepted field = some handle → handle.1 = owner →
+  ∀ field handle, state.memory.accepted field = some (.opaque handle) → handle.1 = owner →
     ∃ value, state.prepared.lookup handle = some value ∧
       state.frozen field = some value ∧ valid handle.2 value
 
@@ -119,15 +119,21 @@ private theorem snapshots_handle (image : ApplicationImage P L) (owner : P)
     by_cases hfield : field = code.sourceField
     · subst field
       have heq : binding = handle := by
-        apply Option.some.inj
-        simpa only [State.bind, if_pos] using haccepted
+        have hdisposition :
+            (BindingDisposition.opaque binding :
+              BindingDisposition (CommitmentHandle P Nat) (TypedValue L)) =
+              BindingDisposition.opaque handle := by
+          apply Option.some.inj
+          simpa only [State.bind, if_pos] using haccepted
+        cases hdisposition
+        rfl
       subst handle
       have hsenderOwner : message.sender = owner := by
         rw [hbinding] at howner
         exact hsender.trans howner
       obtain ⟨value, hvalue, hvalid⟩ := hmessage hsenderOwner address binding hpayload
       exact ⟨value, hvalue, by simpa only [State.bind, if_pos] using hvalue, hvalid⟩
-    · have hprior : state.memory.accepted field = some handle := by
+    · have hprior : state.memory.accepted field = some (.opaque handle) := by
         simpa only [State.bind, if_neg hfield] using haccepted
       obtain ⟨value, hvalue, hfrozen, hvalid⟩ := hsnapshots field handle hprior howner
       exact ⟨value, hvalue, by simpa only [State.bind, if_neg hfield] using hfrozen, hvalid⟩

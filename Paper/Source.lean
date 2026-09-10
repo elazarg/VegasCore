@@ -171,7 +171,7 @@ theorem public_application_conditional_expiry
     (execution included : image.application.PolicyExecution)
     (hrefines : execution.native.application.Refines current.current.graph.1)
     (haccepted : execution.native.application.memory.accepted
-      (build.fieldOf spec.binding) = some (who, sourceSlot))
+      (build.fieldOf spec.binding) = some (.opaque (who, sourceSlot)))
     (hoverdue : deadline < execution.native.application.memory.clock)
     (address : Nat)
     (hcode : image.lookup address = some (.conditional

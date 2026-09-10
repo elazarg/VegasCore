@@ -41,7 +41,7 @@ theorem frozen_source_binding
     (env : VEnv L site.choice.context)
     (hagrees : (site.choice.siteState fresh build).Agrees cfg.store env)
     (haccepted : native.memory.accepted (site.sourceField fresh build) =
-      some (site.choice.owner, site.sourceField fresh build)) :
+      some (.opaque (site.choice.owner, site.sourceField fresh build))) :
     (native.frozen (site.sourceField fresh build)).bind
         (fun typed => typed.as? site.specification.secretTy) =
       some (env.get site.specification.binding) := by
@@ -80,7 +80,7 @@ theorem legal_choice_frozen
           fresh build).graph.field? slot = some fieldSpec ∧
             typed.ty = fieldSpec.ty) history native)
     (haccepted : native.memory.accepted (build.fieldOf spec.binding) =
-      some (who, build.fieldOf spec.binding))
+      some (.opaque (who, build.fieldOf spec.binding)))
     (chosen : L.Val ty)
     (hlegal : evalGuard guard chosen
       ((current.current.source.toView who).eraseEnv) = true) :

@@ -12,6 +12,8 @@ import VegasTests.ApplicationImage
 import VegasTests.ApplicationSampleExecution
 import VegasTests.PublicChoiceSourceCoupling
 import VegasTests.PublicChoiceResolution
+import VegasTests.BindingDefault
+import VegasTests.ApplicationBindingDefault
 import VegasTests.BindingSourceCoupling
 import VegasTests.BindingPhaseExecution
 import VegasTests.ConditionalSourceCoupling

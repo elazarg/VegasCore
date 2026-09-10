@@ -74,7 +74,7 @@ private theorem readStore_view_agrees
     (memory : ApplicationImage.Memory TestPlayer simpleExpr)
     (secret signal : Bool) (first : Option Bool)
     (hcache : image.registrationCache 0 history = some ⟨.bool, secret⟩)
-    (haccepted : memory.accepted 0 = some (0, 0))
+    (haccepted : memory.accepted 0 = some (.opaque (0, 0)))
     (hfields : ∀ field : Fin 8, memory.store field = publicFields signal first field) :
     beforeSecond.ViewAgrees 0 (image.ownerReadStore 0 history memory)
       (secondEnv secret signal first false) := by
@@ -120,11 +120,12 @@ private theorem source_law
     (native : image.application.State) (secret signal : Bool) (first : Option Bool)
     (hcache : image.registrationCache 0 history = some ⟨.bool, secret⟩)
     (hsecond : secondEncoding.cachedValue image.application history = none)
-    (haccepted : native.application.memory.accepted 0 = some (0, 0))
+    (haccepted : native.application.memory.accepted 0 = some (.opaque (0, 0)))
     (hfields : ∀ field : Fin 8,
       native.application.memory.store field = publicFields signal first field)
     (hready : secondCode.endpoint.ready
-      (native.application.memory.accepted 0) native.application.memory.done = true)
+      ((native.application.memory.accepted 0).bind BindingDisposition.opaqueHandle?)
+      native.application.memory.done = true)
     (hresolved : native.application.memory.done 9 = false) :
     (secondController policy).policy image.application history
         (MessageApplication.State.observe image.application native 0) =
@@ -171,7 +172,8 @@ theorem after_opening_first_submission_source_law
             (9, secondCode.endpoint.requestPayload
               (secondSite.specification.encoding choice.1))) := by
   apply source_law policy history _ secret signal (some secret) hcache hsecond
-  · cases secret <;> cases signal <;> decide +kernel
+  · apply (BindingDisposition.bind_opaqueHandle?_eq_some_iff _ _).mp
+    cases secret <;> cases signal <;> decide +kernel
   · intro field
     fin_cases field
     · apply Option.isNone_iff_eq_none.mp
@@ -197,7 +199,8 @@ theorem after_refusal_first_submission_source_law
             (9, secondCode.endpoint.requestPayload
               (secondSite.specification.encoding choice.1))) := by
   apply source_law policy history _ secret signal none hcache hsecond
-  · cases secret <;> cases signal <;> decide +kernel
+  · apply (BindingDisposition.bind_opaqueHandle?_eq_some_iff _ _).mp
+    cases secret <;> cases signal <;> decide +kernel
   · intro field
     fin_cases field
     · apply Option.isNone_iff_eq_none.mp

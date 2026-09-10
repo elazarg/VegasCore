@@ -284,7 +284,8 @@ private theorem reregister_suffix_law (secret signal : Bool) :
 
 private theorem second_opening_ready (secret signal : Bool) :
     secondCode.endpoint.ready
-      ((secondSubmitted secret signal).application.memory.accepted secondCode.sourceField)
+      (((secondSubmitted secret signal).application.memory.accepted secondCode.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       (secondSubmitted secret signal).application.memory.done = true := by
   cases secret <;> cases signal <;> decide +kernel
 
@@ -317,7 +318,8 @@ private theorem second_opening_suffix_result (secret signal : Bool) :
   have hresolve : secondCode.endpoint.resolve?
       (secondSubmitted secret signal).application.memory.clock
       ((secondSubmitted secret signal).application.verify secondCode)
-      ((secondSubmitted secret signal).application.memory.accepted secondCode.sourceField)
+      (((secondSubmitted secret signal).application.memory.accepted secondCode.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       (secondSubmitted secret signal).application.memory.done
       (secondCode.canOpen (secondSubmitted secret signal).application.memory.store)
       ⟨(0, 3), .opening (0, 0) secret⟩ = some (some secret) := by

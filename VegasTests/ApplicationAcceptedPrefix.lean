@@ -38,8 +38,8 @@ theorem accepted_prefix_after_binding (secret : Bool) :
 accepted handle consumed by the generated conditional publication. -/
 theorem conditional_handle_after_binding (secret : Bool) :
     (bound secret).application.memory.accepted (conditionalCode 10).sourceField =
-      some ((conditionalCode 10).endpoint.owner,
-        (conditionalCode 10).endpoint.sourceSlot) := by
+      some (.opaque ((conditionalCode 10).endpoint.owner,
+        (conditionalCode 10).endpoint.sourceSlot)) := by
   apply (accepted_prefix_after_binding secret).conditionalHandle
   · decide
   · change _ ∈ [_, ApplicationInstruction.conditional (conditionalCode 10)]

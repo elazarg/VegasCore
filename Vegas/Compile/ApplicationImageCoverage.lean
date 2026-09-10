@@ -29,12 +29,13 @@ open EventGraph Interaction Interaction.MessageApplication
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- A completed generated event has either a stored value or an accepted
-canonical opaque binding at its compiler-allocated field. -/
+binding disposition at its compiler-allocated field. -/
 def Memory.Covers (initialFields : Nat) (memory : Memory P L) : Prop :=
   ∀ node, memory.done node = true →
     (memory.store (initialFields + node)).isSome ∨
-      ∃ owner, memory.accepted (initialFields + node) =
-        some (owner, initialFields + node)
+      (∃ owner, memory.accepted (initialFields + node) =
+        some (.opaque (owner, initialFields + node))) ∨
+      ∃ value, memory.accepted (initialFields + node) = some (.publicDefault value)
 
 omit [DecidableEq P] in
 theorem Memory.covers_of_done_false (memory : Memory P L) (initialFields : Nat)
@@ -78,11 +79,12 @@ theorem State.sample_covers (state : State P L) (code : SampleCode L)
     change (state.memory.store.set code.outputField ⟨code.dist.ty, value⟩
       code.outputField).isSome = true
     simp
-  · rcases hcovers node hold with hstored | ⟨owner, howner⟩
+  · rcases hcovers node hold with hstored | hopen | hdefault
     · left
       exact store_isSome_set state.memory.store code.outputField
         ⟨code.dist.ty, value⟩ (initialFields + node) hstored
-    · exact Or.inr ⟨owner, howner⟩
+    · exact Or.inr (Or.inl hopen)
+    · exact Or.inr (Or.inr hdefault)
 
 omit [DecidableEq P] in
 theorem State.publish_covers (state : State P L) (code : PublicChoiceCode P L)
@@ -106,12 +108,13 @@ theorem State.publish_covers (state : State P L) (code : PublicChoiceCode P L)
     change (((state.memory.store.set code.choiceField ⟨code.guard.ty, value⟩).set
       code.publicationField ⟨code.guard.ty, value⟩) code.publicationField).isSome = true
     simp
-  · rcases hcovers node hold with hstored | ⟨owner, howner⟩
+  · rcases hcovers node hold with hstored | hopen | hdefault
     · left
       apply store_isSome_set
       exact store_isSome_set state.memory.store code.choiceField
         ⟨code.guard.ty, value⟩ (initialFields + node) hstored
-    · exact Or.inr ⟨owner, howner⟩
+    · exact Or.inr (Or.inl hopen)
+    · exact Or.inr (Or.inr hdefault)
 
 omit [DecidableEq P] in
 theorem State.publishConditional_covers (state : State P L)
@@ -136,12 +139,13 @@ theorem State.publishConditional_covers (state : State P L)
     change (((state.memory.store.set code.choiceField _).set
       code.publicationField _) code.publicationField).isSome = true
     simp
-  · rcases hcovers node hold with hstored | ⟨owner, howner⟩
+  · rcases hcovers node hold with hstored | hopen | hdefault
     · left
       apply store_isSome_set
       exact store_isSome_set state.memory.store code.choiceField _
         (initialFields + node) hstored
-    · exact Or.inr ⟨owner, howner⟩
+    · exact Or.inr (Or.inl hopen)
+    · exact Or.inr (Or.inr hdefault)
 
 omit [DecidableEq P] in
 theorem State.bind_covers (state : State P L) (code : BindingCode P)
@@ -156,15 +160,27 @@ theorem State.bind_covers (state : State P L) (code : BindingCode P)
   simp only [State.bind, Bool.or_eq_true, beq_iff_eq] at hdone
   rcases hdone with hnode | hold
   · right
+    left
     subst node
     refine ⟨code.owner, ?_⟩
     simp [State.bind, hallocated, hhandle]
-  · rcases hcovers node hold with hstored | ⟨owner, howner⟩
+  · rcases hcovers node hold with hstored | hopen | hdefault
     · exact Or.inl hstored
     · right
       by_cases hfield : initialFields + node = code.sourceField
-      · exact ⟨code.owner, by simp [State.bind, hfield, hhandle, hallocated]⟩
-      · exact ⟨owner, by simpa [State.bind, hfield] using howner⟩
+      · exact Or.inl ⟨code.owner, by
+          simp [State.bind, hfield, hhandle, hallocated]⟩
+      · exact Or.inl (by
+          rcases hopen with ⟨owner, haccepted⟩
+          exact ⟨owner, by simpa [State.bind, hfield] using haccepted⟩)
+    · by_cases hfield : initialFields + node = code.sourceField
+      · right
+        left
+        exact ⟨code.owner, by simp [State.bind, hfield, hhandle, hallocated]⟩
+      · right
+        right
+        rcases hdefault with ⟨value, haccepted⟩
+        exact ⟨value, by simpa [State.bind, hfield] using haccepted⟩
 
 theorem handle_covers (image : ApplicationImage P L) (initialFields : Nat)
     (hallocated : ∀ instruction ∈ image.instructions,
@@ -253,7 +269,9 @@ theorem handle_covers (image : ApplicationImage P L) (initialFields : Nat)
               | some decoded =>
                   simp only [hdecoded, Option.bind_some] at hnext
                   cases hresolved : code.endpoint.resolve? state.memory.clock
-                      (state.verify code) (state.memory.accepted code.sourceField)
+                      (state.verify code)
+                      ((state.memory.accepted code.sourceField).bind
+                        BindingDisposition.opaqueHandle?)
                       state.memory.done (code.canOpen state.memory.store)
                       ⟨id, decoded⟩ with
                   | none => simp [hresolved] at hnext

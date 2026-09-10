@@ -129,7 +129,7 @@ private theorem conditional_forward_common
       hreached site.choice.decision current.current.graph.1 checkpoint.refines hsourceReady
       hinitial current.current.source (BuildState.Agrees.view current.current.agrees who)
   have haccepted : execution.native.application.memory.accepted (state.fieldOf spec.binding) =
-      some (who, sourceSlot) := by
+      some (.opaque (who, sourceSlot)) := by
     have haccepted := ApplicationImage.AcceptedBindingPrefix.conditionalHandle
       checkpoint.accepted horigins code hcodeMem (by rfl)
     exact haccepted

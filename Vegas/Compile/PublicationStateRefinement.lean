@@ -69,9 +69,21 @@ theorem resolution_refines
   refine ⟨hlower.1, hlower.2, ?_⟩
   have hbindings := hrefines.bindings.completePair hrefines.reachable
     choice publication written hreadiness.1.1 hreadiness.2.1
-  simpa [ApplicationImage.State.BindingsRepresent, ApplicationImage.State.publish,
-    ApplicationImage.Memory.publish,
-    PublicChoiceSite.completePublication, written] using hbindings
+  constructor
+  · intro field handle haccepted
+    have hprior : native.memory.accepted field = some (.opaque handle) := by
+      simpa only [ApplicationImage.State.publish, ApplicationImage.Memory.publish]
+        using haccepted
+    simpa only [ApplicationImage.State.publish, ApplicationImage.Memory.publish,
+      PublicChoiceSite.completePublication, written] using
+      hbindings.opaqueBinding field handle hprior
+  · intro field typed haccepted
+    have hprior : native.memory.accepted field = some (.publicDefault typed) := by
+      simpa only [ApplicationImage.State.publish, ApplicationImage.Memory.publish]
+        using haccepted
+    simpa only [ApplicationImage.State.publish, ApplicationImage.Memory.publish,
+      PublicChoiceSite.completePublication, written] using
+      hbindings.publicDefault field typed hprior
 
 end PublicChoiceSite
 
@@ -97,7 +109,8 @@ theorem resolution_refines
     (result : Option (L.Val site.specification.secretTy))
     (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
       native.memory.clock (native.verify (site.code fresh build sourceSlot deadline))
-      (native.memory.accepted (site.sourceField fresh build)) native.memory.done
+      ((native.memory.accepted (site.sourceField fresh build)).bind
+        BindingDisposition.opaqueHandle?) native.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (native.publishConditional (site.code fresh build sourceSlot deadline) result).Refines
@@ -109,16 +122,22 @@ theorem resolution_refines
   let written : TypedValue L :=
     ⟨site.choice.ty, site.specification.encoding.symm result⟩
   have hruntimeReady := code.endpoint.resolve_success_inversion native.memory.clock
-    (native.verify code) (native.memory.accepted code.sourceField) native.memory.done
+    (native.verify code) ((native.memory.accepted code.sourceField).bind
+      BindingDisposition.opaqueHandle?) native.memory.done
     (code.canOpen native.memory.store) message result hresolve
   have hreadyParts := hruntimeReady
   simp only [ConditionalPublication.ready, Bool.and_eq_true, beq_iff_eq,
     Bool.not_eq_true'] at hreadyParts
   have haccepted : native.memory.accepted (site.sourceField fresh build) =
-      some (site.choice.owner, sourceSlot) := by
-    exact hreadyParts.1.1.1
+      some (.opaque (site.choice.owner, sourceSlot)) := by
+    obtain ⟨disposition, haccepted, hopaque⟩ :=
+      Option.bind_eq_some_iff.mp hreadyParts.1.1.1
+    rw [BindingDisposition.opaqueHandle?_eq_some_iff] at hopaque
+    subst disposition
+    exact haccepted
   obtain ⟨spec, bound, hfield, _howner, hstored, hfrozen⟩ :=
-    hrefines.bindings (site.sourceField fresh build) (site.choice.owner, sourceSlot)
+    hrefines.bindings.opaqueBinding (site.sourceField fresh build)
+      (site.choice.owner, sourceSlot)
       haccepted
   obtain ⟨sourceSpec, hsourceField, hsourceTy, _hsourceOwner⟩ :=
     site.compiledSourceField fresh build
@@ -137,14 +156,25 @@ theorem resolution_refines
     initial legal native cfg hrefines.memory hrefines.reachable heligible hbinding
     message result hresolve
   have hreadiness := G.conditionalPublication_ready cfg site.choice.owner sourceSlot
-    choice publication deadline (native.memory.accepted code.sourceField)
-    native.memory.done hrefines.memory.completed hruntimeReady
+    choice publication deadline ((native.memory.accepted code.sourceField).bind
+      BindingDisposition.opaqueHandle?) native.memory.done
+      hrefines.memory.completed hruntimeReady
   refine ⟨hlower.1, hlower.2, ?_⟩
   have hbindings := hrefines.bindings.completePair hrefines.reachable
     choice publication written hreadiness.1.1 hreadiness.2.1
-  simpa [ApplicationImage.State.BindingsRepresent,
-    ApplicationImage.State.publishConditional,
-    ConditionalPublicationSite.completePublication, written] using hbindings
+  constructor
+  · intro field handle haccepted
+    have hprior : native.memory.accepted field = some (.opaque handle) := by
+      simpa only [ApplicationImage.State.publishConditional] using haccepted
+    simpa only [ApplicationImage.State.publishConditional,
+      ConditionalPublicationSite.completePublication, written] using
+      hbindings.opaqueBinding field handle hprior
+  · intro field typed haccepted
+    have hprior : native.memory.accepted field = some (.publicDefault typed) := by
+      simpa only [ApplicationImage.State.publishConditional] using haccepted
+    simpa only [ApplicationImage.State.publishConditional,
+      ConditionalPublicationSite.completePublication, written] using
+      hbindings.publicDefault field typed hprior
 
 end ConditionalPublicationSite
 

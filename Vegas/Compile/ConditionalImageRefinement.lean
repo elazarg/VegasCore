@@ -52,7 +52,8 @@ theorem conditional_resolution_refines
     (result : Option (L.Val site.specification.secretTy))
     (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
       native.memory.clock (native.verify (site.code fresh build sourceSlot deadline))
-      (native.memory.accepted (site.sourceField fresh build)) native.memory.done
+      ((native.memory.accepted (site.sourceField fresh build)).bind
+        BindingDisposition.opaqueHandle?) native.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (native.publishConditional (site.code fresh build sourceSlot deadline) result).memory.Represents
@@ -65,11 +66,12 @@ theorem conditional_resolution_refines
   let guard := site.choice.compiledGuard fresh build
   let code := site.code fresh build sourceSlot deadline
   have hruntimeReady := code.endpoint.resolve_success_inversion native.memory.clock
-    (native.verify code) (native.memory.accepted code.sourceField) native.memory.done
+    (native.verify code) ((native.memory.accepted code.sourceField).bind
+      BindingDisposition.opaqueHandle?) native.memory.done
     (code.canOpen native.memory.store) message result hresolve
   have hreadiness := G.conditionalPublication_ready cfg site.choice.owner sourceSlot
-    choice publication deadline (native.memory.accepted code.sourceField)
-    native.memory.done hrep.completed hruntimeReady
+    choice publication deadline ((native.memory.accepted code.sourceField).bind
+      BindingDisposition.opaqueHandle?) native.memory.done hrep.completed hruntimeReady
   have hrow : G.nodes[choice]? = some
       ((decisionSiteState site.choice.decision fresh build).commitEvent
         site.choice.owner site.choice.guard) := site.choice.choiceNode_row fresh build
@@ -100,7 +102,8 @@ theorem conditional_resolution_refines
     | none => exact site.decline_guard_eval fresh build initial legal reads
     | some claimed =>
         have hverified := code.endpoint.resolve_some_verified native.memory.clock
-          (native.verify code) (native.memory.accepted code.sourceField) native.memory.done
+          (native.verify code) ((native.memory.accepted code.sourceField).bind
+            BindingDisposition.opaqueHandle?) native.memory.done
           (code.canOpen native.memory.store) message claimed hresolve
         have hfrozen : (native.frozen (site.sourceField fresh build)).bind
             (fun typed => typed.as? site.specification.secretTy) = some claimed := by
@@ -108,7 +111,8 @@ theorem conditional_resolution_refines
             ConditionalPublicationSite.code] using hverified
         have hclaimed := hbinding claimed hfrozen
         have hcanOpen := code.endpoint.resolve_some_canOpen native.memory.clock
-          (native.verify code) (native.memory.accepted code.sourceField) native.memory.done
+          (native.verify code) ((native.memory.accepted code.sourceField).bind
+            BindingDisposition.opaqueHandle?) native.memory.done
           (code.canOpen native.memory.store) message claimed hresolve
         change site.canOpen fresh build native.memory.store claimed = true at hcanOpen
         rw [site.canOpen_eq_eval fresh build cfg.store native.memory.store reads hreads
@@ -161,7 +165,8 @@ theorem canonical_request_accepted
       Store.getAs native.memory.store ref.field ref.ty =
         Store.getAs representedStore ref.field ref.ty)
     (hready : (site.code fresh state sourceSlot deadline).endpoint.ready
-      (native.memory.accepted (site.sourceField fresh state)) native.memory.done = true)
+      ((native.memory.accepted (site.sourceField fresh state)).bind
+        BindingDisposition.opaqueHandle?) native.memory.done = true)
     (chosen : L.Val site.choice.ty)
     (hlegal : evalGuard site.choice.guard chosen
       ((env.toView site.choice.owner).eraseEnv) = true)
@@ -177,13 +182,15 @@ theorem canonical_request_accepted
         (site.specification.encoding chosen)) := by
   let code := site.code fresh state sourceSlot deadline
   have hresolve : code.endpoint.resolve? native.memory.clock (native.verify code)
-      (native.memory.accepted code.sourceField) native.memory.done
+      ((native.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+      native.memory.done
       (code.canOpen native.memory.store)
       ⟨(code.endpoint.owner, serial),
         code.endpoint.requestPayload (site.specification.encoding chosen)⟩ =
         some (site.specification.encoding chosen) := by
     apply (code.endpoint.resolve_requestPayload native.memory.clock (native.verify code)
-      (native.memory.accepted code.sourceField) native.memory.done
+      ((native.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+      native.memory.done
       (code.canOpen native.memory.store) hready serial
       (site.specification.encoding chosen)).2
     cases hresult : site.specification.encoding chosen with
@@ -243,7 +250,8 @@ theorem include_conditional_source_steps
     (hresolve : (site.code fresh build sourceSlot deadline).endpoint.resolve?
       state.application.memory.clock
       (state.application.verify (site.code fresh build sourceSlot deadline))
-      (state.application.memory.accepted (site.sourceField fresh build))
+      ((state.application.memory.accepted (site.sourceField fresh build)).bind
+        BindingDisposition.opaqueHandle?)
       state.application.memory.done
       ((site.code fresh build sourceSlot deadline).canOpen
         state.application.memory.store)

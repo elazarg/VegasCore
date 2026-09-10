@@ -63,8 +63,11 @@ def ownerReadStore (image : ApplicationImage P L) (who : P)
     (history : List image.application.PlayerEntry) (memory : Memory P L) : Store L :=
   fun field => match memory.store field with
     | some value => some value
-    | none => if memory.accepted field = some (who, field) then
-        image.registrationCache field history else none
+    | none => match memory.accepted field with
+      | some (.publicDefault value) => some value
+      | some (.opaque handle) => if handle = (who, field) then
+          image.registrationCache field history else none
+      | none => none
 
 /-- Load the complete declared choice footprint, not just guard dependencies.
 Missing or ill-typed inputs cause a wait in the consuming choice controller. -/
@@ -78,6 +81,26 @@ theorem ownerReadStore_public (image : ApplicationImage P L) (who : P)
     (field : Nat) (value : TypedValue L) (hstored : memory.store field = some value) :
     image.ownerReadStore who history memory field = some value := by
   simp [ownerReadStore, hstored]
+
+/-- A public-default disposition is read directly when no later public result
+occupies the field; private registration history is not consulted. -/
+theorem ownerReadStore_publicDefault (image : ApplicationImage P L) (who : P)
+    (history : List image.application.PlayerEntry) (memory : Memory P L)
+    (field : Nat) (value : TypedValue L) (hstored : memory.store field = none)
+    (hdefault : memory.accepted field = some (.publicDefault value)) :
+    image.ownerReadStore who history memory field = some value := by
+  simp [ownerReadStore, hstored, hdefault]
+
+/-- Reading a public default at its field is independent of the owner's entire
+private command history. -/
+theorem ownerReadStore_publicDefault_history (image : ApplicationImage P L) (who : P)
+    (left right : List image.application.PlayerEntry) (memory : Memory P L)
+    (field : Nat) (value : TypedValue L) (hstored : memory.store field = none)
+    (hdefault : memory.accepted field = some (.publicDefault value)) :
+    image.ownerReadStore who left memory field =
+      image.ownerReadStore who right memory field := by
+  rw [image.ownerReadStore_publicDefault who left memory field value hstored hdefault,
+    image.ownerReadStore_publicDefault who right memory field value hstored hdefault]
 
 /-- Appending traffic cannot replace an already recorded private choice. This
 is a cache law, not a claim that arbitrary re-registration preserves the
@@ -93,7 +116,7 @@ that original binding. No condition is needed for already-public fields. -/
 def RegistrationMatches (image : ApplicationImage P L) (who : P)
     (history : List image.application.PlayerEntry) (native : State P L) : Prop :=
   ∀ field value, native.memory.store field = none →
-    native.memory.accepted field = some (who, field) →
+    native.memory.accepted field = some (.opaque (who, field)) →
     image.registrationCache field history = some value →
       native.frozen field = some value
 
@@ -119,23 +142,38 @@ theorem ownerReadStore_getAs
       have hstored := hrefines.memory.stored field typed hpublic
       simpa [Store.getAs, ownerReadStore, hpublic, hstored] using hread
   | none =>
-      by_cases haccepted : native.memory.accepted field = some (who, field)
-      · simp only [Store.getAs, ownerReadStore, hpublic, if_pos haccepted] at hread
-        cases hrecorded : image.registrationCache field history with
-        | none => simp [hrecorded] at hread
-        | some typed =>
-            have hfrozen := hcache field typed hpublic haccepted hrecorded
-            obtain ⟨actual, bound, hactual, _, hbound, hconsistent⟩ :=
-              hrefines.bindings field (who, field) haccepted
-            have hspec : actual = spec := Option.some.inj (hactual.symm.trans hfield)
-            subst actual
-            have hrecovered : (native.frozen field).bind
-                (fun stored => stored.as? spec.ty) = some value := by
-              simpa [hfrozen, hrecorded] using hread
-            have heq := hconsistent value hrecovered
-            rw [← heq] at hbound
-            exact hbound
-      · simp [Store.getAs, ownerReadStore, hpublic, haccepted] at hread
+      cases haccepted : native.memory.accepted field with
+      | none => simp [Store.getAs, ownerReadStore, hpublic, haccepted] at hread
+      | some disposition =>
+          cases disposition with
+          | publicDefault typed =>
+              simp only [Store.getAs, ownerReadStore, hpublic, haccepted] at hread
+              obtain ⟨actual, hactual, _, htype', hbound⟩ :=
+                hrefines.bindings.publicDefault field typed haccepted
+              have hspec : actual = spec := Option.some.inj (hactual.symm.trans hfield)
+              subst actual
+              simpa only [Store.getAs, hbound, Option.bind_some] using hread
+          | «opaque» handle =>
+              by_cases hhandle : handle = (who, field)
+              · subst handle
+                simp only [Store.getAs, ownerReadStore, hpublic, haccepted,
+                  if_true] at hread
+                cases hrecorded : image.registrationCache field history with
+                | none => simp [hrecorded] at hread
+                | some typed =>
+                    have hfrozen := hcache field typed hpublic haccepted hrecorded
+                    obtain ⟨actual, bound, hactual, _, hbound, hconsistent⟩ :=
+                      hrefines.bindings.opaqueBinding field (who, field) haccepted
+                    have hspec : actual = spec :=
+                      Option.some.inj (hactual.symm.trans hfield)
+                    subst actual
+                    have hrecovered : (native.frozen field).bind
+                        (fun stored => stored.as? spec.ty) = some value := by
+                      simpa [hfrozen, hrecorded] using hread
+                    have heq := hconsistent value hrecovered
+                    rw [← heq] at hbound
+                    exact hbound
+              · simp [Store.getAs, ownerReadStore, hpublic, haccepted, hhandle] at hread
 
 /-- Native inputs suffice to reconstruct the complete source-visible context
 when all declared reads are available and cached originals match their frozen

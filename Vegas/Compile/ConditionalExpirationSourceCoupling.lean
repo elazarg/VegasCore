@@ -43,7 +43,7 @@ theorem expiry_include_source_coupling
     (execution included : image.application.PolicyExecution)
     (hrefines : execution.native.application.Refines current.current.graph.1)
     (haccepted : execution.native.application.memory.accepted
-      (build.fieldOf spec.binding) = some (who, sourceSlot))
+      (build.fieldOf spec.binding) = some (.opaque (who, sourceSlot)))
     (hoverdue : deadline < execution.native.application.memory.clock)
     (address : Nat)
     (hcode : image.lookup address = some (.conditional
@@ -74,14 +74,16 @@ theorem expiry_include_source_coupling
   have hresolve : code.endpoint.resolve?
       execution.native.application.memory.clock
       (execution.native.application.verify code)
-      (execution.native.application.memory.accepted code.sourceField)
+      ((execution.native.application.memory.accepted code.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       execution.native.application.memory.done
       (code.canOpen execution.native.application.memory.store)
       ⟨id, .expire⟩ = some none := by
     apply (code.endpoint.resolve_expire
       execution.native.application.memory.clock
       (execution.native.application.verify code)
-      (execution.native.application.memory.accepted code.sourceField)
+      ((execution.native.application.memory.accepted code.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       execution.native.application.memory.done
       (code.canOpen execution.native.application.memory.store)
       ⟨id, .expire⟩ rfl).2
@@ -125,7 +127,17 @@ theorem expiry_include_source_coupling
     · rw [hgraph]
       exact hmemory
     · rw [hgraph]
-      exact hbindings
+      constructor
+      · intro field handle haccepted
+        have hprior : execution.native.application.memory.accepted field =
+            some (.opaque handle) := by
+          simpa only [ApplicationImage.State.publishConditional] using haccepted
+        exact hbindings.opaqueBinding field handle hprior
+      · intro field typed haccepted
+        have hprior : execution.native.application.memory.accepted field =
+            some (.publicDefault typed) := by
+          simpa only [ApplicationImage.State.publishConditional] using haccepted
+        exact hbindings.publicDefault field typed hprior
   refine ⟨next, hsource, ?_⟩
   have happlication :
       (image.application.includePending execution.native id).application =

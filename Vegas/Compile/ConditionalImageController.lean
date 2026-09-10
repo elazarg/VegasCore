@@ -96,7 +96,8 @@ def imageController (site : ConditionalPublicationSite prog)
     (retry : List image.application.PlayerEntry → image.application.View → Bool) :=
   site.controller fresh state sourceSlot deadline image.application
     (ApplicationImage.conditionalTransport site.specification.secretTy)
-    (fun view => view.application.accepted (site.sourceField fresh state))
+    (fun view => (view.application.accepted (site.sourceField fresh state)).bind
+      BindingDisposition.opaqueHandle?)
     (fun view => view.application.done) readout? sourcePolicy retry
 
 /-- A first uncached, ready image-controller invocation has exactly the source
@@ -123,7 +124,8 @@ theorem imageController_first_submission_source_law
         (ApplicationImage.conditionalTransport site.specification.secretTy)).submission
           image.application).cachedValue image.application history = none)
     (hready : (site.runtimeSite fresh state sourceSlot deadline).ready
-      (view.application.accepted (site.sourceField fresh state))
+      ((view.application.accepted (site.sourceField fresh state)).bind
+        BindingDisposition.opaqueHandle?)
       view.application.done = true)
     (hreadout : readout? history view = some reads)
     (hagrees : (site.choice.siteState fresh state).ViewAgrees
@@ -139,7 +141,8 @@ theorem imageController_first_submission_source_law
               (site.specification.encoding choice.1))) := by
   exact site.controller_first_submission_source_law fresh state sourceSlot deadline
     image.application (ApplicationImage.conditionalTransport site.specification.secretTy)
-    (fun current => current.application.accepted (site.sourceField fresh state))
+    (fun current => (current.application.accepted (site.sourceField fresh state)).bind
+      BindingDisposition.opaqueHandle?)
     (fun current => current.application.done) readout? sourcePolicy retry history view
     representedStore env reads hresolved hcache hready hreadout hagrees hreads
 

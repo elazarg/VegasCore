@@ -22,7 +22,9 @@ import Interaction.DependencyGate
 import Interaction.DependencyGateLaws
 import Interaction.Deadline
 import Interaction.IdealCommitments
+import Interaction.BindingDisposition
 import Interaction.ConditionalPublication
+import Interaction.BindingPublication
 import Interaction.ConditionalPublicationRouting
 import Interaction.PublicChoice
 import Interaction.ChoiceController

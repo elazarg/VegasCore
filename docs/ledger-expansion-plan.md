@@ -130,21 +130,33 @@ designated source-legal backend resolution, not inferred programmer intent or
 equality with the original owner's policy. The annotation and source accounting
 remain separate. See [timeout compilation](timeout-compilation.md).
 
-The implementation order is:
+Source-certified binding-default values and the distinct public disposition
+are represented and checked. `BindingDefault.defaultBind_source_coupling`
+relates the emitted public expression and state update to the original source
+commit. Public defaults have exact typed refinement and direct local readout;
+opaque bindings retain their separate frozen-snapshot provenance. The generic
+conditional-publication classifier handles both dispositions, but the generated
+conditional instruction still handles only opaque references. No generated
+binding-expiry handler or timeout-driving reference service is supplied by
+these state and classifier results.
 
-1. Extend source-authorized resolution to the opaque-binding instruction.
-   `Legal` provides some legal action, not the programmer's specified
-   nonresponse consequence. Keep the designated expression, its certificate,
-   and backend eligibility separate from core syntax and WF.
-2. Represent an accepted opaque commitment and a public fallback as distinct
-   dispositions. A fallback neither forges an owner's message nor overwrites
-   its private preparation. Retain the fallback value in the disposition and
-   require refinement to relate that value to the source binding. Adapt opening
-   verification and reference readout accordingly: opaque commitments use
-   accepted-snapshot provenance; public defaults supply their recorded value.
-   An unopenable handle cannot substitute for a public default: existing owner
-   readout would return a different cached registration, or no value at all.
-3. Prove handler/source continuation for those fallbacks. Couple this with
+The remaining implementation order is:
+
+1. Factor the public-expression and legality certificate through one source
+   decision interface; keep adjacent reveal geometry on the public-choice
+   consumer. Emit optional binding-default deadline and expression code, admit actual
+   permissionless expiry packets, and use the checked state-update/source
+   theorem to prove their inclusion continuation. `Legal` provides some legal
+   action, not the programmer's specified nonresponse consequence. Keep the
+   designated expression, its certificate, and backend eligibility separate
+   from core syntax and WF.
+2. Integrate disposition-aware conditional publication and reference policies.
+   A public default supplies its recorded value and uses authenticated
+   cleartext publication; it must never be treated as an opaque opening or
+   recovered from an unrelated private cache. Prove both legal source
+   continuation and the appropriate reference law, retaining the real public
+   disposition and message histories.
+3. Couple these handlers with
    observation-local request production, a public clock, and admitted inclusion
    capacity. Specify who supplies permissionless transactions and what happens
    when a valid ordinary request competes with expiry.

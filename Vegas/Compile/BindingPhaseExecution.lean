@@ -149,15 +149,16 @@ theorem binding_phase_source_law
       (compileCore (.commit name who guard tail) fresh build).graph.nodeTarget
         (site.compiledNode fresh build) := rfl
   have haccepted : execution.native.application.memory.accepted code.sourceField = none := by
-    cases haccepted : execution.native.application.memory.accepted code.sourceField with
+    apply hrefines.bindings.accepted_eq_none_of_store_eq_none code.sourceField
+    cases hstored : current.current.graph.1.store code.sourceField with
     | none => rfl
-    | some handle =>
-        obtain ⟨spec, stored, _, _, hstored, _⟩ :=
-          hrefines.bindings code.sourceField handle haccepted
+    | some typed =>
+        have hpresent : Store.getAs current.current.graph.1.store code.sourceField typed.ty =
+            some typed.value := by
+          simp [Store.getAs, hstored, TypedValue.as?]
         have habsent := reachable_getAs_nodeTarget_eq_none hrefines.reachable
-          (site.compiledNode fresh build) hready.1 spec.ty
-        rw [hfield] at hstored
-        rw [habsent] at hstored
+          (site.compiledNode fresh build) hready.1 typed.ty
+        rw [hfield, habsent] at hpresent
         contradiction
   have hresolved : code.resolved execution.native.application.memory = false := by
     simp [BindingCode.resolved, haccepted, hnotDone]

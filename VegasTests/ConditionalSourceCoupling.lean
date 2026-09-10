@@ -128,16 +128,18 @@ theorem unopenable_decline_source_successor :
   obtain ⟨current, hsource, hrefines, _⟩ := bound_source_successor false
   have hunprepared : unpreparedBound.application.Refines current.current.graph.1 := by
     refine ⟨hrefines.memory, hrefines.reachable, ?_⟩
-    intro field handle haccepted
-    obtain ⟨spec, value, hfield, howner, hstored, _⟩ :=
-      hrefines.bindings field handle haccepted
-    refine ⟨spec, value, hfield, howner, hstored, ?_⟩
-    intro recovered hrecovered
-    have hnone : unpreparedBound.application.frozen field = none := by
-      change (if field = 0 then none else none) = none
-      simp
-    rw [hnone] at hrecovered
-    contradiction
+    constructor
+    · intro field handle haccepted
+      obtain ⟨spec, value, hfield, howner, hstored, _⟩ :=
+        hrefines.bindings.opaqueBinding field handle haccepted
+      refine ⟨spec, value, hfield, howner, hstored, ?_⟩
+      intro recovered hrecovered
+      have hnone : unpreparedBound.application.frozen field = none := by
+        change (if field = 0 then none else none) = none
+        simp
+      rw [hnone] at hrecovered
+      contradiction
+    · exact hrefines.bindings.publicDefault
   obtain ⟨next, hnextSource, hnextRefines⟩ :=
     ConditionalPublicationSite.include_source_coupling
       (P := Fin 2) (L := simpleExpr) (Γ := OpeningContext)

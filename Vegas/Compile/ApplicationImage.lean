@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Interaction.MessageApplication
 import Interaction.PublicChoice
 import Interaction.ConditionalPublication
+import Interaction.BindingDisposition
 import Vegas.Compile.PublicGuard
 import Vegas.EventGraph.Execution
 
@@ -107,12 +108,12 @@ structure ApplicationImage (P : Type) (L : IExpr) where
 
 namespace ApplicationImage
 
-/-- Only public application data. Unopened source values have no storage
-location in this carrier. The completion map is operational, not a proof. -/
+/-- Public application data. Opaque bindings expose only their handles; public
+defaults retain their selected values. The completion map is operational. -/
 structure Memory (P : Type) (L : IExpr) where
   store : Store L
   done : Nat → Bool
-  accepted : Nat → Option (CommitmentHandle P Nat)
+  accepted : Nat → Option (BindingDisposition (CommitmentHandle P Nat) (TypedValue L))
   clock : Nat
 
 inductive Payload (P : Type) (L : IExpr) where
@@ -132,8 +133,8 @@ inductive EnvironmentCommand where
   | sample (address : Nat)
 
 /-- The public projection and ideal service state are separate. Frozen values
-are indexed by source field; `memory.accepted` distinguishes an unbound field
-from an accepted handle whose frozen value is absent. -/
+are indexed by source field. An opaque disposition may have an absent frozen
+value; a public default records its value without using that private table. -/
 structure State (P : Type) (L : IExpr) where
   memory : Memory P L
   prepared : IdealCommitments P Nat (TypedValue L)
@@ -196,11 +197,22 @@ def State.bind (state : State P L) (code : BindingCode P)
     (handle : CommitmentHandle P Nat) : State P L :=
   { state with
     memory := { state.memory with
-      accepted field := if field = code.sourceField then some handle
+      accepted field := if field = code.sourceField then some (.opaque handle)
         else state.memory.accepted field
       done node := node == code.node || state.memory.done node }
     frozen field := if field = code.sourceField then state.prepared.lookup handle
       else state.frozen field }
+
+/-- Install a public binding fallback without changing private preparation,
+accepted snapshots, or the public field store. The disposition itself carries
+the selected value. Admission, typing, and source legality are obligations of
+the invoking handler; this state operation alone grants no timeout authority. -/
+def State.defaultBind (state : State P L) (code : BindingCode P)
+    (value : TypedValue L) : State P L :=
+  { state with memory := { state.memory with
+      accepted field := if field = code.sourceField then some (.publicDefault value)
+        else state.memory.accepted field
+      done node := node == code.node || state.memory.done node } }
 
 def State.publishConditional (state : State P L) (code : ConditionalCode P L)
     (result : Option (L.Val code.secretTy)) : State P L :=
@@ -307,7 +319,8 @@ def handle (image : ApplicationImage P L) (state : State P L)
       let .conditional code ← image.lookup address | none
       let decoded ← code.decode payload
       let result ← code.endpoint.resolve? state.memory.clock (state.verify code)
-        (state.memory.accepted code.sourceField) state.memory.done
+        ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+        state.memory.done
         (code.canOpen state.memory.store) ⟨message.id, decoded⟩
       pure (state.publishConditional code result)
 

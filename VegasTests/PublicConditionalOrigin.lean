@@ -134,8 +134,9 @@ theorem public_value_without_accepted_handle :
   decide
 
 theorem conditional_not_ready_after_public_inclusion :
-    conditionalCode.endpoint.ready
-      (included.application.memory.accepted conditionalCode.sourceField)
+  conditionalCode.endpoint.ready
+      ((included.application.memory.accepted conditionalCode.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       included.application.memory.done = false := by
   decide
 

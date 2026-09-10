@@ -84,7 +84,7 @@ theorem other_sender_expiry_source_successor (secret : Bool)
     rw [hsubmittedNative]
     exact (expirationStart secret).native.pool.lookup_submit_fresh 1 expiryPayload (by rfl)
   have haccepted : submitted.native.application.memory.accepted
-      (boundBuild.fieldOf specification.binding) = some (0, 0) := by
+      (boundBuild.fieldOf specification.binding) = some (.opaque (0, 0)) := by
     rw [happlication]
     exact hsnapshot.1
   have hoverdue : 10 < submitted.native.application.memory.clock := by

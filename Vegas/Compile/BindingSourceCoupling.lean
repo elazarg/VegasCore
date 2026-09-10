@@ -188,15 +188,16 @@ theorem include_binding_source_coupling
   have hsourceField : code.sourceField = field :=
     site.bindingCode_sourceField fresh build field
   have haccepted : execution.application.memory.accepted code.sourceField = none := by
-    cases haccepted : execution.application.memory.accepted code.sourceField with
+    apply hrefines.bindings.accepted_eq_none_of_store_eq_none code.sourceField
+    cases hstored : current.current.graph.1.store code.sourceField with
     | none => rfl
-    | some handle =>
-        obtain ⟨spec, stored, _, _, hstored, _⟩ :=
-          hrefines.bindings code.sourceField handle haccepted
+    | some typed =>
+        have hpresent : Store.getAs current.current.graph.1.store code.sourceField typed.ty =
+            some typed.value := by
+          simp [Store.getAs, hstored, TypedValue.as?]
         have habsent := reachable_getAs_nodeTarget_eq_none hrefines.reachable node
-          hready.1 spec.ty
-        rw [hfield] at hstored
-        rw [habsent] at hstored
+          hready.1 typed.ty
+        rw [hfield, habsent] at hpresent
         contradiction
   have hhandler : image.handle execution.application
       ⟨(who, serial), .binding address (who, field)⟩ =
@@ -232,7 +233,7 @@ theorem include_binding_source_coupling
   · rw [hincluded.1]
     constructor
     · change (execution.application.bind code (who, field)).memory.accepted field =
-        some (who, field)
+        some (.opaque (who, field))
       simp [ApplicationImage.State.bind, hsourceField]
     · change (execution.application.bind code (who, field)).frozen field =
         some ⟨ty, value⟩

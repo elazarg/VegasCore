@@ -391,7 +391,7 @@ theorem late_registration_does_not_resurrect (secret : Bool) :
           execution.application.frozen 0,
           Store.getAs (L := simpleExpr) execution.application.memory.store 2 (.option .bool),
           execution.receipts)) =
-      FinDist.pure (some (0, 0), none, none,
+      FinDist.pure (some (.opaque (0, 0)), none, none,
         [((0, 0), true), ((0, 1), false)]) := by
   dsimp only
   simp only [MessageApplication.run_cons, MessageApplication.run_nil,
@@ -410,7 +410,7 @@ theorem wrong_typed_registration_is_unopenable (secret : Bool) :
         (execution.application.memory.accepted 0,
           Store.getAs (L := simpleExpr) execution.application.memory.store 2 (.option .bool),
           execution.receipts)) =
-      FinDist.pure (some (0, 0), none,
+      FinDist.pure (some (.opaque (0, 0)), none,
         [((0, 0), true), ((0, 1), false)]) := by
   dsimp only
   simp only [MessageApplication.run_cons, MessageApplication.run_nil,

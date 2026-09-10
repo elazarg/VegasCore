@@ -38,13 +38,16 @@ theorem ready_at_source_prefix
         fresh build).graph build)
     (native : ApplicationImage.State P L)
     (hrefines : native.Refines current.current.graph.1)
-    (haccepted : native.memory.accepted (build.fieldOf spec.binding) = some (who, sourceSlot)) :
+    (haccepted : native.memory.accepted (build.fieldOf spec.binding) =
+      some (.opaque (who, sourceSlot))) :
     ((atHead name publicName who guard tail spec).runtimeSite fresh build sourceSlot deadline).ready
-      (native.memory.accepted (build.fieldOf spec.binding)) native.memory.done = true := by
+      ((native.memory.accepted (build.fieldOf spec.binding)).bind
+        BindingDisposition.opaqueHandle?) native.memory.done = true := by
   have hpublic := PublicChoiceSite.ready_at_source_prefix guard tail fresh build current
     native.memory.done hrefines.memory.completed
   simpa only [runtimeSite, Graph.conditionalPublication, ConditionalPublication.ready,
-    haccepted, beq_self_eq_true, Bool.true_and, atHead, PublicChoiceSite.atHead,
+    haccepted, Option.bind_some, BindingDisposition.opaqueHandle?_opaque,
+    beq_self_eq_true, Bool.true_and, atHead, PublicChoiceSite.atHead,
     PublicChoiceSite.runtimeSite,
     Graph.publicChoice, PublicChoice.ready] using hpublic
 
@@ -66,7 +69,7 @@ theorem include_source_coupling
     (hrefines : execution.application.Refines current.current.graph.1)
     (heligible : (atHead name publicName who guard tail spec).PubliclyValidatable fresh build)
     (haccepted : execution.application.memory.accepted (build.fieldOf spec.binding) =
-      some (who, sourceSlot))
+      some (.opaque (who, sourceSlot)))
     (address serial : Nat)
     (hcode : image.lookup address = some (.conditional
       ((atHead name publicName who guard tail spec).code fresh build sourceSlot deadline)))
@@ -122,7 +125,17 @@ theorem include_source_coupling
     · rw [hgraph]
       exact hmemory
     · rw [hgraph]
-      exact hbindings
+      constructor
+      · intro field handle haccepted
+        have hprior : execution.application.memory.accepted field =
+            some (.opaque handle) := by
+          simpa only [ApplicationImage.State.publishConditional] using haccepted
+        exact hbindings.opaqueBinding field handle hprior
+      · intro field typed haccepted
+        have hprior : execution.application.memory.accepted field =
+            some (.publicDefault typed) := by
+          simpa only [ApplicationImage.State.publishConditional] using haccepted
+        exact hbindings.publicDefault field typed hprior
   refine ⟨next, hsource, ?_⟩
   have hstate : (image.application.includePending execution (who, serial)).application =
       execution.application.publishConditional code (spec.encoding chosen) := hincluded.1

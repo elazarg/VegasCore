@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.ConditionalPublicationRouting
+import Interaction.BindingPublication
 import Interaction.TransactionalInclusion
 
 /-! # Conditional-publication application regressions
@@ -37,7 +38,7 @@ def service : Service :=
 
 structure Application where
   service : Service
-  accepted : Option (CommitmentHandle Principal Nat)
+  accepted : Option (BindingDisposition (CommitmentHandle Principal Nat) Value)
   completed : List Nat
   result : Option (Option Value)
   openingAllowed : Bool
@@ -45,13 +46,13 @@ structure Application where
 def Application.done (state : Application) (node : Nat) : Bool :=
   decide (node ∈ state.completed)
 
-def initial : Application := ⟨service, some (0, 0), [2], none, true⟩
-def missingPrerequisite : Application := ⟨service, some (0, 0), [], none, true⟩
+def initial : Application := ⟨service, some (.opaque (0, 0)), [2], none, true⟩
+def missingPrerequisite : Application := ⟨service, some (.opaque (0, 0)), [], none, true⟩
 def declineOnly : Application := { initial with openingAllowed := false }
 
 def handler (now : Nat) (state : Application)
     (message : Message Principal Payload) : Option Application :=
-  match site.resolve? now state.service.verify state.accepted state.done
+  match site.resolveDisposition? now state.service.verify state.accepted state.done
       (fun _ => state.openingAllowed) message with
   | none => none
   | some choice => some {
@@ -135,6 +136,45 @@ def prerequisiteMissing := submitDeliverInclude 11 missingPrerequisite 1 0 .expi
 #guard prerequisiteMissing.application.result = none
 #guard prerequisiteMissing.application.completed = []
 
+/- A public default is authoritative even when the private service contains
+a different value. Its publication needs an owner-authored cleartext request,
+not a commitment opening. The actual ledger retains rejected traffic too. -/
+def defaulted : Application := { initial with accepted := some (.publicDefault false) }
+def defaultPublished := submitDeliverInclude 5 defaulted 0 1 (.cleartext false)
+def defaultWrongValue := submitDeliverInclude 5 defaulted 0 1 (.cleartext true)
+def defaultWrongOwner := submitDeliverInclude 5 defaulted 1 0 (.cleartext false)
+def defaultOpening := submitDeliverInclude 5 defaulted 0 1 (.opening (0, 0) false)
+def defaultPriorOpening := submitDeliverInclude 5 defaulted 0 1 (.opening (0, 0) true)
+def defaultClosed := submitDeliverInclude 5 { defaulted with openingAllowed := false }
+  0 1 (.cleartext false)
+def defaultDeclined := submitDeliverInclude 5 defaulted 0 1 .decline
+def defaultBoundary := submitDeliverInclude 10 defaulted 1 0 .expire
+def defaultExpired := submitDeliverInclude 11 defaulted 1 0 .expire
+def defaultLatePublication := submitDeliverInclude 11 defaulted 0 1 (.cleartext false)
+def defaultExpiryFirst := submitDeliverInclude 11 defaultExpired.application 0 1 (.cleartext false)
+def defaultReplay := submitDeliverInclude 11 defaultPublished.application 1 0 .expire
+def opaqueCleartext := submitDeliverInclude 5 initial 0 1 (.cleartext true)
+
+#guard defaultPublished.receipt = some true
+#guard defaultPublished.application.result = some (some false)
+#guard defaultPublished.application.service.lookup (0, 0) = some true
+#guard defaultPublished.application.accepted = some (.publicDefault false)
+#guard defaultWrongValue.receipt = some false
+#guard defaultWrongValue.pool.ledger.length = 1
+#guard defaultWrongOwner.receipt = some false
+#guard defaultOpening.receipt = some false
+#guard defaultPriorOpening.receipt = some false
+#guard defaultClosed.receipt = some false
+#guard defaultDeclined.application.result = some none
+#guard defaultBoundary.receipt = some false
+#guard defaultExpired.application.result = some none
+#guard defaultLatePublication.application.result = some (some false)
+#guard defaultExpiryFirst.receipt = some false
+#guard defaultExpiryFirst.application.result = some none
+#guard defaultReplay.receipt = some false
+#guard defaultReplay.application.result = some (some false)
+#guard opaqueCleartext.receipt = some false
+
 /- A rejected included message remains public, and delivery performed before
 the rejected application call remains in the recipient's inbox. -/
 #guard wrongValue.pool.ledger.length = 1
@@ -164,7 +204,8 @@ def laterSite : Interaction.ConditionalPublication Principal :=
 
 def handler (target : Interaction.ConditionalPublication Principal) (now : Nat)
     (state : Application) (message : Message Principal (Nat × Payload)) : Option Application :=
-  match target.resolveAddressed? now state.service.verify state.accepted state.done
+  match target.resolveAddressed? now state.service.verify
+      (state.accepted.bind BindingDisposition.opaqueHandle?) state.done
       (fun _ => state.openingAllowed) message with
   | none => none
   | some choice => some { state with
@@ -179,10 +220,12 @@ def submitDeliverInclude (target : Interaction.ConditionalPublication Principal)
 
 /- The unaddressed request is meaningful at either ready site. Tag checking,
 not a coincidental guard or missing prerequisite, prevents cross-site use. -/
-example : site.resolve? 5 service.verify initial.accepted initial.done (fun _ => true)
+example : site.resolve? 5 service.verify
+    (initial.accepted.bind BindingDisposition.opaqueHandle?) initial.done (fun _ => true)
     ⟨(0, 0), .opening (0, 0) true⟩ = some (some true) := by decide
 
-example : laterSite.resolve? 5 service.verify initial.accepted initial.done (fun _ => true)
+example : laterSite.resolve? 5 service.verify
+    (initial.accepted.bind BindingDisposition.opaqueHandle?) initial.done (fun _ => true)
     ⟨(0, 0), .opening (0, 0) true⟩ = some (some true) := by decide
 
 def intended := submitDeliverInclude site site.publicationNode (.opening (0, 0) true)
@@ -208,7 +251,8 @@ example : (laterSite.addressedChoiceEncoding (Value := Bool)).decode
 example : (site.addressedChoiceEncoding (Value := Bool)).decode
     (site.publicationNode, .expire) = none := by decide
 
-example : site.resolveAddressed? 11 service.verify initial.accepted initial.done
+example : site.resolveAddressed? 11 service.verify
+    (initial.accepted.bind BindingDisposition.opaqueHandle?) initial.done
     (fun _ => true) ⟨(1, 0), (site.publicationNode, .expire)⟩ = some none := by decide
 
 end Routing

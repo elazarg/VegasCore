@@ -50,7 +50,7 @@ theorem conditional_phase_source_law
     (hrefines : execution.native.application.Refines current.current.graph.1)
     (heligible : (atHead name publicName who guard tail spec).PubliclyValidatable fresh build)
     (haccepted : execution.native.application.memory.accepted (build.fieldOf spec.binding) =
-      some (who, sourceSlot))
+      some (.opaque (who, sourceSlot)))
     (hcode : image.lookup
         ((atHead name publicName who guard tail spec).code fresh build
           sourceSlot deadline).endpoint.publicationNode = some (.conditional

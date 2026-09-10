@@ -85,11 +85,18 @@ theorem State.Refines.sample
         cfg.completeNode node ⟨code.dist.ty, chosen⟩).support
     rw [FinDist.support_map]
     exact ⟨value, hvalue, rfl⟩
-  exact
-    ⟨hrefines.memory.sample code node hnode houtput value,
-      hreachable,
-      hrefines.bindings.completeNode hrefines.reachable node hready.1
-        ⟨code.dist.ty, value⟩⟩
+  have hbindings := hrefines.bindings.completeNode hrefines.reachable node hready.1
+    ⟨code.dist.ty, value⟩
+  refine ⟨hrefines.memory.sample code node hnode houtput value, hreachable, ?_⟩
+  constructor
+  · intro field handle haccepted
+    have hprior : state.memory.accepted field = some (.opaque handle) := by
+      simpa only [State.sample] using haccepted
+    simpa only [State.sample] using hbindings.opaqueBinding field handle hprior
+  · intro field typed haccepted
+    have hprior : state.memory.accepted field = some (.publicDefault typed) := by
+      simpa only [State.sample] using haccepted
+    simpa only [State.sample] using hbindings.publicDefault field typed hprior
 
 /-- At an aligned ready sample instruction, the native kernel is exactly the
 graph distribution law, and every supported native result refines its matching

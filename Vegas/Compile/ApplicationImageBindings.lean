@@ -168,7 +168,9 @@ theorem handle_binding_effect (image : ApplicationImage P L)
               | some decoded =>
                   simp only [hdecoded, Option.bind_some] at hnext
                   cases hresolved : code.endpoint.resolve? state.memory.clock
-                      (state.verify code) (state.memory.accepted code.sourceField)
+                      (state.verify code)
+                      ((state.memory.accepted code.sourceField).bind
+                        BindingDisposition.opaqueHandle?)
                       state.memory.done (code.canOpen state.memory.store)
                       ⟨id, decoded⟩ with
                   | none => simp [hresolved] at hnext
@@ -212,12 +214,14 @@ theorem handle_conditional (image : ApplicationImage P L) (state : State P L)
     (hdecode : code.decode payload = some decoded) :
     image.handle state ⟨id, .conditional address payload⟩ =
       (code.endpoint.resolve? state.memory.clock (state.verify code)
-        (state.memory.accepted code.sourceField) state.memory.done
+        ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+        state.memory.done
         (code.canOpen state.memory.store) ⟨id, decoded⟩).map
           (state.publishConditional code) := by
   simp only [handle, hcode, Option.bind_eq_bind, Option.bind_some, hdecode]
   cases code.endpoint.resolve? state.memory.clock (state.verify code)
-    (state.memory.accepted code.sourceField) state.memory.done
+    ((state.memory.accepted code.sourceField).bind BindingDisposition.opaqueHandle?)
+    state.memory.done
     (code.canOpen state.memory.store) ⟨id, decoded⟩ <;> rfl
 
 /-- An opponent cannot probe a site's private verifier by submitting guessed
@@ -256,7 +260,9 @@ theorem include_conditional (image : ApplicationImage P L)
     (result : Option (L.Val code.secretTy))
     (hlookup : state.pool.lookup id = some ⟨id, .conditional address payload⟩)
     (hresolve : code.endpoint.resolve? state.application.memory.clock
-      (state.application.verify code) (state.application.memory.accepted code.sourceField)
+      (state.application.verify code)
+      ((state.application.memory.accepted code.sourceField).bind
+        BindingDisposition.opaqueHandle?)
       state.application.memory.done (code.canOpen state.application.memory.store)
       ⟨id, decoded⟩ = some result) :
     let next := image.application.includePending state id

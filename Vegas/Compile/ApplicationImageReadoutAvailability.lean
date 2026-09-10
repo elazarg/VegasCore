@@ -40,7 +40,7 @@ theorem RegisteredBindings.frozen_getAs_of_accepted
         G.field? slot = some spec ∧ typed.ty = spec.ty) history native)
     (field : Nat) (spec : FieldSpec P L) {requestedTy : L.Ty}
     (hfield : G.field? field = some spec) (htype : spec.ty = requestedTy)
-    (haccepted : native.memory.accepted field = some (who, field)) :
+    (haccepted : native.memory.accepted field = some (.opaque (who, field))) :
     ∃ value : L.Val requestedTy,
       (native.frozen field).bind (fun typed => typed.as? requestedTy) = some value ∧
       Store.getAs cfg.store field requestedTy = some value := by
@@ -57,7 +57,7 @@ theorem RegisteredBindings.frozen_getAs_of_accepted
       (fun value => value.as? spec.ty) = some recovered := by
     simp only [hfrozen, Option.bind_some, hdecode]
   obtain ⟨storedSpec, stored, hstoredField, _, hstored, hunique⟩ :=
-    hrefines.bindings field (who, field) haccepted
+    hrefines.bindings.opaqueBinding field (who, field) haccepted
   have hstoredSpec : storedSpec = spec :=
     Option.some.inj (hstoredField.symm.trans hfield)
   subst storedSpec
@@ -96,44 +96,56 @@ theorem ownerReadStore_getAs_of_visible
         rw [← heq] at hgraph
         contradiction
       have howner : spec.owner = some who := hvisible.resolve_left hnotPublic
-      have haccepted : native.memory.accepted ref.field = some (who, ref.field) := by
-        cases hsource : spec.source with
-        | initial input => exact False.elim (hnotPublic (hinitial input hsource))
-        | event writer =>
-            have htarget := G.field_eq_nodeTarget_of_event_source hfield hsource
-            obtain ⟨event, hevent⟩ := G.node_get_of_field_event_source hfield hsource
-            let node : Fin G.nodeCount := ⟨writer, (List.getElem?_eq_some_iff.mp hevent).1⟩
-            have hdone : node ∈ cfg.done := by
-              by_contra hnotDone
-              have habsent := reachable_getAs_nodeTarget_eq_none
-                hrefines.reachable node hnotDone ref.ty
-              rw [htarget, habsent] at hgraph
-              contradiction
-            have hcovered := hcovers writer ((hrefines.memory.completed node).mpr hdone)
-            change (native.memory.store (G.nodeTarget writer)).isSome ∨
-              ∃ owner, native.memory.accepted (G.nodeTarget writer) =
-                some (owner, G.nodeTarget writer) at hcovered
-            rw [← htarget, hstored] at hcovered
-            obtain ⟨owner, haccepted⟩ := hcovered.resolve_left (by simp)
+      cases hsource : spec.source with
+      | initial input => exact False.elim (hnotPublic (hinitial input hsource))
+      | event writer =>
+          have htarget := G.field_eq_nodeTarget_of_event_source hfield hsource
+          obtain ⟨event, hevent⟩ := G.node_get_of_field_event_source hfield hsource
+          let node : Fin G.nodeCount := ⟨writer, (List.getElem?_eq_some_iff.mp hevent).1⟩
+          have hdone : node ∈ cfg.done := by
+            by_contra hnotDone
+            have habsent := reachable_getAs_nodeTarget_eq_none
+              hrefines.reachable node hnotDone ref.ty
+            rw [htarget, habsent] at hgraph
+            contradiction
+          have hcovered := hcovers writer ((hrefines.memory.completed node).mpr hdone)
+          change (native.memory.store (G.nodeTarget writer)).isSome ∨
+            (∃ owner, native.memory.accepted (G.nodeTarget writer) =
+              some (.opaque (owner, G.nodeTarget writer))) ∨
+            ∃ typed, native.memory.accepted (G.nodeTarget writer) =
+              some (.publicDefault typed) at hcovered
+          rw [← htarget, hstored] at hcovered
+          rcases hcovered.resolve_left (by simp) with hopen | hdefault
+          · obtain ⟨owner, haccepted⟩ := hopen
             obtain ⟨actual, bound, hactual, hactualOwner, _⟩ :=
-              hrefines.bindings ref.field (owner, ref.field) haccepted
+              hrefines.bindings.opaqueBinding ref.field (owner, ref.field) haccepted
             have hspec : actual = spec := Option.some.inj (hactual.symm.trans hfield)
             subst actual
             have heq : owner = who := Option.some.inj (hactualOwner.symm.trans howner)
-            simpa only [heq] using haccepted
-      obtain ⟨typed, hcache, _, actual, hactual, htyped⟩ :=
-        hbindings ref.field (who, ref.field) haccepted rfl
-      have hspec : actual = spec := Option.some.inj (hactual.symm.trans hfield)
-      subst actual
-      have hlocal : (Store.getAs (image.ownerReadStore who history native.memory)
-          ref.field ref.ty).isSome := by
-        simp [Store.getAs, ownerReadStore, hstored, haccepted, hcache,
-          TypedValue.as?, htyped.trans htype]
-      obtain ⟨recovered, hrecovered⟩ := Option.isSome_iff_exists.mp hlocal
-      have hrepresented := image.ownerReadStore_getAs who history native cfg hrefines
-        hbindings.registrationMatches ref spec hfield htype recovered hrecovered
-      have heq := Option.some.inj (hrepresented.symm.trans hgraph)
-      exact hrecovered.trans (congrArg some heq)
+            subst owner
+            obtain ⟨typed, hcache, _, registeredSpec, hregistered, htyped⟩ :=
+              hbindings ref.field (who, ref.field) haccepted rfl
+            have hregisteredSpec : registeredSpec = spec :=
+              Option.some.inj (hregistered.symm.trans hfield)
+            subst registeredSpec
+            have hlocal : (Store.getAs (image.ownerReadStore who history native.memory)
+                ref.field ref.ty).isSome := by
+              simp [Store.getAs, ownerReadStore, hstored, haccepted, hcache,
+                TypedValue.as?, htyped.trans htype]
+            obtain ⟨recovered, hrecovered⟩ := Option.isSome_iff_exists.mp hlocal
+            have hrepresented := image.ownerReadStore_getAs who history native cfg hrefines
+              hbindings.registrationMatches ref spec hfield htype recovered hrecovered
+            have heqValue := Option.some.inj (hrepresented.symm.trans hgraph)
+            exact hrecovered.trans (congrArg some heqValue)
+          · obtain ⟨typed, haccepted⟩ := hdefault
+            obtain ⟨actual, hactual, _, htyped, hbound⟩ :=
+              hrefines.bindings.publicDefault ref.field typed haccepted
+            have hspec : actual = spec := Option.some.inj (hactual.symm.trans hfield)
+            subst actual
+            have hlocal := image.ownerReadStore_publicDefault who history native.memory
+              ref.field typed hstored haccepted
+            simpa [Store.getAs, hlocal, hbound, TypedValue.as?, htyped.trans htype]
+              using hgraph
 
 /-- Every available graph read footprint visible to the owner is accepted by
 the executable local loader with exactly the same values. Native availability

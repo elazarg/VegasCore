@@ -47,8 +47,9 @@ the public-expression compiler and the source certificate. Acceptance therefore
 has the original adjacent commit/reveal source continuation with the annotated
 value. This is a source-support claim, not equality with the original behavioral
 profile. It also does not produce an expiry transaction or guarantee inclusion.
-Opaque binding defaults need a separate public disposition; the public-choice
-mechanism does not create a commitment handle or an accepted opening witness.
+Opaque binding defaults have a separate source certificate and public
+disposition, described below; the public-choice mechanism does not create a
+commitment handle or an accepted opening witness.
 
 Optional timeout code retains the generated image's completed-run source
 support theorem under arbitrary native actions and randomized policies. It
@@ -57,6 +58,48 @@ policies never submit the new expiry request. The latter follows from a
 runtime-general handler-extension theorem comparing complete executions with
 the same state, observation, action, and history types. Neither result provides
 a source policy simulating an arbitrary runtime deviation.
+
+### Opaque-binding default certificates and dispositions
+
+`SourceDecisionSite.BindingDefault` retains a public source expression and a
+proof that it is legal at the original commitment in every source environment.
+Its compiled expression reads only public fields. At an exact source-prefix
+checkpoint, `defaultBind_source_coupling` proves that evaluating that code and
+installing the resulting public default represents the original source commit
+with that exact value. It makes no assumption about the owner's private
+preparation or chosen policy. This is a state-update/source theorem; the
+generated interpreter does not yet admit binding-expiry transactions.
+
+`BindingDisposition` is runtime-general: it records either an opaque handle or
+a public default value. The application stores this sum in its public memory.
+The private preparation table and acceptance-time snapshots remain separate.
+Refinement relates a public default directly to the typed graph field; opaque
+bindings retain their existing snapshot condition, including absent or
+ill-typed snapshots. Local readout takes a public default from the disposition,
+not from the owner's registration cache. A different cached value does not
+change that readout. The fallback value is stored once, in the disposition;
+the public source-field store remains unchanged by this update.
+
+`ConditionalPublication.resolveDisposition?` supplies the runtime-general
+publication classifier for these alternatives. An opaque binding uses the
+commitment verifier. A public default admits an owner-authored cleartext
+request exactly when its value matches the recorded default and satisfies the
+continuation guard. It rejects commitment-opening requests and does not
+consult the private verifier. Owner decline and permissionless overdue expiry
+remain available. Shared-runtime tests include actual submission, delivery,
+inclusion, retained rejected traffic, and rejection after completion.
+Integrating this classifier into generated conditional instructions and their
+reference policies remains a compiler obligation. The generated application's
+current conditional handler accepts only the opaque disposition; it does not
+manufacture handles for defaults.
+
+The public-expression certificate has a genuine eligibility condition. If two
+source environments have identical public information but disjoint legal
+choice sets, no deterministic public-expression default can be legal in both.
+`BindingDefault.not_nonempty_of_disjoint_legal` checks this statement, with a
+private-Boolean equality regression. This concerns the universal certificate,
+not an impossibility for every runtime or every reachable-state restriction.
+It changes neither source syntax nor well-formedness.
 
 ### Runtime services
 

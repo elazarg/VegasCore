@@ -27,7 +27,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 snapshot may be absent or dynamically ill-typed. -/
 def AcceptedSnapshot (field : Nat) (handle : CommitmentHandle P Nat)
     (snapshot : Option (TypedValue L)) (state : State P L) : Prop :=
-  state.memory.accepted field = some handle ∧ state.frozen field = snapshot
+  state.memory.accepted field = some (.opaque handle) ∧ state.frozen field = snapshot
 
 theorem privateStep_acceptedSnapshot (image : ApplicationImage P L)
     (field : Nat) (handle : CommitmentHandle P Nat)
@@ -149,7 +149,9 @@ theorem handle_acceptedSnapshot (image : ApplicationImage P L)
                   | some decoded =>
                       simp only [hdecoded, Option.bind_some] at hnext
                       cases hresolved : code.endpoint.resolve? state.memory.clock
-                          (state.verify code) (state.memory.accepted code.sourceField)
+                          (state.verify code)
+                          ((state.memory.accepted code.sourceField).bind
+                            BindingDisposition.opaqueHandle?)
                           state.memory.done (code.canOpen state.memory.store)
                           ⟨id, decoded⟩ with
                       | none => simp [hresolved] at hnext

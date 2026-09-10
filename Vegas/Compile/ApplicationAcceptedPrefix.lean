@@ -32,7 +32,7 @@ image, while the bound is the proof-side source compiler cursor. -/
 def AcceptedBindingPrefix (image : ApplicationImage P L) (bound : Nat)
     (state : State P L) : Prop :=
   ∀ code, .bind code ∈ image.instructions → code.node < bound →
-    state.memory.accepted code.sourceField = some (code.owner, code.sourceSlot)
+    state.memory.accepted code.sourceField = some (.opaque (code.owner, code.sourceSlot))
 
 namespace AcceptedBindingPrefix
 
@@ -155,7 +155,7 @@ theorem conditionalHandle
     (hconditional : .conditional conditional ∈ image.instructions)
     (hboundary : conditional.endpoint.choiceNode = bound) :
     state.memory.accepted conditional.sourceField =
-      some (conditional.endpoint.owner, conditional.endpoint.sourceSlot) := by
+      some (.opaque (conditional.endpoint.owner, conditional.endpoint.sourceSlot)) := by
   obtain ⟨before, binding, after, himage, _, horigin⟩ :=
     horigins.origin_of_mem conditional hconditional
   have hbinding : .bind binding ∈ image.instructions := by

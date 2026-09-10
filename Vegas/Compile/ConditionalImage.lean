@@ -99,7 +99,8 @@ theorem code_resolution_source_legal
     (result : Option (L.Val site.specification.secretTy))
     (hresolve : (site.code fresh state sourceSlot deadline).endpoint.resolve?
       native.memory.clock (native.verify (site.code fresh state sourceSlot deadline))
-      (native.memory.accepted (site.sourceField fresh state)) native.memory.done
+      ((native.memory.accepted (site.sourceField fresh state)).bind
+        BindingDisposition.opaqueHandle?) native.memory.done
       ((site.code fresh state sourceSlot deadline).canOpen native.memory.store)
       message = some result) :
     (result = none ∨ result = some (env.get site.specification.binding)) ∧
@@ -110,7 +111,9 @@ theorem code_resolution_source_legal
   | none => exact ⟨Or.inl rfl, site.specification.decline_legal env⟩
   | some value =>
       have hverified := emitted.endpoint.resolve_some_verified native.memory.clock
-        (native.verify emitted) (native.memory.accepted (site.sourceField fresh state))
+        (native.verify emitted)
+        ((native.memory.accepted (site.sourceField fresh state)).bind
+          BindingDisposition.opaqueHandle?)
         native.memory.done (emitted.canOpen native.memory.store) message value hresolve
       have hfrozen : (native.frozen (site.sourceField fresh state)).bind
           (fun typed => typed.as? site.specification.secretTy) = some value := by
@@ -118,7 +121,9 @@ theorem code_resolution_source_legal
       have hvalue := hbinding value hfrozen
       refine ⟨Or.inr (congrArg some hvalue), ?_⟩
       have hcanOpen := emitted.endpoint.resolve_some_canOpen native.memory.clock
-        (native.verify emitted) (native.memory.accepted (site.sourceField fresh state))
+        (native.verify emitted)
+        ((native.memory.accepted (site.sourceField fresh state)).bind
+          BindingDisposition.opaqueHandle?)
         native.memory.done (emitted.canOpen native.memory.store) message value hresolve
       change site.canOpen fresh state native.memory.store value = true at hcanOpen
       rw [site.canOpen_source fresh state representedStore native.memory.store env
