@@ -291,9 +291,10 @@ theorem environment_latest_publicChoice_source_coupling
   let target : Witness → Config
       (compileCore (.commit name who guard (.reveal publicName who name .here tail))
         fresh build).graph := fun witness => witness.1.2.current.graph.1
-  obtain ⟨witness, hnextRefines, hnextFresh⟩ :=
+  obtain ⟨witness, hnextRefines, hnextFresh, _⟩ :=
     runtime.environment_latest_source_witness players environment actor execution next
-      (site.code fresh build).endpoint.publicationNode Witness target hpolicy hactive hinactive (by
+      (site.code fresh build).endpoint.publicationNode Witness target (fun _ _ => True)
+      hpolicy hactive hinactive (by
         intro message resolved hhandle
         obtain ⟨chosen, sourceNext, hlegal, hsource, hresolved⟩ :=
           runtime.handle_publicChoice_or_expiry_source_coupling guard tail fallback fresh build
@@ -301,7 +302,8 @@ theorem environment_latest_publicChoice_source_coupling
             (site.code fresh build).endpoint.publicationNode message hactivation hkey hcode
             hrefines hhandle
         exact ⟨⟨(chosen, sourceNext), hlegal, hsource⟩, hresolved,
-          runtime.handle_freshActivation execution.native.application resolved _ hhandle⟩)
+          runtime.handle_freshActivation execution.native.application resolved _ hhandle,
+          trivial⟩)
       hnext
   exact ⟨witness.1.1, witness.1.2, witness.2.1, witness.2.2,
     hnextRefines, hnextFresh⟩
@@ -655,10 +657,11 @@ theorem runPolicies_publicChoice_relay_pairs_source_coupling
   let target : Witness → Config
       (compileCore (.commit name who guard (.reveal publicName who name .here tail))
         fresh build).graph := fun witness => witness.1.2.current.graph.1
-  obtain ⟨witness, hfinalRefines, hfinalFresh⟩ :=
+  obtain ⟨witness, hfinalRefines, hfinalFresh, _⟩ :=
     runtime.runPolicies_relay_pairs_source_witness roster players relays rosterOffset
       (.publicChoice timed) who current.current.graph.1 execution final activation Witness target
-      hrelays hbound hindex hslot (by rfl) hactive hactivation hrefines hinactive (by
+      (fun _ _ => True) hrelays hbound hindex hslot (by rfl) hactive hactivation hrefines
+      hinactive (by
         intro actor index afterPlayer afterRelay hactor hrelayIndex hrelaySlot
           hplayerActive hplayerActivation hplayerRefines hafterInactive henvironment
         obtain ⟨chosen, sourceNext, hlegal, hsource, hnextRefines, hnextFresh⟩ :=
@@ -666,7 +669,10 @@ theorem runPolicies_publicChoice_relay_pairs_source_coupling
             guard tail fallback fresh build deadline current heligible afterPlayer afterRelay
             activation (.publicChoice timed) hrelayIndex hrelaySlot hactor rfl hplayerActive
             hplayerActivation hkey hcode hplayerRefines hafterInactive henvironment
-        exact ⟨⟨(chosen, sourceNext), hlegal, hsource⟩, hnextRefines, hnextFresh⟩) hfinal
+        exact ⟨⟨(chosen, sourceNext), hlegal, hsource⟩, hnextRefines, hnextFresh,
+          trivial⟩)
+      (by intro witness before after schedule hcertificate hinactive hsupported _; trivial)
+      hfinal
   exact ⟨witness.1.1, witness.1.2, witness.2.1, witness.2.2,
     hfinalRefines, hfinalFresh⟩
 

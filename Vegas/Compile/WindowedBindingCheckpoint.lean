@@ -75,7 +75,14 @@ theorem binding_normal_resolution
         (state.addCommitEvent name owner guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
       included.native.application.base.Refines sourceNext.current.graph.1 ∧
-      included.native.application.FreshActivation := by
+      included.native.application.FreshActivation ∧
+      chosen = ((.here guard tail : SourceDecisionSite owner
+        (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
+          ((.here guard tail : SourceDecisionSite owner
+            (.commit name owner guard tail) Γ name ty guard).compiledField fresh
+              state)).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        included.native.application.base := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
@@ -207,6 +214,13 @@ theorem binding_block_resolution
       sourceNext.current.source = current.current.source.cons chosen ∧
       final.native.application.base.Refines sourceNext.current.graph.1 ∧
       final.native.application.FreshActivation ∧
+      chosen = ((.here guard tail : SourceDecisionSite owner
+        (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
+          ((.here guard tail : SourceDecisionSite owner
+            (.commit name owner guard tail) Γ name ty guard).compiledField fresh
+              state)).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        final.native.application.base ∧
       (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
         final.native.application.base.memory ≠ some state.nodes.length := by
   let runtime := root.windowed deadlineOf binding choice windowOf
@@ -341,7 +355,8 @@ theorem binding_block_resolution
     Nat.zero_add] at hincludedLength
   by_cases hincludedInactive : runtime.image.activeAddress?
       included.native.application.base.memory ≠ some timed.node
-  · obtain ⟨chosen, sourceNext, hsource, hincludedRefines, hincludedFresh⟩ :=
+  · obtain ⟨chosen, sourceNext, hsource, hincludedRefines, hincludedFresh,
+        hincludedChosen⟩ :=
       binding_normal_resolution unrestricted nextPlan profile fallback deadline
         hselect current execution polled included checkpoint hpolled hincluded
         (by
@@ -367,7 +382,24 @@ theorem binding_block_resolution
       change final.native.application.base.memory = included.native.application.base.memory
         at hmemory
       rwa [hmemory]
-    refine ⟨chosen, sourceNext, hsource, ?_, ?_, ?_⟩
+    have hfinalChosen : chosen = code.resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        final.native.application.base := by
+      have hinvariant := runtime.runPolicies_block_inactive_invariant roster players
+        (Invocation.environment :: relayPairs) included final (.bind timed) hremainingIndex
+        (fun application => chosen = code.resolvedValue
+          (L.eval fallback.expr current.current.source.erasePubEnv) application.base ∧
+          runtime.image.activeAddress? application.base.memory ≠ some timed.node)
+        (by
+          intro application actor command happlication
+          constructor
+          · simpa [BindingCode.resolvedValue, WindowedApplication.application,
+              ApplicationImage.State.register] using happlication.1
+          · exact happlication.2)
+        (fun _ happlication => happlication.2) ⟨hincludedChosen, hincludedInactive⟩
+        hafterIncluded
+      exact hinvariant.1
+    refine ⟨chosen, sourceNext, hsource, ?_, ?_, hfinalChosen, ?_⟩
     · exact runtime.runPolicies_block_inactive_refines sourceNext.current.graph.1 roster
         players (Invocation.environment :: relayPairs) included final (.bind timed)
         hremainingIndex hincludedInactive hincludedRefines hafterIncluded
@@ -477,7 +509,7 @@ theorem binding_block_resolution
         exact FinDist.mem_support_pure.mpr rfl)
     simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment, ↓reduceIte,
       Nat.zero_add] at hclockedLength
-    obtain ⟨chosen, sourceNext, hsource, hfinalRefines, hfinalFresh⟩ :=
+    obtain ⟨chosen, sourceNext, hsource, hfinalRefines, hfinalFresh, hfinalChosen⟩ :=
       runtime.runPolicies_binding_relay_pairs_source_coupling roster players roster 0 guard tail
         fallback fresh state current unrestricted deadline clocked final activation
         (by intro index actor hactor; simpa using hactor) (by simp)
@@ -492,7 +524,7 @@ theorem binding_block_resolution
           simp [Nat.add_mod, Nat.mod_eq_of_lt htwo])
         hclockedActive (hclockedActivationEq.trans hactivationIncluded) hkey hlookup
         hclockedRefines hsettled hrelayFinal
-    refine ⟨chosen, sourceNext, hsource, hfinalRefines, hfinalFresh, ?_⟩
+    refine ⟨chosen, sourceNext, hsource, hfinalRefines, hfinalFresh, hfinalChosen, ?_⟩
     change runtime.image.activeAddress? final.native.application.base.memory ≠
       some state.nodes.length at hsettled
     exact hsettled
@@ -532,18 +564,25 @@ theorem binding_block
       sourceNext.current.source = current.current.source.cons chosen ∧
       WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
         replacement (blockIndex + 1) nextPlan profile.afterCommit sourceNext final ∧
+      chosen = ((.here guard tail : SourceDecisionSite owner
+        (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
+          ((.here guard tail : SourceDecisionSite owner
+            (.commit name owner guard tail) Γ name ty guard).compiledField fresh
+              state)).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        final.native.application.base ∧
       (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
         final.native.application.base.memory ≠ some state.nodes.length ∧
       SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
         ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
-  obtain ⟨chosen, sourceNext, hsource, hrefines, hfresh, hinactive⟩ :=
+  obtain ⟨chosen, sourceNext, hsource, hrefines, hfresh, hchosen, hinactive⟩ :=
     binding_block_resolution unrestricted nextPlan profile fallback deadline hselect current
       execution final checkpoint hroster relay hrelay hunchanged hfinal
   have hstep : SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
       ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
     rw [hsource]
     exact .commit guard tail chosen (unrestricted current.current.source chosen)
-  refine ⟨chosen, sourceNext, hsource, ?_, hinactive, hstep⟩
+  refine ⟨chosen, sourceNext, hsource, ?_, hchosen, hinactive, hstep⟩
   refine ⟨.binding checkpoint.continuation, ?_, hrefines,
     checkpoint.reached_after_block final hfinal, ?_, hfresh⟩
   · have hcount := checkpoint.blockCount

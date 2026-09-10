@@ -32,6 +32,7 @@ theorem environment_latest_source_witness
     (execution next : runtime.application.PolicyExecution)
     (address : Nat) {G : Graph P L} (Witness : Type)
     (target : Witness → Config G)
+    (Certificate : WindowedApplication.State P L → Witness → Prop)
     (hpolicy : environment execution.environmentHistory
       (MessageApplication.State.environmentView runtime.application execution.native) =
         FinDist.pure (runtime.liftEnvironmentCommand
@@ -44,11 +45,12 @@ theorem environment_latest_source_witness
       some address)
     (resolve : ∀ message resolved,
       runtime.handle execution.native.application message = some resolved →
-      ∃ witness, resolved.base.Refines (target witness) ∧ resolved.FreshActivation)
+      ∃ witness, resolved.base.Refines (target witness) ∧ resolved.FreshActivation ∧
+        Certificate resolved witness)
     (hnext : next ∈ (runtime.application.invoke players environment execution
       .environment).support) :
     ∃ witness, next.native.application.base.Refines (target witness) ∧
-      next.native.application.FreshActivation := by
+      next.native.application.FreshActivation ∧ Certificate next.native.application witness := by
   simp only [MessageApplication.invoke, hpolicy, FinDist.pure_bind] at hnext
   rcases runtime.image.application.latestSubmissionCommand_cases actor
     (runtime.eraseEnvironmentView
@@ -81,8 +83,10 @@ theorem environment_latest_source_witness
         | some resolved =>
             have hincluded := runtime.application.includePending_accept execution.native id
               message resolved hlookup hhandle
-            obtain ⟨witness, hresolved, hfresh⟩ := resolve message resolved hhandle
-            refine ⟨witness, ?_, ?_⟩
+            obtain ⟨witness, hresolved, hfresh, hcertificate⟩ :=
+              resolve message resolved hhandle
+            refine ⟨witness, ?_, ?_, ?_⟩
+            · rwa [hincluded]
             · rwa [hincluded]
             · rwa [hincluded]
 
@@ -113,6 +117,7 @@ theorem runPolicies_relay_pairs_source_witness
     (execution final : runtime.application.PolicyExecution)
     (activation : Activation Nat)
     (Witness : Type) (target : Witness → Config G)
+    (Certificate : WindowedApplication.State P L → Witness → Prop)
     (hrelays : ∀ index actor, relays[index]? = some actor →
       roster[rosterOffset + index]? = some actor)
     (hbound : rosterOffset + relays.length ≤ roster.length)
@@ -142,13 +147,26 @@ theorem runPolicies_relay_pairs_source_witness
       afterRelay ∈ (runtime.application.invoke players
         (runtime.blockEnvironment roster) afterPlayer .environment).support →
       ∃ witness, afterRelay.native.application.base.Refines (target witness) ∧
-        afterRelay.native.application.FreshActivation)
+        afterRelay.native.application.FreshActivation ∧
+          Certificate afterRelay.native.application witness)
+    (preserveInactive : ∀ witness before after schedule,
+      Certificate before.native.application witness →
+      (∀ index, before.environmentHistory.length ≤ index →
+        index < before.environmentHistory.length +
+          schedule.countP Invocation.isEnvironment →
+        runtime.image.instructions[index / (roster.length + 2)]? = some instruction) →
+      runtime.image.activeAddress? before.native.application.base.memory ≠
+        some instruction.address →
+      after ∈ (runtime.application.runPolicies players
+        (runtime.blockEnvironment roster) schedule before).support →
+      Certificate after.native.application witness)
     (hfinal : final ∈ (runtime.application.runPolicies players
       (runtime.blockEnvironment roster)
       (relays.flatMap fun actor => [Invocation.player actor, .environment])
       execution).support) :
     ∃ witness, final.native.application.base.Refines (target witness) ∧
-      final.native.application.FreshActivation := by
+      final.native.application.FreshActivation ∧
+        Certificate final.native.application witness := by
   induction relays generalizing rosterOffset execution activation with
   | nil =>
       simp only [List.flatMap_nil, MessageApplication.runPolicies,
@@ -266,7 +284,7 @@ theorem runPolicies_relay_pairs_source_witness
             · exact hrelayRefines
             · exact resolve
             · exact hrest
-      · obtain ⟨witness, hnextRefines, hnextFresh⟩ := resolve actor rosterOffset
+      · obtain ⟨witness, hnextRefines, hnextFresh, hcertificate⟩ := resolve actor rosterOffset
           afterPlayer afterRelay hactor
           (by
             rw [hplayerLength]
@@ -280,7 +298,7 @@ theorem runPolicies_relay_pairs_source_witness
             rw [hplayerLength, hslot]) hplayerActive hplayerActivation hplayerRefines
           hafterActive
           (by simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using henvironment)
-        refine ⟨witness, ?_, ?_⟩
+        refine ⟨witness, ?_, ?_, ?_⟩
         · apply runtime.runPolicies_block_inactive_refines (target witness) roster players
             (rest.flatMap fun relay => [Invocation.player relay, Invocation.environment])
             afterRelay final instruction
@@ -313,6 +331,19 @@ theorem runPolicies_relay_pairs_source_witness
           · exact hafterActive
           · exact hnextFresh
           · exact hrest
+        · exact preserveInactive witness afterRelay final
+            (rest.flatMap fun relay => [Invocation.player relay, Invocation.environment])
+            hcertificate (by
+              intro index hlo hhi
+              apply hindex index
+              · simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
+                  Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
+                omega
+              · rw [relayPairs_environment_count] at hhi
+                simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
+                    Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hplayerLength hrelayLength
+                simp only [List.length_cons]
+                omega) hafterActive hrest
 
 /-- The schedule mechanics of one complete service block are independent of
 the source constructor. A caller supplies only the constructor-specific
@@ -326,6 +357,7 @@ theorem runPolicies_complete_block_source_witness
     {G : Graph P L} (cfg : Config G) (blockIndex : Nat)
     (execution final : runtime.application.PolicyExecution)
     (activation : Activation Nat) (Witness : Type) (target : Witness → Config G)
+    (Certificate : WindowedApplication.State P L → Witness → Prop)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
     (henvironmentLength : execution.environmentHistory.length =
       blockIndex * (roster.length + 2))
@@ -355,7 +387,8 @@ theorem runPolicies_complete_block_source_witness
       included ∈ (runtime.application.invoke players
         (runtime.blockEnvironment roster) polled .environment).support →
       ∃ witness, included.native.application.base.Refines (target witness) ∧
-        included.native.application.FreshActivation)
+        included.native.application.FreshActivation ∧
+          Certificate included.native.application witness)
     (settle : ∀ included final,
       runtime.image.instructions[(included.principalHistory relay).length / 3]? =
         some instruction →
@@ -394,11 +427,24 @@ theorem runPolicies_complete_block_source_witness
       afterRelay ∈ (runtime.application.invoke players
         (runtime.blockEnvironment roster) afterPlayer .environment).support →
       ∃ witness, afterRelay.native.application.base.Refines (target witness) ∧
-        afterRelay.native.application.FreshActivation)
+        afterRelay.native.application.FreshActivation ∧
+          Certificate afterRelay.native.application witness)
+    (preserveInactive : ∀ witness before after schedule,
+      Certificate before.native.application witness →
+      (∀ index, before.environmentHistory.length ≤ index →
+        index < before.environmentHistory.length +
+          schedule.countP Invocation.isEnvironment →
+        runtime.image.instructions[index / (roster.length + 2)]? = some instruction) →
+      runtime.image.activeAddress? before.native.application.base.memory ≠
+        some instruction.address →
+      after ∈ (runtime.application.runPolicies players
+        (runtime.blockEnvironment roster) schedule before).support →
+      Certificate after.native.application witness)
     (hfinal : final ∈ (runtime.application.runPolicies players
       (runtime.blockEnvironment roster) (blockInvocations roster) execution).support) :
     ∃ witness, final.native.application.base.Refines (target witness) ∧
       final.native.application.FreshActivation ∧
+      Certificate final.native.application witness ∧
       runtime.image.activeAddress? final.native.application.base.memory ≠
         some instruction.address := by
   let before := roster.flatMap fun actor => [Invocation.player actor, .player actor]
@@ -468,7 +514,8 @@ theorem runPolicies_complete_block_source_witness
     Nat.zero_add] at hincludedLength
   by_cases hincludedInactive : runtime.image.activeAddress?
       included.native.application.base.memory ≠ some instruction.address
-  · obtain ⟨witness, hincludedRefines, hincludedFresh⟩ := resolveNormal polled included
+  · obtain ⟨witness, hincludedRefines, hincludedFresh, hcertificate⟩ :=
+      resolveNormal polled included
       hindexPolled hslotPolled hactivePolled hactivationPolled hrefinesPolled
       hincludedInactive hincluded
     have hremainingIndex : ∀ index, included.environmentHistory.length ≤ index →
@@ -490,13 +537,15 @@ theorem runPolicies_complete_block_source_witness
       change final.native.application.base.memory = included.native.application.base.memory
         at hmemory
       rwa [hmemory]
-    refine ⟨witness, ?_, ?_, hfinalInactive⟩
+    refine ⟨witness, ?_, ?_, ?_, hfinalInactive⟩
     · exact runtime.runPolicies_block_inactive_refines (target witness) roster players
         (Invocation.environment :: relayPairs) included final instruction hremainingIndex
         hincludedInactive hincludedRefines hafterIncluded
     · exact runtime.runPolicies_block_inactive_freshActivation roster players
         (Invocation.environment :: relayPairs) included final instruction hremainingIndex
         hincludedInactive hincludedFresh hafterIncluded
+    · exact preserveInactive witness included final (Invocation.environment :: relayPairs)
+        hcertificate hremainingIndex hincludedInactive hafterIncluded
   · have hincludedActive : runtime.image.activeAddress?
         included.native.application.base.memory = some instruction.address :=
       Classical.byContradiction hincludedInactive
@@ -575,9 +624,9 @@ theorem runPolicies_complete_block_source_witness
         exact FinDist.mem_support_pure.mpr rfl)
     simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment, ↓reduceIte,
       Nat.zero_add] at hclockedLength
-    obtain ⟨witness, hfinalRefines, hfinalFresh⟩ :=
+    obtain ⟨witness, hfinalRefines, hfinalFresh, hcertificate⟩ :=
       runtime.runPolicies_relay_pairs_source_witness roster players roster 0 instruction owner cfg
-        clocked final activation Witness target (by
+        clocked final activation Witness target Certificate (by
           intro index actor hactor
           simpa using hactor) (by simp)
         (by
@@ -590,8 +639,8 @@ theorem runPolicies_complete_block_source_witness
           have htwo : 2 < roster.length + 2 := by omega
           simp [Nat.add_mod, Nat.mod_eq_of_lt htwo]) howner hclockedActive
         (hclockedActivationEq.trans hactivationIncluded) hclockedRefines hsettled resolveRelay
-        hrelayFinal
-    exact ⟨witness, hfinalRefines, hfinalFresh, hsettled⟩
+        preserveInactive hrelayFinal
+    exact ⟨witness, hfinalRefines, hfinalFresh, hcertificate, hsettled⟩
 
 end Vegas.WindowedApplication
 

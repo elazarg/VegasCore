@@ -337,15 +337,20 @@ commit/reveal successor for publicly validatable ordinary choices, retaining
 the guard proof and both sequential source steps. It uses the same service and
 relay requirements with the public-choice fallback selector. Its underlying
 expiry classification identifies the result with the programmer's exact
-source fallback expression. Whole-block successor construction for conditional
-and copied-conditional publication remains to be supplied.
+source fallback expression.
 `WindowedApplication.handle_conditional_source_coupling` classifies an actual
 successful raw conditional handler at the generated source head. It retains
 the optional source result, guard legality, and the corresponding source
 continuation and native refinement. A successful opening itself supplies its
 frozen-value evidence; the theorem assumes neither an unchanged owner policy
-nor private-readout availability. This handler result does not establish that
-the instruction settles under the block service.
+nor private-readout availability. `WindowedCheckpoint.conditional_block` and
+`conditionalCopy_block` extend this classification through the complete block
+service. They construct initialized successor checkpoints, retain the optional
+result and guard legality, and prove the explicit adjacent source steps.
+Their extra static premise is the root image's binding-origin certificate;
+the same duplicate-free roster and unchanged-relay requirements apply.
+They establish supported source successors, not the distribution of the
+unchanged owner's disclosure decision.
 `WindowedCheckpoint.block_caches` preserves future unchanged-owner caches
 through any generated instruction block. The constructor-uniform
 `liftProfileIn_headCommand` classifies commands from an unresolved source
@@ -377,6 +382,23 @@ as observer agreement. These results assume agreement before the owner polls.
 Deriving it from equal source views through complete blocks remains a separate
 obligation.
 
+`WindowedBindingReadiness` derives these controller prerequisites from an
+actual `WindowedCheckpoint`: source readout, both empty caches, the root
+profile's binding dispatch, and the owner's ordinary-slot alignment. The
+source kernel equality therefore needs only the root's public-initial-read
+eligibility, a duplicate-free roster containing the unchanged owner, and the
+checkpoint, rather than separately assumed readout or dispatch equations.
+`binding_polls_source_law_after_others` retains any preceding other-player
+polls in the joint native law. Those policies may issue arbitrary commands;
+the prefix contains neither an owner poll nor an environment turn, so it
+cannot change the owner's policy input. This covers the ordinary roster
+prefix before the binding owner, not later delivery or inclusion.
+The paired-checkpoint inclusion theorem derives the same prerequisites on
+both sides but still requires their starting information agreement. The
+generated regression uses the original whole source profile and canonical
+initial checkpoint, and checks successful acceptance with the exact source
+distribution of the frozen snapshot.
+
 The locality comparison is between two supported executions of the **same**
 canonical initialized program, source profile, pure raw focal replacement,
 block schedule prefix, and block environment. Compare complete-block source
@@ -395,25 +417,36 @@ comparison is not required for the completed-boundary argument. Focal input
 agreement must be derived from initialized execution and equal focal source
 views, not assumed as a restriction on the deviation theorem.
 
-A paired derivation of the same emitted source-prefix shape can carry the two
-actual block support witnesses and their source successors without assuming
-information equivalence. Backward source-view recall then gives agreement at
-the preceding source boundary: public values and focal-owned sealed values
-must agree, whereas another owner's sealed values may differ. The forward
-constructor proof must recover runtime policy-input agreement from that
-induction hypothesis. This paired-prefix proof and its connection to source
-policy extension are not yet implemented.
+The planned prefix carrier is a single-run inductive derivation indexed by
+the source suffix, source environment, native execution, and block count.
+Each edge retains its predecessor, actual full-block support, exact source
+extension, and constructor-specific resolution evidence. Comparing two such
+derivations needs no stored information-equivalence premise. Backward
+source-view recall gives agreement at the preceding source boundary: public
+values and focal-owned sealed values must agree, whereas another owner's
+sealed values may differ. The constructor's paired block proof must recover
+runtime policy-input agreement from that induction hypothesis. A separate
+decision representative pairs a supported pre-decision prefix with its
+resolution edge, so extraction never selects an earlier action from a final
+outcome or a later chance result. Coverage of all actual supported prefixes,
+the paired information proof, and their connection to source-policy extension
+remain to be implemented.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual
 acceptance-time prepared snapshot, using the source-certified public fallback
-when the snapshot is missing or ill-typed. The complete-block endpoint currently
-forgets that equation: `Refines` alone does not constrain the represented source
-value of an unopenable opaque binding. Retain the snapshot-versus-fallback
-classifier, or a canonical resolved-value equation preserved through the block,
-before constructing `SourcePolicyCheckpoints.action_congr`. Equal pre-decision
-inputs must determine the extracted action; choosing arbitrary existential
-source witnesses does not establish that property.
+when the snapshot is missing or ill-typed. `BindingCode.resolvedValue` reads
+the accepted frozen snapshot or recorded public default at the expected source
+type. The complete `binding_block` endpoint retains equality with this
+canonical extraction, including after inactive padding and further private
+registration. The shared block-resolution proof transports the certificate
+on native application states. `Refines` alone deliberately permits other
+source witnesses for unopenable bindings; the extraction equation fixes the
+witness used for backtranslation without restricting raw player commands.
+To instantiate `SourcePolicyCheckpoints.action_congr`, the paired information
+proof must still show that equal pre-decision source views determine this
+extracted action. An equation at each individual execution does not establish
+that cross-execution property.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional

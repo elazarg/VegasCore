@@ -59,6 +59,41 @@ structure WindowedBindingPollsReady
   slot : (execution.principalHistory who).length % 3 = 0
   owner : instruction.submitter = some who
 
+/-- Binding readiness depends only on the owner's history and current view.
+Other principals' private preparations and unseen pending traffic need not
+agree. This transports readiness before the owner is polled. -/
+theorem WindowedBindingPollsReady.of_input_eq
+    {site : SourceDecisionSite who prog Δ name ty guard}
+    {fresh : FreshBindings prog} {build : BuildState P L Γ}
+    {image : ApplicationImage P L} {runtime : WindowedApplication P L}
+    {instruction : ApplicationInstruction P L}
+    {execution next : runtime.application.PolicyExecution} {env : VEnv L Δ}
+    (ready : site.WindowedBindingPollsReady fresh build image runtime instruction execution env)
+    (hinput : (next.principalHistory who, State.observe runtime.application next.native who) =
+      (execution.principalHistory who, State.observe runtime.application execution.native who)) :
+    site.WindowedBindingPollsReady fresh build image runtime instruction next env := by
+  have hhistory : next.principalHistory who = execution.principalHistory who :=
+    congrArg Prod.fst hinput
+  have hview : State.observe runtime.application next.native who =
+      State.observe runtime.application execution.native who := congrArg Prod.snd hinput
+  have hmemory : next.native.application.base.memory =
+      execution.native.application.base.memory := congrArg (fun view => view.application.1) hview
+  have herasedHistory : (runtime.eraseExecution next).principalHistory who =
+      (runtime.eraseExecution execution).principalHistory who :=
+    congrArg (List.map runtime.erasePlayerEntry) hhistory
+  have herasedView : State.observe image.application (runtime.eraseExecution next).native who =
+      State.observe image.application (runtime.eraseExecution execution).native who :=
+    congrArg runtime.eraseView hview
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ready.owner⟩
+  · simpa only [hmemory] using ready.unresolved
+  · simpa only [hmemory] using ready.requires
+  · simpa only [herasedHistory] using ready.registrationCache
+  · simpa only [herasedHistory] using ready.submissionCache
+  · simpa only [herasedHistory, herasedView] using ready.readout
+  · simpa only [hhistory] using ready.index
+  · simpa only [hmemory] using ready.active
+  · simpa only [hhistory] using ready.slot
+
 /-- The actual block-gated binding controller samples once and emits its
 opaque handle on the second poll. The unchanged source kernel may be
 behavioral; no command or execution-law equality is an input hypothesis. -/

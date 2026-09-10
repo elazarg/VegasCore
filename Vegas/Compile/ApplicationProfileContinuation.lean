@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.ApplicationPolicy
 import Vegas.Compile.ApplicationImageStateRefinement
+import Vegas.Compile.ApplicationInitialReads
 
 /-! # Structural continuations of lifted source profiles
 
@@ -217,6 +218,15 @@ theorem liftProfileIn_eq_of_refines
   let index : Fin (compileCore prog fresh state).graph.nodeCount :=
     ⟨node, Nat.lt_of_lt_of_le hnode hbound⟩
   exact (hrefines.memory.completed index).mpr ((current.completedPrefix index).mpr hnode)
+
+/-- The root's initial-read eligibility covers each structural source suffix. -/
+theorem initialControllerReadsPublic
+    (continuation : ProfileContinuation root rootProfile plan profile)
+    (hinitial : root.InitialControllerReadsPublic) : plan.InitialControllerReadsPublic := by
+  induction continuation with
+  | refl => exact hinitial
+  | sample _ ih => exact ih
+  | binding _ ih | publicChoice _ ih | conditional _ ih | conditionalCopy _ ih => exact ih.2
 
 end ProfileContinuation
 

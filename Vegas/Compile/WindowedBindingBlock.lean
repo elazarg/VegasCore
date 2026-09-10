@@ -14,6 +14,27 @@ import Vegas.Compile.WindowedBlockSourceCoupling
 
 noncomputable section
 
+namespace Vegas.BindingCode
+
+open Interaction
+
+variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- Canonical extraction of a source value from a completed binding disposition.
+The caller supplies the expected source type. Opaque bindings use their frozen
+typed verifier when recoverable; absent or ill-typed verifiers select the
+source-certified fallback. Public defaults use their recorded typed value,
+with the same fallback for invalid runtime state. -/
+def resolvedValue (code : BindingCode P L) {ty : L.Ty} (fallback : L.Val ty)
+    (state : ApplicationImage.State P L) : L.Val ty :=
+  match state.memory.accepted code.sourceField with
+  | some (.opaque _) =>
+      ((state.frozen code.sourceField).bind (fun typed => typed.as? ty)).getD fallback
+  | some (.publicDefault typed) => (typed.as? ty).getD fallback
+  | none => fallback
+
+end Vegas.BindingCode
+
 namespace Vegas.WindowedApplication
 
 open EventGraph ToEventGraph Interaction Interaction.MessageApplication
@@ -57,7 +78,9 @@ theorem handle_binding_source_coupling
         (compileCore (.commit name who guard tail) fresh build).graph
         (build.addCommitEvent name who guard fresh.1).1,
       next.current.source = current.current.source.cons chosen ∧
-        resolved.base.Refines next.current.graph.1 := by
+        resolved.base.Refines next.current.graph.1 ∧
+        chosen = (site.bindingCode fresh build (site.compiledField fresh build)).resolvedValue
+          fallbackValue resolved.base := by
   dsimp only
   let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
     .here guard tail
@@ -88,14 +111,23 @@ theorem handle_binding_source_coupling
     simp only [Option.some.injEq] at hunderlying
     obtain ⟨_, hcanonical, _, _, _⟩ := haccept
     change handle = (who, site.compiledField fresh build) at hcanonical
+    subst handle
     obtain ⟨next, hsource, hnext⟩ :=
       SourceDecisionSite.bind_recoveredOr_source_coupling guard tail fresh build current
         state.base hrefines fallbackValue (fun value => unrestricted current.current.source value)
-    refine ⟨next, hsource, ?_⟩
-    rw [hresolved]
-    change base.Refines next.current.graph.1
-    rw [← hunderlying]
-    simpa [hcanonical, ApplicationImage.State.bind, retimed, timed, code, site] using hnext
+    refine ⟨next, hsource, ?_, ?_⟩
+    · rw [hresolved]
+      change base.Refines next.current.graph.1
+      rw [← hunderlying]
+      simpa [ApplicationImage.State.bind, retimed, timed, code, site] using hnext
+    · rw [hresolved]
+      change ((state.base.prepared.lookup (who, site.compiledField fresh build)).bind
+          (fun typed => typed.as? ty)).getD fallbackValue =
+        code.resolvedValue fallbackValue base
+      rw [← hunderlying]
+      simp only [BindingCode.resolvedValue, ApplicationImage.State.bind]
+      have hfield : code.sourceField = retimed.sourceField := rfl
+      rw [if_pos hfield, if_pos hfield]
   · simp at hunderlying
 
 /-- Before the active response window ends, every successful native handler at
@@ -136,7 +168,9 @@ theorem handle_before_window_binding_source_coupling
           (compileCore (.commit name who guard tail) fresh build).graph
           (build.addCommitEvent name who guard fresh.1).1,
         next.current.source = current.current.source.cons chosen ∧
-          resolved.base.Refines next.current.graph.1 := by
+          resolved.base.Refines next.current.graph.1 ∧
+          chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+            (L.eval fallback.expr current.current.source.erasePubEnv) resolved.base := by
   let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
     .here guard tail
   let timed := fallback.bindingTimeoutCode fresh build deadline
@@ -245,7 +279,9 @@ theorem handle_binding_or_expiry_source_coupling
         (compileCore (.commit name who guard tail) fresh build).graph
         (build.addCommitEvent name who guard fresh.1).1),
       next.current.source = current.current.source.cons chosen ∧
-      resolved.base.Refines next.current.graph.1 ∧ resolved.FreshActivation := by
+      resolved.base.Refines next.current.graph.1 ∧ resolved.FreshActivation ∧
+      chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv) resolved.base := by
   let site : SourceDecisionSite who (.commit name who guard tail) Γ name ty guard :=
     .here guard tail
   let timed := fallback.bindingTimeoutCode fresh build deadline
@@ -285,13 +321,14 @@ theorem handle_binding_or_expiry_source_coupling
   | binding submittedAddress handle =>
       have haddress := hadmitted submittedAddress rfl
       subst submittedAddress
-      obtain ⟨next, hsource, hnext⟩ :=
+      obtain ⟨next, hsource, hnext, hchosen⟩ :=
         runtime.handle_binding_source_coupling guard tail fresh build current unrestricted
           state resolved activation id address handle (some ⟨deadline,
             fallback.compiled fresh build⟩)
           (L.eval fallback.expr current.current.source.erasePubEnv) hactive hcode
           hrefines hhandle
-      exact ⟨_, next, hsource, hnext, runtime.handle_freshActivation state resolved _ hhandle⟩
+      exact ⟨_, next, hsource, hnext, runtime.handle_freshActivation state resolved _ hhandle,
+        hchosen⟩
   | expireBinding submittedAddress =>
       have haddress := hadmitted submittedAddress rfl
       subst submittedAddress
@@ -319,18 +356,26 @@ theorem handle_binding_or_expiry_source_coupling
         rw [hexpected] at heval
         exact Option.some.inj heval.symm
       subst value
-      refine ⟨_, next, hsource, ?_, runtime.handle_freshActivation state resolved _ hhandle⟩
-      rw [hresolved]
-      change base.Refines next.current.graph.1
-      rw [← hbase]
-      have hdefault : state.base.defaultBind retimed
-          ⟨retimed.ty, L.eval fallback.expr current.current.source.erasePubEnv⟩ =
-          state.base.defaultBind (site.bindingCode fresh build
-            (site.compiledField fresh build))
-            ⟨ty, L.eval fallback.expr current.current.source.erasePubEnv⟩ := by
-        rfl
-      rw [hdefault]
-      exact hnext
+      refine ⟨_, next, hsource, ?_, runtime.handle_freshActivation state resolved _ hhandle, ?_⟩
+      · rw [hresolved]
+        change base.Refines next.current.graph.1
+        rw [← hbase]
+        have hdefault : state.base.defaultBind retimed
+            ⟨retimed.ty, L.eval fallback.expr current.current.source.erasePubEnv⟩ =
+            state.base.defaultBind (site.bindingCode fresh build
+              (site.compiledField fresh build))
+              ⟨ty, L.eval fallback.expr current.current.source.erasePubEnv⟩ := by
+          rfl
+        rw [hdefault]
+        exact hnext
+      · rw [hresolved]
+        change L.eval fallback.expr current.current.source.erasePubEnv =
+          timed.resolvedValue (L.eval fallback.expr current.current.source.erasePubEnv) base
+        rw [← hbase]
+        simp [BindingCode.resolvedValue, ApplicationImage.State.defaultBind, TypedValue.as?,
+          retimed, timed]
+        have hty : (fallback.bindingTimeoutCode fresh build deadline).ty = ty := rfl
+        simp [hty]
   | malformed data =>
       have hrejected := (runtime.atOrigin activation.since).ordered_handle_malformed
         state.base id data
@@ -388,7 +433,10 @@ theorem environment_latest_binding_source_coupling
         (build.addCommitEvent name who guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
       next.native.application.base.Refines sourceNext.current.graph.1 ∧
-      next.native.application.FreshActivation := by
+      next.native.application.FreshActivation ∧
+      chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        next.native.application.base := by
   let timed := fallback.bindingTimeoutCode fresh build deadline
   let Witness := { pair :
     L.Val ty × CoupledAt
@@ -398,16 +446,19 @@ theorem environment_latest_binding_source_coupling
   let target : Witness → Config
       (compileCore (.commit name who guard tail) fresh build).graph :=
     fun witness => witness.1.2.current.graph.1
-  obtain ⟨witness, hnextRefines, hnextFresh⟩ :=
+  let Certificate : WindowedApplication.State P L → Witness → Prop :=
+    fun result witness => witness.1.1 = timed.resolvedValue
+      (L.eval fallback.expr current.current.source.erasePubEnv) result.base
+  obtain ⟨witness, hnextRefines, hnextFresh, hcertificate⟩ :=
     runtime.environment_latest_source_witness players environment actor execution next timed.node
-      Witness target hpolicy hactive hinactive (by
+      Witness target Certificate hpolicy hactive hinactive (by
         intro message resolved hhandle
-        obtain ⟨chosen, sourceNext, hsource, hresolved, hfresh⟩ :=
+        obtain ⟨chosen, sourceNext, hsource, hresolved, hfresh, hchosen⟩ :=
           runtime.handle_binding_or_expiry_source_coupling guard tail fallback fresh build
             current unrestricted execution.native.application resolved activation timed.node
             deadline message hactivation hkey hcode hrefines hhandle
-        exact ⟨⟨(chosen, sourceNext), hsource⟩, hresolved, hfresh⟩) hnext
-  exact ⟨witness.1.1, witness.1.2, witness.2, hnextRefines, hnextFresh⟩
+        exact ⟨⟨(chosen, sourceNext), hsource⟩, hresolved, hfresh, hchosen⟩) hnext
+  exact ⟨witness.1.1, witness.1.2, witness.2, hnextRefines, hnextFresh, hcertificate⟩
 
 /-- If the ordinary environment slot of an active binding block resolves the
 instruction, the actual included pending message supplies a source successor.
@@ -448,7 +499,10 @@ theorem blockEnvironment_normal_binding_source_coupling
         (build.addCommitEvent name who guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
       next.native.application.base.Refines sourceNext.current.graph.1 ∧
-      next.native.application.FreshActivation := by
+      next.native.application.FreshActivation ∧
+      chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        next.native.application.base := by
   let timed := fallback.bindingTimeoutCode fresh build deadline
   apply runtime.environment_latest_binding_source_coupling players
     (runtime.blockEnvironment roster) timed.owner guard tail fallback fresh build current
@@ -503,7 +557,10 @@ theorem blockEnvironment_relay_binding_source_coupling
         (build.addCommitEvent name who guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
       next.native.application.base.Refines sourceNext.current.graph.1 ∧
-      next.native.application.FreshActivation := by
+      next.native.application.FreshActivation ∧
+      chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        next.native.application.base := by
   apply runtime.environment_latest_binding_source_coupling players
     (runtime.blockEnvironment roster) actor guard tail fallback fresh build current unrestricted
     deadline execution next activation
@@ -659,7 +716,10 @@ theorem runPolicies_binding_relay_pairs_source_coupling
         (build.addCommitEvent name who guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
       final.native.application.base.Refines sourceNext.current.graph.1 ∧
-      final.native.application.FreshActivation := by
+      final.native.application.FreshActivation ∧
+      chosen = (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        final.native.application.base := by
   let Witness := { pair :
     L.Val ty × CoupledAt
       (compileCore (.commit name who guard tail) fresh build).graph
@@ -668,21 +728,42 @@ theorem runPolicies_binding_relay_pairs_source_coupling
   let target : Witness → Config
       (compileCore (.commit name who guard tail) fresh build).graph :=
     fun witness => witness.1.2.current.graph.1
-  obtain ⟨witness, hfinalRefines, hfinalFresh⟩ :=
+  let Certificate : WindowedApplication.State P L → Witness → Prop :=
+    fun result witness => witness.1.1 =
+      (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+        (L.eval fallback.expr current.current.source.erasePubEnv)
+        result.base
+  obtain ⟨witness, hfinalRefines, hfinalFresh, hcertificate⟩ :=
     runtime.runPolicies_relay_pairs_source_witness roster players relays rosterOffset
       (.bind (fallback.bindingTimeoutCode fresh build deadline)) who
-      current.current.graph.1 execution final activation Witness target hrelays hbound hindex
-      hslot (by rfl) hactive hactivation hrefines hinactive (by
+      current.current.graph.1 execution final activation Witness target Certificate hrelays hbound
+      hindex hslot (by rfl) hactive hactivation hrefines hinactive (by
         intro actor index afterPlayer afterRelay hactor hrelayIndex hrelaySlot
           hplayerActive hplayerActivation hplayerRefines hafterInactive henvironment
-        obtain ⟨chosen, sourceNext, hsource, hnextRefines, hnextFresh⟩ :=
+        obtain ⟨chosen, sourceNext, hsource, hnextRefines, hnextFresh, hchosen⟩ :=
           runtime.blockEnvironment_relay_binding_source_coupling roster players actor index
             guard tail fallback fresh build current unrestricted deadline afterPlayer afterRelay
             activation (.bind (fallback.bindingTimeoutCode fresh build deadline)) hrelayIndex
             hrelaySlot hactor rfl hplayerActive hplayerActivation hkey hcode hplayerRefines
             hafterInactive henvironment
-        exact ⟨⟨(chosen, sourceNext), hsource⟩, hnextRefines, hnextFresh⟩) hfinal
-  exact ⟨witness.1.1, witness.1.2, witness.2, hfinalRefines, hfinalFresh⟩
+        exact ⟨⟨(chosen, sourceNext), hsource⟩, hnextRefines, hnextFresh, hchosen⟩) (by
+        intro witness before after schedule hcertificate hschedule hinactive hafter
+        have hinvariant := runtime.runPolicies_block_inactive_invariant roster players schedule
+          before after (.bind (fallback.bindingTimeoutCode fresh build deadline)) hschedule
+          (fun state => witness.1.1 =
+            (fallback.bindingTimeoutCode fresh build deadline).resolvedValue
+              (L.eval fallback.expr current.current.source.erasePubEnv) state.base ∧
+            runtime.image.activeAddress? state.base.memory ≠
+              some (fallback.bindingTimeoutCode fresh build deadline).node)
+          (by
+            intro state actor command hstate
+            constructor
+            · simpa [BindingCode.resolvedValue, WindowedApplication.application,
+                ApplicationImage.State.register] using hstate.1
+            · exact hstate.2)
+          (fun _ hstate => hstate.2) ⟨hcertificate, hinactive⟩ hafter
+        exact hinvariant.1) hfinal
+  exact ⟨witness.1.1, witness.1.2, witness.2, hfinalRefines, hfinalFresh, hcertificate⟩
 
 end Vegas.WindowedApplication
 

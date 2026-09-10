@@ -138,12 +138,14 @@ import Vegas.Compile.WindowedBlockSourceCoupling
 import Vegas.Compile.WindowedBindingSettlement
 import Vegas.Compile.WindowedBindingBlock
 import Vegas.Compile.WindowedConditionalBlock
+import Vegas.Compile.WindowedConditionalCheckpoint
 import Vegas.Compile.WindowedPublicChoiceBlock
 import Vegas.Compile.WindowedCheckpoint
 import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedPublicChoiceCheckpoint
 import Vegas.Compile.WindowedBindingExecution
 import Vegas.Compile.WindowedBindingLocality
+import Vegas.Compile.WindowedBindingReadiness
 import Vegas.Compile.WindowedSampleCaches
 import Vegas.Compile.WindowedBlockCaches
 import Vegas.Compile.WindowedSampleCheckpoint
