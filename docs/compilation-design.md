@@ -26,6 +26,18 @@ not a speculative framework for every possible target.
 Whether a particular runtime preserves a particular source property remains
 a theorem or an impossibility question, not an architectural assumption.
 
+Completion requires one artifact-lowering tower whose stage games execute
+their respective native semantics and whose end-to-end strategic theorems
+follow those same lowering passes. A separate strategic implementation path
+must be superseded, not retained as a proxy for the operational runtime.
+Simpler models may remain as explicit abstractions or optional analyses of
+this tower, with their scope and comparison proofs. The retirement gate is
+the replacement's advertised source-to-runtime guarantees and the migration
+of retained backend code onto that tower; a shared runner alone is insufficient.
+At retirement, the public compiler entry points and end-to-end paper audit
+theorems must use this tower without the superseded implementation path. Remove
+that path rather than preserving it as a compatibility layer.
+
 ## 1. Native representations and their game interpretations
 
 ```text

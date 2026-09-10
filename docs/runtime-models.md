@@ -978,6 +978,22 @@ The theorem is a whole-program reference execution law, not fairness under a
 different environment, settlement against deviating players, or a unilateral
 strategy-correspondence result.
 
+`VegasTests/ConditionalDeviation.lean` gives a limited deviation law for the
+generated Boolean binding/final-disclosure program. The owner controls both
+source decisions; there is no chance or later opponent decision. Replacing
+only its lifted native policy, under any environment and finite schedule,
+has exactly the law of a finite mixture of source-owner replacements whenever
+every supported runtime result completes. The comparison retains the completion
+flag and full public terminal environment, and yields source-outcome lower
+bounds independently of adversary preferences. It uses the actual generated
+application and the independent source denotation. The same artifact's
+generated reference service satisfies the forward law for every source profile.
+Completion is an assumption on the entire law, not conditioning on success.
+Permanent waiting at its fallback-free initial binding has no matching source
+mixture under any environment or finite schedule. These results establish
+neither settlement nor other-player deviation simulation, and do not extend
+to hidden random prefixes or multistage games with other decision makers.
+
 `ApplicationPlan.withholding_no_source_public_law` makes one failure of a
 stronger statement explicit. Undecorated binding and fallback-free ordinary-choice
 node blocks require an owner-authored message. Under a unilateral permanent-wait
