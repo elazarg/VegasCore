@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationImage
+import Vegas.Compile.ApplicationBindingOrigins
 
 /-! # Optional timeout code in the public-message artifact
 
@@ -149,6 +150,30 @@ theorem handle_withChoiceTimeouts_source [DecidableEq P] (image : ApplicationIma
                 (code.endpoint.resolve_iff _ _ _ _).mpr ⟨hvalid.1, rfl, hvalid.2, rfl⟩
               rw [hresolve, Option.map_some]
               rfl
+
+private theorem originsFrom_withChoiceTimeouts
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (earlier : List (BindingCode P L))
+    (instructions : List (ApplicationInstruction P L))
+    (horigins : HasBindingOriginsFrom earlier instructions) :
+    HasBindingOriginsFrom earlier
+      (instructions.map (ApplicationInstruction.withChoiceTimeouts select)) := by
+  induction instructions generalizing earlier with
+  | nil => trivial
+  | cons instruction rest ih =>
+      cases instruction with
+      | sample code => exact ih earlier horigins
+      | publicChoice code => exact ih earlier horigins
+      | bind code => exact ih (code :: earlier) horigins
+      | conditional code => exact ⟨horigins.1, ih earlier horigins.2⟩
+
+/-- Adding optional public-choice fallback code preserves every static
+conditional binding origin. -/
+theorem HasBindingOrigins.withChoiceTimeouts
+    {image : ApplicationImage P L} (horigins : image.HasBindingOrigins)
+    (select : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)) :
+    (image.withChoiceTimeouts select).HasBindingOrigins := by
+  exact originsFrom_withChoiceTimeouts select [] image.instructions horigins
 
 end ApplicationImage
 

@@ -140,6 +140,36 @@ theorem runPolicies_withBindingTimeouts [DecidableEq P] (image : ApplicationImag
   rw [hsample]
   exact hlaw
 
+private theorem originsFrom_withBindingTimeouts
+    (select : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (earlier : List (BindingCode P L))
+    (instructions : List (ApplicationInstruction P L))
+    (horigins : HasBindingOriginsFrom earlier instructions) :
+    HasBindingOriginsFrom
+      (earlier.map fun code => { code with timeout := select code })
+      (instructions.map (ApplicationInstruction.withBindingTimeouts select)) := by
+  induction instructions generalizing earlier with
+  | nil => trivial
+  | cons instruction rest ih =>
+      cases instruction with
+      | sample code => exact ih earlier horigins
+      | publicChoice code => exact ih earlier horigins
+      | bind code => exact ih (code :: earlier) horigins
+      | conditional code =>
+          refine ⟨?_, ih earlier horigins.2⟩
+          obtain ⟨binding, hmem, horigin⟩ := horigins.1
+          refine ⟨{ binding with timeout := select binding },
+            List.mem_map.mpr ⟨binding, hmem, rfl⟩, ?_⟩
+          exact horigin
+
+/-- Adding optional binding fallback code preserves every static conditional
+binding origin. -/
+theorem HasBindingOrigins.withBindingTimeouts
+    {image : ApplicationImage P L} (horigins : image.HasBindingOrigins)
+    (select : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)) :
+    (image.withBindingTimeouts select).HasBindingOrigins := by
+  exact originsFrom_withBindingTimeouts select [] image.instructions horigins
+
 variable [DecidableEq P]
 
 /-- Admission uses public state and executable expression code only. -/

@@ -339,6 +339,13 @@ relay requirements with the public-choice fallback selector. Its underlying
 expiry classification identifies the result with the programmer's exact
 source fallback expression. Whole-block successor construction for conditional
 and copied-conditional publication remains to be supplied.
+`WindowedApplication.handle_conditional_source_coupling` classifies an actual
+successful raw conditional handler at the generated source head. It retains
+the optional source result, guard legality, and the corresponding source
+continuation and native refinement. A successful opening itself supplies its
+frozen-value evidence; the theorem assumes neither an unchanged owner policy
+nor private-readout availability. This handler result does not establish that
+the instruction settles under the block service.
 `WindowedCheckpoint.block_caches` preserves future unchanged-owner caches
 through any generated instruction block. The constructor-uniform
 `liftProfileIn_headCommand` classifies commands from an unresolved source
@@ -375,13 +382,18 @@ canonical initialized program, source profile, pure raw focal replacement,
 block schedule prefix, and block environment. Compare complete-block source
 boundaries, not arbitrary native states satisfying refinement. The candidate
 invariant equates public memory (including dispositions and clock), activation,
-receipts, and the focal history and observable message projection, together with
-focal-owned private preparation and relevant frozen bindings. Opponents' hidden
-registered values and undelivered pending messages may differ. The inner
-invocation induction must allow these differences before inclusion; equality
-of the entire pool is not the appropriate intermediate invariant. The focal
-input agreement must be derived from the common run and equal focal source views,
-not assumed as a restriction on the deviation theorem.
+receipts, and the focal history, together with focal-owned private preparation
+and relevant frozen bindings. Opponents' hidden registered values may differ.
+For this completed-boundary comparison, full pool equality is a viable
+invariant: first recall equal published values from the equal successor source
+views, then compare the corresponding block executions with those values fixed.
+Hidden binding draws can differ, but their submitted opaque handles coincide;
+recalled public values fix public-choice and opening payloads. A theorem about
+arbitrary intermediate pairs would instead need only equality of the focal
+pool view and of the service's identifier-selection data. That stronger
+comparison is not required for the completed-boundary argument. Focal input
+agreement must be derived from initialized execution and equal focal source
+views, not assumed as a restriction on the deviation theorem.
 
 A paired derivation of the same emitted source-prefix shape can carry the two
 actual block support witnesses and their source successors without assuming
@@ -391,6 +403,17 @@ must agree, whereas another owner's sealed values may differ. The forward
 constructor proof must recover runtime policy-input agreement from that
 induction hypothesis. This paired-prefix proof and its connection to source
 policy extension are not yet implemented.
+
+Binding-action extraction needs more than an existential successor checkpoint.
+`handle_binding_source_coupling` computes the chosen value from the actual
+acceptance-time prepared snapshot, using the source-certified public fallback
+when the snapshot is missing or ill-typed. The complete-block endpoint currently
+forgets that equation: `Refines` alone does not constrain the represented source
+value of an unopenable opaque binding. Retain the snapshot-versus-fallback
+classifier, or a canonical resolved-value equation preserved through the block,
+before constructing `SourcePolicyCheckpoints.action_congr`. Equal pre-decision
+inputs must determine the extracted action; choosing arbitrary existential
+source witnesses does not establish that property.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional

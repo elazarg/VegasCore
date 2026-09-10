@@ -137,6 +137,7 @@ import Vegas.Compile.WindowedBlockProgress
 import Vegas.Compile.WindowedBlockSourceCoupling
 import Vegas.Compile.WindowedBindingSettlement
 import Vegas.Compile.WindowedBindingBlock
+import Vegas.Compile.WindowedConditionalBlock
 import Vegas.Compile.WindowedPublicChoiceBlock
 import Vegas.Compile.WindowedCheckpoint
 import Vegas.Compile.WindowedBindingCheckpoint
