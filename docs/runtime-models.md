@@ -221,11 +221,10 @@ adding them needs a new information-flow argument.
 
 ### The opening controller and its release boundary
 
-The owner-polling results in this subsection use the receipt-free
-`SealedPolicies` interface. Its replay-capability embedding preserves the law
-of an embedded policy but does not compare arbitrary replay-enabled deviations.
-These release and binding results remain to be ported to the shared runner;
-the bounded shared hiding theorem above does not cover intervening owner polls.
+The owner-polling results use the same shared policy game as the bounded
+hiding comparison above. Public receipts remain observable and replay is
+unrestricted. The owner follows the specified release policy; opponent and
+environment policies may adapt to their complete permitted observations.
 
 `Interaction/SealedController.lean` supplies the local commit/open controller:
 register the chosen value, submit its opaque handle, then poll the public-view
@@ -243,7 +242,7 @@ handwritten release condition. In the nullable-choice fixture, both commitments
 must be complete before the owner can submit its opening.
 
 The observation comparison is made before the value-bearing packet enters the
-pool. `Interaction/SealedPolicyTrace.lean` records the initial and every
+pool. `Interaction/MessageApplicationPolicyTrace.lean` records the initial and every
 post-invocation snapshot using the same `invoke` function as the native game.
 `tracePolicies_last` proves that its final-state law equals `runPolicies`.
 `PolicyTrace.firstRelease` selects the first release-enabled snapshot, or the
@@ -254,8 +253,14 @@ including traces where release never occurs. Readiness need not be monotone;
 after a reveal completes it becomes false again, without changing the first
 release snapshot.
 
+`tracePolicies_firstRelease_split` identifies an actual invocation prefix
+supporting the selected snapshot and a remaining suffix supporting the final
+snapshot from that same state. Both use the original policies. This permits
+binding persistence to be proved through the full post-release continuation,
+without introducing a second transition function or a stopped execution.
+
 `tracePolicies_hiding_beforeRelease` in `Interaction/SealedRelease.lean`
-proves equality of the selected wire/nonowner-memory observation laws when the
+proves equality of the selected wire/receipt/nonowner-memory observation laws when the
 protected controller waits before the public release condition. The protected
 owner may be invoked throughout the schedule. The opening controller
 discharges this waiting condition. Opponents and the wire-observing environment
@@ -264,8 +269,8 @@ remain arbitrary adaptive policies, fixed between the two executions.
 `VegasTests/PendingRelease.lean` starts the actual compiled example empty and
 includes both initial owner invocations. The rest of the fixed schedule can
 invoke that owner as well as its opponent and environment. Its
-`controllerTraceLaw_hiding` compares every pair of nullable values under both
-rebroadcast selections. `controllerTraceLaw_cut_reachable` obtains the selected
+`controllerTraceLaw_hiding` compares every pair of nullable values with arbitrary
+replay. `controllerTraceLaw_cut_reachable` obtains the selected
 snapshot from a genuine native invocation prefix and the existing checked
 source-support theorem. `PendingReleaseExamples` exercises owner polls before
 readiness, immediate opening afterward, delivery before inclusion, and the
@@ -1155,8 +1160,11 @@ fixed fair draw, and completion disabling further draws. Its policy-game
 regression checks that deterministic controllers retain the application's
 chance law. Hiding of its private prediction is a projection equality, not a
 cryptographic-security theorem.
-The untimed receipt-free sealed instance remains a distinct weaker model;
-extra receipt observations are not silently erased from the shared game.
+The untimed sealed application also uses the shared policy runner, including
+owner-release hiding and binding persistence. Its receipt-free native state
+is a checked reference for source decoding; receipts remain visible in the
+policy game. `InteractionTests/PolicyTrace.lean` checks that shared trace
+recording preserves the lottery's fair draw and retains wait invocations.
 
 `VegasTests/DisclosureApplication` specializes the checked optional-disclosure
 program to this same carrier, with no graph configuration in operational state.

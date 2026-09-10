@@ -97,10 +97,10 @@ bindings and decoded payout evaluation. This is support-level correctness.
 The shared bounded policy runner gives this fragment principal-scoped commands,
 polling histories, public receipts, and adaptive delivery/inclusion under a
 fixed invocation schedule. Its ideal hiding theorem covers arbitrary replay
-and receipt-observing policies before further protected-owner invocations.
-The owner-polling release theorem still uses the receipt-free sealed policy
-interface and remains to be ported. It reads a prefix of a full execution;
-later openings disclose their values normally. Whole-game source-to-runtime
+and receipt-observing policies through the first public release boundary,
+including owner polling. The shared invocation trace records every snapshot
+without changing the execution law; later openings disclose their values
+normally. Whole-game source-to-runtime
 deviation adequacy, timeout settlement, and concrete cryptography remain unproved
 for this model. In the checked two-player instance, the
 opponent's extracted source value is independent of the honest input and

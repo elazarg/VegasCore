@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedController
-import Interaction.SealedPolicyTrace
+import Interaction.MessageApplicationPolicyTrace
 
 /-! # Trace law after the commit controller reaches its opening phase -/
 
@@ -20,27 +20,36 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
 private theorem invoke_owner_history_length [DecidableEq Principal] [DecidableEq Value]
-    (rebroadcast : Bool) (program : SealedProgram Principal)
-    (players : Principal → PlayerPolicy Principal Value rebroadcast)
-    (environment : EnvironmentPolicy Principal Value) (owner : Principal)
-    (execution next : PolicyExecution Principal Value) (invocation : Invocation Principal)
+    (program : SealedProgram Principal)
+    (players : Principal → (program.messageApplication (Value := Value)).PlayerPolicy)
+    (environment : (program.messageApplication (Value := Value)).EnvironmentPolicy)
+    (owner : Principal)
+    (execution next : (program.messageApplication (Value := Value)).PolicyExecution)
+    (invocation : @MessageApplication.Invocation Principal)
     (hlength : 2 ≤ (execution.principalHistory owner).length)
     (hnext : next ∈
-      (invoke rebroadcast program players environment execution invocation).support) :
+      ((program.messageApplication (Value := Value)).invoke
+        players environment execution invocation).support) :
     2 ≤ (next.principalHistory owner).length := by
   cases invocation with
   | environment =>
-      simp only [invoke, FinDist.support_map, Set.mem_image] at hnext
-      obtain ⟨command, _, rfl⟩ := hnext
-      simpa using hlength
+      simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨command, _, hstep⟩ := hnext
+      have hhistory := MessageApplication.environmentStep_principalHistory
+        (app := program.messageApplication (Value := Value)) execution command next hstep
+      rw [congrFun hhistory owner]
+      exact hlength
   | player who =>
-      simp only [invoke, FinDist.support_map, Set.mem_image] at hnext
-      obtain ⟨command, _, rfl⟩ := hnext
+      simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨command, _, hstep⟩ := hnext
       by_cases hwho : owner = who
       · subst who
-        simp only [playerStep_self_history, List.length_append, List.length_singleton]
+        rw [(program.messageApplication (Value := Value)).playerStep_history_self
+          owner execution command next hstep]
+        simp only [List.length_append, List.length_singleton]
         omega
-      · rw [playerStep_other_history program who owner execution command.1 hwho]
+      · rw [(program.messageApplication (Value := Value)).playerStep_other_history
+          who owner hwho execution command next hstep]
         exact hlength
 
 /-- Once the owner's first two invocations are recorded, its complete
@@ -48,46 +57,52 @@ commit/open policy and its opening-only policy induce exactly the same complete
 trace law on every remaining fixed schedule. -/
 theorem tracePolicies_commitOpen_eq_opening_of_two_le
     [DecidableEq Principal] [DecidableEq Value]
-    (rebroadcast : Bool) (program : SealedProgram Principal)
-    (environment : EnvironmentPolicy Principal Value)
-    (schedule : List (Invocation Principal)) (execution : PolicyExecution Principal Value)
-    (players : Profile (policySignature Principal Value rebroadcast))
+    (program : SealedProgram Principal)
+    (environment : (program.messageApplication (Value := Value)).EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution : (program.messageApplication (Value := Value)).PolicyExecution)
+    (players : Profile (MessageApplication.policySignature Principal
+      (program.messageApplication (Value := Value))))
     (owner : Principal) (commitNode revealNode : Nat) (value : Value)
     (hlength : 2 ≤ (execution.principalHistory owner).length) :
-    tracePolicies rebroadcast program
-        (Profile.update (sig := policySignature Principal Value rebroadcast) players owner
-          (commitOpenPolicy rebroadcast program owner commitNode revealNode value))
+    (program.messageApplication (Value := Value)).tracePolicies
+        (Profile.update (sig := MessageApplication.policySignature Principal
+          (program.messageApplication (Value := Value))) players owner
+          (commitOpenPolicy program owner commitNode revealNode value))
         environment schedule execution =
-      tracePolicies rebroadcast program
-        (Profile.update (sig := policySignature Principal Value rebroadcast) players owner
-          (openingPolicy rebroadcast program owner revealNode value))
+      (program.messageApplication (Value := Value)).tracePolicies
+        (Profile.update (sig := MessageApplication.policySignature Principal
+          (program.messageApplication (Value := Value))) players owner
+          (openingPolicy program owner revealNode value))
         environment schedule execution := by
   induction schedule generalizing execution with
   | nil => rfl
   | cons invocation rest ih =>
-      simp only [tracePolicies]
+      simp only [MessageApplication.tracePolicies]
       have hinvoke :
-          invoke rebroadcast program
-              (Profile.update (sig := policySignature Principal Value rebroadcast) players owner
-                (commitOpenPolicy rebroadcast program owner commitNode revealNode value))
+          (program.messageApplication (Value := Value)).invoke
+              (Profile.update (sig := MessageApplication.policySignature Principal
+                (program.messageApplication (Value := Value))) players owner
+                (commitOpenPolicy program owner commitNode revealNode value))
               environment execution invocation =
-            invoke rebroadcast program
-              (Profile.update (sig := policySignature Principal Value rebroadcast) players owner
-                (openingPolicy rebroadcast program owner revealNode value))
+            (program.messageApplication (Value := Value)).invoke
+              (Profile.update (sig := MessageApplication.policySignature Principal
+                (program.messageApplication (Value := Value))) players owner
+                (openingPolicy program owner revealNode value))
               environment execution invocation := by
         cases invocation with
         | environment => rfl
         | player who =>
             by_cases hwho : who = owner
             · subst who
-              simp only [invoke, Profile.update_same]
+              simp only [MessageApplication.invoke, Profile.update_same]
               unfold commitOpenPolicy
               split <;> try omega
               rfl
-            · simp [invoke, Profile.update_of_ne _ _ hwho]
+            · simp [MessageApplication.invoke, Profile.update_of_ne _ _ hwho]
       rw [hinvoke]
       exact FinDist.bind_congr fun next hnext => by
-        rw [ih next (invoke_owner_history_length rebroadcast program _ environment owner
+        rw [ih next (invoke_owner_history_length program _ environment owner
           execution next invocation hlength hnext)]
 
 end Interaction.SealedProgram

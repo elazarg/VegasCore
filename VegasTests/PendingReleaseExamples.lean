@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import VegasTests.PendingRelease
+import VegasTests.PendingSnapshots
 
 /-! # Concrete release-boundary traces
 
@@ -17,17 +18,18 @@ inclusion of the protected opening.
 namespace VegasTests.PendingReleaseExamples
 
 open Interaction Interaction.SealedProgram GameTheory GameTheory.Math.Probability
-open VegasTests.PendingSource VegasTests.PendingExecution
-open VegasTests.PendingRelease
+open VegasTests.PendingSource VegasTests.PendingExecution VegasTests.PendingPolicies
+open Interaction.MessageApplication
+open VegasTests.PendingRelease VegasTests.PendingSnapshots
 
 noncomputable section
 
-def opponent : PlayerPolicy Player Value true :=
-  commitOpenPolicy true program 1 1 3 none
+def opponent : Application.PlayerPolicy :=
+  commitOpenPolicy program 1 1 3 none
 
-def players : Profile (policySignature Player Value true) := fun _ => opponent
+def players : Profile (MessageApplication.policySignature Player Application) := fun _ => opponent
 
-def environment : EnvironmentPolicy Player Value := fun history _ =>
+def environment : Application.EnvironmentPolicy := fun history _ =>
   match history.length with
   | 0 => FinDist.pure (.include (0, 0))
   | 1 => FinDist.pure (.include (1, 0))
@@ -35,121 +37,125 @@ def environment : EnvironmentPolicy Player Value := fun history _ =>
   | 3 => FinDist.pure (.include (0, 1))
   | _ => FinDist.pure .wait
 
-def schedule : List (Invocation Player) :=
+def schedule : List (@MessageApplication.Invocation Player) :=
   [.player 0, .player 1, .player 1, .environment, .player 0,
    .environment, .player 0, .environment, .environment, .player 0]
 
-def law (value : Value) : FinDist (PolicyTrace Player Value) :=
-  controllerTraceLaw true value players environment schedule
+def law (value : Value) : FinDist (Application.PolicyTrace) :=
+  controllerTraceLaw value players environment schedule
 
-def profile (value : Value) : Player → PlayerPolicy Player Value true := fun who =>
-  controllerProfile true value players who
+def profile (value : Value) : Player → Application.PlayerPolicy := fun who =>
+  controllerProfile value players who
 
-def s0 : PolicyExecution Player Value := PolicyExecution.initial initial
-def s1 (v : Value) := playerStep program 0 s0 (.register 0 v)
-def s2 (v : Value) := playerStep program 0 (s1 v) (.submit (.commitment 0 (0, 0)))
-def s3 (v : Value) := playerStep program 0 (s2 v) .wait
-def s4 (v : Value) := playerStep program 1 (s3 v) (.register 1 none)
-def s5 (v : Value) := playerStep program 1 (s4 v) (.submit (.commitment 1 (1, 1)))
-def s6 (v : Value) := environmentStep program (s5 v) (.include (0, 0))
-def s7 (v : Value) := playerStep program 0 (s6 v) .wait
-def s8 (v : Value) := environmentStep program (s7 v) (.include (1, 0))
-def s9 (v : Value) := playerStep program 0 (s8 v) (.submit (.opening 2 (0, 0) v))
-def s10 (v : Value) := environmentStep program (s9 v) (.deliver 1 (0, 1))
-def s11 (v : Value) := environmentStep program (s10 v) (.include (0, 1))
-def s12 (v : Value) := playerStep program 0 (s11 v) .wait
+def s0 : Application.PolicyExecution := initialExecution
+def s1 (v : Value) := playerSnapshot 0 s0 (.privateCommand ⟨(0, v)⟩)
+  { s0.native with application := Application.privateStep s0.native.application 0 ⟨(0, v)⟩ }
+def s2 (v : Value) := playerSnapshot 0 (s1 v) (.submit (.commitment 0 (0, 0)))
+  { (s1 v).native with pool := ((s1 v).native.pool.submit 0 (.commitment 0 (0, 0))).2 }
+def s3 (v : Value) := playerSnapshot 0 (s2 v) .wait (s2 v).native
+def s4 (v : Value) := playerSnapshot 1 (s3 v) (.privateCommand ⟨(1, none)⟩)
+  { (s3 v).native with
+    application := Application.privateStep (s3 v).native.application 1 ⟨(1, none)⟩ }
+def s5 (v : Value) := playerSnapshot 1 (s4 v) (.submit (.commitment 1 (1, 1)))
+  { (s4 v).native with pool := ((s4 v).native.pool.submit 1 (.commitment 1 (1, 1))).2 }
+def s6 (v : Value) := environmentSnapshot (s5 v) (.include (0, 0))
+  (Application.includePending (s5 v).native (0, 0))
+def s7 (v : Value) := playerSnapshot 0 (s6 v) .wait (s6 v).native
+def s8 (v : Value) := environmentSnapshot (s7 v) (.include (1, 0))
+  (Application.includePending (s7 v).native (1, 0))
+def s9 (v : Value) := playerSnapshot 0 (s8 v) (.submit (.opening 2 (0, 0) v))
+  { (s8 v).native with pool := ((s8 v).native.pool.submit 0 (.opening 2 (0, 0) v)).2 }
+def s10 (v : Value) := environmentSnapshot (s9 v) (.deliver 1 (0, 1))
+  { (s9 v).native with pool := ((s9 v).native.pool.deliver 1 (0, 1)).state }
+def s11 (v : Value) := environmentSnapshot (s10 v) (.include (0, 1))
+  (Application.includePending (s10 v).native (0, 1))
+def s12 (v : Value) := playerSnapshot 0 (s11 v) .wait (s11 v).native
 
-def expectedTrace (v : Value) : PolicyTrace Player Value :=
+def expectedTrace (v : Value) : Application.PolicyTrace :=
   .step s0 (.step (s1 v) (.step (s2 v) (.step (s3 v) (.step (s4 v)
     (.step (s5 v) (.step (s6 v) (.step (s7 v) (.step (s8 v) (.step (s9 v)
       (.step (s10 v) (.step (s11 v) (.finish (s12 v)))))))))))))
 
-private theorem allowedTrue (command : PlayerCommand Player Value) : command.allowed true := by
-  cases command <;> trivial
-
-private theorem invokePlayerPure (v : Value) (e : PolicyExecution Player Value)
-    (who : Player) (command : PlayerCommand Player Value)
-    (h : profile v who (e.principalHistory who) (e.native.observe who) =
-      FinDist.pure ⟨command, allowedTrue command⟩) :
-    invoke true program (profile v) environment e (.player who) =
-      FinDist.pure (playerStep program who e command) := by
-  simp only [invoke, h, FinDist.map_pure]
-
-private theorem invokeEnvironmentPure (v : Value) (e : PolicyExecution Player Value)
-    (command : EnvironmentCommand Player)
-    (h : environment e.environmentHistory e.native.environmentView = FinDist.pure command) :
-    invoke true program (profile v) environment e .environment =
-      FinDist.pure (environmentStep program e command) := by
-  simp only [invoke, h, FinDist.map_pure]
-
 private theorem i0 (v : Value) :
-    invoke true program (profile v) environment s0 (.player 0) = FinDist.pure (s1 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment s0 (.player 0) = FinDist.pure (s1 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i1 (v : Value) :
-    invoke true program (profile v) environment (s1 v) (.player 0) = FinDist.pure (s2 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s1 v) (.player 0) = FinDist.pure (s2 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i2 (v : Value) :
-    invoke true program (profile v) environment (s2 v) (.player 0) = FinDist.pure (s3 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s2 v) (.player 0) = FinDist.pure (s3 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i3 (v : Value) :
-    invoke true program (profile v) environment (s3 v) (.player 1) = FinDist.pure (s4 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s3 v) (.player 1) = FinDist.pure (s4 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i4 (v : Value) :
-    invoke true program (profile v) environment (s4 v) (.player 1) = FinDist.pure (s5 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s4 v) (.player 1) = FinDist.pure (s5 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i5 (v : Value) :
-    invoke true program (profile v) environment (s5 v) .environment = FinDist.pure (s6 v) := by
-  apply invokeEnvironmentPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s5 v) .environment = FinDist.pure (s6 v) := by
+  apply invokeEnvironment_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i6 (v : Value) :
-    invoke true program (profile v) environment (s6 v) (.player 0) = FinDist.pure (s7 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s6 v) (.player 0) = FinDist.pure (s7 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i7 (v : Value) :
-    invoke true program (profile v) environment (s7 v) .environment = FinDist.pure (s8 v) := by
-  apply invokeEnvironmentPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s7 v) .environment = FinDist.pure (s8 v) := by
+  apply invokeEnvironment_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i8 (v : Value) :
-    invoke true program (profile v) environment (s8 v) (.player 0) = FinDist.pure (s9 v) := by
-  apply invokePlayerPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s8 v) (.player 0) = FinDist.pure (s9 v) := by
+  apply invokePlayer_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i9 (v : Value) :
-    invoke true program (profile v) environment (s9 v) .environment = FinDist.pure (s10 v) := by
-  apply invokeEnvironmentPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s9 v) .environment = FinDist.pure (s10 v) := by
+  apply invokeEnvironment_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i10 (v : Value) :
-    invoke true program (profile v) environment (s10 v) .environment = FinDist.pure (s11 v) := by
-  apply invokeEnvironmentPure
-  cases v <;> rfl
+    Application.invoke (profile v) environment (s10 v) .environment = FinDist.pure (s11 v) := by
+  apply invokeEnvironment_snapshot
+  · cases v <;> rfl
+  · rfl
 private theorem i11 (v : Value) :
-    invoke true program (profile v) environment (s11 v) (.player 0) = FinDist.pure (s12 v) := by
-  apply invokePlayerPure
-  rcases v with _ | (_ | _) <;> rfl
+    Application.invoke (profile v) environment (s11 v) (.player 0) = FinDist.pure (s12 v) := by
+  apply invokePlayer_snapshot
+  · rcases v with _ | (_ | _) <;> rfl
+  · rfl
 
 theorem law_eq_trace (v : Value) : law v = FinDist.pure (expectedTrace v) := by
-  change tracePolicies true program (profile v) environment
+  change Application.tracePolicies (profile v) environment
     (.player 0 :: .player 0 :: schedule) s0 = _
   simp only [schedule, tracePolicies, i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10,
     i11, FinDist.pure_bind, FinDist.map_pure]
   rfl
 
 def cutEvents (value : Value) : FinDist (List (Event Player Value)) :=
-  (law value).map fun trace => (trace.firstRelease release).native.events
+  (law value).map fun trace => (trace.firstRelease releaseSnapshot).native.application.events
 
 def finalEvents (value : Value) : FinDist (List (Event Player Value)) :=
-  (law value).map fun trace => trace.last.native.events
+  (law value).map fun trace => trace.last.native.application.events
 
 theorem cut_observations_hide :
-    ((law (some false)).map (PolicyTrace.firstRelease release)).map
-        (PolicyExecution.observations 0) =
-      ((law (some true)).map (PolicyTrace.firstRelease release)).map
-        (PolicyExecution.observations 0) :=
-  controllerTraceLaw_hiding true (some false) (some true) players environment schedule
+    ((law (some false)).map (PolicyTrace.firstRelease releaseSnapshot)).map
+        (program.applicationObservations 0) =
+      ((law (some true)).map (PolicyTrace.firstRelease releaseSnapshot)).map
+        (program.applicationObservations 0) :=
+  controllerTraceLaw_hiding (some false) (some true) players environment schedule
 
 theorem cutEvents_eq (v : Value) : cutEvents v =
     FinDist.pure [.accepted 0 (0, 0), .accepted 1 (1, 1)] := by
@@ -185,7 +191,7 @@ theorem s9_opening_visible (v : Value) :
 still contains only the two accepted commitments. -/
 theorem s10_delivered_before_inclusion (v : Value) :
     (s10 v).native.pool.inbox 1 = [⟨(0, 1), .opening 2 (0, 0) v⟩] ∧
-      (s10 v).native.events = [.accepted 0 (0, 0), .accepted 1 (1, 1)] := by
+      (s10 v).native.application.events = [.accepted 0 (0, 0), .accepted 1 (1, 1)] := by
   rcases v with _ | (_ | _) <;> exact ⟨rfl, rfl⟩
 
 theorem full_events_disclose : finalEvents (some false) ≠ finalEvents (some true) := by

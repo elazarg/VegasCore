@@ -173,7 +173,7 @@ private theorem ApplicationPolicyRelated.advance
       · simp only [MessageApplication.advance, hl, FinDist.pure_bind]
       · simp only [MessageApplication.advance, hr, FinDist.pure_bind]
 
-private theorem ApplicationPolicyRelated.playerStep
+theorem ApplicationPolicyRelated.playerStep
     (related : ApplicationPolicyRelated program hiddenOwner first second)
     (who : Principal) (hne : who ≠ hiddenOwner)
     (command : (program.messageApplication (Value := Value)).PlayerCommand) :
@@ -211,7 +211,7 @@ private theorem ApplicationPolicyRelated.playerStep
       simp only [if_pos, related.principalHistory who hne, related.native.observe_eq who]
     · simpa only [if_neg heq] using related.principalHistory other hother
 
-private theorem ApplicationPolicyRelated.environmentStep
+theorem ApplicationPolicyRelated.environmentStep
     (related : ApplicationPolicyRelated program hiddenOwner first second)
     (command : (program.messageApplication (Value := Value)).EnvironmentPolicyCommand) :
     ∃ nextLeft nextRight,

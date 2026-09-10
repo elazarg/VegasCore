@@ -98,13 +98,12 @@ replay. `Vegas/Game/SealedMessages.lean` connects shared policy executions to th
 checked source at support level. Receipt erasure is a source decoder, not an
 observation restriction or a strategic-equivalence claim.
 
-The receipt-free `SealedPolicies` interface remains for owner-release analysis.
-`SealedPolicyLaws` supplies its replay-capability embedding and native witnesses;
-`SealedHiding` and `SealedPolicyRelation` supply its relational invariants.
-`SealedController` and
-`SealedControllerTrace` implement the commit/open phases over native policies;
-`SealedPolicyTrace` records full native executions, and `SealedRelease` proves
-hiding at their first public release-enabled snapshot, allowing owner polls.
+`SealedController` and `SealedControllerTrace` implement the commit/open phases
+over shared policies. `MessageApplicationPolicyTrace` records every invocation
+of any application, with exact final-law and release-prefix/suffix support
+theorems. `SealedRelease` proves receipt-bearing hiding at the first public
+release-enabled snapshot, allowing owner polls. The native `SealedHiding`
+invariant supplies the ideal-service argument; there is one policy runner.
 `Vegas/Game/SealedRelease.lean` connects generated openings to the actual graph
 prerequisites. `SealedPersistence` proves occupied-slot and event-history
 persistence; `SealedBinding` ties accepted/opened values to their application

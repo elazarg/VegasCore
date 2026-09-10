@@ -336,7 +336,7 @@ acceptance and rejection receipts for paired secret values. The finite
 invocation list remains fixed. `PendingPolicies` handles continuations without
 owner invocations and retains a distinguishing cleartext response on this model.
 `PendingRelease` supplies the owner's register/submit/open reference policy from
-empty on the receipt-free sealed policy interface and permits further owner
+empty on the same receipt-bearing policy interface and permits further owner
 invocations. It compares the first public
 release-enabled snapshot of each full native trace; execution continues after
 that snapshot. The generic reference-policy theorem checks all graph
@@ -588,22 +588,17 @@ opening/expiry race regressions. Its raw timed step/run remains a reference
 semantics used in model-specific proofs; its correspondence to the shared
 native runner is exact.
 
-The untimed shared instance has source support and adaptive pre-disclosure
-hiding with receipts exposed and replay unrestricted. This establishes those
-properties on the richer interface, not unrestricted game equivalence after
-receipt erasure.
-
-Removing `SealedPolicies` still requires migrating owner polling and first-release
-instrumentation. `nativeTrace` records only native actions, omitting waits and
-intermediate policy histories; it cannot reconstruct the required invocation
-snapshots. Add one shared trace recorder over `MessageApplication.invoke`, prove
-its last-state projection equals `runPolicies`, and prove first-release prefix
-support on that same runner. Then port the commit/open reference policy,
-release-time hiding, and binding persistence, including `PendingRelease`,
-`PendingChoiceLock`, and their examples. The recorder must reuse native invocation
-semantics and preserve full execution after the selected release snapshot.
-This consolidation does not discharge general public-message deviation
-simulation or migration of the retained EVM backend.
+The untimed instance uses the same policy runner for source support,
+owner-polling release-time hiding, and binding persistence, with receipts
+exposed and replay unrestricted. `MessageApplicationPolicyTrace` records every
+invocation, including waits and intermediate policy histories. Its final-state
+projection has exactly the `runPolicies` law. Its release split identifies
+both an actual prefix and the supported continuation of the same execution.
+`PendingRelease`, `PendingChoiceLock`, and the concrete release examples use
+this shared instrumentation; post-release execution remains part of the game.
+Receipt erasure is used only for source decoding, not as a claim of unrestricted
+game equivalence. General public-message deviation simulation and migration of
+the retained EVM backend remain separate requirements.
 
 Integrate conditional publication and source continuation through this shared
 application boundary. Do not add a separate optional-disclosure runner or

@@ -4,8 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.MessageApplicationPolicyLaws
-import Interaction.SealedApplication
+import Interaction.SealedApplicationPolicyLaws
 import Vegas.Compile.SealedSource
 
 /-! # Native public-message policy executions and the checked source
@@ -63,15 +62,8 @@ theorem sealed_policy_source (source : WFProgram Player L) (ty : L.Ty)
   let app := supported.compile.messageApplication (Value := L.Val ty)
   let initialApplication : app.Application := ⟨IdealCommitments.empty, []⟩
   let initial := MessageApplication.State.initial app initialApplication
-  have hnative := app.runPolicies_initial_native_support players environment schedule
-    initial execution hmem
-  have herased : supported.compile.eraseReceipts execution.native ∈
-      ((app.run execution.nativeTrace initial).map supported.compile.eraseReceipts).support := by
-    rw [FinDist.support_map]
-    exact ⟨execution.native, hnative, rfl⟩
-  rw [supported.compile.run_eraseReceipts] at herased
-  simp only [FinDist.mem_support_pure] at herased
-  rw [herased]
+  rw [supported.compile.runPolicies_eraseReceipts_eq_run_trace
+    players environment schedule initial execution hmem]
   exact source.sealed_run_source ty supported
     (execution.nativeTrace.map supported.compile.nativeAction)
 

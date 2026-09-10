@@ -135,6 +135,7 @@ import VegasTests.PendingExecution
 import VegasTests.PendingOutcome
 import VegasTests.PendingReplay
 import VegasTests.PendingPolicies
+import VegasTests.PendingSnapshots
 import VegasTests.PendingRelease
 import VegasTests.PendingReleaseExamples
 import VegasTests.PendingChoiceLock

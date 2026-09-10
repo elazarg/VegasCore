@@ -10,6 +10,7 @@ import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationProjection
 import Interaction.MessageApplicationPolicyLaws
+import Interaction.MessageApplicationPolicyTrace
 import Interaction.MessageApplicationCounters
 import Interaction.MessageApplicationPolicyHistory
 import Interaction.MessageApplicationPolicyInvariant
@@ -39,15 +40,12 @@ import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution
 import Interaction.SealedApplication
+import Interaction.SealedApplicationPolicyLaws
 import Interaction.SealedApplicationHiding
 import Interaction.SealedExecutionLaws
-import Interaction.SealedPolicies
-import Interaction.SealedPolicyLaws
 import Interaction.SealedHiding
-import Interaction.SealedPolicyRelation
 import Interaction.SealedController
 import Interaction.SealedControllerTrace
-import Interaction.SealedPolicyTrace
 import Interaction.SealedRelease
 import Interaction.SealedPersistence
 import Interaction.SealedBinding

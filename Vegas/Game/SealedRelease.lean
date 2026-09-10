@@ -23,12 +23,13 @@ variable {G : Graph Player L} {ty : L.Ty}
 /-- Any non-wait opening command for a compiled node certifies completion of
 all of that graph node's prerequisites in the controller's public view. -/
 theorem openingCommand_prerequisites (supported : SealedFragment G ty)
+    [DecidableEq (L.Val ty)]
     (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty)
-    (view : SealedProgram.View Player (L.Val ty))
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (hnonwait : SealedProgram.openingCommand supported.compile owner node.val value view ≠
       .wait) :
     ∀ prior, prior ∈ G.prereqs node →
-      SealedProgram.done view.events prior.val = true := by
+      SealedProgram.done view.application prior.val = true := by
   obtain ⟨source, requires, _hcommand, hrule, _hnotDone, hrequires, _haccepted⟩ :=
     SealedProgram.openingCommand_ne_wait_sound supported.compile owner node.val value view
       hnonwait
