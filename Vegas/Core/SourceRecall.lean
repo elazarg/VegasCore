@@ -149,6 +149,24 @@ theorem eraseView_cons_other_recall {Γ : VCtx P L} {x : VarId} {b : L.Ty}
   rw [hproof] at hvalue
   exact hvalue
 
+/-- Equality of extended source views recalls the preceding view for every
+binding visibility. The newly bound values need not agree when hidden. -/
+theorem eraseView_cons_recall {Γ : VCtx P L} {x : VarId} {τ : BindTy P L}
+    (who : P) (hctx : WFCtx ((x, τ) :: Γ))
+    {leftValue rightValue : L.Val τ.base} {left right : VEnv L Γ}
+    (hview : ((left.cons (x := x) (τ := τ) leftValue).toView who).eraseEnv =
+      ((right.cons (x := x) (τ := τ) rightValue).toView who).eraseEnv) :
+    (left.toView who).eraseEnv = (right.toView who).eraseEnv := by
+  cases τ with
+  | mk ty visibility =>
+      cases visibility with
+      | pub => exact (eraseView_cons_public_recall who hctx hview).2
+      | sealed owner =>
+          by_cases howner : who = owner
+          · subst owner
+            exact (eraseView_cons_owned_recall who hctx hview).2
+          · exact eraseView_cons_other_recall howner hctx hview
+
 /-- Equality of a player's complete source view determines the public source
 environment used by timeout fallback expressions. -/
 theorem erasePubEnv_eq_of_eraseView_eq {Γ : VCtx P L} (who : P)
@@ -180,14 +198,8 @@ theorem erasePubEnv_eq_of_eraseView_eq {Γ : VCtx P L} (who : P)
                 Env.cons rightHead rightTail.erasePubEnv
               rw [hhead, ih hctx.tail htail]
           | sealed owner =>
-              have htail :
-                  (leftTail.toView who).eraseEnv = (rightTail.toView who).eraseEnv := by
-                by_cases howner : who = owner
-                · subst owner
-                  exact (eraseView_cons_owned_recall who hctx hview).2
-                · exact eraseView_cons_other_recall howner hctx hview
               change leftTail.erasePubEnv = rightTail.erasePubEnv
-              exact ih hctx.tail htail
+              exact ih hctx.tail (eraseView_cons_recall who hctx hview)
 
 end VEnv
 

@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedSubmitWaitPairing
 import Vegas.Compile.WindowedConditionalInclusion
+import Vegas.Compile.WindowedConditionalInversion
 import Vegas.Compile.WindowedConditionalPrivacy
 import Vegas.Compile.WindowedNormalSuffix
 
@@ -40,29 +41,6 @@ variable {fresh : FreshBindings
 variable {state : BuildState P L Γ} {plan : ApplicationPlan accounted fresh state}
 variable {profile : SourceBehavioralProfile
   (.commit name owner guard (.reveal publicName owner name .here tail))}
-/-- Equal canonical conditional packets carry the same optional source result. -/
-private theorem conditional_result_eq
-    (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
-    (leftValue rightValue : L.Val ty)
-    (heq : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
-      let payload := fun result => ApplicationImage.Payload.conditional
-        (P := P) (L := L) (site.choice.publicationNode fresh state)
-        (site.sourceRequestPayload fresh state (site.sourceField fresh state)
-          (deadlineOf (site.choice.publicationNode fresh state)) disposition result)
-      payload (spec.encoding leftValue) = payload (spec.encoding rightValue)) :
-    spec.encoding leftValue = spec.encoding rightValue := by
-  let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
-  let encoding := site.choiceEncodingFor fresh state (site.sourceField fresh state)
-    (deadlineOf (site.choice.publicationNode fresh state)) disposition
-    (ApplicationImage.conditionalTransport spec.secretTy)
-  have hencoded : encoding.encode leftValue = encoding.encode rightValue :=
-    (site.choiceEncodingFor_encode fresh state (site.sourceField fresh state)
-      (deadlineOf (site.choice.publicationNode fresh state)) disposition leftValue).trans
-      (heq.trans (site.choiceEncodingFor_encode fresh state (site.sourceField fresh state)
-        (deadlineOf (site.choice.publicationNode fresh state)) disposition rightValue).symm)
-  have hdecoded := congrArg encoding.decode hencoded
-  rw [encoding.decode_encode, encoding.decode_encode] at hdecoded
-  exact congrArg spec.encoding (Option.some.inj hdecoded)
 
 /-- The two conditional accounting forms have the same ordinary-poll
 comparison. Source kernels may differ, while the supported public optional
@@ -396,8 +374,11 @@ theorem conditional_block_agreement_of_same_result
   have hmessage := Option.some.inj (hleftLookup.symm.trans
     ((congrArg (fun pool => pool.lookup (owner, left.native.pool.nextSerial owner))
       polledAgreement.pool).trans hrightLookup))
-  have hresult := conditional_result_eq disposition leftChosen.1 rightChosen.1
-    (congrArg Message.payload hmessage)
+  have hpayload := congrArg Message.payload hmessage
+  injection hpayload with _ hrequest
+  have hresult := site.sourceRequestPayload_injective fresh state
+    (site.sourceField fresh state) (deadlineOf (site.choice.publicationNode fresh state))
+    disposition hrequest
   have includedAgreement : WindowedApplication.PolicyAgreement runtime focal
       includedLeft includedRight := by
     apply polledAgreement.environmentPolicyStep_include_conditional code
@@ -433,6 +414,90 @@ theorem conditional_block_agreement_of_same_result
     simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨includedRight, hnormalRight, hfinalRight⟩
 
+/-- Actual complete executions with the same recorded public source result
+preserve focal information across either conditional head. The checkpoints
+and supported runs supply the binding disposition, source draw, and ordinary
+submission branches; none is an additional execution premise. -/
+theorem conditional_block_agreement_at_source
+    (head : ConditionalHead spec plan)
+    (leftCurrent rightCurrent : CoupledAt
+      (compileCore (.commit name owner guard (.reveal publicName owner name .here tail))
+        fresh state).graph state)
+    (left right finalLeft finalRight :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex plan profile leftCurrent left)
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex plan profile rightCurrent right)
+    (agreement : WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal left right)
+    (hinitial : root.InitialControllerReadsPublic)
+    (horigins : (root.image deadlineOf).HasBindingOrigins)
+    (command : List (root.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
+      (root.windowed deadlineOf binding choice windowOf).application.View →
+        (root.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (result : Option (L.Val spec.secretTy))
+    (recordedLeft recordedRight : CoupledAt
+      (compileCore tail fresh.2.2
+        (((state.addCommitEvent name owner guard fresh.1).1).addRevealEvent
+          publicName owner .here fresh.2.1).1).graph
+      (((state.addCommitEvent name owner guard fresh.1).1).addRevealEvent
+        publicName owner .here fresh.2.1).1)
+    (hsourceLeft : recordedLeft.current.source =
+      (leftCurrent.current.source.cons (spec.encoding.symm result)).cons
+        (spec.encoding.symm result))
+    (hsourceRight : recordedRight.current.source =
+      (rightCurrent.current.source.cons (spec.encoding.symm result)).cons
+        (spec.encoding.symm result))
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) left).support)
+    (hfinalRight : finalRight ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) right).support) :
+    WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal finalLeft finalRight := by
+  obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp howner
+  obtain ⟨leftDisposition, hbindingLeft, hresultLeft, polledLeft, hbranchLeft,
+      includedLeft, hincludedLeft, hsuffixLeft⟩ :=
+    conditional_block_support_at_source head leftCurrent left finalLeft leftCheckpoint
+      hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      result recordedLeft hsourceLeft hrefinesLeft hfinalLeft
+  obtain ⟨rightDisposition, hbindingRight, hresultRight, polledRight, hbranchRight,
+      includedRight, hincludedRight, hsuffixRight⟩ :=
+    conditional_block_support_at_source head rightCurrent right finalRight rightCheckpoint
+      hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      result recordedRight hsourceRight hrefinesRight hfinalRight
+  have hdisposition : rightDisposition = leftDisposition := by
+    rw [← agreement.state.base.memory] at hbindingRight
+    exact Option.some.inj (hbindingRight.symm.trans hbindingLeft)
+  subst rightDisposition
+  apply (conditional_block_agreement_of_same_result head leftCurrent rightCurrent left right
+    leftCheckpoint rightCheckpoint agreement hinitial horigins command hpure hroster howner
+    hother beforeRoster afterRoster hsplit leftDisposition hbindingLeft result
+    hresultLeft hresultRight polledLeft polledRight hbranchLeft hbranchRight
+    finalLeft finalRight ?_ ?_).1
+  · change finalLeft ∈ (((root.windowed deadlineOf binding choice windowOf).application.invoke
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      polledLeft .environment).bind _).support
+    simp only [FinDist.support_bind, Set.mem_iUnion]
+    exact ⟨includedLeft, hincludedLeft, hsuffixLeft⟩
+  · change finalRight ∈ (((root.windowed deadlineOf binding choice windowOf).application.invoke
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      polledRight .environment).bind _).support
+    simp only [FinDist.support_bind, Set.mem_iUnion]
+    exact ⟨includedRight, hincludedRight, hsuffixRight⟩
+
 end Vegas.ApplicationPlan.WindowedCheckpoint
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.conditional_block_agreement_of_same_result'
@@ -445,3 +510,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.conditional_ordinary_agreement_of_same_result
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.conditional_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.conditional_block_agreement_at_source

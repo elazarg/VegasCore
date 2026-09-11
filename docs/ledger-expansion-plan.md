@@ -477,10 +477,57 @@ identify the deterministic typed plan/profile position at each block count.
 The `ProfilePoint` package records compiler structure and the reference profile;
 it contains neither source environments nor native executions. This supplies
 the structural alignment needed before comparing two predecessor steps.
+`BlockSourceStep.sourceView_recall` derives preceding source-view equality
+from equal successor views at aligned positions. `BlockSourceStep.policyAgreement`
+combines all emitted instruction cases: actual complete blocks with agreeing
+predecessor runtime information and equal successor source views have agreeing
+successor runtime information. Both statements consume the original source
+edges and checkpoints; their typed extension view is derived, not stored as an
+extra condition on executions. Composing these statements by paired-prefix
+induction remains necessary for whole-prefix information reconstruction.
 A separate decision representative must pair a supported
 pre-decision prefix with its resolution edge, so extraction never selects an
 earlier action from a final outcome or a later chance result. That decision
 carrier and its connection to source-policy extension remain unimplemented.
+
+Decision representatives must be indexed by the exact source decision site,
+not merely by an existential block count and a compatible source context.
+`SourceDecisionSite.depth` counts source constructors, whereas an application
+block may consume an adjacent commit/reveal pair. The extraction construction
+therefore needs a forward correspondence from a source decision site to its
+plan/profile position. Once two representatives have that common position,
+their checkpoint `blockCount` equations determine the same block index, and
+`profilePoint_eq` can align their actual source prefixes. The existing
+`instructions_origin` theorem goes in the reverse direction and does not
+supply this site-indexed position construction.
+
+Action consistency uses predecessor observations, without assuming equal
+successor observations. Whole-prefix information agreement gives equal inputs
+to the pure replacing policy; `owned_block_agreement` then compares its two
+supported resolution blocks. Binding uses `binding_block_action_eq` and the
+edge's recorded resolved-value equality. Public choice and conditional
+publication use the resulting public-memory equality and successor refinement
+to identify the newly published source value. Conditional publication also
+uses its encoding equivalence. `SourcePolicyCheckpoints.extend` can totalize
+these consistent legal actions with the reference policy away from represented
+views. Neither the site-indexed carrier nor this complete extraction is proved
+by the individual block comparisons.
+
+The probability argument requires a joint one-block law, not another support
+inversion. Its first marginal must be the actual complete native block law;
+its source marginal must be the corresponding step or adjacent pair of steps
+of the existing source semantics under the extracted profile. Supported pairs
+must retain the source extension and successor refinement. Chance already has
+an exact complete-block coupling. For unchanged decision owners, the exact
+source-sampling laws retain the owner's draw jointly with an arbitrary
+continuation; the admission and remaining-service arguments must carry that
+joint law through to the recorded successor. A pure focal source action has a
+point-mass marginal, but its actual native resolution still needs to be coupled
+to the source extension. These block couplings can then be composed, retaining
+the information invariant and both marginals. Membership of a recovered draw
+in a source kernel's support does not establish its probability, even after
+source-action consistency has been proved. No additional source interpreter
+is needed for this probability bridge.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an
@@ -521,20 +568,18 @@ derived witnesses to compare actual complete blocks. Its checked mixed-type
 instance includes an initial public field, distinguishing publication-node
 addresses from stored result fields.
 
-`conditional_ordinary_support_result` recovers the actual encoded optional
-result and fixed submission branch for either conditional head. Identifying
-that result with a supplied complete-block source successor remains to be
-proved for conditional publication. The shared packet-retention and
-`after_normal_publicState` lemmas provide the normal-service parts of this
-remaining inversion, including under randomized raw replacement policies.
-The conditional proof should identify the two recovered dispositions through
-their common binding read, identify the optional results through injectivity
-of the canonical conditional-payload encoding, and compare the published
-source value with the successor's public-field readout. The payload
-injectivity argument belongs beside the conditional encoding API so both
-paired-block comparison and single-run inversion use it. Discharge and copy
-share this runtime argument through `ConditionalHead`; neither needs a
-separate source-language case added to the runtime model.
+`conditional_block_support_at_source` performs the complete-block inversion
+for either conditional head. It derives the binding disposition from the
+checkpoint and recovers the actual optional result and fixed ordinary-poll
+branch. Packet retention and injectivity of the canonical conditional encoding
+identify this result with the accepted publication. Public-memory preservation
+through the remaining service and the successor's public-field readout then
+identify it with the recorded source result. This inversion permits randomized
+raw replacement policies. `conditional_block_agreement_at_source` consumes
+these witnesses on both sides to compare complete blocks under a fixed pure
+raw replacement. The checked persistent-disclosure plan exercises that
+endpoint, without admission or internal-branch premises. Discharge and copy
+share the argument through `ConditionalHead`.
 
 The focal-owned block case is checked by
 `WindowedCheckpoint.owned_block_agreement`. Given two actual checkpoints and

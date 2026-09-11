@@ -102,6 +102,29 @@ theorem choiceEncodingFor_encode
       ApplicationImage.conditionalTransport, sourceRequestPayload, ConditionalCode.requestPayload,
       code, hresult]
 
+/-- For a fixed accepted disposition, the canonical conditional request
+payload uniquely determines its optional source result. -/
+theorem sourceRequestPayload_injective
+    (site : ConditionalPublicationSite prog) (fresh : FreshBindings prog)
+    (state : BuildState P L Γ) (sourceSlot deadline : Nat)
+    (disposition : BindingDisposition (CommitmentHandle P Nat)
+      (L.Val site.specification.secretTy)) :
+    Function.Injective
+      (site.sourceRequestPayload fresh state sourceSlot deadline disposition) := by
+  intro left right heq
+  have value_eq_of_typed {left right : L.Val site.specification.secretTy}
+      (h : (⟨site.specification.secretTy, left⟩ : TypedValue L) =
+        ⟨site.specification.secretTy, right⟩) : left = right := by
+    injection h
+  cases disposition <;> cases left <;> cases right <;>
+    unfold sourceRequestPayload ConditionalCode.requestPayload at heq <;>
+      injection heq
+  all_goals try rfl
+  all_goals
+    apply congrArg some
+    apply value_eq_of_typed
+    assumption
+
 /-- Install a conditional source decision with the payload, accepted-binding,
 and completion projections used by the generated image handler. -/
 def imageController (site : ConditionalPublicationSite prog)

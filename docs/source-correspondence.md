@@ -163,12 +163,17 @@ uses each execution's actual frozen source binding or typed public default;
 it is derived from initialized provenance and source legality. These local
 comparisons use a fixed pure raw focal policy and retain actual commands,
 local histories, pending messages, receipts, and public activation metadata.
-For chance and unchanged public choice, source-indexed endpoints derive the
-supported draws and fixed branches from actual complete-block support and
-refined source successors. Conditional ordinary polling has the corresponding
-branch inversion; identification with the complete-block source successor
-remains open. Deterministic plan/profile-position equality supplies structural
-alignment for paired prefixes, without asserting information agreement.
+For chance, unchanged public choice, and both forms of conditional disclosure,
+source-indexed endpoints derive the supported draws and fixed branches from
+actual complete-block support and refined source successors. Conditional
+inversion also derives the accepted binding disposition; payload injectivity
+and the published source field identify the actual optional result.
+Deterministic plan/profile-position equality supplies structural alignment for
+paired prefixes. `BlockSourceStep.sourceView_recall` recovers preceding source
+observations from equal successor observations, and `BlockSourceStep.policyAgreement`
+provides a common information-preserving induction step for every emitted
+instruction kind. The paired-prefix induction combining these steps remains
+open; the structural alignment result alone does not assert information agreement.
 The general public-message deviation law remains open: these local
 comparisons must determine one legal source policy from actual source views,
 then establish its complete outcome law against unchanged opponents.

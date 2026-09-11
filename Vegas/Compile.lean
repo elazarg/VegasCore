@@ -187,6 +187,7 @@ import Vegas.Compile.WindowedConditionalAdmission
 import Vegas.Compile.WindowedConditionalInclusion
 import Vegas.Compile.WindowedConditionalPrivacy
 import Vegas.Compile.WindowedConditionalBlockPrivacy
+import Vegas.Compile.WindowedSourcePrivacy
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
 import Vegas.Compile.WindowedReadoutProjection

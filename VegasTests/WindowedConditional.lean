@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.WindowedConditionalInclusion
+import Vegas.Compile.WindowedConditionalBlockPrivacy
 import VegasTests.WindowedSourceCoverage
 import VegasTests.GeneratedApplicationSourceLaw
 import VegasTests.ApplicationBindingOrigins
@@ -178,6 +178,72 @@ theorem checked_conditional_ordinary_inclusion
       (by simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hincluded)
   exact ⟨chosen, hchosen, hincludedStep, hinactive⟩
 
+/-- At either checked conditional head, agreement before two actual complete
+blocks extends to agreement at their recorded common source result. -/
+theorem checked_conditional_block_agreement_at_source
+    {Γ : VCtx TestPlayer simpleExpr} {pending : Finset VarId}
+    {name publicName : VarId} {ty : simpleExpr.Ty}
+    {guard : simpleExpr.Expr
+      ((name, ty) :: eraseVCtx (viewVCtx (0 : TestPlayer) Γ)) simpleExpr.bool}
+    {tail : VegasCore TestPlayer simpleExpr
+      ((publicName, .pub ty) :: (name, .sealed 0 ty) :: Γ)}
+    {spec : ConditionalOpening guard}
+    {accounted : CommitmentAccounting pending
+      (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    {fresh : FreshBindings (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    {state : BuildState TestPlayer simpleExpr Γ}
+    {plan : ApplicationPlan accounted fresh state}
+    {profile : SourceBehavioralProfile
+      (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    {leftCurrent rightCurrent : CoupledAt
+      (compileCore (.commit name 0 guard (.reveal publicName 0 name .here tail))
+        fresh state).graph state}
+    (rootProfile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy)
+    (command : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (blockIndex : Nat)
+    (left right finalLeft finalRight : runtime.application.PolicyExecution)
+    (head : ApplicationPlan.ConditionalHead spec plan)
+    (leftCheckpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      blockIndex plan profile leftCurrent left)
+    (rightCheckpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      blockIndex plan profile rightCurrent right)
+    (agreement : WindowedApplication.PolicyAgreement runtime 1 left right)
+    (result : Option (simpleExpr.Val spec.secretTy))
+    (recordedLeft recordedRight : CoupledAt
+      (compileCore tail fresh.2.2
+        (((state.addCommitEvent name 0 guard fresh.1).1).addRevealEvent
+          publicName 0 .here fresh.2.1).1).graph
+      (((state.addCommitEvent name 0 guard fresh.1).1).addRevealEvent
+        publicName 0 .here fresh.2.1).1)
+    (hsourceLeft : recordedLeft.current.source =
+      (leftCurrent.current.source.cons (spec.encoding.symm result)).cons
+        (spec.encoding.symm result))
+    (hsourceRight : recordedRight.current.source =
+      (rightCurrent.current.source.cons (spec.encoding.symm result)).cons
+        (spec.encoding.symm result))
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈ (runtime.application.runPolicies
+      (unchangedPlayers rootProfile replacement) (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) left).support)
+    (hfinalRight : finalRight ∈ (runtime.application.runPolicies
+      (unchangedPlayers rootProfile replacement) (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) right).support) :
+    WindowedApplication.PolicyAgreement runtime 1 finalLeft finalRight := by
+  apply leftCheckpoint.conditional_block_agreement_at_source head leftCurrent rightCurrent
+    left right finalLeft finalRight rightCheckpoint agreement
+    GeneratedApplicationSourceLaw.initial_reads_public
+    ApplicationBindingOrigins.persistent_image_has_binding_origins command hpure
+    (by decide) (by simp) (by decide) result recordedLeft recordedRight hsourceLeft hsourceRight
+    hrefinesLeft hrefinesRight
+  · simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hfinalLeft
+  · simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hfinalRight
+
 end VegasTests.WindowedConditional
 
 /-- info: 'VegasTests.WindowedConditional.checked_conditional_ordinary_packet'
@@ -189,3 +255,9 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedConditional.checked_conditional_ordinary_inclusion
+
+/-- info: 'VegasTests.WindowedConditional.checked_conditional_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  VegasTests.WindowedConditional.checked_conditional_block_agreement_at_source
