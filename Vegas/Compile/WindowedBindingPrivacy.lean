@@ -169,7 +169,8 @@ private theorem binding_ordinary_agreement
         players (runtime.blockEnvironment roster) before (by simp [before]) hbeforeOwner
         left middle hmiddle
       simp only [FinDist.bind_map]
-      exact leftCheckpoint.binding_polls_source_law_of_input_eq hinitial hroster howner hother
+      exact leftCheckpoint.binding_polls_source_law_of_input_eq hinitial hroster howner
+        (leftCheckpoint.referenceOwner_of_ne owner hother)
         (runtime.blockEnvironment roster) middle hinput)
     (by
       intro middle hmiddle
@@ -178,7 +179,8 @@ private theorem binding_ordinary_agreement
         players (runtime.blockEnvironment roster) before (by simp [before]) hbeforeOwner
         right middle hmiddle
       simp only [FinDist.bind_map]
-      exact rightCheckpoint.binding_polls_source_law_of_input_eq hinitial hroster howner hother
+      exact rightCheckpoint.binding_polls_source_law_of_input_eq hinitial hroster howner
+        (rightCheckpoint.referenceOwner_of_ne owner hother)
         (runtime.blockEnvironment roster) middle hinput)
     leftSubmitted rightSubmitted hleftPrefix hrightPrefix
   have hsubmittedLengths : ∀ actor, (leftSubmitted.principalHistory actor).length =
@@ -309,14 +311,17 @@ theorem binding_block_agreement
     leftCurrent rightCurrent left right leftCheckpoint rightCheckpoint agreement hinitial command
     hpure hroster howner hother polledLeft polledRight hpolledLeft hpolledRight
   obtain ⟨hleftInclude, hinactive, _⟩ := leftCheckpoint.binding_ordinary_inclusion hinitial
-    hroster howner hother polledLeft includedLeft hpolledLeft hincludedLeft
+    hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother)
+    polledLeft includedLeft hpolledLeft hincludedLeft
   obtain ⟨hrightInclude, _⟩ := rightCheckpoint.binding_ordinary_inclusion hinitial
-    hroster howner hother polledRight includedRight hpolledRight hincludedRight
+    hroster howner (rightCheckpoint.referenceOwner_of_ne owner hother)
+    polledRight includedRight hpolledRight hincludedRight
   have hserial : left.native.pool.nextSerial owner = right.native.pool.nextSerial owner :=
     congrArg (fun pool => pool.nextSerial owner) agreement.pool
   rw [← hserial] at hrightInclude
   have hlookup := (leftCheckpoint.binding_ordinary_submission hinitial
-    hroster howner hother polledLeft hpolledLeft).2
+    hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother)
+    polledLeft hpolledLeft).2
   have includedAgreement : WindowedApplication.PolicyAgreement runtime focal
       includedLeft includedRight := by
     apply polledAgreement.environmentPolicyStep_include (owner, left.native.pool.nextSerial owner)

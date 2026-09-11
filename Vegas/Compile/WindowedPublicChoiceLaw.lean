@@ -7,9 +7,9 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedPublicChoiceInversion
 import Vegas.Compile.WindowedPublicChoiceCheckpoint
 
-/-! # Exact complete-block law for unchanged public-choice owners
+/-! # Exact complete-block law for reference public-choice owners
 
-The emitted block factors through the unchanged owner's source kernel.  The
+The emitted block factors through the reference owner's source kernel.  The
 sampled guarded value remains an explicit index of the concrete native
 continuation; no supported branch is selected after the fact.
 -/
@@ -42,7 +42,7 @@ variable {fresh : FreshBindings
   (.commit name owner guard (.reveal publicName owner name .here tail))}
 variable {state : BuildState P L Γ}
 
-/-- The complete emitted block for an unchanged public-choice owner is the
+/-- The complete emitted block for a reference public-choice owner is the
 owner's exact source decision kernel bound to the concrete submit/wait branch
 and every remaining native invocation.  Polls before the owner may randomize,
 but are independent of the source draw and are therefore commuted inside its
@@ -64,7 +64,8 @@ theorem publicChoice_block_source_factorization
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster) :
     let runtime := root.windowed deadlineOf binding choice windowOf
@@ -107,7 +108,7 @@ theorem publicChoice_block_source_factorization
   have hbeforeOwner : Invocation.player owner ∉ before := by
     simp [before, hnotOwner]
   have hpolls := checkpoint.publicChoice_polls_source_law_after_others hinitial hroster
-    howner hother environment before hbeforeEnvironment hbeforeOwner
+    howner reference environment before hbeforeEnvironment hbeforeOwner
   have hschedule : WindowedApplication.blockInvocations roster =
       (before ++ [Invocation.player owner, .player owner]) ++ remaining := by
     simp only [WindowedApplication.blockInvocations, before, remaining, hsplit,
@@ -143,7 +144,8 @@ theorem publicChoice_fixed_branch_source_coupling
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (chosen : { value // evalGuard guard value
@@ -191,7 +193,7 @@ theorem publicChoice_fixed_branch_source_coupling
   let kernel := profile owner (.here guard (.reveal publicName owner name .here tail))
     ((current.current.source.toView owner).eraseEnv)
   have hfactor := checkpoint.publicChoice_block_source_factorization publicGuard nextPlan profile
-    current execution hinitial hroster howner hother beforeRoster afterRoster hsplit
+    current execution hinitial hroster howner reference beforeRoster afterRoster hsplit
   have hfull : final ∈ (runtime.application.runPolicies players environment
       (WindowedApplication.blockInvocations roster) execution).support := by
     rw [hfactor]
@@ -200,9 +202,9 @@ theorem publicChoice_fixed_branch_source_coupling
       simpa only [FinDist.support_bind, Set.mem_iUnion] using hbranch⟩
   obtain ⟨actual, sourceNext, hsource, hlegal, hsteps, hnext, hinactive⟩ :=
     checkpoint.publicChoice_block publicGuard nextPlan profile fallback deadline hselect current
-      execution final hroster owner howner hother hfull
+      execution final hroster owner howner reference.policy hfull
   have hstored := checkpoint.publicChoice_fixed_branch_publication publicGuard nextPlan profile
-    current execution final hinitial hroster howner hother beforeRoster afterRoster hsplit
+    current execution final hinitial hroster howner reference beforeRoster afterRoster hsplit
     chosen hchosen hbranch
   have hrecorded : Store.getAs final.native.application.base.memory.store
       (state.nextField + 1) ty = some actual := by

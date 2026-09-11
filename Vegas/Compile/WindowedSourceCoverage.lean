@@ -67,6 +67,10 @@ theorem extend
         replacement initial (blockIndex + 1) nextPlan nextProfile sourceNext final := by
   have checkpoint := trace.checkpoint
   have hlocal := checkpoint.continuation.blockFallbacks binding choice hfallbacks
+  have hrelayReference :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay := by
+    simp only [windowedPlayers, Function.update_of_ne hunchanged]
   cases plan with
   | ret => simp only [ApplicationPlan.instructions, List.length_nil] at hremaining; omega
   | sample nextPlan =>
@@ -79,7 +83,7 @@ theorem extend
       obtain ⟨fallback, deadline, hselect⟩ := hlocal.1
       obtain ⟨value, sourceNext, hsource, hnext, hresolved, _, _⟩ :=
         WindowedCheckpoint.binding_block unrestricted nextPlan profile fallback deadline hselect
-          current execution final checkpoint hroster relay hrelay hunchanged hfinal
+          current execution final checkpoint hroster relay hrelay hrelayReference hfinal
       refine ⟨_, _, _, _, _, _, nextPlan, profile.afterCommit, sourceNext, ?_⟩
       exact .step trace hfinal (.binding fallback deadline hselect value hsource hresolved) hnext
   | publicChoice publicGuard nextPlan =>
@@ -87,19 +91,19 @@ theorem extend
       obtain ⟨value, sourceNext, hsource, hlegal, _, hnext, _⟩ :=
         WindowedCheckpoint.publicChoice_block publicGuard nextPlan profile fallback deadline hselect
           current
-          execution final checkpoint hroster relay hrelay hunchanged hfinal
+          execution final checkpoint hroster relay hrelay hrelayReference hfinal
       refine ⟨_, _, _, _, _, _, nextPlan, profile.afterCommit.afterReveal, sourceNext, ?_⟩
       exact .step trace hfinal (.publicChoice value hsource hlegal) hnext
   | conditional publicGuard nextPlan =>
       obtain ⟨result, sourceNext, hadmissible, hsource, hlegal, _, hnext, _⟩ :=
         WindowedCheckpoint.conditional_block publicGuard nextPlan profile horigins current execution
-          final checkpoint hroster relay hrelay hunchanged hfinal
+          final checkpoint hroster relay hrelay hrelayReference hfinal
       refine ⟨_, _, _, _, _, _, nextPlan, profile.afterCommit.afterReveal, sourceNext, ?_⟩
       exact .step trace hfinal (.conditional result hadmissible hsource hlegal) hnext
   | conditionalCopy spec publicGuard nextPlan =>
       obtain ⟨result, sourceNext, hadmissible, hsource, hlegal, _, hnext, _⟩ :=
         WindowedCheckpoint.conditionalCopy_block publicGuard nextPlan profile horigins current
-          execution final checkpoint hroster relay hrelay hunchanged hfinal
+          execution final checkpoint hroster relay hrelay hrelayReference hfinal
       refine ⟨_, _, _, _, _, _, nextPlan, profile.afterCommit.afterReveal, sourceNext, ?_⟩
       exact .step trace hfinal (.conditionalCopy result hadmissible hsource hlegal) hnext
 

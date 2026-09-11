@@ -166,7 +166,7 @@ theorem conditional_polls_source_law_of_input_eq
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
     (hbinding : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
       (site.code fresh state (site.sourceField fresh state)
@@ -203,15 +203,13 @@ theorem conditional_polls_source_law_of_input_eq
       execution.native.application.base.memory :=
     congrArg (fun input => input.2.application.1) hinput
   have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
+      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := reference.policy
   let code := site.code fresh state (site.sourceField fresh state)
     (deadlineOf (site.choice.publicationNode fresh state))
   obtain ⟨rest, hhead⟩ := head.instructions deadlineOf
   obtain ⟨hcache, hfirst⟩ := checkpoint.conditional_first_poll head hinitial horigins hroster
-    howner hpolicy (checkpoint.head_cacheEmpty (.conditional code) rest hhead
-      (fun heq => hother (Option.some.inj heq))) disposition hbinding
+    howner hpolicy (reference.head_cacheEmpty (.conditional code) rest hhead rfl)
+    disposition hbinding
   have hindexOriginal := checkpoint.instruction_at (.conditional code) rest hhead
   have hindex : runtime.image.instructions[blockIndex]? = some (.conditional code) := by
     simp only [runtime, windowed, ApplicationImage.withChoiceTimeouts,
@@ -264,7 +262,7 @@ theorem conditional_polls_source_law_after_others
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
     (hbinding : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
       (site.code fresh state (site.sourceField fresh state)
@@ -299,7 +297,7 @@ theorem conditional_polls_source_law_after_others
   have hrefines := runtime.runPolicies_players_refines players environment before henvironment
     execution middle checkpoint.refines hmiddle
   exact checkpoint.conditional_polls_source_law_of_input_eq head hinitial horigins hroster
-    howner hother disposition hbinding environment middle hrefines hinput
+    howner reference disposition hbinding environment middle hrefines hinput
 
 /-- A legal successful choice of a reference owner opens the exact frozen
 source binding. Snapshot equality follows from real registration provenance,

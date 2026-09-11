@@ -61,7 +61,8 @@ theorem publicChoice_fixed_branch_publication
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (chosen : { value // evalGuard guard value
@@ -124,7 +125,7 @@ theorem publicChoice_fixed_branch_publication
       simp only [FinDist.support_bind, Set.mem_iUnion]
       exact ⟨middle, hmiddle, submitted, hsubmitted, waited, hwaited, hafter⟩)
   have hpolls := checkpoint.publicChoice_polls_source_law_after_others hinitial hroster howner
-    hother environment before hbeforeEnvironment hbeforeOwner
+    reference environment before hbeforeEnvironment hbeforeOwner
   have hbeforePair : waited ∈ (runtime.application.runPolicies players environment
       (before ++ [.player owner, .player owner]) execution).support := by
     rw [hpolls]
@@ -140,7 +141,7 @@ theorem publicChoice_fixed_branch_publication
     simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨waited, hbeforePair, hafter⟩
   obtain ⟨accepted, _, hlookup, hhandle, hinclude, hinactive⟩ :=
-    checkpoint.publicChoice_ordinary_inclusion hinitial hroster howner hother
+    checkpoint.publicChoice_ordinary_inclusion hinitial hroster howner reference
       polled included hpolled hincluded
   have haccepted : chosen.1 = accepted.1 := by
     have hmessage := Option.some.inj (hpacket.2.symm.trans hlookup)
@@ -214,7 +215,8 @@ theorem publicChoice_ordinary_support_value
       roster focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (hpolled : polled ∈
@@ -263,7 +265,7 @@ theorem publicChoice_ordinary_support_value
     change runtime.application.runPolicies players environment
       [.player owner, .player owner] middle = _
     simpa only [kernel, FinDist.bind_map, ApplicationImage.choiceEncoding] using
-      checkpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner hother
+      checkpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner reference
         environment middle hrefines hinput
   · exact hpolled
 
@@ -286,7 +288,8 @@ theorem publicChoice_block_support_at_source
       roster focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (value : L.Val ty)
@@ -344,7 +347,7 @@ theorem publicChoice_block_support_at_source
   simp only [FinDist.support_bind, Set.mem_iUnion, MessageApplication.runPolicies] at hfinal
   obtain ⟨polled, hpolled, included, hincluded, hremaining⟩ := hfinal
   obtain ⟨drawn, hdrawnMap, hbranch⟩ := checkpoint.publicChoice_ordinary_support_value
-    publicGuard nextPlan profile current execution polled hinitial hroster howner hother
+    publicGuard nextPlan profile current execution polled hinitial hroster howner reference
     beforeRoster afterRoster hsplit hpolled
   have hdrawn := hdrawnMap
   rw [FinDist.support_map] at hdrawn
@@ -379,7 +382,8 @@ theorem publicChoice_block_support_at_source
     simpa only [MessageApplication.runPolicies_append, FinDist.bind_bind,
       List.append_assoc, suffix, List.cons_append, List.nil_append] using hwhole
   have hfinalStore := checkpoint.publicChoice_fixed_branch_publication publicGuard nextPlan
-    profile current execution final hinitial hroster howner hother beforeRoster afterRoster hsplit
+    profile current execution final hinitial hroster howner reference beforeRoster afterRoster
+    hsplit
     chosen hchosen hfixedBranch
   have hrecorded : Store.getAs final.native.application.base.memory.store
       (state.nextField + 1) ty = some value := by

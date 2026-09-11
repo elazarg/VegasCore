@@ -210,7 +210,9 @@ theorem conditional_block_resolution_common
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex headPlan profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+      replacement relay = root.windowedReferencePlayers rootProfile deadlineOf binding
+        choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -342,9 +344,7 @@ theorem conditional_block_resolution_common
         obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp hrelay
         have hrosterSplit : (beforeRoster ++ relay :: afterRoster).Nodup := by rwa [← hsplit]
         have hrelayPolicy : players relay = runtime.blockPlayer relay
-            (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) := by
-          simp only [players, windowedPlayers, Function.update_of_ne hunchanged,
-            windowedReferencePlayers, runtime]
+            (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) := hreference
         let before : List (@Invocation P) := [Invocation.environment] ++
           beforeRoster.flatMap fun actor => [Invocation.player actor, Invocation.environment]
         let suffix : List (@Invocation P) := afterRoster.flatMap fun actor =>
@@ -506,7 +506,9 @@ theorem conditional_block
         (.conditional (unresolved := unresolved) (newName := newName)
           (fresh := fresh) publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+      replacement relay = root.windowedReferencePlayers rootProfile deadlineOf binding
+        choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -547,7 +549,7 @@ theorem conditional_block
             |>.choice.publicationNode fresh state))) :: nextPlan.instructions deadlineOf := rfl
   obtain ⟨result, sourceNext, hresult, hlegal, hsource, hrefines, hfresh,
       hinactive⟩ := conditional_block_resolution_common publicGuard plan nextPlan profile
-        hhead horigins current execution final checkpoint hroster relay hrelay hunchanged hfinal
+        hhead horigins current execution final checkpoint hroster relay hrelay hreference hfinal
   have hsteps := spec.commit_reveal_steps publicName tail current.current.source
     (spec.encoding.symm result) hlegal
   rw [← hsource] at hsteps
@@ -584,7 +586,9 @@ theorem conditionalCopy_block
         (.conditionalCopy (newName := newName) (unresolved := unresolved)
           (fresh := fresh) spec publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+      replacement relay = root.windowedReferencePlayers rootProfile deadlineOf binding
+        choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -625,7 +629,7 @@ theorem conditionalCopy_block
             |>.choice.publicationNode fresh state))) :: nextPlan.instructions deadlineOf := rfl
   obtain ⟨result, sourceNext, hresult, hlegal, hsource, hrefines, hfresh,
       hinactive⟩ := conditional_block_resolution_common publicGuard plan nextPlan profile
-        hhead horigins current execution final checkpoint hroster relay hrelay hunchanged hfinal
+        hhead horigins current execution final checkpoint hroster relay hrelay hreference hfinal
   have hsteps := spec.commit_reveal_steps publicName tail current.current.source
     (spec.encoding.symm result) hlegal
   rw [← hsource] at hsteps

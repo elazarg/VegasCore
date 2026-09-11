@@ -131,7 +131,8 @@ theorem binding_fixed_draw_source_successor
   obtain ⟨sourceNext, hsource, _, hnext, _⟩ :=
     checkpoint.binding_fixed_branch_source_coupling _ _ profile bindingFallback 10 rfl
       (compiledInitialCoupled source) initial final
-      GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp) (by decide)
+      GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp)
+      (checkpoint.referenceOwner_of_ne 0 (by decide))
       [1] [] rfl ⟨chosen, rfl⟩ hchosen (by
         change final ∈ (fixedBindingBranch profile replacement chosen).support
         exact hbranch)

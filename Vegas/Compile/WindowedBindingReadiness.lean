@@ -100,37 +100,17 @@ theorem binding_preparation_empty_of_cacheEmpty
     state.nextField (execution.principalHistory owner)
   exact hconsistent.symm.trans (hprojection.symm.trans hcached)
 
-/-- An unchanged owner supplies an empty cache certificate for the binding at
-the current head. -/
-theorem binding_head_cacheEmpty
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
-      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
-      profile current execution)
-    (hother : owner ≠ focal) :
-    let runtime := root.windowed deadlineOf binding choice windowOf
-    let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
-      .here guard tail
-    let code := site.bindingCode fresh state (site.compiledField fresh state)
-    (.bind code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
-      (runtime.eraseExecution execution) := by
-  intro runtime site code
-  have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
-      unrestricted nextPlan).instructions deadlineOf = .bind code ::
-        nextPlan.instructions deadlineOf := rfl
-  exact checkpoint.head_cacheEmpty (.bind code) _ hhead
-    (fun heq => hother (Option.some.inj heq))
-
-/-- An unchanged owner's next binding slot has no prior private registration.
+/-- A reference owner's next binding slot has no prior private registration.
 Freshness follows from actual history and write-once storage consistency,
 not from the registration command being able to overwrite a previous value. -/
 theorem binding_preparation_empty
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
-    (hother : owner ≠ focal) :
+    (reference : checkpoint.ReferenceOwner owner) :
     execution.native.application.base.prepared.lookup (owner, state.nextField) = none :=
   checkpoint.binding_preparation_empty_of_cacheEmpty
-    (checkpoint.binding_head_cacheEmpty hother)
+    (reference.head_cacheEmpty _ _ rfl rfl)
 
 /-- Explicit reference-policy and cache facts supply the local prerequisites
 of the two-poll binding law, including at the distinguished coordinate. -/
@@ -200,14 +180,15 @@ theorem binding_polls_ready_of_policy_cacheEmpty
     omega
 
 /-- Every local prerequisite of the generated two-poll binding law follows
-from an initialized checkpoint, the unchanged owner's roster position, and
+from an initialized checkpoint, the reference owner's roster position, and
 the root's public-initial-read eligibility. -/
 theorem binding_polls_ready
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal) :
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
       .here guard tail
@@ -219,10 +200,9 @@ theorem binding_polls_ready
     focal replacement
   have hpolicy : players owner = runtime.blockPlayer owner
       (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
+    exact reference.policy
   exact checkpoint.binding_polls_ready_of_policy_cacheEmpty hinitial hroster howner hpolicy
-    (checkpoint.binding_head_cacheEmpty hother)
+    (reference.head_cacheEmpty _ _ rfl rfl)
 
 /-- The original compiled reference profile samples the current source
 binding exactly once at an actual checkpoint and then submits its opaque
@@ -232,7 +212,8 @@ theorem binding_polls_source_law
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy) :
     let runtime := root.windowed deadlineOf binding choice windowOf
@@ -256,9 +237,8 @@ theorem binding_polls_source_law
     (.bind { site.bindingCode fresh state (site.compiledField fresh state) with
       timeout := binding (site.bindingCode fresh state (site.compiledField fresh state)) })
     execution current.current.source checkpoint.binding_dispatch
-    (checkpoint.binding_polls_ready hinitial hroster howner hother)
-  simp only [windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-  rfl
+    (checkpoint.binding_polls_ready hinitial hroster howner reference)
+  exact reference.policy
 
 /-- The generated two-poll law is unchanged when the owner's actual policy
 input is unchanged. Hidden preparations of other principals need not agree. -/
@@ -267,7 +247,8 @@ theorem binding_polls_source_law_of_input_eq
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (middle : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
@@ -291,12 +272,12 @@ theorem binding_polls_source_law_of_input_eq
                 (site.bindingCode fresh state (site.compiledField fresh state)).node
                   (owner, site.compiledField fresh state))) := by
   intro runtime players site
-  have ready := (checkpoint.binding_polls_ready hinitial hroster howner hother).of_input_eq hinput
+  have ready :=
+    (checkpoint.binding_polls_ready hinitial hroster howner reference).of_input_eq hinput
   apply site.windowedBinding_two_invocations_source_law fresh state (root.image deadlineOf)
     runtime (profile owner site) (root.liftProfile deadlineOf rootProfile owner)
     players environment _ _ middle current.current.source _ ready
-  · simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
+  · exact reference.policy
   · have hview : State.observe (root.image deadlineOf).application
         (runtime.eraseExecution middle).native owner =
         State.observe (root.image deadlineOf).application
@@ -315,7 +296,8 @@ theorem binding_polls_source_law_after_others
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (before : List (@Invocation P)) (henvironment : Invocation.environment ∉ before)
@@ -342,7 +324,7 @@ theorem binding_polls_source_law_after_others
   have hinput := runtime.application.runPolicies_other_input owner
     (fun state actor command _ => by cases command; rfl)
     players environment before henvironment hbefore execution middle hmiddle
-  exact checkpoint.binding_polls_source_law_of_input_eq hinitial hroster howner hother
+  exact checkpoint.binding_polls_source_law_of_input_eq hinitial hroster howner reference
     environment middle hinput
 
 /-- Paired initialized source checkpoints instantiate the binding inclusion
@@ -386,8 +368,10 @@ theorem binding_inclusion_agreement
     (profile owner site) (root.liftProfile deadlineOf rootProfile owner)
     (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement) _
     (.bind { code with timeout := binding code }) current.current.source rightCurrent.current.source
-    (checkpoint.binding_polls_ready hinitial hroster howner hother)
-    (rightCheckpoint.binding_polls_ready hinitial hroster howner hother)
+    (checkpoint.binding_polls_ready hinitial hroster howner
+      (checkpoint.referenceOwner_of_ne owner hother))
+    (rightCheckpoint.binding_polls_ready hinitial hroster howner
+      (rightCheckpoint.referenceOwner_of_ne owner hother))
     checkpoint.binding_dispatch rightCheckpoint.binding_dispatch
     (checkpoint.serialsBeforeNext.lookup_nextSerial_eq_none owner) leftFinal rightFinal hleft hright
   simp only [windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]

@@ -705,8 +705,8 @@ variable {fresh : FreshBindings
 variable {state : BuildState P L Γ}
 
 /-- A complete generated service block resolves a public-choice head to a
-legal two-node source successor. The focal policy remains unrestricted; an
-unchanged roster relay supplies permissionless fallback settlement. -/
+legal two-node source successor. A roster relay running the reference policy
+supplies permissionless fallback settlement. -/
 theorem publicChoice_block_resolution
     (publicGuard : (PublicChoiceSite.atHead name publicName owner guard tail).PubliclyValidatable
       fresh state)
@@ -729,7 +729,9 @@ theorem publicChoice_block_resolution
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -942,9 +944,8 @@ theorem publicChoice_block_resolution
         omega
     obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp hrelay
     have hrelayPolicy : players relay = runtime.blockPlayer relay
-        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) := by
-      simp only [players, windowedPlayers, Function.update_of_ne hunchanged,
-        windowedReferencePlayers, runtime]
+        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) :=
+      hreference
     have hprincipalStart := checkpoint.historyAlignment hroster relay hrelay |>.1
     have hprincipalPolled := runtime.application.runPolicies_principalHistory_length relay
       players (runtime.blockEnvironment roster) before execution polled hpolled
@@ -1064,7 +1065,9 @@ theorem publicChoice_block
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -1092,7 +1095,7 @@ theorem publicChoice_block
               fresh state).endpoint.publicationNode := by
   obtain ⟨chosen, sourceNext, hlegal, hsource, hrefines, hfresh, hinactive⟩ :=
     publicChoice_block_resolution publicGuard nextPlan profile fallback deadline hselect current
-      execution final checkpoint hroster relay hrelay hunchanged hfinal
+      execution final checkpoint hroster relay hrelay hreference hfinal
   have hsteps := (PublicChoiceSite.atHead name publicName owner guard tail)
     |>.completePublication_source_steps current.current.source chosen hlegal
   rw [← hsource] at hsteps

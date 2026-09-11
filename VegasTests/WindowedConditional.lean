@@ -127,7 +127,8 @@ theorem checked_conditional_ordinary_packet
   exact checkpoint.conditional_ordinary_submission head
     GeneratedApplicationSourceLaw.initial_reads_public
     ApplicationBindingOrigins.persistent_image_has_binding_origins
-    (by decide) (by simp) (by decide) disposition hbinding polled hpolled'
+    (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide))
+    disposition hbinding polled hpolled'
 
 /-- Normal service really includes the generated packet and deactivates the
 conditional instruction; this is not a rejected-message privacy witness. -/
@@ -175,7 +176,7 @@ theorem checked_conditional_ordinary_inclusion
     checkpoint.conditional_ordinary_inclusion head
       GeneratedApplicationSourceLaw.initial_reads_public
       ApplicationBindingOrigins.persistent_image_has_binding_origins
-      (by decide) (by simp) (by decide) polled included
+      (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) polled included
       (by simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hpolled)
       (by simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hincluded)
   exact ⟨chosen, hchosen, hincludedStep, hinactive⟩

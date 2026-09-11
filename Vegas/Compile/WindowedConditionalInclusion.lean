@@ -110,7 +110,7 @@ theorem conditional_ordinary_inclusion
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (polled included :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hpolled : polled ∈
@@ -156,7 +156,7 @@ theorem conditional_ordinary_inclusion
   obtain ⟨disposition, hbinding, hcanonical⟩ :=
     checkpoint.conditional_binding_disposition head horigins
   obtain ⟨chosen, hchosen, hserial, hlookup⟩ :=
-    checkpoint.conditional_ordinary_submission head hinitial horigins hroster howner hother
+    checkpoint.conditional_ordinary_submission head hinitial horigins hroster howner reference
       disposition hbinding polled hpolled
   obtain ⟨rest, hhead⟩ := head.instructions deadlineOf
   have hpublic := runtime.runPolicies_players_publicState players
@@ -182,8 +182,7 @@ theorem conditional_ordinary_inclusion
     subst handle
     have haccepted := (code.binding?_opaque_iff execution.native.application.base.memory
       (owner, state.fieldOf spec.binding)).1 hbinding
-    exact checkpoint.conditional_legal_choice_frozen (by
-      simp only [windowedPlayers, Function.update_of_ne hother])
+    exact checkpoint.conditional_legal_choice_frozen reference.policy
       haccepted chosen.1 hlegal value hvalue
   obtain ⟨activation, hactivation, hkey, _⟩ :=
     checkpoint.active_origin_clock (.conditional code) rest hhead

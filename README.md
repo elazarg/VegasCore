@@ -72,13 +72,18 @@ It is a reference-service forward law, not an arbitrary-deviation simulation.
 For the separate fixed windowed block service, every randomized raw unilateral
 strategy is matched, against unchanged opponents, by a finite mixture of legal
 source deviations with the same completion flag and executable public readout.
-The induced native game therefore preserves any public-outcome lower bound that
+The coordinatewise compiled profile has the source public-result law under that
+same service, and the native game preserves any public-outcome lower bound that
 holds against every source replacement. Exact eligibility includes public
 initial reads, binding origins, certified fallbacks, a duplicate-free roster
-covering all owners, and a distinct unchanged relay. This service has neither
-pending-packet inbox delivery nor adaptive scheduling. Its honest law for the
-same initialized block environment and repeated block schedule is still
-missing, so no Nash or epsilon-Nash preservation follows here.
+covering all owners. The honest law needs no distinct relay; deviation simulation
+needs one distinct unchanged relay, and equilibrium transport needs one for
+every player. Under those conditions coordinatewise compilation preserves and
+reflects epsilon-Nash, for arbitrary utilities of completion and executable
+public output, with the same epsilon. This does not classify runtime equilibria
+outside the compiled image. The service has neither pending-packet inbox
+delivery nor adaptive scheduling, and the separate request route remains.
+It is not superseded by this fixed-service result.
 Chance instructions retain the source distribution, require public dependencies,
 and cannot reroll after completion. They assume ideal unbiased entropy; the
 environment selects the invocation time, not the sampled value. Sealed-input

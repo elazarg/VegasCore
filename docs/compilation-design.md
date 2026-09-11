@@ -816,17 +816,27 @@ review process; move an accepted abstraction and its tests once, then update
 consumers and the dependency pin. No parallel stable definitions or compatibility
 facades. Do not commit a GameTheory-specific temporary issue into this repository.
 
-The minimum upstream candidate is a same-player, noninvertible comparison of
-game forms: playerwise strategy compilation and deviation backtranslation,
-an outcome decoder, and honest and unilateral-deviation law equations against
-unchanged opponents. A considered-deviation predicate is explicit when the
-target strategy class is restricted. Composition requires proving that
-right-edge backtranslated deviations lie in the left edge's considered class.
-Utilities and solution concepts are derived consumers, not fields of the
-outcome-law relation. Existing source/native, request, and strategy-conversion
-clients motivate this extraction; a general hierarchy of compiler passes does
-not. GameTheory's existing game forms, profiles, deviations, and Kuhn results
-remain the canonical APIs. This candidate has not yet been moved upstream.
+The upstream candidate is a same-player, noninvertible comparison of game
+forms with playerwise strategy compilation and honest and unilateral-deviation
+law equations against unchanged opponents. The windowed compiler exercises a
+specific requirement: both games project their outcomes into a common observed
+result, and the source replacement is a finite mixture that may depend on the
+fixed source profile. A target-to-source decoder for complete outcomes and a
+single opponent-independent backtranslation are stronger requirements, not
+equivalent ways to package this result. Do not assume either to reuse an
+existing certificate. The general finite-mixture comparison and its expectation
+and equilibrium consequences belong in GameTheory; the compiler's construction
+of that comparison belongs here.
+
+A considered-deviation predicate is explicit when the target strategy class
+is restricted. Composition requires that every supported right-edge
+backtranslation lies in the left edge's considered class, and that the
+intermediate outcome observations match the comparison being composed. Utilities
+and solution concepts are derived consumers, not fields of the outcome-law
+relation. These concrete compiler clients motivate the extraction; a general
+hierarchy of compiler passes does not. GameTheory's existing game forms,
+profiles, deviations, and Kuhn results remain the canonical APIs. This candidate
+has not yet been moved upstream.
 
 Game-free runtime modules may use GameTheory's probability-only root.
 Their strategic adapters import GameTheory's protocol/core layers. Model

@@ -150,10 +150,14 @@ theorem binding_block_action_eq
   have hfinalAgreement := leftCheckpoint.owned_block_agreement rightCheckpoint agreement
     command hpure (.bind code) (nextPlan.instructions deadlineOf) hhead rfl
     hroster finalLeft finalRight hleft hright
+  have hrelayReference :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf owner replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay := by
+    simp only [windowedPlayers, Function.update_of_ne hunchanged]
   obtain ⟨value, sourceNext, _, nextCheckpoint, _, _, _⟩ :=
     binding_block unrestricted nextPlan profile leftFallback leftDeadline hleftSelect
       leftCurrent left
-      finalLeft leftCheckpoint hroster relay hrelay hunchanged hleft
+      finalLeft leftCheckpoint hroster relay hrelay hrelayReference hleft
   have hmemOriginal : .bind code ∈ root.instructions deadlineOf :=
     List.mem_of_getElem? (leftCheckpoint.instruction_at _ _ hhead)
   have hmem : .bind timed ∈ runtime.image.instructions := by

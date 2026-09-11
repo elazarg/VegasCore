@@ -53,7 +53,7 @@ theorem conditional_ordinary_submission
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
     (hbinding : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
       (site.code fresh state (site.sourceField fresh state)
@@ -105,7 +105,7 @@ theorem conditional_ordinary_submission
     (profile owner site.choice.decision ((current.current.source.toView owner).eraseEnv))
     (fun chosen => encoding.encode chosen.1)
     (checkpoint.conditional_polls_source_law_after_others head hinitial horigins hroster
-      (by simp) hother disposition hbinding environment before (by simp [before]) hbefore)
+      (by simp) reference disposition hbinding environment before (by simp [before]) hbefore)
     hpolled
   obtain ⟨chosen, hchosen, hserial, hlookup⟩ := hpacket
   refine ⟨chosen, hchosen, hserial, ?_⟩

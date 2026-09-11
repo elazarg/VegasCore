@@ -51,7 +51,7 @@ variable {current : CoupledAt
 variable {execution :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
-/-- The generated unchanged owner leaves exactly one fresh public submission.
+/-- The generated reference owner leaves exactly one fresh public submission.
 The retained draw belongs to the actual source kernel; arbitrary other-player
 polls preserve its serial and pending packet. -/
 theorem publicChoice_ordinary_submission
@@ -59,7 +59,8 @@ theorem publicChoice_ordinary_submission
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (polled : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hpolled : polled ∈
       ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
@@ -99,9 +100,9 @@ theorem publicChoice_ordinary_submission
       ((current.current.source.toView owner).eraseEnv))
     (fun chosen => .choice (state.nodes.length + 1) ⟨ty, chosen.1⟩)
     (checkpoint.publicChoice_polls_source_law_after_others hinitial hroster
-      (by simp) hother environment before (by simp [before]) hbefore) hpolled
+      (by simp) reference environment before (by simp [before]) hbefore) hpolled
 
-/-- Normal service includes the unchanged owner's source-supported public
+/-- Normal service includes the reference owner's source-supported public
 choice and finishes this publication instruction. The selected identifier and
 native acceptance are consequences of actual polling, not service premises. -/
 theorem publicChoice_ordinary_inclusion
@@ -109,7 +110,8 @@ theorem publicChoice_ordinary_inclusion
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (polled included :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hpolled : polled ∈
@@ -151,7 +153,7 @@ theorem publicChoice_ordinary_inclusion
       (fresh := fresh) publicGuard nextPlan).instructions deadlineOf =
         .publicChoice code :: nextPlan.instructions deadlineOf := rfl
   obtain ⟨chosen, hchosen, hserial, hlookup⟩ := checkpoint.publicChoice_ordinary_submission hinitial
-    hroster howner hother polled hpolled
+    hroster howner reference polled hpolled
   have hpublic := runtime.runPolicies_players_publicState players (runtime.blockEnvironment roster)
     polls (by simp [polls]) execution polled hpolled
   have hmemory : polled.native.application.base.memory =

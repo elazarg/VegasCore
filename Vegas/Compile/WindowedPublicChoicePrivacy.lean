@@ -178,7 +178,8 @@ theorem publicChoice_ordinary_agreement_of_same_draw
       change runtime.application.runPolicies players environment
         [.player owner, .player owner] middle = _
       simpa only [FinDist.bind_map, ApplicationImage.choiceEncoding] using
-        leftCheckpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner hother
+        leftCheckpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner
+          (leftCheckpoint.referenceOwner_of_ne owner hother)
           environment middle hrefines hinput)
     (by
       intro middle hmiddle
@@ -190,7 +191,8 @@ theorem publicChoice_ordinary_agreement_of_same_draw
       change runtime.application.runPolicies players environment
         [.player owner, .player owner] middle = _
       simpa only [FinDist.bind_map, ApplicationImage.choiceEncoding] using
-        rightCheckpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner hother
+        rightCheckpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner
+          (rightCheckpoint.referenceOwner_of_ne owner hother)
           environment middle hrefines hinput)
     value hleftValue hrightValue polledLeft polledRight hleft hright
 
@@ -308,15 +310,17 @@ theorem publicChoice_block_agreement_of_same_draw
   obtain ⟨includedRight, hincludedRight, hfinalRight⟩ := hfinalRight
   obtain ⟨_, _, _, _, hleftInclude, hinactive⟩ :=
     leftCheckpoint.publicChoice_ordinary_inclusion hinitial
-    hroster howner hother polledLeft includedLeft hpolledLeft hincludedLeft
+    hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother)
+      polledLeft includedLeft hpolledLeft hincludedLeft
   obtain ⟨_, _, _, _, hrightInclude, _⟩ :=
     rightCheckpoint.publicChoice_ordinary_inclusion hinitial
-    hroster howner hother polledRight includedRight hpolledRight hincludedRight
+    hroster howner (rightCheckpoint.referenceOwner_of_ne owner hother)
+      polledRight includedRight hpolledRight hincludedRight
   have hserial : left.native.pool.nextSerial owner = right.native.pool.nextSerial owner :=
     congrArg (fun pool => pool.nextSerial owner) agreement.pool
   rw [← hserial] at hrightInclude
   obtain ⟨chosen, _, _, hlookup⟩ := leftCheckpoint.publicChoice_ordinary_submission hinitial
-    hroster howner hother polledLeft hpolledLeft
+    hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother) polledLeft hpolledLeft
   have includedAgreement : WindowedApplication.PolicyAgreement runtime focal
       includedLeft includedRight := by
     apply polledAgreement.environmentPolicyStep_include (owner, left.native.pool.nextSerial owner)
@@ -412,11 +416,13 @@ theorem publicChoice_block_agreement_at_source
   obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp howner
   obtain ⟨polledLeft, hvalueLeft, hbranchLeft, includedLeft, hincludedLeft, hsuffixLeft⟩ :=
     publicChoice_block_support_at_source publicGuard nextPlan profile leftCurrent left finalLeft
-      leftCheckpoint hinitial hroster howner hother beforeRoster afterRoster hsplit
+      leftCheckpoint hinitial hroster howner
+      (leftCheckpoint.referenceOwner_of_ne owner hother) beforeRoster afterRoster hsplit
       value recordedLeft hsourceLeft hrefinesLeft hfinalLeft
   obtain ⟨polledRight, hvalueRight, hbranchRight, includedRight, hincludedRight, hsuffixRight⟩ :=
     publicChoice_block_support_at_source publicGuard nextPlan profile rightCurrent right finalRight
-      rightCheckpoint hinitial hroster howner hother beforeRoster afterRoster hsplit
+      rightCheckpoint hinitial hroster howner
+      (rightCheckpoint.referenceOwner_of_ne owner hother) beforeRoster afterRoster hsplit
       value recordedRight hsourceRight hrefinesRight hfinalRight
   apply (publicChoice_block_agreement_of_same_draw publicGuard nextPlan profile
     leftCurrent rightCurrent left right leftCheckpoint rightCheckpoint agreement hinitial

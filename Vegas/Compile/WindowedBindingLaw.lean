@@ -9,7 +9,7 @@ import Vegas.Compile.WindowedBindingSubmission
 import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedNormalSuffix
 
-/-! # Exact complete-block law for unchanged binding owners
+/-! # Exact complete-block law for reference binding owners
 
 The source draw indexes a concrete native branch: private registration,
 opaque-handle submission, and the rest of the fixed block service. This
@@ -44,7 +44,7 @@ variable {newName : name ∉ pending}
 variable {accounted : CommitmentAccounting (insert name pending) tail}
 variable {fresh : FreshBindings (.commit name owner guard tail)} {state : BuildState P L Γ}
 
-/-- Factor a complete binding block through its unchanged owner's source
+/-- Factor a complete binding block through its reference owner's source
 kernel. Earlier polls remain inside the chosen-value branch; the equality
 does not condition on acceptance, discard failed runs, or select witnesses. -/
 theorem binding_block_source_factorization
@@ -58,7 +58,8 @@ theorem binding_block_source_factorization
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster) :
     let runtime := root.windowed deadlineOf binding choice windowOf
@@ -100,7 +101,7 @@ theorem binding_block_source_factorization
   have hbeforeEnvironment : Invocation.environment ∉ before := by simp [before]
   have hbeforeOwner : Invocation.player owner ∉ before := by simp [before, hnotOwner]
   have hpolls := checkpoint.binding_polls_source_law_after_others hinitial hroster
-    howner hother environment before hbeforeEnvironment hbeforeOwner
+    howner reference environment before hbeforeEnvironment hbeforeOwner
   have hschedule : WindowedApplication.blockInvocations roster =
       (before ++ [Invocation.player owner, .player owner]) ++ remaining := by
     simp only [WindowedApplication.blockInvocations, before, remaining, hsplit,
@@ -131,7 +132,8 @@ theorem binding_fixed_branch_source_coupling
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (chosen : { value // evalGuard guard value
@@ -188,7 +190,7 @@ theorem binding_fixed_branch_source_coupling
   let suffix := Invocation.environment ::
     roster.flatMap fun actor => [Invocation.player actor, .environment]
   have hfactor := checkpoint.binding_block_source_factorization unrestricted nextPlan profile
-    current execution hinitial hroster howner hother beforeRoster afterRoster hsplit
+    current execution hinitial hroster howner reference beforeRoster afterRoster hsplit
   have hfull : final ∈ (runtime.application.runPolicies players environment
       (WindowedApplication.blockInvocations roster) execution).support := by
     rw [hfactor]
@@ -222,11 +224,11 @@ theorem binding_fixed_branch_source_coupling
     (site.compiledField fresh state) ⟨ty, chosen.1⟩
     (.binding code.node (owner, site.compiledField fresh state)) players environment before after
     hbeforeEnvironment hbeforeOwner hafterEnvironment hafterOwner execution polled
-    (checkpoint.binding_preparation_empty hother) (by
+    (checkpoint.binding_preparation_empty reference) (by
       simp only [FinDist.support_bind, Set.mem_iUnion]
       exact ⟨middle, hmiddle, registered, hregistered, submitted, hsubmitted, hafter⟩)
   have hpolls := checkpoint.binding_polls_source_law_after_others hinitial hroster howner
-    hother environment before hbeforeEnvironment hbeforeOwner
+    reference environment before hbeforeEnvironment hbeforeOwner
   have hbeforePair : submitted ∈ (runtime.application.runPolicies players environment
       (before ++ [.player owner, .player owner]) execution).support := by
     rw [hpolls]
@@ -242,7 +244,7 @@ theorem binding_fixed_branch_source_coupling
     simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨submitted, hbeforePair, hafter⟩
   obtain ⟨_, hinactive, haccepted⟩ := checkpoint.binding_ordinary_inclusion hinitial hroster
-    howner hother polled included hpolled hincluded
+    howner reference polled included hpolled hincluded
   change included.native.application.base = polled.native.application.base.bind
     { code with timeout := binding code } (owner, site.compiledField fresh state) at haccepted
   have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
@@ -268,7 +270,7 @@ theorem binding_fixed_branch_source_coupling
     simp [TypedValue.as?]
   obtain ⟨actual, sourceNext, hsource, hnext, hactual, hinactiveFinal, hstep⟩ :=
     checkpoint.binding_block unrestricted nextPlan profile fallback deadline hselect current
-      execution final hroster owner howner hother hfull
+      execution final hroster owner howner reference.policy hfull
   have heq : actual = chosen.1 := hactual.trans hvalue
   rw [heq] at hsource
   exact ⟨sourceNext, hsource, hstep, hnext, hinactiveFinal, hvalue.symm⟩

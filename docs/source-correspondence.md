@@ -261,12 +261,20 @@ unrestricted randomized raw-command policies, not emitted player clients.
 and `WFProgram.windowed_guarantee` transfers any real-valued lower bound on the
 public observation from all source replacements to all native replacements.
 
-These theorems run the same initialized block environment through the fixed
-repetition of block invocations. They do not cover in-flight inbox delivery or
-adaptive scheduling. The existing windowed honest law instead uses a lifted
-serial service, so an honest-profile law for this block service remains necessary
-before Nash or epsilon-Nash preservation can be derived. The existing
-request/serialization theorem route is not superseded.
+`ApplicationPlan.windowed_reference_source_public_law` runs the original source
+profile through that same initialized block environment and fixed repetition of
+block invocations. Its focal player is only a proof index; unlike deviation
+simulation, it requires no distinct relay. At the game boundary,
+`WFProgram.windowed_honest_public_law` identifies the coordinatewise compiled
+profile's completion/public-output law with the source law.
+
+Consequently `WFProgram.windowed_approximate_nash_iff` preserves and reflects
+epsilon-Nash, with exactly the same epsilon, for arbitrary utilities of the
+completion bit and executable public terminal result. Comparison against every
+native deviation requires a distinct unchanged relay for every possible
+deviator. This concerns coordinatewise compiled profiles, not all native
+equilibria. The theorems do not cover in-flight inbox delivery or adaptive
+scheduling, and the request/serialization route is not superseded.
 
 The honest-law proof needs cache freshness for every player, not only the
 opponents of a distinguished replacement. `WindowedCheckpoint.block_reference_caches`
@@ -276,5 +284,6 @@ projection, take explicit reference-policy equality; the first-poll laws also
 take head-cache freshness. Binding readiness has the same explicit interface.
 These premises allow an honest owner at the distinguished coordinate without
 adding another player or excluding single-player games. Combining the owner
-kernels and their successor couplings into the honest-profile law remains a
-separate proof obligation.
+kernels and their successor couplings gives
+`WindowedSourcePrefix.reference_public_law`; canonical initialization yields
+the checked whole-program reference law above.

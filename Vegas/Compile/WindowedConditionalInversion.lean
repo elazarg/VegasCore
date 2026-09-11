@@ -56,7 +56,7 @@ theorem conditional_fixed_branch_publication
       roster focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
@@ -136,7 +136,7 @@ theorem conditional_fixed_branch_publication
       simp only [FinDist.support_bind, Set.mem_iUnion]
       exact ⟨middle, hmiddle, submitted, hsubmitted, waited, hwaited, hafter⟩)
   have hpolls := checkpoint.conditional_polls_source_law_after_others head hinitial horigins
-    hroster howner hother disposition hbinding environment before hbeforeEnvironment hbeforeOwner
+    hroster howner reference disposition hbinding environment before hbeforeEnvironment hbeforeOwner
   have hbeforePair : waited ∈ (runtime.application.runPolicies players environment
       (before ++ [.player owner, .player owner]) execution).support := by
     rw [hpolls]
@@ -161,7 +161,7 @@ theorem conditional_fixed_branch_publication
     simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨waited, hbeforePair, hafter⟩
   obtain ⟨includedDisposition, accepted, _, hbinding', hlookup, hhandle, hinclude, hinactive⟩ :=
-    checkpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner hother
+    checkpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner reference
       polled included hpolled hincluded
   have hdisposition : includedDisposition = disposition :=
     Option.some.inj (hbinding'.symm.trans hbinding)
@@ -227,7 +227,7 @@ theorem conditional_ordinary_support_result
       roster focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
@@ -299,7 +299,7 @@ theorem conditional_ordinary_support_result
     have hrefines := runtime.runPolicies_players_refines players environment before
       (by simp [before]) execution middle checkpoint.refines hmiddle
     have hlaw := checkpoint.conditional_polls_source_law_of_input_eq head hinitial horigins
-      hroster howner hother disposition hbinding environment middle hrefines hinput
+      hroster howner reference disposition hbinding environment middle hrefines hinput
     change runtime.application.runPolicies players environment [.player owner, .player owner]
       middle = (profile owner site.choice.decision
         ((current.current.source.toView owner).eraseEnv)).bind
@@ -325,7 +325,7 @@ theorem conditional_block_support_at_source
       roster focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (result : Option (L.Val spec.secretTy))
@@ -397,7 +397,7 @@ theorem conditional_block_support_at_source
   obtain ⟨disposition, hbinding, _⟩ :=
     checkpoint.conditional_binding_disposition head horigins
   obtain ⟨drawn, hdrawnMap, hbranch⟩ := checkpoint.conditional_ordinary_support_result
-    head current execution polled hinitial horigins hroster howner hother beforeRoster
+    head current execution polled hinitial horigins hroster howner reference beforeRoster
     afterRoster hsplit disposition hbinding hpolled
   have hdrawn := hdrawnMap
   rw [FinDist.support_map] at hdrawn
@@ -433,7 +433,7 @@ theorem conditional_block_support_at_source
     simp only [FinDist.support_bind, Set.mem_iUnion, MessageApplication.runPolicies]
     exact ⟨polled, hafter, included, hincluded, hremaining⟩
   have hfinalStore := checkpoint.conditional_fixed_branch_publication head current execution final
-    hinitial horigins hroster howner hother beforeRoster afterRoster hsplit disposition hbinding
+    hinitial horigins hroster howner reference beforeRoster afterRoster hsplit disposition hbinding
     chosen hchosen hfixedBranch
   have hrecorded : Store.getAs final.native.application.base.memory.store
       (state.nextField + 1) ty = some (spec.encoding.symm result) := by

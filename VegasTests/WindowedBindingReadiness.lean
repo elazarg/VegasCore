@@ -55,7 +55,7 @@ theorem source_law (profile : SourceBehavioralProfile source.prog)
     (fun code => code.timeout) (fun code => code.timeout) (fun _ => 10)
     [0, 1] 1 replacement
   exact checkpoint.binding_polls_source_law GeneratedApplicationSourceLaw.initial_reads_public
-    (by decide) (by simp) (by decide) environment
+    (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) environment
 
 /-- Arbitrarily many polls of the raw replacement may precede the binding.
 Its complete native prefix is retained, and the subsequent unchanged-owner
@@ -77,7 +77,8 @@ theorem source_law_after_raw_polls (profile : SourceBehavioralProfile source.pro
     (fun code => code.timeout) (fun code => code.timeout) (fun _ => 10)
     [0, 1] 1 replacement
   exact checkpoint.binding_polls_source_law_after_others
-    GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp) (by decide)
+    GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp)
+    (checkpoint.referenceOwner_of_ne 0 (by decide))
     environment (List.replicate count (.player 1)) (by simp) (by simp)
 
 /-- Hidden sampling preserves the other player's complete policy input even

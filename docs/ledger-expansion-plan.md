@@ -609,16 +609,31 @@ retains the native runner and unrestricted raw policies, and
 `WFProgram.windowed_guarantee` transports every source lower bound on the public
 result. The service does not deliver pending packets to player inboxes.
 
-Equilibrium preservation additionally needs the honest-profile law under this
-same block service. The serial-service honest law is not that premise.
-Honest execution must retain `RemainingCachesEmpty` for every player, including
+`ApplicationPlan.windowed_reference_source_public_law` proves the honest-profile
+law under this same block service, with the original source profile unchanged.
+Honest execution retains `RemainingCachesEmpty` for every player, including
 the distinguished coordinate exempted by the unilateral-deviation invariant.
 `WindowedCheckpoint.block_reference_caches` preserves this stronger invariant
-through complete blocks. Owner readiness and registration provenance take
-explicit reference-policy equality, and readiness also uses head-cache
-freshness. The remaining honest-law induction must combine those facts with
-the fixed-draw block laws for every owner. The request/serialization path is
-not superseded.
+through complete blocks. `WindowedCheckpoint.ReferenceOwner` pairs equality to
+the reference policy with freshness of its remaining caches; the same fixed-draw
+block laws then serve both honest execution and unchanged opponents in a
+unilateral deviation. The honest law requires an existing player as a proof
+index, but no distinct relay. Neither the service nor the player set changes
+between the honest and deviation laws.
+
+`WFProgram.windowed_approximate_nash_iff` and `WFProgram.windowed_nash_iff`
+combine these laws at the native game boundary. They preserve and reflect
+equilibria at coordinatewise compiled profiles for utilities of the common
+completion/public-output observation, with the same approximation budget.
+Their all-player relay premise supplies a distinct unchanged roster member
+for each possible deviator. The persistent-disclosure regression discharges
+this premise using its two actual players.
+
+The next strategic service extension must admit recipient-local delivery of
+pending messages and player reactions before inclusion, followed by adaptive
+public scheduling with explicit progress assumptions. The fixed-service laws
+do not discharge either extension. The request/serialization path is not
+superseded.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an
@@ -798,6 +813,33 @@ The fixed block service contains no pending-message delivery calls. Its
 interpreter supports recipient-local delivery, but proving preservation for
 that wider service class remains a separate obligation, not an implicit
 consequence of the fixed-service theorem.
+
+The next bounded service should deliver a selected pending packet to recipients,
+allow raw player reactions, and only then include it. A delivery round followed
+immediately by inclusion with no intervening player opportunity does not test
+this information boundary. Keep the shared native runner. Reference strategies
+may wait during a reaction slot, but a replacement retains all native commands.
+Start with a fixed recipient roster and service order; selective or adaptive
+delivery is a further parameterized comparison, not an assumed consequence.
+
+The central new obligation is persistence of an unchanged owner's generated
+request through other-player reactions: its pending payload must correspond to
+the same source draw eventually accepted by inclusion. In particular, an opening
+must not disclose a private value and then lose its source-corresponding
+publication because another player acted. Binding handles must remain opaque.
+For a deviating owner, delivery may expose its own malformed or superseded packet;
+the theorem must cover that traffic rather than filter it out. A fixed-value
+block factorization can bind an honest source draw before delivery and carry the
+reaction law through to the source successor. The required provenance, admission
+stability, and whole-program law for this service are unproved.
+
+Extra inbox observations can invalidate the current pointwise source-view
+agreement invariant without refuting finite-mixture deviation simulation.
+Self-generated traffic and independent signals are not themselves evidence of
+a strategic impossibility. Any negative claim must exhibit an actual source
+profile and native deviation whose observed outcome law cannot be matched by
+source deviations. Do not extend source semantics solely to repair that invariant.
+
 The absence of delivery is checked for `blockEnvironment`. The generic
 `MessageApplication.runPolicies_noDeliveryProvenance` proves that inboxes stay
 empty and any known foreign-authored packet is already in the public ledger,
@@ -822,8 +864,10 @@ canonical completion of every counterfactual hidden source environment.
 actions that agree at equal source views define a total source policy, with
 the reference policy used away from supported views. The windowed decision
 families instantiate this construction with actual-block evidence. The root
-policy is constructed; its general correspondence to all source edges and its
-joint source/native probability law remain proof obligations.
+policy's source-edge correspondence and joint source/native probability law
+are proved for the fixed block service by the whole-program deviation theorem.
+Those proofs rely on the stated service's information invariant; they do not
+establish the wider delivery law described above.
 
 Keep the designated fallback expression, its legality certificate, and backend
 eligibility separate from core syntax and WF. `Legal` provides some legal action,

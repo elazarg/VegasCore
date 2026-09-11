@@ -202,6 +202,7 @@ import Vegas.Compile.WindowedFocalPublicLaw
 import Vegas.Compile.WindowedConditionalContinuation
 import Vegas.Compile.WindowedDeviationLaw
 import Vegas.Compile.WindowedMixedDeviation
+import Vegas.Compile.WindowedReferenceLaw
 import Vegas.Compile.WindowedConditionalLaw
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
@@ -263,7 +264,8 @@ completion/public-output law with only the focal source policy replaced.
 Predrawing finite executions extends this law to arbitrary randomized raw
 replacements as finite mixtures of source deviations. The native operational
 game consequently transports public-outcome bounds independently of the
-deviator's preferences. The honest-profile law for this same block service,
-its equilibrium consequences, and comparisons admitting pending-message
-delivery or adaptive scheduling remain separate obligations.
+deviator's preferences. The reference-profile law for this same block service
+preserves the original source profile without changing any coordinate.
+Comparisons admitting pending-message delivery or adaptive scheduling remain
+separate obligations.
 -/

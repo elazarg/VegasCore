@@ -36,7 +36,7 @@ variable {fresh : FreshBindings
   (.commit name owner guard (.reveal publicName owner name .here tail))}
 variable {state : BuildState P L Γ}
 
-theorem unchanged_conditional_bind
+theorem reference_conditional_bind
     {unresolved : spec.source ∈ pending} {newName : name ∉ pending}
     {accounted : CommitmentAccounting (pending.erase spec.source) tail}
     (publicGuard : (ConditionalPublicationSite.atHead name publicName owner guard tail spec)
@@ -55,14 +55,20 @@ theorem unchanged_conditional_bind
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : trace.checkpoint.ReferenceOwner owner)
     (nativeAfter : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution →
       FinDist α)
     (sourceAfter : VEnv L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
       WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
-          sourceNext final → nativeAfter final = sourceAfter sourceNext.current.source) :
+          sourceNext final →
+      final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) execution).support →
+      nativeAfter final = sourceAfter sourceNext.current.source) :
     (((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
       ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
@@ -76,7 +82,7 @@ theorem unchanged_conditional_bind
   obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp howner
   have hfactor := checkpoint.conditional_block_source_factorization
     (.discharge publicGuard nextPlan) profile current execution hinitial horigins hroster
-      howner hother disposition hbinding beforeRoster afterRoster hsplit
+      howner reference disposition hbinding beforeRoster afterRoster hsplit
   rw [hfactor, FinDist.bind_bind]
   apply FinDist.bind_congr
   intro chosen hchosen
@@ -114,7 +120,7 @@ theorem unchanged_conditional_bind
       hencode).mp hbranch
   obtain ⟨sourceNext, hsource, _, hnext⟩ :=
     checkpoint.conditional_fixed_branch_source_coupling publicGuard nextPlan profile current
-      execution final hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      execution final hinitial horigins hroster howner reference beforeRoster afterRoster hsplit
       disposition hbinding chosen hchosen hbranchPayload
   have hfull : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -131,9 +137,9 @@ theorem unchanged_conditional_bind
       (by simpa only [Equiv.symm_apply_apply] using hsource)
       (by simpa only [Equiv.symm_apply_apply] using hlegal)
   have nextTrace := WindowedSourcePrefix.step trace hfull hedge hnext
-  rw [hafter sourceNext final nextTrace, hsource]
+  rw [hafter sourceNext final nextTrace hfull, hsource]
 
-theorem unchanged_conditionalCopy_bind
+theorem reference_conditionalCopy_bind
     {newName : name ∉ pending} {unresolved : name ∈ insert name pending}
     {accounted : CommitmentAccounting ((insert name pending).erase name) tail}
     (publicGuard : (ConditionalPublicationSite.atHead name publicName owner guard tail spec)
@@ -152,14 +158,20 @@ theorem unchanged_conditionalCopy_bind
         (unresolved := unresolved) spec publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : trace.checkpoint.ReferenceOwner owner)
     (nativeAfter : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution →
       FinDist α)
     (sourceAfter : VEnv L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
       WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
-          sourceNext final → nativeAfter final = sourceAfter sourceNext.current.source) :
+          sourceNext final →
+      final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) execution).support →
+      nativeAfter final = sourceAfter sourceNext.current.source) :
     (((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
       ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
@@ -172,7 +184,8 @@ theorem unchanged_conditionalCopy_bind
     (.copy publicGuard nextPlan) horigins
   obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp howner
   have hfactor := checkpoint.conditional_block_source_factorization
-    (.copy publicGuard nextPlan) profile current execution hinitial horigins hroster howner hother
+    (.copy publicGuard nextPlan) profile current execution hinitial horigins hroster
+    howner reference
       disposition hbinding beforeRoster afterRoster hsplit
   rw [hfactor, FinDist.bind_bind]
   apply FinDist.bind_congr
@@ -211,7 +224,7 @@ theorem unchanged_conditionalCopy_bind
       hencode).mp hbranch
   obtain ⟨sourceNext, hsource, _, hnext⟩ :=
     checkpoint.conditionalCopy_fixed_branch_source_coupling publicGuard nextPlan profile current
-      execution final hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      execution final hinitial horigins hroster howner reference beforeRoster afterRoster hsplit
       disposition hbinding chosen hchosen hbranchPayload
   have hfull : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -228,16 +241,16 @@ theorem unchanged_conditionalCopy_bind
       (by simpa only [Equiv.symm_apply_apply] using hsource)
       (by simpa only [Equiv.symm_apply_apply] using hlegal)
   have nextTrace := WindowedSourcePrefix.step trace hfull hedge hnext
-  rw [hafter sourceNext final nextTrace, hsource]
+  rw [hafter sourceNext final nextTrace hfull, hsource]
 
 end Vegas.ApplicationPlan.WindowedSourcePrefix
 
-/-- info: 'Vegas.ApplicationPlan.WindowedSourcePrefix.unchanged_conditional_bind'
+/-- info: 'Vegas.ApplicationPlan.WindowedSourcePrefix.reference_conditional_bind'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.WindowedSourcePrefix.unchanged_conditional_bind
+#print axioms Vegas.ApplicationPlan.WindowedSourcePrefix.reference_conditional_bind
 
-/-- info: 'Vegas.ApplicationPlan.WindowedSourcePrefix.unchanged_conditionalCopy_bind'
+/-- info: 'Vegas.ApplicationPlan.WindowedSourcePrefix.reference_conditionalCopy_bind'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.WindowedSourcePrefix.unchanged_conditionalCopy_bind
+#print axioms Vegas.ApplicationPlan.WindowedSourcePrefix.reference_conditionalCopy_bind

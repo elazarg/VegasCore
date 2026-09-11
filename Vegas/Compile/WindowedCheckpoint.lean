@@ -140,6 +140,54 @@ variable {current : CoupledAt (compileCore prog fresh state).graph state}
 variable {execution :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
+/-- Reference-policy behavior and fresh future caches for one owner. This
+certificate applies both to an unchanged opponent and to an honest player at
+the distinguished coordinate. -/
+structure ReferenceOwner
+    (_checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution) (owner : P) : Prop where
+  policy : root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement
+    owner = root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner
+  caches : ∀ instruction ∈ plan.instructions deadlineOf,
+    instruction.submitter = some owner → instruction.CacheEmpty (root.image deadlineOf)
+      ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)
+
+/-- Every unchanged owner has the reference policy and fresh owned caches. -/
+theorem referenceOwner_of_ne
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution)
+    (owner : P) (hother : owner ≠ who) : checkpoint.ReferenceOwner owner := by
+  refine ⟨by simp only [windowedPlayers, Function.update_of_ne hother], ?_⟩
+  intro instruction hinstruction howner
+  have hcache := List.forall_iff_forall_mem.mp checkpoint.unchangedCaches instruction hinstruction
+  exact hcache.resolve_left (fun heq => hother (Option.some.inj (howner.symm.trans heq)))
+
+/-- Full reference execution supplies the owner certificate at every player,
+including the distinguished coordinate. -/
+theorem referenceOwner_of_caches
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution)
+    (hreplacement : replacement =
+      root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf who)
+    (hcaches : plan.RemainingCachesEmpty (root.image deadlineOf) deadlineOf
+      ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution))
+    (owner : P) : checkpoint.ReferenceOwner owner := by
+  refine ⟨by simp only [windowedPlayers, hreplacement, Function.update_eq_self], ?_⟩
+  intro instruction hinstruction _
+  exact List.forall_iff_forall_mem.mp hcaches instruction hinstruction
+
+/-- The reference owner's current head cache is fresh. -/
+theorem ReferenceOwner.head_cacheEmpty
+    {checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution}
+    {owner : P} (reference : checkpoint.ReferenceOwner owner)
+    (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hhead : plan.instructions deadlineOf = instruction :: rest)
+    (howner : instruction.submitter = some owner) :
+    instruction.CacheEmpty (root.image deadlineOf)
+      ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution) :=
+  reference.caches instruction (by rw [hhead]; exact List.mem_cons_self) howner
+
 /-- The head cache is fresh when its submitter is not the replaced player.
 The instruction may be any emitted application instruction. -/
 theorem head_cacheEmpty (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding

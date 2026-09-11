@@ -104,7 +104,7 @@ theorem pure_deviation_public_law
         sourcePolicyCheckpointsFrom, SourcePolicyCheckpoints.update_extend_afterSample]
       refine sample_bind nextPlan profile current execution trace hroster _
         (fun env => (denoteSource _ childProfile env).map _) ?_
-      intro sourceNext final nextTrace
+      intro sourceNext final nextTrace _
       exact ih (blockIndex + 1) profile.afterSample sourceNext final nextTrace
   | @binding Γ pending name owner ty guard tail newName accounted fresh state unrestricted
       nextPlan ih =>
@@ -145,10 +145,11 @@ theorem pure_deviation_public_law
           sourcePolicyCheckpointsFrom, dif_neg howner,
           SourcePolicyCheckpoints.update_otherCommit_afterCommit,
           SourcePolicyCheckpoints.update_otherCommit_here]
-        refine unchanged_binding_bind unrestricted nextPlan profile current execution trace
-          hfallbacks hinitial hroster hownerRoster howner _
+        refine reference_binding_bind unrestricted nextPlan profile current execution trace
+          hfallbacks hinitial hroster hownerRoster
+          (trace.checkpoint.referenceOwner_of_ne owner howner) _
           (fun env => (denoteSource _ childProfile env).map _) ?_
-        intro sourceNext final nextTrace
+        intro sourceNext final nextTrace _
         exact ih (blockIndex + 1) profile.afterCommit sourceNext final nextTrace
   | @publicChoice Γ pending name publicName owner ty guard tail newName unresolved accounted fresh
       state publicGuard nextPlan ih =>
@@ -182,7 +183,8 @@ theorem pure_deviation_public_law
             (trace.checkpoint.continuation.blockFallbacks binding choice hfallbacks).1
           obtain ⟨value, sourceNext, hsource, hlegal, _, hnext, _⟩ :=
             trace.checkpoint.publicChoice_block publicGuard nextPlan profile fallback deadline
-              hselect current execution final hroster relay hrelay hrelayOther hfinal
+              hselect current execution final hroster relay hrelay (by
+                simp only [windowedPlayers, Function.update_of_ne hrelayOther]) hfinal
           exact ⟨value, hlegal, sourceNext, hsource, hnext.refines,
             .step trace hfinal (.publicChoice value hsource hlegal) hnext⟩
         · intro sourceNext final nextTrace
@@ -194,10 +196,11 @@ theorem pure_deviation_public_law
           SourcePolicyCheckpoints.update_otherCommit_afterCommit,
           SourcePolicyCheckpoints.update_extend_afterReveal,
           SourcePolicyCheckpoints.update_otherCommit_here]
-        refine unchanged_publicChoice_bind publicGuard nextPlan profile current execution trace
-          hfallbacks hinitial hroster hownerRoster howner _
+        refine reference_publicChoice_bind publicGuard nextPlan profile current execution trace
+          hfallbacks hinitial hroster hownerRoster
+          (trace.checkpoint.referenceOwner_of_ne owner howner) _
           (fun env => (denoteSource _ childProfile env).map _) ?_
-        intro sourceNext final nextTrace
+        intro sourceNext final nextTrace _
         exact ih (blockIndex + 1) profile.afterCommit.afterReveal sourceNext final nextTrace
   | @conditional Γ pending name publicName owner ty guard tail spec unresolved newName accounted
       fresh state publicGuard nextPlan ih =>
@@ -230,7 +233,8 @@ theorem pure_deviation_public_law
         · intro final hfinal
           obtain ⟨result, sourceNext, hadmissible, hsource, hlegal, _, hnext, _⟩ :=
             trace.checkpoint.conditional_block publicGuard nextPlan profile horigins current
-              execution final hroster relay hrelay hrelayOther hfinal
+              execution final hroster relay hrelay (by
+                simp only [windowedPlayers, Function.update_of_ne hrelayOther]) hfinal
           exact ⟨spec.encoding.symm result, hlegal, sourceNext, hsource, hnext.refines,
             .step trace hfinal (.conditional result hadmissible hsource hlegal) hnext⟩
         · intro sourceNext final nextTrace
@@ -242,10 +246,11 @@ theorem pure_deviation_public_law
           SourcePolicyCheckpoints.update_otherCommit_afterCommit,
           SourcePolicyCheckpoints.update_extend_afterReveal,
           SourcePolicyCheckpoints.update_otherCommit_here]
-        refine unchanged_conditional_bind publicGuard nextPlan profile current execution trace
-          hinitial horigins hroster hownerRoster howner _
+        refine reference_conditional_bind publicGuard nextPlan profile current execution trace
+          hinitial horigins hroster hownerRoster
+          (trace.checkpoint.referenceOwner_of_ne owner howner) _
           (fun env => (denoteSource _ childProfile env).map _) ?_
-        intro sourceNext final nextTrace
+        intro sourceNext final nextTrace _
         exact ih (blockIndex + 1) profile.afterCommit.afterReveal sourceNext final nextTrace
   | @conditionalCopy Γ pending name publicName owner ty guard tail spec newName unresolved accounted
       fresh state publicGuard nextPlan ih =>
@@ -278,7 +283,8 @@ theorem pure_deviation_public_law
         · intro final hfinal
           obtain ⟨result, sourceNext, hadmissible, hsource, hlegal, _, hnext, _⟩ :=
             trace.checkpoint.conditionalCopy_block publicGuard nextPlan profile horigins current
-              execution final hroster relay hrelay hrelayOther hfinal
+              execution final hroster relay hrelay (by
+                simp only [windowedPlayers, Function.update_of_ne hrelayOther]) hfinal
           exact ⟨spec.encoding.symm result, hlegal, sourceNext, hsource, hnext.refines,
             .step trace hfinal (.conditionalCopy result hadmissible hsource hlegal) hnext⟩
         · intro sourceNext final nextTrace
@@ -290,10 +296,11 @@ theorem pure_deviation_public_law
           SourcePolicyCheckpoints.update_otherCommit_afterCommit,
           SourcePolicyCheckpoints.update_extend_afterReveal,
           SourcePolicyCheckpoints.update_otherCommit_here]
-        refine unchanged_conditionalCopy_bind publicGuard nextPlan profile current execution trace
-          hinitial horigins hroster hownerRoster howner _
+        refine reference_conditionalCopy_bind publicGuard nextPlan profile current execution trace
+          hinitial horigins hroster hownerRoster
+          (trace.checkpoint.referenceOwner_of_ne owner howner) _
           (fun env => (denoteSource _ childProfile env).map _) ?_
-        intro sourceNext final nextTrace
+        intro sourceNext final nextTrace _
         exact ih (blockIndex + 1) profile.afterCommit.afterReveal sourceNext final nextTrace
 
 end Vegas.ApplicationPlan.WindowedSourcePrefix

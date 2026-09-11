@@ -85,6 +85,10 @@ theorem continuation_bind
         FinDist.pure (head.action anchor) :=
     head.extend_at_checkpoint (profile focal (.here guard tail)) anchor
   rw [hlocal, FinDist.pure_bind]
+  have hrelayReference :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay := by
+    simp only [windowedPlayers, Function.update_of_ne hrelayOther]
   calc
     _ = ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -96,7 +100,7 @@ theorem continuation_bind
       obtain ⟨value, sourceNext, hsource, hnext, hresolved, _, _⟩ :=
         anchor.sourcePrefix.checkpoint.binding_block unrestricted next profile anchor.fallback
           anchor.deadline anchor.selected anchor.current anchor.execution final hroster relay
-          hrelay hrelayOther hfinal
+          hrelay hrelayReference hfinal
       let sibling : BindingDecision (newName := newName) (fresh := fresh)
           root rootProfile deadlineOf binding choice
           windowOf roster focal replacement initial blockIndex unrestricted next profile :=

@@ -61,7 +61,7 @@ theorem conditional_block_source_factorization
       focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
     (hbinding : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
       (site.code fresh state (site.sourceField fresh state)
@@ -109,7 +109,7 @@ theorem conditional_block_source_factorization
   have hbeforeEnvironment : Invocation.environment ∉ before := by simp [before]
   have hbeforeOwner : Invocation.player owner ∉ before := by simp [before, hnotOwner]
   have hpolls := checkpoint.conditional_polls_source_law_after_others head hinitial horigins
-    hroster howner hother disposition hbinding environment before hbeforeEnvironment hbeforeOwner
+    hroster howner reference disposition hbinding environment before hbeforeEnvironment hbeforeOwner
   have hschedule : WindowedApplication.blockInvocations roster =
       (before ++ [Invocation.player owner, .player owner]) ++ remaining := by
     simp only [WindowedApplication.blockInvocations, before, remaining, hsplit,
@@ -180,7 +180,7 @@ theorem conditional_fixed_branch_source_coupling
           (fresh := fresh) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
@@ -244,7 +244,7 @@ theorem conditional_fixed_branch_source_coupling
       (deadlineOf (site.choice.publicationNode fresh state)) disposition chosen.1
   have hfactor := checkpoint.conditional_block_source_factorization
     (.discharge publicGuard nextPlan) profile current execution hinitial horigins hroster
-      howner hother disposition hbinding beforeRoster afterRoster hsplit
+      howner reference disposition hbinding beforeRoster afterRoster hsplit
   have hfull : final ∈ (runtime.application.runPolicies players environment
       (WindowedApplication.blockInvocations roster) execution).support := by
     rw [hfactor]
@@ -255,10 +255,10 @@ theorem conditional_fixed_branch_source_coupling
     exact hbranch
   obtain ⟨result, sourceNext, _, hsource, _, hsteps, hnext, _⟩ :=
     checkpoint.conditional_block publicGuard nextPlan profile horigins current execution final
-      hroster owner howner hother hfull
+      hroster owner howner reference.policy hfull
   have hstored := checkpoint.conditional_fixed_branch_publication
     (.discharge publicGuard nextPlan) current execution final hinitial horigins hroster howner
-      hother beforeRoster afterRoster hsplit disposition hbinding chosen hchosen hbranch
+      reference beforeRoster afterRoster hsplit disposition hbinding chosen hchosen hbranch
   have hresult : result = spec.encoding chosen.1 :=
     fixed_result_eq chosen.1 result current sourceNext final hstored hsource hnext.refines
   rw [hresult, Equiv.symm_apply_apply] at hsource
@@ -287,7 +287,7 @@ theorem conditionalCopy_fixed_branch_source_coupling
           (fresh := fresh) spec publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
     (beforeRoster afterRoster : List P)
     (hsplit : roster = beforeRoster ++ owner :: afterRoster)
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
@@ -350,7 +350,8 @@ theorem conditionalCopy_fixed_branch_source_coupling
     site.choiceEncodingFor_encode fresh state (site.sourceField fresh state)
       (deadlineOf (site.choice.publicationNode fresh state)) disposition chosen.1
   have hfactor := checkpoint.conditional_block_source_factorization
-    (.copy publicGuard nextPlan) profile current execution hinitial horigins hroster howner hother
+    (.copy publicGuard nextPlan) profile current execution hinitial horigins hroster
+    howner reference
       disposition hbinding beforeRoster afterRoster hsplit
   have hfull : final ∈ (runtime.application.runPolicies players environment
       (WindowedApplication.blockInvocations roster) execution).support := by
@@ -362,9 +363,9 @@ theorem conditionalCopy_fixed_branch_source_coupling
     exact hbranch
   obtain ⟨result, sourceNext, _, hsource, _, hsteps, hnext, _⟩ :=
     checkpoint.conditionalCopy_block publicGuard nextPlan profile horigins current execution final
-      hroster owner howner hother hfull
+      hroster owner howner reference.policy hfull
   have hstored := checkpoint.conditional_fixed_branch_publication
-    (.copy publicGuard nextPlan) current execution final hinitial horigins hroster howner hother
+    (.copy publicGuard nextPlan) current execution final hinitial horigins hroster howner reference
       beforeRoster afterRoster hsplit disposition hbinding chosen hchosen hbranch
   have hresult : result = spec.encoding chosen.1 :=
     fixed_result_eq chosen.1 result current sourceNext final hstored hsource hnext.refines

@@ -66,7 +66,8 @@ theorem initial_publicChoice_inclusion
     (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
   obtain ⟨_, _, _, _, hinclude, hinactive⟩ :=
     checkpoint.publicChoice_ordinary_inclusion initial_reads_public
-      (by decide) (by simp) (by decide) polled included hpolled hincluded
+      (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide))
+      polled included hpolled hincluded
   exact ⟨hinclude, hinactive⟩
 
 /-- The pending packet comes from the source kernel and is submitted once,
@@ -84,7 +85,7 @@ theorem initial_publicChoice_submission
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
     (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
   exact checkpoint.publicChoice_ordinary_submission initial_reads_public
-    (by decide) (by simp) (by decide) polled hpolled
+    (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) polled hpolled
 
 def fixedDrawPolls (profile : SourceBehavioralProfile source.prog)
     (replacement : runtime.application.PlayerPolicy) (value : Bool) :
@@ -113,7 +114,7 @@ theorem initial_publicChoice_block_source_factorization
     (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
   have hlaw := ApplicationPlan.WindowedCheckpoint.publicChoice_block_source_factorization
     first_publicly_validatable _ profile _ initial checkpoint initial_reads_public
-    (by decide) (by simp) (by decide) [1] [] rfl
+    (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) [1] [] rfl
   have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
   dsimp only [compiledInitialCoupled, initialCoupledAt, checked] at hlaw
   simpa only [runtime, players, fixedDrawPolls, List.flatMap_cons, List.flatMap_nil,
@@ -140,7 +141,8 @@ theorem initial_publicChoice_fixed_branch_publication
     (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
   apply checkpoint.publicChoice_fixed_branch_publication
     first_publicly_validatable _ profile _ initial final initial_reads_public
-    (by decide) (by simp) (by decide) [1] [] rfl chosen hchosen
+    (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide))
+    [1] [] rfl chosen hchosen
   have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
   simpa only [runtime, players, fixedDrawPolls, List.flatMap_cons, List.flatMap_nil,
     List.append_nil, List.nil_append, List.cons_append, FinDist.bind_bind, haddress] using hbranch
@@ -162,7 +164,8 @@ theorem initial_publicChoice_draw
   obtain ⟨value, hvalue, hbranch⟩ :=
     ApplicationPlan.WindowedCheckpoint.publicChoice_ordinary_support_value
       first_publicly_validatable _ profile _ initial polled checkpoint
-      initial_reads_public (by decide) (by simp) (by decide) [1] [] rfl hpolled
+      initial_reads_public (by decide) (by simp)
+      (checkpoint.referenceOwner_of_ne 0 (by decide)) [1] [] rfl hpolled
   refine ⟨value, hvalue, ?_⟩
   have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
   simpa only [fixedDrawPolls, runtime, players, List.flatMap_cons, List.flatMap_nil,

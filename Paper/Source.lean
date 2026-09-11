@@ -286,6 +286,31 @@ theorem public_application_windowed_deviation_mixture
     binding choice windowOf roster focal hinitial horigins hfallbacks hroster howners replacement
     relay hrelay hrelayOther
 
+/-- The coordinatewise compiled source profile has its exact public-result law
+in the actual fixed block-service game. The focal player only indexes the proof. -/
+theorem public_application_windowed_game_honest_law
+    {P : Type} [DecidableEq P] {L : IExpr}
+    (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (profile : SourceBehavioralProfile source.core.prog) (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice) (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster) :
+    ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
+      (fun who => source.windowedCompilePolicy plan deadlineOf binding choice windowOf
+        who (profile who))).map
+        (source.windowedPublicResult plan deadlineOf binding choice windowOf) =
+      ((sourceGameForm source.core.prog source.core.env).play profile).map
+        source.publicResult := by
+  exact source.windowed_honest_public_law plan deadlineOf binding choice windowOf profile roster
+    focal hinitial horigins hfallbacks hroster howners
+
 /-- The native windowed game transfers every source lower bound on the public
 result to arbitrary randomized raw-command deviations. -/
 theorem public_application_windowed_game_guarantee
@@ -322,6 +347,66 @@ theorem public_application_windowed_game_guarantee
   exact source.windowed_guarantee plan deadlineOf binding choice windowOf profile roster focal
     hinitial horigins hfallbacks hroster howners value bound hbound replacement relay hrelay
     hrelayOther
+
+/-- Coordinatewise compilation preserves and reflects the same approximate-Nash
+budget for utilities of completion and executable public terminal output. -/
+theorem public_application_windowed_game_approximate_nash_iff
+    {P : Type} [DecidableEq P] {L : IExpr}
+    (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (profile : SourceBehavioralProfile source.core.prog) (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice) (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster)
+    (hrelays : ∀ player, ∃ relay ∈ roster, relay ≠ player)
+    (value : (Bool × Option
+      (Env L.Val (erasePubVCtx (compile source.core).terminalCtx))) → P → ℝ)
+    (ε : ℝ) :
+    IsεNash (source.windowedGame plan deadlineOf binding choice windowOf roster)
+      (fun out player => value
+        (source.windowedPublicResult plan deadlineOf binding choice windowOf out) player) ε
+      (fun player => source.windowedCompilePolicy plan deadlineOf binding choice windowOf
+        player (profile player)) ↔
+      IsεNash (sourceGameForm source.core.prog source.core.env)
+        (fun terminal player => value (source.publicResult terminal) player) ε profile := by
+  exact source.windowed_approximate_nash_iff plan deadlineOf binding choice windowOf profile roster
+    focal hinitial horigins hfallbacks hroster howners hrelays value ε
+
+/-- Coordinatewise compilation preserves and reflects expected-utility Nash
+for utilities of completion and executable public terminal output. -/
+theorem public_application_windowed_game_nash_iff
+    {P : Type} [DecidableEq P] {L : IExpr}
+    (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (profile : SourceBehavioralProfile source.core.prog) (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice) (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster)
+    (hrelays : ∀ player, ∃ relay ∈ roster, relay ≠ player)
+    (value : (Bool × Option
+      (Env L.Val (erasePubVCtx (compile source.core).terminalCtx))) → P → ℝ) :
+    IsNash (source.windowedGame plan deadlineOf binding choice windowOf roster)
+      (euPreference (fun out player => value
+        (source.windowedPublicResult plan deadlineOf binding choice windowOf out) player))
+      (fun player => source.windowedCompilePolicy plan deadlineOf binding choice windowOf
+        player (profile player)) ↔
+      IsNash (sourceGameForm source.core.prog source.core.env)
+        (euPreference (fun terminal player => value (source.publicResult terminal) player))
+        profile := by
+  exact source.windowed_nash_iff plan deadlineOf binding choice windowOf profile roster focal
+    hinitial horigins hfallbacks hroster howners hrelays value
 
 end WindowedDeviation
 
@@ -906,10 +991,25 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_windowed_deviation_mixture
 
+/-- info: 'Vegas.Paper.Source.public_application_windowed_game_honest_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_game_honest_law
+
 /-- info: 'Vegas.Paper.Source.public_application_windowed_game_guarantee'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_windowed_game_guarantee
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_game_approximate_nash_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_game_approximate_nash_iff
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_game_nash_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_game_nash_iff
 
 /-- info: 'Vegas.Paper.Source.public_application_withholding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

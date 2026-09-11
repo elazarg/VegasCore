@@ -112,7 +112,7 @@ theorem publicChoice_first_poll
     (by rw [halign.1]; omega) rfl
   exact ⟨hcache, hsource.1⟩
 
-/-- At unchanged owner input and source refinement, the two ordinary polls
+/-- At reference-owner input and source refinement, the two ordinary polls
 sample once, submit the chosen public value, then wait. This retains the exact
 native execution law, including the submitted packet and both local entries. -/
 theorem publicChoice_polls_source_law_of_input_eq
@@ -120,7 +120,8 @@ theorem publicChoice_polls_source_law_of_input_eq
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (middle : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
@@ -149,9 +150,8 @@ theorem publicChoice_polls_source_law_of_input_eq
       execution.native.application.base.memory :=
     congrArg (fun input => input.2.application.1) hinput
   have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
+      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) :=
+    reference.policy
   let site := PublicChoiceSite.atHead name publicName owner guard tail
   let code := site.code fresh state
   let instruction : ApplicationInstruction P L := .publicChoice { code with timeout := choice code }
@@ -166,8 +166,7 @@ theorem publicChoice_polls_source_law_of_input_eq
       ApplicationInstruction.withChoiceTimeouts, instruction]
   have halign := checkpoint.historyAlignment hroster owner howner
   obtain ⟨hcache, hfirst⟩ := checkpoint.publicChoice_first_poll hinitial hroster howner hpolicy
-    (checkpoint.head_cacheEmpty (.publicChoice code) _ hhead
-      (fun heq => hother (Option.some.inj heq)))
+    (reference.head_cacheEmpty (.publicChoice code) _ hhead rfl)
   change players owner (execution.principalHistory owner)
       (State.observe runtime.application execution.native owner) =
     (profile owner (.here guard (.reveal publicName owner name .here tail))
@@ -211,7 +210,8 @@ theorem publicChoice_polls_source_law_after_others
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (before : List (@Invocation P)) (henvironment : Invocation.environment ∉ before)
@@ -237,7 +237,7 @@ theorem publicChoice_polls_source_law_after_others
     players environment before henvironment hbefore execution middle hmiddle
   have hrefines := runtime.runPolicies_players_refines players environment before henvironment
     execution middle checkpoint.refines hmiddle
-  exact checkpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner hother
+  exact checkpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner reference
     environment middle hrefines hinput
 
 end Vegas.ApplicationPlan.WindowedCheckpoint

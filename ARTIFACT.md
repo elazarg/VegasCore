@@ -56,17 +56,23 @@ is `Paper.Source.public_application_reference_law` in the `Vegas` namespace.
 deviation law for the fixed windowed block service. Every finite-support,
 history-dependent raw policy has exactly the joint completion/public-terminal
 law of a finite mixture of legal source deviations against unchanged opponents.
-`Vegas/Game/Windowed.lean` exposes the actual native policy game and transfers
-any lower bound on an executable public-outcome utility from all source
-deviations to every native deviation. It emits no player clients. Eligibility
+`Vegas/Game/Windowed.lean` exposes the actual native policy game. The
+coordinatewise compiled profile has the source public-result law under the same
+block service, and every source lower bound on an executable public-outcome
+utility transfers to native deviations. It emits no player clients. Eligibility
 requires public initial reads, binding origins, certified fallbacks, a
 duplicate-free roster covering every decision owner, and a distinct unchanged
-relay. The fixed schedule repeatedly invokes each block against the same
-initialized block environment; it has no pending-packet inbox delivery or
-adaptive scheduler. Its honest-profile law is not yet proved for this same
-service, so Nash and epsilon-Nash preservation do not follow. The separate
-request/serialization result is not superseded. The paper audit is
-`Paper.Source.public_application_windowed_deviation_mixture`.
+relay. The honest law itself only takes a focal proof index and needs no
+distinct relay. With a distinct unchanged relay for every possible deviator,
+coordinatewise compilation preserves and reflects epsilon-Nash for arbitrary
+utilities of completion and public output, with the same epsilon. This concerns
+compiled profiles, not all runtime equilibria. The service has no pending-packet
+inbox delivery or adaptive scheduler. The separate request/serialization result
+is not superseded. The paper audits are
+`Paper.Source.public_application_windowed_game_honest_law`,
+`Paper.Source.public_application_windowed_deviation_mixture`,
+`Paper.Source.public_application_windowed_game_guarantee`, and
+`Paper.Source.public_application_windowed_game_approximate_nash_iff`.
 `ApplicationWithholding` proves that a waiting owner prevents completion at
 generated binding and fallback-free ordinary-choice sites under every service policy;
 `ConditionalExpirationSourceCoupling` proves the existing conditional-expiry

@@ -197,7 +197,8 @@ theorem conditional_ordinary_agreement_of_same_result
       have hrefines := runtime.runPolicies_players_refines players environment before
         (by simp [before]) left middle leftCheckpoint.refines hmiddle
       have hlaw := leftCheckpoint.conditional_polls_source_law_of_input_eq head hinitial horigins
-        hroster howner hother disposition hbinding environment middle hrefines hinput
+        hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother)
+        disposition hbinding environment middle hrefines hinput
       change runtime.application.runPolicies players environment [.player owner, .player owner]
         middle = (profile owner site.choice.decision
           ((leftCurrent.current.source.toView owner).eraseEnv)).bind
@@ -217,7 +218,8 @@ theorem conditional_ordinary_agreement_of_same_result
       have hrefines := runtime.runPolicies_players_refines players environment before
         (by simp [before]) right middle rightCheckpoint.refines hmiddle
       have hlaw := rightCheckpoint.conditional_polls_source_law_of_input_eq head hinitial horigins
-        hroster howner hother disposition hrightBinding environment middle hrefines hinput
+        hroster howner (rightCheckpoint.referenceOwner_of_ne owner hother)
+        disposition hrightBinding environment middle hrefines hinput
       change runtime.application.runPolicies players environment [.player owner, .player owner]
         middle = (profile owner site.choice.decision
           ((rightCurrent.current.source.toView owner).eraseEnv)).bind
@@ -356,11 +358,13 @@ theorem conditional_block_agreement_of_same_result
   obtain ⟨includedRight, hincludedRight, hfinalRight⟩ := hfinalRight
   obtain ⟨leftDisposition, leftChosen, _, hleftBinding, hleftLookup, hleftHandle,
     hleftInclude, hinactive⟩ :=
-      leftCheckpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner hother
+      leftCheckpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner
+        (leftCheckpoint.referenceOwner_of_ne owner hother)
         polledLeft includedLeft hpolledLeft hincludedLeft
   obtain ⟨rightDisposition, rightChosen, _, hrightBinding', hrightLookup, hrightHandle,
     hrightInclude, _⟩ :=
-      rightCheckpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner hother
+      rightCheckpoint.conditional_ordinary_inclusion head hinitial horigins hroster howner
+        (rightCheckpoint.referenceOwner_of_ne owner hother)
         polledRight includedRight hpolledRight hincludedRight
   have hleftDisposition : leftDisposition = disposition :=
     Option.some.inj (hleftBinding.symm.trans hbinding)
@@ -469,12 +473,14 @@ theorem conditional_block_agreement_at_source
   obtain ⟨leftDisposition, hbindingLeft, hresultLeft, polledLeft, hbranchLeft,
       includedLeft, hincludedLeft, hsuffixLeft⟩ :=
     conditional_block_support_at_source head leftCurrent left finalLeft leftCheckpoint
-      hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      hinitial horigins hroster howner (leftCheckpoint.referenceOwner_of_ne owner hother)
+      beforeRoster afterRoster hsplit
       result recordedLeft hsourceLeft hrefinesLeft hfinalLeft
   obtain ⟨rightDisposition, hbindingRight, hresultRight, polledRight, hbranchRight,
       includedRight, hincludedRight, hsuffixRight⟩ :=
     conditional_block_support_at_source head rightCurrent right finalRight rightCheckpoint
-      hinitial horigins hroster howner hother beforeRoster afterRoster hsplit
+      hinitial horigins hroster howner (rightCheckpoint.referenceOwner_of_ne owner hother)
+      beforeRoster afterRoster hsplit
       result recordedRight hsourceRight hrefinesRight hfinalRight
   have hdisposition : rightDisposition = leftDisposition := by
     rw [← agreement.state.base.memory] at hbindingRight

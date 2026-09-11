@@ -202,7 +202,9 @@ theorem binding_block_resolution
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+      replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -431,8 +433,7 @@ theorem binding_block_resolution
     obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp hrelay
     have hrelayPolicy : players relay = runtime.blockPlayer relay
         (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) := by
-      simp only [players, windowedPlayers, Function.update_of_ne hunchanged,
-        windowedReferencePlayers, runtime]
+      exact hreference
     have hprincipalStart := checkpoint.historyAlignment hroster relay hrelay |>.1
     have hprincipalPolled := runtime.application.runPolicies_principalHistory_length relay
       players (runtime.blockEnvironment roster) before execution polled hpolled
@@ -552,7 +553,9 @@ theorem binding_block
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
-    (hunchanged : relay ≠ focal)
+    (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+      replacement relay =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application
       |>.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -577,7 +580,7 @@ theorem binding_block
         ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
   obtain ⟨chosen, sourceNext, hsource, hrefines, hfresh, hchosen, hinactive⟩ :=
     binding_block_resolution unrestricted nextPlan profile fallback deadline hselect current
-      execution final checkpoint hroster relay hrelay hunchanged hfinal
+      execution final checkpoint hroster relay hrelay hreference hfinal
   have hstep : SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
       ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ := by
     rw [hsource]

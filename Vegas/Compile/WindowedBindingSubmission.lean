@@ -48,7 +48,7 @@ variable {current : CoupledAt (compileCore (.commit name owner guard tail) fresh
 variable {execution :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
-/-- Every supported ordinary polling segment leaves the unchanged owner's
+/-- Every supported ordinary polling segment leaves the reference owner's
 generated binding packet pending at its fresh serial. Other players may issue
 arbitrary randomized raw commands before and after these two owner polls. -/
 theorem binding_ordinary_submission
@@ -56,7 +56,8 @@ theorem binding_ordinary_submission
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (polled : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hpolled : polled ∈
       ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
@@ -90,7 +91,7 @@ theorem binding_ordinary_submission
   simp only [FinDist.support_bind, Set.mem_iUnion] at hpolled
   obtain ⟨submitted, hsubmitted, hafterRun⟩ := hpolled
   rw [checkpoint.binding_polls_source_law_after_others hinitial hroster
-    (by simp) hother environment before (by simp [before]) hbefore] at hsubmitted
+    (by simp) reference environment before (by simp [before]) hbefore] at hsubmitted
   simp only [FinDist.support_bind, Set.mem_iUnion] at hsubmitted
   obtain ⟨middle, hmiddle, chosen, _, registered, hregistered, hsubmitted⟩ := hsubmitted
   have hbeforeFrame := runtime.runPolicies_other_frame owner players environment before
@@ -115,7 +116,7 @@ theorem binding_ordinary_submission
     rw [hsubmittedPool, ← hbeforeFrame.2.2.1]
     exact hserials.lookup_submit owner _
 
-/-- The ordinary service slot includes and accepts the unchanged owner's
+/-- The ordinary service slot includes and accepts the reference owner's
 actual generated packet. Readiness, freshness, and the selected identifier
 are derived from the source checkpoint and supported preceding polls. No
 timeout selector, successful-opening assumption, or unchanged relay is needed. -/
@@ -124,7 +125,8 @@ theorem binding_ordinary_inclusion
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (reference : checkpoint.ReferenceOwner owner)
     (polled included :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hpolled : polled ∈
@@ -158,7 +160,7 @@ theorem binding_ordinary_inclusion
       unrestricted nextPlan).instructions deadlineOf =
         .bind code :: nextPlan.instructions deadlineOf := rfl
   obtain ⟨hserial, hlookup⟩ := checkpoint.binding_ordinary_submission hinitial hroster
-    howner hother polled hpolled
+    howner reference polled hpolled
   have hpublic := runtime.runPolicies_players_publicState players (runtime.blockEnvironment roster)
     polls (by simp [polls]) execution polled hpolled
   have hmemory : polled.native.application.base.memory =
