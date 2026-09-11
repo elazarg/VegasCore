@@ -267,6 +267,18 @@ theorem delivery_binding_block
   obtain ⟨activation, hactivation, hkey, _⟩ :=
     checkpoint.active_origin_clock (.bind code) _ hhead
   obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp hrelay
+  have hnodup : (runtime.image.instructions.flatMap
+      ApplicationInstruction.coveredNodes).Nodup := by
+    dsimp only [runtime, windowed]
+    rw [ApplicationImage.coveredNodes_withChoiceTimeouts,
+      ApplicationImage.coveredNodes_withBindingTimeouts]
+    exact root.coveredNodes_nodup deadlineOf
+  have hallocated : ∀ candidate ∈ runtime.image.instructions,
+      candidate.AllocatedAt rootState.initialFields.length := by
+    apply ApplicationImage.instructions_allocated_withChoiceTimeouts
+    apply ApplicationImage.instructions_allocated_withBindingTimeouts
+    exact root.instructions_allocated deadlineOf
+  have hresolved := checkpoint.resolvedBindings
   have hsettled : runtime.image.activeAddress? final.native.application.base.memory ≠
       some timed.node := by
     subst roster
@@ -276,8 +288,9 @@ theorem delivery_binding_block
       (.bind timed) rfl current.current.graph.1 blockIndex execution final activation
       henvironment hprincipal hindex hactive hactivation hkey checkpoint.refines
       checkpoint.activationFresh checkpoint.consistent checkpoint.serialsBeforeNext
+      rootState.initialFields.length hnodup hallocated hresolved
     · intro observed hobservedConsistent hobservedRefines hobservedActivation hoverdue
-        hobservedSerial
+        hobservedSerial _
       have hobservedCode : runtime.image.lookup activation.key = some (.bind timed) := by
         rw [hkey]
         exact hlookup

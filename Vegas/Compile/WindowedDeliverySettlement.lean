@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedDeliveryPrefix
 import Vegas.Compile.WindowedDeliveryRelay
 import Vegas.Compile.WindowedDeliveryActivePrefix
+import Vegas.Compile.WindowedApplicationInvariants
 
 /-! # Settlement of a complete delivery-enabled response window
 
@@ -43,6 +44,12 @@ theorem runPolicies_delivery_block_resolves
     (hfresh : execution.native.application.FreshActivation)
     (hconsistent : runtime.Consistent execution.native.application)
     (hserials : execution.native.pool.SerialsBeforeNext)
+    (initialFields : Nat)
+    (hnodup : (runtime.image.instructions.flatMap
+      ApplicationInstruction.coveredNodes).Nodup)
+    (hallocated : ∀ candidate ∈ runtime.image.instructions,
+      candidate.AllocatedAt initialFields)
+    (hresolved : runtime.image.ResolvedBindings execution.native.application.base)
     (eligible : ∀ state : runtime.application.PolicyExecution,
       runtime.Consistent state.native.application →
       state.native.application.base.Refines cfg →
@@ -50,6 +57,7 @@ theorem runPolicies_delivery_block_resolves
       activation.since + runtime.windowOf instruction.address <
         state.native.application.base.memory.clock →
       state.native.pool.lookup (relay, state.native.pool.nextSerial relay) = none →
+      runtime.image.ResolvedBindings state.native.application.base →
       ∃ payload resolved,
         runtime.dueExpiry? (state.native.application.base.memory,
           state.native.application.active) = some payload ∧
@@ -101,6 +109,8 @@ theorem runPolicies_delivery_block_resolves
   rw [hschedule, MessageApplication.runPolicies_append] at hfinal
   simp only [FinDist.support_bind, Set.mem_iUnion] at hfinal
   obtain ⟨prepared, hprepared, hrest⟩ := hfinal
+  have hpreparedResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
+    players environment preparation execution prepared hresolved hprepared
   obtain ⟨hpreparedRefines, hpreparedPublic, _, _, _, hpreparedLength⟩ :=
     runtime.runPolicies_deliveryPreparation roster recipients hroster players execution prepared
       instruction blockIndex henvironment hindex hrefines hfresh hconsistent hprepared
@@ -116,6 +126,8 @@ theorem runPolicies_delivery_block_resolves
   have hincludedRun : included ∈ (runtime.application.runPolicies players environment
       [.environment] prepared).support := by
     simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hincluded
+  have hincludedResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
+    players environment [.environment] prepared included hpreparedResolved hincludedRun
   have hincludedLength := runtime.application.runPolicies_environmentHistory_length players
     environment [.environment] prepared included hincludedRun
   simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment, ↓reduceIte,
@@ -159,6 +171,8 @@ theorem runPolicies_delivery_block_resolves
   have hclockedRun : clocked ∈ (runtime.application.runPolicies players environment
       [.environment] included).support := by
     simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hclocked
+  have hclockedResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
+    players environment [.environment] included clocked hincludedResolved hclockedRun
   have hclockedEq : clocked = expectedClocked := by
     rw [hclockLaw] at hclockedRun
     exact FinDist.mem_support_pure.mp hclockedRun
@@ -212,6 +226,8 @@ theorem runPolicies_delivery_block_resolves
       ((preparation ++ [.environment, .environment]) ++ beforeRelays) execution).support := by
     rw [MessageApplication.runPolicies_append, FinDist.support_bind]
     exact Set.mem_iUnion.mpr ⟨clocked, Set.mem_iUnion.mpr ⟨hclockedBefore, hbeforeRelay⟩⟩
+  have hatRelayResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
+    players environment beforeRelays clocked atRelay hclockedResolved hbeforeRelay
   have hatRelaySerials := runtime.application.runPolicies_serialsBeforeNext players environment
     _ execution atRelay hserials hatRelayReached
   have hnextSerial := hatRelaySerials.lookup_nextSerial_eq_none relay
@@ -222,7 +238,7 @@ theorem runPolicies_delivery_block_resolves
       (hincludedActivation.trans hpreparedActivation))) (by
       have hmax := Nat.le_max_right included.native.application.base.memory.clock
         (activation.since + runtime.windowOf instruction.address + 1)
-      omega) hnextSerial
+      omega) hnextSerial hatRelayResolved
   have hatRelayPrincipal := runtime.application.runPolicies_principalHistory_length relay
     players environment _ execution atRelay hatRelayReached
   have hbeforePlayerCount := relayInvocations_player_count beforeRoster hbeforeNodup relay
