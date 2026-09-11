@@ -140,7 +140,12 @@ theorem binding_ordinary_inclusion
     included ∈ ((root.windowed deadlineOf binding choice windowOf).application.environmentPolicyStep
       polled (.include (owner, execution.native.pool.nextSerial owner))).support ∧
       (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
-        included.native.application.base.memory ≠ some state.nodes.length := by
+        included.native.application.base.memory ≠ some state.nodes.length ∧
+      let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+        .here guard tail
+      let code := site.bindingCode fresh state (site.compiledField fresh state)
+      included.native.application.base = polled.native.application.base.bind
+        { code with timeout := binding code } (owner, site.compiledField fresh state) := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
@@ -197,7 +202,10 @@ theorem binding_ordinary_inclusion
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
     FinDist.mem_support_pure] at hincluded
   subst included
-  exact hadmission.2
+  refine ⟨hadmission.2, ?_⟩
+  rw [runtime.application.includePending_accept polled.native
+    (owner, execution.native.pool.nextSerial owner) _ _ hlookup hadmission.1]
+  rfl
 
 end Vegas.ApplicationPlan.WindowedCheckpoint
 

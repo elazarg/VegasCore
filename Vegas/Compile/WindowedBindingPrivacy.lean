@@ -308,7 +308,7 @@ theorem binding_block_agreement
   have polledAgreement := binding_ordinary_agreement unrestricted nextPlan profile
     leftCurrent rightCurrent left right leftCheckpoint rightCheckpoint agreement hinitial command
     hpure hroster howner hother polledLeft polledRight hpolledLeft hpolledRight
-  obtain ⟨hleftInclude, hinactive⟩ := leftCheckpoint.binding_ordinary_inclusion hinitial
+  obtain ⟨hleftInclude, hinactive, _⟩ := leftCheckpoint.binding_ordinary_inclusion hinitial
     hroster howner hother polledLeft includedLeft hpolledLeft hincludedLeft
   obtain ⟨hrightInclude, _⟩ := rightCheckpoint.binding_ordinary_inclusion hinitial
     hroster howner hother polledRight includedRight hpolledRight hincludedRight

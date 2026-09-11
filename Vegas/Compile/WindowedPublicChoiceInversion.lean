@@ -163,7 +163,7 @@ theorem publicChoice_fixed_branch_publication
     simp only [FinDist.support_bind, Set.mem_iUnion]
     exact ⟨polled, hpolled, by
       simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hincluded⟩
-  have hpublic := checkpoint.after_normal_publicState _ _ hhead included final hinactive
+  have hpublic := checkpoint.after_normal_frame _ _ hhead included final hinactive
     hnormal hfinal
   have hmemory : final.native.application.base.memory =
       included.native.application.base.memory := congrArg Prod.fst hpublic

@@ -65,9 +65,9 @@ private theorem normal_suffix_environment_count (roster : List P) :
   simp only [List.countP_cons, Invocation.isEnvironment, ↓reduceIte, hcount]
 
 /-- Once the actual normal service resolves the current instruction, its
-remaining block slots preserve public memory and activation. The focal policy
-may be randomized and issue arbitrary raw commands. -/
-theorem after_normal_publicState
+remaining block slots preserve memory, activation, and frozen binding snapshots.
+Private preparation and pending traffic may still change under arbitrary raw policies. -/
+theorem after_normal_frame
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex plan profile leftCurrent left)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
@@ -88,8 +88,10 @@ theorem after_normal_publicState
         ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
         (.environment :: roster.flatMap fun actor => [Invocation.player actor, .environment])
         included).support) :
-    (final.native.application.base.memory, final.native.application.active) =
-      (included.native.application.base.memory, included.native.application.active) := by
+    (final.native.application.base.memory, final.native.application.active,
+      final.native.application.base.frozen) =
+      (included.native.application.base.memory, included.native.application.active,
+        included.native.application.base.frozen) := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
@@ -109,17 +111,30 @@ theorem after_normal_publicState
     rw [runtime.application.runPolicies_environmentHistory_length players
       (runtime.blockEnvironment roster) normal left included hincluded,
       normal_environment_count, checkpoint.environmentHistory_length]
-  apply runtime.runPolicies_block_inactive roster players suffix included final timed ?_
-    (by rwa [haddress]) hfinal
-  intro index hlo hhi
-  rw [henv] at hlo hhi
-  rw [normal_suffix_environment_count] at hhi
-  have hquotient : index / (roster.length + 2) = blockIndex := by
-    apply Nat.div_eq_of_lt_le
-    · omega
-    · nlinarith
-  rw [hquotient]
-  exact hindex
+  have hremainingIndex : ∀ index, included.environmentHistory.length ≤ index →
+      index < included.environmentHistory.length + suffix.countP Invocation.isEnvironment →
+      runtime.image.instructions[index / (roster.length + 2)]? = some timed := by
+    intro index hlo hhi
+    rw [henv] at hlo hhi
+    rw [normal_suffix_environment_count] at hhi
+    have hquotient : index / (roster.length + 2) = blockIndex := by
+      apply Nat.div_eq_of_lt_le
+      · omega
+      · nlinarith
+    rw [hquotient]
+    exact hindex
+  apply runtime.runPolicies_block_inactive_invariant roster players suffix included final
+    timed hremainingIndex (fun native => (native.base.memory, native.active, native.base.frozen) =
+      (included.native.application.base.memory, included.native.application.active,
+        included.native.application.base.frozen)) ?_ ?_ rfl hfinal
+  · intro native actor command hnative
+    cases command
+    exact hnative
+  · intro native hnative
+    have hmemory : native.base.memory = included.native.application.base.memory :=
+      congrArg Prod.fst hnative
+    rw [hmemory, haddress]
+    exact hinactive
 
 /-- Paired actual normal-service prefixes extend to paired complete blocks
 when the current instruction has resolved. This applies to every instruction
@@ -276,7 +291,7 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_agreement
 
-/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_publicState'
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_frame'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_publicState
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_frame

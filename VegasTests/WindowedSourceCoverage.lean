@@ -5,10 +5,12 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedSourceCoverage
+import Vegas.Compile.WindowedBindingLaw
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.PublicChoiceResolution
 import VegasTests.GeneratedApplicationPolicy
 import VegasTests.ApplicationBindingOrigins
+import VegasTests.GeneratedApplicationSourceLaw
 
 /-! # Complete source coverage with arbitrary raw replacement policies
 
@@ -95,9 +97,54 @@ theorem complete_source_execution
     ApplicationBindingOrigins.persistent_image_has_binding_origins (by decide) 1
     (by simp) (by decide) final hfinal
 
+private def fixedBindingBranch (profile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy) (value : Bool) :
+    FinDist runtime.application.PolicyExecution :=
+  let policies := applicationPlan.windowedPlayers profile (fun _ => 10)
+    bindingSelector choiceSelector (fun _ => 10) 1 replacement
+  let environment := runtime.blockEnvironment [1, 0]
+  (runtime.application.runPolicies policies environment [.player 1, .player 1] initial).bind
+    fun middle => (runtime.application.playerStep 0 middle
+      (.privateCommand (.register 0 ⟨.bool, value⟩))).bind fun registered =>
+        (runtime.application.playerStep 0 registered (.submit (.binding 0 (0, 0)))).bind
+          fun submitted => runtime.application.runPolicies policies environment
+            [.environment, .environment, .player 1, .environment, .player 0, .environment]
+            submitted
+
+/-- A fixed source draw determines the real source successor after the complete
+binding block, even with randomized raw traffic both before and after its owner. -/
+theorem binding_fixed_draw_source_successor
+    (profile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy) (chosen : Bool)
+    (hchosen : ⟨chosen, rfl⟩ ∈ (profile 0 GeneratedBindingPolicy.site
+      ((source.env.toView 0).eraseEnv)).support)
+    (final : runtime.application.PolicyExecution)
+    (hbranch : final ∈ (fixedBindingBranch profile replacement chosen).support) :
+    ∃ sourceNext : CoupledAt GeneratedPersistentDisclosure.compiled.graph
+        (compilerInitial.addCommitEvent (actionName := 0) (actionTy := BaseTy.bool)
+          0 0 (.constBool true) source.fresh.1).1,
+      sourceNext.current.source = source.env.cons chosen ∧
+        final.native.application.base.Refines sourceNext.current.graph.1 := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
+    DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
+    bindingSelector choiceSelector (fun _ => 10) [1, 0] 1 replacement
+  obtain ⟨sourceNext, hsource, _, hnext, _⟩ :=
+    checkpoint.binding_fixed_branch_source_coupling _ _ profile bindingFallback 10 rfl
+      (compiledInitialCoupled source) initial final
+      GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp) (by decide)
+      [1] [] rfl ⟨chosen, rfl⟩ hchosen (by
+        change final ∈ (fixedBindingBranch profile replacement chosen).support
+        exact hbranch)
+  exact ⟨sourceNext, hsource, hnext.refines⟩
+
 end VegasTests.WindowedSourceCoverage
 
 /-- info: 'VegasTests.WindowedSourceCoverage.complete_source_execution' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedSourceCoverage.complete_source_execution
+
+/-- info: 'VegasTests.WindowedSourceCoverage.binding_fixed_draw_source_successor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedSourceCoverage.binding_fixed_draw_source_successor

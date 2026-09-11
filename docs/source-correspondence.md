@@ -197,6 +197,10 @@ block to a root decision whose extracted kernel is the point mass at the
 recorded legal value. The remaining ordinary source steps reach the recorded
 successor. Its concrete initial-binding regression starts with actual block
 support and obtains the source evidence from `WindowedSourcePrefix.covers`.
+`BlockSourceStep.exists_focal_local_source_choice` exposes the same action at
+the canonical head decision of the current suffix. It retains the actual
+source extension and avoids an existential choice of decision occurrence in
+the probability-law induction.
 
 `binding_block_source_factorization`, `publicChoice_block_source_factorization`,
 and `conditional_block_source_factorization` express the complete native block
@@ -217,9 +221,19 @@ regressions use a runtime without binding or choice timeouts and an arbitrary
 randomized opposing policy; the successor-checkpoint theorem additionally uses
 the existing source-certified fallback interface.
 
-The general public-message deviation law still requires fixed-draw successor
-couplings for binding and conditional/copy, followed by composition of the
-joint block laws into equality of whole-program outcome distributions against
+`binding_fixed_branch_source_coupling` supplies the same fixed-draw successor
+guarantee for opaque bindings. Its value identification uses fresh write-once
+preparation, the actual accepted snapshot, and preservation of that snapshot
+through the rest of the block. The concrete regression includes randomized
+opposing polls before and after the unchanged owner.
+`conditional_fixed_branch_source_coupling` and
+`conditionalCopy_fixed_branch_source_coupling` supply the successor checkpoints
+for conditional discharge and copy. Their shared publication lemma identifies
+the final field with the original guarded source draw, using the actual
+binding disposition and the conditional encoding equivalence.
+
+The general public-message deviation law still requires composition of these
+block laws into equality of whole-program outcome distributions against
 unchanged opponents. The extracted focal policy currently
 assumes a pure raw replacement; randomized deviations require applying the
 finite-mixture reduction to the completed pure-deviation law. Support and

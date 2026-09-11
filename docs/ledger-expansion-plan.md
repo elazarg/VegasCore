@@ -537,6 +537,10 @@ disclosure use legality, the source extension, and successor refinement. No
 hypothesis about the extracted policy is used to construct these witnesses.
 The concrete regression obtains the source edge from actual block support via
 `WindowedSourcePrefix.covers`.
+The suffix-local endpoint `exists_focal_local_source_choice` identifies the
+canonical head decision using the source constructor equality. Its kernel is
+therefore the same syntactic kernel for every supported final state of that
+block, rather than an existentially selected source occurrence.
 
 The probability argument requires a joint one-block law, not another support
 inversion. Its first marginal must be the actual complete native block law;
@@ -559,10 +563,12 @@ For unchanged public choice, `publicChoice_fixed_branch_publication` identifies
 the completed public field with the draw indexing the native branch.
 `publicChoice_fixed_branch_source_coupling` uses this identity and the exact
 factorization to construct the source successor and next checkpoint for that
-draw. The analogous final-draw identification is still required for binding and
-conditional/copy before the complete joint-law induction. Conditional draws
-must remain indexed by the original guarded source value; its encoding to an
-optional opening does not justify resampling or conditioning on admissibility.
+draw. `binding_fixed_branch_source_coupling` and the two conditional endpoints
+provide the corresponding fixed-draw successor checkpoints for binding,
+conditional discharge, and copy. The conditional endpoints share
+`conditional_fixed_branch_publication`; the original guarded source draw is
+retained throughout. Encoding it as an optional opening does not justify
+resampling or conditioning on admissibility.
 
 Binding preparation is write-once. The first registration must therefore use
 an empty slot; it cannot overwrite an earlier value. The initialized-run
@@ -570,10 +576,27 @@ an empty slot; it cannot overwrite an earlier value. The initialized-run
 the preparation table. `binding_preparation_empty` combines it with unchanged
 cache freshness to prove that the next binding slot is empty.
 `runPolicies_register_submit_prepared` retains the fixed registration through
-arbitrary other-player polls. Binding's remaining coupling obligation is to
-identify the accepted frozen snapshot, and hence its canonical resolved source
-value, with this draw through the complete service suffix. Generic fallback
-independence is false for absent or ill-typed frozen values and is not needed.
+arbitrary other-player polls. `binding_ordinary_inclusion` exposes the actual
+accepted base state. `after_normal_frame` preserves memory, activation, and
+frozen snapshots through the complete service suffix; it permits pending
+traffic and private preparation to change. These facts identify the canonical
+resolved source value with the fixed draw. Generic fallback independence is
+false for absent or ill-typed frozen values and is not needed.
+
+The remaining law induction follows `ApplicationPlan`, whose publication
+constructors consume an adjacent source commit/reveal pair. At each suffix,
+the source profile replaces only the focal policy with the local extracted
+checkpoint family; constructor reduction aligns its continuation with the next
+suffix family. The native continuation keeps the actual execution state.
+For a focal-owned block, retain its complete native law unchanged. A supported
+execution supplies a legal head action; the common local kernel and action
+consistency identify that same action at every supported successor. Binding
+the point-mass source kernel to this unchanged native law preserves the native
+marginal (`FinDist.bind_const`); it does not assert deterministic native
+execution or canonical focal commands. The fixed-draw couplings handle
+unchanged owners, and the chance coupling handles samples. Composing these
+cases against the original `denoteSource` remains unproved. The finite-mixture
+reduction applies only after the pure-deviator whole-program law is established.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an
