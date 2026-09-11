@@ -310,6 +310,19 @@ theorem resolvedBindings
     (ApplicationImage.ResolvedBindings.initial runtime.image
       (compileCore rootProg rootFresh rootState).graph) checkpoint.reached
 
+/-- At an initialized checkpoint, preparation is exactly the first private
+registration recorded in each owner's history, including under raw deviations. -/
+theorem registrationConsistent
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution) :
+    (root.windowed deadlineOf binding choice windowOf).RegistrationConsistent execution := by
+  apply (root.windowed deadlineOf binding choice windowOf).runPolicies_registrationConsistent
+    (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
+    ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+    (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
+    (root.windowedInitialExecution deadlineOf binding choice windowOf) execution
+    (by intro owner slot; rfl) checkpoint.reached
+
 /-- The unchanged owner's accepted snapshots retain their actual typed
 registration provenance, even when another player uses an arbitrary raw policy.
 The source suffix uses the same compiled graph as the original program. -/

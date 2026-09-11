@@ -68,9 +68,54 @@ theorem runPolicies_other_frame (runtime : WindowedApplication P L) (owner : P)
   exact ⟨congrArg Prod.fst hproject, fun slot => congrFun (congrArg Prod.snd hproject) slot,
     hserial, hlookup⟩
 
+/-- A fresh private registration followed by submission retains its exact
+value through arbitrary polls of other principals. Other traffic cannot fill
+the owner's slot before registration or replace it afterwards. -/
+theorem runPolicies_register_submit_prepared
+    (runtime : WindowedApplication P L) (owner : P) (slot : Nat) (value : TypedValue L)
+    (payload : ApplicationImage.Payload P L)
+    (players : P → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (before after : List (@Invocation P))
+    (hbeforeEnvironment : Invocation.environment ∉ before)
+    (hbeforeOwner : Invocation.player owner ∉ before)
+    (hafterEnvironment : Invocation.environment ∉ after)
+    (hafterOwner : Invocation.player owner ∉ after)
+    (execution polled : runtime.application.PolicyExecution)
+    (hempty : execution.native.application.base.prepared.lookup (owner, slot) = none)
+    (hbranch : polled ∈
+      ((runtime.application.runPolicies players environment before execution).bind fun middle =>
+        (runtime.application.playerStep owner middle
+          (.privateCommand (.register slot value))).bind fun registered =>
+            (runtime.application.playerStep owner registered (.submit payload)).bind
+              fun submitted =>
+                runtime.application.runPolicies players environment after submitted).support) :
+    polled.native.application.base.prepared.lookup (owner, slot) = some value := by
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hbranch
+  obtain ⟨middle, hmiddle, registered, hregistered, submitted, hsubmitted, hafter⟩ := hbranch
+  have hbeforeFrame := runtime.runPolicies_other_frame owner players environment before
+    hbeforeEnvironment hbeforeOwner execution middle hmiddle
+  have hafterFrame := runtime.runPolicies_other_frame owner players environment after
+    hafterEnvironment hafterOwner submitted polled hafter
+  rw [hafterFrame.2.1 slot]
+  have hmiddleEmpty : middle.native.application.base.prepared.lookup (owner, slot) = none :=
+    (hbeforeFrame.2.1 slot).trans hempty
+  simp only [MessageApplication.playerStep, PlayerCommand.toAction,
+    MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
+    FinDist.mem_support_pure] at hregistered hsubmitted
+  subst registered
+  subst submitted
+  exact (IdealCommitments.seal_first middle.native.application.base.prepared
+    owner slot value hmiddleEmpty).2
+
 end Vegas.WindowedApplication
 
 /-- info: 'Vegas.WindowedApplication.runPolicies_other_frame' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WindowedApplication.runPolicies_other_frame
+
+/-- info: 'Vegas.WindowedApplication.runPolicies_register_submit_prepared'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.runPolicies_register_submit_prepared

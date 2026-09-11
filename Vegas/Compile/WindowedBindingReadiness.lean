@@ -75,6 +75,34 @@ theorem binding_dispatch
   simp only [ApplicationPlan.liftProfileIn, hdone, Bool.false_eq_true, ↓reduceIte]
   rfl
 
+/-- An unchanged owner's next binding slot has no prior private registration.
+Freshness follows from actual history and write-once storage consistency,
+not from the registration command being able to overwrite a previous value. -/
+theorem binding_preparation_empty
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
+      profile current execution)
+    (hother : owner ≠ focal) :
+    execution.native.application.base.prepared.lookup (owner, state.nextField) = none := by
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+    .here guard tail
+  let code := site.bindingCode fresh state (site.compiledField fresh state)
+  have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
+      unrestricted nextPlan).instructions deadlineOf = .bind code ::
+        nextPlan.instructions deadlineOf := rfl
+  have hall := checkpoint.unchangedCaches
+  rw [RemainingUnchangedCachesEmpty, hhead] at hall
+  have hfirst := (List.forall_cons _ _ _).mp hall |>.1
+  rcases hfirst with heq | hcache
+  · exact False.elim (hother (Option.some.inj heq))
+  · have hconsistent := checkpoint.registrationConsistent owner state.nextField
+    have hcached := (runtime.registrationCache_erasePlayerEntry (root.image deadlineOf)
+      state.nextField (execution.principalHistory owner)).trans hcache.1
+    have hprojection := runtime.registrationCache_erasePlayerEntry runtime.image
+      state.nextField (execution.principalHistory owner)
+    exact hconsistent.symm.trans (hprojection.symm.trans hcached)
+
 /-- Every local prerequisite of the generated two-poll binding law follows
 from an initialized checkpoint, the unchanged owner's roster position, and
 the root's public-initial-read eligibility. -/
@@ -316,6 +344,11 @@ end Vegas.ApplicationPlan.WindowedCheckpoint
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_dispatch
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_polls_ready' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

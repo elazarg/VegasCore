@@ -189,12 +189,38 @@ source choices.
 `extractedSourcePolicy` assembles the resulting legal decision kernels along
 the original source syntax. `extractedSourcePolicy_at_checkpoint` proves that
 this single total policy selects the recorded action at every representative;
-elsewhere it uses the reference policy. A concrete initial-binding regression
-constructs the representative from an actual supported runtime block. The
-general public-message deviation law remains open: every actual focal source
-edge must be connected to its representative in the assembled family, and
-joint source/runtime laws must establish the complete outcome distribution
-against unchanged opponents. The construction currently assumes a pure raw
-replacement; randomized deviations require the subsequent finite-mixture
-argument. Support and information preservation alone do not give these
-probability statements.
+elsewhere it uses the reference policy.
+`WindowedSourcePrefix.exists_root_sourceDecisionSite` identifies suffix
+decisions with their occurrences in the original program.
+`BlockSourceStep.exists_focal_source_choice` connects every actual focal-owned
+block to a root decision whose extracted kernel is the point mass at the
+recorded legal value. The remaining ordinary source steps reach the recorded
+successor. Its concrete initial-binding regression starts with actual block
+support and obtains the source evidence from `WindowedSourcePrefix.covers`.
+
+`binding_block_source_factorization`, `publicChoice_block_source_factorization`,
+and `conditional_block_source_factorization` express the complete native block
+law as an unchanged owner's original guarded source kernel bound to the
+concrete remaining execution. They retain arbitrary randomized opposing
+traffic, including polls preceding the owner. Conditional publication and
+copy share a theorem through `ConditionalHead`; the actual binding disposition
+determines how the sampled choice is encoded. These equalities do not discard
+failed runs or condition on termination.
+
+For unchanged public choice, `publicChoice_fixed_branch_publication` proves
+that the completed branch's public field contains its fixed source draw.
+`publicChoice_fixed_branch_source_coupling` constructs the corresponding
+sequential source successor and next native checkpoint with that same draw.
+Thus the exact public-choice block factorization has matching source-successor
+witnesses for every supported pair. Concrete publication and full-block-law
+regressions use a runtime without binding or choice timeouts and an arbitrary
+randomized opposing policy; the successor-checkpoint theorem additionally uses
+the existing source-certified fallback interface.
+
+The general public-message deviation law still requires fixed-draw successor
+couplings for binding and conditional/copy, followed by composition of the
+joint block laws into equality of whole-program outcome distributions against
+unchanged opponents. The extracted focal policy currently
+assumes a pure raw replacement; randomized deviations require applying the
+finite-mixture reduction to the completed pure-deviation law. Support and
+information preservation alone do not give these probability statements.

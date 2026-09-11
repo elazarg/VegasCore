@@ -23,7 +23,10 @@ open EventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-private def RegistrationConsistent (runtime : WindowedApplication P L)
+/-- The first private registration in each owner's history is exactly the
+write-once preparation stored at that owner's slot. This invariant also
+identifies empty slots before an unchanged owner draws a new source value. -/
+def RegistrationConsistent (runtime : WindowedApplication P L)
     (execution : runtime.application.PolicyExecution) : Prop :=
   ∀ who slot, runtime.image.registrationCache slot
       ((execution.principalHistory who).map fun entry =>
@@ -397,4 +400,29 @@ theorem runPolicies_registeredBindings_of_registered_submissions
   exact (congrArg (fun reference => next.native.application.base.prepared.lookup reference)
     heq).symm.trans hprepared
 
+/-- Arbitrary player and environment policies preserve the correspondence
+between private registration history and write-once preparation. -/
+theorem runPolicies_registrationConsistent
+    (runtime : WindowedApplication P L)
+    (players : P → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (schedule : List (@Invocation P))
+    (execution next : runtime.application.PolicyExecution)
+    (hconsistent : runtime.RegistrationConsistent execution)
+    (hnext : next ∈
+      (runtime.application.runPolicies players environment schedule execution).support) :
+    runtime.RegistrationConsistent next := by
+  apply runtime.application.runPolicies_execution_invariant
+    runtime.RegistrationConsistent players environment ?_ ?_ schedule execution next
+      hconsistent hnext
+  · intro current actor command final hcurrent _ hstep
+    exact playerStep_registrationConsistent runtime current final actor command hcurrent hstep
+  · intro current command final hcurrent _ hstep
+    exact environmentStep_registrationConsistent runtime current final command hcurrent hstep
+
 end Vegas.WindowedApplication
+
+/-- info: 'Vegas.WindowedApplication.runPolicies_registrationConsistent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.runPolicies_registrationConsistent

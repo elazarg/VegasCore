@@ -527,30 +527,53 @@ assembled policy chooses the pure extracted action at every representative.
 The checked persistent-disclosure regression constructs such a representative
 from any supported initial binding block and identifies its canonical value.
 
-The general actual-edge-to-carrier coverage theorem remains necessary: each
-focal `BlockSourceStep` must supply the corresponding representative in the
-root family, with its action equal to the edge's recorded source value. For
-binding this uses the stored resolved-value equation; for public choice and
-conditional disclosure it uses legality, the source extension, and successor
-refinement. No hypothesis about the extracted policy is needed to construct
-these witnesses. Coverage and the probability bridge below are separate from
-the already checked policy construction.
+`WindowedSourcePrefix.exists_root_sourceDecisionSite` transports each reached
+suffix decision to the corresponding root family and reference kernel.
+`BlockSourceStep.exists_focal_source_choice` supplies a root source occurrence
+for every actual focal-owned block: the extracted policy selects the recorded
+legal action, and the remaining source steps reach the recorded successor.
+Binding uses the stored resolved-value equation; public choice and conditional
+disclosure use legality, the source extension, and successor refinement. No
+hypothesis about the extracted policy is used to construct these witnesses.
+The concrete regression obtains the source edge from actual block support via
+`WindowedSourcePrefix.covers`.
 
 The probability argument requires a joint one-block law, not another support
 inversion. Its first marginal must be the actual complete native block law;
 its source marginal must be the corresponding step or adjacent pair of steps
 of the existing source semantics under the extracted profile. Supported pairs
 must retain the source extension and successor refinement. Chance already has
-an exact complete-block coupling. For unchanged decision owners, the exact
-source-sampling laws retain the owner's draw jointly with an arbitrary
-continuation; the admission and remaining-service arguments must carry that
-joint law through to the recorded successor. A pure focal source action has a
+an exact complete-block coupling. Unchanged binding, public-choice, and shared
+conditional/copy block factorizations place the original guarded source kernel
+outside the complete fixed-draw native continuation, including randomized
+preceding polls. The admission and remaining-service arguments must carry that
+draw through to the recorded successor. A pure focal source action has a
 point-mass marginal, but its actual native resolution still needs to be coupled
 to the source extension. These block couplings can then be composed, retaining
 the information invariant and both marginals. Membership of a recovered draw
 in a source kernel's support does not establish its probability, even after
 source-action consistency has been proved. No additional source interpreter
 is needed for this probability bridge.
+
+For unchanged public choice, `publicChoice_fixed_branch_publication` identifies
+the completed public field with the draw indexing the native branch.
+`publicChoice_fixed_branch_source_coupling` uses this identity and the exact
+factorization to construct the source successor and next checkpoint for that
+draw. The analogous final-draw identification is still required for binding and
+conditional/copy before the complete joint-law induction. Conditional draws
+must remain indexed by the original guarded source value; its encoding to an
+optional opening does not justify resampling or conditioning on admissibility.
+
+Binding preparation is write-once. The first registration must therefore use
+an empty slot; it cannot overwrite an earlier value. The initialized-run
+`registrationConsistent` invariant equates private registration history with
+the preparation table. `binding_preparation_empty` combines it with unchanged
+cache freshness to prove that the next binding slot is empty.
+`runPolicies_register_submit_prepared` retains the fixed registration through
+arbitrary other-player polls. Binding's remaining coupling obligation is to
+identify the accepted frozen snapshot, and hence its canonical resolved source
+value, with this draw through the complete service suffix. Generic fallback
+independence is false for absent or ill-typed frozen values and is not needed.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an

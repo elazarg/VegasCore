@@ -8,9 +8,9 @@ import Vegas.Compile.WindowedDecisionCheckpoints
 
 /-! # Source policies extracted from actual windowed prefixes
 
-The remaining correspondence work is constructor-local coverage showing that
-each actual focal source edge inhabits its head carrier, followed by the joint
-law relating the resulting source execution to the native execution law.
+Actual focal source edges are connected to this policy in
+`Vegas.Compile.WindowedSourceDecisionCoverage`. Whole-execution correspondence
+additionally requires composing the joint source/native block laws.
 -/
 
 noncomputable section

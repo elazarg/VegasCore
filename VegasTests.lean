@@ -165,6 +165,7 @@ import VegasTests.WindowedOwnedPrivacy
 import VegasTests.WindowedSamplePrivacy
 import VegasTests.WindowedSourceCoverage
 import VegasTests.WindowedBindingAction
+import VegasTests.WindowedSourceDecisionCoverage
 import VegasTests.WindowedOwnerFrame
 import VegasTests.WindowedBindingPrivacy
 import VegasTests.WindowedPublicChoice

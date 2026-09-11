@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedPublicChoicePrivacy
 import Vegas.Compile.WindowedPublicChoiceInversion
+import Vegas.Compile.WindowedPublicChoiceLaw
 import VegasTests.ApplicationImage
 
 /-! # Generated guarded public choice with arbitrary opposing traffic -/
@@ -92,6 +93,57 @@ def fixedDrawPolls (profile : SourceBehavioralProfile source.prog)
     [.player 1, .player 1] initial).bind fun middle =>
       (runtime.application.playerStep 0 middle (.submit (.choice 1 ⟨.bool, value⟩))).bind
         fun submitted => runtime.application.playerStep 0 submitted .wait
+
+/-- The entire initial block, including inclusion and the normal suffix, is the
+original guarded source kernel bound to its fixed-draw native branch. The
+unchanged owner needs no public-choice timeout selector. -/
+theorem initial_publicChoice_block_source_factorization
+    (profile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy) :
+    runtime.application.runPolicies (players profile replacement)
+        (runtime.blockEnvironment [1, 0])
+        (WindowedApplication.blockInvocations [1, 0]) initial =
+      (profile 0 firstSite.decision ((source.env.toView 0).eraseEnv)).bind fun chosen =>
+        (fixedDrawPolls profile replacement chosen.1).bind fun polled =>
+          runtime.application.runPolicies (players profile replacement)
+            (runtime.blockEnvironment [1, 0])
+            [.environment, .environment, .player 1, .environment,
+              .player 0, .environment] polled := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
+    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+  have hlaw := ApplicationPlan.WindowedCheckpoint.publicChoice_block_source_factorization
+    first_publicly_validatable _ profile _ initial checkpoint initial_reads_public
+    (by decide) (by simp) (by decide) [1] [] rfl
+  have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
+  dsimp only [compiledInitialCoupled, initialCoupledAt, checked] at hlaw
+  simpa only [runtime, players, fixedDrawPolls, List.flatMap_cons, List.flatMap_nil,
+    List.append_nil, List.nil_append, List.cons_append, FinDist.bind_bind, haddress,
+    firstSite] using hlaw
+
+/-- A supported fixed legal source draw propagated through the complete native
+branch is stored in the generated public field. -/
+theorem initial_publicChoice_fixed_branch_publication
+    (profile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy)
+    (chosen : { value : Bool // evalGuard firstGuard value
+      ((source.env.toView 0).eraseEnv) = true })
+    (hchosen : chosen ∈ (profile 0 firstSite.decision
+      ((source.env.toView 0).eraseEnv)).support)
+    (final : runtime.application.PolicyExecution)
+    (hbranch : final ∈ ((fixedDrawPolls profile replacement chosen.1).bind fun polled =>
+      runtime.application.runPolicies (players profile replacement)
+        (runtime.blockEnvironment [1, 0])
+        [.environment, .environment, .player 1, .environment,
+          .player 0, .environment] polled).support) :
+    Store.getAs final.native.application.base.memory.store 2 .bool = some chosen.1 := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
+    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+  apply checkpoint.publicChoice_fixed_branch_publication
+    first_publicly_validatable _ profile _ initial final initial_reads_public
+    (by decide) (by simp) (by decide) [1] [] rfl chosen hchosen
+  have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
+  simpa only [runtime, players, fixedDrawPolls, List.flatMap_cons, List.flatMap_nil,
+    List.append_nil, List.nil_append, List.cons_append, FinDist.bind_bind, haddress] using hbranch
 
 /-- Actual ordinary polling determines a supported source draw and a branch
 of the explicit submit/wait execution, even for a randomized raw opponent. -/
@@ -216,6 +268,18 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedPublicChoice.initial_publicChoice_submission
+
+/-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_block_source_factorization'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  VegasTests.WindowedPublicChoice.initial_publicChoice_block_source_factorization
+
+/-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_fixed_branch_publication'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  VegasTests.WindowedPublicChoice.initial_publicChoice_fixed_branch_publication
 
 /-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_draw'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
