@@ -17,7 +17,9 @@ discharged by compilation or stated as explicit runtime capabilities.
    The unrestricted binding and public-choice heads are now complete under the
    actual delivery schedule: recipient delivery, reaction polls, deadline-
    aware clocking, and an unchanged relay's expiry inclusion are all covered.
-   Chance and the other handler families remain to be completed.
+   Conditional resolving handlers have source coupling, but their complete
+   delivery block still needs the conditional eligibility chain. Chance and
+   the other handler families remain to be completed.
 2. Induct over whole pending-message prefixes to extract a pure source
    deviation against unchanged opponents, then linearize arbitrary
    finite-support randomized policies.
@@ -62,8 +64,9 @@ the corresponding successor theorem
 (`WindowedCheckpoint.delivery_publicChoice_block`). Both include a concrete
 unchanged-relay progress proof; the binding edge has regressions for both
 binding-owner and recipient-side arbitrary replacements. Complete successors
-and continuation laws for the other instruction families, their
-information-preservation proofs, and whole-prefix extraction remain open.
+and continuation laws for the other instruction families, conditional
+eligibility, their information-preservation proofs, and whole-prefix
+extraction remain open.
 
 The source-prefix information induction is shared across services: its local
 premise compares complete supported blocks at equal successor source views.
