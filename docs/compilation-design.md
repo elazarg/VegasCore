@@ -54,6 +54,16 @@ completion. Whole-prefix policy extraction, randomized extension, and the
 whole-program law remain open; source coverage does not by itself establish
 adaptive fairness.
 
+The pending-message model has an explicit strategic boundary. `deliver`
+places the selected packet in the recipient's pool, and the recipient policy
+sees that pool. The source observation carried by a `ProfilePoint` contains no
+pending-payload pool. Thus two executions can agree on the source view while
+giving a recipient different delivery inputs; the `PolicyAgreement` relation
+then fails at its pool component. A delivery-level strategic theorem needs a
+separate hiding/equivalence premise (for example, a cryptographic projection
+that erases payload content), or an explicitly richer source observation. The
+checked delivery coverage theorem does not assume either premise.
+
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.
 

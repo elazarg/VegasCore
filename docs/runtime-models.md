@@ -50,6 +50,15 @@ strategic observation surface. Checked infrastructure currently includes:
 - source coverage and terminal completion for every complete repeated delivery
   execution assembled from those four block successors.
 
+The current delivery model deliberately exposes a recipient's delivered pool
+to its policy. A source view does not contain that pending-payload pool, while
+the runtime policy input does. Accordingly, source-view equality alone cannot
+establish the `PolicyAgreement` invariant after delivery: the paired runs must
+also agree on the delivered pool (or the runtime must provide a hiding
+projection). This is the information-flow condition still needed before a
+whole-prefix deviation simulation can be instantiated for public in-flight
+messages. Source-level quitting does not discharge it.
+
 Still open are whole-prefix extraction of a pure source deviation, linear
 extension to arbitrary randomized deviations, and the final whole-program
 honest/deviation laws. The intended endpoint is an
