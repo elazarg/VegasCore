@@ -188,6 +188,9 @@ import Vegas.Compile.WindowedConditionalInclusion
 import Vegas.Compile.WindowedConditionalPrivacy
 import Vegas.Compile.WindowedConditionalBlockPrivacy
 import Vegas.Compile.WindowedSourcePrivacy
+import Vegas.Compile.WindowedPublicAction
+import Vegas.Compile.WindowedDecisionCheckpoints
+import Vegas.Compile.WindowedSourcePolicy
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
 import Vegas.Compile.WindowedReadoutProjection
@@ -240,5 +243,8 @@ The generated serial reference execution finishes with the independent source
 public-outcome law, under explicit initial-read and binding-origin conditions.
 The fixed windowed block service covers sequential source prefixes and completes
 under arbitrary unilateral replacement, with certified fallback and relay conditions.
-General deviation-law correspondence remains a separate obligation.
+For pure raw replacements, source-view information preservation yields consistent
+decision kernels and a total source policy assembled along the original syntax.
+General edge coverage for that policy and deviation-law correspondence remain
+separate obligations.
 -/

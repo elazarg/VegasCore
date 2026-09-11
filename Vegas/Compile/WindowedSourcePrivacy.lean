@@ -11,7 +11,7 @@ import Vegas.Compile.WindowedSamplePrivacy
 import Vegas.Compile.WindowedPublicChoicePrivacy
 import Vegas.Compile.WindowedConditionalBlockPrivacy
 
-/-! # Source-indexed information preservation through complete native blocks -/
+/-! # Source-indexed information preservation through native execution prefixes -/
 
 noncomputable section
 
@@ -201,9 +201,115 @@ theorem BlockSourceStep.policyAgreement
             · simpa only [Equiv.symm_apply_apply] using leftSource
             · simpa only [Equiv.symm_apply_apply] using rightSource
 
+namespace WindowedSourcePrefix
+
+/-- The predecessor and its last edge share one dependent structural index.
+Transporting this package preserves the current state and starting execution
+used by all of its witnesses. -/
+private structure LastStep
+    (initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState)
+    (blockIndex : Nat) (after : ProfilePoint P L) (sourceNext : after.Coupled)
+    (final : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (before : ProfilePoint P L) where
+  current : before.Coupled
+  execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
+  previous : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    replacement initial blockIndex before.plan before.profile current execution
+  block : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+    (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+    ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+    (WindowedApplication.blockInvocations roster) execution).support
+  source : BlockSourceStep binding final.native.application.base before.plan before.profile current
+    after.plan after.profile sourceNext
+  checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+    replacement (blockIndex + 1) after.plan after.profile sourceNext final
+
+private theorem lastStep
+    {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
+    {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
+    {accounted : CommitmentAccounting pending prog} {fresh : FreshBindings prog}
+    {state : BuildState P L Γ} {plan : ApplicationPlan accounted fresh state}
+    {profile : SourceBehavioralProfile prog}
+    {current : CoupledAt (compileCore prog fresh state).graph state}
+    {final : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
+    {blockIndex : Nat}
+    (derivation : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement initial (blockIndex + 1) plan profile current final) :
+    ∃ before, Nonempty (LastStep (rootProfile := rootProfile) (roster := roster) (focal := focal)
+      (replacement := replacement) initial blockIndex (.of plan profile) current final before) := by
+  cases derivation with
+  | step previous block source checkpoint =>
+      exact ⟨.of _ _, ⟨⟨_, _, previous, block, source, checkpoint⟩⟩⟩
+
+/-- At the same source position, equal focal source observations determine
+equal runtime policy inputs along all supported initialized block prefixes.
+The raw focal replacement is pure but otherwise unrestricted. Every emitted
+decision owner is polled; no internal branch-matching premise is assumed. -/
+theorem policyAgreement_of_sourceView_eq
+    {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
+    (hinitial : root.InitialControllerReadsPublic)
+    (horigins : (root.image deadlineOf).HasBindingOrigins)
+    (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ root.instructions deadlineOf,
+      ∀ owner, instruction.submitter = some owner → owner ∈ roster)
+    (command : List (root.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
+      (root.windowed deadlineOf binding choice windowOf).application.View →
+        (root.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (blockIndex : Nat) :
+    ∀ {point : ProfilePoint P L} {leftCurrent rightCurrent : point.Coupled}
+      {left right : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution},
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+        replacement initial blockIndex point.plan point.profile leftCurrent left →
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+        replacement initial blockIndex point.plan point.profile rightCurrent right →
+      (leftCurrent.current.source.toView focal).eraseEnv =
+        (rightCurrent.current.source.toView focal).eraseEnv →
+      WindowedApplication.PolicyAgreement
+        (root.windowed deadlineOf binding choice windowOf) focal left right := by
+  induction blockIndex with
+  | zero =>
+      intro point leftCurrent rightCurrent left right leftPrefix rightPrefix hview
+      have hleft := leftPrefix.checkpoint.reached
+      have hright := rightPrefix.checkpoint.reached
+      change left ∈ (FinDist.pure
+        (root.windowedInitialExecution deadlineOf binding choice windowOf)).support at hleft
+      change right ∈ (FinDist.pure
+        (root.windowedInitialExecution deadlineOf binding choice windowOf)).support at hright
+      have hleft := FinDist.mem_support_pure.mp hleft
+      have hright := FinDist.mem_support_pure.mp hright
+      subst left
+      subst right
+      exact ⟨⟨.refl _ _, rfl⟩, rfl, rfl, rfl⟩
+  | succ blockIndex ih =>
+      intro point leftCurrent rightCurrent left right leftPrefix rightPrefix hview
+      obtain ⟨beforeLeft, ⟨leftLast⟩⟩ := lastStep leftPrefix
+      obtain ⟨beforeRight, ⟨rightLast⟩⟩ := lastStep rightPrefix
+      have hbefore : beforeLeft = beforeRight :=
+        leftLast.previous.profilePoint_eq rightLast.previous
+      subst beforeRight
+      let leftEdge : BlockSourceStep.Fiber (P := P) (L := L) binding
+          left.native.application.base beforeLeft point :=
+        ⟨leftLast.current, leftCurrent, leftLast.source⟩
+      let rightEdge : BlockSourceStep.Fiber (P := P) (L := L) binding
+          right.native.application.base beforeLeft point :=
+        ⟨rightLast.current, rightCurrent, rightLast.source⟩
+      have hpreviousView := BlockSourceStep.sourceView_recall leftEdge rightEdge focal hview
+      have hprevious := ih leftLast.previous rightLast.previous hpreviousView
+      exact BlockSourceStep.policyAgreement leftEdge rightEdge leftLast.previous.checkpoint
+        rightLast.previous.checkpoint leftLast.checkpoint rightLast.checkpoint
+        hinitial horigins hroster howners command hpure hprevious hview
+        leftLast.block rightLast.block
+
+end WindowedSourcePrefix
 end Vegas.ApplicationPlan
 
 /-- info: 'Vegas.ApplicationPlan.BlockSourceStep.policyAgreement'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.BlockSourceStep.policyAgreement
+
+/-- info: 'Vegas.ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq

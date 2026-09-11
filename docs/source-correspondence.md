@@ -172,8 +172,29 @@ Deterministic plan/profile-position equality supplies structural alignment for
 paired prefixes. `BlockSourceStep.sourceView_recall` recovers preceding source
 observations from equal successor observations, and `BlockSourceStep.policyAgreement`
 provides a common information-preserving induction step for every emitted
-instruction kind. The paired-prefix induction combining these steps remains
-open; the structural alignment result alone does not assert information agreement.
-The general public-message deviation law remains open: these local
-comparisons must determine one legal source policy from actual source views,
-then establish its complete outcome law against unchanged opponents.
+instruction kind. `WindowedSourcePrefix.policyAgreement_of_sourceView_eq`
+composes these steps over two actual initialized prefixes: at a shared source
+position, equal focal source observations imply equal runtime policy inputs.
+It requires a pure, otherwise unrestricted raw replacement, initial public
+controller reads, binding origins, and a duplicate-free roster containing every
+emitted decision owner. It assumes no internal branch correspondence.
+
+For a focal-owned next block, `binding_block_action_eq` identifies the canonical
+binding values, including distinct source fallback certificates selected by the
+same compiled timeout code. `public_block_action_eq` identifies the source value
+published by ordinary choice or either conditional disclosure form. These
+action comparisons use predecessor information, not equality of the resulting
+source choices.
+
+`extractedSourcePolicy` assembles the resulting legal decision kernels along
+the original source syntax. `extractedSourcePolicy_at_checkpoint` proves that
+this single total policy selects the recorded action at every representative;
+elsewhere it uses the reference policy. A concrete initial-binding regression
+constructs the representative from an actual supported runtime block. The
+general public-message deviation law remains open: every actual focal source
+edge must be connected to its representative in the assembled family, and
+joint source/runtime laws must establish the complete outcome distribution
+against unchanged opponents. The construction currently assumes a pure raw
+replacement; randomized deviations require the subsequent finite-mixture
+argument. Support and information preservation alone do not give these
+probability statements.

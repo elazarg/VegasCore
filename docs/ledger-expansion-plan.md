@@ -467,8 +467,8 @@ source execution. A generated persistent-disclosure regression discharges the
 timeout certificates and covers all emitted instruction kinds. These are
 support-level results, not equality of outcome distributions.
 
-Comparing two such derivations remains the whole-prefix information
-obligation. Backward source-view recall gives agreement at the preceding
+Comparing two such derivations gives the whole-prefix information theorem.
+Backward source-view recall gives agreement at the preceding
 source boundary: public values and focal-owned sealed values must agree,
 whereas another owner's sealed values may differ. The constructor's paired
 block proof must recover runtime policy-input agreement from that induction
@@ -483,35 +483,58 @@ combines all emitted instruction cases: actual complete blocks with agreeing
 predecessor runtime information and equal successor source views have agreeing
 successor runtime information. Both statements consume the original source
 edges and checkpoints; their typed extension view is derived, not stored as an
-extra condition on executions. Composing these statements by paired-prefix
-induction remains necessary for whole-prefix information reconstruction.
-A separate decision representative must pair a supported
+extra condition on executions.
+`WindowedSourcePrefix.policyAgreement_of_sourceView_eq` composes them by
+paired-prefix induction, deriving runtime policy-input agreement from equal
+focal source observations at a common source position. Its pure replacement
+retains all raw commands; no branch-matching hypothesis is imposed.
+
+A separate decision representative pairs a supported
 pre-decision prefix with its resolution edge, so extraction never selects an
-earlier action from a final outcome or a later chance result. That decision
-carrier and its connection to source-policy extension remain unimplemented.
+earlier action from a final outcome or a later chance result.
 
 Decision representatives must be indexed by the exact source decision site,
 not merely by an existential block count and a compatible source context.
 `SourceDecisionSite.depth` counts source constructors, whereas an application
-block may consume an adjacent commit/reveal pair. The extraction construction
-therefore needs a forward correspondence from a source decision site to its
-plan/profile position. Once two representatives have that common position,
-their checkpoint `blockCount` equations determine the same block index, and
-`profilePoint_eq` can align their actual source prefixes. The existing
-`instructions_origin` theorem goes in the reverse direction and does not
-supply this site-indexed position construction.
+block may consume an adjacent commit/reveal pair. The checkpoint family is
+therefore assembled by recursion on the typed application plan and the existing
+source decision-site constructors. Samples route `.sample` occurrences to the
+child; bindings distinguish `.here` from `.commit`; paired publications
+distinguish `.here` from `.commit (.reveal ...)`. At a head, all representatives
+share the exact source context, plan, reference-profile suffix, and block index
+by construction. This requires neither equating source depth with block count
+nor a separate global source-site-to-runtime-position map.
 
 Action consistency uses predecessor observations, without assuming equal
 successor observations. Whole-prefix information agreement gives equal inputs
 to the pure replacing policy; `owned_block_agreement` then compares its two
 supported resolution blocks. Binding uses `binding_block_action_eq` and the
-edge's recorded resolved-value equality. Public choice and conditional
-publication use the resulting public-memory equality and successor refinement
-to identify the newly published source value. Conditional publication also
-uses its encoding equivalence. `SourcePolicyCheckpoints.extend` can totalize
-these consistent legal actions with the reference policy away from represented
-views. Neither the site-indexed carrier nor this complete extraction is proved
-by the individual block comparisons.
+edge's recorded resolved-value equality. Distinct fallback certificates are
+compared by evaluating their common compiled fallback code in the equal public
+stores. Public choice and conditional publication share
+`public_block_action_eq`, which uses resulting public-memory equality and
+successor refinement to identify the newly published source value. Conditional
+publication also uses its encoding equivalence.
+
+`bindingDecisionCheckpoints` and `publicDecisionCheckpoints` instantiate
+`SourceDecisionCheckpoints` with these actual-block representatives and the
+proved action agreement. The former computes the canonical resolved value;
+the latter stores the legal value and its refined public source successor.
+`sourcePolicyCheckpointsFrom` assembles the families by source syntax, and
+`extractedSourcePolicy` totalizes them with the reference policy away from
+represented views. `extractedSourcePolicy_at_checkpoint` proves that the one
+assembled policy chooses the pure extracted action at every representative.
+The checked persistent-disclosure regression constructs such a representative
+from any supported initial binding block and identifies its canonical value.
+
+The general actual-edge-to-carrier coverage theorem remains necessary: each
+focal `BlockSourceStep` must supply the corresponding representative in the
+root family, with its action equal to the edge's recorded source value. For
+binding this uses the stored resolved-value equation; for public choice and
+conditional disclosure it uses legality, the source extension, and successor
+refinement. No hypothesis about the extracted policy is needed to construct
+these witnesses. Coverage and the probability bridge below are separate from
+the already checked policy construction.
 
 The probability argument requires a joint one-block law, not another support
 inversion. Its first marginal must be the actual complete native block law;
@@ -640,8 +663,9 @@ choice and conditional disclosure share the complete ordinary-poll comparison
 and the runtime-general sample-once packet-retention theorem. Unchanged owners
 resolve during normal service; deviating owners still require the resolution
 service. Every instruction kind now has its corresponding local complete-block
-comparison. Whole-prefix information reconstruction, source-action locality,
-and the general deviation-law theorem remain obligations.
+comparison. The whole-prefix information theorem composes these comparisons;
+the general deviation-law theorem additionally requires a consistent source
+policy and equality of complete probability laws.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual
@@ -656,13 +680,13 @@ source witnesses for unopenable bindings; the extraction equation fixes the
 witness used for backtranslation without restricting raw player commands.
 `WindowedCheckpoint.binding_block_action_eq` proves the cross-execution
 equality of these extracted focal binding actions from preceding information
-agreement and equal focal source views. It derives completed-binding provenance
-and native completion from an actual successor checkpoint, and projects the
-source views to the public environments used by fallback evaluation. No final
+agreement. It derives completed-binding provenance and native completion from
+an actual successor checkpoint, and compares possibly distinct source fallback
+expressions through their selected compiled code and the equal public stores. No final
 action equality, accepted-message condition, or snapshot typing is assumed.
-Instantiating `SourcePolicyCheckpoints.action_congr` still requires the
-whole-prefix theorem to derive the preceding information agreement, and the
-corresponding action-extraction results for public/conditional decisions.
+The whole-prefix theorem supplies preceding information agreement from source
+views. `public_block_action_eq` supplies the corresponding public/conditional
+action comparison without requiring equal successor observations.
 
 For unchanged private bindings, the emitted handle and admission result are
 independent of the hidden draw. For unchanged public choices, conditional
@@ -728,8 +752,10 @@ condition an earlier action on later chance. This avoids requiring a
 canonical completion of every counterfactual hidden source environment.
 `SourcePolicyCheckpoints.extend` checks the totalization step: legal extracted
 actions that agree at equal source views define a total source policy, with
-the reference policy used away from supported views. Instantiating its carrier
-and proving action agreement for actual runtime prefixes remain obligations.
+the reference policy used away from supported views. The windowed decision
+families instantiate this construction with actual-block evidence. The root
+policy is constructed; its general correspondence to all source edges and its
+joint source/native probability law remain proof obligations.
 
 Keep the designated fallback expression, its legality certificate, and backend
 eligibility separate from core syntax and WF. `Legal` provides some legal action,

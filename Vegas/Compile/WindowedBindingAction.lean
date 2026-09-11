@@ -89,9 +89,11 @@ variable {left right :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
 /-- Focal binding action extraction agrees across two actual complete blocks
-whenever the preceding focal inputs and source views agree. Raw commands,
+whenever the preceding focal inputs agree. Raw commands,
 malformed commitments, and timeout resolution remain unrestricted. The whole
-source-prefix information theorem must supply the preceding agreement. -/
+source-prefix information theorem must supply the preceding agreement. Distinct
+source fallback certificates are compared through the single selected compiled
+fallback code, rather than by identifying their source expressions. -/
 theorem binding_block_action_eq
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       owner replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
@@ -101,19 +103,23 @@ theorem binding_block_action_eq
         profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) owner left right)
-    (hview : (leftCurrent.current.source.toView owner).eraseEnv =
-      (rightCurrent.current.source.toView owner).eraseEnv)
     (command :
       List (root.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
         (root.windowed deadlineOf binding choice windowOf).application.View →
           (root.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
     (hpure : replacement = fun history view => FinDist.pure (command history view))
-    (fallback : SourceDecisionSite.PublicFallback (.here guard tail)) (deadline : Nat)
-    (hselect : binding ((.here guard tail : SourceDecisionSite owner
+    (leftFallback rightFallback : SourceDecisionSite.PublicFallback (.here guard tail))
+    (leftDeadline rightDeadline : Nat)
+    (hleftSelect : binding ((.here guard tail : SourceDecisionSite owner
       (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
         ((.here guard tail : SourceDecisionSite owner
           (.commit name owner guard tail) Γ name ty guard).compiledField fresh state)) =
-      some ⟨deadline, fallback.compiled fresh state⟩)
+      some ⟨leftDeadline, leftFallback.compiled fresh state⟩)
+    (hrightSelect : binding ((.here guard tail : SourceDecisionSite owner
+      (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
+        ((.here guard tail : SourceDecisionSite owner
+          (.commit name owner guard tail) Γ name ty guard).compiledField fresh state)) =
+      some ⟨rightDeadline, rightFallback.compiled fresh state⟩)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster) (hunchanged : relay ≠ owner)
     (finalLeft finalRight :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
@@ -129,9 +135,9 @@ theorem binding_block_action_eq
     let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
       .here guard tail
     let code := site.bindingCode fresh state (site.compiledField fresh state)
-    code.resolvedValue (L.eval fallback.expr leftCurrent.current.source.erasePubEnv)
+    code.resolvedValue (L.eval leftFallback.expr leftCurrent.current.source.erasePubEnv)
       finalLeft.native.application.base =
-    code.resolvedValue (L.eval fallback.expr rightCurrent.current.source.erasePubEnv)
+    code.resolvedValue (L.eval rightFallback.expr rightCurrent.current.source.erasePubEnv)
       finalRight.native.application.base := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
@@ -145,7 +151,8 @@ theorem binding_block_action_eq
     command hpure (.bind code) (nextPlan.instructions deadlineOf) hhead rfl
     hroster finalLeft finalRight hleft hright
   obtain ⟨value, sourceNext, _, nextCheckpoint, _, _, _⟩ :=
-    binding_block unrestricted nextPlan profile fallback deadline hselect leftCurrent left
+    binding_block unrestricted nextPlan profile leftFallback leftDeadline hleftSelect
+      leftCurrent left
       finalLeft leftCheckpoint hroster relay hrelay hunchanged hleft
   have hmemOriginal : .bind code ∈ root.instructions deadlineOf :=
     List.mem_of_getElem? (leftCheckpoint.instruction_at _ _ hhead)
@@ -162,11 +169,35 @@ theorem binding_block_action_eq
     change state.nodes.length < (state.addCommitEvent name owner guard fresh.1).1.nodes.length
     simp only [BuildState.addCommitEvent_nodes, List.length_append, List.length_singleton]
     omega
-  have hpublic := VEnv.erasePubEnv_eq_of_eraseView_eq owner state.wctx hview
+  have hselected :
+      (⟨leftDeadline, leftFallback.compiled fresh state⟩ : PublicFallbackCode L ty) =
+        ⟨rightDeadline, rightFallback.compiled fresh state⟩ :=
+    Option.some.inj (hleftSelect.symm.trans hrightSelect)
+  have hcompiled : leftFallback.compiled fresh state = rightFallback.compiled fresh state :=
+    congrArg PublicFallbackCode.value hselected
+  have hleftEval := leftFallback.compiled_evalStore?_eq_source fresh state
+    leftCurrent.current.graph.1.store left.native.application.base.memory.store
+    leftCurrent.current.source leftCurrent.current.agrees (fun ref href =>
+      leftCheckpoint.refines.memory.publicFields ref
+        (leftFallback.compiled_reads_public fresh state ref href))
+  have hrightEval := rightFallback.compiled_evalStore?_eq_source fresh state
+    rightCurrent.current.graph.1.store right.native.application.base.memory.store
+    rightCurrent.current.source rightCurrent.current.agrees (fun ref href =>
+      rightCheckpoint.refines.memory.publicFields ref
+        (rightFallback.compiled_reads_public fresh state ref href))
+  have hevalCode :
+      (leftFallback.compiled fresh state).evalStore?
+          left.native.application.base.memory.store =
+        (rightFallback.compiled fresh state).evalStore?
+          right.native.application.base.memory.store := by
+    rw [hcompiled, agreement.state.base.memory]
+  have hfallback : L.eval leftFallback.expr leftCurrent.current.source.erasePubEnv =
+      L.eval rightFallback.expr rightCurrent.current.source.erasePubEnv :=
+    Option.some.inj (hleftEval.symm.trans (hevalCode.trans hrightEval))
   exact timed.resolvedValue_eq_of_agreesFor runtime.image
     finalLeft.native.application.base finalRight.native.application.base
     hfinalAgreement.state.base nextCheckpoint.resolvedBindings hmem hdone _ _
-    (congrArg (L.eval fallback.expr) hpublic)
+    hfallback
 
 end Vegas.ApplicationPlan.WindowedCheckpoint
 

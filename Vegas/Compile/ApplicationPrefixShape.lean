@@ -102,23 +102,6 @@ structure BlockSourceStep.Fiber
   step : BlockSourceStep binding final before.plan before.profile beforeCurrent
     after.plan after.profile afterCurrent
 
-namespace BlockSourceStep.Fiber
-
-variable {P : Type} [DecidableEq P] {L : IExpr}
-variable {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
-variable {final : ApplicationImage.State P L}
-
-/-- Transport a complete source-edge fiber along equal structural endpoints. -/
-def cast {before₁ before₂ after₁ after₂ : ProfilePoint P L}
-    (hbefore : before₁ = before₂) (hafter : after₁ = after₂)
-    (edge : BlockSourceStep.Fiber (P := P) (L := L) binding final before₁ after₁) :
-    BlockSourceStep.Fiber (P := P) (L := L) binding final before₂ after₂ := by
-  subst before₂
-  subst after₂
-  exact edge
-
-end BlockSourceStep.Fiber
-
 namespace BlockSourceStep
 
 variable {P : Type} [DecidableEq P] {L : IExpr}

@@ -5,6 +5,8 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedConditionalBlockPrivacy
+import Vegas.Compile.WindowedPublicAction
+import Vegas.Compile.WindowedSourcePrivacy
 import VegasTests.WindowedSourceCoverage
 import VegasTests.GeneratedApplicationSourceLaw
 import VegasTests.ApplicationBindingOrigins
@@ -244,6 +246,123 @@ theorem checked_conditional_block_agreement_at_source
   · simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hfinalLeft
   · simpa only [WindowedSourceCoverage.runtime, unchangedPlayers] using hfinalRight
 
+/-- Equal focal source information at a shared checked-plan prefix determines
+runtime agreement for any two actual source-prefix derivations. -/
+theorem checked_source_prefix_agreement
+    (rootProfile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy)
+    (command : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (initial : CoupledAt
+      (compileCore source.prog source.fresh compilerInitial).graph compilerInitial)
+    (blockIndex : Nat) (point : ApplicationPlan.ProfilePoint TestPlayer simpleExpr)
+    (leftCurrent rightCurrent : point.Coupled)
+    (left right : runtime.application.PolicyExecution)
+    (leftPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement initial
+      blockIndex point.plan point.profile leftCurrent left)
+    (rightPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement initial
+      blockIndex point.plan point.profile rightCurrent right)
+    (hview : (leftCurrent.current.source.toView 1).eraseEnv =
+      (rightCurrent.current.source.toView 1).eraseEnv) :
+    WindowedApplication.PolicyAgreement runtime 1 left right := by
+  apply ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq
+    GeneratedApplicationSourceLaw.initial_reads_public
+    ApplicationBindingOrigins.persistent_image_has_binding_origins
+    (by decide) (by
+      intro instruction hinstruction owner hsubmitter
+      fin_cases owner <;> simp)
+    command hpure blockIndex leftPrefix rightPrefix hview
+
+/-- At a focal-owned conditional head, two actual source prefixes with equal
+focal predecessor information cannot record different public results after
+supported complete blocks.  The result equality is recovered from final
+public memory rather than assumed by the block comparison. -/
+theorem checked_focal_conditional_action_eq
+    {Γ : VCtx TestPlayer simpleExpr} {pending : Finset VarId}
+    {name publicName : VarId} {ty : simpleExpr.Ty}
+    {guard : simpleExpr.Expr
+      ((name, ty) :: eraseVCtx (viewVCtx (0 : TestPlayer) Γ)) simpleExpr.bool}
+    {tail : VegasCore TestPlayer simpleExpr
+      ((publicName, .pub ty) :: (name, .sealed 0 ty) :: Γ)}
+    {spec : ConditionalOpening guard}
+    {accounted : CommitmentAccounting pending
+      (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    {fresh : FreshBindings (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    {state : BuildState TestPlayer simpleExpr Γ}
+    {plan : ApplicationPlan accounted fresh state}
+    {profile : SourceBehavioralProfile
+      (.commit name 0 guard (.reveal publicName 0 name .here tail))}
+    (rootProfile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy)
+    (command : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (initial : CoupledAt
+      (compileCore source.prog source.fresh compilerInitial).graph compilerInitial)
+    (blockIndex : Nat)
+    (leftCurrent rightCurrent : CoupledAt
+      (compileCore (.commit name 0 guard (.reveal publicName 0 name .here tail))
+        fresh state).graph state)
+    (left right finalLeft finalRight : runtime.application.PolicyExecution)
+    (head : ApplicationPlan.ConditionalHead spec plan)
+    (leftPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement initial
+      blockIndex plan profile leftCurrent left)
+    (rightPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement initial
+      blockIndex plan profile rightCurrent right)
+    (hview : (leftCurrent.current.source.toView 0).eraseEnv =
+      (rightCurrent.current.source.toView 0).eraseEnv)
+    (leftResult rightResult : Option (simpleExpr.Val spec.secretTy))
+    (leftNext rightNext : CoupledAt (compileCore tail fresh.2.2
+      (((state.addCommitEvent name 0 guard fresh.1).1).addRevealEvent
+        publicName 0 .here fresh.2.1).1).graph
+      (((state.addCommitEvent name 0 guard fresh.1).1).addRevealEvent
+        publicName 0 .here fresh.2.1).1)
+    (hleftSource : leftNext.current.source =
+      (leftCurrent.current.source.cons (spec.encoding.symm leftResult)).cons
+        (spec.encoding.symm leftResult))
+    (hrightSource : rightNext.current.source =
+      (rightCurrent.current.source.cons (spec.encoding.symm rightResult)).cons
+        (spec.encoding.symm rightResult))
+    (hleftRefines : finalLeft.native.application.base.Refines leftNext.current.graph.1)
+    (hrightRefines : finalRight.native.application.base.Refines rightNext.current.graph.1)
+    (hleft : finalLeft ∈ (runtime.application.runPolicies
+      (applicationPlan.windowedPlayers rootProfile (fun _ => 10) bindingSelector
+        choiceSelector (fun _ => 10) 0 replacement)
+      (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) left).support)
+    (hright : finalRight ∈ (runtime.application.runPolicies
+      (applicationPlan.windowedPlayers rootProfile (fun _ => 10) bindingSelector
+        choiceSelector (fun _ => 10) 0 replacement)
+      (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) right).support) :
+    leftResult = rightResult := by
+  have leftCheckpoint := leftPrefix.checkpoint
+  have rightCheckpoint := rightPrefix.checkpoint
+  have agreement : WindowedApplication.PolicyAgreement runtime 0 left right := by
+    apply ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq
+      (roster := [0, 1])
+      (point := ApplicationPlan.ProfilePoint.of plan profile)
+      GeneratedApplicationSourceLaw.initial_reads_public
+      ApplicationBindingOrigins.persistent_image_has_binding_origins
+      (by decide) (by
+        intro instruction hinstruction owner hsubmitter
+        fin_cases owner <;> simp)
+      command hpure blockIndex leftPrefix rightPrefix hview
+  let site := ConditionalPublicationSite.atHead name publicName 0 guard tail spec
+  let code := site.code fresh state (site.sourceField fresh state)
+    (10 : Nat)
+  obtain ⟨rest, hhead⟩ := head.instructions (fun _ => 10)
+  have hvalue := leftCheckpoint.public_block_action_eq rightCheckpoint agreement command hpure
+    (.conditional code) rest hhead rfl (by decide) finalLeft finalRight hleft hright
+    (spec.encoding.symm leftResult) (spec.encoding.symm rightResult) leftNext rightNext
+    hleftSource hrightSource hleftRefines hrightRefines
+  exact spec.encoding.symm.injective hvalue
+
 end VegasTests.WindowedConditional
 
 /-- info: 'VegasTests.WindowedConditional.checked_conditional_ordinary_packet'
@@ -261,3 +380,13 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   VegasTests.WindowedConditional.checked_conditional_block_agreement_at_source
+
+/-- info: 'VegasTests.WindowedConditional.checked_source_prefix_agreement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedConditional.checked_source_prefix_agreement
+
+/-- info: 'VegasTests.WindowedConditional.checked_focal_conditional_action_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedConditional.checked_focal_conditional_action_eq
