@@ -158,7 +158,7 @@ import Vegas.Compile.WindowedNormalSuffix
 import Vegas.Compile.WindowedBindingPrivacy
 import Vegas.Compile.WindowedPublicChoiceReadiness
 import Vegas.Compile.WindowedPublicChoiceSubmission
-import Vegas.Compile.WindowedPublicChoicePairing
+import Vegas.Compile.WindowedSubmitWaitPairing
 import Vegas.Compile.WindowedPublicChoicePrivacy
 import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedPublicChoiceCheckpoint
@@ -174,6 +174,15 @@ import Vegas.Compile.WindowedBindingProvenance
 import Vegas.Compile.WindowedBlockProvenance
 import Vegas.Compile.WindowedContinuationReadout
 import Vegas.Compile.WindowedConditionalOwner
+import Vegas.Compile.ConditionalHead
+import Vegas.Compile.ConditionalDisposition
+import Vegas.Compile.WindowedConditionalCached
+import Vegas.Compile.WindowedConditionalReadiness
+import Vegas.Compile.WindowedConditionalSubmission
+import Vegas.Compile.WindowedConditionalAdmission
+import Vegas.Compile.WindowedConditionalInclusion
+import Vegas.Compile.WindowedConditionalPrivacy
+import Vegas.Compile.WindowedConditionalBlockPrivacy
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
 import Vegas.Compile.WindowedReadoutProjection
@@ -224,5 +233,7 @@ Arbitrary supported public-message executions refine reachable graph states;
 completed runs have the public outcome of a written-order source execution.
 The generated serial reference execution finishes with the independent source
 public-outcome law, under explicit initial-read and binding-origin conditions.
-Strategic correspondence and progress under arbitrary deviations remain separate obligations.
+The fixed windowed block service covers sequential source prefixes and completes
+under arbitrary unilateral replacement, with certified fallback and relay conditions.
+General deviation-law correspondence remains a separate obligation.
 -/

@@ -8,6 +8,7 @@ import Vegas.Compile.WindowedPublicChoiceReadiness
 import Vegas.Compile.WindowedOwnerFrame
 import Vegas.Compile.WindowedNormalService
 import Vegas.Compile.WindowedPublicChoiceAdmission
+import Interaction.MessageApplicationSampleOnce
 
 /-! # Source-legal public submissions under actual ordinary service -/
 
@@ -90,33 +91,15 @@ theorem publicChoice_ordinary_submission
         (fun actor => [Invocation.player actor, Invocation.player actor]) =
       (before ++ [.player owner, .player owner]) ++ after := by
     simp only [before, after, List.flatMap_append, List.flatMap_cons, List.append_assoc]
-  rw [hdecompose, MessageApplication.runPolicies_append] at hpolled
-  simp only [FinDist.support_bind, Set.mem_iUnion] at hpolled
-  obtain ⟨submitted, hsubmitted, hafterRun⟩ := hpolled
-  rw [checkpoint.publicChoice_polls_source_law_after_others hinitial hroster
-    (by simp) hother environment before (by simp [before]) hbefore] at hsubmitted
-  simp only [FinDist.support_bind, Set.mem_iUnion] at hsubmitted
-  obtain ⟨middle, hmiddle, chosen, hchosen, sent, hsent, hsubmitted⟩ := hsubmitted
-  have hbeforeFrame := runtime.runPolicies_other_frame owner players environment before
-    (by simp [before]) hbefore execution middle hmiddle
-  have hserials := runtime.application.runPolicies_serialsBeforeNext players environment before
-    execution middle checkpoint.serialsBeforeNext hmiddle
-  have hafterFrame := runtime.runPolicies_other_frame owner players environment after
-    (by simp [after]) hafter submitted polled hafterRun
-  have hsubmittedPool : submitted.native.pool =
-      (middle.native.pool.submit owner (.choice (state.nodes.length + 1) ⟨ty, chosen.1⟩)).2 := by
-    simp only [MessageApplication.playerStep, PlayerCommand.toAction,
-      MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-      FinDist.mem_support_pure] at hsent hsubmitted
-    subst sent
-    subst submitted
-    rfl
-  refine ⟨chosen, hchosen, ?_, ?_⟩
-  · rw [hafterFrame.2.2.1, hsubmittedPool]
-    simp only [MessagePool.submit, if_pos, hbeforeFrame.2.2.1]
-  · apply hafterFrame.2.2.2
-    rw [hsubmittedPool, ← hbeforeFrame.2.2.1]
-    exact hserials.lookup_submit owner _
+  rw [hdecompose] at hpolled
+  exact runtime.application.runPolicies_submit_wait_packet owner players environment before after
+    (by simp [before]) hbefore (by simp [after]) hafter execution polled
+    checkpoint.serialsBeforeNext
+    (profile owner (.here guard (.reveal publicName owner name .here tail))
+      ((current.current.source.toView owner).eraseEnv))
+    (fun chosen => .choice (state.nodes.length + 1) ⟨ty, chosen.1⟩)
+    (checkpoint.publicChoice_polls_source_law_after_others hinitial hroster
+      (by simp) hother environment before (by simp [before]) hbefore) hpolled
 
 /-- Normal service includes the unchanged owner's source-supported public
 choice and finishes this publication instruction. The selected identifier and

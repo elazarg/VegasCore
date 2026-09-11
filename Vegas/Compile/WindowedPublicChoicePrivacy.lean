@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.WindowedPublicChoicePairing
+import Vegas.Compile.WindowedSubmitWaitPairing
 import Vegas.Compile.WindowedPublicChoiceReadiness
 import Vegas.Compile.WindowedPublicChoiceSubmission
 import Vegas.Compile.WindowedNormalSuffix
@@ -120,22 +120,15 @@ theorem publicChoice_ordinary_agreement_of_same_draw
   let base := fun actor => runtime.liftPlayerPolicy
     (root.liftProfile deadlineOf rootProfile actor)
   let before := beforeRoster.flatMap fun actor => [Invocation.player actor, .player actor]
-  let after := afterRoster.flatMap fun actor => [Invocation.player actor, .player actor]
   let site := PublicChoiceSite.atHead name publicName owner guard tail
   let code := site.code fresh state
   let instruction : ApplicationInstruction P L := .publicChoice { code with timeout := choice code }
   have hsplitNodup := List.nodup_append.mp (hsplit ▸ hroster)
-  have hbeforeNodup := hsplitNodup.1
-  have hafterNodup := (List.nodup_cons.mp hsplitNodup.2.1).2
   have hbeforeOwnerSet : owner ∉ beforeRoster := by
     intro hmem
     exact hsplitNodup.2.2 owner hmem owner (by simp) rfl
-  have hafterOwnerSet : owner ∉ afterRoster := (List.nodup_cons.mp hsplitNodup.2.1).1
-  simp only [FinDist.support_bind, Set.mem_iUnion] at hleft hright
-  obtain ⟨leftMiddle, hleftMiddle, leftSubmitted, hleftSubmitted, leftWaited,
-    hleftWaited, hleftAfter⟩ := hleft
-  obtain ⟨rightMiddle, hrightMiddle, rightSubmitted, hrightSubmitted, rightWaited,
-    hrightWaited, hrightAfter⟩ := hright
+  have hbeforeOwner : Invocation.player owner ∉ before := by
+    simp [before, hbeforeOwnerSet]
   have hfocal : players focal = fun history view => FinDist.pure (command history view) := by
     simp [players, windowedPlayers, hpure]
   have hothers : ∀ actor, actor ≠ focal →
@@ -164,36 +157,12 @@ theorem publicChoice_ordinary_agreement_of_same_draw
       (root.windowedInitialExecution deadlineOf binding choice windowOf) right
       rightCheckpoint.reached
     exact hl.trans hr.symm
-  have hbeforePlayers : ∀ invocation ∈ before,
-      ∃ actor, invocation = Invocation.player actor := by
-    intro invocation hinv
-    rcases List.mem_flatMap.mp hinv with ⟨actor, _, hpair⟩
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hpair
-    rcases hpair with rfl | rfl <;> exact ⟨actor, rfl⟩
-  have hbeforeOwner : Invocation.player owner ∉ before := by
-    simp [before, hbeforeOwnerSet]
-  have hpaired := agreement.publicChoice_polls_after_gated_prefix owner hother
-    (state.nodes.length + 1) ty command base players hfocal hothers instruction before
-    hbeforePlayers (by
-      intro actor hmem _
-      have hne : actor ≠ owner := by
-        intro heq; subst actor; exact hbeforeOwner hmem
-      change some owner ≠ some actor
-      exact fun heq => hne (Option.some.inj heq).symm)
-    environment hlengths (by
-      intro actor index hlo hhi
-      have hcount := WindowedApplication.ordinaryPolls_player_count beforeRoster
-        hbeforeNodup actor
-      change before.countP (WindowedApplication.PolicyAgreement.playerCountFor actor) =
-        (if actor ∈ beforeRoster then 2 else 0) at hcount
-      rw [hcount] at hhi
-      split at hhi
-      · rename_i hactor
-        have hstart := (leftCheckpoint.historyAlignment hroster actor
-          (by rw [hsplit]; exact List.mem_append_left _ hactor)).1
-        have : index / 3 = blockIndex := by omega
-        rw [this]; exact hindex
-      · omega)
+  apply agreement.ordinary_submit_wait_of_same_input owner hother
+    (fun value : L.Val ty => .choice (state.nodes.length + 1) ⟨ty, value⟩)
+    command base players hfocal hothers instruction (by rfl) roster hroster
+    beforeRoster afterRoster hsplit environment blockIndex hlengths (by
+      intro actor hactor
+      exact (leftCheckpoint.historyAlignment hroster actor hactor).1) hindex
     ((profile owner (.here guard (.reveal publicName owner name .here tail))
       ((leftCurrent.current.source.toView owner).eraseEnv)).map Subtype.val)
     ((profile owner (.here guard (.reveal publicName owner name .here tail))
@@ -222,76 +191,7 @@ theorem publicChoice_ordinary_agreement_of_same_draw
       simpa only [FinDist.bind_map, ApplicationImage.choiceEncoding] using
         rightCheckpoint.publicChoice_polls_source_law_of_input_eq hinitial hroster howner hother
           environment middle hrefines hinput)
-    value hleftValue hrightValue leftMiddle rightMiddle leftSubmitted rightSubmitted
-    leftWaited rightWaited hleftMiddle hrightMiddle hleftSubmitted hrightSubmitted
-    hleftWaited hrightWaited
-  have hwaitedLengths : ∀ actor, (leftWaited.principalHistory actor).length =
-      (rightWaited.principalHistory actor).length := by
-    intro actor
-    have hl := runtime.application.runPolicies_principalHistory_length actor players environment
-      (before ++ [.player owner, .player owner]) left leftWaited hpaired.2.1
-    have hr := runtime.application.runPolicies_principalHistory_length actor players environment
-      (before ++ [.player owner, .player owner]) right rightWaited hpaired.2.2
-    rw [hl, hr, hlengths]
-  have hafterAgreement := hpaired.1.runPolicies_players_gated command base players hfocal hothers
-    instruction after (by
-      intro invocation hinv
-      rcases List.mem_flatMap.mp hinv with ⟨actor, _, hpair⟩
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hpair
-      rcases hpair with rfl | rfl <;> exact ⟨actor, rfl⟩)
-    (by
-      intro actor hmem _
-      have hne : actor ≠ owner := by
-        intro heq; subst actor
-        exact hafterOwnerSet (by simpa [after] using hmem)
-      change some owner ≠ some actor
-      exact fun heq => hne (Option.some.inj heq).symm)
-    environment hwaitedLengths (by
-      intro actor index hlo hhi
-      have hcount := WindowedApplication.ordinaryPolls_player_count afterRoster
-        hafterNodup actor
-      change after.countP (WindowedApplication.PolicyAgreement.playerCountFor actor) =
-        (if actor ∈ afterRoster then 2 else 0) at hcount
-      rw [hcount] at hhi
-      split at hhi
-      · rename_i hactor
-        have hnotBefore : actor ∉ beforeRoster := by
-          intro hmem
-          exact hsplitNodup.2.2 actor hmem actor (List.mem_cons_of_mem _ hactor) rfl
-        have hownerNe : owner ≠ actor := by
-          intro heq; exact hafterOwnerSet (heq ▸ hactor)
-        have htotal : (leftWaited.principalHistory actor).length = 3 * blockIndex := by
-          have hl := runtime.application.runPolicies_principalHistory_length actor players
-            environment (before ++ [.player owner, .player owner]) left leftWaited hpaired.2.1
-          rw [hl]
-          have hcountBefore := WindowedApplication.ordinaryPolls_player_count beforeRoster
-            hbeforeNodup actor
-          change before.countP (WindowedApplication.PolicyAgreement.playerCountFor actor) = _
-            at hcountBefore
-          simp only [List.countP_append, List.countP_cons, List.countP_nil,
-            hownerNe, decide_false, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
-          change (left.principalHistory actor).length +
-            before.countP (WindowedApplication.PolicyAgreement.playerCountFor actor) = _
-          rw [hcountBefore, if_neg hnotBefore, Nat.add_zero]
-          have hactorRoster : actor ∈ roster := by
-            rw [hsplit]
-            exact List.mem_append_right _ (List.mem_cons_of_mem _ hactor)
-          exact (leftCheckpoint.historyAlignment hroster actor hactorRoster).1
-        rw [htotal] at hlo hhi
-        have : index / 3 = blockIndex := by omega
-        rw [this]; exact hindex
-      · omega)
-    polledLeft polledRight hleftAfter hrightAfter
-  have hschedule : roster.flatMap (fun actor => [Invocation.player actor, .player actor]) =
-      (before ++ [.player owner, .player owner]) ++ after := by
-    simp [hsplit, before, after, List.append_assoc]
-  refine ⟨hafterAgreement, ?_, ?_⟩
-  · rw [hschedule, MessageApplication.runPolicies_append]
-    simp only [FinDist.support_bind, Set.mem_iUnion]
-    exact ⟨leftWaited, hpaired.2.1, hleftAfter⟩
-  · rw [hschedule, MessageApplication.runPolicies_append]
-    simp only [FinDist.support_bind, Set.mem_iUnion]
-    exact ⟨rightWaited, hpaired.2.2, hrightAfter⟩
+    value hleftValue hrightValue polledLeft polledRight hleft hright
 
 /-- Complete generated public-choice blocks taking the same supported source
 value preserve focal information. Actual source laws, normal admission, and

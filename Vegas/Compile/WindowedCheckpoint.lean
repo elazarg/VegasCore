@@ -11,6 +11,7 @@ import Vegas.Compile.WindowedActivationFreshness
 import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.WindowedPolicyProjection
 import Vegas.Compile.WindowedSourceSafety
+import Vegas.Compile.WindowedBlockProvenance
 import Interaction.MessageApplicationCounters
 
 /-! # Actual windowed source checkpoints
@@ -309,6 +310,35 @@ theorem resolvedBindings
     (ApplicationImage.ResolvedBindings.initial runtime.image
       (compileCore rootProg rootFresh rootState).graph) checkpoint.reached
 
+/-- The unchanged owner's accepted snapshots retain their actual typed
+registration provenance, even when another player uses an arbitrary raw policy.
+The source suffix uses the same compiled graph as the original program. -/
+theorem registeredBindings
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex plan profile current execution)
+    (owner : P) (hother : owner ≠ who) :
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    runtime.image.RegisteredBindings owner
+      (fun slot typed => ∃ fieldSpec : FieldSpec P L,
+        (compileCore prog fresh state).graph.field? slot = some fieldSpec ∧
+          typed.ty = fieldSpec.ty)
+      ((execution.principalHistory owner).map fun entry =>
+        show runtime.image.application.PlayerEntry from runtime.erasePlayerEntry entry)
+      execution.native.application.base := by
+  intro runtime
+  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
+    replacement
+  have hpolicy : players owner = runtime.blockPlayer owner
+      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
+    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
+    rfl
+  have hbindings := root.windowedBlock_registeredBindings deadlineOf binding choice windowOf
+    rootProfile owner players hpolicy (runtime.blockEnvironment roster)
+    (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
+    execution checkpoint.reached
+  rw [← checkpoint.continuation.compile_eq]
+  exact hbindings
+
 theorem historyAlignment (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding
     choice windowOf roster who replacement blockIndex plan profile current execution)
     (hroster : roster.Nodup) (actor : P) (hactor : actor ∈ roster) :
@@ -349,3 +379,8 @@ theorem initial (source : WFProgram P L)
 end WindowedCheckpoint
 
 end Vegas.ApplicationPlan
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.registeredBindings'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.registeredBindings

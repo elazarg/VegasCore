@@ -156,9 +156,12 @@ scheduling require further comparisons.
 
 Source-policy reconstruction requires a paired-execution argument. Its
 complete-block cases include focal-owned instructions, public chance and
-unchanged public choices with the same supported published value, and
-unchanged private bindings with possibly different hidden draws. The
-comparison retains actual raw focal commands,
+unchanged public choices with the same supported published value, conditional
+disclosures and copies with the same supported optional result, and unchanged
+private bindings with possibly different hidden draws. Conditional acceptance
+uses each execution's actual frozen source binding or typed public default;
+it is derived from initialized provenance and source legality. These local
+comparisons use a fixed pure raw focal policy and retain actual commands,
 local histories, pending messages, receipts, and public activation metadata.
 The general public-message deviation law remains open: these local
 comparisons must determine one legal source policy from actual source views,

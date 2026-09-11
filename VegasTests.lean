@@ -168,3 +168,4 @@ import VegasTests.WindowedBindingAction
 import VegasTests.WindowedOwnerFrame
 import VegasTests.WindowedBindingPrivacy
 import VegasTests.WindowedPublicChoice
+import VegasTests.WindowedConditional

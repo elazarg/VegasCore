@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedCheckpoint
 import Vegas.Compile.WindowedConditionalBlock
 import Vegas.Compile.WindowedBlockCaches
+import Vegas.Compile.ConditionalDisposition
 
 /-! # Conditional source successors at actual windowed checkpoints -/
 
@@ -125,53 +126,10 @@ theorem conditional_source_relay_eligibility_after_clock
   have hmiddleResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
     players (runtime.blockEnvironment roster) (.environment :: priorRelays) execution middle
     hresolved hmiddle
-  have hcompleted : ∀ node,
-      node < code.endpoint.choiceNode →
-        middle.native.application.base.memory.done node = true := by
-    intro node hlt
-    have hchoiceNode : code.endpoint.choiceNode = build.nodes.length := rfl
-    have hltBuild : node < build.nodes.length := by
-      rwa [hchoiceNode] at hlt
-    let graphNode : Fin
-        (compileCore (.commit name who guard (.reveal publicName who name .here tail))
-          fresh build).graph.nodeCount :=
-      ⟨node, lt_trans hlt (site.choice.choiceNode fresh build).isLt⟩
-    apply (hmiddleRefines.memory.completed graphNode).mpr
-    apply (current.completedPrefix graphNode).mpr
-    exact hltBuild
-  obtain ⟨rawDisposition, haccepted, hcanonicalRaw⟩ :=
-    hmiddleResolved.conditionalDisposition horigins code hconditional
-      code.endpoint.choiceNode rfl hcompleted
-  obtain ⟨disposition, hbinding, hcanonical⟩ :
-      ∃ disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy),
-        code.binding? middle.native.application.base.memory = some disposition ∧
-        ∀ handle, disposition = .opaque handle → handle = (who, sourceSlot) := by
-    cases rawDisposition with
-    | «opaque» handle =>
-        refine ⟨.opaque handle,
-          (code.binding?_opaque_iff middle.native.application.base.memory handle).2 haccepted,
-          ?_⟩
-        intro candidate heq
-        have hsame : handle = candidate := BindingDisposition.opaque.inj heq
-        subst candidate
-        have hownerCode : code.endpoint.owner = who := rfl
-        have hslotCode : code.endpoint.sourceSlot = sourceSlot := rfl
-        simpa only [hownerCode, hslotCode] using hcanonicalRaw handle rfl
-    | publicDefault typed =>
-        obtain ⟨fieldSpec, hfield, _, htypedTy, _⟩ :=
-          hmiddleRefines.bindings.publicDefault code.sourceField typed haccepted
-        obtain ⟨compiledSpec, hcompiled, hsecret, _⟩ := site.compiledSourceField fresh build
-        have hspec : fieldSpec = compiledSpec := Option.some.inj (hfield.symm.trans hcompiled)
-        subst fieldSpec
-        have hty : typed.ty = spec.secretTy := htypedTy.trans hsecret
-        let value : L.Val spec.secretTy := cast (congrArg L.Val hty) typed.value
-        have hdecode : typed.as? spec.secretTy = some value := by
-          simp [TypedValue.as?, hty, value]
-        refine ⟨.publicDefault value,
-          (code.binding?_publicDefault_iff middle.native.application.base.memory value).2
-            ⟨typed, haccepted, hdecode⟩, ?_⟩
-        intro handle hfalse
-        cases hfalse
+  obtain ⟨disposition, hbinding, hcanonical⟩ :=
+    ConditionalPublicationSite.bindingDisposition_at_source_prefix guard tail spec fresh build
+      sourceSlot deadline current runtime.image middle.native.application.base hmiddleRefines
+      hmiddleResolved horigins hconditional
   have hready := ConditionalPublicationSite.readyDisposition_at_source_prefix
     guard tail spec fresh build sourceSlot deadline current
       middle.native.application.base hmiddleRefines disposition hbinding hcanonical

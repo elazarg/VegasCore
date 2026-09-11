@@ -477,6 +477,21 @@ pre-decision prefix with its resolution edge, so extraction never selects an
 earlier action from a final outcome or a later chance result. That decision
 carrier and its connection to source-policy extension remain unimplemented.
 
+The fixed-draw comparisons also need a source-indexed inversion of actual
+block support. For chance, public choice, and conditional publication, first
+decompose the actual run to obtain its sampled value and its polling/service
+branches. The accepted handler identifies the written public field, and
+`runPolicies_block_inactive` preserves public memory through the remaining
+slots. Independently, the successor checkpoint's refinement, source/store
+agreement, and source-extension equation identify that same field with the
+edge's recorded source value. Comparing the two readouts pins the decomposed
+draw to the recorded value; conditional publication uses the source encoding
+equivalence. These inversion lemmas must return actual fixed-branch support
+and source-kernel support, not assume them. The existing prefix already
+retains the required evidence, so no additional branch certificate needs to
+be stored in `BlockSourceStep`. This is inversion of a supported block, not
+selection of a source strategy from a final outcome.
+
 The focal-owned block case is checked by
 `WindowedCheckpoint.owned_block_agreement`. Given two actual checkpoints and
 their preceding `PolicyAgreement`, it proves agreement after every pair of
@@ -515,21 +530,29 @@ mixed-type program exercises the result with arbitrary raw opposing traffic
 and no timeout handlers. Binding and public choice share the derivation of
 normal-service selection from actual polling.
 
-The unchanged-owner binding and public-choice comparisons are complete;
-conditional-disclosure and conditional-copy still need their full-block
-comparisons. For the latter two, compare the encoded public optional result,
-`spec.encoding chosenLeft = spec.encoding chosenRight`, rather than demanding
-equal source representations. The existing source sampling, canonical
-disposition, and frozen-source binding lemmas should establish ordinary
-admission for generated decline, opaque opening, and public-default payloads.
-Both source constructors use the same conditional runtime instruction, so
-their operational comparison should be shared. The missing paired inclusion
-lemma must use per-side frozen-source evidence: a nonfocal opaque opening
-consults that author's private verifier, and the generic non-opening inclusion
-lemma does not apply. After proving that the two actual inclusions publish the
-same result, `after_normal_agreement` supplies the inactive suffix. This route
-does not need timeout settlement for the unchanged owner; deviating owners
-still require the existing resolution service.
+`WindowedCheckpoint.conditional_block_agreement_of_same_result` compares
+complete unchanged-owner conditional-disclosure blocks with the same supported
+public optional result. `ConditionalHead` identifies the existing discharge
+and copy constructors; it adds neither syntax nor a well-formedness rule.
+The initialized checkpoint supplies the accepted binding disposition, cache
+freshness, and source readout. The exact two-poll law draws once from the
+source policy, submits the disposition-specific packet, then waits.
+Ordinary inclusion derives acceptance for decline, opaque opening, and public
+default. An opaque opening uses the actual registration provenance to recover
+the frozen source value separately on each side; equality of the two private
+verifiers is not a premise. Paired inclusion publishes equal optional results,
+and `after_normal_agreement` supplies the inactive clock/relay suffix. The
+endpoint retains both actual full-block support witnesses and final focal
+information agreement. Its focal replacement is pure and unrestricted.
+
+The checked persistent-disclosure program exercises both source constructors,
+source-supported packet retention, and successful ordinary inclusion. Public
+choice and conditional disclosure share the complete ordinary-poll comparison
+and the runtime-general sample-once packet-retention theorem. Unchanged owners
+resolve during normal service; deviating owners still require the resolution
+service. Every instruction kind now has its corresponding local complete-block
+comparison. Whole-prefix information reconstruction, source-action locality,
+and the general deviation-law theorem remain obligations.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual

@@ -27,6 +27,7 @@ import Interaction.MessageApplicationImmediateService
 import Interaction.MessageApplicationProgress
 import Interaction.MessageApplicationArrival
 import Interaction.MessageApplicationSubmission
+import Interaction.MessageApplicationSampleOnce
 import Interaction.DependencyGate
 import Interaction.DependencyGateLaws
 import Interaction.Deadline
