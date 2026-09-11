@@ -137,6 +137,7 @@ import Vegas.Compile.WindowedDeliverySampleCheckpoint
 import Vegas.Compile.WindowedDeliveryBindingCheckpoint
 import Vegas.Compile.WindowedDeliveryPublicChoice
 import Vegas.Compile.WindowedDeliveryPublicChoiceCheckpoint
+import Vegas.Compile.WindowedDeliveryConditional
 import Vegas.Compile.WindowedDeliveryIsolation
 import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission

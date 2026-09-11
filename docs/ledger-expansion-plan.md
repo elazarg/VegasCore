@@ -56,7 +56,7 @@ two-run information argument still requires a delivery-service proof.
 The checked coin-flip regression discharges the terminal continuation: the
 actual completed program has its source public-result distribution under
 every randomized raw replacement, with both players polled in the roster.
-The unrestricted binding head now has a complete successor and continuation law
+The unrestricted binding head now has a complete successor theorem
 (`WindowedCheckpoint.delivery_binding_block`), and the public-choice head has
 the corresponding successor theorem
 (`WindowedCheckpoint.delivery_publicChoice_block`). Both include a concrete
