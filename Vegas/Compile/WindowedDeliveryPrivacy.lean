@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.WindowedDeliveryPhase
 import Vegas.Compile.WindowedReactionPrivacy
+import Vegas.Compile.WindowedOwnedPlayers
 
 /-! # Information agreement through the concrete delivery phase
 
@@ -22,6 +23,75 @@ open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 variable {runtime : WindowedApplication P L} {focal : P}
+
+/-- Equal public application state and equal environment-history length induce
+the same delivery-service environment policy. The delivery command reads only
+the erased public observation; pending packet contents remain in the shared
+pool and are not inspected by the scheduler. -/
+theorem deliveryBlockEnvironment_eq
+    {left right : runtime.application.PolicyExecution}
+    (agreement : PolicyAgreement runtime focal left right)
+    (roster recipients : List P)
+    (hlength : left.environmentHistory.length = right.environmentHistory.length) :
+    runtime.deliveryBlockEnvironment roster recipients left.environmentHistory
+        (State.environmentView runtime.application left.native) =
+      runtime.deliveryBlockEnvironment roster recipients right.environmentHistory
+        (State.environmentView runtime.application right.native) := by
+  have hview :
+      State.environmentView runtime.application left.native =
+        State.environmentView runtime.application right.native := by
+    simp only [State.environmentView,
+      WindowedApplication.application, agreement.pool, agreement.receipts,
+      agreement.state.base.memory, agreement.state.active]
+  simp only [WindowedApplication.deliveryBlockEnvironment, hlength, hview]
+
+/-- A nonfocal reference player in a focal-owned delivery block is
+independent of the two agreeing private bases. Ordinary and reaction slots
+wait; the relay slot submits the same publicly selected expiry payload. -/
+theorem deliveryBlockPlayer_other_eq
+    {left right : runtime.application.PolicyExecution}
+    (agreement : PolicyAgreement runtime focal left right)
+    (actor : P) (hactor : actor ≠ focal)
+    (leftBase rightBase : runtime.application.PlayerPolicy)
+    (instruction : ApplicationInstruction P L)
+    (howner : instruction.submitter = some focal)
+    (hlength : (left.principalHistory actor).length =
+      (right.principalHistory actor).length)
+    (hindex : runtime.image.instructions[(left.principalHistory actor).length / 4]? =
+      some instruction)
+    (hslot : (left.principalHistory actor).length % 4 = 0 ∨
+      (left.principalHistory actor).length % 4 = 1 ∨
+      (left.principalHistory actor).length % 4 = 2 ∨
+      (left.principalHistory actor).length % 4 = 3) :
+    runtime.deliveryBlockPlayer actor leftBase (left.principalHistory actor)
+        (State.observe runtime.application left.native actor) =
+      runtime.deliveryBlockPlayer actor rightBase (right.principalHistory actor)
+        (State.observe runtime.application right.native actor) := by
+  have hrightIndex : runtime.image.instructions[(right.principalHistory actor).length / 4]? =
+      some instruction := by rwa [← hlength]
+  have hview := agreement.observe_eq actor
+  simp only [WindowedApplication.deliveryBlockPlayer, hindex, hrightIndex]
+  rw [hview]
+  by_cases hactive : runtime.image.activeAddress?
+      (State.observe runtime.application right.native actor).application.1 =
+      some instruction.address
+  · simp only [hactive, ↓reduceIte]
+    rcases hslot with hzero | hone | htwo | hthree
+    · have hrightSlot : (right.principalHistory actor).length % 4 = 0 := by
+        rwa [← hlength]
+      simp only [hzero, hrightSlot, howner, Option.some.injEq, Ne.symm hactor,
+        ↓reduceIte]
+    · have hrightSlot : (right.principalHistory actor).length % 4 = 1 := by
+        rwa [← hlength]
+      simp only [hone, hrightSlot, howner, Option.some.injEq, Ne.symm hactor,
+        ↓reduceIte]
+    · have hrightSlot : (right.principalHistory actor).length % 4 = 2 := by
+        rwa [← hlength]
+      simp only [htwo, hrightSlot]
+    · have hrightSlot : (right.principalHistory actor).length % 4 = 3 := by
+        rwa [← hlength]
+      simp only [hthree, hrightSlot]
+  · simp only [hactive, ↓reduceIte]
 
 /-- Executing the concrete delivery slots for the same selected pending
 identifier, followed by the roster reaction round, preserves focal agreement. -/
@@ -97,3 +167,13 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.WindowedApplication.PolicyAgreement.deliveryPrefix_then_roster_reactions
+
+/-- info: 'Vegas.WindowedApplication.PolicyAgreement.deliveryBlockEnvironment_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.PolicyAgreement.deliveryBlockEnvironment_eq
+
+/-- info: 'Vegas.WindowedApplication.PolicyAgreement.deliveryBlockPlayer_other_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WindowedApplication.PolicyAgreement.deliveryBlockPlayer_other_eq
