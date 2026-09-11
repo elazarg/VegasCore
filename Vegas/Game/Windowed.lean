@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedMixedDeviation
 import Vegas.Compile.WindowedReferenceLaw
 import Vegas.Compile.ApplicationPolicyLocality
-import GameTheory.Core.Approximate
+import GameTheoryExtensions.Core.MixtureSimulation
 
 /-! # The fixed windowed operational game
 
@@ -85,25 +85,6 @@ theorem windowed_compileProfile (profile : SourceBehavioralProfile source.core.p
         simp only [Profile.update_same])
   exact congrArg (fun policy => runtime.blockPlayer who (runtime.liftPlayerPolicy policy)) hpolicy
 
-/-- Coordinatewise compilation commutes with a unilateral source-policy
-update. -/
-theorem windowed_compileProfile_update
-    (profile : SourceBehavioralProfile source.core.prog) (roster : List P) (who : P)
-    (alternative : SourceBehavioralPolicy source.core.prog who) :
-    Profile.update
-      (sig := (source.windowedGame plan deadlineOf binding choice windowOf roster).sig)
-      (fun actor => source.windowedCompilePolicy plan deadlineOf binding choice windowOf
-        actor (profile actor)) who
-      (source.windowedCompilePolicy plan deadlineOf binding choice windowOf who alternative) =
-      (fun actor => source.windowedCompilePolicy plan deadlineOf binding choice windowOf actor
-        ((Profile.update (sig := sourceGameSignature source.core.prog) profile who alternative)
-          actor)) := by
-  funext actor
-  by_cases hactor : actor = who
-  · subst actor
-    simp only [Profile.update_same]
-  · simp only [Profile.update_of_ne _ _ hactor]
-
 /-- The actual operational game under the coordinatewise compiled profile has
 the source program's public-result law. -/
 theorem windowed_honest_public_law
@@ -152,6 +133,36 @@ theorem windowed_deviation_mixture
     windowOf roster focal hinitial horigins hfallbacks hroster howners replacement
     relay hrelay hrelayOther
 
+/-- The source game and its fixed windowed operational game have the same
+public observation law, and every native unilateral deviation is represented
+by a finite mixture of source deviations. -/
+def windowed_mixtureSimulation
+    (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice) (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster)
+    (hrelays : ∀ player, ∃ relay ∈ roster, relay ≠ player) :
+    GameTheory.GameForm.MixtureSimulationOn
+      (sourceGameForm source.core.prog source.core.env)
+      (source.windowedGame plan deadlineOf binding choice windowOf roster)
+      source.publicResult
+      (source.windowedPublicResult plan deadlineOf binding choice windowOf)
+      (fun _ _ => True) where
+  compileStrategy := fun who strategy =>
+    source.windowedCompilePolicy plan deadlineOf binding choice windowOf who strategy
+  honest_law := fun profile =>
+    source.windowed_honest_public_law plan deadlineOf binding choice windowOf profile roster
+      focal hinitial horigins hfallbacks hroster howners
+  compiled_considered := fun _ _ => trivial
+  deviation_mixture := by
+    intro profile who replacement _
+    obtain ⟨relay, hrelay, hrelayOther⟩ := hrelays who
+    exact source.windowed_deviation_mixture plan deadlineOf binding choice windowOf profile
+      roster who hinitial horigins hfallbacks hroster howners replacement relay hrelay
+      hrelayOther
+
 /-- A bound against every source replacement protects the same observable
 against an arbitrary randomized runtime replacement. The observable may value
 an unchanged player; the deviator's own utility is unrestricted. -/
@@ -189,7 +200,7 @@ theorem windowed_guarantee
       exact hbound alternative
 
 /-- For arbitrary utilities of the public result, coordinatewise compilation
-preserves and reflects the exact approximate-Nash budget. Reflection against
+preserves and reflects the exact approximate-Nash budget. Preservation against
 unrestricted native deviations uses a distinct roster relay for each possible
 deviator. -/
 theorem windowed_approximate_nash_iff
@@ -210,90 +221,9 @@ theorem windowed_approximate_nash_iff
         player (profile player)) ↔
       IsεNash (sourceGameForm source.core.prog source.core.env)
         (fun terminal player => value (source.publicResult terminal) player) ε profile := by
-  let nativeProfile := fun player =>
-    source.windowedCompilePolicy plan deadlineOf binding choice windowOf player (profile player)
-  let nativeUtility := fun out player =>
-    value (source.windowedPublicResult plan deadlineOf binding choice windowOf out) player
-  let sourceUtility := fun terminal player => value (source.publicResult terminal) player
-  have hhonest := source.windowed_honest_public_law plan deadlineOf binding choice windowOf
-    profile roster focal hinitial horigins hfallbacks hroster howners
-  have hhonestUtility (player : P) :
-      expectedUtility nativeUtility player
-          ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-            nativeProfile) =
-        expectedUtility sourceUtility player
-          ((sourceGameForm source.core.prog source.core.env).play profile) := by
-    have h := congrArg (fun law => law.expect (fun result => value result player)) hhonest
-    simpa only [FinDist.expect_map, expectedUtility, nativeUtility, sourceUtility,
-      nativeProfile] using h
-  change IsεNash (source.windowedGame plan deadlineOf binding choice windowOf roster)
-      nativeUtility ε nativeProfile ↔
-    IsεNash (sourceGameForm source.core.prog source.core.env) sourceUtility ε profile
-  rw [isεNash_iff, isεNash_iff]
-  constructor
-  · intro hnative player alternative
-    let nativeAlternative :=
-      source.windowedCompilePolicy plan deadlineOf binding choice windowOf player alternative
-    have hupdate := source.windowed_compileProfile_update plan deadlineOf binding choice windowOf
-      profile roster player alternative
-    have halternative := source.windowed_honest_public_law plan deadlineOf binding choice windowOf
-      (Profile.update (sig := sourceGameSignature source.core.prog) profile player alternative)
-      roster focal hinitial horigins hfallbacks hroster howners
-    have halternativeUtility :
-        expectedUtility nativeUtility player
-            ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-              (Profile.update nativeProfile player nativeAlternative)) =
-          expectedUtility sourceUtility player
-            ((sourceGameForm source.core.prog source.core.env).play
-              (Profile.update profile player alternative)) := by
-      rw [hupdate]
-      have h := congrArg (fun law => law.expect (fun result => value result player))
-        halternative
-      simpa only [FinDist.expect_map, expectedUtility, nativeUtility, sourceUtility,
-        nativeProfile] using h
-    calc
-      expectedUtility sourceUtility player
-          ((sourceGameForm source.core.prog source.core.env).play
-            (Profile.update profile player alternative)) =
-          expectedUtility nativeUtility player
-            ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-              (Profile.update nativeProfile player nativeAlternative)) :=
-        halternativeUtility.symm
-      _ ≤ expectedUtility nativeUtility player
-          ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-            nativeProfile) + ε := hnative player nativeAlternative
-      _ = expectedUtility sourceUtility player
-          ((sourceGameForm source.core.prog source.core.env).play profile) + ε := by
-        rw [hhonestUtility]
-  · intro hsource player replacement
-    obtain ⟨relay, hrelay, hrelayOther⟩ := hrelays player
-    obtain ⟨mixture, hlaw⟩ := source.windowed_deviation_mixture plan deadlineOf binding
-      choice windowOf profile roster player hinitial horigins hfallbacks hroster howners
-      replacement relay hrelay hrelayOther
-    have hdeviation := congrArg
-      (fun law => law.expect (fun result => value result player)) hlaw
-    simp only [FinDist.expect_map, FinDist.expect_bind] at hdeviation
-    calc
-      expectedUtility nativeUtility player
-          ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-            (Profile.update nativeProfile player replacement)) =
-          mixture.expect (fun alternative =>
-            expectedUtility sourceUtility player
-              ((sourceGameForm source.core.prog source.core.env).play
-                (Profile.update profile player alternative))) := hdeviation
-      _ ≤
-          mixture.expect (fun _ =>
-            expectedUtility sourceUtility player
-              ((sourceGameForm source.core.prog source.core.env).play profile) + ε) :=
-        FinDist.expect_mono fun alternative _ => by
-          exact hsource player alternative
-      _ = expectedUtility sourceUtility player
-          ((sourceGameForm source.core.prog source.core.env).play profile) + ε :=
-        FinDist.expect_const _ _
-      _ = expectedUtility nativeUtility player
-          ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
-            nativeProfile) + ε := by
-        rw [hhonestUtility]
+  let simulation := source.windowed_mixtureSimulation plan deadlineOf binding choice windowOf
+    roster focal hinitial horigins hfallbacks hroster howners hrelays
+  exact simulation.isεNash_compileProfile_iff value ε profile (fun _ _ => trivial)
 
 /-- Exact expected-utility Nash is preserved and reflected as the zero-budget
 case of the public-result equilibrium theorem. -/
@@ -330,6 +260,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WFProgram.windowed_deviation_mixture
+
+/-- info: 'Vegas.WFProgram.windowed_mixtureSimulation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.WFProgram.windowed_mixtureSimulation
 
 /-- info: 'Vegas.WFProgram.windowed_guarantee'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

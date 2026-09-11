@@ -48,12 +48,13 @@ open Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- At a completed block boundary, every retained envelope authored by another
-principal targets an instruction that has already completed. The focal
-principal's unrestricted traffic is deliberately excluded. -/
-def ForeignLedgerCompleted (runtime : WindowedApplication P L) (who : P)
+/-- At a completed block boundary, every foreign envelope known to any observer
+targets an instruction that has already completed. The focal principal's
+unrestricted traffic is deliberately excluded. -/
+def ForeignKnownCompleted (runtime : WindowedApplication P L) (who : P)
     (state : runtime.application.State) : Prop :=
-  ∀ message ∈ state.pool.ledger, message.sender ≠ who →
+  ∀ observer id message, (state.pool.observe observer).known? id = some message →
+    message.sender ≠ who →
     ∃ address, message.payload.address? = some address ∧
       state.application.base.memory.done address = true
 
@@ -64,18 +65,25 @@ def ForeignAddressed (who : P) (allowed : Nat → Prop)
   message.sender = who ∨ ∃ address, message.payload.address? = some address ∧
     allowed address
 
-/-- When every designated address is completed, all retained foreign ledger
-entries have completed-address provenance. -/
-theorem ForeignAddressed.completedLedger
+/-- When every designated address is completed, every foreign message known
+through any retained carrier has completed-address provenance. -/
+theorem ForeignAddressed.completedKnown
     (runtime : WindowedApplication P L) (who : P)
     (allowed : Nat → Prop)
     (state : runtime.application.State)
     (hsafe : state.pool.Satisfies (ForeignAddressed who allowed))
     (hcompleted : ∀ address, allowed address →
       state.application.base.memory.done address = true) :
-    runtime.ForeignLedgerCompleted who state := by
-  intro message hledger hforeign
-  rcases hsafe.2.1 message hledger with hfocal | ⟨address, haddress, hold⟩
+    runtime.ForeignKnownCompleted who state := by
+  intro observer id message hknown hforeign
+  have hmem := MessagePool.View.known?_mem (state.pool.observe observer) id message hknown
+  simp only [MessagePool.observe, List.mem_append] at hmem
+  have hsmessage : ForeignAddressed who allowed message := by
+    rcases hmem with (hsent | hinbox) | hledger
+    · exact hsafe.2.2.2 observer message hsent
+    · exact hsafe.2.2.1 observer message hinbox
+    · exact hsafe.2.1 message hledger
+  rcases hsmessage with hfocal | ⟨address, haddress, hold⟩
   · exact False.elim (hforeign hfocal)
   · exact ⟨address, haddress, hcompleted address hold⟩
 
@@ -94,13 +102,14 @@ theorem blockPlayer_submit_has_index (runtime : WindowedApplication P L) (who : 
 /-- Completed-address provenance makes every retained foreign envelope inert.
 This is the boundary form needed by replay privacy; no payload typing or
 canonical decoder hypothesis is required. -/
-theorem ForeignLedgerCompleted.inert
+theorem ForeignKnownCompleted.inert
     (runtime : WindowedApplication P L) (who : P)
     (state : runtime.application.State)
-    (hcompleted : runtime.ForeignLedgerCompleted who state) :
-    runtime.ForeignLedgerInert who state := by
-  intro message hledger hforeign
-  obtain ⟨address, haddress, hdone⟩ := hcompleted message hledger hforeign
+    (hcompleted : runtime.ForeignKnownCompleted who state) :
+    runtime.ForeignKnownInert who state := by
+  intro observer id message hknown hforeign
+  obtain ⟨address, haddress, hdone⟩ :=
+    hcompleted observer id message hknown hforeign
   have hinactive : runtime.image.activeAddress? state.application.base.memory ≠
       some address := by
     intro hactive
@@ -433,10 +442,10 @@ end Block
 
 namespace WindowedCheckpoint
 
-/-- At every actual source checkpoint, retained foreign ledger messages target
-completed instructions. The prefix provenance is derived from the initialized
-runner, not added as an assumption on the deviator or checkpoint. -/
-theorem foreignLedgerCompleted
+/-- At every actual source checkpoint, foreign messages known through any
+retained carrier target completed instructions. The prefix provenance is
+derived from the initialized runner, not added as an assumption. -/
+theorem foreignKnownCompleted
     {rootContext Γ : VCtx P L} {rootPending pending : Finset VarId}
     {rootProg : VegasCore P L rootContext} {prog : VegasCore P L Γ}
     {rootAccounted : CommitmentAccounting rootPending rootProg}
@@ -456,13 +465,13 @@ theorem foreignLedgerCompleted
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       who replacement blockIndex plan profile current execution)
     (hroster : roster.Nodup) :
-    (root.windowed deadlineOf binding choice windowOf).ForeignLedgerCompleted who
+    (root.windowed deadlineOf binding choice windowOf).ForeignKnownCompleted who
       execution.native := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   have hpool := root.runPolicies_repeatedBlocks_foreignAddressed deadlineOf binding choice windowOf
     rootProfile who replacement (runtime.blockEnvironment roster) roster hroster blockIndex
     execution checkpoint.reached
-  apply WindowedApplication.ForeignAddressed.completedLedger runtime who
+  apply WindowedApplication.ForeignAddressed.completedKnown runtime who
     (runtime.image.AddressBefore blockIndex) execution.native hpool
   intro address haddress
   have horiginal : (root.image deadlineOf).AddressBefore blockIndex address := by
@@ -489,7 +498,7 @@ end Vegas.ApplicationPlan
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.runPolicies_repeatedBlocks_foreignAddressed
 
-/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.foreignLedgerCompleted' depends on axioms:
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.foreignKnownCompleted' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.foreignLedgerCompleted
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.foreignKnownCompleted

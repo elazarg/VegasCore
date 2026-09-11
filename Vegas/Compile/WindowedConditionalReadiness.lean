@@ -148,14 +148,23 @@ theorem conditional_first_poll
       hindexOriginal, Option.map_some, ApplicationInstruction.withBindingTimeouts,
       ApplicationInstruction.withChoiceTimeouts]
   have hsource := ProfileContinuation.windowedConditional_sample_of_unchanged_owner spec head
-    checkpoint.continuation deadlineOf binding choice windowOf players hpolicy
+    checkpoint.continuation deadlineOf binding choice windowOf players (by
+      intro history view command hcommand
+      rw [show players owner = runtime.blockPlayer owner
+          (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) from
+          hpolicy] at hcommand
+      exact runtime.blockPlayer_supported owner (root.liftProfile deadlineOf rootProfile owner)
+        history view command hcommand)
     (runtime.blockEnvironment roster)
     (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
     execution checkpoint.reached current checkpoint.refines
     (head.initialReadsPublic (checkpoint.continuation.initialControllerReadsPublic hinitial))
-    disposition hbinding hcanonical hcache (.conditional code) hindex
-    (checkpoint.activeAddress?_head (.conditional code) rest hhead)
-    (by rw [halign.1]; omega) rfl
+    disposition hbinding hcanonical hcache (by
+      rw [show players owner = runtime.blockPlayer owner
+        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) from hpolicy]
+      exact runtime.blockPlayer_normal owner _ _ _ (.conditional code) hindex
+        (checkpoint.activeAddress?_head (.conditional code) rest hhead)
+        (by rw [halign.1]; omega) rfl)
   exact ⟨hcache, hsource.1⟩
 
 /-- At unchanged owner input, the ordinary polls draw exactly once from the

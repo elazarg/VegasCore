@@ -167,6 +167,7 @@ import VegasTests.WindowedSourceCoverage
 import VegasTests.WindowedBindingAction
 import VegasTests.WindowedSourceDecisionCoverage
 import VegasTests.WindowedDeviationLaw
+import VegasTests.WindowedDelivery
 import VegasTests.WindowedOwnerFrame
 import VegasTests.WindowedBindingPrivacy
 import VegasTests.WindowedPublicChoice

@@ -801,9 +801,9 @@ foreign-message provenance through the actual initialized repeated-block run:
 every retained nonfocal message targets an instruction before the completed-block
 count, while focal messages remain unrestricted. This result permits an
 arbitrary environment policy and does not assume an intermediate pool invariant.
-At a source checkpoint, `foreignLedgerCompleted` combines that provenance with
-the derived completed prefix. Replaying these foreign ledger packets cannot
-change the application. The within-block theorem accounts separately for
+At a source checkpoint, `foreignKnownCompleted` combines that provenance with
+the derived completed prefix. Replaying these foreign packets from sent,
+inbox, or ledger knowledge cannot change the application. The within-block theorem accounts separately for
 messages targeting the current, not-yet-completed instruction.
 
 These obligations concern the specified service. Adaptive delivery or an
@@ -814,13 +814,18 @@ interpreter supports recipient-local delivery, but proving preservation for
 that wider service class remains a separate obligation, not an implicit
 consequence of the fixed-service theorem.
 
-The next bounded service should deliver a selected pending packet to recipients,
-allow raw player reactions, and only then include it. A delivery round followed
-immediately by inclusion with no intervening player opportunity does not test
-this information boundary. Keep the shared native runner. Reference strategies
-may wait during a reaction slot, but a replacement retains all native commands.
-Start with a fixed recipient roster and service order; selective or adaptive
-delivery is a further parameterized comparison, not an assumed consequence.
+`WindowedApplication.deliveryBlockInvocations` and `deliveryBlockEnvironment`
+specify a bounded service that delivers the selected pending packet to fixed
+recipients, invokes every roster player for a raw reaction, and only then performs
+ordinary inclusion. They use the same native runner and application as the
+fixed-service theorem. `deliveryBlockPlayer` waits at the reference reaction
+coordinate; a replacement installed in that profile retains all native commands.
+Selective or adaptive delivery requires a further information comparison.
+`VegasTests/WindowedDelivery.lean` executes the generated persistent-disclosure
+application with a raw observer that replays an envelope only after learning it.
+For either privately registered Boolean, its reaction sees the same opaque
+handle before any ledger inclusion; ordinary service then includes the original
+envelope while the replay remains pending.
 
 The central new obligation is persistence of an unchanged owner's generated
 request through other-player reactions: its pending payload must correspond to
@@ -830,8 +835,29 @@ publication because another player acted. Binding handles must remain opaque.
 For a deviating owner, delivery may expose its own malformed or superseded packet;
 the theorem must cover that traffic rather than filter it out. A fixed-value
 block factorization can bind an honest source draw before delivery and carry the
-reaction law through to the source successor. The required provenance, admission
-stability, and whole-program law for this service are unproved.
+reaction law through to the source successor.
+
+The checked local ingredients are:
+
+- Pending lookup and inbox preservation through player-only runs, including
+  arbitrary randomized submissions and replay (`MessageApplicationPending`).
+- Delivery/reaction history alignment and source-command support for the
+  reference policy (`WindowedDeliveryAlignment`, `WindowedDeliveryProvenance`).
+- Acceptance of a specified pending request survives a reaction round in which
+  its owner waits. Including that same identifier after delivery preserves the
+  resolved public state and records acceptance (`WindowedPendingAdmission`).
+- Equal focal information survives fixed delivery and pure focal reactions,
+  with other players waiting over the actual visited history interval
+  (`WindowedReactionPrivacy`).
+
+These are not a whole-program deviation theorem. The service recomputes the
+identifier for ordinary inclusion after reactions. For an unchanged owner,
+connect the preserved request to that actual selection; for a deviating owner,
+allow the new selection to differ. Then extend per-head source/native couplings,
+successor checkpoints, and the full-prefix information comparison to this service.
+Source-readout and owner-sampling lemmas accept the reference source-command law
+and the actual ordinary invocation, rather than a hard-coded three-slot gate;
+the complete source-prefix induction still uses `blockEnvironment`.
 
 Extra inbox observations can invalidate the current pointwise source-view
 agreement invariant without refuting finite-mixture deviation simulation.
@@ -839,6 +865,12 @@ Self-generated traffic and independent signals are not themselves evidence of
 a strategic impossibility. Any negative claim must exhibit an actual source
 profile and native deviation whose observed outcome law cannot be matched by
 source deviations. Do not extend source semantics solely to repair that invariant.
+For the fixed delivery service, retain finite predrawing and paired-prefix
+comparison. A randomized or adaptive service requires fixing its independent
+random tape as well and proving that its remaining choices respect the declared
+information boundary. Predrawing does not itself prove that boundary. Conditional
+source kernels are an alternative proof method if pointwise comparison becomes
+inadequate; neither method permits conditioning an earlier choice on future chance.
 
 The absence of delivery is checked for `blockEnvironment`. The generic
 `MessageApplication.runPolicies_noDeliveryProvenance` proves that inboxes stay

@@ -26,7 +26,8 @@ def main() -> int:
     with (root / "lakefile.toml").open("rb") as config:
         failures = check_central_options(tomllib.load(config).get("leanOptions", {}))
     paths = list(root.glob("*.lean"))
-    for directory in ("Interaction", "InteractionTests", "Vegas", "VegasEVM", "VegasTests", "Paper"):
+    for directory in ("GameTheoryExtensions", "Interaction", "InteractionTests", "Vegas",
+                      "VegasEVM", "VegasTests", "Paper"):
         paths.extend((root / directory).rglob("*.lean"))
     for path in sorted(paths):
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):

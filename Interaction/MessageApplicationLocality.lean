@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationPending
 import Interaction.MessageReplay
 
 /-! # Observation locality of player-only polling
@@ -135,9 +136,7 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
       rw [hnative]
       refine ⟨rfl, by simp only [MessagePool.submit, if_neg hne], ?_⟩
       intro id message hlookup
-      change execution.native.pool.pending.find? _ = some message at hlookup
-      simp only [MessagePool.submit, MessagePool.lookup, List.find?_append,
-        hlookup, Option.or]
+      exact execution.native.pool.lookup_submit_of_some id message hlookup actor payload
   | replay id =>
       simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
       rw [hnative]
@@ -145,11 +144,7 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
       · unfold MessagePool.replay
         split <;> rfl
       · intro selected message hlookup
-        change execution.native.pool.pending.find? _ = some message at hlookup
-        unfold MessagePool.replay
-        split
-        · simp only [MessagePool.lookup, List.find?_append, hlookup, Option.or]
-        · exact hlookup
+        exact execution.native.pool.lookup_replay_of_some selected message hlookup actor id
   | wait =>
       simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at hnative
       rw [hnative]

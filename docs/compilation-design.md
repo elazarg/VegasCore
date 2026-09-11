@@ -816,7 +816,8 @@ review process; move an accepted abstraction and its tests once, then update
 consumers and the dependency pin. No parallel stable definitions or compatibility
 facades. Do not commit a GameTheory-specific temporary issue into this repository.
 
-The upstream candidate is a same-player, noninvertible comparison of game
+`GameTheoryExtensions/Core/MixtureSimulation.lean` implements a same-player,
+noninvertible comparison of game
 forms with playerwise strategy compilation and honest and unilateral-deviation
 law equations against unchanged opponents. The windowed compiler exercises a
 specific requirement: both games project their outcomes into a common observed
@@ -825,8 +826,11 @@ fixed source profile. A target-to-source decoder for complete outcomes and a
 single opponent-independent backtranslation are stronger requirements, not
 equivalent ways to package this result. Do not assume either to reuse an
 existing certificate. The general finite-mixture comparison and its expectation
-and equilibrium consequences belong in GameTheory; the compiler's construction
-of that comparison belongs here.
+and equilibrium consequences use the `GameTheory.GameForm` namespace and only
+GameTheory dependencies. `WFProgram.windowed_mixtureSimulation` constructs the
+compiler-specific instance. The dedicated `GameTheoryExtensions` library is
+included in the default build; its import boundary excludes Vegas, interaction,
+and backend modules.
 
 A considered-deviation predicate is explicit when the target strategy class
 is restricted. Composition requires that every supported right-edge
@@ -835,8 +839,12 @@ intermediate outcome observations match the comparison being composed. Utilities
 and solution concepts are derived consumers, not fields of the outcome-law
 relation. These concrete compiler clients motivate the extraction; a general
 hierarchy of compiler passes does not. GameTheory's existing game forms,
-profiles, deviations, and Kuhn results remain the canonical APIs. This candidate
-has not yet been moved upstream.
+profiles, deviations, and Kuhn results remain the canonical APIs. The extensions
+are maintained locally for porting to GameTheory; they do not introduce a
+second definition of equilibrium. `MixtureSimulationOn.transOn` requires one
+middle-deviation mixture satisfying both the right-edge law and the left-edge
+support restriction. Separate witnesses for these properties do not suffice.
+`MixtureSimulationOn.trans` specializes composition to a total left edge.
 
 Game-free runtime modules may use GameTheory's probability-only root.
 Their strategic adapters import GameTheory's protocol/core layers. Model

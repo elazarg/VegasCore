@@ -9,6 +9,8 @@ two consumers: GameTheory analysis and gradual lowering toward concrete runtimes
 EVM backend development; its whole-backend refinement obligation remains
 unproved. The full default build checks both libraries, the tests, and the
 paper audit, together with the independent `Interaction` kernel and its tests.
+`GameTheoryExtensions` contains general simulation and composition results under
+GameTheory namespaces, with no Vegas or interaction-model dependencies.
 See [module boundaries](docs/module-architecture.md) for the
 dependency structure and checked scope of the retained surface language.
 

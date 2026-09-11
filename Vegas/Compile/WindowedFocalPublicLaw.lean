@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedSourceDecisionCoverage
+import Vegas.Compile.WindowedBlockDeterminism
 
 /-! # Exact continuation laws for focal public-decision blocks -/
 
@@ -111,7 +112,35 @@ theorem continuation_bind_of_successors
     (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
     ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
     (WindowedApplication.blockInvocations roster) execution
-  obtain ⟨anchorFinal, hanchorFinal⟩ := block.support_nonempty
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+    replacement
+  let base := fun actor =>
+    runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile actor)
+  let timed := (instruction.withBindingTimeouts binding).withChoiceTimeouts choice
+  have hfocal : players focal = fun history view => FinDist.pure (command history view) := by
+    simp [players, windowedPlayers, hpure]
+  have hothers : ∀ actor, actor ≠ focal →
+      players actor = runtime.blockPlayer actor (base actor) := by
+    intro actor hactor
+    simp only [players, base, windowedPlayers, Function.update_of_ne hactor,
+      windowedReferencePlayers]
+    rfl
+  have hindexOriginal := trace.checkpoint.instruction_at instruction rest hhead
+  have hindex : runtime.image.instructions[blockIndex]? = some timed := by
+    simp only [runtime, windowed, ApplicationImage.withChoiceTimeouts,
+      ApplicationImage.withBindingTimeouts, ApplicationPlan.image, List.getElem?_map,
+      hindexOriginal, Option.map_some, timed]
+  have htimedOwner : timed.submitter = some focal := by
+    cases instruction <;> exact howner
+  obtain ⟨anchorFinal, hblock⟩ := runtime.runPolicies_block_eq_pure roster hroster focal
+    command base players hfocal hothers timed htimedOwner blockIndex execution hindex
+    (fun actor hactor => trace.checkpoint.historyAlignment hroster actor hactor |>.1)
+    trace.checkpoint.environmentHistory_length
+  have hblock' : block = FinDist.pure anchorFinal := hblock
+  have hanchorFinal : anchorFinal ∈ block.support := by
+    rw [hblock']
+    exact FinDist.mem_support_pure.mpr rfl
   obtain ⟨anchorValue, anchorLegal, anchorNext, anchorSource, anchorRefines, anchorPrefix⟩ :=
     hsuccess anchorFinal hanchorFinal
   let anchor : PublicDecision root rootProfile deadlineOf binding choice windowOf roster focal
@@ -124,17 +153,14 @@ theorem continuation_bind_of_successors
       ((current.current.source.toView focal).eraseEnv) =
         FinDist.pure (head.action anchor) :=
     head.extend_at_checkpoint (profile focal (.here guard _)) anchor
-  rw [hlocal, FinDist.pure_bind]
-  refine (FinDist.bind_congr (fun final hfinal => ?_)).trans (FinDist.bind_const _ _)
-  obtain ⟨value, legal, sourceNext, hsource, hrefines, hprefix⟩ := hsuccess final hfinal
-  let sibling : PublicDecision root rootProfile deadlineOf binding choice windowOf roster focal
-      replacement initial blockIndex plan profile :=
-    { current := anchor.current, execution := anchor.execution, final := final
-      sourcePrefix := anchor.sourcePrefix, value := value, legal := legal
-      sourceNext := sourceNext, source := hsource, refines := hrefines, block := hfinal }
-  have hvalue : value = anchor.value := head.action_congr sibling anchor rfl
-  have hcontinuation := hafter sourceNext final hprefix
-  rw [hsource, hvalue] at hcontinuation
+  change block.bind nativeAfter =
+    (head.extend (profile focal (.here guard _))
+      ((current.current.source.toView focal).eraseEnv)).bind
+        (fun selected => sourceAfter
+          (.cons selected (.cons selected current.current.source)))
+  rw [hblock', FinDist.pure_bind, hlocal, FinDist.pure_bind]
+  have hcontinuation := hafter anchorNext anchorFinal anchorPrefix
+  rw [anchorSource] at hcontinuation
   exact hcontinuation
 
 end Vegas.ApplicationPlan.PublicDecision

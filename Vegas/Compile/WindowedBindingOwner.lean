@@ -53,10 +53,13 @@ theorem windowedBinding_sample_of_unchanged_owner
     (windowOf : Nat → Nat)
     (players : P →
       (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
-    (howner : players who =
-      (root.windowed deadlineOf binding choice windowOf).blockPlayer who
-        ((root.windowed deadlineOf binding choice windowOf).liftPlayerPolicy
-          (root.liftProfile deadlineOf rootProfile who)))
+    (hcommands : ∀ history view command, command ∈ (players who history view).support →
+      (root.windowed deadlineOf binding choice windowOf).erasePlayerCommand command ∈
+          (root.liftProfile deadlineOf rootProfile who
+            (history.map (root.windowed deadlineOf binding choice windowOf).erasePlayerEntry)
+            ((root.windowed deadlineOf binding choice windowOf).eraseView view)).support ∨
+        (root.windowed deadlineOf binding choice windowOf).image.IdleOrExpiryCommand
+          ((root.windowed deadlineOf binding choice windowOf).erasePlayerCommand command))
     (priorEnvironment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (previous : List (@Invocation P))
@@ -79,13 +82,13 @@ theorem windowedBinding_sample_of_unchanged_owner
     (hcache : (root.image deadlineOf).registrationCache build.nextField
       ((execution.principalHistory who).map
         (root.windowed deadlineOf binding choice windowOf).erasePlayerEntry) = none)
-    (instruction : ApplicationInstruction P L)
-    (hindex : getElem? (root.windowed deadlineOf binding choice windowOf).image.instructions
-      ((execution.principalHistory who).length / 3) = some instruction)
-    (hactive : (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
-      execution.native.application.base.memory = some instruction.address)
-    (hslot : (execution.principalHistory who).length % 3 < 2)
-    (hsubmitter : instruction.submitter = some who) :
+    (hordinary :
+      let runtime := root.windowed deadlineOf binding choice windowOf
+      players who (execution.principalHistory who)
+          (State.observe runtime.application execution.native who) =
+        runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile who)
+          (execution.principalHistory who)
+          (State.observe runtime.application execution.native who)) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     let encoding := (ApplicationImage.registrationEncoding build.nextField).privateCommand
       runtime.application
@@ -111,8 +114,8 @@ theorem windowedBinding_sample_of_unchanged_owner
   have hready := SourceDecisionSite.binding_ready_at_source_prefix guard tail fresh build
     current execution.native.application.base.memory.done hrefines.memory.completed
   obtain ⟨reads, hreadout, _, hview⟩ :=
-    continuation.windowedBlock_ownerReadout?_of_ready_source_view deadlineOf binding choice
-      windowOf who players howner priorEnvironment previous execution hreached site
+    continuation.windowed_ownerReadout?_of_ready_source_view deadlineOf binding choice
+      windowOf who players hcommands priorEnvironment previous execution hreached site
       current.current.graph.1 hrefines hready.1 hinitial current.current.source
       (BuildState.Agrees.view current.current.agrees who)
   have hunbound : execution.native.application.base.memory.accepted
@@ -153,7 +156,7 @@ theorem windowedBinding_sample_of_unchanged_owner
   have hcommand : players who (execution.principalHistory who)
       (State.observe runtime.application execution.native who) =
         choices.map fun chosen => .privateCommand (.register build.nextField ⟨ty, chosen.1⟩) := by
-    rw [howner, runtime.blockPlayer_normal who _ _ _ instruction hindex hactive hslot hsubmitter]
+    rw [hordinary]
     unfold WindowedApplication.liftPlayerPolicy
     rw [hbase]
     simp only [FinDist.map_comp, Function.comp_def, WindowedApplication.liftPlayerCommand]

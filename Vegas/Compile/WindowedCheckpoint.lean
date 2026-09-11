@@ -405,8 +405,13 @@ theorem registeredBindings
   intro runtime
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
     replacement
-  have hbindings := root.windowedBlock_registeredBindings deadlineOf binding choice windowOf
-    rootProfile owner players hpolicy (runtime.blockEnvironment roster)
+  have hbindings := root.windowed_registeredBindings_of_source_commands deadlineOf binding choice
+    windowOf rootProfile owner players (by
+      intro history view command hcommand
+      dsimp only [players] at hcommand
+      rw [hpolicy] at hcommand
+      exact runtime.blockPlayer_supported owner (root.liftProfile deadlineOf rootProfile owner)
+        history view command hcommand) (runtime.blockEnvironment roster)
     (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
     execution checkpoint.reached
   rw [← checkpoint.continuation.compile_eq]

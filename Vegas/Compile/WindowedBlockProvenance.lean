@@ -102,9 +102,10 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
-/-- Block-gating every lifted player preserves typed accepted-binding
-provenance throughout an actual activation-windowed run. -/
-theorem windowedBlock_registeredBindings
+/-- Any windowed player wrapper whose supported commands come from the lifted
+source policy or are idle/expiry commands preserves typed accepted-binding
+provenance throughout an actual run. -/
+theorem windowed_registeredBindings_of_source_commands
     {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
     {accounted : CommitmentAccounting pending prog} {fresh : FreshBindings prog}
     {state : BuildState P L Γ} (plan : ApplicationPlan accounted fresh state)
@@ -114,10 +115,13 @@ theorem windowedBlock_registeredBindings
     (windowOf : Nat → Nat) (profile : SourceBehavioralProfile prog) (owner : P)
     (players : P →
       (plan.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
-    (howner : players owner =
-      (plan.windowed deadlineOf binding choice windowOf).blockPlayer owner
-        ((plan.windowed deadlineOf binding choice windowOf).liftPlayerPolicy
-          (plan.liftProfile deadlineOf profile owner)))
+    (hcommands : ∀ history view command, command ∈ (players owner history view).support →
+      (plan.windowed deadlineOf binding choice windowOf).erasePlayerCommand command ∈
+          (plan.liftProfile deadlineOf profile owner
+            (history.map (plan.windowed deadlineOf binding choice windowOf).erasePlayerEntry)
+            ((plan.windowed deadlineOf binding choice windowOf).eraseView view)).support ∨
+        (plan.windowed deadlineOf binding choice windowOf).image.IdleOrExpiryCommand
+          ((plan.windowed deadlineOf binding choice windowOf).erasePlayerCommand command))
     (environment : (plan.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (schedule : List (@Invocation P))
     (next : (plan.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
@@ -147,9 +151,8 @@ theorem windowedBlock_registeredBindings
     players environment
     ?_ schedule next hnext
   intro history view address handle hsubmission
-  rw [howner] at hsubmission
-  rcases runtime.blockPlayer_supported owner (plan.liftProfile deadlineOf profile owner)
-      history view (.submit (.binding address handle)) hsubmission with hsource | hidle
+  rcases hcommands history view (.submit (.binding address handle)) hsubmission with
+    hsource | hidle
   · change (.submit (.binding address handle) :
         (plan.image deadlineOf).application.PlayerCommand) ∈
       (plan.liftProfile deadlineOf profile owner
@@ -191,7 +194,7 @@ theorem windowedBlock_registeredBindings
 
 end Vegas.ApplicationPlan
 
-/-- info: 'Vegas.ApplicationPlan.windowedBlock_registeredBindings' depends on axioms:
+/-- info: 'Vegas.ApplicationPlan.windowed_registeredBindings_of_source_commands' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.ApplicationPlan.windowedBlock_registeredBindings
+#print axioms Vegas.ApplicationPlan.windowed_registeredBindings_of_source_commands

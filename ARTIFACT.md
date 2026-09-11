@@ -27,7 +27,7 @@ python -m unittest discover -s scripts -p "test_*.py"
 lake --wfail build
 ```
 
-The full default build includes `Interaction`, `InteractionTests`, `Vegas`,
+The full default build includes `GameTheoryExtensions`, `Interaction`, `InteractionTests`, `Vegas`,
 `VegasEVM`, `VegasTests`, and `Paper`. The independent interaction experiments
 are not part of the manuscript's source-compiler preservation claim.
 The public-message compiler fragment in `Vegas/Compile/SealedSource.lean`

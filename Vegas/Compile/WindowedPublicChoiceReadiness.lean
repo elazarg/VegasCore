@@ -105,11 +105,21 @@ theorem publicChoice_first_poll
       ApplicationInstruction.withChoiceTimeouts, instruction]
   have hinitialHead := checkpoint.continuation.initialControllerReadsPublic hinitial
   have hsource := checkpoint.continuation.windowedPublicChoice_sample_of_unchanged_owner
-    deadlineOf binding choice windowOf players hpolicy (runtime.blockEnvironment roster)
+    deadlineOf binding choice windowOf players (by
+      intro history view command hcommand
+      rw [show players owner = runtime.blockPlayer owner
+          (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) from
+          hpolicy] at hcommand
+      exact runtime.blockPlayer_supported owner (root.liftProfile deadlineOf rootProfile owner)
+        history view command hcommand) (runtime.blockEnvironment roster)
     (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
     execution checkpoint.reached current checkpoint.refines hinitialHead.1 hcache
-    instruction hindex (checkpoint.activeAddress?_head (.publicChoice code) _ hhead)
-    (by rw [halign.1]; omega) rfl
+    (by
+      rw [show players owner = runtime.blockPlayer owner
+        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) from hpolicy]
+      exact runtime.blockPlayer_normal owner _ _ _ instruction hindex
+        (checkpoint.activeAddress?_head (.publicChoice code) _ hhead)
+        (by rw [halign.1]; omega) rfl)
   exact ⟨hcache, hsource.1⟩
 
 /-- At reference-owner input and source refinement, the two ordinary polls

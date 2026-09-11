@@ -169,6 +169,10 @@ def check(root: Path) -> list[str]:
 
     for module, dependencies in modules.items():
         for dependency in dependencies:
+            if under(module, "GameTheoryExtensions") and not any(
+                    under(dependency, prefix) for prefix in
+                    ("GameTheory", "GameTheoryExtensions", "Mathlib", "Batteries", "Init", "Std")):
+                failures.append(f"{module}: game-theory extension imports {dependency}")
             if any(under(dependency, prefix) for prefix in local_roots) and dependency not in modules:
                 failures.append(f"{module}: missing local import {dependency}")
             if under(module, "Interaction") and any(under(dependency, prefix) for prefix in
@@ -212,7 +216,7 @@ def check(root: Path) -> list[str]:
 
     # These public aggregators promise their complete subtree, not only a
     # subset incidentally reached through the paper audit or test suite.
-    for aggregator in ("Vegas.Game", "Vegas.Runtime", "Interaction"):
+    for aggregator in ("Vegas.Game", "Vegas.Runtime", "Interaction", "GameTheoryExtensions"):
         covered = reachable([aggregator])
         for module in sorted(modules):
             if under(module, aggregator) and module not in covered:

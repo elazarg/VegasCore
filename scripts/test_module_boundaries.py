@@ -67,6 +67,27 @@ class ModuleBoundaryTests(unittest.TestCase):
             self.assertTrue(any("imports interaction test InteractionTests" in error
                                 for error in errors))
 
+    def test_game_theory_extensions_cannot_import_runtime_or_language(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import GameTheoryExtensions",
+                "GameTheoryExtensions": "import Vegas Interaction",
+                "Interaction": "",
+            }, '[[lean_lib]]\nname = "GameTheoryExtensions"\n'
+               '[[lean_lib]]\nname = "Interaction"\n')
+            errors = CHECKER.check(root)
+            for dependency in ("Vegas", "Interaction"):
+                self.assertTrue(any(f"game-theory extension imports {dependency}" in error
+                                    for error in errors))
+
+    def test_game_theory_extensions_can_use_upstream_probability_and_forms(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import GameTheoryExtensions",
+                "GameTheoryExtensions": "import GameTheory.Core.Utility Mathlib.Data.Real.Basic",
+            }, '[[lean_lib]]\nname = "GameTheoryExtensions"\n')
+            self.assertEqual(CHECKER.check(root), [])
+
     def test_interaction_tests_remain_language_independent(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {

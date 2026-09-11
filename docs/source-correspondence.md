@@ -268,7 +268,12 @@ simulation, it requires no distinct relay. At the game boundary,
 `WFProgram.windowed_honest_public_law` identifies the coordinatewise compiled
 profile's completion/public-output law with the source law.
 
-Consequently `WFProgram.windowed_approximate_nash_iff` preserves and reflects
+`WFProgram.windowed_mixtureSimulation` packages these laws as the generic
+`GameTheory.GameForm.MixtureSimulationOn` certificate over the common public
+observation. Its all-player version requires a distinct relay for every possible
+deviator; the separate one-deviator bound theorem retains its weaker relay premise.
+The generic certificate supplies the equilibrium argument used by
+`WFProgram.windowed_approximate_nash_iff`, which preserves and reflects
 epsilon-Nash, with exactly the same epsilon, for arbitrary utilities of the
 completion bit and executable public terminal result. Comparison against every
 native deviation requires a distinct unchanged relay for every possible

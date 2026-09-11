@@ -24,7 +24,7 @@ variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- At a ready coupled source checkpoint, the actual erased windowed history
 and view recover the unchanged owner's complete source-visible environment. -/
-theorem windowedBlock_ownerReadout?_of_ready_source_view
+theorem windowed_ownerReadout?_of_ready_source_view
     {rootContext Γ Δ : VCtx P L} {rootPending pending : Finset VarId}
     {rootProg : VegasCore P L rootContext} {prog : VegasCore P L Γ}
     {rootAccounted : CommitmentAccounting rootPending rootProg}
@@ -42,10 +42,13 @@ theorem windowedBlock_ownerReadout?_of_ready_source_view
     (windowOf : Nat → Nat) (who : P)
     (players : P →
       (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
-    (hwho : players who =
-      (root.windowed deadlineOf binding choice windowOf).blockPlayer who
-        ((root.windowed deadlineOf binding choice windowOf).liftPlayerPolicy
-          (root.liftProfile deadlineOf rootProfile who)))
+    (hcommands : ∀ history view command, command ∈ (players who history view).support →
+      (root.windowed deadlineOf binding choice windowOf).erasePlayerCommand command ∈
+          (root.liftProfile deadlineOf rootProfile who
+            (history.map (root.windowed deadlineOf binding choice windowOf).erasePlayerEntry)
+            ((root.windowed deadlineOf binding choice windowOf).eraseView view)).support ∨
+        (root.windowed deadlineOf binding choice windowOf).image.IdleOrExpiryCommand
+          ((root.windowed deadlineOf binding choice windowOf).erasePlayerCommand command))
     (environment :
       (root.windowed deadlineOf binding choice windowOf).application.EnvironmentPolicy)
     (schedule : List (@Invocation P))
@@ -98,8 +101,8 @@ theorem windowedBlock_ownerReadout?_of_ready_source_view
       (compileCore prog fresh state).initialFields.length
     rw [← continuation.compile_eq]
     simpa only [compileCore_initialFields] using hcoversRoot
-  have hbindingsRoot := root.windowedBlock_registeredBindings deadlineOf binding choice
-    windowOf rootProfile who players hwho environment schedule next hnext
+  have hbindingsRoot := root.windowed_registeredBindings_of_source_commands deadlineOf binding
+    choice windowOf rootProfile who players hcommands environment schedule next hnext
   have hbindings : runtime.image.RegisteredBindings who
       (fun slot typed => ∃ spec : FieldSpec P L,
         (compileCore prog fresh state).graph.field? slot = some spec ∧ typed.ty = spec.ty)
@@ -126,8 +129,8 @@ theorem windowedBlock_ownerReadout?_of_ready_source_view
 end Vegas.ApplicationPlan.ProfileContinuation
 
 /-- info:
-'Vegas.ApplicationPlan.ProfileContinuation.windowedBlock_ownerReadout?_of_ready_source_view'
+'Vegas.ApplicationPlan.ProfileContinuation.windowed_ownerReadout?_of_ready_source_view'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
-  Vegas.ApplicationPlan.ProfileContinuation.windowedBlock_ownerReadout?_of_ready_source_view
+  Vegas.ApplicationPlan.ProfileContinuation.windowed_ownerReadout?_of_ready_source_view

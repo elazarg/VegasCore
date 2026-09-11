@@ -35,6 +35,16 @@ namespace State.AgreesFor
 
 variable {who : P} {left right : State P L}
 
+omit [DecidableEq P] in
+protected theorem refl (who : P) (state : State P L) : state.AgreesFor who state :=
+  ⟨.refl who state.base, rfl⟩
+
+omit [DecidableEq P] in
+protected theorem trans {last : State P L}
+    (first : left.AgreesFor who right) (second : right.AgreesFor who last) :
+    left.AgreesFor who last :=
+  ⟨first.base.trans second.base, first.active.trans second.active⟩
+
 private theorem ordered_handle (h : left.AgreesFor who right)
     (image : ApplicationImage P L) (message : Message P (ApplicationImage.Payload P L))
     (hauthor : message.payload.OpensCommitment → message.sender = who) :

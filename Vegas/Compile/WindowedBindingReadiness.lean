@@ -157,8 +157,14 @@ theorem binding_polls_ready_of_policy_cacheEmpty
     exact hready.2.1
   have hinitialHead := checkpoint.continuation.initialControllerReadsPublic hinitial
   obtain ⟨reads, hreadout, _, hview⟩ :=
-    checkpoint.continuation.windowedBlock_ownerReadout?_of_ready_source_view deadlineOf
-      binding choice windowOf owner players hpolicy (runtime.blockEnvironment roster)
+    checkpoint.continuation.windowed_ownerReadout?_of_ready_source_view deadlineOf
+      binding choice windowOf owner players (by
+        intro history view command hcommand
+        rw [show players owner = runtime.blockPlayer owner
+          (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) from
+          hpolicy] at hcommand
+        exact runtime.blockPlayer_supported owner (root.liftProfile deadlineOf rootProfile owner)
+          history view command hcommand) (runtime.blockEnvironment roster)
       (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
       execution checkpoint.reached site current.current.graph.1 checkpoint.refines hready.1
       hinitialHead.1 current.current.source (BuildState.Agrees.view current.current.agrees owner)

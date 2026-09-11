@@ -5,15 +5,16 @@ This is the implemented module inventory. The
 the [implementation plan](ledger-expansion-plan.md) gives the extraction and
 public-message-runtime gates. Proposed ownership is not implemented separation.
 
-The package has six build targets. `lake --wfail build` checks all six;
+The package has seven build targets. `lake --wfail build` checks all seven;
 `lake --wfail build Vegas` checks the Vegas library without the backend or the
 independent message-interaction experiments.
 
 | Target | Contents | Local dependencies |
 | --- | --- | --- |
+| `GameTheoryExtensions` | General finite-mixture game-form simulations, composition, expected-utility transport, and finite regression witnesses, under GameTheory namespaces | none |
 | `Interaction` | Native pending-message kernel, atomic application inclusion, timeout dependency gates, ideal commitments, sealed application rules, bounded policies and hiding | none |
 | `InteractionTests` | Native interaction games, commitment traffic, and timeout-gate regressions | `Interaction` |
-| `Vegas` | Core and surface syntax, event graphs, machine semantics, games, abstract runtimes, public serialization, sealed-message compiler fragment | `Interaction` |
+| `Vegas` | Core and surface syntax, event graphs, machine semantics, games, abstract runtimes, public serialization, sealed-message compiler fragment | `Interaction`, `GameTheoryExtensions` |
 | `VegasEVM` | Contract representations, deployment and instruction semantics, backend compilation, local code-generation proofs | `Vegas` |
 | `VegasTests` | Concrete witnesses and regression tests | `Vegas`, `VegasEVM` |
 | `Paper` | Axiom-pinned general claims and concrete paper witnesses | `Vegas`, `VegasEVM`, `VegasTests` |
@@ -23,6 +24,11 @@ pool and ideal-service carriers import none; the dependency gate uses Mathlib
 finite sets, and the policy interpretation uses GameTheory's existing
 `GameForm` and finite laws. The table describes local library dependencies,
 not additional logical axioms.
+
+`GameTheoryExtensions` uses only GameTheory and its mathematical dependencies;
+the boundary checker rejects application-specific imports. Its public declarations
+belong to `GameTheory.GameForm`, so porting them does not require a Vegas-facing
+compatibility API. Compiler-specific simulation instances remain in `Vegas`.
 
 ## Message-interaction boundary
 

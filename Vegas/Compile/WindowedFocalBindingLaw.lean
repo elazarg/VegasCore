@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedSourceDecisionCoverage
+import Vegas.Compile.WindowedBlockDeterminism
 
 /-! # Exact continuation law for focal binding blocks -/
 
@@ -79,40 +80,68 @@ theorem continuation_bind
     root rootProfile deadlineOf binding choice windowOf roster focal replacement initial
     blockIndex unrestricted next profile hinitial horigins hroster howners command hpure
     relay hrelay hrelayOther
-  let chosen := (head.action anchor).1
   have hlocal : head.extend (profile focal (.here guard tail))
       ((anchor.current.current.source.toView focal).eraseEnv) =
         FinDist.pure (head.action anchor) :=
     head.extend_at_checkpoint (profile focal (.here guard tail)) anchor
   rw [hlocal, FinDist.pure_bind]
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+    replacement
+  let base := fun actor =>
+    runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile actor)
+  let site : SourceDecisionSite focal (.commit name focal guard tail) Γ name ty guard :=
+    .here guard tail
+  let code := site.bindingCode fresh state (site.compiledField fresh state)
+  let instruction : ApplicationInstruction P L := .bind code
+  let timed := (instruction.withBindingTimeouts binding).withChoiceTimeouts choice
+  have hfocal : players focal = fun history view => FinDist.pure (command history view) := by
+    simp [players, windowedPlayers, hpure]
+  have hothers : ∀ actor, actor ≠ focal →
+      players actor = runtime.blockPlayer actor (base actor) := by
+    intro actor hactor
+    simp only [players, base, windowedPlayers, Function.update_of_ne hactor,
+      windowedReferencePlayers]
+    rfl
+  have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
+      unrestricted next).instructions deadlineOf =
+        instruction :: next.instructions deadlineOf := rfl
+  have hindexOriginal := anchor.sourcePrefix.checkpoint.instruction_at instruction _ hhead
+  have hindex : runtime.image.instructions[blockIndex]? = some timed := by
+    simp only [runtime, windowed, ApplicationImage.withChoiceTimeouts,
+      ApplicationImage.withBindingTimeouts, ApplicationPlan.image, List.getElem?_map,
+      hindexOriginal, Option.map_some, timed]
+  have htimedOwner : timed.submitter = some focal := by rfl
+  obtain ⟨deterministicFinal, hblock⟩ := runtime.runPolicies_block_eq_pure roster hroster
+    focal command base players hfocal hothers timed htimedOwner blockIndex anchor.execution
+    hindex (fun actor hactor =>
+      anchor.sourcePrefix.checkpoint.historyAlignment hroster actor hactor |>.1)
+    anchor.sourcePrefix.checkpoint.environmentHistory_length
+  have hfinal : anchor.final = deterministicFinal := by
+    have hanchorBlock := anchor.block
+    rw [hblock, FinDist.mem_support_pure] at hanchorBlock
+    exact hanchorBlock
+  subst deterministicFinal
+  have hblock' :
+      (root.windowed deadlineOf binding choice windowOf).application.runPolicies
+          (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+          ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+          (WindowedApplication.blockInvocations roster) anchor.execution =
+        FinDist.pure anchor.final := hblock
   have hrelayReference :
       root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement relay =
         root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf relay := by
     simp only [windowedPlayers, Function.update_of_ne hrelayOther]
-  calc
-    _ = ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
-        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
-        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
-        (WindowedApplication.blockInvocations roster) anchor.execution).bind
-          (fun _ => sourceAfter (anchor.current.current.source.cons chosen)) := by
-      apply FinDist.bind_congr
-      intro final hfinal
-      obtain ⟨value, sourceNext, hsource, hnext, hresolved, _, _⟩ :=
-        anchor.sourcePrefix.checkpoint.binding_block unrestricted next profile anchor.fallback
-          anchor.deadline anchor.selected anchor.current anchor.execution final hroster relay
-          hrelay hrelayReference hfinal
-      let sibling : BindingDecision (newName := newName) (fresh := fresh)
-          root rootProfile deadlineOf binding choice
-          windowOf roster focal replacement initial blockIndex unrestricted next profile :=
-        { anchor with final := final, block := hfinal }
-      have hvalue : value = chosen := by
-        have hagree := head.action_congr sibling anchor rfl
-        exact hresolved.trans hagree
-      rw [← hvalue, ← hsource]
-      apply hafter
-      exact .step anchor.sourcePrefix hfinal
-        (.binding anchor.fallback anchor.deadline anchor.selected value hsource hresolved) hnext
-    _ = sourceAfter (anchor.current.current.source.cons chosen) := FinDist.bind_const _ _
+  rw [hblock', FinDist.pure_bind]
+  obtain ⟨value, sourceNext, hsource, hnext, hresolved, _, _⟩ :=
+    anchor.sourcePrefix.checkpoint.binding_block unrestricted next profile anchor.fallback
+      anchor.deadline anchor.selected anchor.current anchor.execution anchor.final hroster relay
+      hrelay hrelayReference anchor.block
+  have hvalue : value = (head.action anchor).1 := hresolved
+  rw [← hvalue, ← hsource]
+  apply hafter
+  exact .step anchor.sourcePrefix anchor.block
+    (.binding anchor.fallback anchor.deadline anchor.selected value hsource hresolved) hnext
 
 end Vegas.ApplicationPlan.BindingDecision
 
