@@ -41,6 +41,16 @@ backend would be a further artifact with its own proof edge.
 
 ## Current boundary
 
+The event-graph edge now has a checked strategic theorem at its narrow exact
+frontier. `Vegas.EventGraph.Strategic.deviation_law` and its Nash corollary
+compare the graph's full behavioral presentation with the canonical
+declared-read policy presentation. Under declared-read information locality
+and one ready commitment per player, every canonical unilateral replacement
+has the exact law of one behavioral graph replacement (not merely a mixture),
+for every profile and every observation utility. This theorem is deliberately
+graph-level: it does not identify the written-order `sourceGameForm` with the
+graph game, and it does not instantiate a message runtime.
+
 The strict sealed-message edge has checked whole-run source reconstruction and
 ideal-service hiding laws. Its whole-program strategic preservation theorem is
 not yet proved. `SealedCompilation.StrategicCertificate` packages the exact

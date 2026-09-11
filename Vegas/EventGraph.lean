@@ -35,6 +35,7 @@ import Vegas.EventGraph.PolicyRoundtrip
 import Vegas.EventGraph.Recall
 import Vegas.EventGraph.Sequential
 import Vegas.EventGraph.Skeleton
+import Vegas.EventGraph.Strategic
 import Vegas.EventGraph.SourceOrder
 import Vegas.EventGraph.TopologicalOrder
 import Vegas.EventGraph.Validate

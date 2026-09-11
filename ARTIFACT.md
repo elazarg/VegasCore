@@ -77,6 +77,15 @@ utility guarantees and same-error approximate-Nash preservation and
 reflection. The pending-message certificate is the next open proof obligation;
 support refinement and hiding alone do not discharge it.
 
+At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
+sharper exact statement under declared-read locality and a single ready
+commitment per player: every canonical unilateral replacement is one behavioral
+graph deviation, and `isεNash_compileProfile_iff` follows for every observation
+utility. `Paper.lean` delegates both graph claims directly. The theorem is not
+yet a source-language or pending-message theorem; a graph with simultaneous
+same-player commitments needs a correlated frontier strategy or an explicit
+additional hypothesis.
+
 The reusable mechanism-design step for a designated quit is proved in
 `GameTheoryExtensions/Core/QuitTransfer.lean`. It transfers a strict source
 improvement whenever the runtime supplies a support-level law identifying the

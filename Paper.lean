@@ -8,6 +8,7 @@ import GameTheoryExtensions.Core.MixtureSimulation
 import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedTimeoutRefinement
+import Vegas.EventGraph.Strategic
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedStrategic
@@ -167,6 +168,52 @@ theorem sealed_quit_dominance_transfer
   certificate.compiled_quit_profile_not_isNash_of_quit_law
     value profile who quit preferred quitTarget hquit hstrict
 
+/-! The graph-level strategic edge is complete under its explicit information
+conditions. It is the reusable theorem a concrete runtime must instantiate
+before pending messages, clocks, or settlement are added. -/
+
+theorem graph_nash_preservation
+    {G : EventGraph.Graph Player L}
+    [Fintype Player]
+    (hwf : G.WF) (hguards : EventGraph.GuardLive G)
+    (hlocal : EventGraph.CommitInformationLocal G hwf hguards)
+    (hsingle : ∀ (cfg : EventGraph.Config G) who first second,
+      EventGraph.ReadyCommitNode G cfg who first →
+      EventGraph.ReadyCommitNode G cfg who second → first = second)
+    (value : EventGraph.ReachableConfig G → Player → ℝ) (ε : ℝ)
+    (profile : Profile
+      (EventGraph.Strategic.graphModel G hwf hguards).behavioralSignature) :
+    IsεNash (EventGraph.policyGame G hwf hguards)
+      (fun outcome who => value (EventGraph.Strategic.policyObserve G outcome) who) ε
+      ((EventGraph.Strategic.simulation G hwf hguards hlocal hsingle).compileProfile profile) ↔
+      IsεNash (EventGraph.behavioralGame G hwf hguards)
+        (fun outcome who =>
+          value (EventGraph.Strategic.behavioralObserve G hwf hguards outcome) who) ε profile :=
+  EventGraph.Strategic.isεNash_compileProfile_iff G hwf hguards hlocal hsingle value ε profile
+
+theorem graph_exact_deviation
+    {G : EventGraph.Graph Player L}
+    [Fintype Player]
+    (hwf : G.WF) (hguards : EventGraph.GuardLive G)
+    (hlocal : EventGraph.CommitInformationLocal G hwf hguards)
+    (hsingle : ∀ (cfg : EventGraph.Config G) who first second,
+      EventGraph.ReadyCommitNode G cfg who first →
+      EventGraph.ReadyCommitNode G cfg who second → first = second)
+    (profile : Profile
+      (EventGraph.Strategic.graphModel G hwf hguards).behavioralSignature)
+    (who : Player) (replacement : EventGraph.CommitPolicy G who) :
+    ∃ sourceReplacement :
+        (EventGraph.Strategic.graphModel G hwf hguards).behavioralSignature.Strategy who,
+      ((EventGraph.policyGame G hwf hguards).play
+        (Profile.update (sig := EventGraph.policySignature G)
+          (fun player => EventGraph.CommitPolicy.fromBehavioral hwf hguards player
+            (profile player)) who replacement)).map
+          (EventGraph.Strategic.policyObserve G) =
+        ((EventGraph.behavioralGame G hwf hguards).play
+          (Profile.update profile who sourceReplacement)).map
+          (EventGraph.Strategic.behavioralObserve G hwf hguards) :=
+  EventGraph.Strategic.deviation_law G hwf hguards hlocal hsingle profile who replacement
+
 end Vegas.Paper
 
 /-- info: 'Vegas.Paper.sealed_rule_count' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -200,3 +247,13 @@ end Vegas.Paper
 /-- info: 'Vegas.Paper.sealed_quit_dominance_transfer' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sealed_quit_dominance_transfer
+
+/-- info: 'Vegas.Paper.graph_nash_preservation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.graph_nash_preservation
+
+/-- info: 'Vegas.Paper.graph_exact_deviation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.graph_exact_deviation
