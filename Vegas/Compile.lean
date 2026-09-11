@@ -156,6 +156,10 @@ import Vegas.Compile.WindowedBindingPairing
 import Vegas.Compile.WindowedBindingSubmission
 import Vegas.Compile.WindowedNormalSuffix
 import Vegas.Compile.WindowedBindingPrivacy
+import Vegas.Compile.WindowedPublicChoiceReadiness
+import Vegas.Compile.WindowedPublicChoiceSubmission
+import Vegas.Compile.WindowedPublicChoicePairing
+import Vegas.Compile.WindowedPublicChoicePrivacy
 import Vegas.Compile.WindowedBindingCheckpoint
 import Vegas.Compile.WindowedPublicChoiceCheckpoint
 import Vegas.Compile.WindowedBindingExecution

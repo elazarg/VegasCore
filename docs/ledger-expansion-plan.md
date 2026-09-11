@@ -498,9 +498,38 @@ the original root-profile lifts and fixed pure raw replacement. The endpoint
 returns both final information agreement and actual full-block support on
 each side; the source chance law supplies that support. It does not assert
 agreement between different public draws. `WindowedGatedExecution` supplies
-the shared player-only and inactive-suffix inductions. The unchanged-owner
-binding comparison is complete; public-choice, conditional-disclosure, and
-conditional-copy cases still need their full-block paired comparisons.
+the shared player-only and inactive-suffix inductions.
+
+`WindowedCheckpoint.publicChoice_block_agreement_of_same_draw` compares the
+unchanged owner's complete public-choice block with the same source-supported
+published value. The two private source views and choice distributions may
+differ. The source checkpoint supplies cache freshness, readout, dispatch, and
+the exact first-poll source kernel; the generated second poll waits rather than
+retrying or resampling. Arbitrary other-player polls preserve the owner's
+fresh serial and submitted packet. Public validation derives native acceptance
+from source legality, normal service includes that actual packet, and the
+remaining clock/relay slots are inactive. The endpoint returns both final
+information agreement and membership in each actual full-block execution.
+It assumes neither successful inclusion nor final inactivity. A checked
+mixed-type program exercises the result with arbitrary raw opposing traffic
+and no timeout handlers. Binding and public choice share the derivation of
+normal-service selection from actual polling.
+
+The unchanged-owner binding and public-choice comparisons are complete;
+conditional-disclosure and conditional-copy still need their full-block
+comparisons. For the latter two, compare the encoded public optional result,
+`spec.encoding chosenLeft = spec.encoding chosenRight`, rather than demanding
+equal source representations. The existing source sampling, canonical
+disposition, and frozen-source binding lemmas should establish ordinary
+admission for generated decline, opaque opening, and public-default payloads.
+Both source constructors use the same conditional runtime instruction, so
+their operational comparison should be shared. The missing paired inclusion
+lemma must use per-side frozen-source evidence: a nonfocal opaque opening
+consults that author's private verifier, and the generic non-opening inclusion
+lemma does not apply. After proving that the two actual inclusions publish the
+same result, `after_normal_agreement` supplies the inactive suffix. This route
+does not need timeout settlement for the unchanged owner; deviating owners
+still require the existing resolution service.
 
 Binding-action extraction needs more than an existential successor checkpoint.
 `handle_binding_source_coupling` computes the chosen value from the actual

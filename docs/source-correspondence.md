@@ -139,8 +139,27 @@ service alignment, cache freshness, exact source-prefix refinement, and
 accepted bindings throughout the induction. Source environments and compiler
 cursors occur only in these proofs, not as runtime-policy inputs.
 
-This forward law is independent of the source-to-private-request deviation
-theorem above. Public-message deviation simulation, including completion or
-source-level resolution of silence and malformed commitments under an admitted
-service, remains open. A missing or rejected submission can stall the serial
+This serial forward law and the request-model deviation theorem above are
+separate results. A missing or rejected submission can stall the serial
 reference execution; its service theorem is not a fairness or timeout theorem.
+
+The windowed block service adds fixed ordinary polling, inclusion, clock, and
+relay opportunities. `WindowedSourcePrefix.covers` constructs a sequential
+source derivation for every supported initialized block prefix under an
+arbitrary randomized unilateral raw replacement. `terminates` proves source
+termination and native completion for the full instruction count. These
+results require source-certified fallbacks, binding origins, a duplicate-free
+roster, and an unchanged relay. They establish support and progress, not a
+source strategy or equality of outcome distributions. The fixed service does
+not deliver pending packets to player inboxes; general delivery and adaptive
+scheduling require further comparisons.
+
+Source-policy reconstruction requires a paired-execution argument. Its
+complete-block cases include focal-owned instructions, public chance and
+unchanged public choices with the same supported published value, and
+unchanged private bindings with possibly different hidden draws. The
+comparison retains actual raw focal commands,
+local histories, pending messages, receipts, and public activation metadata.
+The general public-message deviation law remains open: these local
+comparisons must determine one legal source policy from actual source views,
+then establish its complete outcome law against unchanged opponents.
