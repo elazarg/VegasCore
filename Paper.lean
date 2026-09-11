@@ -24,7 +24,10 @@ finite-mixture law for its considered unilateral deviations.
 The pending-message backtranslation for the concrete policy runtime is an open
 research obligation. It is not represented here as a theorem with an
 unjustified universal conclusion; the certificate interface records exactly
-what that proof must construct.
+what that proof must construct. If the eventual runtime edge has a target-only
+early-resolution action, its Nash theorem will additionally require a checked
+strict-dominance law for the corresponding source nullable quit, unless that
+action is itself backtranslated as an ordinary source deviation.
 -/
 
 namespace Vegas.Paper

@@ -51,9 +51,13 @@ openings produce no earlier source step. A payload-dependent scheduler or an
 accepted action before that point would be a genuinely stronger runtime model
 and would need an additional source observation or an impossibility theorem.
 Source-level quitting discharges a separate branch only after the runtime's
-resolution edge supplies a quit law. The sealed kernel treats malformed
-traffic as a stutter; a timeout or other resolution rule may then classify that
-run as the source quit, but that classification is a separate proof obligation.
+resolution edge supplies a quit law. If the edge adds a target-only early
+resolution action, the full Nash theorem is conditional on the corresponding
+nullable source quit being strictly dominated at every source profile. If the
+edge backtranslates the action as an ordinary source deviation, the dominance
+assumption is unnecessary. The sealed kernel treats malformed traffic as a
+stutter; a timeout or other resolution rule may then classify that run as the
+source quit, but that classification is a separate proof obligation.
 The reusable transfer theorem is proved in
 `GameTheoryExtensions.Core.QuitTransfer`.
 

@@ -70,8 +70,14 @@ visible future, would require a stronger source observation or a separate
 impossibility result. The generic
 `GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash`
 theorem proves the mechanism-design step once a runtime resolution law is
-supported entirely on the source quit. The sealed kernel's rejected packet is
-only a stutter; classifying it as quit is a timeout/resolution theorem.
+supported entirely on the source quit. If that resolution action is an
+additional target-only action, the end-to-end Nash theorem is therefore
+conditional on the source nullable quit being strictly dominated (uniformly
+over source profiles): a target-only early quit cannot then be a best response.
+If the runtime action can instead be backtranslated as an ordinary source
+deviation, no dominance hypothesis is needed. The sealed kernel's rejected
+packet is only a stutter; classifying it as quit is a timeout/resolution
+theorem.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.
