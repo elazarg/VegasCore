@@ -41,9 +41,9 @@ strategic observation surface. Checked infrastructure currently includes:
 - the source law for the first poll;
 - preservation of an accepted request across a delivery/reaction round;
 - the paired delivery/reaction segment used by the intended extraction;
-- a complete unrestricted-binding delivery block, including recipient delivery
-  and reaction slots, a source successor, a next checkpoint, and deadline-aware
-  progress from an unchanged relay.
+- complete unrestricted-binding and public-choice delivery blocks, including
+  recipient delivery and reaction slots, source successors, next checkpoints,
+  and deadline-aware progress from an unchanged relay.
 
 Still open are complete successors for the other heads, whole-prefix extraction
 of a pure source deviation, linear extension to arbitrary randomized deviations,
