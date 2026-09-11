@@ -95,6 +95,7 @@ import Vegas.Compile.ApplicationImageRefinement
 import Vegas.Compile.BindingImageRefinement
 import Vegas.Compile.ApplicationImageOutcome
 import Vegas.Compile.ApplicationImageStateRefinement
+import Vegas.Compile.ApplicationSourcePublicAgreement
 import Vegas.Compile.PublicationStateRefinement
 import Vegas.Compile.ApplicationPlanRefinement
 import Vegas.Compile.ApplicationTimeoutRefinement
@@ -150,6 +151,7 @@ import Vegas.Compile.WindowedPublicChoiceBlock
 import Vegas.Compile.WindowedCheckpoint
 import Vegas.Compile.ApplicationBlockFallbacks
 import Vegas.Compile.WindowedSourcePrefix
+import Vegas.Compile.ApplicationPrefixShape
 import Vegas.Compile.WindowedSourceCoverage
 import Vegas.Compile.WindowedBindingAction
 import Vegas.Compile.WindowedBindingPairing
@@ -158,6 +160,8 @@ import Vegas.Compile.WindowedNormalSuffix
 import Vegas.Compile.WindowedBindingPrivacy
 import Vegas.Compile.WindowedPublicChoiceReadiness
 import Vegas.Compile.WindowedPublicChoiceSubmission
+import Vegas.Compile.WindowedPublicChoiceInversion
+import Vegas.Compile.WindowedConditionalInversion
 import Vegas.Compile.WindowedSubmitWaitPairing
 import Vegas.Compile.WindowedPublicChoicePrivacy
 import Vegas.Compile.WindowedBindingCheckpoint

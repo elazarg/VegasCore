@@ -351,6 +351,60 @@ theorem sample_block_agreement_of_same_draw
     rw [hquotient]
     exact hindex
 
+/-- Actual chance blocks reaching the same recorded source draw preserve focal
+information. All fixed-draw branch witnesses are recovered from execution
+support and the successors' source refinement. -/
+theorem sample_block_agreement_at_source
+    (nextPlan : ApplicationPlan accounted fresh.2 (state.addSampleEvent name dist fresh.1).1)
+    (profile : SourceBehavioralProfile (.sample name dist tail))
+    (leftCurrent rightCurrent :
+      CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
+    (left right finalLeft finalRight :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex (.sample (fresh := fresh) nextPlan) profile
+      leftCurrent left)
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex (.sample (fresh := fresh) nextPlan) profile
+      rightCurrent right)
+    (agreement : WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal left right)
+    (command : List (root.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
+      (root.windowed deadlineOf binding choice windowOf).application.View →
+        (root.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (hroster : roster.Nodup)
+    (recordedLeft recordedRight : CoupledAt
+      (compileCore tail fresh.2 (state.addSampleEvent name dist fresh.1).1).graph
+      (state.addSampleEvent name dist fresh.1).1)
+    (value : L.Val ty)
+    (hsourceLeft : recordedLeft.current.source = leftCurrent.current.source.cons value)
+    (hsourceRight : recordedRight.current.source = rightCurrent.current.source.cons value)
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) left).support)
+    (hfinalRight : finalRight ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) right).support) :
+    WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal finalLeft finalRight := by
+  obtain ⟨hvalueLeft, middleLeft, hmiddleLeft, hsuffixLeft⟩ :=
+    sample_block_support_at_source nextPlan profile leftCurrent left finalLeft leftCheckpoint
+      recordedLeft value hsourceLeft hrefinesLeft hfinalLeft
+  obtain ⟨hvalueRight, middleRight, hmiddleRight, hsuffixRight⟩ :=
+    sample_block_support_at_source nextPlan profile rightCurrent right finalRight rightCheckpoint
+      recordedRight value hsourceRight hrefinesRight hfinalRight
+  exact (sample_block_agreement_of_same_draw nextPlan profile leftCurrent rightCurrent
+    left right leftCheckpoint rightCheckpoint agreement command hpure hroster value
+    hvalueLeft hvalueRight middleLeft middleRight finalLeft finalRight
+    hmiddleLeft hmiddleRight hsuffixLeft hsuffixRight).1
+
 end Vegas.ApplicationPlan.WindowedCheckpoint
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_agreement_of_same_draw'
@@ -358,3 +412,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_agreement_of_same_draw
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_agreement_at_source

@@ -41,6 +41,86 @@ variable {leftCurrent rightCurrent : CoupledAt (compileCore prog fresh state).gr
 variable {left right :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
+omit [DecidableEq P] in
+private theorem normal_environment_count (roster : List P) :
+    ((roster.flatMap fun actor => [Invocation.player actor, .player actor]) ++
+      [Invocation.environment]).countP Invocation.isEnvironment = 1 := by
+  induction roster with
+  | nil => rfl
+  | cons actor rest ih =>
+      simpa [List.flatMap_cons, List.append_assoc, Invocation.isEnvironment] using ih
+
+omit [DecidableEq P] in
+private theorem normal_suffix_environment_count (roster : List P) :
+    (Invocation.environment :: roster.flatMap
+      (fun actor => [Invocation.player actor, .environment])).countP
+        Invocation.isEnvironment = roster.length + 1 := by
+  have hcount : ∀ entries : List P,
+      (entries.flatMap fun actor => [Invocation.player actor, Invocation.environment]).countP
+        Invocation.isEnvironment = entries.length := by
+    intro entries
+    induction entries with
+    | nil => rfl
+    | cons actor tail ih => simp [List.flatMap_cons, Invocation.isEnvironment, ih]
+  simp only [List.countP_cons, Invocation.isEnvironment, ↓reduceIte, hcount]
+
+/-- Once the actual normal service resolves the current instruction, its
+remaining block slots preserve public memory and activation. The focal policy
+may be randomized and issue arbitrary raw commands. -/
+theorem after_normal_publicState
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex plan profile leftCurrent left)
+    (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hhead : plan.instructions deadlineOf = instruction :: rest)
+    (included final :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (hinactive : (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
+      included.native.application.base.memory ≠ some instruction.address)
+    (hincluded : included ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        ((roster.flatMap fun actor => [Invocation.player actor, .player actor]) ++ [.environment])
+        left).support)
+    (hfinal : final ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (.environment :: roster.flatMap fun actor => [Invocation.player actor, .environment])
+        included).support) :
+    (final.native.application.base.memory, final.native.application.active) =
+      (included.native.application.base.memory, included.native.application.active) := by
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
+    replacement
+  let normal := (roster.flatMap fun actor => [Invocation.player actor, .player actor]) ++
+    [Invocation.environment]
+  let suffix := Invocation.environment ::
+    roster.flatMap fun actor => [Invocation.player actor, .environment]
+  let timed := (instruction.withBindingTimeouts binding).withChoiceTimeouts choice
+  have haddress : timed.address = instruction.address := by cases instruction <;> rfl
+  have hindexOriginal := checkpoint.instruction_at instruction rest hhead
+  have hindex : runtime.image.instructions[blockIndex]? = some timed := by
+    simp only [runtime, windowed, ApplicationImage.withChoiceTimeouts,
+      ApplicationImage.withBindingTimeouts, ApplicationPlan.image, List.getElem?_map,
+      hindexOriginal, Option.map_some, timed]
+  have henv : included.environmentHistory.length =
+      blockIndex * (roster.length + 2) + 1 := by
+    rw [runtime.application.runPolicies_environmentHistory_length players
+      (runtime.blockEnvironment roster) normal left included hincluded,
+      normal_environment_count, checkpoint.environmentHistory_length]
+  apply runtime.runPolicies_block_inactive roster players suffix included final timed ?_
+    (by rwa [haddress]) hfinal
+  intro index hlo hhi
+  rw [henv] at hlo hhi
+  rw [normal_suffix_environment_count] at hhi
+  have hquotient : index / (roster.length + 2) = blockIndex := by
+    apply Nat.div_eq_of_lt_le
+    · omega
+    · nlinarith
+  rw [hquotient]
+  exact hindex
+
 /-- Paired actual normal-service prefixes extend to paired complete blocks
 when the current instruction has resolved. This applies to every instruction
 kind and does not require its owner to be the focal player. -/
@@ -131,26 +211,10 @@ theorem after_normal_agreement
     simp only [suffix, List.countP_cons, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
     convert WindowedApplication.relayInvocations_player_count roster hroster actor using 1
     rfl
-  have hnormalCount : normal.countP Invocation.isEnvironment = 1 := by
-    have hzero : (roster.flatMap fun actor =>
-        [Invocation.player actor, Invocation.player actor]).countP
-          Invocation.isEnvironment = 0 := by
-      apply List.countP_eq_zero.mpr
-      intro invocation hmem
-      cases invocation with
-      | player actor => simp [Invocation.isEnvironment]
-      | environment => simp at hmem
-    simp only [normal, List.countP_append, List.countP_cons, List.countP_nil,
-      Invocation.isEnvironment, ↓reduceIte, hzero, Nat.zero_add]
-  have hsuffixCount : suffix.countP Invocation.isEnvironment = roster.length + 1 := by
-    have hcount : ∀ entries : List P,
-        (entries.flatMap fun actor => [Invocation.player actor, Invocation.environment]).countP
-          Invocation.isEnvironment = entries.length := by
-      intro entries
-      induction entries with
-      | nil => rfl
-      | cons actor tail ih => simp [List.flatMap_cons, Invocation.isEnvironment, ih]
-    simp only [suffix, List.countP_cons, Invocation.isEnvironment, ↓reduceIte, hcount]
+  have hnormalCount : normal.countP Invocation.isEnvironment = 1 :=
+    normal_environment_count roster
+  have hsuffixCount : suffix.countP Invocation.isEnvironment = roster.length + 1 :=
+    normal_suffix_environment_count roster
   have hcounts := runtime.application.runPolicies_principalHistory_length
   have henvCounts := runtime.application.runPolicies_environmentHistory_length
   have hleftEnv : includedLeft.environmentHistory.length =
@@ -211,3 +275,8 @@ end Vegas.ApplicationPlan.WindowedCheckpoint
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_agreement
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_publicState'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.after_normal_publicState

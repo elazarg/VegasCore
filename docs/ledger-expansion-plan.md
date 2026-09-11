@@ -472,12 +472,23 @@ obligation. Backward source-view recall gives agreement at the preceding
 source boundary: public values and focal-owned sealed values must agree,
 whereas another owner's sealed values may differ. The constructor's paired
 block proof must recover runtime policy-input agreement from that induction
-hypothesis. A separate decision representative must pair a supported
+hypothesis. `WindowedSourcePrefix.profilePoint_after` and `profilePoint_eq`
+identify the deterministic typed plan/profile position at each block count.
+The `ProfilePoint` package records compiler structure and the reference profile;
+it contains neither source environments nor native executions. This supplies
+the structural alignment needed before comparing two predecessor steps.
+A separate decision representative must pair a supported
 pre-decision prefix with its resolution edge, so extraction never selects an
 earlier action from a final outcome or a later chance result. That decision
 carrier and its connection to source-policy extension remain unimplemented.
 
-The fixed-draw comparisons also need a source-indexed inversion of actual
+The information and law theorems must require the fixed polling roster to
+include every emitted decision owner. A certified fallback can resolve an
+unpolled owner's instruction, but does not implement that owner's source
+policy. This owner-coverage requirement is distinct from the unchanged-relay
+condition used for progress.
+
+The fixed-draw comparisons use a source-indexed inversion of actual
 block support. For chance, public choice, and conditional publication, first
 decompose the actual run to obtain its sampled value and its polling/service
 branches. The accepted handler identifies the written public field, and
@@ -491,6 +502,39 @@ and source-kernel support, not assume them. The existing prefix already
 retains the required evidence, so no additional branch certificate needs to
 be stored in `BlockSourceStep`. This is inversion of a supported block, not
 selection of a source strategy from a final outcome.
+
+`WindowedCheckpoint.sample_block_support_at_source` performs this inversion
+for chance. It uses the exact joint chance-block law and public-source readout
+to identify the sampled value with the recorded successor's value.
+`sample_block_agreement_at_source` consequently takes actual full-block
+support and source-successor refinement, deriving its fixed-draw branch
+witnesses internally. The checked fair-coin program exercises this endpoint
+with an arbitrary pure raw opponent.
+
+`publicChoice_block_support_at_source` supplies the corresponding inversion
+for an unchanged public-choice owner. Ordinary-poll support determines a
+source-supported draw and its fixed submission branch. The canonical pending
+packet identifies that draw with the normally accepted value; public-memory
+preservation after normal service and successor refinement identify it with
+the recorded source value. `publicChoice_block_agreement_at_source` uses these
+derived witnesses to compare actual complete blocks. Its checked mixed-type
+instance includes an initial public field, distinguishing publication-node
+addresses from stored result fields.
+
+`conditional_ordinary_support_result` recovers the actual encoded optional
+result and fixed submission branch for either conditional head. Identifying
+that result with a supplied complete-block source successor remains to be
+proved for conditional publication. The shared packet-retention and
+`after_normal_publicState` lemmas provide the normal-service parts of this
+remaining inversion, including under randomized raw replacement policies.
+The conditional proof should identify the two recovered dispositions through
+their common binding read, identify the optional results through injectivity
+of the canonical conditional-payload encoding, and compare the published
+source value with the successor's public-field readout. The payload
+injectivity argument belongs beside the conditional encoding API so both
+paired-block comparison and single-run inversion use it. Discharge and copy
+share this runtime argument through `ConditionalHead`; neither needs a
+separate source-language case added to the runtime model.
 
 The focal-owned block case is checked by
 `WindowedCheckpoint.owned_block_agreement`. Given two actual checkpoints and

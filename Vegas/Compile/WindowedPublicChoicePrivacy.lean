@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedSubmitWaitPairing
 import Vegas.Compile.WindowedPublicChoiceReadiness
 import Vegas.Compile.WindowedPublicChoiceSubmission
+import Vegas.Compile.WindowedPublicChoiceInversion
 import Vegas.Compile.WindowedNormalSuffix
 
 /-! # Paired ordinary polls of an unchanged public-choice owner -/
@@ -305,9 +306,11 @@ theorem publicChoice_block_agreement_of_same_draw
     at hfinalLeft hfinalRight
   obtain ⟨includedLeft, hincludedLeft, hfinalLeft⟩ := hfinalLeft
   obtain ⟨includedRight, hincludedRight, hfinalRight⟩ := hfinalRight
-  obtain ⟨hleftInclude, hinactive⟩ := leftCheckpoint.publicChoice_ordinary_inclusion hinitial
+  obtain ⟨_, _, _, _, hleftInclude, hinactive⟩ :=
+    leftCheckpoint.publicChoice_ordinary_inclusion hinitial
     hroster howner hother polledLeft includedLeft hpolledLeft hincludedLeft
-  obtain ⟨hrightInclude, _⟩ := rightCheckpoint.publicChoice_ordinary_inclusion hinitial
+  obtain ⟨_, _, _, _, hrightInclude, _⟩ :=
+    rightCheckpoint.publicChoice_ordinary_inclusion hinitial
     hroster howner hother polledRight includedRight hpolledRight hincludedRight
   have hserial : left.native.pool.nextSerial owner = right.native.pool.nextSerial owner :=
     congrArg (fun pool => pool.nextSerial owner) agreement.pool
@@ -351,6 +354,88 @@ theorem publicChoice_block_agreement_of_same_draw
     exact ⟨includedRight, hnormalRight, hfinalRight⟩
 
 
+/-- Complete public-choice executions reaching the same recorded source value
+preserve focal information. Kernel membership and fixed-submission branches
+are recovered from the actual blocks and their successor refinements. -/
+theorem publicChoice_block_agreement_at_source
+    (publicGuard :
+      (PublicChoiceSite.atHead name publicName owner guard tail).PubliclyValidatable fresh state)
+    (nextPlan : ApplicationPlan accounted fresh.2.2
+      (((state.addCommitEvent name owner guard fresh.1).1).addRevealEvent
+        publicName owner .here fresh.2.1).1)
+    (profile : SourceBehavioralProfile
+      (.commit name owner guard (.reveal publicName owner name .here tail)))
+    (leftCurrent rightCurrent : CoupledAt
+      (compileCore (.commit name owner guard (.reveal publicName owner name .here tail))
+        fresh state).graph state)
+    (left right finalLeft finalRight :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex (.publicChoice (newName := newName)
+        (unresolved := unresolved) publicGuard nextPlan) profile leftCurrent left)
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      roster focal replacement blockIndex (.publicChoice (newName := newName)
+        (unresolved := unresolved) publicGuard nextPlan) profile rightCurrent right)
+    (agreement : WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal left right)
+    (hinitial : root.InitialControllerReadsPublic)
+    (command : List (root.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
+      (root.windowed deadlineOf binding choice windowOf).application.View →
+        (root.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (hpure : replacement = fun history view => FinDist.pure (command history view))
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (value : L.Val ty)
+    (recordedLeft recordedRight : CoupledAt
+      (compileCore tail fresh.2.2
+        (((state.addCommitEvent name owner guard fresh.1).1).addRevealEvent
+          publicName owner .here fresh.2.1).1).graph
+      (((state.addCommitEvent name owner guard fresh.1).1).addRevealEvent
+        publicName owner .here fresh.2.1).1)
+    (hsourceLeft : recordedLeft.current.source =
+      (leftCurrent.current.source.cons value).cons value)
+    (hsourceRight : recordedRight.current.source =
+      (rightCurrent.current.source.cons value).cons value)
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) left).support)
+    (hfinalRight : finalRight ∈
+      ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+        (WindowedApplication.blockInvocations roster) right).support) :
+    WindowedApplication.PolicyAgreement
+      (root.windowed deadlineOf binding choice windowOf) focal finalLeft finalRight := by
+  obtain ⟨beforeRoster, afterRoster, hsplit⟩ := List.mem_iff_append.mp howner
+  obtain ⟨polledLeft, hvalueLeft, hbranchLeft, includedLeft, hincludedLeft, hsuffixLeft⟩ :=
+    publicChoice_block_support_at_source publicGuard nextPlan profile leftCurrent left finalLeft
+      leftCheckpoint hinitial hroster howner hother beforeRoster afterRoster hsplit
+      value recordedLeft hsourceLeft hrefinesLeft hfinalLeft
+  obtain ⟨polledRight, hvalueRight, hbranchRight, includedRight, hincludedRight, hsuffixRight⟩ :=
+    publicChoice_block_support_at_source publicGuard nextPlan profile rightCurrent right finalRight
+      rightCheckpoint hinitial hroster howner hother beforeRoster afterRoster hsplit
+      value recordedRight hsourceRight hrefinesRight hfinalRight
+  apply (publicChoice_block_agreement_of_same_draw publicGuard nextPlan profile
+    leftCurrent rightCurrent left right leftCheckpoint rightCheckpoint agreement hinitial
+    command hpure hroster howner hother beforeRoster afterRoster hsplit value
+    hvalueLeft hvalueRight polledLeft polledRight hbranchLeft hbranchRight
+    finalLeft finalRight ?_ ?_).1
+  · change finalLeft ∈ (((root.windowed deadlineOf binding choice windowOf).application.invoke
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      polledLeft .environment).bind _).support
+    simp only [FinDist.support_bind, Set.mem_iUnion]
+    exact ⟨includedLeft, hincludedLeft, hsuffixLeft⟩
+  · change finalRight ∈ (((root.windowed deadlineOf binding choice windowOf).application.invoke
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      polledRight .environment).bind _).support
+    simp only [FinDist.support_bind, Set.mem_iUnion]
+    exact ⟨includedRight, hincludedRight, hsuffixRight⟩
+
 end Vegas.ApplicationPlan.WindowedCheckpoint
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.publicChoice_ordinary_agreement_of_same_draw'
@@ -363,3 +448,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.publicChoice_block_agreement_of_same_draw
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.publicChoice_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.publicChoice_block_agreement_at_source

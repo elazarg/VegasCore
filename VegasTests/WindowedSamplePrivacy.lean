@@ -120,6 +120,40 @@ theorem initial_sample_block_agreement_of_same_draw
   · simpa [runtime, players] using hfinalLeft
   · simpa [runtime, players] using hfinalRight
 
+/-- The source-indexed endpoint needs only actual complete-block support and
+the recorded successors' refinement, not an externally supplied decomposition
+into polling and fixed-chance branches. -/
+theorem initial_sample_block_agreement_at_source
+    (profile : SourceBehavioralProfile sampleCore)
+    (command : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (value : Bool)
+    (recordedLeft recordedRight : CoupledAt (compileCore sampleCore sampleFresh sampleState).graph
+      nextState)
+    (hsourceLeft : recordedLeft.current.source =
+      (compiledInitialCoupled source).current.source.cons value)
+    (hsourceRight : recordedRight.current.source =
+      (compiledInitialCoupled source).current.source.cons value)
+    (finalLeft finalRight : runtime.application.PolicyExecution)
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈ (runtime.application.runPolicies (players profile command)
+      (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) initial).support)
+    (hfinalRight : finalRight ∈ (runtime.application.runPolicies (players profile command)
+      (runtime.blockEnvironment [0, 1])
+      (WindowedApplication.blockInvocations [0, 1]) initial).support) :
+    WindowedApplication.PolicyAgreement runtime 0 finalLeft finalRight := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked plan profile deadlineOf
+    noBinding noChoice windowOf [0, 1] 0 (replacement command)
+  have agreement : WindowedApplication.PolicyAgreement runtime 0 initial initial :=
+    ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
+  exact ApplicationPlan.WindowedCheckpoint.sample_block_agreement_at_source nextPlan profile
+    (compiledInitialCoupled source) (compiledInitialCoupled source)
+    initial initial finalLeft finalRight checkpoint checkpoint agreement command rfl (by decide)
+    recordedLeft recordedRight value hsourceLeft hsourceRight hrefinesLeft hrefinesRight
+    hfinalLeft hfinalRight
+
 end VegasTests.WindowedSamplePrivacy
 
 /-- info: 'VegasTests.WindowedSamplePrivacy.initial_sample_block_agreement_of_same_draw'
@@ -127,3 +161,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   VegasTests.WindowedSamplePrivacy.initial_sample_block_agreement_of_same_draw
+
+/-- info: 'VegasTests.WindowedSamplePrivacy.initial_sample_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedSamplePrivacy.initial_sample_block_agreement_at_source

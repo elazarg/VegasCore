@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedCheckpoint
 import Vegas.Compile.WindowedBlockSample
 import Vegas.Compile.WindowedSampleCaches
+import Vegas.Compile.ApplicationSourcePublicAgreement
 
 /-! # Source chance through an actual generated service block
 
@@ -105,6 +106,60 @@ theorem sample_block
     current (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
     execution hlookup hindex (by rw [hlength]; exact Nat.mul_mod_left _ _)
     hactive checkpoint.refines checkpoint.consistent
+
+/-- An actual chance block reaching a recorded source successor must have drawn
+that successor's public value. The witnesses are branches of the real policy
+execution, recovered from its exact chance law and shared public readout. -/
+theorem sample_block_support_at_source
+    (nextPlan : ApplicationPlan accounted fresh.2 (state.addSampleEvent name dist fresh.1).1)
+    (profile : SourceBehavioralProfile (.sample name dist tail))
+    (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
+    (execution final :
+      (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
+    (recorded : CoupledAt
+      (compileCore tail fresh.2 (state.addSampleEvent name dist fresh.1).1).graph
+      (state.addSampleEvent name dist fresh.1).1)
+    (value : L.Val ty)
+    (hsource : recorded.current.source = current.current.source.cons value)
+    (hrefines : final.native.application.base.Refines recorded.current.graph.1)
+    (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
+      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
+      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      (WindowedApplication.blockInvocations roster) execution).support) :
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
+      replacement
+    value ∈ (L.evalDist dist current.current.source.eraseSampleEnv).support ∧
+      ∃ middle,
+        middle ∈ (runtime.application.runPolicies players (runtime.blockEnvironment roster)
+          (roster.flatMap fun actor => [Invocation.player actor, .player actor])
+          execution).support ∧
+        final ∈ (runtime.application.runPolicies players (runtime.blockEnvironment roster)
+          (Invocation.environment :: roster.flatMap
+            (fun actor => [Invocation.player actor, .environment]))
+          (runtime.sampleExecution middle (headSampleCode fresh state) value)).support := by
+  obtain ⟨hlaw, hcoupling⟩ := sample_block nextPlan profile current execution checkpoint
+  rw [hlaw] at hfinal
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hfinal
+  obtain ⟨middle, hmiddle, drawn, hdrawn, hsuffix⟩ := hfinal
+  obtain ⟨drawnNext, hdrawnSource, hnext⟩ := hcoupling middle hmiddle drawn hdrawn
+  have hpublic :
+      (compileCore tail fresh.2 (state.addSampleEvent name dist fresh.1).1).graph.fieldRefPublic
+        ⟨(state.addSampleEvent name dist fresh.1).1.fieldOf
+          (VHasVar.here (x := name) (τ := .pub ty)), ty⟩ := by
+    obtain ⟨spec, hfield, htype, howner⟩ :=
+      compileCore_fieldOf_spec tail fresh.2 (state.addSampleEvent name dist fresh.1).1
+        (VHasVar.here (x := name) (τ := .pub ty))
+    exact ⟨spec, hfield, htype, howner⟩
+  have hvalue := ApplicationImage.State.publicSourceValue_eq_of_memory_eq
+    (leftCurrent := drawnNext.current) (rightCurrent := recorded.current)
+    (hnext final hsuffix).1 hrefines rfl VHasVar.here hpublic hpublic
+  have heq : drawn = value := by
+    simpa only [hdrawnSource, hsource, VEnv.cons_get_here] using hvalue
+  subst drawn
+  exact ⟨hdrawn, middle, hmiddle, hsuffix⟩
 
 /-- Construct the initialized next checkpoint from the actual chance block's
 source coupling, retaining all native histories and future cache invariants. -/
@@ -272,6 +327,11 @@ end Vegas.ApplicationPlan.WindowedCheckpoint
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.sample_block
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_support_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_support_at_source
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.sample_block_successor' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

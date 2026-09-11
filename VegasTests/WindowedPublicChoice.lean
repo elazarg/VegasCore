@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.WindowedPublicChoicePrivacy
+import Vegas.Compile.WindowedPublicChoiceInversion
 import VegasTests.ApplicationImage
 
 /-! # Generated guarded public choice with arbitrary opposing traffic -/
@@ -62,8 +63,10 @@ theorem initial_publicChoice_inclusion
       runtime.image.activeAddress? included.native.application.base.memory ≠ some 1 := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
     (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
-  exact checkpoint.publicChoice_ordinary_inclusion initial_reads_public
-    (by decide) (by simp) (by decide) polled included hpolled hincluded
+  obtain ⟨_, _, _, _, hinclude, hinactive⟩ :=
+    checkpoint.publicChoice_ordinary_inclusion initial_reads_public
+      (by decide) (by simp) (by decide) polled included hpolled hincluded
+  exact ⟨hinclude, hinactive⟩
 
 /-- The pending packet comes from the source kernel and is submitted once,
 even with arbitrary preceding opposing polls. -/
@@ -89,6 +92,29 @@ def fixedDrawPolls (profile : SourceBehavioralProfile source.prog)
     [.player 1, .player 1] initial).bind fun middle =>
       (runtime.application.playerStep 0 middle (.submit (.choice 1 ⟨.bool, value⟩))).bind
         fun submitted => runtime.application.playerStep 0 submitted .wait
+
+/-- Actual ordinary polling determines a supported source draw and a branch
+of the explicit submit/wait execution, even for a randomized raw opponent. -/
+theorem initial_publicChoice_draw
+    (profile : SourceBehavioralProfile source.prog)
+    (replacement : runtime.application.PlayerPolicy)
+    (polled : runtime.application.PolicyExecution)
+    (hpolled : polled ∈ (runtime.application.runPolicies (players profile replacement)
+      (runtime.blockEnvironment [1, 0])
+      [.player 1, .player 1, .player 0, .player 0] initial).support) :
+    ∃ value, value ∈ ((profile 0 firstSite.decision
+      ((source.env.toView 0).eraseEnv)).map Subtype.val).support ∧
+      polled ∈ (fixedDrawPolls profile replacement value).support := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
+    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+  obtain ⟨value, hvalue, hbranch⟩ :=
+    ApplicationPlan.WindowedCheckpoint.publicChoice_ordinary_support_value
+      first_publicly_validatable _ profile _ initial polled checkpoint
+      initial_reads_public (by decide) (by simp) (by decide) [1] [] rfl hpolled
+  refine ⟨value, hvalue, ?_⟩
+  have haddress : compilerInitial.nodes.length + 1 = 1 := rfl
+  simpa only [fixedDrawPolls, runtime, players, List.flatMap_cons, List.flatMap_nil,
+    List.append_nil, MessageApplication.runPolicies, FinDist.bind_pure, haddress] using hbranch
 
 /-- The same supported source choice gives agreeing complete native blocks
 against any fixed pure raw opponent. The theorem also proves that the explicit
@@ -141,6 +167,44 @@ theorem initial_publicChoice_block_agreement
   · simpa only [fixedDrawPolls, runtime, players, List.flatMap_cons, List.flatMap_nil,
       List.append_nil, MessageApplication.runPolicies, FinDist.bind_pure, haddress] using hright
 
+def firstSuccessorState : BuildState TestPlayer simpleExpr FirstPublishedContext :=
+  (((compilerInitial.addCommitEvent 1 0 firstGuard source.fresh.1).1).addRevealEvent
+    2 0 .here source.fresh.2.1).1
+
+/-- The checked mixed-type program uses an initial public field, so its node
+addresses and stored field indices differ. Source-indexed comparison derives
+the actual submitted Boolean without assuming a fixed execution branch. -/
+theorem initial_publicChoice_block_agreement_at_source
+    (profile : SourceBehavioralProfile source.prog)
+    (command : List runtime.application.PlayerEntry → runtime.application.View →
+      runtime.application.PlayerCommand)
+    (value : Bool)
+    (recordedLeft recordedRight : CoupledAt compiled.graph firstSuccessorState)
+    (hsourceLeft : recordedLeft.current.source = (source.env.cons value).cons value)
+    (hsourceRight : recordedRight.current.source = (source.env.cons value).cons value)
+    (finalLeft finalRight : runtime.application.PolicyExecution)
+    (hrefinesLeft : finalLeft.native.application.base.Refines recordedLeft.current.graph.1)
+    (hrefinesRight : finalRight.native.application.base.Refines recordedRight.current.graph.1)
+    (hfinalLeft : finalLeft ∈ (runtime.application.runPolicies
+      (players profile (fun history view => FinDist.pure (command history view)))
+      (runtime.blockEnvironment [1, 0])
+      (WindowedApplication.blockInvocations [1, 0]) initial).support)
+    (hfinalRight : finalRight ∈ (runtime.application.runPolicies
+      (players profile (fun history view => FinDist.pure (command history view)))
+      (runtime.blockEnvironment [1, 0])
+      (WindowedApplication.blockInvocations [1, 0]) initial).support) :
+    WindowedApplication.PolicyAgreement runtime 1 finalLeft finalRight := by
+  have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
+    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1
+    (fun history view => FinDist.pure (command history view))
+  have agreement : WindowedApplication.PolicyAgreement runtime 1 initial initial :=
+    ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
+  exact ApplicationPlan.WindowedCheckpoint.publicChoice_block_agreement_at_source
+    first_publicly_validatable _ profile _ _ initial initial finalLeft finalRight
+    checkpoint checkpoint agreement initial_reads_public command rfl
+    (by decide) (by simp) (by decide) value recordedLeft recordedRight
+    hsourceLeft hsourceRight hrefinesLeft hrefinesRight hfinalLeft hfinalRight
+
 end VegasTests.WindowedPublicChoice
 
 /-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_inclusion'
@@ -153,7 +217,17 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedPublicChoice.initial_publicChoice_submission
 
+/-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_draw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedPublicChoice.initial_publicChoice_draw
+
 /-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_block_agreement'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedPublicChoice.initial_publicChoice_block_agreement
+
+/-- info: 'VegasTests.WindowedPublicChoice.initial_publicChoice_block_agreement_at_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedPublicChoice.initial_publicChoice_block_agreement_at_source

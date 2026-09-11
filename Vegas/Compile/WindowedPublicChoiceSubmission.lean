@@ -122,10 +122,24 @@ theorem publicChoice_ordinary_inclusion
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
         ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
         polled .environment).support) :
-    included ∈ ((root.windowed deadlineOf binding choice windowOf).application.environmentPolicyStep
-      polled (.include (owner, execution.native.pool.nextSerial owner))).support ∧
-      (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
-        included.native.application.base.memory ≠ some (state.nodes.length + 1) := by
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    let site := PublicChoiceSite.atHead name publicName owner guard tail
+    let code := site.code fresh state
+    let timed : PublicChoiceCode P L := { code with timeout := choice code }
+    ∃ chosen ∈ (profile owner (.here guard (.reveal publicName owner name .here tail))
+        ((current.current.source.toView owner).eraseEnv)).support,
+      polled.native.pool.lookup (owner, execution.native.pool.nextSerial owner) =
+          some ⟨(owner, execution.native.pool.nextSerial owner),
+            .choice timed.endpoint.publicationNode ⟨ty, chosen.1⟩⟩ ∧
+        runtime.handle polled.native.application
+            ⟨(owner, execution.native.pool.nextSerial owner),
+              .choice timed.endpoint.publicationNode ⟨ty, chosen.1⟩⟩ =
+          some (runtime.advanceTo polled.native.application
+            (polled.native.application.base.publish timed chosen.1)) ∧
+        included ∈ (runtime.application.environmentPolicyStep polled
+            (.include (owner, execution.native.pool.nextSerial owner))).support ∧
+          runtime.image.activeAddress? included.native.application.base.memory ≠
+            some timed.endpoint.publicationNode := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
@@ -136,7 +150,7 @@ theorem publicChoice_ordinary_inclusion
   have hhead : (ApplicationPlan.publicChoice (newName := newName) (unresolved := unresolved)
       (fresh := fresh) publicGuard nextPlan).instructions deadlineOf =
         .publicChoice code :: nextPlan.instructions deadlineOf := rfl
-  obtain ⟨chosen, _, hserial, hlookup⟩ := checkpoint.publicChoice_ordinary_submission hinitial
+  obtain ⟨chosen, hchosen, hserial, hlookup⟩ := checkpoint.publicChoice_ordinary_submission hinitial
     hroster howner hother polled hpolled
   have hpublic := runtime.runPolicies_players_publicState players (runtime.blockEnvironment roster)
     polls (by simp [polls]) execution polled hpolled
@@ -166,7 +180,7 @@ theorem publicChoice_ordinary_inclusion
   change included ∈ (runtime.application.invoke players (runtime.blockEnvironment roster)
     polled .environment).support at hincluded
   simp only [MessageApplication.invoke, hcommand, FinDist.pure_bind] at hincluded
-  refine ⟨hincluded, ?_⟩
+  have hincludedStep := hincluded
   obtain ⟨activation, hactivation, hkey, _⟩ :=
     checkpoint.active_origin_clock (.publicChoice code) _ hhead
   have hrefines := runtime.runPolicies_players_refines players (runtime.blockEnvironment roster)
@@ -181,9 +195,9 @@ theorem publicChoice_ordinary_inclusion
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
     FinDist.mem_support_pure] at hincluded
   subst included
+  rw [hkey] at hadmission
   have hinactive := hadmission.2
-  rw [hkey] at hinactive
-  exact hinactive
+  refine ⟨chosen, hchosen, hlookup, hadmission.1, hincludedStep, hinactive⟩
 
 end Vegas.ApplicationPlan.WindowedCheckpoint
 

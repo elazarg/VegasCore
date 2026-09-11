@@ -96,6 +96,32 @@ theorem compileCore_nodes_get?_of_lt
   rcases compileCore_nodes_prefix prog fresh state with ⟨suffix, hsuffix⟩
   rw [← hsuffix, List.getElem?_append_left hlt]
 
+/-- The final compiled graph preserves the field specification of every
+source variable already allocated by the current compiler state. -/
+theorem compileCore_fieldOf_spec
+    {Γ : VCtx P L} (prog : VegasCore P L Γ)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ)
+    {name : VarId} {bindTy : BindTy P L} (source : VHasVar Γ name bindTy) :
+    ∃ spec,
+      (compileCore prog fresh state).graph.field? (state.fieldOf source) = some spec ∧
+        spec.ty = bindTy.base ∧ spec.owner = bindTy.owner := by
+  rcases state.fieldOf_spec source with ⟨spec, hfield, hty, howner⟩
+  refine ⟨spec, ?_, hty, howner⟩
+  have hlt := state.fieldOf_lt source
+  have hinitial := compileCore_initialFields prog fresh state
+  rcases compileCore_nodes_prefix prog fresh state with ⟨suffix, hsuffix⟩
+  unfold Graph.field? at hfield
+  unfold Graph.field? BuildResult.graph
+  rw [hinitial]
+  by_cases hinit : state.fieldOf source < state.initialFields.length
+  · simpa [hinit] using hfield
+  · have hnode : state.fieldOf source - state.initialFields.length <
+        state.nodes.length := by
+      omega
+    simp only [hinit]
+    rw [← hsuffix, List.getElem?_append_left hnode]
+    simpa [hinit] using hfield
+
 /-- Reconstructing an environment from reads already known to equal a given
 environment returns that environment. -/
 theorem sourceEnvOfStore_eq_of_get
