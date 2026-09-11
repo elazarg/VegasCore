@@ -68,7 +68,10 @@ compiled profiles.
 
 For the pending-message service, generalized checkpoint and prefix machinery,
 the first-poll source law, preservation of acceptance across delivery and
-reaction, and the paired delivery/reaction segment are checked. Per-head
-delivery successors, whole-prefix pure-deviation extraction, and the final
-whole-program law remain open. Local handler and service lemmas do not by
-themselves imply adaptive progress or deadline fairness.
+reaction, and the paired delivery/reaction segment are checked. A complete
+delivery block for an unrestricted binding now has a source successor and a
+next checkpoint, including recipient delivery and reaction slots; progress is
+proved from a duplicate-free unchanged relay and a source-certified fallback.
+The whole-prefix pure-deviation extraction and final whole-program law remain
+open. Local handler and service lemmas do not by themselves imply adaptive
+progress or deadline fairness.

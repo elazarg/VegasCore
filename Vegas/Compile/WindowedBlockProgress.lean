@@ -18,7 +18,7 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
 
 variable {P : Type} [DecidableEq P] {L : IExpr} {G : Graph P L}
 
-private theorem latestSubmissionCommand_not_sample
+theorem latestSubmissionCommand_not_sample
     (runtime : WindowedApplication P L) (who : P)
     (view : runtime.application.EnvironmentObservation) (address : Nat) :
     runtime.application.latestSubmissionCommand who view ≠
@@ -30,7 +30,7 @@ private theorem latestSubmissionCommand_not_sample
   · rw [hinclude]
     simp
 
-private theorem serviceCommand_not_sample
+theorem serviceCommand_not_sample
     (runtime : WindowedApplication P L)
     (instruction : ApplicationInstruction P L) (owner : P)
     (howner : instruction.submitter = some owner)

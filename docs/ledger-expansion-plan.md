@@ -14,6 +14,10 @@ discharged by compilation or stated as explicit runtime capabilities.
 
 1. Prove per-head delivery successors for every generated handler and retain
    the exact source checkpoint, completed prefix, caches, and accepted request.
+   The unrestricted binding head is now complete under the actual delivery
+   schedule: recipient delivery, reaction polls, deadline-aware clocking, and
+   an unchanged relay's expiry inclusion are all covered. Chance and the other
+   handler families remain to be completed.
 2. Induct over whole pending-message prefixes to extract a pure source
    deviation against unchanged opponents, then linearize arbitrary
    finite-support randomized policies.
@@ -52,8 +56,12 @@ two-run information argument still requires a delivery-service proof.
 The checked coin-flip regression discharges the terminal continuation: the
 actual completed program has its source public-result distribution under
 every randomized raw replacement, with both players polled in the roster.
-Complete successors and continuation laws for the other instruction families,
-their information-preservation proofs, and whole-prefix extraction remain open.
+The unrestricted binding head now has the analogous complete successor and
+continuation law (`WindowedCheckpoint.delivery_binding_block`), with a concrete
+unchanged-relay progress proof and regressions for both binding-owner and
+recipient-side arbitrary replacements. Complete successors and continuation
+laws for the other instruction families, their information-preservation proofs,
+and whole-prefix extraction remain open.
 
 The source-prefix information induction is shared across services: its local
 premise compares complete supported blocks at equal successor source views.

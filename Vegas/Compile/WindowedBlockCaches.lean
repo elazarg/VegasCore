@@ -79,7 +79,7 @@ theorem RemainingUnchangedCachesEmpty.windowed_playerStep_headCommand
     (runtime.erasePlayerCommand command) hinstructions hhead
   exact runtime.playerStep_erased_support image actor execution next command hstep
 
-private theorem RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry
+theorem RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry
     (runtime : WindowedApplication P L) (image : ApplicationImage P L)
     (deadlineOf : Nat → Nat) (plan : ApplicationPlan accounted fresh state) (focal actor : P)
     (execution next : runtime.application.PolicyExecution)
@@ -131,19 +131,20 @@ theorem blockPlayer_relay_idleOrExpiry
 
 /-- Relay-only player coordinates and arbitrary environment invocations
 preserve every future unchanged-owner cache. The focal commands are unrestricted. -/
-theorem runPolicies_relay_slots_preserves_unchangedCaches
+theorem runPolicies_idleOrExpiry_others_preserves_unchangedCaches
     (runtime : WindowedApplication P L) (image : ApplicationImage P L)
     (deadlineOf : Nat → Nat) (plan : ApplicationPlan accounted fresh state) (focal : P)
-    (bases players : P → runtime.application.PlayerPolicy)
+    (players : P → runtime.application.PlayerPolicy)
     (environment : runtime.application.EnvironmentPolicy)
     (schedule : List (@Invocation P)) (execution next : runtime.application.PolicyExecution)
-    (hothers : ∀ actor, actor ≠ focal →
-      players actor = runtime.blockPlayer actor (bases actor))
-    (hslots : ∀ actor index, (execution.principalHistory actor).length ≤ index →
+    (hsafe : ∀ actor, actor ≠ focal → ∀ index,
+      (execution.principalHistory actor).length ≤ index →
       index < (execution.principalHistory actor).length + schedule.countP (fun call =>
         match call with
         | .player who => decide (who = actor)
-        | .environment => false) → index % 3 = 2)
+        | .environment => false) → ∀ history view, history.length = index → ∀ command,
+      command ∈ (players actor history view).support →
+        image.IdleOrExpiryCommand (runtime.erasePlayerCommand command))
     (hfresh : RemainingUnchangedCachesEmpty image deadlineOf plan focal
       (runtime.eraseExecution execution))
     (hnext : next ∈
@@ -168,30 +169,31 @@ theorem runPolicies_relay_slots_preserves_unchangedCaches
             · subst actor
               exact hfresh.playerStep_focal runtime image deadlineOf plan focal
                 execution middle command hstep
-            · rw [hothers actor hactor] at hcommand
-              exact RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry runtime image
+            · exact RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry runtime image
                 deadlineOf plan focal actor execution middle command
-                (blockPlayer_relay_idleOrExpiry runtime image actor (bases actor)
+                (hsafe actor hactor _ (Nat.le_refl _) (by simp)
                   (execution.principalHistory actor)
-                  (State.observe runtime.application execution.native actor)
-                  (hslots actor _ (Nat.le_refl _) (by simp)) command hcommand) hstep hfresh
+                  (State.observe runtime.application execution.native actor) rfl command hcommand)
+                hstep hfresh
         | environment =>
             simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
             obtain ⟨command, _, hstep⟩ := hmiddle
             exact hfresh.environmentPolicyStep runtime image deadlineOf plan focal execution
               middle command hstep
       apply ih middle
-      · intro actor index hlo hhi
+      · intro actor hactor index hlo hhi history view hhistory command hcommand
         have hlength := runtime.application.runPolicies_principalHistory_length actor players
           environment [invocation] execution middle (by
             simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hmiddle)
-        apply hslots actor index
+        apply hsafe actor hactor index
         · omega
         · rw [hlength] at hhi
           convert hhi using 1
           simp only [List.countP_cons, List.countP_nil,
             Nat.zero_add, Nat.add_assoc, Nat.add_comm]
           rfl
+        · exact hhistory
+        · exact hcommand
       · exact hmiddleFresh
       · exact hnext
 
@@ -343,17 +345,24 @@ theorem WindowedCheckpoint.block_caches
     replacement
     (runtime.blockEnvironment roster) polls (by simp [polls]) current execution polled
     checkpoint.refines ((List.forall_cons _ _ _).mp hfresh |>.2) hpolled
-  apply runPolicies_relay_slots_preserves_unchangedCaches runtime (root.image deadlineOf) deadlineOf
-    nextPlan focal
-    (fun actor => runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile actor))
-    players (runtime.blockEnvironment roster) ([.environment, .environment] ++ relays)
+  apply runPolicies_idleOrExpiry_others_preserves_unchangedCaches runtime
+    (root.image deadlineOf) deadlineOf nextPlan focal players
+    (runtime.blockEnvironment roster) ([.environment, .environment] ++ relays)
     polled next
-  · intro actor hactor
-    simp only [players, windowedPlayers, Function.update_of_ne hactor, windowedReferencePlayers]
-    rfl
-  · exact runtime.runPolicies_polls_relay_slots roster hroster players
+  · intro actor hactor index hlo hhi history view hhistory command hcommand
+    have hpolicy : players actor = runtime.blockPlayer actor
+        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile actor)) := by
+      simp only [players, windowedPlayers, Function.update_of_ne hactor,
+        windowedReferencePlayers]
+      rfl
+    rw [hpolicy] at hcommand
+    apply blockPlayer_relay_idleOrExpiry runtime (root.image deadlineOf) actor _ history view
+      _ command hcommand
+    have hslot := runtime.runPolicies_polls_relay_slots roster hroster players
       (runtime.blockEnvironment roster) blockIndex execution polled
-      (fun actor hactor => (checkpoint.historyAlignment hroster actor hactor).1) hpolled
+      (fun who hwho => (checkpoint.historyAlignment hroster who hwho).1) hpolled actor
+      index hlo hhi
+    simpa only [hhistory] using hslot
   · exact hpolledFresh
   · exact hnext
 

@@ -22,6 +22,16 @@ open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
+omit [DecidableEq P] in
+/-- Each relay pair contains one environment invocation. -/
+theorem relayInvocations_environment_count (roster : List P) :
+    (roster.flatMap (fun actor =>
+      [Invocation.player actor, Invocation.environment])).countP Invocation.isEnvironment =
+        roster.length := by
+  induction roster with
+  | nil => rfl
+  | cons actor rest ih => simp [List.flatMap_cons, Invocation.isEnvironment, ih]
+
 /-- The ordinary phase polls each roster member twice. -/
 theorem ordinaryPolls_player_count (roster : List P) (hroster : roster.Nodup)
     (who : P) :

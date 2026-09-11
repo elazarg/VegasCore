@@ -130,9 +130,11 @@ import Vegas.Compile.WindowedDeliveryProvenance
 import Vegas.Compile.WindowedDeliveryAdmission
 import Vegas.Compile.WindowedDeliveryReadiness
 import Vegas.Compile.WindowedDeliveryPhase
+import Vegas.Compile.WindowedDeliveryPrefix
 import Vegas.Compile.WindowedDeliverySample
 import Vegas.Compile.WindowedDeliverySampleCaches
 import Vegas.Compile.WindowedDeliverySampleCheckpoint
+import Vegas.Compile.WindowedDeliveryBindingCheckpoint
 import Vegas.Compile.WindowedDeliveryIsolation
 import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission

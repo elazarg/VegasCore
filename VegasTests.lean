@@ -137,6 +137,7 @@ import VegasTests.WindowedSourceDecisionCoverage
 import VegasTests.WindowedDeviationLaw
 import VegasTests.WindowedDelivery
 import VegasTests.WindowedDeliveryCheckpoint
+import VegasTests.WindowedDeliveryBindingCheckpoint
 import VegasTests.WindowedDeliverySampleCheckpoint
 import VegasTests.WindowedOwnerFrame
 import VegasTests.WindowedBindingPrivacy

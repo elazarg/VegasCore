@@ -146,6 +146,49 @@ theorem deliveryBlockEnvironment_delivery (runtime : WindowedApplication P L)
   simp only [deliveryBlockEnvironment, hindex, hactive, if_pos, hslot,
     hslotRange, hrecipient]
 
+/-- A recipient delivery coordinate can only wait or copy the identifier
+selected by ordinary service into a delivery command. -/
+theorem deliveryBlockEnvironment_delivery_only (runtime : WindowedApplication P L)
+    (roster recipients : List P) (history : List runtime.application.EnvironmentEntry)
+    (view : runtime.application.EnvironmentObservation)
+    (instruction : ApplicationInstruction P L) (slot : Nat) (recipient : P)
+    (command : runtime.application.EnvironmentPolicyCommand)
+    (hindex : runtime.image.instructions[history.length /
+      (recipients.length + roster.length + 2)]? = some instruction)
+    (hactive : runtime.image.activeAddress? view.application.1 = some instruction.address)
+    (hslot : history.length % (recipients.length + roster.length + 2) = slot)
+    (hslotRange : slot < recipients.length) (hrecipient : recipients[slot]? = some recipient)
+    (hcommand : command ∈ (runtime.deliveryBlockEnvironment roster recipients
+      history view).support) :
+    command = .wait ∨ ∃ id, command = .deliver recipient id := by
+  rw [runtime.deliveryBlockEnvironment_delivery roster recipients history view instruction
+    slot recipient hindex hactive hslot hslotRange hrecipient,
+    FinDist.mem_support_pure] at hcommand
+  subst command
+  unfold deliveryCommand
+  split <;> simp
+
+/-- At a recipient coordinate, delivery service is delivery-only even when
+the observed active address has changed, in which case it waits. -/
+theorem deliveryBlockEnvironment_recipient_only (runtime : WindowedApplication P L)
+    (roster recipients : List P) (history : List runtime.application.EnvironmentEntry)
+    (view : runtime.application.EnvironmentObservation)
+    (instruction : ApplicationInstruction P L) (slot : Nat) (recipient : P)
+    (command : runtime.application.EnvironmentPolicyCommand)
+    (hindex : runtime.image.instructions[history.length /
+      (recipients.length + roster.length + 2)]? = some instruction)
+    (hslot : history.length % (recipients.length + roster.length + 2) = slot)
+    (hslotRange : slot < recipients.length) (hrecipient : recipients[slot]? = some recipient)
+    (hcommand : command ∈ (runtime.deliveryBlockEnvironment roster recipients
+      history view).support) :
+    command = .wait ∨ ∃ id, command = .deliver recipient id := by
+  by_cases hactive : runtime.image.activeAddress? view.application.1 = some instruction.address
+  · exact runtime.deliveryBlockEnvironment_delivery_only roster recipients history view
+      instruction slot recipient command hindex hactive hslot hslotRange hrecipient hcommand
+  · simp only [deliveryBlockEnvironment, hindex, hactive, if_false,
+      FinDist.mem_support_pure] at hcommand
+    exact Or.inl hcommand
+
 /-- A delivery slot copies only the identifier of the inclusion selected by
 ordinary head service. -/
 theorem deliveryBlockEnvironment_delivery_include (runtime : WindowedApplication P L)

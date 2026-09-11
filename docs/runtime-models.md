@@ -40,10 +40,13 @@ strategic observation surface. Checked infrastructure currently includes:
 - service, checkpoint, and completed-prefix generalization;
 - the source law for the first poll;
 - preservation of an accepted request across a delivery/reaction round;
-- the paired delivery/reaction segment used by the intended extraction.
+- the paired delivery/reaction segment used by the intended extraction;
+- a complete unrestricted-binding delivery block, including recipient delivery
+  and reaction slots, a source successor, a next checkpoint, and deadline-aware
+  progress from an unchanged relay.
 
-Still open are per-head delivery successor lemmas, whole-prefix extraction of a
-pure source deviation, linear extension to arbitrary randomized deviations,
+Still open are complete successors for the other heads, whole-prefix extraction
+of a pure source deviation, linear extension to arbitrary randomized deviations,
 and the final whole-program honest/deviation laws. The intended endpoint is an
 arbitrary randomized unilateral deviation-mixture theorem, source guarantee,
 and same-epsilon Nash equivalence, followed by public adaptive scheduling under
