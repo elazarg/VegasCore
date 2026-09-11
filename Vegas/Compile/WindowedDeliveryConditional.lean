@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Compile.WindowedHeadSourceCoupling
 import Vegas.Compile.WindowedConditionalBlock
 import Vegas.Compile.WindowedDeliveryProgress
+import Vegas.Compile.ConditionalDisposition
 
 /-! # Source coupling for resolved delivery conditional segments -/
 
@@ -18,6 +19,68 @@ open EventGraph ToEventGraph Interaction Interaction.MessageApplication
   GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
+
+/-- A due conditional expiry is executable whenever the current delivery state
+still refines the source checkpoint and carries the resolved binding
+provenance needed by the conditional validator. The instruction lookup is
+indexed by the actual delivery window, so this lemma is independent of the
+particular relay prefix that reached the state. -/
+theorem conditional_expiry_eligible_at_state
+    (runtime : WindowedApplication P L)
+    {Γ : VCtx P L} {name publicName : VarId} {owner : P} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx owner Γ)) L.bool)
+    (tail : VegasCore P L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ))
+    (spec : ConditionalOpening guard)
+    (fresh : FreshBindings
+      (.commit name owner guard (.reveal publicName owner name .here tail)))
+    (build : BuildState P L Γ)
+    (current : CoupledAt
+      (compileCore (.commit name owner guard
+        (.reveal publicName owner name .here tail)) fresh build).graph build)
+    (sourceSlot deadline width : Nat)
+    (relay : P) (state : runtime.application.PolicyExecution) (activation : Activation Nat)
+    (hindex : runtime.image.instructions[state.environmentHistory.length / width]? =
+      some (.conditional ((ConditionalPublicationSite.atHead name publicName owner guard tail spec)
+        |>.code fresh build sourceSlot deadline)))
+    (hlookup : runtime.image.lookup activation.key = some (.conditional
+      ((ConditionalPublicationSite.atHead name publicName owner guard tail spec)
+        |>.code fresh build sourceSlot deadline)))
+    (hconsistent : runtime.Consistent state.native.application)
+    (hactive : state.native.application.active = some activation)
+    (hoverdue : activation.since + runtime.windowOf activation.key <
+      state.native.application.base.memory.clock)
+    (hrefines : state.native.application.base.Refines current.current.graph.1)
+    (hresolved : runtime.image.ResolvedBindings state.native.application.base)
+    (horigins : runtime.image.HasBindingOrigins) :
+    ∃ payload resolved,
+      runtime.dueExpiry? (state.native.application.base.memory,
+        state.native.application.active) = some payload ∧
+      runtime.handle state.native.application
+        ⟨(relay, state.native.pool.nextSerial relay), payload⟩ =
+        some resolved := by
+  let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
+  let code := site.code fresh build sourceSlot deadline
+  have hconditional : .conditional code ∈ runtime.image.instructions := by
+    exact List.mem_of_getElem? hindex
+  obtain ⟨disposition, hbinding, hcanonical⟩ :=
+    ConditionalPublicationSite.bindingDisposition_at_source_prefix guard tail spec fresh build
+      sourceSlot deadline current runtime.image state.native.application.base hrefines hresolved
+      horigins hconditional
+  have hready := ConditionalPublicationSite.readyDisposition_at_source_prefix guard tail spec
+    fresh build sourceSlot deadline current state.native.application.base hrefines disposition
+      hbinding hcanonical
+  have hreadyCode : code.endpoint.readyDisposition
+      (code.binding? state.native.application.base.memory)
+      state.native.application.base.memory.done = true := by
+    exact hready
+  have hdue := runtime.dueExpiry?_of_conditional state.native.application activation
+    hconsistent hactive code hlookup hoverdue
+  let resolved := runtime.advanceTo state.native.application
+    (state.native.application.base.publishConditional code none)
+  have hhandle := runtime.handle_conditionalExpire_after_window state.native.application
+    activation hconsistent hactive code hlookup hreadyCode hoverdue
+      (relay, state.native.pool.nextSerial relay)
+  exact ⟨.conditional activation.key .expire, resolved, hdue, hhandle⟩
 
 /-- A resolving delivery-service segment at a conditional head carries the
 source optional result to the source successor. The actual schedule and raw

@@ -72,9 +72,10 @@ reaction, and the paired delivery/reaction segment are checked. Complete
 delivery blocks for an unrestricted binding and a public choice now have source
 successors and next checkpoints, including recipient delivery and reaction
 slots. Progress is proved from a duplicate-free unchanged relay and a
-source-certified fallback. The whole-prefix pure-deviation extraction and
-final whole-program law remain open. The conditional head now has the
-corresponding handler-level source-coupling theorem, but its delivery-block
-progress proof still needs the conditional binding-origin and resolved-state
-eligibility chain. Local handler and service lemmas do not by themselves imply
-adaptive progress or deadline fairness.
+source-certified fallback. The conditional head now has the corresponding
+delivery-block theorem for both ordinary and copied accounting: resolved
+binding provenance supplies expiry eligibility, and the theorem yields the
+same source successor and next checkpoint under the actual delivery/reaction
+schedule. The whole-prefix pure-deviation extraction and final whole-program
+law remain open. Local block theorems do not by themselves imply adaptive
+progress or deadline fairness.

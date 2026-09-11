@@ -286,11 +286,11 @@ theorem delivery_binding_block
       owner hroster players
       (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile relay)) hreference
       (.bind timed) rfl current.current.graph.1 blockIndex execution final activation
-      henvironment hprincipal hindex hactive hactivation hkey checkpoint.refines
+      henvironment hprincipal hindex hlookup hactive hactivation hkey checkpoint.refines
       checkpoint.activationFresh checkpoint.consistent checkpoint.serialsBeforeNext
       rootState.initialFields.length hnodup hallocated hresolved
     · intro observed hobservedConsistent hobservedRefines hobservedActivation hoverdue
-        hobservedSerial _
+        hobservedSerial _ _ _
       have hobservedCode : runtime.image.lookup activation.key = some (.bind timed) := by
         rw [hkey]
         exact hlookup

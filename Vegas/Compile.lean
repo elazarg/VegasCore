@@ -138,6 +138,7 @@ import Vegas.Compile.WindowedDeliveryBindingCheckpoint
 import Vegas.Compile.WindowedDeliveryPublicChoice
 import Vegas.Compile.WindowedDeliveryPublicChoiceCheckpoint
 import Vegas.Compile.WindowedDeliveryConditional
+import Vegas.Compile.WindowedDeliveryConditionalCheckpoint
 import Vegas.Compile.WindowedDeliveryIsolation
 import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission
@@ -279,6 +280,8 @@ replacements as finite mixtures of source deviations. The native operational
 game consequently transports public-outcome bounds independently of the
 deviator's preferences. The reference-profile law for this same block service
 preserves the original source profile without changing any coordinate.
-Comparisons admitting pending-message delivery or adaptive scheduling remain
-separate obligations.
+The pending-message delivery service has complete binding, public-choice, and
+conditional (including copied-conditional) block successors under its explicit
+unchanged-relay and provenance premises. Whole-prefix extraction, randomized
+deviation transport, and adaptive scheduling remain separate obligations.
 -/

@@ -206,11 +206,11 @@ theorem delivery_publicChoice_block
         (root.liftProfile deadlineOf rootProfile relay)) hreference
       (.publicChoice timed) rfl current.current.graph.1 blockIndex execution final activation
       henvironment hprincipal
-      hindex hactive hactivation hkey
+      hindex hlookup hactive hactivation hkey
       checkpoint.refines checkpoint.activationFresh checkpoint.consistent
       checkpoint.serialsBeforeNext rootState.initialFields.length hnodup hallocated hresolved
     · intro observed hobservedConsistent hobservedRefines hobservedActivation hoverdue
-        hobservedSerial _
+        hobservedSerial _ _ _
       have hobservedCode : runtime.image.lookup activation.key = some (.publicChoice timed) := by
         rw [hkey]
         exact hlookup

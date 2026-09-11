@@ -46,10 +46,11 @@ public-choice heads now have complete delivery-block successor theorems:
 recipient delivery, reaction polls, deadline-aware clocking, and
 unchanged-relay expiry are all in the actual schedule, with a source successor
 and next checkpoint. Whole-prefix pure extraction, randomized extension, and
-the whole-program law remain open. Conditional resolving handlers have a
-delivery source-coupling theorem; a complete conditional delivery block still
-requires its binding-origin and resolved-state eligibility proof.
-These are the next compiler proof, not a narrower substitute.
+the whole-program law remain open. Conditional resolving handlers now have a
+complete delivery-block successor theorem as well: both ordinary and copied
+accounting constructors use resolved-binding provenance to establish expiry
+eligibility under the same schedule. These remain block-level results; they do
+not by themselves establish whole-prefix extraction or adaptive fairness.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.

@@ -44,9 +44,9 @@ strategic observation surface. Checked infrastructure currently includes:
 - complete unrestricted-binding and public-choice delivery blocks, including
   recipient delivery and reaction slots, source successors, next checkpoints,
   and deadline-aware progress from an unchanged relay.
-- a conditional resolving-handler source-coupling theorem; its full delivery
-  block still requires a conditional binding-origin and resolved-state
-  eligibility proof.
+- complete ordinary and copied conditional delivery blocks, including the
+  resolved-binding provenance needed for expiry eligibility, source successors,
+  next checkpoints, and deadline-aware progress from an unchanged relay.
 
 Still open are complete successors for the other heads, whole-prefix extraction
 of a pure source deviation, linear extension to arbitrary randomized deviations,

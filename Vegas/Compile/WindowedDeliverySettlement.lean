@@ -36,6 +36,7 @@ theorem runPolicies_delivery_block_resolves
       blockIndex * (recipients.length + (beforeRoster ++ relay :: afterRoster).length + 2))
     (hprincipal : (execution.principalHistory relay).length = 4 * blockIndex)
     (hindex : runtime.image.instructions[blockIndex]? = some instruction)
+    (hlookup : runtime.image.lookup instruction.address = some instruction)
     (hactive : runtime.image.activeAddress? execution.native.application.base.memory =
       some instruction.address)
     (hactivation : execution.native.application.active = some activation)
@@ -58,6 +59,10 @@ theorem runPolicies_delivery_block_resolves
         state.native.application.base.memory.clock →
       state.native.pool.lookup (relay, state.native.pool.nextSerial relay) = none →
       runtime.image.ResolvedBindings state.native.application.base →
+      runtime.image.instructions[state.environmentHistory.length /
+          (recipients.length + (beforeRoster ++ relay :: afterRoster).length + 2)]? =
+        some instruction →
+      runtime.image.lookup instruction.address = some instruction →
       ∃ payload resolved,
         runtime.dueExpiry? (state.native.application.base.memory,
           state.native.application.active) = some payload ∧
@@ -228,6 +233,8 @@ theorem runPolicies_delivery_block_resolves
     exact Set.mem_iUnion.mpr ⟨clocked, Set.mem_iUnion.mpr ⟨hclockedBefore, hbeforeRelay⟩⟩
   have hatRelayResolved := runtime.runPolicies_resolvedBindings initialFields hnodup hallocated
     players environment beforeRelays clocked atRelay hclockedResolved hbeforeRelay
+  have hatRelayIndex : runtime.image.instructions[atRelay.environmentHistory.length / width]? =
+      some instruction := hindexRange _ (by omega) (by dsimp [width]; omega)
   have hatRelaySerials := runtime.application.runPolicies_serialsBeforeNext players environment
     _ execution atRelay hserials hatRelayReached
   have hnextSerial := hatRelaySerials.lookup_nextSerial_eq_none relay
@@ -238,7 +245,7 @@ theorem runPolicies_delivery_block_resolves
       (hincludedActivation.trans hpreparedActivation))) (by
       have hmax := Nat.le_max_right included.native.application.base.memory.clock
         (activation.since + runtime.windowOf instruction.address + 1)
-      omega) hnextSerial hatRelayResolved
+      omega) hnextSerial hatRelayResolved hatRelayIndex hlookup
   have hatRelayPrincipal := runtime.application.runPolicies_principalHistory_length relay
     players environment _ execution atRelay hatRelayReached
   have hbeforePlayerCount := relayInvocations_player_count beforeRoster hbeforeNodup relay
@@ -281,13 +288,14 @@ theorem runPolicies_delivery_block_resolves
   simp only [FinDist.support_bind, Set.mem_iUnion] at hpairAndAfter
   obtain ⟨afterPair, hpair, hafter⟩ := hpairAndAfter
   have hprojection : (afterPair.native.application, afterPair.native.pool.ledger,
-      afterPair.native.receipts) ∈ (FinDist.pure (resolved,
-        atRelay.native.pool.ledger ++
-          [⟨(relay, atRelay.native.pool.nextSerial relay), payload⟩],
-        atRelay.native.receipts ++
-          [((relay, atRelay.native.pool.nextSerial relay), true)])).support := by
-    rw [← hlaw, FinDist.support_map]
+      afterPair.native.receipts) ∈
+      (FinDist.map (fun out =>
+        (out.native.application, out.native.pool.ledger, out.native.receipts))
+        (runtime.application.runPolicies players environment
+          [.player relay, .environment] atRelay)).support := by
+    rw [FinDist.support_map]
     exact ⟨afterPair, hpair, rfl⟩
+  rw [hlaw] at hprojection
   have happlication := congrArg Prod.fst (FinDist.mem_support_pure.mp hprojection)
   change afterPair.native.application = resolved at happlication
   have hafterPairInactive : runtime.image.activeAddress?
