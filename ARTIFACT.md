@@ -76,6 +76,8 @@ source-certified fallback. The conditional head now has the corresponding
 delivery-block theorem for both ordinary and copied accounting: resolved
 binding provenance supplies expiry eligibility, and the theorem yields the
 same source successor and next checkpoint under the actual delivery/reaction
-schedule. The whole-prefix pure-deviation extraction and final whole-program
-law remain open. Local block theorems do not by themselves imply adaptive
-progress or deadline fairness.
+schedule. These block successors compose into source coverage for every
+complete repeated delivery execution, including terminal completion of the
+emitted graph. The whole-prefix pure-deviation extraction and final
+whole-program law remain open. Local block theorems do not by themselves
+imply adaptive progress or deadline fairness.

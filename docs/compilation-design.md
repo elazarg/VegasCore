@@ -45,12 +45,14 @@ paired delivery/reaction segment are checked. Unrestricted binding and
 public-choice heads now have complete delivery-block successor theorems:
 recipient delivery, reaction polls, deadline-aware clocking, and
 unchanged-relay expiry are all in the actual schedule, with a source successor
-and next checkpoint. Whole-prefix pure extraction, randomized extension, and
-the whole-program law remain open. Conditional resolving handlers now have a
-complete delivery-block successor theorem as well: both ordinary and copied
-accounting constructors use resolved-binding provenance to establish expiry
-eligibility under the same schedule. These remain block-level results; they do
-not by themselves establish whole-prefix extraction or adaptive fairness.
+and next checkpoint. Conditional resolving handlers now have a complete
+delivery-block successor theorem as well: both ordinary and copied accounting
+constructors use resolved-binding provenance to establish expiry eligibility
+under the same schedule. The four block successors compose into source
+coverage for every complete repeated delivery execution and terminal graph
+completion. Whole-prefix policy extraction, randomized extension, and the
+whole-program law remain open; source coverage does not by itself establish
+adaptive fairness.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.

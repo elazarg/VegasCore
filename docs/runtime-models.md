@@ -47,10 +47,12 @@ strategic observation surface. Checked infrastructure currently includes:
 - complete ordinary and copied conditional delivery blocks, including the
   resolved-binding provenance needed for expiry eligibility, source successors,
   next checkpoints, and deadline-aware progress from an unchanged relay.
+- source coverage and terminal completion for every complete repeated delivery
+  execution assembled from those four block successors.
 
-Still open are complete successors for the other heads, whole-prefix extraction
-of a pure source deviation, linear extension to arbitrary randomized deviations,
-and the final whole-program honest/deviation laws. The intended endpoint is an
+Still open are whole-prefix extraction of a pure source deviation, linear
+extension to arbitrary randomized deviations, and the final whole-program
+honest/deviation laws. The intended endpoint is an
 arbitrary randomized unilateral deviation-mixture theorem, source guarantee,
 and same-epsilon Nash equivalence, followed by public adaptive scheduling under
 explicit information-flow and deadline-fairness assumptions.

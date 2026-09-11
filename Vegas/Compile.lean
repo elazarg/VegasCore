@@ -139,6 +139,7 @@ import Vegas.Compile.WindowedDeliveryPublicChoice
 import Vegas.Compile.WindowedDeliveryPublicChoiceCheckpoint
 import Vegas.Compile.WindowedDeliveryConditional
 import Vegas.Compile.WindowedDeliveryConditionalCheckpoint
+import Vegas.Compile.WindowedDeliverySourceCoverage
 import Vegas.Compile.WindowedDeliveryIsolation
 import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission
@@ -282,6 +283,8 @@ deviator's preferences. The reference-profile law for this same block service
 preserves the original source profile without changing any coordinate.
 The pending-message delivery service has complete binding, public-choice, and
 conditional (including copied-conditional) block successors under its explicit
-unchanged-relay and provenance premises. Whole-prefix extraction, randomized
-deviation transport, and adaptive scheduling remain separate obligations.
+unchanged-relay and provenance premises, and these compose into whole-prefix
+source coverage and terminal completion. Whole-prefix policy extraction,
+randomized deviation transport, and adaptive scheduling remain separate
+obligations.
 -/
