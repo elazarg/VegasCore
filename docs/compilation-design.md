@@ -23,10 +23,17 @@ conformance tests are not refinement.
 
 ## Active lowering
 
-The event graph is the shared dispatch artifact. Native compilation installs
-handlers for the retained binding, release, and timeout applications over the
-`Interaction` pool. Correctness is stated against actual graph reachability
-and source reconstruction, avoiding a parallel operational machine hierarchy.
+The event graph is the shared dispatch artifact. The strict native edge in
+`Vegas.Compile.SealedCompiler` installs one sealed-message rule per graph node
+over the `Interaction` pool. Commit packets carry only an opaque handle;
+opening packets carry the claimed value and are accepted only after the
+corresponding commitment. Correctness is stated against actual graph
+reachability and source reconstruction, avoiding a parallel operational
+machine hierarchy.
+
+The `ApplicationPlan` public-choice image is a fused optimization experiment
+pending removal. It is not a commitment-preserving lowering and is outside the
+strict compiler claims.
 
 Probability tables denote exact finite laws. A concrete entropy mechanism,
 cryptographic commitment scheme, adaptive delivery service, or blockchain
@@ -34,10 +41,10 @@ backend would be a further artifact with its own proof edge.
 
 ## Current boundary
 
-The fixed windowed block service has a checked whole-program honest law and an
-arbitrary randomized unilateral deviation-mixture theorem. Its public-outcome
-guarantee and same-error approximate-Nash equivalence are genuine compiler
-results under the theorem's eligibility, roster, fallback, and relay premises.
+The strict sealed-message edge has checked whole-run source reconstruction and
+ideal-service hiding laws. Its whole-program strategic preservation theorem is
+not yet proved. The earlier fixed-windowed theorem concerns a fused image and
+is not a theorem for the strict compiler edge.
 
 The pending-message development generalizes the service, checkpoint, and prefix
 infrastructure. The first-poll source law, delivery/reaction acceptance, and a

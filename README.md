@@ -1,11 +1,12 @@
 # VegasCore
 
 VegasCore is a Lean 4 foundation for executable games with partial information.
-Its active compiler path is:
+Its strict compiler path is:
 
 ```text
 sequential checked source
-  -> typed event graph and application plan
+  -> typed event graph
+  -> explicit sealed-message program
   -> native public-message execution
 ```
 
@@ -16,13 +17,13 @@ and payoff code in an event graph. The native endpoint uses the shared
 
 The checked results include source execution and event-graph correspondence,
 support-level reconstruction of native executions, and focused laws for the
-retained sealed-message applications. The generated fixed windowed block
-service also has a whole-program theorem: the compiled honest profile has the
-source public-result law, every arbitrary finite-support randomized unilateral
-runtime deviation has the law of a finite mixture of legal source deviations,
-source outcome guarantees transfer, and compiled profiles preserve and reflect
-same-error approximate Nash equilibrium under its stated eligibility and relay
-hypotheses.
+strict sealed-message application. Strategic preservation for the strict
+pending-message compiler edge is still open.
+
+The application-plan path remains in the tree only while it is being removed.
+Its adjacent `commit; reveal` fusion emits a value-bearing request without a
+prior opaque commitment, so it is not a commitment implementation and is
+excluded from the strict path and its claims.
 
 The pending-message target adds observable delivery and reaction, first under
 the concrete block service and then under adaptive public scheduling.

@@ -4,9 +4,15 @@
 principal-scoped commands, polling histories, receipts, delivery/inclusion
 choices, and an explicit ideal commitment service.
 
-`Vegas/Compile/SealedSource.lean` connects checked source programs and their
-event graphs to this model. Retained game adapters expose bounded native policy
-games for the sealed-message applications.
+`Vegas/Compile/SealedCompiler.lean` connects checked source programs and their
+event graphs to this model. The strict edge emits one rule per graph node, so a
+commit and its later reveal remain separate protocol phases. Retained game
+adapters expose bounded native policy games for the sealed-message
+applications.
+
+The `ApplicationPlan` image is a fused optimization experiment pending removal.
+Its value-bearing public-choice request is not used as evidence
+for commitment hiding or public in-flight-message results.
 
 Finite supported native runs,
 including replay of observed messages, decode to reachable graph prefixes.
@@ -14,22 +20,13 @@ Terminal decoded prefixes reconstruct written-order source executions and
 matching decoded public results. Ideal hiding results concern the declared
 ideal service and observation boundary.
 
-## Fixed windowed block service
+## Strategic results
 
-The generated fixed service is a complete checked strategic endpoint, not only
-a local handler result. Its coordinatewise compiled profile has the source
-public-result law. Every arbitrary finite-support, history-dependent randomized
-unilateral raw policy is matched, against unchanged opponents, by a finite
-mixture of legal source deviations with the same joint completion and public
-terminal-result law. Consequently source public-outcome lower bounds transfer,
-and compiled profiles preserve and reflect epsilon-Nash with the same epsilon.
-
-The exact premises matter: initial controller reads are public; generated
-bindings have valid origins; required fallback handlers are source-certified;
-the player roster is duplicate-free and covers decision owners; and deviation
-simulation has a distinct unchanged relay. The theorem classifies compiled
-profiles, not every equilibrium of the larger runtime game. The service has a
-fixed block structure, not adaptive pending-message delivery.
+The strict sealed-message edge currently has support-level source
+reconstruction and ideal-service hiding laws. Strategic preservation for
+pending messages and public scheduling is not yet proved. The earlier
+fixed-windowed theorem concerns the fused application image and is not a
+theorem for the strict compiler edge.
 
 ## Pending-message adaptive service
 

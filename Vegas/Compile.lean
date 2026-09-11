@@ -256,6 +256,7 @@ import Vegas.Compile.SealedRules
 import Vegas.Compile.SealedDecodeLaws
 import Vegas.Compile.SealedRefinement
 import Vegas.Compile.SealedSource
+import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedTimeoutRefinement
 
 /-!

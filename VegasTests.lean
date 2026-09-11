@@ -107,6 +107,7 @@ import VegasTests.DisclosurePolicy
 import VegasTests.DisclosureCorrespondence
 import VegasTests.DisclosurePayoff
 import VegasTests.PendingSource
+import VegasTests.SealedCompiler
 import VegasTests.PendingExecution
 import VegasTests.PendingOutcome
 import VegasTests.PendingReplay

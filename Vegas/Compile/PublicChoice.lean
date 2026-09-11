@@ -7,14 +7,16 @@ Authors: VegasCore contributors
 import Interaction.PublicChoice
 import Vegas.Compile.ConditionalPublication
 
-/-! # Public choice endpoints from graph metadata
+/-! # Fused public-choice endpoints
 
 The emitted endpoint consumes public completion flags, an executable validator,
 and an authenticated request. The represented graph configuration occurs only
 in its correctness proofs. Matching the public validator to the source guard
 is a separate obligation; this module does not grant access to private fields.
-The endpoint implements a choice and its immediate reveal atomically, with no
-claim that their intermediate observations are strategically interchangeable.
+The endpoint implements a choice and its immediate reveal atomically. It is
+retained only as a separately identified optimization experiment. It is not a
+commitment-preserving implementation: the strict baseline is the
+`SealedProgram` edge in `Vegas.Compile.SealedCompiler`.
 -/
 
 namespace Vegas.EventGraph

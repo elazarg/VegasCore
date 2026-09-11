@@ -14,6 +14,55 @@ universe uPrincipal uValue
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
+/-! ## Wire-level safety
+
+These lemmas make the commitment boundary explicit.  A value-bearing packet is
+not an alternative implementation of a commitment: it is rejected by the
+sealed application.  An opening also needs the public acceptance event and a
+successful private verification before it can advance the application.
+-/
+
+theorem validateMessage?_cleartext_none [DecidableEq Principal] [DecidableEq Value]
+    (program : SealedProgram Principal) (state : State Principal Value)
+    (id : MessageId Principal) (node : Nat) (value : Value) :
+    validateMessage? program state.service state.events
+      ⟨id, .cleartext node value⟩ = none := by
+  rfl
+
+theorem validateMessage?_opening_none_of_not_accepted
+    [DecidableEq Principal] [DecidableEq Value]
+    (program : SealedProgram Principal) (state : State Principal Value)
+    (id : MessageId Principal) (node : Nat)
+    (owner : Principal) (source : Nat) (claimed : Value)
+    (haccepted : accepted? state.events source ≠ some (owner, source)) :
+    validateMessage? program state.service state.events
+      ⟨id, .opening node (owner, source) claimed⟩ = none := by
+  cases hrule : program.rules[node]? with
+  | none => simp [validateMessage?, hrule]
+  | some rule =>
+      cases hkind : rule.kind with
+      | commit expectedOwner => simp [validateMessage?, hrule, hkind]
+      | disabled => simp [validateMessage?, hrule, hkind]
+      | reveal expectedOwner expectedSource =>
+          by_cases howner : owner = expectedOwner
+          · by_cases hsource : source = expectedSource
+            · subst expectedOwner
+              subst expectedSource
+              simp [validateMessage?, hrule, hkind, haccepted]
+            · simp [validateMessage?, hrule, hkind, hsource]
+          · simp [validateMessage?, hrule, hkind, howner]
+
+theorem handle_opening_stutters_of_not_accepted
+    [DecidableEq Principal] [DecidableEq Value]
+    (program : SealedProgram Principal) (state : State Principal Value)
+    (id : MessageId Principal) (node : Nat)
+    (owner : Principal) (source : Nat) (claimed : Value)
+    (haccepted : accepted? state.events source ≠ some (owner, source)) :
+    handle program state ⟨id, .opening node (owner, source) claimed⟩ = state := by
+  simp only [handle]
+  rw [validateMessage?_opening_none_of_not_accepted program state id node owner source
+    claimed haccepted]
+
 private theorem validateMessage?_commitment_some
     [DecidableEq Principal] [DecidableEq Value]
     (program : SealedProgram Principal) (state : State Principal Value)

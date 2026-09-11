@@ -8,12 +8,17 @@ import Vegas.Compile.ApplicationImage
 import Vegas.Compile.PublicChoiceExecution
 import Vegas.Compile.PublicChoiceValidation
 
-/-! # Public-choice application images generated from source occurrences
+/-! # Fused public-choice application images
 
 An adjacent source choice/reveal occurrence emits one executable public-choice
 instruction. The correctness
 statements connect actual pending-message inclusion to the source guard and its
 two source steps; source environments remain proof data, not runtime state.
+
+This is not the strict commitment baseline. The emitted instruction has no
+prior opaque commitment handle and must not be used as the runtime model for
+public in-flight messages. See `Vegas.Compile.SealedCompiler` for the explicit
+two-phase edge.
 -/
 
 noncomputable section

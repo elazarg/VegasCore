@@ -9,7 +9,7 @@ import Vegas.Compile.PublicChoiceImage
 import Vegas.Compile.SampleImage
 import Vegas.Compile.SourceExecution
 
-/-! # Structural derivations for public-application generation
+/-! # Fused public-application derivations
 
 A derivation consumes the existing source and its accounting plan. It selects
 implemented instructions and checks their backend conditions; it adds neither
@@ -27,6 +27,14 @@ endpoint. Whole-program realization needs a binding-origin condition or separate
 initial provisioning; a public-choice instruction creates no commitment handle.
 Initial sealed-input provisioning and whole-program strategy correspondence are
 separate from this code-generation derivation.
+
+This module contains the earlier fused application image. Its
+`publicChoice` constructor lowers an adjacent source commit/reveal pair to a
+single value-bearing request, so it is an optimization experiment, not the
+strict commitment-preserving compiler edge. The baseline compiler is
+`SealedCompilation` in `Vegas.Compile.SealedCompiler`; it emits one opaque
+commit rule and one opening rule per graph node. No theorem in this module
+licenses the fused request as a commitment implementation.
 -/
 
 noncomputable section
