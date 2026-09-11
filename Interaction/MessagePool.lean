@@ -150,6 +150,15 @@ theorem deliver_other_observe (state : MessagePool Principal Payload)
     observe (deliver state recipient id).state observer = observe state observer := by
   simp [deliver, hlookup, observe, hne]
 
+/-- A successful delivery exposes the selected envelope, including its
+payload, in the recipient's local observation. -/
+theorem deliver_observe_of_lookup (state : MessagePool Principal Payload)
+    (recipient : Principal) (id : MessageId Principal)
+    (message : Message Principal Payload) (hlookup : state.lookup id = some message) :
+    observe (deliver state recipient id).state recipient =
+      ⟨state.inbox recipient ++ [message], state.ledger, state.sent recipient⟩ := by
+  simp [deliver, hlookup, observe]
+
 theorem include_of_lookup (state : MessagePool Principal Payload) (id : MessageId Principal)
     (message : Message Principal Payload) (hlookup : state.lookup id = some message) :
     includePending state id = ⟨some message, {
