@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Interaction.MessageApplicationIdleService
 import Vegas.Compile.WindowedDeliveryService
 import Vegas.Compile.ApplicationImageStateRefinement
+import Vegas.Compile.WindowedActivationFreshness
 
 /-! # Isolation of resolved delivery-service blocks -/
 
@@ -129,4 +130,34 @@ theorem runPolicies_deliveryBlock_inactive_refines
     (fun _ hstate => hstate.2) ⟨hrefines, hinactive⟩ hnext
   exact hresult.1
 
+/-- An aligned inactive delivery suffix preserves a fresh activation. Raw
+player registration may change private preparation, but public memory and the
+activation record are unchanged. -/
+theorem runPolicies_deliveryBlock_inactive_freshActivation
+    (runtime : WindowedApplication P L) (roster recipients : List P)
+    (players : P → runtime.application.PlayerPolicy)
+    (schedule : List (@Invocation P))
+    (execution next : runtime.application.PolicyExecution)
+    (instruction : ApplicationInstruction P L)
+    (hindex : ∀ index, execution.environmentHistory.length ≤ index →
+      index < execution.environmentHistory.length +
+        schedule.countP Invocation.isEnvironment →
+      runtime.image.instructions[index /
+        (recipients.length + roster.length + 2)]? = some instruction)
+    (hinactive : runtime.image.activeAddress? execution.native.application.base.memory ≠
+      some instruction.address)
+    (hfresh : execution.native.application.FreshActivation)
+    (hnext : next ∈ (runtime.application.runPolicies players
+      (runtime.deliveryBlockEnvironment roster recipients) schedule execution).support) :
+    next.native.application.FreshActivation := by
+  apply hfresh.of_publicState_eq
+  exact runtime.runPolicies_deliveryBlock_inactive roster recipients players schedule execution
+    next instruction hindex hinactive hnext
+
 end Vegas.WindowedApplication
+
+/-- info: 'Vegas.WindowedApplication.runPolicies_deliveryBlock_inactive_freshActivation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.WindowedApplication.runPolicies_deliveryBlock_inactive_freshActivation

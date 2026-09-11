@@ -178,27 +178,25 @@ theorem RemainingUnchangedCachesEmpty.environmentPolicyStep
     cases instruction <;>
       simp_all [ApplicationInstruction.CacheEmpty, WindowedApplication.eraseExecution]
 
-/-- A segment of canonical block players whose current per-player coordinates
-all select the same sample instruction preserves unchanged-owner freshness.
-The coordinate premise is purely a history-count fact; no policy or secrecy
-assumption is hidden in it. -/
-theorem runPolicies_blockPlayer_sample_preserves_unchangedCaches
+/-- A policy segment preserves unchanged-owner cache freshness when every
+non-focal player invocation in the segment is known to return `wait`. The
+coordinate bounds make this reusable for services with different block widths. -/
+theorem runPolicies_waiting_others_preserves_unchangedCaches
     (runtime : WindowedApplication P L) (cacheImage : ApplicationImage P L)
     (deadlineOf : Nat → Nat)
     (plan : ApplicationPlan accounted fresh state) (focal : P)
-    (bases players : P → runtime.application.PlayerPolicy)
+    (players : P → runtime.application.PlayerPolicy)
     (environment : runtime.application.EnvironmentPolicy)
-    (schedule : List (@Invocation P)) (code : SampleCode L)
+    (schedule : List (@Invocation P))
     (execution next : runtime.application.PolicyExecution)
-    (hothers : ∀ actor, actor ≠ focal →
-      players actor = runtime.blockPlayer actor (bases actor))
-    (hlookup : runtime.image.lookup code.node = some (.sample code))
-    (hindex : ∀ actor index, (execution.principalHistory actor).length ≤ index →
+    (hwait : ∀ actor, actor ≠ focal → ∀ index,
+      (execution.principalHistory actor).length ≤ index →
       index < (execution.principalHistory actor).length +
         schedule.countP (fun call => match call with
           | .player who => decide (who = actor)
           | .environment => false) →
-      runtime.image.instructions[index / 3]? = some (.sample code))
+      ∀ history view, history.length = index →
+        players actor history view = FinDist.pure .wait)
     (hfresh : RemainingUnchangedCachesEmpty cacheImage deadlineOf plan focal
       (runtime.eraseExecution execution))
     (hnext : next ∈
@@ -225,11 +223,9 @@ theorem runPolicies_blockPlayer_sample_preserves_unchangedCaches
             · subst actor
               exact hfresh.playerStep_focal runtime cacheImage deadlineOf plan focal execution
                 middle command hstep
-            · rw [hothers actor hactor,
-                runtime.blockPlayer_sample_wait actor (bases actor)
-                  (execution.principalHistory actor)
-                  (State.observe runtime.application execution.native actor) code
-                  (hindex actor _ (Nat.le_refl _) (by simp)) hlookup] at hcommand
+            · rw [hwait actor hactor _ (Nat.le_refl _) (by simp)
+                (execution.principalHistory actor)
+                (State.observe runtime.application execution.native actor) rfl] at hcommand
               rw [FinDist.mem_support_pure] at hcommand
               subst command
               exact hfresh.playerStep_wait runtime cacheImage deadlineOf plan focal actor execution
@@ -241,17 +237,18 @@ theorem runPolicies_blockPlayer_sample_preserves_unchangedCaches
             exact hfresh.environmentPolicyStep runtime cacheImage deadlineOf plan focal execution
               middle command hstep
       apply ih middle
-      · intro actor index hlo hhi
+      · intro actor hactor index hlo hhi history view hhistory
         have hlength := runtime.application.runPolicies_principalHistory_length actor players
           environment [invocation] execution middle (by
             simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hmiddle)
-        apply hindex actor index
+        apply hwait actor hactor index
         · omega
         · rw [hlength] at hhi
           convert hhi using 1
           simp only [List.countP_cons, List.countP_nil,
             Nat.zero_add, Nat.add_assoc, Nat.add_comm]
           rfl
+        · exact hhistory
       · exact hmiddleFresh
       · exact hnext
 
@@ -277,22 +274,27 @@ theorem runPolicies_full_sample_block_preserves_unchangedCaches
       (runtime.blockEnvironment roster) (blockInvocations roster) execution).support) :
     RemainingUnchangedCachesEmpty cacheImage deadlineOf plan focal
       (runtime.eraseExecution next) := by
-  apply runPolicies_blockPlayer_sample_preserves_unchangedCaches runtime cacheImage deadlineOf
-    plan focal bases players (runtime.blockEnvironment roster) (blockInvocations roster) code
-    execution next hothers hlookup
-  · intro actor index hlo hhi
+  apply runPolicies_waiting_others_preserves_unchangedCaches runtime cacheImage deadlineOf
+    plan focal players (runtime.blockEnvironment roster) (blockInvocations roster)
+    execution next
+  · intro actor hactor index hlo hhi history view hhistory
     have hcount : (blockInvocations roster).countP (fun call => match call with
         | .player who => decide (who = actor)
         | .environment => false) = if actor ∈ roster then 3 else 0 :=
       blockInvocations_player_count roster hroster actor
-    rw [hcount] at hhi
+    have hhi' : index < (execution.principalHistory actor).length +
+        (if actor ∈ roster then 3 else 0) := by
+      convert hhi using 1
+      congr 1
+      exact hcount.symm
     by_cases hmem : actor ∈ roster
-    · simp only [hmem, ↓reduceIte] at hhi
-      have hlength := hplayers actor hmem
+    · simp only [hmem, ↓reduceIte] at hhi'
+      have hbaseLength := hplayers actor hmem
       have hquotient : index / 3 = block := by omega
-      rw [hquotient]
-      exact hindex
-    · simp only [hmem, ↓reduceIte, Nat.add_zero] at hhi
+      rw [hothers actor hactor]
+      exact runtime.blockPlayer_sample_wait actor (bases actor) history view code
+        (by rw [hhistory, hquotient]; exact hindex) hlookup
+    · simp only [hmem, ↓reduceIte, Nat.add_zero] at hhi'
       omega
   · exact hfresh
   · exact hnext

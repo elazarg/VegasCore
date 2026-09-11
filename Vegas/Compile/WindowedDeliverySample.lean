@@ -135,7 +135,8 @@ theorem runPolicies_full_delivery_block_sample_source_coupling
       (recipients.length + roster.length + 2) = 0)
     (hactive : runtime.image.activeAddress? execution.native.application.base.memory =
       some state.nodes.length)
-    (hrefines : execution.native.application.base.Refines current.current.graph.1) :
+    (hrefines : execution.native.application.base.Refines current.current.graph.1)
+    (hconsistent : runtime.Consistent execution.native.application) :
     let before := roster.flatMap (fun actor => [.player actor, .player actor]) ++
       recipients.map (fun _ => Invocation.environment) ++ roster.map Invocation.player
     let suffix := Invocation.environment ::
@@ -160,7 +161,8 @@ theorem runPolicies_full_delivery_block_sample_source_coupling
               (runtime.deliveryBlockEnvironment roster recipients) suffix
               (runtime.sampleExecution middle
                 (ApplicationPlan.headSampleCode fresh state) value)).support →
-            final.native.application.base.Refines next.current.graph.1 := by
+            final.native.application.base.Refines next.current.graph.1 ∧
+              final.native.application.FreshActivation := by
   let instruction : ApplicationInstruction P L :=
     .sample (ApplicationPlan.headSampleCode fresh state)
   let width := recipients.length + roster.length + 2
@@ -367,8 +369,19 @@ theorem runPolicies_full_delivery_block_sample_source_coupling
         simp [sampled, sampleExecution, advanceTo, ApplicationImage.State.sample]
       rw [hdone] at hnotDone
       contradiction
-    exact runtime.runPolicies_deliveryBlock_inactive_refines next.current.graph.1 roster recipients
-      players suffix sampled final instruction (hsuffixRange middle hmiddle value) hinactive
-      hrefinesNext hfinal
+    refine ⟨runtime.runPolicies_deliveryBlock_inactive_refines next.current.graph.1 roster
+      recipients players suffix sampled final instruction (hsuffixRange middle hmiddle value)
+      hinactive hrefinesNext hfinal, ?_⟩
+    have hpublic := hprefixInvariant middle hmiddle
+    have hactivation : middle.native.application.active.map Activation.key =
+        some (ApplicationPlan.headSampleCode fresh state).node := by
+      calc
+        _ = execution.native.application.active.map Activation.key :=
+          congrArg (fun pair : ApplicationImage.Memory P L × Option (Activation Nat) =>
+            pair.2.map Activation.key) hpublic.2
+        _ = _ := hconsistent.1.trans hactive
+    exact runtime.runPolicies_deliveryBlock_inactive_freshActivation roster recipients players
+      suffix sampled final instruction (hsuffixRange middle hmiddle value) hinactive
+      (runtime.sampleExecution_freshActivation middle _ value hactivation) hfinal
 
 end Vegas.WindowedApplication

@@ -41,8 +41,19 @@ The fixed windowed block service already closes the honest law, arbitrary
 randomized unilateral deviation mixture, guarantee, and same-error Nash result.
 For pending delivery, the generalized service/checkpoint/prefix layer, first
 poll, acceptance through delivery and reaction, and paired segment are checked.
-The per-head successor family and whole-prefix extraction are the immediate
-open proof obligations.
+The sample head has an exact source-chance law, complete successor checkpoints,
+and a continuation law (`WindowedCheckpoint.delivery_sample_bind`). Its proof
+retains initialized reachability, unchanged-player cache freshness, and the
+next activation window despite arbitrary focal commands throughout its
+scheduled polls, including reaction slots. The sample service's delivery
+slots wait; this case does not exercise payload disclosure or prove delivery
+coverage. These are the chance case's successor and continuation laws; its
+two-run information argument still requires a delivery-service proof.
+The checked coin-flip regression discharges the terminal continuation: the
+actual completed program has its source public-result distribution under
+every randomized raw replacement, with both players polled in the roster.
+Complete successors and continuation laws for the other instruction families,
+their information-preservation proofs, and whole-prefix extraction remain open.
 
 The source-prefix information induction is shared across services: its local
 premise compares complete supported blocks at equal successor source views.
