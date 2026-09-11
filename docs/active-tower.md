@@ -24,11 +24,16 @@ pending-message policy game. This is the remaining end-to-end deviation proof:
 for every considered player policy (which may inspect that player's visible
 inbox, public ledger, sent messages, receipts, and recorded local history),
 construct a finite mixture of source behavioral policies with the same observed
-outcome law against unchanged opponents and environment policy. The runtime
-kernel already records malformed input as a rejected, state-preserving action;
-the missing theorem is the resolution/backtranslation law that maps such a
+outcome law against unchanged opponents and environment policy. Seeing a
+pending opening before inclusion is not by itself an information leak: a
+sealed rule cannot take the corresponding graph step until its prerequisites
+are included. A deviator may pre-submit a later message, but the backtranslation
+must show that this is equivalent to choosing that source action when the
+corresponding source observation becomes available. This causal pending-message
+lemma is still unproved. The runtime kernel already records malformed input as
+a rejected, state-preserving action; a separate resolution law must map such a
 stutter—or a fair timeout after it—to the source program's explicit nullable
-quit (`Option.none`). Once that law and the rest of the deviation mixture are
+quit (`Option.none`). Once these laws and the rest of the deviation mixture are
 proved, `SealedCompilation.StrategicCertificate` discharges the equilibrium
 conclusion without changing the source language. The graph theorem has this
 same exact-deviation shape after backtranslation; its single-ready hypothesis

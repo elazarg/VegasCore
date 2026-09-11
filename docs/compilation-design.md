@@ -57,12 +57,17 @@ not yet proved. `SealedCompilation.StrategicCertificate` packages the exact
 honest-law and finite-mixture obligations needed for the Nash transfer; no
 runtime is granted that certificate by construction.
 
-The active pending-message model has an explicit strategic boundary. `deliver`
-places the selected packet in the recipient's pool, and the recipient policy
-sees that pool. A source observation need not contain the pending-payload pool,
-so source-view equality alone cannot establish a deviation backtranslation.
-The concrete runtime edge must either prove a hiding/equivalence projection or
-declare the additional observation. The generic
+The active pending-message model has an explicit strategic proof obligation.
+`deliver` places the selected packet in the recipient's pool, and the recipient
+policy sees that pool. This extra observation is not automatically a strategic
+counterexample: inclusion still checks the graph prerequisites, so a pending
+opening cannot produce its graph step early. The edge must prove a causal
+backtranslation showing that a message selected before inclusion is equivalent
+to the corresponding source action at the first source point where its value is
+observable. A runtime that lets an accepted action depend on a payload before
+that point, or a scheduler that uses private payload data to alter the source
+visible future, would require a stronger source observation or a separate
+impossibility result. The generic
 `GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash`
 theorem proves the mechanism-design step once a runtime resolution law is
 supported entirely on the source quit. The sealed kernel's rejected packet is
