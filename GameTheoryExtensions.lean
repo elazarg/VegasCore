@@ -1,3 +1,4 @@
 import GameTheoryExtensions.Core.MixtureSimulation
 import GameTheoryExtensions.Core.MixtureSimulationComposition
+import GameTheoryExtensions.Core.QuitTransfer
 import GameTheoryExtensions.Core.MixtureSimulationTests
