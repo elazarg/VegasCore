@@ -41,6 +41,35 @@ class LeanOptionTests(unittest.TestCase):
                 self.assertEqual(len(errors), 1)
                 self.assertIn(name, errors[0])
 
+    def test_admission_tokens_are_detected(self):
+        text = "theorem a : True := by\n  sorry\ntheorem b : True := by admit\n#check sorryAx\n"
+        self.assertEqual(CHECKER.admission_tokens(text), [
+            (2, "sorry"), (3, "admit"), (4, "sorryAx")
+        ])
+
+    def test_comments_and_strings_do_not_supply_admissions(self):
+        text = (
+            "/- outer sorry /- nested admit -/ sorryAx -/\n"
+            "-- sorry\n"
+            "def explanation := \"sorry admit sorryAx\"\n"
+            "theorem safe : True := True.intro\n"
+        )
+        self.assertEqual(CHECKER.admission_tokens(text), [])
+
+    def test_escaped_string_does_not_end_early(self):
+        text = 'def note := "quoted \\\" sorryAx"\ntheorem open : True := by sorry\n'
+        self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
+
+    def test_only_root_paper_audit_may_admit(self):
+        admitted = "theorem target : True := by sorry\n"
+        self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), admitted), [])
+        for path in (Path("Vegas/Proof.lean"), Path("Paper/Source.lean"),
+                     Path("Other.lean")):
+            with self.subTest(path=path):
+                errors = CHECKER.check_admissions(path, admitted)
+                self.assertEqual(len(errors), 1)
+                self.assertIn("forbidden proof admission", errors[0])
+
 
 if __name__ == "__main__":
     unittest.main()

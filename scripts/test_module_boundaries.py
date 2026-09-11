@@ -54,6 +54,23 @@ class ModuleBoundaryTests(unittest.TestCase):
             self.assertTrue(any("missing local import Vegas.Missing" in error
                                 for error in CHECKER.check(root)))
 
+    def test_archived_library_cannot_be_imported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {"Vegas": "import Detached.Backend"})
+            archive = root / "archive" / "split" / "Detached"
+            archive.mkdir(parents=True)
+            (archive / "Backend.lean.txt").write_text("", encoding="utf-8")
+            self.assertTrue(any("archived reference is not an active import Detached.Backend"
+                                in error for error in CHECKER.check(root)))
+
+    def test_archived_original_does_not_shadow_active_module(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {"Vegas": "import Vegas.Core", "Vegas.Core": ""})
+            archive = root / "archive" / "split" / "Vegas"
+            archive.mkdir(parents=True)
+            (archive / "Core.lean.txt").write_text("", encoding="utf-8")
+            self.assertEqual(CHECKER.check(root), [])
+
     def test_interaction_cannot_import_language_or_its_tests(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {

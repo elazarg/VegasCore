@@ -106,7 +106,8 @@ def bindingDecisionCheckpoints
         .binding (newName := newName) unrestricted next, profile⟩)
       (leftCurrent := left.current) (rightCurrent := right.current)
       (left := left.execution) (right := right.execution)
-      hinitial horigins hroster howners command hpure blockIndex
+      (BlockSourceStep.blockService_preservesInformation
+        hinitial horigins hroster howners command hpure) blockIndex
       left.sourcePrefix right.sourcePrefix hview
     exact left.sourcePrefix.checkpoint.binding_block_action_eq
       right.sourcePrefix.checkpoint agreement
@@ -174,7 +175,8 @@ def publicDecisionCheckpoints
   action_congr left right hview := by
     have agreement := WindowedSourcePrefix.policyAgreement_of_sourceView_eq
       (point := .of plan profile)
-      hinitial horigins hroster howners command hpure blockIndex
+      (BlockSourceStep.blockService_preservesInformation
+        hinitial horigins hroster howners command hpure) blockIndex
       left.sourcePrefix right.sourcePrefix hview
     exact left.sourcePrefix.checkpoint.public_block_action_eq
       right.sourcePrefix.checkpoint agreement

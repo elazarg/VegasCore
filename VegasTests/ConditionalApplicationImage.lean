@@ -10,7 +10,7 @@ import Vegas.Compile.ApplicationImageOutcome
 import Vegas.Compile.ApplicationPlanAllocation
 import Vegas.Compile.ApplicationPlanRefinement
 import Vegas.Compile.ApplicationSourceOutcome
-import VegasTests.Game
+import VegasTests.Fixtures
 
 /-! # Generated conditional application image
 

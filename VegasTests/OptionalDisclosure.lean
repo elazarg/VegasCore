@@ -4,7 +4,9 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import VegasTests.Game
+import Vegas.Compile.Compiler
+import Vegas.EventGraph.Execution
+import VegasTests.Fixtures
 
 /-!
 # An optional opening expressed in the existing core
@@ -77,8 +79,7 @@ theorem legal : Legal source.prog := by
 
 abbrev compiled := ToEventGraph.compile source
 
-def program : Machine.Program TestPlayer simpleExpr :=
-  Machine.ofCompiled compiled (ToEventGraph.compile_guardLive source legal)
+abbrev program := compiled
 
 theorem not_reveal_complete : ¬ RevealComplete [] core := by decide
 

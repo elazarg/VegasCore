@@ -4,121 +4,308 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import VegasTests.DisclosureSites
+import VegasTests.DisclosureTrace
 
-/-! # Reachability of canonical disclosure prefixes
-
-Every valid binding, signal, optional opening, and response determines reachable
-graph configurations at all nine phases. The witnesses use the actual graph
-protocol, including its guarded menus and supported public chance outcomes.
--/
+/-! # Reachability of canonical disclosure prefixes -/
 
 noncomputable section
 
 namespace VegasTests.OptionalDisclosure
 
-open Vegas EventGraph GameTheory.Protocol GameTheory.Math.Probability
+open Vegas EventGraph GameTheory.Math.Probability
 
-private theorem reachable_of_map_pure (state : program.State)
-    (command : {joint // program.execution.Legal state joint}) (target : Config graph)
-    (hlaw : (program.execution.step state command).map Subtype.val = FinDist.pure target) :
-    Reachable graph target := by
-  obtain ⟨next, hnext⟩ := (program.execution.step state command).support_nonempty
-  have hmapped : next.1 ∈
-      ((program.execution.step state command).map Subtype.val).support := by
-    rw [FinDist.support_map]
-    exact ⟨next, hnext, rfl⟩
-  rw [hlaw, FinDist.mem_support_pure] at hmapped
-  rw [← hmapped]
-  exact next.2
+private theorem typedValue_eq_cast {left right : simpleExpr.Ty} (h : left = right)
+    (value : simpleExpr.Val left) :
+    (⟨left, value⟩ : TypedValue simpleExpr) =
+      ⟨right, cast (congrArg simpleExpr.Val h) value⟩ := by
+  cases h
+  rfl
 
-private theorem phaseTwo_reachable (data : RunData) : Reachable graph (cfg data 2) := by
-  let state : program.State := afterBinding data.secret
-  have hstate : state.1 = cfg data 1 := by
-    rw [afterBinding_val]
-    rfl
-  have hterm : ¬ program.execution.terminal state := by
-    change ¬ Terminal graph state.1
-    rw [hstate, terminal_iff]
-    decide
-  obtain ⟨joint, hlegal⟩ := program.execution.exists_legal hterm
-  exact reachable_of_map_pure state ⟨joint, hlegal⟩ _
-    (marker_step data state hstate ⟨joint, hlegal⟩)
+private theorem guard_eval_cast {left right : EventGuard simpleExpr}
+    (h : left = right) (value : simpleExpr.Val left.ty)
+    (env : ReadEnv simpleExpr right.choiceReads)
+    (hok : left.eval value
+      (cast (congrArg (ReadEnv simpleExpr ∘ EventGuard.choiceReads) h.symm) env) = true) :
+    right.eval (cast (congrArg simpleExpr.Val (congrArg EventGuard.ty h)) value) env = true := by
+  cases h
+  exact hok
 
-private theorem phaseThree_reachable (data : RunData) : Reachable graph (cfg data 3) := by
-  let state : program.State := ⟨cfg data 2, phaseTwo_reachable data⟩
-  have hterm : ¬ program.execution.terminal state := by
-    change ¬ Terminal graph (cfg data 2)
-    rw [terminal_iff]
-    decide
-  obtain ⟨joint, hlegal⟩ := program.execution.exists_legal hterm
-  let command := (⟨joint, hlegal⟩ : {joint // program.execution.Legal state joint})
-  apply reachable_of_map_pure state command
-  apply internal_step_law state command
-  · change (readyInternalNodes graph (cfg data 2)).Nonempty
-    refine ⟨node 2, Finset.mem_filter.mpr ⟨Finset.mem_univ _, ?_⟩⟩
-    exact (ready_internal_iff _ _ _).mpr ⟨rfl, by simp⟩
-  · intro event step
-    exact marker_reveal_step data state.1 rfl event step
+private theorem reachable_commit_value {G : Graph TestPlayer simpleExpr}
+    {state : Config G} (hreach : Reachable G state) {who : TestPlayer}
+    {action : CommitAction G who} (step : CommitStep G state who action)
+    (value : simpleExpr.Val step.guard.ty) (hvalue : step.guard.eval value step.env = true) :
+    Reachable G
+      (state.completeNode action.node ⟨step.guard.ty, value⟩) := by
+  let selected : CommitAction G who :=
+    ⟨action.node, ⟨step.guard.ty, value⟩⟩
+  let selectedStep : CommitStep G state who selected :=
+    { row := step.row
+      guard := step.guard
+      row_get := step.row_get
+      sem_eq := step.sem_eq
+      ready := step.ready
+      value := value
+      value_ok := by simp [selected, TypedValue.as?]
+      env := step.env
+      env_ok := step.env_ok
+      guard_ok := hvalue }
+  apply Reachable.step hreach (.commit who selected selectedStep)
+  simp [stepAvailableEvent, stepCommit, selected, selectedStep]
 
-private theorem responseHistories (data : RunData) (hvalid : data.Valid) :
-    ∃ middle final : program.execution.History,
-      middle.state.1 = cfg data 5 ∧ final.state.1 = cfg data 6 := by
-  obtain ⟨middle, final, hmiddle, hfinal⟩ :=
-    response_site_realizable data.secret data.signal data.opening hvalid
-  exact ⟨middle, final, hmiddle.trans (by rfl), hfinal.trans (by rfl)⟩
+private theorem opening_guard_valid (data : RunData) (hvalid : data.Valid)
+    (guard : EventGuard simpleExpr)
+    (hsem : (graph.nodeRow (node 4)).sem = .commit 0 guard)
+    (env : ReadEnv simpleExpr guard.choiceReads)
+    (henv : ReadEnv.ofStore? (cfg data 4).store guard.choiceReads = some env) :
+    ∃ value : simpleExpr.Val guard.ty,
+      guard.eval value env = true ∧
+      (⟨guard.ty, value⟩ : TypedValue simpleExpr) = data.value 4 := by
+  have hguard := (NodeSem.commit.inj hsem).2
+  subst guard
+  refine ⟨data.opening, ?_, rfl⟩
+  have hsecret := ReadEnv.ofStore?_read henv (ref := ⟨0, .bool⟩) (by decide)
+  change some data.secret = some (env.read ⟨0, .bool⟩ _) at hsecret
+  have hsecret' := Option.some.inj hsecret
+  change (if data.opening.isNone then true
+    else decide (data.opening = some (env.read ⟨0, .bool⟩ (by decide)))) = true
+  rw [← hsecret']
+  rcases hvalid with h | h <;> simp [h]
 
-private theorem phaseSeven_reachable (data : RunData) (hvalid : data.Valid) :
-    Reachable graph (cfg data 7) := by
-  obtain ⟨_, history, _, hstate⟩ := responseHistories data hvalid
-  let choice := responseChoice history data hstate data.response
-  have hlocal := (program.information.menu_adequate 1 history.trace choice.1).mp choice.2
-  let joint := program.execution.singletonJoint 1 choice.1
-  have hlegal : program.execution.Legal history.state joint := by
-    refine ⟨hlocal.1.1, ?_⟩
-    intro who
-    by_cases heq : who = 1
-    · subst who
-      simp only [joint, ExecutionProtocol.singletonJoint_self]
-      exact hlocal
-    · simp only [joint, ExecutionProtocol.singletonJoint_of_ne _ _ _ heq]
-      intro hactive
-      have hactive' : EventGraph.ActiveAt graph (cfg data 6) who := hstate ▸ hactive
-      exact heq (by simpa [active_iff] using hactive')
-  let command := (⟨joint, hlegal⟩ : {joint // program.execution.Legal history.state joint})
-  apply reachable_of_map_pure history.state command
-  have hbit : responseBit (command.1 1) = data.response := by
-    change responseBit (some (responseAction data.response)) = data.response
-    exact responseBit_action data.response
-  simpa [hbit] using response_step data history.state hstate command
+private theorem sample3 (data : RunData) (hreach : Reachable graph (cfg data 3)) :
+    Reachable graph (cfg data 4) := by
+  have hready := (ready_iff data 3 (node 3)).mpr rfl
+  obtain ⟨event, hevent⟩ := exists_availableEvent_of_ready compiled.graphWF
+    (ToEventGraph.compile_guardLive source legal) (state := ⟨_, hreach⟩) hready
+  have hn : event.node = node 3 := hevent
+  cases event with
+  | commit who action step =>
+      have hr := Option.some.inj
+        (step.row_get.symm.trans (graph.nodes_get?_nodeRow action.node))
+      have hs := step.sem_eq
+      change action.node = node 3 at hn
+      rw [hr, hn] at hs
+      cases hs
+  | internal event step =>
+      change event.node = node 3 at hn
+      cases step with
+      | reveal row sf row_get sem_eq ready value value_ok =>
+          have hr := Option.some.inj
+            (row_get.symm.trans (graph.nodes_get?_nodeRow event.node))
+          rw [hr, hn] at sem_eq
+          cases sem_eq
+      | sample row dist row_get sem_eq ready env env_ok =>
+          have hr : row = graph.nodeRow event.node := Option.some.inj
+            (row_get.symm.trans (graph.nodes_get?_nodeRow event.node))
+          have hs := sem_eq
+          rw [hr, hn] at hs
+          cases hs
+          rw [show cfg data 4 = (cfg data 3).completeNode (node 3) (data.value 3) from
+            cfg_succ data 3, ← hn]
+          apply Reachable.step hreach (.internal event
+            (.sample row _ row_get sem_eq ready env env_ok))
+          simp only [stepAvailableEvent, stepInternal]
+          rw [FinDist.support_map]
+          refine ⟨data.signal, ?_, ?_⟩
+          · have hsupp : data.signal ∈ fairCoin.denote.support := by
+              apply FinDist.prob_pos_iff.mp
+              rw [RationalLaw.prob_denote]
+              cases data.signal <;> simp [fairCoin, Fin.sum_univ_two]
+            simp only [EventDist.eval, EventDist.evalLaw, ToEventGraph.eventDistOf,
+              evalLawDistExprDeps]
+            split <;> exact hsupp
+          · rfl
+
+private theorem cfg_step (data : RunData) (hvalid : data.Valid) (phase : Fin 8)
+    (hreach : Reachable graph (cfg data phase.castSucc)) :
+    Reachable graph (cfg data phase.succ) := by
+  have hready : Ready graph (cfg data phase.castSucc) (node phase) :=
+    (ready_iff data phase.castSucc (node phase)).mpr rfl
+  obtain ⟨event, hevent⟩ := exists_availableEvent_of_ready compiled.graphWF
+    (ToEventGraph.compile_guardLive source legal) (state := ⟨_, hreach⟩) hready
+  have heventNode : event.node = node phase := hevent
+  fin_cases phase
+  · cases event with
+    | commit who action step =>
+        simp only [AvailableEvent.node_commit] at heventNode
+        have hrow : step.row = graph.nodeRow action.node := by
+          exact Option.some.inj (step.row_get.symm.trans
+            (graph.nodes_get?_nodeRow action.node))
+        have hsem := step.sem_eq
+        rw [hrow] at hsem
+        rw [heventNode] at hsem
+        change NodeSem.commit 0 _ = NodeSem.commit who step.guard at hsem
+        obtain ⟨rfl, hguard⟩ := NodeSem.commit.inj hsem
+        have hty : (.bool : simpleExpr.Ty) = step.guard.ty :=
+          congrArg EventGuard.ty hguard
+        let desired := cast (congrArg simpleExpr.Val hty) data.secret
+        have hall : ∀ value : simpleExpr.Val step.guard.ty,
+            ∀ env : ReadEnv simpleExpr step.guard.choiceReads,
+              step.guard.eval value env = true := by
+          rw [← hguard]
+          intro value env
+          rfl
+        have hnext := reachable_commit_value hreach step desired (hall desired step.env)
+        rw [cfg_succ, ← heventNode]
+        simpa only [desired, RunData.value, typedValue_eq_cast hty data.secret] using hnext
+    | internal internal step =>
+        simp only [AvailableEvent.node_internal] at heventNode
+        cases step with
+        | sample row dist row_get sem_eq ready env env_ok =>
+            have hrow : row = graph.nodeRow internal.node := by
+              exact Option.some.inj (row_get.symm.trans
+                (graph.nodes_get?_nodeRow internal.node))
+            rw [hrow] at sem_eq
+            rw [heventNode] at sem_eq
+            cases sem_eq
+        | reveal row sourceField row_get sem_eq ready value value_ok =>
+            have hrow : row = graph.nodeRow internal.node := by
+              exact Option.some.inj (row_get.symm.trans
+                (graph.nodes_get?_nodeRow internal.node))
+            rw [hrow] at sem_eq
+            rw [heventNode] at sem_eq
+            cases sem_eq
+  · cases event with
+    | commit who action step =>
+        simp only [AvailableEvent.node_commit] at heventNode
+        have hrow : step.row = graph.nodeRow action.node :=
+          Option.some.inj (step.row_get.symm.trans (graph.nodes_get?_nodeRow action.node))
+        have hsem := step.sem_eq
+        rw [hrow, heventNode] at hsem
+        change NodeSem.commit 0 _ = NodeSem.commit who step.guard at hsem
+        obtain ⟨rfl, hguard⟩ := NodeSem.commit.inj hsem
+        have hty : (.bool : simpleExpr.Ty) = step.guard.ty :=
+          congrArg EventGuard.ty hguard
+        let desired := cast (congrArg simpleExpr.Val hty) false
+        have hok : step.guard.eval desired step.env = true := by
+          apply guard_eval_cast hguard false step.env
+          rfl
+        have hnext := reachable_commit_value hreach step desired hok
+        rw [cfg_succ, ← heventNode]
+        simpa only [desired, RunData.value, typedValue_eq_cast hty false] using hnext
+    | internal internal step =>
+        simp only [AvailableEvent.node_internal] at heventNode
+        cases step with
+        | sample row dist row_get sem_eq ready env env_ok =>
+            have hrow : row = graph.nodeRow internal.node := by
+              exact Option.some.inj (row_get.symm.trans
+                (graph.nodes_get?_nodeRow internal.node))
+            rw [hrow] at sem_eq
+            rw [heventNode] at sem_eq
+            cases sem_eq
+        | reveal row sourceField row_get sem_eq ready value value_ok =>
+            have hrow : row = graph.nodeRow internal.node := by
+              exact Option.some.inj (row_get.symm.trans
+                (graph.nodes_get?_nodeRow internal.node))
+            rw [hrow] at sem_eq
+            rw [heventNode] at sem_eq
+            cases sem_eq
+  · let step : InternalStep graph (cfg data 2) ⟨node 2⟩ :=
+      .reveal (graph.nodeRow (node 2)) 1 rfl rfl
+        ((ready_iff data 2 (node 2)).mpr rfl) false (by rfl)
+    have hnext := Reachable.step hreach (.internal ⟨node 2⟩ step)
+      (next := (cfg data 2).completeNode (node 2) ⟨.bool, false⟩)
+      (by
+        simp only [stepAvailableEvent, stepInternal, step, FinDist.mem_support_pure]
+        rfl)
+    change Reachable graph ((cfg data 2).completeNode (node 2) ⟨.bool, false⟩)
+    exact hnext
+  · exact sample3 data hreach
+  · cases event with
+    | commit who action step =>
+        simp only [AvailableEvent.node_commit] at heventNode
+        have hrow : step.row = graph.nodeRow action.node := Option.some.inj
+          (step.row_get.symm.trans (graph.nodes_get?_nodeRow action.node))
+        have hsem := step.sem_eq
+        rw [hrow, heventNode] at hsem
+        obtain ⟨rfl, _⟩ := NodeSem.commit.inj hsem
+        obtain ⟨value, hok, hvalue⟩ := opening_guard_valid data hvalid step.guard hsem
+          step.env step.env_ok
+        have hnext := reachable_commit_value hreach step value hok
+        rw [cfg_succ, ← heventNode]
+        simpa [RunData.value, hvalue] using hnext
+    | internal internal step =>
+        simp only [AvailableEvent.node_internal] at heventNode
+        cases step <;> rename_i row arg row_get sem_eq _ _ _
+        all_goals
+          have hrow := Option.some.inj (row_get.symm.trans
+            (graph.nodes_get?_nodeRow internal.node))
+          rw [hrow, heventNode] at sem_eq
+          cases sem_eq
+  · let step : InternalStep graph (cfg data 5) ⟨node 5⟩ :=
+      .reveal (graph.nodeRow (node 5)) 4 rfl rfl
+        ((ready_iff data 5 (node 5)).mpr rfl) data.opening (by rfl)
+    have hnext := Reachable.step hreach (.internal ⟨node 5⟩ step)
+      (next := (cfg data 5).completeNode (node 5) ⟨.option .bool, data.opening⟩)
+      (by
+        simp only [stepAvailableEvent, stepInternal, step, FinDist.mem_support_pure]
+        rfl)
+    change Reachable graph
+      ((cfg data 5).completeNode (node 5) ⟨.option .bool, data.opening⟩)
+    exact hnext
+  · cases event with
+    | commit who action step =>
+        simp only [AvailableEvent.node_commit] at heventNode
+        have hrow : step.row = graph.nodeRow action.node := Option.some.inj
+          (step.row_get.symm.trans (graph.nodes_get?_nodeRow action.node))
+        have hsem := step.sem_eq
+        rw [hrow, heventNode] at hsem
+        change NodeSem.commit 1 _ = NodeSem.commit who step.guard at hsem
+        obtain ⟨rfl, hguard⟩ := NodeSem.commit.inj hsem
+        have hty : (.bool : simpleExpr.Ty) = step.guard.ty :=
+          congrArg EventGuard.ty hguard
+        let desired := cast (congrArg simpleExpr.Val hty) data.response
+        have hall : ∀ value : simpleExpr.Val step.guard.ty,
+            ∀ env : ReadEnv simpleExpr step.guard.choiceReads,
+              step.guard.eval value env = true := by
+          rw [← hguard]
+          intro value env
+          rfl
+        have hnext := reachable_commit_value hreach step desired (hall desired step.env)
+        rw [cfg_succ, ← heventNode]
+        simpa only [desired, RunData.value, typedValue_eq_cast hty data.response] using hnext
+    | internal internal step =>
+        simp only [AvailableEvent.node_internal] at heventNode
+        cases step <;> rename_i row arg row_get sem_eq _ _ _
+        all_goals
+          have hrow := Option.some.inj (row_get.symm.trans
+            (graph.nodes_get?_nodeRow internal.node))
+          rw [hrow, heventNode] at sem_eq
+          cases sem_eq
+  · let step : InternalStep graph (cfg data 7) ⟨node 7⟩ :=
+      .reveal (graph.nodeRow (node 7)) 6 rfl rfl
+        ((ready_iff data 7 (node 7)).mpr rfl) data.response (by rfl)
+    have hnext := Reachable.step hreach (.internal ⟨node 7⟩ step)
+      (next := (cfg data 7).completeNode (node 7) ⟨.bool, data.response⟩)
+      (by
+        simp only [stepAvailableEvent, stepInternal, step, FinDist.mem_support_pure]
+        rfl)
+    change Reachable graph
+      ((cfg data 7).completeNode (node 7) ⟨.bool, data.response⟩)
+    exact hnext
 
 theorem cfg_reachable (data : RunData) (hvalid : data.Valid) (phase : Fin 9) :
     Reachable graph (cfg data phase) := by
   fin_cases phase
-  · exact Reachable.initial
-  · have hcfg : (afterBinding data.secret).1 = cfg data 1 := by
-      rw [afterBinding_val]
-      rfl
-    exact hcfg ▸ (afterBinding data.secret).2
-  · exact phaseTwo_reachable data
-  · exact phaseThree_reachable data
-  · obtain ⟨history, hsummary⟩ := opening_site_realizable data.secret data.signal
-    have hstate : history.state.1 = cfg data 4 := by
-      have := congrArg Prod.fst hsummary
-      exact this.trans (by rfl)
-    exact hstate ▸ history.state.2
-  · obtain ⟨middle, _, hmiddle, _⟩ := responseHistories data hvalid
-    exact hmiddle ▸ middle.state.2
-  · obtain ⟨_, final, _, hfinal⟩ := responseHistories data hvalid
-    exact hfinal ▸ final.state.2
-  · exact phaseSeven_reachable data hvalid
-  · let state : program.State := ⟨cfg data 7, phaseSeven_reachable data hvalid⟩
-    have hterm : ¬ program.execution.terminal state := by
-      change ¬ Terminal graph (cfg data 7)
-      rw [terminal_iff]
-      decide
-    obtain ⟨joint, hlegal⟩ := program.execution.exists_legal hterm
-    exact reachable_of_map_pure state ⟨joint, hlegal⟩ _
-      (final_protocol_step data state rfl ⟨joint, hlegal⟩)
+  · simpa [cfg_initial] using (Reachable.initial : Reachable graph (Config.initial graph))
+  · exact cfg_step data hvalid 0 (Reachable.initial)
+  · exact cfg_step data hvalid 1 (cfg_step data hvalid 0 Reachable.initial)
+  · exact cfg_step data hvalid 2 (cfg_step data hvalid 1
+      (cfg_step data hvalid 0 Reachable.initial))
+  · exact cfg_step data hvalid 3 (cfg_step data hvalid 2
+      (cfg_step data hvalid 1 (cfg_step data hvalid 0 Reachable.initial)))
+  · exact cfg_step data hvalid 4 (cfg_step data hvalid 3
+      (cfg_step data hvalid 2 (cfg_step data hvalid 1
+        (cfg_step data hvalid 0 Reachable.initial))))
+  · exact cfg_step data hvalid 5 (cfg_step data hvalid 4
+      (cfg_step data hvalid 3 (cfg_step data hvalid 2
+        (cfg_step data hvalid 1 (cfg_step data hvalid 0 Reachable.initial)))))
+  · exact cfg_step data hvalid 6 (cfg_step data hvalid 5
+      (cfg_step data hvalid 4 (cfg_step data hvalid 3
+        (cfg_step data hvalid 2 (cfg_step data hvalid 1
+          (cfg_step data hvalid 0 Reachable.initial))))))
+  · exact cfg_step data hvalid 7 (cfg_step data hvalid 6
+      (cfg_step data hvalid 5 (cfg_step data hvalid 4
+        (cfg_step data hvalid 3 (cfg_step data hvalid 2
+          (cfg_step data hvalid 1 (cfg_step data hvalid 0 Reachable.initial)))))))
 
 end VegasTests.OptionalDisclosure

@@ -66,7 +66,8 @@ theorem outcome_source (payouts : Payouts) (state : DisclosureState)
       state.decodedConfig = cfg ⟨secret, signal, opening, response⟩ 8 ∧
       SmallStep.Star (SourceConfig.initial (coreWithPayoffs payouts))
         ⟨TerminalContext, terminalEnv secret signal opening response, .ret payouts⟩ ∧
-      evalPayoffs? (programWithPayoffs payouts).payoffs state.decodedConfig.store =
+      evalPayoffs? (ToEventGraph.compile (sourceWithPayoffs payouts)).payoffs
+          state.decodedConfig.store =
         some (evalPayoffs payouts (terminalEnv secret signal opening response)) := by
   obtain ⟨hsignal, hpublication, hresponse⟩ :=
     (outcome_eq_some_iff state signal opening response).mp houtcome
@@ -95,7 +96,7 @@ theorem policy_outcome_source (payouts : Payouts) (window : Nat)
       next.native.application.decodedConfig = cfg ⟨secret, signal, opening, response⟩ 8 ∧
       SmallStep.Star (SourceConfig.initial (coreWithPayoffs payouts))
         ⟨TerminalContext, terminalEnv secret signal opening response, .ret payouts⟩ ∧
-      evalPayoffs? (programWithPayoffs payouts).payoffs
+      evalPayoffs? (ToEventGraph.compile (sourceWithPayoffs payouts)).payoffs
           next.native.application.decodedConfig.store =
         some (evalPayoffs payouts (terminalEnv secret signal opening response)) := by
   exact outcome_source payouts next.native.application

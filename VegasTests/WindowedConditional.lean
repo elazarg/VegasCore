@@ -276,12 +276,13 @@ theorem checked_source_prefix_agreement
       (rightCurrent.current.source.toView 1).eraseEnv) :
     WindowedApplication.PolicyAgreement runtime 1 left right := by
   apply ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq
-    GeneratedApplicationSourceLaw.initial_reads_public
-    ApplicationBindingOrigins.persistent_image_has_binding_origins
-    (by decide) (by
-      intro instruction hinstruction owner hsubmitter
-      fin_cases owner <;> simp)
-    command hpure blockIndex leftPrefix rightPrefix hview
+    (ApplicationPlan.BlockSourceStep.blockService_preservesInformation
+      GeneratedApplicationSourceLaw.initial_reads_public
+      ApplicationBindingOrigins.persistent_image_has_binding_origins
+      (by decide) (by
+        intro instruction hinstruction owner hsubmitter
+        fin_cases owner <;> simp)
+      command hpure) blockIndex leftPrefix rightPrefix hview
 
 /-- At a focal-owned conditional head, two actual source prefixes with equal
 focal predecessor information cannot record different public results after
@@ -354,14 +355,15 @@ theorem checked_focal_conditional_action_eq
   have rightCheckpoint := rightPrefix.checkpoint
   have agreement : WindowedApplication.PolicyAgreement runtime 0 left right := by
     apply ApplicationPlan.WindowedSourcePrefix.policyAgreement_of_sourceView_eq
-      (roster := [0, 1])
       (point := ApplicationPlan.ProfilePoint.of plan profile)
-      GeneratedApplicationSourceLaw.initial_reads_public
-      ApplicationBindingOrigins.persistent_image_has_binding_origins
-      (by decide) (by
-        intro instruction hinstruction owner hsubmitter
-        fin_cases owner <;> simp)
-      command hpure blockIndex leftPrefix rightPrefix hview
+      (ApplicationPlan.BlockSourceStep.blockService_preservesInformation
+        (roster := [0, 1])
+        GeneratedApplicationSourceLaw.initial_reads_public
+        ApplicationBindingOrigins.persistent_image_has_binding_origins
+        (by decide) (by
+          intro instruction hinstruction owner hsubmitter
+          fin_cases owner <;> simp)
+        command hpure) blockIndex leftPrefix rightPrefix hview
   let site := ConditionalPublicationSite.atHead name publicName 0 guard tail spec
   let code := site.code fresh state (site.sourceField fresh state)
     (10 : Nat)

@@ -4,7 +4,6 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import VegasTests.Game
 import VegasTests.Language
 import VegasTests.CoreFinite
 import VegasTests.PublicGuard
@@ -38,17 +37,9 @@ import VegasTests.ConditionalDefaultApplication
 import VegasTests.ConditionalDefaultPolicy
 import VegasTests.ConditionalDefaultPhase
 import VegasTests.SourceStrategy
-import VegasTests.Machine
-import VegasTests.ScheduledReplay
-import VegasTests.ScheduledEquilibrium
-import VegasTests.MatchingPenniesEquilibrium
-import VegasTests.RuntimeBoundaries
-import VegasTests.FailureObservation
-import VegasTests.ConstantSignal
 import VegasTests.OptionalDisclosure
 import VegasTests.PersistentDisclosure
-import VegasTests.PersistentDisclosurePolicy
-import VegasTests.PersistentDisclosureSource
+import VegasTests.Fixtures
 import VegasTests.DisclosureAccounting
 import VegasTests.GeneratedDisclosure
 import VegasTests.GeneratedPersistentDisclosure
@@ -65,11 +56,6 @@ import VegasTests.ApplicationPolicyProvenance
 import VegasTests.ApplicationReadoutAvailability
 import VegasTests.GeneratedReadoutAvailability
 import VegasTests.DisclosureTrace
-import VegasTests.DisclosureBinding
-import VegasTests.DisclosureCheckpoint
-import VegasTests.DisclosureInformation
-import VegasTests.DisclosureResponse
-import VegasTests.DisclosureOpening
 import VegasTests.DisclosurePublication
 import VegasTests.DisclosurePublicationOrder
 import VegasTests.DisclosureApplicationSource
@@ -117,27 +103,9 @@ import VegasTests.DisclosureFreshPublication
 import VegasTests.DisclosureResponderService
 import VegasTests.DisclosureResponderSettlement
 import VegasTests.DisclosureResolutionGuard
-import VegasTests.DisclosureLaw
-import VegasTests.DisclosureSites
 import VegasTests.DisclosurePolicy
 import VegasTests.DisclosureCorrespondence
 import VegasTests.DisclosurePayoff
-import VegasTests.SealedOffer
-import VegasTests.SealedOfferEquilibrium
-import VegasTests.SealedOfferRuntime
-import VegasTests.ObservedAbort
-import VegasTests.DisclosureWindow
-import VegasTests.QuittingSource
-import VegasTests.QuittingLaw
-import VegasTests.QuittingStrategy
-import VegasTests.QuittingEquilibrium
-import VegasTests.QuittingCheckpoint
-import VegasTests.QuittingImplementation
-import VegasTests.QuittingWindow
-import VegasTests.RequestCompiler
-import VegasTests.ScheduledRequest
-import VegasTests.TraceUtility
-import VegasTests.OutcomeValuation
 import VegasTests.PendingSource
 import VegasTests.PendingExecution
 import VegasTests.PendingOutcome

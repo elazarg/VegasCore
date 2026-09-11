@@ -4,6 +4,8 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
+import Vegas.EventGraph.Information
+import Vegas.EventGraph.Protocol
 import VegasTests.OptionalDisclosure
 
 /-!
@@ -114,27 +116,6 @@ theorem no_internal (data : RunData) (phase : Fin 9)
     Finset.notMem_empty, iff_false, ready_internal_iff]
   rcases hphase with rfl | rfl | rfl | rfl <;> simp
 
-theorem active_iff (data : RunData) (phase : Fin 9) (who : TestPlayer) :
-    EventGraph.ActiveAt graph (cfg data phase) who ↔
-      (who = 0 ∧ (phase = 0 ∨ phase = 1 ∨ phase = 4)) ∨ (who = 1 ∧ phase = 6) := by
-  classical
-  constructor
-  · rintro ⟨_, _, hactive⟩
-    obtain ⟨index, hindex⟩ := (Finset.mem_filter.mp hactive).2
-    exact ((ready_commit_iff _ _ _ _).mp (Finset.mem_filter.mp hindex).2).2
-  · intro hphase
-    have hsmall : phase.val < 8 := by
-      rcases hphase with ⟨_, rfl | rfl | rfl⟩ | ⟨_, rfl⟩ <;> decide
-    have hstrategic : phase = 0 ∨ phase = 1 ∨ phase = 4 ∨ phase = 6 := by
-      tauto
-    refine ⟨?_, no_internal data phase hstrategic, Finset.mem_filter.mpr ?_⟩
-    · rw [terminal_iff]
-      intro heq
-      subst phase
-      contradiction
-    · refine ⟨Finset.mem_univ _, ⟨phase.val, hsmall⟩, Finset.mem_filter.mpr ?_⟩
-      exact ⟨Finset.mem_univ _, (ready_commit_iff _ _ _ _).mpr ⟨rfl, hphase⟩⟩
-
 /-- info: 'VegasTests.OptionalDisclosure.ready_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.OptionalDisclosure.ready_iff
@@ -142,9 +123,5 @@ theorem active_iff (data : RunData) (phase : Fin 9) (who : TestPlayer) :
 /-- info: 'VegasTests.OptionalDisclosure.terminal_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.OptionalDisclosure.terminal_iff
-
-/-- info: 'VegasTests.OptionalDisclosure.active_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms VegasTests.OptionalDisclosure.active_iff
 
 end VegasTests.OptionalDisclosure

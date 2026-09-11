@@ -4,6 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
+import Vegas.Core.Strategy
 import VegasTests.PendingWithholding
 import VegasTests.PendingSnapshots
 

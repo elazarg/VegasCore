@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.ApplicationPlanAllocation
-import VegasTests.Game
+import VegasTests.Fixtures
 
 /-! # Out-of-order binding in a generated application image
 

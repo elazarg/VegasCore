@@ -106,13 +106,9 @@ import Vegas.Compile.PublicGuard
 import Vegas.Compile.DecisionSite
 import Vegas.Compile.FieldMap
 import Vegas.Compile.SourceAdequacy
-import Vegas.Compile.SourceOrder
-import Vegas.Compile.SourceInformation
-import Vegas.Compile.PolicyInformation
 import Vegas.Compile.SourceLaw
 import Vegas.Compile.SourceExecution
 import Vegas.Compile.SourceExecutionGraph
-import Vegas.Compile.SourceExecutionLaw
 import Vegas.Compile.ApplicationOrder
 import Vegas.Compile.ApplicationOrderTimeouts
 import Vegas.Compile.ApplicationOrderPrefix
@@ -134,6 +130,9 @@ import Vegas.Compile.WindowedDeliveryProvenance
 import Vegas.Compile.WindowedDeliveryAdmission
 import Vegas.Compile.WindowedDeliveryReadiness
 import Vegas.Compile.WindowedDeliveryPhase
+import Vegas.Compile.WindowedDeliverySample
+import Vegas.Compile.WindowedDeliverySampleCheckpoint
+import Vegas.Compile.WindowedDeliveryIsolation
 import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission
 import Vegas.Compile.WindowedReactionPrivacy
@@ -199,6 +198,7 @@ import Vegas.Compile.WindowedConditionalInclusion
 import Vegas.Compile.WindowedConditionalPrivacy
 import Vegas.Compile.WindowedConditionalBlockPrivacy
 import Vegas.Compile.WindowedSourcePrivacy
+import Vegas.Compile.WindowedSourceInformation
 import Vegas.Compile.WindowedPublicAction
 import Vegas.Compile.WindowedDecisionCheckpoints
 import Vegas.Compile.WindowedSourcePolicy
@@ -241,9 +241,6 @@ import Vegas.Compile.SourceExecutionOutcome
 import Vegas.Compile.SourceOutcome
 import Vegas.Compile.SourceObservation
 import Vegas.Compile.SourcePolicy
-import Vegas.Compile.SourceBacktranslation
-import Vegas.Compile.SourceStrategy
-import Vegas.Compile.Machine
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution

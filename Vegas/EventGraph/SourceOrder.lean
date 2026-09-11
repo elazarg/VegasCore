@@ -95,4 +95,16 @@ theorem ReadyCommitNode.later_commit_reading_target_not_done
   have hcommitDone := reachable_donePrereqs hreachable hdone hprereq
   exact hready.1 hcommitDone
 
+/-- A ready reveal has completed every source-earlier commitment. -/
+theorem Ready.prior_commit_done_of_reveal
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (G : Graph Player L) (cfg : Config G) {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L} {source : Nat}
+    {who : Player} {guard : EventGuard L}
+    (hnode : G.nodes[node]? = some event) (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat)) (hreveal : event.sem = .reveal source)
+    (hcommit : priorEvent.sem = .commit who guard) (hready : Ready G cfg node) :
+    prior ∈ cfg.done :=
+  hready.2 (G.prior_commit_mem_prereqs_of_reveal hnode hprior hlt hreveal hcommit)
+
 end Vegas.EventGraph

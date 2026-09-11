@@ -5,7 +5,8 @@ Authors: VegasCore contributors
 -/
 
 import VegasTests.DisclosureServiceResolution
-import VegasTests.DisclosureSites
+import Vegas.Foundation.Probability
+import VegasTests.OptionalDisclosure
 
 /-! # A zero-window publication race under service
 
@@ -21,7 +22,15 @@ noncomputable section
 
 namespace VegasTests.OptionalDisclosure.DisclosureState
 
-open Interaction GameTheory.Math.Probability
+open Vegas Interaction GameTheory.Math.Probability
+
+private theorem fairCoin_supported (signal : Bool) : signal ∈ fairCoin.denote.support := by
+  rw [← FinDist.prob_pos_iff]
+  unfold fairCoin
+  rw [RationalLaw.prob_denote]
+  dsimp
+  rw [Fin.sum_univ_two]
+  cases signal <;> norm_num
 
 def publicationExpirationId? : List (Message TestPlayer Payload) →
     Option (MessageId TestPlayer)
@@ -143,7 +152,7 @@ theorem zero_window_race_prelude_reachable :
             ⟨(1, 0), Payload.publish 5 .expire⟩] :
               List (Message TestPlayer Payload)))).support := by
     rw [FinDist.support_map]
-    exact ⟨true, coin_supported true, rfl⟩
+    exact ⟨true, fairCoin_supported true, rfl⟩
   have hout' : (some true, some true, 0, 1, none,
       [⟨(0, 1), Payload.publish 5 (.opening (0, 0) true)⟩,
         ⟨(1, 0), Payload.publish 5 .expire⟩]) ∈

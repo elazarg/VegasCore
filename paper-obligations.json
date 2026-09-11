@@ -1,0 +1,382 @@
+{
+  "Vegas.Paper.Disclosure.expected_payoffs": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Disclosure.nash_correspondence": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Disclosure.outcome_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Disclosure.policy_roundtrip": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.causal_threshold": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.fair_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.own_choice_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.own_choice_value": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.payoff_information_value": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.public_signal_value": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.quitting_value": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Kernel.realized_loss": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Matching.fair_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Matching.quitting_threshold": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Matching.refund_value": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Matching.serialized_adversarial_payoff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Matching.serialized_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.disclosure_timeout": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.runtime_buyer_guarantee": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.runtime_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.source_buyer_best_response": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.source_buyer_guarantee": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.source_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.source_seller_bound": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Offer.source_values": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.native_approximate_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.native_coarse_correlated_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.native_correlated_preservation": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.native_honest_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.native_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.native_unilateral_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_deviation_mixture": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_honest_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_request_approximate_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_request_deviation_mixture": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_request_guarantee": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_request_honest_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Source.scheduled_request_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/Source.lean.txt"
+  },
+  "Vegas.Paper.Staged.causal_quitting_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.checkpoint_information": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.checkpoint_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.nash_correspondence": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.outcome_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.quitting_adequacy": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.serialized_adversarial_payoff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.serialized_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.strategy_lift": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.window_adequacy": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Staged.window_threshold": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.adversarial_bound": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.context_bound": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.decoder_boundary": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.nash_for_every_valuation": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.serialized_valuation": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.trace_counterexample": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.trace_harm": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.trace_incentive": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.Valuation.trace_regret": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.checked_request_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.coarse_correlated_transport": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.compiled_bounded_horizon": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.compiled_perfect_recall": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.compiled_serialized_approximate_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.compiled_serialized_loss_bound_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.constant_signal_approximate_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.constant_signal_deviation_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.constant_signal_dominated_quit": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.correlated_correspondence": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.correlated_transport": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.disclosure_window_adequacy": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.disclosure_window_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.disclosure_window_rule_exact": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.kuhn_behavioral_to_mixedPure": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.kuhn_mixedPure_to_behavioral": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.nash_equivalence": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.no_universal_public_submission_compiler": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_causal_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_information_mono": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_nash_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_no_information": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_optimal_rule": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_payoff_information": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_support_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.observed_abort_value_bound_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.public_submission_approximation_lower_bound": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.public_submission_no_adequacy": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.public_submission_not_nash": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.public_submission_winning_deviation": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.request_compiler_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.request_compiler_mixed_law": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.request_compiler_silence": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.selective_abort_support_iff": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.source_payoff_adequacy": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.utility_preservation_deviation": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  },
+  "Vegas.Paper.utility_preservation_honest": {
+    "reason": "proof module removed from the active audit and remains to be ported",
+    "reference": "archive/split/Paper/General.lean.txt"
+  }
+}

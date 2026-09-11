@@ -162,6 +162,13 @@ theorem viewEnvOfReadEnv_surjective
   rw [hvalues]
   exact eraseEnv_of_lookup visible
 
+/-- Declared reads and source views correspond bijectively when allocation is injective. -/
+theorem viewEnvOfReadEnv_bijective
+    {Γ : VCtx P L} (state : BuildState P L Γ) (who : P)
+    (hinjective : FieldOfNameInjective state.fieldOf) :
+    Function.Bijective (viewEnvOfReadEnv state who) :=
+  ⟨viewEnvOfReadEnv_injective state who, viewEnvOfReadEnv_surjective state who hinjective⟩
+
 /-- A compiled commitment's declared read environment and its source-visible
 environment have exactly the same information. Allocation injectivity is a
 proved compiler invariant; this equivalence does not include graph histories. -/
@@ -170,6 +177,6 @@ def sourceViewEquiv
     (hinjective : FieldOfNameInjective state.fieldOf) :
     ReadEnv L (visibleFieldRefs state who) ≃ Env L.Val (eraseVCtx (viewVCtx who Γ)) :=
   Equiv.ofBijective (viewEnvOfReadEnv state who)
-    ⟨viewEnvOfReadEnv_injective state who, viewEnvOfReadEnv_surjective state who hinjective⟩
+    (viewEnvOfReadEnv_bijective state who hinjective)
 
 end Vegas.ToEventGraph

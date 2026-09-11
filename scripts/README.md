@@ -8,10 +8,11 @@ Run these tools from the repository root.
   interaction/core/backend/test/audit dependency directions. Cycle reports include witness
   imports; acyclicity supplements rather than replaces the direction rules.
 
-- `lake --wfail build Paper` checks the paper audit, including the generic
-  claims in `Paper/General.lean`, independent-source claims in `Paper/Source.lean`,
-  and concrete witnesses in root `Paper.lean`.
-  This is also a default build target. Every audit theorem has an axiom pin.
+- `lake --wfail build Paper` checks the single paper audit in root `Paper.lean`.
+  It contains statement-only restatements with direct delegations, plus explicit
+  admitted declarations for open targets. Every audit theorem has an axiom pin.
+  A Lean build accepts those admissions; it is therefore not the paper-completion
+  gate.
 - `python scripts/check-paper-claims.py --paper-dir PATH` checks the supplied
   manuscript's `main.tex`
   and its inputs against `paper-claims.json`. Every numbered mathematical
@@ -30,13 +31,17 @@ Run these tools from the repository root.
   Active bibliography databases must be in the snapshot. Unqualified database
   filenames must also be unique across it, including archived directories, so
   recursive BibTeX lookup cannot silently select a different bibliography.
+  Strict mode rejects both archived obligations and admitted audit theorems.
+  `--allow-open-obligations` is a progress-only mode: it validates and reports
+  them but never describes an admitted declaration as a checked proof.
 - `python -m unittest discover -s scripts -p 'test_*.py'` checks the maintenance
   tooling, including missing claims, stale mappings, missing axiom pins, and
   active-paper input discovery.
 
 - `python scripts/check-lean-options.py` rejects source-local `set_option`
   directives in every project Lean source tree and checks that both implicit-binder
-  options are disabled and warnings are errors. Shared elaboration and lint settings
+  options are disabled and warnings are errors. It also rejects proof admissions
+  outside root `Paper.lean`. Shared elaboration and lint settings
   belong in `lakefile.toml`; separately managed dependencies keep their own
   package configuration.
 - `scripts/bump-lean-mathlib.sh v4.32.0` updates the Lean toolchain and

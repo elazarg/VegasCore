@@ -136,6 +136,10 @@ def check(root: Path) -> list[str]:
                 failures.append(f"{filename}: tracked source outside configured libraries")
 
     local_roots = [item for roots in library_roots.values() for item in roots]
+    reference_modules = {
+        ".".join(path.relative_to(root / "archive" / "split").parts)[:-len(".lean.txt")]
+        for path in (root / "archive" / "split").rglob("*.lean.txt")
+    }
     local_graph = {
         module: {dependency for dependency in sorted(dependencies) if dependency in modules}
         for module, dependencies in sorted(modules.items())
@@ -169,6 +173,8 @@ def check(root: Path) -> list[str]:
 
     for module, dependencies in modules.items():
         for dependency in dependencies:
+            if dependency in reference_modules and dependency not in modules:
+                failures.append(f"{module}: archived reference is not an active import {dependency}")
             if under(module, "GameTheoryExtensions") and not any(
                     under(dependency, prefix) for prefix in
                     ("GameTheory", "GameTheoryExtensions", "Mathlib", "Batteries", "Init", "Std")):

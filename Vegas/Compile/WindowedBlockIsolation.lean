@@ -8,6 +8,7 @@ import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.ApplicationOrderPrefix
 import Vegas.Compile.ApplicationImageStateRefinement
 import Interaction.MessageApplicationLocality
+import Interaction.MessageApplicationIdleService
 
 /-! # Isolation of a resolved instruction's service block
 
@@ -150,50 +151,15 @@ theorem runPolicies_block_inactive_invariant (runtime : WindowedApplication P L)
     (hnext : next ∈ (runtime.application.runPolicies players
       (runtime.blockEnvironment roster) schedule execution).support) :
     Invariant next.native.application := by
-  induction schedule generalizing execution with
-  | nil =>
-      simp only [MessageApplication.runPolicies, FinDist.mem_support_pure] at hnext
-      subst next
-      exact hinvariant
-  | cons invocation rest ih =>
-      simp only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
-      obtain ⟨middle, hmiddle, hnext⟩ := hnext
-      have hmiddleInvariant : Invariant middle.native.application := by
-        cases invocation with
-        | player actor =>
-            simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
-            obtain ⟨command, _, hstep⟩ := hmiddle
-            cases command with
-            | privateCommand command =>
-                simp only [MessageApplication.playerStep, PlayerCommand.toAction,
-                  MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-                  FinDist.mem_support_pure] at hstep
-                subst middle
-                exact hprivate _ actor command hinvariant
-            | submit payload | replay id | wait =>
-                simp only [MessageApplication.playerStep, PlayerCommand.toAction,
-                  MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-                  FinDist.mem_support_pure] at hstep
-                subst middle
-                exact hinvariant
-        | environment =>
-            have hpolicy := runtime.blockEnvironment_inactive roster execution.environmentHistory
-              (MessageApplication.State.environmentView runtime.application execution.native)
-              instruction (hindex _ (Nat.le_refl _) (by
-                simp [Invocation.isEnvironment])) (hinactive _ hinvariant)
-            simp only [MessageApplication.invoke, hpolicy, FinDist.pure_bind,
-              MessageApplication.environmentStep_wait, FinDist.mem_support_pure] at hmiddle
-            subst middle
-            exact hinvariant
-      have hlength := runtime.application.runPolicies_environmentHistory_length players
-        (runtime.blockEnvironment roster) [invocation] execution middle
-          (by simpa [MessageApplication.runPolicies] using hmiddle)
-      apply ih middle ?_ hmiddleInvariant hnext
-      intro index hlo hhi
-      apply hindex index <;>
-        cases invocation <;>
-        simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment,
-          Bool.false_eq_true, ↓reduceIte] at hlength ⊢ <;> omega
+  apply runtime.application.runPolicies_idleEnvironment_invariant players
+    (runtime.blockEnvironment roster) schedule execution next Invariant hprivate
+    ?_ hinvariant hnext
+  intro current hcurrent hlo hhi
+  apply runtime.blockEnvironment_inactive roster current.environmentHistory
+    (MessageApplication.State.environmentView runtime.application current.native) instruction
+    (hindex current.environmentHistory.length hlo hhi)
+  simpa [MessageApplication.State.environmentView, WindowedApplication.application] using
+    hinactive current.native.application hcurrent
 
 /-- A suffix whose environment slots all belong to a resolved address has
 no public application effect, even with arbitrary policies for every player.

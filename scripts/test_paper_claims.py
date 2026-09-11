@@ -22,7 +22,6 @@ class PaperClaimsTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.paper = self.root / "overleaf"
-        (self.root / "Paper").mkdir()
         self.paper.mkdir()
         for name in CHECKER.AUDIT_FILES:
             (self.root / name).write_text("", encoding="utf-8")
@@ -37,6 +36,8 @@ class PaperClaimsTests(unittest.TestCase):
         self.registry = self.root / "paper-claims.json"
         self.registry.write_text(json.dumps({"thm:witness": ["Vegas.Paper.witness"]}),
                                  encoding="utf-8")
+        self.obligations = self.root / CHECKER.OBLIGATIONS_FILE
+        self.obligations.write_text("{}", encoding="utf-8")
         self.main = self.paper / "main.tex"
         self.main.write_text(
             r"\begin{theorem}\label{thm:witness}Claim.\end{theorem}", encoding="utf-8"
@@ -57,10 +58,45 @@ class PaperClaimsTests(unittest.TestCase):
     def test_valid_plain_export(self):
         self.assertEqual(self.check(), [])
 
-    def test_source_audit_is_indexed(self):
-        source_audit = self.root / "Paper/Source.lean"
+    def test_only_root_audit_is_indexed(self):
+        paper_dir = self.root / "Paper"
+        paper_dir.mkdir()
+        source_audit = paper_dir / "Source.lean"
         source_audit.write_text(self.audit.read_text(encoding="utf-8"), encoding="utf-8")
         self.audit.write_text("", encoding="utf-8")
+        self.assertTrue(any("no audit theorem" in error for error in self.check()))
+
+    def test_strict_mode_rejects_admitted_audit_theorem(self):
+        self.audit.write_text(
+            "namespace Vegas.Paper\n"
+            "theorem witness : True := by\n  sorry\n"
+            "#guard_msgs (whitespace := lax) in\n"
+            "#print axioms Vegas.Paper.witness\n"
+            "end Vegas.Paper\n", encoding="utf-8"
+        )
+        self.assertTrue(any("Admitted audit theorem is an open obligation" in error
+                            for error in self.check()))
+
+    def test_progress_mode_accepts_pinned_admitted_audit_theorem(self):
+        self.audit.write_text(
+            "namespace Vegas.Paper\n"
+            "theorem witness : True :=\n  by\n    sorry\n"
+            "#guard_msgs (whitespace := lax) in\n"
+            "#print axioms Vegas.Paper.witness\n"
+            "end Vegas.Paper\n", encoding="utf-8"
+        )
+        self.assertEqual(CHECKER.check(self.root, self.paper,
+                                       allow_open_obligations=True), [])
+
+    def test_sorry_in_comment_does_not_mark_theorem_open(self):
+        self.audit.write_text(
+            "namespace Vegas.Paper\n"
+            "/- sorry is discussed here -/\n"
+            "theorem witness : True := True.intro\n"
+            "#guard_msgs (whitespace := lax) in\n"
+            "#print axioms Vegas.Paper.witness\n"
+            "end Vegas.Paper\n", encoding="utf-8"
+        )
         self.assertEqual(self.check(), [])
 
     def bibliography_fixture(self, active, names):
@@ -104,6 +140,65 @@ class PaperClaimsTests(unittest.TestCase):
     def test_missing_declaration(self):
         self.audit.write_text("", encoding="utf-8")
         self.assertTrue(any("no audit theorem" in error for error in self.check()))
+
+    def make_open_obligation(self, reference="archive/Paper.lean.txt",
+                             reason="awaiting port"):
+        archived = self.root / reference
+        archived.parent.mkdir(parents=True, exist_ok=True)
+        archived.write_text(self.audit.read_text(encoding="utf-8"), encoding="utf-8")
+        self.audit.write_text("", encoding="utf-8")
+        self.obligations.write_text(json.dumps({
+            "Vegas.Paper.witness": {"reason": reason, "reference": reference}
+        }), encoding="utf-8")
+
+    def test_strict_mode_rejects_explicit_open_obligation(self):
+        self.make_open_obligation()
+        self.assertTrue(any("Open paper obligation: Vegas.Paper.witness" in error
+                            for error in self.check()))
+
+    def test_progress_mode_accepts_explained_archival_reference(self):
+        self.make_open_obligation()
+        self.assertEqual(CHECKER.check(self.root, self.paper,
+                                       allow_open_obligations=True), [])
+
+    def test_progress_mode_rejects_missing_unlisted_theorem(self):
+        self.audit.write_text("", encoding="utf-8")
+        self.assertTrue(any("no audit theorem" in error for error in
+                            CHECKER.check(self.root, self.paper,
+                                          allow_open_obligations=True)))
+
+    def test_stale_obligation_with_active_proof_is_rejected(self):
+        archived = self.root / "archive/Paper.lean.txt"
+        archived.parent.mkdir()
+        archived.write_text(self.audit.read_text(encoding="utf-8"), encoding="utf-8")
+        self.obligations.write_text(json.dumps({
+            "Vegas.Paper.witness": {
+                "reason": "awaiting port", "reference": "archive/Paper.lean.txt"
+            }
+        }), encoding="utf-8")
+        self.assertTrue(any("has an active proof" in error for error in
+                            CHECKER.check(self.root, self.paper,
+                                          allow_open_obligations=True)))
+
+    def test_obligation_reference_must_declare_exact_name(self):
+        self.make_open_obligation()
+        (self.root / "archive/Paper.lean.txt").write_text(
+            "namespace Vegas.Paper\ntheorem typo : True := True.intro\nend Vegas.Paper\n",
+            encoding="utf-8")
+        self.assertTrue(any("does not declare Vegas.Paper.witness" in error for error in
+                            CHECKER.check(self.root, self.paper,
+                                          allow_open_obligations=True)))
+
+    def test_obligation_reference_must_exist(self):
+        self.audit.write_text("", encoding="utf-8")
+        self.obligations.write_text(json.dumps({
+            "Vegas.Paper.witness": {
+                "reason": "awaiting port", "reference": "archive/missing.lean.txt"
+            }
+        }), encoding="utf-8")
+        self.assertTrue(any("Missing paper obligation reference" in error for error in
+                            CHECKER.check(self.root, self.paper,
+                                          allow_open_obligations=True)))
 
     def test_missing_pin(self):
         self.audit.write_text("namespace Vegas.Paper\ntheorem witness : True := True.intro\n",

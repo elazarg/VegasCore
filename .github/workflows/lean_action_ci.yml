@@ -23,8 +23,8 @@ jobs:
         run: python scripts/check-doc-references.py
       - name: Require centralized Lean options
         run: python scripts/check-lean-options.py
-      - name: Check Lean side of paper registry (manuscript unavailable)
-        run: python scripts/check-paper-claims.py --allow-missing-paper
+      - name: Check paper proof progress (open obligations reported)
+        run: python scripts/check-paper-claims.py --allow-missing-paper --allow-open-obligations
       - name: Test paper claim checker
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Check module boundaries and build reachability

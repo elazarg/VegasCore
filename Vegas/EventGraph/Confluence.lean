@@ -177,6 +177,20 @@ theorem scheduleComplete_terminal (w : Fin G.nodeCount → TypedValue L)
   simp only [Config.initial, Finset.empty_union, List.mem_toFinset]
   exact hcover node
 
+/-- Reordering a duplicate-free completed schedule preserves both observations. -/
+theorem scheduleComplete_observe_perm
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} (cfg : Config G) (who : Player)
+    (value : Fin G.nodeCount → TypedValue L)
+    {left right : List (Fin G.nodeCount)}
+    (hperm : List.Perm left right) (hnodup : left.Nodup) :
+    (publicObserve G (cfg.scheduleComplete value left),
+        observe G (cfg.scheduleComplete value left) who) =
+      (publicObserve G (cfg.scheduleComplete value right),
+        observe G (cfg.scheduleComplete value right) who) :=
+  congrArg (fun state => (publicObserve G state, observe G state who))
+    (Config.scheduleComplete_perm cfg value hperm hnodup)
+
 end Config
 
 end EventGraph

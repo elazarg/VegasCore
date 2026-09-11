@@ -4,8 +4,9 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
+import Vegas.Compile.Compiler
 import Vegas.Compile.SealedMessages
-import Vegas.Game.SourceCorrespondence
+import Vegas.Core.FiniteDomain
 
 /-! # A compiled nullable two-player source
 
@@ -51,8 +52,6 @@ def source : WFProgram Player simpleExpr where
 
 abbrev compiled := ToEventGraph.compile source.core
 abbrev graph := compiled.graph
-abbrev machine := Machine.compile source
-
 instance finiteDomains : FiniteDomains source where
   context := inferInstanceAs (FiniteVCtx ([] : VCtx Player simpleExpr))
   program := {

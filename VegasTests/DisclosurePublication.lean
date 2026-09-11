@@ -8,7 +8,7 @@ import Interaction.TransactionalInclusion
 import Vegas.Compile.ConditionalExecution
 import Vegas.Compile.ConditionalOpeningController
 import VegasTests.DisclosureAccounting
-import VegasTests.DisclosureOpening
+import VegasTests.DisclosureTrace
 
 /-! # Transactional publication of the checked optional-disclosure source
 

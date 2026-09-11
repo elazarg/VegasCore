@@ -6,7 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.ApplicationImageRefinement
 import Vegas.Compile.ApplicationPlanAllocation
-import VegasTests.Game
+import VegasTests.Fixtures
 
 /-! # A mixed-type generated public-choice image
 
