@@ -356,6 +356,35 @@ theorem isεNash_compileProfile_iff
   (simulation G hwf hguards hlocal hsingle).isεNash_compileProfile_iff value ε profile
     (fun _ _ => trivial)
 
+theorem isNash_compileProfile_iff
+    (hlocal : CommitInformationLocal G hwf hguards)
+    (hsingle : ∀ (cfg : Config G) who first second,
+      ReadyCommitNode G cfg who first → ReadyCommitNode G cfg who second → first = second)
+    (value : ReachableConfig G → Player → ℝ)
+    (profile : Profile (graphModel G hwf hguards).behavioralSignature) :
+    IsNash (policyGame G hwf hguards)
+      (euPreference (fun outcome who => value (policyObserve G outcome) who))
+      ((simulation G hwf hguards hlocal hsingle).compileProfile profile) ↔
+      IsNash (behavioralGame G hwf hguards)
+        (euPreference (fun outcome who =>
+          value (behavioralObserve G hwf hguards outcome) who)) profile := by
+  have heps := isεNash_compileProfile_iff G hwf hguards hlocal hsingle value 0 profile
+  constructor
+  · intro htarget
+    apply (GameTheory.isNash_iff_isεNash_zero
+      (behavioralGame G hwf hguards)
+      (fun outcome who => value (behavioralObserve G hwf hguards outcome) who)).mpr
+    exact heps.mp ((GameTheory.isNash_iff_isεNash_zero
+      (policyGame G hwf hguards)
+      (fun outcome who => value (policyObserve G outcome) who)).mp htarget)
+  · intro hsource
+    apply (GameTheory.isNash_iff_isεNash_zero
+      (policyGame G hwf hguards)
+      (fun outcome who => value (policyObserve G outcome) who)).mpr
+    exact heps.mpr ((GameTheory.isNash_iff_isεNash_zero
+      (behavioralGame G hwf hguards)
+      (fun outcome who => value (behavioralObserve G hwf hguards outcome) who)).mp hsource)
+
 end Strategic
 
 end Vegas.EventGraph
@@ -370,3 +399,8 @@ end Vegas.EventGraph
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.Strategic.isεNash_compileProfile_iff
+
+/-- info: 'Vegas.EventGraph.Strategic.isNash_compileProfile_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.Strategic.isNash_compileProfile_iff

@@ -172,7 +172,7 @@ theorem sealed_quit_dominance_transfer
 conditions. It is the reusable theorem a concrete runtime must instantiate
 before pending messages, clocks, or settlement are added. -/
 
-theorem graph_nash_preservation
+theorem graph_approximate_nash_preservation
     {G : EventGraph.Graph Player L}
     [Fintype Player]
     (hwf : G.WF) (hguards : EventGraph.GuardLive G)
@@ -190,6 +190,26 @@ theorem graph_nash_preservation
         (fun outcome who =>
           value (EventGraph.Strategic.behavioralObserve G hwf hguards outcome) who) ε profile :=
   EventGraph.Strategic.isεNash_compileProfile_iff G hwf hguards hlocal hsingle value ε profile
+
+theorem graph_nash_preservation
+    {G : EventGraph.Graph Player L}
+    [Fintype Player]
+    (hwf : G.WF) (hguards : EventGraph.GuardLive G)
+    (hlocal : EventGraph.CommitInformationLocal G hwf hguards)
+    (hsingle : ∀ (cfg : EventGraph.Config G) who first second,
+      EventGraph.ReadyCommitNode G cfg who first →
+      EventGraph.ReadyCommitNode G cfg who second → first = second)
+    (value : EventGraph.ReachableConfig G → Player → ℝ)
+    (profile : Profile
+      (EventGraph.Strategic.graphModel G hwf hguards).behavioralSignature) :
+    IsNash (EventGraph.policyGame G hwf hguards)
+      (euPreference (fun outcome who =>
+        value (EventGraph.Strategic.policyObserve G outcome) who))
+      ((EventGraph.Strategic.simulation G hwf hguards hlocal hsingle).compileProfile profile) ↔
+      IsNash (EventGraph.behavioralGame G hwf hguards)
+        (euPreference (fun outcome who =>
+          value (EventGraph.Strategic.behavioralObserve G hwf hguards outcome) who)) profile :=
+  EventGraph.Strategic.isNash_compileProfile_iff G hwf hguards hlocal hsingle value profile
 
 theorem graph_exact_deviation
     {G : EventGraph.Graph Player L}
@@ -247,6 +267,11 @@ end Vegas.Paper
 /-- info: 'Vegas.Paper.sealed_quit_dominance_transfer' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sealed_quit_dominance_transfer
+
+/-- info: 'Vegas.Paper.graph_approximate_nash_preservation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.graph_approximate_nash_preservation
 
 /-- info: 'Vegas.Paper.graph_nash_preservation' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
